@@ -110,7 +110,9 @@ func (s *Service) Claim(ctx context.Context, c importv2.IdentityClaim) error {
 		return fmt.Errorf("claim %q: duplicate source key", c.SourceKey)
 	}
 
-	id, err := s.matchExisting(c)
+	// Minted (page-class) objects keep the flag's gate: whether a re-import
+	// overwrites the user's pages is the user's call.
+	id, err := s.matchExisting(c, false)
 	if err != nil {
 		return fmt.Errorf("claim %q: match existing: %w", c.SourceKey, err)
 	}

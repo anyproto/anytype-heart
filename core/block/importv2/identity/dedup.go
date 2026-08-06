@@ -13,9 +13,16 @@ import (
 
 // matchExisting applies the minted-class dedup order: oldAnytypeID (also
 // checked against uniqueKey — old ids of derived objects equal their unique
-// key), then sourceFilePath when update-existing is on. Empty keys are
-// skipped (v1 queried with empty strings; that was a latent mismatch source).
-func (s *Service) matchExisting(c importv2.IdentityClaim) (string, error) {
+// key), then sourceFilePath when sourcePathAlways or update-existing is on.
+// Empty keys are skipped (v1 queried with empty strings; that was a latent
+// mismatch source).
+//
+// sourcePathAlways carries v1's rule that derived objects correlate on their
+// source id whatever the flag says (v1 hardcoded true for them in
+// objectid/derivedobject.go): the flag decides whether a re-import overwrites
+// user-facing PAGES, while a type or relation that is demonstrably the same
+// one must converge either way, or every re-import mints a parallel set.
+func (s *Service) matchExisting(c importv2.IdentityClaim, sourcePathAlways bool) (string, error) {
 	if c.OldAnytypeID != "" {
 		id, err := s.queryFirstId(database.Query{Filters: []database.FilterRequest{
 			eq(bundle.RelationKeyOldAnytypeID, domain.String(c.OldAnytypeID)),
@@ -35,7 +42,7 @@ func (s *Service) matchExisting(c importv2.IdentityClaim) (string, error) {
 			return id, nil
 		}
 	}
-	if s.updateExisting && c.SourceFilePath != "" {
+	if (sourcePathAlways || s.updateExisting) && c.SourceFilePath != "" {
 		id, err := s.queryFirstId(database.Query{Filters: []database.FilterRequest{
 			eq(bundle.RelationKeySourceFilePath, domain.String(c.SourceFilePath)),
 		}})
@@ -59,7 +66,7 @@ func (s *Service) matchExistingDerived(o *importv2.Object) (string, error) {
 		SbType:         o.SbType,
 		OldAnytypeID:   details.GetString(bundle.RelationKeyOldAnytypeID),
 		SourceFilePath: details.GetString(bundle.RelationKeySourceFilePath),
-	})
+	}, true)
 	if err != nil || id != "" {
 		return id, err
 	}
@@ -91,33 +98,92 @@ func (s *Service) matchRelationOption(o *importv2.Object) (string, error) {
 	return id, nil
 }
 
+// matchRelation matches on the relation key first and only then on the name.
+// The key is an identity — for Notion it is derived from the property id, so
+// it names one property of one database — while the name is a label many
+// properties share. Querying both at once as an OR let a same-named relation
+// from another database win the single returned row, which would merge two
+// databases' vocabularies back into one option pool on every re-import, and
+// non-deterministically at that.
 func (s *Service) matchRelation(o *importv2.Object) (string, error) {
+	format := o.Payload.Details.Get(bundle.RelationKeyRelationFormat)
+	for _, identifying := range []domain.RelationKey{bundle.RelationKeyRelationKey, bundle.RelationKeyName} {
+		value := o.Payload.Details.Get(identifying)
+		if !value.Ok() {
+			continue
+		}
+		records, err := s.store.QueryRaw(&database.Filters{FilterObj: database.FiltersAnd{
+			database.FilterEq{
+				Key:   bundle.RelationKeyRelationFormat,
+				Cond:  model.BlockContentDataviewFilter_Equal,
+				Value: format,
+			},
+			database.FilterEq{
+				Key:   bundle.RelationKeyResolvedLayout,
+				Cond:  model.BlockContentDataviewFilter_Equal,
+				Value: domain.Int64(int64(model.ObjectType_relation)),
+			},
+			database.FilterEq{
+				Key:   identifying,
+				Cond:  model.BlockContentDataviewFilter_Equal,
+				Value: value,
+			},
+		}}, 1, 0)
+		if err != nil {
+			return "", fmt.Errorf("query relation by %s: %w", identifying, err)
+		}
+		if len(records) > 0 {
+			return records[0].Details.GetString(bundle.RelationKeyId), nil
+		}
+	}
+	return "", nil
+}
+
+// matchObjectType matches on the unique key first, then on the name — but a
+// name match only claims a type a previous IMPORT created.
+//
+// Names carry no identity, and under the always-mint plan they come from an
+// untrusted model. Claiming a same-named type the user authored would hand
+// their data model to the importer: persist already refuses to rewrite such a
+// type (persist.go:247-256), but the incoming objects would still be typed
+// onto it, and a database whose collection was replaced by its type would lose
+// its membership entirely. Reusing a type an import made is the re-import
+// case and stays.
+func (s *Service) matchObjectType(o *importv2.Object) (string, error) {
+	if uniqueKey := o.Payload.Details.Get(bundle.RelationKeyUniqueKey); uniqueKey.Ok() {
+		records, err := s.store.QueryRaw(&database.Filters{FilterObj: database.FiltersAnd{
+			typeLayoutFilter(),
+			database.FilterEq{
+				Key:   bundle.RelationKeyUniqueKey,
+				Cond:  model.BlockContentDataviewFilter_Equal,
+				Value: uniqueKey,
+			},
+		}}, 1, 0)
+		if err != nil {
+			return "", fmt.Errorf("query object type by unique key: %w", err)
+		}
+		if len(records) > 0 {
+			return records[0].Details.GetString(bundle.RelationKeyId), nil
+		}
+	}
+	if o.Payload.Details.GetString(bundle.RelationKeyName) == "" {
+		return "", nil
+	}
 	records, err := s.store.QueryRaw(&database.Filters{FilterObj: database.FiltersAnd{
+		typeLayoutFilter(),
 		database.FilterEq{
-			Key:   bundle.RelationKeyRelationFormat,
+			Key:   bundle.RelationKeyName,
 			Cond:  model.BlockContentDataviewFilter_Equal,
-			Value: o.Payload.Details.Get(bundle.RelationKeyRelationFormat),
+			Value: o.Payload.Details.Get(bundle.RelationKeyName),
 		},
 		database.FilterEq{
-			Key:   bundle.RelationKeyResolvedLayout,
+			Key:   bundle.RelationKeyOrigin,
 			Cond:  model.BlockContentDataviewFilter_Equal,
-			Value: domain.Int64(int64(model.ObjectType_relation)),
-		},
-		database.FiltersOr{
-			database.FilterEq{
-				Key:   bundle.RelationKeyName,
-				Cond:  model.BlockContentDataviewFilter_Equal,
-				Value: o.Payload.Details.Get(bundle.RelationKeyName),
-			},
-			database.FilterEq{
-				Key:   bundle.RelationKeyRelationKey,
-				Cond:  model.BlockContentDataviewFilter_Equal,
-				Value: o.Payload.Details.Get(bundle.RelationKeyRelationKey),
-			},
+			Value: domain.Int64(int64(model.ObjectOrigin_import)),
 		},
 	}}, 1, 0)
 	if err != nil {
-		return "", fmt.Errorf("query relation: %w", err)
+		return "", fmt.Errorf("query object type by name: %w", err)
 	}
 	if len(records) > 0 {
 		return records[0].Details.GetString(bundle.RelationKeyId), nil
@@ -125,36 +191,12 @@ func (s *Service) matchRelation(o *importv2.Object) (string, error) {
 	return "", nil
 }
 
-func (s *Service) matchObjectType(o *importv2.Object) (string, error) {
-	if o.Payload.Details.GetString(bundle.RelationKeyName) == "" {
-		return "", nil
+func typeLayoutFilter() database.FilterEq {
+	return database.FilterEq{
+		Key:   bundle.RelationKeyResolvedLayout,
+		Cond:  model.BlockContentDataviewFilter_Equal,
+		Value: domain.Int64(int64(model.ObjectType_objectType)),
 	}
-	records, err := s.store.QueryRaw(&database.Filters{FilterObj: database.FiltersAnd{
-		database.FilterEq{
-			Key:   bundle.RelationKeyResolvedLayout,
-			Cond:  model.BlockContentDataviewFilter_Equal,
-			Value: domain.Int64(int64(model.ObjectType_objectType)),
-		},
-		database.FiltersOr{
-			database.FilterEq{
-				Key:   bundle.RelationKeyName,
-				Cond:  model.BlockContentDataviewFilter_Equal,
-				Value: o.Payload.Details.Get(bundle.RelationKeyName),
-			},
-			database.FilterEq{
-				Key:   bundle.RelationKeyUniqueKey,
-				Cond:  model.BlockContentDataviewFilter_Equal,
-				Value: o.Payload.Details.Get(bundle.RelationKeyUniqueKey),
-			},
-		},
-	}}, 1, 0)
-	if err != nil {
-		return "", fmt.Errorf("query object type: %w", err)
-	}
-	if len(records) > 0 {
-		return records[0].Details.GetString(bundle.RelationKeyId), nil
-	}
-	return "", nil
 }
 
 func (s *Service) isDeleted(uniqueKey string) bool {

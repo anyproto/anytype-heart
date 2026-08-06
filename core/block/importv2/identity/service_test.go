@@ -345,3 +345,121 @@ func TestDerivedAdoptsClaimedSourceKey(t *testing.T) {
 			"a claim answered by a derived object must not surface as an invariant error")
 	})
 }
+
+func planTypeObject(sourceKey, key, name, sourceFilePath string) *importv2.Object {
+	details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyName:           domain.String(name),
+		bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
+	})
+	if sourceFilePath != "" {
+		details.SetString(bundle.RelationKeySourceFilePath, sourceFilePath)
+	}
+	return &importv2.Object{
+		SourceKey: sourceKey,
+		SbType:    coresb.SmartBlockTypeObjectType,
+		Payload:   &importv2.Snapshot{Key: key, Details: details},
+	}
+}
+
+// TestReImportCorrelation pins v1's rule that derived objects correlate on
+// their source id whatever the update flag says (v1 hardcoded it), and the
+// v2 rule that an import may only claim a type an import created.
+func TestReImportCorrelation(t *testing.T) {
+	t.Run("a derived object matches its previous import by source id without the update flag", func(t *testing.T) {
+		// given — a type a previous Notion import created for database db1
+		fx := newFixture(t, false)
+		fx.store.AddObjects(t, spaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:             domain.String("existingType"),
+			bundle.RelationKeyName:           domain.String("Sprint"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
+			bundle.RelationKeySourceFilePath: domain.String("db1"),
+			bundle.RelationKeyUniqueKey:      domain.String("ot-aitypeold"),
+			bundle.RelationKeyOrigin:         domain.Int64(int64(model.ObjectOrigin_import)),
+		}})
+
+		// when — the same database is imported again, and the model happens to
+		// have named the kind differently this run
+		got, err := fx.AssignDerived(context.Background(), planTypeObject("db1", "aitypenew", "Sprint task", "db1"))
+
+		// then — it updates that type instead of minting a second one
+		require.NoError(t, err)
+		assert.Equal(t, "existingType", got.Id)
+		assert.True(t, got.IsExisting)
+	})
+
+	t.Run("a user-authored type of the same name is never claimed", func(t *testing.T) {
+		// given — the user's own "Task" type, not made by any import
+		fx := newFixture(t, false)
+		fx.store.AddObjects(t, spaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:             domain.String("userType"),
+			bundle.RelationKeyName:           domain.String("Task"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
+			bundle.RelationKeyUniqueKey:      domain.String("ot-usertask"),
+		}})
+		uniqueKey, err := domain.NewUniqueKey(coresb.SmartBlockTypeObjectType, "aitypemine")
+		require.NoError(t, err)
+		fx.space.EXPECT().DeriveTreePayload(mock.Anything, payloadcreator.PayloadDerivationParams{Key: uniqueKey}).
+			Return(payloadWithId("derived1"), nil)
+
+		// when — the model names its minted type "Task" too
+		got, err := fx.AssignDerived(context.Background(), planTypeObject("db1", "aitypemine", "Task", "db1"))
+
+		// then — the import gets its own type; the user's is left alone
+		require.NoError(t, err)
+		assert.Equal(t, "derived1", got.Id)
+		assert.False(t, got.IsExisting, "an import must not take over a type the user authored")
+	})
+
+	t.Run("an import-created type of the same name is reused", func(t *testing.T) {
+		// given — same name, but a previous import made it
+		fx := newFixture(t, false)
+		fx.store.AddObjects(t, spaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:             domain.String("importedType"),
+			bundle.RelationKeyName:           domain.String("Task"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
+			bundle.RelationKeyUniqueKey:      domain.String("ot-importtask"),
+			bundle.RelationKeyOrigin:         domain.Int64(int64(model.ObjectOrigin_import)),
+		}})
+
+		// when
+		got, err := fx.AssignDerived(context.Background(), planTypeObject("db2", "aitypemine", "Task", ""))
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "importedType", got.Id)
+	})
+
+	t.Run("same-named relations of different databases do not collapse onto one", func(t *testing.T) {
+		// given — run 1 separated two databases' Category properties
+		fx := newFixture(t, false)
+		fx.store.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("catA"),
+				bundle.RelationKeyName:           domain.String("Category"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_status)),
+				bundle.RelationKeyRelationKey:    domain.String("npropA"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyUniqueKey:      domain.String("rel-npropA"),
+			},
+			{
+				bundle.RelationKeyId:             domain.String("catB"),
+				bundle.RelationKeyName:           domain.String("Category"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_status)),
+				bundle.RelationKeyRelationKey:    domain.String("npropB"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyUniqueKey:      domain.String("rel-npropB"),
+			},
+		})
+
+		// when — run 2 re-imports both
+		gotA, err := fx.AssignDerived(context.Background(), relationObject("relation:npropA", "npropA", "Category", model.RelationFormat_status))
+		require.NoError(t, err)
+		gotB, err := fx.AssignDerived(context.Background(), relationObject("relation:npropB", "npropB", "Category", model.RelationFormat_status))
+		require.NoError(t, err)
+
+		// then — each converges on its own, or the per-database vocabularies
+		// merge back together on every re-import
+		assert.Equal(t, "catA", gotA.Id)
+		assert.Equal(t, "catB", gotB.Id)
+	})
+}
