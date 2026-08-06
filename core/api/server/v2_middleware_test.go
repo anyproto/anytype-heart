@@ -192,6 +192,39 @@ func TestEnsureIdempotency(t *testing.T) {
 		assert.Equal(t, "true", second.Header().Get("Idempotency-Replayed"))
 	})
 
+	t.Run("a replayed DELETE with the same key runs the handler once (Phase-6 widening)", func(t *testing.T) {
+		// C8 covers DELETE where registered (the chat message delete): a
+		// blindly retried delete would otherwise 404 misleadingly after the
+		// first success.
+		// given
+		gin.SetMode(gin.TestMode)
+		store := newIdempotencyStore(8)
+		calls := 0
+		router := gin.New()
+		router.DELETE("/v2/spaces/:space_id/chats/:chat_id/messages/:message_id", ensureIdempotency(store), func(c *gin.Context) {
+			calls++
+			c.JSON(http.StatusOK, gin.H{"call": calls})
+		})
+		del := func() *httptest.ResponseRecorder {
+			req := httptest.NewRequest(http.MethodDelete, "/v2/spaces/space1/chats/chat1/messages/msg1", nil)
+			req.Header.Set(IdempotencyKeyHeader, "key1")
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+			return w
+		}
+
+		// when
+		first := del()
+		second := del()
+
+		// then
+		assert.Equal(t, http.StatusOK, first.Code)
+		assert.Equal(t, http.StatusOK, second.Code)
+		assert.Equal(t, first.Body.String(), second.Body.String(), "the stored result is replayed")
+		assert.Equal(t, 1, calls, "the handler ran once — the retry never re-deleted")
+		assert.Equal(t, "true", second.Header().Get("Idempotency-Replayed"))
+	})
+
 	t.Run("the same key and body on a DIFFERENT object never replays", func(t *testing.T) {
 		// the target object lives in the PATH, so hashing only the body would
 		// replay object A's success for an edit of object B — leaving B

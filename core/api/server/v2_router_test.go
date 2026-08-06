@@ -99,6 +99,15 @@ func TestV2Routes(t *testing.T) {
 			{"PUT", "/v2/spaces/space1/objects/obj1"},
 			{"PATCH", "/v2/spaces/space1/types/task"},
 			{"PATCH", "/v2/spaces/space1/properties/status"},
+			// Phase-6 chat mutations: C8 on every one — a double-sent chat
+			// message is user-visible damage. DELETE is the Phase-6 widening
+			// of the middleware's method set.
+			{"POST", "/v2/spaces/space1/chats"},
+			{"POST", "/v2/spaces/space1/chats/chat1/messages"},
+			{"PATCH", "/v2/spaces/space1/chats/chat1/messages/msg1"},
+			{"DELETE", "/v2/spaces/space1/chats/chat1/messages/msg1"},
+			{"POST", "/v2/spaces/space1/chats/chat1/messages/msg1/reactions"},
+			{"POST", "/v2/spaces/space1/chats/chat1/read"},
 		} {
 			t.Run(route.method+" "+route.path, func(t *testing.T) {
 				fx := newV2ServerFixture(t)
@@ -159,6 +168,26 @@ func TestV2Routes(t *testing.T) {
 		}
 	})
 
+	t.Run("chat messages read rejects offset with cursor steering", func(t *testing.T) {
+		// the messages read is cursor-paged (after/before order ids); a
+		// silently honored ?offset= would let an agent believe it pages by
+		// offset while the RPC ignores it — reject with steering instead
+		fx := newV2ServerFixture(t)
+		fx.KeyToToken = map[string]ApiSessionEntry{"validKey": {Token: "tok"}}
+		fx.eventMock.On("Broadcast", mock.Anything).Return(nil).Maybe()
+
+		req := httptest.NewRequest("GET", "/v2/spaces/space1/chats/chat1/messages?offset=5", nil)
+		req.Host = localApiHost
+		req.Header.Set("Authorization", "Bearer validKey")
+		w := httptest.NewRecorder()
+
+		fx.Engine().ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusBadRequest, w.Code)
+		require.Contains(t, w.Body.String(), "cursor-paged")
+		require.Contains(t, w.Body.String(), "after")
+	})
+
 	t.Run("v2 group absent without deps", func(t *testing.T) {
 		// given: the plain fixture constructs NewServer with V2Deps{}
 		fx := newFixture(t)
@@ -200,6 +229,14 @@ func TestV2Routes(t *testing.T) {
 			{"GET", "/v2/spaces/space1/sets/set1/views"},
 			{"GET", "/v2/spaces/space1/collections/col1/objects"},
 			{"GET", "/v2/spaces/space1/collections/col1/views"},
+			{"GET", "/v2/spaces/space1/chats"},
+			{"POST", "/v2/spaces/space1/chats"},
+			{"GET", "/v2/spaces/space1/chats/chat1/messages"},
+			{"POST", "/v2/spaces/space1/chats/chat1/messages"},
+			{"PATCH", "/v2/spaces/space1/chats/chat1/messages/msg1"},
+			{"DELETE", "/v2/spaces/space1/chats/chat1/messages/msg1"},
+			{"POST", "/v2/spaces/space1/chats/chat1/messages/msg1/reactions"},
+			{"POST", "/v2/spaces/space1/chats/chat1/read"},
 		} {
 			// when
 			w := httptest.NewRecorder()

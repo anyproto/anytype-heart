@@ -173,6 +173,60 @@ func (srv *Server) registerV2Routes(router *gin.Engine, mw apicore.ClientCommand
 
 	srv.registerV2CreateRoutes(v2, eventService, idempotencyMW, writeRateLimitMW)
 	srv.registerV2EditRoutes(v2, eventService, idempotencyMW, writeRateLimitMW)
+	srv.registerV2ChatRoutes(v2, eventService, idempotencyMW, writeRateLimitMW)
+}
+
+// registerV2ChatRoutes registers the Phase-6 chat surface (APIV2.md §8.7).
+// Every mutation — including DELETE, a Phase-6 widening of C8's method set —
+// runs behind the idempotency middleware: a double-sent chat message is
+// user-visible damage, and a blindly retried delete 404s misleadingly. C7
+// etag/If-Match deliberately does not apply (order ids and lastStateId are
+// the chat's native concurrency vocabulary).
+func (srv *Server) registerV2ChatRoutes(v2 *gin.RouterGroup, eventService apicore.EventService, idempotencyMW, writeRateLimitMW gin.HandlerFunc) {
+	v2.GET("/spaces/:space_id/chats",
+		ensureAnalyticsEvent("V2ListChats", eventService),
+		handler.ListChatsV2Handler(srv.v2Service),
+	)
+	v2.POST("/spaces/:space_id/chats",
+		writeRateLimitMW,
+		idempotencyMW,
+		ensureAnalyticsEvent("V2CreateChat", eventService),
+		handler.CreateChatV2Handler(srv.v2Service),
+	)
+	v2.GET("/spaces/:space_id/chats/:chat_id/messages",
+		ensureAnalyticsEvent("V2GetChatMessages", eventService),
+		handler.GetChatMessagesV2Handler(srv.v2Service),
+	)
+	v2.POST("/spaces/:space_id/chats/:chat_id/messages",
+		writeRateLimitMW,
+		idempotencyMW,
+		ensureAnalyticsEvent("V2AddChatMessage", eventService),
+		handler.AddChatMessageV2Handler(srv.v2Service),
+	)
+	v2.PATCH("/spaces/:space_id/chats/:chat_id/messages/:message_id",
+		writeRateLimitMW,
+		idempotencyMW,
+		ensureAnalyticsEvent("V2EditChatMessage", eventService),
+		handler.EditChatMessageV2Handler(srv.v2Service),
+	)
+	v2.DELETE("/spaces/:space_id/chats/:chat_id/messages/:message_id",
+		writeRateLimitMW,
+		idempotencyMW,
+		ensureAnalyticsEvent("V2DeleteChatMessage", eventService),
+		handler.DeleteChatMessageV2Handler(srv.v2Service),
+	)
+	v2.POST("/spaces/:space_id/chats/:chat_id/messages/:message_id/reactions",
+		writeRateLimitMW,
+		idempotencyMW,
+		ensureAnalyticsEvent("V2ToggleChatReaction", eventService),
+		handler.ToggleChatReactionV2Handler(srv.v2Service),
+	)
+	v2.POST("/spaces/:space_id/chats/:chat_id/read",
+		writeRateLimitMW,
+		idempotencyMW,
+		ensureAnalyticsEvent("V2ReadChat", eventService),
+		handler.ReadChatV2Handler(srv.v2Service),
+	)
 }
 
 // registerV2EditRoutes registers the Phase-3 edit surface (APIV2.md §2
