@@ -464,6 +464,24 @@ func (s *V2Service) ListObjects(ctx context.Context, spaceId string, fields []st
 	return rows, total, hasMore, nil
 }
 
+// v2FieldAliases maps the file vocabulary of the fields= channel onto the
+// store relations backing it (Phase 7): `mimeType` and `size` are the
+// format's OWN names for a file's mime and byte size (the SPEC §5 file-block
+// fields, and the POST /files result) — the store relations are named
+// fileMimeType/sizeInBytes, and surfacing those here would put two names on
+// one concept across v2 (C2). The aliases are DISPLAY vocabulary only:
+// valid in fields=, never in filters or sorts.
+var v2FieldAliases = map[string]domain.RelationKey{
+	"mimeType": bundle.RelationKeyFileMimeType,
+	"size":     bundle.RelationKeySizeInBytes,
+}
+
+// isV2FieldAlias reports whether the key is a fields=-only alias.
+func isV2FieldAlias(key string) bool {
+	_, ok := v2FieldAliases[key]
+	return ok
+}
+
 // objectRowBuilder assembles C5 minimal rows (id, name, type + requested
 // property values) for one space, caching the type-key map and the property
 // resolvers across rows. Shared by the object list, the query surface and
@@ -518,6 +536,15 @@ func (b *objectRowBuilder) row(record database.Record) apimodel.V2ObjectRow {
 		for _, key := range b.fields {
 			if v, ok := proto.Fields[key]; ok {
 				values[key] = anyblockjson.MarshalPropertyValue(key, v, b.opts)
+				continue
+			}
+			// the fields= file aliases (Phase 7): read the backing store
+			// relation, emit under the requested name — a real property key
+			// of the same name (matched above) always wins
+			if backing, ok := v2FieldAliases[key]; ok {
+				if v, ok := proto.Fields[string(backing)]; ok {
+					values[key] = anyblockjson.MarshalPropertyValue(string(backing), v, b.opts)
+				}
 			}
 		}
 		if len(values) > 0 {

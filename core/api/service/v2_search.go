@@ -64,6 +64,13 @@ type searchPlan struct {
 	filters   []database.FilterRequest
 	sorts     []database.SortRequest
 	warnings  []apimodel.V2Issue
+	// includeFileLayouts widens the base row scope to ObjectAndFileLayouts
+	// (the Phase-7 file-discovery opt-in): set when the type CHANNEL names a
+	// file type — top-level type or a positive (=, IN) type filter leaf —
+	// reproducing v1's prepareBaseFilters(includeFileLayouts) opt-in without
+	// a new parameter. Without it a pure-v2 agent could upload a file and
+	// never find it again (file layouts are excluded from ObjectLayouts).
+	includeFileLayouts bool
 }
 
 // validateSearchShape applies the request-shape rules that do not depend on
@@ -180,7 +187,7 @@ func (s *V2Service) buildSearchPlan(spaceId string, req apimodel.V2SearchRequest
 	needRefs := req.Type != "" || len(req.Fields) > 0 || req.Filter != "" || len(req.Filters) > 0 || len(req.Sorts) > 0
 	if !needRefs {
 		plan.sorts = defaultSearchSorts(plan.textQuery, nil)
-		plan.filters = appendBaseRowScope(plan.filters)
+		plan.filters = appendBaseRowScope(plan.filters, false)
 		return plan, nil
 	}
 
@@ -198,6 +205,10 @@ func (s *V2Service) buildSearchPlan(spaceId string, req apimodel.V2SearchRequest
 			Condition:   model.BlockContentDataviewFilter_In,
 			Value:       domain.StringList([]string{typeId}),
 		})
+		// the Phase-7 file opt-in: a top-level file type widens the row scope
+		if util.IsFileTypeKey(req.Type) {
+			plan.includeFileLayouts = true
+		}
 	} else {
 		refKeys = s.knownPropertyKeys(spaceId)
 	}
@@ -216,7 +227,7 @@ func (s *V2Service) buildSearchPlan(spaceId string, req apimodel.V2SearchRequest
 	// on the global fan-out (see the strictFields contract above)
 	var issues []apimodel.V2Issue
 	for i, field := range req.Fields {
-		if allowed[field] {
+		if allowed[field] || isV2FieldAlias(field) {
 			continue
 		}
 		if strictFields {
@@ -271,8 +282,12 @@ func (s *V2Service) buildSearchPlan(spaceId string, req apimodel.V2SearchRequest
 		if err != nil {
 			return nil, mapFilterCodecError(err, fromString)
 		}
-		if err := s.resolveTypeLeaves(spaceId, modelFilters, filterFieldPath(fromString)); err != nil {
+		namedFileType, err := s.resolveTypeLeaves(spaceId, modelFilters, filterFieldPath(fromString))
+		if err != nil {
 			return nil, err
+		}
+		if namedFileType {
+			plan.includeFileLayouts = true
 		}
 		plan.filters = append(plan.filters, database.FiltersFromProto(modelFilters)...)
 	}
@@ -313,7 +328,7 @@ func (s *V2Service) buildSearchPlan(spaceId string, req apimodel.V2SearchRequest
 	}
 
 	plan.sorts = defaultSearchSorts(plan.textQuery, plan.sorts)
-	plan.filters = appendBaseRowScope(plan.filters)
+	plan.filters = appendBaseRowScope(plan.filters, plan.includeFileLayouts)
 	return plan, nil
 }
 
@@ -344,13 +359,19 @@ func defaultSearchSorts(textQuery string, sorts []database.SortRequest) []databa
 
 // appendBaseRowScope appends the base row scope (ListObjects parity): object
 // layouts, no templates, no hidden objects; archived/deleted are excluded by
-// the store's defaults.
-func appendBaseRowScope(filters []database.FilterRequest) []database.FilterRequest {
+// the store's defaults. includeFileLayouts is the Phase-7 opt-in (a file
+// type named in the type channel): it widens the layout list to
+// ObjectAndFileLayouts, mirroring v1's prepareBaseFilters.
+func appendBaseRowScope(filters []database.FilterRequest, includeFileLayouts bool) []database.FilterRequest {
+	layouts := util.ObjectLayouts
+	if includeFileLayouts {
+		layouts = util.ObjectAndFileLayouts
+	}
 	return append(filters,
 		database.FilterRequest{
 			RelationKey: bundle.RelationKeyResolvedLayout,
 			Condition:   model.BlockContentDataviewFilter_In,
-			Value:       domain.Int64List(util.LayoutsToIntArgs(util.ObjectLayouts)),
+			Value:       domain.Int64List(util.LayoutsToIntArgs(layouts)),
 		},
 		database.FilterRequest{
 			RelationKey: "type.uniqueKey",
@@ -581,25 +602,35 @@ func containsString(list []string, s string) bool {
 
 // resolveTypeLeaves resolves the `type` pseudo-key (rule 6): filter leaves
 // on `type` carry type KEYS, resolved to the space's type object ids like
-// any reference; unknown keys get the R9 did-you-mean.
-func (s *V2Service) resolveTypeLeaves(spaceId string, filters []*model.BlockContentDataviewFilter, path string) error {
+// any reference; unknown keys get the R9 did-you-mean. The returned bool
+// reports whether a POSITIVE leaf (=, IN) named a file type — the Phase-7
+// file-layout opt-in trigger; negated leaves (!=, NOT IN) exclude a type
+// rather than asking for files, so they never widen the scope.
+func (s *V2Service) resolveTypeLeaves(spaceId string, filters []*model.BlockContentDataviewFilter, path string) (namedFileType bool, err error) {
 	for _, f := range filters {
 		if f == nil {
 			continue
 		}
 		if len(f.NestedFilters) > 0 {
-			if err := s.resolveTypeLeaves(spaceId, f.NestedFilters, path); err != nil {
-				return err
+			nested, err := s.resolveTypeLeaves(spaceId, f.NestedFilters, path)
+			if err != nil {
+				return false, err
 			}
+			namedFileType = namedFileType || nested
 			continue
 		}
 		if f.RelationKey != bundle.RelationKeyType.String() || f.Value == nil {
 			continue
 		}
+		positive := f.Condition == model.BlockContentDataviewFilter_Equal ||
+			f.Condition == model.BlockContentDataviewFilter_In
 		resolve := func(key string) (string, error) {
 			id, ok := s.typeIdInSpace(spaceId, key)
 			if !ok {
 				return "", s.unknownTypeKeyError(spaceId, key, path)
+			}
+			if positive && util.IsFileTypeKey(key) {
+				namedFileType = true
 			}
 			return id, nil
 		}
@@ -607,7 +638,7 @@ func (s *V2Service) resolveTypeLeaves(spaceId string, filters []*model.BlockCont
 		case *types.Value_StringValue:
 			id, err := resolve(kind.StringValue)
 			if err != nil {
-				return err
+				return false, err
 			}
 			f.Value = &types.Value{Kind: &types.Value_StringValue{StringValue: id}}
 		case *types.Value_ListValue:
@@ -618,13 +649,13 @@ func (s *V2Service) resolveTypeLeaves(spaceId string, filters []*model.BlockCont
 				}
 				id, err := resolve(name)
 				if err != nil {
-					return err
+					return false, err
 				}
 				kind.ListValue.Values[i] = &types.Value{Kind: &types.Value_StringValue{StringValue: id}}
 			}
 		}
 	}
-	return nil
+	return namedFileType, nil
 }
 
 //

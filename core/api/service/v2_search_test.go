@@ -879,3 +879,166 @@ func TestV2GlobalSearchObjects(t *testing.T) {
 		assert.NotContains(t, rowIds(rows), "gonner")
 	})
 }
+
+// addImageObjects registers the image TYPE (ot-image) and one image OBJECT
+// (file layout, mime + byte size in the store relations) plus the type-page
+// contrast objects addChoreObjects provides.
+func (fx *v2Fixture) addImageObjects(t *testing.T) {
+	fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+		{
+			bundle.RelationKeyId:             domain.String("type-image"),
+			bundle.RelationKeyName:           domain.String("Image"),
+			bundle.RelationKeyUniqueKey:      domain.String("ot-image"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
+		},
+		{
+			bundle.RelationKeyId:               domain.String("img1"),
+			bundle.RelationKeyName:             domain.String("holiday.png"),
+			bundle.RelationKeyType:             domain.String("type-image"),
+			bundle.RelationKeyResolvedLayout:   domain.Int64(int64(model.ObjectType_image)),
+			bundle.RelationKeyFileMimeType:     domain.String("image/png"),
+			bundle.RelationKeySizeInBytes:      domain.Int64(12345),
+			bundle.RelationKeyLastModifiedDate: domain.Int64(500),
+		},
+		// a second file object of a DIFFERENT file type: the probe that a
+		// negated type leaf must not widen the layout scope
+		{
+			bundle.RelationKeyId:             domain.String("type-file"),
+			bundle.RelationKeyName:           domain.String("File"),
+			bundle.RelationKeyUniqueKey:      domain.String("ot-file"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
+		},
+		{
+			bundle.RelationKeyId:               domain.String("pdf1"),
+			bundle.RelationKeyName:             domain.String("report.pdf"),
+			bundle.RelationKeyType:             domain.String("type-file"),
+			bundle.RelationKeyResolvedLayout:   domain.Int64(int64(model.ObjectType_pdf)),
+			bundle.RelationKeyLastModifiedDate: domain.Int64(400),
+		},
+	})
+}
+
+func TestV2SearchFileLayoutOptIn(t *testing.T) {
+	// Phase 7 (APIV2_SURFACES.md §4): the base row scope excludes file
+	// layouts, so a pure-v2 agent could upload a file and never find it
+	// again. Naming a file type in the type channel widens the scope to
+	// ObjectAndFileLayouts — v1's prepareBaseFilters opt-in reproduced
+	// without a new parameter.
+	setup := func(t *testing.T) *v2Fixture {
+		fx := searchSetup(t)
+		fx.addImageObjects(t)
+		return fx
+	}
+
+	t.Run("a bare search keeps file rows out (base scope)", func(t *testing.T) {
+		// given
+		fx := setup(t)
+
+		// when
+		rows, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId, apimodel.V2SearchRequest{}, 0, 25)
+
+		// then
+		require.NoError(t, err)
+		assert.NotContains(t, rowIds(rows), "img1")
+	})
+
+	t.Run("a top-level file type opts file rows in", func(t *testing.T) {
+		// given
+		fx := setup(t)
+
+		// when
+		rows, total, _, _, err := fx.SearchObjects(context.Background(), testSpaceId,
+			apimodel.V2SearchRequest{Type: "image"}, 0, 25)
+
+		// then: without the widening the layout scope excludes the row and
+		// this query can never return anything
+		require.NoError(t, err)
+		assert.Equal(t, 1, total)
+		require.Len(t, rows, 1)
+		assert.Equal(t, "img1", rows[0].Id)
+		assert.Equal(t, "image", rows[0].Type)
+	})
+
+	t.Run("a positive type filter leaf opts in — string form", func(t *testing.T) {
+		// given
+		fx := setup(t)
+
+		// when
+		rows, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId,
+			apimodel.V2SearchRequest{Filter: `type = "image"`}, 0, 25)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []string{"img1"}, rowIds(rows))
+	})
+
+	t.Run("a positive type filter leaf opts in — structured form, mixed IN list", func(t *testing.T) {
+		// given
+		fx := setup(t)
+
+		// when: a mixed list (a file type among object types) still widens
+		rows, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId,
+			apimodel.V2SearchRequest{Filters: json.RawMessage(`[{"property":"type","condition":"in","value":["chore","image"]}]`)}, 0, 25)
+
+		// then
+		require.NoError(t, err)
+		ids := rowIds(rows)
+		assert.Contains(t, ids, "img1")
+		assert.Contains(t, ids, "chore1")
+	})
+
+	t.Run("a negated type leaf does not widen the scope", func(t *testing.T) {
+		// given
+		fx := setup(t)
+
+		// when: excluding a type is not asking for files
+		rows, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId,
+			apimodel.V2SearchRequest{Filters: json.RawMessage(`[{"property":"type","condition":"notEqual","value":"image"}]`)}, 0, 25)
+
+		// then: neither the negated type's rows nor OTHER file rows leak in —
+		// pdf1 (type "file", untouched by the filter) is the probe that the
+		// layout scope stayed narrow
+		require.NoError(t, err)
+		assert.NotContains(t, rowIds(rows), "img1")
+		assert.NotContains(t, rowIds(rows), "pdf1")
+	})
+
+	t.Run("fields= serves mimeType and size from the backing store relations", func(t *testing.T) {
+		// given
+		fx := setup(t)
+
+		// when
+		rows, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId,
+			apimodel.V2SearchRequest{Type: "image", Fields: []string{"mimeType", "size"}}, 0, 25)
+
+		// then: the row speaks the file vocabulary (SPEC §5 / POST /files),
+		// not the store's fileMimeType/sizeInBytes
+		require.NoError(t, err)
+		require.Len(t, rows, 1)
+		require.NotNil(t, rows[0].Properties)
+		assert.Equal(t, "image/png", rows[0].Properties["mimeType"])
+		assert.EqualValues(t, 12345, rows[0].Properties["size"])
+	})
+
+	t.Run("the aliases are fields-only: a size filter is an unknown key", func(t *testing.T) {
+		// given
+		fx := setup(t)
+
+		// when
+		_, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId,
+			apimodel.V2SearchRequest{Filter: `size > 5`}, 0, 25)
+
+		// then: display vocabulary must not silently become filter scope
+		apiErr := v2Err(t, err)
+		assert.Equal(t, apimodel.V2CodeValidationFailed, apiErr.Code)
+	})
+
+	t.Run("the sets/collections fields validation accepts the aliases", func(t *testing.T) {
+		// given
+		fx := setup(t)
+
+		// then
+		assert.NoError(t, fx.validateListFields(testSpaceId, []string{"mimeType", "size", "name"}))
+		assert.Error(t, fx.validateListFields(testSpaceId, []string{"mimetype"}), "the alias is case-exact")
+	})
+}

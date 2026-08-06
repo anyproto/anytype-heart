@@ -289,7 +289,7 @@ func (s *V2Service) validateListFields(spaceId string, fields []string) error {
 	listUrl := fmt.Sprintf("list keys with GET /v2/spaces/%s/properties", spaceId)
 	var issues []apimodel.V2Issue
 	for _, field := range fields {
-		if !allowed[field] {
+		if !allowed[field] && !isV2FieldAlias(field) {
 			issues = append(issues, unknownPropertyIssue(field, "fields", refKeys, listUrl))
 		}
 	}
