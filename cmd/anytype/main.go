@@ -18,8 +18,10 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"sort"
 	"strings"
@@ -31,7 +33,9 @@ func main() {
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
 }
 
-func run(argv []string, stdout, stderr *os.File) int {
+// run is the whole CLI: io.Writer outputs so the exit-code matrix and both
+// output channels are testable.
+func run(argv []string, stdout, stderr io.Writer) int {
 	if len(argv) == 0 || argv[0] == "help" || argv[0] == "--help" || argv[0] == "-h" {
 		printUsage(stdout)
 		if len(argv) == 0 {
@@ -57,8 +61,13 @@ func run(argv []string, stdout, stderr *os.File) int {
 		return 2
 	}
 
-	args, opts, err := parseVerbFlags(tool, argv[1:])
+	args, opts, err := parseVerbFlags(tool, argv[1:], stderr)
 	if err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			// --help is a request, not a mistake: the FlagSet already printed
+			// the flag listing; exit clean with no "error:" line
+			return 0
+		}
 		fmt.Fprintln(stderr, "error:", err)
 		return 2
 	}
@@ -74,7 +83,12 @@ func run(argv []string, stdout, stderr *os.File) int {
 		return 1
 	}
 	if opts.jsonOut && result.JSON != nil {
-		printJSON(stdout, stderr, result.JSON)
+		data, err := wrapper.EncodeJSON(result.JSON)
+		if err != nil {
+			fmt.Fprintln(stderr, "error:", err)
+			return 1
+		}
+		fmt.Fprintln(stdout, string(data))
 		return 0
 	}
 	fmt.Fprintln(stdout, result.Text)
@@ -91,9 +105,9 @@ type cliOptions struct {
 
 // parseVerbFlags registers one flag per tool argument (from the same table
 // the manifest serves) plus the cross-verb flags, and builds the args map.
-func parseVerbFlags(tool wrapper.Tool, argv []string) (map[string]any, *cliOptions, error) {
+func parseVerbFlags(tool wrapper.Tool, argv []string, errW io.Writer) (map[string]any, *cliOptions, error) {
 	fs := flag.NewFlagSet(tool.Verb(), flag.ContinueOnError)
-	fs.SetOutput(os.Stderr)
+	fs.SetOutput(errW)
 
 	strFlags := map[string]*string{}
 	boolFlags := map[string]*bool{}
@@ -128,7 +142,10 @@ func parseVerbFlags(tool wrapper.Tool, argv []string) (map[string]any, *cliOptio
 
 	args := map[string]any{}
 	for name, v := range strFlags {
-		if *v == "" {
+		// presence = the flag was SET, not "the value is non-empty":
+		// --replace "" and --value "" are meaningful calls (delete the
+		// phrase, clear the cell)
+		if !flagWasSet(fs, name) {
 			continue
 		}
 		if a, _ := toolArg(tool, name); a.Type == wrapper.ArgObject {
@@ -186,15 +203,6 @@ func buildRunner(opts *cliOptions) (*wrapper.Runner, error) {
 	return runner, nil
 }
 
-func printJSON(stdout, stderr *os.File, v any) {
-	data, err := wrapper.EncodeJSON(v)
-	if err != nil {
-		fmt.Fprintln(stderr, "error:", err)
-		return
-	}
-	fmt.Fprintln(stdout, string(data))
-}
-
 func verbs() []string {
 	var out []string
 	for _, t := range wrapper.Tools() {
@@ -204,7 +212,7 @@ func verbs() []string {
 	return out
 }
 
-func printUsage(w *os.File) {
+func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "anytype — task tools over the local Anytype API (v2)")
 	fmt.Fprintln(w, "\nusage: anytype <verb> [--flag value …]")
 	fmt.Fprintln(w, "\nverbs:")
@@ -214,7 +222,7 @@ func printUsage(w *os.File) {
 	fmt.Fprintf(w, "  %-15s %s\n", "tools", "print the machine-readable tool manifest (JSON)")
 	fmt.Fprintln(w, "\ncross-verb flags: --json, --dry-run, --if-match <etag>, --create-missing")
 	fmt.Fprintln(w, "environment: ANYTYPE_API_URL (default "+wrapper.DefaultBaseURL+"), ANYTYPE_API_KEY, ANYTYPE_CLI_SESSION")
-	fmt.Fprintln(w, "\nstart with: anytype find --space <spaceId> --query … ; results are numbered handles the other verbs take as --object")
+	fmt.Fprintln(w, "\nstart with: anytype spaces (lists space ids), then anytype find --space <spaceId> --query … ; find's results are numbered handles the other verbs take as --object")
 }
 
 func firstSentence(s string) string {

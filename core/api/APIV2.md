@@ -570,7 +570,7 @@ Phase-4 discovery additions (`search` kind; the grammar on the `filters`
 kind) and the R9 sets-rule system-key widening · **markdown→flat-blocks
 parser** (`anyblockjson.ParseMarkdownBlocks` + the `insertBlocks`
 `markdown` payload + the single-change-set create fold — Phase 5, §8.6) ·
-**the task-tool wrapper** (`core/api/wrapper`: the 11-tool table, manifest,
+**the task-tool wrapper** (`core/api/wrapper`: the 12-tool table, manifest,
 schemas, per-tool GBNF + the filter-string GBNF, handle/label session
 state, ambiguity retry, idempotency machinery, `@me` + relative dates,
 option pre-validation, degraded `describe` — Phase 5, §8.6) · **the CLI
@@ -715,19 +715,20 @@ than the REST body:
   writes). The wrapper resolves handles/labels → CIDs, with the §7.4
   ambiguity retry. The model never sees or emits a 24-hex id. [closes S3]
 
-### 7.2 Tool set (~10; flat, grammar-constrainable args)
+### 7.2 Tool set (12 as built; flat, grammar-constrainable args)
 
 | Tool | Args (flat) | Backing primitive | Channel notes |
 |---|---|---|---|
+| `spaces` | `limit?` | Phase 4 `GET /v2/spaces` | the bootstrap tool (added post-review): every trace needs a space id and nothing else in the set could produce one — `name — id` rows, no handles |
 | `find` | `space, query?, type?, filter?, limit?` | Phase 4 search **[build — the true §7 blocker]** | filter = string form; results are enumerated handles + minimal fields |
 | `read` | `object, mode=full\|outline` | Phase 1 read | outline returns short block labels; `full` carries full block ids the wrapper relabels (§7.1/§7.4) |
-| `describe` | `type` | Phase 1 `types/{type}/schema?flavor=table` **[build — 501 stub today]** | the accuracy lever, **called before create/set** (folds A1 into the flow); interim degraded form assembled wrapper-side (§2 Phase 5) |
+| `describe` | `space, type` | Phase 1 `types/{type}/schema?flavor=table` **[build — 501 stub today]** | the accuracy lever, **called before create/set** (folds A1 into the flow); interim degraded form assembled wrapper-side (§2 Phase 5); every backing GET is space-scoped, so the tool takes `space` too |
 | `create` | `space, type, name, properties?, markdown?` | Phase 2 create | type and property keys validated with did-you-mean; **select option names create-missing by default (R9/§8.1)** — the small-tier pre-validation guard is wrapper-side (§7.4); markdown caveats until the parser lands (below) |
 | `set_properties` | `object, set?{key: value}, add?{key: […]}, remove?{key: […]}` | `setProperties` op incl. per-key `add`/`remove` (§8.3) | mirrors the op so a one-tag append never rewrites the whole array (the op's entire rationale — reintroducing the read→rewrite→write trap at the wrapper layer would defeat it); `add` on a non-empty select errors, steering to `set`; scalar→array coercion is server-side |
 | `check_item` | `object, block, checked` | `updateBlock` op | the one block-field tool: checkbox **blocks** are a common note shape and `updateBlock` is THE block-update op post-§8.3; other block-field updates (color/align/language/retype) stay excluded — SKILL.md steers task completion to properties (the E4 recipe) |
 | `add_blocks` | `object, after?\|under?, markdown` | `insertBlocks` op, `markdown` payload **[build]** | **markdown channel**; server parses → flat blocks (§7.1) |
-| `edit_text` | `object, block, find, replace` | `replaceText` op | **anchor channel**; deterministic server replace; find/replace text is markup source until D′1 lands (§7.1) |
-| `set_cell` | `object, table, row, col, value` | `setCell` op | flat cell write (as built the tool takes `object` too — the REST op addresses a table within one object, and a table-only reference would need a hidden cross-object table registry; §8.6) |
+| `edit_text` | `object, block, find, replace` | `replaceText` op | **anchor channel**; deterministic server replace; find/replace text is markup source until D′1 lands (§7.1); an EMPTY `replace` deletes the found text (Required means present, not non-empty — §8.6) |
+| `set_cell` | `object, table, row, col, value` | `setCell` op | flat cell write (as built the tool takes `object` too — the REST op addresses a table within one object, and a table-only reference would need a hidden cross-object table registry; §8.6); row/col take the labels full read mints (rows and columns relabel like blocks); an EMPTY `value` clears the cell (null on the wire) |
 | `move_block` / `delete_block` | `object, block, after?\|under?` / `object, block, recursive?` | `moveBlock`/`deleteBlock` ops | handle-addressed |
 
 Excluded from the wrapper: PUT full-document replace (the DELEGATE-52
@@ -795,9 +796,16 @@ Beyond §3's list:
   was consciously not adopted), so the wrapper relabels and keeps the
   label→full-id map. (c) *suffix pass-through* as the write mechanism
   (`matchBlockRef` resolves unique suffixes on every op). (d) *the
-  ambiguity retry* — a suffix unique at read time can become ambiguous
-  after inserts, producing a 400 `ambiguous_input` a small model cannot
-  answer; the wrapper transparently retries with the retained full id.
+  ambiguity retry, scoped honestly (post-review)* — retained labels
+  resolve to full ids BEFORE the send, so a 400 `ambiguous_input` can
+  only name an unretained ref (an outline label, a pruned session); the
+  wrapper re-reads the object and retries once when the ref resolves
+  uniquely against the CURRENT document, which self-heals exactly the
+  concurrent-modification race (the collision the server saw is gone by
+  the re-read). A persistent ambiguity is unresolvable in principle —
+  the wrapper cannot know which block the model meant — and surfaces
+  the server's error; the re-read's labels are retained either way, so
+  the model's next call starts resolved.
 - **wrapper-side option-name pre-validation** (the A2 guard for the small
   tier): `GET /properties/{key}/options` + did-you-mean before
   `create`/`set_properties`, stated as wrapper logic the REST primitive
@@ -1458,89 +1466,154 @@ flat run and passes inline text through VERBATIM as §8 markup source, so
 authoring and reading stay on one dialect (goldmark/anymark was rejected
 for exactly that reason — its inline semantics are not §8's). It never
 fails: unknown constructs degrade to paragraphs, over-deep indents clamp
-by the §4 lenient rule, a run always imports (tested through
-`UnmarshalBlocks`). `insertBlocks` gained the `markdown` payload
-(mutually exclusive with `blocks`, same targeting incl. root-append; the
-op schema's `required` dropped to `op` with exactly-one enforced
-server-side, like the targeting exclusivity). `createdBlocks` keys read
-`ops[i].markdown[j]` — j = the parsed position, the honest analogue of
-the blocks[j] payload position. The create shortcut folds parsed markdown
-into the create snapshot: ONE change set; the §7.2 caveats paragraph is
-historical. Scope bounds (deterministic over clever, in the parser's file
-comment): ATX headings only (`---` is always a divider), one quote level,
-2-spaces-or-tab list nesting, tables need the separator row, no
-image→file-block mapping (file ids come from POST /files).
+by the §4 lenient rule — AND by the two containment rules the +1 clamp
+alone would break (post-review fixes): a line after a §5 leaf block
+(divider, table) stays its sibling, and the F4 depth bound of 32 caps
+every level — so a run always imports (tested through `UnmarshalBlocks`
+over every block type the parser can emit, plus a fuzz target).
+`insertBlocks` gained the `markdown` payload (mutually exclusive with
+`blocks`, same targeting incl. root-append; the op schema's `required`
+dropped to `op` with exactly-one enforced server-side, like the targeting
+exclusivity). The parsed run is CAPPED at 256 blocks per op — the blocks
+channel's own maxItems, shared so the byte-bounded markdown channel
+cannot smuggle ~350k blocks per MiB — and at 2048 on the create shortcut;
+the bounded parse stops early, and the error names the limit.
+`createdBlocks` keys read `ops[i].markdown[j]` — j = the parsed position,
+the honest analogue of the blocks[j] payload position. The create
+shortcut folds parsed markdown into the create snapshot: ONE change set;
+the §7.2 caveats paragraph is historical. Create-shortcut validation
+issues arising from markdown-derived blocks readdress `/blocks/<j>` to
+`/markdown[<j>]` (the caller never wrote a blocks array — C6), and
+whitespace-only markdown on create is the same `markdown produced no
+blocks` error the op path gives, not a silent empty-object 200. Scope
+bounds (deterministic over clever, in the parser's file comment): ATX
+headings only (`---` is always a divider), one quote level,
+2-spaces-or-tab list nesting, tables need the separator row (a closing
+fence marker tolerates ≤3 leading spaces; fence info strings are
+constrained to a language-ish token), no image→file-block mapping (file
+ids come from POST /files).
 
 **The reference channel.** `find` numbers rows 1..N and persists
 `{space, handles}`; every find renumbers (§7.4) and prunes labels of
-objects no longer referenced. Full `read` relabels 24-hex block ids to
+objects no longer referenced. Full `read` relabels 24-hex block ids —
+and table ROW and COLUMN ids, the same bson-hex shape `set_cell` takes
+(post-review; uniqueness is computed over the whole pool) — to
 shortest-unique-SUFFIX labels (min 5 chars — the same uniqueness rule as
-the server's `matchBlockRef`, so labels pass through writes even
-unresolved) by textual replacement over the canonical document (key order
-survives), retaining label→full-id per object. Writes resolve labels
-client-side when retained; the **ambiguity retry**: on 400
-`ambiguous_input` the runner re-reads the object, resolves each block-ref
-field to a now-unique full id, and retries ONCE with the SAME
-Idempotency-Key — an unresolvable ambiguity surfaces the server's error
-untouched. Handle state lives in a session file for the CLI
+the server's `matchBlockRef`, pinned to it by test, so labels pass
+through writes even unresolved) by textual replacement over the
+canonical document (key order survives), retaining label→full-id per
+object. Writes resolve labels client-side when retained; the **ambiguity
+retry** re-reads and retries ONCE with the SAME Idempotency-Key when the
+ref resolves uniquely against the current document — §7.4(d) states its
+honest scope (the concurrent-modification race); a persistent ambiguity
+surfaces the server's error untouched. Every mutation receipt names its
+resolved target (`ok — "Groceries": 1 changed`), so a find that
+renumbered handles between composing and running a call is visible in
+the transcript. Handle state lives in a session file for the CLI
 (`os.UserCacheDir()/anytype-cli/session.json`, `ANYTYPE_CLI_SESSION`
-overrides; corrupt files start fresh, never brick) and in memory for
-long-lived hosts — the `Store` interface is the seam.
+overrides; corrupt files start fresh, never brick; saves are atomic via
+temp-file rename) and in memory for long-lived hosts — the `Store`
+interface is the seam; `Run` serializes on a Runner mutex and
+`MemoryStore` hands out deep copies, so concurrent tool calls in a
+long-lived host cannot race the session maps.
 
-**Idempotency (the §7.3 machinery, placement decided).** Every mutation
-mints a random key; transport errors and 429/502/503/504 resend the exact
-body with the same key (max 3 attempts). An IDENTICAL tool call repeated
-within 60s reuses the previous key (`Session.LastWrite`) — that is a
-regenerated-retry or a harness re-run after a timeout, and C8 replays it;
-after the window an identical call is presumed intentional and applies
-fresh. A pure body-hash key (the review's sketch) was rejected: it would
-make every intentional repeat replay forever. The task tools never send
-If-Match (C7 advisory — sync noise 409s a small model cannot answer); the
-CLI exposes `--if-match` for scripts.
+**Idempotency (the §7.3 machinery, placement decided; identity corrected
+post-review).** Every mutation mints a random key; transport errors and
+429/502/503/504 resend the exact body with the same key (max 3 attempts,
+1s/2s backoff — the server's write budget is 1 req/s — and an exhausted
+retryable status surfaces the server's LAST error body, not a bare
+status). The reuse identity is the RESOLVED request — sha256 over method
++ path + encoded query + marshalled body, the server's own C8 identity —
+NOT the tool name + raw args (the as-first-built form: it made a dry run
+and its real twin, or one call re-addressed by a re-find, share a key,
+which the C8 store answers with 409 `idempotency_conflict`). An identical
+resolved request repeated within 60s reuses the previous key
+(`Session.LastWrite`) — a regenerated-retry or a harness re-run after a
+timeout OR FAILURE (the session, key included, is saved on the error path
+too), and C8 replays it; after the window an identical request is
+presumed intentional and applies fresh. A successful ambiguity retry
+re-stamps the key onto the rewritten request so a later
+client-side-resolved re-run still replays. A pure body-hash key (the
+review's sketch) was rejected: it would make every intentional repeat
+replay forever. The task tools never send If-Match (C7 advisory — sync
+noise 409s a small model cannot answer); the CLI exposes `--if-match`
+for scripts.
 
 **Conveniences, as placed by §7.3.** `@me` resolves through the new
 `GET /v2/spaces/{spaceId}/members/me` (participant id is deterministic —
 served even before the participant object is indexed; no account identity
 → 404 steering to the members list), cached per space in the session; in
-`find` filters the quoted `"@me"` value substitutes textually. Relative
-dates resolve wrapper-side on date-FORMAT keys only (the wrapper loads
-the space's property formats): `today`/`tomorrow`/`yesterday`, weekday
-names (next occurrence, today included), `±Nd` — to RFC 3339 local
-midnight; anything else passes through literally for the server to
-judge. The **A2 option guard** pre-validates select/multiSelect names in
-`create`/`set_properties` `set`+`add` (never `remove` — the op cannot
-create) against the live options with a did-you-mean; `--create-missing`
-is the deliberate CLI escape to the REST R9 semantics.
+`find` filters the quoted `"@me"` value substitutes textually, and in
+property VALUES it substitutes on object-FORMAT keys only (post-review —
+a description literally containing "@me" is data, not an identity).
+Relative dates resolve wrapper-side on date-FORMAT keys only (the wrapper
+loads the space's property formats ONCE per tool call — set+add+remove
+share the fetch): `today`/`tomorrow`/`yesterday`, weekday names (next
+occurrence, today included), `±Nd` — to RFC 3339 local midnight; anything
+else passes through literally for the server to judge. The **A2 option
+guard** pre-validates select/multiSelect names in `create`/
+`set_properties` `set`+`add` (never `remove` — the op cannot create)
+against the live options with a did-you-mean; `--create-missing` is the
+deliberate CLI escape to the REST R9 semantics. `describe` marks a FAILED
+option listing per property (`optionsUnavailable`, rendered as "could not
+be listed — run describe again") instead of showing an optionless select
+that invites an invented name.
 
 **Tool-set deviations from the §7.2 table (recorded there too).**
-`set_cell` takes `object` — the REST op addresses a table within one
-object; a bare table handle would need hidden cross-object state. The
-wrapper's `under` maps to the ops' `inside` (+`position: last`);
-`edit_text` deliberately has no `replace_all`. `describe` ships in the
+`spaces` was added post-review as the 12th tool (bootstrap: nothing else
+could produce a space id; still under the 15-tool cliff). `set_cell`
+takes `object` — the REST op addresses a table within one object; a bare
+table handle would need hidden cross-object state. The wrapper's `under`
+maps to the ops' `inside` (+`position: last`), and server error texts
+are translated BACK to the tool vocabulary before the model sees them
+(`inside`→`under`, `id`→`block`, `tableId`→`table`, the `ops[0].` prefix
+stripped, `?outline=true` hints become `read mode=outline`) — without
+this the server's own repair hint names a field the tool rejects.
+`edit_text` deliberately has no `replace_all`; its `replace` and
+`set_cell`'s `value` are required-but-may-be-EMPTY (`AllowEmpty`:
+deleting a phrase and clearing a cell are first-tier intents; empty
+`value` sends the op's documented null-clears), and the wrapper's error
+text distinguishes a missing arg from an empty one. `describe` takes
+`space, type` (every backing GET is space-scoped) and ships in the
 §2-sanctioned degraded form: `GET /types/{type}` + live option lists,
 composed wrapper-side (25 options per property, truncation marked); the
 `GenerateSchema` §3 item stays open and collapses this to one GET when it
 lands. `find` has no `fields` arg (C5 minimal rows only) and search
-carries no idempotency key (a read).
+carries no idempotency key (a read). The wrapper's route templates are
+exported (`RouteTemplates`) and asserted against the gin router in the
+server suite, so a renamed /v2 route fails loudly instead of 404ing every
+tool in production.
 
 **GBNF (§7.4, kept honest by test).** Per-tool grammars are GENERATED
 from the Arg table: the argument object with required args first in
 declared order, then each optional arg as an independently omittable
 `("," pair)?` group — a pinned key order, which is what constrained
-decoding wants. The filter-string GBNF is transcribed from the pinned
-`filterstring.EBNF`, constraining to the canonical surface (uppercase
-keywords, camelCase presets, ASCII keys; the parser stays lenient), and
-is served as a SEPARATE artifact beside find's grammar: composing a DSL
-into a JSON-string production would require re-escaping every DSL quote
-through the JSON encoding — a transformation GBNF cannot express; the
-seam is documented on the artifact. A GBNF well-formedness checker
-(rule syntax, terminated literals/classes, balanced groups, no undefined
-references, root present) runs over every served grammar in tests, and
-over broken grammars to prove it catches breakage.
+decoding wants (an optional-only tool like `spaces` emits a nested
+optional chain so no comma dangles). The served C12 example is
+pre-rendered JSON in that SAME order (post-review: a Go map serialized
+alphabetically, so 9 of 11 examples were not in the language of the
+grammar shipped beside them). The filter-string GBNF is transcribed from
+the pinned `filterstring.EBNF`, constraining to the canonical surface
+(uppercase keywords, camelCase presets, ASCII keys; the parser stays
+lenient); its leaf REQUIRES whitespace between a key and a word-led
+condition (post-review — `titleEXISTS` was grammar-legal but
+parser-illegal; `key` still admits reserved words, a documented GBNF
+limitation). It is served as a SEPARATE artifact beside find's grammar:
+composing a DSL into a JSON-string production would require re-escaping
+every DSL quote through the JSON encoding — a transformation GBNF cannot
+express; the seam is documented on the artifact. A GBNF well-formedness
+checker (rule syntax, terminated literals/classes, balanced groups, no
+undefined references, root present) runs over every served grammar in
+tests, over broken grammars to prove it catches breakage — and a
+test-only backtracking GBNF MATCHER asserts every served example against
+its own served grammar and the filter grammar against
+`filterstring.Parse` (examples in, the pre-fix false positives out).
 
 **SKILL.md** lives at `cmd/anytype/SKILL.md` (frontmatter description →
-body → references three-tier): the find→describe→read loop, the E4
-intent→verb recipes (complete-a-task steers to `set-properties`, NOT
-`check-item`), filter-string examples, and the caveats (D′1 markup
-source, options-never-created, handle renumbering, no batches, safe
-retries). B4 tunes this text per tier once the benchmark runs.
+body → references three-tier): the spaces→find→describe→read loop, the
+E4 intent→verb recipes (complete-a-task steers to `set-properties`, NOT
+`check-item`; delete-a-phrase and clear-a-cell via the empty-string
+forms), filter-string examples, and the caveats (D′1 markup source,
+options-never-created, handle renumbering + receipts naming the target,
+no batches, safe retries incl. after failure). B4 tunes this text per
+tier once the benchmark runs.

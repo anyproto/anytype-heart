@@ -5,7 +5,7 @@ description: Read, search, create and edit Anytype objects through the anytype C
 
 # Anytype task tools
 
-Eleven verbs over the local Anytype API. Everything composes through a
+Twelve verbs over the local Anytype API. Everything composes through a
 session: `find` numbers its results (1, 2, …) and sets the working space;
 every other verb takes `--object <number>`.
 
@@ -16,18 +16,22 @@ API key from the app's settings (`ANYTYPE_API_URL` defaults to
 ## The loop
 
 ```sh
-anytype find --space <spaceId> --type task --filter 'done = false'
+anytype spaces                             # space ids, when none is known
+# Work — bafyspace1
+anytype find --space bafyspace1 --type task --filter 'done = false'
 # 1. Prepare the Q3 report (task)
 # 2. Ship the beta (task)
 anytype read --object 1 --mode outline     # block labels + structure
 anytype edit-text --object 1 --block ab3f2 --find "Q3" --replace "Q4"
 ```
 
-1. **find** first — it creates the handles and the working space.
-2. **describe** before you create or set properties — property keys and
+1. **spaces** when no space id is known — it lists `name — id`.
+2. **find** next — it creates the handles and the working space.
+3. **describe** before you create or set properties — property keys and
    select option names must match exactly; describe lists the live ones.
-3. **read** before you edit blocks — block labels come from read
-   (`--mode outline` for structure, full mode for text).
+4. **read** before you edit blocks — block labels come from read
+   (`--mode outline` for structure, full mode for text; table row and
+   column labels come from full mode too).
 
 ## Intent → verb recipes
 
@@ -36,8 +40,10 @@ anytype edit-text --object 1 --block ab3f2 --find "Q3" --replace "Q4"
 | complete/close a task object | `set-properties --object 1 --set '{"done":true}'` (or the status option describe shows, e.g. `{"status":"Done"}`) — NOT check-item, which is for checkbox blocks inside a document |
 | tick a checklist line in a note | `check-item --object 1 --block ab3f2 --checked` |
 | change one word/phrase | `edit-text` with a short unique snippet — never retype the block |
+| delete a word/phrase | `edit-text --find "the phrase" --replace ""` — an empty replacement deletes |
 | add notes/sections/checklists | `add-blocks --markdown '…'` — write markdown, the server parses it |
-| fill one table cell | `set-cell` — never rewrite the table |
+| fill one table cell | `set-cell` — never rewrite the table; row/col labels come from full read |
+| clear one table cell | `set-cell … --value ""` — an empty value clears |
 | assign to the current user | value `"@me"` — e.g. `--set '{"assignee":"@me"}'` |
 | due dates | `today`, `tomorrow`, weekday names, `+3d`, or `2026-08-01` |
 | find "my open tasks" | `--filter 'assignee = "@me" AND done = false'` |
@@ -59,9 +65,11 @@ presets are functions (`today()`, `currentWeek()`, `daysAgo(n)`).
   name is an error listing the existing names — fix the spelling (option
   names are case-sensitive). `--create-missing` is the deliberate escape.
 - **Handles expire on the next find.** Re-run `find` and use the new
-  numbers; block labels survive per object.
+  numbers; block labels survive per object. Every edit receipt names the
+  object it changed (`ok — "Groceries": …`) — check it matches your intent.
 - **One verb, one intent.** There is no batch; run verbs in sequence.
-  Retries are safe: an identical re-run within a minute is deduplicated.
+  Retries are safe: an identical re-run within a minute is deduplicated,
+  including after a failed or timed-out attempt.
 - Errors are self-describing and name valid alternatives — read them, fix
   the named field, retry once. Do not loop blindly.
 
