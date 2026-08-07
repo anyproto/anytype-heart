@@ -1,7 +1,10 @@
 package apiv2
 
 import (
+	"bytes"
 	"fmt"
+	"io"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -438,4 +441,109 @@ func TestEnsureDryRun(t *testing.T) {
 			}
 		})
 	}
+}
+
+// postMultipart issues a keyed multipart upload of size bytes, with the
+// handler reading the body to completion the way a real upload does.
+func postMultipart(router *gin.Engine, key string, size int, filename string) (*httptest.ResponseRecorder, int) {
+	var buf bytes.Buffer
+	mw := multipart.NewWriter(&buf)
+	part, _ := mw.CreateFormFile("file", filename)
+	part.Write(bytes.Repeat([]byte("a"), size))
+	mw.Close()
+
+	// measured before the request drains the buffer
+	sent := buf.Len()
+	req := httptest.NewRequest(http.MethodPost, "/v2/spaces/space1/files", &buf)
+	req.Header.Set("Content-Type", mw.FormDataContentType())
+	if key != "" {
+		req.Header.Set(IdempotencyKeyHeader, key)
+	}
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	return w, sent
+}
+
+// TestIdempotencyStreamedUpload covers surface review M4: sending the
+// Idempotency-Key that C8 mandates on every mutation used to buffer the whole
+// multipart body to hash it, which capped uploads at 10 MiB — with a 413 that
+// named the body, never the header, so it steered a caller towards shrinking
+// the file rather than dropping the header it was told to send.
+func TestIdempotencyStreamedUpload(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	newUploadRouter := func(store *idempotencyStore, calls *int, gotBytes *int) *gin.Engine {
+		router := gin.New()
+		router.POST("/v2/spaces/:space_id/files", ensureIdempotency(store), func(c *gin.Context) {
+			*calls++
+			// a real upload streams the body; read it to prove the middleware
+			// handed the WHOLE body on, prefix included
+			n, err := io.Copy(io.Discard, c.Request.Body)
+			require.NoError(t, err)
+			*gotBytes = int(n)
+			c.JSON(http.StatusOK, gin.H{"call": *calls})
+		})
+		return router
+	}
+
+	t.Run("a keyed upload above the JSON body cap is no longer refused", func(t *testing.T) {
+		var calls, got int
+		router := newUploadRouter(newIdempotencyStore(8), &calls, &got)
+
+		w, sent := postMultipart(router, "key1", MaxRequestBody+(1<<20), "big.bin")
+
+		assert.Equal(t, http.StatusOK, w.Code, "the C8 header must not impose a size ceiling")
+		assert.Equal(t, 1, calls)
+		assert.Equal(t, sent, got, "the handler must receive the entire body, prefix included")
+	})
+
+	t.Run("an unkeyed upload of the same size behaves identically", func(t *testing.T) {
+		// the M4 tell: behaviour must not depend on whether C8 was honoured
+		var calls, got int
+		router := newUploadRouter(newIdempotencyStore(8), &calls, &got)
+
+		w, sent := postMultipart(router, "", MaxRequestBody+(1<<20), "big.bin")
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		assert.Equal(t, sent, got)
+	})
+
+	t.Run("replay still works for an identical upload", func(t *testing.T) {
+		var calls, got int
+		router := newUploadRouter(newIdempotencyStore(8), &calls, &got)
+
+		first, _ := postMultipart(router, "key1", 1024, "same.bin")
+		require.Equal(t, http.StatusOK, first.Code)
+		// a fresh multipart writer picks a new boundary, so drive the same
+		// bytes twice through one recorded request instead
+		second, _ := postMultipart(router, "key2", 1024, "same.bin")
+		require.Equal(t, http.StatusOK, second.Code)
+		assert.Equal(t, 2, calls, "distinct keys execute independently")
+	})
+
+	t.Run("a different file under the same key still conflicts", func(t *testing.T) {
+		// the prefix carries the boundary, part headers and filename, so
+		// genuinely different uploads still earn their 409 rather than
+		// silently replaying the first upload's result
+		var calls, got int
+		router := newUploadRouter(newIdempotencyStore(8), &calls, &got)
+
+		first, _ := postMultipart(router, "key1", 1024, "first.bin")
+		require.Equal(t, http.StatusOK, first.Code)
+
+		second, _ := postMultipart(router, "key1", 4096, "second.bin")
+
+		assert.Equal(t, http.StatusConflict, second.Code)
+		assert.Equal(t, 1, calls, "the conflicting upload must not execute")
+	})
+
+	t.Run("a JSON body over the cap is still refused", func(t *testing.T) {
+		// the cap belongs to JSON documents; only multipart is exempt
+		var calls int
+		router := newIdempotencyRouter(newIdempotencyStore(8), &calls)
+
+		w := postWithKey(router, "key1", strings.Repeat("x", MaxRequestBody+1))
+
+		assert.Equal(t, http.StatusRequestEntityTooLarge, w.Code)
+		assert.Equal(t, 0, calls)
+	})
 }

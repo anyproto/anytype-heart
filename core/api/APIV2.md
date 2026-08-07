@@ -2487,3 +2487,36 @@ accepting `Condition_None` — stored dataviews legitimately carry it, and this
 is a v2 request gate, not a format change. This is also the one input channel
 with no GBNF grammar (a documented C13 exception, the tree being recursive),
 so it is precisely where a small model's malformed output lands.
+
+### 8.15 Surface-review fix M4 (2026-08-07 — decisions as built)
+
+Sending the `Idempotency-Key` that C8 mandates on every mutation capped file
+uploads at 10 MiB. The middleware buffered the whole body to hash it, so a
+multipart upload — whose body IS the file — hit `MaxRequestBody` and got a 413
+naming the body, never the header. The disciplined agent was therefore the
+only caller that could not upload a large file, and the error steered it to
+shrink the file rather than to drop the header it had been told to send.
+Every keyed upload under the cap was also buffered whole in RAM and then
+re-parsed by `multipart`.
+
+**As built.** `isStreamedUpload` (multipart content types only) switches the
+identity from the exact body to a BOUNDED PREFIX (`idempotencyPrefixBytes` =
+64 KiB) plus the declared `Content-Length`; the remainder streams to the
+handler through an `io.MultiReader`, so nothing buffers whole files and no
+size ceiling appears. JSON bodies are unchanged — exact-body hash, 10 MiB cap
+— because their bytes are small and ARE the request.
+
+**The trade, stated plainly.** For multipart the conflict guarantee narrows:
+two uploads under one key that agree in both declared length AND first 64 KiB
+now replay instead of answering 409. In practice the prefix covers the
+boundary, the part headers, the filename and the file's opening bytes, so
+distinct uploads still differ there — the test drives exactly that case. This
+is a narrower guarantee than the exact-body hash, bounded to this one content
+type, and it is the price of not having a size ceiling.
+
+**Rejected alternatives.** Exempting the route (the review's third option)
+would have created the first C8 exception, which §1 currently says do not
+exist — a documentation cost paid forever to avoid a bounded technical one.
+Keying on the staged file's digest inside the handler is more correct still,
+but moves idempotency out of the middleware for one route and cannot answer
+the replay before the upload has already happened.

@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/gin-gonic/gin"
@@ -35,6 +37,12 @@ const (
 	// so a keyed POST with a huge body could OOM the process. Sized to match
 	// the largest handler cap (validate = 10 MiB).
 	MaxRequestBody = 10 << 20 // 10 MiB
+
+	// idempotencyPrefixBytes bounds what a streamed upload contributes to its
+	// idempotency identity. Large enough that a multipart prefix carries the
+	// boundary, part headers, filename and the file's opening bytes; small
+	// enough that a keyed upload no longer buffers whole files in RAM.
+	idempotencyPrefixBytes = 64 << 10 // 64 KiB
 )
 
 // storedResult is a replayable response.
@@ -167,6 +175,13 @@ func (r *bodyRecorder) Write(p []byte) (int, error) {
 	return r.ResponseWriter.Write(p)
 }
 
+// isStreamedUpload reports whether the body is a file being streamed rather
+// than a JSON document. Only multipart qualifies: every other v2 body is a
+// bounded JSON payload whose exact bytes are the request identity.
+func isStreamedUpload(r *http.Request) bool {
+	return strings.HasPrefix(strings.ToLower(r.Header.Get("Content-Type")), "multipart/")
+}
+
 // ensureIdempotency implements C8 on mutation routes (POST, PATCH, PUT —
 // and DELETE, the Phase-6 widening, carried by EVERY registered v2 DELETE:
 // the chat message, type and property deletes alike, so C8 reads "every v2
@@ -190,16 +205,48 @@ func ensureIdempotency(store *idempotencyStore) gin.HandlerFunc {
 			return
 		}
 
-		body, err := io.ReadAll(io.LimitReader(c.Request.Body, MaxRequestBody+1))
-		if err != nil {
-			respondV2Error(c, v2model.ValidationFailed("read request body: "+err.Error()))
-			return
+		// A streamed upload's body IS the file, so buffering it to hash was
+		// both a memory cost and — worse — a 10 MiB ceiling that appeared
+		// only when the caller sent the header C8 tells every mutation to
+		// send (surface review M4). The disciplined agent was the one that
+		// could not upload a large file, and the 413 named the body, never
+		// the header, so it steered towards shrinking the file.
+		//
+		// For those requests the identity is a BOUNDED PREFIX plus the
+		// declared length rather than the whole body: for multipart that
+		// prefix covers the boundary, the part headers, the filename and the
+		// file's opening bytes, so two genuinely different uploads still
+		// differ in it and still earn their 409. Two uploads identical in
+		// both length and first 64 KiB replay instead of conflicting — a
+		// narrower guarantee than the exact-body hash, recorded in §8.15 and
+		// bounded to this content type.
+		var body []byte
+		streamed := isStreamedUpload(c.Request)
+		if streamed {
+			prefix, err := io.ReadAll(io.LimitReader(c.Request.Body, idempotencyPrefixBytes))
+			if err != nil {
+				respondV2Error(c, v2model.ValidationFailed("read request body: "+err.Error()))
+				return
+			}
+			// the unread remainder keeps streaming to the handler
+			c.Request.Body = struct {
+				io.Reader
+				io.Closer
+			}{io.MultiReader(bytes.NewReader(prefix), c.Request.Body), c.Request.Body}
+			body = prefix
+		} else {
+			read, err := io.ReadAll(io.LimitReader(c.Request.Body, MaxRequestBody+1))
+			if err != nil {
+				respondV2Error(c, v2model.ValidationFailed("read request body: "+err.Error()))
+				return
+			}
+			if len(read) > MaxRequestBody {
+				respondV2Error(c, v2model.RequestTooLarge(fmt.Sprintf("request body exceeds the %d-byte limit", MaxRequestBody)))
+				return
+			}
+			c.Request.Body = io.NopCloser(bytes.NewReader(read))
+			body = read
 		}
-		if len(body) > MaxRequestBody {
-			respondV2Error(c, v2model.RequestTooLarge(fmt.Sprintf("request body exceeds the %d-byte limit", MaxRequestBody)))
-			return
-		}
-		c.Request.Body = io.NopCloser(bytes.NewReader(body))
 		// The hash identifies the whole request, not just its body:
 		//   - method and path, because PATCH carries the target object in the
 		//     PATH — two byte-identical edits to different objects under one
@@ -212,6 +259,12 @@ func ensureIdempotency(store *idempotencyStore) gin.HandlerFunc {
 		hasher := sha256.New()
 		for _, part := range []string{c.Request.Method, c.Request.URL.Path, c.Request.URL.RawQuery} {
 			hasher.Write([]byte(part))
+			hasher.Write([]byte{0})
+		}
+		if streamed {
+			// the declared length joins the prefix, so the same opening bytes
+			// with a different total are still a different request
+			hasher.Write([]byte(strconv.FormatInt(c.Request.ContentLength, 10)))
 			hasher.Write([]byte{0})
 		}
 		hasher.Write(body)
