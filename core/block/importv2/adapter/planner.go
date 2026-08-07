@@ -42,11 +42,58 @@ func plannerFromRequest(req *pb.RpcObjectImportRequest) plannerParams {
 		params.planner = failingPlanner(fmt.Errorf("ai client: %w", err))
 		return params
 	}
-	// "low" is the measured-best effort setting for the kinds task: it beat
-	// "high" on containers typed (36/37 vs 31/37) — the task is
-	// instruction-following-bound, not reasoning-bound.
-	params.planner = llmplan.New(client, llmplan.WithReasoningEffort("low"))
+	// "low" is meaningful on OpenAI and inert on ollama, where "low" and
+	// "high" are byte-identical requests and only "none" differs. It is kept
+	// as a cost-conscious default, NOT on the strength of the retracted
+	// "low beat high" measurement — see the spec's §1 retraction. Thinking
+	// itself is load-bearing: switching it off makes the model stop
+	// abstracting and copy source labels into both name fields.
+	params.planner = llmplan.New(client,
+		llmplan.WithReasoningEffort("low"),
+		llmplan.WithChunkSize(planChunkSize),
+		llmplan.WithChunkConcurrency(chunkConcurrencyFor(aiParams.GetConfig())),
+	)
 	return params
+}
+
+// planChunkSize bounds how many containers one kinds call has to enumerate.
+//
+// Measured on the real workspace (gemma4:e2b): coverage tracks corpus SIZE
+// rather than model or prompt — every 10-14-container fixture was assigned in
+// full, the 35-container workspace only 32. Chunking at 8 closed that
+// completely (35/35) and, unexpectedly, roughly halved the rate at which the
+// model names a type after its source database instead of naming the kind
+// (81% → 36%); a smaller call leaves it enough budget to name rather than
+// copy. On gpt-5.6-luna, which already assigned everything, chunking still cut
+// that rate (~42% → ~31%).
+//
+// Chunks are balanced, so 35 containers run as 7×5 rather than 8/8/8/8/3 — a
+// starved tail chunk has almost no comparative context and regresses naming
+// (singular==plural collisions went 1 → 6 on the unbalanced split).
+const planChunkSize = 8
+
+// Chunk calls are independent, so concurrency is pure wall-clock. On a cloud
+// endpoint the chunked plan is *cheaper* than the single call it replaces
+// (measured on luna: 25s sequential → 9s at 5, against 22s unchunked). A local
+// server serializes the work regardless, so parallelism there buys nothing and
+// only multiplies peak memory.
+const (
+	cloudChunkConcurrency = 5
+	localChunkConcurrency = 1
+)
+
+// chunkConcurrencyFor picks the concurrency from the provider the user chose.
+// The distinction that matters is whether the endpoint can serve requests in
+// parallel, not where it is: a self-hosted server on another machine is still
+// one GPU taking one request at a time. The provider enum is the user's own
+// declaration of which kind of endpoint this is, so it is the right signal —
+// an OpenAI-compatible local server is configured as its own provider even
+// when the endpoint is overridden.
+func chunkConcurrencyFor(cfg *pb.RpcAIProviderConfig) int {
+	if cfg.GetProvider() == pb.RpcAI_OPENAI {
+		return cloudChunkConcurrency
+	}
+	return localChunkConcurrency
 }
 
 func failingPlanner(err error) schemaplan.Planner {
