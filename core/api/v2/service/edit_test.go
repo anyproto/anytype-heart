@@ -702,6 +702,97 @@ func TestPatchObject(t *testing.T) {
 		assert.Equal(t, v2model.CodeEtagMismatch, apiErr.Code)
 	})
 
+	// M5 (surface review): create-missing is irreversible and was unbounded.
+	// The two halves below catch different requests — the bound stops a batch
+	// that WOULD succeed, the ordering stops one that cannot.
+	t.Run("M5: a failing op creates nothing, even though an earlier op named new options", func(t *testing.T) {
+		// the reproducer: op 1 names an option, op 2 is a 404. Before M5 the
+		// batch failed AND the option existed, permanently, with no delete
+		// surface to undo it.
+		fx := newV2Fixture(t)
+		fx.addSelectProperty(t)
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").
+			Return(editRead(t, editBaseDoc), nil)
+		// no ObjectCreateRelationOption expectation: creating anything fails
+		// the test. No mutator expectation either — the batch must not commit.
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"setProperties","set":{"severity":["BrandNewOption"]}}`,
+				`{"op":"updateBlock","id":"doesNotExist","set":{"text":"hi"}}`), "", false)
+
+		require.Error(t, err)
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusNotFound, apiErr.Status, "the batch fails on the bad block ref")
+	})
+
+	t.Run("M5: the set/unset conflict creates nothing", func(t *testing.T) {
+		// the second reproducer: prewarm's skip list covered a key claimed by
+		// both `add` and `set` but never read `unset`, so this created the
+		// option and then 400ed. Validating the batch first covers the whole
+		// family instead of one more special case.
+		fx := newV2Fixture(t)
+		fx.addSelectProperty(t)
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").
+			Return(editRead(t, editBaseDoc), nil)
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"setProperties","set":{"severity":["BrandNewOption"]},"unset":["severity"]}`), "", false)
+
+		require.Error(t, err)
+	})
+
+	t.Run("M5: a batch over the option cap is refused before any create", func(t *testing.T) {
+		// this one WOULD apply cleanly — only the bound stops it. At the body
+		// cap the same shape reaches ~10^6 permanent objects.
+		fx := newV2Fixture(t)
+		fx.addSelectProperty(t)
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").
+			Return(editRead(t, editBaseDoc), nil).Maybe()
+
+		names := make([]string, 0, v2MaxCreatedOptionsPerPatch+1)
+		for i := 0; i <= v2MaxCreatedOptionsPerPatch; i++ {
+			names = append(names, fmt.Sprintf(`"Hallucinated-%d"`, i))
+		}
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(fmt.Sprintf(`{"op":"setProperties","set":{"severity":[%s]}}`,
+				strings.Join(names, ","))), "", false)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
+		require.NotEmpty(t, apiErr.Issues)
+		assert.Contains(t, apiErr.Issues[0].Message, "would create")
+		assert.Contains(t, apiErr.Issues[0].Message, "severity")
+		assert.Contains(t, apiErr.Issues[0].Hint, "permanent")
+	})
+
+	t.Run("M5: a batch at the cap still applies", func(t *testing.T) {
+		// the bound must not break legitimate bulk tagging
+		fx := newV2Fixture(t)
+		fx.addSelectProperty(t)
+		read := editRead(t, editBaseDoc)
+		fx.expectMutate(read, "headB")
+		fx.mwMock.EXPECT().ObjectCreateRelationOption(mock.Anything, mock.Anything).
+			RunAndReturn(func(_ context.Context, req *pb.RpcObjectCreateRelationOptionRequest) *pb.RpcObjectCreateRelationOptionResponse {
+				name := req.Details.GetFields()[bundle.RelationKeyName.String()].GetStringValue()
+				return &pb.RpcObjectCreateRelationOptionResponse{
+					ObjectId: "opt-" + name,
+					Error:    &pb.RpcObjectCreateRelationOptionResponseError{Code: pb.RpcObjectCreateRelationOptionResponseError_NULL},
+				}
+			}).Times(v2MaxCreatedOptionsPerPatch)
+
+		names := make([]string, 0, v2MaxCreatedOptionsPerPatch)
+		for i := 0; i < v2MaxCreatedOptionsPerPatch; i++ {
+			names = append(names, fmt.Sprintf(`"Bulk-%d"`, i))
+		}
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(fmt.Sprintf(`{"op":"setProperties","set":{"severity":[%s]}}`,
+				strings.Join(names, ","))), "", false)
+
+		require.NoError(t, err)
+		require.NotNil(t, result.Created)
+		assert.Len(t, result.Created.Options, v2MaxCreatedOptionsPerPatch)
+	})
+
 	t.Run("dry run reports a created option once (C′2)", func(t *testing.T) {
 		// prewarm and the op itself both resolve the same name; dry_run must
 		// preview exactly what the real run reports

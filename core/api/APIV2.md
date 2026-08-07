@@ -2393,3 +2393,61 @@ descriptions, and the existing chat/space precedent — constants + drift
 test — already makes divergence a test failure. `UploadFileRequest.name`
 remains accepted-but-unused by the service (pre-existing; the schema
 advertises it — recorded, not fixed here).
+
+### 8.13 Surface-review fixes M1 + M5 (2026-08-07 — decisions as built)
+
+**M1 — the edit gate is per-op.** `checkObjectEditable` demanded both
+`Restrictions_Blocks` and `Restrictions_Details` of every edit. Sets and
+collections carry Blocks but NOT Details (`objRestrictEdit`), so a PATCH to
+either was refused whatever it contained: renames, which restrictions never
+forbade, and `addItems`/`removeItems`, the only v2 route into an existing
+collection. A collection was write-once — seedable at POST, immutable after —
+even though §6 retires v1's `AddObjectsToList` in favour of these ops.
+
+`apicore.ObjectRead` now carries `BlocksRefused` and `DetailsRefused`
+separately, and `ObjectMutator.MutateObject` takes an `apicore.EditNeeds`
+derived from the batch (`v2OpEditNeeds`, `editNeedsForOps`). Item ops need
+NEITHER axis: they mutate the collection store
+(`template.CollectionStoreKey`), which no object restriction governs — the
+same position v1 takes, its `ObjectCollectionAdd` being ungated. PUT demands
+both, because a document replace rewrites blocks and details alike. A refusal
+now addresses the offending op (`/ops/1`), not the request, so a batch mixing
+a legal rename with an illegal block edit says which op is the problem.
+
+The set/collection restriction facts are pinned against the LIVE restriction
+table in `objectmutateadapter_test.go`, so a change to `objRestrictEdit`
+fails there rather than silently restoring the bug.
+
+**M5 — create-missing is bounded, and creates go last.** One FAILING PATCH
+permanently created every option it named: 5,000 objects from a ~60 KB body,
+~10^6 at the body cap, with no v2 option-delete surface to undo them.
+
+There is no transaction available — options are objects, each its own CRDT
+tree, so "create N options and mutate a document" cannot be one commit. The
+irreversible part therefore goes last and small, in two halves that catch
+different requests (`guardCreateMissing`):
+
+1. **The bound** (`v2MaxCreatedOptionsPerPatch` = 64) is the only thing that
+   stops a *well-formed* batch — one that would apply cleanly — from creating
+   a million options. Enforced on a probe pass whose resolvers record instead
+   of create, so the rejection costs one JSON walk and no RPC. The error names
+   the count, the limit and the properties involved.
+2. **The ordering** is the only thing that stops a *failing* batch from
+   leaving debris: the batch is applied against a private state first, so an
+   op that cannot apply is found before any create RPC fires. This subsumes
+   case-by-case skip lists (a key claimed by both `set` and `unset`, a scalar
+   where a list is required, …) — enumerating the ways a batch can fail is
+   open-ended; validating it is not. It runs only when the batch actually
+   names new options, so an ordinary PATCH pays nothing.
+
+Both halves apply to dry runs, so C9's preview reaches the same verdict.
+
+What remains is a crash or cancellation between the creates and the apply,
+which cannot be eliminated without a cross-object transaction. It is now
+bounded by the cap, convergent on retry (`OptionId` resolves an existing
+option by name before creating, so a retry adopts the first attempt's options
+rather than duplicating them), and detectable — created options carry
+`ObjectOrigin_api`. A compensating delete was deliberately NOT added: the
+delete is not atomic either, and another client may have started using an
+option in the window, so it would add a second failure mode to paper over the
+first. Cleanup belongs in a provenance-backed sweep, not the request path.

@@ -24,6 +24,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"sort"
+	"strings"
 
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
@@ -80,6 +82,9 @@ func (s *V2Service) PatchObject(ctx context.Context, spaceId, objectId string, b
 	if err != nil {
 		return nil, err
 	}
+	if err := s.guardCreateMissing(ctx, spaceId, objectId, ops, ifMatch, cur, dryRun); err != nil {
+		return nil, err
+	}
 	s.prewarmCreateMissing(ops, resolvers)
 
 	var result *v2model.EditResult
@@ -112,6 +117,102 @@ func (s *V2Service) PatchObject(ctx context.Context, spaceId, objectId string, b
 	}
 	result.Etag = ComputeEtag(heads)
 	return result, nil
+}
+
+// v2MaxCreatedOptionsPerPatch bounds how many select/multiSelect options one
+// PATCH may bring into existence. Create-missing is deliberate (SPEC §3:
+// option NAMES are the identity, so an unknown name is created, not
+// rejected), but it is also irreversible: options are objects, v2 has no
+// option-delete surface, and they sync to every device. A batch naming
+// dozens of genuinely new options is already extreme for a single object
+// edit; thousands is a hallucinated array, not intent.
+const v2MaxCreatedOptionsPerPatch = 64
+
+// guardCreateMissing is the M5 prevention pass. Before this, one FAILING
+// PATCH permanently created every option it named — 5,000 real objects from
+// a ~60 KB body, ~10^6 at the body cap — because prewarm ran before the
+// batch was known to be applicable and nothing bounded it.
+//
+// There is no transaction to lean on: options are objects, each its own CRDT
+// tree, so "create N options and mutate a document" cannot be one commit.
+// The irreversible part therefore goes LAST and SMALL, in two halves that
+// catch different requests:
+//
+//  1. THE BOUND. Only this stops a *well-formed* batch — one that would
+//     succeed — from creating a million options. Enforced on a probe pass
+//     that resolves without creating, so the rejection costs nothing.
+//  2. THE ORDERING. Only this stops a *failing* batch from leaving debris:
+//     the whole batch is validated against a private state first, so an op
+//     that cannot apply is discovered before any create RPC fires. This
+//     subsumes case-by-case skip lists (a key claimed by both `set` and
+//     `unset`, a scalar where a list is required, …) — enumerating the ways
+//     a batch can fail is open-ended; validating it is not.
+//
+// The second half runs only when the batch actually names new options, so
+// the ordinary PATCH pays one extra JSON walk and nothing more. Both halves
+// run for dry runs too, so C9's preview reaches the same verdict.
+//
+// What remains after this is a crash or cancellation between the creates and
+// the apply. That cannot be eliminated without a cross-object transaction,
+// but it is now bounded by the cap, convergent on retry (OptionId resolves an
+// existing option by name before creating, so a retry adopts what the first
+// attempt made instead of duplicating it), and detectable — created options
+// carry ObjectOrigin_api.
+func (s *V2Service) guardCreateMissing(ctx context.Context, spaceId, objectId string, ops []json.RawMessage, ifMatch string, cur apicore.ObjectRead, dryRun bool) error {
+	// a resolver in dry mode records would-be creations instead of performing
+	// them: no RPCs, no document work, just a walk of the op payloads
+	probe := newCreatingResolvers(ctx, s.mw, spaceId, s.store.SpaceIndex(spaceId), true)
+	s.prewarmCreateMissing(ops, probe)
+	pending := probe.sideEffects.Options
+	if len(pending) == 0 {
+		return nil
+	}
+	if len(pending) > v2MaxCreatedOptionsPerPatch {
+		props := map[string]int{}
+		for _, o := range pending {
+			props[o.Property]++
+		}
+		issue := v2model.Issue{
+			Path: "/ops",
+			Message: fmt.Sprintf("this batch would create %d new options (limit %d): %s",
+				len(pending), v2MaxCreatedOptionsPerPatch, describeCreateCounts(props)),
+			Hint: "creating an option is permanent and there is no delete surface — " +
+				"check the names against GET /v2/spaces/{spaceId}/properties/{propertyKey}/options, " +
+				"or set values in smaller batches if they are all genuinely new",
+		}
+		return v2model.ValidationFailed("too many new options in one request", issue)
+	}
+	if dryRun {
+		// the caller's own run is already create-free; it reports the same
+		// pending list, so re-validating here would only duplicate the work
+		return nil
+	}
+	// ORDERING: prove the batch applies before anything is created. The probe
+	// resolvers create nothing, so a failure here leaves the space untouched;
+	// the error is the same one the real pass would raise, in the same order.
+	edit, err := editFromRead(objectId, cur)
+	if err != nil {
+		return err
+	}
+	if _, err := s.applyPatchOps(ctx, spaceId, objectId, ops, ifMatch, edit, probe); err != nil {
+		return err
+	}
+	return nil
+}
+
+// describeCreateCounts renders "status: 3, tag: 4997" for the over-limit
+// message, so the caller can see which property the runaway array belongs to.
+func describeCreateCounts(counts map[string]int) string {
+	keys := make([]string, 0, len(counts))
+	for k := range counts {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	parts := make([]string, 0, len(keys))
+	for _, k := range keys {
+		parts = append(parts, fmt.Sprintf("%s: %d", k, counts[k]))
+	}
+	return strings.Join(parts, ", ")
 }
 
 // editFromRead builds a dry-run editing session from a plain read: a private
