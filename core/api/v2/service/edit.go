@@ -73,9 +73,12 @@ func (s *V2Service) PatchObject(ctx context.Context, spaceId, objectId string, b
 	}
 	// the object's own restrictions, from the same read — so a dry run reaches
 	// the same verdict as the real edit rather than reporting a success the
-	// adapter would refuse (review C′3)
-	if cur.EditRefused != nil {
-		return nil, cur.EditRefused
+	// adapter would refuse (review C′3). Per-op, not per-request: a set and a
+	// collection restrict Blocks but not Details, so a blanket check refused
+	// renames and every addItems (surface review M1).
+	needs, err := editNeedsForOps(ops, cur)
+	if err != nil {
+		return nil, err
 	}
 	s.prewarmCreateMissing(ops, resolvers)
 
@@ -99,7 +102,7 @@ func (s *V2Service) PatchObject(ctx context.Context, spaceId, objectId string, b
 		result.DryRun = true
 		return result, nil
 	}
-	heads, err := s.mutator.MutateObject(ctx, spaceId, objectId, run)
+	heads, err := s.mutator.MutateObject(ctx, spaceId, objectId, needs, run)
 	if err != nil {
 		var v2Err *v2model.Error
 		if errors.As(err, &v2Err) {

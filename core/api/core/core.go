@@ -45,11 +45,28 @@ type ObjectRead struct {
 	SbType   model.SmartBlockType
 	Snapshot *model.SmartBlockSnapshotBase
 	Heads    []string
-	// EditRefused carries the object-level restriction verdict from the same
-	// locked read, so a dry run reaches the same conclusion as the real edit
-	// (review C′3). nil means the object accepts block/property edits.
-	EditRefused error
+	// BlocksRefused and DetailsRefused carry the object-level restriction
+	// verdicts from the same locked read, so a dry run reaches the same
+	// conclusion as the real edit (review C′3). nil means that axis is
+	// editable. They are separate because the restrictions are: a set and a
+	// collection carry Restrictions_Blocks but NOT Restrictions_Details, so
+	// one blanket verdict made renaming a set — and every addItems — refuse
+	// (surface review M1).
+	BlocksRefused  error
+	DetailsRefused error
 }
+
+// EditNeeds declares which object-level restriction axes an edit touches, so
+// the gate can be per-op instead of per-request. Item ops (addItems /
+// removeItems) need NEITHER: they mutate the collection store, which no
+// object restriction governs — matching v1's ObjectCollectionAdd.
+type EditNeeds struct {
+	Blocks  bool
+	Details bool
+}
+
+// Needs reports whether anything is required at all.
+func (n EditNeeds) Needs() bool { return n.Blocks || n.Details }
 
 // ObjectReader reads the live smartblock state of an object — the API v2
 // read path (APIV2.md §8: not ObjectShow, not the store snapshot).
@@ -95,7 +112,10 @@ type ObjectEdit struct {
 // diff-applies it onto the live state as ONE change set via the smartblock
 // reset-to-version machinery. build returning (nil, nil) commits nothing.
 type ObjectMutator interface {
-	MutateObject(ctx context.Context, spaceId string, objectId string, apply func(edit ObjectEdit) error) (heads []string, err error)
+	// MutateObject takes the restriction axes the batch actually touches;
+	// the adapter re-checks them under the lock (the apply itself runs
+	// without object-level restriction checks, so this gate is the only one).
+	MutateObject(ctx context.Context, spaceId string, objectId string, needs EditNeeds, apply func(edit ObjectEdit) error) (heads []string, err error)
 	ResetObject(ctx context.Context, spaceId string, objectId string, build func(cur ObjectRead) (*model.SmartBlockSnapshotBase, error)) (heads []string, err error)
 }
 

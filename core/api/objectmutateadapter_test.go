@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -117,31 +118,81 @@ func TestPreserveEditorOwnedState_NoStructuralBlocks(t *testing.T) {
 	assert.Equal(t, []string{"p1"}, root.Model().ChildrenIds)
 }
 
-// TestCheckObjectEditable covers A4: the apply runs with NoRestrictions, so
-// the adapter must enforce the object's own restrictions itself.
-func TestCheckObjectEditable(t *testing.T) {
-	t.Run("an unrestricted object is editable", func(t *testing.T) {
-		require.NoError(t, checkObjectEditable(smarttest.New("obj1")))
-	})
+// allAxes is what PUT demands and what the PATCH tests below use unless they
+// are specifically about the per-axis gate.
+var allAxes = apicore.EditNeeds{Blocks: true, Details: true}
 
-	t.Run("block-restricted objects are refused", func(t *testing.T) {
+// layoutHolder is the minimum restriction.RestrictionHolder needed to ask the
+// real table what a layout restricts.
+type layoutHolder struct{ layout model.ObjectTypeLayout }
+
+func (h layoutHolder) Type() coresb.SmartBlockType            { return coresb.SmartBlockTypePage }
+func (h layoutHolder) Layout() (model.ObjectTypeLayout, bool) { return h.layout, true }
+func (h layoutHolder) UniqueKey() domain.UniqueKey            { return nil }
+func (h layoutHolder) LocalDetails() *domain.Details          { return domain.NewDetails() }
+
+// TestCheckObjectEditable covers A4: the apply runs with NoRestrictions, so
+// the adapter must enforce the object's own restrictions itself — and M1:
+// only the axes the batch actually touches.
+func TestCheckObjectEditable(t *testing.T) {
+	blockRestricted := func() *smarttest.SmartTest {
 		sb := smarttest.New("obj1")
 		sb.TestRestrictions = restriction.Restrictions{
 			Object: restriction.ObjectRestrictions{model.Restrictions_Blocks: {}},
 		}
-		err := checkObjectEditable(sb)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "blocks cannot be edited")
-	})
-
-	t.Run("details-restricted objects are refused", func(t *testing.T) {
+		return sb
+	}
+	detailsRestricted := func() *smarttest.SmartTest {
 		sb := smarttest.New("obj1")
 		sb.TestRestrictions = restriction.Restrictions{
 			Object: restriction.ObjectRestrictions{model.Restrictions_Details: {}},
 		}
-		err := checkObjectEditable(sb)
+		return sb
+	}
+
+	t.Run("an unrestricted object is editable on every axis", func(t *testing.T) {
+		require.NoError(t, checkObjectEditable(smarttest.New("obj1"), allAxes))
+	})
+
+	t.Run("block-restricted objects refuse a block edit", func(t *testing.T) {
+		err := checkObjectEditable(blockRestricted(), apicore.EditNeeds{Blocks: true})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "blocks cannot be edited")
+	})
+
+	t.Run("details-restricted objects refuse a property edit", func(t *testing.T) {
+		err := checkObjectEditable(detailsRestricted(), apicore.EditNeeds{Details: true})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "properties cannot be edited")
+	})
+
+	// M1: a set and a collection restrict Blocks but NOT Details. Demanding
+	// both of every edit made renaming a set — and every addItems, the only
+	// v2 route into an existing collection — permanently refuse.
+	t.Run("M1: a block-restricted object still accepts a property edit", func(t *testing.T) {
+		require.NoError(t, checkObjectEditable(blockRestricted(), apicore.EditNeeds{Details: true}))
+	})
+
+	t.Run("M1: a block-restricted object still accepts an item edit", func(t *testing.T) {
+		// addItems/removeItems mutate the collection store, which no object
+		// restriction governs — so they need neither axis.
+		require.NoError(t, checkObjectEditable(blockRestricted(), apicore.EditNeeds{}))
+	})
+
+	t.Run("a details-restricted object still accepts a block edit", func(t *testing.T) {
+		require.NoError(t, checkObjectEditable(detailsRestricted(), apicore.EditNeeds{Blocks: true}))
+	})
+
+	t.Run("the real set and collection restrictions allow properties and items", func(t *testing.T) {
+		// pinned against the LIVE restriction table, not a hand-built one:
+		// M1 exists because sets/collections restrict Blocks and not Details.
+		// If objRestrictEdit ever gains Details this fails loudly, because the
+		// per-axis gate above would then start refusing renames for real.
+		for _, layout := range []model.ObjectTypeLayout{model.ObjectType_set, model.ObjectType_collection} {
+			r := restriction.GetRestrictions(layoutHolder{layout: layout}).Object
+			assert.Error(t, r.Check(model.Restrictions_Blocks), "layout %v should restrict blocks", layout)
+			assert.NoError(t, r.Check(model.Restrictions_Details), "layout %v must NOT restrict details", layout)
+		}
 	})
 }
 
@@ -178,7 +229,7 @@ func TestMutateObject(t *testing.T) {
 		adapter := newObjectMutateAdapter(fakeGetter{sb: sb})
 
 		// when
-		heads, err := adapter.MutateObject(ctx, "space1", "obj1", func(edit apicore.ObjectEdit) error {
+		heads, err := adapter.MutateObject(ctx, "space1", "obj1", allAxes, func(edit apicore.ObjectEdit) error {
 			b := edit.State.Get("p1")
 			require.NotNil(t, b)
 			b.Model().GetText().Text = "edited"
@@ -196,7 +247,7 @@ func TestMutateObject(t *testing.T) {
 		sb := newSb()
 		adapter := newObjectMutateAdapter(fakeGetter{sb: sb})
 
-		_, err := adapter.MutateObject(ctx, "space1", "obj1", func(edit apicore.ObjectEdit) error {
+		_, err := adapter.MutateObject(ctx, "space1", "obj1", allAxes, func(edit apicore.ObjectEdit) error {
 			edit.State.Get("p1").Model().GetText().Text = "edited"
 			return assert.AnError
 		})
@@ -213,7 +264,7 @@ func TestMutateObject(t *testing.T) {
 		adapter := newObjectMutateAdapter(fakeGetter{sb: sb})
 
 		called := false
-		_, err := adapter.MutateObject(ctx, "space1", "obj1", func(apicore.ObjectEdit) error {
+		_, err := adapter.MutateObject(ctx, "space1", "obj1", allAxes, func(apicore.ObjectEdit) error {
 			called = true
 			return nil
 		})
@@ -227,7 +278,7 @@ func TestMutateObject(t *testing.T) {
 		sb.Doc.(*state.State).SetDetail(bundle.RelationKeyRevision, domain.Int64(3))
 		adapter := newObjectMutateAdapter(fakeGetter{sb: sb})
 
-		_, err := adapter.MutateObject(ctx, "space1", "obj1", func(edit apicore.ObjectEdit) error {
+		_, err := adapter.MutateObject(ctx, "space1", "obj1", allAxes, func(edit apicore.ObjectEdit) error {
 			edit.State.SetDetail(bundle.RelationKeyRevision, domain.Int64(1))
 			return nil
 		})

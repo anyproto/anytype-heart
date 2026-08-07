@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"strings"
 
+	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -29,6 +30,74 @@ var v2OpNames = []string{
 	"setProperties", "updateBlock", "replaceSubtree",
 	"insertBlocks", "moveBlock", "deleteBlock", "replaceText", "setCell",
 	"addItems", "removeItems",
+}
+
+// v2OpEditNeeds maps each op to the object-level restriction axes it
+// touches, so the edit gate is per-op rather than per-request (surface
+// review M1). Sets and collections carry Restrictions_Blocks but NOT
+// Restrictions_Details, so demanding both of every batch made renaming a set
+// impossible and left addItems/removeItems — the only v2 route into an
+// existing collection — permanently refused.
+//
+// Item ops need NEITHER axis: they mutate the collection store
+// (template.CollectionStoreKey), which no object restriction governs. That
+// matches v1, whose ObjectCollectionAdd/Remove is likewise ungated.
+var v2OpEditNeeds = map[string]apicore.EditNeeds{
+	"setProperties":  {Details: true},
+	"updateBlock":    {Blocks: true},
+	"replaceSubtree": {Blocks: true},
+	"insertBlocks":   {Blocks: true},
+	"moveBlock":      {Blocks: true},
+	"deleteBlock":    {Blocks: true},
+	"replaceText":    {Blocks: true},
+	"setCell":        {Blocks: true},
+	"addItems":       {},
+	"removeItems":    {},
+}
+
+// editNeedsForOps unions the restriction axes a batch touches and refuses the
+// batch if the object forbids one of them, addressing the FIRST op that needs
+// the forbidden axis (C6) rather than the request as a whole — so a caller
+// mixing a legal rename with an illegal block edit on a set is told which op
+// is the problem.
+//
+// An op the applier does not recognise contributes no needs here; it fails
+// later, in the applier, with its own path-addressed error. This function
+// must never be the thing that reports an unknown op.
+func editNeedsForOps(ops []json.RawMessage, cur apicore.ObjectRead) (apicore.EditNeeds, error) {
+	var union apicore.EditNeeds
+	for i, raw := range ops {
+		var probe struct {
+			Op string `json:"op"`
+		}
+		if err := json.Unmarshal(raw, &probe); err != nil {
+			continue
+		}
+		needs, known := v2OpEditNeeds[probe.Op]
+		if !known {
+			continue
+		}
+		opPath := fmt.Sprintf("/ops/%d", i)
+		if needs.Blocks {
+			if cur.BlocksRefused != nil {
+				return union, restrictionRefusal(cur.BlocksRefused, probe.Op, opPath, "blocks")
+			}
+			union.Blocks = true
+		}
+		if needs.Details {
+			if cur.DetailsRefused != nil {
+				return union, restrictionRefusal(cur.DetailsRefused, probe.Op, opPath, "properties")
+			}
+			union.Details = true
+		}
+	}
+	return union, nil
+}
+
+// restrictionRefusal keeps the wrapped restriction.ErrRestricted (the service
+// layer classifies on it) while naming the op that was refused.
+func restrictionRefusal(refused error, op, opPath, axis string) error {
+	return fmt.Errorf("%w (op %q at %s edits %s)", refused, op, opPath, axis)
 }
 
 // v2OutputOnlyPropertyKeys are the SPEC §4a output-only property keys a

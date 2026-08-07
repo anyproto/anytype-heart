@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -67,8 +68,8 @@ func (fx *v2Fixture) expectMutate(read apicore.ObjectRead, newHeads ...string) *
 	// create-missing refs and taking the lock (review A′1), so every PATCH
 	// test needs the read wired.
 	fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(read, nil).Maybe()
-	fx.mutatorMock.EXPECT().MutateObject(mock.Anything, testSpaceId, "obj1", mock.Anything).
-		RunAndReturn(func(ctx context.Context, spaceId, objectId string, apply func(apicore.ObjectEdit) error) ([]string, error) {
+	fx.mutatorMock.EXPECT().MutateObject(mock.Anything, testSpaceId, "obj1", mock.Anything, mock.Anything).
+		RunAndReturn(func(ctx context.Context, spaceId, objectId string, needs apicore.EditNeeds, apply func(apicore.ObjectEdit) error) ([]string, error) {
 			st, err := state.NewDocFromSnapshot(objectId, &pb.ChangeSnapshot{Data: read.Snapshot})
 			if err != nil {
 				return nil, err
@@ -706,12 +707,75 @@ func TestPatchObject(t *testing.T) {
 		assert.Equal(t, "BrandNewOption", result.Created.Options[0].Name)
 	})
 
+	// M1 (surface review): the gate is per-op. Sets and collections carry
+	// Restrictions_Blocks but NOT Restrictions_Details, so a blanket
+	// per-request check made renaming a set — and every addItems, the only v2
+	// route into an existing collection — permanently refuse.
+	t.Run("M1: a blocks-restricted object still accepts a property edit", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		read := editRead(t, editBaseDoc)
+		read.BlocksRefused = v2model.ValidationFailed("this object's blocks cannot be edited through the API")
+		captured := fx.expectMutate(read, "headB")
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"setProperties","set":{"name":"Renamed"}}`), "", false)
+
+		// before M1 this returned the blocks refusal, so a set could never be
+		// renamed through v2 even though nothing restricted its details
+		require.NoError(t, err)
+		require.NotNil(t, *captured, "the mutator must be reached")
+		assert.Equal(t, "Renamed", (*captured).Details().GetString(bundle.RelationKeyName))
+	})
+
+	t.Run("M1: the batch's needs carry only the axes its ops touch", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		read := editRead(t, editBaseDoc)
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(read, nil).Maybe()
+
+		var got apicore.EditNeeds
+		fx.mutatorMock.EXPECT().MutateObject(mock.Anything, testSpaceId, "obj1", mock.Anything, mock.Anything).
+			RunAndReturn(func(ctx context.Context, spaceId, objectId string, needs apicore.EditNeeds, apply func(apicore.ObjectEdit) error) ([]string, error) {
+				got = needs
+				st, err := state.NewDocFromSnapshot(objectId, &pb.ChangeSnapshot{Data: read.Snapshot})
+				if err != nil {
+					return nil, err
+				}
+				if err := apply(apicore.ObjectEdit{SbType: read.SbType, Heads: read.Heads, State: st}); err != nil {
+					return nil, err
+				}
+				return []string{"headB"}, nil
+			})
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"setProperties","set":{"name":"Renamed"}}`), "", false)
+
+		require.NoError(t, err)
+		assert.Equal(t, apicore.EditNeeds{Details: true}, got,
+			"a property-only batch must not demand the Blocks axis")
+	})
+
+	t.Run("M1: a blocks-restricted object still refuses a block op, naming it", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		read := editRead(t, editBaseDoc)
+		read.BlocksRefused = v2model.ValidationFailed("this object's blocks cannot be edited through the API")
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(read, nil)
+		// no MutateObject expectation: reaching the mutator would fail the test
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"setProperties","set":{"name":"Renamed"}}`,
+				`{"op":"deleteBlock","id":"blockChild1"}`), "", false)
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "cannot be edited")
+		assert.Contains(t, err.Error(), "/ops/1", "the refusal must address the offending op, not the request")
+	})
+
 	t.Run("a restricted object is refused on the dry run too (C′3)", func(t *testing.T) {
 		// the restriction verdict rides the read, so dry_run cannot report a
 		// success the real edit would refuse
 		fx := newV2Fixture(t)
 		read := editRead(t, editBaseDoc)
-		read.EditRefused = v2model.ValidationFailed("this object's blocks cannot be edited through the API")
+		read.BlocksRefused = v2model.ValidationFailed("this object's blocks cannot be edited through the API")
 		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(read, nil)
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",

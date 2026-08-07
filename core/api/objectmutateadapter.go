@@ -45,12 +45,13 @@ func newObjectMutateAdapter(getter cache.ObjectGetter) apicore.ObjectMutator {
 
 // MutateObject is the PATCH path: one lock, one child state, one ordinary
 // Apply.
-func (a *objectMutateAdapter) MutateObject(ctx context.Context, spaceId string, objectId string, apply func(edit apicore.ObjectEdit) error) ([]string, error) {
+func (a *objectMutateAdapter) MutateObject(ctx context.Context, spaceId string, objectId string, needs apicore.EditNeeds, apply func(edit apicore.ObjectEdit) error) ([]string, error) {
 	var heads []string
 	err := cache.DoContextFullID(a.getter, ctx, domain.FullID{SpaceID: spaceId, ObjectID: objectId}, func(sb smartblock.SmartBlock) error {
 		// object-level Blocks/Details restrictions are a service-layer concern
-		// (Apply checks per-block restrictions, not these).
-		if err := checkObjectEditable(sb); err != nil {
+		// (Apply checks per-block restrictions, not these). Only the axes the
+		// batch actually touches are demanded — see checkObjectEditable.
+		if err := checkObjectEditable(sb, needs); err != nil {
 			return err
 		}
 		st := sb.NewState()
@@ -89,8 +90,9 @@ func (a *objectMutateAdapter) ResetObject(ctx context.Context, spaceId string, o
 		// A4: the apply below runs with NoRestrictions (the reset machinery
 		// rewrites structural blocks), so the object's own restrictions must be
 		// checked here — otherwise the API can edit objects the app forbids
-		// (workspace, archive, widgets, a set's dataview…).
-		if err := checkObjectEditable(sb); err != nil {
+		// (workspace, archive, widgets, a set's dataview…). PUT replaces the
+		// whole document, so it demands both axes.
+		if err := checkObjectEditable(sb, apicore.EditNeeds{Blocks: true, Details: true}); err != nil {
 			return err
 		}
 		cur := readLiveState(sb)
@@ -129,16 +131,43 @@ func (a *objectMutateAdapter) ResetObject(ctx context.Context, spaceId string, o
 	return heads, nil
 }
 
+// checkRestriction returns the object's verdict on ONE restriction axis, or
+// nil when that axis is editable. The message names the axis in the API's own
+// vocabulary, and the error wraps restriction.ErrRestricted so the service
+// layer can classify it (403, not 500).
+func checkRestriction(sb smartblock.SmartBlock, r model.RestrictionsObjectRestriction) error {
+	if err := sb.Restrictions().Object.Check(r); err != nil {
+		switch r {
+		case model.Restrictions_Blocks:
+			return fmt.Errorf("%w: this object's blocks cannot be edited through the API", err)
+		case model.Restrictions_Details:
+			return fmt.Errorf("%w: this object's properties cannot be edited through the API", err)
+		}
+		return err
+	}
+	return nil
+}
+
 // checkObjectEditable enforces the object's own restrictions on the API edit
 // path (A4). The reset apply passes NoRestrictions, so without this an agent
 // could rewrite objects the editor itself refuses to edit.
-func checkObjectEditable(sb smartblock.SmartBlock) error {
-	r := sb.Restrictions().Object
-	if err := r.Check(model.Restrictions_Blocks); err != nil {
-		return fmt.Errorf("%w: this object's blocks cannot be edited through the API", err)
+//
+// The check is per-axis (surface review M1): a set and a collection carry
+// Restrictions_Blocks but NOT Restrictions_Details, so demanding both of
+// every edit made renaming a set — and every addItems/removeItems, the only
+// v2 route into an existing collection — permanently refuse. needs comes
+// from the ops the batch actually contains; PUT passes both, because a
+// document replace rewrites blocks and details alike.
+func checkObjectEditable(sb smartblock.SmartBlock, needs apicore.EditNeeds) error {
+	if needs.Blocks {
+		if err := checkRestriction(sb, model.Restrictions_Blocks); err != nil {
+			return err
+		}
 	}
-	if err := r.Check(model.Restrictions_Details); err != nil {
-		return fmt.Errorf("%w: this object's properties cannot be edited through the API", err)
+	if needs.Details {
+		if err := checkRestriction(sb, model.Restrictions_Details); err != nil {
+			return err
+		}
 	}
 	return nil
 }

@@ -60,6 +60,7 @@ func readLiveState(sb smartblock.SmartBlock) apicore.ObjectRead {
 		Heads: append([]string(nil), sb.GetDocInfo().Heads...),
 		// captured under the same lock so a dry run sees the same verdict the
 		// real edit will (review C′3)
-		EditRefused: checkObjectEditable(sb),
+		BlocksRefused:  checkRestriction(sb, model.Restrictions_Blocks),
+		DetailsRefused: checkRestriction(sb, model.Restrictions_Details),
 	}
 }

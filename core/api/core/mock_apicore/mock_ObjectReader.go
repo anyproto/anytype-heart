@@ -6,6 +6,7 @@ import (
 	context "context"
 
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
+
 	mock "github.com/stretchr/testify/mock"
 )
 
