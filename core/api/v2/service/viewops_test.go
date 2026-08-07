@@ -3,7 +3,9 @@ package v2service
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,7 +15,12 @@ import (
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 // editSetDoc is a set with the one dataview block sets carry (fixed id
@@ -942,5 +949,431 @@ func TestViewFamilyOps(t *testing.T) {
 
 		apiErr := v2Err(t, err)
 		assert.Contains(t, apiErr.Message, "too many new options")
+	})
+}
+
+// TestViewOpReviewFixes covers the §8.19 review findings: the no-create
+// commit with live-proto restore (A), the dataview-aware render bound (B),
+// the M7 registration coupling (C), the schema fixes (D/E) and the minors.
+func TestViewOpReviewFixes(t *testing.T) {
+	ctx := context.Background()
+
+	// editDanglingDoc: view B's filter holds a value that resolves to no
+	// option — the state a deleted tag leaves behind.
+	const editDanglingDoc = `{"version":1,"id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
+		`{"id":"dataview","type":"dataview",` +
+		`"properties":[{"key":"name","format":"text"},{"key":"severity","format":"select"}],` +
+		`"views":[` +
+		`{"id":"viewAll1","name":"All","columns":[{"property":"name"},{"property":"severity","hidden":true}]},` +
+		`{"id":"viewOld2","name":"Old","columns":[{"property":"name"}],` +
+		`"filters":[{"property":"severity","condition":"equal","value":"bafyDanglingOpt1"}]}]}]}`
+
+	t.Run("A: a dangling option reference survives an op on another view verbatim", func(t *testing.T) {
+		// before the fix, the commit re-imported EVERY view through the
+		// creating resolver: the dangling value exported as its raw id and
+		// round-tripped into a brand-new option named after it — created
+		// under the object lock, past both halves of M5, by an op that never
+		// touched the view
+		fx := newV2Fixture(t)
+		fx.addSelectProperty(t)
+		captured := fx.expectMutate(editRead(t, editDanglingDoc), "headB")
+		// no ObjectCreateRelationOption expectation: any create RPC fails the test
+
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"moveView","view":"viewOld2","position":"first"}`), "", false)
+
+		require.NoError(t, err)
+		assert.Nil(t, result.Created, "an op that authors no values must create nothing")
+		views := viewsOf(t, dataviewOf(t, *captured, "dataview"))
+		require.Equal(t, "viewOld2", views[0]["id"], "the move itself happened")
+		filters, _ := views[0]["filters"].([]any)
+		require.Len(t, filters, 1)
+		assert.Equal(t, "bafyDanglingOpt1", filters[0].(map[string]any)["value"],
+			"the dangling value is untouched — not rebound, not minted into an option")
+	})
+
+	t.Run("A: an untouched view keeps its exact option id when a twin shares the name", func(t *testing.T) {
+		// two options legally share a name; export writes the NAME, so a
+		// re-import re-picks by store listing order — the untouched view must
+		// instead be restored from the live proto, keeping ITS option
+		fx := newV2Fixture(t)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("rel-severity"),
+				bundle.RelationKeyRelationKey:    domain.String("severity"),
+				bundle.RelationKeyName:           domain.String("Severity"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_status)),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
+			},
+			{
+				bundle.RelationKeyId:             domain.String("optTwinA"),
+				bundle.RelationKeyRelationKey:    domain.String("severity"),
+				bundle.RelationKeyName:           domain.String("High"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relationOption)),
+			},
+			{
+				bundle.RelationKeyId:             domain.String("optTwinB"),
+				bundle.RelationKeyRelationKey:    domain.String("severity"),
+				bundle.RelationKeyName:           domain.String("High"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relationOption)),
+			},
+		})
+		doc := `{"version":1,"id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
+			`{"id":"dataview","type":"dataview",` +
+			`"properties":[{"key":"name","format":"text"},{"key":"severity","format":"select"}],` +
+			`"views":[` +
+			`{"id":"viewAll1","name":"All","columns":[{"property":"name"},{"property":"severity","hidden":true}]},` +
+			`{"id":"viewPinned2","name":"Pinned","columns":[{"property":"name"}],` +
+			`"filters":[{"property":"severity","condition":"equal","value":"optTwinB"}]}]}]}`
+		captured := fx.expectMutate(editRead(t, doc), "headB")
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"updateView","view":"viewAll1","columns":{"severity":{"hidden":false}}}`), "", false)
+
+		require.NoError(t, err)
+		views := viewsOf(t, dataviewOf(t, *captured, "dataview"))
+		filters, _ := views[1]["filters"].([]any)
+		require.Len(t, filters, 1)
+		assert.Equal(t, "optTwinB", filters[0].(map[string]any)["value"],
+			"the untouched view's filter must keep ITS twin, not be repointed by listing order")
+	})
+
+	t.Run("A: a doc/space format disagreement passes through instead of minting under the lock", func(t *testing.T) {
+		// the dataview's own properties list says select, the space says
+		// longtext: the prewarm (space-informed) skips the value, so the
+		// commit (dv-list-informed) must NOT create — it passes the name
+		// through verbatim
+		fx := newV2Fixture(t)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("rel-legacy"),
+				bundle.RelationKeyRelationKey:    domain.String("legacy"),
+				bundle.RelationKeyName:           domain.String("Legacy"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_longtext)),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
+			},
+		})
+		doc := `{"version":1,"id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
+			`{"id":"dataview","type":"dataview",` +
+			`"properties":[{"key":"name","format":"text"},{"key":"legacy","format":"select"}],` +
+			`"views":[{"id":"viewAll1","name":"All","columns":[{"property":"name"},{"property":"legacy"}]}]}]}`
+		captured := fx.expectMutate(editRead(t, doc), "headB")
+
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"updateView","set":{"filters":[{"property":"legacy","condition":"equal","value":"Ghost"}]}}`), "", false)
+
+		require.NoError(t, err)
+		assert.Nil(t, result.Created, "the narrow prewarm/import disagreement must not mint under the lock")
+		view := viewsOf(t, dataviewOf(t, *captured, "dataview"))[0]
+		filters, _ := view["filters"].([]any)
+		require.Len(t, filters, 1)
+		assert.Equal(t, "Ghost", filters[0].(map[string]any)["value"], "the unresolvable value passes through verbatim")
+	})
+
+	t.Run("A: copyFrom preserves the source's exact option ids", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		fx.addSelectProperty(t) // opt-high exists
+		doc := `{"version":1,"id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
+			`{"id":"dataview","type":"dataview",` +
+			`"properties":[{"key":"name","format":"text"},{"key":"severity","format":"select"}],` +
+			`"views":[{"id":"viewAll1","name":"All","columns":[{"property":"name"}],` +
+			`"filters":[{"property":"severity","condition":"equal","value":"bafyDanglingOpt1"}]}]}]}`
+		captured := fx.expectMutate(editRead(t, doc), "headB")
+
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"insertView","name":"Copy","copyFrom":"viewAll1"}`), "", false)
+
+		require.NoError(t, err)
+		assert.Nil(t, result.Created)
+		views := viewsOf(t, dataviewOf(t, *captured, "dataview"))
+		require.Len(t, views, 2)
+		filters, _ := views[1]["filters"].([]any)
+		require.Len(t, filters, 1)
+		assert.Equal(t, "bafyDanglingOpt1", filters[0].(map[string]any)["value"],
+			"the copy's filters restore from the source proto — no name round-trip")
+	})
+
+	t.Run("B: the render bound sees dataview weight, not one block", func(t *testing.T) {
+		// a fully legal 512×insertView batch on a wide set held the lock for
+		// tens of seconds while scoring 0.05% of the budget — the dataview is
+		// one block whose marshal cost is O(views × columns)
+		fx := newV2Fixture(t)
+		var props, cols strings.Builder
+		for i := 0; i < 50; i++ {
+			if i > 0 {
+				props.WriteString(",")
+				cols.WriteString(",")
+			}
+			fmt.Fprintf(&props, `{"key":"name%02d","format":"text"}`, i)
+			fmt.Fprintf(&cols, `{"property":"name%02d"}`, i)
+		}
+		var views strings.Builder
+		for v := 0; v < 10; v++ {
+			if v > 0 {
+				views.WriteString(",")
+			}
+			fmt.Fprintf(&views, `{"id":"view%02d","name":"V%d","columns":[%s]}`, v, v, cols.String())
+		}
+		doc := `{"version":1,"id":"obj1","type":"set","properties":{"name":"Wide","setOf":["ot-bug"]},"blocks":[` +
+			`{"id":"dataview","type":"dataview","properties":[` + props.String() + `],"views":[` + views.String() + `]}]}`
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").
+			Return(editRead(t, doc), nil)
+		var mutated *state.State
+		fx.mutatorMock.EXPECT().MutateObject(mock.Anything, testSpaceId, "obj1", mock.Anything, mock.Anything).
+			RunAndReturn(func(ctx context.Context, spaceId, objectId string, needs apicore.EditNeeds, apply func(apicore.ObjectEdit) error) ([]string, error) {
+				read := editRead(t, doc)
+				st, err := state.NewDocFromSnapshot(objectId, &pb.ChangeSnapshot{Data: read.Snapshot})
+				if err != nil {
+					return nil, err
+				}
+				if err := apply(apicore.ObjectEdit{SbType: read.SbType, Heads: read.Heads, State: st}); err != nil {
+					return nil, err
+				}
+				mutated = st
+				return []string{"headB"}, nil
+			}).Maybe()
+
+		ops := make([]string, 0, v2MaxOpsPerPatch)
+		for i := 0; i < v2MaxOpsPerPatch; i++ {
+			ops = append(ops, fmt.Sprintf(`{"op":"insertView","name":"Extra %d"}`, i))
+		}
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(ops...), "", false)
+
+		apiErr := v2Err(t, err)
+		assert.Contains(t, apiErr.Message, "too much re-rendering work")
+		assert.Nil(t, mutated, "the batch must be refused before any op applies")
+	})
+
+	t.Run("C: view ops rebuild the document view per op and the M7 map says so", func(t *testing.T) {
+		// the marshal-count pin (the TestApplierRenderCounts pattern) coupled
+		// to the v2OpRebuildsView registration: an op measured to re-marshal
+		// per op must be counted by the render-work bound
+		fx := newV2Fixture(t)
+		edit, err := editFromRead("obj1", editRead(t, editTwoViewsDoc))
+		require.NoError(t, err)
+		resolvers := newCreatingResolvers(ctx, fx.mw, testSpaceId, fx.store.SpaceIndex(testSpaceId), false)
+		applier := newV2StateApplier(fx.V2Service, testSpaceId, "obj1", edit.SbType, edit.State, resolvers)
+		_, err = applier.begin()
+		require.NoError(t, err)
+
+		op := json.RawMessage(`{"op":"moveView","view":"viewBoard2","position":"first"}`)
+		for i := 0; i < 2; i++ {
+			require.NoError(t, applier.apply(i, op))
+		}
+		_, err = applier.currentDoc()
+		require.NoError(t, err)
+
+		assert.Equal(t, 3, applier.marshalCount, "2 view ops = begin + one rebuild + the final render")
+		for _, opName := range []string{"updateView", "insertView", "moveView", "deleteView"} {
+			assert.True(t, v2OpRebuildsView[opName],
+				"%s re-marshals per op (measured above) and must be counted by the M7 bound", opName)
+		}
+	})
+
+	t.Run("E: insertView rejects set.name — including the null that defeated the requirement", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		fx.expectMutate(editRead(t, editSetDoc))
+
+		for _, body := range []string{
+			`{"op":"insertView","name":"Real","set":{"name":"Sneaky"}}`,
+			`{"op":"insertView","name":"Real","set":{"name":null}}`,
+		} {
+			_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(body), "", false)
+			apiErr := v2Err(t, err)
+			assert.Equal(t, "ops[0].set.name", apiErr.Issues[0].Path)
+			assert.Contains(t, apiErr.Issues[0].Message, "top-level field")
+		}
+	})
+
+	t.Run("F: an indented inline dataview is editable", func(t *testing.T) {
+		// the shipped inline-dataview shape: nested under a parent block —
+		// the op must strip the view-doc indent before the fragment re-import
+		fx := newV2Fixture(t)
+		doc := `{"version":1,"id":"obj1","type":"page","properties":{"name":"Doc"},"blocks":[` +
+			`{"id":"blockParent1","type":"toggle","text":"data"},` +
+			`{"indent":1,"id":"dvInline1","type":"dataview","properties":[{"key":"name","format":"text"}],` +
+			`"views":[{"id":"viewA1","name":"A","columns":[{"property":"name","hidden":true}]}]}]}`
+		captured := fx.expectMutate(editRead(t, doc), "headB")
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"updateView","columns":{"name":{"hidden":false}}}`), "", false)
+
+		require.NoError(t, err)
+		blocks := docBlocks(stateDoc(t, *captured))
+		require.Len(t, blocks, 2)
+		assert.Equal(t, float64(1), blocks[1]["indent"], "the dataview stays nested")
+		view := viewsOf(t, blocks[1])[0]
+		nameCol := columnByProperty(t, view, "name")
+		_, hidden := nameCol["hidden"]
+		assert.False(t, hidden)
+	})
+
+	t.Run("minor: removing a column from a column-less view is a clean no-op", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		doc := `{"version":1,"id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
+			`{"id":"dataview","type":"dataview","properties":[{"key":"name","format":"text"}],` +
+			`"views":[{"id":"viewA1","name":"A"}]}]}`
+		fx.expectMutate(editRead(t, doc), "headB")
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"updateView","columns":{"name":null}}`), "", false)
+
+		require.NoError(t, err, "a removal no-op must not write columns:null into the block")
+	})
+
+	t.Run("minor: the advertised customOrder and filters bounds are enforced", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		fx.expectMutate(editRead(t, editSetDoc))
+
+		entries := make([]string, maxV2CustomOrderValues+1)
+		for i := range entries {
+			entries[i] = fmt.Sprintf(`"v%d"`, i)
+		}
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"updateView","set":{"sorts":[{"property":"severity","customOrder":[`+joinStrings(entries, ",")+`]}]}}`), "", false)
+		apiErr := v2Err(t, err)
+		assert.Equal(t, "ops[0].set.sorts[0].customOrder", apiErr.Issues[0].Path)
+
+		nodes := make([]string, maxV2ViewFilterNodes+1)
+		for i := range nodes {
+			nodes[i] = `{"property":"severity","condition":"notEmpty"}`
+		}
+		_, err = fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"updateView","set":{"filters":[`+joinStrings(nodes, ",")+`]}}`), "", false)
+		apiErr = v2Err(t, err)
+		assert.Contains(t, apiErr.Issues[0].Message, "top-level filter nodes")
+	})
+
+	t.Run("minor: the filter string sees the whole dataview's keys, like the structured form", func(t *testing.T) {
+		// severity is in the properties list and the OTHER view's columns but
+		// not a column of the addressed view, and not in the space — the two
+		// filter forms must accept the same keys
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editTwoViewsDoc), "headB")
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"updateView","view":"viewAll1","set":{"filter":"severity IS NOT EMPTY"}}`), "", false)
+
+		require.NoError(t, err, "the string form must accept keys the structured form accepts")
+		view := viewsOf(t, dataviewOf(t, *captured, "dataview"))[0]
+		filters, _ := view["filters"].([]any)
+		require.Len(t, filters, 1)
+		assert.Equal(t, "severity", filters[0].(map[string]any)["property"])
+	})
+
+	t.Run("minor: a target-less moveView is refused, not a silent default-tab change", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		fx.expectMutate(editRead(t, editTwoViewsDoc))
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"moveView","view":"viewAll1"}`), "", false)
+
+		apiErr := v2Err(t, err)
+		assert.Contains(t, apiErr.Message, "needs a destination")
+		assert.Contains(t, apiErr.Issues[0].Hint, "default tab")
+	})
+
+	t.Run("minor: two bare inserts in one batch build identical views", func(t *testing.T) {
+		// the bare default must come from pre-op membership: the first
+		// insert's default sort must not grow the properties list and hand
+		// the second insert an extra column
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editSetDoc), "headB")
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"insertView","name":"One"}`, `{"op":"insertView","name":"Two"}`), "", false)
+
+		require.NoError(t, err)
+		views := viewsOf(t, dataviewOf(t, *captured, "dataview"))
+		require.Len(t, views, 3)
+		assert.Len(t, columnsOf(t, views[1]), 3)
+		assert.Len(t, columnsOf(t, views[2]), 3, "the second bare insert must not inherit a column the first one's sort minted")
+	})
+
+	t.Run("minor: copyFrom carries the source's kanban editor state", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		doc := `{"version":1,"id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
+			`{"id":"dataview","type":"dataview",` +
+			`"properties":[{"key":"name","format":"text"},{"key":"severity","format":"select"}],` +
+			`"views":[{"id":"viewBoard1","name":"Board","type":"kanban","groupBy":"severity",` +
+			`"columns":[{"property":"name"}],` +
+			`"groups":[{"id":"groupA","backgroundColor":"red"},{"id":"groupB","hidden":true}],` +
+			`"objectOrders":[{"groupId":"groupA","objectIds":["objX"]}]}]}]}`
+		captured := fx.expectMutate(editRead(t, doc), "headB")
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"insertView","name":"Board 2","copyFrom":"viewBoard1"}`), "", false)
+
+		require.NoError(t, err)
+		views := viewsOf(t, dataviewOf(t, *captured, "dataview"))
+		require.Len(t, views, 2)
+		groups, _ := views[1]["groups"].([]any)
+		require.Len(t, groups, 2, "group order and colors ride the copy")
+		orders, _ := views[1]["objectOrders"].([]any)
+		require.Len(t, orders, 1, "manual object order rides the copy")
+	})
+}
+
+// TestViewSchemaDrift pins the served schemas to the implementation: the
+// §6.2 enum vocabulary comes from viewvocab.go, the sorts item accepts the
+// id every read emits, and insertView's set has no name slot.
+func TestViewSchemaDrift(t *testing.T) {
+	fx := newV2Fixture(t)
+
+	dig := func(t *testing.T, m map[string]any, path ...string) map[string]any {
+		t.Helper()
+		for _, key := range path {
+			next, ok := m[key].(map[string]any)
+			require.True(t, ok, "schema path %v missing at %q", path, key)
+			m = next
+		}
+		return m
+	}
+	enumOf := func(t *testing.T, prop map[string]any) []string {
+		t.Helper()
+		raw, _ := prop["enum"].([]any)
+		out := make([]string, 0, len(raw))
+		for _, v := range raw {
+			if s, ok := v.(string); ok {
+				out = append(out, s)
+			}
+		}
+		return out
+	}
+
+	entry, err := fx.SchemaOp("updateView")
+	require.NoError(t, err)
+	var schema map[string]any
+	require.NoError(t, json.Unmarshal(entry.Schema, &schema))
+	setProps := dig(t, schema, "properties", "set", "properties")
+
+	t.Run("view enums match the exported vocabulary", func(t *testing.T) {
+		assert.ElementsMatch(t, anyblockjson.ViewTypeNames(), enumOf(t, dig(t, setProps, "type")))
+		assert.ElementsMatch(t, anyblockjson.ViewCardSizeNames(), enumOf(t, dig(t, setProps, "cardSize")))
+		assert.ElementsMatch(t, anyblockjson.ViewListSizeNames(), enumOf(t, dig(t, setProps, "listSize")))
+		colProps := dig(t, schema, "properties", "columns", "additionalProperties", "properties")
+		assert.ElementsMatch(t, anyblockjson.ColumnAlignNames(), enumOf(t, dig(t, colProps, "align")))
+		assert.ElementsMatch(t, anyblockjson.ColumnAggregationNames(), enumOf(t, dig(t, colProps, "aggregation")))
+	})
+
+	t.Run("the sorts item accepts the id every read emits", func(t *testing.T) {
+		sortProps := dig(t, setProps, "sorts", "items", "properties")
+		_, hasId := sortProps["id"]
+		assert.True(t, hasId, "read→edit→write of a sort must not be schema-refused")
+	})
+
+	t.Run("the filters bound is advertised", func(t *testing.T) {
+		filters := dig(t, setProps, "filters")
+		assert.Equal(t, float64(maxV2ViewFilterNodes), filters["maxItems"])
+	})
+
+	t.Run("insertView's set has no name slot", func(t *testing.T) {
+		entry, err := fx.SchemaOp("insertView")
+		require.NoError(t, err)
+		var schema map[string]any
+		require.NoError(t, json.Unmarshal(entry.Schema, &schema))
+		insertSetProps := dig(t, schema, "properties", "set", "properties")
+		_, hasName := insertSetProps["name"]
+		assert.False(t, hasName, "insertView's name is the op's required top-level field")
 	})
 }

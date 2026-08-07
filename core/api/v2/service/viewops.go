@@ -32,6 +32,7 @@ import (
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson/filterstring"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 // maxV2ViewColumns bounds one updateView's columns map — the maxProperties
@@ -45,6 +46,15 @@ const maxV2ViewPageSize = 1000
 // maxV2ColumnWidth bounds a column width in pixels (SPEC §6.2: the editor's
 // own drag-resize stays within 54…1000; the schema advertises this cap).
 const maxV2ColumnWidth = 10000
+
+// maxV2ViewFilterNodes bounds the TOP-LEVEL nodes of a set.filters array —
+// the maxItems the served schema advertises (M6). Nesting stays unbounded:
+// the recursive tree is the documented C13 exception.
+const maxV2ViewFilterNodes = 32
+
+// maxV2CustomOrderValues bounds one sort's customOrder — the maxItems the
+// served schema always advertised (M6: advertised = enforced).
+const maxV2CustomOrderValues = 128
 
 // v2ViewFieldKinds maps each authorable §6.2 view-level field to its value
 // kind. groups and objectOrders are output-only editor state (§4a) and id is
@@ -134,7 +144,7 @@ func (a *v2StateApplier) applyUpdateView(op opUpdateView, opPath string) error {
 	// introduced must not vouch for its own existence
 	preKnown := dataviewMembership(edited)
 
-	if err := a.applyViewSet(op.Set, view, opPath, &issues, &keyUses); err != nil {
+	if err := a.applyViewSet(op.Set, edited, view, opPath, false, &issues, &keyUses); err != nil {
 		return err
 	}
 	if err := a.applyViewColumns(op.Columns, view, opPath, &issues, &keyUses); err != nil {
@@ -153,20 +163,70 @@ func (a *v2StateApplier) applyUpdateView(op opUpdateView, opPath string) error {
 
 	views[vi] = view
 	edited["views"] = views
-	return a.commitDataviewBlock(edited, fullId, opPath)
+	viewId, _ := view["id"].(string)
+	return a.commitDataviewBlock(edited, fullId, opPath, viewCommitPlan{
+		authored: map[string]viewAuthored{viewId: {
+			restoreFrom: viewId,
+			sorts:       setNames(op.Set, "sorts"),
+			filters:     setNames(op.Set, "filters") || setNames(op.Set, "filter"),
+		}},
+	})
+}
+
+// setNames reports whether the set channel names a field (null included —
+// a null clears the field, which is authoring it).
+func setNames(set map[string]json.RawMessage, field string) bool {
+	_, ok := set[field]
+	return ok
+}
+
+// viewCommitPlan tells commitDataviewBlock which parts of the imported
+// dataview the op actually AUTHORED. Everything else is restored from the
+// live proto after the codec round-trip (§8.19-A): the JSON form carries
+// option values as NAMES, so re-importing content the op never touched
+// re-resolves name→id — a dangling reference round-trips into a freshly
+// minted option, twins sharing a name repoint by store listing order, and
+// the creates fire under the object lock past both halves of M5. Restoring
+// unauthored content makes the codec round-trip a no-op for it.
+type viewCommitPlan struct {
+	// authored maps a view id to what the op wrote there. A view id absent
+	// from the map was not touched at all: it is restored wholly (moveView
+	// and deleteView author nothing; updateView and insertView author one
+	// view).
+	authored map[string]viewAuthored
+}
+
+// viewAuthored describes the op's writes within one view. Fields the op did
+// not author restore from the live view restoreFrom names — the view's own
+// id normally, the copyFrom source for a fresh copy, empty when there is no
+// live source (a bare insertView, whose constructed content carries no
+// resolvable values).
+type viewAuthored struct {
+	restoreFrom string
+	sorts       bool
+	filters     bool
 }
 
 // commitDataviewBlock re-imports one edited dataview block through the
-// format codec and lands it in the state — the shared tail of every view
-// op.
-func (a *v2StateApplier) commitDataviewBlock(edited map[string]any, fullId, opPath string) error {
+// format codec, restores everything the op did not author from the live
+// proto, and lands the block in the state — the shared tail of every view
+// op. The import runs with NO-CREATE option resolution (commitImportOptions):
+// op-authored option names were resolved by the pre-lock prewarm, so a miss
+// here is content the op has no business minting for — it passes through
+// verbatim instead of creating under the lock (§8.19-A).
+func (a *v2StateApplier) commitDataviewBlock(edited map[string]any, fullId, opPath string, plan viewCommitPlan) error {
 	raw, err := json.Marshal(edited)
 	if err != nil {
 		return fmt.Errorf("encode edited dataview: %w", err)
 	}
-	blocks, err := anyblockjson.UnmarshalBlock(raw, fullId, a.importOptions())
+	blocks, err := anyblockjson.UnmarshalBlock(raw, fullId, a.commitImportOptions())
 	if err != nil {
 		return invalidDocError(err)
+	}
+	if len(blocks) > 0 {
+		if dv := blocks[0].GetDataview(); dv != nil {
+			a.restoreUnauthoredViews(dv, fullId, plan)
+		}
 	}
 	if err := a.checkFreshIds(blocks, map[string]bool{fullId: true}, func(string) string { return opPath }); err != nil {
 		return err
@@ -175,9 +235,69 @@ func (a *v2StateApplier) commitDataviewBlock(edited map[string]any, fullId, opPa
 	return nil
 }
 
+// restoreUnauthoredViews overwrites imported views (or their unauthored
+// sorts/filters) with clones of the live proto content, per the plan.
+func (a *v2StateApplier) restoreUnauthoredViews(dv *model.BlockContentDataview, fullId string, plan viewCommitPlan) {
+	live := a.st.Pick(fullId)
+	if live == nil {
+		return
+	}
+	liveDv := live.Model().GetDataview()
+	if liveDv == nil {
+		return
+	}
+	liveById := make(map[string]*model.BlockContentDataviewView, len(liveDv.Views))
+	for _, v := range liveDv.Views {
+		if v != nil {
+			liveById[v.Id] = v
+		}
+	}
+	for i, v := range dv.Views {
+		if v == nil {
+			continue
+		}
+		auth, isAuthored := plan.authored[v.Id]
+		if !isAuthored {
+			if lv := liveById[v.Id]; lv != nil {
+				dv.Views[i] = cloneDataviewView(lv)
+			}
+			continue
+		}
+		if auth.restoreFrom == "" {
+			continue // no live source — everything is op-constructed
+		}
+		lv := liveById[auth.restoreFrom]
+		if lv == nil {
+			continue
+		}
+		if !auth.sorts {
+			dv.Views[i].Sorts = cloneDataviewView(lv).Sorts
+		}
+		if !auth.filters {
+			dv.Views[i].Filters = cloneDataviewView(lv).Filters
+		}
+	}
+}
+
+// cloneDataviewView deep-copies one view proto (the pbtypes.CopyBlock
+// marshal/unmarshal pattern).
+func cloneDataviewView(in *model.BlockContentDataviewView) *model.BlockContentDataviewView {
+	data, err := in.Marshal()
+	if err != nil {
+		return in
+	}
+	out := &model.BlockContentDataviewView{}
+	if err := out.Unmarshal(data); err != nil {
+		return in
+	}
+	return out
+}
+
 // applyViewSet validates and merges the view-level `set` channel into the
-// view's JSON form.
-func (a *v2StateApplier) applyViewSet(set map[string]json.RawMessage, view map[string]any, opPath string, issues *[]v2model.Issue, keyUses *[]viewKeyUse) error {
+// view's JSON form. nameViaOp marks insertView, whose name rides the op's
+// required top-level field — set.name there would silently override it (or,
+// as null, defeat the requirement), so it is rejected with the steer.
+func (a *v2StateApplier) applyViewSet(set map[string]json.RawMessage, edited, view map[string]any, opPath string, nameViaOp bool, issues *[]v2model.Issue, keyUses *[]viewKeyUse) error {
 	if len(set) == 0 {
 		return nil
 	}
@@ -191,6 +311,11 @@ func (a *v2StateApplier) applyViewSet(set map[string]json.RawMessage, view map[s
 	for _, field := range sortedKeys(set) {
 		path := opPath + ".set." + field
 		raw := set[field]
+		if nameViaOp && field == "name" {
+			*issues = append(*issues, v2model.Issue{Path: path,
+				Message: "insertView's name is the op's required top-level field — drop set.name"})
+			continue
+		}
 		switch field {
 		case "id":
 			*issues = append(*issues, v2model.Issue{Path: path,
@@ -221,7 +346,7 @@ func (a *v2StateApplier) applyViewSet(set map[string]json.RawMessage, view map[s
 			delete(view, field)
 			continue
 		}
-		if err := a.applyViewSetField(field, kind, raw, view, path, issues, keyUses); err != nil {
+		if err := a.applyViewSetField(field, kind, raw, edited, view, path, issues, keyUses); err != nil {
 			return err
 		}
 	}
@@ -231,7 +356,7 @@ func (a *v2StateApplier) applyViewSet(set map[string]json.RawMessage, view map[s
 // applyViewSetField validates one non-null `set` field per its kind and
 // writes it into the view JSON. Kind failures append issues; only transport
 // errors return.
-func (a *v2StateApplier) applyViewSetField(field, kind string, raw json.RawMessage, view map[string]any, path string, issues *[]v2model.Issue, keyUses *[]viewKeyUse) error {
+func (a *v2StateApplier) applyViewSetField(field, kind string, raw json.RawMessage, edited, view map[string]any, path string, issues *[]v2model.Issue, keyUses *[]viewKeyUse) error {
 	badType := func(want string) {
 		*issues = append(*issues, v2model.Issue{Path: path,
 			Message: fmt.Sprintf("%s takes %s", field, want)})
@@ -287,7 +412,7 @@ func (a *v2StateApplier) applyViewSetField(field, kind string, raw json.RawMessa
 	case "filters":
 		return a.applyViewFilters(raw, view, path, issues, keyUses)
 	case "filterString":
-		return a.applyViewFilterString(raw, view, path, issues)
+		return a.applyViewFilterString(raw, edited, view, path, issues)
 	}
 	return nil
 }
@@ -306,9 +431,18 @@ func (a *v2StateApplier) applyViewSorts(raw json.RawMessage, view map[string]any
 			Message: fmt.Sprintf("%d sorts — the cap is %d (the advertised maxItems)", len(probes), maxV2SetSorts)})
 		return nil
 	}
+	// the advertised customOrder bound, enforced (M6: advertised = enforced)
+	for i, probe := range probes {
+		if len(probe.CustomOrder) > maxV2CustomOrderValues {
+			*issues = append(*issues, v2model.Issue{
+				Path:    fmt.Sprintf("%s[%d].customOrder", path, i),
+				Message: fmt.Sprintf("%d entries — the cap is %d (the advertised maxItems)", len(probe.CustomOrder), maxV2CustomOrderValues)})
+			return nil
+		}
+	}
 	// the codec's own vocabulary validation (direction, emptyPlacement, the
 	// missing-property rule) — resolution is READ-ONLY here; the actual
-	// import happens on the block re-import with the creating resolvers
+	// import happens on the block re-import
 	if _, err := anyblockjson.UnmarshalSorts(raw, a.marshalOptions()); err != nil {
 		appendCodecIssues(issues, err, path, "/sorts")
 		return nil
@@ -336,6 +470,13 @@ func (a *v2StateApplier) applyViewFilters(raw json.RawMessage, view map[string]a
 	nodes, err := decodeFilterNodes(raw, "")
 	if err != nil {
 		appendCodecIssues(issues, err, path, "")
+		return nil
+	}
+	// the advertised top-level node bound, enforced (M6); nesting is the
+	// documented C13 recursion exception, so only the top level is counted
+	if len(nodes) > maxV2ViewFilterNodes {
+		*issues = append(*issues, v2model.Issue{Path: path,
+			Message: fmt.Sprintf("%d top-level filter nodes — the cap is %d (the advertised maxItems); group conditions under and/or nodes", len(nodes), maxV2ViewFilterNodes)})
 		return nil
 	}
 	opts := a.marshalOptions()
@@ -384,10 +525,12 @@ func stripValuelessConditionValues(nodes []any) {
 
 // applyViewFilterString parses the compact filter string (SPEC §6.2.1) into
 // the structured array and stores it as the view's filters — the same split
-// POST /sets makes. The parser's reference set is the dataview's own keys
-// plus the space's, so an existing column is always addressable even when
-// the queried type does not recommend it.
-func (a *v2StateApplier) applyViewFilterString(raw json.RawMessage, view map[string]any, path string, issues *[]v2model.Issue) error {
+// POST /sets makes. The parser's reference set is the WHOLE dataview's keys
+// (properties list plus every view's columns — the same membership the
+// structured channel validates against, so the two forms accept the same
+// keys) plus the space's, so an existing column is always addressable even
+// when the queried type does not recommend it.
+func (a *v2StateApplier) applyViewFilterString(raw json.RawMessage, edited, view map[string]any, path string, issues *[]v2model.Issue) error {
 	var s string
 	if err := json.Unmarshal(raw, &s); err != nil {
 		*issues = append(*issues, v2model.Issue{Path: path, Message: "filter takes a string (the compact filter syntax — GET /v2/schemas/filters serves the grammar)"})
@@ -400,7 +543,9 @@ func (a *v2StateApplier) applyViewFilterString(raw json.RawMessage, view map[str
 	}
 	refKeys := appendMissing(a.s.knownPropertyKeys(a.spaceId), "name")
 	refKeys = appendMissing(refKeys, v2SystemQueryKeys...)
-	refKeys = appendMissing(refKeys, a.dataviewKeys(view)...)
+	for key := range dataviewMembership(edited) {
+		refKeys = appendMissing(refKeys, key)
+	}
 	sort.Strings(refKeys)
 	parsed, err := filterstring.Parse(s, filterstring.Options{
 		KnownKeys:     refKeys,
@@ -493,7 +638,13 @@ func (a *v2StateApplier) applyViewColumns(patches map[string]json.RawMessage, vi
 			columns = append(columns, col)
 		}
 	}
-	view["columns"] = columns
+	if columns == nil {
+		// a view with no columns key that only saw removal no-ops: writing an
+		// explicit null would make the re-import reject the block
+		delete(view, "columns")
+	} else {
+		view["columns"] = columns
+	}
 	return nil
 }
 
@@ -608,27 +759,6 @@ func (a *v2StateApplier) validateViewKeys(edited map[string]any, preKnown map[st
 			fmt.Sprintf("list all with GET /v2/spaces/%s/properties, or create it with POST /v2/spaces/%s/properties", a.spaceId, a.spaceId)))
 	}
 	edited["properties"] = props
-}
-
-// dataviewKeys lists the property keys the dataview itself knows: its
-// properties list plus this view's columns.
-func (a *v2StateApplier) dataviewKeys(view map[string]any) []string {
-	var keys []string
-	seen := map[string]bool{}
-	add := func(key string) {
-		if key != "" && !seen[key] {
-			seen[key] = true
-			keys = append(keys, key)
-		}
-	}
-	cols, _ := view["columns"].([]any)
-	for _, raw := range cols {
-		if col, ok := raw.(map[string]any); ok {
-			key, _ := col["property"].(string)
-			add(key)
-		}
-	}
-	return keys
 }
 
 // resolveDataviewBlock resolves the op's dataview target: an explicit block
@@ -895,6 +1025,7 @@ func (a *v2StateApplier) applyInsertView(op opInsertView, opPath string) error {
 	preKnown := dataviewMembership(edited)
 
 	var view map[string]any
+	var copySourceId string
 	if op.CopyFrom != "" {
 		si, err := matchViewRef(views, op.CopyFrom, opPath+".copyFrom")
 		if err != nil {
@@ -904,6 +1035,7 @@ func (a *v2StateApplier) applyInsertView(op opInsertView, opPath string) error {
 		if !ok {
 			return fmt.Errorf("block %s: view %d is not an object", fullId, si)
 		}
+		copySourceId, _ = src["id"].(string)
 		// duplicate everything but the identity: columns, sorts, filters,
 		// type, groupBy, card options, even the per-view editor state — the
 		// §6.2 form nests groups/objectOrders per view, so they re-key to the
@@ -915,7 +1047,11 @@ func (a *v2StateApplier) applyInsertView(op opInsertView, opPath string) error {
 	} else {
 		// the bare default: every property the dataview lists, VISIBLE (the
 		// GO-5969 lesson — the native CreateView default hides everything but
-		// name), ordered latest-first like the native default sort
+		// name), ordered latest-first like the native default sort.
+		// lastModifiedDate is bundled and rides NO keyUse: the properties-list
+		// top-up would make the bare default self-modifying (a second bare
+		// insert in the same batch would grow an extra column), and the sort's
+		// format resolves from the store/bundle without a list entry.
 		props, _ := edited["properties"].([]any)
 		columns := make([]any, 0, len(props))
 		for _, raw := range props {
@@ -932,13 +1068,13 @@ func (a *v2StateApplier) applyInsertView(op opInsertView, opPath string) error {
 			"columns": columns,
 			"sorts":   []any{map[string]any{"property": "lastModifiedDate", "direction": "desc"}},
 		}
-		keyUses = append(keyUses, viewKeyUse{key: "lastModifiedDate", path: opPath})
 	}
 	view["name"] = op.Name
 
 	// set/columns merge on top of the base — updateView's exact channels, so
-	// create is "updateView aimed at a fresh view"
-	if err := a.applyViewSet(op.Set, view, opPath, &issues, &keyUses); err != nil {
+	// create is "updateView aimed at a fresh view" (name rides the op's own
+	// required field, so set.name is rejected — nameViaOp)
+	if err := a.applyViewSet(op.Set, edited, view, opPath, true, &issues, &keyUses); err != nil {
 		return err
 	}
 	if err := a.applyViewColumns(op.Columns, view, opPath, &issues, &keyUses); err != nil {
@@ -953,7 +1089,13 @@ func (a *v2StateApplier) applyInsertView(op opInsertView, opPath string) error {
 	view["id"] = newId
 	views = slices.Insert(views, insertAt, any(view))
 	edited["views"] = views
-	if err := a.commitDataviewBlock(edited, fullId, opPath); err != nil {
+	if err := a.commitDataviewBlock(edited, fullId, opPath, viewCommitPlan{
+		authored: map[string]viewAuthored{newId: {
+			restoreFrom: copySourceId, // "" for a bare insert — nothing live to restore
+			sorts:       setNames(op.Set, "sorts") || copySourceId == "",
+			filters:     setNames(op.Set, "filters") || setNames(op.Set, "filter") || copySourceId == "",
+		}},
+	}); err != nil {
 		return err
 	}
 	a.createdViews[opPath] = newId
@@ -984,6 +1126,17 @@ func (a *v2StateApplier) applyMoveView(op opMoveView, opPath string) error {
 	if err != nil {
 		return err
 	}
+	// a destination is required (unlike insertView's append default and
+	// moveBlock's end default): the end of the views list has no special
+	// meaning while its FRONT is the default tab, so a target-less moveView
+	// is far more likely a forgotten field than an intent — and it would
+	// silently change which view a fresh client opens (§8.19)
+	if op.After == "" && op.Before == "" && op.Position == "" {
+		return v2model.ValidationFailed("moveView needs a destination",
+			v2model.Issue{Path: opPath,
+				Message: "give one of after, before, position",
+				Hint:    `position "first" makes the view the default tab; "last" moves it to the end`})
+	}
 	target, err := a.resolveViewListTarget(views, op.After, op.Before, op.Position, opPath)
 	if err != nil {
 		return err
@@ -995,7 +1148,9 @@ func (a *v2StateApplier) applyMoveView(op opMoveView, opPath string) error {
 	}
 	views = slices.Insert(views, target, moved)
 	edited["views"] = views
-	return a.commitDataviewBlock(edited, fullId, opPath)
+	// moveView authors nothing inside any view — every view is restored from
+	// the live proto; only the ORDER comes from the splice
+	return a.commitDataviewBlock(edited, fullId, opPath, viewCommitPlan{})
 }
 
 func (a *v2StateApplier) applyDeleteView(op opDeleteView, opPath string) error {
@@ -1037,7 +1192,9 @@ func (a *v2StateApplier) applyDeleteView(op opDeleteView, opPath string) error {
 	// first view (activeView is local UI state, §6.2).
 	views = slices.Delete(views, vi, vi+1)
 	edited["views"] = views
-	return a.commitDataviewBlock(edited, fullId, opPath)
+	// deleteView authors nothing inside the surviving views — all restored
+	// from the live proto; only the membership comes from the splice
+	return a.commitDataviewBlock(edited, fullId, opPath, viewCommitPlan{})
 }
 
 // mintViewId mints a view id unused by the state, this PATCH, and the given

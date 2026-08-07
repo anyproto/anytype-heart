@@ -260,6 +260,17 @@ func (a *v2StateApplier) importOptions() anyblockjson.Options {
 	return opts
 }
 
+// commitImportOptions are importOptions with NO-CREATE option resolution —
+// the whole-dataview re-import at a view op's commit (§8.19-A): op-authored
+// names were created by the pre-lock prewarm and resolve from its cache;
+// anything else misses read-only and passes through verbatim instead of
+// minting an option under the object lock.
+func (a *v2StateApplier) commitImportOptions() anyblockjson.Options {
+	opts := a.importOptions()
+	opts.ResolveOptions = readOnlyOptionResolver{r: a.resolvers}
+	return opts
+}
+
 // mintBlockId mints an editor-shaped 24-hex block id unused anywhere in the
 // state or this PATCH.
 func (a *v2StateApplier) mintBlockId() string {

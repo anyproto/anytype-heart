@@ -76,8 +76,8 @@ const v2ViewSetPropDef = `"set":{"type":"object","maxProperties":18,"additionalP
 	`"wrapContent":{"type":["boolean","null"]},` +
 	`"listSize":{"type":["string","null"],"enum":["compact","regular",null]},` +
 	`"alternateRows":{"type":["boolean","null"]},` +
-	`"sorts":{"type":["array","null"],"maxItems":10,"items":{"type":"object","additionalProperties":false,"required":["property"],"properties":{"property":{"type":"string","maxLength":256},"direction":{"type":"string","enum":["asc","desc","custom"]},"customOrder":{"type":"array","maxItems":128},"emptyPlacement":{"type":"string","enum":["start","end"]},"includeTime":{"type":"boolean"},"noCollate":{"type":"boolean"}}}},` +
-	`"filters":{"type":["array","null"],"description":"SPEC §6.2 filter nodes (GET /v2/schemas/filters) — recursive, so small models should prefer filter, the compact string"},` +
+	`"sorts":{"type":["array","null"],"maxItems":10,"items":{"type":"object","additionalProperties":false,"required":["property"],"properties":{"property":{"type":"string","maxLength":256},"direction":{"type":"string","enum":["asc","desc","custom"]},"customOrder":{"type":"array","maxItems":128},"emptyPlacement":{"type":"string","enum":["start","end"]},"includeTime":{"type":"boolean"},"noCollate":{"type":"boolean"},"id":{"type":"string","maxLength":64,"description":"output-only on reads; accepted back so a read sort round-trips"}}}},` +
+	`"filters":{"type":["array","null"],"maxItems":32,"description":"SPEC §6.2 filter nodes (GET /v2/schemas/filters), at most 32 at the top level (group more under and/or nodes) — recursive, so small models should prefer filter, the compact string"},` +
 	`"filter":{"type":"string","maxLength":4096,"description":"compact filter syntax (GET /v2/schemas/filters serves the grammar); parsed server-side into filters"}}}`
 
 // v2ViewColumnsPropDef is the shared per-column merge channel.
@@ -86,6 +86,13 @@ const v2ViewColumnsPropDef = `"columns":{"type":"object","maxProperties":64,"des
 	`"width":{"type":["integer","null"],"minimum":0,"maximum":10000,"description":"pixels; null/omitted lets the client pick per format (SPEC §6.2)"},` +
 	`"align":{"type":["string","null"],"enum":["left","center","right","justify",null]},` +
 	`"aggregation":{"type":["string","null"],"enum":["count","countValue","countDistinct","countEmpty","countNotEmpty","percentEmpty","percentNotEmpty","sum","average","median","min","max","range",null]}}}}`
+
+// v2ViewSetPropDefNoName is insertView's set channel: identical, minus name
+// — insertView's name is the op's required top-level field, and a set.name
+// (null included) would silently defeat it (§8.19-E).
+var v2ViewSetPropDefNoName = strings.Replace(strings.Replace(v2ViewSetPropDef,
+	`"name":{"type":["string","null"],"maxLength":4096},`, "", 1),
+	`"maxProperties":18`, `"maxProperties":17`, 1)
 
 // v2OpSchemas maps each PATCH op to its strict schema + single-op example.
 var v2OpSchemas = map[string]v2SchemaKind{
@@ -186,7 +193,7 @@ var v2OpSchemas = map[string]v2SchemaKind{
 			`"after":{"type":"string","minLength":1,"maxLength":64,"description":"insert after this view (id, full or unique suffix)"}`,
 			`"before":{"type":"string","minLength":1,"maxLength":64,"description":"insert before this view"}`,
 			`"position":{"type":"string","enum":["first","last"],"description":"at most one of after/before/position; omitted = append; the FIRST view is the client's default tab"}`,
-			v2ViewSetPropDef,
+			v2ViewSetPropDefNoName,
 			v2ViewColumnsPropDef),
 		example: `{"ops":[{"op":"insertView","name":"Board","copyFrom":"viewAll1","set":{"type":"kanban","groupBy":"status"}}]}`,
 	},
@@ -198,7 +205,7 @@ var v2OpSchemas = map[string]v2SchemaKind{
 			`"view":{"type":"string","minLength":1,"maxLength":64,"description":"the view to move (id, full or unique suffix)"}`,
 			`"after":{"type":"string","minLength":1,"maxLength":64,"description":"move after this view"}`,
 			`"before":{"type":"string","minLength":1,"maxLength":64,"description":"move before this view"}`,
-			`"position":{"type":"string","enum":["first","last"],"description":"at most one of after/before/position; omitted = move to the end; first makes the view the client's default tab"}`),
+			`"position":{"type":"string","enum":["first","last"],"description":"give exactly one of after/before/position — a destination is required; first makes the view the client's default tab"}`),
 		example: `{"ops":[{"op":"moveView","view":"viewBoard2","position":"first"}]}`,
 	},
 	"deleteView": {

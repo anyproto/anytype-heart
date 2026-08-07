@@ -206,6 +206,9 @@ type sortProbe struct {
 	// search path defaults date sorts to second granularity only when the
 	// request did not decide (search.go).
 	IncludeTime *bool `json:"includeTime"`
+	// CustomOrder is probed by the view ops for the advertised maxItems
+	// bound (viewops.go).
+	CustomOrder []json.RawMessage `json:"customOrder"`
 }
 
 type viewProbe struct {

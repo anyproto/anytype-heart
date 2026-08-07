@@ -58,14 +58,24 @@ const v2MaxOpsPerPatch = 512
 const v2MaxPatchRenderWork = 1 << 20
 
 // checkPatchRenderWork computes the worst-case block-render product of a
-// batch against a document of docBlocks blocks and refuses an over-bound
-// batch whole, before any op applies — with the numbers, so the caller can
-// size its batches. Payload blocks count into the document factor (an insert
-// inflates what every later op re-renders); a markdown payload counts as the
-// parsed-run cap, since parsing happens later. Ops that fail to probe
+// batch against the document and refuses an over-bound batch whole, before
+// any op applies — with the numbers, so the caller can size its batches.
+// Payload blocks count into the document factor (an insert inflates what
+// every later op re-renders); a markdown payload counts as the parsed-run
+// cap, since parsing happens later.
+//
+// A dataview is ONE block whose marshal cost is O(views × columns) — the
+// §8.19-B correction: counting it as one render let a fully legal
+// 512×insertView batch on a wide set hold the object lock for tens of
+// seconds while scoring 0.05% of the budget. The document factor therefore
+// counts dataview weight (per view: 1 + columns + sorts + filters), and
+// every insertView adds the document's heaviest per-view weight to the
+// payload factor — the copyFrom worst case. Ops that fail to probe
 // contribute nothing — they fail in the applier, on their own op path,
 // before any rebuild.
-func checkPatchRenderWork(ops []json.RawMessage, docBlocks int) error {
+func checkPatchRenderWork(ops []json.RawMessage, blocks []map[string]any) error {
+	docWork := len(blocks) + dataviewRenderWork(blocks)
+	perViewWork := heaviestViewRenderWork(blocks)
 	rebuilds, payload := 0, 0
 	for _, raw := range ops {
 		var probe struct {
@@ -83,8 +93,11 @@ func checkPatchRenderWork(ops []json.RawMessage, docBlocks int) error {
 		if probe.Markdown != "" {
 			payload += v2MaxBlocksPerOp
 		}
+		if probe.Op == "insertView" {
+			payload += perViewWork
+		}
 	}
-	work := rebuilds * (docBlocks + payload)
+	work := rebuilds * (docWork + payload)
 	if work <= v2MaxPatchRenderWork {
 		return nil
 	}
@@ -92,10 +105,55 @@ func checkPatchRenderWork(ops []json.RawMessage, docBlocks int) error {
 		v2model.Issue{
 			Path: "/ops",
 			Message: fmt.Sprintf(
-				"%d view-rebuilding ops each re-render the whole document (%d blocks, %d more from payloads): ~%d block-renders exceeds the %d limit",
-				rebuilds, docBlocks, payload, work, v2MaxPatchRenderWork),
+				"%d view-rebuilding ops each re-render the whole document (%d block-render units incl. dataview views×columns, %d more from payloads): ~%d block-renders exceeds the %d limit",
+				rebuilds, docWork, payload, work, v2MaxPatchRenderWork),
 			Hint: "split the edit across several smaller PATCH requests — the object is released between batches",
 		})
+}
+
+// dataviewRenderWork counts the render weight dataview blocks add beyond
+// their single block: one unit per view plus its columns, sorts and filters.
+func dataviewRenderWork(blocks []map[string]any) int {
+	work := 0
+	for _, b := range blocks {
+		if blockType(b) != "dataview" {
+			continue
+		}
+		views, _ := b["views"].([]any)
+		for _, raw := range views {
+			work += viewRenderWork(raw)
+		}
+	}
+	return work
+}
+
+// heaviestViewRenderWork is the largest single-view weight in the document —
+// what one insertView may add (its copyFrom worst case).
+func heaviestViewRenderWork(blocks []map[string]any) int {
+	heaviest := 1
+	for _, b := range blocks {
+		if blockType(b) != "dataview" {
+			continue
+		}
+		views, _ := b["views"].([]any)
+		for _, raw := range views {
+			if w := viewRenderWork(raw); w > heaviest {
+				heaviest = w
+			}
+		}
+	}
+	return heaviest
+}
+
+func viewRenderWork(raw any) int {
+	view, ok := raw.(map[string]any)
+	if !ok {
+		return 1
+	}
+	columns, _ := view["columns"].([]any)
+	sorts, _ := view["sorts"].([]any)
+	filters, _ := view["filters"].([]any)
+	return 1 + len(columns) + len(sorts) + len(filters)
 }
 
 // v2PatchRequest is the PATCH body: the closed op list, nothing else.
@@ -299,7 +357,7 @@ func (s *V2Service) applyPatchOps(ctx context.Context, spaceId, objectId string,
 	// the M7 render-work bound, checked against the authoritative view the
 	// begin() marshal just produced: refusing here costs one marshal — the
 	// same floor a GET pays — instead of the batch's whole product
-	if err := checkPatchRenderWork(ops, len(applier.view.blocks)); err != nil {
+	if err := checkPatchRenderWork(ops, applier.view.blocks); err != nil {
 		return nil, err
 	}
 	for i, raw := range ops {

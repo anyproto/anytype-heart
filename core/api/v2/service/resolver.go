@@ -186,8 +186,12 @@ func (s *V2Service) prewarmCreateMissing(ops []json.RawMessage, resolvers *creat
 			continue
 		}
 		if probe.Op == "updateView" || probe.Op == "insertView" {
-			// both carry the same set channel; insertView's copyFrom clones
-			// only already-resolved values, so it warms nothing extra
+			// both carry the same set channel — the ONLY channel through which
+			// a view op may introduce option names. Everything else a view op
+			// serializes (untouched views, copyFrom clones) is restored from
+			// the live proto at commit and imported with a no-create resolver
+			// (viewops.go commitDataviewBlock), so this prewarm is exhaustive:
+			// a name it cannot see is a name the commit will not mint.
 			s.prewarmViewOptionValues(probe.Set, resolvers)
 			continue
 		}
@@ -316,6 +320,28 @@ func (s *V2Service) prewarmViewOptionValues(set map[string]json.RawMessage, reso
 			}
 		}
 	}
+}
+
+// readOnlyOptionResolver is the no-create view of a creatingResolvers: names
+// resolve through the prewarm's create cache and the store, and a miss
+// passes through verbatim instead of creating. The view-op commit imports
+// whole dataview blocks with it (§8.19-A): the block re-serializes content
+// the op never authored — a dangling option reference exported as its raw
+// id, a twin option's shared name — and a creating resolver there minted
+// options UNDER THE OBJECT LOCK, past both halves of M5.
+type readOnlyOptionResolver struct {
+	r *creatingResolvers
+}
+
+func (ro readOnlyOptionResolver) OptionName(key domain.RelationKey, id string) (string, bool) {
+	return ro.r.OptionName(key, id)
+}
+
+func (ro readOnlyOptionResolver) OptionId(key domain.RelationKey, name string) (string, bool) {
+	if id, ok := ro.r.createdOptions[optionRef{property: string(key), name: name}]; ok {
+		return id, true
+	}
+	return ro.r.reads.OptionId(key, name)
 }
 
 // PropertyById implements anyblockjson.PropertyResolver (export side).
