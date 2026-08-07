@@ -1,0 +1,327 @@
+{
+  "id": "pf-household-command-center",
+  "name": "The Alvarez family command center — six years of bolted-on household databases",
+  "family": "personal-family",
+  "inspiration": "notion.com/templates — the 'Family Command Center' / household-planner family (chores + meal planning + bills + reading lists), crossed with the naming habits of the real 37-database workspace dump: a '(SB)'-suffixed database, a 'Meal Calendar DB'-style decorated type word, per-person duplicated lists in the manner of 'Notebooks (SB)' / 'All notes (SB)', and 'Status' recurring across siblings with mutually incompatible option lists.",
+  "notes": "A family of five has run the whole household out of one workspace for six years. Nothing was designed as a system: every database was added the week it was needed, by whichever family member needed it, so naming drifts ('🧹 Weekly Chores', 'Recipe Box (SB)', 'Meal Plan DB', 'Pet Care Log ' with a real trailing space, 'Priority (v2)', a lowercase 'account'), and three separate personal reading lists were never consolidated.\n\nDecision points exercised: (1) exact duplicates — Mia's and Leo's reading lists are byte-identical; (2) same concept, disjoint schemas — 🧹 Weekly Chores has 2 columns and Household Projects has 12, both 'stuff to get done around the house', and merging them would hang Contractor Phone and Permit Required off every dishwashing row; (3) a four-way 'Status' split with mutually incompatible vocabularies; (4) identical-option 'Genre' across the three reading lists and identical-option 'Assigned To' across chores and projects, where the projects copy carries a trailing space in its NAME; (5) 'Assigned To' as multiSelect in chores but free text in the pet log; (6) all six legal bundled targets land in this one fixture; (7) eight date/checkbox traps that must stay themselves; (9) scale variety, 2 properties up to 12; (10) messy real-world naming throughout.\n\nThe near-duplicate is the point of the reading lists: Mom's list is Mia's five columns plus 'Format' and 'Borrowed From', so each member covers 0.71 / 0.71 / 1.00 of the seven-property union. A planner that demands an exact column match will refuse the merge and leave the family with three interchangeable book types.\n\nDeliberately NOT asserted, because a thoughtful product person could argue either way:\n  - Household Projects 'Contractor Phone' / 'Contractor Email' are phone- and email-format, so the whitelist would happily grab them, but they are the CONTRACTOR's contact details hanging off a renovation page, not the page's own. Whether a phone-format property on a non-person page should still become the bundled Phone relation is a real design question; the fixture leaves it open and pins only the unambiguous case on Family Contacts.\n  - 'Status' in the three reading lists is also identical in name, format and options and would naturally share one relation, exactly like 'Genre' does. It is left out so the shared-relation assertions stay minimal and the four-way Status split cannot be confused with it.\n  - 'Store' is a curated select in Grocery List (Mercadona / Costco / corner shop) and free text in the warranty tracker; the format difference makes sharing impossible, but only the 'Assigned To' format clash is asserted, as the semantically interesting one.\n  - Family Calendar 'Who' carries the same five family-member options as 'Assigned To' under a different name. Whether a planner should unify a synonym pair is taste, so it is not asserted either way.\n  - Meal Plan DB 'Date', Pet Care Log 'Date' and Family Calendar 'Date' are three plain dates with no options; nothing here says whether they should be one relation or three.",
+  "containers": [
+    {
+      "id": "db-chores",
+      "name": "🧹 Weekly Chores",
+      "properties": [
+        {"id": "pAssignedTo", "name": "Assigned To", "format": "multiSelect",
+         "options": ["Mia", "Leo", "Nico", "Mom", "Dad"]},
+        {"id": "pStatus", "name": "Status", "format": "select",
+         "options": ["To do", "Doing", "Done"]}
+      ],
+      "titles": [
+        "Empty the dishwasher",
+        "Bins out — Tuesday night",
+        "Hoover the stairs",
+        "Water the balcony plants",
+        "Fold the laundry pile on the chair",
+        "Wipe down the hob"
+      ]
+    },
+    {
+      "id": "db-projects",
+      "name": "Household Projects",
+      "properties": [
+        {"id": "pStatus", "name": "Status", "format": "select",
+         "options": ["Someday", "Getting quotes", "Scheduled", "Underway", "Wrapped"]},
+        {"id": "pAssignedTo", "name": "Assigned To ", "format": "multiSelect",
+         "options": ["Mia", "Leo", "Nico", "Mom", "Dad"]},
+        {"id": "pDueDate", "name": "Due Date", "format": "date"},
+        {"id": "pBudget", "name": "Budget", "format": "number"},
+        {"id": "pRoom", "name": "Room", "format": "select",
+         "options": ["Kitchen", "Garage", "Back bedroom", "Yard", "Basement"]},
+        {"id": "pContractor", "name": "Contractor", "format": "text"},
+        {"id": "pContractorPhone", "name": "Contractor Phone", "format": "phone"},
+        {"id": "pContractorEmail", "name": "Contractor Email", "format": "email"},
+        {"id": "pPermit", "name": "Permit Required", "format": "checkbox"},
+        {"id": "pPhotos", "name": "Photos", "format": "files"},
+        {"id": "pPriority", "name": "Priority (v2)", "format": "select",
+         "options": ["Do now", "This year", "Someday"]},
+        {"id": "pNotes", "name": "Notes", "format": "text"}
+      ],
+      "titles": [
+        "Regrout the shower",
+        "Replace the garage door spring",
+        "Back bedroom — repaint before Abuela visits",
+        "Get quotes for solar panels",
+        "Fix the dripping outside tap",
+        "Build shelves in the basement stairwell"
+      ]
+    },
+    {
+      "id": "db-grocery",
+      "name": "Grocery List",
+      "properties": [
+        {"id": "pGotIt", "name": "Got It?", "format": "checkbox"},
+        {"id": "pAisle", "name": "Aisle", "format": "select",
+         "options": ["Produce", "Dairy", "Bakery", "Frozen", "Household", "Pharmacy"]},
+        {"id": "pQty", "name": "Qty", "format": "text"},
+        {"id": "pStore", "name": "Store", "format": "select",
+         "options": ["Mercadona", "Costco", "corner shop"]}
+      ],
+      "titles": [
+        "Manchego",
+        "Oat milk (the blue one)",
+        "Frozen peas",
+        "Toilet roll — bulk",
+        "Coffee beans for the Bialetti",
+        "Churro's dental chews"
+      ]
+    },
+    {
+      "id": "db-mealplan",
+      "name": "Meal Plan DB",
+      "properties": [
+        {"id": "pDate", "name": "Date", "format": "date"},
+        {"id": "pMeal", "name": "Meal", "format": "select",
+         "options": ["Breakfast", "Lunch", "Snack", "Dinner"]},
+        {"id": "pRecipe", "name": "Recipe", "format": "objects"},
+        {"id": "pCook", "name": "Who's Cooking 👩‍🍳", "format": "multiSelect",
+         "options": ["Mom", "Dad", "Mia"]}
+      ],
+      "titles": [
+        "Sheet-pan gnocchi again",
+        "Tuesday — leftovers night",
+        "Sunday roast, Abuela coming",
+        "Nico's birthday dinner: tacos",
+        "Wednesday lunch: bocadillos",
+        "Friday pizza night"
+      ]
+    },
+    {
+      "id": "db-recipes",
+      "name": "Recipe Box (SB)",
+      "properties": [
+        {"id": "pStatus", "name": "Status", "format": "select",
+         "options": ["Want to try", "Tested", "Family favorite"]},
+        {"id": "pCuisine", "name": "Cuisine", "format": "multiSelect",
+         "options": ["Mexican", "Italian", "Thai", "Basque", "Weeknight nothing"]},
+        {"id": "pPrepTime", "name": "Prep Time (M)", "format": "number"},
+        {"id": "pDifficulty", "name": "Difficulty", "format": "select",
+         "options": ["Easy", "Medium", "Hard"]},
+        {"id": "pSource", "name": "Source", "format": "text"},
+        {"id": "pPicture", "name": "Picture", "format": "files"},
+        {"id": "pLastMade", "name": "Last Made", "format": "date"}
+      ],
+      "titles": [
+        "Sheet-pan gnocchi with cherry tomatoes",
+        "Abuela's tortilla de patatas",
+        "Weeknight red curry (jar paste, no shame)",
+        "Marbella chicken from the NYT thing",
+        "Basque cheesecake",
+        "Slow cooker pulled pork"
+      ]
+    },
+    {
+      "id": "db-petcare",
+      "name": "Pet Care Log ",
+      "properties": [
+        {"id": "pStatus", "name": "Status", "format": "select",
+         "options": ["Not started", "In progress", "Done"]},
+        {"id": "pAssignedTo", "name": "Assigned To", "format": "text"},
+        {"id": "pPet", "name": "Pet", "format": "select",
+         "options": ["Churro (dog)", "Bean (cat)", "the fish"]},
+        {"id": "pDate", "name": "Date", "format": "date"},
+        {"id": "pVetNotes", "name": "Vet Notes", "format": "text"}
+      ],
+      "titles": [
+        "Churro — flea treatment",
+        "Bean's annual jabs",
+        "Clean the fish tank filter",
+        "Churro — nail trim",
+        "Bean vet: check that lump on her side",
+        "Order more Royal Canin"
+      ]
+    },
+    {
+      "id": "db-bills",
+      "name": "Family Bills & Subscriptions",
+      "properties": [
+        {"id": "pAutopay", "name": "Autopay?", "format": "checkbox"},
+        {"id": "pAmount", "name": "Amount", "format": "number"},
+        {"id": "pDueDay", "name": "Due Day", "format": "number"},
+        {"id": "pRenewal", "name": "Renewal Date", "format": "date"},
+        {"id": "pCategory", "name": "Category", "format": "select",
+         "options": ["Utilities", "Insurance", "Streaming", "School", "Car"]},
+        {"id": "pAccount", "name": "account", "format": "text"},
+        {"id": "pCancelLink", "name": "Cancel Link", "format": "url"}
+      ],
+      "titles": [
+        "Endesa electricity",
+        "Movistar fibre + mobile",
+        "Mapfre home insurance",
+        "Netflix (on Mom's card)",
+        "School dinners — Nico",
+        "Línea Directa car insurance",
+        "Spotify Family",
+        "Amazon Prime — cancel?"
+      ]
+    },
+    {
+      "id": "db-reading-mia",
+      "name": "Mia's Reading List",
+      "properties": [
+        {"id": "pAuthor", "name": "Author", "format": "text"},
+        {"id": "pGenre", "name": "Genre", "format": "multiSelect",
+         "options": ["Fantasy", "Sci-fi", "Mystery", "Graphic Novel", "Nonfiction", "Poetry"]},
+        {"id": "pStatus", "name": "Status", "format": "select",
+         "options": ["Want to read", "Reading", "Finished", "DNF"]},
+        {"id": "pRating", "name": "Rating", "format": "select",
+         "options": ["⭐⭐⭐⭐⭐", "⭐⭐⭐⭐", "⭐⭐⭐", "⭐⭐", "⭐"]},
+        {"id": "pFinishedOn", "name": "Finished On", "format": "date"}
+      ],
+      "titles": [
+        "Piranesi",
+        "Nimona",
+        "Six of Crows",
+        "Heartstopper vol. 4",
+        "The Hobbit (reread)",
+        "Percy Jackson and the Lightning Thief"
+      ]
+    },
+    {
+      "id": "db-reading-leo",
+      "name": "Leo's Reading List",
+      "properties": [
+        {"id": "pAuthor", "name": "Author", "format": "text"},
+        {"id": "pGenre", "name": "Genre", "format": "multiSelect",
+         "options": ["Fantasy", "Sci-fi", "Mystery", "Graphic Novel", "Nonfiction", "Poetry"]},
+        {"id": "pStatus", "name": "Status", "format": "select",
+         "options": ["Want to read", "Reading", "Finished", "DNF"]},
+        {"id": "pRating", "name": "Rating", "format": "select",
+         "options": ["⭐⭐⭐⭐⭐", "⭐⭐⭐⭐", "⭐⭐⭐", "⭐⭐", "⭐"]},
+        {"id": "pFinishedOn", "name": "Finished On", "format": "date"}
+      ],
+      "titles": [
+        "Project Hail Mary",
+        "Ender's Game",
+        "Bone vol. 1",
+        "Holes",
+        "Dune (gave up p.200)",
+        "The Martian"
+      ]
+    },
+    {
+      "id": "db-reading-mom",
+      "name": "Mom's Reading List 📚",
+      "properties": [
+        {"id": "pAuthor", "name": "Author", "format": "text"},
+        {"id": "pGenre", "name": "Genre", "format": "multiSelect",
+         "options": ["Fantasy", "Sci-fi", "Mystery", "Graphic Novel", "Nonfiction", "Poetry"]},
+        {"id": "pStatus", "name": "Status", "format": "select",
+         "options": ["Want to read", "Reading", "Finished", "DNF"]},
+        {"id": "pRating", "name": "Rating", "format": "select",
+         "options": ["⭐⭐⭐⭐⭐", "⭐⭐⭐⭐", "⭐⭐⭐", "⭐⭐", "⭐"]},
+        {"id": "pFinishedOn", "name": "Finished On", "format": "date"},
+        {"id": "pFormat", "name": "Format", "format": "select",
+         "options": ["Paperback", "Kindle", "Audiobook"]},
+        {"id": "pBorrowedFrom", "name": "Borrowed From", "format": "text"}
+      ],
+      "titles": [
+        "Piranesi",
+        "Demon Copperhead",
+        "The Bee Sting",
+        "Tomorrow, and Tomorrow, and Tomorrow",
+        "Patria",
+        "Bad Blood",
+        "The Vegetarian"
+      ]
+    },
+    {
+      "id": "db-warranty",
+      "name": "Appliance & Warranty Tracker",
+      "properties": [
+        {"id": "pPurchaseDate", "name": "Purchase Date", "format": "date"},
+        {"id": "pWarrantyExpires", "name": "Warranty Expires", "format": "date"},
+        {"id": "pModel", "name": "Model #", "format": "text"},
+        {"id": "pStore", "name": "Store", "format": "text"},
+        {"id": "pReceipt", "name": "Receipt", "format": "files"},
+        {"id": "pSerial", "name": "Serial", "format": "text"}
+      ],
+      "titles": [
+        "Bosch dishwasher SMV4HVX",
+        "LG fridge — kitchen",
+        "Vaillant boiler (serviced yearly)",
+        "Dyson V11, refurb from Back Market",
+        "Samsung TV, living room",
+        "Gaggia Classic espresso machine"
+      ]
+    },
+    {
+      "id": "db-contacts",
+      "name": "Family Contacts",
+      "properties": [
+        {"id": "pPhone", "name": "Phone", "format": "phone"},
+        {"id": "pEmail", "name": "Email", "format": "email"},
+        {"id": "pRelationship", "name": "Relationship", "format": "select",
+         "options": ["Family", "School", "Neighbour", "Doctor", "Emergency"]},
+        {"id": "pBirthday", "name": "Birthday", "format": "date"},
+        {"id": "pAddress", "name": "Address", "format": "text"}
+      ],
+      "titles": [
+        "Dr. Ferrán — paediatrician",
+        "Marta next door (has the spare keys)",
+        "Abuela Pilar",
+        "Sr. Oliva, landlord",
+        "Nico's school office",
+        "Sam the plumber"
+      ]
+    },
+    {
+      "id": "db-calendar",
+      "name": "Family Calendar 🗓️",
+      "properties": [
+        {"id": "pDate", "name": "Date", "format": "date"},
+        {"id": "pTags", "name": "Tags", "format": "multiSelect",
+         "options": ["School", "Sports", "Doctor", "Birthday", "Trip"]},
+        {"id": "pWho", "name": "Who", "format": "multiSelect",
+         "options": ["Mia", "Leo", "Nico", "Mom", "Dad"]},
+        {"id": "pAllDay", "name": "All Day?", "format": "checkbox"}
+      ],
+      "titles": [
+        "Nico's dentist Thursday",
+        "Mia's swim gala — Sat 9am",
+        "Parents' evening, Leo's school",
+        "Abuela's birthday",
+        "Flights to Bilbao",
+        "Bin day moved (bank holiday)"
+      ]
+    }
+  ],
+  "expect": {
+    "sameKind": [
+      ["db-reading-mia", "db-reading-leo", "db-reading-mom"]
+    ],
+    "differentKind": [
+      ["db-chores", "db-projects"]
+    ],
+    "bundled": {
+      "db-contacts": {"pPhone": "phone", "pEmail": "email"},
+      "db-projects": {"pDueDate": "dueDate"},
+      "db-grocery": {"pGotIt": "done"},
+      "db-reading-mia": {"pGenre": "genre"},
+      "db-calendar": {"pTags": "tag"}
+    },
+    "notBundled": {
+      "db-bills": ["pAutopay", "pRenewal"],
+      "db-warranty": ["pPurchaseDate", "pWarrantyExpires"],
+      "db-contacts": ["pBirthday"],
+      "db-reading-mia": ["pFinishedOn"],
+      "db-recipes": ["pLastMade"],
+      "db-calendar": ["pAllDay"]
+    },
+    "sharedRelation": [
+      ["db-reading-mia:pGenre", "db-reading-leo:pGenre", "db-reading-mom:pGenre"],
+      ["db-chores:pAssignedTo", "db-projects:pAssignedTo"]
+    ],
+    "separateRelation": [
+      ["db-chores:pStatus", "db-projects:pStatus", "db-petcare:pStatus", "db-recipes:pStatus"],
+      ["db-chores:pAssignedTo", "db-petcare:pAssignedTo"]
+    ]
+  }
+}

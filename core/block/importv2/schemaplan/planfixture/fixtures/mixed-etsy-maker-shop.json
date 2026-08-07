@@ -1,0 +1,689 @@
+{
+  "id": "mixed-etsy-maker-shop",
+  "name": "Mixed — Priya's knitting shop (Etsy business + knitting hobby in one space)",
+  "family": "mixed-personal-business",
+  "inspiration": "notion.com/templates — the 'Etsy Shop Manager' / 'Small Business HQ' family (Product Listings, Orders, Customers, Supply Inventory, Shipping Log), interleaved with the hobby-and-gifts databases real sellers keep in the same space. The 'Yarn Stash 🧶' emoji name and the per-season duplicated shipping log echo the real dump's 'Recipe SB' / repeated 'Premium Templates' pattern.",
+  "notes": "Priya knits and sells finished pieces on Etsy, but also knits gifts for friends and hoards yarn for projects she will 'get to eventually'. Her shop half (listings, orders, customers, expenses, craft-fair bookings, shipping logs) and her personal half (hobby project backlog, gift list, address book, household budget) live in one workspace and reuse the same words for different things.\n\nDECISION POINTS: 8 (cross-domain collision) is the headline duty; also 2 (same concept, disjoint schemas), 4 (same name, identical options -> one relation), 6 (bundled hits), 7 (bundled traps), 9 (scale: 2-prop and 12-prop containers), 10 (messy naming), plus 1 as a bonus (the seasonal shipping log duplicated).\n\nTHE TWO CROSS-DOMAIN COLLISIONS. (1) db-customers (Etsy buyers) and db-personal-contacts (friends and family) both read as address books and both carry an 'Email' of format email. They must NOT share a type. Deliberately NOT asserted: separateRelation on the two Email properties. Same name, same format, no options means nothing justifies separating them — and it would be the wrong call anyway, because both legitimately land on the bundled `email` relation. The personal/business separation here is a TYPE decision, not a relation decision; a planner that splits the types while still routing both emails to `email` is doing exactly the right thing. (2) db-shop-expenses and db-household-budget both have a select called 'Category' and a number called 'Amount', but the Category vocabularies are completely disjoint (yarn/packaging/Etsy fees vs rent/groceries/childcare). Here BOTH calls are asserted: different type AND different relation.\n\nSAME CONCEPT, DIFFERENT KIND. db-listings (12 props, a commercial listing with SKU, price, materials cost, photos and a listing URL) and db-craft-projects (3 props, a hobby project) are both 'a knitted thing Priya is making', and one page title deliberately appears in both ('Fisherman's rib beanie — oatmeal' / '... (v2)'). Merging them yields a 13-relation type of which the hobby side fills 3 — the classic bloat failure.\n\nTHE COUNTERPOINT. 'Yarn Used' is the same multiSelect with the same five yarn options in db-listings and db-craft-projects, and it MUST land on one relation. Different kinds, one shared property: a planner that separates the types must not reflexively separate every property inside them.\n\nNOT ASSERTED, ON PURPOSE. Four different 'Status' selects exist (listings Draft/Active/Sold out/Retired; orders New/Making/Shipped/...; craft projects Idea/In progress/Finished/Gifted; fairs Applied/Waitlisted/...) and three different 'Category' selects (listings garment categories, shop expenses, household budget). Only the expenses/budget Category pair is asserted — the Status-vocabulary duty belongs to other fixtures in the set, and asserting every disjoint pair here would bake taste into the suite. Also left out: db-fairs 'Contact Email' -> email (obviously right, but redundant with the customers assertion), and db-shipping-* 'Delivered?' -> done (genuinely debatable: it is a shipment-state flag on a log row, not a task completion).\n\nCROSS-FIXTURE RULING ('Ship By'): originally asserted as a dueDate hit. Moved to notBundled because events-friends-wedding asserts 'RSVP By' as a trap, and the two are structurally identical ('<verb> By' + date) — no name rule can catch one without catching the other. Resolved toward the trap, per the design principle that an unmapped property keeps the user's own name (zero loss) while a wrong mapping renames their field. If a '<verb> By' rule is ever added, BOTH assertions must flip together.",
+  "containers": [
+    {
+      "id": "db-listings",
+      "name": "Product Listings",
+      "properties": [
+        {
+          "id": "pSku",
+          "name": "SKU",
+          "format": "text"
+        },
+        {
+          "id": "pPrice",
+          "name": "Price",
+          "format": "number"
+        },
+        {
+          "id": "pMaterialsCost",
+          "name": "Materials Cost",
+          "format": "number"
+        },
+        {
+          "id": "pStatus",
+          "name": "Status",
+          "format": "select",
+          "options": [
+            "Draft",
+            "Active",
+            "Sold out",
+            "Retired"
+          ]
+        },
+        {
+          "id": "pYarnUsed",
+          "name": "Yarn Used",
+          "format": "multiSelect",
+          "options": [
+            "Malabrigo Rios",
+            "Cascade 220",
+            "Brooklyn Tweed Shelter",
+            "Drops Alpaca",
+            "Lion Brand Wool-Ease"
+          ]
+        },
+        {
+          "id": "pPhotos",
+          "name": "Photos",
+          "format": "files"
+        },
+        {
+          "id": "pListingUrl",
+          "name": "Listing URL",
+          "format": "url"
+        },
+        {
+          "id": "pDateListed",
+          "name": "Date Listed",
+          "format": "date"
+        },
+        {
+          "id": "pMadeToOrder",
+          "name": "Made To Order",
+          "format": "checkbox"
+        },
+        {
+          "id": "pCategory",
+          "name": "Category",
+          "format": "select",
+          "options": [
+            "Hat",
+            "Shawl",
+            "Mittens",
+            "Baby",
+            "Blanket"
+          ]
+        },
+        {
+          "id": "pTags",
+          "name": "Tags",
+          "format": "multiSelect",
+          "options": [
+            "Bestseller",
+            "Seasonal",
+            "Custom",
+            "Gift-ready"
+          ]
+        },
+        {
+          "id": "pNotes",
+          "name": "Notes",
+          "format": "text"
+        }
+      ],
+      "titles": [
+        "Fisherman's rib beanie — oatmeal",
+        "Nubbin baby blanket, custom for Sana",
+        "Holyoke shawl (test knit)",
+        "Chunky cable mittens — charcoal",
+        "Speckled sock-yarn bandana cowl",
+        "Baby surprise jacket, 6–12mo"
+      ]
+    },
+    {
+      "id": "db-orders",
+      "name": "Orders",
+      "properties": [
+        {
+          "id": "pStatus",
+          "name": "Status",
+          "format": "select",
+          "options": [
+            "New",
+            "Making",
+            "Shipped",
+            "Delivered",
+            "Refunded"
+          ]
+        },
+        {
+          "id": "pBuyer",
+          "name": "Buyer",
+          "format": "text"
+        },
+        {
+          "id": "pShipBy",
+          "name": "Ship By",
+          "format": "date"
+        },
+        {
+          "id": "pTotal",
+          "name": "Total",
+          "format": "number"
+        },
+        {
+          "id": "pEtsyOrderNo",
+          "name": "Etsy Order #",
+          "format": "text"
+        },
+        {
+          "id": "pGiftWrap",
+          "name": "Gift Wrap?",
+          "format": "checkbox"
+        }
+      ],
+      "titles": [
+        "#3199410883 — mittens ×2, rush",
+        "#3201773640 — Sana blanket, gift wrap",
+        "#3187002115 — refunded, wrong colourway",
+        "#3205881234 — L. Dubois (FR)",
+        "#3207119002 — beanie, oatmeal"
+      ]
+    },
+    {
+      "id": "db-customers",
+      "name": "Customers",
+      "properties": [
+        {
+          "id": "pEmail",
+          "name": "Email",
+          "format": "email"
+        },
+        {
+          "id": "pEtsyUsername",
+          "name": "Etsy Username",
+          "format": "text"
+        },
+        {
+          "id": "pOrdersCount",
+          "name": "Orders Count",
+          "format": "number"
+        },
+        {
+          "id": "pCountry",
+          "name": "Country",
+          "format": "select",
+          "options": [
+            "US",
+            "UK",
+            "DE",
+            "FR",
+            "AU"
+          ]
+        },
+        {
+          "id": "pFirstOrderDate",
+          "name": "First Order Date",
+          "format": "date"
+        }
+      ],
+      "titles": [
+        "Rachel Okafor",
+        "Léa Dubois",
+        "knitnervous_92",
+        "Marta Kowalczyk",
+        "Hannah Beaulieu"
+      ]
+    },
+    {
+      "id": "db-personal-contacts",
+      "name": "Personal Contacts",
+      "properties": [
+        {
+          "id": "pEmail",
+          "name": "Email",
+          "format": "email"
+        },
+        {
+          "id": "pPhone",
+          "name": "Phone",
+          "format": "phone"
+        },
+        {
+          "id": "pBirthday",
+          "name": "Birthday",
+          "format": "date"
+        },
+        {
+          "id": "pRelationship",
+          "name": "Relationship",
+          "format": "select",
+          "options": [
+            "Family",
+            "Knitting group",
+            "School friends",
+            "Neighbours"
+          ]
+        },
+        {
+          "id": "pNotes",
+          "name": "Notes",
+          "format": "text"
+        }
+      ],
+      "titles": [
+        "Mum",
+        "Dev (brother)",
+        "Sana & Tom Whitfield",
+        "Aunty Nisha",
+        "Erin from Tuesday knit night"
+      ]
+    },
+    {
+      "id": "db-yarn",
+      "name": "Yarn Stash 🧶",
+      "properties": [
+        {
+          "id": "pCostShop",
+          "name": "Cost (shop)",
+          "format": "number"
+        },
+        {
+          "id": "pSkeins",
+          "name": "Skeins",
+          "format": "number"
+        },
+        {
+          "id": "pColorway",
+          "name": "Colorway",
+          "format": "text"
+        },
+        {
+          "id": "pWeight",
+          "name": "Weight",
+          "format": "select",
+          "options": [
+            "Lace",
+            "Fingering",
+            "DK",
+            "Worsted",
+            "Bulky"
+          ]
+        },
+        {
+          "id": "pReorder",
+          "name": "Reorder?",
+          "format": "checkbox"
+        },
+        {
+          "id": "pDyeLot",
+          "name": "Dye Lot",
+          "format": "text"
+        }
+      ],
+      "titles": [
+        "Malabrigo Rios — Teal Feather",
+        "Cascade 220 — Doeskin Heather (×6)",
+        "Brooklyn Tweed Shelter — Fossil",
+        "Drops Alpaca — Light Grey Mix",
+        "Lion Brand Wool-Ease — Fisherman",
+        "Mystery sock yarn from Rhinebeck '24"
+      ]
+    },
+    {
+      "id": "db-craft-projects",
+      "name": "Personal Craft Projects",
+      "properties": [
+        {
+          "id": "pStatus",
+          "name": "Status",
+          "format": "select",
+          "options": [
+            "Idea",
+            "In progress",
+            "Finished",
+            "Gifted"
+          ]
+        },
+        {
+          "id": "pYarnUsed",
+          "name": "Yarn Used",
+          "format": "multiSelect",
+          "options": [
+            "Malabrigo Rios",
+            "Cascade 220",
+            "Brooklyn Tweed Shelter",
+            "Drops Alpaca",
+            "Lion Brand Wool-Ease"
+          ]
+        },
+        {
+          "id": "pForWhom",
+          "name": "For Whom",
+          "format": "text"
+        }
+      ],
+      "titles": [
+        "Dev's Christmas socks",
+        "Fisherman's rib beanie — oatmeal (v2)",
+        "Sana's baby blanket — frogged, restarting",
+        "Nan's tea cosy",
+        "Colourwork yoke sweater (someday)"
+      ]
+    },
+    {
+      "id": "db-shop-expenses",
+      "name": "Shop Expenses",
+      "properties": [
+        {
+          "id": "pCategory",
+          "name": "Category",
+          "format": "select",
+          "options": [
+            "Yarn",
+            "Packaging",
+            "Etsy Fees",
+            "Shipping",
+            "Booth Fees",
+            "Tools"
+          ]
+        },
+        {
+          "id": "pAmount",
+          "name": "Amount",
+          "format": "number"
+        },
+        {
+          "id": "pDate",
+          "name": "Date",
+          "format": "date"
+        },
+        {
+          "id": "pReceipt",
+          "name": "Receipt",
+          "format": "files"
+        },
+        {
+          "id": "pVendor",
+          "name": "Vendor",
+          "format": "text"
+        },
+        {
+          "id": "pDeductible",
+          "name": "Deductible?",
+          "format": "checkbox"
+        }
+      ],
+      "titles": [
+        "Malabrigo restock — Eat.Sleep.Knit",
+        "Etsy listing + transaction fees, June",
+        "Kraft mailers 100ct — Uline",
+        "Vermont Sheep & Wool booth deposit",
+        "Rowenta steamer for blocking"
+      ]
+    },
+    {
+      "id": "db-household-budget",
+      "name": "Household Budget",
+      "properties": [
+        {
+          "id": "pCategory",
+          "name": "Category",
+          "format": "select",
+          "options": [
+            "Rent",
+            "Groceries",
+            "Utilities",
+            "Car",
+            "Childcare",
+            "Savings"
+          ]
+        },
+        {
+          "id": "pAmount",
+          "name": "Amount",
+          "format": "number"
+        },
+        {
+          "id": "pMonth",
+          "name": "Month",
+          "format": "date"
+        },
+        {
+          "id": "pRecurring",
+          "name": "Recurring?",
+          "format": "checkbox"
+        },
+        {
+          "id": "pAccount",
+          "name": "Account",
+          "format": "text"
+        },
+        {
+          "id": "pNotes",
+          "name": "Notes — old",
+          "format": "text"
+        }
+      ],
+      "titles": [
+        "Rent — July",
+        "Aldi + Costco, week of the 12th",
+        "Nursery fees — Sana",
+        "Car insurance renewal",
+        "Emergency fund transfer"
+      ]
+    },
+    {
+      "id": "db-gifts",
+      "name": "Gift Ideas",
+      "properties": [
+        {
+          "id": "pFor",
+          "name": "For",
+          "format": "text"
+        },
+        {
+          "id": "pIdea",
+          "name": "Idea",
+          "format": "text"
+        }
+      ],
+      "titles": [
+        "Cast-iron pan for Dev",
+        "Handspun cowl for Aunty Nisha",
+        "Sourdough class voucher — Mum",
+        "Sault vinyl for Erin"
+      ]
+    },
+    {
+      "id": "db-fairs",
+      "name": "Craft Fair Bookings",
+      "properties": [
+        {
+          "id": "pStatus",
+          "name": "Status",
+          "format": "select",
+          "options": [
+            "Applied",
+            "Waitlisted",
+            "Accepted",
+            "Booth Paid",
+            "Attended"
+          ]
+        },
+        {
+          "id": "pBoothFee",
+          "name": "Booth Fee",
+          "format": "number"
+        },
+        {
+          "id": "pDates",
+          "name": "Dates",
+          "format": "date"
+        },
+        {
+          "id": "pContactEmail",
+          "name": "Contact Email",
+          "format": "email"
+        },
+        {
+          "id": "pTableSize",
+          "name": "Table Size",
+          "format": "select",
+          "options": [
+            "Half table",
+            "Full table",
+            "Corner booth"
+          ]
+        },
+        {
+          "id": "pLoadIn",
+          "name": "Load-in notes 🚚",
+          "format": "text"
+        }
+      ],
+      "titles": [
+        "Vermont Sheep & Wool 2026",
+        "Squam Art Fair — spring",
+        "Portsmouth Holiday Makers Market",
+        "Rhinebeck (NY Sheep & Wool) 2026",
+        "Local library craft night — free table"
+      ]
+    },
+    {
+      "id": "db-shipping-holiday",
+      "name": "Shipping Log — Holiday Season",
+      "properties": [
+        {
+          "id": "pOrderNo",
+          "name": "Order #",
+          "format": "text"
+        },
+        {
+          "id": "pCarrier",
+          "name": "Carrier",
+          "format": "select",
+          "options": [
+            "USPS",
+            "UPS",
+            "DHL",
+            "Correos"
+          ]
+        },
+        {
+          "id": "pTracking",
+          "name": "Tracking",
+          "format": "url"
+        },
+        {
+          "id": "pShippedOn",
+          "name": "Shipped On",
+          "format": "date"
+        },
+        {
+          "id": "pDelivered",
+          "name": "Delivered?",
+          "format": "checkbox"
+        },
+        {
+          "id": "pPostage",
+          "name": "Postage Cost",
+          "format": "number"
+        }
+      ],
+      "titles": [
+        "#3201773640 → Sana Whitfield",
+        "#3199410883 → R. Okafor",
+        "#3205881234 → L. Dubois",
+        "#3207119002 → M. Kowalczyk"
+      ]
+    },
+    {
+      "id": "db-shipping-summer",
+      "name": "Shipping Log — Summer Season ",
+      "properties": [
+        {
+          "id": "pOrderNo",
+          "name": "Order #",
+          "format": "text"
+        },
+        {
+          "id": "pCarrier",
+          "name": "Carrier",
+          "format": "select",
+          "options": [
+            "USPS",
+            "UPS",
+            "DHL",
+            "Correos"
+          ]
+        },
+        {
+          "id": "pTracking",
+          "name": "Tracking",
+          "format": "url"
+        },
+        {
+          "id": "pShippedOn",
+          "name": "Shipped On",
+          "format": "date"
+        },
+        {
+          "id": "pDelivered",
+          "name": "Delivered?",
+          "format": "checkbox"
+        },
+        {
+          "id": "pPostage",
+          "name": "Postage Cost",
+          "format": "number"
+        }
+      ],
+      "titles": [
+        "#3161028844 → H. Beaulieu",
+        "#3164990127 → T. Nakamura",
+        "#3170338291 → J. Alvarez",
+        "#3172884019 → C. Mbeki"
+      ]
+    }
+  ],
+  "expect": {
+    "sameKind": [
+      [
+        "db-shipping-holiday",
+        "db-shipping-summer"
+      ]
+    ],
+    "differentKind": [
+      [
+        "db-customers",
+        "db-personal-contacts"
+      ],
+      [
+        "db-shop-expenses",
+        "db-household-budget"
+      ],
+      [
+        "db-listings",
+        "db-craft-projects"
+      ],
+      [
+        "db-listings",
+        "db-gifts"
+      ]
+    ],
+    "bundled": {
+      "db-customers": {
+        "pEmail": "email"
+      },
+      "db-personal-contacts": {
+        "pPhone": "phone"
+      },
+      "db-listings": {
+        "pTags": "tag"
+      }
+    },
+    "notBundled": {
+      "db-orders": [
+        "pShipBy"
+      ],
+      "db-listings": [
+        "pDateListed",
+        "pMadeToOrder"
+      ],
+      "db-customers": [
+        "pFirstOrderDate"
+      ],
+      "db-personal-contacts": [
+        "pBirthday"
+      ],
+      "db-yarn": [
+        "pReorder"
+      ],
+      "db-shop-expenses": [
+        "pDeductible"
+      ]
+    },
+    "sharedRelation": [
+      [
+        "db-listings:pYarnUsed",
+        "db-craft-projects:pYarnUsed"
+      ],
+      [
+        "db-shipping-holiday:pCarrier",
+        "db-shipping-summer:pCarrier"
+      ]
+    ],
+    "separateRelation": [
+      [
+        "db-shop-expenses:pCategory",
+        "db-household-budget:pCategory"
+      ]
+    ]
+  }
+}

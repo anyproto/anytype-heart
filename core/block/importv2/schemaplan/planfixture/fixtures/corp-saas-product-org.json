@@ -1,0 +1,312 @@
+{
+  "id": "corp-saas-product-org",
+  "name": "Corporate — Northlight Analytics product org",
+  "family": "corporate",
+  "inspiration": "notion.com/templates/category/product-management + /engineering — the 'Roadmap + Sprint + Bug Tracker' template family, plus the Launch Tracker / Bugs & Issues / Tasks & Features / Docs cluster seen in the real 37-database workspace dump (including its 'Reported Date' date and Severity[High, Critical, Medium, Low] shapes).",
+  "notes": "Northlight Analytics is a ~60-person product-analytics SaaS company that runs product, engineering, support and GTM out of one Notion workspace. Someone duplicated the OKR database at the start of every quarter rather than filtering last quarter's rows out, so three byte-identical OKR databases sit side by side. Decision points exercised: (1) exact duplicate databases — the three OKR quarters must collapse to one kind, coverage 1.00 each; (2) same concept, disjoint schemas — 'Bugs & Issues 🐛' (14 props) and 'Feature Requests' (5 props) are both inbound product issues but share only ('status', select) and ('component', multiSelect), the identical five-value Component list being deliberate bait; merging would yield a ~17-relation type on which Feature Requests fills 5; (3) same property name, disjoint option vocabularies — Status in Sprint Backlog / Support Tickets / Bugs & Issues has zero shared options across all three pairs; (5) same property name, different formats — 'Owner' is a multiSelect in Marketing Campaigns and free text in Competitor Tracker; (7) bundled traps — 'Reported Date', 'Publish Date', 'Signed Date', 'Start Date' must not become Due date, and 'Regression', 'Churned', 'Promoted' must not become Done; (9) scale — On-call Rotation has exactly 2 properties, Bugs & Issues has 14. Naming mess is real-workspace-shaped: an emoji in a database name, an emoji in a property name ('Spend 💸'), a trailing space on 'OKRs — Q3 FY26 ', a '(v2)' suffix on the roadmap, and 'Requested by' vs 'Reported By' capitalisation drift.\n\nDELIBERATELY LEFT UNASSERTED. (a) Customer Accounts and Team Directory both carry an email and a phone and both read as a directory of entities-with-contact-details; a naive planner may fuse them into one 'Contact' type. That is a real failure mode but merging a company record with a staff record is defensible enough to be taste, and the mixed-personal-business fixture owns that call with a cleaner example — so it is not in `expect`. (b) 'Confidence' select[On track, At risk, Off track] is identical in the OKR databases and in Product Roadmap (v2); sharing one relation there is probably right but is not this fixture's duty. (c) Support Tickets also has a 'Tags' multiSelect; only the Content Calendar one is asserted onto `tag`, since whether two unrelated tag vocabularies should land on the same bundled relation is a separate argument. (d) Status vocabularies in Feature Requests, Marketing Campaigns and Content Calendar partially overlap with the asserted three ('Shipped', 'Planned', 'In review' recur); only the three genuinely disjoint ones are asserted.",
+  "containers": [
+    {
+      "id": "db-okr-q1",
+      "name": "OKRs — Q1 FY26",
+      "properties": [
+        {"id": "pObjectiveOwner", "name": "Objective Owner", "format": "multiSelect", "options": ["Priya R.", "Dan K.", "Sofia M.", "Tomas L."]},
+        {"id": "pKeyResult", "name": "Key Result", "format": "text"},
+        {"id": "pTarget", "name": "Target", "format": "number"},
+        {"id": "pCurrent", "name": "Current", "format": "number"},
+        {"id": "pConfidence", "name": "Confidence", "format": "select", "options": ["On track", "At risk", "Off track"]},
+        {"id": "pQuarter", "name": "Quarter", "format": "select", "options": ["Q1 FY26", "Q2 FY26", "Q3 FY26", "Q4 FY26"]}
+      ],
+      "titles": [
+        "Cut p95 query latency to 400ms",
+        "Land 12 Enterprise logos",
+        "Self-serve activation to 35%"
+      ]
+    },
+    {
+      "id": "db-okr-q2",
+      "name": "OKRs — Q2 FY26",
+      "properties": [
+        {"id": "pObjectiveOwner", "name": "Objective Owner", "format": "multiSelect", "options": ["Priya R.", "Dan K.", "Sofia M.", "Tomas L."]},
+        {"id": "pKeyResult", "name": "Key Result", "format": "text"},
+        {"id": "pTarget", "name": "Target", "format": "number"},
+        {"id": "pCurrent", "name": "Current", "format": "number"},
+        {"id": "pConfidence", "name": "Confidence", "format": "select", "options": ["On track", "At risk", "Off track"]},
+        {"id": "pQuarter", "name": "Quarter", "format": "select", "options": ["Q1 FY26", "Q2 FY26", "Q3 FY26", "Q4 FY26"]}
+      ],
+      "titles": [
+        "Ship SOC 2 Type II",
+        "Cut ingest cost per GB by 30%",
+        "Net revenue retention to 118%"
+      ]
+    },
+    {
+      "id": "db-okr-q3",
+      "name": "OKRs — Q3 FY26 ",
+      "properties": [
+        {"id": "pObjectiveOwner", "name": "Objective Owner", "format": "multiSelect", "options": ["Priya R.", "Dan K.", "Sofia M.", "Tomas L."]},
+        {"id": "pKeyResult", "name": "Key Result", "format": "text"},
+        {"id": "pTarget", "name": "Target", "format": "number"},
+        {"id": "pCurrent", "name": "Current", "format": "number"},
+        {"id": "pConfidence", "name": "Confidence", "format": "select", "options": ["On track", "At risk", "Off track"]},
+        {"id": "pQuarter", "name": "Quarter", "format": "select", "options": ["Q1 FY26", "Q2 FY26", "Q3 FY26", "Q4 FY26"]}
+      ],
+      "titles": [
+        "Time to first dashboard under 10 minutes",
+        "Halve P1 escalations per 100 accounts",
+        "Usage-based billing to GA"
+      ]
+    },
+    {
+      "id": "db-bugs",
+      "name": "Bugs & Issues 🐛",
+      "properties": [
+        {"id": "pSeverity", "name": "Severity", "format": "select", "options": ["Critical", "High", "Medium", "Low"]},
+        {"id": "pStatus", "name": "Status", "format": "select", "options": ["New", "Triaged", "Fixing", "Fixed", "Won't fix"]},
+        {"id": "pRepro", "name": "Steps to Reproduce", "format": "text"},
+        {"id": "pEnvironment", "name": "Environment", "format": "select", "options": ["prod", "staging", "local"]},
+        {"id": "pBrowser", "name": "Browser", "format": "select", "options": ["Chrome", "Safari", "Firefox", "Edge"]},
+        {"id": "pReportedDate", "name": "Reported Date", "format": "date"},
+        {"id": "pReportedBy", "name": "Reported By", "format": "text"},
+        {"id": "pAssignee", "name": "Assignee", "format": "multiSelect", "options": ["Dan K.", "Tomas L.", "Wes A."]},
+        {"id": "pComponent", "name": "Component", "format": "multiSelect", "options": ["Ingest", "Query engine", "Dashboards", "Billing", "SDK"]},
+        {"id": "pRegression", "name": "Regression", "format": "checkbox"},
+        {"id": "pCustomerImpact", "name": "Customer Impact", "format": "select", "options": ["Blocking", "Degraded", "Cosmetic"]},
+        {"id": "pLinkedPR", "name": "Linked PR", "format": "url"},
+        {"id": "pFixVersion", "name": "Fix Version", "format": "text"},
+        {"id": "pPriority", "name": "Priority", "format": "select", "options": ["P0", "P1", "P2", "P3"]}
+      ],
+      "titles": [
+        "Dashboard filters reset when switching workspaces",
+        "Stripe webhook retry double-charges annual upgrades",
+        "Query engine OOMs on 90-day GROUP BY",
+        "CSV export truncates at 10k rows in Safari",
+        "SDK v3.2 drops events when the offline queue fills",
+        "SSO login loops for Okta-provisioned users"
+      ]
+    },
+    {
+      "id": "db-feature-requests",
+      "name": "Feature Requests",
+      "properties": [
+        {"id": "pStatus", "name": "Status", "format": "select", "options": ["Inbox", "Under consideration", "Planned", "Shipped", "Declined"]},
+        {"id": "pVotes", "name": "Customer Votes", "format": "number"},
+        {"id": "pBusinessValue", "name": "Business Value", "format": "select", "options": ["High", "Medium", "Low"]},
+        {"id": "pRequestedBy", "name": "Requested by", "format": "text"},
+        {"id": "pComponent", "name": "Component", "format": "multiSelect", "options": ["Ingest", "Query engine", "Dashboards", "Billing", "SDK"]}
+      ],
+      "titles": [
+        "Slack alert when a dashboard breaches a threshold",
+        "Scheduled PDF reports for stakeholders without a seat",
+        "BigQuery reverse-ETL destination",
+        "Per-role dashboard permissions",
+        "Retention curves broken out by plan"
+      ]
+    },
+    {
+      "id": "db-sprint",
+      "name": "Sprint Backlog",
+      "properties": [
+        {"id": "pStatus", "name": "Status", "format": "select", "options": ["To do", "Doing", "In review", "Shipped"]},
+        {"id": "pDueDate", "name": "Due Date", "format": "date"},
+        {"id": "pPoints", "name": "Story Points", "format": "number"},
+        {"id": "pAssignee", "name": "Assignee", "format": "multiSelect", "options": ["Dan K.", "Tomas L.", "Wes A."]},
+        {"id": "pSprint", "name": "Sprint", "format": "select", "options": ["Sprint 41", "Sprint 42", "Sprint 43"]},
+        {"id": "pEpic", "name": "Epic", "format": "objects"},
+        {"id": "pBlocked", "name": "Blocked", "format": "checkbox"},
+        {"id": "pNotes", "name": "Notes", "format": "text"}
+      ],
+      "titles": [
+        "Backfill ingest for accounts migrated off the v2 SDK",
+        "Add p95 latency panel to the internal Grafana board",
+        "De-flake the dashboard snapshot tests",
+        "Spike: columnar cache for repeated GROUP BY",
+        "Ship the billing usage export endpoint"
+      ]
+    },
+    {
+      "id": "db-support",
+      "name": "Support Tickets",
+      "properties": [
+        {"id": "pStatus", "name": "Status", "format": "select", "options": ["Open", "Waiting on customer", "Escalated", "Resolved"]},
+        {"id": "pAccount", "name": "Account", "format": "objects"},
+        {"id": "pContactEmail", "name": "Contact Email", "format": "email"},
+        {"id": "pSeverity", "name": "Severity", "format": "select", "options": ["Urgent", "Normal", "Low"]},
+        {"id": "pFirstResponse", "name": "First Response", "format": "date"},
+        {"id": "pResolved", "name": "Resolved?", "format": "checkbox"},
+        {"id": "pChannel", "name": "Channel", "format": "select", "options": ["Email", "Intercom", "Slack Connect"]},
+        {"id": "pTags", "name": "Tags", "format": "multiSelect", "options": ["Billing", "Onboarding", "Bug", "How-to", "Outage"]},
+        {"id": "pNotes", "name": "Notes", "format": "text"}
+      ],
+      "titles": [
+        "Vantel — dashboards blank after their SSO change",
+        "Marrowbone Labs — invoice shows the wrong seat count",
+        "Kestrel Health — how do I export a cohort?",
+        "Poolside Robotics — ingest stopped at 04:12 UTC",
+        "Ardent Freight — asking for the SOC 2 report"
+      ]
+    },
+    {
+      "id": "db-accounts",
+      "name": "Customer Accounts",
+      "properties": [
+        {"id": "pPlan", "name": "Plan", "format": "select", "options": ["Starter", "Growth", "Enterprise"]},
+        {"id": "pARR", "name": "ARR", "format": "number"},
+        {"id": "pContactEmail", "name": "Contact Email", "format": "email"},
+        {"id": "pContactPhone", "name": "Contact Phone", "format": "phone"},
+        {"id": "pSignedDate", "name": "Signed Date", "format": "date"},
+        {"id": "pRenewalDate", "name": "Renewal Date", "format": "date"},
+        {"id": "pChurned", "name": "Churned", "format": "checkbox"},
+        {"id": "pHealth", "name": "Health", "format": "select", "options": ["Green", "Amber", "Red"]},
+        {"id": "pCSM", "name": "CSM", "format": "multiSelect", "options": ["Sofia M.", "Ines B."]},
+        {"id": "pNotes", "name": "Notes", "format": "text"}
+      ],
+      "titles": [
+        "Vantel",
+        "Kestrel Health",
+        "Poolside Robotics",
+        "Ardent Freight",
+        "Marrowbone Labs",
+        "Trellis Grocers"
+      ]
+    },
+    {
+      "id": "db-team",
+      "name": "Team Directory",
+      "properties": [
+        {"id": "pWorkEmail", "name": "Work Email", "format": "email"},
+        {"id": "pDeskPhone", "name": "Desk Phone", "format": "phone"},
+        {"id": "pTeam", "name": "Team", "format": "select", "options": ["Platform", "Product", "GTM", "Support"]},
+        {"id": "pStartDate", "name": "Start Date", "format": "date"},
+        {"id": "pManager", "name": "Manager", "format": "text"},
+        {"id": "pLocation", "name": "Location", "format": "select", "options": ["Lisbon", "Berlin", "Remote (EU)"]}
+      ],
+      "titles": [
+        "Priya Raghunathan",
+        "Dan Kowalczyk",
+        "Sofia Mendes",
+        "Tomas Lindqvist",
+        "Wes Abioye",
+        "Ines Beaulieu"
+      ]
+    },
+    {
+      "id": "db-marketing",
+      "name": "Marketing Campaigns",
+      "properties": [
+        {"id": "pOwner", "name": "Owner", "format": "multiSelect", "options": ["Sofia M.", "Ines B.", "Priya R."]},
+        {"id": "pChannel", "name": "Channel", "format": "multiSelect", "options": ["Paid search", "LinkedIn", "Webinar", "Conference"]},
+        {"id": "pSpend", "name": "Spend 💸", "format": "number"},
+        {"id": "pLaunchDate", "name": "Launch Date", "format": "date"},
+        {"id": "pStatus", "name": "Status", "format": "select", "options": ["Planned", "Live", "Wrapped"]},
+        {"id": "pLandingPage", "name": "Landing Page", "format": "url"},
+        {"id": "pNotes", "name": "Notes", "format": "text"}
+      ],
+      "titles": [
+        "Q1 webinar — what a query actually costs",
+        "LinkedIn ABM push, mid-market ops leaders",
+        "AWS re:Invent booth 2026",
+        "Paid search — \"product analytics alternative\"",
+        "Customer story series — Kestrel Health"
+      ]
+    },
+    {
+      "id": "db-competitors",
+      "name": "Competitor Tracker",
+      "properties": [
+        {"id": "pOwner", "name": "Owner", "format": "text"},
+        {"id": "pPricingModel", "name": "Pricing Model", "format": "select", "options": ["Seat-based", "Usage-based", "Flat"]},
+        {"id": "pLastReviewed", "name": "Last Reviewed", "format": "date"},
+        {"id": "pThreatLevel", "name": "Threat Level", "format": "select", "options": ["Watch", "Real", "Existential"]},
+        {"id": "pSite", "name": "Site", "format": "url"},
+        {"id": "pNotes", "name": "Notes", "format": "text"}
+      ],
+      "titles": [
+        "Amplitude",
+        "Mixpanel",
+        "PostHog",
+        "Heap",
+        "Statsig",
+        "Snowplow"
+      ]
+    },
+    {
+      "id": "db-content",
+      "name": "Content Calendar",
+      "properties": [
+        {"id": "pPublishDate", "name": "Publish Date", "format": "date"},
+        {"id": "pStatus", "name": "Status", "format": "select", "options": ["Idea", "Drafting", "In review", "Scheduled", "Published"]},
+        {"id": "pTags", "name": "Tags", "format": "multiSelect", "options": ["Product", "Engineering", "Customer story", "Benchmark"]},
+        {"id": "pAuthor", "name": "Author", "format": "text"},
+        {"id": "pWordCount", "name": "Word Count", "format": "number"},
+        {"id": "pBrief", "name": "Brief", "format": "url"},
+        {"id": "pPromoted", "name": "Promoted", "format": "checkbox"}
+      ],
+      "titles": [
+        "How we cut p95 query latency 4x",
+        "Benchmark: 1B events on four vCPUs",
+        "Kestrel Health went from days to minutes on reporting",
+        "Warehouse-native vs event-native, honestly",
+        "Changelog: usage-based billing is GA"
+      ]
+    },
+    {
+      "id": "db-roadmap",
+      "name": "Product Roadmap (v2)",
+      "properties": [
+        {"id": "pTimeframe", "name": "Timeframe", "format": "select", "options": ["Now", "Next", "Later"]},
+        {"id": "pTheme", "name": "Theme", "format": "multiSelect", "options": ["Performance", "Reliability", "Self-serve", "Enterprise"]},
+        {"id": "pConfidence", "name": "Confidence", "format": "select", "options": ["On track", "At risk", "Off track"]},
+        {"id": "pTargetQuarter", "name": "Target Quarter", "format": "select", "options": ["Q1 FY26", "Q2 FY26", "Q3 FY26"]},
+        {"id": "pExecSponsor", "name": "Exec Sponsor", "format": "multiSelect", "options": ["Priya R.", "Sofia M."]},
+        {"id": "pSpec", "name": "Spec", "format": "url"},
+        {"id": "pShipped", "name": "Shipped", "format": "checkbox"}
+      ],
+      "titles": [
+        "Self-serve onboarding with no sales call",
+        "Sub-second dashboards at 1B events",
+        "Enterprise SSO + SCIM",
+        "Usage-based billing GA",
+        "Query cost guardrails"
+      ]
+    },
+    {
+      "id": "db-oncall",
+      "name": "On-call Rotation",
+      "properties": [
+        {"id": "pEngineer", "name": "Engineer", "format": "text"},
+        {"id": "pWeek", "name": "Week", "format": "date"}
+      ],
+      "titles": [
+        "Week of 5 Jan — Dan K.",
+        "Week of 12 Jan — Wes A.",
+        "Week of 19 Jan — Tomas L.",
+        "Week of 26 Jan — Dan K."
+      ]
+    }
+  ],
+  "expect": {
+    "sameKind": [
+      ["db-okr-q1", "db-okr-q2", "db-okr-q3"]
+    ],
+    "differentKind": [
+      ["db-bugs", "db-feature-requests"],
+      ["db-bugs", "db-oncall"]
+    ],
+    "bundled": {
+      "db-sprint": {"pDueDate": "dueDate"},
+      "db-content": {"pTags": "tag"},
+      "db-accounts": {"pContactEmail": "email", "pContactPhone": "phone"},
+      "db-support": {"pResolved": "done"}
+    },
+    "notBundled": {
+      "db-content": ["pPublishDate", "pPromoted"],
+      "db-bugs": ["pReportedDate", "pRegression"],
+      "db-accounts": ["pSignedDate", "pChurned"],
+      "db-team": ["pStartDate"]
+    },
+    "separateRelation": [
+      ["db-sprint:pStatus", "db-support:pStatus", "db-bugs:pStatus"],
+      ["db-marketing:pOwner", "db-competitors:pOwner"]
+    ]
+  }
+}
