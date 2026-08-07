@@ -107,14 +107,27 @@ func (r *Runner) runFind(ctx context.Context, session *Session, args map[string]
 		body["filter"] = resolved
 	}
 	var resp v2model.ListResponse[v2model.ObjectRow]
-	err := r.client.decode(ctx, apiRequest{
-		method: "POST",
-		path:   "/v2/spaces/" + seg(space) + "/search",
-		query:  url.Values{"limit": []string{strconv.Itoa(limit)}},
-		body:   body,
-	}, &resp)
-	if err != nil {
-		return nil, err
+	search := func() error {
+		return r.client.decode(ctx, apiRequest{
+			method: "POST",
+			path:   "/v2/spaces/" + seg(space) + "/search",
+			query:  url.Values{"limit": []string{strconv.Itoa(limit)}},
+			body:   body,
+		}, &resp)
+	}
+	if err := search(); err != nil {
+		// the §8.21 case fold: retry once with the unique case variant
+		folded, ok, foldErr := r.foldTypeArg(ctx, space, strArg(args, "type"), err)
+		if foldErr != nil {
+			return nil, foldErr
+		}
+		if !ok {
+			return nil, err
+		}
+		body["type"] = folded
+		if err := search(); err != nil {
+			return nil, err
+		}
 	}
 
 	handles := make([]Handle, 0, len(resp.Data))
@@ -211,17 +224,33 @@ func (r *Runner) runCreate(ctx context.Context, session *Session, args map[strin
 	}
 	path := "/v2/spaces/" + seg(space) + "/objects"
 	query := r.mutationQuery()
-	key := r.mutationKey(session, requestHash("POST", path, query, body))
 	var result v2model.CreateResult
-	err := r.client.decode(ctx, apiRequest{
-		method:         "POST",
-		path:           path,
-		query:          query,
-		body:           body,
-		idempotencyKey: key,
-	}, &result)
-	if err != nil {
-		return nil, err
+	attempt := func() error {
+		// the key re-derives per attempt: a folded type is a different
+		// resolved request, so it must not reuse the failed body's key
+		key := r.mutationKey(session, requestHash("POST", path, query, body))
+		return r.client.decode(ctx, apiRequest{
+			method:         "POST",
+			path:           path,
+			query:          query,
+			body:           body,
+			idempotencyKey: key,
+		}, &result)
+	}
+	if err := attempt(); err != nil {
+		// the §8.21 case fold: a 400 validated nothing into existence, so
+		// retrying with the unique case variant is a fresh, correct create
+		folded, ok, foldErr := r.foldTypeArg(ctx, space, strArg(args, "type"), err)
+		if foldErr != nil {
+			return nil, foldErr
+		}
+		if !ok {
+			return nil, err
+		}
+		body["type"] = folded
+		if err := attempt(); err != nil {
+			return nil, err
+		}
 	}
 	text := fmt.Sprintf("created %s (%s)", result.Id, result.Type)
 	if result.DryRun {

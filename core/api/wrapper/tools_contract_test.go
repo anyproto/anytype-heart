@@ -260,9 +260,14 @@ func TestDescribeResilience(t *testing.T) {
 	})
 
 	t.Run("unknown type steers to the tool vocabulary, not a REST route", func(t *testing.T) {
+		// the stubbed 404 is an OLDER server's phrasing (pre-§8.21, no
+		// candidate list) — the rewrite must keep covering it; the case-fold
+		// listing finds no variant for "tsak" and the error surfaces
 		fx := newFixture(t)
 		fx.stub("GET /v2/spaces/space1/types/tsak", 404,
 			`{"status":404,"code":"not_found","message":"type \"tsak\" not found in space \"space1\" — list available keys with GET /v2/spaces/space1/types"}`)
+		fx.stub("GET /v2/spaces/space1/types", 200,
+			`{"data":[{"key":"task","name":"Task"}],"total":1,"offset":0,"limit":500,"has_more":false}`)
 
 		_, err := fx.Run(ctx, "describe", map[string]any{"space": "space1", "type": "tsak"})
 

@@ -46,18 +46,37 @@ const describeOptionsLimit = 25
 func (r *Runner) runDescribe(ctx context.Context, session *Session, args map[string]any) (*Result, error) {
 	space := strArg(args, "space")
 	typeKey := strArg(args, "type")
-	doc, err := r.client.raw(ctx, apiRequest{
-		method: "GET",
-		path:   "/v2/spaces/" + seg(space) + "/types/" + seg(typeKey),
-	})
+	getType := func() ([]byte, error) {
+		return r.client.raw(ctx, apiRequest{
+			method: "GET",
+			path:   "/v2/spaces/" + seg(space) + "/types/" + seg(typeKey),
+		})
+	}
+	doc, err := getType()
 	if err != nil {
-		// the server's repair hint names a REST route no tool backs — point
-		// at the tool vocabulary instead
+		// the §8.21 case fold: retry once with the unique case variant
+		folded, ok, foldErr := r.foldTypeArg(ctx, space, typeKey, err)
+		if foldErr != nil {
+			return nil, foldErr
+		}
+		if ok {
+			typeKey = folded
+			doc, err = getType()
+		}
+	}
+	if err != nil {
+		// a repair hint naming a REST route no tool backs (older servers use
+		// the first phrasing, current ones the second on a truncated key
+		// list) — point at the tool vocabulary instead
 		var te *ToolError
 		if errors.As(err, &te) {
-			te.Text = strings.ReplaceAll(te.Text,
+			for _, phrase := range []string{
 				fmt.Sprintf("list available keys with GET /v2/spaces/%s/types", space),
-				"check the type key (find results show each object's type)")
+				fmt.Sprintf("list all with GET /v2/spaces/%s/types", space),
+			} {
+				te.Text = strings.ReplaceAll(te.Text, phrase,
+					"check the type key (find results show each object's type)")
+			}
 		}
 		return nil, err
 	}

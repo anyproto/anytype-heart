@@ -66,6 +66,9 @@ presets are functions (`today()`, `currentWeek()`, `daysAgo(n)`).
 - **Select options are never created by these verbs.** An unknown option
   name is an error listing the existing names — fix the spelling (option
   names are case-sensitive). `--create-missing` is the deliberate escape.
+  Type and property KEYS are more forgiving: a wrongly-cased key
+  (`Status` for `status`) resolves when exactly one key matches; if two
+  keys differ only by case the error names both.
 - **Handles expire on the next find.** Re-run `find` and use the new
   numbers; block labels survive per object. Every edit receipt names the
   object it changed (`ok — "Groceries": …`) — check it matches your intent.

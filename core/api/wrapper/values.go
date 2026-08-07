@@ -9,8 +9,10 @@ package wrapper
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -101,26 +103,140 @@ var selectFormats = map[string]bool{"select": true, "multiSelect": true}
 
 // prepareValues resolves @me and relative dates in a property-value map and
 // — when guard is set — pre-validates select option names (the A2 guard).
-// Unknown keys pass through untouched: the server's referential layer owns
-// key validation and its did-you-mean texts. formats is the space's property
-// key → format index (propertyFormats), loaded ONCE per tool call — a
-// set_properties with set+add+remove must not fetch the index three times.
+// Keys fold case first (§8.21): the folded key drives the format lookup, so
+// "DueDate": "friday" gets its date resolution too. Unknown keys pass
+// through untouched: the server's referential layer owns key validation and
+// its did-you-mean texts. formats is the space's property key → format
+// index (propertyFormats), loaded ONCE per tool call — a set_properties
+// with set+add+remove must not fetch the index three times.
 func (r *Runner) prepareValues(ctx context.Context, session *Session, spaceId string, formats map[string]string, values map[string]any, guard bool) (map[string]any, error) {
 	out := make(map[string]any, len(values))
 	for key, value := range values {
-		format := formats[key]
+		foldedKey, err := foldPropertyKey(formats, key)
+		if err != nil {
+			return nil, err
+		}
+		if _, dup := out[foldedKey]; dup {
+			return nil, fmt.Errorf("property %q is given more than once (case variants fold to one key) — pass it once", foldedKey)
+		}
+		format := formats[foldedKey]
 		resolved, err := r.resolveValue(ctx, session, spaceId, format, value)
 		if err != nil {
 			return nil, fmt.Errorf("value of %q: %w", key, err)
 		}
 		if guard && selectFormats[format] && !r.AllowNewOptions {
-			if err := r.checkOptionNames(ctx, spaceId, key, stringEntries(resolved)); err != nil {
+			if err := r.checkOptionNames(ctx, spaceId, foldedKey, stringEntries(resolved)); err != nil {
 				return nil, err
 			}
 		}
-		out[key] = resolved
+		out[foldedKey] = resolved
 	}
 	return out, nil
+}
+
+//
+// ---- key case folding (§8.21) ----
+//
+// The live benchmark's dominant argument error was a naming/capitalisation
+// guess — "Page" for type page, "Name" for property name — never a
+// structural violation. C2 strictness (a key is a key) is the REST
+// surface's contract and stays; the wrapper is the layer that exists to be
+// forgiving for small models, so it folds case on the way in. The one hard
+// rule: if two keys differ only by case, refuse naming both — never guess.
+
+// foldPropertyKey resolves a property key against the space's visible key
+// index: an exact key wins; otherwise a UNIQUE case-insensitive match
+// resolves; a still-unknown key passes through for the server's
+// did-you-mean.
+func foldPropertyKey(formats map[string]string, key string) (string, error) {
+	if _, ok := formats[key]; ok {
+		return key, nil
+	}
+	var matches []string
+	for k := range formats {
+		if strings.EqualFold(k, key) {
+			matches = append(matches, k)
+		}
+	}
+	sort.Strings(matches)
+	switch len(matches) {
+	case 0:
+		return key, nil
+	case 1:
+		return matches[0], nil
+	default:
+		return "", fmt.Errorf("property key %q matches several keys differing only by case (%s) — use the exact key", key, strings.Join(matches, ", "))
+	}
+}
+
+// maxTypePages bounds the type-index pagination loop.
+const maxTypePages = 4
+
+// typeKeys lists the space's type keys (the fold's reference set).
+func (r *Runner) typeKeys(ctx context.Context, spaceId string) ([]string, error) {
+	var keys []string
+	offset := 0
+	for page := 0; page < maxTypePages; page++ {
+		var resp v2model.ListResponse[v2model.TypeRow]
+		err := r.client.decode(ctx, apiRequest{
+			method: "GET",
+			path:   "/v2/spaces/" + seg(spaceId) + "/types",
+			query:  url.Values{"limit": []string{strconv.Itoa(propertyFormatsPageSize)}, "offset": []string{strconv.Itoa(offset)}},
+		}, &resp)
+		if err != nil {
+			return nil, fmt.Errorf("list types: %w", err)
+		}
+		for _, row := range resp.Data {
+			keys = append(keys, row.Key)
+		}
+		if !resp.HasMore {
+			break
+		}
+		offset += len(resp.Data)
+	}
+	return keys, nil
+}
+
+// isTypeNotFound reports whether err is the server's type-key miss for
+// typeKey — every route that takes a type key says `type "<key>" not
+// found` (describe's GET answers 404 not_found, create and find answer
+// 400 validation_failed).
+func isTypeNotFound(err error, typeKey string) bool {
+	var te *ToolError
+	return errors.As(err, &te) && strings.Contains(te.Text, fmt.Sprintf("type %q not found", typeKey))
+}
+
+// foldTypeArg is the case-fold retry gate for the tools that send a type
+// key (find, describe, create): after a failed first attempt it reports
+// the folded key to retry with — only when err is the server's not-found
+// for exactly that key and a UNIQUE case variant exists among the space's
+// type keys. The fold runs on the error path, so the correct-key common
+// case never pays a type listing. A case collision is its own refusal; a
+// listing failure or a fold miss keeps the original (candidate-bearing)
+// error.
+func (r *Runner) foldTypeArg(ctx context.Context, spaceId, typeKey string, err error) (string, bool, error) {
+	if typeKey == "" || !isTypeNotFound(err, typeKey) {
+		return "", false, nil
+	}
+	keys, listErr := r.typeKeys(ctx, spaceId)
+	if listErr != nil {
+		return "", false, nil // best-effort: the original error stands
+	}
+	var matches []string
+	for _, k := range keys {
+		if strings.EqualFold(k, typeKey) {
+			matches = append(matches, k)
+		}
+	}
+	sort.Strings(matches)
+	switch {
+	case len(matches) == 1 && matches[0] != typeKey:
+		return matches[0], true, nil
+	case len(matches) > 1:
+		return "", false, fmt.Errorf("type key %q matches several keys differing only by case (%s) — use the exact key", typeKey, strings.Join(matches, ", "))
+	default:
+		return "", false, nil
+	}
 }
 
 // meFormats are the property formats whose values can hold a participant id
