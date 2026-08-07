@@ -49,7 +49,14 @@ func TestLiveNamingQuality(t *testing.T) {
 
 	client, err := llmclient.New(llmclient.Config{Endpoint: endpoint, Model: model, Token: key})
 	require.NoError(t, err)
-	planner := llmplan.New(client, llmplan.WithBudget(20*time.Minute))
+	opts := []llmplan.Option{llmplan.WithBudget(20 * time.Minute)}
+	// On ollama only "none" changes anything — it strips the <|think|> marker
+	// from the system turn; "low" and "high" are byte-identical requests there.
+	if effort := os.Getenv("IMPORTV2_LLM_EFFORT"); effort != "" {
+		opts = append(opts, llmplan.WithReasoningEffort(effort))
+		t.Logf("reasoning effort: %q", effort)
+	}
+	planner := llmplan.New(client, opts...)
 
 	type corpus struct {
 		name    string
