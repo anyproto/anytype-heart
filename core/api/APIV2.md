@@ -3087,3 +3087,104 @@ per-tier GBNF re-derivation beyond what the manifest already serves
 (the grammars are per-tool and tier filtering subsets them); no
 Claude-facing MCP recommendation (per the verdict, capable CLI-running
 agents keep the skill+CLI path).
+
+### 8.21 Small-model benchmark fixes (2026-08-08 — decisions as built)
+
+The first LIVE benchmark of the shipped MCP surface: `anytype mcp
+--tier small` (8 tools) driven by gemma4:e4b and gemma4:e2b over
+Ollama against a running Anytype API, 8 realistic tasks. The numbers
+that motivated this section:
+
+- **e4b**: right tool 7/8, executed 5/8 first try — the existing tips
+  repaired 2 of the 3 failures.
+- **e2b**: right tool 6/8 but "executed" 8/8, because two successes
+  were SILENT WRONG ACTIONS — it called `spaces` for "what properties
+  does the page type have", and `read` for "change the word draft to
+  final". A wrong action that returns 200 is worse than any refusal:
+  nothing in the transcript invites a repair.
+- **Every argument error was a naming/capitalisation guess** —
+  `"Page"` for type `page`, `set.Name` for property `name`, `"page
+  type"` lifted from the prompt's phrasing — never a structural or
+  schema violation. The GBNF/schema layer is doing its job; the
+  remaining error surface is semantics, and semantics is repaired by
+  candidates in error texts, not by grammar.
+- The one tip WITH candidates (unknown property key: "known … keys:
+  …") repaired on the first retry; the one WITHOUT (type not found)
+  produced **no retry at all** — same run, same model. Candidate lists
+  are not decoration; they are the difference between one repaired
+  call and a dead end.
+
+Three fixes, each shaped by those observations:
+
+**1. `edit_text.block` is optional — the snippet locates the block.**
+Both models routed around `edit_text` (the `read` silent-wrong-action
+above IS this defect): a required block id is unknowable on turn one,
+and a tool that requires a prior call is a tool a small model will not
+use. When `block` is omitted the wrapper reads the document and
+applies the mandatory ambiguity rule — the snippet must identify
+exactly ONE block, and (the existing rule) occur exactly once within
+it. Zero matches → refusal steering to `read mode=outline`; several
+matching blocks → refusal LISTING the candidate block labels with
+~30 chars of surrounding context, so the retry passes `block`
+explicitly; several occurrences in the one block → the existing
+more-context refusal, issued during the locate (no wasted PATCH). A
+silent wrong edit is far worse than any of these refusals. The locate
+read retains labels (the next call starts resolved); a located id is
+full, so the §7.4 ambiguity retry never double-fires. The manifest
+example is now the block-less form — the call a small model can
+actually make first. Rider: the server's `replace_all` escape hint is
+stripped by the ops→tool vocabulary translation (edit_text
+deliberately has no `replace_all`, §8.6 — the hint steered models
+into an argument the tool rejects). One-table invariant held: schema,
+GBNF, example and CLI flag re-derive from the same Arg row.
+
+**2. The not-found family lists candidates (server-side).** The
+routes addressing a type or property BY KEY (GET/PATCH/DELETE
+`types/{key}`, options listing, PATCH/DELETE `properties/{key}`)
+answered a bare "not found — list keys with GET …" while the R9
+create path always listed keys + did-you-mean — an inconsistency in
+our own error surface, and the measured dead end above. One composer
+(`notFoundWithKeys` in refs.go) now serves the family: known keys
+capped at 15, nearest-match did-you-mean, the list route only when
+the list was truncated with no suggestion. Family survey, recorded:
+view refs and the filter option path already listed candidates; block
+refs steer to outline (the candidate list IS the outline); the space
+404 gains the `GET /v2/spaces` steer but never a candidate list (ids
+are opaque — no did-you-mean can help — and a scoped grant must not
+imply the full space list); the object 404 is left alone (unbounded
+candidate set, and wrapper models reach objects through find handles
+— the wrapper's own no-session/stale-handle errors steer the re-find).
+
+**3. Type and property keys fold case — in the WRAPPER, not the API.**
+The judgment, argued: C2 (a key is a key) is the REST surface's
+contract — programmatic clients depend on exact-match strictness, and
+two keys differing only by case must stay distinguishable over REST.
+The wrapper is the layer built to be forgiving for small models
+(§7.3 already places @me, relative dates and the A2 guard there), so
+the fold sits beside them. The hard rule either way: if two keys
+differ only by case, refuse naming both — never pick one. Property
+keys fold in `prepareValues` against the format index the call
+already fetched (zero extra requests), BEFORE the format lookup — so
+`"DueDate": "friday"` also gets its date resolution and the A2 guard
+runs on the folded key; a key given together with its case variant
+refuses instead of last-write-wins. Type keys fold on the ERROR path
+only (find, describe, create retry once with the unique case
+variant): the correct-key common case never pays a type listing, and
+a folded create re-derives its Idempotency-Key — a different resolved
+request must not reuse the failed body's key (C8). A fold miss
+surfaces the server's now-candidate-bearing error untouched. NOT
+folded, stated: select option NAMES (user data — `done` and `Done`
+can both legitimately exist; the A2 guard's case-insensitive
+did-you-mean already covers the guess) and property keys inside
+filter STRINGS (parsed server-side; the parse error carries
+did-you-mean — a wrapper-side fold would mean parsing the filter
+twice; revisit if a benchmark shows filters failing on case).
+
+Tests: `tools_smallmodel_test.go` pins all four locate outcomes, the
+fold-and-refuse matrix and the replace_all strip;
+`discovery_test.go`/`schema_write_test.go` pin the server candidate
+lists. Every behavioral assertion was verified fail-on-revert (the
+fold-miss and unknown-key pass-through cases assert unchanged
+behavior and pass either way, by design). Deferred, named: case-fold
+inside filter strings; a candidates steer on the object 404; B4
+re-tuning of tool descriptions once the benchmark re-runs.
