@@ -41,9 +41,17 @@ mappings.
 
 **Grouping is the part the LLM does well.** Both the full and compact prompts correctly collapsed
 the three "Premium Templates" duplicates into one kind (34 and 31 kinds respectively on the
-grouping probe). And `reasoning_effort=low` beat `high` (36/37 vs 31/37 containers typed, 0 vs 8
-drops) — the task is instruction-following-bound, not reasoning-bound, which is further evidence
-that judgment (mapping) should leave the model and enumeration (grouping) should stay.
+grouping probe). ~~And `reasoning_effort=low` beat `high` (36/37 vs 31/37 containers typed, 0 vs 8 drops)~~
+**— RETRACTED 2026-08-07.** Verified against the ollama endpoint today: `"low"` and `"high"`
+produce byte-identical requests (18 prompt tokens each); only `"none"` differs (16). If that
+comparison was run against ollama — which the surviving evidence neither confirms nor denies, no
+log records the model — then the two arms were the same request and the difference was run-to-run
+variance, not an effort effect. The parameter remains meaningful on the OpenAI endpoint. The
+conclusion it supported may still hold on other grounds (the 92%-relabelling and drop-class
+numbers above are unaffected), but it is no longer evidence for it. Re-measure before citing.
+
+The case that judgment (mapping) should leave the model while enumeration (grouping) stays rests
+on the measurements above, not on this one.
 
 So: **code maps properties deterministically; the LLM only groups containers into kinds and names
 those kinds.**
