@@ -277,7 +277,39 @@ func TestV2GetType(t *testing.T) {
 		assert.NotEmpty(t, body)
 	})
 
-	t.Run("unknown key is a 404 steering to the types list", func(t *testing.T) {
+	t.Run("unknown key is a 404 listing the space's type keys with did-you-mean", func(t *testing.T) {
+		// given: the candidate-less form of this tip was a dead end — a
+		// benchmarked small model did not retry at all (§8.21); the message
+		// must carry the actual keys and the nearest match, like the
+		// property-key path always did
+		fx := newV2Fixture(t)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("type-task"),
+				bundle.RelationKeyName:           domain.String("Task"),
+				bundle.RelationKeyUniqueKey:      domain.String("ot-task"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
+			},
+			{
+				bundle.RelationKeyId:             domain.String("type-page"),
+				bundle.RelationKeyName:           domain.String("Page"),
+				bundle.RelationKeyUniqueKey:      domain.String("ot-page"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
+			},
+		})
+
+		// when: the benchmark's literal miss — the Title-Case guess
+		_, _, err := fx.GetType(context.Background(), testSpaceId, "Page")
+
+		// then
+		var v2Err *v2model.Error
+		require.ErrorAs(t, err, &v2Err)
+		assert.Equal(t, 404, v2Err.Status)
+		assert.Contains(t, v2Err.Message, "known type keys: page, task")
+		assert.Contains(t, v2Err.Message, "did you mean page?")
+	})
+
+	t.Run("unknown key in an empty space says so", func(t *testing.T) {
 		// given
 		fx := newV2Fixture(t)
 
@@ -288,7 +320,7 @@ func TestV2GetType(t *testing.T) {
 		var v2Err *v2model.Error
 		require.ErrorAs(t, err, &v2Err)
 		assert.Equal(t, 404, v2Err.Status)
-		assert.Contains(t, v2Err.Message, "/types")
+		assert.Contains(t, v2Err.Message, "the space has no type keys yet")
 	})
 }
 
@@ -389,17 +421,20 @@ func TestV2ListPropertyOptions(t *testing.T) {
 		assert.Equal(t, 1, total)
 	})
 
-	t.Run("unknown property is a 404 steering to the properties list", func(t *testing.T) {
-		// given
+	t.Run("unknown property is a 404 listing the space's keys with did-you-mean", func(t *testing.T) {
+		// given: the same candidate-listing contract as the type path (§8.21
+		// — the family is fixed together, not one string)
 		fx := newV2Fixture(t)
+		addOptions(fx, t)
 
 		// when
-		_, _, _, err := fx.ListPropertyOptions(context.Background(), testSpaceId, "nope", "", 0, 25)
+		_, _, _, err := fx.ListPropertyOptions(context.Background(), testSpaceId, "Priority", "", 0, 25)
 
 		// then
 		var v2Err *v2model.Error
 		require.ErrorAs(t, err, &v2Err)
 		assert.Equal(t, 404, v2Err.Status)
-		assert.Contains(t, v2Err.Message, "/properties")
+		assert.Contains(t, v2Err.Message, "known property keys: priority")
+		assert.Contains(t, v2Err.Message, "did you mean priority?")
 	})
 }

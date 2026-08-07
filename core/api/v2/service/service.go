@@ -107,7 +107,10 @@ func (s *V2Service) ensureSpace(ctx context.Context, spaceId string) error {
 		return nil
 	}
 	if _, err := s.store.GetSpaceViewDetails(spaceId); err != nil {
-		return v2model.NotFound(fmt.Sprintf("space %q not found", spaceId))
+		// no candidate list here: ids are opaque (no did-you-mean can help)
+		// and a per-caller grant means the full space list must not be
+		// implied — the steer to the discovery route is the whole repair
+		return v2model.NotFound(fmt.Sprintf("space %q not found — list spaces with GET /v2/spaces", spaceId))
 	}
 	return nil
 }

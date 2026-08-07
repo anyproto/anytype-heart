@@ -222,7 +222,7 @@ func (s *V2Service) GetType(ctx context.Context, spaceId, typeKey string) ([]byt
 	}
 	details, err := s.store.SpaceIndex(spaceId).GetObjectByUniqueKey(uk)
 	if err != nil || details.GetString(bundle.RelationKeyId) == "" {
-		return nil, "", v2model.NotFound(fmt.Sprintf("type %q not found in space %q — list available keys with GET /v2/spaces/%s/types", typeKey, spaceId, spaceId))
+		return nil, "", s.typeNotFoundError(spaceId, typeKey)
 	}
 	return s.GetObject(ctx, spaceId, details.GetString(bundle.RelationKeyId), V2ObjectQuery{})
 }
@@ -295,7 +295,7 @@ func (s *V2Service) ListPropertyOptions(ctx context.Context, spaceId, propertyKe
 	}
 	index := s.store.SpaceIndex(spaceId)
 	if _, err := index.GetRelationByKey(propertyKey); err != nil {
-		return nil, 0, false, v2model.NotFound(fmt.Sprintf("property %q not found in space %q — list available keys with GET /v2/spaces/%s/properties", propertyKey, spaceId, spaceId))
+		return nil, 0, false, s.propertyNotFoundError(spaceId, propertyKey)
 	}
 	options, err := index.ListRelationOptions(domain.RelationKey(propertyKey))
 	if err != nil {

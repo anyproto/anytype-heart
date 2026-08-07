@@ -75,6 +75,45 @@ func (s *V2Service) unknownTypeKeyError(spaceId, typeKey, path string) error {
 		})
 }
 
+// typeNotFoundError is the 404 for a type-KEY lookup miss on the routes that
+// address a type directly (GET/PATCH/DELETE types/{type}). It lists the
+// space's actual keys plus the nearest match — the same steering the R9
+// create path gives (unknownTypeKeyError): a candidate-less tip is a dead
+// end for a small model (§8.21 — given the bare "not found" text, a
+// benchmarked 4B did not retry at all, while the key-listing property tip
+// repaired on the first retry in the same run).
+func (s *V2Service) typeNotFoundError(spaceId, typeKey string) error {
+	return v2model.NotFound(notFoundWithKeys(
+		fmt.Sprintf("type %q not found in space %q", typeKey, spaceId),
+		typeKey, "type keys", s.knownTypeKeys(spaceId),
+		fmt.Sprintf("list all with GET /v2/spaces/%s/types", spaceId)))
+}
+
+// propertyNotFoundError is typeNotFoundError's sibling for property-KEY
+// routes (options listing, PATCH/DELETE properties/{key}).
+func (s *V2Service) propertyNotFoundError(spaceId, propertyKey string) error {
+	return v2model.NotFound(notFoundWithKeys(
+		fmt.Sprintf("property %q not found in space %q", propertyKey, spaceId),
+		propertyKey, "property keys", s.knownPropertyKeys(spaceId),
+		fmt.Sprintf("list all with GET /v2/spaces/%s/properties", spaceId)))
+}
+
+// notFoundWithKeys composes a not-found message that is repairable from the
+// error alone: subject, the known keys (capped), and a did-you-mean when a
+// close key exists. The list route rides along only when the key list was
+// truncated and no suggestion fired — the one case where the message alone
+// cannot show every candidate.
+func notFoundWithKeys(subject, input, what string, known []string, listRoute string) string {
+	msg := subject + " — " + listKnown(what, known)
+	if hint := didYouMean(input, known, ""); hint != "" {
+		return msg + "; " + hint
+	}
+	if len(known) > maxListedKeys {
+		return msg + "; " + listRoute
+	}
+	return msg
+}
+
 // propertyKeyExists reports whether a property key resolves in the space or
 // the bundle.
 func (s *V2Service) propertyKeyExists(spaceId, key string) bool {

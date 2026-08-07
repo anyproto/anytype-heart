@@ -275,7 +275,7 @@ func (s *V2Service) UpdateType(ctx context.Context, spaceId, typeKey string, bod
 	}
 	typeId, ok := s.typeIdInSpace(spaceId, typeKey)
 	if !ok {
-		return nil, v2model.NotFound(fmt.Sprintf("type %q not found in space %q — list available keys with GET /v2/spaces/%s/types", typeKey, spaceId, spaceId))
+		return nil, s.typeNotFoundError(spaceId, typeKey)
 	}
 
 	var patch v2TypePatch
@@ -362,7 +362,7 @@ func (s *V2Service) DeleteType(ctx context.Context, spaceId, typeKey string, dry
 	}
 	typeId, ok := s.typeIdInSpace(spaceId, typeKey)
 	if !ok {
-		return nil, v2model.NotFound(fmt.Sprintf("type %q not found in space %q", typeKey, spaceId))
+		return nil, s.typeNotFoundError(spaceId, typeKey)
 	}
 	result := &v2model.CreateResult{Id: typeId, Key: typeKey}
 	if dryRun {
@@ -489,7 +489,7 @@ func (s *V2Service) UpdateProperty(ctx context.Context, spaceId, propertyKey str
 	}
 	rel, err := s.store.SpaceIndex(spaceId).GetRelationByKey(propertyKey)
 	if err != nil || rel == nil {
-		return nil, v2model.NotFound(fmt.Sprintf("property %q not found in space %q — list available keys with GET /v2/spaces/%s/properties", propertyKey, spaceId, spaceId))
+		return nil, s.propertyNotFoundError(spaceId, propertyKey)
 	}
 	if bundled, err := bundle.PickRelation(domain.RelationKey(propertyKey)); err == nil && bundled.ReadOnly {
 		return nil, v2model.ValidationFailed("property is read-only",
@@ -526,7 +526,7 @@ func (s *V2Service) DeleteProperty(ctx context.Context, spaceId, propertyKey str
 	}
 	rel, err := s.store.SpaceIndex(spaceId).GetRelationByKey(propertyKey)
 	if err != nil || rel == nil {
-		return nil, v2model.NotFound(fmt.Sprintf("property %q not found in space %q", propertyKey, spaceId))
+		return nil, s.propertyNotFoundError(spaceId, propertyKey)
 	}
 	result := &v2model.CreateResult{Id: rel.Id, Key: propertyKey}
 	if dryRun {

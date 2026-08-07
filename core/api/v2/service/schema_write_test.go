@@ -461,19 +461,23 @@ func TestV2UpdateDeleteProperty(t *testing.T) {
 		assert.Equal(t, "rel-severity", result.Id)
 	})
 
-	t.Run("unknown property is a 404 with steering", func(t *testing.T) {
-		// given
+	t.Run("unknown property is a 404 listing the space's keys", func(t *testing.T) {
+		// given: the not-found family lists candidates (§8.21) — a
+		// candidate-less tip left a benchmarked small model with nothing to
+		// act on
 		fx := newV2Fixture(t)
+		fx.addSelectProperty(t)
 		name := "X"
 
 		// when
-		_, err := fx.UpdateProperty(context.Background(), testSpaceId, "ghost",
+		_, err := fx.UpdateProperty(context.Background(), testSpaceId, "Severity",
 			v2model.UpdatePropertyRequest{Name: &name}, false)
 
 		// then
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusNotFound, apiErr.Status)
-		assert.Contains(t, apiErr.Message, "GET /v2/spaces/"+testSpaceId+"/properties")
+		assert.Contains(t, apiErr.Message, "known property keys: severity")
+		assert.Contains(t, apiErr.Message, "did you mean severity?")
 	})
 
 	t.Run("delete archives the property object", func(t *testing.T) {
