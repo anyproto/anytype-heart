@@ -30,6 +30,16 @@ func isV2DryRun(c *gin.Context) bool {
 // maxV2CreateBodySize bounds create request bodies (matches /v2/validate).
 const maxV2CreateBodySize = 10 << 20 // 10 MiB
 
+// maxV2StructuredBodySize caps the five typed Phase-2 JSON bodies (property
+// create/update, set, collection, file-by-URL): each is a small descriptor,
+// nothing like the 10 MiB document channel. Before these routes went through
+// decodeStrictJSONBody they bound with ShouldBindJSON — unknown fields
+// silently dropped while GET /v2/schemas advertises
+// additionalProperties:false for exactly these kinds — and read UNBOUNDED
+// bodies whenever no Idempotency-Key engaged the middleware cap (surface
+// review M6).
+const maxV2StructuredBodySize = 1 << 20 // 1 MiB
+
 // readV2Body reads a bounded request body; a nil return means the error
 // response was already written.
 func readV2Body(c *gin.Context) []byte {
@@ -201,7 +211,7 @@ func DeleteTypeV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 // CreatePropertyV2Handler creates a property
 //
 //	@Summary		Create property
-//	@Description	Creates a property: {key?, name, format, options?:[{name,color?}]}. Formats use the AnyBlock vocabulary (text, select, multiSelect, …). Honors Idempotency-Key and ?dry_run=true.
+//	@Description	Creates a property: {key?, name, format, options?:[{name,color?}]}. Formats use the AnyBlock vocabulary (text, select, multiSelect, …). The body binds strictly: unknown fields are rejected with the field named, and the bounds the property schema advertises (name/key lengths, key pattern, option count) are enforced. Honors Idempotency-Key and ?dry_run=true.
 //	@Id				v2_create_property
 //	@Tags			V2
 //	@Accept			json
@@ -210,13 +220,15 @@ func DeleteTypeV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Param			dry_run		query		bool					false	"Validate and report without committing"
 //	@Success		201			{object}	v2model.CreateResult	"Created property id + key"
 //	@Failure		400			{object}	v2model.Error			"Validation failure"
+//	@Failure		413			{object}	v2model.Error			"Request body exceeds the 1 MiB cap"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/properties [post]
 func CreatePropertyV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req v2model.CreatePropertyRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
-			RespondV2Error(c, v2model.ValidationFailed("invalid property body: "+err.Error()))
+		if !decodeStrictJSONBody(c, &req,
+			"the property body is {key?, name, format, options?} — GET /v2/schemas/property for the schema",
+			maxV2StructuredBodySize, "property") {
 			return
 		}
 		result, err := s.CreateProperty(c.Request.Context(), c.Param("space_id"), req, isV2DryRun(c))
@@ -231,7 +243,7 @@ func CreatePropertyV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 // UpdatePropertyV2Handler updates a property
 //
 //	@Summary		Update property
-//	@Description	Updates a property's display name. The key is identity and cannot change.
+//	@Description	Updates a property's display name. The key is identity and cannot change. The body binds strictly: unknown fields are rejected with the field named.
 //	@Id				v2_update_property
 //	@Tags			V2
 //	@Accept			json
@@ -239,14 +251,17 @@ func CreatePropertyV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Param			space_id	path		string					true	"Space id"
 //	@Param			key			path		string					true	"Property key"
 //	@Success		200			{object}	v2model.CreateResult	"Updated property"
+//	@Failure		400			{object}	v2model.Error			"Validation failure"
 //	@Failure		404			{object}	v2model.Error			"Property not found"
+//	@Failure		413			{object}	v2model.Error			"Request body exceeds the 1 MiB cap"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/properties/{key} [patch]
 func UpdatePropertyV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req v2model.UpdatePropertyRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
-			RespondV2Error(c, v2model.ValidationFailed("invalid property patch: "+err.Error()))
+		if !decodeStrictJSONBody(c, &req,
+			"the property patch takes name — the key is identity and cannot change",
+			maxV2StructuredBodySize, "property") {
 			return
 		}
 		result, err := s.UpdateProperty(c.Request.Context(), c.Param("space_id"), c.Param("key"), req, isV2DryRun(c))
@@ -285,7 +300,7 @@ func DeletePropertyV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 // CreateSetV2Handler creates a set with its views in one change set
 //
 //	@Summary		Create set
-//	@Description	Creates a set querying one type: {name, type, filters?, sorts?, views?}. The set's initial state carries a fully-formed dataview block, so filters/sorts/views land atomically (§8/R10). Filter/sort property keys are validated against the type's actual keys (R9). Honors Idempotency-Key and ?dry_run=true.
+//	@Description	Creates a set querying one type: {name, type, filters?, sorts?, views?}. The set's initial state carries a fully-formed dataview block, so filters/sorts/views land atomically (§8/R10). Filter/sort property keys are validated against the type's actual keys (R9). The body binds strictly (unknown fields rejected) and the set schema's advertised bounds are enforced. Honors Idempotency-Key and ?dry_run=true.
 //	@Id				v2_create_set
 //	@Tags			V2
 //	@Accept			json
@@ -294,13 +309,15 @@ func DeletePropertyV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Param			dry_run		query		bool					false	"Validate and report without committing"
 //	@Success		201			{object}	v2model.CreateResult	"Created set id"
 //	@Failure		400			{object}	v2model.Error			"Validation or reference failure"
+//	@Failure		413			{object}	v2model.Error			"Request body exceeds the 1 MiB cap"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/sets [post]
 func CreateSetV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req v2model.CreateSetRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
-			RespondV2Error(c, v2model.ValidationFailed("invalid set body: "+err.Error()))
+		if !decodeStrictJSONBody(c, &req,
+			"the set body is {name, type, filter?/filters?, sorts?, views?} — GET /v2/schemas/set for the schema",
+			maxV2StructuredBodySize, "set") {
 			return
 		}
 		result, err := s.CreateSet(c.Request.Context(), c.Param("space_id"), req, isV2DryRun(c))
@@ -315,7 +332,7 @@ func CreateSetV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 // CreateCollectionV2Handler creates a collection
 //
 //	@Summary		Create collection
-//	@Description	Creates a collection: {name, items?}. Items are validated against the space. Honors Idempotency-Key and ?dry_run=true.
+//	@Description	Creates a collection: {name, items?}. Items are validated against the space. The body binds strictly (unknown fields rejected) and the collection schema's advertised bounds (name length, item count) are enforced. Honors Idempotency-Key and ?dry_run=true.
 //	@Id				v2_create_collection
 //	@Tags			V2
 //	@Accept			json
@@ -324,13 +341,15 @@ func CreateSetV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Param			dry_run		query		bool					false	"Validate and report without committing"
 //	@Success		201			{object}	v2model.CreateResult	"Created collection id"
 //	@Failure		400			{object}	v2model.Error			"Validation or reference failure"
+//	@Failure		413			{object}	v2model.Error			"Request body exceeds the 1 MiB cap"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/collections [post]
 func CreateCollectionV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req v2model.CreateCollectionRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
-			RespondV2Error(c, v2model.ValidationFailed("invalid collection body: "+err.Error()))
+		if !decodeStrictJSONBody(c, &req,
+			"the collection body is {name, items?} — GET /v2/schemas/collection for the schema",
+			maxV2StructuredBodySize, "collection") {
 			return
 		}
 		result, err := s.CreateCollection(c.Request.Context(), c.Param("space_id"), req, isV2DryRun(c))
@@ -345,7 +364,7 @@ func CreateCollectionV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 // UploadFileV2Handler uploads a file (multipart or URL)
 //
 //	@Summary		Upload file
-//	@Description	Uploads one file and returns the file object id that file/image blocks and iconImage values reference (R11). Send multipart/form-data with a file field, or JSON {"url": …}.
+//	@Description	Uploads one file and returns the file object id that file/image blocks and iconImage values reference (R11). Send multipart/form-data with a file field, or JSON {"url": …} — the JSON body binds strictly (unknown fields rejected, 1 MiB cap). A URL the source refuses or that cannot be fetched is a 400 naming /url; only genuine server faults answer 500.
 //	@Id				v2_upload_file
 //	@Tags			V2
 //	@Accept			multipart/form-data
@@ -353,7 +372,8 @@ func CreateCollectionV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Param			space_id	path		string						true	"Space id"
 //	@Param			dry_run		query		bool						false	"Validate and report without committing"
 //	@Success		201			{object}	v2model.FileUploadResult	"Created file object id"
-//	@Failure		400			{object}	v2model.Error				"Validation failure"
+//	@Failure		400			{object}	v2model.Error				"Validation failure, or a source URL that did not yield the file"
+//	@Failure		413			{object}	v2model.Error				"JSON request body exceeds the 1 MiB cap"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/files [post]
 func UploadFileV2Handler(s *v2service.V2Service) gin.HandlerFunc {
@@ -377,9 +397,9 @@ func UploadFileV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 		}
 
 		var req v2model.UploadFileRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
-			RespondV2Error(c, v2model.ValidationFailed("invalid upload body: "+err.Error(),
-				v2model.Issue{Message: "send multipart/form-data with a file field, or JSON {\"url\": …}"}))
+		if !decodeStrictJSONBody(c, &req,
+			"send multipart/form-data with a file field, or JSON {\"url\": …} — GET /v2/schemas/file for the schema",
+			maxV2StructuredBodySize, "file") {
 			return
 		}
 		result, err := s.UploadFile(c.Request.Context(), spaceId, "", req.Url, dryRun)

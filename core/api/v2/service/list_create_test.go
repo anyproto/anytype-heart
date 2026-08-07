@@ -3,6 +3,7 @@ package v2service
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -243,6 +244,24 @@ func TestV2CreateSet(t *testing.T) {
 		assert.Equal(t, v2model.CodeAmbiguousInput, apiErr.Code)
 	})
 
+	t.Run("M6: the advertised sorts cap is enforced", func(t *testing.T) {
+		fx := setup(t)
+		sorts := make([]map[string]string, maxV2SetSorts+1)
+		for i := range sorts {
+			sorts[i] = map[string]string{"property": "severity"}
+		}
+		raw, err := json.Marshal(sorts)
+		require.NoError(t, err)
+
+		_, err = fx.CreateSet(context.Background(), testSpaceId,
+			v2model.CreateSetRequest{Name: "Sorted", Type: "chore", Sorts: raw}, false)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
+		require.NotEmpty(t, apiErr.Issues)
+		assert.Equal(t, "/sorts", apiErr.Issues[0].Path)
+	})
+
 	t.Run("dry run validates without creating", func(t *testing.T) {
 		// given: no creator expectations
 		fx := setup(t)
@@ -300,6 +319,24 @@ func TestV2CreateCollection(t *testing.T) {
 		apiErr := v2Err(t, err)
 		require.Len(t, apiErr.Issues, 1)
 		assert.Equal(t, "/items/0", apiErr.Issues[0].Path)
+	})
+
+	t.Run("M6: the items cap is enforced before any store lookup", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		items := make([]string, maxV2CollectionItems+1)
+		for i := range items {
+			items[i] = fmt.Sprintf("obj%d", i)
+		}
+
+		_, err := fx.CreateCollection(context.Background(), testSpaceId,
+			v2model.CreateCollectionRequest{Name: "Big", Items: items}, false)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
+		require.NotEmpty(t, apiErr.Issues)
+		assert.Equal(t, "/items", apiErr.Issues[0].Path)
+		assert.NotContains(t, apiErr.Message, "not found",
+			"the cap must fire before the per-item existence walk")
 	})
 
 	t.Run("name is required", func(t *testing.T) {

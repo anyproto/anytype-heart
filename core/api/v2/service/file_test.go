@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/gogo/protobuf/types"
@@ -54,6 +55,21 @@ func TestV2UploadFile(t *testing.T) {
 		// then
 		apiErr := v2Err(t, err)
 		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
+	})
+
+	t.Run("M6: the advertised url bound is enforced", func(t *testing.T) {
+		// given: no FileUpload expectation — reaching the RPC fails the test
+		fx := newV2Fixture(t)
+
+		// when
+		_, err := fx.UploadFile(context.Background(), testSpaceId, "",
+			"https://example.org/"+strings.Repeat("x", maxV2UrlLength), false)
+
+		// then
+		apiErr := v2Err(t, err)
+		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
+		require.NotEmpty(t, apiErr.Issues)
+		assert.Equal(t, "/url", apiErr.Issues[0].Path)
 	})
 
 	t.Run("dry run uploads nothing", func(t *testing.T) {

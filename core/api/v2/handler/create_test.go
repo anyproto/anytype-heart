@@ -126,6 +126,119 @@ func TestCreatePropertyV2Handler(t *testing.T) {
 	})
 }
 
+// TestPhase2StrictBinding pins M6 (surface review): the five typed Phase-2
+// bodies bind strictly — a typo'd or unknown field 400s with the field
+// named instead of silently dropping agent intent (the reproduced failing
+// input: "option" for "options" created a property with no options and no
+// signal, while GET /v2/schemas promised additionalProperties:false), the
+// error speaks C6 (issues array, not gin text), and the previously
+// unbounded bodies are capped. No service mocks carry expectations, so a
+// reverted strict bind that reaches the service fails the test twice over.
+func TestPhase2StrictBinding(t *testing.T) {
+	decode := func(t *testing.T, w *httptest.ResponseRecorder) v2model.Error {
+		t.Helper()
+		var got v2model.Error
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
+		return got
+	}
+
+	post := func(t *testing.T, fx *v2HandlerFixture, path, body string) *httptest.ResponseRecorder {
+		t.Helper()
+		req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(body))
+		w := httptest.NewRecorder()
+		fx.router.ServeHTTP(w, req)
+		return w
+	}
+
+	t.Run("a typo'd options field on POST properties is a 400 naming it", func(t *testing.T) {
+		fx := newV2HandlerFixture(t)
+		fx.router.POST("/v2/spaces/:space_id/properties", withDryRunFlag(), CreatePropertyV2Handler(fx.svc))
+
+		w := post(t, fx, "/v2/spaces/space1/properties",
+			`{"name":"Priority","format":"select","option":[{"name":"High"}],"bogus":123}`)
+
+		require.Equal(t, http.StatusBadRequest, w.Code)
+		got := decode(t, w)
+		assert.Equal(t, v2model.CodeValidationFailed, got.Code)
+		require.NotEmpty(t, got.Issues, "bind failures must speak C6 — the gin text had no issues array")
+		assert.Equal(t, "/option", got.Issues[0].Path, "the unknown field must be named")
+	})
+
+	t.Run("an unknown field on PATCH properties is a 400", func(t *testing.T) {
+		fx := newV2HandlerFixture(t)
+		fx.router.PATCH("/v2/spaces/:space_id/properties/:key", withDryRunFlag(), UpdatePropertyV2Handler(fx.svc))
+
+		req := httptest.NewRequest(http.MethodPatch, "/v2/spaces/space1/properties/priority",
+			strings.NewReader(`{"nmae":"Priority"}`))
+		w := httptest.NewRecorder()
+		fx.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusBadRequest, w.Code)
+		got := decode(t, w)
+		require.NotEmpty(t, got.Issues)
+		assert.Equal(t, "/nmae", got.Issues[0].Path)
+	})
+
+	t.Run("an unknown field on POST sets is a 400", func(t *testing.T) {
+		fx := newV2HandlerFixture(t)
+		fx.router.POST("/v2/spaces/:space_id/sets", withDryRunFlag(), CreateSetV2Handler(fx.svc))
+
+		w := post(t, fx, "/v2/spaces/space1/sets", `{"name":"Open","type":"task","filtre":"done = false"}`)
+
+		require.Equal(t, http.StatusBadRequest, w.Code)
+		got := decode(t, w)
+		require.NotEmpty(t, got.Issues)
+		assert.Equal(t, "/filtre", got.Issues[0].Path)
+	})
+
+	t.Run("an unknown field on POST collections is a 400", func(t *testing.T) {
+		fx := newV2HandlerFixture(t)
+		fx.router.POST("/v2/spaces/:space_id/collections", withDryRunFlag(), CreateCollectionV2Handler(fx.svc))
+
+		w := post(t, fx, "/v2/spaces/space1/collections", `{"name":"List","item":["obj1"]}`)
+
+		require.Equal(t, http.StatusBadRequest, w.Code)
+		got := decode(t, w)
+		require.NotEmpty(t, got.Issues)
+		assert.Equal(t, "/item", got.Issues[0].Path)
+	})
+
+	t.Run("an unknown field on the JSON upload body is a 400", func(t *testing.T) {
+		fx := newV2HandlerFixture(t)
+		fx.router.POST("/v2/spaces/:space_id/files", withDryRunFlag(), UploadFileV2Handler(fx.svc))
+
+		w := post(t, fx, "/v2/spaces/space1/files", `{"uri":"https://example.org/a.pdf"}`)
+
+		require.Equal(t, http.StatusBadRequest, w.Code)
+		got := decode(t, w)
+		require.NotEmpty(t, got.Issues)
+		assert.Equal(t, "/uri", got.Issues[0].Path)
+	})
+
+	t.Run("an oversized property body is a 413 even without an Idempotency-Key", func(t *testing.T) {
+		// before M6 the body cap only engaged when the idempotency
+		// middleware saw a key — a keyless request was read unbounded
+		fx := newV2HandlerFixture(t)
+		fx.router.POST("/v2/spaces/:space_id/properties", withDryRunFlag(), CreatePropertyV2Handler(fx.svc))
+
+		body := `{"name":"` + strings.Repeat("x", maxV2StructuredBodySize) + `","format":"text"}`
+		w := post(t, fx, "/v2/spaces/space1/properties", body)
+
+		require.Equal(t, http.StatusRequestEntityTooLarge, w.Code)
+		assert.Equal(t, v2model.CodeRequestTooLarge, decode(t, w).Code)
+	})
+
+	t.Run("an oversized JSON upload body is a 413", func(t *testing.T) {
+		fx := newV2HandlerFixture(t)
+		fx.router.POST("/v2/spaces/:space_id/files", withDryRunFlag(), UploadFileV2Handler(fx.svc))
+
+		body := `{"url":"https://example.org/` + strings.Repeat("x", maxV2StructuredBodySize) + `"}`
+		w := post(t, fx, "/v2/spaces/space1/files", body)
+
+		require.Equal(t, http.StatusRequestEntityTooLarge, w.Code)
+	})
+}
+
 func TestUploadFileV2Handler(t *testing.T) {
 	t.Run("json body without url is a 400", func(t *testing.T) {
 		// given

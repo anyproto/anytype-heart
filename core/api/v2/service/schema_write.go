@@ -10,6 +10,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
+	"strings"
+	"unicode/utf8"
 
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -26,6 +29,60 @@ import (
 // detailKeyId mirrors the anyblockjson envelope lift: the minted id detail
 // never travels into create RPC payloads.
 const v2DetailKeyId = "id"
+
+// The bounds the §5 discovery schemas advertise on the typed Phase-2
+// bodies (schemas.go: the property, set, collection and file kinds),
+// enforced here so the strict schemas stay true (surface review M6): an
+// advertised bound the endpoint never checks either steers schema-obedient
+// agents into rejections or lets a hallucinated megabyte through
+// unchecked. The drift test in schemas_test.go pins the served schema JSON
+// to these constants — change one and the test names the other.
+const (
+	maxV2NameLength        = 4096 // name fields and option names (maxLength)
+	maxV2KeyLength         = 256  // property/type keys and object ids (maxLength)
+	maxV2PropertyOptions   = 100  // property options (maxItems)
+	maxV2OptionColorLength = 64   // option color (maxLength)
+	maxV2FilterLength      = 4096 // the compact filter string (maxLength)
+	maxV2SetSorts          = 10   // set sorts (maxItems)
+	maxV2SetViews          = 10   // set views (maxItems)
+	maxV2CollectionItems   = 1000 // collection items (maxItems)
+	maxV2UrlLength         = 4096 // file source url (maxLength)
+)
+
+// v2PropertyKeyPattern is the advertised key pattern (the property kind's
+// `pattern` on /key).
+var v2PropertyKeyPattern = regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
+
+// validateV2FieldLength enforces one advertised maxLength, counted in
+// Unicode code points (JSON Schema maxLength semantics — the space-field
+// precedent, space.go).
+func validateV2FieldLength(path, value string, max int) error {
+	if length := utf8.RuneCountInString(value); length > max {
+		return v2model.ValidationFailed(strings.TrimPrefix(path, "/")+" is too long",
+			v2model.Issue{Path: path,
+				Message: fmt.Sprintf("%d characters — the cap is %d (the advertised maxLength)", length, max)})
+	}
+	return nil
+}
+
+// validateV2ArrayCount enforces one advertised maxItems on a raw JSON array
+// field. A non-array shape is left for the field's own decoder, which
+// rejects it with its targeted message.
+func validateV2ArrayCount(path string, raw json.RawMessage, max int) error {
+	if len(raw) == 0 {
+		return nil
+	}
+	var items []json.RawMessage
+	if err := json.Unmarshal(raw, &items); err != nil {
+		return nil
+	}
+	if len(items) > max {
+		return v2model.ValidationFailed(strings.TrimPrefix(path, "/")+" has too many items",
+			v2model.Issue{Path: path,
+				Message: fmt.Sprintf("%d items — the cap is %d (the advertised maxItems)", len(items), max)})
+	}
+	return nil
+}
 
 // CreateType implements POST /v2/spaces/{spaceId}/types: a kind:"objectType"
 // AnyBlock document; typeProperties creates missing properties atomically
@@ -328,6 +385,9 @@ func (s *V2Service) CreateProperty(ctx context.Context, spaceId string, req v2mo
 		return nil, v2model.ValidationFailed("name is required",
 			v2model.Issue{Path: "/name", Message: "a property needs a display name"})
 	}
+	if err := validateV2FieldLength("/name", req.Name, maxV2NameLength); err != nil {
+		return nil, err
+	}
 	format, ok := anyblockjson.FormatByName(req.Format)
 	if !ok {
 		return nil, v2model.ValidationFailed("unknown property format",
@@ -338,7 +398,36 @@ func (s *V2Service) CreateProperty(ctx context.Context, spaceId string, req v2mo
 		return nil, v2model.ValidationFailed("options need a select format",
 			v2model.Issue{Path: "/options", Message: fmt.Sprintf("options apply to select and multiSelect properties, not %q", req.Format)})
 	}
+	// the bounds the property kind advertises (M6): option count, option
+	// fields, and the key's length + pattern
+	if len(req.Options) > maxV2PropertyOptions {
+		return nil, v2model.ValidationFailed("too many options",
+			v2model.Issue{Path: "/options",
+				Message: fmt.Sprintf("%d options — the cap is %d (the advertised maxItems)", len(req.Options), maxV2PropertyOptions)})
+	}
+	for i, opt := range req.Options {
+		optPath := fmt.Sprintf("/options/%d", i)
+		if opt.Name == "" {
+			return nil, v2model.ValidationFailed("an option needs a name",
+				v2model.Issue{Path: optPath + "/name", Message: "name is required on every option"})
+		}
+		if err := validateV2FieldLength(optPath+"/name", opt.Name, maxV2NameLength); err != nil {
+			return nil, err
+		}
+		if err := validateV2FieldLength(optPath+"/color", opt.Color, maxV2OptionColorLength); err != nil {
+			return nil, err
+		}
+	}
 	if req.Key != "" {
+		if err := validateV2FieldLength("/key", req.Key, maxV2KeyLength); err != nil {
+			return nil, err
+		}
+		if !v2PropertyKeyPattern.MatchString(req.Key) {
+			return nil, v2model.ValidationFailed("invalid property key",
+				v2model.Issue{Path: "/key",
+					Message: fmt.Sprintf("key %q does not match the advertised pattern ^[a-zA-Z0-9_]+$", req.Key),
+					Hint:    "use letters, digits and underscores — or omit key to derive one from the name"})
+		}
 		if s.propertyKeyExists(spaceId, req.Key) {
 			return nil, v2model.ValidationFailed("property key already exists",
 				v2model.Issue{Path: "/key", Message: fmt.Sprintf("property %q already exists", req.Key), Hint: fmt.Sprintf("update it with PATCH /v2/spaces/%s/properties/%s", spaceId, req.Key)})
@@ -411,6 +500,9 @@ func (s *V2Service) UpdateProperty(ctx context.Context, spaceId, propertyKey str
 	if req.Name == nil {
 		return nil, v2model.ValidationFailed("nothing to update",
 			v2model.Issue{Message: "the patch accepts name"})
+	}
+	if err := validateV2FieldLength("/name", *req.Name, maxV2NameLength); err != nil {
+		return nil, err
 	}
 	if dryRun {
 		result.DryRun = true

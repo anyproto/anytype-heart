@@ -38,6 +38,23 @@ func (s *V2Service) CreateSet(ctx context.Context, spaceId string, req v2model.C
 		return nil, v2model.ValidationFailed("type is required",
 			v2model.Issue{Path: "/type", Message: "a set queries one type — name its key", Hint: fmt.Sprintf("list keys with GET /v2/spaces/%s/types", spaceId)})
 	}
+	// the bounds the set kind advertises (M6): field lengths and the
+	// sorts/views item caps
+	if err := validateV2FieldLength("/name", req.Name, maxV2NameLength); err != nil {
+		return nil, err
+	}
+	if err := validateV2FieldLength("/type", req.Type, maxV2KeyLength); err != nil {
+		return nil, err
+	}
+	if err := validateV2FieldLength("/filter", req.Filter, maxV2FilterLength); err != nil {
+		return nil, err
+	}
+	if err := validateV2ArrayCount("/sorts", req.Sorts, maxV2SetSorts); err != nil {
+		return nil, err
+	}
+	if err := validateV2ArrayCount("/views", req.Views, maxV2SetViews); err != nil {
+		return nil, err
+	}
 	// C6: filter and filters are mutually exclusive; both → ambiguous_input
 	if req.Filter != "" && len(req.Filters) > 0 {
 		return nil, v2model.AmbiguousInput("provide filter or filters, not both",
@@ -106,6 +123,17 @@ func (s *V2Service) CreateCollection(ctx context.Context, spaceId string, req v2
 	if req.Name == "" {
 		return nil, v2model.ValidationFailed("name is required",
 			v2model.Issue{Path: "/name", Message: "a collection needs a name"})
+	}
+	if err := validateV2FieldLength("/name", req.Name, maxV2NameLength); err != nil {
+		return nil, err
+	}
+	// the advertised items cap (M6) — checked BEFORE the per-item store
+	// lookups, so an oversized list costs nothing
+	if len(req.Items) > maxV2CollectionItems {
+		return nil, v2model.ValidationFailed("too many items",
+			v2model.Issue{Path: "/items",
+				Message: fmt.Sprintf("%d items — the cap is %d (the advertised maxItems)", len(req.Items), maxV2CollectionItems),
+				Hint:    "create the collection with the first items, then add the rest with the addItems PATCH op"})
 	}
 
 	// referential validation: items must be existing objects in the space

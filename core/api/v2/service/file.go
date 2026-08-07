@@ -29,6 +29,10 @@ func (s *V2Service) UploadFile(ctx context.Context, spaceId, localPath, url stri
 		return nil, v2model.ValidationFailed("provide a file or a url",
 			v2model.Issue{Message: "upload multipart/form-data with a file field, or JSON {\"url\": …}"})
 	}
+	// the advertised url bound (M6, the file kind's maxLength)
+	if err := validateV2FieldLength("/url", url, maxV2UrlLength); err != nil {
+		return nil, err
+	}
 	if dryRun {
 		return &v2model.FileUploadResult{DryRun: true}, nil
 	}

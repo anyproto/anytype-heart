@@ -112,6 +112,70 @@ func TestV2Schemas(t *testing.T) {
 			"chatMessageEdit.text maxLength must equal the store cap")
 	})
 
+	t.Run("Phase-2 schema bounds match the enforced constants (M6)", func(t *testing.T) {
+		// the property/set/collection/file kinds advertise
+		// additionalProperties:false plus bounds; the endpoints now bind
+		// strict and enforce those bounds (schema_write.go constants) — this
+		// drift test pins the served JSON to the enforced values so neither
+		// side can move alone
+		var bounds = func(kind string) map[string]struct {
+			MaxLength int    `json:"maxLength"`
+			MaxItems  int    `json:"maxItems"`
+			Pattern   string `json:"pattern"`
+		} {
+			entry, err := fx.SchemaKind(kind)
+			require.NoError(t, err, kind)
+			var schema struct {
+				Properties map[string]struct {
+					MaxLength int    `json:"maxLength"`
+					MaxItems  int    `json:"maxItems"`
+					Pattern   string `json:"pattern"`
+				} `json:"properties"`
+			}
+			require.NoError(t, json.Unmarshal(entry.Schema, &schema), kind)
+			return schema.Properties
+		}
+
+		property := bounds("property")
+		assert.Equal(t, maxV2NameLength, property["name"].MaxLength)
+		assert.Equal(t, maxV2KeyLength, property["key"].MaxLength)
+		assert.Equal(t, v2PropertyKeyPattern.String(), property["key"].Pattern,
+			"the advertised key pattern must be the enforced one")
+		assert.Equal(t, maxV2PropertyOptions, property["options"].MaxItems)
+
+		// the option entries' bounds are nested under options.items
+		entry, err := fx.SchemaKind("property")
+		require.NoError(t, err)
+		var propertySchema struct {
+			Properties struct {
+				Options struct {
+					Items struct {
+						Properties map[string]struct {
+							MaxLength int `json:"maxLength"`
+						} `json:"properties"`
+					} `json:"items"`
+				} `json:"options"`
+			} `json:"properties"`
+		}
+		require.NoError(t, json.Unmarshal(entry.Schema, &propertySchema))
+		assert.Equal(t, maxV2NameLength, propertySchema.Properties.Options.Items.Properties["name"].MaxLength)
+		assert.Equal(t, maxV2OptionColorLength, propertySchema.Properties.Options.Items.Properties["color"].MaxLength)
+
+		set := bounds("set")
+		assert.Equal(t, maxV2NameLength, set["name"].MaxLength)
+		assert.Equal(t, maxV2KeyLength, set["type"].MaxLength)
+		assert.Equal(t, maxV2FilterLength, set["filter"].MaxLength)
+		assert.Equal(t, maxV2SetSorts, set["sorts"].MaxItems)
+		assert.Equal(t, maxV2SetViews, set["views"].MaxItems)
+
+		collection := bounds("collection")
+		assert.Equal(t, maxV2NameLength, collection["name"].MaxLength)
+		assert.Equal(t, maxV2CollectionItems, collection["items"].MaxItems)
+
+		file := bounds("file")
+		assert.Equal(t, maxV2UrlLength, file["url"].MaxLength)
+	})
+
 	t.Run("every kind serves parseable schema and example (C12/C13)", func(t *testing.T) {
 		for _, entry := range fx.SchemaIndex().Kinds {
 			got, err := fx.SchemaKind(entry.Kind)

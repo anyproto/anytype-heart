@@ -2370,3 +2370,26 @@ retrying agents into loops on refusals that can never succeed:
   text instead of duplicated literals, so a producer rewording updates
   the matcher at compile time. Behavior unchanged.
 
+
+**M6 — the five typed Phase-2 bodies bind strict and bounded.**
+CreateProperty, UpdateProperty, CreateSet, CreateCollection and the JSON
+UploadFile now decode through `decodeStrictJSONBody` like chat/space/
+search: unknown fields 400 with the field named in a C6 issue (the
+reproduced trap — `"option"` for `"options"` silently creating an
+option-less property — now rejects), empty bodies 400 with the shape
+hint, and the bodies are capped at 1 MiB (`maxV2StructuredBodySize`)
+regardless of Idempotency-Key — previously the cap only engaged when the
+idempotency middleware buffered a keyed body, so keyless requests to
+these five routes were read unbounded. The bounds the discovery schemas
+advertise are enforced at the service layer from named constants
+(schema_write.go: name 4096, key 256 + `^[a-zA-Z0-9_]+$`, options 100,
+option color 64, filter 4096, sorts 10, views 10, collection items 1000
+— checked before the per-item store walk — url 4096), and a drift test
+in schemas_test.go pins the served schema JSON to those constants so
+neither side can move alone. The one-table derivation the review
+suggested (generating the schema strings from the constants) was
+REJECTED as not worth it: the schemas are hand-written JSON with prose
+descriptions, and the existing chat/space precedent — constants + drift
+test — already makes divergence a test failure. `UploadFileRequest.name`
+remains accepted-but-unused by the service (pre-existing; the schema
+advertises it — recorded, not fixed here).

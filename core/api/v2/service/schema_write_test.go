@@ -2,7 +2,9 @@ package v2service
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/gogo/protobuf/types"
@@ -340,6 +342,40 @@ func TestV2CreateProperty(t *testing.T) {
 		assert.Equal(t, "vibe", result.Key)
 		require.NotNil(t, result.Created)
 		assert.Equal(t, []v2model.CreatedOption{{Property: "vibe", Name: "Happy"}}, result.Created.Options)
+	})
+
+	t.Run("M6: the advertised bounds are enforced, path-addressed", func(t *testing.T) {
+		// the property kind's schema advertises key pattern/length, name
+		// length and the options cap — without enforcement a strict-mode
+		// agent is told bounds the endpoint never checks; no create RPC is
+		// expected, so slipping through fails the test twice over
+		fx := newV2Fixture(t)
+
+		// the review's reproduced input: a key the pattern forbids
+		_, err := fx.CreateProperty(context.Background(), testSpaceId,
+			v2model.CreatePropertyRequest{Key: "my key!!", Name: "My key", Format: "text"}, false)
+		apiErr := v2Err(t, err)
+		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
+		require.NotEmpty(t, apiErr.Issues)
+		assert.Equal(t, "/key", apiErr.Issues[0].Path)
+
+		// a name over the advertised maxLength
+		_, err = fx.CreateProperty(context.Background(), testSpaceId,
+			v2model.CreatePropertyRequest{Name: strings.Repeat("x", maxV2NameLength+1), Format: "text"}, false)
+		apiErr = v2Err(t, err)
+		require.NotEmpty(t, apiErr.Issues)
+		assert.Equal(t, "/name", apiErr.Issues[0].Path)
+
+		// more options than the advertised maxItems
+		options := make([]v2model.CreateOptionRequest, maxV2PropertyOptions+1)
+		for i := range options {
+			options[i] = v2model.CreateOptionRequest{Name: fmt.Sprintf("o%d", i)}
+		}
+		_, err = fx.CreateProperty(context.Background(), testSpaceId,
+			v2model.CreatePropertyRequest{Name: "Tags", Format: "multiSelect", Options: options}, false)
+		apiErr = v2Err(t, err)
+		require.NotEmpty(t, apiErr.Issues)
+		assert.Equal(t, "/options", apiErr.Issues[0].Path)
 	})
 
 	t.Run("unknown format names the allowed set", func(t *testing.T) {
