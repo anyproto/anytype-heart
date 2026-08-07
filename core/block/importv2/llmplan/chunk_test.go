@@ -116,3 +116,37 @@ func TestPlanChunked(t *testing.T) {
 		assert.Len(t, fake.requests, 1)
 	})
 }
+
+func TestBalancedChunks(t *testing.T) {
+	cases := []struct {
+		n, max int
+		want   []int // chunk sizes
+	}{
+		{35, 12, []int{12, 12, 11}},   // already healthy
+		{35, 8, []int{7, 7, 7, 7, 7}}, // was 8,8,8,8,3 — the starved tail
+		{37, 12, []int{10, 9, 9, 9}},  // was 12,12,12,1 — a 1-container tail
+		{10, 12, []int{10}},           // under the threshold, one chunk
+		{12, 12, []int{12}},           // exactly at it
+		{13, 12, []int{7, 6}},
+	}
+	for _, c := range cases {
+		t.Run(fmt.Sprintf("n=%d max=%d", c.n, c.max), func(t *testing.T) {
+			// when
+			got := balancedChunks(c.n, c.max)
+
+			// then
+			var sizes []int
+			covered := 0
+			for i, bound := range got {
+				sizes = append(sizes, bound[1]-bound[0])
+				assert.Equal(t, covered, bound[0], "chunk %d must start where the last ended", i)
+				covered = bound[1]
+			}
+			assert.Equal(t, c.want, sizes)
+			assert.Equal(t, c.n, covered, "chunks must cover every container exactly once")
+			for _, size := range sizes {
+				assert.LessOrEqual(t, size, c.max, "no chunk may exceed the max")
+			}
+		})
+	}
+}
