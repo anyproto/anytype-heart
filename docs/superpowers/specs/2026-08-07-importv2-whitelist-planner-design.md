@@ -280,7 +280,7 @@ Recall figures are measured on the real 37-container workspace (27 date properti
 | `email` | property format == email; container has exactly one email property | **2/2** — names were `Email` and `"Email 📧 "`; a name table would have missed the second, the format rule catches both | The user typed the property as *email* in Notion; the value domain is emails. Format-preserving (email→email). FP requires a Notion email property that isn't one — not observed, structurally implausible |
 | `phone` | property format == phone; sole phone property in container | **1/1** | Same argument; format-typed in the source, format-preserving |
 | `dueDate` | format == date AND normalized name token-matches: any word == "due" OR == "deadline" (normalize as `typesuggest.normalize`, split on spaces); sole match in container | **7/11** of the LLM's dueDate adoptions ("Due Date" ×4, "Due date", "Deadline", "Bid Due Date"). Token rule verified: **0 false positives across all 27 date properties** (Created Date, Creation Date, Reported Date, Requested Date, Start Date, Timeline, Last edited time, Created on, Created time … all correctly excluded). Word-token match (not substring) keeps "Overdue" out | The 4 misses are `Do Date`, `Publish Date`, `Launch Date`, +1 — semantic guesses whose *loss is deliberate*: mapping "Publish Date" onto a relation displayed as "Due date" renames a user's event date into a label they never wrote (§9). Ambiguity guard: 4 containers have 2 date properties; in every one, exactly one token-matches, so the sole-match rule fires nowhere on this workspace |
-| `done` | format == checkbox AND normalized name ∈ `typesuggest` completion set {done, complete, completed, finished, checked}; sole match in container | **0/1** — a genuine measured miss. The workspace's 15 checkbox names (Featured ×3, Pin To Dashboard? ×2, Important, Urgent, Favourite?, Action, Capture, Home, Master, Plan, Track, Launched) match none; the LLM's one done mapping was Launched → done on Launch Task | Checkbox→checkbox, format-preserving, so a FP costs a label only — but a wrong done FP renders wrong completion state in the todo title row, so the table stays conservative. Extending it (launched/shipped/…) or a "sole unmatched checkbox on a todo kind" rule are explicitly *not* adopted: both are FP-prone judgment calls, and judgment is what this design removes. Recorded as the one defensible loss (§9) |
+| `done` | format == checkbox AND normalized name ∈ `CompletionNames` = {done, complete, completed, finished, checked, **resolved**, **got it**}; sole match in container | **0/1** on the real workspace — a genuine measured miss (its 15 checkbox names — Featured ×3, Pin To Dashboard? ×2, Important, Urgent, Favourite?, Action, Capture, Home, Master, Plan, Track, Launched — match none; the LLM's one done mapping was Launched → done). **3/3** on the synthetic suite after adding the two words (§8), which are the only additions the evidence supports | Checkbox→checkbox, format-preserving, so a FP costs a label — but a wrong `done` renders false completion state in the todo title row, so the table stays conservative. `resolved` and `got it` are completion predicates on their own row ("Resolved?" on a ticket, "Got It?" on a grocery item). **State flags are tested and rejected**: adding {shipped, paid, sent, packed} scored zero broken traps *only because the dangerous cases were unasserted* — the synthetic suite contains checkboxes named `Paid`, `Shipped`, `Delivered?`, `Contract Signed`, `Approved`, `Travel Booked`, and mapping any of them to `done` marks an expense or an order as a finished task. A near-miss worth recording: "no traps broken" is not evidence of safety when the risky inputs carry no assertion. Also still rejected: "sole unmatched checkbox on a todo kind" (§9) |
 | `tag` | **no matcher rule** — the shipped `isTagRedirect` (`notion/properties.go:245-257`) keeps owning it. `CompleteKinds` *skips* (creates no plan entry for) any property with format ∈ {status, tag} and exact name ∈ {Tag, Tags, tags}, so it stays unplanned and reaches the redirect. (Evidence carries formats, not Notion types, so a Notion *status*-type property named "Tag" would also be skipped — it stays native, which is harmless) | heuristic **2** vs the LLM's **1** ("Tags" in Calendar (SB) and 90 Day Sprint Planner, both tag format) — the shipped heuristic beats the model here | Space-wide sharing is *intended*: the redirect's own comment says one vocabulary for the whole space is the entire point of tags, and every database's tag property joins the one bundled relation (verified, `properties.go:99-106`). Reimplementing it in the matcher would have to duplicate the global "Tags-only-when-no-Tag-exists" latch; skipping is both correct and simpler. Markdown's schema-less front-matter path likewise keeps its own shipped handling for unplanned properties |
 | `genre` | **no rule.** Zero genre-named properties exist in the measured workspace (verified against the evidence blob); the LLM adopted it 0 times. Unreachable on measured evidence, so any rule would be speculation. Stays in `AllowedBundledTargets` (the sanitizer contract is unchanged; scripted plans may still target it) with nothing producing it | 0/0 | n/a |
 
@@ -305,6 +305,10 @@ PropertyPlan{
     Format: property.Format, // explicit, so the anchor settles to the source format
 }
 ```
+
+Unification is **subject to the merge guards in §4.5** — a kind that fails the coverage gate never
+reaches this step, and a property whose option vocabulary disagrees across members is excluded
+from sharing even when its name and format match.
 
 The key is a pure function of (name, format): two containers of one kind carrying a byte-identical
 property name with the same format derive the same plan key, `ScopedKey` scopes it by the kind's
@@ -356,12 +360,72 @@ bounding, icon vocabulary, bundled-type-key re-keying, unknown-container ids fro
 It stays the trust boundary precisely so that a bug in `CompleteKinds` — or a scripted/test plan —
 still degrades per-entry with a warning instead of being trusted.
 
+### 4.5 Merge guards — vetoing an unsound kind or share
+
+The model proposes grouping; code verifies it. Two guards run in `CompleteKinds` after the kinds
+come back and before any relation is shared. Both can only **un-merge** — neither drops a
+container, a property or a page, so every veto degrades to today's per-database behaviour rather
+than to nothing. A third check the guards would otherwise need is already structural.
+
+**Guard 1 — kind coverage gate (vetoes the kind).** For a kind with more than one member, let
+`U` be the union of its members' `(lowercased name, format)` pairs. If **any** member covers less
+than **0.5** of `U`, the kind is unsound: merging produces a type most of whose relations are
+permanently empty for that member's pages. The kind is split — each member becomes its own
+single-container kind, named from its container's id-stripped title, keeping the model's icon and
+layout. Always-mint is preserved (a split member still gets a minted type, not a bundled one), and
+`notion/plan.go`'s sole-container identity adoption then applies to each.
+
+Calibrated on the real 37-container workspace and on the synthetic suite:
+
+| grouping | union | per-member coverage | gate |
+|---|---|---|---|
+| `Premium Templates` ×3 (real, duplicated database) | 5 | 1.00 / 1.00 / 1.00 | merges |
+| 3 quarterly OKR databases (synthetic) | 6 | 1.00 / 1.00 / 1.00 | merges |
+| conference programme + 2 city roadshows (synthetic) | 14 | 0.93 / 0.86 / 0.86 | merges |
+| 3 family reading lists that drifted apart (synthetic) | 7 | 0.71 / 0.71 / 1.00 | merges |
+| `Tasks` + `Tasks & Features` (real; the LLM **split** these) | 5 | 0.60 / 1.00 | merges |
+| **`Tasks` + `90 Day Sprint Planner` + `Tasks Area (SB)` (real; the LLM merged these)** | **21** | **0.14** / 0.52 / 0.48 | **vetoed** |
+| the four `(SB)` databases (real) | 16 | 0.38 / 0.50 / 0.50 / 0.69 | vetoed |
+
+The vetoed row is the motivating failure: a 21-relation type on which the `Tasks` database fills
+three fields. Note the same evidence shows the model **inverted both judgment calls it faced** on
+the real workspace — it merged the 0.38-mean group and declined the 0.80-mean pair. This is the
+one place the design does not defer to the model, and the reason is measured, not stylistic.
+
+*Peeling the outlier instead of splitting wholesale was considered and rejected*: dropping `Tasks`
+lifts the remainder to min 0.50 — a 20-property type each member half-fills, still marginal — for
+materially more complexity. Split wholesale; the report page shows what was rejected.
+
+**Guard 2 — option vocabulary (vetoes one property's share).** Two members of a surviving kind
+may carry the same name and format but different *meanings*. For `select`/`multiSelect`
+properties unifying under §4.2, share only if the option sets intersect in at least **half the
+smaller set**; otherwise each member keeps its own relation (kind-local key salted with the
+container id). Measured discrimination:
+
+| property | members | option overlap | outcome |
+|---|---|---|---|
+| `Priority` (real) | 90 Day Sprint ‖ Tasks & Features | 3/3 = **1.00** | shares |
+| `Status` (real) | Project Areas ‖ Life Areas ‖ Docs | 3/3 = **1.00** | shares |
+| `Category` (real) | Meal Calendar ‖ Recipe SB | Breakfast/Brunch/Dinner/Lunch | shares |
+| `Status` (real) | Content Planner ‖ Notebooks | Drafted/Idea/Posted vs Done/In progress/Inbox = **0.00** | separate |
+| `Category` (real) | Launch Tracker ‖ Prompt Library | **0.00** | separate |
+
+Across the real workspace's 170 same-name/same-format select pairs, **108 (64%) have zero option
+overlap** — the guard has real work to do, not merely theoretical coverage.
+
+**Guard 3 is unnecessary — same-name/different-format is already structural.** The format is part
+of the §4.2 key, so `Owner` as `multiSelect` in one member and `text` in another derives two keys
+and can never share. Worth stating because it is the obvious third check to reach for; measured on
+the real workspace it would fire on 1 of 561 container pairs anyway.
+
 ## 5. Package and file layout
 
 | File | Fate |
 |---|---|
-| `schemaplan/whitelist.go` | **new** — rules tables (§4.1), kind-local key derivation, `CompleteKinds(kinds []KindPlan, schemas []ContainerSchema) Plan`, `KindPlan` |
+| `schemaplan/whitelist.go` | **new** — rules tables (§4.1), merge guards (§4.5), kind-local key derivation, `CompleteKinds(kinds []KindPlan, schemas []ContainerSchema) Plan`, `KindPlan` |
 | `schemaplan/whitelist_test.go` | **new** |
+| `schemaplan/planfixture/planfixture.go` | **new** — loads the synthetic suite (§8) into `[]ContainerSchema` plus its `Expectations`. String format names (`text`, `select`, …) map through one table; `ContainerSchema` has no JSON tags, so its raw marshalling (numeric formats, Go field names) is unfit for authored fixtures and is deliberately not used |
+| `schemaplan/testdata/fixtures/*.json` + `FORMAT.md` | **new** — five synthetic workspaces, 61 containers, 81 assertions (§8) |
 | `schemaplan/{schemaplan,sanitize,naive,emit}.go` | unchanged |
 | `typesuggest/typesuggest.go` | `completionNames` exported as `CompletionNames` (one source of truth for §4.1's done rule); otherwise unchanged |
 | `llmplan/llmplan.go` | rewritten small: planner struct, `WithBudget`/`WithReasoningEffort`, `Plan` = kinds call → parse → `CompleteKinds`. `WithCompactPrompt` deleted (with its stale "prose" doc comment — the real cause was the denormal-temperature client bug, already fixed) |
@@ -501,6 +565,31 @@ disjoint option pools, and a duplicated pair emits one.
 property-drop issues. `llme2e_test.go` stays the opt-in live harness, its report trimmed of the
 per-property mapping sections and extended with whitelist-vs-model bundled-hit comparison.
 
+**Synthetic workspace suite** — `schemaplan/testdata/fixtures/*.json`, five hand-checked synthetic
+workspaces (61 containers, 81 assertions) covering scenarios the single real cassette cannot: a
+conference producer, an amateur wedding committee, a SaaS product org, a six-year household
+accretion, and an Etsy shop sharing a space with its owner's hobby. Format and rules in the
+suite's own `FORMAT.md`; a `sameKind` assertion is rejected unless it clears the §4.5 coverage
+gate, so the suite cannot assert a bloated merge into existence.
+
+The suite is loaded into `[]ContainerSchema` and drives two test kinds:
+
+- **Whitelist rules, no LLM** (deterministic, CI): run the §4.1 matcher over every fixture and
+  assert its `expect.bundled` hits and — the valuable half — its `expect.notBundled` traps. The
+  suite carries **30 traps** (`Publish Date`, `Reported Date`, `Warranty Expires`, `Birthday`,
+  `Featured`, `Urgent`, `Autopay?`, `Churned`, `Made To Order`, …); the rules table as specified
+  takes **none** of them. This is the regression test for the false-positive property that the
+  whole design rests on.
+- **Guard arithmetic** (deterministic, CI): assert every `sameKind` group clears the coverage gate
+  and every `separateRelation` pair is justified by disjoint options or differing format.
+
+One standing rule for this corpus: **assertions must be consistent across fixtures.** The suite
+already caught a violation — `Ship By` was asserted as a `dueDate` hit while `RSVP By` was
+asserted as a trap, though both are `"<verb> By"` + date and no name rule can separate them. It
+was resolved toward the trap (an unmapped property keeps the user's name; a wrong mapping renames
+their field) and the ruling recorded in the fixture. Per-fixture review cannot catch this class;
+only running the matcher across the whole corpus can.
+
 **Parity**: the no-aiParams fidelity snapshot must stay byte-identical (naive path untouched — the
 existing guard keeps proving it).
 
@@ -534,16 +623,20 @@ tier below it; a planner that can run at all on Apple FM.
 
 ## 10. Risks
 
-1. **Wrong grouping now merges silently — the biggest risk.** Under the old design the model had
-   to *explicitly* give two containers the same property key to share a relation; now membership
-   in one kind shares every identically-named same-format property automatically, and `Sanitize`
-   has no vocabulary to judge whether a grouping is semantically right. An over-eager merge of two
-   genuinely different databases that both carry "Status" (18 of 37 containers do) recreates a
-   bounded version of the option-pool defect *within* the wrongly-merged kind. Mitigations: the
-   exact name+format gate bounds the blast radius; grouping is the measured LLM strength (both
-   probe prompts collapsed the duplicate trio correctly); the "genuinely different" prompt line;
-   and every share is auditable on the report page via the existing issue stream. Residual risk
-   accepted — it is the price of removing 187 bad mappings and 60–75% of the tokens.
+1. **Wrong grouping merges silently — now guarded, downgraded from the biggest risk.** Under the
+   old design the model had to *explicitly* give two containers the same property key to share a
+   relation; kind membership now shares every identically-named same-format property
+   automatically, and `Sanitize` has no vocabulary to judge whether a grouping is semantically
+   right. The §4.5 guards are the answer: the coverage gate vetoes the bloated-merge case (it
+   rejects the real LLM's own bad Task merge at 0.14) and the option-vocabulary guard vetoes the
+   option-pool case (108 of the real workspace's 170 same-name select pairs have zero overlap).
+   What survives both guards is a genuinely-similar schema whose vocabularies agree — the case
+   where sharing is right. Residual: the guards are thresholds, so a merge just above 0.5 with
+   partially-overlapping options can still be wrong; every share stays auditable on the report
+   page. Note the correction this encodes — grouping was *assumed* to be the model's strength, but
+   on the two real judgment calls we can inspect it got both backwards (§4.5). It is reliable at
+   detecting **duplicates** (both probes collapsed the trio); its semantic merging is not
+   validated and is no longer trusted unguarded.
 2. **Featured exact-match brittleness.** Decorated names ("Date 📅\`", trailing spaces) will
    sometimes miss after the model normalizes them; cost is an empty featured slot, never data.
    Trim-before-compare covers the measured cases.
