@@ -1272,11 +1272,12 @@ accordingly (it previously described a dropped-checks draft with an opt-in
 log-only net that never shipped).
 
 **Edit-path ordering and dry-run parity (reviews A′1/C′3).**
-`apicore.ObjectRead` carries `EditRefused` — the object-level restriction
-verdict captured under the same locked read as the snapshot and heads —
-checked before the prewarm and on dry runs, so a dry run reaches the same
-403 the adapter would return (C9's dry≡real contract now covers
-restrictions). And the create-missing prewarm runs only AFTER the object
+`apicore.ObjectRead` carries the per-axis restriction verdicts
+(`BlocksRefused`/`DetailsRefused` — per-op since surface review M1) —
+captured under the same locked read as the snapshot and heads — checked
+before the prewarm and on dry runs, so a dry run reaches the same 403 the
+adapter would return (C9's dry≡real contract now covers restrictions; the
+refusal really is a 403 since surface review M2a — see §8.12). And the create-missing prewarm runs only AFTER the object
 read and the precondition checks pass (read → preconditions → prewarm →
 lock): a PATCH to a nonexistent or restricted object, or with a stale
 If-Match, no longer creates the options it named — §8.2's documented
@@ -1768,12 +1769,19 @@ now it replays.
   identically to its dry run (the store handler treats deleting a
   missing doc as success — without the check the real DELETE answered
   200 for a deletion that never happened, C9 broken); (c)
-  `v2ChatRpcError` classifies the remaining RPC descriptions — the
-  strings are pinned by the middleware: `validate: …` → 400
-  validation_failed, `not found` → 404, `can't delete not own message`
-  → **403 `forbidden`** (a NEW C6 code, additive — C6's list is
-  non-exhaustive "include"). Anything else stays 500 with the
-  description carried.
+  `v2ChatRpcError` classifies the remaining RPC descriptions:
+  `validate: …` → 400 validation_failed, `not found` → 404, and the two
+  foreign-message refusals → **403 `forbidden`** (a NEW C6 code,
+  additive — C6's list is non-exhaustive "include"). The foreign-message
+  arms match through the producers' exported sentinels
+  (`chatobject.ErrModifyForeignMessage` — the EDIT wording,
+  "can't modify someone else's message" — and
+  `chatobject.ErrDeleteForeignMessage`, "can't delete not own message"),
+  so a middleware rewording updates the classifier at compile time; as
+  first shipped only the delete prose was matched and a foreign EDIT
+  fell through to a retry-looping 500 (surface review M2b, fixed with a
+  test that feeds the string the edit path really produces). Anything
+  else stays 500 with the description carried.
 - **PATCH message is a read-merge.** The middleware edit replaces the
   whole message content — chatmodel `content` =
   `{message, attachments, blocks}` (`chatmodel.go:441-444`) — so a naive
@@ -2323,3 +2331,42 @@ does nothing useful. Design:
   responses and `v2model.SearchRequestDoc` for the search body (a
   reflection test pins the twin's JSON field set to `SearchRequest`'s so
   the published document cannot drift from the decoded type).
+
+### 8.12 Surface-review fixes M2 + M6 (2026-08-07 — decisions as built)
+
+**M2 — permanent refusals no longer dress as retryable 500s.** Four
+producers used to fall through `RespondV2Error`'s 500 fallback, sending
+retrying agents into loops on refusals that can never succeed:
+
+- **Restriction refusals on PATCH/PUT → 403 `forbidden`.** The per-op
+  gate (`editNeedsForOps`/`restrictionRefusal`, ops.go) now produces the
+  C6 403 at the verdict site — message carries the adapter's refusal text
+  plus the offending op and `/ops/i` path, and the issue hint states the
+  refusal is permanent. The mutator path (the adapter's in-lock
+  `checkObjectEditable` re-check and `Apply`'s per-block restrictions) is
+  classified by `mapWriteError` (object.go) on
+  `restriction.ErrRestricted` via `errors.Is` — sentinel-backed, no
+  string matching. Dry runs reach the same 403 (the verdict rides the
+  read). The earlier refusal tests fed a ready-made `*v2model.Error`
+  into `BlocksRefused` — green against a shape production never
+  produces; they now feed the adapter's real wrapped-sentinel chain.
+- **Foreign chat edits/deletes → 403** through the exported
+  `chatobject` sentinels (§8.7's classification bullet, updated there).
+- **File-upload failures are classified** (`v2FileRpcError`, file.go):
+  in URL mode, a source answering non-2xx (matched through the
+  `fileuploader.ErrFailedToDownload` sentinel, which the uploader now
+  wraps — pinned by an uploader test that fails if the wrap is dropped)
+  and a fetch that never got a response (`Get "…"` — `url.Error`'s
+  fixed rendering, pinned against the stdlib type in the v2 test;
+  `CleanupError` masks the URL inside but keeps the shape) are 400s
+  naming `/url`. Local-path staging failures and storage faults stay
+  500 — those are genuinely retryable or server-side. The upload
+  pipeline has no size-cap error to classify: nothing bounds a URL
+  download's size today (recorded, not fixed here).
+- **The space classifier's strings are compile-pinned** (M2d): the
+  workspace-RPC arms now match `space.ErrSpaceNotExists` /
+  `ErrSpaceDeleted` / `ErrSpaceStorageMissig` and
+  `restriction.ErrRestricted` through the sentinels' own `.Error()`
+  text instead of duplicated literals, so a producer rewording updates
+  the matcher at compile time. Behavior unchanged.
+

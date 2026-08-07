@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
@@ -16,6 +17,7 @@ import (
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	"github.com/anyproto/anytype-heart/core/api/util"
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
+	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
@@ -140,6 +142,27 @@ func mapReadError(spaceId, objectId string, err error) error {
 		return v2model.NotFound(fmt.Sprintf("space %q not found", spaceId))
 	}
 	return fmt.Errorf("read object %s: %w", objectId, err)
+}
+
+// restrictionForbidden is the C6 403 for an object-restriction refusal:
+// permanent for this object, so the message says not to retry.
+func restrictionForbidden(objectId string, err error) *v2model.Error {
+	return v2model.NewError(http.StatusForbidden, v2model.CodeForbidden,
+		fmt.Sprintf("edit of object %q refused by its restrictions: %s — the refusal is permanent for this object, do not retry", objectId, err))
+}
+
+// mapWriteError classifies mutation-path failures (PATCH/PUT). A
+// restriction refusal — the adapter's in-lock checkObjectEditable re-check
+// or Apply's per-block restrictions, both wrapping
+// restriction.ErrRestricted — is a PERMANENT 403: falling through to
+// mapReadError dressed it as a read-shaped 500 and sent retrying agents
+// into a loop (surface review M2a). Everything else takes the read
+// classification.
+func mapWriteError(spaceId, objectId string, err error) error {
+	if errors.Is(err, restriction.ErrRestricted) {
+		return restrictionForbidden(objectId, err)
+	}
+	return mapReadError(spaceId, objectId, err)
 }
 
 // GetObject reads one object via the live smartblock state → snapshot →

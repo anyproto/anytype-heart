@@ -2,6 +2,7 @@ package v2service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -13,6 +14,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/core/mock_apicore"
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
+	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
+	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -480,7 +483,13 @@ func TestV2AddChatMessage(t *testing.T) {
 	})
 
 	t.Run("editing another member's message is a 403 forbidden, not a 500", func(t *testing.T) {
-		// given
+		// given: the description the EDIT path really produces —
+		// chathandler.go joins storestate.ErrValidation with
+		// ErrModifyForeignMessage and storeObject.EditMessage wraps the push
+		// as "push change: …". Built from the same producers so a rewording
+		// cannot leave this test green against a dead string (the original
+		// fed the DELETE wording into the EDIT path and passed against
+		// behavior that did not exist — surface review M2b).
 		fx := newV2Fixture(t)
 		fx.addChat(t, testChatId, "Team chat", 1000)
 		fx.mwMock.EXPECT().ChatGetMessagesByIds(mock.Anything, mock.Anything).
@@ -488,13 +497,37 @@ func TestV2AddChatMessage(t *testing.T) {
 		fx.mwMock.EXPECT().ChatEditMessageContent(mock.Anything, mock.Anything).Return(&pb.RpcChatEditMessageContentResponse{
 			Error: &pb.RpcChatEditMessageContentResponseError{
 				Code:        pb.RpcChatEditMessageContentResponseError_UNKNOWN_ERROR,
-				Description: "can't delete not own message",
+				Description: "push change: " + errors.Join(storestate.ErrValidation, chatobject.ErrModifyForeignMessage).Error(),
 			},
 		})
 
 		// when
 		_, err := fx.EditChatMessage(context.Background(), testSpaceId, testChatId, "msg1",
 			v2model.EditChatMessageRequest{Text: "updated"}, false)
+
+		// then
+		requireV2Code(t, err, v2model.CodeForbidden)
+		var v2Err *v2model.Error
+		require.ErrorAs(t, err, &v2Err)
+		assert.Equal(t, 403, v2Err.Status)
+	})
+
+	t.Run("deleting another member's message is a 403 forbidden, not a 500", func(t *testing.T) {
+		// given: the DELETE path's refusal (chathandler BeforeDelete),
+		// wrapped like the store wraps it
+		fx := newV2Fixture(t)
+		fx.addChat(t, testChatId, "Team chat", 1000)
+		fx.mwMock.EXPECT().ChatGetMessagesByIds(mock.Anything, mock.Anything).
+			Return(&pb.RpcChatGetMessagesByIdsResponse{Messages: []*model.ChatMessage{chatProtoMessage()}})
+		fx.mwMock.EXPECT().ChatDeleteMessage(mock.Anything, mock.Anything).Return(&pb.RpcChatDeleteMessageResponse{
+			Error: &pb.RpcChatDeleteMessageResponseError{
+				Code:        pb.RpcChatDeleteMessageResponseError_UNKNOWN_ERROR,
+				Description: "push change: " + chatobject.ErrDeleteForeignMessage.Error(),
+			},
+		})
+
+		// when
+		_, err := fx.DeleteChatMessage(context.Background(), testSpaceId, testChatId, "msg1", false)
 
 		// then
 		requireV2Code(t, err, v2model.CodeForbidden)

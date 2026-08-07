@@ -15,6 +15,7 @@ import (
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
@@ -57,6 +58,17 @@ func editRead(t *testing.T, doc string) apicore.ObjectRead {
 	sbType, snapshot, err := anyblockjson.Unmarshal([]byte(doc), anyblockjson.Options{})
 	require.NoError(t, err)
 	return apicore.ObjectRead{SbType: sbType, Snapshot: snapshot, Heads: []string{"headA"}}
+}
+
+// blocksRefusedProduction mirrors the adapter's checkRestriction output for
+// the Blocks axis (core/api/objectmutateadapter.go): a bare error chain
+// wrapping restriction.ErrRestricted, NOT a ready-made *v2model.Error. The
+// earlier fixture fed a v2model.Error here, which kept the refusal tests
+// green while production fell through to a 500 (surface review M2a) — the
+// refusal test must eat what the adapter actually cooks.
+func blocksRefusedProduction() error {
+	return fmt.Errorf("%w: this object's blocks cannot be edited through the API",
+		fmt.Errorf("%w: %s", restriction.ErrRestricted, model.Restrictions_Blocks.String()))
 }
 
 // expectMutate wires the mutator mock the way the adapter behaves: apply
@@ -714,7 +726,7 @@ func TestPatchObject(t *testing.T) {
 	t.Run("M1: a blocks-restricted object still accepts a property edit", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		read := editRead(t, editBaseDoc)
-		read.BlocksRefused = v2model.ValidationFailed("this object's blocks cannot be edited through the API")
+		read.BlocksRefused = blocksRefusedProduction()
 		captured := fx.expectMutate(read, "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
@@ -757,7 +769,7 @@ func TestPatchObject(t *testing.T) {
 	t.Run("M1: a blocks-restricted object still refuses a block op, naming it", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		read := editRead(t, editBaseDoc)
-		read.BlocksRefused = v2model.ValidationFailed("this object's blocks cannot be edited through the API")
+		read.BlocksRefused = blocksRefusedProduction()
 		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(read, nil)
 		// no MutateObject expectation: reaching the mutator would fail the test
 
@@ -765,9 +777,32 @@ func TestPatchObject(t *testing.T) {
 			patchBody(`{"op":"setProperties","set":{"name":"Renamed"}}`,
 				`{"op":"deleteBlock","id":"blockChild1"}`), "", false)
 
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "cannot be edited")
-		assert.Contains(t, err.Error(), "/ops/1", "the refusal must address the offending op, not the request")
+		// M2a: the refusal is PERMANENT, so it must be the C6 403 — not the
+		// bare error RespondV2Error turns into a retryable 500
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusForbidden, apiErr.Status)
+		assert.Equal(t, v2model.CodeForbidden, apiErr.Code)
+		assert.Contains(t, apiErr.Message, "cannot be edited")
+		assert.Contains(t, apiErr.Message, "/ops/1", "the refusal must address the offending op, not the request")
+	})
+
+	t.Run("M2a: a restriction refusal from the in-lock re-check is a 403, not a read-shaped 500", func(t *testing.T) {
+		// the adapter re-checks restrictions under the lock (and Apply checks
+		// per-block restrictions) — a refusal surfacing from MutateObject must
+		// classify like the pre-lock gate's, not fall through mapReadError
+		fx := newV2Fixture(t)
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").
+			Return(editRead(t, editBaseDoc), nil)
+		fx.mutatorMock.EXPECT().MutateObject(mock.Anything, testSpaceId, "obj1", mock.Anything, mock.Anything).
+			Return(nil, blocksRefusedProduction())
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"deleteBlock","id":"blockChild1"}`), "", false)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusForbidden, apiErr.Status)
+		assert.Equal(t, v2model.CodeForbidden, apiErr.Code)
+		assert.NotContains(t, apiErr.Message, "read object", "a refused write must not be dressed as a failed read")
 	})
 
 	t.Run("a restricted object is refused on the dry run too (C′3)", func(t *testing.T) {
@@ -775,13 +810,14 @@ func TestPatchObject(t *testing.T) {
 		// success the real edit would refuse
 		fx := newV2Fixture(t)
 		read := editRead(t, editBaseDoc)
-		read.BlocksRefused = v2model.ValidationFailed("this object's blocks cannot be edited through the API")
+		read.BlocksRefused = blocksRefusedProduction()
 		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(read, nil)
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
 			patchBody(`{"op":"deleteBlock","id":"blockChild1"}`), "", true)
 
 		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusForbidden, apiErr.Status, "the dry run reaches the same 403 the real edit would")
 		assert.Contains(t, apiErr.Message, "cannot be edited")
 	})
 
@@ -1203,6 +1239,37 @@ func TestPutObject(t *testing.T) {
 		assert.Equal(t, ComputeEtag([]string{"headB"}), result.Etag)
 		blocks := docBlocks(snapshotDoc(t, *captured))
 		assert.Equal(t, "edited child", blocks[2]["text"])
+	})
+
+	t.Run("M2a: a PUT dry run reaches the restriction 403 too (C9 dry≡real)", func(t *testing.T) {
+		// the real PUT's refusal lives in the adapter (checkObjectEditable
+		// before build) — without the putPipeline verdict check a dry run
+		// answered 200 for a PUT the real call refuses
+		fx := newV2Fixture(t)
+		read := editRead(t, editBaseDoc)
+		read.BlocksRefused = blocksRefusedProduction()
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(read, nil)
+
+		_, err := fx.PutObject(ctx, testSpaceId, "obj1", []byte(editBaseDoc), "", true)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusForbidden, apiErr.Status)
+		assert.Equal(t, v2model.CodeForbidden, apiErr.Code)
+	})
+
+	t.Run("M2a: a PUT refused by the object's restrictions is a 403, not a 500", func(t *testing.T) {
+		// PUT demands both axes inside the adapter (checkObjectEditable) —
+		// that refusal surfaces from ResetObject as a bare wrapped
+		// restriction.ErrRestricted and must classify to the permanent 403
+		fx := newV2Fixture(t)
+		fx.mutatorMock.EXPECT().ResetObject(mock.Anything, testSpaceId, "obj1", mock.Anything).
+			Return(nil, blocksRefusedProduction())
+
+		_, err := fx.PutObject(ctx, testSpaceId, "obj1", []byte(editBaseDoc), "", false)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusForbidden, apiErr.Status)
+		assert.Equal(t, v2model.CodeForbidden, apiErr.Code)
 	})
 
 	t.Run("a body without block ids is the full-rewrite signal", func(t *testing.T) {

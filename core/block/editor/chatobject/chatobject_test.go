@@ -455,6 +455,8 @@ func TestEditMessage(t *testing.T) {
 
 		err = fx.EditMessage(ctx, messageId, editedMessage)
 		require.Error(t, err)
+		assert.Contains(t, err.Error(), ErrModifyForeignMessage.Error(),
+			"core/api/v2 classifies the RPC description on this sentinel's text — the edit path must keep producing it")
 
 		// Check that nothing is changed
 		messagesResp, err := fx.GetMessages(ctx, chatrepository.GetMessagesRequest{})
@@ -500,6 +502,8 @@ func TestDeleteMessage(t *testing.T) {
 
 		err = fx.DeleteMessage(ctx, messageId)
 		require.Error(t, err)
+		assert.Contains(t, err.Error(), ErrDeleteForeignMessage.Error(),
+			"core/api/v2 classifies the RPC description on this sentinel's text — the delete path must keep producing it")
 
 		// Check that message is not deleted
 		fx.sourceCreator = testCreator

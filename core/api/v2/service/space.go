@@ -23,10 +23,12 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/api/util"
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
+	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -232,22 +234,23 @@ func (s *V2Service) UpdateSpace(ctx context.Context, spaceId string, req v2model
 // no workspace errToCode mappings), so ordinary reachable failures are
 // classified on the description — the Phase-6 chat precedent — instead of
 // defaulting the whole class to a retry-looping 500. The matched strings
-// are pinned by the middleware: space/service.go's ErrSpaceNotExists
-// ("space not exists"), ErrSpaceDeleted ("space is deleted"),
-// ErrSpaceStorageMissig ("space storage missing"), and the smartblock
-// restriction sentinel restriction.ErrRestricted ("restricted") that a
-// reader's SetDetails hits in a shared space.
+// are taken FROM the producers' exported sentinels (space/service.go's
+// ErrSpaceNotExists/ErrSpaceDeleted/ErrSpaceStorageMissig, and the
+// smartblock restriction sentinel restriction.ErrRestricted that a reader's
+// SetDetails hits in a shared space), so a producer rewording updates this
+// matcher at compile time instead of silently un-classifying it back to a
+// 500 (surface review M2d).
 func v2SpaceRpcError(op string, code, badInputCode int32, description string) error {
 	if code == badInputCode {
 		return v2model.ValidationFailed(fmt.Sprintf("%s: invalid input", op),
 			v2model.Issue{Message: description})
 	}
 	switch {
-	case strings.Contains(description, "space not exists"),
-		strings.Contains(description, "space is deleted"),
-		strings.Contains(description, "space storage missing"):
+	case strings.Contains(description, space.ErrSpaceNotExists.Error()),
+		strings.Contains(description, space.ErrSpaceDeleted.Error()),
+		strings.Contains(description, space.ErrSpaceStorageMissig.Error()):
 		return v2model.NotFound(fmt.Sprintf("%s: %s — list live spaces with GET /v2/spaces", op, description))
-	case strings.Contains(description, "restricted"):
+	case strings.Contains(description, restriction.ErrRestricted.Error()):
 		return v2model.NewError(http.StatusForbidden, v2model.CodeForbidden,
 			fmt.Sprintf("%s: %s — this account's role cannot change the space's info", op, description))
 	}

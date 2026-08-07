@@ -12,6 +12,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"strings"
 
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
@@ -94,10 +95,20 @@ func editNeedsForOps(ops []json.RawMessage, cur apicore.ObjectRead) (apicore.Edi
 	return union, nil
 }
 
-// restrictionRefusal keeps the wrapped restriction.ErrRestricted (the service
-// layer classifies on it) while naming the op that was refused.
+// restrictionRefusal is the 403 for an op the object's own restrictions
+// forbid: the verdict is produced HERE, where it is made, as the C6 error —
+// left bare it fell through RespondV2Error's 500 fallback, dressing a
+// PERMANENT refusal as a retryable fault and retry-looping the agent
+// (surface review M2a). The mutator path's in-lock re-check is classified
+// by mapWriteError on the same restriction.ErrRestricted sentinel.
 func restrictionRefusal(refused error, op, opPath, axis string) error {
-	return fmt.Errorf("%w (op %q at %s edits %s)", refused, op, opPath, axis)
+	return v2model.NewError(http.StatusForbidden, v2model.CodeForbidden,
+		fmt.Sprintf("%s (op %q at %s edits %s)", refused.Error(), op, opPath, axis),
+		v2model.Issue{
+			Path:    opPath,
+			Message: fmt.Sprintf("the %q op edits this object's %s, which its restrictions forbid", op, axis),
+			Hint:    "this refusal is permanent for this object — do not retry the same request",
+		})
 }
 
 // v2OutputOnlyPropertyKeys are the SPEC §4a output-only property keys a

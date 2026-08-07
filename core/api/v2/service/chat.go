@@ -21,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/util"
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
+	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
@@ -621,20 +622,27 @@ func v2ChatDeleteWarnings(msg *model.ChatMessage) []v2model.Issue {
 // description instead of defaulting the whole class to a retry-looping 500.
 // The matched strings are pinned by the middleware: chatobject.go wraps
 // store validation as "validate: …", any-store's ErrDocNotFound reads
-// "document not found", and chathandler.go rejects foreign edits/deletes
-// with "can't delete not own message".
+// "document not found", and the two foreign-message refusals are matched
+// through the chatobject sentinels themselves (ErrModifyForeignMessage for
+// the EDIT path, ErrDeleteForeignMessage for DELETE — surface review M2b:
+// matching the delete prose alone left the edit refusal a 500), so a
+// rewording in the producer updates the matcher at compile time. The
+// forbidden arms run FIRST: the edit refusal rides storestate.ErrValidation,
+// and a future "validate:"-wrapped rendering must not downgrade a permanent
+// 403 to a 400.
 func v2ChatRpcError(op string, code, badInputCode int32, description string) error {
 	if code == badInputCode {
 		return v2model.ValidationFailed(fmt.Sprintf("%s: invalid input", op),
 			v2model.Issue{Message: description})
 	}
 	switch {
+	case strings.Contains(description, chatobject.ErrModifyForeignMessage.Error()),
+		strings.Contains(description, chatobject.ErrDeleteForeignMessage.Error()):
+		return v2model.NewError(http.StatusForbidden, v2model.CodeForbidden,
+			fmt.Sprintf("%s: %s — only the author can edit or delete a message", op, description))
 	case strings.Contains(description, "validate:"):
 		return v2model.ValidationFailed(fmt.Sprintf("%s: the middleware rejected the message", op),
 			v2model.Issue{Message: description})
-	case strings.Contains(description, "not own message"):
-		return v2model.NewError(http.StatusForbidden, v2model.CodeForbidden,
-			fmt.Sprintf("%s: %s — only the author can edit or delete a message", op, description))
 	case strings.Contains(description, "not found"):
 		return v2model.NotFound(fmt.Sprintf("%s: %s", op, description))
 	}

@@ -108,7 +108,7 @@ func (s *V2Service) PatchObject(ctx context.Context, spaceId, objectId string, b
 		if errors.As(err, &v2Err) {
 			return nil, v2Err
 		}
-		return nil, mapReadError(spaceId, objectId, err)
+		return nil, mapWriteError(spaceId, objectId, err)
 	}
 	result.Etag = ComputeEtag(heads)
 	return result, nil
@@ -232,7 +232,7 @@ func (s *V2Service) runEdit(ctx context.Context, spaceId, objectId string, dryRu
 		if errors.As(err, &v2Err) {
 			return nil, v2Err
 		}
-		return nil, mapReadError(spaceId, objectId, err)
+		return nil, mapWriteError(spaceId, objectId, err)
 	}
 	(*result).Etag = ComputeEtag(heads)
 	return *result, nil
@@ -276,6 +276,16 @@ func parsePatchRequest(body []byte) ([]json.RawMessage, error) {
 func (s *V2Service) putPipeline(ctx context.Context, spaceId, objectId string, body []byte, envelope docEnvelope, ifMatch string, dryRun bool, cur apicore.ObjectRead) (*model.SmartBlockSnapshotBase, *v2model.EditResult, error) {
 	if err := checkEditPreconditions(cur.SbType, cur.Heads, ifMatch); err != nil {
 		return nil, nil, err
+	}
+	// PUT rewrites blocks and details alike, so both axis verdicts apply.
+	// On the real path the adapter refuses before build runs; checking the
+	// read's verdicts HERE is what lets a dry run reach the same 403 the
+	// real PUT would (C9 dry≡real — the M2a family; PATCH gets the same
+	// parity from editNeedsForOps).
+	for _, refused := range []error{cur.BlocksRefused, cur.DetailsRefused} {
+		if refused != nil {
+			return nil, nil, restrictionForbidden(objectId, refused)
+		}
 	}
 	// an absent type keeps the live object's (a full replace is about
 	// content, not retyping by omission)
