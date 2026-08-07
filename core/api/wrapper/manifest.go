@@ -69,6 +69,14 @@ type Tool struct {
 	Args        []Arg
 	// Example is the one minimal worked example (C12).
 	Example map[string]any
+	// Tier is the smallest model tier this tool is served to (tier.go):
+	// TierSmall tools reach both tiers, TierLarge tools only the large one.
+	// Every tool must declare a tier (pinned by test).
+	Tier Tier
+	// ReadOnly marks a tool that never mutates (spaces, find, read,
+	// describe) — surfaced as the MCP readOnlyHint annotation so hosts can
+	// skip write confirmation.
+	ReadOnly bool
 }
 
 // Verb is the tool's CLI verb (underscores become hyphens: set_properties →
@@ -110,7 +118,9 @@ func Tools() []Tool {
 			Args: []Arg{
 				{Name: "limit", Type: ArgInteger, Min: 1, Max: 100, Description: "max spaces (default 25)"},
 			},
-			Example: map[string]any{"limit": 25},
+			Example:  map[string]any{"limit": 25},
+			Tier:     TierSmall,
+			ReadOnly: true,
 		},
 		{
 			Name:        "find",
@@ -122,7 +132,9 @@ func Tools() []Tool {
 				{Name: "filter", Type: ArgString, MaxLen: maxFilterLen, Description: `compact filter string, e.g. done = false AND dueDate < currentWeek() — string values in double quotes`},
 				{Name: "limit", Type: ArgInteger, Min: 1, Max: 50, Description: "max results (default 10)"},
 			},
-			Example: map[string]any{"space": "space1", "type": "task", "filter": `done = false`},
+			Example:  map[string]any{"space": "space1", "type": "task", "filter": `done = false`},
+			Tier:     TierSmall,
+			ReadOnly: true,
 		},
 		{
 			Name:        "read",
@@ -131,7 +143,9 @@ func Tools() []Tool {
 				{Name: "object", Type: ArgString, Required: true, MaxLen: maxKeyLen, Description: objectArgDescription},
 				{Name: "mode", Type: ArgString, Enum: []string{"full", "outline"}, Description: "default full"},
 			},
-			Example: map[string]any{"object": "1", "mode": "outline"},
+			Example:  map[string]any{"object": "1", "mode": "outline"},
+			Tier:     TierSmall,
+			ReadOnly: true,
 		},
 		{
 			Name:        "describe",
@@ -140,7 +154,9 @@ func Tools() []Tool {
 				{Name: "space", Type: ArgString, Required: true, MaxLen: maxKeyLen, Description: "space id"},
 				{Name: "type", Type: ArgString, Required: true, MaxLen: maxKeyLen, Description: "a type key, e.g. task"},
 			},
-			Example: map[string]any{"space": "space1", "type": "task"},
+			Example:  map[string]any{"space": "space1", "type": "task"},
+			Tier:     TierSmall,
+			ReadOnly: true,
 		},
 		{
 			Name:        "create",
@@ -153,6 +169,7 @@ func Tools() []Tool {
 				{Name: "markdown", Type: ArgString, MaxLen: maxMarkdownLen, Description: "markdown body: headings, lists, - [ ] checkboxes, ``` fences, quotes, tables"},
 			},
 			Example: map[string]any{"space": "space1", "type": "task", "name": "Prepare the Q3 report", "properties": map[string]any{"dueDate": "friday"}},
+			Tier:    TierSmall,
 		},
 		{
 			Name:        "set_properties",
@@ -164,6 +181,7 @@ func Tools() []Tool {
 				{Name: "remove", Type: ArgObject, Description: "list property key → entries to delete"},
 			},
 			Example: map[string]any{"object": "1", "set": map[string]any{"status": "Done"}},
+			Tier:    TierSmall,
 		},
 		{
 			Name:        "check_item",
@@ -174,6 +192,7 @@ func Tools() []Tool {
 				{Name: "checked", Type: ArgBoolean, Required: true, Description: "true to check the box, false to uncheck"},
 			},
 			Example: map[string]any{"object": "1", "block": "ab3f2", "checked": true},
+			Tier:    TierLarge,
 		},
 		{
 			Name:        "add_blocks",
@@ -185,6 +204,7 @@ func Tools() []Tool {
 				{Name: "under", Type: ArgString, MaxLen: maxRefLen, Description: "insert as last child of this block"},
 			},
 			Example: map[string]any{"object": "1", "after": "ab3f2", "markdown": "- [ ] follow up"},
+			Tier:    TierSmall,
 		},
 		{
 			Name:        "edit_text",
@@ -196,6 +216,7 @@ func Tools() []Tool {
 				{Name: "replace", Type: ArgString, Required: true, AllowEmpty: true, MaxLen: maxFindLen, Description: "the new text — empty deletes the found text"},
 			},
 			Example: map[string]any{"object": "1", "block": "ab3f2", "find": "Q3", "replace": "Q4"},
+			Tier:    TierSmall,
 		},
 		{
 			Name:        "set_cell",
@@ -208,6 +229,7 @@ func Tools() []Tool {
 				{Name: "value", Type: ArgString, Required: true, AllowEmpty: true, MaxLen: maxFindLen, Description: "the new cell text — empty clears the cell"},
 			},
 			Example: map[string]any{"object": "1", "table": "t9d2c", "row": "row2", "col": "col1", "value": "done"},
+			Tier:    TierLarge,
 		},
 		{
 			Name:        "move_block",
@@ -219,6 +241,7 @@ func Tools() []Tool {
 				{Name: "under", Type: ArgString, MaxLen: maxRefLen, Description: "place as last child of this block"},
 			},
 			Example: map[string]any{"object": "1", "block": "ab3f2", "under": "c81d0"},
+			Tier:    TierLarge,
 		},
 		{
 			Name:        "delete_block",
@@ -229,6 +252,7 @@ func Tools() []Tool {
 				{Name: "recursive", Type: ArgBoolean, Description: "also delete the block's children (default false)"},
 			},
 			Example: map[string]any{"object": "1", "block": "ab3f2"},
+			Tier:    TierLarge,
 		},
 	}
 }
@@ -300,9 +324,16 @@ type Manifest struct {
 	FilterGrammar FilterGrammar  `json:"filterGrammar"`
 }
 
-// BuildManifest assembles the manifest from the tool table.
+// BuildManifest assembles the full (large-tier) manifest from the tool
+// table.
 func BuildManifest() (Manifest, error) {
-	tools := Tools()
+	return BuildManifestForTier(TierLarge)
+}
+
+// BuildManifestForTier assembles the manifest for one tier (tier.go): the
+// same table, filtered — never a second definition.
+func BuildManifestForTier(tier Tier) (Manifest, error) {
+	tools := ToolsForTier(tier)
 	entries := make([]ManifestTool, 0, len(tools))
 	for _, t := range tools {
 		schema, err := toolSchema(t)
@@ -380,9 +411,14 @@ func exampleJSON(t Tool) (json.RawMessage, error) {
 	return json.RawMessage(b.String()), nil
 }
 
-// ManifestJSON renders the manifest as compact JSON (C3).
+// ManifestJSON renders the full (large-tier) manifest as compact JSON (C3).
 func ManifestJSON() ([]byte, error) {
-	m, err := BuildManifest()
+	return ManifestJSONForTier(TierLarge)
+}
+
+// ManifestJSONForTier renders one tier's manifest as compact JSON (C3).
+func ManifestJSONForTier(tier Tier) ([]byte, error) {
+	m, err := BuildManifestForTier(tier)
 	if err != nil {
 		return nil, err
 	}
