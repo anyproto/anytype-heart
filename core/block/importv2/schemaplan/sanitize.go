@@ -40,11 +40,16 @@ type AllowedBundledTarget struct {
 //   - `status` is a genuine select, but one option pool per space — admitting
 //     it would merge every database's lifecycle vocabulary into one dropdown.
 //     Per-container custom keys (see scopedKey) are how status is imported.
+//   - `genre` fails the same test, which is why it was removed: genre
+//     vocabularies are domain-specific, so pooling them space-wide pours a
+//     record collection's Ambient and Shoegaze into the same dropdown as a
+//     bookshelf's Memoir and a film library's Film Noir. `tag` is the one
+//     genuine space-wide vocabulary — cross-cutting labels are what tags are
+//     for — and a per-type Genre relation is what users actually want.
 var AllowedBundledTargets = []AllowedBundledTarget{
 	{bundle.RelationKeyDueDate, "deadline / due date"},
 	{bundle.RelationKeyDone, "completion checkbox"},
 	{bundle.RelationKeyTag, "labels meant to be shared space-wide"},
-	{bundle.RelationKeyGenre, "genre, shared space-wide"},
 	{bundle.RelationKeyEmail, "email address"},
 	{bundle.RelationKeyPhone, "phone number"},
 }

@@ -204,21 +204,56 @@ func TestCompleteKindsBundledRules(t *testing.T) {
 		}
 	})
 
-	t.Run("genre-named list property maps to genre", func(t *testing.T) {
-		// given
-		fx := newFixture(t, []schemaplan.ContainerSchema{{
-			Id: "c1", Name: "Reading List",
-			Properties: []schemaplan.PropertySchema{
-				{Id: "p1", Name: "Genre", Format: model.RelationFormat_tag, Options: []string{"Fantasy", "Sci-fi"}},
-			},
-		}})
-		kinds := []schemaplan.KindPlan{{Name: "Book Entry", ContainerIds: []string{"c1"}}}
+	t.Run("genre stays per-kind instead of joining a space-wide pool", func(t *testing.T) {
+		// given — a bookshelf and a record collection, each with a "Genre".
+		// genre is deliberately NOT an allowed bundled target: its option pool
+		// would be space-wide, pouring Shoegaze in beside Memoir.
+		fx := newFixture(t, []schemaplan.ContainerSchema{
+			{Id: "c1", Name: "Reading List", Properties: []schemaplan.PropertySchema{
+				{Id: "p1", Name: "Genre", Format: model.RelationFormat_tag,
+					Options: []string{"Fantasy", "Memoir"}},
+			}},
+			{Id: "c2", Name: "Vinyl Shelf", Properties: []schemaplan.PropertySchema{
+				{Id: "q1", Name: "Genre", Format: model.RelationFormat_tag,
+					Options: []string{"Shoegaze", "Ambient"}},
+			}},
+		})
+		kinds := []schemaplan.KindPlan{
+			{Name: "Book", ContainerIds: []string{"c1"}},
+			{Name: "Record", ContainerIds: []string{"c2"}},
+		}
 
 		// when
 		plan := fx.completeSanitized(kinds)
 
 		// then
-		assert.Equal(t, bundle.RelationKeyGenre, plan.Containers["c1"].Properties["p1"].Key)
+		book := plan.Containers["c1"].Properties["p1"].Key
+		record := plan.Containers["c2"].Properties["q1"].Key
+		assert.NotEqual(t, bundle.RelationKeyGenre, book, "must not join the space-wide pool")
+		assert.NotEqual(t, book, record, "each media kind keeps its own genre vocabulary")
+	})
+
+	t.Run("one kind's members still share their genre relation", func(t *testing.T) {
+		// given — the counterpart: three family reading lists of one kind read
+		// the same vocabulary, so per-kind scoping still merges them
+		fx := newFixture(t, []schemaplan.ContainerSchema{
+			{Id: "c1", Name: "Mia's Books", Properties: []schemaplan.PropertySchema{
+				{Id: "p1", Name: "Genre", Format: model.RelationFormat_tag,
+					Options: []string{"Fantasy", "Memoir"}},
+			}},
+			{Id: "c2", Name: "Leo's Books", Properties: []schemaplan.PropertySchema{
+				{Id: "q1", Name: "Genre", Format: model.RelationFormat_tag,
+					Options: []string{"Fantasy", "Sci-fi"}},
+			}},
+		})
+		kinds := []schemaplan.KindPlan{{Name: "Book", ContainerIds: []string{"c1", "c2"}}}
+
+		// when
+		plan := fx.completeSanitized(kinds)
+
+		// then
+		assert.Equal(t, plan.Containers["c1"].Properties["p1"].Key,
+			plan.Containers["c2"].Properties["q1"].Key)
 	})
 
 	t.Run("tag-shaped properties produce no plan entry", func(t *testing.T) {

@@ -72,7 +72,7 @@ their shared `Status` is one `sharedRelation` group of three. Groups are checked
 - `sameKind` — these containers MUST end up sharing one object type.
 - `differentKind` — these containers MUST NOT share a type.
 - `bundled` — this property MUST map to this bundled relation. Allowed values ONLY:
-  `dueDate`, `done`, `tag`, `genre`, `email`, `phone`. Nothing else is a legal target.
+  `dueDate`, `done`, `tag`, `email`, `phone`. Nothing else is a legal target.
 - `notBundled` — this property MUST NOT be redirected to any bundled relation. This is
   how traps are asserted (a `Publish Date` that must stay "Publish Date", not become
   "Due date").

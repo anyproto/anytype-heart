@@ -343,7 +343,7 @@ func typeProperty(property PropertySchema, plan PropertyPlan, isFeatured bool) T
 // container" guard, so ambiguity degrades to no mapping (today's behaviour,
 // zero loss), never to a sanitizer drop.
 func bundledTargets(schema ContainerSchema) map[string]domain.RelationKey {
-	var emails, phones, dues, dones, genres []string
+	var emails, phones, dues, dones []string
 	for _, property := range schema.Properties {
 		switch property.Format {
 		case model.RelationFormat_email:
@@ -362,10 +362,6 @@ func bundledTargets(schema ContainerSchema) map[string]domain.RelationKey {
 			if typesuggest.MappingCompletionNames[typesuggest.Normalize(property.Name)] {
 				dones = append(dones, property.Id)
 			}
-		case model.RelationFormat_status, model.RelationFormat_tag:
-			if !isTagSkip(property) && typesuggest.Normalize(property.Name) == "genre" {
-				genres = append(genres, property.Id)
-			}
 		}
 	}
 	out := map[string]domain.RelationKey{}
@@ -373,7 +369,6 @@ func bundledTargets(schema ContainerSchema) map[string]domain.RelationKey {
 	assignSole(out, phones, bundle.RelationKeyPhone)
 	assignSole(out, dues, bundle.RelationKeyDueDate)
 	assignSole(out, dones, bundle.RelationKeyDone)
-	assignSole(out, genres, bundle.RelationKeyGenre)
 	return out
 }
 

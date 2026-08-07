@@ -8,7 +8,8 @@ the failure model, `schemaplan.Sanitize` as the single trust boundary, always-mi
 kind, sole-container identity adoption.
 
 Decided constraints this design works within (not relitigated here): property mapping leaves the
-LLM entirely; the whitelist hits the six `AllowedBundledTargets` only; no synonym merging across
+LLM entirely; the whitelist hits the `AllowedBundledTargets` set only (five after `genre` was
+removed for pooling domain-specific vocabularies space-wide, §4.1); no synonym merging across
 containers — exact name+format within a kind is the sharing rule; the LLM groups containers into
 kinds and names them; `Sanitize` stays the single trust boundary; always-mint stays; the
 kind/collection/sole-container invariants stay.
@@ -270,7 +271,7 @@ New file `core/block/importv2/schemaplan/whitelist.go`, driven from `CompleteKin
 pure functions of the evidence; output flows through `Sanitize` like any plan (decided constraint —
 and it means a code bug here degrades per-entry with a warning, same as a model error would).
 
-### 4.1 Rules table — the six bundled targets
+### 4.1 Rules table — the five bundled targets
 
 Recall figures are measured on the real 37-container workspace (27 date properties, 15 checkboxes,
 2 email, 1 phone, 224 properties total) against the luna run's 16 bundled adoptions.
@@ -282,7 +283,7 @@ Recall figures are measured on the real 37-container workspace (27 date properti
 | `dueDate` | format == date AND normalized name token-matches: any word == "due" OR == "deadline" (normalize as `typesuggest.normalize`, split on spaces); sole match in container | **7/11** of the LLM's dueDate adoptions ("Due Date" ×4, "Due date", "Deadline", "Bid Due Date"). Token rule verified: **0 false positives across all 27 date properties** (Created Date, Creation Date, Reported Date, Requested Date, Start Date, Timeline, Last edited time, Created on, Created time … all correctly excluded). Word-token match (not substring) keeps "Overdue" out | The 4 misses are `Do Date`, `Publish Date`, `Launch Date`, +1 — semantic guesses whose *loss is deliberate*: mapping "Publish Date" onto a relation displayed as "Due date" renames a user's event date into a label they never wrote (§9). Ambiguity guard: 4 containers have 2 date properties; in every one, exactly one token-matches, so the sole-match rule fires nowhere on this workspace |
 | `done` | format == checkbox AND normalized name ∈ `CompletionNames` = {done, complete, completed, finished, checked, **resolved**, **got it**}; sole match in container | **0/1** on the real workspace — a genuine measured miss (its 15 checkbox names — Featured ×3, Pin To Dashboard? ×2, Important, Urgent, Favourite?, Action, Capture, Home, Master, Plan, Track, Launched — match none; the LLM's one done mapping was Launched → done). **3/3** on the synthetic suite after adding the two words (§8), which are the only additions the evidence supports | Checkbox→checkbox, format-preserving, so a FP costs a label — but a wrong `done` renders false completion state in the todo title row, so the table stays conservative. `resolved` and `got it` are completion predicates on their own row ("Resolved?" on a ticket, "Got It?" on a grocery item). **State flags are tested and rejected**: adding {shipped, paid, sent, packed} scored zero broken traps *only because the dangerous cases were unasserted* — the synthetic suite contains checkboxes named `Paid`, `Shipped`, `Delivered?`, `Contract Signed`, `Approved`, `Travel Booked`, and mapping any of them to `done` marks an expense or an order as a finished task. A near-miss worth recording: "no traps broken" is not evidence of safety when the risky inputs carry no assertion. Also still rejected: "sole unmatched checkbox on a todo kind" (§9) |
 | `tag` | **no matcher rule** — the shipped `isTagRedirect` (`notion/properties.go:245-257`) keeps owning it. `CompleteKinds` *skips* (creates no plan entry for) any property with format ∈ {status, tag} and exact name ∈ {Tag, Tags, tags}, so it stays unplanned and reaches the redirect. (Evidence carries formats, not Notion types, so a Notion *status*-type property named "Tag" would also be skipped — it stays native, which is harmless) | heuristic **2** vs the LLM's **1** ("Tags" in Calendar (SB) and 90 Day Sprint Planner, both tag format) — the shipped heuristic beats the model here | Space-wide sharing is *intended*: the redirect's own comment says one vocabulary for the whole space is the entire point of tags, and every database's tag property joins the one bundled relation (verified, `properties.go:99-106`). Reimplementing it in the matcher would have to duplicate the global "Tags-only-when-no-Tag-exists" latch; skipping is both correct and simpler. Markdown's schema-less front-matter path likewise keeps its own shipped handling for unplanned properties |
-| `genre` | format ∈ {status, tag} AND normalized name == exactly `"genre"` AND not tag-skipped; sole match in container | **0/0 on the real workspace** — it has no genre-named property, which is why an earlier draft of this row specified no rule at all. **1/1 on the synthetic suite**, which reaches it deliberately: `pf-household-command-center` asserts a family reading list's `Genre` multiSelect (§8). Reading lists and media libraries are exactly the pattern bundled `genre` exists for, so "unreachable" was an artifact of having a single real workspace, not a property of the target | Same argument as `tag`: `genre` is in `AllowedBundledTargets` *because* its space-wide option pool is the point, so joining it is the intended behaviour rather than a lossy remap. The rule is the narrowest that can hit: an exact whole-name match on one word, not a token or substring rule, so "Genre Notes" or "Sub-genre" do not match. Verified to take **0 of the synthetic suite's 30 traps**. Leaving it ruleless would make one of six allowed targets permanently unreachable — dead configuration the sanitizer still has to defend |
+| ~~`genre`~~ | **removed from `AllowedBundledTargets` entirely** — not merely ruleless. An earlier draft gave it no rule (unreachable on the one real workspace); a later draft added a narrow rule to satisfy the synthetic suite. Both were wrong: `genre`'s option pool is space-wide, and genre vocabularies are domain-specific, so pooling them pours a record collection's Ambient and Shoegaze into the same dropdown as a bookshelf's Memoir and a film library's Film Noir | n/a | This is verbatim the argument that already excluded `status` ("one option pool per space — admitting it would merge every database's lifecycle vocabulary into one dropdown"); applying it consistently removes `genre` too. `tag` survives because cross-cutting labels spanning everything is precisely what tags are FOR — the one genuine space-wide vocabulary. A `Genre` column now takes the kind-local path like any other property: it keeps the user's own name, and the Books kind and the Records kind each get their own Genre relation, while several reading lists of ONE kind still share theirs (§4.2). This is the outcome users actually want, and it needs no rule at all |
 
 The whitelist places **12** bundled targets on the measured workspace (dueDate 7, email 2, phone
 1, tag 2 via the redirect) vs the LLM's 16 — see §9 for why the delta is mostly a win. The
@@ -576,7 +577,7 @@ The suite is loaded into `[]ContainerSchema` and drives two test kinds:
 
 - **Whitelist rules, no LLM** (deterministic, CI): run the §4.1 matcher over every fixture and
   assert its `expect.bundled` hits and — the valuable half — its `expect.notBundled` traps. The
-  suite carries **30 traps** (`Publish Date`, `Reported Date`, `Warranty Expires`, `Birthday`,
+  suite carries **31 traps** (`Publish Date`, `Reported Date`, `Warranty Expires`, `Birthday`, `Genre`,
   `Featured`, `Urgent`, `Autopay?`, `Churned`, `Made To Order`, …); the rules table as specified
   takes **none** of them. This is the regression test for the false-positive property that the
   whole design rests on.
@@ -603,7 +604,7 @@ Measured against the gpt-5.6-luna live plan on the 37-container workspace:
   count of renames a user would have preferred: not measured, and unknowable without user
   judgment.
 - **Bundled placements 16 → 12.** dueDate 11→7, email 2→2, phone 1→1, tag 1→2 (the heuristic
-  *beats* the model), done 1→0, genre 0→0. The honest reading of the −4: three of the four lost
+  *beats* the model), done 1→0. The honest reading of the −4: three of the four lost
   dueDate placements renamed non-due dates ("Publish Date", "Launch Date", "Do Date") into a
   relation displayed as "Due date" — the model claimed 11 of the workspace's 27 date properties as
   due dates, an aggressive rate that is itself evidence of the false-positive tendency this design
