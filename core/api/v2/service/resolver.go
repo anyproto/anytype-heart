@@ -25,6 +25,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
+	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson/filterstring"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson/storeresolver"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
@@ -161,13 +162,16 @@ func (r *creatingResolvers) OptionId(key domain.RelationKey, name string) (strin
 }
 
 // prewarmCreateMissing resolves a PATCH's create-missing references BEFORE
-// the object lock is taken (review B6/A6): the only create surface in PATCH
-// payloads is setProperties select/multiSelect option names, so those are
+// the object lock is taken (review B6/A6): the create surfaces in PATCH
+// payloads are setProperties select/multiSelect option names and the option
+// names an updateView filter or custom sort order carries, so those are
 // resolved (and, on a real run, created) here; in-lock resolution then hits
 // the resolver's cache and never fires a create-RPC while holding the edited
-// object's lock. The scan is deliberately lenient — every validation error
-// still surfaces from the in-lock op pass, in unchanged order — and create
-// failures ride resolvers.err(), exactly where the in-lock path checks them.
+// object's lock. The M5 bound counts what this pass records, so a channel
+// skipped here would also be a channel the too-many-options cap cannot see.
+// The scan is deliberately lenient — every validation error still surfaces
+// from the in-lock op pass, in unchanged order — and create failures ride
+// resolvers.err(), exactly where the in-lock path checks them.
 func (s *V2Service) prewarmCreateMissing(ops []json.RawMessage, resolvers *creatingResolvers) {
 	for _, raw := range ops {
 		var probe struct {
@@ -178,7 +182,14 @@ func (s *V2Service) prewarmCreateMissing(ops []json.RawMessage, resolvers *creat
 			// option creation moves back inside the object lock
 			Add map[string]json.RawMessage `json:"add"`
 		}
-		if err := json.Unmarshal(raw, &probe); err != nil || probe.Op != "setProperties" {
+		if err := json.Unmarshal(raw, &probe); err != nil {
+			continue
+		}
+		if probe.Op == "updateView" {
+			s.prewarmViewOptionValues(probe.Set, resolvers)
+			continue
+		}
+		if probe.Op != "setProperties" {
 			continue
 		}
 		for field, values := range map[string]map[string]json.RawMessage{"set": probe.Set, "add": probe.Add} {
@@ -213,6 +224,93 @@ func (s *V2Service) prewarmCreateMissing(ops []json.RawMessage, resolvers *creat
 					}
 				}
 				anyblockjson.UnmarshalPropertyValue(key, value, resolvers.Options())
+			}
+		}
+	}
+}
+
+// viewFilterProbe decodes a §6.2 filter tree just deep enough to reach the
+// select values a leaf may carry.
+type viewFilterProbe struct {
+	Property  string            `json:"property"`
+	Condition string            `json:"condition"`
+	Value     json.RawMessage   `json:"value"`
+	Filters   []viewFilterProbe `json:"filters"`
+}
+
+// prewarmViewOptionValues resolves the option names an updateView's set
+// channel carries — filter leaf values and custom sort orders on select
+// properties, both of which the dataview import resolves with create-missing
+// (SPEC §6.2/§3) — so the creates run before the object lock and the M5
+// bound sees them. Same leniency contract as the setProperties pass.
+func (s *V2Service) prewarmViewOptionValues(set map[string]json.RawMessage, resolvers *creatingResolvers) {
+	resolveSelect := func(key string, value json.RawMessage) {
+		format, err := bundle.GetRelationFormat(domain.RelationKey(key))
+		if err != nil {
+			var ok bool
+			if format, ok = resolvers.ResolveFormat(domain.RelationKey(key)); !ok {
+				return
+			}
+		}
+		if format != model.RelationFormat_status && format != model.RelationFormat_tag {
+			return
+		}
+		var decoded any
+		if err := json.Unmarshal(value, &decoded); err != nil || decoded == nil {
+			return
+		}
+		anyblockjson.UnmarshalPropertyValue(key, decoded, resolvers.Options())
+	}
+	var walkFilters func(nodes []viewFilterProbe)
+	walkFilters = func(nodes []viewFilterProbe) {
+		for _, node := range nodes {
+			if len(node.Filters) > 0 {
+				walkFilters(node.Filters)
+				continue
+			}
+			// empty/notEmpty/exists leaves carry no meaningful value (§11) —
+			// resolving one here would create an option the view never uses
+			switch node.Condition {
+			case "empty", "notEmpty", "exists":
+				continue
+			}
+			if node.Property != "" && len(node.Value) > 0 {
+				resolveSelect(node.Property, node.Value)
+			}
+		}
+	}
+	if raw, ok := set["filters"]; ok {
+		var nodes []viewFilterProbe
+		if err := json.Unmarshal(raw, &nodes); err == nil {
+			walkFilters(nodes)
+		}
+	}
+	if raw, ok := set["filter"]; ok {
+		// the compact string parses to the same structured array; parse errors
+		// are the apply pass's to report — here they just mean nothing to warm
+		var str string
+		if err := json.Unmarshal(raw, &str); err == nil && str != "" {
+			parsed, err := filterstring.Parse(str, filterstring.Options{
+				ResolveFormat: s.formatNameResolver(resolvers.spaceId),
+			})
+			if err == nil {
+				var nodes []viewFilterProbe
+				if err := json.Unmarshal(parsed, &nodes); err == nil {
+					walkFilters(nodes)
+				}
+			}
+		}
+	}
+	if raw, ok := set["sorts"]; ok {
+		var sorts []struct {
+			Property    string          `json:"property"`
+			CustomOrder json.RawMessage `json:"customOrder"`
+		}
+		if err := json.Unmarshal(raw, &sorts); err == nil {
+			for _, sort := range sorts {
+				if sort.Property != "" && len(sort.CustomOrder) > 0 {
+					resolveSelect(sort.Property, sort.CustomOrder)
+				}
 			}
 		}
 	}

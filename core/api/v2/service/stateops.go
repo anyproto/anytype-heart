@@ -86,6 +86,11 @@ type v2StateApplier struct {
 	// that claims to keep the view valid in place (v2OpRebuildsView false)
 	// cannot silently regress to a re-marshal per op.
 	marshalCount int
+
+	// warnings collects C11 warning-grade findings the ops raise (today: the
+	// §6.2 unguarded-date-comparison trap from an updateView filter edit);
+	// applyPatchOps surfaces them on the EditResult.
+	warnings []v2model.Issue
 }
 
 func newV2StateApplier(s *V2Service, spaceId, objectId string, sbType model.SmartBlockType, st *state.State, resolvers *creatingResolvers) *v2StateApplier {
@@ -406,6 +411,12 @@ func (a *v2StateApplier) apply(i int, raw json.RawMessage) error {
 			return err
 		}
 		return a.applySetCell(op, opPath)
+	case "updateView":
+		var op opUpdateView
+		if err := decodeStrictOp(raw, probe.Op, opPath, &op); err != nil {
+			return err
+		}
+		return a.applyUpdateView(op, opPath)
 	case "addItems", "removeItems":
 		var op opItems
 		if err := decodeStrictOp(raw, probe.Op, opPath, &op); err != nil {

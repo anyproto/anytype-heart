@@ -194,7 +194,31 @@ func TestCheckObjectEditable(t *testing.T) {
 			assert.NoError(t, r.Check(model.Restrictions_Details), "layout %v must NOT restrict details", layout)
 		}
 	})
+
+	t.Run("a custom object type restricts blocks — the fact updateView's classification rests on", func(t *testing.T) {
+		// pinned against the LIVE table (getRestrictionsForUniqueKey): a
+		// custom type object carries Restrictions_Blocks (like sets and
+		// collections) and not Details. The updateView op is classified as
+		// needing NEITHER axis (v2OpEditNeeds) precisely because all three
+		// dataview-bearing object classes refuse the Blocks axis while the
+		// native dataview view surface (v1's BlockDataviewView* RPCs) is
+		// ungated — if this pin fails, that classification needs re-deriving.
+		uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeObjectType, "plant")
+		require.NoError(t, err)
+		r := restriction.GetRestrictions(ukHolder{uk: uk}).Object
+		assert.Error(t, r.Check(model.Restrictions_Blocks), "a custom type object should restrict blocks")
+		assert.NoError(t, r.Check(model.Restrictions_Details), "a custom type object must NOT restrict details")
+	})
 }
+
+// ukHolder is the minimum RestrictionHolder for the unique-key restriction
+// path (type objects, relations).
+type ukHolder struct{ uk domain.UniqueKey }
+
+func (h ukHolder) Type() coresb.SmartBlockType            { return h.uk.SmartblockType() }
+func (h ukHolder) Layout() (model.ObjectTypeLayout, bool) { return 0, false }
+func (h ukHolder) UniqueKey() domain.UniqueKey            { return h.uk }
+func (h ukHolder) LocalDetails() *domain.Details          { return domain.NewDetails() }
 
 // fakeGetter serves one smartblock to the adapter's DoContextFullID.
 type fakeGetter struct {

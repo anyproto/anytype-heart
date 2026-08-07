@@ -30,7 +30,7 @@ import (
 var v2OpNames = []string{
 	"setProperties", "updateBlock", "replaceSubtree",
 	"insertBlocks", "moveBlock", "deleteBlock", "replaceText", "setCell",
-	"addItems", "removeItems",
+	"updateView", "addItems", "removeItems",
 }
 
 // v2OpEditNeeds maps each op to the object-level restriction axes it
@@ -43,6 +43,19 @@ var v2OpNames = []string{
 // Item ops need NEITHER axis: they mutate the collection store
 // (template.CollectionStoreKey), which no object restriction governs. That
 // matches v1, whose ObjectCollectionAdd/Remove is likewise ungated.
+//
+// updateView needs NEITHER axis either, and getting this wrong recreates the
+// M1 bug exactly: sets, collections AND object types all carry
+// Restrictions_Blocks (restriction/object.go objRestrictEdit /
+// objRestrictEditAndTemplate) — the three object classes that HAVE dataviews
+// — so classifying a view edit as a block op would refuse it on precisely the
+// objects it exists to edit. The Blocks axis governs document content
+// (basic.CreateBlock, tables, clipboard all check it); view configuration is
+// not gated by it: the native dataview surface (sdataview.UpdateView /
+// CreateView / DeleteView, i.e. v1's BlockDataviewView* RPCs) checks no
+// object-level restriction, which is how the app edits views on a set at
+// all. objectmutateadapter_test.go pins these facts against the live
+// restriction table.
 var v2OpEditNeeds = map[string]apicore.EditNeeds{
 	"setProperties":  {Details: true},
 	"updateBlock":    {Blocks: true},
@@ -52,6 +65,7 @@ var v2OpEditNeeds = map[string]apicore.EditNeeds{
 	"deleteBlock":    {Blocks: true},
 	"replaceText":    {Blocks: true},
 	"setCell":        {Blocks: true},
+	"updateView":     {},
 	"addItems":       {},
 	"removeItems":    {},
 }
@@ -132,6 +146,7 @@ var v2OpRebuildsView = map[string]bool{
 	// document without tripping the render-work bound.
 	"replaceText": false,
 	"setCell":     true,
+	"updateView":  true,
 	"addItems":    true,
 	"removeItems": true,
 }
@@ -310,6 +325,31 @@ type opSetCell struct {
 	Row     string          `json:"row"`
 	Col     string          `json:"col"`
 	Value   json.RawMessage `json:"value"`
+}
+
+type opUpdateView struct {
+	Op string `json:"op"`
+	// Block references a dataview block (full id or unique suffix). Optional:
+	// omitted, the op targets the object's only dataview block — the common
+	// case; types, sets and collections carry exactly one, at the fixed id
+	// "dataview".
+	Block string `json:"block"`
+	// View references a view by id (full or unique suffix — the same C4
+	// leniency as resolveViewRef on the read surface). Optional when the
+	// dataview has exactly one view.
+	View string `json:"view"`
+	// Set merges §6.2 view-level fields (updateBlock's merge semantics: only
+	// named fields change, explicit null clears one). sorts and filters
+	// replace whole when named — they are small ordered lists; filter is the
+	// compact-string alternative to filters. columns is NOT accepted here —
+	// the Columns channel below edits per column so one flip never rewrites
+	// the array.
+	Set map[string]json.RawMessage `json:"set"`
+	// Columns merges per column, keyed by property key: a patch object
+	// ({hidden, width, align, aggregation}) merges into the existing column
+	// (appending a new column for a key that has none), an explicit null
+	// removes the column.
+	Columns map[string]json.RawMessage `json:"columns"`
 }
 
 type opItems struct {
