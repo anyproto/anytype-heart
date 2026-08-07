@@ -41,7 +41,7 @@ snake_case auth bodies (§10.1). "A v2 home for every capability" is the goal;
 
 | Surface | v0.1 Rec. | v0.2 (decided) | One line |
 |---|---|---|---|
-| Auth | (a) reuse | **(c) → `/v2/auth/*`** | Same challenge/key mechanism, camelCase bodies + C6 errors; v1 keeps its snake_case routes until deprecation. |
+| Auth | (a) reuse | **issuance dropped (2026-08-07); v2 owns consumption** | No v2 minting endpoint by design — keys are issued in the app over gRPC. v2 owns the scope gate, the per-space grant and `GET /v2/auth/whoami`. |
 | Spaces | (c) | **(c)** unchanged | List shipped; add GET-one/POST/PATCH — v1's list does N+1 RPCs and misses every v2 convention. |
 | Members | (c) | **(c)** unchanged | List shipped; the real gap is `GET /members/me`; member admin is disabled even in v1 — nothing to port. |
 | Files | (c), download stays v1 | **(c) incl. download** | Upload shipped; download gets `/v2` bytes (HTTP conventions still apply *around* the stream); the search file-layout blindness is the live bug. |
@@ -417,10 +417,14 @@ token cost than the v1 flow, and a double-send retry is absorbed by C8.
 
 ## 9. Open questions — decisions needed from a human
 
-- **Q1 · Auth path — DECIDED (v0.2): `/v2/auth/*`.** Not an alias: a v2-shaped
-  pair over the same challenge/key mechanism, camelCase bodies and C6 errors
-  (§10.1). The v0.1 recommendation assumed the seam was free; it is not, once
-  the deliverable is one coherent document.
+- **Q1 · Auth path — DECIDED, twice.** v0.2 (2026-08-06) moved the
+  challenge/key pair to `/v2/auth/*`. **2026-08-07 supersedes it: v2 mints
+  nothing.** Keys are issued in the app over gRPC; the HTTP API only consumes
+  a bearer token, and v2 owns everything downstream of it — the scope gate,
+  the grant, `whoami` (§10.1 item 1). The v0.1 instinct that auth was
+  "version-neutral plumbing" turns out to have been half right: not because
+  the URL prefix is harmless, but because *issuance does not belong to the
+  HTTP API at all*.
 - **Q2 · Space orientation one-shot.** A `GET /v2/spaces/{spaceId}/context`
   returning `{space, me, types[], propertyKeys[]}` would collapse the
   cold-start 3-4 calls into one (~1 s of round trips, a few hundred tokens).
@@ -471,21 +475,29 @@ content; Phase 8 is new and exists only because of the v0.2 decision.
 
 ### 10.1 Phase 8 — completeness: the surfaces v0.1 wanted to leave on v1
 
-1. **[build] `POST /v2/auth/api_keys` — the key exchange only.**
-   Over `AccountLocalLinkSolveChallenge` (`service/auth.go:19-52`), registered
-   unauthenticated like its v1 twin (`router.go:332-337`). The fork from v1 is
-   deliberate and is the point: camelCase bodies (`challengeId`, `appKey` — v1
-   uses snake_case, `model/auth.go`), the C6 error envelope, C13 strict
-   schemas. v1's routes stay untouched until deprecation.
+1. **~~Auth endpoints~~ — DROPPED (human decision, 2026-08-07). v2 does not
+   mint keys at all.** Neither `POST /v2/auth/challenges` nor
+   `POST /v2/auth/api_keys` is built.
 
-   **`POST /v2/auth/challenges` is deliberately NOT built** (human decision,
-   2026-08-06): a reworked challenge flow is landing separately across heart
-   and the clients, and gets its v2 endpoint once that merges. Building the
-   current flow now would mean shipping a v2 endpoint we already know is
-   changing, and then breaking it. Until then a client obtains its challenge
-   id from `POST /v1/auth/challenges` — the one *named, temporary* exception
-   to the completeness rule, documented as such rather than left for a reader
-   to discover, and carried as the single entry in the item-6 allowlist.
+   **Key issuance is not an API surface.** A user creates a key in the app,
+   over gRPC; the HTTP API only ever *consumes* an already-issued bearer
+   token. That is a boundary, not a gap: issuance is an in-app, human,
+   consent-bearing action, and the reworked challenge flow landing separately
+   across heart and the clients is where it belongs. Building either endpoint
+   now would mean shipping a v2 surface we already know is changing.
+
+   What v2 *does* own is everything downstream of the token: the scope gate,
+   the per-space grant, and `GET /v2/auth/whoami` (shipped with scoped keys —
+   it derives from the same grant record the gate reads, so a client can ask
+   what its key is allowed to do without guessing).
+
+   **Consequence for the completeness rule.** `/v1/auth/*` is now an
+   *architectural* exception rather than a temporary one — the whole issuance
+   flow lives outside the HTTP API, so a v2 client that already holds a token
+   never types `/v1`, and one that does not cannot get a token from any HTTP
+   call, v1 or v2. The docs must say this plainly: **v2 has no minting
+   endpoint by design; obtain a key in the app.** Revisit only if headless
+   issuance ever becomes a real requirement.
 2. **[build] `GET /v2/spaces/{spaceId}/files/{fileId}/content`** — the byte
    stream. HTTP is the convention *inside* the response (Content-Type,
    Content-Length, Range, ETag as a real validator), but everything around it
@@ -507,10 +519,17 @@ content; Phase 8 is new and exists only because of the v0.2 decision.
    reachable under `/v1` has a `/v2` route, with an explicit, reviewed
    allowlist of the exceptions. This is the test that makes "complete"
    checkable instead of asserted — without it, completeness decays silently
-   the next time a v1 route is added. The allowlist has exactly one entry
-   today (`POST /v1/auth/challenges`, item 1); each entry carries a reason and
-   an owner, so it reads as a debt list rather than a carve-out, and a second
-   entry has to be argued for in review.
+   the next time a v1 route is added. The allowlist today is exactly
+   `/v1/auth/*` (both routes, item 1): key issuance is deliberately not an
+   HTTP-API surface. Each entry carries a reason and an owner, so the list
+   reads as a set of decisions rather than a carve-out, and adding an entry
+   for any other reason has to be argued for in review.
+
+   Note the harness already exists: scoped API keys shipped a fail-closed
+   route-walking registry over the `/v2` group (verb × global class). It
+   answers a *different* question — "is every v2 route classified for
+   grants?" — but the walk is reusable, and this test is the second
+   assertion over it.
 
 ### 10.2 What "complete" does not mean
 
