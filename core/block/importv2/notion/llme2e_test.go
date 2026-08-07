@@ -49,9 +49,19 @@ var planArtifactPrefixes = []string{"type:", "relation:", "option:"}
 // IMPORTV2_LLM_CASSETTE overrides the tape path (point it at
 // testdata/cassettes/workspace to reuse the committed recording).
 func TestLiveLLMPlan(t *testing.T) {
+	// IMPORTV2_LLM_ENDPOINT points the harness at any OpenAI-compatible server
+	// (ollama's /v1 shim, llama-server, a local proxy). Those need no real
+	// credential, so the key is only required for the OpenAI default.
+	endpoint := os.Getenv("IMPORTV2_LLM_ENDPOINT")
 	openaiKey := os.Getenv("OPENAI_API_KEY")
+	if endpoint == "" {
+		endpoint = "https://api.openai.com/v1"
+		if openaiKey == "" {
+			t.Skip("set OPENAI_API_KEY (or IMPORTV2_LLM_ENDPOINT) to run the live LLM import e2e")
+		}
+	}
 	if openaiKey == "" {
-		t.Skip("set OPENAI_API_KEY to run the live LLM import e2e")
+		openaiKey = "local"
 	}
 	cassettePath := os.Getenv("IMPORTV2_LLM_CASSETTE")
 	if cassettePath == "" {
@@ -74,7 +84,7 @@ func TestLiveLLMPlan(t *testing.T) {
 	// parse error, which is a very different diagnosis.
 	observer := &observingTransport{}
 	llmClient, err := llmclient.New(llmclient.Config{
-		Endpoint: "https://api.openai.com/v1",
+		Endpoint: endpoint,
 		Model:    model,
 		Token:    openaiKey,
 		// No client Timeout: production builds a bare http.Client and lets the
@@ -92,6 +102,14 @@ func TestLiveLLMPlan(t *testing.T) {
 		planTook time.Duration
 	)
 	var planOpts []llmplan.Option
+	if effort := os.Getenv("IMPORTV2_LLM_EFFORT"); effort != "" {
+		planOpts = append(planOpts, llmplan.WithReasoningEffort(effort))
+		t.Logf("reasoning effort set to %q", effort)
+	}
+	if os.Getenv("IMPORTV2_LLM_PERCONTAINER") != "" {
+		planOpts = append(planOpts, llmplan.WithPerContainerCalls())
+		t.Log("per-container (tier 3) planner engaged")
+	}
 	if raw := os.Getenv("IMPORTV2_LLM_BUDGET"); raw != "" {
 		budget, err := time.ParseDuration(raw)
 		require.NoError(t, err, "IMPORTV2_LLM_BUDGET must be a duration like 300s")

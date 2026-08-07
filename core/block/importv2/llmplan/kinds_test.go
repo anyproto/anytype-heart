@@ -103,7 +103,7 @@ func userMessage(request map[string]any) string {
 }
 
 const validKindsReply = `{"kinds": [
-  {"name": "Sprint Task", "pluralName": "Sprint Tasks", "icon": "checkbox", "layout": "todo",
+  {"name_singular": "Sprint Task", "name_plural": "Sprint Tasks", "icon": "checkbox", "layout": "todo",
    "containers": [1, 2], "featured": ["Deadline", "State"]}
 ]}`
 
@@ -164,7 +164,7 @@ func TestPlanKinds(t *testing.T) {
 	t.Run("out-of-range ordinal is dropped", func(t *testing.T) {
 		// given — 7 does not exist; ds2 is left unassigned and falls back
 		reply := `{"kinds": [
-		  {"name": "Sprint Task", "pluralName": "", "icon": "", "layout": "todo", "containers": [1, 7], "featured": []}
+		  {"name_singular": "Sprint Task", "name_plural": "", "icon": "", "layout": "todo", "containers": [1, 7], "featured": []}
 		]}`
 		fake := newFakeLLM(t, content(reply)...)
 		planner := newTestPlanner(t, fake)
@@ -185,8 +185,8 @@ func TestPlanKinds(t *testing.T) {
 	t.Run("container claimed by two kinds goes to the first", func(t *testing.T) {
 		// given
 		reply := `{"kinds": [
-		  {"name": "Alpha", "pluralName": "", "icon": "", "layout": "", "containers": [1], "featured": []},
-		  {"name": "Beta", "pluralName": "", "icon": "", "layout": "", "containers": [1, 2], "featured": []}
+		  {"name_singular": "Alpha", "name_plural": "", "icon": "", "layout": "", "containers": [1], "featured": []},
+		  {"name_singular": "Beta", "name_plural": "", "icon": "", "layout": "", "containers": [1, 2], "featured": []}
 		]}`
 		fake := newFakeLLM(t, content(reply)...)
 		planner := newTestPlanner(t, fake)

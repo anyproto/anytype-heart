@@ -60,8 +60,8 @@ into KINDS and name each kind. Return JSON only, matching the response schema.
 - Give two containers different kinds only when their contents are genuinely different
   sorts of thing.
 - Assign EVERY container to exactly one kind, by its number ("n"). Never invent a number.
-- Name each kind for what ONE member is ("Task", "Recipe", "Team Member"), plus the
-  plural ("Tasks"). Names are labels, never explanations.
+- name_singular is what ONE member is called ("Task", "Recipe", "Team Member"),
+  name_plural what many are called ("Tasks"). Names are labels, never explanations.
 - layout: "todo" for kinds whose members are actions to complete; "profile" for kinds
   describing a person; "note" for freeform notes; otherwise "basic".
 - featured: 2-4 property NAMES copied verbatim from the kind's containers' property
@@ -93,14 +93,14 @@ var kindsResponseSchema = func() json.RawMessage {
 				"items": map[string]any{
 					"type":                 "object",
 					"additionalProperties": false,
-					"required":             []string{"name", "pluralName", "icon", "layout", "containers", "featured"},
+					"required":             []string{"name_singular", "name_plural", "icon", "layout", "containers", "featured"},
 					"properties": map[string]any{
-						"name":       map[string]any{"type": "string"},
-						"pluralName": map[string]any{"type": "string"},
-						"icon":       map[string]any{"type": "string", "enum": icons},
-						"layout":     map[string]any{"type": "string", "enum": []string{"basic", "todo", "profile", "note", ""}},
-						"containers": map[string]any{"type": "array", "items": map[string]any{"type": "integer"}},
-						"featured":   map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+						"name_singular": map[string]any{"type": "string"},
+						"name_plural":   map[string]any{"type": "string"},
+						"icon":          map[string]any{"type": "string", "enum": icons},
+						"layout":        map[string]any{"type": "string", "enum": []string{"basic", "todo", "profile", "note", ""}},
+						"containers":    map[string]any{"type": "array", "items": map[string]any{"type": "integer"}},
+						"featured":      map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
 					},
 				},
 			},
@@ -172,8 +172,8 @@ type wireKinds struct {
 }
 
 type wireKind struct {
-	Name       string   `json:"name"`
-	PluralName string   `json:"pluralName"`
+	Name       string   `json:"name_singular"`
+	PluralName string   `json:"name_plural"`
 	Icon       string   `json:"icon"`
 	Layout     string   `json:"layout"`
 	Containers []int    `json:"containers"`
