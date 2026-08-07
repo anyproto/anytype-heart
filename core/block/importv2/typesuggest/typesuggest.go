@@ -105,9 +105,17 @@ var containerNames = map[string]domain.TypeKey{
 	"meal plan": bundle.TypeKeyRecipe, "meal plans": bundle.TypeKeyRecipe,
 }
 
-// completionNames are checkbox property names that read as task completion.
-var completionNames = map[string]bool{
+// CompletionNames are checkbox property names that read as task completion.
+// Exported as the one source of truth for the schemaplan whitelist's `done`
+// rule (docs/superpowers/specs/2026-08-07-importv2-whitelist-planner-design.md
+// §4.1), so the rule and this suggestor cannot drift. "resolved" and "got it"
+// are completion predicates on their own row ("Resolved?" on a ticket,
+// "Got It?" on a grocery item); state flags like shipped/paid/sent are
+// deliberately absent — mapping them to done marks an expense or an order as
+// a finished task.
+var CompletionNames = map[string]bool{
 	"done": true, "complete": true, "completed": true, "finished": true, "checked": true,
+	"resolved": true, "got it": true,
 }
 
 // dueNames are date property names that read as a task due date.
@@ -116,19 +124,19 @@ var dueNames = map[string]bool{
 }
 
 func (naive) Suggest(evidence Evidence) (Suggestion, bool) {
-	if typeKey, ok := containerNames[normalize(evidence.ContainerName)]; ok {
+	if typeKey, ok := containerNames[Normalize(evidence.ContainerName)]; ok {
 		return Suggestion{TypeKey: typeKey, Confidence: 0.9, Reason: "container name"}, true
 	}
 	var hasEmail, hasPhone, hasCompletionCheckbox, hasDueDate, hasStatus bool
 	for _, property := range evidence.Properties {
-		name := normalize(property.Name)
+		name := Normalize(property.Name)
 		switch property.Format {
 		case model.RelationFormat_email:
 			hasEmail = true
 		case model.RelationFormat_phone:
 			hasPhone = true
 		case model.RelationFormat_checkbox:
-			hasCompletionCheckbox = hasCompletionCheckbox || completionNames[name]
+			hasCompletionCheckbox = hasCompletionCheckbox || CompletionNames[name]
 		case model.RelationFormat_date:
 			hasDueDate = hasDueDate || dueNames[name]
 		case model.RelationFormat_status:
@@ -146,9 +154,11 @@ func (naive) Suggest(evidence Evidence) (Suggestion, bool) {
 	return Suggestion{}, false
 }
 
-// normalize lowercases and keeps only letters, digits and single spaces, so
-// "✅ To-Do" and "Tasks " both hit the table.
-func normalize(name string) string {
+// Normalize lowercases and keeps only letters, digits and single spaces, so
+// "✅ To-Do" and "Tasks " both hit the table. Exported because the schemaplan
+// whitelist normalizes property names with the same rules before matching
+// them against CompletionNames and its due-date tokens.
+func Normalize(name string) string {
 	var b strings.Builder
 	lastSpace := true
 	for _, r := range strings.ToLower(name) {

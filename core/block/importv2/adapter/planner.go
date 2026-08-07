@@ -42,7 +42,10 @@ func plannerFromRequest(req *pb.RpcObjectImportRequest) plannerParams {
 		params.planner = failingPlanner(fmt.Errorf("ai client: %w", err))
 		return params
 	}
-	params.planner = llmplan.New(client)
+	// "low" is the measured-best effort setting for the kinds task: it beat
+	// "high" on containers typed (36/37 vs 31/37) — the task is
+	// instruction-following-bound, not reasoning-bound.
+	params.planner = llmplan.New(client, llmplan.WithReasoningEffort("low"))
 	return params
 }
 
