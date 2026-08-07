@@ -353,6 +353,25 @@ imports `typesuggest` in `naive.go`; no cycle. The completion-name set is export
 `typesuggest` so the done rule and the type suggestor cannot drift; the due *token* rule is new
 semantics and lives in `whitelist.go` with a cross-reference comment.)
 
+**Forcing full coverage with a grammar cardinality constraint is REJECTED, measured.** The
+tempting fix for unassigned containers is to invert the response to one row per container and set
+`minItems = maxItems = N`, making coverage a grammar guarantee rather than a model behaviour. The
+constraint is genuinely enforced (llama.cpp compiles it to a GBNF quantifier), but what it buys is
+*rows*, never *correctness*. Measured on gemma4:e2b, asking for two fruits under `minItems: 5`:
+
+```
+{"fruits": ["Apple", "Banana", "]}} (or any other valid pair, such as ", "Orange", "Grape"]}
+```
+
+`finish_reason` was `stop`, not `length`: the model tried to close the array, the grammar refused,
+and its escape attempt became a *string value*. The result is **valid JSON containing garbage** —
+it parses, so no downstream check catches it. At our scale that means a model wanting 31 kinds
+under `minItems: 37` mints six garbage type names into the user's space. The current behaviour —
+an unassigned container degrading to its `typesuggest` verdict — is strictly better: it is a
+correct answer of lower ambition, not a fabricated one. Related: `uniqueItems` is silently ignored
+by that same converter (verified: `{minItems:4, uniqueItems:true, enum:[a,b,c,d]}` returned
+`["a","a","a","a"]`), so any inverted shape would need Go-side dedup regardless.
+
 Layout is taken from the model verbatim, as today. A todo-layout kind whose completion checkbox
 did not map to `done` renders an empty title-row checkbox — with done recall measured at 0/1 this
 is the visible cost of the conservative done table; demotion-to-basic rules were considered and
