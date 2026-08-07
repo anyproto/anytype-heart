@@ -2746,3 +2746,94 @@ self-maintains through key usage). Type-scoped R9 tightening for edits
 (recorded divergence above). `activeView` anything — local UI state the
 proto excludes from changes. The swagger annotation names the new op;
 `make openapi` regeneration is pending per the working agreement.
+
+### 8.18 The view family: insertView, moveView, deleteView (2026-08-07 — decisions as built)
+
+Supersedes §8.17's deferral: create, reorder and delete now exist, so the
+view surface is symmetric — everything `GET …/views` can show, PATCH can
+make, change, order and remove. The op set grows to 14, and stays learnable
+because the three additions introduce NO new grammar: the block family's
+verbs (insert/move/delete), view-scoped, sharing `updateView`'s channels
+(`set`, `columns`), `updateView`'s block/view addressing, and
+insertBlocks/moveBlock's targeting words. One noun, zero new verbs.
+
+**Naming: `insertView`, singular — a deliberate break from `insertBlocks`'
+plural.** The blocks payload is a structured RUN (ordered, indent-nested),
+which is what the plural names; views have no internal structure, one view
+per intent is the overwhelming case, and several views are several ops in
+the already-atomic batch. The family symmetry that matters is with
+updateView/moveView/deleteView, all singular. A mode-flagged mega-op
+(`updateView` with create/delete/move modes) was rejected for the same
+reason replaceBlock died in v0.3.5: mode flags are disambiguation load.
+
+**insertView = "updateView aimed at a fresh view."** The base is either
+sensible defaults or a `copyFrom` duplicate; `set`/`columns` then merge on
+top through the SAME code paths (`applyViewSet`/`applyViewColumns`), so
+everything §8.17 established — vocabulary, filter gates, key validation,
+warnings, option create-missing (prewarm covers insertView too; the M5
+bound test fails if it does not) — holds for create without a second
+implementation. `name` is required (a view is a named tab; ≤4096). The
+minted id returns in a new `createdViews` response map ("ops[i]" → id);
+view ids are always server-minted — a payload has no id slot, `set.id`
+stays rejected.
+
+**The bare default is a view someone can look at.** `{"op":"insertView",
+"name":"Recent"}` produces: one column per property the dataview lists,
+ALL visible, sorted lastModifiedDate-descending. This deliberately breaks
+with the native `CreateView` default (`dataview.go:333` — every column
+hidden except name), which is the same disease the GO-5969 fix cured for
+generated type views; matching native here would have shipped the reported
+bug as the create default. The sort matches native (`DefaultLastModified-
+DateSort`). `copyFrom` duplicates an existing view of the same dataview —
+columns, sorts, filters, type, groupBy, card options, even the per-view
+editor state, everything but id and name — because "like that one, but…"
+is the common intent; §6.2 nests `groups`/`objectOrders` per view, so the
+copied editor state re-keys to the new view id on import for free.
+
+**Reorder is targeted, never a rewrite.** `moveView {view, after|before|
+position}` — the moveBlock vocabulary minus `inside` (views are a flat
+list; there is no container), with `position: "first"|"last"` standing
+alone instead of riding `inside`. Omitting all three appends (the
+root-append precedent). `position: "first"` is documented as the "make
+this the default tab" verb: `activeView` is local UI state (§6.2, excluded
+from changes), so the FIRST view is what a fresh client shows. The splice
+adjusts the target index across the removal (move-after-a-later-view is
+the test case); moving relative to itself degenerates to a no-op rather
+than an error. insertView shares the same targeting for its insertion
+point.
+
+**Delete has one guard and one deliberate non-behavior.** Deleting the
+last view is a clean C6 refusal (`cannot delete the last view` — the
+native `DeleteView` invariant surfaced as a 400 with a repair hint, not a
+corrupt object; the editor would regenerate a default on open, but relying
+on that is sync-dependent). The guard counts the BATCH's state, not the
+original document: insert-then-delete in one PATCH is legal and is exactly
+how an agent replaces a type's default view atomically (tested). Deleting
+a view some client had active is deliberately unhandled server-side:
+activeView is per-device local state; that client falls back to the first
+view. Per-view editor state (groups, objectOrders) vanishes with its view —
+the §6.2 nesting makes orphaned group orders structurally impossible.
+
+**Classification: the whole family is `{}` — neither axis** — same
+derivation as §8.17 (all three dataview-bearing object classes refuse the
+Blocks axis; the native view RPCs are ungated). Pinned as a FAMILY: one
+test drives an insert+move+delete batch through PatchObject against a read
+refusing BOTH axes and asserts `EditNeeds{}` at the mutator — flipping any
+of the three in `v2OpEditNeeds` fails it (verified by flipping).
+
+**Tests verified fail-on-revert** (by actually reverting each): the family
+classification (flip → fails), the last-view guard (remove → fails), the
+insertView prewarm coverage (drop from the condition → the M5 bound test
+fails). The create-defaults decision is pinned by construction (the bare-
+insert test asserts every column visible and the sort).
+
+**Deliberately NOT built.** A per-dataview view-count cap (native has
+none; unbounded growth across requests is the insertBlocks precedent, and
+the M7 render-work bound covers per-request work — an advertised cap that
+existing user data already exceeds would strand updateView). Client-
+supplied view ids (nothing needs them pre-creation; minting keeps the id
+space server-shaped). copyFrom across dataview blocks (the source must be
+a view of the addressed dataview — cross-block copying is a read+insert
+composition the agent can already do). View duplication INTO another
+object (out of PATCH's one-object scope by definition). `make openapi`
+regeneration is pending (the PATCH annotation now names all 14 ops).

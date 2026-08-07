@@ -51,6 +51,7 @@ whether you may write. Ask this instead of discovering limits through 403s
 | restructure | ops `moveBlock` / `replaceSubtree` / `deleteBlock` |
 | one table cell | op `setCell` — never rewrite the table |
 | show/hide a view column, edit a view | op `updateView` — works on sets, collections and a type's default view (PATCH the type OBJECT id from `GET …/types/{key}`) |
+| add / reorder / remove a view | ops `insertView` (`copyFrom` duplicates one) · `moveView` (`position:"first"` = default tab) · `deleteView` |
 | create an object | `POST …/objects` — shortcut `{type, name, properties, markdown}` covers most cases |
 | curate a collection | PATCH ops `addItems` / `removeItems` on the collection object |
 | read a set / collection | `GET …/sets/{id}/objects` · `…/collections/{id}/objects` (`?view=`, `?fields=`) |
@@ -78,7 +79,7 @@ whether you may write. Ask this instead of discovering limits through 403s
 
 `PATCH …/objects/{id}` body `{"ops":[…]}` — one atomic batch (≤512 ops,
 ≤256 blocks per op): any invalid op rejects the whole PATCH with
-`ops[i]`-addressed issues. Eleven ops:
+`ops[i]`-addressed issues. Fourteen ops:
 
 ```json
 { "ops": [
@@ -90,7 +91,9 @@ whether you may write. Ask this instead of discovering limits through 403s
   { "op": "moveBlock",    "id": "b9", "inside": "b2", "position": "last" },
   { "op": "deleteBlock",  "id": "b4", "recursive": true },
   { "op": "setCell",      "tableId": "t1", "row": "r2", "col": "c1", "value": "done" },
-  { "op": "updateView",   "columns": {"status": {"hidden": false}} }
+  { "op": "updateView",   "columns": {"status": {"hidden": false}} },
+  { "op": "insertView",   "name": "Board", "copyFrom": "viewAll1",
+    "set": {"type": "kanban", "groupBy": "status"} }
 ] }
 ```
 
@@ -119,6 +122,13 @@ whether you may write. Ask this instead of discovering limits through 403s
   per property key: `{"hidden": false}` shows a column, `null` removes it,
   a new key appends one. Works on Blocks-restricted objects — view config
   is not a block edit.
+- **`insertView`/`moveView`/`deleteView`** complete the family (same
+  addressing, same channels). insertView needs only `name` — bare default:
+  every listed property visible, newest first; `copyFrom` duplicates a view
+  (then `set`/`columns` override); the minted id returns in `createdViews`.
+  moveView targets `after`/`before`/`position` like moveBlock (no
+  `inside`). deleteView refuses the last view — insert the replacement
+  first (one atomic batch swaps a bad default view).
 - Response: new `etag`, `createdBlocks` (payload position → real id),
   `created` (options minted by create-missing),
   `diffStats {blocksAdded, blocksRemoved, blocksChanged, blocksMoved,
@@ -243,5 +253,3 @@ read: no `Idempotency-Key`, `dry_run` ignored.
 - `GET …/types/{key}/schema` is a 501 stub — compose from
   `GET …/types/{key}` + `…/properties/{key}/options`.
 - No option rename/recolor/delete under /v2 (v1 tags admin, Phase 8).
-- **No view create/delete/reorder** — `updateView` edits an existing
-  view's fields and columns; new views only at `POST …/sets` time.
