@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -47,6 +48,7 @@ type fakeReply struct {
 
 type fakeLLM struct {
 	*httptest.Server
+	mu       sync.Mutex // chunks can call concurrently (WithChunkConcurrency)
 	requests []map[string]any
 	replies  []fakeReply
 }
@@ -56,11 +58,13 @@ func newFakeLLM(t *testing.T, replies ...fakeReply) *fakeLLM {
 	f.Server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var body map[string]any
 		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+		f.mu.Lock()
 		f.requests = append(f.requests, body)
 		reply := f.replies[0]
 		if len(f.replies) > 1 {
 			f.replies = f.replies[1:]
 		}
+		f.mu.Unlock()
 		finishReason := reply.finishReason
 		if finishReason == "" {
 			finishReason = "stop"

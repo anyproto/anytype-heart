@@ -150,3 +150,40 @@ func TestBalancedChunks(t *testing.T) {
 		})
 	}
 }
+
+func TestChunkConcurrency(t *testing.T) {
+	t.Run("parallel chunks produce the same plan as sequential", func(t *testing.T) {
+		// given — 6 containers in chunks of 2; every chunk answers identically,
+		// so only the merge order can differ between the two runs
+		schemas := chunkSchemas(6)
+		replies := content(taskReply(2), taskReply(2), taskReply(2))
+
+		// when
+		sequential, err := newTestPlanner(t, newFakeLLM(t, replies...), WithChunkSize(2)).
+			Plan(context.Background(), schemas)
+		require.NoError(t, err)
+		parallel, err := newTestPlanner(t, newFakeLLM(t, replies...),
+			WithChunkSize(2), WithChunkConcurrency(3)).Plan(context.Background(), schemas)
+		require.NoError(t, err)
+
+		// then — planners must be deterministic for identical input
+		assert.Equal(t, sequential, parallel)
+	})
+
+	t.Run("every container is still assigned under concurrency", func(t *testing.T) {
+		// given
+		schemas := chunkSchemas(6)
+		fake := newFakeLLM(t, content(taskReply(2), taskReply(2), taskReply(2))...)
+		planner := newTestPlanner(t, fake, WithChunkSize(2), WithChunkConcurrency(3))
+
+		// when
+		plan, err := planner.Plan(context.Background(), schemas)
+
+		// then
+		require.NoError(t, err)
+		for _, schema := range schemas {
+			assert.Contains(t, plan.Containers, schema.Id)
+		}
+		assert.Len(t, fake.requests, 3, "one call per chunk")
+	})
+}

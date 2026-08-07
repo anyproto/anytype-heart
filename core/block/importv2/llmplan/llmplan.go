@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/anyproto/anytype-heart/core/ai/llmclient"
@@ -32,11 +33,12 @@ const defaultBudget = 5 * time.Minute
 const maxCompletionTokens = 16384
 
 type planner struct {
-	client       *llmclient.Client
-	budget       time.Duration
-	effort       string
-	perContainer bool
-	chunkSize    int
+	client           *llmclient.Client
+	budget           time.Duration
+	effort           string
+	perContainer     bool
+	chunkSize        int
+	chunkConcurrency int
 }
 
 // Option configures the planner.
@@ -73,6 +75,19 @@ func WithReasoningEffort(effort string) Option {
 // that would bloat a type, exactly as it does within a chunk.
 func WithChunkSize(n int) Option {
 	return func(p *planner) { p.chunkSize = n }
+}
+
+// WithChunkConcurrency runs up to n chunk calls at once. Chunks are
+// independent — each is a whole kinds call over its own slice — so this is
+// pure wall-clock: on a cloud endpoint the chunked plan costs barely more than
+// the single call it replaces. It defaults to 1 because a local single-GPU
+// server serializes the work anyway, so parallelism there buys nothing and
+// only multiplies peak memory.
+//
+// Merging stays deterministic regardless of completion order: results are
+// collected per chunk and merged in chunk order, never arrival order.
+func WithChunkConcurrency(n int) Option {
+	return func(p *planner) { p.chunkConcurrency = n }
 }
 
 // WithPerContainerCalls skips the global kinds call and goes straight to the
@@ -141,18 +156,44 @@ func (p *planner) planChunked(ctx context.Context, schemas []schemaplan.Containe
 		lastErr  error
 		chunks   int
 	)
-	for _, chunk := range balancedChunks(len(schemas), p.chunkSize) {
-		chunks++
-		kinds, err := p.planKinds(ctx, schemas[chunk[0]:chunk[1]])
-		if err != nil {
+	bounds := balancedChunks(len(schemas), p.chunkSize)
+	chunks = len(bounds)
+	perChunk := make([][]schemaplan.KindPlan, len(bounds))
+	chunkErrs := make([]error, len(bounds))
+
+	concurrency := p.chunkConcurrency
+	if concurrency < 1 {
+		concurrency = 1
+	}
+	slots := make(chan struct{}, concurrency)
+	var wg sync.WaitGroup
+	for i, bound := range bounds {
+		// Acquire BEFORE launching so chunks start in order: at concurrency 1
+		// this is exactly the sequential loop it replaces, and at higher
+		// concurrency the endpoint still sees chunks begin in a stable order.
+		slots <- struct{}{}
+		wg.Add(1)
+		go func(i int, bound [2]int) {
+			defer wg.Done()
+			defer func() { <-slots }()
+			perChunk[i], chunkErrs[i] = p.planKinds(ctx, schemas[bound[0]:bound[1]])
+		}(i, bound)
+	}
+	wg.Wait()
+
+	// Merge in CHUNK order, not completion order, so the plan is identical
+	// whatever the concurrency — planners must be deterministic for identical
+	// input (the typesuggest seam rule).
+	for i := range bounds {
+		if err := chunkErrs[i]; err != nil {
 			if ctx.Err() != nil {
-				return nil, fmt.Errorf("chunk %d: %w", chunks, err)
+				return nil, fmt.Errorf("chunk %d: %w", i+1, err)
 			}
 			failures++
 			lastErr = err
 			continue
 		}
-		for _, kind := range kinds {
+		for _, kind := range perChunk[i] {
 			// Kinds from different chunks merge when their names normalize
 			// equal; the first chunk's spelling, icon and layout win, and
 			// featured names accumulate (CompleteKinds caps and resolves them).

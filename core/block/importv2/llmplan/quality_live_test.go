@@ -56,6 +56,12 @@ func TestLiveNamingQuality(t *testing.T) {
 		require.NoError(t, err, "IMPORTV2_LLM_CHUNK must be an integer")
 		opts = append(opts, llmplan.WithChunkSize(size))
 		t.Logf("chunk size: %d", size)
+		if rawC := os.Getenv("IMPORTV2_LLM_CHUNK_CONCURRENCY"); rawC != "" {
+			n, err := strconv.Atoi(rawC)
+			require.NoError(t, err)
+			opts = append(opts, llmplan.WithChunkConcurrency(n))
+			t.Logf("chunk concurrency: %d", n)
+		}
 	}
 	// On ollama only "none" changes anything — it strips the <|think|> marker
 	// from the system turn; "low" and "high" are byte-identical requests there.
