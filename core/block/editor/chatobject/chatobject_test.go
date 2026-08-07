@@ -31,8 +31,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -238,6 +238,22 @@ func newFixture(t *testing.T, opts ...fixtureOption) *fixture {
 }
 
 func TestAddMessage(t *testing.T) {
+	t.Run("a validation failure carries the validate: prefix", func(t *testing.T) {
+		// core/api/v2 classifies chat validation refusals to a 400 by
+		// matching this prefix (the "validate: %w" wraps in chatobject.go) —
+		// rewording it would silently degrade those 400s to retry-looping
+		// 500s, so the prefix is pinned here at the producer
+		ctx := context.Background()
+		fx := newFixture(t)
+
+		inputMessage := givenComplexMessage()
+		inputMessage.Message.Text = strings.Repeat("a", chatmodel.MaxMessageLength+1)
+
+		_, err := fx.AddMessage(ctx, nil, inputMessage)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "validate:")
+	})
+
 	t.Run("add own messages", func(t *testing.T) {
 		ctx := context.Background()
 		sessionCtx := session.NewContext()
