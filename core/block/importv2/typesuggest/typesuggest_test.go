@@ -126,3 +126,58 @@ func TestSuggestByPropertyShape(t *testing.T) {
 		assert.Equal(t, bundle.TypeKeyContact, suggestion.TypeKey)
 	})
 }
+
+// The whitelist's done rule uses a wider completion vocabulary than this
+// suggestor (MappingCompletionNames). This pins the boundary: widening the
+// mapping set must never change what the no-LLM default path types, because
+// one checkbox here decides the type of an entire database.
+func TestCompletionVocabulariesAreSeparate(t *testing.T) {
+	t.Run("mapping-only names do not type a database as task", func(t *testing.T) {
+		// given
+		suggestor := NewNaive()
+
+		for _, name := range []string{"Resolved?", "Got It?"} {
+			t.Run(name, func(t *testing.T) {
+				evidence := Evidence{
+					ContainerName: "Comments", // not in containerNames
+					Properties: []Property{
+						{Name: name, Format: model.RelationFormat_checkbox},
+					},
+				}
+
+				// when
+				got, ok := suggestor.Suggest(evidence)
+
+				// then
+				assert.False(t, ok, "%q must not type the container", name)
+				assert.Empty(t, got.TypeKey)
+			})
+		}
+	})
+
+	t.Run("shipped completion names still type a database as task", func(t *testing.T) {
+		// given
+		suggestor := NewNaive()
+		evidence := Evidence{
+			ContainerName: "Comments",
+			Properties: []Property{
+				{Name: "Done", Format: model.RelationFormat_checkbox},
+			},
+		}
+
+		// when
+		got, ok := suggestor.Suggest(evidence)
+
+		// then
+		require.True(t, ok)
+		assert.Equal(t, bundle.TypeKeyTask, got.TypeKey)
+	})
+
+	t.Run("mapping set is a strict superset of the suggestor set", func(t *testing.T) {
+		for name := range CompletionNames {
+			assert.True(t, MappingCompletionNames[name],
+				"%q missing from the mapping set", name)
+		}
+		assert.Greater(t, len(MappingCompletionNames), len(CompletionNames))
+	})
+}

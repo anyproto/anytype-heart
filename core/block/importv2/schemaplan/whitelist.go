@@ -234,6 +234,12 @@ func completeKind(kind KindPlan, schemaById map[string]ContainerSchema,
 		plan     PropertyPlan
 	}
 	union := map[domain.RelationKey]unionEntry{}
+	// Guards the recommended list against several keys sharing one label; see
+	// the dedup note below. Keyed by (name, format) rather than name alone, so
+	// a genuine same-name/different-format pair still lists both — the UI
+	// distinguishes those by format, and suppressing one would hide a relation
+	// that really is different.
+	unionNames := map[nameFormat]bool{}
 	for _, containerId := range kind.ContainerIds {
 		schema := schemaById[containerId]
 		containerPlan := ContainerPlan{TypeKey: typeKey, Reason: "LLM plan"}
@@ -269,7 +275,19 @@ func completeKind(kind KindPlan, schemaById map[string]ContainerSchema,
 			}
 			containerPlan.Properties[property.Id] = propertyPlan
 			if _, ok := union[propertyPlan.Key]; !ok {
-				union[propertyPlan.Key] = unionEntry{property: property, plan: propertyPlan}
+				// The type's recommended list is deduped by DISPLAY NAME as
+				// well as by key. Salted keys (a vocabulary-vetoed property)
+				// and format drift both put several distinct keys behind one
+				// name, and listing "Status" three times on one type is the
+				// very "every board sprouts the others' empty columns"
+				// symptom the merge guards exist to prevent. Only the first
+				// member's entry is recommended; the rest stay on their
+				// container plans, so no data and no relation is lost — the
+				// type just does not advertise duplicates.
+				if !unionNames[nameFormat{name: property.Name, format: property.Format}] {
+					unionNames[nameFormat{name: property.Name, format: property.Format}] = true
+					union[propertyPlan.Key] = unionEntry{property: property, plan: propertyPlan}
+				}
 			}
 		}
 		containers[containerId] = containerPlan
@@ -341,7 +359,7 @@ func bundledTargets(schema ContainerSchema) map[string]domain.RelationKey {
 				dues = append(dues, property.Id)
 			}
 		case model.RelationFormat_checkbox:
-			if typesuggest.CompletionNames[typesuggest.Normalize(property.Name)] {
+			if typesuggest.MappingCompletionNames[typesuggest.Normalize(property.Name)] {
 				dones = append(dones, property.Id)
 			}
 		case model.RelationFormat_status, model.RelationFormat_tag:
@@ -480,6 +498,18 @@ func kindTypeKey(name, fallbackName string, usedKeys map[domain.TypeKey]bool) do
 	}
 	if slug == "" {
 		slug = "kind"
+	}
+	// A slug that collides with a bundled type key must be avoided HERE, not
+	// left for sanitizeNewTypes to re-key. Its rename table is applied to
+	// every container plan's TypeKey, including the bundled verdicts that
+	// unassigned containers inherit from typesuggest — so a kind the model
+	// named "Task" (slug "task", re-keyed to "plan_task") would silently pull
+	// every naive-typed `task` container onto this minted type, bypassing the
+	// coverage gate that exists to keep unrelated databases off one type.
+	// "kind-" keeps the key stable across runs, which §7 re-import
+	// correlation depends on.
+	if bundle.HasObjectTypeByKey(domain.TypeKey(slug)) {
+		slug = "kind-" + slug
 	}
 	key := domain.TypeKey(slug)
 	for suffix := 2; usedKeys[key]; suffix++ {

@@ -53,13 +53,20 @@ func (p *planner) planPerContainer(ctx context.Context, schemas []schemaplan.Con
 	// first spelling seen.
 	kindIndex := map[string]int{}
 	var kinds []schemaplan.KindPlan
+	var failures int
+	var lastErr error
 	for _, schema := range ordered {
 		kindName, err := p.askContainerKind(ctx, schema)
 		if err != nil {
 			if ctx.Err() != nil {
 				return nil, fmt.Errorf("container %q kind call: %w", schema.Id, err)
 			}
-			continue // this container falls back to its typesuggest verdict
+			// This container falls back to its typesuggest verdict. Tolerated
+			// per-container, but see the all-failed check below: an endpoint
+			// that answers nothing must not read as a successful empty plan.
+			failures++
+			lastErr = err
+			continue
 		}
 		normalized := typesuggest.Normalize(kindName)
 		if normalized == "" {
@@ -75,6 +82,14 @@ func (p *planner) planPerContainer(ctx context.Context, schemas []schemaplan.Con
 			ContainerIds: []string{schema.Id},
 		})
 	}
+	// An endpoint that answered nothing usable is a failed plan step, not an
+	// empty one: returning no kinds here would degrade to a fully naive plan
+	// while reporting success, so the user who configured a model would see
+	// neither their types nor the llmPlanFailed warning.
+	if len(kinds) == 0 && failures > 0 {
+		return nil, fmt.Errorf("all %d container kind calls failed, last: %w", failures, lastErr)
+	}
+
 	// Layout is decided per group once membership is known: todo iff the group
 	// maps the bundled done target — same completion rule as the whitelist
 	// (sole completion-named checkbox in a member) — else basic. PluralName,
@@ -125,7 +140,7 @@ func mapsCompletionCheckbox(schema schemaplan.ContainerSchema) bool {
 	completion := 0
 	for _, property := range schema.Properties {
 		if property.Format == model.RelationFormat_checkbox &&
-			typesuggest.CompletionNames[typesuggest.Normalize(property.Name)] {
+			typesuggest.MappingCompletionNames[typesuggest.Normalize(property.Name)] {
 			completion++
 		}
 	}

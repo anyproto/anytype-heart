@@ -448,9 +448,13 @@ func TestCompleteKindsTypeDerivation(t *testing.T) {
 		assert.Equal(t, domain.TypeKey("launch-task-2"), plan.NewTypes[1].Key)
 	})
 
-	t.Run("kind slugging onto a bundled type key still sanitizes clean", func(t *testing.T) {
-		// given — "Task" slugs to the bundled key `task`; sanitizeNewTypes
-		// re-keys it to plan_task and re-points the containers
+	t.Run("kind slugging onto a bundled type key is disambiguated before sanitize", func(t *testing.T) {
+		// given — "Task" would slug to the bundled key `task`. The collision is
+		// avoided here rather than left to sanitizeNewTypes' re-key, because
+		// that rename table is applied to every container plan's TypeKey —
+		// including the bundled verdicts unassigned containers inherit from
+		// typesuggest — which would pull naive-typed `task` containers onto
+		// this minted type behind the coverage gate's back.
 		fx := newFixture(t, []schemaplan.ContainerSchema{
 			{Id: "c1", Name: "Chores", Properties: []schemaplan.PropertySchema{property("p1", "X", model.RelationFormat_longtext)}},
 		})
@@ -461,8 +465,8 @@ func TestCompleteKindsTypeDerivation(t *testing.T) {
 
 		// then
 		require.Len(t, clean.NewTypes, 1)
-		assert.Equal(t, domain.TypeKey("plan_task"), clean.NewTypes[0].Key)
-		assert.Equal(t, domain.TypeKey("plan_task"), clean.Containers["c1"].TypeKey)
+		assert.Equal(t, domain.TypeKey("kind-task"), clean.NewTypes[0].Key)
+		assert.Equal(t, domain.TypeKey("kind-task"), clean.Containers["c1"].TypeKey)
 	})
 
 	t.Run("unassigned container gets the typesuggest verdict and bundled-only mappings", func(t *testing.T) {

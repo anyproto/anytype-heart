@@ -124,3 +124,21 @@ func TestPlanPerContainer(t *testing.T) {
 		assert.Equal(t, "container name", got.Containers["ds1"].Reason)
 	})
 }
+
+func TestPerContainerAllCallsFail(t *testing.T) {
+	t.Run("an endpoint that answers nothing usable fails the plan", func(t *testing.T) {
+		// given - every per-container call returns unparseable content, which
+		// is the context-starved runtime this planner exists for going wrong
+		fake := newFakeLLM(t, content("not json at all", "not json at all",
+			"not json at all", "not json at all")...)
+		planner := newTestPlanner(t, fake, WithPerContainerCalls())
+
+		// when
+		_, err := planner.Plan(context.Background(), perContainerSchemas)
+
+		// then - silence here would hand the user a naive plan while reporting
+		// success, so they would see neither their types nor a warning
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "container kind calls failed")
+	})
+}

@@ -105,18 +105,36 @@ var containerNames = map[string]domain.TypeKey{
 	"meal plan": bundle.TypeKeyRecipe, "meal plans": bundle.TypeKeyRecipe,
 }
 
-// CompletionNames are checkbox property names that read as task completion.
-// Exported as the one source of truth for the schemaplan whitelist's `done`
-// rule (docs/superpowers/specs/2026-08-07-importv2-whitelist-planner-design.md
-// §4.1), so the rule and this suggestor cannot drift. "resolved" and "got it"
-// are completion predicates on their own row ("Resolved?" on a ticket,
-// "Got It?" on a grocery item); state flags like shipped/paid/sent are
-// deliberately absent — mapping them to done marks an expense or an order as
-// a finished task.
+// CompletionNames are checkbox property names that read as task completion,
+// as read by this suggestor. Widening it changes what the no-LLM default path
+// does, so it stays as shipped — see MappingCompletionNames.
 var CompletionNames = map[string]bool{
 	"done": true, "complete": true, "completed": true, "finished": true, "checked": true,
-	"resolved": true, "got it": true,
 }
+
+// MappingCompletionNames is the wider set the schemaplan whitelist's `done`
+// rule uses (docs/superpowers/specs/2026-08-07-importv2-whitelist-planner-design.md
+// §4.1). It is a superset of CompletionNames, and the two deliberately differ
+// because the stakes differ: Suggest infers a type for an ENTIRE database from
+// one checkbox (a "Comments" table with a "Resolved" column would become Task,
+// every row carrying the todo layout), while the mapping rule only routes ONE
+// property onto the bundled done relation, checkbox→checkbox and
+// format-preserving. The wider vocabulary is safe at the second stake and not
+// at the first.
+//
+// "resolved" and "got it" are completion predicates on their own row
+// ("Resolved?" on a ticket, "Got It?" on a grocery item). State flags like
+// shipped/paid/sent are deliberately absent from both sets — mapping them to
+// done marks an expense or an order as a finished task.
+var MappingCompletionNames = func() map[string]bool {
+	out := make(map[string]bool, len(CompletionNames)+2)
+	for name := range CompletionNames {
+		out[name] = true
+	}
+	out["resolved"] = true
+	out["got it"] = true
+	return out
+}()
 
 // dueNames are date property names that read as a task due date.
 var dueNames = map[string]bool{
