@@ -483,3 +483,41 @@ func reportLLMRun(t *testing.T, schemas []schemaplan.ContainerSchema, plan schem
 		t.Log("NOTE: no emitted object changed type; the model agreed with the built-in rules")
 	}
 }
+
+// TestDumpRealSchemas writes the workspace's container schemas — the exact
+// evidence the planner sees — to a file, replaying the committed cassette and
+// calling no LLM. It exists so the naming-quality harness
+// (llmplan.TestLiveNamingQuality) can be pointed at real data reproducibly;
+// that data used to live in a scratchpad and was lost to a reboot.
+//
+//	IMPORTV2_DUMP_SCHEMAS=/tmp/schemas.json \
+//	  go test ./core/block/importv2/notion/ -run TestDumpRealSchemas -count=1
+func TestDumpRealSchemas(t *testing.T) {
+	out := os.Getenv("IMPORTV2_DUMP_SCHEMAS")
+	if out == "" {
+		t.Skip("set IMPORTV2_DUMP_SCHEMAS to write the container schemas")
+	}
+	cassettePath := os.Getenv("IMPORTV2_LLM_CASSETTE")
+	if cassettePath == "" {
+		cassettePath = filepath.Join("testdata", "cassettes", "workspace")
+	}
+	if _, err := os.Stat(cassettePath + ".yaml"); err != nil {
+		t.Skipf("no cassette at %s.yaml", cassettePath)
+	}
+
+	var schemas []schemaplan.ContainerSchema
+	capturing := schemaplan.PlannerFunc(func(_ context.Context, in []schemaplan.ContainerSchema) (schemaplan.Plan, error) {
+		schemas = in
+		// No plan: the converter degrades to its naive path, which is all this
+		// test needs — it only wants the evidence.
+		return schemaplan.Plan{}, fmt.Errorf("dump only")
+	})
+	runNotionConvert(t, "cassette-token", cassettePath, recorder.ModeReplayOnly,
+		WithPlanner(capturing), WithContentSamples())
+
+	require.NotEmpty(t, schemas, "no container schemas captured")
+	raw, err := json.MarshalIndent(schemas, "", " ")
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(out, raw, 0o644))
+	t.Logf("wrote %d container schemas to %s (%d bytes)", len(schemas), out, len(raw))
+}
