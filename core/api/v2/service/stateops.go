@@ -81,6 +81,11 @@ type v2StateApplier struct {
 	// marshalResolver is the ONE store-backed resolver reused across every
 	// marshal of this PATCH (review A′2).
 	marshalResolver *storeresolver.Resolvers
+	// marshalCount counts whole-document renders (marshalDoc calls) — the
+	// unit the M7 render-work bound is denominated in. Tests pin it so an op
+	// that claims to keep the view valid in place (v2OpRebuildsView false)
+	// cannot silently regress to a re-marshal per op.
+	marshalCount int
 }
 
 func newV2StateApplier(s *V2Service, spaceId, objectId string, sbType model.SmartBlockType, st *state.State, resolvers *creatingResolvers) *v2StateApplier {
@@ -131,6 +136,7 @@ func (a *v2StateApplier) marshalOptions() anyblockjson.Options {
 // guard and dropped a whole subtree, and the clamped after-document then
 // validated clean. Failing here rejects the whole PATCH instead.
 func (a *v2StateApplier) marshalDoc(onWarning func(anyblockjson.Issue)) ([]byte, error) {
+	a.marshalCount++
 	opts := a.marshalOptions()
 	var degraded []v2model.Issue
 	if onWarning == nil {
@@ -220,6 +226,19 @@ func (a *v2StateApplier) currentDoc() ([]byte, error) {
 // mutated invalidates the view after a state mutation.
 func (a *v2StateApplier) mutated() {
 	a.view, a.viewBody = nil, nil
+}
+
+// textEdited invalidates only the marshaled body after an in-place view
+// update (surface review M7): the caller has already written the CANONICAL
+// exported form of everything it changed into the view, so later ops keep
+// addressing a valid view without a whole-document re-marshal — the O(ops ×
+// document) product this op class no longer pays. The body is dropped
+// because diffStats and the R5 net need the real after-document; currentDoc
+// re-marshals once, at the end. An op may only call this instead of
+// mutated() if its view update is byte-identical to a re-marshal — and must
+// then be listed false in v2OpRebuildsView.
+func (a *v2StateApplier) textEdited() {
+	a.viewBody = nil
 }
 
 // importOptions are the fragment-import options: the Phase-2 create-missing
@@ -1149,6 +1168,12 @@ func (a *v2StateApplier) applyReplaceText(op opReplaceText, opPath string) error
 		return fmt.Errorf("block %s not in state", fullId)
 	}
 	m := b.Copy().Model()
+	// canonical is what a full re-marshal would emit as this block's "text":
+	// the raw splice for the literal channels (§8.4 — code and embed render
+	// t.Text verbatim), the render-of-the-parse for markup text — parse can
+	// merge marks the splice left adjacent, so the raw splice is NOT always
+	// its own canonical form.
+	canonical := text
 	switch content := m.Content.(type) {
 	case *model.BlockContentOfText:
 		if content.Text == nil {
@@ -1168,6 +1193,10 @@ func (a *v2StateApplier) applyReplaceText(op opReplaceText, opPath string) error
 			} else {
 				content.Text.Marks = &model.BlockContentTextMarks{Marks: marks}
 			}
+			// the exporter renders renderInline(text, marks) with mark
+			// compaction OFF on the edit path, so this IS the re-marshal's
+			// output for the field
+			canonical = anyblockjson.RenderInlineText(plain, marks)
 		}
 	case *model.BlockContentOfLatex:
 		if content.Latex == nil {
@@ -1180,7 +1209,18 @@ func (a *v2StateApplier) applyReplaceText(op opReplaceText, opPath string) error
 			v2model.Issue{Path: opPath + ".id", Message: "replaceText only applies to text-bearing blocks"})
 	}
 	a.st.Set(simple.New(m))
-	a.mutated()
+	// incremental view maintenance (surface review M7): replaceText changes
+	// exactly ONE exported field of one block — no ids, no structure, no
+	// indents — so the view stays valid with that field updated in place and
+	// the whole-document re-marshal the next op would otherwise pay is
+	// skipped. This is what makes a batch of text edits O(document), not
+	// O(ops × document), under the object lock.
+	if canonical == "" {
+		delete(block, "text") // the exporter omits empty text (setNonEmpty)
+	} else {
+		block["text"] = canonical
+	}
+	a.textEdited()
 	return nil
 }
 

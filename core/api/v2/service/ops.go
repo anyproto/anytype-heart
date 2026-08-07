@@ -124,10 +124,16 @@ var v2OpRebuildsView = map[string]bool{
 	"insertBlocks":   true,
 	"moveBlock":      true,
 	"deleteBlock":    true,
-	"replaceText":    true,
-	"setCell":        true,
-	"addItems":       true,
-	"removeItems":    true,
+	// replaceText maintains the view in place (stateops.go textEdited): it
+	// changes exactly one exported field of one block, and it writes the
+	// canonical rendering a re-marshal would emit. It is also the one op that
+	// inherently arrives many-per-batch (one find/replace each), so exempting
+	// it is what lets an agent batch hundreds of text edits on a large
+	// document without tripping the render-work bound.
+	"replaceText": false,
+	"setCell":     true,
+	"addItems":    true,
+	"removeItems": true,
 }
 
 // v2OutputOnlyPropertyKeys are the SPEC §4a output-only property keys a

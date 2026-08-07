@@ -1046,6 +1046,60 @@ func TestPatchObject(t *testing.T) {
 		assert.Contains(t, apiErr.Issues[0].Hint, "split the edit")
 	})
 
+	t.Run("a replaceText batch is exempt from the work bound and applies on a large document (M7)", func(t *testing.T) {
+		// replaceText keeps the view valid in place (v2OpRebuildsView false),
+		// so a full 512-op text-edit batch on a 2,500-block document costs two
+		// document renders, not 512 — and must NOT trip the render-work bound
+		// the moveBlock batch above trips
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editManyBlocksDoc(2500)), "headB")
+		ops := make([]string, v2MaxOpsPerPatch)
+		for i := range ops {
+			ops[i] = `{"op":"replaceText","id":"blockSibling2","find":"report","replace":"report"}`
+		}
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(ops...), "", false)
+
+		require.NoError(t, err)
+		require.NotNil(t, *captured)
+	})
+
+	t.Run("sequential replaceText matches against the canonical inline form (M7)", func(t *testing.T) {
+		// op 1 splices "**re****port**" — raw adjacent bolds whose canonical
+		// rendering is "**report**". The view op 2 addresses must carry the
+		// canonical form (what a re-marshal emits and what the agent would
+		// read back), whether the view was rebuilt or maintained in place.
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
+
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(
+			`{"op":"replaceText","id":"blockSibling2","find":"report","replace":"**re****port**"}`,
+			`{"op":"replaceText","id":"blockSibling2","find":"the Q3 **report**","replace":"the Q3 **REPORT**"}`,
+		), "", false)
+
+		require.NoError(t, err)
+		assert.Equal(t, v2model.DiffStats{BlocksChanged: 1}, result.DiffStats)
+		blocks := docBlocks(stateDoc(t, *captured))
+		assert.Equal(t, "the Q3 **REPORT** and Q3 plan", blocks[3]["text"])
+	})
+
+	t.Run("an op after replaceText sees the replaced text (M7)", func(t *testing.T) {
+		// updateBlock merges on the view block — if the in-place text update
+		// were wrong or stale, the merge would resurrect the pre-replace text
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(
+			`{"op":"replaceText","id":"blockChild1","find":"child","replace":"kid"}`,
+			`{"op":"updateBlock","id":"blockChild1","set":{"color":"red"}}`,
+		), "", false)
+
+		require.NoError(t, err)
+		blocks := docBlocks(stateDoc(t, *captured))
+		assert.Equal(t, "kid", blocks[2]["text"], "the merge must ride on the replaced text")
+		assert.Equal(t, "red", blocks[2]["color"])
+	})
+
 	t.Run("a modest batch on a large document stays under the work bound (M7)", func(t *testing.T) {
 		// the bound must catch the abusive product, not ordinary edits to big
 		// documents: 8 ops × 2,500 blocks is well inside the budget
@@ -1556,4 +1610,60 @@ func jsonReplace(t *testing.T, doc, from, to string) []byte {
 	out := strings.Replace(doc, from, to, 1)
 	require.NotEqual(t, doc, out, "replacement must apply")
 	return []byte(out)
+}
+
+// TestApplierRenderCounts pins the M7 bounded-work property in the unit the
+// render-work bound is denominated in: whole-document renders (marshalDoc
+// calls). A wall-clock assertion would be flaky in CI; a render count is not.
+func TestApplierRenderCounts(t *testing.T) {
+	ctx := context.Background()
+
+	// newApplier builds a raw applier over a private state — the same
+	// construction applyPatchOps performs.
+	newApplier := func(t *testing.T, fx *v2Fixture, doc string) *v2StateApplier {
+		t.Helper()
+		edit, err := editFromRead("obj1", editRead(t, doc))
+		require.NoError(t, err)
+		resolvers := newCreatingResolvers(ctx, fx.mw, testSpaceId, fx.store.SpaceIndex(testSpaceId), false)
+		return newV2StateApplier(fx.V2Service, testSpaceId, "obj1", edit.SbType, edit.State, resolvers)
+	}
+
+	t.Run("a replaceText batch renders the document exactly twice", func(t *testing.T) {
+		// begin + the final after-document — NOT once per op: replaceText
+		// maintains the view in place (M7), which is what turns a text-edit
+		// batch from O(ops × document) into O(document) under the object lock
+		fx := newV2Fixture(t)
+		applier := newApplier(t, fx, editBaseDoc)
+		_, err := applier.begin()
+		require.NoError(t, err)
+
+		op := json.RawMessage(`{"op":"replaceText","id":"blockSibling2","find":"report","replace":"report"}`)
+		for i := 0; i < 50; i++ {
+			require.NoError(t, applier.apply(i, op))
+		}
+		_, err = applier.currentDoc()
+
+		require.NoError(t, err)
+		assert.Equal(t, 2, applier.marshalCount,
+			"50 replaceText ops must cost begin + final renders only")
+	})
+
+	t.Run("structural ops still rebuild the view per op", func(t *testing.T) {
+		// the contrast pin: two moveBlocks cost begin + one rebuild (for the
+		// second op's view) + the final after-document — the render-work
+		// bound counts exactly these ops (v2OpRebuildsView)
+		fx := newV2Fixture(t)
+		applier := newApplier(t, fx, editBaseDoc)
+		_, err := applier.begin()
+		require.NoError(t, err)
+
+		op := json.RawMessage(`{"op":"moveBlock","id":"blockParent1"}`)
+		for i := 0; i < 2; i++ {
+			require.NoError(t, applier.apply(i, op))
+		}
+		_, err = applier.currentDoc()
+
+		require.NoError(t, err)
+		assert.Equal(t, 3, applier.marshalCount)
+	})
 }
