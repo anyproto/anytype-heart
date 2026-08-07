@@ -38,8 +38,65 @@ import (
 
 // v2MaxOpsPerPatch bounds one PATCH batch. Each op re-renders the document
 // view while the object lock is held, so an unbounded batch would hold the
-// lock for O(ops × document) work (review A′2).
+// lock for O(ops × document) work (review A′2). The op count alone does not
+// bound that product — the document factor is bounded separately by
+// v2MaxPatchRenderWork.
 const v2MaxOpsPerPatch = 512
+
+// v2MaxPatchRenderWork bounds the marshal work one PATCH may do under the
+// object lock, in block-renders: every view-rebuilding op (v2OpRebuildsView)
+// forces the next op to re-marshal the WHOLE document, so a batch's worst
+// case is rebuildingOps × (document blocks + payload blocks) block-renders.
+// The 512-op cap bounds only the first factor (surface review M7): 400
+// trivial replaceText ops on a 24,000-block document measured 71 s inside
+// PatchObject (~7 µs per block-render on a desktop machine) — all of it
+// while ObjectOpen, sync and every other RPC on the object wait. 2^20
+// block-renders ≈ 7 s worst case; an over-bound batch is refused before any
+// op applies, with the numbers, and splitting the edit across several PATCH
+// requests releases the object between batches — same total work, no
+// minutes-long lock hold.
+const v2MaxPatchRenderWork = 1 << 20
+
+// checkPatchRenderWork computes the worst-case block-render product of a
+// batch against a document of docBlocks blocks and refuses an over-bound
+// batch whole, before any op applies — with the numbers, so the caller can
+// size its batches. Payload blocks count into the document factor (an insert
+// inflates what every later op re-renders); a markdown payload counts as the
+// parsed-run cap, since parsing happens later. Ops that fail to probe
+// contribute nothing — they fail in the applier, on their own op path,
+// before any rebuild.
+func checkPatchRenderWork(ops []json.RawMessage, docBlocks int) error {
+	rebuilds, payload := 0, 0
+	for _, raw := range ops {
+		var probe struct {
+			Op       string            `json:"op"`
+			Blocks   []json.RawMessage `json:"blocks"`
+			Markdown string            `json:"markdown"`
+		}
+		if err := json.Unmarshal(raw, &probe); err != nil {
+			continue
+		}
+		if v2OpRebuildsView[probe.Op] {
+			rebuilds++
+		}
+		payload += len(probe.Blocks)
+		if probe.Markdown != "" {
+			payload += v2MaxBlocksPerOp
+		}
+	}
+	work := rebuilds * (docBlocks + payload)
+	if work <= v2MaxPatchRenderWork {
+		return nil
+	}
+	return v2model.ValidationFailed("this PATCH is too much re-rendering work for one atomic batch",
+		v2model.Issue{
+			Path: "/ops",
+			Message: fmt.Sprintf(
+				"%d view-rebuilding ops each re-render the whole document (%d blocks, %d more from payloads): ~%d block-renders exceeds the %d limit",
+				rebuilds, docBlocks, payload, work, v2MaxPatchRenderWork),
+			Hint: "split the edit across several smaller PATCH requests — the object is released between batches",
+		})
+}
 
 // v2PatchRequest is the PATCH body: the closed op list, nothing else.
 type v2PatchRequest struct {
@@ -237,6 +294,12 @@ func (s *V2Service) applyPatchOps(ctx context.Context, spaceId, objectId string,
 	applier := newV2StateApplier(s, spaceId, objectId, edit.SbType, edit.State, resolvers)
 	beforeDoc, err := applier.begin()
 	if err != nil {
+		return nil, err
+	}
+	// the M7 render-work bound, checked against the authoritative view the
+	// begin() marshal just produced: refusing here costs one marshal — the
+	// same floor a GET pays — instead of the batch's whole product
+	if err := checkPatchRenderWork(ops, len(applier.view.blocks)); err != nil {
 		return nil, err
 	}
 	for i, raw := range ops {

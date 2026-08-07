@@ -1003,12 +1003,19 @@ func (a *v2StateApplier) applyInsertBlocks(op opInsertBlocks, opPath string) err
 	return nil
 }
 
+// v2MaxBlocksPerOp caps one op's payload run — the maxItems the served op
+// schemas already advertise for the blocks channel (insertBlocks,
+// replaceSubtree). Advertised but unenforced, one op could inflate the
+// document by tens of thousands of blocks and every later op in the batch
+// re-rendered them all under the object lock (surface review M7).
+const v2MaxBlocksPerOp = 256
+
 // v2MaxMarkdownBlocksPerOp caps how many blocks one op's markdown payload
-// may parse to — the same 256 the blocks channel's schema pins (maxItems).
-// The markdown channel is byte-bounded by its schema, but 3 bytes can encode
-// one block, so without a parsed-run cap a maximum-size body reaches ~350k
-// blocks per op — the two payload channels must share one cap.
-const v2MaxMarkdownBlocksPerOp = 256
+// may parse to — the same cap as the blocks channel. The markdown channel is
+// byte-bounded by its schema, but 3 bytes can encode one block, so without a
+// parsed-run cap a maximum-size body reaches ~350k blocks per op — the two
+// payload channels must share one cap.
+const v2MaxMarkdownBlocksPerOp = v2MaxBlocksPerOp
 
 // insertPayload picks the insertBlocks payload channel: the blocks array, or
 // the markdown authoring alternative (§7.1) parsed into the same flat-run
@@ -1314,6 +1321,17 @@ func (a *v2StateApplier) decodePayloadRun(raws []json.RawMessage, opPath, field 
 	if len(raws) == 0 {
 		return nil, v2model.ValidationFailed("blocks must not be empty",
 			v2model.Issue{Path: opPath + "." + field, Message: "give at least one block"})
+	}
+	// the maxItems the op schemas advertise, enforced (surface review M7): an
+	// unbounded run inflates the document every later op re-renders under the
+	// object lock (the markdown channel enforces the same cap at parse time)
+	if len(raws) > v2MaxBlocksPerOp {
+		return nil, v2model.ValidationFailed("too many blocks in one op",
+			v2model.Issue{
+				Path:    opPath + "." + field,
+				Message: fmt.Sprintf("%d blocks exceeds the %d-block per-op limit the op schema advertises (maxItems)", len(raws), v2MaxBlocksPerOp),
+				Hint:    "split the run across several ops — the blocks and markdown channels share this cap",
+			})
 	}
 	run := make([]map[string]any, 0, len(raws))
 	prev := -1

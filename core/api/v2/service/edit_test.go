@@ -52,6 +52,23 @@ const editLayoutDoc = `{"version":1,"id":"obj1","type":"page","blocks":[` +
 	`{"indent":1,"id":"colOne1","type":"column"},` +
 	`{"indent":2,"id":"inCol1","type":"paragraph","text":"in column"}]}`
 
+// editManyBlocksDoc builds a document of n filler paragraphs after the base
+// heading/parent/child/sibling four — the pre-existing-large-document shape
+// of the M7 render-work bound.
+func editManyBlocksDoc(n int) string {
+	var sb strings.Builder
+	sb.WriteString(`{"version":1,"id":"obj1","type":"page","properties":{"name":"Doc"},"blocks":[` +
+		`{"id":"blockHeading1","type":"heading1","text":"Section"},` +
+		`{"id":"blockParent1","type":"paragraph","text":"parent"},` +
+		`{"indent":1,"id":"blockChild1","type":"paragraph","text":"child"},` +
+		`{"id":"blockSibling2","type":"paragraph","text":"the Q3 report and Q3 plan"}`)
+	for i := 0; i < n; i++ {
+		fmt.Fprintf(&sb, `,{"id":"filler%06d","type":"paragraph","text":"filler %d"}`, i, i)
+	}
+	sb.WriteString(`]}`)
+	return sb.String()
+}
+
 // editRead builds a live read from an AnyBlock document.
 func editRead(t *testing.T, doc string) apicore.ObjectRead {
 	t.Helper()
@@ -964,6 +981,85 @@ func TestPatchObject(t *testing.T) {
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
 		require.NotEmpty(t, apiErr.Issues)
+	})
+
+	t.Run("a blocks run beyond the advertised per-op cap is refused (M7)", func(t *testing.T) {
+		// the op schemas advertise maxItems 256 on the blocks channel; before
+		// M7 nothing enforced it, so one op could inflate the document by
+		// 24,000 blocks that every later op re-rendered under the object lock
+		fx := newV2Fixture(t)
+		fx.expectMutate(editRead(t, editBaseDoc))
+		run := make([]string, v2MaxBlocksPerOp+1)
+		for i := range run {
+			run[i] = `{"type":"paragraph","text":"x"}`
+		}
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(fmt.Sprintf(`{"op":"insertBlocks","after":"blockHeading1","blocks":[%s]}`, strings.Join(run, ","))), "", false)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
+		assert.Equal(t, "too many blocks in one op", apiErr.Message)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "ops[0].blocks", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Message, "256")
+	})
+
+	t.Run("replaceSubtree shares the per-op blocks cap (M7)", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		fx.expectMutate(editRead(t, editBaseDoc))
+		run := make([]string, v2MaxBlocksPerOp+1)
+		for i := range run {
+			run[i] = `{"type":"paragraph","text":"x"}`
+		}
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(fmt.Sprintf(`{"op":"replaceSubtree","id":"blockParent1","blocks":[%s]}`, strings.Join(run, ","))), "", false)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, "too many blocks in one op", apiErr.Message)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "ops[0].blocks", apiErr.Issues[0].Path)
+	})
+
+	t.Run("a batch whose re-render product exceeds the work bound is refused whole (M7)", func(t *testing.T) {
+		// the 512-op cap bounds one factor of the O(ops × document) product;
+		// this bounds the product itself: 512 structural ops on a 2,500-block
+		// document is ~1.28M block-renders of lock-held marshal work — over
+		// v2MaxPatchRenderWork — and is refused after the begin() marshal,
+		// before any op applies
+		fx := newV2Fixture(t)
+		fx.expectMutate(editRead(t, editManyBlocksDoc(2500)))
+		ops := make([]string, v2MaxOpsPerPatch)
+		for i := range ops {
+			ops[i] = `{"op":"moveBlock","id":"blockParent1"}`
+		}
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(ops...), "", false)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
+		assert.Equal(t, "this PATCH is too much re-rendering work for one atomic batch", apiErr.Message)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "/ops", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Message, "block-renders")
+		assert.Contains(t, apiErr.Issues[0].Hint, "split the edit")
+	})
+
+	t.Run("a modest batch on a large document stays under the work bound (M7)", func(t *testing.T) {
+		// the bound must catch the abusive product, not ordinary edits to big
+		// documents: 8 ops × 2,500 blocks is well inside the budget
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editManyBlocksDoc(2500)), "headB")
+		ops := make([]string, 8)
+		for i := range ops {
+			ops[i] = `{"op":"replaceText","id":"blockSibling2","find":"report","replace":"report"}`
+		}
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(ops...), "", false)
+
+		require.NoError(t, err)
+		require.NotNil(t, *captured)
 	})
 
 	t.Run("a batch beyond the op cap is refused (A′2)", func(t *testing.T) {

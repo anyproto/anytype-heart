@@ -111,6 +111,25 @@ func restrictionRefusal(refused error, op, opPath, axis string) error {
 		})
 }
 
+// v2OpRebuildsView marks the ops whose apply invalidates the document view
+// (stateops.go), forcing the NEXT op to re-marshal the whole document under
+// the object lock. The render-work bound (edit.go patchRenderWork, surface
+// review M7) counts exactly these; an op listed false here must keep the
+// view valid in place. Unknown op names never reach a rebuild — the batch
+// fails at dispatch first.
+var v2OpRebuildsView = map[string]bool{
+	"setProperties":  true,
+	"updateBlock":    true,
+	"replaceSubtree": true,
+	"insertBlocks":   true,
+	"moveBlock":      true,
+	"deleteBlock":    true,
+	"replaceText":    true,
+	"setCell":        true,
+	"addItems":       true,
+	"removeItems":    true,
+}
+
 // v2OutputOnlyPropertyKeys are the SPEC §4a output-only property keys a
 // setProperties must reject. isFavorite is deliberately absent — SPEC §3
 // marks it authorable.
