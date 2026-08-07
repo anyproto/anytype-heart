@@ -21,8 +21,10 @@ anytype spaces                             # space ids, when none is known
 anytype find --space bafyspace1 --type task --filter 'done = false'
 # 1. Prepare the Q3 report (task)
 # 2. Ship the beta (task)
+anytype edit-text --object 1 --find "Q3" --replace "Q4"
+# --block is optional: the snippet locates the block when it matches
+# exactly one; an ambiguous snippet refuses and lists the candidates
 anytype read --object 1 --mode outline     # block labels + structure
-anytype edit-text --object 1 --block ab3f2 --find "Q3" --replace "Q4"
 ```
 
 1. **spaces** when no space id is known — it lists `name — id`.
@@ -39,7 +41,7 @@ anytype edit-text --object 1 --block ab3f2 --find "Q3" --replace "Q4"
 |---|---|
 | complete/close a task object | `set-properties --object 1 --set '{"done":true}'` (or the status option describe shows, e.g. `{"status":"Done"}`) — NOT check-item, which is for checkbox blocks inside a document |
 | tick a checklist line in a note | `check-item --object 1 --block ab3f2 --checked` |
-| change one word/phrase | `edit-text` with a short unique snippet — never retype the block |
+| change one word/phrase | `edit-text` with a short unique snippet — never retype the block; `--block` only when the snippet alone is ambiguous (the error lists the candidates) |
 | delete a word/phrase | `edit-text --find "the phrase" --replace ""` — an empty replacement deletes |
 | add notes/sections/checklists | `add-blocks --markdown '…'` — write markdown, the server parses it |
 | fill one table cell | `set-cell` — never rewrite the table; row/col labels come from full read |

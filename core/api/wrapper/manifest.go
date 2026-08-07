@@ -208,14 +208,17 @@ func Tools() []Tool {
 		},
 		{
 			Name:        "edit_text",
-			Description: "Replace text inside one block: give a short exact snippet to find and its replacement. The snippet must occur exactly once in the block. Text is markdown source — ** [ ] etc. format.",
+			Description: "Replace text inside one block: give a short exact snippet to find and its replacement. The snippet must occur exactly once in the block. block is optional — when omitted, the snippet itself must pin down exactly one block. Text is markdown source — ** [ ] etc. format.",
 			Args: []Arg{
 				{Name: "object", Type: ArgString, Required: true, MaxLen: maxKeyLen, Description: objectArgDescription},
-				{Name: "block", Type: ArgString, Required: true, MaxLen: maxRefLen, Description: blockArgDescription},
 				{Name: "find", Type: ArgString, Required: true, MaxLen: maxFindLen, Description: "exact text to replace, as it appears in the block"},
 				{Name: "replace", Type: ArgString, Required: true, AllowEmpty: true, MaxLen: maxFindLen, Description: "the new text — empty deletes the found text"},
+				// block is OPTIONAL (§8.21): a required block id is unknowable
+				// on turn one, and both benchmarked small models routed around
+				// the tool entirely rather than call read first
+				{Name: "block", Type: ArgString, MaxLen: maxRefLen, Description: blockArgDescription + "; optional — when omitted the find snippet locates the block, and must match exactly one"},
 			},
-			Example: map[string]any{"object": "1", "block": "ab3f2", "find": "Q3", "replace": "Q4"},
+			Example: map[string]any{"object": "1", "find": "Q3", "replace": "Q4"},
 			Tier:    TierSmall,
 		},
 		{

@@ -499,6 +499,9 @@ var opsVocab = []struct{ from, to string }{
 	{"ops[0].id", "block"},
 	{"ops[0].", ""},
 	{"GET the object with ?outline=true to list block ids", "run read with mode=outline to list the block labels"},
+	// edit_text deliberately has no replace_all (§8.6) — the server's escape
+	// hint would steer the model into an argument the tool rejects
+	{`, or set "replace_all": true`, ""},
 }
 
 // translateOpsError rewrites a *ToolError's text and issue paths from the op
