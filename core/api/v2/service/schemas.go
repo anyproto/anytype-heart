@@ -150,8 +150,8 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 		// (SPEC §12 filterNode) and therefore not constrained-decodable
 		schema: `{"$defs":{"filterNode":{"oneOf":[` +
 			`{"type":"object","additionalProperties":false,"required":["operator","filters"],"properties":{` +
-			`"operator":{"type":"string","enum":["and","or"]},"filters":{"type":"array","maxItems":50,"items":{"$ref":"#/$defs/filterNode"}}}},` +
-			`{"type":"object","additionalProperties":false,"required":["property"],"properties":{` +
+			`"operator":{"type":"string","enum":["and","or"]},"filters":{"type":"array","minItems":1,"maxItems":50,"items":{"$ref":"#/$defs/filterNode"}}}},` +
+			`{"type":"object","additionalProperties":false,"required":["property","condition"],"properties":{` +
 			`"property":{"type":"string","maxLength":256},` +
 			`"condition":{"type":"string","enum":["equal","notEqual","greater","less","greaterOrEqual","lessOrEqual","contains","notContains","in","notIn","empty","notEmpty","allIn","notAllIn","exactIn","notExactIn","exists"]},` +
 			`"value":{"description":"leaf value — select/multiSelect: option NAMES; date: unix SECONDS (RFC 3339 strings belong to the compact filter string, which converts them)"},` +

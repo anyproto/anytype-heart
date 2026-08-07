@@ -138,6 +138,38 @@ func TestV2CreateSet(t *testing.T) {
 		assert.Contains(t, apiErr.Issues[0].Message, `a set is already scoped to type "chore"`)
 	})
 
+	// M3 (surface review): the same match-everything shapes the query path
+	// rejects. Here the stakes are higher — a set PERSISTS its filter, so a
+	// malformed one is not a bad query but a set that quietly contains the
+	// whole space, permanently.
+	t.Run("M3: a match-everything filter shape is refused, not persisted", func(t *testing.T) {
+		fx := setup(t)
+
+		for _, tc := range []struct {
+			name    string
+			filters string
+			path    string
+		}{
+			{"group and leaf in one node", `[{"operator":"and","property":"severity","condition":"equal","value":"High"}]`, "/filters/0"},
+			{"leaf with no condition", `[{"property":"severity","value":"High"}]`, "/filters/0/condition"},
+			{"group with no filters", `[{"operator":"and","filters":[]}]`, "/filters/0/filters"},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				// no creator expectation: reaching the create path fails the test
+				_, err := fx.CreateSet(context.Background(), testSpaceId, v2model.CreateSetRequest{
+					Name:    "Open work",
+					Type:    "chore",
+					Filters: json.RawMessage(tc.filters),
+				}, false)
+
+				apiErr := v2Err(t, err)
+				assert.Equal(t, http.StatusBadRequest, apiErr.Status)
+				require.NotEmpty(t, apiErr.Issues)
+				assert.Equal(t, tc.path, apiErr.Issues[0].Path)
+			})
+		}
+	})
+
 	t.Run("filter and filters together are ambiguous_input (C6)", func(t *testing.T) {
 		// given
 		fx := setup(t)

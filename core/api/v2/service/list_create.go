@@ -96,6 +96,16 @@ func (s *V2Service) CreateSet(ctx context.Context, spaceId string, req v2model.C
 		req.Filter = ""
 		req.Filters = parsed
 	}
+	// M3: the same structural gate the query path runs. A set persists its
+	// filter, so a match-everything shape here is not a bad query — it is a
+	// set that quietly contains the whole space, for good. (The string form
+	// above cannot produce these shapes; the parser emits a condition on
+	// every leaf and never a childless group.)
+	if len(req.Filters) > 0 {
+		if _, err := decodeFilterNodes(req.Filters, "/filters"); err != nil {
+			return nil, err
+		}
+	}
 
 	// R9 referential validation: every property key the view addresses must
 	// be one the type actually recommends

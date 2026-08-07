@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -110,6 +111,87 @@ func TestV2SearchObjects(t *testing.T) {
 		assert.Equal(t, 1, total)
 		require.Len(t, rows, 1)
 		assert.Equal(t, "chore1", rows[0].Id)
+	})
+
+	// M3 (surface review): three malformed shapes reached the store as
+	// MATCH EVERYTHING — silently, with no warning, inverting the surface's
+	// promise ("never a silent no-match") in the worst direction. The
+	// searchSetup fixture holds 3 objects, 1 of which matches severity=High,
+	// so a broken filter shows up as total 3 instead of 1.
+	t.Run("M3: a node carrying both a group and a leaf is rejected", func(t *testing.T) {
+		fx := searchSetup(t)
+		req := v2model.SearchRequest{
+			Filters: json.RawMessage(`[{"operator":"and","property":"severity","condition":"equal","value":"High"}]`),
+		}
+
+		_, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId, req, 0, 25)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
+		require.NotEmpty(t, apiErr.Issues)
+		assert.Equal(t, "/filters/0", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Message, "not both")
+	})
+
+	t.Run("M3: a leaf with no condition is rejected", func(t *testing.T) {
+		fx := searchSetup(t)
+		req := v2model.SearchRequest{
+			Filters: json.RawMessage(`[{"property":"severity","value":"High"}]`),
+		}
+
+		_, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId, req, 0, 25)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
+		require.NotEmpty(t, apiErr.Issues)
+		assert.Equal(t, "/filters/0/condition", apiErr.Issues[0].Path)
+	})
+
+	t.Run("M3: a typo'd condition key is rejected, not silently ignored", func(t *testing.T) {
+		// the realistic small-model failure: this is the ONE input channel
+		// with no GBNF grammar (documented C13 exception), so a misspelled
+		// key is exactly what arrives
+		fx := searchSetup(t)
+		req := v2model.SearchRequest{
+			Filters: json.RawMessage(`[{"property":"severity","conditon":"equal","value":"High"}]`),
+		}
+
+		_, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId, req, 0, 25)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
+		assert.Contains(t, apiErr.Issues[0].Message, "no condition")
+	})
+
+	t.Run("M3: a group with no filters is rejected", func(t *testing.T) {
+		fx := searchSetup(t)
+		req := v2model.SearchRequest{
+			Filters: json.RawMessage(`[{"operator":"and","filters":[]}]`),
+		}
+
+		_, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId, req, 0, 25)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
+		assert.Equal(t, "/filters/0/filters", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Hint, "matches every object")
+	})
+
+	t.Run("M3: nested groups are still accepted and still narrow", func(t *testing.T) {
+		// the negative control. It deliberately asserts a total of 1 out of 3:
+		// a group that matched everything would report 3, so this fails both
+		// if the gate over-rejects AND if the group degrades to match-all.
+		fx := searchSetup(t)
+		req := v2model.SearchRequest{
+			Filters: json.RawMessage(`[{"operator":"and","filters":[` +
+				`{"property":"severity","condition":"in","value":["High"]}]}]`),
+		}
+
+		rows, total, _, _, err := fx.SearchObjects(context.Background(), testSpaceId, req, 0, 25)
+
+		require.NoError(t, err)
+		assert.Equal(t, 1, total)
+		assert.Equal(t, []string{"chore1"}, rowIds(rows))
 	})
 
 	t.Run("filter and filters together are ambiguous_input (C6)", func(t *testing.T) {

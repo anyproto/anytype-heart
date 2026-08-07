@@ -2451,3 +2451,39 @@ rather than duplicating them), and detectable — created options carry
 delete is not atomic either, and another client may have started using an
 option in the window, so it would add a second failure mode to paper over the
 first. Cleanup belongs in a provenance-backed sweep, not the request path.
+
+### 8.14 Surface-review fix M3 (2026-08-07 — decisions as built)
+
+Three malformed structured-filter shapes reached the store as MATCH
+EVERYTHING — silently, with no warning — inverting the surface's own promise
+("unresolved → did-you-mean, never a silent no-match") in the most damaging
+direction available:
+
+1. a node carrying BOTH arms, `{"operator":"and","property":"severity",
+   "condition":"equal","value":"High"}`. The codec (`filterFromJSON`) and the
+   semantic gate both branch on `Operator != ""`, take it as a group, ignore
+   every leaf field and emit an AND with no children. An empty AND is true.
+2. a group with an empty `filters` array — the same empty AND, reached
+   directly.
+3. a leaf with no `condition`, which a typo'd key (`"conditon"`) also
+   produces: it reaches the store as `Condition_None`, and
+   `database.FiltersFromProto` drops it.
+
+`validateFilterStructure` (`search.go`) enforces the SHAPE the served
+`filters` schema already described but nothing checked, and
+`decodeFilterNodes` is the single entry both v2 callers use. **The gate runs
+on POST /sets as well as the query path**, because a set PERSISTS its filter:
+there the same shape is not a bad query but a set that quietly contains the
+whole space, for good.
+
+The served schema was tightened to match the enforcement rather than left
+advertising the broken shapes: the leaf arm now requires `condition` (it
+required only `property`, which is what made shape 3 schema-legal), and the
+group arm's `filters` gained `minItems: 1`. The two examples already carried
+a condition on every leaf, so nothing published had to change.
+
+Deliberately NOT touched: the shared document codec, which must keep
+accepting `Condition_None` — stored dataviews legitimately carry it, and this
+is a v2 request gate, not a format change. This is also the one input channel
+with no GBNF grammar (a documented C13 exception, the tree being recursive),
+so it is precisely where a small model's malformed output lands.

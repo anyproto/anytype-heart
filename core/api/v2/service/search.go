@@ -549,10 +549,94 @@ func filterFieldPath(fromString bool) string {
 // searchFilterNode decodes the structured form just deep enough for
 // path-addressed validation.
 type searchFilterNode struct {
-	Operator string             `json:"operator"`
-	Filters  []searchFilterNode `json:"filters"`
-	Property string             `json:"property"`
-	Value    any                `json:"value"`
+	Operator   string             `json:"operator"`
+	Filters    []searchFilterNode `json:"filters"`
+	Property   string             `json:"property"`
+	Condition  string             `json:"condition"`
+	Value      any                `json:"value"`
+	DatePreset string             `json:"datePreset"`
+}
+
+// isGroup reports whether the node is shaped like a group. A node carrying
+// BOTH group and leaf fields is ambiguous and rejected by
+// validateFilterStructure before anything asks this.
+func (n searchFilterNode) isGroup() bool { return n.Operator != "" || len(n.Filters) > 0 }
+
+// hasLeafFields reports whether the node carries any leaf-only field.
+func (n searchFilterNode) hasLeafFields() bool {
+	return n.Property != "" || n.Condition != "" || n.Value != nil || n.DatePreset != ""
+}
+
+// validateFilterStructure enforces the SHAPE of the §6.2 filter tree — the
+// structure the served `filters` schema already describes as a two-armed
+// oneOf, which nothing enforced (surface review M3). Every violation below
+// used to degrade into MATCH EVERYTHING, silently and with no warning, which
+// inverts the surface's central promise ("unresolved → did-you-mean, never a
+// silent no-match") in the most damaging possible direction:
+//
+//   - a node carrying both arms, e.g. {"operator":"and","property":"severity",
+//     "condition":"equal","value":"High"} — both the codec and the semantic
+//     gate treat it as a GROUP, ignore the leaf fields entirely, and emit an
+//     AND with no children. An empty AND is true.
+//   - a group with an empty `filters` array — the same empty AND, reached
+//     directly.
+//   - a leaf with no condition, e.g. {"property":"severity","value":"High"},
+//     which a typo'd key ("conditon") also produces. It reaches the store as
+//     Condition_None and database.FiltersFromProto DROPS it.
+//
+// This is the ONE input channel with no GBNF grammar (a documented C13
+// exception, the tree being recursive), so it is exactly where a small model
+// is most likely to emit these shapes. It runs on the query path AND on
+// POST /sets, where a malformed filter would otherwise be persisted into the
+// set's dataview and match everything for good.
+func validateFilterStructure(nodes []searchFilterNode, path string) []v2model.Issue {
+	var issues []v2model.Issue
+	for i, node := range nodes {
+		nodePath := fmt.Sprintf("%s/%d", path, i)
+		switch {
+		case node.isGroup() && node.hasLeafFields():
+			issues = append(issues, v2model.Issue{
+				Path:    nodePath,
+				Message: "a filter node is either a group (operator + filters) or a leaf (property + condition), not both",
+				Hint: `to combine conditions write {"operator":"and","filters":[{"property":"…","condition":"…","value":…}]}; ` +
+					`a node with both is read as an empty group, which matches everything`,
+			})
+		case node.isGroup() && len(node.Filters) == 0:
+			issues = append(issues, v2model.Issue{
+				Path:    nodePath + "/filters",
+				Message: fmt.Sprintf("group %q has no filters", node.Operator),
+				Hint:    "an empty group matches every object — remove it, or give it at least one leaf",
+			})
+		case node.isGroup():
+			issues = append(issues, validateFilterStructure(node.Filters, nodePath+"/filters")...)
+		case node.Condition == "":
+			// the codec reports a missing property separately; a leaf that
+			// names one but no condition is the typo case
+			if node.Property != "" {
+				issues = append(issues, v2model.Issue{
+					Path:    nodePath + "/condition",
+					Message: fmt.Sprintf("filter on %q has no condition", node.Property),
+					Hint: "a leaf needs a condition (equal, notEqual, contains, in, empty, …); " +
+						"without one the filter is dropped and every object matches",
+				})
+			}
+		}
+	}
+	return issues
+}
+
+// decodeFilterNodes decodes the §6.2 array and checks its shape. Both v2
+// entry points that accept the structured form go through here.
+func decodeFilterNodes(raw json.RawMessage, path string) ([]searchFilterNode, error) {
+	var nodes []searchFilterNode
+	if err := json.Unmarshal(raw, &nodes); err != nil {
+		return nil, v2model.ValidationFailed("invalid filters",
+			v2model.Issue{Path: path, Message: err.Error(), Hint: "filters is the SPEC §6.2 array of filter nodes"})
+	}
+	if issues := validateFilterStructure(nodes, path); len(issues) > 0 {
+		return nil, v2model.ValidationFailed("invalid filter structure", issues...)
+	}
+	return nodes, nil
 }
 
 // validateStructuredFilters applies rules 1 (key scope) and 3 (read-only
@@ -560,17 +644,18 @@ type searchFilterNode struct {
 // did-you-mean — the same checks the string form gets offset-addressed from
 // the parser.
 func (s *V2Service) validateStructuredFilters(spaceId string, raw json.RawMessage, allowed map[string]bool, refKeys []string, formatName func(string) (string, bool), listUrl string) error {
-	var nodes []searchFilterNode
-	if err := json.Unmarshal(raw, &nodes); err != nil {
-		return v2model.ValidationFailed("invalid filters",
-			v2model.Issue{Path: "/filters", Message: err.Error(), Hint: "filters is the SPEC §6.2 array of filter nodes"})
+	nodes, err := decodeFilterNodes(raw, "/filters")
+	if err != nil {
+		return err
 	}
 	var issues []v2model.Issue
 	var walk func(nodes []searchFilterNode, path string)
 	walk = func(nodes []searchFilterNode, path string) {
 		for i, node := range nodes {
 			nodePath := fmt.Sprintf("%s/%d", path, i)
-			if len(node.Filters) > 0 || node.Operator != "" {
+			// a node carrying both arms was rejected above, so this branch is
+			// now unambiguous
+			if node.isGroup() {
 				walk(node.Filters, nodePath+"/filters")
 				continue
 			}
