@@ -1,8 +1,8 @@
 // Package wrapper is the §7 task-tool layer over the /v2 REST surface
 // (APIV2.md §7, the Phase-5 deliverable): one curated tool table, exposed
-// both as CLI verbs (cmd/anytype) and as a machine-readable
-// function-calling manifest for on-device small models — ONE definition,
-// two deliveries.
+// as CLI verbs (cmd/anytype), as a machine-readable function-calling
+// manifest, and as an MCP stdio server for local models (mcp.go,
+// tier-filtered per tier.go/§8.20) — ONE definition, three deliveries.
 //
 // The wrapper is deliberately NOT a 1:1 re-export of the REST endpoints
 // (the documented anti-pattern). Each tool picks the channel a small model

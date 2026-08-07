@@ -547,9 +547,6 @@ strict schema (FLAT.md §7.3) · `?permanent=true` hard delete.
   NOT a wrapper tool until it exists — §7.2/§2 Phase 5).
 - **the D′1 escape decision** for `edit_text`/`replaceText` (§7.1) — still
   open; the tool description and SKILL.md carry the markup caveat.
-- **an MCP server binary** hosting the manifest as a long-lived process —
-  the integration point exists (`wrapper.BuildManifest()` + the
-  MemoryStore runner, §8.6); the process wrapper itself is not built.
 - **md-export loss detector** (converter/md has no warning channel).
 
 **Built** (previously listed as build items; moved out so no one
@@ -574,7 +571,9 @@ parser** (`anyblockjson.ParseMarkdownBlocks` + the `insertBlocks`
 schemas, per-tool GBNF + the filter-string GBNF, handle/label session
 state, ambiguity retry, idempotency machinery, `@me` + relative dates,
 option pre-validation, degraded `describe` — Phase 5, §8.6) · **the CLI
-verb-set** (`cmd/anytype`, generated from the same table) ·
+verb-set** (`cmd/anytype`, generated from the same table) · **the MCP
+server** (`anytype mcp`, stdio, tier-filtered over the same table —
+§8.20) ·
 **`GET /v2/spaces/{spaceId}/members/me`** (server-side identity) ·
 **the Phase-6 chat surface** (§8.7: v2 chat DTOs + the inline-markup
 bridge both directions, `GET/POST /chats` as C5 rows over a store query,
@@ -1490,8 +1489,9 @@ the CLI is out-of-process by nature, and HTTP keeps one enforcement point
 — auth, write rate limit, and crucially the C8 idempotency store live in
 server middleware, which in-process service calls would silently bypass.
 Two surfaces, not three: the wrapper stays a client of `/v2`. An MCP
-server binary was NOT built (open §3 item); a long-lived host constructs
-the same Runner with the in-memory session store.
+server binary was NOT built in this phase — it landed later as the tiered
+`anytype mcp` verb (§8.20), the long-lived host that constructs the same
+Runner with the in-memory session store.
 
 **The markdown channel (server-side, as §7.1 decided).** The parser is
 `anyblockjson.ParseMarkdownBlocks` — in the format package root, the
@@ -2956,3 +2956,134 @@ written, then deleted on that evidence).
 optimization, no correctness stake). The Date-object `state.ErrRestricted`
 500 is pre-existing, shared with every block op, and ticket-worthy — not a
 view-family fix.
+
+### 8.20 The MCP delivery: two model tiers over one table (2026-08-07 — decisions as built)
+
+The §3 "MCP server binary" item is built: `anytype mcp --tier small|large`
+serves the §7 tool table over MCP stdio. This section records the research
+verdict that scoped it, the tier split, the selection and transport
+decisions, and the repair-loop contract.
+
+**Who MCP is for — the research verdict (confirm-with-caveats).** The
+hypothesis under test: MCP is not worth it for large models (Sonnet-class
+should get `core/api/v2/SKILL.md` + raw HTTP, or the CLI + its skill);
+MCP exists to serve small local models. The evidence *confirms the
+narrow form and rejects the sharp one*:
+
+- *Context cost and tool-count degradation are real and hit large models
+  too* — Anthropic's own engineering posts measure a 150k→2k token drop
+  from keeping MCP schemas out of context (code-execution-with-MCP,
+  2025-11) and a 49%→74% (Opus 4) / 79.5%→88.1% (Opus 4.5) accuracy gain
+  from deferred tool loading (advanced-tool-use); practitioner
+  measurements put single servers at ~55k tokens of schemas; BFCL and
+  successor benchmarks show selection accuracy falling with tool count.
+- *But the ecosystem's fix was to repair MCP's discovery mechanics
+  (deferred/searchable tool loading), not to abandon MCP* — so "MCP is
+  wrong for large models" is not the lesson; "don't preload schemas you
+  don't need" is.
+- *For CLI-capable large-model harnesses the skill+CLI/HTTP path
+  measurably wins on cost, not correctness*: Arize's 500-trial eval
+  (2026) found correctness statistically tied between MCP and CLI/skills
+  while MCP ran ~6× the cost and ~5× the latency on hard tasks. Simon
+  Willison's skills-vs-MCP token argument is the same conclusion from
+  the token side.
+- *The standing counterargument*: non-terminal hosts (desktop apps,
+  chat clients, mobile) cannot run a CLI at all — for them MCP is the
+  only delivery at ANY model size. And small-model tool calling is where
+  strict schemas + grammar constraints genuinely compensate for a
+  capability gap (sub-7B models emit malformed calls unaided; GBNF
+  fixes syntax, not semantics).
+
+Decision as recorded: the MCP server here **targets local small models**
+(the task's premise, upheld); large CLI-capable agents keep being pointed
+at the CLI skill (`cmd/anytype/SKILL.md`) or the raw-HTTP skill
+(`core/api/v2/SKILL.md`). The caveat is recorded rather than acted on:
+a capable model in a non-terminal host may legitimately use `--tier
+large`, and nothing in the design penalizes that — at ≤12 tools this
+server never enters the schema-bloat regime the research warns about
+(the whole large-tier `tools/list` is ~1.5k tokens).
+
+**The tier split — a field on the one table, never a second list.** The
+§8.6 one-definition invariant extends: `Tool.Tier` marks the smallest
+tier a tool is served to; `ToolsForTier`/`BuildManifestForTier` filter;
+golden-list tests pin both sets and a mandatory-tier test makes an
+undeclared tool a failure, not a silent omission (`tier.go`,
+`tier_test.go` — verified fail-on-revert).
+
+- **small (~8B, Gemma-class), 8 tools**: `spaces, find, read, describe,
+  create, set_properties, add_blocks, edit_text` — the tasks a local
+  assistant actually performs (find/read notes, capture, set a status,
+  append content, fix wording). Omissions are decisions, each on the
+  misuse-worse-than-missing principle: `check_item` (the E4 recipe steers
+  task completion to `set_properties` anyway; a block-addressed toggle is
+  niche and adds a whole reference-resolution failure surface),
+  `set_cell` (five required args on a rare shape), `move_block`
+  (restructuring is rare; the after/under anchor vocabulary is the most
+  confused one in the set), `delete_block` (destructive with a
+  `recursive` escalation — the worst cost for a wrong guess).
+- **large (~20B, Qwen-class), 12 tools**: the whole table. No NEW tools
+  were minted for it: §7.2's exclusions (PUT replace, batches, structured
+  filters, block-field updates, archive-without-a-route) were re-checked
+  and stand — they were excluded for corruption/ambiguity reasons, not
+  for being beyond a 3–4B. The tier field makes a future 13th tool a
+  one-line tier decision; chats are the named candidate when a use case
+  shows up.
+- Arguments are NOT tiered: the table's args are already flat and
+  minimal, and per-arg tiering would fork the schema/GBNF/CLI renderings
+  of one definition — rejected as complexity without a demonstrated win.
+- The CLI verb set is NOT tiered (coding agents are large models);
+  `anytype tools --tier small` narrows the manifest for non-MCP
+  function-calling hosts.
+
+**Selection + packaging.** One binary, an `mcp` verb on `cmd/anytype`,
+tier by `--tier` flag (default `large`). Rejected: a separate `cmd/`
+(duplicates env/flag plumbing and splits the skill story; the §8.6
+"verb set == tool set by construction" argument applies to deliveries
+too); tier-per-server-name (two registrations of one binary with no
+added expressiveness — hosts pass args natively); an env var (flags are
+visible in host config where the choice is made). The server constructs
+the §8.6 long-lived Runner over the in-memory session store — the CLI's
+session file stays the CLI's (concurrent MCP servers must not fight
+over it, and a host restart starting clean is predictable behavior).
+
+**Transport.** MCP stdio (newline-delimited JSON-RPC 2.0), hand-rolled
+in `wrapper/mcp.go`: `initialize` (version negotiation across
+2024-11-05/2025-03-26/2025-06-18 — the tools-only surface is identical
+across them; unknown versions answer ours), `tools/list` (the C13
+schemas as `inputSchema`, `readOnlyHint` on the four non-mutating
+tools), `tools/call`, `ping`; notifications acknowledged by silence,
+batching refused with steering. A third-party MCP SDK was weighed and
+rejected: the needed subset is ~300 lines, the repo carries no MCP
+dependency today, and hand-rolling keeps the wire shapes pinned by our
+own tests instead of a vendor's release cadence — the SDK becomes worth
+it the day this server needs resources/prompts/elicitation, and that
+day should be a §3 item, not a drive-by. `initialize` also serves
+tier-aware `instructions` (the SKILL.md loop compressed: spaces → find
+→ describe-before-create → read-before-edit, dates/@me, "follow the
+error, retry once").
+
+**The repair loop (the guessability contract).** Tool failures return
+IN-BAND (`isError: true` + text) so the model reads the tip; only
+malformed JSON-RPC and a name outside the tier are protocol errors —
+and the unknown-tool message still lists the tier's tools. The tip
+chain, outermost first: wrapper argument validation (already
+steering-shaped), the §8.6 ops→tool vocabulary translation (server C6
+hints arrive saying `under`/`block`/`read mode=outline`, never
+`ops[0].inside`), and two MCP-layer additions for the conditions whose
+fix is outside the model's reach — API unreachable ("ask the user to
+start the Anytype app") and key rejected ("ask the user to check
+ANYTYPE_API_KEY"), both ending "no change to the call will help" so a
+small model stops burning retries. `TestMCPRepairLoop` pins the loop
+end-to-end per case: the wrong call, the EXACT tip, then the corrected
+call succeeding in the same session (handle-before-find, missing
+required arg, after+under together, bad enum, server C6 in tool
+vocabulary, 401, unreachable). The vocabulary translation and the
+in-band error path were both verified fail-on-revert.
+
+**Not built, stated.** No resources/prompts/sampling/elicitation (no
+use case on a localhost notes API today); no HTTP/SSE transport (local
+hosts spawn stdio; the API server itself is the HTTP surface); no
+per-tier GBNF re-derivation beyond what the manifest already serves
+(the grammars are per-tool and tier filtering subsets them); no
+Claude-facing MCP recommendation (per the verdict, capable CLI-running
+agents keep the skill+CLI path).
