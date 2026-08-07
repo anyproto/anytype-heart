@@ -111,6 +111,8 @@ func TestMCPInitialize(t *testing.T) {
 			assert.Contains(t, instructions, "find")
 			assert.Contains(t, instructions, "describe a type BEFORE create")
 			assert.Contains(t, instructions, "retry once")
+			assert.Contains(t, instructions, "edit_text alone can skip it",
+				"the instructions must not steer the model back into read-before-edit_text (§8.21)")
 			assert.Equal(t, tc.wantTable, strings.Contains(instructions, "row and column labels"),
 				"the set_cell steering follows the tool into its tier (%s)", tc.tier)
 		}

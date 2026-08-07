@@ -220,7 +220,8 @@ func mcpInstructions(tier Tier) string {
 		"spaces lists space ids when none is known; " +
 		"find (space + query/type/filter) numbers matching objects 1, 2, … — pass that number as `object` to the other tools, and re-run find to renumber; " +
 		"describe a type BEFORE create or set_properties — property keys and select option names must match exactly; " +
-		"read (mode=outline) lists the short block labels the editing tools take as `block`.")
+		"read (mode=outline) lists the short block labels the editing tools take as `block` — " +
+		"edit_text alone can skip it: omit block and the find snippet locates the block when it matches exactly one.")
 	if hasToolInTier(tier, "set_cell") {
 		b.WriteString(" Table row and column labels come from read mode=full.")
 	}
