@@ -8,6 +8,7 @@
 //	anytype read --object 1 --mode outline
 //	anytype add-blocks --object 1 --markdown '- [ ] follow up'
 //	anytype tools            # the machine-readable manifest (JSON)
+//	anytype mcp --tier small # serve the tools over MCP stdio (§8.20)
 //
 // Configuration: ANYTYPE_API_URL (default http://127.0.0.1:31009) and
 // ANYTYPE_API_KEY (bearer key from the app's API settings). Handle state
@@ -30,12 +31,12 @@ import (
 )
 
 func main() {
-	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
+	os.Exit(run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
 }
 
-// run is the whole CLI: io.Writer outputs so the exit-code matrix and both
-// output channels are testable.
-func run(argv []string, stdout, stderr io.Writer) int {
+// run is the whole CLI: io streams as parameters so the exit-code matrix,
+// both output channels and the MCP loop are testable.
+func run(argv []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	if len(argv) == 0 || argv[0] == "help" || argv[0] == "--help" || argv[0] == "-h" {
 		printUsage(stdout)
 		if len(argv) == 0 {
@@ -46,7 +47,11 @@ func run(argv []string, stdout, stderr io.Writer) int {
 	verb := argv[0]
 
 	if verb == "tools" {
-		manifest, err := wrapper.ManifestJSON()
+		tier, code := parseTierFlag(verb, argv[1:], stderr)
+		if code >= 0 {
+			return code
+		}
+		manifest, err := wrapper.ManifestJSONForTier(tier)
 		if err != nil {
 			fmt.Fprintln(stderr, "error:", err)
 			return 1
@@ -55,9 +60,28 @@ func run(argv []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 
+	if verb == "mcp" {
+		tier, code := parseTierFlag(verb, argv[1:], stderr)
+		if code >= 0 {
+			return code
+		}
+		// the long-lived delivery (§7.4): handle state lives in memory for
+		// the process lifetime, not in the CLI session file — concurrent MCP
+		// servers must not fight over one file, and a host restart starting
+		// from a clean session is the predictable behavior
+		client := wrapper.NewClient(os.Getenv("ANYTYPE_API_URL"), os.Getenv("ANYTYPE_API_KEY"))
+		runner := wrapper.NewRunner(client, wrapper.NewMemoryStore())
+		server := wrapper.NewMCPServer(runner, tier)
+		if err := server.Serve(context.Background(), stdin, stdout); err != nil {
+			fmt.Fprintln(stderr, "error:", err)
+			return 1
+		}
+		return 0
+	}
+
 	tool, ok := wrapper.ToolByVerb(verb)
 	if !ok {
-		fmt.Fprintf(stderr, "unknown verb %q — verbs: %s, tools\n", verb, strings.Join(verbs(), ", "))
+		fmt.Fprintf(stderr, "unknown verb %q — verbs: %s, tools, mcp\n", verb, strings.Join(verbs(), ", "))
 		return 2
 	}
 
@@ -171,6 +195,31 @@ func parseVerbFlags(tool wrapper.Tool, argv []string, errW io.Writer) (map[strin
 	return args, opts, nil
 }
 
+// parseTierFlag parses the shared --tier flag of the tools and mcp verbs.
+// code is -1 to proceed, else the exit code (0 for --help, 2 for misuse).
+func parseTierFlag(verb string, argv []string, errW io.Writer) (wrapper.Tier, int) {
+	fs := flag.NewFlagSet(verb, flag.ContinueOnError)
+	fs.SetOutput(errW)
+	tierFlag := fs.String("tier", string(wrapper.TierLarge),
+		"tool tier served: small (~8B models, minimal set) or large (default, the full set)")
+	if err := fs.Parse(argv); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return "", 0
+		}
+		return "", 2
+	}
+	if fs.NArg() > 0 {
+		fmt.Fprintf(errW, "error: unexpected argument %q — %s takes flags only (--tier small|large)\n", fs.Arg(0), verb)
+		return "", 2
+	}
+	tier, err := wrapper.ParseTier(*tierFlag)
+	if err != nil {
+		fmt.Fprintln(errW, "error:", err)
+		return "", 2
+	}
+	return tier, -1
+}
+
 func toolArg(tool wrapper.Tool, name string) (wrapper.Arg, bool) {
 	for _, a := range tool.Args {
 		if a.Name == name {
@@ -219,7 +268,8 @@ func printUsage(w io.Writer) {
 	for _, t := range wrapper.Tools() {
 		fmt.Fprintf(w, "  %-15s %s\n", t.Verb(), firstSentence(t.Description))
 	}
-	fmt.Fprintf(w, "  %-15s %s\n", "tools", "print the machine-readable tool manifest (JSON)")
+	fmt.Fprintf(w, "  %-15s %s\n", "tools", "print the machine-readable tool manifest (JSON); --tier small|large")
+	fmt.Fprintf(w, "  %-15s %s\n", "mcp", "serve the tools over MCP stdio for local models; --tier small|large")
 	fmt.Fprintln(w, "\ncross-verb flags: --json, --dry-run, --if-match <etag>, --create-missing")
 	fmt.Fprintln(w, "environment: ANYTYPE_API_URL (default "+wrapper.DefaultBaseURL+"), ANYTYPE_API_KEY, ANYTYPE_CLI_SESSION")
 	fmt.Fprintln(w, "\nstart with: anytype spaces (lists space ids), then anytype find --space <spaceId> --query … ; find's results are numbered handles the other verbs take as --object")

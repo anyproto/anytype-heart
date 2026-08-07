@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -121,10 +122,15 @@ func TestVerbFlagsFromToolTable(t *testing.T) {
 	})
 }
 
-// runCLI captures run()'s exit code and both output channels.
+// runCLI captures run()'s exit code and both output channels (stdin empty —
+// only the mcp verb reads it; runCLIWithStdin feeds it).
 func runCLI(argv ...string) (code int, stdout, stderr string) {
+	return runCLIWithStdin("", argv...)
+}
+
+func runCLIWithStdin(stdin string, argv ...string) (code int, stdout, stderr string) {
 	var out, errOut bytes.Buffer
-	code = run(argv, &out, &errOut)
+	code = run(argv, strings.NewReader(stdin), &out, &errOut)
 	return code, out.String(), errOut.String()
 }
 
@@ -170,6 +176,80 @@ func TestRunExitCodes(t *testing.T) {
 		var m wrapper.Manifest
 		require.NoError(t, json.Unmarshal([]byte(stdout), &m))
 		require.Len(t, m.Tools, len(wrapper.Tools()))
+	})
+
+	t.Run("tools --tier small prints the small-tier manifest", func(t *testing.T) {
+		code, stdout, _ := runCLI("tools", "--tier", "small")
+		assert.Equal(t, 0, code)
+		var m wrapper.Manifest
+		require.NoError(t, json.Unmarshal([]byte(stdout), &m))
+		require.Len(t, m.Tools, len(wrapper.ToolsForTier(wrapper.TierSmall)))
+	})
+
+	t.Run("a bad tier exits 2 naming the tiers", func(t *testing.T) {
+		for _, verb := range []string{"tools", "mcp"} {
+			code, _, stderr := runCLI(verb, "--tier", "medium")
+			assert.Equal(t, 2, code, verb)
+			assert.Contains(t, stderr, `unknown tier "medium" — tiers: small, large`, verb)
+		}
+	})
+}
+
+// TestRunMCP drives the mcp verb through stdio: the verb is the §8.20
+// long-lived delivery, so an initialize → tools/list script must answer
+// over stdout and EOF must end the process cleanly with exit 0.
+func TestRunMCP(t *testing.T) {
+	t.Run("EOF on stdin exits 0", func(t *testing.T) {
+		code, stdout, stderr := runCLIWithStdin("", "mcp")
+		assert.Equal(t, 0, code, stderr)
+		assert.Empty(t, stdout)
+	})
+
+	t.Run("initialize and tier-filtered tools/list over stdio", func(t *testing.T) {
+		script := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18"}}` + "\n" +
+			`{"jsonrpc":"2.0","method":"notifications/initialized"}` + "\n" +
+			`{"jsonrpc":"2.0","id":2,"method":"tools/list"}` + "\n"
+		code, stdout, stderr := runCLIWithStdin(script, "mcp", "--tier", "small")
+		require.Equal(t, 0, code, stderr)
+
+		lines := strings.Split(strings.TrimSpace(stdout), "\n")
+		require.Len(t, lines, 2, "two requests, one notification → two responses")
+
+		var initResp struct {
+			Result struct {
+				ProtocolVersion string `json:"protocolVersion"`
+				Instructions    string `json:"instructions"`
+			} `json:"result"`
+		}
+		require.NoError(t, json.Unmarshal([]byte(lines[0]), &initResp))
+		assert.Equal(t, "2025-06-18", initResp.Result.ProtocolVersion)
+		assert.NotEmpty(t, initResp.Result.Instructions)
+
+		var listResp struct {
+			Result struct {
+				Tools []struct {
+					Name string `json:"name"`
+				} `json:"tools"`
+			} `json:"result"`
+		}
+		require.NoError(t, json.Unmarshal([]byte(lines[1]), &listResp))
+		var names []string
+		for _, tool := range listResp.Result.Tools {
+			names = append(names, tool.Name)
+		}
+		assert.Equal(t, wrapper.ToolNamesForTier(wrapper.TierSmall), names)
+	})
+
+	t.Run("a tools/call reaches the API server", func(t *testing.T) {
+		stubServer(t, func(w http.ResponseWriter, r *http.Request) {
+			require.Equal(t, "/v2/spaces", r.URL.Path)
+			require.Equal(t, "Bearer test-key", r.Header.Get("Authorization"))
+			fmt.Fprint(w, `{"data":[{"id":"bafyspace1","name":"Work"}],"total":1,"offset":0,"limit":25,"has_more":false}`)
+		})
+		script := `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"spaces"}}` + "\n"
+		code, stdout, stderr := runCLIWithStdin(script, "mcp")
+		require.Equal(t, 0, code, stderr)
+		assert.Contains(t, stdout, "Work — bafyspace1")
 	})
 }
 

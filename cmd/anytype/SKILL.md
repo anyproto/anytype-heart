@@ -77,7 +77,13 @@ presets are functions (`today()`, `currentWeek()`, `daysAgo(n)`).
 
 - `anytype tools` — the machine-readable manifest: per-tool JSON schema,
   worked example, GBNF grammar (constrained decoding), and the filter
-  grammar (EBNF + GBNF).
+  grammar (EBNF + GBNF). `--tier small` narrows it to the 8-tool set for
+  ~8B models (`large`, the default, is all twelve).
+- `anytype mcp --tier small|large` — serve the same tools over MCP stdio
+  for LOCAL models (Ollama/LM Studio-class hosts). Coding agents reading
+  this skill should keep using the verbs directly — the CLI is the
+  intended delivery for them; `mcp` exists for hosts that cannot run
+  commands. Session state is in-memory for the server's lifetime.
 - `anytype help` — the verb list; `anytype <verb> --help` — its flags.
 - Spec: `core/api/APIV2.md` §7 (the wrapper contract), `pkg/lib/anyblockjson/SPEC.md`
   (the document format the full-read mode returns).
