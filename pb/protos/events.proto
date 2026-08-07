@@ -22,8 +22,8 @@ message Event {
       Account.Details accountDetails = 201;
       Account.Config.Update accountConfigUpdate = 202;
       Account.Update accountUpdate = 203;
-      Account.LinkChallenge accountLinkChallenge = 204;
-      Account.LinkChallengeHide accountLinkChallengeHide = 205;
+      Account.LinkApprovalRequest accountLinkApprovalRequest = 204;
+      Account.LinkApprovalHide accountLinkApprovalHide = 205;
 
       Object.Details.Set objectDetailsSet = 16;
       Object.Details.Amend objectDetailsAmend = 50;
@@ -232,21 +232,35 @@ message Event {
       anytype.model.Account.Status status = 2;
     }
 
-    message LinkChallenge {
+    // LinkApprovalRequest asks the user to approve a local-link pairing. It
+    // names who is asking and nothing else: the 4-digit code does not exist
+    // yet and is never broadcast. The user's answer goes back through
+    // AccountLocalLinkApproveChallenge, which mints the code and returns it to
+    // that one caller. Replaces the former LinkChallenge event, which carried
+    // the code to every session.
+    message LinkApprovalRequest {
       message ClientInfo {
         string processName = 1;
         string processPath = 2;
         string name = 4;
         bool signatureVerified = 3;
+        // origin of the browser caller that asked for the challenge, e.g.
+        // "chrome-extension://<id>" or "http://localhost:3000". Empty for
+        // native clients, which send no Origin header. Taken from the header
+        // the browser sets, never from the request body, so it names the
+        // caller even when `name` is arbitrary. Show it to the user: it is the
+        // only attributable part of a pairing request.
+        string origin = 5;
       }
-      string challenge = 1;
       ClientInfo clientInfo = 2;
       model.Account.Auth.LocalApiScope scope = 3;
     }
 
-    message LinkChallengeHide {
-      string challenge =
-          1; // verify code before hiding to protect from MITM attacks
+    // LinkApprovalHide takes a pending prompt off screen once it is answered,
+    // denied or expired. Identified by the caller, since a request that was
+    // never approved never had a code.
+    message LinkApprovalHide {
+      LinkApprovalRequest.ClientInfo clientInfo = 2;
     }
   }
 

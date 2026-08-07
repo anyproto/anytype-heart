@@ -37,3 +37,18 @@ func TestNoAuthMethods_ExcludesSessionBackedMethods(t *testing.T) {
 		assert.Contains(t, noAuthMethods, method)
 	}
 }
+
+// TestApproveChallengeRequiresFullScope pins the one membership the local-link
+// approval flow depends on. Approving a pairing is the user's decision, made in
+// the desktop UI, which already holds a full-scope session. Absence from both
+// maps is what enforces that: Authorize falls through to the scope switch, which
+// admits AccountAuth_Full alone and refuses Limited and JsonAPI.
+//
+// Listing it in noAuthMethods would let any local process — including the one
+// asking to be paired — approve itself, which is weaker than the flow it
+// replaced. Listing it in limitedScopeMethods would hand the same power to every
+// app the user paired earlier.
+func TestApproveChallengeRequiresFullScope(t *testing.T) {
+	assert.NotContains(t, noAuthMethods, "AccountLocalLinkApproveChallenge")
+	assert.NotContains(t, limitedScopeMethods, "AccountLocalLinkApproveChallenge")
+}

@@ -97,6 +97,10 @@
     - [Rpc.Account.GetConfig.Get](#anytype-Rpc-Account-GetConfig-Get)
     - [Rpc.Account.GetConfig.Get.Request](#anytype-Rpc-Account-GetConfig-Get-Request)
     - [Rpc.Account.LocalLink](#anytype-Rpc-Account-LocalLink)
+    - [Rpc.Account.LocalLink.ApproveChallenge](#anytype-Rpc-Account-LocalLink-ApproveChallenge)
+    - [Rpc.Account.LocalLink.ApproveChallenge.Request](#anytype-Rpc-Account-LocalLink-ApproveChallenge-Request)
+    - [Rpc.Account.LocalLink.ApproveChallenge.Response](#anytype-Rpc-Account-LocalLink-ApproveChallenge-Response)
+    - [Rpc.Account.LocalLink.ApproveChallenge.Response.Error](#anytype-Rpc-Account-LocalLink-ApproveChallenge-Response-Error)
     - [Rpc.Account.LocalLink.CreateApp](#anytype-Rpc-Account-LocalLink-CreateApp)
     - [Rpc.Account.LocalLink.CreateApp.Request](#anytype-Rpc-Account-LocalLink-CreateApp-Request)
     - [Rpc.Account.LocalLink.CreateApp.Response](#anytype-Rpc-Account-LocalLink-CreateApp-Response)
@@ -1539,6 +1543,7 @@
     - [Rpc.Account.Create.Response.Error.Code](#anytype-Rpc-Account-Create-Response-Error-Code)
     - [Rpc.Account.Delete.Response.Error.Code](#anytype-Rpc-Account-Delete-Response-Error-Code)
     - [Rpc.Account.EnableLocalNetworkSync.Response.Error.Code](#anytype-Rpc-Account-EnableLocalNetworkSync-Response-Error-Code)
+    - [Rpc.Account.LocalLink.ApproveChallenge.Response.Error.Code](#anytype-Rpc-Account-LocalLink-ApproveChallenge-Response-Error-Code)
     - [Rpc.Account.LocalLink.CreateApp.Response.Error.Code](#anytype-Rpc-Account-LocalLink-CreateApp-Response-Error-Code)
     - [Rpc.Account.LocalLink.ListApps.Response.Error.Code](#anytype-Rpc-Account-LocalLink-ListApps-Response-Error-Code)
     - [Rpc.Account.LocalLink.NewChallenge.Response.Error.Code](#anytype-Rpc-Account-LocalLink-NewChallenge-Response-Error-Code)
@@ -1900,9 +1905,9 @@
     - [Event.Account.Config](#anytype-Event-Account-Config)
     - [Event.Account.Config.Update](#anytype-Event-Account-Config-Update)
     - [Event.Account.Details](#anytype-Event-Account-Details)
-    - [Event.Account.LinkChallenge](#anytype-Event-Account-LinkChallenge)
-    - [Event.Account.LinkChallenge.ClientInfo](#anytype-Event-Account-LinkChallenge-ClientInfo)
-    - [Event.Account.LinkChallengeHide](#anytype-Event-Account-LinkChallengeHide)
+    - [Event.Account.LinkApprovalHide](#anytype-Event-Account-LinkApprovalHide)
+    - [Event.Account.LinkApprovalRequest](#anytype-Event-Account-LinkApprovalRequest)
+    - [Event.Account.LinkApprovalRequest.ClientInfo](#anytype-Event-Account-LinkApprovalRequest-ClientInfo)
     - [Event.Account.Show](#anytype-Event-Account-Show)
     - [Event.Account.Update](#anytype-Event-Account-Update)
     - [Event.Block](#anytype-Event-Block)
@@ -2381,6 +2386,7 @@
 | WalletConvert | [Rpc.Wallet.Convert.Request](#anytype-Rpc-Wallet-Convert-Request) | [Rpc.Wallet.Convert.Response](#anytype-Rpc-Wallet-Convert-Response) |  |
 | AccountLocalLinkNewChallenge | [Rpc.Account.LocalLink.NewChallenge.Request](#anytype-Rpc-Account-LocalLink-NewChallenge-Request) | [Rpc.Account.LocalLink.NewChallenge.Response](#anytype-Rpc-Account-LocalLink-NewChallenge-Response) |  |
 | AccountLocalLinkSolveChallenge | [Rpc.Account.LocalLink.SolveChallenge.Request](#anytype-Rpc-Account-LocalLink-SolveChallenge-Request) | [Rpc.Account.LocalLink.SolveChallenge.Response](#anytype-Rpc-Account-LocalLink-SolveChallenge-Response) |  |
+| AccountLocalLinkApproveChallenge | [Rpc.Account.LocalLink.ApproveChallenge.Request](#anytype-Rpc-Account-LocalLink-ApproveChallenge-Request) | [Rpc.Account.LocalLink.ApproveChallenge.Response](#anytype-Rpc-Account-LocalLink-ApproveChallenge-Response) |  |
 | AccountLocalLinkCreateApp | [Rpc.Account.LocalLink.CreateApp.Request](#anytype-Rpc-Account-LocalLink-CreateApp-Request) | [Rpc.Account.LocalLink.CreateApp.Response](#anytype-Rpc-Account-LocalLink-CreateApp-Response) |  |
 | AccountLocalLinkListApps | [Rpc.Account.LocalLink.ListApps.Request](#anytype-Rpc-Account-LocalLink-ListApps-Request) | [Rpc.Account.LocalLink.ListApps.Response](#anytype-Rpc-Account-LocalLink-ListApps-Response) |  |
 | AccountLocalLinkRevokeApp | [Rpc.Account.LocalLink.RevokeApp.Request](#anytype-Rpc-Account-LocalLink-RevokeApp-Request) | [Rpc.Account.LocalLink.RevokeApp.Response](#anytype-Rpc-Account-LocalLink-RevokeApp-Response) |  |
@@ -4049,6 +4055,76 @@ TODO: Remove this request if we do not need it, GO-1926
 
 ### Rpc.Account.LocalLink
 
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-ApproveChallenge"></a>
+
+### Rpc.Account.LocalLink.ApproveChallenge
+ApproveChallenge is the user&#39;s decision on a pending challenge.
+It is the only call that mints the code, and it answers the
+caller rather than broadcasting, so the code never reaches
+sessions other than the one that approved.
+
+The pending challenge is addressed by the caller it came from,
+which is what the prompt showed the user. Only one challenge can
+be pending per caller, so the pair is unambiguous, and it is the
+durable identity a future &#34;always allow&#34; would key on.
+
+Desktop UI only: it must never be listed in noAuthMethods or
+limitedScopeMethods, so authorization admits full scope alone.
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-ApproveChallenge-Request"></a>
+
+### Rpc.Account.LocalLink.ApproveChallenge.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| processPath | [string](#string) |  | both taken verbatim from the ClientInfo of the LinkChallenge event being answered; either may be empty |
+| origin | [string](#string) |  |  |
+| allow | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-ApproveChallenge-Response"></a>
+
+### Rpc.Account.LocalLink.ApproveChallenge.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Account.LocalLink.ApproveChallenge.Response.Error](#anytype-Rpc-Account-LocalLink-ApproveChallenge-Response-Error) |  |  |
+| challenge | [string](#string) |  | the 4-digit code; empty when allow is false |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-ApproveChallenge-Response-Error"></a>
+
+### Rpc.Account.LocalLink.ApproveChallenge.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Account.LocalLink.ApproveChallenge.Response.Error.Code](#anytype-Rpc-Account-LocalLink-ApproveChallenge-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
 
 
 
@@ -25063,6 +25139,21 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Account-LocalLink-ApproveChallenge-Response-Error-Code"></a>
+
+### Rpc.Account.LocalLink.ApproveChallenge.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| ACCOUNT_IS_NOT_RUNNING | 101 |  |
+| NO_PENDING_CHALLENGE | 102 | nothing pending for this caller: never requested, already decided, or expired |
+
+
+
 <a name="anytype-Rpc-Account-LocalLink-CreateApp-Response-Error-Code"></a>
 
 ### Rpc.Account.LocalLink.CreateApp.Response.Error.Code
@@ -25135,6 +25226,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | INVALID_CHALLENGE_ID | 102 |  |
 | CHALLENGE_ATTEMPTS_EXCEEDED | 103 |  |
 | INCORRECT_ANSWER | 104 |  |
+| CHALLENGE_NOT_APPROVED | 105 | the user has not approved this challenge yet, so no code exists to compare against |
 
 
 
@@ -30073,16 +30165,37 @@ corresponding front-end.
 
 
 
-<a name="anytype-Event-Account-LinkChallenge"></a>
+<a name="anytype-Event-Account-LinkApprovalHide"></a>
 
-### Event.Account.LinkChallenge
-
+### Event.Account.LinkApprovalHide
+LinkApprovalHide takes a pending prompt off screen once it is answered,
+denied or expired. Identified by the caller, since a request that was
+never approved never had a code.
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| challenge | [string](#string) |  |  |
-| clientInfo | [Event.Account.LinkChallenge.ClientInfo](#anytype-Event-Account-LinkChallenge-ClientInfo) |  |  |
+| clientInfo | [Event.Account.LinkApprovalRequest.ClientInfo](#anytype-Event-Account-LinkApprovalRequest-ClientInfo) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-LinkApprovalRequest"></a>
+
+### Event.Account.LinkApprovalRequest
+LinkApprovalRequest asks the user to approve a local-link pairing. It
+names who is asking and nothing else: the 4-digit code does not exist
+yet and is never broadcast. The user&#39;s answer goes back through
+AccountLocalLinkApproveChallenge, which mints the code and returns it to
+that one caller. Replaces the former LinkChallenge event, which carried
+the code to every session.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| clientInfo | [Event.Account.LinkApprovalRequest.ClientInfo](#anytype-Event-Account-LinkApprovalRequest-ClientInfo) |  |  |
 | scope | [model.Account.Auth.LocalApiScope](#anytype-model-Account-Auth-LocalApiScope) |  |  |
 
 
@@ -30090,9 +30203,9 @@ corresponding front-end.
 
 
 
-<a name="anytype-Event-Account-LinkChallenge-ClientInfo"></a>
+<a name="anytype-Event-Account-LinkApprovalRequest-ClientInfo"></a>
 
-### Event.Account.LinkChallenge.ClientInfo
+### Event.Account.LinkApprovalRequest.ClientInfo
 
 
 
@@ -30102,21 +30215,7 @@ corresponding front-end.
 | processPath | [string](#string) |  |  |
 | name | [string](#string) |  |  |
 | signatureVerified | [bool](#bool) |  |  |
-
-
-
-
-
-
-<a name="anytype-Event-Account-LinkChallengeHide"></a>
-
-### Event.Account.LinkChallengeHide
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| challenge | [string](#string) |  | verify code before hiding to protect from MITM attacks |
+| origin | [string](#string) |  | origin of the browser caller that asked for the challenge, e.g. &#34;chrome-extension://&lt;id&gt;&#34; or &#34;http://localhost:3000&#34;. Empty for native clients, which send no Origin header. Taken from the header the browser sets, never from the request body, so it names the caller even when `name` is arbitrary. Show it to the user: it is the only attributable part of a pairing request. |
 
 
 
@@ -32623,8 +32722,8 @@ response already carries the path.
 | accountDetails | [Event.Account.Details](#anytype-Event-Account-Details) |  |  |
 | accountConfigUpdate | [Event.Account.Config.Update](#anytype-Event-Account-Config-Update) |  |  |
 | accountUpdate | [Event.Account.Update](#anytype-Event-Account-Update) |  |  |
-| accountLinkChallenge | [Event.Account.LinkChallenge](#anytype-Event-Account-LinkChallenge) |  |  |
-| accountLinkChallengeHide | [Event.Account.LinkChallengeHide](#anytype-Event-Account-LinkChallengeHide) |  |  |
+| accountLinkApprovalRequest | [Event.Account.LinkApprovalRequest](#anytype-Event-Account-LinkApprovalRequest) |  |  |
+| accountLinkApprovalHide | [Event.Account.LinkApprovalHide](#anytype-Event-Account-LinkApprovalHide) |  |  |
 | objectDetailsSet | [Event.Object.Details.Set](#anytype-Event-Object-Details-Set) |  |  |
 | objectDetailsAmend | [Event.Object.Details.Amend](#anytype-Event-Object-Details-Amend) |  |  |
 | objectDetailsUnset | [Event.Object.Details.Unset](#anytype-Event-Object-Details-Unset) |  |  |

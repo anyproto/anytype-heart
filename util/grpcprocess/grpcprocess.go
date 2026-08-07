@@ -27,6 +27,16 @@ func FromContext(ctx context.Context) (*ProcessInfo, bool) {
 	return pi, ok
 }
 
+// WithProcessInfo stores resolved process details on the context. The gRPC
+// interceptor does this itself; the JSON API needs it because its requests
+// never pass through an interceptor.
+func WithProcessInfo(ctx context.Context, pi *ProcessInfo) context.Context {
+	if pi == nil {
+		return ctx
+	}
+	return context.WithValue(ctx, processInfoKey, pi)
+}
+
 // ProcessInfoInterceptor returns an interceptor that *only* runs for the
 // gRPC methods listed in allowedMethods (exact match on info.FullMethod).
 func ProcessInfoInterceptor(allowedMethods ...string) grpc.UnaryServerInterceptor {
@@ -83,7 +93,9 @@ func ResolveProcess(remoteIP, remotePort string) (*ProcessInfo, error) {
 
 			proc, err := gproc.NewProcess(c.Pid)
 			if err != nil {
-				return nil, err
+				// The process went away between listing and lookup, or we may
+				// not inspect it. Keep scanning: another entry may match.
+				continue
 			}
 			name, _ := proc.Name()
 			exe, _ := proc.Exe()
