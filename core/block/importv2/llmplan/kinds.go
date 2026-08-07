@@ -81,6 +81,28 @@ Icons (one per kind, or ""): `)
 // derived in code as a slug of the kind name. minimum/maximum/maxItems are
 // deliberately not used (uneven local-server support) — ordinal range and the
 // 4-featured cap are enforced in the parser.
+// kindPropertyOrder is the generation order of a kind's fields, and it is
+// LOAD-BEARING, not cosmetic. Constrained decoding emits object properties in
+// the order the schema declares them, so this fixes what the model conditions
+// each field on. Names come LAST, after the container list and the featured
+// property names — the model decides what a kind CONTAINS before it decides
+// what to call it, which measurably improves naming: moving the names first
+// brought back the plural bug the name_singular/name_plural split fixed.
+//
+// It is a struct rather than a map because encoding/json sorts map keys and
+// marshals struct fields in declaration order. The previous map spelled this
+// order out only by accident — alphabetically, containers…name_singular — so a
+// future field rename could silently reorder generation and quietly regress
+// naming quality. Declaring it makes the order reviewable and diffable.
+type kindPropertyOrder struct {
+	Containers   any `json:"containers"`
+	Featured     any `json:"featured"`
+	Icon         any `json:"icon"`
+	Layout       any `json:"layout"`
+	NamePlural   any `json:"name_plural"`
+	NameSingular any `json:"name_singular"`
+}
+
 var kindsResponseSchema = func() json.RawMessage {
 	icons := append([]string{""}, schemaplan.AllowedIcons...)
 	schema := map[string]any{
@@ -94,13 +116,13 @@ var kindsResponseSchema = func() json.RawMessage {
 					"type":                 "object",
 					"additionalProperties": false,
 					"required":             []string{"name_singular", "name_plural", "icon", "layout", "containers", "featured"},
-					"properties": map[string]any{
-						"name_singular": map[string]any{"type": "string"},
-						"name_plural":   map[string]any{"type": "string"},
-						"icon":          map[string]any{"type": "string", "enum": icons},
-						"layout":        map[string]any{"type": "string", "enum": []string{"basic", "todo", "profile", "note", ""}},
-						"containers":    map[string]any{"type": "array", "items": map[string]any{"type": "integer"}},
-						"featured":      map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+					"properties": kindPropertyOrder{
+						Containers:   map[string]any{"type": "array", "items": map[string]any{"type": "integer"}},
+						Featured:     map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+						Icon:         map[string]any{"type": "string", "enum": icons},
+						Layout:       map[string]any{"type": "string", "enum": []string{"basic", "todo", "profile", "note", ""}},
+						NamePlural:   map[string]any{"type": "string"},
+						NameSingular: map[string]any{"type": "string"},
 					},
 				},
 			},
