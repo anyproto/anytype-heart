@@ -91,6 +91,11 @@ type v2StateApplier struct {
 	// §6.2 unguarded-date-comparison trap from an updateView filter edit);
 	// applyPatchOps surfaces them on the EditResult.
 	warnings []v2model.Issue
+
+	// createdViews maps each insertView op ("ops[i]") to the view id it
+	// minted — the view-family twin of createdBlocks (ids are always
+	// server-minted; a view payload has no id slot).
+	createdViews map[string]string
 }
 
 func newV2StateApplier(s *V2Service, spaceId, objectId string, sbType model.SmartBlockType, st *state.State, resolvers *creatingResolvers) *v2StateApplier {
@@ -104,6 +109,7 @@ func newV2StateApplier(s *V2Service, spaceId, objectId string, sbType model.Smar
 		createdBlocks: map[string]string{},
 		claimedIds:    map[string]bool{},
 		mintedThisOp:  map[string]bool{},
+		createdViews:  map[string]string{},
 	}
 }
 
@@ -417,6 +423,24 @@ func (a *v2StateApplier) apply(i int, raw json.RawMessage) error {
 			return err
 		}
 		return a.applyUpdateView(op, opPath)
+	case "insertView":
+		var op opInsertView
+		if err := decodeStrictOp(raw, probe.Op, opPath, &op); err != nil {
+			return err
+		}
+		return a.applyInsertView(op, opPath)
+	case "moveView":
+		var op opMoveView
+		if err := decodeStrictOp(raw, probe.Op, opPath, &op); err != nil {
+			return err
+		}
+		return a.applyMoveView(op, opPath)
+	case "deleteView":
+		var op opDeleteView
+		if err := decodeStrictOp(raw, probe.Op, opPath, &op); err != nil {
+			return err
+		}
+		return a.applyDeleteView(op, opPath)
 	case "addItems", "removeItems":
 		var op opItems
 		if err := decodeStrictOp(raw, probe.Op, opPath, &op); err != nil {

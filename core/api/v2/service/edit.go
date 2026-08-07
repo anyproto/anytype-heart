@@ -334,6 +334,9 @@ func (s *V2Service) applyPatchOps(ctx context.Context, spaceId, objectId string,
 	if len(applier.createdBlocks) > 0 {
 		result.CreatedBlocks = applier.createdBlocks
 	}
+	if len(applier.createdViews) > 0 {
+		result.CreatedViews = applier.createdViews
+	}
 	result.Warnings = applier.warnings
 	return result, nil
 }

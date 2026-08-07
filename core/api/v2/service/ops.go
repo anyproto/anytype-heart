@@ -30,7 +30,8 @@ import (
 var v2OpNames = []string{
 	"setProperties", "updateBlock", "replaceSubtree",
 	"insertBlocks", "moveBlock", "deleteBlock", "replaceText", "setCell",
-	"updateView", "addItems", "removeItems",
+	"updateView", "insertView", "moveView", "deleteView",
+	"addItems", "removeItems",
 }
 
 // v2OpEditNeeds maps each op to the object-level restriction axes it
@@ -44,18 +45,20 @@ var v2OpNames = []string{
 // (template.CollectionStoreKey), which no object restriction governs. That
 // matches v1, whose ObjectCollectionAdd/Remove is likewise ungated.
 //
-// updateView needs NEITHER axis either, and getting this wrong recreates the
-// M1 bug exactly: sets, collections AND object types all carry
-// Restrictions_Blocks (restriction/object.go objRestrictEdit /
-// objRestrictEditAndTemplate) — the three object classes that HAVE dataviews
-// — so classifying a view edit as a block op would refuse it on precisely the
-// objects it exists to edit. The Blocks axis governs document content
-// (basic.CreateBlock, tables, clipboard all check it); view configuration is
-// not gated by it: the native dataview surface (sdataview.UpdateView /
-// CreateView / DeleteView, i.e. v1's BlockDataviewView* RPCs) checks no
-// object-level restriction, which is how the app edits views on a set at
-// all. objectmutateadapter_test.go pins these facts against the live
-// restriction table.
+// The VIEW FAMILY (updateView, insertView, moveView, deleteView) needs
+// NEITHER axis either, and getting this wrong recreates the M1 bug exactly:
+// sets, collections AND object types all carry Restrictions_Blocks
+// (restriction/object.go objRestrictEdit / objRestrictEditAndTemplate) —
+// the three object classes that HAVE dataviews — so classifying a view op
+// as a block op would refuse it on precisely the objects it exists to edit.
+// The Blocks axis governs document content (basic.CreateBlock, tables,
+// clipboard all check it); view configuration is not gated by it: the
+// native dataview surface (sdataview.UpdateView / CreateView / DeleteView,
+// i.e. v1's BlockDataviewView* RPCs) checks no object-level restriction,
+// which is how the app edits views on a set at all.
+// objectmutateadapter_test.go pins these facts against the live restriction
+// table; viewops_test.go pins the whole family's classification through
+// PatchObject.
 var v2OpEditNeeds = map[string]apicore.EditNeeds{
 	"setProperties":  {Details: true},
 	"updateBlock":    {Blocks: true},
@@ -66,6 +69,9 @@ var v2OpEditNeeds = map[string]apicore.EditNeeds{
 	"replaceText":    {Blocks: true},
 	"setCell":        {Blocks: true},
 	"updateView":     {},
+	"insertView":     {},
+	"moveView":       {},
+	"deleteView":     {},
 	"addItems":       {},
 	"removeItems":    {},
 }
@@ -147,6 +153,9 @@ var v2OpRebuildsView = map[string]bool{
 	"replaceText": false,
 	"setCell":     true,
 	"updateView":  true,
+	"insertView":  true,
+	"moveView":    true,
+	"deleteView":  true,
 	"addItems":    true,
 	"removeItems": true,
 }
@@ -350,6 +359,49 @@ type opUpdateView struct {
 	// (appending a new column for a key that has none), an explicit null
 	// removes the column.
 	Columns map[string]json.RawMessage `json:"columns"`
+}
+
+// opInsertView creates ONE view. Singular where insertBlocks is plural, on
+// purpose: a blocks payload is a structured run (indent-nested, ordered);
+// views have no internal structure, and several views are several ops in
+// the already-atomic batch. The base view is either sensible defaults
+// (every property of the dataview visible, lastModifiedDate-desc sort —
+// the native CreateView default, minus its everything-hidden columns) or a
+// duplicate of CopyFrom; Set/Columns then merge on top with updateView's
+// exact semantics, so create is "updateView aimed at a fresh view".
+type opInsertView struct {
+	Op    string `json:"op"`
+	Block string `json:"block"`
+	// Name is required — a view is a named tab.
+	Name string `json:"name"`
+	// CopyFrom duplicates an existing view of the same dataview (columns,
+	// sorts, filters, type, groupBy, editor state — everything but id and
+	// name); "like that one, but…" is the common intent.
+	CopyFrom string `json:"copyFrom"`
+	// Targeting within the views list (at most one): after/before a view
+	// ref, or position "first"|"last". Omitted = append. The FIRST view is
+	// the client's default tab, so position "first" is "make this the
+	// default".
+	After    string                     `json:"after"`
+	Before   string                     `json:"before"`
+	Position string                     `json:"position"`
+	Set      map[string]json.RawMessage `json:"set"`
+	Columns  map[string]json.RawMessage `json:"columns"`
+}
+
+type opMoveView struct {
+	Op       string `json:"op"`
+	Block    string `json:"block"`
+	View     string `json:"view"`
+	After    string `json:"after"`
+	Before   string `json:"before"`
+	Position string `json:"position"`
+}
+
+type opDeleteView struct {
+	Op    string `json:"op"`
+	Block string `json:"block"`
+	View  string `json:"view"`
 }
 
 type opItems struct {

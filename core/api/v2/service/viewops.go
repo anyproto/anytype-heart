@@ -153,6 +153,13 @@ func (a *v2StateApplier) applyUpdateView(op opUpdateView, opPath string) error {
 
 	views[vi] = view
 	edited["views"] = views
+	return a.commitDataviewBlock(edited, fullId, opPath)
+}
+
+// commitDataviewBlock re-imports one edited dataview block through the
+// format codec and lands it in the state — the shared tail of every view
+// op.
+func (a *v2StateApplier) commitDataviewBlock(edited map[string]any, fullId, opPath string) error {
 	raw, err := json.Marshal(edited)
 	if err != nil {
 		return fmt.Errorf("encode edited dataview: %w", err)
@@ -665,16 +672,11 @@ func (a *v2StateApplier) resolveDataviewBlock(doc *v2EditDoc, ref, opPath string
 	}
 }
 
-// resolveViewIndex resolves the op's view target within one dataview's
-// views: an explicit id (full or unique suffix — resolveViewRef's rule on
-// the read surface), or — omitted — the dataview's only view. Errors list
-// every view as `id ("name")` so the repair needs no second read.
-func resolveViewIndex(views []any, ref, opPath string) (int, error) {
-	if len(views) == 0 {
-		return -1, v2model.NotFound("this dataview has no views")
-	}
-	listed := make([]string, len(views))
-	ids := make([]string, len(views))
+// viewIdList extracts view ids and the `id ("name")` listing every view
+// error carries, so a repair needs no second read.
+func viewIdList(views []any) (ids, listed []string) {
+	ids = make([]string, len(views))
+	listed = make([]string, len(views))
 	for i, raw := range views {
 		view, _ := raw.(map[string]any)
 		id, _ := view["id"].(string)
@@ -682,14 +684,14 @@ func resolveViewIndex(views []any, ref, opPath string) (int, error) {
 		ids[i] = id
 		listed[i] = fmt.Sprintf("%s (%q)", id, name)
 	}
-	if ref == "" {
-		if len(views) == 1 {
-			return 0, nil
-		}
-		return -1, v2model.AmbiguousInput(
-			fmt.Sprintf("this dataview has %d views — name one with the op's view field: %s", len(views), strings.Join(listed, ", ")),
-			v2model.Issue{Path: opPath + ".view", Message: "view is required when the dataview has more than one view"})
-	}
+	return ids, listed
+}
+
+// matchViewRef resolves a NON-EMPTY view reference by full id or unique
+// suffix (resolveViewRef's rule on the read surface). path names the field
+// the reference came from.
+func matchViewRef(views []any, ref, path string) (int, error) {
+	ids, listed := viewIdList(views)
 	idx, matches := matchBlockRef(ids, ref)
 	switch {
 	case matches == 1:
@@ -697,10 +699,72 @@ func resolveViewIndex(views []any, ref, opPath string) (int, error) {
 	case matches > 1:
 		return -1, v2model.AmbiguousInput(
 			fmt.Sprintf("view reference %q matches more than one view — use the full view id", ref),
-			v2model.Issue{Path: opPath + ".view", Message: "the reference is a suffix of several view ids"})
+			v2model.Issue{Path: path, Message: "the reference is a suffix of several view ids"})
 	default:
 		return -1, v2model.NotFound(
 			fmt.Sprintf("view %q not found — views: %s", ref, strings.Join(listed, ", ")))
+	}
+}
+
+// resolveViewIndex resolves the op's view target within one dataview's
+// views: an explicit id (full or unique suffix), or — omitted — the
+// dataview's only view.
+func resolveViewIndex(views []any, ref, opPath string) (int, error) {
+	if len(views) == 0 {
+		return -1, v2model.NotFound("this dataview has no views")
+	}
+	if ref == "" {
+		if len(views) == 1 {
+			return 0, nil
+		}
+		_, listed := viewIdList(views)
+		return -1, v2model.AmbiguousInput(
+			fmt.Sprintf("this dataview has %d views — name one with the op's view field: %s", len(views), strings.Join(listed, ", ")),
+			v2model.Issue{Path: opPath + ".view", Message: "view is required when the dataview has more than one view"})
+	}
+	return matchViewRef(views, ref, opPath+".view")
+}
+
+// resolveViewListTarget maps the after/before/position targeting vocabulary
+// to an insertion index in the views list. Views are a flat ordered list —
+// there is no `inside` — and the FIRST view is the client's default tab, so
+// position "first" is the "make this the default" verb. Omitting all three
+// appends (the moveBlock root-append precedent).
+func (a *v2StateApplier) resolveViewListTarget(views []any, after, before, position, opPath string) (int, error) {
+	var fields []string
+	if after != "" {
+		fields = append(fields, "after")
+	}
+	if before != "" {
+		fields = append(fields, "before")
+	}
+	if position != "" {
+		fields = append(fields, "position")
+	}
+	if len(fields) > 1 {
+		return -1, v2model.AmbiguousInput("at most one of after, before, position is allowed",
+			v2model.Issue{Path: opPath, Message: fmt.Sprintf("got %d targeting fields (%s)", len(fields), strings.Join(fields, ", "))})
+	}
+	switch {
+	case after != "":
+		idx, err := matchViewRef(views, after, opPath+".after")
+		if err != nil {
+			return -1, err
+		}
+		return idx + 1, nil
+	case before != "":
+		idx, err := matchViewRef(views, before, opPath+".before")
+		if err != nil {
+			return -1, err
+		}
+		return idx, nil
+	case position == "first":
+		return 0, nil
+	case position == "last", position == "":
+		return len(views), nil
+	default:
+		return -1, v2model.ValidationFailed("invalid position",
+			v2model.Issue{Path: opPath + ".position", Message: fmt.Sprintf("unknown position %q", position), Hint: "allowed: first, last"})
 	}
 }
 
@@ -789,4 +853,205 @@ func deepCopyBlock(block map[string]any) (map[string]any, error) {
 // isJSONNull reports an explicit JSON null.
 func isJSONNull(raw json.RawMessage) bool {
 	return string(raw) == "null"
+}
+
+//
+// ---- insertView / moveView / deleteView (§8.18) ----
+//
+
+func (a *v2StateApplier) applyInsertView(op opInsertView, opPath string) error {
+	if op.Name == "" {
+		return v2model.ValidationFailed("a view needs a name",
+			v2model.Issue{Path: opPath + ".name", Message: "name is required — a view is a named tab",
+				Hint: "GET /v2/schemas/ops/insertView for the op's schema and example"})
+	}
+	if length := utf8.RuneCountInString(op.Name); length > maxV2NameLength {
+		return v2model.ValidationFailed("name is too long",
+			v2model.Issue{Path: opPath + ".name",
+				Message: fmt.Sprintf("%d characters — the cap is %d (the advertised maxLength)", length, maxV2NameLength)})
+	}
+	doc, err := a.doc()
+	if err != nil {
+		return err
+	}
+	idx, err := a.resolveDataviewBlock(doc, op.Block, opPath)
+	if err != nil {
+		return err
+	}
+	fullId := blockId(doc.blocks[idx])
+	edited, err := deepCopyBlock(doc.blocks[idx])
+	if err != nil {
+		return err
+	}
+	delete(edited, "indent")
+	views, _ := edited["views"].([]any)
+	insertAt, err := a.resolveViewListTarget(views, op.After, op.Before, op.Position, opPath)
+	if err != nil {
+		return err
+	}
+
+	var issues []v2model.Issue
+	var keyUses []viewKeyUse
+	preKnown := dataviewMembership(edited)
+
+	var view map[string]any
+	if op.CopyFrom != "" {
+		si, err := matchViewRef(views, op.CopyFrom, opPath+".copyFrom")
+		if err != nil {
+			return err
+		}
+		src, ok := views[si].(map[string]any)
+		if !ok {
+			return fmt.Errorf("block %s: view %d is not an object", fullId, si)
+		}
+		// duplicate everything but the identity: columns, sorts, filters,
+		// type, groupBy, card options, even the per-view editor state — the
+		// §6.2 form nests groups/objectOrders per view, so they re-key to the
+		// new view id on import
+		if view, err = deepCopyBlock(src); err != nil {
+			return err
+		}
+		delete(view, "id")
+	} else {
+		// the bare default: every property the dataview lists, VISIBLE (the
+		// GO-5969 lesson — the native CreateView default hides everything but
+		// name), ordered latest-first like the native default sort
+		props, _ := edited["properties"].([]any)
+		columns := make([]any, 0, len(props))
+		for _, raw := range props {
+			if p, ok := raw.(map[string]any); ok {
+				if key, _ := p["key"].(string); key != "" {
+					columns = append(columns, map[string]any{"property": key})
+				}
+			}
+		}
+		if len(columns) == 0 {
+			columns = []any{map[string]any{"property": "name"}}
+		}
+		view = map[string]any{
+			"columns": columns,
+			"sorts":   []any{map[string]any{"property": "lastModifiedDate", "direction": "desc"}},
+		}
+		keyUses = append(keyUses, viewKeyUse{key: "lastModifiedDate", path: opPath})
+	}
+	view["name"] = op.Name
+
+	// set/columns merge on top of the base — updateView's exact channels, so
+	// create is "updateView aimed at a fresh view"
+	if err := a.applyViewSet(op.Set, view, opPath, &issues, &keyUses); err != nil {
+		return err
+	}
+	if err := a.applyViewColumns(op.Columns, view, opPath, &issues, &keyUses); err != nil {
+		return err
+	}
+	a.validateViewKeys(edited, preKnown, keyUses, &issues)
+	if len(issues) > 0 {
+		return v2model.ValidationFailed("insertView rejected", issues...)
+	}
+
+	newId := a.mintViewId(views)
+	view["id"] = newId
+	views = slices.Insert(views, insertAt, any(view))
+	edited["views"] = views
+	if err := a.commitDataviewBlock(edited, fullId, opPath); err != nil {
+		return err
+	}
+	a.createdViews[opPath] = newId
+	return nil
+}
+
+func (a *v2StateApplier) applyMoveView(op opMoveView, opPath string) error {
+	if op.View == "" {
+		return v2model.ValidationFailed("view is required",
+			v2model.Issue{Path: opPath + ".view", Message: "moveView moves one view — name it by id (full or unique suffix)"})
+	}
+	doc, err := a.doc()
+	if err != nil {
+		return err
+	}
+	idx, err := a.resolveDataviewBlock(doc, op.Block, opPath)
+	if err != nil {
+		return err
+	}
+	fullId := blockId(doc.blocks[idx])
+	edited, err := deepCopyBlock(doc.blocks[idx])
+	if err != nil {
+		return err
+	}
+	delete(edited, "indent")
+	views, _ := edited["views"].([]any)
+	mi, err := matchViewRef(views, op.View, opPath+".view")
+	if err != nil {
+		return err
+	}
+	target, err := a.resolveViewListTarget(views, op.After, op.Before, op.Position, opPath)
+	if err != nil {
+		return err
+	}
+	moved := views[mi]
+	views = slices.Delete(views, mi, mi+1)
+	if target > mi {
+		target--
+	}
+	views = slices.Insert(views, target, moved)
+	edited["views"] = views
+	return a.commitDataviewBlock(edited, fullId, opPath)
+}
+
+func (a *v2StateApplier) applyDeleteView(op opDeleteView, opPath string) error {
+	if op.View == "" {
+		return v2model.ValidationFailed("view is required",
+			v2model.Issue{Path: opPath + ".view", Message: "deleteView deletes one view — name it by id (full or unique suffix)"})
+	}
+	doc, err := a.doc()
+	if err != nil {
+		return err
+	}
+	idx, err := a.resolveDataviewBlock(doc, op.Block, opPath)
+	if err != nil {
+		return err
+	}
+	fullId := blockId(doc.blocks[idx])
+	edited, err := deepCopyBlock(doc.blocks[idx])
+	if err != nil {
+		return err
+	}
+	delete(edited, "indent")
+	views, _ := edited["views"].([]any)
+	vi, err := matchViewRef(views, op.View, opPath+".view")
+	if err != nil {
+		return err
+	}
+	// the native DeleteView guard, as a clean C6 refusal: a dataview with
+	// zero views is a corrupt surface (the editor would regenerate a default
+	// on open, sync permitting — do not rely on it)
+	if len(views) <= 1 {
+		return v2model.ValidationFailed("cannot delete the last view",
+			v2model.Issue{Path: opPath + ".view",
+				Message: "a dataview needs at least one view",
+				Hint:    "insertView a replacement first, or updateView to fix this one in place"})
+	}
+	// per-view editor state (groups, objectOrders) nests inside the view in
+	// the §6.2 form, so it vanishes with it — no orphaned group orders. A
+	// client whose locally stored active view this was falls back to the
+	// first view (activeView is local UI state, §6.2).
+	views = slices.Delete(views, vi, vi+1)
+	edited["views"] = views
+	return a.commitDataviewBlock(edited, fullId, opPath)
+}
+
+// mintViewId mints a view id unused by the state, this PATCH, and the given
+// views list.
+func (a *v2StateApplier) mintViewId(views []any) string {
+	ids, _ := viewIdList(views)
+	existing := make(map[string]bool, len(ids))
+	for _, id := range ids {
+		existing[id] = true
+	}
+	for {
+		id := a.mintBlockId()
+		if !existing[id] {
+			return id
+		}
+	}
 }

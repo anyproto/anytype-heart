@@ -442,9 +442,12 @@ type EditResult struct {
 	Etag          string            `json:"etag,omitempty"`
 	DryRun        bool              `json:"dry_run,omitempty"`
 	CreatedBlocks map[string]string `json:"createdBlocks,omitempty"`
-	Created       *SideEffects      `json:"created,omitempty"`
-	DiffStats     DiffStats         `json:"diffStats"`
-	Warnings      []Issue           `json:"warnings,omitempty"`
+	// CreatedViews maps each insertView op ("ops[i]") to the view id it
+	// minted (view ids are always server-minted).
+	CreatedViews map[string]string `json:"createdViews,omitempty"`
+	Created      *SideEffects      `json:"created,omitempty"`
+	DiffStats    DiffStats         `json:"diffStats"`
+	Warnings     []Issue           `json:"warnings,omitempty"`
 }
 
 // SchemaEntry is one GET /v2/schemas/{kind} payload: the strict-mode

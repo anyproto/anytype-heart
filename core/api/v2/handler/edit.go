@@ -24,7 +24,7 @@ func respondV2Edit(c *gin.Context, result *v2model.EditResult) {
 // PatchObjectV2Handler applies a batch of edit ops atomically
 //
 //	@Summary		Edit object (batched ops)
-//	@Description	Applies the closed, id-addressed op set — setProperties, updateBlock, replaceSubtree, insertBlocks, moveBlock, deleteBlock, replaceText, setCell, updateView, addItems, removeItems — atomically (one change set). Block references accept full ids and unique suffixes. The post-op document must satisfy the AnyBlock semantic checks (SPEC §12); any violation rejects the whole PATCH with path-addressed errors. If-Match is advisory (C7): absent = last-write-wins, stale = 409 with the current etag. Responds with the new etag, the created-block id map keyed by payload position, and diffStats. Honors ?dry_run=true (C9). GET /v2/schemas/ops/{op} documents each op.
+//	@Description	Applies the closed, id-addressed op set — setProperties, updateBlock, replaceSubtree, insertBlocks, moveBlock, deleteBlock, replaceText, setCell, updateView, insertView, moveView, deleteView, addItems, removeItems — atomically (one change set). Block references accept full ids and unique suffixes. The post-op document must satisfy the AnyBlock semantic checks (SPEC §12); any violation rejects the whole PATCH with path-addressed errors. If-Match is advisory (C7): absent = last-write-wins, stale = 409 with the current etag. Responds with the new etag, the created-block id map keyed by payload position, and diffStats. Honors ?dry_run=true (C9). GET /v2/schemas/ops/{op} documents each op.
 //	@Id				v2_patch_object
 //	@Tags			V2
 //	@Accept			json

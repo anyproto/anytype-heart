@@ -185,7 +185,9 @@ func (s *V2Service) prewarmCreateMissing(ops []json.RawMessage, resolvers *creat
 		if err := json.Unmarshal(raw, &probe); err != nil {
 			continue
 		}
-		if probe.Op == "updateView" {
+		if probe.Op == "updateView" || probe.Op == "insertView" {
+			// both carry the same set channel; insertView's copyFrom clones
+			// only already-resolved values, so it warms nothing extra
 			s.prewarmViewOptionValues(probe.Set, resolvers)
 			continue
 		}

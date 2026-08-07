@@ -54,6 +54,39 @@ func opSchema(required string, props ...string) string {
 		strings.Join(props, ",") + `}}`
 }
 
+// v2ViewBlockPropDef is the shared dataview-block targeting property of the
+// view-family ops.
+const v2ViewBlockPropDef = `"block":{"$ref":"#/$defs/blockRef","description":"a dataview block — optional when the object has exactly one (types, sets and collections do)"}`
+
+// v2ViewSetPropDef is the shared `set` channel of updateView and insertView:
+// the authorable §6.2 view-level fields, merge semantics.
+const v2ViewSetPropDef = `"set":{"type":"object","maxProperties":18,"additionalProperties":false,"description":"merge semantics: only the named view fields change, null clears one back to its default; sorts and filters replace whole (small ordered lists); filter is the compact-string alternative to filters (give at most one of the two); columns are NOT set here — use the columns channel","properties":{` +
+	`"name":{"type":["string","null"],"maxLength":4096},` +
+	`"type":{"type":["string","null"],"enum":["table","list","gallery","kanban","calendar","graph",null]},` +
+	`"groupBy":{"type":["string","null"],"maxLength":256,"description":"property key to group by (kanban/board views)"},` +
+	`"coverProperty":{"type":["string","null"],"maxLength":256},` +
+	`"endProperty":{"type":["string","null"],"maxLength":256},` +
+	`"hideIcon":{"type":["boolean","null"]},` +
+	`"cardSize":{"type":["string","null"],"enum":["small","medium","large",null]},` +
+	`"coverFit":{"type":["boolean","null"]},` +
+	`"coloredGroups":{"type":["boolean","null"]},` +
+	`"pageSize":{"type":["integer","null"],"minimum":0,"maximum":1000},` +
+	`"defaultTemplateId":{"type":["string","null"],"maxLength":256},` +
+	`"defaultTypeId":{"type":["string","null"],"maxLength":256},` +
+	`"wrapContent":{"type":["boolean","null"]},` +
+	`"listSize":{"type":["string","null"],"enum":["compact","regular",null]},` +
+	`"alternateRows":{"type":["boolean","null"]},` +
+	`"sorts":{"type":["array","null"],"maxItems":10,"items":{"type":"object","additionalProperties":false,"required":["property"],"properties":{"property":{"type":"string","maxLength":256},"direction":{"type":"string","enum":["asc","desc","custom"]},"customOrder":{"type":"array","maxItems":128},"emptyPlacement":{"type":"string","enum":["start","end"]},"includeTime":{"type":"boolean"},"noCollate":{"type":"boolean"}}}},` +
+	`"filters":{"type":["array","null"],"description":"SPEC §6.2 filter nodes (GET /v2/schemas/filters) — recursive, so small models should prefer filter, the compact string"},` +
+	`"filter":{"type":"string","maxLength":4096,"description":"compact filter syntax (GET /v2/schemas/filters serves the grammar); parsed server-side into filters"}}}`
+
+// v2ViewColumnsPropDef is the shared per-column merge channel.
+const v2ViewColumnsPropDef = `"columns":{"type":"object","maxProperties":64,"description":"per-column patches keyed by property key: each merges into that property's column (appending one if absent); null removes the column; unnamed columns are untouched — never resend the whole column list","additionalProperties":{"type":["object","null"],"additionalProperties":false,"properties":{` +
+	`"hidden":{"type":["boolean","null"],"description":"omitted/false = visible"},` +
+	`"width":{"type":["integer","null"],"minimum":0,"maximum":10000,"description":"pixels; null/omitted lets the client pick per format (SPEC §6.2)"},` +
+	`"align":{"type":["string","null"],"enum":["left","center","right","justify",null]},` +
+	`"aggregation":{"type":["string","null"],"enum":["count","countValue","countDistinct","countEmpty","countNotEmpty","percentEmpty","percentNotEmpty","sum","average","median","min","max","range",null]}}}}`
+
 // v2OpSchemas maps each PATCH op to its strict schema + single-op example.
 var v2OpSchemas = map[string]v2SchemaKind{
 	"setProperties": {
@@ -137,33 +170,44 @@ var v2OpSchemas = map[string]v2SchemaKind{
 		endpoint: v2OpsEndpoint,
 		schema: opSchema(`"op"`,
 			`"op":{"const":"updateView"}`,
-			`"block":{"$ref":"#/$defs/blockRef","description":"a dataview block — optional when the object has exactly one (types, sets and collections do)"}`,
+			v2ViewBlockPropDef,
 			`"view":{"type":"string","minLength":1,"maxLength":64,"description":"view id, full or unique suffix — optional when the dataview has exactly one view"}`,
-			`"set":{"type":"object","maxProperties":18,"additionalProperties":false,"description":"merge semantics: only the named view fields change, null clears one back to its default; sorts and filters replace whole (small ordered lists); filter is the compact-string alternative to filters (give at most one of the two); columns are NOT set here — use the columns channel","properties":{`+
-				`"name":{"type":["string","null"],"maxLength":4096},`+
-				`"type":{"type":["string","null"],"enum":["table","list","gallery","kanban","calendar","graph",null]},`+
-				`"groupBy":{"type":["string","null"],"maxLength":256,"description":"property key to group by (kanban/board views)"},`+
-				`"coverProperty":{"type":["string","null"],"maxLength":256},`+
-				`"endProperty":{"type":["string","null"],"maxLength":256},`+
-				`"hideIcon":{"type":["boolean","null"]},`+
-				`"cardSize":{"type":["string","null"],"enum":["small","medium","large",null]},`+
-				`"coverFit":{"type":["boolean","null"]},`+
-				`"coloredGroups":{"type":["boolean","null"]},`+
-				`"pageSize":{"type":["integer","null"],"minimum":0,"maximum":1000},`+
-				`"defaultTemplateId":{"type":["string","null"],"maxLength":256},`+
-				`"defaultTypeId":{"type":["string","null"],"maxLength":256},`+
-				`"wrapContent":{"type":["boolean","null"]},`+
-				`"listSize":{"type":["string","null"],"enum":["compact","regular",null]},`+
-				`"alternateRows":{"type":["boolean","null"]},`+
-				`"sorts":{"type":["array","null"],"maxItems":10,"items":{"type":"object","additionalProperties":false,"required":["property"],"properties":{"property":{"type":"string","maxLength":256},"direction":{"type":"string","enum":["asc","desc","custom"]},"customOrder":{"type":"array","maxItems":128},"emptyPlacement":{"type":"string","enum":["start","end"]},"includeTime":{"type":"boolean"},"noCollate":{"type":"boolean"}}}},`+
-				`"filters":{"type":["array","null"],"description":"SPEC §6.2 filter nodes (GET /v2/schemas/filters) — recursive, so small models should prefer filter, the compact string"},`+
-				`"filter":{"type":"string","maxLength":4096,"description":"compact filter syntax (GET /v2/schemas/filters serves the grammar); parsed server-side into filters"}}}`,
-			`"columns":{"type":"object","maxProperties":64,"description":"per-column patches keyed by property key: each merges into that property's column (appending one if absent); null removes the column; unnamed columns are untouched — never resend the whole column list","additionalProperties":{"type":["object","null"],"additionalProperties":false,"properties":{`+
-				`"hidden":{"type":["boolean","null"],"description":"omitted/false = visible"},`+
-				`"width":{"type":["integer","null"],"minimum":0,"maximum":10000,"description":"pixels; null/omitted lets the client pick per format (SPEC §6.2)"},`+
-				`"align":{"type":["string","null"],"enum":["left","center","right","justify",null]},`+
-				`"aggregation":{"type":["string","null"],"enum":["count","countValue","countDistinct","countEmpty","countNotEmpty","percentEmpty","percentNotEmpty","sum","average","median","min","max","range",null]}}}}`),
+			v2ViewSetPropDef,
+			v2ViewColumnsPropDef),
 		example: `{"ops":[{"op":"updateView","columns":{"status":{"hidden":false}}}]}`,
+	},
+	"insertView": {
+		endpoint: v2OpsEndpoint,
+		schema: opSchema(`"op","name"`,
+			`"op":{"const":"insertView"}`,
+			v2ViewBlockPropDef,
+			`"name":{"type":"string","minLength":1,"maxLength":4096,"description":"the new view's name (its tab label)"}`,
+			`"copyFrom":{"type":"string","minLength":1,"maxLength":64,"description":"duplicate this view of the same dataview (columns, sorts, filters, type — everything but id and name), then apply set/columns on top; omitted = defaults (every listed property visible, sorted by lastModifiedDate desc)"}`,
+			`"after":{"type":"string","minLength":1,"maxLength":64,"description":"insert after this view (id, full or unique suffix)"}`,
+			`"before":{"type":"string","minLength":1,"maxLength":64,"description":"insert before this view"}`,
+			`"position":{"type":"string","enum":["first","last"],"description":"at most one of after/before/position; omitted = append; the FIRST view is the client's default tab"}`,
+			v2ViewSetPropDef,
+			v2ViewColumnsPropDef),
+		example: `{"ops":[{"op":"insertView","name":"Board","copyFrom":"viewAll1","set":{"type":"kanban","groupBy":"status"}}]}`,
+	},
+	"moveView": {
+		endpoint: v2OpsEndpoint,
+		schema: opSchema(`"op","view"`,
+			`"op":{"const":"moveView"}`,
+			v2ViewBlockPropDef,
+			`"view":{"type":"string","minLength":1,"maxLength":64,"description":"the view to move (id, full or unique suffix)"}`,
+			`"after":{"type":"string","minLength":1,"maxLength":64,"description":"move after this view"}`,
+			`"before":{"type":"string","minLength":1,"maxLength":64,"description":"move before this view"}`,
+			`"position":{"type":"string","enum":["first","last"],"description":"at most one of after/before/position; omitted = move to the end; first makes the view the client's default tab"}`),
+		example: `{"ops":[{"op":"moveView","view":"viewBoard2","position":"first"}]}`,
+	},
+	"deleteView": {
+		endpoint: v2OpsEndpoint,
+		schema: opSchema(`"op","view"`,
+			`"op":{"const":"deleteView"}`,
+			v2ViewBlockPropDef,
+			`"view":{"type":"string","minLength":1,"maxLength":64,"description":"the view to delete (id, full or unique suffix) — deleting the last view is refused; per-view editor state goes with it"}`),
+		example: `{"ops":[{"op":"deleteView","view":"viewBoard2"}]}`,
 	},
 	"addItems": {
 		endpoint: v2OpsEndpoint,
