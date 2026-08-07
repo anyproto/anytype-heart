@@ -7,6 +7,7 @@ import (
 	"os"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -50,6 +51,12 @@ func TestLiveNamingQuality(t *testing.T) {
 	client, err := llmclient.New(llmclient.Config{Endpoint: endpoint, Model: model, Token: key})
 	require.NoError(t, err)
 	opts := []llmplan.Option{llmplan.WithBudget(20 * time.Minute)}
+	if raw := os.Getenv("IMPORTV2_LLM_CHUNK"); raw != "" {
+		size, err := strconv.Atoi(raw)
+		require.NoError(t, err, "IMPORTV2_LLM_CHUNK must be an integer")
+		opts = append(opts, llmplan.WithChunkSize(size))
+		t.Logf("chunk size: %d", size)
+	}
 	// On ollama only "none" changes anything — it strips the <|think|> marker
 	// from the system turn; "low" and "high" are byte-identical requests there.
 	if effort := os.Getenv("IMPORTV2_LLM_EFFORT"); effort != "" {
@@ -64,10 +71,14 @@ func TestLiveNamingQuality(t *testing.T) {
 	}
 	var corpora []corpus
 
-	fixtures, err := planfixture.All()
-	require.NoError(t, err)
-	for _, fixture := range fixtures {
-		corpora = append(corpora, corpus{"synthetic/" + fixture.Id, fixture.Containers})
+	// The synthetic fixtures are 10-14 containers, so they exercise naming but
+	// not the size-dependent coverage gap; skip them when sweeping that.
+	if os.Getenv("IMPORTV2_SKIP_FIXTURES") == "" {
+		fixtures, err := planfixture.All()
+		require.NoError(t, err)
+		for _, fixture := range fixtures {
+			corpora = append(corpora, corpus{"synthetic/" + fixture.Id, fixture.Containers})
+		}
 	}
 	// A dumped []schemaplan.ContainerSchema — the real workspace's evidence.
 	if path := os.Getenv("IMPORTV2_REAL_SCHEMAS"); path != "" {

@@ -16,6 +16,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/ai/llmclient"
 	"github.com/anyproto/anytype-heart/core/block/importv2/schemaplan"
+	"github.com/anyproto/anytype-heart/core/block/importv2/typesuggest"
 )
 
 // defaultBudget bounds the whole plan step, retries included — an import
@@ -35,6 +36,7 @@ type planner struct {
 	budget       time.Duration
 	effort       string
 	perContainer bool
+	chunkSize    int
 }
 
 // Option configures the planner.
@@ -52,6 +54,25 @@ func WithBudget(budget time.Duration) Option {
 // is instruction-following-bound, not reasoning-bound.
 func WithReasoningEffort(effort string) Option {
 	return func(p *planner) { p.effort = effort }
+}
+
+// WithChunkSize splits the evidence into chunks of at most n containers, one
+// kinds call per chunk, merging the results by kind name. Zero (the default)
+// sends the whole workspace in one call.
+//
+// The motivation is measured: coverage tracks corpus SIZE, not model or prompt.
+// gemma4:e2b assigns every container on fixtures of 10-14 but only 32 of 37 on
+// the real workspace, and neither an explicit count nor an instruction change
+// recovered the gap. Chunking bounds what any single call has to enumerate.
+//
+// It is the same shape as WithPerContainerCalls (which is chunk size 1 with a
+// one-field schema), but each chunk answers the full kinds schema, so grouping
+// still happens inside a chunk. Cross-chunk grouping is recovered by merging
+// kinds whose names normalize equal — and because the merged kind flows into
+// CompleteKinds like any other, the coverage gate vetoes a cross-chunk merge
+// that would bloat a type, exactly as it does within a chunk.
+func WithChunkSize(n int) Option {
+	return func(p *planner) { p.chunkSize = n }
 }
 
 // WithPerContainerCalls skips the global kinds call and goes straight to the
@@ -85,6 +106,14 @@ func (p *planner) Plan(ctx context.Context, schemas []schemaplan.ContainerSchema
 		return schemaplan.CompleteKinds(kinds, schemas), nil
 	}
 
+	if p.chunkSize > 0 && len(schemas) > p.chunkSize {
+		kinds, err := p.planChunked(ctx, schemas)
+		if err != nil {
+			return schemaplan.Plan{}, fmt.Errorf("chunked plan: %w", err)
+		}
+		return schemaplan.CompleteKinds(kinds, schemas), nil
+	}
+
 	kinds, err := p.planKinds(ctx, schemas)
 	if err != nil {
 		if !isContextStarved(err) {
@@ -98,6 +127,58 @@ func (p *planner) Plan(ctx context.Context, schemas []schemaplan.ContainerSchema
 		}
 	}
 	return schemaplan.CompleteKinds(kinds, schemas), nil
+}
+
+// planChunked runs one kinds call per chunk and merges the answers. A chunk
+// that fails is skipped — its containers degrade to their typesuggest verdict
+// in CompleteKinds — but every chunk failing is a failed plan, not an empty
+// one, so the caller still gets its llmPlanFailed warning.
+func (p *planner) planChunked(ctx context.Context, schemas []schemaplan.ContainerSchema) ([]schemaplan.KindPlan, error) {
+	var (
+		merged   []schemaplan.KindPlan
+		byName   = map[string]int{}
+		failures int
+		lastErr  error
+		chunks   int
+	)
+	for start := 0; start < len(schemas); start += p.chunkSize {
+		end := start + p.chunkSize
+		if end > len(schemas) {
+			end = len(schemas)
+		}
+		chunks++
+		kinds, err := p.planKinds(ctx, schemas[start:end])
+		if err != nil {
+			if ctx.Err() != nil {
+				return nil, fmt.Errorf("chunk %d: %w", chunks, err)
+			}
+			failures++
+			lastErr = err
+			continue
+		}
+		for _, kind := range kinds {
+			// Kinds from different chunks merge when their names normalize
+			// equal; the first chunk's spelling, icon and layout win, and
+			// featured names accumulate (CompleteKinds caps and resolves them).
+			key := typesuggest.Normalize(kind.Name)
+			if key == "" {
+				merged = append(merged, kind)
+				continue
+			}
+			index, seen := byName[key]
+			if !seen {
+				byName[key] = len(merged)
+				merged = append(merged, kind)
+				continue
+			}
+			merged[index].ContainerIds = append(merged[index].ContainerIds, kind.ContainerIds...)
+			merged[index].FeaturedNames = append(merged[index].FeaturedNames, kind.FeaturedNames...)
+		}
+	}
+	if failures == chunks {
+		return nil, fmt.Errorf("all %d chunks failed, last: %w", chunks, lastErr)
+	}
+	return merged, nil
 }
 
 // planKinds is the tier-1/2 path: one kinds call over the whole evidence,
