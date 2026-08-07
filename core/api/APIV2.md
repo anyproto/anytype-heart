@@ -2520,3 +2520,86 @@ exist — a documentation cost paid forever to avoid a bounded technical one.
 Keying on the staged file's digest inside the handler is more correct still,
 but moves idempotency out of the middleware for one route and cannot answer
 the replay before the upload has already happened.
+
+### 8.16 Surface-review fix M7 (2026-08-07 — decisions as built)
+
+One PATCH could hold the object lock for tens of minutes. `v2MaxOpsPerPatch`
+bounds the op count, but every mutating op invalidates the applier's view,
+so the next op re-marshals the WHOLE document — under the smartblock lock,
+where the cost is not latency for one caller but starvation for every
+reader and writer of the object: ObjectOpen, sync, the app's own UI.
+Reproduced before changing anything: 400 trivial replaceText ops measured
+12.2 s on a 4,200-block document and 71.4 s on a 24,000-block one (~7 µs
+per block-render), linear in the document exactly as the O(ops × document)
+product predicts; the 10 MiB body cap × 512 ops extrapolates to 15–20
+minutes from a single request.
+
+**As built — two bounds, then one exemption that earns its way out.**
+
+1. **The per-op blocks cap** (`v2MaxBlocksPerOp` = 256, enforced in
+   `decodePayloadRun`): the served op schemas ALWAYS advertised
+   `maxItems: 256` on the blocks channel of insertBlocks and
+   replaceSubtree; nothing enforced it, so one op could inflate the
+   document by 24,000 blocks for every later op to re-render. The markdown
+   channel already enforced the same number; the two channels now share
+   `v2MaxBlocksPerOp` by definition. No schema text changed — the schema
+   was right, the server was lenient.
+2. **The render-work bound** (`v2MaxPatchRenderWork` = 2^20 block-renders,
+   `checkPatchRenderWork`): the product itself — view-rebuilding ops ×
+   (document blocks + payload blocks, markdown counted at its per-op cap) —
+   refused whole after the `begin()` marshal, before any op applies, with
+   the numbers in the error. Rejection therefore costs one marshal, the
+   same floor a GET pays. 2^20 ≈ 7 s worst case on a desktop machine.
+   The hint says split the batch, and splitting is the fix rather than a
+   workaround: the object is RELEASED between batches, which is the whole
+   point. The check sits in `applyPatchOps`, so the guardCreateMissing
+   probe pass, the dry run and the locked run all reach the same verdict
+   (C9 dry≡real). Like the 512-op cap it is server-side behavior, not a
+   schema-advertised bound.
+3. **replaceText maintains the view in place** (`textEdited`): it changes
+   exactly one exported field of one block — no ids, no structure, no
+   indents — and it is the one op that inherently arrives many-per-batch
+   (one find/replace each). It writes the CANONICAL rendering a re-marshal
+   would emit: `RenderInlineText(parse(splice))` for markup text (the
+   exporter's own `renderInline`; mark compaction is off on the edit path,
+   verified in `compactMarks`), the literal splice for code/embed (§8.4),
+   field dropped when empty (`setNonEmpty`). Canonical matters: a splice
+   can leave adjacent marks (`**re****port**`) whose re-marshal reads
+   `**report**`, and the next op's find must match what the agent would
+   read back. With the exemption in `v2OpRebuildsView`, a full 512-op
+   replaceText batch on a large document is legal again AND cheap:
+   400 ops on 24,000 blocks went 71.4 s → 0.8 s, on 4,200 blocks
+   12.2 s → 0.15 s — the two remaining renders are begin + the final
+   after-document, which diffStats and the R5 net need regardless.
+
+**Tests that fail if the fix is reverted** (verified by reverting): the
+per-op cap and work-bound rejections in `TestPatchObject`, the work-bound
+exemption for replaceText, and `TestApplierRenderCounts`, which pins the
+bounded-work property in the unit that cannot flake in CI — whole-document
+renders (`marshalCount`): exactly 2 for a 50-op text batch, per-op for
+structural ops. Two semantics tests (sequential-canonical, an
+updateBlock merging after a replaceText) pass on BOTH code paths —
+they pin that the in-place update is byte-equivalent to the re-marshal
+it replaces.
+
+**Deliberately NOT done.** Incremental view maintenance for the
+structural ops (insertBlocks, moveBlock, deleteBlock, updateBlock,
+replaceSubtree, setCell): their exported form is produced by the
+exporter's tree walk — normalization, indent clamping with the C11/B′2
+warning contract, table wrapper pinning, the document-wide id domain —
+and replicating that per op in the applier is the applier rewrite this
+review round warned against. Nor for setProperties/addItems/removeItems:
+they batch naturally into ONE op (maps and arrays), so the product term
+barely exists for them, and the properties view has real staleness corner
+cases (a key unset and re-set in one batch must re-check space existence).
+The bound covers what the exemption does not.
+
+**The residual limit, stated plainly.** A structural batch still pays
+O(ops × document) up to the 2^20 budget — single-digit seconds of held
+lock on a desktop, proportionally more on slower devices. Below the
+budget, a hostile-but-legal batch can still buy ~7 s of lock; above it,
+the work simply cannot be purchased in one request. And every PATCH keeps
+its two-marshal floor, so a very large document costs one render even to
+reject — the same floor its GET costs. The exact worst case a caller can
+reach is therefore max(two renders of the document, the render budget),
+never minutes.
