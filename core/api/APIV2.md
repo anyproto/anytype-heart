@@ -2737,7 +2737,8 @@ branch → fails); the vocabulary drift test pins the exported lists to the
 enum tables; and removing the op registration trivially fails the whole
 `TestUpdateViewOp` suite.
 
-**Deliberately NOT built.** View create/delete/reorder (`addView`/
+**Deliberately NOT built** *(superseded by §8.18 — the view family shipped
+the same day)*. View create/delete/reorder (`addView`/
 `deleteView` — POST /sets seeds multiple views at creation; editing was the
 reported gap; creation-after-the-fact is a separate, smaller decision and
 the native RPC precedent has its own last-view invariant). Name-based view
@@ -2793,14 +2794,17 @@ copied editor state re-keys to the new view id on import for free.
 **Reorder is targeted, never a rewrite.** `moveView {view, after|before|
 position}` — the moveBlock vocabulary minus `inside` (views are a flat
 list; there is no container), with `position: "first"|"last"` standing
-alone instead of riding `inside`. Omitting all three appends (the
-root-append precedent). `position: "first"` is documented as the "make
-this the default tab" verb: `activeView` is local UI state (§6.2, excluded
-from changes), so the FIRST view is what a fresh client shows. The splice
-adjusts the target index across the removal (move-after-a-later-view is
-the test case); moving relative to itself degenerates to a no-op rather
-than an error. insertView shares the same targeting for its insertion
-point.
+alone instead of riding `inside`. `position: "first"` is documented as the
+"make this the default tab" verb: `activeView` is local UI state (§6.2,
+excluded from changes), so the FIRST view is what a fresh client shows.
+*(Revised in §8.19: moveView now REQUIRES a destination — the silent
+append default this section originally shipped was judged a
+forgotten-field trap that quietly changes the default tab. insertView
+keeps its append default, where appending is the natural create
+position.)* The splice adjusts the target index across the removal
+(move-after-a-later-view is the test case); moving relative to itself
+degenerates to a no-op rather than an error. insertView shares the same
+targeting for its insertion point.
 
 **Delete has one guard and one deliberate non-behavior.** Deleting the
 last view is a clean C6 refusal (`cannot delete the last view` — the
@@ -2837,3 +2841,118 @@ a view of the addressed dataview — cross-block copying is a read+insert
 composition the agent can already do). View duplication INTO another
 object (out of PATCH's one-object scope by definition). `make openapi`
 regeneration is pending (the PATCH annotation now names all 14 ops).
+
+### 8.19 View-family review fixes (2026-08-07 — decisions as built)
+
+Three review lenses (correctness/data-safety, agent contract, tests) went
+over §8.17/§8.18 as shipped. The headline finding invalidated a §8.17
+claim; the rest tightened contracts and closed fixture gaps. Dispositions,
+in the reviews' order:
+
+**A — the commit path could mint options under the lock (fixed, the big
+one).** The view-op commit re-imported the WHOLE dataview block through the
+create-missing resolver. Export writes option values as NAMES (falling back
+to the raw id for a dangling reference), so every view's filters and custom
+sort orders re-resolved name→id on every view op — including views the op
+never touched. Consequences, all reproduced: a dangling reference (deleted
+tag, filter keeps the id) round-tripped into a BRAND-NEW option named after
+the raw id with the filter rebound to it; those creates fired under the
+object lock (the B6 invariant §8.17 claimed could not be reached); they
+bypassed both halves of M5 (one moveView over an untouched view with 200
+dangling values = 200 options past the cap of 64, and a batch REFUSED as
+atomic still left its options created); and with two options legally
+sharing a name, a pure moveView repointed a filter to the other twin by
+store listing order.
+
+As built, two mechanisms:
+
+1. **The commit imports with a NO-CREATE resolver**
+   (`commitImportOptions` / `readOnlyOptionResolver`): names resolve
+   through the prewarm's create cache and the store; a miss passes through
+   verbatim instead of minting. Op-authored names are created by the
+   PRE-LOCK prewarm, so the cache covers them; anything the prewarm cannot
+   see is by construction content the op has no business minting for. This
+   also closes the narrow prewarm/import format-disagreement case the
+   review flagged (dv-list says select, space says longtext): the value now
+   passes through verbatim instead of creating under the lock.
+2. **Unauthored content is restored from the live proto after the import**
+   (`viewCommitPlan` / `restoreUnauthoredViews`): moveView and deleteView
+   author nothing — every surviving view is byte-restored, only
+   order/membership comes from the splice; updateView and insertView author
+   one view, and within it sorts/filters restore from the live (or
+   copyFrom-source) proto unless the op's set actually named them. The
+   codec round-trip is thereby a no-op for everything the op did not write:
+   no rebinding, no twin repointing, no drift.
+
+The fixture hole the reviews named — no test ever put content in a view
+the op does not address — is closed by four tests: dangling-value
+verbatim survival through moveView, twin-option id stability through
+updateView-on-the-other-view, format-disagreement pass-through, and
+copyFrom preserving the source's exact ids. Each verified fail-on-revert
+by reverting the resolver and the restore separately.
+
+**B — the M7 bound was blind to dataview weight (fixed).** A dataview is
+ONE block whose marshal cost is O(views × columns); a fully legal
+512×insertView batch on a wide set held the lock ~25 s while scoring 0.05%
+of the budget — and §8.18's no-view-cap justification leaned on the bound
+it was beating. `checkPatchRenderWork` now takes the parsed blocks: the
+document factor counts per-view weight (1 + columns + sorts + filters) and
+every insertView adds the document's heaviest per-view weight to the
+payload factor (the copyFrom worst case). The §8.18 justification holds
+again. Pinned by a test whose 512×insertView batch on a 10-view×50-column
+set must be REFUSED — it passes the old cost model, so it fails if the
+model reverts (verified; the reverted run also demonstrated the 24 s hold).
+
+**C — the family's M7 registration was asserted, never tested (fixed).**
+The marshal-count pin (the TestApplierRenderCounts pattern: two view ops =
+begin + one rebuild + final) is now COUPLED in one test to the
+`v2OpRebuildsView` entries, so measured per-op re-marshaling and the map
+that accounts for it cannot drift apart.
+
+**D — the served sorts schema rejected what reads emit (fixed).** Stored
+sorts carry an `id`; the exporter emits it; the strict item schema lacked
+it — so read→edit→write of a sort was schema-refused while the server
+accepted it. The item schema gains `id` (documented output-only-on-reads,
+accepted back). A drift test now walks the served schema and pins the enum
+lists to the `viewvocab.go` exports too — the hand-duplicated schema enums
+were the one link the vocabulary drift test did not reach.
+
+**E — insertView had two name slots (fixed).** `set.name` silently
+overrode the op's required `name`, and `set.name: null` produced a
+nameless view from an op whose schema declares name required. insertView
+now rejects `set.name` with the steer (updateView keeps it — there it IS
+the rename channel), and its served set schema drops the name property
+(`v2ViewSetPropDefNoName`), keeping schema and server in agreement.
+
+**F — the indent strip was load-bearing and unexercised (fixed).** All
+fixtures kept the dataview at indent 0, so deleting the view-doc `indent`
+before re-import was dead weight in every test while being essential for
+the shipped inline-dataview shape. An indented-inline fixture now pins it.
+
+**Minors.** Removing a column from a column-less view no longer writes
+`columns: null` into the block (a reachable 400). The advertised
+`customOrder` maxItems (128) is enforced, and `set.filters` both advertises
+and enforces a top-level-nodes cap (32; nesting stays the documented C13
+recursion exception). The compact filter string now validates keys against
+the same membership as the structured form (the whole dataview: properties
+list + every view's columns — it saw only the addressed view's columns, so
+the recommended input form rejected keys the structured form accepted,
+with a did-you-mean that omitted the right answer). moveView requires a
+destination (§8.18 revision note above). The bare-insert default is built
+from pre-op membership — its default sort no longer grows the properties
+list, so two bare inserts in one batch produce identical views. copyFrom's
+kanban editor-state fidelity is now pinned by a fixture that has some.
+
+**Rejected, with evidence.** "copyFrom duplicates per-node sort/filter ids
+— a state the native editor never produces": the generator itself ships
+fixed node ids on every generated view (`DefaultLastModifiedDateSort`'s
+`byLastModifiedDate`, `defaultChatSort`'s `byLastMessageDate` — identical
+across every set in every space), so shared node ids are generator-normal;
+and after fix A the copy's sorts/filters are proto-restored from the
+source, making a JSON-side strip literally unreachable code (it was
+written, then deleted on that evidence).
+
+**Deferred.** `?fields=` projection on GET …/views (a read-cost
+optimization, no correctness stake). The Date-object `state.ErrRestricted`
+500 is pre-existing, shared with every block op, and ticket-worthy — not a
+view-family fix.

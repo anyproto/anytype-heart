@@ -123,12 +123,13 @@ whether you may write. Ask this instead of discovering limits through 403s
   a new key appends one. Works on Blocks-restricted objects — view config
   is not a block edit.
 - **`insertView`/`moveView`/`deleteView`** complete the family (same
-  addressing, same channels). insertView needs only `name` — bare default:
-  every listed property visible, newest first; `copyFrom` duplicates a view
-  (then `set`/`columns` override); the minted id returns in `createdViews`.
-  moveView targets `after`/`before`/`position` like moveBlock (no
-  `inside`). deleteView refuses the last view — insert the replacement
-  first (one atomic batch swaps a bad default view).
+  addressing, same channels; insertView's name is its own required field —
+  not in `set`). insertView needs only `name` — bare default: every listed
+  property visible, newest first; `copyFrom` duplicates a view (then
+  `set`/`columns` override); the minted id returns in `createdViews`,
+  keyed `ops[i]`. moveView REQUIRES one of `after`/`before`/`position`
+  (`"first"` = default tab). deleteView refuses the last view — insert the
+  replacement first (one atomic batch swaps a bad default view).
 - Response: new `etag`, `createdBlocks` (payload position → real id),
   `created` (options minted by create-missing),
   `diffStats {blocksAdded, blocksRemoved, blocksChanged, blocksMoved,
