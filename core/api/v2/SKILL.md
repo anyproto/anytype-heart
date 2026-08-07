@@ -50,6 +50,7 @@ whether you may write. Ask this instead of discovering limits through 403s
 | add content | op `insertBlocks` with a `markdown` payload — write markdown, the server parses it |
 | restructure | ops `moveBlock` / `replaceSubtree` / `deleteBlock` |
 | one table cell | op `setCell` — never rewrite the table |
+| show/hide a view column, edit a view | op `updateView` — works on sets, collections and a type's default view (PATCH the type OBJECT id from `GET …/types/{key}`) |
 | create an object | `POST …/objects` — shortcut `{type, name, properties, markdown}` covers most cases |
 | curate a collection | PATCH ops `addItems` / `removeItems` on the collection object |
 | read a set / collection | `GET …/sets/{id}/objects` · `…/collections/{id}/objects` (`?view=`, `?fields=`) |
@@ -77,7 +78,7 @@ whether you may write. Ask this instead of discovering limits through 403s
 
 `PATCH …/objects/{id}` body `{"ops":[…]}` — one atomic batch (≤512 ops,
 ≤256 blocks per op): any invalid op rejects the whole PATCH with
-`ops[i]`-addressed issues. Ten ops:
+`ops[i]`-addressed issues. Eleven ops:
 
 ```json
 { "ops": [
@@ -88,7 +89,8 @@ whether you may write. Ask this instead of discovering limits through 403s
   { "op": "insertBlocks", "after": "b3", "markdown": "## Notes\n- first\n- second" },
   { "op": "moveBlock",    "id": "b9", "inside": "b2", "position": "last" },
   { "op": "deleteBlock",  "id": "b4", "recursive": true },
-  { "op": "setCell",      "tableId": "t1", "row": "r2", "col": "c1", "value": "done" }
+  { "op": "setCell",      "tableId": "t1", "row": "r2", "col": "c1", "value": "done" },
+  { "op": "updateView",   "columns": {"status": {"hidden": false}} }
 ] }
 ```
 
@@ -109,10 +111,18 @@ whether you may write. Ask this instead of discovering limits through 403s
   document end — the way into an empty object. Payload `indent: 0` = the
   anchor's level (`after`/`before`) or the container's child level
   (`inside`). `moveBlock` targets the same way.
+- **`updateView`** edits ONE dataview view — never resend the views array.
+  `block`/`view` are optional when the object has one dataview and it one
+  view (types, sets, collections usually do). `set` merges view fields
+  (`name`, `type`, `groupBy`, `sorts`, `filters` — arrays replace whole;
+  `filter` takes the compact string; null clears a field); `columns` merges
+  per property key: `{"hidden": false}` shows a column, `null` removes it,
+  a new key appends one. Works on Blocks-restricted objects — view config
+  is not a block edit.
 - Response: new `etag`, `createdBlocks` (payload position → real id),
   `created` (options minted by create-missing),
   `diffStats {blocksAdded, blocksRemoved, blocksChanged, blocksMoved,
-  propertiesChanged}`.
+  propertiesChanged}`, `warnings` (advisory, e.g. an unguarded date filter).
 - `PUT` replaces the whole document (body = a full AnyBlock doc; keep the
   block ids from your GET so the server can diff-apply). Prefer PATCH.
 
@@ -233,3 +243,5 @@ read: no `Idempotency-Key`, `dry_run` ignored.
 - `GET …/types/{key}/schema` is a 501 stub — compose from
   `GET …/types/{key}` + `…/properties/{key}/options`.
 - No option rename/recolor/delete under /v2 (v1 tags admin, Phase 8).
+- **No view create/delete/reorder** — `updateView` edits an existing
+  view's fields and columns; new views only at `POST …/sets` time.

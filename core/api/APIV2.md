@@ -2603,3 +2603,146 @@ its two-marshal floor, so a very large document costs one render even to
 reject — the same floor its GET costs. The exact worst case a caller can
 reach is therefore max(two renders of the document, the render budget),
 never minutes.
+
+### 8.17 The view write path: updateView (2026-08-07 — decisions as built)
+
+**The gap, as reported by an agent using the API.** Dataview views were
+readable three ways (the object document, `GET …/sets/{id}/views`,
+`…/collections/{id}/views`) and writable zero ways after creation: PUT
+refuses type documents by kind, the types PATCH accepts only
+properties/typeProperties, and no view route accepts a write. The reporter's
+concrete case — a custom type's default "All" view rendering every custom
+column `hidden: true` — was TWO bugs stacked: no write path (this section),
+and the generator regression that hid the columns in the first place
+(GO-5969 inverted `MakeDataviewContent`'s precedence so a type's explicitly
+passed relation links stopped being marked visible; fixed at the generator,
+pinned in `collection_test.go` — a freshly created type now gets a usable
+view and the write path is a repair tool, not a required rite of passage).
+
+**Surface: an eleventh PATCH op, `updateView` — not a route.** Views are
+part of the object's document (SPEC §6.2); C2 says one concept, one slot,
+and the object-edit slot is `PATCH …/objects/{id}`. A dedicated
+`PATCH …/views/{viewId}` was rejected: it would be a second way to edit one
+object with its own idempotency/dry-run/etag wiring, it cannot compose
+atomically with other ops, and it would need THREE registrations (sets,
+collections, types) plus a fourth story for inline dataviews — the op works
+on all four today, including `PATCH …/objects/{typeObjectId}` with the id
+from `GET …/types/{key}` (type objects pass `checkEditPreconditions`; only
+the PUT kind-gate refuses them). Whole-array rewrite via `updateBlock` was
+rejected twice over: it is the documented small-model trap (resend every
+view to flip one bit), and updateBlock's `{Blocks: true}` classification
+refuses it on exactly the three object classes that carry dataviews.
+
+**Shape.** `{op, block?, view?, set?, columns?}` — at least one of
+set/columns. `block` defaults to the object's only dataview (types, sets,
+collections have exactly one, at the fixed id "dataview"); `view` defaults
+to the only view; both resolve by full id or unique suffix (the C4 rule
+`resolveViewRef` already applies on the read surface — resolution by NAME
+was considered and dropped: names collide and localize, and every
+ambiguity/not-found error lists `id ("name")` pairs so the repair needs no
+second read). `set` merges §6.2 view-level fields with updateBlock
+semantics (named fields change, explicit null clears one); `sorts` and
+`filters` replace whole when named — small ordered lists; `filter` is the
+compact-string alternative to `filters` (parsed exactly as POST /sets
+parses it, ambiguous together). `columns` merges PER COLUMN, keyed by
+property key: a patch object merges `{hidden, width, align, aggregation}`
+into that property's column, appends a column for a key that has none, and
+null removes one (removal is deliberately not key-validated — a stale
+column for a deleted property must stay removable). `id` immutable,
+`set.columns` steered to the columns channel, `groups`/`objectOrders`
+rejected as §4a output-only — but they SURVIVE the edit: the merge happens
+on the block's exported JSON and re-imports through the format codec
+(`UnmarshalBlock`, the setCell pattern), and the importer round-trips
+kanban editor state, so untouched views, columns, group orders and manual
+object orders land back bit-identical. All validation runs against a
+private deep copy first — a failing op leaves state and view untouched.
+
+**One vocabulary, exported from the format.** The op validates view types,
+card/list sizes, column align and aggregation against lists the
+`anyblockjson` package now exports (`viewvocab.go`), pinned to the codec's
+own enum tables by a drift test — necessary because the codec itself maps
+unknown enum names silently to defaults on import, which is exactly the
+silent-degradation an op surface must not inherit. Sorts and filters
+validate through the exported fragment codec (`UnmarshalSorts`,
+`UnmarshalFilters` — read-only resolvers, issues rebased onto
+`ops[i].set.…` paths), the M3 structural gate runs on `set.filters` for the
+same reason it runs on POST /sets (a persisted match-everything filter is a
+view that quietly shows the whole space, for good), and the §6.2
+unguarded-date-comparison finding rides the C11 warnings channel — PATCH
+responses now carry `warnings` for the first time.
+
+**THE RESTRICTION CLASSIFICATION — the decision that could have recreated
+M1.** `v2OpEditNeeds["updateView"] = {}` — neither axis. Sets and
+collections carry `Restrictions_Blocks` (`objRestrictEdit`) and object
+types carry it too (`objRestrictEditAndTemplate`) — the three
+dataview-bearing classes, so a Blocks-classified view op would be refused
+on precisely the objects it exists to edit, the M1 bug reborn. The
+classification is not a convenience but the editor's own position: the
+Blocks axis gates document content (`basic.CreateBlock`, tables, clipboard,
+uploads all check it) while the native view surface — `sdataview.
+UpdateView`/`CreateView`/`DeleteView`, i.e. v1's ungated
+`BlockDataviewView*` RPCs — checks NO object-level restriction, which is
+how the app edits views on a set at all. Proved three ways:
+`objectmutateadapter_test.go` pins sets/collections AND a custom type
+object against the LIVE restriction table (Blocks refused, Details not);
+`viewops_test.go` drives a PatchObject with production-shaped
+`BlocksRefused`+`DetailsRefused` on the read and asserts the op succeeds
+with `EditNeeds{}` recorded at the mutator; and the same on the dry-run
+path (C9 parity). Verified fail-on-revert by flipping the classification
+to `{Blocks: true}`: both tests fail, nothing else notices.
+
+**Create-missing wiring (the M5/B6 interplay).** A view filter's select
+values and a custom sort order carry option NAMES, which the dataview
+import resolves with create-missing — so `prewarmCreateMissing` learned the
+op: it walks `set.filters`, the parsed `set.filter` string and
+`set.sorts[].customOrder`, resolving select/tag values BEFORE the object
+lock and thereby inside the M5 bound (a channel prewarm cannot see is a
+channel the too-many-options cap cannot count — the bound test fails if the
+prewarm branch is disabled, verified by disabling it). One §11 alignment
+closes the residual gap: `empty`/`notEmpty`/`exists` leaves get their
+`value` stripped on store (the canonical form), so the in-lock import never
+resolves — never mints — an option the view cannot use, and prewarm and
+import see identical work.
+
+**Reference-key rule, and a recorded divergence.** Keys a patch introduces
+(columns, sorts, filter leaves, groupBy/coverProperty/endProperty) must be
+known to the dataview (pre-merge membership: properties list ∪ any view's
+columns) or to the space — rejected with the did-you-mean otherwise;
+resolvable keys are appended to the dataview's `properties` list so formats
+rehydrate (§6.2 sorts/filters carry no cached format). This is deliberately
+LOOSER than POST /sets' R9 rule (type-recommended keys only): generated
+views already carry columns outside that set (`backlinks`,
+`lastModifiedBy`, `lastOpenedDate`), and an edit surface must not reject
+what the surface already shows. The divergence means a two-step
+set-build can reach a filter key the one-step create would refuse —
+accepted: the native app allows the same, and the cost of the strict rule
+here is false rejections on every generated view.
+
+**Bounds (M6 discipline: advertised = enforced).** columns ≤ 64
+(`maxV2ViewColumns`), sorts ≤ 10 (shared `maxV2SetSorts`), filter string ≤
+4096 (shared `maxV2FilterLength`), pageSize ≤ 1000, width ≤ 10000 px (SPEC
+§6.2: the editor's own range is 54…1000; omitted/null lets the client pick
+per format), name ≤ 4096, keys/ids ≤ 256. The op rebuilds the document view
+(`v2OpRebuildsView`), so the M7 render-work bound counts it with no new
+plumbing. Served schema: `GET /v2/schemas/ops/updateView`, C13-strict
+except the documented `filters` recursion (small models steered to
+`filter`); the example is the one-line repair of the reported gap:
+`{"ops":[{"op":"updateView","columns":{"status":{"hidden":false}}}]}`.
+
+**Tests that fail if reverted** (each verified by actually reverting):
+the generator-regression case in `collection_test.go` (stash the
+`collection.go` fix → fails); the two restriction-classification tests
+(flip `v2OpEditNeeds` → fail); the M5 bound test (disable the prewarm
+branch → fails); the vocabulary drift test pins the exported lists to the
+enum tables; and removing the op registration trivially fails the whole
+`TestUpdateViewOp` suite.
+
+**Deliberately NOT built.** View create/delete/reorder (`addView`/
+`deleteView` — POST /sets seeds multiple views at creation; editing was the
+reported gap; creation-after-the-fact is a separate, smaller decision and
+the native RPC precedent has its own last-view invariant). Name-based view
+addressing (see above). A dataview-properties op (the `properties` list
+self-maintains through key usage). Type-scoped R9 tightening for edits
+(recorded divergence above). `activeView` anything — local UI state the
+proto excludes from changes. The swagger annotation names the new op;
+`make openapi` regeneration is pending per the working agreement.
