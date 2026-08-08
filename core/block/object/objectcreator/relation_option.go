@@ -48,10 +48,13 @@ func (s *service) createRelationOption(ctx context.Context, space clientspace.Sp
 	injectApiObjectKey(object, objectKey)
 	// NOTE: a second fallback used to re-derive the slug here via bare
 	// transliteration WITHOUT the snake_case step — the one divergence in
-	// the slug layer (GO-7383 ADDRESSING §2.3-3). It was also dead code:
-	// injectApiObjectKey always sets the detail from the same inputs, and
-	// strcase.ToSnake never empties a non-empty transliteration, so the
-	// branch could only ever re-compute the same empty string.
+	// the slug layer (GO-7383 ADDRESSING §2.3-3). Removed: for names whose
+	// snake form trims to whitespace/empty (transliterate runs TrimSpace
+	// before unidecode, so U+200B- or U+2800-only names and emoji+space
+	// names do reach this point) the divergent branch stored the raw
+	// transliteration where injectApiObjectKey stored the snaked form —
+	// both effectively blank, neither a usable slug, so the removal is
+	// benign and the un-snaked spelling is gone.
 
 	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
 	createState.SetDetails(object)

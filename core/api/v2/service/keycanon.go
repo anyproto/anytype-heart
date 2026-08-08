@@ -15,6 +15,7 @@ import (
 
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 )
 
 // keyCanon is the per-request canonicalizer.
@@ -51,9 +52,12 @@ func (k *keyCanon) canon(input string) (string, []string) {
 	return input, nil
 }
 
-// withServedSpellings widens a stored-key reference set with the served
-// spelling of each key (the listing's spelling must always be accepted —
-// C2's one-vocabulary promise, kept across mint and listing).
+// withServedSpellings widens a stored-key reference set with every
+// spelling the chain resolves for it: the served spelling (the listing's —
+// C2's one-vocabulary promise, kept across mint and listing) and, for
+// bundled keys, the derived slug (`due_date` for `dueDate` — the routes
+// and documents accept it, so the string-form filter validator must too;
+// acceptance is wider than advertising).
 func (k *keyCanon) withServedSpellings(stored []string) []string {
 	keyTaken, slugCount := servedPropertyKeySets(k.entries)
 	bySlug := map[string]string{}
@@ -66,6 +70,11 @@ func (k *keyCanon) withServedSpellings(stored []string) []string {
 	for _, key := range stored {
 		if served, ok := bySlug[key]; ok {
 			out = append(out, served)
+		}
+		if bundle.HasRelation(domain.RelationKey(key)) {
+			if slug := bundle.ApiSlug(key); slug != key {
+				out = append(out, slug)
+			}
 		}
 	}
 	return sortedDistinct(out)

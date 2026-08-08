@@ -123,9 +123,17 @@ func TestV2CorpsePolicyProperties(t *testing.T) {
 		requireNotFoundError(t, err)
 	})
 
-	t.Run("DELETE of an already-archived property is 404, not a re-archive", func(t *testing.T) {
+	t.Run("DELETE of a UI-deleted property is 404, not a re-archive", func(t *testing.T) {
+		// the UNINSTALLED corpse is the revert-sensitive case: the old
+		// GetRelationByKey lookup saw it (nothing filtered isUninstalled)
+		// and the DELETE archived the corpse. (The archived variant cannot
+		// fail on revert — the store's injected defaults hid archived
+		// objects from the old lookup too — so it is asserted only as a
+		// bonus line, not as this subtest's claim.)
 		fx := corpsePolicyFixture(t)
-		_, err := fx.DeleteProperty(context.Background(), testSpaceId, "archivedKey", false)
+		_, err := fx.DeleteProperty(context.Background(), testSpaceId, "corpseKey", false)
+		requireNotFoundError(t, err)
+		_, err = fx.DeleteProperty(context.Background(), testSpaceId, "archivedKey", false)
 		requireNotFoundError(t, err)
 	})
 

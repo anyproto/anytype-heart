@@ -270,3 +270,22 @@ func TestV2CreateSetCanonicalizesViewKeys(t *testing.T) {
 	assert.Contains(t, filterKeys, slugPropKey)
 	assert.NotContains(t, filterKeys, "manual_property")
 }
+
+func TestV2FilterStringTakesBundledSlugs(t *testing.T) {
+	// the compact string validates keys BEFORE canonicalization, so the
+	// acceptance set must carry the bundled derived slug too — due_date in
+	// a filter string must work exactly as it does on routes and documents
+	fx := slugQueryFixture(t)
+	fx.addRelation(t, testSpaceId, objectstore.TestObject{
+		bundle.RelationKeyId:             domain.String("rel-duedate"),
+		bundle.RelationKeyRelationKey:    domain.String("dueDate"),
+		bundle.RelationKeyName:           domain.String("Due date"),
+		bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_date)),
+	})
+
+	_, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId, v2model.SearchRequest{
+		Filter: `due_date IS EMPTY`,
+	}, 0, 25)
+
+	require.NoError(t, err)
+}
