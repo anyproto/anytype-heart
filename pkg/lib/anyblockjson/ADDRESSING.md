@@ -1,9 +1,12 @@
 # AnyBlock JSON — addressing: one identity story for five reference kinds
 
 Status: **design dossier** (research + recommendation, no normative force) ·
-2026-08-08 · GO-7383 · revised same day after review (normative label
-minting, key strategy decided, write-side defaults flipped, compatibility
-constraint removed). Companion to `SPEC.md` (v0.7) and `FLAT.md`; feeds a
+2026-08-08 · GO-7383 · revised same day after three review rounds
+(normative label minting, write-side defaults flipped, compatibility
+constraint removed; the slugs-always surface adopted in §7.5a; the
+internal-key strategy argued to (b) and then **flipped to (a) on
+falsifying evidence** — the reversal is kept visible in §7.5 rather than
+rewritten away). Companion to `SPEC.md` (v0.7) and `FLAT.md`; feeds a
 SPEC revision and closes SPEC §15.3. Every claim about current behaviour is
 verified against source at the cited line; prior art was researched against
 vendor documentation (§6).
@@ -19,16 +22,20 @@ exist** (PATCH/PUT): an unknown option name is a loud 400 with did-you-mean
 unless the request says `create: true`; an ambiguous name is always a 400;
 and **only options may ever be created implicitly** — an option's name is
 its entire definition, while properties, types and objects carry rich
-content only an explicit create can supply (§7.4). On the key question,
-complete what v2 already does (strategy (b), §7.5): API-created types and
-properties keep the caller's readable key as the internal key — unique-key
-derivation makes concurrent same-key creates *converge*, verified in §2.4 —
-while UI-created ones keep their BSON internally behind a hardened unique
-slug. On the surface, one rule with no exceptions (§7.5a, adopted): **API
+content only an explicit create can supply (§7.4).
+On the surface, one rule with no exceptions (§7.5a, adopted): **API
 v2 addresses every type and property by the snake_case api-key slug** —
 `dueDate` is `due_date` on the wire, and bundled, API-created and
 UI-created keys are indistinguishable to a caller; the document format's
 key vocabulary follows the surface (a deliberate cascade into SPEC §3).
+On the internal-key question the decision **flipped on review evidence**
+(§7.5): every new type and property mints a BSON internal key — v1's
+identity layer — because derived readable keys converge concurrent
+different-intent creates into silent format merges (no guard exists, and
+none can exist above the derivation — §7.5-1) and make delete-then-
+recreate a structural dead end (the derived tree persists — §7.5-2);
+the caller's key lives only in the hardened slug, which §7.5a made the
+entire visible surface anyway.
 **Nothing here has shipped** — AnyBlock JSON and API v2 have no users,
 no exported documents, no third-party consumers — so no default below was
 chosen for compatibility; each is chosen because it is right, and this is
@@ -153,6 +160,20 @@ cross-property name reuse as a duplicate.
    `ToPropertyApiKey`/`ToTypeApiKey`/`ToTagApiKey` all detect a 24-hex key
    and return it verbatim (`key.go:38-69`) — v1 documents the giving-up in
    its own comments.
+5. **SPEC §2a's format-conflict guard is unimplemented.** The SPEC
+   promises "a conflict with an existing property's format is an error at
+   the wiring level"; the wiring never checks: `creatingResolvers.
+   PropertyId` returns the existing relation on a key hit with the
+   declared format ignored (`resolver.go:357-363`), and `createRelation`
+   validates only that the format is present and a valid enum
+   (`relation.go:24-30`) — never against an existing same-key relation.
+6. **Uninstalled relations remain fully visible.** UI delete of a
+   relation sets only `isUninstalled` (`delete.go:113-127`); the query
+   layer's injected defaults exclude `isArchived` and `isDeleted` but
+   **not** `isUninstalled` (`database.go:109-123`), and nothing under
+   `core/api/` filters it either — so a UI-deleted property still
+   resolves by key, still appears in v2 `GET /properties`, and blocks a
+   same-key create with "already exists" pointing at a corpse (§7.5-2).
 
 ### 2.4 How unique keys derive object ids (verified — it decides §7.5)
 
@@ -194,8 +215,20 @@ Four consequences:
    (`core/api/service/property.go:208-229` + `relation.go:46-47`): that is
    strategy (a) live, twin slugs and all. v2's create-missing pins the
    document's key as the stored relation key (`resolver.go:386-401`), and
-   v2 `POST /types` derives the uniqueKey from the document's key
-   (`schema_write.go:235-240`): that is strategy (b) live.
+   v2 `POST /types` and `POST /properties` derive identity from the
+   caller's key (`schema_write.go:235-240`, `schema_write.go:455`): that
+   is strategy (b) live. §7.5 decides between them — for (a).
+5. **Derived objects are never destroyed — deletion is a flag, and the
+   tree persists.** UI delete sets `isUninstalled=true` and keeps the
+   tree (`delete.go:113-127`); v2's DeleteProperty/DeleteType merely
+   archive (`ObjectSetIsArchived` — `schema_write.go:372, 536`); the
+   bundled reinstall path flips the flags back and **reuses the same
+   object with whatever content it accumulated** (`installer.go:210-232`).
+   Re-deriving a "deleted" key therefore cannot mint a fresh object:
+   `PutTree` on the surviving tree returns `ErrTreeExists`, which only
+   the installer tolerates (`installer.go:128`; `objectcache/tree.go:57-59`
+   propagates it everywhere else). Same key ⇒ same tree, forever — the
+   fact that decides §7.5.
 
 ## 3. Scenario analysis
 
@@ -427,9 +460,10 @@ contributed, what was rejected.
 **Adopt design E with strict writes: readable labels in every value slot,
 one per-kind pin table in the envelope, the §9a total resolution rule, loud
 failure everywhere a resolution can go wrong. Fold the existing `refs`
-legend in as the object kind of the same concept. Keys follow strategy (b):
-the caller's key is the internal key for API-created types/properties, the
-hardened unique slug fronts UI-created BSON keys (§7.5).**
+legend in as the object kind of the same concept. Keys follow strategy (a):
+every new type and property mints a BSON internal key, the caller's key
+lives in the hardened unique slug, and the slug is the only key any
+surface speaks (§7.5, §7.5a).**
 
 One clarification the review demanded, stated once and relied on
 throughout: **the pin-map key for each kind is that kind's existing C2
@@ -509,11 +543,12 @@ never influence a label** (order-dependence is what made D2 a coin flip).
 
 1. `base` := the entity's C2 term: an option's display name; a property's
    or type's **slug** — for bundled keys the derived table entry
-   (`snake_case(key)`, §7.5a-1), for API-created keys the key itself
-   (slug == internal key at mint, §7.5a-6), for UI-created the stored
-   `apiObjectKey`, and only for pre-backfill keys with no stored slug
-   `snake_case(transliterate(name))` derived at export time and never
-   written back; an object's name slugified into the object charset.
+   (`snake_case(key)`, §7.5a-1), for every non-bundled key the stored
+   `apiObjectKey` (which for API-created ones equals the caller's
+   snake-normalized key by mint — §7.5), and only for pre-backfill keys
+   with no stored slug `snake_case(transliterate(name))` derived at
+   export time and never written back; an object's name slugified into
+   the object charset.
 2. A suffix is **required** when: `base` is empty; `base` exceeds 60 code
    points (truncate to 60 first); or `base` is exactly equal
    (case-sensitive) to another entity's base in the namespace — in which
@@ -725,85 +760,136 @@ Consequences, stated honestly:
   `guardCreateMissing`) is unchanged in shape — it simply runs only when
   `create: true` is present.
 
-### 7.5 The key strategy: (a) vs (b) vs the original — decided
+### 7.5 The key strategy — argued to (b), then flipped to (a) on evidence
 
-First, the framing correction the review asked for: the pin-map key being
-a *slug* for properties/types while options use *names* is not a duality
-introduced here — it is C2's own per-kind vocabulary. The open question is
-what the slug **is** underneath. The §2.4 verification sharpened it: both
-candidate strategies are already running in production, one per API
-generation.
+History, kept visible: the first pass here weighed (a) — BSON internal
+keys always, the caller's key living only in the slug (v1's live shape) —
+against (b) — the caller's key as the internal key (v2's live shape) — and
+chose (b), crediting it with retry-idempotency-via-convergence and a
+cleaner namespace. A review then falsified both credits and produced two
+facts the weighing had missed. Each is verified below; together they flip
+the decision. The framing correction stands unchanged: the pin-map key
+being a *slug* for properties/types while options use *names* is C2's own
+per-kind vocabulary, not a new duality. And a second §7.5a consequence
+now frames everything: once the surface is slug-only, the internal-key
+choice is **invisible to callers and to documents** — the §7.5a-5
+resolution chain and the pin rules are identical under either strategy —
+so what remains is pure object-lifecycle semantics. There the evidence is
+one-sided.
 
-**(a) Retire internal keys from the API surface** (v1's live shape —
-`property.go:208-229`): every create mints a BSON internal key; the api
-key is the only key a caller ever sees.
+**What (b) actually costs — two data problems, verified in source:**
 
-- *Parallel creates:* two callers creating `priority` get two BSON objects
-  and **twin slugs** — the surface's single key concept now has duplicates,
-  guarded only by a per-device cache check (racy), and v1's cache
-  demonstrably shadows one (§2.3-1). The collision moved, it didn't die.
-- *Documents:* every non-bundled key needs a pin, always — BSON sits under
-  every slug, so the pin table becomes mandatory bulk on every canonical
-  document.
-- *The namespace never actually unifies:* bundled keys (`dueDate`) ARE
-  readable internal keys and cannot retire, so (a) hides the mixed
-  namespace without removing it — and forfeits derived-id convergence
-  (§2.4-1), the free idempotency that §8.13 already leans on.
-- *Migration:* the one strategy that requires changing shipped v2 behavior
-  (v2 pins document keys today).
+1. **Silent format merge, with no guard and no guard possible.** The
+   "sequential format-conflict guard (§2a wiring error)" this section
+   previously leaned on **does not exist**: `creatingResolvers.PropertyId`
+   returns the existing relation on a key hit with the declared format
+   ignored (`resolver.go:357-363`), and `createRelation` validates only
+   that a format is present and a valid enum value (`relation.go:24-30`) —
+   never against an existing same-key relation (§2.3-5). Sequential
+   *explicit* creates are stopped by the existence guard
+   (`propertyKeyExists`, `schema_write.go:431`) — an existence check, not
+   a format check. And the concurrent case cannot be guarded at any
+   layer above the derivation: format is not part of the derivation
+   payload (`{SmartBlockType, InternalKey}` — `payload.go:18-26`), so two
+   members offline-creating `priority` as `select` and as `text` converge
+   into **one object whose format resolves in CRDT order**. The loser's
+   objects then hold select-shaped values on a text relation — silent
+   data corruption, not a naming inconvenience.
 
-**(b) The caller's key IS the internal key for API-created things
-(normalized to snake_case at mint — §7.5a-6); UI creates keep BSON behind
-a hardened slug** (v2's live shape — `resolver.go:386-401`,
-`schema_write.go:235-240` — completed):
+2. **Delete-then-recreate is a structural dead end.** Derived objects are
+   never destroyed (§2.4-5): same key ⇒ same tree, forever. Traced
+   end-to-end, recreating a deleted key lands in one of three traps.
+   After a **v2 delete** (archive — `schema_write.go:536`), the existence
+   guard cannot see the corpse — every store query silently injects
+   `isArchived != true` (`database.go:109-123`) — so the create proceeds
+   to `PutTree` on the still-existing tree and dies on a raw
+   `ErrTreeExists` (propagated by `objectcache/tree.go:57-59`; only the
+   installer tolerates it, `installer.go:128`). After a **UI delete**
+   (uninstall), nothing filters `isUninstalled` (§2.3-6), so the guard
+   refuses "already exists" — steering the caller to PATCH an object the
+   user deleted. The only "success" shape is the reinstall path's
+   **resurrection with the old format, name and options**
+   (`installer.go:210-232`). Under (b) there is no API-layer fix,
+   because the caller's key *is* the derived tree.
 
-- *Parallel creates:* same-key API creates **converge into one object**
-  (§2.4-2) — retry-idempotency for free (§8.13's "convergent on retry" is
-  this mechanism). The residual hazard: two members offline-creating the
-  same new key with *different intent* merge silently, one format winning
-  in CRDT order. Bounded by the sequential format-conflict guard (§2a
-  wiring error) and rare — it needs the same never-before-used key minted
-  twice concurrently with different meanings — but real; recorded as an
-  accepted risk needing a detection surface (§8-OQ2).
-- *UI creates stay BSON* — correctly (§2.4-3: humans collide in name space
-  constantly; distinctness is bought with opacity) — fronted by the slug,
-  hardened: unique at mint, ambiguity-loud at lookup.
-- *Documents:* readable keys for bundled + API-created vocabulary; pins
-  needed only for UI-created BSON keys — the pin table stays small.
-- *Rename:* internal key immutable, slug frozen, label pinned — safe at
-  every layer.
-- *Small model:* types one snake_case slug, same as (a).
-- *Migration:* none — this is what v2 does; the work is the slug hardening,
-  which **every** strategy needs.
+**The two credits (b) held, withdrawn on re-examination:**
 
-**(original)** — slug-as-address, internal keys left as-is: a strict subset
-of (b); it declined to say what new creates should do. (b) completes it.
+- *"Free retry idempotency via convergence"* — misattributed. §8.13's
+  "convergent on retry" comes from `OptionId` doing an exists-by-name
+  lookup **before** creating (`resolver.go:133`) — a lookup pattern, and
+  options are BSON-keyed (`opt-<bson>`, `objectcreator/util.go:32-44`),
+  never name-derived. Property-create retries are covered by C8's
+  `Idempotency-Key` and by the existence guard — both of which every
+  strategy needs anyway. Derived-key convergence contributes nothing at
+  the API layer.
+- *"Bundled keys cannot retire, so (a) hides a mixed namespace"* — an
+  artifact of pre-§7.5a framing. Once the surface is slug-only, internal
+  keys appear nowhere; a namespace nobody can see cannot be "mixed". The
+  bundled table serves bundled slugs, the store serves the rest, and the
+  caller cannot tell — which is §7.5a's whole point.
 
-**Decision: (b).** (a) dies on the twin-slug pathology it already exhibits
-in v1 plus the impossibility of retiring bundled keys; it pays the full pin
-cost on every document to buy a uniformity it cannot deliver. (b)'s one
-hazard (concurrent different-intent convergence) is rarer and *more
-detectable* than (a)'s (twin slugs guarded by a racy cache), and (b) is
-what half the surface already ships.
+**What (a) costs, with the fix already specified:** twin slugs on
+concurrent creates — a NAMING problem. The machinery is already in this
+dossier: suffix-disambiguated minting (§7.1), the union collision check
+at mint (§7.5a-6), ambiguity-loud lookups (400 listing candidates), and
+the optional deterministic re-slug sweep (§8-OQ3). Two members
+offline-creating `priority` yield two distinct, healthy relations whose
+*slugs* collide; the collision is visible, loud, and repairable — no
+value is ever reinterpreted.
 
-The hardening, common to all strategies and now scoped to (b):
+| | (b) caller key = internal key | (a) BSON identity + slug surface |
+|---|---|---|
+| concurrent same-key, different intent | one object; format merges in CRDT order — **silent corruption** | two objects; twin slugs — **loud ambiguity**, repairable |
+| concurrent same-key, same intent | converge (nice, rarely load-bearing) | twin slugs; repair collapses or suffixes |
+| delete, then recreate the key | `ErrTreeExists` raw error / "already exists" corpse / resurrection with old content | **clean create, fresh BSON**; slug policy names it |
+| retry idempotency | C8 + existence guard (convergence adds ~nothing) | C8 + existence guard — identical |
+| document / pin shape (§7.5a-5) | identical | identical |
+| failure mode | **silent, data-level** | **loud, name-level** |
 
-1. `injectApiObjectKey` checks the space index and disambiguates
-   (`manual_property`, `manual_property_2`, …) instead of blindly stamping
-   (fixes §2.3-1; also fix the un-snake-cased option branch, §2.3-3).
-2. **Ambiguous slugs fail loudly at lookup** — a slug matching several
-   entities (offline-parallel mints can still race past 1) is a 400
-   `ambiguous_input` listing disambiguated labels, the same rule options
-   and blocks follow. A deterministic re-slug sweep is optional on top
-   (§8-OQ3).
-3. Backfill for existing objects (lazy on first API touch vs migration
+**Decision: (a).** Every new type and property mints a BSON internal key
+(options already do); the caller's key becomes the `apiObjectKey` slug,
+snake-normalized at mint; internal keys never surface (§7.5a). By the
+dossier's own tie-breaker — a design that fails loudly beats one that
+fails silently — this is not close: (b)'s failures are silent and touch
+data, (a)'s are loud and touch names. The irony is worth recording:
+**v1 had the right identity layer all along** (`property.go:208-229`) and
+lacked only slug discipline; v2's key-pinning creates — the former (b),
+`resolver.go:386-401`, `schema_write.go:235-240, 455` — are what now
+change.
+
+**What (a) requires that this dossier had not yet specified:**
+
+1. **The slug layer is identity-bearing for the API, and its integrity
+   is load-bearing, not hygiene**: union uniqueness at mint (stored
+   slugs + stored keys + bundled-derived slugs), ambiguity-loud lookup
+   everywhere (400 listing candidates), and the §8-OQ3 repair sweep as
+   the concurrency backstop.
+2. **Archived and uninstalled objects vacate the slug namespace.**
+   Delete-then-recreate is (a)'s headline win, so the mint-time existence
+   probe must deliberately skip corpses — note today's guard has it
+   exactly backwards (blind to archived, blocked by uninstalled —
+   §2.3-6/§7.5-2) — and reviving an archived object whose slug has been
+   re-taken re-slugs the *revived* object with a suffix, loudly. Policy
+   details are §8-OQ2.
+3. **v2 code changes** (the strategy-(b) remnants): stop writing
+   `RelationKeyRelationKey` from the caller's key
+   (`schema_write.go:455`), stop deriving type uniqueKeys from document
+   keys (`schema_write.go:235-240`), and `creatingResolvers.PropertyId`
+   mints a BSON and sets `apiObjectKey` from the document's key instead
+   of pinning it as the relation key (`resolver.go:386-401`).
+4. **Implement the format check SPEC §2a promises** at the wiring: a
+   `typeProperties` entry whose declared format contradicts the resolved
+   relation errors, path-addressed (§2.3-5). Under (a) it covers the
+   remaining sequential-declaration case; the concurrent case no longer
+   exists, because keys no longer collide.
+5. Backfill for existing objects (lazy on first API touch vs migration
    sweep) — its own GO issue, and **a prerequisite for §7.5a's
    slugs-always surface over old spaces** (a pre-`apiObjectKey` BSON
    relation otherwise has no stable bare-op address; §7.5a-6). Until it
    runs, the exporter derives labels at export time (deterministic within
    a document, pinned, so documents never depend on the store having a
    slug).
-4. Re-pointing a slug stays possible (v1 compat — v1 *is* shipped, unlike
+6. Re-pointing a slug stays possible (v1 compat — v1 *is* shipped, unlike
    everything else here) and is document-safe by construction: documents
    pin to stored keys, so re-aiming a slug can never re-aim a stored
    reference — the slug is a branch, the key is the SHA.
@@ -814,8 +900,10 @@ Human decision, evaluated and **adopted with three modifications**: *API v2
 addresses types and properties by the api-key slug, always — one mechanism,
 snake_case, no exceptions.* `dueDate` is `due_date` on the wire; bundled,
 API-created and UI-created keys are indistinguishable to a caller — nobody
-has to know which kind they hold. This is not strategy (a): internal keys
-keep §7.5's behaviour end to end; only the surface changes. Stated once,
+has to know which kind they hold. The rule is orthogonal to the
+internal-key strategy — it holds identically under (a) and (b), which is
+exactly what let §7.5 decide between them on lifecycle grounds alone;
+§7.5's (a) decision now says what sits beneath it. Stated once,
 for a reader to act on: **every place API v2 names a type or property —
 path, body, filter string, sort, field list, document key slot — it speaks
 the snake_case api key and nothing else; internal keys never appear on the
@@ -857,6 +945,17 @@ space's relation count (tens to low hundreds). ANOMALIES #9 already
 mandates prime-from-listing with cached point-lookup fallback; this is the
 same discipline with one more column.
 
+The query-per-request shape is **provisional, pending measurement — not a
+principled stance**: a v2 subscription/cache will likely arrive for
+efficiency eventually (the human's expectation, recorded). Constraints
+when it does: **lazy and per-space, warmed after auth** — v1's
+all-spaces pre-auth warm-up sits badly with scoped keys (§8.9/§8.10 space
+grants); it must **fail toward a store query, never a stale answer** — a
+stale slug→key map resolves a write against the wrong property, which is
+precisely the silent-failure class this dossier exists to kill; and
+types/properties are the cacheable layer (small, slow-changing,
+invalidated by their own object events) while objects are not.
+
 **3. The forgiving layer is separator-insensitive and lives server-side.**
 Under slugs the likely model miss is `dueDate` for `due_date` — a
 separator difference, not a case one. Rule: exact match always wins; the
@@ -889,13 +988,17 @@ documents, so key slots in the *format* carry slugs too — `"due_date"`,
 (a deliberate cascade, §7.3; the biggest consequence the decision's
 one-line form hides). An unpinned key label resolves through a four-step
 exact-lookup chain — no shape heuristics, ambiguity at any step fails
-loud: (1) exact stored-key match (API-created keys ARE their slug; legacy
-lowercase customs too); (2) space slug lookup over `apiObjectKey`
-(UI-created, backfilled); (3) the bundled derived table — offline-safe,
-since it ships in `pkg/lib/bundle` with every reader; (4) miss → the §8.1
-per-kind policy. Consequently `pins.properties`/`pins.types` carry
-**only** UI-created BSON keys, pre-backfill derived slugs, and twin-slug
-disambiguation; bundled and API-created keys travel bare. The
+loud: (1) exact stored-key match (legacy readable custom keys, the
+`artist` class); (2) space slug lookup over `apiObjectKey` (every
+non-bundled key — under §7.5's (a) decision API- and UI-created keys are
+BSON alike, and both carry a mint-time slug); (3) the bundled derived
+table — offline-safe, since it ships in `pkg/lib/bundle` with every
+reader; (4) miss → the §8.1 per-kind policy. Consequently
+`pins.properties`/`pins.types` carry **only** the non-bundled (BSON)
+keys, pre-backfill derived slugs, and twin-slug disambiguation; bundled
+keys travel bare, and canonical exports pin each non-bundled key once
+(the lossless internal identity) while API reads may pin-min, since
+chain step 2 resolves slugs in-account without pins. The
 coordinator's reading is confirmed and strengthened: slugs are *more*
 portable than stored keys (meaningful in an account that never saw the
 original; cross-account create-missing mints the slug as the key, so the
@@ -925,15 +1028,16 @@ pin-stripped document still restores in-account through chain step 2.
   CRDT changes say `dueDate`/BSON where the API says `due_date`. Real but
   small — v1 callers live with exactly this today; the discovery listing
   can carry both columns.
-- **Convergence (§2.4/§7.5) survives, slightly strengthened.** To keep
-  slug == internal key for API creates, v2 must **normalize the caller's
-  key to snake_case at mint** (v1 already does — `type.go:225`,
-  `property.go:218`; v2's document path pins keys verbatim today and must
-  normalize on *create only* — resolution never rewrites an existing
-  key). The parallel-create analysis is unchanged in kind; normalization
-  widens the convergence class slightly (`dueDate2` and `due_date2` now
-  converge instead of forking into twin slugs) — the same-intent case,
-  desirable.
+- **Snake-at-mint now normalizes the SLUG, not the internal key.** Under
+  §7.5's (a) decision the internal key is a fresh BSON; what v2 must
+  normalize to snake_case at mint is the `apiObjectKey` it stamps from
+  the caller's key (v1 already does — `type.go:225`, `property.go:218`),
+  on *create only* — resolution never rewrites anything. Derived-key
+  convergence for API creates is gone by design (§7.5); in its place,
+  `dueDate2` and `due_date2` normalize to one slug, so the sequential
+  second create is refused by the union uniqueness check and the
+  concurrent one becomes a twin slug caught loudly — the (a) failure
+  shape, names not data.
 
 **Verdict: adopt, with the three modifications** — the derived-table
 authority for bundled keys (1), the server-side folding fallback with
@@ -963,15 +1067,22 @@ Build order:
    forms, the label-shadowing validation; the slug key vocabulary (§9-item
    in §7.3) with the bundled derived table (both directions) and the
    §7.5a-5 resolution chain; regenerate goldens; rerun the corpus.
-3. **The slug surface** (§7.5a): snake-at-mint on v2 creates, the
-   per-request slug↔key resolver (details-query listing), the server-side
-   folding fallback with loud collisions, the re-spelling sweep.
+3. **The slug surface + the (a) identity layer** (§7.5/§7.5a): retire the
+   strategy-(b) remnants — stop writing `RelationKeyRelationKey` from the
+   caller's key (`schema_write.go:455`), stop deriving type uniqueKeys
+   from document keys (`schema_write.go:235-240`), mint BSON + slug in
+   `creatingResolvers.PropertyId` (`resolver.go:386-401`); snake-at-mint
+   for the slug; the per-request slug↔key resolver (details-query
+   listing); the server-side folding fallback with loud collisions; the
+   re-spelling sweep; the §2a format check the SPEC already promises
+   (§7.5 requirement 4).
 4. **Write-side defaults** (§7.4): strict on PATCH/PUT, `create: true`,
    the ambiguous-name 400; APIV2.md ledger edits; wrapper pre-validation +
    explicit create intent.
 5. **Slug hardening** (§7.5): union collision check at mint,
-   ambiguity-loud lookups; backfill as its own issue — prerequisite for
-   §7.5a over old spaces.
+   ambiguity-loud lookups, the corpse policy (archived/uninstalled vacate
+   the namespace; fix the inverted existence guard — §2.3-6, §8-OQ2);
+   backfill as its own issue — prerequisite for §7.5a over old spaces.
 
 ## 8. Open questions — and the ones the no-compatibility constraint closed
 
@@ -987,31 +1098,39 @@ Build order:
   compatibility machinery for documents that were never produced outside
   this repo; the D1 fix means they never will be. Dev artifacts
   regenerate.
-- ~~Options' own slugs?~~ **Decided with (b):** option identity in
-  documents is name + pin; `apiObjectKey` on options stays a v1-only
-  surface, v2 never adopts it, and the hardening covers it only for v1's
-  sake.
+- ~~Options' own slugs?~~ **Decided:** option identity in documents is
+  name + pin; `apiObjectKey` on options stays a v1-only surface, v2 never
+  adopts it, and the hardening covers it only for v1's sake.
+- ~~The (b) convergence acceptance?~~ **Mooted by §7.5's flip to (a):**
+  new creates never converge — each mints a fresh BSON; the residual
+  convergence is bundled installs, where it is the intended mechanism
+  (§2.4-1). The question dissolved rather than being answered.
 
 **Open** (need a human decision):
 
 1. **`apiObjectKey` mutability** — narrowed, not closed: v1 *is* shipped,
-   so freezing breaks released behavior; under (b) the slug is
-   address-only, so mutability is survivable — but §7.5a raises the
-   stakes (the slug is now the *entire* key surface: re-pointing one
-   changes what every subsequent request means, though never what stored
-   documents mean, since they pin stored keys). Freeze at mint (Linear)
-   vs keep re-pointing with the union uniqueness check. *Lean: keep
-   mutable, address-only, documented — revisit if telemetry shows
-   re-pointing in the wild.*
-2. **The (b) convergence acceptance**: concurrent different-intent creates
-   of the same new key merge silently, one format winning (§2.4-2, §7.5).
-   Accept with the sequential guard only, or add a detection surface (an
-   indexer warning when a relation's format changes underneath existing
-   values)? *Lean: accept + detection surface.*
+   so freezing breaks released behavior; the slug is address-only, so
+   mutability is survivable — but §7.5a raises the stakes (the slug is
+   now the *entire* key surface: re-pointing one changes what every
+   subsequent request means, though never what stored documents mean,
+   since they pin stored keys), and under §7.5's (a) it is also the only
+   readable handle a property has. Freeze at mint (Linear) vs keep
+   re-pointing with the union uniqueness check. *Lean: keep mutable,
+   address-only, documented — revisit if telemetry shows re-pointing in
+   the wild.*
+2. **The corpse policy — archived/uninstalled objects and the slug
+   namespace** (§7.5 requirement 2): corpses vacate the namespace so
+   delete-then-recreate mints cleanly; reviving an archived object whose
+   slug was re-taken re-slugs the revived one with a suffix, loudly.
+   Alternatives: block the create and steer to unarchive (loses (a)'s
+   headline win), or refuse revival into a taken slug. Also covers
+   fixing today's inverted guard (blind to archived, blocked by
+   uninstalled — §2.3-6). *Lean: vacate + re-slug-on-revive.*
 3. **Twin-slug repair**: is the loud-ambiguity lookup error (the floor)
    enough, or add a deterministic re-slug sweep (suffix the younger by
-   internal-key order — convergent, no coordination)? *Lean: floor first,
-   sweep if telemetry shows real collisions.*
+   internal-key order — convergent, no coordination)? Elevated by the
+   (a) decision: twin slugs are now the *only* concurrency artifact
+   left. *Lean: floor first, sweep if telemetry shows real collisions.*
 4. **Uniform strictness for integration scopes** — narrowed by §7.4:
    PATCH/PUT are strict for everyone; the remaining question is whether
    integration-scoped keys should make POST strict too (Airtable is
