@@ -19,7 +19,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 
@@ -130,20 +129,31 @@ func (s *V2Service) CreateType(ctx context.Context, spaceId string, body []byte,
 	if err := json.Unmarshal(body, &envelope); err != nil {
 		return nil, v2model.ValidationFailed("decode document envelope: " + err.Error())
 	}
+
+	// The (a) identity layer (ADDRESSING §7.5): the document's key never
+	// becomes the type's uniqueKey — the create mints a BSON internal key
+	// and the caller's key lives in the apiObjectKey slug, snake-normalized.
+	// The union collision check ships WITH the mint (§7.6-3): bundled keys,
+	// bundled-derived slugs (a custom "objectType"/"object_type" cannot
+	// shadow the bundled type), live internal keys and live slugs — with
+	// corpses vacated (§8-OQ2), so delete-then-recreate mints cleanly.
+	var slug string
 	if envelope.Key != "" {
-		if bundle.HasObjectTypeByKey(domain.TypeKey(envelope.Key)) {
-			return nil, v2model.ValidationFailed("type key is reserved",
-				v2model.Issue{Path: "/key", Message: fmt.Sprintf("%q is a bundled type — it already exists", envelope.Key)})
+		if err := validateV2FieldLength("/key", envelope.Key, maxV2KeyLength); err != nil {
+			return nil, err
 		}
-		if _, exists := s.typeIdInSpace(spaceId, envelope.Key); exists {
-			return nil, v2model.ValidationFailed("type key already exists",
-				v2model.Issue{Path: "/key", Message: fmt.Sprintf("type %q already exists in space %q", envelope.Key, spaceId), Hint: fmt.Sprintf("update it with PATCH /v2/spaces/%s/types/%s", spaceId, envelope.Key)})
+		if !v2PropertyKeyPattern.MatchString(envelope.Key) {
+			return nil, v2model.ValidationFailed("invalid type key",
+				v2model.Issue{Path: "/key",
+					Message: fmt.Sprintf("key %q does not match the advertised pattern ^[a-zA-Z0-9_]+$", envelope.Key),
+					Hint:    "use letters, digits and underscores — or omit key to derive one from the name"})
 		}
+		slug = bundle.ApiSlug(envelope.Key)
 	}
 
 	// Unmarshal rebuilds the four recommended-relation lists from
 	// typeProperties, creating missing properties through the resolver
-	resolvers := newCreatingResolvers(ctx, s.mw, spaceId, s.store.SpaceIndex(spaceId), dryRun)
+	resolvers := s.newCreatingResolvers(ctx, spaceId, dryRun)
 	_, snapshot, err := anyblockjson.Unmarshal(body, resolvers.Options())
 	if err != nil {
 		return nil, mapUnmarshalError(body, err)
@@ -152,13 +162,37 @@ func (s *V2Service) CreateType(ctx context.Context, spaceId string, body []byte,
 		return nil, fmt.Errorf("resolve type properties: %w", err)
 	}
 
-	result := &v2model.CreateResult{Key: envelope.Key, Created: resolvers.created()}
+	keyPath := "/key"
+	if slug == "" {
+		// no explicit key: the slug derives from the document's name, the
+		// same transform objectcreator would apply — derived here so the
+		// union check can guard it (the check ships WITH the mint)
+		if snapshot.Details != nil {
+			slug = bundle.ApiSlugFromName(pbtypes.GetString(snapshot.Details, bundle.RelationKeyName.String()))
+		}
+		keyPath = "/properties/name"
+	}
+	if slug != "" {
+		if holder, taken := s.typeSlugConflict(spaceId, slug); taken {
+			if holder.Kind == "bundled type" {
+				return nil, v2model.ValidationFailed("type key is reserved",
+					v2model.Issue{Path: keyPath,
+						Message: fmt.Sprintf("key %q is taken by bundled type %q — it already exists", slug, holder.Name)})
+			}
+			return nil, v2model.ValidationFailed("type key already exists",
+				v2model.Issue{Path: keyPath,
+					Message: fmt.Sprintf("key %q is taken by type %q in space %s", slug, holder.Name, spaceId),
+					Hint:    fmt.Sprintf("update it with PATCH /v2/spaces/%s/types/%s, or pick a different key", spaceId, holder.Key)})
+		}
+	}
+
+	result := &v2model.CreateResult{Key: slug, Created: resolvers.created()}
 	if dryRun {
 		result.DryRun = true
 		return result, nil
 	}
 
-	details, err := typeDetailsFromSnapshot(snapshot, envelope.Key)
+	details, err := typeDetailsFromSnapshot(snapshot, slug)
 	if err != nil {
 		return nil, err
 	}
@@ -218,10 +252,12 @@ func ensureRegularRecommendedList(details *types.Struct, resolvers *creatingReso
 }
 
 // typeDetailsFromSnapshot converts the unmarshaled type snapshot into the
-// ObjectCreateObjectType details: the minted id dropped, the key pinned as
-// the unique key, and recommendedLayout accepting the layout NAME (the §2a
-// worked example's form) as well as the stored number.
-func typeDetailsFromSnapshot(snapshot *model.SmartBlockSnapshotBase, key string) (*types.Struct, error) {
+// ObjectCreateObjectType details: the minted id dropped, the caller's key
+// stored as the apiObjectKey slug (NEVER as the unique key — the create
+// mints a BSON internal key, ADDRESSING §7.5), and recommendedLayout
+// accepting the layout NAME (the §2a worked example's form) as well as the
+// stored number.
+func typeDetailsFromSnapshot(snapshot *model.SmartBlockSnapshotBase, slug string) (*types.Struct, error) {
 	details := &types.Struct{Fields: map[string]*types.Value{}}
 	if snapshot.Details != nil {
 		for k, v := range snapshot.Details.Fields {
@@ -231,13 +267,8 @@ func typeDetailsFromSnapshot(snapshot *model.SmartBlockSnapshotBase, key string)
 			details.Fields[k] = v
 		}
 	}
-	if key != "" {
-		uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeObjectType, key)
-		if err != nil {
-			return nil, v2model.ValidationFailed("invalid type key",
-				v2model.Issue{Path: "/key", Message: err.Error()})
-		}
-		details.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(uk.Marshal())
+	if slug != "" {
+		details.Fields[bundle.RelationKeyApiObjectKey.String()] = pbtypes.String(slug)
 	}
 	if v, ok := details.Fields[bundle.RelationKeyRecommendedLayout.String()]; ok {
 		if name := v.GetStringValue(); name != "" {
@@ -302,7 +333,7 @@ func (s *V2Service) UpdateType(ctx context.Context, spaceId, typeKey string, bod
 		detailUpdates = append(detailUpdates, &model.Detail{Key: key, Value: value})
 	}
 
-	resolvers := newCreatingResolvers(ctx, s.mw, spaceId, s.store.SpaceIndex(spaceId), dryRun)
+	resolvers := s.newCreatingResolvers(ctx, spaceId, dryRun)
 	if patch.TypeProperties != nil {
 		lists := anyblockjson.BuildRecommendedLists(*patch.TypeProperties, resolvers)
 		if err := resolvers.err(); err != nil {
@@ -423,6 +454,17 @@ func (s *V2Service) CreateProperty(ctx context.Context, spaceId string, req v2mo
 			return nil, err
 		}
 	}
+	// The (a) identity layer (ADDRESSING §7.5): the caller's key never
+	// becomes the stored relation key — the create mints a BSON internal key
+	// and the caller's key lives in the apiObjectKey slug, snake-normalized
+	// at mint. The union collision check ships WITH the mint (§7.6-3): the
+	// proposed slug is tested against bundled keys, bundled-derived slugs,
+	// live stored keys and live stored slugs — so a custom "dueDate2" and
+	// "due_date2" collide by normalization, and a custom "Due Date" can
+	// never shadow bundled due_date. Corpses vacate the namespace (§8-OQ2),
+	// which is what makes delete-then-recreate mint cleanly instead of
+	// dying on the surviving derived tree (§7.5-2).
+	var slug string
 	if req.Key != "" {
 		if err := validateV2FieldLength("/key", req.Key, maxV2KeyLength); err != nil {
 			return nil, err
@@ -433,20 +475,32 @@ func (s *V2Service) CreateProperty(ctx context.Context, spaceId string, req v2mo
 					Message: fmt.Sprintf("key %q does not match the advertised pattern ^[a-zA-Z0-9_]+$", req.Key),
 					Hint:    "use letters, digits and underscores — or omit key to derive one from the name"})
 		}
-		if s.propertyKeyExists(spaceId, req.Key) {
+		slug = bundle.ApiSlug(req.Key)
+	} else {
+		slug = bundle.ApiSlugFromName(req.Name)
+	}
+	if slug != "" {
+		if holder, taken := s.propertySlugConflict(spaceId, slug); taken {
+			path, hint := "/key", fmt.Sprintf("update it with PATCH /v2/spaces/%s/properties/%s, or pick a different key", spaceId, holder.Key)
+			if req.Key == "" {
+				path = "/name"
+				hint = fmt.Sprintf("use the existing property %q, or pass an explicit different key", holder.Key)
+			}
 			return nil, v2model.ValidationFailed("property key already exists",
-				v2model.Issue{Path: "/key", Message: fmt.Sprintf("property %q already exists", req.Key), Hint: fmt.Sprintf("update it with PATCH /v2/spaces/%s/properties/%s", spaceId, req.Key)})
+				v2model.Issue{Path: path,
+					Message: fmt.Sprintf("key %q is taken by %s %q", slug, holder.Kind, holder.Name),
+					Hint:    hint})
 		}
 	}
 
-	result := &v2model.CreateResult{Key: req.Key}
+	result := &v2model.CreateResult{Key: slug}
 	if dryRun {
 		result.DryRun = true
 		result.Created = &v2model.SideEffects{
-			Properties: []v2model.PropertyRow{{Key: req.Key, Name: req.Name, Format: req.Format}},
+			Properties: []v2model.PropertyRow{{Key: slug, Name: req.Name, Format: req.Format}},
 		}
 		for _, opt := range req.Options {
-			result.Created.Options = append(result.Created.Options, v2model.CreatedOption{Property: req.Key, Name: opt.Name})
+			result.Created.Options = append(result.Created.Options, v2model.CreatedOption{Property: slug, Name: opt.Name})
 		}
 		return result, nil
 	}
@@ -456,18 +510,24 @@ func (s *V2Service) CreateProperty(ctx context.Context, spaceId string, req v2mo
 		bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(format)),
 		bundle.RelationKeyOrigin.String():         pbtypes.Int64(int64(model.ObjectOrigin_api)),
 	}}
-	if req.Key != "" {
-		details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(req.Key)
+	if slug != "" {
+		// the slug detail, never the relation key: objectcreator mints the
+		// BSON internal key and respects a caller-set apiObjectKey
+		details.Fields[bundle.RelationKeyApiObjectKey.String()] = pbtypes.String(slug)
 	}
 	resp := s.mw.ObjectCreateRelation(ctx, &pb.RpcObjectCreateRelationRequest{SpaceId: spaceId, Details: details})
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectCreateRelationResponseError_NULL {
 		return nil, fmt.Errorf("create property in space %s: %s", spaceId, resp.Error.Description)
 	}
 	result.Id = resp.ObjectId
-	result.Key = resp.Key
+	if slug == "" {
+		result.Key = resp.Key // no derivable slug: the minted BSON is the only address
+	}
+	publicKey := result.Key
 
 	for _, opt := range req.Options {
 		optDetails := &types.Struct{Fields: map[string]*types.Value{
+			// options bind to the STORED relation key (the minted BSON)
 			bundle.RelationKeyRelationKey.String(): pbtypes.String(resp.Key),
 			bundle.RelationKeyName.String():        pbtypes.String(opt.Name),
 			bundle.RelationKeyOrigin.String():      pbtypes.Int64(int64(model.ObjectOrigin_api)),
@@ -477,12 +537,12 @@ func (s *V2Service) CreateProperty(ctx context.Context, spaceId string, req v2mo
 		}
 		optResp := s.mw.ObjectCreateRelationOption(ctx, &pb.RpcObjectCreateRelationOptionRequest{SpaceId: spaceId, Details: optDetails})
 		if optResp.Error != nil && optResp.Error.Code != pb.RpcObjectCreateRelationOptionResponseError_NULL {
-			return nil, fmt.Errorf("create option %q of property %s: %s", opt.Name, resp.Key, optResp.Error.Description)
+			return nil, fmt.Errorf("create option %q of property %s: %s", opt.Name, publicKey, optResp.Error.Description)
 		}
 		if result.Created == nil {
 			result.Created = &v2model.SideEffects{}
 		}
-		result.Created.Options = append(result.Created.Options, v2model.CreatedOption{Property: resp.Key, Name: opt.Name})
+		result.Created.Options = append(result.Created.Options, v2model.CreatedOption{Property: publicKey, Name: opt.Name})
 	}
 	return result, nil
 }

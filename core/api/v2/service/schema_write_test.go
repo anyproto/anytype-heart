@@ -39,11 +39,14 @@ func TestV2CreateType(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.addSelectProperty(t) // "severity" exists — must NOT be re-created
 		fx.mwMock.EXPECT().ObjectCreateRelation(mock.Anything, mock.MatchedBy(func(req *pb.RpcObjectCreateRelationRequest) bool {
-			return pbtypes.GetString(req.Details, bundle.RelationKeyRelationKey.String()) == "spiciness" &&
+			// the (a) identity layer: the document's key becomes the slug,
+			// NEVER the stored relation key (a BSON is minted downstream)
+			return pbtypes.GetString(req.Details, bundle.RelationKeyRelationKey.String()) == "" &&
+				pbtypes.GetString(req.Details, bundle.RelationKeyApiObjectKey.String()) == "spiciness" &&
 				pbtypes.GetString(req.Details, bundle.RelationKeyName.String()) == "Spiciness" &&
 				pbtypes.GetInt64(req.Details, bundle.RelationKeyRelationFormat.String()) == int64(model.RelationFormat_number)
 		})).Return(&pb.RpcObjectCreateRelationResponse{
-			ObjectId: "rel-spiciness", Key: "spiciness",
+			ObjectId: "rel-spiciness", Key: "6a7663db61fab21cd4b9e745",
 			Error: &pb.RpcObjectCreateRelationResponseError{Code: pb.RpcObjectCreateRelationResponseError_NULL},
 		})
 		var createdDetails *pb.RpcObjectCreateObjectTypeRequest
@@ -76,7 +79,9 @@ func TestV2CreateType(t *testing.T) {
 
 		require.NotNil(t, createdDetails)
 		details := createdDetails.Details
-		assert.Equal(t, "ot-workout", pbtypes.GetString(details, bundle.RelationKeyUniqueKey.String()))
+		assert.Empty(t, pbtypes.GetString(details, bundle.RelationKeyUniqueKey.String()),
+			"the document key must not become the uniqueKey — objectcreator mints a BSON (ADDRESSING §7.5)")
+		assert.Equal(t, "workout", pbtypes.GetString(details, bundle.RelationKeyApiObjectKey.String()))
 		assert.Equal(t, "Workout", pbtypes.GetString(details, bundle.RelationKeyName.String()))
 		assert.Equal(t, int64(model.ObjectType_todo), pbtypes.GetInt64(details, bundle.RelationKeyRecommendedLayout.String()),
 			"the layout NAME maps to the stored enum")
@@ -315,15 +320,21 @@ func TestV2CreateProperty(t *testing.T) {
 	t.Run("create with options", func(t *testing.T) {
 		// given
 		fx := newV2Fixture(t)
+		const mintedKey = "6a7663db61fab21cd4b9e745"
 		fx.mwMock.EXPECT().ObjectCreateRelation(mock.Anything, mock.MatchedBy(func(req *pb.RpcObjectCreateRelationRequest) bool {
-			return pbtypes.GetString(req.Details, bundle.RelationKeyRelationKey.String()) == "vibe" &&
+			// the caller's key becomes the apiObjectKey slug; the stored
+			// relation key is minted downstream (ADDRESSING §7.5)
+			return pbtypes.GetString(req.Details, bundle.RelationKeyRelationKey.String()) == "" &&
+				pbtypes.GetString(req.Details, bundle.RelationKeyApiObjectKey.String()) == "vibe" &&
 				pbtypes.GetInt64(req.Details, bundle.RelationKeyRelationFormat.String()) == int64(model.RelationFormat_status)
 		})).Return(&pb.RpcObjectCreateRelationResponse{
-			ObjectId: "rel-vibe", Key: "vibe",
+			ObjectId: "rel-vibe", Key: mintedKey,
 			Error: &pb.RpcObjectCreateRelationResponseError{Code: pb.RpcObjectCreateRelationResponseError_NULL},
 		})
 		fx.mwMock.EXPECT().ObjectCreateRelationOption(mock.Anything, mock.MatchedBy(func(req *pb.RpcObjectCreateRelationOptionRequest) bool {
-			return pbtypes.GetString(req.Details, bundle.RelationKeyName.String()) == "Happy" &&
+			// options bind to the STORED (minted) relation key
+			return pbtypes.GetString(req.Details, bundle.RelationKeyRelationKey.String()) == mintedKey &&
+				pbtypes.GetString(req.Details, bundle.RelationKeyName.String()) == "Happy" &&
 				pbtypes.GetString(req.Details, bundle.RelationKeyRelationOptionColor.String()) == "yellow"
 		})).Return(&pb.RpcObjectCreateRelationOptionResponse{
 			ObjectId: "opt-happy",

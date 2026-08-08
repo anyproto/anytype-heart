@@ -172,7 +172,7 @@ func (s *V2Service) PatchObject(ctx context.Context, spaceId, objectId string, b
 	if err != nil {
 		return nil, err
 	}
-	resolvers := newCreatingResolvers(ctx, s.mw, spaceId, s.store.SpaceIndex(spaceId), dryRun)
+	resolvers := s.newCreatingResolvers(ctx, spaceId, dryRun)
 
 	// Create-missing option resolution runs before the object lock, so no
 	// create-RPC ever holds it (review B6/A6) — but it must NOT run before the
@@ -276,7 +276,7 @@ const v2MaxCreatedOptionsPerPatch = 64
 func (s *V2Service) guardCreateMissing(ctx context.Context, spaceId, objectId string, ops []json.RawMessage, ifMatch string, cur apicore.ObjectRead, dryRun bool) error {
 	// a resolver in dry mode records would-be creations instead of performing
 	// them: no RPCs, no document work, just a walk of the op payloads
-	probe := newCreatingResolvers(ctx, s.mw, spaceId, s.store.SpaceIndex(spaceId), true)
+	probe := s.newCreatingResolvers(ctx, spaceId, true)
 	s.prewarmCreateMissing(ops, probe)
 	pending := probe.sideEffects.Options
 	if len(pending) == 0 {
@@ -545,7 +545,7 @@ func (s *V2Service) putPipeline(ctx context.Context, spaceId, objectId string, b
 // create, everything else was validated), marshal the resulting snapshot
 // back to its canonical form, and diff it against the before-document.
 func (s *V2Service) finishEdit(ctx context.Context, spaceId string, targetDoc, beforeDoc []byte, dryRun bool) (*model.SmartBlockSnapshotBase, *v2model.EditResult, error) {
-	resolvers := newCreatingResolvers(ctx, s.mw, spaceId, s.store.SpaceIndex(spaceId), dryRun)
+	resolvers := s.newCreatingResolvers(ctx, spaceId, dryRun)
 	sbType, snapshot, err := anyblockjson.Unmarshal(targetDoc, resolvers.Options())
 	if err != nil {
 		return nil, nil, mapUnmarshalError(targetDoc, err)

@@ -1624,7 +1624,7 @@ func TestApplierRenderCounts(t *testing.T) {
 		t.Helper()
 		edit, err := editFromRead("obj1", editRead(t, doc))
 		require.NoError(t, err)
-		resolvers := newCreatingResolvers(ctx, fx.mw, testSpaceId, fx.store.SpaceIndex(testSpaceId), false)
+		resolvers := fx.newCreatingResolvers(ctx, testSpaceId, false)
 		return newV2StateApplier(fx.V2Service, testSpaceId, "obj1", edit.SbType, edit.State, resolvers)
 	}
 

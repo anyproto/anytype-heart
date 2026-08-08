@@ -109,9 +109,10 @@ func notFoundWithKeys(subject, input, what string, known []string, listRoute str
 }
 
 // propertyKeyExists reports whether a property key resolves in the space or
-// the bundle.
+// the bundle. LIVE relations only (§7.5-2 corpse policy): a UI-deleted
+// property must reject with did-you-mean, not resolve as a corpse.
 func (s *V2Service) propertyKeyExists(spaceId, key string) bool {
-	if _, err := s.store.SpaceIndex(spaceId).GetRelationByKey(key); err == nil {
+	if _, ok := s.livePropertyByKey(spaceId, key); ok {
 		return true
 	}
 	return bundle.HasRelation(domain.RelationKey(key))

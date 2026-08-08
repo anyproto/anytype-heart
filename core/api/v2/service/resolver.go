@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
@@ -28,7 +29,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson/filterstring"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson/storeresolver"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 
@@ -49,9 +49,16 @@ type optionRef struct {
 type creatingResolvers struct {
 	ctx     context.Context
 	mw      apicore.ClientCommands
+	svc     *V2Service
 	spaceId string
 	reads   *storeresolver.Resolvers
 	dryRun  bool
+
+	// liveEntries is the once-per-resolver snapshot of the space's live
+	// properties (keys.go) — the slug namespace the §7.5a-5 chain and the
+	// mint-time union check resolve against
+	liveEntries     []propertyEntry
+	livePropsLoaded bool
 
 	createdOptions map[optionRef]string
 	// dryReported are option refs already reported as would-be-created on a
@@ -64,12 +71,13 @@ type creatingResolvers struct {
 	errs           []error
 }
 
-func newCreatingResolvers(ctx context.Context, mw apicore.ClientCommands, spaceId string, index spaceindex.Store, dryRun bool) *creatingResolvers {
+func (s *V2Service) newCreatingResolvers(ctx context.Context, spaceId string, dryRun bool) *creatingResolvers {
 	return &creatingResolvers{
 		ctx:            ctx,
-		mw:             mw,
+		mw:             s.mw,
+		svc:            s,
 		spaceId:        spaceId,
-		reads:          storeresolver.New(index),
+		reads:          storeresolver.New(s.store.SpaceIndex(spaceId)),
 		dryRun:         dryRun,
 		createdOptions: map[optionRef]string{},
 		dryReported:    map[optionRef]bool{},
@@ -351,19 +359,50 @@ func (r *creatingResolvers) PropertyById(id string) (anyblockjson.PropertyDefini
 
 // PropertyId implements anyblockjson.PropertyResolver with create-missing:
 // an unknown key in a type document's typeProperties creates the property
-// (SPEC §2a), pinning the document's key as the stored relation key so the
-// document round-trips. Bundled keys fill name/format from the bundle when
-// the document omits them.
+// (SPEC §2a). Resolution walks the §7.5a-5 chain — exact stored key, then
+// the space's slug namespace (apiObjectKey), then the bundled derived table
+// — and only a full miss creates. The create follows the (a) identity layer
+// (ADDRESSING §7.5): a BUNDLED key keeps the derived install path
+// (convergence is the install mechanism, §2.4-1); a custom key mints a BSON
+// internal key and the document's key becomes the apiObjectKey slug —
+// never the stored relation key, whose derivation is what made concurrent
+// same-key creates merge silently and delete-then-recreate a dead end.
 func (r *creatingResolvers) PropertyId(def anyblockjson.PropertyDefinition) (string, bool) {
 	if id, ok := r.createdPropIds[string(def.Key)]; ok {
 		return id, true
 	}
+	// chain step 1: exact stored-key match
 	if id, ok := r.reads.PropertyId(def); ok {
 		return id, true
 	}
+	// chain step 2: the space's slug namespace — a live property whose
+	// apiObjectKey equals the document's key IS that key's referent (a
+	// v2-created property's stored key is BSON; its slug is its address).
+	// Two live holders of one slug is the (a) failure shape: loud, never
+	// resolved by store order.
+	if entry, ok, err := r.slugLookup(string(def.Key)); err != nil {
+		r.errs = append(r.errs, err)
+		return "", false
+	} else if ok {
+		r.createdPropIds[string(def.Key)] = entry.Id
+		return entry.Id, true
+	}
+	// chain step 3: the bundled derived table — `due_date` names bundled
+	// dueDate; rewrite and retry so the install path (not a twin create)
+	// serves it
+	bundledKey := def.Key
+	if key, ok := bundle.RelationKeyByApiSlug(string(def.Key)); ok && !bundle.HasRelation(def.Key) {
+		bundledKey = key
+		if id, ok := r.reads.PropertyId(anyblockjson.PropertyDefinition{Key: key}); ok {
+			r.createdPropIds[string(def.Key)] = id
+			return id, true
+		}
+	}
 
 	name, format := def.Name, def.Format
-	if rel, err := bundle.GetRelation(def.Key); err == nil {
+	isBundled := false
+	if rel, err := bundle.GetRelation(bundledKey); err == nil {
+		isBundled = true
 		if name == "" {
 			name = rel.Name
 		}
@@ -375,8 +414,43 @@ func (r *creatingResolvers) PropertyId(def anyblockjson.PropertyDefinition) (str
 		name = string(def.Key)
 	}
 
+	details := &types.Struct{Fields: map[string]*types.Value{
+		bundle.RelationKeyName.String():           pbtypes.String(name),
+		bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(format)),
+		bundle.RelationKeyOrigin.String():         pbtypes.Int64(int64(model.ObjectOrigin_api)),
+	}}
+	reportedKey := string(def.Key)
+	if isBundled {
+		// bundled: keep the derived key — every device deriving rel-<key>
+		// converges on the installed object, which is the intent
+		details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(string(bundledKey))
+		reportedKey = string(bundledKey)
+	} else {
+		// custom: mint-time union collision check on the NORMALIZED slug
+		// (the check ships WITH the mint, §7.6-3) — `myKey` must not mint
+		// slug my_key over an existing holder
+		slug := bundle.ApiSlug(string(def.Key))
+		if slug != string(def.Key) {
+			if _, ok, err := r.slugLookup(slug); err != nil {
+				r.errs = append(r.errs, err)
+				return "", false
+			} else if ok {
+				r.errs = append(r.errs, fmt.Errorf("create property %q: its key %q is already taken by another property — reference it by that key", def.Key, slug))
+				return "", false
+			}
+			if _, ok := bundle.RelationKeyByApiSlug(slug); ok {
+				r.errs = append(r.errs, fmt.Errorf("create property %q: its key %q is a bundled property — reference it as %q", def.Key, slug, slug))
+				return "", false
+			}
+		}
+		if slug != "" {
+			details.Fields[bundle.RelationKeyApiObjectKey.String()] = pbtypes.String(slug)
+			reportedKey = slug
+		}
+	}
+
 	r.sideEffects.Properties = append(r.sideEffects.Properties, v2model.PropertyRow{
-		Key:    string(def.Key),
+		Key:    reportedKey,
 		Name:   name,
 		Format: anyblockjson.FormatName(format),
 	})
@@ -385,18 +459,53 @@ func (r *creatingResolvers) PropertyId(def anyblockjson.PropertyDefinition) (str
 	}
 	resp := r.mw.ObjectCreateRelation(r.ctx, &pb.RpcObjectCreateRelationRequest{
 		SpaceId: r.spaceId,
-		Details: &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyRelationKey.String():    pbtypes.String(string(def.Key)),
-			bundle.RelationKeyName.String():           pbtypes.String(name),
-			bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(format)),
-			bundle.RelationKeyOrigin.String():         pbtypes.Int64(int64(model.ObjectOrigin_api)),
-		}},
+		Details: details,
 	})
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectCreateRelationResponseError_NULL {
 		r.errs = append(r.errs, fmt.Errorf("create property %q: %s", def.Key, resp.Error.Description))
 		return "", false
 	}
+	// cache under the DOCUMENT key: later references in the same import
+	// resolve to the same relation whatever its stored key is
 	r.createdProps[string(def.Key)] = anyblockjson.PropertyDefinition{Key: def.Key, Name: name, Format: format}
 	r.createdPropIds[string(def.Key)] = resp.ObjectId
 	return resp.ObjectId, true
+}
+
+// slugLookup resolves a slug against the space's LIVE apiObjectKey namespace
+// (corpses vacated — §8-OQ2). Exactly one holder resolves; two or more is
+// the loud ambiguity the design demands (twin slugs from concurrent creates
+// are a naming problem, and naming problems must never be settled by store
+// order — the D2 lesson).
+func (r *creatingResolvers) slugLookup(slug string) (propertyEntry, bool, error) {
+	entries := r.liveProps()
+	var matches []propertyEntry
+	for _, entry := range entries {
+		if entry.Slug == slug && entry.Slug != "" {
+			matches = append(matches, entry)
+		}
+	}
+	switch len(matches) {
+	case 0:
+		return propertyEntry{}, false, nil
+	case 1:
+		return matches[0], true, nil
+	default:
+		names := make([]string, 0, len(matches))
+		for _, m := range matches {
+			names = append(names, fmt.Sprintf("%q (id %s)", m.Name, m.Id))
+		}
+		return propertyEntry{}, false, fmt.Errorf("property key %q is ambiguous — held by %s; address the intended property by its id-listed key", slug, strings.Join(names, " and "))
+	}
+}
+
+// liveProps primes the live-property snapshot once per resolver instance
+// (the one-bounded-query-per-request discipline, ADDRESSING §7.5a-2).
+func (r *creatingResolvers) liveProps() []propertyEntry {
+	if r.livePropsLoaded {
+		return r.liveEntries
+	}
+	r.livePropsLoaded = true
+	r.liveEntries = r.svc.liveProperties(r.spaceId)
+	return r.liveEntries
 }

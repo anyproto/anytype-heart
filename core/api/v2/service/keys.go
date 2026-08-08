@@ -142,6 +142,92 @@ func (s *V2Service) liveTypeByKey(spaceId, key string) (typeEntry, bool) {
 	return typeEntry{}, false
 }
 
+// slugHolder names the existing holder of a proposed api key — the material
+// for the loud refusal the union collision check owes the caller.
+type slugHolder struct {
+	Kind string // "bundled property", "property", "bundled type", "type"
+	Key  string // the holder's public key (bundled slug or stored key/slug)
+	Name string
+}
+
+// propertySlugConflict runs the §7.5a-6 union collision check for a property
+// mint: the proposed slug is tested against bundled keys, bundled-derived
+// slugs, live stored keys and live stored slugs. Corpses hold nothing — the
+// §8-OQ2 vacate lean, which is what makes delete-then-recreate mint cleanly
+// ((a)'s headline win). The check ships WITH the mint it guards (§7.6-3).
+func (s *V2Service) propertySlugConflict(spaceId, slug string) (slugHolder, bool) {
+	if key, ok := bundle.RelationKeyByApiSlug(slug); ok {
+		rel := bundle.MustGetRelation(key)
+		return slugHolder{Kind: "bundled property", Key: slug, Name: rel.Name}, true
+	}
+	if bundle.HasRelation(domain.RelationKey(slug)) {
+		rel := bundle.MustGetRelation(domain.RelationKey(slug))
+		return slugHolder{Kind: "bundled property", Key: slug, Name: rel.Name}, true
+	}
+	for _, entry := range s.liveProperties(spaceId) {
+		if entry.Key == slug || entry.Slug == slug {
+			return slugHolder{Kind: "property", Key: entry.publicKey(), Name: entry.Name}, true
+		}
+	}
+	return slugHolder{}, false
+}
+
+// typeSlugConflict is propertySlugConflict for the type namespace.
+func (s *V2Service) typeSlugConflict(spaceId, slug string) (slugHolder, bool) {
+	if key, ok := bundle.TypeKeyByApiSlug(slug); ok {
+		t := bundle.MustGetType(key)
+		return slugHolder{Kind: "bundled type", Key: slug, Name: t.Name}, true
+	}
+	if bundle.HasObjectTypeByKey(domain.TypeKey(slug)) {
+		t := bundle.MustGetType(domain.TypeKey(slug))
+		return slugHolder{Kind: "bundled type", Key: slug, Name: t.Name}, true
+	}
+	for _, entry := range s.liveTypes(spaceId) {
+		if entry.Key == slug || entry.Slug == slug {
+			return slugHolder{Kind: "type", Key: entry.publicKey(), Name: entry.Name}, true
+		}
+	}
+	return slugHolder{}, false
+}
+
+// publicKey is the address an entry answers to on the API surface: the
+// stored slug when the stored key is an opaque BSON, the stored key
+// otherwise. (The full §7.5a slugs-always respelling of bundled keys is the
+// deferred sweep; until it lands, readable stored keys stay the wire
+// spelling and only BSON keys hide behind their slug.)
+func (e propertyEntry) publicKey() string {
+	if e.Slug != "" && isBsonLikeKey(e.Key) {
+		return e.Slug
+	}
+	return e.Key
+}
+
+func (e typeEntry) publicKey() string {
+	if e.Slug != "" && isBsonLikeKey(e.Key) {
+		return e.Slug
+	}
+	return e.Key
+}
+
+// isBsonLikeKey reports whether a stored key is a minted BSON ObjectId hex —
+// 24 hex chars with at least one digit (the v1 heuristic, core/api/util).
+func isBsonLikeKey(key string) bool {
+	if len(key) != 24 {
+		return false
+	}
+	digit := false
+	for _, r := range key {
+		switch {
+		case r >= '0' && r <= '9':
+			digit = true
+		case r >= 'a' && r <= 'f':
+		default:
+			return false
+		}
+	}
+	return digit
+}
+
 // propertyDefinition adapts an entry to the anyblockjson definition shape.
 func (e propertyEntry) propertyDefinition() anyblockjson.PropertyDefinition {
 	return anyblockjson.PropertyDefinition{

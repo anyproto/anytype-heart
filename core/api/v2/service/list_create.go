@@ -400,7 +400,7 @@ func (s *V2Service) dataviewProperties(spaceId string, referenced []viewKeyRef) 
 
 // storeFormatResolver builds a bundle-aware format resolver over the space.
 func storeFormatResolver(s *V2Service, spaceId string) anyblockjson.FormatResolver {
-	reads := newCreatingResolvers(context.Background(), s.mw, spaceId, s.store.SpaceIndex(spaceId), true)
+	reads := s.newCreatingResolvers(context.Background(), spaceId, true)
 	return func(key domain.RelationKey) (format model.RelationFormat, ok bool) {
 		if rel, err := bundle.GetRelation(key); err == nil {
 			return rel.Format, true
