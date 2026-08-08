@@ -179,7 +179,7 @@ func (s *V2Service) CreateType(ctx context.Context, spaceId string, body []byte,
 		// same transform objectcreator would apply — derived here so the
 		// union check can guard it (the check ships WITH the mint)
 		if snapshot.Details != nil {
-			slug = bundle.ApiSlugFromName(pbtypes.GetString(snapshot.Details, bundle.RelationKeyName.String()))
+			slug = sanitizeApiSlug(bundle.ApiSlugFromName(pbtypes.GetString(snapshot.Details, bundle.RelationKeyName.String())))
 		}
 		keyPath = "/properties/name"
 	}
@@ -262,17 +262,57 @@ func ensureRegularRecommendedList(details *types.Struct, resolvers *creatingReso
 	}
 }
 
+// typeDetailsForbiddenKeys are identity- and permission-bearing details a
+// type DOCUMENT must never supply: uniqueKey rides through the details
+// channel into getUniqueKeyOrGenerate and DeriveTreeObject — a forged
+// "ot-page" occupies the id a later bundled install converges to, which is
+// strategy (b)'s silent merge reachable under (a) through a channel the
+// union check never inspects. relationKey/isReadonly/restrictions are the
+// system's own flags. Export strips all of them (derived/local source), so
+// no legitimate round-tripped document carries one — rejection is loud,
+// path-addressed, and breaks nothing real.
+var typeDetailsForbiddenKeys = []string{
+	bundle.RelationKeyUniqueKey.String(),
+	bundle.RelationKeyRelationKey.String(),
+	bundle.RelationKeyIsReadonly.String(),
+	bundle.RelationKeyRestrictions.String(),
+}
+
+// typeDetailsDroppedKeys are system-managed details the create path
+// computes itself; a round-tripped document may legitimately carry them
+// (details-source, so export emits them), so they are dropped in favor of
+// the system's value rather than rejected. apiObjectKey in particular is
+// derived from the document's key/name and union-checked — a document-
+// supplied value would bypass the check.
+var typeDetailsDroppedKeys = map[string]bool{
+	bundle.RelationKeyApiObjectKey.String():  true,
+	bundle.RelationKeyOrigin.String():        true,
+	bundle.RelationKeySpaceId.String():       true,
+	bundle.RelationKeyIsArchived.String():    true,
+	bundle.RelationKeyIsDeleted.String():     true,
+	bundle.RelationKeyIsUninstalled.String(): true,
+}
+
 // typeDetailsFromSnapshot converts the unmarshaled type snapshot into the
 // ObjectCreateObjectType details: the minted id dropped, the caller's key
 // stored as the apiObjectKey slug (NEVER as the unique key — the create
-// mints a BSON internal key, ADDRESSING §7.5), and recommendedLayout
-// accepting the layout NAME (the §2a worked example's form) as well as the
-// stored number.
+// mints a BSON internal key, ADDRESSING §7.5), identity-bearing details
+// rejected (see typeDetailsForbiddenKeys), and recommendedLayout accepting
+// the layout NAME (the §2a worked example's form) as well as the stored
+// number.
 func typeDetailsFromSnapshot(snapshot *model.SmartBlockSnapshotBase, slug string) (*types.Struct, error) {
 	details := &types.Struct{Fields: map[string]*types.Value{}}
 	if snapshot.Details != nil {
+		for _, forbidden := range typeDetailsForbiddenKeys {
+			if _, ok := snapshot.Details.Fields[forbidden]; ok {
+				return nil, v2model.ValidationFailed("property is not writable on a type",
+					v2model.Issue{Path: "/properties/" + forbidden,
+						Message: fmt.Sprintf("%q is system-managed and cannot be supplied", forbidden),
+						Hint:    "identity comes from the document's key (and name); remove this property"})
+			}
+		}
 		for k, v := range snapshot.Details.Fields {
-			if k == v2DetailKeyId {
+			if k == v2DetailKeyId || typeDetailsDroppedKeys[k] {
 				continue
 			}
 			details.Fields[k] = v
@@ -533,7 +573,9 @@ func (s *V2Service) CreateProperty(ctx context.Context, spaceId string, req v2mo
 		}
 		slug = bundle.ApiSlug(req.Key)
 	} else {
-		slug = bundle.ApiSlugFromName(req.Name)
+		// derived from the display name, which no pattern ever checked —
+		// sanitize to the advertised key grammar (empty = no derivable slug)
+		slug = sanitizeApiSlug(bundle.ApiSlugFromName(req.Name))
 	}
 	if slug != "" {
 		if holder, taken := s.propertySlugConflict(spaceId, slug); taken {

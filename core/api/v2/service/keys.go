@@ -430,6 +430,39 @@ func (e propertyEntry) propertyDefinition() anyblockjson.PropertyDefinition {
 	}
 }
 
+// sanitizeApiSlug constrains a DERIVED slug (from a display name or a
+// document key — inputs no pattern ever checked) to the advertised key
+// grammar ^[a-zA-Z0-9_]+$ and maxV2KeyLength: every disallowed rune
+// becomes `_`, runs collapse, edges trim. Without this, "50% done", "C++"
+// or "☕" (unidecode: "?") became identity-bearing apiObjectKey values the
+// create returned as keys that no /properties/{key} route could accept.
+// Empty result = no derivable slug; the caller falls back to the minted
+// BSON as the only address.
+func sanitizeApiSlug(raw string) string {
+	var b strings.Builder
+	lastUnderscore := false
+	for _, r := range raw {
+		valid := r == '_' || (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9')
+		if !valid {
+			r = '_'
+		}
+		if r == '_' {
+			if lastUnderscore {
+				continue
+			}
+			lastUnderscore = true
+		} else {
+			lastUnderscore = false
+		}
+		b.WriteRune(r)
+	}
+	out := strings.Trim(b.String(), "_")
+	if len(out) > maxV2KeyLength {
+		out = strings.Trim(out[:maxV2KeyLength], "_")
+	}
+	return out
+}
+
 // servedKeySets primes the two maps the served-spelling rule needs from one
 // live set: every live stored key, and the live holder count per slug.
 func servedPropertyKeySets(entries []propertyEntry) (keys map[string]bool, slugCount map[string]int) {

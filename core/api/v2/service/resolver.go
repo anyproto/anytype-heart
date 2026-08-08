@@ -433,8 +433,9 @@ func (r *creatingResolvers) PropertyId(def anyblockjson.PropertyDefinition) (str
 	} else {
 		// custom: mint-time union collision check on the NORMALIZED slug
 		// (the check ships WITH the mint, §7.6-3) — `myKey` must not mint
-		// slug my_key over an existing holder
-		slug := bundle.ApiSlug(string(def.Key))
+		// slug my_key over an existing holder. Document keys pass no pattern
+		// check, so the derived slug is sanitized to the key grammar.
+		slug := sanitizeApiSlug(bundle.ApiSlug(string(def.Key)))
 		if slug != string(def.Key) {
 			if _, ok, err := r.slugLookup(slug); err != nil {
 				r.errs = append(r.errs, err)

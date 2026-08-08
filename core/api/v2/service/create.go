@@ -343,6 +343,15 @@ func (s *V2Service) validateDocumentRefs(spaceId string, envelope *docEnvelope, 
 		return v2model.ValidationFailed("unsupported document kind",
 			v2model.Issue{Path: "/kind", Message: fmt.Sprintf("kind %q cannot be created through the API", envelope.Kind), Hint: "omit kind (page) or use type \"template\""})
 	}
+	// the envelope key is the derived-identity slot of TYPE documents; on an
+	// object document it would ride into snapshot.Key and DeriveTreeObject —
+	// forged deterministic identity through a channel no guard inspects
+	// (ADDRESSING §2.4). Reject, never strip: identity is nothing to drop
+	// silently.
+	if envelope.Key != "" {
+		return v2model.ValidationFailed("key is not accepted on an object document",
+			v2model.Issue{Path: "/key", Message: "key is the identity slot of type documents only", Hint: "remove key — objects are identified by their minted id"})
+	}
 
 	if opts.requireTemplate {
 		if envelope.Type == "" {

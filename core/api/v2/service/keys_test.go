@@ -189,3 +189,24 @@ func TestV2CorpsePolicyTypes(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
 	})
 }
+
+func TestSanitizeApiSlug(t *testing.T) {
+	// derived slugs (from names and document keys — inputs no pattern ever
+	// checked) must land inside the advertised key grammar or not exist:
+	// before this, "50% done" and "☕" (unidecode: "?") became
+	// identity-bearing apiObjectKey values no /properties/{key} route could
+	// accept
+	cases := map[string]string{
+		"50%_done":  "50_done",
+		"c++":       "c",
+		"?":         "",
+		"foo/bar":   "foo_bar",
+		"a__b":      "a_b",
+		"_x_":       "x",
+		"clean_key": "clean_key",
+		"":          "",
+	}
+	for in, want := range cases {
+		assert.Equal(t, want, sanitizeApiSlug(in), "input %q", in)
+	}
+}
