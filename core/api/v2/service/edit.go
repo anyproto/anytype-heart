@@ -424,8 +424,10 @@ func (s *V2Service) PutObject(ctx context.Context, spaceId, objectId string, bod
 		return nil, v2model.ValidationFailed("decode document envelope: " + err.Error())
 	}
 	// the R9 referential layer guards PUT like create: kind gating, type and
-	// property keys with did-you-mean, items-on-collections
-	if err := s.validateDocumentRefs(spaceId, &envelope, docCreateOptions{}); err != nil {
+	// property keys with did-you-mean, items-on-collections. PUT tolerates
+	// corpse-held keys — an object holding values of a UI-deleted relation
+	// exports that key, and GET→PUT of the same bytes must round-trip.
+	if err := s.validateDocumentRefs(spaceId, &envelope, docCreateOptions{tolerateCorpseKeys: true}); err != nil {
 		return nil, err
 	}
 

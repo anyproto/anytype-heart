@@ -37,13 +37,18 @@ func (s *V2Service) typeIdInSpace(spaceId, typeKey string) (string, bool) {
 	return id, id != ""
 }
 
-// typeKeyExists reports whether a type key resolves in the space or the
-// bundle (bundled types install on first use — the create adapter does it).
+// typeKeyExists reports whether a type key resolves LIVE in the space or in
+// the bundle (bundled types install on first use — the create adapter does
+// it). Corpse-aware and chain-aware: a UI-deleted type must not gate object
+// or template creates through (review cause 2), and the served slug must
+// resolve here like everywhere else. Fail closed on a load error.
 func (s *V2Service) typeKeyExists(spaceId, typeKey string) bool {
-	if _, ok := s.typeIdInSpace(spaceId, typeKey); ok {
-		return true
+	entries, err := s.liveTypes(spaceId)
+	if err != nil {
+		return false
 	}
-	return bundle.HasObjectTypeByKey(domain.TypeKey(typeKey))
+	_, ok, ambiguous := s.resolveTypeInput(typeKey, entries)
+	return ok && len(ambiguous) == 0
 }
 
 // knownTypeKeys lists the space's LIVE type keys in their SERVED spelling

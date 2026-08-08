@@ -92,21 +92,38 @@ func (s *V2Service) CreateSet(ctx context.Context, spaceId string, req v2model.C
 	// Option names are deliberately NOT parse-validated here: a set create is
 	// a WRITE, where select option names create-missing (R9/§8.1) — unlike
 	// the read-only query path.
+	// kc canonicalizes the request's property spellings (served slugs →
+	// stored keys) — the set DOCUMENT persists these keys, and a served
+	// spelling landing in a dataview filter would bind a RelationKey the
+	// store never matches, silently (review cause 3)
+	kc, err := s.newKeyCanon(spaceId)
+	if err != nil {
+		return nil, err
+	}
 	if req.Filter != "" {
 		// "type" joins the reference set only so the discovery-served grammar
 		// example (`type IN (…)`) parses to a targeted error below instead of
 		// an unknown-key message that cannot explain itself
-		refKeys := appendMissing(append(s.typePropertyKeys(spaceId, typeId), "name", "type"), v2SystemQueryKeys...)
+		refKeys := appendMissing(append(kc.withServedSpellings(s.typePropertyKeys(spaceId, typeId)), "name", "type"), v2SystemQueryKeys...)
 		sort.Strings(refKeys)
 		parsed, err := filterstring.Parse(req.Filter, filterstring.Options{
 			KnownKeys:     refKeys,
-			ResolveFormat: s.formatNameResolver(spaceId),
+			ResolveFormat: canonFormatName(s.formatNameResolver(spaceId), kc),
 		})
 		if err != nil {
 			return nil, filterStringError(err)
 		}
 		req.Filter = ""
 		req.Filters = parsed
+	}
+	if req.Filters, err = kc.canonicalizeRawChannel(req.Filters, "filters", "/filters"); err != nil {
+		return nil, err
+	}
+	if req.Sorts, err = kc.canonicalizeRawChannel(req.Sorts, "sorts", "/sorts"); err != nil {
+		return nil, err
+	}
+	if req.Views, err = kc.canonicalizeRawChannel(req.Views, "views", "/views"); err != nil {
+		return nil, err
 	}
 	// M3: the same structural gate the query path runs. A set persists its
 	// filter, so a match-everything shape here is not a bad query — it is a
@@ -308,6 +325,13 @@ func (s *V2Service) validateViewKeys(spaceId, typeId, typeKey string, refs []vie
 	}
 	for _, key := range typeKeys {
 		allowed[key] = true
+	}
+	// inputs arrive canonicalized (CreateSet's kc rewrite); the candidate
+	// list must speak the SERVED spelling — never advertise what the
+	// channel rejects (review cause 3)
+	if entries, err := s.liveProperties(spaceId); err == nil {
+		kc := &keyCanon{s: s, entries: entries}
+		typeKeys = kc.servedSpellings(typeKeys)
 	}
 	var issues []v2model.Issue
 	for _, ref := range refs {

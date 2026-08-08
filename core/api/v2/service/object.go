@@ -499,22 +499,32 @@ var v2FieldAliases = map[string]domain.RelationKey{
 	"size":     bundle.RelationKeySizeInBytes,
 }
 
-// activeFieldAliases resolves the aliases against one space: an alias is
-// active only when the space has no REAL property claiming its key. The
-// decision is per SPACE, never per row — a user-defined relation keyed
-// mimeType/size wins for the whole result set, so one key can never mean
-// the user's property on rows that carry a value and the file's backing
-// relation on rows that don't (the Phase-7 review's per-row hazard).
-func (s *V2Service) activeFieldAliases(spaceId string) map[string]domain.RelationKey {
-	index := s.store.SpaceIndex(spaceId)
+// activeFieldAliasesIn resolves the aliases against one primed live set:
+// an alias is active only when no LIVE property claims its spelling —
+// through the same chain everything else resolves, so a stored key OR a
+// slug claims it, and a UI-deleted (uninstalled) relation no longer
+// deactivates the alias space-wide (the review's corpse-blind finding:
+// one uninstalled mimeType relation silently dropped the field from every
+// file row and filter). The decision is per SPACE, never per row.
+func (s *V2Service) activeFieldAliasesIn(entries []propertyEntry) map[string]domain.RelationKey {
 	active := make(map[string]domain.RelationKey, len(v2FieldAliases))
 	for alias, backing := range v2FieldAliases {
-		if _, err := index.GetRelationByKey(alias); err == nil {
-			continue // a real space property claims the name
+		if entry, ok, ambiguous := s.resolvePropertyInput(alias, entries); len(ambiguous) > 0 || (ok && entry.Id != "") {
+			continue // a real live property claims the spelling
 		}
 		active[alias] = backing
 	}
 	return active
+}
+
+// activeFieldAliases is the load-owning form; on a store error no alias is
+// served (conservative — the real property, if any, must win).
+func (s *V2Service) activeFieldAliases(spaceId string) map[string]domain.RelationKey {
+	entries, err := s.liveProperties(spaceId)
+	if err != nil {
+		return nil
+	}
+	return s.activeFieldAliasesIn(entries)
 }
 
 // objectRowBuilder assembles C5 minimal rows (id, name, type + requested
@@ -543,10 +553,20 @@ func (s *V2Service) newObjectRowBuilder(spaceId string, fields []string) (*objec
 	b := &objectRowBuilder{index: index, typeKeys: typeKeys, fields: fields, spaceId: spaceId}
 	if len(fields) > 0 {
 		b.opts = storeresolver.New(index).Options()
+		// requested fields canonicalize through the one chain (file aliases
+		// + §7.5a-5): the value is read from the STORED key and emitted
+		// under the REQUESTED spelling — the listing's slug spelling works
+		// in fields= exactly as advertised (review cause 3)
+		kc, err := s.newKeyCanon(spaceId)
+		if err != nil {
+			return nil, err
+		}
 		for _, field := range fields {
-			if _, ok := v2FieldAliases[field]; ok {
-				b.aliases = s.activeFieldAliases(spaceId)
-				break
+			if canonical, ambiguous := kc.canon(field); len(ambiguous) == 0 && canonical != field {
+				if b.aliases == nil {
+					b.aliases = map[string]domain.RelationKey{}
+				}
+				b.aliases[field] = domain.RelationKey(canonical)
 			}
 		}
 	}

@@ -514,6 +514,33 @@ func servedKey(storedKey, slug string, keyTaken map[string]bool, slugCount map[s
 	return slug
 }
 
+// anyRelationByKeyExists reports whether ANY relation object holds the
+// stored key — live or corpse (the explicit no-op isArchived filter
+// suppresses the store's injected default; Condition None compiles to no
+// filter at all). This is PUT's round-trip tolerance, never an address.
+func (s *V2Service) anyRelationByKeyExists(spaceId, key string) bool {
+	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
+		Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyRelationKey,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.String(key),
+			},
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.Int64(int64(model.ObjectType_relation)),
+			},
+			{
+				RelationKey: bundle.RelationKeyIsArchived,
+				Condition:   model.BlockContentDataviewFilter_None,
+			},
+		},
+		Limit: 1,
+	})
+	return err == nil && len(records) > 0
+}
+
 // canonicalizeDocumentKeys rewrites an inbound document's addressing terms
 // to their canonical stored spellings BEFORE validation and import: the
 // envelope's type/templateFor (slug → internal type key — the import path

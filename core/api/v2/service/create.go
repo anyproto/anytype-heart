@@ -53,6 +53,11 @@ var shortcutKeys = map[string]bool{"type": true, "name": true, "properties": tru
 type docCreateOptions struct {
 	dryRun          bool
 	requireTemplate bool // POST /templates: templateFor is mandatory
+	// tolerateCorpseKeys: PUT accepts property keys held by ANY relation
+	// object, corpse included — an object holding values of a UI-deleted or
+	// archived relation exports that key, and GET→PUT of the same bytes
+	// must round-trip (C11); a fresh POST keeps the live-only rule.
+	tolerateCorpseKeys bool
 }
 
 // CreateObject implements POST /v2/spaces/{spaceId}/objects.
@@ -388,14 +393,34 @@ func (s *V2Service) validateDocumentRefs(spaceId string, envelope *docEnvelope, 
 	}
 
 	// property keys must exist — did-you-mean, never silent create (R9)
+	return s.validatePropertyKeys(spaceId, envelope.Properties, opts.tolerateCorpseKeys)
+}
+
+// validatePropertyKeys is the R9 unknown-property loop over a document's
+// properties map. One primed live set for the whole loop (§7.5a-2),
+// failing closed on a load error. tolerateCorpses is PUT's round-trip
+// escape: a key held by ANY relation object — corpse included — passes,
+// because the exported document legitimately carries it (review cause 3:
+// GET must never emit a key PUT of the same bytes rejects).
+func (s *V2Service) validatePropertyKeys(spaceId string, props map[string]json.RawMessage, tolerateCorpses bool) error {
+	if len(props) == 0 {
+		return nil
+	}
+	entries, err := s.liveProperties(spaceId)
+	if err != nil {
+		return err
+	}
 	var issues []v2model.Issue
 	var known []string
-	for _, key := range sortedKeys(envelope.Properties) {
-		if s.propertyKeyExists(spaceId, key) {
+	for _, key := range sortedKeys(props) {
+		if propertyKeyExistsIn(entries, key) {
+			continue
+		}
+		if tolerateCorpses && s.anyRelationByKeyExists(spaceId, key) {
 			continue
 		}
 		if known == nil {
-			known = s.knownPropertyKeys(spaceId)
+			known = knownPropertyKeysIn(entries)
 		}
 		issues = append(issues, unknownPropertyIssue(key, "/properties/"+key, known,
 			fmt.Sprintf("list all with GET /v2/spaces/%s/properties, or create it with POST /v2/spaces/%s/properties", spaceId, spaceId)))

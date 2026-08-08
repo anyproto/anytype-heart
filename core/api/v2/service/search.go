@@ -216,36 +216,64 @@ func (s *V2Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, s
 			Value:       domain.StringList([]string{typeId}),
 		})
 		// the Phase-7 file opt-in: a top-level file type widens the row scope
-		if util.IsFileTypeKey(req.Type) {
+		// (entry.Key — the canonical spelling — in case a slug named it)
+		if util.IsFileTypeKey(entry.Key) {
 			plan.includeFileLayouts = true
 		}
-	} else {
-		refKeys = s.knownPropertyKeys(spaceId)
 	}
-	refKeys = appendMissing(refKeys, v2SystemQueryKeys...)
-	refKeys = appendMissing(refKeys, "type")
+	// kc canonicalizes every concrete property input of this request through
+	// the one chain (file aliases + §7.5a-5): the listings advertise served
+	// spellings, so the query channels must accept them and translate to the
+	// stored keys the store binds (review cause 3)
+	kc, err := s.newKeyCanon(spaceId)
+	if err != nil {
+		return nil, err
+	}
+	if req.Type == "" {
+		// no type scope: the whole space's STORED keys are the base set
+		// (withServedSpellings widens them below)
+		stored := make([]string, 0, len(kc.entries))
+		for _, entry := range kc.entries {
+			stored = append(stored, entry.Key)
+		}
+		refKeys = sortedDistinct(stored)
+	}
+	// membership accepts BOTH spellings (stored keys stay valid — GET
+	// documents still emit them); candidate lists speak the served spelling
+	// only (never advertise what a channel rejects)
+	acceptKeys := kc.withServedSpellings(refKeys)
+	refKeys = kc.servedSpellings(refKeys)
+	for _, extra := range [][]string{v2SystemQueryKeys, {"type"}} {
+		refKeys = appendMissing(refKeys, extra...)
+		acceptKeys = appendMissing(acceptKeys, extra...)
+	}
 	// the Phase-7 file aliases join the reference set when active (no real
-	// space property claims the key): mimeType/size are live in EVERY channel
-	// — fields, filters and sorts — translated to the backing store relation,
-	// so the one advertised spelling works everywhere (C2)
-	aliases := s.activeFieldAliases(spaceId)
+	// live property claims the spelling): mimeType/size are live in EVERY
+	// channel — fields, filters and sorts — translated to the backing store
+	// relation, so the one advertised spelling works everywhere (C2)
+	aliases := kc.aliases
 	for alias := range aliases {
 		refKeys = appendMissing(refKeys, alias)
+		acceptKeys = appendMissing(acceptKeys, alias)
 	}
 	sort.Strings(refKeys)
+	sort.Strings(acceptKeys)
 	allowed := map[string]bool{}
-	for _, key := range refKeys {
+	for _, key := range acceptKeys {
 		allowed[key] = true
 	}
 
-	formatName := aliasedFormatName(s.formatNameResolver(spaceId), aliases)
+	formatName := canonFormatName(aliasedFormatName(s.formatNameResolver(spaceId), aliases), kc)
 	listUrl := fmt.Sprintf("list keys with GET /v2/spaces/%s/properties", spaceId)
 
 	// rule 1 covers field keys too — hard on the space search, warning-grade
 	// on the global fan-out (see the strictFields contract above)
 	var issues []v2model.Issue
 	for i, field := range req.Fields {
-		if allowed[field] {
+		if canonical, ambiguous := kc.canon(field); len(ambiguous) > 0 {
+			issues = append(issues, ambiguousInputIssue("property key", field, fmt.Sprintf("/fields/%d", i), ambiguous))
+			continue
+		} else if allowed[field] || allowed[canonical] {
 			continue
 		}
 		if strictFields {
@@ -266,15 +294,13 @@ func (s *V2Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, s
 	fromString := req.Filter != ""
 	if fromString {
 		parsed, err := filterstring.Parse(req.Filter, filterstring.Options{
-			KnownKeys:     refKeys,
+			KnownKeys:     acceptKeys,
 			ResolveFormat: formatName,
 			KnownOptions: func(key string) ([]string, bool) {
 				// ok=false when the store could not list the options: the
 				// check is skipped rather than asserting "no such option"
 				// about data the code never saw
-				if backing, ok := aliases[key]; ok {
-					key = string(backing)
-				}
+				key, _ = kc.canon(key)
 				return s.propertyOptionNames(spaceId, key)
 			},
 		})
@@ -282,7 +308,18 @@ func (s *V2Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, s
 			return nil, filterStringError(err)
 		}
 		filtersJSON = parsed
-	} else if len(filtersJSON) > 0 {
+	}
+	if len(filtersJSON) > 0 {
+		// canonicalize every property leaf to its stored spelling BEFORE
+		// validation and the store query — a served slug in a filter would
+		// otherwise bind a RelationKey the store never matches, silently
+		canonical, err := kc.canonicalizeRawChannel(filtersJSON, "filters", filterFieldPath(fromString))
+		if err != nil {
+			return nil, err
+		}
+		filtersJSON = canonical
+	}
+	if !fromString && len(filtersJSON) > 0 {
 		// the parser validated the string form with offsets; the structured
 		// form gets the same checks path-addressed (rules 1 + 3)
 		if err := s.validateStructuredFilters(spaceId, filtersJSON, allowed, refKeys, formatName, listUrl); err != nil {
@@ -322,7 +359,12 @@ func (s *V2Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, s
 				v2model.Issue{Path: "/sorts", Message: err.Error(), Hint: "sorts is the SPEC §6.2 array of sort objects"})
 		}
 		for i, probe := range probes {
-			if probe.Property != "" && !allowed[probe.Property] {
+			if probe.Property == "" {
+				continue
+			}
+			if canonical, ambiguous := kc.canon(probe.Property); len(ambiguous) > 0 {
+				issues = append(issues, ambiguousInputIssue("property key", probe.Property, fmt.Sprintf("/sorts/%d/property", i), ambiguous))
+			} else if !allowed[probe.Property] && !allowed[canonical] {
 				issues = append(issues, unknownPropertyIssue(probe.Property, fmt.Sprintf("/sorts/%d/property", i), refKeys, listUrl))
 			}
 		}
@@ -334,11 +376,11 @@ func (s *V2Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, s
 			return nil, mapFilterCodecError(err, false)
 		}
 		plan.sorts = database.SortsFromProto(modelSorts)
-		// the file aliases translate in the sort channel too (C2: the one
-		// advertised spelling works everywhere)
+		// every spelling translates in the sort channel too (file aliases +
+		// served slugs — C2: the one advertised spelling works everywhere)
 		for i := range plan.sorts {
-			if backing, ok := aliases[string(plan.sorts[i].RelationKey)]; ok {
-				plan.sorts[i].RelationKey = backing
+			if canonical, ambiguous := kc.canon(string(plan.sorts[i].RelationKey)); len(ambiguous) == 0 {
+				plan.sorts[i].RelationKey = domain.RelationKey(canonical)
 			}
 		}
 		// a date sort the request left includeTime-less defaults to second
@@ -760,12 +802,24 @@ func containsString(list []string, s string) bool {
 // file rows under the earlier =/IN allowlist. Negated leaves exclude a
 // type, so they never widen the scope.
 func (s *V2Service) resolveTypeLeaves(spaceId string, filters []*model.BlockContentDataviewFilter, path string) (namedFileType bool, err error) {
+	// one live snapshot for every leaf of this tree — chain-resolved and
+	// corpse-aware like the top-level type scope (review cause 2: the same
+	// spelling worked at top level and 400'd one level down, and a
+	// UI-deleted type was a usable query scope)
+	typeEntries, err := s.liveTypes(spaceId)
+	if err != nil {
+		return false, err
+	}
+	return s.resolveTypeLeavesIn(spaceId, filters, path, typeEntries)
+}
+
+func (s *V2Service) resolveTypeLeavesIn(spaceId string, filters []*model.BlockContentDataviewFilter, path string, typeEntries []typeEntry) (namedFileType bool, err error) {
 	for _, f := range filters {
 		if f == nil {
 			continue
 		}
 		if len(f.NestedFilters) > 0 {
-			nested, err := s.resolveTypeLeaves(spaceId, f.NestedFilters, path)
+			nested, err := s.resolveTypeLeavesIn(spaceId, f.NestedFilters, path, typeEntries)
 			if err != nil {
 				return false, err
 			}
@@ -777,14 +831,17 @@ func (s *V2Service) resolveTypeLeaves(spaceId string, filters []*model.BlockCont
 		}
 		positive := !negatedFilterConditions[f.Condition]
 		resolve := func(key string) (string, error) {
-			id, ok := s.typeIdInSpace(spaceId, key)
-			if !ok {
+			entry, ok, ambiguous := s.resolveTypeInput(key, typeEntries)
+			if len(ambiguous) > 0 {
+				return "", ambiguousKeyError("type key", key, path, ambiguous)
+			}
+			if !ok || entry.Id == "" {
 				return "", s.unknownTypeKeyError(spaceId, key, path)
 			}
-			if positive && util.IsFileTypeKey(key) {
+			if positive && util.IsFileTypeKey(entry.Key) {
 				namedFileType = true
 			}
-			return id, nil
+			return entry.Id, nil
 		}
 		switch kind := f.Value.GetKind().(type) {
 		case *types.Value_StringValue:

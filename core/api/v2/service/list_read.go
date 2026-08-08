@@ -279,22 +279,38 @@ func (s *V2Service) validateListFields(spaceId string, fields []string) error {
 	if len(fields) == 0 {
 		return nil
 	}
-	refKeys := appendMissing(s.knownPropertyKeys(spaceId), "name", "type")
+	// stored keys and served spellings both accepted (the row builder
+	// canonicalizes for the read — review cause 3); candidate lists speak
+	// the served spelling only
+	kc, err := s.newKeyCanon(spaceId)
+	if err != nil {
+		return err
+	}
+	stored := make([]string, 0, len(kc.entries))
+	for _, entry := range kc.entries {
+		stored = append(stored, entry.Key)
+	}
+	acceptKeys := appendMissing(kc.withServedSpellings(sortedDistinct(stored)), "name", "type")
+	acceptKeys = appendMissing(acceptKeys, v2SystemQueryKeys...)
+	refKeys := appendMissing(kc.servedSpellings(sortedDistinct(stored)), "name", "type")
 	refKeys = appendMissing(refKeys, v2SystemQueryKeys...)
 	// the file aliases are valid ?fields= keys when active (per space — a
-	// real property keyed mimeType/size claims the name instead)
-	for alias := range s.activeFieldAliases(spaceId) {
+	// real property claiming the spelling wins instead)
+	for alias := range kc.aliases {
+		acceptKeys = appendMissing(acceptKeys, alias)
 		refKeys = appendMissing(refKeys, alias)
 	}
 	sort.Strings(refKeys)
 	allowed := map[string]bool{}
-	for _, key := range refKeys {
+	for _, key := range acceptKeys {
 		allowed[key] = true
 	}
 	listUrl := fmt.Sprintf("list keys with GET /v2/spaces/%s/properties", spaceId)
 	var issues []v2model.Issue
 	for _, field := range fields {
-		if !allowed[field] {
+		if canonical, ambiguous := kc.canon(field); len(ambiguous) > 0 {
+			issues = append(issues, ambiguousInputIssue("property key", field, "fields", ambiguous))
+		} else if !allowed[field] && !allowed[canonical] {
 			issues = append(issues, unknownPropertyIssue(field, "fields", refKeys, listUrl))
 		}
 	}
