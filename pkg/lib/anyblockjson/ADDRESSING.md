@@ -1154,11 +1154,16 @@ record):
    the gate is only about bare ops naming them.
    *[SHIPPED except the re-spelling sweep: the mint + union check, the
    input chain incl. fold, the §2a format check and the ambiguity-loud
-   lookups are live (APIV2.md §8.22); outputs serve the slug only where
-   the stored key is BSON and the slug round-trips — the full
-   slugs-always output (bundled keys re-spelling to snake on the wire,
-   the SPEC §3 vocabulary flip, schemas/goldens/SKILL/eval) is the
-   remaining sweep and needs its own change]*
+   lookups are live (APIV2.md §8.22), and a five-lens review pass
+   (§8.23) unified every mint and query channel onto the one chain —
+   union check fold-inclusive on all paths, document-body forgery
+   channel closed, search/list/set inputs canonicalized, guards
+   fail-closed; outputs serve the slug only where the stored key is
+   BSON and the slug round-trips — the full slugs-always output
+   (bundled keys re-spelling to snake on the wire, the SPEC §3
+   vocabulary flip, schemas/goldens/SKILL/eval) is the remaining sweep
+   and needs its own change; view-op set channels stay stored-key-only
+   until then]*
 4. **Write-side defaults** (§7.4): strict on PATCH/PUT, `create: true`,
    the ambiguous-name 400; APIV2.md ledger edits; wrapper pre-validation +
    explicit create intent. *[open]*

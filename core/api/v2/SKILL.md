@@ -27,10 +27,12 @@ whether you may write. Ask this instead of discovering limits through 403s
   spells them (bundled keys camelCase: `dueDate`; API-created ones
   snake_case: `manual_property`). Keys are forgiving on input — `due_date`
   or `DueDate` resolve to `dueDate`; an input matching two properties is a
-  400 listing both. Select/multiSelect values are option **names**
-  (`"In progress"`, case-sensitive) — never option ids. Writes create
-  unknown option names (a PATCH caps this at 64); unknown property keys
-  are rejected with a did-you-mean.
+  400 listing both. (One exception: the compact `filter` STRING validates
+  before folding — use a listed spelling or the snake form there.)
+  Select/multiSelect values are option **names** (`"In progress"`,
+  case-sensitive) — never option ids. Writes create unknown option names
+  (a PATCH caps this at 64); unknown property keys are rejected with a
+  did-you-mean.
 - **Blocks** are a FLAT array in pre-order with an integer `indent`
   (absent = 0) — no `children` key. Inline formatting is markdown inside
   `text`. Block ids are stable; any block reference accepts the full id or

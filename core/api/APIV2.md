@@ -3194,7 +3194,8 @@ re-tuning of tool descriptions once the benchmark re-runs.
 Implements the safety core of `pkg/lib/anyblockjson/ADDRESSING.md` (§7.5,
 §7.5a, §7.6 build step 3 plus the step-5 corpse policy), superseding the
 queued "point v2 at apiObjectKey" fix — which, alone, would have imported
-the slug layer's collision problem (§2.3-1). Six commits, each verified
+the slug layer's collision problem (§2.3-1). Nine commits (seven code,
+two docs), each verified
 fail-on-revert where the behavior is invisible until data is wrong.
 
 **The derived slug table** (`pkg/lib/bundle/apislug.go`): the authority for
@@ -3226,7 +3227,8 @@ document key, and `PropertyId` no longer pins typeProperties keys —
 every create mints a BSON internal key and the caller's key becomes the
 `apiObjectKey` slug, snake-normalized. The union collision check ships
 WITH the mint (bundled keys + bundled-derived slugs + live stored keys +
-live stored slugs): `due_date`, `Due Date` and `dueDate` can no longer
+live stored slugs; §8.23 unified it onto the resolution chain — all mint
+paths, fold classes included): `due_date`, `Due Date` and `dueDate` can no longer
 shadow the bundled property, sequential normalized twins refuse loudly,
 and a name-derived slug (key omitted) is guarded identically — the
 refusal steers to the existing holder or an explicit different key
@@ -3274,8 +3276,111 @@ respell); ADDRESSING §7.6 steps 1–2 (pins + the D1 kill — SPEC-level);
 §7.4 strict-on-PATCH write defaults; the §7.5-req-5 backfill (its own GO
 issue — until it runs, pre-slug custom BSON keys have no stable bare-op
 address, exactly as the dossier states); key slots inside view-op set
-channels and set filters accept stored keys only (slug inputs there fail
+channels accept stored keys only — set filters and the whole query
+surface canonicalize since §8.23 (slug inputs in the one remaining channel fail
 loud via R9, never silently). The heart-side mint (`injectApiObjectKey`)
 still checks nothing — UI creates can still mint twin slugs; v2 defends
 via the ambiguity 400 and round-trip serving. OpenAPI regeneration is
 pending (`make openapi` not run here); no annotation shapes changed.
+
+### 8.23 Identity-layer review pass: five causes, fixed as causes (2026-08-08 — decisions as built)
+
+A five-lens review of §8.22 found incomplete wiring in five structural
+clusters; each is fixed at its cause. Seven commits, every behavioral fix
+verified fail-on-revert (by targeted behavior reverts where a whole-file
+revert would only fail compilation).
+
+**Cause 1 — the document body was an unguarded input channel
+(REGRESSION, reproduced).** A type document's properties map copied
+verbatim into the create RPC; `uniqueKey` is itself a bundled relation,
+so a forged `{"uniqueKey":"ot-page"}` rode into `getUniqueKeyOrGenerate`
+and `DeriveTreeObject` — occupying the id a later bundled install
+converges to (strategy (b)'s silent merge, reachable under (a) through a
+channel the union check never inspected). Fixed with a reject list
+(uniqueKey, relationKey, isReadonly, restrictions — export strips all
+four, so no legitimate round trip carries them; path-addressed 400) and
+a drop list for system-managed details a round trip DOES carry
+(apiObjectKey — a supplied value bypassed the union check when the name
+slugged empty — origin, spaceId, isArchived, isDeleted, isUninstalled).
+The same forgery's second channel — an envelope `key` on an OBJECT
+document becoming `snapshot.Key` → `uniqueKeyInternal` →
+`DeriveTreeObject` (found while fixing; the review named the details
+channel) — is rejected in `validateDocumentRefs`, covering POST and PUT.
+
+**Cause 2 — one canonicalization chain everywhere.** The prewarm's
+`canonicalPropertyKey` and `PropertyId`'s resolution now ARE
+`resolvePropertyInput` — the §7.5a-5 chain every other channel walks —
+closing at one stroke: the M5 bypass (the prewarm lacked the fold the
+in-lock pass had; a folded spelling made 70 option creates run INSIDE
+the object lock past the 64 cap — the repro is now a test), the
+corpse-resolving typeProperties path (custom corpse keys mint fresh;
+bundled keep the storeresolver fallback — bundled identity is derived
+and invariant), and the stored-key shadow (`myKey` beside a legacy
+`my_key` resolves to the legacy relation via the fold; a spelling whose
+fold misses but whose minted slug collides — `"My Key"`, the space
+survives folding — is refused by the slug-side union re-check). The
+canonicalization-equivalence table test pins prewarm ≡ in-lock over
+stored/slug/folded/ambiguous/miss spellings, so the next divergence
+fails there first.
+
+**Cause 4 — guards robust.** `liveProperties`/`liveTypes` return their
+store error (a hiccup no longer empties the namespace and waves
+collisions through — fail closed; hint-only lists degrade); entries are
+primed once per request and mandatory in the chain (the N+1 loops in
+document validation and setProperties/view checkKey share one snapshot);
+the mint remembers its own request (`mintedSlugs` — two spellings of one
+key in one document refuse instead of both minting `warranty_until`);
+the union check covers fold classes (`moodlevel` beside `mood_level`
+refuses — an occupied folded spelling would be permanently ambiguous);
+the type union check runs BEFORE Unmarshal (a refused type create leaves
+no orphan typeProperties relations — M5's lesson in a new path);
+`canonicalizeDocumentKeys` reports duplicates deterministically; and
+ambiguity candidates print stored key + id — the addresses that always
+resolve (twins printed one identical slug; nothing was actionable).
+Hidden holders vacate the slug namespace (resolution, fold, collision,
+serving) while keeping exact-stored-key addressability: a hidden twin is
+invisible and undeletable to the caller and must not 400 the visible
+holder's slug.
+
+**Cause 3 — the query channels speak what the listings advertise.**
+`keycanon.go` canonicalizes every concrete property input of search
+(fields — read from the stored key, emitted under the requested
+spelling — structured filters, the compact string, sorts, format and
+option lookups), list `?fields=`, and set creation (the request's
+filters/sorts/views rewritten in generic JSON before validation and the
+persisted document — a served slug would have become a permanently dead
+dataview filter). Membership accepts stored AND served spellings (plus
+bundled derived slugs — acceptance is wider than advertising); candidate
+lists speak served spellings only. The type filter LEAF resolves through
+the chain, corpse-aware — one spelling now works at every level, and a
+UI-deleted type stopped being a usable query scope (`typeKeyExists`
+likewise: objects/templates of a corpse type refuse). PUT tolerates
+corpse-HELD property keys (GET emits them for objects still carrying
+values; the archived-inclusive probe suppresses the injected default
+with an explicit no-op isArchived filter); POST keeps live-only. The
+file aliases' deactivation is chain- and corpse-aware (an uninstalled
+`mimeType` relation no longer silently drops the field space-wide).
+
+**Cause 5 — derived-slug hygiene.** Name- and document-key-derived slugs
+are sanitized to the advertised `^[a-zA-Z0-9_]+$`/maxLength grammar
+("50% done", "C++", "☕" → unidecode "?" — all previously became
+identity-bearing, unaddressable apiObjectKey values); empty means no
+derivable slug and the minted BSON stays the only address.
+
+**Rejected, with evidence:** corpse-awareness for `isCollectionType`
+(the input is the object's OWN stored type key — a data predicate;
+refusing addItems on an existing collection whose type was uninstalled
+would diverge from the app) and for set-source resolution
+(`setSourceFilters` reads setOf — stored identifiers, never wire
+spellings; a set over a deleted type still lists its objects in the
+app, and v2 stays at parity).
+
+**Still deferred, restated:** view-op set channels (updateView/
+insertView filters and sorts) accept stored keys only — slug inputs
+there fail loud via the view-key validation, never silently; folded
+spellings are accepted on routes, documents and ops but NOT inside
+search/set filter validation sets (only stored, served and bundled-slug
+spellings enumerate); the §7.5a respelling sweep, pins/D1, §7.4
+defaults, the backfill and active re-slug-on-revive as in §8.22.
+Truthfulness fixes to §8.22 ride this pass (commit count, the union
+check's scope, search's former stored-keys-only state).
