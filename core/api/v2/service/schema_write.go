@@ -273,10 +273,13 @@ func (s *V2Service) UpdateType(ctx context.Context, spaceId, typeKey string, bod
 	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
 	}
-	typeId, ok := s.typeIdInSpace(spaceId, typeKey)
+	// live lookup — a UI-deleted type must 404, never steer the caller into
+	// patching a corpse (§2.3-6)
+	entry, ok := s.liveTypeByKey(spaceId, typeKey)
 	if !ok {
 		return nil, s.typeNotFoundError(spaceId, typeKey)
 	}
+	typeId := entry.Id
 
 	var patch v2TypePatch
 	decoder := json.NewDecoder(bytes.NewReader(body))
@@ -360,10 +363,12 @@ func (s *V2Service) DeleteType(ctx context.Context, spaceId, typeKey string, dry
 	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
 	}
-	typeId, ok := s.typeIdInSpace(spaceId, typeKey)
+	// live lookup — deleting a corpse is a 404, not a re-archive (§7.5-2)
+	entry, ok := s.liveTypeByKey(spaceId, typeKey)
 	if !ok {
 		return nil, s.typeNotFoundError(spaceId, typeKey)
 	}
+	typeId := entry.Id
 	result := &v2model.CreateResult{Id: typeId, Key: typeKey}
 	if dryRun {
 		result.DryRun = true
@@ -487,16 +492,18 @@ func (s *V2Service) UpdateProperty(ctx context.Context, spaceId, propertyKey str
 	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
 	}
-	rel, err := s.store.SpaceIndex(spaceId).GetRelationByKey(propertyKey)
-	if err != nil || rel == nil {
+	// live lookup — a UI-deleted property must 404, never steer the caller
+	// into patching a corpse (§2.3-6)
+	entry, ok := s.livePropertyByKey(spaceId, propertyKey)
+	if !ok {
 		return nil, s.propertyNotFoundError(spaceId, propertyKey)
 	}
-	if bundled, err := bundle.PickRelation(domain.RelationKey(propertyKey)); err == nil && bundled.ReadOnly {
+	if bundled, err := bundle.PickRelation(domain.RelationKey(entry.Key)); err == nil && bundled.ReadOnly {
 		return nil, v2model.ValidationFailed("property is read-only",
 			v2model.Issue{Path: "/name", Message: fmt.Sprintf("bundled property %q cannot be updated", propertyKey)})
 	}
 
-	result := &v2model.CreateResult{Id: rel.Id, Key: propertyKey}
+	result := &v2model.CreateResult{Id: entry.Id, Key: propertyKey}
 	if req.Name == nil {
 		return nil, v2model.ValidationFailed("nothing to update",
 			v2model.Issue{Message: "the patch accepts name"})
@@ -509,7 +516,7 @@ func (s *V2Service) UpdateProperty(ctx context.Context, spaceId, propertyKey str
 		return result, nil
 	}
 	resp := s.mw.ObjectSetDetails(ctx, &pb.RpcObjectSetDetailsRequest{
-		ContextId: rel.Id,
+		ContextId: entry.Id,
 		Details:   []*model.Detail{{Key: bundle.RelationKeyName.String(), Value: pbtypes.String(*req.Name)}},
 	})
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSetDetailsResponseError_NULL {
@@ -524,16 +531,18 @@ func (s *V2Service) DeleteProperty(ctx context.Context, spaceId, propertyKey str
 	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
 	}
-	rel, err := s.store.SpaceIndex(spaceId).GetRelationByKey(propertyKey)
-	if err != nil || rel == nil {
+	// live lookup — deleting an already-archived or uninstalled property is
+	// a 404, not a second archive of a corpse (§7.5-2 corpse policy)
+	entry, ok := s.livePropertyByKey(spaceId, propertyKey)
+	if !ok {
 		return nil, s.propertyNotFoundError(spaceId, propertyKey)
 	}
-	result := &v2model.CreateResult{Id: rel.Id, Key: propertyKey}
+	result := &v2model.CreateResult{Id: entry.Id, Key: propertyKey}
 	if dryRun {
 		result.DryRun = true
 		return result, nil
 	}
-	resp := s.mw.ObjectSetIsArchived(ctx, &pb.RpcObjectSetIsArchivedRequest{ContextId: rel.Id, IsArchived: true})
+	resp := s.mw.ObjectSetIsArchived(ctx, &pb.RpcObjectSetIsArchivedRequest{ContextId: entry.Id, IsArchived: true})
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSetIsArchivedResponseError_NULL {
 		return nil, fmt.Errorf("archive property %s: %s", propertyKey, resp.Error.Description)
 	}

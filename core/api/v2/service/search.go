@@ -194,10 +194,13 @@ func (s *V2Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, s
 	// rules 1 + 2: the reference key set
 	var refKeys []string
 	if req.Type != "" {
-		typeId, ok := s.typeIdInSpace(spaceId, req.Type)
+		// live lookup: a corpse type is not a query scope — the did-you-mean
+		// steers to live keys (§7.5-2 corpse policy)
+		entry, ok := s.liveTypeByKey(spaceId, req.Type)
 		if !ok {
 			return nil, s.unknownTypeKeyError(spaceId, req.Type, "/type")
 		}
+		typeId := entry.Id
 		refKeys = append(s.typePropertyKeys(spaceId, typeId), "name")
 		// rule 6: the top-level type composes by AND with any type filter
 		plan.filters = append(plan.filters, database.FilterRequest{

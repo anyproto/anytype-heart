@@ -17,8 +17,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson/storeresolver"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 // maxListedKeys bounds how many actual keys an error message names.
@@ -48,19 +46,15 @@ func (s *V2Service) typeKeyExists(spaceId, typeKey string) bool {
 	return bundle.HasObjectTypeByKey(domain.TypeKey(typeKey))
 }
 
-// knownTypeKeys lists the space's type keys (for did-you-mean).
+// knownTypeKeys lists the space's LIVE type keys (for did-you-mean) — a
+// corpse must never be suggested as a remedy (§7.5-2 corpse policy).
 func (s *V2Service) knownTypeKeys(spaceId string) []string {
-	keys, _ := s.typeKeysById(spaceId)
-	out := make([]string, 0, len(keys))
-	seen := map[string]bool{}
-	for _, key := range keys {
-		if key != "" && !seen[key] {
-			seen[key] = true
-			out = append(out, key)
-		}
+	entries := s.liveTypes(spaceId)
+	keys := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		keys = append(keys, entry.Key)
 	}
-	sort.Strings(out)
-	return out
+	return sortedDistinct(keys)
 }
 
 // unknownTypeKeyError is the R9 did-you-mean 400 for a type reference.
@@ -123,29 +117,15 @@ func (s *V2Service) propertyKeyExists(spaceId, key string) bool {
 	return bundle.HasRelation(domain.RelationKey(key))
 }
 
-// knownPropertyKeys lists the space's visible property keys (did-you-mean).
+// knownPropertyKeys lists the space's LIVE property keys (did-you-mean) — a
+// corpse must never be suggested as a remedy (§7.5-2 corpse policy).
 func (s *V2Service) knownPropertyKeys(spaceId string) []string {
-	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
-		Filters: []database.FilterRequest{{
-			RelationKey: bundle.RelationKeyResolvedLayout,
-			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       domain.Int64(int64(model.ObjectType_relation)),
-		}},
-	})
-	if err != nil {
-		return nil
+	entries := s.liveProperties(spaceId)
+	keys := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		keys = append(keys, entry.Key)
 	}
-	out := make([]string, 0, len(records))
-	seen := map[string]bool{}
-	for _, record := range records {
-		key := record.Details.GetString(bundle.RelationKeyRelationKey)
-		if key != "" && !seen[key] {
-			seen[key] = true
-			out = append(out, key)
-		}
-	}
-	sort.Strings(out)
-	return out
+	return sortedDistinct(keys)
 }
 
 // unknownPropertyIssue builds one path-addressed did-you-mean issue for an

@@ -18,7 +18,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -171,18 +170,14 @@ func (s *V2Service) ListTypes(ctx context.Context, spaceId string, offset, limit
 		return nil, 0, false, err
 	}
 	records, total, err := s.store.SpaceIndex(spaceId).QueryAndCount(database.Query{
-		Filters: []database.FilterRequest{
-			{
-				RelationKey: bundle.RelationKeyResolvedLayout,
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       domain.Int64(int64(model.ObjectType_objectType)),
-			},
-			{
+		// live filters: a UI-deleted (uninstalled) type must not list — the
+		// §7.5-requirement-2 corpse policy (keys.go)
+		Filters: append(liveTypeFilters(),
+			database.FilterRequest{
 				RelationKey: bundle.RelationKeyIsHidden,
 				Condition:   model.BlockContentDataviewFilter_NotEqual,
 				Value:       domain.Bool(true),
-			},
-		},
+			}),
 		Sorts: []database.SortRequest{{
 			RelationKey: bundle.RelationKeyName,
 			Type:        model.BlockContentDataviewSort_Asc,
@@ -215,16 +210,11 @@ func (s *V2Service) GetType(ctx context.Context, spaceId, typeKey string) ([]byt
 	if err := s.ensureSpace(ctx, spaceId); err != nil {
 		return nil, "", err
 	}
-	uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeObjectType, typeKey)
-	if err != nil {
-		return nil, "", v2model.ValidationFailed("invalid type key",
-			v2model.Issue{Path: "type", Message: fmt.Sprintf("invalid type key %q", typeKey)})
-	}
-	details, err := s.store.SpaceIndex(spaceId).GetObjectByUniqueKey(uk)
-	if err != nil || details.GetString(bundle.RelationKeyId) == "" {
+	entry, ok := s.liveTypeByKey(spaceId, typeKey)
+	if !ok || entry.Id == "" {
 		return nil, "", s.typeNotFoundError(spaceId, typeKey)
 	}
-	return s.GetObject(ctx, spaceId, details.GetString(bundle.RelationKeyId), V2ObjectQuery{})
+	return s.GetObject(ctx, spaceId, entry.Id, V2ObjectQuery{})
 }
 
 // GetTypeSchema is the [build] GenerateSchema endpoint — the derived
@@ -244,18 +234,15 @@ func (s *V2Service) ListProperties(ctx context.Context, spaceId string, offset, 
 		return nil, 0, false, err
 	}
 	records, total, err := s.store.SpaceIndex(spaceId).QueryAndCount(database.Query{
-		Filters: []database.FilterRequest{
-			{
-				RelationKey: bundle.RelationKeyResolvedLayout,
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       domain.Int64(int64(model.ObjectType_relation)),
-			},
-			{
+		// live filters: a UI-deleted (uninstalled) property still carried the
+		// relation layout and passed every filter here — the §2.3-6 defect;
+		// the corpse policy excludes it (keys.go)
+		Filters: append(livePropertyFilters(),
+			database.FilterRequest{
 				RelationKey: bundle.RelationKeyIsHidden,
 				Condition:   model.BlockContentDataviewFilter_NotEqual,
 				Value:       domain.Bool(true),
-			},
-		},
+			}),
 		Sorts: []database.SortRequest{{
 			RelationKey: bundle.RelationKeyName,
 			Type:        model.BlockContentDataviewSort_Asc,
@@ -293,11 +280,11 @@ func (s *V2Service) ListPropertyOptions(ctx context.Context, spaceId, propertyKe
 	if err := s.ensureSpace(ctx, spaceId); err != nil {
 		return nil, 0, false, err
 	}
-	index := s.store.SpaceIndex(spaceId)
-	if _, err := index.GetRelationByKey(propertyKey); err != nil {
+	// live lookup — a corpse property's options are not an API surface
+	if _, ok := s.livePropertyByKey(spaceId, propertyKey); !ok {
 		return nil, 0, false, s.propertyNotFoundError(spaceId, propertyKey)
 	}
-	options, err := index.ListRelationOptions(domain.RelationKey(propertyKey))
+	options, err := s.store.SpaceIndex(spaceId).ListRelationOptions(domain.RelationKey(propertyKey))
 	if err != nil {
 		return nil, 0, false, fmt.Errorf("list options of property %s: %w", propertyKey, err)
 	}

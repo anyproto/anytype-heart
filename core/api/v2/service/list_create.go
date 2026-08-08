@@ -67,11 +67,13 @@ func (s *V2Service) CreateSet(ctx context.Context, spaceId string, req v2model.C
 	}
 
 	// the queried type must exist in the space — its property keys are the
-	// R9 reference set for the filters
-	typeId, ok := s.typeIdInSpace(spaceId, req.Type)
+	// R9 reference set for the filters. Live lookup: a set over a UI-deleted
+	// type would be a set over a corpse (§7.5-2 corpse policy).
+	entry, ok := s.liveTypeByKey(spaceId, req.Type)
 	if !ok {
 		return nil, s.unknownTypeKeyError(spaceId, req.Type, "/type")
 	}
+	typeId := entry.Id
 
 	// the compact filter string (SPEC §6.2.1) parses to the structured array
 	// through the same reference set the structured form is validated
