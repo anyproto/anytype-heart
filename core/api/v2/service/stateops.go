@@ -81,6 +81,12 @@ type v2StateApplier struct {
 	// marshalResolver is the ONE store-backed resolver reused across every
 	// marshal of this PATCH (review A′2).
 	marshalResolver *storeresolver.Resolvers
+	// liveEntries is the ONE live-property snapshot shared by every key
+	// check of this PATCH (§7.5a-2: one bounded query per request, never
+	// one per reference), primed lazily by propEntries.
+	liveEntries       []propertyEntry
+	liveEntriesErr    error
+	liveEntriesLoaded bool
 	// marshalCount counts whole-document renders (marshalDoc calls) — the
 	// unit the M7 render-work bound is denominated in. Tests pin it so an op
 	// that claims to keep the view valid in place (v2OpRebuildsView false)
@@ -700,9 +706,14 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 				Message: fmt.Sprintf("%q is output-only (SPEC §4a) — export writes it, writes must not", key)})
 			return false
 		default:
-			if _, inDoc := doc.properties[key]; !inDoc && !a.s.propertyKeyExists(a.spaceId, key) {
+			entries, err := a.propEntries() // primed once per PATCH (§7.5a-2)
+			if err != nil {
+				issues = append(issues, v2model.Issue{Path: path, Message: err.Error()})
+				return false
+			}
+			if _, inDoc := doc.properties[key]; !inDoc && !propertyKeyExistsIn(entries, key) {
 				if known == nil {
-					known = a.s.knownPropertyKeys(a.spaceId)
+					known = knownPropertyKeysIn(entries)
 				}
 				issues = append(issues, unknownPropertyIssue(key, path, known,
 					fmt.Sprintf("list all with GET /v2/spaces/%s/properties, or create it with POST /v2/spaces/%s/properties", a.spaceId, a.spaceId)))
@@ -845,14 +856,27 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 	return nil
 }
 
+// propEntries primes the applier's live-property snapshot once. A load
+// error fails the request (closed), never an empty-looking namespace.
+func (a *v2StateApplier) propEntries() ([]propertyEntry, error) {
+	if !a.liveEntriesLoaded {
+		a.liveEntriesLoaded = true
+		a.liveEntries, a.liveEntriesErr = a.s.liveProperties(a.spaceId)
+	}
+	return a.liveEntries, a.liveEntriesErr
+}
+
 // canonicalizeSetPropertyKeys rewrites slug-spelled property terms in a
 // setProperties op to their canonical stored keys (§7.5a-5). Rewrites apply
 // only when the chain resolves to a DIFFERENT stored spelling; two spellings
 // landing on one key is a loud 400, as is an ambiguous slug.
 func (a *v2StateApplier) canonicalizeSetPropertyKeys(op *opSetProperties, opPath string) error {
-	entries := a.s.liveProperties(a.spaceId)
+	entries, err := a.propEntries()
+	if err != nil {
+		return err
+	}
 	canon := func(key, path string) (string, error) {
-		entry, ok, ambiguous := a.s.resolvePropertyInput(a.spaceId, key, entries)
+		entry, ok, ambiguous := a.s.resolvePropertyInput(key, entries)
 		if len(ambiguous) > 0 {
 			return "", ambiguousKeyError("property key", key, path, ambiguous)
 		}
@@ -881,7 +905,6 @@ func (a *v2StateApplier) canonicalizeSetPropertyKeys(op *opSetProperties, opPath
 		}
 		return out, nil
 	}
-	var err error
 	if op.Set, err = rewriteMap(op.Set, "set"); err != nil {
 		return err
 	}

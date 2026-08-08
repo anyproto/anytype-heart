@@ -2,7 +2,9 @@ package v2service
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -209,6 +211,52 @@ func TestV2SlugAddressedOps(t *testing.T) {
 			patchBody(`{"op":"setProperties","set":{"mood_level":["Brand new"]}}`), "", false)
 
 		// then
+		require.NoError(t, err)
+	})
+
+	t.Run("the M5 bound sees folded spellings (the reviewed bypass repro)", func(t *testing.T) {
+		// the review's repro: a PATCH naming 70 new options under a FOLDED
+		// key spelling. Pre-fix, the prewarm (no fold) recorded zero
+		// pending, guardCreateMissing short-circuited on len(pending)==0,
+		// and all 70 were created inside the object lock — cap 64 lost.
+		fx := slugSpaceFixture(t)
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").
+			Return(editRead(t, editBaseDoc), nil)
+		// no ObjectCreateRelationOption and no mutator expectation: creating
+		// anything, anywhere, fails the test — the bound must refuse first
+
+		names := make([]string, 0, v2MaxCreatedOptionsPerPatch+6)
+		for i := 0; i < v2MaxCreatedOptionsPerPatch+6; i++ {
+			names = append(names, fmt.Sprintf(`"Opt %03d"`, i))
+		}
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"setProperties","set":{"moodLevel":[`+strings.Join(names, ",")+`]}}`), "", false)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
+		require.NotEmpty(t, apiErr.Issues)
+		assert.Contains(t, apiErr.Issues[0].Message, "limit 64")
+	})
+
+	t.Run("a FOLDED slug spelling reaches the prewarm too (the M5 bypass)", func(t *testing.T) {
+		// the reviewed regression: the prewarm lacked the fold the in-lock
+		// pass had, so "moodLevel" was invisible pre-lock — the M5 bound
+		// short-circuited on len(pending)==0 and the creates ran INSIDE the
+		// object lock. The prewarm now walks the same chain: the option is
+		// created pre-lock, bound to the stored key.
+		fx := slugSpaceFixture(t)
+		fx.expectMutate(editRead(t, editBaseDoc), "headB")
+		fx.mwMock.EXPECT().ObjectCreateRelationOption(mock.Anything, mock.MatchedBy(func(req *pb.RpcObjectCreateRelationOptionRequest) bool {
+			return pbtypes.GetString(req.Details, bundle.RelationKeyRelationKey.String()) == slugSelectKey &&
+				pbtypes.GetString(req.Details, bundle.RelationKeyName.String()) == "Folded new"
+		})).Return(&pb.RpcObjectCreateRelationOptionResponse{
+			ObjectId: "opt-folded",
+			Error:    &pb.RpcObjectCreateRelationOptionResponseError{Code: pb.RpcObjectCreateRelationOptionResponseError_NULL},
+		})
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"setProperties","set":{"moodLevel":["Folded new"]}}`), "", false)
+
 		require.NoError(t, err)
 	})
 }

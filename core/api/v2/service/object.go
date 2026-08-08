@@ -615,7 +615,11 @@ func (s *V2Service) typeKeysById(spaceId string) (map[string]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("query types in space %s: %w", spaceId, err)
 	}
-	keyTaken, slugCount := servedTypeKeySets(s.liveTypes(spaceId))
+	liveEntries, err := s.liveTypes(spaceId)
+	if err != nil {
+		return nil, err
+	}
+	keyTaken, slugCount := servedTypeKeySets(liveEntries)
 	out := make(map[string]string, len(records))
 	for _, record := range records {
 		id := record.Details.GetString(bundle.RelationKeyId)

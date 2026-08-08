@@ -33,14 +33,21 @@ type propertyEntry struct {
 	Slug   string // stored apiObjectKey; empty for pre-slug keys
 	Name   string
 	Format model.RelationFormat
+	// Hidden entries stay addressable by their exact stored key but do NOT
+	// participate in the slug namespace (resolution, fold, collision,
+	// serving): a hidden holder is invisible and undeletable to the caller,
+	// so letting it block or ambiguate a visible holder's slug would make
+	// that slug permanently unusable through no visible cause.
+	Hidden bool
 }
 
 // typeEntry is one live type object's identity row.
 type typeEntry struct {
-	Id   string
-	Key  string // internal type key (uniqueKey's internal part)
-	Slug string
-	Name string
+	Id     string
+	Key    string // internal type key (uniqueKey's internal part)
+	Slug   string
+	Name   string
+	Hidden bool
 }
 
 // livePropertyFilters are the corpse-policy filters for relation queries:
@@ -79,11 +86,14 @@ func liveTypeFilters() []database.FilterRequest {
 
 // liveProperties lists the space's live relations — one bounded query, the
 // per-request resolver shape ADDRESSING §7.5a-2 prescribes (tens to low
-// hundreds of rows; never one query per reference).
-func (s *V2Service) liveProperties(spaceId string) []propertyEntry {
+// hundreds of rows; never one query per reference). A store error is
+// returned, never swallowed: the collision check and the resolution chain
+// are load-bearing, and an empty-looking namespace on a store hiccup would
+// wave every collision through (fail closed, not open).
+func (s *V2Service) liveProperties(spaceId string) ([]propertyEntry, error) {
 	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{Filters: livePropertyFilters()})
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("query live properties of space %s: %w", spaceId, err)
 	}
 	entries := make([]propertyEntry, 0, len(records))
 	for _, record := range records {
@@ -97,16 +107,17 @@ func (s *V2Service) liveProperties(spaceId string) []propertyEntry {
 			Slug:   record.Details.GetString(bundle.RelationKeyApiObjectKey),
 			Name:   record.Details.GetString(bundle.RelationKeyName),
 			Format: model.RelationFormat(record.Details.GetInt64(bundle.RelationKeyRelationFormat)),
+			Hidden: record.Details.GetBool(bundle.RelationKeyIsHidden),
 		})
 	}
-	return entries
+	return entries, nil
 }
 
-// liveTypes lists the space's live type objects.
-func (s *V2Service) liveTypes(spaceId string) []typeEntry {
+// liveTypes lists the space's live type objects (error contract as above).
+func (s *V2Service) liveTypes(spaceId string) ([]typeEntry, error) {
 	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{Filters: liveTypeFilters()})
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("query live types of space %s: %w", spaceId, err)
 	}
 	entries := make([]typeEntry, 0, len(records))
 	for _, record := range records {
@@ -115,61 +126,42 @@ func (s *V2Service) liveTypes(spaceId string) []typeEntry {
 			continue
 		}
 		entries = append(entries, typeEntry{
-			Id:   record.Details.GetString(bundle.RelationKeyId),
-			Key:  string(key),
-			Slug: record.Details.GetString(bundle.RelationKeyApiObjectKey),
-			Name: record.Details.GetString(bundle.RelationKeyName),
+			Id:     record.Details.GetString(bundle.RelationKeyId),
+			Key:    string(key),
+			Slug:   record.Details.GetString(bundle.RelationKeyApiObjectKey),
+			Name:   record.Details.GetString(bundle.RelationKeyName),
+			Hidden: record.Details.GetBool(bundle.RelationKeyIsHidden),
 		})
 	}
-	return entries
-}
-
-// livePropertyByKey resolves an exact stored relation key against the live
-// set — the corpse-aware replacement for GetRelationByKey on API addressing
-// paths.
-func (s *V2Service) livePropertyByKey(spaceId, key string) (propertyEntry, bool) {
-	for _, entry := range s.liveProperties(spaceId) {
-		if entry.Key == key {
-			return entry, true
-		}
-	}
-	return propertyEntry{}, false
-}
-
-// liveTypeByKey resolves an exact internal type key against the live set.
-func (s *V2Service) liveTypeByKey(spaceId, key string) (typeEntry, bool) {
-	for _, entry := range s.liveTypes(spaceId) {
-		if entry.Key == key {
-			return entry, true
-		}
-	}
-	return typeEntry{}, false
+	return entries, nil
 }
 
 // resolvePropertyInput implements the §7.5a-5 resolution chain for one
-// inbound property term: (1) exact live stored key; (2) the space's live
+// inbound property term over a primed live set (entries are mandatory —
+// the caller loads them and owns the load error, so a store hiccup fails
+// closed, never open): (1) exact live stored key; (2) the space's live
 // slug namespace; (3) the bundled vocabulary — exact key or derived slug
 // (`due_date` names bundled dueDate); (4) the forgiving fold layer
 // (§7.5a-3: lowercase, `_`/`-` stripped — `dueDate` for `due_date`).
+// Hidden entries answer to their exact stored key only (step 1) and are
+// invisible to the slug and fold steps — see propertyEntry.Hidden.
 // Ambiguity at any step returns the candidate descriptions and never a
 // guess (the git rule); a full miss returns ok=false and the caller's R9
 // machinery owns the refusal. A resolved bundled term that is not installed
 // in the space has Id == "" — address routes require an installed entry,
 // existence checks do not.
-func (s *V2Service) resolvePropertyInput(spaceId, input string, entries []propertyEntry) (propertyEntry, bool, []string) {
-	if entries == nil {
-		entries = s.liveProperties(spaceId)
-	}
-	// 1: exact stored key
+func (s *V2Service) resolvePropertyInput(input string, entries []propertyEntry) (propertyEntry, bool, []string) {
+	// 1: exact stored key (hidden included — the stored key is always an
+	// address)
 	for _, entry := range entries {
 		if entry.Key == input {
 			return entry, true, nil
 		}
 	}
-	// 2: exact live slug — two live holders is the loud ambiguity
+	// 2: exact live slug — two visible holders is the loud ambiguity
 	var slugMatches []propertyEntry
 	for _, entry := range entries {
-		if entry.Slug != "" && entry.Slug == input {
+		if !entry.Hidden && entry.Slug != "" && entry.Slug == input {
 			slugMatches = append(slugMatches, entry)
 		}
 	}
@@ -198,6 +190,9 @@ func (s *V2Service) resolvePropertyInput(spaceId, input string, entries []proper
 	var candidates []propertyEntry
 	seen := map[string]bool{}
 	for _, entry := range entries {
+		if entry.Hidden {
+			continue
+		}
 		if bundle.FoldApiKey(entry.Key) == fold || (entry.Slug != "" && bundle.FoldApiKey(entry.Slug) == fold) {
 			if !seen[entry.Key] {
 				seen[entry.Key] = true
@@ -223,10 +218,7 @@ func (s *V2Service) resolvePropertyInput(spaceId, input string, entries []proper
 }
 
 // resolveTypeInput is resolvePropertyInput for the type namespace.
-func (s *V2Service) resolveTypeInput(spaceId, input string, entries []typeEntry) (typeEntry, bool, []string) {
-	if entries == nil {
-		entries = s.liveTypes(spaceId)
-	}
+func (s *V2Service) resolveTypeInput(input string, entries []typeEntry) (typeEntry, bool, []string) {
 	for _, entry := range entries {
 		if entry.Key == input {
 			return entry, true, nil
@@ -234,7 +226,7 @@ func (s *V2Service) resolveTypeInput(spaceId, input string, entries []typeEntry)
 	}
 	var slugMatches []typeEntry
 	for _, entry := range entries {
-		if entry.Slug != "" && entry.Slug == input {
+		if !entry.Hidden && entry.Slug != "" && entry.Slug == input {
 			slugMatches = append(slugMatches, entry)
 		}
 	}
@@ -260,6 +252,9 @@ func (s *V2Service) resolveTypeInput(spaceId, input string, entries []typeEntry)
 	var candidates []typeEntry
 	seen := map[string]bool{}
 	for _, entry := range entries {
+		if entry.Hidden {
+			continue
+		}
 		if bundle.FoldApiKey(entry.Key) == fold || (entry.Slug != "" && bundle.FoldApiKey(entry.Slug) == fold) {
 			if !seen[entry.Key] {
 				seen[entry.Key] = true
@@ -284,10 +279,14 @@ func (s *V2Service) resolveTypeInput(spaceId, input string, entries []typeEntry)
 	return typeEntry{}, false, nil
 }
 
+// describePropertyEntries renders ambiguity candidates ACTIONABLY: the
+// stored key is the one address that always resolves (twin slugs print
+// identically, so the slug alone steers the caller back into the same
+// 400 — the review's unactionable-floor finding).
 func describePropertyEntries(entries []propertyEntry) []string {
 	out := make([]string, 0, len(entries))
 	for _, entry := range entries {
-		out = append(out, fmt.Sprintf("%q (%s)", entry.Name, entry.publicKey()))
+		out = append(out, fmt.Sprintf("%q (key %s, id %s)", entry.Name, entry.Key, entry.Id))
 	}
 	return out
 }
@@ -295,7 +294,7 @@ func describePropertyEntries(entries []propertyEntry) []string {
 func describeTypeEntries(entries []typeEntry) []string {
 	out := make([]string, 0, len(entries))
 	for _, entry := range entries {
-		out = append(out, fmt.Sprintf("%q (%s)", entry.Name, entry.publicKey()))
+		out = append(out, fmt.Sprintf("%q (key %s, id %s)", entry.Name, entry.Key, entry.Id))
 	}
 	return out
 }
@@ -311,9 +310,14 @@ func ambiguousKeyError(what, input, path string, candidates []string) error {
 }
 
 // requireLiveProperty resolves a property-addressing route param: ambiguity
-// is a 400, anything not installed live in the space is the keyed 404.
+// is a 400, anything not installed live in the space is the keyed 404, and
+// a store failure propagates (fail closed).
 func (s *V2Service) requireLiveProperty(spaceId, input string) (propertyEntry, error) {
-	entry, ok, ambiguous := s.resolvePropertyInput(spaceId, input, nil)
+	entries, err := s.liveProperties(spaceId)
+	if err != nil {
+		return propertyEntry{}, err
+	}
+	entry, ok, ambiguous := s.resolvePropertyInput(input, entries)
 	if len(ambiguous) > 0 {
 		return propertyEntry{}, ambiguousKeyError("property key", input, "/key", ambiguous)
 	}
@@ -325,7 +329,11 @@ func (s *V2Service) requireLiveProperty(spaceId, input string) (propertyEntry, e
 
 // requireLiveType is requireLiveProperty for type routes.
 func (s *V2Service) requireLiveType(spaceId, input, path string) (typeEntry, error) {
-	entry, ok, ambiguous := s.resolveTypeInput(spaceId, input, nil)
+	entries, err := s.liveTypes(spaceId)
+	if err != nil {
+		return typeEntry{}, err
+	}
+	entry, ok, ambiguous := s.resolveTypeInput(input, entries)
 	if len(ambiguous) > 0 {
 		return typeEntry{}, ambiguousKeyError("type key", input, path, ambiguous)
 	}
@@ -343,44 +351,41 @@ type slugHolder struct {
 	Name string
 }
 
-// propertySlugConflict runs the §7.5a-6 union collision check for a property
-// mint: the proposed slug is tested against bundled keys, bundled-derived
-// slugs, live stored keys and live stored slugs. Corpses hold nothing — the
-// §8-OQ2 vacate lean, which is what makes delete-then-recreate mint cleanly
-// ((a)'s headline win). The check ships WITH the mint it guards (§7.6-3).
-func (s *V2Service) propertySlugConflict(spaceId, slug string) (slugHolder, bool) {
-	if key, ok := bundle.RelationKeyByApiSlug(slug); ok {
-		rel := bundle.MustGetRelation(key)
-		return slugHolder{Kind: "bundled property", Key: slug, Name: rel.Name}, true
+// propertySlugConflict runs the §7.5a-6 union collision check for a
+// property mint by asking the resolution chain itself: a slug is free iff
+// NOTHING resolves for it — live stored keys, live slugs, bundled keys,
+// bundled-derived slugs AND the fold layer (a `moodlevel` minted beside
+// `mood_level` would make the folded spelling permanently ambiguous for
+// every caller, so an occupied fold class refuses too). Corpses and hidden
+// holders vacate the namespace (§8-OQ2 / propertyEntry.Hidden). The check
+// ships WITH the mint it guards (§7.6-3).
+func (s *V2Service) propertySlugConflict(slug string, entries []propertyEntry) (slugHolder, bool) {
+	entry, ok, ambiguous := s.resolvePropertyInput(slug, entries)
+	if len(ambiguous) > 0 {
+		return slugHolder{Kind: "properties", Key: slug, Name: strings.Join(ambiguous, " and ")}, true
 	}
-	if bundle.HasRelation(domain.RelationKey(slug)) {
-		rel := bundle.MustGetRelation(domain.RelationKey(slug))
-		return slugHolder{Kind: "bundled property", Key: slug, Name: rel.Name}, true
+	if !ok {
+		return slugHolder{}, false
 	}
-	for _, entry := range s.liveProperties(spaceId) {
-		if entry.Key == slug || entry.Slug == slug {
-			return slugHolder{Kind: "property", Key: entry.publicKey(), Name: entry.Name}, true
-		}
+	if entry.Id == "" {
+		return slugHolder{Kind: "bundled property", Key: bundle.ApiSlug(entry.Key), Name: entry.Name}, true
 	}
-	return slugHolder{}, false
+	return slugHolder{Kind: "property", Key: entry.Key, Name: entry.Name}, true
 }
 
 // typeSlugConflict is propertySlugConflict for the type namespace.
-func (s *V2Service) typeSlugConflict(spaceId, slug string) (slugHolder, bool) {
-	if key, ok := bundle.TypeKeyByApiSlug(slug); ok {
-		t := bundle.MustGetType(key)
-		return slugHolder{Kind: "bundled type", Key: slug, Name: t.Name}, true
+func (s *V2Service) typeSlugConflict(slug string, entries []typeEntry) (slugHolder, bool) {
+	entry, ok, ambiguous := s.resolveTypeInput(slug, entries)
+	if len(ambiguous) > 0 {
+		return slugHolder{Kind: "types", Key: slug, Name: strings.Join(ambiguous, " and ")}, true
 	}
-	if bundle.HasObjectTypeByKey(domain.TypeKey(slug)) {
-		t := bundle.MustGetType(domain.TypeKey(slug))
-		return slugHolder{Kind: "bundled type", Key: slug, Name: t.Name}, true
+	if !ok {
+		return slugHolder{}, false
 	}
-	for _, entry := range s.liveTypes(spaceId) {
-		if entry.Key == slug || entry.Slug == slug {
-			return slugHolder{Kind: "type", Key: entry.publicKey(), Name: entry.Name}, true
-		}
+	if entry.Id == "" {
+		return slugHolder{Kind: "bundled type", Key: bundle.ApiSlug(entry.Key), Name: entry.Name}, true
 	}
-	return slugHolder{}, false
+	return slugHolder{Kind: "type", Key: entry.Key, Name: entry.Name}, true
 }
 
 // publicKey is the address an entry answers to on the API surface: the
@@ -464,13 +469,15 @@ func sanitizeApiSlug(raw string) string {
 }
 
 // servedKeySets primes the two maps the served-spelling rule needs from one
-// live set: every live stored key, and the live holder count per slug.
+// live set: every live stored key, and the VISIBLE holder count per slug
+// (hidden holders don't participate in the slug namespace — a hidden twin
+// must not downgrade the visible row's spelling).
 func servedPropertyKeySets(entries []propertyEntry) (keys map[string]bool, slugCount map[string]int) {
 	keys = make(map[string]bool, len(entries))
 	slugCount = map[string]int{}
 	for _, entry := range entries {
 		keys[entry.Key] = true
-		if entry.Slug != "" {
+		if !entry.Hidden && entry.Slug != "" {
 			slugCount[entry.Slug]++
 		}
 	}
@@ -482,7 +489,7 @@ func servedTypeKeySets(entries []typeEntry) (keys map[string]bool, slugCount map
 	slugCount = map[string]int{}
 	for _, entry := range entries {
 		keys[entry.Key] = true
-		if entry.Slug != "" {
+		if !entry.Hidden && entry.Slug != "" {
 			slugCount[entry.Slug]++
 		}
 	}
@@ -533,9 +540,11 @@ func (s *V2Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byt
 			continue
 		}
 		if typeEntries == nil {
-			typeEntries = s.liveTypes(spaceId)
+			if typeEntries, err = s.liveTypes(spaceId); err != nil {
+				return nil, err
+			}
 		}
-		entry, ok, ambiguous := s.resolveTypeInput(spaceId, term, typeEntries)
+		entry, ok, ambiguous := s.resolveTypeInput(term, typeEntries)
 		if len(ambiguous) > 0 {
 			return nil, ambiguousKeyError("type key", term, "/"+field, ambiguous)
 		}
@@ -550,10 +559,13 @@ func (s *V2Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byt
 	if raw, ok := fields["properties"]; ok {
 		var props map[string]json.RawMessage
 		if err := json.Unmarshal(raw, &props); err == nil && len(props) > 0 {
-			propEntries := s.liveProperties(spaceId)
+			propEntries, err := s.liveProperties(spaceId)
+			if err != nil {
+				return nil, err
+			}
 			renames := map[string]string{}
 			for _, key := range sortedKeys(props) {
-				entry, ok, ambiguous := s.resolvePropertyInput(spaceId, key, propEntries)
+				entry, ok, ambiguous := s.resolvePropertyInput(key, propEntries)
 				if len(ambiguous) > 0 {
 					return nil, ambiguousKeyError("property key", key, "/properties/"+key, ambiguous)
 				}
@@ -563,7 +575,9 @@ func (s *V2Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byt
 			}
 			if len(renames) > 0 {
 				rewritten := make(map[string]json.RawMessage, len(props))
-				for key, value := range props {
+				// deterministic order, so a duplicate-spelling refusal
+				// names the same path on every run
+				for _, key := range sortedKeys(props) {
 					canonical := key
 					if to, ok := renames[key]; ok {
 						canonical = to
@@ -573,7 +587,7 @@ func (s *V2Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byt
 							v2model.Issue{Path: "/properties/" + key,
 								Message: fmt.Sprintf("%q and another spelling both address property %q — keep one", key, canonical)})
 					}
-					rewritten[canonical] = value
+					rewritten[canonical] = props[key]
 				}
 				if fields["properties"], err = rawJSON(rewritten); err != nil {
 					return nil, err

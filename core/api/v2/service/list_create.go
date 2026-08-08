@@ -69,7 +69,11 @@ func (s *V2Service) CreateSet(ctx context.Context, spaceId string, req v2model.C
 	// the queried type must exist in the space — its property keys are the
 	// R9 reference set for the filters. Live lookup, slug-aware: a set over
 	// a UI-deleted type would be a set over a corpse (§7.5-2 corpse policy).
-	entry, ok, ambiguous := s.resolveTypeInput(spaceId, req.Type, nil)
+	typeEntries, err := s.liveTypes(spaceId)
+	if err != nil {
+		return nil, err
+	}
+	entry, ok, ambiguous := s.resolveTypeInput(req.Type, typeEntries)
 	if len(ambiguous) > 0 {
 		return nil, ambiguousKeyError("type key", req.Type, "/type", ambiguous)
 	}

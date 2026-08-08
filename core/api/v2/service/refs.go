@@ -46,13 +46,20 @@ func (s *V2Service) typeKeyExists(spaceId, typeKey string) bool {
 	return bundle.HasObjectTypeByKey(domain.TypeKey(typeKey))
 }
 
-// knownTypeKeys lists the space's LIVE type keys (for did-you-mean) — a
-// corpse must never be suggested as a remedy (§7.5-2 corpse policy).
+// knownTypeKeys lists the space's LIVE type keys in their SERVED spelling
+// (the address the input chain resolves right back) — a corpse must never
+// be suggested as a remedy (§7.5-2), and a candidate list must never
+// advertise a spelling the routes reject (review cause 3). Hint-only, so a
+// load error degrades to an empty list rather than failing the request.
 func (s *V2Service) knownTypeKeys(spaceId string) []string {
-	entries := s.liveTypes(spaceId)
+	entries, err := s.liveTypes(spaceId)
+	if err != nil {
+		return nil
+	}
+	keyTaken, slugCount := servedTypeKeySets(entries)
 	keys := make([]string, 0, len(entries))
 	for _, entry := range entries {
-		keys = append(keys, entry.Key)
+		keys = append(keys, servedKey(entry.Key, entry.Slug, keyTaken, slugCount))
 	}
 	return sortedDistinct(keys)
 }
@@ -108,23 +115,47 @@ func notFoundWithKeys(subject, input, what string, known []string, listRoute str
 	return msg
 }
 
-// propertyKeyExists reports whether a property key resolves in the space or
-// the bundle. LIVE relations only (§7.5-2 corpse policy): a UI-deleted
-// property must reject with did-you-mean, not resolve as a corpse.
-func (s *V2Service) propertyKeyExists(spaceId, key string) bool {
-	if _, ok := s.livePropertyByKey(spaceId, key); ok {
-		return true
+// propertyKeyExistsIn reports whether a property key resolves in a primed
+// live set or the bundle. LIVE relations only (§7.5-2 corpse policy): a
+// UI-deleted property must reject with did-you-mean, not resolve as a
+// corpse. The primed form is the loop shape (§7.5a-2: one bounded query
+// per request, never one per reference).
+func propertyKeyExistsIn(entries []propertyEntry, key string) bool {
+	for _, entry := range entries {
+		if entry.Key == key {
+			return true
+		}
 	}
 	return bundle.HasRelation(domain.RelationKey(key))
 }
 
-// knownPropertyKeys lists the space's LIVE property keys (did-you-mean) — a
-// corpse must never be suggested as a remedy (§7.5-2 corpse policy).
+// propertyKeyExists is the single-lookup form; loops prime entries once and
+// use propertyKeyExistsIn.
+func (s *V2Service) propertyKeyExists(spaceId, key string) bool {
+	entries, err := s.liveProperties(spaceId)
+	if err != nil {
+		return false // fail closed: an unverifiable key is not "known good"
+	}
+	return propertyKeyExistsIn(entries, key)
+}
+
+// knownPropertyKeys lists the space's LIVE property keys in their SERVED
+// spelling (see knownTypeKeys) — corpse-free, load-error-tolerant
+// (hint-only).
 func (s *V2Service) knownPropertyKeys(spaceId string) []string {
-	entries := s.liveProperties(spaceId)
+	entries, err := s.liveProperties(spaceId)
+	if err != nil {
+		return nil
+	}
+	return knownPropertyKeysIn(entries)
+}
+
+// knownPropertyKeysIn is knownPropertyKeys over a primed set.
+func knownPropertyKeysIn(entries []propertyEntry) []string {
+	keyTaken, slugCount := servedPropertyKeySets(entries)
 	keys := make([]string, 0, len(entries))
 	for _, entry := range entries {
-		keys = append(keys, entry.Key)
+		keys = append(keys, servedKey(entry.Key, entry.Slug, keyTaken, slugCount))
 	}
 	return sortedDistinct(keys)
 }

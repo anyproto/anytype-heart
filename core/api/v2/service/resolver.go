@@ -56,9 +56,15 @@ type creatingResolvers struct {
 
 	// liveEntries is the once-per-resolver snapshot of the space's live
 	// properties (keys.go) — the slug namespace the §7.5a-5 chain and the
-	// mint-time union check resolve against
+	// mint-time union check resolve against; livePropsErr fails write paths
+	// closed when the snapshot could not load
 	liveEntries     []propertyEntry
+	livePropsErr    error
 	livePropsLoaded bool
+	// mintedSlugs are the slugs THIS request already minted (doc key by
+	// slug): the live snapshot predates them, so without this a document
+	// declaring two spellings of one key minted both (review cause 4)
+	mintedSlugs map[string]string
 
 	createdOptions map[optionRef]string
 	// dryReported are option refs already reported as would-be-created on a
@@ -83,6 +89,7 @@ func (s *V2Service) newCreatingResolvers(ctx context.Context, spaceId string, dr
 		dryReported:    map[optionRef]bool{},
 		createdProps:   map[string]anyblockjson.PropertyDefinition{},
 		createdPropIds: map[string]string{},
+		mintedSlugs:    map[string]string{},
 	}
 }
 
@@ -364,59 +371,63 @@ func (r *creatingResolvers) PropertyById(id string) (anyblockjson.PropertyDefini
 
 // PropertyId implements anyblockjson.PropertyResolver with create-missing:
 // an unknown key in a type document's typeProperties creates the property
-// (SPEC §2a). Resolution walks the §7.5a-5 chain — exact stored key, then
-// the space's slug namespace (apiObjectKey), then the bundled derived table
-// — and only a full miss creates. The create follows the (a) identity layer
+// (SPEC §2a). Resolution IS resolvePropertyInput — the one §7.5a-5 chain
+// every other channel walks (exact stored key, live slug, bundled, fold),
+// corpse-aware and ambiguity-loud — so this path can never diverge from
+// the route/op channels again (the review's unification demand). Only a
+// full chain miss creates. The create follows the (a) identity layer
 // (ADDRESSING §7.5): a BUNDLED key keeps the derived install path
-// (convergence is the install mechanism, §2.4-1); a custom key mints a BSON
-// internal key and the document's key becomes the apiObjectKey slug —
+// (convergence is the install mechanism, §2.4-1); a custom key mints a
+// BSON internal key and the document's key becomes the apiObjectKey slug —
 // never the stored relation key, whose derivation is what made concurrent
 // same-key creates merge silently and delete-then-recreate a dead end.
 func (r *creatingResolvers) PropertyId(def anyblockjson.PropertyDefinition) (string, bool) {
-	if id, ok := r.createdPropIds[string(def.Key)]; ok {
+	docKey := string(def.Key)
+	if id, ok := r.createdPropIds[docKey]; ok {
 		return id, true
 	}
-	// chain step 1: exact stored-key match
-	if id, ok := r.reads.PropertyId(def); ok {
-		return id, true
-	}
-	// chain step 2: the space's slug namespace — a live property whose
-	// apiObjectKey equals the document's key IS that key's referent (a
-	// v2-created property's stored key is BSON; its slug is its address).
-	// Two live holders of one slug is the (a) failure shape: loud, never
-	// resolved by store order.
-	if entry, ok, err := r.slugLookup(string(def.Key)); err != nil {
+	entries, err := r.liveProps()
+	if err != nil {
+		// fail closed: an unreadable namespace must not look empty to the
+		// mint check (§7.5a-2's rule, inverted, is the fail-open bug)
 		r.errs = append(r.errs, err)
 		return "", false
-	} else if ok {
-		r.createdPropIds[string(def.Key)] = entry.Id
+	}
+	entry, ok, ambiguous := r.svc.resolvePropertyInput(docKey, entries)
+	if len(ambiguous) > 0 {
+		r.errs = append(r.errs, fmt.Errorf("property key %q is ambiguous — held by %s; address the intended property by its listed key", docKey, strings.Join(ambiguous, " and ")))
+		return "", false
+	}
+	if ok && entry.Id != "" {
+		r.createdPropIds[docKey] = entry.Id
 		return entry.Id, true
 	}
-	// chain step 3: the bundled derived table — `due_date` names bundled
-	// dueDate; rewrite and retry so the install path (not a twin create)
-	// serves it
-	bundledKey := def.Key
-	if key, ok := bundle.RelationKeyByApiSlug(string(def.Key)); ok && !bundle.HasRelation(def.Key) {
-		bundledKey = key
-		if id, ok := r.reads.PropertyId(anyblockjson.PropertyDefinition{Key: key}); ok {
-			r.createdPropIds[string(def.Key)] = id
+	isBundled := ok && entry.Id == "" // bundled vocabulary, not installed
+	if isBundled {
+		// storeresolver still resolves system relations by their bundled
+		// definition (synthetic listing entries) and legacy index gaps by
+		// point lookup (anomaly #9) — prefer that to firing an install RPC
+		// for a mere reference. Bundled identity is derived and invariant
+		// (same key ⇒ same tree, §2.4), so this can never resolve to a
+		// wrong object; custom corpse keys stay out — this branch is
+		// bundled-only.
+		if id, found := r.reads.PropertyId(anyblockjson.PropertyDefinition{Key: domain.RelationKey(entry.Key)}); found {
+			r.createdPropIds[docKey] = id
 			return id, true
 		}
 	}
 
 	name, format := def.Name, def.Format
-	isBundled := false
-	if rel, err := bundle.GetRelation(bundledKey); err == nil {
-		isBundled = true
+	if isBundled {
 		if name == "" {
-			name = rel.Name
+			name = entry.Name
 		}
 		if format == 0 {
-			format = rel.Format
+			format = entry.Format
 		}
 	}
 	if name == "" {
-		name = string(def.Key)
+		name = docKey
 	}
 
 	details := &types.Struct{Fields: map[string]*types.Value{
@@ -424,32 +435,40 @@ func (r *creatingResolvers) PropertyId(def anyblockjson.PropertyDefinition) (str
 		bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(format)),
 		bundle.RelationKeyOrigin.String():         pbtypes.Int64(int64(model.ObjectOrigin_api)),
 	}}
-	reportedKey := string(def.Key)
+	reportedKey := docKey
 	if isBundled {
 		// bundled: keep the derived key — every device deriving rel-<key>
 		// converges on the installed object, which is the intent
-		details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(string(bundledKey))
-		reportedKey = string(bundledKey)
+		details.Fields[bundle.RelationKeyRelationKey.String()] = pbtypes.String(entry.Key)
+		reportedKey = entry.Key
 	} else {
-		// custom: mint-time union collision check on the NORMALIZED slug
-		// (the check ships WITH the mint, §7.6-3) — `myKey` must not mint
-		// slug my_key over an existing holder. Document keys pass no pattern
-		// check, so the derived slug is sanitized to the key grammar.
-		slug := sanitizeApiSlug(bundle.ApiSlug(string(def.Key)))
-		if slug != string(def.Key) {
-			if _, ok, err := r.slugLookup(slug); err != nil {
-				r.errs = append(r.errs, err)
+		// custom mint. Document keys pass no pattern check, so the derived
+		// slug is sanitized to the key grammar; when normalization CHANGED
+		// the spelling, the slug's own chain runs too — fold classes differ
+		// when the key holds characters fold keeps (a space: "My Key" folds
+		// to "my key", never reaching the my_key holder the minted slug
+		// would shadow) — and any holder, live stored key included, refuses
+		// the mint loudly (the union check ships WITH the mint, §7.6-3).
+		slug := sanitizeApiSlug(bundle.ApiSlug(docKey))
+		if slug != "" && slug != docKey {
+			if _, taken, amb := r.svc.resolvePropertyInput(slug, entries); len(amb) > 0 {
+				r.errs = append(r.errs, fmt.Errorf("create property %q: its key %q is ambiguous — held by %s", docKey, slug, strings.Join(amb, " and ")))
 				return "", false
-			} else if ok {
-				r.errs = append(r.errs, fmt.Errorf("create property %q: its key %q is already taken by another property — reference it by that key", def.Key, slug))
-				return "", false
-			}
-			if _, ok := bundle.RelationKeyByApiSlug(slug); ok {
-				r.errs = append(r.errs, fmt.Errorf("create property %q: its key %q is a bundled property — reference it as %q", def.Key, slug, slug))
+			} else if taken {
+				r.errs = append(r.errs, fmt.Errorf("create property %q: its key %q is already taken — reference the existing property by that key, or use a different key", docKey, slug))
 				return "", false
 			}
 		}
 		if slug != "" {
+			// blind spot closed (review cause 4): the live snapshot predates
+			// this request's own mints, so two spellings of one key in one
+			// document would both reach here — the second is refused, not
+			// silently minted as a permanent twin
+			if prev, taken := r.mintedSlugs[slug]; taken {
+				r.errs = append(r.errs, fmt.Errorf("typeProperties declares %q and %q — two spellings of one key %q; keep one", prev, docKey, slug))
+				return "", false
+			}
+			r.mintedSlugs[slug] = docKey
 			details.Fields[bundle.RelationKeyApiObjectKey.String()] = pbtypes.String(slug)
 			reportedKey = slug
 		}
@@ -473,69 +492,43 @@ func (r *creatingResolvers) PropertyId(def anyblockjson.PropertyDefinition) (str
 	}
 	// cache under the DOCUMENT key: later references in the same import
 	// resolve to the same relation whatever its stored key is
-	r.createdProps[string(def.Key)] = anyblockjson.PropertyDefinition{Key: def.Key, Name: name, Format: format}
-	r.createdPropIds[string(def.Key)] = resp.ObjectId
+	r.createdProps[docKey] = anyblockjson.PropertyDefinition{Key: def.Key, Name: name, Format: format}
+	r.createdPropIds[docKey] = resp.ObjectId
 	return resp.ObjectId, true
 }
 
-// slugLookup resolves a slug against the space's LIVE apiObjectKey namespace
-// (corpses vacated — §8-OQ2). Exactly one holder resolves; two or more is
-// the loud ambiguity the design demands (twin slugs from concurrent creates
-// are a naming problem, and naming problems must never be settled by store
-// order — the D2 lesson).
-func (r *creatingResolvers) slugLookup(slug string) (propertyEntry, bool, error) {
-	entries := r.liveProps()
-	var matches []propertyEntry
-	for _, entry := range entries {
-		if entry.Slug == slug && entry.Slug != "" {
-			matches = append(matches, entry)
-		}
-	}
-	switch len(matches) {
-	case 0:
-		return propertyEntry{}, false, nil
-	case 1:
-		return matches[0], true, nil
-	default:
-		names := make([]string, 0, len(matches))
-		for _, m := range matches {
-			names = append(names, fmt.Sprintf("%q (id %s)", m.Name, m.Id))
-		}
-		return propertyEntry{}, false, fmt.Errorf("property key %q is ambiguous — held by %s; address the intended property by its id-listed key", slug, strings.Join(names, " and "))
-	}
-}
-
 // canonicalPropertyKey maps an inbound term to its canonical stored key for
-// prewarm purposes (§7.5a-5): bundled and exact stored keys stay verbatim; a
-// live-slug term becomes its holder's stored key; a bundled-slug term its
-// bundled key. Ambiguity resolves to nothing here — the in-lock op pass owns
-// the loud 400 — and a full miss passes through verbatim.
+// prewarm purposes, through the SAME chain the in-lock pass walks
+// (resolvePropertyInput — fold included; the review's M5 bypass was
+// exactly a fold the prewarm lacked and the in-lock pass had, letting a
+// respelled key evade the create-missing bound). Ambiguity and misses pass
+// through verbatim — the in-lock op pass owns the loud 400 — and a load
+// error passes through too (the prewarm is best-effort; the in-lock pass
+// fails closed on the same error).
 func (r *creatingResolvers) canonicalPropertyKey(key string) string {
 	if _, ok := r.createdProps[key]; ok {
 		return key
 	}
-	if bundle.HasRelation(domain.RelationKey(key)) {
+	entries, err := r.liveProps()
+	if err != nil {
 		return key
 	}
-	if _, ok := r.reads.ResolveFormat(domain.RelationKey(key)); ok {
-		return key // exact stored key
+	entry, ok, ambiguous := r.svc.resolvePropertyInput(key, entries)
+	if len(ambiguous) > 0 || !ok {
+		return key
 	}
-	if entry, ok, err := r.slugLookup(key); err == nil && ok {
-		return entry.Key
-	}
-	if bundledKey, ok := bundle.RelationKeyByApiSlug(key); ok {
-		return string(bundledKey)
-	}
-	return key
+	return entry.Key
 }
 
 // liveProps primes the live-property snapshot once per resolver instance
-// (the one-bounded-query-per-request discipline, ADDRESSING §7.5a-2).
-func (r *creatingResolvers) liveProps() []propertyEntry {
+// (the one-bounded-query-per-request discipline, ADDRESSING §7.5a-2). The
+// load error is remembered with the snapshot: callers on write paths must
+// fail closed on it.
+func (r *creatingResolvers) liveProps() ([]propertyEntry, error) {
 	if r.livePropsLoaded {
-		return r.liveEntries
+		return r.liveEntries, r.livePropsErr
 	}
 	r.livePropsLoaded = true
-	r.liveEntries = r.svc.liveProperties(r.spaceId)
-	return r.liveEntries
+	r.liveEntries, r.livePropsErr = r.svc.liveProperties(r.spaceId)
+	return r.liveEntries, r.livePropsErr
 }

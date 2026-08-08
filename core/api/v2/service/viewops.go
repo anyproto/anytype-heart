@@ -735,6 +735,11 @@ func (a *v2StateApplier) validateViewKeys(edited map[string]any, preKnown map[st
 		return
 	}
 	props, _ := edited["properties"].([]any)
+	entries, err := a.propEntries() // primed once per PATCH (§7.5a-2)
+	if err != nil {
+		*issues = append(*issues, v2model.Issue{Message: err.Error()})
+		return
+	}
 	var known []string
 	seen := map[string]bool{}
 	for _, use := range keyUses {
@@ -745,7 +750,7 @@ func (a *v2StateApplier) validateViewKeys(edited map[string]any, preKnown map[st
 		if preKnown[use.key] {
 			continue
 		}
-		if a.s.propertyKeyExists(a.spaceId, use.key) {
+		if propertyKeyExistsIn(entries, use.key) {
 			props = append(props, map[string]any{
 				"key":    use.key,
 				"format": anyblockjson.FormatName(a.propertyFormat(use.key)),
@@ -753,7 +758,7 @@ func (a *v2StateApplier) validateViewKeys(edited map[string]any, preKnown map[st
 			continue
 		}
 		if known == nil {
-			known = a.s.knownPropertyKeys(a.spaceId)
+			known = knownPropertyKeysIn(entries)
 		}
 		*issues = append(*issues, unknownPropertyIssue(use.key, use.path, known,
 			fmt.Sprintf("list all with GET /v2/spaces/%s/properties, or create it with POST /v2/spaces/%s/properties", a.spaceId, a.spaceId)))

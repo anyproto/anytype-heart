@@ -151,6 +151,41 @@ func (s *V2Service) CreateType(ctx context.Context, spaceId string, body []byte,
 		slug = bundle.ApiSlug(envelope.Key)
 	}
 
+	keyPath := "/key"
+	if slug == "" {
+		// no explicit key: the slug derives from the document's name (the
+		// same transform objectcreator would apply, sanitized to the key
+		// grammar) — read from the ENVELOPE so the union check can run
+		// BEFORE the resolver creates anything
+		if raw, ok := envelope.Properties["name"]; ok {
+			var name string
+			if err := json.Unmarshal(raw, &name); err == nil {
+				slug = sanitizeApiSlug(bundle.ApiSlugFromName(name))
+			}
+		}
+		keyPath = "/properties/name"
+	}
+	if slug != "" {
+		// the union collision check runs before Unmarshal: a refused type
+		// create must not leave the typeProperties it would have carried as
+		// orphan relations (the M5 lesson — reject before any side effect)
+		typeEntries, err := s.liveTypes(spaceId)
+		if err != nil {
+			return nil, err
+		}
+		if holder, taken := s.typeSlugConflict(slug, typeEntries); taken {
+			if holder.Kind == "bundled type" {
+				return nil, v2model.ValidationFailed("type key is reserved",
+					v2model.Issue{Path: keyPath,
+						Message: fmt.Sprintf("key %q is taken by bundled type %q — it already exists", slug, holder.Name)})
+			}
+			return nil, v2model.ValidationFailed("type key already exists",
+				v2model.Issue{Path: keyPath,
+					Message: fmt.Sprintf("key %q is taken by %s %q in space %s", slug, holder.Kind, holder.Name, spaceId),
+					Hint:    fmt.Sprintf("update it with PATCH /v2/spaces/%s/types/%s, or pick a different key", spaceId, holder.Key)})
+		}
+	}
+
 	// the SPEC §2a format check, at the wiring and BEFORE anything is
 	// created (§7.5-requirement-4)
 	if len(envelope.TypeProperties) > 0 {
@@ -171,30 +206,6 @@ func (s *V2Service) CreateType(ctx context.Context, spaceId string, body []byte,
 	}
 	if err := resolvers.err(); err != nil {
 		return nil, fmt.Errorf("resolve type properties: %w", err)
-	}
-
-	keyPath := "/key"
-	if slug == "" {
-		// no explicit key: the slug derives from the document's name, the
-		// same transform objectcreator would apply — derived here so the
-		// union check can guard it (the check ships WITH the mint)
-		if snapshot.Details != nil {
-			slug = sanitizeApiSlug(bundle.ApiSlugFromName(pbtypes.GetString(snapshot.Details, bundle.RelationKeyName.String())))
-		}
-		keyPath = "/properties/name"
-	}
-	if slug != "" {
-		if holder, taken := s.typeSlugConflict(spaceId, slug); taken {
-			if holder.Kind == "bundled type" {
-				return nil, v2model.ValidationFailed("type key is reserved",
-					v2model.Issue{Path: keyPath,
-						Message: fmt.Sprintf("key %q is taken by bundled type %q — it already exists", slug, holder.Name)})
-			}
-			return nil, v2model.ValidationFailed("type key already exists",
-				v2model.Issue{Path: keyPath,
-					Message: fmt.Sprintf("key %q is taken by type %q in space %s", slug, holder.Name, spaceId),
-					Hint:    fmt.Sprintf("update it with PATCH /v2/spaces/%s/types/%s, or pick a different key", spaceId, holder.Key)})
-		}
 	}
 
 	result := &v2model.CreateResult{Key: slug, Created: resolvers.created()}
@@ -357,9 +368,12 @@ func (s *V2Service) validateTypePropertyFormats(spaceId string, props []anyblock
 			continue
 		}
 		if entries == nil {
-			entries = s.liveProperties(spaceId)
+			var err error
+			if entries, err = s.liveProperties(spaceId); err != nil {
+				return err
+			}
 		}
-		entry, ok, ambiguous := s.resolvePropertyInput(spaceId, tp.Key, entries)
+		entry, ok, ambiguous := s.resolvePropertyInput(tp.Key, entries)
 		if len(ambiguous) > 0 || !ok {
 			continue
 		}
@@ -578,7 +592,11 @@ func (s *V2Service) CreateProperty(ctx context.Context, spaceId string, req v2mo
 		slug = sanitizeApiSlug(bundle.ApiSlugFromName(req.Name))
 	}
 	if slug != "" {
-		if holder, taken := s.propertySlugConflict(spaceId, slug); taken {
+		propEntries, err := s.liveProperties(spaceId)
+		if err != nil {
+			return nil, err
+		}
+		if holder, taken := s.propertySlugConflict(slug, propEntries); taken {
 			path, hint := "/key", fmt.Sprintf("update it with PATCH /v2/spaces/%s/properties/%s, or pick a different key", spaceId, holder.Key)
 			if req.Key == "" {
 				path = "/name"
