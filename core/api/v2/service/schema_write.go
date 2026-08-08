@@ -151,6 +151,17 @@ func (s *V2Service) CreateType(ctx context.Context, spaceId string, body []byte,
 		slug = bundle.ApiSlug(envelope.Key)
 	}
 
+	// the SPEC §2a format check, at the wiring and BEFORE anything is
+	// created (§7.5-requirement-4)
+	if len(envelope.TypeProperties) > 0 {
+		var declared []anyblockjson.TypeProperty
+		if err := json.Unmarshal(envelope.TypeProperties, &declared); err == nil {
+			if err := s.validateTypePropertyFormats(spaceId, declared); err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	// Unmarshal rebuilds the four recommended-relation lists from
 	// typeProperties, creating missing properties through the resolver
 	resolvers := s.newCreatingResolvers(ctx, spaceId, dryRun)
@@ -284,6 +295,47 @@ func typeDetailsFromSnapshot(snapshot *model.SmartBlockSnapshotBase, slug string
 	return details, nil
 }
 
+// validateTypePropertyFormats implements the format check SPEC §2a promises
+// at the wiring (ADDRESSING §2.3-5, §7.5-requirement-4): a typeProperties
+// entry whose DECLARED format contradicts the format of the relation its
+// key resolves to is a path-addressed 400 — before this, the declared
+// format was silently ignored on a key hit and the entry's objects held
+// wrong-shaped values. Under the (a) identity layer the check covers the
+// remaining sequential-declaration case; the concurrent case no longer
+// exists, because keys no longer collide. Entries that resolve to nothing
+// (the creation case — the declared format IS the property's format) or
+// carry no format pass through; unknown format names and ambiguous keys
+// stay with the layers that own those refusals.
+func (s *V2Service) validateTypePropertyFormats(spaceId string, props []anyblockjson.TypeProperty) error {
+	var entries []propertyEntry
+	for i, tp := range props {
+		if tp.Key == "" || tp.Format == "" {
+			continue
+		}
+		declared, ok := anyblockjson.FormatByName(tp.Format)
+		if !ok {
+			continue
+		}
+		if entries == nil {
+			entries = s.liveProperties(spaceId)
+		}
+		entry, ok, ambiguous := s.resolvePropertyInput(spaceId, tp.Key, entries)
+		if len(ambiguous) > 0 || !ok {
+			continue
+		}
+		if entry.Format != declared {
+			return v2model.ValidationFailed("property format conflict",
+				v2model.Issue{
+					Path: fmt.Sprintf("/typeProperties/%d/format", i),
+					Message: fmt.Sprintf("%q declares format %q but the existing property %q has format %q",
+						tp.Key, tp.Format, entry.Name, anyblockjson.FormatName(entry.Format)),
+					Hint: "omit format to use the existing property as it is, or create a new property under a different key",
+				})
+		}
+	}
+	return nil
+}
+
 // updatableTypeDetailKeys is the explicit PATCH surface for a type's own
 // properties; anything else is rejected (never silently dropped).
 var updatableTypeDetailKeys = map[string]bool{
@@ -335,6 +387,10 @@ func (s *V2Service) UpdateType(ctx context.Context, spaceId, typeKey string, bod
 
 	resolvers := s.newCreatingResolvers(ctx, spaceId, dryRun)
 	if patch.TypeProperties != nil {
+		// the SPEC §2a format check, before the resolver can create
+		if err := s.validateTypePropertyFormats(spaceId, *patch.TypeProperties); err != nil {
+			return nil, err
+		}
 		lists := anyblockjson.BuildRecommendedLists(*patch.TypeProperties, resolvers)
 		if err := resolvers.err(); err != nil {
 			return nil, fmt.Errorf("resolve type properties: %w", err)

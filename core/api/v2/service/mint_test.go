@@ -335,6 +335,71 @@ func TestV2PropertyIdResolutionChain(t *testing.T) {
 		assert.Contains(t, err.Error(), "rel-twin2")
 	})
 
+	t.Run("a declared format conflicting with the resolved property is a loud 400", func(t *testing.T) {
+		// the format check SPEC §2a promises at the wiring (§2.3-5): before
+		// this, PropertyId returned the existing relation with the declared
+		// format silently ignored — the entry's objects then held
+		// wrong-shaped values
+		fx := newV2Fixture(t)
+		fx.addSelectProperty(t) // "severity", format select
+
+		_, err := fx.CreateType(context.Background(), testSpaceId,
+			[]byte(`{"kind":"objectType","key":"incident","properties":{"name":"Incident"},
+			"typeProperties":[{"key":"severity","format":"text"}]}`), false)
+
+		apiErr := v2ErrWithIssue(t, err)
+		require.NotEmpty(t, apiErr.Issues)
+		assert.Equal(t, "/typeProperties/0/format", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Message, `"select"`)
+	})
+
+	t.Run("a declared format conflicting with a bundled property is a loud 400", func(t *testing.T) {
+		fx := newV2Fixture(t)
+
+		_, err := fx.CreateType(context.Background(), testSpaceId,
+			[]byte(`{"kind":"objectType","key":"errand2","properties":{"name":"Errand 2"},
+			"typeProperties":[{"key":"due_date","format":"text"}]}`), false)
+
+		apiErr := v2ErrWithIssue(t, err)
+		require.NotEmpty(t, apiErr.Issues)
+		assert.Equal(t, "/typeProperties/0/format", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Message, `"date"`)
+	})
+
+	t.Run("a matching declared format passes the check", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		fx.addSelectProperty(t)
+		fx.mwMock.EXPECT().ObjectCreateObjectType(mock.Anything, mock.Anything).
+			Return(&pb.RpcObjectCreateObjectTypeResponse{
+				ObjectId: "type-ok",
+				Error:    &pb.RpcObjectCreateObjectTypeResponseError{Code: pb.RpcObjectCreateObjectTypeResponseError_NULL},
+			})
+		fx.expectEtagRead("type-ok")
+
+		_, err := fx.CreateType(context.Background(), testSpaceId,
+			[]byte(`{"kind":"objectType","key":"incident2","properties":{"name":"Incident 2"},
+			"typeProperties":[{"key":"severity","format":"select"}]}`), false)
+
+		require.NoError(t, err)
+	})
+
+	t.Run("the format check guards the PATCH typeProperties channel too", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		fx.addSelectProperty(t)
+		fx.addType(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:        domain.String("type-edit"),
+			bundle.RelationKeyUniqueKey: domain.String("ot-editable"),
+			bundle.RelationKeyName:      domain.String("Editable"),
+		})
+
+		_, err := fx.UpdateType(context.Background(), testSpaceId, "editable",
+			[]byte(`{"typeProperties":[{"key":"severity","format":"number"}]}`), false)
+
+		apiErr := v2ErrWithIssue(t, err)
+		require.NotEmpty(t, apiErr.Issues)
+		assert.Equal(t, "/typeProperties/0/format", apiErr.Issues[0].Path)
+	})
+
 	t.Run("a custom key still creates on a full miss, slug stamped", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		var captured *pb.RpcObjectCreateRelationRequest
