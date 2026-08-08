@@ -296,14 +296,38 @@ candidates; one retry). Success = the edit lands on the intended block.
 this session the remote Ollama box's Metal compiler wedged while loading
 bonsai-27b (`llama-server … MTLCompilerService … Reentrancy avoided`);
 from that point every local model answered 500 and did not recover within
-the session, so the direct gemma ID-vs-LOC arms could not be completed
-(the §7 knob eval ran *before* the fault and is unaffected). The
-small-model half of the locator case therefore rests on §8.21's earlier
-live benchmark — which is exactly this comparison run against the real
+the session (a server restart is required), so the direct gemma ID-vs-LOC
+arms could not be completed. The §7 knob eval ran *before* the fault and
+is unaffected. Read the frontier rows accordingly: **a 6/6 ID arm at
+gpt-5 scale is precisely NOT the case locators exist for** — frontier
+models copy 24-hex ids fine; the claim under test is about the small
+tier, and **the direct ID-vs-LOC comparison at the small tier is
+untested**. The standing small-model evidence is §8.21's earlier live
+benchmark — the same comparison in tool-selection form, against the real
 MCP server: with a required block id, gemma4:e4b/e2b scored 7/8 and 6/8
-on tool selection and routed around the edit tool; with the snippet
-locator, both reached 8/8. Re-run the ID/LOC arms on the gemmas when the
-box returns; the harness is reusable as described.
+and routed around the edit tool; with the snippet locator both reached
+8/8. That supports "a required id makes small models avoid the edit
+path"; it does not yet measure small-model *locator authoring* accuracy
+head-to-head against id copying.
+
+*To close the gap once the box is restarted* (whoever reruns needs no
+re-derivation): two arms × 6 tasks × {`gemma4:e2b`, `gemma4:e4b`,
+`bonsai-27b-q1_0`}, temperature 0, one tool call + one error-fed retry.
+Arm ID: context = compact default read *with* ids, tool
+`replace_text(object_id, block_id, find, replace)`, resolution = shipped
+`matchBlockRef` (exact-else-unique-suffix). Arm LOC: context = the same
+read with block ids stripped, tool
+`replace_text(object_id, find, replace, under?, occurrence?)`,
+resolution = §5.3 (one-match-or-refuse; ambiguity refusal lists ≤ 8
+candidate blocks with ~30-char context). Documents: the two eval objects
+left in the test account's Project Tracker space — "Relaunch brief
+(locator eval copy)" (24 blocks, API-minted 24-hex ids; three
+unique-match tasks: 61 %→58 %, ~140 posts→~150, 4.2s→3.9s — the last
+matches two blocks, score either) and "Locator eval doc" (two sections
+where "Budget: TBD" and "Draft timeline" repeat; tasks: Execution budget
+→ $40k, Planning budget → $12k, "scope creep"→"schedule slip"). Success
+= the edit lands on the intended block; report first-try and
+after-retry separately.
 
 Two observations beyond the scores. Context-cost asymmetry, same
 documents: the ID arm's read is 1 551 tok, the LOC arm's 1 115 (−28 %);
