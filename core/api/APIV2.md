@@ -3188,3 +3188,94 @@ fold-miss and unknown-key pass-through cases assert unchanged
 behavior and pass either way, by design). Deferred, named: case-fold
 inside filter strings; a candidates steer on the object 404; B4
 re-tuning of tool descriptions once the benchmark re-runs.
+
+### 8.22 The (a) identity layer — mint, corpse policy, key resolution (2026-08-08 — decisions as built)
+
+Implements the safety core of `pkg/lib/anyblockjson/ADDRESSING.md` (§7.5,
+§7.5a, §7.6 build step 3 plus the step-5 corpse policy), superseding the
+queued "point v2 at apiObjectKey" fix — which, alone, would have imported
+the slug layer's collision problem (§2.3-1). Six commits, each verified
+fail-on-revert where the behavior is invisible until data is wrong.
+
+**The derived slug table** (`pkg/lib/bundle/apislug.go`): the authority for
+a bundled key's snake api slug is a fixed table in code, both directions —
+verified collision-free (194 relation slugs distinct, 29 type slugs
+distinct, fold layer clean) by tests that fail on the first bundle change
+that mints a collision. `ApiSlug` is deliberately the same transform
+objectcreator's `injectApiObjectKey` applies at mint. One dossier example
+respells: `dueDate2`/`due_date2` converge on `due_date_2` (strcase
+separates trailing digits), not `due_date2` — same collision, different
+joint spelling.
+
+**The corpse policy** (§7.5-req-2, the §8-OQ2 vacate lean — both live
+defects fixed): UI delete sets only `isUninstalled`, which the query
+layer's injected defaults never filtered — so a UI-deleted property still
+listed in `GET /properties`, still resolved on PATCH/DELETE, and blocked a
+same-key create with "already exists" pointing at a corpse, while an
+archived one was invisible to the guard and the create died downstream on
+a raw `ErrTreeExists`. Now: `keys.go`'s live queries exclude corpses
+everywhere the API addresses schema (listings, routes, did-you-mean
+candidate lists, existence guards), corpses vacate the slug namespace at
+mint, and delete-then-recreate is a clean create with fresh identity.
+DELETE of an already-deleted property/type is a 404, not a re-archive.
+
+**The mint** (§7.5 strategy (a), the strategy-(b) remnants retired):
+`POST /properties` no longer writes the caller's key as the stored
+relation key, `POST /types` no longer derives the uniqueKey from the
+document key, and `PropertyId` no longer pins typeProperties keys —
+every create mints a BSON internal key and the caller's key becomes the
+`apiObjectKey` slug, snake-normalized. The union collision check ships
+WITH the mint (bundled keys + bundled-derived slugs + live stored keys +
+live stored slugs): `due_date`, `Due Date` and `dueDate` can no longer
+shadow the bundled property, sequential normalized twins refuse loudly,
+and a name-derived slug (key omitted) is guarded identically — the
+refusal steers to the existing holder or an explicit different key
+(auto-suffixing was considered and rejected for POST: explicit beats
+silent). Bundled keys keep the derived install path — convergence IS the
+install mechanism (§2.4-1).
+
+**Input resolution** (§7.5a-5 + §7.5a-3): every place v2 takes a type or
+property key walks the chain — exact stored key, live slug namespace,
+bundled vocabulary (exact or derived slug), fold layer (`DueDate`,
+`due-date` → `dueDate`) — with ambiguity a loud 400 listing every holder,
+never store order. Wired into route params, search/set type scopes,
+document creates and PUT (`canonicalizeDocumentKeys` — detail keys and
+`ot-` URLs are the store's vocabulary, not the wire's), `setProperties`
+keys, and the option-create prewarm (a slug-keyed select would otherwise
+mint options bound to the slug string). The §8.21 benchmark's Title-Case
+miss now resolves with zero retries.
+
+**Output spelling** (the dossier's blessed interim, NOT yet the full
+§7.5a): `GET /properties`/`GET /types` rows and the type column on
+object/search rows spell a BSON-keyed entity by its slug iff the slug
+round-trips to that row (twins and stored-key shadows keep the honest
+BSON; corpses always do). Readable stored keys keep today's spelling.
+
+**The §2a format check** (§7.5-req-4): a typeProperties entry whose
+declared format contradicts the resolved relation (live, slug-resolved or
+bundled) is a path-addressed 400 on both POST and PATCH types, checked
+before the create-missing resolver can mint. It lives in the v2 wiring
+because `PropertyDefinition` cannot distinguish an absent format from
+longtext (enum zero).
+
+**Slug hygiene**: the option path's un-snaked second injection branch
+(§2.3-3) removed — it was dead code (ToSnake never empties a non-empty
+transliteration).
+
+**§8 leans built as assumed**: OQ1 — `apiObjectKey` stays mutable,
+address-only (nothing freezes it); OQ2 — vacate + loud floor. Deferred,
+named: the ACTIVE re-slug-on-revive half of OQ2 (no v2 revive endpoint
+exists; the bundled reinstall path cannot collide because minting over
+bundled slugs is refused; a UI bin-restore of a custom twin is caught by
+the ambiguity-loud lookups and the conservative served spelling, not yet
+auto-repaired); the full §7.5a respelling sweep (bundled keys → snake on
+the wire, SPEC §3 key-vocabulary flip, schemas/goldens/SKILL/eval
+respell); ADDRESSING §7.6 steps 1–2 (pins + the D1 kill — SPEC-level);
+§7.4 strict-on-PATCH write defaults; the §7.5-req-5 backfill (its own GO
+issue — until it runs, pre-slug custom BSON keys have no stable bare-op
+address, exactly as the dossier states); key slots inside view-op set
+channels and set filters accept stored keys only (slug inputs there fail
+loud via R9, never silently). The heart-side mint (`injectApiObjectKey`)
+still checks nothing — UI creates can still mint twin slugs; v2 defends
+via the ambiguity 400 and round-trip serving. OpenAPI regeneration is
+pending (`make openapi` not run here); no annotation shapes changed.

@@ -23,10 +23,14 @@ whether you may write. Ask this instead of discovering limits through 403s
   `/v2/spaces/{spaceId}/…`. `GET /v2/spaces` lists them.
 - An **object** = `properties` (typed key-values) + `blocks` (document
   content). `type` is always a type **key** (`page`, `task`) — never an id.
-- **Properties** are addressed by camelCase key. Select/multiSelect values
-  are option **names** (`"In progress"`, case-sensitive) — never option
-  ids. Writes create unknown option names (a PATCH caps this at 64);
-  unknown property keys are rejected with a did-you-mean.
+- **Properties** are addressed by key, exactly as `GET …/properties`
+  spells them (bundled keys camelCase: `dueDate`; API-created ones
+  snake_case: `manual_property`). Keys are forgiving on input — `due_date`
+  or `DueDate` resolve to `dueDate`; an input matching two properties is a
+  400 listing both. Select/multiSelect values are option **names**
+  (`"In progress"`, case-sensitive) — never option ids. Writes create
+  unknown option names (a PATCH caps this at 64); unknown property keys
+  are rejected with a did-you-mean.
 - **Blocks** are a FLAT array in pre-order with an integer `indent`
   (absent = 0) — no `children` key. Inline formatting is markdown inside
   `text`. Block ids are stable; any block reference accepts the full id or
