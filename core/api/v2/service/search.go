@@ -194,10 +194,13 @@ func (s *V2Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, s
 	// rules 1 + 2: the reference key set
 	var refKeys []string
 	if req.Type != "" {
-		// live lookup: a corpse type is not a query scope — the did-you-mean
-		// steers to live keys (§7.5-2 corpse policy)
-		entry, ok := s.liveTypeByKey(spaceId, req.Type)
-		if !ok {
+		// live lookup, slug-aware: a corpse type is not a query scope — the
+		// did-you-mean steers to live keys (§7.5-2 corpse policy)
+		entry, ok, ambiguous := s.resolveTypeInput(spaceId, req.Type, nil)
+		if len(ambiguous) > 0 {
+			return nil, ambiguousKeyError("type key", req.Type, "/type", ambiguous)
+		}
+		if !ok || entry.Id == "" {
 			return nil, s.unknownTypeKeyError(spaceId, req.Type, "/type")
 		}
 		typeId := entry.Id

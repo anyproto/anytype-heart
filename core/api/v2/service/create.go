@@ -209,6 +209,14 @@ func (s *V2Service) createFromDocument(ctx context.Context, spaceId string, body
 		return nil, err
 	}
 
+	// 1a. canonicalize addressing terms (§7.5a-5): api-key slugs in the
+	// envelope's type/templateFor and in the properties map resolve to
+	// their stored spellings before validation and import
+	body, err := s.canonicalizeDocumentKeys(spaceId, body)
+	if err != nil {
+		return nil, err
+	}
+
 	var envelope docEnvelope
 	if err := json.Unmarshal(body, &envelope); err != nil {
 		return nil, v2model.ValidationFailed("decode document envelope: " + err.Error())

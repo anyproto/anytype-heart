@@ -472,6 +472,23 @@ func TestV2UpdateDeleteProperty(t *testing.T) {
 		assert.Equal(t, "rel-severity", result.Id)
 	})
 
+	t.Run("a case-variant key resolves through the fold layer", func(t *testing.T) {
+		// §7.5a-3: the Title-Case guess folds onto the stored key and the
+		// PATCH lands on the intended property
+		fx := newV2Fixture(t)
+		fx.addSelectProperty(t)
+		fx.mwMock.EXPECT().ObjectSetDetails(mock.Anything, mock.MatchedBy(func(req *pb.RpcObjectSetDetailsRequest) bool {
+			return req.ContextId == "rel-severity"
+		})).Return(&pb.RpcObjectSetDetailsResponse{Error: &pb.RpcObjectSetDetailsResponseError{Code: pb.RpcObjectSetDetailsResponseError_NULL}})
+		name := "X"
+
+		result, err := fx.UpdateProperty(context.Background(), testSpaceId, "Severity",
+			v2model.UpdatePropertyRequest{Name: &name}, false)
+
+		require.NoError(t, err)
+		assert.Equal(t, "rel-severity", result.Id)
+	})
+
 	t.Run("unknown property is a 404 listing the space's keys", func(t *testing.T) {
 		// given: the not-found family lists candidates (§8.21) — a
 		// candidate-less tip left a benchmarked small model with nothing to
@@ -480,8 +497,8 @@ func TestV2UpdateDeleteProperty(t *testing.T) {
 		fx.addSelectProperty(t)
 		name := "X"
 
-		// when
-		_, err := fx.UpdateProperty(context.Background(), testSpaceId, "Severity",
+		// when: a genuine miss — no fold candidate either
+		_, err := fx.UpdateProperty(context.Background(), testSpaceId, "sev",
 			v2model.UpdatePropertyRequest{Name: &name}, false)
 
 		// then

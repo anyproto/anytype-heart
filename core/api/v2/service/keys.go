@@ -13,8 +13,12 @@ package v2service
 // hold its slug against a same-key create.
 
 import (
+	"encoding/json"
+	"fmt"
 	"sort"
+	"strings"
 
+	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -142,6 +146,195 @@ func (s *V2Service) liveTypeByKey(spaceId, key string) (typeEntry, bool) {
 	return typeEntry{}, false
 }
 
+// resolvePropertyInput implements the §7.5a-5 resolution chain for one
+// inbound property term: (1) exact live stored key; (2) the space's live
+// slug namespace; (3) the bundled vocabulary — exact key or derived slug
+// (`due_date` names bundled dueDate); (4) the forgiving fold layer
+// (§7.5a-3: lowercase, `_`/`-` stripped — `dueDate` for `due_date`).
+// Ambiguity at any step returns the candidate descriptions and never a
+// guess (the git rule); a full miss returns ok=false and the caller's R9
+// machinery owns the refusal. A resolved bundled term that is not installed
+// in the space has Id == "" — address routes require an installed entry,
+// existence checks do not.
+func (s *V2Service) resolvePropertyInput(spaceId, input string, entries []propertyEntry) (propertyEntry, bool, []string) {
+	if entries == nil {
+		entries = s.liveProperties(spaceId)
+	}
+	// 1: exact stored key
+	for _, entry := range entries {
+		if entry.Key == input {
+			return entry, true, nil
+		}
+	}
+	// 2: exact live slug — two live holders is the loud ambiguity
+	var slugMatches []propertyEntry
+	for _, entry := range entries {
+		if entry.Slug != "" && entry.Slug == input {
+			slugMatches = append(slugMatches, entry)
+		}
+	}
+	if len(slugMatches) == 1 {
+		return slugMatches[0], true, nil
+	}
+	if len(slugMatches) > 1 {
+		return propertyEntry{}, false, describePropertyEntries(slugMatches)
+	}
+	// 3: the bundled vocabulary (exact key, then the derived table)
+	if rel, err := bundle.PickRelation(domain.RelationKey(input)); err == nil {
+		return propertyEntry{Key: input, Name: rel.Name, Format: rel.Format}, true, nil
+	}
+	if key, ok := bundle.RelationKeyByApiSlug(input); ok {
+		for _, entry := range entries {
+			if entry.Key == string(key) {
+				return entry, true, nil
+			}
+		}
+		rel := bundle.MustGetRelation(key)
+		return propertyEntry{Key: string(key), Name: rel.Name, Format: rel.Format}, true, nil
+	}
+	// 4: the fold layer — exact has failed everywhere, so a single folded
+	// candidate is the intended forgiveness and several are a loud 400
+	fold := bundle.FoldApiKey(input)
+	var candidates []propertyEntry
+	seen := map[string]bool{}
+	for _, entry := range entries {
+		if bundle.FoldApiKey(entry.Key) == fold || (entry.Slug != "" && bundle.FoldApiKey(entry.Slug) == fold) {
+			if !seen[entry.Key] {
+				seen[entry.Key] = true
+				candidates = append(candidates, entry)
+			}
+		}
+	}
+	for _, key := range bundle.RelationKeysByApiFold(input) {
+		if seen[string(key)] {
+			continue
+		}
+		seen[string(key)] = true
+		rel := bundle.MustGetRelation(key)
+		candidates = append(candidates, propertyEntry{Key: string(key), Name: rel.Name, Format: rel.Format})
+	}
+	if len(candidates) == 1 {
+		return candidates[0], true, nil
+	}
+	if len(candidates) > 1 {
+		return propertyEntry{}, false, describePropertyEntries(candidates)
+	}
+	return propertyEntry{}, false, nil
+}
+
+// resolveTypeInput is resolvePropertyInput for the type namespace.
+func (s *V2Service) resolveTypeInput(spaceId, input string, entries []typeEntry) (typeEntry, bool, []string) {
+	if entries == nil {
+		entries = s.liveTypes(spaceId)
+	}
+	for _, entry := range entries {
+		if entry.Key == input {
+			return entry, true, nil
+		}
+	}
+	var slugMatches []typeEntry
+	for _, entry := range entries {
+		if entry.Slug != "" && entry.Slug == input {
+			slugMatches = append(slugMatches, entry)
+		}
+	}
+	if len(slugMatches) == 1 {
+		return slugMatches[0], true, nil
+	}
+	if len(slugMatches) > 1 {
+		return typeEntry{}, false, describeTypeEntries(slugMatches)
+	}
+	if t, err := bundle.GetType(domain.TypeKey(input)); err == nil {
+		return typeEntry{Key: input, Name: t.Name}, true, nil
+	}
+	if key, ok := bundle.TypeKeyByApiSlug(input); ok {
+		for _, entry := range entries {
+			if entry.Key == string(key) {
+				return entry, true, nil
+			}
+		}
+		t := bundle.MustGetType(key)
+		return typeEntry{Key: string(key), Name: t.Name}, true, nil
+	}
+	fold := bundle.FoldApiKey(input)
+	var candidates []typeEntry
+	seen := map[string]bool{}
+	for _, entry := range entries {
+		if bundle.FoldApiKey(entry.Key) == fold || (entry.Slug != "" && bundle.FoldApiKey(entry.Slug) == fold) {
+			if !seen[entry.Key] {
+				seen[entry.Key] = true
+				candidates = append(candidates, entry)
+			}
+		}
+	}
+	for _, key := range bundle.TypeKeysByApiFold(input) {
+		if seen[string(key)] {
+			continue
+		}
+		seen[string(key)] = true
+		t := bundle.MustGetType(key)
+		candidates = append(candidates, typeEntry{Key: string(key), Name: t.Name})
+	}
+	if len(candidates) == 1 {
+		return candidates[0], true, nil
+	}
+	if len(candidates) > 1 {
+		return typeEntry{}, false, describeTypeEntries(candidates)
+	}
+	return typeEntry{}, false, nil
+}
+
+func describePropertyEntries(entries []propertyEntry) []string {
+	out := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		out = append(out, fmt.Sprintf("%q (%s)", entry.Name, entry.publicKey()))
+	}
+	return out
+}
+
+func describeTypeEntries(entries []typeEntry) []string {
+	out := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		out = append(out, fmt.Sprintf("%q (%s)", entry.Name, entry.publicKey()))
+	}
+	return out
+}
+
+// ambiguousKeyError is the loud 400 the chain owes an input that several
+// holders answer to — candidates listed, never a guess (C6/§7.5a-3).
+func ambiguousKeyError(what, input, path string, candidates []string) error {
+	return v2model.AmbiguousInput(
+		fmt.Sprintf("%s %q is ambiguous", what, input),
+		v2model.Issue{Path: path,
+			Message: fmt.Sprintf("%q matches %s", input, strings.Join(candidates, " and ")),
+			Hint:    "address the intended one by its exact key"})
+}
+
+// requireLiveProperty resolves a property-addressing route param: ambiguity
+// is a 400, anything not installed live in the space is the keyed 404.
+func (s *V2Service) requireLiveProperty(spaceId, input string) (propertyEntry, error) {
+	entry, ok, ambiguous := s.resolvePropertyInput(spaceId, input, nil)
+	if len(ambiguous) > 0 {
+		return propertyEntry{}, ambiguousKeyError("property key", input, "/key", ambiguous)
+	}
+	if !ok || entry.Id == "" {
+		return propertyEntry{}, s.propertyNotFoundError(spaceId, input)
+	}
+	return entry, nil
+}
+
+// requireLiveType is requireLiveProperty for type routes.
+func (s *V2Service) requireLiveType(spaceId, input, path string) (typeEntry, error) {
+	entry, ok, ambiguous := s.resolveTypeInput(spaceId, input, nil)
+	if len(ambiguous) > 0 {
+		return typeEntry{}, ambiguousKeyError("type key", input, path, ambiguous)
+	}
+	if !ok || entry.Id == "" {
+		return typeEntry{}, s.typeNotFoundError(spaceId, input)
+	}
+	return entry, nil
+}
+
 // slugHolder names the existing holder of a proposed api key — the material
 // for the loud refusal the union collision check owes the caller.
 type slugHolder struct {
@@ -235,6 +428,88 @@ func (e propertyEntry) propertyDefinition() anyblockjson.PropertyDefinition {
 		Name:   e.Name,
 		Format: e.Format,
 	}
+}
+
+// canonicalizeDocumentKeys rewrites an inbound document's addressing terms
+// to their canonical stored spellings BEFORE validation and import: the
+// envelope's type/templateFor (slug → internal type key — the import path
+// derives `ot-<key>` URLs from them) and the properties-map keys (slug →
+// stored relation key — they become detail keys verbatim). Terms already
+// canonical, or resolving to nothing (the R9 validation owns that refusal),
+// pass through verbatim so errors keep the caller's spelling. Ambiguity is
+// a path-addressed 400; two spellings canonicalizing onto one key is too.
+func (s *V2Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byte, error) {
+	fields, err := parseEnvelope(body)
+	if err != nil {
+		return body, nil // not an object — the document validator owns this
+	}
+	changed := false
+
+	var typeEntries []typeEntry
+	for _, field := range []string{"type", "templateFor"} {
+		raw, ok := fields[field]
+		if !ok {
+			continue
+		}
+		var term string
+		if err := json.Unmarshal(raw, &term); err != nil || term == "" {
+			continue
+		}
+		if typeEntries == nil {
+			typeEntries = s.liveTypes(spaceId)
+		}
+		entry, ok, ambiguous := s.resolveTypeInput(spaceId, term, typeEntries)
+		if len(ambiguous) > 0 {
+			return nil, ambiguousKeyError("type key", term, "/"+field, ambiguous)
+		}
+		if ok && entry.Key != term {
+			if fields[field], err = rawJSON(entry.Key); err != nil {
+				return nil, err
+			}
+			changed = true
+		}
+	}
+
+	if raw, ok := fields["properties"]; ok {
+		var props map[string]json.RawMessage
+		if err := json.Unmarshal(raw, &props); err == nil && len(props) > 0 {
+			propEntries := s.liveProperties(spaceId)
+			renames := map[string]string{}
+			for _, key := range sortedKeys(props) {
+				entry, ok, ambiguous := s.resolvePropertyInput(spaceId, key, propEntries)
+				if len(ambiguous) > 0 {
+					return nil, ambiguousKeyError("property key", key, "/properties/"+key, ambiguous)
+				}
+				if ok && entry.Key != key {
+					renames[key] = entry.Key
+				}
+			}
+			if len(renames) > 0 {
+				rewritten := make(map[string]json.RawMessage, len(props))
+				for key, value := range props {
+					canonical := key
+					if to, ok := renames[key]; ok {
+						canonical = to
+					}
+					if _, dup := rewritten[canonical]; dup {
+						return nil, v2model.ValidationFailed("duplicate property key",
+							v2model.Issue{Path: "/properties/" + key,
+								Message: fmt.Sprintf("%q and another spelling both address property %q — keep one", key, canonical)})
+					}
+					rewritten[canonical] = value
+				}
+				if fields["properties"], err = rawJSON(rewritten); err != nil {
+					return nil, err
+				}
+				changed = true
+			}
+		}
+	}
+
+	if !changed {
+		return body, nil
+	}
+	return encodeEnvelope(fields)
 }
 
 // sortedDistinct returns the sorted distinct non-empty values.

@@ -207,15 +207,19 @@ func (s *V2Service) prewarmCreateMissing(ops []json.RawMessage, resolvers *creat
 			continue
 		}
 		for field, values := range map[string]map[string]json.RawMessage{"set": probe.Set, "add": probe.Add} {
-			for key, rawValue := range values {
+			for rawKey, rawValue := range values {
 				// A key claimed by more than one field is rejected by the apply
 				// path, so prewarming it would create an option for a PATCH
 				// that cannot succeed. Skip it here and let the op error.
 				if field == "add" {
-					if _, alsoInSet := probe.Set[key]; alsoInSet {
+					if _, alsoInSet := probe.Set[rawKey]; alsoInSet {
 						continue
 					}
 				}
+				// §7.5a-5: a slug-spelled term canonicalizes to its stored
+				// key here too, or the prewarm would miss the channel AND a
+				// later create would bind the option to the slug string
+				key := resolvers.canonicalPropertyKey(rawKey)
 				format, err := bundle.GetRelationFormat(domain.RelationKey(key))
 				if err != nil {
 					var ok bool
@@ -258,7 +262,8 @@ type viewFilterProbe struct {
 // (SPEC §6.2/§3) — so the creates run before the object lock and the M5
 // bound sees them. Same leniency contract as the setProperties pass.
 func (s *V2Service) prewarmViewOptionValues(set map[string]json.RawMessage, resolvers *creatingResolvers) {
-	resolveSelect := func(key string, value json.RawMessage) {
+	resolveSelect := func(rawKey string, value json.RawMessage) {
+		key := resolvers.canonicalPropertyKey(rawKey)
 		format, err := bundle.GetRelationFormat(domain.RelationKey(key))
 		if err != nil {
 			var ok bool
@@ -497,6 +502,30 @@ func (r *creatingResolvers) slugLookup(slug string) (propertyEntry, bool, error)
 		}
 		return propertyEntry{}, false, fmt.Errorf("property key %q is ambiguous — held by %s; address the intended property by its id-listed key", slug, strings.Join(names, " and "))
 	}
+}
+
+// canonicalPropertyKey maps an inbound term to its canonical stored key for
+// prewarm purposes (§7.5a-5): bundled and exact stored keys stay verbatim; a
+// live-slug term becomes its holder's stored key; a bundled-slug term its
+// bundled key. Ambiguity resolves to nothing here — the in-lock op pass owns
+// the loud 400 — and a full miss passes through verbatim.
+func (r *creatingResolvers) canonicalPropertyKey(key string) string {
+	if _, ok := r.createdProps[key]; ok {
+		return key
+	}
+	if bundle.HasRelation(domain.RelationKey(key)) {
+		return key
+	}
+	if _, ok := r.reads.ResolveFormat(domain.RelationKey(key)); ok {
+		return key // exact stored key
+	}
+	if entry, ok, err := r.slugLookup(key); err == nil && ok {
+		return entry.Key
+	}
+	if bundledKey, ok := bundle.RelationKeyByApiSlug(key); ok {
+		return string(bundledKey)
+	}
+	return key
 }
 
 // liveProps primes the live-property snapshot once per resolver instance

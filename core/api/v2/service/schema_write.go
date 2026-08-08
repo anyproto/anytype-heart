@@ -304,11 +304,11 @@ func (s *V2Service) UpdateType(ctx context.Context, spaceId, typeKey string, bod
 	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
 	}
-	// live lookup — a UI-deleted type must 404, never steer the caller into
-	// patching a corpse (§2.3-6)
-	entry, ok := s.liveTypeByKey(spaceId, typeKey)
-	if !ok {
-		return nil, s.typeNotFoundError(spaceId, typeKey)
+	// live lookup, slug-aware — a UI-deleted type must 404, never steer the
+	// caller into patching a corpse (§2.3-6)
+	entry, err := s.requireLiveType(spaceId, typeKey, "/key")
+	if err != nil {
+		return nil, err
 	}
 	typeId := entry.Id
 
@@ -394,10 +394,10 @@ func (s *V2Service) DeleteType(ctx context.Context, spaceId, typeKey string, dry
 	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
 	}
-	// live lookup — deleting a corpse is a 404, not a re-archive (§7.5-2)
-	entry, ok := s.liveTypeByKey(spaceId, typeKey)
-	if !ok {
-		return nil, s.typeNotFoundError(spaceId, typeKey)
+	// live lookup, slug-aware — deleting a corpse is a 404, not a re-archive
+	entry, err := s.requireLiveType(spaceId, typeKey, "/key")
+	if err != nil {
+		return nil, err
 	}
 	typeId := entry.Id
 	result := &v2model.CreateResult{Id: typeId, Key: typeKey}
@@ -552,11 +552,11 @@ func (s *V2Service) UpdateProperty(ctx context.Context, spaceId, propertyKey str
 	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
 	}
-	// live lookup — a UI-deleted property must 404, never steer the caller
-	// into patching a corpse (§2.3-6)
-	entry, ok := s.livePropertyByKey(spaceId, propertyKey)
-	if !ok {
-		return nil, s.propertyNotFoundError(spaceId, propertyKey)
+	// live lookup, slug-aware (§7.5a-5) — a UI-deleted property must 404,
+	// never steer the caller into patching a corpse (§2.3-6)
+	entry, err := s.requireLiveProperty(spaceId, propertyKey)
+	if err != nil {
+		return nil, err
 	}
 	if bundled, err := bundle.PickRelation(domain.RelationKey(entry.Key)); err == nil && bundled.ReadOnly {
 		return nil, v2model.ValidationFailed("property is read-only",
@@ -591,11 +591,11 @@ func (s *V2Service) DeleteProperty(ctx context.Context, spaceId, propertyKey str
 	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
 	}
-	// live lookup — deleting an already-archived or uninstalled property is
-	// a 404, not a second archive of a corpse (§7.5-2 corpse policy)
-	entry, ok := s.livePropertyByKey(spaceId, propertyKey)
-	if !ok {
-		return nil, s.propertyNotFoundError(spaceId, propertyKey)
+	// live lookup, slug-aware — deleting an already-archived or uninstalled
+	// property is a 404, not a second archive of a corpse (§7.5-2)
+	entry, err := s.requireLiveProperty(spaceId, propertyKey)
+	if err != nil {
+		return nil, err
 	}
 	result := &v2model.CreateResult{Id: entry.Id, Key: propertyKey}
 	if dryRun {

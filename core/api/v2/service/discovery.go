@@ -210,9 +210,9 @@ func (s *V2Service) GetType(ctx context.Context, spaceId, typeKey string) ([]byt
 	if err := s.ensureSpace(ctx, spaceId); err != nil {
 		return nil, "", err
 	}
-	entry, ok := s.liveTypeByKey(spaceId, typeKey)
-	if !ok || entry.Id == "" {
-		return nil, "", s.typeNotFoundError(spaceId, typeKey)
+	entry, err := s.requireLiveType(spaceId, typeKey, "/key")
+	if err != nil {
+		return nil, "", err
 	}
 	return s.GetObject(ctx, spaceId, entry.Id, V2ObjectQuery{})
 }
@@ -280,11 +280,13 @@ func (s *V2Service) ListPropertyOptions(ctx context.Context, spaceId, propertyKe
 	if err := s.ensureSpace(ctx, spaceId); err != nil {
 		return nil, 0, false, err
 	}
-	// live lookup — a corpse property's options are not an API surface
-	if _, ok := s.livePropertyByKey(spaceId, propertyKey); !ok {
-		return nil, 0, false, s.propertyNotFoundError(spaceId, propertyKey)
+	// live lookup, slug-aware — a corpse property's options are not an API
+	// surface; options bind to the STORED key, so list by entry.Key
+	entry, err := s.requireLiveProperty(spaceId, propertyKey)
+	if err != nil {
+		return nil, 0, false, err
 	}
-	options, err := s.store.SpaceIndex(spaceId).ListRelationOptions(domain.RelationKey(propertyKey))
+	options, err := s.store.SpaceIndex(spaceId).ListRelationOptions(domain.RelationKey(entry.Key))
 	if err != nil {
 		return nil, 0, false, fmt.Errorf("list options of property %s: %w", propertyKey, err)
 	}

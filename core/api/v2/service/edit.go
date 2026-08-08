@@ -415,6 +415,10 @@ func (s *V2Service) PutObject(ctx context.Context, spaceId, objectId string, bod
 	if err := s.rejectInvalidDocument(body); err != nil {
 		return nil, err
 	}
+	// canonicalize addressing terms (§7.5a-5) — PUT guards like create
+	if body, err = s.canonicalizeDocumentKeys(spaceId, body); err != nil {
+		return nil, err
+	}
 	var envelope docEnvelope
 	if err := json.Unmarshal(body, &envelope); err != nil {
 		return nil, v2model.ValidationFailed("decode document envelope: " + err.Error())

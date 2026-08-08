@@ -67,13 +67,19 @@ func (s *V2Service) CreateSet(ctx context.Context, spaceId string, req v2model.C
 	}
 
 	// the queried type must exist in the space — its property keys are the
-	// R9 reference set for the filters. Live lookup: a set over a UI-deleted
-	// type would be a set over a corpse (§7.5-2 corpse policy).
-	entry, ok := s.liveTypeByKey(spaceId, req.Type)
-	if !ok {
+	// R9 reference set for the filters. Live lookup, slug-aware: a set over
+	// a UI-deleted type would be a set over a corpse (§7.5-2 corpse policy).
+	entry, ok, ambiguous := s.resolveTypeInput(spaceId, req.Type, nil)
+	if len(ambiguous) > 0 {
+		return nil, ambiguousKeyError("type key", req.Type, "/type", ambiguous)
+	}
+	if !ok || entry.Id == "" {
 		return nil, s.unknownTypeKeyError(spaceId, req.Type, "/type")
 	}
 	typeId := entry.Id
+	// downstream builders derive `ot-` URLs from the type term — hand them
+	// the canonical internal key, not the caller's slug spelling
+	req.Type = entry.Key
 
 	// the compact filter string (SPEC §6.2.1) parses to the structured array
 	// through the same reference set the structured form is validated

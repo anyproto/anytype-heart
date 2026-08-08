@@ -672,6 +672,14 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 		return v2model.ValidationFailed("setProperties needs at least one of set, unset, add, remove",
 			v2model.Issue{Path: opPath, Message: "set, unset, add and remove are all empty"})
 	}
+	// §7.5a-5: property terms may arrive as api-key slugs (a v2-created
+	// property's stored key is BSON; its slug is its address) — canonicalize
+	// to stored keys before validation and application. A term resolving to
+	// nothing passes through verbatim (checkKey owns the did-you-mean);
+	// ambiguity is a loud 400 here.
+	if err := a.canonicalizeSetPropertyKeys(&op, opPath); err != nil {
+		return err
+	}
 	doc, err := a.doc()
 	if err != nil {
 		return err
@@ -834,6 +842,62 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 		a.st.SetDetail(domain.RelationKey(key), domain.StringList(kept))
 	}
 	a.mutated()
+	return nil
+}
+
+// canonicalizeSetPropertyKeys rewrites slug-spelled property terms in a
+// setProperties op to their canonical stored keys (§7.5a-5). Rewrites apply
+// only when the chain resolves to a DIFFERENT stored spelling; two spellings
+// landing on one key is a loud 400, as is an ambiguous slug.
+func (a *v2StateApplier) canonicalizeSetPropertyKeys(op *opSetProperties, opPath string) error {
+	entries := a.s.liveProperties(a.spaceId)
+	canon := func(key, path string) (string, error) {
+		entry, ok, ambiguous := a.s.resolvePropertyInput(a.spaceId, key, entries)
+		if len(ambiguous) > 0 {
+			return "", ambiguousKeyError("property key", key, path, ambiguous)
+		}
+		if ok && entry.Key != key {
+			return entry.Key, nil
+		}
+		return key, nil
+	}
+	rewriteMap := func(m map[string]json.RawMessage, field string) (map[string]json.RawMessage, error) {
+		if len(m) == 0 {
+			return m, nil
+		}
+		out := make(map[string]json.RawMessage, len(m))
+		for _, key := range sortedKeys(m) {
+			path := opPath + "." + field + "." + key
+			canonical, err := canon(key, path)
+			if err != nil {
+				return nil, err
+			}
+			if _, dup := out[canonical]; dup {
+				return nil, v2model.ValidationFailed("duplicate property key",
+					v2model.Issue{Path: path,
+						Message: fmt.Sprintf("%q and another spelling both address property %q — keep one", key, canonical)})
+			}
+			out[canonical] = m[key]
+		}
+		return out, nil
+	}
+	var err error
+	if op.Set, err = rewriteMap(op.Set, "set"); err != nil {
+		return err
+	}
+	if op.Add, err = rewriteMap(op.Add, "add"); err != nil {
+		return err
+	}
+	if op.Remove, err = rewriteMap(op.Remove, "remove"); err != nil {
+		return err
+	}
+	for i, key := range op.Unset {
+		canonical, err := canon(key, opPath+".unset."+key)
+		if err != nil {
+			return err
+		}
+		op.Unset[i] = canonical
+	}
 	return nil
 }
 

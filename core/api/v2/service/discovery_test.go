@@ -298,8 +298,15 @@ func TestV2GetType(t *testing.T) {
 			},
 		})
 
-		// when: the benchmark's literal miss — the Title-Case guess
+		// the benchmark's literal miss — the Title-Case guess — now resolves
+		// through the §7.5a-3 fold layer (exact-first, fold as fallback):
+		// zero retries instead of one repaired retry (§8.21)
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "type-page").Return(testObjectRead(), nil)
 		_, _, err := fx.GetType(context.Background(), testSpaceId, "Page")
+		require.NoError(t, err)
+
+		// when: a genuine miss (no fold candidate) keeps the keyed 404
+		_, _, err = fx.GetType(context.Background(), testSpaceId, "Pages")
 
 		// then
 		var v2Err *v2model.Error
@@ -421,14 +428,26 @@ func TestV2ListPropertyOptions(t *testing.T) {
 		assert.Equal(t, 1, total)
 	})
 
+	t.Run("a case-variant key resolves through the fold layer", func(t *testing.T) {
+		// §7.5a-3: exact match first, fold (lowercase, _- stripped) as the
+		// forgiving fallback — the Title-Case guess works without a retry
+		fx := newV2Fixture(t)
+		addOptions(fx, t)
+
+		rows, _, _, err := fx.ListPropertyOptions(context.Background(), testSpaceId, "Priority", "", 0, 25)
+
+		require.NoError(t, err)
+		require.Len(t, rows, 2)
+	})
+
 	t.Run("unknown property is a 404 listing the space's keys with did-you-mean", func(t *testing.T) {
 		// given: the same candidate-listing contract as the type path (§8.21
 		// — the family is fixed together, not one string)
 		fx := newV2Fixture(t)
 		addOptions(fx, t)
 
-		// when
-		_, _, _, err := fx.ListPropertyOptions(context.Background(), testSpaceId, "Priority", "", 0, 25)
+		// when: a genuine miss — no fold candidate either
+		_, _, _, err := fx.ListPropertyOptions(context.Background(), testSpaceId, "prio", "", 0, 25)
 
 		// then
 		var v2Err *v2model.Error
