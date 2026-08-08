@@ -1,22 +1,33 @@
 # AnyBlock JSON — addressing: one identity story for five reference kinds
 
 Status: **design dossier** (research + recommendation, no normative force) ·
-2026-08-08 · GO-7383. Companion to `SPEC.md` (v0.7) and `FLAT.md`; feeds a
+2026-08-08 · GO-7383 · revised same day after review (normative label
+minting, key strategy decided, write-side defaults flipped, compatibility
+constraint removed). Companion to `SPEC.md` (v0.7) and `FLAT.md`; feeds a
 SPEC revision and closes SPEC §15.3. Every claim about current behaviour is
 verified against source at the cited line; prior art was researched against
 vendor documentation (§6).
 
 **Verdict, up front.** Keep readable strings in every value slot — option
 *names*, type/property *keys* — and generalize the §9a refs legend into a
-per-kind **pin table**: an envelope map from the readable label to the
-internal identity, with the §9a total resolution rule (label in the table →
-pinned identity; label absent → it *is* a name/key, resolve-or-create).
-Canonical export always pins; agent-facing shapes may prune; authors never
-write pins. The two "profiles" the format seems to need are then one format
-with one rule and two emission policies. The complementary platform move:
-harden `apiObjectKey` into a unique, frozen-at-mint, per-space slug so the
-API can resolve the same labels statelessly. Everything that fails today
-fails *silently*; every failure in this design is loud.
+per-kind **pin table**: an envelope map from label to internal identity,
+with the §9a total resolution rule. **A label is an opaque map key**: it
+must be unique within the document and nothing else; its readability is a
+courtesy to the reader, not a mechanism, and resolution never parses one
+(§7.1). Write paths flip to **strict-by-default wherever a stale read can
+exist** (PATCH/PUT): an unknown option name is a loud 400 with did-you-mean
+unless the request says `create: true`; an ambiguous name is always a 400;
+and **only options may ever be created implicitly** — an option's name is
+its entire definition, while properties, types and objects carry rich
+content only an explicit create can supply (§7.4). On the key question,
+complete what v2 already does (strategy (b), §7.5): API-created types and
+properties keep the caller's readable key as the internal key — unique-key
+derivation makes concurrent same-key creates *converge*, verified in §2.4 —
+while UI-created ones keep their BSON internally behind a hardened unique
+slug. **Nothing here has shipped** — AnyBlock JSON and API v2 have no users,
+no exported documents, no third-party consumers — so no default below was
+chosen for compatibility; each is chosen because it is right, and this is
+the cheapest moment there will ever be to choose it (§7.6).
 
 ---
 
@@ -101,7 +112,12 @@ production data has them — `ANOMALIES.md` #6, 7 objects on `tag`).
 in `ListRelationOptions` order (`storeresolver.go:106-113`) — an order the
 API contract nowhere defines. Resolution of a twin name is a coin flip;
 round-tripping an object that referenced the losing twin silently re-points
-it (the one accepted loss in the ≥ 99.86% figure).
+it (the one accepted loss in the ≥ 99.86% figure). Scope matters here:
+**options belong to one property** — every lookup is `(propertyKey, name)`
+— so the same name on two *different* properties ("High" on `status`,
+"High" on `priority`) is two unrelated options and entirely normal. The
+defect is twins **within one property**; nothing in this dossier treats
+cross-property name reuse as a duplicate.
 
 ### 2.3 Findings beyond the known picture (worse than assumed)
 
@@ -133,6 +149,49 @@ it (the one accepted loss in the ≥ 99.86% figure).
    and return it verbatim (`key.go:38-69`) — v1 documents the giving-up in
    its own comments.
 
+### 2.4 How unique keys derive object ids (verified — it decides §7.5)
+
+The review asked to confirm the parallel-create hazard behind BSON internal
+keys. Confirmed, and sharper than folklore:
+
+- A derived object's change payload is a **pure function of (smartblock
+  type, internal key)** — `createChangePayload`,
+  `objectcache/payload.go:18-28`.
+- In a **shared space**, the tree derives from (spaceId, that payload)
+  with **no account key, no timestamp, no randomness** —
+  `derivePayload`/`DeriveTree`, `payload.go:30-38`, `tree.go:90-95`. So the
+  object id is a pure function of (space, kind, internal key): **any member
+  deriving the same unique key computes the same object id.** (The personal
+  space adds the account sign key — `payload.go:40-48` — but has one
+  account, so per-space determinism holds there too.) Ordinary objects, by
+  contrast, are created from a random 32-byte seed plus a timestamp
+  (`payload.go:50-58`) and can never collide.
+
+Four consequences:
+
+1. **Convergence is the install mechanism.** Bundled types/relations
+   (`rel-dueDate`, `ot-task`) install idempotently *because* every device
+   derives the same object.
+2. **Concurrent same-key creates converge.** A second local create of an
+   existing key fails on put; two members creating the same key offline
+   each succeed locally and their trees **merge on sync into one object**,
+   conflicting details resolving in CRDT order — one name/format silently
+   wins. Same key ⇒ same object is a space-level invariant, not a race
+   outcome.
+3. **This is exactly why UI creates mint BSON.** A name-derived readable
+   key would make two users' unrelated "Status" properties merge into one
+   object; the UI buys distinctness with opacity (`relation.go:46-47`;
+   options always `opt-<bson>` via `getUniqueKeyOrGenerate`,
+   `objectcreator/util.go:32-44`).
+4. **v1 and v2 already embody the two candidate key strategies.** v1
+   `POST /properties` never sets the relation key — the create mints a BSON
+   and the caller's key lands only in `apiObjectKey`
+   (`core/api/service/property.go:208-229` + `relation.go:46-47`): that is
+   strategy (a) live, twin slugs and all. v2's create-missing pins the
+   document's key as the stored relation key (`resolver.go:386-401`), and
+   v2 `POST /types` derives the uniqueKey from the document's key
+   (`schema_write.go:235-240`): that is strategy (b) live.
+
 ## 3. Scenario analysis
 
 What each consumer actually needs, and what breaks when the wrong identity
@@ -144,7 +203,7 @@ types/properties.
 | Full-account backup → restore (same space) | **id / stored key**. Everything resolves; renames since the backup are survived only by id. | Names: a rename between backup and restore mints a twin option and re-points values to it (silent); twin names collapse (D2). This is *the* case names cannot serve. |
 | Export → import into another account | **name / self-contained key**. Foreign ids resolve to nothing — id-only documents are dead on arrival; create-missing (SPEC §3, §2a) rebuilds vocabulary from names/keys. | Ids: values dangle or, worse, collide with unrelated local ids. This is *the* case ids cannot serve. |
 | API v2 read | name + key (C2), compact object refs (C4). | Raw BSON keys: unusable, unguessable, ~10 tokens each — v2's live state for UI-created properties. Raw ids in name slots: D1 reaches the API read surface. |
-| API v2 write (agent authors JSON) | name + key, create-missing with did-you-mean (§8.1 policy). | Ids: agents mutate them in flight (−89% errors from short handles). Names alone: the rename race (§3.1) and twin ambiguity (D2). |
+| API v2 write (agent authors JSON) | name + key, with loud resolution (§7.4). | Ids: agents mutate them in flight (−89% errors from short handles). Names alone with silent create-missing: the rename race (§3.1) and twin ambiguity (D2). |
 | Small-model authoring (wrapper tier) | names only, zero opaque tokens, no legend in sight (§7.1: "the model never sees or emits a 24-hex id"). | Anything composite or tagged: a 3B model strips suffixes and mangles unions; both forms then need accepting forever. |
 | Third-party integration / sync | **stable id + name**, both, per reference (the Kubernetes ownerReference shape). Sync must *detect* renames, not perceive a new entity. | Name-only: every rename is a delete+create to the integration. Id-only: cross-tenant sync impossible. |
 | Diff / merge two documents | stable anchors (ids/keys); names as values. | Name-as-identity: a rename diffs as remove+add everywhere the value occurs; twins misalign the diff. |
@@ -166,7 +225,7 @@ per design, for the two critical windows:
 | **Ids only** | Restore resolves `o1` → correct. | Agent cannot plausibly author ids; DOA. |
 | **Composite `High#6a76`** | Suffix resolves → correct; stale name half is cosmetic (Stack Overflow slug-URL semantics). | Only if the agent echoes the suffix — small models won't; bare "High" must stay legal → the race returns. |
 | **Inline `{id,name}`** | id wins → correct (Notion semantics). | Same caveat: agents author bare strings; both forms legal forever. |
-| **Pins (recommended)** | Pin `"High": "o1"` resolves by id → correct; the label is cosmetic. Unpinned docs behave as today. | Document paths (PUT round trip) are protected — the read carried pins, the echo resolves by id. Non-document ops (`setProperties`) are *not* protected by the format — see §7.4 for the API-side answer (strict flag + `created` surfacing). Honest, not blurred. |
+| **Pins + strict writes (recommended)** | Pin `"High": "o1"` resolves by id → correct; the label is cosmetic. | Document paths (PUT round trip) carry pins → resolve by id. Bare ops (`setProperties`) hit the strict default: "High" no longer matches → **400 with did-you-mean ("Critical") and the `create:true` remedy** — loud, before damage (§7.4). |
 | **Two profiles** | Backup profile (ids) → correct. | Agent profile is names-only → the race, unmitigated, plus a reader fork. |
 
 Property/type renames are the benign half **because the stored key never
@@ -250,7 +309,7 @@ frozen-at-birth slug diverges from the display name after any rename — the
 agent reads `high` while the UI says "Critical", the worst of both
 readability worlds — and because today's slug layer is non-unique and
 mutable (§2.3). Slugs are the right *API address* once hardened (§7.5);
-they are not the right *document value*.
+they are not the right *document value* for options.
 
 **I. Kind-prefixed opaque ids** (Stripe `opt_…`, `rel_…`). Self-identifying
 tokens would make the D1 mix at least detectable. Rejected as the design:
@@ -271,7 +330,7 @@ silently** — the lesson of D1.
 | A. mode selector | ◐ (per doc) | ◐ | ◐ | ◐ | ◐ | ◐ | med + reader fork | mixed |
 | C. inline `{id,name}` | ● | ● | ● | ● | ○ (unions) | ○ (per occurrence) | high (schemas, C13) | loud |
 | D. composite value | ◐ (echo-dependent) | ◐ | ◐ | ● | ○ (suffix loss) | ◐ | med (escaping, parser) | silent when suffix dropped |
-| **E. pins** | **●** | **●** | ● (docs) ◐ (bare ops) | **●** | **●** (authors never see them) | **●** (zero when clean) | **med, additive** | **loud** |
+| **E. pins + strict writes** | **●** | **●** | ● (docs; bare ops fail loud, §7.4) | **●** | **●** (authors never see them) | **●** (zero when clean) | **med, additive** | **loud** |
 | F. sidecar | ◐ (no twins) | ◐ | ◐ | ● | ● | ◐ | med | silent (sidecar lost) |
 | G. profiles | ◐ (per profile) | ● / ○ | ● / ○ | ○ / ● | ○ / ● | split | high (everything ×2) | split |
 | H. stored slugs | ○ today (§2.3) | ◐ | ● | ◐ | ◐ (stale slugs) | ● | med (hardening + backfill) | silent (shadowing) |
@@ -297,7 +356,8 @@ contributed, what was rejected.
   accept name or id interchangeably; and **unknown select options are a hard
   error unless `typecast=true`** — auto-creation is opt-in "to ensure data
   integrity". Contribution: the strict/permissive switch belongs on the
-  *write request*, not in the document — directly the §7.4 strict flag.
+  *write request*, not in the document — directly §7.4's verb-bound default
+  plus `create` flag.
 - **Kubernetes** — `metadata.name` is a reusable human handle;
   `metadata.uid` is identity; `ownerReferences` store **both** and GC
   honors the reference only when the uid matches, so a reused name can
@@ -307,8 +367,8 @@ contributed, what was rejected.
 - **git** — abbreviated SHAs are shortest-*unique* prefixes, checked
   against the actual object corpus, auto-lengthening as it grows, and an
   ambiguous abbreviation is a **hard error, never a guess**. Contribution:
-  the label-minting rule for twins (§7.1) and the existing `matchBlockRef`
-  behavior it validates.
+  the label-minting rule (§7.1), the write-side ambiguity 400 (§7.4), and
+  the existing `matchBlockRef` behavior it validates.
 - **JSON-LD `@context`** — a document-level legend (term → IRI) declared
   once and applied everywhere is standardized, mainstream technology.
   Contribution: precedent for pins as an envelope concept; nothing else
@@ -359,24 +419,41 @@ contributed, what was rejected.
 
 ## 7. Recommendation
 
-**Adopt design E: readable labels in every value slot, one per-kind pin
-table in the envelope, the §9a total resolution rule, loud failure for
-unresolvable pins. Fold the existing `refs` legend in as the object kind of
-the same concept. Complementary platform work: harden `apiObjectKey` into
-the unique frozen slug that makes the same labels resolvable statelessly on
-the API's non-document paths.**
+**Adopt design E with strict writes: readable labels in every value slot,
+one per-kind pin table in the envelope, the §9a total resolution rule, loud
+failure everywhere a resolution can go wrong. Fold the existing `refs`
+legend in as the object kind of the same concept. Keys follow strategy (b):
+the caller's key is the internal key for API-created types/properties, the
+hardened unique slug fronts UI-created BSON keys (§7.5).**
+
+One clarification the review demanded, stated once and relied on
+throughout: **the pin-map key for each kind is that kind's existing C2
+vocabulary term** — display *names* for options, *keys* for properties and
+types. That is not a new duality introduced by pins; it is C2's own
+per-kind vocabulary ("property **keys**, option **names** — everywhere"),
+with one resolution rule laid over all four kinds.
 
 ### 7.1 Mechanism (normative sketch for the SPEC revision)
 
-Envelope gains one field, `pins`, placed with `refs` before `blocks`
-(legend precedes use, §2):
+**The tenet.** A label is an **opaque map key**. It must be non-empty and
+unique within its namespace — nothing else. Its readability is a courtesy
+to the reader, not a mechanism: resolution never parses a label, `#` has no
+grammar, there is no suffix syntax to unescape. A string either
+exact-matches a pin key, or it is a bare term of whatever the slot's C2
+vocabulary says — an option name in a value, a key in a key position, a
+full id in an id position (§9a, unchanged). This sentence dissolves most
+questions below: every "what if the name contains/looks like X" case is
+answered by "nothing is ever inferred from a label's shape".
+
+Envelope gains one field, `pins`, placed where `refs` is today (legend
+precedes use, §2):
 
 ```json
 "pins": {
   "types":      { "recipe": "6b21f0e3cda913b84c1299aa" },
   "properties": { "manual_property": "6a7663db61fab21cd4b9e745" },
-  "options":    { "status": { "High": "bafyrei…o1", "High#4f2a": "6a76…o2" } },
-  "objects":    { "miovm": "bafyreieqh63jv…miovm" }
+  "options":    { "status": { "High#4f2a": { "id": "bafy…4f2a", "name": "High" } } },
+  "objects":    { "roman": "bafyreidfmzjh…" }
 }
 ```
 
@@ -386,178 +463,393 @@ Envelope gains one field, `pins`, placed with `refs` before `blocks`
   keys, `typeProperties[].key`, dataview `properties[].key` / `groupBy` /
   column `property` / sort and filter `property`, the `property` block's
   `key`, link-block `properties` entries.
-- `pins.options` — per property key: label → option object id. Covers
+- `pins.options` — per property label: label → option entry. Covers
   select/multiSelect values in `properties`, filter `value`s, sort
   `customOrder` entries, and §2a vocabulary entries.
-- `pins.objects` — the current `refs`, renamed into the family (see Open
-  Question 1). Same charset, same rules.
+- `pins.objects` — the current `refs`, folded into the family (decided,
+  §8). Same charset, same §9a rules, string entries only.
 
-**Resolution rule (total, per kind — verbatim §9a generalized):** where a
-value of kind K is expected, if the string is a key in the kind's pin map it
-resolves to the pinned identity; otherwise it *is* what the slot says — an
-option name, a property key, a type key — with today's resolve-or-create
-semantics (SPEC §3, §2a; APIV2 §8.1 policy). No shape heuristics, ever. An
-unused pin is pruned by export; import ignores it.
+**Namespaces and charsets.** Labels are unique per namespace: one namespace
+each for types, properties, objects; **one per property for options** —
+mirroring the store, where every option lookup is scoped by its property.
+"High" on `status` and "High" on `priority` live in unrelated namespaces:
+neither is a twin, neither gets a suffix, and no rule below ever compares
+labels across properties. Option,
+property and type labels are arbitrary non-empty JSON strings of at most
+64 Unicode code points (property/type labels SHOULD additionally be
+identifier-shaped — letters, digits, `_` — so they remain typable in the
+§6.2.1 filter-string grammar, which takes bare identifiers; a
+non-identifier label is reachable only through the structured form, the
+grammar's existing rule for colliding keys). Object labels keep §9a's
+`[A-Za-z0-9_-]{1,64}` because they ride inside markup positions (mention
+attributes, link destinations) that arbitrary strings would break.
 
-**Label minting (export):** the label is the display name (options) or the
-readable slug (types/properties) whenever that string is unique among the
-document's emitted labels of that kind *and* does not collide with another
-real name in the same scope. A twin gets `name + "#" + shortest unique
-suffix (≥4) of its internal id`, lengthened until unique against both the
-sibling labels and every real name present (the git rule; the §9a
-key-vs-full-id collision rule). Because labels are opaque map keys, `#`
-needs no escaping and no parser — a real option named `High#2` simply
-forces a longer suffix on the minted label.
+**Entry forms.** `pins.types`, `pins.properties`, `pins.objects`: always
+`"label": "<identity>"` (strings — these kinds never fall back through a
+name, see below). `pins.options`: `"label": "<optionId>"` when the label
+equals the option's exact current name, otherwise
+`"label": {"id": "<optionId>", "name": "<name>"}` — `name` present-but-empty
+means the option's name *is* empty; `name` absent means unknown (a dangling
+id). The object form exists only for options because options are the only
+kind whose pin-miss fallback needs a name to resolve or create by.
 
-**Pin misses fail loudly, by kind:**
+**Label minting (export) — normative.** A pure function of the namespace's
+(base, identity) pairs; entities are processed in ascending internal-
+identity order so suffixing cascades deterministically; **store order can
+never influence a label** (order-dependence is what made D2 a coin flip).
 
-- `pins.options` label whose pinned id resolves to no option → import
-  stores the pinned id **verbatim** in the value (the snapshot's own
-  dangling state round-trips instead of laundering into a fake option) and
-  reports a warning-grade issue naming property, label and id. **Never
-  create an option named by an id** — D1 dies here.
-- `pins.properties` / `pins.types` miss → create with the **pinned** key
-  (restore fidelity wins; the created property carries the label as its
-  display name). Stripping pins is the deliberate cross-account lever: a
-  pin-stripped document creates the *readable* key — BSON keys launder into
-  slugs exactly when the author chooses portability over fidelity.
-- `pins.objects` — unchanged §9a.
+1. `base` := the entity's C2 term: an option's display name; a property's
+   or type's slug (the stored `apiObjectKey` when present, else
+   `snake_case(transliterate(name))`, derived at export time and never
+   written back); an object's name slugified into the object charset.
+2. A suffix is **required** when: `base` is empty; `base` exceeds 60 code
+   points (truncate to 60 first); or `base` is exactly equal
+   (case-sensitive) to another entity's base in the namespace — in which
+   case **every** holder of that base gets a suffix; none keeps the bare
+   name. Otherwise `label := base`.
+3. `suffix` := the shortest trailing run of the entity's internal identity,
+   minimum 4 characters, such that `base + sep + suffix` collides with no
+   other label and no other base in the namespace; lengthen until unique
+   (the git rule). `sep` is `#` for options/properties/types and nothing
+   for objects with an empty base (a bare id-tail — exactly today's §9a
+   suffix labels), `-` otherwise.
+4. Case-sensitivity is exact everywhere, matching the store's own
+   comparison (`storeresolver.go:108`): `high` and `High` are distinct
+   names, distinct bases, distinct labels — no suffixes. (Notion dedupes
+   options case-insensitively; Anytype does not, and the format follows
+   the store.)
+
+Per-case behaviour — mint on the left, what the resolver does on the right
+(resolution is always the same exact-match lookup; only the minting and
+the miss-handling differ):
+
+| Case | Minted label | Resolution |
+|---|---|---|
+| unique name `High` | `High` | map hit → id. |
+| twins `High`, `High` | `High#4f2a`, `High#9c1e` — both suffixed | map hits → the right twin each. A *bare* `High` on a write is ambiguous → 400 listing both labels (§7.4). |
+| empty name | `#77d0` | map hit → id. On pin-miss: the entry's `name` is `""`, which cannot create (`createRelationOption` rejects empty names) → identity kept verbatim + warning. |
+| name contains `#` (`C#`) | `C#`, verbatim | map hit. Never parsed; a minted label that would collide with it lengthens its own suffix instead. |
+| name shaped like an id | verbatim | map hit. A bare id-shaped string in a value is a *name* — no shape heuristics, and post-D1 export never emits a bare id there, so the case cannot arise from our own output. |
+| names differing only by case | both bare, no suffixes | distinct map keys, distinct store names — nothing to disambiguate. |
+| name > 60 code points | first 60 + `#suffix` (suffix mandatory) | map hit; the full name rides the entry's object form. |
+| dangling id (D1) | `#4f2a`, entry `{"id": …}` with no `name` | map hit → id unresolvable → identity kept verbatim + warning. **Never an option created from an id.** |
+
+**Writer rules** (a hand-authored or agent-edited document): a label is
+only a label if it has a pin entry — a string without one is a bare term of
+the slot's vocabulary, full stop. When authoring pins: any label within the
+kind's charset and length; unique in its namespace; it MUST NOT equal a
+bare unpinned term of the same kind and scope used elsewhere in the
+document (the legend-wins rule would capture that term — validation
+rejects the document naming both sites); use the object form whenever the
+label is not the option's exact current name.
+
+**Worked example** (two same-named options, one unnamed option, one
+unnamed object):
+
+```json
+{
+  "version": 1,
+  "type": "task",
+  "pins": {
+    "objects": { "roman": "bafyreidfmzjh…", "x7ke": "bafyreiuv…x7ke" },
+    "options": { "status": {
+      "High#4f2a": { "id": "bafy…4f2a", "name": "High" },
+      "High#9c1e": { "id": "bafy…9c1e", "name": "High" },
+      "#77d0":     { "id": "bafy…77d0", "name": "" }
+    } }
+  },
+  "properties": { "name": "Q3 report", "status": ["High#4f2a"] },
+  "blocks": [ { "type": "paragraph",
+    "text": "Review with <mention objectId=\"roman\">Roman</mention>, cf. <mention objectId=\"x7ke\">(untitled)</mention>" } ]
+}
+```
+
+Same-space restore: every pin resolves by identity — the twins stay twins
+(the `ANOMALIES.md` #6 loss class closes), the unnamed option survives.
+Cross-account import: the option ids miss; `High#4f2a` and `High#9c1e`
+fall back to their entries' `name` and **collapse into one created
+"High"** (correct there — the twins are indistinguishable to a human in
+the target space); `#77d0` has an empty name, cannot be created, and is
+dropped with a warning naming it. Object pins follow §9a (never created —
+`roman` resolves or dangles with a warning). Every outcome is visible in
+`created`/`warnings`; nothing happens silently.
 
 **The D1 fix on export:** `optionName` misses stop emitting the raw id as a
-name. The value becomes a minted label (`"#4f2a"`-style, no name half) with
-a pin to the raw id, plus a C11 warning on API reads. The mix of names and
-ids in one slot becomes *representable*, so it stops being invisible.
+name. The value becomes a minted `#suffix` label pinned to the raw id, plus
+a C11 warning on API reads. The mix of names and ids in one slot becomes
+representable, so it stops being invisible.
 
 **Emission policies (this is the whole "profiles" story):**
 
 | Shape | Pins |
 |---|---|
-| Canonical export / backup (`Marshal` default) | **all** — every option value, every non-slug key. Lossless; anomaly #6 becomes round-trippable; a backup restored after a rename re-points correctly. |
-| API v2 default read | all (the PUT round trip is a document path and inherits the protection; cost is near zero on clean documents — see §7.4); `?pins=min|none` opts down. |
+| Canonical export / backup (`Marshal` default) | **all** — every option value, every non-slug key. Lossless; a backup restored after a rename re-points correctly. |
+| API v2 default read | all (the PUT round trip is a document path and inherits the protection; cost is near zero on clean documents); `?pins=min|none` opts down. |
 | Outline / prompt / example shapes | none (matches `OmitIds`+labels today). |
 | Agent-authored documents | none — pins are `x-output-only` in the schema; authors write bare names and keys, exactly as now. |
 
-One format, one resolution rule, two emission policies. G's honest core,
-without the fork.
+Pin-stripping (the deliberate portability lever) is defined, not ad hoc:
+replace each pinned label with its entry's `name` where known, drop values
+whose entries carry no name (warn), then delete `pins`. One format, one
+resolution rule, two emission policies — G's honest core, without the fork.
 
 ### 7.2 What each scenario gets
 
-- **Backup/restore:** lossless including twins and renames (pins invert).
-  The last accepted round-trip loss class (`ANOMALIES.md` #6) closes.
-- **Cross-account:** unchanged mechanics (names/keys + create-missing),
-  now with an explicit dial: keep pins for fidelity, strip for laundering.
+- **Backup/restore:** lossless including twins, unnamed entities and
+  renames (pins invert). The last accepted round-trip loss class
+  (`ANOMALIES.md` #6) closes.
+- **Cross-account:** unchanged mechanics (names/keys + create-missing on
+  import), now with an explicit dial: keep pins for fidelity, strip for
+  laundering.
 - **API read:** unchanged vocabulary (C2 intact); BSON keys disappear
   behind slug labels; D1 becomes a warning instead of garbage.
 - **API write:** documents (POST/PUT) inherit pin protection; bare ops get
-  the §7.4 loudness levers. Stated plainly: **the format cannot rename-proof
-  a bare `setProperties` write, and this design does not pretend to.**
-- **Small models:** see nothing new. The wrapper already never shows ids.
-- **Integrations/sync:** every reference obtainable as (label, id) — the
-  ownerReference shape — without per-value unions.
+  the §7.4 strict default. The rename race on bare ops now fails loudly
+  *before* damage instead of minting twins.
+- **Small models:** see nothing new on the read/author side; on writes,
+  a typo'd option name becomes a path-addressed 400 with candidates
+  instead of silent garbage — strictness *helps* the small tier (§7.4).
+- **Integrations/sync:** every reference obtainable as (label, identity) —
+  the ownerReference shape — without per-value unions.
 - **Diff/merge:** pins give the differ stable anchors; a rename diffs as
   one pin-line change, not N value changes.
 
 ### 7.3 SPEC.md changes
 
-1. §2 envelope: add `pins` (after `refs` or replacing it — OQ1); canonical
-   order and pruning rules.
+1. §2 envelope: `refs` becomes `pins` with four kind maps (fold decided,
+   §8); canonical order and pruning rules.
 2. §3: option values become **labels** under the resolution rule; the
    silent fallback clause is deleted; duplicate-name collapse leaves §11's
    normalization list (it becomes a fidelity guarantee instead).
-3. §9a: rewritten as §9 "Identity and pins", one rule for four kinds;
-   block labels unchanged.
+3. §9a: rewritten as §9 "Identity and pins" — the tenet, the namespaces
+   and charsets, the minting algorithm, the entry forms, the writer rules
+   (§7.1 above); block labels unchanged.
 4. §2a: vocabulary entries may be labels; "duplicate names are a validation
    error" becomes duplicate *labels*; twin-named options become
    expressible.
 5. §6.2: filter values / customOrder reference the same rule.
 6. §11: round-trip guarantee strengthened (pinned documents round-trip
-   twins and dangling option ids byte-stably).
-7. §12: pin validation — charset per §9a, label uniqueness per kind,
-   options sub-maps keyed by known property labels/keys, `x-output-only`.
-8. §13: `Options` gains `PinOptions`/`AliasKeys` (or a single
-   `Pins: all|min|none`); §15.3 closes with a pointer here.
+   twins, unnamed options and dangling option ids byte-stably).
+7. §12: pin validation — charset/length per kind, label uniqueness per
+   namespace, the label-shadows-bare-term error, `x-output-only`.
+8. §13: `Options` gains a `Pins: all|min|none` emission knob and the
+   strip operation; §15.3 closes with a pointer here.
 
-The format is still a **draft with no external consumers** (§10 explicitly
-licenses breaking changes) — this is the cheapest this change will ever be;
-after freeze it becomes a version-2 conversation.
+Package semantics stay resolver-driven (create-missing remains what the
+wired resolver does — SPEC §3 is unchanged as *import* semantics); the API
+chooses resolvers per verb, which is where §7.4 lives.
 
-### 7.4 API surface cost (the C2/C13 audit)
+### 7.4 Write-side resolution: strict where a stale read exists
 
-- **C2 (one concept, one slot): respected.** Value slots keep exactly one
-  vocabulary — the readable one, both directions. Identity occupies exactly
-  one envelope slot, and it is a slot the surface already has (the C4 refs
-  legend); folding `refs` in means the concept count goes *down*, not up.
-- **C13 (strict schemas): improved relative to the alternatives.** No
-  unions anywhere; `pins` is output-only and absent from authoring schemas.
-- **Token cost:** zero on documents whose labels are all unique readable
-  strings (the overwhelmingly common case — pins are only *required* for
-  twins, BSON keys, and danglings; pin-all on reads adds one short line per
-  distinct select value and is opt-out).
-- **Write-path loudness (build items):** (a) surface the existing `created`
-  side-effect array in the wrapper/SKILL so a minted option is *seen*;
-  (b) an Airtable-style strict switch — `?create_options=false` (or
-  `strict=true`) turning unknown option names into a 400 with did-you-mean,
-  for integrators who prefer loud to permissive. R9's create-missing stays
-  the default; the switch is the escape hatch the rename race needs on bare
-  ops.
-- **Non-document key resolution** (filter strings, sort keys, `fields=`,
-  `setProperties` keys): aliases must resolve statelessly → requires §7.5.
+The review's sharpest point, accepted in full: **an absent pin on a write
+was the one silent direction left in the design.** The original draft kept
+R9's create-missing default and bolted on an opt-out; that reproduces D1's
+failure shape (silent vocabulary invention) at the exact moment the agent
+is most likely to be wrong — writing back something it read before a
+rename. Two orthogonal axes replace it.
 
-### 7.5 The platform prong: harden `apiObjectKey`
+**The kind axis — what may be created implicitly: options, and nothing
+else.** The principle (the human's, and it is the right one): implicit
+creation is legitimate only when the referencing string *is* the complete
+definition. An option's content is its name (plus an assignable color) —
+a bare name defines it fully, and every create is preceded by an
+exists-by-name check within the property (`resolver.go:133`; it is what
+makes §8.13's retries convergent). Properties carry a format and target
+types; types carry layouts and recommended-property lists; objects are
+whole documents — **a bare reference can never supply that content, so a
+bare reference must never create one.** They are created only from
+explicit definitions: `POST /properties`, a type document's
+`typeProperties` entries (which are definitions — key, name, format — not
+references), `POST /objects`. This gives §8.1's shipped
+create-vs-reject table its principled justification, and it is why the
+option column below has a permissive mode at all while the other kinds
+never do.
 
-The document story above needs nothing from the store. The *API* story —
-readable keys on bare ops, v1 parity, one vocabulary — needs a per-space
-slug that is **unique at mint and frozen by default**:
+**The verb axis — when implicit option-creation is permitted.** Airtable's
+`typecast` shows where the switch belongs: on the write request. We go one
+step further and bind the *default* to the verb, because the risk boundary
+is the stale-read window, and that window only exists when modifying state
+previously read:
+
+| Kind | POST (create/import — nothing was read) | PATCH / PUT (read-modify-write) |
+|---|---|---|
+| option names in values | **create-missing** (the §8.1/R9 behavior): bounded (`v2MaxCreatedOptionsPerPatch` = 64), validated-before-created, reported in `created`, previewed by dry runs — `guardCreateMissing`, APIV2.md §8.13, all unchanged | **strict**: unknown name → 400 `unknown_option`, did-you-mean over the property's labels, and the remedy named verbatim ("retry with create:true"); `create: true` restores create-missing under the same bound and ordering |
+| option names in `typeProperties` | always creates — declaring a vocabulary IS the create statement | same (editing a declared vocabulary is explicit intent) |
+| **ambiguous** bare option name (twins) | **400 always**, listing the minted labels — never resolved by store order, never a third twin, with or without `create:true`. Closes D2 on the write path; reads never resolve bare names (export emits labels) | same |
+| property keys in object `properties` | reject + did-you-mean (§8.1, unchanged) | same |
+| type keys | reject + did-you-mean (§8.1, unchanged) | same |
+| object references | **never created from a reference — any path, any flag, ever** (normative; today this is true by accident, now it is a rule). An unresolvable ref is kept verbatim with a C11 warning — never a 400 (cross-space and not-yet-synced references are legitimate), never a create | same |
+
+Consequences, stated honestly:
+
+- **What it costs small models: one extra turn, rarely, and only on raw
+  REST.** The wrapper tier pays nothing: its planned pre-validation pass
+  (APIV2.md §7.4, the A2 guard) checks option names against the live list
+  before sending, and the wrapper sets `create: true` deliberately where
+  creation is the intent. A raw-REST small model writing a genuinely new
+  tag eats one 400 whose text names the exact remedy — the
+  generate→validate→repair loop is the format's own operating premise
+  (SPEC §12). In exchange the small tier gains real protection: today a
+  typo'd option name silently mints garbage; now it returns candidates.
+- **Import and POST keep one-shot semantics.** The discovery examples
+  (`schemas.go`) — `"status": ["In progress"]` on a fresh space — still
+  work first try; cross-account import still rebuilds vocabulary. The
+  sets-create path (POST /sets) keeps R9's ahead-of-data option creation.
+- **This supersedes R9's blanket default for ops** — an APIV2.md
+  decisions-ledger edit. It is possible precisely because nothing has
+  shipped; after GA it would be a breaking behavior change.
+- The PATCH prewarm/lock machinery (`prewarmCreateMissing`,
+  `guardCreateMissing`) is unchanged in shape — it simply runs only when
+  `create: true` is present.
+
+### 7.5 The key strategy: (a) vs (b) vs the original — decided
+
+First, the framing correction the review asked for: the pin-map key being
+a *slug* for properties/types while options use *names* is not a duality
+introduced here — it is C2's own per-kind vocabulary. The open question is
+what the slug **is** underneath. The §2.4 verification sharpened it: both
+candidate strategies are already running in production, one per API
+generation.
+
+**(a) Retire internal keys from the API surface** (v1's live shape —
+`property.go:208-229`): every create mints a BSON internal key; the api
+key is the only key a caller ever sees.
+
+- *Parallel creates:* two callers creating `priority` get two BSON objects
+  and **twin slugs** — the surface's single key concept now has duplicates,
+  guarded only by a per-device cache check (racy), and v1's cache
+  demonstrably shadows one (§2.3-1). The collision moved, it didn't die.
+- *Documents:* every non-bundled key needs a pin, always — BSON sits under
+  every slug, so the pin table becomes mandatory bulk on every canonical
+  document.
+- *The namespace never actually unifies:* bundled keys (`dueDate`) ARE
+  readable internal keys and cannot retire, so (a) hides the mixed
+  namespace without removing it — and forfeits derived-id convergence
+  (§2.4-1), the free idempotency that §8.13 already leans on.
+- *Migration:* the one strategy that requires changing shipped v2 behavior
+  (v2 pins document keys today).
+
+**(b) The caller's key IS the internal key for API-created things; UI
+creates keep BSON behind a hardened slug** (v2's live shape —
+`resolver.go:386-401`, `schema_write.go:235-240` — completed):
+
+- *Parallel creates:* same-key API creates **converge into one object**
+  (§2.4-2) — retry-idempotency for free (§8.13's "convergent on retry" is
+  this mechanism). The residual hazard: two members offline-creating the
+  same new key with *different intent* merge silently, one format winning
+  in CRDT order. Bounded by the sequential format-conflict guard (§2a
+  wiring error) and rare — it needs the same never-before-used key minted
+  twice concurrently with different meanings — but real; recorded as an
+  accepted risk needing a detection surface (§8-OQ2).
+- *UI creates stay BSON* — correctly (§2.4-3: humans collide in name space
+  constantly; distinctness is bought with opacity) — fronted by the slug,
+  hardened: unique at mint, ambiguity-loud at lookup.
+- *Documents:* readable keys for bundled + API-created vocabulary; pins
+  needed only for UI-created BSON keys — the pin table stays small.
+- *Rename:* internal key immutable, slug frozen, label pinned — safe at
+  every layer.
+- *Small model:* types one snake_case slug, same as (a).
+- *Migration:* none — this is what v2 does; the work is the slug hardening,
+  which **every** strategy needs.
+
+**(original)** — slug-as-address, internal keys left as-is: a strict subset
+of (b); it declined to say what new creates should do. (b) completes it.
+
+**Decision: (b).** (a) dies on the twin-slug pathology it already exhibits
+in v1 plus the impossibility of retiring bundled keys; it pays the full pin
+cost on every document to buy a uniformity it cannot deliver. (b)'s one
+hazard (concurrent different-intent convergence) is rarer and *more
+detectable* than (a)'s (twin slugs guarded by a racy cache), and (b) is
+what half the surface already ships.
+
+The hardening, common to all strategies and now scoped to (b):
 
 1. `injectApiObjectKey` checks the space index and disambiguates
    (`manual_property`, `manual_property_2`, …) instead of blindly stamping
    (fixes §2.3-1; also fix the un-snake-cased option branch, §2.3-3).
-2. Backfill decision for existing objects (lazy on first API touch vs
-   migration sweep) — needs its own GO issue; until then the exporter
-   derives labels at export time (deterministic within a document, pinned,
-   so nothing depends on the store having a slug).
-3. Re-pointing stays possible (v1 compat) but is document-safe by
-   construction: documents pin to *stored keys*, so re-aiming an alias can
-   never re-aim a stored reference — the alias is a branch, the key is the
-   SHA.
-4. v2 emits the slug as the label wherever the stored key is a BSON;
-   the interim "v2 reads apiObjectKey" fix converges into this.
+2. **Ambiguous slugs fail loudly at lookup** — a slug matching several
+   entities (offline-parallel mints can still race past 1) is a 400
+   `ambiguous_input` listing disambiguated labels, the same rule options
+   and blocks follow. A deterministic re-slug sweep is optional on top
+   (§8-OQ3).
+3. Backfill for existing objects (lazy on first API touch vs migration
+   sweep) — its own GO issue; until then the exporter derives labels at
+   export time (deterministic within a document, pinned, so nothing
+   depends on the store having a slug).
+4. Re-pointing a slug stays possible (v1 compat — v1 *is* shipped, unlike
+   everything else here) and is document-safe by construction: documents
+   pin to stored keys, so re-aiming a slug can never re-aim a stored
+   reference — the slug is a branch, the key is the SHA.
 
-### 7.6 Build order
+### 7.6 What remains to migrate, and the build order
 
-1. **Kill D1** (small, self-contained): `optionName` miss → minted label +
-   pin + warning; import side: pinned-id verbatim passthrough + warning.
-   Ships value even before the rest.
-2. **SPEC revision + package** (§7.3): pins emission/resolution, label
-   minting, `Options` knob; round-trip tests over the anomaly-#6 corpus —
-   acceptance target moves from 99.86% to 100% on that class.
-3. **v2 read aliasing** for BSON keys via `pins.properties`/`pins.types`
+**Migration inventory — nothing user-facing exists.** No exported user
+documents, no third-party consumers, no wrapper installs. The complete
+list: the package's golden files and `testdata/` regenerate; the round-trip
+corpus reruns under `cmd/anyblockroundtrip` (expect the anomaly-#6 class to
+flip from accepted-loss to pass, and the acceptance bar to move to 100% on
+that class); APIV2.md takes the ledger edits (C4's `refs` → `pins`, R9's
+op-default); SPEC.md takes §7.3. That is all. Every choice in this dossier
+gets an order of magnitude more expensive the day a third party ships a
+consumer — **this is the moment to make the format right.**
+
+Build order:
+
+1. **Kill D1** (small, self-contained): `optionName` miss → minted
+   `#suffix` label + pin + warning; import side: pinned-id verbatim
+   passthrough + warning.
+2. **SPEC revision + package** (§7.3): pins, the minting algorithm, entry
+   forms, the label-shadowing validation; regenerate goldens; rerun the
+   corpus.
+3. **Write-side defaults** (§7.4): strict on PATCH/PUT, `create: true`,
+   the ambiguous-name 400; APIV2.md ledger edit; wrapper pre-validation +
+   explicit create intent.
+4. **v2 read aliasing** for BSON keys via `pins.properties`/`pins.types`
    (subsumes the interim apiObjectKey read fix).
-4. **Write loudness**: strict switch + wrapper surfacing of `created`.
-5. **`apiObjectKey` hardening + backfill** (own issue, heart-wide).
+5. **Slug hardening** (§7.5): unique at mint, ambiguity-loud lookups;
+   backfill decision as its own issue.
 
-## 8. Open questions (need a human decision)
+## 8. Open questions — and the ones the no-compatibility constraint closed
 
-1. **Fold `refs` into `pins.objects`, or keep both fields?** Folding gives
-   one concept (C2's spirit) but renames a field the shipped v2 read
-   surface already emits (C4). Pre-GA this is cheap; post-GA it is a
-   compatibility carve-out. *Lean: fold now.*
-2. **Pin-all vs pin-min as the API read default.** Pin-all protects the
-   PUT round trip against the rename race; pin-min is leaner on token-
-   sensitive readers. *Lean: pin-all, `?pins=min` opt-down.*
-3. **`apiObjectKey` mutability**: freeze after mint (Linear) vs keep v1's
-   re-pointing with a uniqueness check. Freezing breaks a documented v1
-   behavior. *Lean: keep mutable as address-only, document that stored
-   references never use it.*
-4. **Legacy id-as-name rescue**: should import wiring resolve a bare value
-   that exactly equals an existing option id of that property (a store
-   lookup, not a shape heuristic — the §9a wiring allowance)? Rescues
-   documents already polluted by D1. *Lean: yes, wiring-level, warn.*
-5. **Options' own slugs**: options carry `apiObjectKey` today (v1 tags use
-   it; format and v2 use names). Drop it from options, or harden it with
-   the rest? *Lean: harden with the rest but keep it out of the format —
-   option labels are display names.*
-6. **Strict-by-default for integrations**: should some auth scopes (e.g.
-   future read-write integration keys) default to `strict=true` on option
-   creation, Airtable-style? Touches the API-key-scoping design, not this
-   format.
+**Closed** (decided in this revision; recorded so the closure is visible):
+
+- ~~Fold `refs` into `pins`?~~ **Folded.** The only argument against was
+  the shipped v2 C4 read shape — which has no consumers. One legend
+  concept, four kind maps.
+- ~~Pin-all vs pin-min on API reads?~~ **Pin-all**, `?pins=min|none`
+  opt-down. The only argument for min was token caution; clean documents
+  pay ~nothing, and pin-all is what protects the PUT loop.
+- ~~Legacy id-as-name rescue on import?~~ **Dropped.** It was
+  compatibility machinery for documents that were never produced outside
+  this repo; the D1 fix means they never will be. Dev artifacts
+  regenerate.
+- ~~Options' own slugs?~~ **Decided with (b):** option identity in
+  documents is name + pin; `apiObjectKey` on options stays a v1-only
+  surface, v2 never adopts it, and the hardening covers it only for v1's
+  sake.
+
+**Open** (need a human decision):
+
+1. **`apiObjectKey` mutability** — narrowed, not closed: v1 *is* shipped,
+   so freezing breaks released behavior; under (b) the slug is
+   address-only, so mutability is survivable. Freeze at mint (Linear) vs
+   keep re-pointing with the uniqueness check. *Lean: keep mutable,
+   address-only, documented.*
+2. **The (b) convergence acceptance**: concurrent different-intent creates
+   of the same new key merge silently, one format winning (§2.4-2, §7.5).
+   Accept with the sequential guard only, or add a detection surface (an
+   indexer warning when a relation's format changes underneath existing
+   values)? *Lean: accept + detection surface.*
+3. **Twin-slug repair**: is the loud-ambiguity lookup error (the floor)
+   enough, or add a deterministic re-slug sweep (suffix the younger by
+   internal-key order — convergent, no coordination)? *Lean: floor first,
+   sweep if telemetry shows real collisions.*
+4. **Uniform strictness for integration scopes** — narrowed by §7.4:
+   PATCH/PUT are strict for everyone; the remaining question is whether
+   integration-scoped keys should make POST strict too (Airtable is
+   uniform-strict). Touches the API-key-scoping design, not this format.
+5. **Identifier-shaped property/type labels: SHOULD or MUST?** MUST keeps
+   every label typable in the filter-string grammar; SHOULD tolerates
+   exotic slugs at the cost of a structured-form-only escape hatch (the
+   grammar's existing rule). *Lean: MUST for minted labels, SHOULD for
+   hand-authored.*
