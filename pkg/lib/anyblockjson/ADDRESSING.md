@@ -1122,15 +1122,19 @@ That is all. Every choice in this dossier
 gets an order of magnitude more expensive the day a third party ships a
 consumer — **this is the moment to make the format right.**
 
-Build order:
+Build order (status marks 2026-08-08 — APIV2.md §8.22 is the as-built
+record):
 
 1. **Kill D1** (small, self-contained): `optionName` miss → minted
    `#suffix` label + pin + warning; import side: pinned-id verbatim
-   passthrough + warning.
+   passthrough + warning. *[open — needs step 2's pins]*
 2. **SPEC revision + package** (§7.3): pins, the minting algorithm, entry
    forms, the label-shadowing validation; the slug key vocabulary (§9-item
    in §7.3) with the bundled derived table (both directions) and the
    §7.5a-5 resolution chain; regenerate goldens; rerun the corpus.
+   *[open — except the bundled derived table, which SHIPPED early in
+   `pkg/lib/bundle/apislug.go` (both directions, collision-verified,
+   fold layer included) because step 3's union check needs it]*
 3. **The slug surface + the (a) identity layer** (§7.5/§7.5a): retire the
    strategy-(b) remnants — stop writing `RelationKeyRelationKey` from the
    caller's key (`schema_write.go:455`), stop deriving type uniqueKeys
@@ -1148,14 +1152,25 @@ Build order:
    gated on step 5's backfill (§7.5 requirement 5) — pre-slug custom
    keys stay reachable through documents and pins in the interim, and
    the gate is only about bare ops naming them.
+   *[SHIPPED except the re-spelling sweep: the mint + union check, the
+   input chain incl. fold, the §2a format check and the ambiguity-loud
+   lookups are live (APIV2.md §8.22); outputs serve the slug only where
+   the stored key is BSON and the slug round-trips — the full
+   slugs-always output (bundled keys re-spelling to snake on the wire,
+   the SPEC §3 vocabulary flip, schemas/goldens/SKILL/eval) is the
+   remaining sweep and needs its own change]*
 4. **Write-side defaults** (§7.4): strict on PATCH/PUT, `create: true`,
    the ambiguous-name 400; APIV2.md ledger edits; wrapper pre-validation +
-   explicit create intent.
+   explicit create intent. *[open]*
 5. **Slug lifecycle** (§7.5): the corpse policy (archived/uninstalled
    vacate the namespace; fix the inverted existence guard — §2.3-6,
    §8-OQ2) and the backfill (lazy vs sweep — its own GO issue) that
    un-gates step 3 for old accounts; the §8-OQ3 repair sweep if
-   telemetry warrants it.
+   telemetry warrants it. *[corpse policy SHIPPED (vacate + both live
+   defects fixed + loud ambiguity floor); open: the active
+   re-slug-on-revive half of the §8-OQ2 lean (no v2 revive endpoint
+   exists; the loud floor covers UI bin-restores), the backfill, the
+   §8-OQ3 sweep]*
 
 ## 8. Open questions — and the ones the no-compatibility constraint closed
 
