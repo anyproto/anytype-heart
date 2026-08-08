@@ -24,7 +24,12 @@ complete what v2 already does (strategy (b), §7.5): API-created types and
 properties keep the caller's readable key as the internal key — unique-key
 derivation makes concurrent same-key creates *converge*, verified in §2.4 —
 while UI-created ones keep their BSON internally behind a hardened unique
-slug. **Nothing here has shipped** — AnyBlock JSON and API v2 have no users,
+slug. On the surface, one rule with no exceptions (§7.5a, adopted): **API
+v2 addresses every type and property by the snake_case api-key slug** —
+`dueDate` is `due_date` on the wire, and bundled, API-created and
+UI-created keys are indistinguishable to a caller; the document format's
+key vocabulary follows the surface (a deliberate cascade into SPEC §3).
+**Nothing here has shipped** — AnyBlock JSON and API v2 have no users,
 no exported documents, no third-party consumers — so no default below was
 chosen for compatibility; each is chosen because it is right, and this is
 the cheapest moment there will ever be to choose it (§7.6).
@@ -459,10 +464,14 @@ precedes use, §2):
 
 - `pins.types` — label → internal type key. Covers `type`, `templateFor`,
   the envelope `key` of a type document, `typeProperties[].objectTypes`.
+  Labels are the snake_case slugs (§7.5a); bundled and API-created type
+  keys travel bare (no pin — the slug resolves through the §7.5a chain).
 - `pins.properties` — label → stored relation key. Covers `properties` map
   keys, `typeProperties[].key`, dataview `properties[].key` / `groupBy` /
   column `property` / sort and filter `property`, the `property` block's
-  `key`, link-block `properties` entries.
+  `key`, link-block `properties` entries. Labels are slugs; pins exist
+  only where the slug cannot resolve without one — UI-created BSON keys,
+  pre-backfill derived slugs, twin disambiguation (§7.5a-5).
 - `pins.options` — per property label: label → option entry. Covers
   select/multiSelect values in `properties`, filter `value`s, sort
   `customOrder` entries, and §2a vocabulary entries.
@@ -499,9 +508,12 @@ identity order so suffixing cascades deterministically; **store order can
 never influence a label** (order-dependence is what made D2 a coin flip).
 
 1. `base` := the entity's C2 term: an option's display name; a property's
-   or type's slug (the stored `apiObjectKey` when present, else
-   `snake_case(transliterate(name))`, derived at export time and never
-   written back); an object's name slugified into the object charset.
+   or type's **slug** — for bundled keys the derived table entry
+   (`snake_case(key)`, §7.5a-1), for API-created keys the key itself
+   (slug == internal key at mint, §7.5a-6), for UI-created the stored
+   `apiObjectKey`, and only for pre-backfill keys with no stored slug
+   `snake_case(transliterate(name))` derived at export time and never
+   written back; an object's name slugified into the object charset.
 2. A suffix is **required** when: `base` is empty; `base` exceeds 60 code
    points (truncate to 60 first); or `base` is exactly equal
    (case-sensitive) to another entity's base in the namespace — in which
@@ -634,6 +646,17 @@ resolution rule, two emission policies — G's honest core, without the fork.
    namespace, the label-shadows-bare-term error, `x-output-only`.
 8. §13: `Options` gains a `Pins: all|min|none` emission knob and the
    strip operation; §15.3 closes with a pointer here.
+9. §3 **key vocabulary flips to the slug** (§7.5a-5): the "camelCase
+   stored keys… so documents resolve offline" rationale is rewritten —
+   offline resolution now rides the bundled derived table plus
+   slug==internal-key for API-created plus pins for BSON; the well-known
+   properties table re-spells (`icon_emoji`, `icon_image`, `due_date`);
+   every example in SPEC and FLAT follows.
+10. APIV2.md ledger edits: **C2 revised** (snake_case keys + camelCase
+    envelope + recorded carve-outs, replacing "no snake_case" — §7.5a-4),
+    R9's op default (§7.4), C4's `refs` → `pins`; plus the mechanical
+    sweep — `schemas.go` examples, served EBNF examples, SKILL.md, §8.x
+    notes, eval-harness tasks.
 
 Package semantics stay resolver-driven (create-missing remains what the
 wired resolver does — SPEC §3 is unchanged as *import* semantics); the API
@@ -729,9 +752,10 @@ key is the only key a caller ever sees.
 - *Migration:* the one strategy that requires changing shipped v2 behavior
   (v2 pins document keys today).
 
-**(b) The caller's key IS the internal key for API-created things; UI
-creates keep BSON behind a hardened slug** (v2's live shape —
-`resolver.go:386-401`, `schema_write.go:235-240` — completed):
+**(b) The caller's key IS the internal key for API-created things
+(normalized to snake_case at mint — §7.5a-6); UI creates keep BSON behind
+a hardened slug** (v2's live shape — `resolver.go:386-401`,
+`schema_write.go:235-240` — completed):
 
 - *Parallel creates:* same-key API creates **converge into one object**
   (§2.4-2) — retry-idempotency for free (§8.13's "convergent on retry" is
@@ -773,13 +797,148 @@ The hardening, common to all strategies and now scoped to (b):
    and blocks follow. A deterministic re-slug sweep is optional on top
    (§8-OQ3).
 3. Backfill for existing objects (lazy on first API touch vs migration
-   sweep) — its own GO issue; until then the exporter derives labels at
-   export time (deterministic within a document, pinned, so nothing
-   depends on the store having a slug).
+   sweep) — its own GO issue, and **a prerequisite for §7.5a's
+   slugs-always surface over old spaces** (a pre-`apiObjectKey` BSON
+   relation otherwise has no stable bare-op address; §7.5a-6). Until it
+   runs, the exporter derives labels at export time (deterministic within
+   a document, pinned, so documents never depend on the store having a
+   slug).
 4. Re-pointing a slug stays possible (v1 compat — v1 *is* shipped, unlike
    everything else here) and is document-safe by construction: documents
    pin to stored keys, so re-aiming a slug can never re-aim a stored
    reference — the slug is a branch, the key is the SHA.
+
+### 7.5a The surface rule: the slug is the only key the API speaks (adopted)
+
+Human decision, evaluated and **adopted with three modifications**: *API v2
+addresses types and properties by the api-key slug, always — one mechanism,
+snake_case, no exceptions.* `dueDate` is `due_date` on the wire; bundled,
+API-created and UI-created keys are indistinguishable to a caller — nobody
+has to know which kind they hold. This is not strategy (a): internal keys
+keep §7.5's behaviour end to end; only the surface changes. Stated once,
+for a reader to act on: **every place API v2 names a type or property —
+path, body, filter string, sort, field list, document key slot — it speaks
+the snake_case api key and nothing else; internal keys never appear on the
+wire.** The six questions the review posed, answered:
+
+**1. The mapping is total and collision-free today — but derived, not
+stored, for bundled keys.** Installed bundled relations and types *do*
+receive `apiObjectKey` — installs route through
+`createRelation`/`createObjectType` (`installer.go:109-134`), which call
+`injectApiObjectKey` with the bundled key — **but** old spaces predate the
+detail and `systemobjectreviser` does not backfill it (its revised-keys
+list, `systemobjectreviser.go:30-43`, has no `ApiObjectKey`), so the
+stored detail cannot be the authority for bundled keys. The authority is a
+**fixed derived table in code, both directions, built from the bundle**.
+Collision check, run against the real bundle with the real `strcase`
+library: **194 bundled relation keys → 194 distinct snake slugs; 29
+bundled type keys → 29 distinct; zero collisions even under
+case-and-separator folding.** No blocker. The same run proves string
+inversion is not the reverse mechanism — `mediaArtistURL` →
+`media_artist_url` → `ToLowerCamel` yields `mediaArtistUrl`, and
+`_score`/`_final_score` do not round-trip — so the reverse is a table
+lookup, never a case transform. Visible churn: 153 of 194 relation keys
+and 5 of 29 type keys (`objectType`, `relationOption`, `spaceView`,
+`diaryEntry`, `chatDerived`) change spelling on the wire.
+
+**2. Reverse lookup without a cache: one bounded query per request, never
+one per reference.** `apiObjectKey` is an ordinary detail (hidden,
+longtext, `source: details` — `bundle/relations.json:1725`) and is
+queryable through the same details-query path every v2 listing already
+uses (`ListProperties` filters on `resolvedLayout` identically,
+`discovery.go:246-265`); there is no dedicated index, so per-reference
+point queries would each pay a scan. The right shape is the per-request
+resolver pattern the codebase already has: `storeresolver.loadRelations`
+primes id↔key maps from one listing (`storeresolver.go:47-72`) — but
+`model.Relation` carries no `apiObjectKey`, so the listing switches to a
+details query returning `relationKey` + `apiObjectKey` + name + format,
+building slug↔key maps both directions once per request, bounded by the
+space's relation count (tens to low hundreds). ANOMALIES #9 already
+mandates prime-from-listing with cached point-lookup fallback; this is the
+same discipline with one more column.
+
+**3. The forgiving layer is separator-insensitive and lives server-side.**
+Under slugs the likely model miss is `dueDate` for `due_date` — a
+separator difference, not a case one. Rule: exact match always wins; the
+fallback folds (lowercase, strip `_` and `-`) and matches the folded key
+set; **two keys folding together → 400 `ambiguous_input` naming both,
+never a guess** (the git rule; the fold check over the bundle is clean
+today, so a future collision fails loud instead of silently re-pointing).
+Server-side, not wrapper-side: every tier benefits (raw REST, CLI, MCP),
+it is one implementation instead of N, and C4 already blesses server-side
+leniency for block suffixes. The wrapper's case-fold becomes a subset.
+
+**4. Scope: keys are snake; the envelope stays camel — deliberately.**
+"Snake_case everywhere" means the *user vocabulary*: type keys and
+property keys, wherever they appear. Envelope and DTO field names stay
+camelCase per C2 (`spaceId`, `etag`), with `dry_run` and `has_more` the
+existing recorded carve-outs (§8.8, C10); enum *values* stay lowerCamel —
+`objectType` the layout **value** coexists with `object_type` the type
+**key**, and that is intended. v1 has always mixed snake keys into a camel
+envelope without saying so; v2 writes it down. This **revises C2's
+letter** — its cell currently reads "no id/key duality, no snake_case" —
+while keeping its spirit (one vocabulary, no duality): a decisions-ledger
+edit, free because nothing shipped. C2's original camelCase rested on
+"the format's stored keys"; the BSON class made stored-keys-as-surface
+untenable, and the uniform slug is the repair.
+
+**5. Documents follow the surface — and pins shrink further.** C2 ("one
+vocabulary: the format's") cuts both ways: the API serves AnyBlock
+documents, so key slots in the *format* carry slugs too — `"due_date"`,
+`"icon_emoji"` — and SPEC §3's "camelCase stored keys" rule is overturned
+(a deliberate cascade, §7.3; the biggest consequence the decision's
+one-line form hides). An unpinned key label resolves through a four-step
+exact-lookup chain — no shape heuristics, ambiguity at any step fails
+loud: (1) exact stored-key match (API-created keys ARE their slug; legacy
+lowercase customs too); (2) space slug lookup over `apiObjectKey`
+(UI-created, backfilled); (3) the bundled derived table — offline-safe,
+since it ships in `pkg/lib/bundle` with every reader; (4) miss → the §8.1
+per-kind policy. Consequently `pins.properties`/`pins.types` carry
+**only** UI-created BSON keys, pre-backfill derived slugs, and twin-slug
+disambiguation; bundled and API-created keys travel bare. The
+coordinator's reading is confirmed and strengthened: slugs are *more*
+portable than stored keys (meaningful in an account that never saw the
+original; cross-account create-missing mints the slug as the key, so the
+BSON laundering §7.1 offered as a lever becomes the default), and even a
+pin-stripped document still restores in-account through chain step 2.
+
+**6. What gets worse — named honestly.**
+
+- **The cascade into the format is the real scope.** Every SPEC/FLAT
+  example, golden file, `filterstring` example and served EBNF example
+  (`due_date < currentWeek()`), `schemas.go` worked example, SKILL.md,
+  §8.x note and eval-harness task re-spells its keys. Mechanical, wide,
+  and only free right now.
+- **Mint-time uniqueness must check a union.** A UI property named "Due
+  Date" slugs to `due_date` — colliding with bundled `dueDate`'s derived
+  slug. The §7.5 hardening check must test new slugs against stored
+  slugs, stored keys *and* bundled-derived slugs (v1's cache check
+  partially covers this; the heart-side mint checks nothing — §2.3-1,
+  sharpened).
+- **Backfill is promoted from follow-up to prerequisite** for old spaces:
+  a pre-`apiObjectKey` custom BSON relation has no stored slug, and
+  deriving one from the *name* at read time is the HTML-anchor
+  anti-pattern (unstable under rename). Until backfill runs, such keys
+  resolve in documents via export-time pins but have no stable bare-op
+  address.
+- **Debugging vocabulary diverges from the wire**: logs, store dumps and
+  CRDT changes say `dueDate`/BSON where the API says `due_date`. Real but
+  small — v1 callers live with exactly this today; the discovery listing
+  can carry both columns.
+- **Convergence (§2.4/§7.5) survives, slightly strengthened.** To keep
+  slug == internal key for API creates, v2 must **normalize the caller's
+  key to snake_case at mint** (v1 already does — `type.go:225`,
+  `property.go:218`; v2's document path pins keys verbatim today and must
+  normalize on *create only* — resolution never rewrites an existing
+  key). The parallel-create analysis is unchanged in kind; normalization
+  widens the convergence class slightly (`dueDate2` and `due_date2` now
+  converge instead of forking into twin slugs) — the same-intent case,
+  desirable.
+
+**Verdict: adopt, with the three modifications** — the derived-table
+authority for bundled keys (1), the server-side folding fallback with
+loud collisions (3), and snake-at-mint on v2 creates plus the
+union collision check (6).
 
 ### 7.6 What remains to migrate, and the build order
 
@@ -788,7 +947,9 @@ documents, no third-party consumers, no wrapper installs. The complete
 list: the package's golden files and `testdata/` regenerate; the round-trip
 corpus reruns under `cmd/anyblockroundtrip` (expect the anomaly-#6 class to
 flip from accepted-loss to pass, and the acceptance bar to move to 100% on
-that class); APIV2.md takes the ledger edits (C4's `refs` → `pins`, R9's
+that class); the §7.5a re-spelling sweep (SPEC/FLAT examples, `schemas.go`,
+served EBNF examples, SKILL.md, §8.x notes, eval-harness tasks); APIV2.md
+takes the ledger edits (C2's key casing, C4's `refs` → `pins`, R9's
 op-default); SPEC.md takes §7.3. That is all. Every choice in this dossier
 gets an order of magnitude more expensive the day a third party ships a
 consumer — **this is the moment to make the format right.**
@@ -799,15 +960,18 @@ Build order:
    `#suffix` label + pin + warning; import side: pinned-id verbatim
    passthrough + warning.
 2. **SPEC revision + package** (§7.3): pins, the minting algorithm, entry
-   forms, the label-shadowing validation; regenerate goldens; rerun the
-   corpus.
-3. **Write-side defaults** (§7.4): strict on PATCH/PUT, `create: true`,
-   the ambiguous-name 400; APIV2.md ledger edit; wrapper pre-validation +
+   forms, the label-shadowing validation; the slug key vocabulary (§9-item
+   in §7.3) with the bundled derived table (both directions) and the
+   §7.5a-5 resolution chain; regenerate goldens; rerun the corpus.
+3. **The slug surface** (§7.5a): snake-at-mint on v2 creates, the
+   per-request slug↔key resolver (details-query listing), the server-side
+   folding fallback with loud collisions, the re-spelling sweep.
+4. **Write-side defaults** (§7.4): strict on PATCH/PUT, `create: true`,
+   the ambiguous-name 400; APIV2.md ledger edits; wrapper pre-validation +
    explicit create intent.
-4. **v2 read aliasing** for BSON keys via `pins.properties`/`pins.types`
-   (subsumes the interim apiObjectKey read fix).
-5. **Slug hardening** (§7.5): unique at mint, ambiguity-loud lookups;
-   backfill decision as its own issue.
+5. **Slug hardening** (§7.5): union collision check at mint,
+   ambiguity-loud lookups; backfill as its own issue — prerequisite for
+   §7.5a over old spaces.
 
 ## 8. Open questions — and the ones the no-compatibility constraint closed
 
@@ -832,9 +996,13 @@ Build order:
 
 1. **`apiObjectKey` mutability** — narrowed, not closed: v1 *is* shipped,
    so freezing breaks released behavior; under (b) the slug is
-   address-only, so mutability is survivable. Freeze at mint (Linear) vs
-   keep re-pointing with the uniqueness check. *Lean: keep mutable,
-   address-only, documented.*
+   address-only, so mutability is survivable — but §7.5a raises the
+   stakes (the slug is now the *entire* key surface: re-pointing one
+   changes what every subsequent request means, though never what stored
+   documents mean, since they pin stored keys). Freeze at mint (Linear)
+   vs keep re-pointing with the union uniqueness check. *Lean: keep
+   mutable, address-only, documented — revisit if telemetry shows
+   re-pointing in the wild.*
 2. **The (b) convergence acceptance**: concurrent different-intent creates
    of the same new key merge silently, one format winning (§2.4-2, §7.5).
    Accept with the sequential guard only, or add a detection surface (an
@@ -848,8 +1016,10 @@ Build order:
    PATCH/PUT are strict for everyone; the remaining question is whether
    integration-scoped keys should make POST strict too (Airtable is
    uniform-strict). Touches the API-key-scoping design, not this format.
-5. **Identifier-shaped property/type labels: SHOULD or MUST?** MUST keeps
-   every label typable in the filter-string grammar; SHOULD tolerates
-   exotic slugs at the cost of a structured-form-only escape hatch (the
-   grammar's existing rule). *Lean: MUST for minted labels, SHOULD for
+5. **Identifier-shaped property/type labels: SHOULD or MUST?** Largely
+   settled by §7.5a — slugs are identifier-shaped by construction, and
+   every minted label is a slug (possibly `#`-suffixed for twins, which
+   the filter grammar cannot type — the structured form is the escape
+   hatch, the grammar's existing rule). Remaining question: MUST for
+   hand-authored labels too? *Lean: MUST for minted, SHOULD for
    hand-authored.*
