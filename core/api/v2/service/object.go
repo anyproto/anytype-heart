@@ -600,7 +600,10 @@ func (b *objectRowBuilder) row(record database.Record) v2model.ObjectRow {
 }
 
 // typeKeysById maps type object ids to type keys — rows carry the type key
-// (C2), never the type object (C5).
+// (C2), never the type object (C5). Live types are spelled as their served
+// key (the slug for a BSON-keyed type, §7.5a — the spelling the search
+// type filter resolves right back); uninstalled corpses stay in the map so
+// their objects' rows keep a type, spelled by the honest internal key.
 func (s *V2Service) typeKeysById(spaceId string) (map[string]string, error) {
 	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
 		Filters: []database.FilterRequest{{
@@ -612,6 +615,7 @@ func (s *V2Service) typeKeysById(spaceId string) (map[string]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("query types in space %s: %w", spaceId, err)
 	}
+	keyTaken, slugCount := servedTypeKeySets(s.liveTypes(spaceId))
 	out := make(map[string]string, len(records))
 	for _, record := range records {
 		id := record.Details.GetString(bundle.RelationKeyId)
@@ -620,7 +624,11 @@ func (s *V2Service) typeKeysById(spaceId string) (map[string]string, error) {
 		if err != nil {
 			continue
 		}
-		out[id] = string(key)
+		if record.Details.GetBool(bundle.RelationKeyIsUninstalled) {
+			out[id] = string(key) // a corpse's slug vacated the namespace
+			continue
+		}
+		out[id] = servedKey(string(key), record.Details.GetString(bundle.RelationKeyApiObjectKey), keyTaken, slugCount)
 	}
 	return out, nil
 }

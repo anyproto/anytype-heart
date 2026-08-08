@@ -193,13 +193,17 @@ func (s *V2Service) ListTypes(ctx context.Context, spaceId string, offset, limit
 	if hasMore {
 		records = records[:limit]
 	}
+	keyTaken, slugCount := servedTypeKeySets(s.liveTypes(spaceId))
 	rows := make([]v2model.TypeRow, 0, len(records))
 	for _, record := range records {
 		key, err := domain.GetTypeKeyFromRawUniqueKey(record.Details.GetString(bundle.RelationKeyUniqueKey))
 		if err != nil {
 			continue
 		}
-		rows = append(rows, v2model.TypeRow{Key: string(key), Name: record.Details.GetString(bundle.RelationKeyName)})
+		rows = append(rows, v2model.TypeRow{
+			Key:  servedKey(string(key), record.Details.GetString(bundle.RelationKeyApiObjectKey), keyTaken, slugCount),
+			Name: record.Details.GetString(bundle.RelationKeyName),
+		})
 	}
 	return rows, total, hasMore, nil
 }
@@ -258,6 +262,10 @@ func (s *V2Service) ListProperties(ctx context.Context, spaceId string, offset, 
 	if hasMore {
 		records = records[:limit]
 	}
+	// the served spelling (§7.5a): a BSON-keyed property answers to its
+	// slug, so the slug is what the row advertises — iff it round-trips
+	// (servedKey); the count maps come from the full live set, not the page
+	keyTaken, slugCount := servedPropertyKeySets(s.liveProperties(spaceId))
 	rows := make([]v2model.PropertyRow, 0, len(records))
 	for _, record := range records {
 		key := record.Details.GetString(bundle.RelationKeyRelationKey)
@@ -265,7 +273,7 @@ func (s *V2Service) ListProperties(ctx context.Context, spaceId string, offset, 
 			continue
 		}
 		rows = append(rows, v2model.PropertyRow{
-			Key:    key,
+			Key:    servedKey(key, record.Details.GetString(bundle.RelationKeyApiObjectKey), keyTaken, slugCount),
 			Name:   record.Details.GetString(bundle.RelationKeyName),
 			Format: anyblockjson.FormatName(model.RelationFormat(record.Details.GetInt64(bundle.RelationKeyRelationFormat))),
 		})

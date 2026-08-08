@@ -430,6 +430,50 @@ func (e propertyEntry) propertyDefinition() anyblockjson.PropertyDefinition {
 	}
 }
 
+// servedKeySets primes the two maps the served-spelling rule needs from one
+// live set: every live stored key, and the live holder count per slug.
+func servedPropertyKeySets(entries []propertyEntry) (keys map[string]bool, slugCount map[string]int) {
+	keys = make(map[string]bool, len(entries))
+	slugCount = map[string]int{}
+	for _, entry := range entries {
+		keys[entry.Key] = true
+		if entry.Slug != "" {
+			slugCount[entry.Slug]++
+		}
+	}
+	return keys, slugCount
+}
+
+func servedTypeKeySets(entries []typeEntry) (keys map[string]bool, slugCount map[string]int) {
+	keys = make(map[string]bool, len(entries))
+	slugCount = map[string]int{}
+	for _, entry := range entries {
+		keys[entry.Key] = true
+		if entry.Slug != "" {
+			slugCount[entry.Slug]++
+		}
+	}
+	return keys, slugCount
+}
+
+// servedKey is the wire spelling of one live entry's key: the stored slug
+// iff the stored key is an opaque BSON AND the slug round-trips to this
+// entry through the §7.5a-5 chain — i.e. no live stored key equals it
+// (chain step 1 would win) and it has exactly one live holder (twins are
+// ambiguous). An address the API serves must resolve to the row it labels;
+// anything else keeps the honest BSON spelling. (The full §7.5a respelling
+// of READABLE keys — dueDate → due_date on the wire — is the deferred
+// sweep; readable stored keys keep their spelling until it lands.)
+func servedKey(storedKey, slug string, keyTaken map[string]bool, slugCount map[string]int) string {
+	if slug == "" || !isBsonLikeKey(storedKey) {
+		return storedKey
+	}
+	if keyTaken[slug] || slugCount[slug] != 1 {
+		return storedKey
+	}
+	return slug
+}
+
 // canonicalizeDocumentKeys rewrites an inbound document's addressing terms
 // to their canonical stored spellings BEFORE validation and import: the
 // envelope's type/templateFor (slug → internal type key — the import path
