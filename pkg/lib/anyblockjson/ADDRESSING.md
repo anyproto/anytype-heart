@@ -242,7 +242,7 @@ types/properties.
 | Export → import into another account | **name / self-contained key**. Foreign ids resolve to nothing — id-only documents are dead on arrival; create-missing (SPEC §3, §2a) rebuilds vocabulary from names/keys. | Ids: values dangle or, worse, collide with unrelated local ids. This is *the* case ids cannot serve. |
 | API v2 read | name + key (C2), compact object refs (C4). | Raw BSON keys: unusable, unguessable, ~10 tokens each — v2's live state for UI-created properties. Raw ids in name slots: D1 reaches the API read surface. |
 | API v2 write (agent authors JSON) | name + key, with loud resolution (§7.4). | Ids: agents mutate them in flight (−89% errors from short handles). Names alone with silent create-missing: the rename race (§3.1) and twin ambiguity (D2). |
-| Small-model authoring (wrapper tier) | names only, zero opaque tokens, no legend in sight (§7.1: "the model never sees or emits a 24-hex id"). | Anything composite or tagged: a 3B model strips suffixes and mangles unions; both forms then need accepting forever. |
+| Small-model authoring (wrapper tier) | names only, zero opaque tokens, no legend in sight (APIV2.md §7.1: "the model never sees or emits a 24-hex id"). | Anything composite or tagged: a 3B model strips suffixes and mangles unions; both forms then need accepting forever. |
 | Third-party integration / sync | **stable id + name**, both, per reference (the Kubernetes ownerReference shape). Sync must *detect* renames, not perceive a new entity. | Name-only: every rename is a delete+create to the integration. Id-only: cross-tenant sync impossible. |
 | Diff / merge two documents | stable anchors (ids/keys); names as values. | Name-as-identity: a rename diffs as remove+add everywhere the value occurs; twins misalign the diff. |
 
@@ -368,7 +368,7 @@ silently** — the lesson of D1.
 | A. mode selector | ◐ (per doc) | ◐ | ◐ | ◐ | ◐ | ◐ | med + reader fork | mixed |
 | C. inline `{id,name}` | ● | ● | ● | ● | ○ (unions) | ○ (per occurrence) | high (schemas, C13) | loud |
 | D. composite value | ◐ (echo-dependent) | ◐ | ◐ | ● | ○ (suffix loss) | ◐ | med (escaping, parser) | silent when suffix dropped |
-| **E. pins + strict writes** | **●** | **●** | ● (docs; bare ops fail loud, §7.4) | **●** | **●** (authors never see them) | **●** (zero when clean) | **med, additive** | **loud** |
+| **E. pins + strict writes** | **●** | **●** | ● (docs; bare ops fail loud, §7.4) | **●** | **●** (authors never see them) | ◐→● (a legend line per non-bundled key and per distinct select value; zero on fully-bundled docs; `?pins=` opts down) | **med-high, additive** (incl. slug hardening + v2 create rework, §7.5) | **loud** |
 | F. sidecar | ◐ (no twins) | ◐ | ◐ | ● | ● | ◐ | med | silent (sidecar lost) |
 | G. profiles | ◐ (per profile) | ● / ○ | ● / ○ | ○ / ● | ○ / ● | split | high (everything ×2) | split |
 | H. stored slugs | ○ today (§2.3) | ◐ | ● | ◐ | ◐ (stale slugs) | ● | med (hardening + backfill) | silent (shadowing) |
@@ -498,14 +498,21 @@ precedes use, §2):
 
 - `pins.types` — label → internal type key. Covers `type`, `templateFor`,
   the envelope `key` of a type document, `typeProperties[].objectTypes`.
-  Labels are the snake_case slugs (§7.5a); bundled and API-created type
-  keys travel bare (no pin — the slug resolves through the §7.5a chain).
+  Labels are the snake_case slugs (§7.5a). **Population (§7.5's (a)
+  decision):** canonical exports pin **every non-bundled key** — all new
+  keys are BSON, and a bare slug rides a mutable `apiObjectKey`, exactly
+  the silent re-aim class this dossier exists to kill; bundled keys
+  travel bare (the derived table resolves them) *except* a suffixed
+  bundled label (twin collision with a custom slug), which cannot resolve
+  through the table and carries a pin like any other. API reads may opt
+  down via `?pins=`.
 - `pins.properties` — label → stored relation key. Covers `properties` map
   keys, `typeProperties[].key`, dataview `properties[].key` / `groupBy` /
   column `property` / sort and filter `property`, the `property` block's
-  `key`, link-block `properties` entries. Labels are slugs; pins exist
-  only where the slug cannot resolve without one — UI-created BSON keys,
-  pre-backfill derived slugs, twin disambiguation (§7.5a-5).
+  `key`, link-block `properties` entries. Labels are slugs; population is
+  the same rule as `pins.types`: every non-bundled key pinned in
+  canonical exports, bundled bare unless suffixed, `?pins=` opt-down on
+  reads (§7.5a-5).
 - `pins.options` — per property label: label → option entry. Covers
   select/multiSelect values in `properties`, filter `value`s, sort
   `customOrder` entries, and §2a vocabulary entries.
@@ -528,13 +535,17 @@ grammar's existing rule for colliding keys). Object labels keep §9a's
 attributes, link destinations) that arbitrary strings would break.
 
 **Entry forms.** `pins.types`, `pins.properties`, `pins.objects`: always
-`"label": "<identity>"` (strings — these kinds never fall back through a
-name, see below). `pins.options`: `"label": "<optionId>"` when the label
+`"label": "<identity>"` (strings — on a miss these kinds fall back to the
+**label**, not a name, so the entry needs no payload; the normative miss
+rules are below). `pins.options`: `"label": "<optionId>"` when the label
 equals the option's exact current name, otherwise
 `"label": {"id": "<optionId>", "name": "<name>"}` — `name` present-but-empty
 means the option's name *is* empty; `name` absent means unknown (a dangling
 id). The object form exists only for options because options are the only
-kind whose pin-miss fallback needs a name to resolve or create by.
+kind whose pin-miss fallback needs a *name* to resolve or create by —
+property and type creation only ever proceeds from a definition
+(`typeProperties`, a type document), which carries its own name and
+format, so their pins stay bare strings.
 
 **Label minting (export) — normative.** A pure function of the namespace's
 (base, identity) pairs; entities are processed in ascending internal-
@@ -581,6 +592,30 @@ the miss-handling differ):
 | name > 60 code points | first 60 + `#suffix` (suffix mandatory) | map hit; the full name rides the entry's object form. |
 | dangling id (D1) | `#4f2a`, entry `{"id": …}` with no `name` | map hit → id unresolvable → identity kept verbatim + warning. **Never an option created from an id.** |
 
+**Pin-miss semantics by kind (normative).** The table above is the option
+rule; the flip to (a) makes the property/type miss a *hot path* — every
+cross-account import of a canonical document misses on foreign BSON pins —
+so it is specified, not left to the implementer:
+
+- **Options**: resolve-or-create by the entry's `name` under the §7.4 verb
+  rules; no name → identity verbatim + warning (the table above).
+- **Properties and types**: a pin whose stored key resolves to nothing
+  **degrades to its label** and re-resolves through the §7.5a-5 chain,
+  with a warning naming the label and the lost key. It never writes the
+  pinned key verbatim — a BSON in a key slot is the D1 shape — and never
+  hard-errors on its own, which would break cross-account restore.
+  Whether the chain's step 4 then *creates* is the §7.4 kind axis:
+  creation proceeds only from a definition (`typeProperties`, a type
+  document — minting a fresh BSON with `apiObjectKey` = label, §7.5);
+  a bare reference follows the §8.1 policy (API: reject with
+  did-you-mean; package-level import: the label passes through as the
+  key for the wiring to reconcile, today's §3 degradation). Import
+  wiring therefore lands **definitions before references**, so a batch
+  resolves its own vocabulary — chain step 2 hits the slugs the batch's
+  definitions just minted.
+- **Objects**: §9a unchanged — never created; unresolvable refs dangle
+  with a warning.
+
 **Writer rules** (a hand-authored or agent-edited document): a label is
 only a label if it has a pin entry — a string without one is a bare term of
 the slot's vocabulary, full stop. When authoring pins: any label within the
@@ -598,6 +633,7 @@ unnamed object):
   "version": 1,
   "type": "task",
   "pins": {
+    "properties": { "priority": "6a7663db61fab21cd4b9e745" },
     "objects": { "roman": "bafyreidfmzjh…", "x7ke": "bafyreiuv…x7ke" },
     "options": { "status": {
       "High#4f2a": { "id": "bafy…4f2a", "name": "High" },
@@ -605,7 +641,8 @@ unnamed object):
       "#77d0":     { "id": "bafy…77d0", "name": "" }
     } }
   },
-  "properties": { "name": "Q3 report", "status": ["High#4f2a"] },
+  "properties": { "name": "Q3 report", "priority": 2,
+                  "status": ["High#4f2a"] },
   "blocks": [ { "type": "paragraph",
     "text": "Review with <mention objectId=\"roman\">Roman</mention>, cf. <mention objectId=\"x7ke\">(untitled)</mention>" } ]
 }
@@ -617,9 +654,16 @@ Cross-account import: the option ids miss; `High#4f2a` and `High#9c1e`
 fall back to their entries' `name` and **collapse into one created
 "High"** (correct there — the twins are indistinguishable to a human in
 the target space); `#77d0` has an empty name, cannot be created, and is
-dropped with a warning naming it. Object pins follow §9a (never created —
-`roman` resolves or dangles with a warning). Every outcome is visible in
-`created`/`warnings`; nothing happens silently.
+dropped with a warning naming it. The property pin: same-space,
+`priority` resolves through its pin to the BSON relation; cross-account
+the BSON misses and the pin **degrades to its label** — `priority`
+re-enters the §7.5a-5 chain and resolves against the vocabulary the
+batch's own definitions just created (a type document's `typeProperties`
+entry minted a fresh BSON stamped `apiObjectKey: priority`), warning if
+the batch carries no such definition; the BSON is never written as a
+key. Object pins follow §9a (never created — `roman` resolves or dangles
+with a warning). Every outcome is visible in `created`/`warnings`;
+nothing happens silently.
 
 **The D1 fix on export:** `optionName` misses stop emitting the raw id as a
 name. The value becomes a minted `#suffix` label pinned to the raw id, plus
@@ -630,8 +674,8 @@ representable, so it stops being invisible.
 
 | Shape | Pins |
 |---|---|
-| Canonical export / backup (`Marshal` default) | **all** — every option value, every non-slug key. Lossless; a backup restored after a rename re-points correctly. |
-| API v2 default read | all (the PUT round trip is a document path and inherits the protection; cost is near zero on clean documents); `?pins=min|none` opts down. |
+| Canonical export / backup (`Marshal` default) | **all** — every option value, every non-bundled key (plus any suffixed bundled label). Lossless; a backup restored after a rename re-points correctly. |
+| API v2 default read | all (the PUT round trip is a document path and inherits the protection; cost = one legend line per non-bundled key and per distinct select value — zero on fully-bundled documents); `?pins=min|none` opts down. |
 | Outline / prompt / example shapes | none (matches `OmitIds`+labels today). |
 | Agent-authored documents | none — pins are `x-output-only` in the schema; authors write bare names and keys, exactly as now. |
 
@@ -648,8 +692,10 @@ resolution rule, two emission policies — G's honest core, without the fork.
 - **Cross-account:** unchanged mechanics (names/keys + create-missing on
   import), now with an explicit dial: keep pins for fidelity, strip for
   laundering.
-- **API read:** unchanged vocabulary (C2 intact); BSON keys disappear
-  behind slug labels; D1 becomes a warning instead of garbage.
+- **API read:** one vocabulary, revised — option names unchanged, keys
+  re-spell to slugs (§7.5a-4 amends C2's letter; 153 bundled keys change
+  spelling); BSON keys disappear behind slug labels; D1 becomes a warning
+  instead of garbage.
 - **API write:** documents (POST/PUT) inherit pin protection; bare ops get
   the §7.4 strict default. The rename race on bare ops now fails loudly
   *before* damage instead of minting twins.
@@ -683,10 +729,11 @@ resolution rule, two emission policies — G's honest core, without the fork.
    strip operation; §15.3 closes with a pointer here.
 9. §3 **key vocabulary flips to the slug** (§7.5a-5): the "camelCase
    stored keys… so documents resolve offline" rationale is rewritten —
-   offline resolution now rides the bundled derived table plus
-   slug==internal-key for API-created plus pins for BSON; the well-known
-   properties table re-spells (`icon_emoji`, `icon_image`, `due_date`);
-   every example in SPEC and FLAT follows.
+   offline resolution now rides the bundled derived table plus pins for
+   every non-bundled (BSON) key, with the space slug lookup as the
+   in-account path (§7.5's (a) decision); the well-known properties
+   table re-spells (`icon_emoji`, `icon_image`, `due_date`); every
+   example in SPEC and FLAT follows.
 10. APIV2.md ledger edits: **C2 revised** (snake_case keys + camelCase
     envelope + recorded carve-outs, replacing "no snake_case" — §7.5a-4),
     R9's op default (§7.4), C4's `refs` → `pins`; plus the mechanical
@@ -771,11 +818,14 @@ facts the weighing had missed. Each is verified below; together they flip
 the decision. The framing correction stands unchanged: the pin-map key
 being a *slug* for properties/types while options use *names* is C2's own
 per-kind vocabulary, not a new duality. And a second §7.5a consequence
-now frames everything: once the surface is slug-only, the internal-key
-choice is **invisible to callers and to documents** — the §7.5a-5
-resolution chain and the pin rules are identical under either strategy —
-so what remains is pure object-lifecycle semantics. There the evidence is
-one-sided.
+now frames the weighing: once the surface is slug-only, the internal-key
+choice is **invisible to callers**, and the resolution *mechanics* — the
+§7.5a-5 chain, the label rules — are identical under either strategy.
+What is **not** identical is pin population and backfill scope: (a) pins
+every non-bundled key in canonical exports and needs backfill for every
+pre-slug custom key, where (b) would have pinned and backfilled less — a
+real cost, small and bounded, and the decision survives it. The deciding
+axis is object-lifecycle semantics, where the evidence is one-sided.
 
 **What (b) actually costs — two data problems, verified in source:**
 
@@ -843,7 +893,7 @@ value is ever reinterpreted.
 | concurrent same-key, same intent | converge (nice, rarely load-bearing) | twin slugs; repair collapses or suffixes |
 | delete, then recreate the key | `ErrTreeExists` raw error / "already exists" corpse / resurrection with old content | **clean create, fresh BSON**; slug policy names it |
 | retry idempotency | C8 + existence guard (convergence adds ~nothing) | C8 + existence guard — identical |
-| document / pin shape (§7.5a-5) | identical | identical |
+| document / pin mechanics (§7.5a-5) | identical | identical — but (a) pins more (every non-bundled key) and backfills more; small, bounded |
 | failure mode | **silent, data-level** | **loud, name-level** |
 
 **Decision: (a).** Every new type and property mints a BSON internal key
@@ -864,13 +914,15 @@ change.
    slugs + stored keys + bundled-derived slugs), ambiguity-loud lookup
    everywhere (400 listing candidates), and the §8-OQ3 repair sweep as
    the concurrency backstop.
-2. **Archived and uninstalled objects vacate the slug namespace.**
-   Delete-then-recreate is (a)'s headline win, so the mint-time existence
-   probe must deliberately skip corpses — note today's guard has it
-   exactly backwards (blind to archived, blocked by uninstalled —
-   §2.3-6/§7.5-2) — and reviving an archived object whose slug has been
-   re-taken re-slugs the *revived* object with a suffix, loudly. Policy
-   details are §8-OQ2.
+2. **Archived and uninstalled objects vacate the slug namespace** — this
+   requirement assumes §8-OQ2's lean (vacate + re-slug-on-revive) and is
+   what an implementer builds unless that lean is overturned; overturning
+   it edits this item and nothing else. Delete-then-recreate is (a)'s
+   headline win, so the mint-time existence probe must deliberately skip
+   corpses — note today's guard has it exactly backwards (blind to
+   archived, blocked by uninstalled — §2.3-6/§7.5-2) — and reviving an
+   archived object whose slug has been re-taken re-slugs the *revived*
+   object with a suffix, loudly.
 3. **v2 code changes** (the strategy-(b) remnants): stop writing
    `RelationKeyRelationKey` from the caller's key
    (`schema_write.go:455`), stop deriving type uniqueKeys from document
@@ -885,14 +937,17 @@ change.
 5. Backfill for existing objects (lazy on first API touch vs migration
    sweep) — its own GO issue, and **a prerequisite for §7.5a's
    slugs-always surface over old spaces** (a pre-`apiObjectKey` BSON
-   relation otherwise has no stable bare-op address; §7.5a-6). Until it
-   runs, the exporter derives labels at export time (deterministic within
-   a document, pinned, so documents never depend on the store having a
-   slug).
-6. Re-pointing a slug stays possible (v1 compat — v1 *is* shipped, unlike
-   everything else here) and is document-safe by construction: documents
-   pin to stored keys, so re-aiming a slug can never re-aim a stored
-   reference — the slug is a branch, the key is the SHA.
+   relation otherwise has no stable bare-op address; §7.5a-6). It
+   **gates build step 3's bare-op surface for old accounts** — §7.6
+   states the ordering. Until it runs, the exporter derives labels at
+   export time (deterministic within a document, pinned, so documents
+   never depend on the store having a slug).
+6. Re-pointing a slug stays possible — the §8-OQ1 lean (keep mutable,
+   address-only), assumed here; overturning it edits this item and
+   nothing else. It is v1 compat (v1 *is* shipped, unlike everything
+   else here) and document-safe by construction: documents pin to stored
+   keys, so re-aiming a slug can never re-aim a stored reference — the
+   slug is a branch, the key is the SHA.
 
 ### 7.5a The surface rule: the slug is the only key the API speaks (adopted)
 
@@ -901,9 +956,11 @@ addresses types and properties by the api-key slug, always — one mechanism,
 snake_case, no exceptions.* `dueDate` is `due_date` on the wire; bundled,
 API-created and UI-created keys are indistinguishable to a caller — nobody
 has to know which kind they hold. The rule is orthogonal to the
-internal-key strategy — it holds identically under (a) and (b), which is
-exactly what let §7.5 decide between them on lifecycle grounds alone;
-§7.5's (a) decision now says what sits beneath it. Stated once,
+internal-key strategy — it holds under (a) and (b) alike, with identical
+resolution mechanics and differing only in pin population and backfill
+scope (§7.5) — which is what let §7.5 weigh lifecycle semantics as the
+deciding axis; its (a) decision now says what sits beneath the surface.
+Stated once,
 for a reader to act on: **every place API v2 names a type or property —
 path, body, filter string, sort, field list, document key slot — it speaks
 the snake_case api key and nothing else; internal keys never appear on the
@@ -981,28 +1038,31 @@ edit, free because nothing shipped. C2's original camelCase rested on
 "the format's stored keys"; the BSON class made stored-keys-as-surface
 untenable, and the uniform slug is the repair.
 
-**5. Documents follow the surface — and pins shrink further.** C2 ("one
-vocabulary: the format's") cuts both ways: the API serves AnyBlock
+**5. Documents follow the surface — pin population is §7.5's to decide.**
+(The earlier headline here read "and pins shrink further" — superseded by
+the (a) flip, which pins every non-bundled key in canonical exports.) C2
+("one vocabulary: the format's") cuts both ways: the API serves AnyBlock
 documents, so key slots in the *format* carry slugs too — `"due_date"`,
 `"icon_emoji"` — and SPEC §3's "camelCase stored keys" rule is overturned
 (a deliberate cascade, §7.3; the biggest consequence the decision's
-one-line form hides). An unpinned key label resolves through a four-step
-exact-lookup chain — no shape heuristics, ambiguity at any step fails
-loud: (1) exact stored-key match (legacy readable custom keys, the
-`artist` class); (2) space slug lookup over `apiObjectKey` (every
-non-bundled key — under §7.5's (a) decision API- and UI-created keys are
-BSON alike, and both carry a mint-time slug); (3) the bundled derived
-table — offline-safe, since it ships in `pkg/lib/bundle` with every
-reader; (4) miss → the §8.1 per-kind policy. Consequently
-`pins.properties`/`pins.types` carry **only** the non-bundled (BSON)
-keys, pre-backfill derived slugs, and twin-slug disambiguation; bundled
-keys travel bare, and canonical exports pin each non-bundled key once
-(the lossless internal identity) while API reads may pin-min, since
-chain step 2 resolves slugs in-account without pins. The
-coordinator's reading is confirmed and strengthened: slugs are *more*
-portable than stored keys (meaningful in an account that never saw the
-original; cross-account create-missing mints the slug as the key, so the
-BSON laundering §7.1 offered as a lever becomes the default), and even a
+one-line form hides). A bare key term (a string with no pin entry — §7.1)
+resolves through a four-step exact-lookup chain — no shape heuristics,
+ambiguity at any step fails loud: (1) exact stored-key match (legacy
+readable custom keys, the `artist` class); (2) space slug lookup over
+`apiObjectKey` (every non-bundled key — under §7.5's (a) decision API-
+and UI-created keys are BSON alike, and both carry a mint-time slug);
+(3) the bundled derived table — offline-safe, since it ships in
+`pkg/lib/bundle` with every reader; (4) miss → the §8.1 per-kind policy.
+Population follows §7.1: canonical exports pin every non-bundled key
+(the lossless internal identity) plus any suffixed bundled label;
+bundled keys otherwise travel bare; API reads may pin-min via `?pins=`,
+since chain step 2 resolves slugs in-account without pins. The
+coordinator's portability reading is confirmed: slugs are *more*
+portable than stored keys — meaningful in an account that never saw the
+original; cross-account create-missing **mints a fresh BSON and stamps
+the slug as its `apiObjectKey`** (§7.5), so the readable slug is what
+crosses accounts while the BSON stays disposable plumbing — the
+laundering conclusion survives with the mechanism corrected — and even a
 pin-stripped document still restores in-account through chain step 2.
 
 **6. What gets worse — named honestly.**
@@ -1054,7 +1114,11 @@ flip from accepted-loss to pass, and the acceptance bar to move to 100% on
 that class); the §7.5a re-spelling sweep (SPEC/FLAT examples, `schemas.go`,
 served EBNF examples, SKILL.md, §8.x notes, eval-harness tasks); APIV2.md
 takes the ledger edits (C2's key casing, C4's `refs` → `pins`, R9's
-op-default); SPEC.md takes §7.3. That is all. Every choice in this dossier
+op-default); SPEC.md takes §7.3. The one store-touching item is the §7.5
+requirement-5 backfill (`apiObjectKey` for pre-slug custom keys in old
+accounts — the single place where "nothing shipped" does not apply,
+because the *stores* exist even though the format's consumers do not).
+That is all. Every choice in this dossier
 gets an order of magnitude more expensive the day a third party ships a
 consumer — **this is the moment to make the format right.**
 
@@ -1072,17 +1136,26 @@ Build order:
    caller's key (`schema_write.go:455`), stop deriving type uniqueKeys
    from document keys (`schema_write.go:235-240`), mint BSON + slug in
    `creatingResolvers.PropertyId` (`resolver.go:386-401`); snake-at-mint
-   for the slug; the per-request slug↔key resolver (details-query
-   listing); the server-side folding fallback with loud collisions; the
-   re-spelling sweep; the §2a format check the SPEC already promises
-   (§7.5 requirement 4).
+   for the slug **with the union collision check** (stored slugs + stored
+   keys + bundled-derived slugs — the check ships WITH the mint it
+   guards, never after it: a custom "Due Date" colliding with bundled
+   `due_date` must be impossible from the first minted slug) and
+   ambiguity-loud lookups; the per-request slug↔key resolver
+   (details-query listing); the server-side folding fallback with loud
+   collisions; the re-spelling sweep; the §2a format check the SPEC
+   already promises (§7.5 requirement 4). **Ordering:** for fresh spaces
+   this step is self-contained; over old spaces its *bare-op* surface is
+   gated on step 5's backfill (§7.5 requirement 5) — pre-slug custom
+   keys stay reachable through documents and pins in the interim, and
+   the gate is only about bare ops naming them.
 4. **Write-side defaults** (§7.4): strict on PATCH/PUT, `create: true`,
    the ambiguous-name 400; APIV2.md ledger edits; wrapper pre-validation +
    explicit create intent.
-5. **Slug hardening** (§7.5): union collision check at mint,
-   ambiguity-loud lookups, the corpse policy (archived/uninstalled vacate
-   the namespace; fix the inverted existence guard — §2.3-6, §8-OQ2);
-   backfill as its own issue — prerequisite for §7.5a over old spaces.
+5. **Slug lifecycle** (§7.5): the corpse policy (archived/uninstalled
+   vacate the namespace; fix the inverted existence guard — §2.3-6,
+   §8-OQ2) and the backfill (lazy vs sweep — its own GO issue) that
+   un-gates step 3 for old accounts; the §8-OQ3 repair sweep if
+   telemetry warrants it.
 
 ## 8. Open questions — and the ones the no-compatibility constraint closed
 
@@ -1117,7 +1190,8 @@ Build order:
    readable handle a property has. Freeze at mint (Linear) vs keep
    re-pointing with the union uniqueness check. *Lean: keep mutable,
    address-only, documented — revisit if telemetry shows re-pointing in
-   the wild.*
+   the wild. §7.5 requirement 6 assumes this lean; overturning it edits
+   that requirement and nothing else.*
 2. **The corpse policy — archived/uninstalled objects and the slug
    namespace** (§7.5 requirement 2): corpses vacate the namespace so
    delete-then-recreate mints cleanly; reviving an archived object whose
@@ -1125,7 +1199,10 @@ Build order:
    Alternatives: block the create and steer to unarchive (loses (a)'s
    headline win), or refuse revival into a taken slug. Also covers
    fixing today's inverted guard (blind to archived, blocked by
-   uninstalled — §2.3-6). *Lean: vacate + re-slug-on-revive.*
+   uninstalled — §2.3-6). *Lean: vacate + re-slug-on-revive. §7.5
+   requirement 2 assumes this lean and is what gets built unless it is
+   overturned; overturning it edits that requirement and build step 5,
+   nothing else.*
 3. **Twin-slug repair**: is the loud-ambiguity lookup error (the floor)
    enough, or add a deterministic re-slug sweep (suffix the younger by
    internal-key order — convergent, no coordination)? Elevated by the
