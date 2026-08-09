@@ -540,6 +540,58 @@ content; Phase 8 is new and exists only because of the v0.2 decision.
 - **Not v1 removal.** Phase 8 makes `/v1` *deprecable*, and §6's clock can
   then start. Removal is its own migration with its own notice period.
 
+### 10.3 Phase 9 — space-optional object routes (decided 2026-08-09)
+
+Not completeness and not a token knob — a surface simplification that
+happens to save tokens. **Object ids are content-addressed (the CID of the
+object header), so they are unique across spaces**; the `spaceId` in
+`/v2/spaces/{spaceId}/objects/{objectId}` is redundant whenever the object
+id is known.
+
+The binding already exists and is a keyed point lookup, not a scan:
+`spaceresolverstore.GetSpaceId(objectId)` (`FindId` on the primary key,
+`pkg/lib/localstore/objectstore/spaceresolverstore/store.go:44`), exposed
+as the `idresolver.Resolver` component (`ResolveSpaceID` /
+`ResolveSpaceIdWithRetry`, `core/block/object/idresolver/resolver.go:32`)
+and already consumed by `core/block/service.go:215` and `fileobject`. This
+is exposing existing machinery, not building it.
+
+**What it buys.** `space` disappears from every object-addressed route and
+tool — `read`, `set_properties`, `add_blocks`, `edit_text`, and
+`check_item`/`move_block`/`delete_block`/`set_cell` in the large tier. It
+stays where it is genuinely part of the intent: `find`, `describe`,
+`create` (you search *in* a space, create *in* a space). For the wrapper's
+small tier that removes a required argument from half the tools — and it
+is the argument a model is most likely to omit or invent, because it never
+appears in the user's request.
+
+**Build items:**
+
+1. **[build]** an `apicore` port for the resolver, carried on `V2Deps` (the
+   same shape as the existing object adapters).
+2. **[build]** space-optional routes (`GET /v2/objects/{objectId}` and the
+   object-addressed mutations), resolving the space before anything else.
+   **Use `ResolveSpaceIdWithRetry`** — the binding is eventual, so a plain
+   resolve immediately after a create will intermittently 404, which is the
+   worst class of bug to ship on the commonest agent flow.
+3. **[build]** grant enforcement **after** resolution. `ensureSpaceGrant`
+   reads the space from the path param today; a space-less route needs a
+   new class in the fail-closed route registry (§8.10), or the conformance
+   walk refuses it outright — which is the M1 trap in a new form: an
+   unregistered route class is exactly what that registry exists to catch.
+4. **[decide]** the error for an object in a space the key does not hold:
+   403 naming the space confirms the object exists somewhere; 404 hides it.
+   Enumeration is not a real threat against 59-char CIDs, so the lean is
+   403 with the grant message — but it should be a deliberate call.
+
+**Sequencing note.** A free partial exists first: the wrapper's `find`
+already returns handles, so it can remember the space each handle came from
+and fill the path itself — no API change, covers the dominant
+find → read → edit flow, fails only on a cold-pasted id. Do it in the API
+anyway, for the same reason locators belong there: one implementation
+serves the CLI, both MCP tiers, raw HTTP and third-party SDKs, and the
+wrapper-side version helps nobody who is not using the wrapper.
+
 ## 11. Documentation architecture — the actual deliverable
 
 The completeness decision was made *for* the documentation, so the doc plan is

@@ -594,3 +594,15 @@ search results**, not of documents — a search row measures ≈ 50 tok of
 which ≈ 30 is the object id (§3), and search returns rows by the dozen. A
 space-wide short id would pay there far more than it ever could inside a
 single document, which is the opposite of where the refs legend was aimed.
+
+**3. Space-optional object routes (decided 2026-08-09 — specified in
+`APIV2_SURFACES.md` §10.3).** Object ids are content-addressed and unique
+across spaces, and `spaceresolverstore.GetSpaceId` already binds
+objectId → spaceId as a keyed point lookup — so `spaceId` is redundant on
+any route that already names the object. It drops a required argument from
+every object-addressed tool, which matters here for a reason this review
+keeps running into: the tokens are a rounding error, but `space` is the
+argument a small model is most likely to omit or invent, because it never
+appears in the user's request. Recorded here for the cross-reference; it is
+a surface simplification, not a token knob, and the build items and the
+403-vs-404 decision live in the surfaces doc.
