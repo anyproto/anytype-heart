@@ -112,13 +112,15 @@ func ListTypesV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Produce	json
 //	@Param		space_id	path		string			true	"Space id"
 //	@Param		type		path		string			true	"Type key"
+//	@Param		ids			query		string			false	"compact (default) = the edit shape with short labels for minted view/block ids; full = the export shape with full ids"
 //	@Success	200			{object}	map[string]any	"The kind:objectType AnyBlock document + etag"
 //	@Failure	404			{object}	v2model.Error	"Type not found"
 //	@Security	bearerauth
 //	@Router		/v2/spaces/{space_id}/types/{type} [get]
 func GetTypeV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		body, etag, err := s.GetType(c.Request.Context(), c.Param("space_id"), c.Param("type"))
+		body, etag, err := s.GetType(c.Request.Context(), c.Param("space_id"), c.Param("type"),
+			v2service.V2ObjectQuery{Ids: c.Query("ids")})
 		if err != nil {
 			RespondV2Error(c, err)
 			return

@@ -170,7 +170,7 @@ func TestV2CorpsePolicyTypes(t *testing.T) {
 
 	t.Run("GET of a UI-deleted type is 404 with live candidates", func(t *testing.T) {
 		fx := corpsePolicyFixture(t)
-		_, _, err := fx.GetType(context.Background(), testSpaceId, "corpsetype")
+		_, _, err := fx.GetType(context.Background(), testSpaceId, "corpsetype", V2ObjectQuery{})
 		apiErr := requireNotFoundError(t, err)
 		assert.Contains(t, apiErr.Message, "livetype")
 		assert.NotContains(t, apiErr.Message, "corpsetype: ")

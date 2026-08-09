@@ -269,12 +269,37 @@ func TestV2GetType(t *testing.T) {
 		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "type-task").Return(read, nil)
 
 		// when
-		body, etag, err := fx.GetType(context.Background(), testSpaceId, "task")
+		body, etag, err := fx.GetType(context.Background(), testSpaceId, "task", V2ObjectQuery{})
 
 		// then
 		require.NoError(t, err)
 		assert.NotEmpty(t, etag)
 		assert.NotEmpty(t, body)
+	})
+
+	t.Run("?ids= rides through to the type read — the export shape is one query parameter away", func(t *testing.T) {
+		// given: a type document with minted-shape block ids; GetType used to
+		// hardcode V2ObjectQuery{}, so §8.25's "the export shape is one query
+		// parameter away" was false for types
+		fx := newV2Fixture(t)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("type-task"),
+				bundle.RelationKeyName:           domain.String("Task"),
+				bundle.RelationKeyUniqueKey:      domain.String("ot-task"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
+			},
+		})
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "type-task").Return(testObjectReadLongIds(), nil).Times(2)
+
+		// when / then: default = labels, full = the stored ids
+		compact, _, err := fx.GetType(context.Background(), testSpaceId, "task", V2ObjectQuery{})
+		require.NoError(t, err)
+		assert.Contains(t, string(compact), `"id":"bbbb1"`, "the default type read is the edit shape")
+
+		full, _, err := fx.GetType(context.Background(), testSpaceId, "task", V2ObjectQuery{Ids: V2IdsFull})
+		require.NoError(t, err)
+		assert.Contains(t, string(full), `"id":"`+testMintedParentId+`"`, "?ids=full serves the stored ids")
 	})
 
 	t.Run("unknown key is a 404 listing the space's type keys with did-you-mean", func(t *testing.T) {
@@ -302,11 +327,11 @@ func TestV2GetType(t *testing.T) {
 		// through the §7.5a-3 fold layer (exact-first, fold as fallback):
 		// zero retries instead of one repaired retry (§8.21)
 		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "type-page").Return(testObjectRead(), nil)
-		_, _, err := fx.GetType(context.Background(), testSpaceId, "Page")
+		_, _, err := fx.GetType(context.Background(), testSpaceId, "Page", V2ObjectQuery{})
 		require.NoError(t, err)
 
 		// when: a genuine miss (no fold candidate) keeps the keyed 404
-		_, _, err = fx.GetType(context.Background(), testSpaceId, "Pages")
+		_, _, err = fx.GetType(context.Background(), testSpaceId, "Pages", V2ObjectQuery{})
 
 		// then
 		var v2Err *v2model.Error
@@ -321,7 +346,7 @@ func TestV2GetType(t *testing.T) {
 		fx := newV2Fixture(t)
 
 		// when
-		_, _, err := fx.GetType(context.Background(), testSpaceId, "nope")
+		_, _, err := fx.GetType(context.Background(), testSpaceId, "nope", V2ObjectQuery{})
 
 		// then
 		var v2Err *v2model.Error

@@ -239,8 +239,11 @@ func TestV2GetObjectIdShapes(t *testing.T) {
 		assert.Equal(t, testLinkTargetId, blocks[4].(map[string]any)["objectId"], "object refs stay full inline — no legend hop to write one back")
 	})
 
-	t.Run("ids=full: full block ids and the refs legend", func(t *testing.T) {
-		// given
+	t.Run("ids=full: full block ids AND full inline object refs — no legend", func(t *testing.T) {
+		// given — the export shape used to carry the refs legend, which this
+		// work's own measurement shows as a pure loss (+0.6 % even on a
+		// ref-heavy document) and §8.25 itself calls a write-back trap; no
+		// shape serves it now, so full block ids come without the indirection
 		fx := newV2Fixture(t)
 		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(testObjectReadWithRef(), nil)
 
@@ -253,10 +256,8 @@ func TestV2GetObjectIdShapes(t *testing.T) {
 		blocks := doc["blocks"].([]any)
 		require.Len(t, blocks, 5)
 		assert.Equal(t, testMintedParentId, blocks[1].(map[string]any)["id"], "the export shape must not relabel — relabeling is lossy")
-		refs, ok := doc["refs"].(map[string]any)
-		require.True(t, ok, "the export shape carries the legend")
-		label := blocks[4].(map[string]any)["objectId"].(string)
-		assert.Equal(t, testLinkTargetId, refs[label], "the legend inverts the label")
+		assert.NotContains(t, doc, "refs", "no shape serves the legend (input resolution stays total, SPEC §9a)")
+		assert.Equal(t, testLinkTargetId, blocks[4].(map[string]any)["objectId"], "object refs are full inline")
 	})
 
 }

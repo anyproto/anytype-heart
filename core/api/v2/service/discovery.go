@@ -213,8 +213,11 @@ func (s *V2Service) ListTypes(ctx context.Context, spaceId string, offset, limit
 }
 
 // GetType returns the kind:"objectType" AnyBlock document for one type key,
-// read via the live smartblock state like any object (§8).
-func (s *V2Service) GetType(ctx context.Context, spaceId, typeKey string) ([]byte, string, error) {
+// read via the live smartblock state like any object (§8). The query rides
+// through to GetObject, so `?ids=full` works here exactly as on objects —
+// the export shape must be one query parameter away on every document read
+// (§8.25 promised it; hardcoding V2ObjectQuery{} broke it for types).
+func (s *V2Service) GetType(ctx context.Context, spaceId, typeKey string, q V2ObjectQuery) ([]byte, string, error) {
 	if err := s.ensureSpace(ctx, spaceId); err != nil {
 		return nil, "", err
 	}
@@ -222,7 +225,7 @@ func (s *V2Service) GetType(ctx context.Context, spaceId, typeKey string) ([]byt
 	if err != nil {
 		return nil, "", err
 	}
-	return s.GetObject(ctx, spaceId, entry.Id, V2ObjectQuery{})
+	return s.GetObject(ctx, spaceId, entry.Id, q)
 }
 
 // GetTypeSchema is the [build] GenerateSchema endpoint — the derived

@@ -52,29 +52,24 @@ type V2ObjectQuery struct {
 
 // objectReadPlan is the validated form of a V2ObjectQuery.
 //
-// The two id axes are INDEPENDENT because their economics are opposite
-// (TOKENS §1.2/§10, SPEC §9a): relabeling block ids to short doc-local
-// suffixes is a pure win (19–22 % of a read on minted 24-hex ids, and a
-// 2–3 token label is what a small model echoes back correctly), while
-// shortening object refs through the `refs` legend is a measured net LOSS
-// on real documents — 85–90 % of refs are used exactly once, so the legend
-// lines cost more than the inline ids they replace, and they add an
-// indirection that traps write-back of object-valued properties. `?ids=`
-// used to move both at once.
+// One id axis moves per shape: block-id relabeling. Object refs stay full
+// inline on EVERY shape — the `refs` legend is a measured net loss on every
+// corpus document (TOKENS §1.2, §8.25: +0.6 % even on the ref-heaviest
+// one), and the indirection traps write-back of object-valued properties.
+// Legend RESOLUTION on input is untouched and total (SPEC §9a), so a
+// document arriving with a legend still writes back.
 type objectReadPlan struct {
 	wantProperties bool
 	wantBlocks     bool
 	outline        bool
 	block          string
-	// compactRefs shortens object refs via the refs legend — lossless, the
-	// export/round-trip shape only.
-	compactRefs bool
-	// compactBlockLabels relabels doc-local block/row/column/view ids to
-	// short suffixes — legend-less and LOSSY (the originals are not
-	// recoverable from the document), which is why the export shape does not
-	// use it. Every write channel resolves a label back by unique suffix
-	// (matchBlockRef), so a labeled read stays addressable by PATCH,
-	// `?block=` and `?view=`.
+	// compactBlockLabels relabels machine-minted doc-local block/row/column/
+	// view ids (24-hex, view UUIDs — anyblockjson.isMintedLocalId) to short
+	// suffixes — legend-less and LOSSY (the originals are not recoverable
+	// from the document), which is why the export shape does not use it.
+	// Meaningful ids never relabel. Every write channel resolves a label
+	// back by unique suffix (matchBlockRef), so a labeled read stays
+	// addressable by PATCH, `?block=` and `?view=`.
 	compactBlockLabels bool
 	markdown           bool
 }
@@ -101,17 +96,19 @@ func (q V2ObjectQuery) validate() (objectReadPlan, error) {
 			v2model.Issue{Path: "block", Message: "conflicts with format=md"})
 	}
 
-	// `?ids=` selects one of TWO document shapes; it is not a per-axis knob
-	// (the axes above are what it composes). Wave 2 renames these to
+	// `?ids=` selects one of TWO document shapes. Wave 2 renames these to
 	// `?mode=edit|full` with no change of bytes.
 	switch q.Ids {
 	case "", V2IdsCompact:
-		// the edit shape: short block labels, full inline object refs
-		plan.compactBlockLabels, plan.compactRefs = true, false
+		// the edit shape: short labels for minted block ids
+		plan.compactBlockLabels = true
 	case V2IdsFull:
-		// the export shape: full block ids (so a GET body PUTs back as a
-		// minimal diff — APIV2.md §3(b)) plus the lossless refs legend
-		plan.compactBlockLabels, plan.compactRefs = false, true
+		// the export shape: full block ids everywhere, so a GET body PUTs
+		// back as a minimal diff (APIV2.md §3(b)). No shape serves the refs
+		// legend — this used to be where it lived, until its own measurement
+		// showed it a pure loss (§8.26), which left no shape offering full
+		// block ids without the write-back-trapping indirection.
+		plan.compactBlockLabels = false
 	default:
 		return plan, v2model.ValidationFailed("invalid ids value",
 			v2model.Issue{Path: "ids", Message: fmt.Sprintf("unknown value %q", q.Ids), Hint: "allowed: compact, full"})
@@ -155,12 +152,10 @@ func (q V2ObjectQuery) validate() (objectReadPlan, error) {
 	if plan.block != "" {
 		plan.wantBlocks = true
 	}
-	// the outline shape fixes both axes and ignores `?ids=` (C4 T7): it is
-	// read-only, so lossy block labels are free, and it drops the refs legend
-	// together with the properties map — a legend-compacted ref left in a
-	// heading's text would be unresolvable.
+	// the outline shape fixes the axis and ignores `?ids=` (C4 T7): it is
+	// read-only, so lossy block labels are free.
 	if plan.outline {
-		plan.compactBlockLabels, plan.compactRefs = true, false
+		plan.compactBlockLabels = true
 	}
 	return plan, nil
 }
@@ -221,8 +216,8 @@ func (s *V2Service) GetObject(ctx context.Context, spaceId, objectId string, q V
 	etag := ComputeEtag(read.Heads)
 
 	opts := storeresolver.New(s.store.SpaceIndex(spaceId)).Options()
-	// the two id axes come pre-composed by validate() — see objectReadPlan
-	opts.CompactObjectRefs = plan.compactRefs
+	// the shape comes pre-composed by validate() — see objectReadPlan;
+	// CompactObjectRefs stays at its zero value on every shape (no legend)
 	opts.CompactBlockLabels = plan.compactBlockLabels
 	// C11 (M3): a read never fails on content the format can't represent —
 	// unmapped/over-deep blocks degrade to warnings that ride the envelope.
@@ -372,7 +367,7 @@ func buildOutlineEnvelope(fields map[string]json.RawMessage, keepProperties bool
 	delete(fields, "blocks")
 	if !keepProperties {
 		delete(fields, "properties")
-		delete(fields, "refs") // the legend serves the properties map here
+		delete(fields, "refs") // backstop: no shape serves a legend anymore
 	}
 	return nil
 }

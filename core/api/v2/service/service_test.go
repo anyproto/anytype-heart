@@ -133,15 +133,15 @@ func TestV2ObjectQueryValidate(t *testing.T) {
 		wantPlan func(t *testing.T, plan objectReadPlan)
 	}{
 		{
-			// the edit shape: short block labels (the ~15 % win) and full
-			// inline object refs (the legend is a measured loss — TOKENS §1.2)
-			name:  "defaults: both sections, short block labels, inline object refs, anyblock",
+			// the edit shape: short labels for minted block ids; object refs
+			// are full inline on every shape (the legend is a measured loss —
+			// TOKENS §1.2, §8.26)
+			name:  "defaults: both sections, short block labels, anyblock",
 			query: V2ObjectQuery{},
 			wantPlan: func(t *testing.T, plan objectReadPlan) {
 				assert.True(t, plan.wantProperties)
 				assert.True(t, plan.wantBlocks)
 				assert.True(t, plan.compactBlockLabels)
-				assert.False(t, plan.compactRefs)
 				assert.False(t, plan.markdown)
 			},
 		},
@@ -155,12 +155,11 @@ func TestV2ObjectQueryValidate(t *testing.T) {
 		},
 		{
 			// the export shape: full block ids so a GET body PUTs back as a
-			// minimal diff, plus the lossless refs legend
-			name:  "ids=full is the export shape: full block ids + refs legend",
+			// minimal diff; no legend here either
+			name:  "ids=full is the export shape: full block ids",
 			query: V2ObjectQuery{Ids: "full"},
 			wantPlan: func(t *testing.T, plan objectReadPlan) {
 				assert.False(t, plan.compactBlockLabels)
-				assert.True(t, plan.compactRefs)
 			},
 		},
 		{
@@ -168,17 +167,14 @@ func TestV2ObjectQueryValidate(t *testing.T) {
 			query: V2ObjectQuery{Ids: "compact"},
 			wantPlan: func(t *testing.T, plan objectReadPlan) {
 				assert.True(t, plan.compactBlockLabels)
-				assert.False(t, plan.compactRefs)
 			},
 		},
 		{
-			// T7: the outline drops the refs legend with the properties map,
-			// so it fixes both axes and ignores ?ids=
-			name:  "outline fixes both axes and ignores ids=full",
+			// T7: the outline fixes the axis and ignores ?ids=
+			name:  "outline fixes the axis and ignores ids=full",
 			query: V2ObjectQuery{Outline: true, Ids: "full"},
 			wantPlan: func(t *testing.T, plan objectReadPlan) {
 				assert.True(t, plan.compactBlockLabels)
-				assert.False(t, plan.compactRefs)
 			},
 		},
 		{name: "outline and block conflict", query: V2ObjectQuery{Outline: true, Block: "b1"}, wantErr: "ambiguous_input"},
