@@ -714,6 +714,12 @@ func checkEditPreconditions(sbType model.SmartBlockType, heads []string, ifMatch
 // aborts the edit: content the format cannot represent would silently vanish
 // in the write-back — the one thing C11 forbids. PUT skips the guard (a full
 // replace is explicitly destructive) and the caller surfaces the warnings.
+//
+// COUPLING: the options here must stay the ones a `?ids=full` GET uses (the
+// uncompacted storeresolver defaults — GetObject with compactBlockLabels
+// off). checkPutBlockIds derives its owned-id vocabulary from this marshal,
+// so the prescribed GET ?ids=full → edit → PUT loop round-trips exactly when
+// the two marshals agree; TestPutRoundTripFromExportRead pins the agreement.
 func (s *V2Service) marshalForEdit(spaceId, objectId string, cur apicore.ObjectRead, guardWarnings bool) ([]byte, error) {
 	opts := storeresolver.New(s.store.SpaceIndex(spaceId)).Options()
 	var warnings []v2model.Issue

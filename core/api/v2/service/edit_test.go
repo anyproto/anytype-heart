@@ -1727,6 +1727,46 @@ func TestPutObject(t *testing.T) {
 	})
 }
 
+// TestPutRoundTripFromExportRead pins the loop every guide prescribes (C4,
+// APIV2.md §3(b)/§8.26, both SKILL guides, the OpenAPI PUT description):
+// GET ?ids=full → edit → PUT. Every other write-path test asserts a
+// REFUSAL; this is the one that asserts the prescribed path succeeds — and
+// it succeeds only because marshalForEdit and the export read share the
+// same uncompacted storeresolver options, so checkPutBlockIds' owned
+// vocabulary is exactly the id vocabulary the read served (the coupling is
+// declared on marshalForEdit). An unchanged export body must diff to zero
+// on every fixture shape; the minimal-edit variant of the loop is covered
+// by "id round-trip gives a minimal diff".
+func TestPutRoundTripFromExportRead(t *testing.T) {
+	ctx := context.Background()
+	for _, tc := range []struct{ name, doc string }{
+		{"page", editBaseDoc},
+		{"minted ids", editMintedDoc},
+		{"table", editTableDoc},
+		{"row-column layout", editLayoutDoc},
+		{"table with cell descendants", editTableCellChildDoc},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// given: the export read of the live document
+			fx := newV2Fixture(t)
+			read := editRead(t, tc.doc)
+			fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(read, nil)
+			fx.expectReset(read, "headB")
+			body, _, err := fx.GetObject(ctx, testSpaceId, "obj1", V2ObjectQuery{Ids: V2IdsFull})
+			require.NoError(t, err)
+
+			// when: that exact body PUTs back
+			result, err := fx.PutObject(ctx, testSpaceId, "obj1", body, "", false)
+
+			// then: accepted, and a zero diff — every id the read served is
+			// an id PUT recognizes as owned
+			require.NoError(t, err, "the export read must round-trip through PUT")
+			assert.Equal(t, v2model.DiffStats{}, result.DiffStats,
+				"an unchanged export body must read as no content movement")
+		})
+	}
+}
+
 // jsonReplace swaps the first occurrence of a literal substring in a JSON
 // document (test helper).
 func jsonReplace(t *testing.T, doc, from, to string) []byte {
