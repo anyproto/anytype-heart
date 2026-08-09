@@ -37,16 +37,21 @@ dependency or an open question.
 | # | item | value | where |
 |---|---|---|---|
 | 0.1 | ~~Compact the embedded envelope values~~ **DONE** — fixed in `encodeEnvelope` (the serving layer); the canonical form is untouched and no golden moved | predicted 16–26 %, **measured −15.5…−26.4 %, corpus −23.2 %** | TOKENS §1.1, action 1; §8.24 |
-| 0.2 | ~~Split `?ids=`~~ **DONE** — two shapes: `compact` (edit) and `full` (export) | legend removal **0.9–11.5 %** (confirmed); block labels **bimodal**, −19…−22 % on minted 24-hex ids and **0 %** where ids carry dashes (the local-label charset is dash-free) — not the flat ~15 % the review assumed | TOKENS §1.2 + §10, action 2; §8.25 |
+| 0.2 | ~~Split `?ids=`~~ **DONE + HARDENED** — two shapes: `compact` (edit) and `full` (export); after the three-lens review, **only machine-minted ids relabel** (24-hex bson, view UUIDs — meaningful ids keep their spelling and are reserved), and the legend left the export shape too | legend removal **0.9–11.5 % on the measured corpus** (confirmed); block labels **bimodal**, −19…−22 % on minted-id documents and **0 %** on meaningful-id documents — by rule now, not charset accident; not the flat ~15 % the review assumed | TOKENS §1.2 + §10, action 2; §8.25 + §8.26 |
 
-`edit` (the default read) is: **short block labels, full inline object
-refs, no pins**. `full`/export keeps full block ids and the refs legend
-(pins remain unshipped), because block relabelling is lossy. Combined,
-against the actual served bytes: **−33.1 % across the corpus**.
+`edit` (the default read) is: **short labels for minted block ids, full
+inline object refs, no pins**. `full`/export is **full ids everywhere**
+(no legend on any shape — §8.26; pins remain unshipped), because block
+relabelling is lossy. Combined, against the actual served bytes:
+**−33.1 % across the corpus**.
 
-Left open by the wave: PUT takes block ids literally, so a GET(default) →
-PUT loop re-mints blocks; `?ids=full` is the PUT read, and teaching PUT the
-suffix resolution the ops already use belongs with 2.1.
+Closed by the hardening (§8.26): PUT **refuses** a body carrying ids the
+object does not own (it used to silently adopt served labels as stored
+ids); `?block=` subtree reads are marked partial and no write path accepts
+them; create strips the read envelope and warns on label-shaped ids; the
+wrapper's client-side relabeling retired. Still owed to 2.1: teaching PUT
+the suffix resolution the ops already use, so the refusal can become a
+resolution.
 
 ## Wave 1 — finish the identity layer (one item fixes a live defect)
 

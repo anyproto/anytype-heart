@@ -95,10 +95,13 @@ func TestEncodeEnvelope(t *testing.T) {
 	})
 
 	t.Run("string contents survive compaction byte for byte", func(t *testing.T) {
-		// given — the format's writer escapes without HTML escaping and
-		// pre-escapes U+2028/U+2029; json.Compact must not re-escape anything
+		// given — the format's writer escapes without HTML escaping;
+		// json.Compact must neither re-escape `<`/`>`/`&` nor rewrite a RAW
+		// U+2028/U+2029. The fixture carries the six-character \u2028 escape
+		// (which Compact could never touch) AND the raw U+2028 and U+2029
+		// characters after "raw:" — only the raw ones actually pin the claim.
 		fields := map[string]json.RawMessage{
-			"id": json.RawMessage("{\n  \"a\": \"<b>&amp; \\u2028 café — ünïcode\"\n}"),
+			"id": json.RawMessage("{\n  \"a\": \"<b>&amp; \\u2028 raw:   café — ünïcode\"\n}"),
 		}
 
 		// when
@@ -106,7 +109,7 @@ func TestEncodeEnvelope(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		want := "{\"id\":{\"a\":\"<b>&amp; \\u2028 caf\u00e9 \u2014 \u00fcn\u00efcode\"}}"
+		want := "{\"id\":{\"a\":\"<b>&amp; \\u2028 raw:   caf\u00e9 \u2014 \u00fcn\u00efcode\"}}"
 		assert.Equal(t, want, string(got))
 	})
 

@@ -75,10 +75,13 @@ whether you may write. Ask this instead of discovering limits through 403s
   and ids survive across reads.
 - `?include=properties` or `?include=blocks` reads half the object.
   `?format=md` is a read-only markdown rendering.
-- Reads spell object ids in full inline; block ids come back as short
-  labels — echo them back verbatim, every block reference takes a full id
-  or a unique suffix. `?ids=full` is the export shape (full block ids +
-  a `refs` legend) a PUT round-trip needs.
+- Reads spell object ids in full inline (never a legend); machine-minted
+  block ids come back as short labels, meaningful ids (`title`,
+  `dataview`, readable imports) keep their spelling — echo either back
+  verbatim, every block reference takes a full id or a unique suffix.
+  `?ids=full` is the export shape (full ids everywhere) a PUT round-trip
+  needs — labels are a READ vocabulary, and PUT refuses ids the object
+  does not own.
 - List/search rows are minimal `{id, name, type}`; add columns with
   `fields=` (property keys) instead of GETting each object.
 - Every object read returns an `etag` (envelope + `ETag` header).
@@ -142,8 +145,11 @@ whether you may write. Ask this instead of discovering limits through 403s
   `created` (options minted by create-missing),
   `diffStats {blocksAdded, blocksRemoved, blocksChanged, blocksMoved,
   propertiesChanged}`, `warnings` (advisory, e.g. an unguarded date filter).
-- `PUT` replaces the whole document (body = a full AnyBlock doc; keep the
-  block ids from your GET so the server can diff-apply). Prefer PATCH.
+- `PUT` replaces the whole document. Read with `?ids=full` first and keep
+  those ids so the server can diff-apply — a body carrying ids the object
+  does not own (compact labels included) is refused; omit the id on new
+  blocks. A `?block=` subtree read is partial and will not PUT back.
+  Prefer PATCH.
 
 ## Query
 
