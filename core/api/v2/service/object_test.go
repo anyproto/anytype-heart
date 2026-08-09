@@ -107,9 +107,20 @@ func testObjectRead() apicore.ObjectRead {
 	}
 }
 
-// testObjectReadLongIds mirrors testObjectRead but with block ids longer than
-// the compact-label width, so outline relabeling is a real (not identity)
-// operation — the case the short-id fixtures cannot exercise (M1).
+// Minted-shape (24-hex) block ids for the relabeling fixtures — only
+// machine-minted opaque ids relabel, so a fixture that wants a real (not
+// identity) relabel operation must mint like the editor does.
+const (
+	testMintedHeadingId = "0000000000000000000aaaa1" // label "aaaa1"
+	testMintedParentId  = "0000000000000000000bbbb1" // label "bbbb1"
+	testMintedChildId   = "0000000000000000000cccc1" // label "cccc1"
+	testMintedSiblingId = "0000000000000000000dddd1" // label "dddd1"
+	testMintedLinkId    = "0000000000000000000eeee1" // label "eeee1"
+)
+
+// testObjectReadLongIds mirrors testObjectRead but with minted-shape block
+// ids, so relabeling is a real (not identity) operation — the case the
+// short-id fixtures cannot exercise (M1).
 func testObjectReadLongIds() apicore.ObjectRead {
 	return apicore.ObjectRead{
 		SbType: model.SmartBlockType_Page,
@@ -120,12 +131,12 @@ func testObjectReadLongIds() apicore.ObjectRead {
 			}},
 			ObjectTypes: []string{"ot-page"},
 			Blocks: []*model.Block{
-				{Id: "obj1", ChildrenIds: []string{"blockHeading", "blockParent", "blockSibling"},
+				{Id: "obj1", ChildrenIds: []string{testMintedHeadingId, testMintedParentId, testMintedSiblingId},
 					Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}},
-				{Id: "blockHeading", Content: textContent("Section", model.BlockContentText_Header1)},
-				{Id: "blockParent", ChildrenIds: []string{"blockChild"}, Content: textContent("parent", model.BlockContentText_Paragraph)},
-				{Id: "blockChild", Content: textContent("child", model.BlockContentText_Paragraph)},
-				{Id: "blockSibling", Content: textContent("sibling", model.BlockContentText_Paragraph)},
+				{Id: testMintedHeadingId, Content: textContent("Section", model.BlockContentText_Header1)},
+				{Id: testMintedParentId, ChildrenIds: []string{testMintedChildId}, Content: textContent("parent", model.BlockContentText_Paragraph)},
+				{Id: testMintedChildId, Content: textContent("child", model.BlockContentText_Paragraph)},
+				{Id: testMintedSiblingId, Content: textContent("sibling", model.BlockContentText_Paragraph)},
 			},
 		},
 		Heads: []string{"headB", "headA"},
@@ -144,8 +155,8 @@ func TestV2OutlineBlockRoundTrip(t *testing.T) {
 	entries := decodeBody(t, outlineBody)["outline"].([]any)
 	require.Len(t, entries, 4)
 	label := entries[1].(map[string]any)["id"].(string) // the parent paragraph
-	require.NotEqual(t, "blockParent", label, "outline must emit a compact label, not the full id")
-	require.True(t, strings.HasSuffix("blockParent", label), "label is the id suffix")
+	require.NotEqual(t, testMintedParentId, label, "outline must emit a compact label, not the full id")
+	require.True(t, strings.HasSuffix(testMintedParentId, label), "label is the id suffix")
 
 	// the label round-trips: ?block=<label> returns the parent + its child,
 	// under the SAME labels (the subtree read is the edit shape too, so the
@@ -155,7 +166,7 @@ func TestV2OutlineBlockRoundTrip(t *testing.T) {
 	blocks := decodeBody(t, blockBody)["blocks"].([]any)
 	require.Len(t, blocks, 2, "subtree = parent + child, not the sibling")
 	assert.Equal(t, label, blocks[0].(map[string]any)["id"])
-	assert.Equal(t, "Child", blocks[1].(map[string]any)["id"])
+	assert.Equal(t, "cccc1", blocks[1].(map[string]any)["id"])
 
 	// and the export shape still spells them in full, so a GET body PUTs
 	// back as a minimal diff (APIV2.md §3(b))
@@ -164,7 +175,7 @@ func TestV2OutlineBlockRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 	fullBlocks := decodeBody(t, fullBody)["blocks"].([]any)
 	require.Len(t, fullBlocks, 4)
-	assert.Equal(t, "blockParent", fullBlocks[1].(map[string]any)["id"])
+	assert.Equal(t, testMintedParentId, fullBlocks[1].(map[string]any)["id"])
 }
 
 // TestV2GetObjectCompactBody pins C3 for the WHOLE body, not just its
@@ -197,9 +208,9 @@ const testLinkTargetId = "bafyreih6ymjl42i6pevii77dnlulv4n52hsxmjflmwc5ttygotovb
 func testObjectReadWithRef() apicore.ObjectRead {
 	read := testObjectReadLongIds()
 	root := read.Snapshot.Blocks[0]
-	root.ChildrenIds = append(root.ChildrenIds, "blockLink")
+	root.ChildrenIds = append(root.ChildrenIds, testMintedLinkId)
 	read.Snapshot.Blocks = append(read.Snapshot.Blocks, &model.Block{
-		Id:      "blockLink",
+		Id:      testMintedLinkId,
 		Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: testLinkTargetId}},
 	})
 	return read
@@ -224,7 +235,7 @@ func TestV2GetObjectIdShapes(t *testing.T) {
 		assert.NotContains(t, doc, "refs", "the refs legend costs more than it saves on real documents (TOKENS §1.2)")
 		blocks := doc["blocks"].([]any)
 		require.Len(t, blocks, 5)
-		assert.Equal(t, "arent", blocks[1].(map[string]any)["id"], "block ids relabel to their short suffix")
+		assert.Equal(t, "bbbb1", blocks[1].(map[string]any)["id"], "block ids relabel to their short suffix")
 		assert.Equal(t, testLinkTargetId, blocks[4].(map[string]any)["objectId"], "object refs stay full inline — no legend hop to write one back")
 	})
 
@@ -241,7 +252,7 @@ func TestV2GetObjectIdShapes(t *testing.T) {
 		doc := decodeBody(t, body)
 		blocks := doc["blocks"].([]any)
 		require.Len(t, blocks, 5)
-		assert.Equal(t, "blockParent", blocks[1].(map[string]any)["id"], "the export shape must not relabel — relabeling is lossy")
+		assert.Equal(t, testMintedParentId, blocks[1].(map[string]any)["id"], "the export shape must not relabel — relabeling is lossy")
 		refs, ok := doc["refs"].(map[string]any)
 		require.True(t, ok, "the export shape carries the legend")
 		label := blocks[4].(map[string]any)["objectId"].(string)

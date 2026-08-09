@@ -905,10 +905,16 @@ func (e *exporter) buildCompactIds() {
 		dropInvalidLabels(e.objectRefs, isValidRefsKey)
 	}
 	if e.opts.compactBlockLabels() {
-		// local relabels stay dash-free: '-' is the derived-cell-id separator
-		// and forbidden in row/column ids (§6.1)
-		e.localIds = suffixLabels(setToSlice(locals), compactIdMinLen, isInvalidLocalLabel)
-		dropInvalidLabels(e.localIds, func(label string) bool { return !isInvalidLocalLabel(label) })
+		// only machine-minted opaque ids relabel (isMintedLocalId); every id
+		// that keeps its full spelling is reserved through the fullIds
+		// avoid-set, so no label can alias a served id — and the census inside
+		// mintedSuffixLabels runs over ALL local ids, so a label cannot be an
+		// ambiguous suffix of one either. Labels stay dash-free as before:
+		// '-' is the derived-cell-id separator and forbidden in row/column
+		// ids (§6.1) — minted suffixes are hex, so the check is a backstop.
+		e.localIds = mintedSuffixLabels(setToSlice(locals), compactIdMinLen, func(candidate string) bool {
+			return fullIds[candidate] || isInvalidLocalLabel(candidate)
+		})
 	}
 }
 

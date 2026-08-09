@@ -679,12 +679,15 @@ func defaultGenerateId() string {
 	return hex.EncodeToString(b[:])
 }
 
-// suffixLabels labels each id with its last size characters (§9a). An id
-// whose suffix collides with another id's or is rejected by disallow gets no
-// label and stays uncompacted — with 5 characters over CID/hex alphabets
-// collisions are birthday-rare, and falling back to the full id is always
-// correct under the total resolution rule. Ids no longer than size label as
-// themselves.
+// suffixLabels labels each id with its last size characters (§9a) — the
+// refs-legend labeler. An id whose suffix collides with another id's or is
+// rejected by disallow gets no label and stays uncompacted — with 5
+// characters over CID/hex alphabets collisions are birthday-rare, and
+// falling back to the full id is always correct under the total resolution
+// rule. Ids no longer than size label as themselves. The census only counts
+// ids longer than size, so the caller's disallow set MUST cover every id
+// that stays verbatim in the document (buildCompactIds passes fullIds) or a
+// label could alias a short id.
 func suffixLabels(ids []string, size int, disallow func(candidate string) bool) map[string]string {
 	counts := make(map[string]int, len(ids))
 	for _, id := range ids {
@@ -705,4 +708,93 @@ func suffixLabels(ids []string, size int, disallow func(candidate string) bool) 
 		}
 	}
 	return out
+}
+
+// mintedSuffixLabels is the doc-local relabeler (§9a): it labels an id with
+// its last size characters ONLY when the id matches a machine-minted shape
+// (isMintedLocalId). The rule is deliberately inverted from "relabel unless
+// the label charset is dirty": a non-opaque id usually carries meaning —
+// `dataview` is a documented constant, `title`/`header`/`featuredRelations`
+// are structural, imported documents carry human-readable ids — and
+// relabeling those destroys information for zero benefit, while a false
+// negative on a minted id merely costs a few tokens.
+//
+// The census counts EVERY id — the ids that never relabel included, with an
+// id no longer than size counting as itself — so a label can neither equal
+// another served id nor be an ambiguous suffix of one. disallow rejects
+// candidates the caller reserves on top of that (every id that stays full,
+// via the fullIds avoid-set, plus charset rules).
+func mintedSuffixLabels(ids []string, size int, disallow func(candidate string) bool) map[string]string {
+	counts := make(map[string]int, len(ids))
+	for _, id := range ids {
+		if r := []rune(id); len(r) > size {
+			counts[string(r[len(r)-size:])]++
+		} else {
+			counts[id]++
+		}
+	}
+	out := make(map[string]string, len(ids))
+	for _, id := range ids {
+		if !isMintedLocalId(id) {
+			continue
+		}
+		suffix := id[len(id)-size:] // minted shapes are ASCII and longer than size
+		if counts[suffix] == 1 && (disallow == nil || !disallow(suffix)) {
+			out[id] = suffix
+		}
+	}
+	return out
+}
+
+// isMintedLocalId recognises the machine-minted doc-local id shapes — the
+// only ids relabeling may touch. Worked out from the actual minting sites:
+//
+//   - 24-char lowercase hex: bson.NewObjectId().Hex() — every editor-minted
+//     block, table-row and table-column id (core/block/simple, the table
+//     editor) — and this package's own defaultGenerateId (12 random bytes).
+//   - RFC-4122 UUID (8-4-4-4-12 lowercase hex): uuid.New().String() —
+//     dataview view ids.
+//
+// Derived cell ids (`rowId-colId`) are left out on purpose: a cell's suffix
+// is its column's, so neither could ever win the census — and cells carry no
+// id in the flat form anyway. Anything unrecognised stays full: a false
+// negative costs a few tokens, a false positive destroys a meaningful
+// identifier.
+func isMintedLocalId(id string) bool {
+	return isHexLower(id, 24) || isUuidShaped(id)
+}
+
+// isHexLower reports whether s is exactly n lowercase-hex characters.
+func isHexLower(s string, n int) bool {
+	if len(s) != n {
+		return false
+	}
+	for i := 0; i < n; i++ {
+		c := s[i]
+		if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
+			return false
+		}
+	}
+	return true
+}
+
+// isUuidShaped reports the 8-4-4-4-12 lowercase-hex UUID shape.
+func isUuidShaped(s string) bool {
+	if len(s) != 36 {
+		return false
+	}
+	for i := 0; i < 36; i++ {
+		c := s[i]
+		switch i {
+		case 8, 13, 18, 23:
+			if c != '-' {
+				return false
+			}
+		default:
+			if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
+				return false
+			}
+		}
+	}
+	return true
 }
