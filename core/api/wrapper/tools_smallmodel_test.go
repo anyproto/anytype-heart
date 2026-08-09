@@ -20,9 +20,9 @@ import (
 // unique to e0001; "budget" appears in e0002 AND e0003 (two candidate
 // blocks); "todo" appears only in e0003 but twice there.
 const snippetDoc = `{"version":1,"type":"page","properties":{"name":"Plan"},"blocks":[` +
-	`{"id":"aaaabbbbccccddddeeee0001","type":"heading1","text":"Q3 planning"},` +
-	`{"id":"aaaabbbbccccddddeeee0002","type":"paragraph","text":"the draft budget is due"},` +
-	`{"id":"aaaabbbbccccddddeeee0003","type":"paragraph","text":"todo todo budget"}]}`
+	`{"id":"e0001","type":"heading1","text":"Q3 planning"},` +
+	`{"id":"e0002","type":"paragraph","text":"the draft budget is due"},` +
+	`{"id":"e0003","type":"paragraph","text":"todo todo budget"}]}`
 
 func TestEditTextLocatesBlock(t *testing.T) {
 	ctx := context.Background()
@@ -44,11 +44,8 @@ func TestEditTextLocatesBlock(t *testing.T) {
 		patches := fx.sent("PATCH /v2/spaces/space1/objects/bafyobj1")
 		require.Len(t, patches, 1)
 		op := firstOp(t, patches[0])
-		assert.Equal(t, "aaaabbbbccccddddeeee0001", op["id"], "the located block's full id is sent")
+		assert.Equal(t, "e0001", op["id"], "the located block's served id is sent — the server resolves it")
 		assert.Equal(t, "Q3", op["find"])
-		session, _ := fx.store.Load()
-		assert.Equal(t, "aaaabbbbccccddddeeee0001", session.Labels["bafyobj1"]["e0001"],
-			"the locate read retains labels — the next call starts resolved")
 	})
 
 	t.Run("zero matches refuses and steers to read mode=outline", func(t *testing.T) {

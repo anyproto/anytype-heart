@@ -168,18 +168,16 @@ func TestSetProperties(t *testing.T) {
 func TestBlockTools(t *testing.T) {
 	ctx := context.Background()
 
-	// seedWithLabels installs a session with a retained label map.
-	seedWithLabels := func(fx *fixture) {
-		s := fx.seedSession("space1", Handle{N: 1, Id: "bafyobj1"})
-		s.Labels = map[string]map[string]string{
-			"bafyobj1": {"e0001": "aaaabbbbccccddddeeee0001"},
-		}
-		require.NoError(t, fx.store.Save(s))
+	// refs pass through verbatim: the server labels reads itself and
+	// resolves a label by exact id or unique suffix on every write channel
+	// (C4) — the wrapper's session label map is retired.
+	seed := func(fx *fixture) {
+		fx.seedSession("space1", Handle{N: 1, Id: "bafyobj1"})
 	}
 
-	t.Run("check_item resolves the label and sends updateBlock", func(t *testing.T) {
+	t.Run("check_item passes the served label through and sends updateBlock", func(t *testing.T) {
 		fx := newFixture(t)
-		seedWithLabels(fx)
+		seed(fx)
 		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 200, editOKBody)
 
 		result, err := fx.Run(ctx, "check_item", map[string]any{"object": "1", "block": "e0001", "checked": true})
@@ -188,13 +186,13 @@ func TestBlockTools(t *testing.T) {
 		assert.Contains(t, result.Text, "1 changed")
 		op := firstOp(t, fx.sent("PATCH /v2/spaces/space1/objects/bafyobj1")[0])
 		assert.Equal(t, "updateBlock", op["op"])
-		assert.Equal(t, "aaaabbbbccccddddeeee0001", op["id"], "the retained full id is sent, not the label")
+		assert.Equal(t, "e0001", op["id"], "the ref goes to the server as the model spoke it — resolution is server-side")
 		assert.Equal(t, map[string]any{"checked": true}, op["set"])
 	})
 
 	t.Run("add_blocks sends the markdown channel with under→inside", func(t *testing.T) {
 		fx := newFixture(t)
-		seedWithLabels(fx)
+		seed(fx)
 		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 200, editOKBody)
 
 		_, err := fx.Run(ctx, "add_blocks", map[string]any{
@@ -205,13 +203,13 @@ func TestBlockTools(t *testing.T) {
 		op := firstOp(t, fx.sent("PATCH /v2/spaces/space1/objects/bafyobj1")[0])
 		assert.Equal(t, "insertBlocks", op["op"])
 		assert.Equal(t, "- [ ] follow up", op["markdown"])
-		assert.Equal(t, "aaaabbbbccccddddeeee0001", op["inside"], "under maps to the op's inside")
+		assert.Equal(t, "e0001", op["inside"], "under maps to the op's inside, verbatim")
 		assert.NotContains(t, op, "blocks")
 	})
 
 	t.Run("add_blocks with both anchors is a wrapper-side error", func(t *testing.T) {
 		fx := newFixture(t)
-		seedWithLabels(fx)
+		seed(fx)
 		_, err := fx.Run(ctx, "add_blocks", map[string]any{
 			"object": "1", "after": "a", "under": "b", "markdown": "x",
 		})
@@ -221,7 +219,7 @@ func TestBlockTools(t *testing.T) {
 
 	t.Run("edit_text sends replaceText without replace_all", func(t *testing.T) {
 		fx := newFixture(t)
-		seedWithLabels(fx)
+		seed(fx)
 		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 200, editOKBody)
 
 		_, err := fx.Run(ctx, "edit_text", map[string]any{
@@ -238,7 +236,7 @@ func TestBlockTools(t *testing.T) {
 
 	t.Run("set_cell sends the flat cell write", func(t *testing.T) {
 		fx := newFixture(t)
-		seedWithLabels(fx)
+		seed(fx)
 		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 200, editOKBody)
 
 		_, err := fx.Run(ctx, "set_cell", map[string]any{
@@ -248,7 +246,7 @@ func TestBlockTools(t *testing.T) {
 		require.NoError(t, err)
 		op := firstOp(t, fx.sent("PATCH /v2/spaces/space1/objects/bafyobj1")[0])
 		assert.Equal(t, "setCell", op["op"])
-		assert.Equal(t, "aaaabbbbccccddddeeee0001", op["tableId"])
+		assert.Equal(t, "e0001", op["tableId"])
 		assert.Equal(t, "row2", op["row"])
 		assert.Equal(t, "col1", op["col"])
 		assert.Equal(t, "done", op["value"])
@@ -256,7 +254,7 @@ func TestBlockTools(t *testing.T) {
 
 	t.Run("move_block root-append omits anchors", func(t *testing.T) {
 		fx := newFixture(t)
-		seedWithLabels(fx)
+		seed(fx)
 		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 200, editOKBody)
 
 		_, err := fx.Run(ctx, "move_block", map[string]any{"object": "1", "block": "e0001"})
@@ -270,7 +268,7 @@ func TestBlockTools(t *testing.T) {
 
 	t.Run("delete_block forwards recursive and the server's counting error", func(t *testing.T) {
 		fx := newFixture(t)
-		seedWithLabels(fx)
+		seed(fx)
 		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 400,
 			`{"status":400,"code":"validation_failed","message":"block \"e0001\" has 2 descendant blocks — pass \"recursive\": true to delete the whole subtree"}`)
 
@@ -284,30 +282,27 @@ func TestBlockTools(t *testing.T) {
 func TestAmbiguityRetry(t *testing.T) {
 	ctx := context.Background()
 
-	// Scope, honestly stated (the Phase-5 review caught the old test
-	// implying more): a ref retained in the session is resolved to a full
-	// id BEFORE the send, so a 400 ambiguous_input can only name an
-	// unretained ref (an outline label, a pruned session). Re-resolving it
-	// by suffix over the re-read document applies the server's own rule to
-	// the server's own id set — so the retry fires exactly when the two
-	// disagree: the concurrent-modification race, where the collision the
-	// server saw at PATCH time is gone by the re-read (background sync
-	// removed or renamed the colliding block). A persistent ambiguity is
+	// Scope, honestly stated: refs go to the server verbatim, so a 400
+	// ambiguous_input means the ref did not resolve against the document
+	// the server saw. The retry pool is the re-read document's own SERVED
+	// ids — never a session map, which could be stale — so the retry fires
+	// exactly when the ref uniquely tails a served id on re-read: the
+	// concurrent-modification race, where the collision the server saw at
+	// PATCH time is gone by the re-read. A persistent ambiguity is
 	// unresolvable in principle and surfaces the server's error untouched
 	// (the second subtest).
 
-	t.Run("a raced ambiguity re-reads and retries once with the now-unique full id", func(t *testing.T) {
-		// given: the model echoes an outline label the wrapper has no map
-		// for; at PATCH time the server's document had a second block whose
-		// id ENDED in e0001 (the 400 below); by the re-read that block is
-		// gone — the surviving collision-shaped id has e0001 only in the
-		// MIDDLE, so the suffix now resolves uniquely
+	t.Run("a raced ambiguity re-reads and retries once with the now-unique served id", func(t *testing.T) {
+		// given: at PATCH time the server's document had a second block
+		// whose id ended in e0001 (the 400 below); by the re-read that block
+		// is gone. The surviving ids are meaningful (dashed), so the server
+		// serves them in full and the ref now tails exactly one of them.
 		fx := newFixture(t)
 		fx.seedSession("space1", Handle{N: 1, Id: "bafyobj1"})
 		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 400,
 			`{"status":400,"code":"ambiguous_input","message":"block reference \"e0001\" matches more than one block — use the full id"}`)
 		fx.stub("GET /v2/spaces/space1/objects/bafyobj1", 200,
-			`{"version":1,"type":"task","blocks":[{"id":"aaaabbbbccccddddeeee0001","type":"paragraph","text":"a"},{"id":"aaaabbbbccccdddd00e0001f","type":"paragraph","text":"b"}]}`)
+			`{"version":1,"type":"task","blocks":[{"id":"section-intro-e0001","type":"paragraph","text":"a"},{"id":"section-body-f0002","type":"paragraph","text":"b"}]}`)
 		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 200, editOKBody)
 
 		// when
@@ -318,12 +313,10 @@ func TestAmbiguityRetry(t *testing.T) {
 		patches := fx.sent("PATCH /v2/spaces/space1/objects/bafyobj1")
 		require.Len(t, patches, 2, "one ambiguous attempt, one retry")
 		assert.Equal(t, "e0001", firstOp(t, patches[0])["id"])
-		assert.Equal(t, "aaaabbbbccccddddeeee0001", firstOp(t, patches[1])["id"])
+		assert.Equal(t, "section-intro-e0001", firstOp(t, patches[1])["id"],
+			"the retry uses the re-read's served spelling")
 		assert.Equal(t, patches[0].Header.Get("Idempotency-Key"), patches[1].Header.Get("Idempotency-Key"),
 			"the retry keeps the same idempotency key")
-		session, _ := fx.store.Load()
-		assert.Equal(t, "aaaabbbbccccddddeeee0001", session.Labels["bafyobj1"]["e0001"],
-			"the re-read's labels are retained, so the model's next call starts resolved")
 	})
 
 	t.Run("a still-unresolvable ambiguity surfaces the server's error", func(t *testing.T) {
@@ -332,7 +325,7 @@ func TestAmbiguityRetry(t *testing.T) {
 		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 400,
 			`{"status":400,"code":"ambiguous_input","message":"block reference \"0001\" matches more than one block — use the full id"}`)
 		fx.stub("GET /v2/spaces/space1/objects/bafyobj1", 200,
-			`{"version":1,"type":"task","blocks":[{"id":"aaaabbbbccccddddeeee0001","type":"paragraph"},{"id":"bbbbccccddddeeeeffff0001","type":"paragraph"}]}`)
+			`{"version":1,"type":"task","blocks":[{"id":"chapter-a-0001","type":"paragraph"},{"id":"chapter-b-0001","type":"paragraph"}]}`)
 
 		_, err := fx.Run(ctx, "check_item", map[string]any{"object": "1", "block": "0001", "checked": true})
 
@@ -425,24 +418,6 @@ func TestRelativeDates(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestSuffixLabels(t *testing.T) {
-	t.Run("labels are shortest unique suffixes", func(t *testing.T) {
-		ids := []string{"aaaabbbbccccddddeeee0001", "aaaabbbbccccddddeeee0002"}
-		labels := suffixLabels(ids)
-		assert.Equal(t, "e0001", labels[ids[0]])
-		assert.Equal(t, "e0002", labels[ids[1]])
-	})
-	t.Run("colliding tails extend until unique", func(t *testing.T) {
-		ids := []string{"aaaabbbbccccdddd11170001", "aaaabbbbccccdddd22270001"}
-		labels := suffixLabels(ids)
-		assert.NotEqual(t, labels[ids[0]], labels[ids[1]])
-		for id, label := range labels {
-			assert.True(t, len(label) > 5, "5-char tail is shared, so labels extend")
-			assert.True(t, len(id) >= len(label))
-		}
-	})
 }
 
 func TestFileStore(t *testing.T) {

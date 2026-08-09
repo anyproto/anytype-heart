@@ -104,15 +104,18 @@ func TestIdempotencyIdentity(t *testing.T) {
 	})
 
 	t.Run("an identical re-run after a successful ambiguity retry replays under the same key", func(t *testing.T) {
-		// after the retry rewrote the ref to a full id, the session retains
-		// the labels; the re-run resolves client-side to the SAME resolved
-		// request — the re-stamped LastWrite must match it
+		// the retry rewrote the ref mid-flight AFTER the key was minted, and
+		// the server bound that key to the REWRITTEN body. The re-run
+		// computes the pre-rewrite hash, so LastWrite records the rewrite
+		// (PriorHash + Rewrites) and the re-run reproduces it — landing on
+		// the exact request identity the C8 store cached, instead of 409ing
+		// or re-applying under a fresh key.
 		fx := newFixture(t)
 		fx.seedSession("space1", Handle{N: 1, Id: "bafyobj1"})
 		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 400,
 			`{"status":400,"code":"ambiguous_input","message":"block reference \"e0001\" matches more than one block — use the full block id"}`)
 		fx.stub("GET /v2/spaces/space1/objects/bafyobj1", 200,
-			`{"version":1,"type":"task","blocks":[{"id":"aaaabbbbccccddddeeee0001","type":"paragraph","text":"a"},{"id":"aaaabbbbccccdddd00e0001f","type":"paragraph","text":"b"}]}`)
+			`{"version":1,"type":"task","blocks":[{"id":"section-intro-e0001","type":"paragraph","text":"a"},{"id":"section-body-f0002","type":"paragraph","text":"b"}]}`)
 		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 200, editOKBody)
 		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 200, editOKBody)
 
@@ -124,8 +127,8 @@ func TestIdempotencyIdentity(t *testing.T) {
 
 		sent := fx.sent("PATCH /v2/spaces/space1/objects/bafyobj1")
 		require.Len(t, sent, 3, "attempt, retry, replayed re-run")
-		assert.Equal(t, "aaaabbbbccccddddeeee0001", firstOp(t, sent[2])["id"],
-			"the re-run resolves the label client-side from the retained map")
+		assert.Equal(t, "section-intro-e0001", firstOp(t, sent[2])["id"],
+			"the re-run reproduces the recorded rewrite")
 		assert.Equal(t, sent[1].Header.Get("Idempotency-Key"), sent[2].Header.Get("Idempotency-Key"),
 			"the key was re-stamped onto the resolved request identity")
 	})

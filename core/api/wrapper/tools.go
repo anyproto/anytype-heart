@@ -134,19 +134,9 @@ func (r *Runner) runFind(ctx context.Context, session *Session, args map[string]
 	for i, row := range resp.Data {
 		handles = append(handles, Handle{N: i + 1, Id: row.Id, Name: row.Name, Type: row.Type})
 	}
-	// each find renumbers (§7.4); labels survive only for objects still
-	// referenced, so the session stays bounded
+	// each find renumbers (§7.4)
 	session.Space = space
 	session.Handles = handles
-	if session.Labels != nil {
-		kept := map[string]map[string]string{}
-		for _, h := range handles {
-			if m, ok := session.Labels[h.Id]; ok {
-				kept[h.Id] = m
-			}
-		}
-		session.Labels = kept
-	}
 
 	var b strings.Builder
 	for _, h := range handles {
@@ -190,15 +180,10 @@ func (r *Runner) runRead(ctx context.Context, session *Session, args map[string]
 	if err != nil {
 		return nil, err
 	}
-	if mode != "outline" {
-		// the reference channel: relabel full block ids to short unique
-		// suffixes and retain the map for the editing tools (§7.1/§7.4)
-		relabeled, labels := relabelDoc(doc)
-		if labels != nil {
-			session.setLabels(objectId, labels)
-		}
-		doc = relabeled
-	}
+	// the served document already carries the reference vocabulary: the
+	// server labels minted ids itself (Wave 0.2) and resolves either
+	// spelling on every write channel (C4), so the wrapper serves the body
+	// verbatim — client-side relabeling retired with the session label map
 	return &Result{Text: string(doc), JSON: rawJSONResult(doc)}, nil
 }
 
@@ -313,7 +298,7 @@ func (r *Runner) runCheckItem(ctx context.Context, session *Session, args map[st
 	}
 	op := map[string]any{
 		"op":  "updateBlock",
-		"id":  resolveBlockRef(session, objectId, strArg(args, "block")),
+		"id":  strArg(args, "block"),
 		"set": map[string]any{"checked": boolArg(args, "checked")},
 	}
 	result, err := r.patchOps(ctx, session, space, objectId, op, []string{"id"})
@@ -324,18 +309,19 @@ func (r *Runner) runCheckItem(ctx context.Context, session *Session, args map[st
 }
 
 // anchorTarget maps the wrapper's after/under vocabulary onto the op
-// targeting (under → inside; both omitted → root-append).
-func anchorTarget(session *Session, objectId string, args map[string]any, op map[string]any) error {
+// targeting (under → inside; both omitted → root-append). Refs pass through
+// verbatim — resolution is server-side (C4).
+func anchorTarget(args map[string]any, op map[string]any) error {
 	after := strArg(args, "after")
 	under := strArg(args, "under")
 	if after != "" && under != "" {
 		return fmt.Errorf("give after or under, not both — after inserts next to the block, under inserts into it")
 	}
 	if after != "" {
-		op["after"] = resolveBlockRef(session, objectId, after)
+		op["after"] = after
 	}
 	if under != "" {
-		op["inside"] = resolveBlockRef(session, objectId, under)
+		op["inside"] = under
 	}
 	return nil
 }
@@ -349,7 +335,7 @@ func (r *Runner) runAddBlocks(ctx context.Context, session *Session, args map[st
 		"op":       "insertBlocks",
 		"markdown": strArg(args, "markdown"),
 	}
-	if err := anchorTarget(session, objectId, args, op); err != nil {
+	if err := anchorTarget(args, op); err != nil {
 		return nil, err
 	}
 	result, err := r.patchOps(ctx, session, space, objectId, op, []string{"after", "inside"})
@@ -374,8 +360,6 @@ func (r *Runner) runEditText(ctx context.Context, session *Session, args map[str
 		if err != nil {
 			return nil, err
 		}
-	} else {
-		blockRef = resolveBlockRef(session, objectId, blockRef)
 	}
 	op := map[string]any{
 		"op":      "replaceText",
@@ -411,12 +395,9 @@ func (r *Runner) locateBlock(ctx context.Context, session *Session, spaceId, obj
 	if err != nil {
 		return "", err
 	}
-	// retain the labels either way — the model's next call starts resolved,
-	// and the refusals below name blocks by the labels read would mint
-	_, labels := relabelDoc(doc)
-	if labels != nil {
-		session.setLabels(objectId, labels)
-	}
+	// the served ids ARE the reference vocabulary (the server labels minted
+	// ids itself), so the refusals below name blocks exactly as a read shows
+	// them, and the resolved id goes straight into the op
 	var envelope struct {
 		Blocks []struct {
 			Id   string `json:"id"`
@@ -426,16 +407,6 @@ func (r *Runner) locateBlock(ctx context.Context, session *Session, spaceId, obj
 	}
 	if err := json.Unmarshal(doc, &envelope); err != nil {
 		return "", fmt.Errorf("decode document: %w", err)
-	}
-	byId := make(map[string]string, len(labels))
-	for label, id := range labels {
-		byId[id] = label
-	}
-	label := func(id string) string {
-		if l, ok := byId[id]; ok {
-			return l
-		}
-		return id
 	}
 	type candidate struct {
 		id, typ, text string
@@ -452,7 +423,7 @@ func (r *Runner) locateBlock(ctx context.Context, session *Session, spaceId, obj
 		return "", fmt.Errorf("no block contains %q — run read with mode=outline to see the blocks, and copy the find text exactly as read shows it (text is markdown source: ** [ ] etc. count)", find)
 	case 1:
 		if c := candidates[0]; c.count > 1 {
-			return "", fmt.Errorf("found %d matches for %q in block %s — provide more context to make the match unique", c.count, find, label(c.id))
+			return "", fmt.Errorf("found %d matches for %q in block %s — provide more context to make the match unique", c.count, find, c.id)
 		}
 		return candidates[0].id, nil
 	default:
@@ -463,7 +434,7 @@ func (r *Runner) locateBlock(ctx context.Context, session *Session, spaceId, obj
 				fmt.Fprintf(&b, "\n  … and %d more", len(candidates)-maxSnippetCandidates)
 				break
 			}
-			fmt.Fprintf(&b, "\n  block %s (%s): %q", label(c.id), c.typ, snippetContext(c.text, find))
+			fmt.Fprintf(&b, "\n  block %s (%s): %q", c.id, c.typ, snippetContext(c.text, find))
 		}
 		return "", fmt.Errorf("%s", b.String())
 	}
@@ -510,9 +481,9 @@ func (r *Runner) runSetCell(ctx context.Context, session *Session, args map[stri
 	}
 	op := map[string]any{
 		"op":      "setCell",
-		"tableId": resolveBlockRef(session, objectId, strArg(args, "table")),
-		"row":     resolveBlockRef(session, objectId, strArg(args, "row")),
-		"col":     resolveBlockRef(session, objectId, strArg(args, "col")),
+		"tableId": strArg(args, "table"),
+		"row":     strArg(args, "row"),
+		"col":     strArg(args, "col"),
 		"value":   value,
 	}
 	result, err := r.patchOps(ctx, session, space, objectId, op, []string{"tableId", "row", "col"})
@@ -529,9 +500,9 @@ func (r *Runner) runMoveBlock(ctx context.Context, session *Session, args map[st
 	}
 	op := map[string]any{
 		"op": "moveBlock",
-		"id": resolveBlockRef(session, objectId, strArg(args, "block")),
+		"id": strArg(args, "block"),
 	}
-	if err := anchorTarget(session, objectId, args, op); err != nil {
+	if err := anchorTarget(args, op); err != nil {
 		return nil, err
 	}
 	result, err := r.patchOps(ctx, session, space, objectId, op, []string{"id", "after", "inside"})
@@ -548,7 +519,7 @@ func (r *Runner) runDeleteBlock(ctx context.Context, session *Session, args map[
 	}
 	op := map[string]any{
 		"op": "deleteBlock",
-		"id": resolveBlockRef(session, objectId, strArg(args, "block")),
+		"id": strArg(args, "block"),
 	}
 	if boolArg(args, "recursive") {
 		op["recursive"] = true

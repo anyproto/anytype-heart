@@ -220,14 +220,9 @@ func TestFind(t *testing.T) {
 		assert.Equal(t, Handle{N: 1, Id: "bafyobj1", Name: "Q3 report", Type: "task"}, session.Handles[0])
 	})
 
-	t.Run("each find renumbers and prunes stale labels", func(t *testing.T) {
+	t.Run("each find renumbers", func(t *testing.T) {
 		fx := newFixture(t)
-		s := fx.seedSession("space1", Handle{N: 1, Id: "old1"})
-		s.Labels = map[string]map[string]string{
-			"old1":     {"ab123": "0123456789abcdef0000ab123"},
-			"bafyobj2": {"cd456": "0123456789abcdef0000cd456"},
-		}
-		require.NoError(t, fx.store.Save(s))
+		fx.seedSession("space1", Handle{N: 1, Id: "old1"})
 		fx.stub("POST /v2/spaces/space1/search", 200, searchResponse(1, false,
 			v2model.ObjectRow{Id: "bafyobj2", Name: "Plan", Type: "page"}))
 
@@ -238,8 +233,6 @@ func TestFind(t *testing.T) {
 		require.Len(t, session.Handles, 1)
 		assert.Equal(t, 1, session.Handles[0].N)
 		assert.Equal(t, "bafyobj2", session.Handles[0].Id)
-		assert.Contains(t, session.Labels, "bafyobj2", "labels of still-referenced objects survive")
-		assert.NotContains(t, session.Labels, "old1", "labels of dropped objects are pruned")
 	})
 
 	t.Run("truncation steers", func(t *testing.T) {
@@ -280,13 +273,16 @@ func TestFind(t *testing.T) {
 	})
 }
 
-const testFullDoc = `{"version":1,"etag":"abcd1234","type":"task","properties":{"name":"Doc"},"blocks":[{"id":"aaaabbbbccccddddeeee0001","type":"heading1","text":"Section"},{"id":"aaaabbbbccccddddeeee0002","type":"paragraph","text":"body"}]}`
+// testFullDoc is what the server now serves on a default read: minted block
+// ids already relabeled server-side (Wave 0.2), meaningful ids in full.
+const testFullDoc = `{"version":1,"etag":"abcd1234","type":"task","properties":{"name":"Doc"},"blocks":[{"id":"e0001","type":"heading1","text":"Section"},{"id":"e0002","type":"paragraph","text":"body"},{"id":"quarterly-goals-1","type":"paragraph","text":"tail"}]}`
 
 func TestRead(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("full read relabels block ids and retains the map", func(t *testing.T) {
-		// given
+	t.Run("read serves the server-labeled document verbatim", func(t *testing.T) {
+		// given: the server labels minted ids itself now — the wrapper's
+		// client-side relabeling and its session label map are retired
 		fx := newFixture(t)
 		fx.seedSession("space1", Handle{N: 1, Id: "bafyobj1", Name: "Doc", Type: "task"})
 		fx.stub("GET /v2/spaces/space1/objects/bafyobj1", 200, testFullDoc)
@@ -296,13 +292,29 @@ func TestRead(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.NotContains(t, result.Text, "aaaabbbbccccddddeeee0001", "full ids never reach the model")
-		assert.Contains(t, result.Text, `"e0001"`, "block ids become 5-char suffix labels")
-		assert.Contains(t, result.Text, `"e0002"`)
+		assert.Equal(t, testFullDoc, result.Text, "the served bytes pass through untouched")
+	})
 
-		session, _ := fx.store.Load()
-		assert.Equal(t, "aaaabbbbccccddddeeee0001", session.Labels["bafyobj1"]["e0001"])
-		assert.Equal(t, "aaaabbbbccccddddeeee0002", session.Labels["bafyobj1"]["e0002"])
+	t.Run("a stale pre-upgrade label map cannot rewrite refs", func(t *testing.T) {
+		// reproduced before the retirement: a session file from a previous
+		// wrapper version carried labels for an OLD document version; the
+		// `if labels != nil` guard meant a fresh read never cleared it, and a
+		// write rewrote the label the model just read into an outdated full
+		// id — which the server accepted as an exact match. Now the field
+		// does not exist: an old session file still loads (unknown JSON
+		// fields are ignored) and refs pass through as the model spoke them.
+		fx := newFixture(t)
+		staleSession := `{"space":"space1","handles":[{"n":1,"id":"bafyobj1","name":"Doc","type":"task"}],` +
+			`"labels":{"bafyobj1":{"e0001":"aaaabbbbccccddddeee9dead"}}}`
+		fx.store.data = []byte(staleSession) // a session file written by the previous version
+		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 200, editOKBody)
+
+		_, err := fx.Run(ctx, "check_item", map[string]any{"object": "1", "block": "e0001", "checked": true})
+
+		require.NoError(t, err)
+		op := firstOp(t, fx.sent("PATCH /v2/spaces/space1/objects/bafyobj1")[0])
+		assert.Equal(t, "e0001", op["id"],
+			"the ref the model spoke goes to the server — never a stale map's full id")
 	})
 
 	t.Run("outline mode passes through the server shape", func(t *testing.T) {

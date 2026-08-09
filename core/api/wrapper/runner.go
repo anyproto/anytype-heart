@@ -242,34 +242,26 @@ func (r *Runner) resolveObject(session *Session, ref string) (string, string, er
 	return session.Space, ref, nil
 }
 
-// resolveBlockRef maps a block label to its retained full id when the
-// session has one; otherwise the ref passes through (unique-suffix
-// resolution is server-side, C4).
-func resolveBlockRef(session *Session, objectId, ref string) string {
-	if full, ok := session.Labels[objectId][ref]; ok {
-		return full
-	}
-	return ref
-}
-
 //
-// ---- full-read relabeling ----
+// ---- served ids ----
 //
 
+// fullBlockIdRe recognises a full editor-minted block/row/column id (bson
+// hex). The server's relabeler now uses the same minted-shape predicate —
+// the wrapper had this rule first, and its client-side relabeling retired
+// when the server started serving labels itself: block refs pass through
+// verbatim, and the server resolves a label by exact id or unique suffix
+// (C4). The retired label map was worse than dead weight: a stale map from
+// a previous document version rewrote a just-read label into an outdated
+// full id, which the server accepted as an exact match.
 var fullBlockIdRe = regexp.MustCompile(`^[0-9a-f]{24}$`)
 
-// labelLen is the starting label length (the C4 outline label shape).
-const labelLen = 5
-
-// relabelDoc replaces every full 24-hex block id in a document — block ids
-// AND table row/column ids, which are the same bson-hex shape and the ids
-// set_cell takes — with a short unique-suffix label, returning the
-// rewritten document plus the label → full-id map. Uniqueness is computed
-// over the WHOLE pool, so a row label can never collide with a block label.
-// The replacement is textual over the exact quoted ids, so the document's
-// canonical key order survives (derived cell ids like "row-col" are left
-// alone: the quoted-exact match cannot touch them).
-func relabelDoc(doc []byte) ([]byte, map[string]string) {
+// servedLocalIds walks a served document and returns its local ids exactly
+// as served — block ids plus table column and row ids (the ids set_cell
+// takes). On a default read those are the server's compact labels for
+// minted ids and the full spelling for everything else; either spelling
+// resolves server-side.
+func servedLocalIds(doc []byte) []string {
 	type idHolder struct {
 		Id string `json:"id"`
 	}
@@ -281,11 +273,11 @@ func relabelDoc(doc []byte) ([]byte, map[string]string) {
 		} `json:"blocks"`
 	}
 	if err := json.Unmarshal(doc, &envelope); err != nil {
-		return doc, nil
+		return nil
 	}
 	var ids []string
 	addId := func(id string) {
-		if fullBlockIdRe.MatchString(id) {
+		if id != "" {
 			ids = append(ids, id)
 		}
 	}
@@ -298,44 +290,7 @@ func relabelDoc(doc []byte) ([]byte, map[string]string) {
 			addId(row.Id)
 		}
 	}
-	if len(ids) == 0 {
-		return doc, nil
-	}
-	labels := suffixLabels(ids)
-	out := doc
-	byLabel := make(map[string]string, len(labels))
-	for id, label := range labels {
-		out = []byte(strings.ReplaceAll(string(out), `"`+id+`"`, `"`+label+`"`))
-		byLabel[label] = id
-	}
-	return out, byLabel
-}
-
-// suffixLabels assigns each id its shortest unique suffix of at least
-// labelLen characters (unique = no OTHER id ends with it, the server's
-// matchBlockRef rule).
-func suffixLabels(ids []string) map[string]string {
-	labels := make(map[string]string, len(ids))
-	for _, id := range ids {
-		for n := labelLen; n <= len(id); n++ {
-			suffix := id[len(id)-n:]
-			unique := true
-			for _, other := range ids {
-				if other != id && strings.HasSuffix(other, suffix) {
-					unique = false
-					break
-				}
-			}
-			if unique {
-				labels[id] = suffix
-				break
-			}
-		}
-		if _, ok := labels[id]; !ok {
-			labels[id] = id
-		}
-	}
-	return labels
+	return ids
 }
 
 //
@@ -391,12 +346,23 @@ func (r *Runner) mutationQuery() url.Values {
 
 // patchOps sends a single-op PATCH (the wrapper never batches — one tool
 // call, one intent) with the idempotency machinery and the §7.4 ambiguity
-// retry: on 400 ambiguous_input the runner re-reads the object, resolves
-// the named block refs to retained full ids, and retries once.
+// retry: on 400 ambiguous_input the runner re-reads the object, rewrites the
+// named block refs to the served id they uniquely tail-match, and retries
+// once.
 func (r *Runner) patchOps(ctx context.Context, session *Session, spaceId, objectId string, op map[string]any, refFields []string) (*v2model.EditResult, error) {
 	path := "/v2/spaces/" + seg(spaceId) + "/objects/" + seg(objectId)
 	query := r.mutationQuery()
 	body := map[string]any{"ops": []any{op}}
+	// an identical re-run of a call whose refs were rewritten mid-flight
+	// (the ambiguity retry below) computes the PRE-rewrite hash; the server
+	// bound the key to the REWRITTEN body, so the re-run must reproduce the
+	// rewrite to replay instead of 409ing or re-applying
+	if lw := session.LastWrite; lw != nil && len(lw.Rewrites) > 0 &&
+		lw.PriorHash == requestHash("PATCH", path, query, body) && r.now().Sub(lw.At) < idempotencyReuseWindow {
+		for field, resolved := range lw.Rewrites {
+			op[field] = resolved // op backs body, so the hash below sees this
+		}
+	}
 	key := r.mutationKey(session, requestHash("PATCH", path, query, body))
 	send := func() (*v2model.EditResult, error) {
 		var result v2model.EditResult
@@ -413,6 +379,7 @@ func (r *Runner) patchOps(ctx context.Context, session *Session, spaceId, object
 		}
 		return &result, nil
 	}
+	priorHash := session.LastWrite.Hash
 	result, err := send()
 	if err == nil || !isAmbiguous(err) || len(refFields) == 0 {
 		return result, err
@@ -420,51 +387,42 @@ func (r *Runner) patchOps(ctx context.Context, session *Session, spaceId, object
 	// ambiguity retry: re-read the object and retry ONCE when the refs now
 	// resolve (see retryAmbiguous — this self-heals the concurrent-
 	// modification race, not a genuinely ambiguous label)
-	retried, retryErr := r.retryAmbiguous(ctx, session, spaceId, objectId, op, refFields)
-	if retryErr != nil || !retried {
+	rewrites, retryErr := r.retryAmbiguous(ctx, spaceId, objectId, op, refFields)
+	if retryErr != nil || len(rewrites) == 0 {
 		return nil, err // surface the original ambiguity, it names the ref
 	}
 	// the rewrite changed the body, so re-stamp the SAME key onto the new
-	// request identity: the C8 store never cached the failed 400, and a
-	// later identical call that resolves client-side (labels were retained
-	// by the re-read) must replay, not re-apply
+	// request identity — the C8 store never cached the failed 400 — and
+	// record the rewrite so a later identical call replays, not re-applies
 	if lw := session.LastWrite; lw != nil && lw.Key == key {
+		lw.PriorHash = priorHash
+		lw.Rewrites = rewrites
 		lw.Hash = requestHash("PATCH", path, query, body)
 		lw.At = r.now()
 	}
 	return send()
 }
 
-// retryAmbiguous re-reads the object and rewrites op's ref fields to full
-// ids where the suffix now resolves uniquely, reporting whether anything
-// changed. Scope, stated honestly: a ref RETAINED in the session never gets
-// here — resolveBlockRef resolved it to a full id before the send (§7.4's
-// retained-id promise, honored up front). So the 400 means the ref was not
-// retained (an outline label, a pruned session), and re-resolving it by
-// suffix over the CURRENT document self-heals exactly one case: the
-// concurrent-modification race, where the reference was ambiguous when the
-// PATCH ran but is unique against the re-read document (background sync
-// removed the collision). A ref that is STILL ambiguous on re-read is
-// unresolvable in principle — the wrapper cannot know which block the model
-// meant — and the server's error surfaces untouched. The re-read's labels
-// are retained either way, so the model's next read/edit starts resolved.
-func (r *Runner) retryAmbiguous(ctx context.Context, session *Session, spaceId, objectId string, op map[string]any, refFields []string) (bool, error) {
+// retryAmbiguous re-reads the object and rewrites op's ref fields to the
+// served id they now uniquely tail-match, returning the rewrites it made.
+// The pool is the re-read document's own served ids (servedLocalIds) —
+// never a session-retained map, which could be stale against the current
+// document. This self-heals exactly one case: the concurrent-modification
+// race, where the reference was ambiguous when the PATCH ran but is unique
+// against the re-read document (background sync removed the collision). A
+// ref that is STILL ambiguous on re-read is unresolvable in principle — the
+// wrapper cannot know which block the model meant — and the server's error
+// surfaces untouched.
+func (r *Runner) retryAmbiguous(ctx context.Context, spaceId, objectId string, op map[string]any, refFields []string) (map[string]string, error) {
 	doc, err := r.client.raw(ctx, apiRequest{
 		method: "GET",
 		path:   "/v2/spaces/" + seg(spaceId) + "/objects/" + seg(objectId),
 	})
 	if err != nil {
-		return false, err
+		return nil, err
 	}
-	_, labels := relabelDoc(doc)
-	if labels != nil {
-		session.setLabels(objectId, labels)
-	}
-	fullIds := make([]string, 0, len(labels))
-	for _, id := range labels {
-		fullIds = append(fullIds, id)
-	}
-	changed := false
+	servedIds := servedLocalIds(doc)
+	var rewrites map[string]string
 	for _, field := range refFields {
 		ref, _ := op[field].(string)
 		if ref == "" || fullBlockIdRe.MatchString(ref) {
@@ -472,7 +430,7 @@ func (r *Runner) retryAmbiguous(ctx context.Context, session *Session, spaceId, 
 		}
 		var match string
 		count := 0
-		for _, id := range fullIds {
+		for _, id := range servedIds {
 			if strings.HasSuffix(id, ref) {
 				match = id
 				count++
@@ -480,10 +438,13 @@ func (r *Runner) retryAmbiguous(ctx context.Context, session *Session, spaceId, 
 		}
 		if count == 1 && match != ref {
 			op[field] = match
-			changed = true
+			if rewrites == nil {
+				rewrites = map[string]string{}
+			}
+			rewrites[field] = match
 		}
 	}
-	return changed, nil
+	return rewrites, nil
 }
 
 // opsVocab maps the op-path vocabulary of server error texts back onto the

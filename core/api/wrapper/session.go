@@ -2,10 +2,18 @@ package wrapper
 
 // session.go — the handle state (§7.4, fully stated there): find writes
 // numbered handles and the working space; the id-taking tools read them;
-// each new find renumbers. Full-read relabeling stores the label→full-id
-// map per object. The CLI persists the session in a file because a CLI
-// invocation is a fresh process; the MCP/long-lived delivery keeps the same
-// state in memory — the Store interface is that seam.
+// each new find renumbers. The CLI persists the session in a file because a
+// CLI invocation is a fresh process; the MCP/long-lived delivery keeps the
+// same state in memory — the Store interface is that seam.
+//
+// The session used to retain a per-object block label→full-id map from
+// client-side relabeling. The server labels reads itself now, and the map
+// was retired: worse than dead weight, a STALE map surviving in a session
+// file rewrote a just-read label into a full id from a previous document
+// version, which the server accepted as an exact match — a silent
+// wrong-block write reachable through the CLI's persistent session across
+// an upgrade. Old session files carrying "labels" load fine (unknown JSON
+// fields are ignored) and the field is dropped on the next save.
 
 import (
 	"encoding/json"
@@ -36,6 +44,15 @@ type LastWrite struct {
 	Hash string    `json:"hash"`
 	Key  string    `json:"key"`
 	At   time.Time `json:"at"`
+	// PriorHash/Rewrites record an ambiguity-retry rewrite (runner.patchOps):
+	// the request was re-addressed mid-flight AFTER its key was minted, so an
+	// identical re-run computes the PRE-rewrite hash. To replay instead of
+	// 409ing (the server binds the key to the REWRITTEN body) the re-run must
+	// reproduce the rewrite: PriorHash identifies it, Rewrites replays it.
+	// Scoped to the one LastWrite entry and its reuse window — deliberately
+	// NOT a per-object label map, which could go stale across documents.
+	PriorHash string            `json:"priorHash,omitempty"`
+	Rewrites  map[string]string `json:"rewrites,omitempty"`
 }
 
 // idempotencyReuseWindow bounds LastWrite key reuse.
@@ -48,10 +65,6 @@ type Session struct {
 	Space string `json:"space,omitempty"`
 	// Handles are the last find's enumerated results.
 	Handles []Handle `json:"handles,omitempty"`
-	// Labels maps objectId → block label → full block id (full-read
-	// relabeling; labels are unique suffixes, so they also pass through
-	// writes unresolved).
-	Labels map[string]map[string]string `json:"labels,omitempty"`
 	// Me caches spaceId → the caller's participant id (@me resolution).
 	Me map[string]string `json:"me,omitempty"`
 	// LastWrite is the idempotency reuse record.
@@ -68,14 +81,6 @@ func (s *Session) handle(n int) (Handle, bool) {
 	return Handle{}, false
 }
 
-// setLabels replaces one object's label map.
-func (s *Session) setLabels(objectId string, labels map[string]string) {
-	if s.Labels == nil {
-		s.Labels = map[string]map[string]string{}
-	}
-	s.Labels[objectId] = labels
-}
-
 // Store persists the session between tool calls.
 type Store interface {
 	Load() (*Session, error)
@@ -85,7 +90,7 @@ type Store interface {
 // MemoryStore keeps the session in memory (the MCP / long-lived delivery,
 // and tests). Load hands out a deep COPY under a lock — handing out the
 // stored pointer would alias every caller's session and make concurrent
-// tool calls race on its maps (Labels, Me).
+// tool calls race on its maps (Me).
 type MemoryStore struct {
 	mu   sync.Mutex
 	data []byte // the session, JSON-encoded (the copy mechanism)

@@ -8,7 +8,6 @@ package wrapper
 
 import (
 	"context"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -151,19 +150,20 @@ func TestMutationReceiptsNameTheTarget(t *testing.T) {
 	})
 }
 
-// testTableDoc is a realistic table document: block ids and row/column ids
-// are all 24-hex (rows/cols are bson hex in production), differing only in
-// their tails.
+// testTableDoc is a table document as the SERVER now serves it: minted block
+// and row ids relabeled server-side; column ids stay full (a column's tail is
+// shared with its derived cell ids, so columns structurally never relabel —
+// §8.26).
 const testTableDoc = `{"version":1,"type":"page","properties":{"name":"Grid"},"blocks":[` +
-	`{"id":"aaaabbbbccccdddd11112222","type":"paragraph","text":"intro"},` +
-	`{"id":"aaaabbbbccccddddee44ff02","type":"table",` +
+	`{"id":"12222","type":"paragraph","text":"intro"},` +
+	`{"id":"4ff02","type":"table",` +
 	`"columns":[{"id":"bbbbccccddddeeee00000c01"},{"id":"bbbbccccddddeeee00000c02"}],` +
-	`"rows":[{"id":"ccccddddeeeeffff00000d01","cells":["a","b"]},{"id":"ccccddddeeeeffff00000d02","cells":["c","d"]}]}]}`
+	`"rows":[{"id":"00d01","cells":["a","b"]},{"id":"00d02","cells":["c","d"]}]}]}`
 
-func TestTableRelabeling(t *testing.T) {
+func TestTableReadPassThrough(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("full read relabels table row and column ids too — no 24-hex reaches the model", func(t *testing.T) {
+	t.Run("a table read serves the server's id vocabulary verbatim", func(t *testing.T) {
 		fx := newFixture(t)
 		fx.seedSession("space1", Handle{N: 1, Id: "bafyobj1"})
 		fx.stub("GET /v2/spaces/space1/objects/bafyobj1", 200, testTableDoc)
@@ -171,39 +171,26 @@ func TestTableRelabeling(t *testing.T) {
 		result, err := fx.Run(ctx, "read", map[string]any{"object": "1"})
 
 		require.NoError(t, err)
-		for _, full := range []string{
-			"aaaabbbbccccdddd11112222", "aaaabbbbccccddddee44ff02",
-			"bbbbccccddddeeee00000c01", "bbbbccccddddeeee00000c02",
-			"ccccddddeeeeffff00000d01", "ccccddddeeeeffff00000d02",
-		} {
-			assert.NotContains(t, result.Text, full, "full ids never reach the model (§7.1) — including table parts")
-		}
-		assert.Contains(t, result.Text, `"4ff02"`, "the table block gets a label")
-		assert.Contains(t, result.Text, `"00d01"`, "rows get labels")
-		assert.Contains(t, result.Text, `"00c01"`, "columns get labels")
-
-		session, _ := fx.store.Load()
-		assert.Equal(t, "ccccddddeeeeffff00000d01", session.Labels["bafyobj1"]["00d01"])
-		assert.Equal(t, "bbbbccccddddeeee00000c02", session.Labels["bafyobj1"]["00c02"])
+		assert.Equal(t, testTableDoc, result.Text, "labeling is server-side now — nothing to rewrite")
 	})
 
-	t.Run("set_cell resolves row and column labels to the retained full ids", func(t *testing.T) {
+	t.Run("set_cell passes the served row and column spellings through", func(t *testing.T) {
+		// a served read mixes spellings by design: row labels are short,
+		// column ids stay full — the server resolves each by exact id or
+		// unique suffix (resolveTablePart), so the wrapper forwards verbatim
 		fx := newFixture(t)
 		fx.seedSession("space1", Handle{N: 1, Id: "bafyobj1"})
-		fx.stub("GET /v2/spaces/space1/objects/bafyobj1", 200, testTableDoc)
 		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 200, editOKBody)
 
-		_, err := fx.Run(ctx, "read", map[string]any{"object": "1"})
-		require.NoError(t, err)
-		_, err = fx.Run(ctx, "set_cell", map[string]any{
-			"object": "1", "table": "4ff02", "row": "00d02", "col": "00c01", "value": "done",
+		_, err := fx.Run(ctx, "set_cell", map[string]any{
+			"object": "1", "table": "4ff02", "row": "00d02", "col": "bbbbccccddddeeee00000c01", "value": "done",
 		})
 
 		require.NoError(t, err)
 		op := firstOp(t, fx.sent("PATCH /v2/spaces/space1/objects/bafyobj1")[0])
-		assert.Equal(t, "aaaabbbbccccddddee44ff02", op["tableId"])
-		assert.Equal(t, "ccccddddeeeeffff00000d02", op["row"], "the row label resolves client-side")
-		assert.Equal(t, "bbbbccccddddeeee00000c01", op["col"], "the column label resolves client-side")
+		assert.Equal(t, "4ff02", op["tableId"])
+		assert.Equal(t, "00d02", op["row"])
+		assert.Equal(t, "bbbbccccddddeeee00000c01", op["col"])
 	})
 }
 
@@ -329,45 +316,9 @@ func TestPropertyIndexFetchedOnce(t *testing.T) {
 		"the page size stays under the server's MaxPageSize — sitting on the boundary 400s if it is lowered")
 }
 
-// TestLabelsResolveUnderServerRule pins the two suffix-label implementations
-// to each other: every label the wrapper mints must resolve to exactly its
-// id under the server's matchBlockRef rule (exact match wins, else unique
-// suffix over ALL ids) — the §8.6 "same uniqueness rule" claim, enforced.
-func TestLabelsResolveUnderServerRule(t *testing.T) {
-	ids := []string{
-		"aaaabbbbccccddddeeee0001",
-		"aaaabbbbccccddddeeee0002",
-		"aaaabbbbccccdddd00e0001f", // e0001 in the middle
-		"aaaabbbbccccdddd11170001", // colliding 5-char tails …
-		"aaaabbbbccccdddd22270001", // … force extended labels
-		"bbbbccccddddeeee00000c01", // a column id
-		"ccccddddeeeeffff00000d01", // a row id
-	}
-	labels := suffixLabels(ids)
-	require.Len(t, labels, len(ids))
-	for id, label := range labels {
-		// the server rule (matchBlockRef): exact id match wins, otherwise
-		// the suffix must match exactly one id
-		exact := 0
-		suffix := 0
-		var match string
-		for _, other := range ids {
-			if other == label {
-				exact++
-				match = other
-			}
-			if strings.HasSuffix(other, label) {
-				suffix++
-				if exact == 0 {
-					match = other
-				}
-			}
-		}
-		if exact > 0 {
-			assert.Equal(t, id, match, "label %q resolves exactly", label)
-			continue
-		}
-		assert.Equal(t, 1, suffix, "label %q must be a unique suffix under the server rule", label)
-		assert.Equal(t, id, match, "label %q must resolve to its own id", label)
-	}
-}
+// The old TestLabelsResolveUnderServerRule pinned the wrapper's own
+// suffix-label minting to the server's matchBlockRef rule. With client-side
+// relabeling retired there is a single labeler — the server's — whose
+// label-uniqueness invariant is pinned at the format level
+// (anyblockjson.TestExport_MintedShapeRelabeling) and whose resolution is
+// pinned by the service's outline/?block= round-trip tests.
