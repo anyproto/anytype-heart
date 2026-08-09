@@ -57,7 +57,7 @@ func PatchObjectV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 // PutObjectV2Handler replaces the whole document (escape hatch)
 //
 //	@Summary		Replace object (full AnyBlock document)
-//	@Description	Replaces the object's content with the supplied flat AnyBlock document in one change set. The CRDT diff is minimal iff the block ids round-trip from the GET (the default read keeps them full — C4); diffStats make an accidental full rewrite visible. Prefer PATCH for targeted edits. If-Match is advisory (C7). System-managed objects are excluded. Honors ?dry_run=true.
+//	@Description	Replaces the object's content with the supplied flat AnyBlock document in one change set. Read the object with ?ids=full first: PUT takes ids literally, and a body carrying ids the object does not own — including the compact labels a DEFAULT read serves — is refused with a 400 naming the offending ids. New blocks omit their id (the server mints one). The CRDT diff is minimal iff the ids round-trip from that ?ids=full read; diffStats make an accidental full rewrite visible. Partial reads (?block= subtrees, outlines) do not PUT back. Prefer PATCH for targeted edits. If-Match is advisory (C7). System-managed objects are excluded. Honors ?dry_run=true.
 //	@Id				v2_put_object
 //	@Tags			V2
 //	@Accept			json

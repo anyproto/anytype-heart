@@ -253,6 +253,13 @@ components:
           additionalProperties:
             type: string
           type: object
+        createdViews:
+          additionalProperties:
+            type: string
+          description: |-
+            CreatedViews maps each insertView op ("ops[i]") to the view id it
+            minted (view ids are always server-minted).
+          type: object
         diffStats:
           $ref: '#/components/schemas/DiffStats'
         dry_run:
@@ -726,7 +733,7 @@ info:
     url: https://anytype.io/contact
   description: |-
     The agent-oriented Anytype local API. Objects are AnyBlock JSON documents (pkg/lib/anyblockjson/SPEC.md) rather than block trees, so one read returns a whole editable document and one PATCH edits it.
-    One vocabulary throughout (C2): camelCase, property keys, option names, and `type` as a type key — never an id, never snake_case. Responses are compact JSON (C3) with compact object refs plus a legend (C4); list and search rows carry id, name, type and the properties you asked for, and never embed type objects (C5).
+    One vocabulary throughout (C2): camelCase, property keys, option names, and `type` as a type key — never an id, never snake_case. Responses are compact JSON (C3); object refs are always full inline, and the default object read relabels machine-minted block ids to short doc-local suffixes — `?ids=full` returns the export shape with full ids everywhere, the shape that PUTs back (C4); list and search rows carry id, name, type and the properties you asked for, and never embed type objects (C5).
     Errors share one shape (C6): {status, code, message, issues:[{path, message, hint}]}, path-addressed and naming the allowed values, so a failed call tells an agent how to repair it. Reads never fail on unknown content — anything a representation cannot express is reported in `warnings` (C11).
     Every object read returns an `etag` derived from the tree heads plus an ETag header; mutations take `If-Match` and are advisory by default (C7). Every mutation honours `Idempotency-Key` (C8) and `?dry_run=true` (C9). Every list surface is paginated with limit=25 by default and steers you when it truncates (C10).
     Schemas are discoverable at runtime and strict-mode-compatible for constrained decoding (C12, C13): GET /v2/schemas lists the kinds, GET /v2/schemas/{kind} returns one, and GET /v2/schemas/ops/{op} returns the schema of a single PATCH op.
@@ -1553,7 +1560,9 @@ paths:
   /v2/spaces/{space_id}/collections:
     post:
       description: 'Creates a collection: {name, items?}. Items are validated against
-        the space. Honors Idempotency-Key and ?dry_run=true.'
+        the space. The body binds strictly (unknown fields rejected) and the collection
+        schema''s advertised bounds (name length, item count) are enforced. Honors
+        Idempotency-Key and ?dry_run=true.'
       operationId: v2_create_collection
       parameters:
       - description: Space id
@@ -1585,6 +1594,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: Validation or reference failure
+        "413":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Request body exceeds the 1 MiB cap
       security:
       - bearerauth: []
       summary: Create collection
@@ -1713,7 +1728,9 @@ paths:
     post:
       description: 'Uploads one file and returns the file object id that file/image
         blocks and iconImage values reference (R11). Send multipart/form-data with
-        a file field, or JSON {"url": …}.'
+        a file field, or JSON {"url": …} — the JSON body binds strictly (unknown fields
+        rejected, 1 MiB cap). A URL the source refuses or that cannot be fetched is
+        a 400 naming /url; only genuine server faults answer 500.'
       operationId: v2_upload_file
       parameters:
       - description: Space id
@@ -1744,7 +1761,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-          description: Validation failure
+          description: Validation failure, or a source URL that did not yield the
+            file
+        "413":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: JSON request body exceeds the 1 MiB cap
       security:
       - bearerauth: []
       summary: Upload file
@@ -1886,11 +1910,15 @@ paths:
       - V2
   /v2/spaces/{space_id}/objects/{object_id}:
     get:
-      description: Returns the object as a flat AnyBlock JSON document read from the
-        live editor state, with an advisory etag (C7) in the envelope and the ETag
-        header. Supports include=properties,blocks; outline=true (block skeleton with
-        compact labels); block={blockId} (one contiguous subtree); ids=compact|full
-        (object-id compaction, C4); format=anyblock|md (markdown is read-only).
+      description: 'Returns the object as a flat AnyBlock JSON document read from
+        the live editor state, with an advisory etag (C7) in the envelope and the
+        ETag header. Supports include=properties,blocks; outline=true (block skeleton
+        with compact labels); block={blockId} (one contiguous subtree, marked "subtree":
+        true — a partial body no write path accepts); ids=compact|full (the two document
+        shapes, C4 — compact is the edit read where machine-minted block ids relabel
+        to short suffixes, full is the export read with full ids everywhere: the shape
+        that PUTs back). Object refs are always full inline. format=anyblock|md (markdown
+        is read-only).'
       operationId: v2_get_object
       parameters:
       - description: Space id
@@ -1920,7 +1948,9 @@ paths:
         name: block
         schema:
           type: string
-      - description: compact (default) or full — object ids only
+      - description: 'compact (default) = the edit shape: minted block ids relabel
+          to short suffixes. full = the export shape: full ids everywhere — the shape
+          to PUT back. Object refs are full inline on both.'
         in: query
         name: ids
         schema:
@@ -1958,13 +1988,14 @@ paths:
     patch:
       description: 'Applies the closed, id-addressed op set — setProperties, updateBlock,
         replaceSubtree, insertBlocks, moveBlock, deleteBlock, replaceText, setCell,
-        addItems, removeItems — atomically (one change set). Block references accept
-        full ids and unique suffixes. The post-op document must satisfy the AnyBlock
-        semantic checks (SPEC §12); any violation rejects the whole PATCH with path-addressed
-        errors. If-Match is advisory (C7): absent = last-write-wins, stale = 409 with
-        the current etag. Responds with the new etag, the created-block id map keyed
-        by payload position, and diffStats. Honors ?dry_run=true (C9). GET /v2/schemas/ops/{op}
-        documents each op.'
+        updateView, insertView, moveView, deleteView, addItems, removeItems — atomically
+        (one change set). Block references accept full ids and unique suffixes. The
+        post-op document must satisfy the AnyBlock semantic checks (SPEC §12); any
+        violation rejects the whole PATCH with path-addressed errors. If-Match is
+        advisory (C7): absent = last-write-wins, stale = 409 with the current etag.
+        Responds with the new etag, the created-block id map keyed by payload position,
+        and diffStats. Honors ?dry_run=true (C9). GET /v2/schemas/ops/{op} documents
+        each op.'
       operationId: v2_patch_object
       parameters:
       - description: Space id
@@ -2025,11 +2056,15 @@ paths:
       tags:
       - V2
     put:
-      description: Replaces the object's content with the supplied flat AnyBlock document
-        in one change set. The CRDT diff is minimal iff the block ids round-trip from
-        the GET (the default read keeps them full — C4); diffStats make an accidental
-        full rewrite visible. Prefer PATCH for targeted edits. If-Match is advisory
-        (C7). System-managed objects are excluded. Honors ?dry_run=true.
+      description: 'Replaces the object''s content with the supplied flat AnyBlock
+        document in one change set. Read the object with ?ids=full first: PUT takes
+        ids literally, and a body carrying ids the object does not own — including
+        the compact labels a DEFAULT read serves — is refused with a 400 naming the
+        offending ids. New blocks omit their id (the server mints one). The CRDT diff
+        is minimal iff the ids round-trip from that ?ids=full read; diffStats make
+        an accidental full rewrite visible. Partial reads (?block= subtrees, outlines)
+        do not PUT back. Prefer PATCH for targeted edits. If-Match is advisory (C7).
+        System-managed objects are excluded. Honors ?dry_run=true.'
       operationId: v2_put_object
       parameters:
       - description: Space id
@@ -2113,8 +2148,10 @@ paths:
       - V2
     post:
       description: 'Creates a property: {key?, name, format, options?:[{name,color?}]}.
-        Formats use the AnyBlock vocabulary (text, select, multiSelect, …). Honors
-        Idempotency-Key and ?dry_run=true.'
+        Formats use the AnyBlock vocabulary (text, select, multiSelect, …). The body
+        binds strictly: unknown fields are rejected with the field named, and the
+        bounds the property schema advertises (name/key lengths, key pattern, option
+        count) are enforced. Honors Idempotency-Key and ?dry_run=true.'
       operationId: v2_create_property
       parameters:
       - description: Space id
@@ -2146,6 +2183,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: Validation failure
+        "413":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Request body exceeds the 1 MiB cap
       security:
       - bearerauth: []
       summary: Create property
@@ -2187,8 +2230,9 @@ paths:
       tags:
       - V2
     patch:
-      description: Updates a property's display name. The key is identity and cannot
-        change.
+      description: 'Updates a property''s display name. The key is identity and cannot
+        change. The body binds strictly: unknown fields are rejected with the field
+        named.'
       operationId: v2_update_property
       parameters:
       - description: Space id
@@ -2215,12 +2259,24 @@ paths:
               schema:
                 $ref: '#/components/schemas/CreateResult'
           description: Updated property
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Validation failure
         "404":
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
           description: Property not found
+        "413":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Request body exceeds the 1 MiB cap
       security:
       - bearerauth: []
       summary: Update property
@@ -2329,8 +2385,9 @@ paths:
       description: 'Creates a set querying one type: {name, type, filters?, sorts?,
         views?}. The set''s initial state carries a fully-formed dataview block, so
         filters/sorts/views land atomically (§8/R10). Filter/sort property keys are
-        validated against the type''s actual keys (R9). Honors Idempotency-Key and
-        ?dry_run=true.'
+        validated against the type''s actual keys (R9). The body binds strictly (unknown
+        fields rejected) and the set schema''s advertised bounds are enforced. Honors
+        Idempotency-Key and ?dry_run=true.'
       operationId: v2_create_set
       parameters:
       - description: Space id
@@ -2362,6 +2419,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: Validation or reference failure
+        "413":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Request body exceeds the 1 MiB cap
       security:
       - bearerauth: []
       summary: Create set
@@ -2642,6 +2705,12 @@ paths:
         in: path
         name: type
         required: true
+        schema:
+          type: string
+      - description: compact (default) = the edit shape with short labels for minted
+          view/block ids; full = the export shape with full ids
+        in: query
+        name: ids
         schema:
           type: string
       responses:
