@@ -74,6 +74,11 @@ func TestLiveNamingQuality(t *testing.T) {
 	type corpus struct {
 		name    string
 		schemas []schemaplan.ContainerSchema
+		// expect is set for synthetic fixtures: their sameKind/differentKind
+		// assertions are pure LLM grouping decisions, and nothing else in the
+		// suite checks a real model against them (the whitelist tests use
+		// scripted plans).
+		expect *planfixture.Expectations
 	}
 	var corpora []corpus
 
@@ -83,7 +88,8 @@ func TestLiveNamingQuality(t *testing.T) {
 		fixtures, err := planfixture.All()
 		require.NoError(t, err)
 		for _, fixture := range fixtures {
-			corpora = append(corpora, corpus{"synthetic/" + fixture.Id, fixture.Containers})
+			expect := fixture.Expect
+			corpora = append(corpora, corpus{"synthetic/" + fixture.Id, fixture.Containers, &expect})
 		}
 	}
 	// A dumped []schemaplan.ContainerSchema — the real workspace's evidence.
@@ -92,10 +98,10 @@ func TestLiveNamingQuality(t *testing.T) {
 		require.NoError(t, err)
 		var real []schemaplan.ContainerSchema
 		require.NoError(t, json.Unmarshal(raw, &real))
-		corpora = append(corpora, corpus{fmt.Sprintf("REAL/%d-containers", len(real)), real})
+		corpora = append(corpora, corpus{name: fmt.Sprintf("REAL/%d-containers", len(real)), schemas: real})
 	}
 
-	t.Logf("%-34s %8s %6s %9s %9s %7s %6s", "corpus", "assigned", "kinds", "sing==pl", "echoed", "dupes", "sec")
+	t.Logf("%-34s %8s %6s %9s %9s %7s %8s %6s", "corpus", "assigned", "kinds", "sing==pl", "echoed", "dupes", "grouping", "sec")
 	for _, c := range corpora {
 		started := time.Now()
 		plan, err := planner.Plan(context.Background(), c.schemas)
@@ -105,12 +111,65 @@ func TestLiveNamingQuality(t *testing.T) {
 			continue
 		}
 		s := scoreNaming(plan, c.schemas)
-		t.Logf("%-34s %5d/%-2d %6d %9s %9s %7d %6.0f  %s",
+		grouping := "-"
+		if c.expect != nil {
+			ok, total, misses := scoreGrouping(plan, *c.expect)
+			grouping = fmt.Sprintf("%d/%d", ok, total)
+			for _, miss := range misses {
+				t.Logf("    %s GROUPING MISS: %s", c.name, miss)
+			}
+		}
+		t.Logf("%-34s %5d/%-2d %6d %9s %9s %7d %8s %6.0f  %s",
 			c.name, s.assigned, len(c.schemas), s.kinds,
 			fmt.Sprintf("%d/%d", s.sameSingularPlural, s.kinds),
 			fmt.Sprintf("%d/%d", s.echoed, s.kinds),
-			s.duplicateNames, took.Seconds(), strings.Join(s.sample, ", "))
+			s.duplicateNames, grouping, took.Seconds(), strings.Join(s.sample, ", "))
 	}
+}
+
+// scoreGrouping checks the fixture's sameKind/differentKind assertions against
+// what the model actually grouped. These are the assertions only a real model
+// can satisfy — every other expectation in the suite is decided by code.
+func scoreGrouping(plan schemaplan.Plan, expect planfixture.Expectations) (ok, total int, misses []string) {
+	typeOf := func(containerId string) string {
+		return string(plan.Containers[containerId].TypeKey)
+	}
+	for _, group := range expect.SameKind {
+		total++
+		want := typeOf(group[0])
+		shared := want != ""
+		for _, containerId := range group[1:] {
+			if typeOf(containerId) != want {
+				shared = false
+			}
+		}
+		if shared {
+			ok++
+			continue
+		}
+		var got []string
+		for _, containerId := range group {
+			got = append(got, containerId+"="+typeOf(containerId))
+		}
+		misses = append(misses, "sameKind not shared: "+strings.Join(got, " "))
+	}
+	for _, group := range expect.DifferentKind {
+		total++
+		clash := ""
+		for i := 0; i < len(group); i++ {
+			for j := i + 1; j < len(group); j++ {
+				if key := typeOf(group[i]); key != "" && key == typeOf(group[j]) {
+					clash = group[i] + " and " + group[j] + " both " + key
+				}
+			}
+		}
+		if clash == "" {
+			ok++
+			continue
+		}
+		misses = append(misses, "differentKind merged: "+clash)
+	}
+	return ok, total, misses
 }
 
 type namingScore struct {
