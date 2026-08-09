@@ -49,6 +49,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription"
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/dataviewservice"
+	"github.com/anyproto/anytype-heart/core/block/deletionaudit"
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
@@ -316,6 +317,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(block.New()).
 		Register(detailservice.New()).
 		Register(objectgc.New()).
+		Register(deletionaudit.New()).
 		Register(dataviewservice.New()).
 		Register(migration.New()).
 		Register(indexer.New()).

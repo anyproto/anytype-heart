@@ -1989,5 +1989,49 @@
     "name": "Template Placeholders",
     "readonly": false,
     "source": "details"
+  },
+  {
+    "description": "Human who permanently deleted this object",
+    "format": "object",
+    "hidden": true,
+    "key": "deletedBy",
+    "maxCount": 1,
+    "name": "Deleted by",
+    "objectTypes": [
+      "participant"
+    ],
+    "readonly": true,
+    "source": "local"
+  },
+  {
+    "description": "Date when the object was permanently deleted",
+    "format": "date",
+    "hidden": true,
+    "includeTime": true,
+    "key": "deletedDate",
+    "maxCount": 1,
+    "name": "Deletion date",
+    "readonly": true,
+    "source": "local"
+  },
+  {
+    "description": "Id of the space settings tree change that deleted this object. Objects deleted in one operation share it",
+    "format": "shorttext",
+    "hidden": true,
+    "key": "deletionChangeId",
+    "maxCount": 1,
+    "name": "Deletion change id",
+    "readonly": true,
+    "source": "local"
+  },
+  {
+    "description": "What the object was, captured when it was deleted. Nested so its keys stay out of the objectstore indexes",
+    "format": "map",
+    "hidden": true,
+    "key": "deletedSnapshot",
+    "maxCount": 1,
+    "name": "Deleted object snapshot",
+    "readonly": true,
+    "source": "local"
   }
 ]

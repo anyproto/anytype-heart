@@ -208,6 +208,17 @@ func (s *dsObjectStore) QueryRaw(filters *database.Filters, limit int, offset in
 	return s.queryAnyStore(s.componentCtx, filters.FilterObj, filters.Order, uint(limit), uint(offset))
 }
 
+func (s *dsObjectStore) CountRaw(filters *database.Filters) (int, error) {
+	if filters == nil || filters.FilterObj == nil {
+		return 0, fmt.Errorf("filter cannot be nil or unitialized")
+	}
+	count, err := s.objects.Find(filters.FilterObj.AnystoreFilter()).Count(s.componentCtx)
+	if err != nil {
+		return 0, fmt.Errorf("count objects: %w", err)
+	}
+	return count, nil
+}
+
 type injectionHit struct {
 	id      string
 	details *domain.Details
