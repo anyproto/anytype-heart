@@ -183,6 +183,18 @@ func (s *invalidStore) GetActiveViews(objectId string) (map[string]string, error
 	return nil, s.err
 }
 
+func (s *invalidStore) CountRaw(f *database.Filters) (int, error) {
+	return 0, s.err
+}
+
+func (s *invalidStore) GetDeletionAuditMark() (string, error) {
+	return "", s.err
+}
+
+func (s *invalidStore) SetDeletionAuditMark(heads string) error {
+	return s.err
+}
+
 func (s *invalidStore) GetRelationLink(key string) (*model.RelationLink, error) {
 	return nil, s.err
 }

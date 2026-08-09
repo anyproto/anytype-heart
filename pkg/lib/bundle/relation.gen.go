@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "cb8c8504438f2846044f86bbc2274d236d682c9f088ac3514d5268dbad219f3b"
+const RelationChecksum = "df2637b4fed2c7622ae81a8211523ce0907f50257b6f6f6b3438023a5d967a14"
 const (
 	RelationKeyTag                                  domain.RelationKey = "tag"
 	RelationKeyCamera                               domain.RelationKey = "camera"
@@ -205,6 +205,10 @@ const (
 	RelationKeySpaceType                            domain.RelationKey = "spaceType"
 	RelationKeyHomepage                             domain.RelationKey = "homepage"
 	RelationKeyTemplatePlaceholders                 domain.RelationKey = "templatePlaceholders"
+	RelationKeyDeletedBy                            domain.RelationKey = "deletedBy"
+	RelationKeyDeletedDate                          domain.RelationKey = "deletedDate"
+	RelationKeyDeletionChangeId                     domain.RelationKey = "deletionChangeId"
+	RelationKeyDeletedSnapshot                      domain.RelationKey = "deletedSnapshot"
 )
 
 var (
@@ -632,6 +636,64 @@ var (
 			MaxCount:         1,
 			Name:             "Default view type",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyDeletedBy: {
+
+			DataSource:       model.Relation_local,
+			Description:      "Human who permanently deleted this object",
+			Format:           model.RelationFormat_object,
+			Hidden:           true,
+			Id:               "_brdeletedBy",
+			Key:              "deletedBy",
+			MaxCount:         1,
+			Name:             "Deleted by",
+			ObjectTypes:      []string{TypePrefix + "participant"},
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyDeletedDate: {
+
+			DataSource:       model.Relation_local,
+			Description:      "Date when the object was permanently deleted",
+			Format:           model.RelationFormat_date,
+			Hidden:           true,
+			Id:               "_brdeletedDate",
+			IncludeTime:      true,
+			Key:              "deletedDate",
+			MaxCount:         1,
+			Name:             "Deletion date",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyDeletedSnapshot: {
+
+			DataSource:       model.Relation_local,
+			Description:      "What the object was, captured when it was deleted. Nested so its keys stay out of the objectstore indexes",
+			Format:           model.RelationFormat_map,
+			Hidden:           true,
+			Id:               "_brdeletedSnapshot",
+			Key:              "deletedSnapshot",
+			MaxCount:         1,
+			Name:             "Deleted object snapshot",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyDeletionChangeId: {
+
+			DataSource:       model.Relation_local,
+			Description:      "Id of the space settings tree change that deleted this object. Objects deleted in one operation share it",
+			Format:           model.RelationFormat_shorttext,
+			Hidden:           true,
+			Id:               "_brdeletionChangeId",
+			Key:              "deletionChangeId",
+			MaxCount:         1,
+			Name:             "Deletion change id",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
