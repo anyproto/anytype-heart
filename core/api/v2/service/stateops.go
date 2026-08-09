@@ -513,9 +513,16 @@ func (a *v2StateApplier) setBlocks(blocks []*model.Block) {
 
 // checkFreshIds rejects payload block ids (including table internals) that
 // already exist in the state or this PATCH, except ids the op explicitly
-// replaces (allowed) and ids the op itself minted (fresh by construction).
-// On success every payload id is claimed for the rest of the PATCH.
+// replaces (allowed) and ids the op itself minted (fresh by construction) —
+// and ids that match the TAIL of a block the document keeps. Adopting such
+// an id is not cosmetic: matchBlockRef resolves exact matches FIRST, so the
+// adopted id captures every reference its tail-owner answered to
+// (reproduced: a compact label pasted from a default read into an
+// insertBlocks payload — the next replaceText on that label edited the copy
+// while the original silently lost it). On success every payload id is
+// claimed for the rest of the PATCH.
 func (a *v2StateApplier) checkFreshIds(blocks []*model.Block, allowed map[string]bool, pathFor func(id string) string) error {
+	var keptIds []string // lazily collected — most payloads carry no authored ids
 	for _, b := range blocks {
 		if allowed[b.Id] || a.mintedThisOp[b.Id] {
 			continue
@@ -523,12 +530,49 @@ func (a *v2StateApplier) checkFreshIds(blocks []*model.Block, allowed map[string
 		if a.st.Exists(b.Id) || a.claimedIds[b.Id] {
 			return duplicateIdError(pathFor(b.Id), b.Id)
 		}
+		if b.Id == "" {
+			continue
+		}
+		if keptIds == nil {
+			keptIds = a.keptBlockIds(allowed)
+		}
+		if idx, matches := matchBlockRef(keptIds, b.Id); matches >= 1 {
+			return adoptedLabelError(pathFor(b.Id), b.Id, keptIds[idx])
+		}
 	}
 	for _, b := range blocks {
 		a.claimedIds[b.Id] = true
 	}
 	a.mintedThisOp = map[string]bool{}
 	return nil
+}
+
+// keptBlockIds lists the state's reachable block ids minus the ones this op
+// replaces (leaving) — the id vocabulary a payload id could capture a
+// suffix of.
+func (a *v2StateApplier) keptBlockIds(leaving map[string]bool) []string {
+	var ids []string
+	_ = a.st.Iterate(func(b simple.Block) bool {
+		if id := b.Model().Id; id != "" && !leaving[id] {
+			ids = append(ids, id)
+		}
+		return true
+	})
+	return ids
+}
+
+// adoptedLabelError refuses a payload id that tails a kept block id: stored
+// as a literal id it would exact-match every future reference that meant
+// the tail's owner — the pasted-compact-label case from a default read.
+func adoptedLabelError(path, id, ownerId string) error {
+	return v2model.NewError(http.StatusBadRequest, v2model.CodeValidationFailed, v2InvalidDocMessage,
+		v2model.Issue{
+			Path: path,
+			Message: fmt.Sprintf(
+				"id %q matches the tail of existing block id %q — it looks like a compact label from a default read, and storing it as a literal id would capture that block's references",
+				id, ownerId),
+			Hint: "omit id on a new block — the server mints one; the real ids are one ?ids=full read away",
+		})
 }
 
 // runPathFor reports a duplicate id under its payload position when the id

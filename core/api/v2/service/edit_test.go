@@ -241,6 +241,28 @@ func TestPatchObject(t *testing.T) {
 		assert.Equal(t, float64(1), blocks[2]["indent"], "payload indent is relative to the anchor level")
 	})
 
+	t.Run("a payload id that tails an existing block id is refused — adoption steals the label", func(t *testing.T) {
+		// reproduced before this guard: a compact label ("bbbb1") copied from
+		// a default read into an insertBlocks payload passed checkFreshIds
+		// (no exact duplicate) and was stored as the literal block id.
+		// matchBlockRef resolves exact matches FIRST, so the adopted label
+		// captured the reference — the next replaceText on "bbbb1" edited the
+		// copy while the original block silently lost its label. §8.26 argued
+		// the adoption was cosmetic; that covered serving, not resolution.
+		fx := newV2Fixture(t)
+		fx.expectMutate(editRead(t, editMintedDoc), "headB")
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"insertBlocks","blocks":[{"id":"bbbb1","type":"paragraph","text":"copy"}]}`), "", false)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
+		require.NotEmpty(t, apiErr.Issues)
+		assert.Contains(t, apiErr.Issues[0].Message, `"bbbb1"`)
+		assert.Contains(t, apiErr.Issues[0].Message, "compact label", "the refusal diagnoses the pasted-label shape")
+		assert.Contains(t, apiErr.Issues[0].Hint, "omit id", "the mint escape hatch is named")
+	})
+
 	t.Run("insertBlocks inside position first lands at the child level", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
