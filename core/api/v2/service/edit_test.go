@@ -42,6 +42,12 @@ const editTableDoc = `{"version":1,"id":"obj1","type":"page","blocks":[` +
 // the document, so a fresh object has zero addressable blocks.
 const editEmptyDoc = `{"version":1,"id":"obj1","type":"page","properties":{"name":"Empty"},"blocks":[]}`
 
+// editMintedDoc mirrors the base document with editor-shaped (24-hex) block
+// ids — the documents whose default read serves compact labels.
+const editMintedDoc = `{"version":1,"id":"obj1","type":"page","blocks":[` +
+	`{"id":"0000000000000000000aaaa1","type":"heading1","text":"Section"},` +
+	`{"id":"0000000000000000000bbbb1","type":"paragraph","text":"parent"}]}`
+
 // editCollectionDoc is a collection with one member.
 const editCollectionDoc = `{"version":1,"id":"obj1","type":"collection","properties":{"name":"List"},"items":["memberA"]}`
 
@@ -1600,6 +1606,73 @@ func TestPutObject(t *testing.T) {
 		require.NoError(t, err)
 		doc := snapshotDoc(t, *captured)
 		assert.Equal(t, "page", doc["type"])
+	})
+
+	t.Run("a default-read body of compact labels is refused, not adopted", func(t *testing.T) {
+		// reproduced live before this guard: GET(default) → PUT stored the
+		// 5-char labels AS the block ids, permanently — a PATCH with the
+		// original 24-hex id 404ed afterwards. PUT takes ids literally, so
+		// the honest interim is a loud refusal naming the export read.
+		fx := newV2Fixture(t)
+		fx.expectReset(editRead(t, editMintedDoc))
+		body := `{"version":1,"id":"obj1","type":"page","blocks":[` +
+			`{"id":"aaaa1","type":"heading1","text":"Section"},` +
+			`{"id":"bbbb1","type":"paragraph","text":"parent edited"}]}`
+
+		_, err := fx.PutObject(ctx, testSpaceId, "obj1", []byte(body), "", false)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
+		assert.Contains(t, apiErr.Message, "?ids=full", "the refusal must name the read that round-trips")
+		require.Len(t, apiErr.Issues, 2)
+		assert.Contains(t, apiErr.Issues[0].Message, `"aaaa1"`)
+		assert.Contains(t, apiErr.Issues[0].Message, "compact label", "a label-tail id is diagnosed as one")
+	})
+
+	t.Run("an unowned explicit id is refused; omitting it mints", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		fx.expectReset(editRead(t, editBaseDoc), "headB")
+		withId := jsonReplace(t, editBaseDoc, `{"id":"blockSibling2"`,
+			`{"id":"brandNewBlock1","type":"paragraph","text":"new"},{"id":"blockSibling2"`)
+
+		_, err := fx.PutObject(ctx, testSpaceId, "obj1", withId, "", false)
+
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Contains(t, apiErr.Issues[0].Message, `"brandNewBlock1" is not an id this object owns`)
+		assert.Contains(t, apiErr.Issues[0].Hint, "omit id", "the escape hatch for a genuinely new block is named")
+
+		// the same block without an explicit id is minted server-side
+		withoutId := jsonReplace(t, editBaseDoc, `{"id":"blockSibling2"`,
+			`{"type":"paragraph","text":"new"},{"id":"blockSibling2"`)
+		result, err := fx.PutObject(ctx, testSpaceId, "obj1", withoutId, "", false)
+		require.NoError(t, err)
+		assert.Equal(t, v2model.DiffStats{BlocksAdded: 1}, result.DiffStats)
+	})
+
+	t.Run("a ?block= subtree read cannot write back or clone (partial marker)", func(t *testing.T) {
+		// reproduced live before the marker: a 6-block page, GET ?block= then
+		// PUT of that exact body → blocksRemoved: 5 — a schema-valid partial
+		// envelope with nothing marking it partial, while the equally partial
+		// outline was refused loudly.
+		fx := newV2Fixture(t)
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(editRead(t, editBaseDoc), nil)
+		subtree, _, err := fx.GetObject(ctx, testSpaceId, "obj1", V2ObjectQuery{Block: "blockParent1"})
+		require.NoError(t, err)
+		assert.Contains(t, string(subtree), `"subtree":true`, "the subtree envelope carries the partial marker")
+		require.Error(t, anyblockjson.Validate(subtree),
+			"the partial envelope must not validate as a whole document (the way outline does not)")
+
+		_, err = fx.PutObject(ctx, testSpaceId, "obj1", subtree, "", false)
+		apiErr := v2Err(t, err)
+		require.NotEmpty(t, apiErr.Issues)
+		assert.Equal(t, "/subtree", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Hint, "?ids=full", "the refusal names the export read")
+
+		_, err = fx.CreateObject(ctx, testSpaceId, subtree, false)
+		apiErr = v2Err(t, err)
+		require.NotEmpty(t, apiErr.Issues)
+		assert.Equal(t, "/subtree", apiErr.Issues[0].Path)
 	})
 }
 

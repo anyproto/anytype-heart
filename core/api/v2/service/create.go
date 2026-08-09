@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
@@ -205,10 +206,63 @@ func rebaseMarkdownCreateError(err error) error {
 	return v2Err
 }
 
+// normalizeCreateBody strips the v2 read-envelope additions (etag,
+// warnings) so "read a document, create a copy" works from every GET shape
+// the way PUT already tolerates them, and refuses the partial ?block=
+// subtree marker — a subtree is not a document.
+func normalizeCreateBody(body []byte) ([]byte, error) {
+	fields, err := parseEnvelope(body)
+	if err != nil {
+		return nil, v2model.ValidationFailed("request body is not a JSON object",
+			v2model.Issue{Message: err.Error()})
+	}
+	if _, partial := fields["subtree"]; partial {
+		return nil, v2model.ValidationFailed("this body is a partial ?block= subtree read, not a whole document",
+			v2model.Issue{Path: "/subtree", Message: "an object cannot be created from a subtree read — it is a fragment of another document",
+				Hint: "GET the source object with ?ids=full and without ?block= for a complete document"})
+	}
+	delete(fields, "etag") // C7: concurrency lives in headers, never in create bodies
+	delete(fields, "warnings")
+	return encodeEnvelope(fields)
+}
+
+// warnLabelShapedIds flags a create body whose local ids look like the
+// default read's compact labels (5 lowercase-hex chars). Adopting them is
+// legal — the new object has no other holders of those ids — but almost
+// never intended: the clone's stored ids become the labels, and the
+// source's real ids are one query parameter away. A warning, not a
+// refusal: with no owned-id baseline to check against, a 5-hex authored id
+// is indistinguishable from a label, and a clone of a document that truly
+// owns such ids (they never relabel, so its export carries them verbatim)
+// must keep working.
+func warnLabelShapedIds(body []byte) []v2model.Issue {
+	var labelLike []string
+	for _, id := range docLocalIds(body) {
+		if anyblockjson.IsCompactLabelShaped(id) {
+			labelLike = append(labelLike, strconv.Quote(id))
+		}
+	}
+	if len(labelLike) == 0 {
+		return nil
+	}
+	return []v2model.Issue{{
+		Path:    "/blocks",
+		Message: fmt.Sprintf("ids %s look like compact labels from a default read and were adopted as this object's real ids", strings.Join(labelLike, ", ")),
+		Hint:    "to clone with the source's real ids, GET it with ?ids=full; to mint fresh ids, omit them",
+	}}
+}
+
 // createFromDocument is the shared full-document create path: structural
 // validation → referential validation → Unmarshal with create-missing
 // resolvers → snapshot create (one change set) → etag read-back.
 func (s *V2Service) createFromDocument(ctx context.Context, spaceId string, body []byte, opts docCreateOptions) (*v2model.CreateResult, error) {
+	// 0. envelope normalization: a pasted read body creates a copy instead of
+	// 400ing on its own etag
+	body, err := normalizeCreateBody(body)
+	if err != nil {
+		return nil, err
+	}
+
 	// 1. structural + format-semantic validation (no side effects)
 	if err := s.rejectInvalidDocument(body); err != nil {
 		return nil, err
@@ -217,7 +271,7 @@ func (s *V2Service) createFromDocument(ctx context.Context, spaceId string, body
 	// 1a. canonicalize addressing terms (§7.5a-5): api-key slugs in the
 	// envelope's type/templateFor and in the properties map resolve to
 	// their stored spellings before validation and import
-	body, err := s.canonicalizeDocumentKeys(spaceId, body)
+	body, err = s.canonicalizeDocumentKeys(spaceId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -264,6 +318,8 @@ func (s *V2Service) createFromDocument(ctx context.Context, spaceId string, body
 	}
 
 	result := &v2model.CreateResult{Type: envelope.Type, Created: resolvers.created()}
+	// the label-adoption tell rides real runs and dry runs alike (C9)
+	result.Warnings = warnLabelShapedIds(body)
 	if opts.dryRun {
 		result.DryRun = true
 		return result, nil

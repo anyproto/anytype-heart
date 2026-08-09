@@ -746,6 +746,15 @@ func mintedSuffixLabels(ids []string, size int, disallow func(candidate string) 
 	return out
 }
 
+// IsCompactLabelShaped reports whether s has the exact shape of a served
+// compact label: compactIdMinLen lowercase-hex characters. Every label the
+// relabeler mints is the 5-char hex tail of a minted id (isMintedLocalId),
+// so this is the serving layer's cheap tell for "this id probably came off a
+// default read" where no owned-id baseline exists to check against.
+func IsCompactLabelShaped(s string) bool {
+	return isHexLower(s, compactIdMinLen)
+}
+
 // isMintedLocalId recognises the machine-minted doc-local id shapes — the
 // only ids relabeling may touch. Worked out from the actual minting sites:
 //

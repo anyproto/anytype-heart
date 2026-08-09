@@ -401,9 +401,11 @@ func (s *V2Service) applyPatchOps(ctx context.Context, spaceId, objectId string,
 
 // PutObject implements PUT /v2/spaces/{spaceId}/objects/{objectId}: the body
 // is a full AnyBlock document that replaces the object's content in one
-// change set. Minimal CRDT diff iff the block ids round-trip from the GET
-// (they do on default reads, C4); diffStats make an accidental full rewrite
-// visible.
+// change set. Minimal CRDT diff iff the block ids round-trip from the GET —
+// which is `?ids=full`, the export shape; the default read serves compact
+// labels for minted ids, and a body carrying ids the object does not own is
+// refused loudly (checkPutBlockIds) instead of silently re-minting identity.
+// diffStats make an accidental full rewrite visible.
 func (s *V2Service) PutObject(ctx context.Context, spaceId, objectId string, body []byte, ifMatch string, dryRun bool) (*v2model.EditResult, error) {
 	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
@@ -539,11 +541,112 @@ func (s *V2Service) putPipeline(ctx context.Context, spaceId, objectId string, b
 	if err != nil {
 		return nil, nil, err
 	}
+	// refuse unowned ids BEFORE finishEdit: Unmarshal runs the creating
+	// resolvers, and a refusal must leave no option debris behind
+	if err := checkPutBlockIds(body, beforeDoc); err != nil {
+		return nil, nil, err
+	}
 	snapshot, result, err := s.finishEdit(ctx, spaceId, body, beforeDoc, dryRun)
 	if err != nil {
 		return nil, nil, err
 	}
 	return snapshot, result, nil
+}
+
+// docLocalIds collects the doc-local ids a flat AnyBlock document carries
+// explicitly — block ids, table column and row ids, dataview view ids: the
+// same id domain compact relabeling covers. Cell ids are derived and carry
+// no id in the flat form (SPEC §6.1). Ids stay in document order,
+// deduplicated; a body that is not decodable yields nil (later validation
+// owns that failure).
+func docLocalIds(doc []byte) []string {
+	type idHolder struct {
+		Id string `json:"id"`
+	}
+	var envelope struct {
+		Blocks []struct {
+			Id      string     `json:"id"`
+			Columns []idHolder `json:"columns"`
+			Rows    []idHolder `json:"rows"`
+			Views   []idHolder `json:"views"`
+		} `json:"blocks"`
+	}
+	if err := json.Unmarshal(doc, &envelope); err != nil {
+		return nil
+	}
+	var ids []string
+	seen := map[string]bool{}
+	add := func(id string) {
+		if id != "" && !seen[id] {
+			seen[id] = true
+			ids = append(ids, id)
+		}
+	}
+	for _, b := range envelope.Blocks {
+		add(b.Id)
+		for _, c := range b.Columns {
+			add(c.Id)
+		}
+		for _, r := range b.Rows {
+			add(r.Id)
+		}
+		for _, v := range b.Views {
+			add(v.Id)
+		}
+	}
+	return ids
+}
+
+// maxPutIdIssues bounds how many offending ids one refusal enumerates.
+const maxPutIdIssues = 8
+
+// checkPutBlockIds refuses a PUT body carrying local ids the object does not
+// own. PUT takes the body's ids literally, so an unowned id does not "fail to
+// match" — it silently REPLACES the block's identity: reproduced live, a
+// GET(default) → PUT loop adopted the 5-char compact labels as the stored
+// block ids, permanently, breaking every id other clients held. A loud
+// refusal is strictly better than a silent identity rewrite, and it is the
+// honest interim until Wave 2.1 teaches PUT the unique-suffix resolution C4
+// already permits. New blocks omit their id — the server mints one.
+//
+// beforeDoc is the object's own export-shape marshal, so "owned" is exactly
+// the id vocabulary a `?ids=full` read serves back.
+func checkPutBlockIds(body, beforeDoc []byte) error {
+	ownedIds := docLocalIds(beforeDoc)
+	owned := make(map[string]bool, len(ownedIds))
+	for _, id := range ownedIds {
+		owned[id] = true
+	}
+	var issues []v2model.Issue
+	extra := 0
+	for _, id := range docLocalIds(body) {
+		if owned[id] {
+			continue
+		}
+		if len(issues) == maxPutIdIssues {
+			extra++
+			continue
+		}
+		issue := v2model.Issue{
+			Path:    "/blocks",
+			Message: fmt.Sprintf("id %q is not an id this object owns", id),
+			Hint:    "omit id on a new block — the server mints one",
+		}
+		if _, matches := matchBlockRef(ownedIds, id); matches >= 1 {
+			issue.Message = fmt.Sprintf("id %q is not an id this object owns — it matches the tail of one, so it looks like a compact label from a default read", id)
+			issue.Hint = "labels are a read vocabulary; GET the object with ?ids=full for the real ids"
+		}
+		issues = append(issues, issue)
+	}
+	if len(issues) == 0 {
+		return nil
+	}
+	if extra > 0 {
+		issues = append(issues, v2model.Issue{Path: "/blocks", Message: fmt.Sprintf("… and %d more unowned ids", extra)})
+	}
+	return v2model.ValidationFailed(
+		"the PUT body carries ids this object does not own — PUT takes ids literally and would re-mint the document's identity; GET the object with ?ids=full for a body that round-trips",
+		issues...)
 }
 
 // finishEdit is the shared tail of both pipelines: Unmarshal the target
@@ -612,18 +715,26 @@ func (s *V2Service) marshalForEdit(spaceId, objectId string, cur apicore.ObjectR
 }
 
 // normalizePutBody strips the v2 read-envelope additions (etag, warnings —
-// so a GET body round-trips verbatim into PUT) and pins the envelope id to
-// the addressed object.
+// so a GET body round-trips verbatim into PUT), refuses the partial-read
+// marker, and pins the envelope id to the addressed object.
 //
 // The GET that round-trips is `?ids=full` (C4's export shape). PUT takes the
-// document's block ids literally, so a default read's short block labels
-// would re-mint every block — visible in diffStats as the full rewrite it is
-// (APIV2.md §3(b) and §8.25).
+// document's block ids literally, so any other id spelling is refused by
+// checkPutBlockIds rather than silently adopted (APIV2.md §3(b) and §8.26).
 func normalizePutBody(body []byte, objectId string) ([]byte, error) {
 	fields, err := parseEnvelope(body)
 	if err != nil {
 		return nil, v2model.ValidationFailed("the PUT body must be a full AnyBlock document",
 			v2model.Issue{Message: err.Error()})
+	}
+	// a ?block= subtree read is a partial document: PUT replaces the WHOLE
+	// document, so writing it back would delete every block outside the
+	// subtree — refuse it by name (the schema also rejects the marker, but
+	// this error says what to do instead)
+	if _, partial := fields["subtree"]; partial {
+		return nil, v2model.ValidationFailed("this body is a partial ?block= subtree read, not a whole document",
+			v2model.Issue{Path: "/subtree", Message: "PUT replaces the whole document — writing a subtree read back would delete every block outside it",
+				Hint: "GET the object with ?ids=full and without ?block= for a body that round-trips, or edit the subtree with PATCH replaceSubtree"})
 	}
 	delete(fields, "etag") // C7: preconditions ride the If-Match header only
 	delete(fields, "warnings")

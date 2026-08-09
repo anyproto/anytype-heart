@@ -382,6 +382,14 @@ func buildOutlineEnvelope(fields map[string]json.RawMessage, keepProperties bool
 // stable across full and subtree reads. The block reference resolves by exact
 // id or by unique suffix (§9a), so a short outline label round-trips to
 // ?block= (M1).
+//
+// The envelope is marked partial with "subtree": true — the way the outline
+// shape is partial by construction. Without the marker the subtree body was
+// schema-valid, and PUT of that exact body silently deleted every block
+// outside the subtree (reproduced: 6-block page, GET ?block= then PUT →
+// blocksRemoved: 5). The marker makes every write path refuse it — the
+// AnyBlock envelope is additionalProperties:false, so Validate rejects it
+// structurally, and PUT/create name it precisely before that.
 func filterBlockSubtree(fields map[string]json.RawMessage, blockRef string) error {
 	var blocks []json.RawMessage
 	if raw, ok := fields["blocks"]; ok {
@@ -420,6 +428,9 @@ func filterBlockSubtree(fields map[string]json.RawMessage, blockRef string) erro
 		return err
 	}
 	fields["blocks"] = raw
+	if fields["subtree"], err = rawJSON(true); err != nil {
+		return err
+	}
 	return nil
 }
 

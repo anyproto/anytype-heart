@@ -241,6 +241,46 @@ func TestV2CreateObjectShortcut(t *testing.T) {
 }
 
 func TestV2CreateObjectDocument(t *testing.T) {
+	t.Run("a pasted read body creates a copy — etag and warnings are stripped", func(t *testing.T) {
+		// reproduced live before the fix: POST /objects 400ed on the etag of
+		// every GET shape, while PUT stripped the same field — "read a
+		// document, create a copy" required knowing which envelope fields to
+		// hand-strip.
+		fx := newV2Fixture(t)
+		captured := fx.expectCreate("cloneObj")
+		fx.expectEtagRead("cloneObj")
+		body := `{"version":1,"etag":"abcd1234","id":"sourceObj","type":"page",` +
+			`"warnings":[{"message":"from the read"}],` +
+			`"blocks":[{"id":"blockHeading1","type":"heading1","text":"Section"}]}`
+
+		result, err := fx.CreateObject(context.Background(), testSpaceId, []byte(body), false)
+
+		require.NoError(t, err, "a GET body must clone without hand-stripping envelope fields")
+		assert.Equal(t, "cloneObj", result.Id)
+		assert.Empty(t, result.Warnings, "the read's warnings are the source's, not the clone's")
+		require.NotNil(t, *captured)
+	})
+
+	t.Run("label-shaped block ids on create ride a warning", func(t *testing.T) {
+		// a clone from a DEFAULT-shape read adopts the compact labels as the
+		// new object's real ids — legal (the clone has no other id holders),
+		// but almost never intended, so the adoption is named
+		fx := newV2Fixture(t)
+		fx.expectCreate("cloneObj")
+		fx.expectEtagRead("cloneObj")
+		body := `{"version":1,"type":"page","blocks":[` +
+			`{"id":"aaaa1","type":"paragraph","text":"x"},` +
+			`{"id":"keeper","type":"paragraph","text":"y"}]}`
+
+		result, err := fx.CreateObject(context.Background(), testSpaceId, []byte(body), false)
+
+		require.NoError(t, err)
+		require.Len(t, result.Warnings, 1)
+		assert.Contains(t, result.Warnings[0].Message, `"aaaa1"`)
+		assert.NotContains(t, result.Warnings[0].Message, `"keeper"`, "only label-shaped ids are flagged")
+		assert.Contains(t, result.Warnings[0].Hint, "?ids=full")
+	})
+
 	t.Run("full document creates with blocks", func(t *testing.T) {
 		// given
 		fx := newV2Fixture(t)
