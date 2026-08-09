@@ -23,10 +23,14 @@ func compactSplitSnapshot() *model.SmartBlockSnapshotBase {
 			"name": str("Doc"),
 		}),
 		Blocks: []*model.Block{
-			{Id: "bafyreiselfobjectidxxxxxxx", ChildrenIds: []string{"64b2c1d2e3f4a5b6c7d8e9f0"},
+			{Id: "bafyreiselfobjectidxxxxxxx", ChildrenIds: []string{"64b2c1d2e3f4a5b6c7d8e9f0", "featuredRelations"},
 				Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}},
 			textBlock("64b2c1d2e3f4a5b6c7d8e9f0", model.BlockContentText_Paragraph, "ping Roman",
 				mark(mMention, 5, 10, "bafyreimentiontargetidxxx")),
+			// a real editor id that is NOT minted-shaped: the old charset rule
+			// relabeled it ("tions"), the minted rule serves it verbatim — the
+			// discriminating id the labels-only test pins the rule with
+			textBlock("featuredRelations", model.BlockContentText_Paragraph, "meaningful id"),
 		},
 	}
 }
@@ -55,18 +59,33 @@ func TestExport_CompactObjectRefsOnly(t *testing.T) {
 	// then: object refs compacted with legend, block ids stay full
 	require.Len(t, doc.Refs, 1)
 	assert.Equal(t, "bafyreimentiontargetidxxx", doc.Refs["idxxx"])
-	require.Len(t, doc.Blocks, 1)
+	require.Len(t, doc.Blocks, 2)
 	assert.Equal(t, "64b2c1d2e3f4a5b6c7d8e9f0", doc.Blocks[0].Id)
+	assert.Equal(t, "featuredRelations", doc.Blocks[1].Id)
 }
 
 func TestExport_CompactBlockLabelsOnly(t *testing.T) {
 	// given / when
-	doc := marshalCompactSplit(t, Options{CompactBlockLabels: true})
+	data, err := Marshal(model.SmartBlockType_Page, compactSplitSnapshot(), Options{CompactBlockLabels: true})
+	require.NoError(t, err)
+	require.NoError(t, Validate(data))
+	var doc parsedCompactDoc
+	require.NoError(t, json.Unmarshal(data, &doc))
 
-	// then: block ids relabeled, object refs untouched (no legend)
-	assert.Empty(t, doc.Refs)
-	require.Len(t, doc.Blocks, 1)
+	// then: ONLY the minted id relabels — a meaningful editor id serves
+	// verbatim (the old charset rule relabeled "featuredRelations" to
+	// "tions"; without this id the assertion could not fail against either
+	// rule, both relabel a 24-hex id)
+	require.Len(t, doc.Blocks, 2)
 	assert.Equal(t, "8e9f0", doc.Blocks[0].Id)
+	assert.Equal(t, "featuredRelations", doc.Blocks[1].Id)
+
+	// and object refs stay FULL INLINE: no legend, and the mention target
+	// keeps its full spelling inside the marks — the C4 split this file
+	// exists for (refs-absence alone never checked the inline spelling)
+	assert.Empty(t, doc.Refs)
+	assert.Contains(t, string(data), "bafyreimentiontargetidxxx",
+		"the mention target must survive uncompacted in the document body")
 }
 
 func TestExport_CompactIdsImpliesBoth(t *testing.T) {
@@ -75,8 +94,9 @@ func TestExport_CompactIdsImpliesBoth(t *testing.T) {
 
 	// then
 	require.Len(t, doc.Refs, 1)
-	require.Len(t, doc.Blocks, 1)
+	require.Len(t, doc.Blocks, 2)
 	assert.Equal(t, "8e9f0", doc.Blocks[0].Id)
+	assert.Equal(t, "featuredRelations", doc.Blocks[1].Id, "minted-only relabeling holds under CompactIds too")
 }
 
 // TestExport_MintedShapeRelabeling pins the relabel rule: only machine-
