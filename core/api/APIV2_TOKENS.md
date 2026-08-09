@@ -546,7 +546,7 @@ compaction sentence flips), ±0 lines.
 | # | change | saving (measured basis) | effort |
 |---|---|---|---|
 | 1 | Compact the embedded envelope values (§1.1) | 16–26 % of every object read | trivial |
-| 2 | Default object refs to full; legend only in `full` mode (§1.2) | 2–10 % + removes a write-back trap | trivial |
+| 2 | Split the `?ids=` knob: short block labels + full object refs on `edit` (§9a below) | 2–10 % (refs) + ~15 % (block labels) + removes a write-back trap | trivial |
 | 3 | Locators on block-addressed ops (§5) | read-free text edits (~2.4 k → ~50 tok on the quoted-sentence flow); id-free reads become writable | small |
 | 4 | `?mode=` profiles replacing include/outline/ids/format (§6.2) | 4× on pure-read calls for small models (§7); −37 % across the task mix for e2b | small-medium |
 | 5 | md mention-link short form (§1.3) | up to ~55 % of md reads on mention-heavy docs | small |
@@ -556,3 +556,41 @@ compaction sentence flips), ±0 lines.
 The knobs were never the problem; the defaults and the encodings were.
 One profile knob a 2B model can drive, full ids under it, locators so the
 cheapest read is also writable — that is the whole recommendation.
+
+---
+
+## 10. Decisions taken on this review (human, 2026-08-09)
+
+**1. `?ids=` splits; it currently bundles a winner with a loser.**
+`CompactIds` is shorthand for two mechanisms with opposite economics
+(`export.go:35-37`): `CompactBlockLabels` relabels doc-local block ids to
+short suffixes and is **legend-less** (the server resolves them —
+`matchBlockRef`: exact, else unique suffix), while `CompactObjectRefs`
+shortens object refs **via the refs legend**, which §1.2 measures as a net
+loss because 85–90 % of refs are used exactly once. Outline already moves
+them independently; the read knob should too.
+
+**`edit` (the default) therefore emits: short block labels, full inline
+object refs, no pins.** Block labels are ~15 % of a default read (18.2 tok
+per 24-hex id → 2–3 per suffix) and are *simultaneously* cheaper and
+easier for a small model to echo back — the only place in this review
+where cost and usability point the same way. Note `CompactBlockLabels` is
+marked **lossy** (the original ids are not recoverable from the document
+alone), so `full`/export keeps full block ids, the refs legend and pins.
+
+**2. The "legend only for refs used ≥ 2×" hybrid is REJECTED.** It was the
+cheap way to keep some compaction on object refs without new machinery,
+but repeated mentions of one object inside a single document are rare
+enough that the hybrid would almost never fire, leaving per-document
+counting logic that earns nothing. Object refs go full inline, and the
+future direction is a **space-wide short object-id map** — a resolver that
+makes a short form addressable across documents rather than within one.
+That is a real build (it needs a cheap space-scoped short→full lookup, and
+a decision about what happens when a short form stops being unique), and
+it is deliberately deferred, not designed here.
+
+Worth recording as its motivation: object ids are the **dominant cost of
+search results**, not of documents — a search row measures ≈ 50 tok of
+which ≈ 30 is the object id (§3), and search returns rows by the dozen. A
+space-wide short id would pay there far more than it ever could inside a
+single document, which is the opposite of where the refs legend was aimed.
