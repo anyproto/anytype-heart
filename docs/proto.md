@@ -1024,6 +1024,10 @@
     - [Rpc.Object.DateByTimestamp.Request](#anytype-Rpc-Object-DateByTimestamp-Request)
     - [Rpc.Object.DateByTimestamp.Response](#anytype-Rpc-Object-DateByTimestamp-Response)
     - [Rpc.Object.DateByTimestamp.Response.Error](#anytype-Rpc-Object-DateByTimestamp-Response-Error)
+    - [Rpc.Object.DeletionAudit](#anytype-Rpc-Object-DeletionAudit)
+    - [Rpc.Object.DeletionAudit.Request](#anytype-Rpc-Object-DeletionAudit-Request)
+    - [Rpc.Object.DeletionAudit.Response](#anytype-Rpc-Object-DeletionAudit-Response)
+    - [Rpc.Object.DeletionAudit.Response.Error](#anytype-Rpc-Object-DeletionAudit-Response-Error)
     - [Rpc.Object.DiscussionAdd](#anytype-Rpc-Object-DiscussionAdd)
     - [Rpc.Object.DiscussionAdd.Request](#anytype-Rpc-Object-DiscussionAdd-Request)
     - [Rpc.Object.DiscussionAdd.Response](#anytype-Rpc-Object-DiscussionAdd-Response)
@@ -1768,6 +1772,7 @@
     - [Rpc.Object.CrossSpaceSearchSubscribe.Response.Error.Code](#anytype-Rpc-Object-CrossSpaceSearchSubscribe-Response-Error-Code)
     - [Rpc.Object.CrossSpaceSearchUnsubscribe.Response.Error.Code](#anytype-Rpc-Object-CrossSpaceSearchUnsubscribe-Response-Error-Code)
     - [Rpc.Object.DateByTimestamp.Response.Error.Code](#anytype-Rpc-Object-DateByTimestamp-Response-Error-Code)
+    - [Rpc.Object.DeletionAudit.Response.Error.Code](#anytype-Rpc-Object-DeletionAudit-Response-Error-Code)
     - [Rpc.Object.DiscussionAdd.Response.Error.Code](#anytype-Rpc-Object-DiscussionAdd-Response-Error-Code)
     - [Rpc.Object.Duplicate.Response.Error.Code](#anytype-Rpc-Object-Duplicate-Response-Error-Code)
     - [Rpc.Object.Export.Response.Error.Code](#anytype-Rpc-Object-Export-Response-Error-Code)
@@ -2468,6 +2473,7 @@
 | ObjectListSetIsArchived | [Rpc.Object.ListSetIsArchived.Request](#anytype-Rpc-Object-ListSetIsArchived-Request) | [Rpc.Object.ListSetIsArchived.Response](#anytype-Rpc-Object-ListSetIsArchived-Response) |  |
 | ObjectCleanupSuggestions | [Rpc.Object.CleanupSuggestions.Request](#anytype-Rpc-Object-CleanupSuggestions-Request) | [Rpc.Object.CleanupSuggestions.Response](#anytype-Rpc-Object-CleanupSuggestions-Response) |  |
 | ObjectCleanupSuggestionIgnore | [Rpc.Object.CleanupSuggestionIgnore.Request](#anytype-Rpc-Object-CleanupSuggestionIgnore-Request) | [Rpc.Object.CleanupSuggestionIgnore.Response](#anytype-Rpc-Object-CleanupSuggestionIgnore-Response) |  |
+| ObjectDeletionAudit | [Rpc.Object.DeletionAudit.Request](#anytype-Rpc-Object-DeletionAudit-Request) | [Rpc.Object.DeletionAudit.Response](#anytype-Rpc-Object-DeletionAudit-Response) |  |
 | ObjectListSetIsFavorite | [Rpc.Object.ListSetIsFavorite.Request](#anytype-Rpc-Object-ListSetIsFavorite-Request) | [Rpc.Object.ListSetIsFavorite.Response](#anytype-Rpc-Object-ListSetIsFavorite-Response) |  |
 | ObjectListSetObjectType | [Rpc.Object.ListSetObjectType.Request](#anytype-Rpc-Object-ListSetObjectType-Request) | [Rpc.Object.ListSetObjectType.Response](#anytype-Rpc-Object-ListSetObjectType-Response) |  |
 | ObjectListSetDetails | [Rpc.Object.ListSetDetails.Request](#anytype-Rpc-Object-ListSetDetails-Request) | [Rpc.Object.ListSetDetails.Response](#anytype-Rpc-Object-ListSetDetails-Response) |  |
@@ -17531,6 +17537,74 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
+<a name="anytype-Rpc-Object-DeletionAudit"></a>
+
+### Rpc.Object.DeletionAudit
+DeletionAudit lists what was removed from a space, newest first, with who created and who
+removed each one.
+
+Records come in two kinds, told apart by isUninstalled:
+ - absent: an object destroyed outright. Its tree is gone, so it has no name, and
+   creation-side keys are present only if it was deleted by a build that preserves them.
+ - true: a type, property, relation option or template that was uninstalled. Reversible,
+   tree intact, name and sourceObject still readable.
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-DeletionAudit-Request"></a>
+
+### Rpc.Object.DeletionAudit.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| keys | [string](#string) | repeated | relation keys to return; empty =&gt; a default audit set. id, deletedBy, deletedDate and isUninstalled are always included. |
+| offset | [int32](#int32) |  |  |
+| limit | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-DeletionAudit-Response"></a>
+
+### Rpc.Object.DeletionAudit.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.DeletionAudit.Response.Error](#anytype-Rpc-Object-DeletionAudit-Response-Error) |  |  |
+| records | [google.protobuf.Struct](#google-protobuf-Struct) | repeated |  |
+| total | [int64](#int64) |  | total number of deleted objects in the space, ignoring limit/offset |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-DeletionAudit-Response-Error"></a>
+
+### Rpc.Object.DeletionAudit.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.DeletionAudit.Response.Error.Code](#anytype-Rpc-Object-DeletionAudit-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Object-DiscussionAdd"></a>
 
 ### Rpc.Object.DiscussionAdd
@@ -28217,6 +28291,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-Object-DateByTimestamp-Response-Error-Code"></a>
 
 ### Rpc.Object.DateByTimestamp.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-Object-DeletionAudit-Response-Error-Code"></a>
+
+### Rpc.Object.DeletionAudit.Response.Error.Code
 
 
 | Name | Number | Description |
