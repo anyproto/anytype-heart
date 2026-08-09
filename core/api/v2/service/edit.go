@@ -554,9 +554,13 @@ func (s *V2Service) putPipeline(ctx context.Context, spaceId, objectId string, b
 }
 
 // docLocalIds collects the doc-local ids a flat AnyBlock document carries
-// explicitly — block ids, table column and row ids, dataview view ids: the
-// same id domain compact relabeling covers. Cell ids are derived and carry
-// no id in the flat form (SPEC §6.1). Ids stay in document order,
+// explicitly — block ids, table column and row ids, dataview view ids, and
+// the ids of cell DESCENDANTS: the same id domain compact relabeling covers.
+// The cell block itself carries no id in the flat form (derived, SPEC §6.1),
+// but a cell with descendants is the F10 array form, whose elements past the
+// first are ordinary flat blocks WITH ids in the relabel pool — skipping
+// them let a body whose only minted id lived inside a cell PUT a compact
+// label back as the literal stored id. Ids stay in document order,
 // deduplicated; a body that is not decodable yields nil (later validation
 // owns that failure).
 func docLocalIds(doc []byte) []string {
@@ -567,8 +571,11 @@ func docLocalIds(doc []byte) []string {
 		Blocks []struct {
 			Id      string     `json:"id"`
 			Columns []idHolder `json:"columns"`
-			Rows    []idHolder `json:"rows"`
-			Views   []idHolder `json:"views"`
+			Rows    []struct {
+				Id    string            `json:"id"`
+				Cells []json.RawMessage `json:"cells"`
+			} `json:"rows"`
+			Views []idHolder `json:"views"`
 		} `json:"blocks"`
 	}
 	if err := json.Unmarshal(doc, &envelope); err != nil {
@@ -589,6 +596,17 @@ func docLocalIds(doc []byte) []string {
 		}
 		for _, r := range b.Rows {
 			add(r.Id)
+			for _, cell := range r.Cells {
+				// only the array form carries ids (string/null/bare-object
+				// cells have none); a non-array raw simply fails to decode
+				var run []idHolder
+				if err := json.Unmarshal(cell, &run); err != nil {
+					continue
+				}
+				for _, el := range run {
+					add(el.Id)
+				}
+			}
 		}
 		for _, v := range b.Views {
 			add(v.Id)

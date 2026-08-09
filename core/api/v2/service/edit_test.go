@@ -42,6 +42,16 @@ const editTableDoc = `{"version":1,"id":"obj1","type":"page","blocks":[` +
 // the document, so a fresh object has zero addressable blocks.
 const editEmptyDoc = `{"version":1,"id":"obj1","type":"page","properties":{"name":"Empty"},"blocks":[]}`
 
+// editTableCellChildDoc holds a table whose only cell is the F10 array form:
+// a toggle cell block (no id — derived) with one minted-id DESCENDANT. Cell
+// descendants render as flat blocks, carry ids and are in the relabel pool —
+// the id population the docLocalIds comment used to deny existed.
+const editTableCellChildDoc = `{"version":1,"id":"obj1","type":"page","blocks":[` +
+	`{"id":"tblOne1","type":"table",` +
+	`"columns":[{"id":"colA"}],` +
+	`"rows":[{"id":"rowA","cells":[[{"type":"toggle","text":"cell"},` +
+	`{"indent":1,"id":"0000000000000000000dddd1","type":"paragraph","text":"inside"}]]}]}]}`
+
 // editMintedDoc mirrors the base document with editor-shaped (24-hex) block
 // ids — the documents whose default read serves compact labels.
 const editMintedDoc = `{"version":1,"id":"obj1","type":"page","blocks":[` +
@@ -1649,6 +1659,25 @@ func TestPutObject(t *testing.T) {
 		require.Len(t, apiErr.Issues, 2)
 		assert.Contains(t, apiErr.Issues[0].Message, `"aaaa1"`)
 		assert.Contains(t, apiErr.Issues[0].Message, "compact label", "a label-tail id is diagnosed as one")
+	})
+
+	t.Run("a compact label among a cell's descendants is refused too", func(t *testing.T) {
+		// docLocalIds asserted cells "carry no id in the flat form" — true of
+		// the cell BLOCK, false of its descendants (the F10 array form),
+		// which carry ids and relabel like any minted id. A body whose only
+		// minted id lived inside a cell PUT back 200 with the label adopted
+		// permanently — masked whenever a top-level id also relabeled.
+		fx := newV2Fixture(t)
+		fx.expectReset(editRead(t, editTableCellChildDoc))
+		body := jsonReplace(t, editTableCellChildDoc, `"0000000000000000000dddd1"`, `"dddd1"`)
+
+		_, err := fx.PutObject(ctx, testSpaceId, "obj1", body, "", false)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
+		require.NotEmpty(t, apiErr.Issues)
+		assert.Contains(t, apiErr.Issues[0].Message, `"dddd1"`)
+		assert.Contains(t, apiErr.Issues[0].Message, "compact label", "the cell-descendant label is diagnosed like a top-level one")
 	})
 
 	t.Run("an unowned explicit id is refused; omitting it mints", func(t *testing.T) {

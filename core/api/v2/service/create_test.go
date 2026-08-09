@@ -270,13 +270,17 @@ func TestV2CreateObjectDocument(t *testing.T) {
 		fx.expectEtagRead("cloneObj")
 		body := `{"version":1,"type":"page","blocks":[` +
 			`{"id":"aaaa1","type":"paragraph","text":"x"},` +
-			`{"id":"keeper","type":"paragraph","text":"y"}]}`
+			`{"id":"keeper","type":"paragraph","text":"y"},` +
+			`{"id":"tblOne1","type":"table","columns":[{"id":"colA"}],` +
+			`"rows":[{"id":"rowA","cells":[[{"type":"toggle","text":"cell"},` +
+			`{"indent":1,"id":"bbbb1","type":"paragraph","text":"inside"}]]}]}]}`
 
 		result, err := fx.CreateObject(context.Background(), testSpaceId, []byte(body), false)
 
 		require.NoError(t, err)
 		require.Len(t, result.Warnings, 1)
 		assert.Contains(t, result.Warnings[0].Message, `"aaaa1"`)
+		assert.Contains(t, result.Warnings[0].Message, `"bbbb1"`, "a label inside a cell's descendants is flagged too")
 		assert.NotContains(t, result.Warnings[0].Message, `"keeper"`, "only label-shaped ids are flagged")
 		assert.Contains(t, result.Warnings[0].Hint, "?ids=full")
 	})
