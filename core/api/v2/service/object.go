@@ -251,7 +251,8 @@ func (s *V2Service) GetObject(ctx context.Context, spaceId, objectId string, q V
 			delete(fields, "blocks")
 		}
 		if plan.block != "" {
-			if err := filterBlockSubtree(fields, plan.block, snapshotBlockIds(read.Snapshot)); err != nil {
+			storedIds := func() ([]string, error) { return s.exportShapeBlockIds(spaceId, read) }
+			if err := filterBlockSubtree(fields, plan.block, storedIds); err != nil {
 				return nil, "", err
 			}
 		}
@@ -389,7 +390,11 @@ func buildOutlineEnvelope(fields map[string]json.RawMessage, keepProperties bool
 // blocksRemoved: 5). The marker makes every write path refuse it — the
 // AnyBlock envelope is additionalProperties:false, so Validate rejects it
 // structurally, and PUT/create name it precisely before that.
-func filterBlockSubtree(fields map[string]json.RawMessage, blockRef string, storedIds []string) error {
+//
+// storedIds() lists the stored spelling of each SERVED block, index-aligned
+// with the served blocks array (exportShapeBlockIds), and is only invoked on
+// the fallback path.
+func filterBlockSubtree(fields map[string]json.RawMessage, blockRef string, storedIds func() ([]string, error)) error {
 	var blocks []json.RawMessage
 	if raw, ok := fields["blocks"]; ok {
 		if err := json.Unmarshal(raw, &blocks); err != nil {
@@ -411,18 +416,28 @@ func filterBlockSubtree(fields map[string]json.RawMessage, blockRef string, stor
 
 	anchor, err := resolveBlockRef(ids, blockRef)
 	if err != nil {
-		// the stored-id vocabulary: a ref that names exactly one stored id
-		// maps to that block's served spelling (the served id is the stored
-		// id itself or its label — always a suffix of it)
-		if storedIdx, matches := matchBlockRef(storedIds, blockRef); matches == 1 {
-			for i, servedId := range ids {
-				if strings.HasSuffix(storedIds[storedIdx], servedId) {
-					anchor, err = i, nil
-					break
-				}
-			}
+		// the stored-id vocabulary fallback. Only a not-found falls through:
+		// a served-vocabulary AMBIGUITY stays a refusal — resolving it
+		// against the other vocabulary would silently pick one of the blocks
+		// the 400 exists to make the caller disambiguate.
+		var refErr *v2model.Error
+		if !errors.As(err, &refErr) || refErr.Code != v2model.CodeNotFound {
+			return err
 		}
-		if err != nil {
+		stored, storedErr := storedIds()
+		if storedErr != nil {
+			return storedErr
+		}
+		// stored[i] is the stored spelling of blocks[i] — the same marshal
+		// modulo relabeling — so a resolved ref maps to its served block by
+		// POSITION. (A suffix scan here served the WRONG block: any earlier
+		// served id that happened to tail the matched stored id won — "b1"
+		// tails "…9ab1".) A stored id that is never served (the root, table
+		// wrappers, cells) is simply absent from the list and stays a 404.
+		if len(stored) != len(ids) {
+			return fmt.Errorf("subtree stored-id fallback: %d stored ids for %d served blocks", len(stored), len(ids))
+		}
+		if anchor, err = resolveBlockRef(stored, blockRef); err != nil {
 			return err
 		}
 	}
@@ -446,19 +461,36 @@ func filterBlockSubtree(fields map[string]json.RawMessage, blockRef string, stor
 	return nil
 }
 
-// snapshotBlockIds lists the stored block ids of a live read — the second
-// resolution vocabulary for ?block= (the first is the served ids).
-func snapshotBlockIds(snapshot *model.SmartBlockSnapshotBase) []string {
-	if snapshot == nil {
-		return nil
+// exportShapeBlockIds re-marshals a read WITHOUT block-id relabeling and
+// returns the top-level block ids in document order — the second resolution
+// vocabulary for ?block= (the first is the served ids). Relabeling changes
+// id spellings only, never the block set or order, so index i here is the
+// STORED spelling of the served document's block i: the fallback maps a
+// resolved stored id to its served block positionally. The discarding
+// warning sink keeps degradation identical to the served marshal (without a
+// sink, C11-degradable content fails the marshal instead). Blocks that never
+// render as flat blocks — the root, table wrappers, cells — are absent here
+// exactly as they are absent from the served array.
+func (s *V2Service) exportShapeBlockIds(spaceId string, read apicore.ObjectRead) ([]string, error) {
+	opts := storeresolver.New(s.store.SpaceIndex(spaceId)).Options()
+	opts.OnWarning = func(anyblockjson.Issue) {}
+	doc, err := anyblockjson.Marshal(read.SbType, read.Snapshot, opts)
+	if err != nil {
+		return nil, fmt.Errorf("marshal stored-id shape: %w", err)
 	}
-	ids := make([]string, 0, len(snapshot.Blocks))
-	for _, b := range snapshot.Blocks {
-		if b != nil && b.Id != "" {
-			ids = append(ids, b.Id)
-		}
+	var probe struct {
+		Blocks []struct {
+			Id string `json:"id"`
+		} `json:"blocks"`
 	}
-	return ids
+	if err := json.Unmarshal(doc, &probe); err != nil {
+		return nil, fmt.Errorf("decode stored-id shape: %w", err)
+	}
+	ids := make([]string, len(probe.Blocks))
+	for i, b := range probe.Blocks {
+		ids[i] = b.Id
+	}
+	return ids, nil
 }
 
 // matchBlockRef maps a block reference to an index into ids: an exact id

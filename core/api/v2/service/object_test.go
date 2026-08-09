@@ -181,10 +181,17 @@ func TestV2OutlineBlockRoundTrip(t *testing.T) {
 
 // TestV2MixedIdPopulationsRoundTrip is the review's coverage-hole fixture:
 // three id populations in ONE document — a minted 24-hex id (relabels), a
-// hyphenated readable id and a 5-char id (both stay full) — asserting which
+// hyphenated readable id and a short id (both stay full) — asserting which
 // come back relabeled, that ?block= resolves BOTH spellings for each, and
 // that the served document passes anyblockjson.Validate. Mixed documents are
 // exactly where the aliasing and adoption defects lived.
+//
+// The short id is "b1" and sits FIRST in document order — deliberately a
+// suffix of the minted parent's stored id ("…bbbb1" ends with "b1"). The
+// stored-id fallback of ?block= used to map the matched stored id back to a
+// served spelling with a first-match-wins suffix scan, which served THIS
+// decoy instead of the minted block; the fixture's earlier ordering (short
+// id last, not a suffix) could not catch that.
 func TestV2MixedIdPopulationsRoundTrip(t *testing.T) {
 	mixedRead := func() apicore.ObjectRead {
 		return apicore.ObjectRead{
@@ -195,12 +202,12 @@ func TestV2MixedIdPopulationsRoundTrip(t *testing.T) {
 				}},
 				ObjectTypes: []string{"ot-page"},
 				Blocks: []*model.Block{
-					{Id: "obj1", ChildrenIds: []string{testMintedParentId, "pages-roadmap-home-1", "note5"},
+					{Id: "obj1", ChildrenIds: []string{"b1", testMintedParentId, "pages-roadmap-home-1"},
 						Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}},
+					{Id: "b1", Content: textContent("short decoy", model.BlockContentText_Paragraph)},
 					{Id: testMintedParentId, ChildrenIds: []string{testMintedChildId}, Content: textContent("minted", model.BlockContentText_Paragraph)},
 					{Id: testMintedChildId, Content: textContent("minted child", model.BlockContentText_Paragraph)},
 					{Id: "pages-roadmap-home-1", Content: textContent("readable", model.BlockContentText_Paragraph)},
-					{Id: "note5", Content: textContent("short", model.BlockContentText_Paragraph)},
 				},
 			},
 			Heads: []string{"headA"},
@@ -225,20 +232,21 @@ func TestV2MixedIdPopulationsRoundTrip(t *testing.T) {
 	for _, b := range decodeBody(t, body)["blocks"].([]any) {
 		served = append(served, b.(map[string]any)["id"].(string))
 	}
-	assert.Equal(t, []string{"bbbb1", "cccc1", "pages-roadmap-home-1", "note5"}, served)
+	assert.Equal(t, []string{"b1", "bbbb1", "cccc1", "pages-roadmap-home-1"}, served)
 
 	// ?block= resolves BOTH spellings for each population: the served
-	// spelling and the stored one
+	// spelling and the stored one. The stored-spelling case is the trap: the
+	// decoy "b1" tails testMintedParentId and comes first in document order.
 	for _, tc := range []struct {
 		ref       string
 		wantFirst string // the served id of the subtree's anchor
 		wantLen   int
 	}{
 		{ref: "bbbb1", wantFirst: "bbbb1", wantLen: 2},                               // minted, by label
-		{ref: testMintedParentId, wantFirst: "bbbb1", wantLen: 2},                    // minted, by full id
+		{ref: testMintedParentId, wantFirst: "bbbb1", wantLen: 2},                    // minted, by full id (the decoy trap)
 		{ref: "pages-roadmap-home-1", wantFirst: "pages-roadmap-home-1", wantLen: 1}, // readable, full
 		{ref: "home-1", wantFirst: "pages-roadmap-home-1", wantLen: 1},               // readable, unique suffix
-		{ref: "note5", wantFirst: "note5", wantLen: 1},                               // short id, exact
+		{ref: "b1", wantFirst: "b1", wantLen: 1},                                     // short id, exact
 	} {
 		sub, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", V2ObjectQuery{Block: tc.ref})
 		require.NoErrorf(t, err, "?block=%s must resolve", tc.ref)
@@ -246,6 +254,97 @@ func TestV2MixedIdPopulationsRoundTrip(t *testing.T) {
 		require.Lenf(t, blocks, tc.wantLen, "?block=%s subtree size", tc.ref)
 		assert.Equalf(t, tc.wantFirst, blocks[0].(map[string]any)["id"], "?block=%s anchor", tc.ref)
 	}
+}
+
+// TestV2BlockRefStoredIdFallback pins the ?block= stored-id fallback on the
+// reproduced wrong-block shape: blocks "b1" (short, first in document order)
+// and 000000000000000000009ab1 (served as "09ab1"). "b1" is a suffix of the
+// minted block's stored id, so the retired suffix scan mapped
+// ?block=<full stored id> onto "b1" — the WRONG block, served 200 with the
+// wrong content. The mapping is positional now (stored[i] belongs to served
+// blocks[i]); a stored id that is never served — the root here — is a 404,
+// not a scan hit.
+func TestV2BlockRefStoredIdFallback(t *testing.T) {
+	const mintedId = "000000000000000000009ab1" // label "09ab1"; "b1" tails it
+	trapRead := func() apicore.ObjectRead {
+		return apicore.ObjectRead{
+			SbType: model.SmartBlockType_Page,
+			Snapshot: &model.SmartBlockSnapshotBase{
+				Details: &types.Struct{Fields: map[string]*types.Value{
+					"id": pbtypes.String("obj1"), "name": pbtypes.String("Trap"),
+				}},
+				ObjectTypes: []string{"ot-page"},
+				Blocks: []*model.Block{
+					{Id: "obj1", ChildrenIds: []string{"b1", mintedId},
+						Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}},
+					{Id: "b1", Content: textContent("decoy", model.BlockContentText_Paragraph)},
+					{Id: mintedId, Content: textContent("target", model.BlockContentText_Paragraph)},
+				},
+			},
+			Heads: []string{"headA"},
+		}
+	}
+	fx := newV2Fixture(t)
+	fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(trapRead(), nil).Times(2)
+
+	// the full stored id resolves to ITS block, not the earlier suffix decoy
+	sub, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", V2ObjectQuery{Block: mintedId})
+	require.NoError(t, err)
+	blocks := decodeBody(t, sub)["blocks"].([]any)
+	require.Len(t, blocks, 1)
+	block := blocks[0].(map[string]any)
+	assert.Equal(t, "09ab1", block["id"], "?block=<full stored id> must serve the block that OWNS the id")
+	assert.Equal(t, "target", block["text"])
+
+	// the root's stored id is never served — 404, not a silent scan hit
+	_, _, err = fx.GetObject(context.Background(), testSpaceId, "obj1", V2ObjectQuery{Block: "obj1"})
+	apiErr := v2Err(t, err)
+	assert.Equal(t, http.StatusNotFound, apiErr.Status)
+}
+
+// TestFilterBlockSubtreeStoredIdFallback pins the fallback machinery in
+// isolation: the served-vocabulary ambiguity refusal survives even when the
+// stored vocabulary would resolve, and the stored resolution maps by
+// position, not by suffix scanning the served ids.
+func TestFilterBlockSubtreeStoredIdFallback(t *testing.T) {
+	const minted = "000000000000000000009ab1"
+	staticIds := func(ids []string) func() ([]string, error) {
+		return func() ([]string, error) { return ids, nil }
+	}
+
+	t.Run("a served ambiguity stays a 400 — never silently resolved via stored ids", func(t *testing.T) {
+		// two long served ids both end with the minted block's full stored
+		// id, so the ref is ambiguous in the served vocabulary while the
+		// stored vocabulary holds exactly one exact match
+		fields := map[string]json.RawMessage{"blocks": json.RawMessage(`[
+			{"id":"x` + minted + `","type":"paragraph","text":"a"},
+			{"id":"y` + minted + `","type":"paragraph","text":"b"},
+			{"id":"09ab1","type":"paragraph","text":"c"}]`)}
+		err := filterBlockSubtree(fields, minted,
+			staticIds([]string{"x" + minted, "y" + minted, minted}))
+		apiErr := v2Err(t, err)
+		assert.Equal(t, v2model.CodeAmbiguousInput, apiErr.Code)
+	})
+
+	t.Run("stored resolution is positional", func(t *testing.T) {
+		fields := map[string]json.RawMessage{"blocks": json.RawMessage(`[
+			{"id":"b1","type":"paragraph","text":"decoy"},
+			{"id":"09ab1","type":"paragraph","text":"target"}]`)}
+		require.NoError(t, filterBlockSubtree(fields, minted,
+			staticIds([]string{"b1", minted})))
+		var run []map[string]any
+		require.NoError(t, json.Unmarshal(fields["blocks"], &run))
+		require.Len(t, run, 1)
+		assert.Equal(t, "09ab1", run[0]["id"])
+	})
+
+	t.Run("a stored-id list out of step with the served blocks is an error, not a guess", func(t *testing.T) {
+		fields := map[string]json.RawMessage{"blocks": json.RawMessage(`[
+			{"id":"b1","type":"paragraph","text":"decoy"}]`)}
+		err := filterBlockSubtree(fields, minted, staticIds([]string{"b1", minted}))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "stored-id fallback")
+	})
 }
 
 // TestV2GetObjectCompactBody pins C3 for the WHOLE body, not just its
