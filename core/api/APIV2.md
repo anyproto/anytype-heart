@@ -68,7 +68,7 @@ repair loop with path-addressed errors.
 |---|---|---|
 | C1 | Base path `/v2`, localhost, bearer auth and `Anytype-Version` date header as in v1. | migration §4.8 |
 | C2 | **One vocabulary: the format's.** camelCase, property **keys**, option **names** — everywhere, both directions. The object-type field is **`type`** (a type key) on every surface: envelope, rows, search, shortcuts. No id/key duality, no snake_case. Object ids remain ids. | v1's top agent trap (§2.1) |
-| C3 | **Compact JSON always** (no pretty-printing). | free 38–46% (§3.6) |
+| C3 | **Compact JSON always** (no pretty-printing) — **all the way down, not just the envelope**. `anyblockjson.Marshal` returns the format's canonical byte form, which is two-space **indented** (SPEC §4), and the v2 envelope re-embeds those bytes verbatim; until Wave 0.1 every object read was therefore compact on top and pretty-printed underneath, costing a measured 16–26 %. *(Built: `encodeEnvelope` compacts each embedded value — the serving layer, so the format's canonical form and its `Export ∘ Import` byte-stability are untouched; §8.24.)* | free 38–46% (§3.6); 16–26% (TOKENS §1.1) |
 | C4 | **Object ids compact by default** (refs legend per SPEC §9a — lossless); `?ids=full` opts out. **Block ids are always full on default reads** — block-label compaction (5-char, legend-less, lossy) appears only in explicitly read-only shapes (`outline`, prompt/example exports). Write endpoints MAY additionally resolve block-id references by unique-suffix match against the live object (SPEC §9a wiring allowance). Never require echoing a full CID. *(Built: `Options.CompactObjectRefs` and `Options.CompactBlockLabels` are separate flags; `CompactIds` is the shorthand for both.)* **Outline exception (T7)**: the outline shape compacts block labels but keeps object refs **full** — it drops the refs legend with the properties map, so a legend-compacted ref inside a heading's text would be unresolvable; `?ids=` is ignored there. | ~24×/id, −89% id errors (§3.6); id round-trip contract (R1) |
 | C5 | Minimal rows: list/search responses carry `id, name, type` + requested property values. **Never embed type objects.** `fields=` expands. | v1's N× multiplier (§2.1) |
 | C6 | Error shape everywhere: `{status, code, message, issues:[{path, message, hint}]}` — path-addressed, naming allowed values. Required codes include: `validation_failed`, `version_unsupported` (surfaces SPEC §10's "produced by a newer version" verbatim, naming both versions), `idempotency_conflict` (same key, different body), `etag_mismatch`, `ambiguous_input` (e.g. both `filter` and `filters` supplied), `forbidden` (403 — an operation the caller's identity may not perform, e.g. editing another member's chat message; added by the Phase-6 review; also the `/v2` key-scope gate's refusal of a non-JsonAPI key, which answers in the shared v1 envelope — §8.9). Error text is API surface; test it. | repair loop (§3.2, §4.6); R15 |
@@ -3384,3 +3384,58 @@ spellings enumerate); the §7.5a respelling sweep, pins/D1, §7.4
 defaults, the backfill and active re-slug-on-revive as in §8.22.
 Truthfulness fixes to §8.22 ride this pass (commit count, the union
 check's scope, search's former stored-keys-only state).
+
+### 8.24 Wave 0.1 — the served body is compact all the way down (2026-08-09 — decisions as built)
+
+**The defect.** C3 promised "compact JSON always" and the envelope
+delivered it only at the top level. `anyblockjson.Marshal` emits the
+format's canonical byte form — two-space indented with a trailing
+newline (`marshalCanonical`, SPEC §4) — and the read path splits that
+document into `map[string]json.RawMessage` and re-emits a compact
+envelope whose `properties`/`blocks`/`refs` values keep their indented
+bytes **verbatim**. Every default object read shipped an indented
+document inside a compact wrapper.
+
+**Measured on the live account** (o200k, the six-document TOKENS corpus,
+served bytes → the same documents re-rendered compact): −15.5 % (XS,
+0 blocks) · −20.2 % (S, 12) · −21.3 % (M, 24) · −26.4 % (L, 66) ·
+−23.9 % (R, 22) · −21.4 % (K, 31); corpus total **−23.2 %**. This
+reproduces TOKENS §1.1 (16–26 %) within a point on every document.
+
+**Where the fix lives, and why not in the format package.** In
+`encodeEnvelope` (`v2/service/service.go`), which compacts each embedded
+value with `json.Compact` before concatenating it. Three reasons the
+serving layer is the right one:
+
+1. `marshalCanonical` is the format's **canonical byte encoding**. SPEC
+   §4's serialization canon ("UTF-8, LF, two-space indent") is what
+   §11.2's `Export ∘ Import` byte-stability is defined over, and what the
+   four `testdata/rich*.json` goldens pin byte-for-byte. Making it
+   compact would move all four goldens and silently flip ~30 in-package
+   `assert.Contains` probes that match on `": "` — six of them
+   `NotContains`, which would go **false-green**, not red. None of that
+   is a price a token saving should pay.
+2. Nothing outside the tests depends on the *whitespace*: the etag hashes
+   tree heads (not the document), C8 idempotency hashes the client's
+   request body, `snapshotdiff` and the eval corruption scorer are
+   state-level, and every round-trip/byte-stability assertion compares
+   Marshal output to Marshal output under the same options. The one
+   cosmetic loser would be `cmd/anyblockroundtrip`'s `firstDiff` line
+   reporter and the human-diffable `.json` artifacts `anyblockrecover`
+   writes — both of which want the indent.
+3. The envelope fix is **total**. Every v2 body that re-embeds foreign
+   bytes goes through this one function: the object read, `GetType` (it
+   delegates to `GetObject`), the PATCH/PUT response documents, the
+   create echo. A `Marshal` option would have had to be threaded through
+   each of them and would still miss caller-supplied bytes.
+
+`json.Compact` is whitespace-only — the exported form runs with HTML
+escaping OFF, so it neither re-escapes `<`/`>`/`&` nor rewrites
+U+2028/U+2029, and the format writer's deliberately non-HTML-escaped
+strings survive byte for byte (pinned by a test). A value the JSON
+scanner rejects is appended verbatim rather than erroring:
+`encodeEnvelope` is a formatter, not a validator, so malformed input
+keeps exactly the body it produced before compaction existed.
+
+**No golden moved and no fixture was regenerated** — which is the signal
+that the change landed at the right layer.

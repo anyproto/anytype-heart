@@ -156,6 +156,26 @@ func TestV2OutlineBlockRoundTrip(t *testing.T) {
 	assert.Equal(t, "blockChild", blocks[1].(map[string]any)["id"])
 }
 
+// TestV2GetObjectCompactBody pins C3 for the WHOLE body, not just its
+// envelope: anyblockjson.Marshal returns the format's canonical two-space
+// indented bytes (SPEC §4) and the envelope re-embeds them verbatim, so every
+// default read used to be compact on top and pretty-printed underneath —
+// 16–26 % of the served tokens (TOKENS §1.1).
+func TestV2GetObjectCompactBody(t *testing.T) {
+	// given
+	fx := newV2Fixture(t)
+	fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(testObjectRead(), nil)
+
+	// when
+	body, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", V2ObjectQuery{})
+
+	// then
+	require.NoError(t, err)
+	assert.NotContains(t, string(body), "\n", "no pretty-printing survives inside the envelope")
+	assert.NotContains(t, string(body), `": "`, "no indent spacing after a key")
+	require.Len(t, decodeBody(t, body)["blocks"].([]any), 4, "and it is still the same document")
+}
+
 func decodeBody(t *testing.T, body []byte) map[string]any {
 	t.Helper()
 	var doc map[string]any

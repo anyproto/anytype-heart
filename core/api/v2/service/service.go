@@ -4,6 +4,7 @@ package v2service
 // helpers, and the compact-JSON envelope assembly (APIV2.md §8).
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -211,7 +212,22 @@ func parseEnvelope(doc []byte) (map[string]json.RawMessage, error) {
 }
 
 // encodeEnvelope re-emits the fields as one compact JSON object in the
-// canonical key order (C3: compact JSON always).
+// canonical key order (C3: compact JSON always) — INCLUDING the interior of
+// every value.
+//
+// The interior matters because the values arrive verbatim: `anyblockjson.Marshal`
+// returns the format's canonical byte form, which is two-space indented
+// (SPEC §4, `marshalCanonical`), and parseEnvelope hands those bytes straight
+// through as json.RawMessage. Before this compaction every object read was
+// compact at the top level and pretty-printed underneath — measured at
+// 16–26 % of the served tokens (TOKENS §1.1). Compacting HERE rather than in
+// the format package keeps the canonical form untouched (it is what
+// `Export ∘ Import` byte-stability is defined over) and covers every v2 body
+// that re-embeds foreign bytes, not just the object read.
+//
+// json.Compact is whitespace-only: it does not re-escape strings (the escape
+// pass is off for the exported Compact), so the format's non-HTML-escaping
+// writer output survives byte-for-byte.
 func encodeEnvelope(fields map[string]json.RawMessage) ([]byte, error) {
 	known := map[string]bool{}
 	for _, k := range envelopeKeyOrder {
@@ -242,7 +258,7 @@ func encodeEnvelope(fields map[string]json.RawMessage) ([]byte, error) {
 		}
 		out = append(out, keyJSON...)
 		out = append(out, ':')
-		out = append(out, raw...)
+		out = appendCompactJSON(out, raw)
 		return nil
 	}
 	for _, k := range envelopeKeyOrder {
@@ -256,6 +272,18 @@ func encodeEnvelope(fields map[string]json.RawMessage) ([]byte, error) {
 		}
 	}
 	return append(out, '}'), nil
+}
+
+// appendCompactJSON appends value to dst with its insignificant whitespace
+// stripped. A value encoding/json cannot scan is appended verbatim:
+// encodeEnvelope is a formatter, not a validator, so malformed input keeps
+// exactly the (equally malformed) body it produced before compaction existed.
+func appendCompactJSON(dst, value []byte) []byte {
+	var buf bytes.Buffer
+	if err := json.Compact(&buf, value); err != nil {
+		return append(dst, value...)
+	}
+	return append(dst, buf.Bytes()...)
 }
 
 // rawJSON marshals a value into a raw envelope field.

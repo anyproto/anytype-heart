@@ -76,6 +76,40 @@ func TestEncodeEnvelope(t *testing.T) {
 		assert.Equal(t, want, string(got))
 	})
 
+	t.Run("compacts the interior of embedded values (C3)", func(t *testing.T) {
+		// given — the indented bytes anyblockjson.Marshal produces (SPEC §4
+		// canonical form), re-embedded verbatim by parseEnvelope
+		fields := map[string]json.RawMessage{
+			"id":     json.RawMessage(`"obj1"`),
+			"blocks": json.RawMessage("[\n  {\n    \"id\": \"b1\",\n    \"type\": \"paragraph\",\n    \"text\": \"a  b\"\n  }\n]"),
+			"refs":   json.RawMessage("{\n  \"ab12c\": \"bafyreiab12c\"\n}"),
+		}
+		want := `{"id":"obj1","refs":{"ab12c":"bafyreiab12c"},"blocks":[{"id":"b1","type":"paragraph","text":"a  b"}]}`
+
+		// when
+		got, err := encodeEnvelope(fields)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, want, string(got), "C3 is about the whole body, not just the envelope")
+	})
+
+	t.Run("string contents survive compaction byte for byte", func(t *testing.T) {
+		// given — the format's writer escapes without HTML escaping and
+		// pre-escapes U+2028/U+2029; json.Compact must not re-escape anything
+		fields := map[string]json.RawMessage{
+			"id": json.RawMessage("{\n  \"a\": \"<b>&amp; \\u2028 café — ünïcode\"\n}"),
+		}
+
+		// when
+		got, err := encodeEnvelope(fields)
+
+		// then
+		require.NoError(t, err)
+		want := "{\"id\":{\"a\":\"<b>&amp; \\u2028 café — ünïcode\"}}"
+		assert.Equal(t, want, string(got))
+	})
+
 	t.Run("round-trips through parseEnvelope", func(t *testing.T) {
 		// given
 		doc := []byte(`{"version":1,"id":"x","blocks":[{"type":"paragraph","text":"hi"}]}`)

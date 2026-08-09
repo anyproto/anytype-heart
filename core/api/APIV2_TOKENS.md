@@ -545,7 +545,7 @@ compaction sentence flips), ±0 lines.
 
 | # | change | saving (measured basis) | effort |
 |---|---|---|---|
-| 1 | Compact the embedded envelope values (§1.1) | 16–26 % of every object read | trivial |
+| 1 | ~~Compact the embedded envelope values (§1.1)~~ **DONE** (Wave 0.1, APIV2.md §8.24) | 16–26 % of every object read — **re-measured on the live corpus: −15.5…−26.4 %, total −23.2 %** | trivial |
 | 2 | Split the `?ids=` knob: short block labels + full object refs on `edit` (§9a below) | 2–10 % (refs) + ~15 % (block labels) + removes a write-back trap | trivial |
 | 3 | Locators on block-addressed ops (§5) | read-free text edits (~2.4 k → ~50 tok on the quoted-sentence flow); id-free reads become writable | small |
 | 4 | `?mode=` profiles replacing include/outline/ids/format (§6.2) | 4× on pure-read calls for small models (§7); −37 % across the task mix for e2b | small-medium |
