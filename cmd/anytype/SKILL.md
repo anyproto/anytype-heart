@@ -70,9 +70,12 @@ presets are functions (`today()`, `currentWeek()`, `daysAgo(n)`).
   (`Status` for `status`) resolves when exactly one key matches; if two
   keys differ only by case the error names both.
 - **Handles expire on the next find.** Re-run `find` and use the new
-  numbers; block labels come from the server's read and stay stable
-  between edits. Every edit receipt names the
-  object it changed (`ok — "Groceries": …`) — check it matches your intent.
+  numbers. Block labels come from the server's read and are derived per
+  read — inserting or deleting blocks can change a label (it lengthens
+  when another block's id starts sharing its tail), so after a structural
+  edit prefer the labels of a fresh read over remembered ones. Every edit
+  receipt names the object it changed (`ok — "Groceries": …`) — check it
+  matches your intent.
 - **One verb, one intent.** There is no batch; run verbs in sequence.
   Retries are safe: an identical re-run within a minute is deduplicated,
   including after a failed or timed-out attempt.

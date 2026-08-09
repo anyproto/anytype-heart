@@ -171,6 +171,20 @@ The v0.6 flat-blocks change carried assumptions the flat-encoding sweep
   dropped the entry). Fixed in `cmd/anyblockroundtrip` by caching point-
   lookup hits in both directions; format and package unaffected.
 
+## 12. Charset-dirty block ids are no longer laundered by relabeling
+
+The schema's block-id pattern is `^[A-Za-z0-9_-]{1,64}$`, but stored ids
+are not guaranteed to match it (legacy/imported data could carry other
+characters; no live producer found). The pre-v0.6.1 charset relabel rule
+*accidentally laundered* such an id whenever its 5-char tail was clean —
+the served document carried the clean label and validated. Under the
+minted-shape rule (`isMintedLocalId`, API v2 Wave 0 hardening) a
+non-minted id serves verbatim, so a document holding a charset-dirty
+block id now fails its own `Validate` on export. **Handling**: accepted —
+a false relabel destroys a meaningful identifier, and no such id appeared
+in the 35 400-object sweep; should one surface, it belongs here with the
+producer named. **Spec**: §9a (relabel rule), schema `$defs/blockId`.
+
 ---
 
 Final state after all fixes: 35 369 objects, 0 export/import errors, 0

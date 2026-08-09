@@ -54,8 +54,9 @@ type V2ObjectQuery struct {
 //
 // One id axis moves per shape: block-id relabeling. Object refs stay full
 // inline on EVERY shape — the `refs` legend is a measured net loss on every
-// corpus document (TOKENS §1.2, §8.25: +0.6 % even on the ref-heaviest
-// one), and the indirection traps write-back of object-valued properties.
+// corpus document (TOKENS §1.2; §8.25's legend axis has it costing
+// 0.9–11.5 % per document, 5.3 % on the ref-heaviest row), and the
+// indirection traps write-back of object-valued properties.
 // Legend RESOLUTION on input is untouched and total (SPEC §9a), so a
 // document arriving with a legend still writes back.
 type objectReadPlan struct {

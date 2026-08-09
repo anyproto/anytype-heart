@@ -410,9 +410,10 @@ func TestV2GetObjectIdShapes(t *testing.T) {
 
 	t.Run("ids=full: full block ids AND full inline object refs — no legend", func(t *testing.T) {
 		// given — the export shape used to carry the refs legend, which this
-		// work's own measurement shows as a pure loss (+0.6 % even on a
-		// ref-heavy document) and §8.25 itself calls a write-back trap; no
-		// shape serves it now, so full block ids come without the indirection
+		// work's own measurement shows as a pure loss (§8.25's legend axis:
+		// 0.9–11.5 % per document) and §8.25 itself calls a write-back trap;
+		// no shape serves it now, so full block ids come without the
+		// indirection
 		fx := newV2Fixture(t)
 		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(testObjectReadWithRef(), nil)
 

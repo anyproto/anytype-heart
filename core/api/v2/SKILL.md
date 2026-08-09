@@ -35,8 +35,10 @@ whether you may write. Ask this instead of discovering limits through 403s
   did-you-mean.
 - **Blocks** are a FLAT array in pre-order with an integer `indent`
   (absent = 0) — no `children` key. Inline formatting is markdown inside
-  `text`. Block ids are stable; any block reference accepts the full id or
-  a unique suffix.
+  `text`. FULL block ids are stable; the short labels a default read
+  shows for machine-minted ids are derived per read and can change after
+  a structural edit. Any block reference accepts the full id or a unique
+  suffix.
 - Title and description are **not blocks** — they live in `properties`
   (`name`, `description`). A fresh object has zero blocks.
 - A **set** is a live query over a type; a **collection** is a hand-curated

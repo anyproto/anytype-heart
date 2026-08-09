@@ -3645,13 +3645,16 @@ fresh object breaks no other holder of the ids.
 
 **No shape serves the refs legend.** The export shape kept the legend that
 this work's own measurement shows as a pure loss on the measured corpus
-(+0.6 % even on a 41-block ref-heavy document; the §8.25 table has it
-saving on none) — which left no shape offering full block ids without the
-indirection §8.25 itself calls a write-back trap. `?ids=full` now means
-full ids AND full inline refs. Legend *resolution on input* is untouched
-(SPEC §9a is total). The claim stays scoped to the corpus: §1.2's own
-model has the legend winning at ≥2× ref reuse, which the corpus rarely
-shows.
+(the §8.25 legend axis: it costs 0.9–11.5 % per document, 5.3 % on the
+ref-heaviest row, and saves on none) — which left no shape offering full
+block ids without the indirection §8.25 itself calls a write-back trap.
+*(Corrected by the release review: this section first cited "+0.6 % on a
+41-block ref-heavy document" — a figure with no traceable provenance; the
+corpus has no 41-block document and its ref-heaviest row is the 22-block
+R-20refs at 5.3 %.)* `?ids=full` now means full ids AND full inline refs.
+Legend *resolution on input* is untouched (SPEC §9a is total). The claim
+stays scoped to the corpus: §1.2's own model has the legend winning at
+≥2× ref reuse, which the corpus rarely shows.
 
 **`GET …/types/{key}` threads `?ids=`** so the export shape is one query
 parameter away on types too; `dataview` needs no exemption because it is
@@ -3678,18 +3681,15 @@ instead of 409ing or re-applying under a fresh key.
   identity. Any §8.25-era argument that "diffStats makes it visible" was
   therefore half-true on tables; the PUT refusal now fires long before
   diffStats matters.
-- Table columns structurally never relabel — a column's 5-char tail is
-  shared with every derived cell id in that column, so the census always
-  counts ≥ 2 — which means a served table mixes a 5-char `row` with a
-  24-char `col`, `setCell` sends that mix back (resolveTablePart handles
-  both), and columns contribute 0 % of the label saving on any table.
-- `checkFreshIds` (PATCH) treats copied labels as fresh ids: a model
-  copying blocks from a read into `replaceSubtree`/`insertBlocks` creates
-  blocks with ids like `arent` instead of earning the old loud
-  `duplicateIdError`. Under the minted-shape rule such ids never relabel
-  or alias afterwards, so this is cosmetic debris rather than a
-  correctness hole; a shape-aware freshness warning belongs with Wave
-  2.1's resolution work.
+- Table columns **with at least one stored cell** never relabel — the
+  column's 5-char tail is shared with every derived cell id in that
+  column, so the census counts ≥ 2 — which means a served table mixes a
+  5-char `row` with a 24-char `col`, `setCell` sends that mix back
+  (resolveTablePart handles both), and such columns contribute 0 % of the
+  label saving. *(Scoped by the release review — "structurally never" was
+  overstated: a column with NO stored cells has no derived ids in the
+  census and DOES relabel, verified live, so served column ids are 5-char
+  or 24-char depending on sparsity.)*
 
 **Numbers.** The §8.25 measurements were not re-run live (the running
 desktop app predates this branch; reviewers reconstructed served bytes
@@ -3697,3 +3697,71 @@ with a branch-built harness) and are expected to hold within noise:
 the documents that saved were minted-id documents, which still relabel;
 the 0 % rows were readable-id documents, which still do not — now by
 rule rather than by charset accident.
+
+**Two trades of the minted-shape rule, unnoted when it landed.** The
+outline got materially longer on readable-id documents — `ing-1` became
+`notes-2024-meeting-1` — which matters because outline's whole value is
+being the cheap map; readable ids are also the documents where the label
+axis already saved 0 %, so the outline is where their cost now shows.
+And the old charset rule *accidentally laundered* charset-dirty stored
+block ids (an id the schema's `^[A-Za-z0-9_-]{1,64}$` pattern rejects
+used to serve as its clean 5-char label); such ids now serve verbatim,
+so a slightly wider class of documents fails its own `Validate` —
+pre-existing data shape, no live producer found (ANOMALIES #12).
+
+**Release pass (the fourth-lens review of this section's own work).** A
+follow-up review of the hardening found five code defects, all fixed on
+this branch with fail-on-revert tests:
+
+- The `?block=` stored-id fallback mapped the resolved stored id back to
+  a served spelling with a first-match-wins suffix scan — any earlier
+  served id that happened to tail the matched stored id won (reproduced:
+  `?block=<full minted id>` returned the unrelated block `b1`). The
+  mapping is positional now (a second, uncompacted marshal of the same
+  read — same block set and order, only spellings differ); stored ids
+  never served (root, table wrappers, cells) 404, and a served-vocabulary
+  ambiguity stays a refusal.
+- The bullet this section previously recorded as *deliberately unfixed* —
+  "`checkFreshIds` treats copied labels as fresh ids … cosmetic debris" —
+  was **false as written**: "never relabel or alias afterwards" covered
+  serving, not resolution. `matchBlockRef` returns on the first EXACT
+  match, so an adopted label *captured the reference* — reproduced: read →
+  `insertBlocks` with the read's own label → the next `replaceText` on
+  that label edited the copy while the original silently lost it. PATCH
+  now refuses any payload id that tails a kept block id, diagnosing the
+  pasted-label shape.
+- `docLocalIds` skipped table-cell **descendants** (the §6.1 F10 array
+  form renders them as flat blocks with ids, in the relabel pool), so a
+  body whose only minted id lived inside a cell PUT its label back 200,
+  adopted permanently. It recurses now; create's label warning inherits
+  the fix.
+- The wrapper's C8 record had no lower bound on its reuse window (a
+  backwards clock step revived an arbitrarily old key and its rewrite —
+  `LastWrite` persists in the CLI session file), judged the window from
+  two `now()` readings that could disagree across the boundary (a
+  rewritten body under a fresh identity), and kept only a single-level
+  rewrite chain (`PriorHash` captured the already-rewritten hash on a
+  second rewrite — reproduced double-apply). Floored, single-reading,
+  and PriorHash-once + merged rewrites now.
+- `POST …/types` 400ed on the etag of its own `GET …/types/{key}` read —
+  this pass taught GetType to serve etag but never gave CreateType
+  `normalizeCreateBody`. It normalizes like every other create now.
+
+**Record corrections** (the commits cannot be amended, so the corrections
+live here):
+
+- `9e18ac568`'s message ("additive h1 entries for versions already listed
+  — go-md2man, blackfriday — no dependency change") under-describes the
+  diff: 10 lines across SIX module@version pairs. `urfave/cli/v2 v2.25.7`
+  and `xrash/smetrics` were absent from go.sum entirely;
+  `go-md2man v2.0.7`, `urfave/cli v1.22.17` and `sigs.k8s.io/yaml v1.3.0`
+  are new versions (only blackfriday matches the message). No functional
+  harm — go.mod is untouched and `go mod verify` passes — but the record
+  was wrong.
+- `e966b5bd2`'s message under-reports its yaml diff: 10 of the 17 hunks
+  predate the claimed Q5 backlog (strict-bind prose and `413` responses
+  originating in `b794b0c36`'s annotations, flushed here because the
+  artifacts had not been regenerated since). And "the sorts id" is not in
+  the artifacts at all — it lives in the `v2ViewSetPropDef` string
+  literal served by `GET /v2/schemas/ops/{op}`, structurally invisible
+  to swag.
