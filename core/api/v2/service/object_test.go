@@ -18,6 +18,7 @@ import (
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -176,6 +177,75 @@ func TestV2OutlineBlockRoundTrip(t *testing.T) {
 	fullBlocks := decodeBody(t, fullBody)["blocks"].([]any)
 	require.Len(t, fullBlocks, 4)
 	assert.Equal(t, testMintedParentId, fullBlocks[1].(map[string]any)["id"])
+}
+
+// TestV2MixedIdPopulationsRoundTrip is the review's coverage-hole fixture:
+// three id populations in ONE document — a minted 24-hex id (relabels), a
+// hyphenated readable id and a 5-char id (both stay full) — asserting which
+// come back relabeled, that ?block= resolves BOTH spellings for each, and
+// that the served document passes anyblockjson.Validate. Mixed documents are
+// exactly where the aliasing and adoption defects lived.
+func TestV2MixedIdPopulationsRoundTrip(t *testing.T) {
+	mixedRead := func() apicore.ObjectRead {
+		return apicore.ObjectRead{
+			SbType: model.SmartBlockType_Page,
+			Snapshot: &model.SmartBlockSnapshotBase{
+				Details: &types.Struct{Fields: map[string]*types.Value{
+					"id": pbtypes.String("obj1"), "name": pbtypes.String("Mixed"),
+				}},
+				ObjectTypes: []string{"ot-page"},
+				Blocks: []*model.Block{
+					{Id: "obj1", ChildrenIds: []string{testMintedParentId, "pages-roadmap-home-1", "note5"},
+						Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}},
+					{Id: testMintedParentId, ChildrenIds: []string{testMintedChildId}, Content: textContent("minted", model.BlockContentText_Paragraph)},
+					{Id: testMintedChildId, Content: textContent("minted child", model.BlockContentText_Paragraph)},
+					{Id: "pages-roadmap-home-1", Content: textContent("readable", model.BlockContentText_Paragraph)},
+					{Id: "note5", Content: textContent("short", model.BlockContentText_Paragraph)},
+				},
+			},
+			Heads: []string{"headA"},
+		}
+	}
+	fx := newV2Fixture(t)
+	// one read for the default shape + one per ?block= case below
+	fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(mixedRead(), nil).Times(6)
+
+	// the default read: minted ids relabel, the others serve verbatim — and
+	// the served document stays schema-valid net of the v2 envelope
+	// additions every write path strips (etag/warnings — normalizePutBody)
+	body, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", V2ObjectQuery{})
+	require.NoError(t, err)
+	stripped := decodeBody(t, body)
+	delete(stripped, "etag")
+	delete(stripped, "warnings")
+	strippedJSON, err := json.Marshal(stripped)
+	require.NoError(t, err)
+	require.NoError(t, anyblockjson.Validate(strippedJSON), "the served default shape must validate")
+	var served []string
+	for _, b := range decodeBody(t, body)["blocks"].([]any) {
+		served = append(served, b.(map[string]any)["id"].(string))
+	}
+	assert.Equal(t, []string{"bbbb1", "cccc1", "pages-roadmap-home-1", "note5"}, served)
+
+	// ?block= resolves BOTH spellings for each population: the served
+	// spelling and the stored one
+	for _, tc := range []struct {
+		ref       string
+		wantFirst string // the served id of the subtree's anchor
+		wantLen   int
+	}{
+		{ref: "bbbb1", wantFirst: "bbbb1", wantLen: 2},                               // minted, by label
+		{ref: testMintedParentId, wantFirst: "bbbb1", wantLen: 2},                    // minted, by full id
+		{ref: "pages-roadmap-home-1", wantFirst: "pages-roadmap-home-1", wantLen: 1}, // readable, full
+		{ref: "home-1", wantFirst: "pages-roadmap-home-1", wantLen: 1},               // readable, unique suffix
+		{ref: "note5", wantFirst: "note5", wantLen: 1},                               // short id, exact
+	} {
+		sub, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", V2ObjectQuery{Block: tc.ref})
+		require.NoErrorf(t, err, "?block=%s must resolve", tc.ref)
+		blocks := decodeBody(t, sub)["blocks"].([]any)
+		require.Lenf(t, blocks, tc.wantLen, "?block=%s subtree size", tc.ref)
+		assert.Equalf(t, tc.wantFirst, blocks[0].(map[string]any)["id"], "?block=%s anchor", tc.ref)
+	}
 }
 
 // TestV2GetObjectCompactBody pins C3 for the WHOLE body, not just its

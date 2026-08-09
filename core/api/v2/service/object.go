@@ -251,7 +251,7 @@ func (s *V2Service) GetObject(ctx context.Context, spaceId, objectId string, q V
 			delete(fields, "blocks")
 		}
 		if plan.block != "" {
-			if err := filterBlockSubtree(fields, plan.block); err != nil {
+			if err := filterBlockSubtree(fields, plan.block, snapshotBlockIds(read.Snapshot)); err != nil {
 				return nil, "", err
 			}
 		}
@@ -374,9 +374,13 @@ func buildOutlineEnvelope(fields map[string]json.RawMessage, keepProperties bool
 
 // filterBlockSubtree keeps only the addressed block and its contiguous
 // indent-run of descendants. Indents stay absolute so ids and depths are
-// stable across full and subtree reads. The block reference resolves by exact
-// id or by unique suffix (§9a), so a short outline label round-trips to
-// ?block= (M1).
+// stable across full and subtree reads. The block reference resolves by
+// exact id or by unique suffix (§9a) against the SERVED ids first, then
+// against the stored ids (storedIds) — so BOTH spellings of a relabeled
+// block address it: the short label a default read shows, and the full
+// stored id a `?ids=full` read, PATCH `createdBlocks` or another client
+// holds. Without the stored-id fallback the full id 404ed on the default
+// shape — an addressability hole between the two vocabularies.
 //
 // The envelope is marked partial with "subtree": true — the way the outline
 // shape is partial by construction. Without the marker the subtree body was
@@ -385,7 +389,7 @@ func buildOutlineEnvelope(fields map[string]json.RawMessage, keepProperties bool
 // blocksRemoved: 5). The marker makes every write path refuse it — the
 // AnyBlock envelope is additionalProperties:false, so Validate rejects it
 // structurally, and PUT/create name it precisely before that.
-func filterBlockSubtree(fields map[string]json.RawMessage, blockRef string) error {
+func filterBlockSubtree(fields map[string]json.RawMessage, blockRef string, storedIds []string) error {
 	var blocks []json.RawMessage
 	if raw, ok := fields["blocks"]; ok {
 		if err := json.Unmarshal(raw, &blocks); err != nil {
@@ -407,7 +411,20 @@ func filterBlockSubtree(fields map[string]json.RawMessage, blockRef string) erro
 
 	anchor, err := resolveBlockRef(ids, blockRef)
 	if err != nil {
-		return err
+		// the stored-id vocabulary: a ref that names exactly one stored id
+		// maps to that block's served spelling (the served id is the stored
+		// id itself or its label — always a suffix of it)
+		if storedIdx, matches := matchBlockRef(storedIds, blockRef); matches == 1 {
+			for i, servedId := range ids {
+				if strings.HasSuffix(storedIds[storedIdx], servedId) {
+					anchor, err = i, nil
+					break
+				}
+			}
+		}
+		if err != nil {
+			return err
+		}
 	}
 
 	anchorIndent := probes[anchor].Indent
@@ -427,6 +444,21 @@ func filterBlockSubtree(fields map[string]json.RawMessage, blockRef string) erro
 		return err
 	}
 	return nil
+}
+
+// snapshotBlockIds lists the stored block ids of a live read — the second
+// resolution vocabulary for ?block= (the first is the served ids).
+func snapshotBlockIds(snapshot *model.SmartBlockSnapshotBase) []string {
+	if snapshot == nil {
+		return nil
+	}
+	ids := make([]string, 0, len(snapshot.Blocks))
+	for _, b := range snapshot.Blocks {
+		if b != nil && b.Id != "" {
+			ids = append(ids, b.Id)
+		}
+	}
+	return ids
 }
 
 // matchBlockRef maps a block reference to an index into ids: an exact id
