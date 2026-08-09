@@ -64,7 +64,7 @@ whether you may write. Ask this instead of discovering limits through 403s
 | new type / property | `POST …/types` · `POST …/properties`; select options ride the property or create-missing |
 | upload a file | `POST …/files` (multipart or `{"url":…}`) → the id file blocks and chat attachments need |
 | chat | `GET/POST …/chats/{id}/messages`, `POST …/read` — see Chats |
-| replace a whole document | `PUT …/objects/{id}` — last resort; check `diffStats` for an accidental full rewrite |
+| replace a whole document | `PUT …/objects/{id}` — last resort; read it with `?ids=full` first, then check `diffStats` for an accidental full rewrite |
 
 ## Read cheaply
 
@@ -75,8 +75,10 @@ whether you may write. Ask this instead of discovering limits through 403s
   and ids survive across reads.
 - `?include=properties` or `?include=blocks` reads half the object.
   `?format=md` is a read-only markdown rendering.
-- Object ids in read bodies are compacted via a `refs` legend by default
-  (`?ids=full` opts out); block ids are always full on default reads.
+- Reads spell object ids in full inline; block ids come back as short
+  labels — echo them back verbatim, every block reference takes a full id
+  or a unique suffix. `?ids=full` is the export shape (full block ids +
+  a `refs` legend) a PUT round-trip needs.
 - List/search rows are minimal `{id, name, type}`; add columns with
   `fields=` (property keys) instead of GETting each object.
 - Every object read returns an `etag` (envelope + `ETag` header).

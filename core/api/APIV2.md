@@ -69,7 +69,7 @@ repair loop with path-addressed errors.
 | C1 | Base path `/v2`, localhost, bearer auth and `Anytype-Version` date header as in v1. | migration §4.8 |
 | C2 | **One vocabulary: the format's.** camelCase, property **keys**, option **names** — everywhere, both directions. The object-type field is **`type`** (a type key) on every surface: envelope, rows, search, shortcuts. No id/key duality, no snake_case. Object ids remain ids. | v1's top agent trap (§2.1) |
 | C3 | **Compact JSON always** (no pretty-printing) — **all the way down, not just the envelope**. `anyblockjson.Marshal` returns the format's canonical byte form, which is two-space **indented** (SPEC §4), and the v2 envelope re-embeds those bytes verbatim; until Wave 0.1 every object read was therefore compact on top and pretty-printed underneath, costing a measured 16–26 %. *(Built: `encodeEnvelope` compacts each embedded value — the serving layer, so the format's canonical form and its `Export ∘ Import` byte-stability are untouched; §8.24.)* | free 38–46% (§3.6); 16–26% (TOKENS §1.1) |
-| C4 | **Object ids compact by default** (refs legend per SPEC §9a — lossless); `?ids=full` opts out. **Block ids are always full on default reads** — block-label compaction (5-char, legend-less, lossy) appears only in explicitly read-only shapes (`outline`, prompt/example exports). Write endpoints MAY additionally resolve block-id references by unique-suffix match against the live object (SPEC §9a wiring allowance). Never require echoing a full CID. *(Built: `Options.CompactObjectRefs` and `Options.CompactBlockLabels` are separate flags; `CompactIds` is the shorthand for both.)* **Outline exception (T7)**: the outline shape compacts block labels but keeps object refs **full** — it drops the refs legend with the properties map, so a legend-compacted ref inside a heading's text would be unresolvable; `?ids=` is ignored there. | ~24×/id, −89% id errors (§3.6); id round-trip contract (R1) |
+| C4 | **Two document shapes, because the two id axes have opposite economics** (revised Wave 0.2; TOKENS §1.2/§10). `?ids=compact` (**the default — the *edit* shape**): block/row/column/view ids relabel to short doc-local suffixes (5-char, legend-less, **lossy**), object refs stay **full inline, no legend**. `?ids=full` (**the *export* shape**): block ids in full — so a GET body PUTs back as a minimal diff (§3(b)) — plus the lossless `refs` legend. Every write channel resolves a block/view/row/column reference by exact id **or unique suffix** (`matchBlockRef`), which is what makes the lossy edit shape addressable; legend **resolution on input is unchanged and total** (SPEC §9a), so a document arriving with a legend still resolves whatever shape produced it. Never require echoing a full CID. *(Built: `Options.CompactObjectRefs` and `Options.CompactBlockLabels` are separate flags composed by `objectReadPlan`; `CompactIds` remains the format-package shorthand for both. Wave 2 renames the two values to `?mode=edit\|full` with no change of bytes.)* **Outline exception (T7)**: the outline fixes both axes — short block labels, object refs full — and ignores `?ids=`, because it drops the refs legend with the properties map and a legend-compacted ref inside a heading's text would be unresolvable. | ~24×/id, −89% id errors (§3.6); block labels −19…−22% on minted-id documents, the legend a net **loss** of 0.9–11.5% (TOKENS §1.2, live-measured); id round-trip contract (R1) |
 | C5 | Minimal rows: list/search responses carry `id, name, type` + requested property values. **Never embed type objects.** `fields=` expands. | v1's N× multiplier (§2.1) |
 | C6 | Error shape everywhere: `{status, code, message, issues:[{path, message, hint}]}` — path-addressed, naming allowed values. Required codes include: `validation_failed`, `version_unsupported` (surfaces SPEC §10's "produced by a newer version" verbatim, naming both versions), `idempotency_conflict` (same key, different body), `etag_mismatch`, `ambiguous_input` (e.g. both `filter` and `filters` supplied), `forbidden` (403 — an operation the caller's identity may not perform, e.g. editing another member's chat message; added by the Phase-6 review; also the `/v2` key-scope gate's refusal of a non-JsonAPI key, which answers in the shared v1 envelope — §8.9). Error text is API surface; test it. | repair loop (§3.2, §4.6); R15 |
 | C7 | Every object read returns **`etag`** (short opaque token, ≤8 chars, derived from tree heads — NOT the object's `revision` property, which stays in `properties`) plus an `ETag` header. Mutations accept **`If-Match` header only** (the AnyBlock body has no envelope slot for it). **Advisory by default**: without `If-Match`, ops apply last-write-wins and `diffStats` reports the outcome; with it, mismatch → 409 `etag_mismatch` carrying the current etag. Note: the etag advances on background sync, not only on agent edits — strict If-Match will 409 on sync noise; block-scoped preconditions (ops apply iff the *addressed* blocks are unchanged) are the deferred v2.x refinement. | R2; optimistic concurrency (§3.2) |
@@ -113,7 +113,7 @@ GET /v2/spaces/{spaceId}/objects/{objectId}
     ?include=properties,blocks      # subset; default both
     ?outline=true                   # block skeleton, see below
     ?block={blockId}                # subtree only (contiguous indent-run)
-    ?ids=compact|full               # object ids only (C4); default compact
+    ?ids=compact|full               # document shape (C4); default compact (edit)
     ?format=anyblock|md             # md read-only, with warnings (C11)
 GET /v2/spaces/{spaceId}/objects            # minimal rows (C5)
 DELETE /v2/spaces/{spaceId}/objects/{objectId}   # archive (v1 parity); ?permanent=true later  [build — never registered, see below]
@@ -134,11 +134,14 @@ GET /v2/spaces/{spaceId}/properties/{key}/options    # option names (+color), pa
 - **Param legality** (R12): `outline` and `block` are mutually exclusive
   with each other and with `format=md`; `outline` implies blocks (an
   accompanying `include=properties` adds the properties map; `include`
-  without blocks suppresses `blocks` entirely); `ids` affects any shape
-  that contains object ids; illegal combinations → 400 `ambiguous_input`
-  naming the conflicting params. The outline shape uses compact block
-  labels but **full object refs** (read-only shape; the C4 outline
-  exception — `ids` is ignored there).
+  without blocks suppresses `blocks` entirely); `ids` selects the whole
+  document shape (C4: `compact` = the edit read, `full` = the export
+  read); illegal combinations → 400 `ambiguous_input` naming the
+  conflicting params. The outline shape uses compact block labels but
+  **full object refs** (read-only shape; the C4 outline exception —
+  `ids` is ignored there), which since Wave 0.2 is also what the default
+  and subtree reads emit, so a block id never changes spelling between
+  an outline, a `?block=` and a default read.
 - The object response is the flat AnyBlock document + `etag` (+
   `warnings`).
 - `types/{type}/schema` **[build]**: the derived artifact (SPEC §2a
@@ -289,9 +292,13 @@ naming the descendant count.
 Body = full AnyBlock doc; etag via `If-Match` header only. Server
 diff-applies via `Unmarshal → NewDocFromSnapshot → SetParent →
 ResetToVersion` — minimal CRDT changes **iff block ids round-trip from the
-GET** (which C4's full-block-ids default now guarantees for the natural
-loop). Response includes `diffStats`, making an accidental full rewrite
-visible (the DELEGATE-52 signature). System kinds excluded per
+GET**. Since Wave 0.2 that means **`GET …?ids=full` is the PUT read**: the
+default edit shape relabels block ids to short suffixes, and PUT takes the
+document's ids literally (unlike PATCH, which suffix-resolves every block
+reference), so PUTting an edit-shape body back re-mints every block. The
+content survives, the ids do not, and `diffStats` reports it as the full
+rewrite it is. Response includes `diffStats`, making an accidental full
+rewrite visible (the DELEGATE-52 signature). System kinds excluded per
 `canUpdateObject`. Docs steer agents to PATCH.
 
 **(c) `replaceText` — str_replace scoped to one block's `text` (LAUNCH)**
@@ -821,9 +828,12 @@ Beyond §3's list:
   handles stop being small stable integers and prefixes grow with the
   space; revisit if the session file proves fragile under concurrent
   harnesses.) (b) *wrapper-side relabeling of full-read block ids* — full
-  body-bearing reads carry full ids (C4/T7; the S3 `?ids=compact` shape
-  was consciously not adopted), so the wrapper relabels and keeps the
-  label→full-id map. (c) *suffix pass-through* as the write mechanism
+  body-bearing reads carried full ids, so the wrapper relabels and keeps
+  the label→full-id map. **Superseded by Wave 0.2**: the default read now
+  relabels server-side, `relabelDoc`'s `^[0-9a-f]{24}$` match finds
+  nothing and it degrades to a no-op — the labels the wrapper forwards are
+  the server's own, resolved by mechanism (c). Harmless, and now dead
+  weight. (c) *suffix pass-through* as the write mechanism
   (`matchBlockRef` resolves unique suffixes on every op). (d) *the
   ambiguity retry, scoped honestly (post-review)* — retained labels
   resolve to full ids BEFORE the send, so a 400 `ambiguous_input` can
@@ -3439,3 +3449,96 @@ keeps exactly the body it produced before compaction existed.
 
 **No golden moved and no fixture was regenerated** — which is the signal
 that the change landed at the right layer.
+
+### 8.25 Wave 0.2 — `?ids=` splits into two document shapes (2026-08-09 — decisions as built)
+
+**The defect.** `CompactIds` is shorthand for two mechanisms with
+**opposite** economics (`export.go:35-37`), and one query parameter moved
+both:
+
+- `CompactBlockLabels` relabels doc-local block/row/column/view ids to
+  short suffixes. **Legend-less** (the server resolves a label by exact
+  id, else unique suffix — `matchBlockRef`, shared by `?block=`, `?view=`,
+  every block-addressed op and `resolveTablePart`) and **lossy** (the
+  originals are not recoverable from the document alone). A pure win on
+  reads: cheaper *and* easier for a small model to echo back.
+- `CompactObjectRefs` shortens object refs through the `refs` legend.
+  Lossless, and a measured net **loss**: 85–90 % of refs in real documents
+  are used exactly once, so the legend lines cost more than the inline ids
+  they replace, and the indirection traps write-back of object-valued
+  properties (a model that saw `"ai52e"` inline must dig the legend to
+  name the object again).
+
+So you could not take the winner without the loser. The outline shape
+already moved them independently (T7), which is the precedent this
+generalizes.
+
+**As built.** `objectReadPlan` carries the two axes separately;
+`V2ObjectQuery.validate` composes them into one of two shapes, and
+`GetObject` just applies them:
+
+| `?ids=` | block ids | object refs | for |
+|---|---|---|---|
+| absent / `compact` | short doc-local labels | full inline, no legend | the default **edit** read |
+| `full` | full | the `refs` legend | the **export** read: PUT round-trips, backups |
+| (outline, any `?ids=`) | short doc-local labels | full inline, no legend | T7, unchanged |
+
+The old `?ids=full` (no compaction on either axis) is gone; nothing
+depended on it and Wave 2's `?mode=` enum has no such profile. **Today's
+default shape did not disappear — it became `?ids=full`**, so no shape was
+invented and the export/PUT loop keeps exactly the bytes it had.
+
+**Legend resolution on input is untouched.** SPEC §9a's resolution rule is
+total, and the create/PUT/PATCH paths still accept any document carrying a
+legend, whoever produced it.
+
+**`GET …/types/{key}` rides along** — it delegates to `GetObject` with the
+default query, so a type document's dataview and view ids come back as
+labels too. That is safe because every consumer resolves by suffix
+(`updateView`/`insertView`/`moveView`/`deleteView` via `matchBlockRef`,
+`?view=` via `resolveViewRef`), and because the internal documents those
+ops work on are rendered **without** compaction — `list_read.go`'s
+fixed-`"dataview"` block lookup and the applier's per-op re-render both
+see full ids. Type creates reject a `blocks` array outright, so there is
+no GET-type → PUT-type block loop to break.
+
+**Measured on the live account** (o200k, the six-document TOKENS corpus,
+each axis isolated against the same compact-encoded baseline):
+
+| doc | blocks | block-label axis | legend axis (live served bytes) |
+|---|---|---|---|
+| XS-props | 0 | — | −11.5 % |
+| S-12blk | 12 | **0.0 %** | −4.6 % |
+| M-24blk | 24 | **0.0 %** | −5.6 % |
+| L-66blk | 66 | −19.1 % | −2.4 % |
+| R-20refs | 22 | −1.8 % | −5.3 % |
+| K-recipe | 31 | −21.9 % | −0.9 % |
+
+The legend column confirms TOKENS §1.2 on every document: dropping it is
+a saving, never a cost.
+
+**The block-label column is bimodal, and the review's flat "~15 %" is
+not what the corpus shows.** Relabeling fires only on 24-hex ids — the
+ones the app and the API mint — where it is worth **19–22 %**. It is a
+**no-op** on S/M/R, whose seeded block ids are hyphenated and readable
+(`pages-brief-website-1`): the label charset for local relabels is
+dash-free (`isInvalidLocalLabel`, because `-` separates derived cell ids
+per SPEC §6.1), so every 5-char suffix of those ids is rejected and the
+id stays full. That is a property of this demo account's seeding, not of
+production documents; but it is also a real ceiling — a document whose
+ids carry dashes gets nothing from the axis. Widening the local-label
+charset is a format change and is deliberately **not** in Wave 0.
+
+**Combined with §8.24, against the actual served bytes:** XS −24.9 % ·
+S −23.5 % · M −25.1 % · L −42.1 % · R −28.9 % · K −39.3 %; corpus total
+**−33.1 %** — a third off every object read.
+
+**The one behaviour that got worse, named plainly.** PUT takes the
+document's block ids literally. A GET(default) → edit → PUT loop now
+re-mints every block on a minted-id document, which `diffStats` reports
+as a full rewrite. PATCH is unaffected (it suffix-resolves), and the
+export shape is one query parameter away. Teaching PUT the same
+suffix-resolution the write ops already use is the honest follow-up —
+C4 has always permitted it ("write endpoints MAY … resolve block-id
+references by unique-suffix match") — and it belongs with Wave 2.1,
+which builds the same resolution machinery for locators.

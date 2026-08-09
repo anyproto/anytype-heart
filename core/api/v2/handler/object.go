@@ -14,7 +14,7 @@ import (
 // GetObjectV2Handler reads one object as a flat AnyBlock document
 //
 //	@Summary		Get object (AnyBlock)
-//	@Description	Returns the object as a flat AnyBlock JSON document read from the live editor state, with an advisory etag (C7) in the envelope and the ETag header. Supports include=properties,blocks; outline=true (block skeleton with compact labels); block={blockId} (one contiguous subtree); ids=compact|full (object-id compaction, C4); format=anyblock|md (markdown is read-only).
+//	@Description	Returns the object as a flat AnyBlock JSON document read from the live editor state, with an advisory etag (C7) in the envelope and the ETag header. Supports include=properties,blocks; outline=true (block skeleton with compact labels); block={blockId} (one contiguous subtree); ids=compact|full (the two document shapes, C4 — compact is the edit read with short block labels and full inline object refs, full is the export read with full block ids and the refs legend); format=anyblock|md (markdown is read-only).
 //	@Id				v2_get_object
 //	@Tags			V2
 //	@Produce		json
@@ -23,7 +23,7 @@ import (
 //	@Param			include		query		string			false	"Subset of properties,blocks (default both)"
 //	@Param			outline		query		bool			false	"Return the block skeleton instead of full blocks"
 //	@Param			block		query		string			false	"Return only this block's subtree"
-//	@Param			ids			query		string			false	"compact (default) or full — object ids only"
+//	@Param			ids			query		string			false	"compact (default) = the edit shape: short block labels, full inline object refs. full = the export shape: full block ids + the refs legend"
 //	@Param			format		query		string			false	"anyblock (default) or md"
 //	@Success		200			{object}	map[string]any	"The flat AnyBlock document + etag"
 //	@Failure		400			{object}	v2model.Error	"Illegal parameter combination (ambiguous_input)"

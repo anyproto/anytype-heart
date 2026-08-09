@@ -614,6 +614,11 @@ func (s *V2Service) marshalForEdit(spaceId, objectId string, cur apicore.ObjectR
 // normalizePutBody strips the v2 read-envelope additions (etag, warnings —
 // so a GET body round-trips verbatim into PUT) and pins the envelope id to
 // the addressed object.
+//
+// The GET that round-trips is `?ids=full` (C4's export shape). PUT takes the
+// document's block ids literally, so a default read's short block labels
+// would re-mint every block — visible in diffStats as the full rewrite it is
+// (APIV2.md §3(b) and §8.25).
 func normalizePutBody(body []byte, objectId string) ([]byte, error) {
 	fields, err := parseEnvelope(body)
 	if err != nil {

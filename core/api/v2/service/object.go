@@ -46,25 +46,44 @@ type V2ObjectQuery struct {
 	Include string // comma-separated subset of properties,blocks; "" = both
 	Outline bool
 	Block   string
-	Ids     string // compact (default) | full — object ids only (C4)
+	Ids     string // compact (default) = the edit shape | full = the export shape (C4)
 	Format  string // anyblock (default) | md
 }
 
 // objectReadPlan is the validated form of a V2ObjectQuery.
+//
+// The two id axes are INDEPENDENT because their economics are opposite
+// (TOKENS §1.2/§10, SPEC §9a): relabeling block ids to short doc-local
+// suffixes is a pure win (19–22 % of a read on minted 24-hex ids, and a
+// 2–3 token label is what a small model echoes back correctly), while
+// shortening object refs through the `refs` legend is a measured net LOSS
+// on real documents — 85–90 % of refs are used exactly once, so the legend
+// lines cost more than the inline ids they replace, and they add an
+// indirection that traps write-back of object-valued properties. `?ids=`
+// used to move both at once.
 type objectReadPlan struct {
 	wantProperties bool
 	wantBlocks     bool
 	outline        bool
 	block          string
-	compactRefs    bool
-	markdown       bool
+	// compactRefs shortens object refs via the refs legend — lossless, the
+	// export/round-trip shape only.
+	compactRefs bool
+	// compactBlockLabels relabels doc-local block/row/column/view ids to
+	// short suffixes — legend-less and LOSSY (the originals are not
+	// recoverable from the document), which is why the export shape does not
+	// use it. Every write channel resolves a label back by unique suffix
+	// (matchBlockRef), so a labeled read stays addressable by PATCH,
+	// `?block=` and `?view=`.
+	compactBlockLabels bool
+	markdown           bool
 }
 
 // validate applies the Phase-1 param legality matrix: outline and block are
 // mutually exclusive with each other and with format=md; illegal
 // combinations → 400 ambiguous_input naming the conflicting params.
 func (q V2ObjectQuery) validate() (objectReadPlan, error) {
-	plan := objectReadPlan{wantProperties: true, wantBlocks: true, compactRefs: true}
+	plan := objectReadPlan{wantProperties: true, wantBlocks: true, compactBlockLabels: true}
 
 	if q.Outline && q.Block != "" {
 		return plan, v2model.AmbiguousInput("outline and block are mutually exclusive — request the outline or one subtree, not both",
@@ -82,11 +101,17 @@ func (q V2ObjectQuery) validate() (objectReadPlan, error) {
 			v2model.Issue{Path: "block", Message: "conflicts with format=md"})
 	}
 
+	// `?ids=` selects one of TWO document shapes; it is not a per-axis knob
+	// (the axes above are what it composes). Wave 2 renames these to
+	// `?mode=edit|full` with no change of bytes.
 	switch q.Ids {
 	case "", V2IdsCompact:
-		plan.compactRefs = true
+		// the edit shape: short block labels, full inline object refs
+		plan.compactBlockLabels, plan.compactRefs = true, false
 	case V2IdsFull:
-		plan.compactRefs = false
+		// the export shape: full block ids (so a GET body PUTs back as a
+		// minimal diff — APIV2.md §3(b)) plus the lossless refs legend
+		plan.compactBlockLabels, plan.compactRefs = false, true
 	default:
 		return plan, v2model.ValidationFailed("invalid ids value",
 			v2model.Issue{Path: "ids", Message: fmt.Sprintf("unknown value %q", q.Ids), Hint: "allowed: compact, full"})
@@ -129,6 +154,13 @@ func (q V2ObjectQuery) validate() (objectReadPlan, error) {
 	// alongside block= adds the properties map instead of emptying the read
 	if plan.block != "" {
 		plan.wantBlocks = true
+	}
+	// the outline shape fixes both axes and ignores `?ids=` (C4 T7): it is
+	// read-only, so lossy block labels are free, and it drops the refs legend
+	// together with the properties map — a legend-compacted ref left in a
+	// heading's text would be unresolvable.
+	if plan.outline {
+		plan.compactBlockLabels, plan.compactRefs = true, false
 	}
 	return plan, nil
 }
@@ -189,14 +221,9 @@ func (s *V2Service) GetObject(ctx context.Context, spaceId, objectId string, q V
 	etag := ComputeEtag(read.Heads)
 
 	opts := storeresolver.New(s.store.SpaceIndex(spaceId)).Options()
-	// object refs compact via the refs legend (C4) — but the outline drops the
-	// legend when it drops the properties map, so a compacted object ref left
-	// in a heading's text would become an unresolvable label. Keep object refs
-	// full in the outline shape (T7).
-	opts.CompactObjectRefs = plan.compactRefs && !plan.outline
-	// block ids stay full on default reads (C4); the outline shape is the
-	// read-only exception and uses compact block labels
-	opts.CompactBlockLabels = plan.outline
+	// the two id axes come pre-composed by validate() — see objectReadPlan
+	opts.CompactObjectRefs = plan.compactRefs
+	opts.CompactBlockLabels = plan.compactBlockLabels
 	// C11 (M3): a read never fails on content the format can't represent —
 	// unmapped/over-deep blocks degrade to warnings that ride the envelope.
 	var warnings []v2model.Issue

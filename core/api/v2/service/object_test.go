@@ -147,13 +147,24 @@ func TestV2OutlineBlockRoundTrip(t *testing.T) {
 	require.NotEqual(t, "blockParent", label, "outline must emit a compact label, not the full id")
 	require.True(t, strings.HasSuffix("blockParent", label), "label is the id suffix")
 
-	// the label round-trips: ?block=<label> returns the parent + its child
+	// the label round-trips: ?block=<label> returns the parent + its child,
+	// under the SAME labels (the subtree read is the edit shape too, so the
+	// ids an agent sees never change spelling between the two calls)
 	blockBody, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", V2ObjectQuery{Block: label})
 	require.NoError(t, err, "the outline label must resolve in ?block=")
 	blocks := decodeBody(t, blockBody)["blocks"].([]any)
 	require.Len(t, blocks, 2, "subtree = parent + child, not the sibling")
-	assert.Equal(t, "blockParent", blocks[0].(map[string]any)["id"])
-	assert.Equal(t, "blockChild", blocks[1].(map[string]any)["id"])
+	assert.Equal(t, label, blocks[0].(map[string]any)["id"])
+	assert.Equal(t, "Child", blocks[1].(map[string]any)["id"])
+
+	// and the export shape still spells them in full, so a GET body PUTs
+	// back as a minimal diff (APIV2.md §3(b))
+	fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(testObjectReadLongIds(), nil).Once()
+	fullBody, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", V2ObjectQuery{Ids: V2IdsFull})
+	require.NoError(t, err)
+	fullBlocks := decodeBody(t, fullBody)["blocks"].([]any)
+	require.Len(t, fullBlocks, 4)
+	assert.Equal(t, "blockParent", fullBlocks[1].(map[string]any)["id"])
 }
 
 // TestV2GetObjectCompactBody pins C3 for the WHOLE body, not just its
@@ -174,6 +185,69 @@ func TestV2GetObjectCompactBody(t *testing.T) {
 	assert.NotContains(t, string(body), "\n", "no pretty-printing survives inside the envelope")
 	assert.NotContains(t, string(body), `": "`, "no indent spacing after a key")
 	require.Len(t, decodeBody(t, body)["blocks"].([]any), 4, "and it is still the same document")
+}
+
+// testLinkTargetId is a realistic 59-char object id — the thing the refs
+// legend exists to shorten.
+const testLinkTargetId = "bafyreih6ymjl42i6pevii77dnlulv4n52hsxmjflmwc5ttygotovbrcteq"
+
+// testObjectReadWithRef adds a link block to the long-id fixture, so both id
+// populations (doc-local block ids and cross-document object refs) are
+// present in one read.
+func testObjectReadWithRef() apicore.ObjectRead {
+	read := testObjectReadLongIds()
+	root := read.Snapshot.Blocks[0]
+	root.ChildrenIds = append(root.ChildrenIds, "blockLink")
+	read.Snapshot.Blocks = append(read.Snapshot.Blocks, &model.Block{
+		Id:      "blockLink",
+		Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: testLinkTargetId}},
+	})
+	return read
+}
+
+// TestV2GetObjectIdShapes pins the Wave-0 split of `?ids=` into two document
+// SHAPES with opposite id economics (TOKENS §1.2/§10): the default edit read
+// relabels block ids short and leaves object refs full inline, while the
+// export read keeps block ids full and pays the lossless refs legend.
+func TestV2GetObjectIdShapes(t *testing.T) {
+	t.Run("default: short block labels, full inline object refs, no legend", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(testObjectReadWithRef(), nil)
+
+		// when
+		body, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", V2ObjectQuery{})
+
+		// then
+		require.NoError(t, err)
+		doc := decodeBody(t, body)
+		assert.NotContains(t, doc, "refs", "the refs legend costs more than it saves on real documents (TOKENS §1.2)")
+		blocks := doc["blocks"].([]any)
+		require.Len(t, blocks, 5)
+		assert.Equal(t, "arent", blocks[1].(map[string]any)["id"], "block ids relabel to their short suffix")
+		assert.Equal(t, testLinkTargetId, blocks[4].(map[string]any)["objectId"], "object refs stay full inline — no legend hop to write one back")
+	})
+
+	t.Run("ids=full: full block ids and the refs legend", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(testObjectReadWithRef(), nil)
+
+		// when
+		body, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", V2ObjectQuery{Ids: V2IdsFull})
+
+		// then
+		require.NoError(t, err)
+		doc := decodeBody(t, body)
+		blocks := doc["blocks"].([]any)
+		require.Len(t, blocks, 5)
+		assert.Equal(t, "blockParent", blocks[1].(map[string]any)["id"], "the export shape must not relabel — relabeling is lossy")
+		refs, ok := doc["refs"].(map[string]any)
+		require.True(t, ok, "the export shape carries the legend")
+		label := blocks[4].(map[string]any)["objectId"].(string)
+		assert.Equal(t, testLinkTargetId, refs[label], "the legend inverts the label")
+	})
+
 }
 
 func decodeBody(t *testing.T, body []byte) map[string]any {

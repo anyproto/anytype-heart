@@ -32,14 +32,21 @@ as-built section and has been through an opus review round.
 Ship these first. Both are trivial, both pay on **every** read, neither has a
 dependency or an open question.
 
+**Both landed 2026-08-09** — APIV2.md §8.24 and §8.25.
+
 | # | item | value | where |
 |---|---|---|---|
-| 0.1 | Compact the embedded envelope values — the read path re-embeds `Marshal`'s *indented* bytes inside a compact envelope | **16–26 % of every object read**; makes C3 true instead of aspirational | TOKENS §1.1, action 1 |
-| 0.2 | Split `?ids=` — it bundles two mechanisms with opposite economics | short block labels ≈ **15 %**, full object refs **2–10 %**, and removes a write-back trap | TOKENS §1.2 + §10, action 2 |
+| 0.1 | ~~Compact the embedded envelope values~~ **DONE** — fixed in `encodeEnvelope` (the serving layer); the canonical form is untouched and no golden moved | predicted 16–26 %, **measured −15.5…−26.4 %, corpus −23.2 %** | TOKENS §1.1, action 1; §8.24 |
+| 0.2 | ~~Split `?ids=`~~ **DONE** — two shapes: `compact` (edit) and `full` (export) | legend removal **0.9–11.5 %** (confirmed); block labels **bimodal**, −19…−22 % on minted 24-hex ids and **0 %** where ids carry dashes (the local-label charset is dash-free) — not the flat ~15 % the review assumed | TOKENS §1.2 + §10, action 2; §8.25 |
 
-`edit` (the default read) becomes: **short block labels, full inline object
-refs, no pins**. `full`/export keeps full block ids, the refs legend and pins,
-because block relabelling is lossy.
+`edit` (the default read) is: **short block labels, full inline object
+refs, no pins**. `full`/export keeps full block ids and the refs legend
+(pins remain unshipped), because block relabelling is lossy. Combined,
+against the actual served bytes: **−33.1 % across the corpus**.
+
+Left open by the wave: PUT takes block ids literally, so a GET(default) →
+PUT loop re-mints blocks; `?ids=full` is the PUT read, and teaching PUT the
+suffix resolution the ops already use belongs with 2.1.
 
 ## Wave 1 — finish the identity layer (one item fixes a live defect)
 

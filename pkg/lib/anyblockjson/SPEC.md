@@ -1204,10 +1204,11 @@ than the sentence around it. Compaction has two independent halves (§13):
 the envelope (lossless — the legend inverts it); `CompactBlockLabels`
 relabels doc-local block/row/column/view ids to short suffixes (legend-less,
 lossy). `CompactIds` remains as shorthand for both. The split exists because
-consumers legitimately want one without the other: API v2 default reads
-compact object refs but keep block ids full for edit round-trips, while
-read-only outline/prompt shapes use block labels (API spec C4). Legend
-example:
+consumers legitimately want one without the other, and because the two
+halves pay differently: API v2 default reads use block labels (the server
+resolves them by unique suffix) and keep object refs full inline, while its
+export shape — the one whose bytes must PUT back as a minimal diff — keeps
+block ids full and takes the legend (API spec C4). Legend example:
 
 ```json
 "refs": { "miovm": "bafyreieqh63jv…miovm", "roman": "bafyreidfmzjh…" }
