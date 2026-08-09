@@ -12,13 +12,13 @@ import (
 )
 
 // depTracker maintains a parent subscription's render dependencies: the
-// objects referenced by object/file-format values among the requested keys
-// of visible members, plus objects referenced by filter values. They are
-// delivered through a hidden child sub under "{subId}/dep" — a scoped,
-// detail-events-only sibling registered in the same space, so dep detail
-// changes flow through the regular pipeline. The dep id set is recomputed
-// after batches that touched the parent's membership, window or dep-key
-// values (parent.depDirty).
+// objects referenced by dep-format values (see isDepFormat) among the
+// requested keys of visible members, plus objects referenced by filter
+// values. They are delivered through a hidden child sub under "{subId}/dep"
+// — a scoped, detail-events-only sibling registered in the same space, so
+// dep detail changes flow through the regular pipeline. The dep id set is
+// recomputed after batches that touched the parent's membership, window or
+// dep-key values (parent.depDirty).
 //
 // Order dependencies (sorting by an object/tag/status relation) are handled
 // separately and cheaper: every feed item is offered to the parent's
@@ -31,6 +31,19 @@ type depTracker struct {
 	depKeys      []domain.RelationKey
 	depKeySet    map[string]struct{}
 	filterDepIds []string
+}
+
+// isDepFormat reports whether values of this format are ids of objects the
+// client must resolve to render. tag and status belong here as much as
+// object and file do: their values are relationOption ids, and clients build
+// the chip from the option's name and colour.
+func isDepFormat(format model.RelationFormat) bool {
+	switch format {
+	case model.RelationFormat_object, model.RelationFormat_file, model.RelationFormat_tag, model.RelationFormat_status:
+		return true
+	default:
+		return false
+	}
 }
 
 // newDepTracker resolves which requested keys carry object references and
@@ -46,7 +59,7 @@ func newDepTracker(parent *coreSub, spec subSpec, idx spaceindex.Store) *depTrac
 		if err != nil {
 			continue
 		}
-		if format == model.RelationFormat_object || format == model.RelationFormat_file {
+		if isDepFormat(format) {
 			depKeys = append(depKeys, k)
 		}
 	}
@@ -64,7 +77,7 @@ func newDepTracker(parent *coreSub, spec subSpec, idx spaceindex.Store) *depTrac
 		// dependent objects are rendered as name/icon chips; never stream the
 		// high-churn strip-by-default keys (sync/usage) for them, even if the
 		// parent lists those keys for its own rows. depKeys above are derived
-		// from spec.keys and are unaffected (stripped keys are never object/file
+		// from spec.keys and are unaffected (stripped keys never carry a dep
 		// format).
 		keys:             slices.DeleteFunc(slices.Clone(spec.keys), bundle.IsDefaultStrippedKey),
 		members:          make(map[string]struct{}),
@@ -112,7 +125,7 @@ func collectFilterDepIds(filters []database.FilterRequest, idx spaceindex.Store)
 				continue
 			}
 			format, err := idx.GetRelationFormatByKey(f.RelationKey)
-			if err != nil || (format != model.RelationFormat_object && format != model.RelationFormat_file) {
+			if err != nil || !isDepFormat(format) {
 				continue
 			}
 			for _, id := range f.Value.WrapToStringList() {
