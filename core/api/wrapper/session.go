@@ -39,7 +39,10 @@ type Handle struct {
 // double-applying (C8). Hash is requestHash over method + path + query +
 // body — the server's own identity — so a dry run and its real twin, or
 // one tool call re-addressed by a re-find, never share a key. A repeat
-// after the window is treated as intentional and applies again.
+// after the window is treated as intentional and applies again — as is one
+// whose stamp sits in the FUTURE (a backwards clock step; the record
+// persists in the CLI session file, so it can outlive the clock that wrote
+// it — runner.withinReuseWindow).
 type LastWrite struct {
 	Hash string    `json:"hash"`
 	Key  string    `json:"key"`

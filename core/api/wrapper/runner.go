@@ -297,13 +297,26 @@ func servedLocalIds(doc []byte) []string {
 // ---- mutation machinery ----
 //
 
+// withinReuseWindow reports whether a LastWrite stamped `at` may be reused
+// at `now`: strictly younger than the window AND not from the future. The
+// record is persisted in the CLI session file, so a backwards clock step
+// (NTP, a session file moved between hosts) can put `at` ahead of `now` —
+// without the floor, any negative age passed the `< window` check and
+// revived an arbitrarily old key (and its recorded rewrite) until the clock
+// caught back up.
+func withinReuseWindow(now, at time.Time) bool {
+	age := now.Sub(at)
+	return age >= 0 && age < idempotencyReuseWindow
+}
+
 // mutationKey returns the Idempotency-Key for a resolved mutation request:
 // reused from LastWrite when the identical request repeats within the reuse
 // window (a retry — C8 replays it), fresh otherwise (an intentional repeat
-// applies). hash comes from requestHash.
-func (r *Runner) mutationKey(session *Session, hash string) string {
-	if lw := session.LastWrite; lw != nil && lw.Hash == hash && r.now().Sub(lw.At) < idempotencyReuseWindow {
-		lw.At = r.now()
+// applies). hash comes from requestHash; now is the caller's ONE clock
+// reading for the whole call, so every window judgment in the call agrees.
+func (r *Runner) mutationKey(session *Session, hash string, now time.Time) string {
+	if lw := session.LastWrite; lw != nil && lw.Hash == hash && withinReuseWindow(now, lw.At) {
+		lw.At = now
 		return lw.Key
 	}
 	var b [16]byte
@@ -311,7 +324,7 @@ func (r *Runner) mutationKey(session *Session, hash string) string {
 		panic(fmt.Errorf("random idempotency key: %w", err))
 	}
 	key := hex.EncodeToString(b[:])
-	session.LastWrite = &LastWrite{Hash: hash, Key: key, At: r.now()}
+	session.LastWrite = &LastWrite{Hash: hash, Key: key, At: now}
 	return key
 }
 
@@ -353,17 +366,22 @@ func (r *Runner) patchOps(ctx context.Context, session *Session, spaceId, object
 	path := "/v2/spaces/" + seg(spaceId) + "/objects/" + seg(objectId)
 	query := r.mutationQuery()
 	body := map[string]any{"ops": []any{op}}
+	// ONE clock reading serves the whole call: the rewrite-replay gate below
+	// and mutationKey used to read the clock separately, and ticking across
+	// the window boundary between the two applied the recorded rewrite and
+	// then minted a FRESH key for it — a rewritten body under a new identity.
+	now := r.now()
 	// an identical re-run of a call whose refs were rewritten mid-flight
 	// (the ambiguity retry below) computes the PRE-rewrite hash; the server
 	// bound the key to the REWRITTEN body, so the re-run must reproduce the
 	// rewrite to replay instead of 409ing or re-applying
 	if lw := session.LastWrite; lw != nil && len(lw.Rewrites) > 0 &&
-		lw.PriorHash == requestHash("PATCH", path, query, body) && r.now().Sub(lw.At) < idempotencyReuseWindow {
+		lw.PriorHash == requestHash("PATCH", path, query, body) && withinReuseWindow(now, lw.At) {
 		for field, resolved := range lw.Rewrites {
 			op[field] = resolved // op backs body, so the hash below sees this
 		}
 	}
-	key := r.mutationKey(session, requestHash("PATCH", path, query, body))
+	key := r.mutationKey(session, requestHash("PATCH", path, query, body), now)
 	send := func() (*v2model.EditResult, error) {
 		var result v2model.EditResult
 		err := r.client.decode(ctx, apiRequest{
@@ -395,8 +413,22 @@ func (r *Runner) patchOps(ctx context.Context, session *Session, spaceId, object
 	// request identity — the C8 store never cached the failed 400 — and
 	// record the rewrite so a later identical call replays, not re-applies
 	if lw := session.LastWrite; lw != nil && lw.Key == key {
-		lw.PriorHash = priorHash
-		lw.Rewrites = rewrites
+		// PriorHash stays the FIRST pre-rewrite hash: on a chained second
+		// rewrite (the replayed body went ambiguous again) the current
+		// lw.Hash is itself a rewritten hash, and capturing IT orphaned the
+		// original request identity — a third identical run re-applied under
+		// a fresh key instead of replaying (reproduced double-apply)
+		if lw.PriorHash == "" {
+			lw.PriorHash = priorHash
+		}
+		// merged, not replaced: a chained retry may rewrite a subset of the
+		// ref fields, and a later run must reproduce the WHOLE chain
+		if lw.Rewrites == nil {
+			lw.Rewrites = map[string]string{}
+		}
+		for field, resolved := range rewrites {
+			lw.Rewrites[field] = resolved
+		}
 		lw.Hash = requestHash("PATCH", path, query, body)
 		lw.At = r.now()
 	}

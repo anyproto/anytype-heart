@@ -132,6 +132,114 @@ func TestIdempotencyIdentity(t *testing.T) {
 		assert.Equal(t, sent[1].Header.Get("Idempotency-Key"), sent[2].Header.Get("Idempotency-Key"),
 			"the key was re-stamped onto the resolved request identity")
 	})
+
+	t.Run("a backwards clock step re-keys instead of reviving a stale record", func(t *testing.T) {
+		// LastWrite is persisted in the CLI session file, so a backwards
+		// clock step (NTP, a session file moved between hosts) puts lw.At in
+		// the future. The window check had no lower bound — any negative age
+		// passed `< window` — so an arbitrarily old key (and its recorded
+		// rewrite) was revived until the clock caught back up.
+		fx := newFixture(t)
+		fx.seedSession("space1", Handle{N: 1, Id: "bafyobj1"})
+		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 200, editOKBody)
+		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 200, editOKBody)
+
+		_, err := fx.Run(ctx, "check_item", args)
+		require.NoError(t, err)
+		fx.now = fx.now.Add(-10 * time.Minute) // the clock steps back
+		_, err = fx.Run(ctx, "check_item", args)
+		require.NoError(t, err)
+
+		sent := fx.sent("PATCH /v2/spaces/space1/objects/bafyobj1")
+		require.Len(t, sent, 2)
+		assert.NotEqual(t, sent[0].Header.Get("Idempotency-Key"), sent[1].Header.Get("Idempotency-Key"),
+			"a stamp from the future is not evidence of a recent retry — mint fresh")
+	})
+
+	t.Run("the reuse window is judged from ONE clock reading per call", func(t *testing.T) {
+		// the window used to be evaluated twice — once by the rewrite-replay
+		// gate, once by mutationKey — from two now() readings; ticking
+		// across the boundary between them applied the recorded rewrite and
+		// then minted a FRESH key for it: a rewritten body under a new
+		// identity, which the server applies again instead of replaying.
+		fx := newFixture(t)
+		fx.seedSession("space1", Handle{N: 1, Id: "bafyobj1"})
+		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 400,
+			`{"status":400,"code":"ambiguous_input","message":"block reference \"e0001\" matches more than one block — use the full block id"}`)
+		fx.stub("GET /v2/spaces/space1/objects/bafyobj1", 200,
+			`{"version":1,"type":"task","blocks":[{"id":"section-intro-e0001","type":"paragraph","text":"a"},{"id":"section-body-f0002","type":"paragraph","text":"b"}]}`)
+		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 200, editOKBody)
+		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 200, editOKBody)
+		_, err := fx.Run(ctx, "check_item", args) // records the rewrite under its key
+		require.NoError(t, err)
+
+		// the boundary straddle: the first reading of the re-run falls just
+		// inside the window, every later one just outside
+		base := fx.now
+		reads := 0
+		fx.Runner.now = func() time.Time {
+			reads++
+			if reads == 1 {
+				return base.Add(idempotencyReuseWindow - time.Second)
+			}
+			return base.Add(idempotencyReuseWindow + time.Second)
+		}
+		_, err = fx.Run(ctx, "check_item", args)
+		require.NoError(t, err)
+
+		sent := fx.sent("PATCH /v2/spaces/space1/objects/bafyobj1")
+		require.Len(t, sent, 3, "attempt, retry, re-run")
+		require.Equal(t, "section-intro-e0001", firstOp(t, sent[2])["id"],
+			"the recorded rewrite fired on the re-run")
+		assert.Equal(t, sent[1].Header.Get("Idempotency-Key"), sent[2].Header.Get("Idempotency-Key"),
+			"a body carrying the recorded rewrite must carry the recorded key — never a fresh one")
+	})
+
+	t.Run("a second ambiguity rewrite keeps the ORIGINAL pre-rewrite identity", func(t *testing.T) {
+		// the chain was single-level: the second rewrite captured lw.Hash —
+		// itself already a rewritten hash — as PriorHash, orphaning the
+		// original identity; a third identical run then computed the
+		// original hash, matched nothing, minted a fresh key and re-applied
+		// (reproduced double-apply). PriorHash must stay the FIRST
+		// pre-rewrite hash and the rewrites must accumulate.
+		fx := newFixture(t)
+		fx.seedSession("space1", Handle{N: 1, Id: "bafyobj1"})
+		patch := "PATCH /v2/spaces/space1/objects/bafyobj1"
+		getPath := "GET /v2/spaces/space1/objects/bafyobj1"
+		ambiguous := `{"status":400,"code":"ambiguous_input","message":"block reference matches more than one block — use the full block id"}`
+		// run 1: attempt 400s, re-read resolves "e0001" → "section-intro-e0001"
+		fx.stub(patch, 400, ambiguous)
+		fx.stub(getPath, 200,
+			`{"version":1,"type":"task","blocks":[{"id":"section-intro-e0001","type":"paragraph","text":"a"},{"id":"section-body-f0002","type":"paragraph","text":"b"}]}`)
+		fx.stub(patch, 200, editOKBody)
+		// run 2: the replayed rewritten body goes ambiguous AGAIN (the
+		// document moved); re-read resolves onto the longer spelling
+		fx.stub(patch, 400, ambiguous)
+		fx.stub(getPath, 200,
+			`{"version":1,"type":"task","blocks":[{"id":"part-a-section-intro-e0001","type":"paragraph","text":"a"},{"id":"section-body-f0002","type":"paragraph","text":"b"}]}`)
+		fx.stub(patch, 200, editOKBody)
+		// run 3: an identical re-run must REPLAY the whole chain
+		fx.stub(patch, 200, editOKBody)
+
+		_, err := fx.Run(ctx, "check_item", args)
+		require.NoError(t, err)
+		fx.now = fx.now.Add(5 * time.Second)
+		_, err = fx.Run(ctx, "check_item", args)
+		require.NoError(t, err)
+		fx.now = fx.now.Add(5 * time.Second)
+		_, err = fx.Run(ctx, "check_item", args)
+		require.NoError(t, err)
+
+		sent := fx.sent(patch)
+		require.Len(t, sent, 5, "attempt+retry, replay+retry, replayed re-run")
+		key := sent[1].Header.Get("Idempotency-Key")
+		assert.Equal(t, key, sent[2].Header.Get("Idempotency-Key"))
+		assert.Equal(t, key, sent[3].Header.Get("Idempotency-Key"))
+		assert.Equal(t, key, sent[4].Header.Get("Idempotency-Key"),
+			"the third run replays under the same key — not a fresh re-apply")
+		assert.Equal(t, "part-a-section-intro-e0001", firstOp(t, sent[4])["id"],
+			"the third run reproduces the WHOLE rewrite chain")
+	})
 }
 
 func TestRetryLoopKeepsErrorBody(t *testing.T) {

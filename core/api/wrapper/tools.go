@@ -213,7 +213,7 @@ func (r *Runner) runCreate(ctx context.Context, session *Session, args map[strin
 	attempt := func() error {
 		// the key re-derives per attempt: a folded type is a different
 		// resolved request, so it must not reuse the failed body's key
-		key := r.mutationKey(session, requestHash("POST", path, query, body))
+		key := r.mutationKey(session, requestHash("POST", path, query, body), r.now())
 		return r.client.decode(ctx, apiRequest{
 			method:         "POST",
 			path:           path,
