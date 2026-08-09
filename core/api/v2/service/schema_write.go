@@ -90,6 +90,14 @@ func (s *V2Service) CreateType(ctx context.Context, spaceId string, body []byte,
 	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
 	}
+	// envelope normalization like every other create: a pasted GetType read
+	// carries etag (and possibly warnings) — without the strip, POST types
+	// 400ed on the etag of its own read; the ?block= subtree marker is
+	// refused by name instead of as an anonymous unknown field
+	body, err := normalizeCreateBody(body)
+	if err != nil {
+		return nil, err
+	}
 	fields, err := parseEnvelope(body)
 	if err != nil {
 		return nil, v2model.ValidationFailed("request body is not a JSON object",

@@ -160,6 +160,35 @@ func TestV2CreateType(t *testing.T) {
 		assert.Equal(t, "spiciness", result.Created.Properties[0].Key)
 	})
 
+	t.Run("a pasted GET-type read body creates — etag and warnings are stripped", func(t *testing.T) {
+		// this pass taught GetType to serve etag (the ?ids= threading), but
+		// CreateType never got normalizeCreateBody — so POST types 400ed on
+		// the etag of its own read while POST objects stripped the same
+		// field. Dry run: no RPC expectations, any call fails the test.
+		fx := newV2Fixture(t)
+
+		result, err := fx.CreateType(context.Background(), testSpaceId, []byte(`{
+			"kind":"objectType","key":"workout","etag":"abcd1234",
+			"warnings":[{"message":"from the read"}],
+			"typeProperties":[{"key":"spiciness","format":"number"}]}`), true)
+
+		require.NoError(t, err, "a GET-type body must create without hand-stripping envelope fields")
+		assert.True(t, result.DryRun)
+	})
+
+	t.Run("a ?block= subtree read is refused by name, not as an unknown field", func(t *testing.T) {
+		fx := newV2Fixture(t)
+
+		_, err := fx.CreateType(context.Background(), testSpaceId, []byte(`{
+			"kind":"objectType","key":"workout","subtree":true,
+			"typeProperties":[{"key":"spiciness","format":"number"}]}`), true)
+
+		apiErr := v2Err(t, err)
+		require.NotEmpty(t, apiErr.Issues)
+		assert.Equal(t, "/subtree", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Message, "subtree read", "the refusal names the partial-read marker")
+	})
+
 	t.Run("bundled type key is rejected", func(t *testing.T) {
 		// given
 		fx := newV2Fixture(t)
