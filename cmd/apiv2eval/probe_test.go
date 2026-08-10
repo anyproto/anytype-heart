@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -128,5 +130,34 @@ func TestRewriteConstAsEnumTouchesOnlyTheDiscriminator(t *testing.T) {
 		restored := strings.Replace(string(spec.Parameters),
 			`"op":{"enum":["`+spec.Name+`"]}`, `"op":{"const":"`+spec.Name+`"}`, 1)
 		assert.Equal(t, string(served[i].Parameters), restored)
+	}
+}
+
+func TestProbeRecordsWhatWasWrittenIntoTheDiscriminator(t *testing.T) {
+	tests := []struct {
+		name        string
+		args        string
+		wantMissing bool
+		wantValue   string
+	}{
+		{name: "the const, correctly", args: `{"op":"insertBlocks","markdown":"x"}`},
+		{name: "absent", args: `{"markdown":"x"}`, wantMissing: true},
+		{name: "a positional word", args: `{"op":"append","markdown":"x"}`, wantValue: `"append"`},
+		{name: "an empty object", args: `{"op":{},"markdown":"x"}`, wantValue: `{}`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// given
+			model, _ := newScriptedModel(toolCallTurn("insertBlocks", tt.args))
+			defer model.Close()
+
+			// when
+			got := probeOnce(context.Background(), newChatClient(model.URL, "", 30*time.Second),
+				"stub", probeCase{id: "c", wantOp: "insertBlocks"}, nil, "sys", options{}, "run1", 1)
+
+			// then
+			assert.Equal(t, tt.wantMissing, got.MissingOpConst)
+			assert.Equal(t, tt.wantValue, got.OpConstValue)
+		})
 	}
 }

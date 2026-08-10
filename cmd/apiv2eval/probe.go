@@ -23,6 +23,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -114,9 +115,13 @@ type probeRecord struct {
 	// statically (see staticRefusalRisks) — the probe never sends anything.
 	RefusalRisks []string `json:"refusal_risks,omitempty"`
 	// MissingOpConst records that the payload omitted `op`, which every op
-	// schema marks required with a const. The tool name already determines
-	// it, so this measures schema compliance, not intent.
+	// schema marks required with a const; OpConstValue is what it wrote
+	// instead when it wrote something other than the const. The tool name
+	// already determines the value, so this measures schema compliance, not
+	// intent — and the wrong-value case is the common one, so it is counted
+	// apart from the absent one.
 	MissingOpConst bool   `json:"missing_op_const,omitempty"`
+	OpConstValue   string `json:"op_const_value,omitempty"`
 	NoToolCall     bool   `json:"no_tool_call,omitempty"`
 	ArgsError      string `json:"args_error,omitempty"`
 	EnvError       string `json:"env_error,omitempty"`
@@ -226,8 +231,13 @@ func probeOnce(ctx context.Context, chat *chatClient, model string, pc probeCase
 		rec.IdEmissions[i].Tool = call.Function.Name
 	}
 	rec.RefusalRisks = staticRefusalRisks(call.Function.Name, args)
-	_, hasOp := args["op"]
+	op, hasOp := args["op"]
 	rec.MissingOpConst = !hasOp
+	if hasOp {
+		if written, _ := json.Marshal(op); string(written) != strconv.Quote(call.Function.Name) {
+			rec.OpConstValue = string(written)
+		}
+	}
 	return rec
 }
 
@@ -458,24 +468,38 @@ func buildProbeSummary(runId string, records []probeRecord, opt options) string 
 	}
 
 	missingOp := map[string]int{}
+	wrongOp := map[string]int{}
+	wroteValues := map[string]int{}
 	calls := map[string]int{}
 	for _, r := range records {
 		if r.CalledOp == "" {
 			continue
 		}
 		calls[r.Model]++
-		if r.MissingOpConst {
+		switch {
+		case r.MissingOpConst:
 			missingOp[r.Model]++
+		case r.OpConstValue != "":
+			wrongOp[r.Model]++
+			wroteValues[r.Model+" wrote "+r.OpConstValue]++
 		}
 	}
-	add("\npayloads omitting the required `op` const (the tool name determines it)\n\n")
+	add("\nthe required `op` const (the tool name determines its one legal value)\n\n")
 	models := make([]string, 0, len(calls))
 	for m := range calls {
 		models = append(models, m)
 	}
 	sort.Strings(models)
 	for _, m := range models {
-		add("%-14s %d/%d\n", m, missingOp[m], calls[m])
+		add("%-14s %d/%d absent, %d/%d wrong\n", m, missingOp[m], calls[m], wrongOp[m], calls[m])
+	}
+	values := make([]string, 0, len(wroteValues))
+	for v := range wroteValues {
+		values = append(values, v)
+	}
+	sort.Slice(values, func(i, j int) bool { return wroteValues[values[i]] > wroteValues[values[j]] })
+	for _, v := range values {
+		add("%4d× %s\n", wroteValues[v], v)
 	}
 
 	envErrs := 0
