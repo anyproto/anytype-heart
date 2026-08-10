@@ -73,8 +73,8 @@ type Config struct {
 	JsonApiListenAddr                      string           `json:",omitempty"` // empty means disabled
 	EnableMembershipV2                     bool             `json:",omitempty"` // optional, default is false
 	PreferredSpaceId                       string           `json:",omitempty"` // optional, set from accountSelect; enables client-driven lazy multi-space loading for this space
-	ImportV2Markdown                       bool             `json:",omitempty"` // route Markdown/Obsidian imports through the v2 engine (env: ANYTYPE_IMPORTV2MARKDOWN)
-	ImportV2Notion                         bool             `json:",omitempty"` // route Notion imports through the v2 engine (env: ANYTYPE_IMPORTV2NOTION)
+	ImportV2Markdown                       bool             `json:",omitempty"` // route Markdown/Obsidian imports through the v2 engine, DEFAULT TRUE (kill switch: ANYTYPE_IMPORTV2MARKDOWN=false)
+	ImportV2Notion                         bool             `json:",omitempty"` // route Notion imports through the v2 engine, DEFAULT TRUE (kill switch: ANYTYPE_IMPORTV2NOTION=false)
 
 	RepoPath    string
 	AnalyticsId string
@@ -245,6 +245,13 @@ const (
 var DefaultConfig = Config{
 	LocalServerAddr: ":0",
 	DS:              clientds.DefaultConfig,
+	// Markdown, Obsidian and Notion imports run on the v2 engine. Setting
+	// ANYTYPE_IMPORTV2MARKDOWN=false / ANYTYPE_IMPORTV2NOTION=false routes
+	// them back to v1 — envconfig applies an explicit "false" over these
+	// defaults, and the persisted config file cannot touch them (it
+	// unmarshals into PersistedConfig, not Config).
+	ImportV2Markdown: true,
+	ImportV2Notion:   true,
 }
 
 func WithNewAccount(isNewAccount bool) func(*Config) {
@@ -306,8 +313,10 @@ type quicPreferenceSetter interface {
 
 func New(options ...func(*Config)) *Config {
 	cfg := &Config{
-		LocalServerAddr: DefaultConfig.LocalServerAddr,
-		DS:              DefaultConfig.DS,
+		LocalServerAddr:  DefaultConfig.LocalServerAddr,
+		DS:               DefaultConfig.DS,
+		ImportV2Markdown: DefaultConfig.ImportV2Markdown,
+		ImportV2Notion:   DefaultConfig.ImportV2Notion,
 	}
 	for _, opt := range options {
 		opt(cfg)
