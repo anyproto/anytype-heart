@@ -9,6 +9,16 @@ never sets `RelationLinks`; `ResetToVersion` repairs only *bundled* relation
 links (its own GO-7217 comment names the wipe-on-replay class this leaves
 open for custom keys); `marshalForEdit` discards PUT warnings.
 
+> **2026-08-10 — findings retired by the removal of PUT.** APIV2.md §8.27
+> removed the full-document replace surface with its whole pipeline
+> (`PutObject`, `putPipeline`, `marshalForEdit`, `ResetObject`,
+> `preserveEditorOwnedState`). **B5** (dead `Warnings` on the PUT path) and
+> **B7** (create-only guards running before the live-type fallback) are
+> retired with their subject, as is every reference below to the
+> `marshal → mutate-JSON → Unmarshal → ResetToVersion` apply path — PATCH
+> has been a child-state `sb.Apply` since v0.3.4. Findings about the op
+> layer, the lock story and PATCH itself stand as written.
+
 ## Overall verdict
 
 The **op layer** is largely faithful and genuinely well-tested at its own

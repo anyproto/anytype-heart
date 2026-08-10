@@ -69,11 +69,11 @@ repair loop with path-addressed errors.
 | C1 | Base path `/v2`, localhost, bearer auth and `Anytype-Version` date header as in v1. | migration §4.8 |
 | C2 | **One vocabulary: the format's.** camelCase, property **keys**, option **names** — everywhere, both directions. The object-type field is **`type`** (a type key) on every surface: envelope, rows, search, shortcuts. No id/key duality, no snake_case. Object ids remain ids. | v1's top agent trap (§2.1) |
 | C3 | **Compact JSON always** (no pretty-printing) — **all the way down, not just the envelope**. `anyblockjson.Marshal` returns the format's canonical byte form, which is two-space **indented** (SPEC §4), and the v2 envelope re-embeds those bytes verbatim; until Wave 0.1 every object read was therefore compact on top and pretty-printed underneath, costing a measured 16–26 %. *(Built: `encodeEnvelope` compacts each embedded value — the serving layer, so the format's canonical form and its `Export ∘ Import` byte-stability are untouched; §8.24.)* | free 38–46% (§3.6); 16–26% (TOKENS §1.1) |
-| C4 | **Two document shapes, one id axis** (revised Wave 0.2, hardened §8.26; TOKENS §1.2/§10). `?ids=compact` (**the default — the *edit* shape**): **machine-minted** block/row/column/view ids — 24-hex bson and view UUIDs, `isMintedLocalId` — relabel to their 5-char suffixes (legend-less, **lossy**); every id that could carry meaning (`dataview`, `title`, readable imported ids) keeps its full spelling and is **reserved**, so no label can alias a served id. `?ids=full` (**the *export* shape**): full ids everywhere — the GET a PUT round-trips from (§3(b)). Object refs are **full inline on every shape**: the `refs` legend was a measured net loss **on the measured corpus** (85–90 % of refs used once; §1.2's own model has it winning only at ≥2× reuse) and its indirection trapped write-back, so no shape serves one — but legend **resolution on input stays total** (SPEC §9a), so a document arriving with a legend still resolves. Every write channel resolves a block/view/row/column reference by exact id **or unique suffix** (`matchBlockRef`), which is what makes the lossy edit shape addressable; PUT alone takes ids literally and therefore **refuses unowned ids** instead of adopting them (§8.26). Never require echoing a full CID. *(Built: `Options.CompactBlockLabels` composed by `objectReadPlan`; `Options.CompactObjectRefs` remains a format-package option no API shape sets. Wave 2 renames the two values to `?mode=edit\|full` with no change of bytes.)* **Outline exception (T7)**: the outline fixes the axis — short labels — and ignores `?ids=`. | ~24×/id, −89% id errors (§3.6); block labels −19…−22% on minted-id documents, the legend a net **loss** of 0.9–11.5% on the measured corpus (TOKENS §1.2, live-measured); id round-trip contract (R1) |
+| C4 | **Two document shapes, one id axis** (revised Wave 0.2, hardened §8.26; TOKENS §1.2/§10). `?ids=compact` (**the default — the *edit* shape**): **machine-minted** block/row/column/view ids — 24-hex bson and view UUIDs, `isMintedLocalId` — relabel to their 5-char suffixes (legend-less, **lossy**); every id that could carry meaning (`dataview`, `title`, readable imported ids) keeps its full spelling and is **reserved**, so no label can alias a served id. `?ids=full` (**the *export* shape**): full ids everywhere — the **backup/export** read (§3(b)), and the read to clone from when a POST should reuse the source's real ids. Object refs are **full inline on every shape**: the `refs` legend was a measured net loss **on the measured corpus** (85–90 % of refs used once; §1.2's own model has it winning only at ≥2× reuse) and its indirection trapped write-back, so no shape serves one — but legend **resolution on input stays total** (SPEC §9a), so a document arriving with a legend still resolves. Every write channel resolves a block/view/row/column reference by exact id **or unique suffix** (`matchBlockRef`), which is what makes the lossy edit shape addressable — and since §8.27 removed PUT there is no longer any channel that takes ids **literally**, which is what made the compact shape a trap (§8.26). Never require echoing a full CID. *(Built: `Options.CompactBlockLabels` composed by `objectReadPlan`; `Options.CompactObjectRefs` remains a format-package option no API shape sets. Wave 2 renames the two values to `?mode=edit\|full` with no change of bytes.)* **Outline exception (T7)**: the outline fixes the axis — short labels — and ignores `?ids=`. | ~24×/id, −89% id errors (§3.6); block labels −19…−22% on minted-id documents, the legend a net **loss** of 0.9–11.5% on the measured corpus (TOKENS §1.2, live-measured); id round-trip contract (R1) |
 | C5 | Minimal rows: list/search responses carry `id, name, type` + requested property values. **Never embed type objects.** `fields=` expands. | v1's N× multiplier (§2.1) |
 | C6 | Error shape everywhere: `{status, code, message, issues:[{path, message, hint}]}` — path-addressed, naming allowed values. Required codes include: `validation_failed`, `version_unsupported` (surfaces SPEC §10's "produced by a newer version" verbatim, naming both versions), `idempotency_conflict` (same key, different body), `etag_mismatch`, `ambiguous_input` (e.g. both `filter` and `filters` supplied), `forbidden` (403 — an operation the caller's identity may not perform, e.g. editing another member's chat message; added by the Phase-6 review; also the `/v2` key-scope gate's refusal of a non-JsonAPI key, which answers in the shared v1 envelope — §8.9). Error text is API surface; test it. | repair loop (§3.2, §4.6); R15 |
 | C7 | Every object read returns **`etag`** (short opaque token, ≤8 chars, derived from tree heads — NOT the object's `revision` property, which stays in `properties`) plus an `ETag` header. Mutations accept **`If-Match` header only** (the AnyBlock body has no envelope slot for it). **Advisory by default**: without `If-Match`, ops apply last-write-wins and `diffStats` reports the outcome; with it, mismatch → 409 `etag_mismatch` carrying the current etag. Note: the etag advances on background sync, not only on agent edits — strict If-Match will 409 on sync noise; block-scoped preconditions (ops apply iff the *addressed* blocks are unchanged) are the deferred v2.x refinement. | R2; optimistic concurrency (§3.2) |
-| C8 | `Idempotency-Key` honored on all mutations (POST, PATCH, PUT — v0.3.5; was POST-only); replay with the same key returns the stored result; same key with a different body → 409 `idempotency_conflict`. Response always returns created ids. | agent auto-retry (§3.7); R15 |
+| C8 | `Idempotency-Key` honored on all mutations (POST, PATCH, DELETE — v0.3.5/Phase 6; was POST-only); replay with the same key returns the stored result; same key with a different body → 409 `idempotency_conflict`. Response always returns created ids. | agent auto-retry (§3.7); R15 |
 | C9 | `?dry_run=true` on every mutation → would-be diff summary + issues, nothing committed. **Recorded C2 carve-out**: the response's `dry_run` echo keeps the query parameter's snake_case spelling (uniform across all v2 mutation DTOs — §8.8). | highest-leverage affordance (§3.7) |
 | C10 | Pagination on **every** list surface — objects, search, and the discovery lists (types, properties, **options**): default `limit=25`, `has_more`, truncation messages steer ("312 matches — narrow with filter…"). Options lists take a `prefix=` filter (tag-like properties can hold thousands of options). | Linear/AXI (§3.4, §3.7); R-minor |
 | C11 | Reads never fail on unknown *content*; anything a representation cannot express is listed in `warnings` (array of the C6 issue shape, warning-grade). Writes never pass through a lossy representation. | ADF disaster (§3.3) |
@@ -287,22 +287,19 @@ naming the descendant count.
   `simple.Block`/`state.State` mutations, one `sb.Apply` — the pattern
   Block* RPC handlers use internally (research §2.3; feasibility-verified).
 
-**(b) `PUT /v2/spaces/{spaceId}/objects/{objectId}` — full-document replace (escape hatch)**
+**(b) There is no full-document replace — removed §8.27**
 
-Body = full AnyBlock doc; etag via `If-Match` header only. Server
-diff-applies via `Unmarshal → NewDocFromSnapshot → SetParent →
-ResetToVersion` — minimal CRDT changes **iff block ids round-trip from the
-GET**. Since Wave 0.2 that means **`GET …?ids=full` is the PUT read**: the
-default edit shape relabels minted block ids to short suffixes, and PUT
-takes the document's ids literally (unlike PATCH, which suffix-resolves
-every block reference). A body carrying local ids the object does not own
-is therefore **refused with a 400 naming `?ids=full`** (§8.26) — before
-the hardening it silently ADOPTED them as the stored ids, a permanent
-identity rewrite dressed as a diff. New blocks omit their id; the server
-mints one. A `?block=` subtree read is marked `"subtree": true` and no
-write path accepts it. Response includes `diffStats`, making an accidental
-full rewrite visible (the DELEGATE-52 signature). System kinds excluded
-per `canUpdateObject`. Docs steer agents to PATCH.
+`PUT /v2/spaces/{spaceId}/objects/{objectId}` existed through the Phase-3
+hardening and is **gone**, with its whole pipeline: the route, the handler,
+`PutObject`/`putPipeline`/`normalizePutBody`/`checkPutBlockIds`, the
+`ObjectMutator.ResetObject` port and the `preserveEditorOwnedState` repair
+its reset machinery needed. **PATCH is the edit surface.** The principle it
+leaves behind is §8.27: *snapshots are for creates, edits are ops.*
+
+A `?block=` subtree read is still marked `"subtree": true` and still no
+write path accepts it (create names it by path). `?ids=full` survives as
+the **backup/export shape** (C4) and as the id vocabulary a clone-from-read
+POST should use — not as "the PUT read".
 
 **(c) `replaceText` — str_replace scoped to one block's `text` (LAUNCH)**
 
@@ -509,9 +506,10 @@ Both are thin over the same server primitives; bulk work via scripts.
 
 **Decided**: id-addressed closed op set, no RFC 6902, no index/offset
 addressing · `updateBlock` merge op + `replaceText` + `setCell` in the
-launch op set (they back wrapper tools — §7/S1) · PUT-with-server-diff as
-escape hatch (excluded from the small-model wrapper), full-block-id
-round-trip default, diffStats · flat AnyBlock as the primary content
+launch op set (they back wrapper tools — §7/S1) · **no full-document
+replace at all** (PUT shipped through Phase 3 and was removed — §8.27:
+snapshots are for creates, edits are ops), full-block-id round-trip
+default, diffStats · flat AnyBlock as the primary content
 representation on the REST write path, plus **one markdown-in alternative:
 an `insertBlocks` `markdown` payload** (mutually exclusive with `blocks`,
 same targeting incl. root-append — the server parses; it backs the
@@ -625,9 +623,11 @@ output tokens, turns; per model tier.
 - **B1 — edit-primitive steering** (tunes documentation; ships nothing —
   `replaceText`/`setCell` are launch ops per §2(c)/(d), so B1 no longer
   gates them): arms = **updateBlock-only** (`replaceText`/`setCell`
-  withheld from the prompt) · **full launch op set**. **PUT-only runs as
-  the corruption baseline**, anchoring the DELEGATE-52 comparison — it is
-  not a gate arm (PUT's existence is decided). Decision rule: whether the
+  withheld from the prompt) · **full launch op set**. The DELEGATE-52
+  corruption baseline was to be a **PUT-only** arm; with PUT removed
+  (§8.27) that arm is a *simulated* whole-document rewrite (read the
+  document, regenerate it, `replaceSubtree` the root run) — it never was a
+  gate arm. Decision rule: whether the
   REST docs and B4 guidance point *large* models at `replaceText`/`setCell`
   for text/cell edits or leave them on `updateBlock` (small-model steering
   is settled — the wrapper channels).
@@ -770,8 +770,10 @@ than the REST body:
 | `set_cell` | `object, table, row, col, value` | `setCell` op | flat cell write (as built the tool takes `object` too — the REST op addresses a table within one object, and a table-only reference would need a hidden cross-object table registry; §8.6); row/col take the labels full read mints (rows and columns relabel like blocks); an EMPTY `value` clears the cell (null on the wire) |
 | `move_block` / `delete_block` | `object, block, after?\|under?` / `object, block, recursive?` | `moveBlock`/`deleteBlock` ops | handle-addressed |
 
-Excluded from the wrapper: PUT full-document replace (the DELEGATE-52
-corruption vector — REST-only, large models), multi-op batch (single tool
+Excluded from the wrapper: whole-document replace (the DELEGATE-52
+corruption vector — and since §8.27 excluded from the REST surface too,
+so this line records a gap that closed from the other end), multi-op
+batch (single tool
 call per intent), the structured `filters` array (recursive, not
 constrained-decodable — string only), relative-indent authoring (markdown
 channel replaces it), block-field updates beyond `checked` (deliberate
@@ -793,7 +795,8 @@ survives only so the old caveats are not re-derived.
 1. **The bounded server primitives must exist** — `edit_text`/`set_cell` are
    safe only because `replaceText`/`setCell` are real server-side scoped ops
    (the S1 launch reweighting in §3). A wrapper that implemented them as
-   GET+regenerate+PUT would reintroduce corruption.
+   GET+regenerate+write-the-whole-document would reintroduce corruption —
+   which is the same argument §8.27 later applied to the REST PUT itself.
 2. **Constrained decoding still required, now tractable** — on-device
    function-calling (Ollama/llama.cpp GBNF) needs the *tool* schemas
    grammar-emittable; C13 applies to the small flat tool args here instead of
@@ -976,8 +979,8 @@ atomic (R10). Rejected alternatives: the import engine's
 `common/objectcreator.Create` (needs the whole import DataObject machinery —
 id remapping, payload pre-creation, file syncers — the wrong altitude for a
 single-object API create) and create-empty-then-`ResetToVersion` (two change
-sets, plus the `canUpdateObject` exclusions; that diff-apply shape is
-Phase 3b's PUT, not create). §7 structural blocks (title/description) stay
+sets, plus the `canUpdateObject` exclusions; that diff-apply shape was
+Phase 3b's PUT, and it left the API entirely with it — §8.27). §7 structural blocks (title/description) stay
 absent per SPEC §7 — the editor regenerates them at first open. Bundled
 types/relations a document references are installed on the way (mirrors the
 import path's `installBundledRelationsAndTypes`); the `origin` detail is
@@ -1064,17 +1067,19 @@ are interpreted by the format package at **fragment granularity**
 + the inline codec), so only the format package ever parses AnyBlock
 JSON.
 
-**The mutation port (v0.3.4).** `apicore.ObjectMutator` has two methods.
-`MutateObject(ctx, spaceId, objectId, apply func(edit ObjectEdit) error)`
+**The mutation port (v0.3.4; single-method since §8.27).**
+`apicore.ObjectMutator` has ONE method.
+`MutateObject(ctx, spaceId, objectId, needs, apply func(edit ObjectEdit) error)`
 is PATCH: the adapter locks the object, checks the object-level
-Blocks/Details restrictions, hands `apply` an `ObjectEdit{SbType, Heads,
-State}` (State = `sb.NewState()`), runs the bundled-revision guard (never
-downgrade `revision`; untouched keys are simply inherited now), and
-commits with a plain `sb.Apply`. `ResetObject(ctx, spaceId, objectId,
-build func(cur ObjectRead) (*SmartBlockSnapshotBase, error))` keeps the
-v0.3.3 reset-to-version machinery (with `preserveEditorOwnedState`) for
-PUT until its own rework. Dry runs never touch the mutator: the same op
-applier runs on a private `state.NewDocFromSnapshot` of a plain read.
+Blocks/Details restrictions on the axes the batch touches, hands `apply`
+an `ObjectEdit{SbType, Heads, State}` (State = `sb.NewState()`), runs the
+bundled-revision guard (never downgrade `revision`; untouched keys are
+simply inherited now), and commits with a plain `sb.Apply`. The
+`ResetObject` sibling that carried the v0.3.3 reset-to-version machinery
+(and `preserveEditorOwnedState` with it) went out with PUT — the child
+state inherits everything that repair had to reconstruct, so nothing
+replaced it. Dry runs never touch the mutator: the same op applier runs
+on a private `state.NewDocFromSnapshot` of a plain read.
 
 **Ops → state, exact.** setProperties → `st.SetDetail`/`RemoveDetail` +
 `st.AddRelationLinks` for the key (mandatory — a value without its link
@@ -1156,12 +1161,14 @@ guard remains on PATCH (a loss warning on the live state still refuses
 the edit — the view itself would be lossy), and B8's float64 concern is
 narrowed to the one block an op re-imports.
 
-**C11 write-safety guard (PATCH only).** If the internal marshal of the live
-state reports any loss warning (unmapped block, over-deep nesting), the
-PATCH is refused (422) — otherwise the write-back would silently drop the
-unrepresentable content, exactly what C11 forbids. PUT skips the guard (a
-full replace is explicitly destructive; the GET the body came from carried
-the same warnings) and surfaces the warnings instead.
+**C11 write-safety guard.** If the internal marshal of the live state
+reports any loss warning (unmapped block, over-deep nesting), the PATCH is
+refused (422) — otherwise the write-back would silently drop the
+unrepresentable content, exactly what C11 forbids. PUT used to skip this
+guard (a full replace being explicitly destructive) and surface the
+warnings instead; with PUT gone (§8.27) the guard has no exemption left,
+and the 422's advice is now "edit it in the app" rather than "replace it
+wholesale".
 
 **diffStats.** Canonical-before vs canonical-after document diff (the after
 side is the applied snapshot re-marshaled, so import/export normalization
@@ -1198,14 +1205,16 @@ authorable per SPEC §3), unknown keys rejected with did-you-mean (Phase-2
 policy), select option names create-missing and ride `created`, `unset` of
 an absent key is a no-op, a key in both `set` and `unset` is an error.
 
-**PUT.** The envelope `etag`/`warnings` a GET body carries are stripped
-before validation (C7: preconditions are the If-Match header only); a
-non-matching envelope `id` is rejected, and the id is pinned to the URL's. A
-body without `type` keeps the live object's type (a replace is about
-content, not retyping by omission). The R9 referential layer guards PUT like
-create. `canUpdateObject` mirrored as smartblock-type exclusions
-(relation, relation option, file object, participant) — applied to PATCH
-too, same machinery, same risks.
+**PUT — REMOVED (§8.27).** As built it stripped the envelope
+`etag`/`warnings` a GET body carried, rejected a non-matching envelope
+`id`, kept the live object's type when `type` was absent, and ran the R9
+referential layer like create (with a corpse-key tolerance so a GET→PUT of
+the same bytes round-tripped). All of that left with the surface; the
+envelope-stripping half survives on the create path (`normalizeCreateBody`,
+so a pasted read body clones), the corpse tolerance did not — a PATCH names
+only the properties it edits. `canUpdateObject` mirrored as smartblock-type
+exclusions (relation, relation option, file object, participant) remains,
+on PATCH.
 
 **Structural blocks.** As with Phase-2 creates, SPEC §7 structural blocks
 (title/description) are absent from the format, so an edit re-lands the
@@ -1233,7 +1242,9 @@ is exactly the §7 wrapper's omitted-`after` case. No root-prepend; `position`
 still requires `inside` (position without any targeting field is a 400
 naming the root-append behavior). This closes the structural hole where an
 empty object (SPEC §7: no title/description blocks in the document) had zero
-addressable anchors and PUT was the only way to give it content. More than
+addressable anchors and PUT was then the only way to give it content —
+which is also why removing PUT (§8.27) cost the surface nothing here.
+More than
 one targeting field is now "at most one of after, before, inside is allowed"
 (was "exactly one … is required" — reworded because zero is legal now).
 Payload indents stay R3-relative: at root, indent 0 = document top level.
@@ -1265,13 +1276,15 @@ a key in more than one of set/unset/add/remove is a path-addressed error.
 The empty-op error is now "setProperties needs at least one of set, unset,
 add, remove".
 
-**Idempotency-Key covers PATCH and PUT (C8 widened).** The store, request
-hash, in-flight reservation and replay were POST-only wiring; agents
-auto-retry on timeout, and PATCH is where a blind retry does damage (a
-retried successful `insertBlocks` duplicates blocks; a retried `deleteBlock`
-404s misleadingly). The middleware now acts on POST, PATCH and PUT and is
-registered on the object PATCH/PUT routes and the types/properties PATCH
-routes. Semantics unchanged: same key + same request (the §8.1 hash —
+**Idempotency-Key covers PATCH (C8 widened).** The store, request hash,
+in-flight reservation and replay were POST-only wiring; agents auto-retry
+on timeout, and PATCH is where a blind retry does damage (a retried
+successful `insertBlocks` duplicates blocks; a retried `deleteBlock` 404s
+misleadingly). The middleware acts on every mutation METHOD — POST, PATCH,
+PUT, DELETE — and is registered on the object PATCH route and the
+types/properties PATCH routes. (PUT stays in the method set although
+§8.27 left v2 with no PUT route: the switch classifies methods, so a
+future mutation method is covered by construction.) Semantics unchanged: same key + same request (the §8.1 hash —
 method ‖ path ‖ query ‖ body) ⇒ replay; any differing part ⇒ 409
 `idempotency_conflict`; only 2xx results are cached.
 
@@ -1734,7 +1747,8 @@ deliberate exemption class search's C8/C9 one established).
 
 **C8 widened to DELETE (additive contract change, recorded loudly).**
 The surfaces doc demands idempotency on *every* chat mutation; C8's
-method set was POST/PATCH/PUT. `ensureIdempotency` now also acts on
+method set was POST/PATCH/PUT (PUT's route later went away — §8.27 — but
+the method stays in the classifier). `ensureIdempotency` now also acts on
 DELETE — and after the Phase-6 review, EVERY registered v2 DELETE
 carries the middleware: chat message, type and property alike. (As
 first built, only the chat delete was keyed; the review called the
@@ -2354,7 +2368,7 @@ does nothing useful. Design:
 producers used to fall through `RespondV2Error`'s 500 fallback, sending
 retrying agents into loops on refusals that can never succeed:
 
-- **Restriction refusals on PATCH/PUT → 403 `forbidden`.** The per-op
+- **Restriction refusals on PATCH → 403 `forbidden`.** The per-op
   gate (`editNeedsForOps`/`restrictionRefusal`, ops.go) now produces the
   C6 403 at the verdict site — message carries the adapter's refusal text
   plus the offending op and `/ops/i` path, and the issue hint states the
@@ -2425,8 +2439,10 @@ separately, and `ObjectMutator.MutateObject` takes an `apicore.EditNeeds`
 derived from the batch (`v2OpEditNeeds`, `editNeedsForOps`). Item ops need
 NEITHER axis: they mutate the collection store
 (`template.CollectionStoreKey`), which no object restriction governs — the
-same position v1 takes, its `ObjectCollectionAdd` being ungated. PUT demands
-both, because a document replace rewrites blocks and details alike. A refusal
+same position v1 takes, its `ObjectCollectionAdd` being ungated. (PUT
+demanded both, a document replace rewriting blocks and details alike; that
+caller is gone — §8.27 — and `EditNeeds` is now derived from ops only.) A
+refusal
 now addresses the offending op (`/ops/1`), not the request, so a batch mixing
 a legal rename with an illegal block edit says which op is the problem.
 
@@ -2624,9 +2640,9 @@ never minutes.
 
 **The gap, as reported by an agent using the API.** Dataview views were
 readable three ways (the object document, `GET …/sets/{id}/views`,
-`…/collections/{id}/views`) and writable zero ways after creation: PUT
-refuses type documents by kind, the types PATCH accepts only
-properties/typeProperties, and no view route accepts a write. The reporter's
+`…/collections/{id}/views`) and writable zero ways after creation: the
+then-existing PUT refused type documents by kind, the types PATCH accepts
+only properties/typeProperties, and no view route accepts a write. The reporter's
 concrete case — a custom type's default "All" view rendering every custom
 column `hidden: true` — was TWO bugs stacked: no write path (this section),
 and the generator regression that hid the columns in the first place
@@ -2643,8 +2659,8 @@ object with its own idempotency/dry-run/etag wiring, it cannot compose
 atomically with other ops, and it would need THREE registrations (sets,
 collections, types) plus a fourth story for inline dataviews — the op works
 on all four today, including `PATCH …/objects/{typeObjectId}` with the id
-from `GET …/types/{key}` (type objects pass `checkEditPreconditions`; only
-the PUT kind-gate refuses them). Whole-array rewrite via `updateBlock` was
+from `GET …/types/{key}` (type objects pass `checkEditPreconditions`; it
+was only PUT's kind-gate that refused them, and PUT is gone — §8.27). Whole-array rewrite via `updateBlock` was
 rejected twice over: it is the documented small-model trap (resend every
 view to flip one bit), and updateBlock's `{Blocks: true}` classification
 refuses it on exactly the three object classes that carry dataviews.
@@ -3038,8 +3054,8 @@ undeclared tool a failure, not a silent omission (`tier.go`,
   confused one in the set), `delete_block` (destructive with a
   `recursive` escalation — the worst cost for a wrong guess).
 - **large (~20B, Qwen-class), 12 tools**: the whole table. No NEW tools
-  were minted for it: §7.2's exclusions (PUT replace, batches, structured
-  filters, block-field updates, archive-without-a-route) were re-checked
+  were minted for it: §7.2's exclusions (whole-document replace — since
+  §8.27 not a REST surface either — batches, structured filters, block-field updates, archive-without-a-route) were re-checked
   and stand — they were excluded for corruption/ambiguity reasons, not
   for being beyond a 3–4B. The tier field makes a future 13th tool a
   one-line tier decision; chats are the named candidate when a use case
@@ -3257,8 +3273,9 @@ property key walks the chain — exact stored key, live slug namespace,
 bundled vocabulary (exact or derived slug), fold layer (`DueDate`,
 `due-date` → `dueDate`) — with ambiguity a loud 400 listing every holder,
 never store order. Wired into route params, search/set type scopes,
-document creates and PUT (`canonicalizeDocumentKeys` — detail keys and
-`ot-` URLs are the store's vocabulary, not the wire's), `setProperties`
+document creates (`canonicalizeDocumentKeys` — detail keys and
+`ot-` URLs are the store's vocabulary, not the wire's; it guarded PUT the
+same way until §8.27), `setProperties`
 keys, and the option-create prewarm (a slug-keyed select would otherwise
 mint options bound to the slug string). The §8.21 benchmark's Title-Case
 miss now resolves with zero retries.
@@ -3321,7 +3338,8 @@ slugged empty — origin, spaceId, isArchived, isDeleted, isUninstalled).
 The same forgery's second channel — an envelope `key` on an OBJECT
 document becoming `snapshot.Key` → `uniqueKeyInternal` →
 `DeriveTreeObject` (found while fixing; the review named the details
-channel) — is rejected in `validateDocumentRefs`, covering POST and PUT.
+channel) — is rejected in `validateDocumentRefs`, covering every document
+create (it covered PUT too until §8.27).
 
 **Cause 2 — one canonicalization chain everywhere.** The prewarm's
 `canonicalPropertyKey` and `PropertyId`'s resolution now ARE
@@ -3370,10 +3388,12 @@ bundled derived slugs — acceptance is wider than advertising); candidate
 lists speak served spellings only. The type filter LEAF resolves through
 the chain, corpse-aware — one spelling now works at every level, and a
 UI-deleted type stopped being a usable query scope (`typeKeyExists`
-likewise: objects/templates of a corpse type refuse). PUT tolerates
+likewise: objects/templates of a corpse type refuse). PUT tolerated
 corpse-HELD property keys (GET emits them for objects still carrying
-values; the archived-inclusive probe suppresses the injected default
-with an explicit no-op isArchived filter); POST keeps live-only. The
+values, and a GET→PUT of the same bytes had to round-trip) while POST kept
+live-only; **§8.27 retired the tolerance with PUT** — the probe
+(`anyRelationByKeyExists`) is gone and live-only is now the whole rule, a
+PATCH naming only the properties it edits. The
 file aliases' deactivation is chain- and corpse-aware (an uninstalled
 `mimeType` relation no longer silently drops the field space-wide).
 
@@ -3441,8 +3461,8 @@ serving layer is the right one:
    writes — both of which want the indent.
 3. The envelope fix is **total — for the right reason** (corrected by the
    Wave-0 review: the first write-up named "PATCH/PUT response documents"
-   and a "create echo" that do not exist — PATCH/PUT return `EditResult`
-   and creates return `CreateResult`, plain structs via `c.JSON`, never
+   and a "create echo" that do not exist — the edit routes return
+   `EditResult` and creates return `CreateResult`, plain structs via `c.JSON`, never
    through `encodeEnvelope`). Only three handlers write bytes verbatim
    (`c.Data`): `GetObject`, `markdownEnvelope` and `GetType` — and all
    three serve `encodeEnvelope` output. Everything else exits via
@@ -3495,7 +3515,7 @@ generalizes.
 | `?ids=` | block ids | object refs | for |
 |---|---|---|---|
 | absent / `compact` | short doc-local labels | full inline, no legend | the default **edit** read |
-| `full` | full | the `refs` legend | the **export** read: PUT round-trips, backups |
+| `full` | full | the `refs` legend | the **export** read: backups, and the shape to clone from |
 | (outline, any `?ids=`) | short doc-local labels | full inline, no legend | T7, unchanged |
 
 *(Superseded by §8.26 in two cells: `full` no longer carries the legend —
@@ -3505,12 +3525,13 @@ narrowed to machine-minted ids only.)*
 The old `?ids=full` (no compaction on either axis) is gone; nothing
 depended on it and Wave 2's `?mode=` enum has no such profile. **Today's
 default shape did not disappear — it became `?ids=full`**, so no shape was
-invented and the export/PUT loop keeps exactly the bytes it had. *(§8.26
-then dropped the legend from `full`, so the export/PUT loop bytes changed
-once more — deliberately.)*
+invented and the export loop keeps exactly the bytes it had. *(§8.26 then
+dropped the legend from `full`, so the export bytes changed once more —
+deliberately. §8.27 removed the write-back leg of that loop entirely: the
+export shape is a BACKUP shape, not a round-trip-through-PUT shape.)*
 
 **Legend resolution on input is untouched.** SPEC §9a's resolution rule is
-total, and the create/PUT/PATCH paths still accept any document carrying a
+total, and the create/PATCH paths still accept any document carrying a
 legend, whoever produced it.
 
 **`GET …/types/{key}` rides along** — it delegates to `GetObject`, so a
@@ -3520,9 +3541,9 @@ because every consumer resolves by suffix
 `?view=` via `resolveViewRef`), and because the internal documents those
 ops work on are rendered **without** compaction — `list_read.go`'s
 fixed-`"dataview"` block lookup and the applier's per-op re-render both
-see full ids. Type creates reject a `blocks` array outright, so there is
-no GET-type → PUT-type block loop to break. *(As first shipped this
-hardcoded the default query — so "the export shape is one query parameter
+see full ids. Type creates reject a `blocks` array outright, so there was
+no GET-type → PUT-type block loop to break even before PUT went away.
+*(As first shipped this hardcoded the default query — so "the export shape is one query parameter
 away" was false for types, and the well-known `dataview` block id was
 served as `aview`. §8.26 threads `?ids=` through and the minted-shape
 rule keeps `dataview` full by construction.)*
@@ -3557,28 +3578,28 @@ because their seeded ids are readable — a property of this demo account's
 seeding, not of production documents; but it is also a real ceiling: a
 document of meaningful ids gets nothing from the axis, by design. The
 useful corollary: **on such documents the default read IS the export
-read** — every id serves in full, so GET(default) → PUT is a clean no-op
-there, and the id-adoption trap is confined to minted-id documents.
+read** — every id serves in full, so the two shapes are byte-identical
+there, and the id-adoption trap (while PUT still existed) was confined to
+minted-id documents.
 
 **Combined with §8.24, against the actual served bytes:** XS −24.9 % ·
 S −23.5 % · M −25.1 % · L −42.1 % · R −28.9 % · K −39.3 %; corpus total
 **−33.1 %** — a third off every object read.
 
-**The one behaviour that got worse, named plainly — and then understated.**
-PUT takes the document's block ids literally. As first shipped, a
+**The one behaviour that got worse, named plainly — and then removed.**
+PUT took the document's block ids literally. As first shipped, a
 GET(default) → edit → PUT loop on a minted-id document did not "re-mint
 with `diffStats` visibility" as this section originally claimed — it
 **adopted the 5-char labels as the stored block ids, permanently**
 (reproduced: after the PUT the stored ids *were* `1bcb9`, `1c5c4`, … and
 a PATCH with the original 24-hex id 404ed), breaking every id another
 client held; and on tables `diffStats` under-reported the rewrite (§8.26).
-PATCH is unaffected (it suffix-resolves), and the export shape is one
-query parameter away. **§8.26 closes the trap**: PUT refuses a body
-carrying ids the object does not own, naming `?ids=full`. Teaching PUT
-the same suffix-resolution the write ops already use remains the
-follow-up — C4 has always permitted it ("write endpoints MAY … resolve
-block-id references by unique-suffix match") — and it belongs with Wave
-2.1, which builds the same resolution machinery for locators.
+PATCH was never affected (it suffix-resolves). §8.26 closed the trap with
+a refusal, and **§8.27 closed it by construction**: the literal-id channel
+is gone, so no served vocabulary can reach the identity channel at all.
+The follow-up this section left open — "teach PUT the same suffix
+resolution the write ops already use", parked for Wave 2.1 — is retired
+with its subject.
 
 ### 8.26 Wave 0 hardening — served ids are a vocabulary, not an identity channel (2026-08-09 — decisions as built)
 
@@ -3597,8 +3618,8 @@ golden; `featuredRelations` → `tions`; the documented `dataview` constant
 → `aview` on type reads), and carried a genuine aliasing hole: the label
 census only counted ids longer than the label width, so a 5-char id and a
 minted id sharing that suffix were served as the SAME id — silent
-wrong-block PATCHes, a wrong `?block=` subtree, and a PUT of the server's
-own read 400ing on `duplicate id` (live today via `?outline=true`
+wrong-block PATCHes, a wrong `?block=` subtree, and a write-back of the
+server's own read 400ing on `duplicate id` (live today via `?outline=true`
 regardless of Wave 0.2). Now `isMintedLocalId` recognises the actual
 minting sites — 24-char lowercase hex (`bson.NewObjectId().Hex()`: every
 editor block/row/column id, and the format's own `defaultGenerateId`) and
@@ -3612,32 +3633,36 @@ rule that produces it. Notably the wrapper had this predicate first
 (`fullBlockIdRe = ^[0-9a-f]{24}$`) — the server's charset rule was the
 accidental one.
 
-**PUT refuses unowned ids instead of adopting them.** Reproduced live:
-GET(default) → PUT stored the 5-char labels AS the block ids, permanently
-— not the "re-mint visible in diffStats" §8.25 first claimed. The guard
-(`checkPutBlockIds`) collects the body's local ids (blocks, table
-columns/rows, views — the relabel domain) and refuses any id the object's
-own export-shape marshal does not carry, before the creating resolvers
-run. An unowned id that tails an owned one is diagnosed as a compact
-label; a genuinely new block omits its id. The loud refusal is the honest
-interim until Wave 2.1 teaches PUT the unique-suffix resolution C4 already
-permits — and it narrowed with the relabel rule: a document of meaningful
-ids round-trips GET(default) → PUT untouched, so the trap is confined to
-minted-id documents, exactly where the label saving is real.
+**PUT refuses unowned ids instead of adopting them — SUPERSEDED by
+§8.27, which removed PUT.** Reproduced live: GET(default) → PUT stored the
+5-char labels AS the block ids, permanently — not the "re-mint visible in
+diffStats" §8.25 first claimed. The guard (`checkPutBlockIds`) collected
+the body's local ids (blocks, table columns/rows, views — the relabel
+domain) and refused any id the object's own export-shape marshal did not
+carry, before the creating resolvers ran. It was explicitly *the honest
+interim* until PUT learned the unique-suffix resolution C4 permits; the
+interim ended by deleting the surface instead, which is the stronger
+form of the same fix — a channel that cannot take an id literally cannot
+adopt one. What survives is `docLocalIds` and the create-side
+`warnLabelShapedIds` warning, whose subject (a clone adopting labels) is
+real and harmless.
 
 **Partial reads are marked partial.** A `?block=` subtree read was a
 schema-valid envelope with nothing marking it partial, and PUT of that
 exact body deleted every block outside the subtree (reproduced:
 `blocksRemoved: 5` on a 6-block page) while the equally partial outline
-was refused loudly. The subtree envelope now carries `"subtree": true` —
+was refused loudly. The subtree envelope carries `"subtree": true` —
 schema-invalid by `additionalProperties: false`, the way outline is
-partial by construction — and PUT/create name it precisely before the
-schema does.
+partial by construction — and create names it precisely before the schema
+does. (The PUT half of the refusal went with PUT; the marker and the
+create refusal stand, and the delete-everything-outside failure mode is
+now unreachable by construction.)
 
 **Create accepts a pasted read.** `POST /objects` 400ed on the `etag` of
-every read shape while PUT stripped the same field. The create body now
-goes through the same envelope stripping (etag, warnings) and the subtree
-refusal. Label-shaped ids (5 lowercase hex — every served label's exact
+every read shape while PUT stripped the same field. The create body goes
+through the same envelope stripping (etag, warnings) and the subtree
+refusal — and since §8.27 removed PUT, `normalizeCreateBody` is the only
+place that stripping lives. Label-shaped ids (5 lowercase hex — every served label's exact
 shape) ride a warning rather than a refusal: with no owned-id baseline a
 label is indistinguishable from a rare authored 5-hex id, a clone of a
 document that truly owns such ids must keep working, and adoption on a
@@ -3676,11 +3701,12 @@ instead of 409ing or re-applying under a fresh key.
 
 **Recorded, deliberately unfixed:**
 
-- `diffStats` under-reports a PUT identity rewrite on tables: reproduced
+- `diffStats` under-reported a PUT identity rewrite on tables: reproduced
   4 added/4 removed while 3 row ids and 6 derived cell ids also changed
   identity. Any §8.25-era argument that "diffStats makes it visible" was
-  therefore half-true on tables; the PUT refusal now fires long before
-  diffStats matters.
+  therefore half-true on tables. *(Moot since §8.27: no surface performs a
+  whole-document identity rewrite. The narrower fact — diffStats does not
+  count derived table-cell identity — still holds and is still unfixed.)*
 - Table columns **with at least one stored cell** never relabel — the
   column's 5-char tail is shared with every derived cell id in that
   column, so the census counts ≥ 2 — which means a served table mixes a
@@ -3733,8 +3759,9 @@ this branch with fail-on-revert tests:
 - `docLocalIds` skipped table-cell **descendants** (the §6.1 F10 array
   form renders them as flat blocks with ids, in the relabel pool), so a
   body whose only minted id lived inside a cell PUT its label back 200,
-  adopted permanently. It recurses now; create's label warning inherits
-  the fix.
+  adopted permanently. It recurses now. The PUT consumer is gone (§8.27);
+  the fix lives on in create's label warning, which is where the helper
+  now sits.
 - The wrapper's C8 record had no lower bound on its reuse window (a
   backwards clock step revived an arbitrarily old key and its rewrite —
   `LastWrite` persists in the CLI session file), judged the window from
@@ -3765,3 +3792,82 @@ live here):
   the artifacts at all — it lives in the `v2ViewSetPropDef` string
   literal served by `GET /v2/schemas/ops/{op}`, structurally invisible
   to swag.
+
+### 8.27 PUT removed — snapshots are for creates, edits are ops (2026-08-10 — decisions as built)
+
+`PUT /v2/spaces/{spaceId}/objects/{objectId}` replaced an object's whole
+document: the body became a `SmartBlockSnapshotBase`, `NewDocFromSnapshot`
+materialized it, and `history.ResetToVersion` diff-applied it against the
+live object. **It is gone, whole.** This section records why, so the shape
+is not re-proposed.
+
+**The principle it leaves.** *Snapshots are for creates; edits are ops.* A
+surface that requires materialising a WHOLE document to change part of it
+is the wrong shape for this API — it pays whole-document cost in both
+directions, it re-derives identity on every write, and it needs a repair
+layer (`preserveEditorOwnedState`) to undo the damage its own round trip
+causes. Approaches that lead back to snapshot generation on the edit path
+are to be treated as a design smell, not a shortcut.
+
+**Four reasons, in the order they weigh.**
+
+1. **Token cost, both ways.** Changing one word cost ~2 400 tokens to read
+   plus ~2 400 to write, against **33** for a PATCH `replaceText` op —
+   two orders of magnitude, on the commonest edit there is (TOKENS §3's
+   flow table, M-24blk: "GET default → PATCH `replaceText` by id =
+   2 417 + 33"; PUT pays the 2 417 again on the way out).
+2. **Its one distinguishing property was conditional and unexercised.**
+   The id-matched minimal CRDT diff only helped a client that had
+   preserved the stored block ids. A client that had not got a full
+   rewrite — which `setProperties` + `replaceSubtree` already produce, on
+   an id-addressed path that cannot silently mutate identity.
+3. **No consumer.** Nothing in the tree called it: not the §7 wrapper
+   (which excluded it by design), not the CLI, not the evals, not the
+   integration tests. Only its own unit tests.
+4. **It cost three review rounds.** Every id-identity defect of the Wave-0
+   hardening is downstream of one asymmetry: **PUT took block ids
+   literally while PATCH resolves them.** Labels adopted as stored ids,
+   the cell-descendant hole, the `?ids=full`-before-PUT ceremony, the
+   owned-vocabulary refusal (§8.26) — all of it exists to protect one
+   surface from a vocabulary the rest of the API handles by construction.
+   Removing the consumer removes the asymmetry.
+
+**Removed:** the route (`registerEditRoutes`) and its authz registry entry;
+`PutObjectV2Handler` and its OpenAPI operation (`v2_put_object`);
+`V2Service.PutObject`, `putPipeline`, `runEdit`, `normalizePutBody`,
+`checkPutBlockIds`/`maxPutIdIssues`, `finishEdit`, `marshalForEdit`;
+`apicore.ObjectMutator.ResetObject` (the port is single-method now) and the
+adapter's reset implementation with `preserveEditorOwnedState`,
+`preserveStructuralBlocks`, `copySubtree` and `isStructuralBlock`; and
+`docCreateOptions.tolerateCorpseKeys` with its `anyRelationByKeyExists`
+probe, whose only purpose was letting a GET→PUT of a corpse-held property
+key round-trip (§8.23 cause 3).
+
+**Kept, and re-framed.** `?ids=full` survives as the **backup/export
+shape** and as the read to clone from — not as "the PUT read"; the
+id-spelling ceremony that existed only to feed PUT is deleted from the
+guides. `docLocalIds` and the `"subtree": true` marker are shared with
+create and keep their create halves (`warnLabelShapedIds`; the subtree
+refusal). The C11 write-safety guard loses its PUT exemption: its 422 now
+says "edit it in the app" rather than "replace it wholesale with PUT".
+`ensureIdempotency` keeps `PUT` in its METHOD set deliberately — it
+classifies methods, not routes, so a future mutation method is covered by
+construction.
+
+**What this retires from the plan.** Wave 2.1's "teach PUT the
+unique-suffix resolution C4 already permits" disappears with its subject,
+as does the review-debt item "PUT and `POST /sets` still run whole-document
+creating-resolver imports" for the PUT half (`POST /sets` still does).
+
+**The one capability it nominally served — "clear the document and write
+new content" — is owed a replacement.** Today that costs a `deleteBlock`
+per top-level block. The named follow-up is a **range block-remove op** on
+PATCH (APIV2_PLAN.md), so the clear-and-rewrite case is one bounded op plus
+one `insertBlocks`, at op cost rather than document cost. Deliberately not
+built here: removing the wrong shape first is what makes the right one
+easy to specify.
+
+**If a whole-document-replace client ever materialises**, it gets rebuilt
+with id **resolution** from the start (`matchBlockRef`, as every other
+write channel does) rather than inheriting the literal semantics that
+caused these bugs.

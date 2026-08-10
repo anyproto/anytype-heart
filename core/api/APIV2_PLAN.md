@@ -16,7 +16,8 @@ ones with measured numbers or a live defect behind them.
 
 ## Built and green (for orientation)
 
-Phases 0–7 — read, create, edit (batched id-addressed ops + PUT), query with
+Phases 0–7 — read, create, edit (batched id-addressed ops; the
+full-document PUT shipped and was **removed** — §8.27), query with
 the compact filter DSL, the task-tool wrapper (12 tools, CLI, MCP stdio, two
 model tiers), chats, the space periphery; the view family
 (`updateView`/`insertView`/`moveView`/`deleteView`); scoped API keys with the
@@ -45,13 +46,15 @@ inline object refs, no pins**. `full`/export is **full ids everywhere**
 relabelling is lossy. Combined, against the actual served bytes:
 **−33.1 % across the corpus**.
 
-Closed by the hardening (§8.26): PUT **refuses** a body carrying ids the
+Closed by the hardening (§8.26): PUT **refused** a body carrying ids the
 object does not own (it used to silently adopt served labels as stored
 ids); `?block=` subtree reads are marked partial and no write path accepts
 them; create strips the read envelope and warns on label-shaped ids; the
-wrapper's client-side relabeling retired. Still owed to 2.1: teaching PUT
-the suffix resolution the ops already use, so the refusal can become a
-resolution.
+wrapper's client-side relabeling retired. **§8.27 then removed PUT
+entirely**, which closes the same trap by construction — no channel takes
+block ids literally any more — and retires the item once owed to 2.1
+("teach PUT the suffix resolution the ops already use"). `?ids=full` is
+now framed as the backup/export shape, not as a write-back read.
 
 ## Wave 1 — finish the identity layer (one item fixes a live defect)
 
@@ -61,7 +64,7 @@ cosmetic.
 | # | item | why now | where |
 |---|---|---|---|
 | 1.1 | **Heart-side mint hardening** — `injectApiObjectKey` checks nothing for UI creates | prerequisite for 1.2/1.3; v2 currently defends only at resolution | ADDRESSING §7.5 req 1; APIV2.md §8.22 |
-| 1.2 | **Backfill `apiObjectKey` for old spaces** (`systemobjectreviser` never sets it) | **live silent wrong-entity write**: in a pre-`apiObjectKey` space a UI property named "Due Date" claims `due_date`, and `PUT {"properties":{"due_date":…}}` lands in it instead of the bundled property. Not "no stable address" — the wrong address | ADDRESSING §7.5 req 5; surface review |
+| 1.2 | **Backfill `apiObjectKey` for old spaces** (`systemobjectreviser` never sets it) | **live silent wrong-entity write**: in a pre-`apiObjectKey` space a UI property named "Due Date" claims `due_date`, and a `setProperties {"set":{"due_date":…}}` lands in it instead of the bundled property. Not "no stable address" — the wrong address | ADDRESSING §7.5 req 5; surface review |
 | 1.3 | **BSON→slug re-spelling sweep** (153 of 194 relation keys, 5 of 29 type keys) | −19 % on property reads **and** it deletes the 722-token `GET /properties` discovery call a model needs today to learn what `6a76…` means | ADDRESSING §7.5a-1; TOKENS §6.2, action 6 |
 | 1.4 | Remaining identity deferrals: view-op `set` channels are stored-key-only; the compact filter string is fold-strict | both fail loud today, so they are debt rather than bugs | APIV2.md §8.23 |
 
@@ -84,13 +87,14 @@ is cheaper to specify after them.
 | 3.2 | **Phase 9** — space-optional object routes (`spaceId` is redundant when the object id is known) | drops a required argument from every object-addressed tool — the argument a small model most often omits, because it is never in the user's request. Blocked on decision D2 | SURFACES §10.3 |
 | 3.3 | `DELETE /v2/spaces/{spaceId}/objects/{objectId}` (archive) — specced, never registered | also the only way to clean up test data; its absence is why eval fixtures accumulate | APIV2.md §3 |
 | 3.4 | `GenerateSchema` + store-backed option join — un-501 `types/{type}/schema` | the wrapper's `describe` runs degraded until this lands | APIV2.md §3, `discovery.go:235` |
+| 3.5 | **A range block-remove op on PATCH** — `deleteBlocks {from, to}` (or `{all: true}` scoped to the document root), one op that removes a contiguous run of top-level blocks with their subtrees | **the capability PUT nominally served**: "clear the document and write new content" now costs one `deleteBlock` op per top-level block, so a 60-block rewrite is 60 ops against a 512-op batch cap for what is one intent. With this it is one op + one `insertBlocks`, at OP cost rather than DOCUMENT cost — which is the whole reason PUT could be removed rather than replaced (§8.27). Design notes: reuse `matchBlockRef` for both endpoints (no literal-id channel), refuse a range that straddles a container boundary, and make `diffStats.blocksRemoved` the receipt | APIV2.md §8.27 |
 
 ## Wave 4 — format-level
 
 | # | item | notes | where |
 |---|---|---|---|
 | 4.1 | **Pins + the D1 kill + the SPEC revision** — the pin table, the label-minting algorithm, the total resolution rule | **pins are export-only** (decided): they protect rename/cross-account round trips that PATCH-first agents never perform, at ~22 tok per custom key. D1 (the silent id-as-name fallback) cannot be fixed without them | ADDRESSING §7.1, §7.6 steps 1–2; TOKENS action 7 |
-| 4.2 | §7.4 strict write defaults — the kind × verb rule (only options implicitly created; POST permissive, PATCH/PUT strict) | supersedes R9's blanket default; free only pre-ship | ADDRESSING §7.4 |
+| 4.2 | §7.4 strict write defaults — the kind × verb rule (only options implicitly created; POST permissive, PATCH strict) | supersedes R9's blanket default; free only pre-ship | ADDRESSING §7.4 |
 
 ## Quality track — runs alongside, not after
 
@@ -115,7 +119,7 @@ is cheaper to specify after them.
 
 ## Tickets outside API v2
 
-- **PUT and `POST /sets` still run whole-document creating-resolver imports** — the same dangling-name minting the view ops fixed, on a path that predates them. Needs its own change: with PUT the caller authored the whole document, so "did they mean this?" cannot be answered the way it was for view ops.
+- **`POST /sets` still runs a whole-document creating-resolver import** — the same dangling-name minting the view ops fixed, on a path that predates them. Needs its own change: the caller authored the whole document, so "did they mean this?" cannot be answered the way it was for view ops. *(PUT was the other half of this item and left with §8.27.)*
 - **Date objects** — a view op on one dies inside `sb.Apply` with `state.ErrRestricted` (a different sentinel from `restriction.ErrRestricted`), likely surfacing as a 500. Pre-existing and shared with every block op.
 - **GO-5969** — the type default-view visibility regression, cherry-picked to `develop` as PR #3235. Independent of this branch; every type created since Nov 2025 has an all-columns-hidden "All" view until it merges.
 - Two eval documents remain in the throwaway test account (no object DELETE — see 3.3); they double as the Q4 rerun fixtures.

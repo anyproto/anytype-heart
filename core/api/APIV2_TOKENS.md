@@ -85,7 +85,7 @@ also adds an indirection: a model that wants to write an object id back
 must dig the legend for the full id — a correctness hazard on top of a
 token loss. C4's research rationale (−89 % id *transcription* errors) is
 about models *generating* references — which happens in agent-authored
-create/PUT documents and in ops, where **block** ids are the vocabulary
+create documents and in ops, where **block** ids are the vocabulary
 (and those are full on default reads anyway). On reads the legend earns
 nothing. **Recommendation: serve full object ids inline by default; keep
 legend resolution on *input* documents unchanged (SPEC §9a is total), and
@@ -358,7 +358,8 @@ from a trap into the cheapest correct loop.
   GETs the document, resolves, then PATCHes by id — the document can move
   between the two. In-API resolution runs under the object lock; the race
   disappears. §7.3 item 1's own principle (bounded server-side primitives,
-  never GET+compute+PUT at a layer above) argues this side.
+  never GET+compute+write-the-whole-document at a layer above) argues
+  this side — the same argument APIV2.md §8.27 applied to PUT itself.
 - **The §8.21-fix-3 precedent does not apply.** Case folding went
   wrapper-side because folding is *forgiveness* — it changes what a
   spelling resolves to, and REST clients depend on exact-match strictness.
@@ -406,7 +407,7 @@ for stored dataview views; the wrapper's read already calls this `mode`.)
 | `text` | markdown envelope | short mention links (§1.3 fix); no ids | ~1 150 *(estimate after fix — 14 mentions × ~55 saved; 2 036 today)* |
 | `props` | properties + etag, no blocks | full object ids | 774 |
 | `edit` (default) | properties + blocks | **full block ids, full object ids inline, no legend, compact (§1.1+§1.2)** | 1 811 |
-| `full` | canonical export: refs legend + full block ids + **pins when they ship** | the backup/PUT-round-trip shape = `Marshal` default | ~1 900 + pins |
+| `full` | canonical export: refs legend + full block ids + **pins when they ship** | the backup shape = `Marshal` default | ~1 900 + pins |
 
 - `include=` and `ids=` retire (props/edit/full cover every measured use;
   `include=blocks` saved 2–7 % on content-bearing docs and §7 shows
@@ -422,8 +423,9 @@ for stored dataview views; the wrapper's read already calls this `mode`.)
   240–460 tok on the corpus, less than the second round trip it invites.
 - **Pins land in `full` only.** ADDRESSING §7.1 plans "API v2 default
   read: all pins"; measured, that is +22 tok per custom key on every
-  read to protect a GET→PUT round trip that PATCH-first agents almost
-  never run — and PATCH inputs never consume pins (key resolution walks
+  read to protect a whole-document round trip that no longer has a write
+  leg at all (§8.27 removed PUT) and that PATCH-first agents never ran —
+  and PATCH inputs never consume pins (key resolution walks
   the §7.5a-5 chain regardless). `full` is the document-shaped read; it
   carries the protection. This review recommends amending §7.1's emission
   table accordingly; `?pins=min` dies with the ordinal (§6.1).
@@ -523,7 +525,7 @@ that ships must displace text. Exact edits, keyed to today's lines — net
 - **L78–79 ("Object ids in read bodies are compacted via a refs legend by
   default (`?ids=full` opts out); block ids are always full")**: becomes
   "Ids are full on `edit` reads; `full` mode adds the refs legend for
-  export/PUT round-trips." −1 line.
+  export and backups." −1 line.
 - **L74–75 ("editing needs no prior full read once you know the ids")**:
   append the locator sentence: "text edits need no read at all —
   `replaceText` with no `id` locates by `find` (must match exactly once;

@@ -9,6 +9,10 @@ mechanism confirmed) before promotion; items two lenses found independently are 
 conclusion. Verdicts on the two previously-open findings: **C4 still open** (and wider —
 `setCell` strips the whole table), **E8 still open** (and wider — the entire PUT commit path
 is untested, confirmed by mutation testing in two lenses independently).
+*(2026-08-10: the PUT half of E8 is retired rather than fixed — APIV2.md
+§8.27 removed the surface, so `ResetObject`, `preserveEditorOwnedState`
+and their untested guards no longer exist. E8's PATCH half — no change-set
+assertion on `sb.Apply` — stands.)*
 
 ---
 
@@ -219,7 +223,11 @@ adds routes. Three mutations leave `go test ./core/api/...` fully green:
 - **(c) E8 wider than recorded**: `sb.Apply(st)` → `Apply(st, NoRestrictions, DoSnapshot)`
   green (`objectmutateadapter.go:72`); deleting `preserveEditorOwnedState`,
   `checkObjectEditable` or `guardBundledRevision` from `ResetObject` (`:86-130`) each green —
-  there is no `TestResetObject` anywhere. Root cause verified in source: the mutator mock
+  there is no `TestResetObject` anywhere. *(2026-08-10: `ResetObject` and
+  `preserveEditorOwnedState` are gone — §8.27 — so three of the four
+  untested guards no longer exist; `checkObjectEditable` and
+  `guardBundledRevision` survive on the PATCH path, where `TestMutateObject`
+  covers both. The `sb.Apply` mutation is still green.)* Root cause verified in source: the mutator mock
   builds a fresh ROOT state via `NewDocFromSnapshot` (`edit_test.go:64-72`) where production
   hands a CHILD state, so ApplyState diffs nothing and restrictions never run in tests.
   Fix: an `expectMutateLive` fixture over smarttest + assertions on `st.GetChanges()` (no
@@ -496,7 +504,8 @@ Ranked by risk × invisibility-to-mocks. E1 is the precondition for E2–E10.
 4. **E4 — A PATCH that lands in the CRDT, with change-set assertions, surviving evict+reopen —
    plus `addItems` on a REAL collection.** Create from markdown, PATCH a batch covering every
    op kind, assert diffStats; capture the emitted change set (no RelationRemove/BlockDelete/
-   snapshot beyond the ops — closes E8 and the four untested ResetObject guards); restart
+   snapshot beyond the ops — closes E8; the ResetObject guards it also named went away with
+   PUT, §8.27); restart
    against the same repoDir and re-GET (title/featured row/custom relation intact, etag moved).
    Drive `addItems`/`removeItems` on a real collection smartblock — the ONE test that would
    have caught M1. Why: the mutator mock builds a root state; ApplyState diffs nothing in

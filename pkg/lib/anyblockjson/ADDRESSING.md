@@ -18,7 +18,7 @@ with the §9a total resolution rule. **A label is an opaque map key**: it
 must be unique within the document and nothing else; its readability is a
 courtesy to the reader, not a mechanism, and resolution never parses one
 (§7.1). Write paths flip to **strict-by-default wherever a stale read can
-exist** (PATCH/PUT): an unknown option name is a loud 400 with did-you-mean
+exist** (PATCH): an unknown option name is a loud 400 with did-you-mean
 unless the request says `create: true`; an ambiguous name is always a 400;
 and **only options may ever be created implicitly** — an option's name is
 its entire definition, while properties, types and objects carry rich
@@ -263,7 +263,7 @@ per design, for the two critical windows:
 | **Ids only** | Restore resolves `o1` → correct. | Agent cannot plausibly author ids; DOA. |
 | **Composite `High#6a76`** | Suffix resolves → correct; stale name half is cosmetic (Stack Overflow slug-URL semantics). | Only if the agent echoes the suffix — small models won't; bare "High" must stay legal → the race returns. |
 | **Inline `{id,name}`** | id wins → correct (Notion semantics). | Same caveat: agents author bare strings; both forms legal forever. |
-| **Pins + strict writes (recommended)** | Pin `"High": "o1"` resolves by id → correct; the label is cosmetic. | Document paths (PUT round trip) carry pins → resolve by id. Bare ops (`setProperties`) hit the strict default: "High" no longer matches → **400 with did-you-mean ("Critical") and the `create:true` remedy** — loud, before damage (§7.4). |
+| **Pins + strict writes (recommended)** | Pin `"High": "o1"` resolves by id → correct; the label is cosmetic. | Document paths (create) carry pins → resolve by id. Bare ops (`setProperties`) hit the strict default: "High" no longer matches → **400 with did-you-mean ("Critical") and the `create:true` remedy** — loud, before damage (§7.4). |
 | **Two profiles** | Backup profile (ids) → correct. | Agent profile is names-only → the race, unmitigated, plus a reader fork. |
 
 Property/type renames are the benign half **because the stored key never
@@ -675,7 +675,7 @@ representable, so it stops being invisible.
 | Shape | Pins |
 |---|---|
 | Canonical export / backup (`Marshal` default) | **all** — every option value, every non-bundled key (plus any suffixed bundled label). Lossless; a backup restored after a rename re-points correctly. |
-| API v2 default read | all (the PUT round trip is a document path and inherits the protection; cost = one legend line per non-bundled key and per distinct select value — zero on fully-bundled documents); `?pins=min|none` opts down. |
+| API v2 default read | all (the whole-document round trip is a document path and inherits the protection; cost = one legend line per non-bundled key and per distinct select value — zero on fully-bundled documents); `?pins=min|none` opts down. **Superseded: APIV2.md §8.27 removed the document WRITE path (PUT), so v2 has no round trip left to protect on the default read — TOKENS §6 puts pins in the export shape only.** |
 | Outline / prompt / example shapes | none (matches `OmitIds`+labels today). |
 | Agent-authored documents | none — pins are `x-output-only` in the schema; authors write bare names and keys, exactly as now. |
 
@@ -696,8 +696,9 @@ resolution rule, two emission policies — G's honest core, without the fork.
   re-spell to slugs (§7.5a-4 amends C2's letter; 153 bundled keys change
   spelling); BSON keys disappear behind slug labels; D1 becomes a warning
   instead of garbage.
-- **API write:** documents (POST/PUT) inherit pin protection; bare ops get
-  the §7.4 strict default. The rename race on bare ops now fails loudly
+- **API write:** document creates (POST) inherit pin protection; bare ops
+  get the §7.4 strict default. *(PUT was the other document write path;
+  it was removed — APIV2.md §8.27.)* The rename race on bare ops now fails loudly
   *before* damage instead of minting twins.
 - **Small models:** see nothing new on the read/author side; on writes,
   a typo'd option name becomes a path-addressed 400 with candidates
@@ -776,7 +777,7 @@ step further and bind the *default* to the verb, because the risk boundary
 is the stale-read window, and that window only exists when modifying state
 previously read:
 
-| Kind | POST (create/import — nothing was read) | PATCH / PUT (read-modify-write) |
+| Kind | POST (create/import — nothing was read) | PATCH (read-modify-write; PUT was the other column until APIV2.md §8.27 removed it) |
 |---|---|---|
 | option names in values | **create-missing** (the §8.1/R9 behavior): bounded (`v2MaxCreatedOptionsPerPatch` = 64), validated-before-created, reported in `created`, previewed by dry runs — `guardCreateMissing`, APIV2.md §8.13, all unchanged | **strict**: unknown name → 400 `unknown_option`, did-you-mean over the property's labels, and the remedy named verbatim ("retry with create:true"); `create: true` restores create-missing under the same bound and ordering |
 | option names in `typeProperties` | always creates — declaring a vocabulary IS the create statement | same (editing a declared vocabulary is explicit intent) |
@@ -1164,7 +1165,7 @@ record):
    vocabulary flip, schemas/goldens/SKILL/eval) is the remaining sweep
    and needs its own change; view-op set channels stay stored-key-only
    until then]*
-4. **Write-side defaults** (§7.4): strict on PATCH/PUT, `create: true`,
+4. **Write-side defaults** (§7.4): strict on PATCH, `create: true`,
    the ambiguous-name 400; APIV2.md ledger edits; wrapper pre-validation +
    explicit create intent. *[open]*
 5. **Slug lifecycle** (§7.5): the corpse policy (archived/uninstalled
@@ -1186,7 +1187,9 @@ record):
   concept, four kind maps.
 - ~~Pin-all vs pin-min on API reads?~~ **Pin-all**, `?pins=min|none`
   opt-down. The only argument for min was token caution; clean documents
-  pay ~nothing, and pin-all is what protects the PUT loop.
+  pay ~nothing, and pin-all is what protects the PUT loop. *(Reopened by
+  APIV2.md §8.27: the PUT loop is gone, so the argument for pin-all on the
+  DEFAULT read is gone with it — export-shape-only, per TOKENS §6.)*
 - ~~Legacy id-as-name rescue on import?~~ **Dropped.** It was
   compatibility machinery for documents that were never produced outside
   this repo; the D1 fix means they never will be. Dev artifacts
@@ -1229,7 +1232,7 @@ record):
    (a) decision: twin slugs are now the *only* concurrency artifact
    left. *Lean: floor first, sweep if telemetry shows real collisions.*
 4. **Uniform strictness for integration scopes** — narrowed by §7.4:
-   PATCH/PUT are strict for everyone; the remaining question is whether
+   PATCH is strict for everyone; the remaining question is whether
    integration-scoped keys should make POST strict too (Airtable is
    uniform-strict). Touches the API-key-scoping design, not this format.
 5. **Identifier-shaped property/type labels: SHOULD or MUST?** Largely

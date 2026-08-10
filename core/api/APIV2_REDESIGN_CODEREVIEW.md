@@ -8,7 +8,10 @@ severity-tiered; cross-confirmations noted.
 
 Baseline verified by the synthesizer before review: tree clean, `go build`
 exit 0, all 12 packages green, `ResetToVersion` confined to `ResetObject`
-(PUT), PATCH ending in a plain `sb.Apply(st)`.
+(PUT), PATCH ending in a plain `sb.Apply(st)`. *(2026-08-10: `ResetObject`
+and PUT are gone — APIV2.md §8.27 — so `ResetToVersion` has no API caller
+at all; findings below that name PUT as the fallback or the comparison
+are retired with it.)*
 
 ## Verdict
 

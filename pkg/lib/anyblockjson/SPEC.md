@@ -1207,8 +1207,9 @@ lossy). `CompactIds` remains as shorthand for both. The split exists because
 consumers legitimately want one without the other, and because the two
 halves pay differently: API v2 default reads use block labels (the server
 resolves them by unique suffix) and keep object refs full inline, while its
-export shape — the one whose bytes must PUT back as a minimal diff — keeps
-block ids full and takes the legend (API spec C4). Legend example:
+export shape — the backup/round-trip shape, whose bytes must re-import to
+the same document — keeps block ids full and takes the legend (API spec
+C4). Legend example:
 
 ```json
 "refs": { "miovm": "bafyreieqh63jv…miovm", "roman": "bafyreidfmzjh…" }
