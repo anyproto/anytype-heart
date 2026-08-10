@@ -563,7 +563,9 @@ func TestV2GetObject(t *testing.T) {
 		var v2Err *v2model.Error
 		require.ErrorAs(t, err, &v2Err)
 		assert.Equal(t, 404, v2Err.Status)
-		assert.Contains(t, v2Err.Message, "outline=true")
+		assert.Contains(t, v2Err.Message, `"nope"`)
+		require.NotEmpty(t, v2Err.Issues)
+		assert.Contains(t, v2Err.Issues[0].Hint, "outline=true")
 	})
 
 	t.Run("format=md returns the markdown envelope", func(t *testing.T) {

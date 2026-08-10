@@ -488,8 +488,8 @@ func (a *v2StateApplier) resolveRef(doc *v2EditDoc, ref, path string) (int, erro
 			fmt.Sprintf("block reference %q matches more than one block — use the full block id", ref),
 			v2model.Issue{Path: path, Message: "the reference is a suffix of several block ids"})
 	default:
-		return -1, v2model.NotFound(
-			fmt.Sprintf("block %q not found — GET the object with ?outline=true to list block ids", ref))
+		return -1, v2model.NotFound(fmt.Sprintf("block %q not found", ref),
+			v2model.Issue{Path: path, Message: v2AddressableBlocksMessage, Hint: v2AddressableBlocksHint})
 	}
 }
 

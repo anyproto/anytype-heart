@@ -524,9 +524,35 @@ func resolveBlockRef(ids []string, ref string) (int, error) {
 			fmt.Sprintf("block label %q matches more than one block — use the full block id", ref),
 			v2model.Issue{Path: "block", Message: "the label is a suffix of several block ids"})
 	default:
-		return -1, v2model.NotFound(fmt.Sprintf("block %q not found — read the object without ?block= or with ?outline=true to list block ids", ref))
+		return -1, v2model.NotFound(fmt.Sprintf("block %q not found", ref),
+			v2model.Issue{Path: "block", Message: v2AddressableBlocksMessage, Hint: v2AddressableBlocksHint})
 	}
 }
+
+// v2AddressableBlocksMessage / v2AddressableBlocksHint are the shared
+// not-found repair loop for a block reference, on the read side (?block=)
+// and the write side (the PATCH ops). They have to be TRUE: both messages
+// used to say "GET the object with ?outline=true to list block ids", and a
+// caller who had just been served a block id the outline does not list was
+// sent round that loop forever.
+//
+// What ?outline=true lists is exactly the document's blocks array — the set
+// a block reference resolves against, on every channel. A default read also
+// serves ids that live INSIDE a block: table row and column ids, the ids of
+// blocks nested in table cells, dataview view ids. Those are real stored ids
+// and they relabel like any other, but they are not block references: they
+// are addressed through the slot that owns them (setCell's row/col, the view
+// ops' view), and a block nested in a cell has no addressing slot at all —
+// it is reached by rewriting its cell.
+//
+// TODO(GO-7383): make cell descendants addressable. Ticketed, not taken —
+// see APIV2.md §8.29 for what it would cost (a second addressing mode in
+// every ref-taking op, a served shape for a partial cell run, and an outline
+// entry that says "this is not a sibling of the top-level run").
+const (
+	v2AddressableBlocksMessage = "the addressable blocks are the entries of the document's blocks array"
+	v2AddressableBlocksHint    = "GET the object with ?outline=true to list them. Ids nested inside a block are served but are not block references: a table's rows and columns are addressed by setCell's row/col, a dataview's views by the view ops, and a block inside a table cell is not individually addressable — rewrite its cell with setCell."
+)
 
 //
 // ---- object list (C5 minimal rows) ----

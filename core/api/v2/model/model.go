@@ -66,9 +66,11 @@ func ValidationFailed(message string, issues ...Issue) *Error {
 	return NewError(http.StatusBadRequest, CodeValidationFailed, message, issues...)
 }
 
-// NotFound is the 404 for missing resources.
-func NotFound(message string) *Error {
-	return NewError(http.StatusNotFound, CodeNotFound, message)
+// NotFound is the 404 for missing resources. Issues are optional — a 404
+// that has a repair loop to describe (which read actually lists the thing
+// the caller could not find) carries it C6-shaped rather than in prose.
+func NotFound(message string, issues ...Issue) *Error {
+	return NewError(http.StatusNotFound, CodeNotFound, message, issues...)
 }
 
 // SpaceNotGranted is the 403 for a request outside the key's space grant —

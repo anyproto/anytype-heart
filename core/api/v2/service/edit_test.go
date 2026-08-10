@@ -1393,7 +1393,7 @@ func TestPatchObject(t *testing.T) {
 		assert.Contains(t, apiErr.Message, "matches more than one block")
 	})
 
-	t.Run("missing block steers to the outline", func(t *testing.T) {
+	t.Run("missing block steers to the outline, C6-shaped", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.expectMutate(editRead(t, editBaseDoc))
 
@@ -1402,7 +1402,10 @@ func TestPatchObject(t *testing.T) {
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusNotFound, apiErr.Status)
-		assert.Contains(t, apiErr.Message, "?outline=true")
+		assert.Contains(t, apiErr.Message, `"nowhere"`)
+		require.NotEmpty(t, apiErr.Issues, "the repair loop rides a C6 issue, not the message prose")
+		assert.Equal(t, "ops[0].id", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Hint, "?outline=true")
 	})
 
 	t.Run("unknown op lists the op set", func(t *testing.T) {
@@ -1549,4 +1552,34 @@ func TestApplierRenderCounts(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, 3, applier.marshalCount)
 	})
+}
+
+// TestPatchExcludesSystemManagedObjects is F3: the canUpdateObject switch in
+// checkEditPreconditions lost its only coverage when PUT went away. It must
+// FAIL if the switch is deleted — the assertion is on the refusal itself,
+// and the mutator carries no expectation, so a PATCH that got through would
+// blow up on the mock too.
+func TestPatchExcludesSystemManagedObjects(t *testing.T) {
+	ctx := context.Background()
+	for _, sbType := range []model.SmartBlockType{
+		model.SmartBlockType_STRelation,
+		model.SmartBlockType_STRelationOption,
+		model.SmartBlockType_FileObject,
+		model.SmartBlockType_Participant,
+	} {
+		t.Run(sbType.String(), func(t *testing.T) {
+			fx := newV2Fixture(t)
+			read := editRead(t, editBaseDoc)
+			read.SbType = sbType
+			fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(read, nil).Maybe()
+
+			_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+				patchBody(`{"op":"updateBlock","id":"blockChild1","set":{"text":"edited"}}`), "", false)
+
+			apiErr := v2Err(t, err)
+			assert.Equal(t, http.StatusBadRequest, apiErr.Status)
+			assert.Contains(t, apiErr.Message, "system-managed")
+			assert.Contains(t, apiErr.Message, sbType.String())
+		})
+	}
 }
