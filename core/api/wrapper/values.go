@@ -72,9 +72,9 @@ const maxPropertyPages = 10
 // into a 400 the day the constant is lowered.
 const propertyFormatsPageSize = 500
 
-// propertyFormats loads the space's property key → format index.
-func (r *Runner) propertyFormats(ctx context.Context, spaceId string) (map[string]string, error) {
-	formats := map[string]string{}
+// propertyRows loads the space's property rows, following C10 pagination.
+func (r *Runner) propertyRows(ctx context.Context, spaceId string) ([]v2model.PropertyRow, error) {
+	var rows []v2model.PropertyRow
 	offset := 0
 	for page := 0; page < maxPropertyPages; page++ {
 		var resp v2model.ListResponse[v2model.PropertyRow]
@@ -86,13 +86,24 @@ func (r *Runner) propertyFormats(ctx context.Context, spaceId string) (map[strin
 		if err != nil {
 			return nil, fmt.Errorf("list properties: %w", err)
 		}
-		for _, row := range resp.Data {
-			formats[row.Key] = row.Format
-		}
+		rows = append(rows, resp.Data...)
 		if !resp.HasMore {
 			break
 		}
 		offset += len(resp.Data)
+	}
+	return rows, nil
+}
+
+// propertyFormats loads the space's property key → format index.
+func (r *Runner) propertyFormats(ctx context.Context, spaceId string) (map[string]string, error) {
+	rows, err := r.propertyRows(ctx, spaceId)
+	if err != nil {
+		return nil, err
+	}
+	formats := make(map[string]string, len(rows))
+	for _, row := range rows {
+		formats[row.Key] = row.Format
 	}
 	return formats, nil
 }

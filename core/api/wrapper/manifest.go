@@ -123,8 +123,12 @@ func Tools() []Tool {
 			ReadOnly: true,
 		},
 		{
-			Name:        "find",
-			Description: "Search objects in a space. Returns numbered handles (1, 2, …) the other tools accept as `object`. Each find renumbers the handles.",
+			Name: "find",
+			// the last sentence is the §8.33 listing, stated because the
+			// description must not claim a bare space returns matches — not
+			// because prose is expected to steer (arm B2 measured that it does
+			// not); the behaviour change is what carries the fix
+			Description: "Search objects in a space by query, type or filter. Returns numbered handles (1, 2, …) the other tools accept as `object`. Each find renumbers the handles. Given none of the three it matches nothing and lists the space instead — unnumbered, and not addressable.",
 			Args: []Arg{
 				{Name: "space", Type: ArgString, Required: true, MaxLen: maxKeyLen, Description: "space id"},
 				{Name: "query", Type: ArgString, MaxLen: maxNameLen, Description: "full-text words to match"},

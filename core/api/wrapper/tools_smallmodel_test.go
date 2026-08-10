@@ -150,6 +150,7 @@ func TestTypeKeyCaseFold(t *testing.T) {
 		fx.stub("GET /v2/spaces/space1/types", 200, typeListBody)
 		fx.stub("GET /v2/spaces/space1/types/page", 200,
 			`{"version":1,"kind":"objectType","key":"page","properties":{"name":"Page"},"typeProperties":[]}`)
+		fx.stub("GET /v2/spaces/space1/properties", 200, propertiesResponse())
 
 		// when
 		result, err := fx.Run(ctx, "describe", map[string]any{"space": "space1", "type": "Page"})

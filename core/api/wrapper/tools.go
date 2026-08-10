@@ -74,13 +74,27 @@ func (r *Runner) runSpaces(ctx context.Context, session *Session, args map[strin
 	}, nil
 }
 
-// findResult is find's machine shape.
+// findResult is find's machine shape. Listing marks the no-criteria call
+// (§8.33): its Rows carry no handle numbers, because nothing was matched.
 type findResult struct {
 	Handles []Handle `json:"handles"`
 	Total   int      `json:"total"`
 	HasMore bool     `json:"has_more"`
+	Listing bool     `json:"listing,omitempty"`
+	Rows    []Handle `json:"rows,omitempty"`
 }
 
+// runFind searches a space — or, when the call names no criterion at all,
+// LISTS it (§8.33). The two are different acts and the difference is the
+// whole point: a search ranks matches, so handle 1 is the object the caller
+// asked for; a bare space matches nothing, so handle 1 is whichever object
+// the index happened to return first. Both used to render as "N matches"
+// with the same numbered handles, and a small model that dropped its
+// `query` read that as a match, addressed handle 1 and wrote three blocks
+// into an unrelated object. The listing therefore assigns NO handles: the
+// intent is still served (you can see what a space holds), but nothing it
+// returns can be passed as `object`, so that write is unreachable rather
+// than discouraged.
 func (r *Runner) runFind(ctx context.Context, session *Session, args map[string]any) (*Result, error) {
 	space := strArg(args, "space")
 	limit := defaultFindLimit
@@ -106,6 +120,9 @@ func (r *Runner) runFind(ctx context.Context, session *Session, args map[string]
 		}
 		body["filter"] = resolved
 	}
+	// no query, no type, no filter: nothing was matched, so this is a
+	// listing and not a search (see the doc comment)
+	listing := len(body) == 0
 	var resp v2model.ListResponse[v2model.ObjectRow]
 	search := func() error {
 		return r.client.decode(ctx, apiRequest{
@@ -134,17 +151,29 @@ func (r *Runner) runFind(ctx context.Context, session *Session, args map[string]
 	for i, row := range resp.Data {
 		handles = append(handles, Handle{N: i + 1, Id: row.Id, Name: row.Name, Type: row.Type})
 	}
-	// each find renumbers (§7.4)
+	// each find renumbers (§7.4) — and a listing numbers nothing, which
+	// clears whatever the previous find left behind: stale handles surviving
+	// a call that matched nothing would be the same mis-address one document
+	// further away
 	session.Space = space
+	if listing {
+		session.Handles = nil
+		// the rows shed their numbers too: the JSON channel must not carry an
+		// addressable-looking handle the text deliberately withheld
+		rows := make([]Handle, 0, len(handles))
+		for _, h := range handles {
+			rows = append(rows, Handle{Id: h.Id, Name: h.Name, Type: h.Type})
+		}
+		return &Result{
+			Text: listingText(rows, resp.Total, resp.HasMore, resp.Warnings),
+			JSON: findResult{Total: resp.Total, HasMore: resp.HasMore, Listing: true, Rows: rows},
+		}, nil
+	}
 	session.Handles = handles
 
 	var b strings.Builder
 	for _, h := range handles {
-		name := h.Name
-		if name == "" {
-			name = "(unnamed)"
-		}
-		fmt.Fprintf(&b, "%d. %s (%s)\n", h.N, name, h.Type)
+		fmt.Fprintf(&b, "%d. %s (%s)\n", h.N, displayName(h), h.Type)
 	}
 	switch {
 	case resp.Total == 0:
@@ -161,6 +190,41 @@ func (r *Runner) runFind(ctx context.Context, session *Session, args map[string]
 		Text: b.String(),
 		JSON: findResult{Handles: handles, Total: resp.Total, HasMore: resp.HasMore},
 	}, nil
+}
+
+// displayName renders a row's name, naming the empty case rather than
+// serving a blank.
+func displayName(h Handle) string {
+	if h.Name == "" {
+		return "(unnamed)"
+	}
+	return h.Name
+}
+
+// listingText renders the no-criteria find. The frame comes FIRST: a small
+// model reads top-down, and the fact that nothing was matched has to reach
+// it before the names do, or the names read as results. Nothing is
+// numbered, and the closing line names the one repair that produces
+// handles.
+func listingText(rows []Handle, total int, hasMore bool, warnings []v2model.Issue) string {
+	var b strings.Builder
+	b.WriteString("nothing was searched for: find with only a space has no criterion to match on, so this is a listing of what the space holds — not results, and not numbered.\n")
+	for _, h := range rows {
+		fmt.Fprintf(&b, "  %s (%s)\n", displayName(h), h.Type)
+	}
+	switch {
+	case total == 0:
+		b.WriteString("the space is empty")
+	case hasMore:
+		fmt.Fprintf(&b, "%d objects — showing %d", total, len(rows))
+	default:
+		fmt.Fprintf(&b, "%d objects", total)
+	}
+	b.WriteString("\nto address one, run find again with query (words from its name), type or filter — a search numbers its results 1, 2, …, and those numbers are what `object` takes.")
+	for _, w := range warnings {
+		b.WriteString("\nwarning: " + w.Message)
+	}
+	return b.String()
 }
 
 func (r *Runner) runRead(ctx context.Context, session *Session, args map[string]any) (*Result, error) {

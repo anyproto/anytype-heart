@@ -184,7 +184,7 @@ func TestMCPToolsCall(t *testing.T) {
 		fx.stub("POST /v2/spaces/space1/search", 200, searchResponse(1, false, v2model.ObjectRow{Id: "bafyobj1", Name: "Doc", Type: "task"}))
 		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 200, editOKBody)
 		resps := fx.mcpSession(t, TierLarge,
-			call(t, 1, "find", map[string]any{"space": "space1"}),
+			call(t, 1, "find", map[string]any{"space": "space1", "query": "doc"}),
 			call(t, 2, "delete_block", map[string]any{"object": "1", "block": "e0002"}))
 		text, isErr := callText(t, resps[1])
 		assert.False(t, isErr)
@@ -220,7 +220,7 @@ func TestMCPRepairLoop(t *testing.T) {
 		fx.stub("POST /v2/spaces/space1/search", 200, searchResponse(1, false, v2model.ObjectRow{Id: "bafyobj1", Name: "Doc", Type: "task"}))
 		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 200, editOKBody)
 		resps := fx.mcpSession(t, TierSmall,
-			call(t, 1, "find", map[string]any{"space": "space1"}),
+			call(t, 1, "find", map[string]any{"space": "space1", "query": "doc"}),
 			call(t, 2, "edit_text", map[string]any{"object": "1", "block": "e0002", "find": "body"}),
 			call(t, 3, "edit_text", map[string]any{"object": "1", "block": "e0002", "find": "body", "replace": "the body"}))
 
@@ -238,7 +238,7 @@ func TestMCPRepairLoop(t *testing.T) {
 		fx.stub("POST /v2/spaces/space1/search", 200, searchResponse(1, false, v2model.ObjectRow{Id: "bafyobj1", Name: "Doc", Type: "task"}))
 		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 200, editOKBody)
 		resps := fx.mcpSession(t, TierSmall,
-			call(t, 1, "find", map[string]any{"space": "space1"}),
+			call(t, 1, "find", map[string]any{"space": "space1", "query": "doc"}),
 			call(t, 2, "add_blocks", map[string]any{"object": "1", "markdown": "- [ ] x", "after": "e0001", "under": "e0002"}),
 			call(t, 3, "add_blocks", map[string]any{"object": "1", "markdown": "- [ ] x", "after": "e0001"}))
 
@@ -255,7 +255,7 @@ func TestMCPRepairLoop(t *testing.T) {
 		fx.stub("POST /v2/spaces/space1/search", 200, searchResponse(1, false, v2model.ObjectRow{Id: "bafyobj1", Name: "Doc", Type: "task"}))
 		fx.stub("GET /v2/spaces/space1/objects/bafyobj1", 200, `{"outline":[{"indent":0,"id":"e0001","type":"heading1","text":"Section"}]}`)
 		resps := fx.mcpSession(t, TierSmall,
-			call(t, 1, "find", map[string]any{"space": "space1"}),
+			call(t, 1, "find", map[string]any{"space": "space1", "query": "doc"}),
 			call(t, 2, "read", map[string]any{"object": "1", "mode": "tree"}),
 			call(t, 3, "read", map[string]any{"object": "1", "mode": "outline"}))
 
@@ -275,7 +275,7 @@ func TestMCPRepairLoop(t *testing.T) {
 		fx.stub("GET /v2/spaces/space1/objects/bafyobj1", 200, testFullDoc)
 		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 200, editOKBody)
 		resps := fx.mcpSession(t, TierLarge,
-			call(t, 1, "find", map[string]any{"space": "space1"}),
+			call(t, 1, "find", map[string]any{"space": "space1", "query": "doc"}),
 			call(t, 2, "move_block", map[string]any{"object": "1", "block": "e0002", "under": "zzzzz"}),
 			call(t, 3, "read", map[string]any{"object": "1"}),
 			call(t, 4, "move_block", map[string]any{"object": "1", "block": "e0002", "under": "e0001"}))
@@ -384,7 +384,7 @@ func TestMCPSessionStateSpansCalls(t *testing.T) {
 		v2model.ObjectRow{Id: "bafyobj2", Name: "Second", Type: "page"}))
 	fx.stub("GET /v2/spaces/space1/objects/bafyobj2", 200, testFullDoc)
 	resps := fx.mcpSession(t, TierSmall,
-		call(t, 1, "find", map[string]any{"space": "space1"}),
+		call(t, 1, "find", map[string]any{"space": "space1", "query": "doc"}),
 		call(t, 2, "read", map[string]any{"object": "2"}))
 	require.Len(t, resps, 2)
 	_, isErr := callText(t, resps[1])

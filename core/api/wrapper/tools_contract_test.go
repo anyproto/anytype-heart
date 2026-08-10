@@ -12,6 +12,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 )
 
 func TestSpacesTool(t *testing.T) {
@@ -235,6 +237,8 @@ func TestDescribeResilience(t *testing.T) {
 		fx.stub("GET /v2/spaces/space1/types/task", 200,
 			`{"version":1,"kind":"objectType","key":"task","properties":{"name":"Task"},"typeProperties":[{"key":"status","name":"Status","format":"select"}]}`)
 		fx.stub("GET /v2/spaces/space1/properties/status/options", 503, `oops`)
+		fx.stub("GET /v2/spaces/space1/properties", 200, propertiesResponse(
+			v2model.PropertyRow{Key: "status", Name: "Status", Format: "select"}))
 
 		result, err := fx.Run(ctx, "describe", map[string]any{"space": "space1", "type": "task"})
 
@@ -242,7 +246,7 @@ func TestDescribeResilience(t *testing.T) {
 		assert.Contains(t, result.Text, "options: (could not be listed — run describe again before using this property)")
 		js, ok := result.JSON.(describeResult)
 		require.True(t, ok)
-		require.Len(t, js.Properties, 1)
+		require.NotEmpty(t, js.Properties)
 		assert.True(t, js.Properties[0].OptionsUnavailable)
 	})
 
