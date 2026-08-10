@@ -23,6 +23,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	v2service "github.com/anyproto/anytype-heart/core/api/v2/service"
@@ -98,9 +99,11 @@ type probeRecord struct {
 	Case      string    `json:"case"`
 	Seq       int       `json:"seq"`
 	WantOp    string    `json:"want_op"`
-	// ExampleShape is which example the tool description carried — see
-	// probeToolSpecs.
+	// ExampleShape is which example the tool description carried, and
+	// ConstAsEnum whether the discriminator's const was spelled as a
+	// single-value enum — see probeToolSpecs.
 	ExampleShape string `json:"example_shape,omitempty"`
+	ConstAsEnum  bool   `json:"const_as_enum,omitempty"`
 	CalledOp     string `json:"called_op,omitempty"`
 	Args         string `json:"args,omitempty"`
 	// Channel is which authoring channel an insertBlocks call used: markdown
@@ -122,7 +125,7 @@ type probeRecord struct {
 
 // runProbe runs the one-turn schema-emission probe over the model list.
 func runProbe(ctx context.Context, chat *chatClient, models []string, opt options) error {
-	specs, err := probeToolSpecs(opt.exampleShape)
+	specs, err := probeToolSpecs(opt.exampleShape, opt.constAsEnum)
 	if err != nil {
 		return err
 	}
@@ -158,6 +161,7 @@ func runProbe(ctx context.Context, chat *chatClient, models []string, opt option
 				}
 				rec := probeOnce(ctx, chat, model, pc, tools, system, opt, runId, seq)
 				rec.ExampleShape = opt.exampleShape
+				rec.ConstAsEnum = opt.constAsEnum
 				records = append(records, rec)
 				line, err := json.Marshal(rec)
 				if err != nil {
@@ -293,7 +297,7 @@ const (
 // reads the pair together, which is the small consumer §5 built the route
 // for, gets contradictory instructions. Serving both shapes turns that into
 // a measurement instead of an opinion.
-func probeToolSpecs(exampleShape string) ([]toolSpec, error) {
+func probeToolSpecs(exampleShape string, constAsEnum bool) ([]toolSpec, error) {
 	var svc v2service.V2Service
 	specs := make([]toolSpec, 0, len(probeOps))
 	for _, op := range probeOps {
@@ -305,13 +309,31 @@ func probeToolSpecs(exampleShape string) ([]toolSpec, error) {
 		if exampleShape == exampleAtOpLevel {
 			example = unwrapOpsExample(entry.Example)
 		}
+		schema := entry.Schema
+		if constAsEnum {
+			schema = rewriteConstAsEnum(schema, op)
+		}
 		specs = append(specs, toolSpec{
 			Name:        op,
 			Description: fmt.Sprintf("PATCH op %q on the document. Example: %s", op, example),
-			Parameters:  entry.Schema,
+			Parameters:  schema,
 		})
 	}
 	return specs, nil
+}
+
+// rewriteConstAsEnum turns the discriminator's `const` into a single-value
+// `enum`. This is the ONE place the harness alters a served schema, and it
+// is a diagnostic, never a measurement: when a model writes a positional
+// word into a field pinned by `const`, there are two explanations — the
+// model ignored the keyword, or the host's tool-schema rendering dropped it
+// before the model ever saw it. `enum` is the older, more widely handled
+// spelling of the same constraint, so the same run with one keyword swapped
+// separates them. The default is always the schema as served.
+func rewriteConstAsEnum(schema json.RawMessage, op string) json.RawMessage {
+	from := fmt.Sprintf(`"op":{"const":%q}`, op)
+	to := fmt.Sprintf(`"op":{"enum":[%q]}`, op)
+	return json.RawMessage(strings.Replace(string(schema), from, to, 1))
 }
 
 // unwrapOpsExample reduces {"ops":[X]} to X, leaving anything else alone.

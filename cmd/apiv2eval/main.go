@@ -70,6 +70,9 @@ type options struct {
 	// (probe.go): "published" — byte-for-byte as GET /v2/schemas/ops/{op}
 	// serves it — or "op", that example unwrapped to the single op inside.
 	exampleShape string
+	// constAsEnum is the probe's one diagnostic deviation from a served
+	// schema — see rewriteConstAsEnum.
+	constAsEnum bool
 }
 
 func run() error {
@@ -89,6 +92,8 @@ func run() error {
 	flag.BoolVar(&opt.probe, "probe", false, "run the one-turn schema-emission probe instead of the loop (needs no live API)")
 	flag.StringVar(&opt.exampleShape, "probe-example", exampleAsPublished,
 		"probe only: which example to pair with each op schema — published (a whole PATCH body, as served) or op (unwrapped to one op)")
+	flag.BoolVar(&opt.constAsEnum, "probe-const-as-enum", false,
+		"probe only, diagnostic: spell the op discriminator as a single-value enum instead of const (the default is the schema as served)")
 	flag.Parse()
 
 	env, err := loadEnv(opt.envFile)

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,7 +11,7 @@ import (
 
 func TestProbeToolSpecsComeFromThePublishedSchemas(t *testing.T) {
 	// when
-	specs, err := probeToolSpecs(exampleAsPublished)
+	specs, err := probeToolSpecs(exampleAsPublished, false)
 
 	// then
 	require.NoError(t, err)
@@ -87,7 +88,7 @@ func TestServedOpExampleIsNotAnInstanceOfItsOwnSchema(t *testing.T) {
 	// This pins the state of the discovery response as it is today, so the
 	// harness's two example shapes stay meaningful; it is a finding, not an
 	// endorsement.
-	specs, err := probeToolSpecs(exampleAsPublished)
+	specs, err := probeToolSpecs(exampleAsPublished, false)
 	require.NoError(t, err)
 	for _, spec := range specs {
 		var schema struct {
@@ -102,10 +103,30 @@ func TestServedOpExampleIsNotAnInstanceOfItsOwnSchema(t *testing.T) {
 	}
 
 	// unwrapped, the same example IS an instance of the schema
-	unwrapped, err := probeToolSpecs(exampleAtOpLevel)
+	unwrapped, err := probeToolSpecs(exampleAtOpLevel, false)
 	require.NoError(t, err)
 	for _, spec := range unwrapped {
 		assert.NotContains(t, spec.Description, `{"ops":[`)
 		assert.Contains(t, spec.Description, `"op":"`+spec.Name+`"`)
+	}
+}
+
+func TestRewriteConstAsEnumTouchesOnlyTheDiscriminator(t *testing.T) {
+	// given — the harness's one deliberate deviation from a served schema
+	served, err := probeToolSpecs(exampleAtOpLevel, false)
+	require.NoError(t, err)
+	swapped, err := probeToolSpecs(exampleAtOpLevel, true)
+	require.NoError(t, err)
+	require.Len(t, swapped, len(served))
+
+	for i, spec := range swapped {
+		// then
+		assert.Contains(t, string(served[i].Parameters), `"op":{"const":"`+spec.Name+`"}`)
+		assert.Contains(t, string(spec.Parameters), `"op":{"enum":["`+spec.Name+`"]}`)
+		assert.NotContains(t, string(spec.Parameters), `"const"`, "no other const may be rewritten")
+		// everything else is byte-identical
+		restored := strings.Replace(string(spec.Parameters),
+			`"op":{"enum":["`+spec.Name+`"]}`, `"op":{"const":"`+spec.Name+`"}`, 1)
+		assert.Equal(t, string(served[i].Parameters), restored)
 	}
 }
