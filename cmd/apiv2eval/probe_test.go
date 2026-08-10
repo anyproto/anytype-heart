@@ -88,14 +88,16 @@ func TestStaticRefusalRisks(t *testing.T) {
 	}
 }
 
-func TestServedOpExampleIsNotAnInstanceOfItsOwnSchema(t *testing.T) {
-	// GET /v2/schemas/ops/{op} answers with a `schema` describing ONE op
-	// (additionalProperties:false, `op` required with a const) and an
-	// `example` that is a whole PATCH request body, {"ops":[{…}]}. The
-	// example would therefore be REJECTED by the schema served beside it.
-	// This pins the state of the discovery response as it is today, so the
-	// harness's two example shapes stay meaningful; it is a finding, not an
-	// endorsement.
+func TestServedOpExampleIsAnInstanceOfItsOwnSchema(t *testing.T) {
+	// This test was written to DOCUMENT the defect: GET /v2/schemas/ops/{op}
+	// answered with a `schema` describing ONE op (additionalProperties:false,
+	// `op` required with a const) beside an `example` that was a whole PATCH
+	// request body, {"ops":[{…}]} — so the example was rejected by the schema
+	// served with it. Unwrapping it took gemma4:e4b's missing-`op` rate from
+	// 9/60 to 0/60, and the route now serves the op level. The assertion is
+	// inverted rather than deleted, so the harness's two example shapes stay
+	// meaningful and a regression to the wrapped body is caught here as well
+	// as at the source (TestServedOpExampleValidatesAgainstItsOwnSchema).
 	specs, err := probeToolSpecs(exampleAsPublished, false)
 	require.NoError(t, err)
 	for _, spec := range specs {
@@ -107,15 +109,17 @@ func TestServedOpExampleIsNotAnInstanceOfItsOwnSchema(t *testing.T) {
 		require.NotNil(t, schema.AdditionalProperties)
 		assert.False(t, *schema.AdditionalProperties, "%s: the op schema is C13-strict", spec.Name)
 		assert.NotContains(t, schema.Properties, "ops", "%s: the schema describes one op, not a request body", spec.Name)
-		assert.Contains(t, spec.Description, `{"ops":[`, "%s: the served example is a whole request body", spec.Name)
+		assert.NotContains(t, spec.Description, `{"ops":[`, "%s: the served example is not a request body", spec.Name)
+		assert.Contains(t, spec.Description, `"op":"`+spec.Name+`"`, "%s: it is an instance of the schema", spec.Name)
 	}
 
-	// unwrapped, the same example IS an instance of the schema
+	// the two shapes the probe can serve are now the same bytes: -probe-example
+	// stays a knob, but it no longer separates anything
 	unwrapped, err := probeToolSpecs(exampleAtOpLevel, false)
 	require.NoError(t, err)
-	for _, spec := range unwrapped {
-		assert.NotContains(t, spec.Description, `{"ops":[`)
-		assert.Contains(t, spec.Description, `"op":"`+spec.Name+`"`)
+	require.Len(t, unwrapped, len(specs))
+	for i, spec := range unwrapped {
+		assert.Equal(t, specs[i].Description, spec.Description)
 	}
 }
 

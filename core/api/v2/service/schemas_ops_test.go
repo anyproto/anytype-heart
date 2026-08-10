@@ -1,11 +1,13 @@
 package v2service
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"testing"
 
+	"github.com/santhosh-tekuri/jsonschema/v6"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -29,15 +31,11 @@ func TestSchemaOp(t *testing.T) {
 			require.NoError(t, json.Unmarshal(entry.Schema, &schema), "schema of %s must be valid JSON", op)
 			assert.Equal(t, false, schema["additionalProperties"], "%s schema is C13-strict", op)
 
-			// the example is a full single-op PATCH body whose op matches
-			var example struct {
-				Ops []struct {
-					Op string `json:"op"`
-				} `json:"ops"`
-			}
+			// the example is one op object whose op matches — not a request body
+			var example map[string]any
 			require.NoError(t, json.Unmarshal(entry.Example, &example), "example of %s must be valid JSON", op)
-			require.Len(t, example.Ops, 1, "example of %s is single-op", op)
-			assert.Equal(t, op, example.Ops[0].Op)
+			assert.Equal(t, op, example["op"])
+			assert.NotContains(t, example, "ops", "the example of %s is an op, not a PATCH body", op)
 		}
 	})
 
@@ -139,6 +137,63 @@ func TestSchemaOp(t *testing.T) {
 		assert.Equal(t, "setProperties", index.Ops[0].Kind)
 		assert.Equal(t, "/v2/schemas/ops/setProperties", index.Ops[0].Url)
 	})
+}
+
+// TestServedOpExampleValidatesAgainstItsOwnSchema is the pin the wrapper
+// manifest has had all along (TestExamplesAcceptedByOwnGBNF: every served
+// example must be in the language of the served grammar) and this route did
+// not: the two halves of GET /v2/schemas/ops/{op} were at DIFFERENT levels —
+// a `schema` describing one op (additionalProperties:false, `op` required
+// with a const) beside an `example` that was a whole {"ops":[…]} request
+// body, so the example the route showed was rejected by the schema it showed
+// it with. Table-driven over every op, so a new op cannot land with an
+// example its own schema refuses.
+func TestServedOpExampleValidatesAgainstItsOwnSchema(t *testing.T) {
+	fx := newV2Fixture(t)
+
+	for _, op := range v2OpNames {
+		t.Run(op, func(t *testing.T) {
+			// given
+			entry, err := fx.SchemaOp(op)
+			require.NoError(t, err)
+
+			// when
+			err = validateAgainstSchema(t, entry.Schema, entry.Example)
+
+			// then
+			assert.NoError(t, err, "the served example must be an instance of the served schema")
+		})
+	}
+}
+
+// TestExampleValidatorIsHonest: the validator above must be able to reject,
+// or the pin proves nothing. Both historical shapes fail it — the wrapped
+// request body, and an op object missing the `op` discriminator (the field
+// gemma4:e4b omitted on 9 of 60 calls when shown the wrapped example).
+func TestExampleValidatorIsHonest(t *testing.T) {
+	fx := newV2Fixture(t)
+	entry, err := fx.SchemaOp("insertBlocks")
+	require.NoError(t, err)
+
+	assert.Error(t, validateAgainstSchema(t, entry.Schema,
+		json.RawMessage(`{"ops":[`+string(entry.Example)+`]}`)), "the old wrapped shape must fail")
+	assert.Error(t, validateAgainstSchema(t, entry.Schema,
+		json.RawMessage(`{"after":"b3","markdown":"- [ ] todo"}`)), "a missing op discriminator must fail")
+}
+
+// validateAgainstSchema compiles a served JSON Schema and validates one
+// served example against it.
+func validateAgainstSchema(t *testing.T, schema, instance json.RawMessage) error {
+	t.Helper()
+	doc, err := jsonschema.UnmarshalJSON(bytes.NewReader(schema))
+	require.NoError(t, err)
+	c := jsonschema.NewCompiler()
+	require.NoError(t, c.AddResource("op.schema.json", doc))
+	compiled, err := c.Compile("op.schema.json")
+	require.NoError(t, err)
+	value, err := jsonschema.UnmarshalJSON(bytes.NewReader(instance))
+	require.NoError(t, err)
+	return compiled.Validate(value)
 }
 
 // opBlockDefProps returns the property names an op schema's payload-block

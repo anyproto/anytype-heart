@@ -848,9 +848,11 @@ paths:
       - V2
   /v2/schemas/ops/{op}:
     get:
-      description: 'One op''s tiny strict schema (C13) and a single-op minimal example.
-        Ops: setProperties, updateBlock, replaceSubtree, insertBlocks, moveBlock,
-        deleteBlock, replaceText, setCell, addItems, removeItems.'
+      description: 'One op''s tiny strict schema (C13) and a minimal example that
+        is an INSTANCE of it — one op object, ready to drop into the PATCH body''s
+        ops array. Ops: setProperties, updateBlock, replaceSubtree, insertBlocks,
+        moveBlock, deleteBlock, replaceText, setCell, updateView, insertView, moveView,
+        deleteView, addItems, removeItems.'
       operationId: v2_get_op_schema
       parameters:
       - description: Op name

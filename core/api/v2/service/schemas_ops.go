@@ -1,10 +1,18 @@
 package v2service
 
 // schemas_ops.go is the Phase-3 per-op discovery (APIV2.md §5):
-// GET /v2/schemas/ops/{op} serves one tiny C13-strict schema and a single-op
-// minimal example per PATCH op, so the smallest consumers stay at the
-// smallest schema surface. The multi-op composite example remains on the
-// PATCH endpoint docs as the secondary illustration.
+// GET /v2/schemas/ops/{op} serves one tiny C13-strict schema and a minimal
+// example per PATCH op, so the smallest consumers stay at the smallest schema
+// surface. The multi-op composite example remains on the PATCH endpoint docs
+// as the secondary illustration.
+//
+// The example is an INSTANCE of the schema served beside it — one op object,
+// not a whole {"ops":[…]} request body (§8.32). A consumer that reads the
+// pair together, which is the small consumer this route exists for, otherwise
+// gets two contradictory shapes; measured, the wrapped example cost
+// gemma4:e4b a missing `op` field on 9 of 60 calls, and unwrapping it took
+// that to 0 of 60. TestServedOpExampleValidatesAgainstItsOwnSchema is the
+// pin: a new op cannot land with an example its own schema rejects.
 
 import (
 	"encoding/json"
@@ -179,21 +187,21 @@ var v2OpSchemas = map[string]v2SchemaKind{
 			`"unset":{"type":"array","maxItems":128,"items":{"type":"string","maxLength":256},"description":"property keys to remove"}`,
 			`"add":{"type":"object","maxProperties":128,"additionalProperties":{"type":"array","maxItems":128,"items":{"type":"string","maxLength":4096}},"description":"list-shaped keys only (select, multiSelect, objects, files): append entries without rewriting the array — existing entries are never duplicated; unknown option NAMES are created"}`,
 			`"remove":{"type":"object","maxProperties":128,"additionalProperties":{"type":"array","maxItems":128,"items":{"type":"string","maxLength":4096}},"description":"list-shaped keys only: delete matching entries — absent entries (and absent keys) are a no-op; a key may appear in only one of set/unset/add/remove"}`),
-		example: `{"ops":[{"op":"setProperties","set":{"status":["Done"]},"add":{"tags":["Urgent"]},"unset":["dueDate"]}]}`,
+		example: `{"op":"setProperties","set":{"status":["Done"]},"add":{"tags":["Urgent"]},"unset":["dueDate"]}`,
 	},
 	"updateBlock": {
 		endpoint: v2OpsEndpoint,
 		schema: opSchema("updateBlock", []string{"id", "set"},
 			`"id":{"$ref":"#/$defs/blockRef"}`,
 			`"set":{"type":"object","maxProperties":32,"description":"merge semantics: only the named fields change — text included only if named; null clears a field; id and indent are rejected (use moveBlock to re-nest)"}`),
-		example: `{"ops":[{"op":"updateBlock","id":"b5","set":{"checked":true}}]}`,
+		example: `{"op":"updateBlock","id":"b5","set":{"checked":true}}`,
 	},
 	"replaceSubtree": {
 		endpoint: v2OpsEndpoint,
 		schema: opSchema("replaceSubtree", []string{"id", "blocks"},
 			`"id":{"$ref":"#/$defs/blockRef"}`,
 			`"blocks":{"type":"array","minItems":1,"maxItems":256,"items":{"$ref":"#/$defs/block"},"description":"replaces the block AND its descendants; indent 0 = the replaced block's level"}`),
-		example: `{"ops":[{"op":"replaceSubtree","id":"b7","blocks":[{"type":"bulletedListItem","text":"a"},{"indent":1,"type":"paragraph","text":"b"}]}]}`,
+		example: `{"op":"replaceSubtree","id":"b7","blocks":[{"type":"bulletedListItem","text":"a"},{"indent":1,"type":"paragraph","text":"b"}]}`,
 	},
 	"insertBlocks": {
 		endpoint: v2OpsEndpoint,
@@ -204,7 +212,7 @@ var v2OpSchemas = map[string]v2SchemaKind{
 			`"position":{"type":"string","enum":["first","last"],"description":"which end to insert at: of the inside container, or — with NO targeting field — of the document itself, so first inserts at the start of the document and last appends at its end (the default either way)"}`,
 			`"blocks":{"type":"array","minItems":1,"maxItems":256,"items":{"$ref":"#/$defs/block"},"description":"at most one of after/before/inside targets the run — omit all three to insert at the end of the document (position:first for the start; both work on an empty object); indent 0 = the insertion level"}`,
 			`"markdown":{"type":"string","minLength":1,"maxLength":1048576,"description":"authoring alternative to blocks (give exactly one): the server parses markdown into flat blocks — headings, lists, checkboxes, fences, quotes, dividers, tables; same targeting; at most 256 parsed blocks per op (the blocks channel's cap); createdBlocks keys read markdown[j] for the j-th parsed block"}`),
-		example: `{"ops":[{"op":"insertBlocks","after":"b3","markdown":"- [ ] todo"}]}`,
+		example: `{"op":"insertBlocks","after":"b3","markdown":"- [ ] todo"}`,
 	},
 	"moveBlock": {
 		endpoint: v2OpsEndpoint,
@@ -214,14 +222,14 @@ var v2OpSchemas = map[string]v2SchemaKind{
 			`"before":{"$ref":"#/$defs/blockRef"}`,
 			`"inside":{"$ref":"#/$defs/blockRef","description":"moving into the moved block's own subtree is a cycle → error"}`,
 			`"position":{"type":"string","enum":["first","last"],"description":"which end to move to: of the inside container, or — with NO targeting field — of the document itself, so first moves the block to the start of the document and last to its end (the default either way)"}`),
-		example: `{"ops":[{"op":"moveBlock","id":"b9","inside":"b2","position":"last"}]}`,
+		example: `{"op":"moveBlock","id":"b9","inside":"b2","position":"last"}`,
 	},
 	"deleteBlock": {
 		endpoint: v2OpsEndpoint,
 		schema: opSchema("deleteBlock", []string{"id"},
 			`"id":{"$ref":"#/$defs/blockRef"}`,
 			`"recursive":{"type":"boolean","description":"default false — deleting a block that has descendants without it is an error naming the descendant count"}`),
-		example: `{"ops":[{"op":"deleteBlock","id":"b4","recursive":true}]}`,
+		example: `{"op":"deleteBlock","id":"b4","recursive":true}`,
 	},
 	"replaceText": {
 		endpoint: v2OpsEndpoint,
@@ -230,7 +238,7 @@ var v2OpSchemas = map[string]v2SchemaKind{
 			`"find":{"type":"string","minLength":1,"maxLength":65536,"description":"exact text within this one block's text (inline markup included) — must match exactly once unless replace_all"}`,
 			`"replace":{"type":"string","maxLength":65536}`,
 			`"replace_all":{"type":"boolean","description":"default false"}`),
-		example: `{"ops":[{"op":"replaceText","id":"b2","find":"Q3","replace":"Q4"}]}`,
+		example: `{"op":"replaceText","id":"b2","find":"Q3","replace":"Q4"}`,
 	},
 	"setCell": {
 		endpoint: v2OpsEndpoint,
@@ -239,7 +247,7 @@ var v2OpSchemas = map[string]v2SchemaKind{
 			`"row":{"type":"string","minLength":1,"maxLength":64,"description":"row id — full or unique suffix"}`,
 			`"col":{"type":"string","minLength":1,"maxLength":64,"description":"column id — full or unique suffix"}`,
 			`"value":{"type":["string","null","object","array"],"description":"string = paragraph shorthand, null = clear, or a block object / array of blocks (SPEC §6.1 cell forms)"}`),
-		example: `{"ops":[{"op":"setCell","tableId":"t1","row":"r2","col":"c1","value":"done"}]}`,
+		example: `{"op":"setCell","tableId":"t1","row":"r2","col":"c1","value":"done"}`,
 	},
 	"updateView": {
 		endpoint: v2OpsEndpoint,
@@ -248,7 +256,7 @@ var v2OpSchemas = map[string]v2SchemaKind{
 			`"view":{"type":"string","minLength":1,"maxLength":64,"description":"view id, full or unique suffix — optional when the dataview has exactly one view"}`,
 			v2ViewSetPropDef,
 			v2ViewColumnsPropDef),
-		example: `{"ops":[{"op":"updateView","columns":{"status":{"hidden":false}}}]}`,
+		example: `{"op":"updateView","columns":{"status":{"hidden":false}}}`,
 	},
 	"insertView": {
 		endpoint: v2OpsEndpoint,
@@ -261,7 +269,7 @@ var v2OpSchemas = map[string]v2SchemaKind{
 			`"position":{"type":"string","enum":["first","last"],"description":"at most one of after/before/position; omitted = append; the FIRST view is the client's default tab"}`,
 			v2ViewSetPropDefNoName,
 			v2ViewColumnsPropDef),
-		example: `{"ops":[{"op":"insertView","name":"Board","copyFrom":"viewAll1","set":{"type":"kanban","groupBy":"status"}}]}`,
+		example: `{"op":"insertView","name":"Board","copyFrom":"viewAll1","set":{"type":"kanban","groupBy":"status"}}`,
 	},
 	"moveView": {
 		endpoint: v2OpsEndpoint,
@@ -271,26 +279,26 @@ var v2OpSchemas = map[string]v2SchemaKind{
 			`"after":{"type":"string","minLength":1,"maxLength":64,"description":"move after this view"}`,
 			`"before":{"type":"string","minLength":1,"maxLength":64,"description":"move before this view"}`,
 			`"position":{"type":"string","enum":["first","last"],"description":"give exactly one of after/before/position — a destination is required; first makes the view the client's default tab"}`),
-		example: `{"ops":[{"op":"moveView","view":"viewBoard2","position":"first"}]}`,
+		example: `{"op":"moveView","view":"viewBoard2","position":"first"}`,
 	},
 	"deleteView": {
 		endpoint: v2OpsEndpoint,
 		schema: opSchema("deleteView", []string{"view"},
 			v2ViewBlockPropDef,
 			`"view":{"type":"string","minLength":1,"maxLength":64,"description":"the view to delete (id, full or unique suffix) — deleting the last view is refused; per-view editor state goes with it"}`),
-		example: `{"ops":[{"op":"deleteView","view":"viewBoard2"}]}`,
+		example: `{"op":"deleteView","view":"viewBoard2"}`,
 	},
 	"addItems": {
 		endpoint: v2OpsEndpoint,
 		schema: opSchema("addItems", []string{"items"},
 			`"items":{"type":"array","minItems":1,"maxItems":1000,"items":{"type":"string","maxLength":256},"description":"member object ids to add to the collection (already-present ids are ignored)"}`),
-		example: `{"ops":[{"op":"addItems","items":["bafyreieqh63jv…"]}]}`,
+		example: `{"op":"addItems","items":["bafyreieqh63jv…"]}`,
 	},
 	"removeItems": {
 		endpoint: v2OpsEndpoint,
 		schema: opSchema("removeItems", []string{"items"},
 			`"items":{"type":"array","minItems":1,"maxItems":1000,"items":{"type":"string","maxLength":256},"description":"member object ids to remove from the collection (absent ids are ignored)"}`),
-		example: `{"ops":[{"op":"removeItems","items":["bafyreieqh63jv…"]}]}`,
+		example: `{"op":"removeItems","items":["bafyreieqh63jv…"]}`,
 	},
 }
 
