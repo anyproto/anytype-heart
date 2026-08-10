@@ -1047,7 +1047,7 @@ func (a *v2StateApplier) applyReplaceSubtree(op opReplaceSubtree, opPath string)
 	if err != nil {
 		return err
 	}
-	run, err := a.decodePayloadRun(op.Blocks, opPath, "blocks")
+	run, err := a.decodePayloadRun(op.Blocks, opPath, "blocks", "")
 	if err != nil {
 		return err
 	}
@@ -1153,7 +1153,9 @@ func (a *v2StateApplier) applyInsertBlocks(op opInsertBlocks, opPath string) err
 	if err != nil {
 		return err
 	}
-	run, err := a.decodePayloadRun(payload, opPath, field)
+	// insertBlocks only ever creates, so its payload carries no id slots at
+	// all (§8.30) — they are refused as not part of the op, never resolved.
+	run, err := a.decodePayloadRun(payload, opPath, field, "insertBlocks")
 	if err != nil {
 		return err
 	}
@@ -1161,6 +1163,8 @@ func (a *v2StateApplier) applyInsertBlocks(op opInsertBlocks, opPath string) err
 	if err != nil {
 		return err
 	}
+	// the payload carried no ids, so every id here is server-generated; this
+	// stays as the collision guard on those (table internals included)
 	if err := a.claimPayloadIds(blocks, nil, runPathFor(opPath, field, topIds)); err != nil {
 		return err
 	}
@@ -1532,7 +1536,11 @@ func (a *v2StateApplier) applyItems(op opItems, opPath string) error {
 // land in createdBlocks keyed by payload position: a resolved id names
 // something that already existed, and reporting it as created would be the
 // same kind of lie diffStats used to tell.
-func (a *v2StateApplier) decodePayloadRun(raws []json.RawMessage, opPath, field string) ([]map[string]any, error) {
+//
+// newContentOp names the op when its payload can only ever CREATE, and then
+// the run carries no id slots at all: they are refused as not part of the op
+// rather than resolved (§8.30). Empty = the existing-content rule above.
+func (a *v2StateApplier) decodePayloadRun(raws []json.RawMessage, opPath, field, newContentOp string) ([]map[string]any, error) {
 	if len(raws) == 0 {
 		return nil, v2model.ValidationFailed("blocks must not be empty",
 			v2model.Issue{Path: opPath + "." + field, Message: "give at least one block"})
@@ -1548,9 +1556,12 @@ func (a *v2StateApplier) decodePayloadRun(raws []json.RawMessage, opPath, field 
 				Hint:    "split the run across several ops — the blocks and markdown channels share this cap",
 			})
 	}
-	vocab, err := a.payloadIdVocabulary()
-	if err != nil {
-		return nil, err
+	var vocab []string
+	if newContentOp == "" {
+		var err error
+		if vocab, err = a.payloadIdVocabulary(); err != nil {
+			return nil, err
+		}
 	}
 	run := make([]map[string]any, 0, len(raws))
 	prev := -1
@@ -1560,7 +1571,11 @@ func (a *v2StateApplier) decodePayloadRun(raws []json.RawMessage, opPath, field 
 		if err != nil {
 			return nil, err
 		}
-		if err := a.resolvePayloadBlock(vocab, block, path); err != nil {
+		if newContentOp != "" {
+			if err := rejectPayloadIds(newContentOp, block, path); err != nil {
+				return nil, err
+			}
+		} else if err := a.resolvePayloadBlock(vocab, block, path); err != nil {
 			return nil, err
 		}
 		rel := 0

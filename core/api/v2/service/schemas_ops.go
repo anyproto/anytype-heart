@@ -17,16 +17,25 @@ import (
 // v2OpsEndpoint is the endpoint every op schema belongs to.
 const v2OpsEndpoint = "PATCH /v2/spaces/{spaceId}/objects/{objectId}"
 
-// v2OpBlockDef is the shared payload-block definition: the common AnyBlock
-// block fields, strict and non-recursive (C13). The full inventory is
-// SPEC §5 — served as GET /v2/schemas/object; this def covers the fields a
-// generated edit realistically touches.
-const v2OpBlockDef = `{"type":"object","additionalProperties":false,"required":["type"],` +
-	`"description":"a flat AnyBlock block; the full field inventory is GET /v2/schemas/object (SPEC §5)",` +
-	`"properties":{` +
-	`"indent":{"type":"integer","minimum":0,"maximum":32,"description":"relative: 0 = the anchor's level (after/before/replaceSubtree) or the container's child level (inside)"},` +
-	`"id":{"type":"string","pattern":"^[A-Za-z0-9_-]{1,64}$","description":"optional; when present it must name an EXISTING block of this object — full id or unique suffix, resolved like every other id slot — and the payload keeps that block's identity. Omit it to author new content: the server mints an id and returns it in createdBlocks. An id that matches nothing is refused, never minted over."},` +
-	`"type":{"type":"string","maxLength":64},` +
+// The payload block comes in TWO shapes, and the split is the whole point
+// (§8.30). `id` in a payload means "name an EXISTING block, keep its
+// identity" — which is meaningful only where the op has existing content to
+// name. In a NEW-content payload every possible value of it is an error (an
+// id that resolves is a duplicate, one that does not is unresolvable), so it
+// must not be advertised there: with additionalProperties:false (C13) a
+// constrained decoder then cannot emit the field at all, which is the only
+// instrument that works against a decoder that emits what it sees.
+//
+// v2OpBlockIndentProp and v2OpBlockRestProps are the fields both shapes
+// share, split only so the id slot can sit in its historical position. The
+// full inventory is SPEC §5 — served as GET /v2/schemas/object; these defs
+// cover the fields a generated edit realistically touches.
+const v2OpBlockIndentProp = `"indent":{"type":"integer","minimum":0,"maximum":32,"description":"relative: 0 = the anchor's level (after/before/replaceSubtree) or the container's child level (inside)"}`
+
+// v2OpBlockIdProp is the EXISTING-content id slot.
+const v2OpBlockIdProp = `"id":{"type":"string","pattern":"^[A-Za-z0-9_-]{1,64}$","description":"optional; when present it must name an EXISTING block of this object — full id or unique suffix, resolved like every other id slot — and the payload keeps that block's identity. Omit it to author new content: the server mints an id and returns it in createdBlocks. An id that matches nothing is refused, never minted over."}`
+
+const v2OpBlockRestProps = `"type":{"type":"string","maxLength":64},` +
 	`"text":{"type":"string","maxLength":1048576,"description":"inline markup per SPEC §8"},` +
 	`"checked":{"type":"boolean"},` +
 	`"color":{"type":"string","maxLength":64},` +
@@ -43,13 +52,38 @@ const v2OpBlockDef = `{"type":"object","additionalProperties":false,"required":[
 	`"align":{"type":"string","enum":["left","center","right","justify"]},` +
 	`"backgroundColor":{"type":"string","maxLength":64},` +
 	`"columns":{"type":"array","maxItems":64,"description":"table columns (SPEC §6.1)"},` +
-	`"rows":{"type":"array","maxItems":1024,"description":"table rows (SPEC §6.1)"}}}`
+	`"rows":{"type":"array","maxItems":1024,"description":"table rows (SPEC §6.1)"}`
+
+// v2OpBlockDef is the EXISTING-content payload block (replaceSubtree): it
+// publishes the id slot, because naming a block the op replaces is what
+// makes echoing a read back a no-op instead of a rename.
+const v2OpBlockDef = `{"type":"object","additionalProperties":false,"required":["type"],` +
+	`"description":"a flat AnyBlock block; the full field inventory is GET /v2/schemas/object (SPEC §5)",` +
+	`"properties":{` + v2OpBlockIndentProp + `,` + v2OpBlockIdProp + `,` + v2OpBlockRestProps + `}}`
+
+// v2OpNewBlockDef is the NEW-content payload block (insertBlocks): no id
+// slot anywhere — not on the block, not inside its rows/columns/views.
+const v2OpNewBlockDef = `{"type":"object","additionalProperties":false,"required":["type"],` +
+	`"description":"a flat AnyBlock block to CREATE. There is no id slot — neither here nor inside rows/columns/views: this op only ever makes new content, so the server mints every id and returns the block's in createdBlocks keyed by payload position. Ids name EXISTING blocks, which is what the other ops address. The full field inventory is GET /v2/schemas/object (SPEC §5)",` +
+	`"properties":{` + v2OpBlockIndentProp + `,` + v2OpBlockRestProps + `}}`
 
 // v2BlockRefDef is a block reference: full id (canonical) or unique suffix.
 const v2BlockRefDef = `{"type":"string","minLength":1,"maxLength":64,"description":"a block id — full (canonical) or a unique suffix"}`
 
+// opSchema builds an op schema whose payload-block def is the
+// EXISTING-content shape.
 func opSchema(required string, props ...string) string {
-	return `{"$defs":{"block":` + v2OpBlockDef + `,"blockRef":` + v2BlockRefDef + `},` +
+	return opSchemaWithBlock(v2OpBlockDef, required, props...)
+}
+
+// opSchemaNewContent builds an op schema whose payload-block def is the
+// NEW-content shape — the id-less one (§8.30).
+func opSchemaNewContent(required string, props ...string) string {
+	return opSchemaWithBlock(v2OpNewBlockDef, required, props...)
+}
+
+func opSchemaWithBlock(blockDef, required string, props ...string) string {
+	return `{"$defs":{"block":` + blockDef + `,"blockRef":` + v2BlockRefDef + `},` +
 		`"type":"object","additionalProperties":false,"required":[` + required + `],"properties":{` +
 		strings.Join(props, ",") + `}}`
 }
@@ -124,7 +158,7 @@ var v2OpSchemas = map[string]v2SchemaKind{
 	},
 	"insertBlocks": {
 		endpoint: v2OpsEndpoint,
-		schema: opSchema(`"op"`,
+		schema: opSchemaNewContent(`"op"`,
 			`"op":{"const":"insertBlocks"}`,
 			`"after":{"$ref":"#/$defs/blockRef","description":"insert after this block's subtree, at its level"}`,
 			`"before":{"$ref":"#/$defs/blockRef","description":"insert before this block, at its level"}`,

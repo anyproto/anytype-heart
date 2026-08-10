@@ -235,15 +235,16 @@ func TestPatchObject(t *testing.T) {
 		assert.Equal(t, float64(1), blocks[2]["indent"], "payload indent is relative to the anchor level")
 	})
 
-	t.Run("a payload id that resolves to a live block cannot be inserted a second time", func(t *testing.T) {
+	t.Run("an insertBlocks payload id is refused as not part of the op", func(t *testing.T) {
 		// reproduced before payload id resolution: a compact label ("bbbb1")
 		// copied from a default read into an insertBlocks payload was stored
 		// as the literal block id, and matchBlockRef resolves exact matches
 		// FIRST — so the adopted label captured the reference and the next
 		// replaceText on "bbbb1" edited the copy while the original block
-		// silently lost its label. Now the label RESOLVES (payloadids.go), so
-		// what insertBlocks sees is a request to insert a second holder of an
-		// id the document already owns: a duplicate, named in both spellings.
+		// silently lost its label. Resolution closed that (payloadids.go),
+		// which left the slot with NO working value at all — so the field is
+		// gone from the op's schema (§8.30) and the refusal says so rather
+		// than reporting a duplicate the caller could not have foreseen.
 		fx := newV2Fixture(t)
 		fx.expectMutate(editRead(t, editMintedDoc), "headB")
 
@@ -253,10 +254,10 @@ func TestPatchObject(t *testing.T) {
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
 		require.NotEmpty(t, apiErr.Issues)
+		assert.Equal(t, "ops[0].blocks[0].id", apiErr.Issues[0].Path)
 		assert.Contains(t, apiErr.Issues[0].Message, `"bbbb1"`)
-		assert.Contains(t, apiErr.Issues[0].Message, testMintedParentId, "the refusal names the id the label resolved to")
-		assert.Contains(t, apiErr.Issues[0].Message, "compact label", "the refusal diagnoses the pasted-label shape")
-		assert.Contains(t, apiErr.Issues[0].Hint, "omit id", "the mint escape hatch is named")
+		assert.Contains(t, apiErr.Issues[0].Message, "not part of this op")
+		assert.Contains(t, apiErr.Issues[0].Hint, "createdBlocks", "the mint escape hatch is named")
 	})
 
 	t.Run("insertBlocks inside position first lands at the child level", func(t *testing.T) {

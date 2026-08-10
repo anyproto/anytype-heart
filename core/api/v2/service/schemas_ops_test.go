@@ -2,6 +2,7 @@ package v2service
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -44,6 +45,34 @@ func TestSchemaOp(t *testing.T) {
 		assert.Len(t, v2OpSchemas, len(v2OpNames))
 	})
 
+	// §8.30: a field no value of which can succeed is not advertised. In
+	// insertBlocks the payload only ever CREATES, so an id slot there is an
+	// error whatever the caller writes — and a constrained decoder emits the
+	// fields it is shown, so a runtime guard alone cannot stop it.
+	t.Run("the insertBlocks payload publishes no id slot", func(t *testing.T) {
+		// when
+		entry, err := fx.SchemaOp("insertBlocks")
+
+		// then
+		require.NoError(t, err)
+		props := opBlockDefProps(t, entry)
+		require.NotEmpty(t, props, "insertBlocks still has a payload-block def")
+		assert.NotContains(t, props, "id", "the new-content block def has no id slot")
+		// nothing nested publishes one either (rows/columns/views entries)
+		assert.Empty(t, schemaPropertyOwners(t, entry.Schema, "id"),
+			"no part of the insertBlocks schema advertises an id")
+	})
+
+	t.Run("replaceSubtree keeps the id slot its payload needs", func(t *testing.T) {
+		// naming the block it replaces is what makes echoing a read back a
+		// no-op instead of a rename (§8.29)
+		entry, err := fx.SchemaOp("replaceSubtree")
+
+		require.NoError(t, err)
+		assert.Contains(t, opBlockDefProps(t, entry), "id",
+			"the existing-content block def keeps its id slot")
+	})
+
 	t.Run("unknown op lists the available ops", func(t *testing.T) {
 		_, err := fx.SchemaOp("frobnicate")
 
@@ -59,6 +88,51 @@ func TestSchemaOp(t *testing.T) {
 		assert.Equal(t, "setProperties", index.Ops[0].Kind)
 		assert.Equal(t, "/v2/schemas/ops/setProperties", index.Ops[0].Url)
 	})
+}
+
+// opBlockDefProps returns the property names an op schema's payload-block
+// def publishes.
+func opBlockDefProps(t *testing.T, entry v2model.SchemaEntry) map[string]any {
+	t.Helper()
+	var schema struct {
+		Defs struct {
+			Block struct {
+				Properties map[string]any `json:"properties"`
+			} `json:"block"`
+		} `json:"$defs"`
+	}
+	require.NoError(t, json.Unmarshal(entry.Schema, &schema))
+	return schema.Defs.Block.Properties
+}
+
+// schemaPropertyOwners walks a JSON Schema and reports every "properties"
+// map in it that publishes the named field — unreferenced $defs included, so
+// the assertion holds however the op wires its refs.
+func schemaPropertyOwners(t *testing.T, raw json.RawMessage, field string) []string {
+	t.Helper()
+	var doc any
+	require.NoError(t, json.Unmarshal(raw, &doc))
+	var found []string
+	var walk func(node any, path string)
+	walk = func(node any, path string) {
+		switch n := node.(type) {
+		case map[string]any:
+			if props, ok := n["properties"].(map[string]any); ok {
+				if _, has := props[field]; has {
+					found = append(found, path+".properties")
+				}
+			}
+			for k, v := range n {
+				walk(v, path+"."+k)
+			}
+		case []any:
+			for i, v := range n {
+				walk(v, fmt.Sprintf("%s[%d]", path, i))
+			}
+		}
+	}
+	walk(doc, "")
+	return found
 }
 
 func TestDiffEditDocs(t *testing.T) {

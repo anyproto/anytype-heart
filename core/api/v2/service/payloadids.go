@@ -34,6 +34,13 @@ package v2service
 // unresolvable id would silently turn a stale or mistyped reference into a
 // new block — the same class of silent-wrong-thing this file exists to
 // close — while the refusal costs a caller who meant new content one edit.
+//
+// Which leaves a payload with NO existing content to name — insertBlocks —
+// with an id slot in which every value is an error. Those ops resolve
+// nothing: they reject the field outright (rejectPayloadIds below), and
+// their op schema does not publish it (§8.30). Two meanings ("name this
+// existing block" / "choose an id for this new one") shared one slot, and
+// that sharing is what produced F1; the split is C2 applied to a field.
 
 import (
 	"fmt"
@@ -178,6 +185,85 @@ func (a *v2StateApplier) resolvePayloadBlock(vocab []string, block map[string]an
 		}
 	}
 	return nil
+}
+
+//
+// ---- new-content payloads: no id slot at all ----
+//
+
+// rejectPayloadIds refuses every id one NEW-CONTENT payload block carries —
+// its own and the ones nested in columns, rows (incl. cell descendants) and
+// views. It walks the same slots resolvePayloadBlock does, so the two cannot
+// drift apart.
+//
+// The op schema does not publish an id for such a payload (§8.30), which is
+// what stops a constrained decoder from emitting one; this is the check for
+// the caller who is not decoding against the schema. It runs INSTEAD of
+// resolution so the verdict reads as "not part of this op" rather than as a
+// duplicate or an unresolvable id — both of which were true before and
+// neither of which told the caller the field itself is wrong.
+func rejectPayloadIds(op string, block map[string]any, path string) error {
+	if err := rejectIdField(op, block, path+".id"); err != nil {
+		return err
+	}
+	for _, field := range v2IdBearingBlockFields {
+		entries, ok := block[field].([]any)
+		if !ok {
+			continue
+		}
+		for j, e := range entries {
+			m, ok := e.(map[string]any)
+			if !ok {
+				continue
+			}
+			entryPath := fmt.Sprintf("%s.%s[%d]", path, field, j)
+			if err := rejectIdField(op, m, entryPath+".id"); err != nil {
+				return err
+			}
+			if field != "rows" {
+				continue
+			}
+			cells, _ := m["cells"].([]any)
+			for k, cell := range cells {
+				run, ok := cell.([]any)
+				if !ok {
+					continue
+				}
+				for i := 1; i < len(run); i++ {
+					el, ok := run[i].(map[string]any)
+					if !ok {
+						continue
+					}
+					if err := rejectIdField(op, el, fmt.Sprintf("%s.cells[%d][%d].id", entryPath, k, i)); err != nil {
+						return err
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// rejectIdField refuses one id slot of a new-content payload.
+func rejectIdField(op string, m map[string]any, path string) error {
+	id, _ := m["id"].(string)
+	if id == "" {
+		return nil
+	}
+	return newContentIdError(op, id, path)
+}
+
+// newContentIdError is the refusal for an id in a payload that only ever
+// creates. It names the field as not belonging to the op, because that is
+// the repair — there is no value that would have worked.
+func newContentIdError(op, id, path string) error {
+	return v2model.ValidationFailed(
+		fmt.Sprintf("%s takes no id — its payload authors NEW content", op),
+		v2model.Issue{
+			Path:    path,
+			Message: fmt.Sprintf("id %q is not part of this op: an id names an EXISTING element, and %s only creates them; no value of this field can succeed, so the op's schema does not have it", id, op),
+			Hint:    fmt.Sprintf("drop the id — the server mints one and returns it in createdBlocks (GET /v2/schemas/ops/%s); to change an existing block use updateBlock, or replaceSubtree to swap it whole", op),
+		})
 }
 
 // resolveCellValueIds resolves the ids a setCell value carries. Only the

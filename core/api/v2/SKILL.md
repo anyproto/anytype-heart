@@ -118,6 +118,9 @@ whether you may write. Ask this instead of discovering limits through 403s
   document end — the way into an empty object. Payload `indent: 0` = the
   anchor's level (`after`/`before`) or the container's child level
   (`inside`). `moveBlock` targets the same way.
+- **Author new content without ids** — an `id` names an EXISTING block, so
+  `insertBlocks` takes none anywhere in its payload (rows and columns
+  included); the server mints them and returns them in `createdBlocks`.
 - **`updateView`** edits ONE dataview view — never resend the views array.
   `block`/`view` are optional when the object has one dataview and it one
   view (types, sets, collections usually do). `set` merges view fields

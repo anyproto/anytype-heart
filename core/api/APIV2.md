@@ -4068,3 +4068,72 @@ it would cost, so the decision is a decision and not an oversight:
 The state side is already there — they are real blocks — so the entire cost
 is in the addressing model and the served shapes. That is a format-level
 decision, not a bug fix.
+
+### 8.30 A field that cannot succeed does not appear in that op's schema (2026-08-10 — decisions as built)
+
+§8.29-F1 made every PATCH payload id slot resolve through `matchBlockRef`
+instead of being taken literally, and refused an id that resolves to
+nothing. Correct, and it stays. But it finished a change of meaning that had
+been half-made: after it, a payload `id` means exactly one thing — *name an
+existing element and keep its identity* — and `insertBlocks`, whose payload
+has no existing content to name, was left advertising a field in which
+**every value is an error**. An id that resolves is refused as a duplicate
+(`claimPayloadIds` with an empty allow-set); one that does not resolve is
+refused as unresolvable. Both refusals are correct and neither is
+reachable-by-repair: there is no third value.
+
+**Why the runtime guard is the wrong instrument.** A refusal is a fine
+answer to a caller who guessed wrong. It is not an answer to the consumer
+this API is built for. A small model emits the fields it is shown, and under
+constrained decoding it does so *by construction* — the grammar compiled
+from the published schema had `id` in it, so `id` was always emittable and
+the guard could only ever fire after the fact. The model has no channel to
+learn from the 400 within the request, and the next request is generated
+from the same grammar. The only instrument that reaches a constrained
+decoder is the schema itself: with `additionalProperties: false` (C13), a
+field absent from the schema cannot be emitted at all.
+
+**The split.** The payload block def became two:
+
+- `v2OpNewBlockDef` — **new content** (`insertBlocks`): no `id`, on the
+  block or nested in `rows`/`columns`/`views`.
+- `v2OpBlockDef` — **existing content** (`replaceSubtree`): keeps `id`,
+  because naming the block being replaced is what makes echoing a read back
+  a no-op instead of a rename (§8.29).
+
+`updateBlock`'s `set.{rows,columns,views}` and `setCell`'s `value` are
+existing-content payloads too — both allow ids drawn from the addressed
+block's own subtree — and their schemas publish those channels untyped, so
+they advertise no `id` to remove.
+
+The runtime is unchanged in what it accepts: `insertBlocks` still refuses an
+id. What changed is the verdict's meaning — it no longer resolves the id at
+all (`rejectPayloadIds`), so it says *"id is not part of this op"* instead
+of reporting a duplicate or an unresolvable reference, neither of which
+names the actual repair.
+
+**The rule going forward: a field that cannot succeed in an op does not
+appear in that op's schema.** A runtime refusal is a backstop for the caller
+who ignored the schema, never the mechanism. This is C2 — one concept, one
+slot — applied one level down, to a *field*: `id` carried two meanings
+("name this existing element" and "choose the id of this new one"), and the
+two sharing one slot is precisely what produced F1. Splitting the slot is
+the same move C2 makes on the surface's nouns.
+
+**Boundary check.** Every id-bearing payload slot was re-derived from the
+code rather than assumed. Table rows, columns and cell descendants are real
+state blocks, so `claimPayloadIds` sees them and the always-error verdict
+holds for them in `insertBlocks`. Dataview **view** ids are the one slot no
+guard covered: they are not blocks, so an `insertBlocks` payload naming an
+existing view used to import a *second* dataview holding that view id — no
+refusal, a duplicate view id in the document. Rejecting the field closes
+that without a new guard. `updateView`/`insertView` `set.sorts[].id` is a
+different id domain (a sort's own id, output-only on reads, accepted back so
+a read round-trips) and is untouched.
+
+**Not taken.** The unreferenced `$defs.block` that every op schema carries —
+`setProperties` publishes a payload-block def it never `$ref`s — is noise,
+not a trap: a decoder reaches only what the root schema references. Left
+alone. The format's own document schema (`GET /v2/schemas/object`,
+`pkg/lib/anyblockjson/schema`) is a different contract — a create body is a
+snapshot, where an id is legitimate — and was not touched.

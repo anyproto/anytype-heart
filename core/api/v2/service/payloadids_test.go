@@ -222,6 +222,26 @@ func TestPatchPayloadIdsResolve(t *testing.T) {
 		}
 	})
 
+	t.Run("an id nested in an insertBlocks payload is refused as not part of the op", func(t *testing.T) {
+		// §8.30: the nested id slots go the same way as the block's own —
+		// the row id below names a REAL row of the document, so before the
+		// split it resolved and then failed as a duplicate, which reads as a
+		// value problem rather than as "this op has no such field"
+		fx := newV2Fixture(t)
+		fx.expectMutate(editRead(t, editTableDoc), "headB")
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"insertBlocks","blocks":[{"type":"table",`+
+				`"columns":[{}],"rows":[{"id":"rowH","cells":["Fresh"]}]}]}`), "", false)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
+		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
+		require.NotEmpty(t, apiErr.Issues)
+		assert.Equal(t, "ops[0].blocks[0].rows[0].id", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Message, "not part of this op")
+	})
+
 	t.Run("a payload id naming a block outside the replaced subtree is a duplicate", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.expectMutate(editRead(t, editBaseDoc), "headB")

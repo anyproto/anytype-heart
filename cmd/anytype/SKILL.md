@@ -71,9 +71,10 @@ presets are functions (`today()`, `currentWeek()`, `daysAgo(n)`).
   keys differ only by case the error names both.
 - **Handles expire on the next find.** Re-run `find` and use the new
   numbers. Block ids come from `read` — use them as served, and re-read
-  after a structural edit rather than reusing remembered ones. Every edit
-  receipt names the object it changed (`ok — "Groceries": …`) — check it
-  matches your intent.
+  after a structural edit rather than reusing remembered ones. A block id
+  always names an EXISTING block: new content is authored without ids
+  (`add-blocks` takes none). Every edit receipt names the object it changed
+  (`ok — "Groceries": …`) — check it matches your intent.
 - **One verb, one intent.** There is no batch; run verbs in sequence.
   Retries are safe: an identical re-run within a minute is deduplicated,
   including after a failed or timed-out attempt.
