@@ -24,3 +24,4 @@ build
 doc/dependency_decisions.yml
 .serena/
 .ralphex/progress/
+/eval-out/
