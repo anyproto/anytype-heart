@@ -514,6 +514,36 @@ func servedKey(storedKey, slug string, keyTaken map[string]bool, slugCount map[s
 	return slug
 }
 
+// propertyKeyHeldByAnyRelation reports whether ANY relation object holds the
+// stored key — live or corpse (the explicit no-op isArchived filter
+// suppresses the store's injected default; Condition None compiles to no
+// filter at all). This is the create path's round-trip tolerance for a
+// document that legitimately carries a value of a UI-deleted relation
+// (§8.29); it is never an ADDRESS — nothing resolves a corpse key to a
+// property object, and no listing advertises it.
+func (s *V2Service) propertyKeyHeldByAnyRelation(spaceId, key string) bool {
+	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
+		Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyRelationKey,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.String(key),
+			},
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.Int64(int64(model.ObjectType_relation)),
+			},
+			{
+				RelationKey: bundle.RelationKeyIsArchived,
+				Condition:   model.BlockContentDataviewFilter_None,
+			},
+		},
+		Limit: 1,
+	})
+	return err == nil && len(records) > 0
+}
+
 // canonicalizeDocumentKeys rewrites an inbound document's addressing terms
 // to their canonical stored spellings BEFORE validation and import: the
 // envelope's type/templateFor (slug → internal type key — the import path

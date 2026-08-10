@@ -175,12 +175,11 @@ func TestV2TypeKeyExistsIsCorpseAndChainAware(t *testing.T) {
 	})
 }
 
-func TestV2CreateRejectsCorpseKeys(t *testing.T) {
-	// review cause 3 was a GET→PUT round-trip concern: an object holding
-	// values of a UI-deleted relation exports that key, and PUT of those
-	// same bytes had to be accepted. PUT is gone (APIV2.md §8.27) and with
-	// it the tolerance — a PATCH names only the properties it edits, so the
-	// live-only rule is now the whole rule on every write channel.
+// corpseKeyCloneFixture holds a UI-deleted relation whose key an object
+// still carries, plus a LIVE relation spelled one character away — the
+// near-miss that made the refusal actively harmful (the did-you-mean steered
+// the caller to move the value onto an unrelated property).
+func corpseKeyCloneFixture(t *testing.T) *v2Fixture {
 	fx := newV2Fixture(t)
 	fx.addRelation(t, testSpaceId, objectstore.TestObject{
 		bundle.RelationKeyId:            domain.String("rel-corpse"),
@@ -188,13 +187,65 @@ func TestV2CreateRejectsCorpseKeys(t *testing.T) {
 		bundle.RelationKeyName:          domain.String("Deleted in UI"),
 		bundle.RelationKeyIsUninstalled: domain.Bool(true),
 	})
+	fx.addRelation(t, testSpaceId, objectstore.TestObject{
+		bundle.RelationKeyId:          domain.String("rel-nearmiss"),
+		bundle.RelationKeyRelationKey: domain.String("corpse_kez"),
+		bundle.RelationKeyName:        domain.String("Near miss"),
+	})
+	return fx
+}
 
-	_, err := fx.CreateObject(context.Background(), testSpaceId,
-		[]byte(`{"version":1,"type":"page","properties":{"name":"Fresh","corpse_key":"x"}}`), false)
+func TestV2CreateToleratesCorpseHeldKeys(t *testing.T) {
+	// Review cause 3 was framed as a GET→PUT concern and its tolerance was
+	// retired with PUT (§8.27) on the grounds that create is live-only and
+	// PATCH names only what it edits. BOTH halves were wrong (§8.29): PATCH
+	// has its own in-document escape (checkKey passes any key already on the
+	// document), and create is the channel a read body is pasted into — "a
+	// pasted read body creates a copy". Live-only there broke the one loop
+	// it is advertised for.
+	t.Run("a read body holding a corpse key creates a copy", func(t *testing.T) {
+		// given
+		fx := corpseKeyCloneFixture(t)
+		captured := fx.expectCreate("clone1")
+		fx.expectEtagRead("clone1")
 
-	var apiErr *v2model.Error
-	require.ErrorAs(t, err, &apiErr)
-	assert.Equal(t, http.StatusBadRequest, apiErr.Status)
+		// when — the bytes a GET of such an object serves
+		_, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"version":1,"type":"page","properties":{"name":"Fresh","corpse_key":"x"}}`), false)
+
+		// then
+		require.NoError(t, err)
+		require.NotNil(t, *captured)
+		assert.Equal(t, "x", (*captured).Details.Fields["corpse_key"].GetStringValue(),
+			"the value is carried, not dropped")
+	})
+
+	t.Run("a key no relation holds at all is still refused", func(t *testing.T) {
+		// the tolerance is a round-trip escape, not an address: only a key
+		// SOME relation object holds passes
+		fx := corpseKeyCloneFixture(t)
+
+		_, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"version":1,"type":"page","properties":{"name":"Fresh","never_existed":"x"}}`), false)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
+		require.NotEmpty(t, apiErr.Issues)
+		assert.Equal(t, "/properties/never_existed", apiErr.Issues[0].Path)
+	})
+
+	t.Run("no did-you-mean steers a corpse-held key onto a near-miss live property", func(t *testing.T) {
+		// the actively harmful half: "did you mean corpse_kez?" invited the
+		// caller to write the value onto an unrelated property
+		fx := corpseKeyCloneFixture(t)
+		fx.expectCreate("clone2")
+		fx.expectEtagRead("clone2")
+
+		_, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"version":1,"type":"page","properties":{"name":"Fresh","corpse_key":"x"}}`), false)
+
+		require.NoError(t, err)
+	})
 }
 
 func TestV2FieldAliasSurvivesACorpseClaimant(t *testing.T) {

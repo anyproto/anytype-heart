@@ -462,11 +462,25 @@ func (s *V2Service) validateDocumentRefs(spaceId string, envelope *docEnvelope, 
 }
 
 // validatePropertyKeys is the R9 unknown-property loop over a document's
-// properties map. One primed live set for the whole loop (§7.5a-2),
-// failing closed on a load error. Only LIVE properties pass: the
-// corpse-tolerant variant existed solely so a GET→PUT round trip of a
-// document holding values of a UI-deleted relation would not 400, and it
-// retired with PUT — a PATCH never resends a property it is not editing.
+// properties map. One primed live set for the whole loop (§7.5a-2), failing
+// closed on a load error.
+//
+// A LIVE property passes as an address. A key no live property claims but
+// SOME relation object still holds — a UI-deleted or archived one, a
+// "corpse" — passes as a round-trip tolerance
+// (propertyKeyHeldByAnyRelation): an object holding values of such a
+// relation exports that key, and create is the channel a read body is
+// pasted into ("a pasted read body creates a copy", §3(b)). Refusing it
+// would make the advertised clone loop fail on a document the API itself
+// served, and would do so with a did-you-mean pointing at some unrelated
+// live key that happens to be spelled nearby — moving a value onto the
+// wrong property is worse than carrying a dormant one.
+//
+// This tolerance is not create-specific special pleading: PATCH has the
+// same escape by another route (stateops.go checkKey passes any key already
+// present on the document). Both say the same thing — a document may keep a
+// value it legitimately already carries; neither is an ADDRESS, because
+// neither channel will resolve a corpse key to a property object.
 func (s *V2Service) validatePropertyKeys(spaceId string, props map[string]json.RawMessage) error {
 	if len(props) == 0 {
 		return nil
@@ -479,6 +493,9 @@ func (s *V2Service) validatePropertyKeys(spaceId string, props map[string]json.R
 	var known []string
 	for _, key := range sortedKeys(props) {
 		if propertyKeyExistsIn(entries, key) {
+			continue
+		}
+		if s.propertyKeyHeldByAnyRelation(spaceId, key) {
 			continue
 		}
 		if known == nil {
