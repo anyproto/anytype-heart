@@ -264,6 +264,45 @@ func (c *apiClient) createObject(ctx context.Context, spaceId, typeKey, name, ma
 	return resp.Id, nil
 }
 
+// searchPollInterval is how often waitSearchable re-asks.
+const searchPollInterval = 500 * time.Millisecond
+
+// waitSearchable blocks until a search for the fixture's title returns it.
+// Full-text indexing is asynchronous, so a fixture created a moment ago can
+// be invisible to the search the wrapper arm's `find` runs — an attempt that
+// starts before the index catches up fails for a reason that has nothing to
+// do with the model or the API contract. Returns whether it became visible
+// and how long that took.
+func (c *apiClient) waitSearchable(ctx context.Context, spaceId, title, objectId string, timeout time.Duration) (bool, time.Duration, error) {
+	deadline := time.Now().Add(timeout)
+	path := "/v2/spaces/" + url.PathEscape(spaceId) + "/search"
+	start := time.Now()
+	for {
+		var resp struct {
+			Data []struct {
+				Id string `json:"id"`
+			} `json:"data"`
+		}
+		if _, err := c.call(ctx, http.MethodPost, path, url.Values{"limit": {"25"}},
+			map[string]any{"query": title}, &resp); err != nil {
+			return false, time.Since(start), fmt.Errorf("search for the fixture: %w", err)
+		}
+		for _, row := range resp.Data {
+			if row.Id == objectId {
+				return true, time.Since(start), nil
+			}
+		}
+		if time.Now().After(deadline) {
+			return false, time.Since(start), nil
+		}
+		select {
+		case <-time.After(searchPollInterval):
+		case <-ctx.Done():
+			return false, time.Since(start), ctx.Err()
+		}
+	}
+}
+
 // typeExists reports whether a type key resolves in the space.
 func (c *apiClient) typeExists(ctx context.Context, spaceId, typeKey string) bool {
 	path := "/v2/spaces/" + url.PathEscape(spaceId) + "/types/" + url.PathEscape(typeKey)

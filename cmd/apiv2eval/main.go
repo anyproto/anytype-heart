@@ -227,6 +227,10 @@ const (
 	surfaceOps     = "ops"
 )
 
+// fixtureIndexTimeout bounds the wait for a fresh fixture to become
+// searchable.
+const fixtureIndexTimeout = 30 * time.Second
+
 // armSpec is one surface under test.
 type armSpec struct {
 	name    string
@@ -259,6 +263,8 @@ type attemptRecord struct {
 	StoppedBy   string `json:"stopped_by,omitempty"`
 	ToolCalls   int    `json:"tool_calls"`
 	FailedCalls int    `json:"failed_calls"`
+	// FixtureIndexMs is how long the fixture took to become searchable.
+	FixtureIndexMs int64 `json:"fixture_index_ms,omitempty"`
 	// WrongTargetWrites counts mutations that landed on some OTHER object.
 	// Fixtures share a space and a title stem, so a find that returns
 	// several and a handle picked from the wrong row writes to a real note
@@ -305,6 +311,23 @@ func runAttempt(ctx context.Context, deps attemptDeps, model string, arm armSpec
 		return finishRecord()
 	}
 	att.ObjectId, att.Title = fx.ObjectId, fx.Title
+
+	// the wrapper arm reaches the object through find, which searches; the
+	// index is asynchronous, so an attempt started too early fails for a
+	// reason that is neither the model's nor the API's
+	if arm.surface == surfaceWrapper {
+		ok, took, err := deps.api.waitSearchable(ctx, deps.spaceId, fx.Title, fx.ObjectId, fixtureIndexTimeout)
+		att.FixtureIndexMs = took.Milliseconds()
+		switch {
+		case err != nil:
+			att.Outcome, att.EnvError = outcomeEnv, fmt.Errorf("wait for the fixture to be searchable: %w", err).Error()
+			return finishRecord()
+		case !ok:
+			att.Outcome = outcomeEnv
+			att.EnvError = fmt.Sprintf("the fixture %q was still not searchable after %s — the full-text index had not caught up", fx.Title, fixtureIndexTimeout)
+			return finishRecord()
+		}
+	}
 
 	ts, err := buildToolset(ctx, deps, arm, fx)
 	if err != nil {

@@ -353,3 +353,47 @@ func TestOpsArmSetsTheDiscriminatorFromTheToolName(t *testing.T) {
 	require.Len(t, stub.patches, 1)
 	assert.JSONEq(t, `{"op":"insertBlocks","markdown":"## Risks"}`, string(stub.patches[0]))
 }
+
+func TestWaitSearchableReturnsWhenTheIndexCatchesUp(t *testing.T) {
+	// given — the fixture is invisible to search on the first poll and
+	// visible on the second, which is what an asynchronous full-text index
+	// looks like from the outside
+	var polls int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		polls++
+		if polls == 1 {
+			fmt.Fprint(w, `{"data":[],"total":0}`)
+			return
+		}
+		fmt.Fprint(w, `{"data":[{"id":"obj1"}],"total":1}`)
+	}))
+	defer srv.Close()
+	client := newAPIClient(srv.URL, "key", &recordingTransport{base: http.DefaultTransport, rec: &recorder{}})
+
+	// when
+	ok, took, err := client.waitSearchable(context.Background(), "space1", "Quarterly plan ab12", "obj1", 5*time.Second)
+
+	// then
+	require.NoError(t, err)
+	assert.True(t, ok)
+	assert.Equal(t, 2, polls)
+	assert.Greater(t, took, time.Duration(0))
+}
+
+func TestWaitSearchableGivesUpWithoutClaimingSuccess(t *testing.T) {
+	// given
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"data":[],"total":0}`)
+	}))
+	defer srv.Close()
+	client := newAPIClient(srv.URL, "key", &recordingTransport{base: http.DefaultTransport, rec: &recorder{}})
+
+	// when
+	ok, _, err := client.waitSearchable(context.Background(), "space1", "missing", "obj1", 100*time.Millisecond)
+
+	// then
+	require.NoError(t, err)
+	assert.False(t, ok, "a timeout is an environment fact, never a silent pass")
+}
