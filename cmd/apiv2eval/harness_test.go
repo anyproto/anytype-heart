@@ -397,3 +397,18 @@ func TestWaitSearchableGivesUpWithoutClaimingSuccess(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, ok, "a timeout is an environment fact, never a silent pass")
 }
+
+// stubTransport serves the stub API in-process, with no listening socket:
+// http.RoundTripper straight into the handler. The live smoke tests use it
+// because a test binary that binds a local port can be treated differently
+// by a sandbox's network policy than one that does not, and a smoke test
+// that fails for that reason tells you nothing about the model.
+type stubTransport struct{ handler http.Handler }
+
+func (t *stubTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	w := httptest.NewRecorder()
+	t.handler.ServeHTTP(w, req)
+	resp := w.Result()
+	resp.Request = req
+	return resp, nil
+}

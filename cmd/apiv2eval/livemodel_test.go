@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
@@ -32,12 +31,10 @@ func TestLiveModelDrivesTheTierSmallToolSet(t *testing.T) {
 		baseURL = "http://127.0.0.1:11434/v1"
 	}
 
-	// given
-	api := newStubAPI(servedDoc)
-	defer api.Close()
+	// given — the stub API is served in-process, without a socket
 	rec := &recorder{}
-	client := wrapper.NewClient(api.URL, "key")
-	client.HTTP = &http.Client{Transport: &recordingTransport{base: http.DefaultTransport, rec: rec}}
+	client := wrapper.NewClient("http://stub", "key")
+	client.HTTP = &http.Client{Transport: &recordingTransport{base: &stubTransport{handler: &stubAPI{doc: servedDoc}}, rec: rec}}
 	runner := wrapper.NewRunner(client, wrapper.NewMemoryStore())
 	ts, err := newMCPToolset(context.Background(), runner, wrapper.TierSmall)
 	require.NoError(t, err)
@@ -79,9 +76,8 @@ func TestLiveModelDrivesTheOpsArm(t *testing.T) {
 	// given — the ops arm needs the published op schemas, which only the
 	// server serves; against the stub they are placeholders, so this checks
 	// the loop and the tool count, not the schemas themselves
-	stub := httptest.NewServer(&stubAPI{doc: servedDoc})
-	defer stub.Close()
-	client := newAPIClient(stub.URL, "key", &recordingTransport{base: http.DefaultTransport, rec: &recorder{}})
+	client := newAPIClient("http://stub", "key",
+		&recordingTransport{base: &stubTransport{handler: &stubAPI{doc: servedDoc}}, rec: &recorder{}})
 	ts, err := newOpsToolset(context.Background(), client, "space1", "obj1")
 	require.NoError(t, err)
 
