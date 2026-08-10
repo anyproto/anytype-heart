@@ -266,6 +266,11 @@ func (srv *Server) registerObjectRoutes(v1 *gin.RouterGroup, eventService apicor
 		ensureAnalyticsEvent("OpenObject", eventService),
 		handler.GetObjectHandler(srv.service),
 	)
+	v1.POST("/spaces/:space_id/objects/batch",
+		writeRateLimitMW,
+		ensureAnalyticsEvent("BatchGetObjects", eventService),
+		handler.BatchGetObjectsHandler(srv.service),
+	)
 	v1.POST("/spaces/:space_id/objects",
 		writeRateLimitMW,
 		ensureAnalyticsEvent("CreateObject", eventService),

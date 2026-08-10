@@ -65,7 +65,7 @@ func ListObjectsHandler(s *service.Service) gin.HandlerFunc {
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-11-08)
 //	@Param			space_id		path		string					true	"The ID of the space in which the object exists; must be retrieved from ListSpaces endpoint"
 //	@Param			object_id		path		string					true	"The ID of the object to retrieve; must be retrieved from ListObjects, SearchSpace or GlobalSearch endpoints or obtained from response context"
-//	@Param			format			query		apimodel.BodyFormat		false	"The format to return the object body in" default(md)
+//	@Param			format			query		apimodel.BodyFormat		false	"The format to return the object body in"	default(md)
 //	@Success		200				{object}	apimodel.ObjectResponse	"The retrieved object"
 //	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure		404				{object}	util.NotFoundError		"Resource not found"
@@ -201,7 +201,57 @@ func UpdateObjectHandler(s *service.Service) gin.HandlerFunc {
 	}
 }
 
-// DeleteObjectHandler deletes an object in a space
+// BatchGetObjectsHandler retrieves multiple objects by ID in a single request
+//
+//	@Summary		Get objects by ID
+//	@Description	Fetches multiple objects by their IDs within the specified space in a single request. Objects that cannot be found are represented by a "null" entry in the response, preserving the order of the requested IDs. This avoids the need to issue one request per object when a client operates on a known set of objects (e.g. a list of tasks or commitments).
+//	@Id				get_objects_batch
+//	@Tags			Objects
+//	@Accept			json
+//	@Produce		json
+//	@Param			Anytype-Version	header		string							true	"The version of the API to use"	default(2025-11-08)
+//	@Param			space_id		path		string							true	"The ID of the space in which the objects exist; must be retrieved from ListSpaces endpoint"
+//	@Param			ids				body		apimodel.BatchGetObjectsRequest	true	"The IDs of the objects to fetch"
+//	@Success		200				{array}		apimodel.ObjectResponse			"The requested objects in the same order as the requested IDs, with a null placeholder for any ID that could not be found"
+//	@Failure		400				{object}	util.ValidationError			"Bad request"
+//	@Failure		401				{object}	util.UnauthorizedError			"Unauthorized"
+//	@Failure		429				{object}	util.RateLimitError				"Rate limit exceeded"
+//	@Failure		500				{object}	util.ServerError				"Internal server error"
+//	@Security		bearerauth
+//	@Router			/v1/spaces/{space_id}/objects/batch [post]
+func BatchGetObjectsHandler(s *service.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		spaceId := c.Param("space_id")
+
+		request := apimodel.BatchGetObjectsRequest{}
+		if err := c.BindJSON(&request); err != nil {
+			apiErr := util.CodeToApiError(http.StatusBadRequest, err.Error())
+			c.JSON(http.StatusBadRequest, apiErr)
+			return
+		}
+
+		objects, err := s.BatchGetObjects(c.Request.Context(), spaceId, request.Ids)
+		code := util.MapErrorCode(err,
+			util.ErrToCode(service.ErrBatchTooManyIds, http.StatusBadRequest),
+			util.ErrToCode(service.ErrFailedRetrieveBatchObject, http.StatusInternalServerError),
+		)
+
+		if code != http.StatusOK {
+			apiErr := util.CodeToApiError(code, err.Error())
+			c.JSON(code, apiErr)
+			return
+		}
+
+		// Wrap each object in an ObjectResponse; nil entries become JSON null
+		responses := make([]*apimodel.ObjectResponse, len(objects))
+		for i, obj := range objects {
+			if obj != nil {
+				responses[i] = &apimodel.ObjectResponse{Object: *obj}
+			}
+		}
+		c.JSON(http.StatusOK, responses)
+	}
+}
 //
 //	@Summary		Delete object
 //	@Description	This endpoint “deletes” an object by marking it as archived. The deletion process is performed safely and is subject to rate limiting. It returns the object’s details after it has been archived. Proper error handling is in place for situations such as when the object isn’t found or the deletion cannot be performed because of permission issues.

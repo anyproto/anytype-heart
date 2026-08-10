@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/gogo/protobuf/types"
 
@@ -22,6 +23,8 @@ var (
 	ErrFailedRetrieveObject      = errors.New("failed to retrieve object")
 	ErrFailedExportMarkdown      = errors.New("failed to export markdown")
 	ErrFailedRetrieveObjects     = errors.New("failed to retrieve list of objects")
+	ErrFailedRetrieveBatchObject = errors.New("failed to retrieve batch of objects")
+	ErrBatchTooManyIds           = errors.New("batch request exceeds maximum of 100 IDs")
 	ErrFailedCreateObject        = errors.New("failed to create object")
 	ErrFailedSetPropertyFeatured = errors.New("failed to set property featured")
 	ErrFailedCreateBookmark      = errors.New("failed to fetch bookmark")
@@ -111,6 +114,41 @@ func (s *Service) GetObject(ctx context.Context, spaceId string, objectId string
 	}
 
 	return s.getObjectWithBlocksFromStruct(resp.ObjectView.Details[0].Details, markdown), nil
+}
+
+// BatchGetObjects retrieves multiple objects by their IDs in a specific space.
+// Objects that cannot be found are returned as nil entries in the result,
+// preserving the order of the requested IDs.
+func (s *Service) BatchGetObjects(ctx context.Context, spaceId string, objectIds []string) ([]*apimodel.ObjectWithBody, error) {
+	if len(objectIds) == 0 || len(objectIds) > 100 {
+		return nil, ErrBatchTooManyIds
+	}
+
+	results := make([]*apimodel.ObjectWithBody, len(objectIds))
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	jobC := make(chan struct{}, 10) // concurrency limit
+
+	for i, id := range objectIds {
+		wg.Add(1)
+		go func(idx int, objId string) {
+			defer wg.Done()
+			jobC <- struct{}{}
+			defer func() { <-jobC }()
+
+			obj, err := s.GetObject(ctx, spaceId, objId)
+			mu.Lock()
+			defer mu.Unlock()
+			if err != nil {
+				results[idx] = nil
+				return
+			}
+			results[idx] = obj
+		}(i, id)
+	}
+
+	wg.Wait()
+	return results, nil
 }
 
 // CreateObject creates a new object in a specific space.

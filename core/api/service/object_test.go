@@ -309,6 +309,178 @@ func TestObjectService_GetObject(t *testing.T) {
 	})
 }
 
+func TestObjectService_BatchGetObjects(t *testing.T) {
+	mockObjectShow := func(objectId, name string) *pb.RpcObjectShowResponse {
+		return &pb.RpcObjectShowResponse{
+			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
+			ObjectView: &model.ObjectView{
+				RootId: objectId,
+				Details: []*model.ObjectViewDetailsSet{
+					{
+						Id: objectId,
+						Details: &types.Struct{
+							Fields: map[string]*types.Value{
+								bundle.RelationKeyId.String():               pbtypes.String(objectId),
+								bundle.RelationKeyName.String():             pbtypes.String(name),
+								bundle.RelationKeyResolvedLayout.String():   pbtypes.Float64(float64(model.ObjectType_basic)),
+								bundle.RelationKeyType.String():             pbtypes.String(mockedTypeId),
+								bundle.RelationKeyIconEmoji.String():        pbtypes.String(mockedObjectIcon),
+								bundle.RelationKeySpaceId.String():          pbtypes.String(mockedSpaceId),
+								bundle.RelationKeyLastModifiedDate.String(): pbtypes.Float64(999999),
+								bundle.RelationKeyCreatedDate.String():      pbtypes.Float64(888888),
+								bundle.RelationKeyLastOpenedDate.String():   pbtypes.Float64(0),
+							},
+						},
+					},
+					{
+						Id: mockedTypeId,
+						Details: &types.Struct{
+							Fields: map[string]*types.Value{
+								bundle.RelationKeyId.String():        pbtypes.String(mockedTypeId),
+								bundle.RelationKeyName.String():      pbtypes.String(mockedTypeName),
+								bundle.RelationKeyUniqueKey.String(): pbtypes.String(mockedTypeKey),
+								bundle.RelationKeyIconEmoji.String(): pbtypes.String(mockedTypeIcon),
+							},
+						},
+					},
+				},
+			},
+		}
+	}
+
+	mockObjectExport := func(fx *fixture, objectId string) {
+		fx.mwMock.On("ObjectExport", mock.Anything, &pb.RpcObjectExportRequest{
+			SpaceId:  mockedSpaceId,
+			ObjectId: objectId,
+			Format:   model.Export_Markdown,
+		}).Return(&pb.RpcObjectExportResponse{
+			Result: "dummy markdown",
+			Error:  &pb.RpcObjectExportResponseError{Code: pb.RpcObjectExportResponseError_NULL},
+		}, nil).Once()
+	}
+
+	t.Run("successfully batch get multiple objects", func(t *testing.T) {
+		// given
+		ctx := context.Background()
+		fx := newFixture(t)
+		fx.populateCache(mockedSpaceId)
+
+		ids := []string{"obj-1", "obj-2", "obj-3"}
+		for _, id := range ids {
+			fx.mwMock.On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
+				SpaceId:  mockedSpaceId,
+				ObjectId: id,
+			}).Return(mockObjectShow(id, id), nil).Once()
+			mockObjectExport(fx, id)
+		}
+
+		// when
+		objects, err := fx.service.BatchGetObjects(ctx, mockedSpaceId, ids)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, objects, 3)
+		for i, id := range ids {
+			require.NotNil(t, objects[i])
+			require.Equal(t, id, objects[i].Id)
+			require.Equal(t, id, objects[i].Name)
+		}
+	})
+
+	t.Run("batch with empty ids returns error", func(t *testing.T) {
+		// given
+		ctx := context.Background()
+		fx := newFixture(t)
+
+		// when
+		objects, err := fx.service.BatchGetObjects(ctx, mockedSpaceId, []string{})
+
+		// then
+		require.ErrorIs(t, err, ErrBatchTooManyIds)
+		require.Empty(t, objects)
+	})
+
+	t.Run("batch with more than 100 ids returns error", func(t *testing.T) {
+		// given
+		ctx := context.Background()
+		fx := newFixture(t)
+
+		ids := make([]string, 101)
+		for i := range ids {
+			ids[i] = "obj"
+		}
+
+		// when
+		objects, err := fx.service.BatchGetObjects(ctx, mockedSpaceId, ids)
+
+		// then
+		require.ErrorIs(t, err, ErrBatchTooManyIds)
+		require.Empty(t, objects)
+	})
+
+	t.Run("batch with not-found ids returns null entries", func(t *testing.T) {
+		// given
+		ctx := context.Background()
+		fx := newFixture(t)
+		fx.populateCache(mockedSpaceId)
+
+		ids := []string{"obj-1", "missing-2", "obj-3"}
+		for _, id := range ids {
+			if id == "missing-2" {
+				fx.mwMock.On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
+					SpaceId:  mockedSpaceId,
+					ObjectId: id,
+				}).Return(&pb.RpcObjectShowResponse{
+					Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NOT_FOUND},
+				}, nil).Once()
+				continue
+			}
+			fx.mwMock.On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
+				SpaceId:  mockedSpaceId,
+				ObjectId: id,
+			}).Return(mockObjectShow(id, id), nil).Once()
+			mockObjectExport(fx, id)
+		}
+
+		// when
+		objects, err := fx.service.BatchGetObjects(ctx, mockedSpaceId, ids)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, objects, 3)
+		require.NotNil(t, objects[0])
+		require.Nil(t, objects[1])
+		require.NotNil(t, objects[2])
+	})
+
+	t.Run("batch preserves input order", func(t *testing.T) {
+		// given
+		ctx := context.Background()
+		fx := newFixture(t)
+		fx.populateCache(mockedSpaceId)
+
+		ids := []string{"obj-z", "obj-a", "obj-m", "obj-b"}
+		for _, id := range ids {
+			fx.mwMock.On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
+				SpaceId:  mockedSpaceId,
+				ObjectId: id,
+			}).Return(mockObjectShow(id, id), nil).Once()
+			mockObjectExport(fx, id)
+		}
+
+		// when
+		objects, err := fx.service.BatchGetObjects(ctx, mockedSpaceId, ids)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, objects, len(ids))
+		for i, id := range ids {
+			require.NotNil(t, objects[i])
+			require.Equal(t, id, objects[i].Id)
+		}
+	})
+}
+
 func TestObjectService_CreateObject(t *testing.T) {
 	t.Run("successful object creation", func(t *testing.T) {
 		// given

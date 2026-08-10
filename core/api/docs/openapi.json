@@ -60,6 +60,28 @@
         },
         "type": "object"
       },
+      "BatchGetObjectsRequest": {
+        "properties": {
+          "ids": {
+            "description": "The IDs of the objects to fetch; must be retrieved from ListObjects, SearchSpace or GlobalSearch endpoints or obtained from response context",
+            "example": [
+              "[\"bafyrei...\"",
+              "\"bafyrej...\"]"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": false
+          }
+        },
+        "required": [
+          "ids"
+        ],
+        "type": "object"
+      },
       "ChatAttachment": {
         "properties": {
           "target": {
@@ -6473,6 +6495,108 @@
           }
         ],
         "summary": "Create object",
+        "tags": [
+          "Objects"
+        ]
+      }
+    },
+    "/v1/spaces/{space_id}/objects/batch": {
+      "post": {
+        "description": "Fetches multiple objects by their IDs within the specified space in a single request. Objects that cannot be found are represented by a \"null\" entry in the response, preserving the order of the requested IDs. This avoids the need to issue one request per object when a client operates on a known set of objects (e.g. a list of tasks or commitments).",
+        "operationId": "get_objects_batch",
+        "parameters": [
+          {
+            "description": "The version of the API to use",
+            "in": "header",
+            "name": "Anytype-Version",
+            "required": true,
+            "schema": {
+              "default": "2025-11-08",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The ID of the space in which the objects exist; must be retrieved from ListSpaces endpoint",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchGetObjectsRequest"
+              }
+            }
+          },
+          "description": "The IDs of the objects to fetch",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ObjectResponse"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "The requested objects in the same order as the requested IDs, with a null placeholder for any ID that could not be found"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            },
+            "description": "Bad request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitError"
+                }
+              }
+            },
+            "description": "Rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            },
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Get objects by ID",
         "tags": [
           "Objects"
         ]
