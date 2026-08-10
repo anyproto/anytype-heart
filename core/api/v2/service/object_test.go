@@ -219,7 +219,7 @@ func TestV2MixedIdPopulationsRoundTrip(t *testing.T) {
 
 	// the default read: minted ids relabel, the others serve verbatim — and
 	// the served document stays schema-valid net of the v2 envelope
-	// additions every write path strips (etag/warnings — normalizePutBody)
+	// additions every write path strips (etag/warnings — normalizeCreateBody)
 	body, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", V2ObjectQuery{})
 	require.NoError(t, err)
 	stripped := decodeBody(t, body)

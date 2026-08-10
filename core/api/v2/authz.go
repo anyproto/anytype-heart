@@ -138,7 +138,6 @@ var v2RouteAuthz = map[string]RouteAuthz{
 	routeKey(http.MethodPost, "/v2/spaces/:space_id/files"):             {Verb: RouteVerbWrite},
 	// edit surface (registerEditRoutes)
 	routeKey(http.MethodPatch, "/v2/spaces/:space_id/objects/:object_id"): {Verb: RouteVerbWrite},
-	routeKey(http.MethodPut, "/v2/spaces/:space_id/objects/:object_id"):   {Verb: RouteVerbWrite},
 	// chat surface (registerChatRoutes)
 	routeKey(http.MethodGet, "/v2/spaces/:space_id/chats"):                                          {Verb: RouteVerbRead},
 	routeKey(http.MethodPost, "/v2/spaces/:space_id/chats"):                                         {Verb: RouteVerbWrite},

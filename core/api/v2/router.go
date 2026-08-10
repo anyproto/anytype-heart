@@ -257,10 +257,12 @@ func registerChatRoutes(v2 *gin.RouterGroup, deps RouteDeps, idempotencyMW gin.H
 }
 
 // registerEditRoutes registers the Phase-3 edit surface (APIV2.md §2
-// Phase 3). Concurrency safety is the If-Match header (C7); Idempotency-Key
-// additionally covers PATCH/PUT (C8, v0.3.5) because agents auto-retry on
-// timeout and a blind PATCH retry duplicates inserted blocks or 404s a
-// re-deleted one. Skipped when no mutator dependency was provided.
+// Phase 3): PATCH alone — snapshots are for creates, edits are ops (§8.27),
+// so there is no full-document replace route. Concurrency safety is the
+// If-Match header (C7); Idempotency-Key additionally covers PATCH (C8,
+// v0.3.5) because agents auto-retry on timeout and a blind PATCH retry
+// duplicates inserted blocks or 404s a re-deleted one. Skipped when no
+// mutator dependency was provided.
 func registerEditRoutes(v2 *gin.RouterGroup, deps RouteDeps, idempotencyMW gin.HandlerFunc) {
 	if deps.EditDisabled {
 		return
@@ -270,12 +272,6 @@ func registerEditRoutes(v2 *gin.RouterGroup, deps RouteDeps, idempotencyMW gin.H
 		idempotencyMW,
 		deps.AnalyticsEvent("V2PatchObject"),
 		v2handler.PatchObjectV2Handler(deps.Service),
-	)
-	v2.PUT("/spaces/:space_id/objects/:object_id",
-		deps.WriteRateLimit,
-		idempotencyMW,
-		deps.AnalyticsEvent("V2PutObject"),
-		v2handler.PutObjectV2Handler(deps.Service),
 	)
 }
 

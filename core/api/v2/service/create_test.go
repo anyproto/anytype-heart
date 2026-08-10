@@ -15,6 +15,7 @@ import (
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -243,9 +244,8 @@ func TestV2CreateObjectShortcut(t *testing.T) {
 func TestV2CreateObjectDocument(t *testing.T) {
 	t.Run("a pasted read body creates a copy — etag and warnings are stripped", func(t *testing.T) {
 		// reproduced live before the fix: POST /objects 400ed on the etag of
-		// every GET shape, while PUT stripped the same field — "read a
-		// document, create a copy" required knowing which envelope fields to
-		// hand-strip.
+		// every GET shape — "read a document, create a copy" required
+		// knowing which envelope fields to hand-strip.
 		fx := newV2Fixture(t)
 		captured := fx.expectCreate("cloneObj")
 		fx.expectEtagRead("cloneObj")
@@ -283,6 +283,25 @@ func TestV2CreateObjectDocument(t *testing.T) {
 		assert.Contains(t, result.Warnings[0].Message, `"bbbb1"`, "a label inside a cell's descendants is flagged too")
 		assert.NotContains(t, result.Warnings[0].Message, `"keeper"`, "only label-shaped ids are flagged")
 		assert.Contains(t, result.Warnings[0].Hint, "?ids=full")
+	})
+
+	t.Run("a ?block= subtree read cannot be cloned (partial marker)", func(t *testing.T) {
+		// a ?block= read is a fragment of another document: schema-valid on
+		// its face, so the envelope carries an explicit partial marker and
+		// create names it, the way the equally partial outline is named.
+		fx := newV2Fixture(t)
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(editRead(t, editBaseDoc), nil)
+		subtree, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", V2ObjectQuery{Block: "blockParent1"})
+		require.NoError(t, err)
+		assert.Contains(t, string(subtree), `"subtree":true`, "the subtree envelope carries the partial marker")
+		require.Error(t, anyblockjson.Validate(subtree),
+			"the partial envelope must not validate as a whole document (the way outline does not)")
+
+		_, err = fx.CreateObject(context.Background(), testSpaceId, subtree, false)
+
+		apiErr := v2Err(t, err)
+		require.NotEmpty(t, apiErr.Issues)
+		assert.Equal(t, "/subtree", apiErr.Issues[0].Path)
 	})
 
 	t.Run("full document creates with blocks", func(t *testing.T) {

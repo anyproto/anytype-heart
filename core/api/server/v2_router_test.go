@@ -215,7 +215,7 @@ func TestV2Routes(t *testing.T) {
 
 	t.Run("the idempotency middleware is wired on the edit routes", func(t *testing.T) {
 		// the middleware itself is unit-tested, but its REGISTRATION is the
-		// user-visible half of C8 on PATCH/PUT: dropping idempotencyMW from
+		// user-visible half of C8 on PATCH: dropping idempotencyMW from
 		// registerV2EditRoutes would silently stop replay on every edit route
 		// while every other test stayed green. A replayed request is answered
 		// from the store before auth runs, so the marker proves the middleware
@@ -226,7 +226,6 @@ func TestV2Routes(t *testing.T) {
 		// chain — without needing the edit itself to succeed.
 		for _, route := range []struct{ method, path string }{
 			{"PATCH", "/v2/spaces/space1/objects/obj1"},
-			{"PUT", "/v2/spaces/space1/objects/obj1"},
 			{"PATCH", "/v2/spaces/space1/types/task"},
 			{"PATCH", "/v2/spaces/space1/properties/status"},
 			// Phase-7 space mutations: a retried space create without C8
@@ -399,7 +398,6 @@ func TestV2Routes(t *testing.T) {
 			{"GET", "/v2/schemas/object"},
 			{"GET", "/v2/schemas/ops/replaceText"},
 			{"PATCH", "/v2/spaces/space1/objects/obj1"},
-			{"PUT", "/v2/spaces/space1/objects/obj1"},
 			{"POST", "/v2/search"},
 			{"POST", "/v2/spaces/space1/search"},
 			{"GET", "/v2/spaces/space1/sets/set1/objects"},

@@ -1,8 +1,9 @@
 package v2handler
 
-// edit.go holds the Phase-3 edit handlers (APIV2.md §2 Phase 3). PATCH
-// and PUT take their concurrency precondition from the If-Match header (C7,
-// advisory) — the idempotency middleware covers POST only.
+// edit.go holds the Phase-3 edit handler (APIV2.md §2 Phase 3). PATCH is
+// the whole edit surface — snapshots are for creates, edits are ops
+// (§8.27) — and takes its concurrency precondition from the If-Match
+// header (C7, advisory).
 
 import (
 	"net/http"
@@ -46,39 +47,6 @@ func PatchObjectV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 			return
 		}
 		result, err := s.PatchObject(c.Request.Context(), c.Param("space_id"), c.Param("object_id"), body, c.GetHeader("If-Match"), isV2DryRun(c))
-		if err != nil {
-			RespondV2Error(c, err)
-			return
-		}
-		respondV2Edit(c, result)
-	}
-}
-
-// PutObjectV2Handler replaces the whole document (escape hatch)
-//
-//	@Summary		Replace object (full AnyBlock document)
-//	@Description	Replaces the object's content with the supplied flat AnyBlock document in one change set. Read the object with ?ids=full first: PUT takes ids literally, and a body carrying ids the object does not own — including the compact labels a DEFAULT read serves — is refused with a 400 naming the offending ids. New blocks omit their id (the server mints one). The CRDT diff is minimal iff the ids round-trip from that ?ids=full read; diffStats make an accidental full rewrite visible. Partial reads (?block= subtrees, outlines) do not PUT back. Prefer PATCH for targeted edits. If-Match is advisory (C7). System-managed objects are excluded. Honors ?dry_run=true.
-//	@Id				v2_put_object
-//	@Tags			V2
-//	@Accept			json
-//	@Produce		json
-//	@Param			space_id	path		string				true	"Space id"
-//	@Param			object_id	path		string				true	"Object id"
-//	@Param			If-Match	header		string				false	"Advisory etag precondition (C7)"
-//	@Param			dry_run		query		bool				false	"Validate and report without committing"
-//	@Success		200			{object}	v2model.EditResult	"New etag + diffStats"
-//	@Failure		400			{object}	v2model.Error		"Invalid document"
-//	@Failure		404			{object}	v2model.Error		"Object or space not found"
-//	@Failure		409			{object}	v2model.Error		"Stale If-Match (etag_mismatch)"
-//	@Security		bearerauth
-//	@Router			/v2/spaces/{space_id}/objects/{object_id} [put]
-func PutObjectV2Handler(s *v2service.V2Service) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		body := readV2Body(c)
-		if body == nil {
-			return
-		}
-		result, err := s.PutObject(c.Request.Context(), c.Param("space_id"), c.Param("object_id"), body, c.GetHeader("If-Match"), isV2DryRun(c))
 		if err != nil {
 			RespondV2Error(c, err)
 			return

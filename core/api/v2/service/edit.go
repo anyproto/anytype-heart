@@ -1,29 +1,28 @@
 package v2service
 
 // edit.go implements the Phase-3 edit surface (APIV2.md §2 Phase 3):
-// PATCH /v2/spaces/{spaceId}/objects/{objectId} (the batched, atomic op set —
-// ops.go) and PUT (full-document replace, the escape hatch).
+// PATCH /v2/spaces/{spaceId}/objects/{objectId} — the batched, atomic,
+// id-addressed op set (ops.go). It is the ONLY edit surface: SNAPSHOTS ARE
+// FOR CREATES, EDITS ARE OPS (APIV2.md §8.27). The full-document PUT that
+// once sat beside it was removed with its whole pipeline — a surface that
+// makes a caller materialize the whole document to change part of it pays
+// whole-document tokens both ways and takes block ids literally, which is
+// where every id-identity defect of the hardening came from.
 //
 // PATCH applies the ops to a child *state.State of the live object
 // (stateops.go) and the adapter commits it with ONE ordinary sb.Apply —
 // the Block* RPC handler model. The flat document is still rendered under
 // the lock, but only as the read-only view the ops address (refs, indents,
 // error texts) and as the diffStats input; nothing round-trips the whole
-// document through Unmarshal anymore. Create-missing option resolution runs
-// BEFORE the object lock (resolver.go prewarm), so no create-RPC ever
-// holds the lock.
-//
-// PUT still runs the document-level pipeline (marshal live → validate the
-// client body → Unmarshal → reset-to-version diff-apply via ResetObject);
-// its stage-3 rework is pending. diffStats for both come from the canonical
-// before/after documents (diff.go).
+// document through Unmarshal. Create-missing option resolution runs BEFORE
+// the object lock (resolver.go prewarm), so no create-RPC ever holds the
+// lock. diffStats come from the canonical before/after documents (diff.go).
 
 import (
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 	"sort"
 	"strings"
 
@@ -31,8 +30,6 @@ import (
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
-	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson/storeresolver"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -399,79 +396,6 @@ func (s *V2Service) applyPatchOps(ctx context.Context, spaceId, objectId string,
 	return result, nil
 }
 
-// PutObject implements PUT /v2/spaces/{spaceId}/objects/{objectId}: the body
-// is a full AnyBlock document that replaces the object's content in one
-// change set. Minimal CRDT diff iff the block ids round-trip from the GET —
-// which is `?ids=full`, the export shape; the default read serves compact
-// labels for minted ids, and a body carrying ids the object does not own is
-// refused loudly (checkPutBlockIds) instead of silently re-minting identity.
-// diffStats make an accidental full rewrite visible.
-func (s *V2Service) PutObject(ctx context.Context, spaceId, objectId string, body []byte, ifMatch string, dryRun bool) (*v2model.EditResult, error) {
-	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
-		return nil, err
-	}
-	body, err := normalizePutBody(body, objectId)
-	if err != nil {
-		return nil, err
-	}
-	if err := s.rejectInvalidDocument(body); err != nil {
-		return nil, err
-	}
-	// canonicalize addressing terms (§7.5a-5) — PUT guards like create
-	if body, err = s.canonicalizeDocumentKeys(spaceId, body); err != nil {
-		return nil, err
-	}
-	var envelope docEnvelope
-	if err := json.Unmarshal(body, &envelope); err != nil {
-		return nil, v2model.ValidationFailed("decode document envelope: " + err.Error())
-	}
-	// the R9 referential layer guards PUT like create: kind gating, type and
-	// property keys with did-you-mean, items-on-collections. PUT tolerates
-	// corpse-held keys — an object holding values of a UI-deleted relation
-	// exports that key, and GET→PUT of the same bytes must round-trip.
-	if err := s.validateDocumentRefs(spaceId, &envelope, docCreateOptions{tolerateCorpseKeys: true}); err != nil {
-		return nil, err
-	}
-
-	var result *v2model.EditResult
-	build := func(cur apicore.ObjectRead) (*model.SmartBlockSnapshotBase, error) {
-		snapshot, res, err := s.putPipeline(ctx, spaceId, objectId, body, envelope, ifMatch, dryRun, cur)
-		if err != nil {
-			return nil, err
-		}
-		result = res
-		return snapshot, nil
-	}
-	return s.runEdit(ctx, spaceId, objectId, dryRun, build, &result)
-}
-
-// runEdit executes a PUT build: through the mutator's reset path (one locked
-// diff-apply) on a real run, through a plain read on a dry run (C9 — nothing
-// is committed, the would-be outcome rides the result).
-func (s *V2Service) runEdit(ctx context.Context, spaceId, objectId string, dryRun bool, build func(apicore.ObjectRead) (*model.SmartBlockSnapshotBase, error), result **v2model.EditResult) (*v2model.EditResult, error) {
-	if dryRun {
-		cur, err := s.reader.ReadObject(ctx, spaceId, objectId)
-		if err != nil {
-			return nil, mapReadError(spaceId, objectId, err)
-		}
-		if _, err := build(cur); err != nil {
-			return nil, err
-		}
-		(*result).DryRun = true
-		return *result, nil
-	}
-	heads, err := s.mutator.ResetObject(ctx, spaceId, objectId, build)
-	if err != nil {
-		var v2Err *v2model.Error
-		if errors.As(err, &v2Err) {
-			return nil, v2Err
-		}
-		return nil, mapWriteError(spaceId, objectId, err)
-	}
-	(*result).Etag = ComputeEtag(heads)
-	return *result, nil
-}
-
 // parsePatchRequest decodes the PATCH body strictly.
 func parsePatchRequest(body []byte) ([]json.RawMessage, error) {
 	fields, err := parseEnvelope(body)
@@ -506,191 +430,6 @@ func parsePatchRequest(body []byte) ([]json.RawMessage, error) {
 	return req.Ops, nil
 }
 
-// putPipeline runs the PUT against one consistent read.
-func (s *V2Service) putPipeline(ctx context.Context, spaceId, objectId string, body []byte, envelope docEnvelope, ifMatch string, dryRun bool, cur apicore.ObjectRead) (*model.SmartBlockSnapshotBase, *v2model.EditResult, error) {
-	if err := checkEditPreconditions(cur.SbType, cur.Heads, ifMatch); err != nil {
-		return nil, nil, err
-	}
-	// PUT rewrites blocks and details alike, so both axis verdicts apply.
-	// On the real path the adapter refuses before build runs; checking the
-	// read's verdicts HERE is what lets a dry run reach the same 403 the
-	// real PUT would (C9 dry≡real — the M2a family; PATCH gets the same
-	// parity from editNeedsForOps).
-	for _, refused := range []error{cur.BlocksRefused, cur.DetailsRefused} {
-		if refused != nil {
-			return nil, nil, restrictionForbidden(objectId, refused)
-		}
-	}
-	// an absent type keeps the live object's (a full replace is about
-	// content, not retyping by omission)
-	if envelope.Type == "" {
-		if liveType := objectTypeKey(cur); liveType != "" {
-			fields, err := parseEnvelope(body)
-			if err != nil {
-				return nil, nil, err
-			}
-			if fields["type"], err = rawJSON(liveType); err != nil {
-				return nil, nil, err
-			}
-			if body, err = encodeEnvelope(fields); err != nil {
-				return nil, nil, err
-			}
-		}
-	}
-	beforeDoc, err := s.marshalForEdit(spaceId, objectId, cur, false)
-	if err != nil {
-		return nil, nil, err
-	}
-	// refuse unowned ids BEFORE finishEdit: Unmarshal runs the creating
-	// resolvers, and a refusal must leave no option debris behind
-	if err := checkPutBlockIds(body, beforeDoc); err != nil {
-		return nil, nil, err
-	}
-	snapshot, result, err := s.finishEdit(ctx, spaceId, body, beforeDoc, dryRun)
-	if err != nil {
-		return nil, nil, err
-	}
-	return snapshot, result, nil
-}
-
-// docLocalIds collects the doc-local ids a flat AnyBlock document carries
-// explicitly — block ids, table column and row ids, dataview view ids, and
-// the ids of cell DESCENDANTS: the same id domain compact relabeling covers.
-// The cell block itself carries no id in the flat form (derived, SPEC §6.1),
-// but a cell with descendants is the F10 array form, whose elements past the
-// first are ordinary flat blocks WITH ids in the relabel pool — skipping
-// them let a body whose only minted id lived inside a cell PUT a compact
-// label back as the literal stored id. Ids stay in document order,
-// deduplicated; a body that is not decodable yields nil (later validation
-// owns that failure).
-func docLocalIds(doc []byte) []string {
-	type idHolder struct {
-		Id string `json:"id"`
-	}
-	var envelope struct {
-		Blocks []struct {
-			Id      string     `json:"id"`
-			Columns []idHolder `json:"columns"`
-			Rows    []struct {
-				Id    string            `json:"id"`
-				Cells []json.RawMessage `json:"cells"`
-			} `json:"rows"`
-			Views []idHolder `json:"views"`
-		} `json:"blocks"`
-	}
-	if err := json.Unmarshal(doc, &envelope); err != nil {
-		return nil
-	}
-	var ids []string
-	seen := map[string]bool{}
-	add := func(id string) {
-		if id != "" && !seen[id] {
-			seen[id] = true
-			ids = append(ids, id)
-		}
-	}
-	for _, b := range envelope.Blocks {
-		add(b.Id)
-		for _, c := range b.Columns {
-			add(c.Id)
-		}
-		for _, r := range b.Rows {
-			add(r.Id)
-			for _, cell := range r.Cells {
-				// only the array form carries ids (string/null/bare-object
-				// cells have none); a non-array raw simply fails to decode
-				var run []idHolder
-				if err := json.Unmarshal(cell, &run); err != nil {
-					continue
-				}
-				for _, el := range run {
-					add(el.Id)
-				}
-			}
-		}
-		for _, v := range b.Views {
-			add(v.Id)
-		}
-	}
-	return ids
-}
-
-// maxPutIdIssues bounds how many offending ids one refusal enumerates.
-const maxPutIdIssues = 8
-
-// checkPutBlockIds refuses a PUT body carrying local ids the object does not
-// own. PUT takes the body's ids literally, so an unowned id does not "fail to
-// match" — it silently REPLACES the block's identity: reproduced live, a
-// GET(default) → PUT loop adopted the 5-char compact labels as the stored
-// block ids, permanently, breaking every id other clients held. A loud
-// refusal is strictly better than a silent identity rewrite, and it is the
-// honest interim until Wave 2.1 teaches PUT the unique-suffix resolution C4
-// already permits. New blocks omit their id — the server mints one.
-//
-// beforeDoc is the object's own export-shape marshal, so "owned" is exactly
-// the id vocabulary a `?ids=full` read serves back.
-func checkPutBlockIds(body, beforeDoc []byte) error {
-	ownedIds := docLocalIds(beforeDoc)
-	owned := make(map[string]bool, len(ownedIds))
-	for _, id := range ownedIds {
-		owned[id] = true
-	}
-	var issues []v2model.Issue
-	extra := 0
-	for _, id := range docLocalIds(body) {
-		if owned[id] {
-			continue
-		}
-		if len(issues) == maxPutIdIssues {
-			extra++
-			continue
-		}
-		issue := v2model.Issue{
-			Path:    "/blocks",
-			Message: fmt.Sprintf("id %q is not an id this object owns", id),
-			Hint:    "omit id on a new block — the server mints one",
-		}
-		if _, matches := matchBlockRef(ownedIds, id); matches >= 1 {
-			issue.Message = fmt.Sprintf("id %q is not an id this object owns — it matches the tail of one, so it looks like a compact label from a default read", id)
-			issue.Hint = "labels are a read vocabulary; GET the object with ?ids=full for the real ids"
-		}
-		issues = append(issues, issue)
-	}
-	if len(issues) == 0 {
-		return nil
-	}
-	if extra > 0 {
-		issues = append(issues, v2model.Issue{Path: "/blocks", Message: fmt.Sprintf("… and %d more unowned ids", extra)})
-	}
-	return v2model.ValidationFailed(
-		"the PUT body carries ids this object does not own — PUT takes ids literally and would re-mint the document's identity; GET the object with ?ids=full for a body that round-trips",
-		issues...)
-}
-
-// finishEdit is the shared tail of both pipelines: Unmarshal the target
-// document with the Phase-2 create-missing resolvers (select option names
-// create, everything else was validated), marshal the resulting snapshot
-// back to its canonical form, and diff it against the before-document.
-func (s *V2Service) finishEdit(ctx context.Context, spaceId string, targetDoc, beforeDoc []byte, dryRun bool) (*model.SmartBlockSnapshotBase, *v2model.EditResult, error) {
-	resolvers := s.newCreatingResolvers(ctx, spaceId, dryRun)
-	sbType, snapshot, err := anyblockjson.Unmarshal(targetDoc, resolvers.Options())
-	if err != nil {
-		return nil, nil, mapUnmarshalError(targetDoc, err)
-	}
-	if err := resolvers.err(); err != nil {
-		return nil, nil, fmt.Errorf("resolve document references: %w", err)
-	}
-	afterDoc, err := anyblockjson.Marshal(sbType, snapshot, storeresolver.New(s.store.SpaceIndex(spaceId)).Options())
-	if err != nil {
-		return nil, nil, fmt.Errorf("marshal edited state: %w", err)
-	}
-	stats, err := diffEditDocs(beforeDoc, afterDoc)
-	if err != nil {
-		return nil, nil, err
-	}
-	return snapshot, &v2model.EditResult{Created: resolvers.created(), DiffStats: stats}, nil
-}
-
 // checkEditPreconditions applies the C7 If-Match check against the live
 // heads (advisory: absent = last-write-wins) and the canUpdateObject system
 // exclusions (system-managed smartblock types are not editable through the
@@ -707,72 +446,6 @@ func checkEditPreconditions(sbType model.SmartBlockType, heads []string, ifMatch
 		return v2model.EtagMismatch(ComputeEtag(heads))
 	}
 	return nil
-}
-
-// marshalForEdit marshals the live state into the full-id document the edit
-// pipeline works on. With guardWarnings (PATCH), any C11 marshal warning
-// aborts the edit: content the format cannot represent would silently vanish
-// in the write-back — the one thing C11 forbids. PUT skips the guard (a full
-// replace is explicitly destructive) and the caller surfaces the warnings.
-//
-// COUPLING: the options here must stay the ones a `?ids=full` GET uses (the
-// uncompacted storeresolver defaults — GetObject with compactBlockLabels
-// off). checkPutBlockIds derives its owned-id vocabulary from this marshal,
-// so the prescribed GET ?ids=full → edit → PUT loop round-trips exactly when
-// the two marshals agree; TestPutRoundTripFromExportRead pins the agreement.
-func (s *V2Service) marshalForEdit(spaceId, objectId string, cur apicore.ObjectRead, guardWarnings bool) ([]byte, error) {
-	opts := storeresolver.New(s.store.SpaceIndex(spaceId)).Options()
-	var warnings []v2model.Issue
-	opts.OnWarning = func(iss anyblockjson.Issue) {
-		warnings = append(warnings, v2model.Issue{Path: iss.Path, Message: iss.Message})
-	}
-	doc, err := anyblockjson.Marshal(cur.SbType, cur.Snapshot, opts)
-	if err != nil {
-		return nil, fmt.Errorf("marshal object %s: %w", objectId, err)
-	}
-	if guardWarnings && len(warnings) > 0 {
-		return nil, v2model.NewError(http.StatusUnprocessableEntity, v2model.CodeValidationFailed,
-			"this object contains content the AnyBlock format cannot fully represent — a PATCH would drop it (C11); edit it in the app or replace it wholesale with PUT",
-			warnings...)
-	}
-	return doc, nil
-}
-
-// normalizePutBody strips the v2 read-envelope additions (etag, warnings —
-// so a GET body round-trips verbatim into PUT), refuses the partial-read
-// marker, and pins the envelope id to the addressed object.
-//
-// The GET that round-trips is `?ids=full` (C4's export shape). PUT takes the
-// document's block ids literally, so any other id spelling is refused by
-// checkPutBlockIds rather than silently adopted (APIV2.md §3(b) and §8.26).
-func normalizePutBody(body []byte, objectId string) ([]byte, error) {
-	fields, err := parseEnvelope(body)
-	if err != nil {
-		return nil, v2model.ValidationFailed("the PUT body must be a full AnyBlock document",
-			v2model.Issue{Message: err.Error()})
-	}
-	// a ?block= subtree read is a partial document: PUT replaces the WHOLE
-	// document, so writing it back would delete every block outside the
-	// subtree — refuse it by name (the schema also rejects the marker, but
-	// this error says what to do instead)
-	if _, partial := fields["subtree"]; partial {
-		return nil, v2model.ValidationFailed("this body is a partial ?block= subtree read, not a whole document",
-			v2model.Issue{Path: "/subtree", Message: "PUT replaces the whole document — writing a subtree read back would delete every block outside it",
-				Hint: "GET the object with ?ids=full and without ?block= for a body that round-trips, or edit the subtree with PATCH replaceSubtree"})
-	}
-	delete(fields, "etag") // C7: preconditions ride the If-Match header only
-	delete(fields, "warnings")
-	if raw, ok := fields["id"]; ok {
-		var id string
-		if err := json.Unmarshal(raw, &id); err == nil && id != "" && id != objectId {
-			return nil, v2model.ValidationFailed("the document id does not match the addressed object",
-				v2model.Issue{Path: "/id", Message: fmt.Sprintf("got %q, the URL addresses %q — omit id or repeat the addressed one", id, objectId)})
-		}
-	}
-	if fields["id"], err = rawJSON(objectId); err != nil {
-		return nil, err
-	}
-	return encodeEnvelope(fields)
 }
 
 func joinOpNames() string {

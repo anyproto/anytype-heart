@@ -175,10 +175,12 @@ func TestV2TypeKeyExistsIsCorpseAndChainAware(t *testing.T) {
 	})
 }
 
-func TestV2PutRoundTripsCorpseKeys(t *testing.T) {
-	// GET emits the key of a relation the user later deleted (the object
-	// still carries the value); PUT of those same bytes must not 400
-	// (review cause 3 — a regression of the corpse policy's live-only guard)
+func TestV2CreateRejectsCorpseKeys(t *testing.T) {
+	// review cause 3 was a GET→PUT round-trip concern: an object holding
+	// values of a UI-deleted relation exports that key, and PUT of those
+	// same bytes had to be accepted. PUT is gone (APIV2.md §8.27) and with
+	// it the tolerance — a PATCH names only the properties it edits, so the
+	// live-only rule is now the whole rule on every write channel.
 	fx := newV2Fixture(t)
 	fx.addRelation(t, testSpaceId, objectstore.TestObject{
 		bundle.RelationKeyId:            domain.String("rel-corpse"),
@@ -186,24 +188,13 @@ func TestV2PutRoundTripsCorpseKeys(t *testing.T) {
 		bundle.RelationKeyName:          domain.String("Deleted in UI"),
 		bundle.RelationKeyIsUninstalled: domain.Bool(true),
 	})
-	body := `{"version":1,"id":"obj1","type":"page","properties":{"name":"Doc","corpse_key":"still here"},"blocks":[]}`
 
-	t.Run("PUT tolerates the corpse-held key", func(t *testing.T) {
-		fx.expectReset(editRead(t, editBaseDoc), "headB")
+	_, err := fx.CreateObject(context.Background(), testSpaceId,
+		[]byte(`{"version":1,"type":"page","properties":{"name":"Fresh","corpse_key":"x"}}`), false)
 
-		_, err := fx.PutObject(context.Background(), testSpaceId, "obj1", []byte(body), "", false)
-
-		require.NoError(t, err)
-	})
-
-	t.Run("POST keeps the live-only rule", func(t *testing.T) {
-		_, err := fx.CreateObject(context.Background(), testSpaceId,
-			[]byte(`{"version":1,"type":"page","properties":{"name":"Fresh","corpse_key":"x"}}`), false)
-
-		var apiErr *v2model.Error
-		require.ErrorAs(t, err, &apiErr)
-		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
-	})
+	var apiErr *v2model.Error
+	require.ErrorAs(t, err, &apiErr)
+	assert.Equal(t, http.StatusBadRequest, apiErr.Status)
 }
 
 func TestV2FieldAliasSurvivesACorpseClaimant(t *testing.T) {

@@ -186,7 +186,7 @@ func (a *v2StateApplier) begin() ([]byte, error) {
 	}
 	if len(warnings) > 0 {
 		return nil, v2model.NewError(http.StatusUnprocessableEntity, v2model.CodeValidationFailed,
-			"this object contains content the AnyBlock format cannot fully represent — a PATCH would drop it (C11); edit it in the app or replace it wholesale with PUT",
+			"this object contains content the AnyBlock format cannot fully represent — a PATCH would drop it (C11); edit it in the app",
 			warnings...)
 	}
 	// seed the view from the document we just rendered: without this the first

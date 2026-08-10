@@ -54,11 +54,6 @@ var shortcutKeys = map[string]bool{"type": true, "name": true, "properties": tru
 type docCreateOptions struct {
 	dryRun          bool
 	requireTemplate bool // POST /templates: templateFor is mandatory
-	// tolerateCorpseKeys: PUT accepts property keys held by ANY relation
-	// object, corpse included — an object holding values of a UI-deleted or
-	// archived relation exports that key, and GET→PUT of the same bytes
-	// must round-trip (C11); a fresh POST keeps the live-only rule.
-	tolerateCorpseKeys bool
 }
 
 // CreateObject implements POST /v2/spaces/{spaceId}/objects.
@@ -207,9 +202,9 @@ func rebaseMarkdownCreateError(err error) error {
 }
 
 // normalizeCreateBody strips the v2 read-envelope additions (etag,
-// warnings) so "read a document, create a copy" works from every GET shape
-// the way PUT already tolerates them, and refuses the partial ?block=
-// subtree marker — a subtree is not a document.
+// warnings) so "read a document, create a copy" works from every GET shape,
+// and refuses the partial ?block= subtree marker — a subtree is not a
+// document.
 func normalizeCreateBody(body []byte) ([]byte, error) {
 	fields, err := parseEnvelope(body)
 	if err != nil {
@@ -224,6 +219,66 @@ func normalizeCreateBody(body []byte) ([]byte, error) {
 	delete(fields, "etag") // C7: concurrency lives in headers, never in create bodies
 	delete(fields, "warnings")
 	return encodeEnvelope(fields)
+}
+
+// docLocalIds collects the doc-local ids a flat AnyBlock document carries
+// explicitly — block ids, table column and row ids, dataview view ids, and
+// the ids of cell DESCENDANTS: the same id domain compact relabeling covers.
+// The cell block itself carries no id in the flat form (derived, SPEC §6.1),
+// but a cell with descendants is the F10 array form, whose elements past the
+// first are ordinary flat blocks WITH ids in the relabel pool. Ids stay in
+// document order, deduplicated; a body that is not decodable yields nil
+// (later validation owns that failure).
+func docLocalIds(doc []byte) []string {
+	type idHolder struct {
+		Id string `json:"id"`
+	}
+	var envelope struct {
+		Blocks []struct {
+			Id      string     `json:"id"`
+			Columns []idHolder `json:"columns"`
+			Rows    []struct {
+				Id    string            `json:"id"`
+				Cells []json.RawMessage `json:"cells"`
+			} `json:"rows"`
+			Views []idHolder `json:"views"`
+		} `json:"blocks"`
+	}
+	if err := json.Unmarshal(doc, &envelope); err != nil {
+		return nil
+	}
+	var ids []string
+	seen := map[string]bool{}
+	add := func(id string) {
+		if id != "" && !seen[id] {
+			seen[id] = true
+			ids = append(ids, id)
+		}
+	}
+	for _, b := range envelope.Blocks {
+		add(b.Id)
+		for _, c := range b.Columns {
+			add(c.Id)
+		}
+		for _, r := range b.Rows {
+			add(r.Id)
+			for _, cell := range r.Cells {
+				// only the array form carries ids (string/null/bare-object
+				// cells have none); a non-array raw simply fails to decode
+				var run []idHolder
+				if err := json.Unmarshal(cell, &run); err != nil {
+					continue
+				}
+				for _, el := range run {
+					add(el.Id)
+				}
+			}
+		}
+		for _, v := range b.Views {
+			add(v.Id)
+		}
+	}
+	return ids
 }
 
 // warnLabelShapedIds flags a create body whose local ids look like the
@@ -449,16 +504,16 @@ func (s *V2Service) validateDocumentRefs(spaceId string, envelope *docEnvelope, 
 	}
 
 	// property keys must exist — did-you-mean, never silent create (R9)
-	return s.validatePropertyKeys(spaceId, envelope.Properties, opts.tolerateCorpseKeys)
+	return s.validatePropertyKeys(spaceId, envelope.Properties)
 }
 
 // validatePropertyKeys is the R9 unknown-property loop over a document's
 // properties map. One primed live set for the whole loop (§7.5a-2),
-// failing closed on a load error. tolerateCorpses is PUT's round-trip
-// escape: a key held by ANY relation object — corpse included — passes,
-// because the exported document legitimately carries it (review cause 3:
-// GET must never emit a key PUT of the same bytes rejects).
-func (s *V2Service) validatePropertyKeys(spaceId string, props map[string]json.RawMessage, tolerateCorpses bool) error {
+// failing closed on a load error. Only LIVE properties pass: the
+// corpse-tolerant variant existed solely so a GET→PUT round trip of a
+// document holding values of a UI-deleted relation would not 400, and it
+// retired with PUT — a PATCH never resends a property it is not editing.
+func (s *V2Service) validatePropertyKeys(spaceId string, props map[string]json.RawMessage) error {
 	if len(props) == 0 {
 		return nil
 	}
@@ -470,9 +525,6 @@ func (s *V2Service) validatePropertyKeys(spaceId string, props map[string]json.R
 	var known []string
 	for _, key := range sortedKeys(props) {
 		if propertyKeyExistsIn(entries, key) {
-			continue
-		}
-		if tolerateCorpses && s.anyRelationByKeyExists(spaceId, key) {
 			continue
 		}
 		if known == nil {

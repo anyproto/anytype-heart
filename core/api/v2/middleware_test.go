@@ -281,9 +281,12 @@ func TestEnsureIdempotency(t *testing.T) {
 		assert.Equal(t, 1, calls)
 	})
 
-	t.Run("a replayed PUT with the same key and body runs the handler once", func(t *testing.T) {
-		// C8 v0.3.5 covers POST, PATCH and PUT; PUT is the full-document
-		// replace, where a re-executed retry is the most destructive
+	t.Run("the gate is a method classifier: an unrouted mutation method replays too", func(t *testing.T) {
+		// C8 covers POST, PATCH and DELETE on the registered surface, but
+		// the switch is written over METHODS, not routes — v2 registers no
+		// PUT since the full-document replace was removed (§8.27), and a
+		// future mutation method must be covered by construction rather
+		// than by remembering to widen the switch
 		gin.SetMode(gin.TestMode)
 		store := newIdempotencyStore(8)
 		calls := 0

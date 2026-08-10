@@ -182,15 +182,20 @@ func isStreamedUpload(r *http.Request) bool {
 	return strings.HasPrefix(strings.ToLower(r.Header.Get("Content-Type")), "multipart/")
 }
 
-// ensureIdempotency implements C8 on mutation routes (POST, PATCH, PUT —
-// and DELETE, the Phase-6 widening, carried by EVERY registered v2 DELETE:
-// the chat message, type and property deletes alike, so C8 reads "every v2
+// ensureIdempotency implements C8 on mutation routes (POST, PATCH — and
+// DELETE, the Phase-6 widening, carried by EVERY registered v2 DELETE: the
+// chat message, type and property deletes alike, so C8 reads "every v2
 // mutation" with no per-route exceptions): replay with the same key and
 // body returns the stored result; the same key with a different body → 409
 // idempotency_conflict. Requests without the header pass through. PATCH is
 // where a blind agent retry does the most damage — a retried successful
 // insertBlocks duplicates blocks, a retried deleteBlock 404s misleadingly —
 // so the middleware covers it like POST (v0.3.5).
+//
+// The gate is a METHOD classifier, not a route list, so PUT stays in the
+// set even though v2 registers no PUT route since the full-document
+// replace was removed (§8.27): a future mutation method must be covered by
+// construction, never by remembering to widen this switch.
 func ensureIdempotency(store *idempotencyStore) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		key := c.GetHeader(IdempotencyKeyHeader)
