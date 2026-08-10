@@ -35,10 +35,7 @@ whether you may write. Ask this instead of discovering limits through 403s
   did-you-mean.
 - **Blocks** are a FLAT array in pre-order with an integer `indent`
   (absent = 0) — no `children` key. Inline formatting is markdown inside
-  `text`. FULL block ids are stable; the short labels a default read
-  shows for machine-minted ids are derived per read and can change after
-  a structural edit. Any block reference accepts the full id or a unique
-  suffix.
+  `text`. Use block ids exactly as a read served them.
 - Title and description are **not blocks** — they live in `properties`
   (`name`, `description`). A fresh object has zero blocks.
 - A **set** is a live query over a type; a **collection** is a hand-curated
@@ -72,14 +69,12 @@ whether you may write. Ask this instead of discovering limits through 403s
 - `GET …/objects/{id}?outline=true` → every block's `{indent, id, type}`
   (text on headings only) — structure + addressable ids at a fraction of
   the tokens. Follow up with `?block={id}` for one subtree, or PATCH
-  directly: **editing needs no prior full read once you know the ids**,
-  and ids survive across reads.
+  directly: **editing needs no prior full read once you know the ids**.
 - `?include=properties` or `?include=blocks` reads half the object.
   `?format=md` is a read-only markdown rendering.
-- Machine-minted block ids come back as short labels; echo whatever a read
-  served back verbatim — every block reference takes a full id or a unique
-  suffix. `?ids=full` serves full ids everywhere: the backup/export shape,
-  and the read to clone from.
+- Echo block ids back exactly as a read served them; if one is rejected as
+  unknown, re-read and use the fresh ids. `?ids=full` is the backup/export
+  shape — the read to archive or clone from, not needed for editing.
 - List/search rows are minimal `{id, name, type}`; add columns with
   `fields=` (property keys) instead of GETting each object.
 - Every object read returns an `etag` (envelope + `ETag` header).

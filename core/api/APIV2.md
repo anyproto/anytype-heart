@@ -3871,3 +3871,48 @@ easy to specify.
 with id **resolution** from the start (`matchBlockRef`, as every other
 write channel does) rather than inheriting the literal semantics that
 caused these bugs.
+
+### 8.28 The id-compaction mechanism is not agent-facing (2026-08-10 — decisions as built)
+
+The compaction rule (§8.25) is now **absent from both agent guides**, and
+that is deliberate rather than an omission.
+
+`core/api/v2/SKILL.md` and `cmd/anytype/SKILL.md` used to explain it: that
+machine-minted ids are served as short labels, that labels are derived per
+read, and that a structural edit can change one. Every word was true and
+every word was a liability — it hands a model a concept it must reason
+about, in exchange for a case the model cannot act on differently. Small
+models were the ones this cost most.
+
+**What the guides say instead:** *use block ids exactly as a read served
+them; if one is rejected as unknown, re-read.* One instruction, one
+recovery, no mechanism.
+
+**Why that is safe, not merely shorter** — three properties of the rule as
+built, none of which the agent has to know:
+
+1. **A compact read is self-addressable.** When two minted ids share a
+   last-5 suffix, *neither* shortens (`mintedSuffixLabels`, the
+   `counts[suffix] == 1` guard). So the read never serves a block it
+   cannot then resolve — the agent's "echo it back" contract holds
+   unconditionally.
+2. **Writes take both spellings.** `matchBlockRef` tries the exact id,
+   then a unique suffix. A full id, a served label, and any unique tail
+   are all valid, so no write path depends on which shape a read chose.
+3. **Staleness fails loud.** A label from an older read either still
+   resolves or is refused as unknown — which is exactly what the recovery
+   instruction answers.
+
+**The residual, stated for the record and not for the guides:** a cached
+label could in principle retarget if its block were deleted *and* a new
+block appeared sharing that 20-bit tail. It needs a collision and a
+deletion, it is inherent to any suffix scheme, and documenting it to agents
+would cost more comprehension than the risk it removes.
+
+**`?ids=full` keeps exactly one framing:** the backup/export shape — the
+read to archive or clone from. With PUT gone (§8.27) there is no write-back
+read, so it is not an editing knob and the guides do not present it as one.
+
+**If a future review finds the code and wants to "fix" the docs to match:**
+this section is the answer. The mechanism belongs in §8.25 and in the API
+reference; it does not belong in a guide whose readers are language models.

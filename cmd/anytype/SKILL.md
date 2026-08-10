@@ -24,16 +24,16 @@ anytype find --space bafyspace1 --type task --filter 'done = false'
 anytype edit-text --object 1 --find "Q3" --replace "Q4"
 # --block is optional: the snippet locates the block when it matches
 # exactly one; an ambiguous snippet refuses and lists the candidates
-anytype read --object 1 --mode outline     # block labels + structure
+anytype read --object 1 --mode outline     # block ids + structure
 ```
 
 1. **spaces** when no space id is known — it lists `name — id`.
 2. **find** next — it creates the handles and the working space.
 3. **describe** before you create or set properties — property keys and
    select option names must match exactly; describe lists the live ones.
-4. **read** before you edit blocks — block labels come from read
+4. **read** before you edit blocks — block ids come from read
    (`--mode outline` for structure, full mode for text; table row and
-   column labels come from full mode too).
+   column ids come from full mode too).
 
 ## Intent → verb recipes
 
@@ -44,7 +44,7 @@ anytype read --object 1 --mode outline     # block labels + structure
 | change one word/phrase | `edit-text` with a short unique snippet — never retype the block; `--block` only when the snippet alone is ambiguous (the error lists the candidates) |
 | delete a word/phrase | `edit-text --find "the phrase" --replace ""` — an empty replacement deletes |
 | add notes/sections/checklists | `add-blocks --markdown '…'` — write markdown, the server parses it |
-| fill one table cell | `set-cell` — never rewrite the table; row/col labels come from full read |
+| fill one table cell | `set-cell` — never rewrite the table; row/col ids come from full read |
 | clear one table cell | `set-cell … --value ""` — an empty value clears |
 | assign to the current user | value `"@me"` — e.g. `--set '{"assignee":"@me"}'` |
 | due dates | `today`, `tomorrow`, weekday names, `+3d`, or `2026-08-01` |
@@ -70,10 +70,8 @@ presets are functions (`today()`, `currentWeek()`, `daysAgo(n)`).
   (`Status` for `status`) resolves when exactly one key matches; if two
   keys differ only by case the error names both.
 - **Handles expire on the next find.** Re-run `find` and use the new
-  numbers. Block labels come from the server's read and are derived per
-  read — inserting or deleting blocks can change a label (it lengthens
-  when another block's id starts sharing its tail), so after a structural
-  edit prefer the labels of a fresh read over remembered ones. Every edit
+  numbers. Block ids come from `read` — use them as served, and re-read
+  after a structural edit rather than reusing remembered ones. Every edit
   receipt names the object it changed (`ok — "Groceries": …`) — check it
   matches your intent.
 - **One verb, one intent.** There is no batch; run verbs in sequence.
