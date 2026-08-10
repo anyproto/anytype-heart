@@ -761,9 +761,9 @@ than the REST body:
 | Tool | Args (flat) | Backing primitive | Channel notes |
 |---|---|---|---|
 | `spaces` | `limit?` | Phase 4 `GET /v2/spaces` | the bootstrap tool (added post-review): every trace needs a space id and nothing else in the set could produce one — `name — id` rows, no handles |
-| `find` | `space, query?, type?, filter?, limit?` | Phase 4 search **[build — the true §7 blocker]** | filter = string form; results are enumerated handles + minimal fields |
+| `find` | `space, query?, type?, filter?, limit?` | Phase 4 search **[build — the true §7 blocker]** | filter = string form; results are enumerated handles + minimal fields. *Since §8.33: with none of `query`/`type`/`filter` the call matched nothing, so it LISTS the space instead — unnumbered, assigning no handles, because handle 1 of a listing is not the object anyone asked for* |
 | `read` | `object, mode=full\|outline` | Phase 1 read | outline returns short block labels; `full` carries full block ids the wrapper relabels (§7.1/§7.4) |
-| `describe` | `space, type` | Phase 1 `types/{type}/schema?flavor=table` **[build — 501 stub today]** | the accuracy lever, **called before create/set** (folds A1 into the flow); interim degraded form assembled wrapper-side (§2 Phase 5); every backing GET is space-scoped, so the tool takes `space` too |
+| `describe` | `space, type` | Phase 1 `types/{type}/schema?flavor=table` **[build — 501 stub today]** | the accuracy lever, **called before create/set** (folds A1 into the flow); interim degraded form assembled wrapper-side (§2 Phase 5); every backing GET is space-scoped, so the tool takes `space` too. *Since §8.33 it reports what is SETTABLE — the type's recommended lists were neither a superset nor a subset of that, and hid `name` and `description`* |
 | `create` | `space, type, name, properties?, markdown?` | Phase 2 create | type and property keys validated with did-you-mean; **select option names create-missing by default (R9/§8.1)** — the small-tier pre-validation guard is wrapper-side (§7.4); markdown caveats until the parser lands (below) |
 | `set_properties` | `object, set?{key: value}, add?{key: […]}, remove?{key: […]}` | `setProperties` op incl. per-key `add`/`remove` (§8.3) | mirrors the op so a one-tag append never rewrites the whole array (the op's entire rationale — reintroducing the read→rewrite→write trap at the wrapper layer would defeat it); `add` on a non-empty select errors, steering to `set`; scalar→array coercion is server-side |
 | `check_item` | `object, block, checked` | `updateBlock` op | the one block-field tool: checkbox **blocks** are a common note shape and `updateBlock` is THE block-update op post-§8.3; other block-field updates (color/align/language/retype) stay excluded — SKILL.md steers task completion to properties (the E4 recipe) |
@@ -4176,6 +4176,19 @@ alone. The format's own document schema (`GET /v2/schemas/object`,
 `pkg/lib/anyblockjson/schema`) is a different contract — a create body is a
 snapshot, where an id is legitimate — and was not touched.
 
+> **Superseded in part by §8.33 (2026-08-11).** The verdict below —
+> *"the mechanism is unconfirmed"* — was correct for this probe and is no
+> longer the last word. A three-arm A/B on `edit_text`'s optional `block`,
+> varying **only** the published definition, moved emission from 11/11 to
+> **0/13** by removing the field from the schema and left it at 8/8 when the
+> field stayed and prose told the model not to use it. Schema shape changes
+> behaviour; prose does not — on a field these models actually emit, which is
+> the separation the control below could not produce. What §8.33 does **not**
+> support is the inference that removal is therefore good: the arm without
+> the field relocated the value into `object`, the only id-shaped slot left,
+> and looped. Read the mechanism as confirmed and the *remedy* as
+> field-by-field.
+
 **Measured 2026-08-10: the removal is unregressed, the mechanism is
 unconfirmed.** `cmd/apiv2eval -probe` put 210 real calls through the
 published op schemas (`gemma4:e2b` and `gemma4:e4b`, three runs — 120 with
@@ -4197,7 +4210,11 @@ where it needs no behavioural claim at all — a field in which every value is
 an error is an incoherent thing to publish, whatever any particular decoder
 would have done with it. The paragraph above still reads *"the instrument
 that reaches a constrained decoder is the schema itself"*; treat that as the
-design's reasoning, not as a measured result.
+design's reasoning, not as a measured result. *(§8.33 measured it: on a
+field the models do emit, the schema is what decides — so that sentence is
+now a result and not only reasoning. The removal being the right response
+to it remains a per-field judgment, and §8.33 is the case where it was
+not.)*
 
 Where the rule *is* argued by measurement is its second instance: `position`
 on `insertBlocks` was published with a description that made it read inert,
@@ -4494,3 +4511,219 @@ measure F1 and F3 after the fix (the full matrix is a 3-hour serialized job)
 the enum being the format's own vocabulary. The `position` semantics are
 unchanged for the `inside` placement, and no other op's targeting vocabulary
 was touched.
+
+### 8.33 The A/B that settled §8.30's mechanism, and three defects a live run found (2026-08-11 — decisions as built)
+
+§8.32 read the surface as a prompt with no live API behind it. This run put
+`gemma4:e2b` through the product's own MCP wrapper against the real local
+server — 60 attempts, four tasks, temperature 0, artifacts in the gitignored
+`eval-out/attempts.jsonl` (run `20260810-222855`). The A/B answers the
+question §8.30 could not. The three defects are what a *loop* exposes that a
+schema read cannot: each needs a tool call to have happened before the next
+one goes wrong.
+
+#### The A/B: schema shape changes behaviour, prose does not
+
+Three arms differed in **one thing** — the `edit_text` definition published
+in `tools/list`. The runner behind them was the same object, so a `block`
+sent to an arm that publishes none still works and is still counted.
+
+| arm | `edit_text` definition | calls | …with `block` |
+|---|---|---|---|
+| `ab/a-shipped` | as shipped: `block` optional | 11 | **11** |
+| `ab/b2-prose` | `block` published, description says the snippet locates it and to prefer that | 8 | **8** |
+| `ab/b1-noblock` | `block` removed from the schema | 13 | **0** |
+
+The field is supplied on **every single call** where the schema shows it,
+including the arm whose prose argues against it, and on **none** where the
+schema does not. This is the separation §8.30's 210-call probe could not
+produce: there the control field (`replaceSubtree`'s payload `id`) was not
+emitted *whether it was shown or not*, so the arms never diverged and the
+probe could only report that the removal cost nothing. Here the field is one
+these models reach for by default, and it moves 11/11 → 0/13 on a schema
+edit and 11/11 → 8/8 on a prose edit. §8.30's *"the instrument that reaches a
+constrained decoder is the schema itself"* is now measured, not argued.
+
+**And `block` stays published.** The arm that removed it was worse on
+everything the removal was supposed to help. Wasted reads rose 8 → 19. With
+no `block` slot, the model put the block label in `object` — the only
+id-shaped argument left — and then, on the useless refusal that produced
+(defect 2 below), repeated the identical call three times and abandoned:
+`identical_repeat=3`, a signal that appears in **no other arm**. Removing a
+field does not remove the impulse to supply the value. It relocates it, and
+`object` is a worse home for a block reference than `block` is. The rule
+§8.30 states is about fields *in which every value is an error*; `block` is
+not that field — every value of it can succeed — so the rule never applied
+to it, and the A/B is evidence about the **mechanism**, not a licence to run
+the removal anywhere the mechanism operates.
+
+**The success rates are noise and are not cited.** 60%/80%/85% across the
+arms, n=5 per cell. The two tasks that never call `edit_text` at all
+(`append-section`, `set-property`) varied as much between arms as the two
+that do. Nothing in this section rests on them.
+
+#### Defect 1 — a `find` with no criteria was not a search, but said it was
+
+`find {"space": …}` with no `query`, `type` or `filter` matched nothing and
+rendered *"78 matches"* over a numbered handle list. **12 of 67 find calls in
+the run were this shape** — just under a fifth of all searches, and every one
+of them on a task whose prompt names the note by title, so every one a
+dropped argument rather than an intent to browse. What the model did with
+the result:
+
+- 4 attempts addressed handle 1 — an arbitrary object. Three read it,
+  noticed, and re-found;
+- **the fourth read it and then wrote to it**: three blocks appended to
+  `Kimubabe` while the task named `Takosize`, reported as done;
+- 2 attempts stopped on the bare `find` and claimed success having written
+  nothing;
+- 9 of the 12 re-ran `find` *with* a query unprompted, which is the repair
+  already being in the model's repertoire.
+
+The receipt worked and did not help: `ok — "Kimubabe": 3 added` named the
+wrong object plainly and the model read past it. A receipt is a record, not
+a control.
+
+**Decided: a bare `find` lists, and a listing assigns no handles.** The
+alternatives were refusing the call outright, or leaving it and steering
+harder.
+
+Refusing was rejected on the B1 finding above: the impulse relocates.
+`find {space, type:"page"}` is a legitimate search that returns the same
+arbitrary first row, so a refusal that only bans the bare shape moves the
+mistake one argument sideways and makes it un-refusable. Steering harder was
+rejected on the B2 finding: the MCP instructions already say *"find (space +
+query/type/filter)"* and the model dropped them anyway.
+
+What is left is changing what the call *produces*. A bare `find` now returns
+the space's objects **unnumbered**, under a first line stating that nothing
+was searched for, and clears `Session.Handles`. The browse intent is still
+served — you can see what a space holds, which is a real thing to want — but
+nothing the listing returns can be passed as `object`, so the wrong-object
+write is unreachable rather than discouraged. A handle used afterwards earns
+its own refusal naming the repair, and *not* `errNoSession`'s "run find
+first", which would be false (find has run) and reads as a repair already
+attempted. Any one of the three criteria makes it a search again, numbered
+as before.
+
+The name the act gets is in the output, not in a thirteenth tool. Adding one
+costs every model on every call — schema tokens, one more row of selection
+pressure, and the set sits deliberately under the >15-tool cliff — to serve
+an intent that is one degenerate argument shape of a tool already present.
+What failed was never that browsing was unavailable. It was that browsing
+looked like matching, and that is fixed where it was broken: in the
+rendering and in the handle table.
+
+#### Defect 2 — the `object` refusal named no repair
+
+`edit_text {"object":"767cb", "find":"Q3", "replace":"Q4"}` earned `object
+"767cb" not found in space "bafyrei…"`. True, and inert: it names the
+failure and no repair, and the model sent it three more times before giving
+up. This is H3's worst case, and the run's own numbers say the rest of the
+surface does better — refusals that name a field get `fixed_named_field`,
+`switched_to_read`, `switched_tool`; only this one produced
+`identical_repeat`.
+
+Three shapes arrive in `object` and each has a known repair: a block
+reference the model just read (5 in the run), the **space** id (6 in the
+run), and an object's name. The wrapper now says which:
+
+```
+object "767cb" not found in space "bafyrei…" — that is a block reference:
+read serves those, and they go in `block`. `object` takes a handle number
+from the last find (1, 2, …)
+```
+
+Three properties of how it is built, each deliberate:
+
+- **It appends, never replaces.** The server's 404 is the fact; the hint is
+  the repair. Dropping the fact would hide which reference failed.
+- **It runs on `Run`'s error path, not inside an executor.** The mistake is
+  a property of the *argument*, so every tool taking `object` gets the steer
+  by construction — `read`, `set_properties`, `move_block`, all of them —
+  and a new tool taking `object` inherits it without a line of code.
+  Fixing it in `runEditText` would have fixed one call site of nine.
+- **It fires only after the server has said not-found**, and only when the
+  server's message names the caller's own reference. A pre-flight shape
+  check would have to prove that no legitimate object id is 5–24 hex
+  characters; the post-404 hint needs no such proof, because the 404 has
+  already established the value is not an object. The cost is one HTTP round
+  trip on a mistake, which is nothing.
+
+#### Defect 3 — `describe` answered a different question than it was asked
+
+Told to set a description, the model ran `describe`, did not find one, and
+answered *"The note type does not have a 'description' property, so I cannot
+set it."* The API does it in one call.
+
+The cause is that `describe` read the type's **recommended** lists — what a
+client renders in its properties panel — and served them under *"use these
+exact property keys … in create and set_properties"*. Those are different
+sets, and they disagree in both directions. Live, `page` recommends
+`createdDate` and `creator` (which `setProperties` **refuses**, SPEC §4a)
+and `backlinks`, `links`, `lastModifiedBy`, `lastOpenedDate` (which it
+accepts and silently ignores — see below); it recommends neither `name` nor
+`description`.
+
+**Both of the two properties every object has were invisible.** `description`
+is in the space's property index and no type names it. `name` is worse: it
+is `hidden` in the bundle, so `GET /v2/spaces/{s}/properties` — which
+excludes hidden relations — does not list it either, and no type recommends
+it because clients render it as the title. It was reachable from no read of
+the surface at all, on the one tool whose job is to answer *what can I set*.
+
+`describe` now reports the settable set: the type's own properties first
+(the curation is real signal and its order carries it), then the rest of the
+space's property index, then a line naming the output-only keys as
+read-only rather than dropping them — a caller who saw `createdDate` in a
+read and cannot find it in `describe` would reasonably conclude `describe`
+is incomplete, which is the defect this rendering exists to close. `name` is
+added from a small always-settable list, since neither source can produce
+it.
+
+The output-only set is now stated **once**, in `v2model`, and both layers
+read it: the service refuses a `setProperties` naming one, and `describe`
+must not advertise one as settable. A second copy in the wrapper is the
+drift class §8.31 was about.
+
+Option lists stay bounded to the type's own selects — one HTTP call each,
+and fetching them for a whole space's index would turn `describe` into
+dozens of round trips for values the A2 guard already names on refusal.
+
+**The token cost, on the record.** Measured with the Gemma 3 tokenizer
+(ollama `prompt_eval_count`, delta method), `describe page` in the eval
+space goes from **76 to 281 tokens — +205**, for 38 space properties. It is
+paid once per task, against a ~10k-token attempt, and it buys the difference
+between a tool that answers the question and a tool that produced a
+confident refusal of a possible task. The cost scales with the space's
+property count; the off-type listing is bounded at 120 rows and degrades
+into a count past that.
+
+#### Also found, filed not fixed: SPEC §4a's output-only set is too small
+
+Verified live against the running API: `setProperties` accepts
+`backlinks`, `links`, `lastModifiedBy` and `lastOpenedDate`, answers **200
+with `propertiesChanged: 0`**, and writes nothing. They are derived, marked
+`readonly` in the bundle, and absent from `v2OutputOnlyPropertyKeys`. That
+is an accepted write that does nothing, reported as success — the
+silent-wrong-action class these rounds have been spent removing, and the one
+place it survives. It is four of the six rows `page`'s recommended list
+leads with, so it is also what `describe`'s first section now shows.
+
+Not fixed here: widening the refusal set turns previously-200 requests into
+400s on the REST surface, which is a contract change that deserves its own
+decision rather than a fold-in to a wrapper fix. `PropertyRow` carries no
+read-only flag either, so the wrapper cannot mark them without the server
+saying so first — the fix is server-side in both halves.
+
+#### What the spot checks did and did not show
+
+One live attempt per fix (`gemma4:e2b`, one task, one attempt, run
+sequentially). All three passed — and **none of the three reached the
+failure point**: the model supplied its `query`, put its block ref in
+`block`, and set `description` without calling `describe` at all. They are
+evidence of no regression on the changed surface and nothing more; a
+sample of one on a high-variance model is not a rate, and is not offered as
+one. The before/after that actually pins each fix is deterministic — the
+live CLI against the running server, and a unit test per fix that fails when
+the fix is reverted (all three reverts run and confirmed).
