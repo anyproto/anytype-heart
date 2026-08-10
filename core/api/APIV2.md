@@ -69,7 +69,7 @@ repair loop with path-addressed errors.
 | C1 | Base path `/v2`, localhost, bearer auth and `Anytype-Version` date header as in v1. | migration §4.8 |
 | C2 | **One vocabulary: the format's.** camelCase, property **keys**, option **names** — everywhere, both directions. The object-type field is **`type`** (a type key) on every surface: envelope, rows, search, shortcuts. No id/key duality, no snake_case. Object ids remain ids. | v1's top agent trap (§2.1) |
 | C3 | **Compact JSON always** (no pretty-printing) — **all the way down, not just the envelope**. `anyblockjson.Marshal` returns the format's canonical byte form, which is two-space **indented** (SPEC §4), and the v2 envelope re-embeds those bytes verbatim; until Wave 0.1 every object read was therefore compact on top and pretty-printed underneath, costing a measured 16–26 %. *(Built: `encodeEnvelope` compacts each embedded value — the serving layer, so the format's canonical form and its `Export ∘ Import` byte-stability are untouched; §8.24.)* | free 38–46% (§3.6); 16–26% (TOKENS §1.1) |
-| C4 | **Two document shapes, one id axis** (revised Wave 0.2, hardened §8.26; TOKENS §1.2/§10). `?ids=compact` (**the default — the *edit* shape**): **machine-minted** block/row/column/view ids — 24-hex bson and view UUIDs, `isMintedLocalId` — relabel to their 5-char suffixes (legend-less, **lossy**); every id that could carry meaning (`dataview`, `title`, readable imported ids) keeps its full spelling and is **reserved**, so no label can alias a served id. `?ids=full` (**the *export* shape**): full ids everywhere — the **backup/export** read (§3(b)), and the read to clone from when a POST should reuse the source's real ids. Object refs are **full inline on every shape**: the `refs` legend was a measured net loss **on the measured corpus** (85–90 % of refs used once; §1.2's own model has it winning only at ≥2× reuse) and its indirection trapped write-back, so no shape serves one — but legend **resolution on input stays total** (SPEC §9a), so a document arriving with a legend still resolves. Every write channel resolves a block/view/row/column reference by exact id **or unique suffix** (`matchBlockRef`), which is what makes the lossy edit shape addressable — and since §8.27 removed PUT there is no longer any channel that takes ids **literally**, which is what made the compact shape a trap (§8.26). Never require echoing a full CID. *(Built: `Options.CompactBlockLabels` composed by `objectReadPlan`; `Options.CompactObjectRefs` remains a format-package option no API shape sets. Wave 2 renames the two values to `?mode=edit\|full` with no change of bytes.)* **Outline exception (T7)**: the outline fixes the axis — short labels — and ignores `?ids=`. | ~24×/id, −89% id errors (§3.6); block labels −19…−22% on minted-id documents, the legend a net **loss** of 0.9–11.5% on the measured corpus (TOKENS §1.2, live-measured); id round-trip contract (R1) |
+| C4 | **Two document shapes, one id axis** (revised Wave 0.2, hardened §8.26; TOKENS §1.2/§10). `?ids=compact` (**the default — the *edit* shape**): **machine-minted** block/row/column/view ids — 24-hex bson and view UUIDs, `isMintedLocalId` — relabel to their 5-char suffixes (legend-less, **lossy**); every id that could carry meaning (`dataview`, `title`, readable imported ids) keeps its full spelling and is **reserved**, so no label can alias a served id. `?ids=full` (**the *export* shape**): full ids everywhere — the **backup/export** read (§3(b)), and the read to clone from when a POST should reuse the source's real ids. Object refs are **full inline on every shape**: the `refs` legend was a measured net loss **on the measured corpus** (85–90 % of refs used once; §1.2's own model has it winning only at ≥2× reuse) and its indirection trapped write-back, so no shape serves one — but legend **resolution on input stays total** (SPEC §9a), so a document arriving with a legend still resolves. Every write channel resolves a block/view/row/column id by exact id **or unique suffix** (`matchBlockRef`), which is what makes the lossy edit shape addressable — **in payload slots as well as reference slots since §8.29**, so no channel takes an id **literally**, which is what made the compact shape a trap (§8.26). *(§8.27 claimed this was already true once PUT was gone. It was not: PATCH resolved `updateBlock.id`, `replaceSubtree.id`, the targeting refs and the table/view refs, but handed `replaceSubtree.blocks[].id`, `updateBlock.set.{rows,columns,views}[].id` and `setCell.value[].id` to the format importer verbatim — reproduced as permanent id corruption on the documented read-then-echo loop.)* A payload id resolving to nothing is refused, not minted over; omitting it is how new content is authored. Never require echoing a full CID. *(Built: `Options.CompactBlockLabels` composed by `objectReadPlan`; `Options.CompactObjectRefs` remains a format-package option no API shape sets. Wave 2 renames the two values to `?mode=edit\|full` with no change of bytes.)* **Outline exception (T7)**: the outline fixes the axis — short labels — and ignores `?ids=`. | ~24×/id, −89% id errors (§3.6); block labels −19…−22% on minted-id documents, the legend a net **loss** of 0.9–11.5% on the measured corpus (TOKENS §1.2, live-measured); id round-trip contract (R1) |
 | C5 | Minimal rows: list/search responses carry `id, name, type` + requested property values. **Never embed type objects.** `fields=` expands. | v1's N× multiplier (§2.1) |
 | C6 | Error shape everywhere: `{status, code, message, issues:[{path, message, hint}]}` — path-addressed, naming allowed values. Required codes include: `validation_failed`, `version_unsupported` (surfaces SPEC §10's "produced by a newer version" verbatim, naming both versions), `idempotency_conflict` (same key, different body), `etag_mismatch`, `ambiguous_input` (e.g. both `filter` and `filters` supplied), `forbidden` (403 — an operation the caller's identity may not perform, e.g. editing another member's chat message; added by the Phase-6 review; also the `/v2` key-scope gate's refusal of a non-JsonAPI key, which answers in the shared v1 envelope — §8.9). Error text is API surface; test it. | repair loop (§3.2, §4.6); R15 |
 | C7 | Every object read returns **`etag`** (short opaque token, ≤8 chars, derived from tree heads — NOT the object's `revision` property, which stays in `properties`) plus an `ETag` header. Mutations accept **`If-Match` header only** (the AnyBlock body has no envelope slot for it). **Advisory by default**: without `If-Match`, ops apply last-write-wins and `diffStats` reports the outcome; with it, mismatch → 409 `etag_mismatch` carrying the current etag. Note: the etag advances on background sync, not only on agent edits — strict If-Match will 409 on sync noise; block-scoped preconditions (ops apply iff the *addressed* blocks are unchanged) are the deferred v2.x refinement. | R2; optimistic concurrency (§3.2) |
@@ -3391,9 +3391,11 @@ UI-deleted type stopped being a usable query scope (`typeKeyExists`
 likewise: objects/templates of a corpse type refuse). PUT tolerated
 corpse-HELD property keys (GET emits them for objects still carrying
 values, and a GET→PUT of the same bytes had to round-trip) while POST kept
-live-only; **§8.27 retired the tolerance with PUT** — the probe
-(`anyRelationByKeyExists`) is gone and live-only is now the whole rule, a
-PATCH naming only the properties it edits. The
+live-only; §8.27 retired the tolerance with PUT on the grounds that
+live-only was now the whole rule — **wrong, and reverted in §8.29**: PATCH
+has its own in-document escape (`checkKey` passes any key already on the
+document), and create is the channel a read body is pasted into, so the
+tolerance moved to **create** as `propertyKeyHeldByAnyRelation`. The
 file aliases' deactivation is chain- and corpse-aware (an uninstalled
 `mimeType` relation no longer silently drops the field space-wide).
 
@@ -3831,6 +3833,10 @@ are to be treated as a design smell, not a shortcut.
    owned-vocabulary refusal (§8.26) — all of it exists to protect one
    surface from a vocabulary the rest of the API handles by construction.
    Removing the consumer removes the asymmetry.
+   **Corrected by §8.29:** PATCH resolved its *reference* slots and took its
+   *payload* slots literally, so removing PUT removed one literal channel
+   and left three. The asymmetry was inside PATCH as well; §8.29 closes it
+   there. The reason still stands — it was just not the whole account.
 
 **Removed:** the route (`registerEditRoutes`) and its authz registry entry;
 `PutObjectV2Handler` and its OpenAPI operation (`v2_put_object`);
@@ -3841,7 +3847,9 @@ adapter's reset implementation with `preserveEditorOwnedState`,
 `preserveStructuralBlocks`, `copySubtree` and `isStructuralBlock`; and
 `docCreateOptions.tolerateCorpseKeys` with its `anyRelationByKeyExists`
 probe, whose only purpose was letting a GET→PUT of a corpse-held property
-key round-trip (§8.23 cause 3).
+key round-trip (§8.23 cause 3). **That last removal was wrong and is
+reverted in §8.29** — the tolerance belonged to the pasted-read-body case,
+not to PUT, and create is where that case lives now.
 
 **Kept, and re-framed.** `?ids=full` survives as the **backup/export
 shape** and as the read to clone from — not as "the PUT read"; the
@@ -3889,30 +3897,174 @@ them; if one is rejected as unknown, re-read.* One instruction, one
 recovery, no mechanism.
 
 **Why that is safe, not merely shorter** — three properties of the rule as
-built, none of which the agent has to know:
+built, none of which the agent has to know. *(This list was written before
+the §8.29 audit and two of its three claims were overstated; they are
+restated here as what the code actually guarantees. The section stands, but
+it stands on the corrected version.)*
 
-1. **A compact read is self-addressable.** When two minted ids share a
-   last-5 suffix, *neither* shortens (`mintedSuffixLabels`, the
-   `counts[suffix] == 1` guard). So the read never serves a block it
-   cannot then resolve — the agent's "echo it back" contract holds
-   unconditionally.
-2. **Writes take both spellings.** `matchBlockRef` tries the exact id,
-   then a unique suffix. A full id, a served label, and any unique tail
-   are all valid, so no write path depends on which shape a read chose.
+1. **A label is never ambiguous — and a subset read cannot make one.**
+   When two minted ids share a last-5 suffix, *neither* shortens
+   (`mintedSuffixLabels`, the `counts[suffix] == 1` guard), and the census
+   runs in `buildCompactIds` over the WHOLE snapshot before any slicing —
+   so a `?block=` subtree read cannot hand out a label that the blocks it
+   omitted also claim. This is the load-bearing half and it is sound.
+   Pinned by `TestServedLabelsAvoidTailCollisions`, including the subset
+   case.
+   **Not** "the read never serves a block it cannot then resolve": that
+   conclusion is false for cell descendants, which a default read serves
+   with ids no channel resolves (F4 / §8.29). The guarantee is about
+   *labels being unambiguous*, not about *every served id being
+   addressable*.
+2. **Every id slot resolves the same way — since §8.29.** `matchBlockRef`
+   tries the exact id, then a unique suffix, in *reference* slots and
+   *payload* slots alike. A full id, a served label and any unique tail are
+   all valid everywhere.
+   As originally written — "no write path depends on which shape a read
+   chose" — this was **false**: the payload slots took the served spelling
+   literally, so a document echoed back from a default read was renamed to
+   its labels. It is true now, and it is true because it was fixed, not
+   because it was restated.
 3. **Staleness fails loud.** A label from an older read either still
    resolves or is refused as unknown — which is exactly what the recovery
-   instruction answers.
+   instruction answers. Unchanged, and now total: an unresolvable id in a
+   payload is refused too, rather than silently becoming a new block.
 
 **The residual, stated for the record and not for the guides:** a cached
-label could in principle retarget if its block were deleted *and* a new
-block appeared sharing that 20-bit tail. It needs a collision and a
-deletion, it is inherent to any suffix scheme, and documenting it to agents
-would cost more comprehension than the risk it removes.
+label can retarget. Two paths, not one:
+
+- **Collision plus deletion.** The block is deleted *and* a new block
+  appears sharing that 20-bit tail. Inherent to any suffix scheme.
+- **Retarget with neither** (missed when this section was written): a
+  suffix match is resolved against the CURRENT document, so a label cached
+  from an older read resolves to whatever now owns that tail. No deletion
+  is needed and no collision is needed — only that the tail's owner
+  changed. Post-§8.29 this is bounded by the ambiguity refusal (a tail with
+  two claimants is a 400, never a silent pick) and by minting: new ids are
+  24-hex random, so an accidental tail hand-off is ~2⁻²⁰ per minted block.
+
+Documenting either to agents would cost more comprehension than the risk it
+removes; the recovery instruction ("if an id is rejected, re-read") is the
+agent-facing answer to both.
 
 **`?ids=full` keeps exactly one framing:** the backup/export shape — the
 read to archive or clone from. With PUT gone (§8.27) there is no write-back
 read, so it is not an editing knob and the guides do not present it as one.
 
 **If a future review finds the code and wants to "fix" the docs to match:**
-this section is the answer. The mechanism belongs in §8.25 and in the API
-reference; it does not belong in a guide whose readers are language models.
+this section is the answer — *the corrected version of it*. An audit
+(§8.29) read the original three properties against the code and falsified
+two of them; that is what this section is for, and being the standing answer
+does not make it exempt from being checked. Check it again if you have
+reason to. The mechanism belongs in §8.25 and in the API reference; it does
+not belong in a guide whose readers are language models.
+
+### 8.29 Audit round after the PUT removal: payload ids, corpse keys, honest hints (2026-08-10 — decisions as built)
+
+§8.27 removed PUT on the stated grounds that no channel took block ids
+literally any more, and §8.28 recorded three safety properties of the
+compaction rule. An audit of both reproduced data corruption. Four
+findings, fixed at their causes; every fix verified fail-on-revert.
+
+**F1 — the PATCH payload slots took ids literally (data corruption,
+reproduced).** Reference slots resolved (`matchBlockRef`: exact, then unique
+suffix). Payload slots did not — they went to the format importer verbatim,
+which reads an id as an identity. The documented loop
+
+```
+GET ?block=aaaa1                                   # default = compact shape
+PATCH {"op":"replaceSubtree","id":"aaaa1","blocks":<that exact array>}
+```
+
+answered **200** with `blocksAdded: 1, blocksRemoved: 1` and permanently
+renamed the stored `0000000000000000000aaaa1` to `aaaa1`. Consequences:
+other clients' cached ids 404; the adopted id is not minted-shaped so it
+never relabels again *and* permanently reserves that label in the
+exporter's avoid-set; the CRDT records a delete plus a create where an edit
+belonged. `updateBlock set:{rows:[…]}` did the same and reported it as the
+innocuous `blocksChanged: 1`. `setCell value` did it to cell descendants.
+
+The old guard (`checkFreshIds`) missed exactly these because
+`keptBlockIds(leaving)` **subtracts the subtree being replaced** — so it
+covered `insertBlocks` (where nothing is leaving) and skipped every op
+whose payload replaces the label's own owner.
+
+*Fix:* payload ids resolve like reference ids, against the pre-op
+vocabulary **including the leaving subtree** (`payloadids.go`;
+`v2EditDoc.localIds` is the vocabulary — block, row, column,
+cell-descendant and view ids, the exact domain relabeling covers, shared
+with create's `docLocalIds` so the two cannot drift). The loop above is now
+*correct*, not merely refused: identity is preserved and a no-op echo is a
+genuine no-op (`diffStats` all zero).
+
+*Unmatched id — refused, not minted.* A payload id that resolves to nothing
+is a 400 with the C6 hint naming both legitimate moves. Minting over it
+would silently turn a stale or mistyped id into a new block — the same
+silent-wrong-thing class F1 is about — and it would keep a literal channel
+open for non-minted-shaped ids. Refusing costs a caller who meant new
+content one edit (`id` is omitted, the server mints, `createdBlocks`
+reports it), and it makes the rule total, which is what lets C4 finally say
+"no channel takes ids literally" truthfully. This retires the one
+affordance it removes: a client can no longer choose the id of a block it
+creates through PATCH. Nothing in the tree used it (the wrapper authors via
+`markdown`), and `createdBlocks` returns what was minted.
+
+*Ambiguous suffix* is a 400 `ambiguous_input` listing the candidates.
+*`checkFreshIds` is gone*, rewritten as `claimPayloadIds` — resolution
+subsumed its tail-scan half, and two overlapping guards with different
+coverage were the bug. *`createdBlocks` now reports only minted ids*: a
+resolved payload position names something that already existed.
+
+**F2 — the GET → POST clone broke on corpse-held property keys.** §8.27
+removed `tolerateCorpseKeys` because "PATCH names only the properties it
+edits, so live-only is now the whole rule". Both halves were wrong: PATCH
+has its own in-document escape (`checkKey` passes any key already in
+`doc.properties`), and **create** — the channel advertised as "a pasted read
+body creates a copy" — became the only write path with no tolerance at all.
+A `GET` of an object holding a value of a since-archived relation, `POST`ed
+back, was a 400; with a live key spelled one character away the hint read
+*"did you mean corpse_kez?"*, steering the caller to move the value onto an
+unrelated property. *Fix:* `propertyKeyHeldByAnyRelation` on the create
+path. It is a round-trip tolerance, never an address — nothing resolves a
+corpse key to a property object and no listing advertises it — and a key no
+relation holds at all is still refused.
+
+**F3 — the system-managed exclusion lost its only coverage.** The
+`STRelation | STRelationOption | FileObject | Participant` switch in
+`checkEditPreconditions` was pinned solely by a PUT test.
+`TestPatchExcludesSystemManagedObjects` covers all four on the PATCH path.
+
+**F4 — the 404 hints lied.** Both said *"GET the object with
+`?outline=true` to list block ids"*. Cell descendants are served by a
+default read (inside `rows[].cells[]`), resolve on **no** channel — not
+`?block=` on either spelling, not `replaceText` — and the outline does not
+list them (`blockIds()` and `exportShapeBlockIds` read only top-level
+`blocks[]`). The guides' one recovery instruction therefore looped forever.
+*Fix:* the hints now scope the outline's promise to the document's blocks
+array and say outright which served ids are not block references (a table's
+rows and columns are addressed by `setCell`'s `row`/`col`, a dataview's
+views by the view ops, and a block inside a cell is not individually
+addressable — rewrite its cell). Pinned by a property test: every outline
+entry must resolve as a `?block=` reference, and the cell descendant a
+default read serves must not be in the outline.
+
+**Making cell descendants addressable is NOT taken here — ticketed.** What
+it would cost, so the decision is a decision and not an oversight:
+
+1. The block-ref vocabulary would move from `doc.blockIds()` to
+   `doc.localIds()` — cheap, already built.
+2. But `resolveRef` returns an **index into `doc.blocks`**, and every
+   ref-taking op works on `doc.blocks[idx]`. Cell descendants have no entry
+   there, so each of `updateBlock`, `replaceSubtree`, `moveBlock`,
+   `deleteBlock`, `replaceText` and the `insertBlocks` targeting needs a
+   second addressing mode routed through the owning table's re-import (the
+   `setCell` path) — or the flat view has to promote cell descendants to
+   first-class entries, which changes the served document shape.
+3. `?block=` on a cell descendant would have to serve a *partial cell run*,
+   a shape the AnyBlock envelope cannot express (a cell descendant is not a
+   top-level block).
+4. `?outline=true` would have to list them with a container marker, or the
+   caller reads them as siblings of the top-level run.
+
+The state side is already there — they are real blocks — so the entire cost
+is in the addressing model and the served shapes. That is a format-level
+decision, not a bug fix.
