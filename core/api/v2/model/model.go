@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 )
 
 // V2 error codes (APIV2.md C6). Error text is API surface; tests assert it.
@@ -491,4 +492,36 @@ type SchemaIndexEntry struct {
 	Kind     string `json:"kind"`
 	Endpoint string `json:"endpoint"`
 	Url      string `json:"url"`
+}
+
+//
+// ---- the output-only property contract (SPEC §4a) ----
+//
+
+// outputOnlyPropertyKeys are the SPEC §4a output-only property keys: an
+// export writes them, a write must not. They live here, in the leaf model
+// package, because two layers need the SAME answer — the service refuses a
+// setProperties naming one (stateops.go), and the wrapper's describe must
+// not advertise one as settable. A hand-copied second list is the drift
+// class §8.31 was about.
+//
+// isFavorite is deliberately absent — SPEC §3 marks it authorable.
+var outputOnlyPropertyKeys = map[string]bool{
+	"coverId": true, "coverType": true, "createdDate": true,
+	"lastModifiedDate": true, "creator": true, "isArchived": true,
+	"resolvedLayout": true,
+}
+
+// IsOutputOnlyProperty reports whether a property key is output-only.
+func IsOutputOnlyProperty(key string) bool { return outputOnlyPropertyKeys[key] }
+
+// OutputOnlyPropertyKeys returns the output-only keys, sorted — the form an
+// agent-facing listing needs.
+func OutputOnlyPropertyKeys() []string {
+	keys := make([]string, 0, len(outputOnlyPropertyKeys))
+	for key := range outputOnlyPropertyKeys {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
 }

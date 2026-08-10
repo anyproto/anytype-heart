@@ -176,14 +176,12 @@ var v2OpRebuildsView = map[string]bool{
 	"removeItems": true,
 }
 
-// v2OutputOnlyPropertyKeys are the SPEC §4a output-only property keys a
-// setProperties must reject. isFavorite is deliberately absent — SPEC §3
-// marks it authorable.
-var v2OutputOnlyPropertyKeys = map[string]bool{
-	"coverId": true, "coverType": true, "createdDate": true,
-	"lastModifiedDate": true, "creator": true, "isArchived": true,
-	"resolvedLayout": true,
-}
+// v2OutputOnlyPropertyKeys reports whether a key is one of the SPEC §4a
+// output-only property keys a setProperties must reject. The set itself
+// lives in v2model (the leaf both layers share): the wrapper's describe
+// must not advertise an output-only key as settable, and a second copy of
+// the list there would be the §8.31 drift class.
+func v2OutputOnlyPropertyKeys(key string) bool { return v2model.IsOutputOnlyProperty(key) }
 
 // v2ListShapedFormats are the property formats whose SPEC §3 value encoding
 // is a list — the only formats setProperties add/remove apply to.

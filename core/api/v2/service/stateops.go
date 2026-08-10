@@ -795,7 +795,7 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 			issues = append(issues, v2model.Issue{Path: path,
 				Message: fmt.Sprintf("%q is not a property — it is lifted to the document envelope and cannot be set here", key)})
 			return false
-		case v2OutputOnlyPropertyKeys[key]:
+		case v2OutputOnlyPropertyKeys(key):
 			issues = append(issues, v2model.Issue{Path: path,
 				Message: fmt.Sprintf("%q is output-only (SPEC §4a) — export writes it, writes must not", key)})
 			return false
@@ -839,7 +839,7 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 	unset := map[string]bool{}
 	for _, key := range op.Unset {
 		path := opPath + ".unset." + key
-		if v2OutputOnlyPropertyKeys[key] {
+		if v2OutputOnlyPropertyKeys(key) {
 			issues = append(issues, v2model.Issue{Path: path,
 				Message: fmt.Sprintf("%q is output-only (SPEC §4a) and cannot be unset", key)})
 			continue
