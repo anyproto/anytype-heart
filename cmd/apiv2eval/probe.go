@@ -98,8 +98,11 @@ type probeRecord struct {
 	Case      string    `json:"case"`
 	Seq       int       `json:"seq"`
 	WantOp    string    `json:"want_op"`
-	CalledOp  string    `json:"called_op,omitempty"`
-	Args      string    `json:"args,omitempty"`
+	// ExampleShape is which example the tool description carried — see
+	// probeToolSpecs.
+	ExampleShape string `json:"example_shape,omitempty"`
+	CalledOp     string `json:"called_op,omitempty"`
+	Args         string `json:"args,omitempty"`
 	// Channel is which authoring channel an insertBlocks call used: markdown
 	// (no id is expressible at all) or blocks (where the removed slot was).
 	Channel     string       `json:"channel,omitempty"`
@@ -119,7 +122,7 @@ type probeRecord struct {
 
 // runProbe runs the one-turn schema-emission probe over the model list.
 func runProbe(ctx context.Context, chat *chatClient, models []string, opt options) error {
-	specs, err := probeToolSpecs()
+	specs, err := probeToolSpecs(opt.exampleShape)
 	if err != nil {
 		return err
 	}
@@ -154,6 +157,7 @@ func runProbe(ctx context.Context, chat *chatClient, models []string, opt option
 					return writeProbeSummary(writer, records, runId, opt)
 				}
 				rec := probeOnce(ctx, chat, model, pc, tools, system, opt, runId, seq)
+				rec.ExampleShape = opt.exampleShape
 				records = append(records, rec)
 				line, err := json.Marshal(rec)
 				if err != nil {
@@ -266,10 +270,30 @@ func staticRefusalRisks(op string, args map[string]any) []string {
 	return nil
 }
 
+// example shapes the probe can serve alongside a schema.
+const (
+	// exampleAsPublished is the example byte-for-byte as GET
+	// /v2/schemas/ops/{op} serves it: a whole PATCH request body,
+	// {"ops":[{…}]}.
+	exampleAsPublished = "published"
+	// exampleAtOpLevel is that example unwrapped to the single op inside it
+	// — an instance of the schema served beside it.
+	exampleAtOpLevel = "op"
+)
+
 // probeToolSpecs reads the published op schemas in-process, from the same
 // table GET /v2/schemas/ops/{op} serves — so the probe runs with no server,
 // on the bytes the server would have sent.
-func probeToolSpecs() ([]toolSpec, error) {
+//
+// The example shape is a variable because the two halves of that discovery
+// response are at DIFFERENT levels: `schema` describes one op object
+// (additionalProperties:false, `op` required with a const), while `example`
+// is a whole request body, {"ops":[{…}]} — so the served example is not an
+// instance of the served schema and would be rejected by it. A consumer that
+// reads the pair together, which is the small consumer §5 built the route
+// for, gets contradictory instructions. Serving both shapes turns that into
+// a measurement instead of an opinion.
+func probeToolSpecs(exampleShape string) ([]toolSpec, error) {
 	var svc v2service.V2Service
 	specs := make([]toolSpec, 0, len(probeOps))
 	for _, op := range probeOps {
@@ -277,13 +301,28 @@ func probeToolSpecs() ([]toolSpec, error) {
 		if err != nil {
 			return nil, fmt.Errorf("read published schema for %q: %w", op, err)
 		}
+		example := string(entry.Example)
+		if exampleShape == exampleAtOpLevel {
+			example = unwrapOpsExample(entry.Example)
+		}
 		specs = append(specs, toolSpec{
 			Name:        op,
-			Description: fmt.Sprintf("PATCH op %q on the document. Example: %s", op, string(entry.Example)),
+			Description: fmt.Sprintf("PATCH op %q on the document. Example: %s", op, example),
 			Parameters:  entry.Schema,
 		})
 	}
 	return specs, nil
+}
+
+// unwrapOpsExample reduces {"ops":[X]} to X, leaving anything else alone.
+func unwrapOpsExample(raw json.RawMessage) string {
+	var body struct {
+		Ops []json.RawMessage `json:"ops"`
+	}
+	if err := json.Unmarshal(raw, &body); err != nil || len(body.Ops) != 1 {
+		return string(raw)
+	}
+	return string(body.Ops[0])
 }
 
 func writeProbeSummary(writer *bufio.Writer, records []probeRecord, runId string, opt options) error {

@@ -10,7 +10,7 @@ import (
 
 func TestProbeToolSpecsComeFromThePublishedSchemas(t *testing.T) {
 	// when
-	specs, err := probeToolSpecs()
+	specs, err := probeToolSpecs(exampleAsPublished)
 
 	// then
 	require.NoError(t, err)
@@ -76,5 +76,36 @@ func TestStaticRefusalRisks(t *testing.T) {
 			// then
 			assert.Equal(t, tt.want, got)
 		})
+	}
+}
+
+func TestServedOpExampleIsNotAnInstanceOfItsOwnSchema(t *testing.T) {
+	// GET /v2/schemas/ops/{op} answers with a `schema` describing ONE op
+	// (additionalProperties:false, `op` required with a const) and an
+	// `example` that is a whole PATCH request body, {"ops":[{…}]}. The
+	// example would therefore be REJECTED by the schema served beside it.
+	// This pins the state of the discovery response as it is today, so the
+	// harness's two example shapes stay meaningful; it is a finding, not an
+	// endorsement.
+	specs, err := probeToolSpecs(exampleAsPublished)
+	require.NoError(t, err)
+	for _, spec := range specs {
+		var schema struct {
+			Properties           map[string]any `json:"properties"`
+			AdditionalProperties *bool          `json:"additionalProperties"`
+		}
+		require.NoError(t, json.Unmarshal(spec.Parameters, &schema))
+		require.NotNil(t, schema.AdditionalProperties)
+		assert.False(t, *schema.AdditionalProperties, "%s: the op schema is C13-strict", spec.Name)
+		assert.NotContains(t, schema.Properties, "ops", "%s: the schema describes one op, not a request body", spec.Name)
+		assert.Contains(t, spec.Description, `{"ops":[`, "%s: the served example is a whole request body", spec.Name)
+	}
+
+	// unwrapped, the same example IS an instance of the schema
+	unwrapped, err := probeToolSpecs(exampleAtOpLevel)
+	require.NoError(t, err)
+	for _, spec := range unwrapped {
+		assert.NotContains(t, spec.Description, `{"ops":[`)
+		assert.Contains(t, spec.Description, `"op":"`+spec.Name+`"`)
 	}
 }

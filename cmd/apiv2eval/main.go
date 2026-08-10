@@ -66,6 +66,10 @@ type options struct {
 	outDir      string
 	list        bool
 	probe       bool
+	// exampleShape selects which example the probe pairs with each schema
+	// (probe.go): "published" — byte-for-byte as GET /v2/schemas/ops/{op}
+	// serves it — or "op", that example unwrapped to the single op inside.
+	exampleShape string
 }
 
 func run() error {
@@ -83,6 +87,8 @@ func run() error {
 	flag.StringVar(&opt.outDir, "out", "eval-out", "output directory for attempts.jsonl and summary.txt")
 	flag.BoolVar(&opt.list, "list", false, "print the run matrix and exit")
 	flag.BoolVar(&opt.probe, "probe", false, "run the one-turn schema-emission probe instead of the loop (needs no live API)")
+	flag.StringVar(&opt.exampleShape, "probe-example", exampleAsPublished,
+		"probe only: which example to pair with each op schema — published (a whole PATCH body, as served) or op (unwrapped to one op)")
 	flag.Parse()
 
 	env, err := loadEnv(opt.envFile)
@@ -116,6 +122,9 @@ func run() error {
 	defer stop()
 
 	if opt.probe {
+		if opt.exampleShape != exampleAsPublished && opt.exampleShape != exampleAtOpLevel {
+			return fmt.Errorf("unknown -probe-example %q — shapes: %s, %s", opt.exampleShape, exampleAsPublished, exampleAtOpLevel)
+		}
 		// the probe asks only what the model WRITES given a published schema,
 		// so it skips the API preflight entirely
 		chat := newChatClient(modelURL, modelKey, opt.modelTimout)

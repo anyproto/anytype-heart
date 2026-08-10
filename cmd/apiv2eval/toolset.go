@@ -236,9 +236,14 @@ func newOpsToolset(ctx context.Context, client *apiClient, spaceId, objectId str
 		if err != nil {
 			return nil, err
 		}
+		// the served example is a whole PATCH body, {"ops":[{…}]}, while the
+		// schema beside it describes ONE op — the example is not an instance
+		// of its own schema. The arm pairs the schema with the op inside, so
+		// a long run measures the schema rather than that mismatch; the
+		// mismatch itself is measured by -probe -probe-example (probe.go).
 		ts.specs = append(ts.specs, toolSpec{
 			Name:        op,
-			Description: fmt.Sprintf("PATCH op %q on the object being edited. Example: %s", op, strings.TrimSpace(string(example))),
+			Description: fmt.Sprintf("PATCH op %q on the object being edited. Example: %s", op, unwrapOpsExample(example)),
 			Parameters:  schema,
 		})
 	}
