@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
+	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 )
 
 func TestSchemaOp(t *testing.T) {
@@ -122,6 +123,39 @@ func TestSchemaOp(t *testing.T) {
 			"the existing-content block def keeps its id slot")
 	})
 
+	// §8.32: the payload block's `type` published no vocabulary — a bare
+	// string beside a description naming another fetch, which a decoder cannot
+	// make. Asked for a checkbox item, gemma4:e2b answered
+	// {"type":"bulletedListItem","text":"[ ] Follow up"} 10 times out of 10.
+	// The enum is derived, never copied: a hand-kept list is the drift class
+	// §8.31 was about.
+	t.Run("both payload block defs publish the block-type vocabulary", func(t *testing.T) {
+		for _, op := range []string{"insertBlocks", "replaceSubtree"} {
+			entry, err := fx.SchemaOp(op)
+			require.NoError(t, err, op)
+
+			got := publishedBlockTypes(t, entry)
+			assert.Equal(t, anyblockjson.AuthorableBlockTypeNames(), got,
+				"%s: the published enum IS the format's authorable vocabulary", op)
+			assert.Contains(t, got, "checkbox", "the type the measured failure needed")
+		}
+	})
+
+	t.Run("the published vocabulary offers no value that cannot become a block", func(t *testing.T) {
+		// §7 structural types are in the format's vocabulary but import
+		// absorbs or drops them — the §8.30 rule, one level down: a VALUE no
+		// caller can succeed with does not appear in the enum
+		entry, err := fx.SchemaOp("insertBlocks")
+		require.NoError(t, err)
+		published := publishedBlockTypes(t, entry)
+		require.NotEmpty(t, published)
+		for _, typ := range anyblockjson.BlockTypeNames() {
+			if anyblockjson.StructuralBlockType(typ) {
+				assert.NotContains(t, published, typ, "%s is structural (SPEC §7)", typ)
+			}
+		}
+	})
+
 	t.Run("unknown op lists the available ops", func(t *testing.T) {
 		_, err := fx.SchemaOp("frobnicate")
 
@@ -209,6 +243,21 @@ func opBlockDefProps(t *testing.T, entry v2model.SchemaEntry) map[string]any {
 	}
 	require.NoError(t, json.Unmarshal(entry.Schema, &schema))
 	return schema.Defs.Block.Properties
+}
+
+// publishedBlockTypes returns the block-type enum an op's payload-block def
+// publishes.
+func publishedBlockTypes(t *testing.T, entry v2model.SchemaEntry) []string {
+	t.Helper()
+	typeProp, _ := opBlockDefProps(t, entry)["type"].(map[string]any)
+	require.NotNil(t, typeProp, "the block def types `type`")
+	values, _ := typeProp["enum"].([]any)
+	require.NotEmpty(t, values, "`type` publishes its vocabulary")
+	out := make([]string, 0, len(values))
+	for _, v := range values {
+		out = append(out, v.(string))
+	}
+	return out
 }
 
 // blockDefArrayItems returns the `items` def an op's payload-block def

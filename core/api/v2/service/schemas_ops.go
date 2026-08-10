@@ -17,9 +17,11 @@ package v2service
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
+	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 )
 
 // v2OpsEndpoint is the endpoint every op schema belongs to.
@@ -52,7 +54,27 @@ const v2OpBlockIndentProp = `"indent":{"type":"integer","minimum":0,"maximum":32
 // v2OpBlockIdProp is the EXISTING-content id slot.
 const v2OpBlockIdProp = `"id":{"type":"string","pattern":"^[A-Za-z0-9_-]{1,64}$","description":"optional; when present it must name an EXISTING block of this object — full id or unique suffix, resolved like every other id slot — and the payload keeps that block's identity. Omit it to author new content: the server mints an id and returns it in createdBlocks under this payload path. An id that matches nothing is refused, never minted over."}`
 
-const v2OpBlockCommonProps = `"type":{"type":"string","maxLength":64},` +
+// v2OpBlockTypeProp publishes the block-type vocabulary itself (§8.32). It
+// used to be a bare {"type":"string","maxLength":64} beside a description
+// pointing at another fetch — and a decoder cannot fetch. Asked for a
+// checkbox item, gemma4:e2b wrote {"type":"bulletedListItem","text":"[ ]
+// Follow up"} 10 times out of 10: a plausible type plus a literal markdown
+// checkbox in the text, which is what inventing a vocabulary looks like. The
+// names come from anyblockjson.AuthorableBlockTypeNames — the format's own
+// schema enum minus the §7 structural types — never from a copy kept here.
+var v2OpBlockTypeProp = `"type":{"type":"string","enum":[` +
+	strings.Join(quoteAll(anyblockjson.AuthorableBlockTypeNames()), ",") + `]}`
+
+// quoteAll JSON-quotes each name of a published vocabulary.
+func quoteAll(names []string) []string {
+	out := make([]string, len(names))
+	for i, name := range names {
+		out[i] = strconv.Quote(name)
+	}
+	return out
+}
+
+var v2OpBlockCommonProps = v2OpBlockTypeProp + `,` +
 	`"text":{"type":"string","maxLength":1048576,"description":"inline markup per SPEC §8"},` +
 	`"checked":{"type":"boolean"},` +
 	`"color":{"type":"string","maxLength":64},` +

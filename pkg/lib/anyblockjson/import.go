@@ -365,23 +365,20 @@ func (imp *importer) topLevelBlocks(details *types.Struct) ([]*jsonBlock, []int)
 		if jb == nil {
 			continue
 		}
-		if indents[i] == 0 {
-			structural := true
+		// structuralBlockTypes (blockvocab.go) is the one statement of which
+		// types these are — the API surfaces that publish an authorable
+		// vocabulary read the same map
+		if indents[i] == 0 && structuralBlockTypes[jb.Type] {
 			switch jb.Type {
 			case "title":
 				imp.absorbIntoProperty(details, "name", jb.Text)
 			case "description":
 				imp.absorbIntoProperty(details, "description", jb.Text)
-			case "featuredProperties":
-			default:
-				structural = false
 			}
-			if structural {
-				for i+1 < len(raw) && indents[i+1] > 0 {
-					i++
-				}
-				continue
+			for i+1 < len(raw) && indents[i+1] > 0 {
+				i++
 			}
+			continue
 		}
 		jbs = append(jbs, jb)
 		kept = append(kept, indents[i])
