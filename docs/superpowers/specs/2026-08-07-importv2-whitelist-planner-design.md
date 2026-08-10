@@ -30,7 +30,7 @@ bundled target: dueDate ×11, email ×2, tag ×1, phone ×1, done ×1.
 **Property mappings are 60–75% of the output tokens.** Full plans cost 6,700–11,000 completion
 tokens for 37 containers; under strict mode each mapping is ~30–40 tokens (all four fields
 forced), ~6,100–8,100 tokens total. That is what makes the plan step cost 35–49s on cloud
-gpt-5.6-luna and 22–37 **minutes** on a local 5 tok/s decoder — and impossible outright on Apple
+gpt-5.6-luna and 22–37 **minutes** on the local decoder as then measured — and impossible outright on Apple
 Foundation Models (~4,096 total context measured on macOS 26; the evidence blob alone is ~4,900
 tokens).
 
@@ -267,11 +267,13 @@ Retry: the shipped one-corrective-retry-on-invalid-parse stays (`llmplan.go`), b
 | Input tokens | ~4,900 (measured) + ~1k prompt | ~3,900 + ~230 prompt (estimate) | measured −21% chars on the real blob |
 | Output tokens | 6,700–11,000 (measured) | **~1,100–1,700** (estimate) | ~30–40 tokens/kind × 31–34 kinds (measured kind counts) + wrapper |
 | Cloud wall-clock | 35–49s (measured) | **~10–20s** (estimate) | assumes decode-dominated latency; fixed prompt/reasoning floor not measured |
-| Local 5 tok/s decode | 22–37 min (measured) | **~3.7–5.7 min decode** | 1,100–1,700 tok ÷ 5 tok/s; prompt-eval time not measured |
+| Local decode | 22–37 min (measured) | **~3.4 min end to end, chunked** (measured) | the 5 tok/s rate this row originally assumed was wrong: gemma4:e2b GGUF measures **38.4 tok/s**, so decode is seconds and the wall-clock is prefill across chunks (§6.0, §6 tier 2) |
 | Apple FM (~4k ctx) | impossible (measured: evidence alone ~4,900 tok) | still impossible globally → tier 3 (§6) | |
 
-The local figure sits at the edge of the 5-minute `defaultBudget`; §6 addresses it. Output drops
-75–85% because the response carries zero property mappings and zero typeProperties.
+Output drops 75–85% because the response carries zero property mappings and zero typeProperties.
+The local wall-clock is now dominated by prefill across several chunks rather than by decode, and
+sits well inside the 5-minute `defaultBudget` at this workspace size — but the budget bounds the
+whole step, every chunk included, so it is the knob for very large workspaces (§6.0).
 
 ## 4. The whitelist property mapper
 
@@ -474,13 +476,76 @@ separate ruling.
 Free text is proposed **nowhere** — every tier speaks strict structured output; the smallest call
 is a one-field JSON object, not prose.
 
-**Tier 1 — cloud (default).** One kinds call (§3), `reasoning_effort=low`. ~10–20s (estimate).
+### 6.0 Chunking — the kinds call is split at 8 containers (SHIPPED, added after this spec)
 
-**Tier 2 — capable local (one call).** Same single call; ordinals and the no-property-id evidence
-are already the default, so nothing differs but arithmetic: at the measured 5 tok/s decode,
-1,100–1,700 output tokens is ~3.7–5.7 minutes — inside the 5-minute `defaultBudget` only at the
-low end. Faster local decoders scale proportionally. The client/adapter may raise `WithBudget` for
-local endpoints; a budget expiry still degrades to naive with the shipped warning.
+Tiers 1 and 2 do not send the whole workspace in one call. `WithChunkSize(8)` splits the evidence
+into balanced chunks, one kinds call each, merging kinds whose names normalize equal;
+`WithChunkConcurrency` runs them in parallel (5 on cloud, 1 local — a single GPU serializes
+anyway). `adapter/planner.go` wires both.
+
+**Why it exists.** Coverage tracks corpus SIZE, not model or prompt: every 10–14-container fixture
+was assigned in full while the real 35-container workspace was not (gemma4:e2b 32/35). Neither an
+explicit container count in the user message nor an instruction change recovered the gap; bounding
+what one call must enumerate did, completely. It also roughly halved the rate at which the model
+names a type after its source database instead of naming the kind — a bigger effect than any
+prompt intervention tried (§9).
+
+**The size was swept, so do not re-open it without new evidence.** Fixed corpus (the real 35
+containers), varying only containers-per-call:
+
+| containers/call | e2b assigned | e2b sing==pl | e2b echo | luna assigned | luna echo |
+|---|---|---|---|---|---|
+| 35 (one call) | 32/35 | 1/31 | 25/31 (81%) | 35/35 | 14/33 |
+| 18 | 34/35 | 2/33 | 29/33 (88%) | 35/35 | 11/33 |
+| 12 | **35/35** | 1/34 | 15/34 (44%) | 35/35 | 14/33 |
+| **8** | **35/35** | **0/33** | **12/33 (36%)** | 35/35 | 9/32 |
+| 6 | **35/35** | **0/32** | 12/32 (38%) | 35/35 | 14/33 |
+
+For the weak local model smaller calls are monotonically better on BOTH axes — coverage saturates
+at ≤12, naming keeps improving to 8. For cloud models chunk size is irrelevant to coverage (luna
+holds 35/35 at every size) and the echo column is inside the ±3–5 run-to-run band, so 8 sits at the
+local optimum and costs cloud nothing. Balanced chunks matter independently: 35 sliced fixed-size
+at 8 gives 8/8/8/8/3, and the starved 3-tail regressed plural collisions 1 → 6.
+
+**A minimum workspace size before chunking engages was proposed and REJECTED on measurement.** The
+worry was that splitting a small workspace wastes comparative context. Tested by holding
+composition fixed — the real workspace truncated to 14 containers, gemma4:e2b, two runs per config,
+both reproducing exactly:
+
+| N=14 | assigned | sing==pl | echo |
+|---|---|---|---|
+| one call | 14/14 | 2/14 | 10/14 (71%) |
+| chunk 8 (7/7) | 14/14 | **0/14** | **4/14 (29%)** |
+
+Chunking a 14-container workspace *helps*. The single contrary observation that motivated the idea
+(a fixture where splitting took e2b from 0 to 4 plural collisions) was unreplicated noise.
+
+**The mechanism is worth carrying into future prompt work, because it is counter-intuitive:** for a
+small model, MORE containers per call makes it copy source labels MORE, not less — 36% echo at 8
+degrading to 88% at 18. The instinct that comparative context aids abstraction is backwards at this
+model size.
+
+**Tier 1 — cloud (default).** Chunked kinds calls (§6.0) at concurrency 5, `reasoning_effort=low`.
+Measured on gpt-5.6-luna, 35 containers: 9s — *faster* than the 22s single call it replaces, since
+the chunks overlap.
+
+**Tier 2 — capable local (chunked, sequential).** Same chunked calls at concurrency 1; ordinals
+and the no-property-id evidence are already the default. Measured end to end on gemma4:e2b over
+the real 35-container workspace: **~203s** chunked against 89s for the single call — chunking costs
+~2.3× wall-clock here and buys full coverage plus less than half the echo (§6.0). Parallelism is
+deliberately off: one GPU serializes regardless, and concurrent slots only multiply peak memory.
+
+The earlier arithmetic in this section assumed **5 tok/s** decode; that figure was wrong. Measured
+on the actual box, gemma4:e2b GGUF Q4_K_M generates at **38.4 tok/s** (290 tokens in 7.6s), so the
+per-call decode is seconds, and the minutes above are dominated by prefill across several chunks
+rather than by output. `defaultBudget` (5 min) has real headroom at this size, but it bounds the
+whole step including every chunk, so it is the number to raise for very large workspaces; a budget
+expiry still degrades to naive with the shipped warning.
+
+For contrast, `gemma4:e2b-mlx` is **rejected**: ollama's MLX engine silently ignores
+`response_format: json_schema` (it returns prose and markdown fences, so every chunk fails to
+parse) and it decodes at 9.2 tok/s — 4× slower than the GGUF build, since it is unquantized
+safetensors against Q4_K_M and local decode is bandwidth-bound.
 
 **Tier 3 — context-starved runtimes (Apple FM ~4k total context, sub-8B).** The global call is
 impossible (measured: even the trimmed evidence is ~3,900 tokens before prompt and response). The
@@ -511,7 +576,8 @@ forced shape is one call per container with a **one-field structured response**:
   ("Tasks" and "Sprint Tasks" stay apart) — an accepted cost: under-merge means more types, never
   data loss, and identical duplicates (the decided case) still collapse.
 
-Cost: 37 calls × ~10 output tokens ≈ 370 output tokens total; at 5 tok/s that is ~75s of decode
+Cost: 37 calls × ~10 output tokens ≈ 370 output tokens total; at the measured 38.4 tok/s that is
+~10s of decode
 plus per-call prompt evaluation (rate not measured).
 
 **Tier selection.** Tier 1/2 are the same code path. Tier 3 engages two ways: automatically, when
@@ -670,7 +736,9 @@ tier below it; a planner that can run at all on Apple FM.
    Trim-before-compare covers the measured cases.
 3. **done recall 0/1.** Real, measured, reported in §9; the conservative table is a choice, with
    two rejected-for-now extensions on record (§4.1).
-4. **Local one-call decode sits at the budget edge** (~3.7–5.7 min vs 5-min budget at 5 tok/s);
-   mitigated by budget config and tier 3.
+4. ~~**Local one-call decode sits at the budget edge**~~ — largely dissolved. The 5 tok/s rate
+   behind it was wrong (gemma4:e2b GGUF measures 38.4 tok/s), and the plan is now chunked: the real
+   35-container workspace completes in ~203s against the 5-minute budget. The budget still bounds
+   the whole step across every chunk, so it remains the knob for very large workspaces.
 5. **Kind-name instability across runs** would mint parallel types on re-import; mitigated by the
    name-based import-origin fallback in `matchObjectType`; cross-run stability not measured.
