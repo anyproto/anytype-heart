@@ -267,13 +267,14 @@ func (t *opsToolset) call(ctx context.Context, name string, args map[string]any)
 		}
 		return toolOutcome{Text: string(raw)}
 	}
-	// the tool NAME already says which op it is. A schema-following model
-	// emits the const; a missing one is filled in rather than turned into a
-	// 400 about a field the tool name already determined — the question this
-	// arm asks is about the PAYLOAD, not about the const.
-	if _, ok := args["op"]; !ok {
-		args["op"] = name
-	}
+	// The tool NAME already says which op it is, so the const is set from it
+	// — absent, wrong or right. This arm asks about the PAYLOAD; letting a
+	// mis-written discriminator 400 every call would answer a different
+	// question, and one that only exists because the arm splits the ops into
+	// separate tools (a raw HTTP caller has no tool name and must write the
+	// field). What the model wrote is preserved in the call record and
+	// counted separately — see signals.OpConstAbsent / OpConstWrong.
+	args["op"] = name
 	result, err := t.client.patchOps(ctx, t.spaceId, t.objectId, []any{args})
 	if err != nil {
 		return toolOutcome{Text: apiErrorText(err), IsError: true}

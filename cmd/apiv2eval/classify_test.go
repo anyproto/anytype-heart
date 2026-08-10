@@ -260,3 +260,22 @@ func TestReferenceOrderIsDeterministic(t *testing.T) {
 	}
 	assert.Equal(t, []string{"col", "row", "table"}, []string{first.Refs[0].Arg, first.Refs[1].Arg, first.Refs[2].Arg})
 }
+
+func TestAnalyzeCountsTheOpDiscriminator(t *testing.T) {
+	// given — the ops arm sets `op` from the tool name, so a model that
+	// omits it or writes a positional word into it never fails for that;
+	// the reading skill is still worth a number
+	calls := []callRecord{
+		call(0, "insertBlocks", `{"op":"insertBlocks","markdown":"## Risks"}`),
+		call(1, "insertBlocks", `{"markdown":"## Risks"}`),
+		call(2, "insertBlocks", `{"op":"last","markdown":"## Risks"}`),
+		call(3, "edit_text", `{"object":"1","find":"a","replace":"b"}`),
+	}
+
+	// when
+	got := analyze(calls)
+
+	// then
+	assert.Equal(t, 1, got.OpConstAbsent)
+	assert.Equal(t, 1, got.OpConstWrong, "a wrapper tool without an op field must not be counted")
+}

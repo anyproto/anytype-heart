@@ -104,12 +104,16 @@ func buildSummary(runId string, attempts []attemptRecord, opt options) string {
 		v := h1[k]
 		fmt.Fprintf(&b, "%-14s %-14s %14d %14d %16d %16d\n", k.model, k.arm, v[0], v[1], v[2], v[3])
 	}
-	unknownArg := 0
+	unknownArg, opAbsent, opWrong := 0, 0, 0
 	for _, a := range attempts {
 		unknownArg += a.Signals.UnknownArgCalls
+		opAbsent += a.Signals.OpConstAbsent
+		opWrong += a.Signals.OpConstWrong
 	}
 	fmt.Fprintf(&b, "\ncalls refused for naming an argument the tool does not have: %d\n", unknownArg)
 	b.WriteString("(the wrapper's add_blocks has no id channel at all — on that surface the field is unemittable by construction)\n")
+	fmt.Fprintf(&b, "ops-arm `op` discriminator: %d absent, %d wrong (set from the tool name either way — never an outcome)\n",
+		opAbsent, opWrong)
 
 	b.WriteString("\n## H2 — was an echoed block id the exact string the read served?\n\n")
 	refClasses := []string{refExact, refSuffix, refStale, refCaseFold, refSubstring, refHandleLike, refInvented, refNoRead}

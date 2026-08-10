@@ -85,11 +85,27 @@ type signals struct {
 	IdEmissions         []idEmission `json:"id_emissions,omitempty"`
 	// UnknownArgCalls counts calls refused for naming an argument the tool
 	// does not have — the wrapper-arm shadow of the same question.
-	UnknownArgCalls int      `json:"unknown_arg_calls"`
-	Refs            []refUse `json:"refs,omitempty"`
-	Repairs         []repair `json:"repairs,omitempty"`
-	MalformedArgs   int      `json:"malformed_args"`
+	UnknownArgCalls int `json:"unknown_arg_calls"`
+	// OpConstAbsent / OpConstWrong count the discriminator the op schemas
+	// mark required with a const. The ops arm sets it from the tool name, so
+	// these never affect an outcome — they measure how a small model reads a
+	// const, which is the same reading skill the rest of the schema needs.
+	OpConstAbsent int      `json:"op_const_absent"`
+	OpConstWrong  int      `json:"op_const_wrong"`
+	Refs          []refUse `json:"refs,omitempty"`
+	Repairs       []repair `json:"repairs,omitempty"`
+	MalformedArgs int      `json:"malformed_args"`
 }
+
+// opToolNames is the ops arm's tool set — the names that are also op
+// discriminator values.
+var opToolNames = func() map[string]bool {
+	m := make(map[string]bool, len(opsArmOps))
+	for _, op := range opsArmOps {
+		m[op] = true
+	}
+	return m
+}()
 
 // readingTools name the calls whose RESULT is a served document — the
 // source of the ids an echo is measured against.
@@ -153,6 +169,14 @@ func analyze(calls []callRecord) signals {
 		}
 		if call.IsError && strings.Contains(call.ResultText, "does not take") {
 			s.UnknownArgCalls++
+		}
+		if opToolNames[call.Tool] {
+			switch op, present := args["op"]; {
+			case !present:
+				s.OpConstAbsent++
+			case op != call.Tool:
+				s.OpConstWrong++
+			}
 		}
 
 		// H2 — reference echo fidelity. Argument names are walked in sorted

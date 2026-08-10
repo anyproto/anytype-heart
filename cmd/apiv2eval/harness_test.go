@@ -331,3 +331,25 @@ func TestToolArgumentsDecodeFromBothWireShapes(t *testing.T) {
 		})
 	}
 }
+
+func TestOpsArmSetsTheDiscriminatorFromTheToolName(t *testing.T) {
+	// given — a model that writes a positional word into the const field.
+	// The arm splits the ops into separate tools, which a raw HTTP caller
+	// does not have, so the const must not decide the outcome here.
+	stub := &stubAPI{doc: servedDoc}
+	api := httptest.NewServer(stub)
+	defer api.Close()
+	client := newAPIClient(api.URL, "key", &recordingTransport{base: http.DefaultTransport, rec: &recorder{}})
+	ts, err := newOpsToolset(context.Background(), client, "space1", "obj1")
+	require.NoError(t, err)
+
+	// when
+	out := ts.call(context.Background(), "insertBlocks", map[string]any{"op": "last", "markdown": "## Risks"})
+
+	// then
+	assert.False(t, out.IsError)
+	stub.mu.Lock()
+	defer stub.mu.Unlock()
+	require.Len(t, stub.patches, 1)
+	assert.JSONEq(t, `{"op":"insertBlocks","markdown":"## Risks"}`, string(stub.patches[0]))
+}
