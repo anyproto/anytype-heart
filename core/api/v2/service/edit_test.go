@@ -222,27 +222,28 @@ func TestPatchObject(t *testing.T) {
 
 		// when
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insertBlocks","after":"blockHeading1","blocks":[{"type":"checkbox","text":"todo"},{"indent":1,"type":"paragraph","id":"clientId1","text":"note"}]}`), "", false)
+			patchBody(`{"op":"insertBlocks","after":"blockHeading1","blocks":[{"type":"checkbox","text":"todo"},{"indent":1,"type":"paragraph","text":"note"}]}`), "", false)
 
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, v2model.DiffStats{BlocksAdded: 2}, result.DiffStats)
 		require.Len(t, result.CreatedBlocks, 2)
 		assert.Len(t, result.CreatedBlocks["ops[0].blocks[0]"], 24, "minted id is editor-shaped")
-		assert.Equal(t, "clientId1", result.CreatedBlocks["ops[0].blocks[1]"], "client-supplied ids are echoed")
+		assert.Len(t, result.CreatedBlocks["ops[0].blocks[1]"], 24)
 		blocks := docBlocks(stateDoc(t, *captured))
 		assert.Equal(t, []string{"Section", "todo", "note", "parent", "child", "the Q3 report and Q3 plan"}, blockTexts(blocks))
 		assert.Equal(t, float64(1), blocks[2]["indent"], "payload indent is relative to the anchor level")
 	})
 
-	t.Run("a payload id that tails an existing block id is refused — adoption steals the label", func(t *testing.T) {
-		// reproduced before this guard: a compact label ("bbbb1") copied from
-		// a default read into an insertBlocks payload passed checkFreshIds
-		// (no exact duplicate) and was stored as the literal block id.
-		// matchBlockRef resolves exact matches FIRST, so the adopted label
-		// captured the reference — the next replaceText on "bbbb1" edited the
-		// copy while the original block silently lost its label. §8.26 argued
-		// the adoption was cosmetic; that covered serving, not resolution.
+	t.Run("a payload id that resolves to a live block cannot be inserted a second time", func(t *testing.T) {
+		// reproduced before payload id resolution: a compact label ("bbbb1")
+		// copied from a default read into an insertBlocks payload was stored
+		// as the literal block id, and matchBlockRef resolves exact matches
+		// FIRST — so the adopted label captured the reference and the next
+		// replaceText on "bbbb1" edited the copy while the original block
+		// silently lost its label. Now the label RESOLVES (payloadids.go), so
+		// what insertBlocks sees is a request to insert a second holder of an
+		// id the document already owns: a duplicate, named in both spellings.
 		fx := newV2Fixture(t)
 		fx.expectMutate(editRead(t, editMintedDoc), "headB")
 
@@ -253,6 +254,7 @@ func TestPatchObject(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
 		require.NotEmpty(t, apiErr.Issues)
 		assert.Contains(t, apiErr.Issues[0].Message, `"bbbb1"`)
+		assert.Contains(t, apiErr.Issues[0].Message, testMintedParentId, "the refusal names the id the label resolved to")
 		assert.Contains(t, apiErr.Issues[0].Message, "compact label", "the refusal diagnoses the pasted-label shape")
 		assert.Contains(t, apiErr.Issues[0].Hint, "omit id", "the mint escape hatch is named")
 	})

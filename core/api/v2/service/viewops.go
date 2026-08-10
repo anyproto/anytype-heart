@@ -228,7 +228,7 @@ func (a *v2StateApplier) commitDataviewBlock(edited map[string]any, fullId, opPa
 			a.restoreUnauthoredViews(dv, fullId, plan)
 		}
 	}
-	if err := a.checkFreshIds(blocks, map[string]bool{fullId: true}, func(string) string { return opPath }); err != nil {
+	if err := a.claimPayloadIds(blocks, map[string]bool{fullId: true}, func(string) string { return opPath }); err != nil {
 		return err
 	}
 	a.replaceLive(false, blocks)

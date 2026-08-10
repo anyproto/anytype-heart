@@ -433,14 +433,19 @@ type DiffStats struct {
 	PropertiesChanged int `json:"propertiesChanged"`
 }
 
-// EditResult is the PATCH/PUT response: the new etag, the created-block id
-// map keyed by payload position (client-supplied ids echoed), the schema
-// side effects (created select options, like Phase 2's create), and the
-// diff stats. On a dry run nothing is committed: Etag stays empty and DryRun
-// is true; CreatedBlocks/Created/DiffStats report the would-be outcome.
+// EditResult is the PATCH response: the new etag, the created-block id map
+// keyed by payload position, the schema side effects (created select
+// options, like Phase 2's create), and the diff stats. On a dry run nothing
+// is committed: Etag stays empty and DryRun is true; CreatedBlocks/Created/
+// DiffStats report the would-be outcome.
 type EditResult struct {
-	Etag          string            `json:"etag,omitempty"`
-	DryRun        bool              `json:"dry_run,omitempty"`
+	Etag   string `json:"etag,omitempty"`
+	DryRun bool   `json:"dry_run,omitempty"`
+	// CreatedBlocks maps each payload position that CREATED a block
+	// ("ops[3].blocks[0]") to the id the server minted for it. A payload
+	// position carrying an id is absent: since §8.29 that id resolves to an
+	// existing block whose identity the op keeps, and reporting a preserved
+	// block as created would be the same lie diffStats used to tell.
 	CreatedBlocks map[string]string `json:"createdBlocks,omitempty"`
 	// CreatedViews maps each insertView op ("ops[i]") to the view id it
 	// minted (view ids are always server-minted).

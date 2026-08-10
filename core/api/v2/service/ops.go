@@ -244,6 +244,61 @@ func (d *v2EditDoc) blockIds() []string {
 	return ids
 }
 
+// localIds collects every doc-local id the document carries in an id slot —
+// block ids, table column and row ids, dataview view ids, and the ids of
+// cell DESCENDANTS: the same id domain compact relabeling covers (§9a). The
+// cell block itself carries no id in the flat form (derived, SPEC §6.1), but
+// a cell with descendants is the F10 array form, whose elements past the
+// first are ordinary flat blocks WITH ids in the relabel pool. Ids stay in
+// document order, deduplicated.
+//
+// This is the id vocabulary two guards share: the create path's
+// label-shaped-id warning (docLocalIds) and the PATCH payload resolver
+// (payloadids.go). One walker, so neither can drift into covering a slot the
+// other misses.
+func (d *v2EditDoc) localIds() []string {
+	var ids []string
+	seen := map[string]bool{}
+	add := func(id string) {
+		if id != "" && !seen[id] {
+			seen[id] = true
+			ids = append(ids, id)
+		}
+	}
+	entryIds := func(b map[string]any, field string) []any {
+		entries, _ := b[field].([]any)
+		return entries
+	}
+	for _, b := range d.blocks {
+		add(blockId(b))
+		for _, field := range v2IdBearingBlockFields {
+			for _, e := range entryIds(b, field) {
+				m, ok := e.(map[string]any)
+				if !ok {
+					continue
+				}
+				add(blockId(m))
+				if field != "rows" {
+					continue
+				}
+				cells, _ := m["cells"].([]any)
+				for _, cell := range cells {
+					run, ok := cell.([]any)
+					if !ok {
+						continue // string/null/bare-object cells carry no id
+					}
+					for i := 1; i < len(run); i++ { // element 0 is the cell block (derived id)
+						if el, ok := run[i].(map[string]any); ok {
+							add(blockId(el))
+						}
+					}
+				}
+			}
+		}
+	}
+	return ids
+}
+
 // subtreeEnd returns the index just past block i's contiguous descendant run.
 func (d *v2EditDoc) subtreeEnd(i int) int {
 	base := blockIndent(d.blocks[i])

@@ -69,6 +69,10 @@ type v2StateApplier struct {
 	// current op's own mints (fresh by construction, cleared per op).
 	claimedIds   map[string]bool
 	mintedThisOp map[string]bool
+	// payloadIdOrigin maps a resolved stored id back to the shorter spelling
+	// the caller wrote for it (payloadids.go), so a collision refusal can name
+	// both. Cleared per op alongside mintedThisOp.
+	payloadIdOrigin map[string]string
 
 	// view is the state's flat-document rendering, rebuilt lazily after any
 	// mutating op. Everything agent-facing (refs, indents, error texts) reads
@@ -106,16 +110,17 @@ type v2StateApplier struct {
 
 func newV2StateApplier(s *V2Service, spaceId, objectId string, sbType model.SmartBlockType, st *state.State, resolvers *creatingResolvers) *v2StateApplier {
 	return &v2StateApplier{
-		s:             s,
-		spaceId:       spaceId,
-		objectId:      objectId,
-		sbType:        sbType,
-		st:            st,
-		resolvers:     resolvers,
-		createdBlocks: map[string]string{},
-		claimedIds:    map[string]bool{},
-		mintedThisOp:  map[string]bool{},
-		createdViews:  map[string]string{},
+		s:               s,
+		spaceId:         spaceId,
+		objectId:        objectId,
+		sbType:          sbType,
+		st:              st,
+		resolvers:       resolvers,
+		createdBlocks:   map[string]string{},
+		claimedIds:      map[string]bool{},
+		mintedThisOp:    map[string]bool{},
+		payloadIdOrigin: map[string]string{},
+		createdViews:    map[string]string{},
 	}
 }
 
@@ -341,18 +346,6 @@ func rebaseFragmentPath(base, path string) string {
 	return base + strings.ReplaceAll(path, "/", ".")
 }
 
-// duplicateIdError is the R5-net rejection for a payload id that already
-// exists in the document (the document-level pipeline caught this via the
-// format's id-uniqueness check; the state pipeline checks it explicitly,
-// with the op-shaped path).
-func duplicateIdError(path string, id string) error {
-	return v2model.NewError(http.StatusBadRequest, v2model.CodeValidationFailed, v2InvalidDocMessage,
-		v2model.Issue{
-			Path:    path,
-			Message: fmt.Sprintf("duplicate block id %q — it already exists in the document", id),
-		})
-}
-
 // validateEditedDoc is the R5 whole-document net, restored (review B′3):
 // fragment validation only sees a payload run in isolation, so invariants
 // that span the spliced result — V3 row→column containment, the
@@ -378,6 +371,11 @@ func validateEditedDoc(objectId string, doc []byte) error {
 // "ops[i]…", R5).
 func (a *v2StateApplier) apply(i int, raw json.RawMessage) error {
 	opPath := fmt.Sprintf("ops[%d]", i)
+	// per-op scratch: which payload ids this op resolved from a shorter
+	// spelling. Reset here rather than in claimPayloadIds so an op that
+	// never reaches the collision guard cannot leave an origin behind for
+	// the next op's error message.
+	a.payloadIdOrigin = map[string]string{}
 	var probe struct {
 		Op string `json:"op"`
 	}
@@ -511,33 +509,28 @@ func (a *v2StateApplier) setBlocks(blocks []*model.Block) {
 	}
 }
 
-// checkFreshIds rejects payload block ids (including table internals) that
+// claimPayloadIds rejects payload block ids (including table internals) that
 // already exist in the state or this PATCH, except ids the op explicitly
-// replaces (allowed) and ids the op itself minted (fresh by construction) —
-// and ids that match the TAIL of a block the document keeps. Adopting such
-// an id is not cosmetic: matchBlockRef resolves exact matches FIRST, so the
-// adopted id captures every reference its tail-owner answered to
-// (reproduced: a compact label pasted from a default read into an
-// insertBlocks payload — the next replaceText on that label edited the copy
-// while the original silently lost it). On success every payload id is
-// claimed for the rest of the PATCH.
-func (a *v2StateApplier) checkFreshIds(blocks []*model.Block, allowed map[string]bool, pathFor func(id string) string) error {
-	var keptIds []string // lazily collected — most payloads carry no authored ids
+// replaces (allowed) and ids the op itself minted (fresh by construction).
+// On success every payload id is claimed for the rest of the PATCH.
+//
+// This is the collision half of the old checkFreshIds. Its other half — a
+// scan for ids that merely TAIL a block the document keeps — is gone,
+// subsumed by payload id resolution (payloadids.go): a tailing id no longer
+// reaches the state as a literal, it resolves to the block it labels (or
+// refuses as ambiguous/unresolvable) before the fragment import runs. What
+// survives here is the case resolution cannot decide: an id that legitimately
+// names an existing element, in an op that may not reuse it — insertBlocks
+// naming a live block, replaceSubtree naming one outside the subtree it
+// replaces. Keeping only one guard is deliberate: the two overlapped, with
+// different coverage, and the gap between them was F1.
+func (a *v2StateApplier) claimPayloadIds(blocks []*model.Block, allowed map[string]bool, pathFor func(id string) string) error {
 	for _, b := range blocks {
 		if allowed[b.Id] || a.mintedThisOp[b.Id] {
 			continue
 		}
 		if a.st.Exists(b.Id) || a.claimedIds[b.Id] {
-			return duplicateIdError(pathFor(b.Id), b.Id)
-		}
-		if b.Id == "" {
-			continue
-		}
-		if keptIds == nil {
-			keptIds = a.keptBlockIds(allowed)
-		}
-		if idx, matches := matchBlockRef(keptIds, b.Id); matches >= 1 {
-			return adoptedLabelError(pathFor(b.Id), b.Id, keptIds[idx])
+			return a.duplicateIdError(pathFor(b.Id), b.Id)
 		}
 	}
 	for _, b := range blocks {
@@ -545,34 +538,6 @@ func (a *v2StateApplier) checkFreshIds(blocks []*model.Block, allowed map[string
 	}
 	a.mintedThisOp = map[string]bool{}
 	return nil
-}
-
-// keptBlockIds lists the state's reachable block ids minus the ones this op
-// replaces (leaving) — the id vocabulary a payload id could capture a
-// suffix of.
-func (a *v2StateApplier) keptBlockIds(leaving map[string]bool) []string {
-	var ids []string
-	_ = a.st.Iterate(func(b simple.Block) bool {
-		if id := b.Model().Id; id != "" && !leaving[id] {
-			ids = append(ids, id)
-		}
-		return true
-	})
-	return ids
-}
-
-// adoptedLabelError refuses a payload id that tails a kept block id: stored
-// as a literal id it would exact-match every future reference that meant
-// the tail's owner — the pasted-compact-label case from a default read.
-func adoptedLabelError(path, id, ownerId string) error {
-	return v2model.NewError(http.StatusBadRequest, v2model.CodeValidationFailed, v2InvalidDocMessage,
-		v2model.Issue{
-			Path: path,
-			Message: fmt.Sprintf(
-				"id %q matches the tail of existing block id %q — it looks like a compact label from a default read, and storing it as a literal id would capture that block's references",
-				id, ownerId),
-			Hint: "omit id on a new block — the server mints one; the real ids are one ?ids=full read away",
-		})
 }
 
 // runPathFor reports a duplicate id under its payload position when the id
@@ -1031,6 +996,10 @@ func (a *v2StateApplier) applyUpdateBlock(op opUpdateBlock, opPath string) error
 		merged[k] = v
 	}
 	delete(merged, "indent") // position is the tree's business
+	// only the CALLER's arrays are resolved: the live fields merged in
+	// already carry stored ids, and the vocabulary is loaded lazily so an
+	// ordinary field edit pays nothing
+	var vocab []string
 	for _, key := range keys {
 		var value any
 		if err := json.Unmarshal(op.Set[key], &value); err != nil {
@@ -1040,6 +1009,16 @@ func (a *v2StateApplier) applyUpdateBlock(op opUpdateBlock, opPath string) error
 		if value == nil {
 			delete(merged, key) // explicit null clears the field (merge semantics)
 			continue
+		}
+		if entries, isArray := value.([]any); isArray && idBearingBlockField(key) {
+			if vocab == nil {
+				if vocab, err = a.payloadIdVocabulary(); err != nil {
+					return err
+				}
+			}
+			if err := a.resolveIdEntries(vocab, entries, key, opPath+".set"); err != nil {
+				return err
+			}
 		}
 		merged[key] = value
 	}
@@ -1052,7 +1031,7 @@ func (a *v2StateApplier) applyUpdateBlock(op opUpdateBlock, opPath string) error
 	if err != nil {
 		return invalidFragmentError(opPath+".set", err)
 	}
-	if err := a.checkFreshIds(blocks, collectSubtreeIds(a.st, fullId), func(string) string { return opPath + ".set" }); err != nil {
+	if err := a.claimPayloadIds(blocks, collectSubtreeIds(a.st, fullId), func(string) string { return opPath + ".set" }); err != nil {
 		return err
 	}
 	a.replaceLive(oldWasTable, blocks)
@@ -1078,7 +1057,7 @@ func (a *v2StateApplier) applyReplaceSubtree(op opReplaceSubtree, opPath string)
 	if err != nil {
 		return err
 	}
-	if err := a.checkFreshIds(blocks, oldSubtree, runPathFor(opPath, "blocks", topIds)); err != nil {
+	if err := a.claimPayloadIds(blocks, oldSubtree, runPathFor(opPath, "blocks", topIds)); err != nil {
 		return err
 	}
 
@@ -1182,7 +1161,7 @@ func (a *v2StateApplier) applyInsertBlocks(op opInsertBlocks, opPath string) err
 	if err != nil {
 		return err
 	}
-	if err := a.checkFreshIds(blocks, nil, runPathFor(opPath, field, topIds)); err != nil {
+	if err := a.claimPayloadIds(blocks, nil, runPathFor(opPath, field, topIds)); err != nil {
 		return err
 	}
 	a.setBlocks(blocks)
@@ -1431,6 +1410,18 @@ func (a *v2StateApplier) applySetCell(op opSetCell, opPath string) error {
 		return v2model.ValidationFailed("invalid cell value",
 			v2model.Issue{Path: opPath + ".value", Message: "a cell is a string, null, a block object, or an array of blocks (SPEC §6.1)"})
 	}
+	// the array form's elements past the first are the cell's flat
+	// DESCENDANTS, ids and all — a default read serves those relabeled, so
+	// they resolve like every other id slot (payloadids.go). Element 0 is the
+	// cell block itself, whose id is derived (rowId-colId) and forced by the
+	// importer.
+	vocab, err := a.payloadIdVocabulary()
+	if err != nil {
+		return err
+	}
+	if err := a.resolveCellValueIds(vocab, value, opPath+".value"); err != nil {
+		return err
+	}
 
 	ci, err := resolveTablePart(table, "columns", op.Col, op.TableId, opPath+".col")
 	if err != nil {
@@ -1471,7 +1462,7 @@ func (a *v2StateApplier) applySetCell(op opSetCell, opPath string) error {
 	if err != nil {
 		return invalidDocError(err)
 	}
-	if err := a.checkFreshIds(blocks, collectSubtreeIds(a.st, fullId), func(string) string { return opPath + ".value" }); err != nil {
+	if err := a.claimPayloadIds(blocks, collectSubtreeIds(a.st, fullId), func(string) string { return opPath + ".value" }); err != nil {
 		return err
 	}
 	a.replaceLive(true, blocks)
@@ -1532,8 +1523,15 @@ func (a *v2StateApplier) applyItems(op opItems, opPath string) error {
 // after/before and replaceSubtree, the container's child level for inside).
 // The run must obey the format's monotonicity (V1) internally; the indents
 // stay run-relative — the state splice, not indent arithmetic, sets the
-// insertion level. Missing ids are minted; every payload block's id lands in
-// createdBlocks keyed by payload position.
+// insertion level.
+//
+// Ids: every id slot the run carries — the block's own, and the ones nested
+// in its columns/rows/cells/views — RESOLVES against the pre-op document
+// (payloadids.go), so a compact label echoed from a read names the element it
+// labels instead of renaming it. Only MISSING ids are minted, and only those
+// land in createdBlocks keyed by payload position: a resolved id names
+// something that already existed, and reporting it as created would be the
+// same kind of lie diffStats used to tell.
 func (a *v2StateApplier) decodePayloadRun(raws []json.RawMessage, opPath, field string) ([]map[string]any, error) {
 	if len(raws) == 0 {
 		return nil, v2model.ValidationFailed("blocks must not be empty",
@@ -1550,12 +1548,19 @@ func (a *v2StateApplier) decodePayloadRun(raws []json.RawMessage, opPath, field 
 				Hint:    "split the run across several ops — the blocks and markdown channels share this cap",
 			})
 	}
+	vocab, err := a.payloadIdVocabulary()
+	if err != nil {
+		return nil, err
+	}
 	run := make([]map[string]any, 0, len(raws))
 	prev := -1
 	for j, raw := range raws {
 		path := fmt.Sprintf("%s.%s[%d]", opPath, field, j)
 		block, err := decodeOpBlock(raw, path)
 		if err != nil {
+			return nil, err
+		}
+		if err := a.resolvePayloadBlock(vocab, block, path); err != nil {
 			return nil, err
 		}
 		rel := 0
@@ -1581,12 +1586,11 @@ func (a *v2StateApplier) decodePayloadRun(raws []json.RawMessage, opPath, field 
 		} else {
 			delete(block, "indent")
 		}
-		id := blockId(block)
-		if id == "" {
-			id = a.mintBlockId()
+		if blockId(block) == "" {
+			id := a.mintBlockId()
 			block["id"] = id
+			a.createdBlocks[path] = id
 		}
-		a.createdBlocks[fmt.Sprintf("%s.%s[%d]", opPath, field, j)] = id
 		run = append(run, block)
 	}
 	return run, nil

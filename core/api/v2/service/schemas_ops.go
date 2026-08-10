@@ -25,7 +25,7 @@ const v2OpBlockDef = `{"type":"object","additionalProperties":false,"required":[
 	`"description":"a flat AnyBlock block; the full field inventory is GET /v2/schemas/object (SPEC §5)",` +
 	`"properties":{` +
 	`"indent":{"type":"integer","minimum":0,"maximum":32,"description":"relative: 0 = the anchor's level (after/before/replaceSubtree) or the container's child level (inside)"},` +
-	`"id":{"type":"string","pattern":"^[A-Za-z0-9_-]{1,64}$","description":"optional; omitted ids are minted and returned in createdBlocks"},` +
+	`"id":{"type":"string","pattern":"^[A-Za-z0-9_-]{1,64}$","description":"optional; when present it must name an EXISTING block of this object — full id or unique suffix, resolved like every other id slot — and the payload keeps that block's identity. Omit it to author new content: the server mints an id and returns it in createdBlocks. An id that matches nothing is refused, never minted over."},` +
 	`"type":{"type":"string","maxLength":64},` +
 	`"text":{"type":"string","maxLength":1048576,"description":"inline markup per SPEC §8"},` +
 	`"checked":{"type":"boolean"},` +

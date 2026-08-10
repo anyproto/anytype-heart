@@ -252,6 +252,12 @@ components:
         createdBlocks:
           additionalProperties:
             type: string
+          description: |-
+            CreatedBlocks maps each payload position that CREATED a block
+            ("ops[3].blocks[0]") to the id the server minted for it. A payload
+            position carrying an id is absent: since §8.29 that id resolves to an
+            existing block whose identity the op keeps, and reporting a preserved
+            block as created would be the same lie diffStats used to tell.
           type: object
         createdViews:
           additionalProperties:
@@ -1989,11 +1995,14 @@ paths:
       description: 'Applies the closed, id-addressed op set — setProperties, updateBlock,
         replaceSubtree, insertBlocks, moveBlock, deleteBlock, replaceText, setCell,
         updateView, insertView, moveView, deleteView, addItems, removeItems — atomically
-        (one change set). Block references accept full ids and unique suffixes. The
-        post-op document must satisfy the AnyBlock semantic checks (SPEC §12); any
-        violation rejects the whole PATCH with path-addressed errors. If-Match is
-        advisory (C7): absent = last-write-wins, stale = 409 with the current etag.
-        Responds with the new etag, the created-block id map keyed by payload position,
+        (one change set). EVERY id slot resolves the same way, in references and in
+        payloads alike: a full id or a unique suffix, so a document echoed back from
+        a read keeps its identity instead of being renamed. A payload id that matches
+        nothing is refused; omit it to author new content and the server mints one.
+        The post-op document must satisfy the AnyBlock semantic checks (SPEC §12);
+        any violation rejects the whole PATCH with path-addressed errors. If-Match
+        is advisory (C7): absent = last-write-wins, stale = 409 with the current etag.
+        Responds with the new etag, the minted-block id map keyed by payload position,
         and diffStats. Honors ?dry_run=true (C9). GET /v2/schemas/ops/{op} documents
         each op.'
       operationId: v2_patch_object

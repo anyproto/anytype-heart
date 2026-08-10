@@ -222,63 +222,17 @@ func normalizeCreateBody(body []byte) ([]byte, error) {
 }
 
 // docLocalIds collects the doc-local ids a flat AnyBlock document carries
-// explicitly — block ids, table column and row ids, dataview view ids, and
-// the ids of cell DESCENDANTS: the same id domain compact relabeling covers.
-// The cell block itself carries no id in the flat form (derived, SPEC §6.1),
-// but a cell with descendants is the F10 array form, whose elements past the
-// first are ordinary flat blocks WITH ids in the relabel pool. Ids stay in
-// document order, deduplicated; a body that is not decodable yields nil
-// (later validation owns that failure).
+// explicitly, in document order and deduplicated — the create path's view of
+// the id domain compact relabeling covers. The walk itself is
+// v2EditDoc.localIds (ops.go), shared with the PATCH payload resolver so the
+// two guards cannot drift into covering different slots. A body that is not
+// decodable yields nil (later validation owns that failure).
 func docLocalIds(doc []byte) []string {
-	type idHolder struct {
-		Id string `json:"id"`
-	}
-	var envelope struct {
-		Blocks []struct {
-			Id      string     `json:"id"`
-			Columns []idHolder `json:"columns"`
-			Rows    []struct {
-				Id    string            `json:"id"`
-				Cells []json.RawMessage `json:"cells"`
-			} `json:"rows"`
-			Views []idHolder `json:"views"`
-		} `json:"blocks"`
-	}
-	if err := json.Unmarshal(doc, &envelope); err != nil {
+	parsed, err := parseEditDoc(doc)
+	if err != nil {
 		return nil
 	}
-	var ids []string
-	seen := map[string]bool{}
-	add := func(id string) {
-		if id != "" && !seen[id] {
-			seen[id] = true
-			ids = append(ids, id)
-		}
-	}
-	for _, b := range envelope.Blocks {
-		add(b.Id)
-		for _, c := range b.Columns {
-			add(c.Id)
-		}
-		for _, r := range b.Rows {
-			add(r.Id)
-			for _, cell := range r.Cells {
-				// only the array form carries ids (string/null/bare-object
-				// cells have none); a non-array raw simply fails to decode
-				var run []idHolder
-				if err := json.Unmarshal(cell, &run); err != nil {
-					continue
-				}
-				for _, el := range run {
-					add(el.Id)
-				}
-			}
-		}
-		for _, v := range b.Views {
-			add(v.Id)
-		}
-	}
-	return ids
+	return parsed.localIds()
 }
 
 // warnLabelShapedIds flags a create body whose local ids look like the
