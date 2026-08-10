@@ -37,10 +37,22 @@ package v2service
 //
 // Which leaves a payload with NO existing content to name — insertBlocks —
 // with an id slot in which every value is an error. Those ops resolve
-// nothing: they reject the field outright (rejectPayloadIds below), and
+// nothing: they reject the field outright (rejectOrMintSlot below), and
 // their op schema does not publish it (§8.30). Two meanings ("name this
 // existing block" / "choose an id for this new one") shared one slot, and
 // that sharing is what produced F1; the split is C2 applied to a field.
+//
+// ONE WALK, THREE PASSES (§8.31). The id rule has two halves — what an id
+// may NAME (resolution, here) and what an id may CLAIM (the collision guard,
+// claimPayloadIds in stateops.go) — and they have to agree about which slots
+// exist and about which of them already do. They did not: resolution walked
+// blocks, table internals AND dataview views, while the guard walked the
+// imported []*model.Block, in which a view is not an element at all. So a
+// view id was resolvable but unclaimable, and two documented bugs followed
+// from that one disagreement. Every slot is now visited by ONE walker
+// (walkPayloadIdSlots) whose visitors are the three things a slot can need —
+// resolve, reject, mint — and "already exists" is one union on both sides
+// (payloadIdExists).
 
 import (
 	"fmt"
@@ -54,7 +66,7 @@ import (
 // doc-local id of their own: table columns and rows (SPEC §6.1) and dataview
 // views (§6.2). Cells are absent on purpose — a cell block's id is DERIVED
 // (rowId-colId) and the importer forces it, so the cell object itself has no
-// id slot; a cell's flat DESCENDANTS do, and resolveCellIds walks those.
+// id slot; a cell's flat DESCENDANTS do, and the walker covers those.
 var v2IdBearingBlockFields = []string{"columns", "rows", "views"}
 
 // idBearingBlockField reports whether a block field's entries carry ids.
@@ -89,6 +101,35 @@ func (a *v2StateApplier) payloadIdVocabulary() ([]string, error) {
 	return doc.localIds(), nil
 }
 
+// payloadIdExists reports what "already exists in this object" means — the
+// question the collision guard asks, which MUST have the same answer as the
+// question the resolver asks (§8.31). It is the union of two views of one
+// object, and the union is the fix:
+//
+//   - a.st.Exists sees every state BLOCK, including the ones the served
+//     document does not carry at all (the root, title, header,
+//     featuredRelations) — so a payload cannot adopt one of those either.
+//   - the pre-op document's localIds() is the payload id VOCABULARY, and it
+//     additionally holds the doc-local ids that are NOT blocks: a dataview's
+//     VIEW ids.
+//
+// The guard used to ask st.Exists alone. A view id was therefore resolvable
+// but never claimable: `updateBlock set:{views:[…]}` could store two views
+// under one id (every later view op then addressed the first one forever),
+// and a payload block could adopt a live view's id — an identity collision
+// no read can distinguish.
+func (a *v2StateApplier) payloadIdExists() (func(string) bool, error) {
+	vocab, err := a.payloadIdVocabulary()
+	if err != nil {
+		return nil, err
+	}
+	local := make(map[string]bool, len(vocab))
+	for _, id := range vocab {
+		local[id] = true
+	}
+	return func(id string) bool { return local[id] || a.st.Exists(id) }, nil
+}
+
 // resolvePayloadId maps one payload id onto the stored id it names.
 func (a *v2StateApplier) resolvePayloadId(vocab []string, id, path string) (string, error) {
 	idx, matches := matchBlockRef(vocab, id)
@@ -107,60 +148,69 @@ func (a *v2StateApplier) resolvePayloadId(vocab []string, id, path string) (stri
 	}
 }
 
-// resolveIdField resolves the "id" of one payload object in place. An
-// omitted id is left alone — that is how new content is authored; the
-// importer mints one and the response reports it in createdBlocks.
-func (a *v2StateApplier) resolveIdField(vocab []string, m map[string]any, path string) error {
-	id, _ := m["id"].(string)
-	if id == "" {
-		return nil
-	}
-	full, err := a.resolvePayloadId(vocab, id, path)
-	if err != nil {
+//
+// ---- the one walk over a payload's id slots ----
+//
+
+// payloadIdSlot is one id-bearing object of a payload, with the path that
+// ADDRESSES it and whether it is a dataview view. path is the ELEMENT path
+// ("ops[0].blocks[0].rows[1]"): error paths append ".id", and a minted id is
+// reported under the path itself — which is what makes the slot the caller
+// left empty the key it gets its answer back on.
+type payloadIdSlot struct {
+	m    map[string]any
+	path string
+	view bool
+}
+
+// slotVisitor handles one id slot. The three implementations below are the
+// three things a slot can need, and sharing the walk is what keeps them from
+// covering different sets of slots.
+type slotVisitor func(payloadIdSlot) error
+
+// walkPayloadIdSlots visits every id slot one payload block carries: the
+// block itself, each entry of its columns/rows/views, and the flat
+// DESCENDANTS inside its rows' cells.
+func walkPayloadIdSlots(block map[string]any, path string, fn slotVisitor) error {
+	if err := fn(payloadIdSlot{m: block, path: path}); err != nil {
 		return err
 	}
-	m["id"] = full
+	for _, field := range v2IdBearingBlockFields {
+		entries, ok := block[field].([]any)
+		if !ok {
+			continue
+		}
+		if err := walkEntryIdSlots(entries, field, path, fn); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
-// resolveIdEntries resolves the id of every entry of a rows/columns/views
-// array, and (for rows) the ids inside their cells.
-func (a *v2StateApplier) resolveIdEntries(vocab []string, entries []any, field, path string) error {
+// walkEntryIdSlots visits the id slots of ONE rows/columns/views array.
+// updateBlock resolves the caller's arrays field by field — the live fields
+// merged in already carry stored ids — so this half of the walk is reachable
+// on its own.
+func walkEntryIdSlots(entries []any, field, path string, fn slotVisitor) error {
 	for j, e := range entries {
 		m, ok := e.(map[string]any)
 		if !ok {
 			continue // shape errors belong to the format validation, not here
 		}
 		entryPath := fmt.Sprintf("%s.%s[%d]", path, field, j)
-		if err := a.resolveIdField(vocab, m, entryPath+".id"); err != nil {
+		if err := fn(payloadIdSlot{m: m, path: entryPath, view: field == "views"}); err != nil {
 			return err
 		}
-		if field == "rows" {
-			if err := a.resolveCellIds(vocab, m, entryPath); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
-// resolveCellIds resolves the ids a row's cells carry. Only the F10 array
-// form has any: its first element is the cell block (derived id, forced by
-// the importer — skipped) and the rest are ordinary flat blocks with ids.
-// The string, null and bare-object forms carry no id slot at all.
-func (a *v2StateApplier) resolveCellIds(vocab []string, row map[string]any, path string) error {
-	cells, _ := row["cells"].([]any)
-	for k, cell := range cells {
-		run, ok := cell.([]any)
-		if !ok {
+		if field != "rows" {
 			continue
 		}
-		for i := 1; i < len(run); i++ {
-			el, ok := run[i].(map[string]any)
+		cells, _ := m["cells"].([]any)
+		for k, cell := range cells {
+			run, ok := cell.([]any)
 			if !ok {
-				continue
+				continue // string, null and bare-object cells carry no id slot
 			}
-			if err := a.resolveIdField(vocab, el, fmt.Sprintf("%s.cells[%d][%d].id", path, k, i)); err != nil {
+			if err := walkCellRunIdSlots(run, fmt.Sprintf("%s.cells[%d]", entryPath, k), fn); err != nil {
 				return err
 			}
 		}
@@ -168,19 +218,17 @@ func (a *v2StateApplier) resolveCellIds(vocab []string, row map[string]any, path
 	return nil
 }
 
-// resolvePayloadBlock resolves every id slot one payload block object
-// carries: its own id and the ids nested in its columns, rows (incl. cell
-// descendants) and views.
-func (a *v2StateApplier) resolvePayloadBlock(vocab []string, block map[string]any, path string) error {
-	if err := a.resolveIdField(vocab, block, path+".id"); err != nil {
-		return err
-	}
-	for _, field := range v2IdBearingBlockFields {
-		entries, ok := block[field].([]any)
+// walkCellRunIdSlots visits the id slots of a cell's array form (§6.1 F10).
+// Element 0 is the cell block itself, whose id is DERIVED (rowId-colId) and
+// forced by the importer, so the walk starts at 1; the rest are ordinary
+// flat blocks. setCell's value channel is the same shape, so it shares this.
+func walkCellRunIdSlots(run []any, path string, fn slotVisitor) error {
+	for i := 1; i < len(run); i++ {
+		el, ok := run[i].(map[string]any)
 		if !ok {
 			continue
 		}
-		if err := a.resolveIdEntries(vocab, entries, field, path); err != nil {
+		if err := fn(payloadIdSlot{m: el, path: fmt.Sprintf("%s[%d]", path, i)}); err != nil {
 			return err
 		}
 	}
@@ -188,70 +236,94 @@ func (a *v2StateApplier) resolvePayloadBlock(vocab []string, block map[string]an
 }
 
 //
-// ---- new-content payloads: no id slot at all ----
+// ---- the three visitors ----
 //
 
-// rejectPayloadIds refuses every id one NEW-CONTENT payload block carries —
-// its own and the ones nested in columns, rows (incl. cell descendants) and
-// views. It walks the same slots resolvePayloadBlock does, so the two cannot
-// drift apart.
-//
-// The op schema does not publish an id for such a payload (§8.30), which is
-// what stops a constrained decoder from emitting one; this is the check for
-// the caller who is not decoding against the schema. It runs INSTEAD of
-// resolution so the verdict reads as "not part of this op" rather than as a
-// duplicate or an unresolvable id — both of which were true before and
-// neither of which told the caller the field itself is wrong.
-func rejectPayloadIds(op string, block map[string]any, path string) error {
-	if err := rejectIdField(op, block, path+".id"); err != nil {
-		return err
-	}
-	for _, field := range v2IdBearingBlockFields {
-		entries, ok := block[field].([]any)
-		if !ok {
-			continue
+// resolveOrMintSlot is the EXISTING-content visitor: an id that is there
+// names an existing element and resolves to it; an id that is not is MINTED
+// here rather than by the format importer, so the response can report it.
+func (a *v2StateApplier) resolveOrMintSlot(vocab []string) slotVisitor {
+	return func(s payloadIdSlot) error {
+		id, _ := s.m["id"].(string)
+		if id == "" {
+			a.mintSlotId(s)
+			return nil
 		}
-		for j, e := range entries {
-			m, ok := e.(map[string]any)
-			if !ok {
-				continue
-			}
-			entryPath := fmt.Sprintf("%s.%s[%d]", path, field, j)
-			if err := rejectIdField(op, m, entryPath+".id"); err != nil {
-				return err
-			}
-			if field != "rows" {
-				continue
-			}
-			cells, _ := m["cells"].([]any)
-			for k, cell := range cells {
-				run, ok := cell.([]any)
-				if !ok {
-					continue
-				}
-				for i := 1; i < len(run); i++ {
-					el, ok := run[i].(map[string]any)
-					if !ok {
-						continue
-					}
-					if err := rejectIdField(op, el, fmt.Sprintf("%s.cells[%d][%d].id", entryPath, k, i)); err != nil {
-						return err
-					}
-				}
-			}
+		full, err := a.resolvePayloadId(vocab, id, s.path+".id")
+		if err != nil {
+			return err
 		}
-	}
-	return nil
-}
-
-// rejectIdField refuses one id slot of a new-content payload.
-func rejectIdField(op string, m map[string]any, path string) error {
-	id, _ := m["id"].(string)
-	if id == "" {
+		s.m["id"] = full
 		return nil
 	}
-	return newContentIdError(op, id, path)
 }
+
+// rejectOrMintSlot is the NEW-content visitor (§8.30): every id is refused
+// as not part of the op — there is no value of the field that could succeed
+// — and every empty slot is minted and reported.
+//
+// The refusal runs INSTEAD of resolution so the verdict reads as "not part
+// of this op" rather than as a duplicate or an unresolvable id — both of
+// which were true before and neither of which told the caller the field
+// itself is wrong. The op schema does not publish an id for such a payload,
+// which is what stops a constrained decoder from emitting one; this is the
+// check for the caller who is not decoding against the schema.
+func (a *v2StateApplier) rejectOrMintSlot(op string) slotVisitor {
+	return func(s payloadIdSlot) error {
+		if id, _ := s.m["id"].(string); id != "" {
+			return newContentIdError(op, id, s.path+".id")
+		}
+		a.mintSlotId(s)
+		return nil
+	}
+}
+
+// mintSlotId fills an empty id slot and REPORTS what it minted under that
+// slot's path.
+//
+// Minting here rather than leaving it to the format importer is what makes
+// the refusals' promise true. Both of them tell the caller to omit the id
+// because "the server mints one and returns it in createdBlocks" — but
+// createdBlocks used to be written only for TOP-LEVEL run blocks, so a
+// minted view id, a minted cell descendant and the row/column ids of a table
+// created through insertBlocks were all unreported. Those are precisely the
+// slots the refusals fire on, so the API was telling a model to do something
+// and then withholding the answer it had promised; the model's only recovery
+// was a re-read, a whole round trip to learn an id it had just created.
+//
+// A view id goes to createdViews, not createdBlocks: a view is not a block,
+// and createdViews is already the view-family twin of that map.
+func (a *v2StateApplier) mintSlotId(s payloadIdSlot) {
+	id := a.mintBlockId()
+	s.m["id"] = id
+	if s.view {
+		a.createdViews[s.path] = id
+		return
+	}
+	a.createdBlocks[s.path] = id
+}
+
+// resolveIdEntries resolves (and mints into) the id slots of one payload
+// rows/columns/views array — updateBlock's set channel, which hands over one
+// field at a time.
+func (a *v2StateApplier) resolveIdEntries(vocab []string, entries []any, field, path string) error {
+	return walkEntryIdSlots(entries, field, path, a.resolveOrMintSlot(vocab))
+}
+
+// resolveCellValueIds resolves (and mints into) the id slots a setCell value
+// carries. Only the array form has any, and only past element 0 (the cell
+// block, derived id).
+func (a *v2StateApplier) resolveCellValueIds(vocab []string, value any, path string) error {
+	run, ok := value.([]any)
+	if !ok {
+		return nil
+	}
+	return walkCellRunIdSlots(run, path, a.resolveOrMintSlot(vocab))
+}
+
+//
+// ---- refusals ----
+//
 
 // newContentIdError is the refusal for an id in a payload that only ever
 // creates. It names the field as not belonging to the op, because that is
@@ -262,27 +334,8 @@ func newContentIdError(op, id, path string) error {
 		v2model.Issue{
 			Path:    path,
 			Message: fmt.Sprintf("id %q is not part of this op: an id names an EXISTING element, and %s only creates them; no value of this field can succeed, so the op's schema does not have it", id, op),
-			Hint:    fmt.Sprintf("drop the id — the server mints one and returns it in createdBlocks (GET /v2/schemas/ops/%s); to change an existing block use updateBlock, or replaceSubtree to swap it whole", op),
+			Hint:    fmt.Sprintf("drop the id — the server mints one and reports it under this exact path in createdBlocks (createdViews for a view); see GET /v2/schemas/ops/%s. To change an existing block use updateBlock, or replaceSubtree to swap it whole", op),
 		})
-}
-
-// resolveCellValueIds resolves the ids a setCell value carries. Only the
-// array form has any, and only past element 0 (the cell block, derived id).
-func (a *v2StateApplier) resolveCellValueIds(vocab []string, value any, path string) error {
-	run, ok := value.([]any)
-	if !ok {
-		return nil
-	}
-	for i := 1; i < len(run); i++ {
-		el, ok := run[i].(map[string]any)
-		if !ok {
-			continue
-		}
-		if err := a.resolveIdField(vocab, el, fmt.Sprintf("%s[%d].id", path, i)); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // suffixCandidates lists the ids ref is a suffix of, bounded.
@@ -307,7 +360,7 @@ func unresolvedPayloadIdError(path, id string) error {
 		v2model.Issue{
 			Path:    path,
 			Message: "a payload id names an EXISTING element whose identity the op keeps — a full id or a unique suffix, the same rule every other id slot follows; it is not a way to choose the id of new content",
-			Hint:    "omit id to author something new — the server mints one and returns it in createdBlocks; if you meant an existing element, re-read the object (GET ?outline=true lists block ids) — it may have changed under you",
+			Hint:    "omit id to author something new — the server mints one and reports it under this exact path in createdBlocks (createdViews for a view); if you meant an existing element, re-read the object (GET ?outline=true lists block ids) — it may have changed under you",
 		})
 }
 
@@ -338,4 +391,11 @@ func (a *v2StateApplier) duplicateIdError(path string, id string) error {
 			Message: detail,
 			Hint:    "omit id on new content — the server mints one; to change the existing element, address it with updateBlock or replaceSubtree",
 		})
+}
+
+// viewIdPath addresses the j-th view of the payload block whose own id slot
+// is base: "ops[0].blocks[0].id" → "ops[0].blocks[0].views[1].id", and a base
+// that is not itself an id slot ("ops[0].set") simply gains the suffix.
+func viewIdPath(base string, j int) string {
+	return fmt.Sprintf("%s.views[%d].id", strings.TrimSuffix(base, ".id"), j)
 }

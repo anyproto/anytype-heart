@@ -45,22 +45,73 @@ func TestSchemaOp(t *testing.T) {
 		assert.Len(t, v2OpSchemas, len(v2OpNames))
 	})
 
-	// §8.30: a field no value of which can succeed is not advertised. In
-	// insertBlocks the payload only ever CREATES, so an id slot there is an
+	// §8.30: a field no value of which can succeed is not advertised. In a
+	// NEW-content payload the op only ever CREATES, so an id slot there is an
 	// error whatever the caller writes — and a constrained decoder emits the
 	// fields it is shown, so a runtime guard alone cannot stop it.
-	t.Run("the insertBlocks payload publishes no id slot", func(t *testing.T) {
-		// when
-		entry, err := fx.SchemaOp("insertBlocks")
+	//
+	// Table-driven over v2NewContentOps, the ONE set the runtime reads too
+	// (decodePayloadRun): an op added to the runtime half and missed in the
+	// schema half is what re-creates §8.30's bug, so neither half gets its
+	// own list to fall out of date.
+	t.Run("the new-content op set decides which schemas publish an id", func(t *testing.T) {
+		for _, op := range v2OpNames {
+			entry, err := fx.SchemaOp(op)
+			require.NoError(t, err, op)
 
-		// then
-		require.NoError(t, err)
-		props := opBlockDefProps(t, entry)
-		require.NotEmpty(t, props, "insertBlocks still has a payload-block def")
-		assert.NotContains(t, props, "id", "the new-content block def has no id slot")
-		// nothing nested publishes one either (rows/columns/views entries)
-		assert.Empty(t, schemaPropertyOwners(t, entry.Schema, "id"),
-			"no part of the insertBlocks schema advertises an id")
+			owners := schemaPropertyOwners(t, entry.Schema, "id")
+			if v2NewContentOps[op] {
+				assert.Empty(t, owners, "%s only ever creates: no part of its schema may advertise an id", op)
+				assert.NotContains(t, opBlockDefProps(t, entry), "id", "%s block def", op)
+				continue
+			}
+			assert.NotEmpty(t, owners, "%s addresses existing content: its payload-block def keeps the id slot", op)
+		}
+	})
+
+	t.Run("every new-content op is a real op", func(t *testing.T) {
+		for op := range v2NewContentOps {
+			assert.Contains(t, v2OpNames, op)
+		}
+	})
+
+	// §8.31: the emptiness assertion above is only worth anything if the
+	// nested slots are TYPED. They were not — columns/rows were bare
+	// {"type":"array"} with no items — so "no nested id is published" held
+	// because there was no nested schema at all, and would have passed
+	// identically for replaceSubtree.
+	t.Run("the nested table entries are typed, and their id slot follows the same split", func(t *testing.T) {
+		for _, tc := range []struct {
+			op       string
+			nestedId bool
+		}{
+			{"insertBlocks", false},
+			{"replaceSubtree", true},
+		} {
+			entry, err := fx.SchemaOp(tc.op)
+			require.NoError(t, err, tc.op)
+			for _, field := range []string{"columns", "rows"} {
+				items := blockDefArrayItems(t, entry, field)
+				require.NotNil(t, items, "%s: %s must publish an items def — an untyped array constrains nothing", tc.op, field)
+				assert.Equal(t, false, items["additionalProperties"],
+					"%s: %s entries are C13-strict, which is what makes an absent id unemittable", tc.op, field)
+				props, _ := items["properties"].(map[string]any)
+				require.NotEmpty(t, props, "%s: %s entries publish properties", tc.op, field)
+				_, hasId := props["id"]
+				assert.Equal(t, tc.nestedId, hasId, "%s: %s[].id", tc.op, field)
+			}
+		}
+	})
+
+	t.Run("no payload-block def publishes views", func(t *testing.T) {
+		// the block def's own claim: neither shape has a `views` property, so
+		// with additionalProperties:false no decoder can name a dataview view
+		// through this channel at all
+		for _, op := range []string{"insertBlocks", "replaceSubtree"} {
+			entry, err := fx.SchemaOp(op)
+			require.NoError(t, err, op)
+			assert.NotContains(t, opBlockDefProps(t, entry), "views", op)
+		}
 	})
 
 	t.Run("replaceSubtree keeps the id slot its payload needs", func(t *testing.T) {
@@ -103,6 +154,15 @@ func opBlockDefProps(t *testing.T, entry v2model.SchemaEntry) map[string]any {
 	}
 	require.NoError(t, json.Unmarshal(entry.Schema, &schema))
 	return schema.Defs.Block.Properties
+}
+
+// blockDefArrayItems returns the `items` def an op's payload-block def
+// publishes for one array-valued property (columns, rows), or nil.
+func blockDefArrayItems(t *testing.T, entry v2model.SchemaEntry, field string) map[string]any {
+	t.Helper()
+	prop, _ := opBlockDefProps(t, entry)[field].(map[string]any)
+	items, _ := prop["items"].(map[string]any)
+	return items
 }
 
 // schemaPropertyOwners walks a JSON Schema and reports every "properties"

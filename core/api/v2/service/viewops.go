@@ -228,7 +228,11 @@ func (a *v2StateApplier) commitDataviewBlock(edited map[string]any, fullId, opPa
 			a.restoreUnauthoredViews(dv, fullId, plan)
 		}
 	}
-	if err := a.claimPayloadIds(blocks, map[string]bool{fullId: true}, func(string) string { return opPath }); err != nil {
+	// the op replaces the dataview block whole, so the ids it may reuse are
+	// the block's own subtree AND the view ids that block currently holds —
+	// collectSubtreeIds carries both since §8.31, which is what lets the
+	// surviving views keep their identities through the re-import
+	if err := a.claimPayloadIds(blocks, collectSubtreeIds(a.st, fullId), func(string) string { return opPath }); err != nil {
 		return err
 	}
 	a.replaceLive(false, blocks)

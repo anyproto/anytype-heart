@@ -246,6 +246,32 @@ func TestV2CreateToleratesCorpseHeldKeys(t *testing.T) {
 
 		require.NoError(t, err)
 	})
+
+	t.Run("an ARCHIVED relation's key is tolerated too", func(t *testing.T) {
+		// the two ways a relation dies are not the same query. The fixture
+		// above uses isUninstalled (UI delete), which no store default
+		// filters; the explicit no-op `isArchived Condition:None` in
+		// propertyKeyHeldByAnyRelation exists solely to suppress the store's
+		// INJECTED isArchived:false default — so without that clause an
+		// archived claimant is invisible and this create 400s. It was the one
+		// arm of the tolerance nothing pinned.
+		fx := newV2Fixture(t)
+		fx.addRelation(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:          domain.String("rel-archived"),
+			bundle.RelationKeyRelationKey: domain.String("archived_key"),
+			bundle.RelationKeyName:        domain.String("Archived"),
+			bundle.RelationKeyIsArchived:  domain.Bool(true),
+		})
+		captured := fx.expectCreate("clone3")
+		fx.expectEtagRead("clone3")
+
+		_, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"version":1,"type":"page","properties":{"name":"Fresh","archived_key":"x"}}`), false)
+
+		require.NoError(t, err)
+		require.NotNil(t, *captured)
+		assert.Equal(t, "x", (*captured).Details.Fields["archived_key"].GetStringValue())
+	})
 }
 
 func TestV2FieldAliasSurvivesACorpseClaimant(t *testing.T) {

@@ -443,14 +443,22 @@ type DiffStats struct {
 type EditResult struct {
 	Etag   string `json:"etag,omitempty"`
 	DryRun bool   `json:"dry_run,omitempty"`
-	// CreatedBlocks maps each payload position that CREATED a block
-	// ("ops[3].blocks[0]") to the id the server minted for it. A payload
-	// position carrying an id is absent: since §8.29 that id resolves to an
-	// existing block whose identity the op keeps, and reporting a preserved
-	// block as created would be the same lie diffStats used to tell.
+	// CreatedBlocks maps each payload position that CREATED a block to the id
+	// the server minted for it — the top-level run positions
+	// ("ops[3].blocks[0]") and the NESTED id slots alike: a table's rows and
+	// columns ("ops[3].blocks[0].rows[1]") and the blocks inside a cell run
+	// ("ops[3].value[1]"). Those nested slots are exactly the ones the id
+	// refusals tell a caller to leave empty, so leaving them unreported made
+	// the API withhold the answer it had promised. A payload position
+	// carrying an id is absent: since §8.29 that id resolves to an existing
+	// block whose identity the op keeps, and reporting a preserved block as
+	// created would be the same lie diffStats used to tell.
 	CreatedBlocks map[string]string `json:"createdBlocks,omitempty"`
-	// CreatedViews maps each insertView op ("ops[i]") to the view id it
-	// minted (view ids are always server-minted).
+	// CreatedViews maps each payload position that CREATED a dataview view to
+	// the view id the server minted: an insertView op ("ops[i]") or a view
+	// slot of an updateBlock set channel ("ops[i].set.views[2]"). View ids
+	// are always server-minted; a view is not a block, so it is reported
+	// here rather than in CreatedBlocks.
 	CreatedViews map[string]string `json:"createdViews,omitempty"`
 	Created      *SideEffects      `json:"created,omitempty"`
 	DiffStats    DiffStats         `json:"diffStats"`

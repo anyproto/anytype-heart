@@ -32,6 +32,15 @@ const editMintedTableDoc = `{"version":1,"id":"obj1","type":"page","blocks":[` +
 	`"rows":[{"id":"00000000000000000000dd11","isHeader":true,"cells":["Name","Status"]},` +
 	`{"id":"00000000000000000000dd22","cells":["Export"]}]}]}`
 
+// editSharedViewIdDoc is a page with two inline dataviews whose views share
+// the id "default" — the shape the app itself produces (every set,
+// collection and type mints its first view as "default", and creating an
+// inline set from one copies its views verbatim). View ids are unique within
+// a dataview BLOCK, not document-wide (SPEC §6.2), so this is valid.
+const editSharedViewIdDoc = `{"version":1,"id":"obj1","type":"page","properties":{"name":"Doc"},"blocks":[` +
+	`{"id":"dvFirst1","type":"dataview","properties":[{"key":"name","format":"text"}],"views":[{"id":"default","name":"First","columns":[{"property":"name"}]}]},` +
+	`{"id":"dvSecond2","type":"dataview","properties":[{"key":"name","format":"text"}],"views":[{"id":"default","name":"Second","columns":[{"property":"name"}]}]}]}`
+
 // editTailCollisionDoc holds two minted block ids sharing their last five
 // characters — the §8.28 property-1 case with no cells involved.
 const editTailCollisionDoc = `{"version":1,"id":"obj1","type":"page","blocks":[` +
@@ -145,10 +154,12 @@ func TestPatchPayloadIdsResolve(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, v2model.DiffStats{}, result.DiffStats)
-		out, err := json.Marshal(stateDoc(t, *captured))
-		require.NoError(t, err)
-		assert.Contains(t, string(out), `"0000000000000000000dddd1"`, "the descendant keeps its stored id")
-		assert.NotContains(t, string(out), `"dddd1",`, "the label was not adopted as an id")
+		// assert the PARSED descendant id, not a substring of the marshaled
+		// document: `NotContains("dddd1,")` only held because `id` happens
+		// not to be the last key of a block object
+		assert.Equal(t, []string{"0000000000000000000dddd1"},
+			cellDescendantIds(t, docBlocks(stateDoc(t, *captured))[0]),
+			"the descendant keeps its stored id — the label was not adopted")
 	})
 
 	t.Run("a payload id matching nothing is refused, never minted over", func(t *testing.T) {
@@ -251,9 +262,272 @@ func TestPatchPayloadIdsResolve(t *testing.T) {
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
+		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
 		require.NotEmpty(t, apiErr.Issues)
+		assert.Equal(t, "ops[0].blocks[0].id", apiErr.Issues[0].Path)
 		assert.Contains(t, apiErr.Issues[0].Message, "already exists in the document")
 	})
+
+	t.Run("a duplicate reached through a compact label names both spellings", func(t *testing.T) {
+		// the payloadIdOrigin diagnosis, written for exactly this case and
+		// never exercised: every other duplicate test writes a full literal
+		// id, so no origin is recorded and the message stays generic. Here
+		// "bbbb1" is a label off a default read — it READS as a fresh id but
+		// resolves to the block it labels, which is the whole confusion the
+		// message exists to name.
+		fx := newV2Fixture(t)
+		fx.expectMutate(editRead(t, editMintedDoc), "headB")
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"replaceSubtree","id":"aaaa1","blocks":[{"id":"bbbb1","type":"paragraph","text":"x"}]}`), "", false)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
+		require.NotEmpty(t, apiErr.Issues)
+		assert.Contains(t, apiErr.Issues[0].Message, `"bbbb1"`, "the spelling the caller wrote")
+		assert.Contains(t, apiErr.Issues[0].Message, testMintedParentId, "the id it resolves to")
+		assert.Contains(t, apiErr.Issues[0].Message, "compact label off a default read")
+	})
+}
+
+// TestPatchPayloadIdSeam pins §8.31: the two halves of the id rule — what an
+// id may NAME (the resolver, whose vocabulary is doc.localIds()) and what an
+// id may CLAIM (claimPayloadIds, whose domain was a.st.Exists) — now agree
+// about what exists. They did not, and dataview VIEW ids fell through the
+// gap: not blocks, so st.Exists could not see them, but doc-local, so the
+// resolver could.
+func TestPatchPayloadIdSeam(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("two views cannot share an id in one payload", func(t *testing.T) {
+		// before: 200, and the document stored TWO views under "viewAll1" —
+		// a later updateView renamed only the first, so every subsequent view
+		// op addressed view #1 forever. Columns and rows in the identical
+		// position were refused correctly; views were the only slot claiming
+		// nothing.
+		//
+		// The FORMAT owns this one now (anyblockjson checkDataviewViews), so
+		// the fragment import refuses it before the API's guard is reached —
+		// which is the point of fixing it at the format layer: create and
+		// import are closed too, not just PATCH.
+		fx := newV2Fixture(t)
+		fx.expectMutate(editRead(t, editSetDoc), "headB")
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"updateBlock","id":"dataview","set":{"views":[`+
+				`{"id":"viewAll1","name":"All","columns":[{"property":"name"}]},`+
+				`{"id":"viewAll1","name":"Second","columns":[{"property":"name"}]}]}}`), "", false)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
+		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
+		require.NotEmpty(t, apiErr.Issues)
+		assert.Equal(t, "ops[0].set[0].views.1.id", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Message, `duplicate view id "viewAll1"`)
+	})
+
+	t.Run("a view cannot adopt a live block's id", func(t *testing.T) {
+		// the other half of the same seam, and the half the format cannot
+		// see: view ids are unique per dataview block (§6.2), so a view
+		// wearing a BLOCK's id is format-legal — it is the API's own
+		// vocabulary that is document-wide (one relabel pool, one payload
+		// resolver), so this is the API's guard to keep
+		fx := newV2Fixture(t)
+		fx.expectMutate(editRead(t, editTwoDataviewsDoc), "headB")
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"updateBlock","id":"dvFirst1","set":{"views":[`+
+				`{"id":"blockPara1","name":"All","columns":[{"property":"name"}]}]}}`), "", false)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
+		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
+		require.NotEmpty(t, apiErr.Issues)
+		assert.Equal(t, "ops[0].set.views[0].id", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Message, "already exists in the document")
+	})
+
+	t.Run("a block cannot adopt a live view's id", func(t *testing.T) {
+		// before: 200, storing a paragraph whose id equals a live view's.
+		// Nothing broke immediately — block refs and view refs resolve
+		// against different lists — but the document held an identity
+		// collision no read can distinguish.
+		fx := newV2Fixture(t)
+		fx.expectMutate(editRead(t, editTwoDataviewsDoc), "headB")
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"replaceSubtree","id":"blockPara1","blocks":[{"id":"viewA1","type":"paragraph","text":"x"}]}`), "", false)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
+		require.NotEmpty(t, apiErr.Issues)
+		assert.Equal(t, "ops[0].blocks[0].id", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Message, "already exists in the document")
+	})
+
+	t.Run("a block cannot adopt a view's id through a suffix either", func(t *testing.T) {
+		// the compact-label route: a view id is in the relabel pool (§9a), so
+		// a suffix of one resolves through the payload vocabulary exactly
+		// like a block label does
+		fx := newV2Fixture(t)
+		fx.expectMutate(editRead(t, editTwoDataviewsDoc), "headB")
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"replaceSubtree","id":"blockPara1","blocks":[{"id":"ewA1","type":"paragraph","text":"x"}]}`), "", false)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
+		require.NotEmpty(t, apiErr.Issues)
+		assert.Contains(t, apiErr.Issues[0].Message, `"ewA1"`, "the spelling the caller wrote")
+		assert.Contains(t, apiErr.Issues[0].Message, "viewA1", "the view it resolves to")
+	})
+
+	t.Run("echoing a dataview's own views back keeps them", func(t *testing.T) {
+		// the guard must not swing the other way: the ids an op REPLACES are
+		// the ids it may reuse, and a dataview's views go with the block, so
+		// collectSubtreeIds has to carry them
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editTwoViewsDoc), "headB")
+
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"updateBlock","id":"dataview","set":{"views":[`+
+				`{"id":"viewAll1","name":"All","columns":[{"property":"name"}]},`+
+				`{"id":"viewBoard2","name":"Board","type":"kanban","groupBy":"severity","columns":[{"property":"name"},{"property":"severity","hidden":true}]}]}}`), "", false)
+
+		require.NoError(t, err)
+		assert.Empty(t, result.CreatedViews, "a resolved view id created nothing")
+		assert.Equal(t, []string{"viewAll1", "viewBoard2"},
+			viewIdsOf(t, dataviewOf(t, *captured, "dataview")), "the stored view ids survive the echo")
+	})
+
+	t.Run("two dataviews may hold one view id — the scope is the block", func(t *testing.T) {
+		// SPEC §6.2: view ids are unique WITHIN a dataview block. The app
+		// itself makes this case — every set/collection/type mints its
+		// default view as "default", and creating an inline set copies those
+		// views verbatim — so a document-wide domain would refuse a real edit
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editSharedViewIdDoc), "headB")
+
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"updateView","block":"dvSecond2","view":"default","set":{"name":"Renamed"}}`), "", false)
+
+		require.NoError(t, err)
+		assert.Equal(t, v2model.DiffStats{BlocksChanged: 1}, result.DiffStats)
+		assert.Equal(t, []string{"default"}, viewIdsOf(t, dataviewOf(t, *captured, "dvSecond2")))
+		assert.Equal(t, "Renamed", viewsOf(t, dataviewOf(t, *captured, "dvSecond2"))[0]["name"])
+		assert.Equal(t, "First", viewsOf(t, dataviewOf(t, *captured, "dvFirst1"))[0]["name"],
+			"the other block's identically-named view is untouched")
+	})
+}
+
+// TestPatchReportsMintedNestedIds pins the receipt the refusals promise. Both
+// unresolvedPayloadIdError and newContentIdError tell the caller to omit the
+// id because the server mints one and reports it — but createdBlocks used to
+// be written only for TOP-LEVEL run blocks, so exactly the slots those
+// refusals fire on (a table's rows and columns, a cell descendant, a view)
+// went unreported and the caller had to re-read to learn an id it had just
+// created.
+func TestPatchReportsMintedNestedIds(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("a table created through insertBlocks reports its row and column ids", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
+
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"insertBlocks","blocks":[{"type":"table",`+
+				`"columns":[{},{}],`+
+				`"rows":[{"isHeader":true,"cells":["Name","Status"]},{"cells":["Export","Done"]}]}]}`), "", false)
+
+		require.NoError(t, err)
+		table := docBlocks(stateDoc(t, *captured))[4]
+		assert.Equal(t, result.CreatedBlocks["ops[0].blocks[0]"], blockId(table))
+		assert.Equal(t, []any{result.CreatedBlocks["ops[0].blocks[0].rows[0]"],
+			result.CreatedBlocks["ops[0].blocks[0].rows[1]"]}, rowIdsOf(table))
+		assert.Equal(t, []any{result.CreatedBlocks["ops[0].blocks[0].columns[0]"],
+			result.CreatedBlocks["ops[0].blocks[0].columns[1]"]}, columnIdsOf(table))
+		for key, id := range result.CreatedBlocks {
+			assert.NotEmpty(t, id, key)
+		}
+	})
+
+	t.Run("a minted cell descendant is reported under its slot", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editTableDoc), "headB")
+
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"setCell","tableId":"tblOne1","row":"rowB","col":"colA",`+
+				`"value":[{"type":"toggle","text":"cell"},{"indent":1,"type":"paragraph","text":"inside"}]}`), "", false)
+
+		require.NoError(t, err)
+		minted := result.CreatedBlocks["ops[0].value[1]"]
+		require.NotEmpty(t, minted, "the cell descendant the op minted is reported")
+		assert.Contains(t, cellDescendantIds(t, docBlocks(stateDoc(t, *captured))[0]), minted)
+	})
+
+	t.Run("a view minted through updateBlock is reported in createdViews", func(t *testing.T) {
+		// a view is not a block, so it lands in the view-family map — the
+		// same map insertView already reports through
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editSetDoc), "headB")
+
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"updateBlock","id":"dataview","set":{"views":[`+
+				`{"id":"viewAll1","name":"All","columns":[{"property":"name"}]},`+
+				`{"name":"Fresh","columns":[{"property":"name"}]}]}}`), "", false)
+
+		require.NoError(t, err)
+		minted := result.CreatedViews["ops[0].set.views[1]"]
+		require.NotEmpty(t, minted, "the minted view id is reported under its payload slot")
+		assert.Equal(t, []string{"viewAll1", minted},
+			viewIdsOf(t, dataviewOf(t, *captured, "dataview")))
+		assert.Empty(t, result.CreatedBlocks, "a view is not reported as a block")
+	})
+}
+
+// cellDescendantIds lists the ids of every cell-run descendant of a table
+// block (the F10 array form's elements past the cell block itself).
+func cellDescendantIds(t *testing.T, table map[string]any) []string {
+	t.Helper()
+	var out []string
+	rows, _ := table["rows"].([]any)
+	for _, r := range rows {
+		row, _ := r.(map[string]any)
+		cells, _ := row["cells"].([]any)
+		for _, c := range cells {
+			run, isRun := c.([]any)
+			if !isRun {
+				continue
+			}
+			for i := 1; i < len(run); i++ {
+				el, _ := run[i].(map[string]any)
+				out = append(out, blockId(el))
+			}
+		}
+	}
+	return out
+}
+
+// columnIdsOf lists a marshaled table block's column ids.
+func columnIdsOf(table map[string]any) []any {
+	columns, _ := table["columns"].([]any)
+	out := make([]any, 0, len(columns))
+	for _, c := range columns {
+		m, _ := c.(map[string]any)
+		out = append(out, m["id"])
+	}
+	return out
+}
+
+// viewIdsOf lists a marshaled dataview block's view ids.
+func viewIdsOf(t *testing.T, dv map[string]any) []string {
+	t.Helper()
+	views := viewsOf(t, dv)
+	out := make([]string, len(views))
+	for i, v := range views {
+		out[i], _ = v["id"].(string)
+	}
+	return out
 }
 
 // mustDoc decodes a served envelope into its generic map form.

@@ -23,19 +23,28 @@ const v2OpsEndpoint = "PATCH /v2/spaces/{spaceId}/objects/{objectId}"
 // name. In a NEW-content payload every possible value of it is an error (an
 // id that resolves is a duplicate, one that does not is unresolvable), so it
 // must not be advertised there: with additionalProperties:false (C13) a
-// constrained decoder then cannot emit the field at all, which is the only
+// constrained decoder then cannot emit the field at all, which is the
 // instrument that works against a decoder that emits what it sees.
 //
-// v2OpBlockIndentProp and v2OpBlockRestProps are the fields both shapes
+// The claim only holds for slots the schema actually TYPES, so the nested
+// entries are typed too (§8.31): `columns` and `rows` publish `items` defs
+// that are themselves additionalProperties:false, and the id slot inside
+// them appears on the existing-content shape only. What is NOT typed here is
+// the interior of a cell run (a cell is string | null | object | array of
+// blocks — recursive, and a strict recursive def is a real cost to a
+// constrained decoder); there the runtime guard is the instrument, and the
+// descriptions say so rather than implying the schema covers it.
+//
+// v2OpBlockIndentProp and v2OpBlockCommonProps are the fields both shapes
 // share, split only so the id slot can sit in its historical position. The
 // full inventory is SPEC §5 — served as GET /v2/schemas/object; these defs
 // cover the fields a generated edit realistically touches.
 const v2OpBlockIndentProp = `"indent":{"type":"integer","minimum":0,"maximum":32,"description":"relative: 0 = the anchor's level (after/before/replaceSubtree) or the container's child level (inside)"}`
 
 // v2OpBlockIdProp is the EXISTING-content id slot.
-const v2OpBlockIdProp = `"id":{"type":"string","pattern":"^[A-Za-z0-9_-]{1,64}$","description":"optional; when present it must name an EXISTING block of this object — full id or unique suffix, resolved like every other id slot — and the payload keeps that block's identity. Omit it to author new content: the server mints an id and returns it in createdBlocks. An id that matches nothing is refused, never minted over."}`
+const v2OpBlockIdProp = `"id":{"type":"string","pattern":"^[A-Za-z0-9_-]{1,64}$","description":"optional; when present it must name an EXISTING block of this object — full id or unique suffix, resolved like every other id slot — and the payload keeps that block's identity. Omit it to author new content: the server mints an id and returns it in createdBlocks under this payload path. An id that matches nothing is refused, never minted over."}`
 
-const v2OpBlockRestProps = `"type":{"type":"string","maxLength":64},` +
+const v2OpBlockCommonProps = `"type":{"type":"string","maxLength":64},` +
 	`"text":{"type":"string","maxLength":1048576,"description":"inline markup per SPEC §8"},` +
 	`"checked":{"type":"boolean"},` +
 	`"color":{"type":"string","maxLength":64},` +
@@ -50,42 +59,75 @@ const v2OpBlockRestProps = `"type":{"type":"string","maxLength":64},` +
 	`"key":{"type":"string","maxLength":256},` +
 	`"cardStyle":{"type":"string","maxLength":32},` +
 	`"align":{"type":"string","enum":["left","center","right","justify"]},` +
-	`"backgroundColor":{"type":"string","maxLength":64},` +
-	`"columns":{"type":"array","maxItems":64,"description":"table columns (SPEC §6.1)"},` +
-	`"rows":{"type":"array","maxItems":1024,"description":"table rows (SPEC §6.1)"}`
+	`"backgroundColor":{"type":"string","maxLength":64}`
+
+// v2OpTableInnerIdProp is the EXISTING-content id slot of a table row or
+// column. Its charset has no dash on purpose: a cell's id is rowId+"-"+colId
+// and the editor recovers the column by splitting on the first dash (SPEC
+// §6.1), so a dash in either would be unrecoverable.
+const v2OpTableInnerIdProp = `"id":{"type":"string","pattern":"^[A-Za-z0-9_]{1,64}$","description":"optional; names an EXISTING row/column of this table (full id or unique suffix) and keeps its identity. Omit it to author a new one — the server mints the id and returns it in createdBlocks under this payload path."}`
+
+// v2OpCellDef types one table cell. The four cell forms are SPEC §6.1; the
+// array form's interior is left untyped — see the file header.
+const v2OpCellDef = `{"type":["string","null","object","array"],"description":"a cell: a string (paragraph shorthand), null (empty), a block object, or a flat array of blocks whose first element is the cell block itself (SPEC §6.1). A cell block never carries an id — cell ids are derived rowId-colId; ids on the blocks INSIDE a cell run follow the same rule as the payload block's own id, enforced at runtime"}`
+
+// opTableProps builds the columns/rows properties of a payload block def.
+// withId decides whether the row/column entries publish an id slot — the
+// same §8.30 split the block itself gets, applied one level down, because a
+// decoder emits whatever the schema shows it at ANY depth.
+func opTableProps(withId bool) string {
+	innerId := ""
+	if withId {
+		innerId = v2OpTableInnerIdProp + `,`
+	}
+	column := `{"type":"object","additionalProperties":false,"properties":{` + innerId +
+		`"width":{"type":"number","minimum":0,"maximum":10000}}}`
+	row := `{"type":"object","additionalProperties":false,"properties":{` + innerId +
+		`"isHeader":{"type":"boolean"},` +
+		`"cells":{"type":"array","maxItems":64,"items":` + v2OpCellDef + `}}}`
+	return `"columns":{"type":"array","maxItems":64,"items":` + column + `,"description":"table columns (SPEC §6.1)"},` +
+		`"rows":{"type":"array","maxItems":1024,"items":` + row + `,"description":"table rows (SPEC §6.1)"}`
+}
 
 // v2OpBlockDef is the EXISTING-content payload block (replaceSubtree): it
-// publishes the id slot, because naming a block the op replaces is what
-// makes echoing a read back a no-op instead of a rename.
-const v2OpBlockDef = `{"type":"object","additionalProperties":false,"required":["type"],` +
+// publishes the id slot — on the block and on its row/column entries —
+// because naming what the op replaces is what makes echoing a read back a
+// no-op instead of a rename.
+var v2OpBlockDef = `{"type":"object","additionalProperties":false,"required":["type"],` +
 	`"description":"a flat AnyBlock block; the full field inventory is GET /v2/schemas/object (SPEC §5)",` +
-	`"properties":{` + v2OpBlockIndentProp + `,` + v2OpBlockIdProp + `,` + v2OpBlockRestProps + `}}`
+	`"properties":{` + v2OpBlockIndentProp + `,` + v2OpBlockIdProp + `,` + v2OpBlockCommonProps + `,` + opTableProps(true) + `}}`
 
 // v2OpNewBlockDef is the NEW-content payload block (insertBlocks): no id
-// slot anywhere — not on the block, not inside its rows/columns/views.
-const v2OpNewBlockDef = `{"type":"object","additionalProperties":false,"required":["type"],` +
-	`"description":"a flat AnyBlock block to CREATE. There is no id slot — neither here nor inside rows/columns/views: this op only ever makes new content, so the server mints every id and returns the block's in createdBlocks keyed by payload position. Ids name EXISTING blocks, which is what the other ops address. The full field inventory is GET /v2/schemas/object (SPEC §5)",` +
-	`"properties":{` + v2OpBlockIndentProp + `,` + v2OpBlockRestProps + `}}`
+// slot anywhere the schema reaches — not on the block, not on its row or
+// column entries. There is no `views` property on EITHER shape, so a payload
+// block cannot name a dataview view at all through this channel; views are
+// authored by the view-family ops and by updateBlock's untyped `set`.
+var v2OpNewBlockDef = `{"type":"object","additionalProperties":false,"required":["type"],` +
+	`"description":"a flat AnyBlock block to CREATE. There is no id slot — not here and not on its rows or columns: this op only ever makes new content, so the server mints every id and returns it in createdBlocks keyed by the payload path that produced it (a table's row and column ids included). Ids name EXISTING blocks, which is what the other ops address. The full field inventory is GET /v2/schemas/object (SPEC §5)",` +
+	`"properties":{` + v2OpBlockIndentProp + `,` + v2OpBlockCommonProps + `,` + opTableProps(false) + `}}`
 
 // v2BlockRefDef is a block reference: full id (canonical) or unique suffix.
 const v2BlockRefDef = `{"type":"string","minLength":1,"maxLength":64,"description":"a block id — full (canonical) or a unique suffix"}`
 
-// opSchema builds an op schema whose payload-block def is the
-// EXISTING-content shape.
-func opSchema(required string, props ...string) string {
-	return opSchemaWithBlock(v2OpBlockDef, required, props...)
-}
-
-// opSchemaNewContent builds an op schema whose payload-block def is the
-// NEW-content shape — the id-less one (§8.30).
-func opSchemaNewContent(required string, props ...string) string {
-	return opSchemaWithBlock(v2OpNewBlockDef, required, props...)
-}
-
-func opSchemaWithBlock(blockDef, required string, props ...string) string {
+// opSchema builds one op's strict schema. The op NAME is the first argument
+// because THREE things are derived from it and must not be spelled
+// independently: the `op` const, the required `op` field, and — through
+// v2NewContentOps (ops.go) — which payload-block def the schema publishes.
+// That last one is the point: the runtime reads the same set, so an op cannot
+// advertise an id slot it will only ever refuse, which is §8.30's own bug.
+func opSchema(op string, required []string, props ...string) string {
+	blockDef := v2OpBlockDef
+	if v2NewContentOps[op] {
+		blockDef = v2OpNewBlockDef
+	}
+	req := make([]string, 0, len(required)+1)
+	for _, name := range append([]string{"op"}, required...) {
+		req = append(req, `"`+name+`"`)
+	}
+	all := append([]string{`"op":{"const":"` + op + `"}`}, props...)
 	return `{"$defs":{"block":` + blockDef + `,"blockRef":` + v2BlockRefDef + `},` +
-		`"type":"object","additionalProperties":false,"required":[` + required + `],"properties":{` +
-		strings.Join(props, ",") + `}}`
+		`"type":"object","additionalProperties":false,"required":[` + strings.Join(req, ",") + `],"properties":{` +
+		strings.Join(all, ",") + `}}`
 }
 
 // v2ViewBlockPropDef is the shared dataview-block targeting property of the
@@ -132,8 +174,7 @@ var v2ViewSetPropDefNoName = strings.Replace(strings.Replace(v2ViewSetPropDef,
 var v2OpSchemas = map[string]v2SchemaKind{
 	"setProperties": {
 		endpoint: v2OpsEndpoint,
-		schema: opSchema(`"op"`,
-			`"op":{"const":"setProperties"}`,
+		schema: opSchema("setProperties", nil,
 			`"set":{"type":"object","maxProperties":128,"additionalProperties":{"type":["string","number","boolean","array","null"]},"description":"property key → value; presence is meaningful — an empty array means present-but-empty (SPEC §3); unknown select option NAMES are created"}`,
 			`"unset":{"type":"array","maxItems":128,"items":{"type":"string","maxLength":256},"description":"property keys to remove"}`,
 			`"add":{"type":"object","maxProperties":128,"additionalProperties":{"type":"array","maxItems":128,"items":{"type":"string","maxLength":4096}},"description":"list-shaped keys only (select, multiSelect, objects, files): append entries without rewriting the array — existing entries are never duplicated; unknown option NAMES are created"}`,
@@ -142,24 +183,21 @@ var v2OpSchemas = map[string]v2SchemaKind{
 	},
 	"updateBlock": {
 		endpoint: v2OpsEndpoint,
-		schema: opSchema(`"op","id","set"`,
-			`"op":{"const":"updateBlock"}`,
+		schema: opSchema("updateBlock", []string{"id", "set"},
 			`"id":{"$ref":"#/$defs/blockRef"}`,
 			`"set":{"type":"object","maxProperties":32,"description":"merge semantics: only the named fields change — text included only if named; null clears a field; id and indent are rejected (use moveBlock to re-nest)"}`),
 		example: `{"ops":[{"op":"updateBlock","id":"b5","set":{"checked":true}}]}`,
 	},
 	"replaceSubtree": {
 		endpoint: v2OpsEndpoint,
-		schema: opSchema(`"op","id","blocks"`,
-			`"op":{"const":"replaceSubtree"}`,
+		schema: opSchema("replaceSubtree", []string{"id", "blocks"},
 			`"id":{"$ref":"#/$defs/blockRef"}`,
 			`"blocks":{"type":"array","minItems":1,"maxItems":256,"items":{"$ref":"#/$defs/block"},"description":"replaces the block AND its descendants; indent 0 = the replaced block's level"}`),
 		example: `{"ops":[{"op":"replaceSubtree","id":"b7","blocks":[{"type":"bulletedListItem","text":"a"},{"indent":1,"type":"paragraph","text":"b"}]}]}`,
 	},
 	"insertBlocks": {
 		endpoint: v2OpsEndpoint,
-		schema: opSchemaNewContent(`"op"`,
-			`"op":{"const":"insertBlocks"}`,
+		schema: opSchema("insertBlocks", nil,
 			`"after":{"$ref":"#/$defs/blockRef","description":"insert after this block's subtree, at its level"}`,
 			`"before":{"$ref":"#/$defs/blockRef","description":"insert before this block, at its level"}`,
 			`"inside":{"$ref":"#/$defs/blockRef","description":"insert as children of this block"}`,
@@ -170,8 +208,7 @@ var v2OpSchemas = map[string]v2SchemaKind{
 	},
 	"moveBlock": {
 		endpoint: v2OpsEndpoint,
-		schema: opSchema(`"op","id"`,
-			`"op":{"const":"moveBlock"}`,
+		schema: opSchema("moveBlock", []string{"id"},
 			`"id":{"$ref":"#/$defs/blockRef","description":"the block to move — its whole subtree moves with it; omit after/before/inside to move it to the end of the document"}`,
 			`"after":{"$ref":"#/$defs/blockRef"}`,
 			`"before":{"$ref":"#/$defs/blockRef"}`,
@@ -181,16 +218,14 @@ var v2OpSchemas = map[string]v2SchemaKind{
 	},
 	"deleteBlock": {
 		endpoint: v2OpsEndpoint,
-		schema: opSchema(`"op","id"`,
-			`"op":{"const":"deleteBlock"}`,
+		schema: opSchema("deleteBlock", []string{"id"},
 			`"id":{"$ref":"#/$defs/blockRef"}`,
 			`"recursive":{"type":"boolean","description":"default false — deleting a block that has descendants without it is an error naming the descendant count"}`),
 		example: `{"ops":[{"op":"deleteBlock","id":"b4","recursive":true}]}`,
 	},
 	"replaceText": {
 		endpoint: v2OpsEndpoint,
-		schema: opSchema(`"op","id","find","replace"`,
-			`"op":{"const":"replaceText"}`,
+		schema: opSchema("replaceText", []string{"id", "find", "replace"},
 			`"id":{"$ref":"#/$defs/blockRef"}`,
 			`"find":{"type":"string","minLength":1,"maxLength":65536,"description":"exact text within this one block's text (inline markup included) — must match exactly once unless replace_all"}`,
 			`"replace":{"type":"string","maxLength":65536}`,
@@ -199,8 +234,7 @@ var v2OpSchemas = map[string]v2SchemaKind{
 	},
 	"setCell": {
 		endpoint: v2OpsEndpoint,
-		schema: opSchema(`"op","tableId","row","col","value"`,
-			`"op":{"const":"setCell"}`,
+		schema: opSchema("setCell", []string{"tableId", "row", "col", "value"},
 			`"tableId":{"$ref":"#/$defs/blockRef","description":"a table block"}`,
 			`"row":{"type":"string","minLength":1,"maxLength":64,"description":"row id — full or unique suffix"}`,
 			`"col":{"type":"string","minLength":1,"maxLength":64,"description":"column id — full or unique suffix"}`,
@@ -209,8 +243,7 @@ var v2OpSchemas = map[string]v2SchemaKind{
 	},
 	"updateView": {
 		endpoint: v2OpsEndpoint,
-		schema: opSchema(`"op"`,
-			`"op":{"const":"updateView"}`,
+		schema: opSchema("updateView", nil,
 			v2ViewBlockPropDef,
 			`"view":{"type":"string","minLength":1,"maxLength":64,"description":"view id, full or unique suffix — optional when the dataview has exactly one view"}`,
 			v2ViewSetPropDef,
@@ -219,8 +252,7 @@ var v2OpSchemas = map[string]v2SchemaKind{
 	},
 	"insertView": {
 		endpoint: v2OpsEndpoint,
-		schema: opSchema(`"op","name"`,
-			`"op":{"const":"insertView"}`,
+		schema: opSchema("insertView", []string{"name"},
 			v2ViewBlockPropDef,
 			`"name":{"type":"string","minLength":1,"maxLength":4096,"description":"the new view's name (its tab label)"}`,
 			`"copyFrom":{"type":"string","minLength":1,"maxLength":64,"description":"duplicate this view of the same dataview (columns, sorts, filters, type — everything but id and name), then apply set/columns on top; omitted = defaults (every listed property visible, sorted by lastModifiedDate desc)"}`,
@@ -233,8 +265,7 @@ var v2OpSchemas = map[string]v2SchemaKind{
 	},
 	"moveView": {
 		endpoint: v2OpsEndpoint,
-		schema: opSchema(`"op","view"`,
-			`"op":{"const":"moveView"}`,
+		schema: opSchema("moveView", []string{"view"},
 			v2ViewBlockPropDef,
 			`"view":{"type":"string","minLength":1,"maxLength":64,"description":"the view to move (id, full or unique suffix)"}`,
 			`"after":{"type":"string","minLength":1,"maxLength":64,"description":"move after this view"}`,
@@ -244,23 +275,20 @@ var v2OpSchemas = map[string]v2SchemaKind{
 	},
 	"deleteView": {
 		endpoint: v2OpsEndpoint,
-		schema: opSchema(`"op","view"`,
-			`"op":{"const":"deleteView"}`,
+		schema: opSchema("deleteView", []string{"view"},
 			v2ViewBlockPropDef,
 			`"view":{"type":"string","minLength":1,"maxLength":64,"description":"the view to delete (id, full or unique suffix) — deleting the last view is refused; per-view editor state goes with it"}`),
 		example: `{"ops":[{"op":"deleteView","view":"viewBoard2"}]}`,
 	},
 	"addItems": {
 		endpoint: v2OpsEndpoint,
-		schema: opSchema(`"op","items"`,
-			`"op":{"const":"addItems"}`,
+		schema: opSchema("addItems", []string{"items"},
 			`"items":{"type":"array","minItems":1,"maxItems":1000,"items":{"type":"string","maxLength":256},"description":"member object ids to add to the collection (already-present ids are ignored)"}`),
 		example: `{"ops":[{"op":"addItems","items":["bafyreieqh63jv…"]}]}`,
 	},
 	"removeItems": {
 		endpoint: v2OpsEndpoint,
-		schema: opSchema(`"op","items"`,
-			`"op":{"const":"removeItems"}`,
+		schema: opSchema("removeItems", []string{"items"},
 			`"items":{"type":"array","minItems":1,"maxItems":1000,"items":{"type":"string","maxLength":256},"description":"member object ids to remove from the collection (absent ids are ignored)"}`),
 		example: `{"ops":[{"op":"removeItems","items":["bafyreieqh63jv…"]}]}`,
 	},

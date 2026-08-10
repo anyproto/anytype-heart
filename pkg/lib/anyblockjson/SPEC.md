@@ -471,7 +471,7 @@ fails schema validation). Every block is an object:
 |---|---|---|---|
 | `indent` | integer ≥ 0 | no | Nesting depth. Absent = `0` (top level); canonical form omits `indent: 0`. Values above **32** fail validation (adversarial-input bound; real documents reach ~6). See the nesting rules below. |
 | `type` | string | **yes** | Discriminator; full inventory in §5. Unrecognized values fail schema validation (see §10 for forward compatibility). |
-| `id` | string | no | `[A-Za-z0-9_-]{1,64}`. Uniqueness is enforced over the whole document, including derived table cell ids `<rowId>-<colId>` (§6.1) — a non-table block id that collides with a derived cell id is a validation error. Export writes ids by default — the `OmitIds` option drops them (§9); import generates missing ids with the editor's standard id generator. |
+| `id` | string | no | `[A-Za-z0-9_-]{1,64}`. Uniqueness is enforced over the whole document, including derived table cell ids `<rowId>-<colId>` (§6.1) — a non-table block id that collides with a derived cell id is a validation error. Dataview **view** ids are the one exception: they are unique **within their dataview block**, not document-wide (§6.2). Export writes ids by default — the `OmitIds` option drops them (§9); import generates missing ids with the editor's standard id generator. |
 | `align` | `left · center · right · justify` | no | Omit when default (`left`). |
 | `verticalAlign` | `top · middle · bottom` | no | Omit when default (`top`). |
 | `backgroundColor` | string | no | Anytype color name. Omit when empty. |
@@ -744,6 +744,21 @@ omit `small`), `coverFit`, `coloredGroups` (from `groupBackgroundColors`),
 `defaultObjectTypeId`), `wrapContent`, `listSize` (`compact · regular`,
 omit `compact`), `alternateRows`, then `sorts`, `filters`, `columns`,
 `groups`, `objectOrders`.
+
+**View id uniqueness is scoped to the dataview block.** Two views of ONE
+dataview may not share an `id` — that is a validation error naming both
+positions — but two views in *different* dataview blocks may. This is the
+only id domain in the format that is not document-wide (§4), and the scope
+is the one in which a duplicate does damage: a view reference always
+resolves within a single dataview's `views` list, and the per-view editor
+state below (`groups`, `objectOrders`) is keyed by view id inside that same
+block, so a repeat inside one block makes the second view permanently
+unaddressable. Across blocks, each view is reached through its own block and
+nothing is ambiguous — and the app itself produces that case: the default
+view of every set, collection and type is minted with the literal id
+`default`, and creating an inline set from an existing object copies that
+object's views verbatim, so a page with two inline collections legitimately
+holds two views called `default`.
 
 Editor state nested per view, both output-only (§4a):
 
@@ -1363,7 +1378,8 @@ emoji, tables, dataviews, UTF-16 payloads such as astral-plane characters).
 - Import = schema validation first, then semantic checks the schema can't
   express: **indent monotonicity** (§4 validity — errors name both
   indents), **leaf containment** and **row→column** (§4 containment), id
-  uniqueness over the whole document (§4), table shape and cell rules
+  uniqueness over the whole document (§4) plus view-id uniqueness within
+  each dataview block (§6.2), table shape and cell rules
   (§6.1), envelope combinations (`items`/`templateFor`/`kind`, §2),
   `language`-vs-`fields.lang` conflicts, and **inline-markup parsing** (§8)
   — grammar errors report the block's JSON path and the offending snippet.

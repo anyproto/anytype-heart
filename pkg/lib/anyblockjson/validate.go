@@ -659,17 +659,57 @@ var groupableFormats = map[string]map[string]struct{}{
 
 // checkDataviewViews runs the per-view semantic checks that need the
 // dataview's own properties[] to know a key's format: groupBy viability and
-// the date-filter empty trap.
+// the date-filter empty trap. It also enforces view-id uniqueness.
 //
 // It reports a groupBy a view cannot honour. An impossible pair on
 // a grouping view is an error: it can only come from authoring, and it
 // renders as a single empty group. groupBy on a non-grouping view is only a
 // warning — switching a kanban to a table in the editor leaves the stale
 // groupRelationKey behind, so real exported data legitimately carries it.
+//
+// VIEW-ID UNIQUENESS is scoped to the dataview BLOCK, not to the document —
+// the one id domain in this format that is not document-wide (§4), and
+// deliberately so:
+//
+//   - It is the scope in which a duplicate actually breaks something. Every
+//     consumer resolves a view reference within ONE dataview's views list
+//     (the API's matchViewRef, the client's view tabs), and a dataview's
+//     per-view editor state — groupOrders, objectOrders — is keyed by view
+//     id inside that same block. Two views of one dataview sharing an id
+//     make the second unaddressable forever; two views in DIFFERENT dataview
+//     blocks sharing one are each reachable through their own block.
+//   - Document-wide would reject data the app itself produces. The default
+//     view of every set, collection and type is minted with the literal id
+//     "default" (editor/template.MakeDataviewContent), and creating an
+//     inline set from an existing object copies that object's views verbatim
+//     into the new block (dataviewservice.CopyDataviewToBlock) — so a page
+//     with two inline collections legitimately holds two views called
+//     "default". A format error there would fail on real exports.
+//
+// Before this, `views[].id` was the one id slot in the document with no
+// uniqueness check at all — invalid but unvalidated on every channel,
+// create and import included, not just PATCH (§8.31).
 func checkDataviewViews(block map[string]any, path string, addIssue, warnIssue func(string, string, ...any)) {
 	views, _ := block["views"].([]any)
 	if len(views) == 0 {
 		return
+	}
+	seenViewIds := map[string]string{} // id -> path of first occurrence
+	for i, raw := range views {
+		view, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		id, _ := view["id"].(string)
+		if id == "" {
+			continue // ids are optional on input (§9); import generates them
+		}
+		idPath := fmt.Sprintf("%s/views/%d/id", path, i)
+		if first, dup := seenViewIds[id]; dup {
+			addIssue(idPath, "duplicate view id %q in this dataview (first used at %s)", id, first)
+			continue
+		}
+		seenViewIds[id] = idPath
 	}
 	formats := map[string]string{}
 	props, _ := block["properties"].([]any)

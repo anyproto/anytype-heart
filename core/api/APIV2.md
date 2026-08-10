@@ -4026,7 +4026,29 @@ back, was a 400; with a live key spelled one character away the hint read
 unrelated property. *Fix:* `propertyKeyHeldByAnyRelation` on the create
 path. It is a round-trip tolerance, never an address — nothing resolves a
 corpse key to a property object and no listing advertises it — and a key no
-relation holds at all is still refused.
+relation holds at all is still refused. (Both ways of dying are covered: a
+UI-deleted relation carries `isUninstalled`, an archived one `isArchived`,
+and the explicit no-op `isArchived Condition:None` filter is what suppresses
+the store's injected `isArchived: false` default so the second is visible at
+all. Both arms are pinned.)
+
+*The asymmetry left standing, on purpose.* PATCH `setProperties` still
+refuses a corpse-held key the target object does not already carry, with the
+same near-miss did-you-mean — so the F2 argument above ("the hint steers the
+caller onto an unrelated property") applies verbatim to the PATCH
+cross-object case, and it is not being fixed. The difference is what the
+channel is FOR. Create's whole advertised loop is "a pasted read body creates
+a copy" (§3(b)): the document the caller pastes is one this API served, and
+the key is in it because the source object holds a value of that relation —
+refusing is refusing our own output. `setProperties` is not a paste channel;
+it names the properties an edit changes, one at a time, and a key the object
+does not already hold arriving there is a caller writing a NEW value onto a
+dead relation, which the near-miss hint is at least approximately right
+about. The in-document escape (`checkKey` passes any key already on the
+document) covers the round-trip half of PATCH — echoing a read body back —
+which is the only part that shares create's justification. A later reader
+should take this as decided, not overlooked: the day `setProperties` grows a
+paste-shaped channel, the tolerance moves with it.
 
 **F3 — the system-managed exclusion lost its only coverage.** The
 `STRelation | STRelationOption | FileObject | Participant` switch in
@@ -4089,14 +4111,20 @@ constrained decoding it does so *by construction* — the grammar compiled
 from the published schema had `id` in it, so `id` was always emittable and
 the guard could only ever fire after the fact. The model has no channel to
 learn from the 400 within the request, and the next request is generated
-from the same grammar. The only instrument that reaches a constrained
+from the same grammar. The instrument that reaches a constrained
 decoder is the schema itself: with `additionalProperties: false` (C13), a
-field absent from the schema cannot be emitted at all.
+field absent from the schema cannot be emitted at all. *(Overstated as "the
+only instrument" here, and only half-built: as shipped this covered the
+block's OWN id slot — the nested `columns`/`rows` were untyped arrays and
+`views` was not a block property at all, so below the top level the runtime
+guard was doing all the work. Corrected and the nested entries typed in
+§8.31.)*
 
 **The split.** The payload block def became two:
 
 - `v2OpNewBlockDef` — **new content** (`insertBlocks`): no `id`, on the
-  block or nested in `rows`/`columns`/`views`.
+  block or nested in `rows`/`columns` (typed as such since §8.31; `views` is
+  not a block property on either shape, so nothing can name one here).
 - `v2OpBlockDef` — **existing content** (`replaceSubtree`): keeps `id`,
   because naming the block being replaced is what makes echoing a read back
   a no-op instead of a rename (§8.29).
@@ -4127,7 +4155,10 @@ holds for them in `insertBlocks`. Dataview **view** ids are the one slot no
 guard covered: they are not blocks, so an `insertBlocks` payload naming an
 existing view used to import a *second* dataview holding that view id — no
 refusal, a duplicate view id in the document. Rejecting the field closes
-that without a new guard. `updateView`/`insertView` `set.sorts[].id` is a
+that for `insertBlocks` without a new guard — but only for `insertBlocks`:
+the EXISTING-content payloads (`updateBlock set:{views}`, `replaceSubtree`)
+still had no view-id guard at all, which is the seam §8.31 closes.
+`updateView`/`insertView` `set.sorts[].id` is a
 different id domain (a sort's own id, output-only on reads, accepted back so
 a read round-trips) and is untouched.
 
@@ -4137,3 +4168,155 @@ not a trap: a decoder reaches only what the root schema references. Left
 alone. The format's own document schema (`GET /v2/schemas/object`,
 `pkg/lib/anyblockjson/schema`) is a different contract — a create body is a
 snapshot, where an id is legitimate — and was not touched.
+
+### 8.31 The two halves of the id rule disagreed about what "exists" means (2026-08-10 — decisions as built)
+
+§8.29 made every PATCH payload id slot RESOLVE, and §8.30 removed the slot
+from the ops where no value of it can succeed. Both are about what an id may
+*name*. The other half of the rule — what an id may *claim* — was never
+brought along, and the two halves were reading different documents:
+
+| | resolution (`payloadids.go`) | collision guard (`claimPayloadIds`) |
+|---|---|---|
+| domain | `doc.localIds()` — blocks, table columns, rows, cell descendants **and dataview views** | `a.st.Exists` — **blocks only**, because it walks the imported `[]*model.Block` and a view is not an element of it |
+
+A dataview **view id** therefore resolved but could never collide. Two
+reproduced consequences, both 200 before:
+
+**(a) Duplicate view ids sailed through.**
+`updateBlock {"id":"dataview","set":{"views":[{"id":"viewAll1",…},{"id":"viewAll1",…}]}}`
+stored a document holding two views under one id. `matchViewRef` returns the
+first exact match, so a later `updateView {"view":"viewAll1"}` renamed only
+view #1 — and every subsequent view op addressed view #1 **forever**; the
+second was unreachable for the life of the object. A column or a row in the
+identical position was refused correctly, which is what makes this a seam
+rather than a policy: the guard covered every id slot that happened to be a
+block.
+
+**(b) A block could adopt a view's id.**
+`replaceSubtree {"id":"blockPara1","blocks":[{"id":"viewA1","type":"paragraph"}]}`
+stored a paragraph whose id equals a live view's — reachable by compact
+suffix too, since view ids are in the relabel pool (§9a). Damage is bounded
+today (block refs and view refs resolve against different lists) but the
+document holds an identity collision no read can distinguish, and "bounded
+today" is not a property to ship.
+
+**Fix at the API layer.** `payloadIdExists` is now the one answer to "does
+this id already name something in this object", and it is the **union** of
+the two views above: `a.st.Exists` (which sees the state blocks the served
+document does not carry at all — root, title, header) **∪** the pre-op
+`doc.localIds()` (which sees the doc-local ids that are not blocks — views).
+`claimPayloadIds` claims view ids alongside block ids, so a duplicate within
+one payload is caught, and `collectSubtreeIds` — the "ids this op may reuse"
+set — now carries a dataview block's view ids, because an op that replaces a
+dataview block replaces the identities it holds and echoing its views back
+must keep them. Both halves ask one question of one domain; there is no
+remaining slot where the resolver and the guard disagree.
+
+**And at the format layer.** `anyblockjson.Validate`'s uniqueness domain
+(`claimId`) covered blocks, columns, rows and derived cells but not
+`views[].id` — so a duplicate view id was invalid-but-unvalidated on **every**
+channel, create and import included, not only PATCH. It is now checked in
+`checkDataviewViews`, which means (a) is refused by the fragment import
+before the API guard is even reached. That ordering is the point of fixing
+it there.
+
+**The uniqueness scope chosen for view ids: within the dataview BLOCK, not
+the document.** This is the only id domain in the format that is not
+document-wide (SPEC §4), and both directions were checked against the code
+rather than assumed:
+
+- *Why not narrower.* Every consumer resolves a view reference within ONE
+  dataview's `views` list (`matchViewRef` over `viewIdList(views)`; the
+  client's tabs), and the per-view editor state — `groupOrders`,
+  `objectOrders` — is keyed by view id **inside the same
+  `BlockContentDataview`**. A repeat inside one block makes the second view
+  permanently unaddressable, which is exactly bug (a).
+- *Why not document-wide.* It would reject data the app itself produces.
+  `template.MakeDataviewContent` mints the first view of every set,
+  collection and type with the literal id `"default"`, and
+  `dataviewservice.CopyDataviewToBlock` copies a target object's views
+  **verbatim** into an inline dataview block — so a page with two inline
+  collections legitimately holds two views called `"default"`. A
+  document-wide error would fail on real exports.
+
+**Why the API layer is nevertheless stricter than the format**, and why that
+is not an inconsistency: the format lets a view id collide with a *block* id
+(different domains), while the API refuses it. The API's own id vocabulary
+**is** document-wide — one compact-relabel pool (§9a) and one payload
+resolver whose `localIds()` deduplicates — so it declines to *create* a
+collision it could not later describe to a reader. It does not retro-refuse
+one it is shown: a document that already holds one still reads and still
+resolves.
+
+**The receipt the refusals promise is now delivered.** Both
+`unresolvedPayloadIdError` and `newContentIdError` tell the caller to omit
+the id because *"the server mints one and returns it in `createdBlocks`"* —
+but `createdBlocks` was written only in `decodePayloadRun`, for **top-level
+run blocks**. A minted view id, a minted cell descendant, and the row/column
+ids of a table created through `insertBlocks` were all unreported — and
+those are precisely the slots the refusals fire on (the §8.30 test asserts
+path `ops[0].blocks[0].rows[0].id`). Reporting was chosen over rewording:
+the alternative costs a model that must re-read to learn an id it just
+created a whole round trip, and the fix is one walk. Minting moved from the
+format importer into the API's slot walk, so every empty id slot is filled
+and reported under **its own payload path** — `ops[0].blocks[0].rows[1]`,
+`ops[0].value[1]`, `ops[0].set.views[2]`. Views go to `createdViews` (a view
+is not a block; that map already existed for `insertView`), everything else
+to `createdBlocks`.
+
+**One walk, three passes.** Resolution and rejection used to be two hand-kept
+walkers over the same slot set (`resolvePayloadBlock` / `rejectPayloadIds`),
+with a comment promising they could not drift — and the drift that mattered
+was a third participant, the guard, walking something else entirely.
+`walkPayloadIdSlots` is now the only walk; its visitors are the three things
+a slot can need (resolve, reject, mint).
+
+**§8.30's overclaim, corrected.** It argued the schema is *"the only
+instrument that works against a decoder that emits what it sees"*, and
+`v2OpNewBlockDef` said *"no id slot — neither here nor inside
+rows/columns/views"*. Neither was true of the nested slots: the served
+`columns`/`rows` were `{"type":"array","maxItems":N}` with **no `items`**,
+and `views` is not a property of the block def at all. The schema constrained
+the top-level slot and nothing below it; the runtime guard did all the work
+there, and the new test's `schemaPropertyOwners` found no nested `id` only
+because there was no nested schema — the same assertion would have passed for
+`replaceSubtree`. *Fix:* the nested entries are typed. `columns` and `rows`
+publish `items` defs that are themselves `additionalProperties: false`, and
+the id slot inside them follows the same §8.30 split as the block's own —
+present on `v2OpBlockDef`, absent on `v2OpNewBlockDef`. What is **not** typed
+is the interior of a cell run (string | null | object | array of blocks —
+recursive, and a strict recursive def is a real cost to a constrained
+decoder); there the runtime guard is the instrument, and the cell
+description says so rather than implying otherwise. `views` is published on
+**neither** shape, so no payload block can name a view through this channel
+at all — the corrected claim, and what the block descriptions now say. The
+test asserts the nested defs exist, are strict, and carry an `id` exactly on
+the existing-content shape, so it fails both if a nested slot regains an id
+and if the nested defs are removed again.
+
+**The new-content op set is one set.** The runtime literal `"insertBlocks"`
+and `opSchemaNewContent(…)` were independent statements of the same fact.
+Runtime-without-schema is merely strict; **schema-without-runtime re-creates
+§8.30's exact bug** — an op publishing an id no value of which can succeed.
+`v2NewContentOps` (ops.go) is now read by both: `decodePayloadRun` picks the
+rejecting visitor from it, and `opSchema` picks the payload-block def from
+it. `opSchema` takes the op NAME as its first argument for the same reason —
+the `op` const, the required `op` field and the block def all derive from it
+instead of being spelled three times. The schema test is table-driven over
+`v2NewContentOps` × `v2OpNames`, so an op added to one half and missed in
+the other fails.
+
+**What the seam says about the design.** The id rule was stated once and
+implemented twice, and the second implementation was a *by-product* — a
+guard written when payload ids were taken literally, kept when they started
+resolving, never re-derived against the vocabulary the resolver had grown.
+The rule "ids resolve against `doc.localIds()`" was true of one half and
+false of the other for two releases, and nothing in the type system, the
+tests or the prose could see the disagreement because each half was
+individually correct about its own domain. The structural answer taken here
+is to give the domain a NAME (`payloadIdExists`) that both halves call,
+rather than two correct-looking expressions; the same move as `localIds()`
+being shared by create's warning and the PATCH resolver. Where a rule has two
+enforcement points, the shared thing should be the predicate, not the
+sentence in a comment saying they agree.

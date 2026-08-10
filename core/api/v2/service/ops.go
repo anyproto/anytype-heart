@@ -131,6 +131,22 @@ func restrictionRefusal(refused error, op, opPath, axis string) error {
 		})
 }
 
+// v2NewContentOps is the set of ops whose block payload can only ever
+// CREATE, so no value of an id slot in it can succeed (§8.30): an id that
+// resolves is a duplicate, one that does not is unresolvable, and there is no
+// third value.
+//
+// ONE set, read by BOTH halves that have to agree about it. The runtime
+// (decodePayloadRun) refuses the field for the ops listed here; the served op
+// schema (schemas_ops.go opSchema) publishes the id-less payload-block def
+// for exactly the same ops. Runtime-without-schema is merely strict;
+// schema-without-runtime re-creates §8.30's own bug — an op advertising a
+// field no value of which can succeed — so the two literals that used to
+// state this independently are gone.
+var v2NewContentOps = map[string]bool{
+	"insertBlocks": true,
+}
+
 // v2OpRebuildsView marks the ops whose apply invalidates the document view
 // (stateops.go), forcing the NEXT op to re-marshal the whole document under
 // the object lock. The render-work bound (edit.go patchRenderWork, surface

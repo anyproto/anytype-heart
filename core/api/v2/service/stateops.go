@@ -509,10 +509,11 @@ func (a *v2StateApplier) setBlocks(blocks []*model.Block) {
 	}
 }
 
-// claimPayloadIds rejects payload block ids (including table internals) that
-// already exist in the state or this PATCH, except ids the op explicitly
-// replaces (allowed) and ids the op itself minted (fresh by construction).
-// On success every payload id is claimed for the rest of the PATCH.
+// claimPayloadIds rejects payload ids (table internals and dataview VIEW ids
+// included) that already exist in the object or in this PATCH, except ids the
+// op explicitly replaces (allowed) and ids the op itself minted (fresh by
+// construction). On success every payload id is claimed for the rest of the
+// PATCH.
 //
 // This is the collision half of the old checkFreshIds. Its other half — a
 // scan for ids that merely TAIL a block the document keeps — is gone,
@@ -524,17 +525,58 @@ func (a *v2StateApplier) setBlocks(blocks []*model.Block) {
 // naming a live block, replaceSubtree naming one outside the subtree it
 // replaces. Keeping only one guard is deliberate: the two overlapped, with
 // different coverage, and the gap between them was F1.
+//
+// The two halves of the id rule must agree on the DOMAIN, and this is where
+// they used to disagree (§8.31). Resolution's domain is the pre-op document's
+// localIds() — blocks, table internals, cell descendants AND views — while
+// this guard asked a.st.Exists, which walks the imported []*model.Block and
+// in which a view is not an element at all. So a view id resolved but could
+// never collide: two views could be stored under one id, and a block could
+// adopt a live view's id. Both halves now ask payloadIdExists, and views are
+// claimed alongside blocks.
+//
+// A view id is unique within its DATAVIEW BLOCK, not document-wide (SPEC
+// §6.2, and matchViewRef resolves a view reference against one dataview's
+// views) — so the intra-payload duplicate scan for views is per block, while
+// block-shaped ids share one document-wide scan.
 func (a *v2StateApplier) claimPayloadIds(blocks []*model.Block, allowed map[string]bool, pathFor func(id string) string) error {
-	for _, b := range blocks {
-		if allowed[b.Id] || a.mintedThisOp[b.Id] {
-			continue
+	exists, err := a.payloadIdExists()
+	if err != nil {
+		return err
+	}
+	var claim []string
+	// take checks one id slot. dup says the same payload already used this id
+	// in the scope the id has to be unique in — a duplicate is refused even
+	// when the id is one the op may reuse, because "may reuse it" licenses
+	// ONE holder, not two.
+	take := func(id, path string, dup bool) error {
+		if id == "" {
+			return nil
 		}
-		if a.st.Exists(b.Id) || a.claimedIds[b.Id] {
-			return a.duplicateIdError(pathFor(b.Id), b.Id)
+		if dup || (!allowed[id] && !a.mintedThisOp[id] && (exists(id) || a.claimedIds[id])) {
+			return a.duplicateIdError(path, id)
+		}
+		claim = append(claim, id)
+		return nil
+	}
+	seen := map[string]bool{} // document-wide: block, row, column, cell ids
+	for _, b := range blocks {
+		base := pathFor(b.Id)
+		if err := take(b.Id, base, seen[b.Id]); err != nil {
+			return err
+		}
+		seen[b.Id] = true
+		viewSeen := map[string]bool{} // per dataview block
+		for j, v := range b.GetDataview().GetViews() {
+			id := v.GetId()
+			if err := take(id, viewIdPath(base, j), viewSeen[id]); err != nil {
+				return err
+			}
+			viewSeen[id] = true
 		}
 	}
-	for _, b := range blocks {
-		a.claimedIds[b.Id] = true
+	for _, id := range claim {
+		a.claimedIds[id] = true
 	}
 	a.mintedThisOp = map[string]bool{}
 	return nil
@@ -552,19 +594,32 @@ func runPathFor(opPath, field string, topIds []string) func(id string) string {
 	}
 }
 
-// collectSubtreeIds gathers a block and all its descendants.
+// collectSubtreeIds gathers a block, all its descendants, and the doc-local
+// ids those blocks OWN without being blocks themselves: a dataview block's
+// VIEW ids. It is the "ids this op may reuse" set, so it has to name every
+// identity the op is replacing — and a dataview's views go with the block,
+// so echoing them back has to keep them (§8.31).
 func collectSubtreeIds(st *state.State, id string) map[string]bool {
 	out := map[string]bool{}
+	visited := map[string]bool{}
 	var walk func(string)
 	walk = func(cur string) {
-		if out[cur] {
+		if visited[cur] {
 			return
 		}
+		visited[cur] = true
 		out[cur] = true
-		if b := st.Pick(cur); b != nil {
-			for _, child := range b.Model().ChildrenIds {
-				walk(child)
+		b := st.Pick(cur)
+		if b == nil {
+			return
+		}
+		for _, v := range b.Model().GetDataview().GetViews() {
+			if v.GetId() != "" {
+				out[v.GetId()] = true
 			}
+		}
+		for _, child := range b.Model().ChildrenIds {
+			walk(child)
 		}
 	}
 	walk(id)
@@ -1047,7 +1102,7 @@ func (a *v2StateApplier) applyReplaceSubtree(op opReplaceSubtree, opPath string)
 	if err != nil {
 		return err
 	}
-	run, err := a.decodePayloadRun(op.Blocks, opPath, "blocks", "")
+	run, err := a.decodePayloadRun(op.Blocks, opPath, "blocks", "replaceSubtree")
 	if err != nil {
 		return err
 	}
@@ -1533,14 +1588,15 @@ func (a *v2StateApplier) applyItems(op opItems, opPath string) error {
 // in its columns/rows/cells/views — RESOLVES against the pre-op document
 // (payloadids.go), so a compact label echoed from a read names the element it
 // labels instead of renaming it. Only MISSING ids are minted, and only those
-// land in createdBlocks keyed by payload position: a resolved id names
-// something that already existed, and reporting it as created would be the
-// same kind of lie diffStats used to tell.
+// land in createdBlocks (createdViews for a view) keyed by payload position:
+// a resolved id names something that already existed, and reporting it as
+// created would be the same kind of lie diffStats used to tell.
 //
-// newContentOp names the op when its payload can only ever CREATE, and then
-// the run carries no id slots at all: they are refused as not part of the op
-// rather than resolved (§8.30). Empty = the existing-content rule above.
-func (a *v2StateApplier) decodePayloadRun(raws []json.RawMessage, opPath, field, newContentOp string) ([]map[string]any, error) {
+// op names the op the run belongs to. When it is a NEW-content op
+// (v2NewContentOps — the one set the served schema reads too, §8.30) the run
+// carries no id slots at all: they are refused as not part of the op rather
+// than resolved.
+func (a *v2StateApplier) decodePayloadRun(raws []json.RawMessage, opPath, field, op string) ([]map[string]any, error) {
 	if len(raws) == 0 {
 		return nil, v2model.ValidationFailed("blocks must not be empty",
 			v2model.Issue{Path: opPath + "." + field, Message: "give at least one block"})
@@ -1556,12 +1612,13 @@ func (a *v2StateApplier) decodePayloadRun(raws []json.RawMessage, opPath, field,
 				Hint:    "split the run across several ops — the blocks and markdown channels share this cap",
 			})
 	}
-	var vocab []string
-	if newContentOp == "" {
-		var err error
-		if vocab, err = a.payloadIdVocabulary(); err != nil {
+	visit := a.rejectOrMintSlot(op)
+	if !v2NewContentOps[op] {
+		vocab, err := a.payloadIdVocabulary()
+		if err != nil {
 			return nil, err
 		}
+		visit = a.resolveOrMintSlot(vocab)
 	}
 	run := make([]map[string]any, 0, len(raws))
 	prev := -1
@@ -1571,11 +1628,7 @@ func (a *v2StateApplier) decodePayloadRun(raws []json.RawMessage, opPath, field,
 		if err != nil {
 			return nil, err
 		}
-		if newContentOp != "" {
-			if err := rejectPayloadIds(newContentOp, block, path); err != nil {
-				return nil, err
-			}
-		} else if err := a.resolvePayloadBlock(vocab, block, path); err != nil {
+		if err := walkPayloadIdSlots(block, path, visit); err != nil {
 			return nil, err
 		}
 		rel := 0
@@ -1600,11 +1653,6 @@ func (a *v2StateApplier) decodePayloadRun(raws []json.RawMessage, opPath, field,
 			block["indent"] = float64(rel)
 		} else {
 			delete(block, "indent")
-		}
-		if blockId(block) == "" {
-			id := a.mintBlockId()
-			block["id"] = id
-			a.createdBlocks[path] = id
 		}
 		run = append(run, block)
 	}

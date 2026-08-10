@@ -120,7 +120,12 @@ whether you may write. Ask this instead of discovering limits through 403s
   (`inside`). `moveBlock` targets the same way.
 - **Author new content without ids** — an `id` names an EXISTING block, so
   `insertBlocks` takes none anywhere in its payload (rows and columns
-  included); the server mints them and returns them in `createdBlocks`.
+  included); the server mints them and returns them in `createdBlocks`,
+  keyed by the payload path that produced each — `ops[0].blocks[0]`,
+  `ops[0].blocks[0].rows[1]`, `ops[0].blocks[0].columns[0]`. The same holds
+  wherever you leave an id out of an existing-content payload (a new row in
+  `updateBlock set.rows`, a block inside a `setCell` array), so you never
+  have to re-read to learn an id you just created.
 - **`updateView`** edits ONE dataview view — never resend the views array.
   `block`/`view` are optional when the object has one dataview and it one
   view (types, sets, collections usually do). `set` merges view fields
@@ -137,8 +142,9 @@ whether you may write. Ask this instead of discovering limits through 403s
   keyed `ops[i]`. moveView REQUIRES one of `after`/`before`/`position`
   (`"first"` = default tab). deleteView refuses the last view — insert the
   replacement first (one atomic batch swaps a bad default view).
-- Response: new `etag`, `createdBlocks` (payload position → real id),
-  `created` (options minted by create-missing),
+- Response: new `etag`, `createdBlocks` (payload position → real id;
+  nested row/column/cell slots included), `createdViews` (same, for minted
+  view ids), `created` (options minted by create-missing),
   `diffStats {blocksAdded, blocksRemoved, blocksChanged, blocksMoved,
   propertiesChanged}`, `warnings` (advisory, e.g. an unguarded date filter).
 - **There is no whole-document replace** — never read a document,
