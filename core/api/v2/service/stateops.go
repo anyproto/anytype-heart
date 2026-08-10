@@ -646,9 +646,9 @@ func (a *v2StateApplier) insertAt(parentId string, index int, ids []string) erro
 
 // targetPosition maps the R14 targeting vocabulary to the state's insert
 // positions. Note the state's naming: Block_Inner appends (last child),
-// Block_InnerFirst prepends (first child). Root mode falls through to
-// Block_Inner — with an empty target id InsertTo appends at the document
-// root's end.
+// Block_InnerFirst prepends (first child). Root mode never reaches here —
+// rootTarget resolves it, because the document's two ends are not the state
+// root's two ends (§8.32).
 func targetPosition(mode, pos string) model.BlockPosition {
 	switch mode {
 	case "before":
@@ -660,6 +660,36 @@ func targetPosition(mode, pos string) model.BlockPosition {
 		return model.Block_InnerFirst
 	}
 	return model.Block_Inner
+}
+
+// rootTarget resolves root mode — no after/before/inside — into an InsertTo
+// anchor. `last` (the default) is the empty anchor: InsertTo reads that as
+// the document root and appends at its end.
+//
+// `first` is NOT the root's Block_InnerFirst. The state root's first child is
+// the structural header — title, description, featuredProperties — which SPEC
+// §7 keeps OUT of the served document, so prepending at the root would land
+// the block above the title, which is not the start of the document. The
+// start of the document is the slot `before: <first block>` names, and
+// anchoring there needs no knowledge of the header at all.
+//
+// skipFrom/skipEnd exclude one subtree from the anchor search: moveBlock's
+// own subtree, which InsertTo refuses as its own target. The next top-level
+// block after it gives the same final order, and when there is none the two
+// ends coincide and the append is correct.
+func rootTarget(doc *v2EditDoc, pos string, skipFrom, skipEnd int) (anchorId string, position model.BlockPosition) {
+	if pos != "first" {
+		return "", model.Block_Inner
+	}
+	for i := 0; i < len(doc.blocks); i = doc.subtreeEnd(i) {
+		if i >= skipFrom && i < skipEnd {
+			continue
+		}
+		return blockId(doc.blocks[i]), model.Block_Top
+	}
+	// an empty document (or one that holds only the moved subtree): the start
+	// and the end of the document are the same slot
+	return "", model.Block_Inner
 }
 
 // fragmentBlocks converts a decoded payload run (relative indents, minted
@@ -1140,12 +1170,13 @@ func (a *v2StateApplier) applyReplaceSubtree(op opReplaceSubtree, opPath string)
 
 // resolveTarget resolves the shared after/before/inside targeting vocabulary
 // (insertBlocks and moveBlock, R14). It returns the anchor index, the mode
-// ("after"|"before"|"inside"|"root") and the inside position
-// ("first"|"last"). Omitting all three targeting fields means the document
-// root: append at the end of the document (§8.2 v0.3.5) — the only ops-path
-// into an object that has no addressable blocks yet (SPEC §7 keeps
-// title/description out of the document, so an empty object has none). The
-// anchor index is -1 in root mode.
+// ("after"|"before"|"inside"|"root") and the position ("first"|"last").
+// Omitting all three targeting fields means the document root (§8.2 v0.3.5) —
+// the only ops-path into an object that has no addressable blocks yet (SPEC
+// §7 keeps title/description out of the document, so an empty object has
+// none). The anchor index is -1 in root mode, and `position` picks which end
+// of the document: `first` the start, `last` (or absent) the end — the same
+// two words that pick an end inside a container (§8.32).
 func (a *v2StateApplier) resolveTarget(doc *v2EditDoc, after, before, inside, position, opPath string) (anchor int, mode string, pos string, err error) {
 	var refs []string
 	if after != "" {
@@ -1163,8 +1194,10 @@ func (a *v2StateApplier) resolveTarget(doc *v2EditDoc, after, before, inside, po
 	}
 	if len(refs) == 0 {
 		if position != "" {
-			return 0, "", "", v2model.ValidationFailed("position only applies to inside",
-				v2model.Issue{Path: opPath + ".position", Message: "position without a targeting field is meaningless — omitting after/before/inside appends at the end of the document"})
+			if err := checkPosition(position, opPath); err != nil {
+				return 0, "", "", err
+			}
+			return -1, "root", position, nil
 		}
 		return -1, "root", "last", nil
 	}
@@ -1174,9 +1207,8 @@ func (a *v2StateApplier) resolveTarget(doc *v2EditDoc, after, before, inside, po
 			return 0, "", "", v2model.ValidationFailed("position only applies to inside",
 				v2model.Issue{Path: opPath + ".position", Message: fmt.Sprintf("position with %q targeting is meaningless — after/before already name the slot", mode)})
 		}
-		if position != "first" && position != "last" {
-			return 0, "", "", v2model.ValidationFailed("invalid position",
-				v2model.Issue{Path: opPath + ".position", Message: fmt.Sprintf("unknown position %q", position), Hint: "allowed: first, last"})
+		if err := checkPosition(position, opPath); err != nil {
+			return 0, "", "", err
 		}
 		pos = position
 	}
@@ -1193,6 +1225,18 @@ func (a *v2StateApplier) resolveTarget(doc *v2EditDoc, after, before, inside, po
 		}
 	}
 	return anchor, mode, pos, nil
+}
+
+// checkPosition validates the position vocabulary. It is one check because
+// the two words mean the same two ends wherever they appear (inside a
+// container, or at the document root) — the schema publishes the enum, and
+// this is the runtime backstop for the caller who ignored it.
+func checkPosition(position, opPath string) error {
+	if position != "first" && position != "last" {
+		return v2model.ValidationFailed("invalid position",
+			v2model.Issue{Path: opPath + ".position", Message: fmt.Sprintf("unknown position %q", position), Hint: "allowed: first, last"})
+	}
+	return nil
 }
 
 func (a *v2StateApplier) applyInsertBlocks(op opInsertBlocks, opPath string) error {
@@ -1224,13 +1268,13 @@ func (a *v2StateApplier) applyInsertBlocks(op opInsertBlocks, opPath string) err
 		return err
 	}
 	a.setBlocks(blocks)
-	// root mode: an empty anchor id makes InsertTo target the document root
-	// (append at the end for any non-InnerFirst position)
-	anchorId := ""
-	if mode != "root" {
+	anchorId, insertPos := "", targetPosition(mode, pos)
+	if mode == "root" {
+		anchorId, insertPos = rootTarget(doc, pos, -1, -1)
+	} else {
 		anchorId = blockId(doc.blocks[anchor])
 	}
-	if err := a.st.InsertTo(anchorId, targetPosition(mode, pos), topIds...); err != nil {
+	if err := a.st.InsertTo(anchorId, insertPos, topIds...); err != nil {
 		return fmt.Errorf("insert blocks at %q: %w", anchorId, err)
 	}
 	a.mutated()
@@ -1302,14 +1346,17 @@ func (a *v2StateApplier) applyMoveBlock(op opMoveBlock, opPath string) error {
 			v2model.Issue{Path: opPath, Message: "the target block is a descendant of (or is) the moved block — that would create a cycle; pick a target outside the moved subtree"})
 	}
 	fullId := blockId(doc.blocks[idx])
-	// root mode (anchor -1, no targeting fields): move to the end of the
-	// document root — the root can never be inside the moved subtree
-	anchorId := ""
-	if mode != "root" {
+	// root mode (anchor -1, no targeting fields): move to one end of the
+	// document — the moved subtree is excluded from the anchor search, so
+	// "first" is reachable even for the block that is already first
+	anchorId, movePos := "", targetPosition(mode, pos)
+	if mode == "root" {
+		anchorId, movePos = rootTarget(doc, pos, idx, end)
+	} else {
 		anchorId = blockId(doc.blocks[anchor])
 	}
 	a.st.Unlink(fullId)
-	if err := a.st.InsertTo(anchorId, targetPosition(mode, pos), fullId); err != nil {
+	if err := a.st.InsertTo(anchorId, movePos, fullId); err != nil {
 		return fmt.Errorf("move block %s to %q: %w", fullId, anchorId, err)
 	}
 	a.mutated()

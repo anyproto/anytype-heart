@@ -114,10 +114,13 @@ whether you may write. Ask this instead of discovering limits through 403s
   block plus descendants.
 - **`insertBlocks`**: `blocks` (flat array) or `markdown` — mutually
   exclusive, same targeting. Target with one of `after`/`before`/`inside`
-  (+`position: first|last` with `inside`); omit all three to append at the
-  document end — the way into an empty object. Payload `indent: 0` = the
-  anchor's level (`after`/`before`) or the container's child level
-  (`inside`). `moveBlock` targets the same way.
+  (+`position: first|last` inside that container); omit all three and
+  `position` picks an end of the DOCUMENT — `last` (or absent) appends,
+  `first` inserts at the start, both on an empty object too. Payload
+  `indent: 0` = the anchor's level (`after`/`before`) or the container's
+  child level (`inside`). `moveBlock` targets the same way, so
+  `{"op":"moveBlock","id":"b9","position":"first"}` moves a block to the top
+  of the document.
 - **Author new content without ids** — an `id` names an EXISTING block, so
   `insertBlocks` takes none anywhere in its payload (rows and columns
   included); the server mints them and returns them in `createdBlocks`,

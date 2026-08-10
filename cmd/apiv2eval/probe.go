@@ -243,24 +243,23 @@ func probeOnce(ctx context.Context, chat *chatClient, model string, pc probeCase
 
 // refusal risks recognised without sending anything.
 const (
-	riskPositionNoTarget = "position_without_target" // 400 validation_failed at .position
 	riskPositionNotIside = "position_with_after_or_before"
 )
 
 // staticRefusalRisks names payload shapes the server refuses, recognised
 // from the payload alone. Exactly one guard is transcribed here — the
 // targeting rule in resolveTarget (stateops.go), which refuses `position`
-// unless `inside` is also given:
+// alongside `after`/`before`, where the anchor already names the slot.
+// Nothing else is duplicated here — a full local validator would be a second
+// implementation of the server, and the loop runs against the real one.
 //
-//	position without a targeting field is meaningless — omitting
-//	after/before/inside appends at the end of the document
-//
-// It is transcribed because it is a schema-invited mistake of the same
-// family as the id question: the published description reads "with inside
-// only; default last", which a model can and does read as "last is the
-// default, so naming it is harmless". Nothing else is duplicated here — a
-// full local validator would be a second implementation of the server, and
-// the loop runs against the real one.
+// The shape this classifier was WRITTEN for is gone from it: `position` with
+// no targeting field at all was a guaranteed 400, and the probe measured
+// gemma4:e2b producing it on 20 payloads — 10 of 10 in add_section, 10 of 10
+// in copy_block_new. The surface changed rather than the classifier: with
+// nothing else targeted, position now picks an end of the DOCUMENT (§8.32),
+// so the shape the model reaches for is the shape that works and there is no
+// risk left to name.
 func staticRefusalRisks(op string, args map[string]any) []string {
 	if op != "insertBlocks" && op != "moveBlock" {
 		return nil
@@ -275,10 +274,7 @@ func staticRefusalRisks(op string, args map[string]any) []string {
 			targeted = field
 		}
 	}
-	switch targeted {
-	case "":
-		return []string{riskPositionNoTarget}
-	case "after", "before":
+	if targeted == "after" || targeted == "before" {
 		return []string{riskPositionNotIside}
 	}
 	return nil

@@ -15,6 +15,7 @@ import (
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
@@ -41,6 +42,13 @@ const editTableDoc = `{"version":1,"id":"obj1","type":"page","blocks":[` +
 // editEmptyDoc has no blocks at all — SPEC §7 keeps title/description out of
 // the document, so a fresh object has zero addressable blocks.
 const editEmptyDoc = `{"version":1,"id":"obj1","type":"page","properties":{"name":"Empty"},"blocks":[]}`
+
+// editSoleParentDoc is one top-level block with one child: the document is
+// exactly one subtree, so moving that subtree leaves no other block to anchor
+// against.
+const editSoleParentDoc = `{"version":1,"id":"obj1","type":"page","blocks":[` +
+	`{"id":"blockParent1","type":"paragraph","text":"parent"},` +
+	`{"indent":1,"id":"blockChild1","type":"paragraph","text":"child"}]}`
 
 // editTableCellChildDoc holds a table whose only cell is the F10 array form:
 // a toggle cell block (no id — derived) with one minted-id DESCENDANT. Cell
@@ -108,6 +116,21 @@ func blocksRefusedProduction() error {
 // runs against a state built from read's snapshot and, on success, that
 // mutated state is captured for assertions and newHeads reported.
 func (fx *v2Fixture) expectMutate(read apicore.ObjectRead, newHeads ...string) **state.State {
+	return fx.expectMutateState(read, nil, newHeads...)
+}
+
+// expectMutateHeader is expectMutate over a state that carries the structural
+// header — the header wrapper and its title block, which every real page gets
+// from template.InitTemplate at first open and which SPEC §7 keeps out of the
+// served document. A document built from an AnyBlock snapshot alone has none,
+// so nothing else in this file can see a placement rule that depends on it.
+func (fx *v2Fixture) expectMutateHeader(read apicore.ObjectRead, newHeads ...string) **state.State {
+	return fx.expectMutateState(read, func(st *state.State) {
+		template.InitTemplate(st, template.WithTitle)
+	}, newHeads...)
+}
+
+func (fx *v2Fixture) expectMutateState(read apicore.ObjectRead, prepare func(*state.State), newHeads ...string) **state.State {
 	var captured *state.State
 	// PatchObject reads the object and checks preconditions BEFORE prewarming
 	// create-missing refs and taking the lock (review A′1), so every PATCH
@@ -118,6 +141,9 @@ func (fx *v2Fixture) expectMutate(read apicore.ObjectRead, newHeads ...string) *
 			st, err := state.NewDocFromSnapshot(objectId, &pb.ChangeSnapshot{Data: read.Snapshot})
 			if err != nil {
 				return nil, err
+			}
+			if prepare != nil {
+				prepare(st)
 			}
 			if err := apply(apicore.ObjectEdit{SbType: read.SbType, Heads: read.Heads, State: st}); err != nil {
 				return nil, err
@@ -322,16 +348,147 @@ func TestPatchObject(t *testing.T) {
 		assert.Equal(t, []string{"First", "body"}, blockTexts(blocks))
 	})
 
-	t.Run("insertBlocks position without a target is rejected", func(t *testing.T) {
+	// §8.32: `position` with no targeting field was a guaranteed 400, and it
+	// is the shape gemma4:e2b produced on 20 payloads — 10 of 10 in each of
+	// the two cases that reach for it (add a section at the end, copy this
+	// block as new content). The published description ("with inside only")
+	// reads as "last is the default, so naming it is harmless". It now names
+	// an end of the DOCUMENT, which is both the obvious intent and the only
+	// expression of "insert at the beginning" that needs no prior read.
+	t.Run("insertBlocks position last with no target appends at the document end", func(t *testing.T) {
+		// given — the exact payload shape the probe recorded
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
+
+		// when
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"insertBlocks","markdown":"## Risks","position":"last"}`), "", false)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, v2model.DiffStats{BlocksAdded: 1}, result.DiffStats)
+		blocks := docBlocks(stateDoc(t, *captured))
+		assert.Equal(t, []string{"Section", "parent", "child", "the Q3 report and Q3 plan", "Risks"}, blockTexts(blocks))
+	})
+
+	t.Run("insertBlocks position first with no target inserts at the document start", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
+
+		// when: the direction that used to require reading the document first
+		// just to learn the id of the block to sit before
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"insertBlocks","position":"first","blocks":[{"type":"heading2","text":"Summary"},{"indent":1,"type":"paragraph","text":"note"}]}`), "", false)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, v2model.DiffStats{BlocksAdded: 2}, result.DiffStats)
+		blocks := docBlocks(stateDoc(t, *captured))
+		assert.Equal(t, []string{"Summary", "note", "Section", "parent", "child", "the Q3 report and Q3 plan"}, blockTexts(blocks))
+		_, hasIndent := blocks[0]["indent"]
+		assert.False(t, hasIndent, "root-first lands at document level 0")
+		assert.Equal(t, float64(1), blocks[1]["indent"], "payload indent stays relative to the insertion level")
+	})
+
+	t.Run("insertBlocks position first keeps the structural header above it", func(t *testing.T) {
+		// given: a real page's state root holds the header (title, description
+		// — SPEC §7 keeps it OUT of the served document) as its FIRST child, so
+		// prepending at the state root would land the block above the title
+		fx := newV2Fixture(t)
+		captured := fx.expectMutateHeader(editRead(t, editBaseDoc), "headB")
+
+		// when
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"insertBlocks","position":"first","blocks":[{"type":"paragraph","text":"top"}]}`), "", false)
+
+		// then
+		require.NoError(t, err)
+		st := *captured
+		require.NotNil(t, st)
+		assert.Equal(t, template.HeaderLayoutId, st.Pick(st.RootId()).Model().ChildrenIds[0],
+			"the header stays the first child of the state root")
+		assert.Equal(t, []string{"top", "Section", "parent", "child", "the Q3 report and Q3 plan"},
+			blockTexts(docBlocks(stateDoc(t, st))), "and the block is first in the document")
+	})
+
+	t.Run("insertBlocks position first on an empty object is the same slot as last", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editEmptyDoc), "headB")
+
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"insertBlocks","position":"first","blocks":[{"type":"paragraph","text":"only"}]}`), "", false)
+
+		require.NoError(t, err)
+		assert.Equal(t, v2model.DiffStats{BlocksAdded: 1}, result.DiffStats)
+		assert.Equal(t, []string{"only"}, blockTexts(docBlocks(stateDoc(t, *captured))))
+	})
+
+	t.Run("insertBlocks position with no target still rejects a value outside the enum", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.expectMutate(editRead(t, editBaseDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insertBlocks","position":"first","blocks":[{"type":"paragraph","text":"x"}]}`), "", false)
+			patchBody(`{"op":"insertBlocks","position":"middle","blocks":[{"type":"paragraph","text":"x"}]}`), "", false)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, "invalid position", apiErr.Message)
+		assert.Equal(t, "ops[0].position", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Hint, "first, last")
+	})
+
+	t.Run("insertBlocks position alongside after is still refused", func(t *testing.T) {
+		// the anchor already names the slot — this one is unchanged
+		fx := newV2Fixture(t)
+		fx.expectMutate(editRead(t, editBaseDoc))
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"insertBlocks","after":"blockHeading1","position":"first","blocks":[{"type":"paragraph","text":"x"}]}`), "", false)
 
 		apiErr := v2Err(t, err)
 		assert.Contains(t, apiErr.Message, "position only applies to inside")
-		assert.Contains(t, apiErr.Issues[0].Message, "appends at the end of the document")
+		assert.Equal(t, "ops[0].position", apiErr.Issues[0].Path)
+	})
+
+	t.Run("moveBlock position first with no target moves the block to the document start", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
+
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"moveBlock","id":"blockParent1","position":"first"}`), "", false)
+
+		require.NoError(t, err)
+		// every reordered block counts as moved (the documented diff rule)
+		assert.Equal(t, v2model.DiffStats{BlocksMoved: 3}, result.DiffStats)
+		blocks := docBlocks(stateDoc(t, *captured))
+		assert.Equal(t, []string{"parent", "child", "Section", "the Q3 report and Q3 plan"}, blockTexts(blocks))
+		assert.Equal(t, float64(1), blocks[1]["indent"], "the subtree rides along")
+	})
+
+	t.Run("moveBlock position first on the block already first keeps the order", func(t *testing.T) {
+		// the moved subtree cannot anchor itself (InsertTo refuses its own
+		// target) — the anchor search skips it, so the op succeeds where it
+		// would otherwise have appended the block to the END
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"moveBlock","id":"blockHeading1","position":"first"}`), "", false)
+
+		require.NoError(t, err)
+		assert.Equal(t, []string{"Section", "parent", "child", "the Q3 report and Q3 plan"},
+			blockTexts(docBlocks(stateDoc(t, *captured))))
+	})
+
+	t.Run("moveBlock position first when the moved subtree is the whole document", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editSoleParentDoc), "headB")
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"moveBlock","id":"blockParent1","position":"first"}`), "", false)
+
+		require.NoError(t, err)
+		assert.Equal(t, []string{"parent", "child"}, blockTexts(docBlocks(stateDoc(t, *captured))))
 	})
 
 	t.Run("insertBlocks markdown payload is parsed into blocks (the authoring channel)", func(t *testing.T) {

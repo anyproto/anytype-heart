@@ -40,10 +40,16 @@ func TestStaticRefusalRisks(t *testing.T) {
 		want []string
 	}{
 		{
-			name: "position with no targeting field is refused at .position",
+			// the shape gemma4:e2b produced 20/20 times: it is no longer a
+			// refusal, so it is no longer a risk (§8.32)
+			name: "position with no targeting field targets the document",
 			op:   "insertBlocks",
 			args: `{"op":"insertBlocks","blocks":[{"type":"paragraph"}],"position":"last"}`,
-			want: []string{riskPositionNoTarget},
+		},
+		{
+			name: "the same shape asking for the start of the document",
+			op:   "insertBlocks",
+			args: `{"op":"insertBlocks","blocks":[{"type":"paragraph"}],"position":"first"}`,
 		},
 		{
 			name: "position alongside after is refused too",
