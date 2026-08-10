@@ -1087,7 +1087,7 @@
       "name": "Anytype Support",
       "url": "https://anytype.io/contact"
     },
-    "description": "The agent-oriented Anytype local API. Objects are AnyBlock JSON documents (pkg/lib/anyblockjson/SPEC.md) rather than block trees, so one read returns a whole editable document and one PATCH edits it.\nOne vocabulary throughout (C2): camelCase, property keys, option names, and `type` as a type key — never an id, never snake_case. Responses are compact JSON (C3); object refs are always full inline, and the default object read relabels machine-minted block ids to short doc-local suffixes — `?ids=full` returns the export shape with full ids everywhere, the shape that PUTs back (C4); list and search rows carry id, name, type and the properties you asked for, and never embed type objects (C5).\nErrors share one shape (C6): {status, code, message, issues:[{path, message, hint}]}, path-addressed and naming the allowed values, so a failed call tells an agent how to repair it. Reads never fail on unknown content — anything a representation cannot express is reported in `warnings` (C11).\nEvery object read returns an `etag` derived from the tree heads plus an ETag header; mutations take `If-Match` and are advisory by default (C7). Every mutation honours `Idempotency-Key` (C8) and `?dry_run=true` (C9). Every list surface is paginated with limit=25 by default and steers you when it truncates (C10).\nSchemas are discoverable at runtime and strict-mode-compatible for constrained decoding (C12, C13): GET /v2/schemas lists the kinds, GET /v2/schemas/{kind} returns one, and GET /v2/schemas/ops/{op} returns the schema of a single PATCH op.",
+    "description": "The agent-oriented Anytype local API. Objects are AnyBlock JSON documents (pkg/lib/anyblockjson/SPEC.md) rather than block trees, so one read returns a whole editable document and one PATCH edits it.\nOne vocabulary throughout (C2): camelCase, property keys, option names, and `type` as a type key — never an id, never snake_case. Responses are compact JSON (C3); object refs are always full inline, and the default object read relabels machine-minted block ids to short doc-local suffixes — `?ids=full` returns the export shape with full ids everywhere — the backup shape, and the read to clone from (C4); list and search rows carry id, name, type and the properties you asked for, and never embed type objects (C5).\nErrors share one shape (C6): {status, code, message, issues:[{path, message, hint}]}, path-addressed and naming the allowed values, so a failed call tells an agent how to repair it. Reads never fail on unknown content — anything a representation cannot express is reported in `warnings` (C11).\nEvery object read returns an `etag` derived from the tree heads plus an ETag header; mutations take `If-Match` and are advisory by default (C7). Every mutation honours `Idempotency-Key` (C8) and `?dry_run=true` (C9). Every list surface is paginated with limit=25 by default and steers you when it truncates (C10).\nSchemas are discoverable at runtime and strict-mode-compatible for constrained decoding (C12, C13): GET /v2/schemas lists the kinds, GET /v2/schemas/{kind} returns one, and GET /v2/schemas/ops/{op} returns the schema of a single PATCH op.",
     "license": {
       "name": "Any Source Available License 1.0",
       "url": "https://github.com/anyproto/anytype-api/blob/main/LICENSE.md"
@@ -3032,106 +3032,6 @@
           }
         ],
         "summary": "Edit object (batched ops)",
-        "tags": [
-          "V2"
-        ]
-      },
-      "put": {
-        "description": "Replaces the object's content with the supplied flat AnyBlock document in one change set. Read the object with ?ids=full first: PUT takes ids literally, and a body carrying ids the object does not own — including the compact labels a DEFAULT read serves — is refused with a 400 naming the offending ids. New blocks omit their id (the server mints one). The CRDT diff is minimal iff the ids round-trip from that ?ids=full read; diffStats make an accidental full rewrite visible. Partial reads (?block= subtrees, outlines) do not PUT back. Prefer PATCH for targeted edits. If-Match is advisory (C7). System-managed objects are excluded. Honors ?dry_run=true.",
-        "operationId": "v2_put_object",
-        "parameters": [
-          {
-            "description": "Space id",
-            "in": "path",
-            "name": "space_id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Object id",
-            "in": "path",
-            "name": "object_id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Advisory etag precondition (C7)",
-            "in": "header",
-            "name": "If-Match",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Validate and report without committing",
-            "in": "query",
-            "name": "dry_run",
-            "schema": {
-              "type": "boolean"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EditResult"
-                }
-              }
-            },
-            "description": "New etag + diffStats"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            },
-            "description": "Invalid document"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            },
-            "description": "Object or space not found"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            },
-            "description": "Stale If-Match (etag_mismatch)"
-          }
-        },
-        "security": [
-          {
-            "bearerauth": []
-          }
-        ],
-        "summary": "Replace object (full AnyBlock document)",
         "tags": [
           "V2"
         ]
