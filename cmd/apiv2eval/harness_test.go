@@ -121,7 +121,7 @@ func TestWrapperArmDrivesTheProductMCPServer(t *testing.T) {
 	runner := wrapper.NewRunner(client, wrapper.NewMemoryStore())
 
 	// when
-	ts, err := newMCPToolset(context.Background(), runner, wrapper.TierSmall)
+	ts, err := newMCPToolset(context.Background(), runner, wrapper.TierSmall, editTextAsShipped)
 
 	// then
 	require.NoError(t, err)
@@ -145,6 +145,146 @@ func TestWrapperArmDrivesTheProductMCPServer(t *testing.T) {
 	assert.Contains(t, out.Text, "unknown tool")
 }
 
+// editTextSpec returns the edit_text entry one variant publishes, built over
+// the real MCP server so the bytes are the product's own.
+func editTextSpec(t *testing.T, variant editTextVariant) toolSpec {
+	t.Helper()
+	client := wrapper.NewClient("http://stub", "key")
+	client.HTTP = &http.Client{Transport: &stubTransport{handler: &stubAPI{doc: servedDoc}}}
+	ts, err := newMCPToolset(context.Background(), wrapper.NewRunner(client, wrapper.NewMemoryStore()),
+		wrapper.TierSmall, variant)
+	require.NoError(t, err)
+	t.Cleanup(func() { ts.close() })
+	for _, spec := range ts.tools() {
+		if spec.Name == "edit_text" {
+			return spec
+		}
+	}
+	t.Fatalf("the %q arm publishes no edit_text", variant)
+	return toolSpec{}
+}
+
+// The A/B's whole validity rests on this: three arms that differ in the
+// PUBLISHED edit_text definition and in nothing else. If the schema drifts
+// so that B1 stops removing anything, or if a variant reaches the runner,
+// the experiment measures something other than the surface.
+func TestTheEditTextArmsVaryThePublishedSurfaceAndNothingElse(t *testing.T) {
+	// given
+	a := editTextSpec(t, editTextAsShipped)
+	b1 := editTextSpec(t, editTextNoBlock)
+	b2 := editTextSpec(t, editTextProse)
+
+	// then — A is the shipped definition, verbatim
+	shipped, ok := wrapper.ToolByName("edit_text")
+	require.True(t, ok)
+	assert.Equal(t, shipped.Description, a.Description)
+	assert.Contains(t, string(a.Parameters), `"block"`)
+
+	// B1 drops block from the schema AND from the prose that names it
+	assert.NotContains(t, string(b1.Parameters), `"block"`,
+		"B1 must publish no block argument at all")
+	assert.NotContains(t, b1.Description, "block is optional")
+	assert.Equal(t, strings.Replace(a.Description, editTextBlockSentence, "", 1), b1.Description,
+		"B1 differs from A by exactly the removed sentence")
+
+	// B2 keeps the schema byte-identical and leads with the instruction
+	assert.JSONEq(t, string(a.Parameters), string(b2.Parameters))
+	assert.True(t, strings.HasPrefix(b2.Description, editTextNoReadFirst), "B2 leads with the instruction")
+	assert.Equal(t, editTextNoReadFirst+a.Description, b2.Description)
+
+	// and every other tool is untouched in all three
+	for _, variant := range []editTextVariant{editTextNoBlock, editTextProse} {
+		client := wrapper.NewClient("http://stub", "key")
+		client.HTTP = &http.Client{Transport: &stubTransport{handler: &stubAPI{doc: servedDoc}}}
+		ts, err := newMCPToolset(context.Background(), wrapper.NewRunner(client, wrapper.NewMemoryStore()),
+			wrapper.TierSmall, variant)
+		require.NoError(t, err)
+		defer ts.close()
+		names := make([]string, 0, len(ts.tools()))
+		for _, spec := range ts.tools() {
+			names = append(names, spec.Name)
+		}
+		assert.Equal(t, wrapper.ToolNamesForTier(wrapper.TierSmall), names,
+			"a variant may not add or drop a tool")
+	}
+}
+
+func TestTheEditTextArmsShareOneExecutor(t *testing.T) {
+	// given — the same call, snippet-only, against each arm. The server must
+	// behave identically or a difference between the arms is not
+	// attributable to what they published.
+	for _, variant := range []editTextVariant{editTextAsShipped, editTextNoBlock, editTextProse} {
+		t.Run(string("variant="+variant), func(t *testing.T) {
+			stub := &stubAPI{doc: servedDoc}
+			client := wrapper.NewClient("http://stub", "key")
+			client.HTTP = &http.Client{Transport: &stubTransport{handler: stub}}
+			ts, err := newMCPToolset(context.Background(), wrapper.NewRunner(client, wrapper.NewMemoryStore()),
+				wrapper.TierSmall, variant)
+			require.NoError(t, err)
+			defer ts.close()
+			_ = ts.call(context.Background(), "find", map[string]any{"space": "space1", "query": "Quarterly"})
+
+			// when — no block: locateBlock resolves it from the snippet
+			out := ts.call(context.Background(), "edit_text",
+				map[string]any{"object": "1", "find": "Q3", "replace": "Q4"})
+
+			// then
+			assert.False(t, out.IsError, out.Text)
+			func() {
+				stub.mu.Lock()
+				defer stub.mu.Unlock()
+				require.Len(t, stub.patches, 1)
+				assert.Contains(t, string(stub.patches[0]), `"id":"d4e5f"`,
+					"every arm resolves the snippet to the same block, server-side")
+			}()
+
+			// and a block sent to the arm that does not publish one still
+			// works: the arms vary the published surface, not the server
+			out = ts.call(context.Background(), "edit_text",
+				map[string]any{"object": "1", "find": "Q3", "replace": "Q4", "block": "d4e5f"})
+			assert.False(t, out.IsError, out.Text)
+		})
+	}
+}
+
+// locateBlock's refusals are recognised by the product's own words, so this
+// drives the real wrapper into each one rather than asserting on a string
+// the harness wrote. It is the price B1 pays for snippet-only location, and
+// a rewording must break a test, not zero a count.
+func TestSnippetRefusalsAreCountedFromTheProductsOwnText(t *testing.T) {
+	// given — "Q3" is in two blocks of this document
+	const ambiguousDoc = `{"id":"obj1","blocks":[` +
+		`{"id":"a1b2c","type":"paragraph","text":"Revenue target for Q3 is 1.2M."},` +
+		`{"id":"d4e5f","type":"paragraph","text":"Q3 review is due."}]}`
+	client := wrapper.NewClient("http://stub", "key")
+	client.HTTP = &http.Client{Transport: &stubTransport{handler: &stubAPI{doc: ambiguousDoc}}}
+	ts, err := newMCPToolset(context.Background(), wrapper.NewRunner(client, wrapper.NewMemoryStore()),
+		wrapper.TierSmall, editTextNoBlock)
+	require.NoError(t, err)
+	defer ts.close()
+	_ = ts.call(context.Background(), "find", map[string]any{"space": "space1", "query": "Quarterly"})
+
+	// when
+	ambiguous := ts.call(context.Background(), "edit_text",
+		map[string]any{"object": "1", "find": "Q3", "replace": "Q4"})
+	missing := ts.call(context.Background(), "edit_text",
+		map[string]any{"object": "1", "find": "Q9", "replace": "Q4"})
+
+	// then
+	require.True(t, ambiguous.IsError)
+	require.True(t, missing.IsError)
+	got := analyze([]callRecord{
+		{Turn: 0, Tool: "edit_text", Args: json.RawMessage(`{"object":"1","find":"Q3","replace":"Q4"}`),
+			ResultText: ambiguous.Text, IsError: true},
+		{Turn: 1, Tool: "edit_text", Args: json.RawMessage(`{"object":"1","find":"Q9","replace":"Q4"}`),
+			ResultText: missing.Text, IsError: true},
+	})
+	assert.Equal(t, 1, got.SnippetAmbiguous, "refusal was: %s", ambiguous.Text)
+	assert.Equal(t, 1, got.SnippetNoMatch, "refusal was: %s", missing.Text)
+	assert.Equal(t, 2, got.EditTextCalls)
+	assert.Equal(t, 0, got.EditTextWithBlock)
+}
+
 func TestAgentLoopRecordsCallsErrorsAndTokens(t *testing.T) {
 	// given
 	stub := &stubAPI{doc: servedDoc, refuseFirstPatch: true}
@@ -163,7 +303,7 @@ func TestAgentLoopRecordsCallsErrorsAndTokens(t *testing.T) {
 	client.HTTP = &http.Client{Transport: &recordingTransport{base: http.DefaultTransport, rec: rec}}
 	client.Backoff = func(int) time.Duration { return 0 }
 	runner := wrapper.NewRunner(client, wrapper.NewMemoryStore())
-	ts, err := newMCPToolset(context.Background(), runner, wrapper.TierSmall)
+	ts, err := newMCPToolset(context.Background(), runner, wrapper.TierSmall, editTextAsShipped)
 	require.NoError(t, err)
 	defer ts.close()
 

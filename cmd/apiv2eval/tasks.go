@@ -10,13 +10,19 @@ package main
 // table and restructure tasks are where block ids must be echoed, and the
 // deliberately ambiguous snippet in the table task is a refusal a model has
 // to repair from.
+//
+// A task declares the CAPABILITIES it cannot be done without, and the run
+// derives which cells to skip from them (capabilityTools + planCells). It
+// does not name tiers by hand: that is what let fill-table-cell run on a
+// small tier with no set_cell, where the model correctly reported the limit
+// and the matrix scored the answer as a failure.
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
 	"strings"
-
-	"github.com/anyproto/anytype-heart/core/api/wrapper"
+	"time"
 )
 
 // fixture is one attempt's freshly created object.
@@ -38,15 +44,16 @@ type task struct {
 	Intent string
 	// Arms restricts which surfaces run it (empty = both).
 	Arms []string
-	// Tiers restricts which wrapper tiers run it (empty = both). The
-	// restructure task needs delete_block, which the small tier
-	// deliberately does not serve — running it there would measure a
-	// documented omission, not a loop failure.
-	Tiers []wrapper.Tier
-	// Markdown is the fixture body; TitleStem + a per-attempt nonce is its
-	// name, so concurrent and repeated runs never edit each other's objects.
-	TitleStem string
-	Markdown  string
+	// Requires names the capabilities the task cannot be completed without.
+	// The gate is DERIVED from this against each arm's published tool set
+	// (capabilityTools, armSpec.publishedTools): a cell whose arm publishes
+	// no tool for a required capability is not run, because it asks a model
+	// to do something the surface it was handed cannot do.
+	Requires []capability
+	// Markdown is the fixture body; the name is minted per attempt by
+	// fixtureTitle, so repeated runs never edit — or find — each other's
+	// objects.
+	Markdown string
 	// Prompt is the user turn. It names the object by TITLE (the wrapper arm
 	// must find it) — the ops arm is bound to the object already.
 	Prompt func(fx *fixture) string
@@ -65,25 +72,77 @@ func (t task) runsOnArm(arm string) bool {
 	return false
 }
 
-func (t task) runsOnTier(tier wrapper.Tier) bool {
-	if len(t.Tiers) == 0 {
-		return true
+//
+// ---- capability gating ----
+//
+
+// capability is one thing a task cannot be done without, named once for both
+// surfaces. Tasks declare capabilities rather than tool names because the
+// wrapper renames the op vocabulary (setCell → set_cell, replaceText →
+// edit_text), and the gate has to ask both surfaces the same question.
+type capability string
+
+const (
+	capRead          capability = "read the document"
+	capEditText      capability = "replace text in a block"
+	capAddBlocks     capability = "add blocks"
+	capSetCell       capability = "write a table cell"
+	capDeleteBlock   capability = "delete a block"
+	capSetProperties capability = "set a property"
+)
+
+// capabilityTools names the tool each surface would use for each capability
+// — the ONE place the two vocabularies meet. A hand-kept list of which task
+// runs where is what let fill-table-cell run on a tier with no set_cell:
+// the model recognised the limit and said so, and the matrix scored six
+// guaranteed losses into the headline rate (§8.31's drift class, one level
+// up from the schema).
+var capabilityTools = map[capability]map[string]string{
+	capRead:          {surfaceWrapper: "read", surfaceOps: "read_object"},
+	capEditText:      {surfaceWrapper: "edit_text", surfaceOps: "replaceText"},
+	capAddBlocks:     {surfaceWrapper: "add_blocks", surfaceOps: "insertBlocks"},
+	capSetCell:       {surfaceWrapper: "set_cell", surfaceOps: "setCell"},
+	capDeleteBlock:   {surfaceWrapper: "delete_block", surfaceOps: "deleteBlock"},
+	capSetProperties: {surfaceWrapper: "set_properties", surfaceOps: "setProperties"},
+}
+
+// capabilityTool returns the surface's tool for a capability.
+func capabilityTool(c capability, surface string) (string, error) {
+	bySurface, ok := capabilityTools[c]
+	if !ok {
+		return "", fmt.Errorf("capability %q is not in capabilityTools", c)
 	}
-	for _, x := range t.Tiers {
-		if x == tier {
-			return true
+	tool, ok := bySurface[surface]
+	if !ok {
+		return "", fmt.Errorf("capability %q names no tool on the %s surface", c, surface)
+	}
+	return tool, nil
+}
+
+// checkTaskGating verifies every declared capability resolves on every
+// surface, at startup rather than an hour into a run: an unmapped capability
+// would otherwise skip a cell silently, which reads in the report exactly
+// like a cell that was deliberately not measured.
+func checkTaskGating() error {
+	for _, t := range tasks() {
+		for _, c := range t.Requires {
+			for _, surface := range []string{surfaceWrapper, surfaceOps} {
+				if _, err := capabilityTool(c, surface); err != nil {
+					return fmt.Errorf("task %s: %w", t.Id, err)
+				}
+			}
 		}
 	}
-	return false
+	return nil
 }
 
 // tasks is the table.
 func tasks() []task {
 	return []task{
 		{
-			Id:        "edit-one-word",
-			Intent:    "change one word in a document",
-			TitleStem: "Quarterly plan",
+			Id:       "edit-one-word",
+			Intent:   "change one word in a document",
+			Requires: []capability{capEditText},
 			Markdown: "## Summary\n" +
 				"Revenue target for Q3 is 1.2M.\n\n" +
 				"## Owner\n" +
@@ -106,9 +165,9 @@ func tasks() []task {
 			},
 		},
 		{
-			Id:        "append-section",
-			Intent:    "add a section of content",
-			TitleStem: "Migration notes",
+			Id:       "append-section",
+			Intent:   "add a section of content",
+			Requires: []capability{capAddBlocks},
 			Markdown: "## Overview\n" +
 				"The migration runs in three stages.\n",
 			Prompt: func(fx *fixture) string {
@@ -146,9 +205,9 @@ func tasks() []task {
 			},
 		},
 		{
-			Id:        "fill-table-cell",
-			Intent:    "fill a table cell",
-			TitleStem: "Release checklist",
+			Id:       "fill-table-cell",
+			Intent:   "fill a table cell",
+			Requires: []capability{capSetCell},
 			Markdown: "## Components\n\n" +
 				"| Component | Status |\n" +
 				"| --- | --- |\n" +
@@ -200,10 +259,9 @@ func tasks() []task {
 			},
 		},
 		{
-			Id:        "restructure-section",
-			Intent:    "replace a subtree with different content",
-			Tiers:     []wrapper.Tier{wrapper.TierLarge}, // small tier has no delete_block, by design
-			TitleStem: "Project status",
+			Id:       "restructure-section",
+			Intent:   "replace a subtree with different content",
+			Requires: []capability{capDeleteBlock, capAddBlocks},
 			Markdown: "## Next steps\n" +
 				"- Ship the beta\n" +
 				"- Collect feedback\n" +
@@ -234,9 +292,9 @@ func tasks() []task {
 			},
 		},
 		{
-			Id:        "set-property",
-			Intent:    "set a property value",
-			TitleStem: "Vendor review",
+			Id:       "set-property",
+			Intent:   "set a property value",
+			Requires: []capability{capSetProperties},
 			Markdown: "## Scope\n" +
 				"Three vendors were compared on price and support.\n",
 			Prompt: func(fx *fixture) string {
@@ -254,9 +312,9 @@ func tasks() []task {
 			},
 		},
 		{
-			Id:        "read-then-edit",
-			Intent:    "multi-step: a read is required before the edit is knowable",
-			TitleStem: "Handover notes",
+			Id:       "read-then-edit",
+			Intent:   "multi-step: a read is required before the edit is knowable",
+			Requires: []capability{capRead, capEditText},
 			Markdown: "## Meeting notes\n" +
 				"Owner: Priya Raman\n" +
 				"Next review: 12 May\n",
@@ -264,16 +322,20 @@ func tasks() []task {
 				return fmt.Sprintf("The owner of the note titled %q has changed to Dana Whitfield. "+
 					"Update the note so the Owner line names the new owner instead of the old one.", fx.Title)
 			},
+			// the two lines of the fixture are ONE block: markdown without a
+			// blank line between them imports as a single paragraph holding a
+			// soft break. The check therefore reads LINES, not blocks — the
+			// first version compared whole block texts and failed a model that
+			// had done the task exactly right, which is the same defect class
+			// as running a task on a tier that cannot do it.
 			Check: func(doc *document, fx *fixture) checkResult {
-				if _, ok := doc.findBlock(func(b docBlock) bool {
-					return strings.TrimSpace(b.Text) == "Owner: Dana Whitfield"
-				}); !ok {
-					return checkResult{Detail: "no block reads \"Owner: Dana Whitfield\": " + describeBlocks(doc)}
+				if !containsLine(doc, "Owner: Dana Whitfield") {
+					return checkResult{Detail: "no line reads \"Owner: Dana Whitfield\": " + describeBlocks(doc)}
 				}
 				if strings.Contains(doc.allText(), "Priya Raman") {
 					return checkResult{Detail: "the old owner is still named"}
 				}
-				if !strings.Contains(doc.allText(), "Next review: 12 May") {
+				if !containsLine(doc, "Next review: 12 May") {
 					return checkResult{Detail: "collateral damage: the review line was changed"}
 				}
 				return checkResult{OK: true}
@@ -284,13 +346,75 @@ func tasks() []task {
 
 // setupFixture creates one attempt's object.
 func setupFixture(ctx context.Context, client *apiClient, spaceId string, t task) (*fixture, error) {
-	nonce := newNonce(3)
-	title := fmt.Sprintf("%s %s", t.TitleStem, nonce)
+	title := fixtureTitle()
 	id, err := client.createObject(ctx, spaceId, "page", title, t.Markdown)
 	if err != nil {
 		return nil, fmt.Errorf("create fixture for %s: %w", t.Id, err)
 	}
-	return &fixture{ObjectId: id, Title: title, Extra: map[string]string{"nonce": nonce}}, nil
+	return &fixture{ObjectId: id, Title: title, Extra: map[string]string{}}, nil
+}
+
+// titleSyllables are the pieces fixtureTitle builds a name out of: 15
+// consonants × 5 vowels, four syllables, always eight letters.
+const (
+	titleConsonants = "bdfgjklmnprstvz"
+	titleVowels     = "aeiou"
+	titleSyllables  = 4
+)
+
+// fixtureTitle mints one attempt's object name as a coined single-token
+// codename — never a shared stem plus a nonce.
+//
+// The API has no object DELETE, so every attempt's fixture stays in the eval
+// space forever, and search matches a query TOKEN-wise: measured against the
+// live server, `find "Quarterly plan 84353d"` returned all five leftover
+// "Quarterly plan …" notes, and `"Migration notes"` matched "Handover notes"
+// on the word they share. Across one aborted run the same task's find went
+// 1 → 2 → 3 matches, so a long run's success rate would decay for a reason
+// that is the harness's, not the API's. A per-run space fixes only the
+// cross-run half of that: a run makes ~17 fixtures per task itself.
+//
+// One coined token shares nothing with any other fixture. Two properties of
+// the server's search make it exact, both measured rather than assumed:
+// there is no fuzzy matching (Zafuriko and Zafurika each return only
+// themselves) and there IS prefix matching (Zafurik returns both), so the
+// names are fixed-length — one can be a prefix of another only by being
+// equal. 75 syllables to the fourth is ~32M names.
+//
+// What this deliberately gives up: find becomes an unambiguous lookup. How a
+// model picks among several plausible matches is a real question, and it is
+// now a question a run has to ASK rather than one it answers by accident
+// with whatever previous attempts left lying around.
+func fixtureTitle() string {
+	raw := make([]byte, titleSyllables*2)
+	if _, err := rand.Read(raw); err != nil {
+		// a colliding title costs the run its find isolation, nothing else
+		nano := time.Now().UnixNano()
+		for i := range raw {
+			raw[i] = byte(nano >> (uint(i) * 8))
+		}
+	}
+	name := make([]byte, 0, titleSyllables*2)
+	for i := 0; i < titleSyllables; i++ {
+		name = append(name,
+			titleConsonants[int(raw[i*2])%len(titleConsonants)],
+			titleVowels[int(raw[i*2+1])%len(titleVowels)])
+	}
+	return strings.ToUpper(string(name[:1])) + string(name[1:])
+}
+
+// containsLine reports whether any block holds a LINE equal to want. A
+// served block's text can carry soft breaks, so a whole-text comparison
+// asks for a document shape the markdown importer does not produce.
+func containsLine(doc *document, want string) bool {
+	for _, b := range doc.Blocks {
+		for _, line := range strings.Split(b.Text, "\n") {
+			if strings.TrimSpace(line) == want {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // describeBlocks renders a document compactly for a failing check's detail.

@@ -279,3 +279,123 @@ func TestAnalyzeCountsTheOpDiscriminator(t *testing.T) {
 	assert.Equal(t, 1, got.OpConstAbsent)
 	assert.Equal(t, 1, got.OpConstWrong, "a wrapper tool without an op field must not be counted")
 }
+
+func TestAnalyzeCountsTheOptionalBlockAndTheReadsItCost(t *testing.T) {
+	t.Run("the shape gemma4:e2b produced on 3 of 3 attempts: outline, full, edit with block", func(t *testing.T) {
+		// given
+		calls := []callRecord{
+			{Turn: 0, Tool: "find", Args: json.RawMessage(`{"space":"s","query":"Zafuriko"}`),
+				ResultText: "1. Zafuriko (page)\n1 matches"},
+			{Turn: 1, Tool: "read", Args: json.RawMessage(`{"object":"1","mode":"outline"}`), ResultText: servedDoc},
+			{Turn: 2, Tool: "read", Args: json.RawMessage(`{"object":"1","mode":"full"}`), ResultText: servedDoc},
+			call(3, "edit_text", `{"object":"1","block":"d4e5f","find":"Q3","replace":"Q4"}`),
+		}
+
+		// when
+		got := analyze(calls)
+
+		// then
+		assert.Equal(t, 1, got.EditTextCalls)
+		assert.Equal(t, 1, got.EditTextWithBlock)
+		require.Len(t, got.WastedReads, 1, "the outline was superseded by the full read")
+		assert.Equal(t, wasteOutlineThenFull, got.WastedReads[0].Kind)
+		assert.Equal(t, 1, got.FindCalls)
+		assert.Equal(t, 0, got.FindMultiMatch)
+		assert.Equal(t, 1, got.MaxFindMatches)
+	})
+
+	t.Run("a full read before a snippet-only edit is the read the A/B tries to remove", func(t *testing.T) {
+		// given
+		calls := []callRecord{
+			{Turn: 0, Tool: "read", Args: json.RawMessage(`{"object":"1","mode":"outline"}`), ResultText: servedDoc},
+			{Turn: 1, Tool: "read", Args: json.RawMessage(`{"object":"1","mode":"full"}`), ResultText: servedDoc},
+			call(2, "edit_text", `{"object":"1","find":"Q3","replace":"Q4"}`),
+		}
+
+		// when
+		got := analyze(calls)
+
+		// then
+		require.Len(t, got.WastedReads, 2)
+		assert.Equal(t, wasteOutlineThenFull, got.WastedReads[0].Kind)
+		assert.Equal(t, wasteReadBeforeSnippetEdit, got.WastedReads[1].Kind)
+		assert.Equal(t, 0, got.EditTextWithBlock)
+	})
+
+	t.Run("a read that fed an earlier write is not waste", func(t *testing.T) {
+		// given — the read served the add_blocks anchor; the later snippet
+		// edit did not need it
+		calls := []callRecord{
+			{Turn: 0, Tool: "read", Args: json.RawMessage(`{"object":"1","mode":"full"}`), ResultText: servedDoc},
+			call(1, "add_blocks", `{"object":"1","after":"d4e5f","markdown":"## Risks"}`),
+			call(2, "edit_text", `{"object":"1","find":"Q3","replace":"Q4"}`),
+		}
+
+		// when
+		got := analyze(calls)
+
+		// then
+		assert.Empty(t, got.WastedReads)
+	})
+
+	t.Run("find matches are counted so a contaminated run says so", func(t *testing.T) {
+		// given — what the shared-stem fixtures produced: one more leftover
+		// match on every attempt of a run
+		calls := []callRecord{
+			{Turn: 0, Tool: "find", Args: json.RawMessage(`{"space":"s","query":"Quarterly plan 84353d"}`),
+				ResultText: "1. Quarterly plan 84353d (page)\n2. Quarterly plan 1425d9 (page)\n3 matches"},
+		}
+
+		// when
+		got := analyze(calls)
+
+		// then
+		assert.Equal(t, 1, got.FindCalls)
+		assert.Equal(t, 1, got.FindMultiMatch)
+		assert.Equal(t, 3, got.MaxFindMatches)
+	})
+}
+
+func TestAnalyzeCountsIdsWrittenIntoTheObjectArgument(t *testing.T) {
+	// given — the two ways a model puts an id in the one slot its tool
+	// offers: a block label served by a read (seen the first time an arm
+	// published no block argument), and the space id (seen when the harness
+	// named one without naming its argument)
+	const spaceId = "bafyreispace.abc"
+	calls := []callRecord{
+		{Turn: 0, Tool: "read", Args: json.RawMessage(`{"object":"` + spaceId + `","mode":"full"}`),
+			ResultText: "no working session for object", IsError: true},
+		{Turn: 1, Tool: "find", Args: json.RawMessage(`{"space":"` + spaceId + `","query":"Zafuriko"}`),
+			ResultText: "1. Zafuriko (page)\n1 matches"},
+		{Turn: 2, Tool: "read", Args: json.RawMessage(`{"object":"1","mode":"full"}`), ResultText: servedDoc},
+		call(3, "edit_text", `{"object":"d4e5f","find":"Q3","replace":"Q4"}`),
+	}
+
+	// when
+	got := analyze(calls)
+
+	// then
+	assert.Equal(t, 1, got.ObjectArgIsBlockRef, "d4e5f is a block the read served, not an object")
+	assert.Equal(t, 1, countSpaceIdAsObject(calls, spaceId))
+	assert.Equal(t, 0, countSpaceIdAsObject(calls, "some-other-space"))
+}
+
+func TestWastedReadsDoNotDependOnTheEditSucceeding(t *testing.T) {
+	// given — the shape arm B1 produced live: the model read anyway, had no
+	// block argument to put the label in, and put it in `object` instead.
+	// Counting only successful edits would hide that read on exactly the arm
+	// the experiment is trying to measure.
+	calls := []callRecord{
+		{Turn: 0, Tool: "read", Args: json.RawMessage(`{"object":"1","mode":"full"}`), ResultText: servedDoc},
+		{Turn: 1, Tool: "edit_text", Args: json.RawMessage(`{"object":"d4e5f","find":"Q3","replace":"Q4"}`),
+			ResultText: `object "d4e5f" not found in space "s1"`, IsError: true},
+	}
+
+	// when
+	got := analyze(calls)
+
+	// then
+	require.Len(t, got.WastedReads, 1)
+	assert.Equal(t, wasteReadBeforeSnippetEdit, got.WastedReads[0].Kind)
+	assert.Equal(t, 1, got.ObjectArgIsBlockRef)
+}

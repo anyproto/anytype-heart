@@ -15,11 +15,28 @@ package main
 //     resolve an exact id or a unique suffix, so "close" has grades.
 //  3. After a refusal, did the next turn fix the field the error named, or
 //     repeat itself? A refusal a model cannot act on is only half a fix.
+//
+// Two more, added for the edit_text A/B (toolset.go):
+//
+//  4. Did the model fill edit_text's optional `block`, and what did that
+//     cost? EditTextWithBlock is the quantity the three arms vary the
+//     published surface to move; SnippetAmbiguous is the trade B1 buys it
+//     with — a refusal that names candidate blocks, which under B1 the model
+//     has no argument to act on.
+//  5. Wasted reads: a read whose result the model did not need. An outline
+//     immediately followed by a full read of the same object (outline
+//     carries text only on headings, so a snippet cannot be located in it),
+//     and a full read that precedes an edit_text supplying no block. The
+//     second is only waste where the prompt already carries the text to
+//     find — on read-then-edit the model genuinely must read first — so the
+//     two kinds are counted apart and never summed into one number.
 
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -76,6 +93,34 @@ const (
 	repairAbandoned   = "abandoned"
 )
 
+// wastedRead is one read whose result the model did not need.
+type wastedRead struct {
+	Turn int    `json:"turn"`
+	Tool string `json:"tool"`
+	Kind string `json:"kind"`
+}
+
+// wasted-read kinds.
+const (
+	// wasteOutlineThenFull: an outline read immediately followed by a full
+	// read of the same object. Outline carries text only on headings, so a
+	// model that needs a snippet's block pays for both.
+	wasteOutlineThenFull = "outline_then_full"
+	// wasteReadBeforeSnippetEdit: a full read whose next write is an
+	// edit_text that supplied no block — the snippet located the block, and
+	// the document the read served went unused for that purpose.
+	wasteReadBeforeSnippetEdit = "full_read_before_snippet_edit"
+)
+
+// locateBlock's two refusals, recognised by the product's own words. A
+// harness test drives the real wrapper into each one, so a rewording breaks
+// the test rather than silently zeroing the count.
+const (
+	snippetNoMatchText   = "no block contains"
+	snippetAmbiguousText = "retry with block naming one of"
+	snippetTooManyText   = "provide more context to make the match unique"
+)
+
 // signals is the instrumented summary of one attempt.
 type signals struct {
 	InsertBlocksCalls   int          `json:"insert_blocks_calls"`
@@ -95,6 +140,32 @@ type signals struct {
 	Refs          []refUse `json:"refs,omitempty"`
 	Repairs       []repair `json:"repairs,omitempty"`
 	MalformedArgs int      `json:"malformed_args"`
+
+	// EditTextCalls / EditTextWithBlock are the edit_text A/B's quantity:
+	// how often the model filled an argument it did not need. Under the
+	// arm that publishes no block, a non-zero WithBlock is a field the
+	// model supplied without being shown it (the runner still accepts it —
+	// the arms vary the published surface, not the server).
+	EditTextCalls     int `json:"edit_text_calls"`
+	EditTextWithBlock int `json:"edit_text_with_block"`
+	// SnippetAmbiguous / SnippetNoMatch count locateBlock's refusals — the
+	// price of snippet-only location, which B1 pays in full.
+	SnippetAmbiguous int          `json:"snippet_ambiguous"`
+	SnippetNoMatch   int          `json:"snippet_no_match"`
+	WastedReads      []wastedRead `json:"wasted_reads,omitempty"`
+	// FindCalls / FindMultiMatch watch the fixture isolation: a find that
+	// returns more than one object means the run is matching its own
+	// leftovers again, which decays a rate for a reason that is not the API.
+	FindCalls      int `json:"find_calls"`
+	FindMultiMatch int `json:"find_multi_match"`
+	MaxFindMatches int `json:"max_find_matches"`
+	// ObjectArgIsBlockRef / SpaceIdAsObject count the two ways an id lands
+	// in the wrong argument. Both are "the model had an id and one slot to
+	// put it in": a block label written as `object` (seen the first time an
+	// arm published no block argument), and a space id written as `object`
+	// (seen when the harness handed one over naming no argument for it).
+	ObjectArgIsBlockRef int `json:"object_arg_is_block_ref"`
+	SpaceIdAsObject     int `json:"space_id_as_object"`
 }
 
 // opToolNames is the ops arm's tool set — the names that are also op
@@ -170,6 +241,40 @@ func analyze(calls []callRecord) signals {
 		if call.IsError && strings.Contains(call.ResultText, "does not take") {
 			s.UnknownArgCalls++
 		}
+
+		// H4 — the edit_text A/B: the optional field, and what refusing to
+		// guess costs when it is absent
+		if call.Tool == "edit_text" {
+			s.EditTextCalls++
+			block, _ := args["block"].(string)
+			if block != "" {
+				s.EditTextWithBlock++
+			}
+			// only a call that named NO block can earn a snippet-location
+			// refusal. The server's own multiple-matches text is nearly the
+			// wrapper's, and it fires on the explicit-block path too — where
+			// it says something else entirely about the same words.
+			if block == "" {
+				switch {
+				case strings.Contains(call.ResultText, snippetAmbiguousText),
+					strings.Contains(call.ResultText, snippetTooManyText):
+					s.SnippetAmbiguous++
+				case strings.Contains(call.ResultText, snippetNoMatchText):
+					s.SnippetNoMatch++
+				}
+			}
+		}
+		if call.Tool == "find" && !call.IsError {
+			s.FindCalls++
+			if n, ok := findMatchCount(call.ResultText); ok {
+				if n > s.MaxFindMatches {
+					s.MaxFindMatches = n
+				}
+				if n > 1 {
+					s.FindMultiMatch++
+				}
+			}
+		}
 		if opToolNames[call.Tool] {
 			switch op, present := args["op"]; {
 			case !present:
@@ -202,6 +307,13 @@ func analyze(calls []callRecord) signals {
 			})
 		}
 
+		// an `object` argument that is neither a handle nor an object id, but
+		// a block reference a read served: the id the model had, in the only
+		// id-shaped slot its tool offered
+		if target, ok := args["object"].(string); ok && target != "" && !isHandleLike(target) && everServed[target] {
+			s.ObjectArgIsBlockRef++
+		}
+
 		// a read REFRESHES the served vocabulary for everything after it
 		if readingTools[call.Tool] && !call.IsError {
 			ids := servedIds(call.ResultText)
@@ -223,7 +335,125 @@ func analyze(calls []callRecord) signals {
 		}
 	}
 	sort.SliceStable(s.Refs, func(i, j int) bool { return s.Refs[i].Turn < s.Refs[j].Turn })
+	s.WastedReads = wastedReads(calls)
 	return s
+}
+
+// wastedReads finds the reads whose result the model did not need. Both
+// kinds are structural — an outline superseded by a full read of the same
+// object, and a full read followed by an edit that located its block from
+// the snippet — so neither depends on judging what the model "meant".
+func wastedReads(calls []callRecord) []wastedRead {
+	var out []wastedRead
+	counted := map[int]bool{}
+	for i, call := range calls {
+		if !readingTools[call.Tool] || call.IsError || i+1 >= len(calls) {
+			continue
+		}
+		next := calls[i+1]
+		if !readingTools[next.Tool] || next.IsError {
+			continue
+		}
+		if readIsOutline(call) && !readIsOutline(next) && readTarget(call) == readTarget(next) {
+			counted[i] = true
+			out = append(out, wastedRead{Turn: call.Turn, Tool: call.Tool, Kind: wasteOutlineThenFull})
+		}
+	}
+	for i, call := range calls {
+		// the edit's OUTCOME is deliberately not a condition: whether the
+		// model needed the read to compose the call is answered by the call's
+		// arguments. Requiring success would undercount exactly on the arm
+		// whose edits fail most, which is the arm the experiment is about.
+		if call.Tool != "edit_text" {
+			continue
+		}
+		var args map[string]any
+		if json.Unmarshal(call.Args, &args) != nil {
+			continue
+		}
+		if block, _ := args["block"].(string); block != "" {
+			continue
+		}
+		// walk back to the read that fed this edit, past nothing but reads:
+		// a read separated from the edit by another write served that write
+		for j := i - 1; j >= 0; j-- {
+			prior := calls[j]
+			if !readingTools[prior.Tool] {
+				break
+			}
+			if prior.IsError || readIsOutline(prior) || counted[j] {
+				continue
+			}
+			counted[j] = true
+			out = append(out, wastedRead{Turn: prior.Turn, Tool: prior.Tool, Kind: wasteReadBeforeSnippetEdit})
+			break
+		}
+	}
+	sort.SliceStable(out, func(i, j int) bool { return out[i].Turn < out[j].Turn })
+	return out
+}
+
+// countSpaceIdAsObject counts calls that passed the SPACE id where an object
+// belongs. The harness's own preamble caused this once — it named the space
+// id without naming the argument it belongs to — so the count has to survive
+// the fix that was supposed to end it, or nobody learns whether it did.
+func countSpaceIdAsObject(calls []callRecord, spaceId string) int {
+	n := 0
+	for _, call := range calls {
+		var args map[string]any
+		if json.Unmarshal(call.Args, &args) != nil {
+			continue
+		}
+		if target, _ := args["object"].(string); target == spaceId {
+			n++
+		}
+	}
+	return n
+}
+
+// readIsOutline reports whether a read asked for the outline shape — the
+// wrapper spells it mode=outline, the ops arm outline=true.
+func readIsOutline(call callRecord) bool {
+	var args map[string]any
+	if json.Unmarshal(call.Args, &args) != nil {
+		return false
+	}
+	if mode, _ := args["mode"].(string); mode == "outline" {
+		return true
+	}
+	outline, _ := args["outline"].(bool)
+	return outline
+}
+
+// readTarget names the object a read addressed; the ops arm's read_object is
+// bound to one object and names none.
+func readTarget(call callRecord) string {
+	var args map[string]any
+	if json.Unmarshal(call.Args, &args) != nil {
+		return ""
+	}
+	target, _ := args["object"].(string)
+	return target
+}
+
+// findMatchCountRe reads the count off find's own summary line ("3 matches",
+// "12 matches — showing 10; narrow with …").
+var findMatchCountRe = regexp.MustCompile(`(?m)^(\d+) match`)
+
+// findMatchCount returns how many objects a find reported.
+func findMatchCount(text string) (int, bool) {
+	if strings.Contains(text, "no matches") {
+		return 0, true
+	}
+	m := findMatchCountRe.FindStringSubmatch(text)
+	if m == nil {
+		return 0, false
+	}
+	n, err := strconv.Atoi(m[1])
+	if err != nil {
+		return 0, false
+	}
+	return n, true
 }
 
 // collectIdPaths walks a decoded payload and returns every `id` key in it,

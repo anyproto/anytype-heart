@@ -22,7 +22,7 @@ func TestSummaryExcludesEnvironmentFailuresFromTheRate(t *testing.T) {
 	}
 
 	// when
-	got := buildSummary("run1", attempts, options{n: 3, maxTurns: 8})
+	got := buildSummary("run1", attempts, nil, options{n: 3, maxTurns: 8})
 
 	// then
 	assert.Contains(t, got, "1/2")
@@ -55,7 +55,7 @@ func TestSummaryQuotesAFailingTranscriptAndItsRefusals(t *testing.T) {
 	}
 
 	// when
-	got := buildSummary("run1", []attemptRecord{failing}, options{n: 1, maxTurns: 8})
+	got := buildSummary("run1", []attemptRecord{failing}, nil, options{n: 1, maxTurns: 8})
 
 	// then
 	assert.Contains(t, got, "One failing transcript per (arm, task)")
@@ -77,7 +77,7 @@ func TestSummaryReportsTheInsertBlocksControlSideBySide(t *testing.T) {
 	}}
 
 	// when
-	got := buildSummary("run1", attempts, options{n: 1, maxTurns: 8})
+	got := buildSummary("run1", attempts, nil, options{n: 1, maxTurns: 8})
 
 	// then
 	require.Contains(t, got, "H1 — does the model emit an id where the schema does not show one?")
@@ -88,7 +88,7 @@ func TestSummaryReportsTheInsertBlocksControlSideBySide(t *testing.T) {
 func TestSummaryHandlesAnEmptyRun(t *testing.T) {
 	// when — an interrupted run before its first attempt must still write a
 	// summary rather than panic
-	got := buildSummary("run1", nil, options{n: 3, maxTurns: 8})
+	got := buildSummary("run1", nil, nil, options{n: 3, maxTurns: 8})
 
 	// then
 	assert.Contains(t, got, "attempts: 0")

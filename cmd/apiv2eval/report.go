@@ -31,12 +31,25 @@ type cellStats struct {
 func (c cellStats) counted() int { return c.attempts - c.env }
 
 // buildSummary renders the whole report.
-func buildSummary(runId string, attempts []attemptRecord, opt options) string {
+func buildSummary(runId string, attempts []attemptRecord, skipped []skippedCell, opt options) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "API v2 small-model evaluation — run %s\n", runId)
 	fmt.Fprintf(&b, "attempts per cell (n): %d · turn budget: %d · temperature: %.2f\n",
 		opt.n, opt.maxTurns, opt.temperature)
 	fmt.Fprintf(&b, "attempts: %d\n\n", len(attempts))
+
+	// the skipped cells lead, before any rate: a rate over a matrix with
+	// holes in it means something different from a rate over a full one, and
+	// the reader has to know which they are looking at
+	b.WriteString("## Cells not run\n\n")
+	if len(skipped) == 0 {
+		b.WriteString("(none — every arm publishes a tool for every capability its tasks require)\n")
+	} else {
+		for _, s := range skipped {
+			fmt.Fprintf(&b, "%-14s %-14s %-16s — %s\n", s.Model, s.Arm, s.Task, s.Reason)
+		}
+	}
+	b.WriteString("\n")
 
 	byCell := map[cellKey]*cellStats{}
 	byArm := map[cellKey]*cellStats{}
@@ -150,6 +163,73 @@ func buildSummary(runId string, attempts []attemptRecord, opt options) string {
 	}
 	if wrongTarget > 0 {
 		fmt.Fprintf(&b, "\nattempts that wrote to an object other than their fixture: %d\n", wrongTarget)
+	}
+
+	b.WriteString("\n## H4 — edit_text's optional `block`: does the model fill a field it is shown?\n")
+	b.WriteString("(the ab/… arms differ ONLY in the published edit_text definition; the runner behind them is identical,\n")
+	b.WriteString(" so a block sent to an arm that does not publish one still works and is still counted here)\n\n")
+	fmt.Fprintf(&b, "%-14s %-14s %10s %10s %10s %12s %10s %14s\n",
+		"model", "arm", "edit_text", "…w/ block", "ambiguous", "no-match", "wasted", "…of which O→F")
+	type abStats struct {
+		calls, withBlock, ambiguous, noMatch int
+		outlineThenFull, readBeforeEdit      int
+	}
+	ab := map[cellKey]*abStats{}
+	for _, a := range attempts {
+		k := cellKey{a.Model, a.Arm, ""}
+		s := ab[k]
+		if s == nil {
+			s = &abStats{}
+			ab[k] = s
+		}
+		s.calls += a.Signals.EditTextCalls
+		s.withBlock += a.Signals.EditTextWithBlock
+		s.ambiguous += a.Signals.SnippetAmbiguous
+		s.noMatch += a.Signals.SnippetNoMatch
+		for _, w := range a.Signals.WastedReads {
+			switch w.Kind {
+			case wasteOutlineThenFull:
+				s.outlineThenFull++
+			case wasteReadBeforeSnippetEdit:
+				s.readBeforeEdit++
+			}
+		}
+	}
+	for _, k := range sortedABKeys(ab) {
+		s := ab[k]
+		fmt.Fprintf(&b, "%-14s %-14s %10d %10d %10d %12d %10d %14d\n",
+			k.model, k.arm, s.calls, s.withBlock, s.ambiguous, s.noMatch,
+			s.outlineThenFull+s.readBeforeEdit, s.outlineThenFull)
+	}
+	b.WriteString("\nwasted reads are counted apart, never summed into a judgment:\n")
+	b.WriteString("  " + wasteOutlineThenFull + " — an outline read superseded by a full read of the same object\n")
+	b.WriteString("  " + wasteReadBeforeSnippetEdit + " — a full read before an edit_text that located its block from the snippet;\n")
+	b.WriteString("    on read-then-edit that read is NOT waste (the model must learn the old text), on edit-one-word it is\n")
+
+	blockAsObject, spaceAsObject := 0, 0
+	for _, a := range attempts {
+		blockAsObject += a.Signals.ObjectArgIsBlockRef
+		spaceAsObject += a.Signals.SpaceIdAsObject
+	}
+	if blockAsObject+spaceAsObject > 0 {
+		b.WriteString("\n## `object` arguments that were not objects\n\n")
+		fmt.Fprintf(&b, "a block reference a read served, passed as object: %d\n", blockAsObject)
+		fmt.Fprintf(&b, "the SPACE id passed as object: %d\n", spaceAsObject)
+		b.WriteString("(both are one id and one slot to put it in — the second is the shape the harness's own preamble invited)\n")
+	}
+
+	findCalls, multi, maxMatches := 0, 0, 0
+	for _, a := range attempts {
+		findCalls += a.Signals.FindCalls
+		multi += a.Signals.FindMultiMatch
+		if a.Signals.MaxFindMatches > maxMatches {
+			maxMatches = a.Signals.MaxFindMatches
+		}
+	}
+	if findCalls > 0 {
+		fmt.Fprintf(&b, "\nfixture isolation: %d/%d find calls returned more than one object (most matches seen: %d)\n",
+			multi, findCalls, maxMatches)
+		b.WriteString("(fixtures are never deleted, so anything above zero means a run is finding its own leftovers)\n")
 	}
 
 	recovered, withErrors := 0, 0
@@ -339,6 +419,15 @@ func sortedCellKeys(m map[cellKey]*cellStats) []cellKey {
 }
 
 func sortedIntCellKeys(m map[cellKey]*[4]int) []cellKey {
+	keys := make([]cellKey, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sortCellKeys(keys)
+	return keys
+}
+
+func sortedABKeys[T any](m map[cellKey]*T) []cellKey {
 	keys := make([]cellKey, 0, len(m))
 	for k := range m {
 		keys = append(keys, k)

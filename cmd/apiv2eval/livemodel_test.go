@@ -36,7 +36,7 @@ func TestLiveModelDrivesTheTierSmallToolSet(t *testing.T) {
 	client := wrapper.NewClient("http://stub", "key")
 	client.HTTP = &http.Client{Transport: &recordingTransport{base: &stubTransport{handler: &stubAPI{doc: servedDoc}}, rec: rec}}
 	runner := wrapper.NewRunner(client, wrapper.NewMemoryStore())
-	ts, err := newMCPToolset(context.Background(), runner, wrapper.TierSmall)
+	ts, err := newMCPToolset(context.Background(), runner, wrapper.TierSmall, editTextAsShipped)
 	require.NoError(t, err)
 	defer ts.close()
 

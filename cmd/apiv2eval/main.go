@@ -18,6 +18,14 @@
 //	apiv2eval -models gemma4:e2b -arms ops  # one cell
 //	apiv2eval -list                         # print the matrix and exit
 //
+// The ab/… arms are the edit_text A/B (toolset.go): three surfaces over the
+// same tasks that differ ONLY in the edit_text definition the model is
+// shown. They are not in the default arm list — mixing them into the matrix
+// would average three surfaces into one headline rate — so the experiment is
+// its own run:
+//
+//	apiv2eval -arms ab/a-shipped,ab/b1-noblock,ab/b2-prose -n 5
+//
 // Configuration comes from the repo's .env: ANYTYPE_API_URL, ANYTYPE_API_KEY
 // and OLLAMA_BASE_URL (the OpenAI-compatible model endpoint). The API must
 // be running; the harness refuses to start otherwise, naming which of the
@@ -33,6 +41,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -80,7 +89,8 @@ func run() error {
 	var opt options
 	flag.StringVar(&opt.envFile, "env", ".env", "file holding ANYTYPE_API_URL / ANYTYPE_API_KEY / OLLAMA_BASE_URL")
 	flag.StringVar(&opt.models, "models", "gemma4:e2b,gemma4:e4b", "comma-separated model ids to evaluate")
-	flag.StringVar(&opt.arms, "arms", "wrapper/small,wrapper/large,ops", "comma-separated surfaces: wrapper/small, wrapper/large, ops")
+	flag.StringVar(&opt.arms, "arms", strings.Join(defaultArms, ","),
+		"comma-separated surfaces: "+strings.Join(allArms, ", "))
 	flag.StringVar(&opt.taskFilter, "tasks", "", "comma-separated task ids (default: all)")
 	flag.IntVar(&opt.n, "n", 3, "attempts per cell — report this number, never present one sample as a rate")
 	flag.IntVar(&opt.maxTurns, "max-turns", 8, "turn budget per attempt")
@@ -118,9 +128,16 @@ func run() error {
 	if len(models) == 0 {
 		return fmt.Errorf("no models selected")
 	}
+	if err := checkTaskGating(); err != nil {
+		return err
+	}
+	cells, skipped, err := planCells(models, arms, selected)
+	if err != nil {
+		return err
+	}
 
 	if opt.list {
-		printMatrix(os.Stdout, models, arms, selected, opt.n)
+		printMatrix(os.Stdout, models, arms, selected, cells, skipped, opt.n)
 		return nil
 	}
 
@@ -178,8 +195,9 @@ func run() error {
 	defer writer.Flush()
 
 	runId := time.Now().UTC().Format("20060102-150405")
-	fmt.Printf("run %s — space %s, %d models × %d arms × %d tasks × n=%d\n",
-		runId, spaceId, len(models), len(arms), len(selected), opt.n)
+	fmt.Printf("run %s — space %s, %d models × %d arms × %d tasks × n=%d = %d attempts\n",
+		runId, spaceId, len(models), len(arms), len(selected), opt.n, len(cells)*opt.n)
+	printSkipped(os.Stdout, skipped)
 
 	var attempts []attemptRecord
 	for _, model := range models {
@@ -187,12 +205,12 @@ func run() error {
 		for seq := 1; seq <= opt.n; seq++ {
 			for _, arm := range arms {
 				for _, t := range selected {
-					if !t.runsOnArm(arm.surface) || (arm.surface == surfaceWrapper && !t.runsOnTier(arm.tier)) {
+					if !cells[cellKey{model, arm.name, t.Id}] {
 						continue
 					}
 					if ctx.Err() != nil {
 						fmt.Println("interrupted — writing what ran")
-						return finish(writer, attempts, opt, runId)
+						return finish(writer, attempts, skipped, opt, runId)
 					}
 					rec.take()
 					att := runAttempt(ctx, attemptDeps{
@@ -215,14 +233,14 @@ func run() error {
 			}
 		}
 	}
-	return finish(writer, attempts, opt, runId)
+	return finish(writer, attempts, skipped, opt, runId)
 }
 
-func finish(writer *bufio.Writer, attempts []attemptRecord, opt options, runId string) error {
+func finish(writer *bufio.Writer, attempts []attemptRecord, skipped []skippedCell, opt options, runId string) error {
 	if err := writer.Flush(); err != nil {
 		return fmt.Errorf("flush attempts file: %w", err)
 	}
-	summary := buildSummary(runId, attempts, opt)
+	summary := buildSummary(runId, attempts, skipped, opt)
 	path := filepath.Join(opt.outDir, "summary.txt")
 	if err := os.WriteFile(path, []byte(summary), 0o644); err != nil {
 		return fmt.Errorf("write summary: %w", err)
@@ -250,11 +268,113 @@ const (
 	spaceReadyTimeout   = 60 * time.Second
 )
 
+// arm names. The ab/… three are the edit_text A/B: the same small tier, the
+// same runner, three different published edit_text definitions.
+const (
+	armWrapperSmall = "wrapper/small"
+	armWrapperLarge = "wrapper/large"
+	armOps          = "ops"
+	armEditTextA    = "ab/a-shipped"
+	armEditTextB1   = "ab/b1-noblock"
+	armEditTextB2   = "ab/b2-prose"
+)
+
+// defaultArms is the matrix; allArms is everything -arms accepts.
+var (
+	defaultArms = []string{armWrapperSmall, armWrapperLarge, armOps}
+	allArms     = []string{armWrapperSmall, armWrapperLarge, armOps, armEditTextA, armEditTextB1, armEditTextB2}
+)
+
 // armSpec is one surface under test.
 type armSpec struct {
 	name    string
 	surface string
 	tier    wrapper.Tier
+	// variant is the published-surface variation this arm serves — the only
+	// thing that differs between the three ab/… arms (toolset.go).
+	variant editTextVariant
+}
+
+// publishedTools returns the tool names this arm serves the model, read from
+// the same table the arm publishes from: the tier filter for the wrapper,
+// the op list for the ops arm. The capability gate asks THIS rather than a
+// hand-kept note of which task runs where, so removing a tool from a tier
+// updates the gate with it.
+func (a armSpec) publishedTools() []string {
+	switch a.surface {
+	case surfaceWrapper:
+		return wrapper.ToolNamesForTier(a.tier)
+	case surfaceOps:
+		return append([]string{"read_object"}, opsArmOps...)
+	default:
+		return nil
+	}
+}
+
+// skippedCell is one (model, arm, task) the run did not measure, with the
+// reason. Skips are reported, never silent: a cell that quietly disappears
+// reads as "not applicable" when it may mean "we stopped measuring this".
+type skippedCell struct {
+	Model  string
+	Arm    string
+	Task   string
+	Reason string
+}
+
+// planCells derives which cells a run measures. A cell is skipped when the
+// arm's published tool set has no tool for a capability the task requires —
+// asking a model to fill a table cell with no set_cell in its tier is not a
+// measurement of anything, and scoring the answer as a failure moves the
+// headline rate by the number of such cells.
+func planCells(models []string, arms []armSpec, selected []task) (map[cellKey]bool, []skippedCell, error) {
+	cells := map[cellKey]bool{}
+	var skipped []skippedCell
+	for _, model := range models {
+		for _, arm := range arms {
+			published := map[string]bool{}
+			for _, name := range arm.publishedTools() {
+				published[name] = true
+			}
+			for _, t := range selected {
+				key := cellKey{model, arm.name, t.Id}
+				if !t.runsOnArm(arm.surface) {
+					skipped = append(skipped, skippedCell{model, arm.name, t.Id,
+						fmt.Sprintf("the task does not run on the %s surface", arm.surface)})
+					continue
+				}
+				missing := ""
+				for _, c := range t.Requires {
+					tool, err := capabilityTool(c, arm.surface)
+					if err != nil {
+						return nil, nil, fmt.Errorf("gate %s on %s: %w", t.Id, arm.name, err)
+					}
+					if !published[tool] {
+						missing = fmt.Sprintf("%s publishes no %s — the task cannot %s without it",
+							arm.name, tool, c)
+						break
+					}
+				}
+				if missing != "" {
+					skipped = append(skipped, skippedCell{model, arm.name, t.Id, missing})
+					continue
+				}
+				cells[key] = true
+			}
+		}
+	}
+	return cells, skipped, nil
+}
+
+// printSkipped writes the skipped cells to a stream, or says there are none.
+func printSkipped(w io.Writer, skipped []skippedCell) {
+	if len(skipped) == 0 {
+		fmt.Fprintln(w, "no cells skipped — every arm publishes a tool for every capability its tasks require")
+		return
+	}
+	fmt.Fprintf(w, "%d cells skipped:\n", len(skipped))
+	for _, s := range skipped {
+		fmt.Fprintf(w, "  %-14s %-14s %-16s — %s\n", s.Model, s.Arm, s.Task, s.Reason)
+	}
 }
 
 // attemptRecord is one (model, arm, task, seq) run, as written to JSONL.
@@ -266,13 +386,16 @@ type attemptRecord struct {
 	Arm        string    `json:"arm"`
 	Surface    string    `json:"surface"`
 	Tier       string    `json:"tier,omitempty"`
-	Task       string    `json:"task"`
-	Seq        int       `json:"seq"`
-	SpaceId    string    `json:"space_id"`
-	ObjectId   string    `json:"object_id,omitempty"`
-	Title      string    `json:"title,omitempty"`
-	System     string    `json:"system_prompt"`
-	Prompt     string    `json:"prompt"`
+	// Variant is the published-surface variation the arm served (the
+	// edit_text A/B) — empty for the arms that publish the shipped surface.
+	Variant  string `json:"variant,omitempty"`
+	Task     string `json:"task"`
+	Seq      int    `json:"seq"`
+	SpaceId  string `json:"space_id"`
+	ObjectId string `json:"object_id,omitempty"`
+	Title    string `json:"title,omitempty"`
+	System   string `json:"system_prompt"`
+	Prompt   string `json:"prompt"`
 	// Outcome is success | failure | environment. An environment outcome is
 	// the harness's or the host's fault and never enters a success rate.
 	Outcome     string `json:"outcome"`
@@ -316,8 +439,8 @@ func runAttempt(ctx context.Context, deps attemptDeps, model string, arm armSpec
 	started := time.Now()
 	att := attemptRecord{
 		Run: deps.runId, StartedAt: started, Model: model, Arm: arm.name,
-		Surface: arm.surface, Tier: string(arm.tier), Task: t.Id, Seq: seq,
-		SpaceId: deps.spaceId,
+		Surface: arm.surface, Tier: string(arm.tier), Variant: string(arm.variant),
+		Task: t.Id, Seq: seq, SpaceId: deps.spaceId,
 	}
 	finishRecord := func() attemptRecord {
 		att.DurationMs = time.Since(started).Milliseconds()
@@ -374,6 +497,7 @@ func runAttempt(ctx context.Context, deps attemptDeps, model string, arm armSpec
 		}
 		att.PromptTokens, att.CompletionTokens = tr.PromptTokens, tr.CompletionTokens
 		att.Signals = analyze(tr.Calls)
+		att.Signals.SpaceIdAsObject = countSpaceIdAsObject(tr.Calls, deps.spaceId)
 		att.WrongTargetWrites = countWrongTargetWrites(tr.Calls, fx.ObjectId)
 	}
 	if err != nil {
@@ -426,7 +550,7 @@ func buildToolset(ctx context.Context, deps attemptDeps, arm armSpec, fx *fixtur
 		client := wrapper.NewClient(deps.api.baseURL, deps.api.apiKey)
 		client.HTTP = &http.Client{Timeout: 60 * time.Second, Transport: deps.api.http.Transport}
 		runner := wrapper.NewRunner(client, wrapper.NewMemoryStore())
-		ts, err := newMCPToolset(ctx, runner, arm.tier)
+		ts, err := newMCPToolset(ctx, runner, arm.tier, arm.variant)
 		if err != nil {
 			return nil, fmt.Errorf("build wrapper toolset: %w", err)
 		}
@@ -446,12 +570,23 @@ func buildToolset(ctx context.Context, deps attemptDeps, arm armSpec, fx *fixtur
 // space the work happens in (wrapper arm), or that the object is already
 // selected (ops arm). Everything else the model is told comes from the
 // product's own instructions.
+//
+// The space id names its ARGUMENT here. The first version said only "Work in
+// the Anytype space <id>", and a model opened its attempt with
+// read {"object": "<that space id>"} — the one id in its context, handed to
+// it in a position that named no argument, and `read`'s object takes "a full
+// object id". That was the harness's doing, not the surface's: the wrapper
+// refused it with "no working session … run find first" and the model
+// recovered on the next turn. The sentence below is the product's own — it
+// is what the `spaces` tool prints under its listing — so labelling the
+// channel adds no steering the model would not have had if it had asked for
+// the space itself.
 func armPreamble(arm armSpec, spaceId string) string {
 	if arm.surface == surfaceOps {
 		return "The object named in the request is the one your tools already act on. " +
 			"When the work is done, reply with one short sentence and no tool call."
 	}
-	return "Work in the Anytype space " + spaceId + ". " +
+	return "Work in the Anytype space " + spaceId + " — pass that id as space to find, describe and create. " +
 		"When the work is done, reply with one short sentence and no tool call."
 }
 
@@ -478,15 +613,27 @@ func checkModels(ctx context.Context, chat *chatClient, modelURL string, models 
 func parseArms(spec string) ([]armSpec, error) {
 	var out []armSpec
 	for _, name := range splitList(spec) {
+		small := armSpec{name: name, surface: surfaceWrapper, tier: wrapper.TierSmall}
 		switch name {
-		case "ops":
-			out = append(out, armSpec{name: "ops", surface: surfaceOps})
-		case "wrapper/small":
-			out = append(out, armSpec{name: name, surface: surfaceWrapper, tier: wrapper.TierSmall})
-		case "wrapper/large":
+		case armOps:
+			out = append(out, armSpec{name: name, surface: surfaceOps})
+		case armWrapperSmall:
+			out = append(out, small)
+		case armWrapperLarge:
 			out = append(out, armSpec{name: name, surface: surfaceWrapper, tier: wrapper.TierLarge})
+		case armEditTextA:
+			// byte-for-byte the shipped surface — the A/B's control, run
+			// beside its variants rather than borrowed from another run
+			small.variant = editTextAsShipped
+			out = append(out, small)
+		case armEditTextB1:
+			small.variant = editTextNoBlock
+			out = append(out, small)
+		case armEditTextB2:
+			small.variant = editTextProse
+			out = append(out, small)
 		default:
-			return nil, fmt.Errorf("unknown arm %q — arms: wrapper/small, wrapper/large, ops", name)
+			return nil, fmt.Errorf("unknown arm %q — arms: %s", name, strings.Join(allArms, ", "))
 		}
 	}
 	if len(out) == 0 {
@@ -564,12 +711,12 @@ func resolveSpace(ctx context.Context, api *apiClient, opt options) (string, err
 	return id, nil
 }
 
-func printMatrix(w *os.File, models []string, arms []armSpec, selected []task, n int) {
+func printMatrix(w io.Writer, models []string, arms []armSpec, selected []task, cells map[cellKey]bool, skipped []skippedCell, n int) {
 	total := 0
 	for _, m := range models {
 		for _, a := range arms {
 			for _, t := range selected {
-				if !t.runsOnArm(a.surface) || (a.surface == surfaceWrapper && !t.runsOnTier(a.tier)) {
+				if !cells[cellKey{m, a.name, t.Id}] {
 					continue
 				}
 				fmt.Fprintf(w, "%-14s %-14s %-16s ×%d\n", m, a.name, t.Id, n)
@@ -578,6 +725,7 @@ func printMatrix(w *os.File, models []string, arms []armSpec, selected []task, n
 		}
 	}
 	fmt.Fprintf(w, "\n%d attempts\n", total)
+	printSkipped(w, skipped)
 }
 
 // loadEnv reads a KEY=VALUE file. Values are never printed: the file holds

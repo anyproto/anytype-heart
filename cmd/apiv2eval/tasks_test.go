@@ -155,6 +155,23 @@ func TestTaskChecks(t *testing.T) {
 				{"id":"r","type":"paragraph","text":"Next review: 12 May"}]}`,
 		},
 		{
+			// the shape the SERVER actually produces from the fixture markdown:
+			// two lines with no blank line between them are one paragraph with
+			// a soft break. The first check compared whole block texts and
+			// failed this document, which a model had edited exactly right.
+			task: "read-then-edit", name: "both lines in one block, as the importer makes it", want: true,
+			doc: `{"blocks":[{"id":"h","type":"heading2","text":"Meeting notes"},
+				{"id":"o","type":"paragraph","text":"Owner: Dana Whitfield\nNext review: 12 May"}]}`,
+		},
+		{
+			task: "read-then-edit", name: "one block, old owner still named", want: false,
+			doc: `{"blocks":[{"id":"o","type":"paragraph","text":"Owner: Priya Raman\nNext review: 12 May"}]}`,
+		},
+		{
+			task: "read-then-edit", name: "the owner line was rewritten past recognition", want: false,
+			doc: `{"blocks":[{"id":"o","type":"paragraph","text":"The owner is now Dana Whitfield\nNext review: 12 May"}]}`,
+		},
+		{
 			task: "read-then-edit", name: "new owner appended, old one left", want: false,
 			doc: `{"blocks":[{"id":"o","type":"paragraph","text":"Owner: Priya Raman"},
 				{"id":"n","type":"paragraph","text":"Owner: Dana Whitfield"},
@@ -192,11 +209,11 @@ func TestTaskTableIsWellFormed(t *testing.T) {
 			seen[task.Id] = true
 			assert.NotEmpty(t, task.Intent)
 			assert.NotEmpty(t, task.Markdown, "every task needs a fixture body")
-			assert.NotEmpty(t, task.TitleStem)
+			assert.NotEmpty(t, task.Requires, "a task with no declared capability is gated by nothing")
 			require.NotNil(t, task.Prompt)
 			require.NotNil(t, task.Check)
 
-			fx := &fixture{Title: task.TitleStem + " ab12", ObjectId: "obj1"}
+			fx := &fixture{Title: fixtureTitle(), ObjectId: "obj1"}
 			prompt := task.Prompt(fx)
 			assert.Contains(t, prompt, fx.Title, "the prompt must name the object the model has to find")
 			assert.NotContains(t, prompt, "insertBlocks", "a prompt must not name the tool to use")
@@ -249,29 +266,94 @@ func docFromMarkdownApproximation(markdown string) *document {
 	return doc
 }
 
-func TestRestructureIsWithheldFromTheTierThatCannotDoIt(t *testing.T) {
-	// given — the small tier deliberately serves no delete_block (§8.20), so
-	// running the restructure task there would measure a documented omission
-	// rather than the loop
-	task := taskById(t, "restructure-section")
+// The gate is derived from the arm's published tool set, not from a
+// hand-kept list of tiers: fill-table-cell ran on a small tier with no
+// set_cell for a whole matrix, where the model recognised the limit, said so
+// in plain words, and was scored as a failure six times over.
+func TestCellsAreSkippedWhenTheArmPublishesNoToolForTheTask(t *testing.T) {
+	// given
+	require.NoError(t, checkTaskGating())
+	arms, err := parseArms(strings.Join(allArms, ","))
+	require.NoError(t, err)
+
+	// when
+	cells, skipped, err := planCells([]string{"m"}, arms, tasks())
+	require.NoError(t, err)
+
+	reasons := map[cellKey]string{}
+	for _, s := range skipped {
+		reasons[cellKey{s.Model, s.Arm, s.Task}] = s.Reason
+	}
+
+	// then — the two tasks the small tier has no tool for are skipped on
+	// every arm that serves that tier, and run everywhere else
+	for _, arm := range []string{armWrapperSmall, armEditTextA, armEditTextB1, armEditTextB2} {
+		assert.Contains(t, reasons[cellKey{"m", arm, "fill-table-cell"}], "publishes no set_cell",
+			"the small tier has no set_cell — the cell is not a measurement")
+		assert.Contains(t, reasons[cellKey{"m", arm, "restructure-section"}], "publishes no delete_block")
+		assert.True(t, cells[cellKey{"m", arm, "edit-one-word"}], "edit_text is served to the small tier")
+	}
+	assert.True(t, cells[cellKey{"m", armWrapperLarge, "fill-table-cell"}])
+	assert.True(t, cells[cellKey{"m", armOps, "fill-table-cell"}], "the ops arm publishes setCell")
+	assert.True(t, cells[cellKey{"m", armOps, "restructure-section"}])
+
+	// and the gate reads the tier table rather than restating it
+	assert.NotContains(t, wrapper.ToolNamesForTier(wrapper.TierSmall), "set_cell")
+	assert.NotContains(t, wrapper.ToolNamesForTier(wrapper.TierSmall), "delete_block")
+	assert.Contains(t, wrapper.ToolNamesForTier(wrapper.TierLarge), "set_cell")
+}
+
+func TestEveryArmPublishesEveryToolItsCapabilitiesName(t *testing.T) {
+	// given — a capability that names no tool on a surface would skip cells
+	// silently, which reads exactly like a cell nobody wanted measured
+	require.NoError(t, checkTaskGating())
 
 	// then
-	assert.False(t, task.runsOnTier(wrapper.TierSmall))
-	assert.True(t, task.runsOnTier(wrapper.TierLarge))
-	assert.NotContains(t, wrapper.ToolNamesForTier(wrapper.TierSmall), "delete_block")
+	for _, arm := range []armSpec{
+		{name: armWrapperLarge, surface: surfaceWrapper, tier: wrapper.TierLarge},
+		{name: armOps, surface: surfaceOps},
+	} {
+		published := arm.publishedTools()
+		for c := range capabilityTools {
+			tool, err := capabilityTool(c, arm.surface)
+			require.NoError(t, err)
+			assert.Contains(t, published, tool, "%s should publish %s", arm.name, tool)
+		}
+	}
+}
+
+func TestFixtureTitlesShareNoTokenAndNoPrefix(t *testing.T) {
+	// given — the API's search matches token-wise and prefix-matches the
+	// query, and fixtures can never be deleted, so a shared stem made find
+	// return one more object on every attempt of a run
+	seen := map[string]bool{}
+
+	for i := 0; i < 500; i++ {
+		// when
+		title := fixtureTitle()
+
+		// then
+		assert.NotContains(t, title, " ", "a title must be ONE search token")
+		assert.Len(t, title, titleSyllables*2, "fixed length: only an equal name can be a prefix of another")
+		assert.False(t, seen[title], "collision after %d titles", i)
+		seen[title] = true
+	}
 }
 
 func TestArmParsing(t *testing.T) {
 	// when
-	arms, err := parseArms("wrapper/small,ops")
+	arms, err := parseArms("wrapper/small,ops," + armEditTextB1)
 
 	// then
 	require.NoError(t, err)
-	require.Len(t, arms, 2)
+	require.Len(t, arms, 3)
 	assert.Equal(t, wrapper.TierSmall, arms[0].tier)
 	assert.Equal(t, surfaceOps, arms[1].surface)
+	assert.Equal(t, editTextNoBlock, arms[2].variant)
+	assert.Equal(t, wrapper.TierSmall, arms[2].tier, "the A/B varies the surface, not the tier")
 
 	_, err = parseArms("wrapper/medium")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "wrapper/small")
+	assert.Contains(t, err.Error(), armEditTextB2)
 }
