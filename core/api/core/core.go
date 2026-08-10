@@ -107,16 +107,15 @@ type ObjectEdit struct {
 // commits that state with one ordinary Apply. The returned heads are the
 // post-apply tree heads, the input of the new etag.
 //
-// ResetObject (PUT, stage-3 rework pending) locks the object, hands the
-// current consistent read to build, and — when build returns a snapshot —
-// diff-applies it onto the live state as ONE change set via the smartblock
-// reset-to-version machinery. build returning (nil, nil) commits nothing.
+// There is deliberately no snapshot-shaped sibling: the reset-to-version
+// document replace that once served PUT was removed with that surface
+// (APIV2.md §8.27 — snapshots are for creates, edits are ops), and with it
+// the state repair a snapshot round trip needed.
 type ObjectMutator interface {
 	// MutateObject takes the restriction axes the batch actually touches;
 	// the adapter re-checks them under the lock (the apply itself runs
 	// without object-level restriction checks, so this gate is the only one).
 	MutateObject(ctx context.Context, spaceId string, objectId string, needs EditNeeds, apply func(edit ObjectEdit) error) (heads []string, err error)
-	ResetObject(ctx context.Context, spaceId string, objectId string, build func(cur ObjectRead) (*model.SmartBlockSnapshotBase, error)) (heads []string, err error)
 }
 
 type ClientCommands interface {
