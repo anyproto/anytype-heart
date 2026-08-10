@@ -107,10 +107,14 @@ type probeRecord struct {
 	// RefusalRisks name payload shapes the server refuses, recognised
 	// statically (see staticRefusalRisks) — the probe never sends anything.
 	RefusalRisks []string `json:"refusal_risks,omitempty"`
-	NoToolCall   bool     `json:"no_tool_call,omitempty"`
-	ArgsError    string   `json:"args_error,omitempty"`
-	EnvError     string   `json:"env_error,omitempty"`
-	Usage        usage    `json:"usage"`
+	// MissingOpConst records that the payload omitted `op`, which every op
+	// schema marks required with a const. The tool name already determines
+	// it, so this measures schema compliance, not intent.
+	MissingOpConst bool   `json:"missing_op_const,omitempty"`
+	NoToolCall     bool   `json:"no_tool_call,omitempty"`
+	ArgsError      string `json:"args_error,omitempty"`
+	EnvError       string `json:"env_error,omitempty"`
+	Usage          usage  `json:"usage"`
 }
 
 // runProbe runs the one-turn schema-emission probe over the model list.
@@ -214,6 +218,8 @@ func probeOnce(ctx context.Context, chat *chatClient, model string, pc probeCase
 		rec.IdEmissions[i].Tool = call.Function.Name
 	}
 	rec.RefusalRisks = staticRefusalRisks(call.Function.Name, args)
+	_, hasOp := args["op"]
+	rec.MissingOpConst = !hasOp
 	return rec
 }
 
@@ -388,6 +394,27 @@ func buildProbeSummary(runId string, records []probeRecord, opt options) string 
 		for _, name := range names {
 			add("%4d× %s\n", risks[name], name)
 		}
+	}
+
+	missingOp := map[string]int{}
+	calls := map[string]int{}
+	for _, r := range records {
+		if r.CalledOp == "" {
+			continue
+		}
+		calls[r.Model]++
+		if r.MissingOpConst {
+			missingOp[r.Model]++
+		}
+	}
+	add("\npayloads omitting the required `op` const (the tool name determines it)\n\n")
+	models := make([]string, 0, len(calls))
+	for m := range calls {
+		models = append(models, m)
+	}
+	sort.Strings(models)
+	for _, m := range models {
+		add("%-14s %d/%d\n", m, missingOp[m], calls[m])
 	}
 
 	envErrs := 0

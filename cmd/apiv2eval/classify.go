@@ -155,12 +155,19 @@ func analyze(calls []callRecord) signals {
 			s.UnknownArgCalls++
 		}
 
-		// H2 — reference echo fidelity
-		for arg, raw := range args {
+		// H2 — reference echo fidelity. Argument names are walked in sorted
+		// order: map iteration is randomized, and a record that reorders
+		// itself between runs of the same input is not a record.
+		argNames := make([]string, 0, len(args))
+		for arg := range args {
+			argNames = append(argNames, arg)
+		}
+		sort.Strings(argNames)
+		for _, arg := range argNames {
 			if !refArgs[arg] {
 				continue
 			}
-			value, ok := raw.(string)
+			value, ok := args[arg].(string)
 			if !ok || value == "" {
 				continue
 			}

@@ -237,3 +237,26 @@ func TestAnalyzeCountsMalformedArguments(t *testing.T) {
 	assert.Equal(t, 1, got.MalformedArgs)
 	assert.Empty(t, got.Refs)
 }
+
+func TestReferenceOrderIsDeterministic(t *testing.T) {
+	// given — one call carrying three references; map iteration would
+	// reorder them between runs, and a record that reorders itself is not a
+	// record
+	calls := []callRecord{
+		{Turn: 0, Tool: "read", Args: json.RawMessage(`{"object":"1"}`), ResultText: servedDoc},
+		call(1, "set_cell", `{"object":"1","table":"t9d2c","row":"r0022","col":"c0022","value":"Done"}`),
+	}
+
+	// when
+	first := analyze(calls)
+
+	// then
+	for i := 0; i < 20; i++ {
+		again := analyze(calls)
+		require.Equal(t, len(first.Refs), len(again.Refs))
+		for j := range first.Refs {
+			assert.Equal(t, first.Refs[j].Arg, again.Refs[j].Arg, "ref %d reordered on run %d", j, i)
+		}
+	}
+	assert.Equal(t, []string{"col", "row", "table"}, []string{first.Refs[0].Arg, first.Refs[1].Arg, first.Refs[2].Arg})
+}
