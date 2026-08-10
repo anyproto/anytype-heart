@@ -34,6 +34,7 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -242,8 +243,12 @@ const (
 )
 
 // fixtureIndexTimeout bounds the wait for a fresh fixture to become
-// searchable.
-const fixtureIndexTimeout = 30 * time.Second
+// searchable; spaceReadyTimeout bounds the wait for a freshly created eval
+// space to become readable.
+const (
+	fixtureIndexTimeout = 30 * time.Second
+	spaceReadyTimeout   = 60 * time.Second
+)
 
 // armSpec is one surface under test.
 type armSpec struct {
@@ -537,6 +542,23 @@ func resolveSpace(ctx context.Context, api *apiClient, opt options) (string, err
 	id, err := api.createSpace(ctx, opt.spaceName)
 	if err != nil {
 		return "", fmt.Errorf("create the eval space (pass -space to use an existing one): %w", err)
+	}
+	// a just-created space is not necessarily loaded yet; without this every
+	// attempt of the run would fail at fixture creation and be recorded as an
+	// environment failure, which is true but useless
+	deadline := time.Now().Add(spaceReadyTimeout)
+	for {
+		if _, err := api.call(ctx, http.MethodGet, "/v2/spaces/"+url.PathEscape(id), nil, nil, nil); err == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			return "", fmt.Errorf("the eval space %s was created but not readable after %s", id, spaceReadyTimeout)
+		}
+		select {
+		case <-time.After(time.Second):
+		case <-ctx.Done():
+			return "", ctx.Err()
+		}
 	}
 	fmt.Printf("created eval space %q (%s)\n", opt.spaceName, id)
 	return id, nil
