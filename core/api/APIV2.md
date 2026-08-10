@@ -255,8 +255,10 @@ naming the descendant count.
   anchor-required contract left PUT as the only way to give it content — the
   corruption vector the design steers agents away from. It also backs the §7
   wrapper's `add_blocks(object, after?, markdown)` omitted-`after` case.
-  Payload `indent: 0` = the document's top level; `position` still requires
-  `inside` (no root-prepend — one shape, fewer fields for a small model).
+  Payload `indent: 0` = the document's top level; `position` names an end of
+  the document when nothing else is targeted — `first` the start, `last` (or
+  absent) the end (§8.32; the original shape had no root-prepend and refused
+  `position` here at all).
 - **`deleteBlock`**: `recursive` defaults to false; deleting a block that
   has descendants without `recursive:true` → error naming the descendant
   count (R14).
@@ -1185,7 +1187,8 @@ payload runs must start at 0 and obey +1 monotonicity internally, checked
 with `ops[i].blocks[j].indent` paths before the document-level net.
 `insertBlocks` inserts after the anchor's whole subtree for `after`;
 `inside` defaults `position` to `last`; `position` with `after`/`before` is
-an error. `moveBlock` moves the whole subtree and re-bases its indents.
+an error; `position` with NO targeting field names an end of the document
+(§8.32). `moveBlock` moves the whole subtree and re-bases its indents.
 
 **Small op decisions.** `updateBlock`: `set` is merge; explicit `null`
 clears a field; `id`/`indent` in `set` are rejected (steering to moveBlock);
@@ -1225,9 +1228,11 @@ survives, and the editor regenerates the header blocks (same §7 contract).
 launch ops; each schema is C13-strict and self-contained, with a shared
 payload-block definition covering the realistic edit fields
 (`additionalProperties:false` — the full block inventory stays at
-`/v2/schemas/object`, which the def points to). Every example is a full
-single-op PATCH body (enforced by test); the index (`GET /v2/schemas`) grew
-an `ops` list.
+`/v2/schemas/object`, which the def points to; the block-type vocabulary
+itself is published in the def since §8.32). Every example is a full
+single-op PATCH body (enforced by test) — *changed in §8.32: the example is
+now the op object itself, an instance of the schema served beside it.* The
+index (`GET /v2/schemas`) grew an `ops` list.
 
 ### 8.3 Phase-3 revisions (v0.3.5 — pre-release design review, decisions as built)
 
@@ -1238,15 +1243,17 @@ while the API is unreleased and breaking changes are cheap.
 `after`/`before`/`inside` appends at the end of the document root (state:
 `InsertTo("", Block_Inner)`). Chosen shape: the omitted-anchor form, not an
 explicit `at: "start"|"end"` field — fewer fields for a small model, and it
-is exactly the §7 wrapper's omitted-`after` case. No root-prepend; `position`
-still requires `inside` (position without any targeting field is a 400
-naming the root-append behavior). This closes the structural hole where an
-empty object (SPEC §7: no title/description blocks in the document) had zero
-addressable anchors and PUT was then the only way to give it content —
-which is also why removing PUT (§8.27) cost the surface nothing here.
-More than
-one targeting field is now "at most one of after, before, inside is allowed"
-(was "exactly one … is required" — reworded because zero is legal now).
+is exactly the §7 wrapper's omitted-`after` case. *Revised in §8.32:*
+`position` is no longer refused here — with no targeting field it picks the
+end of the document, so `first` is the root-PREPEND this paragraph declined
+to build (anchored before the first document block, never at the state root,
+which carries the §7 header as its first child). This closes the structural
+hole where an empty object (SPEC §7: no title/description blocks in the
+document) had zero addressable anchors and PUT was then the only way to give
+it content — which is also why removing PUT (§8.27) cost the surface nothing
+here. More than one targeting field is now "at most one of after, before,
+inside is allowed" (was "exactly one … is required" — reworded because zero
+is legal now).
 Payload indents stay R3-relative: at root, indent 0 = document top level.
 
 **`replaceBlock` removed (BREAKING, deliberate — the API is unreleased).**
@@ -4169,6 +4176,37 @@ alone. The format's own document schema (`GET /v2/schemas/object`,
 `pkg/lib/anyblockjson/schema`) is a different contract — a create body is a
 snapshot, where an id is legitimate — and was not touched.
 
+**Measured 2026-08-10: the removal is unregressed, the mechanism is
+unconfirmed.** `cmd/apiv2eval -probe` put 210 real calls through the
+published op schemas (`gemma4:e2b` and `gemma4:e4b`, three runs — 120 with
+the example as published, 60 with it at op level, 30 with the discriminator
+diagnostic; artifacts in the gitignored `eval-out/`). **Zero** payload `id`
+emissions, at any path, in all 210:
+
+| arm | payloads | schema publishes a payload `id`? | `id` emitted |
+|---|---|---|---|
+| `insertBlocks` | 140 | no (this section's change) | 0 |
+| `replaceSubtree` | 70 | **yes** — and half of them come from the `echo_block_existing` case, which quotes a read block WITH its id and asks for the replacement *"keeping the block's identity"* | 0 |
+
+The second row is the control, and it is what limits the claim. These models
+did not write a payload `id` **whether they were shown one or not**, so the
+two arms did not separate and the probe cannot say the schema is what stopped
+the first arm. What it does say is that the removal cost nothing: no
+generation needed the slot it lost. The argument for §8.30 therefore rests
+where it needs no behavioural claim at all — a field in which every value is
+an error is an incoherent thing to publish, whatever any particular decoder
+would have done with it. The paragraph above still reads *"the instrument
+that reaches a constrained decoder is the schema itself"*; treat that as the
+design's reasoning, not as a measured result.
+
+Where the rule *is* argued by measurement is its second instance: `position`
+on `insertBlocks` was published with a description that made it read inert,
+and in the no-target shape **every** value of it was a 400 — a shape
+`gemma4:e2b` produced on 20 of its payloads, 10 of 10 in each of the two
+cases that reach for it. That is the same rule catching a second field, and
+it was fixed the other way round — §8.32 gave the field a meaning instead of
+removing it, because both of its values named a real intent.
+
 ### 8.31 The two halves of the id rule disagreed about what "exists" means (2026-08-10 — decisions as built)
 
 §8.29 made every PATCH payload id slot RESOLVE, and §8.30 removed the slot
@@ -4320,3 +4358,139 @@ rather than two correct-looking expressions; the same move as `localIds()`
 being shared by create's warning and the PATCH resolver. Where a rule has two
 enforcement points, the shared thing should be the predicate, not the
 sentence in a comment saying they agree.
+
+### 8.32 Three defects a small model found that five review rounds did not (2026-08-10 — decisions as built)
+
+§8.24–§8.31 were six passes of design review over the same surface, by
+readers who know what every field means. `cmd/apiv2eval -probe` put 210 calls
+from `gemma4:e2b`/`e4b` through the schemas the product actually publishes,
+with no live API and no repair loop, and the transcripts named three defects
+in an afternoon. None of them is subtle in hindsight. All three are the same
+kind of thing: **the surface was reviewed as a specification and consumed as
+a prompt**, and a reader who already knows the answer cannot see a field that
+reads wrong, an example that contradicts its schema, or a vocabulary that was
+never published. A generator has no other information, so it sees exactly
+that and nothing else.
+
+**F1. `position` with no targeting field was a guaranteed 400 — now it names
+an end of the document.** `resolveTarget` refused it: *"position without a
+targeting field is meaningless"*. The published description said *"with
+`inside` only; default last"*, which reads to a model as *last is the
+default, so naming it is harmless* — and `gemma4:e2b` wrote exactly
+
+```json
+{"markdown":"## Risks\n- Vendor delay","op":"insertBlocks","position":"last"}
+```
+
+on 20 payloads: 10 of 10 in *add a section at the end*, 10 of 10 in *copy
+this block as new content*. Every one a 400 at `ops[0].position`.
+
+Accepting-and-ignoring was refused. `first` and `last` are **different
+intents**, and silently discarding one would do the wrong thing for that
+one — the silent-wrong-action class five rounds have been spent removing.
+The field was made meaningful instead: with no `after`/`before`/`inside`,
+`position` picks which end of the DOCUMENT, `first` the start and `last` (or
+absent) the end. That turns a guaranteed refusal into the obvious reading,
+and it gives *"insert at the beginning"* an expression that previously
+required reading the document first only to learn the first block's id.
+`moveBlock` shares `resolveTarget` and gets the same meaning: one vocabulary,
+one meaning, in both ops that use it.
+
+**Root-first is not the state root's `InnerFirst`.** `InsertTo("")` targets
+the state root, whose FIRST child is the structural header — title,
+description, featured properties — which SPEC §7 keeps out of the served
+document. Prepending there lands the block *above the title*, and nothing
+repairs it until the object is next initialised (`template.RequireHeader` /
+`normalizeTree` run at open, not at apply). The start of the *document* is
+"before the first document block" — the same slot `before: <first block>`
+names, needing no knowledge of the header at all — with the append as the
+fallback when there is no document block to sit before. `rootTarget`
+(stateops.go) is that one resolution, and `moveBlock` passes it the moved
+subtree to skip, so `position:"first"` on the block that is already first
+anchors against the block *after* it instead of failing InsertTo's
+"blockIds contains target" or, worse, falling through to the append at the
+other end.
+
+The refusal that remains is the one the anchor makes redundant: `position`
+alongside `after`/`before` is still `validation_failed`, because there the
+anchor already names the slot. An out-of-enum value is still refused too —
+`checkPosition` is now one check for both placements.
+
+**F2. Every `GET /v2/schemas/ops/{op}` served an example its own schema
+rejects.** All 14. The `schema` describes ONE op — `additionalProperties:
+false`, `op` required with a `const` — and the `example` was a whole request
+body, `{"ops":[{…}]}`. The example beside the schema was therefore not an
+instance of it, and a consumer that reads the pair together (the small
+consumer §5 built this route for) got two contradictory shapes. Measured:
+with the wrapped example, `gemma4:e4b` omitted the required `op` field on
+**9 of 60** calls (`e2b`: 10 of 60); with the example unwrapped to op level,
+**0 of 60** — and 0 of 30 in the follow-up run.
+
+Examples are now the op object itself. The pin the wrapper manifest has had
+all along (`TestExamplesAcceptedByOwnGBNF` — every served example must be in
+the language of the served grammar) is now on this route too, table-driven
+over all 14 ops and compiling the served schema with a real validator, so a
+new op cannot land with an example its own schema refuses. The eval harness's
+`TestServedOpExampleIsNotAnInstanceOfItsOwnSchema`, written to *document* the
+defect, is inverted rather than deleted: it now asserts the instance
+relation, and the harness's `-probe-example` knob no longer separates two
+shapes because both are the same bytes.
+
+**F3. The payload block's `type` published no vocabulary.** It was
+`{"type":"string","maxLength":64}`, beside a block description pointing at
+`GET /v2/schemas/object` — a fetch a decoder cannot make. Asked to add a
+checkbox item, `gemma4:e2b` answered
+
+```json
+{"type":"bulletedListItem","text":"[ ] Follow up"}
+```
+
+**10 times out of 10**: a plausible type plus a literal markdown checkbox in
+the text, which is what inventing a vocabulary looks like. `checkbox` is a
+real type; it was simply never shown.
+
+The enum is now published on both payload-block defs, and it is **derived,
+not copied**: `anyblockjson.BlockTypeNames()` reads the names out of the
+format's own embedded JSON Schema (`$defs.blockCore.properties.type.enum`) at
+startup, and `AuthorableBlockTypeNames()` subtracts the §7 structural types —
+`title`, `description`, `featuredProperties` — which import absorbs into
+properties or drops, so a payload naming one produces no block. That
+subtraction is §8.30's rule one level down, applied to a *value*: an enum
+must not offer a value no caller can succeed with. The structural set is the
+same map `topLevelBlocks` (import.go) switches on, so "which types are
+structural" is stated once. A hand-copied list is the drift class §8.31 was
+about; there is no second list here to drift.
+
+**The token cost, on the record.** 39 names in the format's enum, 36
+published. Measured with the Gemma 3 tokenizer (ollama `prompt_eval_count`,
+delta method so the chat template cancels): the `type` property goes from
+**12 to 100 tokens** — **+88** — and a served op schema from ~867–945 to
+~956–1034 tokens, **+89 each, +9.4% to +10.3%**. That is paid on all 14 op
+schemas, because `$defs.block` is carried unconditionally (§8.30 "Not
+taken"); 12 of the 14 never `$ref` it, so a consumer that fetches every op
+pays ~1.2k tokens for an enum most of those schemas do not reference. Making
+`$defs` conditional on reference would recover that and about 1.5 KB per
+non-referencing op besides — a bigger win than this enum is a cost, and
+deliberately left as its own change rather than folded in here. Against the
+cost: the vocabulary is 10% of the schema and it is the 10% without which the
+`type` field is a guess.
+
+**What the three have in common, and what it says about review.** Each was
+a *published artifact* that a specification reader completes from knowledge
+they already have — "position obviously needs a target", "the example is
+obviously illustrative", "the type list is obviously at the other endpoint" —
+and that a generator completes from the bytes in front of it. Five rounds of
+careful review did not find them because review reads for *correctness of
+meaning*, and all three were meaning-correct; they were wrong as *stimulus*.
+The cheap instrument for that class is not another reading. It is 210 calls
+through the published bytes with no repair loop, which is a couple of hours
+of a small model's time. Where the earlier rounds did land is in what made
+these fixes short: the derivation points already existed (`v2NewContentOps`,
+the vocabulary exports of §8.17), so each fix is a wiring, not a new list.
+
+**Not taken.** Neither `-probe` case set nor the model host was re-run to
+measure F1 and F3 after the fix (the full matrix is a 3-hour serialized job)
+— F1's before/after is pinned by unit tests and by the live surface, F3's by
+the enum being the format's own vocabulary. The `position` semantics are
+unchanged for the `inside` placement, and no other op's targeting vocabulary
+was touched.
