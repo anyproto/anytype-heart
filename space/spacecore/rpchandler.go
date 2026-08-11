@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"slices"
 	"strconv"
 
 	"github.com/anyproto/any-sync/commonspace"
@@ -12,7 +13,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/net/peer"
 	"go.uber.org/zap"
-	"golang.org/x/exp/slices"
 )
 
 type rpcHandler struct {

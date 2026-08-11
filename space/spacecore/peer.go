@@ -58,10 +58,7 @@ func (s *service) spaceExchangeV2(ctx context.Context, unaryPeer peer.Peer, peer
 		resp, dErr = clientspaceproto.NewDRPCClientSpaceClient(conn).SpaceExchangeV2(ctx, &clientspaceproto.SpaceExchangeV2Request{
 			Nonce:       nonce,
 			SpaceTokens: tokens,
-			LocalServer: &clientspaceproto.LocalServer{
-				Ips:  own.Addrs,
-				Port: int32(own.Port),
-			},
+			LocalServer: localServerOf(own),
 		})
 		return dErr
 	})
@@ -79,11 +76,8 @@ func (s *service) spaceExchangeV1(ctx context.Context, unaryPeer peer.Peer, allI
 	err := unaryPeer.DoDrpc(ctx, func(conn drpc.Conn) error {
 		var dErr error
 		resp, dErr = clientspaceproto.NewDRPCClientSpaceClient(conn).SpaceExchange(ctx, &clientspaceproto.SpaceExchangeRequest{
-			SpaceIds: allIds,
-			LocalServer: &clientspaceproto.LocalServer{
-				Ips:  own.Addrs,
-				Port: int32(own.Port),
-			},
+			SpaceIds:    allIds,
+			LocalServer: localServerOf(own),
 		})
 		return dErr
 	})
@@ -91,6 +85,15 @@ func (s *service) spaceExchangeV1(ctx context.Context, unaryPeer peer.Peer, allI
 		return nil, fmt.Errorf("space exchange: %w", err)
 	}
 	return resp.SpaceIds, nil
+}
+
+// localServerOf describes this device's listening endpoint to a LAN peer.
+func localServerOf(own localdiscovery.OwnAddresses) *clientspaceproto.LocalServer {
+	return &clientspaceproto.LocalServer{
+		Ips: own.Addrs,
+		// our own drpc listener port, so always within uint16
+		Port: int32(own.Port), // #nosec G115
+	}
 }
 
 // addSchema expands each discovered ip:port into explicit transport URLs.
