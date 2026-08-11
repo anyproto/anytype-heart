@@ -660,7 +660,13 @@ type objectRowBuilder struct {
 	typeKeys map[string]string
 	fields   []string
 	opts     anyblockjson.Options
-	spaceId  string // set on rows only when includeSpaceId (global search)
+	spaceId  string // the store-facing full id
+	// spaceRef is what a row's spaceId FIELD carries when includeSpaceId
+	// (global search): the §8.35 short reference by default, the full id
+	// when its tail collides with another visible space's. Defaults to
+	// spaceId so a builder constructed without a census still serves a
+	// working value.
+	spaceRef string
 	// aliases is the builder's per-space alias resolution, computed ONCE at
 	// construction (activeFieldAliases) — never per row
 	aliases map[string]domain.RelationKey
@@ -674,7 +680,7 @@ func (s *V2Service) newObjectRowBuilder(spaceId string, fields []string) (*objec
 		return nil, err
 	}
 	index := s.store.SpaceIndex(spaceId)
-	b := &objectRowBuilder{index: index, typeKeys: typeKeys, fields: fields, spaceId: spaceId}
+	b := &objectRowBuilder{index: index, typeKeys: typeKeys, fields: fields, spaceId: spaceId, spaceRef: spaceId}
 	if len(fields) > 0 {
 		b.opts = storeresolver.New(index).Options()
 		// requested fields canonicalize through the one chain (file aliases
@@ -716,7 +722,7 @@ func (b *objectRowBuilder) row(record database.Record) v2model.ObjectRow {
 		Type: typeKey,
 	}
 	if b.includeSpaceId {
-		row.SpaceId = b.spaceId
+		row.SpaceId = b.spaceRef
 	}
 	if len(b.fields) > 0 {
 		values := map[string]any{}

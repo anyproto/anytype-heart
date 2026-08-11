@@ -883,10 +883,13 @@ var negatedFilterConditions = map[model.BlockContentDataviewFilterCondition]bool
 // ---- global search (rule 4) ----
 //
 
-// spaceRef is one queryable space (id + display name for warnings).
+// spaceRef is one queryable space: the full id (what the store is keyed
+// by), the §8.35 short reference served on its rows, and a display name for
+// warnings.
 type spaceRef struct {
-	id   string
-	name string
+	id    string
+	short string
+	name  string
 }
 
 // spaceRefs enumerates the account's spaces from the tech space's views,
@@ -899,38 +902,27 @@ type spaceRef struct {
 // not the output rows: a non-granted space must never enter the fan-out
 // loop, where a per-space failure or warning would disclose that it exists.
 func (s *V2Service) spaceRefs(ctx context.Context) ([]spaceRef, error) {
-	grant := util.ApiGrantFromCtx(ctx)
-	records, err := s.store.SpaceIndex(s.techSpaceId).Query(database.Query{
-		Filters: []database.FilterRequest{{
-			RelationKey: bundle.RelationKeyResolvedLayout,
-			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       domain.Int64(int64(model.ObjectType_spaceView)),
-		}},
-	})
+	rows, err := s.liveSpaceRows(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("query space views: %w", err)
+		return nil, err
 	}
+	ids := make([]string, len(rows))
+	for i, row := range rows {
+		ids[i] = row.Id
+	}
+	served := shortSpaceRefs(ids)
 	var out []spaceRef
-	seen := map[string]bool{}
-	for _, record := range records {
-		id := record.Details.GetString(bundle.RelationKeyTargetSpaceId)
-		if id == "" || seen[id] {
-			continue
-		}
-		if !isLiveSpaceView(record.Details) {
-			continue
-		}
-		if grant != nil && !grant.AllowsSpace(id) {
-			continue
-		}
-		seen[id] = true
-		name := record.Details.GetString(bundle.RelationKeyName)
+	for _, row := range rows {
+		name := row.Name
 		if name == "" {
-			name = id
+			name = row.Id
 		}
-		out = append(out, spaceRef{id: id, name: name})
+		short := row.Id
+		if s, ok := served[row.Id]; ok {
+			short = s
+		}
+		out = append(out, spaceRef{id: row.Id, short: short, name: name})
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].id < out[j].id })
 	return out, nil
 }
 
@@ -1014,6 +1006,13 @@ func (s *V2Service) GlobalSearchObjects(ctx context.Context, req v2model.SearchR
 	sortGlobalRecords(merged, mergeSorts)
 	page := merged[minInt(offset, len(merged)):minInt(need, len(merged))]
 
+	// the row's spaceId field is served in the §8.35 short form, minted over
+	// the SAME visible set the fan-out ran on — a global-search row is the
+	// one place an agent learns a space id it did not itself name
+	shortRefs := map[string]string{}
+	for _, space := range spaces {
+		shortRefs[space.id] = space.short
+	}
 	builders := map[string]*objectRowBuilder{}
 	rows := make([]v2model.ObjectRow, 0, len(page))
 	for _, entry := range page {
@@ -1023,6 +1022,9 @@ func (s *V2Service) GlobalSearchObjects(ctx context.Context, req v2model.SearchR
 				return nil, 0, false, nil, err
 			}
 			builder.includeSpaceId = true
+			if short, found := shortRefs[entry.spaceId]; found {
+				builder.spaceRef = short
+			}
 			builders[entry.spaceId] = builder
 		}
 		rows = append(rows, builder.row(entry.record))

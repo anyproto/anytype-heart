@@ -162,6 +162,10 @@ type ObjectRow struct {
 // the canonical "list my spaces, pick one to write to" trace — withholding
 // it would force a GET-one per space (the N+1 pushed onto the agent).
 type SpaceRow struct {
+	// Id is the space's SHORT reference (§8.35) — the last six characters
+	// of its CID half — or the full id when that tail is shared with
+	// another visible space. Either spelling is accepted back on every
+	// route that takes a space.
 	Id          string `json:"id"`
 	Name        string `json:"name"`
 	Description string `json:"description,omitempty"`

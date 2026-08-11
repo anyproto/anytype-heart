@@ -143,7 +143,7 @@ func TestWhoamiService(t *testing.T) {
 		want := map[string]string{"spaceA": "Work"}
 
 		// when
-		got, err := fx.resolveGrantedSpaceNames(util.CtxWithApiGrant(context.Background(), grant), grant)
+		got, _, err := fx.resolveGrantedSpaceNames(util.CtxWithApiGrant(context.Background(), grant), grant)
 
 		// then
 		require.NoError(t, err)

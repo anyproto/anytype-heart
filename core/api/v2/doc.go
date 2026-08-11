@@ -13,6 +13,7 @@
 //	@description					Errors share one shape (C6): {status, code, message, issues:[{path, message, hint}]}, path-addressed and naming the allowed values, so a failed call tells an agent how to repair it. Reads never fail on unknown content — anything a representation cannot express is reported in `warnings` (C11).
 //	@description					Every object read returns an `etag` derived from the tree heads plus an ETag header; mutations take `If-Match` and are advisory by default (C7). Every mutation honours `Idempotency-Key` (C8) and `?dry_run=true` (C9). Every list surface is paginated with limit=25 by default and steers you when it truncates (C10).
 //	@description					Schemas are discoverable at runtime and strict-mode-compatible for constrained decoding (C12, C13): GET /v2/schemas lists the kinds, GET /v2/schemas/{kind} returns one, and GET /v2/schemas/ops/{op} returns the schema of a single PATCH op.
+//	@description					Spaces are served by a SHORT reference — the last six characters of the space id's CID half — and every route that takes a space accepts either that short reference or the full `<cid>.<replicationKey>` id. Resolution is exact id first, then a unique suffix, within the spaces the credential can see; an ambiguous reference is a 400 listing the candidates, and two spaces whose tails collide are both served in full. The full id keeps working everywhere.
 //	@termsOfService					https://anytype.io/terms_of_use
 //	@contact.name					Anytype Support
 //	@contact.url					https://anytype.io/contact

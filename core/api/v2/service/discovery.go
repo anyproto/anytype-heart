@@ -35,6 +35,41 @@ import (
 // the ctx grant happens here — a non-granted space's row (id, name,
 // description alike) must never leave this method.
 func (s *V2Service) ListSpaces(ctx context.Context, offset, limit int) ([]v2model.SpaceRow, int, bool, error) {
+	rows, err := s.liveSpaceRows(ctx)
+	if err != nil {
+		return nil, 0, false, err
+	}
+	// §8.35: the census runs over the WHOLE visible set, before pagination —
+	// a page must not hand out a tail a space on another page also claims.
+	ids := make([]string, len(rows))
+	for i, row := range rows {
+		ids[i] = row.Id
+	}
+	served := shortSpaceRefs(ids)
+	for i := range rows {
+		if short, ok := served[rows[i].Id]; ok {
+			rows[i].Id = short
+		}
+	}
+
+	total := len(rows)
+	page, hasMore := pagination.Paginate(rows, offset, limit)
+	return page, total, hasMore, nil
+}
+
+// liveSpaceRows is the ONE enumeration of the spaces a caller can SEE: the
+// tech space's space views, filtered to live ones (isLiveSpaceView) and
+// intersected with the ctx grant, sorted by full id. Every surface that
+// needs the caller's space set reads it here — the spaces list, the
+// global-search fan-out (spaceRefs), whoami's name resolution and the
+// §8.35 short-reference census and resolution — so the set a short
+// reference resolves within is by construction the set the list served it
+// from. Two enumerations would be two answers to "which spaces exist", and
+// the short form is only unambiguous relative to a fixed set.
+//
+// Rows carry the FULL id: shortening is a serving decision, made by each
+// caller of this method.
+func (s *V2Service) liveSpaceRows(ctx context.Context) ([]v2model.SpaceRow, error) {
 	grant := util.ApiGrantFromCtx(ctx)
 	records, err := s.store.SpaceIndex(s.techSpaceId).Query(database.Query{
 		Filters: []database.FilterRequest{{
@@ -44,7 +79,7 @@ func (s *V2Service) ListSpaces(ctx context.Context, offset, limit int) ([]v2mode
 		}},
 	})
 	if err != nil {
-		return nil, 0, false, fmt.Errorf("query space views: %w", err)
+		return nil, fmt.Errorf("query space views: %w", err)
 	}
 
 	rows := make([]v2model.SpaceRow, 0, len(records))
@@ -68,10 +103,7 @@ func (s *V2Service) ListSpaces(ctx context.Context, offset, limit int) ([]v2mode
 		})
 	}
 	sort.Slice(rows, func(i, j int) bool { return rows[i].Id < rows[j].Id })
-
-	total := len(rows)
-	page, hasMore := pagination.Paginate(rows, offset, limit)
-	return page, total, hasMore, nil
+	return rows, nil
 }
 
 // ListMembers returns minimal member rows (active participants) — agents

@@ -60,7 +60,7 @@ func (s *V2Service) Whoami(ctx context.Context) (v2model.WhoamiResponse, error) 
 		return resp, nil
 	}
 
-	names, err := s.resolveGrantedSpaceNames(ctx, grant)
+	names, refs, err := s.resolveGrantedSpaceNames(ctx, grant)
 	if err != nil {
 		return v2model.WhoamiResponse{}, fmt.Errorf("resolve granted space names: %w", err)
 	}
@@ -69,10 +69,19 @@ func (s *V2Service) Whoami(ctx context.Context) (v2model.WhoamiResponse, error) 
 	resp.Grant.Scoped = true
 	resp.Grant.Permission = &perms
 	for _, spaceId := range grant.Spaces {
+		// the id is served in the form GET /v2/spaces serves it (§8.35). A
+		// granted space the caller cannot SEE — deleted, left, never loaded —
+		// has no served short form and keeps its full spelling: the grant
+		// echo must stay complete, and only a visible space has an
+		// unambiguous tail.
+		id := spaceId
+		if short, ok := refs[spaceId]; ok {
+			id = short
+		}
 		// per-entry permission, uniform today — the object shape is what
 		// lets P2 introduce per-space permissions without a wire break
 		resp.Grant.Spaces = append(resp.Grant.Spaces, v2model.WhoamiGrantSpace{
-			Id:         spaceId,
+			Id:         id,
 			Name:       names[spaceId],
 			Permission: perms,
 		})
@@ -80,28 +89,33 @@ func (s *V2Service) Whoami(ctx context.Context) (v2model.WhoamiResponse, error) 
 	return resp, nil
 }
 
-// resolveGrantedSpaceNames resolves display names through the SAME
-// grant-intersected ListSpaces path GET /v2/spaces serves: the ctx grant
-// filters the enumeration at the input, so a non-granted space's name never
-// enters the map. Deliberately NO second filter here — the map is exactly
-// what ListSpaces yields, so its unit test fails the moment name resolution
-// stops flowing through the intersected path (the outer loop over
-// grant.Spaces in Whoami is the independent boundary for WHICH spaces are
-// listed). The limit is the grant size: the intersected total can never
-// exceed it.
-func (s *V2Service) resolveGrantedSpaceNames(ctx context.Context, grant *util.ApiGrant) (map[string]string, error) {
-	names := map[string]string{}
+// resolveGrantedSpaceNames resolves display names — and the §8.35 served
+// short references — through the SAME grant-intersected enumeration
+// GET /v2/spaces serves (liveSpaceRows, which ListSpaces is a thin serving
+// wrapper over): the ctx grant filters at the input, so a non-granted
+// space's name never enters the map. Deliberately NO second filter here —
+// the maps are exactly what the shared enumeration yields, so the unit test
+// fails the moment name resolution stops flowing through the intersected
+// path (the outer loop over grant.Spaces in Whoami is the independent
+// boundary for WHICH spaces are listed).
+//
+// Both maps are keyed by the FULL space id, which is what a grant holds:
+// grants are keyed by space id and this method must not change that.
+func (s *V2Service) resolveGrantedSpaceNames(ctx context.Context, grant *util.ApiGrant) (names, refs map[string]string, err error) {
+	names = map[string]string{}
 	if grant == nil || len(grant.Spaces) == 0 {
-		return names, nil
+		return names, map[string]string{}, nil
 	}
-	rows, _, _, err := s.ListSpaces(ctx, 0, len(grant.Spaces))
+	rows, err := s.liveSpaceRows(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("list granted spaces: %w", err)
+		return nil, nil, fmt.Errorf("list granted spaces: %w", err)
 	}
-	for _, row := range rows {
+	ids := make([]string, len(rows))
+	for i, row := range rows {
+		ids[i] = row.Id
 		names[row.Id] = row.Name
 	}
-	return names, nil
+	return names, shortSpaceRefs(ids), nil
 }
 
 // scopeName renders the session scope in the whoami vocabulary (camelCase

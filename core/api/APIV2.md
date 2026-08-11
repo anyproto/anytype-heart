@@ -4954,3 +4954,275 @@ were run: dropping the `space` row from `argSteers` (`TestSpaceRefSteering`),
 unwiring the vocabulary pass from `steerError` (`TestRestVocabulary`), and
 dropping the truncated-space case from the `object` repair
 (`TestObjectRefSteering`).
+
+### 8.35 A space reference a model cannot truncate (2026-08-11 — decisions as built)
+
+§8.34 measured the mistake and made it recoverable. This removes it: `/v2`
+now **serves** spaces by a short reference and **accepts** either spelling
+everywhere a space id is accepted. The full id keeps working, forever; this
+is additive addressing over the existing identity, not a new identity.
+
+#### The measurement this answers
+
+A space id is `<CID>.<base36 replication key>` —
+`bafyreihwvsaekzzyb54o7um4hdpvpn5b2invn75lmijhhtghblvphxwz2i.28y6mgnwgodt7`.
+`gemma4:e4b` truncates it at the dot, plausibly reading the suffix as a file
+extension: **83 of 93 `find` calls** across its wrapper attempts in run
+`20260810-235748`, **zero** mangles in any other argument of any other tool.
+It collapsed that model's wrapper arm to 2/12 until §8.34's repair made the
+refusal recoverable. `space` was the last place a raw composite id was asked
+for — every object-addressed tool already takes `object` alone — and it is
+exactly where the failure was measured.
+
+#### The form: the TAIL of the CID half, and NOT the replication key
+
+**Off the tail, not the head.** Every space CID on one account is a CIDv1 in
+the same multibase and codec, so they all start `bafyrei…` — about eight
+characters that distinguish nothing. That is the same reasoning that makes
+anyblockjson's block labels shortest-unique-**suffix**
+(`mintedSuffixLabels`), and the same machinery shape is reused here: a
+census over the whole visible set, a fixed tail length, and no short form at
+all for anything that collides.
+
+**Without the replication key**, which is what removes the dot — and with it
+the character the model cut at. Excluding it costs nothing, because it
+*distinguishes nothing*: derived spaces hash the account key and every
+client-created space reuses the personal space's, so **all 17 spaces on the
+eval account end `.28y6mgnwgodt7`**. `nodeconf.ReplKey` hashes it to pick
+responsible nodes; it is not a per-space discriminator.
+
+That second fact is also the trap, and it is why the fixture is the load-
+bearing part of the test file. **The census must run over the CID half, after
+splitting on the dot.** Feed the composite ids in and every tail is
+identical, the collision rule fires on every pair, and the feature emits
+*nothing* — no error, no failing test, silence on exactly the accounts it
+exists for. `spaceref_test.go` therefore pins the production shape: CIDs that
+differ, replication keys that are **the same**, and an explicit assertion
+that a composite-tail census would collapse to one bucket while the real one
+does not. (Same shape as the Phase-3 review's "fixture-lossless mask", where
+every edit fixture was built through `Unmarshal` and so could not observe a
+loss that only happened on real documents.)
+
+**Six characters.** The CID half is 59 base32 characters, and its last
+character carries only **3 bits** — 288 payload bits do not divide by 5, so
+the final symbol is padded (the 17 real ids use 7 of its 8 possible values).
+A tail of n characters holds 3 + 5(n−1) bits: 28 bits at n = 6. Over the real
+account all 17 tails are distinct at every length from 2 up; at 6 the
+birthday probability of any pair colliding is ~7 × 10⁻⁵ even at 200 spaces,
+and a collision degrades gracefully rather than failing.
+
+**Only real space ids enter the mechanism.** `isSpaceIdShaped` requires
+`<base32 cid ≥ 32 chars>.<base36 key>`; anything else — a fixture's
+`spaceLive`, a tech space id, a hand-written string — neither shortens nor
+answers to a tail. That is `mintedSuffixLabels`' own rule (`isMintedLocalId`,
+"anything unrecognised stays full"): a false negative costs a few tokens, a
+false positive turns a meaningful identifier into a guess. It is also why
+this change moved no existing test.
+
+#### Resolution: the rule the codebase already has, not a second one
+
+`matchSpaceRef` **is** `matchBlockRef` (object.go) applied to space ids over
+their CID halves: exact full id first, then a unique suffix; more than one
+claimant is a 400 listing the candidates. Nothing new was invented, and the
+one rule now covers block refs, view refs, payload ids and space refs.
+
+A consequence worth stating: **the §8.34 truncation now resolves**, because
+the whole CID half is a suffix of itself. The mistake that cost 15 attempts
+is a working call.
+
+#### Where it runs: a middleware, in front of the grant gate
+
+Every space-addressing `/v2` route uses one param name (`SpaceParam`; the
+conformance walk refuses any other), so one middleware covers the surface —
+including routes added later, the same by-construction argument the grant
+gate rests on. It **must** run before `ensureSpaceGrant`: grants are keyed by
+full space id, so a short reference reaching the gate unresolved would be
+refused as a non-granted space. Resolving inside the services would be too
+late by one middleware.
+
+**The scoped-key path, checked.** Resolution's candidate set is
+`liveSpaceRows` — live spaces intersected with the ctx grant, the same
+enumeration `GET /v2/spaces` serves from. So:
+
+- a short reference can only ever resolve to a space the caller can already
+  see. It is not a probe: a tail belonging to a non-granted space does not
+  resolve, the param is left exactly as it arrived, and the request meets the
+  refusal any other unknown value meets — quoting the caller's own value, not
+  naming the space the tail belongs to.
+- a full id is returned untouched without reading the space list, so the
+  common path costs nothing and a non-granted full id still gets the same
+  403 it got before.
+- the grant check is not weakened anywhere: it still compares full ids, still
+  runs on every request, and the service-level `ensureSpaceGranted` backstop
+  is unchanged.
+
+`liveSpaceRows` is also the point of a small refactor: `ListSpaces`,
+`spaceRefs` (the global-search fan-out) and whoami's name resolution used to
+enumerate separately. They are one enumeration now, because a short form is
+only unambiguous *relative to a fixed set* — two censuses would be two
+answers to "which spaces exist".
+
+#### Serve short, accept either, echo what you were served
+
+Served short: `GET /v2/spaces` rows, `GET`/`POST`/`PATCH /v2/spaces/{id}`,
+global-search rows' `spaceId`, whoami's `grant.spaces[].id` (a granted space
+the caller cannot SEE has no census entry and keeps its full spelling — the
+grant echo must stay complete), and therefore the wrapper's `spaces` tool,
+which passes `SpaceRow` through verbatim. The census runs over the WHOLE
+visible set before pagination, so a page cannot mint a tail a space on
+another page also claims.
+
+The echo is one hook, not twenty. `v2handler.RespondV2Error` — the single
+place a v2 error becomes bytes — re-spells the resolved full id back into
+the caller's own reference across the message, every issue message and every
+hint. The alternative was the same substitution at ~20 `Sprintf` sites, where
+one could drift from nineteen and a message added tomorrow would inherit
+nothing. Substituting into a repair URL keeps it valid: every route takes
+either spelling. The not-found and not-granted refusals needed nothing —
+resolution only ever succeeds, so those messages already quote the caller's
+own value.
+
+Per §8.28 the mechanism is **not** explained to agents: neither
+`core/api/v2/SKILL.md` nor `cmd/anytype/SKILL.md` mentions short versus long.
+Both already say "list the spaces and pass the id", which is now true of a
+value with no dot in it. The mechanism is in the API reference (the v2
+OpenAPI description) and here.
+
+**The compact `filter` string is unaffected.** A space id cannot appear in
+it: filter keys are the space's property keys plus the four-key system
+allowlist, and `spaceId` is not among the 38 keys the eval space publishes —
+checked, not assumed. So §C2's validate-before-fold exception raises no
+question here, and the string keeps treating identifiers exactly as it did.
+
+#### The token cost, on the record
+
+Measured with the Gemma 3 tokenizer (ollama `prompt_eval_count` via the
+served `gemma4:e4b`), against the real 17-space account:
+
+| surface | before | after | change |
+|---|---|---|---|
+| the `spaces` tool's whole output | 895 tok | 159 tok | **−82.2 %** |
+| one space id, as the model must EMIT it | 44 tok | 2 tok | **−95.5 %** |
+
+The second row is the one that matters: 44 tokens of exact base32 copying, on
+every `find`, `describe` and `create` — which is the copy the model got
+wrong.
+
+#### Live verification
+
+Before (the running API, old binary):
+
+```
+GET /v2/spaces        → "bafyreia4znhhjvxek2iux7enfzilekj5vwlgddgogpfgnx5qnim7bugaxa.28y6mgnwgodt7" …×17
+GET /v2/spaces/hxwz2i → 404 space "hxwz2i" not found — list spaces with GET /v2/spaces
+GET /v2/spaces/bafyrei…hxwz2i/objects → 404 (the §8.34 truncation)
+```
+
+After:
+
+```
+GET /v2/spaces        → bugaxa | Project Tracker … hxwz2i | APIv2 eval   (17 rows, all distinct)
+GET /v2/spaces/hxwz2i → {"id":"hxwz2i","name":"APIv2 eval"}
+GET /v2/spaces/<full> → {"id":"hxwz2i","name":"APIv2 eval"}      (full still works, served short)
+GET /v2/spaces/bafyrei…hxwz2i/objects → 200                      (the truncation resolves)
+POST /v2/spaces/hxwz2i/search         → 200                      (nested routes too)
+GET /v2/spaces/zzzzzz/objects         → 404 space "zzzzzz" not found  (the caller's own value)
+GET /v2/spaces/hxwz2i/types/nope      → … not found in space "hxwz2i" … GET /v2/spaces/hxwz2i/types
+GET /v2/spaces/<full>/types/nope      → … not found in space "bafyrei….28y6mgnwgodt7" …
+POST /v2/search                       → rows carry "spaceId":"hxwz2i"
+```
+
+Through the wrapper CLI, all three `space`-taking tools: `spaces` prints the
+short ids, and `find --space hxwz2i`, `find --space <full>` and
+`find --space <truncated>` all return the same object.
+
+**One `gemma4:e4b` spot check**, one task, one attempt (`edit-one-word`,
+wrapper/large): it passed `space: "hxwz2i"` verbatim on its first `find`,
+made **zero** failed calls, and finished in 3 turns on `model_done`. Its
+reasoning names the short id as the space. It is a spot check and not a rate.
+
+#### What this does to §8.34
+
+§8.34's `space` steer is **superseded for the measured mistake** and stays in
+place, unchanged, as a backstop. Its live trigger is gone twice over: the
+served form has no dot to cut, and a truncated FULL id pasted from elsewhere
+now resolves. The one case it could still meet — a truncated id belonging to
+a space the credential cannot see — is one no repair can help, since that
+space is unusable to the caller either way. Worth recording honestly:
+`spaceIdsWithPrefix` reads `GET /v2/spaces`, which now serves short ids, so
+the prefix match will not fire against a served list; the value that would
+have needed the repair resolves instead.
+
+#### Tests, and the revert each one catches
+
+`core/api/v2/service/spaceref_test.go`:
+
+- **`TestShortSpaceRefs`** — a real-shaped account (identical replication
+  keys) shortens every space; a composite-tail census would collapse to one;
+  colliding CID tails keep BOTH full spellings; an unshaped id never
+  shortens. *Reverts caught:* computing the tail over the composite id
+  (the silent-nothing regression), dropping the `counts[tail] != 1` guard,
+  dropping `isSpaceIdShaped`.
+- **`TestMatchSpaceRef`** — exact wins; a unique tail resolves; the whole CID
+  half resolves; an ambiguous tail reports both claimants. *Revert caught:*
+  matching the suffix against the composite id, or dropping the exact-first
+  branch.
+- **`TestResolveSpaceRef`** — a full id passes through with an EMPTY store
+  (proving the common path reads no space list); ambiguity is a 400 with
+  candidates; **a non-granted space's tail does not resolve and the grant
+  backstop still refuses it**; a non-granted FULL id is still refused, not
+  hidden. *Reverts caught:* widening the candidate set past the grant
+  intersection, resolving before the grant filter, returning an error instead
+  of the caller's value on no match.
+- **`TestSpacesSurfaceServesShortRefs`** — the list serves short; colliding
+  spaces are listed in full; the census precedes pagination; GET-one serves
+  short. *Reverts caught:* minting per page, serving the full id.
+- **`TestWhoamiServesShortSpaceRefs`** — the maps stay keyed by FULL id (a
+  grant is keyed by space id); an invisible granted space keeps its full
+  spelling. *Revert caught:* keying `resolveGrantedSpaceNames` off the served
+  id, which silently empties whoami's space names.
+
+`core/api/v2/spaceref_test.go` (the route half):
+
+- **`TestResolveSpaceRefMiddleware`** — the param rewrite; the full id
+  untouched; the §8.34 truncation resolving; ambiguity refused before the
+  handler; the refusal echoing the caller's spelling and NOT the full id.
+  *Reverts caught:* unwiring `resolveSpaceRef` from the router, dropping the
+  echo from `RespondV2Error`.
+- **`TestResolveSpaceRefAndTheGrantGate`** — resolution BEFORE the gate (a
+  granted space's short reference passes); a non-granted tail is refused
+  quoting the caller and never naming the space; a non-granted full id is
+  refused exactly as before; an invisible space's tail resolves nowhere.
+  *Revert caught:* moving `resolveSpaceRef` after `ensureSpaceGrant` — which
+  turns every short reference into a 403 for a scoped key.
+
+`core/api/server/v2_spaceref_test.go` (the REAL engine):
+
+- **`TestV2ShortSpaceRefThroughTheRealEngine`** — the two tests above build
+  their own middleware chain, so neither can see whether
+  `apiv2.RegisterRoutes` installs the middleware at all. This walks the real
+  engine: the list serves short and does not leak the full id, a short
+  reference on a path param resolves, the full id still works, a granted key
+  reaches its space by the short reference, and a non-granted tail is still
+  refused. *Revert caught:* deleting the `v2.Use(resolveSpaceRef(...))` line
+  from the router — which the package-local tests do not notice.
+
+All seven reverts were run and each failed the named test.
+
+One free consequence, recorded: the C8 idempotency key is scoped by
+`c.Param("space_id")` (`middleware.go`), which the middleware has already
+rewritten — so a retry that spells the space differently still hits the same
+cached entry, rather than replaying the mutation under a second key.
+
+#### Retiring Phase 9
+
+Phase 9 (space-optional object routes) is **retired** — see `APIV2_PLAN.md`
+3.2 and `APIV2_SURFACES.md` §10.3. It was proposed for this problem and this
+supersedes it for the measured version of it. Recorded there: what Phase 9
+uniquely solved (a cold-pasted object id with no prior `find`), that no eval
+has ever produced that case, and the two defects found while scoping it —
+`ResolveSpaceIdWithRetry` is `retry.Attempts(0)` (infinite, bounded only by
+the context, so an unresolvable id spins instead of 404ing), and
+`set_properties` needs a space regardless because `propertyFormats`, the
+option-name guard, `@me` and relative dates are all space-scoped. Decision D2
+is **moot**, not decided.

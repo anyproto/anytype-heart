@@ -540,7 +540,48 @@ content; Phase 8 is new and exists only because of the v0.2 decision.
 - **Not v1 removal.** Phase 8 makes `/v1` *deprecable*, and §6's clock can
   then start. Removal is its own migration with its own notice period.
 
-### 10.3 Phase 9 — space-optional object routes (decided 2026-08-09)
+### 10.3 Phase 9 — space-optional object routes (decided 2026-08-09 · **RETIRED 2026-08-11**)
+
+> **Retired — superseded by the short space reference (APIV2.md §8.35).**
+> `/v2` now serves spaces by a six-character reference off the tail of the
+> CID half and accepts either spelling on every route that takes a space.
+> That removes the measured failure — a model cannot truncate a value with
+> no dot in it, and the truncated form resolves anyway — without a new route
+> class, a new grant class, or a resolver dependency. The section below is
+> kept for the reasoning it records; three of its claims are corrected here.
+>
+> **Correction 1 — the tools it was said to unburden already take `object`
+> alone.** "For the wrapper's small tier that removes a required argument
+> from half the tools" is wrong as written: `read`, `set_properties`,
+> `add_blocks`, `edit_text`, `check_item`, `move_block`, `delete_block` and
+> `set_cell` take `object` (a handle number or an id) and resolve the space
+> from `session.Space`, set by the last `find` (`runner.go` `resolveObject`).
+> Phase 9 would have removed a `space` argument from the ROUTES, which the
+> wrapper fills itself. The three tools that ask a model for a space —
+> `find`, `describe`, `create` — are exactly the three Phase 9 says keep it.
+>
+> **Correction 2 — what Phase 9 uniquely solved, and how often it happens.**
+> The one case the wrapper's own space memory cannot cover is a **cold-pasted
+> object id with no prior `find`**. That case has **never appeared in an
+> eval**: every measured trace reaches an object through `find`, which is
+> also the only thing that mints the handles the tools take. It is a real
+> gap and an unobserved one.
+>
+> **Correction 3 — `set_properties` needs a space regardless.** Even with a
+> space-less route, the wrapper cannot drop the space for it: `propertyFormats`
+> (the key → format index), the option-name guard, `@me` resolution and
+> relative-date resolution are all space-scoped calls (`values.go`). A
+> space-optional route would have moved the lookup, not removed it.
+>
+> **A defect found while scoping it, filed here rather than fixed:**
+> `ResolveSpaceIdWithRetry` (`core/block/object/idresolver/resolver.go:98`)
+> is `retry.Attempts(0)` — **infinite**, bounded only by the caller's
+> context. Build item 2 below mandates using it, so an unresolvable object
+> id would have spun until the request deadline instead of answering 404.
+> Anything that revives this must bound the retry first.
+>
+> **Decision D2 is moot**, not decided: it asked what to answer for an object
+> in a space the key does not hold, which only arises on a space-less route.
 
 Not completeness and not a token knob — a surface simplification that
 happens to save tokens. **Object ids are content-addressed (the CID of the
@@ -581,6 +622,12 @@ it, which is the only version of this that also removes the mistake. Note
 the scope limit: the routes that keep `space` (`find` above all — the very
 call that produced these numbers) still take the composite id, so Phase 9
 narrows the exposure rather than closing it.
+
+**That scope limit is what retired it (2026-08-11).** `find` is where the
+numbers came from and Phase 9 does not touch `find`. §8.35 does: it changes
+what a space id *is* on the wire, so the value the model copies has no dot
+to cut, on `find`, `describe`, `create` and every path param at once — and
+it needs no resolver, no new route class and no D2 decision.
 
 **Build items:**
 

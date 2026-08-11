@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"slices"
 	"strings"
 	"unicode/utf8"
 
@@ -83,10 +84,36 @@ func (s *V2Service) GetSpace(ctx context.Context, spaceId string) (v2model.Space
 			fmt.Sprintf("space %q is not available (deleted, left, or still joining) — list live spaces with GET /v2/spaces", spaceId))
 	}
 	return v2model.Space{
-		Id:          spaceId,
+		// served in the §8.35 short form, exactly as GET /v2/spaces prints
+		// it — one space has one served spelling whichever route produced it
+		Id:          s.servedSpaceRef(ctx, spaceId),
 		Name:        details.GetString(bundle.RelationKeyName),
 		Description: details.GetString(bundle.RelationKeyDescription),
 	}, nil
+}
+
+// servedSpaceRef renders one space id in the form this caller is served
+// (§8.35): the short reference when its tail is unique across the caller's
+// visible spaces, the full id when it collides or when the set cannot be
+// read. Never fails — a serving decision must not be able to fail a read.
+func (s *V2Service) servedSpaceRef(ctx context.Context, spaceId string, extra ...string) string {
+	rows, err := s.liveSpaceRows(ctx)
+	if err != nil {
+		return spaceId
+	}
+	ids := make([]string, 0, len(rows)+len(extra)+1)
+	for _, row := range rows {
+		ids = append(ids, row.Id)
+	}
+	// a just-created space is not in the tech-space index yet; it must still
+	// enter the census, or its short form could collide with a space the
+	// census did see
+	for _, id := range append(extra, spaceId) {
+		if id != "" && !slices.Contains(ids, id) {
+			ids = append(ids, id)
+		}
+	}
+	return shortSpaceRef(ids, spaceId)
 }
 
 // validateSpaceField enforces the advertised maxLength on one space field —
@@ -163,7 +190,7 @@ func (s *V2Service) CreateSpace(ctx context.Context, req v2model.CreateSpaceRequ
 		return nil, v2model.NewError(http.StatusInternalServerError, v2model.CodeInternalError,
 			"create space: the workspace RPC returned no space id")
 	}
-	return &v2model.Space{Id: resp.SpaceId, Name: name, Description: description}, nil
+	return &v2model.Space{Id: s.servedSpaceRef(ctx, resp.SpaceId), Name: name, Description: description}, nil
 }
 
 // UpdateSpace implements PATCH /v2/spaces/{spaceId}: thin over

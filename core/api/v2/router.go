@@ -75,6 +75,12 @@ func RegisterRoutes(router *gin.Engine, deps RouteDeps) {
 	v2.Use(deps.CacheInit)
 	v2.Use(deps.Auth)
 	v2.Use(deps.KeyScope)
+	// Short space references (§8.35) resolve BEFORE the grant gate: grants
+	// are keyed by full space id, so a short reference has to become one
+	// before anything compares it against the grant. Resolution itself can
+	// only land inside the caller's visible (grant-intersected) spaces —
+	// spaceref.go.
+	v2.Use(resolveSpaceRef(deps.Service))
 	// The space-grant gate runs directly after the key-scope gate: KeyScope
 	// decides the key's KIND, ensureSpaceGrant decides which spaces and
 	// which verbs the key's grant covers (authz.go). It must run before any
