@@ -51,34 +51,90 @@ func (r *rpcHandler) SpaceExchange(ctx context.Context, request *clientspaceprot
 		if err != nil {
 			return nil, err
 		}
-		var portAddrs []string
-		peerAddr := peer.CtxPeerAddr(ctx)
-
-		if peerAddr != "" {
-			// prioritize the address the remote peer connected us from — but
-			// with its advertised listening port: the port in peerAddr is the
-			// dialer's ephemeral source port, nothing listens on it
-			if u, errParse := url.Parse(peerAddr); errParse == nil && u.Hostname() != "" {
-				portAddrs = append(portAddrs, net.JoinHostPort(u.Hostname(), strconv.Itoa(int(request.LocalServer.Port))))
-			}
-		}
-
-		for _, ip := range request.LocalServer.Ips {
-			addr := fmt.Sprintf("%s:%d", ip, request.LocalServer.Port)
-			if slices.Contains(portAddrs, addr) {
-				continue
-			}
-			portAddrs = append(portAddrs, addr)
-		}
-		// addSchema pins the transport for local peers (yamux); see its comment
-		addrsWithSchema := r.s.addSchema(portAddrs)
-		r.s.peerService.SetPeerAddrs(peerId, addrsWithSchema)
-		r.s.peerStore.UpdateLocalPeer(peerId, request.SpaceIds)
-		log.Info("updated local peer", zap.Strings("ips", addrsWithSchema), zap.String("peerId", peerId), zap.Strings("spaceIds", request.SpaceIds))
+		r.s.recordLocalPeer(ctx, peerId, request.LocalServer, request.SpaceIds)
 	}
 	log.Debug("returning list with ids", zap.Strings("spaceIds", allIds))
 	resp = &clientspaceproto.SpaceExchangeResponse{SpaceIds: allIds}
 	return
+}
+
+// recordLocalPeer registers the addresses a LAN peer advertised and the spaces
+// it shares with us, so subsequent syncing dials it directly.
+func (s *service) recordLocalPeer(ctx context.Context, peerId string, localServer *clientspaceproto.LocalServer, spaceIds []string) {
+	var portAddrs []string
+	peerAddr := peer.CtxPeerAddr(ctx)
+
+	if peerAddr != "" {
+		// prioritize the address the remote peer connected us from — but
+		// with its advertised listening port: the port in peerAddr is the
+		// dialer's ephemeral source port, nothing listens on it
+		if u, errParse := url.Parse(peerAddr); errParse == nil && u.Hostname() != "" {
+			portAddrs = append(portAddrs, net.JoinHostPort(u.Hostname(), strconv.Itoa(int(localServer.Port))))
+		}
+	}
+
+	for _, ip := range localServer.Ips {
+		addr := fmt.Sprintf("%s:%d", ip, localServer.Port)
+		if slices.Contains(portAddrs, addr) {
+			continue
+		}
+		portAddrs = append(portAddrs, addr)
+	}
+	// addSchema pins the transport for local peers (yamux); see its comment
+	addrsWithSchema := s.addSchema(portAddrs)
+	s.peerService.SetPeerAddrs(peerId, addrsWithSchema)
+	s.peerStore.UpdateLocalPeer(peerId, spaceIds)
+	log.Info("updated local peer", zap.Strings("ips", addrsWithSchema), zap.String("peerId", peerId), zap.Strings("spaceIds", spaceIds))
+}
+
+// SpaceExchangeV2 is the inbound side of the token handshake: compute this
+// device's expected request token for every space it holds a discovery key
+// for, intersect with what the caller sent, and answer with membership proofs
+// for the intersection only — keyed by the caller's nonce, so a response can
+// be neither precomputed nor replayed.
+func (r *rpcHandler) SpaceExchangeV2(ctx context.Context, request *clientspaceproto.SpaceExchangeV2Request) (*clientspaceproto.SpaceExchangeV2Response, error) {
+	callerPeerId, err := peer.CtxPeerId(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("caller peer id: %w", err)
+	}
+	if len(request.Nonce) != clientspaceproto.NonceSizeV2 {
+		return nil, fmt.Errorf("space exchange v2: bad nonce size %d", len(request.Nonce))
+	}
+	if len(request.SpaceTokens) > clientspaceproto.MaxTokensV2 {
+		return nil, fmt.Errorf("space exchange v2: too many tokens (%d)", len(request.SpaceTokens))
+	}
+	allIds, err := r.s.spaceStorageProvider.AllSpaceIds()
+	if err != nil {
+		return nil, fmt.Errorf("all space ids: %w", err)
+	}
+	received := make(map[string]struct{}, len(request.SpaceTokens))
+	for _, token := range request.SpaceTokens {
+		received[string(token)] = struct{}{}
+	}
+	var (
+		shared       []string
+		respTokens   [][]byte
+		selfPeerId   = r.s.wallet.GetDevicePrivkey().GetPublic().PeerId()
+		discoveryKey = r.s.discoveryKeys.DiscoveryKeys(ctx, allIds)
+	)
+	for _, spaceId := range allIds {
+		key, ok := discoveryKey[spaceId]
+		if !ok {
+			continue
+		}
+		if _, ok = received[string(clientspaceproto.RequestTokenV2(key, request.Nonce, callerPeerId, selfPeerId))]; !ok {
+			continue
+		}
+		shared = append(shared, spaceId)
+		respTokens = append(respTokens, clientspaceproto.ResponseTokenV2(key, request.Nonce, callerPeerId, selfPeerId))
+	}
+	// a request without LocalServer is a plain probe: answer the proofs but
+	// record nothing
+	if request.LocalServer != nil {
+		r.s.recordLocalPeer(ctx, callerPeerId, request.LocalServer, shared)
+	}
+	log.Debug("space exchange v2 received", zap.String("peerId", callerPeerId), zap.Int("shared", len(shared)))
+	return &clientspaceproto.SpaceExchangeV2Response{SpaceTokens: respTokens}, nil
 }
 
 func (r *rpcHandler) SpacePull(ctx context.Context, request *spacesyncproto.SpacePullRequest) (resp *spacesyncproto.SpacePullResponse, err error) {
