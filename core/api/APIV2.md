@@ -4518,7 +4518,12 @@ was touched.
 `gemma4:e2b` through the product's own MCP wrapper against the real local
 server — 60 attempts, four tasks, temperature 0, artifacts in the gitignored
 `eval-out/attempts.jsonl` (run `20260810-222855`). The A/B answers the
-question §8.30 could not. The three defects are what a *loop* exposes that a
+question §8.30 could not.
+
+**Every number in this section is `gemma4:e2b`.** The next run added
+`gemma4:e4b` and it scores far worse on the wrapper — for one string-handling
+reason that has nothing to do with the wrapper's shape, and that this section
+predates. Read §8.34 before drawing a model-vs-surface conclusion from either. The three defects are what a *loop* exposes that a
 schema read cannot: each needs a tool call to have happened before the next
 one goes wrong.
 
@@ -4727,3 +4732,225 @@ sample of one on a high-variance model is not a rate, and is not offered as
 one. The before/after that actually pins each fix is deterministic — the
 live CLI against the running server, and a unit test per fix that fails when
 the fix is reverted (all three reverts run and confirmed).
+
+### 8.34 A refusal that is correct and unactionable is a defect — stated once (2026-08-11 — decisions as built)
+
+Run `20260810-235748`: 110 attempts, `gemma4:e2b` and `gemma4:e4b`, three
+surfaces, temperature 0, artifacts in the gitignored
+`eval-out/attempts.jsonl`. It looked like a capability result and was a
+string-handling quirk.
+
+| model | arm | passed | of |
+|---|---|---|---|
+| `gemma4:e2b` | wrapper/small | 18 | 20 |
+| `gemma4:e2b` | wrapper/large | 21 | 30 |
+| `gemma4:e2b` | ops | 23 | 30 |
+| `gemma4:e4b` | wrapper/small | 3 | 8 |
+| `gemma4:e4b` | wrapper/large | **2** | **12** |
+| `gemma4:e4b` | ops | 8 | 10 |
+
+The obvious reading — the bigger model is worse at the wrapper and fine on
+the raw op surface — is wrong twice over.
+
+#### The finding: one string, mangled in one argument
+
+A space id has two dot-joined parts:
+`bafyreihwvsaekzzyb54o7um4hdpvpn5b2invn75lmijhhtghblvphxwz2i.28y6mgnwgodt7`.
+**`gemma4:e4b` truncates it at the dot**, passing only the prefix — plausibly
+reading `.28y6mgnwgodt7` as a file extension. It earned:
+
+```
+space "bafyreihwvsaekzzyb54o7um4hdpvpn5b2invn75lmijhhtghblvphxwz2i" not found — list spaces with GET /v2/spaces
+```
+
+**74 of the 79 `find` calls in e4b's 15 wrapper failures are this** (83 of 93
+across all 20 of its wrapper attempts). Every single truncation is in
+`find`'s `space` argument; **not one** appears in any other argument of any
+other tool. `gemma4:e2b` never does it, in any arm. In one attempt e4b called
+`spaces`, was served the full ids, and went straight back to the truncated
+form — the identical call **seven times**, until the turn budget ended the
+attempt. Ten of the fifteen failures stopped on `turn_budget`, against zero
+for e2b anywhere in the run.
+
+**And the ops arm is not a control.** Its tools take no `space` and no object
+id at all — the harness binds the target, and across all 39 ops-arm calls in
+the run the argument names are `op`, `id`, `find`, `replace`, `blocks`,
+`row`/`col`/`tableId`, `value`, `position`, `set`, `markdown`, `after`,
+`outline`, `recursive`. e4b scores 8/10 there because it never has to handle
+a space id, not because it handles one well. The two arms differ in the
+argument, not in the difficulty of the work.
+
+#### Fix 1 — the refusal names the mistake, with the full id in it
+
+A rejected space id that is a **prefix of a known space id** is a
+recognisable error with a known repair, and the model already has everything
+else right. The wrapper now answers:
+
+```
+space "bafyrei…z2i" not found — that is the first part of the space id
+"bafyrei…z2i.28y6mgnwgodt7": a space id has two parts joined by a dot and
+BOTH are part of the id — pass it whole, exactly as `spaces` prints it
+```
+
+Built the same way §8.33's `object` steer was, for the same reasons: it
+**appends to the server's 404** (the fact is which value failed, the hint is
+the repair); it runs on `Run`'s **error path**, so all three tools taking
+`space` — `find`, `describe`, `create` — are covered by construction and a
+fourth inherits it; and it fires **only after the server has refused**, so
+nothing has to be proven impossible up front. The cost is one `GET /v2/spaces`
+on a mistake and zero on a working call (asserted). A value that is nobody's
+prefix, or an unreadable space list, leaves the server's refusal exactly as
+it was written.
+
+One thing is new: the specific repair **supersedes** the generic one. The
+message no longer also says "list them with the `spaces` tool", because two
+repairs in one refusal compete and this run shows which one loses — the model
+had already run `spaces`. That is a declared field on the steer table
+(`supersedes`), not a special case in the code.
+
+**Object ids do not share the hazard**, and the check is worth recording.
+Object ids are CIDs, `_bundled` keys, `_date_…` keys or participant ids, and
+the two derived ids that *do* embed a space id — `NewParticipantId` and
+`NewPersonalWidgetsId` (`core/domain/id.go`) — **re-encode the dot as an
+underscore**, with the comment "to avoid issues on Desktop client". The one
+dotted identifier on this surface is the space id. What can still happen is
+the truncated space id landing in `object` instead of `space`, so the
+`object` steer recognises that too (a strict prefix of the working space, 16
+characters or more — two CIDs in the same multibase share about eight).
+
+#### Fix 2 — the wrapper stopped speaking REST to a tool caller
+
+The refusal above ended in *"list spaces with GET /v2/spaces"*. On the HTTP
+surface that is right: routes are its vocabulary. On the wrapper surface the
+tool is `spaces`, the model **had already called it**, and the hint named a
+thing it cannot do while leaving the thing it can do unnamed.
+
+The audit found this was never one message. Every hint the server writes for
+a route the wrapper calls reaches a tool caller verbatim, and the wrapper had
+exactly two ad-hoc rewrites — one in `describe` for two type-key phrasings,
+one in `opsVocab` for a block hint the server **no longer sends** (§8.29
+rewrote it, and the rewrite was not followed here, so the current phrasing
+leaked). Reachable and unhandled: the space hint, the type-key hints on
+`find`/`create`, the property-key hint, the option-names hint, the current
+block hint on every editing tool, the members hint behind `@me`.
+
+So the vocabulary is one table now (`steer.go`), applied to every tool error
+— text, issue messages and issue hints alike, since the rendered text is
+built from all three. Six phrases get a real tool-shaped repair. Behind them
+is a **generic rule**: anything still matching `METHOD /vN/…` becomes "the
+HTTP API". That is deliberately a bare noun phrase — it stays grammatical
+wherever a route can appear in a sentence, and it says the true thing, which
+is that the repair is not on this surface. A hint added server-side tomorrow
+therefore cannot reach a tool caller as a route; the worst it can do is lose
+its specificity, and a test asserts no route survives the pass.
+
+Not changed: the raw HTTP surface, where naming the route is correct and
+stays.
+
+#### The pattern, stated once as a rule
+
+This is the third instance of one shape, and it is now a rule rather than a
+per-field discovery:
+
+> **A refusal that is correct and unactionable is a defect.** When a rejected
+> value is wrong in a *recognisable* way, the refusal must name the repair —
+> and it must name it in the caller's own vocabulary. A small model handed a
+> true "not found" with no repair does not explore: it re-sends the identical
+> call until its turn budget ends the attempt.
+
+The three instances: the mis-shaped `object` (§8.33 defect 2, three identical
+repeats), the B1 arm's relocated block reference (§8.33 — removing the field
+moved the mistake, it did not remove it), and the truncated space id here
+(seven identical repeats). In every case the wrong value was one shape with
+one repair, and in every case the model's *other* arguments were correct.
+
+The code answer to "one rule, not one hook per field" is `steer.go`: an
+`argSteers` table keyed by argument name, evaluated on `Run`'s error path. A
+new diagnosable argument is a row, not a hook in an executor — and because it
+is keyed by the argument and not the tool, every tool taking that argument is
+covered the moment the row exists. `describe`'s private rewrite and the
+`object` steer both moved into it; nothing in any executor knows a steer
+exists.
+
+What the rule does **not** license is guessing. Each repair fires only when
+the server has already refused *and* the refusal quotes the caller's own
+value *and* the shape is provable (a prefix of a real space id, a pure-hex
+block reference, the working space id). Everything else keeps the server's
+words.
+
+#### Considered and not done
+
+**Changing the `space` argument description** to warn about the dot. §8.33's
+B2 arm is direct evidence that description prose does not change what a model
+puts in an argument, and it would cost tokens on every call by every model to
+repair a mistake one model makes. The repair costs nothing when the model is
+right.
+
+**Changing the identifier**. Out of scope by instruction and correctly so —
+see the Phase 9 note below for what the suffix actually is.
+
+#### Where the suffix comes from, and what it would cost to hide it
+
+Reported, not acted on. `NewSpaceId(cid, repKey)` is
+`cid + "." + strconv.FormatUint(repKey, 36)`
+(any-sync `commonspace/spacepayloads/payloads.go`). The prefix is the CIDv1
+of the marshalled, signed space header; the suffix is the space's
+**replication key**, a `uint64` in base36. It is load-bearing twice over:
+`ValidateSpaceHeader` rejects a header whose id suffix does not equal
+`FormatUint(header.ReplicationKey, 36)`, and `nodeconf.ReplKey` feeds **only
+the suffix** into the consistent hash that picks which any-sync nodes are
+responsible for the space. The CID half plays no part in node selection.
+
+Two consequences for anyone tempted to shorten it. First, the suffix is
+*not* per-space in practice: derived spaces take `fnv64(accountPubKey)` and
+every space a client creates reuses the personal space's key
+(`space/service.go`, `space/create.go`), which is why all 17 spaces on the
+eval account end in `.28y6mgnwgodt7` — the CID half is the part that
+distinguishes them, which is exactly why the truncation *looks* survivable
+and is not. Second, there is **no prefix index anywhere**: every local store
+keys by the full id, and nothing in either repo does a prefix lookup. The
+wrapper's steer reads the space list and matches in memory, which is fine for
+an error path and is not a resolution mechanism.
+
+So handing tool callers something they cannot truncate means either an alias
+the API mints and resolves (a new identity to keep, invalidate and reconcile
+— the corpse-key class of problem §8.22 already paid for once), or not asking
+them for a space id at all. The second is Phase 9, and it is cheaper.
+
+#### Evidence for Phase 9 (`APIV2_SURFACES.md` §10.3)
+
+The plan predicted `spaceId` would be the argument a small model most often
+**omits**, because it never appears in the user's request. The measurement
+says it is the argument a model most often **mangles**: 83 of 93 `find` calls
+in e4b's wrapper attempts, zero mangles in any other argument, and an ops arm
+that takes no space id scoring 8/10 for the same model on the same tasks. The
+prediction was right about which argument and wrong about the failure mode,
+and the fix it proposes covers both. Added to the plan item; not implemented
+here.
+
+#### Verification
+
+Live, against the running API, before and after — the mistake reproduces
+through the CLI alone, no model needed:
+
+```
+before: space "bafyrei…z2i" not found — list spaces with GET /v2/spaces
+after:  space "bafyrei…z2i" not found — that is the first part of the space id
+        "bafyrei…z2i.28y6mgnwgodt7": a space id has two parts joined by a dot
+        and BOTH are part of the id — pass it whole, exactly as `spaces` prints it
+```
+
+The same steer on `describe` (the by-construction claim), an unknown space id
+keeping its plain refusal, and a working call issuing no extra request, all
+checked live and pinned by tests.
+
+**One `gemma4:e4b` spot check**, one task, one attempt: it truncated the space
+id on its first `find`, read the repair, passed the full id on the very next
+turn, and completed the task — 4 turns, `model_done`. That is the point it
+previously did not get past. It is a spot check and not a rate.
+
+Each fix has a test that fails when the fix is reverted; all three reverts
+were run: dropping the `space` row from `argSteers` (`TestSpaceRefSteering`),
+unwiring the vocabulary pass from `steerError` (`TestRestVocabulary`), and
+dropping the truncated-space case from the `object` repair
+(`TestObjectRefSteering`).

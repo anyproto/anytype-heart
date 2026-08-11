@@ -565,6 +565,23 @@ small tier that removes a required argument from half the tools — and it
 is the argument a model is most likely to omit or invent, because it never
 appears in the user's request.
 
+**Measured, 2026-08-11 (APIV2.md §8.34).** The prediction above is right
+about *which* argument and wrong about the failure mode: `spaceId` is the
+argument a small model most often **mangles**, not the one it omits. A space
+id is two dot-joined parts (`bafyrei….28y6mgnwgodt7` — CID plus base36
+replication key, and the suffix is load-bearing: it is what
+`nodeconf.ReplKey` hashes to pick the responsible nodes). `gemma4:e4b`
+truncates it at the dot, plausibly reading the suffix as a file extension:
+**83 of 93 `find` calls** across its wrapper attempts in run
+`20260810-235748`, **zero** mangles in any other argument of any other tool,
+and 2/12 passed on `wrapper/large` against 8/10 on an ops arm whose tools
+take **no** space id at all. §8.34 repairs the refusal so the mistake is
+recoverable; Phase 9 removes the argument from the routes that do not need
+it, which is the only version of this that also removes the mistake. Note
+the scope limit: the routes that keep `space` (`find` above all — the very
+call that produced these numbers) still take the composite id, so Phase 9
+narrows the exposure rather than closing it.
+
 **Build items:**
 
 1. **[build]** an `apicore` port for the resolver, carried on `V2Deps` (the

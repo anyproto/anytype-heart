@@ -25,7 +25,6 @@ package wrapper
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/url"
 	"sort"
@@ -104,19 +103,9 @@ func (r *Runner) runDescribe(ctx context.Context, session *Session, args map[str
 		}
 	}
 	if err != nil {
-		// a repair hint naming a REST route no tool backs (older servers use
-		// the first phrasing, current ones the second on a truncated key
-		// list) — point at the tool vocabulary instead
-		var te *ToolError
-		if errors.As(err, &te) {
-			for _, phrase := range []string{
-				fmt.Sprintf("list available keys with GET /v2/spaces/%s/types", space),
-				fmt.Sprintf("list all with GET /v2/spaces/%s/types", space),
-			} {
-				te.Text = strings.ReplaceAll(te.Text, phrase,
-					"check the type key (find results show each object's type)")
-			}
-		}
+		// the repair hints naming a REST route no tool backs are re-spelled
+		// on Run's error path now (steer.go), for every tool and not just
+		// this one — the leak was never describe-specific (§8.34)
 		return nil, err
 	}
 	var typeDoc struct {

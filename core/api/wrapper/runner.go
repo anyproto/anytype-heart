@@ -14,7 +14,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 	"net/url"
 	"regexp"
 	"strconv"
@@ -97,7 +96,7 @@ func (r *Runner) Run(ctx context.Context, tool string, args map[string]any) (*Re
 		return nil, fmt.Errorf("load session: %w", err)
 	}
 	result, err := exec(r, ctx, session, args)
-	err = steerObjectRef(def, session, args, err)
+	err = r.steerError(ctx, def, session, args, err)
 	// the session is saved on BOTH paths: a failed mutation has already
 	// minted its Idempotency-Key (Session.LastWrite), and dropping it is
 	// exactly the double-apply the reuse window exists to prevent — the
@@ -251,70 +250,6 @@ func (r *Runner) resolveObject(session *Session, ref string) (string, string, er
 		return "", "", errNoSession(fmt.Sprintf("object %q", ref))
 	}
 	return session.Space, ref, nil
-}
-
-//
-// ---- steering a mis-shaped `object` (§8.33) ----
-//
-
-// blockRefRe recognises a reference from the BLOCK vocabulary: a served
-// block label (a hex suffix, 5 chars and up — anyblockjson's
-// compactIdMinLen) or a full minted block/row/column id (24 hex). Object ids
-// are CIDs, `_bundled` keys or participant ids and are never pure hex, so a
-// value of this shape in `object` is a category error, not a typo.
-var blockRefRe = regexp.MustCompile(`^[0-9a-f]{5,24}$`)
-
-// steerObjectRef repairs the one refusal that named no repair: a tool that
-// takes `object` was handed something that is not one, and the server
-// answered `object "767cb" not found in space "bafyrei…"` — true, and inert.
-// A small model repeated that call byte-identically three times and gave up.
-//
-// The shapes that arrive there are recognisable and each has a known repair,
-// so the wrapper names it. This runs on Run's error path rather than inside
-// each executor, so it covers EVERY tool taking `object` by construction —
-// the mistake is a property of the argument, not of edit_text. The hint is
-// appended to the server's own text (never replacing it: the 404 is the
-// fact, this is the repair), and only when the server's message actually
-// names the reference the caller passed, so a not-found about anything else
-// is left alone.
-func steerObjectRef(def Tool, session *Session, args map[string]any, err error) error {
-	if err == nil {
-		return nil
-	}
-	if _, takesObject := def.arg("object"); !takesObject {
-		return err
-	}
-	ref := strArg(args, "object")
-	if ref == "" || handleRe.MatchString(ref) {
-		return err
-	}
-	var te *ToolError
-	if !errors.As(err, &te) || te.Status != http.StatusNotFound || !strings.Contains(te.Text, strconv.Quote(ref)) {
-		return err
-	}
-	te.Text += " — " + objectRefRepair(def, session, ref)
-	return te
-}
-
-// handleRepair is the sentence every mis-shaped `object` ends on: where the
-// numbers come from. It is the phrasing errNoSession already uses, because
-// one repair should read the same wherever it is offered.
-const handleRepair = "`object` takes a handle number from the last find (1, 2, …)"
-
-// objectRefRepair names the repair for a reference that is not an object.
-func objectRefRepair(def Tool, session *Session, ref string) string {
-	switch {
-	case ref == session.Space:
-		return "that is the space id, not an object: find searches inside a space and numbers the objects it matches. " + handleRepair
-	case blockRefRe.MatchString(ref):
-		where := "a block reference belongs in a block argument, not in `object`"
-		if _, ok := def.arg("block"); ok {
-			where = "that is a block reference: read serves those, and they go in `block`"
-		}
-		return where + ". " + handleRepair
-	default:
-		return handleRepair + "; to address an object by name, run find with query naming it"
-	}
 }
 
 //
@@ -557,16 +492,17 @@ func (r *Runner) retryAmbiguous(ctx context.Context, spaceId, objectId string, o
 // opsVocab maps the op-path vocabulary of server error texts back onto the
 // tool-argument vocabulary the model actually speaks: the wrapper renames
 // `inside`→`under`, `id`→`block`, `tableId`→`table` and strips the ops[0]
-// prefix (the wrapper never batches), and the REST-route repair hints become
-// tool repairs. Without this, a model that follows the server's own hint
-// (`retry with inside`) earns the wrapper's rejection — two dead retries on
-// the most common anchoring mistake. Order matters: longest keys first.
+// prefix (the wrapper never batches). Without this, a model that follows the
+// server's own hint (`retry with inside`) earns the wrapper's rejection — two
+// dead retries on the most common anchoring mistake. Order matters: longest
+// keys first. The REST-route repair hints are NOT here: they arrive on every
+// tool, not just the ops path, and steer.go re-spells them in one place for
+// all of them (§8.34).
 var opsVocab = []struct{ from, to string }{
 	{"ops[0].inside", "under"},
 	{"ops[0].tableId", "table"},
 	{"ops[0].id", "block"},
 	{"ops[0].", ""},
-	{"GET the object with ?outline=true to list block ids", "run read with mode=outline to list the block labels"},
 	// edit_text deliberately has no replace_all (§8.6) — the server's escape
 	// hint would steer the model into an argument the tool rejects
 	{`, or set "replace_all": true`, ""},
