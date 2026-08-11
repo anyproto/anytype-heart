@@ -111,10 +111,14 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	apiURL := firstNonEmpty(env["ANYTYPE_API_URL"], os.Getenv("ANYTYPE_API_URL"), wrapper.DefaultBaseURL)
-	apiKey := firstNonEmpty(env["ANYTYPE_API_KEY"], os.Getenv("ANYTYPE_API_KEY"))
-	modelURL := firstNonEmpty(env["OLLAMA_BASE_URL"], os.Getenv("OLLAMA_BASE_URL"), "http://127.0.0.1:11434/v1")
-	modelKey := firstNonEmpty(env["OPENAI_API_KEY"], os.Getenv("OPENAI_API_KEY"), "ollama")
+	// The process environment wins over the env FILE, not the other way round:
+	// the file is the default, an explicit `VAR=… apiv2eval …` is the override.
+	// (Reversed, a stale host in .env silently beat the command line — which is
+	// how a run went to a LAN address after the host moved to Tailscale.)
+	apiURL := firstNonEmpty(os.Getenv("ANYTYPE_API_URL"), env["ANYTYPE_API_URL"], wrapper.DefaultBaseURL)
+	apiKey := firstNonEmpty(os.Getenv("ANYTYPE_API_KEY"), env["ANYTYPE_API_KEY"])
+	modelURL := firstNonEmpty(os.Getenv("OLLAMA_BASE_URL"), env["OLLAMA_BASE_URL"], "http://127.0.0.1:11434/v1")
+	modelKey := firstNonEmpty(os.Getenv("OPENAI_API_KEY"), env["OPENAI_API_KEY"], "ollama")
 
 	arms, err := parseArms(opt.arms)
 	if err != nil {

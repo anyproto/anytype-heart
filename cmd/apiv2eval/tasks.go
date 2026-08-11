@@ -148,7 +148,7 @@ func tasks() []task {
 				"## Owner\n" +
 				"The finance team reviews this monthly.\n",
 			Prompt: func(fx *fixture) string {
-				return fmt.Sprintf("In the note titled %q, change Q3 to Q4. Change nothing else.", fx.Title)
+				return fmt.Sprintf("In the page titled %q, change Q3 to Q4. Change nothing else.", fx.Title)
 			},
 			Check: func(doc *document, fx *fixture) checkResult {
 				want := "Revenue target for Q4 is 1.2M."
@@ -171,7 +171,7 @@ func tasks() []task {
 			Markdown: "## Overview\n" +
 				"The migration runs in three stages.\n",
 			Prompt: func(fx *fixture) string {
-				return fmt.Sprintf("Add a section at the end of the note titled %q: a heading that reads Risks, "+
+				return fmt.Sprintf("Add a section at the end of the page titled %q: a heading that reads Risks, "+
 					"followed by two bullet points reading Vendor delay and Budget overrun.", fx.Title)
 			},
 			Check: func(doc *document, fx *fixture) checkResult {
@@ -215,7 +215,7 @@ func tasks() []task {
 				"| Beta | Pending |\n" +
 				"| Gamma | Pending |\n",
 			Prompt: func(fx *fixture) string {
-				return fmt.Sprintf("In the note titled %q there is a components table. The Beta component is finished — "+
+				return fmt.Sprintf("In the page titled %q there is a components table. The Beta component is finished — "+
 					"set its Status cell to Done. Leave every other row alone.", fx.Title)
 			},
 			Check: func(doc *document, fx *fixture) checkResult {
@@ -267,7 +267,7 @@ func tasks() []task {
 				"- Collect feedback\n" +
 				"- Write the report\n",
 			Prompt: func(fx *fixture) string {
-				return fmt.Sprintf("In the note titled %q, replace the three bullet points under Next steps with a single "+
+				return fmt.Sprintf("In the page titled %q, replace the three bullet points under Next steps with a single "+
 					"paragraph reading exactly: Deferred to Q4. Keep the Next steps heading.", fx.Title)
 			},
 			Check: func(doc *document, fx *fixture) checkResult {
@@ -298,7 +298,7 @@ func tasks() []task {
 			Markdown: "## Scope\n" +
 				"Three vendors were compared on price and support.\n",
 			Prompt: func(fx *fixture) string {
-				return fmt.Sprintf("Set the description property of the note titled %q to exactly: Reviewed by the ops team.", fx.Title)
+				return fmt.Sprintf("Set the description property of the page titled %q to exactly: Reviewed by the ops team.", fx.Title)
 			},
 			Check: func(doc *document, fx *fixture) checkResult {
 				got, ok := doc.stringProperty("description")
@@ -319,7 +319,7 @@ func tasks() []task {
 				"Owner: Priya Raman\n" +
 				"Next review: 12 May\n",
 			Prompt: func(fx *fixture) string {
-				return fmt.Sprintf("The owner of the note titled %q has changed to Dana Whitfield. "+
+				return fmt.Sprintf("The owner of the page titled %q has changed to Dana Whitfield. "+
 					"Update the note so the Owner line names the new owner instead of the old one.", fx.Title)
 			},
 			// the two lines of the fixture are ONE block: markdown without a
