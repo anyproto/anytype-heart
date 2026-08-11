@@ -47,15 +47,10 @@ func (s *service) spaceExchangeV2(ctx context.Context, unaryPeer peer.Peer, peer
 	}
 	selfPeerId := s.wallet.GetDevicePrivkey().GetPublic().PeerId()
 	keys := s.discoveryKeys.DiscoveryKeys(ctx, allIds)
-	tokens := make([][]byte, 0, len(keys))
-	for _, spaceId := range allIds {
-		if key, ok := keys[spaceId]; ok {
-			tokens = append(tokens, clientspaceproto.RequestTokenV2(key, nonce, selfPeerId, peerId))
-		}
-	}
-	tokens, err = clientspaceproto.PadTokensV2(tokens)
+	// we are the caller, so the pair is ordered (us, them)
+	tokens, err := requestTokens(allIds, keys, nonce, selfPeerId, peerId)
 	if err != nil {
-		return nil, fmt.Errorf("pad tokens: %w", err)
+		return nil, fmt.Errorf("build request tokens: %w", err)
 	}
 	var resp *clientspaceproto.SpaceExchangeV2Response
 	err = unaryPeer.DoDrpc(ctx, func(conn drpc.Conn) error {
@@ -73,21 +68,7 @@ func (s *service) spaceExchangeV2(ctx context.Context, unaryPeer peer.Peer, peer
 	if err != nil {
 		return nil, fmt.Errorf("space exchange v2: %w", err)
 	}
-	received := make(map[string]struct{}, len(resp.SpaceTokens))
-	for _, token := range resp.SpaceTokens {
-		received[string(token)] = struct{}{}
-	}
-	var shared []string
-	for _, spaceId := range allIds {
-		key, ok := keys[spaceId]
-		if !ok {
-			continue
-		}
-		if _, ok = received[string(clientspaceproto.ResponseTokenV2(key, nonce, selfPeerId, peerId))]; ok {
-			shared = append(shared, spaceId)
-		}
-	}
-	return shared, nil
+	return matchProofs(allIds, keys, resp.SpaceTokens, nonce, selfPeerId, peerId), nil
 }
 
 // spaceExchangeV1 is the legacy plaintext handshake, kept only to reach peers

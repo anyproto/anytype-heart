@@ -107,27 +107,10 @@ func (r *rpcHandler) SpaceExchangeV2(ctx context.Context, request *clientspacepr
 	if err != nil {
 		return nil, fmt.Errorf("all space ids: %w", err)
 	}
-	received := make(map[string]struct{}, len(request.SpaceTokens))
-	for _, token := range request.SpaceTokens {
-		received[string(token)] = struct{}{}
-	}
-	var (
-		shared       []string
-		respTokens   [][]byte
-		selfPeerId   = r.s.wallet.GetDevicePrivkey().GetPublic().PeerId()
-		discoveryKey = r.s.discoveryKeys.DiscoveryKeys(ctx, allIds)
-	)
-	for _, spaceId := range allIds {
-		key, ok := discoveryKey[spaceId]
-		if !ok {
-			continue
-		}
-		if _, ok = received[string(clientspaceproto.RequestTokenV2(key, request.Nonce, callerPeerId, selfPeerId))]; !ok {
-			continue
-		}
-		shared = append(shared, spaceId)
-		respTokens = append(respTokens, clientspaceproto.ResponseTokenV2(key, request.Nonce, callerPeerId, selfPeerId))
-	}
+	selfPeerId := r.s.wallet.GetDevicePrivkey().GetPublic().PeerId()
+	keys := r.s.discoveryKeys.DiscoveryKeys(ctx, allIds)
+	// we are the responder, so the pair is ordered (them, us)
+	shared, respTokens := respondTokens(allIds, keys, request.SpaceTokens, request.Nonce, callerPeerId, selfPeerId)
 	// a request without LocalServer is a plain probe: answer the proofs but
 	// record nothing
 	if request.LocalServer != nil {

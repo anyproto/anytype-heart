@@ -85,10 +85,19 @@ func (d *discoveryKeySource) get(ctx context.Context, spaceId string) []byte {
 // derive reads the space's ACL from storage and takes the first read key — the
 // one minted at space creation, held by every member and never rotated.
 func (d *discoveryKeySource) derive(ctx context.Context, spaceId string) ([]byte, error) {
+	// WaitSpaceStorage opens a fresh anystore db on every call — it keeps no
+	// cache — so this handle is ours to close, separately from any handle the
+	// loaded space holds on the same file
 	st, err := d.storage.WaitSpaceStorage(ctx, spaceId)
 	if err != nil {
 		return nil, fmt.Errorf("wait space storage: %w", err)
 	}
+	defer func() {
+		if closeErr := st.Close(ctx); closeErr != nil {
+			log.Warn("close space storage after discovery key derive",
+				zap.String("spaceId", spaceId), zap.Error(closeErr))
+		}
+	}()
 	aclStorage, err := st.AclStorage()
 	if err != nil {
 		return nil, fmt.Errorf("acl storage: %w", err)
