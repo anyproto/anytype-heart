@@ -69,11 +69,11 @@ func (s *V2Service) Whoami(ctx context.Context) (v2model.WhoamiResponse, error) 
 	resp.Grant.Scoped = true
 	resp.Grant.Permission = &perms
 	for _, spaceId := range grant.Spaces {
-		// the id is served in the form GET /v2/spaces serves it (§8.35). A
-		// granted space the caller cannot SEE — deleted, left, never loaded —
-		// has no served short form and keeps its full spelling: the grant
-		// echo must stay complete, and only a visible space has an
-		// unambiguous tail.
+		// the id is served in the form GET /v2/spaces serves it to this
+		// request (§8.35, and §8.36's `?ids=full`). A granted space the
+		// caller cannot SEE — deleted, left, never loaded — has no served
+		// short form and keeps its full spelling: the grant echo must stay
+		// complete, and only a visible space has an unambiguous tail.
 		id := spaceId
 		if short, ok := refs[spaceId]; ok {
 			id = short
@@ -115,7 +115,7 @@ func (s *V2Service) resolveGrantedSpaceNames(ctx context.Context, grant *util.Ap
 		ids[i] = row.Id
 		names[row.Id] = row.Name
 	}
-	return names, shortSpaceRefs(ids), nil
+	return names, s.servedSpaceRefs(ctx, ids), nil
 }
 
 // scopeName renders the session scope in the whoami vocabulary (camelCase

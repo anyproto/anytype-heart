@@ -75,6 +75,12 @@ func RegisterRoutes(router *gin.Engine, deps RouteDeps) {
 	v2.Use(deps.CacheInit)
 	v2.Use(deps.Auth)
 	v2.Use(deps.KeyScope)
+	// `?ids=` (C4) is parsed once, for every route: it picks the shape ids
+	// are SERVED in, on both axes a response has — block ids in a document
+	// and space ids anywhere a space is named (§8.36). It runs before
+	// resolution so that an ambiguous reference's candidate list is spelled
+	// the way this request asked for — idshape.go.
+	v2.Use(ensureIdsShape())
 	// Short space references (§8.35) resolve BEFORE the grant gate: grants
 	// are keyed by full space id, so a short reference has to become one
 	// before anything compares it against the grant. Resolution itself can

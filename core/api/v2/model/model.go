@@ -164,8 +164,10 @@ type ObjectRow struct {
 type SpaceRow struct {
 	// Id is the space's SHORT reference (§8.35) — the last six characters
 	// of its CID half — or the full id when that tail is shared with
-	// another visible space. Either spelling is accepted back on every
-	// route that takes a space.
+	// another visible space, or when the request asked for `?ids=full`
+	// (§8.36: the spelling to persist, since a short reference is unique
+	// only against the spaces you can currently see). Either spelling is
+	// accepted back on every route that takes a space.
 	Id          string `json:"id"`
 	Name        string `json:"name"`
 	Description string `json:"description,omitempty"`

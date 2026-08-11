@@ -96,7 +96,13 @@ func (s *V2Service) GetSpace(ctx context.Context, spaceId string) (v2model.Space
 // (§8.35): the short reference when its tail is unique across the caller's
 // visible spaces, the full id when it collides or when the set cannot be
 // read. Never fails — a serving decision must not be able to fail a read.
+//
+// `?ids=full` (§8.36) short-circuits it: the full id is what the caller
+// asked for, and returning it here also spares the census its store query.
 func (s *V2Service) servedSpaceRef(ctx context.Context, spaceId string, extra ...string) string {
+	if fullIdsRequested(ctx) {
+		return spaceId
+	}
 	rows, err := s.liveSpaceRows(ctx)
 	if err != nil {
 		return spaceId

@@ -645,8 +645,10 @@ components:
           description: |-
             Id is the space's SHORT reference (§8.35) — the last six characters
             of its CID half — or the full id when that tail is shared with
-            another visible space. Either spelling is accepted back on every
-            route that takes a space.
+            another visible space, or when the request asked for `?ids=full`
+            (§8.36: the spelling to persist, since a short reference is unique
+            only against the spaces you can currently see). Either spelling is
+            accepted back on every route that takes a space.
           type: string
         name:
           type: string
@@ -757,6 +759,7 @@ info:
     Every object read returns an `etag` derived from the tree heads plus an ETag header; mutations take `If-Match` and are advisory by default (C7). Every mutation honours `Idempotency-Key` (C8) and `?dry_run=true` (C9). Every list surface is paginated with limit=25 by default and steers you when it truncates (C10).
     Schemas are discoverable at runtime and strict-mode-compatible for constrained decoding (C12, C13): GET /v2/schemas lists the kinds, GET /v2/schemas/{kind} returns one, and GET /v2/schemas/ops/{op} returns the schema of a single PATCH op.
     Spaces are served by a SHORT reference — the last six characters of the space id's CID half — and every route that takes a space accepts either that short reference or the full `<cid>.<replicationKey>` id. Resolution is exact id first, then a unique suffix, within the spaces the credential can see; an ambiguous reference is a 400 listing the candidates, and two spaces whose tails collide are both served in full. The full id keeps working everywhere.
+    A short reference is an addressing convenience, not a stable identifier: it is unique only against the spaces the credential can currently see, so joining a space with a colliding tail retires it. `?ids=full` — the same parameter that asks an object read for the export shape — makes every space id in the response the full one instead: use it whenever a reference is going to be stored outside this API (a config file, a script, a log line, another API).
   license:
     name: Any Source Available License 1.0
     url: https://github.com/anyproto/anytype-api/blob/main/LICENSE.md
@@ -779,6 +782,14 @@ paths:
         read ONLY from the Authorization header; it is never accepted as a query or
         body parameter, and an unknown or revoked key gets a plain 401.'
       operationId: v2_auth_whoami
+      parameters:
+      - description: 'How grant.spaces[].id is spelled: compact (default) = the short
+          space reference; full = the full <cid>.<replicationKey> id — the spelling
+          to persist outside this API'
+        in: query
+        name: ids
+        schema:
+          type: string
       responses:
         "200":
           content:
@@ -906,6 +917,13 @@ paths:
         schema:
           default: 25
           type: integer
+      - description: 'How each row''s spaceId is spelled: compact (default) = the
+          short space reference; full = the full <cid>.<replicationKey> id — the spelling
+          to persist outside this API'
+        in: query
+        name: ids
+        schema:
+          type: string
       requestBody:
         content:
           application/json:
@@ -937,6 +955,15 @@ paths:
         — deleted, left and still-joining spaces are filtered out (the same predicate
         GET /v2/spaces/{space_id} and the global search use).
       operationId: v2_list_spaces
+      parameters:
+      - description: compact (default) = the short space reference; full = the full
+          <cid>.<replicationKey> id — the export spelling, and the one to persist
+          outside this API (a short reference is unique only against the spaces you
+          can currently see)
+        in: query
+        name: ids
+        schema:
+          type: string
       responses:
         "200":
           content:
@@ -962,6 +989,13 @@ paths:
         name: dry_run
         schema:
           type: boolean
+      - description: compact (default) = the short space reference; full = the full
+          <cid>.<replicationKey> id of the created space — the spelling to persist
+          outside this API
+        in: query
+        name: ids
+        schema:
+          type: string
       - description: 'C8 replay guard: the same key with the same body replays the
           stored response'
         in: header
@@ -1008,6 +1042,14 @@ paths:
         required: true
         schema:
           type: string
+      - description: compact (default) = the short space reference; full = the full
+          <cid>.<replicationKey> id — the export spelling, and the one to persist
+          outside this API (a short reference is unique only against the spaces you
+          can currently see)
+        in: query
+        name: ids
+        schema:
+          type: string
       responses:
         "200":
           content:
@@ -1045,6 +1087,12 @@ paths:
         name: dry_run
         schema:
           type: boolean
+      - description: compact (default) = the short space reference; full = the full
+          <cid>.<replicationKey> id — the spelling to persist outside this API
+        in: query
+        name: ids
+        schema:
+          type: string
       - description: C8 replay guard
         in: header
         name: Idempotency-Key

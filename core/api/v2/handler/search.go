@@ -128,6 +128,7 @@ func SearchObjectsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Param			request	body		v2model.SearchRequestDoc				true	"Search request"
 //	@Param			offset	query		int										false	"Items to skip"		default(0)
 //	@Param			limit	query		int										false	"Items to return"	default(25)
+//	@Param			ids		query		string									false	"How each row's spaceId is spelled: compact (default) = the short space reference; full = the full <cid>.<replicationKey> id — the spelling to persist outside this API"
 //	@Success		200		{object}	v2model.ListResponse[v2model.ObjectRow]	"Minimal object rows with spaceId"
 //	@Failure		400		{object}	v2model.Error							"Invalid request"
 //	@Security		bearerauth

@@ -37,11 +37,12 @@ const (
 )
 
 // newSpaceRefEngine builds the /v2 middleware chain as router.go orders it —
-// grant on the context, THEN resolution, THEN the grant gate — over a store
-// holding the given spaces. The probe handler answers with whatever
-// :space_id the handlers would see, which is what makes the rewrite
-// observable; the second probe raises a not-found quoting that same value,
-// which is what makes the echo observable.
+// grant on the context, the `?ids=` shape, THEN resolution, THEN the grant
+// gate — over a store holding the given spaces. The probe handler answers
+// with whatever :space_id the handlers would see, which is what makes the
+// rewrite observable; the second probe raises a not-found quoting that same
+// value, which is what makes the echo observable; the third is the real
+// GET-one handler, which is what makes the SERVED spelling observable.
 func newSpaceRefEngine(t *testing.T, grant *util.ApiGrant, spaceIds ...string) *gin.Engine {
 	t.Helper()
 	store := objectstore.NewStoreFixture(t)
@@ -61,8 +62,10 @@ func newSpaceRefEngine(t *testing.T, grant *util.ApiGrant, spaceIds ...string) *
 		c.Request = c.Request.WithContext(util.CtxWithApiGrant(c.Request.Context(), grant))
 		c.Next()
 	})
+	group.Use(ensureIdsShape())
 	group.Use(resolveSpaceRef(svc))
 	group.Use(ensureSpaceGrant())
+	group.GET("/spaces/:space_id", v2handler.GetSpaceV2Handler(svc))
 	group.GET("/spaces/:space_id/objects", func(c *gin.Context) {
 		c.String(http.StatusOK, c.Param(SpaceParam))
 	})

@@ -41,11 +41,13 @@ func (s *V2Service) ListSpaces(ctx context.Context, offset, limit int) ([]v2mode
 	}
 	// §8.35: the census runs over the WHOLE visible set, before pagination —
 	// a page must not hand out a tail a space on another page also claims.
+	// §8.36: `?ids=full` skips it, and the rows keep the full ids they
+	// already carry — the spelling a caller can persist outside this API.
 	ids := make([]string, len(rows))
 	for i, row := range rows {
 		ids[i] = row.Id
 	}
-	served := shortSpaceRefs(ids)
+	served := s.servedSpaceRefs(ctx, ids)
 	for i := range rows {
 		if short, ok := served[rows[i].Id]; ok {
 			rows[i].Id = short

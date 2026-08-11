@@ -17,6 +17,7 @@ import (
 //	@Id				v2_list_spaces
 //	@Tags			V2
 //	@Produce		json
+//	@Param			ids	query		string									false	"compact (default) = the short space reference; full = the full <cid>.<replicationKey> id — the export spelling, and the one to persist outside this API (a short reference is unique only against the spaces you can currently see)"
 //	@Success		200	{object}	v2model.ListResponse[v2model.SpaceRow]	"Minimal space rows"
 //	@Security		bearerauth
 //	@Router			/v2/spaces [get]

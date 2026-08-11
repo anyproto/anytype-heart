@@ -884,8 +884,8 @@ var negatedFilterConditions = map[model.BlockContentDataviewFilterCondition]bool
 //
 
 // spaceRef is one queryable space: the full id (what the store is keyed
-// by), the §8.35 short reference served on its rows, and a display name for
-// warnings.
+// by), the §8.35 short reference served on its rows — the full id again
+// under `?ids=full` (§8.36) — and a display name for warnings.
 type spaceRef struct {
 	id    string
 	short string
@@ -910,7 +910,7 @@ func (s *V2Service) spaceRefs(ctx context.Context) ([]spaceRef, error) {
 	for i, row := range rows {
 		ids[i] = row.Id
 	}
-	served := shortSpaceRefs(ids)
+	served := s.servedSpaceRefs(ctx, ids)
 	var out []spaceRef
 	for _, row := range rows {
 		name := row.Name

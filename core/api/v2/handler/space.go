@@ -28,6 +28,7 @@ const maxSpaceRequestBody = 1 << 20 // 1 MiB
 //	@Tags			V2
 //	@Produce		json
 //	@Param			space_id	path		string			true	"Space id"
+//	@Param			ids			query		string			false	"compact (default) = the short space reference; full = the full <cid>.<replicationKey> id — the export spelling, and the one to persist outside this API (a short reference is unique only against the spaces you can currently see)"
 //	@Success		200			{object}	v2model.Space	"The space row"
 //	@Failure		404			{object}	v2model.Error	"Space not found"
 //	@Security		bearerauth
@@ -52,6 +53,7 @@ func GetSpaceV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Accept			json
 //	@Produce		json
 //	@Param			dry_run			query		bool						false	"Validate the body without creating"
+//	@Param			ids				query		string						false	"compact (default) = the short space reference; full = the full <cid>.<replicationKey> id of the created space — the spelling to persist outside this API"
 //	@Param			Idempotency-Key	header		string						false	"C8 replay guard: the same key with the same body replays the stored response"
 //	@Param			request			body		v2model.CreateSpaceRequest	true	"The space to create"
 //	@Success		201				{object}	v2model.Space				"Created space"
@@ -88,6 +90,7 @@ func CreateSpaceV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Produce		json
 //	@Param			space_id		path		string						true	"Space id"
 //	@Param			dry_run			query		bool						false	"Validate and report without committing"
+//	@Param			ids				query		string						false	"compact (default) = the short space reference; full = the full <cid>.<replicationKey> id — the spelling to persist outside this API"
 //	@Param			Idempotency-Key	header		string						false	"C8 replay guard"
 //	@Param			request			body		v2model.UpdateSpaceRequest	true	"The fields to change"
 //	@Success		200				{object}	v2model.Space				"The updated space row"

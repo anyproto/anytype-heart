@@ -99,21 +99,22 @@ func (q V2ObjectQuery) validate() (objectReadPlan, error) {
 
 	// `?ids=` selects one of TWO document shapes. Wave 2 renames these to
 	// `?mode=edit|full` with no change of bytes.
-	switch q.Ids {
-	case "", V2IdsCompact:
-		// the edit shape: short labels for minted block ids
-		plan.compactBlockLabels = true
-	case V2IdsFull:
-		// the export shape: full block ids everywhere, so a GET body PUTs
-		// back as a minimal diff (APIV2.md §3(b)). No shape serves the refs
-		// legend — this used to be where it lived, until its own measurement
-		// showed it a pure loss (§8.26), which left no shape offering full
-		// block ids without the write-back-trapping indirection.
-		plan.compactBlockLabels = false
-	default:
-		return plan, v2model.ValidationFailed("invalid ids value",
-			v2model.Issue{Path: "ids", Message: fmt.Sprintf("unknown value %q", q.Ids), Hint: "allowed: compact, full"})
+	//
+	// compact = the edit shape: short labels for minted block ids.
+	// full = the export shape: full block ids everywhere, so a GET body PUTs
+	// back as a minimal diff (APIV2.md §3(b)). No shape serves the refs
+	// legend — this used to be where it lived, until its own measurement
+	// showed it a pure loss (§8.26), which left no shape offering full block
+	// ids without the write-back-trapping indirection.
+	//
+	// The parse is ParseIdsShape (idshape.go), the same one the route
+	// middleware runs to decide how SPACE ids are spelled in the same
+	// response (§8.36): one parameter, one list of legal values, one 400.
+	fullIds, err := ParseIdsShape(q.Ids)
+	if err != nil {
+		return plan, err
 	}
+	plan.compactBlockLabels = !fullIds
 
 	switch q.Format {
 	case "", V2FormatAnyblock:

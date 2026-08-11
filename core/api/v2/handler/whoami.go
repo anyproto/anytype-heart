@@ -28,6 +28,7 @@ import (
 //	@Id				v2_auth_whoami
 //	@Tags			V2
 //	@Produce		json
+//	@Param			ids	query		string					false	"How grant.spaces[].id is spelled: compact (default) = the short space reference; full = the full <cid>.<replicationKey> id — the spelling to persist outside this API"
 //	@Success		200	{object}	v2model.WhoamiResponse	"The credential's grant as enforced"
 //	@Failure		401	{object}	util.UnauthorizedError	"Missing, unknown, revoked or expired key — the shared auth middleware's envelope (APIV2.md §8.9 seam), not the C6 shape"
 //	@Failure		403	{object}	util.ForbiddenError		"Key scope does not admit the JSON API (e.g. Limited) — the shared scope gate's envelope"

@@ -136,6 +136,28 @@ func shortSpaceRef(ids []string, id string) string {
 	return id
 }
 
+// servedSpaceRefs is shortSpaceRefs for one REQUEST: the census, unless the
+// caller asked for `?ids=full`, in which case NOTHING shortens and every
+// space is served by its full id (§8.36).
+//
+// It answers with an EMPTY map rather than a second branch at each call
+// site, because "no census entry" already means "serve this one in full"
+// everywhere — that is exactly what a colliding tail produces. So the knob
+// costs one line here and nothing at the five surfaces, and a surface added
+// later inherits it by using this method instead of shortSpaceRefs.
+//
+// A short reference is a serving convenience, not an identity: it is unique
+// only relative to the caller's CURRENT visible space set, so a newly joined
+// space can retire one. Anything that PERSISTS a space reference — a config
+// file, a script, a log line, a gRPC call into the heart — needs the full
+// id, and this is how it asks for it.
+func (s *V2Service) servedSpaceRefs(ctx context.Context, ids []string) map[string]string {
+	if fullIdsRequested(ctx) {
+		return map[string]string{}
+	}
+	return shortSpaceRefs(ids)
+}
+
 // matchSpaceRef maps a space reference to an index into ids: an exact id
 // match wins (matches = 1); otherwise SHAPED ids whose CID half ends with
 // ref are counted and idx points at the last suffix match. This is
@@ -199,10 +221,11 @@ func (s *V2Service) ResolveSpaceRef(ctx context.Context, ref string) (string, er
 	case matches == 1:
 		return ids[idx], nil
 	case matches > 1:
-		// the candidates are named in the form GET /v2/spaces SERVES them
-		// (short when unambiguous, full when their tails collide), so the
-		// listed repair is a value the caller can paste back
-		served := shortSpaceRefs(ids)
+		// the candidates are named in the form GET /v2/spaces SERVES them to
+		// THIS request (short when unambiguous, full when their tails collide
+		// or when `?ids=full` asked for the full spelling), so the listed
+		// repair is a value the caller can paste back
+		served := s.servedSpaceRefs(ctx, ids)
 		candidates := make([]string, 0, matches)
 		for i, id := range ids {
 			if _, m := matchSpaceRef(ids[i:i+1], ref); m != 1 {

@@ -936,7 +936,7 @@
             "type": "string"
           },
           "id": {
-            "description": "Id is the space's SHORT reference (§8.35) — the last six characters\nof its CID half — or the full id when that tail is shared with\nanother visible space. Either spelling is accepted back on every\nroute that takes a space.",
+            "description": "Id is the space's SHORT reference (§8.35) — the last six characters\nof its CID half — or the full id when that tail is shared with\nanother visible space, or when the request asked for `?ids=full`\n(§8.36: the spelling to persist, since a short reference is unique\nonly against the spaces you can currently see). Either spelling is\naccepted back on every route that takes a space.",
             "type": "string"
           },
           "name": {
@@ -1089,7 +1089,7 @@
       "name": "Anytype Support",
       "url": "https://anytype.io/contact"
     },
-    "description": "The agent-oriented Anytype local API. Objects are AnyBlock JSON documents (pkg/lib/anyblockjson/SPEC.md) rather than block trees, so one read returns a whole editable document and one PATCH edits it.\nOne vocabulary throughout (C2): camelCase, property keys, option names, and `type` as a type key — never an id, never snake_case. Responses are compact JSON (C3); object refs are always full inline, and the default object read relabels machine-minted block ids to short doc-local suffixes — `?ids=full` returns the export shape with full ids everywhere — the backup shape, and the read to clone from (C4); list and search rows carry id, name, type and the properties you asked for, and never embed type objects (C5).\nErrors share one shape (C6): {status, code, message, issues:[{path, message, hint}]}, path-addressed and naming the allowed values, so a failed call tells an agent how to repair it. Reads never fail on unknown content — anything a representation cannot express is reported in `warnings` (C11).\nEvery object read returns an `etag` derived from the tree heads plus an ETag header; mutations take `If-Match` and are advisory by default (C7). Every mutation honours `Idempotency-Key` (C8) and `?dry_run=true` (C9). Every list surface is paginated with limit=25 by default and steers you when it truncates (C10).\nSchemas are discoverable at runtime and strict-mode-compatible for constrained decoding (C12, C13): GET /v2/schemas lists the kinds, GET /v2/schemas/{kind} returns one, and GET /v2/schemas/ops/{op} returns the schema of a single PATCH op.\nSpaces are served by a SHORT reference — the last six characters of the space id's CID half — and every route that takes a space accepts either that short reference or the full `<cid>.<replicationKey>` id. Resolution is exact id first, then a unique suffix, within the spaces the credential can see; an ambiguous reference is a 400 listing the candidates, and two spaces whose tails collide are both served in full. The full id keeps working everywhere.",
+    "description": "The agent-oriented Anytype local API. Objects are AnyBlock JSON documents (pkg/lib/anyblockjson/SPEC.md) rather than block trees, so one read returns a whole editable document and one PATCH edits it.\nOne vocabulary throughout (C2): camelCase, property keys, option names, and `type` as a type key — never an id, never snake_case. Responses are compact JSON (C3); object refs are always full inline, and the default object read relabels machine-minted block ids to short doc-local suffixes — `?ids=full` returns the export shape with full ids everywhere — the backup shape, and the read to clone from (C4); list and search rows carry id, name, type and the properties you asked for, and never embed type objects (C5).\nErrors share one shape (C6): {status, code, message, issues:[{path, message, hint}]}, path-addressed and naming the allowed values, so a failed call tells an agent how to repair it. Reads never fail on unknown content — anything a representation cannot express is reported in `warnings` (C11).\nEvery object read returns an `etag` derived from the tree heads plus an ETag header; mutations take `If-Match` and are advisory by default (C7). Every mutation honours `Idempotency-Key` (C8) and `?dry_run=true` (C9). Every list surface is paginated with limit=25 by default and steers you when it truncates (C10).\nSchemas are discoverable at runtime and strict-mode-compatible for constrained decoding (C12, C13): GET /v2/schemas lists the kinds, GET /v2/schemas/{kind} returns one, and GET /v2/schemas/ops/{op} returns the schema of a single PATCH op.\nSpaces are served by a SHORT reference — the last six characters of the space id's CID half — and every route that takes a space accepts either that short reference or the full `<cid>.<replicationKey>` id. Resolution is exact id first, then a unique suffix, within the spaces the credential can see; an ambiguous reference is a 400 listing the candidates, and two spaces whose tails collide are both served in full. The full id keeps working everywhere.\nA short reference is an addressing convenience, not a stable identifier: it is unique only against the spaces the credential can currently see, so joining a space with a colliding tail retires it. `?ids=full` — the same parameter that asks an object read for the export shape — makes every space id in the response the full one instead: use it whenever a reference is going to be stored outside this API (a config file, a script, a log line, another API).",
     "license": {
       "name": "Any Source Available License 1.0",
       "url": "https://github.com/anyproto/anytype-api/blob/main/LICENSE.md"
@@ -1107,6 +1107,16 @@
       "get": {
         "description": "Describes the CREDENTIAL presented in the Authorization header — never the person; there is only one account on this API. `grant.scoped` is the load-bearing field: false means a legacy unscoped key (then `spaces` is `[]` and `permission` is null — never null spaces), true means enforcement constrains the key to exactly the listed spaces with the listed permission. `spaces[]` entries carry a per-entry `permission` (uniform today; per-space grants land without a wire change) and a `name` resolved through the same grant-intersected path as GET /v2/spaces. `keyStatus`/`notice` repeat the Anytype-Key-Status/Anytype-Notice header signal in the body. The token is read ONLY from the Authorization header; it is never accepted as a query or body parameter, and an unknown or revoked key gets a plain 401.",
         "operationId": "v2_auth_whoami",
+        "parameters": [
+          {
+            "description": "How grant.spaces[].id is spelled: compact (default) = the short space reference; full = the full <cid>.<replicationKey> id — the spelling to persist outside this API",
+            "in": "query",
+            "name": "ids",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -1295,6 +1305,14 @@
               "default": 25,
               "type": "integer"
             }
+          },
+          {
+            "description": "How each row's spaceId is spelled: compact (default) = the short space reference; full = the full <cid>.<replicationKey> id — the spelling to persist outside this API",
+            "in": "query",
+            "name": "ids",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -1345,6 +1363,16 @@
       "get": {
         "description": "Returns {id, name, description} rows for the account's LIVE spaces — deleted, left and still-joining spaces are filtered out (the same predicate GET /v2/spaces/{space_id} and the global search use).",
         "operationId": "v2_list_spaces",
+        "parameters": [
+          {
+            "description": "compact (default) = the short space reference; full = the full <cid>.<replicationKey> id — the export spelling, and the one to persist outside this API (a short reference is unique only against the spaces you can currently see)",
+            "in": "query",
+            "name": "ids",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -1377,6 +1405,14 @@
             "name": "dry_run",
             "schema": {
               "type": "boolean"
+            }
+          },
+          {
+            "description": "compact (default) = the short space reference; full = the full <cid>.<replicationKey> id of the created space — the spelling to persist outside this API",
+            "in": "query",
+            "name": "ids",
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -1445,6 +1481,14 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "description": "compact (default) = the short space reference; full = the full <cid>.<replicationKey> id — the export spelling, and the one to persist outside this API (a short reference is unique only against the spaces you can currently see)",
+            "in": "query",
+            "name": "ids",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -1498,6 +1542,14 @@
             "name": "dry_run",
             "schema": {
               "type": "boolean"
+            }
+          },
+          {
+            "description": "compact (default) = the short space reference; full = the full <cid>.<replicationKey> id — the spelling to persist outside this API",
+            "in": "query",
+            "name": "ids",
+            "schema": {
+              "type": "string"
             }
           },
           {

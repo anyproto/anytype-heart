@@ -5226,3 +5226,179 @@ the context, so an unresolvable id spins instead of 404ing), and
 `set_properties` needs a space regardless because `propertyFormats`, the
 option-name guard, `@me` and relative dates are all space-scoped. Decision D2
 is **moot**, not decided.
+
+### 8.36 The full space id has to stay reachable (2026-08-11 — decisions as built)
+
+§8.35 made the short reference the served spelling and left the full id
+reachable "everywhere" — on input. On **output** it became unreachable:
+`?ids=full` was wired only into the object read (`V2IdsCompact` /
+`V2IdsFull`, `object.go`), and the space surfaces ignored it. There was no
+call in `/v2` that answered with a full space id.
+
+#### Why that matters: a short reference is not an identifier
+
+The short form is **unique only against the caller's current visible space
+set**. Join a space whose CID tail collides and the collision rule fires:
+both spaces drop back to their full spelling and the reference that was
+printed yesterday addresses nothing today. That is the correct behaviour —
+§8.35 chose graceful degradation over a wrong resolution — and it is exactly
+why the short form is an *addressing convenience*, not an identity.
+
+So every caller that **persists** a space reference needs the full id: a
+config file, a shell script, a log line, a support ticket, a gRPC call into
+the heart, another API. `/v2` is not the only thing that speaks about spaces,
+and the ones that are not `/v2` only know the composite id.
+
+Recorded honestly: the full id was *derivable* even before this change, by
+string surgery on an unrelated object's id — `domain.NewParticipantId` embeds
+the space id in every participant id with its first dot replaced by an
+underscore, so `GET …/members/me` leaks it. That is a coincidence of an
+internal id format, not a contract, and "parse our member id backwards" is
+not an answer to "how do I store this space id".
+
+#### One parameter, not a second one
+
+`?ids=` already means "which spelling of ids do you want" and already has
+`compact` (default) and `full`, a documented meaning (the backup/export
+shape, C4), and a 400 for anything else. A space id is an id. So `?ids=full`
+was extended to the space surfaces rather than given a sibling:
+
+- **not** `?fullIds=` — two parameters that answer the same question, which
+  a caller then has to set consistently, and which will eventually disagree;
+- **not** a second `fullId` field beside `id` — C2, one concept one slot. It
+  would also double the token cost of the very list §8.35 shrank by 82 %, on
+  every caller including the ones that never wanted it.
+
+The value list and its refusal live in **one function**, `ParseIdsShape`
+(`service/idshape.go`). The object read's own plan validation calls it, so
+the block-id axis and the space-id axis cannot come to disagree about what
+`ids=export` means — a second copy of a value list is how a surface starts
+accepting on one route what it refuses on another.
+
+#### Where it runs: one middleware, like `ensureDryRun`
+
+`ensureIdsShape` (`v2/idshape.go`) parses `?ids=` once for the whole group
+and records a full request on the **request context** — the carrier the
+§8.35 echo already uses. `servedSpaceRefs` (the census) and `servedSpaceRef`
+(the single-id form) consult it; the five serving surfaces call those and
+need no branch of their own.
+
+It is group-wide for `ensureDryRun`'s reason: the parameter is group-wide, its
+values are a closed set, and an unknown value must be a 400 on every route
+rather than on the routes someone remembered to wire. A space-serving surface
+added later inherits the behaviour by calling `servedSpaceRefs` — the same
+by-construction argument the grant gate and the reference resolver rest on.
+
+It runs **in front of `resolveSpaceRef`**, so the candidate list an ambiguous
+reference is refused with is spelled the way the request asked for.
+
+The ctx carries only the *full* case: an untouched context means compact,
+which is what every internal caller and every existing test already carries,
+and is why this change moved no existing test.
+
+#### Per-surface decisions
+
+| surface | serves a space id? | `?ids=full` |
+|---|---|---|
+| `GET /v2/spaces` | rows' `id` | **honoured** |
+| `GET /v2/spaces/{id}` | `id` | **honoured** |
+| `POST /v2/spaces` | the created `id` | **honoured** — a create is precisely when a caller has a new id to store |
+| `PATCH /v2/spaces/{id}` | `id` (via GET-one) | **honoured** |
+| `POST /v2/search` (global) | rows' `spaceId` | **honoured** — the one place an agent learns a space id it did not name |
+| `GET /v2/auth/whoami` | `grant.spaces[].id` | **honoured**. It has no space in its path, but it does have a space id in its body, and it is the surface a holder reads to learn which spaces it holds — the answer a scoped integration writes into its own config |
+| ambiguity refusals (`ResolveSpaceRef` candidates) | the candidates | **honoured** — a refusal's repair value is part of the response |
+| `POST /v2/spaces/{id}/search`, `GET …/objects`, members, types, properties, chats, sets/collections | **no space id in the body** | parsed and ignored: there is nothing to spell |
+| `GET …/objects/{id}`, `GET …/types/{key}` | no space id in the document | see below |
+
+Two surfaces deliberately did **not** change:
+
+- **Accepting.** Unchanged and unchangeable: exact-then-unique-suffix, both
+  spellings always accepted, on every route. `?ids=` is about what is
+  **served**. `GET /v2/spaces/{short}?ids=full` is the round trip a caller
+  makes to turn a reference it was handed into one it can store.
+- **Member ids.** `_participant_<spaceId>_<identity>` keeps the full space id
+  inside it under both shapes. It is an id of a different object, addressable
+  as a unit; rewriting its interior would break it.
+
+#### The object-read overlap: same knob, and nothing to spell
+
+Should `?ids=full` on an object read imply full space spellings in that
+response? **Yes — and it is the same flag, set by the same middleware, on
+that request too.** There is no second knob to reconcile: a caller asking for
+the export shape has asked for it, full stop.
+
+What that changes on the object read today is **nothing**, because an
+AnyBlock document carries no space id — not in the envelope, not in a
+property value, not in a ref. The same is true of the object list and the
+space-scoped search (`includeSpaceId` is set only by the global fan-out). So
+the answer is "yes, and it is currently a no-op there" — which is the useful
+form of the answer, because the flag is already correct for the surface that
+adds a `spaceId` tomorrow.
+
+#### Not agent-facing (§8.28)
+
+Neither `core/api/v2/SKILL.md` nor `cmd/anytype/SKILL.md` gains a word about
+short versus long — the §8.28 rule stands, and an agent that lists spaces and
+passes the id it was given is still correct under both shapes. `?ids=full`
+stays framed exactly as C4 frames it: the backup/export shape. The mechanism
+lives in the v2 OpenAPI description (where the info block now names the
+stability limit and points at `?ids=full` for anything stored outside the
+API), in the six `@Param ids` annotations, and here.
+
+The wrapper and the CLI gain nothing either: they are the agent-facing tier,
+they pass `SpaceRow` through verbatim, and nothing they do outlives the
+session that made the call.
+
+One free consequence, recorded: the C8 hash already covers the query string,
+so a retried create that *adds* `?ids=full` earns the 409
+`idempotency_conflict` rather than replaying — the same rule `?dry_run` has
+lived under since §8.15. A retry must repeat the request it is retrying.
+
+#### Tests, and the revert each one catches
+
+`core/api/v2/service/idshape_test.go`:
+
+- **`TestParseIdsShape`** — the three legal values and which is the default;
+  `export`/`FULL`/`true`/`short` are 400s addressed at `ids` and naming both
+  allowed values; and `V2ObjectQuery.validate` produces those same answers.
+  *Reverts caught:* dropping the `default` branch (unknown values silently
+  becoming compact); re-inlining a private switch in `object.go` so the two
+  axes can drift.
+- **`TestFullIdsCtx`** — an untouched context means compact.
+
+`core/api/v2/service/spaceref_test.go`:
+
+- **`TestSpacesSurfaceServesFullRefsOnRequest`** — under `?ids=full` the
+  list, GET-one, the global-search fan-out and whoami's grant echo all serve
+  the full id, while the default still serves short; and an ambiguity's
+  candidates follow the request's shape (the fixture is two spaces differing
+  at the SIXTH character from the end, the only ambiguity in which candidates
+  *have* short forms of their own). *Reverts caught:* `servedSpaceRefs`
+  ignoring the ctx — four subtests fail; `servedSpaceRef` losing its
+  short-circuit — the GET-one subtest fails.
+
+`core/api/v2/idshape_test.go` (the route half):
+
+- **`TestEnsureIdsShapeMiddleware`** — the middleware's own contract over the
+  real GET-one handler: `?ids=full` serves the full id, the default and
+  `?ids=compact` serve short, a short reference still *addresses* the space
+  it serves in full, an unknown value is a 400 before the handler, and the
+  shape is read before resolution. *Reverts caught:* dropping the error
+  branch from the middleware; the `servedSpaceRef` short-circuit again, this
+  time through a real chain.
+
+`core/api/server/v2_spaceref_test.go` (the REAL engine):
+
+- **`TestV2FullSpaceIdsThroughTheRealEngine`** — the package-local tests build
+  their own middleware chain, so none of them can see whether
+  `apiv2.RegisterRoutes` installs `ensureIdsShape` at all, or where. This
+  walks the registered engine: the list, GET-one-by-short-reference, whoami
+  (which nothing else exercises for this parameter), the unknown-value 400,
+  and the candidate spelling. *Reverts caught:* deleting
+  `v2.Use(ensureIdsShape())` from the router — five subtests fail while the
+  package-local ones stay green, which is precisely the blind spot this file
+  exists for; moving it AFTER `resolveSpaceRef` — exactly one subtest fails,
+  the candidate-spelling one.
+
+All six reverts were run and each failed the named tests, with the named
+subtest granularity.

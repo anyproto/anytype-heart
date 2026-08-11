@@ -43,6 +43,12 @@ const (
 // differs in the ninth from the end — the collision case.
 const twinPersonal = "bafyreiby4rdeleruyuy6x575hvhtifedmjq4g3ojpffvpbgmuackq3oake" + testReplKey
 
+// cousinPersonal differs from realSpacePersonal at the SIXTH character from
+// the end, so the two have distinct short forms (`q3oake` / `r3oake`) while
+// still sharing the five-character tail `3oake` — the only shape in which an
+// ambiguous reference has candidates that DO have short forms.
+const cousinPersonal = "bafyreiay4rdeleruyuy6x575hvhtifedmjq4g3ojpffvpbgmuackr3oake" + testReplKey
+
 func realSpaceIds() []string {
 	return []string{realSpaceTracker, realSpacePersonal, realSpaceEval, realSpaceEngineering}
 }
@@ -327,6 +333,119 @@ func TestSpacesSurfaceServesShortRefs(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, want, got)
+	})
+}
+
+// TestSpacesSurfaceServesFullRefsOnRequest pins §8.36: `?ids=full` — the
+// same parameter that asks an object read for the export shape — makes every
+// space id in the response the full one, because a short reference is unique
+// only against the caller's CURRENT visible set and so cannot be persisted.
+//
+// The ctx is what the route middleware (ensureIdsShape) sets; these tests
+// call the services directly, which is the layer the spelling decision is
+// actually made at.
+func TestSpacesSurfaceServesFullRefsOnRequest(t *testing.T) {
+	fullIds := func() context.Context { return CtxWithFullIds(context.Background()) }
+
+	t.Run("GET /v2/spaces?ids=full serves the full id; the default still serves short", func(t *testing.T) {
+		// given
+		fx := newV2FixtureBare(t)
+		fx.registerSpaceView(t, realSpaceEval, "APIv2 eval", "")
+		fx.registerSpaceView(t, realSpaceTracker, "Project Tracker", "")
+		want := []v2model.SpaceRow{
+			{Id: realSpaceTracker, Name: "Project Tracker"},
+			{Id: realSpaceEval, Name: "APIv2 eval"},
+		}
+
+		// when
+		full, _, _, err := fx.ListSpaces(fullIds(), 0, 25)
+		short, _, _, err2 := fx.ListSpaces(context.Background(), 0, 25)
+
+		// then
+		require.NoError(t, err)
+		require.NoError(t, err2)
+		assert.Equal(t, want, full)
+		assert.Equal(t, []string{"bugaxa", "hxwz2i"}, []string{short[0].Id, short[1].Id},
+			"the default must stay the short reference — full is the opt-in")
+	})
+
+	t.Run("GET-one serves the full id, whichever spelling addressed it", func(t *testing.T) {
+		// given
+		fx := newV2FixtureBare(t)
+		fx.registerSpaceView(t, realSpaceEval, "APIv2 eval", "The eval space")
+		want := v2model.Space{Id: realSpaceEval, Name: "APIv2 eval", Description: "The eval space"}
+
+		// when: the route middleware has already resolved the caller's short
+		// reference to this full id — accepting is unchanged, serving is not
+		got, err := fx.GetSpace(fullIds(), realSpaceEval)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("the global-search fan-out spells rows' spaceId in full", func(t *testing.T) {
+		// given
+		fx := newV2FixtureBare(t)
+		fx.registerSpaceView(t, realSpaceEval, "APIv2 eval", "")
+		fx.registerSpaceView(t, realSpaceTracker, "Project Tracker", "")
+
+		// when
+		refs, err := fx.spaceRefs(fullIds())
+
+		// then: the row field (short) is the store-facing id (id), not a tail
+		require.NoError(t, err)
+		require.Len(t, refs, 2)
+		for _, ref := range refs {
+			assert.Equal(t, ref.id, ref.short, "the served spaceId must be the full id")
+		}
+	})
+
+	t.Run("whoami's grant echo names spaces in full", func(t *testing.T) {
+		// given
+		fx := newV2FixtureBare(t)
+		fx.registerSpaceView(t, realSpaceEval, "APIv2 eval", "")
+		grant := &util.ApiGrant{Spaces: []string{realSpaceEval}, Perms: util.GrantPermsRead}
+
+		// when
+		names, refs, err := fx.resolveGrantedSpaceNames(util.CtxWithApiGrant(fullIds(), grant), grant)
+
+		// then: no short form is minted, so Whoami's per-space loop falls
+		// through to the full id it holds — and the names map is untouched,
+		// because it is keyed by the full id either way
+		require.NoError(t, err)
+		assert.Equal(t, map[string]string{realSpaceEval: "APIv2 eval"}, names)
+		assert.Empty(t, refs)
+	})
+
+	t.Run("an ambiguous reference lists its candidates in the spelling the request asked for", func(t *testing.T) {
+		// given: two spaces that differ at the SIXTH character from the end,
+		// so both have their own short form — and a five-character reference
+		// that both of them answer to. This is the only ambiguity shape in
+		// which the candidate spelling can differ at all: the twins collide
+		// and would be listed in full either way.
+		fx := newV2FixtureBare(t)
+		for i, id := range []string{realSpacePersonal, cousinPersonal} {
+			fx.registerSpaceView(t, id, "Space "+string(rune('A'+i)), "")
+		}
+		shared := realSpacePersonalShort[1:] // "3oake"
+
+		// when
+		_, shortErr := fx.ResolveSpaceRef(context.Background(), shared)
+		_, fullErr := fx.ResolveSpaceRef(fullIds(), shared)
+
+		// then: the default names the short forms the list serves…
+		var apiErr *v2model.Error
+		require.ErrorAs(t, shortErr, &apiErr)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Contains(t, apiErr.Issues[0].Message, realSpacePersonalShort)
+		assert.NotContains(t, apiErr.Issues[0].Message, realSpacePersonal)
+
+		// …and ?ids=full names the ids a caller can persist
+		require.ErrorAs(t, fullErr, &apiErr)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Contains(t, apiErr.Issues[0].Message, realSpacePersonal)
+		assert.Contains(t, apiErr.Issues[0].Message, cousinPersonal)
 	})
 }
 
