@@ -312,6 +312,32 @@ func tasks() []task {
 			},
 		},
 		{
+			// the §7.5a sweep's coverage: every OTHER task names only
+			// single-word keys, which cannot tell a camelCase wire
+			// vocabulary from a snake_case one. This one can — a model that
+			// re-spells `due_date` back to `dueDate` from its training prior
+			// still succeeds (the fold layer forgives it), but a SERVER that
+			// stops advertising the slug fails the check.
+			Id:       "set-multiword-property",
+			Intent:   "set a bundled property whose key re-spells on the wire",
+			Requires: []capability{capSetProperties},
+			Markdown: "## Scope\n" +
+				"The ops review is due at the end of the week.\n",
+			Prompt: func(fx *fixture) string {
+				return fmt.Sprintf("Set the due date of the page titled %q to 2026-08-01.", fx.Title)
+			},
+			Check: func(doc *document, fx *fixture) checkResult {
+				got, ok := doc.stringProperty("due_date")
+				if !ok {
+					return checkResult{Detail: fmt.Sprintf("no due_date property; properties: %v", propertyKeys(doc))}
+				}
+				if !strings.HasPrefix(got, "2026-08-01") {
+					return checkResult{Detail: fmt.Sprintf("due_date is %q", got)}
+				}
+				return checkResult{OK: true}
+			},
+		},
+		{
 			Id:       "read-then-edit",
 			Intent:   "multi-step: a read is required before the edit is knowable",
 			Requires: []capability{capRead, capEditText},

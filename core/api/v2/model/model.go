@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 )
 
 // V2 error codes (APIV2.md C6). Error text is API surface; tests assert it.
@@ -518,15 +520,24 @@ var outputOnlyPropertyKeys = map[string]bool{
 	"resolvedLayout": true,
 }
 
-// IsOutputOnlyProperty reports whether a property key is output-only.
-func IsOutputOnlyProperty(key string) bool { return outputOnlyPropertyKeys[key] }
+// IsOutputOnlyProperty reports whether a property key is output-only. The
+// keys above are STORED spellings; the wire spells slugs (ADDRESSING §7.5a),
+// so a served `created_date` has to answer here exactly as `createdDate`
+// does — one predicate, both vocabularies.
+func IsOutputOnlyProperty(key string) bool {
+	if outputOnlyPropertyKeys[key] {
+		return true
+	}
+	stored, ok := bundle.RelationKeyByApiSlug(key)
+	return ok && outputOnlyPropertyKeys[string(stored)]
+}
 
 // OutputOnlyPropertyKeys returns the output-only keys, sorted — the form an
 // agent-facing listing needs.
 func OutputOnlyPropertyKeys() []string {
 	keys := make([]string, 0, len(outputOnlyPropertyKeys))
 	for key := range outputOnlyPropertyKeys {
-		keys = append(keys, key)
+		keys = append(keys, bundle.ApiSlug(key)) // advertised in the wire spelling
 	}
 	sort.Strings(keys)
 	return keys

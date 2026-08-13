@@ -23,12 +23,13 @@ whether you may write. Ask this instead of discovering limits through 403s
   `/v2/spaces/{spaceId}/…`. `GET /v2/spaces` lists them.
 - An **object** = `properties` (typed key-values) + `blocks` (document
   content). `type` is always a type **key** (`page`, `task`) — never an id.
-- **Properties** are addressed by key, exactly as `GET …/properties`
-  spells them (bundled keys camelCase: `dueDate`; API-created ones
-  snake_case: `manual_property`). Keys are forgiving on input — `due_date`
-  or `DueDate` resolve to `dueDate`; an input matching two properties is a
-  400 listing both. (One exception: the compact `filter` STRING validates
-  before folding — use a listed spelling or the snake form there.)
+- **Properties** are addressed by key, and every key is snake_case —
+  bundled, API-created and UI-created alike (`due_date`, `icon_emoji`,
+  `manual_property`). `GET …/properties` spells them the same way; so do
+  documents. Keys are forgiving on input — `dueDate` or `DueDate` resolve
+  to `due_date` too; an input matching two properties is a 400 listing
+  both. (One exception: the compact `filter` STRING validates before
+  folding — use a listed spelling there.)
   Select/multiSelect values are option **names** (`"In progress"`,
   case-sensitive) — never option ids. Writes create unknown option names
   (a PATCH caps this at 64); unknown property keys are rejected with a
@@ -163,14 +164,14 @@ read: no `Idempotency-Key`, `dry_run` ignored.
 
 ```json
 { "query": "report", "type": "task",
-  "filter": "done = false AND (dueDate < currentWeek() OR dueDate IS EMPTY)",
-  "sorts": [ { "property": "dueDate", "direction": "asc" } ],
-  "fields": ["name", "dueDate", "status"] }
+  "filter": "done = false AND (due_date < currentWeek() OR due_date IS EMPTY)",
+  "sorts": [ { "property": "due_date", "direction": "asc" } ],
+  "fields": ["name", "due_date", "status"] }
 ```
 
 - **Prefer the compact `filter` string** (≤4096 chars):
   `status IN ("In progress", "Blocked")` · `name CONTAINS "report"` ·
-  `lastModifiedDate > daysAgo(7)` · `tags HAS ALL ("urgent", "q3") AND
+  `last_modified_date > daysAgo(7)` · `tags HAS ALL ("urgent", "q3") AND
   assignee IS NOT EMPTY`. Dates are RFC 3339 or preset functions
   (`today()`, `currentWeek()`, `daysAgo(n)`). Parse errors are
   offset-addressed with did-you-mean.
@@ -184,12 +185,12 @@ read: no `Idempotency-Key`, `dry_run` ignored.
   channel (`type = "image"`, `type IN (… "file")`) — `size > 5` alone
   matches nothing; compose `type = "image" AND size > 5`. `mimeType` and
   `size` work in fields/filters/sorts.
-- An unguarded `dueDate < …` also matches objects with **no** date — the
-  response warns; add `AND dueDate IS NOT EMPTY` unless intended.
+- An unguarded `due_date < …` also matches objects with **no** date — the
+  response warns; add `AND due_date IS NOT EMPTY` unless intended.
 - Full-text `total` is a lower bound while `has_more` is true — walk
   pages, don't plan on the number.
 - Sorts: any property key, `{"property", "direction": "asc|desc"}`;
-  default is `lastModifiedDate desc`.
+  default is `last_modified_date desc`.
 
 ## Chats
 

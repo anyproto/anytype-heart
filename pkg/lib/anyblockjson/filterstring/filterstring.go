@@ -341,7 +341,7 @@ type parser struct {
 // Errors are always *Error (offset-addressed).
 func Parse(input string, opts Options) (json.RawMessage, error) {
 	if strings.TrimSpace(input) == "" {
-		return nil, &Error{Offset: 0, Message: "empty filter", Hint: `a filter is one or more conditions, e.g. done = false AND dueDate < currentWeek()`}
+		return nil, &Error{Offset: 0, Message: "empty filter", Hint: `a filter is one or more conditions, e.g. done = false AND due_date < currentWeek()`}
 	}
 	if len(input) > maxFilterLength {
 		return nil, &Error{Offset: maxFilterLength, Token: "",
@@ -546,7 +546,7 @@ func (p *parser) parseValueLeaf(key, condition string) (*node, error) {
 		condition != "greaterOrEqual" && condition != "lessOrEqual" {
 		return nil, &Error{Offset: p.presetTok.offset, Token: p.presetTok.raw,
 			Message: fmt.Sprintf("a date preset cannot be used with %s", condition),
-			Hint:    `presets work with = > < >= <=; negate by range instead, e.g. dueDate < today() OR dueDate > today()`}
+			Hint:    `presets work with = > < >= <=; negate by range instead, e.g. due_date < today() OR due_date > today()`}
 	}
 	return n, nil
 }

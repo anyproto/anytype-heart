@@ -84,8 +84,8 @@ var v2OpBlockCommonProps = v2OpBlockTypeProp + `,` +
 	`"objectId":{"type":"string","maxLength":256},` +
 	`"name":{"type":"string","maxLength":4096},` +
 	`"style":{"type":"string","maxLength":64},` +
-	`"iconEmoji":{"type":"string","maxLength":64},` +
-	`"iconImage":{"type":"string","maxLength":256},` +
+	`"icon_emoji":{"type":"string","maxLength":64},` +
+	`"icon_image":{"type":"string","maxLength":256},` +
 	`"key":{"type":"string","maxLength":256},` +
 	`"cardStyle":{"type":"string","maxLength":32},` +
 	`"align":{"type":"string","enum":["left","center","right","justify"]},` +
@@ -209,7 +209,7 @@ var v2OpSchemas = map[string]v2SchemaKind{
 			`"unset":{"type":"array","maxItems":128,"items":{"type":"string","maxLength":256},"description":"property keys to remove"}`,
 			`"add":{"type":"object","maxProperties":128,"additionalProperties":{"type":"array","maxItems":128,"items":{"type":"string","maxLength":4096}},"description":"list-shaped keys only (select, multiSelect, objects, files): append entries without rewriting the array — existing entries are never duplicated; unknown option NAMES are created"}`,
 			`"remove":{"type":"object","maxProperties":128,"additionalProperties":{"type":"array","maxItems":128,"items":{"type":"string","maxLength":4096}},"description":"list-shaped keys only: delete matching entries — absent entries (and absent keys) are a no-op; a key may appear in only one of set/unset/add/remove"}`),
-		example: `{"op":"setProperties","set":{"status":["Done"]},"add":{"tags":["Urgent"]},"unset":["dueDate"]}`,
+		example: `{"op":"setProperties","set":{"status":["Done"]},"add":{"tags":["Urgent"]},"unset":["due_date"]}`,
 	},
 	"updateBlock": {
 		endpoint: v2OpsEndpoint,
@@ -285,7 +285,7 @@ var v2OpSchemas = map[string]v2SchemaKind{
 		schema: opSchema("insertView", []string{"name"},
 			v2ViewBlockPropDef,
 			`"name":{"type":"string","minLength":1,"maxLength":4096,"description":"the new view's name (its tab label)"}`,
-			`"copyFrom":{"type":"string","minLength":1,"maxLength":64,"description":"duplicate this view of the same dataview (columns, sorts, filters, type — everything but id and name), then apply set/columns on top; omitted = defaults (every listed property visible, sorted by lastModifiedDate desc)"}`,
+			`"copyFrom":{"type":"string","minLength":1,"maxLength":64,"description":"duplicate this view of the same dataview (columns, sorts, filters, type — everything but id and name), then apply set/columns on top; omitted = defaults (every listed property visible, sorted by last_modified_date desc)"}`,
 			`"after":{"type":"string","minLength":1,"maxLength":64,"description":"insert after this view (id, full or unique suffix)"}`,
 			`"before":{"type":"string","minLength":1,"maxLength":64,"description":"insert before this view"}`,
 			`"position":{"type":"string","enum":["first","last"],"description":"at most one of after/before/position; omitted = append; the FIRST view is the client's default tab"}`,

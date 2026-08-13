@@ -133,7 +133,7 @@ func Tools() []Tool {
 				{Name: "space", Type: ArgString, Required: true, MaxLen: maxKeyLen, Description: "space id"},
 				{Name: "query", Type: ArgString, MaxLen: maxNameLen, Description: "full-text words to match"},
 				{Name: "type", Type: ArgString, MaxLen: maxKeyLen, Description: "a type key, e.g. task"},
-				{Name: "filter", Type: ArgString, MaxLen: maxFilterLen, Description: `compact filter string, e.g. done = false AND dueDate < currentWeek() — string values in double quotes`},
+				{Name: "filter", Type: ArgString, MaxLen: maxFilterLen, Description: `compact filter string, e.g. done = false AND due_date < currentWeek() — string values in double quotes`},
 				{Name: "limit", Type: ArgInteger, Min: 1, Max: 50, Description: "max results (default 10)"},
 			},
 			Example:  map[string]any{"space": "space1", "type": "task", "filter": `done = false`},
@@ -172,7 +172,7 @@ func Tools() []Tool {
 				{Name: "properties", Type: ArgObject, Description: "property key → value; select values are option NAMES"},
 				{Name: "markdown", Type: ArgString, MaxLen: maxMarkdownLen, Description: "markdown body: headings, lists, - [ ] checkboxes, ``` fences, quotes, tables"},
 			},
-			Example: map[string]any{"space": "space1", "type": "task", "name": "Prepare the Q3 report", "properties": map[string]any{"dueDate": "friday"}},
+			Example: map[string]any{"space": "space1", "type": "task", "name": "Prepare the Q3 report", "properties": map[string]any{"due_date": "friday"}},
 			Tier:    TierSmall,
 		},
 		{

@@ -350,7 +350,7 @@ Primary worked example (single-filter form — the small-model form, C12):
 ```json
 { "query": "report", "type": "task",
   "filter": "done = false AND (dueDate < currentWeek() OR dueDate IS EMPTY)",
-  "sorts": [ { "property": "dueDate", "direction": "asc" } ],
+  "sorts": [ { "property": "due_date", "direction": "asc" } ],
   "fields": ["name", "dueDate", "status"] }
 ```
 
@@ -361,7 +361,7 @@ illustration):
 ```json
 { "type": "task",
   "filters": [ { "property": "done", "condition": "equal", "value": false } ],
-  "sorts": [ { "property": "dueDate", "direction": "asc" } ] }
+  "sorts": [ { "property": "due_date", "direction": "asc" } ] }
 ```
 
 - `filter` (compact string) and `filters` (structured array) are mutually
@@ -5402,3 +5402,179 @@ lived under since §8.15. A retry must repeat the request it is retrying.
 
 All six reverts were run and each failed the named tests, with the named
 subtest granularity.
+
+### 8.37 Wave 1 — the identity layer finished: mint, backfill, one vocabulary (2026-08-13 — decisions as built)
+
+Wave 1 of `APIV2_PLAN.md` (items 1.1–1.4), specified in
+`ADDRESSING.md` §7.5 / §7.5a. Three commits, in dependency order — the
+union check has to exist before the backfill can be safe, and both have to
+exist before the re-spelling sweep can be anything but silent
+mis-resolution.
+
+**1.1 — the heart-side mint checks a union** (`objectcreator/apikey.go`).
+`injectApiObjectKey` derived the api slug from the create-time name and
+validated **nothing** (§2.3-1); v2 defended only at resolution. The mint is
+where the address is decided, so the check moved there, and it tests the
+whole union §7.5a-6 names — not just stored slugs: (1) the space's live
+stored `apiObjectKey` slugs, (2) the space's live stored **keys** (a legacy
+readable key is an address at chain step 1, so a slug spelled the same is a
+shadow), (3) the **bundled-derived** vocabulary via
+`pkg/lib/bundle/apislug.go`. Arm 3 is the one that catches the headline
+case — a UI property named "Due Date" slugs to `due_date`, which is exactly
+bundled `dueDate`'s derived slug, and **no stored detail exists for it in
+an old space**, so a store-only check would wave it through. Arms 1–2 come
+from one bounded listing (§7.5a-2), arm 3 from a point lookup.
+
+Two deliberate asymmetries with v2's mint: a **bundled install skips the
+check** (its slug is derived, not minted — the table in code is its
+authority, and convergence is the install mechanism, §2.4-1), and a
+collision **suffixes rather than refuses** (`due_date_2`) because a UI
+create has no caller to steer. Corpses vacate the namespace; an entity
+never collides with itself. A store error degrades the mint and is logged —
+failing a user's property create because the store hiccuped is the worse
+trade, and the ambiguity-loud lookups are the standing backstop.
+
+**1.2 — the backfill, and the floor under the collisions it cannot fix**
+(`space/internal/components/migration/apiobjectkey`). `systemobjectreviser`
+never set `apiObjectKey` — its revised-keys list has none, and it only
+visits bundled/system objects anyway, which are exactly the ones that need
+no stored slug. A migration, built like one: it fills only EMPTY slugs
+(never re-points one — `apiObjectKey` is mutable and **v1-visible**), skips
+bundled keys, processes candidates in ascending object-id order so two
+devices converge, and costs one filtered query in the steady state.
+
+**The already-taken case is a deliberate no-op**, named in code as
+`takenSlugPolicy` and pinned by tests. The mint suffixes because a UI
+create must succeed and carries a name the user just chose; a backfill has
+neither, and `due_date_2` invented unattended is a permanent, v1-visible
+address minted out of an ordering accident. Skipping is the reversible
+choice: the entity keeps exactly the addressability it has today, and a
+later run picks it up if the obstacle clears. Which resolution the case
+ultimately gets is ADDRESSING §8 open question 3 (lean: "floor first").
+
+**The plan's stated defect for 1.2 was mis-attributed, and the real one is
+now loud.** The wrong-entity write ("a UI property named Due Date claims
+`due_date`, so `setProperties` lands in it instead of the bundled one") is
+not what a backfill fixes: the squatter *has* a slug, so the backfill never
+touches it. 1.1 prevents new ones; existing ones cannot be repaired without
+re-pointing an address v1 serves. What needed no permission was the failure
+mode — a stored slug that the bundled table resolves to a **different** key
+is now **ambiguous**, and ambiguity is a loud 400 listing both holders.
+`servedKey` refuses the same spelling, so the API never advertises an
+address that 400s. Silent-and-wrong became refused-and-actionable; the
+backfill's own value is the one §7.5a-6 states — pre-slug custom keys had
+**no** bare-op address at all.
+
+**1.3 — one key vocabulary, bundled keys included.** 153 of 194 bundled
+relation keys and 5 of 29 type keys (`objectType`, `relationOption`,
+`spaceView`, `diaryEntry`, `chatDerived`) re-spell on the wire.
+
+*The reverse is a table, both directions, built from the bundle — never a
+case transform.* `anyblockjson/keyvocab.go` states it and two tests pin it
+with the counterexamples that prove it: `mediaArtistURL` →
+`media_artist_url` → `ToLowerCamel` yields `mediaArtistUrl`, and `_score`
+does not round-trip. A later "simplification" to a case function fails
+there first.
+
+*Two authorities, one chain.* The package default is the bundled derived
+table, which ships with every reader, so a document resolves its bundled
+keys offline with no store. Inside a node, `storeresolver/keyvocab.go`
+widens it with the space's stored slugs — **one bounded details query per
+kind per resolver instance** (a resolver is per request/operation), never a
+point query per reference, because `apiObjectKey` is an ordinary hidden
+detail with no index. Precedence is §7.5a-5 and is load-bearing: an exact
+live stored key wins over the slug layer, a twin slug resolves to neither,
+and a store error degrades to the bundled table rather than to a partial
+map — a half-built vocabulary would resolve a write against the wrong
+property, the exact class §7.5a-2 forbids a cache from producing.
+
+*The format's key slots follow* (`properties` map, `typeProperties[].key`,
+envelope `type`/`templateFor`, dataview `properties[].key`/`groupBy`/
+`coverProperty`/`endProperty`/sorts/filters/columns, the `property` block's
+`key`, a link block's `properties`): export spells, import inverts. Two
+consequences worth writing down: canonical property order now sorts by the
+**spelling**, because the reader sorts what it sees; and two stored keys
+whose slugs would collapse onto one JSON key keep the honest stored
+spelling for the second — a duplicate map key loses a value.
+
+*What did NOT re-spell, deliberately* (§7.5a-4): the envelope and DTO field
+names (`spaceId`, `iconSize`, `defaultTemplateId`, `has_more`'s existing
+carve-out), block attribute names (a callout's `iconEmoji`), enum **values**
+(`kind: "objectType"`, layout names) — `objectType` the layout value
+coexists with `object_type` the type key, and that is intended — the
+`index.json` envelope (§2c), and a type document's envelope `key` (it is
+not an address: v2 stopped deriving identity from it in §8.22, and the
+§8.23 reject list drops `uniqueKey` outright).
+
+*The cascade*, all of it mechanical: SPEC §3's key-vocabulary rule (rewritten
+— the old text said "as stored, camelCase"), its worked examples and the §14
+full document; OVERVIEW and ANOMALIES; the four golden files; `schemas.go`'s
+served examples and `schemas_ops.go`'s op schemas; the served EBNF examples
+and the filter parser's hints; the wrapper's tool manifest; both SKILL
+guides (the v2 one's teaching sentence changed meaning, not just spelling);
+and a new eval task — every existing one named single-word keys only, which
+cannot tell one vocabulary from the other.
+
+*Two functional channels needed the wire spelling taught to them*, found by
+following the sweep rather than by test failure: `UpdateType`'s `properties`
+patch never went through `canonicalizeDocumentKeys`, so the schema now
+advertised `icon_emoji` against a check that only knew `iconEmoji`; and
+`IsOutputOnlyProperty` is called by the wrapper with SERVED keys, so
+`created_date` would have stopped reading as output-only. Both now accept
+either spelling through the bundled table, and the output-only listing
+advertises slugs.
+
+**1.4 — the deferrals, resolved rather than restated.** Both fell out of
+1.3, and one turned from debt into a defect on the way:
+
+- **View-op `set`/`columns` key channels** were stored-key-only. That was
+  survivable while documents spelled stored keys; the moment they spell
+  slugs it is a defect, because the ops merge into the exported document —
+  a stored-key column address stops matching the column it names (it
+  appends a twin), and a folded spelling lands verbatim in the stored
+  `groupBy`, where nothing can ever match it. `canonicalViewKey` now
+  translates every key input once, on the way in, to the document's
+  spelling: `set.groupBy`/`coverProperty`/`endProperty`, `set.sorts`,
+  `set.filters`, the compact `set.filter` string's **output**, and the
+  `columns` map keys.
+- **The compact filter string stays fold-strict on input** (§C2's stated
+  exception), unchanged: it validates against the served spellings before
+  folding. What changed is that its served spellings are now the slugs, so
+  the exception costs a caller nothing it can see — and its parsed output
+  is canonicalized like every other channel, which it was not before.
+
+**Verification.** Every behaviour has a test that fails on revert, and each
+revert was run: the mint's union arms and its wiring in `createRelation`
+(`objectcreator/apikey_test.go` — 10 subtests fail with the check stubbed
+out); the backfill's fill, skip, idempotence and convergence
+(`apiobjectkey_test.go`); the bundled-slug serving and the shadow's loud
+400 (`keys_output_test.go` — reverting `servedKey` to the BSON-only rule
+and dropping the `shadowedBundled*` branch fails 3 tests); the view-op key
+spellings (`viewops_test.go` — stubbing `canonicalViewKey` fails both
+subtests); and the vocabulary's two counterexamples
+(`anyblockjson/keyvocab_test.go`).
+
+**v1 is untouched** — no file under `core/api/handler`, `core/api/service`,
+`core/api/model`, `core/api/filter` or `core/api/docs/v1` changed, and its
+suites pass. v1 keeps its own key vocabulary by construction: it reads
+`apiObjectKey` directly and never consults the derived table.
+
+**`cmd/anyblockroundtrip` — can it still run, and what would it need?** Yes,
+unchanged, and it is the sweep's most valuable outstanding verification.
+The harness exports each object and re-imports it through the same
+`storeresolver` wiring, so the vocabulary is applied symmetrically in both
+directions and the comparison is still snapshot-vs-snapshot, not
+bytes-vs-bytes. Two things to expect on the next run: documents now carry
+slugs, so any **saved corpus artifacts** from an earlier run compare
+against the old vocabulary and should be regenerated rather than diffed;
+and a space holding a **shadow** (a custom slug over a bundled key) is the
+one place the round trip can now lose a key — the exporter keeps the honest
+stored spelling for the second holder, which imports back correctly, so the
+expected result is a pass, but it is the case to watch in the anomaly
+report. It was **not run here**: it needs account credentials, which this
+work deliberately did not touch.
+
+**Not done, and why.** OpenAPI regeneration (`make openapi`) is still
+pending across Waves 0–1 (Q5); no annotation *shapes* changed here, only
+description and example text. The `?ids=`/pins work, the §7.4 write
+defaults and the active re-slug-on-revive remain as §8.22 recorded them.

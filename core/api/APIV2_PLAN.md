@@ -56,17 +56,18 @@ block ids literally any more — and retires the item once owed to 2.1
 ("teach PUT the suffix resolution the ops already use"). `?ids=full` is
 now framed as the backup/export shape, not as a write-back read.
 
-## Wave 1 — finish the identity layer (one item fixes a live defect)
+## Wave 1 — finish the identity layer — **DONE 2026-08-13** (APIV2.md §8.37)
 
-The slug surface shipped; the platform half did not, and the gap is not
-cosmetic.
+The slug surface shipped; the platform half did not. All four items landed,
+in dependency order (the union check has to exist before the backfill can be
+safe, and both before the sweep can be anything but silent mis-resolution).
 
-| # | item | why now | where |
+| # | item | as built | where |
 |---|---|---|---|
-| 1.1 | **Heart-side mint hardening** — `injectApiObjectKey` checks nothing for UI creates | prerequisite for 1.2/1.3; v2 currently defends only at resolution | ADDRESSING §7.5 req 1; APIV2.md §8.22 |
-| 1.2 | **Backfill `apiObjectKey` for old spaces** (`systemobjectreviser` never sets it) | **live silent wrong-entity write**: in a pre-`apiObjectKey` space a UI property named "Due Date" claims `due_date`, and a `setProperties {"set":{"due_date":…}}` lands in it instead of the bundled property. Not "no stable address" — the wrong address | ADDRESSING §7.5 req 5; surface review |
-| 1.3 | **BSON→slug re-spelling sweep** (153 of 194 relation keys, 5 of 29 type keys) | −19 % on property reads **and** it deletes the 722-token `GET /properties` discovery call a model needs today to learn what `6a76…` means | ADDRESSING §7.5a-1; TOKENS §6.2, action 6 |
-| 1.4 | Remaining identity deferrals: view-op `set` channels are stored-key-only; the compact filter string is fold-strict | both fail loud today, so they are debt rather than bugs | APIV2.md §8.23 |
+| 1.1 | ~~Heart-side mint hardening~~ **DONE** — `ensureUniqueApiObjectKey` tests the union: live stored slugs + live stored **keys** (one bounded listing) + the **bundled-derived** vocabulary (a point lookup — arm 3 is the one that catches "Due Date" → `due_date`, which no store-only check can see). Bundled installs skip it (their slug is derived, not minted); a collision **suffixes**, because a UI create has no caller to steer | ADDRESSING §7.5 req 1; §8.37 |
+| 1.2 | ~~Backfill `apiObjectKey`~~ **DONE** — a real migration: fills only EMPTY slugs (never re-points one — the slug is v1-visible), skips bundled keys, ascending-id order so devices converge, one filtered query in the steady state. An **already-taken slug is a deliberate no-op** (`takenSlugPolicy`), because a backfill has no caller to steer and no name the user chose; §8-OQ3 owns the repair. **The plan's stated defect was mis-attributed** — a squatter already HAS a slug, so no backfill touches it; what shipped instead is the **loud floor**: a stored slug the bundled table resolves elsewhere is now ambiguous (400 listing both), and `servedKey` stops advertising it | ADDRESSING §7.5 req 5; §8.37 |
+| 1.3 | ~~BSON→slug re-spelling sweep~~ **DONE** — one vocabulary, both directions, as a **table built from the bundle** (`mediaArtistURL` and `_score` pinned as the counterexamples no case transform survives). Package default = the bundled table (offline-safe); inside a node `storeresolver` widens it with the space's stored slugs, one bounded query per kind per request. Format key slots, row surfaces, served examples, goldens, both SKILL guides and a new eval task all re-spell; envelope/DTO names, block attributes and enum **values** deliberately do not | ADDRESSING §7.5a-1; TOKENS §6.2, action 6; §8.37 |
+| 1.4 | ~~Identity deferrals~~ **DONE** — view-op `set`/`columns` key channels canonicalize their inputs (they were stored-key-only, which 1.3 turns from debt into a defect: a stored-key column address stops matching the column it names). The compact filter string **stays fold-strict on input** by design, but now advertises slugs and canonicalizes its parsed output | APIV2.md §8.23; §8.37 |
 
 ## Wave 2 — make the cheap reads usable
 
@@ -126,7 +127,12 @@ is cheaper to specify after them.
 
 ## The shortest useful path
 
-If only three things ship: **0.1 + 0.2** (a third off every read, for an
-afternoon's work), **2.1 locators** (the 50× edit flow, and it makes the cheap
-modes honest), and **1.2 backfill** (it is a live silent wrong-entity write, not
-a deferral).
+Waves 0 and 1 have shipped. Of what remains, if only two things ship:
+**2.1 locators** (the 50× edit flow, and it is what makes an id-free read
+writable instead of a trap) and **2.2 modes** (the parameters are not chosen
+wrong, they are not chosen at all).
+
+One thing Wave 1 leaves for a human: an existing **twin/shadow slug** now
+fails loud but is not repaired, because repairing it re-points an address v1
+serves. That is ADDRESSING §8-OQ3 (also D5 below), and the backfill's skip
+counter is the telemetry it asked for.

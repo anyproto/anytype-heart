@@ -166,9 +166,9 @@ involved.
   "version": 1,
   "kind": "objectType",
   "key": "task",
-  "properties": { "name": "Task", "iconEmoji": "✅", "recommendedLayout": "todo" },
+  "properties": { "name": "Task", "icon_emoji": "✅", "recommended_layout": "todo" },
   "typeProperties": [
-    { "key": "dueDate",  "name": "Due date", "format": "date",    "section": "featured" },
+    { "key": "due_date",  "name": "Due date", "format": "date",    "section": "featured" },
     { "key": "assignee", "name": "Assignee", "format": "objects", "section": "featured" },
     { "key": "status",   "name": "Status",   "format": "select",
       "options": ["Backlog", {"name": "In progress", "color": "blue"},
@@ -178,10 +178,10 @@ involved.
 }
 ```
 
-The type's own details (`name`, `iconEmoji`, `recommendedLayout`, …) stay in
+The type's own details (`name`, `icon_emoji`, `recommended_layout`, …) stay in
 `properties` under their stored keys (§3). The four recommended-relation id
-lists (`recommendedFeaturedRelations`, `recommendedRelations`,
-`recommendedFileRelations`, `recommendedHiddenRelations`) are **replaced**
+lists (`recommended_featured_relations`, `recommended_relations`,
+`recommended_file_relations`, `recommended_hidden_relations`) are **replaced**
 by `typeProperties` — resolved entries, never raw relation ids.
 
 `typeProperties` entry fields (canonical order):
@@ -261,8 +261,8 @@ object. That is `index.json`, one file at the bundle root, validated against
 
 | Field | Meaning |
 |---|---|
-| `name` · `description` · `iconEmoji` | the space's own identity, applied on install |
-| `iconImage` | the space icon as an image: the **object id** of an image in the bundle, as `iconImage` means everywhere else (§3). Needs the image object *and* its file in the archive, so a generated bundle uses `iconEmoji` |
+| `name` · `description` · `icon_emoji` | the space's own identity, applied on install |
+| `icon_image` | the space icon as an image: the **object id** of an image in the bundle, as `icon_image` means everywhere else (§3). Needs the image object *and* its file in the archive, so a generated bundle uses `icon_emoji` |
 | `homepage` | what opens on entering the space: an object id, or the reserved `widgets` (the sidebar dashboard, the default) or `graph` |
 | `widgets` | sidebar widgets, in order. **The first one is what the install opens**, so the entry point goes first |
 
@@ -285,8 +285,8 @@ whatever format the snapshots are in:
 | `index.json` | `pb.Profile` | effect |
 |---|---|---|
 | `name` | `name` | the space's name |
-| `iconImage` | `avatar` | the space icon. The field holds an object id; `avatar` wants the image's **name**, because `getNewAvatarId` resolves it by querying name + image layout — so the wiring reads the name off the referenced object. Authors keep writing ids, as everywhere else in the format |
-| `homepage`, falling back to `entrypoint` | `spaceDashboardId` | the space's `homepage` detail — what opens on **every** entry |
+| `icon_image` | `avatar` | the space icon. The field holds an object id; `avatar` wants the image's **name**, because `getNewAvatarId` resolves it by querying name + image layout — so the wiring reads the name off the referenced object. Authors keep writing ids, as everywhere else in the format |
+| `homepage`, falling back to `entrypoint` | `space_dashboard_id` | the space's `homepage` detail — what opens on **every** entry |
 | `widgets` | `widgets` | sidebar widgets, in order |
 | `entrypoint` | `widgets[0].targetObjectId` | the object the install opens, **once** |
 
@@ -304,13 +304,13 @@ format:
   it by sorting `widgets` means reordering the sidebar silently changes what
   a new user sees.
 - **Omitting `homepage` does not mean the widgets screen.** An absent
-  `spaceDashboardId` makes `setWorkspaceSettings` default to `widgets`, which
+  `space_dashboard_id` makes `setWorkspaceSettings` default to `widgets`, which
   is the right default for a *blank* space and the wrong one for a use case:
   on desktop the widgets are already in the sidebar, so it leaves the main
   pane empty. So an omitted `homepage` resolves to the `entrypoint` instead,
   and only an explicit `"widgets"` or `"graph"` gives up a real page.
 
-Nothing per-object substitutes for this file. In particular **`isFavorite` is
+Nothing per-object substitutes for this file. In particular **`is_favorite` is
 not an entry point**: it adds an object to Favorites and nothing more. It
 does not open anything, create a widget, or set the homepage.
 
@@ -322,9 +322,27 @@ document defines.
 
 ## 3. Properties
 
-`properties` is a JSON object keyed by **property key** (as stored,
-camelCase — note the public REST API exposes snake_case aliases for some of
-these; this format uses the stored keys so documents resolve offline).
+`properties` is a JSON object keyed by **property key**, always in the
+snake_case **api slug** spelling — `due_date`, `icon_emoji`,
+`manual_property` — bundled, API-created and UI-created keys alike. One
+vocabulary, no aliases, no duality: a reader never has to know which kind of
+key it holds. (This overturns the earlier "as stored, camelCase" rule, and
+it is the format half of the same decision the API surface makes —
+ADDRESSING.md §7.5a, §7.3.)
+
+The mapping is a **table, both directions, never a case transform**: for
+bundled keys the derived table in `pkg/lib/bundle` (which ships with every
+reader, so documents still resolve offline), and for every other key the
+entity's stored `apiObjectKey`, which a node-backed reader primes from the
+space. `mediaArtistURL` → `media_artist_url` → `ToLowerCamel` would yield
+`mediaArtistUrl`, and `_score` does not round-trip at all — string inversion
+cannot be the reverse mechanism, and the package's tests pin both cases.
+
+A key the vocabulary does not know passes through verbatim in both
+directions: an exact stored key is always an address (the resolution chain's
+first step), which is what keeps a package-only reader — with no space to
+ask — lossless on custom keys.
+
 Values are encoded by the property's format:
 
 | Format | JSON encoding |
@@ -337,8 +355,8 @@ Values are encoded by the property's format:
 | `objects`, `files` | array of object ids (strings) |
 | unresolvable format | value passes through verbatim in both directions |
 
-**Layout is named, not numbered.** `recommendedLayout`, `layout` and
-`resolvedLayout` are stored as numbers (their bundled relations have format
+**Layout is named, not numbered.** `recommended_layout`, `layout` and
+`resolved_layout` are stored as numbers (their bundled relations have format
 `number`), but the format writes the enum **name** — `basic · profile · todo ·
 set · objectType · relation · file · dashboard · image · note · space ·
 bookmark · relationOptionsList · relationOption · collection · audio · video ·
@@ -367,8 +385,8 @@ blindly:
 
 - **Export** writes `text` for both stored formats.
 - **Import** reads `text` as the key's *existing* format when that key is
-  already known to be `shorttext` — bundled properties (`name`, `iconEmoji`,
-  `coverId`, …) and anything the wiring's `ResolveFormat` recognizes. So a
+  already known to be `shorttext` — bundled properties (`name`, `icon_emoji`,
+  `cover_id`, …) and anything the wiring's `ResolveFormat` recognizes. So a
   short-text property keeps its stored format across a round-trip even
   though the document never names it.
 - Otherwise `text` means `longtext`, which is what a **new** property
@@ -410,14 +428,14 @@ just unprettified.
 |---|---|---|
 | `name` | text | the object's title |
 | `description` | text | subtitle/description line |
-| `iconEmoji` | text | page icon as emoji |
-| `iconImage` | files | page icon as image (object id) |
-| `coverId` / `coverType` | text / number | page cover — output-only (§4a) |
+| `icon_emoji` | text | page icon as emoji |
+| `icon_image` | files | page icon as image (object id) |
+| `cover_id` / `cover_type` | text / number | page cover — output-only (§4a) |
 | `done` | checkbox | completion state on task-like types |
-| `dueDate` | date | due date on task-like types |
+| `due_date` | date | due date on task-like types |
 
 **Canonical key order in `properties`** (implementation decision): the
-well-known keys `name`, `description`, `iconEmoji`, `iconImage` first (in
+well-known keys `name`, `description`, `icon_emoji`, `icon_image` first (in
 that order, when present), then all remaining keys alphabetically.
 
 **Presence is meaningful.** A key's presence in `properties` records that the
@@ -436,14 +454,14 @@ single-element lists on round-trip (§11).
 
 **Stripping.** Export removes internal/derived properties
 (`bundle.LocalAndDerivedRelationKeys`) **except** those the importer
-meaningfully preserves (mirroring `core/block/import/pb`): `createdDate`,
-`lastModifiedDate`, `creator`, `isFavorite`, `isArchived`, `resolvedLayout`.
+meaningfully preserves (mirroring `core/block/import/pb`): `created_date`,
+`last_modified_date`, `creator`, `is_favorite`, `is_archived`, `resolved_layout`.
 Those six are **output-only** (§4a): export writes them, generators should
-not — with one deliberate exception. **`isFavorite` is authorable**, because
+not — with one deliberate exception. **`is_favorite` is authorable**, because
 the pb importer reads it to choose a space's root objects
 (`core/block/import/pb/space.go`), which is how a generated bundle
 designates the object a user should land on. A bundle with no favourite, no
-`homepage` and no `spaceDashboardId` imports as an undifferentiated list. `id` is lifted to the envelope and `type` to `type`. Everything else
+`homepage` and no `space_dashboard_id` imports as an undifferentiated list. `id` is lifted to the envelope and `type` to `type`. Everything else
 round-trips.
 
 Validation: the schema types `properties` loosely (`object` with scalar/array
@@ -532,7 +550,7 @@ Schema so tooling can warn.
 
 Output-only surfaces: `fields` (any block), `root`, `store`, `source`
 (dataview), `groups`/`objectOrders` (views, §6.2), `id` on sorts/filters,
-filter `nestedProperty` (reserved), `coverId`/`coverType`, and the six
+filter `nestedProperty` (reserved), `cover_id`/`cover_type`, and the six
 preserved internal properties listed in §3.
 
 ## 5. Block type inventory
@@ -554,7 +572,7 @@ mapping:
 | `bulletedListItem` | Text/Marked | `color`, `text` (Notion/BlockNote naming) |
 | `numberedListItem` | Text/Numbered | `color`, `text` (numbering is derived from position among consecutive siblings; never stored) |
 | `toggle` | Text/Toggle | `color`, `text` |
-| `callout` | Text/Callout | `iconEmoji`, `iconImage` (file object id), `color`, `text` |
+| `callout` | Text/Callout | `icon_emoji`, `icon_image` (file object id), `color`, `text` |
 | `toggleHeading1` … `toggleHeading3` | Text/ToggleHeader1..3 | `color`, `text` |
 | `file` `image` `video` `audio` `pdf` | File (Type enum promoted; `Type_None` → `file` with no `objectId`) | `objectId` (target file object), `name`, `mimeType`, `size` (bytes), `style` (`auto · link · embed`), `addedAt` (RFC 3339). Legacy `hash` accepted on input. On export, a block with only the legacy `hash` set writes it as `objectId` (the hash migrates on round-trip, §11); when both are set, `objectId` wins and the hash is dropped. `state` is not serialized: import sets `Done` when `objectId`/`hash` is present, `Empty` otherwise. File blocks are leaves in the editor, but legacy data can nest real blocks under them — indented descendants are allowed and round-trip verbatim |
 | `bookmark` | Bookmark | `url`, `objectId` (target bookmark object). `state` handled like file blocks. Deprecated preview fields and `type` (derivable) are dropped — preview data lives on the target object |
@@ -695,7 +713,7 @@ string enums, and defaults omitted:
   "properties": [
     { "key": "name", "format": "text" },
     { "key": "status", "format": "select" },
-    { "key": "dueDate", "format": "date" }
+    { "key": "due_date", "format": "date" }
   ],
   "views": [
     {
@@ -704,15 +722,15 @@ string enums, and defaults omitted:
       "name": "By status",
       "groupBy": "status",
       "sorts": [
-        { "property": "dueDate", "direction": "asc", "emptyPlacement": "end" }
+        { "property": "due_date", "direction": "asc", "emptyPlacement": "end" }
       ],
       "filters": [
-        { "property": "dueDate", "condition": "less", "datePreset": "currentWeek" },
+        { "property": "due_date", "condition": "less", "datePreset": "currentWeek" },
         { "property": "done", "condition": "equal", "value": false }
       ],
       "columns": [
         { "property": "name" },
-        { "property": "dueDate", "width": 120, "align": "right" },
+        { "property": "due_date", "width": 120, "align": "right" },
         { "property": "status", "aggregation": "countDistinct" }
       ]
     }
@@ -920,7 +938,7 @@ query string:
 
 ```json
 { "type": "kanban", "groupBy": "status",
-  "filter": "done = false AND (dueDate < currentWeek() OR dueDate IS EMPTY)" }
+  "filter": "done = false AND (due_date < currentWeek() OR due_date IS EMPTY)" }
 ```
 
 Grammar (informal here; the `filterstring` parser is the normative
@@ -942,7 +960,7 @@ conditions, keeping string ⇄ structured 1:1.
 | exists | `assignee EXISTS` |
 
 Values: double-quoted strings, bare numbers, `true`/`false`, RFC 3339 dates
-in quotes (`dueDate < "2026-08-01"`), and date-preset **functions** —
+in quotes (`due_date < "2026-08-01"`), and date-preset **functions** —
 `yesterday() · today() · tomorrow() · lastWeek() · currentWeek() ·
 nextWeek() · lastMonth() · currentMonth() · nextMonth() · lastYear() ·
 currentYear() · nextYear() · daysAgo(n) · daysFromNow(n)` (the parameterized
@@ -993,7 +1011,7 @@ Import does **not** attempt to rebuild them: which structural blocks an
 object gets depends on its layout (note objects have no title block at all,
 todo objects bind `done`, …), which the editor resolves from the type's
 recommended layout at first open (`template.InitTemplate`). The package
-preserves `resolvedLayout` in `properties` (§3) and leaves structural blocks
+preserves `resolved_layout` in `properties` (§3) and leaves structural blocks
 absent; the editor regenerates them on open. `N(S)` in §11 is defined
 accordingly.
 
@@ -1258,7 +1276,7 @@ every id-valued surface:
 |---|---|
 | `objectId` props (file/image/video/audio/pdf, bookmark, link, dataview) | yes |
 | mention / object-link targets in `text` | yes |
-| `iconImage` (callout, and the `iconImage` property) | yes |
+| `icon_image` (callout, and the `icon_image` property) | yes |
 | property values of `objects`/`files` formats | yes |
 | `items` | yes |
 | view `defaultTemplateId`, `defaultTypeId` | yes |
@@ -1531,7 +1549,7 @@ Wiring (follow-up work, not this package):
   "type": "page",
   "properties": {
     "name": "Project Phoenix",
-    "iconEmoji": "🔥",
+    "icon_emoji": "🔥",
     "status": ["In progress"]
   },
   "blocks": [
@@ -1556,21 +1574,21 @@ Wiring (follow-up work, not this package):
       "properties": [
         { "key": "name", "format": "text" },
         { "key": "status", "format": "select" },
-        { "key": "dueDate", "format": "date" }
+        { "key": "due_date", "format": "date" }
       ],
       "views": [
         { "id": "v1", "type": "kanban", "name": "By status",
           "groupBy": "status",
           "sorts": [
-            { "property": "dueDate", "direction": "asc", "emptyPlacement": "end" }
+            { "property": "due_date", "direction": "asc", "emptyPlacement": "end" }
           ],
           "filters": [
-            { "property": "dueDate", "condition": "less", "datePreset": "currentWeek" },
+            { "property": "due_date", "condition": "less", "datePreset": "currentWeek" },
             { "property": "done", "condition": "equal", "value": false }
           ],
           "columns": [
             { "property": "name" },
-            { "property": "dueDate", "width": 120, "align": "right" },
+            { "property": "due_date", "width": 120, "align": "right" },
             { "property": "status", "aggregation": "countDistinct" }
           ]
         }
@@ -1608,10 +1626,10 @@ Wiring (follow-up work, not this package):
    same way types are specified in §2a (resolved options by name, not id).
 9. **Trim system-property noise** (follow-up): refine §3 "presence is
    meaningful" — keys in `bundle.SystemRelations` are machine-stamped
-   metadata (`isHidden`, `revision`, `relationFormatIncludeTime`, …) and
+   metadata (`is_hidden`, `revision`, `relation_format_include_time`, …) and
    could safely omit empty/default values, keeping documents compact for
    LLMs; presence stays preserved for user-intent keys via a small
-   exception list (`name`, `description`, `iconEmoji`, `iconImage`,
+   exception list (`name`, `description`, `icon_emoji`, `icon_image`,
    `done`) and for every non-system key. Deliberately static (no
    type-schema lookup at export time) to keep the canonical form
    deterministic. Decide `done` membership and wire `buildProperties` +

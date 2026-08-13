@@ -24,7 +24,7 @@ a human-only format would have made.
   "type": "page",
   "properties": {
     "name": "Project Phoenix",
-    "iconEmoji": "🔥",
+    "icon_emoji": "🔥",
     "status": ["In progress"]
   },
   "blocks": [
@@ -108,7 +108,7 @@ to block attributes and envelope fields.
 
 **Why.** This one was decided by data. The first production sweep flagged
 14,032 "issues" that were all the same thing: default scalars
-(`isHidden:false`, `revision:0`) that canonicalization had dropped. The
+(`is_hidden:false`, `revision:0`) that canonicalization had dropped. The
 ruling was that **a user setting a property to empty is a fact**, and the
 format has no business deleting it. Blocks are different — an absent
 attribute there genuinely means "default".

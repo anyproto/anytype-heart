@@ -34,7 +34,7 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 	"object": {
 		endpoint: "POST /v2/spaces/{spaceId}/objects",
 		// the full AnyBlock document schema is served verbatim (schema: "")
-		example: `{"version":1,"type":"task","properties":{"name":"Prepare the Q3 report","status":["In progress"],"dueDate":"2026-08-01T00:00:00Z"},"blocks":[{"type":"heading2","text":"Steps"},{"type":"checkbox","text":"Collect the numbers"},{"indent":1,"type":"paragraph","text":"Ask **finance** first"}]}`,
+		example: `{"version":1,"type":"task","properties":{"name":"Prepare the Q3 report","status":["In progress"],"due_date":"2026-08-01T00:00:00Z"},"blocks":[{"type":"heading2","text":"Steps"},{"type":"checkbox","text":"Collect the numbers"},{"indent":1,"type":"paragraph","text":"Ask **finance** first"}]}`,
 	},
 	"shortcut": {
 		endpoint: "POST /v2/spaces/{spaceId}/objects",
@@ -43,12 +43,12 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 			`"name":{"type":"string","maxLength":4096},` +
 			`"properties":{"type":"object","maxProperties":128,"additionalProperties":{"type":["string","number","boolean","array","null"]}},` +
 			`"markdown":{"type":"string","maxLength":1048576,"description":"markdown body parsed into blocks server-side — part of the same single create (dry runs validate it too); at most 2048 parsed blocks"}}}`,
-		example: `{"type":"task","name":"Buy milk","properties":{"dueDate":"2026-08-01T00:00:00Z"},"markdown":"- [ ] oat\n- [ ] whole"}`,
+		example: `{"type":"task","name":"Buy milk","properties":{"due_date":"2026-08-01T00:00:00Z"},"markdown":"- [ ] oat\n- [ ] whole"}`,
 	},
 	"type": {
 		endpoint: "POST /v2/spaces/{spaceId}/types",
 		// a type document is an AnyBlock document (kind objectType)
-		example: `{"version":1,"kind":"objectType","key":"task","properties":{"name":"Task","iconEmoji":"✅","recommendedLayout":"todo"},"typeProperties":[{"key":"dueDate","name":"Due date","format":"date","section":"featured"},{"key":"status","name":"Status","format":"select"}]}`,
+		example: `{"version":1,"kind":"objectType","key":"task","properties":{"name":"Task","icon_emoji":"✅","recommended_layout":"todo"},"typeProperties":[{"key":"due_date","name":"Due date","format":"date","section":"featured"},{"key":"status","name":"Status","format":"select"}]}`,
 	},
 	"template": {
 		endpoint: "POST /v2/spaces/{spaceId}/templates",
@@ -73,7 +73,7 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 			`"sorts":{"type":"array","maxItems":10,"items":{"type":"object","additionalProperties":false,"required":["property"],"properties":{` +
 			`"property":{"type":"string","maxLength":256},"direction":{"type":"string","enum":["asc","desc"]},"emptyPlacement":{"type":"string","enum":["start","end"]}}}},` +
 			`"views":{"type":"array","maxItems":10,"description":"full SPEC §6.2 view objects; mutually exclusive with top-level filter/sorts"}}}`,
-		example: `{"name":"Open tasks","type":"task","filter":"done = false","sorts":[{"property":"dueDate","direction":"asc"}]}`,
+		example: `{"name":"Open tasks","type":"task","filter":"done = false","sorts":[{"property":"due_date","direction":"asc"}]}`,
 	},
 	"collection": {
 		endpoint: "POST /v2/spaces/{spaceId}/collections",
@@ -98,7 +98,7 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 			`"sorts":{"type":"array","maxItems":10,"items":{"type":"object","additionalProperties":false,"required":["property"],"properties":{` +
 			`"property":{"type":"string","maxLength":256,"description":"any property key"},"direction":{"type":"string","enum":["asc","desc"]},"emptyPlacement":{"type":"string","enum":["start","end"]}}}},` +
 			`"fields":{"type":"array","maxItems":25,"items":{"type":"string","maxLength":256},"description":"property keys to include per row; file rows additionally take mimeType and size — also valid filter and sort keys (they translate to the store's fileMimeType/sizeInBytes); file rows enter scope only when the type channel names a file type"}}}`,
-		example: `{"query":"report","type":"task","filter":"done = false AND (dueDate < currentWeek() OR dueDate IS EMPTY)","sorts":[{"property":"dueDate","direction":"asc"}],"fields":["name","dueDate","status"]}`,
+		example: `{"query":"report","type":"task","filter":"done = false AND (due_date < currentWeek() OR due_date IS EMPTY)","sorts":[{"property":"due_date","direction":"asc"}],"fields":["name","due_date","status"]}`,
 	},
 	"space": {
 		endpoint: "POST /v2/spaces (PATCH /v2/spaces/{spaceId} takes the same fields, both optional — at least one)",
@@ -159,7 +159,7 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 			`"includeTime":{"type":"boolean"}}}]}},` +
 			`"type":"array","maxItems":50,"items":{"$ref":"#/$defs/filterNode"},` +
 			`"description":"RECURSIVE (documented C13 exception): top-level nodes combine with an implicit AND; select values are option names; date values are unix seconds"}`,
-		example: `[{"property":"done","condition":"equal","value":false},{"operator":"or","filters":[{"property":"dueDate","condition":"less","datePreset":"currentWeek"},{"property":"dueDate","condition":"empty"}]}]`,
+		example: `[{"property":"done","condition":"equal","value":false},{"operator":"or","filters":[{"property":"due_date","condition":"less","datePreset":"currentWeek"},{"property":"due_date","condition":"empty"}]}]`,
 	},
 }
 

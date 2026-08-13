@@ -53,9 +53,9 @@ anytype read --object 1 --mode outline     # block ids + structure
 ## Filter strings
 
 `--filter` is a compact expression, not JSON:
-`done = false AND (dueDate < currentWeek() OR dueDate IS EMPTY)` ·
+`done = false AND (due_date < currentWeek() OR due_date IS EMPTY)` ·
 `status IN ("In progress", "Blocked")` · `name CONTAINS "report"` ·
-`lastModifiedDate > daysAgo(7)`. String values take double quotes; date
+`last_modified_date > daysAgo(7)`. String values take double quotes; date
 presets are functions (`today()`, `currentWeek()`, `daysAgo(n)`).
 
 ## Caveats

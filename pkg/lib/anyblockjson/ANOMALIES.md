@@ -46,7 +46,7 @@ rather than dropping them. **Spec**: §5 file row, §6.1.
 ## 3. Recommended-relation lists holding bare property keys
 
 Type objects predating per-space derived relation ids store bare property
-**keys** (`"creator"`, `"createdDate"`) in `recommendedHiddenRelations` and
+**keys** (`"creator"`, `"createdDate"`) in `recommended_hidden_relations` and
 friends, where object ids are expected.
 
 Volume: ~15 objects.
@@ -93,7 +93,7 @@ round-trip reports as evidence for the §15.3 open question (names vs
 
 ## 7. Default-valued details are semantically present
 
-Details like `isHidden: false`, `revision: 0`, `relationFormatIncludeTime:
+Details like `is_hidden: false`, `revision: 0`, `relation_format_include_time:
 false` appear *explicitly* on thousands of objects. Presence of a property
 key — even with a default/empty value — records that the property was set on
 the object; clients rely on it.

@@ -2599,7 +2599,7 @@
     },
     "/v2/spaces/{space_id}/files": {
       "post": {
-        "description": "Uploads one file and returns the file object id that file/image blocks and iconImage values reference (R11). Send multipart/form-data with a file field, or JSON {\"url\": …} — the JSON body binds strictly (unknown fields rejected, 1 MiB cap). A URL the source refuses or that cannot be fetched is a 400 naming /url; only genuine server faults answer 500.",
+        "description": "Uploads one file and returns the file object id that file/image blocks and icon_image values reference (R11). Send multipart/form-data with a file field, or JSON {\"url\": …} — the JSON body binds strictly (unknown fields rejected, 1 MiB cap). A URL the source refuses or that cannot be fetched is a 400 naming /url; only genuine server faults answer 500.",
         "operationId": "v2_upload_file",
         "parameters": [
           {
@@ -4039,7 +4039,7 @@
         ]
       },
       "patch": {
-        "description": "Partial type-document update: properties changes the type's own details (name, description, iconEmoji, recommendedLayout); typeProperties, when present, rebuilds the recommended property lists, creating missing properties (SPEC §2a).",
+        "description": "Partial type-document update: properties changes the type's own details (name, description, icon_emoji, recommended_layout); typeProperties, when present, rebuilds the recommended property lists, creating missing properties (SPEC §2a).",
         "operationId": "v2_update_type",
         "parameters": [
           {

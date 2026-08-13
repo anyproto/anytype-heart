@@ -158,7 +158,7 @@ func CreateTypeV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 // UpdateTypeV2Handler updates a type (type-document semantics)
 //
 //	@Summary		Update type
-//	@Description	Partial type-document update: properties changes the type's own details (name, description, iconEmoji, recommendedLayout); typeProperties, when present, rebuilds the recommended property lists, creating missing properties (SPEC §2a).
+//	@Description	Partial type-document update: properties changes the type's own details (name, description, icon_emoji, recommended_layout); typeProperties, when present, rebuilds the recommended property lists, creating missing properties (SPEC §2a).
 //	@Id				v2_update_type
 //	@Tags			V2
 //	@Accept			json
@@ -364,7 +364,7 @@ func CreateCollectionV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 // UploadFileV2Handler uploads a file (multipart or URL)
 //
 //	@Summary		Upload file
-//	@Description	Uploads one file and returns the file object id that file/image blocks and iconImage values reference (R11). Send multipart/form-data with a file field, or JSON {"url": …} — the JSON body binds strictly (unknown fields rejected, 1 MiB cap). A URL the source refuses or that cannot be fetched is a 400 naming /url; only genuine server faults answer 500.
+//	@Description	Uploads one file and returns the file object id that file/image blocks and icon_image values reference (R11). Send multipart/form-data with a file field, or JSON {"url": …} — the JSON body binds strictly (unknown fields rejected, 1 MiB cap). A URL the source refuses or that cannot be fetched is a 400 naming /url; only genuine server faults answer 500.
 //	@Id				v2_upload_file
 //	@Tags			V2
 //	@Accept			multipart/form-data

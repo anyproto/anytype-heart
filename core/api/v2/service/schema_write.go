@@ -398,6 +398,16 @@ func (s *V2Service) validateTypePropertyFormats(spaceId string, props []anyblock
 	return nil
 }
 
+// storedDetailKey maps a wire property key to its stored spelling through
+// the bundled derived table — enough for every key in this file's maps,
+// which are all bundled, and free of any store lookup.
+func storedDetailKey(key string) string {
+	if stored, ok := bundle.RelationKeyByApiSlug(key); ok {
+		return string(stored)
+	}
+	return key
+}
+
 // updatableTypeDetailKeys is the explicit PATCH surface for a type's own
 // properties; anything else is rejected (never silently dropped).
 var updatableTypeDetailKeys = map[string]bool{
@@ -435,10 +445,14 @@ func (s *V2Service) UpdateType(ctx context.Context, spaceId, typeKey string, bod
 	}
 
 	var detailUpdates []*model.Detail
-	for _, key := range sortedKeys(patch.Properties) {
+	for _, raw := range sortedKeys(patch.Properties) {
+		// this channel does not go through canonicalizeDocumentKeys, so it
+		// translates its own: the served schema advertises slugs (§7.5a) and
+		// the keys below are stored spellings
+		key := storedDetailKey(raw)
 		if !updatableTypeDetailKeys[key] {
 			return nil, v2model.ValidationFailed("property not updatable on a type",
-				v2model.Issue{Path: "/properties/" + key, Message: fmt.Sprintf("cannot update %q", key), Hint: "updatable: name, description, iconEmoji, recommendedLayout"})
+				v2model.Issue{Path: "/properties/" + raw, Message: fmt.Sprintf("cannot update %q", raw), Hint: "updatable: name, description, icon_emoji, recommended_layout"})
 		}
 		value, err := typeDetailValue(key, patch.Properties[key])
 		if err != nil {

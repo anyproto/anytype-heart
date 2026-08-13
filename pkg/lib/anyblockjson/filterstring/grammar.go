@@ -36,10 +36,10 @@ string      = '"' , { character } , '"' ;           (* backslash escapes: \" \\ 
 
 // Examples are worked filter strings, served alongside the grammar (C12).
 var Examples = []string{
-	`done = false AND (dueDate < currentWeek() OR dueDate IS EMPTY)`,
+	`done = false AND (due_date < currentWeek() OR due_date IS EMPTY)`,
 	`status IN ("In progress", "Blocked")`,
 	`tags HAS ALL ("urgent", "q3") AND assignee IS NOT EMPTY`,
-	`lastModifiedDate > daysAgo(7)`,
+	`last_modified_date > daysAgo(7)`,
 	`type IN ("task", "bug") AND priority >= 3`,
-	`name CONTAINS "report" AND dueDate < "2026-08-01"`,
+	`name CONTAINS "report" AND due_date < "2026-08-01"`,
 }
