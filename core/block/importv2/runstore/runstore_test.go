@@ -229,6 +229,81 @@ func TestEffectLedger(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, []string{"obj-1"}, inputs.Created)
 	})
+
+	t.Run("a run-created object never leaves the delete set", func(t *testing.T) {
+		// given — P1-4 (confirmed): a later effect under the same source key
+		// clobbered the created row wholesale, so the object silently left
+		// the delete set and would orphan on abort. minted is sticky.
+		ctx := context.Background()
+		store := createStore(t, filepath.Join(t.TempDir(), "run-1"))
+		require.NoError(t, store.RecordCreated(ctx, "page-1", "obj-1"))
+
+		// when
+		require.NoError(t, store.RecordUpdated(ctx, "page-1", "obj-1"))
+		inputs, err := store.CompensationInputs(ctx)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []string{"obj-1"}, inputs.Created, "minted must be sticky")
+		assert.Empty(t, inputs.Updated, "a run-created object is deleted, never reported as an uncovered update")
+	})
+
+	t.Run("rank is first-record order and never changes", func(t *testing.T) {
+		// given
+		ctx := context.Background()
+		store := createStore(t, filepath.Join(t.TempDir(), "run-1"))
+		require.NoError(t, store.RecordCreated(ctx, "page-a", "obj-a"))
+		require.NoError(t, store.RecordCreated(ctx, "page-b", "obj-b"))
+
+		// when: a re-record of page-a must not move it to the front
+		require.NoError(t, store.RecordUpdated(ctx, "page-a", "obj-a"))
+		inputs, err := store.CompensationInputs(ctx)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []string{"obj-b", "obj-a"}, inputs.Created)
+	})
+
+	t.Run("a file's first classification wins", func(t *testing.T) {
+		// given — a re-recorded file (dedup makes the second upload look
+		// pre-existing because the first one indexed it) must keep its
+		// honest first classification: owned by this run.
+		ctx := context.Background()
+		store := createStore(t, filepath.Join(t.TempDir(), "run-1"))
+		require.NoError(t, store.RecordFile(ctx, "file-1", "file-obj-1", false))
+
+		// when
+		require.NoError(t, store.RecordFile(ctx, "file-1", "file-obj-1", true))
+		inputs, err := store.CompensationInputs(ctx)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []string{"file-obj-1"}, inputs.OwnedFiles)
+	})
+
+	t.Run("an unknown entries mode is deletable to this reader", func(t *testing.T) {
+		// given — §4.4 frozen-core reader rule: a mode this binary does not
+		// know (a phase-B "derived" read by an older binary) is treated as
+		// deletable; a future non-deletable mode must bump schemaVersion.
+		ctx := context.Background()
+		store := createStore(t, filepath.Join(t.TempDir(), "run-1"))
+		arena := &anyenc.Arena{}
+		row := arena.NewObject()
+		row.Set("id", arena.NewString("derived-1"))
+		row.Set("objectId", arena.NewString("obj-derived"))
+		row.Set("mode", arena.NewString("derived"))
+		row.Set("status", arena.NewString("persisted"))
+		row.Set("rank", arena.NewNumberInt(7))
+		require.NoError(t, store.entries.UpsertOne(ctx, row))
+
+		// when
+		inputs, err := store.CompensationInputs(ctx)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []string{"obj-derived"}, inputs.Created)
+		assert.Empty(t, inputs.Updated)
+	})
 }
 
 func TestDrop(t *testing.T) {

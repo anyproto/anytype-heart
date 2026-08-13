@@ -24,6 +24,7 @@ import (
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
+	"github.com/anyproto/any-store/query"
 	sqlite "github.com/anyproto/go-sqlite"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/anystorehelper"
@@ -309,41 +310,56 @@ func (s *Store) RecordUpdated(ctx context.Context, sourceKey, objectId string) e
 	return s.recordEntry(ctx, sourceKey, objectId, modeMatched, actionUpdated)
 }
 
+// recordEntry merges one effect into the row keyed by sourceKey. Two rules
+// keep the delete set sound under re-records (a later effect must never
+// erase what compensation needs to know):
+//
+//   - minted is STICKY: once a row says the run created the object, no
+//     later effect may downgrade it — deletion supersedes update-rollback
+//     for an object this run made;
+//   - rank is assigned at the row's FIRST write and never changes (it is a
+//     frozen field, §4.4, and compensation ordering depends on it).
 func (s *Store) recordEntry(ctx context.Context, sourceKey, objectId, mode, action string) error {
-	arena := s.arenas.Get()
-	defer func() {
-		arena.Reset()
-		s.arenas.Put(arena)
-	}()
-	obj := arena.NewObject()
-	obj.Set("id", arena.NewString(sourceKey))
-	obj.Set("objectId", arena.NewString(objectId))
-	obj.Set("mode", arena.NewString(mode))
-	obj.Set("status", arena.NewString(statusPersisted))
-	obj.Set("action", arena.NewString(action))
-	obj.Set("rank", arena.NewNumberInt(int(s.rank.Add(1))))
-	obj.Set("incarnation", arena.NewNumberInt(1))
-	return s.entries.UpsertOne(ctx, obj)
+	rank := int(s.rank.Add(1))
+	_, err := s.entries.UpsertId(ctx, sourceKey, query.ModifyFunc(
+		func(arena *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
+			if string(v.GetStringBytes("mode")) == modeMinted {
+				return v, false, nil
+			}
+			v.Set("objectId", arena.NewString(objectId))
+			v.Set("mode", arena.NewString(mode))
+			v.Set("status", arena.NewString(statusPersisted))
+			v.Set("action", arena.NewString(action))
+			if v.Get("rank") == nil {
+				v.Set("rank", arena.NewNumberInt(rank))
+			}
+			v.Set("incarnation", arena.NewNumberInt(1))
+			return v, true, nil
+		}))
+	return err
 }
 
 // RecordFile journals a file-upload outcome. preExisting marks a
 // content-dedup hit on an object that already lived in the space — those are
 // never compensation-deleted (the classification cannot be reconstructed
-// later; see persist/journal.go).
+// later; see persist/journal.go). The FIRST record wins entirely: a
+// re-recorded file looks pre-existing only because the first upload indexed
+// it, so the first classification is the honest one.
 func (s *Store) RecordFile(ctx context.Context, sourceKey, objectId string, preExisting bool) error {
-	arena := s.arenas.Get()
-	defer func() {
-		arena.Reset()
-		s.arenas.Put(arena)
-	}()
-	obj := arena.NewObject()
-	obj.Set("id", arena.NewString(sourceKey))
-	obj.Set("objectId", arena.NewString(objectId))
-	obj.Set("status", arena.NewString(statusDone))
-	obj.Set("preExisting", arena.NewBool(preExisting))
-	obj.Set("rank", arena.NewNumberInt(int(s.rank.Add(1))))
-	obj.Set("incarnation", arena.NewNumberInt(1))
-	return s.files.UpsertOne(ctx, obj)
+	rank := int(s.rank.Add(1))
+	_, err := s.files.UpsertId(ctx, sourceKey, query.ModifyFunc(
+		func(arena *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
+			if len(v.GetStringBytes("objectId")) > 0 {
+				return v, false, nil
+			}
+			v.Set("objectId", arena.NewString(objectId))
+			v.Set("status", arena.NewString(statusDone))
+			v.Set("preExisting", arena.NewBool(preExisting))
+			v.Set("rank", arena.NewNumberInt(rank))
+			v.Set("incarnation", arena.NewNumberInt(1))
+			return v, true, nil
+		}))
+	return err
 }
 
 type rankedId struct {
@@ -364,10 +380,15 @@ func (s *Store) CompensationInputs(ctx context.Context) (CompensationInputs, err
 			return fmt.Errorf("row %q: missing objectId or mode", v.GetStringBytes("id"))
 		}
 		switch mode {
-		case modeMinted:
-			created = append(created, rankedId{id: objectId, rank: v.GetInt("rank")})
 		case modeMatched:
 			inputs.Updated = append(inputs.Updated, objectId)
+		default:
+			// minted — and, by the §4.4 reader rule, any mode this binary
+			// does not know: an unrecognized mode is treated as DELETABLE
+			// (a phase-B "derived" row read by an older binary must still
+			// be compensated; a future non-deletable mode must bump
+			// schemaVersion instead).
+			created = append(created, rankedId{id: objectId, rank: v.GetInt("rank")})
 		}
 		return nil
 	})
