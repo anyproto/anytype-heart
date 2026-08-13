@@ -235,8 +235,10 @@ func TestSweepRuns(t *testing.T) {
 		assert.DirExists(t, dir)
 	})
 
-	t.Run("a failed delete leaks loudly but the dir is still removed", func(t *testing.T) {
-		// given
+	t.Run("a leaked delete keeps the dir so the next start retries", func(t *testing.T) {
+		// given — P1-1: compensation is idempotent, so retrying next start
+		// is free; dropping the dir would turn a retryable leak into a
+		// permanent orphan.
 		root := t.TempDir()
 		dir := makeRun(t, root, "leaky", runstore.StateRunning, true)
 		deleter := &sweepDeleter{failIds: map[string]error{"obj-1": assert.AnError}}
@@ -244,12 +246,76 @@ func TestSweepRuns(t *testing.T) {
 		// when
 		outcomes := sweepRuns(ctx, root, deleter, alwaysOK)
 
-		// then
+		// then: partial result, dir kept in the compensating state
 		require.Len(t, outcomes, 1)
-		assert.Equal(t, sweepCompensated, outcomes[0].Action)
+		assert.Equal(t, sweepCompensatedPartially, outcomes[0].Action)
 		assert.Equal(t, 2, outcomes[0].Result.Compensated)
 		assert.Equal(t, 1, outcomes[0].Result.Leaked)
-		_, err := os.Stat(dir)
-		assert.True(t, os.IsNotExist(err))
+		assert.DirExists(t, dir)
+		store, err := runstore.Open(ctx, dir)
+		require.NoError(t, err)
+		manifest, err := store.Manifest(ctx)
+		require.NoError(t, err)
+		require.NoError(t, store.Close())
+		assert.Equal(t, runstore.StateCompensating, manifest.State)
+
+		// and: once the failure clears, the next sweep finishes the job
+		// (already-deleted objects count compensated, not leaked)
+		deleter.failIds = nil
+		outcomes = sweepRuns(ctx, root, deleter, alwaysOK)
+		require.Len(t, outcomes, 1)
+		assert.Equal(t, sweepCompensated, outcomes[0].Action)
+		assert.Zero(t, outcomes[0].Result.Leaked)
+		_, statErr := os.Stat(dir)
+		assert.True(t, os.IsNotExist(statErr))
+	})
+
+	t.Run("an active run's dir is never touched", func(t *testing.T) {
+		// given — P1-2 (confirmed): a second Open of a live run's db
+		// succeeds (the .lock is a dirty sentinel, not a mutex) and Drop
+		// unlinks the dir under the live writer. Reachable via Close()'s
+		// 30s give-up plus a same-process account restart.
+		root := t.TempDir()
+		dir := filepath.Join(root, "live")
+		store, err := runstore.Create(ctx, dir, runstore.Manifest{RunId: "live", SpaceId: "space-1"})
+		require.NoError(t, err)
+		require.NoError(t, store.RecordCreated(ctx, "page-1", "obj-1"))
+		deleter := &sweepDeleter{}
+
+		// when: swept while the run still holds its store open
+		outcomes := sweepRuns(ctx, root, deleter, alwaysOK)
+
+		// then
+		require.Len(t, outcomes, 1)
+		assert.Equal(t, sweepSkippedActive, outcomes[0].Action)
+		assert.Empty(t, deleter.deleted)
+		assert.DirExists(t, dir)
+
+		// and: once the run lets go, the sweep settles it normally
+		require.NoError(t, store.Close())
+		outcomes = sweepRuns(ctx, root, deleter, alwaysOK)
+		require.Len(t, outcomes, 1)
+		assert.Equal(t, sweepCompensated, outcomes[0].Action)
+		_, statErr := os.Stat(dir)
+		assert.True(t, os.IsNotExist(statErr))
+	})
+
+	t.Run("a dead component context stops the sweep before it touches anything", func(t *testing.T) {
+		// given — P1-5: an account stop mid-sweep must not keep deleting
+		// through a closing service (every delete would fail and every
+		// remaining dir would be dropped anyway).
+		root := t.TempDir()
+		dir := makeRun(t, root, "run", runstore.StateRunning, true)
+		deleter := &sweepDeleter{}
+		dead, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		// when
+		outcomes := sweepRuns(dead, root, deleter, alwaysOK)
+
+		// then
+		assert.Empty(t, outcomes)
+		assert.Empty(t, deleter.deleted)
+		assert.DirExists(t, dir)
 	})
 }

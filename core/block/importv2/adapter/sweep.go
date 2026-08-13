@@ -32,9 +32,11 @@ type sweepAction string
 const (
 	sweepDeletedTerminal         sweepAction = "deleted-terminal"
 	sweepCompensated             sweepAction = "compensated"
+	sweepCompensatedPartially    sweepAction = "compensated-partially" // leaks left; dir kept for retry
 	sweepDeletedCorrupt          sweepAction = "deleted-corrupt"
 	sweepDeletedEmpty            sweepAction = "deleted-empty"
 	sweepDeletedSpaceGone        sweepAction = "deleted-space-gone"
+	sweepSkippedActive           sweepAction = "skipped-active"
 	sweepSkippedNewerSchema      sweepAction = "skipped-newer-schema"
 	sweepSkippedSpaceUnavailable sweepAction = "skipped-space-unavailable"
 	sweepSkippedError            sweepAction = "skipped-error"
@@ -49,15 +51,20 @@ type sweepOutcome struct {
 
 // sweepRuns walks the runs root once and settles every dir it finds. New
 // dirs created by imports starting mid-sweep are not in the listing
-// snapshot, so an active run is never touched.
+// snapshot, and dirs a live Store holds open are skipped via the active
+// registry — an active run is never touched. A dead ctx (the component is
+// closing) stops the walk: remaining dirs settle on the next start.
 func sweepRuns(ctx context.Context, root string, objects persist.ObjectAccess, probe spaceProbe) []sweepOutcome {
 	dirs, err := runstore.ListRunDirs(root)
 	if err != nil {
 		log.Errorf("sweep: list run dirs: %s", err)
 		return nil
 	}
-	outcomes := make([]sweepOutcome, 0, len(dirs))
+	var outcomes []sweepOutcome
 	for _, dir := range dirs {
+		if ctx.Err() != nil {
+			return outcomes
+		}
 		outcomes = append(outcomes, sweepOne(ctx, dir, objects, probe))
 	}
 	return outcomes
@@ -65,6 +72,15 @@ func sweepRuns(ctx context.Context, root string, objects persist.ObjectAccess, p
 
 func sweepOne(ctx context.Context, dir string, objects persist.ObjectAccess, probe spaceProbe) sweepOutcome {
 	outcome := sweepOutcome{Dir: dir}
+	if runstore.IsActive(dir) {
+		// A live Store holds this dir (a run Close's grace gave up on, still
+		// finishing in this process). The db's .lock is a dirty sentinel,
+		// not a mutex — opening and dropping here would unlink the dir under
+		// the live writer, whose subsequent writes would succeed into an
+		// unlinked file.
+		outcome.Action = sweepSkippedActive
+		return outcome
+	}
 	store, err := runstore.Open(ctx, dir)
 	if err != nil {
 		switch {
@@ -132,8 +148,19 @@ func sweepOne(ctx context.Context, dir string, objects persist.ObjectAccess, pro
 	if err = store.SetState(ctx, runstore.StateCompensating); err != nil {
 		log.Errorf("sweep: mark %s compensating: %s", dir, err)
 	}
-	outcome.Action = sweepCompensated
 	outcome.Result = persist.CompensateIds(ctx, objects, inputs.Created, inputs.OwnedFiles, inputs.Updated)
+	if outcome.Result.Leaked > 0 {
+		// Leaks are retryable — compensation is idempotent, so the next
+		// start simply runs it again (already-deleted objects count
+		// compensated). Dropping the dir here would turn a retryable leak
+		// into a permanent orphan; keep it in the compensating state.
+		outcome.Action = sweepCompensatedPartially
+		if err = store.Close(); err != nil {
+			outcome.Err = errors.Join(outcome.Err, err)
+		}
+		return outcome
+	}
+	outcome.Action = sweepCompensated
 	if err = store.SetState(ctx, runstore.StateFailed); err != nil {
 		log.Errorf("sweep: mark %s failed: %s", dir, err)
 	}

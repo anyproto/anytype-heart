@@ -19,6 +19,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -114,6 +115,41 @@ type Store struct {
 	files    anystore.Collection
 	arenas   *anyenc.ArenaPool
 	rank     atomic.Int64
+}
+
+// activeDirs is the process-global registry of run dirs currently held open
+// by a Store. It is the sweep's guard against touching a live run: the db's
+// .lock file is a dirty sentinel, not a mutex — a second Open of a live
+// run's db succeeds and Drop would unlink the dir under the live writer.
+// Process-global (not per component instance) on purpose: the confirmed
+// hazard is a same-process account stop/start where Close's 30s grace gave
+// up on a run that is still finishing while the NEW component instance
+// sweeps. Cross-process exclusivity is already the platform invariant (one
+// heart per repo dir).
+var (
+	activeDirsMu sync.Mutex
+	activeDirs   = map[string]struct{}{}
+)
+
+// IsActive reports whether some Store in this process currently holds the
+// run dir open. Sweep checks this BEFORE opening.
+func IsActive(dir string) bool {
+	activeDirsMu.Lock()
+	defer activeDirsMu.Unlock()
+	_, active := activeDirs[filepath.Clean(dir)]
+	return active
+}
+
+func markActive(dir string) {
+	activeDirsMu.Lock()
+	defer activeDirsMu.Unlock()
+	activeDirs[filepath.Clean(dir)] = struct{}{}
+}
+
+func markInactive(dir string) {
+	activeDirsMu.Lock()
+	defer activeDirsMu.Unlock()
+	delete(activeDirs, filepath.Clean(dir))
 }
 
 // RunsRoot is where all run dirs live for an account repo.
@@ -241,6 +277,7 @@ func open(ctx context.Context, dir string) (*Store, error) {
 		_ = db.Close()
 		return nil, fmt.Errorf("ensure entries index: %w", err)
 	}
+	markActive(dir)
 	return s, nil
 }
 
@@ -468,12 +505,14 @@ func (s *Store) Flush(ctx context.Context) error {
 }
 
 func (s *Store) Close() error {
+	defer markInactive(s.dir)
 	return s.db.Close()
 }
 
 // Drop closes the store and deletes the whole run dir — the disposal the
 // per-run-DB layout exists for (§4.1): O(1), no tombstones, no vacuum.
 func (s *Store) Drop() error {
+	defer markInactive(s.dir)
 	err := s.db.Close()
 	if removeErr := os.RemoveAll(s.dir); removeErr != nil {
 		return errors.Join(err, fmt.Errorf("remove run dir: %w", removeErr))
