@@ -36,6 +36,38 @@ func ApiSlugFromName(name string) string {
 	return strcase.ToSnake(unidecode.Unidecode(strings.TrimSpace(name)))
 }
 
+// SanitizeApiSlug constrains a DERIVED slug (from a display name or a
+// document key — inputs no pattern ever checked) to the advertised key
+// grammar `^[a-zA-Z0-9_]+$` and a maximum length: every disallowed rune
+// becomes `_`, runs collapse, edges trim. Without it, "50% done", "C++" or
+// "☕" (unidecode: "?") become identity-bearing apiObjectKey values that no
+// key route can accept. An empty result means "no derivable slug" — the
+// caller falls back to the minted internal key as the only address.
+func SanitizeApiSlug(raw string, maxLen int) string {
+	var b strings.Builder
+	lastUnderscore := false
+	for _, r := range raw {
+		valid := r == '_' || (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9')
+		if !valid {
+			r = '_'
+		}
+		if r == '_' {
+			if lastUnderscore {
+				continue
+			}
+			lastUnderscore = true
+		} else {
+			lastUnderscore = false
+		}
+		b.WriteRune(r)
+	}
+	out := strings.Trim(b.String(), "_")
+	if len(out) > maxLen {
+		out = strings.Trim(out[:maxLen], "_")
+	}
+	return out
+}
+
 // FoldApiKey is the forgiving-layer fold (ADDRESSING.md §7.5a-3): lowercase
 // with `_` and `-` stripped, so `dueDate`, `due_date` and `due-date` fold
 // together. Exact match always wins before folding is consulted; two keys
