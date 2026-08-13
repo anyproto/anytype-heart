@@ -19,7 +19,7 @@ func writeFile(path, content string) error {
 }
 
 // propertiesBody stubs the space's property index (formats).
-const propertiesBody = `{"data":[{"key":"status","name":"Status","format":"select"},{"key":"dueDate","name":"Due date","format":"date"},{"key":"assignee","name":"Assignee","format":"objects"},{"key":"tags","name":"Tags","format":"multiSelect"}],"total":4,"offset":0,"limit":1000,"has_more":false}`
+const propertiesBody = `{"data":[{"key":"status","name":"Status","format":"select"},{"key":"due_date","name":"Due date","format":"date"},{"key":"assignee","name":"Assignee","format":"objects"},{"key":"tags","name":"Tags","format":"multiSelect"}],"total":4,"offset":0,"limit":1000,"has_more":false}`
 
 func TestCreate(t *testing.T) {
 	ctx := context.Background()
@@ -36,7 +36,7 @@ func TestCreate(t *testing.T) {
 		// when
 		result, err := fx.Run(ctx, "create", map[string]any{
 			"space": "space1", "type": "task", "name": "Report",
-			"properties": map[string]any{"status": "Done", "dueDate": "friday", "assignee": "@me"},
+			"properties": map[string]any{"status": "Done", "due_date": "friday", "assignee": "@me"},
 			"markdown":   "# Plan\n\n- [ ] draft",
 		})
 
@@ -53,7 +53,7 @@ func TestCreate(t *testing.T) {
 		props, _ := body["properties"].(map[string]any)
 		assert.Equal(t, "Done", props["status"])
 		assert.Equal(t, "_participant_space1_acc", props["assignee"], "@me resolves to the caller's participant id")
-		assert.Equal(t, "2026-08-07T00:00:00Z", props["dueDate"], "friday resolves to the next Friday at midnight")
+		assert.Equal(t, "2026-08-07T00:00:00Z", props["due_date"], "friday resolves to the next Friday at midnight")
 	})
 
 	t.Run("unknown option name is blocked before the server (the A2 guard)", func(t *testing.T) {

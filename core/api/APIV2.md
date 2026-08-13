@@ -5489,9 +5489,14 @@ map — a half-built vocabulary would resolve a write against the wrong
 property, the exact class §7.5a-2 forbids a cache from producing.
 
 *The format's key slots follow* (`properties` map, `typeProperties[].key`,
-envelope `type`/`templateFor`, dataview `properties[].key`/`groupBy`/
-`coverProperty`/`endProperty`/sorts/filters/columns, the `property` block's
-`key`, a link block's `properties`): export spells, import inverts. Two
+`typeProperties[].objectTypes`, envelope `type`/`templateFor`, dataview
+`properties[].key`/`groupBy`/`coverProperty`/`endProperty`/sorts/filters/
+columns, the `property` block's `key`, a link block's `properties`): export
+spells, import inverts. **`objectTypes` is the complete inventory's last
+entry and was the one the wave missed** — it NAMES types, so it is a key slot
+by the same test every other one passes, and leaving it untranslated would
+have made one array in a type document speak a vocabulary the envelope two
+lines above it does not (§8.38). Two
 consequences worth writing down: canonical property order now sorts by the
 **spelling**, because the reader sorts what it sees; and two stored keys
 whose slugs would collapse onto one JSON key keep the honest stored
@@ -5578,3 +5583,205 @@ work deliberately did not touch.
 pending across Waves 0–1 (Q5); no annotation *shapes* changed here, only
 description and example text. The `?ids=`/pins work, the §7.4 write
 defaults and the active re-slug-on-revive remain as §8.22 recorded them.
+
+### 8.38 Wave 1 review: the write half spoke a different vocabulary than the read half (2026-08-13 — decisions as built)
+
+A three-lens review of Wave 1 (§8.37) reproduced every finding below by
+execution rather than by reading. Two were data-corrupting, two more served
+addresses that resolve to the wrong entity, and one made two thirds of a
+PATCH surface return 400 for every spelling the wave had just taught. All
+five were shipped over a green suite.
+
+**The fixture-blindness lesson, stated plainly, because this is the third
+time.** Every blind fixture in Wave 1 used a key the bundled table happens to
+invert — `name`, `page`, `dueDate`, `severity`, `created_date`. A test whose
+fixture key spells the same in both vocabularies **cannot fail** when the two
+vocabularies diverge, whatever it asserts. `TestV2UpdateType` used `name` and
+stayed green while `icon_emoji` and `recommended_layout` 400'd. The wrapper
+suite stubbed `dueDate` and `createdDate` as *served* keys and so modelled a
+server that no longer existed. `TestV2ListingsServeBundledSlugs` asserted only
+the row that the guard it was testing already covered.
+
+The rule this leaves behind, and the one to apply to every future test in this
+layer: **a key-vocabulary fixture must use a BSON-keyed entity with a stored
+`apiObjectKey`, or a stored key the bundled table resolves elsewhere.**
+Anything else proves nothing. Both new test files (`keys_write_test.go`,
+`storeresolver/keyvocab_test.go`) say so in their headers.
+
+#### 1. The write half fell back to the bundled table (critical)
+
+`creatingResolvers.Options()` set `ResolveFormat`/`ResolveOptions`/
+`ResolveProperties` and **no `Keys`**, so every import channel of the service
+fell through to `BundledKeyVocabulary` while the read half exported through
+`storeresolver`. Both directions were wrong, for opposite reasons:
+
+- the bundled table does not know a BSON-keyed relation's slug, so
+  `manual_property` imported as the **literal stored key** `manual_property`.
+  Executed: `PATCH …/objects/obj1 {"op":"updateView","columns":{"severity":
+  {"hidden":false}}}` on a space whose `severity` is a UI property stored as
+  `6a76…e107` rewrote the dataview's relation key to `severity` — a dataview
+  naming a key no relation object owns. Columns unbind, filters and sorts
+  match nothing, silently. Every view op re-imports the whole dataview, so
+  every view op did this.
+- the bundled table over-reaches in the other direction: a space holding a
+  live relation **stored** under `due_date` had `canonicalizeDocumentKeys`
+  resolve it correctly at chain step 1 and then `Unmarshal` rewrite it to
+  bundled `dueDate`. The value landed on the wrong property. Same on the
+  type-create path, through `applyTypeProperties`.
+
+Fix: `Keys: r.reads`. `storeresolver.PropertyKey` already implements chain
+step 1 (an exact live stored key wins over the slug layer), which is exactly
+what makes it safe on every call site — `create.go`'s document import,
+`schema_write.go`'s type import, and `stateops.go`'s `insertBlocks`/
+`replaceSubtree` fragments and whole-dataview re-import. Verified per site,
+not assumed.
+
+#### 2. `PATCH /v2/spaces/{s}/types/{key}` was broken for every spelling it taught
+
+`schema_write.go` read the patch map with the **stored** key while the map is
+keyed by the **wire** spelling: `typeDetailValue(key, patch.Properties[key])`.
+For any key the two vocabularies spell differently the lookup returned nil and
+the decode failed. Executed: `{"icon_emoji":"✅"}` → 400 with issue path
+`/properties/iconEmoji`, a key the request never sent; `{"recommended_layout":
+"todo"}` → 400. Two of the surface's four fields were dead, and only the
+spelling the wave had just removed from every document still worked.
+
+Fixed to `patch.Properties[raw]`, and `typeDetailValue` now takes the caller's
+spelling for its issue paths — an error naming a key the caller did not send
+is unactionable. `TestV2UpdateType` gained a table over `icon_emoji`,
+`recommended_layout` and the camelCase form.
+
+#### 3. The cascade re-spelled block attributes, which its own rule excludes
+
+`v2OpBlockCommonProps` gained `icon_emoji`/`icon_image`. Block attributes are
+**not** key slots — §7.5a-4 names the exclusion in the same commit. Both
+payload defs are `additionalProperties:false`, so a grammar-constrained
+decoder could not author a callout icon **at all**, while `GET
+/v2/schemas/object` went on serving the format's own schema declaring
+`iconEmoji`: two served schemas contradicting each other one request apart.
+
+Reverted, and — the part that matters — **the exclusion is now enforced by the
+build**. `TestSchemaOp` already cross-checked the op schema's block-*type*
+enum against `anyblockjson.AuthorableBlockTypeNames()`; the mirror is now
+there too: every property name `v2OpBlockCommonProps` publishes must exist in
+the format's own block schema (`anyblockjson.KnownBlockProperty`, read out of
+the embedded JSON Schema the same way the type enum is). Prose became a test.
+
+The same over-reach hit `SPEC.md`, where it made the document contradict
+itself: the §2c table re-spelled the `index.json` envelope fields while the
+example six lines above still showed `iconEmoji` — and `index.schema.json` is
+`additionalProperties:false` and rejects `icon_emoji`, so the **table** was
+the wrong half. Reverted there, plus the callout row, the id-remap table, and
+`spaceDashboardId`, which is a `pb.Profile` field name and not a key slot at
+all. SPEC §3 now states the exclusion inline rather than leaving it in
+ADDRESSING only.
+
+#### 4. The emit side had no chain step 1 and no shadow check
+
+`storeresolver`'s `PropertySlug`/`TypeSlug` returned `bundle.ApiSlug(key)`
+unconditionally for a bundled key, never consulting the space. The accept side
+(`PropertyKey`) honours both guards. Probed: a space where a BSON squatter
+holds `due_date` exported the **bundled** property's value under an address
+that resolves to the squatter; a space with a live stored key `due_date`
+exported to the v1 relation; the type namespace had the same hole. A served
+document labelled a value with a key denoting a different entity — while
+`servedKey` applied the guards, so the listing and the document disagreed.
+
+The emit side now runs one predicate, `keyMaps.roundTrips`, with all three
+chain steps: a live stored key wins the spelling (step 1), another live holder
+makes it ambiguous (step 2), and the bundled table resolving it elsewhere is
+the §7.5a-6 shadow (step 3). It is deliberately the same predicate
+`servedKeyOf` applies to a listing row — **the address a document carries and
+the address a listing advertises are the same address**, so the two must not
+be able to drift.
+
+Two smaller defects in the same file: `keyMaps.add` cleared a twin slug from
+the reverse map but returned before clearing the first holder's forward entry,
+so export emitted a slug import refuses to invert; and `keyMaps.slug` never
+asked whether a slug was ambiguous. Both closed.
+
+`storeresolver/keyvocab.go` had **no test file at all** — 176 new lines pinned
+by one incidental assertion elsewhere. It has one now, 16 subtests, every
+fixture BSON-keyed or shadowed.
+
+#### 5. `servedKey` advertised a shadowed slug (medium)
+
+`servedKeyOf` tested other stored holders but never asked whether the bundled
+table resolves the candidate elsewhere — the exact predicate the input side
+added in Wave 1.4. Executed: with the bundled relation **not installed**,
+`ListProperties` served `key="due_date"` for the squatter and
+`resolve("due_date")` then 400'd as ambiguous, one request later. The existing
+test asserted only the bundled row, which the holder guard already covered, so
+the gap was untested. Third guard added; both namespaces pinned.
+
+#### 6. New shadows were still mintable through v1's rename channel (medium)
+
+`PATCH /v1/…/properties/{id}` and `/types/{id}` stamp `apiObjectKey` through
+`ObjectSetDetails` and never enter `objectcreator`, so they bypass
+`ensureUniqueApiObjectKey` entirely. Their only guard was v1's per-space
+cache, which has no row for a bundled relation **not installed** in the space
+— so renaming a custom key to `dueDate` minted a fresh `due_date` shadow,
+through a door beside the one the mint hardening had just closed. The bundled
+arm of the union check now runs on both rename paths, and `keys.go`'s claim
+about new shadows is restated to name the channel rather than to assert
+something broader than what was true.
+
+**This is the first time this wave touched v1** (§8.37's "v1 is untouched" no
+longer holds): `core/api/service/property.go` and `type.go` each gain one
+refusal. The v1 **document** is byte-identical after `make openapi` — verified
+by checksum — because no annotation changed; only two v2 descriptions did
+(`chatDerived` → `chat_derived`, `setOf` → `set_of`).
+
+#### 7. The last untranslated key slot, and the wrapper's fold
+
+`typeProperties[].objectTypes` NAMES types and was passing through
+untranslated, which would have left one array in a type document speaking a
+vocabulary the envelope two lines above it does not. **Decided: it is a
+type-key slot and speaks the one vocabulary**, like `type` and `templateFor`.
+Export spells, import inverts, an unknown term passes through verbatim (chain
+step 1, so a stored-key spelling keeps working). The offline bundle linter
+(`cmd/internal/anyblockbatch`) accepts both. APIV2's key-slot inventory and
+SPEC §2a now say so.
+
+`BuildRecommendedLists` — the PATCH-types channel — writes the same §2a array
+and inverted nothing, because it took a bare `PropertyResolver` and had no
+vocabulary in scope. It now takes the full `Options`, so one type's property
+list means the same thing whichever endpoint writes it. Nothing observable
+changed through v2's own resolver, which duplicates the chain internally; what
+changed is that the two channels can no longer drift apart, and the
+package-level test says so with a recording resolver.
+
+Updating the wrapper suite to the real served vocabulary exposed one live
+defect it had been masking: the wrapper's forgiving fold was
+`strings.EqualFold`, which does not match `dueDate` to `due_date`. Since the
+served vocabulary flipped, `dueDate` is both the most natural guess a model
+makes and the spelling every pre-1.3 document used. The wrapper passes an
+unfolded key through and the server still resolves it at chain step 4, so the
+write lands — what silently stopped is everything the wrapper does with the
+key's **format**: the relative-date convenience and the option guard. Loud on
+the server, silent in the layer whose whole job is forgiveness. The fold is
+now `bundle.FoldApiKey`, the server's own (§7.5a-3).
+
+**Verification.** Every fix has a test that fails on revert, and every revert
+was executed:
+
+| Fix | Revert run | Fails |
+|---|---|---|
+| 1 | drop `Keys: r.reads` from `Options()` | 4 subtests, `keys_write_test.go` |
+| 2 | `patch.Properties[key]` | 2 subtests, `schema_write_test.go` |
+| 3 | re-spell to `icon_emoji`/`icon_image` | `TestSchemaOp` structural guard |
+| 4 | unconditional `bundle.ApiSlug`; drop the bundled arm of `roundTrips`; drop `delete(m.slugByKey, first)`; drop the corpse filter; drop `PropertyKey`'s step-1 branch | 5 separate runs, `storeresolver/keyvocab_test.go` |
+| 5 | drop `shadowed()` from `servedKeyOf` | 3 subtests, `keys_output_test.go` |
+| 6 | drop both `shadowsBundled*Key` calls | 2 subtests, `core/api/service` |
+| 7 | drop `typeSlugs`/`typeKeys`; drop `BuildRecommendedLists`'s inversion; revert the wrapper fold | 2 + 1 + 2 subtests |
+
+Test debt closed alongside: `buildProperties`' duplicate-slug collapse (its
+failure loses a value — pinned with a deliberately non-injective vocabulary,
+which no bundled fixture can produce), `IsOutputOnlyProperty`'s bundled
+fallback in both spellings, `createObjectType`'s mint wiring (the type
+namespace had the helper tested and the wiring not), and the
+`shadowedBundledType` branch, which had no test at all.
+
+**Not done.** The `apiObjectKey` backfill migration is untouched — a design
+decision on replacing it with deterministic derivation is pending.
+`cmd/anyblockroundtrip` still needs an account to run and was not run.

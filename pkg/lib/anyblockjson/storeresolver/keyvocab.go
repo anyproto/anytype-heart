@@ -30,21 +30,31 @@ import (
 )
 
 // keyMaps is one namespace's two directions plus the stored-key set that
-// gives chain step 1 its precedence.
+// gives chain step 1 its precedence. bundledKey is that namespace's bundled
+// reverse table — the third chain step, which the EMIT side has to consult
+// too (see roundTrips).
 type keyMaps struct {
-	slugByKey map[string]string
-	keyBySlug map[string]string
-	storedKey map[string]bool
+	slugByKey  map[string]string
+	keyBySlug  map[string]string
+	storedKey  map[string]bool
+	bundledKey func(slug string) (string, bool)
 }
 
-func newKeyMaps() *keyMaps {
-	return &keyMaps{slugByKey: map[string]string{}, keyBySlug: map[string]string{}, storedKey: map[string]bool{}}
+func newKeyMaps(bundledKey func(string) (string, bool)) *keyMaps {
+	return &keyMaps{
+		slugByKey:  map[string]string{},
+		keyBySlug:  map[string]string{},
+		storedKey:  map[string]bool{},
+		bundledKey: bundledKey,
+	}
 }
 
-// add records one live entity. A slug with two holders is dropped from the
-// reverse direction: an ambiguous address must never resolve by store order
-// (the git rule), and dropping it degrades to the stored key, which always
-// works.
+// add records one live entity. A slug with two holders is dropped from BOTH
+// directions: an ambiguous address must never resolve by store order (the git
+// rule), and dropping it degrades to the stored key, which always works.
+// Clearing only the reverse map left the first holder still EXPORTING a slug
+// that import then refused to invert — a document naming an address the
+// server itself rejects.
 func (m *keyMaps) add(key, slug string) {
 	if key == "" {
 		return
@@ -53,23 +63,46 @@ func (m *keyMaps) add(key, slug string) {
 	if slug == "" || slug == key {
 		return
 	}
-	if _, taken := m.keyBySlug[slug]; taken {
+	if first, taken := m.keyBySlug[slug]; taken {
 		m.keyBySlug[slug] = "" // twin slugs: neither wins
+		delete(m.slugByKey, first)
 		return
 	}
 	m.keyBySlug[slug] = key
 	m.slugByKey[key] = slug
 }
 
-// slug is the wire spelling of a stored key: its stored slug, unless a live
-// stored key already answers to that spelling (step 1 would win, so serving
-// it would not round-trip).
-func (m *keyMaps) slug(key string) (string, bool) {
-	s, ok := m.slugByKey[key]
-	if !ok || m.storedKey[s] {
-		return "", false
+// roundTrips reports whether emitting `slug` for `key` inverts back to `key`
+// through the §7.5a-5 chain — the emit side's whole obligation. An emitted
+// spelling that resolves elsewhere does not degrade a document, it MISLABELS
+// it: the value belongs to one entity and the key names another.
+//
+// Three ways it can fail, one per chain step:
+//   - a live stored key answers to the spelling (step 1 wins over any slug);
+//   - another live holder claims the slug (step 2 is ambiguous → a loud 400);
+//   - the bundled table resolves it to a different key (step 3 — the §7.5a-6
+//     shadow, e.g. a UI property that took `due_date` while bundled `dueDate`
+//     derives it).
+//
+// This is the same predicate the API's servedKey applies to a listing row, and
+// it must stay the same: the address a document carries and the address the
+// listing advertises are the same address.
+func (m *keyMaps) roundTrips(slug, key string) bool {
+	if slug == "" || slug == key {
+		return false
 	}
-	return s, true
+	if m.storedKey[slug] {
+		return false
+	}
+	if holder, ok := m.keyBySlug[slug]; ok && holder != key {
+		return false
+	}
+	if m.bundledKey != nil {
+		if other, ok := m.bundledKey(slug); ok && other != key {
+			return false
+		}
+	}
+	return true
 }
 
 func (m *keyMaps) key(slug string) (string, bool) {
@@ -84,6 +117,9 @@ func (r *Resolvers) relationKeyMaps() *keyMaps {
 	if r.relVocab == nil {
 		r.relVocab = r.loadKeyMaps(model.ObjectType_relation, func(d *domain.Details) string {
 			return d.GetString(bundle.RelationKeyRelationKey)
+		}, func(slug string) (string, bool) {
+			key, ok := bundle.RelationKeyByApiSlug(slug)
+			return string(key), ok
 		})
 	}
 	return r.relVocab
@@ -97,6 +133,9 @@ func (r *Resolvers) typeKeyMaps() *keyMaps {
 				return ""
 			}
 			return string(key)
+		}, func(slug string) (string, bool) {
+			key, ok := bundle.TypeKeyByApiSlug(slug)
+			return string(key), ok
 		})
 	}
 	return r.typeVocab
@@ -107,8 +146,8 @@ func (r *Resolvers) typeKeyMaps() *keyMaps {
 // table, which is the offline-safe answer — never a stale or half-built map,
 // which would resolve a write against the wrong property (the exact
 // silent-failure class §7.5a-2 forbids a cache from ever producing).
-func (r *Resolvers) loadKeyMaps(layout model.ObjectTypeLayout, keyOf func(*domain.Details) string) *keyMaps {
-	maps := newKeyMaps()
+func (r *Resolvers) loadKeyMaps(layout model.ObjectTypeLayout, keyOf func(*domain.Details) string, bundledKey func(string) (string, bool)) *keyMaps {
+	maps := newKeyMaps(bundledKey)
 	records, err := r.index.Query(database.Query{Filters: []database.FilterRequest{
 		{
 			RelationKey: bundle.RelationKeyResolvedLayout,
@@ -133,14 +172,24 @@ func (r *Resolvers) loadKeyMaps(layout model.ObjectTypeLayout, keyOf func(*domai
 }
 
 // PropertySlug implements anyblockjson.KeyVocabulary: bundled keys spell as
-// their derived slug (the code table is their authority — §7.5a-1), the rest
-// as their stored slug when they have one.
+// their DERIVED slug (the code table is their authority in every space and
+// offline — §7.5a-1), the rest as their STORED slug. Either way the spelling
+// is emitted only when it round-trips back to this very key (keyMaps.
+// roundTrips): the alternative is not a lost slug but a mislabeled value.
+//
+// A bundled key therefore consults the space's vocabulary too, which costs the
+// one bounded listing §7.5a-2 budgets — the same query the custom path already
+// pays, and the price of the emit half implementing the same chain the accept
+// half does. Without it, a space where a UI property squats `due_date` emitted
+// the bundled property's value under a key naming the squatter.
 func (r *Resolvers) PropertySlug(key string) string {
+	maps := r.relationKeyMaps()
+	candidate := maps.slugByKey[key]
 	if bundle.HasRelation(domain.RelationKey(key)) {
-		return bundle.ApiSlug(key)
+		candidate = bundle.ApiSlug(key)
 	}
-	if slug, ok := r.relationKeyMaps().slug(key); ok {
-		return slug
+	if maps.roundTrips(candidate, key) {
+		return candidate
 	}
 	return key
 }
@@ -155,12 +204,15 @@ func (r *Resolvers) PropertyKey(slug string) (string, bool) {
 	return anyblockjson.BundledKeyVocabulary{}.PropertyKey(slug)
 }
 
+// TypeSlug is PropertySlug for the type namespace.
 func (r *Resolvers) TypeSlug(key string) string {
+	maps := r.typeKeyMaps()
+	candidate := maps.slugByKey[key]
 	if bundle.HasObjectTypeByKey(domain.TypeKey(key)) {
-		return bundle.ApiSlug(key)
+		candidate = bundle.ApiSlug(key)
 	}
-	if slug, ok := r.typeKeyMaps().slug(key); ok {
-		return slug
+	if maps.roundTrips(candidate, key) {
+		return candidate
 	}
 	return key
 }

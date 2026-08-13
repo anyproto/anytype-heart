@@ -95,3 +95,44 @@ func TestSearchRequestDocMirrorsSearchRequest(t *testing.T) {
 
 	assert.Equal(t, want, got, "the doc twin drifted from SearchRequest — the published document would lie about the search body")
 }
+
+// TestIsOutputOnlyProperty pins the §4a predicate in BOTH vocabularies. The
+// stored list is camelCase and every caller now speaks slugs (ADDRESSING
+// §7.5a) — the wrapper's describe passes SERVED keys straight in — so the
+// bundled fallback is what keeps `created_date` output-only. Revert it and
+// the two surfaces that share this predicate start disagreeing, silently:
+// a setProperties naming created_date would be accepted, and describe would
+// advertise it as settable.
+func TestIsOutputOnlyProperty(t *testing.T) {
+	t.Run("both spellings of an output-only key answer the same", func(t *testing.T) {
+		for stored, slug := range map[string]string{
+			"createdDate":      "created_date",
+			"lastModifiedDate": "last_modified_date",
+			"coverId":          "cover_id",
+			"coverType":        "cover_type",
+			"isArchived":       "is_archived",
+			"resolvedLayout":   "resolved_layout",
+		} {
+			assert.True(t, IsOutputOnlyProperty(stored), stored)
+			assert.True(t, IsOutputOnlyProperty(slug), slug)
+		}
+		// creator spells the same in both vocabularies — which is why a
+		// fixture using it could not tell them apart
+		assert.True(t, IsOutputOnlyProperty("creator"))
+	})
+
+	t.Run("authorable keys stay authorable in both spellings", func(t *testing.T) {
+		for _, key := range []string{"name", "description", "dueDate", "due_date", "isFavorite", "is_favorite", "manual_property"} {
+			assert.False(t, IsOutputOnlyProperty(key), key)
+		}
+	})
+
+	t.Run("the advertised listing is the wire spelling", func(t *testing.T) {
+		keys := OutputOnlyPropertyKeys()
+		assert.Contains(t, keys, "created_date")
+		assert.NotContains(t, keys, "createdDate")
+		for _, key := range keys {
+			assert.True(t, IsOutputOnlyProperty(key), "everything advertised must answer the predicate: %s", key)
+		}
+	})
+}

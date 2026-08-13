@@ -27,7 +27,9 @@ type PropertyDefinition struct {
 	// behaviour.
 	Options []OptionDefinition
 	// ObjectTypes restricts which types an objects/files property may point
-	// at, in priority order, given as **type keys** (§2a). Empty means any
+	// at, in priority order, given as **type keys** — the STORED spelling on
+	// this struct; the document spells the slug, and the codec translates at
+	// the boundary like every other key slot (§7.5a). Empty means any
 	// object, which is also what an untargeted property accepts — a task
 	// could be assigned to a random page. Listing the built-in `participant`
 	// alongside a bundle's own people type is what makes the current-user
@@ -157,7 +159,9 @@ func (e *exporter) buildTypeProperties() []any {
 			m.setNonEmpty("name", def.Name)
 			m.setNonEmpty("format", formatName(def.Format))
 			m.setNonEmpty("options", optionsToAny(def.Options))
-			m.setNonEmpty("objectTypes", stringsToAny(def.ObjectTypes))
+			// objectTypes is a TYPE key slot (§7.5a) — it names types, so it
+			// speaks the same vocabulary the envelope `type` does
+			m.setNonEmpty("objectTypes", stringsToAny(e.opts.typeSlugs(def.ObjectTypes)))
 			m.setNonEmpty("section", l.section)
 			out = append(out, m)
 		}
@@ -215,19 +219,26 @@ type RecommendedList struct {
 // pass through in place of ids, the same degradation as import (§2a). It
 // carries the declared vocabulary and target types through to the resolver,
 // so a property minted here is created with the same shape import gives it.
-func BuildRecommendedLists(props []TypeProperty, resolver PropertyResolver) []RecommendedList {
+//
+// It takes the full Options rather than a bare resolver because a
+// typeProperties array carries KEY SLOTS — `key` and `objectTypes` — and this
+// is the PATCH channel for the same array `applyTypeProperties` reads out of a
+// document. Both must invert through the same vocabulary, or the two ways of
+// writing one type's property list disagree about what a key means.
+func BuildRecommendedLists(props []TypeProperty, opts Options) []RecommendedList {
 	bySection := map[string][]string{}
 	for _, tp := range props {
-		id := tp.Key
-		if resolver != nil {
+		key := opts.propertyKey(tp.Key)
+		id := key
+		if opts.ResolveProperties != nil {
 			def := PropertyDefinition{
-				Key:         domain.RelationKey(tp.Key),
+				Key:         domain.RelationKey(key),
 				Name:        tp.Name,
 				Format:      formatNames.value(tp.Format),
 				Options:     tp.Options,
-				ObjectTypes: tp.ObjectTypes,
+				ObjectTypes: opts.typeKeys(tp.ObjectTypes),
 			}
-			if resolved, ok := resolver.PropertyId(def); ok {
+			if resolved, ok := opts.ResolveProperties.PropertyId(def); ok {
 				id = resolved
 			}
 		}
@@ -262,7 +273,7 @@ func (imp *importer) applyTypeProperties(details *types.Struct) {
 			Name:        tp.Name,
 			Format:      imp.declaredFormat(key, tp.Format),
 			Options:     tp.Options,
-			ObjectTypes: tp.ObjectTypes,
+			ObjectTypes: imp.opts.typeKeys(tp.ObjectTypes),
 		}
 		id := key
 		if imp.opts.ResolveProperties != nil {

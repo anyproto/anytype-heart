@@ -18,6 +18,7 @@ import (
 	"time"
 
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 )
 
 // meSentinel is the caller-identity placeholder accepted in property values
@@ -154,18 +155,29 @@ func (r *Runner) prepareValues(ctx context.Context, session *Session, spaceId st
 // surface's contract and stays; the wrapper is the layer that exists to be
 // forgiving for small models, so it folds case on the way in. The one hard
 // rule: if two keys differ only by case, refuse naming both — never guess.
+//
+// The fold is the SERVER's fold (bundle.FoldApiKey, ADDRESSING §7.5a-3:
+// lowercase with `_`/`-` stripped), not strings.EqualFold. It has to be: the
+// served vocabulary is snake_case now, so `dueDate` — the most natural guess a
+// model makes, and the spelling every pre-1.3 document used — folds to
+// `due_date` on the server and did NOT fold here. The wrapper passes an
+// unfolded key through and the server still resolves it at chain step 4, so
+// the write lands; what silently stops is everything the wrapper does with the
+// key's FORMAT, which it looks up by the folded spelling — the relative-date
+// convenience and the option guard. Loud on the server, silent in the layer
+// whose whole job is forgiveness.
 
 // foldPropertyKey resolves a property key against the space's visible key
-// index: an exact key wins; otherwise a UNIQUE case-insensitive match
-// resolves; a still-unknown key passes through for the server's
-// did-you-mean.
+// index: an exact key wins; otherwise a UNIQUE fold-class match resolves; a
+// still-unknown key passes through for the server's did-you-mean.
 func foldPropertyKey(formats map[string]string, key string) (string, error) {
 	if _, ok := formats[key]; ok {
 		return key, nil
 	}
+	fold := bundle.FoldApiKey(key)
 	var matches []string
 	for k := range formats {
-		if strings.EqualFold(k, key) {
+		if bundle.FoldApiKey(k) == fold {
 			matches = append(matches, k)
 		}
 	}
@@ -233,9 +245,10 @@ func (r *Runner) foldTypeArg(ctx context.Context, spaceId, typeKey string, err e
 	if listErr != nil {
 		return "", false, nil // best-effort: the original error stands
 	}
+	fold := bundle.FoldApiKey(typeKey)
 	var matches []string
 	for _, k := range keys {
-		if strings.EqualFold(k, typeKey) {
+		if bundle.FoldApiKey(k) == fold {
 			matches = append(matches, k)
 		}
 	}

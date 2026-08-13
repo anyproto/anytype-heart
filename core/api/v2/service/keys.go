@@ -292,13 +292,19 @@ func (s *V2Service) resolveTypeInput(input string, entries []typeEntry) (typeEnt
 // `setProperties {"set": {"due_date": …}}` since has landed in that property
 // instead of the bundled one. Silently.
 //
-// The mint hardening makes new shadows impossible, but a space that already
-// holds one cannot be repaired without re-pointing a slug v1 has been
-// serving as an address (ADDRESSING §8-OQ3 owns that decision). What CAN be
-// fixed without touching stored data is the failure mode: chain step 2 no
-// longer picks the squatter over the bundled property — the input is
-// ambiguous, and ambiguity at any step is a loud 400 listing every holder
-// (§7.5-req-1). Wrong-and-silent becomes refused-and-actionable.
+// New shadows are unreachable through every write channel that stamps
+// `apiObjectKey`: the heart-side mint runs the union check
+// (objectcreator/apikey.go), v2's POST refuses a taken slug, and v1's rename
+// channel — which never enters objectcreator and so was NOT covered by the
+// mint hardening, only by a per-space cache with no row for an uninstalled
+// bundled relation — now applies the bundled arm too (service/property.go's
+// shadowsBundledRelationKey). A space that already holds a shadow still cannot
+// be repaired without re-pointing a slug v1 has been serving as an address
+// (ADDRESSING §8-OQ3 owns that decision). What CAN be fixed without touching
+// stored data is the failure mode: chain step 2 no longer picks the squatter
+// over the bundled property — the input is ambiguous, and ambiguity at any
+// step is a loud 400 listing every holder (§7.5-req-1). Wrong-and-silent
+// becomes refused-and-actionable.
 //
 // The check is exact, never folded: only a slug that the bundled table
 // itself resolves to a DIFFERENT key shadows anything. A bundled relation
@@ -534,21 +540,27 @@ func servedTypeKeySets(entries []typeEntry) (keys map[string]bool, slugHolders m
 //     honest degradation, not a second vocabulary.
 //
 // The round-trip guard is unchanged in spirit and sharper in fact: an
-// address the API serves MUST resolve back to the row it labels, so a
-// spelling that a live stored key would win at chain step 1, or that any
-// OTHER live holder answers to at step 2, is refused and the honest stored
-// key is served instead.
+// address the API serves MUST resolve back to the row it labels. All THREE
+// ways it can fail are checked, one per chain step — a live stored key wins
+// the spelling at step 1; any OTHER live holder makes it ambiguous at step 2;
+// and the bundled table resolving it to a different key is the §7.5a-6 shadow
+// at step 3, which resolvePropertyInput refuses as ambiguous. The third was
+// missing: with the bundled relation NOT installed, nothing in the space
+// revealed the clash, so a listing advertised `due_date` for a squatter and
+// the very next request to /properties/due_date 400'd.
 func servedKey(storedKey, slug string, keyTaken map[string]bool, slugHolders map[string][]string) string {
-	return servedKeyOf(storedKey, slug, keyTaken, slugHolders, bundle.HasRelation(domain.RelationKey(storedKey)))
+	return servedKeyOf(storedKey, slug, keyTaken, slugHolders,
+		bundle.HasRelation(domain.RelationKey(storedKey)), shadowedBundledProperty)
 }
 
-// servedTypeKeyOf is servedKey for the type namespace (its bundled test is
-// the type table, not the relation one).
+// servedTypeKeyOf is servedKey for the type namespace (its bundled tests are
+// the type tables, not the relation ones).
 func servedTypeKeyOf(storedKey, slug string, keyTaken map[string]bool, slugHolders map[string][]string) string {
-	return servedKeyOf(storedKey, slug, keyTaken, slugHolders, bundle.HasObjectTypeByKey(domain.TypeKey(storedKey)))
+	return servedKeyOf(storedKey, slug, keyTaken, slugHolders,
+		bundle.HasObjectTypeByKey(domain.TypeKey(storedKey)), shadowedBundledType)
 }
 
-func servedKeyOf(storedKey, slug string, keyTaken map[string]bool, slugHolders map[string][]string, bundled bool) string {
+func servedKeyOf(storedKey, slug string, keyTaken map[string]bool, slugHolders map[string][]string, bundled bool, shadowed func(input, matchedKey string) (string, bool)) string {
 	candidate := slug
 	if bundled {
 		candidate = bundle.ApiSlug(storedKey)
@@ -563,6 +575,9 @@ func servedKeyOf(storedKey, slug string, keyTaken map[string]bool, slugHolders m
 		if holder != storedKey {
 			return storedKey // someone else answers to it — ambiguous, so honest
 		}
+	}
+	if _, isShadow := shadowed(candidate, storedKey); isShadow {
+		return storedKey // the bundled table answers to it — the input side refuses it
 	}
 	return candidate
 }

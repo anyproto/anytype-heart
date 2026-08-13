@@ -365,6 +365,12 @@ func CheckTargetTypes(files []string, typeIds map[string]string) ([]BadTarget, e
 		}
 		for _, tp := range doc.TypeProperties {
 			for _, target := range tp.ObjectTypes {
+				// objectTypes is a type-key slot, so it spells the slug
+				// (§7.5a) — and a stored key still passes through verbatim,
+				// which is chain step 1. Both must resolve here.
+				if _, isBundledSlug := bundle.TypeKeyByApiSlug(target); isBundledSlug {
+					continue
+				}
 				if bundle.HasObjectTypeByKey(domain.TypeKey(target)) {
 					continue
 				}

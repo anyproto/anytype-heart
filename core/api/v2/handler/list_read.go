@@ -31,7 +31,7 @@ func listFieldsParam(c *gin.Context) []string {
 // GetSetObjectsV2Handler lists the objects a set's query matches
 //
 //	@Summary		Get set objects
-//	@Description	Executes the set's stored query (its setOf source) directly against the store, optionally through one stored view's filters and sorts (?view=, exact id or unique suffix). Stored-view execution substitutes the SPEC §6.2 dynamic placeholders server-side; unresolvable placeholders degrade to warnings, never a silent no-match. Rows are C5 minimal; fields= expands.
+//	@Description	Executes the set's stored query (its set_of source) directly against the store, optionally through one stored view's filters and sorts (?view=, exact id or unique suffix). Stored-view execution substitutes the SPEC §6.2 dynamic placeholders server-side; unresolvable placeholders degrade to warnings, never a silent no-match. Rows are C5 minimal; fields= expands.
 //	@Id				v2_get_set_objects
 //	@Tags			V2
 //	@Produce		json

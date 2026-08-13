@@ -125,9 +125,9 @@ Fields, in **canonical order** (§4):
 | `version` | int | **yes** | Format version. This spec defines `1`. Evolution is additive within a version (ADF model); a breaking change bumps it. |
 | `kind` | string | no | System-level object kind, lowerCamel (`page`, `profilePage`, `template`, `archive`, `widget`, `chat`, …) — from `model.SmartBlockType`. `chat` is `ChatDerivedObject`: a standalone chat object whose identity is `key`, like a type's; its messages live in the CRDT store, not in snapshots, so it always imports empty. (`chatObject` is the deprecated predecessor; `discussion` is a hidden type.) **Omitted whenever derivable**: absent means `page`, and `type: "template"` implies `template`. An unrecognized value is a validation error listing the allowed values. |
 | `id` | string | no | Object id. Written by export; import treats it as informational (a new id is minted on import) except for resolving intra-export links. Never compacted (§9a). |
-| `type` | string | no | The object's type key without the `ot-` prefix (`page`, `task`, `bookmark`…). Maps to `objectTypes[0]` in the snapshot. Absent when the snapshot has no object types (legacy/system objects). Import preserves the key verbatim; the import wiring resolves it — matching an existing type or creating one (the Markdown importer's behavior). |
-| `templateFor` | string | no | Only for templates: the target type key (`objectTypes[1]`). Present with `type != "template"` → validation error. |
-| `key` | string | no | Identity key of *system* objects (types, properties); matches the public API's `key`. Never emitted for ordinary documents. |
+| `type` | string | no | The object's type **slug** (`page`, `task`, `object_type`…) — the key vocabulary of §3, not the stored `ot-`-prefixed key. Maps to `objectTypes[0]` in the snapshot. Absent when the snapshot has no object types (legacy/system objects). Import inverts the slug through the vocabulary in force (bundled table offline, the space's stored slugs inside a node) and hands the resulting stored key to the wiring, which resolves it — matching an existing type or creating one (the Markdown importer's behavior). A term the vocabulary does not know passes through verbatim, which is chain step 1. |
+| `templateFor` | string | no | Only for templates: the target type slug (`objectTypes[1]`), same vocabulary as `type`. Present with `type != "template"` → validation error. |
+| `key` | string | no | Identity key of *system* objects (types, properties). This is the STORED identity key (a `uniqueKey`'s internal part), written verbatim: unlike every key slot in §3 it is **not** translated, so for an object whose stored key is a minted BSON it does not match the slug the public API serves as that object's `key`. Never emitted for ordinary documents. |
 | `properties` | object | no | The object's properties, §3. |
 | `typeProperties` | array | no | Only for `kind: "objectType"` documents: the type's property definitions, §2a. Present on any other kind → validation error. |
 | `refs` | object | no | Short-id legend for compact documents (§9a): maps labels to full object ids. Placed before `blocks` so the legend precedes use when read linearly. |
@@ -192,7 +192,7 @@ by `typeProperties` — resolved entries, never raw relation ids.
 | `name` | string | no | Display name. Import uses it only when the property must be **created**; an existing property keeps its own name. Every bundled key already exists, so a name given for one is inert — `{"key": "description", "name": "Summary"}` renders as *Description*. Validation warns. If the label is the point, mint a custom key instead of reusing a bundled one. |
 | `format` | string | no | Property format (§3 names). Same import rule as `name`; a conflict with an existing property's format is an error at the wiring level (the package cannot see the space). |
 | `options` | (string \| object)[] | no | A select/multiSelect property's **vocabulary, in display order**. Each entry is a bare option name, or `{"name": …, "color": …}` when the option's color is part of the design — the color belongs to the option rather than to a parallel array, so inserting or reordering an option cannot shift it. `color` is one of `grey`, `yellow`, `orange`, `red`, `pink`, `purple`, `blue`, `ice`, `teal`, `lime` (`util/constant`); anything else is a validation error rather than a silently ignored value. The bare string is **canonical** whenever the option declares no color, the object form otherwise — the same rule cells follow in §6.1. Leaving a color out does not mean *no* color: the wiring assigns one, cycling the palette in declaration order and skipping whatever the vocabulary claims explicitly, so a vocabulary that names no colors still gets distinct ones. (The app assigns one at random on every other creation path; cycling keeps a converted bundle identical run to run.) Options are otherwise discovered only from values that happen to be used, so a vocabulary entry no record carries would never exist — its kanban column simply absent — and a discovered option carries no `orderId`, which makes every select sort alphabetically (options order by `[orderId, name]`, `pkg/lib/database.BuildOrderMap`). Declaring them lets the wiring create each one up front with an order id. Every option needs one: the sort concatenates `orderId + name` before comparing, so an option missing an order id is compared by *name* against the others' order ids and lands arbitrarily — ahead of the whole vocabulary when its name sorts below the id alphabet, behind it otherwise. Names discovered from usage rather than declared are ordered after the declared ones. Only meaningful on `select`/`multiSelect`; duplicate names are a validation error, across both forms. |
-| `objectTypes` | string[] | no | The **type keys** an `objects`/`files` property may point at, in priority order. Empty means any object — an untargeted property will happily accept a random page as a task's assignee. Listing the built-in `participant` alongside a bundle's own people type is what makes the current-user filter value usable on that property (§6.2) while still allowing the seeded people as values; the client only offers it when the relation's targets include Participant. The wiring resolves each key to an id the way it resolves properties: a type the batch defines by the id its own document carries, a bundled type by its bundled url (`_ot<key>`). Only meaningful on `objects`/`files`. |
+| `objectTypes` | string[] | no | The **type slugs** an `objects`/`files` property may point at, in priority order — a type-key slot like the envelope `type`, so it speaks the one key vocabulary (§3) and import inverts it; a term the vocabulary does not know passes through verbatim. Empty means any object — an untargeted property will happily accept a random page as a task's assignee. Listing the built-in `participant` alongside a bundle's own people type is what makes the current-user filter value usable on that property (§6.2) while still allowing the seeded people as values; the client only offers it when the relation's targets include Participant. The wiring resolves each key to an id the way it resolves properties: a type the batch defines by the id its own document carries, a bundled type by its bundled url (`_ot<key>`). Only meaningful on `objects`/`files`. |
 | `section` | string | no | `featured` \| `hidden` \| `file` — which list the property belongs to. Absent = a regular (sidebar) property. |
 
 Export emits entries in section order featured → regular → file → hidden,
@@ -261,8 +261,8 @@ object. That is `index.json`, one file at the bundle root, validated against
 
 | Field | Meaning |
 |---|---|
-| `name` · `description` · `icon_emoji` | the space's own identity, applied on install |
-| `icon_image` | the space icon as an image: the **object id** of an image in the bundle, as `icon_image` means everywhere else (§3). Needs the image object *and* its file in the archive, so a generated bundle uses `icon_emoji` |
+| `name` · `description` · `iconEmoji` | the space's own identity, applied on install |
+| `iconImage` | the space icon as an image: the **object id** of an image in the bundle, as the `icon_image` property means everywhere else (§3). Needs the image object *and* its file in the archive, so a generated bundle uses `iconEmoji` |
 | `homepage` | what opens on entering the space: an object id, or the reserved `widgets` (the sidebar dashboard, the default) or `graph` |
 | `widgets` | sidebar widgets, in order. **The first one is what the install opens**, so the entry point goes first |
 
@@ -285,8 +285,8 @@ whatever format the snapshots are in:
 | `index.json` | `pb.Profile` | effect |
 |---|---|---|
 | `name` | `name` | the space's name |
-| `icon_image` | `avatar` | the space icon. The field holds an object id; `avatar` wants the image's **name**, because `getNewAvatarId` resolves it by querying name + image layout — so the wiring reads the name off the referenced object. Authors keep writing ids, as everywhere else in the format |
-| `homepage`, falling back to `entrypoint` | `space_dashboard_id` | the space's `homepage` detail — what opens on **every** entry |
+| `iconImage` | `avatar` | the space icon. The field holds an object id; `avatar` wants the image's **name**, because `getNewAvatarId` resolves it by querying name + image layout — so the wiring reads the name off the referenced object. Authors keep writing ids, as everywhere else in the format |
+| `homepage`, falling back to `entrypoint` | `spaceDashboardId` | the space's `homepage` detail — what opens on **every** entry |
 | `widgets` | `widgets` | sidebar widgets, in order |
 | `entrypoint` | `widgets[0].targetObjectId` | the object the install opens, **once** |
 
@@ -304,7 +304,7 @@ format:
   it by sorting `widgets` means reordering the sidebar silently changes what
   a new user sees.
 - **Omitting `homepage` does not mean the widgets screen.** An absent
-  `space_dashboard_id` makes `setWorkspaceSettings` default to `widgets`, which
+  `spaceDashboardId` makes `setWorkspaceSettings` default to `widgets`, which
   is the right default for a *blank* space and the wrong one for a use case:
   on desktop the widgets are already in the sidebar, so it leaves the main
   pane empty. So an omitted `homepage` resolves to the `entrypoint` instead,
@@ -342,6 +342,16 @@ A key the vocabulary does not know passes through verbatim in both
 directions: an exact stored key is always an address (the resolution chain's
 first step), which is what keeps a package-only reader — with no space to
 ask — lossless on custom keys.
+
+**What is not a key slot** (ADDRESSING §7.5a-4). The vocabulary applies where
+a document NAMES a type or property, and nowhere else. Envelope and DTO field
+names, enum *values* (`kind: "objectType"`, layout and view-type names), the
+`index.json` envelope, view field names like `defaultTemplateId`, and — the
+one most easily mistaken for a key — **block attribute names**: a callout's
+`iconEmoji` and `iconImage` are attributes of a block, not property keys, and
+stay camelCase however the `icon_emoji` *property* is spelled one section
+over. `objectType` the layout value coexists with `object_type` the type key,
+and that is intended.
 
 Values are encoded by the property's format:
 
@@ -461,7 +471,7 @@ not — with one deliberate exception. **`is_favorite` is authorable**, because
 the pb importer reads it to choose a space's root objects
 (`core/block/import/pb/space.go`), which is how a generated bundle
 designates the object a user should land on. A bundle with no favourite, no
-`homepage` and no `space_dashboard_id` imports as an undifferentiated list. `id` is lifted to the envelope and `type` to `type`. Everything else
+`homepage` and no `spaceDashboardId` imports as an undifferentiated list. `id` is lifted to the envelope and `type` to `type`. Everything else
 round-trips.
 
 Validation: the schema types `properties` loosely (`object` with scalar/array
@@ -572,7 +582,7 @@ mapping:
 | `bulletedListItem` | Text/Marked | `color`, `text` (Notion/BlockNote naming) |
 | `numberedListItem` | Text/Numbered | `color`, `text` (numbering is derived from position among consecutive siblings; never stored) |
 | `toggle` | Text/Toggle | `color`, `text` |
-| `callout` | Text/Callout | `icon_emoji`, `icon_image` (file object id), `color`, `text` |
+| `callout` | Text/Callout | `iconEmoji`, `iconImage` (file object id), `color`, `text` |
 | `toggleHeading1` … `toggleHeading3` | Text/ToggleHeader1..3 | `color`, `text` |
 | `file` `image` `video` `audio` `pdf` | File (Type enum promoted; `Type_None` → `file` with no `objectId`) | `objectId` (target file object), `name`, `mimeType`, `size` (bytes), `style` (`auto · link · embed`), `addedAt` (RFC 3339). Legacy `hash` accepted on input. On export, a block with only the legacy `hash` set writes it as `objectId` (the hash migrates on round-trip, §11); when both are set, `objectId` wins and the hash is dropped. `state` is not serialized: import sets `Done` when `objectId`/`hash` is present, `Empty` otherwise. File blocks are leaves in the editor, but legacy data can nest real blocks under them — indented descendants are allowed and round-trip verbatim |
 | `bookmark` | Bookmark | `url`, `objectId` (target bookmark object). `state` handled like file blocks. Deprecated preview fields and `type` (derivable) are dropped — preview data lives on the target object |
@@ -1276,7 +1286,7 @@ every id-valued surface:
 |---|---|
 | `objectId` props (file/image/video/audio/pdf, bookmark, link, dataview) | yes |
 | mention / object-link targets in `text` | yes |
-| `icon_image` (callout, and the `icon_image` property) | yes |
+| `iconImage` (the callout attribute) and the `icon_image` property | yes |
 | property values of `objects`/`files` formats | yes |
 | `items` | yes |
 | view `defaultTemplateId`, `defaultTypeId` | yes |

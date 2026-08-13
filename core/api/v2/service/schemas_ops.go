@@ -84,8 +84,15 @@ var v2OpBlockCommonProps = v2OpBlockTypeProp + `,` +
 	`"objectId":{"type":"string","maxLength":256},` +
 	`"name":{"type":"string","maxLength":4096},` +
 	`"style":{"type":"string","maxLength":64},` +
-	`"icon_emoji":{"type":"string","maxLength":64},` +
-	`"icon_image":{"type":"string","maxLength":256},` +
+	// block ATTRIBUTE names are not key slots — §7.5a-4 excludes them by name,
+	// and the format's own schema (served verbatim as GET /v2/schemas/object)
+	// declares iconEmoji/iconImage. Re-spelled here, both defs being
+	// additionalProperties:false meant a grammar-constrained decoder could not
+	// author a callout icon at all, and two served schemas contradicted each
+	// other one request apart. TestOpBlockPropsExistInTheFormatSchema is the
+	// structural guard that keeps the exclusion out of prose.
+	`"iconEmoji":{"type":"string","maxLength":64},` +
+	`"iconImage":{"type":"string","maxLength":256},` +
 	`"key":{"type":"string","maxLength":256},` +
 	`"cardStyle":{"type":"string","maxLength":32},` +
 	`"align":{"type":"string","enum":["left","center","right","justify"]},` +

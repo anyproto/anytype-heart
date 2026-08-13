@@ -246,3 +246,44 @@ func TestMintApiObjectKey_TypeNamespace(t *testing.T) {
 		assert.Equal(t, "cocktail", mint(t, f, "Cocktail", ""))
 	})
 }
+
+// TestCreateObjectType_MintsUniqueApiObjectKey is TestCreateRelation_… for the
+// OTHER namespace: the type-create path had the same mint wiring and no test
+// of it, so reverting the ensureUniqueApiObjectKey call in createObjectType
+// left every suite green while a new type stored the shadowing `object_type`.
+func TestCreateObjectType_MintsUniqueApiObjectKey(t *testing.T) {
+	// given
+	f := newFixture(t)
+	f.spaceService.EXPECT().Get(mock.Anything, apiKeySpaceId).Return(f.spc, nil)
+	f.spc.EXPECT().Id().Return(apiKeySpaceId).Maybe()
+	f.spc.EXPECT().IsReadOnly().Return(true).Maybe() // skips the bundled-relation install
+	f.spc.EXPECT().GetRelationIdByKey(mock.Anything, mock.Anything).RunAndReturn(
+		func(_ context.Context, key domain.RelationKey) (string, error) { return key.URL(), nil }).Maybe()
+	f.spc.EXPECT().GetTypeIdByKey(mock.Anything, mock.Anything).RunAndReturn(
+		func(_ context.Context, key domain.TypeKey) (string, error) { return key.URL(), nil }).Maybe()
+	f.spc.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).RunAndReturn(
+		func(_ context.Context, key domain.UniqueKey) (string, error) { return key.Marshal(), nil }).Maybe()
+	var created *state.State
+	f.spc.EXPECT().DeriveTreeObject(mock.Anything, mock.Anything).RunAndReturn(
+		func(ctx context.Context, params objectcache.TreeDerivationParams) (smartblock.SmartBlock, error) {
+			sb := smarttest.New(params.Key.Marshal())
+			initCtx := params.InitFunc(params.Key.Marshal())
+			created = initCtx.State
+			return sb, sb.Init(initCtx)
+		})
+
+	details := domain.NewDetails()
+	details.SetString(bundle.RelationKeyName, "Object type")
+
+	// when
+	_, _, err := f.service.CreateObject(context.Background(), apiKeySpaceId, CreateObjectRequest{
+		ObjectTypeKey: bundle.TypeKeyObjectType,
+		Details:       details,
+	})
+
+	// then
+	require.NoError(t, err)
+	require.NotNil(t, created)
+	assert.Equal(t, "object_type_2", created.Details().GetString(bundle.RelationKeyApiObjectKey),
+		"the bundled objectType holds the bare spelling — the mint must disambiguate")
+}

@@ -72,7 +72,7 @@ func ListChatsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 // CreateChatV2Handler creates a chat
 //
 //	@Summary		Create chat
-//	@Description	Creates a chat object: {name}. A thin create with the chatDerived type — messages live in the chat store, not blocks. Honors Idempotency-Key (C8) and ?dry_run=true (C9). No If-Match (C7 exemption).
+//	@Description	Creates a chat object: {name}. A thin create with the chat_derived type — messages live in the chat store, not blocks. Honors Idempotency-Key (C8) and ?dry_run=true (C9). No If-Match (C7 exemption).
 //	@Id				v2_create_chat
 //	@Tags			V2
 //	@Accept			json

@@ -272,7 +272,7 @@ func TestMeSentinelFormatGating(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("@me stays literal on non-object formats", func(t *testing.T) {
-		// propertiesBody: status=select, dueDate=date, assignee=objects,
+		// propertiesBody: status=select, due_date=date, assignee=objects,
 		// tags=multiSelect — a TEXT value literally containing "@me" is data
 		fx := newFixture(t)
 		fx.seedSession("space1", Handle{N: 1, Id: "bafyobj1"})

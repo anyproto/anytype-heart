@@ -348,13 +348,13 @@ func TestFind(t *testing.T) {
 
 	t.Run("server error text passes through with issues", func(t *testing.T) {
 		fx := newFixture(t)
-		fx.stub("POST /v2/spaces/space1/search", 400, `{"status":400,"code":"validation_failed","message":"parse error at offset 17","issues":[{"path":"/filter","message":"unknown property key \"dueDat\"","hint":"did you mean dueDate?"}]}`)
+		fx.stub("POST /v2/spaces/space1/search", 400, `{"status":400,"code":"validation_failed","message":"parse error at offset 17","issues":[{"path":"/filter","message":"unknown property key \"due_dat\"","hint":"did you mean due_date?"}]}`)
 
 		_, err := fx.Run(ctx, "find", map[string]any{"space": "space1", "filter": "dueDat < today()"})
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "parse error at offset 17")
-		assert.Contains(t, err.Error(), `/filter: unknown property key "dueDat" (did you mean dueDate?)`)
+		assert.Contains(t, err.Error(), `/filter: unknown property key "due_dat" (did you mean due_date?)`)
 	})
 }
 
@@ -445,11 +445,11 @@ func TestRead(t *testing.T) {
 func TestDescribe(t *testing.T) {
 	fx := newFixture(t)
 	fx.stub("GET /v2/spaces/space1/types/task", 200,
-		`{"version":1,"kind":"objectType","key":"task","properties":{"name":"Task"},"typeProperties":[{"key":"dueDate","name":"Due date","format":"date"},{"key":"status","name":"Status","format":"select"}]}`)
+		`{"version":1,"kind":"objectType","key":"task","properties":{"name":"Task"},"typeProperties":[{"key":"due_date","name":"Due date","format":"date"},{"key":"status","name":"Status","format":"select"}]}`)
 	fx.stub("GET /v2/spaces/space1/properties/status/options", 200,
 		`{"data":[{"name":"Backlog"},{"name":"In progress"},{"name":"Done"}],"total":3,"offset":0,"limit":25,"has_more":false}`)
 	fx.stub("GET /v2/spaces/space1/properties", 200, propertiesResponse(
-		v2model.PropertyRow{Key: "dueDate", Name: "Due date", Format: "date"},
+		v2model.PropertyRow{Key: "due_date", Name: "Due date", Format: "date"},
 		v2model.PropertyRow{Key: "status", Name: "Status", Format: "select"},
 		v2model.PropertyRow{Key: "description", Name: "Description", Format: "text"},
 	))
@@ -458,7 +458,7 @@ func TestDescribe(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Contains(t, result.Text, "type task — Task")
-	assert.Contains(t, result.Text, "dueDate  date")
+	assert.Contains(t, result.Text, "due_date  date")
 	assert.Contains(t, result.Text, "status  select  options: Backlog, In progress, Done")
 	assert.Contains(t, result.Text, "use these exact property keys and option names")
 
@@ -487,14 +487,14 @@ func TestDescribeReportsWhatIsSettable(t *testing.T) {
 	fx.stub("GET /v2/spaces/space1/types/page", 200,
 		`{"version":1,"kind":"objectType","key":"page","properties":{"name":"Page"},"typeProperties":[
 			{"key":"tag","name":"Tag","format":"multiSelect"},
-			{"key":"createdDate","name":"Creation date","format":"date"},
+			{"key":"created_date","name":"Creation date","format":"date"},
 			{"key":"creator","name":"Created by","format":"objects"}]}`)
 	fx.stub("GET /v2/spaces/space1/properties/tag/options", 200,
 		`{"data":[{"name":"Urgent"}],"total":1,"offset":0,"limit":25,"has_more":false}`)
 	fx.stub("GET /v2/spaces/space1/properties", 200, propertiesResponse(
 		v2model.PropertyRow{Key: "description", Name: "Description", Format: "text"},
-		v2model.PropertyRow{Key: "dueDate", Name: "Due date", Format: "date"},
-		v2model.PropertyRow{Key: "createdDate", Name: "Creation date", Format: "date"},
+		v2model.PropertyRow{Key: "due_date", Name: "Due date", Format: "date"},
+		v2model.PropertyRow{Key: "created_date", Name: "Creation date", Format: "date"},
 	))
 
 	result, err := fx.Run(context.Background(), "describe", map[string]any{"space": "space1", "type": "page"})
@@ -504,11 +504,11 @@ func TestDescribeReportsWhatIsSettable(t *testing.T) {
 		"a bundled settable property the type does not recommend must still be shown")
 	assert.Contains(t, result.Text, "\n  name  text",
 		"name is hidden from GET /properties and recommended by no type — describe is the only place it can come from")
-	assert.Contains(t, result.Text, "\n  dueDate  date",
+	assert.Contains(t, result.Text, "\n  due_date  date",
 		"any of the space's properties is settable on any object")
-	assert.Contains(t, result.Text, "read-only — read serves these, set_properties refuses them: createdDate, creator",
+	assert.Contains(t, result.Text, "read-only — read serves these, set_properties refuses them: created_date, creator",
 		"output-only keys are named as such, not offered as settable and not silently dropped")
-	assert.NotContains(t, result.Text, "\n  createdDate  date",
+	assert.NotContains(t, result.Text, "\n  created_date  date",
 		"an output-only key must never appear in a settable section")
 
 	js, ok := result.JSON.(describeResult)
@@ -519,5 +519,5 @@ func TestDescribeReportsWhatIsSettable(t *testing.T) {
 			settable[p.Key] = true
 		}
 	}
-	assert.Equal(t, map[string]bool{"tag": true, "description": true, "dueDate": true, "name": true}, settable)
+	assert.Equal(t, map[string]bool{"tag": true, "description": true, "due_date": true, "name": true}, settable)
 }

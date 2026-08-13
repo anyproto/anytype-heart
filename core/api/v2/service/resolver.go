@@ -95,11 +95,32 @@ func (s *V2Service) newCreatingResolvers(ctx context.Context, spaceId string, dr
 
 // Options returns anyblockjson import options wired with the creating
 // resolvers.
+//
+// `Keys` is the SAME vocabulary the read half exports with (storeresolver —
+// the space's stored slugs over the bundled table, §7.5a-5 precedence
+// included). Leaving it unset fell back to BundledKeyVocabulary, and a write
+// half speaking a narrower vocabulary than the read half is not a degradation
+// but a corruption: the slug of a BSON-keyed relation is unknown to the
+// bundled table, so `manual_property` imported as the literal stored key
+// `manual_property` — a dataview naming a relation key no relation object
+// owns (columns unbind, filters match nothing, silently). In the other
+// direction the bundled table over-reaches: a space holding a live relation
+// STORED under `due_date` had that key rewritten to bundled `dueDate` and the
+// value landed on the wrong property, even though canonicalizeDocumentKeys
+// had already resolved it correctly at chain step 1. storeresolver.PropertyKey
+// implements step 1 (an exact live stored key wins over the slug layer), which
+// is exactly what makes it safe here.
+//
+// Every import channel of this service rides these Options: create.go's
+// document import, schema_write.go's type import, and stateops.go's
+// insertBlocks/replaceSubtree fragments and whole-dataview re-import behind
+// every view op.
 func (r *creatingResolvers) Options() anyblockjson.Options {
 	return anyblockjson.Options{
 		ResolveFormat:     r.ResolveFormat,
 		ResolveOptions:    r,
 		ResolveProperties: r,
+		Keys:              r.reads,
 	}
 }
 

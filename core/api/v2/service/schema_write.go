@@ -454,7 +454,11 @@ func (s *V2Service) UpdateType(ctx context.Context, spaceId, typeKey string, bod
 			return nil, v2model.ValidationFailed("property not updatable on a type",
 				v2model.Issue{Path: "/properties/" + raw, Message: fmt.Sprintf("cannot update %q", raw), Hint: "updatable: name, description, icon_emoji, recommended_layout"})
 		}
-		value, err := typeDetailValue(key, patch.Properties[key])
+		// the map is keyed by the WIRE spelling — reading it back with the
+		// STORED one handed typeDetailValue a nil body for every key the two
+		// vocabularies spell differently, so icon_emoji and recommended_layout
+		// (the only two of the four that differ) 400'd on a value they carried
+		value, err := typeDetailValue(key, raw, patch.Properties[raw])
 		if err != nil {
 			return nil, err
 		}
@@ -467,7 +471,7 @@ func (s *V2Service) UpdateType(ctx context.Context, spaceId, typeKey string, bod
 		if err := s.validateTypePropertyFormats(spaceId, *patch.TypeProperties); err != nil {
 			return nil, err
 		}
-		lists := anyblockjson.BuildRecommendedLists(*patch.TypeProperties, resolvers)
+		lists := anyblockjson.BuildRecommendedLists(*patch.TypeProperties, resolvers.Options())
 		if err := resolvers.err(); err != nil {
 			return nil, fmt.Errorf("resolve type properties: %w", err)
 		}
@@ -493,15 +497,18 @@ func (s *V2Service) UpdateType(ctx context.Context, spaceId, typeKey string, bod
 	return result, nil
 }
 
-// typeDetailValue decodes one PATCH type property value.
-func typeDetailValue(key string, raw json.RawMessage) (*types.Value, error) {
+// typeDetailValue decodes one PATCH type property value. `key` is the stored
+// spelling the value is decoded FOR; `wire` is the caller's own spelling, and
+// every issue path uses it — an error naming a key the request never sent is
+// unactionable (the old paths said /properties/iconEmoji for icon_emoji).
+func typeDetailValue(key, wire string, raw json.RawMessage) (*types.Value, error) {
 	if key == "recommendedLayout" {
 		var name string
 		if err := json.Unmarshal(raw, &name); err == nil {
 			layout, ok := model.ObjectTypeLayout_value[name]
 			if !ok {
 				return nil, v2model.ValidationFailed("unknown layout name",
-					v2model.Issue{Path: "/properties/recommendedLayout", Message: fmt.Sprintf("unknown layout %q", name), Hint: "common layouts: basic, todo, note, profile"})
+					v2model.Issue{Path: "/properties/" + wire, Message: fmt.Sprintf("unknown layout %q", name), Hint: "common layouts: basic, todo, note, profile"})
 			}
 			return pbtypes.Int64(int64(layout)), nil
 		}
@@ -510,12 +517,12 @@ func typeDetailValue(key string, raw json.RawMessage) (*types.Value, error) {
 			return pbtypes.Int64(number), nil
 		}
 		return nil, v2model.ValidationFailed("invalid recommendedLayout",
-			v2model.Issue{Path: "/properties/recommendedLayout", Message: "expected a layout name or number"})
+			v2model.Issue{Path: "/properties/" + wire, Message: "expected a layout name or number"})
 	}
 	var str string
 	if err := json.Unmarshal(raw, &str); err != nil {
 		return nil, v2model.ValidationFailed("invalid property value",
-			v2model.Issue{Path: "/properties/" + key, Message: "expected a string"})
+			v2model.Issue{Path: "/properties/" + wire, Message: "expected a string"})
 	}
 	return pbtypes.String(str), nil
 }

@@ -282,6 +282,64 @@ func TestV2UpdateType(t *testing.T) {
 		require.Contains(t, byKey, bundle.RelationKeyRecommendedRelations.String())
 	})
 
+	// The wire spelling the swagger, the served type schema, the hint text and
+	// SPEC all teach. `name` folds identically in both vocabularies, which is
+	// why the subtest above stayed green while two of this surface's four
+	// fields were dead: the map is keyed by the wire spelling and the value was
+	// read back with the stored one. Any fixture here must use a key the two
+	// vocabularies SPELL DIFFERENTLY.
+	t.Run("the slug spellings the surface teaches actually work", func(t *testing.T) {
+		for _, tc := range []struct {
+			name      string
+			body      string
+			detailKey string
+			want      *types.Value
+		}{
+			{"icon_emoji", `{"properties":{"icon_emoji":"✅"}}`, "iconEmoji", pbtypes.String("✅")},
+			{"recommended_layout", `{"properties":{"recommended_layout":"todo"}}`, "recommendedLayout", pbtypes.Int64(int64(model.ObjectType_todo))},
+			{"the camelCase spelling still works", `{"properties":{"iconEmoji":"✅"}}`, "iconEmoji", pbtypes.String("✅")},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				// given
+				fx := newV2Fixture(t)
+				fx.addTaskType(t)
+				var setDetails *pb.RpcObjectSetDetailsRequest
+				fx.mwMock.EXPECT().ObjectSetDetails(mock.Anything, mock.Anything).
+					RunAndReturn(func(ctx context.Context, req *pb.RpcObjectSetDetailsRequest) *pb.RpcObjectSetDetailsResponse {
+						setDetails = req
+						return &pb.RpcObjectSetDetailsResponse{Error: &pb.RpcObjectSetDetailsResponseError{Code: pb.RpcObjectSetDetailsResponseError_NULL}}
+					})
+				fx.expectEtagRead("type-chore")
+
+				// when
+				_, err := fx.UpdateType(context.Background(), testSpaceId, "chore", []byte(tc.body), false)
+
+				// then
+				require.NoError(t, err)
+				require.NotNil(t, setDetails)
+				require.Len(t, setDetails.Details, 1)
+				assert.Equal(t, tc.detailKey, setDetails.Details[0].Key, "the STORED spelling reaches the store")
+				assert.Equal(t, tc.want, setDetails.Details[0].Value)
+			})
+		}
+	})
+
+	t.Run("a rejection names the caller's own spelling", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.addTaskType(t)
+
+		// when
+		_, err := fx.UpdateType(context.Background(), testSpaceId, "chore",
+			[]byte(`{"properties":{"recommended_layout":"frobnicate"}}`), false)
+
+		// then
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "/properties/recommended_layout", apiErr.Issues[0].Path,
+			"an issue path naming a key the request never sent is unactionable")
+	})
+
 	t.Run("non-updatable property key is rejected", func(t *testing.T) {
 		// given
 		fx := newV2Fixture(t)

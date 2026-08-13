@@ -156,6 +156,43 @@ func TestSchemaOp(t *testing.T) {
 		}
 	})
 
+	// The MIRROR of the block-type assertion above, and the reason it exists:
+	// the 1.3 slug cascade re-spelled iconEmoji/iconImage to icon_emoji/
+	// icon_image in v2OpBlockCommonProps — block ATTRIBUTE names, which
+	// ADDRESSING §7.5a-4 excludes from the respelling by name. Both payload
+	// defs are additionalProperties:false, so a grammar-constrained decoder
+	// could not author a callout icon at all, while GET /v2/schemas/object
+	// went on serving the format's own schema declaring iconEmoji — two served
+	// schemas contradicting each other one request apart, and no test failed.
+	//
+	// The op schemas publish a SUBSET of the block shape, so every property
+	// name they publish must exist in the format's own block schema. That
+	// turns the exclusion from prose into something the build enforces.
+	t.Run("every published block property exists in the format's block schema", func(t *testing.T) {
+		for _, op := range []string{"insertBlocks", "replaceSubtree"} {
+			entry, err := fx.SchemaOp(op)
+			require.NoError(t, err, op)
+
+			for name := range opBlockDefProps(t, entry) {
+				if name == "indent" || name == "id" {
+					continue // op-payload addressing, not a block attribute
+				}
+				assert.True(t, anyblockjson.KnownBlockProperty(name),
+					"%s publishes %q, which the format's block schema does not know — "+
+						"with additionalProperties:false no document can ever carry it", op, name)
+			}
+		}
+	})
+
+	t.Run("the format's block schema knows the attributes the exclusion names", func(t *testing.T) {
+		// the guard above is only worth anything if the format's inventory is
+		// really read from the schema — these are the two the cascade broke
+		assert.True(t, anyblockjson.KnownBlockProperty("iconEmoji"))
+		assert.True(t, anyblockjson.KnownBlockProperty("iconImage"))
+		assert.False(t, anyblockjson.KnownBlockProperty("icon_emoji"))
+		assert.False(t, anyblockjson.KnownBlockProperty("icon_image"))
+	})
+
 	t.Run("unknown op lists the available ops", func(t *testing.T) {
 		_, err := fx.SchemaOp("frobnicate")
 

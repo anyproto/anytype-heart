@@ -76,3 +76,80 @@ func AuthorableBlockTypeNames() []string {
 	}
 	return out
 }
+
+// blockPropertyNames is the §5 block ATTRIBUTE inventory, read out of the same
+// embedded schema — the shared core plus every conditional per-type branch.
+// Must-decode for the same reason blockTypeNames is.
+var blockPropertyNames = mustSchemaBlockProperties()
+
+func mustSchemaBlockProperties() map[string]bool {
+	var doc struct {
+		Defs map[string]json.RawMessage `json:"$defs"`
+	}
+	if err := json.Unmarshal(schemaJSON, &doc); err != nil {
+		panic(fmt.Sprintf("anyblockjson: decode embedded schema: %v", err))
+	}
+	names := map[string]bool{}
+	var collect func(raw json.RawMessage)
+	collect = func(raw json.RawMessage) {
+		var node map[string]json.RawMessage
+		if err := json.Unmarshal(raw, &node); err != nil {
+			// an array of subschemas (allOf/anyOf/oneOf) — recurse into each
+			var list []json.RawMessage
+			if json.Unmarshal(raw, &list) == nil {
+				for _, item := range list {
+					collect(item)
+				}
+			}
+			return
+		}
+		if props, ok := node["properties"]; ok {
+			var fields map[string]json.RawMessage
+			if json.Unmarshal(props, &fields) == nil {
+				for name := range fields {
+					names[name] = true
+				}
+			}
+		}
+		// only the composition keywords are descended: a property's own value
+		// is a schema for that property, not another property inventory
+		for _, keyword := range []string{"allOf", "anyOf", "oneOf", "if", "then", "else"} {
+			if sub, ok := node[keyword]; ok {
+				collect(sub)
+			}
+		}
+	}
+	for _, def := range []string{"blockCore", "block", "cellBlock"} {
+		if raw, ok := doc.Defs[def]; ok {
+			collect(raw)
+		}
+	}
+	if len(names) == 0 {
+		panic("anyblockjson: the embedded schema publishes no block properties")
+	}
+	return names
+}
+
+// BlockPropertyNames lists every ATTRIBUTE name the format's block schema
+// knows — the shared core plus the per-type conditional branches — sorted.
+//
+// Exported for the API v2 surfaces that re-publish a subset of the block shape
+// (the PATCH op schemas): those defs are additionalProperties:false, so a name
+// they publish that the format does not know is a field no document can ever
+// carry, and a constrained decoder shown it emits a block the codec rejects.
+// Block attribute names are NOT key slots (ADDRESSING §7.5a-4) — this is the
+// build-enforced form of that exclusion.
+func BlockPropertyNames() []string {
+	out := make([]string, 0, len(blockPropertyNames))
+	for name := range blockPropertyNames {
+		out = append(out, name)
+	}
+	slices.Sort(out)
+	return out
+}
+
+// KnownBlockProperty reports whether the format's block schema knows this
+// attribute name.
+func KnownBlockProperty(name string) bool {
+	return blockPropertyNames[name]
+}

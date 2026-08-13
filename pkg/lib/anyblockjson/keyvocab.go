@@ -120,6 +120,31 @@ func (o Options) typeKey(slug string) string {
 	return key
 }
 
+// typeSlugs / typeKeys map a list of TYPE key slots (typeProperties[].
+// objectTypes — §2a's target-type restriction, which is a key slot like any
+// other and speaks the same vocabulary).
+func (o Options) typeSlugs(keys []string) []string {
+	if len(keys) == 0 {
+		return keys
+	}
+	out := make([]string, len(keys))
+	for i, key := range keys {
+		out[i] = o.typeSlug(key)
+	}
+	return out
+}
+
+func (o Options) typeKeys(slugs []string) []string {
+	if len(slugs) == 0 {
+		return slugs
+	}
+	out := make([]string, len(slugs))
+	for i, slug := range slugs {
+		out[i] = o.typeKey(slug)
+	}
+	return out
+}
+
 // propertySlugs / propertyKeys map a list in place-free fashion.
 func (o Options) propertySlugs(keys []string) []string {
 	if len(keys) == 0 {

@@ -248,10 +248,38 @@ func TestPropertyKeyCaseFold(t *testing.T) {
 		set, _ := op["set"].(map[string]any)
 		assert.Equal(t, "Done", set["status"], "the folded key goes on the wire")
 		assert.NotContains(t, set, "Status")
-		assert.Equal(t, "2026-08-07T00:00:00Z", set["dueDate"],
+		assert.Equal(t, "2026-08-07T00:00:00Z", set["due_date"],
 			"the fold precedes the format lookup — the date convenience fires on the folded key")
 		assert.Len(t, fx.sent("GET /v2/spaces/space1/properties/status/options"), 1,
 			"the A2 guard runs against the folded key")
+	})
+
+	// §7.5a-3: the wrapper's fold is the SERVER's fold — lowercase with `_`/`-`
+	// stripped — not strings.EqualFold. Since the served vocabulary flipped to
+	// snake_case, `dueDate` is both the most natural guess a model makes and
+	// the spelling every pre-1.3 document used; EqualFold does not match it to
+	// `due_date`, so the format lookup missed and every convenience keyed on
+	// the format went silent. Revert to strings.EqualFold and this fails.
+	t.Run("a camelCase guess folds onto the served snake_case key", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		fx.seedSession("space1", Handle{N: 1, Id: "bafyobj1"})
+		fx.stub("GET /v2/spaces/space1/properties", 200, propertiesBody)
+		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 200, editOKBody)
+
+		// when
+		_, err := fx.Run(ctx, "set_properties", map[string]any{
+			"object": "1",
+			"set":    map[string]any{"dueDate": "friday"},
+		})
+
+		// then
+		require.NoError(t, err)
+		op := firstOp(t, fx.sent("PATCH /v2/spaces/space1/objects/bafyobj1")[0])
+		set, _ := op["set"].(map[string]any)
+		assert.NotContains(t, set, "dueDate", "the served spelling goes on the wire")
+		assert.Equal(t, "2026-08-07T00:00:00Z", set["due_date"],
+			"and the date convenience fires, because the format lookup found the key")
 	})
 
 	t.Run("two property keys differing only by case refuse naming both", func(t *testing.T) {

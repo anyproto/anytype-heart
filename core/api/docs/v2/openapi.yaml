@@ -1180,7 +1180,7 @@ paths:
       tags:
       - V2
     post:
-      description: 'Creates a chat object: {name}. A thin create with the chatDerived
+      description: 'Creates a chat object: {name}. A thin create with the chat_derived
         type — messages live in the chat store, not blocks. Honors Idempotency-Key
         (C8) and ?dry_run=true (C9). No If-Match (C7 exemption).'
       operationId: v2_create_chat
@@ -2439,7 +2439,7 @@ paths:
       - V2
   /v2/spaces/{space_id}/sets/{set_id}/objects:
     get:
-      description: Executes the set's stored query (its setOf source) directly against
+      description: Executes the set's stored query (its set_of source) directly against
         the store, optionally through one stored view's filters and sorts (?view=,
         exact id or unique suffix). Stored-view execution substitutes the SPEC §6.2
         dynamic placeholders server-side; unresolvable placeholders degrade to warnings,
