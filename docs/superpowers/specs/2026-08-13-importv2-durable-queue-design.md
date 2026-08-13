@@ -619,19 +619,46 @@ commits/s.
 
 Supply side: any-store v0.4.7 on SQLite WAL with `synchronous=normal` (the provider's own
 setting, `provider.go:271`) makes a commit a WAL append with no per-commit fsync (fsync rides
-the checkpoint, `wal_autocheckpoint=10000`). Small-doc commit throughput in that configuration
-is **estimated** in the thousands per second on desktop SSDs (basis: SQLite WAL
-characteristics + the filequeue running per-item `ReleaseAndUpdate` writes at file-upload rates
-in production, `filesync/upload.go:103-121`; not measured for this workload). Estimated
-headroom ≥ 5×, on a private DB whose single writer nothing else contends. **Phase A gates on a
-microbench** (10k-object synthetic run, volatile vs durable, assert < 10% wall-clock overhead)
-so the estimate is replaced by a number before anything ships.
+the checkpoint, `wal_autocheckpoint=10000`).
 
-Space: `entries` ~250 B/row → 25 MB per 100k objects; `payloads` ~0.5–1 KB/row transient,
-peaking right after pass 1 at ~50–100 MB per 100k objects and draining to zero (consistent
-with §4's "tens of MB" estimate, ImportV2Design.md:226-227); `derived`/`files`/`issues`
-negligible; spill bytes unchanged in magnitude from today's temp dir, relocated. Write
-amplification from indexes: one secondary index total (§4.3), by design.
+**Measured, not estimated.** The Phase-A gate microbench has been run: real any-store v0.4.7,
+the exact §4.1 durability config, a dedicated per-run DB, the one §4.3 secondary index, and
+realistic row shapes (32-hex source keys, 59-char object ids, 550 B payload blobs). Apple M2,
+three runs.
+
+| Scenario | Measured (typical / stalled run) |
+|---|---|
+| Claims batched 500/tx, 100k claims | 23k–36k claims/s; 14–21 ms per 500-row commit |
+| Claims unbatched 1/tx | 7.7k–9.2k claims/s — batching is a 3–4× win |
+| Per-object outcome tx, 1 worker | 15.5k–19k tx/s / 5.5k |
+| Per-object outcome tx, 8 workers | 15.8k–16.4k tx/s aggregate / 4.1k; p99 1.7 ms |
+| 8 workers + 40 ms simulated persist (worst-case demand) | **194 obj/s vs 200 ideal = 3% overhead**, identical across all 3 runs; tx p99 2.7–6.7 ms |
+| File shape (intent tx + outcome tx) | ~12k cycles/s; p99 ~4 ms |
+| `Flush` (suspend path) | 4–9 ms — far inside the 30 s close grace (§5.6) |
+
+Against the ≈400 commits/s worst-case demand above, that is **~40× headroom typically and
+~10× on the worst observed run** (one ~530 ms stall, checkpoint or background load). The gate's
+threshold was < 10% wall-clock overhead; the measured figure is 3%. **§5's write-through policy
+therefore stands unmodified** — no batching or write-behind on the outcome path.
+
+One property the bench exposed that the design should not have to rediscover: **any-store
+v0.4.7 has a single write connection per DB, so ledger writes do not scale with worker count**
+— 8 workers aggregate to roughly what 1 worker achieves, with per-tx p50 rising 43 µs → ~450 µs
+from queueing. This is invisible at demand rates (the 3% row above) and is a further argument
+for per-run DBs (§4.1): a shared queue DB would serialize every run's ledger writes against
+every other run's.
+
+Space — **measured ~180 MB peak per 100k objects**, against this section's original 50–100 MB
+estimate: 96 MB live data after the payload drain, 160 MB total file plus WAL. anyenc, page and
+index overhead run ~2× the raw-bytes estimate, which is where the original figure went wrong.
+Note also that **the live data drains as payload rows are deleted but the file does not shrink**
+— SQLite reuses freed pages rather than releasing them, so on-disk footprint stays at its peak
+for the life of the run. That is not a problem here, and it is precisely why disposal is
+`os.RemoveAll` of the run dir rather than a delete-and-vacuum inside a shared DB (§4.1): the
+space is reclaimed by unlinking the file, which is the only cheap way to reclaim it at all.
+`derived`/`files`/`issues` remain negligible; spill bytes are unchanged in magnitude from
+today's temp dir, relocated. Write amplification from indexes: one secondary index total
+(§4.3), by design.
 
 Crash-window cost recap (the price of D7's batching decisions): ≤500 claims re-minted
 (harmless), ≤~40 objects re-converted (§3.2), one file re-uploaded (§5.3). No window loses an
@@ -682,7 +709,8 @@ leak-biased).
   package (manifest, entries as effect ledger, files, frozen-core reader); journal seam swap;
   suspend-on-close with cause; startup sweep limited to the compensate/finish branches
   (`running`/`suspended` runs are *compensated* in this phase — resume lands in B, and until
-  then suspend still beats today's cancel-compensate-race). Microbench gate (§8). Ships value
+  then suspend still beats today's cancel-compensate-race). Microbench gate (§8) — **run and
+  passed** (3% overhead against a 10% threshold), so this phase is clear to start. Ships value
   alone: no more unattributable orphans, no more redeploy-races-compensation.
 - **Phase B — identity ledger + resume for markdown (driver 2 mechanics).** Payloads/derived
   collections, `NewServiceFromLedger`, sink backstop dedup, stale-claim rule, ErrTreeExists
