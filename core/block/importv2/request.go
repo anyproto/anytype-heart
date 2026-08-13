@@ -47,6 +47,15 @@ type Result struct {
 	Compensated int
 	Leaked      int
 
+	// Suspended means the run was stopped by a graceful shutdown
+	// (ErrSuspended cause) and deliberately NOT compensated — its durable
+	// state is kept for the startup sweep. The engine is the single source
+	// of this verdict; deriving it again from a context elsewhere can
+	// disagree with what the engine actually did (a cancel cause is
+	// one-shot: an inner abort followed by a Close reads differently from
+	// the two contexts).
+	Suspended bool
+
 	// Err is the fatal error when the run aborted, nil otherwise.
 	Err error
 }

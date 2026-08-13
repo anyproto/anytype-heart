@@ -188,10 +188,11 @@ func (s *service) runImport(req *pb.RpcObjectImportRequest) {
 
 	result := s.execute(runCtx, req, progress)
 
-	if errors.Is(context.Cause(runCtx), importv2.ErrSuspended) {
-		// Shutdown suspend: the run state is on disk for the startup sweep.
-		// No finish notification, no import events — the process is going
-		// away and the run is not over.
+	if result.Suspended {
+		// Shutdown suspend (the engine's own verdict — it skipped
+		// compensation and the state is on disk for the startup sweep). No
+		// finish notification, no import events — the process is going away
+		// and the run is not over.
 		log.With("importType", req.Type.String(), "spaceId", req.SpaceId).
 			Warnf("import suspended for shutdown")
 		s.fileSync.ClearImportEvents()
@@ -323,6 +324,7 @@ func (s *service) executeMarkdown(ctx context.Context, request importv2.Request,
 		}
 		if result.Err != nil {
 			combined.Err = result.Err
+			combined.Suspended = result.Suspended
 			break
 		}
 	}
@@ -349,7 +351,7 @@ func (s *service) executeNotion(ctx context.Context, request importv2.Request, r
 	converter := notion.New(apiClient, notionclient.NewFileFetcher(),
 		&collectionFactory{service: s.collectionService}, lc.spillDir, opts...)
 	result := s.runEngine(ctx, request, converter, spc, lc, progress)
-	s.finishRun(ctx, lc, result)
+	s.finishRun(lc, result)
 	return result
 }
 
@@ -399,7 +401,7 @@ func (s *service) runOne(ctx context.Context, request importv2.Request, spc clie
 		IncludeContentSamples:    params.Planner.includeSamples,
 	}, &collectionFactory{service: s.collectionService})
 	result := s.runEngine(ctx, request, converter, spc, lc, progress)
-	s.finishRun(ctx, lc, result)
+	s.finishRun(lc, result)
 	return result
 }
 

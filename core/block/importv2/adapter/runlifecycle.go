@@ -2,7 +2,6 @@ package adapter
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -54,21 +53,22 @@ func (s *service) beginRun(ctx context.Context, request importv2.Request, conver
 	return &runLifecycle{store: store, spillDir: store.SpillDir()}, nil
 }
 
-// finishRun settles a run's durable state. A run stopped by a shutdown
-// suspend (runCtx cause is ErrSuspended and the engine aborted) keeps its
-// dir — marked suspended and flushed for the startup sweep (§6.4). Every
-// other outcome is disposed whole: terminal state, then delete the dir. The
-// state write is insurance — if Drop fails, the sweep sees a terminal
-// manifest and just deletes the dir. State writes run on a background
-// context: runCtx is typically already cancelled on the failure path.
-func (s *service) finishRun(runCtx context.Context, lc *runLifecycle, result *importv2.Result) {
+// finishRun settles a run's durable state. A run the ENGINE says was
+// suspended (Result.Suspended — the single source of that verdict; it means
+// compensation was skipped) keeps its dir, marked suspended and flushed for
+// the startup sweep (§6.4). Every other outcome is disposed whole: terminal
+// state, then delete the dir. The state write is insurance — if Drop fails,
+// the sweep sees a terminal manifest and just deletes the dir. State writes
+// run on a background context: the run ctx is typically already cancelled
+// on the failure path.
+func (s *service) finishRun(lc *runLifecycle, result *importv2.Result) {
 	if lc.store == nil {
 		if lc.cleanup != nil {
 			lc.cleanup()
 		}
 		return
 	}
-	if result.Err != nil && errors.Is(context.Cause(runCtx), importv2.ErrSuspended) {
+	if result.Suspended {
 		ctx := context.Background()
 		if err := lc.store.SetState(ctx, runstore.StateSuspended); err != nil {
 			log.Errorf("mark run suspended: %s", err)

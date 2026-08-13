@@ -141,7 +141,7 @@ func Run(ctx context.Context, req importv2.Request, converter importv2.Converter
 	}
 
 	if fatal := r.fatalIssue(); fatal != nil {
-		if !suspended() {
+		if r.suspendedRun = suspended(); !r.suspendedRun {
 			r.compensate()
 		}
 		return r.buildResult(*fatal, importv2.RootSpec{})
@@ -150,7 +150,7 @@ func Run(ctx context.Context, req importv2.Request, converter importv2.Converter
 	r.finalize(runCtx, rootSpec)
 	r.reconcileClaims()
 	if fatal := r.fatalIssue(); fatal != nil {
-		if !suspended() {
+		if r.suspendedRun = suspended(); !r.suspendedRun {
 			r.compensate()
 		}
 		return r.buildResult(*fatal, importv2.RootSpec{})
@@ -207,6 +207,10 @@ type run struct {
 	reportObjectId   string
 	compensated      int
 	leaked           int
+	// suspendedRun records the engine's own verdict — the run stopped for a
+	// shutdown suspend and was NOT compensated — carried out via
+	// Result.Suspended so the adapter never re-derives it from a context.
+	suspendedRun bool
 }
 
 // report is the single issue funnel: collects (capped) and applies the one
@@ -597,6 +601,7 @@ func (r *run) buildResult(fatal importv2.Issue, rootSpec importv2.RootSpec) *imp
 		IssuesDropped:    dropped,
 		Compensated:      r.compensated,
 		Leaked:           r.leaked,
+		Suspended:        r.suspendedRun,
 	}
 	if fatal.Code != "" {
 		result.Err = fatal

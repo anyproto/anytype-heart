@@ -64,17 +64,22 @@ func TestBeginRun(t *testing.T) {
 		assert.DirExists(t, lc.spillDir)
 
 		// and: finishing cleans the temp dir
-		s.finishRun(context.Background(), lc, &importv2.Result{})
+		s.finishRun(lc, &importv2.Result{})
 		_, statErr := os.Stat(lc.spillDir)
 		assert.True(t, os.IsNotExist(statErr))
 	})
 }
 
 func TestFinishRun(t *testing.T) {
-	t.Run("a finished run is disposed whole, success or failure", func(t *testing.T) {
+	t.Run("a finished run is disposed whole — success, failure, or an abort that merely raced a Close", func(t *testing.T) {
 		for _, result := range []*importv2.Result{
 			{},
 			{Err: importv2.Fatal(importv2.IssueStoreError, assert.AnError)},
+			// P1-3's confirmed disagreement scenario: the run aborted (and
+			// compensated) for its own reasons, then a Close raced in. The
+			// engine's verdict says NOT suspended — the dir must be disposed,
+			// never wrongly promoted backwards to "suspended".
+			{Err: importv2.Fatal(importv2.IssueObjectFailed, assert.AnError), Suspended: false},
 		} {
 			// given
 			s := &service{config: &config.Config{RepoPath: t.TempDir()}}
@@ -83,7 +88,7 @@ func TestFinishRun(t *testing.T) {
 			dir := lc.store.Dir()
 
 			// when
-			s.finishRun(context.Background(), lc, result)
+			s.finishRun(lc, result)
 
 			// then
 			_, statErr := os.Stat(dir)
@@ -92,18 +97,18 @@ func TestFinishRun(t *testing.T) {
 	})
 
 	t.Run("a suspended run keeps its dir, flushed, in the suspended state", func(t *testing.T) {
-		// given
+		// given — the verdict comes from the engine's Result, the single
+		// source of truth (deriving it twice from two contexts disagreed).
 		s := &service{config: &config.Config{RepoPath: t.TempDir()}}
 		lc, err := s.beginRun(context.Background(), testRequest(), "Notion", 0)
 		require.NoError(t, err)
 		require.NoError(t, lc.store.RecordCreated(context.Background(), "page-1", "obj-1"))
 		dir := lc.store.Dir()
-		ctx, cancel := context.WithCancelCause(context.Background())
-		cancel(importv2.ErrSuspended)
 
 		// when
-		s.finishRun(ctx, lc, &importv2.Result{
-			Err: importv2.Fatal(importv2.IssueCancelled, context.Cause(ctx)),
+		s.finishRun(lc, &importv2.Result{
+			Err:       importv2.Fatal(importv2.IssueCancelled, importv2.ErrSuspended),
+			Suspended: true,
 		})
 
 		// then: the dir survives and reopens as suspended with effects intact

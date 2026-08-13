@@ -550,6 +550,7 @@ func TestRunCancellation(t *testing.T) {
 		case result := <-done:
 			issue := importv2.AsIssue(result.Err, importv2.SeverityFatal, importv2.IssueStoreError)
 			assert.Equal(t, importv2.IssueCancelled, issue.Code)
+			assert.True(t, result.Suspended, "the engine owns the suspend verdict (P1-3)")
 			assert.Zero(t, result.Compensated, "suspend must not compensate")
 			assert.Empty(t, fx.deps.Objects.(*deleterFake).deleted, "no created object may be deleted on suspend")
 			assert.False(t, marked, "the compensating state must not be marked on suspend")
@@ -593,6 +594,7 @@ func TestRunCancellation(t *testing.T) {
 			require.Error(t, result.Err, "a cancelled import must never report success")
 			issue := importv2.AsIssue(result.Err, importv2.SeverityFatal, importv2.IssueStoreError)
 			assert.Equal(t, importv2.IssueCancelled, issue.Code)
+			assert.False(t, result.Suspended, "a plain user cancel is not a suspend")
 			assert.Positive(t, result.Compensated, "user cancel must compensate")
 			assert.NotEmpty(t, fx.deps.Objects.(*deleterFake).deleted)
 		case <-time.After(5 * time.Second):
