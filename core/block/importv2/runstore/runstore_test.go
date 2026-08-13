@@ -353,15 +353,17 @@ func TestRunsRoot(t *testing.T) {
 
 // TestFrozenCoreFixture pins §4.4's forward-compat promise: the
 // compensation-critical fields written at schema v1 must stay readable
-// forever. The fixture is a real store committed under testdata; regenerate
-// with RUNSTORE_UPDATE_FIXTURE=1 go test -run TestFrozenCoreFixture ./...
-// only when creating it for a NEW schema version — never rewrite v1.
+// forever. The fixture is a real store committed under testdata; generation
+// (RUNSTORE_UPDATE_FIXTURE=1) REFUSES to overwrite an existing fixture —
+// the pin is only ever created once per schema version, in a NEW dir.
 func TestFrozenCoreFixture(t *testing.T) {
 	ctx := context.Background()
 	fixtureDir := filepath.Join("testdata", "frozen-v1")
 
 	if os.Getenv("RUNSTORE_UPDATE_FIXTURE") == "1" {
-		require.NoError(t, os.RemoveAll(fixtureDir))
+		if _, err := os.Stat(fixtureDir); err == nil {
+			t.Fatalf("refusing to overwrite %s: the freeze pin must never be regenerated in place — a failing freeze test means the CODE broke the freeze; a new schema version gets a NEW fixture dir", fixtureDir)
+		}
 		store, err := Create(ctx, fixtureDir, testManifest())
 		require.NoError(t, err)
 		require.NoError(t, store.RecordCreated(ctx, "page-1", "obj-1"))
@@ -396,6 +398,88 @@ func TestFrozenCoreFixture(t *testing.T) {
 	assert.Equal(t, []string{"obj-2", "obj-1"}, inputs.Created)
 	assert.Equal(t, []string{"file-obj-1"}, inputs.OwnedFiles)
 	assert.Equal(t, []string{"obj-3"}, inputs.Updated)
+}
+
+// TestFrozenCoreRawFields pins presence AND anyenc type of every frozen
+// field (§4.4) by reading dbs raw, independent of what the current reader
+// happens to consume. The gap it closes is structural: CompensationInputs
+// never reads entries.status, so renaming or retyping it passed the entire
+// black-box suite (confirmed by review) — yet the field is frozen and phase
+// B will read it. Two subjects, both required:
+//   - the committed v1 fixture (the reader-forever half of the freeze);
+//   - a store freshly written by TODAY'S writer (the writer half — a field
+//     rename in the writer fails here immediately).
+func TestFrozenCoreRawFields(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("the committed v1 fixture carries every frozen field", func(t *testing.T) {
+		workDir := filepath.Join(t.TempDir(), "frozen-v1")
+		copyDir(t, filepath.Join("testdata", "frozen-v1"), workDir)
+		assertFrozenFields(t, filepath.Join(workDir, "run.db"))
+	})
+
+	t.Run("today's writer still writes every frozen field", func(t *testing.T) {
+		dir := filepath.Join(t.TempDir(), "run-1")
+		store, err := Create(ctx, dir, testManifest())
+		require.NoError(t, err)
+		require.NoError(t, store.RecordCreated(ctx, "page-1", "obj-1"))
+		require.NoError(t, store.RecordUpdated(ctx, "page-2", "obj-2"))
+		require.NoError(t, store.RecordFile(ctx, "file-1", "file-obj-1", false))
+		require.NoError(t, store.RecordFile(ctx, "file-2", "file-obj-2", true))
+		require.NoError(t, store.Close())
+		assertFrozenFields(t, filepath.Join(dir, "run.db"))
+	})
+}
+
+func assertFrozenFields(t *testing.T, dbPath string) {
+	t.Helper()
+	ctx := context.Background()
+	db, err := anystore.Open(ctx, dbPath, nil)
+	require.NoError(t, err)
+	defer db.Close()
+
+	boolTypes := []string{"true", "false"}
+	frozen := map[string]map[string][]string{
+		"manifest": {
+			"schemaVersion": {"number"},
+			"state":         {"string"},
+			"spaceId":       {"string"},
+		},
+		"entries": {
+			"id":       {"string"},
+			"objectId": {"string"},
+			"mode":     {"string"},
+			"status":   {"string"},
+			"rank":     {"number"},
+		},
+		"files": {
+			"id":          {"string"},
+			"objectId":    {"string"},
+			"status":      {"string"},
+			"preExisting": boolTypes,
+			"rank":        {"number"},
+		},
+	}
+	for collName, fields := range frozen {
+		coll, err := db.OpenCollection(ctx, collName)
+		require.NoError(t, err, "frozen collection %q must exist", collName)
+		iter, err := coll.Find(nil).Iter(ctx)
+		require.NoError(t, err)
+		rows := 0
+		for iter.Next() {
+			doc, err := iter.Doc()
+			require.NoError(t, err)
+			rows++
+			for field, allowedTypes := range fields {
+				value := doc.Value().Get(field)
+				require.NotNil(t, value, "frozen field %s.%s missing", collName, field)
+				assert.Contains(t, allowedTypes, value.Type().String(),
+					"frozen field %s.%s changed type", collName, field)
+			}
+		}
+		require.NoError(t, iter.Close())
+		require.Positive(t, rows, "db must carry %s rows", collName)
+	}
 }
 
 func copyDir(t *testing.T, from, to string) {
