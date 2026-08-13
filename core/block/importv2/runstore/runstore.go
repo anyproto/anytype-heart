@@ -139,6 +139,14 @@ func ListRunDirs(root string) ([]string, error) {
 	return dirs, nil
 }
 
+// IsMissingManifest reports an Open failure meaning the db opened fine but
+// never got its manifest — a dir whose creation crashed before the first
+// write. No manifest means no recorded effects: safe for the sweep to
+// delete outright.
+func IsMissingManifest(err error) bool {
+	return errors.Is(err, anystore.ErrDocNotFound)
+}
+
 // IsCorrupted reports whether an Open failure means the db file is damaged
 // (as opposed to transient IO trouble) — the sweep's delete-dir criterion.
 //

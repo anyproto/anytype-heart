@@ -112,7 +112,14 @@ func (s *service) Init(a *app.App) error {
 	return nil
 }
 
-func (s *service) Run(ctx context.Context) error { return nil }
+func (s *service) Run(ctx context.Context) error {
+	if s.config.RepoPath != "" {
+		// Settle runs a previous process left behind (spec §6.1): finish
+		// deleting terminal ones, compensate crashed/suspended ones.
+		go s.sweepAbandoned()
+	}
+	return nil
+}
 
 // Close suspends in-flight runs (their durable state is kept for the
 // startup sweep, spec §6.4 — no compensation races the shutdown grace) and
