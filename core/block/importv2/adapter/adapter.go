@@ -82,6 +82,12 @@ type service struct {
 	componentCtx    context.Context
 	componentCancel context.CancelFunc
 	runs            sync.WaitGroup
+
+	// activeRuns tracks in-flight runs' cancel-cause funcs so Close can
+	// suspend them (importv2.ErrSuspended) instead of tearing them down.
+	activeRunsMu sync.Mutex
+	activeRuns   map[int64]context.CancelCauseFunc
+	runSeq       int64
 }
 
 func New() Importer {
@@ -108,8 +114,13 @@ func (s *service) Init(a *app.App) error {
 
 func (s *service) Run(ctx context.Context) error { return nil }
 
-// Close cancels in-flight runs and waits (bounded) for their compensation.
+// Close suspends in-flight runs (their durable state is kept for the
+// startup sweep, spec §6.4 — no compensation races the shutdown grace) and
+// waits (bounded) for them to drain and flush.
 func (s *service) Close(ctx context.Context) error {
+	// Suspend BEFORE the component cancel: the first cancellation wins the
+	// cause, and it must be ErrSuspended, not a plain Canceled.
+	s.suspendRuns()
 	s.componentCancel()
 	done := make(chan struct{})
 	go func() {
@@ -153,19 +164,33 @@ func (s *service) Import(req *pb.RpcObjectImportRequest) {
 
 func (s *service) runImport(req *pb.RpcObjectImportRequest) {
 	progress := s.setupProgress(req)
-	runCtx, cancel := context.WithCancel(s.componentCtx)
-	defer cancel()
+	runCtx, cancel := context.WithCancelCause(s.componentCtx)
+	defer cancel(nil)
+	handle := s.registerRun(cancel)
+	defer s.unregisterRun(handle)
 	watchDone := make(chan struct{})
 	defer close(watchDone)
 	go func() {
 		select {
 		case <-progress.Canceled():
-			cancel()
+			// User cancellation: a plain cause — the engine compensates.
+			cancel(nil)
 		case <-watchDone:
 		}
 	}()
 
 	result := s.execute(runCtx, req, progress)
+
+	if errors.Is(context.Cause(runCtx), importv2.ErrSuspended) {
+		// Shutdown suspend: the run state is on disk for the startup sweep.
+		// No finish notification, no import events — the process is going
+		// away and the run is not over.
+		log.With("importType", req.Type.String(), "spaceId", req.SpaceId).
+			Warnf("import suspended for shutdown")
+		s.fileSync.ClearImportEvents()
+		progress.Finish(result.Err)
+		return
+	}
 
 	logRunResult(req, result)
 	s.finishProgress(progress, req, result)
@@ -317,7 +342,7 @@ func (s *service) executeNotion(ctx context.Context, request importv2.Request, r
 	converter := notion.New(apiClient, notionclient.NewFileFetcher(),
 		&collectionFactory{service: s.collectionService}, lc.spillDir, opts...)
 	result := s.runEngine(ctx, request, converter, spc, lc, progress)
-	s.finishRun(lc, result)
+	s.finishRun(ctx, lc, result)
 	return result
 }
 
@@ -367,7 +392,7 @@ func (s *service) runOne(ctx context.Context, request importv2.Request, spc clie
 		IncludeContentSamples:    params.Planner.includeSamples,
 	}, &collectionFactory{service: s.collectionService})
 	result := s.runEngine(ctx, request, converter, spc, lc, progress)
-	s.finishRun(lc, result)
+	s.finishRun(ctx, lc, result)
 	return result
 }
 

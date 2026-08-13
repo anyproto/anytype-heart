@@ -133,6 +133,14 @@ func AsIssue(err error, defaultSeverity Severity, defaultCode IssueCode) Issue {
 	return Issue{Severity: defaultSeverity, Code: defaultCode, Err: err}
 }
 
+// ErrSuspended is the cancellation cause of a graceful shutdown: the run
+// stops promptly but is NOT compensated — its durable state is kept for the
+// startup sweep (docs/superpowers/specs/2026-08-13-importv2-durable-queue-
+// design.md §6.4). Distinct from user cancellation (a plain cancel, which
+// compensates): the adapter cancels the run context with this cause from
+// Close, and the engine checks context.Cause against it.
+var ErrSuspended = errors.New("import run suspended for shutdown")
+
 // Mode is the run-wide failure policy.
 type Mode int
 

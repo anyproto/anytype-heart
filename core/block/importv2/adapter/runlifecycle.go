@@ -2,6 +2,7 @@ package adapter
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -53,15 +54,32 @@ func (s *service) beginRun(ctx context.Context, request importv2.Request, conver
 	return &runLifecycle{store: store, spillDir: store.SpillDir()}, nil
 }
 
-// finishRun disposes a finished run whole: terminal state, then delete the
-// dir. The state write is insurance — if Drop fails, the startup sweep sees
-// a terminal manifest and just deletes the dir. Runs on a background
-// context: the run ctx is typically already cancelled on the failure path.
-func (s *service) finishRun(lc *runLifecycle, result *importv2.Result) {
+// finishRun settles a run's durable state. A run stopped by a shutdown
+// suspend (runCtx cause is ErrSuspended and the engine aborted) keeps its
+// dir — marked suspended and flushed for the startup sweep (§6.4). Every
+// other outcome is disposed whole: terminal state, then delete the dir. The
+// state write is insurance — if Drop fails, the sweep sees a terminal
+// manifest and just deletes the dir. State writes run on a background
+// context: runCtx is typically already cancelled on the failure path.
+func (s *service) finishRun(runCtx context.Context, lc *runLifecycle, result *importv2.Result) {
 	if lc.store == nil {
 		if lc.cleanup != nil {
 			lc.cleanup()
 		}
+		return
+	}
+	if result.Err != nil && errors.Is(context.Cause(runCtx), importv2.ErrSuspended) {
+		ctx := context.Background()
+		if err := lc.store.SetState(ctx, runstore.StateSuspended); err != nil {
+			log.Errorf("mark run suspended: %s", err)
+		}
+		if err := lc.store.Flush(ctx); err != nil {
+			log.Errorf("flush suspended run: %s", err)
+		}
+		if err := lc.store.Close(); err != nil {
+			log.Errorf("close suspended run: %s", err)
+		}
+		log.With("dir", lc.store.Dir()).Warnf("import run suspended for shutdown; state kept for the startup sweep")
 		return
 	}
 	state := runstore.StateCompleted
@@ -87,5 +105,33 @@ func (s *service) onCompensating(lc *runLifecycle) func() {
 		if err := lc.store.SetState(context.Background(), runstore.StateCompensating); err != nil {
 			log.Errorf("mark run compensating: %s", err)
 		}
+	}
+}
+
+// registerRun tracks an active run's cancel-cause func so Close can suspend
+// it (with importv2.ErrSuspended) BEFORE the component context's plain
+// cancel wins the cause race.
+func (s *service) registerRun(cancel context.CancelCauseFunc) int64 {
+	s.activeRunsMu.Lock()
+	defer s.activeRunsMu.Unlock()
+	s.runSeq++
+	if s.activeRuns == nil {
+		s.activeRuns = map[int64]context.CancelCauseFunc{}
+	}
+	s.activeRuns[s.runSeq] = cancel
+	return s.runSeq
+}
+
+func (s *service) unregisterRun(handle int64) {
+	s.activeRunsMu.Lock()
+	defer s.activeRunsMu.Unlock()
+	delete(s.activeRuns, handle)
+}
+
+func (s *service) suspendRuns() {
+	s.activeRunsMu.Lock()
+	defer s.activeRunsMu.Unlock()
+	for _, cancel := range s.activeRuns {
+		cancel(importv2.ErrSuspended)
 	}
 }

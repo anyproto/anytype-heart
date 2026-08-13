@@ -118,20 +118,38 @@ func Run(ctx context.Context, req importv2.Request, converter importv2.Converter
 		}
 	}()
 
+	// A graceful-shutdown suspend (cause importv2.ErrSuspended, spec §6.4)
+	// stops the run like a cancel but skips compensation: the durable state
+	// is kept for the startup sweep instead of being torn down mid-shutdown.
+	suspended := func() bool {
+		return errors.Is(context.Cause(runCtx), importv2.ErrSuspended)
+	}
+
 	if fatal := r.identityPass(runCtx, converter); fatal != nil {
 		return r.buildResult(*fatal, importv2.RootSpec{})
 	}
 	rootSpec := r.streamPass(runCtx, converter)
 
+	// A suspend that races the end of the stream (converter done, workers
+	// interrupted mid-drain) may leave no fatal behind — the run must still
+	// stop as suspended, never finalize into a silent partial import.
+	if suspended() && r.fatalIssue() == nil {
+		r.report(importv2.Fatal(importv2.IssueCancelled, context.Cause(runCtx)))
+	}
+
 	if fatal := r.fatalIssue(); fatal != nil {
-		r.compensate()
+		if !suspended() {
+			r.compensate()
+		}
 		return r.buildResult(*fatal, importv2.RootSpec{})
 	}
 	reportClaimed := r.maybeClaimReport(runCtx)
 	r.finalize(runCtx, rootSpec)
 	r.reconcileClaims()
 	if fatal := r.fatalIssue(); fatal != nil {
-		r.compensate()
+		if !suspended() {
+			r.compensate()
+		}
 		return r.buildResult(*fatal, importv2.RootSpec{})
 	}
 	r.emitReport(runCtx, reportClaimed, reportTitle(rootSpec, converter))
@@ -342,6 +360,14 @@ func (r *run) process(ctx context.Context, w work) {
 		r.deps.Identity.CompleteFile(w.object.SourceKey, outcome.Id, err)
 	}
 	if err != nil {
+		if ctx.Err() != nil && (errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)) {
+			// The run is being cancelled or suspended: an interrupted
+			// persist is not an object failure — the abort is accounted
+			// once, by the fatal cancellation, and the issue code must stay
+			// "cancelled" (not "objectFailed") for the wire mapping.
+			r.skipped.Add(1)
+			return
+		}
 		r.failed.Add(1)
 		r.rootMu.Lock()
 		r.failedKeys[w.object.SourceKey] = struct{}{}

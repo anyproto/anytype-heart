@@ -64,7 +64,7 @@ func TestBeginRun(t *testing.T) {
 		assert.DirExists(t, lc.spillDir)
 
 		// and: finishing cleans the temp dir
-		s.finishRun(lc, &importv2.Result{})
+		s.finishRun(context.Background(), lc, &importv2.Result{})
 		_, statErr := os.Stat(lc.spillDir)
 		assert.True(t, os.IsNotExist(statErr))
 	})
@@ -83,11 +83,55 @@ func TestFinishRun(t *testing.T) {
 			dir := lc.store.Dir()
 
 			// when
-			s.finishRun(lc, result)
+			s.finishRun(context.Background(), lc, result)
 
 			// then
 			_, statErr := os.Stat(dir)
 			assert.True(t, os.IsNotExist(statErr))
 		}
+	})
+
+	t.Run("a suspended run keeps its dir, flushed, in the suspended state", func(t *testing.T) {
+		// given
+		s := &service{config: &config.Config{RepoPath: t.TempDir()}}
+		lc, err := s.beginRun(context.Background(), testRequest(), "Notion", 0)
+		require.NoError(t, err)
+		require.NoError(t, lc.store.RecordCreated(context.Background(), "page-1", "obj-1"))
+		dir := lc.store.Dir()
+		ctx, cancel := context.WithCancelCause(context.Background())
+		cancel(importv2.ErrSuspended)
+
+		// when
+		s.finishRun(ctx, lc, &importv2.Result{
+			Err: importv2.Fatal(importv2.IssueCancelled, context.Cause(ctx)),
+		})
+
+		// then: the dir survives and reopens as suspended with effects intact
+		reopened, err := runstore.Open(context.Background(), dir)
+		require.NoError(t, err)
+		defer reopened.Close()
+		manifest, err := reopened.Manifest(context.Background())
+		require.NoError(t, err)
+		assert.Equal(t, runstore.StateSuspended, manifest.State)
+		inputs, err := reopened.CompensationInputs(context.Background())
+		require.NoError(t, err)
+		assert.Equal(t, []string{"obj-1"}, inputs.Created)
+	})
+}
+
+func TestSuspendRuns(t *testing.T) {
+	t.Run("suspendRuns cancels every registered run with the suspend cause", func(t *testing.T) {
+		// given
+		s := &service{}
+		ctx, cancel := context.WithCancelCause(context.Background())
+		handle := s.registerRun(cancel)
+		defer s.unregisterRun(handle)
+
+		// when
+		s.suspendRuns()
+
+		// then
+		require.Error(t, ctx.Err())
+		assert.ErrorIs(t, context.Cause(ctx), importv2.ErrSuspended)
 	})
 }

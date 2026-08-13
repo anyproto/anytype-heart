@@ -508,6 +508,47 @@ func TestRunCancellation(t *testing.T) {
 			t.Fatal("run did not stop after cancel")
 		}
 	})
+
+	t.Run("suspend cause stops the run WITHOUT compensating", func(t *testing.T) {
+		// given — a shutdown suspend must preserve the run's work for the
+		// startup sweep instead of tearing it down (spec §6.4): compensation
+		// is skipped, journal effects stay, OnCompensating never fires.
+		fx := newEngineFixture()
+		fx.persister.delay = 20 * time.Millisecond
+		marked := false
+		fx.deps.OnCompensating = func() { marked = true }
+		objects := make([]*importv2.Object, 200)
+		for i := range objects {
+			objects[i] = pageObj(fmt.Sprintf("p-%03d.md", i), false)
+		}
+		converter := &scriptConverter{objects: objects}
+		ctx, cancel := context.WithCancelCause(context.Background())
+
+		done := make(chan *importv2.Result, 1)
+		go func() {
+			done <- Run(ctx, importv2.Request{Mode: importv2.ModeAllOrNothing}, converter, fx.deps)
+		}()
+
+		// when: suspend once at least one object is committed
+		require.Eventually(t, func() bool {
+			fx.persister.mu.Lock()
+			defer fx.persister.mu.Unlock()
+			return len(fx.persister.persisted) >= 1
+		}, 5*time.Second, 5*time.Millisecond)
+		cancel(importv2.ErrSuspended)
+
+		// then
+		select {
+		case result := <-done:
+			issue := importv2.AsIssue(result.Err, importv2.SeverityFatal, importv2.IssueStoreError)
+			assert.Equal(t, importv2.IssueCancelled, issue.Code)
+			assert.Zero(t, result.Compensated, "suspend must not compensate")
+			assert.Empty(t, fx.deps.Objects.(*deleterFake).deleted, "no created object may be deleted on suspend")
+			assert.False(t, marked, "the compensating state must not be marked on suspend")
+		case <-time.After(5 * time.Second):
+			t.Fatal("run did not stop after suspend")
+		}
+	})
 }
 
 func TestRunMemoryBound(t *testing.T) {
