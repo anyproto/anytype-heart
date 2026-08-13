@@ -433,6 +433,48 @@ func TestRunModes(t *testing.T) {
 		assert.Equal(t, result.Compensated, len(fx.deps.Objects.(*deleterFake).deleted))
 		assert.Empty(t, result.RootCollectionId)
 	})
+
+	t.Run("OnCompensating fires before any deletion, and only on abort", func(t *testing.T) {
+		// given — the durable manifest must say "compensating" BEFORE the
+		// first delete, so a crash mid-cleanup is finished by the sweep
+		// (spec §6.5).
+		fx := newEngineFixture()
+		deleter := fx.deps.Objects.(*deleterFake)
+		var deletedWhenMarked int
+		marked := 0
+		fx.deps.OnCompensating = func() {
+			marked++
+			deleter.mu.Lock()
+			deletedWhenMarked = len(deleter.deleted)
+			deleter.mu.Unlock()
+		}
+		fx.persister.failKeys["bad.md"] = assert.AnError
+		fx.persister.delayKeys = map[string]time.Duration{"bad.md": 100 * time.Millisecond}
+		converter := &scriptConverter{objects: []*importv2.Object{
+			pageObj("a.md", false), pageObj("bad.md", false),
+		}}
+
+		// when
+		result := Run(context.Background(), importv2.Request{Mode: importv2.ModeAllOrNothing}, converter, fx.deps)
+
+		// then
+		require.Error(t, result.Err)
+		assert.Equal(t, 1, marked)
+		assert.Zero(t, deletedWhenMarked, "state must be durable before the first delete")
+
+		// and: a clean run never marks
+		fx = newEngineFixture()
+		fx.deps.OnCompensating = func() { marked += 10 }
+		result = Run(context.Background(), importv2.Request{}, converter2(), fx.deps)
+		require.NoError(t, result.Err)
+		assert.Equal(t, 1, marked)
+	})
+}
+
+// converter2 is a fresh single-object converter (scriptConverter instances
+// are stateless, but per-run construction is the contract).
+func converter2() *scriptConverter {
+	return &scriptConverter{objects: []*importv2.Object{pageObj("ok.md", false)}}
 }
 
 func TestRunCancellation(t *testing.T) {

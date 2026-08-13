@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
 	"path/filepath"
 	"runtime/debug"
 	"sort"
@@ -242,12 +241,6 @@ func (s *service) execute(ctx context.Context, req *pb.RpcObjectImportRequest, p
 		return &importv2.Result{Err: importv2.Fatal(importv2.IssueStoreError, fmt.Errorf("get space: %w", err))}
 	}
 
-	spillDir, err := os.MkdirTemp("", "anytype-import-v2-*")
-	if err != nil {
-		return &importv2.Result{Err: importv2.Fatal(importv2.IssueSourceInvalid, fmt.Errorf("create spill dir: %w", err))}
-	}
-	defer os.RemoveAll(spillDir)
-
 	request := importv2.Request{
 		SpaceID:        req.SpaceId,
 		Origin:         objectorigin.Import(req.Type),
@@ -258,9 +251,9 @@ func (s *service) execute(ctx context.Context, req *pb.RpcObjectImportRequest, p
 	var combined *importv2.Result
 	switch req.Type {
 	case model.Import_Notion:
-		combined = s.executeNotion(ctx, request, req, spc, spillDir, progress)
+		combined = s.executeNotion(ctx, request, req, spc, progress)
 	default:
-		combined = s.executeMarkdown(ctx, request, req, spc, spillDir, progress)
+		combined = s.executeMarkdown(ctx, request, req, spc, progress)
 	}
 	if combined.Err == nil && combined.RootCollectionId != "" {
 		s.createRootWidget(spc.DerivedIDs().Widgets, combined)
@@ -268,7 +261,7 @@ func (s *service) execute(ctx context.Context, req *pb.RpcObjectImportRequest, p
 	return combined
 }
 
-func (s *service) executeMarkdown(ctx context.Context, request importv2.Request, req *pb.RpcObjectImportRequest, spc clientspace.Space, spillDir string, progress process.Progress) *importv2.Result {
+func (s *service) executeMarkdown(ctx context.Context, request importv2.Request, req *pb.RpcObjectImportRequest, spc clientspace.Space, progress process.Progress) *importv2.Result {
 	paths, params, err := markdownParams(req)
 	if err != nil {
 		return &importv2.Result{Err: importv2.Fatal(importv2.IssueSourceInvalid, err)}
@@ -279,8 +272,8 @@ func (s *service) executeMarkdown(ctx context.Context, request importv2.Request,
 	// Multiple paths run as independent sequential engine runs (v1 built one
 	// merged run; parity for multi-path selections is a phase-3 item).
 	combined := &importv2.Result{}
-	for _, importPath := range paths {
-		result := s.runOne(ctx, request, spc, importPath, params, spillDir, progress)
+	for pathIndex, importPath := range paths {
+		result := s.runOne(ctx, request, spc, importPath, pathIndex, params, progress)
 		combined.Created += result.Created
 		combined.Updated += result.Updated
 		combined.Skipped += result.Skipped
@@ -304,10 +297,14 @@ func (s *service) executeMarkdown(ctx context.Context, request importv2.Request,
 	return combined
 }
 
-func (s *service) executeNotion(ctx context.Context, request importv2.Request, req *pb.RpcObjectImportRequest, spc clientspace.Space, spillDir string, progress process.Progress) *importv2.Result {
+func (s *service) executeNotion(ctx context.Context, request importv2.Request, req *pb.RpcObjectImportRequest, spc clientspace.Space, progress process.Progress) *importv2.Result {
 	params := req.GetNotionParams()
 	if params == nil || params.GetApiKey() == "" {
 		return &importv2.Result{Err: importv2.Fatal(importv2.IssueAuthFailed, fmt.Errorf("notion import requires an api key"))}
+	}
+	lc, err := s.beginRun(ctx, request, "Notion", 0)
+	if err != nil {
+		return &importv2.Result{Err: importv2.Fatal(importv2.IssueStoreError, err)}
 	}
 	apiClient := notionclient.NewClient(params.GetApiKey())
 	var opts []notion.Option
@@ -318,8 +315,10 @@ func (s *service) executeNotion(ctx context.Context, request importv2.Request, r
 		}
 	}
 	converter := notion.New(apiClient, notionclient.NewFileFetcher(),
-		&collectionFactory{service: s.collectionService}, spillDir, opts...)
-	return s.runEngine(ctx, request, converter, spc, spillDir, progress)
+		&collectionFactory{service: s.collectionService}, lc.spillDir, opts...)
+	result := s.runEngine(ctx, request, converter, spc, lc, progress)
+	s.finishRun(lc, result)
+	return result
 }
 
 type mdParams struct {
@@ -349,13 +348,17 @@ func markdownParams(req *pb.RpcObjectImportRequest) ([]string, mdParams, error) 
 	}, nil
 }
 
-func (s *service) runOne(ctx context.Context, request importv2.Request, spc clientspace.Space, importPath string, params mdParams, spillDir string, progress process.Progress) *importv2.Result {
+func (s *service) runOne(ctx context.Context, request importv2.Request, spc clientspace.Space, importPath string, pathIndex int, params mdParams, progress process.Progress) *importv2.Result {
 	src, err := source.Open(importPath)
 	if err != nil {
 		return &importv2.Result{Err: importv2.Fatal(importv2.IssueSourceInvalid, fmt.Errorf("open source: %w", err))}
 	}
 	defer src.Close()
 
+	lc, err := s.beginRun(ctx, request, "Markdown", pathIndex)
+	if err != nil {
+		return &importv2.Result{Err: importv2.Fatal(importv2.IssueStoreError, err)}
+	}
 	converter := markdown.New(src, markdown.Params{
 		CreateDirectoryPages:     params.CreateDirectoryPages,
 		IncludePropertiesAsBlock: params.IncludePropertiesAsBlock,
@@ -363,12 +366,17 @@ func (s *service) runOne(ctx context.Context, request importv2.Request, spc clie
 		Planner:                  params.Planner.planner,
 		IncludeContentSamples:    params.Planner.includeSamples,
 	}, &collectionFactory{service: s.collectionService})
-	return s.runEngine(ctx, request, converter, spc, spillDir, progress)
+	result := s.runEngine(ctx, request, converter, spc, lc, progress)
+	s.finishRun(lc, result)
+	return result
 }
 
 // runEngine wires one engine run's per-run components over the app seams.
-func (s *service) runEngine(ctx context.Context, request importv2.Request, converter importv2.Converter, spc clientspace.Space, spillDir string, progress process.Progress) *importv2.Result {
+func (s *service) runEngine(ctx context.Context, request importv2.Request, converter importv2.Converter, spc clientspace.Space, lc *runLifecycle, progress process.Progress) *importv2.Result {
 	journal := persist.NewJournal()
+	if lc.store != nil {
+		journal = persist.NewJournalWithLedger(lc.store)
+	}
 	formats := resolve.NewFormats()
 	keys := engine.NewKeyTable()
 	identitySvc := identity.NewService(spc, s.objectStore.SpaceIndex(request.SpaceID), request.UpdateExisting, time.Now())
@@ -384,7 +392,7 @@ func (s *service) runEngine(ctx context.Context, request importv2.Request, conve
 		persist.NewInstallCoordinator(&installerAdapter{installer: s.installer, space: spc}),
 		journal,
 		&existsChecker{store: s.objectStore.SpaceIndex(request.SpaceID)},
-		spillDir,
+		lc.spillDir,
 	)
 	return engine.Run(ctx, request, converter, engine.Deps{
 		Identity:  identitySvc,
@@ -394,8 +402,9 @@ func (s *service) runEngine(ctx context.Context, request importv2.Request, conve
 		Formats:   formats,
 		Keys:      keys,
 		// The run's root collection carries the import date in its name.
-		Collection: &collectionFactory{service: s.collectionService, addDate: true},
-		Reporter:   &progressReporter{progress: progress},
+		Collection:     &collectionFactory{service: s.collectionService, addDate: true},
+		Reporter:       &progressReporter{progress: progress},
+		OnCompensating: s.onCompensating(lc),
 	})
 }
 

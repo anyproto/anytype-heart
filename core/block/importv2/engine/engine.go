@@ -80,6 +80,11 @@ type Deps struct {
 	// Gauge, when set, tracks in-flight heavy objects (test hook for the
 	// bounded-memory invariant).
 	Gauge func(delta int)
+	// OnCompensating, when set, is invoked once before the first
+	// compensation delete — the adapter persists the run's "compensating"
+	// state there, so a crash mid-cleanup is finished by the startup sweep
+	// (spec §6.5).
+	OnCompensating func()
 }
 
 // Run executes one import. The passed ctx is the run's single cancellation
@@ -512,6 +517,9 @@ func (r *run) emitReport(ctx context.Context, claimed bool, title string) {
 }
 
 func (r *run) compensate() {
+	if r.deps.OnCompensating != nil {
+		r.deps.OnCompensating()
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), compensationTimeout)
 	defer cancel()
 	result := r.deps.Journal.Compensate(ctx, r.deps.Objects)
