@@ -205,7 +205,11 @@ dedicated DB needs none.
   mode: "minted" | "matched" | "derived" | "file",
   status: "claimed" | "persisted" | "failed" | "skipped",
   action: "created" | "updated" | "skipped",   // persist Outcome.Action, set with persisted
-  rank: <int64>,               // emission order; root membership + newest-first compensation
+  rank: <int64>,               // FROZEN; assigned at the row's FIRST write, never changed.
+                               //   Phase A writes rows at effect time, so rank is effect
+                               //   order; phase B's claims write rows first, making it
+                               //   emission order. Root membership + newest-first delete
+                               //   order both read it.
   isRootCandidate: <bool>,
   incarnation: <int> }
 ```
@@ -216,6 +220,12 @@ deliberately no durable "emitted" state: for minted objects, *intent* is already
 claim time (the minted id exists in `entries` before any tree can be created), which closes the
 attribution window that a create-then-journal order leaves open (§3.1b). `failed` is terminal
 across incarnations — resume does not retry failed objects (§6.3).
+
+Effect writes MERGE into the row, never clobber it (review finding, phase A): **minted is
+sticky** — once a row says the run created the object, no later effect (a phase-B
+heal-by-update re-record, say) may downgrade it out of the delete set; deletion supersedes
+update-rollback for an object the run made. A `files` row's **first record wins** entirely: a
+re-recorded file looks pre-existing only because the first upload indexed it.
 
 **`payloads`** — the create-payload store, §4's disk spill; `id = objectId`:
 
@@ -282,11 +292,24 @@ the whole ledger once — 100k rows ≈ 25 MB, sub-second):
   downgrade scenario), log loudly.
 - `schemaVersion` < its own: **resume is refused, compensation is guaranteed**, because the
   compensation-critical subset is version-frozen by policy: the fields
-  `entries.{id, objectId, mode, status, rank}`, `files.{id, objectId, status, preExisting}`
-  and `manifest.{schemaVersion, state, spaceId}` may only ever gain siblings, never change
-  meaning, type or name. Any future version can therefore always run the §6.5 compensation
-  against any older DB. This is what "forward-compat story" concretely means here: we promise
-  cleanup forever, resume only within a version.
+  `entries.{id, objectId, mode, status, rank}`, `files.{id, objectId, status, preExisting,
+  rank}` and `manifest.{schemaVersion, state, spaceId}` may only ever gain siblings, never
+  change meaning, type or name (`files.rank` is frozen too — delete order depends on it). Any
+  future version can therefore always run the §6.5 compensation against any older DB. This is
+  what "forward-compat story" concretely means here: we promise cleanup forever, resume only
+  within a version.
+
+Two rules make the freeze bite in both directions (review hardening):
+
+- **Reader rule — an unrecognized `entries.mode` is DELETABLE.** An older binary reading a
+  newer DB (phase-B `derived` rows, say) must still compensate those objects; only `matched`
+  is exempt from deletion. The flip side is a writer obligation: a future mode that must NOT
+  be deleted cannot ride an old schemaVersion — it bumps it.
+- **The pin is a test, both halves.** A committed v1 fixture is checked raw (presence + anyenc
+  type of every frozen field), and so is a store freshly written by the current writer —
+  because the black-box reader consumes only a subset of the frozen fields, a rename of
+  `entries.status` passed the entire suite until this pin existed (confirmed by review).
+  Fixture regeneration refuses to overwrite an existing fixture dir.
 
 ## 5. The write path — and each invariant it must preserve
 
@@ -336,6 +359,13 @@ run re-uploads the same bytes and receives the same object id (dedup inside
 `UploadFile`/`CreateFromImport`, ImportV2Design.md:272-274), after which the ledger owns it.
 Only the crash-then-*discard* path can leak that one file, and the design keeps the codebase's
 explicit bias — leak, never delete user data (`persist.go:59-63`, `journal.go:73-76`).
+
+**Effect writes never ride the run context** (P0 review finding, confirmed by execution: 20/20
+ledger writes failed on a cancelled ctx). The effect has already happened in the user's space,
+and the run context dies exactly at shutdown — which is exactly when the record matters most,
+because the next start's sweep compensates *from the ledger*. The journal's record methods
+therefore take no caller context at all; every ledger write runs detached, bounded by a 10 s
+timeout (measured cost is sub-millisecond, §8).
 
 Updated objects: `entries.action = "updated"` replaces `journal.UpdatedObject`
 (`persist.go:261`); they remain uncompensated by decision §13.3 (ImportV2Design.md:765-768) and
@@ -415,30 +445,45 @@ source size and are the same bytes the run spills today, relocated.
 
 ### 6.1 Startup sweep
 
-Runs in the adapter's `Run()` (component start), in a background goroutine gated by the same
-`componentCtx` the runs use (`adapter.go:106`). For each `<repo>/importv2/runs/<dir>`:
+Runs in the adapter's `Run()` (component start), in a background goroutine joined into the
+run waitgroup (Close waits for it) and gated by the same `componentCtx` the runs use
+(`adapter.go:106`) — checked between dirs, so an account stop mid-sweep stops the walk
+instead of deleting through a closing service. For each `<repo>/importv2/runs/<dir>`:
 
 ```
-open run.db                    → on corruption (anystorehelper.IsCorruptedError):
-                                 report DB_CORRUPTION (provider.go:222-229 idiom),
-                                 delete dir, emit a "import state lost, N objects may
-                                 be orphaned" notification. Leak, documented. (§7.2)
+dir held open by a live Store  → SKIP (active-run guard, below)
+open run.db                    → on corruption: delete dir, loud "objects may be
+                                 orphaned" log. Leak, documented. (§7.2)
+                                 Corruption is classified NARROWLY: anystore's
+                                 quick-check/version sentinels + the go-sqlite fork's
+                                 CORRUPT/NOTADB codes. CANTOPEN is deliberately NOT
+                                 corruption (EACCES, fd exhaustion, disk-full — an
+                                 intact ledger must survive a permission hiccup);
+                                 an unreadable db → SKIP, retry next start
+open ok, no manifest doc       → delete dir (creation crashed before the first write:
+                                 nothing recorded ⇒ nothing done)
 read manifest
   schemaVersion > ours         → skip (log)                                  (§4.4)
   state completed | failed     → delete dir            (crash between finish & cleanup)
   state cancelling
-      | compensating           → run compensation from ledger, notify result, delete dir
+      | compensating           → run compensation from ledger; delete dir only if
+                                 nothing leaked — a partial compensation keeps the dir
+                                 (state stays compensating) so the next start retries:
+                                 compensation is idempotent, retry is free, and
+                                 dropping the dir would make the leak permanent
   state running | suspended    →
-      resumeAttempts ≥ 3       → compensate, notify failed(resume attempts exhausted),
-                                 delete dir            (crash-loop backstop; the panic
-                                                        firewall makes loops unlikely,
-                                                        engine.go:88-114 — this is the cap
-                                                        behind it)
-      space missing/deleted    → delete dir            (nothing to compensate into)
-      source unavailable       → compensate, notify failed(source gone)      (OQ4)
-      else                     → resume (§6.2), incarnation++, resumeAttempts++
-                                 (reset resumeAttempts to 0 on clean suspend)
+      resumeAttempts ≥ 3       → compensate, fail                            (phase B)
+      space missing/deleted    → delete dir (nothing to compensate into; only a
+                                 DEFINITIVE not-exists/deleted/storage-missing answer
+                                 counts — any other probe error skips the dir)
+      source unavailable       → compensate, fail                            (OQ4, phase B)
+      else                     → resume (§6.2)          (phase B; phase A compensates,
+                                                         same branch as cancelling)
 ```
+
+Phase A reports each settled run as one structured log line on the import-v2 scope; a
+user-facing notification is deliberately deferred to phase D — no existing wire code means
+"cleaned up after a crash", and inventing one is client-facing surface.
 
 `state == "running"` at sweep time **is** the crash detector: a live process moves its runs
 through `suspended`/`cancelling`/terminal before exiting; only a dead one leaves `running`
@@ -446,11 +491,15 @@ behind. `state == "cancelling"` is the durable record that *the user said stop* 
 before compensation starts (§6.5) — which is exactly the crash-vs-cancel distinction the
 drivers demand: a cancelled run is never resumed, only finished being cleaned up.
 
-Exclusivity: one heart process per repo dir is already the platform invariant (the account
-store locks enforce it); within the process, the adapter keeps a `runId → active` registry so
-the sweep never touches a run it just started. Run DBs are self-describing (manifest embeds the
-request), so enumeration/inspection needs no session — a future `ImportRunList` RPC is a
-read-only walk over manifests (server operators' observability; noted, not designed here).
+**The active-run guard is a process-global dir registry in runstore** (marked on open,
+released on Close/Drop), not a per-component map: the confirmed hazard is a same-process
+account stop/start where Close's 30 s grace gave up on a run still finishing while the NEW
+component instance sweeps — and the db's `.lock` is a dirty *sentinel*, not a mutex, so a
+second Open of a live run's db succeeds and Drop would unlink the dir under the live writer
+(whose subsequent writes keep succeeding, into an unlinked file). Cross-process exclusivity
+remains the platform invariant (one heart per repo dir). Run DBs are self-describing, so
+enumeration/inspection needs no session — a future `ImportRunList` RPC is a read-only walk
+over manifests (server operators' observability; noted, not designed here).
 
 ### 6.2 Resume — what is rebuilt, what is replayed, what is skipped
 
@@ -547,11 +596,21 @@ compensation (§1). New behavior when a run has a `RunStore`:
    incarnation. Critically, suspension must not *bake in* degradation: a resolver file-wait
    interrupted by suspend already returns an error rather than the missing-marker
    (`resolver.go:78-82` — the degrade branch fires only when ctx is alive), and the engine's
-   completion path checks the cause: persist failures wrapping `context.Canceled` under
-   `errSuspend` are recorded as *nothing* (entry stays non-terminal, no `failed` count, no
-   issue, no abort) instead of today's failed-object accounting (`engine.go:339-345`).
+   completion path treats a persist interrupted by cancellation as **`skipped`** — not
+   `failed`, not an issue (as-built; amended from this spec's original "recorded as nothing":
+   the run-level counter is the honest place for "stopped before done", and phase B keys
+   resume off the durable entry status, which stays non-terminal, not off in-memory
+   counters). The abort itself is accounted exactly once, by the run's fatal cancellation.
+   One carve-out: a *fatal* issue that merely wraps a context error (a durable-journal write
+   timing out during shutdown) is never absorbed as skipped — it aborts loudly.
 3. Mark manifest `suspended`, `db.Flush(ctx, 0, CheckpointPassive)`, close the DB. No
    compensation, no notification.
+
+The engine is the single owner of the suspend verdict, carried out as `Result.Suspended` (set
+iff it skipped compensation for the suspend cause). The adapter must consume that, never
+re-derive it from a context: a cancel cause is one-shot, so an inner abort followed by a Close
+reads differently from the engine's inner runCtx and the adapter's outer one (confirmed
+disagreement — a backwards `compensating → suspended` manifest transition).
 
 The 30 s grace now bounds only drain + flush — sufficient, unlike today where it races a 5 min
 compensation budget (§1). The sweep resumes suspended runs on next start; on a server that
@@ -561,13 +620,23 @@ same mechanics on app quit for free (OQ1 covers the UX question of when to auto-
 ### 6.5 Cancel — user intent, made durable
 
 `ProcessCancel` keeps today's semantics: cancel → fatal `IssueCancelled` → compensation
-(`engine.go:565-570, 514-539`). Two durable additions: the engine writes `state: "cancelling"`
-*before* compensation begins and `"failed"` (terminal, with `compensated`/`leaked` counts)
-after — so a crash mid-cleanup is finished by the sweep, idempotently (§5.4's not-found-is-
-success rule exists for exactly this). The run dir is deleted after the result is delivered.
-The suspend cause and the cancel path share the single runCtx; `context.Cause` is the one
-switch. "User said stop" is thus never confused with "process died" on restart: the former is
-on disk as `cancelling`/`failed` before the process can die uncleanly with it.
+(`engine.go:565-570, 514-539`). Two durable additions: the engine marks the run
+**`compensating`** *before* the first delete (as built, via the `OnCompensating` hook — the
+state is named for what is happening, since any abort compensates, not only cancel;
+`cancelling` stays reserved for phase B's adapter-side cancel-intent record) and `"failed"`
+(terminal, with `compensated`/`leaked` counts) after — so a crash mid-cleanup is finished by
+the sweep, idempotently (§5.4's not-found-is-success rule exists for exactly this). The run
+dir is disposed by `finishRun` *before* the result is delivered (§7.1). "User said stop" is
+thus never confused with "process died" on restart: the former is on disk as
+`compensating`/`failed` before the process can die uncleanly with it.
+
+One user-cancel subtlety the review confirmed the hard way: with lanes holding `2C+K = 40`
+objects, a small import is *fully buffered* when cancel fires — the converter has already
+returned cleanly and cannot report the cancellation, and interrupted persists are accounted
+skipped. The engine therefore reports the cancelled fatal itself whenever the run context is
+dead and no fatal exists (`engine.go`, post-stream guard); without that, a ≤40-object import
+cancelled mid-flight finalized as a silent SUCCESS with zero compensation (wire `ErrorCode`
+NULL — confirmed by differential run).
 
 ## 7. Lifecycle and GC
 
@@ -575,29 +644,48 @@ on disk as `cancelling`/`failed` before the process can die uncleanly with it.
 
 Created by the adapter immediately before the engine run (manifest written `running` first,
 engine started second — an empty-but-manifested dir is sweepable garbage, an un-manifested dir
-is deleted on sight). On success: manifest → `completed`, notification/event delivered
-(`adapter.go:169-186`), then `db.Close()` + `os.RemoveAll(runDir)`. The DB lives exactly as
-long as its run — the cheap-disposal constraint honored end to end. Nothing accumulates: the
-steady-state content of `<repo>/importv2/runs/` is the currently-running imports.
+is deleted on sight). On success: manifest → `completed`, then `db.Close()` +
+`os.RemoveAll(runDir)`, and only then is the notification/event delivered
+(`adapter.go:169-186`) — as built, `finishRun` runs inside the per-run executor, before the
+request-level delivery. Disposed-before-delivered is fine in phase A (the result is complete
+in memory) but is worth stating for phase B, where anything the delivery might want from the
+store must be extracted into the Result first. The DB lives exactly as long as its run — the
+cheap-disposal constraint honored end to end.
 
 ### 7.2 Abnormal cases
 
-- **Corrupted run DB** (sweep or mid-run): report, delete dir, notify possible orphans. The
-  frozen core (§4.4) protects against *version* skew, nothing protects against lost bytes; the
-  bias stays leak-over-delete.
-- **Mid-run ledger write failure** (disk full, IO error): the write-through calls surface
-  errors into the persist path → `IssueStoreError`, normal abort predicate applies. A run that
-  cannot journal must not keep creating objects — that is the point of the journal.
-- **Runs that can never resume**: covered by the sweep table (§6.1) — space gone, source gone,
-  attempts exhausted, schema too old (compensate-only). Every branch ends in "dir deleted",
-  so there is no fourth state where dirs pile up.
+- **Corrupted run DB** (sweep or mid-run): report, delete dir, log possible orphans loudly.
+  The frozen core (§4.4) protects against *version* skew, nothing protects against lost
+  bytes; the bias stays leak-over-delete. Corruption classification is narrow on purpose —
+  CANTOPEN is not corruption (§6.1).
+- **Mid-run ledger write failure** (disk full, IO error): the write-through calls surface a
+  **fatal** `IssueStoreError` — the run aborts regardless of mode, IGNORE_ERRORS included
+  (amended from "normal abort predicate applies": a run that cannot journal must not keep
+  creating objects, and continue-on-error would do exactly that). The in-memory record is
+  kept even when the durable write failed, so in-process compensation still covers the effect
+  that just happened.
+- **Runs that can never resume**: covered by the sweep table (§6.1) — space gone, source
+  gone, attempts exhausted, schema too old (compensate-only).
+- **Dirs CAN pile up** (retraction — this section originally claimed "no fourth state where
+  dirs pile up"): the skip branches (unreadable db, transient space error, newer schema,
+  active run) and the partial-compensation keep are all deliberate keeps, and a condition
+  that never heals accumulates them. Bounding this needs a `sweepAttempts` counter on the
+  manifest plus an age bound (e.g. give up and delete-with-loud-leak-log after N failed
+  sweeps or M days) — **designed here, deliberately not built in phase A**: every keep today
+  is retryable and self-heals on the next start in the common case, and choosing N/M is a
+  product call (OQ8).
+- **The 5-minute compensation budget is inert** (pre-existing, noted for honesty):
+  `ObjectAccess.DeleteObject` takes no context, so `compensationTimeout` bounds nothing
+  inside the delete loop. Making it real means threading ctx through the delete seam —
+  phase B at the earliest.
 
 ### 7.3 Compatibility
 
 `schemaVersion` bumps only for incompatible changes; additive fields don't bump (anyenc docs
 tolerate unknown fields; `unmarshalOrSkip` tolerates bad rows, `storage.go:54-67`). The frozen
-core contract (§4.4) is pinned by a test: a fixture DB checked in at v1 must forever pass
-`runstore.CompensationView(db)`.
+core contract (§4.4) is pinned by tests: a fixture DB checked in at v1 must forever pass
+`runstore.CompensationInputs`, and the raw-field pin (§4.4) holds both the fixture and the
+current writer to the frozen field set.
 
 ## 8. Performance
 
@@ -710,8 +798,14 @@ leak-biased).
   suspend-on-close with cause; startup sweep limited to the compensate/finish branches
   (`running`/`suspended` runs are *compensated* in this phase — resume lands in B, and until
   then suspend still beats today's cancel-compensate-race). Microbench gate (§8) — **run and
-  passed** (3% overhead against a 10% threshold), so this phase is clear to start. Ships value
-  alone: no more unattributable orphans, no more redeploy-races-compensation.
+  passed** (3% overhead against a 10% threshold). **Built and review-hardened** (2026-08-13,
+  three-way review): detached effect writes (§5.3), the engine-owned cancel fatal and suspend
+  verdict (§6.4-§6.5), narrow corruption classification and the active-run guard (§6.1),
+  merge-not-clobber effect rows (§4.2), and the frozen-field raw pin (§4.4). One honest
+  bound: phase A **narrows** the unattributable-orphan window to one object per crash — the
+  journal still records *after* the effect (`persist.go:214-220`-era ordering), and only
+  phase B's claims-as-intent closes it. Ships value alone: no more journal-lost-on-crash, no
+  more redeploy-races-compensation.
 - **Phase B — identity ledger + resume for markdown (driver 2 mechanics).** Payloads/derived
   collections, `NewServiceFromLedger`, sink backstop dedup, stale-claim rule, ErrTreeExists
   heal-by-update, counters/issues rehydration, sweep resume branch with attempt cap.
@@ -759,6 +853,13 @@ leak-biased).
   flows into Close → suspend (fine), but a *different* account logging in must not resume
   another account's runs — run dirs live under the per-account repo path, so isolation should
   hold by construction; needs a test, not a design change.
-- **OQ7 — `Deps.Journal` API shape.** §5.1 extends the journal seam methods with `sourceKey`.
-  An alternative is keying the effect API by sourceKey alone and resolving objectId inside the
-  store. Cosmetic; decide at phase-A review.
+- **OQ7 — `Deps.Journal` API shape.** RESOLVED at phase-A implementation: the journal stays a
+  concrete `*persist.Journal`; the seam is the narrow `persist.EffectLedger` write-through
+  interface implemented structurally by `runstore.Store`; record methods carry `sourceKey`,
+  return an error, and (P0 amendment) take no caller context — writes run detached (§5.3).
+- **OQ8 — bounding run-dir accumulation.** The sweep's deliberate keeps (unreadable db,
+  transient space error, newer schema, active run, partial compensation) can accumulate under
+  a condition that never heals (§7.2). The design is a manifest `sweepAttempts` counter plus
+  an age bound — give up and delete with a loud leaked-objects log after N failed sweeps or
+  M days. Choosing N/M (and whether give-up should notify) is a product call; not built in
+  phase A.
