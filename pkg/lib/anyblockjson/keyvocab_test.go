@@ -317,3 +317,63 @@ func TestBuildRecommendedListsInvertsItsKeySlots(t *testing.T) {
 	assert.Equal(t, "recommendedFeaturedRelations", lists[0].DetailKey)
 	assert.Equal(t, []string{"dueDate"}, lists[0].Ids)
 }
+
+// TestImportRefusesTwoSpellingsOfOneStoredKey is the ACCEPT-half mirror of
+// the export collapse guard above. `build()` ranged doc.Properties, so when
+// two spellings canonicalized onto one stored key the last writer won — over
+// a Go map. Same request, different stored object, run to run (48 identical
+// POSTs: iconEmoji A:6 / B:42). The refusal belongs in the codec because the
+// API layer's canonicalizeDocumentKeys — which refuses first, and better —
+// is skipped by the type-create channel and by every direct package caller
+// (cmd/anyblockroundtrip, cmd/anyblockrecover, cmd/internal/anyblockbatch).
+// Revert either the sort or the boundBy branch and this fails (the sort one
+// intermittently, which is the point of the 32 iterations).
+func TestImportRefusesTwoSpellingsOfOneStoredKey(t *testing.T) {
+	t.Run("the exact POST /types repro: icon_emoji beside iconEmoji", func(t *testing.T) {
+		// given — a stored key the bundled table resolves elsewhere:
+		// `icon_emoji` inverts to `iconEmoji`, which is also a literal
+		// stored key, so both spellings land on one detail
+		doc := `{"version": 1, "kind": "objectType", "id": "t1", "key": "k",
+			"properties": {"name": "T", "icon_emoji": "A", "iconEmoji": "B"}}`
+
+		for i := 0; i < 32; i++ {
+			// when
+			_, _, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
+
+			// then
+			require.Error(t, err, "a collapse must never be resolved by map order")
+			var ve *ValidationError
+			require.ErrorAs(t, err, &ve)
+			require.Len(t, ve.Issues, 1)
+			assert.Equal(t, "/properties/icon_emoji", ve.Issues[0].Path, "the same path on every run")
+			assert.Contains(t, ve.Issues[0].Message, `"iconEmoji" and "icon_emoji" both address property "iconEmoji"`)
+		}
+	})
+
+	t.Run("a stored slug over a BSON key collapses the same way", func(t *testing.T) {
+		// given — the shape every space has after the apiObjectKey backfill:
+		// a BSON stored key addressed by a stored slug. Naming both spellings
+		// in one document addresses one property twice.
+		const bsonKey = "68b1c0aa4e1f0d0011223344"
+		vocab := collapsingVocab{a: bsonKey, slug: "severity"}
+		doc := `{"version": 1, "id": "o1", "properties": {"severity": "high", "` + bsonKey + `": "low"}}`
+
+		// when
+		_, _, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g"), Keys: vocab})
+
+		// then
+		var ve *ValidationError
+		require.ErrorAs(t, err, &ve)
+		require.Len(t, ve.Issues, 1)
+		assert.Equal(t, "/properties/severity", ve.Issues[0].Path)
+		assert.Contains(t, ve.Issues[0].Message, `"`+bsonKey+`" and "severity"`)
+	})
+
+	t.Run("distinct keys are untouched", func(t *testing.T) {
+		doc := `{"version": 1, "id": "o1", "properties": {"name": "T", "icon_emoji": "A", "due_date": "2025-07-06T08:44:05Z"}}`
+		_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
+		require.NoError(t, err)
+		assert.Contains(t, snap.Details.Fields, "iconEmoji")
+		assert.Contains(t, snap.Details.Fields, "dueDate")
+	})
+}

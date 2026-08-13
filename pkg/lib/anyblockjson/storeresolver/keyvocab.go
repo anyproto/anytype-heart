@@ -37,7 +37,11 @@ type keyMaps struct {
 	slugByKey  map[string]string
 	keyBySlug  map[string]string
 	storedKey  map[string]bool
+	keysByFold map[string][]string // chain step 4 — see fold
 	bundledKey func(slug string) (string, bool)
+	// bundledFold is that namespace's bundled fold table (chain step 4's
+	// bundled arm), as stored-key strings.
+	bundledFold func(input string) []string
 }
 
 func newKeyMaps(bundledKey func(string) (string, bool)) *keyMaps {
@@ -45,6 +49,7 @@ func newKeyMaps(bundledKey func(string) (string, bool)) *keyMaps {
 		slugByKey:  map[string]string{},
 		keyBySlug:  map[string]string{},
 		storedKey:  map[string]bool{},
+		keysByFold: map[string][]string{},
 		bundledKey: bundledKey,
 	}
 }
@@ -55,14 +60,30 @@ func newKeyMaps(bundledKey func(string) (string, bool)) *keyMaps {
 // Clearing only the reverse map left the first holder still EXPORTING a slug
 // that import then refused to invert — a document naming an address the
 // server itself rejects.
-func (m *keyMaps) add(key, slug string) {
+//
+// A HIDDEN entity keeps its stored key (chain step 1 — the stored key is
+// always an address, and roundTrips must still refuse to emit a spelling it
+// owns) but does NOT enter the slug namespace, exactly as v2's request
+// namespace has it (core/api/v2/service/keys.go, propertyEntry.Hidden). The
+// rule has to be the same in both builders or the two disagree on one
+// spelling: a hidden twin used to erase a VISIBLE holder's slug from
+// keyBySlug, so a listing advertised `severity` while a POST naming it stored
+// `severity` verbatim as a relation key no relation object owns; and a hidden
+// squatter holding `due_date` used to win the reverse lookup outright, so the
+// bundled property's own slug resolved to the squatter.
+func (m *keyMaps) add(key, slug string, hidden bool) {
 	if key == "" {
 		return
 	}
 	m.storedKey[key] = true
+	if hidden {
+		return
+	}
+	m.addFold(bundle.FoldApiKey(key), key)
 	if slug == "" || slug == key {
 		return
 	}
+	m.addFold(bundle.FoldApiKey(slug), key)
 	if first, taken := m.keyBySlug[slug]; taken {
 		m.keyBySlug[slug] = "" // twin slugs: neither wins
 		delete(m.slugByKey, first)
@@ -113,6 +134,47 @@ func (m *keyMaps) key(slug string) (string, bool) {
 	return k, ok && k != ""
 }
 
+func (m *keyMaps) addFold(fold, key string) {
+	for _, existing := range m.keysByFold[fold] {
+		if existing == key {
+			return
+		}
+	}
+	m.keysByFold[fold] = append(m.keysByFold[fold], key)
+}
+
+// fold is chain step 4, the forgiving layer (§7.5a-3): every exact lookup has
+// already failed, so a SINGLE key whose stored key or stored slug folds to the
+// input's fold is the intended forgiveness, and several are an ambiguity that
+// degrades to the verbatim term — never a guess.
+//
+// The accept half had no step 4 at all, while the v2 ROUTE layer did: a
+// dataview or a properties map naming `Severity` or `sever_ity` stored the
+// term verbatim as a column key, 200 OK, though both fold to the live
+// property that the very same request would have found through /properties.
+// Only updateView was covered (canonicalViewKey). Hidden holders do not
+// participate, as at every other step.
+func (m *keyMaps) fold(input string) (string, bool) {
+	stored := m.keysByFold[bundle.FoldApiKey(input)]
+	candidates := append(make([]string, 0, len(stored)+1), stored...)
+	if m.bundledFold != nil {
+		seen := make(map[string]bool, len(candidates))
+		for _, c := range candidates {
+			seen[c] = true
+		}
+		for _, key := range m.bundledFold(input) {
+			if !seen[key] {
+				seen[key] = true
+				candidates = append(candidates, key)
+			}
+		}
+	}
+	if len(candidates) == 1 {
+		return candidates[0], true
+	}
+	return "", false
+}
+
 func (r *Resolvers) relationKeyMaps() *keyMaps {
 	if r.relVocab == nil {
 		r.relVocab = r.loadKeyMaps(model.ObjectType_relation, func(d *domain.Details) string {
@@ -120,6 +182,13 @@ func (r *Resolvers) relationKeyMaps() *keyMaps {
 		}, func(slug string) (string, bool) {
 			key, ok := bundle.RelationKeyByApiSlug(slug)
 			return string(key), ok
+		}, func(input string) []string {
+			keys := bundle.RelationKeysByApiFold(input)
+			out := make([]string, len(keys))
+			for i, key := range keys {
+				out[i] = string(key)
+			}
+			return out
 		})
 	}
 	return r.relVocab
@@ -136,6 +205,13 @@ func (r *Resolvers) typeKeyMaps() *keyMaps {
 		}, func(slug string) (string, bool) {
 			key, ok := bundle.TypeKeyByApiSlug(slug)
 			return string(key), ok
+		}, func(input string) []string {
+			keys := bundle.TypeKeysByApiFold(input)
+			out := make([]string, len(keys))
+			for i, key := range keys {
+				out[i] = string(key)
+			}
+			return out
 		})
 	}
 	return r.typeVocab
@@ -146,8 +222,9 @@ func (r *Resolvers) typeKeyMaps() *keyMaps {
 // table, which is the offline-safe answer — never a stale or half-built map,
 // which would resolve a write against the wrong property (the exact
 // silent-failure class §7.5a-2 forbids a cache from ever producing).
-func (r *Resolvers) loadKeyMaps(layout model.ObjectTypeLayout, keyOf func(*domain.Details) string, bundledKey func(string) (string, bool)) *keyMaps {
+func (r *Resolvers) loadKeyMaps(layout model.ObjectTypeLayout, keyOf func(*domain.Details) string, bundledKey func(string) (string, bool), bundledFold func(string) []string) *keyMaps {
 	maps := newKeyMaps(bundledKey)
+	maps.bundledFold = bundledFold
 	records, err := r.index.Query(database.Query{Filters: []database.FilterRequest{
 		{
 			RelationKey: bundle.RelationKeyResolvedLayout,
@@ -166,7 +243,9 @@ func (r *Resolvers) loadKeyMaps(layout model.ObjectTypeLayout, keyOf func(*domai
 		return maps
 	}
 	for _, record := range records {
-		maps.add(keyOf(record.Details), record.Details.GetString(bundle.RelationKeyApiObjectKey))
+		maps.add(keyOf(record.Details),
+			record.Details.GetString(bundle.RelationKeyApiObjectKey),
+			record.Details.GetBool(bundle.RelationKeyIsHidden))
 	}
 	return maps
 }
@@ -195,13 +274,20 @@ func (r *Resolvers) PropertySlug(key string) string {
 }
 
 func (r *Resolvers) PropertyKey(slug string) (string, bool) {
-	if key, ok := r.relationKeyMaps().key(slug); ok {
+	maps := r.relationKeyMaps()
+	if key, ok := maps.key(slug); ok {
 		return key, true
 	}
-	if r.relationKeyMaps().storedKey[slug] {
+	if maps.storedKey[slug] {
 		return slug, false // chain step 1 — do not consult the bundled table
 	}
-	return anyblockjson.BundledKeyVocabulary{}.PropertyKey(slug)
+	if key, ok := (anyblockjson.BundledKeyVocabulary{}).PropertyKey(slug); ok {
+		return key, true
+	}
+	if key, ok := maps.fold(slug); ok {
+		return key, true
+	}
+	return slug, false
 }
 
 // TypeSlug is PropertySlug for the type namespace.
@@ -218,11 +304,18 @@ func (r *Resolvers) TypeSlug(key string) string {
 }
 
 func (r *Resolvers) TypeKey(slug string) (string, bool) {
-	if key, ok := r.typeKeyMaps().key(slug); ok {
+	maps := r.typeKeyMaps()
+	if key, ok := maps.key(slug); ok {
 		return key, true
 	}
-	if r.typeKeyMaps().storedKey[slug] {
+	if maps.storedKey[slug] {
 		return slug, false
 	}
-	return anyblockjson.BundledKeyVocabulary{}.TypeKey(slug)
+	if key, ok := (anyblockjson.BundledKeyVocabulary{}).TypeKey(slug); ok {
+		return key, true
+	}
+	if key, ok := maps.fold(slug); ok {
+		return key, true
+	}
+	return slug, false
 }

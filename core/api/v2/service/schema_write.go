@@ -240,6 +240,10 @@ func (s *V2Service) CreateType(ctx context.Context, spaceId string, body []byte,
 		return nil, fmt.Errorf("create type in space %s: %s", spaceId, resp.Error.Description)
 	}
 	result.Id = resp.ObjectId
+	// the same read-back as CreateProperty: the mint may have suffixed or
+	// dropped the slug v2 proposed, and the key a 201 returns must be one the
+	// key routes accept
+	result.Key = storedApiKeyOf(resp.Details, result.Key)
 	if result.Key == "" && resp.Details != nil {
 		if uk := pbtypes.GetString(resp.Details, bundle.RelationKeyUniqueKey.String()); uk != "" {
 			if key, err := domain.GetTypeKeyFromRawUniqueKey(uk); err == nil {
@@ -279,6 +283,20 @@ func ensureRegularRecommendedList(details *types.Struct, resolvers *creatingReso
 	if len(ids) > 0 {
 		details.Fields[key] = pbtypes.StringList(ids)
 	}
+}
+
+// storedApiKeyOf reads the apiObjectKey the MINT actually stored out of a
+// create response's details, falling back to the proposal when the response
+// carries no details at all (nothing to read back from — the proposal is then
+// the best available answer). An empty stored slug is authoritative and
+// returns "": it means the mint found no free spelling and the internal key
+// is the only address, which the caller must be told rather than handed a
+// key that resolves to nothing.
+func storedApiKeyOf(details *types.Struct, proposed string) string {
+	if details == nil {
+		return proposed
+	}
+	return pbtypes.GetString(details, bundle.RelationKeyApiObjectKey.String())
 }
 
 // typeDetailsForbiddenKeys are identity- and permission-bearing details a
@@ -445,11 +463,22 @@ func (s *V2Service) UpdateType(ctx context.Context, spaceId, typeKey string, bod
 	}
 
 	var detailUpdates []*model.Detail
+	// two spellings of one key in one body: sortedKeys makes the winner
+	// deterministic, which is not the same as correct — the caller asked for
+	// two values on one detail and one of them is being dropped. Refuse, as
+	// canonicalizeDocumentKeys does on the object channel.
+	spelledBy := map[string]string{}
 	for _, raw := range sortedKeys(patch.Properties) {
 		// this channel does not go through canonicalizeDocumentKeys, so it
 		// translates its own: the served schema advertises slugs (§7.5a) and
 		// the keys below are stored spellings
 		key := storedDetailKey(raw)
+		if first, dup := spelledBy[key]; dup {
+			return nil, v2model.ValidationFailed("duplicate property key",
+				v2model.Issue{Path: "/properties/" + raw,
+					Message: fmt.Sprintf("%q and %q both address %q — keep one", first, raw, key)})
+		}
+		spelledBy[key] = raw
 		if !updatableTypeDetailKeys[key] {
 			return nil, v2model.ValidationFailed("property not updatable on a type",
 				v2model.Issue{Path: "/properties/" + raw, Message: fmt.Sprintf("cannot update %q", raw), Hint: "updatable: name, description, icon_emoji, recommended_layout"})
@@ -665,7 +694,16 @@ func (s *V2Service) CreateProperty(ctx context.Context, spaceId string, req v2mo
 		return nil, fmt.Errorf("create property in space %s: %s", spaceId, resp.Error.Description)
 	}
 	result.Id = resp.ObjectId
-	if slug == "" {
+	// The MINT owns the final slug, not the proposal above. Its namespace and
+	// v2's pre-check are deliberately not the same set — the mint counts
+	// hidden holders, v2's request namespace excludes them (§7.5a /
+	// propertyEntry.Hidden) — so a slug that was free here can be suffixed
+	// there, and a walk that ran out gives up and stores nothing at all.
+	// Returning the proposal handed the caller a 201 {"key": "manual_property"}
+	// whose very next GET .../properties/manual_property 404'd. Read back what
+	// was STORED.
+	result.Key = storedApiKeyOf(resp.Details, result.Key)
+	if result.Key == "" {
 		result.Key = resp.Key // no derivable slug: the minted BSON is the only address
 	}
 	publicKey := result.Key

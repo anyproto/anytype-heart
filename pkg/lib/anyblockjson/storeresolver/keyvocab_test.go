@@ -121,8 +121,8 @@ func TestPropertyKeyVocabulary(t *testing.T) {
 		m := newKeyMaps(nil)
 
 		// when
-		m.add(bsonPropKey, "manual_property")
-		m.add(bsonTwinKey, "manual_property")
+		m.add(bsonPropKey, "manual_property", false)
+		m.add(bsonTwinKey, "manual_property", false)
 
 		// then
 		assert.Equal(t, "", m.keyBySlug["manual_property"], "neither holder wins the reverse direction")
@@ -288,4 +288,174 @@ func TestKeyVocabularyWiring(t *testing.T) {
 	opts := r.Options()
 
 	assert.Equal(t, r, opts.Keys)
+}
+
+// hiddenRelationRow is a relation the app hides from the user: invisible in
+// every listing, and — this is what makes it dangerous as a slug holder —
+// undeletable through the API. Whatever slug it occupies is occupied forever
+// with no visible cause.
+func hiddenRelationRow(id, key, slug string) spaceindex.TestObject {
+	row := relationRow(id, key, slug)
+	row[bundle.RelationKeyIsHidden] = domain.Bool(true)
+	return row
+}
+
+// TestHiddenHoldersDoNotOwnSlugs is the one-place-for-one-rule test. The
+// hidden-holder exclusion was implemented only in v2's request namespace
+// (core/api/v2/service/keys.go), and this vocabulary — which decides what a
+// DOCUMENT's keys bind to — still counted them. The two builders disagreeing
+// on one spelling is the whole defect: the listing serves an address the
+// write half resolves elsewhere, or nowhere.
+func TestHiddenHoldersDoNotOwnSlugs(t *testing.T) {
+	t.Run("a hidden twin does not erase a visible holder's slug", func(t *testing.T) {
+		// given — the dangling-key shape: a visible relation and a hidden one
+		// both slugged `severity`. GET /properties advertises `severity` (v2
+		// already excludes the hidden holder); before this, keyBySlug dropped
+		// BOTH, so a POST naming `severity` stored `severity` verbatim as a
+		// relationLink key no relation object owns. 200 OK, no warning.
+		r := vocabFixture(t,
+			relationRow("rel-visible", bsonPropKey, "severity"),
+			hiddenRelationRow("rel-hidden", bsonTwinKey, "severity"),
+		)
+
+		// when
+		key, ok := r.PropertyKey("severity")
+
+		// then
+		require.True(t, ok, "the visible holder owns the slug alone")
+		assert.Equal(t, bsonPropKey, key)
+		assert.Equal(t, "severity", r.PropertySlug(bsonPropKey), "and the listing's spelling is emitted")
+	})
+
+	t.Run("a hidden squatter does not win a bundled property's own slug", func(t *testing.T) {
+		// given — the wrong-property shape: installed bundled dueDate plus a
+		// hidden squatter holding `due_date`. The listing serves `due_date`
+		// for the bundled one and the chain resolves it to bundled dueDate,
+		// so this vocabulary resolving it to the SQUATTER wrote the value
+		// onto an invisible relation.
+		r := vocabFixture(t,
+			relationRow("rel-due", "dueDate", ""),
+			hiddenRelationRow("rel-squatter", bsonPropKey, "due_date"),
+		)
+
+		// when
+		key, ok := r.PropertyKey("due_date")
+
+		// then
+		require.True(t, ok)
+		assert.Equal(t, "dueDate", key, "the bundled property, not the invisible squatter")
+		assert.Equal(t, "due_date", r.PropertySlug("dueDate"),
+			"and the emit side agrees, so the document round-trips")
+	})
+
+	t.Run("a hidden entity keeps its stored key as an address", func(t *testing.T) {
+		// chain step 1 is not a namespace question: the stored key is always
+		// an address, and the emit side must still refuse to spell someone
+		// else's value with it
+		r := vocabFixture(t,
+			hiddenRelationRow("rel-hidden", "hidden_key", "hidden_slug"),
+			relationRow("rel-other", bsonPropKey, "hidden_key"),
+		)
+
+		key, ok := r.PropertyKey("hidden_key")
+		assert.False(t, ok, "a stored key, verbatim — never the slug layer")
+		assert.Equal(t, "hidden_key", key)
+		assert.Equal(t, bsonPropKey, r.PropertySlug(bsonPropKey),
+			"and the other holder does not emit a spelling the hidden stored key answers to")
+	})
+
+	t.Run("the type namespace follows the same rule", func(t *testing.T) {
+		// given
+		hidden := typeRow("type-hidden", "6a7663db61fab21cd4b9e107", "invoice")
+		hidden[bundle.RelationKeyIsHidden] = domain.Bool(true)
+		r := vocabFixture(t, typeRow("type-visible", bsonTypeKey, "invoice"), hidden)
+
+		// when
+		key, ok := r.TypeKey("invoice")
+
+		// then
+		require.True(t, ok)
+		assert.Equal(t, bsonTypeKey, key)
+		assert.Equal(t, "invoice", r.TypeSlug(bsonTypeKey))
+	})
+}
+
+// TestAcceptHalfFolds is chain step 4 on the accept side (§7.5a-3). The
+// vocabulary implemented steps 1–3 and then degraded VERBATIM, while the v2
+// route layer folded — so one request could resolve a term through
+// /properties and store it unfolded as a dataview column key in the same
+// breath. Only updateView was covered (canonicalViewKey).
+func TestAcceptHalfFolds(t *testing.T) {
+	// a BSON-keyed relation with a stored slug: nothing about this fixture is
+	// resolvable through the bundled table, so a pass means the SPACE's fold
+	// class answered
+	fold := func(t *testing.T) *Resolvers {
+		return vocabFixture(t, relationRow("rel-sev", bsonPropKey, "severity"))
+	}
+
+	t.Run("case and separator variants of a stored slug fold to it", func(t *testing.T) {
+		for _, input := range []string{"Severity", "SEVERITY", "sever_ity", "sever-ity"} {
+			key, ok := fold(t).PropertyKey(input)
+			require.True(t, ok, input)
+			assert.Equal(t, bsonPropKey, key, input)
+		}
+	})
+
+	t.Run("an exact stored key still wins the fold", func(t *testing.T) {
+		// given — `severity` is one relation's stored KEY and another's slug
+		r := vocabFixture(t,
+			relationRow("rel-sev", bsonPropKey, "severity"),
+			relationRow("rel-legacy", "Severity", ""),
+		)
+
+		// when / then — step 1, exact, before any folding
+		key, ok := r.PropertyKey("Severity")
+		assert.False(t, ok)
+		assert.Equal(t, "Severity", key, "an exact stored key is never folded away")
+	})
+
+	t.Run("an ambiguous fold degrades verbatim, never guesses", func(t *testing.T) {
+		// given — two live relations whose slugs fold together
+		r := vocabFixture(t,
+			relationRow("rel-a", bsonPropKey, "mood_level"),
+			relationRow("rel-b", bsonTwinKey, "moodlevel"),
+		)
+
+		// when
+		key, ok := r.PropertyKey("MoodLevel")
+
+		// then
+		assert.False(t, ok)
+		assert.Equal(t, "MoodLevel", key, "the term passes through — the git rule, never a guess")
+	})
+
+	t.Run("a hidden holder does not answer the fold", func(t *testing.T) {
+		r := vocabFixture(t, hiddenRelationRow("rel-hidden", bsonPropKey, "severity"))
+
+		key, ok := r.PropertyKey("Severity")
+		assert.False(t, ok)
+		assert.Equal(t, "Severity", key)
+	})
+
+	t.Run("the bundled fold table is consulted too", func(t *testing.T) {
+		r := vocabFixture(t)
+
+		key, ok := r.PropertyKey("DueDate")
+		require.True(t, ok)
+		assert.Equal(t, "dueDate", key)
+	})
+
+	t.Run("a term nothing folds to passes through", func(t *testing.T) {
+		key, ok := vocabFixture(t).PropertyKey("no_such_thing")
+		assert.False(t, ok)
+		assert.Equal(t, "no_such_thing", key, "a miss must return the term, not an empty key")
+	})
+
+	t.Run("the type namespace folds the same way", func(t *testing.T) {
+		r := vocabFixture(t, typeRow("type-inv", bsonTypeKey, "invoice"))
+
+		key, ok := r.TypeKey("Invoice")
+		require.True(t, ok)
+		assert.Equal(t, bsonTypeKey, key)
+	})
 }

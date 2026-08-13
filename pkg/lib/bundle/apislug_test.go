@@ -84,3 +84,46 @@ func TestApiSlugFromName(t *testing.T) {
 	assert.Equal(t, "manual_property", ApiSlugFromName("Manual property"))
 	assert.Equal(t, "uber", ApiSlugFromName(" Über "))
 }
+
+// TestApiSlugTablesAreInjective is the guard init panics on, run over the
+// REAL tables. `key -> slug` is lossy, the reverse tables are plain maps, and
+// nothing anywhere checked: a bundled key added tomorrow that snakes onto an
+// existing slug would make `RelationKeyByApiSlug` a per-process coin flip —
+// a different address on a different restart, with no signal at all. The
+// tables are clean today, so this can only ever fail on the commit that
+// breaks them.
+func TestApiSlugTablesAreInjective(t *testing.T) {
+	relationKeys := sortedApiSlugKeys(len(relations), func(yield func(string)) {
+		for key := range relations {
+			yield(key.String())
+		}
+	})
+	typeKeys := sortedApiSlugKeys(len(types), func(yield func(string)) {
+		for key := range types {
+			yield(key.String())
+		}
+	})
+
+	assert.NoError(t, checkApiSlugInjectivity("relation", relationKeys))
+	assert.NoError(t, checkApiSlugInjectivity("type", typeKeys))
+	assert.Equal(t, len(relationKeys), len(relationKeyByApiSlug), "one slug per bundled relation")
+	assert.Equal(t, len(typeKeys), len(typeKeyByApiSlug), "one slug per bundled type")
+}
+
+func TestApiSlugInjectivityGuardFires(t *testing.T) {
+	t.Run("two keys deriving one slug", func(t *testing.T) {
+		err := checkApiSlugInjectivity("relation", []string{"dueDate", "due_date"})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), `both derive the api slug "due_date"`)
+	})
+
+	t.Run("two slugs folding together", func(t *testing.T) {
+		err := checkApiSlugInjectivity("type", []string{"moodlevel", "moodLevel"})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "fold together")
+	})
+
+	t.Run("a clean table passes", func(t *testing.T) {
+		assert.NoError(t, checkApiSlugInjectivity("relation", []string{"dueDate", "name", "_score"}))
+	})
+}

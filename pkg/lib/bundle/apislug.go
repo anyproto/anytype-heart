@@ -1,6 +1,8 @@
 package bundle
 
 import (
+	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/gosimple/unidecode"
@@ -90,23 +92,86 @@ var (
 	typeKeysByFold       map[string][]domain.TypeKey
 )
 
+// init builds the two reverse tables, SORTED and with an injectivity guard.
+//
+// The guard is the point. `key -> slug` is a lossy transform, so two bundled
+// keys can in principle land on one slug (or one fold), and the reverse table
+// is a plain map: the winner would be whichever key Go's map iteration
+// reached last — a different address per process, with no signal anywhere.
+// The bundled table is the ONE authority for bundled keys in every space and
+// offline (§7.5a-1); an authority that disagrees with itself between restarts
+// is worse than no authority. Today the table is injective on both counts
+// (194 relations → 194 slugs → 194 folds; 29 types → 29 → 29), so this can
+// only fire on a bundled key ADDED later, at the moment it is added, in every
+// test binary — which is exactly when it is cheap to rename.
+//
+// The fold arm panics too, even though relationKeysByFold is a slice and
+// could hold both: two bundled keys sharing a fold would make that whole fold
+// class permanently ambiguous for every caller of the forgiving layer, which
+// is a defect to fix in the table, not to serve.
 func init() {
-	relationKeyByApiSlug = make(map[string]domain.RelationKey, len(relations))
-	relationKeysByFold = make(map[string][]domain.RelationKey, len(relations))
-	for key := range relations {
-		slug := ApiSlug(key.String())
-		relationKeyByApiSlug[slug] = key
-		fold := FoldApiKey(slug)
-		relationKeysByFold[fold] = append(relationKeysByFold[fold], key)
+	relationKeys := sortedApiSlugKeys(len(relations), func(yield func(string)) {
+		for key := range relations {
+			yield(key.String())
+		}
+	})
+	if err := checkApiSlugInjectivity("relation", relationKeys); err != nil {
+		panic(err)
 	}
-	typeKeyByApiSlug = make(map[string]domain.TypeKey, len(types))
-	typeKeysByFold = make(map[string][]domain.TypeKey, len(types))
-	for key := range types {
-		slug := ApiSlug(key.String())
-		typeKeyByApiSlug[slug] = key
+	relationKeyByApiSlug = make(map[string]domain.RelationKey, len(relationKeys))
+	relationKeysByFold = make(map[string][]domain.RelationKey, len(relationKeys))
+	for _, raw := range relationKeys {
+		slug := ApiSlug(raw)
+		relationKeyByApiSlug[slug] = domain.RelationKey(raw)
 		fold := FoldApiKey(slug)
-		typeKeysByFold[fold] = append(typeKeysByFold[fold], key)
+		relationKeysByFold[fold] = append(relationKeysByFold[fold], domain.RelationKey(raw))
 	}
+
+	typeKeys := sortedApiSlugKeys(len(types), func(yield func(string)) {
+		for key := range types {
+			yield(key.String())
+		}
+	})
+	if err := checkApiSlugInjectivity("type", typeKeys); err != nil {
+		panic(err)
+	}
+	typeKeyByApiSlug = make(map[string]domain.TypeKey, len(typeKeys))
+	typeKeysByFold = make(map[string][]domain.TypeKey, len(typeKeys))
+	for _, raw := range typeKeys {
+		slug := ApiSlug(raw)
+		typeKeyByApiSlug[slug] = domain.TypeKey(raw)
+		fold := FoldApiKey(slug)
+		typeKeysByFold[fold] = append(typeKeysByFold[fold], domain.TypeKey(raw))
+	}
+}
+
+func sortedApiSlugKeys(size int, each func(yield func(string))) []string {
+	out := make([]string, 0, size)
+	each(func(key string) { out = append(out, key) })
+	sort.Strings(out)
+	return out
+}
+
+// checkApiSlugInjectivity is the guard init panics on. Two keys sharing a
+// slug make the reverse table a coin flip; two keys sharing a fold make that
+// whole fold class permanently ambiguous for the forgiving layer. Both are
+// defects in the TABLE, to be fixed by renaming a key, never served.
+func checkApiSlugInjectivity(kind string, keys []string) error {
+	bySlug := make(map[string]string, len(keys))
+	byFold := make(map[string]string, len(keys))
+	for _, key := range keys {
+		slug := ApiSlug(key)
+		if first, taken := bySlug[slug]; taken {
+			return fmt.Errorf("bundled %s keys %q and %q both derive the api slug %q — the reverse table would resolve it to whichever key the map reached last; rename one", kind, first, key, slug)
+		}
+		bySlug[slug] = key
+		fold := FoldApiKey(slug)
+		if first, taken := byFold[fold]; taken {
+			return fmt.Errorf("bundled %s keys %q and %q fold together (%q) — the forgiving layer would be permanently ambiguous for that spelling; rename one", kind, first, key, fold)
+		}
+		byFold[fold] = key
+	}
+	return nil
 }
 
 // RelationKeyByApiSlug resolves a bundled relation's derived slug back to its

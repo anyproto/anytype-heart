@@ -438,43 +438,16 @@ func (s *V2Service) typeSlugConflict(slug string, entries []typeEntry) (slugHold
 	return slugHolder{Kind: "type", Key: entry.Key, Name: entry.Name}, true
 }
 
-// publicKey is the address an entry answers to on the API surface: the
-// stored slug when the stored key is an opaque BSON, the stored key
-// otherwise. (The full §7.5a slugs-always respelling of bundled keys is the
-// deferred sweep; until it lands, readable stored keys stay the wire
-// spelling and only BSON keys hide behind their slug.)
-func (e propertyEntry) publicKey() string {
-	if e.Slug != "" && isBsonLikeKey(e.Key) {
-		return e.Slug
-	}
-	return e.Key
-}
-
-func (e typeEntry) publicKey() string {
-	if e.Slug != "" && isBsonLikeKey(e.Key) {
-		return e.Slug
-	}
-	return e.Key
-}
-
-// isBsonLikeKey reports whether a stored key is a minted BSON ObjectId hex —
-// 24 hex chars with at least one digit (the v1 heuristic, core/api/util).
-func isBsonLikeKey(key string) bool {
-	if len(key) != 24 {
-		return false
-	}
-	digit := false
-	for _, r := range key {
-		switch {
-		case r >= '0' && r <= '9':
-			digit = true
-		case r >= 'a' && r <= 'f':
-		default:
-			return false
-		}
-	}
-	return digit
-}
+// There is exactly ONE authority for the wire spelling of a key: servedKeyOf
+// below. The rival propertyEntry.publicKey/typeEntry.publicKey pair used to
+// live here — "the stored slug when the stored key is a BSON, the stored key
+// otherwise" — with NONE of servedKeyOf's three round-trip guards, and dead
+// repo-wide. Methods never trip an unused-symbol check, so it would have sat
+// here until the next listing picked it up and re-opened the class of defect
+// this file exists to close. Deleted deliberately: if a listing needs a wire
+// spelling, it calls servedKey/servedTypeKeyOf. Its only helper,
+// isBsonLikeKey, went with it — the BSON-or-not distinction was the rival
+// rule's whole basis, and servedKeyOf does not make it.
 
 // propertyDefinition adapts an entry to the anyblockjson definition shape.
 func (e propertyEntry) propertyDefinition() anyblockjson.PropertyDefinition {

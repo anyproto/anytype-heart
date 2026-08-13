@@ -302,3 +302,53 @@ func TestBackfill_TakenSlugIsANoOp(t *testing.T) {
 		assert.Empty(t, fx.written)
 	})
 }
+
+// TestBackfillLeavesHiddenObjectsAlone is the candidate-side half of the
+// hidden-holder rule. A hidden relation is invisible AND undeletable to an
+// API caller, so it does not participate in the slug namespace on the request
+// side — stamping it a slug manufactures exactly the twin that rule then has
+// to paper over, and the twin is the one the caller cannot see, name or
+// remove. It still HOLDS a stored slug against a candidate: not stamping and
+// not colliding are the same policy from two sides.
+func TestBackfillLeavesHiddenObjectsAlone(t *testing.T) {
+	t.Run("a hidden candidate is not stamped", func(t *testing.T) {
+		// given — two BSON-keyed relations that would slug identically; the
+		// hidden one used to win the id race and take `severity`
+		fx := newFixture(t)
+		hidden := property("rel-hidden", bsonA, "", "Severity")
+		hidden[bundle.RelationKeyIsHidden] = domain.Bool(true)
+		fx.store.AddObjects(t, spaceId, []objectstore.TestObject{
+			hidden,
+			property("rel-visible", bsonB, "", "Severity"),
+		})
+
+		// when
+		toMigrate, migrated := fx.run(t)
+
+		// then
+		assert.Equal(t, 1, toMigrate, "the hidden object is not a candidate at all")
+		assert.Equal(t, 1, migrated)
+		assert.Equal(t, map[string]string{"rel-visible": "severity"}, fx.written,
+			"the visible relation gets the clean slug, not a suffix and not a skip")
+	})
+
+	t.Run("a hidden object still holds a slug it already stored", func(t *testing.T) {
+		// given — the hidden holder already carries `severity` in data; a
+		// candidate must not be minted onto it (that IS the ambiguity)
+		fx := newFixture(t)
+		hidden := property("rel-hidden", bsonA, "severity", "Severity")
+		hidden[bundle.RelationKeyIsHidden] = domain.Bool(true)
+		fx.store.AddObjects(t, spaceId, []objectstore.TestObject{
+			hidden,
+			property("rel-visible", bsonB, "", "Severity"),
+		})
+
+		// when
+		toMigrate, migrated := fx.run(t)
+
+		// then
+		assert.Equal(t, 1, toMigrate)
+		assert.Equal(t, 0, migrated, "takenSlugPolicy: skip, loudly enough to count")
+		assert.Empty(t, fx.written)
+	})
+}

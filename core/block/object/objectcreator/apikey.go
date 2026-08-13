@@ -118,6 +118,22 @@ func (n apiKeyNamespace) occupy(name, key string) {
 // the slug namespace, so delete-then-recreate mints the same clean slug
 // again. isArchived/isDeleted ride the store's injected query defaults.
 //
+// **Hidden holders are deliberately COUNTED here**, where v2's request
+// namespace excludes them (`propertyEntry.Hidden`) and the backfill no longer
+// stamps them. The two rules differ because the two jobs differ. v2's rule is
+// about RESOLUTION: a hidden holder is invisible and undeletable to a caller,
+// so letting it block or ambiguate a visible holder's slug makes that slug
+// permanently unusable through no visible cause. This rule is about
+// CREATION: a hidden holder still occupies a slug in stored data, and minting
+// a second entity onto it is precisely what manufactures the ambiguity the
+// other rule then has to paper over. Excluding them here would let a hidden
+// holder's slug be re-minted — cheap to say, and it would put two rows on one
+// address forever. The cost of counting is one `_2` suffix on a name
+// collision the user never sees, and this mint never refuses, so nobody is
+// blocked. v2 reports the slug the mint STORED, not the one it proposed
+// (schema_write.go's storedApiKeyOf), so the divergence is visible to the
+// caller rather than silent.
+//
 // A store error is returned, never swallowed: an empty-looking namespace
 // would wave every collision through, and the whole point of this file is
 // that a wrong slug is a wrong address.

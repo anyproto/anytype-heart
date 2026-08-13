@@ -123,7 +123,12 @@ var selectFormats = map[string]bool{"select": true, "multiSelect": true}
 // with set+add+remove must not fetch the index three times.
 func (r *Runner) prepareValues(ctx context.Context, session *Session, spaceId string, formats map[string]string, values map[string]any, guard bool) (map[string]any, error) {
 	out := make(map[string]any, len(values))
-	for key, value := range values {
+	// sorted: every refusal below picks the FIRST offending key it meets, and
+	// over a Go map that was a different message per run on the surface an
+	// agent reads back. A tool that says something different each time about
+	// the same body cannot be debugged from the transcript.
+	for _, key := range sortedValueKeys(values) {
+		value := values[key]
 		foldedKey, err := foldPropertyKey(formats, key)
 		if err != nil {
 			return nil, err
@@ -415,4 +420,14 @@ func resolveRelativeDate(input string, now time.Time) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+// sortedValueKeys is prepareValues' deterministic input order.
+func sortedValueKeys(values map[string]any) []string {
+	out := make([]string, 0, len(values))
+	for key := range values {
+		out = append(out, key)
+	}
+	sort.Strings(out)
+	return out
 }

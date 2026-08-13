@@ -247,11 +247,27 @@ func liveFilters() []database.FilterRequest {
 	}
 }
 
+// listUnslugged are the backfill's CANDIDATES. Hidden objects are excluded:
+// a hidden holder is invisible and undeletable to an API caller, so it does
+// not participate in the slug namespace on the request side (v2's
+// propertyEntry.Hidden) — stamping one a slug would manufacture exactly the
+// twin that rule then has to paper over, and the twin would be the one the
+// caller cannot see, name or remove. They stay in listTypesAndProperties,
+// which is the namespace this migration checks AGAINST: a hidden holder still
+// occupies a stored slug in data, and minting a second entity onto it is what
+// creates the ambiguity. Not stamping and not colliding are the same policy
+// seen from two sides.
 func listUnslugged(store dependencies.QueryableStore) ([]entity, error) {
-	return list(store, append(liveFilters(), database.FilterRequest{
-		RelationKey: bundle.RelationKeyApiObjectKey,
-		Condition:   model.BlockContentDataviewFilter_Empty,
-	}))
+	return list(store, append(liveFilters(),
+		database.FilterRequest{
+			RelationKey: bundle.RelationKeyApiObjectKey,
+			Condition:   model.BlockContentDataviewFilter_Empty,
+		},
+		database.FilterRequest{
+			RelationKey: bundle.RelationKeyIsHidden,
+			Condition:   model.BlockContentDataviewFilter_NotEqual,
+			Value:       domain.Bool(true),
+		}))
 }
 
 func listTypesAndProperties(store dependencies.QueryableStore) ([]entity, error) {

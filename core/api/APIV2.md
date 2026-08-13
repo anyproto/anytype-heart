@@ -5564,6 +5564,17 @@ subtests); and the vocabulary's two counterexamples
 suites pass. v1 keeps its own key vocabulary by construction: it reads
 `apiObjectKey` directly and never consults the derived table.
 
+> **CORRECTION (§8.39).** The first clause was false, and the second clause
+> is *why*. No v1 **file** changed, but this wave shipped a **migration that
+> rewrites the data v1 addresses by**: the backfill stamps `apiObjectKey` on
+> every BSON-keyed custom type, and because v1 "reads `apiObjectKey`
+> directly", `getTypeFromStruct` then serves the slug as `Type.Key` and the
+> bare hex — the only key v1 has ever served for such a type — stops being an
+> index in v1's type cache. Create and update 500/400, and `Search` silently
+> drops the type from its filter and answers `200 {"data": []}`. A migration
+> that re-points a shipped v1 address is a v1 change whatever the diff says.
+> §8.39 fixes it in `cacheType` and states the v1 behaviour change.
+
 **`cmd/anyblockroundtrip` — can it still run, and what would it need?** Yes,
 unchanged, and it is the sweep's most valuable outstanding verification.
 The harness exports each object and re-imports it through the same
@@ -5798,3 +5809,226 @@ namespace had the helper tested and the wiring not), and the
 **Not done.** The `apiObjectKey` backfill migration is untouched — a design
 decision on replacing it with deterministic derivation is pending.
 `cmd/anyblockroundtrip` still needs an account to run and was not run.
+
+### 8.39 Second review round: the migration that re-pointed v1's addresses (2026-08-13 — decisions as built)
+
+A second three-lens review of the identity layer, again reproducing every
+finding by execution. The headline is not a v2 defect at all: **Wave 1's
+`apiObjectKey` backfill breaks v1 create, update and search for every custom
+type in every existing account**, and it does so *because* v1 "reads
+`apiObjectKey` directly" — the very sentence §8.37 offered as proof that v1
+was untouched. That correction is now inline at §8.37.
+
+#### 1. `cacheType` indexed the slug and dropped the derived key
+
+v1's type cache (`core/api/service/cache_manager.go`) indexed each type under
+`{Id, UniqueKey, Key}`. For a BSON-keyed custom type — `uniqueKey =
+"ot-<hex>"`, which `getUniqueKeyOrGenerate` mints for **every** type not
+created with an explicit unique key — the bare `<hex>` was present in exactly
+one of those slots: `Key`. `getTypeFromStruct` prefers `apiObjectKey` over the
+derived key, so the moment the backfill stamps a slug, `Key` becomes
+`my_type` and the hex stops being an index:
+
+```
+ResolveTypeApiKey("67b0d3e3cda913b84c1299b1")  = ""     (post-backfill)
+CreateObject   → 500 internal_server_error
+UpdateObject   → 400 invalid type key
+Search         → 200 {"data": []}     — prepareTypeFilters DROPS the key
+GlobalSearch   → the space vanishes from the results
+```
+
+The search arm is the worst of the three: an integration polling "all my
+Invoices" is told, with a 200, that they were deleted. A mixed request loses
+the custom type and keeps `page` — partial silent loss, still 200.
+
+It is also **restart-latent**: `cacheType` adds without evicting, so a live
+process keeps serving the pre-backfill slot and the break appears at the next
+heart restart.
+
+**Decided: index the derived key ALWAYS, beside the slug**, with the matching
+delete in `removeType`. Properties already have this for free — the property
+cache carries a `RelationKey` slot, and a relation's stored key needs no
+prefix stripped. Types had no equivalent because `UniqueKey` keeps its `ot-`
+prefix. The derived key is written *before* `Key`, so an explicit slug still
+wins a slot the two would share. This invents no new address: `<hex>` is the
+address v1 has served for these types since the beginning.
+
+**This changes v1 BEHAVIOUR** (the v1 *document* does not move — no annotation
+shape changed, and the key-parameter text already says "type key", which both
+spellings are): a bare-hex type key that returns 500/400/empty on a
+post-backfill account resolves again. The direction is restoration, not a new
+contract. The v1 OpenAPI document stays byte-identical.
+
+#### 2. The import picked by map iteration order
+
+`build()` in `pkg/lib/anyblockjson/import.go` ranged `doc.Properties`, so two
+spellings that canonicalize onto one stored key were last-writer-wins over a
+Go map. Forty-eight identical requests:
+
+```
+POST /v2/spaces/{id}/types {"properties":{"name":"T","icon_emoji":"A","iconEmoji":"B"}}
+  → stored iconEmoji: map[A:6 B:42]
+```
+
+This is the exact mirror of the export-side collapse §8.38 fixed. `POST
+/objects` was protected because `canonicalizeDocumentKeys` refuses first
+(48/48) — but the type-create channel skips that by design, and so does every
+direct package caller (`cmd/anyblockroundtrip`, `cmd/anyblockrecover`,
+`cmd/internal/anyblockbatch`). The 35k round-trip sweep was safe only
+incidentally: its documents come from `Marshal`, which happens to produce
+non-colliding spellings.
+
+**Decided: the refusal belongs in the CODEC, not per caller.** `build()` now
+iterates sorted and returns a path-addressed `ValidationError` when two
+spellings bind one stored key. The API layer's better-worded refusal stays
+where it is and still fires first; the codec is the backstop for the three
+`cmd/` tools and the type channel.
+
+#### 3. The hidden-holder rule lived in one of four namespace builders
+
+| builder | isUninstalled | isHidden (before) | isHidden (now) |
+|---|---|---|---|
+| v2 request namespace (`v2/service/keys.go`) | yes | excluded | excluded |
+| document vocabulary (`storeresolver/keyvocab.go`) | yes | **counted** | excluded |
+| heart mint (`objectcreator/apikey.go`) | yes | counted | **counted, deliberately** |
+| backfill candidates (`apiobjectkey.go`) | yes | **counted** | excluded |
+
+Two executed failures came out of the disagreement:
+
+- **Dangling key.** A visible relation and a hidden one both slug to
+  `severity`. `GET /properties` advertises `severity` (v2 excludes the hidden
+  twin); the document vocabulary saw twins and dropped the slug from *both*
+  directions, so a `POST` naming `severity` stored `severity` verbatim as a
+  `relationLink` key **no relation object owns**. 200 OK, no warning.
+- **Wrong property.** Installed bundled `dueDate` plus a hidden squatter
+  holding `due_date`. The listing serves `due_date` for the bundled one, the
+  resolution chain agrees — and `storeresolver` resolved it to the hidden
+  squatter's BSON key. The value landed on an invisible relation.
+
+The backfill made both *likelier*: `listUnslugged` had no `isHidden` filter,
+so it stamped slugs onto hidden custom relations — manufacturing exactly the
+twins this needs.
+
+**Decided, and the split is intentional:**
+
+- **Resolution excludes hidden holders** (`loadKeyMaps` now matches v2). A
+  hidden entity keeps its stored key in `storedKey`, so chain step 1 still
+  holds and the emit side still refuses to spell someone else's value with
+  it; it simply owns no slug.
+- **Candidate selection excludes them** (the one migration change made — the
+  file is otherwise untouched pending the deterministic-derivation decision).
+  They stay in `listTypesAndProperties`, the namespace checked *against*.
+- **The mint keeps counting them.** The two jobs differ. v2's rule is about
+  RESOLUTION: a hidden holder is invisible and undeletable to a caller, so
+  letting it block a visible holder's slug makes that slug permanently
+  unusable through no visible cause. The mint's rule is about CREATION:
+  minting a second entity onto an occupied slug is precisely what
+  *manufactures* the ambiguity the other rule has to paper over. Excluding
+  them there would let a hidden holder's slug be re-minted and put two rows
+  on one address forever. Counting costs one `_2` suffix on a name collision
+  the user never sees, and this mint never refuses, so nobody is blocked.
+
+The divergence is now **visible rather than silent** — see 4.
+
+#### 4. A 201 returned a key that does not exist
+
+`POST /v2/…/properties` set `CreateResult{Key: slug}` from the **proposed**
+slug and never read back what `objectcreator` stored. Given 3's deliberate
+split, that is now a reachable, expected divergence: the mint's namespace sees
+holders v2's pre-check does not, so it suffixes — `201 {"key":
+"manual_property"}` then `GET …/properties/manual_property` → **404**. The
+same shape existed on the type path.
+
+**Decided: read the stored `apiObjectKey` back out of the create response**
+(`storedApiKeyOf`) on both paths. An empty stored slug is authoritative and
+falls through to the internal key: it means the mint's walk ran out and the
+minted key is the only address there is, which the caller must be told rather
+than handed a key that resolves to nothing. A response with no details at all
+(the mocked case) keeps the proposal.
+
+#### 5. The dead rival spelling authority is deleted
+
+`propertyEntry.publicKey()` / `typeEntry.publicKey()` were dead repo-wide and
+returned the stored slug with **none** of `servedKeyOf`'s three round-trip
+guards. Methods never trip an unused-symbol check, so the next listing anyone
+writes would have picked one up and re-opened the class. Deleted, along with
+`isBsonLikeKey`, whose BSON-or-not distinction was that rival rule's whole
+basis. There is now exactly one authority for a wire spelling in v2:
+`servedKeyOf`. A deletion has no revert test of its own; the guards it
+protects are pinned by `TestV2ServedKeyRefusesAShadowedSlug` and
+`TestV2ListingsServeBundledSlugs`, which a reintroduced `publicKey` would
+fail the moment a listing used it.
+
+#### 6. Also fixed
+
+- **The accept half now folds (chain step 4).** `storeresolver.PropertyKey` /
+  `TypeKey` implemented steps 1–3 and then degraded verbatim, while the v2
+  route layer folded — so one request could resolve `Severity` through
+  `/properties` and, in the same body, store it unfolded as a dataview column
+  key. Only `updateView` was covered (`canonicalViewKey`). A single folded
+  candidate resolves; several degrade verbatim (never a guess); hidden
+  holders do not participate; an exact stored key still wins first. It folds
+  over both the stored key and the stored slug, exactly as the route layer
+  does — deliberately, since a fold that differs between the two halves would
+  recreate the disagreement class this round exists to close. **One widening
+  to watch on the next round-trip sweep:** a detail key with no relation
+  object behind it (a stray or local detail) no longer necessarily survives
+  export∘import verbatim — if it differs from a *live* key only by case or
+  separator, step 4 now binds it to that live key. A stray whose live twin is
+  a real relation object is caught earlier by step 1, so this needs a key that
+  is simultaneously stray and case-twinned with a live one.
+- **`bundle/apislug.go`'s `init` has an injectivity guard.** `key → slug` is
+  lossy and the reverse tables are plain maps, so a bundled key added later
+  that snakes onto an existing slug would make the reverse table a
+  per-process coin flip with no signal anywhere. `init` now builds from
+  **sorted** keys and panics on a duplicate slug or a duplicate fold. Probed
+  clean today: 194 relations → 194 slugs → 194 folds; 29 types → 29 → 29.
+- **`PATCH /types/{t}` refuses two spellings of one detail.** `sortedKeys`
+  made the winner deterministic, which is not the same as correct — the
+  caller asked for two values on one detail and one was being dropped.
+- **`prepareValues` sorts its input.** Every refusal in it names the first
+  offending key it meets, so over a Go map the wrapper told an agent
+  something different about the same body on each run.
+- **v1's cross-space property subscription filters `isUninstalled`.** It
+  filtered `isHidden` only, so a UI-deleted property still listed, still
+  resolved as an address and still blocked a same-key create in v1 while v2
+  had already vacated that slug. The namespace a key lives in cannot depend
+  on which version asks. (The type and tag subscriptions have the same shape;
+  changing those moves more of v1's behaviour than this round's finding
+  covers, and is left named rather than done.)
+- **The test-fixture fd leak.** `dsObjectStore.Close` only cancels a context —
+  the sqlite handles belong to the *provider*, which `objectstore.NewStoreFixture`
+  never closed. Every fixture held its databases open until the binary
+  exited, so `-count=N` on a package with a fixture per subtest died on "too
+  many open files" — taking repetition away as an instrument exactly where
+  map-order defects need it. The provider is now closed in the fixture's
+  `t.Cleanup`. Measured: at `ulimit -n 256`, 20 iterations of two v2 test
+  functions died before the fix and pass after it.
+
+**Verification.** Every fix has a test that fails on revert, and each revert
+was run:
+
+| fix | revert | fails |
+|---|---|---|
+| 1 `cacheType` derived key | drop the derived write | `TestCacheType_BsonKeyStaysAddressableAfterTheApiObjectKeyBackfill` (2 subtests: resolve + the silent search drop) |
+| 2 codec collapse | drop the `boundBy` refusal / drop the sort | `TestImportRefusesTwoSpellingsOfOneStoredKey` (both arms; the sort arm over 32 runs) |
+| 3 hidden holders | drop `hidden` from `keyMaps.add` | `TestHiddenHoldersDoNotOwnSlugs` (3 subtests) |
+| 3 backfill | drop the `isHidden` candidate filter | `TestBackfillLeavesHiddenObjectsAlone` |
+| 4 read-back | return the proposal | `TestCreateReturnsTheStoredKeyNotTheProposal` (3 subtests) |
+| 6 fold | drop the step-4 branch | `TestAcceptHalfFolds` (3 subtests) |
+| 6 injectivity | short-circuit `checkApiSlugInjectivity` | `TestApiSlugInjectivityGuardFires` (2 subtests) |
+| 6 PATCH duplicate | drop the refusal | `TestV2UpdateType/two spellings of one detail…` |
+| 6 `prepareValues` | restore `range values` | `TestPrepareValuesIsOrderDeterministic` (32 runs) |
+| 6 v1 corpse filter | drop the filter | `TestCrossSpacePropertyFiltersVacateCorpses` |
+
+Every new fixture uses a BSON-keyed entity with a stored `apiObjectKey`, a
+hidden holder, or a stored key the bundled table resolves elsewhere. This was
+the fourth round the blind-fixture problem bit, and the fixtures are now
+checked for it before the assertion is written.
+
+**Not done.** The backfill migration is otherwise untouched — the
+deterministic-derivation decision is still pending, and only the `isHidden`
+candidate filter was changed. v1's type and tag cross-space subscriptions
+keep their `isUninstalled` gap (named above). `cmd/anyblockroundtrip` still
+needs an account and was not run; the running server predates this HEAD, so
+verification here is unit and handler tests only.

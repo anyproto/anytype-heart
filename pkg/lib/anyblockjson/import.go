@@ -6,6 +6,7 @@ package anyblockjson
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 
 	"github.com/gogo/protobuf/types"
 
@@ -177,13 +178,29 @@ func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBas
 
 	details := &types.Struct{Fields: map[string]*types.Value{}}
 	details.Fields[detailKeyId] = &types.Value{Kind: &types.Value_StringValue{StringValue: objectId}}
-	for slug, raw := range doc.Properties {
+	// Sorted, and a REFUSAL when two spellings canonicalize onto one stored
+	// key — the mirror of the export-side collapse guard (§8.38). Ranging the
+	// map made "which of two spellings wins" a per-run coin flip: the same
+	// request stored a different object run to run. The API layer refuses
+	// first, with a better-worded message (canonicalizeDocumentKeys), but the
+	// type-create channel skips it by design and so does every direct package
+	// caller (cmd/anyblockroundtrip, cmd/anyblockrecover,
+	// cmd/internal/anyblockbatch) — so the codec is the backstop.
+	boundBy := make(map[string]string, len(doc.Properties))
+	for _, slug := range sortedPropertySlugs(doc.Properties) {
 		if slug == detailKeyId || slug == detailKeyType {
 			continue // lifted into the envelope; a stray copy must not leak
 		}
 		// the document spells slugs (§7.5a); the store binds stored keys
 		key := imp.opts.propertyKey(slug)
-		if v := imp.propertyValue(key, raw); v != nil {
+		if first, dup := boundBy[key]; dup {
+			return 0, nil, &ValidationError{Issues: []Issue{{
+				Path:    "/properties/" + slug,
+				Message: fmt.Sprintf("%q and %q both address property %q — keep one", first, slug, key),
+			}}}
+		}
+		boundBy[key] = slug
+		if v := imp.propertyValue(key, doc.Properties[slug]); v != nil {
 			details.Fields[key] = v
 		}
 	}
@@ -635,4 +652,16 @@ func (imp *importer) applyBlockCommon(b *model.Block, jb *jsonBlock, liftedLang 
 		}
 		b.Fields.Fields[codeLangField] = &types.Value{Kind: &types.Value_StringValue{StringValue: liftedLang}}
 	}
+}
+
+// sortedPropertySlugs returns the document's property spellings in a fixed
+// order, so which of two colliding spellings the refusal names — and which
+// value a non-colliding document binds — never depends on map iteration.
+func sortedPropertySlugs(props map[string]any) []string {
+	out := make([]string, 0, len(props))
+	for slug := range props {
+		out = append(out, slug)
+	}
+	sort.Strings(out)
+	return out
 }

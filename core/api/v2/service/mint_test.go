@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/gogo/protobuf/types"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -431,5 +433,98 @@ func TestV2PropertyIdResolutionChain(t *testing.T) {
 		require.NotNil(t, result.Created)
 		require.Len(t, result.Created.Properties, 1)
 		assert.Equal(t, "warranty_until", result.Created.Properties[0].Key)
+	})
+}
+
+// TestCreateReturnsTheStoredKeyNotTheProposal pins the one thing a 201 owes:
+// the key it returns must be a key the key routes accept. v2's pre-check and
+// the heart's mint check DIFFERENT namespaces on purpose — the mint counts
+// hidden holders (a hidden holder still occupies a stored slug in data, and
+// minting a second entity onto it is what creates the ambiguity), v2's
+// request namespace excludes them (propertyEntry.Hidden). So the mint can
+// suffix a slug v2 just found free, or give up and store none. Returning the
+// PROPOSAL made `201 {"key":"manual_property"}` followed by
+// `GET …/properties/manual_property` → 404.
+func TestCreateReturnsTheStoredKeyNotTheProposal(t *testing.T) {
+	t.Run("a property mint that suffixed is reported as suffixed", func(t *testing.T) {
+		// given — a HIDDEN holder of `manual_property`: v2's pre-check does
+		// not see it, so the create proceeds; the mint does, so it suffixes
+		fx := newV2Fixture(t)
+		fx.addRelation(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:           domain.String("rel-hidden"),
+			bundle.RelationKeyRelationKey:  domain.String("6a7663db61fab21cd4b9e201"),
+			bundle.RelationKeyApiObjectKey: domain.String("manual_property"),
+			bundle.RelationKeyName:         domain.String("Hidden holder"),
+			bundle.RelationKeyIsHidden:     domain.Bool(true),
+		})
+		fx.mwMock.EXPECT().ObjectCreateRelation(mock.Anything, mock.Anything).
+			Return(&pb.RpcObjectCreateRelationResponse{
+				ObjectId: "rel-new", Key: "6a7663db61fab21cd4b9e202",
+				Details: &types.Struct{Fields: map[string]*types.Value{
+					bundle.RelationKeyApiObjectKey.String(): pbtypes.String("manual_property_2"),
+				}},
+				Error: &pb.RpcObjectCreateRelationResponseError{Code: pb.RpcObjectCreateRelationResponseError_NULL},
+			})
+
+		// when
+		result, err := fx.CreateProperty(context.Background(), testSpaceId,
+			v2model.CreatePropertyRequest{Key: "manual_property", Name: "Manual property", Format: "text"}, false)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "manual_property_2", result.Key,
+			"the stored slug, never the proposal — the proposal 404s")
+	})
+
+	t.Run("a property mint that stored no slug reports the internal key", func(t *testing.T) {
+		// given — the walk gave up (maxApiKeySuffix): apiObjectKey is empty
+		// and the minted BSON is the only address there is
+		fx := newV2Fixture(t)
+		fx.mwMock.EXPECT().ObjectCreateRelation(mock.Anything, mock.Anything).
+			Return(&pb.RpcObjectCreateRelationResponse{
+				ObjectId: "rel-new", Key: "6a7663db61fab21cd4b9e203",
+				Details: &types.Struct{Fields: map[string]*types.Value{
+					bundle.RelationKeyApiObjectKey.String(): pbtypes.String(""),
+				}},
+				Error: &pb.RpcObjectCreateRelationResponseError{Code: pb.RpcObjectCreateRelationResponseError_NULL},
+			})
+
+		// when
+		result, err := fx.CreateProperty(context.Background(), testSpaceId,
+			v2model.CreatePropertyRequest{Key: "manual_property", Name: "Manual property", Format: "text"}, false)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "6a7663db61fab21cd4b9e203", result.Key)
+	})
+
+	t.Run("the type create path has the same shape", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.addType(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:           domain.String("type-hidden"),
+			bundle.RelationKeyUniqueKey:    domain.String("ot-6a7663db61fab21cd4b9e204"),
+			bundle.RelationKeyApiObjectKey: domain.String("invoice"),
+			bundle.RelationKeyName:         domain.String("Hidden type"),
+			bundle.RelationKeyIsHidden:     domain.Bool(true),
+		})
+		fx.mwMock.EXPECT().ObjectCreateObjectType(mock.Anything, mock.Anything).
+			Return(&pb.RpcObjectCreateObjectTypeResponse{
+				ObjectId: "type-new",
+				Details: &types.Struct{Fields: map[string]*types.Value{
+					bundle.RelationKeyUniqueKey.String():    pbtypes.String("ot-6a7663db61fab21cd4b9e205"),
+					bundle.RelationKeyApiObjectKey.String(): pbtypes.String("invoice_2"),
+				}},
+				Error: &pb.RpcObjectCreateObjectTypeResponseError{Code: pb.RpcObjectCreateObjectTypeResponseError_NULL},
+			})
+		fx.expectEtagRead("type-new")
+
+		// when
+		result, err := fx.CreateType(context.Background(), testSpaceId,
+			[]byte(`{"kind":"objectType","key":"invoice","properties":{"name":"Invoice"}}`), false)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "invoice_2", result.Key)
 	})
 }

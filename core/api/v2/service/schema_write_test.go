@@ -282,6 +282,25 @@ func TestV2UpdateType(t *testing.T) {
 		require.Contains(t, byKey, bundle.RelationKeyRecommendedRelations.String())
 	})
 
+	t.Run("two spellings of one detail are refused, not silently merged", func(t *testing.T) {
+		// given — icon_emoji and iconEmoji are the same stored detail; the
+		// body asks for two values and sortedKeys would just pick one. A
+		// deterministic drop is still a drop.
+		fx := newV2Fixture(t)
+		fx.addTaskType(t)
+
+		// when — no ObjectSetDetails expectation: a write here fails the mock
+		_, err := fx.UpdateType(context.Background(), testSpaceId, "chore",
+			[]byte(`{"properties":{"icon_emoji":"\u2705","iconEmoji":"\ud83d\udd25"}}`), false)
+
+		// then
+		apiErr := v2ErrWithIssue(t, err)
+		assert.Equal(t, "duplicate property key", apiErr.Message)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "/properties/icon_emoji", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Message, `both address "iconEmoji"`)
+	})
+
 	// The wire spelling the swagger, the served type schema, the hint text and
 	// SPEC all teach. `name` folds identically in both vocabularies, which is
 	// why the subtest above stayed green while two of this surface's four

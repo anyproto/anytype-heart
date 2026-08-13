@@ -295,3 +295,27 @@ func TestFileStoreAtomicSave(t *testing.T) {
 	require.Len(t, entries, 1, "no temp files left behind")
 	assert.Equal(t, "session.json", entries[0].Name())
 }
+
+// TestPrepareValuesIsOrderDeterministic. prepareValues ranged its input map,
+// so when two keys were both refusable it reported whichever one Go's map
+// iteration reached first — a different message per run, on the surface an
+// agent reads back and a human debugs from a transcript.
+func TestPrepareValuesIsOrderDeterministic(t *testing.T) {
+	// given — a space whose key index holds two fold-ambiguous PAIRS, so
+	// both inbound keys are refusable and only the ORDER decides which is
+	// named. Bundled or single-word keys cannot produce this.
+	fx := newFixture(t)
+	formats := map[string]string{
+		"moodLevel": "text", "mood_level": "text",
+		"dueDate": "date", "due_date": "date",
+	}
+	values := map[string]any{"MoodLevel": "high", "DueDate": "friday"}
+
+	// when / then — 32 runs, because the order was randomized per run
+	for i := 0; i < 32; i++ {
+		_, err := fx.Runner.prepareValues(context.Background(), &Session{}, "space1", formats, values, false)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), `property key "DueDate"`,
+			"the alphabetically first offending key, every run")
+	}
+}
