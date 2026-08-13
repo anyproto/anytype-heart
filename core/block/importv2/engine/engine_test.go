@@ -163,7 +163,9 @@ func (f *fakePersister) Persist(ctx context.Context, o *importv2.Object, target 
 		id = "file-" + o.SourceKey
 	}
 	if f.journal != nil {
-		f.journal.CreatedObject(id)
+		if err := f.journal.CreatedObject(ctx, o.SourceKey, id); err != nil {
+			return persist.Outcome{}, err
+		}
 	}
 	return persist.Outcome{Id: id, Action: persist.ActionCreated}, nil
 }

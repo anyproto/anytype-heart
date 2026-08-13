@@ -2,15 +2,36 @@ package persist
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
+	"github.com/anyproto/any-sync/commonspace/spacestorage"
+
 	"github.com/anyproto/anytype-heart/core/block/importv2"
+	"github.com/anyproto/anytype-heart/core/domain"
 )
 
+// EffectLedger is the durable write-through seam behind the journal
+// (docs/superpowers/specs/2026-08-13-importv2-durable-queue-design.md §5.1),
+// implemented by runstore.Store. Every effect is recorded here as it
+// happens so a crash keeps the run compensable.
+type EffectLedger interface {
+	RecordCreated(ctx context.Context, sourceKey, objectId string) error
+	RecordUpdated(ctx context.Context, sourceKey, objectId string) error
+	RecordFile(ctx context.Context, sourceKey, objectId string, preExisting bool) error
+}
+
 // Journal records every effect of a run, in order, for compensation.
-// Safe for concurrent worker use.
+// Safe for concurrent worker use. With a ledger attached, effects
+// additionally write through to durable storage; a ledger failure is
+// returned as a fatal issue (spec §7.2 — a run that cannot journal must not
+// keep creating objects) while the in-memory record is kept, so in-process
+// compensation still covers the effect that just happened.
 type Journal struct {
+	ledger EffectLedger // nil => volatile (tests, sync callers)
+
 	mu      sync.Mutex
 	created []string
 	// ownedFiles are file objects the run's uploads brought into existence;
@@ -27,34 +48,59 @@ func NewJournal() *Journal {
 	return &Journal{}
 }
 
-func (j *Journal) CreatedObject(id string) {
+func NewJournalWithLedger(ledger EffectLedger) *Journal {
+	return &Journal{ledger: ledger}
+}
+
+func (j *Journal) CreatedObject(ctx context.Context, sourceKey, id string) error {
 	j.mu.Lock()
-	defer j.mu.Unlock()
 	j.created = append(j.created, id)
+	j.mu.Unlock()
+	if j.ledger == nil {
+		return nil
+	}
+	return ledgerIssue(j.ledger.RecordCreated(ctx, sourceKey, id))
 }
 
 // CreatedFile records an upload outcome; preExisting marks a content-dedup
 // hit on an object that already lived in the space.
-func (j *Journal) CreatedFile(id string, preExisting bool) {
+func (j *Journal) CreatedFile(ctx context.Context, sourceKey, id string, preExisting bool) error {
 	j.mu.Lock()
-	defer j.mu.Unlock()
 	if preExisting {
 		j.matchedFiles = append(j.matchedFiles, id)
-		return
+	} else {
+		j.ownedFiles = append(j.ownedFiles, id)
 	}
-	j.ownedFiles = append(j.ownedFiles, id)
+	j.mu.Unlock()
+	if j.ledger == nil {
+		return nil
+	}
+	return ledgerIssue(j.ledger.RecordFile(ctx, sourceKey, id, preExisting))
 }
 
-func (j *Journal) UpdatedObject(id string) {
+func (j *Journal) UpdatedObject(ctx context.Context, sourceKey, id string) error {
 	j.mu.Lock()
-	defer j.mu.Unlock()
 	j.updated = append(j.updated, id)
+	j.mu.Unlock()
+	if j.ledger == nil {
+		return nil
+	}
+	return ledgerIssue(j.ledger.RecordUpdated(ctx, sourceKey, id))
 }
 
 func (j *Journal) Updated() []string {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	return append([]string(nil), j.updated...)
+}
+
+// ledgerIssue wraps a durable-write failure as a fatal store issue: the
+// single abort predicate then stops the run regardless of mode.
+func ledgerIssue(err error) error {
+	if err == nil {
+		return nil
+	}
+	return importv2.Fatal(importv2.IssueStoreError, fmt.Errorf("journal effect: %w", err))
 }
 
 // CompensationResult reports what the abort cleanup achieved. Updated
@@ -76,32 +122,58 @@ type CompensationResult struct {
 // Runs on its own context so user cancellation doesn't abort the cleanup.
 func (j *Journal) Compensate(ctx context.Context, objects ObjectAccess) CompensationResult {
 	j.mu.Lock()
-	created := append([]string(nil), j.created...)
-	owned := append([]string(nil), j.ownedFiles...)
+	created := newestFirst(j.created)
+	owned := newestFirst(j.ownedFiles)
 	updated := append([]string(nil), j.updated...)
 	j.mu.Unlock()
+	return CompensateIds(ctx, objects, created, owned, updated)
+}
 
-	result := CompensationResult{Uncovered: updated}
-	for i := len(created) - 1; i >= 0; i-- {
-		j.deleteOne(created[i], objects, &result)
+func newestFirst(ids []string) []string {
+	reversed := make([]string, 0, len(ids))
+	for i := len(ids) - 1; i >= 0; i-- {
+		reversed = append(reversed, ids[i])
 	}
-	for i := len(owned) - 1; i >= 0; i-- {
-		j.deleteOne(owned[i], objects, &result)
+	return reversed
+}
+
+// CompensateIds is the one compensation implementation, shared by the
+// in-process journal and the startup sweep's crash path (spec §5.1). Ids
+// are expected newest-first (runstore.CompensationInputs' order). An
+// already-gone object counts as compensated, not leaked: compensation must
+// be idempotent so a crash mid-cleanup can simply re-run it (§6.5).
+func CompensateIds(ctx context.Context, objects ObjectAccess, created, ownedFiles, updated []string) CompensationResult {
+	result := CompensationResult{Uncovered: updated}
+	for _, id := range created {
+		deleteOne(id, objects, &result)
+	}
+	for _, id := range ownedFiles {
+		deleteOne(id, objects, &result)
 	}
 	return result
 }
 
-func (j *Journal) deleteOne(id string, objects ObjectAccess, result *CompensationResult) {
-	if err := objects.DeleteObject(id); err != nil {
-		result.Leaked++
-		result.Issues = append(result.Issues, importv2.Issue{
-			Severity: importv2.SeverityWarning,
-			Code:     importv2.IssueStoreError,
-			ObjectId: id,
-			Message:  "compensation: delete created object",
-			Err:      fmt.Errorf("delete %s: %w", id, err),
-		})
+func deleteOne(id string, objects ObjectAccess, result *CompensationResult) {
+	err := objects.DeleteObject(id)
+	if err == nil || isAlreadyGone(err) {
+		result.Compensated++
 		return
 	}
-	result.Compensated++
+	result.Leaked++
+	result.Issues = append(result.Issues, importv2.Issue{
+		Severity: importv2.SeverityWarning,
+		Code:     importv2.IssueStoreError,
+		ObjectId: id,
+		Message:  "compensation: delete created object",
+		Err:      fmt.Errorf("delete %s: %w", id, err),
+	})
+}
+
+// isAlreadyGone recognizes the delete-path shapes of "this object does not
+// exist": an id that was never indexed (resolver miss), a tree the space
+// does not know, or a tree already deleted by a previous compensation pass.
+func isAlreadyGone(err error) bool {
+	return errors.Is(err, domain.ErrObjectNotFound) ||
+		errors.Is(err, treestorage.ErrUnknownTreeId) ||
+		errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted)
 }

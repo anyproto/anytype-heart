@@ -493,13 +493,14 @@ func TestInstallCoordinator(t *testing.T) {
 func TestCompensate(t *testing.T) {
 	t.Run("deletes newest first, never touches pre-existing files, reports leaks", func(t *testing.T) {
 		// given
+		ctx := context.Background()
 		objects := &fakeObjects{failIds: map[string]error{"bad": assert.AnError}}
 		journal := NewJournal()
-		journal.CreatedObject("obj1")
-		journal.CreatedObject("obj2")
-		journal.CreatedObject("bad")
-		journal.CreatedFile("preExistingFile", true)
-		journal.CreatedFile("ownedFile", false)
+		require.NoError(t, journal.CreatedObject(ctx, "page1", "obj1"))
+		require.NoError(t, journal.CreatedObject(ctx, "page2", "obj2"))
+		require.NoError(t, journal.CreatedObject(ctx, "page3", "bad"))
+		require.NoError(t, journal.CreatedFile(ctx, "file1", "preExistingFile", true))
+		require.NoError(t, journal.CreatedFile(ctx, "file2", "ownedFile", false))
 
 		// when
 		result := journal.Compensate(context.Background(), objects)
@@ -526,8 +527,9 @@ func TestCompensate(t *testing.T) {
 		fx := newFixture(t)
 
 		journal := NewJournal()
-		journal.CreatedFile("userFile1", checker.Exists("userFile1")) // dedup hit
-		journal.CreatedFile("runFile1", checker.Exists("runFile1"))   // fresh upload
+		ctx := context.Background()
+		require.NoError(t, journal.CreatedFile(ctx, "file1", "userFile1", checker.Exists("userFile1"))) // dedup hit
+		require.NoError(t, journal.CreatedFile(ctx, "file2", "runFile1", checker.Exists("runFile1")))   // fresh upload
 
 		// when
 		result := journal.Compensate(context.Background(), fx.objects)

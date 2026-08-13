@@ -189,19 +189,22 @@ func (p *Persister) persistRegular(ctx context.Context, o *importv2.Object, targ
 
 	outcome := Outcome{Id: target.Id, Action: ActionSkipped}
 	if target.Payload.RootRawChange != nil {
-		outcome, err = p.createObject(ctx, target, doc)
+		outcome, err = p.createObject(ctx, o.SourceKey, target, doc)
 		if err != nil {
 			return Outcome{}, err
 		}
 	} else if canUpdate(o.SbType) {
-		outcome = p.updateObject(target.Id, doc, report)
+		outcome, err = p.updateObject(ctx, o.SourceKey, target.Id, doc, report)
+		if err != nil {
+			return Outcome{}, err
+		}
 	}
 
 	p.applyFlags(ctx, o, target.Id, report)
 	return outcome, nil
 }
 
-func (p *Persister) createObject(ctx context.Context, target Target, doc *state.State) (Outcome, error) {
+func (p *Persister) createObject(ctx context.Context, sourceKey string, target Target, doc *state.State) (Outcome, error) {
 	sb, err := p.space.CreateTreeObjectWithPayload(ctx, target.Payload, func(id string) *smartblock.InitContext {
 		return &smartblock.InitContext{
 			Ctx:         ctx,
@@ -211,7 +214,11 @@ func (p *Persister) createObject(ctx context.Context, target Target, doc *state.
 		}
 	})
 	if err == nil {
-		p.journal.CreatedObject(target.Id)
+		if err = p.journal.CreatedObject(ctx, sourceKey, target.Id); err != nil {
+			// The tree exists but its durable record failed: abort (§7.2).
+			// The in-memory record stays, so compensation still covers it.
+			return Outcome{}, err
+		}
 		sb.Lock()
 		details := sb.Details()
 		sb.Unlock()
@@ -236,8 +243,10 @@ func (p *Persister) createObject(ctx context.Context, target Target, doc *state.
 // updateObject overwrites a matched existing object with the imported state
 // (replace semantics — collection membership was already resolved to the
 // import's own list). Guarded by Revision so newer bundled objects are never
-// downgraded. Failures degrade to Skipped with an issue, as in v1.
-func (p *Persister) updateObject(objectId string, doc *state.State, report func(importv2.Issue)) Outcome {
+// downgraded. Update failures degrade to Skipped with an issue, as in v1;
+// the returned error is reserved for a journal (durable ledger) failure,
+// which must abort instead of degrading.
+func (p *Persister) updateObject(ctx context.Context, sourceKey, objectId string, doc *state.State, report func(importv2.Issue)) (Outcome, error) {
 	outcome := Outcome{Id: objectId, Action: ActionSkipped}
 	err := cache.Do(p.objects, objectId, func(sb smartblock.SmartBlock) error {
 		currentRevision := sb.Details().GetInt64(bundle.RelationKeyRevision)
@@ -258,7 +267,6 @@ func (p *Persister) updateObject(objectId string, doc *state.State, report func(
 		if err := history.ResetToVersion(sb, doc); err != nil {
 			return fmt.Errorf("reset to imported state: %w", err)
 		}
-		p.journal.UpdatedObject(objectId)
 		outcome = Outcome{Id: objectId, Action: ActionUpdated, Details: sb.CombinedDetails()}
 		return nil
 	})
@@ -270,8 +278,14 @@ func (p *Persister) updateObject(objectId string, doc *state.State, report func(
 			Message:  "update existing object",
 			Err:      err,
 		})
+		return outcome, nil
 	}
-	return outcome
+	if outcome.Action == ActionUpdated {
+		if err = p.journal.UpdatedObject(ctx, sourceKey, objectId); err != nil {
+			return Outcome{}, err
+		}
+	}
+	return outcome, nil
 }
 
 func (p *Persister) installBundledDeps(ctx context.Context, o *importv2.Object, doc *state.State, report func(importv2.Issue)) {
