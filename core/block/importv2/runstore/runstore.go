@@ -148,21 +148,27 @@ func IsMissingManifest(err error) bool {
 }
 
 // IsCorrupted reports whether an Open failure means the db file is damaged
-// (as opposed to transient IO trouble) — the sweep's delete-dir criterion.
+// (as opposed to transient IO trouble) — the sweep's delete-dir criterion,
+// so it must never fire on a recoverable condition.
 //
-// anystorehelper.IsCorruptedError alone is not enough here: it classifies by
-// zombiezen.com/go/sqlite error codes, but any-store v0.4.7 links the
-// github.com/anyproto/go-sqlite fork, whose error type upstream ErrCode
-// cannot unwrap. Check the fork's codes too.
+// Classification is deliberately narrow:
+//   - the fork's codes are checked directly (anystorehelper classifies by
+//     zombiezen.com/go/sqlite codes, which cannot unwrap the
+//     github.com/anyproto/go-sqlite error type any-store v0.4.7 emits);
+//   - only CORRUPT and NOTADB count — CANTOPEN is excluded on purpose: it
+//     also means EACCES, fd exhaustion and some disk-full paths, none of
+//     which is a damaged file (the provider's reinit path counts CANTOPEN
+//     as corruption; deleting a run ledger on a permission hiccup is the
+//     wrong trade here).
 func IsCorrupted(err error) bool {
 	if err == nil {
 		return false
 	}
-	if _, corrupted := anystorehelper.IsCorruptedError(err); corrupted {
+	if errors.Is(err, anystore.ErrQuickCheckFailed) || errors.Is(err, anystore.ErrIncompatibleVersion) {
 		return true
 	}
 	switch sqlite.ErrCode(err) {
-	case sqlite.ResultCorrupt, sqlite.ResultNotADB, sqlite.ResultCantOpen:
+	case sqlite.ResultCorrupt, sqlite.ResultNotADB:
 		return true
 	}
 	return false

@@ -101,6 +101,29 @@ func TestCreateOpen(t *testing.T) {
 		require.Error(t, err)
 		assert.True(t, IsCorrupted(err))
 	})
+
+	t.Run("an unreadable but intact db is NOT corrupted", func(t *testing.T) {
+		// given — P0-3: SQLITE_CANTOPEN also means EACCES, fd exhaustion and
+		// some disk-full paths. None of those is a damaged file, and the
+		// sweep answers "corrupted" by DELETING the ledger — so a permission
+		// hiccup must never classify as corruption.
+		if os.Geteuid() == 0 {
+			t.Skip("chmod-based denial does not bind as root")
+		}
+		dir := filepath.Join(t.TempDir(), "run-1")
+		store := createStore(t, dir)
+		require.NoError(t, store.Close())
+		require.NoError(t, os.Chmod(filepath.Join(dir, "run.db"), 0o000))
+		t.Cleanup(func() { _ = os.Chmod(filepath.Join(dir, "run.db"), 0o600) })
+
+		// when
+		_, err := Open(context.Background(), dir)
+
+		// then
+		require.Error(t, err)
+		assert.False(t, IsCorrupted(err),
+			"an intact ledger behind a transient open failure must survive the sweep")
+	})
 }
 
 func TestSetState(t *testing.T) {

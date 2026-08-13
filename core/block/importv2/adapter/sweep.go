@@ -186,6 +186,13 @@ func (s *service) sweepAbandoned() {
 // probeSpace classifies whether a run's target space still exists. Only a
 // definitive not-exists/deleted answer allows deleting the run dir without
 // compensation; anything else is retried on the next start.
+//
+// ErrSpaceNotExists IS definitive here, reviewed 2026-08-13: Get →
+// ensureSpaceStarted (space/load.go) falls through to resolveDerivedInfo in
+// lazy mode, which reads the space view directly from techspace rather than
+// from deferred statuses — a space that was ever an import target on this
+// device has a view here, so a lazily-not-yet-started space resolves fine
+// and never reaches the ErrSpaceNotExists branch.
 func (s *service) probeSpace(ctx context.Context, spaceId string) spaceStatus {
 	if spaceId == "" {
 		return spaceGone

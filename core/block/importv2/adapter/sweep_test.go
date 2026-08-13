@@ -130,6 +130,29 @@ func TestSweepRuns(t *testing.T) {
 		assert.True(t, os.IsNotExist(err))
 	})
 
+	t.Run("an unreadable run db is kept for the next start, not deleted", func(t *testing.T) {
+		// given — P0-3: a permission hiccup (or fd exhaustion, disk full)
+		// must not answer as corruption; the sweep would delete the ledger
+		// of a run whose db is perfectly intact.
+		if os.Geteuid() == 0 {
+			t.Skip("chmod-based denial does not bind as root")
+		}
+		root := t.TempDir()
+		dir := makeRun(t, root, "unreadable", runstore.StateRunning, true)
+		require.NoError(t, os.Chmod(filepath.Join(dir, "run.db"), 0o000))
+		t.Cleanup(func() { _ = os.Chmod(filepath.Join(dir, "run.db"), 0o600) })
+		deleter := &sweepDeleter{}
+
+		// when
+		outcomes := sweepRuns(ctx, root, deleter, alwaysOK)
+
+		// then
+		require.Len(t, outcomes, 1)
+		assert.Equal(t, sweepSkippedError, outcomes[0].Action)
+		assert.Empty(t, deleter.deleted)
+		assert.DirExists(t, dir)
+	})
+
 	t.Run("a dir that never got its manifest is deleted", func(t *testing.T) {
 		// given: crash between store creation and the manifest write — no
 		// manifest means no recorded effects, so the dir is plain garbage.
