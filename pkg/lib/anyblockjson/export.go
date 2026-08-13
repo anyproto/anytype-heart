@@ -306,15 +306,28 @@ func (e *exporter) buildProperties() *omap {
 	// the document spells slugs (§7.5a), so the canonical alphabetical order
 	// is over the SPELLINGS, not the stored keys — the reader sorts what it
 	// sees. Values still resolve through the stored key.
+	//
+	// The collapse pass below runs over the STORED keys sorted, not over map
+	// order: which holder keeps a contested spelling must not depend on Go's
+	// map iteration, or the canonical form is not canonical and export∘import
+	// byte-stability is a coin flip on exactly the spaces that need it most.
+	sort.Strings(keys)
+	stored := make(map[string]bool, len(keys))
+	for _, k := range keys {
+		stored[k] = true
+	}
 	type prop struct{ slug, key string }
 	props := make([]prop, 0, len(keys))
 	spelled := map[string]bool{}
 	for _, k := range keys {
 		slug := e.opts.propertySlug(k)
-		// a slug two stored keys agree on (a space holding a pre-mint-check
-		// shadow) would collapse into one JSON key and lose a value: the
-		// second holder keeps its honest stored key
-		if slug != k && spelled[slug] {
+		// a spelling two stored keys agree on would collapse into one JSON key
+		// and lose a value. Two ways that happens in a space holding a
+		// pre-mint-check shadow: another holder already took the slug, or the
+		// slug IS another stored key on this very object (chain step 1 would
+		// bind it to that one on the way back). Either way the later holder
+		// keeps its honest stored key.
+		if slug != k && (spelled[slug] || stored[slug]) {
 			slug = k
 		}
 		spelled[slug] = true

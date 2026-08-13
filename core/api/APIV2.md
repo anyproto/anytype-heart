@@ -5774,10 +5774,23 @@ was executed:
 | 5 | drop `shadowed()` from `servedKeyOf` | 3 subtests, `keys_output_test.go` |
 | 6 | drop both `shadowsBundled*Key` calls | 2 subtests, `core/api/service` |
 | 7 | drop `typeSlugs`/`typeKeys`; drop `BuildRecommendedLists`'s inversion; revert the wrapper fold | 2 + 1 + 2 subtests |
+| collapse | drop `sort.Strings(keys)`; drop the `stored[slug]` arm; drop the guard | 3 runs, `anyblockjson/keyvocab_test.go` |
+
+**One more defect, found by writing the test rather than by reading.** The
+duplicate-slug collapse guard in `buildProperties` needs a deliberately
+non-injective vocabulary to exercise, which no bundled fixture can produce —
+and the moment one existed, the test failed intermittently. The collapse pass
+ran over Go's **map iteration order**, so which of two holders keeps a
+contested spelling was a coin flip per run: the canonical form was not
+canonical, and export∘import byte-stability was chance on exactly the spaces
+that hold a shadow. The pass now runs over the sorted stored keys. The same
+test also exposed the guard's missing second arm: the contested spelling can
+be another **stored key on the same object**, not only another holder's slug —
+emitting it would bind the value to that key on the way back at chain step 1.
+Both arms are pinned, the ordering one with a 32-iteration loop.
 
 Test debt closed alongside: `buildProperties`' duplicate-slug collapse (its
-failure loses a value — pinned with a deliberately non-injective vocabulary,
-which no bundled fixture can produce), `IsOutputOnlyProperty`'s bundled
+failure loses a value), `IsOutputOnlyProperty`'s bundled
 fallback in both spellings, `createObjectType`'s mint wiring (the type
 namespace had the helper tested and the wiring not), and the
 `shadowedBundledType` branch, which had no test at all.

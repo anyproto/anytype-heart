@@ -181,8 +181,12 @@ func (v collapsingVocab) TypeKey(s string) (string, bool) { return s, false }
 // TestBuildPropertiesKeepsBothValuesWhenSlugsCollapse is the data-loss guard
 // in export.go's buildProperties. Two stored keys spelling one JSON key would
 // overwrite each other in the properties map — one value gone, no error, no
-// warning. The second holder keeps its honest stored key instead. Revert the
-// `if slug != k && spelled[slug]` branch and one of the two values vanishes.
+// warning. The later holder keeps its honest stored key instead, and WHICH
+// holder that is may not depend on Go's map iteration order: the collapse
+// pass runs over the sorted stored keys, or the canonical form is a coin flip
+// on exactly the spaces that hold a shadow. Revert either the
+// `spelled[slug]` branch or the `sort.Strings(keys)` and this fails (the
+// second one intermittently, which is the point).
 func TestBuildPropertiesKeepsBothValuesWhenSlugsCollapse(t *testing.T) {
 	// given
 	snapshot := &model.SmartBlockSnapshotBase{
@@ -193,6 +197,36 @@ func TestBuildPropertiesKeepsBothValuesWhenSlugsCollapse(t *testing.T) {
 	}
 	vocab := collapsingVocab{a: "aaaKey", b: "zzzKey", slug: "shared_slug"}
 
+	// when: repeated, because map iteration order is randomized per run
+	for i := 0; i < 32; i++ {
+		data, err := Marshal(model.SmartBlockType_Page, snapshot, Options{Keys: vocab})
+
+		// then
+		require.NoError(t, err)
+		var doc struct {
+			Properties map[string]string `json:"properties"`
+		}
+		require.NoError(t, json.Unmarshal(data, &doc))
+		assert.Len(t, doc.Properties, 2, "no value may be lost to a collapsed spelling")
+		assert.Equal(t, "value of A", doc.Properties["shared_slug"], "the first stored key keeps the slug, every run")
+		assert.Equal(t, "value of Z", doc.Properties["zzzKey"], "the later one keeps its honest stored key")
+	}
+}
+
+// TestBuildPropertiesRefusesASlugAnotherStoredKeyOwns is the second arm of the
+// same collapse: the contested spelling is not another holder's SLUG but
+// another stored key on this very object. Emitting it would bind the value to
+// that key on the way back (chain step 1 — an exact stored key always wins).
+func TestBuildPropertiesRefusesASlugAnotherStoredKeyOwns(t *testing.T) {
+	// given
+	snapshot := &model.SmartBlockSnapshotBase{
+		Details: &types.Struct{Fields: map[string]*types.Value{
+			"aaaKey":      pbtypes.String("value of A"),
+			"shared_slug": pbtypes.String("value of the squatter"),
+		}},
+	}
+	vocab := collapsingVocab{a: "aaaKey", b: "", slug: "shared_slug"}
+
 	// when
 	data, err := Marshal(model.SmartBlockType_Page, snapshot, Options{Keys: vocab})
 
@@ -202,9 +236,9 @@ func TestBuildPropertiesKeepsBothValuesWhenSlugsCollapse(t *testing.T) {
 		Properties map[string]string `json:"properties"`
 	}
 	require.NoError(t, json.Unmarshal(data, &doc))
-	assert.Len(t, doc.Properties, 2, "no value may be lost to a collapsed spelling")
-	assert.Equal(t, "value of A", doc.Properties["shared_slug"], "the first holder keeps the slug")
-	assert.Equal(t, "value of Z", doc.Properties["zzzKey"], "the second keeps its honest stored key")
+	assert.Len(t, doc.Properties, 2)
+	assert.Equal(t, "value of the squatter", doc.Properties["shared_slug"])
+	assert.Equal(t, "value of A", doc.Properties["aaaKey"], "the slug is not emitted — its spelling is taken")
 }
 
 // TestObjectTypesIsAKeySlot pins the vocabulary decision for
