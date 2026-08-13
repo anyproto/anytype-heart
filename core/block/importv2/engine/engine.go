@@ -130,10 +130,13 @@ func Run(ctx context.Context, req importv2.Request, converter importv2.Converter
 	}
 	rootSpec := r.streamPass(runCtx, converter)
 
-	// A suspend that races the end of the stream (converter done, workers
-	// interrupted mid-drain) may leave no fatal behind — the run must still
-	// stop as suspended, never finalize into a silent partial import.
-	if suspended() && r.fatalIssue() == nil {
+	// A cancellation that races the end of the stream may leave no fatal
+	// behind: with lanes holding 2*C+K objects, a small import's converter
+	// has already returned cleanly, and interrupted persists are accounted
+	// skipped — nobody else reports the abort. Without this the run would
+	// finalize into a silent "success" (user cancel) or a silent partial
+	// import (suspend). Any dead runCtx here means the run was stopped.
+	if runCtx.Err() != nil && r.fatalIssue() == nil {
 		r.report(importv2.Fatal(importv2.IssueCancelled, context.Cause(runCtx)))
 	}
 
@@ -360,11 +363,16 @@ func (r *run) process(ctx context.Context, w work) {
 		r.deps.Identity.CompleteFile(w.object.SourceKey, outcome.Id, err)
 	}
 	if err != nil {
-		if ctx.Err() != nil && (errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)) {
+		if ctx.Err() != nil &&
+			(errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)) &&
+			importv2.AsIssue(err, importv2.SeverityObjectError, importv2.IssueObjectFailed).Severity < importv2.SeverityFatal {
 			// The run is being cancelled or suspended: an interrupted
 			// persist is not an object failure — the abort is accounted
-			// once, by the fatal cancellation, and the issue code must stay
-			// "cancelled" (not "objectFailed") for the wire mapping.
+			// once, by the fatal cancellation (Run's post-stream guard), and
+			// the issue code must stay "cancelled" (not "objectFailed") for
+			// the wire mapping. Fatal issues that merely WRAP a context
+			// error (a durable-journal write timing out during shutdown)
+			// must not be absorbed here: they abort loudly.
 			r.skipped.Add(1)
 			return
 		}

@@ -20,7 +20,7 @@ import (
 // completes the identity future with it.
 func (p *Persister) persistFile(ctx context.Context, o *importv2.Object) (Outcome, error) {
 	if o.File == nil {
-		return p.persistContentAddressedFile(ctx, o)
+		return p.persistContentAddressedFile(o)
 	}
 	localPath, cleanup, err := p.materialize(ctx, o.File)
 	if err != nil {
@@ -56,7 +56,7 @@ func (p *Persister) persistFile(ctx context.Context, o *importv2.Object) (Outcom
 			Err:       fmt.Errorf("upload %q: %w", o.File.Name, err),
 		}
 	}
-	if err = p.journal.CreatedFile(ctx, o.SourceKey, objectId, p.checker.Exists(objectId)); err != nil {
+	if err = p.journal.CreatedFile(o.SourceKey, objectId, p.checker.Exists(objectId)); err != nil {
 		return Outcome{}, err
 	}
 	return Outcome{Id: objectId, Action: ActionCreated, Details: details}, nil
@@ -64,7 +64,7 @@ func (p *Persister) persistFile(ctx context.Context, o *importv2.Object) (Outcom
 
 // persistContentAddressedFile handles files that already live in the content
 // store (anytype exports): register keys and create/find the file object.
-func (p *Persister) persistContentAddressedFile(ctx context.Context, o *importv2.Object) (Outcome, error) {
+func (p *Persister) persistContentAddressedFile(o *importv2.Object) (Outcome, error) {
 	fileId := o.Payload.Details.GetString(bundle.RelationKeyId)
 	if fileId == "" {
 		return Outcome{}, importv2.Issue{
@@ -84,7 +84,7 @@ func (p *Persister) persistContentAddressedFile(ctx context.Context, o *importv2
 			Err:       fmt.Errorf("create from import %q: %w", fileId, err),
 		}
 	}
-	if err = p.journal.CreatedFile(ctx, o.SourceKey, objectId, p.checker.Exists(objectId)); err != nil {
+	if err = p.journal.CreatedFile(o.SourceKey, objectId, p.checker.Exists(objectId)); err != nil {
 		return Outcome{}, err
 	}
 	return Outcome{Id: objectId, Action: ActionCreated, Details: nil}, nil

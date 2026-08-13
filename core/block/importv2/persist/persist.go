@@ -194,7 +194,7 @@ func (p *Persister) persistRegular(ctx context.Context, o *importv2.Object, targ
 			return Outcome{}, err
 		}
 	} else if canUpdate(o.SbType) {
-		outcome, err = p.updateObject(ctx, o.SourceKey, target.Id, doc, report)
+		outcome, err = p.updateObject(o.SourceKey, target.Id, doc, report)
 		if err != nil {
 			return Outcome{}, err
 		}
@@ -214,7 +214,7 @@ func (p *Persister) createObject(ctx context.Context, sourceKey string, target T
 		}
 	})
 	if err == nil {
-		if err = p.journal.CreatedObject(ctx, sourceKey, target.Id); err != nil {
+		if err = p.journal.CreatedObject(sourceKey, target.Id); err != nil {
 			// The tree exists but its durable record failed: abort (§7.2).
 			// The in-memory record stays, so compensation still covers it.
 			return Outcome{}, err
@@ -246,7 +246,7 @@ func (p *Persister) createObject(ctx context.Context, sourceKey string, target T
 // downgraded. Update failures degrade to Skipped with an issue, as in v1;
 // the returned error is reserved for a journal (durable ledger) failure,
 // which must abort instead of degrading.
-func (p *Persister) updateObject(ctx context.Context, sourceKey, objectId string, doc *state.State, report func(importv2.Issue)) (Outcome, error) {
+func (p *Persister) updateObject(sourceKey, objectId string, doc *state.State, report func(importv2.Issue)) (Outcome, error) {
 	outcome := Outcome{Id: objectId, Action: ActionSkipped}
 	err := cache.Do(p.objects, objectId, func(sb smartblock.SmartBlock) error {
 		currentRevision := sb.Details().GetInt64(bundle.RelationKeyRevision)
@@ -281,7 +281,7 @@ func (p *Persister) updateObject(ctx context.Context, sourceKey, objectId string
 		return outcome, nil
 	}
 	if outcome.Action == ActionUpdated {
-		if err = p.journal.UpdatedObject(ctx, sourceKey, objectId); err != nil {
+		if err = p.journal.UpdatedObject(sourceKey, objectId); err != nil {
 			return Outcome{}, err
 		}
 	}

@@ -106,8 +106,12 @@ type fakePersister struct {
 	delay     time.Duration
 	delayKeys map[string]time.Duration
 	failKeys  map[string]error
-	panicKeys map[string]bool
-	journal   *persist.Journal
+	// failOnCancelKeys blocks the persist until the run ctx dies, then
+	// returns the given error (NOT ctx.Err()) — the shape of a durable-
+	// journal failure racing a shutdown.
+	failOnCancelKeys map[string]error
+	panicKeys        map[string]bool
+	journal          *persist.Journal
 	// fileReady simulates reference resolution: objects whose key starts
 	// with "ref-" block until the file object's persist closes the channel
 	// (as resolver.ResolveRef blocks on the identity future in production).
@@ -118,6 +122,10 @@ func (f *fakePersister) Persist(ctx context.Context, o *importv2.Object, target 
 	// Fires outside the mutex: a recovered panic must not strand the lock.
 	if f.panicKeys[o.SourceKey] {
 		panic("injected persist panic: " + o.SourceKey)
+	}
+	if err, ok := f.failOnCancelKeys[o.SourceKey]; ok {
+		<-ctx.Done()
+		return persist.Outcome{}, err
 	}
 	if f.fileReady != nil {
 		if o.File != nil {
@@ -163,7 +171,7 @@ func (f *fakePersister) Persist(ctx context.Context, o *importv2.Object, target 
 		id = "file-" + o.SourceKey
 	}
 	if f.journal != nil {
-		if err := f.journal.CreatedObject(ctx, o.SourceKey, id); err != nil {
+		if err := f.journal.CreatedObject(o.SourceKey, id); err != nil {
 			return persist.Outcome{}, err
 		}
 	}
@@ -547,6 +555,88 @@ func TestRunCancellation(t *testing.T) {
 			assert.False(t, marked, "the compensating state must not be marked on suspend")
 		case <-time.After(5 * time.Second):
 			t.Fatal("run did not stop after suspend")
+		}
+	})
+
+	t.Run("cancel of a fully-buffered small import compensates and reports cancelled", func(t *testing.T) {
+		// given — P0-2: the lanes hold 2*16+8 objects, so a small import is
+		// entirely inside the channels when cancel fires: the converter has
+		// already returned cleanly and cannot be the one to report the
+		// cancellation. The run must still end cancelled and compensated,
+		// never as a silent success.
+		fx := newEngineFixture()
+		fx.persister.delay = 20 * time.Millisecond
+		objects := make([]*importv2.Object, 20)
+		for i := range objects {
+			objects[i] = pageObj(fmt.Sprintf("p-%03d.md", i), false)
+		}
+		converter := &scriptConverter{objects: objects}
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		done := make(chan *importv2.Result, 1)
+		go func() {
+			done <- Run(ctx, importv2.Request{Mode: importv2.ModeAllOrNothing}, converter, fx.deps)
+		}()
+
+		// when: cancel once at least one object is committed
+		require.Eventually(t, func() bool {
+			fx.persister.mu.Lock()
+			defer fx.persister.mu.Unlock()
+			return len(fx.persister.persisted) >= 1
+		}, 5*time.Second, 5*time.Millisecond)
+		cancel()
+
+		// then
+		select {
+		case result := <-done:
+			require.Error(t, result.Err, "a cancelled import must never report success")
+			issue := importv2.AsIssue(result.Err, importv2.SeverityFatal, importv2.IssueStoreError)
+			assert.Equal(t, importv2.IssueCancelled, issue.Code)
+			assert.Positive(t, result.Compensated, "user cancel must compensate")
+			assert.NotEmpty(t, fx.deps.Objects.(*deleterFake).deleted)
+		case <-time.After(5 * time.Second):
+			t.Fatal("run did not stop after cancel")
+		}
+	})
+
+	t.Run("a fatal issue from an interrupted persist is never swallowed as skipped", func(t *testing.T) {
+		// given — the interrupted-persist skip branch may only absorb pure
+		// cancellation; a fatal issue that happens to wrap a context error
+		// (a durable-journal write timing out during shutdown) must abort
+		// loudly, or the effect goes unrecorded in silence.
+		fx := newEngineFixture()
+		fatal := importv2.Fatal(importv2.IssueStoreError,
+			fmt.Errorf("journal effect: %w", context.DeadlineExceeded))
+		fx.persister.failOnCancelKeys = map[string]error{"x.md": fatal}
+		converter := &scriptConverter{objects: []*importv2.Object{
+			pageObj("a.md", false), pageObj("x.md", false),
+		}}
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		done := make(chan *importv2.Result, 1)
+		go func() {
+			done <- Run(ctx, importv2.Request{Mode: importv2.ModeAllOrNothing}, converter, fx.deps)
+		}()
+		require.Eventually(t, func() bool {
+			fx.persister.mu.Lock()
+			defer fx.persister.mu.Unlock()
+			return len(fx.persister.persisted) >= 1
+		}, 5*time.Second, 5*time.Millisecond)
+
+		// when
+		cancel()
+
+		// then
+		select {
+		case result := <-done:
+			require.Error(t, result.Err)
+			issue := importv2.AsIssue(result.Err, importv2.SeverityFatal, importv2.IssueObjectFailed)
+			assert.Equal(t, importv2.IssueStoreError, issue.Code,
+				"the fatal store issue must win over the generic cancellation")
+		case <-time.After(5 * time.Second):
+			t.Fatal("run did not stop")
 		}
 	})
 }

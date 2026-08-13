@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
@@ -12,6 +13,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/importv2"
 	"github.com/anyproto/anytype-heart/core/domain"
 )
+
+// ledgerWriteTimeout bounds one detached effect write. Measured cost is
+// sub-millisecond (spec §8); the timeout only guards a pathological disk.
+const ledgerWriteTimeout = 10 * time.Second
 
 // EffectLedger is the durable write-through seam behind the journal
 // (docs/superpowers/specs/2026-08-13-importv2-durable-queue-design.md §5.1),
@@ -52,19 +57,27 @@ func NewJournalWithLedger(ledger EffectLedger) *Journal {
 	return &Journal{ledger: ledger}
 }
 
-func (j *Journal) CreatedObject(ctx context.Context, sourceKey, id string) error {
+// Record methods deliberately take no context: the effect has already
+// happened in the user's space, so its record must be written even — and
+// especially — when the run context is already dead (shutdown is exactly
+// when the next start's sweep will compensate FROM this ledger). Writes run
+// on a detached, time-bounded context instead.
+
+func (j *Journal) CreatedObject(sourceKey, id string) error {
 	j.mu.Lock()
 	j.created = append(j.created, id)
 	j.mu.Unlock()
 	if j.ledger == nil {
 		return nil
 	}
-	return ledgerIssue(j.ledger.RecordCreated(ctx, sourceKey, id))
+	return j.record(func(ctx context.Context) error {
+		return j.ledger.RecordCreated(ctx, sourceKey, id)
+	})
 }
 
 // CreatedFile records an upload outcome; preExisting marks a content-dedup
 // hit on an object that already lived in the space.
-func (j *Journal) CreatedFile(ctx context.Context, sourceKey, id string, preExisting bool) error {
+func (j *Journal) CreatedFile(sourceKey, id string, preExisting bool) error {
 	j.mu.Lock()
 	if preExisting {
 		j.matchedFiles = append(j.matchedFiles, id)
@@ -75,17 +88,29 @@ func (j *Journal) CreatedFile(ctx context.Context, sourceKey, id string, preExis
 	if j.ledger == nil {
 		return nil
 	}
-	return ledgerIssue(j.ledger.RecordFile(ctx, sourceKey, id, preExisting))
+	return j.record(func(ctx context.Context) error {
+		return j.ledger.RecordFile(ctx, sourceKey, id, preExisting)
+	})
 }
 
-func (j *Journal) UpdatedObject(ctx context.Context, sourceKey, id string) error {
+func (j *Journal) UpdatedObject(sourceKey, id string) error {
 	j.mu.Lock()
 	j.updated = append(j.updated, id)
 	j.mu.Unlock()
 	if j.ledger == nil {
 		return nil
 	}
-	return ledgerIssue(j.ledger.RecordUpdated(ctx, sourceKey, id))
+	return j.record(func(ctx context.Context) error {
+		return j.ledger.RecordUpdated(ctx, sourceKey, id)
+	})
+}
+
+// record runs one ledger write on its own bounded context, detached from
+// any run cancellation.
+func (j *Journal) record(write func(ctx context.Context) error) error {
+	ctx, cancel := context.WithTimeout(context.Background(), ledgerWriteTimeout)
+	defer cancel()
+	return ledgerIssue(write(ctx))
 }
 
 func (j *Journal) Updated() []string {

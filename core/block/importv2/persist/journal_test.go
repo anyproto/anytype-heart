@@ -3,12 +3,14 @@ package persist
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/importv2"
+	"github.com/anyproto/anytype-heart/core/block/importv2/runstore"
 	"github.com/anyproto/anytype-heart/core/domain"
 )
 
@@ -22,19 +24,36 @@ type ledgerCall struct {
 type fakeLedger struct {
 	calls []ledgerCall
 	err   error
+	// ctxStates pins P0-1: every write must arrive on a live, deadline-
+	// bounded context detached from the run (a dead run ctx here would mean
+	// effect records are lost exactly at shutdown).
+	ctxStates []string
 }
 
-func (l *fakeLedger) RecordCreated(_ context.Context, sourceKey, objectId string) error {
+func ctxState(ctx context.Context) string {
+	if ctx.Err() != nil {
+		return "dead"
+	}
+	if _, hasDeadline := ctx.Deadline(); hasDeadline {
+		return "live-bounded"
+	}
+	return "live-unbounded"
+}
+
+func (l *fakeLedger) RecordCreated(ctx context.Context, sourceKey, objectId string) error {
+	l.ctxStates = append(l.ctxStates, ctxState(ctx))
 	l.calls = append(l.calls, ledgerCall{kind: "created", sourceKey: sourceKey, objectId: objectId})
 	return l.err
 }
 
-func (l *fakeLedger) RecordUpdated(_ context.Context, sourceKey, objectId string) error {
+func (l *fakeLedger) RecordUpdated(ctx context.Context, sourceKey, objectId string) error {
+	l.ctxStates = append(l.ctxStates, ctxState(ctx))
 	l.calls = append(l.calls, ledgerCall{kind: "updated", sourceKey: sourceKey, objectId: objectId})
 	return l.err
 }
 
-func (l *fakeLedger) RecordFile(_ context.Context, sourceKey, objectId string, preExisting bool) error {
+func (l *fakeLedger) RecordFile(ctx context.Context, sourceKey, objectId string, preExisting bool) error {
+	l.ctxStates = append(l.ctxStates, ctxState(ctx))
 	l.calls = append(l.calls, ledgerCall{kind: "file", sourceKey: sourceKey, objectId: objectId, preExisting: preExisting})
 	return l.err
 }
@@ -48,9 +67,9 @@ func TestJournalLedger(t *testing.T) {
 		journal := NewJournalWithLedger(ledger)
 
 		// when
-		require.NoError(t, journal.CreatedObject(ctx, "page-1", "obj-1"))
-		require.NoError(t, journal.UpdatedObject(ctx, "page-2", "obj-2"))
-		require.NoError(t, journal.CreatedFile(ctx, "file-1", "file-obj-1", true))
+		require.NoError(t, journal.CreatedObject("page-1", "obj-1"))
+		require.NoError(t, journal.UpdatedObject("page-2", "obj-2"))
+		require.NoError(t, journal.CreatedFile("file-1", "file-obj-1", true))
 
 		// then
 		assert.Equal(t, []ledgerCall{
@@ -58,6 +77,8 @@ func TestJournalLedger(t *testing.T) {
 			{kind: "updated", sourceKey: "page-2", objectId: "obj-2"},
 			{kind: "file", sourceKey: "file-1", objectId: "file-obj-1", preExisting: true},
 		}, ledger.calls)
+		assert.Equal(t, []string{"live-bounded", "live-bounded", "live-bounded"}, ledger.ctxStates,
+			"ledger writes must run on a detached, time-bounded context (P0-1)")
 	})
 
 	t.Run("a ledger write failure is fatal but keeps the memory record", func(t *testing.T) {
@@ -67,7 +88,7 @@ func TestJournalLedger(t *testing.T) {
 		journal := NewJournalWithLedger(ledger)
 
 		// when
-		err := journal.CreatedObject(ctx, "page-1", "obj-1")
+		err := journal.CreatedObject("page-1", "obj-1")
 
 		// then
 		require.Error(t, err)
@@ -86,9 +107,35 @@ func TestJournalLedger(t *testing.T) {
 		journal := NewJournal()
 
 		// when / then
-		assert.NoError(t, journal.CreatedObject(ctx, "page-1", "obj-1"))
-		assert.NoError(t, journal.UpdatedObject(ctx, "page-2", "obj-2"))
-		assert.NoError(t, journal.CreatedFile(ctx, "file-1", "file-obj-1", false))
+		assert.NoError(t, journal.CreatedObject("page-1", "obj-1"))
+		assert.NoError(t, journal.UpdatedObject("page-2", "obj-2"))
+		assert.NoError(t, journal.CreatedFile("file-1", "file-obj-1", false))
+	})
+
+	t.Run("effect rows survive the run context dying", func(t *testing.T) {
+		// given — P0-1: the run context is cancelled exactly at shutdown,
+		// which is exactly when the effect record matters most: the tree was
+		// already created, and the next start's sweep compensates FROM THE
+		// LEDGER. The record methods therefore take no caller context at all
+		// (writes run detached and time-bounded); this pins that every row
+		// lands durably against a real store, whatever the run's state.
+		store, err := runstore.Create(context.Background(),
+			filepath.Join(t.TempDir(), "run-1"), runstore.Manifest{RunId: "run-1"})
+		require.NoError(t, err)
+		defer store.Close()
+		journal := NewJournalWithLedger(store)
+
+		// when
+		require.NoError(t, journal.CreatedObject("page-1", "obj-1"))
+		require.NoError(t, journal.UpdatedObject("page-2", "obj-2"))
+		require.NoError(t, journal.CreatedFile("file-1", "file-obj-1", false))
+
+		// then: every row is durably present
+		inputs, err := store.CompensationInputs(context.Background())
+		require.NoError(t, err)
+		assert.Equal(t, []string{"obj-1"}, inputs.Created)
+		assert.Equal(t, []string{"obj-2"}, inputs.Updated)
+		assert.Equal(t, []string{"file-obj-1"}, inputs.OwnedFiles)
 	})
 }
 
