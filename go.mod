@@ -13,6 +13,7 @@ require (
 	github.com/anyproto/go-chash v0.1.0
 	github.com/anyproto/go-naturaldate/v2 v2.0.2-0.20230524105841-9829cfd13438
 	github.com/anyproto/go-slip10 v1.0.1
+	github.com/anyproto/go-sqlite v1.4.2-any
 	github.com/anyproto/goheif v0.0.0-20260216083627-c3efd00cd92e
 	github.com/anyproto/lexid v0.0.6
 	github.com/anyproto/tantivy-go v1.0.6
@@ -136,7 +137,6 @@ require (
 	github.com/andybalholm/cascadia v1.3.3 // indirect
 	github.com/anyproto/go-bip39 v1.0.0 // indirect
 	github.com/anyproto/go-slip21 v1.0.0 // indirect
-	github.com/anyproto/go-sqlite v1.4.2-any // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.3.5 // indirect
