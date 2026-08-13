@@ -1,7 +1,7 @@
 package anyblockjson
 
 // Layout is stored as a number but named in the format (§3). Before this, a
-// document following the spec ("recommendedLayout": "profile") imported the
+// document following the spec ("recommended_layout": "profile") imported the
 // *string* onto a number-format property: every consumer reads it with an
 // int64 getter, so the type silently fell back to basic (== 0).
 
@@ -66,18 +66,18 @@ func TestExport_LayoutNumberToName(t *testing.T) {
 	}
 	data, err := Marshal(model.SmartBlockType_STType, snapshot, testOptions())
 	require.NoError(t, err)
-	assert.Contains(t, string(data), `"recommendedLayout": "profile"`)
-	assert.Contains(t, string(data), `"resolvedLayout": "todo"`)
+	assert.Contains(t, string(data), `"recommended_layout": "profile"`)
+	assert.Contains(t, string(data), `"resolved_layout": "todo"`)
 }
 
 func TestRoundtrip_LayoutSurvives(t *testing.T) {
 	doc := `{"version": 1, "kind": "objectType", "id": "t1", "key": "k",
-		"properties": {"recommendedLayout": "profile"}}`
+		"properties": {"recommended_layout": "profile"}}`
 	_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 	require.NoError(t, err)
 	data, err := Marshal(model.SmartBlockType_STType, snap, testOptions())
 	require.NoError(t, err)
-	assert.Contains(t, string(data), `"recommendedLayout": "profile"`)
+	assert.Contains(t, string(data), `"recommended_layout": "profile"`)
 }
 
 // a typo must not reach the snapshot as a bare string

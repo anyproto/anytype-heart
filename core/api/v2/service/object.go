@@ -770,7 +770,7 @@ func (s *V2Service) typeKeysById(spaceId string) (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	keyTaken, slugCount := servedTypeKeySets(liveEntries)
+	keyTaken, slugHolders := servedTypeKeySets(liveEntries)
 	out := make(map[string]string, len(records))
 	for _, record := range records {
 		id := record.Details.GetString(bundle.RelationKeyId)
@@ -783,7 +783,7 @@ func (s *V2Service) typeKeysById(spaceId string) (map[string]string, error) {
 			out[id] = string(key) // a corpse's slug vacated the namespace
 			continue
 		}
-		out[id] = servedKey(string(key), record.Details.GetString(bundle.RelationKeyApiObjectKey), keyTaken, slugCount)
+		out[id] = servedTypeKeyOf(string(key), record.Details.GetString(bundle.RelationKeyApiObjectKey), keyTaken, slugHolders)
 	}
 	return out, nil
 }

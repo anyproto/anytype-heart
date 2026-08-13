@@ -32,6 +32,7 @@ import (
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson/filterstring"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -357,6 +358,66 @@ func (a *v2StateApplier) applyViewSet(set map[string]json.RawMessage, edited, vi
 	return nil
 }
 
+// canonicalViewKey maps an inbound property key to the spelling the VIEW
+// DOCUMENT uses (ADDRESSING.md §7.5a). The view ops merge into exported
+// JSON, which spells slugs, so a key that arrives as a stored key — or as a
+// folded spelling, or as a bundled slug — has to be translated once, on the
+// way in, or it addresses a column that is not there and writes a filter the
+// store can never match.
+//
+// This closes the §8.22/§8.23 deferral ("key slots inside view-op set
+// channels accept stored keys only"): every spelling the rest of the API
+// accepts now works here too, and the one the listings advertise is the one
+// the merge sees. Ambiguity returns candidates; a miss passes through
+// verbatim so validateViewKeys owns the did-you-mean refusal in the caller's
+// own spelling.
+func (a *v2StateApplier) canonicalViewKey(input string) (string, []string) {
+	if input == "" {
+		return input, nil
+	}
+	entries, err := a.propEntries()
+	if err != nil {
+		return input, nil // the load error surfaces in validateViewKeys
+	}
+	entry, ok, ambiguous := a.s.resolvePropertyInput(input, entries)
+	if len(ambiguous) > 0 {
+		return input, ambiguous
+	}
+	if !ok || entry.Key == "" {
+		return input, nil
+	}
+	keyTaken, slugHolders := servedPropertyKeySets(entries)
+	return servedKey(entry.Key, entry.Slug, keyTaken, slugHolders), nil
+}
+
+// canonicalizeDecodedKeySlots rewrites every `property` slot in a decoded
+// sorts/filters/columns array to the document spelling, recursively through
+// filter groups. Ambiguous terms are left alone and reported.
+func (a *v2StateApplier) canonicalizeDecodedKeySlots(nodes []any, path string, issues *[]v2model.Issue) {
+	for i, raw := range nodes {
+		node, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		if nested, ok := node["filters"].([]any); ok {
+			a.canonicalizeDecodedKeySlots(nested, fmt.Sprintf("%s[%d].filters", path, i), issues)
+			continue
+		}
+		key, ok := node["property"].(string)
+		if !ok || key == "" {
+			continue
+		}
+		canonical, ambiguous := a.canonicalViewKey(key)
+		if len(ambiguous) > 0 {
+			*issues = append(*issues, v2model.Issue{Path: fmt.Sprintf("%s[%d].property", path, i),
+				Message: fmt.Sprintf("%q matches %s", key, strings.Join(ambiguous, " and ")),
+				Hint:    "address the intended one by its exact key"})
+			continue
+		}
+		node["property"] = canonical
+	}
+}
+
 // applyViewSetField validates one non-null `set` field per its kind and
 // writes it into the view JSON. Kind failures append issues; only transport
 // errors return.
@@ -382,6 +443,14 @@ func (a *v2StateApplier) applyViewSetField(field, kind string, raw json.RawMessa
 			return nil
 		}
 		if kind == "propertyKey" {
+			canonical, ambiguous := a.canonicalViewKey(s)
+			if len(ambiguous) > 0 {
+				*issues = append(*issues, v2model.Issue{Path: path,
+					Message: fmt.Sprintf("%q matches %s", s, strings.Join(ambiguous, " and ")),
+					Hint:    "address the intended one by its exact key"})
+				return nil
+			}
+			s = canonical
 			*keyUses = append(*keyUses, viewKeyUse{key: s, path: path})
 		}
 		view[field] = s
@@ -451,14 +520,16 @@ func (a *v2StateApplier) applyViewSorts(raw json.RawMessage, view map[string]any
 		appendCodecIssues(issues, err, path, "/sorts")
 		return nil
 	}
-	for i, probe := range probes {
-		if probe.Property != "" {
-			*keyUses = append(*keyUses, viewKeyUse{key: probe.Property, path: fmt.Sprintf("%s[%d].property", path, i)})
-		}
-	}
 	var decoded []any
 	if err := json.Unmarshal(raw, &decoded); err != nil {
 		return fmt.Errorf("re-decode sorts: %w", err)
+	}
+	a.canonicalizeDecodedKeySlots(decoded, path, issues)
+	for i, node := range decoded {
+		m, _ := node.(map[string]any)
+		if key, _ := m["property"].(string); key != "" {
+			*keyUses = append(*keyUses, viewKeyUse{key: key, path: fmt.Sprintf("%s[%d].property", path, i)})
+		}
 	}
 	view["sorts"] = decoded
 	return nil
@@ -494,11 +565,12 @@ func (a *v2StateApplier) applyViewFilters(raw json.RawMessage, view map[string]a
 		appendCodecIssues(issues, err, path, "/filters")
 		return nil
 	}
-	collectNodeKeys(nodes, path, keyUses)
 	var decoded []any
 	if err := json.Unmarshal(raw, &decoded); err != nil {
 		return fmt.Errorf("re-decode filters: %w", err)
 	}
+	a.canonicalizeDecodedKeySlots(decoded, path, issues)
+	collectDecodedKeys(decoded, path, keyUses)
 	// §11 canonical form: empty/notEmpty/exists leaves carry no value —
 	// stripping it here keeps the in-lock import from resolving (and possibly
 	// creating) an option the view never uses, exactly mirroring what the
@@ -572,6 +644,10 @@ func (a *v2StateApplier) applyViewFilterString(raw json.RawMessage, edited, view
 	if err := json.Unmarshal(parsed, &decoded); err != nil {
 		return fmt.Errorf("decode parsed filter: %w", err)
 	}
+	// the parser accepts the SERVED spellings (its KnownKeys are those), and
+	// the compact string is fold-strict only in what it accepts — what it
+	// EMITS still has to be the document's spelling, like every other channel
+	a.canonicalizeDecodedKeySlots(decoded, path, issues)
 	view["filters"] = decoded
 	return nil
 }
@@ -597,9 +673,16 @@ func (a *v2StateApplier) applyViewColumns(patches map[string]json.RawMessage, vi
 		}
 		return -1
 	}
-	for _, key := range sortedKeys(patches) {
-		path := opPath + ".columns." + key
-		raw := patches[key]
+	for _, rawKey := range sortedKeys(patches) {
+		path := opPath + ".columns." + rawKey
+		raw := patches[rawKey]
+		key, ambiguous := a.canonicalViewKey(rawKey)
+		if len(ambiguous) > 0 {
+			*issues = append(*issues, v2model.Issue{Path: path,
+				Message: fmt.Sprintf("%q matches %s", rawKey, strings.Join(ambiguous, " and ")),
+				Hint:    "address the intended one by its exact key"})
+			continue
+		}
 		ci := indexOf(key)
 		if isJSONNull(raw) {
 			// remove the column; removing an absent one is a no-op (the unset
@@ -908,6 +991,25 @@ func (a *v2StateApplier) resolveViewListTarget(views []any, after, before, posit
 }
 
 // collectNodeKeys walks a filter tree for leaf property keys.
+// collectDecodedKeys is collectNodeKeys over the DECODED (and by then
+// canonicalized) filter array — the keys the merge will actually write.
+func collectDecodedKeys(nodes []any, path string, keyUses *[]viewKeyUse) {
+	for i, raw := range nodes {
+		node, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		nodePath := fmt.Sprintf("%s[%d]", path, i)
+		if nested, ok := node["filters"].([]any); ok {
+			collectDecodedKeys(nested, nodePath+".filters", keyUses)
+			continue
+		}
+		if key, _ := node["property"].(string); key != "" {
+			*keyUses = append(*keyUses, viewKeyUse{key: key, path: nodePath + ".property"})
+		}
+	}
+}
+
 func collectNodeKeys(nodes []searchFilterNode, path string, keyUses *[]viewKeyUse) {
 	for i, node := range nodes {
 		nodePath := fmt.Sprintf("%s[%d]", path, i)
@@ -1057,7 +1159,7 @@ func (a *v2StateApplier) applyInsertView(op opInsertView, opPath string) error {
 		// the bare default: every property the dataview lists, VISIBLE (the
 		// GO-5969 lesson — the native CreateView default hides everything but
 		// name), ordered latest-first like the native default sort.
-		// lastModifiedDate is bundled and rides NO keyUse: the properties-list
+		// last_modified_date is bundled and rides NO keyUse: the properties-list
 		// top-up would make the bare default self-modifying (a second bare
 		// insert in the same batch would grow an extra column), and the sort's
 		// format resolves from the store/bundle without a list entry.
@@ -1075,7 +1177,10 @@ func (a *v2StateApplier) applyInsertView(op opInsertView, opPath string) error {
 		}
 		view = map[string]any{
 			"columns": columns,
-			"sorts":   []any{map[string]any{"property": "lastModifiedDate", "direction": "desc"}},
+			// the document vocabulary is slugs (§7.5a) — this literal is
+			// written straight into the view JSON, so it is spelled the way
+			// the export spells it
+			"sorts": []any{map[string]any{"property": bundle.ApiSlug(bundle.RelationKeyLastModifiedDate.String()), "direction": "desc"}},
 		}
 	}
 	view["name"] = op.Name

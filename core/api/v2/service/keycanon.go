@@ -59,10 +59,10 @@ func (k *keyCanon) canon(input string) (string, []string) {
 // and documents accept it, so the string-form filter validator must too;
 // acceptance is wider than advertising).
 func (k *keyCanon) withServedSpellings(stored []string) []string {
-	keyTaken, slugCount := servedPropertyKeySets(k.entries)
+	keyTaken, slugHolders := servedPropertyKeySets(k.entries)
 	bySlug := map[string]string{}
 	for _, entry := range k.entries {
-		if served := servedKey(entry.Key, entry.Slug, keyTaken, slugCount); served != entry.Key {
+		if served := servedKey(entry.Key, entry.Slug, keyTaken, slugHolders); served != entry.Key {
 			bySlug[entry.Key] = served
 		}
 	}
@@ -84,10 +84,10 @@ func (k *keyCanon) withServedSpellings(stored []string) []string {
 // candidate lists and did-you-mean — never advertise a spelling the
 // channels reject).
 func (k *keyCanon) servedSpellings(stored []string) []string {
-	keyTaken, slugCount := servedPropertyKeySets(k.entries)
+	keyTaken, slugHolders := servedPropertyKeySets(k.entries)
 	byKey := map[string]string{}
 	for _, entry := range k.entries {
-		byKey[entry.Key] = servedKey(entry.Key, entry.Slug, keyTaken, slugCount)
+		byKey[entry.Key] = servedKey(entry.Key, entry.Slug, keyTaken, slugHolders)
 	}
 	out := make([]string, 0, len(stored))
 	for _, key := range stored {

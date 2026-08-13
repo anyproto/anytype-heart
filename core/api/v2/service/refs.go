@@ -61,10 +61,10 @@ func (s *V2Service) knownTypeKeys(spaceId string) []string {
 	if err != nil {
 		return nil
 	}
-	keyTaken, slugCount := servedTypeKeySets(entries)
+	keyTaken, slugHolders := servedTypeKeySets(entries)
 	keys := make([]string, 0, len(entries))
 	for _, entry := range entries {
-		keys = append(keys, servedKey(entry.Key, entry.Slug, keyTaken, slugCount))
+		keys = append(keys, servedTypeKeyOf(entry.Key, entry.Slug, keyTaken, slugHolders))
 	}
 	return sortedDistinct(keys)
 }
@@ -157,10 +157,10 @@ func (s *V2Service) knownPropertyKeys(spaceId string) []string {
 
 // knownPropertyKeysIn is knownPropertyKeys over a primed set.
 func knownPropertyKeysIn(entries []propertyEntry) []string {
-	keyTaken, slugCount := servedPropertyKeySets(entries)
+	keyTaken, slugHolders := servedPropertyKeySets(entries)
 	keys := make([]string, 0, len(entries))
 	for _, entry := range entries {
-		keys = append(keys, servedKey(entry.Key, entry.Slug, keyTaken, slugCount))
+		keys = append(keys, servedKey(entry.Key, entry.Slug, keyTaken, slugHolders))
 	}
 	return sortedDistinct(keys)
 }

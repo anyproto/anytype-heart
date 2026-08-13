@@ -23,6 +23,10 @@ type Resolvers struct {
 	relsLoaded bool
 	relById    map[string]anyblockjson.PropertyDefinition
 	relKeyToId map[string]string
+
+	// the §7.5a key vocabulary, primed lazily — see keyvocab.go
+	relVocab  *keyMaps
+	typeVocab *keyMaps
 }
 
 // New creates resolvers over one space's index.
@@ -37,6 +41,7 @@ func (r *Resolvers) Options() anyblockjson.Options {
 		ResolveFormat:     r.ResolveFormat,
 		ResolveOptions:    r,
 		ResolveProperties: r,
+		Keys:              r,
 	}
 }
 

@@ -169,18 +169,20 @@ func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBas
 
 	var objectTypes []string
 	if doc.Type != "" {
-		objectTypes = append(objectTypes, domain.TypeKey(doc.Type).URL())
+		objectTypes = append(objectTypes, domain.TypeKey(imp.opts.typeKey(doc.Type)).URL())
 		if doc.Type == "template" && doc.TemplateFor != "" {
-			objectTypes = append(objectTypes, domain.TypeKey(doc.TemplateFor).URL())
+			objectTypes = append(objectTypes, domain.TypeKey(imp.opts.typeKey(doc.TemplateFor)).URL())
 		}
 	}
 
 	details := &types.Struct{Fields: map[string]*types.Value{}}
 	details.Fields[detailKeyId] = &types.Value{Kind: &types.Value_StringValue{StringValue: objectId}}
-	for key, raw := range doc.Properties {
-		if key == detailKeyId || key == detailKeyType {
+	for slug, raw := range doc.Properties {
+		if slug == detailKeyId || slug == detailKeyType {
 			continue // lifted into the envelope; a stray copy must not leak
 		}
+		// the document spells slugs (§7.5a); the store binds stored keys
+		key := imp.opts.propertyKey(slug)
 		if v := imp.propertyValue(key, raw); v != nil {
 			details.Fields[key] = v
 		}
@@ -517,7 +519,7 @@ func (imp *importer) linkFromJSON(jb *jsonBlock) (*model.BlockContentLink, error
 		CardStyle:     cardStyleNames.value(jb.CardStyle),
 		IconSize:      iconSizeNames.value(jb.IconSize),
 		Description:   linkDescriptionNames.value(jb.Description),
-		Relations:     propKeys,
+		Relations:     imp.opts.propertyKeys(propKeys),
 	}, nil
 }
 
@@ -590,7 +592,7 @@ func (imp *importer) blockFromJSON(jb *jsonBlock, forcedId string) ([]*model.Blo
 	case jb.Type == "tableOfContents":
 		b.Content = &model.BlockContentOfTableOfContents{TableOfContents: &model.BlockContentTableOfContents{}}
 	case jb.Type == "property":
-		b.Content = &model.BlockContentOfRelation{Relation: &model.BlockContentRelation{Key: jb.Key}}
+		b.Content = &model.BlockContentOfRelation{Relation: &model.BlockContentRelation{Key: imp.opts.propertyKey(jb.Key)}}
 	case jb.Type == "dataview":
 		dv, err := imp.dataviewFromJSON(jb)
 		if err != nil {

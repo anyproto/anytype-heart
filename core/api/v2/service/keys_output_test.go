@@ -131,3 +131,100 @@ func TestV2ListingsServeSlugs(t *testing.T) {
 		assert.Equal(t, "meeting_note", keys["type-meeting"], "the live holder keeps the slug")
 	})
 }
+
+// The §7.5a sweep: bundled keys re-spell on the wire too. The authority is
+// the derived table in code, not a stored detail — an old space stores no
+// apiObjectKey for its installed bundled relations and must still serve the
+// slug.
+
+func TestV2ListingsServeBundledSlugs(t *testing.T) {
+	t.Run("an installed bundled property with no stored slug still serves its derived slug", func(t *testing.T) {
+		// given
+		fx := slugSpaceFixture(t)
+		fx.addRelation(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:          domain.String("rel-dueDate"),
+			bundle.RelationKeyRelationKey: domain.String("dueDate"),
+			bundle.RelationKeyName:        domain.String("Due date"),
+		})
+
+		// when
+		rows, _, _, err := fx.ListProperties(context.Background(), testSpaceId, 0, 25)
+
+		// then
+		require.NoError(t, err)
+		keys := map[string]bool{}
+		for _, row := range rows {
+			keys[row.Key] = true
+		}
+		assert.True(t, keys["due_date"], "the derived table is the authority, stored detail or not")
+		assert.False(t, keys["dueDate"], "the camel stored key is not a wire spelling any more")
+	})
+
+	t.Run("a bundled type re-spells in object rows", func(t *testing.T) {
+		fx := slugSpaceFixture(t)
+		fx.addType(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:        domain.String("type-objectType"),
+			bundle.RelationKeyUniqueKey: domain.String("ot-objectType"),
+			bundle.RelationKeyName:      domain.String("Type"),
+		})
+
+		keys, err := fx.typeKeysById(testSpaceId)
+
+		require.NoError(t, err)
+		assert.Equal(t, "object_type", keys["type-objectType"])
+	})
+
+	t.Run("a squatted bundled slug keeps the honest stored key", func(t *testing.T) {
+		// given — a pre-mint-check space where a custom property took
+		// due_date. Serving it on the bundled row would advertise an address
+		// that now 400s (the shadow is ambiguous), so the bundled row keeps
+		// its stored spelling.
+		fx := slugSpaceFixture(t)
+		fx.addRelation(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:          domain.String("rel-dueDate"),
+			bundle.RelationKeyRelationKey: domain.String("dueDate"),
+			bundle.RelationKeyName:        domain.String("Due date"),
+		})
+		fx.addRelation(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:           domain.String("rel-squatter"),
+			bundle.RelationKeyRelationKey:  domain.String("6a7663db61fab21cd4b9e107"),
+			bundle.RelationKeyApiObjectKey: domain.String("due_date"),
+			bundle.RelationKeyName:         domain.String("Due Date"),
+		})
+
+		rows, _, _, err := fx.ListProperties(context.Background(), testSpaceId, 0, 25)
+
+		require.NoError(t, err)
+		byName := map[string]string{}
+		for _, row := range rows {
+			byName[row.Name] = row.Key
+		}
+		assert.Equal(t, "dueDate", byName["Due date"])
+	})
+}
+
+// TestV2ShadowedBundledSlugIsLoud is the 1.2 floor: a pre-existing shadow
+// used to resolve silently to the squatter. Revert the shadowedBundled*
+// branches in keys.go and this passes with the WRONG entity instead of
+// refusing.
+func TestV2ShadowedBundledSlugIsLoud(t *testing.T) {
+	// given
+	fx := slugSpaceFixture(t)
+	fx.addRelation(t, testSpaceId, objectstore.TestObject{
+		bundle.RelationKeyId:           domain.String("rel-squatter"),
+		bundle.RelationKeyRelationKey:  domain.String("6a7663db61fab21cd4b9e107"),
+		bundle.RelationKeyApiObjectKey: domain.String("due_date"),
+		bundle.RelationKeyName:         domain.String("Due Date"),
+	})
+	entries, err := fx.liveProperties(testSpaceId)
+	require.NoError(t, err)
+
+	// when
+	_, ok, ambiguous := fx.resolvePropertyInput("due_date", entries)
+
+	// then
+	assert.False(t, ok, "a shadowed bundled slug must never resolve by store order")
+	require.Len(t, ambiguous, 2)
+	assert.Contains(t, ambiguous[0], "6a7663db61fab21cd4b9e107", "the squatter, addressable by its stored key")
+	assert.Contains(t, ambiguous[1], "dueDate", "and the bundled property it shadows")
+}

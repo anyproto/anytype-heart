@@ -231,7 +231,7 @@ func (s *V2Service) ListTypes(ctx context.Context, spaceId string, offset, limit
 	if err != nil {
 		return nil, 0, false, err
 	}
-	keyTaken, slugCount := servedTypeKeySets(liveEntries)
+	keyTaken, slugHolders := servedTypeKeySets(liveEntries)
 	rows := make([]v2model.TypeRow, 0, len(records))
 	for _, record := range records {
 		key, err := domain.GetTypeKeyFromRawUniqueKey(record.Details.GetString(bundle.RelationKeyUniqueKey))
@@ -239,7 +239,7 @@ func (s *V2Service) ListTypes(ctx context.Context, spaceId string, offset, limit
 			continue
 		}
 		rows = append(rows, v2model.TypeRow{
-			Key:  servedKey(string(key), record.Details.GetString(bundle.RelationKeyApiObjectKey), keyTaken, slugCount),
+			Key:  servedTypeKeyOf(string(key), record.Details.GetString(bundle.RelationKeyApiObjectKey), keyTaken, slugHolders),
 			Name: record.Details.GetString(bundle.RelationKeyName),
 		})
 	}
@@ -310,7 +310,7 @@ func (s *V2Service) ListProperties(ctx context.Context, spaceId string, offset, 
 	if err != nil {
 		return nil, 0, false, err
 	}
-	keyTaken, slugCount := servedPropertyKeySets(liveEntries)
+	keyTaken, slugHolders := servedPropertyKeySets(liveEntries)
 	rows := make([]v2model.PropertyRow, 0, len(records))
 	for _, record := range records {
 		key := record.Details.GetString(bundle.RelationKeyRelationKey)
@@ -318,7 +318,7 @@ func (s *V2Service) ListProperties(ctx context.Context, spaceId string, offset, 
 			continue
 		}
 		rows = append(rows, v2model.PropertyRow{
-			Key:    servedKey(key, record.Details.GetString(bundle.RelationKeyApiObjectKey), keyTaken, slugCount),
+			Key:    servedKey(key, record.Details.GetString(bundle.RelationKeyApiObjectKey), keyTaken, slugHolders),
 			Name:   record.Details.GetString(bundle.RelationKeyName),
 			Format: anyblockjson.FormatName(model.RelationFormat(record.Details.GetInt64(bundle.RelationKeyRelationFormat))),
 		})

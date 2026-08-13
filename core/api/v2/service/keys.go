@@ -166,6 +166,9 @@ func (s *V2Service) resolvePropertyInput(input string, entries []propertyEntry) 
 		}
 	}
 	if len(slugMatches) == 1 {
+		if shadowed, ok := shadowedBundledProperty(input, slugMatches[0].Key); ok {
+			return propertyEntry{}, false, append(describePropertyEntries(slugMatches), shadowed)
+		}
 		return slugMatches[0], true, nil
 	}
 	if len(slugMatches) > 1 {
@@ -231,6 +234,9 @@ func (s *V2Service) resolveTypeInput(input string, entries []typeEntry) (typeEnt
 		}
 	}
 	if len(slugMatches) == 1 {
+		if shadowed, ok := shadowedBundledType(input, slugMatches[0].Key); ok {
+			return typeEntry{}, false, append(describeTypeEntries(slugMatches), shadowed)
+		}
 		return slugMatches[0], true, nil
 	}
 	if len(slugMatches) > 1 {
@@ -277,6 +283,44 @@ func (s *V2Service) resolveTypeInput(input string, entries []typeEntry) (typeEnt
 		return typeEntry{}, false, describeTypeEntries(candidates)
 	}
 	return typeEntry{}, false, nil
+}
+
+// shadowedBundledProperty reports whether a STORED slug that just matched at
+// chain step 2 shadows a different key in the bundled vocabulary — the
+// live-defect shape ADDRESSING §7.5a-6 names: a UI property named "Due Date"
+// took `due_date`, which is bundled `dueDate`'s derived slug, and every
+// `setProperties {"set": {"due_date": …}}` since has landed in that property
+// instead of the bundled one. Silently.
+//
+// The mint hardening makes new shadows impossible, but a space that already
+// holds one cannot be repaired without re-pointing a slug v1 has been
+// serving as an address (ADDRESSING §8-OQ3 owns that decision). What CAN be
+// fixed without touching stored data is the failure mode: chain step 2 no
+// longer picks the squatter over the bundled property — the input is
+// ambiguous, and ambiguity at any step is a loud 400 listing every holder
+// (§7.5-req-1). Wrong-and-silent becomes refused-and-actionable.
+//
+// The check is exact, never folded: only a slug that the bundled table
+// itself resolves to a DIFFERENT key shadows anything. A bundled relation
+// carrying its own derived slug (dueDate/due_date) is not a shadow, and a
+// stored KEY spelled like a bundled slug still wins at step 1 — that is the
+// chain's documented precedence (§8.23's stored-key-shadow case), not this.
+func shadowedBundledProperty(input, matchedKey string) (string, bool) {
+	key, ok := bundle.RelationKeyByApiSlug(input)
+	if !ok || string(key) == matchedKey {
+		return "", false
+	}
+	rel := bundle.MustGetRelation(key)
+	return fmt.Sprintf("the bundled %q (key %s)", rel.Name, key), true
+}
+
+// shadowedBundledType is shadowedBundledProperty for the type namespace.
+func shadowedBundledType(input, matchedKey string) (string, bool) {
+	key, ok := bundle.TypeKeyByApiSlug(input)
+	if !ok || string(key) == matchedKey {
+		return "", false
+	}
+	return fmt.Sprintf("the bundled %q (key %s)", bundle.MustGetType(key).Name, key), true
 }
 
 // describePropertyEntries renders ambiguity candidates ACTIONABLY: the
@@ -442,76 +486,85 @@ func (e propertyEntry) propertyDefinition() anyblockjson.PropertyDefinition {
 // or "☕" (unidecode: "?") became identity-bearing apiObjectKey values the
 // create returned as keys that no /properties/{key} route could accept.
 // Empty result = no derivable slug; the caller falls back to the minted
-// BSON as the only address.
+// BSON as the only address. The transform itself lives in pkg/lib/bundle
+// beside ApiSlug — the slug grammar is one thing, and the heart-side mint
+// and the apiObjectKey backfill apply the same one.
 func sanitizeApiSlug(raw string) string {
-	var b strings.Builder
-	lastUnderscore := false
-	for _, r := range raw {
-		valid := r == '_' || (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9')
-		if !valid {
-			r = '_'
-		}
-		if r == '_' {
-			if lastUnderscore {
-				continue
-			}
-			lastUnderscore = true
-		} else {
-			lastUnderscore = false
-		}
-		b.WriteRune(r)
-	}
-	out := strings.Trim(b.String(), "_")
-	if len(out) > maxV2KeyLength {
-		out = strings.Trim(out[:maxV2KeyLength], "_")
-	}
-	return out
+	return bundle.SanitizeApiSlug(raw, maxV2KeyLength)
 }
 
 // servedKeySets primes the two maps the served-spelling rule needs from one
-// live set: every live stored key, and the VISIBLE holder count per slug
+// live set: every live stored key, and the stored keys HOLDING each slug
 // (hidden holders don't participate in the slug namespace — a hidden twin
-// must not downgrade the visible row's spelling).
-func servedPropertyKeySets(entries []propertyEntry) (keys map[string]bool, slugCount map[string]int) {
+// must not downgrade the visible row's spelling). Holders, not a count:
+// a bundled key's slug is DERIVED, so the round-trip test is "does anyone
+// ELSE answer to this spelling", which a count of zero cannot express.
+func servedPropertyKeySets(entries []propertyEntry) (keys map[string]bool, slugHolders map[string][]string) {
 	keys = make(map[string]bool, len(entries))
-	slugCount = map[string]int{}
+	slugHolders = map[string][]string{}
 	for _, entry := range entries {
 		keys[entry.Key] = true
 		if !entry.Hidden && entry.Slug != "" {
-			slugCount[entry.Slug]++
+			slugHolders[entry.Slug] = append(slugHolders[entry.Slug], entry.Key)
 		}
 	}
-	return keys, slugCount
+	return keys, slugHolders
 }
 
-func servedTypeKeySets(entries []typeEntry) (keys map[string]bool, slugCount map[string]int) {
+func servedTypeKeySets(entries []typeEntry) (keys map[string]bool, slugHolders map[string][]string) {
 	keys = make(map[string]bool, len(entries))
-	slugCount = map[string]int{}
+	slugHolders = map[string][]string{}
 	for _, entry := range entries {
 		keys[entry.Key] = true
 		if !entry.Hidden && entry.Slug != "" {
-			slugCount[entry.Slug]++
+			slugHolders[entry.Slug] = append(slugHolders[entry.Slug], entry.Key)
 		}
 	}
-	return keys, slugCount
+	return keys, slugHolders
 }
 
-// servedKey is the wire spelling of one live entry's key: the stored slug
-// iff the stored key is an opaque BSON AND the slug round-trips to this
-// entry through the §7.5a-5 chain — i.e. no live stored key equals it
-// (chain step 1 would win) and it has exactly one live holder (twins are
-// ambiguous). An address the API serves must resolve to the row it labels;
-// anything else keeps the honest BSON spelling. (The full §7.5a respelling
-// of READABLE keys — dueDate → due_date on the wire — is the deferred
-// sweep; readable stored keys keep their spelling until it lands.)
-func servedKey(storedKey, slug string, keyTaken map[string]bool, slugCount map[string]int) string {
-	if slug == "" || !isBsonLikeKey(storedKey) {
+// servedKey is the wire spelling of one live entry's key under the §7.5a
+// surface rule — **the slug, always**, from whichever authority owns it:
+//
+//   - a BUNDLED key spells as its DERIVED slug (`dueDate` → `due_date`),
+//     because the table in code is that key's authority in every space and
+//     offline (§7.5a-1); no stored detail is consulted or needed;
+//   - every other key spells as its STORED slug (apiObjectKey), when it has
+//     one. Pre-backfill entities have none and keep the stored key — the
+//     honest degradation, not a second vocabulary.
+//
+// The round-trip guard is unchanged in spirit and sharper in fact: an
+// address the API serves MUST resolve back to the row it labels, so a
+// spelling that a live stored key would win at chain step 1, or that any
+// OTHER live holder answers to at step 2, is refused and the honest stored
+// key is served instead.
+func servedKey(storedKey, slug string, keyTaken map[string]bool, slugHolders map[string][]string) string {
+	return servedKeyOf(storedKey, slug, keyTaken, slugHolders, bundle.HasRelation(domain.RelationKey(storedKey)))
+}
+
+// servedTypeKeyOf is servedKey for the type namespace (its bundled test is
+// the type table, not the relation one).
+func servedTypeKeyOf(storedKey, slug string, keyTaken map[string]bool, slugHolders map[string][]string) string {
+	return servedKeyOf(storedKey, slug, keyTaken, slugHolders, bundle.HasObjectTypeByKey(domain.TypeKey(storedKey)))
+}
+
+func servedKeyOf(storedKey, slug string, keyTaken map[string]bool, slugHolders map[string][]string, bundled bool) string {
+	candidate := slug
+	if bundled {
+		candidate = bundle.ApiSlug(storedKey)
+	}
+	if candidate == "" || candidate == storedKey {
 		return storedKey
 	}
-	if keyTaken[slug] || slugCount[slug] != 1 {
-		return storedKey
+	if keyTaken[candidate] {
+		return storedKey // a live stored key wins the spelling at chain step 1
 	}
-	return slug
+	for _, holder := range slugHolders[candidate] {
+		if holder != storedKey {
+			return storedKey // someone else answers to it — ambiguous, so honest
+		}
+	}
+	return candidate
 }
 
 // propertyKeyHeldByAnyRelation reports whether ANY relation object holds the

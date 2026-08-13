@@ -118,7 +118,7 @@ func TestUpdateViewOp(t *testing.T) {
 		_, stillHidden := severity["hidden"]
 		assert.False(t, stillHidden, "hidden flipped off (visible = omitted on export)")
 		assert.Equal(t, float64(100), severity["width"], "the column's other fields survive the merge")
-		dueDate := columnByProperty(t, view, "dueDate")
+		dueDate := columnByProperty(t, view, "due_date")
 		require.NotNil(t, dueDate)
 		assert.Equal(t, true, dueDate["hidden"], "unnamed columns are untouched")
 		assert.Equal(t, float64(120), dueDate["width"])
@@ -695,7 +695,7 @@ func TestViewFamilyOps(t *testing.T) {
 		}
 		sorts, _ := view["sorts"].([]any)
 		require.Len(t, sorts, 1)
-		assert.Equal(t, "lastModifiedDate", sorts[0].(map[string]any)["property"])
+		assert.Equal(t, "last_modified_date", sorts[0].(map[string]any)["property"])
 		assert.Equal(t, "desc", sorts[0].(map[string]any)["direction"])
 	})
 
@@ -710,7 +710,7 @@ func TestViewFamilyOps(t *testing.T) {
 		view := viewsOf(t, dataviewOf(t, *captured, "dataview"))[1]
 		assert.Equal(t, "kanban", view["type"])
 		assert.Equal(t, "severity", view["groupBy"])
-		dueDate := columnByProperty(t, view, "dueDate")
+		dueDate := columnByProperty(t, view, "due_date")
 		require.NotNil(t, dueDate)
 		assert.Equal(t, true, dueDate["hidden"], "the columns channel merges onto the defaults")
 	})
@@ -1375,5 +1375,52 @@ func TestViewSchemaDrift(t *testing.T) {
 		insertSetProps := dig(t, schema, "properties", "set", "properties")
 		_, hasName := insertSetProps["name"]
 		assert.False(t, hasName, "insertView's name is the op's required top-level field")
+	})
+}
+
+// TestViewOpKeySpellings closes the §8.22/§8.23 deferral: view-op `set` and
+// `columns` channels used to accept stored keys ONLY, and once the documents
+// they merge into spell slugs (§7.5a) that becomes actively wrong — a
+// stored-key column address stops matching the column it names. Revert
+// canonicalViewKey and both subtests fail.
+func TestViewOpKeySpellings(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("the stored-key spelling still addresses the column the document spells as a slug", func(t *testing.T) {
+		// given — the working document spells due_date; the caller says
+		// dueDate, which every other v2 channel accepts
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editSetDoc), "headB")
+
+		// when
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"updateView","columns":{"dueDate":{"hidden":false}}}`), "", false)
+
+		// then
+		require.NoError(t, err)
+		view := viewsOf(t, dataviewOf(t, *captured, "dataview"))[0]
+		require.Len(t, columnsOf(t, view), 3, "it merged onto the existing column, it did not append a twin")
+		dueDate := columnByProperty(t, view, "due_date")
+		require.NotNil(t, dueDate)
+		_, stillHidden := dueDate["hidden"]
+		assert.False(t, stillHidden)
+	})
+
+	t.Run("a folded spelling lands as the document's, not as itself", func(t *testing.T) {
+		// given — the fold layer (§7.5a-3) is server-side everywhere else;
+		// unfolded, `DueDate` would be written verbatim into the stored
+		// groupBy, where nothing can ever match it
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editSetDoc), "headB")
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"updateView","set":{"groupBy":"DueDate","sorts":[{"property":"due-date","direction":"desc"}]}}`), "", false)
+
+		require.NoError(t, err)
+		view := viewsOf(t, dataviewOf(t, *captured, "dataview"))[0]
+		assert.Equal(t, "due_date", view["groupBy"])
+		sorts, _ := view["sorts"].([]any)
+		require.Len(t, sorts, 1)
+		assert.Equal(t, "due_date", sorts[0].(map[string]any)["property"])
 	})
 }

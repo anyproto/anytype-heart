@@ -31,6 +31,7 @@ type Options struct {
 	ResolveFormat      FormatResolver   // optional; nil = bundle-only resolution (§3)
 	ResolveOptions     OptionResolver   // optional; nil = option values pass through as ids
 	ResolveProperties  PropertyResolver // optional; nil = type documents keep raw recommended-relation ids (§2a)
+	Keys               KeyVocabulary    // optional; nil = BundledKeyVocabulary (the derived table — keyvocab.go)
 	OmitIds            bool             // export only: drop every id (§9)
 	CompactIds         bool             // export only: shorthand for CompactObjectRefs+CompactBlockLabels (§9a)
 	CompactObjectRefs  bool             // export only: shorten object refs via the refs legend (§9a; lossless)
@@ -162,7 +163,7 @@ var typeKeyIdPrefix = domain.TypeKey("").URL()
 func (e *exporter) typeKeys() []string {
 	keys := make([]string, 0, len(e.snapshot.ObjectTypes))
 	for _, t := range e.snapshot.ObjectTypes {
-		keys = append(keys, strings.TrimPrefix(t, typeKeyIdPrefix))
+		keys = append(keys, e.opts.typeSlug(strings.TrimPrefix(t, typeKeyIdPrefix)))
 	}
 	return keys
 }
@@ -302,29 +303,46 @@ func (e *exporter) buildProperties() *omap {
 			keys = append(keys, k)
 		}
 	}
-	sort.Strings(keys)
-	ordered := make([]string, 0, len(keys))
+	// the document spells slugs (§7.5a), so the canonical alphabetical order
+	// is over the SPELLINGS, not the stored keys — the reader sorts what it
+	// sees. Values still resolve through the stored key.
+	type prop struct{ slug, key string }
+	props := make([]prop, 0, len(keys))
+	spelled := map[string]bool{}
+	for _, k := range keys {
+		slug := e.opts.propertySlug(k)
+		// a slug two stored keys agree on (a space holding a pre-mint-check
+		// shadow) would collapse into one JSON key and lose a value: the
+		// second holder keeps its honest stored key
+		if slug != k && spelled[slug] {
+			slug = k
+		}
+		spelled[slug] = true
+		props = append(props, prop{slug: slug, key: k})
+	}
+	sort.Slice(props, func(i, j int) bool { return props[i].slug < props[j].slug })
+	ordered := make([]prop, 0, len(props))
 	seen := map[string]bool{}
 	for _, wk := range wellKnownPropertyOrder {
-		for _, k := range keys {
-			if k == wk {
-				ordered = append(ordered, k)
-				seen[k] = true
+		for _, p := range props {
+			if p.key == wk {
+				ordered = append(ordered, p)
+				seen[p.key] = true
 			}
 		}
 	}
-	for _, k := range keys {
-		if !seen[k] {
-			ordered = append(ordered, k)
+	for _, p := range props {
+		if !seen[p.key] {
+			ordered = append(ordered, p)
 		}
 	}
 	m := &omap{}
-	for _, k := range ordered {
+	for _, p := range ordered {
 		// presence of a property key is meaningful — it records that the
 		// property was set on the object — so values are written verbatim,
 		// including empty and default ones (§3); the omit-empty canon applies
 		// to block attributes and envelope fields only
-		m.set(k, e.propertyValue(k, e.snapshot.Details.Fields[k]))
+		m.set(p.slug, e.propertyValue(p.key, e.snapshot.Details.Fields[p.key]))
 	}
 	return m
 }
@@ -552,7 +570,7 @@ func (e *exporter) blockToJSON(b *model.Block, depth int) (*omap, bool, error) {
 		if l.Description != model.BlockContentLink_None {
 			m.setNonEmpty("description", linkDescriptionNames.name(l.Description))
 		}
-		m.setNonEmpty("properties", stringsToAny(l.Relations))
+		m.setNonEmpty("properties", stringsToAny(e.opts.propertySlugs(l.Relations)))
 		withChildren = false
 	case *model.BlockContentOfDiv:
 		m.set("type", "divider")
@@ -590,7 +608,7 @@ func (e *exporter) blockToJSON(b *model.Block, depth int) (*omap, bool, error) {
 		withChildren = false
 	case *model.BlockContentOfRelation:
 		m.set("type", "property")
-		m.setNonEmpty("key", orEmpty(c.Relation).Key)
+		m.setNonEmpty("key", e.opts.propertySlug(orEmpty(c.Relation).Key))
 		withChildren = false
 	case *model.BlockContentOfDataview:
 		if err := e.dataviewToJSON(m, orEmpty(c.Dataview)); err != nil {
