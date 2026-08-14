@@ -3,6 +3,8 @@ package identity
 import (
 	"context"
 	"fmt"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -63,6 +65,71 @@ func TestFlushKeepsBatchOnFailure(t *testing.T) {
 		// then
 		require.Len(t, ledger.batches, 1)
 		assert.Equal(t, "page-1", ledger.batches[0][0].SourceKey)
+	})
+}
+
+type blockingLedger struct {
+	mu      sync.Mutex
+	batches [][]ClaimLedgerRecord
+	entered chan struct{}
+	release chan struct{}
+	calls   atomic.Int32
+}
+
+func (l *blockingLedger) RecordClaims(ctx context.Context, claims []ClaimLedgerRecord) error {
+	if l.calls.Add(1) == 1 {
+		close(l.entered)
+		<-l.release
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.batches = append(l.batches, claims)
+	return nil
+}
+
+func TestFlushOverlap(t *testing.T) {
+	t.Run("overlapping flushes never panic or lose records", func(t *testing.T) {
+		// given — CONFIRMED 'slice bounds out of range [4:0]': the lock
+		// protected the field but not the take/write/trim transaction.
+		store := objectstore.NewStoreFixture(t)
+		space := mock_clientspace.NewMockSpace(t)
+		ledger := &blockingLedger{entered: make(chan struct{}), release: make(chan struct{})}
+		service := NewService(space, store.SpaceIndex(spaceId), false, time.Unix(1700000000, 0), WithClaimLedger(ledger))
+		counter := 0
+		space.EXPECT().CreateTreePayload(mock.Anything, mock.Anything).RunAndReturn(
+			func(ctx context.Context, _ payloadcreator.PayloadCreationParams) (treestorage.TreeStorageCreatePayload, error) {
+				counter++
+				return treestorage.TreeStorageCreatePayload{
+					RootRawChange: &treechangeproto.RawTreeChangeWithId{Id: fmt.Sprintf("t-%d", counter), RawChange: []byte("r")},
+				}, nil
+			})
+		for i := 0; i < 4; i++ {
+			require.NoError(t, service.Claim(context.Background(), importv2.IdentityClaim{
+				SourceKey: fmt.Sprintf("p-%d", i), SbType: coresb.SmartBlockTypePage,
+			}))
+		}
+
+		// when: flush A blocks inside the ledger; flush B arrives while A
+		// is parked. Under the broken take/unlock/write/trim shape, B
+		// completed a duplicate delivery and A then panicked on the trim
+		// (reproduced: slice bounds [4:0]); the fix serializes the whole
+		// transaction, so B waits and then finds nothing to do.
+		done := make(chan error, 2)
+		go func() { done <- service.FlushClaims(context.Background()) }()
+		<-ledger.entered
+		go func() { done <- service.FlushClaims(context.Background()) }()
+		close(ledger.release)
+		require.NoError(t, <-done)
+		require.NoError(t, <-done)
+
+		// then: every claim delivered exactly once across the batches
+		ledger.mu.Lock()
+		total := 0
+		for _, batch := range ledger.batches {
+			total += len(batch)
+		}
+		ledger.mu.Unlock()
+		assert.Equal(t, 4, total)
 	})
 }
 

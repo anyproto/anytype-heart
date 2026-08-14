@@ -91,6 +91,15 @@ func (s *spoolSink) Object(ctx context.Context, object *importv2.Object) error {
 		}
 	}
 	if err := s.spool.Append(ctx, object); err != nil {
+		if ctx.Err() != nil {
+			// The run is being stopped; the failed append is the stop, not
+			// a store failure (finish classifies). NOTE for DM-2: the spool
+			// write itself still rides the cancellable ctx — acceptable
+			// while the spool dies with the dir, but the moment resume
+			// exists a suspend-truncated spool is silent content loss and
+			// the write must detach like the effect/claim ledgers do.
+			return ctx.Err()
+		}
 		// A spool that cannot absorb is the run store failing: fatal, §7.2.
 		s.run.report(importv2.Fatal(importv2.IssueStoreError, fmt.Errorf("spool: %w", err)))
 		return s.errIfAborting(ctx)

@@ -148,6 +148,12 @@ const spoolChunkSize = 16
 // Replay streams the spooled objects back in emission order — the recorded
 // definitions-before-use order pass 3's resolution depends on — in bounded
 // chunks re-seeded on the last id, so the db stays usable throughout.
+//
+// Two properties, stated for DM-2: (1) after cancellation, up to
+// chunkSize-1 already-buffered objects are still emitted (benign — the
+// sink rejects them on its own ctx check); (2) chunked reads are NOT
+// snapshot-isolated across chunks — fine while pass 2 strictly precedes
+// pass 3, but late spooling would change that.
 func (sp *Spool) Replay(ctx context.Context, emit func(o *importv2.Object) error) error {
 	lastId := ""
 	for {

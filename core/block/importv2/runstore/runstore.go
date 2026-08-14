@@ -157,8 +157,53 @@ var (
 	activeDirs   = map[string]int{}
 )
 
+// ErrActive means another Store in this process holds the run dir.
+var ErrActive = errors.New("run dir is held by a live store")
+
+// tryMarkExclusive marks the dir active only when no other holder exists —
+// the atomic form of the IsActive-then-Open pair (the gap between the two
+// is exactly what a DM-2 resume could slip into).
+func tryMarkExclusive(dir string) bool {
+	activeDirsMu.Lock()
+	defer activeDirsMu.Unlock()
+	key := filepath.Clean(dir)
+	if activeDirs[key] > 0 {
+		return false
+	}
+	activeDirs[key]++
+	return true
+}
+
+// OpenExclusive opens a run dir only if no other holder is live, atomically
+// with taking the guard. The sweep's entry point.
+func OpenExclusive(ctx context.Context, dir string) (*Store, error) {
+	if !tryMarkExclusive(dir) {
+		return nil, ErrActive
+	}
+	s, err := open(ctx, dir)
+	if err != nil {
+		markInactive(dir)
+		return nil, err
+	}
+	if _, err = s.Manifest(ctx); err != nil {
+		_ = s.Close()
+		return nil, fmt.Errorf("read manifest: %w", err)
+	}
+	if err = s.seedRank(ctx); err != nil {
+		_ = s.Close()
+		return nil, fmt.Errorf("seed rank: %w", err)
+	}
+	issueSeq, err := seedMaxSequenceId(ctx, s.issues)
+	if err != nil {
+		_ = s.Close()
+		return nil, fmt.Errorf("seed issue sequence: %w", err)
+	}
+	s.issueSeq.Store(issueSeq)
+	return s, nil
+}
+
 // IsActive reports whether some Store in this process currently holds the
-// run dir open. Sweep checks this BEFORE opening.
+// run dir open.
 func IsActive(dir string) bool {
 	activeDirsMu.Lock()
 	defer activeDirsMu.Unlock()
@@ -255,6 +300,9 @@ func Create(ctx context.Context, dir string, m Manifest) (*Store, error) {
 	}
 	s, err := open(ctx, dir)
 	if err != nil {
+		// Create owns the dir: a failure must not leave sweepable garbage
+		// behind (removed while the guard is still held, then released).
+		_ = os.RemoveAll(dir)
 		markInactive(dir)
 		return nil, err
 	}
@@ -265,7 +313,9 @@ func Create(ctx context.Context, dir string, m Manifest) (*Store, error) {
 	m.CreatedAt = now
 	m.UpdatedAt = now
 	if err = s.writeManifest(ctx, m); err != nil {
-		_ = s.Close() // releases the guard
+		_ = s.closeDb()
+		_ = os.RemoveAll(dir) // Create owns the dir; no garbage on failure
+		s.releaseGuard()
 		return nil, fmt.Errorf("write manifest: %w", err)
 	}
 	return s, nil
@@ -673,10 +723,11 @@ func (s *Store) releaseGuard() {
 
 // Close is idempotent: exactly one call releases the active-dir registry
 // hold, whatever combination of Close/Drop/deferred-release paths runs.
+// The release is deferred so even a panicking db close cannot leak the
+// guard.
 func (s *Store) Close() error {
-	err := s.closeDb()
-	s.releaseGuard()
-	return err
+	defer s.releaseGuard()
+	return s.closeDb()
 }
 
 // Drop closes the store and deletes the whole run dir — the disposal the
@@ -684,12 +735,11 @@ func (s *Store) Close() error {
 // guard is released only AFTER the unlink: the dir must never be observable
 // as existing-but-unguarded (C3).
 func (s *Store) Drop() error {
+	defer s.releaseGuard() // after RemoveAll (C3), panic-safe
 	err := s.closeDb()
 	if removeErr := os.RemoveAll(s.dir); removeErr != nil {
-		s.releaseGuard()
 		return errors.Join(err, fmt.Errorf("remove run dir: %w", removeErr))
 	}
-	s.releaseGuard()
 	return err
 }
 

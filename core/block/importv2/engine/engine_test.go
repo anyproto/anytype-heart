@@ -126,6 +126,9 @@ type fakePersister struct {
 	// persist time — the pass-2 drain assertions read them.
 	filePaths    map[string]string
 	fileOpenSeen map[string]bool
+	// failOnDeadCtx makes Persist honor a dead context like the real
+	// persister does (the fake otherwise ignores ctx without a delay).
+	failOnDeadCtx bool
 	// observe, when set, fires at the top of every Persist call.
 	observe func()
 	// observeKeyed fires with the object's source key at the top of Persist.
@@ -142,6 +145,11 @@ func (f *fakePersister) Persist(ctx context.Context, o *importv2.Object, target 
 	}
 	if f.observeKeyed != nil {
 		f.observeKeyed(o.SourceKey)
+	}
+	if f.failOnDeadCtx {
+		if err := ctx.Err(); err != nil {
+			return persist.Outcome{}, err
+		}
 	}
 	// Fires outside the mutex: a recovered panic must not strand the lock.
 	if f.panicKeys[o.SourceKey] {
@@ -775,6 +783,93 @@ func TestRunStopClassification(t *testing.T) {
 		case <-time.After(5 * time.Second):
 			t.Fatal("run did not stop")
 		}
+	})
+}
+
+// cancelAfterFirstConverter cancels the run after its first emission.
+type cancelAfterFirstConverter struct {
+	scriptConverter
+	cancel context.CancelFunc
+}
+
+func (c *cancelAfterFirstConverter) Convert(ctx context.Context, sink importv2.Sink) (importv2.RootSpec, error) {
+	for i, o := range c.objects {
+		if err := sink.Object(ctx, o); err != nil {
+			return importv2.RootSpec{}, err
+		}
+		if i == 0 {
+			c.cancel()
+		}
+	}
+	return importv2.RootSpec{}, nil
+}
+
+func TestOnFetchedFailureIsFatal(t *testing.T) {
+	t.Run("a run that cannot mark the pass boundary must not materialize", func(t *testing.T) {
+		// given — S6: §7.2 says a run that cannot journal must not create
+		// objects; the fetched/materializing transition IS journaling (the
+		// A1 gate depends on it), so its failure was log-and-continue.
+		fx := newEngineFixture(t)
+		fx.deps.OnFetched = func() error { return assert.AnError }
+		converter := &scriptConverter{objects: []*importv2.Object{pageObj("a.md", false)}}
+
+		// when
+		result := Run(context.Background(), importv2.Request{Mode: importv2.ModeContinueOnError}, converter, fx.deps)
+
+		// then
+		require.Error(t, result.Err)
+		issue := importv2.AsIssue(result.Err, importv2.SeverityFatal, importv2.IssueObjectFailed)
+		assert.Equal(t, importv2.IssueStoreError, issue.Code)
+		assert.Zero(t, result.Created, "pass 3 must not run past a failed boundary write")
+	})
+}
+
+func TestCancelClassification(t *testing.T) {
+	t.Run("a cancel that lands in the spool append is a cancel, not a store error", func(t *testing.T) {
+		// given — the append error path had no stop guard, unlike both its
+		// neighbours in the same file: a user cancel during pass 2 reported
+		// INTERNAL_ERROR.
+		fx := newEngineFixture(t)
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		converter := &cancelAfterFirstConverter{
+			scriptConverter: scriptConverter{objects: []*importv2.Object{
+				pageObj("a.md", false), pageObj("b.md", false), pageObj("c.md", false),
+			}},
+			cancel: cancel,
+		}
+
+		// when
+		result := Run(ctx, importv2.Request{Mode: importv2.ModeContinueOnError}, converter, fx.deps)
+
+		// then
+		require.Error(t, result.Err)
+		issue := importv2.AsIssue(result.Err, importv2.SeverityFatal, importv2.IssueObjectFailed)
+		assert.Equal(t, importv2.IssueCancelled, issue.Code,
+			"a cancel during pass 2 must reach the wire as IMPORT_IS_CANCELED")
+	})
+
+	t.Run("a cancel that lands in finalize's direct persist is a cancel", func(t *testing.T) {
+		// given — finalize calls Persister.Persist directly, bypassing
+		// process()'s ctx-absorb: under ALL_OR_NOTHING the ctx-shaped
+		// failure became the fatal objectFailed → INTERNAL_ERROR.
+		fx := newEngineFixture(t)
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		fx.deps.Collection = &cancellingFactory{cancel: cancel}
+		fx.persister.failOnDeadCtx = true
+		converter := &scriptConverter{
+			objects:  []*importv2.Object{pageObj("a.md", true)},
+			rootSpec: importv2.RootSpec{CollectionName: "Import"},
+		}
+
+		// when
+		result := Run(ctx, importv2.Request{Mode: importv2.ModeAllOrNothing}, converter, fx.deps)
+
+		// then
+		require.Error(t, result.Err)
+		issue := importv2.AsIssue(result.Err, importv2.SeverityFatal, importv2.IssueObjectFailed)
+		assert.Equal(t, importv2.IssueCancelled, issue.Code)
 	})
 }
 

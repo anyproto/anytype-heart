@@ -102,8 +102,11 @@ type Deps struct {
 	// (memory-spool mode only).
 	SpillDir string
 	// OnFetched, when set, fires between pass 2 and pass 3 — the adapter
-	// marks the manifest fetched/materializing there (DM spec §6.4).
-	OnFetched func()
+	// marks the manifest fetched/materializing there (DM spec §6.4). Its
+	// failure is FATAL (S6): the transition is journaling — the A1
+	// compensation gate depends on it — and §7.2 forbids creating objects
+	// past a failed journal write.
+	OnFetched func() error
 	// ShutdownCtx, when set, bounds compensation (S1): it must survive the
 	// RUN's cancellation (compensation runs exactly when the run ctx is
 	// dead) but die with the COMPONENT, so Close actually reaches the
@@ -158,7 +161,10 @@ func Run(ctx context.Context, req importv2.Request, converter importv2.Converter
 		return r.finish(runCtx, importv2.RootSpec{})
 	}
 	if r.deps.OnFetched != nil {
-		r.deps.OnFetched()
+		if err := r.deps.OnFetched(); err != nil {
+			r.report(importv2.Fatal(importv2.IssueStoreError, fmt.Errorf("mark pass boundary: %w", err)))
+			return r.finish(runCtx, importv2.RootSpec{})
+		}
 	}
 
 	// Pass 3 — materialize: the existing streaming pipeline fed by the
@@ -480,6 +486,16 @@ func (r *run) persistGuarded(ctx context.Context, w work) (outcome persist.Outco
 	return r.deps.Persister.Persist(ctx, w.object, w.target, r.report)
 }
 
+// stageInterrupted mirrors process()'s ctx-absorb for the finalize-stage
+// calls that go to the persister directly: a ctx-shaped failure while the
+// run is being stopped is the stop itself (finish classifies), never an
+// objectFailed fatal — with the same fatal-severity carve-out.
+func (r *run) stageInterrupted(ctx context.Context, err error) bool {
+	return ctx.Err() != nil &&
+		(errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)) &&
+		importv2.AsIssue(err, importv2.SeverityObjectError, importv2.IssueObjectFailed).Severity < importv2.SeverityFatal
+}
+
 func (r *run) finalize(ctx context.Context, rootSpec importv2.RootSpec) {
 	if r.req.NoCollection {
 		return
@@ -508,6 +524,9 @@ func (r *run) finalize(ctx context.Context, rootSpec importv2.RootSpec) {
 		return
 	}
 	if err := r.deps.Identity.Claim(ctx, importv2.IdentityClaim{SourceKey: object.SourceKey, SbType: object.SbType}); err != nil {
+		if r.stageInterrupted(ctx, err) {
+			return
+		}
 		r.report(importv2.ObjectError(importv2.IssueObjectFailed, object.SourceKey, fmt.Errorf("claim root collection: %w", err)))
 		return
 	}
@@ -522,6 +541,9 @@ func (r *run) finalize(ctx context.Context, rootSpec importv2.RootSpec) {
 		Payload:    assignment.Payload,
 	}, r.report)
 	if err != nil {
+		if r.stageInterrupted(ctx, err) {
+			return
+		}
 		r.report(importv2.AsIssue(err, importv2.SeverityObjectError, importv2.IssueObjectFailed))
 		return
 	}
@@ -616,8 +638,10 @@ func (r *run) emitReport(ctx context.Context, claimed bool, title string) {
 		Payload:    assignment.Payload,
 	}})
 	if err != nil {
-		r.report(importv2.Warning(importv2.IssueObjectFailed, object.SourceKey,
-			fmt.Sprintf("persist import report: %s", err)))
+		if !r.stageInterrupted(ctx, err) {
+			r.report(importv2.Warning(importv2.IssueObjectFailed, object.SourceKey,
+				fmt.Sprintf("persist import report: %s", err)))
+		}
 		return
 	}
 	r.reportObjectId = outcome.Id

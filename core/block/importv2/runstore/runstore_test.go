@@ -385,6 +385,23 @@ func TestCreateGuardsItsDir(t *testing.T) {
 		}
 	})
 
+	t.Run("a failed create leaves no dir behind", func(t *testing.T) {
+		// given — CONFIRMED: any post-MkdirAll failure leaked the created
+		// run dir (sweepable garbage forever). Make open fail: run.db as a
+		// directory.
+		dir := filepath.Join(t.TempDir(), "run-1")
+		require.NoError(t, os.MkdirAll(filepath.Join(dir, "run.db"), 0o700))
+
+		// when
+		_, err := Create(context.Background(), dir, testManifest())
+
+		// then
+		require.Error(t, err)
+		_, statErr := os.Stat(dir)
+		assert.True(t, os.IsNotExist(statErr), "Create owns the dir and must remove it on failure")
+		assert.False(t, IsActive(dir))
+	})
+
 	t.Run("a failed create never leaks an active mark", func(t *testing.T) {
 		// given: a parent that is a file, so MkdirAll fails
 		parent := filepath.Join(t.TempDir(), "not-a-dir")
@@ -397,6 +414,24 @@ func TestCreateGuardsItsDir(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.False(t, IsActive(dir))
+	})
+}
+
+func TestOpenExclusive(t *testing.T) {
+	t.Run("OpenExclusive refuses while any holder is live, atomically", func(t *testing.T) {
+		// given — the sweep's IsActive-then-Open pair is not atomic; DM-2's
+		// resume is the first thing that can slip into the gap.
+		ctx := context.Background()
+		dir := filepath.Join(t.TempDir(), "run-1")
+		holder := createStore(t, dir)
+
+		// when / then
+		_, err := OpenExclusive(ctx, dir)
+		require.ErrorIs(t, err, ErrActive)
+		require.NoError(t, holder.Close())
+		store, err := OpenExclusive(ctx, dir)
+		require.NoError(t, err)
+		require.NoError(t, store.Close())
 	})
 }
 

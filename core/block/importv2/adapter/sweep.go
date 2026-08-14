@@ -3,6 +3,7 @@ package adapter
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"runtime/debug"
 
@@ -65,25 +66,40 @@ func sweepRuns(ctx context.Context, root string, objects persist.ObjectAccess, p
 		if ctx.Err() != nil {
 			return outcomes
 		}
-		outcomes = append(outcomes, sweepOne(ctx, dir, objects, probe))
+		outcomes = append(outcomes, sweepOneGuarded(ctx, dir, objects, probe))
 	}
 	return outcomes
 }
 
+// sweepOneGuarded contains a panic to ITS dir: one poison dir must not
+// abort the rest of the sweep (previously the recover sat a level up, so
+// aaa-poison left zzz-healthy uncompensated on every start, forever).
+func sweepOneGuarded(ctx context.Context, dir string, objects persist.ObjectAccess, probe spaceProbe) (outcome sweepOutcome) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			outcome.Dir = dir
+			outcome.Action = sweepSkippedError
+			outcome.Err = fmt.Errorf("sweep panic: %v", rec)
+			log.With("dir", dir).Errorf("sweep of one run dir panicked; continuing with the rest: %v", rec)
+		}
+	}()
+	return sweepOne(ctx, dir, objects, probe)
+}
+
 func sweepOne(ctx context.Context, dir string, objects persist.ObjectAccess, probe spaceProbe) sweepOutcome {
 	outcome := sweepOutcome{Dir: dir}
-	if runstore.IsActive(dir) {
-		// A live Store holds this dir (a run Close's grace gave up on, still
-		// finishing in this process). The db's .lock is a dirty sentinel,
-		// not a mutex — opening and dropping here would unlink the dir under
-		// the live writer, whose subsequent writes would succeed into an
-		// unlinked file.
-		outcome.Action = sweepSkippedActive
-		return outcome
-	}
-	store, err := runstore.Open(ctx, dir)
+	// OpenExclusive takes the guard atomically with the liveness check —
+	// the IsActive-then-Open pair had a gap a DM-2 resume could slip into.
+	// A live Store holding the dir (a run Close's grace gave up on, still
+	// finishing in this process) yields ErrActive: the db's .lock is a
+	// dirty sentinel, not a mutex — opening and dropping here would unlink
+	// the dir under the live writer.
+	store, err := runstore.OpenExclusive(ctx, dir)
 	if err != nil {
 		switch {
+		case errors.Is(err, runstore.ErrActive):
+			outcome.Action = sweepSkippedActive
+			return outcome
 		case runstore.IsCorrupted(err):
 			// The ledger is lost: whatever the run created can no longer be
 			// attributed. Delete the dir, say so loudly — leak, never guess.

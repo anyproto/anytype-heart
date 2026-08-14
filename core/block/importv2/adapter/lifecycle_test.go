@@ -341,6 +341,12 @@ func TestLifecycleInvariants(t *testing.T) {
 		default:
 			t.Fatal("the progress process must be finished even on a panic path")
 		}
+		sync := fx.service.fileSync.(*fakeFileSync)
+		sync.mu.Lock()
+		cleared := sync.cleared
+		sync.mu.Unlock()
+		assert.Positive(t, cleared,
+			"stale limit-reached events must not leak into the next import")
 	})
 
 	t.Run("a panicking engine run cannot leak the active registry", func(t *testing.T) {
@@ -395,6 +401,54 @@ func TestLifecycleSweep(t *testing.T) {
 		fx.service.sweepAbandoned()
 		_, statErr := os.Stat(dir)
 		assert.True(t, os.IsNotExist(statErr))
+	})
+
+	t.Run("one poison dir cannot abort the rest of the sweep", func(t *testing.T) {
+		// given — CONFIRMED: the recover sat at sweepAbandoned, so a
+		// panicking delete in aaa-poison left zzz-healthy uncompensated,
+		// repeating every start forever.
+		fx := newLifecycleFixture(t)
+		ctx := context.Background()
+		for _, name := range []string{"aaa-poison", "zzz-healthy"} {
+			dir := filepath.Join(runstore.RunsRoot(fx.repo), name)
+			store, err := runstore.Create(ctx, dir, runstore.Manifest{RunId: name, SpaceId: "space-1"})
+			require.NoError(t, err)
+			require.NoError(t, store.RecordCreated(ctx, "page", "obj-"+name))
+			require.NoError(t, store.SetState(ctx, runstore.StateMaterializing))
+			require.NoError(t, store.Close())
+		}
+		deleter := fx.service.objects.(*sweepDeleter)
+		deleter.panicIds = map[string]bool{"obj-aaa-poison": true}
+
+		// when
+		fx.service.sweepAbandoned()
+
+		// then: the healthy dir was still settled
+		assert.Contains(t, deleter.deleted, "obj-zzz-healthy")
+		_, err := os.Stat(filepath.Join(runstore.RunsRoot(fx.repo), "zzz-healthy"))
+		assert.True(t, os.IsNotExist(err), "the healthy dir must be compensated despite the poison dir")
+	})
+
+	t.Run("no imports are accepted after Close", func(t *testing.T) {
+		// given — CONFIRMED: a post-Close Import derived a plain-cancel
+		// cause (compensating instead of keeping), broadcast a finish during
+		// shutdown, and runs.Add raced runs.Wait.
+		fx := newLifecycleFixture(t)
+		ran := false
+		req := fx.script(func(ctx context.Context, request importv2.Request, converter importv2.Converter, spc clientspace.Space, lc *runLifecycle, progress process.Progress) *importv2.Result {
+			ran = true
+			return &importv2.Result{Created: 1}
+		})
+		require.NoError(t, fx.service.Close(context.Background()))
+
+		// when
+		fx.service.Import(req)
+		fx.waitRuns()
+
+		// then
+		assert.False(t, ran, "no run may start on a closed service")
+		assert.Zero(t, fx.finishEvents())
+		assert.Empty(t, runDirs(t, fx.repo))
 	})
 
 	t.Run("the service-level sweep settles a crashed run end to end", func(t *testing.T) {

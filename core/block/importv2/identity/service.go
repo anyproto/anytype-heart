@@ -213,20 +213,21 @@ func (s *Service) FlushClaims(ctx context.Context) error {
 	if s.ledger == nil {
 		return nil
 	}
+	// The lock is held across take, write and trim: the transaction is
+	// what needs protecting, not the field (a released lock between take
+	// and trim let overlapping flushes double-deliver and then panic on
+	// the second trim). The ledger write is a local, bounded db write;
+	// Claim contends only for its duration. E3 holds: the batch is
+	// retained until the ledger accepts it.
 	s.pendingMu.Lock()
-	batch := s.pending
-	s.pendingMu.Unlock()
-	if len(batch) == 0 {
+	defer s.pendingMu.Unlock()
+	if len(s.pending) == 0 {
 		return nil
 	}
-	// E3: the batch is retained until the ledger accepts it — a transient
-	// failure retries the same intents instead of silently dropping them.
-	if err := s.ledger.RecordClaims(ctx, batch); err != nil {
+	if err := s.ledger.RecordClaims(ctx, s.pending); err != nil {
 		return fmt.Errorf("record claims: %w", err)
 	}
-	s.pendingMu.Lock()
-	s.pending = s.pending[len(batch):]
-	s.pendingMu.Unlock()
+	s.pending = nil
 	return nil
 }
 

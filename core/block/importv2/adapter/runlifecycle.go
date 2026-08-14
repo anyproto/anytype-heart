@@ -203,21 +203,22 @@ func (s *service) onIssue(lc *runLifecycle) func(importv2.Issue) {
 // fetched — the spool is whole — flushed to disk, then materializing. A
 // crash between the two resumes from the spool once DM-2 lands; until then
 // both states sweep into the compensate branch. nil in volatile mode.
-func (s *service) onFetched(lc *runLifecycle) func() {
+func (s *service) onFetched(lc *runLifecycle) func() error {
 	if lc.store == nil {
 		return nil
 	}
-	return func() {
+	return func() error {
 		ctx := context.Background()
 		if err := lc.store.SetState(ctx, runstore.StateFetched); err != nil {
-			log.Errorf("mark run fetched: %s", err)
+			return fmt.Errorf("mark run fetched: %w", err)
 		}
 		if err := lc.store.Flush(ctx); err != nil {
-			log.Errorf("flush fetched run: %s", err)
+			return fmt.Errorf("flush fetched run: %w", err)
 		}
 		if err := lc.store.SetState(ctx, runstore.StateMaterializing); err != nil {
-			log.Errorf("mark run materializing: %s", err)
+			return fmt.Errorf("mark run materializing: %w", err)
 		}
+		return nil
 	}
 }
 

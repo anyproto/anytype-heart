@@ -112,6 +112,7 @@ type service struct {
 	activeRunsMu sync.Mutex
 	activeRuns   map[int64]context.CancelCauseFunc
 	runSeq       int64
+	closing      bool
 }
 
 func New() Importer {
@@ -159,8 +160,12 @@ func (s *service) Run(ctx context.Context) error {
 // startup sweep, spec §6.4 — no compensation races the shutdown grace) and
 // waits (bounded) for them to drain and flush.
 func (s *service) Close(ctx context.Context) error {
-	// Suspend BEFORE the component cancel: the first cancellation wins the
+	// Gate new imports first (no run may start on a closing service), then
+	// suspend BEFORE the component cancel: the first cancellation wins the
 	// cause, and it must be ErrSuspended, not a plain Canceled.
+	s.activeRunsMu.Lock()
+	s.closing = true
+	s.activeRunsMu.Unlock()
 	s.suspendRuns()
 	s.componentCancel()
 	done := make(chan struct{})
@@ -190,7 +195,14 @@ func (s *service) Handles(importType model.ImportType) bool {
 }
 
 func (s *service) Import(req *pb.RpcObjectImportRequest) {
-	s.runs.Add(1)
+	s.activeRunsMu.Lock()
+	if s.closing {
+		s.activeRunsMu.Unlock()
+		log.With("importType", req.Type.String()).Warnf("import rejected: service is closing")
+		return
+	}
+	s.runs.Add(1) // under the lock, so Close's runs.Wait cannot race the Add
+	s.activeRunsMu.Unlock()
 	go func() {
 		defer s.runs.Done()
 		// The engine firewalls its own run; this catches adapter-level
@@ -214,6 +226,8 @@ func (s *service) runImport(req *pb.RpcObjectImportRequest) {
 	defer func() {
 		if !progressSettled {
 			progress.Finish(fmt.Errorf("import aborted"))
+			// stale limit-reached events must not leak into the NEXT import
+			s.fileSync.ClearImportEvents()
 		}
 	}()
 	runCtx, cancel := context.WithCancelCause(s.componentCtx)
