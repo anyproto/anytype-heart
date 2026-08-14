@@ -25,6 +25,16 @@ type runLifecycle struct {
 	spillDir string
 	cleanup  func()
 	settled  bool
+	// untrack removes the run from the live-status registry (runstatus.go);
+	// called on every settlement path exactly once via settleTracking.
+	untrack func()
+}
+
+func (lc *runLifecycle) settleTracking() {
+	if lc.untrack != nil {
+		lc.untrack()
+		lc.untrack = nil
+	}
 }
 
 // release is DEFERRED by the run owner immediately after beginRun
@@ -37,6 +47,7 @@ func (lc *runLifecycle) release() {
 		return
 	}
 	lc.settled = true
+	lc.settleTracking()
 	if lc.store != nil {
 		if err := lc.store.Close(); err != nil {
 			log.Errorf("release unsettled run store: %s", err)
@@ -75,7 +86,11 @@ func (s *service) beginRun(ctx context.Context, request importv2.Request, conver
 	if err != nil {
 		return nil, fmt.Errorf("create run store: %w", err)
 	}
-	return &runLifecycle{store: store, spillDir: store.SpillDir()}, nil
+	return &runLifecycle{
+		store:    store,
+		spillDir: store.SpillDir(),
+		untrack:  s.trackLive(runId, store, request.Origin.ImportType),
+	}, nil
 }
 
 // finishRun settles a run's durable state. A run the ENGINE says was
@@ -88,6 +103,7 @@ func (s *service) beginRun(ctx context.Context, request importv2.Request, conver
 // on the failure path.
 func (s *service) finishRun(lc *runLifecycle, result *importv2.Result) {
 	lc.settled = true
+	lc.settleTracking()
 	if lc.store == nil {
 		if lc.cleanup != nil {
 			lc.cleanup()

@@ -195,6 +195,29 @@ func (sp *Spool) SourceKeys(ctx context.Context) (map[string]struct{}, int, erro
 	return keys, count, nil
 }
 
+// Census counts the spooled rows split pages/files without decoding any
+// snapshot — the status surface's totals (§15.4: pages and files are
+// separate counters by requirement).
+func (sp *Spool) Census(ctx context.Context) (pages, files int, err error) {
+	iter, err := sp.coll.Find(nil).Iter(ctx)
+	if err != nil {
+		return 0, 0, fmt.Errorf("iterate spool census: %w", err)
+	}
+	defer iter.Close()
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return 0, 0, fmt.Errorf("read spool doc: %w", err)
+		}
+		if doc.Value().Get("file") != nil {
+			files++
+		} else {
+			pages++
+		}
+	}
+	return pages, files, nil
+}
+
 // readChunk reads and decodes up to spoolChunkSize rows after lastId, then
 // releases the read transaction before returning.
 func (sp *Spool) readChunk(ctx context.Context, lastId string) ([]*importv2.Object, string, error) {

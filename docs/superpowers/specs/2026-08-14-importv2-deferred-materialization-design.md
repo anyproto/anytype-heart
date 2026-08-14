@@ -742,3 +742,15 @@ the engine restructure rewrites the reporting path anyway, so this is the moment
 restart-rehydrated counters, the pull RPC pair, dormant-run serving. DM-3: `safeToClose`
 turns true for pass 2. Phase D keeps only client-side rendering guidance and the residual
 intermediate-notification question (OQ-DM3).
+
+**As built (DM-2, 2026-08-14).** DM-1 did not carry the event core; DM-2 shipped the
+WIRE CONTRACT whole and the pull side complete: `Event.Import.Statistic` (the full
+§15.2 shape, registered in the event stream) plus `ObjectImportRunStatus` /
+`ObjectImportRunList` served for dormant runs from manifest+ledger exactly per §15.4's
+right-hand column (counters, totals from the spool census, cancelEffect/safeToClose from
+the materialize marker, issue counts) and for live runs from the run's own store handle —
+the same ledger-derived column, `live=true`. What remains of §15 is the PUSH producer:
+the coalescing emitter, the pacer/retry hooks in the Notion client (the three-state
+signal), converter-side ANALYZING/currentItem, bytes, and rate/ETA — the event message
+exists and is served by the RPCs, but nothing emits it on the stream yet. That producer
+is the §15 remainder, scheduled next; the contract will not move under it.

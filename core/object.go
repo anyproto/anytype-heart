@@ -709,6 +709,50 @@ func (mw *Middleware) ObjectImportNotionValidateToken(ctx context.Context,
 	return response(errCode, err)
 }
 
+// ObjectImportRunStatus reports one importv2 run by its durable importId —
+// live runs from the running engine's store, dormant runs (a crashed
+// process's dir awaiting the sweep, a suspended run) from manifest+ledger
+// alone, which is what makes polling restart-proof (deferred-
+// materialization spec §15.5).
+func (mw *Middleware) ObjectImportRunStatus(cctx context.Context, req *pb.RpcObjectImportRunStatusRequest) *pb.RpcObjectImportRunStatusResponse {
+	response := func(run *pb.RpcObjectImportRunStatusRun, code pb.RpcObjectImportRunStatusResponseErrorCode, err error) *pb.RpcObjectImportRunStatusResponse {
+		m := &pb.RpcObjectImportRunStatusResponse{Run: run, Error: &pb.RpcObjectImportRunStatusResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = getErrorDescription(err)
+		}
+		return m
+	}
+	if req.ImportId == "" {
+		return response(nil, pb.RpcObjectImportRunStatusResponseError_BAD_INPUT, errors.New("importId is required"))
+	}
+	run, err := mustService[importv2adapter.Importer](mw).RunStatus(cctx, req.ImportId)
+	switch {
+	case errors.Is(err, importv2adapter.ErrRunNotFound):
+		return response(nil, pb.RpcObjectImportRunStatusResponseError_NOT_FOUND, err)
+	case err != nil:
+		return response(nil, pb.RpcObjectImportRunStatusResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(run, pb.RpcObjectImportRunStatusResponseError_NULL, nil)
+}
+
+// ObjectImportRunList enumerates every known importv2 run — live and
+// dormant. A sibling RPC rather than an empty-id status overload by design
+// (spec §15.5).
+func (mw *Middleware) ObjectImportRunList(cctx context.Context, req *pb.RpcObjectImportRunListRequest) *pb.RpcObjectImportRunListResponse {
+	response := func(runs []*pb.RpcObjectImportRunStatusRun, code pb.RpcObjectImportRunListResponseErrorCode, err error) *pb.RpcObjectImportRunListResponse {
+		m := &pb.RpcObjectImportRunListResponse{Runs: runs, Error: &pb.RpcObjectImportRunListResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = getErrorDescription(err)
+		}
+		return m
+	}
+	runs, err := mustService[importv2adapter.Importer](mw).RunList(cctx)
+	if err != nil {
+		return response(runs, pb.RpcObjectImportRunListResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(runs, pb.RpcObjectImportRunListResponseError_NULL, nil)
+}
+
 func (mw *Middleware) ObjectImportUseCase(cctx context.Context, req *pb.RpcObjectImportUseCaseRequest) *pb.RpcObjectImportUseCaseResponse {
 	ctx := mw.newContext(cctx)
 

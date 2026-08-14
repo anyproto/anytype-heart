@@ -66,6 +66,11 @@ type Importer interface {
 	Import(req *pb.RpcObjectImportRequest)
 	// ValidateNotionToken probes the Notion API with the given token.
 	ValidateNotionToken(ctx context.Context, req *pb.RpcObjectImportNotionValidateTokenRequest) pb.RpcObjectImportNotionValidateTokenResponseErrorCode
+	// RunStatus reports one run by its durable importId; ErrRunNotFound when
+	// neither a live run nor a run dir carries it (§15.5).
+	RunStatus(ctx context.Context, importId string) (*pb.RpcObjectImportRunStatusRun, error)
+	// RunList reports every known run — live and dormant.
+	RunList(ctx context.Context) ([]*pb.RpcObjectImportRunStatusRun, error)
 }
 
 // Narrow seams over the app components the adapter's lifecycle paths touch,
@@ -117,6 +122,11 @@ type service struct {
 	activeRuns   map[int64]context.CancelCauseFunc
 	runSeq       int64
 	closing      bool
+
+	// liveStatus tracks durable runs with a running engine, keyed by runId,
+	// so status reads share the live store handle (runstatus.go).
+	liveStatusMu sync.Mutex
+	liveStatus   map[string]*liveRunInfo
 }
 
 func New() Importer {

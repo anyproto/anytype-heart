@@ -32,6 +32,9 @@ type State struct {
 	// SpoolCount is the replay's row count (progress total for the resumed
 	// incarnation).
 	SpoolCount int
+	// FilesDone counts completed uploads (the files-ledger rows) — the
+	// status surface's separate file counter (§15.4).
+	FilesDone int64
 	// Engine seeds engine.Resume.
 	Engine engine.ResumeState
 
@@ -158,6 +161,7 @@ func Load(ctx context.Context, store *runstore.Store) (*State, error) {
 		})
 		skip[file.SourceKey] = struct{}{}
 		created++ // persistFile reports every completed upload as created
+		st.FilesDone++
 	}
 
 	issues := make([]importv2.Issue, 0, len(issueRecords))

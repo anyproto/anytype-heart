@@ -1072,6 +1072,15 @@
     - [Rpc.Object.ImportList.Request](#anytype-Rpc-Object-ImportList-Request)
     - [Rpc.Object.ImportList.Response](#anytype-Rpc-Object-ImportList-Response)
     - [Rpc.Object.ImportList.Response.Error](#anytype-Rpc-Object-ImportList-Response-Error)
+    - [Rpc.Object.ImportRunList](#anytype-Rpc-Object-ImportRunList)
+    - [Rpc.Object.ImportRunList.Request](#anytype-Rpc-Object-ImportRunList-Request)
+    - [Rpc.Object.ImportRunList.Response](#anytype-Rpc-Object-ImportRunList-Response)
+    - [Rpc.Object.ImportRunList.Response.Error](#anytype-Rpc-Object-ImportRunList-Response-Error)
+    - [Rpc.Object.ImportRunStatus](#anytype-Rpc-Object-ImportRunStatus)
+    - [Rpc.Object.ImportRunStatus.Request](#anytype-Rpc-Object-ImportRunStatus-Request)
+    - [Rpc.Object.ImportRunStatus.Response](#anytype-Rpc-Object-ImportRunStatus-Response)
+    - [Rpc.Object.ImportRunStatus.Response.Error](#anytype-Rpc-Object-ImportRunStatus-Response-Error)
+    - [Rpc.Object.ImportRunStatus.Run](#anytype-Rpc-Object-ImportRunStatus-Run)
     - [Rpc.Object.ImportUseCase](#anytype-Rpc-Object-ImportUseCase)
     - [Rpc.Object.ImportUseCase.Request](#anytype-Rpc-Object-ImportUseCase-Request)
     - [Rpc.Object.ImportUseCase.Response](#anytype-Rpc-Object-ImportUseCase-Response)
@@ -1783,6 +1792,8 @@
     - [Rpc.Object.ImportExperience.Response.Error.Code](#anytype-Rpc-Object-ImportExperience-Response-Error-Code)
     - [Rpc.Object.ImportList.ImportResponse.Type](#anytype-Rpc-Object-ImportList-ImportResponse-Type)
     - [Rpc.Object.ImportList.Response.Error.Code](#anytype-Rpc-Object-ImportList-Response-Error-Code)
+    - [Rpc.Object.ImportRunList.Response.Error.Code](#anytype-Rpc-Object-ImportRunList-Response-Error-Code)
+    - [Rpc.Object.ImportRunStatus.Response.Error.Code](#anytype-Rpc-Object-ImportRunStatus-Response-Error-Code)
     - [Rpc.Object.ImportUseCase.Request.UseCase](#anytype-Rpc-Object-ImportUseCase-Request-UseCase)
     - [Rpc.Object.ImportUseCase.Response.Error.Code](#anytype-Rpc-Object-ImportUseCase-Response-Error-Code)
     - [Rpc.Object.ListDelete.Response.Error.Code](#anytype-Rpc-Object-ListDelete-Response-Error-Code)
@@ -2055,6 +2066,7 @@
     - [Event.File.SpaceUsage](#anytype-Event-File-SpaceUsage)
     - [Event.Import](#anytype-Event-Import)
     - [Event.Import.Finish](#anytype-Event-Import-Finish)
+    - [Event.Import.Statistic](#anytype-Event-Import-Statistic)
     - [Event.Membership](#anytype-Event-Membership)
     - [Event.Membership.TiersUpdate](#anytype-Event-Membership-TiersUpdate)
     - [Event.Membership.Update](#anytype-Event-Membership-Update)
@@ -2124,6 +2136,9 @@
     - [ResponseEvent](#anytype-ResponseEvent)
   
     - [Event.Block.Dataview.SliceOperation](#anytype-Event-Block-Dataview-SliceOperation)
+    - [Event.Import.Statistic.CancelEffect](#anytype-Event-Import-Statistic-CancelEffect)
+    - [Event.Import.Statistic.Phase](#anytype-Event-Import-Statistic-Phase)
+    - [Event.Import.Statistic.State](#anytype-Event-Import-Statistic-State)
     - [Event.Object.CleanupSuggestion.Trigger](#anytype-Event-Object-CleanupSuggestion-Trigger)
     - [Event.P2PStatus.Status](#anytype-Event-P2PStatus-Status)
     - [Event.Space.Network](#anytype-Event-Space-Network)
@@ -2485,6 +2500,8 @@
 | ObjectImport | [Rpc.Object.Import.Request](#anytype-Rpc-Object-Import-Request) | [Rpc.Object.Import.Response](#anytype-Rpc-Object-Import-Response) |  |
 | ObjectImportList | [Rpc.Object.ImportList.Request](#anytype-Rpc-Object-ImportList-Request) | [Rpc.Object.ImportList.Response](#anytype-Rpc-Object-ImportList-Response) |  |
 | ObjectImportNotionValidateToken | [Rpc.Object.Import.Notion.ValidateToken.Request](#anytype-Rpc-Object-Import-Notion-ValidateToken-Request) | [Rpc.Object.Import.Notion.ValidateToken.Response](#anytype-Rpc-Object-Import-Notion-ValidateToken-Response) |  |
+| ObjectImportRunStatus | [Rpc.Object.ImportRunStatus.Request](#anytype-Rpc-Object-ImportRunStatus-Request) | [Rpc.Object.ImportRunStatus.Response](#anytype-Rpc-Object-ImportRunStatus-Response) |  |
+| ObjectImportRunList | [Rpc.Object.ImportRunList.Request](#anytype-Rpc-Object-ImportRunList-Request) | [Rpc.Object.ImportRunList.Response](#anytype-Rpc-Object-ImportRunList-Response) |  |
 | ObjectImportUseCase | [Rpc.Object.ImportUseCase.Request](#anytype-Rpc-Object-ImportUseCase-Request) | [Rpc.Object.ImportUseCase.Response](#anytype-Rpc-Object-ImportUseCase-Response) |  |
 | ObjectImportExperience | [Rpc.Object.ImportExperience.Request](#anytype-Rpc-Object-ImportExperience-Request) | [Rpc.Object.ImportExperience.Response](#anytype-Rpc-Object-ImportExperience-Response) |  |
 | ObjectDateByTimestamp | [Rpc.Object.DateByTimestamp.Request](#anytype-Rpc-Object-DateByTimestamp-Request) | [Rpc.Object.DateByTimestamp.Response](#anytype-Rpc-Object-DateByTimestamp-Response) |  |
@@ -18272,6 +18289,142 @@ DEPRECATED, GO-1926 |
 
 
 
+<a name="anytype-Rpc-Object-ImportRunList"></a>
+
+### Rpc.Object.ImportRunList
+ImportRunList enumerates every known importv2 run — live ones and
+dormant run dirs. A sibling RPC rather than an empty-id overload
+of ImportRunStatus by design (DM spec §15.5).
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportRunList-Request"></a>
+
+### Rpc.Object.ImportRunList.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportRunList-Response"></a>
+
+### Rpc.Object.ImportRunList.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.ImportRunList.Response.Error](#anytype-Rpc-Object-ImportRunList-Response-Error) |  |  |
+| runs | [Rpc.Object.ImportRunStatus.Run](#anytype-Rpc-Object-ImportRunStatus-Run) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportRunList-Response-Error"></a>
+
+### Rpc.Object.ImportRunList.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.ImportRunList.Response.Error.Code](#anytype-Rpc-Object-ImportRunList-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportRunStatus"></a>
+
+### Rpc.Object.ImportRunStatus
+ImportRunStatus reports one importv2 run by its durable importId
+(returned nowhere yet client-side; discover via ImportRunList).
+Live runs are served from the running engine&#39;s surface; dormant
+runs — a crashed process&#39;s dir awaiting the sweep, a suspended
+run — are served from the manifest and the ledger alone, which is
+what makes the poll restart-proof (DM spec §15.5: a server-side
+operator polls job state instead of holding a session stream open
+across sidecar restarts).
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportRunStatus-Request"></a>
+
+### Rpc.Object.ImportRunStatus.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| importId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportRunStatus-Response"></a>
+
+### Rpc.Object.ImportRunStatus.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.ImportRunStatus.Response.Error](#anytype-Rpc-Object-ImportRunStatus-Response-Error) |  |  |
+| run | [Rpc.Object.ImportRunStatus.Run](#anytype-Rpc-Object-ImportRunStatus-Run) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportRunStatus-Response-Error"></a>
+
+### Rpc.Object.ImportRunStatus.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.ImportRunStatus.Response.Error.Code](#anytype-Rpc-Object-ImportRunStatus-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportRunStatus-Run"></a>
+
+### Rpc.Object.ImportRunStatus.Run
+Run pairs the statistic payload with the durable lifecycle
+state and liveness.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| status | [Event.Import.Statistic](#anytype-Event-Import-Statistic) |  |  |
+| manifestState | [string](#string) |  | the manifest lifecycle state (running | fetched | materializing | suspended | compensating | completed | failed) |
+| live | [bool](#bool) |  | an engine in this process is running it right now |
+
+
+
+
+
+
 <a name="anytype-Rpc-Object-ImportUseCase"></a>
 
 ### Rpc.Object.ImportUseCase
@@ -28437,6 +28590,33 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Object-ImportRunList-Response-Error-Code"></a>
+
+### Rpc.Object.ImportRunList.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-Object-ImportRunStatus-Response-Error-Code"></a>
+
+### Rpc.Object.ImportRunStatus.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_FOUND | 3 |  |
+
+
+
 <a name="anytype-Rpc-Object-ImportUseCase-Request-UseCase"></a>
 
 ### Rpc.Object.ImportUseCase.Request.UseCase
@@ -32550,6 +32730,53 @@ response already carries the path.
 
 
 
+<a name="anytype-Event-Import-Statistic"></a>
+
+### Event.Import.Statistic
+Statistic is the structured progress surface of one importv2 run
+(docs/superpowers/specs/2026-08-14-importv2-deferred-materialization-design.md
+§15): per-phase counters — deliberately NO blended overall percentage
+(fetching is rate-limit-bound at ~1.5 items/s, creating runs at
+persist speed: any blended bar crawls for an hour and then leaps) —
+plus the three-state running/throttled/retrying model: rate limiting
+is normal operation, not an error. The same message is served by
+ObjectImportRunStatus/ObjectImportRunList for runs with no live
+engine.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| importId | [string](#string) |  | the durable run id; stable across restarts |
+| processId | [string](#string) |  | correlates with the legacy progress process |
+| importType | [model.Import.Type](#anytype-model-Import-Type) |  |  |
+| phase | [Event.Import.Statistic.Phase](#anytype-Event-Import-Statistic-Phase) |  |  |
+| phaseStartedAt | [int64](#int64) |  | unix ms; clients show elapsed without their own clock |
+| totalsKnown | [bool](#bool) |  | false while the total is indeterminate (a cursor-chained scan has no total until it ends): render a count-up, never a fake bar |
+| pagesTotal | [int64](#int64) |  | pages and files are SEPARATE counters: 500 small files and one huge one behave nothing alike |
+| pagesDone | [int64](#int64) |  |  |
+| filesTotal | [int64](#int64) |  |  |
+| filesDone | [int64](#int64) |  |  |
+| bytesTotal | [int64](#int64) |  | files only; 0 = unknown |
+| bytesDone | [int64](#int64) |  |  |
+| state | [Event.Import.Statistic.State](#anytype-Event-Import-Statistic-State) |  |  |
+| resumesInMs | [int64](#int64) |  | Throttled: when the rate-limit window reopens |
+| attempt | [int32](#int32) |  | Retrying: attempt N... |
+| attemptsMax | [int32](#int32) |  | ...of M |
+| errorMessage | [string](#string) |  | Error only |
+| itemsPerSecond | [double](#double) |  | recent-window rate, per phase |
+| estimatedRemainingMs | [int64](#int64) |  | 0 = unknown; honest computation only |
+| cancelEffect | [Event.Import.Statistic.CancelEffect](#anytype-Event-Import-Statistic-CancelEffect) |  |  |
+| objectsCreated | [int64](#int64) |  | for phrasing &#34;stop and remove the N objects created&#34; |
+| safeToClose | [bool](#bool) |  | closing now loses nothing (resume exists for the current phase) |
+| warningCount | [int64](#int64) |  | live issue counts — abort a bad import at minute 20, not minute 110 |
+| errorCount | [int64](#int64) |  |  |
+| currentItem | [string](#string) |  | &#34;Fetching: Q3 Planning&#34; — the strongest not-stuck signal. USER CONTENT: displayable, never loggable. |
+
+
+
+
+
+
 <a name="anytype-Event-Membership"></a>
 
 ### Event.Membership
@@ -32730,6 +32957,7 @@ received to update per-message mention read status (if needed |
 | chatStateUpdate | [Event.Chat.UpdateState](#anytype-Event-Chat-UpdateState) |  | in case new unread messages received or chat state changed |
 | membershipV2Update | [Event.MembershipV2.Update](#anytype-Event-MembershipV2-Update) |  |  |
 | membershipV2ProductsUpdate | [Event.MembershipV2.ProductsUpdate](#anytype-Event-MembershipV2-ProductsUpdate) |  |  |
+| importStatistic | [Event.Import.Statistic](#anytype-Event-Import-Statistic) |  |  |
 
 
 
@@ -33622,6 +33850,47 @@ scenario: Precondition: user A and user B opened the same block
 | SliceOperationMove | 2 |  |
 | SliceOperationRemove | 3 |  |
 | SliceOperationReplace | 4 |  |
+
+
+
+<a name="anytype-Event-Import-Statistic-CancelEffect"></a>
+
+### Event.Import.Statistic.CancelEffect
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NothingToUndo | 0 | passes 1-2: nothing has entered the space yet |
+| RemovesCreated | 1 | pass 3 onward: cancel deletes what was created |
+
+
+
+<a name="anytype-Event-Import-Statistic-Phase"></a>
+
+### Event.Import.Statistic.Phase
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Scanning | 0 |  |
+| Analyzing | 1 |  |
+| Fetching | 2 |  |
+| Creating | 3 |  |
+| Finalizing | 4 |  |
+
+
+
+<a name="anytype-Event-Import-Statistic-State"></a>
+
+### Event.Import.Statistic.State
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Running | 0 |  |
+| Throttled | 1 | expected and calm; carries resumesInMs |
+| Retrying | 2 | transient failure under backoff |
+| Error | 3 | something is actually wrong |
 
 
 

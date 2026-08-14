@@ -244,6 +244,12 @@ func RunsRoot(repoPath string) string {
 	return filepath.Join(repoPath, "importv2", "runs")
 }
 
+// RunIdOfDir maps a run dir back to its runId — the dir is named by the
+// runId at creation, so enumeration and by-id lookup need no db open.
+func RunIdOfDir(dir string) string {
+	return filepath.Base(dir)
+}
+
 // ListRunDirs enumerates run directories under root. A missing root is an
 // empty listing, not an error (no import has ever run).
 func ListRunDirs(root string) ([]string, error) {

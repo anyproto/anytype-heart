@@ -141,6 +141,8 @@ message Event {
 
       MembershipV2.Update membershipV2Update = 138;
       MembershipV2.ProductsUpdate membershipV2ProductsUpdate = 139;
+
+      Import.Statistic importStatistic = 147;
     }
   }
 
@@ -1110,6 +1112,75 @@ message Event {
       string reportObjectId = 4;
       // number of issues recorded during the run (importv2)
       int64 issuesCount = 5;
+    }
+
+    // Statistic is the structured progress surface of one importv2 run
+    // (docs/superpowers/specs/2026-08-14-importv2-deferred-materialization-design.md
+    // §15): per-phase counters — deliberately NO blended overall percentage
+    // (fetching is rate-limit-bound at ~1.5 items/s, creating runs at
+    // persist speed: any blended bar crawls for an hour and then leaps) —
+    // plus the three-state running/throttled/retrying model: rate limiting
+    // is normal operation, not an error. The same message is served by
+    // ObjectImportRunStatus/ObjectImportRunList for runs with no live
+    // engine.
+    message Statistic {
+      string importId = 1;  // the durable run id; stable across restarts
+      string processId = 2; // correlates with the legacy progress process
+      model.Import.Type importType = 3;
+
+      Phase phase = 4;
+      int64 phaseStartedAt = 5; // unix ms; clients show elapsed without their own clock
+
+      // false while the total is indeterminate (a cursor-chained scan has no
+      // total until it ends): render a count-up, never a fake bar
+      bool totalsKnown = 6;
+      // pages and files are SEPARATE counters: 500 small files and one huge
+      // one behave nothing alike
+      int64 pagesTotal = 7;
+      int64 pagesDone = 8;
+      int64 filesTotal = 9;
+      int64 filesDone = 10;
+      int64 bytesTotal = 11; // files only; 0 = unknown
+      int64 bytesDone = 12;
+
+      State state = 13;
+      int64 resumesInMs = 14;   // Throttled: when the rate-limit window reopens
+      int32 attempt = 15;       // Retrying: attempt N...
+      int32 attemptsMax = 16;   // ...of M
+      string errorMessage = 17; // Error only
+
+      double itemsPerSecond = 18;      // recent-window rate, per phase
+      int64 estimatedRemainingMs = 19; // 0 = unknown; honest computation only
+
+      CancelEffect cancelEffect = 20;
+      int64 objectsCreated = 21; // for phrasing "stop and remove the N objects created"
+      bool safeToClose = 22;     // closing now loses nothing (resume exists for the current phase)
+
+      // live issue counts — abort a bad import at minute 20, not minute 110
+      int64 warningCount = 23;
+      int64 errorCount = 24;
+
+      // "Fetching: Q3 Planning" — the strongest not-stuck signal.
+      // USER CONTENT: displayable, never loggable.
+      string currentItem = 25;
+
+      enum Phase {
+        Scanning = 0;
+        Analyzing = 1;
+        Fetching = 2;
+        Creating = 3;
+        Finalizing = 4;
+      }
+      enum State {
+        Running = 0;
+        Throttled = 1; // expected and calm; carries resumesInMs
+        Retrying = 2;  // transient failure under backoff
+        Error = 3;     // something is actually wrong
+      }
+      enum CancelEffect {
+        NothingToUndo = 0;  // passes 1-2: nothing has entered the space yet
+        RemovesCreated = 1; // pass 3 onward: cancel deletes what was created
+      }
     }
   }
 
