@@ -44,10 +44,12 @@ func TestResumeSkipsTerminalRows(t *testing.T) {
 			Created:       1, // a's rehydrated count
 		})
 
-		// then: only b and c went through persist; the counters continue
-		// from the ledger instead of snapping to zero
+		// then: only b and c went through persist — as a SET: persisted
+		// records COMPLETION order across 8 concurrent workers, which is
+		// non-deterministic by design. The counters continue from the
+		// ledger instead of snapping to zero.
 		require.NoError(t, result.Err)
-		assert.Equal(t, []string{"b", "c"}, fx.persister.persisted)
+		assert.ElementsMatch(t, []string{"b", "c"}, fx.persister.persisted)
 		assert.Equal(t, int64(3), result.Created)
 	})
 
@@ -70,9 +72,10 @@ func TestResumeSkipsTerminalRows(t *testing.T) {
 			SkipKeys:      map[string]struct{}{"rel-1": {}},
 		})
 
-		// then
+		// then — as a SET (completion order is non-deterministic; the
+		// property is membership: the definition replayed, nothing skipped)
 		require.NoError(t, result.Err)
-		assert.Equal(t, []string{"rel-1", "b"}, fx.persister.persisted,
+		assert.ElementsMatch(t, []string{"rel-1", "b"}, fx.persister.persisted,
 			"the derived definition must replay despite its terminal ledger row")
 	})
 
