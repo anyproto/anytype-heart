@@ -56,13 +56,11 @@ type FakeSpace struct {
 	counter int
 	Created map[string]*state.State
 	Objects map[string]smartblock.SmartBlock
-	// minted remembers every payload's root bytes by id, surviving fixture
-	// "crashes" the way real tree storage would: the id IS the hash of
-	// those bytes, so a create presenting DIFFERENT bytes under a known id
-	// is rejected (review Class H: the old fake read only the id, so
-	// corrupting rehydrated root bytes changed nothing end to end — the
-	// gate proved id reuse, never byte fidelity).
-	minted map[string][]byte
+	// Deleted records every DeleteObject in order — compensation coverage
+	// is asserted on it (review Class H: no crash test compensated a file
+	// at all, so inverting file-ownership classification left the whole
+	// suite green).
+	Deleted []string
 	// BeforeCreate/AfterCreate are crash-injection hooks: BeforeCreate
 	// returning an error skips the write and fails the create with it;
 	// AfterCreate fires after a successful write. Both may cancel the run
@@ -116,7 +114,6 @@ func NewFakeSpace() *FakeSpace {
 	return &FakeSpace{
 		Created: map[string]*state.State{},
 		Objects: map[string]smartblock.SmartBlock{},
-		minted:  map[string][]byte{},
 	}
 }
 
@@ -124,17 +121,11 @@ func (f *FakeSpace) CreateTreePayload(ctx context.Context, params payloadcreator
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.counter++
-	payload := payloadWithId(fmt.Sprintf("obj-%03d", f.counter))
-	f.minted[payload.RootRawChange.Id] = payload.RootRawChange.GetRawChange()
-	return payload, nil
+	return payloadWithId(fmt.Sprintf("obj-%03d", f.counter)), nil
 }
 
 func (f *FakeSpace) DeriveTreePayload(ctx context.Context, params payloadcreator.PayloadDerivationParams) (treestorage.TreeStorageCreatePayload, error) {
-	payload := payloadWithId("drv-" + params.Key.Marshal())
-	f.mu.Lock()
-	f.minted[payload.RootRawChange.Id] = payload.RootRawChange.GetRawChange()
-	f.mu.Unlock()
-	return payload, nil
+	return payloadWithId("drv-" + params.Key.Marshal()), nil
 }
 
 func (f *FakeSpace) CreateTreeObjectWithPayload(ctx context.Context, payload treestorage.TreeStorageCreatePayload, initFunc smartblock.InitFunc) (smartblock.SmartBlock, error) {
@@ -147,17 +138,31 @@ func (f *FakeSpace) CreateTreeObjectWithPayload(ctx context.Context, payload tre
 		f.mu.Unlock()
 		return nil, treestorage.ErrTreeExists
 	}
-	if want, known := f.minted[id]; known && !bytes.Equal(payload.RootRawChange.GetRawChange(), want) {
-		f.mu.Unlock()
-		return nil, fmt.Errorf("create %s: payload bytes differ from the minted root (the id is the hash of those bytes)", id)
-	}
 	f.mu.Unlock()
+	// HISTORY-FREE byte validation, like the real objecttree.CreateStorage
+	// (review Class H: the old check compared against bytes THIS PROCESS
+	// minted, so a modelled process death — an emptied map — let corrupted
+	// rehydrated bytes import silently; the real check is id↔bytes, no
+	// history). In this fake the bijection is bytes == payloadBytesFor(id),
+	// standing in for id == CID(bytes).
+	if !bytes.Equal(payload.RootRawChange.GetRawChange(), payloadBytesFor(id)) {
+		return nil, fmt.Errorf("create %s: payload bytes are not the root the id names", id)
+	}
 	if f.BeforeCreate != nil {
 		if err := f.BeforeCreate(id); err != nil {
 			return nil, err
 		}
 	}
 	initCtx := initFunc(id)
+	// The real space stamps these; a wrong value anywhere fails every test
+	// that creates anything (review Class H: InitContext.IsNewObject and
+	// SpaceID previously reached no assertion in the tree).
+	if !initCtx.IsNewObject {
+		return nil, fmt.Errorf("create %s: InitContext.IsNewObject must be true", id)
+	}
+	if initCtx.SpaceID != SpaceId {
+		return nil, fmt.Errorf("create %s: InitContext.SpaceID = %q, want %q", id, initCtx.SpaceID, SpaceId)
+	}
 	sb := smarttest.New(id)
 	if initCtx.State != nil {
 		if err := sb.Apply(initCtx.State); err != nil {
@@ -206,10 +211,15 @@ func (f *FakeSpace) GetObjectByFullID(ctx context.Context, id domain.FullID) (sm
 func (f *FakeSpace) DeleteObject(objectId string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	f.Deleted = append(f.Deleted, objectId)
 	delete(f.Objects, objectId)
 	delete(f.Created, objectId)
 	return nil
 }
+
+// payloadBytesFor is the fake's id↔bytes bijection: the history-free stand-
+// in for "the id is the CID of the root bytes".
+func payloadBytesFor(id string) []byte { return []byte("raw-" + id) }
 
 func payloadWithId(id string) treestorage.TreeStorageCreatePayload {
 	// Real payloads always carry root bytes — the id IS their hash — and
@@ -217,7 +227,7 @@ func payloadWithId(id string) treestorage.TreeStorageCreatePayload {
 	// A fake payload without them models an impossible object and starves
 	// the resume path of its payload rows.
 	return treestorage.TreeStorageCreatePayload{
-		RootRawChange: &treechangeproto.RawTreeChangeWithId{Id: id, RawChange: []byte("raw-" + id)},
+		RootRawChange: &treechangeproto.RawTreeChangeWithId{Id: id, RawChange: payloadBytesFor(id)},
 		Heads:         []string{id},
 	}
 }

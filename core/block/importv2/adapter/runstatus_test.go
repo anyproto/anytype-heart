@@ -3,6 +3,7 @@ package adapter
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -82,6 +83,55 @@ func TestRunStatusDormant(t *testing.T) {
 
 		// then
 		assert.ErrorIs(t, err, ErrRunNotFound)
+	})
+}
+
+func TestRunStatusCrossVersion(t *testing.T) {
+	t.Run("an older-schema dir is served from its frozen core, not dropped", func(t *testing.T) {
+		// given — review P2: buildRunStatus called resume.Load
+		// unconditionally, so a v1 dir errored from RunStatus and silently
+		// VANISHED from RunList — the exact symptom Class E was raised to
+		// fix, through a different door. §4.4 froze the manifest fields for
+		// exactly this: any version can always say what a run IS.
+		fx := newLifecycleFixture(t)
+		dir := makeResumableRun(t, runstore.RunsRoot(fx.repo), "old-run")
+		downgradeSchema(t, dir, runstore.SchemaVersion-1)
+
+		// when
+		run, err := fx.service.RunStatus(context.Background(), "old-run")
+
+		// then: identity and lifecycle served; ledger-derived numbers absent
+		require.NoError(t, err)
+		assert.False(t, run.Live)
+		assert.Equal(t, string(runstore.StateMaterializing), run.ManifestState)
+		assert.Equal(t, "old-run", run.Status.ImportId)
+		assert.False(t, run.Status.TotalsKnown)
+
+		// and: the listing includes it
+		runs, err := fx.service.RunList(context.Background())
+		require.NoError(t, err)
+		require.Len(t, runs, 1)
+		assert.Equal(t, "old-run", runs[0].Status.ImportId)
+	})
+}
+
+func TestRunListStrayDir(t *testing.T) {
+	t.Run("a stray dir without a db is skipped, and NO db is created into it", func(t *testing.T) {
+		// given — review P2: anystore.Open creates run.db where none
+		// exists, so a listing MATERIALISED a database into any stray
+		// directory under the runs root (a reader must never write).
+		fx := newLifecycleFixture(t)
+		stray := filepath.Join(runstore.RunsRoot(fx.repo), "stray")
+		require.NoError(t, os.MkdirAll(stray, 0o700))
+
+		// when
+		runs, err := fx.service.RunList(context.Background())
+
+		// then
+		require.NoError(t, err)
+		assert.Empty(t, runs)
+		_, statErr := os.Stat(filepath.Join(stray, "run.db"))
+		assert.True(t, os.IsNotExist(statErr), "a status read must not create a database")
 	})
 }
 

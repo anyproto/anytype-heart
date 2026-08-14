@@ -2,6 +2,7 @@ package runstore
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -363,21 +364,19 @@ func TestCreateGuardsItsDir(t *testing.T) {
 		for i := 0; i < 20; i++ {
 			dir := filepath.Join(t.TempDir(), "run-1")
 			stop := make(chan struct{})
+			watcherDone := make(chan struct{})
 			var violated atomic.Bool
 			go func() {
+				defer close(watcherDone)
 				for {
 					select {
 					case <-stop:
 						return
 					default:
 					}
-					// Read IsActive FIRST (review Class H: this test was the
-					// phase's second flake — Stat-then-IsActive raced benignly,
-					// Drop completing between the two reads). Once observed
-					// inactive, correct code has already unlinked (release
-					// strictly follows RemoveAll), so a dir that still Stats is
-					// a REAL violation — and the broken release-before-unlink
-					// shape is exactly what this ordering fires on.
+					// IsActive first: markActive strictly precedes MkdirAll
+					// in Create, so an existing-but-inactive observation
+					// during the create IS the C2 violation.
 					if !IsActive(dir) {
 						if _, err := os.Stat(dir); err == nil {
 							violated.Store(true)
@@ -388,7 +387,12 @@ func TestCreateGuardsItsDir(t *testing.T) {
 			}()
 			store, err := Create(context.Background(), dir, testManifest())
 			require.NoError(t, err)
+			// JOIN the watcher before Close (review Class H TOCTOU): Close
+			// legitimately releases the guard while the dir still exists, so
+			// an in-flight iteration past its stop check would read that
+			// valid end state as a violation.
 			close(stop)
+			<-watcherDone
 			require.NoError(t, store.Close())
 			require.False(t, violated.Load(),
 				"the dir existed on disk while not registered active (iteration %d)", i)
@@ -442,6 +446,59 @@ func TestOpenExclusive(t *testing.T) {
 		store, err := OpenExclusive(ctx, dir)
 		require.NoError(t, err)
 		require.NoError(t, store.Close())
+	})
+}
+
+func TestIsCorruptedStopShapes(t *testing.T) {
+	t.Run("a quick check that died OF the stop is not corruption", func(t *testing.T) {
+		// given — review P0-A (reproduced end to end by the reviewers): the
+		// quick check runs ONLY on dirty-sentinel dirs — crashed runs, the
+		// ones whose ledgers hold uncompensated effects — and any-store
+		// wraps EVERY quick-check failure as ErrQuickCheckFailed, including
+		// a shutdown's cancellation and its own five-minute cap. Classifying
+		// those as corruption made the sweep unlink exactly the ledgers that
+		// matter most. The wrap shape below is any-store's own
+		// (db.go: fmt.Errorf("%w: %w", ErrQuickCheckFailed, err)).
+		for _, tc := range []struct {
+			name string
+			err  error
+			want bool
+		}{
+			{"cancelled quick check", fmt.Errorf("%w: %w", anystore.ErrQuickCheckFailed, context.Canceled), false},
+			{"deadline-capped quick check", fmt.Errorf("%w: %w", anystore.ErrQuickCheckFailed, context.DeadlineExceeded), false},
+			{"genuinely failed quick check", fmt.Errorf("%w: %w", anystore.ErrQuickCheckFailed, errors.New("integrity check failed")), true},
+			{"plain cancellation", context.Canceled, false},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				assert.Equal(t, tc.want, IsCorrupted(tc.err))
+			})
+		}
+	})
+}
+
+func TestWriteTxSurvivesPanics(t *testing.T) {
+	t.Run("a panic mid-transaction releases the write connection", func(t *testing.T) {
+		// given — the db has a SINGLE write connection: a transaction leaked
+		// by a panic between WriteTx and Commit wedges every later durable
+		// write (suspend markers, refunds, effect rows) into an unbounded
+		// Background wait — the exact 30s-Close signature of the review's
+		// blocker. The ledger writers must release on EVERY exit.
+		ctx := context.Background()
+		store := createStore(t, filepath.Join(t.TempDir(), "run-1"))
+		func() {
+			defer func() { require.NotNil(t, recover(), "the injected panic must fire") }()
+			_ = store.withWriteTx(ctx, func(txCtx context.Context) error {
+				panic("injected mid-tx panic")
+			})
+		}()
+
+		// when: a later write must acquire the write connection promptly
+		writeCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+		defer cancel()
+		err := store.RecordCreated(writeCtx, "page-1", "obj-1")
+
+		// then
+		require.NoError(t, err, "a panicked transaction must not wedge the store")
 	})
 }
 

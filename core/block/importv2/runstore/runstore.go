@@ -275,16 +275,24 @@ func RunsRoot(repoPath string) string {
 //   - NO sentinel machinery: Open's quick-check clears the dirty sentinel
 //     (MarkCleanAfterCheck), disarming corruption detection on exactly the
 //     dirs most likely damaged — the reader must not observe-and-destroy;
-//   - NO writes: collections are OPENED, never created, and no index is
-//     ensured. A dir missing its collections (a creation-time crash) is an
-//     error the caller skips.
+//   - NO content writes: the db must already exist (a dir without run.db —
+//     a stray directory — is refused, because anystore.Open would CREATE
+//     one), collections are OPENED, never created, and no index is
+//     ensured. Honesty note (review P2): anystore.Open still runs its own
+//     system DDL on open, so the FILE is touched — what this reader
+//     guarantees is no run-content mutation and no db materialisation, not
+//     byte-identical files.
 //
 // The returned Store must only be used for reads; Close releases only the
 // db handle. Concurrent with a live writer this is a plain extra SQLite
 // connection (WAL) — safe, at the documented cost of read-transaction
 // pressure on the writer's latency.
 func OpenStatusReader(ctx context.Context, dir string) (*Store, error) {
-	db, err := anystore.Open(ctx, filepath.Join(dir, dbFileName), &anystore.Config{ReadConnections: 1})
+	dbPath := filepath.Join(dir, dbFileName)
+	if _, err := os.Stat(dbPath); err != nil {
+		return nil, fmt.Errorf("no run db to read: %w", err)
+	}
+	db, err := anystore.Open(ctx, dbPath, &anystore.Config{ReadConnections: 1})
 	if err != nil {
 		return nil, fmt.Errorf("open run db (status): %w", err)
 	}
@@ -365,6 +373,19 @@ func IsCorrupted(err error) bool {
 	if err == nil {
 		return false
 	}
+	// The stop is never corruption (review P0-A): any-store wraps EVERY
+	// quick-check failure as ErrQuickCheckFailed — including a shutdown's
+	// cancellation and the check's own five-minute cap — and the quick
+	// check runs only on dirty-sentinel dirs, i.e. exactly the crashed runs
+	// whose ledgers hold uncompensated effects. A ctx-shaped or
+	// SQLITE_INTERRUPT cause means "try again next start", never "unlink
+	// the ledger".
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return false
+	}
+	if sqlite.ErrCode(err) == sqlite.ResultInterrupt {
+		return false
+	}
 	if errors.Is(err, anystore.ErrQuickCheckFailed) || errors.Is(err, anystore.ErrIncompatibleVersion) {
 		return true
 	}
@@ -413,6 +434,30 @@ func Create(ctx context.Context, dir string, m Manifest) (*Store, error) {
 }
 
 func nowSecond() time.Time { return time.Now().Truncate(time.Second) }
+
+// dbOpTimeout bounds one store operation on the detached context below.
+// Generous: the largest measured op (a full 5k-row scan) is ~10ms.
+const dbOpTimeout = time.Minute
+
+// opCtx returns the context for ONE database operation: values preserved,
+// CANCELLATION DROPPED, bounded by a generous timeout.
+//
+// This is the fix for the review blocker, diagnosed by stack capture:
+// any-store v0.4.7 leaks the acquired connection when a query fails
+// mid-prepare on a cancelled context (query.go Iter: getReadTx acquired,
+// conn.Query returns 'sqlite: prepare: interrupted', the tx is never
+// committed) — and with ReadConnections:1 that wedges EVERY later read on
+// the handle into GetRead's eternal one-second retry: the resume's refund
+// and suspend markers hung forever and Close burned its whole grace. A
+// suspend cancels the ctx mid-replay by design, so the trigger is our own
+// normal shutdown. The rule, applied to every operation on this store:
+// cancellation is honored BETWEEN operations (the sinks and loops already
+// check their run contexts); the operation itself runs undisturbed on a
+// bounded detached context, exactly like the detached ledger writes
+// (P0-1) — this is that rule's read-side twin.
+func opCtx(ctx context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.WithoutCancel(ctx), dbOpTimeout)
+}
 
 // seedFromManifest aligns the store's in-memory markers with the manifest.
 func (s *Store) seedFromManifest(m Manifest) {
@@ -512,6 +557,9 @@ func (s *Store) Dir() string { return s.dir }
 func (s *Store) SpillDir() string { return filepath.Join(s.dir, spillDirName) }
 
 func (s *Store) Manifest(ctx context.Context) (Manifest, error) {
+	ctx, opDone := opCtx(ctx)
+	defer opDone()
+
 	doc, err := s.manifest.FindId(ctx, manifestId)
 	if err != nil {
 		return Manifest{}, fmt.Errorf("find manifest: %w", err)
@@ -521,6 +569,9 @@ func (s *Store) Manifest(ctx context.Context) (Manifest, error) {
 
 // SetState persists a lifecycle transition and bumps UpdatedAt.
 func (s *Store) SetState(ctx context.Context, state State) error {
+	ctx, opDone := opCtx(ctx)
+	defer opDone()
+
 	m, err := s.Manifest(ctx)
 	if err != nil {
 		return err
@@ -540,12 +591,42 @@ func (s *Store) SetState(ctx context.Context, state State) error {
 }
 
 func (s *Store) writeManifest(ctx context.Context, m Manifest) error {
+	ctx, opDone := opCtx(ctx)
+	defer opDone()
+
 	arena := s.arenas.Get()
 	defer func() {
 		arena.Reset()
 		s.arenas.Put(arena)
 	}()
 	return s.manifest.UpsertOne(ctx, marshalManifest(arena, m))
+}
+
+// withWriteTx runs fn inside one write transaction, releasing it on EVERY
+// exit including panics. The db has a SINGLE write connection, so a leaked
+// transaction wedges every later durable write — suspend markers, attempt
+// refunds, effect rows — into an unbounded wait (the review blocker's
+// 30s-Close signature is exactly what that wedge produces): explicit-path
+// rollback is not release discipline, this is.
+func (s *Store) withWriteTx(ctx context.Context, fn func(txCtx context.Context) error) error {
+	ctx, opDone := opCtx(ctx)
+	defer opDone()
+
+	tx, err := s.db.WriteTx(ctx)
+	if err != nil {
+		return fmt.Errorf("write tx: %w", err)
+	}
+	finished := false
+	defer func() {
+		if !finished {
+			_ = tx.Rollback()
+		}
+	}()
+	if err = fn(tx.Context()); err != nil {
+		return err // the deferred rollback releases the connection
+	}
+	finished = true
+	return tx.Commit()
 }
 
 // RecordCreated journals one run-created tree object (spec §5.3): the
@@ -582,86 +663,81 @@ func (s *Store) recordEntry(ctx context.Context, sourceKey, objectId, mode, acti
 	rank := int(s.rank.Add(1))
 	var displacedId, displacedMode, displacedStatus, displacedAction, keptId string
 	var displacedLate bool
-	tx, err := s.db.WriteTx(ctx)
-	if err != nil {
-		return fmt.Errorf("entry tx: %w", err)
-	}
-	_, err = s.entries.UpsertId(tx.Context(), sourceKey, query.ModifyFunc(
-		func(arena *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
-			existingId := string(v.GetStringBytes("objectId"))
-			if string(v.GetStringBytes("mode")) == modeMinted {
-				if existingId != "" && existingId != objectId {
-					// the INCOMING effect would vanish (minted-sticky keeps
-					// the row): it persisted, so it carries that status —
-					// and the classification a fresh effect row would get
-					displacedId, displacedMode, displacedStatus = objectId, mode, statusPersisted
-					displacedAction = action
-					displacedLate = s.materializeStarted.Load()
-					keptId = existingId
-					return v, false, nil
-				}
-				// same id: the effect completes the claim — status/action
-				// advance, but mode/rank/objectId (the frozen compensation
-				// fields) stay exactly as first written.
-				v.Set("status", arena.NewString(statusPersisted))
-				v.Set("action", arena.NewString(action))
-				return v, true, nil
-			}
-			if existingId != "" {
-				if existingId == objectId {
-					// same id over a non-minted row: advance status/action
-					// only. Mode is IDENTITY and identity does not change —
-					// in particular a matched (pre-existing, user-owned) id
-					// must never flip into the delete set (bias: leak,
-					// never delete user data).
+	return s.withWriteTx(ctx, func(txCtx context.Context) error {
+		_, err := s.entries.UpsertId(txCtx, sourceKey, query.ModifyFunc(
+			func(arena *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
+				existingId := string(v.GetStringBytes("objectId"))
+				if string(v.GetStringBytes("mode")) == modeMinted {
+					if existingId != "" && existingId != objectId {
+						// the INCOMING effect would vanish (minted-sticky keeps
+						// the row): it persisted, so it carries that status —
+						// and the classification a fresh effect row would get
+						displacedId, displacedMode, displacedStatus = objectId, mode, statusPersisted
+						displacedAction = action
+						displacedLate = s.materializeStarted.Load()
+						keptId = existingId
+						return v, false, nil
+					}
+					// same id: the effect completes the claim — status/action
+					// advance, but mode/rank/objectId (the frozen compensation
+					// fields) stay exactly as first written.
 					v.Set("status", arena.NewString(statusPersisted))
 					v.Set("action", arena.NewString(action))
 					return v, true, nil
 				}
-				// the EXISTING row would vanish (this write replaces it):
-				// it carries ITS classification into the synthetic row —
-				// mode, status, action and late all belong to the origin
-				// row, not to the current phase (review Class B)
-				displacedId = existingId
-				displacedMode = string(v.GetStringBytes("mode"))
-				displacedStatus = string(v.GetStringBytes("status"))
-				displacedAction = string(v.GetStringBytes("action"))
-				displacedLate = v.GetBool("late")
-				keptId = objectId
-			}
-			v.Set("objectId", arena.NewString(objectId))
-			v.Set("mode", arena.NewString(mode))
-			v.Set("status", arena.NewString(statusPersisted))
-			v.Set("action", arena.NewString(action))
-			if v.Get("rank") == nil {
-				v.Set("rank", arena.NewNumberInt(rank))
-			}
-			v.Set("incarnation", arena.NewNumberInt(s.currentIncarnation()))
-			if v.Get("late") == nil && s.materializeStarted.Load() {
-				// A FRESH effect row during pass 3 belongs to an object with
-				// no earlier claim row: a finalize-stage object (whose
-				// buffered claim flushes only at finish) or a derived-class
-				// definition. Same marker, same reason as RecordClaims —
-				// the restart's finalize inference depends on it.
-				v.Set("late", arena.NewBool(true))
-			}
-			return v, true, nil
-		}))
-	if err != nil {
-		return rollback(tx.Rollback(), err)
-	}
-	if displacedId == "" {
-		return tx.Commit()
-	}
-	log.With("sourceKey", sourceKey, "kept", keptId, "displaced", displacedId).
-		Errorf("conflicting objectId recorded under one source key — identity invariant violation; preserving both in the ledger")
-	if err = s.recordSyntheticEntry(tx.Context(), sourceKey, syntheticRow{
-		objectId: displacedId, mode: displacedMode, status: displacedStatus,
-		action: displacedAction, late: displacedLate,
-	}); err != nil {
-		return rollback(tx.Rollback(), err)
-	}
-	return tx.Commit()
+				if existingId != "" {
+					if existingId == objectId {
+						// same id over a non-minted row: advance status/action
+						// only. Mode is IDENTITY and identity does not change —
+						// in particular a matched (pre-existing, user-owned) id
+						// must never flip into the delete set (bias: leak,
+						// never delete user data).
+						v.Set("status", arena.NewString(statusPersisted))
+						v.Set("action", arena.NewString(action))
+						return v, true, nil
+					}
+					// the EXISTING row would vanish (this write replaces it):
+					// it carries ITS classification into the synthetic row —
+					// mode, status, action and late all belong to the origin
+					// row, not to the current phase (review Class B)
+					displacedId = existingId
+					displacedMode = string(v.GetStringBytes("mode"))
+					displacedStatus = string(v.GetStringBytes("status"))
+					displacedAction = string(v.GetStringBytes("action"))
+					displacedLate = v.GetBool("late")
+					keptId = objectId
+				}
+				v.Set("objectId", arena.NewString(objectId))
+				v.Set("mode", arena.NewString(mode))
+				v.Set("status", arena.NewString(statusPersisted))
+				v.Set("action", arena.NewString(action))
+				if v.Get("rank") == nil {
+					v.Set("rank", arena.NewNumberInt(rank))
+				}
+				v.Set("incarnation", arena.NewNumberInt(s.currentIncarnation()))
+				if v.Get("late") == nil && s.materializeStarted.Load() {
+					// A FRESH effect row during pass 3 belongs to an object with
+					// no earlier claim row: a finalize-stage object (whose
+					// buffered claim flushes only at finish) or a derived-class
+					// definition. Same marker, same reason as RecordClaims —
+					// the restart's finalize inference depends on it.
+					v.Set("late", arena.NewBool(true))
+				}
+				return v, true, nil
+			}))
+		if err != nil {
+			return err
+		}
+		if displacedId == "" {
+			return nil
+		}
+		log.With("sourceKey", sourceKey, "kept", keptId, "displaced", displacedId).
+			Errorf("conflicting objectId recorded under one source key — identity invariant violation; preserving both in the ledger")
+		return s.recordSyntheticEntry(txCtx, sourceKey, syntheticRow{
+			objectId: displacedId, mode: displacedMode, status: displacedStatus,
+			action: displacedAction, late: displacedLate,
+		})
+	})
 }
 
 // syntheticRow is a displaced row's FULL classification: mode keeps
@@ -718,21 +794,40 @@ func (s *Store) recordSyntheticEntry(ctx context.Context, sourceKey string, row 
 // via the entries displacement machinery on the effect write).
 func (s *Store) RecordCreateIntent(ctx context.Context, sourceKey, objectId string) error {
 	rank := int(s.rank.Add(1))
-	_, err := s.entries.UpsertId(ctx, sourceKey, query.ModifyFunc(
-		func(arena *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
-			if string(v.GetStringBytes("objectId")) != "" {
-				return v, false, nil // never downgrade an existing row (E1)
-			}
-			v.Set("objectId", arena.NewString(objectId))
-			v.Set("mode", arena.NewString(modeDerived))
-			v.Set("status", arena.NewString(statusClaimed))
-			v.Set("rank", arena.NewNumberInt(rank))
-			v.Set("incarnation", arena.NewNumberInt(s.currentIncarnation()))
-			if s.materializeStarted.Load() {
-				v.Set("late", arena.NewBool(true))
-			}
-			return v, true, nil
-		}))
+	var displaced bool
+	err := s.withWriteTx(ctx, func(txCtx context.Context) error {
+		_, err := s.entries.UpsertId(txCtx, sourceKey, query.ModifyFunc(
+			func(arena *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
+				if existing := string(v.GetStringBytes("objectId")); existing != "" {
+					// never downgrade an existing row (E1) — but a DIFFERENT
+					// id must not vanish either (review P2: this was the one
+					// ledger writer with no displacement preservation)
+					displaced = existing != objectId
+					return v, false, nil
+				}
+				v.Set("objectId", arena.NewString(objectId))
+				v.Set("mode", arena.NewString(modeDerived))
+				v.Set("status", arena.NewString(statusClaimed))
+				v.Set("rank", arena.NewNumberInt(rank))
+				v.Set("incarnation", arena.NewNumberInt(s.currentIncarnation()))
+				if s.materializeStarted.Load() {
+					v.Set("late", arena.NewBool(true))
+				}
+				return v, true, nil
+			}))
+		if err != nil {
+			return err
+		}
+		if !displaced {
+			return nil
+		}
+		log.With("sourceKey", sourceKey, "displaced", objectId).
+			Errorf("derived intent conflicts with an existing ledger id — preserving both")
+		return s.recordSyntheticEntry(txCtx, sourceKey, syntheticRow{
+			objectId: objectId, mode: modeDerived, status: statusClaimed,
+			late: s.materializeStarted.Load(),
+		})
+	})
 	return err
 }
 
@@ -741,6 +836,9 @@ func (s *Store) RecordCreateIntent(ctx context.Context, sourceKey, objectId stri
 // transition — deletability strictly DECREASES, the leak-bias direction)
 // and the row turns terminal. Any other row shape is left alone.
 func (s *Store) RecordDerivedMatched(ctx context.Context, sourceKey, objectId string) error {
+	ctx, opDone := opCtx(ctx)
+	defer opDone()
+
 	_, err := s.entries.UpsertId(ctx, sourceKey, query.ModifyFunc(
 		func(arena *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
 			if string(v.GetStringBytes("mode")) != modeDerived ||
@@ -765,58 +863,52 @@ func (s *Store) RecordFile(ctx context.Context, sourceKey, objectId string, preE
 	rank := int(s.rank.Add(1))
 	var displacedId string
 	var displacedPreExisting bool
-	tx, err := s.db.WriteTx(ctx)
-	if err != nil {
-		return fmt.Errorf("file tx: %w", err)
-	}
-	_, err = s.files.UpsertId(tx.Context(), sourceKey, query.ModifyFunc(
-		func(arena *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
-			if existingId := string(v.GetStringBytes("objectId")); existingId != "" {
-				if existingId != objectId {
-					// first-record-wins keeps the row; the incoming id must
-					// not vanish from the ledger (Invariant 3)
-					displacedId, displacedPreExisting = objectId, preExisting
+	return s.withWriteTx(ctx, func(txCtx context.Context) error {
+		_, err := s.files.UpsertId(txCtx, sourceKey, query.ModifyFunc(
+			func(arena *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
+				if existingId := string(v.GetStringBytes("objectId")); existingId != "" {
+					if existingId != objectId {
+						// first-record-wins keeps the row; the incoming id must
+						// not vanish from the ledger (Invariant 3)
+						displacedId, displacedPreExisting = objectId, preExisting
+					}
+					return v, false, nil
 				}
-				return v, false, nil
-			}
-			v.Set("objectId", arena.NewString(objectId))
-			v.Set("status", arena.NewString(statusDone))
-			v.Set("preExisting", arena.NewBool(preExisting))
-			v.Set("rank", arena.NewNumberInt(rank))
-			v.Set("incarnation", arena.NewNumberInt(s.currentIncarnation()))
-			return v, true, nil
-		}))
-	if err != nil {
-		return rollback(tx.Rollback(), err)
-	}
-	if displacedId == "" {
-		return tx.Commit()
-	}
-	log.With("sourceKey", sourceKey, "displaced", displacedId).
-		Errorf("conflicting file objectId recorded under one source key — preserving both in the ledger")
-	displacedRank := int(s.rank.Add(1))
-	err = placeRow(tx.Context(), s.files, sourceKey+"#dup-"+displacedId,
-		func(v *anyenc.Value) bool {
-			return string(v.GetStringBytes("objectId")) == displacedId &&
-				v.GetBool("preExisting") == displacedPreExisting
-		},
-		func(a *anyenc.Arena, v *anyenc.Value) {
-			v.Set("objectId", a.NewString(displacedId))
-			v.Set("status", a.NewString(statusDone))
-			v.Set("preExisting", a.NewBool(displacedPreExisting))
-			// same rule as entries synthetics (Class B, own-audit sibling):
-			// a displaced row exists for compensation alone — rehydration
-			// and the counters must be able to exclude it
-			v.Set("synthetic", a.NewBool(true))
-			if v.Get("rank") == nil { // frozen at first write (recordEntry's rule)
-				v.Set("rank", a.NewNumberInt(displacedRank))
-			}
-			v.Set("incarnation", a.NewNumberInt(s.currentIncarnation()))
-		})
-	if err != nil {
-		return rollback(tx.Rollback(), err)
-	}
-	return tx.Commit()
+				v.Set("objectId", arena.NewString(objectId))
+				v.Set("status", arena.NewString(statusDone))
+				v.Set("preExisting", arena.NewBool(preExisting))
+				v.Set("rank", arena.NewNumberInt(rank))
+				v.Set("incarnation", arena.NewNumberInt(s.currentIncarnation()))
+				return v, true, nil
+			}))
+		if err != nil {
+			return err
+		}
+		if displacedId == "" {
+			return nil
+		}
+		log.With("sourceKey", sourceKey, "displaced", displacedId).
+			Errorf("conflicting file objectId recorded under one source key — preserving both in the ledger")
+		displacedRank := int(s.rank.Add(1))
+		return placeRow(txCtx, s.files, sourceKey+"#dup-"+displacedId,
+			func(v *anyenc.Value) bool {
+				return string(v.GetStringBytes("objectId")) == displacedId &&
+					v.GetBool("preExisting") == displacedPreExisting
+			},
+			func(a *anyenc.Arena, v *anyenc.Value) {
+				v.Set("objectId", a.NewString(displacedId))
+				v.Set("status", a.NewString(statusDone))
+				v.Set("preExisting", a.NewBool(displacedPreExisting))
+				// same rule as entries synthetics (Class B, own-audit sibling):
+				// a displaced row exists for compensation alone — rehydration
+				// and the counters must be able to exclude it
+				v.Set("synthetic", a.NewBool(true))
+				if v.Get("rank") == nil { // frozen at first write (recordEntry's rule)
+					v.Set("rank", a.NewNumberInt(displacedRank))
+				}
+				v.Set("incarnation", a.NewNumberInt(s.currentIncarnation()))
+			})
+	})
 }
 
 type rankedId struct {
@@ -828,6 +920,9 @@ type rankedId struct {
 // version-frozen fields, tolerantly — an undecodable row is logged and
 // skipped, never fatal (a damaged row must not block cleaning up the rest).
 func (s *Store) CompensationInputs(ctx context.Context) (CompensationInputs, error) {
+	ctx, opDone := opCtx(ctx)
+	defer opDone()
+
 	var inputs CompensationInputs
 	// A1: pass-1 claims are pure intent. Before materialization begins,
 	// nothing exists in the space — rows still in the claimed status must
@@ -840,12 +935,44 @@ func (s *Store) CompensationInputs(ctx context.Context) (CompensationInputs, err
 		return CompensationInputs{}, fmt.Errorf("read manifest for compensation scope: %w", err)
 	}
 	deleteClaimed := manifest.MaterializeStarted
+	// neverDelete is ID-scoped (review P1-C): placeRow preserves displaced
+	// ROWS, but this reader returns IDS — so an id that ANY row classifies
+	// matched (pre-existing object) or pre-existing (deduped file) must be
+	// subtracted from the delete sets however many other rows name it as
+	// minted/owned. Collected from every row, gates ignored: a protection
+	// is a protection.
+	neverDelete := map[string]struct{}{}
+	err = s.scan(ctx, s.entries, func(v *anyenc.Value) error {
+		if string(v.GetStringBytes("mode")) == modeMatched {
+			if id := string(v.GetStringBytes("objectId")); id != "" {
+				neverDelete[id] = struct{}{}
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return CompensationInputs{}, err
+	}
+	err = s.scan(ctx, s.files, func(v *anyenc.Value) error {
+		if v.GetBool("preExisting") {
+			if id := string(v.GetStringBytes("objectId")); id != "" {
+				neverDelete[id] = struct{}{}
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return CompensationInputs{}, err
+	}
 	var created []rankedId
 	err = s.scan(ctx, s.entries, func(v *anyenc.Value) error {
 		objectId := string(v.GetStringBytes("objectId"))
 		mode := string(v.GetStringBytes("mode"))
 		if objectId == "" || mode == "" {
 			return fmt.Errorf("row %q: missing objectId or mode", v.GetStringBytes("id"))
+		}
+		if _, protected := neverDelete[objectId]; protected && mode != modeMatched {
+			return nil // id-scoped protection wins over this row's own class
 		}
 		if string(v.GetStringBytes("status")) == statusClaimed && !deleteClaimed {
 			return nil
@@ -856,7 +983,10 @@ func (s *Store) CompensationInputs(ctx context.Context) (CompensationInputs, err
 			// import (the create collided and the resolution record was the
 			// thing the crash ate). Leak-bias: never delete what may be
 			// another run's object. A COMPLETED derived create (persisted)
-			// is proven ours and stays deletable below.
+			// is proven ours and stays deletable below. The skip is REPORTED
+			// (review P2): the id joins the uncovered list — a possible real
+			// object must never leave the record without a word.
+			inputs.Updated = append(inputs.Updated, objectId)
 			return nil
 		}
 		switch mode {
@@ -880,6 +1010,9 @@ func (s *Store) CompensationInputs(ctx context.Context) (CompensationInputs, err
 		objectId := string(v.GetStringBytes("objectId"))
 		if objectId == "" {
 			return fmt.Errorf("row %q: missing objectId", v.GetStringBytes("id"))
+		}
+		if _, protected := neverDelete[objectId]; protected {
+			return nil // id-scoped: some row says this file pre-existed
 		}
 		if !v.GetBool("preExisting") {
 			ownedFiles = append(ownedFiles, rankedId{id: objectId, rank: v.GetInt("rank")})
@@ -925,6 +1058,9 @@ func (s *Store) scan(ctx context.Context, coll anystore.Collection, read func(v 
 }
 
 func (s *Store) seedRank(ctx context.Context) error {
+	ctx, opDone := opCtx(ctx)
+	defer opDone()
+
 	maxRank := 0
 	for _, coll := range []anystore.Collection{s.entries, s.files} {
 		err := s.scan(ctx, coll, func(v *anyenc.Value) error {
@@ -944,6 +1080,9 @@ func (s *Store) seedRank(ctx context.Context) error {
 // Flush forces a WAL checkpoint + fsync — the suspend path's durability
 // point (spec §6.4; measured 4–9 ms, §8).
 func (s *Store) Flush(ctx context.Context) error {
+	ctx, opDone := opCtx(ctx)
+	defer opDone()
+
 	return s.db.Flush(ctx, 0, anystore.FlushModeCheckpointPassive)
 }
 

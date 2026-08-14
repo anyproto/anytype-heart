@@ -98,7 +98,12 @@ func (l *blockingLedger) RecordClaims(ctx context.Context, claims []ClaimLedgerR
 // -cpu=1 B could run entirely after A and the test passed on broken code.
 func waitSecondFlushArrived(t *testing.T, ledger *blockingLedger) {
 	t.Helper()
-	buf := make([]byte, 1<<20)
+	// 64 MiB: runtime.Stack TRUNCATES silently on a full buffer, and the
+	// package's leaked any-store goroutines push the all-goroutine dump
+	// past 1 MiB under repetition — the handshake then never sees B's
+	// parked frame and times out (review: 17/60 at -count=60; 60/60 and
+	// ~3.5x faster at this size).
+	buf := make([]byte, 64<<20)
 	deadline := time.Now().Add(10 * time.Second)
 	for time.Now().Before(deadline) {
 		if ledger.calls.Load() >= 2 {

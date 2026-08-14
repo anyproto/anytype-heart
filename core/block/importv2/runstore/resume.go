@@ -76,6 +76,9 @@ type FileRecord struct {
 // the two scans) where a fresh entry read as payload-less, which the
 // strict check classifies as corruption.
 func (s *Store) ReadEntries(ctx context.Context) ([]EntryRecord, error) {
+	ctx, opDone := opCtx(ctx)
+	defer opDone()
+
 	type rawEntry struct {
 		record EntryRecord
 		minted bool
@@ -133,6 +136,9 @@ type payloadRecord struct {
 
 // ReadFiles returns every file-ledger row.
 func (s *Store) ReadFiles(ctx context.Context) ([]FileRecord, error) {
+	ctx, opDone := opCtx(ctx)
+	defer opDone()
+
 	var records []FileRecord
 	err := s.scanStrict(ctx, s.files, func(v *anyenc.Value) error {
 		objectId := string(v.GetStringBytes("objectId"))
@@ -180,6 +186,9 @@ const rootSpecId = "rootSpec"
 // boundary — a restart has no converter to re-produce it). A singleton
 // config row, overwritten whole; it carries no merge invariant.
 func (s *Store) SetRootSpec(ctx context.Context, spec importv2.RootSpec) error {
+	ctx, opDone := opCtx(ctx)
+	defer opDone()
+
 	arena := s.arenas.Get()
 	defer func() {
 		arena.Reset()
@@ -196,6 +205,9 @@ func (s *Store) SetRootSpec(ctx context.Context, spec importv2.RootSpec) error {
 // ReadRootSpec returns the persisted RootSpec; found is false when pass 2
 // never wrote one.
 func (s *Store) ReadRootSpec(ctx context.Context) (spec importv2.RootSpec, found bool, err error) {
+	ctx, opDone := opCtx(ctx)
+	defer opDone()
+
 	doc, err := s.kv.FindId(ctx, rootSpecId)
 	if err != nil {
 		if IsMissingManifest(err) { // ErrDocNotFound

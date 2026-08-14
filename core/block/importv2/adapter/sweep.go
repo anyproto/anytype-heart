@@ -142,6 +142,15 @@ func sweepOne(ctx context.Context, dir string, objects persist.ObjectAccess, pro
 		case errors.Is(err, runstore.ErrActive):
 			outcome.Action = sweepSkippedActive
 			return outcome
+		case ctx.Err() != nil:
+			// The stop is consulted BEFORE the corrupt branch (review P0-A):
+			// a shutdown mid-open surfaces through whatever error the driver
+			// was in the middle of — including a cancelled quick check that
+			// any-store wraps as ErrQuickCheckFailed — and the corrupt
+			// branch three lines down answers by UNLINKING the ledger.
+			outcome.Action = sweepSkippedError
+			outcome.Err = fmt.Errorf("sweep stopped: %w", err)
+			return outcome
 		case runstore.IsCorrupted(err):
 			// The ledger is lost: whatever the run created can no longer be
 			// attributed. Delete the dir, say so loudly — leak, never guess.
@@ -226,6 +235,15 @@ func sweepOne(ctx context.Context, dir string, objects persist.ObjectAccess, pro
 		outcome.Err = fmt.Errorf("mark compensating: %w", err)
 		return outcome
 	}
+	if err = store.Flush(ctx); err != nil {
+		// The marker must be ON DISK before the first delete (review P2):
+		// a committed-but-unflushed marker can be lost to power loss while
+		// its authorised deletes are already in the space.
+		_ = store.Close()
+		outcome.Action = sweepSkippedError
+		outcome.Err = fmt.Errorf("flush compensating marker: %w", err)
+		return outcome
+	}
 	outcome.Result = persist.CompensateIds(ctx, objects, inputs.Created, inputs.OwnedFiles, inputs.Updated)
 	if outcome.Result.Leaked > 0 {
 		// Leaks are retryable — compensation is idempotent, so the next
@@ -272,6 +290,7 @@ func (s *service) sweepAbandoned() {
 			"dir", outcome.Dir,
 			"action", string(outcome.Action),
 			"compensated", outcome.Result.Compensated,
+			"alreadyGone", outcome.Result.AlreadyGone,
 			"leaked", outcome.Result.Leaked,
 			"uncovered", len(outcome.Result.Uncovered),
 		)

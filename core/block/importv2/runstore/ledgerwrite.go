@@ -31,6 +31,9 @@ import (
 // seedMaxSequenceId returns the highest zero-padded-decimal id in coll, 0
 // when empty.
 func seedMaxSequenceId(ctx context.Context, coll anystore.Collection) (int64, error) {
+	ctx, opDone := opCtx(ctx)
+	defer opDone()
+
 	iter, err := coll.Find(nil).Sort("-id").Iter(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("seed sequence: %w", err)

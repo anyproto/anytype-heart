@@ -8,6 +8,7 @@ import (
 	"sort"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
@@ -18,7 +19,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	importv2 "github.com/anyproto/anytype-heart/core/block/importv2"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 )
 
 // The DM-2 equivalence gate (spec §9): kill a run during pass 3 at the
@@ -33,8 +36,14 @@ import (
 // crashTree is the shared source: five linked pages (c.md references the
 // FIRST page — a late row resolving against a possibly-skipped early row),
 // an image, and front-matter deriving a relation and a type.
+// crashFixtureMtime pins every fixture file's mtime, so the mtime-derived
+// original-created timestamps have an ABSOLUTE expected value (review
+// Class H, the structural finding: control==resumed equality alone cannot
+// catch a systematic drop — both sides go to zero together).
+var crashFixtureMtime = time.Unix(1700000000, 0)
+
 func crashTree(t *testing.T) string {
-	return writeTree(t, map[string]string{
+	root := writeTree(t, map[string]string{
 		"index.md":       "---\nAuthor: Roman\ntype: Zettel\n---\n# Home\n\nSee [A](notes/a.md) and ![pic](assets/pic.png)\n",
 		"notes/a.md":     "# A\n\nNext: [B](b.md)\n",
 		"notes/b.md":     "# B\n",
@@ -42,6 +51,13 @@ func crashTree(t *testing.T) string {
 		"notes/d.md":     "# D\n",
 		"assets/pic.png": "png-bytes",
 	})
+	require.NoError(t, filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() {
+			return err
+		}
+		return os.Chtimes(path, crashFixtureMtime, crashFixtureMtime)
+	}))
+	return root
 }
 
 // runControl produces the uninterrupted reference run over the same tree.
@@ -111,8 +127,16 @@ func TestCrashResumeMidCreate(t *testing.T) {
 		assertResumedClean(t, resumed, controlResult)
 		assert.Equal(t, control.Dump(), fx.Dump(),
 			"the final object set must be identical to the uninterrupted run")
-		assert.Equal(t, control.OriginalTimestamps(), fx.OriginalTimestamps(),
-			"original-created timestamps must survive the spool and the restart")
+		// ABSOLUTE, not control-relative (review Class H: with
+		// stampProvenance dropping the field, control and resumed both went
+		// to zero and the equality stayed green): the fixture mtime is
+		// pinned, so the surviving value is a literal.
+		wantTs := crashFixtureMtime.Unix()
+		assert.Equal(t, map[string]int64{
+			"Home": wantTs, "A": wantTs, "B": wantTs, "C": wantTs, "D": wantTs,
+			"Author": 0, "Zettel": 0, "Markdown Import": 0,
+		}, fx.OriginalTimestamps(),
+			"original-created timestamps must survive the spool and the restart, at their real values")
 	})
 }
 
@@ -281,11 +305,18 @@ func TestCrashResumeAtUpload(t *testing.T) {
 		// when
 		resumed := fx.ResumeDurable(context.Background(), t, dir, request(false, false))
 
-		// then: uploaded exactly once, everything else identical — including
-		// the full upload request surface (imageKind, encryption keys, url:
-		// the fields no consumer-side test observed, review Class H)
+		// then: uploaded exactly once — asserted ABSOLUTELY (the content
+		// hash of the fixture bytes), not only against the control — plus
+		// record equality for the request surface. Honesty note (review
+		// Class H): ImageKind and EncryptionKeys are zero-valued here
+		// because no converter in the repo sets them yet; their
+		// serialization is pinned by runstore's round-trip test, and
+		// consumer-side coverage is owed by the converter that first sets
+		// them (see the FileSource field docs).
 		assertResumedClean(t, resumed, controlResult)
 		assert.Equal(t, control.Dump(), fx.Dump())
+		assert.Equal(t, []string{contentHash([]byte("png-bytes"))}, fx.Uploader.Uploads,
+			"exactly one upload, of exactly the fixture bytes")
 		assert.Equal(t, control.Uploader.Records, fx.Uploader.Records,
 			"the resumed upload must present exactly what the uninterrupted one did")
 	})
@@ -339,6 +370,62 @@ func TestCrashResumeWithoutSource(t *testing.T) {
 		assertResumedClean(t, resumed, controlResult)
 		assert.Equal(t, control.Dump(), fx.Dump(),
 			"the resumed run must not depend on the source tree existing")
+	})
+}
+
+func TestCompensationCoversFiles(t *testing.T) {
+	t.Run("cancel deletes owned file objects and never pre-existing ones", func(t *testing.T) {
+		// given — review Class H named this the worst blind spot: no crash
+		// test compensated a FILE at all, so inverting the ownership
+		// classification (!checker.Exists) left the entire suite green while
+		// compensation would delete a user's pre-existing file objects. Two
+		// images: one whose content-hash id is pre-indexed (a dedup hit on
+		// the user's existing file), one genuinely new.
+		root := writeTree(t, map[string]string{
+			"index.md":     "# Home\n\n![a](assets/a.png) ![b](assets/b.png)\n",
+			"assets/a.png": "png-bytes-owned",
+			"assets/b.png": "png-bytes-preexisting",
+		})
+		fx := NewFixture(t)
+		ownedId := "file-" + contentHash([]byte("png-bytes-owned"))
+		preId := "file-" + contentHash([]byte("png-bytes-preexisting"))
+		fx.Store.AddObjects(t, SpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:   domain.String(preId),
+			bundle.RelationKeyName: domain.String("user-file"),
+		}})
+
+		// kill inside finalize's create: every stream object (both uploads
+		// included) has persisted and journaled
+		control, _ := runControl(t, root)
+		streamCreates := int32(len(control.Space.Created) - 1)
+		dir := filepath.Join(t.TempDir(), "run-crash")
+		inc1 := interrupt(t, fx, root, dir, func(cancel context.CancelCauseFunc) {
+			killInsideFinalizeCreate(fx, streamCreates, cancel)
+		})
+		require.True(t, inc1.Suspended)
+		require.Len(t, fx.Uploader.Uploads, 2, "both files must have uploaded before the kill")
+
+		// when: the RESUMED run is cancelled at its first create (finalize's
+		// own — everything else replays skipped): plain cause, full undo
+		ctx, cancel := context.WithCancelCause(context.Background())
+		defer cancel(nil)
+		fx.Space.BeforeCreate = func(id string) error {
+			cancel(nil)
+			return context.Canceled
+		}
+		resumed := fx.ResumeDurable(ctx, t, dir, request(false, false))
+		fx.Space.BeforeCreate = nil
+
+		// then
+		require.Error(t, resumed.Err)
+		assert.Zero(t, resumed.Leaked)
+		fx.Space.mu.Lock()
+		deleted := append([]string(nil), fx.Space.Deleted...)
+		fx.Space.mu.Unlock()
+		assert.Contains(t, deleted, ownedId,
+			"the file object this run's upload created must be compensated")
+		assert.NotContains(t, deleted, preId,
+			"a pre-existing (content-deduped) file object must NEVER be deleted")
 	})
 }
 

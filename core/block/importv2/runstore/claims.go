@@ -36,11 +36,12 @@ func (s *Store) RecordClaims(ctx context.Context, claims []ClaimRecord) error {
 	if len(claims) == 0 {
 		return nil
 	}
-	tx, err := s.db.WriteTx(ctx)
-	if err != nil {
-		return fmt.Errorf("claims tx: %w", err)
-	}
-	txCtx := tx.Context()
+	return s.withWriteTx(ctx, func(txCtx context.Context) error {
+		return s.recordClaimsInTx(txCtx, claims)
+	})
+}
+
+func (s *Store) recordClaimsInTx(txCtx context.Context, claims []ClaimRecord) error {
 	for _, claim := range claims {
 		mode := modeMinted
 		if claim.Matched {
@@ -75,25 +76,25 @@ func (s *Store) RecordClaims(ctx context.Context, claims []ClaimRecord) error {
 				return v, true, nil
 			}))
 		if upErr != nil {
-			return fmt.Errorf("claim %q: %w", claim.SourceKey, rollback(tx.Rollback(), upErr))
+			return fmt.Errorf("claim %q: %w", claim.SourceKey, upErr)
 		}
 		if displacedId != "" {
 			log.With("sourceKey", claim.SourceKey, "displaced", displacedId).
 				Errorf("claim conflicts with an existing ledger id — preserving both")
-			if err = s.recordSyntheticEntry(txCtx, claim.SourceKey, syntheticRow{
+			if err := s.recordSyntheticEntry(txCtx, claim.SourceKey, syntheticRow{
 				objectId: displacedId, mode: mode, status: statusClaimed,
 				late: s.materializeStarted.Load(),
 			}); err != nil {
-				return fmt.Errorf("claim %q synthetic: %w", claim.SourceKey, rollback(tx.Rollback(), err))
+				return fmt.Errorf("claim %q synthetic: %w", claim.SourceKey, err)
 			}
 		}
 		if !claim.Matched && len(claim.PayloadRoot) > 0 {
-			if err = s.placePayload(txCtx, claim); err != nil {
-				return fmt.Errorf("payload %q: %w", claim.ObjectId, rollback(tx.Rollback(), err))
+			if err := s.placePayload(txCtx, claim); err != nil {
+				return fmt.Errorf("payload %q: %w", claim.ObjectId, err)
 			}
 		}
 	}
-	return tx.Commit()
+	return nil
 }
 
 // placePayload writes one write-ahead create payload, keyed by objectId,
@@ -137,13 +138,6 @@ func readHeads(v *anyenc.Value) []string {
 	return heads
 }
 
-func rollback(rollbackErr, err error) error {
-	if rollbackErr != nil {
-		return fmt.Errorf("%w (rollback: %s)", err, rollbackErr)
-	}
-	return err
-}
-
 // IssueRecord is one durable issue-ledger row: pass-2 issues must survive to
 // pass 3's report page (DM spec §6.2). Flattened strings — the wire Issue's
 // error chain does not round-trip and does not need to.
@@ -159,6 +153,9 @@ type IssueRecord struct {
 // AppendIssue appends one row in arrival order, capped by the caller (the
 // adapter enforces IssueCap, mirroring the in-memory ledger).
 func (s *Store) AppendIssue(ctx context.Context, rec IssueRecord) error {
+	ctx, opDone := opCtx(ctx)
+	defer opDone()
+
 	arena := s.arenas.Get()
 	defer func() {
 		arena.Reset()
@@ -177,6 +174,9 @@ func (s *Store) AppendIssue(ctx context.Context, rec IssueRecord) error {
 
 // ReadIssues returns the durable issue ledger in arrival order.
 func (s *Store) ReadIssues(ctx context.Context) ([]IssueRecord, error) {
+	ctx, opDone := opCtx(ctx)
+	defer opDone()
+
 	iter, err := s.issues.Find(nil).Sort("id").Iter(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("iterate issues: %w", err)

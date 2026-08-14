@@ -167,9 +167,12 @@ func TestCompensateIds(t *testing.T) {
 		assert.Equal(t, []string{"updated-1"}, result.Uncovered)
 	})
 
-	t.Run("an already-gone object counts as compensated, not leaked", func(t *testing.T) {
+	t.Run("an already-gone object counts already-gone: success, never leaked", func(t *testing.T) {
 		// given: compensation must be idempotent — a crash mid-cleanup means
 		// the sweep re-runs it against objects already deleted (spec §6.5).
+		// Counted SEPARATELY from performed deletes (review P2: a resumed
+		// cancel probes every pass-1 claim; folding thousands of not-founds
+		// into Compensated inflated the telemetry).
 		objects := &fakeObjects{failIds: map[string]error{
 			"gone-1": fmt.Errorf("resolve spaceID: %w", domain.ErrObjectNotFound),
 			"bad":    assert.AnError,
@@ -180,7 +183,8 @@ func TestCompensateIds(t *testing.T) {
 			[]string{"gone-1", "obj-1", "bad"}, nil, nil)
 
 		// then
-		assert.Equal(t, 2, result.Compensated)
+		assert.Equal(t, 1, result.Compensated)
+		assert.Equal(t, 1, result.AlreadyGone)
 		assert.Equal(t, 1, result.Leaked)
 		require.Len(t, result.Issues, 1)
 		assert.Equal(t, importv2.IssueStoreError, result.Issues[0].Code)

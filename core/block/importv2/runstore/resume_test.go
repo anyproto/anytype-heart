@@ -427,6 +427,41 @@ func TestDerivedIntent(t *testing.T) {
 			"an unresolved derived intent may point at an earlier import's object — never delete it")
 	})
 
+	t.Run("a conflicting intent preserves the displaced id like every other writer", func(t *testing.T) {
+		// given — review P2: RecordCreateIntent was the ONE ledger writer
+		// with no displacement preservation — a silent (v, false, nil) —
+		// which left the original Class-C failure intact for the collision
+		// shape: the incoming id vanished from the ledger entirely.
+		store := createStore(t, filepath.Join(t.TempDir(), "run-1"))
+		require.NoError(t, store.SetState(ctx, StateMaterializing))
+		require.NoError(t, store.RecordClaims(ctx, []ClaimRecord{
+			{SourceKey: "k", ObjectId: "obj-a", PayloadRoot: []byte("r")},
+		}))
+
+		// when: a derived intent lands under the same key with another id
+		require.NoError(t, store.RecordCreateIntent(ctx, "k", "drv-b"))
+
+		// then: neither id vanished; the displaced intent is synthetic and
+		// keeps the derived classification (claimed intents stay out of the
+		// delete set even displaced — the id may pre-exist)
+		records, err := store.ReadEntries(ctx)
+		require.NoError(t, err)
+		var displaced *EntryRecord
+		for i, record := range records {
+			if record.ObjectId == "drv-b" {
+				displaced = &records[i]
+			}
+		}
+		require.NotNil(t, displaced, "the displaced intent id must stay in the ledger")
+		assert.True(t, displaced.Synthetic)
+		assert.True(t, displaced.Derived)
+		assert.False(t, displaced.Terminal)
+		inputs, err := store.CompensationInputs(ctx)
+		require.NoError(t, err)
+		assert.NotContains(t, inputs.Created, "drv-b",
+			"a displaced UNRESOLVED intent keeps the leak-bias exclusion")
+	})
+
 	t.Run("a collision with a pre-existing tree resolves the intent to matched", func(t *testing.T) {
 		// given
 		store := createStore(t, filepath.Join(t.TempDir(), "run-1"))

@@ -259,8 +259,15 @@ func Resume(ctx context.Context, req importv2.Request, deps Deps, state *ResumeS
 		}
 	}()
 	if deps.Spool == nil {
-		r.report(importv2.Fatal(importv2.IssueInvariant, fmt.Errorf("resume requires the run's durable spool")))
-		return r.finish(runCtx, importv2.RootSpec{})
+		// INERT failure, deliberately bypassing finish() (review P1-D): the
+		// run never started, and finish's compensation would run over the
+		// journal — which resume construction SEEDS with every previous
+		// incarnation's effects — turning a wiring bug into the destruction
+		// of the whole import and then (Leaked 0) of its ledger. Nothing
+		// happened here, so nothing may be undone: CompensationRan stays
+		// false and the disposal invariant keeps the dir for the sweep.
+		issue := importv2.Fatal(importv2.IssueInvariant, fmt.Errorf("resume requires the run's durable spool"))
+		return &importv2.Result{Err: issue, Issues: []importv2.Issue{issue}}
 	}
 	r.created.Store(state.Created)
 	r.updated.Store(state.Updated)

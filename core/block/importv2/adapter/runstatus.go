@@ -141,18 +141,30 @@ func buildRunStatus(ctx context.Context, store *runstore.Store, live bool) (*pb.
 	if err != nil {
 		return nil, err
 	}
-	if manifest.SchemaVersion > runstore.SchemaVersion {
-		// The sweep's hands-off rule applies to reads too (review Class E):
-		// a newer binary owns this run and this binary cannot interpret its
-		// ledger honestly.
-		return nil, fmt.Errorf("run %s: schema %d is newer than this binary's %d",
-			manifest.RunId, manifest.SchemaVersion, runstore.SchemaVersion)
+	if manifest.SchemaVersion != runstore.SchemaVersion {
+		// A cross-version dir is SERVED, from the frozen manifest core alone
+		// (review P2: erroring here made v1 dirs vanish silently from the
+		// listing — the exact Class-E symptom through a different door).
+		// §4.4 froze exactly the fields that let any version say what a run
+		// IS; the ledger-derived numbers need same-version reads and are
+		// honestly absent.
+		return &pb.RpcObjectImportRunStatusRun{
+			Status: &pb.EventImportStatistic{
+				ImportId:     manifest.RunId,
+				ImportType:   model.ImportType(manifest.ImportType),
+				Phase:        phaseOf(manifest),
+				State:        pb.EventImportStatistic_Running,
+				CancelEffect: cancelEffectOf(manifest),
+			},
+			ManifestState: string(manifest.State),
+			Live:          live,
+		}, nil
 	}
 	status := &pb.EventImportStatistic{
 		ImportId:     manifest.RunId,
 		ImportType:   model.ImportType(manifest.ImportType),
 		Phase:        phaseOf(manifest),
-		CancelEffect: pb.EventImportStatistic_NothingToUndo,
+		CancelEffect: cancelEffectOf(manifest),
 		// The three-state model describes a running engine; ledger-backed
 		// serving has no throttle/retry signal yet (event core), so the
 		// state stays Running and manifestState carries the lifecycle.
@@ -162,7 +174,6 @@ func buildRunStatus(ctx context.Context, store *runstore.Store, live bool) (*pb.
 		TotalsKnown: manifest.MaterializeStarted || manifest.State == runstore.StateFetched,
 	}
 	if manifest.MaterializeStarted {
-		status.CancelEffect = pb.EventImportStatistic_RemovesCreated
 		// The pass-3 restart (this phase) makes closing lossless once
 		// materialization began; during the crawl it stays false until
 		// DM-3's pass-2 resume.
@@ -198,6 +209,13 @@ func buildRunStatus(ctx context.Context, store *runstore.Store, live bool) (*pb.
 		ManifestState: string(manifest.State),
 		Live:          live,
 	}, nil
+}
+
+func cancelEffectOf(m runstore.Manifest) pb.EventImportStatisticCancelEffect {
+	if m.MaterializeStarted {
+		return pb.EventImportStatistic_RemovesCreated
+	}
+	return pb.EventImportStatistic_NothingToUndo
 }
 
 // phaseOf maps the durable lifecycle onto the coarse phase indicator: a

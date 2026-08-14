@@ -186,7 +186,13 @@ func ledgerIssue(err error) error {
 // objects are deliberately not restored (postponed by design decision —
 // docs/ImportV2Design.md §13): they are listed so the result can say so.
 type CompensationResult struct {
+	// Compensated counts deletes actually performed; AlreadyGone counts
+	// targets that no longer existed (split per review P2: a resumed
+	// cancel walks every pass-1 claim, and folding thousands of not-found
+	// probes into Compensated inflated the telemetry — the retry-safety
+	// semantics are unchanged, both outcomes are success, neither leaks).
 	Compensated int
+	AlreadyGone int
 	Leaked      int
 	Uncovered   []string // updated objects, reported not rolled back
 	Issues      []importv2.Issue
@@ -264,8 +270,12 @@ func dedupe(ids []string) []string {
 
 func deleteOne(id string, objects ObjectAccess, result *CompensationResult) {
 	err := objects.DeleteObject(id)
-	if err == nil || isAlreadyGone(err) {
+	if err == nil {
 		result.Compensated++
+		return
+	}
+	if isAlreadyGone(err) {
+		result.AlreadyGone++
 		return
 	}
 	result.Leaked++

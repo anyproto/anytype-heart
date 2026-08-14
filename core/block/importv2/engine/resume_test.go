@@ -225,15 +225,29 @@ func TestReplayStopClassification(t *testing.T) {
 }
 
 func TestResumeRequiresSpool(t *testing.T) {
-	t.Run("resume without a spool is an invariant failure, not a silent no-op", func(t *testing.T) {
-		// given
+	t.Run("a nil spool fails WITHOUT compensating the seeded journal", func(t *testing.T) {
+		// given — review P1-D, which falsified this round's own audit claim:
+		// the guard reported a fatal and finish() then ran compensation over
+		// the journal — which the Class-A fix had just SEEDED with every
+		// previous incarnation's effects. A wiring bug (nil spool) became
+		// maximally destructive: every object of every incarnation deleted,
+		// then finishRun dropped the ledger (CompensationRan true, Leaked 0).
+		// A run that never started must fail inert.
 		fx := newEngineFixture(t)
 		fx.deps.Spool = nil
+		deleter := fx.deps.Objects.(*deleterFake)
+		fx.deps.Journal.Seed([]string{"obj-1", "obj-2"}, nil, nil) // prior incarnations
 
 		// when
 		result := Resume(context.Background(), resumeRequest(), fx.deps, &ResumeState{ConverterName: "Markdown"})
 
 		// then
 		require.Error(t, result.Err)
+		deleter.mu.Lock()
+		deleted := len(deleter.deleted)
+		deleter.mu.Unlock()
+		assert.Zero(t, deleted, "a run that never started must not delete anything")
+		assert.False(t, result.CompensationRan,
+			"the disposal invariant must keep the dir (nothing was undone)")
 	})
 }

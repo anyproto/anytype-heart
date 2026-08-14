@@ -40,6 +40,9 @@ type Spool struct {
 // any existing rows — E2: a per-instance counter restarting at zero let a
 // second handle overwrite rows and reorder the replay.
 func (s *Store) Spool(ctx context.Context) (*Spool, error) {
+	ctx, opDone := opCtx(ctx)
+	defer opDone()
+
 	var coll anystore.Collection
 	var err error
 	if s.readOnly {
@@ -105,6 +108,9 @@ func (sp *Spool) Close() error {
 // have drained any Open closure to the spill dir first — a closure reaching
 // the spool is a contract violation, reported loudly, never a silent loss.
 func (sp *Spool) Append(ctx context.Context, o *importv2.Object) error {
+	ctx, opDone := opCtx(ctx)
+	defer opDone()
+
 	if o.File != nil && o.File.Open != nil {
 		return fmt.Errorf("spool %q: file source carries an undrained Open closure", o.SourceKey)
 	}
@@ -186,6 +192,9 @@ func (sp *Spool) Replay(ctx context.Context, emit func(o *importv2.Object) error
 // decoding any snapshot — the restart's cheap census (which rehydrated
 // claims have a spool row; how much replay remains).
 func (sp *Spool) SourceKeys(ctx context.Context) (map[string]struct{}, int, error) {
+	ctx, opDone := opCtx(ctx)
+	defer opDone()
+
 	iter, err := sp.coll.Find(nil).Iter(ctx)
 	if err != nil {
 		return nil, 0, fmt.Errorf("iterate spool keys: %w", err)
@@ -208,6 +217,9 @@ func (sp *Spool) SourceKeys(ctx context.Context) (map[string]struct{}, int, erro
 // snapshot — the status surface's totals (§15.4: pages and files are
 // separate counters by requirement).
 func (sp *Spool) Census(ctx context.Context) (pages, files int, err error) {
+	ctx, opDone := opCtx(ctx)
+	defer opDone()
+
 	iter, err := sp.coll.Find(nil).Iter(ctx)
 	if err != nil {
 		return 0, 0, fmt.Errorf("iterate spool census: %w", err)
@@ -230,6 +242,9 @@ func (sp *Spool) Census(ctx context.Context) (pages, files int, err error) {
 // readChunk reads and decodes up to spoolChunkSize rows after lastId, then
 // releases the read transaction before returning.
 func (sp *Spool) readChunk(ctx context.Context, lastId string) ([]*importv2.Object, string, error) {
+	ctx, opDone := opCtx(ctx)
+	defer opDone()
+
 	var filter any
 	if lastId != "" {
 		filter = fmt.Sprintf(`{"id":{"$gt":%q}}`, lastId)

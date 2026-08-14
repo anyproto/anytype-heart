@@ -113,7 +113,7 @@ type service struct {
 	fileSync          filesync.FileSync
 
 	componentCtx    context.Context
-	componentCancel context.CancelFunc
+	componentCancel context.CancelCauseFunc
 	runs            sync.WaitGroup
 
 	// activeRuns tracks in-flight runs' cancel-cause funcs so Close can
@@ -152,7 +152,7 @@ func (s *service) Init(a *app.App) error {
 	s.notificationsSvc = app.MustComponent[notifications.Notifications](a)
 	s.eventSender = app.MustComponent[event.Sender](a)
 	s.fileSync = app.MustComponent[filesync.FileSync](a)
-	s.componentCtx, s.componentCancel = context.WithCancel(context.Background())
+	s.componentCtx, s.componentCancel = context.WithCancelCause(context.Background())
 	return nil
 }
 
@@ -176,13 +176,19 @@ func (s *service) Run(ctx context.Context) error {
 // waits (bounded) for them to drain and flush.
 func (s *service) Close(ctx context.Context) error {
 	// Gate new imports first (no run may start on a closing service), then
-	// suspend BEFORE the component cancel: the first cancellation wins the
-	// cause, and it must be ErrSuspended, not a plain Canceled.
+	// suspend registered runs, then cancel the component context WITH THE
+	// SUSPEND CAUSE (review P1-B): a run deriving its ctx in the window
+	// between the registry sweep and its own registration inherits the
+	// componentCtx cause — a plain Canceled there read as user-cancel and
+	// COMPENSATED (with a seeded journal, destructively) a run an orderly
+	// shutdown should have suspended. Close's cancellation IS the suspend,
+	// so the cause says so at the root; suspendRuns stays as the fast path
+	// for registered runs (first cause wins either way).
 	s.activeRunsMu.Lock()
 	s.closing = true
 	s.activeRunsMu.Unlock()
 	s.suspendRuns()
-	s.componentCancel()
+	s.componentCancel(importv2.ErrSuspended)
 	done := make(chan struct{})
 	go func() {
 		s.runs.Wait()

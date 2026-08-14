@@ -26,8 +26,12 @@ import (
 func (s *service) resumeRun(ctx context.Context, store *runstore.Store, manifest runstore.Manifest) (outcome sweepOutcome) {
 	outcome.Dir = store.Dir()
 	// Attempts move durably BEFORE any work: a resume-and-crash loop is
-	// bounded by the cap however early the crash lands.
-	manifest, err := store.BeginResume(ctx)
+	// bounded by the cap however early the crash lands. DETACHED (review
+	// P2): this is the one prologue step that WRITES, two-phase — a Close
+	// landing mid-write would tear it; on Background the small write
+	// completes and the very next step (Load, on the live ctx) classifies
+	// the stop calmly and refunds.
+	manifest, err := store.BeginResume(context.Background())
 	if err != nil {
 		_ = store.Close()
 		outcome.Action, outcome.Err = sweepSkippedError, fmt.Errorf("begin resume: %w", err)

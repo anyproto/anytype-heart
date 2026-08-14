@@ -183,6 +183,46 @@ func TestFileDisplacedWrite(t *testing.T) {
 	})
 }
 
+func TestNeverDeletableIdsAreIdScoped(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("an id any row classifies matched never enters the delete set", func(t *testing.T) {
+		// given — review P1-C (confirmed): placeRow protects the displaced
+		// ROW, but CompensationInputs reads IDS — a second row classifying
+		// the same id as minted made a pre-existing user object deletable
+		// anyway. The never-delete property is a property of the ID.
+		store := createStore(t, filepath.Join(t.TempDir(), "run-1"))
+		require.NoError(t, store.SetState(ctx, StateMaterializing))
+		require.NoError(t, store.RecordUpdated(ctx, "k-user", "M"))  // matched: the user's object
+		require.NoError(t, store.RecordCreated(ctx, "k-other", "M")) // identity violation upstream
+
+		// when
+		inputs, err := store.CompensationInputs(ctx)
+
+		// then
+		require.NoError(t, err)
+		assert.NotContains(t, inputs.Created, "M",
+			"a matched classification anywhere makes the id never-deletable (leak-bias)")
+		assert.Contains(t, inputs.Updated, "M")
+	})
+
+	t.Run("an id any row classifies pre-existing never enters the owned-file set", func(t *testing.T) {
+		// given — the files twin, which also contradicted the writer's own
+		// 'first record wins entirely'
+		store := createStore(t, filepath.Join(t.TempDir(), "run-1"))
+		require.NoError(t, store.RecordFile(ctx, "f-user", "F", true)) // pre-existing
+		require.NoError(t, store.RecordFile(ctx, "f-other", "F", false))
+
+		// when
+		inputs, err := store.CompensationInputs(ctx)
+
+		// then
+		require.NoError(t, err)
+		assert.NotContains(t, inputs.OwnedFiles, "F",
+			"a pre-existing classification anywhere makes the file id never-deletable")
+	})
+}
+
 func TestPayloadOccupancy(t *testing.T) {
 	ctx := context.Background()
 

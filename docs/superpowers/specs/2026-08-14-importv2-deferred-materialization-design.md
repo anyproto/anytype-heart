@@ -417,7 +417,14 @@ latent-until-resume:
    and in the minted-sticky branch the primary write is a no-op, so the unprotected second
    write is the *only* record of the incoming effect. Both pairs move into one write
    transaction.
-3. **`Spool.Append` rides a cancellable context — re-decided, kept.** A durable write on
+3. **`Spool.Append` rides a cancellable context — re-decided, kept; AMENDED at the DM-2
+   fix-round blocker:** the append's *database operation* now runs on the store's detached
+   per-op context (any-store v0.4.7 leaks its connection when an operation dies
+   mid-prepare on a cancelled ctx — `query.go` `Iter` acquires the read tx and never
+   commits it on a failed `conn.Query` — wedging every later read on a
+   `ReadConnections:1` store; diagnosed by stack capture under GOMAXPROCS=1). Truncation
+   semantics are unchanged: the spool sink checks the run context before every append, so
+   cancellation still lands between objects. Original text follows.** A durable write on
    the run ctx is defensible only while a truncated spool can never be replayed. DM-2
    resumes only runs at `fetched` or later (spool provably whole — the fetch-complete
    marker), and pass 3 never appends, so the property holds. The moment DM-3's pass-2

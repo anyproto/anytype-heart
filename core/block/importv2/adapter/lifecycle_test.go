@@ -112,7 +112,7 @@ type lifecycleFixture struct {
 
 func newLifecycleFixture(t *testing.T) *lifecycleFixture {
 	fx := &lifecycleFixture{t: t, repo: t.TempDir()}
-	componentCtx, componentCancel := context.WithCancel(context.Background())
+	componentCtx, componentCancel := context.WithCancelCause(context.Background())
 	fx.service = &service{
 		config:          &config.Config{RepoPath: fx.repo},
 		spaceService:    &fakeSpaceGetter{spc: mock_clientspace.NewMockSpace(t)},
@@ -127,7 +127,7 @@ func newLifecycleFixture(t *testing.T) *lifecycleFixture {
 			fx.events = append(fx.events, e)
 		}),
 	}
-	t.Cleanup(componentCancel)
+	t.Cleanup(func() { componentCancel(nil) })
 	return fx
 }
 
@@ -282,6 +282,28 @@ func TestLifecycleClose(t *testing.T) {
 		inputs, err := store.CompensationInputs(context.Background())
 		require.NoError(t, err)
 		assert.Equal(t, []string{"obj-1"}, inputs.Created, "effects must survive the suspend")
+	})
+}
+
+func TestCloseCauseIsSuspend(t *testing.T) {
+	t.Run("the component context itself carries the suspend cause", func(t *testing.T) {
+		// given — review P1-B: a run deriving its ctx in the window between
+		// Close's registry sweep and its own registration inherited the
+		// PLAIN componentCancel cause, so the engine read a user-cancel and
+		// compensated (with a seeded journal, destructively) a run an
+		// orderly shutdown should have suspended. The rule, fixed at the
+		// root: Close's cancellation IS the suspend, expressed in the cause
+		// at componentCtx — every child in every window inherits it;
+		// suspendRuns stays as the fast path for registered runs.
+		fx := newLifecycleFixture(t)
+
+		// when
+		require.NoError(t, fx.service.Close(context.Background()))
+
+		// then
+		require.Error(t, fx.service.componentCtx.Err())
+		assert.ErrorIs(t, context.Cause(fx.service.componentCtx), importv2.ErrSuspended,
+			"any run ctx derived in any window must read the shutdown as a suspend")
 	})
 }
 

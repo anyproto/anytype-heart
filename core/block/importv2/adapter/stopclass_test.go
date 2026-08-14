@@ -25,22 +25,27 @@ func TestStopClassifiedAdapterExits(t *testing.T) {
 		return ctx
 	}
 
-	t.Run("runEngine's spool-open failure during suspend carries the verdict", func(t *testing.T) {
-		// given — B1 (CONFIRMED): both spool constructors fail on a dead
-		// ctx, so this exit is reachable during every shutdown.
+	t.Run("a dead ctx no longer fails the spool open at all", func(t *testing.T) {
+		// given — REWORKED at the fix-round blocker: this test used to pin
+		// that a spool-open failure on a suspend-dead ctx carried the
+		// suspend verdict (B1). Since the store-op detachment (opCtx — the
+		// fix for any-store's cancelled-op connection leak), store
+		// operations are ctx-IMMUNE by design: the open simply succeeds and
+		// the run proceeds to its normal suspend classification. The
+		// stopFatal guard on the open-failure branch remains for genuine
+		// (disk-shaped) failures; its classification property is pinned by
+		// the space-get sibling below.
 		store, err := runstore.Create(context.Background(),
 			t.TempDir()+"/run-1", runstore.Manifest{RunId: "run-1"})
 		require.NoError(t, err)
 		defer store.Close()
-		lc := &runLifecycle{store: store, spillDir: store.SpillDir()}
-		s := &service{}
 
 		// when
-		result := s.runEngine(suspendCtx(), importv2.Request{}, nil, nil, lc, process.NewNoOp())
+		spool, err := store.Spool(suspendCtx())
 
 		// then
-		require.Error(t, result.Err)
-		assert.True(t, result.Suspended, "a shutdown-shaped failure must carry the suspend verdict")
+		require.NoError(t, err, "store operations are detached from run cancellation")
+		require.NotNil(t, spool)
 	})
 
 	t.Run("execute's space-get failure during suspend carries the verdict", func(t *testing.T) {

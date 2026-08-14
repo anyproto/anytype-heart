@@ -206,12 +206,19 @@ func (s *service) onCompensating(lc *runLifecycle) func() error {
 		return nil
 	}
 	return func() error {
+		// The engine treats this as a GATE: no durable marker, no deletes
+		// (a crash mid-cleanup without it would make the next start resume
+		// a partly-compensated run). FLUSHED like every other durability
+		// point (review P2): a committed-but-unflushed marker can be lost
+		// to power loss while its authorised deletes are already in the
+		// space.
 		if err := lc.store.SetState(context.Background(), runstore.StateCompensating); err != nil {
-			// The engine treats this as a GATE: no durable marker, no
-			// deletes (a crash mid-cleanup without it would make the next
-			// start resume a partly-compensated run).
 			log.Errorf("mark run compensating: %s", err)
 			return fmt.Errorf("mark run compensating: %w", err)
+		}
+		if err := lc.store.Flush(context.Background()); err != nil {
+			log.Errorf("flush compensating marker: %s", err)
+			return fmt.Errorf("flush compensating marker: %w", err)
 		}
 		return nil
 	}

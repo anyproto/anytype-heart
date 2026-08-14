@@ -108,7 +108,12 @@ type FileSource struct {
 	Name string
 
 	// EncryptionKeys are per-path keys registered with the upload for
-	// already-encrypted content (anytype exports). Empty for md/notion.
+	// already-encrypted content (anytype exports). Empty for md/notion —
+	// NO shipped converter sets this yet (or ImageKind): both are reserved
+	// for the pb/anytype-export converter, their spool serialization is
+	// pinned (runstore round-trip test), and consumer-side test coverage
+	// is owed by whichever converter first populates them (recorded per
+	// review: plumbing must not LOOK covered).
 	EncryptionKeys map[string]string
 
 	// URL is the original remote location, for provenance and diagnostics.
