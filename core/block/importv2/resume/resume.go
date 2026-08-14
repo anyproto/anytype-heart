@@ -121,6 +121,14 @@ func Load(ctx context.Context, store *runstore.Store) (*State, error) {
 			}
 			continue
 		}
+		if !entry.Matched && !entry.Terminal && len(entry.PayloadRoot) == 0 {
+			// A minted claim without its payload cannot be replayed — the id
+			// is the hash of exactly those bytes, and re-minting would break
+			// every spooled reference. RecordClaims writes both in one tx,
+			// so this shape is corruption: fail the resume loudly (the
+			// sweep's attempt cap then routes the run to compensation).
+			return nil, fmt.Errorf("minted claim %q has no create payload; the run cannot be resumed", entry.SourceKey)
+		}
 		st.identityEntries = append(st.identityEntries, identity.RehydratedEntry{
 			SourceKey:    entry.SourceKey,
 			ObjectId:     entry.ObjectId,

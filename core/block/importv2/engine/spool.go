@@ -226,7 +226,16 @@ func (c *spoolReplayConverter) Convert(ctx context.Context, sink importv2.Sink) 
 	err := c.spool.Replay(ctx, func(o *importv2.Object) error {
 		return sink.Object(ctx, o)
 	})
-	if err != nil && ctx.Err() == nil {
+	if err != nil {
+		if ctx.Err() != nil {
+			// The replay died OF the stop: sqlite aborts in-flight reads on
+			// a cancelled ctx with its own 'interrupted' error, which is not
+			// errors.Is-ctx-shaped — returned raw it classified as a bogus
+			// (and durably recorded) sourceInvalid fatal. The stop
+			// classification must reach this exit like every other
+			// (Invariant 1).
+			return importv2.RootSpec{}, ctx.Err()
+		}
 		// A replay failure is OUR storage failing, not the user's source
 		// (the source was fine — pass 2 finished): classify accordingly.
 		err = importv2.Fatal(importv2.IssueStoreError, err)

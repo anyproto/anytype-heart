@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"sync"
 	"testing"
 	"time"
@@ -27,6 +28,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/importv2/markdown"
 	"github.com/anyproto/anytype-heart/core/block/importv2/persist"
 	"github.com/anyproto/anytype-heart/core/block/importv2/resolve"
+	"github.com/anyproto/anytype-heart/core/block/importv2/resume"
 	"github.com/anyproto/anytype-heart/core/block/importv2/runstore"
 	"github.com/anyproto/anytype-heart/core/block/importv2/source"
 	"github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
@@ -50,6 +52,28 @@ type FakeSpace struct {
 	counter int
 	Created map[string]*state.State
 	Objects map[string]smartblock.SmartBlock
+	// BeforeCreate/AfterCreate are crash-injection hooks: BeforeCreate
+	// returning an error skips the write and fails the create with it;
+	// AfterCreate fires after a successful write. Both may cancel the run
+	// context to model a process death at the create boundary.
+	BeforeCreate func(id string) error
+	AfterCreate  func(id string)
+}
+
+// spaceObject overrides smarttest's no-op ResetToVersion so update and
+// heal paths become visible in Created, the way the real space would show
+// the reset state.
+type spaceObject struct {
+	*smarttest.SmartTest
+	space *FakeSpace
+	id    string
+}
+
+func (o *spaceObject) ResetToVersion(s *state.State) error {
+	o.space.mu.Lock()
+	defer o.space.mu.Unlock()
+	o.space.Created[o.id] = s
+	return nil
 }
 
 func NewFakeSpace() *FakeSpace {
@@ -71,7 +95,21 @@ func (f *FakeSpace) DeriveTreePayload(ctx context.Context, params payloadcreator
 }
 
 func (f *FakeSpace) CreateTreeObjectWithPayload(ctx context.Context, payload treestorage.TreeStorageCreatePayload, initFunc smartblock.InitFunc) (smartblock.SmartBlock, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err // the real space is ctx-respecting; the fake must be too
+	}
 	id := payload.RootRawChange.Id
+	f.mu.Lock()
+	if _, exists := f.Created[id]; exists {
+		f.mu.Unlock()
+		return nil, treestorage.ErrTreeExists
+	}
+	f.mu.Unlock()
+	if f.BeforeCreate != nil {
+		if err := f.BeforeCreate(id); err != nil {
+			return nil, err
+		}
+	}
 	initCtx := initFunc(id)
 	sb := smarttest.New(id)
 	if initCtx.State != nil {
@@ -80,12 +118,16 @@ func (f *FakeSpace) CreateTreeObjectWithPayload(ctx context.Context, payload tre
 		}
 	}
 	f.mu.Lock()
-	defer f.mu.Unlock()
 	if _, exists := f.Created[id]; exists {
+		f.mu.Unlock()
 		return nil, treestorage.ErrTreeExists
 	}
 	f.Created[id] = initCtx.State
-	f.Objects[id] = sb
+	f.Objects[id] = &spaceObject{SmartTest: sb, space: f, id: id}
+	f.mu.Unlock()
+	if f.AfterCreate != nil {
+		f.AfterCreate(id)
+	}
 	return sb, nil
 }
 
@@ -123,8 +165,13 @@ func (f *FakeSpace) DeleteObject(objectId string) error {
 }
 
 func payloadWithId(id string) treestorage.TreeStorageCreatePayload {
+	// Real payloads always carry root bytes — the id IS their hash — and
+	// the durable claim ledger records exactly those bytes for the restart.
+	// A fake payload without them models an impossible object and starves
+	// the resume path of its payload rows.
 	return treestorage.TreeStorageCreatePayload{
-		RootRawChange: &treechangeproto.RawTreeChangeWithId{Id: id},
+		RootRawChange: &treechangeproto.RawTreeChangeWithId{Id: id, RawChange: []byte("raw-" + id)},
+		Heads:         []string{id},
 	}
 }
 
@@ -134,9 +181,17 @@ func payloadWithId(id string) treestorage.TreeStorageCreatePayload {
 type FakeUploader struct {
 	mu      sync.Mutex
 	Uploads []string
+	// BeforeUpload is a crash-injection hook: a non-nil error fails the
+	// upload with it before anything is recorded.
+	BeforeUpload func(localPath string) error
 }
 
 func (f *FakeUploader) UploadFile(ctx context.Context, spaceId string, req block.FileUploadRequest) (string, model.BlockContentFileType, *domain.Details, error) {
+	if f.BeforeUpload != nil {
+		if err := f.BeforeUpload(req.LocalPath); err != nil {
+			return "", 0, nil, err
+		}
+	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.Uploads = append(f.Uploads, req.LocalPath)
@@ -249,6 +304,81 @@ func (fx *Fixture) RunMarkdown(t *testing.T, root string, req importv2.Request) 
 		Spool:      spool,
 		SpillDir:   spillDir,
 	})
+}
+
+// durableDeps wires the engine over a real run store the way the adapter
+// does: ledger-backed journal, durable spool, MarkFetched at the pass
+// boundary, the durable issue recorder.
+func (fx *Fixture) durableDeps(t *testing.T, store *runstore.Store, req importv2.Request, identityOpts ...identity.Option) (engine.Deps, *persist.Persister) {
+	t.Helper()
+	journal := persist.NewJournalWithLedger(store)
+	fx.Journal = journal
+	formats := resolve.NewFormats()
+	keys := engine.NewKeyTable()
+	identitySvc := identity.NewService(fx.Space, fx.Store.SpaceIndex(SpaceId), req.UpdateExisting,
+		time.Unix(1700000000, 0), identityOpts...)
+	resolver := resolve.New(identitySvc, keys, formats)
+	persister := persist.New(
+		SpaceId, req.Origin, fx.Space, fx.Space, fx.Uploader, nopFlags{},
+		resolver, persist.NewInstallCoordinator(nopInstaller{}), journal,
+		&storeChecker{store: fx.Store.SpaceIndex(SpaceId)}, store.SpillDir(),
+	)
+	spool, err := store.Spool(context.Background())
+	require.NoError(t, err)
+	deps := engine.Deps{
+		Identity:   identitySvc,
+		Persister:  persister,
+		Journal:    journal,
+		Objects:    fx.Space,
+		Formats:    formats,
+		Keys:       keys,
+		Collection: stubCollectionFactory{},
+		Spool:      spool,
+		SpillDir:   store.SpillDir(),
+		OnFetched: func(rootSpec importv2.RootSpec) error {
+			return store.MarkFetched(context.Background(), rootSpec)
+		},
+		OnIssue: resume.IssueRecorder(store),
+	}
+	return deps, persister
+}
+
+// RunMarkdownDurable runs one incarnation over a real run store in dir.
+// The store is closed but the dir is NOT settled — an interrupted run
+// (ctx cancelled with importv2.ErrSuspended mid-materialize) leaves
+// exactly the state a killed process leaves: manifest at materializing,
+// partial effects journaled, spool whole.
+func (fx *Fixture) RunMarkdownDurable(ctx context.Context, t *testing.T, root string, req importv2.Request, dir string) *importv2.Result {
+	t.Helper()
+	src, err := source.Open(root)
+	require.NoError(t, err)
+	defer src.Close()
+	store, err := runstore.Create(context.Background(), dir, runstore.Manifest{
+		RunId: filepath.Base(dir), SpaceId: req.SpaceID, Converter: "Markdown",
+	})
+	require.NoError(t, err)
+	deps, _ := fx.durableDeps(t, store, req, resume.ClaimLedgerOption(store))
+	converter := markdown.New(src, markdown.Params{}, stubCollectionFactory{})
+	result := engine.Run(ctx, req, converter, deps)
+	require.NoError(t, store.Close())
+	return result
+}
+
+// ResumeDurable restarts pass 3 from the dir alone, through the same glue
+// the adapter's sweep uses: Load, rehydrated identity, the heal policy,
+// engine.Resume. No source, no network.
+func (fx *Fixture) ResumeDurable(t *testing.T, dir string, req importv2.Request) *importv2.Result {
+	t.Helper()
+	ctx := context.Background()
+	store, err := runstore.Open(ctx, dir)
+	require.NoError(t, err)
+	defer store.Close()
+	state, err := resume.Load(ctx, store)
+	require.NoError(t, err)
+	deps, persister := fx.durableDeps(t, store, req,
+		resume.ClaimLedgerOption(store), state.IdentityOption())
+	persister.SetResumeHeal(state.Heal())
+	return engine.Resume(ctx, req, deps, &state.Engine)
 }
 
 // storeChecker classifies deduped uploads against the real store fixture.

@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -187,6 +188,36 @@ func TestResumeEmitsReportForRehydratedIssues(t *testing.T) {
 		require.NoError(t, result.Err)
 		assert.NotEmpty(t, result.ReportObjectId,
 			"pass-2 issues must survive to the pass-3 report across the restart")
+	})
+}
+
+type interruptedSpool struct {
+	memorySpool
+}
+
+func (s *interruptedSpool) Replay(ctx context.Context, emit func(o *importv2.Object) error) error {
+	return errors.New("sqlite: prepare: interrupted")
+}
+
+func TestReplayStopClassification(t *testing.T) {
+	t.Run("a replay dying OF the stop classifies as the stop, not the source", func(t *testing.T) {
+		// given — found by the crash harness: sqlite aborts in-flight reads
+		// on a cancelled ctx with its own 'interrupted' error, which is not
+		// errors.Is-ctx-shaped. classifyFatal then recorded a bogus
+		// sourceInvalid fatal — durably, so a resumed run rehydrated it into
+		// its report. The stop classification must reach this exit too
+		// (Invariant 1).
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		converter := &spoolReplayConverter{spool: &interruptedSpool{}}
+
+		// when
+		_, err := converter.Convert(ctx, nil)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorIs(t, err, context.Canceled,
+			"a dead-ctx replay failure is the stop; anything else mislabels every suspend mid-materialize")
 	})
 }
 
