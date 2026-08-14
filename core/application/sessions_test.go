@@ -194,6 +194,28 @@ func TestLinkLocalCreateApp(t *testing.T) {
 		require.ErrorIs(t, err, ErrBadInput)
 	})
 
+	t.Run("empty app name is bad input", func(t *testing.T) {
+		// The app name is what creation provenance derives from
+		// (APIV2_OBJECT_DELETE.md §5/§11.7): a nameless key would create
+		// objects it can never delete. No PersistAppLink expectation — the
+		// guard must fire before anything is written; a mint that slips
+		// through fails on the unexpected wallet call.
+		s := New()
+		walletMock := mock_wallet.NewMockWallet(t)
+		walletMock.EXPECT().Name().Return(walletComp.CName).Maybe()
+		walletMock.EXPECT().Init(nil).Return(nil).Maybe()
+		a := new(app.App)
+		a.Register(walletMock)
+		s.app = a
+
+		_, err := s.LinkLocalCreateApp(&pb.RpcAccountLocalLinkCreateAppRequest{
+			App: &model.AccountAuthAppInfo{AppName: "", Scope: model.AccountAuth_JsonAPI},
+		})
+
+		require.ErrorIs(t, err, ErrBadInput)
+		require.ErrorContains(t, err, "app name is required")
+	})
+
 	t.Run("Full scope is refused, mirroring the challenge guard", func(t *testing.T) {
 		// given: no PersistAppLink expectation — the guard must fire before
 		// anything is written (H3)
@@ -915,5 +937,44 @@ func TestChallengeFlowGrant(t *testing.T) {
 
 		// then
 		require.ErrorIs(t, err, walletComp.ErrInvalidGrant)
+	})
+
+	t.Run("a nameless challenge is refused before the code is shown", func(t *testing.T) {
+		// The app name is what creation provenance derives from
+		// (APIV2_OBJECT_DELETE.md §5/§11.7). No Broadcast expectation — the
+		// refusal must land before the user is shown a code, so a guard that
+		// fires at solve time fails here on the unexpected broadcast.
+		cases := []struct {
+			name string
+			info *pb.EventAccountLinkChallengeClientInfo
+		}{
+			{"nil client info", nil},
+			{"both names empty", &pb.EventAccountLinkChallengeClientInfo{}},
+		}
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				s, _, _ := newChallengeService(t)
+
+				_, err := s.LinkLocalStartNewChallenge(model.AccountAuth_JsonAPI, tc.info, nil)
+
+				require.ErrorIs(t, err, ErrBadInput)
+				require.ErrorContains(t, err, "app name is required")
+			})
+		}
+	})
+
+	t.Run("a process name alone satisfies the name guard", func(t *testing.T) {
+		// the solve-time fallback (name = clientInfo.ProcessName) still
+		// yields a named key, so the guard must not refuse this shape —
+		// pinned so the guard cannot silently tighten into breaking the
+		// gRPC-inspected pairing flow
+		s, _, sender := newChallengeService(t)
+		sender.EXPECT().Broadcast(mock.Anything).Return()
+
+		challengeId, err := s.LinkLocalStartNewChallenge(model.AccountAuth_JsonAPI,
+			&pb.EventAccountLinkChallengeClientInfo{ProcessName: "SomeApp.exe"}, nil)
+
+		require.NoError(t, err)
+		require.NotEmpty(t, challengeId)
 	})
 }

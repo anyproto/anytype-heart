@@ -224,6 +224,15 @@ func (s *Service) LinkLocalStartNewChallenge(scope model.AccountAuthLocalApiScop
 	if err = walletComp.ValidateAppLinkGrant(walletComp.AppLinkGrantFromProto(requestedGrant), scope); err != nil {
 		return "", fmt.Errorf("validate requested grant: %w", err)
 	}
+	// A key needs a name (APIV2_OBJECT_DELETE.md §5/§11.7): the app name is
+	// what creation provenance is derived from, and a nameless key would
+	// create objects it can never delete. Refused before the challenge
+	// exists — not at solve time, after the user already typed the code.
+	// The process-name fallback (LinkLocalSolveChallenge) still counts: the
+	// guard fires only when NEITHER name is available.
+	if clientInfo == nil || (clientInfo.Name == "" && clientInfo.ProcessName == "") {
+		return "", errors.Join(ErrBadInput, errors.New("app name is required"))
+	}
 
 	id, value, err := s.sessions.StartNewChallenge(scope, clientInfo, requestedGrant)
 	if err != nil {
@@ -282,6 +291,13 @@ func (s *Service) LinkLocalCreateApp(req *pb.RpcAccountLocalLinkCreateAppRequest
 	}
 	if req.App == nil {
 		return "", errors.Join(ErrBadInput, errors.New("app info is required"))
+	}
+	// A key needs a name (APIV2_OBJECT_DELETE.md §5/§11.7): creation
+	// provenance — and with it the ability to DELETE the key's own output —
+	// is derived from the app name; minting a nameless key would create
+	// permanently undeletable objects.
+	if req.App.AppName == "" {
+		return "", errors.Join(ErrBadInput, errors.New("app name is required"))
 	}
 	// Mirror the challenge-path guard (session.StartNewChallenge): a Full
 	// scope app key must never be mintable — Full stays reserved for sessions
