@@ -252,11 +252,24 @@ func (p *Persister) createObject(ctx context.Context, sourceKey string, target T
 	}
 	if errors.Is(err, treestorage.ErrTreeExists) {
 		if p.heal != nil && p.heal(sourceKey, derived) {
-			// Resumed incarnation, ledger-proven ours: the tree is an
-			// interrupted create and may be hollow — reset it to the
-			// imported state instead of silently keeping whatever half
-			// survived the crash.
-			return p.healInterruptedCreate(sourceKey, target.Id, doc)
+			// Resumed incarnation with ledger proof. For MINTED ids the
+			// proof is sound on its own (the id is seed-random — only this
+			// run can have written the tree). For DERIVED ids it is NOT:
+			// the id is deterministic and the intent row precedes the
+			// create, so an intent interrupted BEFORE the tree write reads
+			// identically to one torn AFTER it — and the colliding tree may
+			// belong to an EARLIER import. The tree itself disambiguates:
+			// Class C's tear leaves a HOLLOW tree (root written, state
+			// never applied), while a pre-existing object is fully formed.
+			// Heal only the hollow; a formed collision resolves as matched
+			// below (worst case an ours-but-completed tree leaks one object
+			// on a later abort — the leak-bias direction).
+			if !derived {
+				return p.healInterruptedCreate(sourceKey, target.Id, doc)
+			}
+			if hollow, hollowErr := p.isHollow(target.Id); hollowErr == nil && hollow {
+				return p.healInterruptedCreate(sourceKey, target.Id, doc)
+			}
 		}
 		// An index-invisible tree already exists (prior run, index lag):
 		// read it instead of failing so re-import stays idempotent.
@@ -268,9 +281,31 @@ func (p *Persister) createObject(ctx context.Context, sourceKey string, target T
 		if err != nil {
 			return Outcome{}, fmt.Errorf("read existing object %s: %w", target.Id, err)
 		}
+		if derived {
+			// Resolve the write-ahead intent: a DERIVED id is deterministic,
+			// so this collision means the object PRE-EXISTS this run (an
+			// earlier import made it) — the intent row must not keep reading
+			// as ownership, or a later resume "heals" (resets) and a later
+			// compensation DELETES another run's object off false proof.
+			if err = p.journal.SkippedExisting(sourceKey, target.Id); err != nil {
+				return Outcome{}, err
+			}
+		}
 		return Outcome{Id: target.Id, Action: ActionSkipped, Details: details}, nil
 	}
 	return Outcome{}, fmt.Errorf("create tree object %s: %w", target.Id, err)
+}
+
+// isHollow reports whether the tree carries no applied state — the shape a
+// create torn between the tree write and the state application leaves.
+func (p *Persister) isHollow(objectId string) (bool, error) {
+	hollow := false
+	err := cache.Do(p.objects, objectId, func(sb smartblock.SmartBlock) error {
+		details := sb.Details()
+		hollow = details == nil || details.Len() == 0
+		return nil
+	})
+	return hollow, err
 }
 
 // healInterruptedCreate applies the imported state over a tree this run's
@@ -328,6 +363,14 @@ func (p *Persister) updateObject(sourceKey, objectId string, doc *state.State, r
 		return nil
 	})
 	if err != nil {
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			// The reset died OF a stop: propagate so process()'s absorb (or
+			// stageInterrupted) classifies it as the stop. Degrading it to a
+			// warning here recorded the shutdown as a durable user-facing
+			// issue, which a resumed run then rehydrated into its report
+			// (found by the update-crash harness variant, review Class H).
+			return Outcome{}, err
+		}
 		report(importv2.Issue{
 			Severity: importv2.SeverityWarning,
 			Code:     importv2.IssueObjectFailed,

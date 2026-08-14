@@ -46,6 +46,12 @@ func (l *fakeLedger) RecordCreateIntent(ctx context.Context, sourceKey, objectId
 	return l.err
 }
 
+func (l *fakeLedger) RecordDerivedMatched(ctx context.Context, sourceKey, objectId string) error {
+	l.ctxStates = append(l.ctxStates, ctxState(ctx))
+	l.calls = append(l.calls, ledgerCall{kind: "derivedMatched", sourceKey: sourceKey, objectId: objectId})
+	return l.err
+}
+
 func (l *fakeLedger) RecordCreated(ctx context.Context, sourceKey, objectId string) error {
 	l.ctxStates = append(l.ctxStates, ctxState(ctx))
 	l.calls = append(l.calls, ledgerCall{kind: "created", sourceKey: sourceKey, objectId: objectId})

@@ -64,6 +64,7 @@ func interrupt(t *testing.T, fx *Fixture, root, dir string, arm func(cancel cont
 	result := fx.RunMarkdownDurable(ctx, t, root, request(false, false), dir)
 	fx.Space.BeforeCreate = nil
 	fx.Space.AfterCreate = nil
+	fx.Space.BeforeReset = nil
 	fx.Uploader.BeforeUpload = nil
 	return result
 }
@@ -448,6 +449,123 @@ func TestCrashResumeAfterFinalize(t *testing.T) {
 		assert.Equal(t, controlResult.RootCollectionId, resumed.RootCollectionId,
 			"the recorded collection must be reused, not rebuilt")
 	})
+}
+
+func TestCorruptedPayloadBytesFailTheResume(t *testing.T) {
+	t.Run("the gate detects rehydrated root bytes that are not the minted ones", func(t *testing.T) {
+		// given — review Class H: the old fake read only the payload's id,
+		// so corrupting the rehydrated bytes changed nothing end to end. The
+		// fake now models the real consumer (objecttree hashes the bytes):
+		// a create presenting different bytes under a known id is rejected,
+		// so this corruption MUST surface, never silently import.
+		root := crashTree(t)
+		fx := NewFixture(t)
+		dir := filepath.Join(t.TempDir(), "run-crash")
+		var creates atomic.Int32
+		inc1 := interrupt(t, fx, root, dir, func(cancel context.CancelCauseFunc) {
+			fx.Space.BeforeCreate = func(id string) error {
+				if creates.Add(1) == 3 {
+					cancel(importv2.ErrSuspended)
+					return context.Canceled
+				}
+				return nil
+			}
+		})
+		require.True(t, inc1.Suspended)
+		corruptOnePendingPayload(t, dir)
+
+		// when
+		resumed := fx.ResumeDurable(context.Background(), t, dir, request(false, false))
+
+		// then: loud, not silent
+		assert.NotEmpty(t, resumed.Issues,
+			"corrupted payload bytes must fail their object, never import silently")
+	})
+}
+
+func TestCrashResumeUpdateExisting(t *testing.T) {
+	t.Run("killed mid-update on a re-import: matched rows converge", func(t *testing.T) {
+		// given — review Class H: no crash variant exercised the matched-
+		// class update path. First import, indexed as the real indexer
+		// would; then a re-import with updateExisting killed inside a state
+		// reset; then resume — against an uninterrupted re-import control.
+		files := map[string]string{
+			"a.md": "---\nAuthor: Roman\ntype: Zettel\n---\n# A\n\n[B](b.md)\n",
+			"b.md": "# B\n",
+			"c.md": "# C\n",
+		}
+		buildReimported := func(t *testing.T) (*Fixture, string) {
+			root := writeTree(t, files)
+			fx := NewFixture(t)
+			first := fx.RunMarkdownDurable(context.Background(), t, root, request(true, true),
+				filepath.Join(t.TempDir(), "run-first"))
+			require.NoError(t, first.Err)
+			fx.IndexCreated(t)
+			return fx, root
+		}
+		control, controlRoot := buildReimported(t)
+		controlSecond := control.RunMarkdownDurable(context.Background(), t, controlRoot,
+			request(true, true), filepath.Join(t.TempDir(), "run-control-2"))
+		require.NoError(t, controlSecond.Err)
+		require.Positive(t, controlSecond.Updated, "the control re-import must take the update path")
+
+		fx, root := buildReimported(t)
+		dir := filepath.Join(t.TempDir(), "run-crash")
+		ctx, cancel := context.WithCancelCause(context.Background())
+		defer cancel(nil)
+		var resets atomic.Int32
+		fx.Space.BeforeReset = func(id string) error {
+			if resets.Add(1) == 2 {
+				cancel(importv2.ErrSuspended)
+				return context.Canceled
+			}
+			return nil
+		}
+		inc1 := fx.RunMarkdownDurable(ctx, t, root, request(true, true), dir)
+		fx.Space.BeforeReset = nil
+		require.Error(t, inc1.Err)
+		require.True(t, inc1.Suspended, "an interrupted update must classify as the stop, not a warning")
+
+		// when
+		resumed := fx.ResumeDurable(context.Background(), t, dir, request(true, true))
+
+		// then
+		assertResumedClean(t, resumed, controlSecond)
+		assert.Equal(t, control.Dump(), fx.Dump(),
+			"the resumed re-import must converge on the control's object set")
+		assert.Zero(t, resumed.Created, "a re-import updates in place; resume must not mint")
+	})
+}
+
+// corruptOnePendingPayload flips the payload bytes of one non-terminal
+// minted claim — the shape of on-disk corruption the §6.3 versioning story
+// says must refuse, not replay wrong.
+func corruptOnePendingPayload(t *testing.T, dir string) {
+	t.Helper()
+	ctx := context.Background()
+	db, err := anystore.Open(ctx, filepath.Join(dir, "run.db"), nil)
+	require.NoError(t, err)
+	defer func() { require.NoError(t, db.Close()) }()
+	entries, err := db.Collection(ctx, "entries")
+	require.NoError(t, err)
+	iter, err := entries.Find(`{"status":"claimed","mode":"minted"}`).Iter(ctx)
+	require.NoError(t, err)
+	var objectId string
+	if iter.Next() {
+		doc, err := iter.Doc()
+		require.NoError(t, err)
+		objectId = string(doc.Value().GetStringBytes("objectId"))
+	}
+	require.NoError(t, iter.Close())
+	require.NotEmpty(t, objectId, "a pending minted claim must exist")
+	payloads, err := db.Collection(ctx, "payloads")
+	require.NoError(t, err)
+	_, err = payloads.UpsertId(ctx, objectId, query.ModifyFunc(
+		func(a *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
+			v.Set("root", a.NewBinary([]byte("corrupted-bytes")))
+			return v, true, nil
+		}))
+	require.NoError(t, err)
 }
 
 // --- helpers ---

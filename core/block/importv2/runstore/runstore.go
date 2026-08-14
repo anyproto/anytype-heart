@@ -726,6 +726,24 @@ func (s *Store) RecordCreateIntent(ctx context.Context, sourceKey, objectId stri
 	return err
 }
 
+// RecordDerivedMatched resolves a derived intent row against a
+// PRE-EXISTING tree: mode flips derived → matched (the one sanctioned mode
+// transition — deletability strictly DECREASES, the leak-bias direction)
+// and the row turns terminal. Any other row shape is left alone.
+func (s *Store) RecordDerivedMatched(ctx context.Context, sourceKey, objectId string) error {
+	_, err := s.entries.UpsertId(ctx, sourceKey, query.ModifyFunc(
+		func(arena *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
+			if string(v.GetStringBytes("mode")) != modeDerived ||
+				string(v.GetStringBytes("objectId")) != objectId {
+				return v, false, nil
+			}
+			v.Set("mode", arena.NewString(modeMatched))
+			v.Set("status", arena.NewString(statusPersisted))
+			return v, true, nil
+		}))
+	return err
+}
+
 // RecordFile journals a file-upload outcome. preExisting marks a
 // content-dedup hit on an object that already lived in the space — those are
 // never compensation-deleted (the classification cannot be reconstructed
@@ -816,6 +834,15 @@ func (s *Store) CompensationInputs(ctx context.Context) (CompensationInputs, err
 			return fmt.Errorf("row %q: missing objectId or mode", v.GetStringBytes("id"))
 		}
 		if string(v.GetStringBytes("status")) == statusClaimed && !deleteClaimed {
+			return nil
+		}
+		if mode == modeDerived && string(v.GetStringBytes("status")) == statusClaimed {
+			// A derived intent that never completed: the id is DETERMINISTIC,
+			// so the tree — if it exists at all — may belong to an EARLIER
+			// import (the create collided and the resolution record was the
+			// thing the crash ate). Leak-bias: never delete what may be
+			// another run's object. A COMPLETED derived create (persisted)
+			// is proven ours and stays deletable below.
 			return nil
 		}
 		switch mode {

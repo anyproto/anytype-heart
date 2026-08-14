@@ -5,6 +5,7 @@
 package enginetest
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -55,12 +56,21 @@ type FakeSpace struct {
 	counter int
 	Created map[string]*state.State
 	Objects map[string]smartblock.SmartBlock
+	// minted remembers every payload's root bytes by id, surviving fixture
+	// "crashes" the way real tree storage would: the id IS the hash of
+	// those bytes, so a create presenting DIFFERENT bytes under a known id
+	// is rejected (review Class H: the old fake read only the id, so
+	// corrupting rehydrated root bytes changed nothing end to end — the
+	// gate proved id reuse, never byte fidelity).
+	minted map[string][]byte
 	// BeforeCreate/AfterCreate are crash-injection hooks: BeforeCreate
 	// returning an error skips the write and fails the create with it;
 	// AfterCreate fires after a successful write. Both may cancel the run
 	// context to model a process death at the create boundary.
 	BeforeCreate func(id string) error
 	AfterCreate  func(id string)
+	// BeforeReset observes/injects at the update path (ResetToVersion).
+	BeforeReset func(id string) error
 }
 
 // spaceObject overrides smarttest's no-op ResetToVersion so update and
@@ -72,7 +82,30 @@ type spaceObject struct {
 	id    string
 }
 
+// Details/CombinedDetails serve the RECORDED state (what the create or the
+// last reset applied): smarttest's own doc never receives the applied
+// state, so without this every fixture object read as detail-less — which
+// made persist's hollow-tree probe classify fully-formed objects as torn
+// and heal (reset) them (fixture fidelity, review Class H).
+func (o *spaceObject) Details() *domain.Details {
+	o.space.mu.Lock()
+	defer o.space.mu.Unlock()
+	if st := o.space.Created[o.id]; st != nil {
+		return st.CombinedDetails()
+	}
+	return o.SmartTest.Details()
+}
+
+func (o *spaceObject) CombinedDetails() *domain.Details {
+	return o.Details()
+}
+
 func (o *spaceObject) ResetToVersion(s *state.State) error {
+	if o.space.BeforeReset != nil {
+		if err := o.space.BeforeReset(o.id); err != nil {
+			return err
+		}
+	}
 	o.space.mu.Lock()
 	defer o.space.mu.Unlock()
 	o.space.Created[o.id] = s
@@ -83,6 +116,7 @@ func NewFakeSpace() *FakeSpace {
 	return &FakeSpace{
 		Created: map[string]*state.State{},
 		Objects: map[string]smartblock.SmartBlock{},
+		minted:  map[string][]byte{},
 	}
 }
 
@@ -90,11 +124,17 @@ func (f *FakeSpace) CreateTreePayload(ctx context.Context, params payloadcreator
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.counter++
-	return payloadWithId(fmt.Sprintf("obj-%03d", f.counter)), nil
+	payload := payloadWithId(fmt.Sprintf("obj-%03d", f.counter))
+	f.minted[payload.RootRawChange.Id] = payload.RootRawChange.GetRawChange()
+	return payload, nil
 }
 
 func (f *FakeSpace) DeriveTreePayload(ctx context.Context, params payloadcreator.PayloadDerivationParams) (treestorage.TreeStorageCreatePayload, error) {
-	return payloadWithId("drv-" + params.Key.Marshal()), nil
+	payload := payloadWithId("drv-" + params.Key.Marshal())
+	f.mu.Lock()
+	f.minted[payload.RootRawChange.Id] = payload.RootRawChange.GetRawChange()
+	f.mu.Unlock()
+	return payload, nil
 }
 
 func (f *FakeSpace) CreateTreeObjectWithPayload(ctx context.Context, payload treestorage.TreeStorageCreatePayload, initFunc smartblock.InitFunc) (smartblock.SmartBlock, error) {
@@ -106,6 +146,10 @@ func (f *FakeSpace) CreateTreeObjectWithPayload(ctx context.Context, payload tre
 	if _, exists := f.Created[id]; exists {
 		f.mu.Unlock()
 		return nil, treestorage.ErrTreeExists
+	}
+	if want, known := f.minted[id]; known && !bytes.Equal(payload.RootRawChange.GetRawChange(), want) {
+		f.mu.Unlock()
+		return nil, fmt.Errorf("create %s: payload bytes differ from the minted root (the id is the hash of those bytes)", id)
 	}
 	f.mu.Unlock()
 	if f.BeforeCreate != nil {

@@ -31,6 +31,11 @@ type EffectLedger interface {
 	// create torn between the tree write and its effect row left no proof
 	// at all — unhealable, uncompensable, silently hollow.
 	RecordCreateIntent(ctx context.Context, sourceKey, objectId string) error
+	// RecordDerivedMatched resolves a derived intent whose create collided
+	// with a PRE-EXISTING tree (deterministic id, made by an earlier
+	// import): the row leaves the heal-proof and delete sets — intent is
+	// not ownership for deterministic ids.
+	RecordDerivedMatched(ctx context.Context, sourceKey, objectId string) error
 }
 
 // Journal records every effect of a run, in order, for compensation.
@@ -112,6 +117,18 @@ func (j *Journal) CreateIntent(sourceKey, id string) error {
 	}
 	return j.record(func(ctx context.Context) error {
 		return j.ledger.RecordCreateIntent(ctx, sourceKey, id)
+	})
+}
+
+// SkippedExisting resolves a derived create intent against a pre-existing
+// tree — durable only, no in-memory effect (nothing was done to the
+// object; the record exists so the intent stops reading as ownership).
+func (j *Journal) SkippedExisting(sourceKey, id string) error {
+	if j.ledger == nil {
+		return nil
+	}
+	return j.record(func(ctx context.Context) error {
+		return j.ledger.RecordDerivedMatched(ctx, sourceKey, id)
 	})
 }
 

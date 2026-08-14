@@ -374,6 +374,73 @@ func TestRootSpecKV(t *testing.T) {
 	})
 }
 
+func TestDerivedIntent(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("a derived intent is deletable only once its create completed", func(t *testing.T) {
+		// given — the Class-C refinement: derived ids are DETERMINISTIC, so
+		// an unresolved intent's tree — if it exists at all — may belong to
+		// an EARLIER import. Leak-bias: a claimed intent never enters the
+		// delete set; a completed create (persisted) is proven ours.
+		store := createStore(t, filepath.Join(t.TempDir(), "run-1"))
+		require.NoError(t, store.SetState(ctx, StateMaterializing))
+		require.NoError(t, store.RecordCreateIntent(ctx, "rel-torn", "drv-torn"))
+		require.NoError(t, store.RecordCreateIntent(ctx, "rel-done", "drv-done"))
+		require.NoError(t, store.RecordCreated(ctx, "rel-done", "drv-done"))
+
+		// when
+		inputs, err := store.CompensationInputs(ctx)
+
+		// then
+		require.NoError(t, err)
+		assert.Contains(t, inputs.Created, "drv-done", "a completed derived create is ours and deletable")
+		assert.NotContains(t, inputs.Created, "drv-torn",
+			"an unresolved derived intent may point at an earlier import's object — never delete it")
+	})
+
+	t.Run("a collision with a pre-existing tree resolves the intent to matched", func(t *testing.T) {
+		// given
+		store := createStore(t, filepath.Join(t.TempDir(), "run-1"))
+		require.NoError(t, store.SetState(ctx, StateMaterializing))
+		require.NoError(t, store.RecordCreateIntent(ctx, "rel-1", "drv-1"))
+
+		// when: the create collided and skip-and-read resolved it
+		require.NoError(t, store.RecordDerivedMatched(ctx, "rel-1", "drv-1"))
+
+		// then: terminal, matched (never deletable), out of the heal set
+		records, err := store.ReadEntries(ctx)
+		require.NoError(t, err)
+		require.Len(t, records, 1)
+		assert.True(t, records[0].Matched)
+		assert.False(t, records[0].Derived)
+		assert.True(t, records[0].Terminal)
+		inputs, err := store.CompensationInputs(ctx)
+		require.NoError(t, err)
+		assert.Empty(t, inputs.Created)
+		assert.Equal(t, []string{"drv-1"}, inputs.Updated, "matched ids report as uncovered, never deleted")
+	})
+
+	t.Run("the matched resolution never touches a foreign row", func(t *testing.T) {
+		// given: the row under this key is a MINTED claim (identity conflict
+		// upstream) — the resolution must not rewrite it
+		store := createStore(t, filepath.Join(t.TempDir(), "run-1"))
+		require.NoError(t, store.SetState(ctx, StateMaterializing))
+		require.NoError(t, store.RecordClaims(ctx, []ClaimRecord{
+			{SourceKey: "k", ObjectId: "obj-1", PayloadRoot: []byte("r")},
+		}))
+
+		// when
+		require.NoError(t, store.RecordDerivedMatched(ctx, "k", "obj-1"))
+
+		// then: untouched
+		records, err := store.ReadEntries(ctx)
+		require.NoError(t, err)
+		require.Len(t, records, 1)
+		assert.False(t, records[0].Matched)
+		assert.False(t, records[0].Terminal)
+	})
+}
+
 func TestMarkFetched(t *testing.T) {
 	t.Run("the pass boundary lands root spec, fetched and materializing in order", func(t *testing.T) {
 		// given
