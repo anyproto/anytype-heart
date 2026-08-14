@@ -126,12 +126,46 @@ func notFoundWithKeys(subject, input, what string, known []string, listRoute str
 // corpse. The primed form is the loop shape (§7.5a-2: one bounded query
 // per request, never one per reference).
 func propertyKeyExistsIn(entries []propertyEntry, key string) bool {
+	return propertyKeyInstalledIn(entries, key) || bundle.HasRelation(domain.RelationKey(key))
+}
+
+// propertyKeyInstalledIn is the live-entry half of propertyKeyExistsIn: the
+// key belongs to a relation object this space actually has. Split out
+// because the BUNDLED half answers for keys with no object at all, and the
+// two halves need different corpse verdicts (propertyKeyRemovedIn).
+func propertyKeyInstalledIn(entries []propertyEntry, key string) bool {
 	for _, entry := range entries {
 		if entry.Key == key {
 			return true
 		}
 	}
-	return bundle.HasRelation(domain.RelationKey(key))
+	return false
+}
+
+// propertyKeyRemovedIn reports whether a key that propertyKeyExistsIn just
+// waved through only exists because of the BUNDLED table, while this space
+// has explicitly uninstalled that bundled relation — the user deleted it.
+// `removed` comes from uninstalledBundledKeys and holds bundled keys only,
+// so a live entry is the sole thing that can outvote it.
+func propertyKeyRemovedIn(entries []propertyEntry, removed map[string]bool, key string) bool {
+	return removed[key] && !propertyKeyInstalledIn(entries, key)
+}
+
+// removedPropertyIssue refuses a write that names a bundled property the
+// space removed. Asymmetric with the §8.29 corpse tolerance ON PURPOSE, and
+// the asymmetry is in the entities, not the policy: a custom corpse's stored
+// key is a BSON id that can never be reinstalled or re-derived, so a
+// document value on it is inert freight the tolerance carries; a bundled
+// corpse's key is reinstallable, so a value landing there resurrects into a
+// property the user deleted the moment it comes back. The refusal names the
+// repair, per §8.34 — a refusal a caller cannot act on is itself a defect.
+func removedPropertyIssue(spaceId, key, path string) v2model.Issue {
+	slug := bundle.ApiSlug(key)
+	return v2model.Issue{
+		Path:    path,
+		Message: fmt.Sprintf("property %q was removed from this space — nothing new lands on a removed property", slug),
+		Hint:    fmt.Sprintf("restore it in the app, or use a different property — list them with GET /v2/spaces/%s/properties", spaceId),
+	}
 }
 
 // propertyKeyExists is the single-lookup form; loops prime entries once and

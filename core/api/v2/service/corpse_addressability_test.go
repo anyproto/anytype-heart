@@ -19,8 +19,9 @@ package v2service
 //     is hidden from queries even where nothing filters isUninstalled.
 //
 // A flag-only fixture therefore CANNOT catch behavior that depends on the
-// injected isDeleted default — see TestV2CloneToleranceProdCorpseGap, where
-// the two shapes give opposite answers on an advertised loop.
+// injected isDeleted default — see TestV2CloneToleranceSurvivesTheProdShape,
+// where the two shapes gave opposite answers on an advertised loop until the
+// probe behind it suppressed both defaults (§8.40).
 //
 // Fixture discipline: the corpse is BSON-keyed (24-hex) WITH a stored
 // apiObjectKey slug — the one shape that can tell the two vocabularies
@@ -236,52 +237,44 @@ func TestV2CorpseHeldValueIsUnqueryable(t *testing.T) {
 	})
 }
 
-// TestV2CloneToleranceProdCorpseGap — DOCUMENTS A GAP (§8.29 F2 broken for
-// real uninstalls).
+// TestV2CloneToleranceSurvivesTheProdShape (was
+// TestV2CloneToleranceProdCorpseGap, which pinned the gap this fixes).
 //
 // The advertised loop "a pasted read body creates a copy" is protected by
-// propertyKeyHeldByAnyRelation (keys.go), whose query suppresses only the
-// injected isArchived default. A REAL uninstalled corpse also carries
-// isDeleted=true (see the file header), which the query does NOT suppress —
-// so against the prod shape the tolerance finds nothing and the create 400s
-// on a document the API itself served. The flag-only subtest passes and is
-// exactly why the pre-existing tolerance tests (cause3_test.go) could not
-// catch this: their corpse rows omit isDeleted, a shape no real uninstall
-// produces.
+// propertyKeyHeldByAnyRelation (keys.go) → relationObjectHoldingKey, whose
+// query used to suppress only the injected isArchived default. A REAL
+// uninstalled corpse also carries isDeleted=true (see the file header), so
+// against the prod shape the tolerance found nothing and the create 400'd on
+// a document the API itself served — the archived case worked, the
+// uninstalled case, which is the common one, did not. The fix is the
+// explicit no-op `isDeleted Condition None` clause beside the isArchived
+// one; both shapes now round-trip.
 //
-// The first subtest pins the CURRENT (broken) refusal so the gap cannot
-// drift silently; fixing the tolerance (e.g. an explicit no-op isDeleted
-// filter beside the isArchived one) must flip that assertion — this comment
-// is the invitation to do so. Executed revert check: adding
-// `isDeleted Condition None` to propertyKeyHeldByAnyRelation makes the
-// prod-shape subtest fail (the create passes), proving it pins the gap.
-func TestV2CloneToleranceProdCorpseGap(t *testing.T) {
+// How this fixture can fail: the corpse is BSON-keyed WITH a stored slug, so
+// dropping either no-op clause fails the prod leg, and any resolution of the
+// corpse's SLUG instead of its stored key fails the third subtest.
+// Revert check (executed): removing the `isDeleted Condition None` filter
+// from relationObjectHoldingKey fails the prod-shape leg — the create 400s
+// with "unknown property keys".
+func TestV2CloneToleranceSurvivesTheProdShape(t *testing.T) {
 	cloneBody := []byte(`{"version":1,"type":"page","properties":{"name":"Fresh","` + corpseBsonKey + `":"x"}}`)
 
-	t.Run("prod shape: the advertised clone loop 400s — the gap", func(t *testing.T) {
-		// given
-		fx := newV2Fixture(t)
-		fx.addCorpseProperty(t, true)
+	t.Run("the clone loop round-trips on BOTH shapes", func(t *testing.T) {
+		corpseShapes(t, func(t *testing.T, prodShape bool) {
+			// given
+			fx := newV2Fixture(t)
+			fx.addCorpseProperty(t, prodShape)
+			captured := fx.expectCreate("clone1")
+			fx.expectEtagRead("clone1")
 
-		// when — the bytes a GET of a corpse-held object serves
-		_, err := fx.CreateObject(context.Background(), testSpaceId, cloneBody, false)
+			// when — the bytes a GET of a corpse-held object serves
+			_, err := fx.CreateObject(context.Background(), testSpaceId, cloneBody, false)
 
-		// then: refused today; a correct tolerance would accept
-		apiErr := v2Err(t, err)
-		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
-	})
-
-	t.Run("flag-only shape: tolerated — the shape the fixtures test", func(t *testing.T) {
-		fx := newV2Fixture(t)
-		fx.addCorpseProperty(t, false)
-		captured := fx.expectCreate("clone1")
-		fx.expectEtagRead("clone1")
-
-		_, err := fx.CreateObject(context.Background(), testSpaceId, cloneBody, false)
-
-		require.NoError(t, err)
-		require.NotNil(t, *captured)
-		assert.Equal(t, "x", (*captured).Details.Fields[corpseBsonKey].GetStringValue())
+			// then — the value lands under the STORED key it was served under
+			require.NoError(t, err)
+			require.NotNil(t, *captured)
+			assert.Equal(t, "x", (*captured).Details.Fields[corpseBsonKey].GetStringValue())
+		})
 	})
 
 	t.Run("the corpse SLUG is refused on create in both shapes", func(t *testing.T) {
@@ -458,50 +451,189 @@ func TestV2CorpseSquatterVacatesBundledSlug(t *testing.T) {
 	assert.Equal(t, "dueDate", entry.Key)
 }
 
-// TestV2UninstalledBundledPropertyWriteAsymmetry — DOCUMENTS AN ASYMMETRY.
+// TestV2UninstalledBundledPropertyRefusesWrites (was
+// TestV2UninstalledBundledPropertyWriteAsymmetry, which pinned the
+// half-applied policy this fixes).
 //
-// For a BUNDLED relation the corpse policy only half-applies: uninstalling
-// dueDate removes it from listings and 404s its routes, but the bundled
+// For a BUNDLED relation the corpse policy used to half-apply: uninstalling
+// dueDate removed it from listings and 404'd its routes, but the bundled
 // vocabulary (resolution chain step 3, propertyKeyExistsIn's
-// bundle.HasRelation arm) keeps `due_date` a valid DOCUMENT key in every
-// space — so a create lands new data in the property the user deleted, and
-// the relation link re-materializes it on the new object. "Nothing new lands
-// in an uninstalled property" does not hold for bundled corpses today. This
-// pins the current behavior so a change in either direction is a conscious
-// one; a write-refuse fix would flip the create assertion.
-// Revert check: removing the bundle.HasRelation arm from propertyKeyExistsIn
-// fails the create subtest (400 instead of success).
-func TestV2UninstalledBundledPropertyWriteAsymmetry(t *testing.T) {
-	newFx := func(t *testing.T) *v2Fixture {
+// bundle.HasRelation arm) kept `due_date` a valid DOCUMENT key in every
+// space — so a create landed new data in the property the user deleted, and
+// the reinstall would light it back up. Now every write channel consults
+// uninstalledBundledKeys and refuses with a repair.
+//
+// The distinction that makes this safe is NEVER-INSTALLED vs UNINSTALLED: a
+// bundled relation nobody installed has no relation object at all, is absent
+// from the removal set, and keeps working exactly as before (the third
+// subtest — it is the common case in a fresh space, and conflating the two
+// would break ordinary writes everywhere).
+//
+// Fixture notes: the removed entity here is bundled, so it CANNOT be
+// BSON-keyed with a stored slug — its key is `dueDate` by definition and its
+// slug `due_date` is derived in code, never stored; that is precisely the
+// class this refusal is about. The BSON-keyed corpse with a stored slug rides
+// along in the last subtest, which proves the refusal targets the bundled
+// class only and leaves the §8.29 tolerance intact. Both store shapes run:
+// the flag-only shape would pass even with the isDeleted default unhandled,
+// so only the prod leg proves uninstalledBundledKeys suppresses it.
+// Revert check (executed): dropping the removedPropertyIssue arm from
+// validatePropertyKeys fails the create subtest, and dropping it from
+// stateops' checkKey fails the PATCH subtest.
+func TestV2UninstalledBundledPropertyRefusesWrites(t *testing.T) {
+	ctx := context.Background()
+	newFx := func(t *testing.T, prodShape bool) *v2Fixture {
 		fx := newV2Fixture(t)
-		fx.addRelation(t, testSpaceId, objectstore.TestObject{
+		obj := objectstore.TestObject{
 			bundle.RelationKeyId:            domain.String("rel-duedate"),
 			bundle.RelationKeyRelationKey:   domain.String("dueDate"),
 			bundle.RelationKeyName:          domain.String("Due date"),
 			bundle.RelationKeyIsUninstalled: domain.Bool(true),
-			bundle.RelationKeyIsDeleted:     domain.Bool(true),
-		})
+		}
+		if prodShape {
+			obj[bundle.RelationKeyIsDeleted] = domain.Bool(true)
+		}
+		fx.addRelation(t, testSpaceId, obj)
 		return fx
+	}
+	// requireRemovalRefusal asserts the 400 names the removal AND its repair
+	// (§8.34: a refusal a caller cannot act on is itself a defect).
+	requireRemovalRefusal := func(t *testing.T, err error) {
+		t.Helper()
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
+		require.NotEmpty(t, apiErr.Issues)
+		assert.Contains(t, apiErr.Issues[0].Message, `"due_date"`, "the refusal spells the served slug")
+		assert.Contains(t, apiErr.Issues[0].Message, "removed from this space")
+		assert.NotEmpty(t, apiErr.Issues[0].Hint, "the repair is named")
 	}
 
 	t.Run("the route side is corpse-aware: 404", func(t *testing.T) {
-		fx := newFx(t)
-		_, err := fx.requireLiveProperty(testSpaceId, "due_date")
-		requireNotFoundError(t, err)
+		corpseShapes(t, func(t *testing.T, prodShape bool) {
+			fx := newFx(t, prodShape)
+			_, err := fx.requireLiveProperty(testSpaceId, "due_date")
+			requireNotFoundError(t, err)
+		})
 	})
 
-	t.Run("the document write side is not: create lands the value", func(t *testing.T) {
-		fx := newFx(t)
+	t.Run("create refuses to land a value on it", func(t *testing.T) {
+		corpseShapes(t, func(t *testing.T, prodShape bool) {
+			fx := newFx(t, prodShape)
+
+			_, err := fx.CreateObject(ctx, testSpaceId,
+				[]byte(`{"version":1,"type":"page","properties":{"name":"n","due_date":"2027-01-01"}}`), false)
+
+			requireRemovalRefusal(t, err)
+		})
+	})
+
+	t.Run("PATCH refuses it off-document, keeps the in-document cleanup", func(t *testing.T) {
+		corpseShapes(t, func(t *testing.T, prodShape bool) {
+			cleanDoc := `{"version":1,"id":"obj1","type":"page","properties":{"name":"Doc"},"blocks":[{"id":"blockOne1","type":"paragraph","text":"hi"}]}`
+			holdingDoc := `{"version":1,"id":"obj1","type":"page","properties":{"name":"Doc","dueDate":"2027-01-01"},"blocks":[{"id":"blockOne1","type":"paragraph","text":"hi"}]}`
+
+			t.Run("off-document set: refused", func(t *testing.T) {
+				fx := newFx(t, prodShape)
+				fx.expectMutate(editRead(t, cleanDoc), "headB")
+
+				_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+					patchBody(`{"op":"setProperties","set":{"due_date":"2030-12-31"}}`), "", false)
+
+				requireRemovalRefusal(t, err)
+			})
+
+			t.Run("unset of a value the document carries: still the cleanup channel", func(t *testing.T) {
+				fx := newFx(t, prodShape)
+				captured := fx.expectMutate(editRead(t, holdingDoc), "headB")
+
+				_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+					patchBody(`{"op":"setProperties","unset":["due_date"]}`), "", false)
+
+				require.NoError(t, err)
+				_, present := (*captured).CombinedDetails().TryString(bundle.RelationKeyDueDate)
+				assert.False(t, present, "removing a removed property's leftover value must stay possible")
+			})
+		})
+	})
+
+	t.Run("a view cannot gain a column for it either", func(t *testing.T) {
+		// no removal check was added to the view channel and none is needed:
+		// view documents spell SLUGS (canonicalViewKey → servedKey), and the
+		// bundled slug stops resolving the moment the relation is
+		// uninstalled, so validateViewKeys refuses at its unknown-key branch.
+		// Pinned because the channel's closure is the load-bearing fact, not
+		// which branch closes it.
+		corpseShapes(t, func(t *testing.T, prodShape bool) {
+			fx := newFx(t, prodShape)
+			plainViewDoc := `{"version":1,"id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
+				`{"id":"dataview","type":"dataview","properties":[{"key":"name","format":"text"}],` +
+				`"views":[{"id":"viewAll1","name":"All","columns":[{"property":"name"}]}]}]}`
+			fx.expectMutate(editRead(t, plainViewDoc), "headB")
+
+			_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+				patchBody(`{"op":"updateView","view":"viewAll1","columns":{"due_date":{"width":80}}}`), "", false)
+
+			apiErr := v2Err(t, err)
+			assert.Equal(t, http.StatusBadRequest, apiErr.Status)
+		})
+	})
+
+	t.Run("a NEVER-installed bundled property still works", func(t *testing.T) {
+		// the whole distinction: no relation object exists for dueDate here,
+		// so install-on-write is untouched — the common case in a fresh space
+		fx := newV2Fixture(t)
 		captured := fx.expectCreate("obj-due")
 		fx.expectEtagRead("obj-due")
 
-		_, err := fx.CreateObject(context.Background(), testSpaceId,
+		_, err := fx.CreateObject(ctx, testSpaceId,
 			[]byte(`{"version":1,"type":"page","properties":{"name":"n","due_date":"2027-01-01"}}`), false)
 
 		require.NoError(t, err)
 		require.NotNil(t, *captured)
 		_, landed := (*captured).Details.Fields["dueDate"]
-		assert.True(t, landed, "the value lands on the uninstalled bundled relation")
+		assert.True(t, landed, "a bundled property nobody removed installs on write")
+	})
+
+	t.Run("an ARCHIVED bundled property is outside this refusal", func(t *testing.T) {
+		// the boundary of the decision implemented here: it keys on
+		// isUninstalled — the UI delete the user performed — and nothing else.
+		// A v2 DELETE only archives, and whether that should refuse writes too
+		// is an open question this round did not settle; the behavior is
+		// pinned so answering it later is a conscious edit, and so widening
+		// uninstalledBundledKeys past isUninstalled=true cannot pass silently.
+		fx := newV2Fixture(t)
+		fx.addRelation(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:          domain.String("rel-duedate-archived"),
+			bundle.RelationKeyRelationKey: domain.String("dueDate"),
+			bundle.RelationKeyName:        domain.String("Due date"),
+			bundle.RelationKeyIsArchived:  domain.Bool(true),
+		})
+		captured := fx.expectCreate("obj-due-arch")
+		fx.expectEtagRead("obj-due-arch")
+
+		_, err := fx.CreateObject(ctx, testSpaceId,
+			[]byte(`{"version":1,"type":"page","properties":{"name":"n","due_date":"2027-01-01"}}`), false)
+
+		require.NoError(t, err)
+		_, landed := (*captured).Details.Fields["dueDate"]
+		assert.True(t, landed)
+	})
+
+	t.Run("the BSON-keyed custom corpse stays tolerated", func(t *testing.T) {
+		// the refusal is bundled-only: a custom corpse's stored key can never
+		// be reinstalled, so §8.29's clone tolerance still carries its value
+		corpseShapes(t, func(t *testing.T, prodShape bool) {
+			fx := newFx(t, prodShape)
+			fx.addCorpseProperty(t, prodShape)
+			captured := fx.expectCreate("obj-both")
+			fx.expectEtagRead("obj-both")
+
+			_, err := fx.CreateObject(ctx, testSpaceId,
+				[]byte(`{"version":1,"type":"page","properties":{"name":"n","`+corpseBsonKey+`":"x"}}`), false)
+
+			require.NoError(t, err)
+			assert.Equal(t, "x", (*captured).Details.Fields[corpseBsonKey].GetStringValue())
+		})
 	})
 }
 
@@ -547,25 +679,32 @@ func TestV2CorpseSlugReAimsAfterRecreate(t *testing.T) {
 	})
 }
 
-// TestV2TypePropertiesCorpseEchoMintsDuplicate — DOCUMENTS A GAP (the type
-// document's clone loop resurrects corpses as duplicates).
+// TestV2TypePropertiesCorpseEchoResolvesToItsHolder (was
+// TestV2TypePropertiesCorpseEchoMintsDuplicate, which pinned the gap).
 //
 // GET /types/{key} serves typeProperties resolved BY ID (storeresolver's
 // GetRelationById falls back to an unfiltered point lookup), so a corpse in
 // recommendedRelations is served under its stored BSON key with its name —
-// see the first subtest. PATCHing that served list back walks
-// creatingResolvers.PropertyId, which excludes corpses (corpse-aware by
-// design) and therefore treats the echoed BSON key as a CREATE: it mints a
-// brand-new property duplicating the corpse's name, with a garbage slug
-// derived by snake-casing the 24-hex key. The documented read-modify-write
-// loop for types silently duplicates every corpse it touches — the
-// typeProperties counterpart of §8.29 F2, with no tolerance guarding it.
-// The second subtest pins the CURRENT behavior loudly; any fix (echo
-// tolerance, refusal, or resolving the corpse by id) must flip it.
-// Revert check: dropping the isUninstalled filter in livePropertyFilters
-// resolves the corpse at chain step 1 and no mint happens — the second
-// subtest fails, proving it pins the corpse-exclusion consequence.
-func TestV2TypePropertiesCorpseEchoMintsDuplicate(t *testing.T) {
+// see the first subtest, and that read is DELIBERATELY unchanged: the type
+// document mirrors the list the type actually stores, so dropping corpse
+// entries would make the documented read-modify-write loop silently DELETE
+// the type's reference to them (typeProperties is a whole-list replace).
+//
+// PATCHing that served list back used to walk creatingResolvers.PropertyId,
+// which excludes corpses by design, and mint a brand-new property
+// duplicating the corpse's name under a snake-cased-hex slug — once per
+// PATCH, forever. Now PropertyId consults relationObjectHoldingKey after the
+// live chain misses: a stored key held by a relation object resolves to that
+// relation and never mints. The round trip is an identity.
+//
+// How this fixture can fail: the corpse is BSON-keyed with a stored slug, so
+// a resolver that started answering the SLUG here (the vacated namespace)
+// would keep the mint assertion green but change the resolved id, which the
+// recommendedRelations assertion catches; a readable corpse key could not
+// tell a mint from a resolve at all.
+// Revert check (executed): removing the relationObjectHoldingKey arm from
+// PropertyId fails the second subtest on both shapes — a mint reappears.
+func TestV2TypePropertiesCorpseEchoResolvesToItsHolder(t *testing.T) {
 	newFx := func(t *testing.T, prodShape bool) *v2Fixture {
 		fx := newV2Fixture(t)
 		fx.addCorpseProperty(t, prodShape)
@@ -594,29 +733,33 @@ func TestV2TypePropertiesCorpseEchoMintsDuplicate(t *testing.T) {
 	}
 
 	t.Run("GET type serves the corpse row in typeProperties", func(t *testing.T) {
-		// given — prod shape: the by-id fallback escapes even the injected
-		// isDeleted default (GetRelationById reads unfiltered details)
-		fx := newFx(t, true)
-		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "type-live").Return(liveTypeRead(), nil)
+		// the by-id fallback escapes even the injected isDeleted default
+		// (GetRelationById reads unfiltered details), and that is the
+		// behaviour the write half is built around — see the header
+		corpseShapes(t, func(t *testing.T, prodShape bool) {
+			// given
+			fx := newFx(t, prodShape)
+			fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "type-live").Return(liveTypeRead(), nil)
 
-		// when
-		body, _, err := fx.GetType(context.Background(), testSpaceId, "livetype", V2ObjectQuery{})
+			// when
+			body, _, err := fx.GetType(context.Background(), testSpaceId, "livetype", V2ObjectQuery{})
 
-		// then — served under the stored BSON key, with the corpse's name
-		require.NoError(t, err)
-		var doc struct {
-			TypeProperties []struct {
-				Key  string `json:"key"`
-				Name string `json:"name"`
-			} `json:"typeProperties"`
-		}
-		require.NoError(t, json.Unmarshal(body, &doc))
-		require.Len(t, doc.TypeProperties, 1)
-		assert.Equal(t, corpseBsonKey, doc.TypeProperties[0].Key)
-		assert.Equal(t, "Warranty until", doc.TypeProperties[0].Name)
+			// then — served under the stored BSON key, with the corpse's name
+			require.NoError(t, err)
+			var doc struct {
+				TypeProperties []struct {
+					Key  string `json:"key"`
+					Name string `json:"name"`
+				} `json:"typeProperties"`
+			}
+			require.NoError(t, json.Unmarshal(body, &doc))
+			require.Len(t, doc.TypeProperties, 1)
+			assert.Equal(t, corpseBsonKey, doc.TypeProperties[0].Key)
+			assert.Equal(t, "Warranty until", doc.TypeProperties[0].Name)
+		})
 	})
 
-	t.Run("PATCHing that list back mints a duplicate — the gap", func(t *testing.T) {
+	t.Run("PATCHing that list back resolves to the holder — no mint", func(t *testing.T) {
 		corpseShapes(t, func(t *testing.T, prodShape bool) {
 			// given
 			fx := newFx(t, prodShape)
@@ -629,23 +772,59 @@ func TestV2TypePropertiesCorpseEchoMintsDuplicate(t *testing.T) {
 						Error:    &pb.RpcObjectCreateRelationResponseError{Code: pb.RpcObjectCreateRelationResponseError_NULL},
 						ObjectId: "rel-minted-dup", Key: "6a7663db61fab21cd4b9e999",
 					}
+				}).Maybe()
+			var applied []*model.Detail
+			fx.mwMock.EXPECT().ObjectSetDetails(mock.Anything, mock.Anything).RunAndReturn(
+				func(ctx context.Context, req *pb.RpcObjectSetDetailsRequest) *pb.RpcObjectSetDetailsResponse {
+					applied = req.Details
+					return &pb.RpcObjectSetDetailsResponse{
+						Error: &pb.RpcObjectSetDetailsResponseError{Code: pb.RpcObjectSetDetailsResponseError_NULL}}
+				})
+
+			// when — exactly the typeProperties GET just served
+			result, err := fx.UpdateType(context.Background(), testSpaceId, "livetype",
+				[]byte(`{"typeProperties":[{"key":"`+corpseBsonKey+`","name":"Warranty until","format":"text"}]}`), false)
+
+			// then — nothing is minted and the list still points at the very
+			// relation object the GET resolved it from: a round-trip identity
+			require.NoError(t, err)
+			assert.Empty(t, minted, "an echoed stored key is never a mint request")
+			assert.Nil(t, result.Created, "no property side effect is reported either")
+			var recommended []string
+			for _, detail := range applied {
+				if detail.Key == bundle.RelationKeyRecommendedRelations.String() {
+					recommended = pbtypes.GetStringListValue(detail.Value)
+				}
+			}
+			assert.Equal(t, []string{"rel-corpse-bson"}, recommended)
+		})
+	})
+
+	t.Run("the corpse SLUG in typeProperties still mints — the namespace vacated", func(t *testing.T) {
+		// the resolve is KEY-ONLY: a corpse's slug is free for re-minting
+		// (§8-OQ2), so naming it declares a NEW property, never the corpse
+		corpseShapes(t, func(t *testing.T, prodShape bool) {
+			fx := newFx(t, prodShape)
+			fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "type-live").Return(liveTypeRead(), nil).Maybe()
+			var minted []*pb.RpcObjectCreateRelationRequest
+			fx.mwMock.EXPECT().ObjectCreateRelation(mock.Anything, mock.Anything).RunAndReturn(
+				func(ctx context.Context, req *pb.RpcObjectCreateRelationRequest) *pb.RpcObjectCreateRelationResponse {
+					minted = append(minted, req)
+					return &pb.RpcObjectCreateRelationResponse{
+						Error:    &pb.RpcObjectCreateRelationResponseError{Code: pb.RpcObjectCreateRelationResponseError_NULL},
+						ObjectId: "rel-fresh", Key: "6a7663db61fab21cd4b9e777",
+					}
 				})
 			fx.mwMock.EXPECT().ObjectSetDetails(mock.Anything, mock.Anything).Return(&pb.RpcObjectSetDetailsResponse{
 				Error: &pb.RpcObjectSetDetailsResponseError{Code: pb.RpcObjectSetDetailsResponseError_NULL}}).Maybe()
 
-			// when — exactly the typeProperties GET just served
 			_, err := fx.UpdateType(context.Background(), testSpaceId, "livetype",
-				[]byte(`{"typeProperties":[{"key":"`+corpseBsonKey+`","name":"Warranty until","format":"text"}]}`), false)
+				[]byte(`{"typeProperties":[{"key":"`+corpseSlug+`","name":"Warranty until","format":"text"}]}`), false)
 
-			// then — a NEW relation is created: the corpse's name duplicated,
-			// its slug the snake-cased hex of the echoed stored key
 			require.NoError(t, err)
-			require.Len(t, minted, 1, "the echoed corpse key is treated as a create")
-			fields := minted[0].Details.Fields
-			assert.Equal(t, "Warranty until", fields[bundle.RelationKeyName.String()].GetStringValue())
-			assert.Equal(t, "6_a_7663_db_61_fab_21_cd_4_b_9_e_201",
-				fields[bundle.RelationKeyApiObjectKey.String()].GetStringValue(),
-				"the duplicate's address is garbage derived from the 24-hex key")
+			require.Len(t, minted, 1)
+			assert.Equal(t, corpseSlug,
+				minted[0].Details.Fields[bundle.RelationKeyApiObjectKey.String()].GetStringValue())
 		})
 	})
 }

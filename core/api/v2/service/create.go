@@ -481,6 +481,11 @@ func (s *V2Service) validateDocumentRefs(spaceId string, envelope *docEnvelope, 
 // present on the document). Both say the same thing — a document may keep a
 // value it legitimately already carries; neither is an ADDRESS, because
 // neither channel will resolve a corpse key to a property object.
+//
+// The ONE key class the tolerance does not cover is a BUNDLED relation this
+// space uninstalled (removedPropertyIssue): bundle.HasRelation answers for
+// it forever, so without the explicit check a create lands new data on a
+// property the user deleted, and the reinstall lights it back up.
 func (s *V2Service) validatePropertyKeys(spaceId string, props map[string]json.RawMessage) error {
 	if len(props) == 0 {
 		return nil
@@ -491,8 +496,21 @@ func (s *V2Service) validatePropertyKeys(spaceId string, props map[string]json.R
 	}
 	var issues []v2model.Issue
 	var known []string
+	// primed lazily and at most once (§7.5a-2), and only when a key reaches
+	// the bundled arm at all
+	var removedBundled map[string]bool
 	for _, key := range sortedKeys(props) {
 		if propertyKeyExistsIn(entries, key) {
+			if !propertyKeyInstalledIn(entries, key) {
+				if removedBundled == nil {
+					if removedBundled, err = s.uninstalledBundledKeys(spaceId); err != nil {
+						return err
+					}
+				}
+				if propertyKeyRemovedIn(entries, removedBundled, key) {
+					issues = append(issues, removedPropertyIssue(spaceId, key, "/properties/"+key))
+				}
+			}
 			continue
 		}
 		if s.propertyKeyHeldByAnyRelation(spaceId, key) {

@@ -91,6 +91,12 @@ type v2StateApplier struct {
 	liveEntries       []propertyEntry
 	liveEntriesErr    error
 	liveEntriesLoaded bool
+	// removedBundled is the same shape for the bundled relations this space
+	// uninstalled — primed lazily by removedBundledKeys, and only when a key
+	// reaches the bundled arm at all.
+	removedBundled       map[string]bool
+	removedBundledErr    error
+	removedBundledLoaded bool
 	// marshalCount counts whole-document renders (marshalDoc calls) — the
 	// unit the M7 render-work bound is denominated in. Tests pin it so an op
 	// that claims to keep the view valid in place (v2OpRebuildsView false)
@@ -805,13 +811,27 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 				issues = append(issues, v2model.Issue{Path: path, Message: err.Error()})
 				return false
 			}
-			if _, inDoc := doc.properties[key]; !inDoc && !propertyKeyExistsIn(entries, key) {
-				if known == nil {
-					known = knownPropertyKeysIn(entries)
+			if _, inDoc := doc.properties[key]; !inDoc {
+				if !propertyKeyExistsIn(entries, key) {
+					if known == nil {
+						known = knownPropertyKeysIn(entries)
+					}
+					issues = append(issues, unknownPropertyIssue(key, path, known,
+						fmt.Sprintf("list all with GET /v2/spaces/%s/properties, or create it with POST /v2/spaces/%s/properties", a.spaceId, a.spaceId)))
+					return false
 				}
-				issues = append(issues, unknownPropertyIssue(key, path, known,
-					fmt.Sprintf("list all with GET /v2/spaces/%s/properties, or create it with POST /v2/spaces/%s/properties", a.spaceId, a.spaceId)))
-				return false
+				// the key exists only through the bundled table and this space
+				// removed it — same refusal create makes, or PATCH would be the
+				// hole create just closed
+				refused, err := a.refusesRemovedBundled(entries, key)
+				if err != nil {
+					issues = append(issues, v2model.Issue{Path: path, Message: err.Error()})
+					return false
+				}
+				if refused {
+					issues = append(issues, removedPropertyIssue(a.spaceId, key, path))
+					return false
+				}
 			}
 		}
 		return true
@@ -958,6 +978,35 @@ func (a *v2StateApplier) propEntries() ([]propertyEntry, error) {
 		a.liveEntries, a.liveEntriesErr = a.s.liveProperties(a.spaceId)
 	}
 	return a.liveEntries, a.liveEntriesErr
+}
+
+// removedBundledKeys primes the applier's uninstalled-bundled snapshot once
+// (same one-query-per-request discipline as propEntries), and only when a
+// key actually reaches the bundled arm. Fails closed on a load error: an
+// unreadable removal set must not read as "nothing was removed".
+func (a *v2StateApplier) removedBundledKeys() (map[string]bool, error) {
+	if !a.removedBundledLoaded {
+		a.removedBundledLoaded = true
+		a.removedBundled, a.removedBundledErr = a.s.uninstalledBundledKeys(a.spaceId)
+	}
+	return a.removedBundled, a.removedBundledErr
+}
+
+// refusesRemovedBundled is the PATCH-side verdict: the key exists ONLY
+// because the bundled table answers for it, and this space uninstalled that
+// bundled relation. It is consulted AFTER the in-document escape — a removed
+// property's existing values stay editable and removable, since unset is the
+// one cleanup channel a caller has left; what this refuses is landing the
+// key on a document that does not already carry it.
+func (a *v2StateApplier) refusesRemovedBundled(entries []propertyEntry, key string) (bool, error) {
+	if propertyKeyInstalledIn(entries, key) {
+		return false, nil
+	}
+	removed, err := a.removedBundledKeys()
+	if err != nil {
+		return false, err
+	}
+	return propertyKeyRemovedIn(entries, removed, key), nil
 }
 
 // canonicalizeSetPropertyKeys rewrites slug-spelled property terms in a

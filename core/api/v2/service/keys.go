@@ -555,14 +555,20 @@ func servedKeyOf(storedKey, slug string, keyTaken map[string]bool, slugHolders m
 	return candidate
 }
 
-// propertyKeyHeldByAnyRelation reports whether ANY relation object holds the
-// stored key — live or corpse (the explicit no-op isArchived filter
-// suppresses the store's injected default; Condition None compiles to no
-// filter at all). This is the create path's round-trip tolerance for a
-// document that legitimately carries a value of a UI-deleted relation
-// (§8.29); it is never an ADDRESS — nothing resolves a corpse key to a
-// property object, and no listing advertises it.
-func (s *V2Service) propertyKeyHeldByAnyRelation(spaceId, key string) bool {
+// relationObjectHoldingKey returns the ID of the relation object holding the
+// stored key — live or corpse — and is the one probe that deliberately sees
+// past BOTH of the store's injected defaults.
+//
+// A real UI delete persists TWO flags, not one: deleteDerivedObject sets
+// isUninstalled and the same Apply stamps isDeleted (smartblock's
+// detailsinject, since GO-1978), after which BeforeDelete tombstones the
+// index row and the next space load re-indexes the still-existing tree with
+// both. Suppressing only isArchived — as this query did — therefore made
+// every PRODUCTION corpse invisible to the very tolerance built for it,
+// while the flag-only fixtures in these suites (isUninstalled alone) kept
+// passing. Condition None compiles to no filter at all, so both no-op
+// clauses are pure default suppression and add nothing to the scan.
+func (s *V2Service) relationObjectHoldingKey(spaceId, key string) (string, bool) {
 	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
 		Filters: []database.FilterRequest{
 			{
@@ -579,10 +585,75 @@ func (s *V2Service) propertyKeyHeldByAnyRelation(spaceId, key string) bool {
 				RelationKey: bundle.RelationKeyIsArchived,
 				Condition:   model.BlockContentDataviewFilter_None,
 			},
+			{
+				RelationKey: bundle.RelationKeyIsDeleted,
+				Condition:   model.BlockContentDataviewFilter_None,
+			},
 		},
 		Limit: 1,
 	})
-	return err == nil && len(records) > 0
+	if err != nil || len(records) == 0 {
+		return "", false
+	}
+	return records[0].Details.GetString(bundle.RelationKeyId), true
+}
+
+// propertyKeyHeldByAnyRelation reports whether ANY relation object holds the
+// stored key — live or corpse. This is the create path's round-trip
+// tolerance for a document that legitimately carries a value of a UI-deleted
+// relation (§8.29); it is never an ADDRESS — nothing resolves a corpse key
+// to a property object, and no listing advertises it.
+func (s *V2Service) propertyKeyHeldByAnyRelation(spaceId, key string) bool {
+	_, held := s.relationObjectHoldingKey(spaceId, key)
+	return held
+}
+
+// uninstalledBundledKeys is the set of BUNDLED relation keys this space has
+// explicitly UNINSTALLED: a relation object exists and carries
+// isUninstalled=true. One bounded query per request (§7.5a-2), never one per
+// reference.
+//
+// The set is deliberately narrow. A bundled relation that was NEVER
+// installed has no object at all and is absent here — install-on-write stays
+// correct, and is the common case in a fresh space. Only the removal the
+// user actually performed lands in this set, which is the whole distinction
+// the refusal rests on: "not installed yet" and "you deleted it" look
+// identical through bundle.HasRelation and could not be told apart without
+// this probe.
+func (s *V2Service) uninstalledBundledKeys(spaceId string) (map[string]bool, error) {
+	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
+		Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.Int64(int64(model.ObjectType_relation)),
+			},
+			{
+				RelationKey: bundle.RelationKeyIsUninstalled,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.Bool(true),
+			},
+			// both injected defaults suppressed: the prod corpse carries
+			// isDeleted too, and an archived-then-uninstalled row is still a
+			// removal
+			{RelationKey: bundle.RelationKeyIsArchived, Condition: model.BlockContentDataviewFilter_None},
+			{RelationKey: bundle.RelationKeyIsDeleted, Condition: model.BlockContentDataviewFilter_None},
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("query uninstalled relations of space %s: %w", spaceId, err)
+	}
+	removed := make(map[string]bool, len(records))
+	for _, record := range records {
+		key := record.Details.GetString(bundle.RelationKeyRelationKey)
+		// custom corpses are NOT in this set: their stored key is a BSON id
+		// no bundled table knows, they can never be reinstalled, and the
+		// §8.29 tolerance carries their in-document values instead
+		if key != "" && bundle.HasRelation(domain.RelationKey(key)) {
+			removed[key] = true
+		}
+	}
+	return removed, nil
 }
 
 // canonicalizeDocumentKeys rewrites an inbound document's addressing terms

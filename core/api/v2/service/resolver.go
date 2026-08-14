@@ -438,6 +438,26 @@ func (r *creatingResolvers) PropertyId(def anyblockjson.PropertyDefinition) (str
 		}
 	}
 
+	// The chain has missed, so nothing LIVE answers to this key — but a
+	// relation object may still hold it: the type document's own read serves
+	// corpses in typeProperties (GET resolves recommendedRelations BY ID,
+	// which is unfiltered by design — a type must show the properties it
+	// actually references), and the documented read-modify-write loop sends
+	// that list straight back. Minting here produced a brand-new property
+	// duplicating the corpse's name under a snake-cased-hex slug, once per
+	// PATCH, forever. A stored key held by a relation object has never been a
+	// legitimate mint request in either direction, so it resolves to its
+	// holder instead: the id returned is the id the type already carries, the
+	// round trip is an identity, and no value moves anywhere. This is the
+	// typeProperties counterpart of the §8.29 create tolerance and it is
+	// deliberately KEY-ONLY — the corpse's SLUG vacated the namespace and
+	// still resolves to nothing here, so a re-minted slug can never re-aim
+	// onto the corpse.
+	if holderId, held := r.svc.relationObjectHoldingKey(r.spaceId, docKey); held && holderId != "" {
+		r.createdPropIds[docKey] = holderId
+		return holderId, true
+	}
+
 	name, format := def.Name, def.Format
 	if isBundled {
 		if name == "" {
