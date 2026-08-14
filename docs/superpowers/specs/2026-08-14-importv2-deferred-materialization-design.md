@@ -117,6 +117,10 @@ report page). Downloads: `FileSource.Open` closures are drained to the run dir's
 spool time through a small bounded download pool (concurrency ~4, streaming copy — the
 existing `readerWithContext` discipline, `persist/file.go:139-149`); plain `FileSource.Path`
 entries (markdown loose files) are spooled as paths, not copied (§10 costs, "source moved").
+**REVERSED at DM-2 review (Class D, executed):** a path into the user's tree serialized
+into the spool violates §8.1's headline property — the resumed upload read from a deleted
+source and "succeeded". On-disk entries now drain into the spill dir at spool time like
+every other source; the loose-file copy is the accepted cost of the no-source invariant.
 
 What pass 2 may touch: the source, the network, the run dir, the space **index for reads**
 (pass-1 dedup queries and `AssignDerived`-style lookups are reads and happen in passes 1/3

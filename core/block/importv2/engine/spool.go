@@ -68,7 +68,7 @@ func (s *spoolSink) Object(ctx context.Context, object *importv2.Object) error {
 	}
 	s.run.deps.Gauge(1)
 	defer s.run.deps.Gauge(-1)
-	if object.File != nil && object.File.Open != nil && s.spillDir != "" {
+	if object.File != nil && s.spillDir != "" && (object.File.Open != nil || object.File.Path != "") {
 		if err := s.drainFile(ctx, object); err != nil {
 			if ctx.Err() != nil {
 				return ctx.Err()
@@ -110,11 +110,21 @@ func (s *spoolSink) Object(ctx context.Context, object *importv2.Object) error {
 }
 
 // drainFile downloads/copies the file source into the spill dir and rewrites
-// the source to a plain path. Synchronous by design for DM-1: correctness
-// first — the bounded overlap pool (DM spec §4.1, concurrency ~4) is a
-// wall-clock optimization deliberately deferred and reported as such.
+// the source to a plain path. This covers ON-DISK paths too, not only Open
+// closures (review Class D, reversing the spec's §4.1 "loose files are
+// spooled as paths, not copied" cost decision): a path into the user's tree
+// serialized into the spool violates the no-source resume invariant — the
+// tree can be gone by the time a resumed pass 3 uploads, and §8.1's
+// headline property is "the run dir alone suffices". Synchronous by design
+// for DM-1: correctness first — the bounded overlap pool (DM spec §4.1,
+// concurrency ~4) is a wall-clock optimization deliberately deferred.
 func (s *spoolSink) drainFile(ctx context.Context, object *importv2.Object) error {
-	reader, err := object.File.Open(ctx)
+	open := object.File.Open
+	if open == nil {
+		sourcePath := object.File.Path
+		open = func(context.Context) (io.ReadCloser, error) { return os.Open(sourcePath) }
+	}
+	reader, err := open(ctx)
 	if err != nil {
 		return fmt.Errorf("open file source: %w", err)
 	}

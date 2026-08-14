@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -342,12 +343,25 @@ func pageObj(key string, root bool) *importv2.Object {
 	}
 }
 
+// fileObj carries REAL on-disk bytes: since the Class-D fix, pass 2 drains
+// on-disk paths into the spill dir (opening them), so a phantom path would
+// fail the drain and silently drop the file object from every test using it.
 func fileObj(key string) *importv2.Object {
+	f, err := os.CreateTemp("", "importv2-test-*-"+key)
+	if err != nil {
+		panic(err)
+	}
+	if _, err = f.WriteString("bytes-" + key); err != nil {
+		panic(err)
+	}
+	if err = f.Close(); err != nil {
+		panic(err)
+	}
 	return &importv2.Object{
 		SourceKey: key,
 		SbType:    coresb.SmartBlockTypeFileObject,
 		Payload:   &importv2.Snapshot{Details: domain.NewDetails()},
-		File:      &importv2.FileSource{Path: "/tmp/x", Name: key},
+		File:      &importv2.FileSource{Path: f.Name(), Name: key},
 	}
 }
 

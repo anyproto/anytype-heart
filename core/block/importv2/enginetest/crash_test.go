@@ -3,6 +3,7 @@ package enginetest
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"sort"
 	"sync/atomic"
@@ -109,6 +110,8 @@ func TestCrashResumeMidCreate(t *testing.T) {
 		assertResumedClean(t, resumed, controlResult)
 		assert.Equal(t, control.Dump(), fx.Dump(),
 			"the final object set must be identical to the uninterrupted run")
+		assert.Equal(t, control.OriginalTimestamps(), fx.OriginalTimestamps(),
+			"original-created timestamps must survive the spool and the restart")
 	})
 }
 
@@ -277,9 +280,13 @@ func TestCrashResumeAtUpload(t *testing.T) {
 		// when
 		resumed := fx.ResumeDurable(context.Background(), t, dir, request(false, false))
 
-		// then: uploaded exactly once, everything else identical
+		// then: uploaded exactly once, everything else identical — including
+		// the full upload request surface (imageKind, encryption keys, url:
+		// the fields no consumer-side test observed, review Class H)
 		assertResumedClean(t, resumed, controlResult)
 		assert.Equal(t, control.Dump(), fx.Dump())
+		assert.Equal(t, control.Uploader.Records, fx.Uploader.Records,
+			"the resumed upload must present exactly what the uninterrupted one did")
 	})
 }
 
@@ -299,6 +306,39 @@ func killInsideFinalizeCreate(fx *Fixture, streamCreates int32, cancel context.C
 		}
 		return nil
 	}
+}
+
+func TestCrashResumeWithoutSource(t *testing.T) {
+	t.Run("resumed with the source tree DELETED: the run dir alone suffices", func(t *testing.T) {
+		// given — review Class D (executed): markdown loose files were
+		// spooled as absolute paths into the USER'S tree, nothing was copied
+		// into the run dir, and the resumed upload read from a path that no
+		// longer existed — reported success with zero issues, because the
+		// old fake uploader never opened what it was given. The no-source
+		// invariant (§8.1: a resumed run needs no source) must hold for
+		// every converter path, not only the two that were examined.
+		root := crashTree(t)
+		control, controlResult := runControl(t, root)
+		fx := NewFixture(t)
+		dir := filepath.Join(t.TempDir(), "run-crash")
+		inc1 := interrupt(t, fx, root, dir, func(cancel context.CancelCauseFunc) {
+			fx.Uploader.BeforeUpload = func(string) error {
+				cancel(importv2.ErrSuspended)
+				return context.Canceled
+			}
+		})
+		require.Error(t, inc1.Err)
+		require.True(t, inc1.Suspended)
+
+		// when: the source is gone — a moved tree, an unplugged drive
+		require.NoError(t, os.RemoveAll(root))
+		resumed := fx.ResumeDurable(context.Background(), t, dir, request(false, false))
+
+		// then: identical outcome, from the run dir alone
+		assertResumedClean(t, resumed, controlResult)
+		assert.Equal(t, control.Dump(), fx.Dump(),
+			"the resumed run must not depend on the source tree existing")
+	})
 }
 
 func TestCrashResumeAtFinalize(t *testing.T) {

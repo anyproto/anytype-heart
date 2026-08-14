@@ -115,7 +115,7 @@
         {
           "kind": "file",
           "style": "Image",
-          "target": "file-logo.png"
+          "target": "file-ea803343"
         },
         {
           "kind": "text",
@@ -176,6 +176,6 @@
     }
   ],
   "uploads": [
-    "logo.png"
+    "ea803343"
   ]
 }

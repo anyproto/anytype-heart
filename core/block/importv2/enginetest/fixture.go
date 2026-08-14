@@ -6,8 +6,11 @@ package enginetest
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -175,12 +178,27 @@ func payloadWithId(id string) treestorage.TreeStorageCreatePayload {
 	}
 }
 
-// FakeUploader assigns deterministic file-object ids by file name and
-// records uploads (content dedup by name, mirroring content addressing for
-// fixture purposes).
+// UploadRecord is everything one upload was asked to do — the observable
+// surface for fields that previously reached no consumer any test watched
+// (review Class H: ImageKind, EncryptionKeys, URL).
+type UploadRecord struct {
+	ContentHash    string
+	ImageKind      model.ImageKind
+	EncryptionKeys map[string]string
+	Url            string
+}
+
+// FakeUploader models content addressing HONESTLY: it reads the bytes it
+// is given — an upload from a path that does not exist fails like a real
+// one (review Class H: the old fake recorded LocalPath unopened, which is
+// exactly why a resumed run "succeeded" uploading from a deleted source
+// tree) — and derives the file object id from the CONTENT hash, so a
+// re-upload of the same bytes converges on the same id whatever path
+// carried them, as real content addressing does.
 type FakeUploader struct {
 	mu      sync.Mutex
-	Uploads []string
+	Uploads []string // content hashes, golden-visible
+	Records []UploadRecord
 	// BeforeUpload is a crash-injection hook: a non-nil error fails the
 	// upload with it before anything is recorded.
 	BeforeUpload func(localPath string) error
@@ -192,26 +210,38 @@ func (f *FakeUploader) UploadFile(ctx context.Context, spaceId string, req block
 			return "", 0, nil, err
 		}
 	}
+	var hash string
+	switch {
+	case req.LocalPath != "":
+		data, err := os.ReadFile(req.LocalPath)
+		if err != nil {
+			return "", 0, nil, fmt.Errorf("upload %q: %w", req.LocalPath, err)
+		}
+		hash = contentHash(data)
+	case req.Url != "":
+		hash = contentHash([]byte(req.Url)) // the fixture does not fetch
+	default:
+		return "", 0, nil, errors.New("upload with neither path nor url")
+	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.Uploads = append(f.Uploads, req.LocalPath)
-	return "file-" + sanitizeId(req.LocalPath), model.BlockContentFile_File, domain.NewDetails(), nil
+	f.Uploads = append(f.Uploads, hash)
+	f.Records = append(f.Records, UploadRecord{
+		ContentHash:    hash,
+		ImageKind:      req.ImageKind,
+		EncryptionKeys: req.CustomEncryptionKeys,
+		Url:            req.Url,
+	})
+	return "file-" + hash, model.BlockContentFile_File, domain.NewDetails(), nil
 }
 
 func (f *FakeUploader) CreateFromImport(fileId domain.FullFileId, origin objectorigin.ObjectOrigin, details *domain.Details) (string, error) {
 	return "file-" + fileId.FileId.String(), nil
 }
 
-func sanitizeId(localPath string) string {
-	// keep only the base name so spill temp prefixes don't leak into ids
-	base := localPath
-	for i := len(localPath) - 1; i >= 0; i-- {
-		if localPath[i] == '/' {
-			base = localPath[i+1:]
-			break
-		}
-	}
-	return base
+func contentHash(data []byte) string {
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:4])
 }
 
 type nopFlags struct{}
@@ -379,6 +409,26 @@ func (fx *Fixture) ResumeDurable(ctx context.Context, t *testing.T, dir string, 
 	persister.SetResumeHeal(state.Heal())
 	state.SeedJournal(deps.Journal)
 	return engine.Resume(ctx, req, deps, &state.Engine)
+}
+
+// OriginalTimestamps maps object name → the persisted state's original
+// created timestamp. The value is mtime-derived for markdown, so it can
+// never live in a golden — but two runs over one tree must agree, which
+// makes it a crash-equivalence observable (review Class H: the field
+// previously reached no consumer any test watched).
+func (fx *Fixture) OriginalTimestamps() map[string]int64 {
+	fx.Space.mu.Lock()
+	defer fx.Space.mu.Unlock()
+	out := map[string]int64{}
+	for _, st := range fx.Space.Created {
+		if st == nil {
+			continue
+		}
+		if name := st.CombinedDetails().GetString(bundle.RelationKeyName); name != "" {
+			out[name] = st.OriginalCreatedTimestamp()
+		}
+	}
+	return out
 }
 
 // storeChecker classifies deduped uploads against the real store fixture.
