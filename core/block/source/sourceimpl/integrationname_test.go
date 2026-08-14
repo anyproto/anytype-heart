@@ -1,6 +1,6 @@
 package sourceimpl
 
-// Wire-level tests for pb.Change.IntegrationKey (APIV2_OBJECT_DELETE.md
+// Wire-level tests for pb.Change.IntegrationName (APIV2_OBJECT_DELETE.md
 // §11.1/§11.4/§15): the param → change copy at build, the ChangeNoSnapshot
 // read-path conversion, and the legacy (field-absent) shape.
 
@@ -19,7 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 )
 
-func TestBuildChange_IntegrationKey(t *testing.T) {
+func TestBuildChange_IntegrationName(t *testing.T) {
 	// newSource builds the minimal treeSource buildChange needs: an object
 	// tree whose head differs from its id (no forced snapshot), so the built
 	// change is the plain content shape and the assertion below is about the
@@ -33,35 +33,35 @@ func TestBuildChange_IntegrationKey(t *testing.T) {
 	}
 	params := func(key string) source.PushChangeParams {
 		return source.PushChangeParams{
-			State:          state.NewDoc("rootId", nil).(*state.State),
-			Changes:        changeWithSmallTextUpdate().Content,
-			Time:           time.Unix(1700000000, 0),
-			IntegrationKey: key,
+			State:           state.NewDoc("rootId", nil).(*state.State),
+			Changes:         changeWithSmallTextUpdate().Content,
+			Time:            time.Unix(1700000000, 0),
+			IntegrationName: key,
 		}
 	}
 
 	t.Run("param lands on the pb.Change", func(t *testing.T) {
-		// fails if buildChange stops copying PushChangeParams.IntegrationKey —
+		// fails if buildChange stops copying PushChangeParams.IntegrationName —
 		// the write half of the provenance record
-		c := newSource(t).buildChange(params("claude-desktop"))
-		assert.Equal(t, "claude-desktop", c.IntegrationKey)
+		c := newSource(t).buildChange(params("Claude Desktop"))
+		assert.Equal(t, "Claude Desktop", c.IntegrationName)
 	})
 
 	t.Run("empty param leaves the field empty", func(t *testing.T) {
 		c := newSource(t).buildChange(params(""))
-		assert.Equal(t, "", c.IntegrationKey)
+		assert.Equal(t, "", c.IntegrationName)
 	})
 }
 
-func TestUnmarshalChange_IntegrationKey(t *testing.T) {
+func TestUnmarshalChange_IntegrationName(t *testing.T) {
 	t.Run("the no-snapshot read path preserves the key", func(t *testing.T) {
 		// given: a stamped, snapshot-less change as the wire carries it. The
 		// no-snapshot unmarshal decodes into pb.ChangeNoSnapshot and CONVERTS
 		// back to pb.Change — this test fails if that conversion (source.go)
-		// stops copying IntegrationKey: the value would be written by every
+		// stops copying IntegrationName: the value would be written by every
 		// creation and then silently dropped on every read.
 		c := changeWithSmallTextUpdate()
-		c.IntegrationKey = "claude-desktop"
+		c.IntegrationName = "Claude Desktop"
 		require.Nil(t, c.Snapshot)
 		data, dt, err := MarshalChange(c)
 		require.NoError(t, err)
@@ -71,19 +71,19 @@ func TestUnmarshalChange_IntegrationKey(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, "claude-desktop", res.(*pb.Change).IntegrationKey)
+		assert.Equal(t, "Claude Desktop", res.(*pb.Change).IntegrationName)
 	})
 
 	t.Run("snapshot read path preserves the key", func(t *testing.T) {
 		c := changeWithBigSnapshot()
-		c.IntegrationKey = "claude-desktop"
+		c.IntegrationName = "Claude Desktop"
 		data, dt, err := MarshalChange(c)
 		require.NoError(t, err)
 
 		res, err := unmarshalChange(&objecttree.Change{DataType: dt}, data, true)
 
 		require.NoError(t, err)
-		assert.Equal(t, "claude-desktop", res.(*pb.Change).IntegrationKey)
+		assert.Equal(t, "Claude Desktop", res.(*pb.Change).IntegrationName)
 	})
 
 	t.Run("legacy change without the field reads as empty", func(t *testing.T) {
@@ -95,7 +95,7 @@ func TestUnmarshalChange_IntegrationKey(t *testing.T) {
 		for _, needSnapshot := range []bool{true, false} {
 			res, err := unmarshalChange(&objecttree.Change{DataType: dt}, data, needSnapshot)
 			require.NoError(t, err)
-			assert.Equal(t, "", res.(*pb.Change).IntegrationKey)
+			assert.Equal(t, "", res.(*pb.Change).IntegrationName)
 		}
 	})
 }

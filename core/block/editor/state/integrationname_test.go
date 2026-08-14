@@ -10,29 +10,29 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-// The integration key must be strictly per-apply (APIV2_OBJECT_DELETE.md
+// The integration name must be strictly per-apply (APIV2_OBJECT_DELETE.md
 // §11.4): if any of these propagation paths ever starts carrying it, every
 // later local edit inherits the creation stamp and the DELETE ownership gate
 // silently widens. Each subtest names the exact leak it would catch.
-func TestState_IntegrationKeyIsNotPropagated(t *testing.T) {
+func TestState_IntegrationNameIsNotPropagated(t *testing.T) {
 	t.Run("set and get on one state", func(t *testing.T) {
 		s := NewDoc("root", nil).(*State)
-		s.SetIntegrationKey("claude-desktop")
-		assert.Equal(t, "claude-desktop", s.IntegrationKey())
+		s.SetIntegrationName("Claude Desktop")
+		assert.Equal(t, "Claude Desktop", s.IntegrationName())
 	})
 
 	t.Run("NewState does not inherit", func(t *testing.T) {
 		// the leak: every derived edit state would carry the creation stamp
 		parent := NewDoc("root", nil).(*State)
-		parent.SetIntegrationKey("claude-desktop")
-		assert.Equal(t, "", parent.NewState().IntegrationKey())
+		parent.SetIntegrationName("Claude Desktop")
+		assert.Equal(t, "", parent.NewState().IntegrationName())
 	})
 
 	t.Run("Copy does not inherit", func(t *testing.T) {
 		// the leak: template/snapshot copies would carry the stamp
 		s := NewDoc("root", nil).(*State)
-		s.SetIntegrationKey("claude-desktop")
-		assert.Equal(t, "", s.Copy().IntegrationKey())
+		s.SetIntegrationName("Claude Desktop")
+		assert.Equal(t, "", s.Copy().IntegrationName())
 	})
 
 	t.Run("apply does not write it onto the parent doc", func(t *testing.T) {
@@ -43,14 +43,14 @@ func TestState_IntegrationKeyIsNotPropagated(t *testing.T) {
 			"root": simple.New(&model.Block{Id: "root"}),
 		}).(*State)
 		s := doc.NewState()
-		s.SetIntegrationKey("claude-desktop")
+		s.SetIntegrationName("Claude Desktop")
 		s.Add(simple.New(&model.Block{Id: "child"}))
 		require.NoError(t, s.InsertTo("root", model.Block_Inner, "child"))
 
 		_, _, err := ApplyState("space1", s, false)
 		require.NoError(t, err)
 
-		assert.Equal(t, "", doc.IntegrationKey())
-		assert.Equal(t, "", doc.NewState().IntegrationKey())
+		assert.Equal(t, "", doc.IntegrationName())
+		assert.Equal(t, "", doc.NewState().IntegrationName())
 	})
 }

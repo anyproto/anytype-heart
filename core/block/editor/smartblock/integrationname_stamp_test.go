@@ -54,15 +54,15 @@ func (fx *fixture) applyWithNewBlock(t *testing.T, s *state.State, blockId strin
 	require.NoError(t, fx.Apply(s, NoHistory, NoEvent, NoRestrictions, KeepInternalFlags))
 }
 
-func TestSmartBlock_IntegrationKeyStamping(t *testing.T) {
-	ctxWithKey := domain.CtxWithIntegrationKey(context.Background(), "claude-desktop")
+func TestSmartBlock_IntegrationNameStamping(t *testing.T) {
+	ctxWithName := domain.CtxWithIntegrationName(context.Background(), "Claude Desktop")
 
 	t.Run("creating apply stamps, the next apply does not — the per-apply leak guard", func(t *testing.T) {
-		// given: a NEW object whose init ctx carries the API session's slug —
+		// given: a NEW object whose init ctx carries the API session raw app name —
 		// the §8a creation shape shared by v1 and v2
 		fx := newFixture("root", t)
 		fx.indexer.EXPECT().Index(mock.Anything, mock.Anything).Return(nil)
-		initCtx := fx.initAs(t, ctxWithKey, true)
+		initCtx := fx.initAs(t, ctxWithName, true)
 
 		// when: the creating Apply (what factory.InitObject runs), then a
 		// later local edit on the very same open object
@@ -70,31 +70,31 @@ func TestSmartBlock_IntegrationKeyStamping(t *testing.T) {
 		fx.applyWithNewBlock(t, initCtx.State, "created-block")
 		fx.applyWithNewBlock(t, fx.NewState(), "edited-later-block")
 
-		// then: exactly the creating change carries the slug. The first
+		// then: exactly the creating change carries the name. The first
 		// assertion fails if the Init fill or the Apply plumbing is reverted;
 		// the SECOND fails if the value is ever persisted on the doc/smartblock
 		// instead of the per-apply state — the leak that would misattribute
 		// every subsequent local edit and silently widen the DELETE gate.
 		require.Len(t, fx.source.pushed, 2)
-		assert.Equal(t, "claude-desktop", fx.source.pushed[0].IntegrationKey)
-		assert.Equal(t, "", fx.source.pushed[1].IntegrationKey)
+		assert.Equal(t, "Claude Desktop", fx.source.pushed[0].IntegrationName)
+		assert.Equal(t, "", fx.source.pushed[1].IntegrationName)
 	})
 
 	t.Run("existing object opened under an API ctx is not stamped", func(t *testing.T) {
 		// given: the SAME ctx, but IsNewObject false — an existing object
 		// loaded during an API request (a PATCH, a migration-producing open).
 		// This fixture can fail: an implementation that stamps from the ctx on
-		// every apply — instead of gating on creation — pushes the slug here.
+		// every apply — instead of gating on creation — pushes the name here.
 		fx := newFixture("root", t)
 		fx.indexer.EXPECT().Index(mock.Anything, mock.Anything).Return(nil)
-		fx.initAs(t, ctxWithKey, false)
+		fx.initAs(t, ctxWithName, false)
 
 		// when
 		fx.applyWithNewBlock(t, fx.NewState(), "block")
 
 		// then
 		require.Len(t, fx.source.pushed, 1)
-		assert.Equal(t, "", fx.source.pushed[0].IntegrationKey)
+		assert.Equal(t, "", fx.source.pushed[0].IntegrationName)
 	})
 
 	t.Run("creation without an API ctx is not stamped", func(t *testing.T) {
@@ -111,6 +111,6 @@ func TestSmartBlock_IntegrationKeyStamping(t *testing.T) {
 
 		// then
 		require.Len(t, fx.source.pushed, 1)
-		assert.Equal(t, "", fx.source.pushed[0].IntegrationKey)
+		assert.Equal(t, "", fx.source.pushed[0].IntegrationName)
 	})
 }

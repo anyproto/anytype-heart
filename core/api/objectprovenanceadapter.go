@@ -25,8 +25,8 @@ import (
 //     account (the §2-grade guarantee that this account created the
 //     object; derived trees have no root identity and fail here);
 //  3. the key clause: the FIRST non-root change, in tree order, must carry
-//     the same identity, and its pb.Change.IntegrationKey is the recorded
-//     provenance.
+//     the same identity, and its pb.Change.IntegrationName is the recorded
+//     provenance (the raw app name, served verbatim — the caller compares).
 //
 // Cost: one full-history read of one tree from local storage — the same
 // class as opening that object's version history, on a human-scale,
@@ -47,7 +47,7 @@ func newObjectProvenanceAdapter(spaces space.Service, account accountIdProvider)
 	return &objectProvenanceAdapter{spaces: spaces, account: account}
 }
 
-func (a *objectProvenanceAdapter) CreatorProvenance(ctx context.Context, spaceId string, objectId string) (accountMatch bool, integrationKey string, err error) {
+func (a *objectProvenanceAdapter) CreatorProvenance(ctx context.Context, spaceId string, objectId string) (accountMatch bool, integrationName string, err error) {
 	spc, err := a.spaces.Get(ctx, spaceId)
 	if err != nil {
 		return false, "", fmt.Errorf("get space %s: %w", spaceId, err)
@@ -77,7 +77,7 @@ type provenanceTree interface {
 // Every ambiguity resolves toward "no provenance" — the caller refuses on
 // anything short of a full match, so the safe direction here is empty, not
 // guessed.
-func creatorProvenanceFromTree(tree provenanceTree, ownAccount string) (accountMatch bool, integrationKey string, err error) {
+func creatorProvenanceFromTree(tree provenanceTree, ownAccount string) (accountMatch bool, integrationName string, err error) {
 	root := tree.UnmarshalledHeader()
 	if root == nil || root.Identity == nil || ownAccount == "" || root.Identity.Account() != ownAccount {
 		// derived trees (no signed root identity) and other members' objects:
@@ -112,5 +112,5 @@ func creatorProvenanceFromTree(tree provenanceTree, ownAccount string) (accountM
 	if !ok || model == nil {
 		return true, "", nil
 	}
-	return true, model.IntegrationKey, nil
+	return true, model.IntegrationName, nil
 }

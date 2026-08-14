@@ -128,15 +128,19 @@ type ObjectMutator interface {
 // the enforcement read behind DELETE /v2/spaces/{spaceId}/objects/{objectId}:
 //
 //   - accountMatch reports the root clause — the tree's signed root carries
-//     this account's identity (derived trees and other members' objects
-//     report false);
-//   - integrationKey is the key clause — the slug recorded on the first
-//     account-signed content change, or "" when none is recorded (legacy
-//     objects, app-created objects, the §10 same-account race edge);
+//     this account's identity (other members' objects report false; note
+//     that some derived shapes DO carry a signed root — the personal space's
+//     derive path and every FileObject sign with the account key — so a
+//     true here does not by itself mean "user content": the route's sbType
+//     allowlist owns that exclusion);
+//   - integrationName is the key clause — the raw app name recorded on the
+//     first account-signed content change (never normalized, compared
+//     exactly by the caller), or "" when none is recorded (legacy objects,
+//     app-created objects, the §10 same-account race edge);
 //   - err is an infrastructure failure (space/tree unavailable). Callers
 //     MUST refuse on err — the rule is fail-closed in every direction.
 type ObjectProvenance interface {
-	CreatorProvenance(ctx context.Context, spaceId string, objectId string) (accountMatch bool, integrationKey string, err error)
+	CreatorProvenance(ctx context.Context, spaceId string, objectId string) (accountMatch bool, integrationName string, err error)
 }
 
 type ClientCommands interface {

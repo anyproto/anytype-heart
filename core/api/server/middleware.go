@@ -193,14 +193,16 @@ func (srv *Server) ensureAuthenticated(mw apicore.ClientCommands) gin.HandlerFun
 			ExpiresAt: apiSession.ExpireAt,
 			Scope:     apiSession.Scope,
 		})
-		// The integration-key carrier (APIV2_OBJECT_DELETE.md §11.3): the
-		// session's slug rides the request ctx into the object-creation
-		// pipeline, which stamps it on the creating change. Installed by this
-		// SHARED middleware, so v1 and v2 creations are stamped by the same
-		// line (§8a — the "free" case is the actual case). Derived here from
-		// the same AppName the ApiKeyInfo carrier serves — one input, no
-		// second stored copy to drift. Empty AppName ⇒ no carrier ⇒ no stamp.
-		ctx = domain.CtxWithIntegrationKey(ctx, domain.IntegrationKeyFromAppName(apiSession.AppName))
+		// The integration-name carrier (APIV2_OBJECT_DELETE.md §11.3): the
+		// session's RAW app name rides the request ctx into the
+		// object-creation pipeline, which stamps it on the creating change.
+		// Installed by this SHARED middleware, so v1 and v2 creations are
+		// stamped by the same line (§8a — the "free" case is the actual
+		// case). The name is deliberately NOT normalized (§5: normalization
+		// is many-to-one and lossy; the DELETE rule compares exactly) — the
+		// same AppName the ApiKeyInfo carrier serves, one input, no derived
+		// copy to drift. Empty AppName ⇒ no carrier ⇒ no stamp.
+		ctx = domain.CtxWithIntegrationName(ctx, apiSession.AppName)
 		c.Request = c.Request.WithContext(ctx)
 		srv.emitKeyStatusSignals(c, apiSession)
 		c.Next()

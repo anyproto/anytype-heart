@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/api"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/session"
 	walletComp "github.com/anyproto/anytype-heart/core/wallet"
@@ -214,6 +215,39 @@ func TestLinkLocalCreateApp(t *testing.T) {
 
 		require.ErrorIs(t, err, ErrBadInput)
 		require.ErrorContains(t, err, "app name is required")
+	})
+
+	t.Run("an over-long app name is bad input — the raw name is bounded", func(t *testing.T) {
+		// The raw name rides every creating change and appears in debug
+		// exports, so issuance bounds it (domain.MaxIntegrationNameLen) —
+		// reject, never truncate: truncation is normalization again, and the
+		// DELETE provenance comparison is exact. No PersistAppLink
+		// expectation — the guard fires before anything is written. A name
+		// AT the bound must still mint (the boundary case a lax `>=` would
+		// break); one byte over must refuse.
+		s := New()
+		walletMock := mock_wallet.NewMockWallet(t)
+		walletMock.EXPECT().Name().Return(walletComp.CName).Maybe()
+		walletMock.EXPECT().Init(nil).Return(nil).Maybe()
+		a := new(app.App)
+		a.Register(walletMock)
+		s.app = a
+
+		tooLong := strings.Repeat("a", domain.MaxIntegrationNameLen+1)
+		_, err := s.LinkLocalCreateApp(&pb.RpcAccountLocalLinkCreateAppRequest{
+			App: &model.AccountAuthAppInfo{AppName: tooLong, Scope: model.AccountAuth_JsonAPI},
+		})
+		require.ErrorIs(t, err, ErrBadInput)
+		require.ErrorContains(t, err, "app name exceeds")
+
+		atBound := strings.Repeat("a", domain.MaxIntegrationNameLen)
+		walletMock.EXPECT().PersistAppLink(atBound, model.AccountAuth_JsonAPI, int64(0), (*walletComp.AppLinkGrant)(nil)).
+			Return(&walletComp.AppLinkInfo{AppKey: "minted"}, nil).Once()
+		key, err := s.LinkLocalCreateApp(&pb.RpcAccountLocalLinkCreateAppRequest{
+			App: &model.AccountAuthAppInfo{AppName: atBound, Scope: model.AccountAuth_JsonAPI},
+		})
+		require.NoError(t, err)
+		require.Equal(t, "minted", key)
 	})
 
 	t.Run("Full scope is refused, mirroring the challenge guard", func(t *testing.T) {
@@ -976,5 +1010,44 @@ func TestChallengeFlowGrant(t *testing.T) {
 
 		require.NoError(t, err)
 		require.NotEmpty(t, challengeId)
+	})
+
+	t.Run("an over-long effective name is refused before the code is shown", func(t *testing.T) {
+		// the bound guards the EFFECTIVE name — the one solve time persists:
+		// the requested name, else the inspected process name. Either shape
+		// over domain.MaxIntegrationNameLen refuses with no Broadcast (the
+		// user is never shown a code for a key that could not mint).
+		tooLong := strings.Repeat("x", domain.MaxIntegrationNameLen+1)
+		cases := []struct {
+			name string
+			info *pb.EventAccountLinkChallengeClientInfo
+		}{
+			{"requested name too long", &pb.EventAccountLinkChallengeClientInfo{Name: tooLong}},
+			{"process-name fallback too long", &pb.EventAccountLinkChallengeClientInfo{ProcessName: tooLong}},
+		}
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				s, _, _ := newChallengeService(t)
+
+				_, err := s.LinkLocalStartNewChallenge(model.AccountAuth_JsonAPI, tc.info, nil)
+
+				require.ErrorIs(t, err, ErrBadInput)
+				require.ErrorContains(t, err, "app name exceeds")
+			})
+		}
+
+		t.Run("a short requested name beside a long process name still mints", func(t *testing.T) {
+			// the guard must bound what will be PERSISTED, not everything in
+			// sight: the requested name wins at solve time, so the process
+			// name's length is irrelevant when a name was requested
+			s, _, sender := newChallengeService(t)
+			sender.EXPECT().Broadcast(mock.Anything).Return()
+
+			challengeId, err := s.LinkLocalStartNewChallenge(model.AccountAuth_JsonAPI,
+				&pb.EventAccountLinkChallengeClientInfo{Name: "Fine", ProcessName: tooLong}, nil)
+
+			require.NoError(t, err)
+			require.NotEmpty(t, challengeId)
+		})
 	})
 }

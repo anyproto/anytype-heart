@@ -18,14 +18,14 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-// The integration-key carrier (APIV2_OBJECT_DELETE.md §11.3) must ride the
+// The integration-name carrier (APIV2_OBJECT_DELETE.md §11.3) must ride the
 // REQUEST context: it is what the object-creation pipeline stamps onto the
 // creating change, and ensureAuthenticated serves BOTH route groups, so this
 // one install is also what makes v1 creations carry provenance (§8a). The
 // mint below goes through the real middleware — if the install line is
-// dropped, or the slug stops being derived from the session AppName, the
-// carrier reads empty and the first subtest fails.
-func TestEnsureAuthenticatedInstallsIntegrationKey(t *testing.T) {
+// dropped, or the name stops coming from the session AppName, the carrier
+// reads empty and the first subtest fails.
+func TestEnsureAuthenticatedInstallsIntegrationName(t *testing.T) {
 	mintWithAppName := func(t *testing.T, appName string) *gin.Context {
 		fx := newFixture(t)
 		fx.KeyToToken = make(map[string]ApiSessionEntry)
@@ -50,23 +50,36 @@ func TestEnsureAuthenticatedInstallsIntegrationKey(t *testing.T) {
 		return c
 	}
 
-	t.Run("the session AppName rides the request ctx as its slug", func(t *testing.T) {
-		// given/when: the raw display name is NOT the slug — asserting on
-		// "Claude Desktop"→"claude-desktop" also fails an implementation that
-		// installs the un-normalized name
+	t.Run("the session AppName rides the request ctx RAW", func(t *testing.T) {
+		// given/when: the carrier holds the name verbatim — asserting on the
+		// exact string also fails an implementation that re-introduces slug
+		// normalization ("Claude Desktop" → "claude-desktop")
 		c := mintWithAppName(t, "Claude Desktop")
 
 		// then
-		require.Equal(t, "claude-desktop", domain.IntegrationKeyFromCtx(c.Request.Context()))
+		require.Equal(t, "Claude Desktop", domain.IntegrationNameFromCtx(c.Request.Context()))
+	})
+
+	t.Run("slug-hostile names survive untouched — the F2/F3 regression pins", func(t *testing.T) {
+		// each of these was destroyed by the old normalization: the first
+		// collapsed onto "Claude Desktop"'s slug (F2 — a foreign key could
+		// archive its output), the rest slugged to "" (F3 — the key's own
+		// output became permanently undeletable). A revert to slug
+		// derivation fails every row: the first yields "claude-desktop",
+		// the others install no carrier at all.
+		for _, name := range []string{"Claude/Desktop", "привет", "🙂"} {
+			c := mintWithAppName(t, name)
+			require.Equal(t, name, domain.IntegrationNameFromCtx(c.Request.Context()), "AppName %q", name)
+		}
 	})
 
 	t.Run("a nameless key installs no carrier", func(t *testing.T) {
 		// §5: empty AppName ⇒ no stamp — that key's creations stay
-		// unprovenanced rather than carrying a garbage slug
+		// unprovenanced rather than carrying an empty stamp
 		c := mintWithAppName(t, "")
 
 		// then
-		require.Equal(t, "", domain.IntegrationKeyFromCtx(c.Request.Context()))
+		require.Equal(t, "", domain.IntegrationNameFromCtx(c.Request.Context()))
 	})
 }
 

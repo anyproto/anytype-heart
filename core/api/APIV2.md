@@ -6493,17 +6493,20 @@ deletability probe (full verdict incl. provenance, no write). `?permanent=
 true` stays reserved and unimplemented.
 
 **The rule.** Deletion is permitted only for objects the calling API key
-created. The record is the `integrationKey` field on the object's CREATING
-change (`pb.Change` field 10 — the same field, number and value the
-integration-attribution spec defined; §12's zero-wire-diff claim held), a
-normalized slug of the session's app name stamped by heart per-apply at
-creation — never accepted from a request, never persisted on the state, so
-a later local edit cannot inherit it. Enforcement reads BOTH clauses from
-validated change storage via a history-tree build (§10): signed root
-identity = this account, AND first content change carries this account's
-identity + the caller's slug. Details are never consulted — a detail is
-overwritable by any member with write access, which is the forgery the
-requirement excludes.
+created. The record is the `integrationName` field on the object's CREATING
+change (`pb.Change` field 10 — wire number as the attribution spec defined;
+the VALUE was revised by the second review round, §8.44: the RAW session
+app name, stamped verbatim and compared exactly, replacing the normalized
+slug whose many-to-one collapse and lossy-empty class were both executed
+against — the tolerance normalization bought was deliberately dropped,
+because for an authorization comparison tolerance is a liability). Stamped
+by heart per-apply at creation — never accepted from a request, never
+persisted on the state, so a later local edit cannot inherit it.
+Enforcement reads BOTH clauses from validated change storage via a
+history-tree build (§10): signed root identity = this account, AND first
+content change carries this account's identity + the caller's exact app
+name. Details are never consulted — a detail is overwritable by any member
+with write access, which is the forgery the requirement excludes.
 
 **Fail-closed, and its stated consequence.** No recorded key → 403
 `not_created_by_this_key`, for every caller, permanently: **DELETE does not
@@ -6528,17 +6531,20 @@ free (§8a — both surfaces converge in objectcreator and share
 ensureAuthenticated): v1's DELETE stays the unrestricted grandfathered
 escape, and v1's OpenAPI document is byte-identical. Key issuance now
 requires an app name (CreateApp and the challenge flow, §11.7) so no new
-key can mint itself into permanently-unprovenanced output.
+key can mint itself into permanently-unprovenanced output — with the
+raw-name revision that guard is complete (no non-empty name can lose its
+record), and issuance also bounds the name at 128 bytes
+(`domain.MaxIntegrationNameLen`; reject, never truncate — no bound existed
+anywhere on AppName before, and the raw name now rides every creating
+change).
 
 **Deliberately not built** (attribution's, later — §11): the integration
 object + icons, `createdVia`/`lastModifiedVia`, StoreChange/ChatMessage
 fields, history surfacing, gRPC session labeling, any UI. Derived-tree
 objects (chats included) can never pass the root clause; their deletes
-refuse with the app named as the repair. One deviation from the spec's
-letter, recorded: the slug is normalized per request in the auth
-middleware rather than cached on the session entry (§13 suggested caching)
-— one derivation input beats a second stored copy, and the cost is a
-sub-microsecond string walk.
+refuse with the app named as the repair. The §13 caching suggestion is
+moot since the raw-name revision: the middleware installs the session's
+AppName itself — no derivation exists to cache.
 
 ### 8.43 Wave 2.1a — find-as-locator on replaceText (2026-08-14 — decisions as built)
 

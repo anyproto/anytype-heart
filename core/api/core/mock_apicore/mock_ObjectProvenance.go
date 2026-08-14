@@ -76,8 +76,8 @@ func (_c *MockObjectProvenance_CreatorProvenance_Call) Run(run func(ctx context.
 	return _c
 }
 
-func (_c *MockObjectProvenance_CreatorProvenance_Call) Return(accountMatch bool, integrationKey string, err error) *MockObjectProvenance_CreatorProvenance_Call {
-	_c.Call.Return(accountMatch, integrationKey, err)
+func (_c *MockObjectProvenance_CreatorProvenance_Call) Return(accountMatch bool, integrationName string, err error) *MockObjectProvenance_CreatorProvenance_Call {
+	_c.Call.Return(accountMatch, integrationName, err)
 	return _c
 }
 

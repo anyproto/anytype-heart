@@ -113,12 +113,12 @@ func unmarshalChange(treeChange *objecttree.Change, data []byte, needSnapshot bo
 	} else {
 		noSnapshotChange := change.(*pb.ChangeNoSnapshot)
 		return &pb.Change{
-			Content:        noSnapshotChange.Content,
-			FileKeys:       noSnapshotChange.FileKeys,
-			Timestamp:      noSnapshotChange.Timestamp,
-			Version:        noSnapshotChange.Version,
-			ChangeType:     noSnapshotChange.ChangeType,
-			IntegrationKey: noSnapshotChange.IntegrationKey,
+			Content:         noSnapshotChange.Content,
+			FileKeys:        noSnapshotChange.FileKeys,
+			Timestamp:       noSnapshotChange.Timestamp,
+			Version:         noSnapshotChange.Version,
+			ChangeType:      noSnapshotChange.ChangeType,
+			IntegrationName: noSnapshotChange.IntegrationName,
 		}, nil
 	}
 }
@@ -434,10 +434,10 @@ func (s *treeSource) PushChange(params source.PushChangeParams) (id string, err 
 
 func (s *treeSource) buildChange(params source.PushChangeParams) (c *pb.Change) {
 	c = &pb.Change{
-		Timestamp:      params.Time.Unix(),
-		Version:        params.State.MigrationVersion(),
-		ChangeType:     params.ChangeType.Raw(),
-		IntegrationKey: params.IntegrationKey,
+		Timestamp:       params.Time.Unix(),
+		Version:         params.State.MigrationVersion(),
+		ChangeType:      params.ChangeType.Raw(),
+		IntegrationName: params.IntegrationName,
 	}
 	if params.DoSnapshot || s.needSnapshot() || len(params.Changes) == 0 {
 		c.Snapshot = &pb.ChangeSnapshot{

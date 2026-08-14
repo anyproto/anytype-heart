@@ -2743,7 +2743,7 @@ the element of change tree used to store and internal apply smartBlock history
 | timestamp | [int64](#int64) |  | creation timestamp |
 | version | [uint32](#uint32) |  | version of business logic |
 | changeType | [uint32](#uint32) |  | business-level type of change applied to object |
-| integrationKey | [string](#string) |  | integrationKey identifies the integration (a normalized slug of the paired app&#39;s name) whose API key authored this change. Stamped by heart from the authenticated session — never accepted from a request. Empty for changes not authored through an API key. |
+| integrationName | [string](#string) |  | integrationName is the RAW app name of the paired API key that authored this change — exactly as the app link recorded it, never normalized (normalization is many-to-one and lossy; the DELETE ownership rule compares this value exactly). Stamped by heart from the authenticated session — never accepted from a request. Bounded at key issuance (domain.MaxIntegrationNameLen). Empty for changes not authored through an API key. |
 
 
 
@@ -3224,7 +3224,7 @@ the element of change tree used to store and internal apply smartBlock history
 | timestamp | [int64](#int64) |  | creation timestamp |
 | version | [uint32](#uint32) |  | version of business logic |
 | changeType | [uint32](#uint32) |  | business-level type of change applied to object |
-| integrationKey | [string](#string) |  | integrationKey mirrors Change.integrationKey (the two messages share wire numbers by design; 1/2/5 are historical — do not reuse). |
+| integrationName | [string](#string) |  | integrationName mirrors Change.integrationName (the two messages share wire numbers by design; 1/2/5 are historical — do not reuse). |
 
 
 

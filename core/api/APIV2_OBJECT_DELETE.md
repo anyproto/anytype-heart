@@ -31,10 +31,14 @@ carriers already in hand).
 
 The self-test this spec applies to itself: *would adding integration
 attribution later require changing the on-wire format?* Answer: **no** — the
-field DELETE ships (§5) is byte-for-byte the field the attribution spec
-already defined, and §12 lists what attribution adds around it (all additive).
-If the recommendation of §4/§5 is rejected in favor of a hash or a root-change
-field, that answer flips to yes, which is the main reason not to.
+field DELETE ships (§5: `integrationName`, the RAW app name — revised from
+the attribution spec's normalized slug after the two-lens review; the
+attribution DOC needs a matching one-line revision, the wire does not) is
+the change-level identifier attribution consumes, and §12 lists what
+attribution adds around it (all additive; its integration object derives
+its unique key by hashing this value). If the §4 carrier were a hash-only
+value or a root-change field, that answer would flip to yes, which is the
+main reason not to.
 
 ---
 
@@ -46,8 +50,11 @@ one paragraph of the second, and is disjoint from the third**:
 1. **`docs/IntegrationAttribution.md`** (sibling worktree
    `../anytype-heart_integration`, branch `integration-attribution`; spec
    approved in discussion, unimplemented). It already defines the exact
-   primitive this feature needs: an optional `integrationKey` field — a
-   normalized slug of the paired app's name — stamped by heart into the
+   primitive this feature needs: an optional per-change integration
+   identifier — it spelled the value as a normalized slug
+   (`integrationKey`); this spec, after the two-lens review, ships it as
+   the RAW app name (`integrationName`, §5) and that document owes a
+   one-line revision when attribution lands — stamped by heart into the
    change payloads it owns (`pb.Change`, `pb.ChangeNoSnapshot`,
    `pb.StoreChange`), under a self-asserted, member-signed trust model.
    **This is the shared foundation. This spec does not invent a parallel
@@ -238,47 +245,75 @@ identity — and is out of scope for the same reasons the attribution spec
 non-goaled it; nothing in (B) blocks layering it later (a sub-key identity
 would land in `Change.Identity` itself, orthogonal to the payload field).
 
-## 5. One representation for both: the slug, not a hash
+## 5. One representation for both: the raw name, compared exactly
 
-The steer's crux: DELETE wants *unforgeable and comparable*; attribution
-wants *resolvable and human-meaningful*. These do not conflict here, because
-**the unforgeability of the record does not come from the value — it comes
-from the signature and the ACL check on the change that carries it** (§2).
-A hash of the key would add nothing DELETE can use: the comparison is
-performed by the local heart, which holds the calling key's cleartext
-metadata either way; and a bare hash of a low-entropy secret is a guessable
-secret, so the hash would have to be salted-per-account to be safe to sync —
-at which point it is just an opaque per-integration identifier that is
-*still* stable across every object (same privacy surface as the slug, §7)
-while defeating attribution's display/join needs and breaking rotation
-continuity (§8). The two requirements are reconciled by one field:
+**REVISED after the two-lens review (2026-08-14; Roman's decision).** The
+first build of this section chose a normalized slug of the app link's
+`AppName` (lowercase, `[a-z0-9_-]`, collapsed, trimmed, capped at 64,
+derived by a shared `IntegrationKeyFromAppName`). The review executed two
+findings against it and both died at the same root, so the representation
+changed: **the stamped and compared value is the raw `AppName`, verbatim,
+and the field is named for what it holds — `pb.Change.integrationName`
+(wire number 10, unchanged).**
 
-**The value is the attribution spec's `integrationKey`: a normalized slug of
-the app link's `AppName`** — lowercase, `[a-z0-9_-]`, other runs collapsed to
-`-`, trimmed, capped at 64 — derived by one shared function (proposed:
-`core/domain/integrationkey.go`, `IntegrationKeyFromAppName(string) string`),
-the same function the attribution feature will later use to derive the
-integration object's unique key (`integration-<key>`). Properties, decided
-deliberately:
+Why the slug fell:
 
-- **Granularity is the integration, not the key instance.** Two keys whose
-  AppName normalizes to the same slug are the same integration. The
-  attribution spec calls this merge desired ("single Linear object"); for
-  DELETE it is what makes rotation and re-pairing survivable (§8). The
-  sharper alternative — stamping `appHash` for exact-key granularity — is
-  rejected: it is a persistent pseudonymous identifier synced to every
-  member with no display value, it makes every re-issue orphan the key's
-  entire output, and attribution would need the slug anyway (two fields, two
-  mechanisms).
+- **Normalization is many-to-one (F2, executed).** `"Claude/Desktop"`,
+  `"Claude:Desktop"`, `"CLAUDE DESKTOP"` and `"Claude.Desktop"` all
+  collapsed to `claude-desktop`, and a key paired as `"Claude/Desktop"`
+  archived an object created by `"Claude Desktop"` end-to-end. The consent
+  dialog shows the user two visibly different strings while the system
+  treats them as one principal — a strictly weaker consent story than §6's
+  conceded identical-name case.
+- **Normalization is lossy the other way (F3, executed).** `"привет"`,
+  `"🙂"`, `"!!!"` all normalized to `""`, so a user pairing a
+  Cyrillic/CJK/emoji-named app got a key whose objects were permanently
+  unprovenanced and undeletable by their own creator, with no signal at
+  pairing time.
+
+**What the slug bought, and why giving it up is correct.** Normalization
+bought *tolerance*: re-pairing as `"claude desktop"` still matched
+`"Claude Desktop"`. For an **authorization** comparison, tolerance is a
+liability — it is precisely what creates F2. Exact match is the point;
+rotation continuity (§8) survives because re-pairing under the byte-same
+name still matches, and the refusal message names the recorded name so the
+repair is discoverable.
+
+The reasoning that still stands from the first version: the record's
+unforgeability does not come from the value — it comes from the signature
+and the ACL check on the change that carries it (§2) — and a hash adds
+nothing DELETE can use. The one thing the slug was genuinely for — a
+charset-safe unique key for attribution's future per-space integration
+object — is served differently: **the integration object hashes the raw
+name for its unique key** (it need not be human-readable; display comes
+from the object's `name` detail, exactly as every other object works —
+the same shape the identity work settled on: opaque internal key, readable
+display separate). `IntegrationKeyFromAppName` therefore has no caller on
+any path and was **deleted** rather than kept as a rival spelling
+authority; attribution adds its hashing helper when it lands.
+
+Properties, decided deliberately:
+
+- **Granularity is the byte-exact app name, not the key instance.** Two
+  keys paired under the identical name are the same principal (§6 records
+  this as consent); keys under names differing in ANY byte — case included
+  — are different principals. `appHash` exact-key granularity stays
+  rejected for the reasons the first version gave (pseudonymous identifier
+  synced forever, every re-issue orphans the key's output).
 - **The value is stamped by heart from the session, never read from the
-  request.** There is no API surface through which a caller chooses its own
-  slug; the only way to write a given slug is to hold a key whose AppName
-  produces it (§6 covers who can mint such a key).
-- **Empty AppName ⇒ no stamp.** A key with no recorded name (possible for
-  old app links) creates unprovenanced objects and can never DELETE (§8).
-  The refusal message names re-pairing with a name as the repair. The mint
-  paths already require `AppName` on the challenge flow; `CreateApp` should
-  reject empty names when this ships (one-line guard, listed in §11).
+  request, and never rewritten.** No truncation, no case fold — a rewrite
+  anywhere recreates the many-to-one collapse.
+- **Empty AppName ⇒ no stamp.** Unchanged — and with the raw name this
+  rule is *complete*: the §11.7 issuance guard rejecting an empty `AppName`
+  is now sufficient (under the slug there was a gap: a non-empty name could
+  still slug to empty; that class is gone by construction).
+- **The name is bounded at issuance.** No bound existed anywhere on
+  `AppName`; the raw name now rides every creating change and appears in
+  debug exports, so `CreateApp` and the challenge flow reject names over
+  `domain.MaxIntegrationNameLen` (128 bytes — double the old slug cap) —
+  reject, never truncate. The stamp site deliberately does not re-check:
+  a legacy key minted before the bound keeps working, and the recorded
+  value always equals the session's name exactly.
 
 ## 6. The unforgeability statement — and its honest limits
 
@@ -290,8 +325,8 @@ distinct guarantor:
    (§2a-c). Another space member cannot produce an object whose root claims
    this account, and cannot alter an existing root. **Unforgeable,
    full stop.**
-2. **"…via the integration named X"** — `integrationKey` on the first
-   account-signed content change. Another member can stamp `"linear"` in
+2. **"…via the integration named X"** — `integrationName` on the first
+   account-signed content change. Another member can stamp `"Linear"` in
    *their own* changes (it is just a string), but their changes carry *their*
    identity and fail clause 1. Within this account's own objects, only this
    account's devices can have written the stamp. **Unforgeable by anyone
@@ -300,7 +335,7 @@ distinct guarantor:
 What remains inside the trust domain, stated plainly rather than hidden:
 
 - **A local process with `Full`/gRPC access** can archive anything directly,
-  mint keys, or stamp arbitrary slugs. It always could; the attribution
+  mint keys, or stamp arbitrary names. It always could; the attribution
   spec's trust-model paragraph applies verbatim: this record is provenance
   within the member's trust domain, and enforcement of what a *key* may do
   is exactly what the scoping track + this rule provide against *scoped*
@@ -327,10 +362,10 @@ What remains inside the trust domain, stated plainly rather than hidden:
 
 ## 7. Privacy — decided
 
-The slug syncs inside encrypted change payloads to **every space member**,
-forever (version history). Space members can, with a modified client, read
-which integration created each of this account's objects before any
-attribution UI exists. Decision: **intended.** This is precisely the
+The raw app name syncs inside encrypted change payloads to **every space
+member**, forever (version history). Space members can, with a modified
+client, read which integration created each of this account's objects before
+any attribution UI exists. Decision: **intended.** This is precisely the
 disclosure the attribution feature exists to make ("attribution must be
 visible to all space members, survive sync, persist in history" — its stated
 goal), under the trust model already approved there; shipping the field
@@ -338,25 +373,33 @@ before the UI changes *when* members can see it, not *whether*. What this
 spec deliberately does **not** disclose: nothing is visible to sync nodes
 (the field rides encrypted payloads — the root-change option was rejected
 partly for leaking to infrastructure, §4), and nothing names the *key*
-(no hash, no id — a leaked slug says "a thing called linear", not which
+(no hash, no id — a leaked name says "a thing called Linear", not which
 credential). Objects created via API additionally already carry the synced
 `origin: api` detail today (`core/api/objectcreateadapter.go:43`), so "this
 object came from an API" is not new member-visible information — only
-"which integration" is.
+"which integration" is. The §5 revision widens this disclosure slightly:
+the raw name can carry anything the user typed at pairing (an emoji, a
+person's name, a non-Latin phrase) where the slug would have flattened it —
+same class of disclosure, more faithful bytes; the 128-byte issuance bound
+caps it.
 
 ## 8. Rotation, re-issue, legacy objects
 
-- **Re-issue, same name** (revoke key, pair again as "Linear"): same slug →
-  old objects remain deletable by the new key. This is the rotation story,
-  and it is the decisive argument for the slug over any per-key value.
-  Works across devices and across account recovery, since the record is in
-  the synced tree.
-- **Re-issue, different name**: new slug → old objects are no longer
-  deletable by the new key, permanently (the record is immutable by design —
-  there is deliberately no re-point). The refusal message names the recorded
-  slug so the repair ("re-pair under the old name") is discoverable.
-  Accepted; documenting "keep the app name stable" costs one sentence in the
-  key-management docs.
+- **Re-issue, same name** (revoke key, pair again as "Linear" —
+  byte-identical): same recorded name → old objects remain deletable by the
+  new key. This is the rotation story, and it is the decisive argument for
+  a name-derived value over any per-key value. Works across devices and
+  across account recovery, since the record is in the synced tree.
+  **Revised (§5):** the comparison is now EXACT — re-pairing as "linear" or
+  "Linear " no longer matches "Linear". That tolerance was deliberately
+  dropped: it was many-to-one (F2), and for an authorization comparison
+  tolerance is a liability. "Keep the app name byte-stable across re-pairs"
+  is the one sentence the key-management docs owe.
+- **Re-issue, different name**: different recorded name → old objects are no
+  longer deletable by the new key, permanently (the record is immutable by
+  design — there is deliberately no re-point). The refusal message names the
+  recorded app name so the repair ("re-pair under the old name, exactly") is
+  discoverable. Accepted.
 - **Legacy objects — DECIDED (Roman, 2026-08-14): fail-closed, final.**
   Everything created before this ships — the vast majority of every account,
   including today's v2-created eval fixtures — and **objects created by
@@ -407,9 +450,9 @@ returned for app-key sessions by `CreateSession`
 (`core/application/sessions.go:66`, `AppName: appLink.AppName`), cached in
 `ApiSessionEntry.AppName`, and observable today on a legacy key via
 `whoami` (a real legacy key shows `"name":"22"`, `keyStatus: legacy`). The
-slug is derived from it exactly as for v2 keys — stable per key, however
-inelegant the name (`"22"` → slug `22`; functional, and the same key
-produces the same slug on both surfaces). The §5 empty-name rule applies
+raw name is stamped verbatim, exactly as for v2 keys — stable per key,
+however inelegant (`"22"` stays `"22"`; functional, and the same key
+records the same name on both surfaces). The §5 empty-name rule applies
 unchanged: no name → no stamp → that key's creations stay unprovenanced.
 One recorded caveat, not affecting HTTP: sessions derived from a *token*
 (`WalletCreateSession(token:)`) deliberately carry no app attributes
@@ -424,8 +467,8 @@ other key's — while the very same key on v2 can delete only its own output.
 Deliberate: v1 is the escape hatch and changes "not at all" (the migration
 stance); grant presence, not surface, is the durable boundary, and scoped
 keys never reach v1. Conversely the stamp composes across surfaces: it is
-slug-keyed and session-derived, so **the same underlying key used through
-v1 and later through v2 produces the same slug, and v2 DELETE recognizes
+name-keyed and session-derived, so **the same underlying key used through
+v1 and later through v2 records the same name, and v2 DELETE recognizes
 its v1-created objects as its own** — v1 creations become deletable through
 v2 from day one, which is most of what "free" buys.
 
@@ -493,8 +536,8 @@ variants, each naming what IS recorded:
   (created by the Anytype app or before provenance existed). To remove it,
   archive it in the Anytype app.`
 - created via a different integration: `…this object was created via
-  'linear', not via this key ('claude-desktop'). Use the linear key, or
-  archive it in the app.`
+  'Linear', not via this key ('Claude Desktop'). App names are compared
+  exactly (§5). Use a key paired as 'Linear', or archive it in the app.`
 - created by another space member: `…this object was created by another
   space member. Ask them, or archive it in the app if your role permits.`
 
@@ -536,17 +579,18 @@ details**:
    non-root change**; require its `Identity` to equal the root identity, and
    unmarshal its payload (`sourceimpl.UnmarshalChange`, decrypted by the
    history tree exactly as `BuildState` does) as `pb.Change`; require
-   `change.IntegrationKey != "" && change.IntegrationKey ==
-   IntegrationKeyFromAppName(ctxKeyInfo.Name)`. The calling key's name is
-   already in the request context on this branch
+   `change.IntegrationName != "" && change.IntegrationName ==
+   <the session's raw AppName>` — an EXACT byte comparison, no
+   normalization on either side (§5). The calling key's name is already in
+   the request context on this branch
    (`util.CtxWithApiKeyInfo`, `core/api/server/middleware.go:188-194`).
-4. Any clause failing → the §9.5 refusal, with the recorded slug (or its
+4. Any clause failing → the §9.5 refusal, with the recorded name (or its
    absence) folded into the message.
 
 Edge, recorded: between tree creation and the first content push, another
 device of the *same account* could theoretically append the first non-root
 change (the tree syncs from the root). Then step 3's identity still matches
-but the slug is absent → fail-closed refusal of a genuinely-owned object.
+but the stamp is absent → fail-closed refusal of a genuinely-owned object.
 The window is the milliseconds between `PutTree` and the init `Apply`
 (`objectcache/tree.go:56-67`), on an object the other device cannot yet
 know exists; accepted as vanishingly rare and safe-direction.
@@ -574,25 +618,30 @@ assumption.
 Everything DELETE needs, nothing attribution-specific. Each item is
 independently reviewable; together they are one shippable PR train:
 
-1. **Proto** (`pb/protos/changes.proto` + regen): `string integrationKey =
-   10;` on `Change` **and** `ChangeNoSnapshot` — the two messages share wire
-   numbers by design (content 3, fileKeys 6, timestamp 7, version 8,
+1. **Proto** (`pb/protos/changes.proto` + regen): `string integrationName =
+   10;` on `Change` **and** `ChangeNoSnapshot` (§5 revision: named for the
+   raw value it holds; wire number 10 unchanged) — the two messages share
+   wire numbers by design (content 3, fileKeys 6, timestamp 7, version 8,
    changeType 9; 1/2/5 are historical — do not reuse), and the read-side
    conversion at `sourceimpl/source.go:114-121` must copy the new field.
    `StoreChange` (chat) gets nothing now; its field is additive whenever
    attribution lands.
-2. **Slug derivation**: `core/domain` (proposed `integrationkey.go`),
-   `IntegrationKeyFromAppName` with the §5 normalization + property tests.
-   One function, later shared by attribution's unique-key derivation.
+2. ~~**Slug derivation**~~ **Gone with the §5 revision.** There is no
+   derivation: the stamped value IS the session's `AppName`.
+   `IntegrationKeyFromAppName` was built, then deleted with the revision —
+   attribution's unique-key derivation will be a hash of the raw name,
+   added when attribution lands. What remains in `core/domain`
+   (`integrationname.go`): the ctx carrier (item 3) and the
+   `MaxIntegrationNameLen` issuance bound (§5).
 3. **Neutral ctx carrier**: a `domain`-level (not `core/api/util`-level)
-   `CtxWithIntegrationKey`/`CtxIntegrationKey`, installed by the API auth
-   middleware next to the existing carriers (`middleware.go:186-195`),
-   computed once per session from `AppName`. `ensureAuthenticated` serves
+   `CtxWithIntegrationName`/`IntegrationNameFromCtx`, installed by the API
+   auth middleware next to the existing carriers (`middleware.go:186-195`),
+   carrying the session `AppName` verbatim. `ensureAuthenticated` serves
    **both** route groups, so v1 creations are stamped by the same lines —
    the §8a decision costs nothing here. Attribution's future gRPC
    interceptor installs the same carrier — that is the shared plumbing
    seam, and it is one function each side.
-4. **Stamping**: `source.PushChangeParams` gains `IntegrationKey string`
+4. **Stamping**: `source.PushChangeParams` gains `IntegrationName string`
    (`core/block/source/interface.go:96`); `treeSource.buildChange`
    (`sourceimpl/source.go:434`) copies it onto the `pb.Change`. Fill site
    for the minimal slice: the **creation path only** — `objectcreator`
@@ -611,13 +660,15 @@ independently reviewable; together they are one shippable PR train:
 5. **Provenance read port**: a small `apicore` port (implemented beside the
    existing adapters in package `api`, which already owns the heart-internal
    composition) exposing `CreatorProvenance(ctx, spaceId, objectId)
-   (accountMatch bool, integrationKey string, err error)` per §10.
+   (accountMatch bool, integrationName string, err error)` per §10.
 6. **Surface**: `V2Service.DeleteObject` (§9.4), handler, route + authz
    registry entry + `V2DeleteObject` analytics id, the
    `not_created_by_this_key` code + constructors in `v2model`, OpenAPI
    annotations, `make openapi`.
-7. **Guards**: `CreateApp`/challenge reject empty `AppName` (§5); no other
-   issuance change.
+7. **Guards**: `CreateApp`/challenge reject an empty `AppName` — with the
+   §5 revision this is sufficient (no non-empty name can lose its record) —
+   and one over `MaxIntegrationNameLen` (the bound, §5); no other issuance
+   change.
 8. **Docs**: APIV2.md §3 build-item closure note; SKILL.md gets the
    delete verb + the dry-run probe idiom; scoping design §3 paragraph gets a
    superseded-by pointer. The plan-3.3 row and the APIV2.md note must say
@@ -639,32 +690,35 @@ shipped wire format. The attribution spec's needs, item by item:
 
 | Attribution piece | What it consumes/adds | Wire change to §11's format? |
 |---|---|---|
-| Per-change field on object trees | `pb.Change.integrationKey = 10` — **already shipped by §11.1, same field, same number, same value** | none |
-| Stamping every labeled change (not just creation) | more fill sites for the same `PushChangeParams.IntegrationKey` (session ctx chain per its "Identity plumbing" section) | none |
-| Chat | new additive fields (`StoreChange.integrationKey = 2`, `ChatMessage.createdVia = 18`) — new surfaces, not changes to shipped ones | additive only |
-| Integration object | derived from `integration-<slug>` via the **same** `IntegrationKeyFromAppName` (§11.2) — ids converge with what DELETE recorded | none |
+| Per-change field on object trees | `pb.Change.integrationName = 10` — **already shipped by §11.1, same field, same number, same value** | none |
+| Stamping every labeled change (not just creation) | more fill sites for the same `PushChangeParams.IntegrationName` (session ctx chain per its "Identity plumbing" section) | none |
+| Chat | new additive fields (`StoreChange.integrationName = 2`, `ChatMessage.createdVia = 18`) — new surfaces, not changes to shipped ones | additive only |
+| Integration object | unique key = a HASH of the raw recorded name (§5 revision — the key need not be human-readable; display comes from the object's `name` detail); ids converge with what DELETE recorded because both start from the same bytes | none |
 | `createdVia` detail | set at creation from the same creating-change value §10 reads; display/query sugar, never enforcement | none |
 | `lastModifiedVia` | mirrors `SetLastModified` from per-change stamps | none |
-| History rows | reads `integrationKey` from each `pb.Change` — the field already there | none |
+| History rows | reads `integrationName` from each `pb.Change` — the field already there | none |
 | Icons, wallet, UI, restrictions | orthogonal | none |
 
-Conversely, if §5's representation were a hash or §4's carrier the root
-payload, attribution would require a second field (resolvable slug) or a
-second slot (change-level) respectively — i.e. **only** the recommended
-shape passes this test, which is the concrete content of "the foundation
-costs nothing extra now and demonstrably prevents a format change later."
+Conversely, if §5's representation were a hash-only value or §4's carrier
+the root payload, attribution would require a second field (a resolvable
+display value) or a second slot (change-level) respectively — i.e. **only**
+a name-carrying change-level field passes this test, which is the concrete
+content of "the foundation costs nothing extra now and demonstrably
+prevents a format change later." (The §5 raw-name revision passes it the
+same way the slug did — the raw name is strictly MORE resolvable.)
 DELETE-created objects from the interim are then *retroactively* fully
-attributed (their creating changes already carry the slug), which is a small
-free win the narrow design would forfeit.
+attributed (their creating changes already carry the name), which is a
+small free win the narrow design would forfeit.
 
 ## 13. Cost and compatibility
 
-- **Bytes**: `integrationKey` ≈ slug length + 2 (tag+len) — `claude-desktop`
-  = 16 bytes — on the creating change only (minimal slice), and only for
-  API-key-authored creations. Against a typical creating snapshot change
-  (KB-scale; hard cap 10 MiB, `sourceimpl/source.go:47`) this is noise;
-  sync-volume delta likewise. CPU: one string copy at build, one slug
-  normalization per session (cached with the session entry).
+- **Bytes**: `integrationName` ≈ name length + 2 (tag+len) — `Claude
+  Desktop` = 16 bytes, at most `MaxIntegrationNameLen`+3 (§5) — on the
+  creating change only (minimal slice), and only for API-key-authored
+  creations. Against a typical creating snapshot change (KB-scale; hard cap
+  10 MiB, `sourceimpl/source.go:47`) this is noise; sync-volume delta
+  likewise. CPU: one string copy at build — the §5 revision removed even
+  the per-session normalization.
 - **Old clients**: the field is an unknown proto field inside the
   **encrypted, heart-owned** change payload — any-sync and the nodes never
   parse it; old hearts ignore it on unmarshal; and because trees are
@@ -674,7 +728,7 @@ free win the narrow design would forfeit.
 - **New clients reading old objects**: absent field → unprovenanced →
   fail-closed refusal (§8). Deterministic, no heuristics.
 - **Failure surface added to creation**: none — stamping cannot fail
-  (string copy); an empty slug degrades to today's behavior.
+  (string copy); an empty name degrades to today's behavior.
 
 ## 14. What argues against, collected
 
@@ -696,13 +750,17 @@ Stated as prominently as the case for, per the brief:
 3. **The retention assumption** (§10): provenance lives in full tree
    history; a future history-truncation feature inherits a hard constraint
    from this spec.
-4. **Slug-granularity is same-user-forgeable** (§6): pairing a same-named
-   app transfers delete rights. Within the stated trust model this is
-   consent, not forgery, but it is the weakest link and the reason the word
-   "unforgeable" is always qualified with "by other members" in this spec.
+4. **Name-granularity is same-user-forgeable** (§6): pairing an app under
+   the byte-identical name transfers delete rights. Within the stated trust
+   model this is consent, not forgery, but it is the weakest link and the
+   reason the word "unforgeable" is always qualified with "by other
+   members" in this spec. (The §5 revision NARROWED this: under the slug,
+   visibly different names could collapse onto the same principal — F2;
+   now only the identical string matches, which is the §6 conceded case
+   and nothing more.)
 5. **Member-visible forever** (§7): the disclosure is approved by the
    attribution trust model, but it ships *before* the UI that explains it.
-   Anyone auditing raw changes sees integration slugs from day one.
+   Anyone auditing raw changes sees integration app names from day one.
 
 None of these, in this spec's judgment, outweigh shipping: 1 shrinks by
 attrition and is the scoping design's explicit stance; 2 is the requirement
@@ -711,17 +769,19 @@ working as intended; 3–5 are recorded costs of the only design that passes
 
 ## 15. Testing plan
 
-- **Slug**: normalization property tests; same AppName across devices/keys →
-  same slug (§11.2).
-- **Stamping**: creation via ctx carrying a key → creating change carries
-  the slug (assert at the `pb.Change` level, the E′8 lesson: change-set
+- **Raw-name carrier** (§5 revision — replaces the slug property tests):
+  slug-hostile names ride the carrier byte-for-byte ("Claude/Desktop",
+  "привет", "🙂"); the F2 pair "Claude Desktop" vs "Claude/Desktop" REFUSES;
+  the F3 shape (recorded and caller both "привет") ARCHIVES.
+- **Stamping**: creation via ctx carrying a name → creating change carries
+  the name (assert at the `pb.Change` level, the E′8 lesson: change-set
   assertions, not just green Applies); creation without ctx (UI path,
   indexer, import) → no field; **second Apply on the same object without
   ctx → no field** (the §11.4 leak guard); `ChangeNoSnapshot` roundtrip
   preserves it; old-proto unmarshal ignores it.
-- **Provenance read**: fixture trees — created-by-this-account+slug (allow);
-  same account, no slug (legacy shape — refuse); same account, different
-  slug (refuse, message names it); derived root (refuse via steer);
+- **Provenance read**: fixture trees — created-by-this-account+name (allow);
+  same account, no name (legacy shape — refuse); same account, different
+  name (refuse, message names it); derived root (refuse via steer);
   snapshot-reduced live tree vs history read (the §10 must-not-use case).
 - **Surface**: table-driven handler/service tests per the house fixture
   pattern — 404 / steer / 403×3 variants / already-archived idempotence /

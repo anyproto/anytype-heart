@@ -137,17 +137,23 @@ func (s *V2Service) checkDeleteProvenance(ctx context.Context, spaceId, objectId
 			"DELETE is limited to objects this API key created, and no API key is recorded as this object's creator "+
 				"(created by the Anytype app or before provenance existed). To remove it, archive it in the Anytype app.", deleteProbeIssue)
 	}
-	caller := domain.IntegrationKeyFromCtx(ctx)
+	caller := domain.IntegrationNameFromCtx(ctx)
 	if caller == "" {
-		// a nameless key can never match a recorded slug (§5): name the repair
+		// a nameless key can never match a recorded name (§5): name the repair
 		return v2model.NotCreatedByThisKey(fmt.Sprintf(
 			"DELETE is limited to objects this API key created, and this key has no recorded app name to compare against the recorded creator (%q). "+
 				"Re-pair the app under that name, or archive the object in the Anytype app.", recorded), deleteProbeIssue)
 	}
+	// EXACT comparison of raw names, deliberately (§5): the former slug
+	// normalization was many-to-one ("Claude/Desktop" could archive "Claude
+	// Desktop"'s output) and lossy (a non-Latin name slugged to "" and its
+	// key could delete nothing). The tolerance normalization bought —
+	// re-pairing under a case-variant name still matching — is given up:
+	// for an authorization comparison, tolerance is a liability.
 	if recorded != caller {
 		return v2model.NotCreatedByThisKey(fmt.Sprintf(
 			"DELETE is limited to objects this API key created: this object was created via %q, not via this key (%q). "+
-				"Use the %s key, or archive it in the Anytype app.", recorded, caller, recorded), deleteProbeIssue)
+				"App names are compared exactly. Use a key paired as %q, or archive it in the Anytype app.", recorded, caller, recorded), deleteProbeIssue)
 	}
 	return nil
 }

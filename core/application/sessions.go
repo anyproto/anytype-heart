@@ -8,6 +8,7 @@ import (
 	"github.com/anyproto/any-sync/util/crypto"
 
 	"github.com/anyproto/anytype-heart/core/api"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/session"
 	walletComp "github.com/anyproto/anytype-heart/core/wallet"
@@ -224,14 +225,25 @@ func (s *Service) LinkLocalStartNewChallenge(scope model.AccountAuthLocalApiScop
 	if err = walletComp.ValidateAppLinkGrant(walletComp.AppLinkGrantFromProto(requestedGrant), scope); err != nil {
 		return "", fmt.Errorf("validate requested grant: %w", err)
 	}
-	// A key needs a name (APIV2_OBJECT_DELETE.md §5/§11.7): the app name is
-	// what creation provenance is derived from, and a nameless key would
-	// create objects it can never delete. Refused before the challenge
-	// exists — not at solve time, after the user already typed the code.
-	// The process-name fallback (LinkLocalSolveChallenge) still counts: the
-	// guard fires only when NEITHER name is available.
+	// A key needs a name (APIV2_OBJECT_DELETE.md §5/§11.7): the app name IS
+	// creation provenance (stamped raw, compared exactly), and a nameless
+	// key would create objects it can never delete. Refused before the
+	// challenge exists — not at solve time, after the user already typed the
+	// code. The process-name fallback (LinkLocalSolveChallenge) still
+	// counts: the guard fires only when NEITHER name is available.
 	if clientInfo == nil || (clientInfo.Name == "" && clientInfo.ProcessName == "") {
 		return "", errors.Join(ErrBadInput, errors.New("app name is required"))
+	}
+	// The bound guards the EFFECTIVE name — the one solve time will persist
+	// (the requested name, else the inspected process name). Reject, never
+	// truncate: the name rides every creating change, and the provenance
+	// comparison is exact (§5).
+	effectiveName := clientInfo.Name
+	if effectiveName == "" {
+		effectiveName = clientInfo.ProcessName
+	}
+	if len(effectiveName) > domain.MaxIntegrationNameLen {
+		return "", errors.Join(ErrBadInput, fmt.Errorf("app name exceeds %d bytes", domain.MaxIntegrationNameLen))
 	}
 
 	id, value, err := s.sessions.StartNewChallenge(scope, clientInfo, requestedGrant)
@@ -294,10 +306,16 @@ func (s *Service) LinkLocalCreateApp(req *pb.RpcAccountLocalLinkCreateAppRequest
 	}
 	// A key needs a name (APIV2_OBJECT_DELETE.md §5/§11.7): creation
 	// provenance — and with it the ability to DELETE the key's own output —
-	// is derived from the app name; minting a nameless key would create
-	// permanently undeletable objects.
+	// IS the app name (stamped raw, compared exactly); minting a nameless
+	// key would create permanently undeletable objects.
 	if req.App.AppName == "" {
 		return "", errors.Join(ErrBadInput, errors.New("app name is required"))
+	}
+	// ...and the name must be bounded: it rides every creating change and
+	// appears in debug exports. Reject, never truncate — truncation is
+	// normalization again, and the provenance comparison is exact (§5).
+	if len(req.App.AppName) > domain.MaxIntegrationNameLen {
+		return "", errors.Join(ErrBadInput, fmt.Errorf("app name exceeds %d bytes", domain.MaxIntegrationNameLen))
 	}
 	// Mirror the challenge-path guard (session.StartNewChallenge): a Full
 	// scope app key must never be mintable — Full stays reserved for sessions
