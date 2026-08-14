@@ -123,6 +123,22 @@ type ObjectMutator interface {
 	MutateObject(ctx context.Context, spaceId string, objectId string, needs EditNeeds, apply func(edit ObjectEdit) error) (heads []string, err error)
 }
 
+// ObjectProvenance reads an object's creator provenance from validated
+// change storage — never from details (APIV2_OBJECT_DELETE.md §10). It is
+// the enforcement read behind DELETE /v2/spaces/{spaceId}/objects/{objectId}:
+//
+//   - accountMatch reports the root clause — the tree's signed root carries
+//     this account's identity (derived trees and other members' objects
+//     report false);
+//   - integrationKey is the key clause — the slug recorded on the first
+//     account-signed content change, or "" when none is recorded (legacy
+//     objects, app-created objects, the §10 same-account race edge);
+//   - err is an infrastructure failure (space/tree unavailable). Callers
+//     MUST refuse on err — the rule is fail-closed in every direction.
+type ObjectProvenance interface {
+	CreatorProvenance(ctx context.Context, spaceId string, objectId string) (accountMatch bool, integrationKey string, err error)
+}
+
 type ClientCommands interface {
 	// Wallet
 	AccountLocalLinkNewChallenge(context.Context, *pb.RpcAccountLocalLinkNewChallengeRequest) *pb.RpcAccountLocalLinkNewChallengeResponse
