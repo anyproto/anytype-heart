@@ -6526,7 +6526,10 @@ probe hint); type/property/option targets steer to their own routes BEFORE
 the provenance read; re-delete of an archived object is a 200 no-op with a
 warning; the grant conjunction is ordered (space_not_granted /
 write_not_granted fire before ownership, pinned by expectation-free
-mocks). v1 is untouched except that its creations now carry the stamp for
+mocks). One asymmetry stated rather than implied (F8): `DELETE
+/types/{key}` and `/properties/{key}` archive on the write grant ALONE —
+"own output only" is a property of THIS route, not of v2 deletion; the
+schema-delete own-output question stays open in §17.1. v1 is untouched except that its creations now carry the stamp for
 free (§8a — both surfaces converge in objectcreator and share
 ensureAuthenticated): v1's DELETE stays the unrestricted grandfathered
 escape, and v1's OpenAPI document is byte-identical. Key issuance now
@@ -6650,3 +6653,73 @@ read served the compact shape); the server lists canonical full ids, which
 its view holds and which resolve exactly — the label spelling would have
 required threading the serving layer's relabeler into the applier for a
 cosmetic saving on an error path.
+
+### 8.44 Object DELETE under two lenses: the raw-name revision and six findings (2026-08-14 — decisions as built)
+
+The §8.42/§8.43 build went under a two-lens review before anything was
+pushed; wire format and naming were therefore still free, and the round's
+largest outcome spent that freedom. Everything below is on this branch,
+each fix pinned by a test verified to fail under a simulated revert.
+
+**The design change (Roman's decision) — the stamp is the RAW app name,
+compared exactly.** `pb.Change.integrationKey` (a normalized slug) became
+`pb.Change.integrationName` (the session's `AppName`, verbatim; wire
+number 10 unchanged, `ChangeNoSnapshot` in lockstep). Two executed
+findings died at that root: **F2** — normalization was many-to-one
+("Claude/Desktop", "CLAUDE DESKTOP", "Claude.Desktop" all collapsed to
+`claude-desktop`, and a key paired under one visibly different name
+archived another's output end-to-end, a strictly weaker consent story than
+the conceded identical-name case) — and **F3** — normalization was lossy
+("привет", "🙂", "!!!" all slugged to `""`, so a non-Latin-named key's
+objects were permanently unprovenanced and undeletable by their own
+creator, with no signal at pairing). The tolerance the slug bought
+(re-pair as "claude desktop" still matched) was DELIBERATELY dropped: for
+an authorization comparison, tolerance is a liability — it is precisely
+what creates F2. `IntegrationKeyFromAppName` was deleted, not parked: the
+future integration object hashes the raw name for its unique key (display
+comes from the `name` detail, as for every object — the identity work's
+shape), so the slug has no future caller and keeping it would be a rival
+spelling authority. New with the revision: `AppName` had NO length bound
+anywhere; issuance (CreateApp + the challenge flow's effective name) now
+rejects — never truncates — names over `domain.MaxIntegrationNameLen`
+(128 bytes). The §11.7 empty-name guard is now sufficient as issued: no
+non-empty name can lose its record. Regression pins: the middleware
+carries "Claude/Desktop"/"привет"/"🙂" raw; DELETE refuses the F2 pair
+"Claude Desktop" vs "Claude/Desktop" naming both; both-sides-"привет"
+archives.
+
+**F1 (high) — §8.42's derived-safety claim was false; fixed with a
+positive allowlist.** Recorded in full as the Correction inside §8.42:
+account-signed derived roots exist (personal-space derives; every
+FileObject via `UseAccountSignature`), so the root clause never excluded
+system objects — `DeleteObject` now refuses everything outside
+`Page`/`Template`/`FileObject`/`ChatDerivedObject`/`DiscussionObject`
+before the provenance read.
+
+**The one-line fixes.** **H1**: `translateOpsError` now rewrites
+`Issues[i].Hint` (deRest always did) — the locator refusals put the repair
+in the hint, so the "or give the block id"→"or pass block" opsVocab row
+was dead code and a model following the raw hint emitted a schema-invalid
+call. **H2**: `AccountLocalLinkNewChallenge` maps `application.ErrBadInput`
+→ `BAD_INPUT` (extracted as `accountLocalLinkNewChallengeErrorCode` so the
+row is testable); the nameless challenge answered UNKNOWN_ERROR while its
+sibling CreateApp answered BAD_INPUT. **F4**: the archive-refusal match
+now also catches `CanDeleteFile`'s "can't delete other's file" — a
+permanent refusal that fell to a retry-shaped 500 two lines under the M2a
+citation; and the dry-run CONTRACT is stated (§9.6): it verifies what the
+route owns (existence, steer, allowlist, grant, provenance), archive-time
+restriction checks run only on the real call. **F5**: archive success is
+judged over the requested ids, not the GC cascade — a refused target
+whose orphan file archived no longer yields a 200 receipt (fixed in
+detailservice; v1 inherits). **F6**: `Apply` consumes the stamp at
+capture — one stamped push per stamped state is structural, not an
+InitObject-applies-once caller invariant.
+
+**Recorded, not fixed** (spec §7/§13/§17): `anonymize.Change` does not
+anonymize `integrationName`, so the raw name reaches anonymized debug
+exports (recommend covering it); proto3 string non-presence makes
+"old client" and "non-API session" permanently indistinguishable on the
+wire; F7 — dry_run + the naming refusal is a new API-queryable channel for
+enumerating per-object creator integrations under a write grant; F8 —
+type/property DELETEs archive on the write grant alone ("own output only"
+is this route's property, not v2 deletion's — §17.1 stays open).

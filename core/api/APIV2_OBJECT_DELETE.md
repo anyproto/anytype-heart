@@ -383,6 +383,26 @@ person's name, a non-Latin phrase) where the slug would have flattened it —
 same class of disclosure, more faithful bytes; the 128-byte issuance bound
 caps it.
 
+**Recorded gaps in this disclosure story (second review round; recorded,
+not fixed):**
+
+- **`anonymize.Change` does not anonymize the field**
+  (`util/anonymize/anonymize.go` rewrites snapshot details/blocks/relations
+  and change content, nothing at the `pb.Change` top level) — so the value
+  appears in ANONYMIZED debug tree exports attached to bug reports. This
+  matters more now that it is a raw name rather than a slug: a name can
+  carry a person's name or free text. Recommendation (not implemented
+  here): anonymization should cover `integrationName` the way it covers
+  relation names — the field is provenance, not payload, but an anonymized
+  export's promise is "no user-authored strings".
+- **F7 — a read channel through the refusal**: `?dry_run=true` plus the
+  §9.5 message (which names the recorded creator) lets any write-granted
+  key enumerate which integration created each object in a granted space,
+  without the attribution UI existing. Consistent with this section's
+  stance — the disclosure is to space members and this key is the user's
+  own — but it is a NEW channel (API-queryable, no modified client
+  needed), recorded as such.
+
 ## 8. Rotation, re-issue, legacy objects
 
 - **Re-issue, same name** (revoke key, pair again as "Linear" —
@@ -746,7 +766,12 @@ small free win the narrow design would forfeit.
   is no lossy-rewrite path. The root-change format is untouched — nothing
   any-sync-visible changes at all. No migration; no backfill (§8).
 - **New clients reading old objects**: absent field → unprovenanced →
-  fail-closed refusal (§8). Deterministic, no heuristics.
+  fail-closed refusal (§8). Deterministic, no heuristics. One permanent
+  wire fact, recorded: proto3 scalar strings have no presence, so "written
+  by an old client" and "written by a non-API session" are BOTH the empty
+  string — indistinguishable on the wire, forever. Fail-closed treats them
+  identically, which is why this is a recorded fact and not a bug; any
+  future feature wanting to tell them apart would need a new field.
 - **Failure surface added to creation**: none — stamping cannot fail
   (string copy); an empty name degrades to today's behavior.
 
@@ -829,7 +854,11 @@ that spec's §3, built early.
 1. Schema deletes (`DELETE /types`, `/properties`): adopt the same own-output
    rule, or stay plain readwrite? (Scoping design's open question;
    unchanged. The provenance read works for derived trees via their signed
-   creating change if the answer is ever yes.)
+   creating change if the answer is ever yes.) Stated plainly per the
+   second review round (F8): today those routes archive on the write grant
+   ALONE — "own output only" is a property of the object route, not of v2
+   deletion as a whole, and a steered type target lands on a route with a
+   weaker rule than the one that steered it away.
 2. A "delete any" capability for keys that should manage whole spaces
    (grant bit? bot accounts?) — a separate future product decision, not a
    gap in this design (§8, decided); nothing here precludes it.
