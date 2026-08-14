@@ -104,9 +104,9 @@ func sweepOneGuarded(ctx context.Context, dir string, objects persist.ObjectAcce
 // resumable reports whether the manifest describes a run whose pass 2
 // completed — the DM spec §8.1 class: the spool is provably whole (the
 // fetched marker or later), so pass 3 can restart from the dir alone. A
-// suspend BEFORE materialization began is not in the class (its crawl is
-// resumable only with DM-3's pass-2 seam) and keeps compensating —
-// trivially, to nothing.
+// suspend BEFORE materialization began is not in this class — it belongs
+// to crawlResumable below when its manifest carries the request, and
+// compensates (trivially, to nothing) when it does not (pre-DM-3 dirs).
 //
 // Resume also happens only WITHIN a schema version (§4.4: only the frozen
 // compensation core is promised across versions, and resume rehydrates far
