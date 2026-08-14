@@ -19,8 +19,9 @@ import (
 )
 
 type sweepDeleter struct {
-	deleted []string
-	failIds map[string]error
+	deleted  []string
+	failIds  map[string]error
+	panicIds map[string]bool
 }
 
 func (d *sweepDeleter) GetObject(ctx context.Context, objectId string) (smartblock.SmartBlock, error) {
@@ -32,6 +33,9 @@ func (d *sweepDeleter) GetObjectByFullID(ctx context.Context, id domain.FullID) 
 }
 
 func (d *sweepDeleter) DeleteObject(objectId string) error {
+	if d.panicIds[objectId] {
+		panic("injected sweep delete panic: " + objectId)
+	}
 	if err, ok := d.failIds[objectId]; ok {
 		return err
 	}

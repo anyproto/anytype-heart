@@ -355,6 +355,36 @@ func TestLifecycleInvariants(t *testing.T) {
 }
 
 func TestLifecycleSweep(t *testing.T) {
+	t.Run("a panicking sweep delete cannot leak the active registry", func(t *testing.T) {
+		// given — C1 (CONFIRMED): sweepOne opened a store with no deferred
+		// release; a panicking DeleteObject (recovered one level up) left
+		// IsActive true for the process lifetime — that dir skipped-active
+		// forever, inherited across same-process account restarts.
+		fx := newLifecycleFixture(t)
+		ctx := context.Background()
+		dir := filepath.Join(runstore.RunsRoot(fx.repo), "crashed")
+		store, err := runstore.Create(ctx, dir, runstore.Manifest{RunId: "crashed", SpaceId: "space-1"})
+		require.NoError(t, err)
+		require.NoError(t, store.RecordCreated(ctx, "page-1", "obj-1"))
+		require.NoError(t, store.SetState(ctx, runstore.StateMaterializing))
+		require.NoError(t, store.Close())
+		deleter := fx.service.objects.(*sweepDeleter)
+		deleter.panicIds = map[string]bool{"obj-1": true}
+
+		// when
+		fx.service.sweepAbandoned() // the recover one level up catches it
+
+		// then
+		assert.False(t, runstore.IsActive(dir),
+			"the sweep's store hold must release on the panic path")
+
+		// and: with the failure gone, the next sweep settles the dir
+		deleter.panicIds = nil
+		fx.service.sweepAbandoned()
+		_, statErr := os.Stat(dir)
+		assert.True(t, os.IsNotExist(statErr))
+	})
+
 	t.Run("the service-level sweep settles a crashed run end to end", func(t *testing.T) {
 		// given: a dir a previous process left behind in the running state
 		fx := newLifecycleFixture(t)

@@ -133,8 +133,10 @@ type Store struct {
 	issueSeq atomic.Int64
 	// closed makes Close idempotent, so each Store releases its active-dir
 	// registry hold exactly once whatever combination of Close/Drop/deferred
-	// release paths runs.
-	closed atomic.Bool
+	// release paths runs; released tracks the guard separately so Drop can
+	// hold it through the unlink (C3).
+	closed   atomic.Bool
+	released atomic.Bool
 }
 
 // activeDirs is the process-global registry of run dirs currently held open
@@ -242,11 +244,18 @@ func IsCorrupted(err error) bool {
 // Create makes the run dir (with its spill subdir), opens a fresh store and
 // writes the manifest in StateRunning at SchemaVersion.
 func Create(ctx context.Context, dir string, m Manifest) (*Store, error) {
+	// C2: the guard is held from BEFORE the dir exists on disk — the sweep
+	// must never observe an existing-but-unguarded dir mid-creation (it
+	// would unlink it under the creator, whose ledger writes would then
+	// land in an unlinked db).
+	markActive(dir)
 	if err := os.MkdirAll(filepath.Join(dir, spillDirName), 0o700); err != nil {
+		markInactive(dir)
 		return nil, fmt.Errorf("create run dir: %w", err)
 	}
 	s, err := open(ctx, dir)
 	if err != nil {
+		markInactive(dir)
 		return nil, err
 	}
 	m.SchemaVersion = SchemaVersion
@@ -256,7 +265,7 @@ func Create(ctx context.Context, dir string, m Manifest) (*Store, error) {
 	m.CreatedAt = now
 	m.UpdatedAt = now
 	if err = s.writeManifest(ctx, m); err != nil {
-		_ = s.Close()
+		_ = s.Close() // releases the guard
 		return nil, fmt.Errorf("write manifest: %w", err)
 	}
 	return s, nil
@@ -265,12 +274,14 @@ func Create(ctx context.Context, dir string, m Manifest) (*Store, error) {
 // Open opens an existing run dir. It fails when the db is missing, corrupted
 // (see IsCorrupted) or carries no manifest.
 func Open(ctx context.Context, dir string) (*Store, error) {
+	markActive(dir)
 	s, err := open(ctx, dir)
 	if err != nil {
+		markInactive(dir)
 		return nil, err
 	}
 	if _, err = s.Manifest(ctx); err != nil {
-		_ = s.Close()
+		_ = s.Close() // releases the guard
 		return nil, fmt.Errorf("read manifest: %w", err)
 	}
 	if err = s.seedRank(ctx); err != nil {
@@ -307,7 +318,6 @@ func open(ctx context.Context, dir string) (*Store, error) {
 		_ = db.Close()
 		return nil, fmt.Errorf("ensure entries index: %w", err)
 	}
-	markActive(dir)
 	return s, nil
 }
 
@@ -619,23 +629,41 @@ func (s *Store) Flush(ctx context.Context) error {
 	return s.db.Flush(ctx, 0, anystore.FlushModeCheckpointPassive)
 }
 
-// Close is idempotent: exactly one call releases the active-dir registry
-// hold, whatever combination of Close/Drop/deferred-release paths runs.
-func (s *Store) Close() error {
+// closeDb closes the database exactly once; the guard release is separate
+// so Drop can keep the guard alive THROUGH the unlink (C3).
+func (s *Store) closeDb() error {
 	if !s.closed.CompareAndSwap(false, true) {
 		return nil
 	}
-	defer markInactive(s.dir)
 	return s.db.Close()
 }
 
+// releaseGuard releases this Store's registry hold exactly once.
+func (s *Store) releaseGuard() {
+	if s.released.CompareAndSwap(false, true) {
+		markInactive(s.dir)
+	}
+}
+
+// Close is idempotent: exactly one call releases the active-dir registry
+// hold, whatever combination of Close/Drop/deferred-release paths runs.
+func (s *Store) Close() error {
+	err := s.closeDb()
+	s.releaseGuard()
+	return err
+}
+
 // Drop closes the store and deletes the whole run dir — the disposal the
-// per-run-DB layout exists for (§4.1): O(1), no tombstones, no vacuum.
+// per-run-DB layout exists for (§4.1): O(1), no tombstones, no vacuum. The
+// guard is released only AFTER the unlink: the dir must never be observable
+// as existing-but-unguarded (C3).
 func (s *Store) Drop() error {
-	err := s.Close()
+	err := s.closeDb()
 	if removeErr := os.RemoveAll(s.dir); removeErr != nil {
+		s.releaseGuard()
 		return errors.Join(err, fmt.Errorf("remove run dir: %w", removeErr))
 	}
+	s.releaseGuard()
 	return err
 }
 

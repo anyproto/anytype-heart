@@ -103,6 +103,10 @@ func sweepOne(ctx context.Context, dir string, objects persist.ObjectAccess, pro
 		return outcome
 	}
 
+	// C1: the sweep's own store hold must survive a panic anywhere below
+	// (a panicking DeleteObject is recovered one level up) — Close is
+	// idempotent, so the branches that Close/Drop explicitly are unharmed.
+	defer store.Close()
 	manifest, err := store.Manifest(ctx)
 	if err != nil {
 		_ = store.Close()

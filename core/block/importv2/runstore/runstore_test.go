@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -349,6 +350,85 @@ func TestActiveRegistry(t *testing.T) {
 		require.NoError(t, first.Close())
 		require.NoError(t, first.Close()) // double close must not underflow
 		assert.False(t, IsActive(dir))
+	})
+}
+
+func TestCreateGuardsItsDir(t *testing.T) {
+	t.Run("a run dir is active from the moment it exists on disk", func(t *testing.T) {
+		// given — C2 (CONFIRMED, 156/200 probe): markActive fired at the END
+		// of open, after the dir and db files existed, so a concurrent sweep
+		// could unlink a dir beginRun was still creating — the run then
+		// wrote its ledger into an unlinked db.
+		for i := 0; i < 20; i++ {
+			dir := filepath.Join(t.TempDir(), "run-1")
+			stop := make(chan struct{})
+			var violated atomic.Bool
+			go func() {
+				for {
+					select {
+					case <-stop:
+						return
+					default:
+					}
+					if _, err := os.Stat(dir); err == nil && !IsActive(dir) {
+						violated.Store(true)
+						return
+					}
+				}
+			}()
+			store, err := Create(context.Background(), dir, testManifest())
+			require.NoError(t, err)
+			close(stop)
+			require.NoError(t, store.Close())
+			require.False(t, violated.Load(),
+				"the dir existed on disk while not registered active (iteration %d)", i)
+		}
+	})
+
+	t.Run("a failed create never leaks an active mark", func(t *testing.T) {
+		// given: a parent that is a file, so MkdirAll fails
+		parent := filepath.Join(t.TempDir(), "not-a-dir")
+		require.NoError(t, os.WriteFile(parent, []byte("x"), 0o600))
+		dir := filepath.Join(parent, "run-1")
+
+		// when
+		_, err := Create(context.Background(), dir, testManifest())
+
+		// then
+		require.Error(t, err)
+		assert.False(t, IsActive(dir))
+	})
+}
+
+func TestDropGuardOrder(t *testing.T) {
+	t.Run("the guard outlives the unlink", func(t *testing.T) {
+		// given — C3 (CONFIRMED regression): Close's deferred release fired
+		// before RemoveAll, so the dir was briefly unguarded while being
+		// deleted. Pin the ordering via a watcher: the dir must never be
+		// observable as existing-but-inactive during Drop.
+		for i := 0; i < 20; i++ {
+			dir := filepath.Join(t.TempDir(), "run-1")
+			store := createStore(t, dir)
+			stop := make(chan struct{})
+			var violated atomic.Bool
+			go func() {
+				for {
+					select {
+					case <-stop:
+						return
+					default:
+					}
+					if _, err := os.Stat(dir); err == nil && !IsActive(dir) {
+						violated.Store(true)
+						return
+					}
+				}
+			}()
+			require.NoError(t, store.Drop())
+			close(stop)
+			require.False(t, violated.Load(),
+				"the dir was existing-but-unguarded during Drop (iteration %d)", i)
+		}
 	})
 }
 
