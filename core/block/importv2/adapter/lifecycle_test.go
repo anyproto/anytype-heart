@@ -3,16 +3,28 @@ package adapter
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
+	"github.com/stretchr/testify/mock"
+
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
+	objectcreator "github.com/anyproto/anytype-heart/core/block/object/objectcreator"
+	"github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/core/block/importv2"
 	"github.com/anyproto/anytype-heart/core/block/importv2/runstore"
 	"github.com/anyproto/anytype-heart/core/block/process"
@@ -403,5 +415,85 @@ func TestLifecycleSweep(t *testing.T) {
 		assert.Equal(t, []string{"obj-1"}, deleter.deleted)
 		_, err = os.Stat(dir)
 		assert.True(t, os.IsNotExist(err))
+	})
+}
+
+// fakeInstaller embeds the interface; only bundled installs are real.
+type fakeInstaller struct {
+	objectcreator.Service
+}
+
+func (fakeInstaller) InstallBundledObjects(ctx context.Context, spc clientspace.Space, sourceObjectIds []string) ([]string, []*domain.Details, error) {
+	return nil, nil, nil
+}
+
+func TestLifecycleRealEngine(t *testing.T) {
+	t.Run("a real runEngine drive: spool, ledgers and lifecycle end to end", func(t *testing.T) {
+		// given — the harness gap the review named: engineRunFn replaced all
+		// of runEngine, leaving spool provisioning, onFetched, onIssue and
+		// the claim ledger with zero coverage. This drives the REAL
+		// runEngine over a mock space: one markdown page, full pass 1 →
+		// spool → materialize → dispose.
+		fx := newLifecycleFixture(t)
+		spc := mock_clientspace.NewMockSpace(t)
+		var minted atomic.Int64
+		spc.EXPECT().CreateTreePayload(mock.Anything, mock.Anything).RunAndReturn(
+			func(ctx context.Context, _ payloadcreator.PayloadCreationParams) (treestorage.TreeStorageCreatePayload, error) {
+				return treestorage.TreeStorageCreatePayload{RootRawChange: &treechangeproto.RawTreeChangeWithId{
+					Id: fmt.Sprintf("obj-%03d", minted.Add(1)), RawChange: []byte("raw"),
+				}}, nil
+			}).Maybe()
+		spc.EXPECT().DeriveTreePayload(mock.Anything, mock.Anything).RunAndReturn(
+			func(ctx context.Context, params payloadcreator.PayloadDerivationParams) (treestorage.TreeStorageCreatePayload, error) {
+				return treestorage.TreeStorageCreatePayload{RootRawChange: &treechangeproto.RawTreeChangeWithId{
+					Id: "drv-" + params.Key.Marshal(), RawChange: []byte("raw"),
+				}}, nil
+			}).Maybe()
+		spc.EXPECT().CreateTreeObjectWithPayload(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(
+			func(ctx context.Context, payload treestorage.TreeStorageCreatePayload, initFunc smartblock.InitFunc) (smartblock.SmartBlock, error) {
+				id := payload.RootRawChange.Id
+				sb := smarttest.New(id)
+				if initCtx := initFunc(id); initCtx.State != nil {
+					require.NoError(t, sb.Apply(initCtx.State))
+				}
+				return sb, nil
+			}).Maybe()
+		fx.service.spaceService = &fakeSpaceGetter{spc: spc}
+		fx.service.objectStore = objectstore.NewStoreFixture(t)
+		fx.service.installer = fakeInstaller{}
+		fx.service.engineRunner = fx.service.runEngine // the real thing
+
+		dir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "page.md"), []byte("# Hello"), 0o600))
+		req := &pb.RpcObjectImportRequest{
+			SpaceId:    "space-1",
+			Type:       model.Import_Markdown,
+			NoProgress: true,
+			Params: &pb.RpcObjectImportRequestParamsOfMarkdownParams{
+				MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{
+					Path: []string{dir}, NoCollection: true,
+				},
+			},
+		}
+
+		// when
+		fx.service.Import(req)
+		fx.waitRuns()
+
+		// then: the page materialized through the full pipeline and the run
+		// dir was disposed whole
+		require.Equal(t, 1, fx.finishEvents())
+		fx.eventsMu.Lock()
+		var objectsCount int64
+		for _, e := range fx.events {
+			for _, msg := range e.Messages {
+				if fin := msg.GetImportFinish(); fin != nil {
+					objectsCount = fin.ObjectsCount
+				}
+			}
+		}
+		fx.eventsMu.Unlock()
+		assert.Equal(t, int64(1), objectsCount, "the markdown page must have materialized")
+		assert.Empty(t, runDirs(t, fx.repo), "the run dir must be disposed after completion")
 	})
 }

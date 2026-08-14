@@ -33,6 +33,14 @@ network, is the bottleneck) — so the window in which the space is visibly half
 from hours to minutes. Everything before pass 3 is abortable by deleting the run dir: nothing
 to compensate, because nothing was done.
 
+**Scope of the guarantee (review finding, recorded): per ENGINE RUN, not per user request.**
+A multi-path markdown request runs N sequential engine runs (`adapter.go` executeMarkdown),
+so path 1 has fully materialized before path 2 begins fetching — the space holds path 1's
+objects while later paths crawl. Notion is a single engine run, so the flagship driver gets
+the full clean-until-done property; making multi-path markdown atomic across paths would
+need a cross-run spool and is deliberately out of scope (multi-path parity is already a
+phase-3 open item in the base design).
+
 **The core design move, stated up front:** the spool reader implements `importv2.Converter`.
 Pass 3 is today's engine back-half — sink, identity assignment, channels, workers, resolver,
 persister, journal — fed by a converter that replays the spool instead of crawling Notion.
