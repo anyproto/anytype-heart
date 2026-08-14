@@ -1,11 +1,12 @@
 package v2service
 
-// locator_test.go — unit pins for resolveByFind (Wave 2.1a, §8.43) that
-// the service-level tests in edit_test.go cannot reach: the candidate cap
-// (documents with >8 matching blocks) and the text-bearing gate (the real
-// format never puts `text` on a non-text block, so the gate is
-// unobservable through PatchObject — it is the invariant that a block
-// replaceText cannot edit never captures or contaminates a match).
+// locator_test.go — unit pins for resolveByText (Wave 2.1a/2.1b, §8.43,
+// §8.45) that the service-level tests in edit_test.go cannot reach: the
+// candidate cap (documents with >8 matching blocks) and the per-op scope
+// (the real format never puts `text` on a non-text block, so the scopes are
+// unobservable through PatchObject — they are the invariants that a block
+// replaceText cannot edit never captures or contaminates ITS match, while
+// nothing is ever filtered out of a destructive op's candidate set).
 // locatorContext's windowing tests moved here from the wrapper with the
 // function itself.
 
@@ -28,7 +29,7 @@ func findDoc(t *testing.T, blocks ...string) *v2EditDoc {
 	return doc
 }
 
-func TestResolveByFind(t *testing.T) {
+func TestResolveByText(t *testing.T) {
 	t.Run("the candidate list caps at 8 and counts the rest", func(t *testing.T) {
 		blocks := make([]string, 10)
 		for i := range blocks {
@@ -36,7 +37,7 @@ func TestResolveByFind(t *testing.T) {
 		}
 		doc := findDoc(t, blocks...)
 
-		_, err := resolveByFind(doc, "needle", "ops[0].find")
+		_, err := resolveByText(doc, "needle", "find", "ops[0].find", textBlocksOnly)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, v2model.CodeAmbiguousInput, apiErr.Code)
@@ -46,25 +47,25 @@ func TestResolveByFind(t *testing.T) {
 		assert.Contains(t, apiErr.Message, "… and 2 more")
 	})
 
-	t.Run("a non-text block never captures the match", func(t *testing.T) {
+	t.Run("a non-text block never captures replaceText's match", func(t *testing.T) {
 		// were a non-text block to carry the snippet, resolving to it would
 		// produce an op the applier must then refuse — so it must not count
 		doc := findDoc(t,
 			`{"id":"bmOne1","type":"bookmark","text":"needle"}`,
 			`{"id":"parOne1","type":"paragraph","text":"needle"}`)
 
-		idx, err := resolveByFind(doc, "needle", "ops[0].find")
+		idx, err := resolveByText(doc, "needle", "find", "ops[0].find", textBlocksOnly)
 
 		require.NoError(t, err, "the paragraph is the unique TEXT match — no ambiguity")
 		assert.Equal(t, 1, idx)
 	})
 
-	t.Run("a snippet found only in a non-text block is zero matches", func(t *testing.T) {
+	t.Run("a snippet found only in a non-text block is zero matches for replaceText", func(t *testing.T) {
 		doc := findDoc(t,
 			`{"id":"bmOne1","type":"bookmark","text":"needle"}`,
 			`{"id":"parOne1","type":"paragraph","text":"other"}`)
 
-		_, err := resolveByFind(doc, "needle", "ops[0].find")
+		_, err := resolveByText(doc, "needle", "find", "ops[0].find", textBlocksOnly)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, v2model.CodeNotFound, apiErr.Code)
@@ -75,10 +76,62 @@ func TestResolveByFind(t *testing.T) {
 			`{"id":"parOne1","type":"paragraph","text":"prose"}`,
 			`{"id":"codeOne1","type":"code","text":"var needle int"}`)
 
-		idx, err := resolveByFind(doc, "needle", "ops[0].find")
+		idx, err := resolveByText(doc, "needle", "find", "ops[0].find", textBlocksOnly)
 
 		require.NoError(t, err)
 		assert.Equal(t, 1, idx)
+	})
+
+	// ---- the everyBlock scope (2.1b): nothing is filtered out of a
+	// destructive op's candidate set ----
+
+	t.Run("a non-text block IS a candidate for match, so two candidates refuse", func(t *testing.T) {
+		// the same document replaceText resolves uniquely above. deleteBlock
+		// can delete a bookmark, so filtering it out would answer a genuinely
+		// two-block question with one silent, wrong, destructive match. The
+		// exporter never writes `text` on a bookmark today — this fixture is
+		// synthetic on purpose: it is the only way to state which scope each
+		// op has before a format change makes it observable.
+		doc := findDoc(t,
+			`{"id":"bmOne1","type":"bookmark","text":"needle"}`,
+			`{"id":"parOne1","type":"paragraph","text":"needle"}`)
+
+		_, err := resolveByText(doc, "needle", "match", "ops[0].match", everyBlock)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, v2model.CodeAmbiguousInput, apiErr.Code)
+		assert.Contains(t, apiErr.Message, "block bmOne1 (bookmark)")
+		assert.Contains(t, apiErr.Message, "block parOne1 (paragraph)")
+	})
+
+	t.Run("the refusals name the field that carried the text", func(t *testing.T) {
+		// the repair has to speak the caller's own vocabulary: an updateBlock
+		// told to "add surrounding text to find" is told to edit a field it
+		// does not have
+		doc := findDoc(t, `{"id":"parOne1","type":"paragraph","text":"other"}`)
+
+		_, err := resolveByText(doc, "needle", "match", "ops[0].match", everyBlock)
+
+		apiErr := v2Err(t, err)
+		assert.Contains(t, apiErr.Message, "copy the match text exactly")
+		require.Len(t, apiErr.Issues, 1)
+		assert.Contains(t, apiErr.Issues[0].Message, "the match text must appear in exactly one block")
+		assert.NotContains(t, apiErr.Message, "find")
+	})
+
+	t.Run("repeats within the one block still resolve it", func(t *testing.T) {
+		// within-block multiplicity is not a resolution failure: this
+		// function identifies a BLOCK, and updateBlock/deleteBlock act on the
+		// block as a whole. Only replaceText, which has to splice one
+		// occurrence, refuses on the count (applyReplaceText)
+		doc := findDoc(t,
+			`{"id":"parOne1","type":"paragraph","text":"the Q3 report and the Q3 plan"}`,
+			`{"id":"parTwo2","type":"paragraph","text":"unrelated"}`)
+
+		idx, err := resolveByText(doc, "Q3", "match", "ops[0].match", everyBlock)
+
+		require.NoError(t, err)
+		assert.Equal(t, 0, idx)
 	})
 }
 

@@ -61,6 +61,18 @@ const editTwinDoc = `{"version":1,"id":"obj1","type":"page","blocks":[` +
 	`{"id":"secExec1","type":"heading1","text":"Execution"},` +
 	`{"id":"budgetExec1","type":"paragraph","text":"Budget: TBD"}]}`
 
+// editChecklistDoc is §5.1's checkbox case ("check 'Draft timeline' under
+// Planning"): two sections of checkbox items, every text distinct. FIVE
+// blocks, and the assertions read the whole checked vector — a single-block
+// fixture, or one that asserted only the target, could not catch a locator
+// that toggled the wrong box.
+const editChecklistDoc = `{"version":1,"id":"obj1","type":"page","blocks":[` +
+	`{"id":"secPlanning1","type":"heading1","text":"Planning"},` +
+	`{"id":"taskDraft1","type":"checkbox","text":"Draft timeline"},` +
+	`{"id":"taskBudget1","type":"checkbox","text":"Budget review"},` +
+	`{"id":"secExec1","type":"heading1","text":"Execution"},` +
+	`{"id":"taskShip1","type":"checkbox","text":"Ship the release"}]}`
+
 // editTableCellChildDoc holds a table whose only cell is the F10 array form:
 // a toggle cell block (no id — derived) with one minted-id DESCENDANT. Cell
 // descendants render as flat blocks, carry ids and are in the relabel pool —
@@ -197,6 +209,17 @@ func blockTexts(blocks []map[string]any) []string {
 	out := make([]string, len(blocks))
 	for i, b := range blocks {
 		out[i], _ = b["text"].(string)
+	}
+	return out
+}
+
+// blockChecked reads the whole document's checkbox state (the exporter omits
+// a false `checked`, so absent reads as false). Asserting the VECTOR is what
+// makes a wrong-block match visible.
+func blockChecked(blocks []map[string]any) []bool {
+	out := make([]bool, len(blocks))
+	for i, b := range blocks {
+		out[i], _ = b["checked"].(bool)
 	}
 	return out
 }
@@ -965,6 +988,317 @@ func TestPatchObject(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, result.DryRun)
 		assert.Equal(t, v2model.DiffStats{BlocksChanged: 1}, result.DiffStats)
+	})
+
+	// ---- match-as-locator (Wave 2.1b, §8.45): the id alternative on
+	// updateBlock and deleteBlock ----
+
+	t.Run("match: updateBlock toggles the one checkbox the text names", func(t *testing.T) {
+		// §5.1's own case. The fixture holds THREE checkboxes in two
+		// sections: a resolver that guessed a fixed index would check the
+		// wrong box, and the whole checked vector says which one moved
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editChecklistDoc), "headB")
+		want := v2model.DiffStats{BlocksChanged: 1}
+
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"updateBlock","match":"Draft timeline","set":{"checked":true}}`), "", false)
+
+		require.NoError(t, err)
+		assert.Equal(t, want, result.DiffStats)
+		blocks := docBlocks(stateDoc(t, *captured))
+		assert.Equal(t, []bool{false, true, false, false, false}, blockChecked(blocks))
+		assert.Equal(t, []string{"Planning", "Draft timeline", "Budget review", "Execution", "Ship the release"},
+			blockTexts(blocks), "merge semantics: the located block keeps its text")
+		assert.Equal(t, "taskDraft1", blocks[1]["id"], "and its id")
+	})
+
+	t.Run("match: several matching blocks refuse and list the candidates", func(t *testing.T) {
+		// twin fixture: two blocks carry IDENTICAL text, so a resolver that
+		// took the first match would sail through — the refusal is the test
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editTwinDoc))
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"updateBlock","match":"Budget: TBD","set":{"text":"Budget: $40k"}}`), "", false)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
+		assert.Equal(t, v2model.CodeAmbiguousInput, apiErr.Code)
+		assert.Contains(t, apiErr.Message, `"Budget: TBD" appears in 2 blocks`)
+		assert.Contains(t, apiErr.Message, "block budgetPlan1 (paragraph)")
+		assert.Contains(t, apiErr.Message, "block budgetExec1 (paragraph)")
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "ops[0].match", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Hint, "add surrounding text to match",
+			"the repair names the caller's own field")
+		assert.Nil(t, *captured, "a refusal never writes")
+	})
+
+	t.Run("match: zero matches is a 404 steering to the outline read", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		fx.expectMutate(editRead(t, editChecklistDoc))
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"updateBlock","match":"Draft agenda","set":{"checked":true}}`), "", false)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusNotFound, apiErr.Status)
+		assert.Contains(t, apiErr.Message, `no block contains "Draft agenda"`)
+		assert.Contains(t, apiErr.Message, "copy the match text exactly")
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "ops[0].match", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Hint, "?outline=true")
+	})
+
+	t.Run("match: repeats within the one matched block are not a refusal", func(t *testing.T) {
+		// "Q3" occurs twice in blockSibling2 and nowhere else. For
+		// replaceText that is the more-context refusal (it has to splice ONE
+		// occurrence); updateBlock addresses the BLOCK, which the text
+		// identifies perfectly well — a fixture where the snippet appeared
+		// once per block could not tell the two classes apart
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
+
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"updateBlock","match":"Q3","set":{"color":"red"}}`), "", false)
+
+		require.NoError(t, err)
+		assert.Equal(t, v2model.DiffStats{BlocksChanged: 1}, result.DiffStats)
+		blocks := docBlocks(stateDoc(t, *captured))
+		assert.Equal(t, "red", blocks[3]["color"])
+		assert.Equal(t, "the Q3 report and Q3 plan", blocks[3]["text"], "the text is untouched")
+	})
+
+	t.Run("match: id and match together are refused, never ranked", func(t *testing.T) {
+		// silent precedence is the failure shape this surface removes: with
+		// one winning, the other field is inert and the caller cannot tell
+		// which block was addressed
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editChecklistDoc))
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"updateBlock","id":"taskShip1","match":"Draft timeline","set":{"checked":true}}`), "", false)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
+		assert.Equal(t, v2model.CodeAmbiguousInput, apiErr.Code)
+		assert.Contains(t, apiErr.Message, "id or match, not both")
+		assert.Contains(t, apiErr.Message, "updateBlock")
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "ops[0]", apiErr.Issues[0].Path)
+		assert.Nil(t, *captured, "neither channel wins — nothing is written")
+	})
+
+	t.Run("match: neither id nor match names both channels", func(t *testing.T) {
+		// before 2.1b an id-less updateBlock resolved the empty string and
+		// reported `block "" not found` — a 404 naming nothing
+		fx := newV2Fixture(t)
+		fx.expectMutate(editRead(t, editChecklistDoc))
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"updateBlock","set":{"checked":true}}`), "", false)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
+		assert.Contains(t, apiErr.Message, "updateBlock needs a block to address")
+		assert.NotContains(t, apiErr.Message, `block "" not found`)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Contains(t, apiErr.Issues[0].Message, "give id")
+		assert.Contains(t, apiErr.Issues[0].Message, "or match")
+	})
+
+	t.Run("match: an op may match the very text it rewrites", func(t *testing.T) {
+		// resolution runs before the merge — the only coherent order, and
+		// what makes a match-then-rename expressible at all
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"updateBlock","match":"parent","set":{"text":"renamed parent"}}`), "", false)
+
+		require.NoError(t, err)
+		assert.Equal(t, []string{"Section", "renamed parent", "child", "the Q3 report and Q3 plan"},
+			blockTexts(docBlocks(stateDoc(t, *captured))))
+	})
+
+	t.Run("match mid-batch: op i matches the text op i-1 WROTE", func(t *testing.T) {
+		// op 0 renames a block; op 1 matches the NEW text. Against the
+		// pre-batch document op 1 has zero matches, so a stale view 404s the
+		// batch — a single-op test cannot see this at all
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(
+			`{"op":"updateBlock","match":"child","set":{"text":"renamed leaf"}}`,
+			`{"op":"updateBlock","match":"renamed leaf","set":{"color":"red"}}`,
+		), "", false)
+
+		require.NoError(t, err)
+		blocks := docBlocks(stateDoc(t, *captured))
+		assert.Equal(t, []string{"Section", "parent", "renamed leaf", "the Q3 report and Q3 plan"}, blockTexts(blocks))
+		assert.Equal(t, "red", blocks[2]["color"], "both ops landed on the same block")
+	})
+
+	t.Run("match mid-batch: the text op i-1 OVERWROTE stops resolving", func(t *testing.T) {
+		// the same freshness, in the direction that must fail: op 0 rewrote
+		// "child" away, so op 1's match names text no block carries any more.
+		// A stale view would resolve it and edit a block whose content the
+		// batch already replaced
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editBaseDoc))
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(
+			`{"op":"updateBlock","match":"child","set":{"text":"renamed leaf"}}`,
+			`{"op":"updateBlock","match":"child","set":{"color":"red"}}`,
+		), "", false)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, v2model.CodeNotFound, apiErr.Code)
+		assert.Contains(t, apiErr.Message, `no block contains "child"`)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "ops[1].match", apiErr.Issues[0].Path, "the failing op is the one addressed")
+		assert.Nil(t, *captured, "the whole batch refuses — op 0 is not committed either")
+	})
+
+	t.Run("match: deleteBlock removes the one block the text names", func(t *testing.T) {
+		// four blocks, and the remaining texts are asserted whole — deleting
+		// the wrong one is visible either way
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
+
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"deleteBlock","match":"child"}`), "", false)
+
+		require.NoError(t, err)
+		assert.Equal(t, v2model.DiffStats{BlocksRemoved: 1}, result.DiffStats)
+		assert.Equal(t, []string{"Section", "parent", "the Q3 report and Q3 plan"},
+			blockTexts(docBlocks(stateDoc(t, *captured))))
+	})
+
+	t.Run("match: a located parent still demands recursive, naming the RESOLVED id", func(t *testing.T) {
+		// the caller never sent an id, so the guard cannot name one back —
+		// `block ""` would be a retry value that resolves to nothing. The
+		// resolved full id always resolves
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editBaseDoc))
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"deleteBlock","match":"parent"}`), "", false)
+
+		apiErr := v2Err(t, err)
+		assert.Contains(t, apiErr.Message, `block "blockParent1" has 1 descendant block`)
+		assert.Contains(t, apiErr.Message, `"recursive": true`)
+		assert.NotContains(t, apiErr.Message, `block ""`)
+		assert.Nil(t, *captured, "the guard refuses before anything is unlinked")
+	})
+
+	t.Run("match: a located parent with recursive deletes the whole subtree", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
+
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"deleteBlock","match":"parent","recursive":true}`), "", false)
+
+		require.NoError(t, err)
+		assert.Equal(t, v2model.DiffStats{BlocksRemoved: 2}, result.DiffStats,
+			"the receipt counts the subtree, exactly as it does for an id")
+		assert.Equal(t, []string{"Section", "the Q3 report and Q3 plan"},
+			blockTexts(docBlocks(stateDoc(t, *captured))))
+	})
+
+	t.Run("match: an ambiguous delete refuses, and its candidate list is a usable retry", func(t *testing.T) {
+		// the destructive half of the one-match rule: on the twin fixture a
+		// guess would delete a coin-flip block. The candidates must not just
+		// be printed — the second PATCH replays one of them verbatim and must
+		// land on that exact block
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editTwinDoc))
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"deleteBlock","match":"Budget: TBD"}`), "", false)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, v2model.CodeAmbiguousInput, apiErr.Code)
+		assert.Contains(t, apiErr.Message, "retry with id naming one of")
+		assert.Contains(t, apiErr.Message, "block budgetExec1 (paragraph)")
+		assert.Nil(t, *captured, "nothing is deleted while the address is ambiguous")
+
+		// when: the caller retries with a listed candidate
+		retry := newV2Fixture(t)
+		retried := retry.expectMutate(editRead(t, editTwinDoc), "headB")
+
+		result, err := retry.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"deleteBlock","id":"budgetExec1"}`), "", false)
+
+		require.NoError(t, err)
+		assert.Equal(t, v2model.DiffStats{BlocksRemoved: 1}, result.DiffStats)
+		assert.Equal(t, []string{"Planning", "Budget: TBD", "Execution"},
+			blockTexts(docBlocks(stateDoc(t, *retried))), "the listed candidate deleted the block it named")
+	})
+
+	t.Run("match mid-batch: an earlier op makes a DELETE locator ambiguous — refuse, never the stale unique match", func(t *testing.T) {
+		// the failure this slice exists to prevent, at its worst: against the
+		// pre-batch document "child" is unique, so a stale view would delete
+		// blockChild1 silently. Op 0 writes the same word into a second block
+		// — the fresh view must refuse and name both
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editBaseDoc))
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(
+			`{"op":"updateBlock","id":"blockParent1","set":{"text":"child of mine"}}`,
+			`{"op":"deleteBlock","match":"child"}`,
+		), "", false)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, v2model.CodeAmbiguousInput, apiErr.Code)
+		assert.Contains(t, apiErr.Message, "appears in 2 blocks")
+		assert.Contains(t, apiErr.Message, "blockParent1")
+		assert.Contains(t, apiErr.Message, "blockChild1")
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "ops[1].match", apiErr.Issues[0].Path)
+		assert.Nil(t, *captured, "the whole batch refuses — nothing is deleted")
+	})
+
+	t.Run("match: deleteBlock refuses id and match together before deleting anything", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editBaseDoc))
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"deleteBlock","id":"blockChild1","match":"Section"}`), "", false)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, v2model.CodeAmbiguousInput, apiErr.Code)
+		assert.Contains(t, apiErr.Message, "id or match, not both")
+		assert.Contains(t, apiErr.Message, "deleteBlock")
+		assert.Nil(t, *captured)
+	})
+
+	t.Run("match: deleteBlock with neither channel names both", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		fx.expectMutate(editRead(t, editBaseDoc))
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"deleteBlock","recursive":true}`), "", false)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
+		assert.Contains(t, apiErr.Message, "deleteBlock needs a block to address")
+	})
+
+	t.Run("match: a dry run resolves identically and commits nothing (C9)", func(t *testing.T) {
+		// no mutator expectation is wired at all — the dry run must never
+		// reach it; resolution runs at apply time on the private state
+		fx := newV2Fixture(t)
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").
+			Return(editRead(t, editBaseDoc), nil)
+
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"deleteBlock","match":"parent","recursive":true}`), "", true)
+
+		require.NoError(t, err)
+		assert.True(t, result.DryRun)
+		assert.Equal(t, v2model.DiffStats{BlocksRemoved: 2}, result.DiffStats)
 	})
 
 	t.Run("setCell writes one cell", func(t *testing.T) {
@@ -1884,6 +2218,33 @@ func TestApplierRenderCounts(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, 2, applier.marshalCount,
 			"50 id-less replaceText ops must cost begin + final renders only")
+	})
+
+	t.Run("a match-addressed structural batch costs the same renders as an id-addressed one", func(t *testing.T) {
+		// `match` resolution reads the view the op already holds (§8.45), so
+		// it must add ZERO renders: two deleteBlocks cost begin + one rebuild
+		// + the final after-document either way. A locator that re-marshaled
+		// to resolve would double the count and re-inherit the O(ops ×
+		// document) product M7 removed
+		fx := newV2Fixture(t)
+		byId := newApplier(t, fx, editBaseDoc)
+		_, err := byId.begin()
+		require.NoError(t, err)
+		require.NoError(t, byId.apply(0, json.RawMessage(`{"op":"deleteBlock","id":"blockChild1"}`)))
+		require.NoError(t, byId.apply(1, json.RawMessage(`{"op":"deleteBlock","id":"blockSibling2"}`)))
+		_, err = byId.currentDoc()
+		require.NoError(t, err)
+
+		byMatch := newApplier(t, fx, editBaseDoc)
+		_, err = byMatch.begin()
+		require.NoError(t, err)
+		require.NoError(t, byMatch.apply(0, json.RawMessage(`{"op":"deleteBlock","match":"child"}`)))
+		require.NoError(t, byMatch.apply(1, json.RawMessage(`{"op":"deleteBlock","match":"Q3 report"}`)))
+		_, err = byMatch.currentDoc()
+
+		require.NoError(t, err)
+		assert.Equal(t, 3, byId.marshalCount)
+		assert.Equal(t, byId.marshalCount, byMatch.marshalCount, "the locator adds no renders")
 	})
 
 	t.Run("structural ops still rebuild the view per op", func(t *testing.T) {

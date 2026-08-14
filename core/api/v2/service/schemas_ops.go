@@ -146,6 +146,12 @@ var v2OpNewBlockDef = `{"type":"object","additionalProperties":false,"required":
 // v2BlockRefDef is a block reference: full id (canonical) or unique suffix.
 const v2BlockRefDef = `{"type":"string","minLength":1,"maxLength":64,"description":"a block id — full (canonical) or a unique suffix"}`
 
+// v2OpMatchPropDef is the `match` locator (Wave 2.1b, §8.45): the
+// alternative to `id` on the ops that address one existing block by
+// content. One published def, because one resolution rule serves them all —
+// a second spelling here is how the two halves drift apart (§8.31).
+const v2OpMatchPropDef = `"match":{"type":"string","minLength":1,"maxLength":65536,"description":"alternative to id: exact text from the block (inline markup included — text is markdown source), which must appear in exactly ONE block or the op refuses (several matching blocks → the error lists candidate ids to retry with; zero → read the outline). Give id or match, never both. Repeats WITHIN the one matched block are fine — this addresses the block, not an occurrence"}`
+
 // opSchema builds one op's strict schema. The op NAME is the first argument
 // because THREE things are derived from it and must not be spelled
 // independently: the `op` const, the required `op` field, and — through
@@ -220,10 +226,11 @@ var v2OpSchemas = map[string]v2SchemaKind{
 	},
 	"updateBlock": {
 		endpoint: v2OpsEndpoint,
-		schema: opSchema("updateBlock", []string{"id", "set"},
-			`"id":{"$ref":"#/$defs/blockRef"}`,
+		schema: opSchema("updateBlock", []string{"set"},
+			`"id":{"$ref":"#/$defs/blockRef","description":"the block to update — give this or match, never both"}`,
+			v2OpMatchPropDef,
 			`"set":{"type":"object","maxProperties":32,"description":"merge semantics: only the named fields change — text included only if named; null clears a field; id and indent are rejected (use moveBlock to re-nest)"}`),
-		example: `{"op":"updateBlock","id":"b5","set":{"checked":true}}`,
+		example: `{"op":"updateBlock","match":"Draft timeline","set":{"checked":true}}`,
 	},
 	"replaceSubtree": {
 		endpoint: v2OpsEndpoint,
@@ -255,10 +262,11 @@ var v2OpSchemas = map[string]v2SchemaKind{
 	},
 	"deleteBlock": {
 		endpoint: v2OpsEndpoint,
-		schema: opSchema("deleteBlock", []string{"id"},
-			`"id":{"$ref":"#/$defs/blockRef"}`,
-			`"recursive":{"type":"boolean","description":"default false — deleting a block that has descendants without it is an error naming the descendant count"}`),
-		example: `{"op":"deleteBlock","id":"b4","recursive":true}`,
+		schema: opSchema("deleteBlock", nil,
+			`"id":{"$ref":"#/$defs/blockRef","description":"the block to delete — give this or match, never both"}`,
+			v2OpMatchPropDef,
+			`"recursive":{"type":"boolean","description":"default false — deleting a block that has descendants without it is an error naming the descendant count and the resolved block id"}`),
+		example: `{"op":"deleteBlock","match":"Obsolete section","recursive":true}`,
 	},
 	"replaceText": {
 		endpoint: v2OpsEndpoint,

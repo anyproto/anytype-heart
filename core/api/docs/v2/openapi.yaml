@@ -2134,12 +2134,15 @@ paths:
         doubles as the locator and must identify exactly ONE block — zero or several
         matching blocks refuse (the ambiguity refusal lists candidate ids), and resolution
         runs per-op under the object lock, so a later op resolves against the earlier
-        ops'' edits. The post-op document must satisfy the AnyBlock semantic checks
-        (SPEC §12); any violation rejects the whole PATCH with path-addressed errors.
-        If-Match is advisory (C7): absent = last-write-wins, stale = 409 with the
-        current etag. Responds with the new etag, the minted-block id map keyed by
-        payload position, and diffStats. Honors ?dry_run=true (C9). GET /v2/schemas/ops/{op}
-        documents each op.'
+        ops'' edits. updateBlock and deleteBlock take the same locator as `match`
+        (exact text from the block) instead of an id — one of the two, never both,
+        and the same one-match-or-refuse rule, which on deleteBlock is what stops
+        a locator from removing the wrong subtree. The post-op document must satisfy
+        the AnyBlock semantic checks (SPEC §12); any violation rejects the whole PATCH
+        with path-addressed errors. If-Match is advisory (C7): absent = last-write-wins,
+        stale = 409 with the current etag. Responds with the new etag, the minted-block
+        id map keyed by payload position, and diffStats. Honors ?dry_run=true (C9).
+        GET /v2/schemas/ops/{op} documents each op.'
       operationId: v2_patch_object
       parameters:
       - description: Space id

@@ -2,9 +2,11 @@ package v2service
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
@@ -250,6 +252,74 @@ func TestExampleValidatorIsHonest(t *testing.T) {
 		json.RawMessage(`{"ops":[`+string(entry.Example)+`]}`)), "the old wrapped shape must fail")
 	assert.Error(t, validateAgainstSchema(t, entry.Schema,
 		json.RawMessage(`{"after":"b3","markdown":"- [ ] todo"}`)), "a missing op discriminator must fail")
+}
+
+// TestMatchLocatorIsPublishedExactlyWhereItWorks ties the two halves of the
+// `match` locator together the way §8.30 ties the payload id slot: the ops
+// whose SCHEMA publishes `match` and the ops whose DECODER accepts it must
+// be the same set. Schema-without-runtime advertises a field no value of
+// which can succeed (a constrained decoder emits what it is shown);
+// runtime-without-schema hides a channel from the only consumers that read
+// the schema. The list is derived from the served schemas, so neither half
+// carries a literal that can fall out of date — and the probe goes through
+// PatchObject, so what is tested is the real strict decoder.
+func TestMatchLocatorIsPublishedExactlyWhereItWorks(t *testing.T) {
+	ctx := context.Background()
+	schemas := newV2Fixture(t)
+
+	for _, op := range v2OpNames {
+		t.Run(op, func(t *testing.T) {
+			entry, err := schemas.SchemaOp(op)
+			require.NoError(t, err)
+			published := len(schemaPropertyOwners(t, entry.Schema, "match")) > 0
+
+			fx := newV2Fixture(t)
+			fx.expectMutate(editRead(t, editBaseDoc))
+			_, err = fx.PatchObject(ctx, testSpaceId, "obj1",
+				patchBody(fmt.Sprintf(`{"op":%q,"match":"no block says this"}`, op)), "", false)
+
+			// the probe carries nothing but a locator that matches nothing, so
+			// every op refuses SOMEHOW — the question is only whether it
+			// refuses the FIELD
+			require.Error(t, err, op)
+			apiErr := v2Err(t, err)
+			rejectedTheField := false
+			for _, issue := range apiErr.Issues {
+				if strings.Contains(issue.Message, `unknown field "match"`) {
+					rejectedTheField = true
+				}
+			}
+			assert.Equal(t, published, !rejectedTheField,
+				"%s: the served schema and the decoder must agree about `match`", op)
+		})
+	}
+}
+
+// TestLocatorOpsDropTheRequiredId is the schema half of 2.1b: an op that
+// accepts a locator cannot go on REQUIRING an id, or a decoder constrained
+// to the schema can never write the locator form at all — which is the whole
+// point of the field.
+func TestLocatorOpsDropTheRequiredId(t *testing.T) {
+	fx := newV2Fixture(t)
+
+	for _, op := range []string{"updateBlock", "deleteBlock"} {
+		t.Run(op, func(t *testing.T) {
+			entry, err := fx.SchemaOp(op)
+			require.NoError(t, err)
+
+			var schema struct {
+				Required   []string                   `json:"required"`
+				Properties map[string]json.RawMessage `json:"properties"`
+			}
+			require.NoError(t, json.Unmarshal(entry.Schema, &schema))
+
+			assert.NotContains(t, schema.Required, "id", "id is one of two addressing channels now")
+			assert.Contains(t, schema.Properties, "id", "and still published")
+			assert.Contains(t, schema.Properties, "match")
+			assert.Equal(t, v2OpMatchPropDef, `"match":`+string(schema.Properties["match"]),
+				"one published def serves every locator op — a second spelling is the §8.31 drift class")
+		})
+	}
 }
 
 // validateAgainstSchema compiles a served JSON Schema and validates one

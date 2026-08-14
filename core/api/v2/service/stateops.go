@@ -482,6 +482,49 @@ func (a *v2StateApplier) apply(i int, raw json.RawMessage) error {
 	}
 }
 
+// resolveSubject resolves the block an op acts on from its TWO alternative
+// addressing channels (Wave 2.1b, §8.45): `id` (a full id or unique suffix,
+// C4) or `match` (an exact substring of the block's text, which must
+// identify exactly one block — locator.go). It returns the view index.
+//
+// Giving BOTH is refused, not ranked. `match` has exactly one job —
+// addressing — so a precedence rule would make one of the two fields
+// silently inert, which is the failure shape this surface has spent its
+// review rounds removing; and reading the loser as a content precondition
+// instead would be a second meaning for `match` invented at the point of
+// conflict. (replaceText is not the counter-example: its `find` is the text
+// to splice FIRST and the locator only when `id` is absent, so there is
+// nothing to rank there either.) Giving neither is refused too — an
+// unaddressed block op has no subject, and the empty-string id it used to
+// send produced the misleading `block "" not found`.
+//
+// The both/neither pair reuses insertPayload's shipped vocabulary for
+// alternative channels: ambiguous_input for both, validation_failed for
+// neither.
+func (a *v2StateApplier) resolveSubject(doc *v2EditDoc, op, id, match, opPath string, scope locatorScope) (int, error) {
+	switch {
+	case id != "" && match != "":
+		return -1, v2model.AmbiguousInput(fmt.Sprintf("address the block with id or match, not both (%s)", op),
+			v2model.Issue{
+				Path:    opPath,
+				Message: "id names the block directly; match locates it by its text — they are alternative addressing channels",
+				Hint:    "drop match to address by id, or drop id to let the text locate the block",
+			})
+	case match != "":
+		// the locator scans the applier's LIVE view, per op and under the
+		// object lock, so op i addresses the document op i−1 left
+		return resolveByText(doc, match, "match", opPath+".match", scope)
+	case id != "":
+		return a.resolveRef(doc, id, opPath+".id")
+	default:
+		return -1, v2model.ValidationFailed(fmt.Sprintf("%s needs a block to address", op),
+			v2model.Issue{
+				Path:    opPath,
+				Message: "give id (a full block id or a unique suffix) or match (exact text from the block, which must appear in exactly one)",
+			})
+	}
+}
+
 // resolveRef resolves a block reference (full id or unique suffix, C4/§9a)
 // against the view, with op-scoped errors.
 func (a *v2StateApplier) resolveRef(doc *v2EditDoc, ref, path string) (int, error) {
@@ -1103,7 +1146,14 @@ func (a *v2StateApplier) applyUpdateBlock(op opUpdateBlock, opPath string) error
 	if err != nil {
 		return err
 	}
-	idx, err := a.resolveRef(doc, op.Id, opPath+".id")
+	// `match` selects on the block's text as it stands when THIS op runs —
+	// before its own set applies, which is the only coherent order (the block
+	// has to be found before it can be changed) and is what makes
+	// {"match":"Draft timeline","set":{"checked":true}} — §5.1's checkbox case
+	// — and a match-then-rewrite rename expressible at all. Mid-batch the
+	// same rule reads forward: op i matches the text op i−1 wrote, never the
+	// text it overwrote (the view is rebuilt after every updateBlock).
+	idx, err := a.resolveSubject(doc, "updateBlock", op.Id, op.Match, opPath, everyBlock)
 	if err != nil {
 		return err
 	}
@@ -1432,14 +1482,22 @@ func (a *v2StateApplier) applyDeleteBlock(op opDeleteBlock, opPath string) error
 	if err != nil {
 		return err
 	}
-	idx, err := a.resolveRef(doc, op.Id, opPath+".id")
+	idx, err := a.resolveSubject(doc, "deleteBlock", op.Id, op.Match, opPath, everyBlock)
 	if err != nil {
 		return err
 	}
 	end := doc.subtreeEnd(idx)
+	// the descendant guard names the block as the caller addressed it — the
+	// reference it sent, or the id the locator resolved. A locator caller
+	// never sent an id, and `block "" has 3 descendant blocks` would name
+	// nothing it could retry with; the resolved full id always is one.
+	ref := op.Id
+	if ref == "" {
+		ref = blockId(doc.blocks[idx])
+	}
 	if descendants := end - idx - 1; descendants > 0 && !op.Recursive {
 		return v2model.ValidationFailed(
-			fmt.Sprintf("block %q has %s — pass \"recursive\": true to delete the whole subtree", op.Id, countBlocks(descendants)),
+			fmt.Sprintf("block %q has %s — pass \"recursive\": true to delete the whole subtree", ref, countBlocks(descendants)),
 			v2model.Issue{Path: opPath, Message: "deleteBlock without recursive only deletes childless blocks", Hint: "or moveBlock the descendants out first"})
 	}
 	a.st.Unlink(blockId(doc.blocks[idx])) // the unlinked subtree is dropped by apply-side normalization
@@ -1461,7 +1519,7 @@ func (a *v2StateApplier) applyReplaceText(op opReplaceText, opPath string) error
 		// id omitted: find IS the locator (Wave 2.1a, §8.43) — resolved here,
 		// per op, against the live view, one match or refuse. doc is fresh
 		// under the object lock, so op i resolves against op i−1's edits.
-		idx, err = resolveByFind(doc, op.Find, opPath+".find")
+		idx, err = resolveByText(doc, op.Find, "find", opPath+".find", textBlocksOnly)
 	} else {
 		idx, err = a.resolveRef(doc, op.Id, opPath+".id")
 	}

@@ -347,10 +347,15 @@ type opSetProperties struct {
 	Remove map[string]json.RawMessage `json:"remove"`
 }
 
+// opUpdateBlock addresses its block through EITHER Id or Match (Wave 2.1b,
+// §8.45): Match is an exact substring of the block's text that must identify
+// exactly one block. Giving both is refused rather than ranked — see
+// resolveSubject.
 type opUpdateBlock struct {
-	Op  string                     `json:"op"`
-	Id  string                     `json:"id"`
-	Set map[string]json.RawMessage `json:"set"`
+	Op    string                     `json:"op"`
+	Id    string                     `json:"id"`
+	Match string                     `json:"match"`
+	Set   map[string]json.RawMessage `json:"set"`
 }
 
 type opReplaceSubtree struct {
@@ -383,9 +388,13 @@ type opMoveBlock struct {
 	Position string `json:"position"`
 }
 
+// opDeleteBlock addresses its block the same two ways as opUpdateBlock. This
+// is the op §5.1 calls out as the one where one-match-or-refuse is
+// load-bearing: a locator that guessed here would delete the wrong subtree.
 type opDeleteBlock struct {
 	Op        string `json:"op"`
 	Id        string `json:"id"`
+	Match     string `json:"match"`
 	Recursive bool   `json:"recursive"`
 }
 
