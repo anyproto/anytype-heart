@@ -26,6 +26,14 @@ type RehydratedEntry struct {
 	// not-yet-terminal claims.
 	PayloadRoot  []byte
 	PayloadHeads []string
+	// Reclaimable marks a crawl-resume seed (DM spec §8.3): the resumed
+	// pass 1 re-enumerates the live source, and its claim for this key is
+	// absorbed as a reuse of the recorded identity — no re-mint, no dedup
+	// re-query, no ledger re-record (08-13 §6.2 item 4). One-shot: after the
+	// reclaim, a further claim for the key is a converter bug again. Pass-3
+	// restarts leave it false — no pass 1 runs there, so any claim against a
+	// rehydrated key keeps failing loudly.
+	Reclaimable bool
 }
 
 // RehydratedFile is one completed upload: its future rehydrates already
@@ -44,10 +52,11 @@ func WithRehydrated(entries []RehydratedEntry, files []RehydratedFile) Option {
 				mode = entryMatched
 			}
 			s.entries[record.SourceKey] = &entry{
-				id:       record.ObjectId,
-				mode:     mode,
-				claimed:  true,
-				assigned: record.Terminal,
+				id:          record.ObjectId,
+				mode:        mode,
+				claimed:     true,
+				assigned:    record.Terminal,
+				reclaimable: record.Reclaimable,
 			}
 			if !record.Matched && len(record.PayloadRoot) > 0 && !record.Terminal {
 				s.payloads[record.ObjectId] = treestorage.TreeStorageCreatePayload{

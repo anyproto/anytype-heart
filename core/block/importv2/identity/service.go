@@ -67,6 +67,10 @@ type entry struct {
 	// The gap between the two is the completeness-reconciliation input.
 	claimed  bool
 	assigned bool
+	// reclaimable marks a crawl-resume rehydration seed: exactly one claim
+	// for the key is absorbed as a reuse of the recorded identity (see
+	// RehydratedEntry.Reclaimable). Cleared by that claim.
+	reclaimable bool
 }
 
 // ClaimLedgerRecord is one pass-1 decision handed to the durable ledger:
@@ -138,17 +142,26 @@ func NewService(space TreePayloadCreator, store Store, updateExisting bool, now 
 	return s
 }
 
-// Claim mints or dedup-matches one pass-1 identity claim.
+// Claim mints or dedup-matches one pass-1 identity claim. On a crawl-resumed
+// run, a claim for a reclaimable rehydrated key is absorbed as a reuse of the
+// recorded decision: no re-mint (the seed argument — a new payload's random
+// seed would yield a different id while the spooled references point at the
+// recorded one), no dedup re-query, no ledger re-record.
 func (s *Service) Claim(ctx context.Context, c importv2.IdentityClaim) error {
 	if c.SourceKey == "" {
 		return fmt.Errorf("claim: empty source key")
 	}
-	s.mu.RLock()
-	_, dup := s.entries[c.SourceKey]
-	s.mu.RUnlock()
-	if dup {
+	s.mu.Lock()
+	if e, dup := s.entries[c.SourceKey]; dup {
+		if e.reclaimable {
+			e.reclaimable = false // one-shot: the next claim is a bug again
+			s.mu.Unlock()
+			return nil
+		}
+		s.mu.Unlock()
 		return fmt.Errorf("claim %q: duplicate source key", c.SourceKey)
 	}
+	s.mu.Unlock()
 
 	// Minted (page-class) objects keep the flag's gate: whether a re-import
 	// overwrites the user's pages is the user's call.

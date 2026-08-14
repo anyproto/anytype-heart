@@ -138,3 +138,94 @@ func TestRehydratedFiles(t *testing.T) {
 		assert.Equal(t, "file-1", id)
 	})
 }
+
+func TestReclaimableRehydratedClaims(t *testing.T) {
+	t.Run("a crawl re-claim reuses the recorded identity: no mint, no dedup query, no error", func(t *testing.T) {
+		// given — DM spec §8.3 via 08-13 §6.2 item 4: a resumed pass 1 runs
+		// against the live source, and claims whose sourceKey already has a
+		// ledger row are no-ops. The mock space has no CreateTreePayload
+		// expectation, so any re-mint fails the test by itself.
+		service := rehydratedService(t, []RehydratedEntry{{
+			SourceKey:    "page-1",
+			ObjectId:     "obj-1",
+			PayloadRoot:  []byte("raw-root"),
+			PayloadHeads: []string{"obj-1"},
+			Reclaimable:  true,
+		}}, nil)
+
+		// when
+		err := service.Claim(context.Background(), importv2.IdentityClaim{
+			SourceKey:      "page-1",
+			SbType:         coresb.SmartBlockTypePage,
+			SourceFilePath: "page-1",
+		})
+
+		// then: the claim is absorbed and the recorded identity stands
+		require.NoError(t, err)
+		assignment, err := service.Assign("page-1")
+		require.NoError(t, err)
+		assert.Equal(t, "obj-1", assignment.Id)
+		assert.Equal(t, []byte("raw-root"), assignment.Payload.RootRawChange.GetRawChange())
+	})
+
+	t.Run("a SECOND claim within the incarnation still errors: reclaim is one-shot", func(t *testing.T) {
+		// given — the duplicate-source-key error exists to catch converter
+		// bugs; rehydration must not blunt it for the resumed incarnation.
+		service := rehydratedService(t, []RehydratedEntry{{
+			SourceKey: "page-1", ObjectId: "obj-1", Reclaimable: true,
+			PayloadRoot: []byte("raw-root"),
+		}}, nil)
+		require.NoError(t, service.Claim(context.Background(), importv2.IdentityClaim{
+			SourceKey: "page-1", SbType: coresb.SmartBlockTypePage,
+		}))
+
+		// when
+		err := service.Claim(context.Background(), importv2.IdentityClaim{
+			SourceKey: "page-1", SbType: coresb.SmartBlockTypePage,
+		})
+
+		// then
+		require.Error(t, err, "a duplicate claim within one incarnation is a converter bug")
+	})
+
+	t.Run("pass-3 rehydration stays non-reclaimable: a claim against it errors", func(t *testing.T) {
+		// given — no pass 1 runs on a pass-3 restart, so a claim arriving for
+		// a rehydrated key there is a bug, not a resume: the Reclaimable flag
+		// is what separates the two loaders.
+		service := rehydratedService(t, []RehydratedEntry{{
+			SourceKey: "page-1", ObjectId: "obj-1", PayloadRoot: []byte("raw-root"),
+		}}, nil)
+
+		// when
+		err := service.Claim(context.Background(), importv2.IdentityClaim{
+			SourceKey: "page-1", SbType: coresb.SmartBlockTypePage,
+		})
+
+		// then
+		require.Error(t, err)
+	})
+
+	t.Run("a reclaim does not re-record through the claim ledger", func(t *testing.T) {
+		// given — the ledger row already exists (the resume loaded it from
+		// there); re-recording would be a no-op merge at best and a
+		// displacement hazard at worst.
+		ledger := &fakeClaimLedger{}
+		store := objectstore.NewStoreFixture(t)
+		space := mock_clientspace.NewMockSpace(t)
+		service := NewService(space, store.SpaceIndex(spaceId), false, time.Unix(1700000000, 0),
+			WithRehydrated([]RehydratedEntry{{
+				SourceKey: "page-1", ObjectId: "obj-1", Reclaimable: true,
+				PayloadRoot: []byte("raw-root"),
+			}}, nil),
+			WithClaimLedger(ledger))
+
+		// when
+		require.NoError(t, service.Claim(context.Background(), importv2.IdentityClaim{
+			SourceKey: "page-1", SbType: coresb.SmartBlockTypePage,
+		}))
+		require.NoError(t, service.FlushClaims(context.Background()))
+
+		// then
+		assert.Empty(t, ledger.batches, "a reclaim must not re-enter the ledger")
+	})
+}
