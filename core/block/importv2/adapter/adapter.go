@@ -205,6 +205,15 @@ func (s *service) Import(req *pb.RpcObjectImportRequest) {
 
 func (s *service) runImport(req *pb.RpcObjectImportRequest) {
 	progress := s.setupProgress(req)
+	// B2: the spinner must stop whatever happens below — a panic unwinds
+	// through here before Import's recover, so the process is finished on
+	// every path, not only the normal one.
+	progressSettled := false
+	defer func() {
+		if !progressSettled {
+			progress.Finish(fmt.Errorf("import aborted"))
+		}
+	}()
 	runCtx, cancel := context.WithCancelCause(s.componentCtx)
 	defer cancel(nil)
 	handle := s.registerRun(cancel)
@@ -231,11 +240,13 @@ func (s *service) runImport(req *pb.RpcObjectImportRequest) {
 			Warnf("import suspended for shutdown")
 		s.fileSync.ClearImportEvents()
 		progress.Finish(result.Err)
+		progressSettled = true
 		return
 	}
 
 	logRunResult(req, result)
 	s.finishProgress(progress, req, result)
+	progressSettled = true
 	if result.Err == nil {
 		s.fileSync.SendImportEvents()
 	}
@@ -305,7 +316,7 @@ func (s *service) execute(ctx context.Context, req *pb.RpcObjectImportRequest, p
 	}
 	spc, err := s.spaceService.Get(ctx, req.SpaceId)
 	if err != nil {
-		return &importv2.Result{Err: importv2.Fatal(importv2.IssueStoreError, fmt.Errorf("get space: %w", err))}
+		return stopFatal(ctx, importv2.IssueStoreError, fmt.Errorf("get space: %w", err))
 	}
 
 	request := importv2.Request{
@@ -372,7 +383,7 @@ func (s *service) executeNotion(ctx context.Context, request importv2.Request, r
 	}
 	lc, err := s.beginRun(ctx, request, "Notion", 0)
 	if err != nil {
-		return &importv2.Result{Err: importv2.Fatal(importv2.IssueStoreError, err)}
+		return stopFatal(ctx, importv2.IssueStoreError, err)
 	}
 	defer lc.release() // Invariant 3: a panic below must not leak the registry hold
 	apiClient := notionclient.NewClient(params.GetApiKey())
@@ -420,13 +431,13 @@ func markdownParams(req *pb.RpcObjectImportRequest) ([]string, mdParams, error) 
 func (s *service) runOne(ctx context.Context, request importv2.Request, spc clientspace.Space, importPath string, pathIndex int, params mdParams, progress process.Progress) *importv2.Result {
 	src, err := source.Open(importPath)
 	if err != nil {
-		return &importv2.Result{Err: importv2.Fatal(importv2.IssueSourceInvalid, fmt.Errorf("open source: %w", err))}
+		return stopFatal(ctx, importv2.IssueSourceInvalid, fmt.Errorf("open source: %w", err))
 	}
 	defer src.Close()
 
 	lc, err := s.beginRun(ctx, request, "Markdown", pathIndex)
 	if err != nil {
-		return &importv2.Result{Err: importv2.Fatal(importv2.IssueStoreError, err)}
+		return stopFatal(ctx, importv2.IssueStoreError, err)
 	}
 	defer lc.release() // Invariant 3: a panic below must not leak the registry hold
 	converter := markdown.New(src, markdown.Params{
@@ -450,13 +461,13 @@ func (s *service) runEngine(ctx context.Context, request importv2.Request, conve
 	if lc.store != nil {
 		storeSpool, err := lc.store.Spool(ctx)
 		if err != nil {
-			return &importv2.Result{Err: importv2.Fatal(importv2.IssueStoreError, fmt.Errorf("open spool: %w", err))}
+			return stopFatal(ctx, importv2.IssueStoreError, fmt.Errorf("open spool: %w", err))
 		}
 		spool = storeSpool
 	} else {
 		standalone, err := runstore.OpenStandaloneSpool(ctx, lc.spillDir)
 		if err != nil {
-			return &importv2.Result{Err: importv2.Fatal(importv2.IssueStoreError, fmt.Errorf("open spool: %w", err))}
+			return stopFatal(ctx, importv2.IssueStoreError, fmt.Errorf("open spool: %w", err))
 		}
 		defer standalone.Close()
 		spool = standalone
@@ -573,6 +584,19 @@ func (s *service) finishProgress(progress process.Progress, req *pb.RpcObjectImp
 			IssuesCount:    issuesCount(result),
 		}},
 	}, result.Err)
+}
+
+// stopFatal classifies an in-run failure against the run context — the
+// adapter half of Invariant 1: a failure on a dead ctx IS the stop (a
+// shutdown or cancel), never an INTERNAL_ERROR notification.
+func stopFatal(ctx context.Context, code importv2.IssueCode, err error) *importv2.Result {
+	if ctx.Err() != nil {
+		return &importv2.Result{
+			Err:       importv2.Fatal(importv2.IssueCancelled, context.Cause(ctx)),
+			Suspended: errors.Is(context.Cause(ctx), importv2.ErrSuspended),
+		}
+	}
+	return &importv2.Result{Err: importv2.Fatal(code, err)}
 }
 
 func modeFromProto(mode pb.RpcObjectImportRequestMode) importv2.Mode {

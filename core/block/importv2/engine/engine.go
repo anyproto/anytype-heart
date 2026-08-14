@@ -168,6 +168,7 @@ func Run(ctx context.Context, req importv2.Request, converter importv2.Converter
 		return r.finish(runCtx, importv2.RootSpec{})
 	}
 	r.emitReport(runCtx, reportClaimed, reportTitle(rootSpec, converter))
+	r.allStagesDone = true
 	return r.finish(runCtx, rootSpec)
 }
 
@@ -184,6 +185,14 @@ func Run(ctx context.Context, req importv2.Request, converter importv2.Converter
 // the durable state for the startup sweep; everything else compensates.
 func (r *run) finish(runCtx context.Context, rootSpec importv2.RootSpec) *importv2.Result {
 	if runCtx.Err() != nil && r.fatalIssue() == nil {
+		// B3: a shutdown suspend landing after EVERY mutating stage has
+		// completed has nothing left to stop — classifying it as suspended
+		// made the next sweep compensate a complete import. The run is
+		// terminal-success. A user cancel in the same window still undoes:
+		// that is the cancel contract.
+		if r.allStagesDone && errors.Is(context.Cause(runCtx), importv2.ErrSuspended) {
+			return r.buildResult(importv2.Issue{}, rootSpec)
+		}
 		r.report(importv2.Fatal(importv2.IssueCancelled, context.Cause(runCtx)))
 	}
 	fatal := r.fatalIssue()
@@ -244,6 +253,7 @@ type run struct {
 	compensated      int
 	leaked           int
 	compensateState  int // 0 not run, 1 running, 2 done
+	allStagesDone    bool
 	// suspendedRun records the engine's own verdict — the run stopped for a
 	// shutdown suspend and was NOT compensated — carried out via
 	// Result.Suspended so the adapter never re-derives it from a context.

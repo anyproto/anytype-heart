@@ -120,6 +120,8 @@ type fakePersister struct {
 	fileOpenSeen map[string]bool
 	// observe, when set, fires at the top of every Persist call.
 	observe func()
+	// observeKeyed fires with the object's source key at the top of Persist.
+	observeKeyed func(sourceKey string)
 	// fileReady simulates reference resolution: objects whose key starts
 	// with "ref-" block until the file object's persist closes the channel
 	// (as resolver.ResolveRef blocks on the identity future in production).
@@ -129,6 +131,9 @@ type fakePersister struct {
 func (f *fakePersister) Persist(ctx context.Context, o *importv2.Object, target persist.Target, report func(importv2.Issue)) (persist.Outcome, error) {
 	if f.observe != nil {
 		f.observe()
+	}
+	if f.observeKeyed != nil {
+		f.observeKeyed(o.SourceKey)
 	}
 	// Fires outside the mutex: a recovered panic must not strand the lock.
 	if f.panicKeys[o.SourceKey] {
@@ -748,6 +753,49 @@ func TestRunStopClassification(t *testing.T) {
 			t.Fatal("run did not stop")
 		}
 	})
+}
+
+func TestSuspendAfterCompletion(t *testing.T) {
+	t.Run("a suspend landing after all stages completed is a completed import", func(t *testing.T) {
+		// given — B3: the root collection and report page have persisted;
+		// there is nothing left to stop. Classifying this as suspended made
+		// the next sweep compensate a COMPLETE import — new data loss. A
+		// user cancel in the same window still undoes (that is the cancel
+		// contract); only the shutdown suspend is terminal-success.
+		fx := newEngineFixture()
+		ctx, cancel := context.WithCancelCause(context.Background())
+		defer cancel(nil)
+		// the report page is the last mutating stage: fire the suspend from
+		// inside its persist, so it lands after every other stage
+		fx.persister.observe = func() {}
+		var suspendFired atomic.Bool
+		fx.persister.observeKeyed = func(sourceKey string) {
+			if sourceKey == "import-report" && !suspendFired.Swap(true) {
+				cancel(importv2.ErrSuspended)
+			}
+		}
+		converter := &issueScriptConverter{scriptConverter{objects: []*importv2.Object{pageObj("a.md", false)}}}
+
+		// when
+		result := Run(ctx, importv2.Request{Mode: importv2.ModeContinueOnError}, converter, fx.deps)
+
+		// then
+		require.NoError(t, result.Err, "a run that completed all its work is complete")
+		assert.False(t, result.Suspended)
+		assert.NotEmpty(t, result.ReportObjectId)
+		assert.Zero(t, result.Compensated)
+	})
+}
+
+// issueScriptConverter emits its objects plus one warning so the report
+// page (the final mutating stage) is produced.
+type issueScriptConverter struct {
+	scriptConverter
+}
+
+func (c *issueScriptConverter) Convert(ctx context.Context, sink importv2.Sink) (importv2.RootSpec, error) {
+	sink.Issue(importv2.Warning(importv2.IssueDataLoss, "a.md", "synthetic warning"))
+	return c.scriptConverter.Convert(ctx, sink)
 }
 
 func TestCompensationEvidence(t *testing.T) {

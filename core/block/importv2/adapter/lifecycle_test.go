@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files/filesync"
+	"github.com/anyproto/anytype-heart/core/notifications"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
@@ -42,6 +43,30 @@ func (f *fakeSpaceGetter) Get(ctx context.Context, spaceId string) (clientspace.
 type fakeProcesses struct{}
 
 func (fakeProcesses) ProcessAdd(p process.Process) error { return nil }
+
+// capturingProcesses keeps the registered process for assertions.
+type capturingProcesses struct {
+	progress process.Process
+}
+
+func (c *capturingProcesses) ProcessAdd(p process.Process) error {
+	c.progress = p
+	return nil
+}
+
+// fakeNotifications embeds the interface; only CreateAndSend is real.
+type fakeNotifications struct {
+	notifications.Notifications
+	mu   sync.Mutex
+	sent []*model.Notification
+}
+
+func (f *fakeNotifications) CreateAndSend(n *model.Notification) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.sent = append(f.sent, n)
+	return nil
+}
 
 // fakeFileSync embeds the interface: only the two import-event methods are
 // real, anything else panics loudly if the adapter starts calling it.
@@ -279,6 +304,31 @@ func TestLifecycleInvariants(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, runstore.StateCompensating, manifest.State)
 		assert.Equal(t, 1, fx.finishEvents())
+	})
+
+	t.Run("a panicking engine run still finishes its progress process", func(t *testing.T) {
+		// given — B2 (CONFIRMED): the recover in Import caught the panic but
+		// finishProgress sat on the normal path — the spinner never stopped.
+		fx := newLifecycleFixture(t)
+		captured := &capturingProcesses{}
+		fx.service.processes = captured
+		req := fx.script(func(ctx context.Context, request importv2.Request, converter importv2.Converter, spc clientspace.Space, lc *runLifecycle, progress process.Progress) *importv2.Result {
+			panic("injected engine panic")
+		})
+		req.NoProgress = false // a real (notification) process, so Finish is observable
+		fx.service.notificationsSvc = &fakeNotifications{}
+
+		// when
+		fx.service.Import(req)
+		fx.waitRuns()
+
+		// then
+		require.NotNil(t, captured.progress)
+		select {
+		case <-captured.progress.Done():
+		default:
+			t.Fatal("the progress process must be finished even on a panic path")
+		}
 	})
 
 	t.Run("a panicking engine run cannot leak the active registry", func(t *testing.T) {
