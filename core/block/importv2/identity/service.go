@@ -69,6 +69,36 @@ type entry struct {
 	assigned bool
 }
 
+// ClaimLedgerRecord is one pass-1 decision handed to the durable ledger:
+// the minted id is write-ahead intent, and the serialized payload is what a
+// later materialize-restart needs so it mints nothing (DM spec §6.2).
+type ClaimLedgerRecord struct {
+	SourceKey    string
+	ObjectId     string
+	Matched      bool
+	PayloadRoot  []byte // RawTreeChangeWithId proto; nil for matched claims
+	PayloadHeads []string
+}
+
+// ClaimLedger is the durable write-through seam for claims, implemented (via
+// a thin adapter wrapper) by runstore.Store.
+type ClaimLedger interface {
+	RecordClaims(ctx context.Context, claims []ClaimLedgerRecord) error
+}
+
+// claimBatchSize batches ledger writes (08-13 §5.2: measured 3-4x over
+// per-claim commits; an unflushed batch's loss is harmless — no side
+// effects exist at claim time, the resumed pass simply re-mints).
+const claimBatchSize = 500
+
+// Option configures a Service.
+type Option func(*Service)
+
+// WithClaimLedger attaches the durable claim ledger.
+func WithClaimLedger(ledger ClaimLedger) Option {
+	return func(s *Service) { s.ledger = ledger }
+}
+
 // Service implements the identity index for one run. Claim, Assign and
 // AssignDerived are called from the engine's single dispatch goroutine;
 // Resolve, ResolveFile and CompleteFile are safe for concurrent worker use.
@@ -77,6 +107,7 @@ type Service struct {
 	store          Store
 	updateExisting bool
 	now            time.Time
+	ledger         ClaimLedger
 
 	mu       sync.RWMutex
 	entries  map[string]*entry
@@ -84,10 +115,14 @@ type Service struct {
 	// derived memoizes uniqueKey → assignment so a repeated definition
 	// converges to one object per run.
 	derived map[string]Assignment
+	// pending buffers claim records between ledger flushes. Claims arrive on
+	// one goroutine per pass (engine dispatch / converter), so the buffer
+	// needs no lock of its own.
+	pending []ClaimLedgerRecord
 }
 
-func NewService(space TreePayloadCreator, store Store, updateExisting bool, now time.Time) *Service {
-	return &Service{
+func NewService(space TreePayloadCreator, store Store, updateExisting bool, now time.Time, opts ...Option) *Service {
+	s := &Service{
 		space:          space,
 		store:          store,
 		updateExisting: updateExisting,
@@ -96,6 +131,10 @@ func NewService(space TreePayloadCreator, store Store, updateExisting bool, now 
 		payloads:       map[string]treestorage.TreeStorageCreatePayload{},
 		derived:        map[string]Assignment{},
 	}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s
 }
 
 // Claim mints or dedup-matches one pass-1 identity claim.
@@ -134,6 +173,47 @@ func (s *Service) Claim(ctx context.Context, c importv2.IdentityClaim) error {
 	s.mu.Lock()
 	s.entries[c.SourceKey] = &entry{id: id, mode: mode, claimed: true}
 	s.mu.Unlock()
+	return s.ledgerClaim(ctx, c.SourceKey, id, mode == entryMatched)
+}
+
+// ledgerClaim buffers one claim for the durable ledger, flushing full
+// batches. The payload serializes at claim time (the root change is the
+// id's own proof — a restart must reuse it, never re-mint).
+func (s *Service) ledgerClaim(ctx context.Context, sourceKey, id string, matched bool) error {
+	if s.ledger == nil {
+		return nil
+	}
+	record := ClaimLedgerRecord{SourceKey: sourceKey, ObjectId: id, Matched: matched}
+	if !matched {
+		s.mu.RLock()
+		payload, ok := s.payloads[id]
+		s.mu.RUnlock()
+		if ok {
+			// RootRawChange is {RawChange []byte, Id string} and the Id IS
+			// the objectId — the raw bytes alone reconstruct the payload.
+			record.PayloadRoot = payload.RootRawChange.GetRawChange()
+			record.PayloadHeads = payload.Heads
+		}
+	}
+	s.pending = append(s.pending, record)
+	if len(s.pending) >= claimBatchSize {
+		return s.FlushClaims(ctx)
+	}
+	return nil
+}
+
+// FlushClaims writes the buffered claim batch through the ledger. The
+// engine calls it at the end of pass 1 (and the sink's late claims ride the
+// next flush or the pass-2 end).
+func (s *Service) FlushClaims(ctx context.Context) error {
+	if s.ledger == nil || len(s.pending) == 0 {
+		return nil
+	}
+	batch := s.pending
+	s.pending = nil
+	if err := s.ledger.RecordClaims(ctx, batch); err != nil {
+		return fmt.Errorf("record claims: %w", err)
+	}
 	return nil
 }
 

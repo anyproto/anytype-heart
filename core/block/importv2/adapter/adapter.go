@@ -448,7 +448,7 @@ func (s *service) runEngine(ctx context.Context, request importv2.Request, conve
 	}
 	formats := resolve.NewFormats()
 	keys := engine.NewKeyTable()
-	identitySvc := identity.NewService(spc, s.objectStore.SpaceIndex(request.SpaceID), request.UpdateExisting, time.Now())
+	identitySvc := identity.NewService(spc, s.objectStore.SpaceIndex(request.SpaceID), request.UpdateExisting, time.Now(), lc.identityOptions()...)
 	resolver := resolve.New(identitySvc, keys, formats)
 	persister := persist.New(
 		request.SpaceID,
@@ -474,6 +474,7 @@ func (s *service) runEngine(ctx context.Context, request importv2.Request, conve
 		Collection:     &collectionFactory{service: s.collectionService, addDate: true},
 		Reporter:       &progressReporter{progress: progress},
 		OnCompensating: s.onCompensating(lc),
+		OnIssue:        s.onIssue(lc),
 	})
 }
 

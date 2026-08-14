@@ -48,6 +48,8 @@ func (f *fakeIdentity) Claim(ctx context.Context, c importv2.IdentityClaim) erro
 	return nil
 }
 
+func (f *fakeIdentity) FlushClaims(ctx context.Context) error { return nil }
+
 func (f *fakeIdentity) Assign(sourceKey string) (identity.Assignment, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

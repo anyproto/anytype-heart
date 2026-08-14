@@ -52,6 +52,9 @@ func (noopReporter) Step(int64)     {}
 // IdentityService is the identity seam (implemented by identity.Service).
 type IdentityService interface {
 	Claim(ctx context.Context, c importv2.IdentityClaim) error
+	// FlushClaims drains the buffered durable claim batch (no-op without a
+	// ledger); the engine calls it at the end of pass 1.
+	FlushClaims(ctx context.Context) error
 	Assign(sourceKey string) (identity.Assignment, error)
 	AssignDerived(ctx context.Context, o *importv2.Object) (identity.Assignment, error)
 	RegisterFile(sourceKey string)
@@ -85,6 +88,11 @@ type Deps struct {
 	// state there, so a crash mid-cleanup is finished by the startup sweep
 	// (spec §6.5).
 	OnCompensating func()
+	// OnIssue, when set, receives every retained issue as it is reported —
+	// the adapter's durable issue ledger (pass-2 issues must survive to the
+	// pass-3 report page, DM spec §6.2). Called outside the issue lock; must
+	// be safe for concurrent use and must not block.
+	OnIssue func(issue importv2.Issue)
 }
 
 // Run executes one import. The passed ctx is the run's single cancellation
@@ -218,7 +226,8 @@ type run struct {
 // abort predicate.
 func (r *run) report(issue importv2.Issue) {
 	r.issueMu.Lock()
-	if len(r.issues) < importv2.IssueCap {
+	kept := len(r.issues) < importv2.IssueCap
+	if kept {
 		r.issues = append(r.issues, issue)
 	} else {
 		r.issuesDropped++
@@ -235,6 +244,9 @@ func (r *run) report(issue importv2.Issue) {
 		r.fatal = &fatal
 	}
 	r.issueMu.Unlock()
+	if kept && r.deps.OnIssue != nil {
+		r.deps.OnIssue(issue)
+	}
 	if abort {
 		r.cancel()
 	}
@@ -265,6 +277,10 @@ func (r *run) identityPass(ctx context.Context, converter importv2.Converter) *i
 	}
 	if count == 0 {
 		issue := importv2.Fatal(importv2.IssueNoObjects, fmt.Errorf("source contains no importable objects"))
+		return &issue
+	}
+	if err := r.deps.Identity.FlushClaims(ctx); err != nil {
+		issue := classifyFatal(err, importv2.IssueStoreError)
 		return &issue
 	}
 	r.deps.Reporter.AddTotal(count)

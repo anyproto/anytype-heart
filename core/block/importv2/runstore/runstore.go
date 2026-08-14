@@ -113,8 +113,11 @@ type Store struct {
 	manifest anystore.Collection
 	entries  anystore.Collection
 	files    anystore.Collection
+	payloads anystore.Collection
+	issues   anystore.Collection
 	arenas   *anyenc.ArenaPool
 	rank     atomic.Int64
+	issueSeq atomic.Int64
 	// closed makes Close idempotent, so each Store releases its active-dir
 	// registry hold exactly once whatever combination of Close/Drop/deferred
 	// release paths runs.
@@ -277,6 +280,8 @@ func open(ctx context.Context, dir string) (*Store, error) {
 		{collManifest, &s.manifest},
 		{collEntries, &s.entries},
 		{collFiles, &s.files},
+		{collPayloads, &s.payloads},
+		{collIssues, &s.issues},
 	} {
 		if *coll.target, err = db.Collection(ctx, coll.name); err != nil {
 			_ = db.Close()
@@ -382,8 +387,14 @@ func (s *Store) recordEntry(ctx context.Context, sourceKey, objectId, mode, acti
 				if existingId != "" && existingId != objectId {
 					// the INCOMING id would vanish (minted-sticky keeps the row)
 					displacedId, displacedMode = objectId, mode
+					return v, false, nil
 				}
-				return v, false, nil
+				// same id: the effect completes the claim — status/action
+				// advance, but mode/rank/objectId (the frozen compensation
+				// fields) stay exactly as first written.
+				v.Set("status", arena.NewString(statusPersisted))
+				v.Set("action", arena.NewString(action))
+				return v, true, nil
 			}
 			if existingId != "" && existingId != objectId {
 				// the EXISTING id would vanish (this write replaces the row)

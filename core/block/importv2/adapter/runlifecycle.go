@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 
 	"github.com/globalsign/mgo/bson"
 
 	"github.com/anyproto/anytype-heart/core/block/importv2"
+	"github.com/anyproto/anytype-heart/core/block/importv2/identity"
 	"github.com/anyproto/anytype-heart/core/block/importv2/runstore"
 	"github.com/anyproto/anytype-heart/util/vcs"
 )
@@ -133,6 +135,62 @@ func (s *service) finishRun(lc *runLifecycle, result *importv2.Result) {
 	}
 	if err := lc.store.Drop(); err != nil {
 		log.Errorf("drop run dir: %s", err)
+	}
+}
+
+// claimLedger adapts identity's claim records onto the run store.
+type claimLedger struct {
+	store *runstore.Store
+}
+
+func (l *claimLedger) RecordClaims(ctx context.Context, claims []identity.ClaimLedgerRecord) error {
+	records := make([]runstore.ClaimRecord, 0, len(claims))
+	for _, c := range claims {
+		records = append(records, runstore.ClaimRecord{
+			SourceKey:    c.SourceKey,
+			ObjectId:     c.ObjectId,
+			Matched:      c.Matched,
+			PayloadRoot:  c.PayloadRoot,
+			PayloadHeads: c.PayloadHeads,
+		})
+	}
+	return l.store.RecordClaims(ctx, records)
+}
+
+// identityOptions attaches the durable claim ledger in durable mode.
+func (lc *runLifecycle) identityOptions() []identity.Option {
+	if lc.store == nil {
+		return nil
+	}
+	return []identity.Option{identity.WithClaimLedger(&claimLedger{store: lc.store})}
+}
+
+// onIssue writes every retained issue to the durable ledger (pass-2 issues
+// must survive to the pass-3 report, DM spec §6.2), capped like the
+// in-memory list. Errors degrade to a log line: an issue-ledger problem must
+// never abort a run that is otherwise fine.
+func (s *service) onIssue(lc *runLifecycle) func(importv2.Issue) {
+	if lc.store == nil {
+		return nil
+	}
+	var count atomic.Int64
+	return func(issue importv2.Issue) {
+		if count.Add(1) > importv2.IssueCap {
+			return
+		}
+		record := runstore.IssueRecord{
+			Severity:  int(issue.Severity),
+			Code:      string(issue.Code),
+			SourceKey: issue.SourceKey,
+			ObjectId:  issue.ObjectId,
+			Message:   issue.Message,
+		}
+		if issue.Err != nil {
+			record.Error = issue.Err.Error()
+		}
+		if err := lc.store.AppendIssue(context.Background(), record); err != nil {
+			log.Errorf("append issue to run ledger: %s", err)
+		}
 	}
 }
 
