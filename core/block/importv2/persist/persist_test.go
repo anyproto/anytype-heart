@@ -561,10 +561,13 @@ func TestPersistFile(t *testing.T) {
 	})
 
 	t.Run("url-only source — the replayed-spool shape — uploads by url", func(t *testing.T) {
-		// given — the shape every remote file has after a spool round-trip:
-		// runstore rebuilds FileSource with URL but no Open closure (closures
-		// don't serialize) and no local path, so materialize yields "" and
-		// req.Url is the ONLY thing letting the uploader re-fetch. This
+		// given — the shape of a source the engine did NOT spill: the spool
+		// round-trip strips Open closures (they don't serialize), so a row
+		// with a URL and no path reaches persist exactly like this, and
+		// materialize's contract ("uploader fetches the url itself") makes
+		// req.Url the ONLY fetch carrier. (Notion sources are drained to the
+		// run-dir spill in pass 2 and replay by path; this branch is the
+		// seam's promise to any converter that emits bare URLs.) This
 		// assertion is the branch's first reader: deleting it left the whole
 		// suite green while every url-only upload lost its source.
 		fx := newFixture(t)
