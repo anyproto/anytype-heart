@@ -261,7 +261,16 @@ naming the descendant count.
   `position` here at all).
 - **`deleteBlock`**: `recursive` defaults to false; deleting a block that
   has descendants without `recursive:true` → error naming the descendant
-  count (R14).
+  count and the resolved block id (R14).
+- **`match` — the id alternative on `updateBlock` and `deleteBlock`**
+  (Wave 2.1b, §8.45): an exact substring of the block's text, which must
+  appear in exactly ONE block or the op refuses — the same rule
+  `replaceText`'s `find` follows (§8.43), resolved per-op against the live
+  document view under the object lock.
+  `{"op":"updateBlock","match":"Draft timeline","set":{"checked":true}}`.
+  Give `id` or `match`, **never both** — the combination is refused rather
+  than ranked, and giving neither is refused too. Repeats *within* the one
+  matched block are fine: `match` addresses a block, not an occurrence.
 - **`setProperties`** (R14): `set` writes presence — `"k": []` means
   present-but-empty (SPEC §3 presence-is-meaningful); `unset` removes
   presence. Output-only properties (SPEC §4a) are rejected with a
@@ -6723,3 +6732,120 @@ wire; F7 — dry_run + the naming refusal is a new API-queryable channel for
 enumerating per-object creator integrations under a write grant; F8 —
 type/property DELETEs archive on the write grant alone ("own output only"
 is this route's property, not v2 deletion's — §17.1 stays open).
+
+### 8.45 Wave 2.1b — `match` as the id alternative on updateBlock and deleteBlock (2026-08-15 — decisions as built)
+
+The second locator slice (TOKENS §5.1's next two verdicts, plan 2.1b):
+`match` — an exact substring of the block's text — addresses the block
+instead of `id` on `updateBlock` (the checkbox-toggle case: `{"op":
+"updateBlock", "match": "Draft timeline", "set": {"checked": true}}`) and
+on `deleteBlock`, where §5.1 marks one-match-or-refuse as load-bearing
+*because* the op is destructive. §5.3's rule is unchanged and was not
+re-derived: exactly one block or refuse, resolved per-op against the
+applier's live document view under the object lock.
+
+**One resolver, generalised — not a second one.** 2.1a's `resolveByFind`
+became `resolveByText(doc, text, field, path, scope)` and serves all three
+ops. Two parameters carry everything an op contributes:
+
+- **`field`** names the caller's own slot in the refusals ("copy the
+  **match** text exactly…", "add surrounding text to **match** until it
+  appears in one block only"). An `updateBlock` told to edit `find` is
+  told to edit a field it does not have — the repair has to speak the
+  vocabulary the caller wrote.
+- **`scope`** is the candidate set: `replaceText` keeps its text-bearing
+  gate (§8.43 — a block it could not edit must neither capture its match
+  nor make a unique one ambiguous), while `updateBlock`/`deleteBlock` scan
+  **every** block, because they address any block. The two scopes coincide
+  today — the exporter writes `text` only on the types `TextBlockType`
+  covers — so this is a stated rule rather than an observable difference;
+  it is stated because the failure it prevents is asymmetric. An excluded
+  block cannot capture a match, but it also cannot make a wrong match
+  AMBIGUOUS, and on `deleteBlock` that is a silently deleted wrong
+  subtree. Narrowing is only ever safe where the excluded blocks could not
+  be the intent AND the op would refuse them anyway.
+
+**Decision 1 — `id` and `match` together are REFUSED, never ranked.**
+`match` has exactly one job (addressing), so any precedence rule leaves
+one of the two fields silently inert, which is the failure shape this
+surface spent five review rounds removing; and reading the loser as a
+content *precondition* instead ("update b5, but only if it still says X")
+would invent a second meaning for `match` at the point of conflict, off
+§5.2's three-field vocabulary. `replaceText` is not a counter-example: its
+`find` is the text to splice first and the locator only when `id` is
+absent, so there is nothing to rank there either. **Neither channel is
+refused too**: an id-less `updateBlock` used to resolve the empty string
+and report `block "" not found`, a 404 naming nothing. Both refusals reuse
+the shipped vocabulary for alternative channels (`insertPayload`'s
+blocks-or-markdown pair): `ambiguous_input` for both, `validation_failed`
+for neither, addressed at `ops[i]`.
+
+**Decision 2 — `deleteBlock` + `recursive` under a locator.** The
+descendant guard now names the **resolved** id (`block "blockParent1" has
+1 descendant block — pass "recursive": true …`): a locator caller never
+sent an id, and `block ""` is not a value it could retry with, while the
+resolved full id always is. The receipt is unchanged — `match` +
+`recursive` deletes the subtree and `diffStats.blocksRemoved` counts it
+exactly as the id form does. The ambiguity refusal is usable for a
+destructive retry by construction, since its candidates are full stored
+ids; a test **replays one of the listed candidates** and asserts it
+deletes that exact block, so "the list is usable" is pinned rather than
+assumed.
+
+**Decision 3 — matching on text the op is about to change.** Resolution
+runs **before** the op's own `set` — the only coherent order (the block
+has to be found before it can be changed), and what makes both §5.1's
+checkbox case and a match-then-rewrite rename expressible at all. Across a
+batch the same rule reads forward: op *i* matches what op *i−1* **wrote**,
+never what it overwrote. Both directions are pinned — an op-0 rename whose
+new text op 1 matches (a stale view would 404 the batch), and the same
+rename whose OLD text op 1 matches (a stale view would resolve it and edit
+a block whose content the batch had already replaced).
+
+**Within-block multiplicity is not a refusal here — the one place §5 did
+not transfer.** §5.3's third bullet ("several occurrences within the one
+block → the existing more-context refusal") is written from
+`replaceText`'s vantage and does not generalise: that refusal lives in
+`applyReplaceText`, not in the resolver, and it exists only because
+replaceText must splice ONE occurrence. `updateBlock`/`deleteBlock` act on
+the block, which a twice-occurring snippet identifies perfectly well —
+refusing would demand disambiguation of a question the op never asks (and
+`nth`, 2.1c, is a document-order index over BLOCKS, so it would not even
+be the escape). The served `match` description says so outright.
+
+**Mid-batch freshness, and the render bound.** Resolution reads `a.doc()`
+— the same live view id-suffix resolution uses — so both view paths stay
+correct, and it adds **zero renders**: a match-addressed `deleteBlock`
+batch costs exactly what the id-addressed one costs (begin + one rebuild
+per structural op + the final after-document), which `TestApplierRenderCounts`
+now asserts by comparing the two. Dry run and apply resolve identically at
+apply time (C9 advisory).
+
+**Schema and surface.** Both ops publish ONE shared `match` def
+(`v2OpMatchPropDef`) and drop `id` from `required` — an op that accepts a
+locator cannot go on requiring an id, or a schema-constrained decoder can
+never write the locator form at all. The served examples are the locator
+form (`updateBlock` is §5.1's checkbox case verbatim; `deleteBlock` keeps
+`recursive` in the example, which is the other thing that op has to
+teach). A new cross-check, `TestMatchLocatorIsPublishedExactlyWhereItWorks`,
+probes every op through the real decoder and requires the schema half and
+the runtime half to advertise the same set — §8.30's bug class, in both
+directions, derived rather than listed. v1's OpenAPI document is
+byte-identical.
+
+**The wrapper gains nothing here, and that is not a gap.** `check_item`
+and `delete_block` are the tool-level equivalents, but neither has a
+double-read to drop: unlike `edit_text` (whose `locateBlock` GET §8.43
+retired), both have always passed a REQUIRED `block` straight to the op's
+`id`, so each is already ONE request. The only benefit left would be
+making `block` optional with a text locator — a tool-surface change that
+needs a second argument (reusing `block` for "an id or some text" is
+exactly the silent precedence this slice just refused a layer down), on
+two `TierLarge` tools, with no measurement behind it: §8.21's optional-
+`block` win was measured for `edit_text` at the SMALL tier, and the
+small-tier rerun (plan Q4) is still blocked on the Ollama host. The API
+capability is there for every client the moment an eval shows it pays —
+which is §5.5's point. Nothing regresses either: `block` is a required,
+non-empty-checked wrapper argument, so the "give id or match" refusal is
+unreachable from the wrapper and no `match` vocabulary can leak into a
+tool that has no such argument.

@@ -52,9 +52,9 @@ whether you may write. Ask this instead of discovering limits through 403s
 | change property values | PATCH op `setProperties` — `add`/`remove` for list values, `set` for scalars |
 | complete a task object | `setProperties` (`"set":{"done":true}` or the status option) — a property, not a block edit |
 | change a word/phrase | op `replaceText` `{find, replace}` — `id` optional; never retype the block |
-| toggle a checkbox block | op `updateBlock` `{"id":…,"set":{"checked":true}}` — merge; text untouched |
+| toggle a checkbox block | op `updateBlock` `{"match":"Draft timeline","set":{"checked":true}}` — merge; text untouched. `match` or `id`, never both |
 | add content | op `insertBlocks` with a `markdown` payload — write markdown, the server parses it |
-| restructure | ops `moveBlock` / `replaceSubtree` / `deleteBlock` |
+| restructure | ops `moveBlock` / `replaceSubtree` / `deleteBlock` (`deleteBlock` takes `match` too) |
 | one table cell | op `setCell` — never rewrite the table |
 | show/hide a view column, edit a view | op `updateView` — works on sets, collections and a type's default view (PATCH the type OBJECT id from `GET …/types/{key}`) |
 | add / reorder / remove a view | ops `insertView` (`copyFrom` duplicates one) · `moveView` (`position:"first"` = default tab) · `deleteView` |
@@ -73,8 +73,9 @@ whether you may write. Ask this instead of discovering limits through 403s
   the tokens. Follow up with `?block={id}` for one subtree, or PATCH
   directly: **editing needs no prior full read once you know the ids**.
 - When the request already quotes the text to change, skip the read
-  entirely: `replaceText {find, replace}` locates the block itself (one
-  match, or a refusal listing the candidates).
+  entirely: `replaceText {find, replace}` locates the block itself, and
+  `updateBlock`/`deleteBlock` take `match` for the same job (one match, or
+  a refusal listing the candidates).
 - `?include=properties` or `?include=blocks` reads half the object.
   `?format=md` is a read-only markdown rendering.
 - Echo block ids back exactly as a read served them; if one is rejected as
@@ -94,7 +95,7 @@ whether you may write. Ask this instead of discovering limits through 403s
 { "ops": [
   { "op": "setProperties", "set": {"status": ["Done"]}, "unset": ["oldKey"],
     "add": {"tags": ["urgent"]}, "remove": {"assignee": ["bafy…"]} },
-  { "op": "updateBlock",  "id": "b5", "set": {"checked": true} },
+  { "op": "updateBlock",  "match": "Draft timeline", "set": {"checked": true} },
   { "op": "replaceText",  "find": "Q3 report", "replace": "Q4 report" },
   { "op": "insertBlocks", "after": "b3", "markdown": "## Notes\n- first\n- second" },
   { "op": "moveBlock",    "id": "b9", "inside": "b2", "position": "last" },
@@ -113,6 +114,13 @@ whether you may write. Ask this instead of discovering limits through 403s
   = present-but-empty; `unset` removes presence.
 - **`updateBlock`** is THE block-field op (merge; explicit `null` clears a
   field) — checkbox, color, language, retype, or full text rewrite.
+- **`match` addresses the block by its TEXT** on `updateBlock` and
+  `deleteBlock` — the `id` alternative: give one or the other, **never
+  both** (and never neither). The text must appear in exactly ONE block or
+  the op refuses: zero → read the outline, several → the error lists
+  candidate ids to retry with. Repeats inside the one matched block are
+  fine — `match` names a block, not an occurrence. It reads the document as
+  the ops before it in the batch left it.
 - **`replaceText`**: `id` is optional — omitted, `find` locates the block
   and must appear in exactly ONE block (zero or several matching blocks
   refuse; the ambiguity error lists candidate ids to retry with). Within
