@@ -183,6 +183,51 @@ func TestFileDisplacedWrite(t *testing.T) {
 	})
 }
 
+func TestPayloadOccupancy(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("a differing payload re-record never replaces the first", func(t *testing.T) {
+		// given — §9.1 item 1: the payload row is the write-ahead create
+		// payload and the id IS the hash of the root bytes, so a different
+		// root under one id is an identity violation upstream. The blind
+		// UpsertOne made it last-writer-wins — the wrong default for the row
+		// a pass-3 restart mints nothing without.
+		store := createStore(t, filepath.Join(t.TempDir(), "run-1"))
+		require.NoError(t, store.RecordClaims(ctx, []ClaimRecord{
+			{SourceKey: "k1", ObjectId: "obj-1", PayloadRoot: []byte("root-first"), PayloadHeads: []string{"obj-1"}},
+		}))
+
+		// when: a conflicting claim under another source key carries the
+		// same minted id with different payload bytes
+		require.NoError(t, store.RecordClaims(ctx, []ClaimRecord{
+			{SourceKey: "k2", ObjectId: "obj-1", PayloadRoot: []byte("root-second"), PayloadHeads: []string{"other"}},
+		}))
+
+		// then: first record wins entirely
+		root, heads, err := store.readPayloadForTest(ctx, "obj-1")
+		require.NoError(t, err)
+		assert.Equal(t, []byte("root-first"), root)
+		assert.Equal(t, []string{"obj-1"}, heads)
+	})
+
+	t.Run("an identical payload re-record is a no-op", func(t *testing.T) {
+		// given
+		store := createStore(t, filepath.Join(t.TempDir(), "run-1"))
+		claim := ClaimRecord{SourceKey: "k1", ObjectId: "obj-1", PayloadRoot: []byte("root"), PayloadHeads: []string{"obj-1"}}
+		require.NoError(t, store.RecordClaims(ctx, []ClaimRecord{claim}))
+
+		// when
+		claim.SourceKey = "k2"
+		require.NoError(t, store.RecordClaims(ctx, []ClaimRecord{claim}))
+
+		// then
+		root, heads, err := store.readPayloadForTest(ctx, "obj-1")
+		require.NoError(t, err)
+		assert.Equal(t, []byte("root"), root)
+		assert.Equal(t, []string{"obj-1"}, heads)
+	})
+}
+
 func TestDisplacedRankFrozen(t *testing.T) {
 	t.Run("re-displacing the same entry id does not reorder the delete set", func(t *testing.T) {
 		// given — the last instance of the frozen-rank defect class:

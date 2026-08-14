@@ -93,11 +93,13 @@ func (s *spoolSink) Object(ctx context.Context, object *importv2.Object) error {
 	if err := s.spool.Append(ctx, object); err != nil {
 		if ctx.Err() != nil {
 			// The run is being stopped; the failed append is the stop, not
-			// a store failure (finish classifies). NOTE for DM-2: the spool
-			// write itself still rides the cancellable ctx — acceptable
-			// while the spool dies with the dir, but the moment resume
-			// exists a suspend-truncated spool is silent content loss and
-			// the write must detach like the effect/claim ledgers do.
+			// a store failure (finish classifies). DECIDED for DM-2 (spec
+			// §9.1 item 3): the append stays on the cancellable ctx — resume
+			// replays only spools proven whole (manifest at fetched or
+			// later, and this sink's pass precedes fetched), and pass 3
+			// never appends, so a truncated spool is never replayed. DM-3's
+			// pass-2 crawl resume breaks that premise and must detach this
+			// write like the effect/claim ledgers (named DM-3 entry item).
 			return ctx.Err()
 		}
 		// A spool that cannot absorb is the run store failing: fatal, §7.2.

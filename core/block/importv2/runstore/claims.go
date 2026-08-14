@@ -1,8 +1,10 @@
 package runstore
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/query"
@@ -39,11 +41,6 @@ func (s *Store) RecordClaims(ctx context.Context, claims []ClaimRecord) error {
 		return fmt.Errorf("claims tx: %w", err)
 	}
 	txCtx := tx.Context()
-	arena := s.arenas.Get()
-	defer func() {
-		arena.Reset()
-		s.arenas.Put(arena)
-	}()
 	for _, claim := range claims {
 		mode := modeMinted
 		if claim.Matched {
@@ -81,21 +78,53 @@ func (s *Store) RecordClaims(ctx context.Context, claims []ClaimRecord) error {
 			}
 		}
 		if !claim.Matched && len(claim.PayloadRoot) > 0 {
-			payload := arena.NewObject()
-			payload.Set("id", arena.NewString(claim.ObjectId))
-			payload.Set("root", arena.NewBinary(claim.PayloadRoot))
-			heads := arena.NewArray()
-			for i, head := range claim.PayloadHeads {
-				heads.SetArrayItem(i, arena.NewString(head))
-			}
-			payload.Set("heads", heads)
-			if err = s.payloads.UpsertOne(txCtx, payload); err != nil {
+			if err = s.placePayload(txCtx, claim); err != nil {
 				return fmt.Errorf("payload %q: %w", claim.ObjectId, rollback(tx.Rollback(), err))
 			}
-			arena.Reset()
 		}
 	}
 	return tx.Commit()
+}
+
+// placePayload writes one write-ahead create payload, keyed by objectId,
+// under the occupancy rule (§9.1 item 1): the FIRST record wins entirely.
+// The minted id is the hash of the root bytes, so a differing re-record
+// under one id is an identity violation upstream — logged loudly, never
+// silently preferred; an identical re-record is an idempotent no-op.
+func (s *Store) placePayload(ctx context.Context, claim ClaimRecord) error {
+	conflicting := false
+	_, err := s.payloads.UpsertId(ctx, claim.ObjectId, query.ModifyFunc(
+		func(a *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
+			if existing := v.GetBytes("root"); len(existing) > 0 {
+				conflicting = !bytes.Equal(existing, claim.PayloadRoot) ||
+					!slices.Equal(readHeads(v), claim.PayloadHeads)
+				return v, false, nil
+			}
+			v.Set("root", a.NewBinary(claim.PayloadRoot))
+			heads := a.NewArray()
+			for i, head := range claim.PayloadHeads {
+				heads.SetArrayItem(i, a.NewString(head))
+			}
+			v.Set("heads", heads)
+			return v, true, nil
+		}))
+	if err != nil {
+		return err
+	}
+	if conflicting {
+		log.With("objectId", claim.ObjectId, "sourceKey", claim.SourceKey).
+			Errorf("conflicting create payload re-recorded under one object id — keeping the first record")
+	}
+	return nil
+}
+
+func readHeads(v *anyenc.Value) []string {
+	rows := v.GetArray("heads")
+	heads := make([]string, 0, len(rows))
+	for _, row := range rows {
+		heads = append(heads, string(row.GetStringBytes()))
+	}
+	return heads
 }
 
 func rollback(rollbackErr, err error) error {

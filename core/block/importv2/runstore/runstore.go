@@ -459,10 +459,19 @@ func (s *Store) RecordUpdated(ctx context.Context, sourceKey, objectId string) e
 //     (Invariant 3): the displaced id is preserved under a synthetic key,
 //     keeping its own mode (a matched id must never become deletable), and
 //     the conflict — an identity violation upstream — is logged loudly.
+//
+// The primary merge and the displacement preservation commit in ONE
+// transaction (§9.1 item 2): a crash between them would lose the displaced
+// id — and in the minted-sticky branch the primary write is a no-op, so the
+// synthetic row is the only record of the incoming effect.
 func (s *Store) recordEntry(ctx context.Context, sourceKey, objectId, mode, action string) error {
 	rank := int(s.rank.Add(1))
 	var displacedId, displacedMode, displacedStatus, keptId string
-	_, err := s.entries.UpsertId(ctx, sourceKey, query.ModifyFunc(
+	tx, err := s.db.WriteTx(ctx)
+	if err != nil {
+		return fmt.Errorf("entry tx: %w", err)
+	}
+	_, err = s.entries.UpsertId(tx.Context(), sourceKey, query.ModifyFunc(
 		func(arena *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
 			existingId := string(v.GetStringBytes("objectId"))
 			if string(v.GetStringBytes("mode")) == modeMinted {
@@ -508,12 +517,18 @@ func (s *Store) recordEntry(ctx context.Context, sourceKey, objectId, mode, acti
 			v.Set("incarnation", arena.NewNumberInt(1))
 			return v, true, nil
 		}))
-	if err != nil || displacedId == "" {
-		return err
+	if err != nil {
+		return rollback(tx.Rollback(), err)
+	}
+	if displacedId == "" {
+		return tx.Commit()
 	}
 	log.With("sourceKey", sourceKey, "kept", keptId, "displaced", displacedId).
 		Errorf("conflicting objectId recorded under one source key — identity invariant violation; preserving both in the ledger")
-	return s.recordSyntheticEntry(ctx, sourceKey, displacedId, displacedMode, displacedStatus)
+	if err = s.recordSyntheticEntry(tx.Context(), sourceKey, displacedId, displacedMode, displacedStatus); err != nil {
+		return rollback(tx.Rollback(), err)
+	}
+	return tx.Commit()
 }
 
 // recordSyntheticEntry preserves a displaced id under a synthetic key with
@@ -546,12 +561,17 @@ func (s *Store) recordSyntheticEntry(ctx context.Context, sourceKey, objectId, m
 // never compensation-deleted (the classification cannot be reconstructed
 // later; see persist/journal.go). The FIRST record wins entirely: a
 // re-recorded file looks pre-existing only because the first upload indexed
-// it, so the first classification is the honest one.
+// it, so the first classification is the honest one. Primary and
+// displacement commit in one transaction (§9.1 item 2, as recordEntry).
 func (s *Store) RecordFile(ctx context.Context, sourceKey, objectId string, preExisting bool) error {
 	rank := int(s.rank.Add(1))
 	var displacedId string
 	var displacedPreExisting bool
-	_, err := s.files.UpsertId(ctx, sourceKey, query.ModifyFunc(
+	tx, err := s.db.WriteTx(ctx)
+	if err != nil {
+		return fmt.Errorf("file tx: %w", err)
+	}
+	_, err = s.files.UpsertId(tx.Context(), sourceKey, query.ModifyFunc(
 		func(arena *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
 			if existingId := string(v.GetStringBytes("objectId")); existingId != "" {
 				if existingId != objectId {
@@ -568,13 +588,16 @@ func (s *Store) RecordFile(ctx context.Context, sourceKey, objectId string, preE
 			v.Set("incarnation", arena.NewNumberInt(1))
 			return v, true, nil
 		}))
-	if err != nil || displacedId == "" {
-		return err
+	if err != nil {
+		return rollback(tx.Rollback(), err)
+	}
+	if displacedId == "" {
+		return tx.Commit()
 	}
 	log.With("sourceKey", sourceKey, "displaced", displacedId).
 		Errorf("conflicting file objectId recorded under one source key — preserving both in the ledger")
 	displacedRank := int(s.rank.Add(1))
-	return placeRow(ctx, s.files, sourceKey+"#dup-"+displacedId,
+	err = placeRow(tx.Context(), s.files, sourceKey+"#dup-"+displacedId,
 		func(v *anyenc.Value) bool {
 			return string(v.GetStringBytes("objectId")) == displacedId &&
 				v.GetBool("preExisting") == displacedPreExisting
@@ -588,6 +611,10 @@ func (s *Store) RecordFile(ctx context.Context, sourceKey, objectId string, preE
 			}
 			v.Set("incarnation", a.NewNumberInt(1))
 		})
+	if err != nil {
+		return rollback(tx.Rollback(), err)
+	}
+	return tx.Commit()
 }
 
 type rankedId struct {
