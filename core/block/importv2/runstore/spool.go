@@ -114,31 +114,69 @@ func (sp *Spool) Append(ctx context.Context, o *importv2.Object) error {
 	return sp.coll.UpsertOne(ctx, row)
 }
 
+// spoolChunkSize bounds how many rows one read transaction touches — and
+// how many decoded objects the replay buffers between reads. Emission
+// happens with NO transaction held, so persist backpressure never pins the
+// db's read connection or the WAL (D1/D2: the old whole-pass iterator held
+// both for the entire materialize pass — hundreds of MB of unreclaimable
+// WAL and every concurrent read blocked). The buffer adds ≤ chunkSize
+// resident objects on top of the 2C+K lane bound.
+const spoolChunkSize = 16
+
 // Replay streams the spooled objects back in emission order — the recorded
-// definitions-before-use order pass 3's resolution depends on.
+// definitions-before-use order pass 3's resolution depends on — in bounded
+// chunks re-seeded on the last id, so the db stays usable throughout.
 func (sp *Spool) Replay(ctx context.Context, emit func(o *importv2.Object) error) error {
-	iter, err := sp.coll.Find(nil).Sort("id").Iter(ctx)
+	lastId := ""
+	for {
+		objects, nextId, err := sp.readChunk(ctx, lastId)
+		if err != nil {
+			return err
+		}
+		if len(objects) == 0 {
+			return nil
+		}
+		lastId = nextId
+		for _, object := range objects {
+			if err = emit(object); err != nil {
+				return err
+			}
+		}
+	}
+}
+
+// readChunk reads and decodes up to spoolChunkSize rows after lastId, then
+// releases the read transaction before returning.
+func (sp *Spool) readChunk(ctx context.Context, lastId string) ([]*importv2.Object, string, error) {
+	var filter any
+	if lastId != "" {
+		filter = fmt.Sprintf(`{"id":{"$gt":%q}}`, lastId)
+	}
+	iter, err := sp.coll.Find(filter).Sort("id").Iter(ctx)
 	if err != nil {
-		return fmt.Errorf("iterate spool: %w", err)
+		return nil, "", fmt.Errorf("iterate spool: %w", err)
 	}
 	defer iter.Close()
+	var objects []*importv2.Object
 	for iter.Next() {
 		doc, err := iter.Doc()
 		if err != nil {
-			return fmt.Errorf("read spool doc: %w", err)
+			return nil, "", fmt.Errorf("read spool doc: %w", err)
 		}
 		object, err := unmarshalSpoolRow(doc.Value())
 		if err != nil {
 			// Unlike the tolerant compensation reader, the spool is the
 			// import's PRIMARY content: a row that cannot be decoded is a
 			// loss the run must fail on, not skip silently.
-			return fmt.Errorf("decode spool row %q: %w", doc.Value().GetStringBytes("id"), err)
+			return nil, "", fmt.Errorf("decode spool row %q: %w", doc.Value().GetStringBytes("id"), err)
 		}
-		if err = emit(object); err != nil {
-			return err
+		lastId = string(doc.Value().GetStringBytes("id"))
+		objects = append(objects, object)
+		if len(objects) >= spoolChunkSize {
+			break
 		}
 	}
-	return nil
+	return objects, lastId, nil
 }
 
 func unmarshalSpoolRow(v *anyenc.Value) (*importv2.Object, error) {
