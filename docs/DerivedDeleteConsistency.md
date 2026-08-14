@@ -6,9 +6,10 @@ uninstalled on the device that performed the uninstall, so its local store
 matches what every other device already has.
 
 Everything below marked **executed** was proven by running code (probes against
-the real store fixture on `develop` @ `715a9f976`, or existing tests); marked
-**traced** was established by reading the code paths end to end. Nothing here
-required a live account, except the items listed in §9.
+the real store fixture on `develop` @ `715a9f976`; the §12 favorite probes on
+this branch @ `6a20205e4` and again on `develop` @ `715a9f976`; or existing
+tests); marked **traced** was established by reading the code paths end to end.
+Nothing here required a live account, except the items listed in §9.
 
 ## 1. The two shapes, confirmed
 
@@ -145,9 +146,19 @@ device.
 What each `BeforeDelete` ingredient becomes for the derived path:
 
 - `ObjectCloseAllSessions` — keep (close open editors on this device).
-- `SetIsFavorite(id, currentValue)` — drop. It re-asserts the current value
-  (likely a latent oddity even on the real-delete path); receiving devices
-  never run it.
+- `SetIsFavorite(id, currentValue)` — **this is not the harmless re-assert the
+  first draft of this section called it; it is a verified regression, and the
+  instruction is fix, not drop** (§12, executed). Passing the *current* value
+  inverted an original guard that hard-coded `false`: a favorited object being
+  deleted gets `AddObject` on the Home collection and **stays linked**. Merely
+  dropping the call — from this path or any other — preserves the bug rather
+  than removing it: nothing else removes the link. For the *derived* path the
+  outcome of the consistency change is still "no favorite write here", but for
+  the right reason: receiving devices never unfavorite an uninstalled object,
+  and the favorite then survives to reinstall, which is the consistent
+  behavior. The real-delete paths (files, regular objects via the tree-deletion
+  pipeline) must instead get the repaired guard — that fix is independently
+  shippable and specified in §12.
 - `b.SetIsDeleted()` (blocks further Apply/StateAppend on the cached instance)
   — drop. Receiving devices never mark uninstalled objects; reinstall applies
   `isUninstalled=false` through the same object, and the mark would only ever
@@ -305,6 +316,114 @@ independently reportable. This document lives on the GO-7383 branch because
 the tombstone window was isolated during the API v2 corpse-policy work
 (§8.40–8.41), whose fallback code is the main in-repo consumer of the answer.
 
+## 12. Independent fix: `BeforeDelete` re-favorites the object it deletes
+
+Separate from the consistency change above, independently shippable, and
+needed regardless of whether §5 lands. Deserves its own issue number
+(unfiled at the time of writing; it is not GO-7383 work — it predates this
+branch by two years and reproduces identically on `develop`).
+
+**The bug (executed, both on this branch @ `6a20205e4` and on `develop` @
+`715a9f976` — the three functions involved are byte-identical on both).**
+`BeforeDelete` (`core/block/delete.go`) reads the object's current
+`isFavorite` local detail and passes it straight to
+`detailsService.SetIsFavorite(id.ObjectID, isFavorite)`. `SetIsFavorite` is
+not a detail write: it is Home-collection membership
+(`objectLinksCollectionModify` → `AddObject`/`RemoveObject`,
+`core/block/detailservice/set_details.go`). So deleting a favorited object
+calls `AddObject` — which finds the existing link and no-ops — and the Home
+tree keeps a dangling link block to the deleted object, permanently, synced
+to every device. The original code was a guard with the written value
+hard-coded to `false`:
+
+```go
+if isFavorite {
+    _ = s.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{IsFavorite: false, ContextId: id.ObjectID})
+}
+```
+
+**Introducing commit:** `92999ad01` "GO-3964 Introduce details service"
+(2024-09-12) collapsed the guard into the argument —
+`SetIsFavorite(id.ObjectID, isFavorite)` — inverting the intent. Later
+commits (`b987f04c4` rename to `BeforeDelete`, `9bd3ce10b` dropping a third
+parameter) carried the inverted form along unchanged.
+
+**Reproduction level.** A throwaway probe (not committed; appendix item 5)
+ran the real `Service.BeforeDelete` against the real `detailservice`
+(constructed via `New()`/`Init` with mocked resolver/space/cache plumbing)
+and a real `blockcollection`-backed Home smartblock: favorite an object
+(link present), run `BeforeDelete`, assert. Result: object marked deleted,
+store row tombstoned, **Home still links it** — on both branches. What the
+probe does not cover: the tree-deletion machinery around `BeforeDelete`
+(any-sync settings/deletionmanager) and client UI behavior; those are traced
+(below), and the probe proves the favorite handling itself regardless of
+which caller reached it.
+
+**Blast radius — every delete path, every object kind (traced).**
+`BeforeDelete` is reached from: (1) `deleteDerivedObject` (types, relations,
+relation options, templates, plus any head-entry `IsDerived` object); (2)
+the file-object branch of `DeleteObjectByFullID`; (3) all remaining objects
+— `DeleteObjectByFullID` calls `spc.DeleteTree`, the deletion propagates
+through the space settings object, and any-sync's deletionmanager
+(`deletionmanager/deleter.go`) calls back into
+`treemanager.DeleteTree`/`MarkTreeDeleted`
+(`core/block/object/treemanager/treemanager.go`), which is wired to
+`BeforeDelete`. That third path also runs on *receiving* devices processing
+a remote deletion — so no device ever removes the link. Deleting any
+favorited object by any means leaves the dangling Home link.
+
+**What compensates, and what does not (traced; store shape executed).** The
+same `BeforeDelete` tombstones the store row (`spaceindex.DeleteObject`
+replaces details with `{id, spaceId, isDeleted}`), so `isFavorite` vanishes
+from the index and every query surface — the favorites widget and any
+`isFavorite == true` subscription — hides the deleted object. No
+user-visible favorites ghost was found. The Home reconcile
+(`core/block/editor/dashboard.go` `updateInStore` +
+`isMissingObjectError`, `linkreconcile.go`) explicitly *tolerates* dangling
+targets rather than cleaning them: on every Home apply the dead id shows up
+in `addedIds`, gets a spurious pending-local-details write
+(`blockcollection.ModifyLocalDetails` → `UpdatePendingLocalDetails`), fails
+to open with `ErrTreeStorageAlreadyDeleted`, and is skipped. Residual cost,
+then: permanent per-delete garbage link blocks in the Home CRDT on all
+devices, repeated reconcile churn + a dormant pending-details row per dead
+id, Home's serialized tree (export `index` file) carrying dangling links —
+plus the guard's actual purpose being dead for two years. Low
+user-visible severity; real and unbounded tree garbage. (The Archive
+collection has the same dangling-link exposure on delete-from-bin and the
+same flag-based hiding; noted for context, not investigated here.)
+
+**Fix shape: restore the guard, do not pass `false` unconditionally
+(executed).** `RemoveObject` on an object that is not in the collection is
+*not* a safe no-op: it returns `blockcollection.ErrObjectNotFound`
+(appendix item 6), which `BeforeDelete` would log at error level — and
+`RemoveObject` scans the Home state — on every deletion of every
+non-favorited object. The correct fix is the original guard, inside
+`BeforeDelete`:
+
+```go
+if isFavorite := st.LocalDetails().GetBool(bundle.RelationKeyIsFavorite); isFavorite {
+    if err := s.detailsService.SetIsFavorite(id.ObjectID, false); err != nil { … }
+}
+```
+
+The control probe (appendix item 6) confirms `SetIsFavorite(id, false)`
+removes the link through the same real chain. On the receiving-device path
+the guard also self-limits: once the deleting device's Home change syncs,
+other devices see `isFavorite=false` locally and skip the call; a
+concurrent double-unlink converges as an ordinary CRDT remove.
+
+**Interplay with §5.** Independent and composable, but note the ordering
+semantics: shipped alone, the guard also makes derived *uninstall*
+unfavorite on the deleting device (the pre-GO-3964 behavior, divergent from
+receivers — today's inverted code is accidentally "consistent" by doing
+nothing). Once §5 lands, `deleteDerivedObject` stops calling `BeforeDelete`
+and the derived path keeps favorites on all devices, which is the intended
+end state. Ship the guard fix first anyway: the window of divergence is the
+one users had for years before GO-3964, and real deletions — where the
+dangling links accumulate — are the common case. Land it with a regression
+test at the probe's level (real detailservice + real blockcollection Home;
+appendix item 5 describes the exact construction).
+
 ### Appendix: probe inventory (executed on `develop` @ `715a9f976`)
 
 Throwaway probes, run in a scratch worktree, not committed anywhere:
@@ -319,6 +438,20 @@ Throwaway probes, run in a scratch worktree, not committed anywhere:
    behavior), `ErrObjectNotFound` on the tombstone. PASS.
 4. `queryDeletedObjects`' exact filter tree: finds the corpse, misses the
    tombstone. PASS.
+5. (§12; run on branch @ `6a20205e4` *and* on `develop` @ `715a9f976` in a
+   scratch worktree) Real `Service.BeforeDelete` → real `detailservice`
+   (built via `New()`/`Init` on an `app.App` carrying the objectstore
+   fixture, mocked resolver/space service/object getter, a GC stub) → real
+   `blockcollection.NewCollection` over a smarttest Home: favorited object
+   deleted ⇒ marked deleted, store row tombstoned, **Home link still
+   present** on both branches. Bug CONFIRMED (the "link removed" assertion
+   fails identically on both).
+6. (§12 controls, same harness, both branches) `SetIsFavorite(id, false)` on
+   a favorited object removes the Home link through the same chain;
+   `SetIsFavorite(id, false)` on a never-favorited object returns
+   `blockcollection.ErrObjectNotFound` — unconditional `false` in
+   `BeforeDelete` would error-log on every non-favorited delete, hence the
+   guard. PASS.
 
 Existing tests relied on: `reindex_test.go` ("objNeverIndexed" is re-indexed
 when no heads hash is stored) — the heal/migration trigger.
