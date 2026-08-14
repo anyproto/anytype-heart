@@ -114,6 +114,12 @@ type fakePersister struct {
 	failOnCancelKeys map[string]error
 	panicKeys        map[string]bool
 	journal          *persist.Journal
+	// filePaths/fileOpenSeen capture the file source as it arrives at
+	// persist time — the pass-2 drain assertions read them.
+	filePaths    map[string]string
+	fileOpenSeen map[string]bool
+	// observe, when set, fires at the top of every Persist call.
+	observe func()
 	// fileReady simulates reference resolution: objects whose key starts
 	// with "ref-" block until the file object's persist closes the channel
 	// (as resolver.ResolveRef blocks on the identity future in production).
@@ -121,6 +127,9 @@ type fakePersister struct {
 }
 
 func (f *fakePersister) Persist(ctx context.Context, o *importv2.Object, target persist.Target, report func(importv2.Issue)) (persist.Outcome, error) {
+	if f.observe != nil {
+		f.observe()
+	}
 	// Fires outside the mutex: a recovered panic must not strand the lock.
 	if f.panicKeys[o.SourceKey] {
 		panic("injected persist panic: " + o.SourceKey)
@@ -163,6 +172,14 @@ func (f *fakePersister) Persist(ctx context.Context, o *importv2.Object, target 
 	err := f.failKeys[o.SourceKey]
 	if err == nil {
 		f.persisted = append(f.persisted, o.SourceKey)
+	}
+	if o.File != nil {
+		if f.filePaths == nil {
+			f.filePaths = map[string]string{}
+			f.fileOpenSeen = map[string]bool{}
+		}
+		f.filePaths[o.SourceKey] = o.File.Path
+		f.fileOpenSeen[o.SourceKey] = o.File.Open != nil
 	}
 	f.mu.Unlock()
 	if err != nil {
@@ -947,8 +964,12 @@ func TestPanicFirewall(t *testing.T) {
 		}
 	})
 
-	t.Run("converter panic aborts with an invariant issue and compensates", func(t *testing.T) {
-		// given
+	t.Run("converter panic aborts with an invariant issue — and nothing to compensate", func(t *testing.T) {
+		// given — under deferred materialization the converter runs in
+		// pass 2, BEFORE anything enters the space: a converter panic (or
+		// any pass-2 abort) now strands zero objects by construction. This
+		// test previously asserted the emitted object was compensated; the
+		// stronger property is that there is nothing to compensate at all.
 		fx := newEngineFixture()
 		converter := &panicConvertConverter{scriptConverter{objects: []*importv2.Object{pageObj("a.md", false)}}}
 
@@ -960,7 +981,9 @@ func TestPanicFirewall(t *testing.T) {
 		issue := importv2.AsIssue(result.Err, importv2.SeverityFatal, importv2.IssueStoreError)
 		assert.Equal(t, importv2.IssueInvariant, issue.Code)
 		assert.Contains(t, issue.Error(), "injected converter panic")
-		assert.Equal(t, 1, result.Compensated, "the already-created object must be compensated")
+		assert.Zero(t, result.Created, "pass 2 must not have touched the space")
+		assert.Zero(t, result.Compensated, "an abort during fetch/convert has nothing to undo")
+		assert.Empty(t, fx.deps.Objects.(*deleterFake).deleted)
 	})
 
 	t.Run("identity-pass panic returns a fatal result instead of crashing", func(t *testing.T) {

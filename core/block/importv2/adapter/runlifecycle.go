@@ -194,6 +194,28 @@ func (s *service) onIssue(lc *runLifecycle) func(importv2.Issue) {
 	}
 }
 
+// onFetched marks the pass-2/pass-3 boundary durably (DM spec §6.4):
+// fetched — the spool is whole — flushed to disk, then materializing. A
+// crash between the two resumes from the spool once DM-2 lands; until then
+// both states sweep into the compensate branch. nil in volatile mode.
+func (s *service) onFetched(lc *runLifecycle) func() {
+	if lc.store == nil {
+		return nil
+	}
+	return func() {
+		ctx := context.Background()
+		if err := lc.store.SetState(ctx, runstore.StateFetched); err != nil {
+			log.Errorf("mark run fetched: %s", err)
+		}
+		if err := lc.store.Flush(ctx); err != nil {
+			log.Errorf("flush fetched run: %s", err)
+		}
+		if err := lc.store.SetState(ctx, runstore.StateMaterializing); err != nil {
+			log.Errorf("mark run materializing: %s", err)
+		}
+	}
+}
+
 // onCompensating persists the compensating state before the engine's first
 // compensation delete (spec §6.5) so a crash mid-cleanup is finished by the
 // sweep. nil in volatile mode.

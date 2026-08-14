@@ -47,12 +47,18 @@ const SchemaVersion = 1
 type State string
 
 const (
-	StateRunning      State = "running"
-	StateSuspended    State = "suspended"
-	StateCancelling   State = "cancelling"
-	StateCompensating State = "compensating"
-	StateCompleted    State = "completed"
-	StateFailed       State = "failed"
+	StateRunning State = "running"
+	// StateFetched marks pass 2 complete: the spool is whole (the
+	// fetch-complete marker of DM spec §4.1). StateMaterializing marks
+	// pass 3 started. Both land in the sweep's compensate-by-default branch
+	// on binaries that predate them — the safe outcome (§6.3).
+	StateFetched       State = "fetched"
+	StateMaterializing State = "materializing"
+	StateSuspended     State = "suspended"
+	StateCancelling    State = "cancelling"
+	StateCompensating  State = "compensating"
+	StateCompleted     State = "completed"
+	StateFailed        State = "failed"
 )
 
 // Manifest is the run's self-description. It deliberately does NOT carry the

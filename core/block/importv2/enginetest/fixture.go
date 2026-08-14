@@ -27,6 +27,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/importv2/markdown"
 	"github.com/anyproto/anytype-heart/core/block/importv2/persist"
 	"github.com/anyproto/anytype-heart/core/block/importv2/resolve"
+	"github.com/anyproto/anytype-heart/core/block/importv2/runstore"
 	"github.com/anyproto/anytype-heart/core/block/importv2/source"
 	"github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -207,12 +208,20 @@ func NewFixture(t *testing.T) *Fixture {
 	}
 }
 
-// RunMarkdown imports a markdown directory through the full engine.
+// RunMarkdown imports a markdown directory through the full engine — always
+// via the DURABLE spool, so every golden fixture proves the pass-2
+// serialize → pass-3 materialize round-trip byte-identical to the direct
+// path the goldens were recorded from (DM-1's equivalence gate).
 func (fx *Fixture) RunMarkdown(t *testing.T, root string, req importv2.Request) *importv2.Result {
 	t.Helper()
 	src, err := source.Open(root)
 	require.NoError(t, err)
 	defer src.Close()
+
+	spillDir := t.TempDir()
+	spool, err := runstore.OpenStandaloneSpool(context.Background(), spillDir)
+	require.NoError(t, err)
+	defer spool.Close()
 
 	fx.Journal = persist.NewJournal()
 	formats := resolve.NewFormats()
@@ -222,7 +231,7 @@ func (fx *Fixture) RunMarkdown(t *testing.T, root string, req importv2.Request) 
 	persister := persist.New(
 		SpaceId, req.Origin, fx.Space, fx.Space, fx.Uploader, nopFlags{},
 		resolver, persist.NewInstallCoordinator(nopInstaller{}), fx.Journal,
-		&storeChecker{store: fx.Store.SpaceIndex(SpaceId)}, t.TempDir(),
+		&storeChecker{store: fx.Store.SpaceIndex(SpaceId)}, spillDir,
 	)
 	converter := markdown.New(src, markdown.Params{}, stubCollectionFactory{})
 	return engine.Run(context.Background(), req, converter, engine.Deps{
@@ -233,6 +242,8 @@ func (fx *Fixture) RunMarkdown(t *testing.T, root string, req importv2.Request) 
 		Formats:    formats,
 		Keys:       keys,
 		Collection: stubCollectionFactory{},
+		Spool:      spool,
+		SpillDir:   spillDir,
 	})
 }
 

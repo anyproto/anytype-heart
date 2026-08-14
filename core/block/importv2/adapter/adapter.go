@@ -30,6 +30,7 @@ import (
 	notionclient "github.com/anyproto/anytype-heart/core/block/importv2/notion/client"
 	"github.com/anyproto/anytype-heart/core/block/importv2/persist"
 	"github.com/anyproto/anytype-heart/core/block/importv2/resolve"
+	"github.com/anyproto/anytype-heart/core/block/importv2/runstore"
 	"github.com/anyproto/anytype-heart/core/block/importv2/source"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -442,6 +443,24 @@ func (s *service) runOne(ctx context.Context, request importv2.Request, spc clie
 
 // runEngine wires one engine run's per-run components over the app seams.
 func (s *service) runEngine(ctx context.Context, request importv2.Request, converter importv2.Converter, spc clientspace.Space, lc *runLifecycle, progress process.Progress) *importv2.Result {
+	// Every run spools to disk — durable runs inside run.db, volatile runs
+	// via a throwaway spool in the spill dir — so the pass-2 memory bound
+	// and the serialization round-trip hold everywhere (DM spec §5.3).
+	var spool engine.Spool
+	if lc.store != nil {
+		storeSpool, err := lc.store.Spool(ctx)
+		if err != nil {
+			return &importv2.Result{Err: importv2.Fatal(importv2.IssueStoreError, fmt.Errorf("open spool: %w", err))}
+		}
+		spool = storeSpool
+	} else {
+		standalone, err := runstore.OpenStandaloneSpool(ctx, lc.spillDir)
+		if err != nil {
+			return &importv2.Result{Err: importv2.Fatal(importv2.IssueStoreError, fmt.Errorf("open spool: %w", err))}
+		}
+		defer standalone.Close()
+		spool = standalone
+	}
 	journal := persist.NewJournal()
 	if lc.store != nil {
 		journal = persist.NewJournalWithLedger(lc.store)
@@ -475,6 +494,9 @@ func (s *service) runEngine(ctx context.Context, request importv2.Request, conve
 		Reporter:       &progressReporter{progress: progress},
 		OnCompensating: s.onCompensating(lc),
 		OnIssue:        s.onIssue(lc),
+		Spool:          spool,
+		SpillDir:       lc.spillDir,
+		OnFetched:      s.onFetched(lc),
 	})
 }
 

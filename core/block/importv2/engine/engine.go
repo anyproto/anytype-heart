@@ -93,6 +93,17 @@ type Deps struct {
 	// pass-3 report page, DM spec §6.2). Called outside the issue lock; must
 	// be safe for concurrent use and must not block.
 	OnIssue func(issue importv2.Issue)
+	// Spool is the pass-2 → pass-3 queue. nil falls back to an in-memory
+	// spool (unit tests; makes no memory-invariant claim). Real runs get the
+	// disk-backed runstore spool from the adapter.
+	Spool Spool
+	// SpillDir, when set, is where pass 2 drains file Open closures so the
+	// spooled object carries a plain path. Empty keeps closures in place
+	// (memory-spool mode only).
+	SpillDir string
+	// OnFetched, when set, fires between pass 2 and pass 3 — the adapter
+	// marks the manifest fetched/materializing there (DM spec §6.4).
+	OnFetched func()
 }
 
 // Run executes one import. The passed ctx is the run's single cancellation
@@ -129,7 +140,24 @@ func Run(ctx context.Context, req importv2.Request, converter importv2.Converter
 		r.report(*fatal)
 		return r.finish(runCtx, importv2.RootSpec{})
 	}
-	rootSpec := r.streamPass(runCtx, converter)
+
+	// Pass 2 — fetch, convert, spool: nothing enters the space, so an abort
+	// anywhere in here compensates nothing and costs nothing (DM spec §7).
+	spool := deps.Spool
+	if spool == nil {
+		spool = &memorySpool{}
+	}
+	rootSpec := r.spoolPass(runCtx, converter, spool)
+	if r.fatalIssue() != nil || runCtx.Err() != nil {
+		return r.finish(runCtx, importv2.RootSpec{})
+	}
+	if r.deps.OnFetched != nil {
+		r.deps.OnFetched()
+	}
+
+	// Pass 3 — materialize: the existing streaming pipeline fed by the
+	// recording. rootSpec comes from pass 2; the replay's own is empty.
+	r.streamPass(runCtx, &spoolReplayConverter{spool: spool})
 	if r.fatalIssue() != nil || runCtx.Err() != nil {
 		return r.finish(runCtx, importv2.RootSpec{})
 	}
@@ -288,7 +316,7 @@ func (r *run) identityPass(ctx context.Context, converter importv2.Converter) *i
 }
 
 func (r *run) streamPass(ctx context.Context, converter importv2.Converter) importv2.RootSpec {
-	r.deps.Reporter.Phase("Importing objects")
+	r.deps.Reporter.Phase("Creating objects")
 	objectCh := make(chan work, channelCapacity)
 	fileCh := make(chan work, channelCapacity)
 	sink := &engineSink{run: r, objectCh: objectCh, fileCh: fileCh}

@@ -90,6 +90,9 @@ func TestSweepRuns(t *testing.T) {
 		for _, state := range []runstore.State{
 			runstore.StateRunning, runstore.StateSuspended,
 			runstore.StateCancelling, runstore.StateCompensating,
+			// the DM-1 pass-boundary states sweep the same way until DM-2
+			// brings the resume branch
+			runstore.StateFetched, runstore.StateMaterializing,
 		} {
 			// given
 			root := t.TempDir()
