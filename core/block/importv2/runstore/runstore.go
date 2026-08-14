@@ -96,6 +96,20 @@ type Manifest struct {
 	// this). It is the compensation-scope switch — before it, claims are
 	// pure intent and nothing exists in the space to delete (A1).
 	MaterializeStarted bool
+	// Request is the serialized pb.RpcObjectImportRequest — everything a
+	// pass-2 crawl resume needs to rebuild its converter (source paths, the
+	// Notion token, planner config). Stored AS-IS, no application-level
+	// encryption (OQ2, decided 2026-08-14): the run dir already sits in the
+	// account repo beside the wallet and the objectstore, and anytype is
+	// migrating to an encrypted any-store that will cover this field with
+	// the rest of the ledger — building account-derived-key blob encryption
+	// now would mean owning key management forever for something the
+	// storage layer is about to provide. Until then the exposure is
+	// TIME-BOXED mechanically: writeManifest scrubs the field on every
+	// transition out of the crawl-resumable states (running/suspended), so
+	// only a run actually mid-crawl carries it — and no projection (status
+	// RPCs, sweep logs) ever serves it.
+	Request []byte
 }
 
 // CompensationInputs is the frozen-core view: exactly what compensation
@@ -423,7 +437,7 @@ func Create(ctx context.Context, dir string, m Manifest) (*Store, error) {
 	now := nowSecond()
 	m.CreatedAt = now
 	m.UpdatedAt = now
-	if err = s.writeManifest(ctx, m); err != nil {
+	if m, err = s.writeManifest(ctx, m); err != nil {
 		_ = s.closeDb()
 		_ = os.RemoveAll(dir) // Create owns the dir; no garbage on failure
 		s.releaseGuard()
@@ -588,7 +602,7 @@ func (s *Store) SetState(ctx context.Context, state State) error {
 		m.MaterializeStarted = true
 	}
 	m.UpdatedAt = nowSecond()
-	if err = s.writeManifest(ctx, m); err != nil {
+	if _, err = s.writeManifest(ctx, m); err != nil {
 		return err
 	}
 	if state == StateMaterializing {
@@ -597,16 +611,28 @@ func (s *Store) SetState(ctx context.Context, state State) error {
 	return nil
 }
 
-func (s *Store) writeManifest(ctx context.Context, m Manifest) error {
+// writeManifest persists the manifest and returns EXACTLY what it wrote, so
+// no caller can hand out a view the disk does not hold.
+//
+// The request-blob scrub lives at this ONE write site so every writer —
+// SetState, MarkFetched, BeginResume, the sweep — obeys it mechanically
+// (OQ2 mitigation 1): the blob's useful life is the crawl, and only the
+// crawl-resumable states (running, suspended) may carry it. Materialization
+// is headless by design (§8.1 — no source, no credentials), so the fetched
+// transition is where the token leaves the disk.
+func (s *Store) writeManifest(ctx context.Context, m Manifest) (Manifest, error) {
 	ctx, opDone := opCtx(ctx)
 	defer opDone()
 
+	if m.State != StateRunning && m.State != StateSuspended {
+		m.Request = nil
+	}
 	arena := s.arenas.Get()
 	defer func() {
 		arena.Reset()
 		s.arenas.Put(arena)
 	}()
-	return s.manifest.UpsertOne(ctx, marshalManifest(arena, m))
+	return m, s.manifest.UpsertOne(ctx, marshalManifest(arena, m))
 }
 
 // withWriteTx runs fn inside one write transaction, releasing it on EVERY
@@ -1163,6 +1189,9 @@ func marshalManifest(arena *anyenc.Arena, m Manifest) *anyenc.Value {
 	obj.Set("converter", arena.NewString(m.Converter))
 	obj.Set("appVersion", arena.NewString(m.AppVersion))
 	obj.Set("materializeStarted", arena.NewBool(m.MaterializeStarted))
+	if len(m.Request) > 0 {
+		obj.Set("request", arena.NewBinary(m.Request))
+	}
 	return obj
 }
 
@@ -1185,5 +1214,14 @@ func unmarshalManifest(v *anyenc.Value) Manifest {
 		AppVersion:     string(v.GetStringBytes("appVersion")),
 
 		MaterializeStarted: v.GetBool("materializeStarted"),
+		Request:            bytesCopy(v.GetBytes("request")),
 	}
+}
+
+// bytesCopy detaches a value from its arena; nil stays nil.
+func bytesCopy(b []byte) []byte {
+	if len(b) == 0 {
+		return nil
+	}
+	return append([]byte(nil), b...)
 }

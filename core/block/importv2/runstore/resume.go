@@ -223,6 +223,45 @@ func (s *Store) ReadRootSpec(ctx context.Context) (spec importv2.RootSpec, found
 	}, true, nil
 }
 
+const planId = "schemaPlan"
+
+// SetPlanJSON records the run's sanitized structure plan (08-13 §6.3: LLM
+// output is not deterministic across calls, so a resumed crawl must reuse
+// the recorded plan, never recompute it — a second plan would mint divergent
+// type/relation identities for the run's second half). A singleton kv row,
+// overwritten whole.
+func (s *Store) SetPlanJSON(ctx context.Context, data []byte) error {
+	ctx, opDone := opCtx(ctx)
+	defer opDone()
+
+	arena := s.arenas.Get()
+	defer func() {
+		arena.Reset()
+		s.arenas.Put(arena)
+	}()
+	row := arena.NewObject()
+	row.Set("id", arena.NewString(planId))
+	row.Set("json", arena.NewBinary(data))
+	return s.kv.UpsertOne(ctx, row)
+}
+
+// ReadPlanJSON returns the recorded plan; nil (no error) when the run never
+// recorded one — a crash before the plan phase completed spooled nothing, so
+// replanning from scratch is safe there.
+func (s *Store) ReadPlanJSON(ctx context.Context) ([]byte, error) {
+	ctx, opDone := opCtx(ctx)
+	defer opDone()
+
+	doc, err := s.kv.FindId(ctx, planId)
+	if err != nil {
+		if IsMissingManifest(err) { // ErrDocNotFound
+			return nil, nil
+		}
+		return nil, fmt.Errorf("read plan: %w", err)
+	}
+	return bytesCopy(doc.Value().GetBytes("json")), nil
+}
+
 // RefundResumeAttempt gives back one resume attempt (floor zero): an
 // ORDERLY suspend is not a crash, and the cap exists to bound crash loops
 // (review Class F: three clean quits during a long materialization
@@ -239,7 +278,8 @@ func (s *Store) RefundResumeAttempt(ctx context.Context) error {
 	}
 	m.ResumeAttempts--
 	m.UpdatedAt = nowSecond()
-	return s.writeManifest(ctx, m)
+	_, err = s.writeManifest(ctx, m)
+	return err
 }
 
 // MarkFetched records the pass-2/pass-3 boundary durably (DM spec §4.1 +
@@ -264,6 +304,32 @@ func (s *Store) MarkFetched(ctx context.Context, spec importv2.RootSpec) error {
 	return nil
 }
 
+// BeginCrawlResume durably opens one pass-2 (crawl) resume attempt (DM spec
+// §8.3): incarnation and the attempt counter move BEFORE any work, exactly
+// as BeginResume, but the state stays running and MaterializeStarted stays
+// false — a resumed crawl has put nothing in the space, and flipping the
+// compensation-scope switch here would turn its pure-intent claims into
+// deletables (A1). The request blob survives by the writeManifest rule
+// (running keeps it): the resumed crawl is exactly what it exists for.
+func (s *Store) BeginCrawlResume(ctx context.Context) (Manifest, error) {
+	m, err := s.Manifest(ctx)
+	if err != nil {
+		return Manifest{}, err
+	}
+	m.Incarnation++
+	m.ResumeAttempts++
+	m.State = StateRunning
+	m.UpdatedAt = nowSecond()
+	if m, err = s.writeManifest(ctx, m); err != nil {
+		return Manifest{}, fmt.Errorf("write crawl-resume manifest: %w", err)
+	}
+	if err = s.Flush(ctx); err != nil {
+		return Manifest{}, fmt.Errorf("flush crawl-resume manifest: %w", err)
+	}
+	s.seedFromManifest(m)
+	return m, nil
+}
+
 // BeginResume durably opens one resume attempt: incarnation and the attempt
 // counter move BEFORE any work — a crash loop is bounded by the cap however
 // early the crash lands — and the state enters materializing (setting the
@@ -279,7 +345,7 @@ func (s *Store) BeginResume(ctx context.Context) (Manifest, error) {
 	m.State = StateMaterializing
 	m.MaterializeStarted = true
 	m.UpdatedAt = nowSecond()
-	if err = s.writeManifest(ctx, m); err != nil {
+	if m, err = s.writeManifest(ctx, m); err != nil {
 		return Manifest{}, fmt.Errorf("write resume manifest: %w", err)
 	}
 	if err = s.Flush(ctx); err != nil {
