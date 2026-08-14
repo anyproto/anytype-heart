@@ -755,6 +755,13 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		// whose own state was stamped (the creating one) pushes it
 		integrationName = s.IntegrationName()
 	)
+	// consume the stamp AT capture (review F6): one stamped push per stamped
+	// state is a structural guarantee, not a caller invariant. Without this
+	// line the state object keeps the name after it becomes the doc, and
+	// applying the same stamped state twice pushes the value twice —
+	// InitObject applies once today, but attribution will widen the fill
+	// sites, and a caller-count invariant does not survive that.
+	s.SetIntegrationName("")
 
 	if parent != nil {
 		migrationVersionUpdated = s.MigrationVersion() != parent.MigrationVersion()

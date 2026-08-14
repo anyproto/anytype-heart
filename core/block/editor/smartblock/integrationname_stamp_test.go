@@ -78,6 +78,16 @@ func TestSmartBlock_IntegrationNameStamping(t *testing.T) {
 		require.Len(t, fx.source.pushed, 2)
 		assert.Equal(t, "Claude Desktop", fx.source.pushed[0].IntegrationName)
 		assert.Equal(t, "", fx.source.pushed[1].IntegrationName)
+
+		// F6: the creating Apply CONSUMES the stamp. initCtx.State became the
+		// doc after the apply — if Apply only read the field without clearing
+		// it, the doc would keep carrying the name and re-applying the same
+		// state object would push it twice (a caller-count invariant, not a
+		// code one; executed by the review). A fixture that never looks at
+		// the post-apply state cannot catch this — this assertion fails if
+		// the clear-at-capture line is dropped.
+		assert.Equal(t, "", initCtx.State.IntegrationName(),
+			"the stamp must be consumed by the apply that pushed it")
 	})
 
 	t.Run("existing object opened under an API ctx is not stamped", func(t *testing.T) {
