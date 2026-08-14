@@ -148,6 +148,33 @@ func spoolKeyName(i int) string {
 	return "page-" + string(rune('a'+i%26)) + "-" + string(rune('0'+i/26))
 }
 
+func TestSpoolReopenKeepsSequence(t *testing.T) {
+	t.Run("a second spool handle continues the sequence instead of overwriting", func(t *testing.T) {
+		// given — E2 (CONFIRMED by two lenses): the per-instance counter
+		// restarted at 0, so a reopened spool destroyed rows and reordered
+		// the replay.
+		ctx := context.Background()
+		store := createStore(t, filepath.Join(t.TempDir(), "run-1"))
+		first, err := store.Spool(ctx)
+		require.NoError(t, err)
+		require.NoError(t, first.Append(ctx, spoolObject("a.md", false)))
+		require.NoError(t, first.Append(ctx, spoolObject("b.md", false)))
+
+		// when: a fresh handle appends
+		second, err := store.Spool(ctx)
+		require.NoError(t, err)
+		require.NoError(t, second.Append(ctx, spoolObject("c.md", false)))
+		var keys []string
+		require.NoError(t, second.Replay(ctx, func(o *importv2.Object) error {
+			keys = append(keys, o.SourceKey)
+			return nil
+		}))
+
+		// then
+		assert.Equal(t, []string{"a.md", "b.md", "c.md"}, keys)
+	})
+}
+
 func TestSpoolReplayDoesNotPinTheDb(t *testing.T) {
 	t.Run("run.db stays readable while replay is blocked on backpressure", func(t *testing.T) {
 		// given — D2 (CONFIRMED): the replay iterator held the single read

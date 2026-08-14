@@ -184,6 +184,14 @@ func Run(ctx context.Context, req importv2.Request, converter importv2.Converter
 // importv2.ErrSuspended, spec §6.4) decides compensation: a suspend keeps
 // the durable state for the startup sweep; everything else compensates.
 func (r *run) finish(runCtx context.Context, rootSpec importv2.RootSpec) *importv2.Result {
+	// E4: claims made after pass 2 (root collection, report page) must
+	// reach the ledger — every exit passes through here, so this is the
+	// one flush that cannot be skipped. Detached ctx: the run context is
+	// dead on the abort paths, and intent must still land (P0-1 rule).
+	if err := r.deps.Identity.FlushClaims(context.Background()); err != nil {
+		r.report(importv2.Warning(importv2.IssueStoreError, "",
+			fmt.Sprintf("flush late claims: %s", err)))
+	}
 	if runCtx.Err() != nil && r.fatalIssue() == nil {
 		// B3: a shutdown suspend landing after EVERY mutating stage has
 		// completed has nothing left to stop — classifying it as suspended

@@ -445,22 +445,38 @@ func (s *Store) recordEntry(ctx context.Context, sourceKey, objectId, mode, acti
 }
 
 // recordSyntheticEntry writes a displaced id under a synthetic key so it
-// stays in the compensation view with its original mode.
+// stays in the compensation view with its original mode. E5: the write
+// itself must not clobber a REAL row whose key happens to share the
+// synthetic shape (source keys can contain '#') — on a different-id
+// occupant the key is suffixed until free.
 func (s *Store) recordSyntheticEntry(ctx context.Context, sourceKey, objectId, mode string) error {
-	arena := s.arenas.Get()
-	defer func() {
-		arena.Reset()
-		s.arenas.Put(arena)
-	}()
-	row := arena.NewObject()
-	row.Set("id", arena.NewString(sourceKey+"#dup-"+objectId))
-	row.Set("objectId", arena.NewString(objectId))
-	row.Set("mode", arena.NewString(mode))
-	row.Set("status", arena.NewString(statusPersisted))
-	row.Set("action", arena.NewString(actionCreated))
-	row.Set("rank", arena.NewNumberInt(int(s.rank.Add(1))))
-	row.Set("incarnation", arena.NewNumberInt(1))
-	return s.entries.UpsertOne(ctx, row)
+	key := sourceKey + "#dup-" + objectId
+	for attempt := 0; attempt < 100; attempt++ {
+		rank := int(s.rank.Add(1))
+		occupied := false
+		_, err := s.entries.UpsertId(ctx, key, query.ModifyFunc(
+			func(a *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
+				if existing := string(v.GetStringBytes("objectId")); existing != "" && existing != objectId {
+					occupied = true
+					return v, false, nil
+				}
+				v.Set("objectId", a.NewString(objectId))
+				v.Set("mode", a.NewString(mode))
+				v.Set("status", a.NewString(statusPersisted))
+				v.Set("action", a.NewString(actionCreated))
+				v.Set("rank", a.NewNumberInt(rank))
+				v.Set("incarnation", a.NewNumberInt(1))
+				return v, true, nil
+			}))
+		if err != nil {
+			return err
+		}
+		if !occupied {
+			return nil
+		}
+		key = fmt.Sprintf("%s#dup-%s-%d", sourceKey, objectId, attempt+2)
+	}
+	return fmt.Errorf("synthetic key for %q could not be placed after 100 attempts", sourceKey)
 }
 
 // RecordFile journals a file-upload outcome. preExisting marks a

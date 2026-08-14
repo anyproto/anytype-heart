@@ -36,13 +36,39 @@ type Spool struct {
 	ownDb  anystore.DB // standalone mode only; nil when backed by a Store
 }
 
-// Spool opens the run db's spool collection.
+// Spool opens the run db's spool collection, continuing the sequence from
+// any existing rows — E2: a per-instance counter restarting at zero let a
+// second handle overwrite rows and reorder the replay.
 func (s *Store) Spool(ctx context.Context) (*Spool, error) {
 	coll, err := s.db.Collection(ctx, collSpool)
 	if err != nil {
 		return nil, fmt.Errorf("open spool collection: %w", err)
 	}
-	return &Spool{coll: coll, arenas: s.arenas}, nil
+	sp := &Spool{coll: coll, arenas: s.arenas}
+	if err = sp.seedSeq(ctx); err != nil {
+		return nil, err
+	}
+	return sp, nil
+}
+
+// seedSeq continues the append sequence after the highest existing row id.
+func (sp *Spool) seedSeq(ctx context.Context) error {
+	iter, err := sp.coll.Find(nil).Sort("-id").Iter(ctx)
+	if err != nil {
+		return fmt.Errorf("seed spool seq: %w", err)
+	}
+	defer iter.Close()
+	if iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return fmt.Errorf("seed spool seq: %w", err)
+		}
+		var last int64
+		if _, err = fmt.Sscanf(string(doc.Value().GetStringBytes("id")), "%d", &last); err == nil {
+			sp.seq.Store(last)
+		}
+	}
+	return nil
 }
 
 // OpenStandaloneSpool creates a throwaway spool db under dir (volatile
@@ -58,7 +84,12 @@ func OpenStandaloneSpool(ctx context.Context, dir string) (*Spool, error) {
 		_ = db.Close()
 		return nil, fmt.Errorf("open spool collection: %w", err)
 	}
-	return &Spool{coll: coll, arenas: &anyenc.ArenaPool{}, ownDb: db}, nil
+	sp := &Spool{coll: coll, arenas: &anyenc.ArenaPool{}, ownDb: db}
+	if err = sp.seedSeq(ctx); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+	return sp, nil
 }
 
 // Close releases the standalone db; a Store-backed spool closes with its

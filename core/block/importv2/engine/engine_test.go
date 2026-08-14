@@ -24,6 +24,7 @@ import (
 
 // fakeIdentity assigns deterministic ids without store or space.
 type fakeIdentity struct {
+	events []string
 	mu       sync.Mutex
 	claims   []importv2.IdentityClaim
 	assigned map[string]bool
@@ -45,10 +46,16 @@ func (f *fakeIdentity) Claim(ctx context.Context, c importv2.IdentityClaim) erro
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.claims = append(f.claims, c)
+	f.events = append(f.events, "claim:"+c.SourceKey)
 	return nil
 }
 
-func (f *fakeIdentity) FlushClaims(ctx context.Context) error { return nil }
+func (f *fakeIdentity) FlushClaims(ctx context.Context) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.events = append(f.events, "flush")
+	return nil
+}
 
 func (f *fakeIdentity) Assign(sourceKey string) (identity.Assignment, error) {
 	f.mu.Lock()
@@ -796,6 +803,32 @@ type issueScriptConverter struct {
 func (c *issueScriptConverter) Convert(ctx context.Context, sink importv2.Sink) (importv2.RootSpec, error) {
 	sink.Issue(importv2.Warning(importv2.IssueDataLoss, "a.md", "synthetic warning"))
 	return c.scriptConverter.Convert(ctx, sink)
+}
+
+func TestLateClaimsFlush(t *testing.T) {
+	t.Run("claims made during finalize reach the ledger", func(t *testing.T) {
+		// given — E4: FlushClaims ran at the ends of passes 1 and 2 only;
+		// the root-collection and report-page claims (made in finalize)
+		// stayed buffered forever — write-ahead intent that never wrote.
+		fx := newEngineFixture()
+		fx.deps.Collection = &fakeCollectionFactory{}
+		converter := &scriptConverter{
+			objects:  []*importv2.Object{pageObj("a.md", true)},
+			rootSpec: importv2.RootSpec{CollectionName: "Import"},
+		}
+
+		// when
+		result := Run(context.Background(), importv2.Request{Mode: importv2.ModeContinueOnError}, converter, fx.deps)
+
+		// then: no claim may remain unflushed at the end of the run
+		require.NoError(t, result.Err)
+		fx.identity.mu.Lock()
+		events := append([]string(nil), fx.identity.events...)
+		fx.identity.mu.Unlock()
+		require.NotEmpty(t, events)
+		assert.Equal(t, "flush", events[len(events)-1],
+			"the run must end with a flush after the last claim, got %v", events)
+	})
 }
 
 func TestCompensationEvidence(t *testing.T) {

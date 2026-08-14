@@ -28,6 +28,44 @@ func (l *fakeClaimLedger) RecordClaims(ctx context.Context, claims []ClaimLedger
 	return nil
 }
 
+type failingOnceLedger struct {
+	fakeClaimLedger
+	failures int
+}
+
+func (l *failingOnceLedger) RecordClaims(ctx context.Context, claims []ClaimLedgerRecord) error {
+	if l.failures > 0 {
+		l.failures--
+		return assert.AnError
+	}
+	return l.fakeClaimLedger.RecordClaims(ctx, claims)
+}
+
+func TestFlushKeepsBatchOnFailure(t *testing.T) {
+	t.Run("a failed flush retries the same batch instead of dropping it", func(t *testing.T) {
+		// given — E3: FlushClaims nil'd the buffer before the ledger call,
+		// so a transient failure silently dropped every buffered intent.
+		store := objectstore.NewStoreFixture(t)
+		space := mock_clientspace.NewMockSpace(t)
+		ledger := &failingOnceLedger{failures: 1}
+		service := NewService(space, store.SpaceIndex(spaceId), false, time.Unix(1700000000, 0), WithClaimLedger(ledger))
+		space.EXPECT().CreateTreePayload(mock.Anything, mock.Anything).Return(treestorage.TreeStorageCreatePayload{
+			RootRawChange: &treechangeproto.RawTreeChangeWithId{Id: "tree-1", RawChange: []byte("r")},
+		}, nil).Once()
+		require.NoError(t, service.Claim(context.Background(), importv2.IdentityClaim{
+			SourceKey: "page-1", SbType: coresb.SmartBlockTypePage,
+		}))
+
+		// when
+		require.Error(t, service.FlushClaims(context.Background()))
+		require.NoError(t, service.FlushClaims(context.Background()))
+
+		// then
+		require.Len(t, ledger.batches, 1)
+		assert.Equal(t, "page-1", ledger.batches[0][0].SourceKey)
+	})
+}
+
 func TestClaimLedger(t *testing.T) {
 	t.Run("claims buffer and flush with payload bytes; matched claims carry none", func(t *testing.T) {
 		// given

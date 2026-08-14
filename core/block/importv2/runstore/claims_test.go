@@ -74,6 +74,65 @@ func TestClaims(t *testing.T) {
 	})
 }
 
+func TestClaimMergeRules(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("a claim over a persisted effect row never downgrades it", func(t *testing.T) {
+		// given — E1 (CONFIRMED, latent until DM-2 re-records claims): the
+		// blind upsert let a later claim erase a run-created id.
+		store := createStore(t, filepath.Join(t.TempDir(), "run-1"))
+		require.NoError(t, store.RecordCreated(ctx, "k", "obj-minted"))
+		require.NoError(t, store.SetState(ctx, StateMaterializing))
+
+		// when: a claim arrives for the same key with the same id
+		require.NoError(t, store.RecordClaims(ctx, []ClaimRecord{{SourceKey: "k", ObjectId: "obj-minted"}}))
+
+		// then: the effect survives — still persisted, still deletable
+		inputs, err := store.CompensationInputs(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"obj-minted"}, inputs.Created)
+		assert.Equal(t, "persisted", store.readEntryStatusForTest(t, ctx, "k"))
+	})
+
+	t.Run("a claim with a DIFFERENT id preserves the displaced id", func(t *testing.T) {
+		// given
+		store := createStore(t, filepath.Join(t.TempDir(), "run-1"))
+		require.NoError(t, store.RecordCreated(ctx, "k", "obj-a"))
+		require.NoError(t, store.SetState(ctx, StateMaterializing))
+
+		// when
+		require.NoError(t, store.RecordClaims(ctx, []ClaimRecord{{SourceKey: "k", ObjectId: "obj-b", PayloadRoot: []byte("r")}}))
+
+		// then: neither id vanished from the ledger
+		inputs, err := store.CompensationInputs(ctx)
+		require.NoError(t, err)
+		assert.Contains(t, inputs.Created, "obj-a")
+	})
+}
+
+func TestSyntheticKeyCollision(t *testing.T) {
+	t.Run("a source key shaped like a synthetic key cannot collide", func(t *testing.T) {
+		// given — E5: filenames can contain '#'; the old "#dup-" suffix let
+		// a legitimate key overwrite a synthetic preservation row.
+		ctx := context.Background()
+		store := createStore(t, filepath.Join(t.TempDir(), "run-1"))
+		require.NoError(t, store.SetState(ctx, StateMaterializing))
+		// a REAL source key that happens to have the synthetic shape...
+		require.NoError(t, store.RecordCreated(ctx, "k#dup-obj-b", "obj-c"))
+		// ...then key "k" displaces obj-b: the synthetic write must not
+		// clobber the real row
+		require.NoError(t, store.RecordCreated(ctx, "k", "obj-a"))
+		require.NoError(t, store.RecordUpdated(ctx, "k", "obj-b"))
+		inputs, err := store.CompensationInputs(ctx)
+
+		// then: all three ids are present
+		require.NoError(t, err)
+		assert.Contains(t, inputs.Created, "obj-a")
+		assert.Contains(t, inputs.Created, "obj-c")
+		assert.Contains(t, inputs.Updated, "obj-b")
+	})
+}
+
 func TestIssues(t *testing.T) {
 	t.Run("issues append durably in order", func(t *testing.T) {
 		// given

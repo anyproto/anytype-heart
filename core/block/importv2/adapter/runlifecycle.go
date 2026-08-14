@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync/atomic"
+	"time"
 
 	"github.com/globalsign/mgo/bson"
 
@@ -144,6 +145,10 @@ type claimLedger struct {
 }
 
 func (l *claimLedger) RecordClaims(ctx context.Context, claims []identity.ClaimLedgerRecord) error {
+	// Intent must land even when the run context is dying (the P0-1 rule
+	// that already governs effect writes): detach, bounded.
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 	records := make([]runstore.ClaimRecord, 0, len(claims))
 	for _, c := range claims {
 		records = append(records, runstore.ClaimRecord{

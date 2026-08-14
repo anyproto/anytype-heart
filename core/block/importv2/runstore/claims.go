@@ -3,6 +3,9 @@ package runstore
 import (
 	"context"
 	"fmt"
+
+	"github.com/anyproto/any-store/anyenc"
+	"github.com/anyproto/any-store/query"
 )
 
 const (
@@ -46,17 +49,37 @@ func (s *Store) RecordClaims(ctx context.Context, claims []ClaimRecord) error {
 		if claim.Matched {
 			mode = modeMatched
 		}
-		row := arena.NewObject()
-		row.Set("id", arena.NewString(claim.SourceKey))
-		row.Set("objectId", arena.NewString(claim.ObjectId))
-		row.Set("mode", arena.NewString(mode))
-		row.Set("status", arena.NewString(statusClaimed))
-		row.Set("rank", arena.NewNumberInt(int(s.rank.Add(1))))
-		row.Set("incarnation", arena.NewNumberInt(1))
-		if err = s.entries.UpsertOne(txCtx, row); err != nil {
-			return fmt.Errorf("claim %q: %w", claim.SourceKey, rollback(tx.Rollback(), err))
+		rank := int(s.rank.Add(1))
+		// E1: never a blind upsert — an existing row (an effect, or an
+		// earlier claim) is kept in full: a claim must not downgrade a
+		// persisted status, and a DIFFERENT id must not vanish (the
+		// incoming id is preserved under a synthetic key instead).
+		var displacedId string
+		_, upErr := s.entries.UpsertId(txCtx, claim.SourceKey, query.ModifyFunc(
+			func(a *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
+				if existingId := string(v.GetStringBytes("objectId")); existingId != "" {
+					if existingId != claim.ObjectId {
+						displacedId = claim.ObjectId
+					}
+					return v, false, nil
+				}
+				v.Set("objectId", a.NewString(claim.ObjectId))
+				v.Set("mode", a.NewString(mode))
+				v.Set("status", a.NewString(statusClaimed))
+				v.Set("rank", a.NewNumberInt(rank))
+				v.Set("incarnation", a.NewNumberInt(1))
+				return v, true, nil
+			}))
+		if upErr != nil {
+			return fmt.Errorf("claim %q: %w", claim.SourceKey, rollback(tx.Rollback(), upErr))
 		}
-		arena.Reset()
+		if displacedId != "" {
+			log.With("sourceKey", claim.SourceKey, "displaced", displacedId).
+				Errorf("claim conflicts with an existing ledger id — preserving both")
+			if err = s.recordSyntheticEntry(txCtx, claim.SourceKey, displacedId, mode); err != nil {
+				return fmt.Errorf("claim %q synthetic: %w", claim.SourceKey, rollback(tx.Rollback(), err))
+			}
+		}
 		if !claim.Matched && len(claim.PayloadRoot) > 0 {
 			payload := arena.NewObject()
 			payload.Set("id", arena.NewString(claim.ObjectId))

@@ -115,10 +115,11 @@ type Service struct {
 	// derived memoizes uniqueKey → assignment so a repeated definition
 	// converges to one object per run.
 	derived map[string]Assignment
-	// pending buffers claim records between ledger flushes. Claims arrive on
-	// one goroutine per pass (engine dispatch / converter), so the buffer
-	// needs no lock of its own.
-	pending []ClaimLedgerRecord
+	// pending buffers claim records between ledger flushes, under its own
+	// lock (claims arrive on one goroutine per pass by convention, but the
+	// convention is unenforced and -race cannot see a convention).
+	pendingMu sync.Mutex
+	pending   []ClaimLedgerRecord
 }
 
 func NewService(space TreePayloadCreator, store Store, updateExisting bool, now time.Time, opts ...Option) *Service {
@@ -195,8 +196,11 @@ func (s *Service) ledgerClaim(ctx context.Context, sourceKey, id string, matched
 			record.PayloadHeads = payload.Heads
 		}
 	}
+	s.pendingMu.Lock()
 	s.pending = append(s.pending, record)
-	if len(s.pending) >= claimBatchSize {
+	full := len(s.pending) >= claimBatchSize
+	s.pendingMu.Unlock()
+	if full {
 		return s.FlushClaims(ctx)
 	}
 	return nil
@@ -206,14 +210,23 @@ func (s *Service) ledgerClaim(ctx context.Context, sourceKey, id string, matched
 // engine calls it at the end of pass 1 (and the sink's late claims ride the
 // next flush or the pass-2 end).
 func (s *Service) FlushClaims(ctx context.Context) error {
-	if s.ledger == nil || len(s.pending) == 0 {
+	if s.ledger == nil {
 		return nil
 	}
+	s.pendingMu.Lock()
 	batch := s.pending
-	s.pending = nil
+	s.pendingMu.Unlock()
+	if len(batch) == 0 {
+		return nil
+	}
+	// E3: the batch is retained until the ledger accepts it — a transient
+	// failure retries the same intents instead of silently dropping them.
 	if err := s.ledger.RecordClaims(ctx, batch); err != nil {
 		return fmt.Errorf("record claims: %w", err)
 	}
+	s.pendingMu.Lock()
+	s.pending = s.pending[len(batch):]
+	s.pendingMu.Unlock()
 	return nil
 }
 
