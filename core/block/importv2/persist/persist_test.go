@@ -556,6 +556,35 @@ func TestPersistFile(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "fileObj1", outcome.Id)
 		assert.Equal(t, []string{path}, fx.uploader.uploadedPaths)
+		assert.Equal(t, []string{""}, fx.uploader.uploadedUrls,
+			"a path-backed upload must not also carry a url")
+	})
+
+	t.Run("url-only source — the replayed-spool shape — uploads by url", func(t *testing.T) {
+		// given — the shape every remote file has after a spool round-trip:
+		// runstore rebuilds FileSource with URL but no Open closure (closures
+		// don't serialize) and no local path, so materialize yields "" and
+		// req.Url is the ONLY thing letting the uploader re-fetch. This
+		// assertion is the branch's first reader: deleting it left the whole
+		// suite green while every url-only upload lost its source.
+		fx := newFixture(t)
+		obj := &importv2.Object{
+			SourceKey: "file:abc123",
+			SbType:    coresb.SmartBlockTypeFileObject,
+			Payload:   &importv2.Snapshot{Details: domain.NewDetails()},
+			File:      &importv2.FileSource{Name: "img.png", URL: "https://example.org/img.png"},
+		}
+
+		// when
+		outcome, err := fx.Persist(context.Background(), obj, Target{}, fx.report)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "fileObj1", outcome.Id)
+		assert.Equal(t, []string{""}, fx.uploader.uploadedPaths,
+			"no local path exists for a url-only source")
+		assert.Equal(t, []string{"https://example.org/img.png"}, fx.uploader.uploadedUrls,
+			"the url must reach the upload request — it is the only fetch carrier")
 	})
 
 	t.Run("streamed file spills to temp and cleans up", func(t *testing.T) {
