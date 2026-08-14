@@ -46,6 +46,7 @@ type Client struct {
 	token     string
 	retry     RetryPolicy
 	pacer     *pacer
+	status    StatusHook
 }
 
 type Option func(*Client)
@@ -74,6 +75,7 @@ func NewClient(token string, opts ...Option) *Client {
 		token:     token,
 		retry:     DefaultRetryPolicy(),
 		pacer:     newPacer(rate.Limit(requestsPerSecond)),
+		status:    noopStatusHook{},
 	}
 	for _, opt := range opts {
 		opt(c)
@@ -95,6 +97,7 @@ func (c *Client) Request(ctx context.Context, method, path string, body any, out
 
 	deadline := time.Now().Add(c.retry.TotalBudget)
 	var lastErr error
+	signalled := false // a Throttled/Retrying edge was reported for this call
 	for attempt := 0; attempt < c.retry.MaxAttempts; attempt++ {
 		if attempt > 0 {
 			delay := c.retry.backoff(attempt)
@@ -104,16 +107,27 @@ func (c *Client) Request(ctx context.Context, method, path string, body any, out
 			if time.Now().Add(delay).After(deadline) {
 				break // budget exhausted, report the last error
 			}
+			c.status.Retrying(attempt, c.retry.MaxAttempts)
+			signalled = true
 			if err := sleepCtx(ctx, delay); err != nil {
 				return err
 			}
 		}
+		// A pending pushback pause is the calm THROTTLED state, not an
+		// error: report it with its resume time before waiting it out.
+		if pause := c.pacer.pauseRemaining(); pause > 0 {
+			c.status.Throttled(pause)
+			signalled = true
+		}
 		if err := c.pacer.Wait(ctx); err != nil {
-			return err
+			return err // cancelled mid-wait: no recovery — the run is stopping
 		}
 
 		lastErr = c.doOnce(ctx, method, path, payload, out)
 		if lastErr == nil {
+			if signalled {
+				c.status.Recovered()
+			}
 			return nil
 		}
 		if !isRetryable(lastErr) {

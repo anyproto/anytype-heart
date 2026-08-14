@@ -52,15 +52,20 @@ func newPacer(limit rate.Limit) *pacer {
 }
 
 func (p *pacer) Wait(ctx context.Context) error {
-	p.mu.Lock()
-	pause := time.Until(p.pausedUntil)
-	p.mu.Unlock()
-	if pause > 0 {
+	if pause := p.pauseRemaining(); pause > 0 {
 		if err := sleepCtx(ctx, pause); err != nil {
 			return err
 		}
 	}
 	return p.limiter.Wait(ctx)
+}
+
+// pauseRemaining reports how much of the shared pushback window is left —
+// the THROTTLED signal's resume time.
+func (p *pacer) pauseRemaining() time.Duration {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return time.Until(p.pausedUntil)
 }
 
 func (p *pacer) pushback(d time.Duration) {
