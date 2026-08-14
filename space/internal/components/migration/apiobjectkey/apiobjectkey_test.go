@@ -166,6 +166,45 @@ func TestBackfill(t *testing.T) {
 		assert.Equal(t, map[string]string{"rel2": "warranty_until"}, fx.written)
 	})
 
+	t.Run("a corpse-held slug does not block the backfill — even when the corpse STORES it", func(t *testing.T) {
+		// given — the sibling case to the one above, with the corpse's
+		// apiObjectKey POPULATED: an entity that was backfilled or minted a
+		// slug and then UI-deleted still stores it. The vacate policy
+		// (§7.5-req-2) says the dead row does not hold the spelling, so the
+		// live candidate deriving the same slug is stamped — after which TWO
+		// rows persist apiObjectKey "warranty_until", one dead, one live.
+		// That is intended and safe while the corpse stays dead (every
+		// namespace excludes it); if a revival channel ever appears, the
+		// loud-ambiguity floor at lookup is what catches the twins (§8-OQ2's
+		// re-slug-on-revive half is not built). Both store shapes are run:
+		// flag-only pins the migration's own isUninstalled filter, the prod
+		// double-flag ({isUninstalled,isDeleted}) pins what a real UI delete
+		// leaves in the index.
+		for _, shape := range []struct {
+			name string
+			prod bool
+		}{{"flag-only", false}, {"prod", true}} {
+			t.Run(shape.name, func(t *testing.T) {
+				fx := newFixture(t)
+				corpse := property("rel-corpse", bsonA, "warranty_until", "Warranty until")
+				corpse[bundle.RelationKeyIsUninstalled] = domain.Bool(true)
+				if shape.prod {
+					corpse[bundle.RelationKeyIsDeleted] = domain.Bool(true)
+				}
+				fx.store.AddObjects(t, spaceId, []objectstore.TestObject{
+					corpse,
+					property("rel-live", bsonB, "", "Warranty until"),
+				})
+
+				toMigrate, migrated := fx.run(t)
+
+				assert.Equal(t, 1, toMigrate)
+				assert.Equal(t, 1, migrated)
+				assert.Equal(t, map[string]string{"rel-live": "warranty_until"}, fx.written)
+			})
+		}
+	})
+
 	t.Run("the migration is idempotent: a second run over its own output does nothing", func(t *testing.T) {
 		fx := newFixture(t)
 		fx.store.AddObjects(t, spaceId, []objectstore.TestObject{

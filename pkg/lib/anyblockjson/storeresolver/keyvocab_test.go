@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -457,5 +458,82 @@ func TestAcceptHalfFolds(t *testing.T) {
 		key, ok := r.TypeKey("Invoice")
 		require.True(t, ok)
 		assert.Equal(t, bsonTypeKey, key)
+	})
+}
+
+// TestCorpseSlugLifecycleInDocumentVocabulary — the corpse (uninstalled)
+// story on the DOCUMENT vocabulary, both store shapes a real UI delete can
+// leave (flag-only {isUninstalled}, and the prod double-flag
+// {isUninstalled, isDeleted} that delete.go + detailsinject.go persist).
+//
+// Fixture discipline: the corpse is BSON-keyed WITH a stored apiObjectKey —
+// if loadKeyMaps stopped excluding corpses, the slug would resolve and emit
+// again and every assertion here flips; a readable or slug-less corpse key
+// could detect neither direction.
+func TestCorpseSlugLifecycleInDocumentVocabulary(t *testing.T) {
+	corpse := func(prodShape bool) spaceindex.TestObject {
+		row := relationRow("rel-corpse", bsonPropKey, "warranty_until")
+		row[bundle.RelationKeyIsUninstalled] = domain.Bool(true)
+		if prodShape {
+			row[bundle.RelationKeyIsDeleted] = domain.Bool(true)
+		}
+		return row
+	}
+
+	for _, shape := range []struct {
+		name string
+		prod bool
+	}{{"flag-only shape", false}, {"prod shape", true}} {
+		t.Run(shape.name+": the slug is severed in both directions", func(t *testing.T) {
+			// given — the corpse is the ONLY holder of warranty_until
+			r := vocabFixture(t, corpse(shape.prod))
+
+			// then: emit degrades to the stored key (a document written NOW
+			// pins the address that survives a later re-mint of the slug)…
+			assert.Equal(t, bsonPropKey, r.PropertySlug(bsonPropKey))
+			// …and the slug no longer resolves — a document written BEFORE
+			// the uninstall keeps its term verbatim on import, landing the
+			// value under a string key no relation owns (executed below)
+			key, ok := r.PropertyKey("warranty_until")
+			assert.False(t, ok)
+			assert.Equal(t, "warranty_until", key)
+		})
+	}
+
+	t.Run("a pre-uninstall document imports its value onto a key no relation owns", func(t *testing.T) {
+		// given — the export produced while the property was live spells the
+		// slug; the property has since been UI-deleted
+		index := spaceindex.NewStoreFixture(t)
+		index.AddObjects(t, []spaceindex.TestObject{corpse(true)})
+		doc := []byte(`{"version":1,"id":"obj1","type":"page","properties":{"name":"Doc","warranty_until":"2027-01-01"}}`)
+
+		// when
+		_, snapshot, err := anyblockjson.Unmarshal(doc, New(index).Options())
+
+		// then — the term passes through verbatim (the git rule, never a
+		// guess): the value lands under the literal slug string, NOT under
+		// the corpse's stored key. Byte-safe, address-orphaned.
+		require.NoError(t, err)
+		assert.Equal(t, "2027-01-01", snapshot.Details.Fields["warranty_until"].GetStringValue())
+		assert.Nil(t, snapshot.Details.Fields[bsonPropKey])
+	})
+
+	t.Run("after a recreate the corpse-era slug re-aims onto the new holder", func(t *testing.T) {
+		// given — the vacate lean's (§8-OQ2) executed consequence: P held
+		// warranty_until and was uninstalled; Q minted it fresh
+		recreated := relationRow("rel-recreated", bsonTwinKey, "warranty_until")
+		r := vocabFixture(t, corpse(true), recreated)
+
+		// when
+		key, ok := r.PropertyKey("warranty_until")
+
+		// then — same bytes, different property: a document exported while P
+		// was live now binds Q. Pinned as current, documented behavior; it is
+		// also why the emit side must keep degrading a corpse to its stored
+		// key (the assertion above), or post-uninstall exports would join
+		// this re-aim class too.
+		require.True(t, ok)
+		assert.Equal(t, bsonTwinKey, key)
+		assert.Equal(t, "warranty_until", r.PropertySlug(bsonTwinKey), "the new holder owns the spelling")
 	})
 }

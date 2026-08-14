@@ -1,13 +1,17 @@
 package service
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/subscription"
+	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -118,4 +122,53 @@ func TestCrossSpacePropertyFiltersVacateCorpses(t *testing.T) {
 	assert.Equal(t, model.BlockContentDataviewFilter_NotEqual, byKey[bundle.RelationKeyIsUninstalled].Condition)
 	assert.Equal(t, domain.Bool(true), byKey[bundle.RelationKeyIsUninstalled].Value)
 	assert.Contains(t, byKey, bundle.RelationKeyIsHidden, "and the pre-existing hidden filter stays")
+}
+
+// TestCrossSpaceTypeAndTagFiltersLackTheCorpseFilter — DOCUMENTS A GAP in
+// the v1 corpse policy's coverage: only the PROPERTY subscription carries the
+// isUninstalled filter (the test above); the TYPE and TAG subscriptions
+// filter isHidden only. Executed against the real subscription requests via
+// a capturing mock, so the asymmetry is pinned where it lives, not inferred.
+//
+// Today this is masked in production by the store's injected
+// `isDeleted != true` default: a real UI delete persists BOTH isUninstalled
+// and isDeleted (delete.go + smartblock/detailsinject.go), so prod corpses
+// never reach any of the three subscriptions. The isUninstalled filter is
+// the belt-and-braces layer, and it exists on one namespace out of three.
+// Extending it to types and tags must flip the False assertions below —
+// this test marks the asymmetry so that either resolution is a conscious
+// change, not drift.
+func TestCrossSpaceTypeAndTagFiltersLackTheCorpseFilter(t *testing.T) {
+	// given — capture every cross-space subscription request
+	fx := newFixture(t)
+	filtersBySub := map[string]map[domain.RelationKey]database.FilterRequest{}
+	fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything, mock.Anything).RunAndReturn(
+		func(req subscription.SubscribeRequest, _ crossspacesub.Predicate) (*subscription.SubscribeResponse, error) {
+			byKey := map[domain.RelationKey]database.FilterRequest{}
+			for _, f := range req.Filters {
+				byKey[f.RelationKey] = f
+			}
+			filtersBySub[req.SubId] = byKey
+			return nil, errors.New("stop after capturing the request")
+		})
+
+	// when — each subscription builds its real request (the error return
+	// stops each one before any queue machinery starts)
+	_ = fx.service.subscribeToCrossSpaceProperties()
+	_ = fx.service.subscribeToCrossSpaceTypes()
+	_ = fx.service.subscribeToCrossSpaceTags()
+
+	// then — properties carry the corpse filter…
+	require.Contains(t, filtersBySub, "api.properties.crossspace")
+	assert.Contains(t, filtersBySub["api.properties.crossspace"], bundle.RelationKeyIsUninstalled)
+
+	// …types and tags do NOT (the gap: a flag-only corpse would list in v1's
+	// type and tag namespaces; only the injected isDeleted default hides the
+	// prod double-flag shape)
+	require.Contains(t, filtersBySub, "api.types.crossspace")
+	assert.NotContains(t, filtersBySub["api.types.crossspace"], bundle.RelationKeyIsUninstalled,
+		"pinned asymmetry — adding the filter to types must update this test")
+	require.Contains(t, filtersBySub, "api.tags.crossspace")
+	assert.NotContains(t, filtersBySub["api.tags.crossspace"], bundle.RelationKeyIsUninstalled,
+		"pinned asymmetry — adding the filter to tags must update this test")
 }
