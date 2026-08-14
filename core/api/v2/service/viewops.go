@@ -838,11 +838,39 @@ func (a *v2StateApplier) validateViewKeys(edited map[string]any, preKnown map[st
 			continue
 		}
 		if propertyKeyExistsIn(entries, use.key) {
+			if !propertyKeyInstalledIn(entries, use.key) {
+				// the key exists only through the bundled table — the same
+				// removal gate every other write channel runs (§8.41). Before
+				// this, only the slug≠key bundled class was refused (as an
+				// accidental unknown-key), while `tag`, `status` and the other
+				// 41 keys whose derived slug equals the key sailed straight
+				// into columns, groupBy, filters and sorts of a property the
+				// user had deleted.
+				refused, err := a.refusesRemovedBundled(entries, use.key)
+				if err != nil {
+					*issues = append(*issues, v2model.Issue{Path: use.path, Message: err.Error()})
+					continue
+				}
+				if refused {
+					*issues = append(*issues, removedPropertyIssue(a.spaceId, use.key, use.key, use.path))
+					continue
+				}
+			}
 			props = append(props, map[string]any{
 				"key":    use.key,
 				"format": anyblockjson.FormatName(a.propertyFormat(use.key)),
 			})
 			continue
+		}
+		// a bundled DERIVED slug that no longer resolves may be the removed
+		// relation's view spelling — say "removed", not "unknown key" with a
+		// did-you-mean pointing somewhere else (§8.41-10)
+		if stored, ok := bundle.RelationKeyByApiSlug(use.key); ok {
+			refused, err := a.refusesRemovedBundled(entries, string(stored))
+			if err == nil && refused {
+				*issues = append(*issues, removedPropertyIssue(a.spaceId, string(stored), use.key, use.path))
+				continue
+			}
 		}
 		if known == nil {
 			known = knownPropertyKeysIn(entries)

@@ -217,7 +217,18 @@ func (s *V2Service) GetObject(ctx context.Context, spaceId, objectId string, q V
 	}
 	etag := ComputeEtag(read.Heads)
 
-	opts := storeresolver.New(s.store.SpaceIndex(spaceId)).Options()
+	reads := storeresolver.New(s.store.SpaceIndex(spaceId))
+	if read.SbType == model.SmartBlockType_STType {
+		// tombstone window (§8.41): a just-deleted relation's index row is
+		// {id, isDeleted} only, so the by-id resolve behind typeProperties
+		// fails and the entry would silently VANISH from the served list —
+		// and the documented read-modify-write loop would then delete the
+		// type's reference to it. The surviving tree still knows everything;
+		// read it and seed the resolver so all three store shapes serve the
+		// same bytes.
+		s.seedTombstonedTypeProperties(ctx, spaceId, reads, read.Snapshot)
+	}
+	opts := reads.Options()
 	// the shape comes pre-composed by validate() — see objectReadPlan;
 	// CompactObjectRefs stays at its zero value on every shape (no legend)
 	opts.CompactBlockLabels = plan.compactBlockLabels
@@ -271,6 +282,49 @@ func (s *V2Service) GetObject(ctx context.Context, spaceId, objectId string, q V
 		return nil, "", fmt.Errorf("object %s: %w", objectId, err)
 	}
 	return body, etag, nil
+}
+
+// seedTombstonedTypeProperties makes a type read serve the SAME
+// typeProperties in the tombstone window as before the delete and after the
+// next space load (§8.41). For every recommended-relation id the store
+// resolver cannot answer (GetRelationById needs a relationKey the tombstone
+// row lost), it confirms the row exists as a tombstone and reads the LIVE
+// object — the tree survives a UI delete by design (ADDRESSING §2.4-5) — to
+// recover key, name and format, then seeds the resolver. Every miss degrades
+// to the pre-§8.41 behavior for that entry (dropped), never to an error: a
+// dangling id in a recommended list has always been dropped, and the read
+// must not fail on it.
+func (s *V2Service) seedTombstonedTypeProperties(ctx context.Context, spaceId string, reads *storeresolver.Resolvers, snapshot *model.SmartBlockSnapshotBase) {
+	if snapshot == nil || snapshot.Details == nil {
+		return
+	}
+	index := s.store.SpaceIndex(spaceId)
+	details := domain.NewDetailsFromProto(snapshot.Details)
+	for _, listKey := range typeRecommendedListKeys {
+		for _, id := range details.GetStringList(listKey) {
+			if _, ok := reads.PropertyById(id); ok {
+				continue
+			}
+			row, err := index.GetDetails(id)
+			if err != nil || row.GetString(bundle.RelationKeyId) == "" || !row.GetBool(bundle.RelationKeyIsDeleted) {
+				continue // no row, or not a tombstone — the drop stands
+			}
+			relRead, err := s.reader.ReadObject(ctx, spaceId, id)
+			if err != nil || relRead.Snapshot == nil || relRead.Snapshot.Details == nil {
+				continue
+			}
+			live := domain.NewDetailsFromProto(relRead.Snapshot.Details)
+			key := live.GetString(bundle.RelationKeyRelationKey)
+			if key == "" {
+				continue
+			}
+			reads.SeedProperty(id, anyblockjson.PropertyDefinition{
+				Key:    domain.RelationKey(key),
+				Name:   live.GetString(bundle.RelationKeyName),
+				Format: model.RelationFormat(live.GetInt64(bundle.RelationKeyRelationFormat)),
+			})
+		}
+	}
 }
 
 // markdownEnvelope builds the format=md response. The etag is read AFTER the
@@ -753,15 +807,28 @@ func (b *objectRowBuilder) row(record database.Record) v2model.ObjectRow {
 // typeKeysById maps type object ids to type keys — rows carry the type key
 // (C2), never the type object (C5). Live types are spelled as their served
 // key (the slug for a BSON-keyed type, §7.5a — the spelling the search
-// type filter resolves right back); uninstalled corpses stay in the map so
-// their objects' rows keep a type, spelled by the honest internal key.
+// type filter resolves right back); removed types (uninstalled, archived —
+// or the prod corpse shape carrying isDeleted) stay in the map so their
+// objects' rows keep a type, spelled by the honest internal key.
+//
+// The query suppresses both injected defaults DELIBERATELY (§8.41): a
+// production corpse carries isDeleted, so the plain query this used to be
+// never returned one and the corpse branch below was dead outside flag-only
+// fixtures — production rows fell through to the per-row GetDetails fallback
+// instead. Tombstoned rows ({id, isDeleted} only) still land here but carry
+// no uniqueKey and are skipped; their objects' rows serve an empty type for
+// the window, the only honest answer a keyless row allows.
 func (s *V2Service) typeKeysById(spaceId string) (map[string]string, error) {
 	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
-		Filters: []database.FilterRequest{{
-			RelationKey: bundle.RelationKeyResolvedLayout,
-			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       domain.Int64(int64(model.ObjectType_objectType)),
-		}},
+		Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.Int64(int64(model.ObjectType_objectType)),
+			},
+			{RelationKey: bundle.RelationKeyIsArchived, Condition: model.BlockContentDataviewFilter_None},
+			{RelationKey: bundle.RelationKeyIsDeleted, Condition: model.BlockContentDataviewFilter_None},
+		},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("query types in space %s: %w", spaceId, err)
@@ -779,7 +846,7 @@ func (s *V2Service) typeKeysById(spaceId string) (map[string]string, error) {
 		if err != nil {
 			continue
 		}
-		if record.Details.GetBool(bundle.RelationKeyIsUninstalled) {
+		if corpseFlagged(record.Details) {
 			out[id] = string(key) // a corpse's slug vacated the namespace
 			continue
 		}

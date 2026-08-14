@@ -9,6 +9,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 )
 
@@ -122,21 +123,58 @@ func TestV2ListingsServeSlugs(t *testing.T) {
 	t.Run("a corpse type keeps its internal spelling in rows", func(t *testing.T) {
 		// its slug vacated the namespace (§8-OQ2) — a recreated live type
 		// may hold it now, and two rows advertising one address would be
-		// the D2 shape all over
-		fx := slugSpaceFixture(t)
-		fx.addType(t, testSpaceId, objectstore.TestObject{
-			bundle.RelationKeyId:            domain.String("type-corpse"),
-			bundle.RelationKeyUniqueKey:     domain.String("ot-6a7663db61fab21cd4b9e106"),
-			bundle.RelationKeyApiObjectKey:  domain.String("meeting_note"),
-			bundle.RelationKeyName:          domain.String("Old meeting note"),
-			bundle.RelationKeyIsUninstalled: domain.Bool(true),
+		// the D2 shape all over.
+		//
+		// All three corpse shapes run, THROUGH THE ROW BUILDER — the path
+		// that serves production. The original flag-only fixture asserted on
+		// typeKeysById alone, whose plain query the injected isDeleted
+		// default emptied of every prod corpse: its isUninstalled branch was
+		// dead code in production and the fixture could not know (§8.41).
+		// typeKeysById now suppresses both defaults, so the flag-only and
+		// prod legs serve identically; the tombstone row carries no
+		// uniqueKey, so its objects' rows serve an EMPTY type for that
+		// window — the only honest answer, pinned here as such.
+		// Revert check: dropping the two Condition None clauses from
+		// typeKeysById fails the prod leg (the row falls back to the per-row
+		// point lookup — same spelling — but the map assertion sees the
+		// corpse vanish); dropping the corpseFlagged branch serves the slug
+		// and fails flag-only and prod both.
+		corpseShapes(t, func(t *testing.T, shape corpseShape) {
+			fx := slugSpaceFixture(t)
+			if shape == corpseTombstone {
+				fx.addTombstone(t, "type-corpse")
+			} else {
+				obj := objectstore.TestObject{
+					bundle.RelationKeyId:            domain.String("type-corpse"),
+					bundle.RelationKeyUniqueKey:     domain.String("ot-6a7663db61fab21cd4b9e106"),
+					bundle.RelationKeyApiObjectKey:  domain.String("meeting_note"),
+					bundle.RelationKeyName:          domain.String("Old meeting note"),
+					bundle.RelationKeyIsUninstalled: domain.Bool(true),
+				}
+				if shape == corpseProd {
+					obj[bundle.RelationKeyIsDeleted] = domain.Bool(true)
+				}
+				fx.addType(t, testSpaceId, obj)
+			}
+
+			builder, err := fx.newObjectRowBuilder(testSpaceId, nil)
+			require.NoError(t, err)
+			details := domain.NewDetails()
+			details.SetString(bundle.RelationKeyId, "note1")
+			details.SetString(bundle.RelationKeyName, "Standup")
+			details.SetString(bundle.RelationKeyType, "type-corpse")
+			row := builder.row(database.Record{Details: details})
+
+			if shape == corpseTombstone {
+				assert.Equal(t, "", row.Type, "a tombstoned type row spells nothing — the store has nothing to spell")
+			} else {
+				assert.Equal(t, "6a7663db61fab21cd4b9e106", row.Type, "a corpse type spells its internal key")
+			}
+
+			keys, err := fx.typeKeysById(testSpaceId)
+			require.NoError(t, err)
+			assert.Equal(t, "meeting_note", keys["type-meeting"], "the live holder keeps the slug")
 		})
-
-		keys, err := fx.typeKeysById(testSpaceId)
-
-		require.NoError(t, err)
-		assert.Equal(t, "6a7663db61fab21cd4b9e106", keys["type-corpse"])
-		assert.Equal(t, "meeting_note", keys["type-meeting"], "the live holder keeps the slug")
 	})
 }
 

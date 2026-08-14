@@ -279,8 +279,9 @@ func (s *V2Service) createFromDocument(ctx context.Context, spaceId string, body
 
 	// 1a. canonicalize addressing terms (§7.5a-5): api-key slugs in the
 	// envelope's type/templateFor and in the properties map resolve to
-	// their stored spellings before validation and import
-	body, err = s.canonicalizeDocumentKeys(spaceId, body)
+	// their stored spellings before validation and import; the spelling map
+	// keeps refusal paths addressed to the request as sent
+	body, spellings, err := s.canonicalizeDocumentKeys(spaceId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -311,7 +312,7 @@ func (s *V2Service) createFromDocument(ctx context.Context, spaceId string, body
 	}
 
 	// 2. referential validation (R9) — reject before anything is created
-	if err := s.validateDocumentRefs(spaceId, &envelope, opts); err != nil {
+	if err := s.validateDocumentRefs(ctx, spaceId, &envelope, opts, spellings); err != nil {
 		return nil, err
 	}
 
@@ -402,8 +403,10 @@ func mapUnmarshalError(body []byte, err error) error {
 // gating, template target, items-on-collections, and property-key existence
 // in the properties map (reject with did-you-mean — creating properties from
 // a possibly hallucinated key is reserved for typeProperties and
-// POST /properties).
-func (s *V2Service) validateDocumentRefs(spaceId string, envelope *docEnvelope, opts docCreateOptions) error {
+// POST /properties). spellings maps canonicalized keys back to the caller's
+// own spelling (canonicalizeDocumentKeys), so refusals address the request
+// that was actually sent.
+func (s *V2Service) validateDocumentRefs(ctx context.Context, spaceId string, envelope *docEnvelope, opts docCreateOptions, spellings map[string]string) error {
 	switch envelope.Kind {
 	case "", "page", "template":
 	case "objectType":
@@ -446,9 +449,22 @@ func (s *V2Service) validateDocumentRefs(spaceId string, envelope *docEnvelope, 
 		if err := rejectRestrictedType(envelope.Type); err != nil {
 			return err
 		}
+		// the bundled table answers for a type key forever, so existence alone
+		// cannot see that this SPACE removed the type — without this check a
+		// create landed a new object in a type whose route 404s, and a
+		// reinstall lit it back up (§8.41; the type twin of the property
+		// refusal below)
+		if err := s.refuseRemovedType(ctx, spaceId, envelope.Type, "/type"); err != nil {
+			return err
+		}
 	}
-	if envelope.TemplateFor != "" && !s.typeKeyExists(spaceId, envelope.TemplateFor) {
-		return s.unknownTypeKeyError(spaceId, envelope.TemplateFor, "/templateFor")
+	if envelope.TemplateFor != "" {
+		if !s.typeKeyExists(spaceId, envelope.TemplateFor) {
+			return s.unknownTypeKeyError(spaceId, envelope.TemplateFor, "/templateFor")
+		}
+		if err := s.refuseRemovedType(ctx, spaceId, envelope.TemplateFor, "/templateFor"); err != nil {
+			return err
+		}
 	}
 
 	// SPEC §2: items on a non-collection document is a wiring-enforced error
@@ -458,7 +474,29 @@ func (s *V2Service) validateDocumentRefs(spaceId string, envelope *docEnvelope, 
 	}
 
 	// property keys must exist — did-you-mean, never silent create (R9)
-	return s.validatePropertyKeys(spaceId, envelope.Properties)
+	return s.validatePropertyKeys(ctx, spaceId, envelope.Properties, spellings)
+}
+
+// refuseRemovedType is the type-namespace removal gate for one canonicalized
+// type slot (§8.41). Fails closed on any probe error: an unverifiable
+// removal set must not read as "nothing was removed".
+func (s *V2Service) refuseRemovedType(ctx context.Context, spaceId, typeKey, path string) error {
+	entries, err := s.liveTypes(spaceId)
+	if err != nil {
+		return err
+	}
+	removed, err := s.bundledTypeRemovalSet(spaceId)
+	if err != nil {
+		return err
+	}
+	isRemoved, err := s.bundledTypeRemoved(ctx, spaceId, entries, removed, typeKey)
+	if err != nil {
+		return err
+	}
+	if isRemoved {
+		return v2model.ValidationFailed("removed type key", removedTypeIssue(spaceId, typeKey, path))
+	}
+	return nil
 }
 
 // validatePropertyKeys is the R9 unknown-property loop over a document's
@@ -474,7 +512,11 @@ func (s *V2Service) validateDocumentRefs(spaceId string, envelope *docEnvelope, 
 // would make the advertised clone loop fail on a document the API itself
 // served, and would do so with a did-you-mean pointing at some unrelated
 // live key that happens to be spelled nearby — moving a value onto the
-// wrong property is worse than carrying a dormant one.
+// wrong property is worse than carrying a dormant one. The tolerance is a
+// bare existence probe BY DESIGN — it cannot, and does not claim to,
+// distinguish a pasted clone from a freshly authored value (see
+// propertyKeyHeldByAnyRelation for why no provenance signal is worth its
+// cost on a key that resolves nowhere).
 //
 // This tolerance is not create-specific special pleading: PATCH has the
 // same escape by another route (stateops.go checkKey passes any key already
@@ -483,10 +525,16 @@ func (s *V2Service) validateDocumentRefs(spaceId string, envelope *docEnvelope, 
 // neither channel will resolve a corpse key to a property object.
 //
 // The ONE key class the tolerance does not cover is a BUNDLED relation this
-// space uninstalled (removedPropertyIssue): bundle.HasRelation answers for
-// it forever, so without the explicit check a create lands new data on a
-// property the user deleted, and the reinstall lights it back up.
-func (s *V2Service) validatePropertyKeys(spaceId string, props map[string]json.RawMessage) error {
+// space removed (removedPropertyIssue; §8.41 widened "removed" from
+// uninstalled to archived too, and to the tombstone window): bundle.
+// HasRelation answers for it forever, so without the explicit check a
+// create lands new data on a property the user deleted, and the reinstall
+// lights it back up.
+//
+// spellings maps a canonicalized key back to the caller's spelling —
+// refusal paths must address the request as sent, not the rewrite
+// (§8.41-10).
+func (s *V2Service) validatePropertyKeys(ctx context.Context, spaceId string, props map[string]json.RawMessage, spellings map[string]string) error {
 	if len(props) == 0 {
 		return nil
 	}
@@ -494,7 +542,14 @@ func (s *V2Service) validatePropertyKeys(spaceId string, props map[string]json.R
 	if err != nil {
 		return err
 	}
+	spelledAs := func(key string) string {
+		if original, ok := spellings[key]; ok {
+			return original
+		}
+		return key
+	}
 	var issues []v2model.Issue
+	var removedCount int
 	var known []string
 	// primed lazily and at most once (§7.5a-2), and only when a key reaches
 	// the bundled arm at all
@@ -503,26 +558,39 @@ func (s *V2Service) validatePropertyKeys(spaceId string, props map[string]json.R
 		if propertyKeyExistsIn(entries, key) {
 			if !propertyKeyInstalledIn(entries, key) {
 				if removedBundled == nil {
-					if removedBundled, err = s.uninstalledBundledKeys(spaceId); err != nil {
+					if removedBundled, err = s.bundledRemovalSet(spaceId); err != nil {
 						return err
 					}
 				}
-				if propertyKeyRemovedIn(entries, removedBundled, key) {
-					issues = append(issues, removedPropertyIssue(spaceId, key, "/properties/"+key))
+				isRemoved, err := s.bundledPropertyRemoved(ctx, spaceId, entries, removedBundled, key)
+				if err != nil {
+					return err
+				}
+				if isRemoved {
+					issues = append(issues, removedPropertyIssue(spaceId, key, spelledAs(key), "/properties/"+spelledAs(key)))
+					removedCount++
 				}
 			}
 			continue
 		}
-		if s.propertyKeyHeldByAnyRelation(spaceId, key) {
+		if s.propertyKeyHeldByAnyRelation(ctx, spaceId, key) {
 			continue
 		}
 		if known == nil {
 			known = knownPropertyKeysIn(entries)
 		}
-		issues = append(issues, unknownPropertyIssue(key, "/properties/"+key, known,
+		issues = append(issues, unknownPropertyIssue(key, "/properties/"+spelledAs(key), known,
 			fmt.Sprintf("list all with GET /v2/spaces/%s/properties, or create it with POST /v2/spaces/%s/properties", spaceId, spaceId)))
 	}
 	if len(issues) > 0 {
+		// the envelope names what actually happened: "unknown" on a key the
+		// space knows and removed is a lie the issue text then contradicts
+		switch {
+		case removedCount == len(issues):
+			return v2model.ValidationFailed("removed property keys", issues...)
+		case removedCount > 0:
+			return v2model.ValidationFailed("unknown and removed property keys", issues...)
+		}
 		return v2model.ValidationFailed("unknown property keys", issues...)
 	}
 	return nil

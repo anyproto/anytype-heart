@@ -82,6 +82,64 @@ func (_c *MockObjectCreator_CreateObjectFromSnapshot_Call) RunAndReturn(run func
 	return _c
 }
 
+// RelationIdByKey provides a mock function with given fields: ctx, spaceId, key
+func (_m *MockObjectCreator) RelationIdByKey(ctx context.Context, spaceId string, key domain.RelationKey) (string, error) {
+	ret := _m.Called(ctx, spaceId, key)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RelationIdByKey")
+	}
+
+	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, domain.RelationKey) (string, error)); ok {
+		return rf(ctx, spaceId, key)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, domain.RelationKey) string); ok {
+		r0 = rf(ctx, spaceId, key)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, domain.RelationKey) error); ok {
+		r1 = rf(ctx, spaceId, key)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockObjectCreator_RelationIdByKey_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RelationIdByKey'
+type MockObjectCreator_RelationIdByKey_Call struct {
+	*mock.Call
+}
+
+// RelationIdByKey is a helper method to define mock.On call
+//   - ctx context.Context
+//   - spaceId string
+//   - key domain.RelationKey
+func (_e *MockObjectCreator_Expecter) RelationIdByKey(ctx interface{}, spaceId interface{}, key interface{}) *MockObjectCreator_RelationIdByKey_Call {
+	return &MockObjectCreator_RelationIdByKey_Call{Call: _e.mock.On("RelationIdByKey", ctx, spaceId, key)}
+}
+
+func (_c *MockObjectCreator_RelationIdByKey_Call) Run(run func(ctx context.Context, spaceId string, key domain.RelationKey)) *MockObjectCreator_RelationIdByKey_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(domain.RelationKey))
+	})
+	return _c
+}
+
+func (_c *MockObjectCreator_RelationIdByKey_Call) Return(_a0 string, _a1 error) *MockObjectCreator_RelationIdByKey_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockObjectCreator_RelationIdByKey_Call) RunAndReturn(run func(context.Context, string, domain.RelationKey) (string, error)) *MockObjectCreator_RelationIdByKey_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // TypeIdByKey provides a mock function with given fields: ctx, spaceId, key
 func (_m *MockObjectCreator) TypeIdByKey(ctx context.Context, spaceId string, key domain.TypeKey) (string, error) {
 	ret := _m.Called(ctx, spaceId, key)

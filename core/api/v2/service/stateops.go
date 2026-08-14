@@ -783,8 +783,15 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 	// to stored keys before validation and application. A term resolving to
 	// nothing passes through verbatim (checkKey owns the did-you-mean);
 	// ambiguity is a loud 400 here.
-	if err := a.canonicalizeSetPropertyKeys(&op, opPath); err != nil {
+	spellings, err := a.canonicalizeSetPropertyKeys(&op, opPath)
+	if err != nil {
 		return err
+	}
+	spelledAs := func(key string) string {
+		if original, ok := spellings[key]; ok {
+			return original
+		}
+		return key
 	}
 	doc, err := a.doc()
 	if err != nil {
@@ -829,7 +836,7 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 					return false
 				}
 				if refused {
-					issues = append(issues, removedPropertyIssue(a.spaceId, key, path))
+					issues = append(issues, removedPropertyIssue(a.spaceId, key, spelledAs(key), path))
 					return false
 				}
 			}
@@ -852,13 +859,15 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 
 	setKeys := sortedKeys(op.Set)
 	for _, key := range setKeys {
-		path := opPath + ".set." + key
+		// issue paths spell the key as the CALLER sent it — canonicalization
+		// already ran, and a path naming the rewrite is unactionable (§8.41-10)
+		path := opPath + ".set." + spelledAs(key)
 		claim(key, "set", path) // set goes first — it can never collide
 		checkKey(key, path)
 	}
 	unset := map[string]bool{}
 	for _, key := range op.Unset {
-		path := opPath + ".unset." + key
+		path := opPath + ".unset." + spelledAs(key)
 		if v2OutputOnlyPropertyKeys(key) {
 			issues = append(issues, v2model.Issue{Path: path,
 				Message: fmt.Sprintf("%q is output-only (SPEC §4a) and cannot be unset", key)})
@@ -874,7 +883,7 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 	checkListField := func(field string, m map[string]json.RawMessage) map[string][]any {
 		decoded := map[string][]any{}
 		for _, key := range sortedKeys(m) {
-			path := opPath + "." + field + "." + key
+			path := opPath + "." + field + "." + spelledAs(key)
 			if !claim(key, field, path) || !checkKey(key, path) {
 				continue
 			}
@@ -980,21 +989,23 @@ func (a *v2StateApplier) propEntries() ([]propertyEntry, error) {
 	return a.liveEntries, a.liveEntriesErr
 }
 
-// removedBundledKeys primes the applier's uninstalled-bundled snapshot once
+// removedBundledKeys primes the applier's bundled-removal snapshot once
 // (same one-query-per-request discipline as propEntries), and only when a
 // key actually reaches the bundled arm. Fails closed on a load error: an
 // unreadable removal set must not read as "nothing was removed".
 func (a *v2StateApplier) removedBundledKeys() (map[string]bool, error) {
 	if !a.removedBundledLoaded {
 		a.removedBundledLoaded = true
-		a.removedBundled, a.removedBundledErr = a.s.uninstalledBundledKeys(a.spaceId)
+		a.removedBundled, a.removedBundledErr = a.s.bundledRemovalSet(a.spaceId)
 	}
 	return a.removedBundled, a.removedBundledErr
 }
 
 // refusesRemovedBundled is the PATCH-side verdict: the key exists ONLY
-// because the bundled table answers for it, and this space uninstalled that
-// bundled relation. It is consulted AFTER the in-document escape — a removed
+// because the bundled table answers for it, and this space removed that
+// bundled relation (uninstalled, archived, or sitting in the post-delete
+// tombstone window — bundledPropertyRemoved covers all three shapes,
+// §8.41). It is consulted AFTER the in-document escape — a removed
 // property's existing values stay editable and removable, since unset is the
 // one cleanup channel a caller has left; what this refuses is landing the
 // key on a document that does not already carry it.
@@ -1006,17 +1017,20 @@ func (a *v2StateApplier) refusesRemovedBundled(entries []propertyEntry, key stri
 	if err != nil {
 		return false, err
 	}
-	return propertyKeyRemovedIn(entries, removed, key), nil
+	return a.s.bundledPropertyRemoved(a.resolvers.ctx, a.spaceId, entries, removed, key)
 }
 
 // canonicalizeSetPropertyKeys rewrites slug-spelled property terms in a
 // setProperties op to their canonical stored keys (§7.5a-5). Rewrites apply
 // only when the chain resolves to a DIFFERENT stored spelling; two spellings
-// landing on one key is a loud 400, as is an ambiguous slug.
-func (a *v2StateApplier) canonicalizeSetPropertyKeys(op *opSetProperties, opPath string) error {
+// landing on one key is a loud 400, as is an ambiguous slug. The returned
+// map remembers every rewrite (canonical → caller's spelling) so refusals
+// raised after the rewrite can address the request as sent (§8.41-10).
+func (a *v2StateApplier) canonicalizeSetPropertyKeys(op *opSetProperties, opPath string) (map[string]string, error) {
+	spellings := map[string]string{}
 	entries, err := a.propEntries()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	canon := func(key, path string) (string, error) {
 		entry, ok, ambiguous := a.s.resolvePropertyInput(key, entries)
@@ -1024,6 +1038,7 @@ func (a *v2StateApplier) canonicalizeSetPropertyKeys(op *opSetProperties, opPath
 			return "", ambiguousKeyError("property key", key, path, ambiguous)
 		}
 		if ok && entry.Key != key {
+			spellings[entry.Key] = key
 			return entry.Key, nil
 		}
 		return key, nil
@@ -1049,22 +1064,22 @@ func (a *v2StateApplier) canonicalizeSetPropertyKeys(op *opSetProperties, opPath
 		return out, nil
 	}
 	if op.Set, err = rewriteMap(op.Set, "set"); err != nil {
-		return err
+		return nil, err
 	}
 	if op.Add, err = rewriteMap(op.Add, "add"); err != nil {
-		return err
+		return nil, err
 	}
 	if op.Remove, err = rewriteMap(op.Remove, "remove"); err != nil {
-		return err
+		return nil, err
 	}
 	for i, key := range op.Unset {
 		canonical, err := canon(key, opPath+".unset."+key)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		op.Unset[i] = canonical
 	}
-	return nil
+	return spellings, nil
 }
 
 // propertyFormat resolves a property key's format for its relation link

@@ -201,7 +201,7 @@ func TestV2CanonicalizeDocumentKeysDeterministicError(t *testing.T) {
 	body := []byte(`{"version":1,"properties":{"manual_property":"a","` + slugPropKey + `":"b","manualProperty":"c"}}`)
 	var firstPath string
 	for i := 0; i < 8; i++ {
-		_, err := fx.canonicalizeDocumentKeys(testSpaceId, body)
+		_, _, err := fx.canonicalizeDocumentKeys(testSpaceId, body)
 		var apiErr *v2model.Error
 		require.ErrorAs(t, err, &apiErr)
 		require.NotEmpty(t, apiErr.Issues)

@@ -291,6 +291,16 @@ func TestRestVocabulary(t *testing.T) {
 				want: "the tool set has no member listing",
 			},
 			{
+				name: "removed property (§8.41)",
+				from: `remove "due_date" from the request — values objects already hold stay readable, and reappear if the property is restored; for a different property, list them with GET /v2/spaces/space1/properties`,
+				want: "for a different property, run describe on the type to list its live property keys",
+			},
+			{
+				name: "removed type (§8.41)",
+				from: `use a live type instead — list them with GET /v2/spaces/space1/types`,
+				want: "use a live type instead (find results show each object's type)",
+			},
+			{
 				name: "a hint this table has never seen",
 				from: `"image" objects come from file uploads (POST /v2/spaces/{spaceId}/files)`,
 				want: "the HTTP API",
@@ -328,6 +338,25 @@ func TestRestVocabulary(t *testing.T) {
 		deRest(te)
 		assert.Equal(t, "the /v2 surface accepts ops only", te.Text,
 			"the rule matches a METHOD + route, not the string /v2")
+	})
+
+	t.Run("a DOTTED real space id is consumed whole by the fallback", func(t *testing.T) {
+		// real space ids carry a dot (bafyreiabc….28y6mgnwgodt7) and the
+		// server interpolates them into hints verbatim (list_read, search,
+		// refs). The old fallback pattern stopped at the dot, leaving the id
+		// tail glued to the replacement: "the HTTP API.28y6mgnwgodt7/…" —
+		// invisible to every fixture because they all used the dot-free
+		// `space1` (§8.41-9).
+		te := &ToolError{Status: 404, Text: `list them with GET /v2/spaces/bafyreiabc.28y6mgnwgodt7/objects`}
+		deRest(te)
+		assert.Equal(t, "list them with the HTTP API", te.Text,
+			"the whole dotted route is replaced, tail included")
+
+		// and a sentence-ending dot still terminates the route
+		te = &ToolError{Status: 404, Text: `use GET /v2/spaces/bafyreiabc.28y6mgnwgodt7/objects. Then retry.`}
+		deRest(te)
+		assert.Equal(t, "use the HTTP API. Then retry.", te.Text,
+			"a dot followed by whitespace is prose, not route")
 	})
 }
 

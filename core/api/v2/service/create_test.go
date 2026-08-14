@@ -501,8 +501,8 @@ func TestV2CreateTemplate(t *testing.T) {
 		fx := newV2Fixture(t)
 		captured := fx.expectCreate("newTemplate")
 		fx.expectEtagRead("newTemplate")
-		fx.creatorMock.EXPECT().TypeIdByKey(mock.Anything, testSpaceId, domain.TypeKey("task")).
-			Return("taskTypeId", nil)
+		// the fixture's derived-id stub answers TypeIdByKey ("drv-ot-task") —
+		// a per-test override cannot shadow it (see newV2FixtureBare)
 
 		// when
 		result, err := fx.CreateTemplate(context.Background(), testSpaceId,
@@ -513,7 +513,7 @@ func TestV2CreateTemplate(t *testing.T) {
 		assert.Equal(t, "newTemplate", result.Id)
 		snapshot := *captured
 		assert.Equal(t, []string{"ot-template", "ot-task"}, snapshot.ObjectTypes)
-		assert.Equal(t, "taskTypeId", pbtypes.GetString(snapshot.Details, bundle.RelationKeyTargetObjectType.String()))
+		assert.Equal(t, "drv-ot-task", pbtypes.GetString(snapshot.Details, bundle.RelationKeyTargetObjectType.String()))
 	})
 
 	t.Run("templateFor is required", func(t *testing.T) {

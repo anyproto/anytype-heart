@@ -50,6 +50,22 @@ func newV2FixtureBare(t *testing.T) *v2Fixture {
 	creatorMock := mock_apicore.NewMockObjectCreator(t)
 	mutatorMock := mock_apicore.NewMockObjectMutator(t)
 	objectStore := objectstore.NewStoreFixture(t)
+	// Deterministic derived-id stubs (ADDRESSING §2.4: a derived object's id
+	// is a pure function of space and key; the mock's function is `drv-rel-`
+	// / `drv-ot-` + key). The §8.41 tombstone probes derive an id and
+	// point-look-up its row on every bundled key that is not installed —
+	// which is most creates — so the stub lives in the fixture; a tombstone
+	// test materializes a store row AT the derived id. NOTE testify matches
+	// the FIRST registered expectation, so a test needing a different answer
+	// cannot override these — place rows in the store instead.
+	creatorMock.EXPECT().RelationIdByKey(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(
+		func(_ context.Context, _ string, key domain.RelationKey) (string, error) {
+			return "drv-rel-" + string(key), nil
+		}).Maybe()
+	creatorMock.EXPECT().TypeIdByKey(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(
+		func(_ context.Context, _ string, key domain.TypeKey) (string, error) {
+			return "drv-ot-" + string(key), nil
+		}).Maybe()
 	return &v2Fixture{
 		V2Service:   NewV2Service(mwMock, readerMock, creatorMock, mutatorMock, objectStore, objectstore.TestTechSpaceId, testAccountId),
 		mwMock:      mwMock,

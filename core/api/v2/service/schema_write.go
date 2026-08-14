@@ -496,6 +496,10 @@ func (s *V2Service) UpdateType(ctx context.Context, spaceId, typeKey string, bod
 
 	resolvers := s.newCreatingResolvers(ctx, spaceId, dryRun)
 	if patch.TypeProperties != nil {
+		// the echo baseline (§8.41): entries this type ALREADY references
+		// resolve as identities even when their relation is removed — the
+		// GET/PATCH loop must not force-delete a reference the read served
+		resolvers.echoPropertyIds = s.recommendedRelationIds(spaceId, typeId)
 		// the SPEC §2a format check, before the resolver can create
 		if err := s.validateTypePropertyFormats(spaceId, *patch.TypeProperties); err != nil {
 			return nil, err

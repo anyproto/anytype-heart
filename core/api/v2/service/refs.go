@@ -157,14 +157,38 @@ func propertyKeyRemovedIn(entries []propertyEntry, removed map[string]bool, key 
 // key is a BSON id that can never be reinstalled or re-derived, so a
 // document value on it is inert freight the tolerance carries; a bundled
 // corpse's key is reinstallable, so a value landing there resurrects into a
-// property the user deleted the moment it comes back. The refusal names the
-// repair, per §8.34 — a refusal a caller cannot act on is itself a defect.
-func removedPropertyIssue(spaceId, key, path string) v2model.Issue {
+// property the user deleted the moment it comes back.
+//
+// The refusal names the repair that actually works, per §8.34 — and for the
+// clone loop (§8.41: GET serves the key, POST of those bytes lands here) the
+// working repair is REMOVING the key from the body, so the hint leads with
+// it. `spelledAs` is the caller's own spelling — canonicalization runs
+// before validation on these channels, and a hint naming a spelling the
+// request never contained is unactionable; the message keeps the served
+// slug, the one spelling every listing agrees on.
+func removedPropertyIssue(spaceId, key, spelledAs, path string) v2model.Issue {
 	slug := bundle.ApiSlug(key)
 	return v2model.Issue{
 		Path:    path,
 		Message: fmt.Sprintf("property %q was removed from this space — nothing new lands on a removed property", slug),
-		Hint:    fmt.Sprintf("restore it in the app, or use a different property — list them with GET /v2/spaces/%s/properties", spaceId),
+		Hint: fmt.Sprintf("remove %q from the request — values objects already hold stay readable, and reappear if the property is restored; for a different property, list them with GET /v2/spaces/%s/properties",
+			spelledAs, spaceId),
+	}
+}
+
+// removedTypeIssue is removedPropertyIssue for the TYPE namespace (§8.41):
+// an uninstalled or archived bundled type stays a resolvable key through the
+// bundled table forever, so without this a create landed a new object in a
+// type the user deleted — GET /types/{key} 404ing beside it — and a
+// reinstall lit the type back up with the new object already in it. The
+// repair differs from the property one: a create cannot simply drop its
+// type, so the hint steers to the live type list.
+func removedTypeIssue(spaceId, key, path string) v2model.Issue {
+	slug := bundle.ApiSlug(key)
+	return v2model.Issue{
+		Path:    path,
+		Message: fmt.Sprintf("type %q was removed from this space — nothing new is created in a removed type", slug),
+		Hint:    fmt.Sprintf("use a live type instead — list them with GET /v2/spaces/%s/types", spaceId),
 	}
 }
 
@@ -320,6 +344,15 @@ func minInt(values ...int) int {
 	return out
 }
 
+// typeRecommendedListKeys are the four recommended-relation lists a type
+// object carries — the §2a typeProperties storage.
+var typeRecommendedListKeys = []domain.RelationKey{
+	bundle.RelationKeyRecommendedFeaturedRelations,
+	bundle.RelationKeyRecommendedRelations,
+	bundle.RelationKeyRecommendedFileRelations,
+	bundle.RelationKeyRecommendedHiddenRelations,
+}
+
 // typePropertyKeys collects the property keys a type actually recommends
 // (its four recommended-relation lists, resolved id→key) — the R9 reference
 // set for set filters and sorts.
@@ -331,12 +364,7 @@ func (s *V2Service) typePropertyKeys(spaceId, typeId string) []string {
 	reads := storeresolver.New(s.store.SpaceIndex(spaceId))
 	var out []string
 	seen := map[string]bool{}
-	for _, listKey := range []domain.RelationKey{
-		bundle.RelationKeyRecommendedFeaturedRelations,
-		bundle.RelationKeyRecommendedRelations,
-		bundle.RelationKeyRecommendedFileRelations,
-		bundle.RelationKeyRecommendedHiddenRelations,
-	} {
+	for _, listKey := range typeRecommendedListKeys {
 		for _, id := range details.GetStringList(listKey) {
 			def, ok := reads.PropertyById(id)
 			if !ok || def.Key == "" || seen[string(def.Key)] {
@@ -347,5 +375,27 @@ func (s *V2Service) typePropertyKeys(spaceId, typeId string) []string {
 		}
 	}
 	sort.Strings(out)
+	return out
+}
+
+// recommendedRelationIds reads the relation object ids a type's four
+// recommended lists carry RIGHT NOW — the echo baseline for the
+// typeProperties removal gate (creatingResolvers.echoPropertyIds): an entry
+// already referenced resolves as an identity even when its relation is
+// removed, because refusing the type's own read back would force-delete the
+// reference (§8.34/§8.41). Hint-grade lookup: an unreadable type yields an
+// empty baseline, and the write path then refuses rather than echoes —
+// fail closed.
+func (s *V2Service) recommendedRelationIds(spaceId, typeId string) map[string]bool {
+	details, err := s.store.SpaceIndex(spaceId).GetDetails(typeId)
+	if err != nil {
+		return nil
+	}
+	out := map[string]bool{}
+	for _, listKey := range typeRecommendedListKeys {
+		for _, id := range details.GetStringList(listKey) {
+			out[id] = true
+		}
+	}
 	return out
 }

@@ -13,6 +13,7 @@ package v2service
 // hold its slug against a same-key create.
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"sort"
@@ -555,20 +556,47 @@ func servedKeyOf(storedKey, slug string, keyTaken map[string]bool, slugHolders m
 	return candidate
 }
 
+// corpseFlagged reports whether an index row carries any lifecycle-exit
+// flag: isUninstalled (UI delete), isArchived (v2 DELETE — §8.41 made it
+// refuse writes like an uninstall) or isDeleted (the re-derived local flag a
+// prod corpse always carries).
+func corpseFlagged(details *domain.Details) bool {
+	return details.GetBool(bundle.RelationKeyIsUninstalled) ||
+		details.GetBool(bundle.RelationKeyIsArchived) ||
+		details.GetBool(bundle.RelationKeyIsDeleted)
+}
+
 // relationObjectHoldingKey returns the ID of the relation object holding the
-// stored key — live or corpse — and is the one probe that deliberately sees
-// past BOTH of the store's injected defaults.
+// stored key — live, corpse or tombstoned — and is the one probe that
+// deliberately sees EVERY store shape a relation row can have.
 //
-// A real UI delete persists TWO flags, not one: deleteDerivedObject sets
-// isUninstalled and the same Apply stamps isDeleted (smartblock's
-// detailsinject, since GO-1978), after which BeforeDelete tombstones the
-// index row and the next space load re-indexes the still-existing tree with
-// both. Suppressing only isArchived — as this query did — therefore made
-// every PRODUCTION corpse invisible to the very tolerance built for it,
-// while the flag-only fixtures in these suites (isUninstalled alone) kept
-// passing. Condition None compiles to no filter at all, so both no-op
-// clauses are pure default suppression and add nothing to the scan.
-func (s *V2Service) relationObjectHoldingKey(spaceId, key string) (string, bool) {
+// A corpse has THREE store shapes, not two (§8.41). A UI delete sets
+// isUninstalled, the same Apply stamps isDeleted (smartblock's
+// detailsinject, since GO-1978), and BeforeDelete then TOMBSTONES the index
+// row down to {id, spaceId, isDeleted} — no relationKey, no resolvedLayout —
+// until the next space load re-indexes the surviving tree with full details
+// and both flags. So:
+//
+//   - the query below (both injected defaults suppressed via the no-op
+//     Condition None clauses) sees the full-detail shapes, flag-only and
+//     two-flag alike;
+//   - the tombstone, which no key-filtered query can return, is found by its
+//     ID instead: a derived object's id is a pure function of (space, kind,
+//     internal key) — ADDRESSING §2.4, verified for every relation creation
+//     path — so RelationIdByKey computes where the row MUST be and a point
+//     lookup answers whether it is there. The tree the tombstone stands for
+//     still exists; the row's absence of fields is a window, not a fact.
+//
+// When several rows hold one key (a live relation beside a corpse), the LIVE
+// row wins — callers reach this probe after the live resolution chain
+// misses, but that ordering is a convention of today's call sites, not a
+// contract this probe may lean on. Ties break by id for determinism.
+//
+// The error return is load-bearing: PropertyId's mint decision consults this
+// probe, and a probe that swallowed a store or derivation error would turn
+// "could not look" into "not held" and mint a duplicate of a property that
+// exists (§7.5a-2's fail-closed rule).
+func (s *V2Service) relationObjectHoldingKey(ctx context.Context, spaceId, key string) (string, bool, error) {
 	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
 		Filters: []database.FilterRequest{
 			{
@@ -590,37 +618,99 @@ func (s *V2Service) relationObjectHoldingKey(spaceId, key string) (string, bool)
 				Condition:   model.BlockContentDataviewFilter_None,
 			},
 		},
-		Limit: 1,
 	})
-	if err != nil || len(records) == 0 {
-		return "", false
+	if err != nil {
+		return "", false, fmt.Errorf("query relation objects holding %q in space %s: %w", key, spaceId, err)
 	}
-	return records[0].Details.GetString(bundle.RelationKeyId), true
+	best := ""
+	bestLive := false
+	for _, record := range records {
+		id := record.Details.GetString(bundle.RelationKeyId)
+		if id == "" {
+			continue
+		}
+		live := !corpseFlagged(record.Details)
+		switch {
+		case best == "",
+			live && !bestLive,
+			live == bestLive && id < best:
+			best, bestLive = id, live
+		}
+	}
+	if best != "" {
+		return best, true, nil
+	}
+	// tombstone window: the row may exist with nothing but {id, isDeleted}
+	details, id, err := s.derivedRelationRow(ctx, spaceId, key)
+	if err != nil {
+		return "", false, err
+	}
+	if details != nil && details.GetString(bundle.RelationKeyId) != "" {
+		return id, true, nil
+	}
+	return "", false, nil
+}
+
+// derivedRelationRow computes the id the relation object for `key` MUST have
+// in this space (derived identity, ADDRESSING §2.4) and point-looks-up its
+// index row, bypassing every injected default. A nil details return means
+// "no row at all" — the relation was never installed here. Requires the
+// creator port (id derivation runs in the space); a read-only service has
+// none and reports no row, which the write paths that consult this never
+// reach.
+func (s *V2Service) derivedRelationRow(ctx context.Context, spaceId, key string) (*domain.Details, string, error) {
+	if s.creator == nil {
+		return nil, "", nil
+	}
+	id, err := s.creator.RelationIdByKey(ctx, spaceId, domain.RelationKey(key))
+	if err != nil {
+		return nil, "", fmt.Errorf("derive relation id for %q in space %s: %w", key, spaceId, err)
+	}
+	details, err := s.store.SpaceIndex(spaceId).GetDetails(id)
+	if err != nil {
+		return nil, "", fmt.Errorf("read relation row %s in space %s: %w", id, spaceId, err)
+	}
+	return details, id, nil
 }
 
 // propertyKeyHeldByAnyRelation reports whether ANY relation object holds the
-// stored key — live or corpse. This is the create path's round-trip
-// tolerance for a document that legitimately carries a value of a UI-deleted
-// relation (§8.29); it is never an ADDRESS — nothing resolves a corpse key
-// to a property object, and no listing advertises it.
-func (s *V2Service) propertyKeyHeldByAnyRelation(spaceId, key string) bool {
-	_, held := s.relationObjectHoldingKey(spaceId, key)
-	return held
+// stored key — live, corpse or tombstoned. This is the create path's
+// round-trip tolerance (§8.29); it is never an ADDRESS — nothing resolves a
+// corpse key to a property object, and no listing advertises it.
+//
+// The tolerance is DELIBERATELY a bare existence probe. It cannot tell a
+// pasted read body (the clone loop it was written for) from a fresh value
+// authored onto the corpse key of a brand-new object: the API has no
+// provenance signal, and the §8.41 review settled that none is worth
+// building — a custom corpse's stored key is a BSON id that resolves
+// nowhere, so the worst a fresh value can do is join the dormant freight the
+// clone loop already carries. Rows with only isDeleted set (no
+// isUninstalled/isArchived) pass too, and that is intended: whatever exotic
+// path exited the relation, a document value under its stored key is the
+// same inert freight. On a probe error the key reads as not held and create
+// refuses — fail closed, never a silent mint of presence.
+func (s *V2Service) propertyKeyHeldByAnyRelation(ctx context.Context, spaceId, key string) bool {
+	_, held, err := s.relationObjectHoldingKey(ctx, spaceId, key)
+	return err == nil && held
 }
 
-// uninstalledBundledKeys is the set of BUNDLED relation keys this space has
-// explicitly UNINSTALLED: a relation object exists and carries
-// isUninstalled=true. One bounded query per request (§7.5a-2), never one per
-// reference.
+// bundledRemovalSet is the set of BUNDLED relation keys this space has
+// REMOVED: a relation object exists and carries isUninstalled (UI delete) or
+// isArchived (v2 DELETE — §8.41: the API's own delete verb must not leave a
+// property that 404s on its route yet accepts writes). One bounded query per
+// request (§7.5a-2), never one per reference; both injected defaults are
+// suppressed so every full-detail corpse shape is seen.
 //
 // The set is deliberately narrow. A bundled relation that was NEVER
 // installed has no object at all and is absent here — install-on-write stays
-// correct, and is the common case in a fresh space. Only the removal the
-// user actually performed lands in this set, which is the whole distinction
-// the refusal rests on: "not installed yet" and "you deleted it" look
-// identical through bundle.HasRelation and could not be told apart without
-// this probe.
-func (s *V2Service) uninstalledBundledKeys(spaceId string) (map[string]bool, error) {
+// correct, and is the common case in a fresh space. Only removals land in
+// this set, which is the whole distinction the refusal rests on: "not
+// installed yet" and "you deleted it" look identical through
+// bundle.HasRelation and could not be told apart without this probe. The
+// TOMBSTONE shape is invisible to this query too (no relationKey field) —
+// per-key consultation goes through bundledPropertyRemoved, which adds the
+// derived-id probe for that window.
+func (s *V2Service) bundledRemovalSet(spaceId string) (map[string]bool, error) {
 	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
 		Filters: []database.FilterRequest{
 			{
@@ -628,23 +718,18 @@ func (s *V2Service) uninstalledBundledKeys(spaceId string) (map[string]bool, err
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.Int64(int64(model.ObjectType_relation)),
 			},
-			{
-				RelationKey: bundle.RelationKeyIsUninstalled,
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       domain.Bool(true),
-			},
-			// both injected defaults suppressed: the prod corpse carries
-			// isDeleted too, and an archived-then-uninstalled row is still a
-			// removal
 			{RelationKey: bundle.RelationKeyIsArchived, Condition: model.BlockContentDataviewFilter_None},
 			{RelationKey: bundle.RelationKeyIsDeleted, Condition: model.BlockContentDataviewFilter_None},
 		},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("query uninstalled relations of space %s: %w", spaceId, err)
+		return nil, fmt.Errorf("query removed relations of space %s: %w", spaceId, err)
 	}
-	removed := make(map[string]bool, len(records))
+	removed := map[string]bool{}
 	for _, record := range records {
+		if !corpseFlagged(record.Details) {
+			continue
+		}
 		key := record.Details.GetString(bundle.RelationKeyRelationKey)
 		// custom corpses are NOT in this set: their stored key is a BSON id
 		// no bundled table knows, they can never be reinstalled, and the
@@ -656,6 +741,105 @@ func (s *V2Service) uninstalledBundledKeys(spaceId string) (map[string]bool, err
 	return removed, nil
 }
 
+// bundledPropertyRemoved is the per-key removal verdict for a BUNDLED
+// property key: the space explicitly removed it (bundledRemovalSet), or its
+// relation object sits in the post-delete tombstone window — a row at the
+// derived id carrying isDeleted and no relationKey, which no query-built set
+// can contain. A live installed entry always outvotes; a missing row means
+// never-installed and keeps install-on-write working.
+func (s *V2Service) bundledPropertyRemoved(ctx context.Context, spaceId string, entries []propertyEntry, removed map[string]bool, key string) (bool, error) {
+	if propertyKeyRemovedIn(entries, removed, key) {
+		return true, nil
+	}
+	if !bundle.HasRelation(domain.RelationKey(key)) || propertyKeyInstalledIn(entries, key) {
+		return false, nil
+	}
+	details, _, err := s.derivedRelationRow(ctx, spaceId, key)
+	if err != nil {
+		return false, err
+	}
+	if details == nil || details.GetString(bundle.RelationKeyId) == "" {
+		return false, nil // no row: never installed
+	}
+	if _, hasKey := details.TryString(bundle.RelationKeyRelationKey); hasKey {
+		return false, nil // a full-detail row belongs to the query-built sets
+	}
+	return details.GetBool(bundle.RelationKeyIsDeleted), nil
+}
+
+// bundledTypeRemovalSet is bundledRemovalSet for the TYPE namespace: bundled
+// type keys whose type object exists and carries a removal flag. Same
+// query discipline, same never-installed boundary, same tombstone blind spot
+// (bundledTypeRemoved owns that window).
+func (s *V2Service) bundledTypeRemovalSet(spaceId string) (map[string]bool, error) {
+	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
+		Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.Int64(int64(model.ObjectType_objectType)),
+			},
+			{RelationKey: bundle.RelationKeyIsArchived, Condition: model.BlockContentDataviewFilter_None},
+			{RelationKey: bundle.RelationKeyIsDeleted, Condition: model.BlockContentDataviewFilter_None},
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("query removed types of space %s: %w", spaceId, err)
+	}
+	removed := map[string]bool{}
+	for _, record := range records {
+		if !corpseFlagged(record.Details) {
+			continue
+		}
+		key, err := domain.GetTypeKeyFromRawUniqueKey(record.Details.GetString(bundle.RelationKeyUniqueKey))
+		if err != nil {
+			continue
+		}
+		if bundle.HasObjectTypeByKey(key) {
+			removed[string(key)] = true
+		}
+	}
+	return removed, nil
+}
+
+// typeKeyInstalledIn is propertyKeyInstalledIn for the type namespace.
+func typeKeyInstalledIn(entries []typeEntry, key string) bool {
+	for _, entry := range entries {
+		if entry.Key == key {
+			return true
+		}
+	}
+	return false
+}
+
+// bundledTypeRemoved is bundledPropertyRemoved for the type namespace.
+func (s *V2Service) bundledTypeRemoved(ctx context.Context, spaceId string, entries []typeEntry, removed map[string]bool, key string) (bool, error) {
+	if removed[key] && !typeKeyInstalledIn(entries, key) {
+		return true, nil
+	}
+	if !bundle.HasObjectTypeByKey(domain.TypeKey(key)) || typeKeyInstalledIn(entries, key) {
+		return false, nil
+	}
+	if s.creator == nil {
+		return false, nil
+	}
+	id, err := s.creator.TypeIdByKey(ctx, spaceId, domain.TypeKey(key))
+	if err != nil {
+		return false, fmt.Errorf("derive type id for %q in space %s: %w", key, spaceId, err)
+	}
+	details, err := s.store.SpaceIndex(spaceId).GetDetails(id)
+	if err != nil {
+		return false, fmt.Errorf("read type row %s in space %s: %w", id, spaceId, err)
+	}
+	if details.GetString(bundle.RelationKeyId) == "" {
+		return false, nil // no row: never installed
+	}
+	if _, hasKey := details.TryString(bundle.RelationKeyUniqueKey); hasKey {
+		return false, nil // a full-detail row belongs to the query-built set
+	}
+	return details.GetBool(bundle.RelationKeyIsDeleted), nil
+}
+
 // canonicalizeDocumentKeys rewrites an inbound document's addressing terms
 // to their canonical stored spellings BEFORE validation and import: the
 // envelope's type/templateFor (slug → internal type key — the import path
@@ -664,10 +848,15 @@ func (s *V2Service) uninstalledBundledKeys(spaceId string) (map[string]bool, err
 // canonical, or resolving to nothing (the R9 validation owns that refusal),
 // pass through verbatim so errors keep the caller's spelling. Ambiguity is
 // a path-addressed 400; two spellings canonicalizing onto one key is too.
-func (s *V2Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byte, error) {
+//
+// The second return maps every REWRITTEN property key back to the spelling
+// the caller sent (canonical → original), so validation that runs after the
+// rewrite can address its refusals to the request as sent (§8.41-10).
+func (s *V2Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byte, map[string]string, error) {
+	spellings := map[string]string{}
 	fields, err := parseEnvelope(body)
 	if err != nil {
-		return body, nil // not an object — the document validator owns this
+		return body, spellings, nil // not an object — the document validator owns this
 	}
 	changed := false
 
@@ -683,16 +872,16 @@ func (s *V2Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byt
 		}
 		if typeEntries == nil {
 			if typeEntries, err = s.liveTypes(spaceId); err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 		}
 		entry, ok, ambiguous := s.resolveTypeInput(term, typeEntries)
 		if len(ambiguous) > 0 {
-			return nil, ambiguousKeyError("type key", term, "/"+field, ambiguous)
+			return nil, nil, ambiguousKeyError("type key", term, "/"+field, ambiguous)
 		}
 		if ok && entry.Key != term {
 			if fields[field], err = rawJSON(entry.Key); err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			changed = true
 		}
@@ -703,13 +892,13 @@ func (s *V2Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byt
 		if err := json.Unmarshal(raw, &props); err == nil && len(props) > 0 {
 			propEntries, err := s.liveProperties(spaceId)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			renames := map[string]string{}
 			for _, key := range sortedKeys(props) {
 				entry, ok, ambiguous := s.resolvePropertyInput(key, propEntries)
 				if len(ambiguous) > 0 {
-					return nil, ambiguousKeyError("property key", key, "/properties/"+key, ambiguous)
+					return nil, nil, ambiguousKeyError("property key", key, "/properties/"+key, ambiguous)
 				}
 				if ok && entry.Key != key {
 					renames[key] = entry.Key
@@ -723,16 +912,17 @@ func (s *V2Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byt
 					canonical := key
 					if to, ok := renames[key]; ok {
 						canonical = to
+						spellings[canonical] = key
 					}
 					if _, dup := rewritten[canonical]; dup {
-						return nil, v2model.ValidationFailed("duplicate property key",
+						return nil, nil, v2model.ValidationFailed("duplicate property key",
 							v2model.Issue{Path: "/properties/" + key,
 								Message: fmt.Sprintf("%q and another spelling both address property %q — keep one", key, canonical)})
 					}
 					rewritten[canonical] = props[key]
 				}
 				if fields["properties"], err = rawJSON(rewritten); err != nil {
-					return nil, err
+					return nil, nil, err
 				}
 				changed = true
 			}
@@ -740,9 +930,10 @@ func (s *V2Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byt
 	}
 
 	if !changed {
-		return body, nil
+		return body, spellings, nil
 	}
-	return encodeEnvelope(fields)
+	body, err = encodeEnvelope(fields)
+	return body, spellings, err
 }
 
 // sortedDistinct returns the sorted distinct non-empty values.

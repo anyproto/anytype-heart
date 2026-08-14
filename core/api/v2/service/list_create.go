@@ -78,6 +78,15 @@ func (s *V2Service) CreateSet(ctx context.Context, spaceId string, req v2model.C
 		return nil, ambiguousKeyError("type key", req.Type, "/type", ambiguous)
 	}
 	if !ok || entry.Id == "" {
+		// a bundled key resolving with no live install may be one this space
+		// REMOVED — say that, not "unknown" with a did-you-mean (§8.41-10);
+		// the refusal itself predates §8.41 (a set requires an installed
+		// type either way)
+		if ok && entry.Id == "" {
+			if err := s.refuseRemovedType(ctx, spaceId, entry.Key, "/type"); err != nil {
+				return nil, err
+			}
+		}
 		return nil, s.unknownTypeKeyError(spaceId, req.Type, "/type")
 	}
 	typeId := entry.Id
@@ -142,7 +151,7 @@ func (s *V2Service) CreateSet(ctx context.Context, spaceId string, req v2model.C
 	if err != nil {
 		return nil, err
 	}
-	if err := s.validateViewKeys(spaceId, typeId, req.Type, referenced); err != nil {
+	if err := s.validateViewKeys(ctx, spaceId, typeId, req.Type, referenced); err != nil {
 		return nil, err
 	}
 
@@ -314,7 +323,14 @@ func collectFilterKeys(nodes []filterNodeProbe, path string, refs *[]viewKeyRef)
 // always part of the reference set: those keys appear in no type's
 // recommended lists yet back bread-and-butter queries (rule 2 — the
 // widening of the shipped R9 sets rule).
-func (s *V2Service) validateViewKeys(spaceId, typeId, typeKey string, refs []viewKeyRef) error {
+//
+// Membership in the type's recommended lists is NOT enough on its own: the
+// lists are resolved by id and nothing strips a deleted relation from them,
+// so after any UI delete the default state is a type still recommending the
+// corpse — and a NEW set filtering or sorting on it would persist a query
+// against a property the user removed (§8.41). The removal gate runs after
+// the membership pass for exactly that row.
+func (s *V2Service) validateViewKeys(ctx context.Context, spaceId, typeId, typeKey string, refs []viewKeyRef) error {
 	if len(refs) == 0 {
 		return nil
 	}
@@ -329,13 +345,33 @@ func (s *V2Service) validateViewKeys(spaceId, typeId, typeKey string, refs []vie
 	// inputs arrive canonicalized (CreateSet's kc rewrite); the candidate
 	// list must speak the SERVED spelling — never advertise what the
 	// channel rejects (review cause 3)
-	if entries, err := s.liveProperties(spaceId); err == nil {
+	entries, entriesErr := s.liveProperties(spaceId)
+	if entriesErr == nil {
 		kc := &keyCanon{s: s, entries: entries}
 		typeKeys = kc.servedSpellings(typeKeys)
 	}
+	// the bundled-removal set, primed lazily and only when an allowed key is
+	// not live-installed (§7.5a-2)
+	var removedBundled map[string]bool
 	var issues []v2model.Issue
 	for _, ref := range refs {
 		if allowed[ref.key] {
+			if entriesErr == nil && bundle.HasRelation(domain.RelationKey(ref.key)) && !propertyKeyInstalledIn(entries, ref.key) {
+				if removedBundled == nil {
+					var err error
+					if removedBundled, err = s.bundledRemovalSet(spaceId); err != nil {
+						return err
+					}
+				}
+				isRemoved, err := s.bundledPropertyRemoved(ctx, spaceId, entries, removedBundled, ref.key)
+				if err != nil {
+					return err
+				}
+				if isRemoved {
+					issues = append(issues, removedPropertyIssue(spaceId, ref.key, ref.key, ref.path))
+					continue
+				}
+			}
 			continue
 		}
 		if ref.key == "type" {

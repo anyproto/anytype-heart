@@ -6044,6 +6044,17 @@ verification here is unit and handler tests only.
 
 ### 8.40 The corpse policy, applied where it was only half-applied (2026-08-14 — decisions as built)
 
+> **CORRECTION (§8.41).** This section's framing fact was itself one shape
+> short: a corpse has THREE store shapes, not two — the §8.41 tombstone
+> (`{id, spaceId, isDeleted}`, the deleting device's shape until its next
+> space load) defeats both probes this section introduced, because they
+> filter on `relationKey`, a field the tombstone does not have. Fixes 1 and
+> 2 below were therefore dead for the rest of the session that follows
+> every UI delete. §8.41 re-keys the probes on the derived id, widens the
+> refusal to the type namespace, the view/set channels and the archived
+> state, and corrects the specific claims below that execution disproved
+> (marked inline).
+
 The round that pinned corpse addressability (`corpse_addressability_test.go`)
 left three findings marked as gaps, deliberately, with tests that pinned the
 broken behaviour loudly. This section is those three fixed, plus the spec
@@ -6124,7 +6135,15 @@ half is what had to learn to read it back.
 Before/after, both shapes: a mint of `6_a_7663_db_61_fab_21_cd_4_b_9_e_201`
 → `recommendedRelations` unchanged at `["rel-corpse-bson"]`, `created` nil.
 Both shapes behaved identically here (the by-id read escapes both defaults),
-which is why the fix is at the write half, not the read.
+which is why the fix is at the write half, not the read. *(CORRECTED in
+§8.41-1: the TOMBSTONE shape does not behave identically — `GetRelationById`
+fails on a row with no `relationKey`, the read silently DROPS the corpse
+entry, and the loop this fix protects becomes the §8.34 silent deletion by
+another door. §8.41 makes the read recover the entry from the surviving
+tree and the resolve survive via the derived id. Note also the by-id escape
+is relation-specific: the TYPE-side point lookup, `GetObjectType`, filters
+`isDeleted` explicitly — "point lookups by id are unfiltered" was never
+true across kinds, ADDRESSING §2.3-6.)*
 
 #### 3. Bundled corpses: refuse the write, loudly and actionably
 
@@ -6151,7 +6170,11 @@ so the never-installed case is pinned by its own subtest, and so is the
 boundary in the other direction: an **archived** (v2-deleted) bundled
 relation is *not* in the set and still accepts writes. Whether it should is
 an open question this round did not settle; the test pins today's answer so
-that widening the probe cannot pass silently.
+that widening the probe cannot pass silently. *(SETTLED in §8.41-8: archived
+now refuses on the same channels — v2's own DELETE creates the state, and a
+property that 404s on its route while accepting writes is the incoherence
+this whole policy exists to remove. The pinned test was flipped as the
+conscious edit this paragraph asked for.)*
 
 The refusal names the repair (§8.34): `property "due_date" was removed from
 this space — nothing new lands on a removed property`, with a hint pointing
@@ -6165,7 +6188,7 @@ Channels, and why each is where it is:
 | `POST /objects` (document create) | value landed on `dueDate` | 400, repair named |
 | `PATCH … setProperties`, key NOT on the document | value landed | 400, repair named |
 | `PATCH … setProperties`, key already on the document | edit/unset allowed | **unchanged** — the two-tier rule (§8.17, `checkKey`'s `inDoc`) keeps a document's own values editable, and `unset` is the only cleanup channel a caller has left |
-| `updateView` introducing the key | 400 (`unknown property key`) | **unchanged, verified** — view documents spell slugs, and the bundled slug stops resolving the moment the relation is uninstalled, so `validateViewKeys` already refused at its unknown-key branch. A removal check there would have been dead code; the closure is pinned by test regardless of which branch closes it |
+| `updateView` introducing the key | 400 (`unknown property key`) | **unchanged, verified** — view documents spell slugs, and the bundled slug stops resolving the moment the relation is uninstalled, so `validateViewKeys` already refused at its unknown-key branch. A removal check there would have been dead code; the closure is pinned by test regardless of which branch closes it *(CORRECTED in §8.41-2: true only when slug ≠ key — dueDate, the one key every test here used, is one of the few. For the 41 bundled relations whose derived slug EQUALS the key — `tag`, `status`, `description`, … — the slug never stops resolving and this channel accepted all of them, 40/40 in the executed matrix. The removal check is now wired.)* |
 
 The asymmetry with §8.29's tolerance is deliberate and lives in the entities,
 not the policy: a **custom** corpse's stored key is a BSON id that can never
@@ -6201,7 +6224,10 @@ was run:
 Fixture discipline: every corpse fixture in this file is BSON-keyed **with** a
 stored `apiObjectKey` and runs over both store shapes — the one shape that
 can tell the two vocabularies apart, and the only pairing that can catch an
-`isDeleted`-default mistake. The single exception is stated in the test
+`isDeleted`-default mistake. *(WIDENED in §8.41: "both" became **three** —
+the tombstone leg joined `corpseShapes`, because a two-shape fixture
+structurally cannot express the failure both fixes above had.)* The single
+exception is stated in the test
 itself: the bundled corpse **cannot** be BSON-keyed (its key is `dueDate` by
 definition and its slug is derived in code, never stored), which is precisely
 the entity class the refusal is about; the BSON-keyed corpse rides along in
@@ -6219,3 +6245,225 @@ behaviour change than this round covers) — its gap-marked test stays as-is.
 No served schema or annotation changed, so `make openapi` was not needed and
 both documents are byte-identical. The running server predates this HEAD;
 verification here is unit and handler tests only.
+
+### 8.41 The corpse policy under three lenses: the tombstone window, the slug==key class, and the type namespace (2026-08-14 — decisions as built)
+
+A three-lens review of §8.40 executed the fixes instead of reading them, and
+found that the round's worst defects had survived because the fixtures
+**structurally could not express the failures**. Three separate instances:
+every corpse fixture had two store shapes where a corpse has three; every
+bundled-key fixture used `dueDate` where 41 of 194 bundled relations behave
+differently; and every space-id fixture was dot-free where real space ids
+are dotted. This section is the fixes, the two decisions the review settled,
+and the corrections §8.40 and ADDRESSING §2.3-6 needed.
+
+#### 1. The tombstone window disabled §8.40's own fixes
+
+**The missing shape.** `spaceindex.DeleteObject` strips a deleted object's
+index row to `{id, spaceId, isDeleted}` — no `relationKey`, no
+`resolvedLayout`. That is the store's answer on the deleting device from the
+delete until the next space load: normally the rest of the app session. Both
+§8.40 probes (`relationObjectHoldingKey`, the removal set) query
+`relationKey == key` + layout, so both missed the tombstone **on their first
+filter** — not on a suppressed default, which is why the `Condition None`
+lesson didn't help. Executed: in the window, a custom-corpse clone 400'd
+again (§8.29 undone), a removed-bundled create landed the value again, and
+the typeProperties fix was masked only because the READ broke first —
+`GetRelationById` fails on a keyless row, `typeProperties` silently dropped
+the corpse entry, and the documented read-modify-write loop DELETED the
+type's reference: the §8.34 outcome §8.40 explicitly rejected, reached
+through another door.
+
+**The fix keys on what the tombstone cannot erase.** A derived object's id
+is a pure function of (space, kind, internal key) — ADDRESSING §2.4 — so
+the row's ADDRESS survives the row's fields. The `ObjectCreator` port grew
+`RelationIdByKey` (the `TypeIdByKey` twin, `clientspace.GetRelationIdByKey`
+underneath), and:
+
+- `relationObjectHoldingKey` falls back, on a query miss, to a point lookup
+  at the derived id — a row there, tombstone included, is the holder. It
+  also now **prefers a live row** over a corpse when several hold one key
+  (§8.40's `Limit:1`-no-sort depended on a caller-ordering convention
+  stated nowhere) and returns errors instead of swallowing them — a probe
+  error must never read as "not held" on the mint path.
+- `bundledPropertyRemoved` / `bundledTypeRemoved` are the per-key removal
+  verdicts: the query-built set, plus the tombstone probe (row at the
+  derived id, `isDeleted`, no key field) for the window the set cannot see.
+  A missing row still means never-installed — install-on-write is intact.
+- the READ half recovers what the index lost: for a type read,
+  `seedTombstonedTypeProperties` reads the corpse relation's **live
+  object** (the tree survives a UI delete by design, §2.4-5) and seeds the
+  store resolver, so `typeProperties` serves the same bytes in all three
+  shapes and the PATCH echo stays an identity. A read failure degrades to
+  the pre-§8.41 drop for that entry, never to an error.
+
+**The derived-id assumption, verified.** Every relation/type creation path
+derives the object id from `rel-<key>` / `ot-<key>`: `createRelation` and
+type creation build the state with `NewDocWithUniqueKey`; the import path
+(`objectid/derivedobject.go`) derives from the snapshot's unique key, and
+when it re-mints (unique key held by a deleted object) it re-mints the
+INTERNAL KEY too, so key↔id consistency holds for the new row as well. The
+one caveat: `isDeletedObject`'s check there queries by `uniqueKey`, which a
+tombstone also lacks — an import colliding with a tombstoned corpse derives
+the same id; `PutTree` then meets `ErrTreeExists` (outside the installer's
+tolerance), which is the pre-existing §2.4-5 behavior, not new exposure. A
+relation whose row predates the unique-key era and matches no derivation
+would be invisible to the tombstone fallback — but such a row also cannot
+BE tombstoned into anonymity meaningfully, since nothing could ever find it;
+the query-based legs still serve its full-detail shapes.
+
+`corpseShapes` now runs THREE legs, and the fixture stubs derive
+deterministic ids (`drv-rel-<key>`, `drv-ot-<key>`) with the tombstone rows
+placed at them — the same relationship production rows have to their keys.
+
+#### 2. The slug==key class: the hole §8.40's own test fixture hid
+
+41 of 194 bundled relations have `ApiSlug(key) == key` — `tag`, `status`,
+`description`, `assignee`, `priority`, … `dueDate` is one of the keys where
+slug ≠ key, and every §8.40 verification used it. The consequence: §8.40's
+"the bundled slug stops resolving, so `updateView` already refuses" was true
+only for the slug≠key class. Executed: `tag`, `status`, `description`,
+`assignee`, `priority` × {columns, groupBy, filters, sorts} → **40 of 40
+accepted**, landing in `dataview.properties` and `view.columns` of removed
+properties. `validateViewKeys` (viewops) now runs the same removal gate as
+create and PATCH — with the §8.17 `preKnown` escape intact (a view already
+showing the key stays editable), and with the slug≠key spelling's refusal
+upgraded from a misleading "unknown property key" to the removal message.
+Every bundled-key test now covers BOTH classes by rule.
+
+#### 3. The bundled clone loop: refusal stays, and now names the repair that works
+
+`GET` of an object holding a removed bundled property serves
+`{"due_date": …}` (nothing contests the slug once the corpse vacates it);
+`POST` of those exact bytes 400s — §8.29-F2 re-created for the bundled
+class. Decided: **the refusal stays, and the message now names the actual
+repair**. Why not the alternatives:
+
+- *Degrade the read to the stored key* (`dueDate`): insufficient — the
+  stored key refuses too (removal is keyed on the relation, not the
+  spelling), and it would poison every export with a spelling that
+  re-canonicalizes right back to the same refusal.
+- *Accept the paste like the custom tolerance*: wrong — the asymmetry is in
+  the entities (§8.40): a custom corpse's key resolves nowhere, so carried
+  values are inert; a bundled corpse's key is REINSTALLABLE, so every
+  accepted clone is new resurrection freight the reinstall lights up.
+- *A provenance signal* ("this value came from a GET"): indistinguishable
+  from a fresh write without server-side state; not worth its cost.
+
+So the loop cannot be made to round-trip for this class, and the refusal
+says what to do instead: `remove "due_date" from the request — values
+objects already hold stay readable, and reappear if the property is
+restored; …`. The old `restore it in the app` is gone (inactionable for a
+headless caller). Channel-table row for the record:
+
+| channel | before | after |
+|---|---|---|
+| `GET` object holding removed bundled property → `POST` those bytes | 400 naming a repair that does not repair | 400 naming the working repair (remove the key; the source object keeps its value) |
+
+#### 4. The refusal reaches typeProperties — with the echo escape
+
+`POST`/`PATCH /types` with `{"key":"due_date"}` while dueDate is removed
+pointed the type's `recommendedRelations` at the corpse (`created: null`,
+silently). `PropertyId`'s bundled arm now consults the removal verdict and
+refuses — **except** when the PATCHed type's lists already reference the
+holder (`echoPropertyIds`, primed by UpdateType from the type's current
+recommended lists): the type's own GET/PATCH echo resolves as an identity,
+because refusing it would force-delete the reference — the same §8.34
+reasoning as §8.40's custom-corpse decision, now applied consistently.
+`POST /types` has no prior references and always refuses. The §8.40-era
+resurrection (this path used to REINSTALL the deleted relation) stays
+closed: the refusal precedes every install/mint RPC, and the tests fail on
+any unexpected one.
+
+#### 5. The type namespace, closed the same way
+
+`POST /objects {"type":"task"}` with bundled `task` uninstalled → accepted,
+object created in the removed type, `GET /types/task` 404ing beside it —
+the identical self-contradiction, entirely unhandled (there was no type
+removal set at all). Now: `bundledTypeRemovalSet` + `bundledTypeRemoved`
+(same three-shape coverage, same never-installed boundary via the derived
+id), consulted by `validateDocumentRefs` for `/type` and `/templateFor`,
+and by `CreateSet` — which already refused (a set needs an installed type
+object) but as "unknown type key" with a did-you-mean; it now says
+*removed*. `removedTypeIssue` steers to the live type list; the repair
+differs from the property one because a create cannot drop its type.
+
+#### 6. Sets, options, archived
+
+- **`POST /sets`** validated filter/sort keys against the type's
+  recommended lists — resolved by id, never stripped of deleted relations,
+  i.e. the DEFAULT state after any UI delete. The removal gate now runs
+  after the membership pass. (Tombstone window: the recommended-list
+  resolution cannot spell the key at all, so it falls out of the reference
+  set and the has-no-property branch refuses — a 400 either way, pinned.)
+- **Relation options** had no `isUninstalled` filter anywhere — the
+  injected `isDeleted` default was the SOLE defence, in the one entity
+  class the corpse rounds never audited. `ListRelationOptions` now excludes
+  `isUninstalled` explicitly (spaceindex — shared with v1, whose behavior
+  is unchanged for every shape a live index can hold, since the default
+  already hid those rows).
+- **Archived refuses writes on the same channels as uninstalled** — the
+  §8.40 open question, settled: `DELETE /v2/…/properties/{key}` archives,
+  the route then 404s, and a `POST` still wrote to it; the API's own
+  delete verb must not create that state. The removal sets now include
+  `isArchived` rows (types too), and §8.40's boundary-pinning test was
+  flipped as the conscious edit it asked for. The archived tolerance for
+  values a document already holds is untouched: the PATCH in-document
+  escape and unset both survive, and the custom-key §8.29 tolerance never
+  keyed on flags at all.
+
+#### 7. Small print made honest
+
+- **The wrapper's route fallback** (`restRoute`) stopped at `.` inside real
+  dotted space ids, mangling hints into `the HTTP API.28y6…/properties` —
+  invisible because every steer fixture used dot-free `space1`. The regex
+  now consumes dots followed by route characters and still stops at
+  sentence-ending dots; the new removal hints got `restVocab` rows; dotted
+  ids are in the fixtures.
+- **Message/path coherence**: a removal refusal's envelope now says
+  `removed property keys` (or `unknown and removed …` when mixed) — the key
+  is known, "unknown" was a lie the issue text contradicted — and issue
+  paths spell the key as the CALLER sent it (create and setProperties keep
+  a canonical→sent spelling map), not as canonicalization rewrote it.
+- **`propertyKeyHeldByAnyRelation`'s comment** claimed a constraint the
+  code never enforced ("a document that legitimately carries a value").
+  The code is intentionally a bare existence probe — no provenance signal
+  exists, rows with only `isDeleted` pass too — and the comment now says
+  exactly that instead of implying a check.
+- **`typeKeysById`** was a plain query, so its corpse branch (internal-key
+  spelling) was dead in production — the injected default emptied it of
+  prod corpses and the per-row point-lookup fallback served them instead,
+  untested. It now suppresses both defaults; the corpse-row test runs all
+  three shapes through the ROW BUILDER, and pins the tombstone window's
+  only honest answer: an empty type on the row (nothing to spell).
+
+**Verification.** Every fix has a test that fails on revert; each revert was
+run:
+
+| fix | revert | fails |
+|---|---|---|
+| 1 tombstone fallback (holder probe) | drop `derivedRelationRow` fallback from `relationObjectHoldingKey` | clone-tolerance and typeProperties-echo **tombstone legs** only — every full-detail leg stays green, which is the §8.41 point |
+| 1 tombstone fallback (removal verdict) | drop the tombstone arm from `bundledPropertyRemoved` | `TestV2UninstalledBundledPropertyRefusesWrites` create/PATCH/view **tombstone legs** |
+| 1 read recovery | drop `seedTombstonedTypeProperties` from `GetObject` | typeProperties GET **tombstone leg** (the entry vanishes) |
+| 1 prefer-live | first-match selection instead of live-preferred | `TestV2HoldingKeyPrefersLive` (corpse row sorts first by id, so id-ordering alone also fails it) |
+| 2 view channel | drop the removal gate from viewops `validateViewKeys` | `TestV2RemovedBundledSlugEqualsKeyClass` view legs (all four channels), while the dueDate column test stays green — the class split, demonstrated |
+| 4 typeProperties refusal | drop the removal gate from `PropertyId`'s bundled arm | `TestV2TypePropertiesRefusesRemovedBundledKey` POST and PATCH subtests |
+| 4 echo escape | drop `echoPropertyIds` | the echo subtest turns into a refusal |
+| 5 type namespace | drop `refuseRemovedType` from `validateDocumentRefs` | `TestV2RemovedBundledTypeRefusesWrites` create + templateFor legs |
+| 5 type tombstone | drop the tombstone arm from `bundledTypeRemoved` | its **tombstone legs** only |
+| 6 sets | drop the removal gate from list_create `validateViewKeys` | `TestV2SetsRefuseRemovedBundledProperty` flag-only + prod legs |
+| 6 options | drop the `isUninstalled` filter from `ListRelationOptions` | `TestListRelationOptionsExcludesRemovedOptions` (the flag-only option serves again) |
+| 8 archived | drop `isArchived` from `corpseFlagged` | both ARCHIVED subtests (property + type) |
+| 7 route regex | restore `[^\s,;.)]*` | the dotted-space-id steer test (`the HTTP API.28y6…` reappears) |
+| 10 messages | restore the `unknown property keys` envelope / canonical paths | the create-leg coherence assertions |
+| typeKeysById | drop the `Condition None` clauses | the corpse-row test's **prod leg** |
+
+**Not done, deliberately.** v1's missing corpse filters stay (per §8.40 —
+masked by the injected default in every shape a live index holds).
+`typePropertyKeys` (the sets reference set) does not learn the tombstone
+window: its narrowing there only ever REFUSES more, never lands data. The
+tombstone window's object rows serve an empty type rather than a derived
+guess — the store has nothing to spell and inventing a spelling from the id
+is not recoverable. No served schema or annotation changed, so
+`make openapi` was not needed and both documents are byte-identical. The
+running server predates this HEAD; verification is unit and handler tests.

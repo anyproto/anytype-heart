@@ -80,10 +80,15 @@ type ObjectReader interface {
 // composite creates, §8/R10); the object's type keys come from the
 // snapshot's ObjectTypes. TypeIdByKey derives the space-local object id of a
 // type key (needed for setOf/targetObjectType details before the object
-// exists).
+// exists). RelationIdByKey is the relation twin: derived objects' ids are a
+// pure function of (space, kind, internal key) (ADDRESSING §2.4), so the id
+// is computable whether or not the relation object — or even its index
+// row — exists; the corpse probes use it to see a tombstoned row that no
+// key-filtered query can return (§8.41).
 type ObjectCreator interface {
 	CreateObjectFromSnapshot(ctx context.Context, spaceId string, snapshot *model.SmartBlockSnapshotBase) (id string, err error)
 	TypeIdByKey(ctx context.Context, spaceId string, key domain.TypeKey) (string, error)
+	RelationIdByKey(ctx context.Context, spaceId string, key domain.RelationKey) (string, error)
 }
 
 // ObjectEdit is one locked editing session on a live object — what the

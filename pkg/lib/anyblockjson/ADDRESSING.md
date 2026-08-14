@@ -167,54 +167,96 @@ cross-property name reuse as a duplicate.
    declared format ignored (`resolver.go:357-363`), and `createRelation`
    validates only that the format is present and a valid enum
    (`relation.go:24-30`) — never against an existing same-key relation.
-6. **A production corpse carries TWO flags, and `isDeleted` is what
-   actually hides it.** *(Corrected 2026-08-14 — the original text below
-   described a shape production never has, and every corpse fixture in
-   the repo inherited it.)*
+6. **A corpse has THREE store shapes, and `isDeleted` is what actually
+   hides two of them.** *(Corrected 2026-08-14 twice — the original text
+   described the flag-only shape as if it were the only one; the first
+   correction promoted the two-flag shape to "the persisted shape" as if
+   it were the only one; execution then found the third, and the third is
+   the one no fixture in the repo had — §8.41.)*
 
    `deleteDerivedObject` sets `isUninstalled=true`
    (`core/block/delete.go:113-127`), and the **same Apply** stamps
    `isDeleted=true` beside it: `injectDerivedDetails` writes `isDeleted`
    whenever `isUninstalled` is present on the state
-   (`smartblock/detailsinject.go:219-226`). `BeforeDelete` then tombstones
-   the index row, and because the tree itself survives (§2.4-5) the next
-   space load re-indexes it — the row comes back with **full details and
-   both flags**. So the persisted shape of a UI delete is
-   `{isUninstalled:true, isDeleted:true}`, never `{isUninstalled:true}`
-   alone.
+   (`smartblock/detailsinject.go:219-226`). `BeforeDelete` then
+   **tombstones** the index row — `spaceindex.DeleteObject` strips it to
+   `{id, spaceId, isDeleted}`, no `relationKey`, no `resolvedLayout` —
+   and because the tree itself survives (§2.4-5) the next space load
+   re-indexes it with **full details and both flags**. Three shapes,
+   each real in a different place:
+
+   - `{isUninstalled}` **flag-only** — never persisted by a live index
+     (`isDeleted` is a `source: local` relation, re-derived on every
+     load), but it IS the shape a **snapshot/export** of a corpse
+     carries, since export strips local relations. "The shape production
+     never has" is exactly the shape production *exports*.
+   - `{isUninstalled, isDeleted}` + full details — the **steady state**
+     after the next space load, and the *immediate* shape on any device
+     that received the delete **by sync**: the receiving index re-derives
+     the row from the tree and never passes through a tombstone. Which
+     shape a device sees in the delete's first session is
+     device-dependent; the data is the same.
+   - `{id, spaceId, isDeleted}` — the **tombstone**, on the deleting
+     device from the delete until its next space load: normally the rest
+     of the app session. Every key- or layout-filtered query misses it on
+     its first filter, defaults suppressed or not; the only handle is the
+     **id**, which for derived objects is computable from the key
+     (§2.4), and the only full description is the surviving tree.
 
    That matters for what is visible to whom. Every plain store query
-   injects `isDeleted != true` (`database.go:109-123`), so a production
-   corpse is **already invisible** to ordinary queries — including the
-   ones under `core/api/` that filter nothing themselves. The explicit
-   `isUninstalled` filters v2 added (`livePropertyFilters`,
-   `liveTypeFilters`) are therefore belt-and-braces rather than the sole
-   defence: they pin the corpse policy to the flag that *means* "the user
-   deleted this", instead of leaning on an injected default that any
-   query suppressing it — or any point lookup that never had it — loses.
+   injects `isDeleted != true` (`database.go:109-123`), so a corpse in
+   either `isDeleted`-bearing shape is **already invisible** to ordinary
+   queries — including the ones under `core/api/` that filter nothing
+   themselves. The explicit `isUninstalled` filters v2 added
+   (`livePropertyFilters`, `liveTypeFilters`) are belt-and-braces there:
+   they pin the corpse policy to the flag that *means* "the user deleted
+   this", instead of leaning on an injected default that any query
+   suppressing it — or any point lookup that never had it — loses. For
+   **relation options** the same statement was NOT true until §8.41:
+   `ListRelationOptions` filtered layout and `relationKey` only, so the
+   injected default was the **sole** defence for the one entity class the
+   corpse rounds never audited (the explicit `isUninstalled` exclusion is
+   now in). Note also `deleteRelationOptions` tombstones every option of
+   a deleted relation, so a corpse select/multiSelect has no resolvable
+   options and its values read back as raw ids.
 
-   Two consequences of that lean survive and are load-bearing:
+   The residual channels that bypass the defaults are **five, not two**:
 
-   - **Point lookups by id are unfiltered.** `GetRelationById` falls back
-     to reading details directly, so a corpse referenced by a type's
+   - **Point lookups by id** read details directly (`GetRelationById` via
+     `GetDetails`), so a corpse referenced by a type's
      `recommendedRelations` is still served in `typeProperties`, both
-     flags and all (§8.40).
-   - **A query that suppresses the defaults sees corpses again.** Any
-     probe written with `Condition None` — the round-trip tolerance, the
-     removal set — must suppress **both** `isArchived` and `isDeleted`, or
-     it silently sees only the fixtures' shape and never production's
-     (the §8.40 defect: a tolerance that worked for archived properties
-     and not for the uninstalled ones it was written for).
+     flags and all (§8.40) — but this is **not uniform across kinds**:
+     `GetObjectType` checks `isDeleted` explicitly and answers "type was
+     removed", so the type-side point lookup IS filtered where the
+     relation-side one is not. §8.40's "both shapes behaved identically
+     here" is right for relations and wrong for the type path.
+   - **Probes that suppress the defaults** (`Condition None` — the
+     round-trip tolerance, the removal sets) see full-detail corpses
+     again, and must suppress **both** `isArchived` and `isDeleted` or
+     they see only the flag-only shape (the §8.40 defect) — and even
+     then they never see the tombstone (the §8.41 defect; those probes
+     now fall back to the derived id).
+   - **`FetchRelationByKey`** is a **key**-addressed read that runs
+     `QueryRaw` with a hand-built filter — `QueryRaw` never calls
+     `NewFilters`, so no default is ever injected. Not a by-id lookup,
+     and not covered by any "point lookups" wording: a corpse resolves
+     here by its unique key in both full-detail shapes.
+   - **`QueryByIds`** injects nothing either, and feeds v1 subscription
+     dependency resolution, export and history — corpse rows ride into
+     all three.
+   - **The raw scans** — `HasIds`, `ListIds`, `IterateAll`,
+     `QueryIterateRaw` — enumerate documents with no filter layer at all.
 
-   The original finding, corrected: "nothing filters it, so a corpse
-   remains fully visible" holds only for the `{isUninstalled}`-alone shape
-   — the fixtures' shape. For the shape production persists, a plain
-   query hides the corpse on the `isDeleted` default alone, and what
-   remains visible is narrower and more specific: the channels that
-   bypass those defaults (point lookups by id, probes that suppress them)
-   and the derivation layer, where a same-key create meets the surviving
-   tree with no store query involved at all (§7.5-2). Any claim about
-   corpse visibility must name which of the two shapes it is about.
+   The original finding, corrected twice: "nothing filters it, so a
+   corpse remains fully visible" holds only for the flag-only shape. For
+   the `isDeleted`-bearing shapes, a plain query hides the corpse on the
+   injected default alone, and what remains visible is the five channels
+   above plus the derivation layer, where a same-key create meets the
+   surviving tree with no store query involved at all (§7.5-2). Any claim
+   about corpse visibility must name **which of the three shapes** it is
+   about — and any probe that claims to see corpses must say what it
+   does in the tombstone window, where the row it is looking for has no
+   fields to match.
 
 ### 2.4 How unique keys derive object ids (verified — it decides §7.5)
 

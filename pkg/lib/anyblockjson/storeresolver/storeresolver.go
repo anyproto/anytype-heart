@@ -144,6 +144,25 @@ func (r *Resolvers) PropertyById(id string) (anyblockjson.PropertyDefinition, bo
 	return def, true
 }
 
+// SeedProperty registers a definition for an id the index cannot currently
+// answer for. The one caller class is the tombstone window (API v2 §8.41): a
+// deleted relation's index row is stripped to {id, isDeleted} until the next
+// space load, so GetRelationById fails on an id the surviving TREE still
+// fully describes — the wiring reads the live object and seeds what the
+// index will hold again after reindex. Seeds never override a loaded row
+// (the by-key map keeps its first binding), matching the cache discipline of
+// PropertyById's point-lookup arm.
+func (r *Resolvers) SeedProperty(id string, def anyblockjson.PropertyDefinition) {
+	r.loadRelations()
+	if _, ok := r.relById[id]; ok {
+		return
+	}
+	r.relById[id] = def
+	if _, taken := r.relKeyToId[string(def.Key)]; !taken {
+		r.relKeyToId[string(def.Key)] = id
+	}
+}
+
 // PropertyId implements anyblockjson.PropertyResolver.
 func (r *Resolvers) PropertyId(def anyblockjson.PropertyDefinition) (string, bool) {
 	r.loadRelations()

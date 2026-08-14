@@ -79,6 +79,18 @@ func (a *objectCreateAdapter) TypeIdByKey(ctx context.Context, spaceId string, k
 	return id, nil
 }
 
+func (a *objectCreateAdapter) RelationIdByKey(ctx context.Context, spaceId string, key domain.RelationKey) (string, error) {
+	spc, err := a.spaces.Get(ctx, spaceId)
+	if err != nil {
+		return "", fmt.Errorf("get space %s: %w", spaceId, err)
+	}
+	id, err := spc.GetRelationIdByKey(ctx, key)
+	if err != nil {
+		return "", fmt.Errorf("derive relation id for %s: %w", key, err)
+	}
+	return id, nil
+}
+
 // snapshotRootId finds the snapshot's root block: the block carrying the
 // smartblock content (anyblockjson.Unmarshal always emits exactly one).
 func snapshotRootId(snapshot *model.SmartBlockSnapshotBase) string {

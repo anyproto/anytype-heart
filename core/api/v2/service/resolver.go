@@ -75,6 +75,32 @@ type creatingResolvers struct {
 	createdPropIds map[string]string                          // key → id
 	sideEffects    v2model.SideEffects
 	errs           []error
+
+	// echoPropertyIds are relation object ids the PATCHed type's recommended
+	// lists ALREADY carry (UpdateType primes them; empty on create). They are
+	// the typeProperties twin of §8.17's in-document escape: a REMOVED bundled
+	// key whose holder is already referenced resolves as an identity echo —
+	// refusing it would turn the documented read-modify-write loop into a
+	// forced deletion of the reference (§8.34) — while the same key on a type
+	// that does NOT reference it is a new landing on a removed property and
+	// refuses like every other channel (§8.41).
+	echoPropertyIds map[string]bool
+
+	// removedBundled is the space's bundled-removal set (bundledRemovalSet),
+	// primed lazily and only when a bundled key actually reaches PropertyId.
+	removedBundled       map[string]bool
+	removedBundledLoaded bool
+	removedBundledErr    error
+}
+
+// removedBundledKeys primes the resolver's removal-set snapshot once. Fails
+// closed: an unreadable removal set must not read as "nothing was removed".
+func (r *creatingResolvers) removedBundledKeys() (map[string]bool, error) {
+	if !r.removedBundledLoaded {
+		r.removedBundledLoaded = true
+		r.removedBundled, r.removedBundledErr = r.svc.bundledRemovalSet(r.spaceId)
+	}
+	return r.removedBundled, r.removedBundledErr
 }
 
 func (s *V2Service) newCreatingResolvers(ctx context.Context, spaceId string, dryRun bool) *creatingResolvers {
@@ -425,6 +451,39 @@ func (r *creatingResolvers) PropertyId(def anyblockjson.PropertyDefinition) (str
 	}
 	isBundled := ok && entry.Id == "" // bundled vocabulary, not installed
 	if isBundled {
+		// A bundled key that exists only through the table may exist that way
+		// because this space REMOVED its relation — naming it in
+		// typeProperties would point a recommended list at the corpse (or,
+		// pre-§8.40, reinstall it outright). Same refusal every other write
+		// channel makes (§8.41), with ONE escape: when the PATCHed type's
+		// lists already reference the holder, the entry is the read's own
+		// echo and resolves as an identity — see echoPropertyIds.
+		removed, err := r.removedBundledKeys()
+		if err != nil {
+			r.errs = append(r.errs, err)
+			return "", false
+		}
+		isRemoved, err := r.svc.bundledPropertyRemoved(r.ctx, r.spaceId, entries, removed, entry.Key)
+		if err != nil {
+			r.errs = append(r.errs, err)
+			return "", false
+		}
+		if isRemoved {
+			holderId, held, err := r.svc.relationObjectHoldingKey(r.ctx, r.spaceId, entry.Key)
+			if err != nil {
+				r.errs = append(r.errs, err)
+				return "", false
+			}
+			if held && r.echoPropertyIds[holderId] {
+				r.createdPropIds[docKey] = holderId
+				return holderId, true
+			}
+			// spelledAs is the served slug: typeProperties documents spell
+			// slugs, so that is the spelling the caller can actually remove
+			r.errs = append(r.errs, v2model.ValidationFailed("removed property key",
+				removedPropertyIssue(r.spaceId, entry.Key, bundle.ApiSlug(entry.Key), "/typeProperties")))
+			return "", false
+		}
 		// storeresolver still resolves system relations by their bundled
 		// definition (synthetic listing entries) and legacy index gaps by
 		// point lookup (anomaly #9) — prefer that to firing an install RPC
@@ -452,8 +511,14 @@ func (r *creatingResolvers) PropertyId(def anyblockjson.PropertyDefinition) (str
 	// typeProperties counterpart of the §8.29 create tolerance and it is
 	// deliberately KEY-ONLY — the corpse's SLUG vacated the namespace and
 	// still resolves to nothing here, so a re-minted slug can never re-aim
-	// onto the corpse.
-	if holderId, held := r.svc.relationObjectHoldingKey(r.spaceId, docKey); held && holderId != "" {
+	// onto the corpse. The probe's error is a hard stop, not a fall-through
+	// to the mint below: "could not look" must never mint a duplicate.
+	holderId, held, err := r.svc.relationObjectHoldingKey(r.ctx, r.spaceId, docKey)
+	if err != nil {
+		r.errs = append(r.errs, err)
+		return "", false
+	}
+	if held && holderId != "" {
 		r.createdPropIds[docKey] = holderId
 		return holderId, true
 	}

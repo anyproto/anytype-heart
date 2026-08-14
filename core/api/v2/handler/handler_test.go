@@ -1,6 +1,7 @@
 package v2handler
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -48,6 +49,16 @@ func newV2HandlerFixture(t *testing.T) *v2HandlerFixture {
 		},
 	})
 	creatorMock := mock_apicore.NewMockObjectCreator(t)
+	// deterministic derived-id stubs, same convention as the service fixture
+	// (the §8.41 tombstone probes derive ids on most create paths)
+	creatorMock.EXPECT().RelationIdByKey(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(
+		func(_ context.Context, _ string, key domain.RelationKey) (string, error) {
+			return "drv-rel-" + string(key), nil
+		}).Maybe()
+	creatorMock.EXPECT().TypeIdByKey(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(
+		func(_ context.Context, _ string, key domain.TypeKey) (string, error) {
+			return "drv-ot-" + string(key), nil
+		}).Maybe()
 	svc := v2service.NewV2Service(mwMock, readerMock, creatorMock, mock_apicore.NewMockObjectMutator(t), store, objectstore.TestTechSpaceId, testAccountId)
 	return &v2HandlerFixture{svc: svc, mwMock: mwMock, readerMock: readerMock, creatorMock: creatorMock, store: store, router: gin.New()}
 }

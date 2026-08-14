@@ -241,6 +241,14 @@ var restVocab = []struct {
 		"run describe on the type to list the property keys it takes"},
 	{regexp.MustCompile(`check the names against GET /v2/spaces/[^/\s]+/properties/[^/\s]+/options\b`),
 		"check the names against describe, which lists the live option names"},
+	// the removed-property refusal (§8.41): the remove-the-key repair works
+	// verbatim on this surface; only the list-route tail needs the tool
+	// spelling
+	{regexp.MustCompile(`for a different property, list them with GET /v2/spaces/[^/\s]+/properties\b`),
+		"for a different property, run describe on the type to list its live property keys"},
+	// the removed-type refusal (§8.41)
+	{regexp.MustCompile(`use a live type instead — list them with GET /v2/spaces/[^/\s]+/types\b`),
+		"use a live type instead (find results show each object's type)"},
 	{regexp.MustCompile(`GET the object with \?outline=true to list (?:them|block ids)\b`),
 		"run read with mode=outline to list the block labels"},
 	{regexp.MustCompile(`list members with GET /v2/spaces/[^/\s]+/members\b`),
@@ -253,7 +261,14 @@ var restVocab = []struct {
 // wherever a route can appear in a sentence, and it says the true thing,
 // which is that the repair is not on this surface. A test asserts nothing
 // route-shaped survives this pass.
-var restRoute = regexp.MustCompile(`(?:GET|POST|PATCH|PUT|DELETE) /v[0-9]+/[^\s,;.)]*`)
+//
+// A dot is part of the route only when route characters follow it — real
+// space ids are dotted (`bafyreiabc.28y6mgnwgodt7`), and the earlier
+// `[^\s,;.)]*` stopped at the id's dot, leaving its tail glued to the
+// replacement ("the HTTP API.28y6mgnwgodt7/properties"). A sentence-ending
+// dot is still excluded: `\.` must be followed by at least one route
+// character to match.
+var restRoute = regexp.MustCompile(`(?:GET|POST|PATCH|PUT|DELETE) /v[0-9]+[^\s,;.)]*(?:\.[^\s,;.)]+)*`)
 
 const restRouteFallback = "the HTTP API"
 
