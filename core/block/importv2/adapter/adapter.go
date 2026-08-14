@@ -32,6 +32,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/importv2/resolve"
 	"github.com/anyproto/anytype-heart/core/block/importv2/source"
 	"github.com/anyproto/anytype-heart/core/block/process"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
@@ -66,11 +67,33 @@ type Importer interface {
 	ValidateNotionToken(ctx context.Context, req *pb.RpcObjectImportNotionValidateTokenRequest) pb.RpcObjectImportNotionValidateTokenResponseErrorCode
 }
 
+// Narrow seams over the app components the adapter's lifecycle paths touch,
+// so the lifecycle harness (§13.4) can construct the service with fakes and
+// actually drive Import/Close/sweep — the paths earlier reviews could only
+// reason about. Init wires all of them from the real components.
+type spaceGetter interface {
+	Get(ctx context.Context, spaceId string) (clientspace.Space, error)
+}
+
+type processAdder interface {
+	ProcessAdd(p process.Process) error
+}
+
+type widgetCreator interface {
+	CreateWidgetBlock(ctx session.Context, req *pb.RpcBlockCreateWidgetRequest, checkDuplicatedTarget bool) (string, error)
+}
+
+type engineRunFn func(ctx context.Context, request importv2.Request, converter importv2.Converter, spc clientspace.Space, lc *runLifecycle, progress process.Progress) *importv2.Result
+
 type service struct {
 	config            *config.Config
-	spaceService      space.Service
+	spaceService      spaceGetter
 	objectStore       objectstore.ObjectStore
 	blockService      *block.Service
+	processes         processAdder
+	widgets           widgetCreator
+	objects           persist.ObjectAccess
+	engineRunner      engineRunFn
 	fileObjectService fileobject.Service
 	installer         objectcreator.Service
 	detailsService    detailservice.Service
@@ -101,6 +124,10 @@ func (s *service) Init(a *app.App) error {
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	s.blockService = app.MustComponent[*block.Service](a)
+	s.processes = s.blockService
+	s.widgets = s.blockService
+	s.objects = s.blockService
+	s.engineRunner = s.runEngine
 	s.fileObjectService = app.MustComponent[fileobject.Service](a)
 	s.installer = app.MustComponent[objectcreator.Service](a)
 	s.detailsService = app.MustComponent[detailservice.Service](a)
@@ -346,6 +373,7 @@ func (s *service) executeNotion(ctx context.Context, request importv2.Request, r
 	if err != nil {
 		return &importv2.Result{Err: importv2.Fatal(importv2.IssueStoreError, err)}
 	}
+	defer lc.release() // Invariant 3: a panic below must not leak the registry hold
 	apiClient := notionclient.NewClient(params.GetApiKey())
 	var opts []notion.Option
 	if planner := plannerFromRequest(req); planner.planner != nil {
@@ -356,7 +384,7 @@ func (s *service) executeNotion(ctx context.Context, request importv2.Request, r
 	}
 	converter := notion.New(apiClient, notionclient.NewFileFetcher(),
 		&collectionFactory{service: s.collectionService}, lc.spillDir, opts...)
-	result := s.runEngine(ctx, request, converter, spc, lc, progress)
+	result := s.engineRunner(ctx, request, converter, spc, lc, progress)
 	s.finishRun(lc, result)
 	return result
 }
@@ -399,6 +427,7 @@ func (s *service) runOne(ctx context.Context, request importv2.Request, spc clie
 	if err != nil {
 		return &importv2.Result{Err: importv2.Fatal(importv2.IssueStoreError, err)}
 	}
+	defer lc.release() // Invariant 3: a panic below must not leak the registry hold
 	converter := markdown.New(src, markdown.Params{
 		CreateDirectoryPages:     params.CreateDirectoryPages,
 		IncludePropertiesAsBlock: params.IncludePropertiesAsBlock,
@@ -406,7 +435,7 @@ func (s *service) runOne(ctx context.Context, request importv2.Request, spc clie
 		Planner:                  params.Planner.planner,
 		IncludeContentSamples:    params.Planner.includeSamples,
 	}, &collectionFactory{service: s.collectionService})
-	result := s.runEngine(ctx, request, converter, spc, lc, progress)
+	result := s.engineRunner(ctx, request, converter, spc, lc, progress)
 	s.finishRun(lc, result)
 	return result
 }
@@ -470,7 +499,7 @@ func (s *service) ValidateNotionToken(ctx context.Context, req *pb.RpcObjectImpo
 }
 
 func (s *service) createRootWidget(widgetsId string, result *importv2.Result) {
-	_, err := s.blockService.CreateWidgetBlock(nil, &pb.RpcBlockCreateWidgetRequest{
+	_, err := s.widgets.CreateWidgetBlock(nil, &pb.RpcBlockCreateWidgetRequest{
 		ContextId:    widgetsId,
 		WidgetLayout: result.WidgetLayout,
 		Block: &model.Block{
@@ -496,7 +525,7 @@ func (s *service) setupProgress(req *pb.RpcObjectImportRequest) process.Progress
 		}
 		progress = process.NewNotificationProcess(processMessage, s.notificationsSvc)
 	}
-	if err := s.blockService.ProcessAdd(progress); err != nil {
+	if err := s.processes.ProcessAdd(progress); err != nil {
 		log.Errorf("register import process: %s", err)
 	}
 	return progress

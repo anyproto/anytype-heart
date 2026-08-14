@@ -188,7 +188,7 @@ func (s *service) sweepAbandoned() {
 			log.Errorf("sweep panic: %v\n%s", rec, debug.Stack())
 		}
 	}()
-	outcomes := sweepRuns(s.componentCtx, runstore.RunsRoot(s.config.RepoPath), s.blockService, s.probeSpace)
+	outcomes := sweepRuns(s.componentCtx, runstore.RunsRoot(s.config.RepoPath), s.objects, s.probeSpace)
 	for _, outcome := range outcomes {
 		logger := log.With(
 			"dir", outcome.Dir,

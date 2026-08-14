@@ -281,6 +281,32 @@ func TestEffectLedger(t *testing.T) {
 		assert.Equal(t, []string{"file-obj-1"}, inputs.OwnedFiles)
 	})
 
+	t.Run("a same-key effect with a DIFFERENT objectId is never silently dropped", func(t *testing.T) {
+		// given — Invariant 3 (review): the merge rules must not discard an
+		// id. A conflicting record indicates an identity violation upstream:
+		// keep BOTH ids in the ledger (the displaced one under a synthetic
+		// key, preserving its mode so matched ids stay undeletable).
+		ctx := context.Background()
+		store := createStore(t, filepath.Join(t.TempDir(), "run-1"))
+		require.NoError(t, store.RecordCreated(ctx, "page-1", "obj-a"))
+
+		// when: a second create arrives under the same key with another id
+		require.NoError(t, store.RecordCreated(ctx, "page-1", "obj-b"))
+		inputs, err := store.CompensationInputs(ctx)
+
+		// then: both ids stay deletable
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []string{"obj-a", "obj-b"}, inputs.Created)
+
+		// and: a matched id displaced by a minted one keeps its matched mode
+		require.NoError(t, store.RecordUpdated(ctx, "page-2", "obj-c"))
+		require.NoError(t, store.RecordCreated(ctx, "page-2", "obj-d"))
+		inputs, err = store.CompensationInputs(ctx)
+		require.NoError(t, err)
+		assert.Contains(t, inputs.Created, "obj-d")
+		assert.Contains(t, inputs.Updated, "obj-c", "the displaced matched id must never become deletable")
+	})
+
 	t.Run("an unknown entries mode is deletable to this reader", func(t *testing.T) {
 		// given — §4.4 frozen-core reader rule: a mode this binary does not
 		// know (a phase-B "derived" read by an older binary) is treated as
@@ -303,6 +329,26 @@ func TestEffectLedger(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, []string{"obj-derived"}, inputs.Created)
 		assert.Empty(t, inputs.Updated)
+	})
+}
+
+func TestActiveRegistry(t *testing.T) {
+	t.Run("the registry refcounts holders, and Close is idempotent", func(t *testing.T) {
+		// given — Invariant 3: a set-not-refcount registry is disarmed for
+		// the still-live holder by any double open (confirmed by review).
+		ctx := context.Background()
+		dir := filepath.Join(t.TempDir(), "run-1")
+		first := createStore(t, dir)
+		second, err := Open(ctx, dir)
+		require.NoError(t, err)
+
+		// when / then
+		assert.True(t, IsActive(dir))
+		require.NoError(t, second.Close())
+		assert.True(t, IsActive(dir), "the first holder is still live")
+		require.NoError(t, first.Close())
+		require.NoError(t, first.Close()) // double close must not underflow
+		assert.False(t, IsActive(dir))
 	})
 }
 

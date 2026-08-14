@@ -115,6 +115,10 @@ type Store struct {
 	files    anystore.Collection
 	arenas   *anyenc.ArenaPool
 	rank     atomic.Int64
+	// closed makes Close idempotent, so each Store releases its active-dir
+	// registry hold exactly once whatever combination of Close/Drop/deferred
+	// release paths runs.
+	closed atomic.Bool
 }
 
 // activeDirs is the process-global registry of run dirs currently held open
@@ -126,9 +130,13 @@ type Store struct {
 // up on a run that is still finishing while the NEW component instance
 // sweeps. Cross-process exclusivity is already the platform invariant (one
 // heart per repo dir).
+//
+// It is a REFCOUNT, not a set (Invariant 3): a double open of one dir must
+// not let the first Close disarm the guard for the still-live holder.
+// Store.Close is idempotent, so each Store releases exactly once.
 var (
 	activeDirsMu sync.Mutex
-	activeDirs   = map[string]struct{}{}
+	activeDirs   = map[string]int{}
 )
 
 // IsActive reports whether some Store in this process currently holds the
@@ -136,20 +144,24 @@ var (
 func IsActive(dir string) bool {
 	activeDirsMu.Lock()
 	defer activeDirsMu.Unlock()
-	_, active := activeDirs[filepath.Clean(dir)]
-	return active
+	return activeDirs[filepath.Clean(dir)] > 0
 }
 
 func markActive(dir string) {
 	activeDirsMu.Lock()
 	defer activeDirsMu.Unlock()
-	activeDirs[filepath.Clean(dir)] = struct{}{}
+	activeDirs[filepath.Clean(dir)]++
 }
 
 func markInactive(dir string) {
 	activeDirsMu.Lock()
 	defer activeDirsMu.Unlock()
-	delete(activeDirs, filepath.Clean(dir))
+	key := filepath.Clean(dir)
+	if activeDirs[key] <= 1 {
+		delete(activeDirs, key)
+		return
+	}
+	activeDirs[key]--
 }
 
 // RunsRoot is where all run dirs live for an account repo.
@@ -347,7 +359,7 @@ func (s *Store) RecordUpdated(ctx context.Context, sourceKey, objectId string) e
 	return s.recordEntry(ctx, sourceKey, objectId, modeMatched, actionUpdated)
 }
 
-// recordEntry merges one effect into the row keyed by sourceKey. Two rules
+// recordEntry merges one effect into the row keyed by sourceKey. Three rules
 // keep the delete set sound under re-records (a later effect must never
 // erase what compensation needs to know):
 //
@@ -355,13 +367,27 @@ func (s *Store) RecordUpdated(ctx context.Context, sourceKey, objectId string) e
 //     later effect may downgrade it — deletion supersedes update-rollback
 //     for an object this run made;
 //   - rank is assigned at the row's FIRST write and never changes (it is a
-//     frozen field, §4.4, and compensation ordering depends on it).
+//     frozen field, §4.4, and compensation ordering depends on it);
+//   - a DIFFERENT objectId under the same key is never silently dropped
+//     (Invariant 3): the displaced id is preserved under a synthetic key,
+//     keeping its own mode (a matched id must never become deletable), and
+//     the conflict — an identity violation upstream — is logged loudly.
 func (s *Store) recordEntry(ctx context.Context, sourceKey, objectId, mode, action string) error {
 	rank := int(s.rank.Add(1))
+	var displacedId, displacedMode string
 	_, err := s.entries.UpsertId(ctx, sourceKey, query.ModifyFunc(
 		func(arena *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
+			existingId := string(v.GetStringBytes("objectId"))
 			if string(v.GetStringBytes("mode")) == modeMinted {
+				if existingId != "" && existingId != objectId {
+					// the INCOMING id would vanish (minted-sticky keeps the row)
+					displacedId, displacedMode = objectId, mode
+				}
 				return v, false, nil
+			}
+			if existingId != "" && existingId != objectId {
+				// the EXISTING id would vanish (this write replaces the row)
+				displacedId, displacedMode = existingId, string(v.GetStringBytes("mode"))
 			}
 			v.Set("objectId", arena.NewString(objectId))
 			v.Set("mode", arena.NewString(mode))
@@ -373,7 +399,31 @@ func (s *Store) recordEntry(ctx context.Context, sourceKey, objectId, mode, acti
 			v.Set("incarnation", arena.NewNumberInt(1))
 			return v, true, nil
 		}))
-	return err
+	if err != nil || displacedId == "" {
+		return err
+	}
+	log.With("sourceKey", sourceKey, "kept", objectId, "displaced", displacedId).
+		Errorf("conflicting objectId recorded under one source key — identity invariant violation; preserving both in the ledger")
+	return s.recordSyntheticEntry(ctx, sourceKey, displacedId, displacedMode)
+}
+
+// recordSyntheticEntry writes a displaced id under a synthetic key so it
+// stays in the compensation view with its original mode.
+func (s *Store) recordSyntheticEntry(ctx context.Context, sourceKey, objectId, mode string) error {
+	arena := s.arenas.Get()
+	defer func() {
+		arena.Reset()
+		s.arenas.Put(arena)
+	}()
+	row := arena.NewObject()
+	row.Set("id", arena.NewString(sourceKey+"#dup-"+objectId))
+	row.Set("objectId", arena.NewString(objectId))
+	row.Set("mode", arena.NewString(mode))
+	row.Set("status", arena.NewString(statusPersisted))
+	row.Set("action", arena.NewString(actionCreated))
+	row.Set("rank", arena.NewNumberInt(int(s.rank.Add(1))))
+	row.Set("incarnation", arena.NewNumberInt(1))
+	return s.entries.UpsertOne(ctx, row)
 }
 
 // RecordFile journals a file-upload outcome. preExisting marks a
@@ -384,9 +434,16 @@ func (s *Store) recordEntry(ctx context.Context, sourceKey, objectId, mode, acti
 // it, so the first classification is the honest one.
 func (s *Store) RecordFile(ctx context.Context, sourceKey, objectId string, preExisting bool) error {
 	rank := int(s.rank.Add(1))
+	var displacedId string
+	var displacedPreExisting bool
 	_, err := s.files.UpsertId(ctx, sourceKey, query.ModifyFunc(
 		func(arena *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
-			if len(v.GetStringBytes("objectId")) > 0 {
+			if existingId := string(v.GetStringBytes("objectId")); existingId != "" {
+				if existingId != objectId {
+					// first-record-wins keeps the row; the incoming id must
+					// not vanish from the ledger (Invariant 3)
+					displacedId, displacedPreExisting = objectId, preExisting
+				}
 				return v, false, nil
 			}
 			v.Set("objectId", arena.NewString(objectId))
@@ -396,7 +453,24 @@ func (s *Store) RecordFile(ctx context.Context, sourceKey, objectId string, preE
 			v.Set("incarnation", arena.NewNumberInt(1))
 			return v, true, nil
 		}))
-	return err
+	if err != nil || displacedId == "" {
+		return err
+	}
+	log.With("sourceKey", sourceKey, "displaced", displacedId).
+		Errorf("conflicting file objectId recorded under one source key — preserving both in the ledger")
+	arena := s.arenas.Get()
+	defer func() {
+		arena.Reset()
+		s.arenas.Put(arena)
+	}()
+	row := arena.NewObject()
+	row.Set("id", arena.NewString(sourceKey+"#dup-"+displacedId))
+	row.Set("objectId", arena.NewString(displacedId))
+	row.Set("status", arena.NewString(statusDone))
+	row.Set("preExisting", arena.NewBool(displacedPreExisting))
+	row.Set("rank", arena.NewNumberInt(int(s.rank.Add(1))))
+	row.Set("incarnation", arena.NewNumberInt(1))
+	return s.files.UpsertOne(ctx, row)
 }
 
 type rankedId struct {
@@ -504,7 +578,12 @@ func (s *Store) Flush(ctx context.Context) error {
 	return s.db.Flush(ctx, 0, anystore.FlushModeCheckpointPassive)
 }
 
+// Close is idempotent: exactly one call releases the active-dir registry
+// hold, whatever combination of Close/Drop/deferred-release paths runs.
 func (s *Store) Close() error {
+	if !s.closed.CompareAndSwap(false, true) {
+		return nil
+	}
 	defer markInactive(s.dir)
 	return s.db.Close()
 }
@@ -512,8 +591,7 @@ func (s *Store) Close() error {
 // Drop closes the store and deletes the whole run dir — the disposal the
 // per-run-DB layout exists for (§4.1): O(1), no tombstones, no vacuum.
 func (s *Store) Drop() error {
-	defer markInactive(s.dir)
-	err := s.db.Close()
+	err := s.Close()
 	if removeErr := os.RemoveAll(s.dir); removeErr != nil {
 		return errors.Join(err, fmt.Errorf("remove run dir: %w", removeErr))
 	}

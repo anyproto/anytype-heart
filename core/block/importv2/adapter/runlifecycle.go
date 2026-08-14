@@ -22,6 +22,29 @@ type runLifecycle struct {
 	store    *runstore.Store
 	spillDir string
 	cleanup  func()
+	settled  bool
+}
+
+// release is DEFERRED by the run owner immediately after beginRun
+// (Invariant 3): if finishRun never ran — a panic between beginRun and
+// finishRun — the store is still closed, so the active-dir registry entry
+// cannot leak and block the dir from ever being swept. The dir itself is
+// kept: an unsettled run is exactly what the sweep exists to settle.
+func (lc *runLifecycle) release() {
+	if lc.settled {
+		return
+	}
+	lc.settled = true
+	if lc.store != nil {
+		if err := lc.store.Close(); err != nil {
+			log.Errorf("release unsettled run store: %s", err)
+		}
+		log.With("dir", lc.store.Dir()).Errorf("import run was abandoned without settling; dir left for the startup sweep")
+		return
+	}
+	if lc.cleanup != nil {
+		lc.cleanup()
+	}
 }
 
 // beginRun creates the run dir + store before the engine starts. A store
@@ -62,6 +85,7 @@ func (s *service) beginRun(ctx context.Context, request importv2.Request, conver
 // run on a background context: the run ctx is typically already cancelled
 // on the failure path.
 func (s *service) finishRun(lc *runLifecycle, result *importv2.Result) {
+	lc.settled = true
 	if lc.store == nil {
 		if lc.cleanup != nil {
 			lc.cleanup()
@@ -80,6 +104,24 @@ func (s *service) finishRun(lc *runLifecycle, result *importv2.Result) {
 			log.Errorf("close suspended run: %s", err)
 		}
 		log.With("dir", lc.store.Dir()).Warnf("import run suspended for shutdown; state kept for the startup sweep")
+		return
+	}
+	if result.Err != nil && result.Leaked > 0 {
+		// Invariant 2, the in-process half (the sweep already obeys it): a
+		// compensation that leaked keeps the dir so the next start retries
+		// instead of making the leak permanent. The state is ensured here
+		// rather than assumed from the engine's OnCompensating hook — the
+		// rule must hold whatever path produced the leak.
+		if err := lc.store.SetState(context.Background(), runstore.StateCompensating); err != nil {
+			log.Errorf("mark leaked run compensating: %s", err)
+		}
+		if err := lc.store.Flush(context.Background()); err != nil {
+			log.Errorf("flush leaked run: %s", err)
+		}
+		if err := lc.store.Close(); err != nil {
+			log.Errorf("close leaked run: %s", err)
+		}
+		log.With("dir", lc.store.Dir()).Warnf("compensation leaked %d objects; dir kept for the startup sweep to retry", result.Leaked)
 		return
 	}
 	state := runstore.StateCompleted
