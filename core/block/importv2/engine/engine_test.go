@@ -559,10 +559,16 @@ func TestCompensationGate(t *testing.T) {
 		// switch, so deleting past a failed "compensating" write means the
 		// next start RESUMES a partly-compensated run whose deleted objects
 		// have terminal rows and are silently skipped. No marker, no deletes.
+		// The journal must be NON-EMPTY when the abort fires, or the
+		// empty-journal short-circuit (DM-3) legitimately skips the gate
+		// this subtest exists to pin: bad.md is delayed so a.md's journal
+		// write always lands first (found by -count=60 — the two persists
+		// raced, and the losing order tested a different rule).
 		fx := newEngineFixture(t)
 		deleter := fx.deps.Objects.(*deleterFake)
 		fx.deps.OnCompensating = func() error { return assert.AnError }
 		fx.persister.failKeys["bad.md"] = assert.AnError
+		fx.persister.delayKeys = map[string]time.Duration{"bad.md": 150 * time.Millisecond}
 		converter := &scriptConverter{objects: []*importv2.Object{
 			pageObj("a.md", false), pageObj("bad.md", false),
 		}}
@@ -581,9 +587,11 @@ func TestCompensationGate(t *testing.T) {
 	})
 
 	t.Run("a normal abort reports that compensation ran", func(t *testing.T) {
-		// given
+		// given (same deterministic ordering as above: the pin is the REAL
+		// compensation path, not the vacuous empty-journal skip)
 		fx := newEngineFixture(t)
 		fx.persister.failKeys["bad.md"] = assert.AnError
+		fx.persister.delayKeys = map[string]time.Duration{"bad.md": 150 * time.Millisecond}
 		converter := &scriptConverter{objects: []*importv2.Object{
 			pageObj("a.md", false), pageObj("bad.md", false),
 		}}
@@ -594,6 +602,34 @@ func TestCompensationGate(t *testing.T) {
 		// then
 		require.Error(t, result.Err)
 		assert.True(t, result.CompensationRan)
+		assert.Equal(t, 1, result.Compensated, "a.md journaled before the abort and must be undone")
+	})
+
+	t.Run("an abort with NOTHING to undo skips the gate and the marker entirely", func(t *testing.T) {
+		// given — the DM-3 rule (DM spec §7: compensation during passes 1-2
+		// is Drop()): an abort whose journal is empty must not write the
+		// compensating transition, which would scrub the manifest's crawl
+		// request and burn the dir's crawl-resumable state to authorize
+		// zero deletes. Vacuously complete: CompensationRan true, so a
+		// genuinely failed run still disposes.
+		fx := newEngineFixture(t)
+		gateCalled := false
+		fx.deps.OnCompensating = func() error {
+			gateCalled = true
+			return nil
+		}
+		fx.persister.failKeys["bad.md"] = assert.AnError
+		converter := &scriptConverter{objects: []*importv2.Object{pageObj("bad.md", false)}}
+
+		// when
+		result := Run(context.Background(), importv2.Request{Mode: importv2.ModeAllOrNothing}, converter, fx.deps)
+
+		// then
+		require.Error(t, result.Err)
+		assert.False(t, gateCalled, "no effects, no durable compensating transition")
+		assert.True(t, result.CompensationRan, "vacuously complete — disposal may proceed")
+		assert.Zero(t, result.Compensated)
+		assert.Zero(t, result.Leaked)
 	})
 
 	t.Run("a suspend reports that compensation did NOT run", func(t *testing.T) {

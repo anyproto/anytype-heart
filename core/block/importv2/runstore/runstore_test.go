@@ -376,9 +376,16 @@ func TestCreateGuardsItsDir(t *testing.T) {
 					}
 					// IsActive first: markActive strictly precedes MkdirAll
 					// in Create, so an existing-but-inactive observation
-					// during the create IS the C2 violation.
+					// during the create IS the C2 violation. DOUBLE-CHECKED
+					// (a 1-in-60 flake under full-machine load): the watcher
+					// can be descheduled between IsActive and Stat long
+					// enough for markActive+MkdirAll to BOTH run — the
+					// dir-exists then reflects that gap, not a guard hole.
+					// The recheck disambiguates soundly: the guard is never
+					// released before this goroutine joins, so a dir that
+					// exists while STILL inactive is a genuine violation.
 					if !IsActive(dir) {
-						if _, err := os.Stat(dir); err == nil {
+						if _, err := os.Stat(dir); err == nil && !IsActive(dir) {
 							violated.Store(true)
 							return
 						}
