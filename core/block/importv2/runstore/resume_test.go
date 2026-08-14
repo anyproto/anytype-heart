@@ -109,6 +109,70 @@ func TestReadEntries(t *testing.T) {
 		assert.True(t, byKey["collection:Import"].Late)
 	})
 
+	t.Run("displacement carries classification and marks the row synthetic", func(t *testing.T) {
+		// given — review Class B: the finalize inference keys on Late, and
+		// reconciliation must never see a synthetic row (it can have no
+		// spool row by construction). The displaced-row writer dropped BOTH
+		// facts: a re-claimed finalize key (same minute, same name) produced
+		// an unmarked synthetic that read as an ordinary stream row.
+		store := createStore(t, filepath.Join(t.TempDir(), "run-1"))
+		require.NoError(t, store.SetState(ctx, StateMaterializing))
+		require.NoError(t, store.RecordClaims(ctx, []ClaimRecord{
+			{SourceKey: "collection:Import", ObjectId: "obj-a", PayloadRoot: []byte("r")},
+		}))
+
+		// when: the resumed finalize re-claims the SAME key with a new id
+		require.NoError(t, store.RecordClaims(ctx, []ClaimRecord{
+			{SourceKey: "collection:Import", ObjectId: "obj-b", PayloadRoot: []byte("r")},
+		}))
+
+		// then: the displaced id's synthetic row is marked synthetic and
+		// keeps the late classification of its origin
+		records, err := store.ReadEntries(ctx)
+		require.NoError(t, err)
+		byKey := map[string]EntryRecord{}
+		for _, record := range records {
+			byKey[record.SourceKey] = record
+		}
+		require.Len(t, byKey, 2)
+		primary := byKey["collection:Import"]
+		assert.True(t, primary.Late)
+		assert.False(t, primary.Synthetic)
+		var synthetic *EntryRecord
+		for key, record := range byKey {
+			if key != "collection:Import" {
+				record := record
+				synthetic = &record
+			}
+		}
+		require.NotNil(t, synthetic)
+		assert.True(t, synthetic.Synthetic, "a displaced row must be marked synthetic")
+		assert.True(t, synthetic.Late, "the late classification must survive displacement")
+	})
+
+	t.Run("an effect displacement keeps the displaced row's own late marker", func(t *testing.T) {
+		// given: a pre-materialize (non-late) matched effect, displaced by a
+		// conflicting create during pass 3 — the synthetic must keep the
+		// ORIGIN row's late (false), not inherit the current phase's
+		store := createStore(t, filepath.Join(t.TempDir(), "run-1"))
+		require.NoError(t, store.RecordUpdated(ctx, "k", "obj-old"))
+		require.NoError(t, store.SetState(ctx, StateMaterializing))
+
+		// when
+		require.NoError(t, store.RecordCreated(ctx, "k", "obj-new"))
+
+		// then
+		records, err := store.ReadEntries(ctx)
+		require.NoError(t, err)
+		for _, record := range records {
+			if record.ObjectId == "obj-old" {
+				assert.True(t, record.Synthetic)
+				assert.False(t, record.Late, "the displaced row keeps ITS late, not the current phase's")
+				assert.Equal(t, "updated", record.Action, "the displaced row keeps its action")
+			}
+		}
+	})
+
 	t.Run("the late marker survives a reopen", func(t *testing.T) {
 		// given: a run that reached materializing, then a new process
 		dir := filepath.Join(t.TempDir(), "run-1")

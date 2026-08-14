@@ -38,6 +38,11 @@ type EntryRecord struct {
 	// finalize-stage claim (root collection, report page), not a converter
 	// entity: it has no spool row and must not be reconciled against one.
 	Late bool
+	// Synthetic means the row preserves a DISPLACED id (an identity
+	// conflict upstream): it can have no spool row by construction and
+	// exists for compensation alone — rehydration, reconciliation,
+	// inference and counters all exclude it.
+	Synthetic bool
 	// PayloadRoot/PayloadHeads reconstruct the create payload for minted
 	// claims (nil for matched rows and rows whose payload was never
 	// recorded).
@@ -80,6 +85,7 @@ func (s *Store) ReadEntries(ctx context.Context) ([]EntryRecord, error) {
 			Action:    string(v.GetStringBytes("action")),
 			Rank:      v.GetInt("rank"),
 			Late:      v.GetBool("late"),
+			Synthetic: v.GetBool("synthetic"),
 		}
 		if payload, ok := payloads[objectId]; ok && !record.Matched {
 			record.PayloadRoot = payload.root

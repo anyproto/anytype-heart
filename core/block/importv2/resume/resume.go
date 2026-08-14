@@ -133,15 +133,25 @@ func Load(ctx context.Context, store *runstore.Store) (*State, error) {
 	rootCandidateRank := -1
 	var reportId string
 	for _, entry := range entries {
+		if entry.Synthetic {
+			// A displaced-id preservation row (identity conflict upstream):
+			// it can have no spool row by construction, so rehydrating it
+			// would strand a phantom claim in reconciliation, and letting it
+			// into the inference or the counters re-classifies a conflict as
+			// content. It exists for compensation alone — CompensationInputs
+			// reads it separately (review Class B).
+			continue
+		}
 		_, inSpool := spoolKeys[entry.SourceKey]
 		if entry.Late && !inSpool {
 			// A finalize-stage row (root collection, report page): it has no
 			// spool row to reconcile against and is never re-claimed.
 			if !entry.Terminal {
 				// The interrupted finalize claim is dropped: the resumed
-				// finalize re-claims a FRESH key (the collection name is
-				// date-suffixed). The abandoned minted id stays in the
-				// ledger — delete-tolerated if the run later aborts.
+				// finalize re-claims — often the SAME key (the date suffix
+				// has minute granularity), which displaces this abandoned id
+				// into a synthetic row. Either way the minted id stays in
+				// the ledger, delete-tolerated if the run later aborts.
 				continue
 			}
 			switch {

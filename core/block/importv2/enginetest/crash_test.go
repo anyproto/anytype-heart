@@ -237,26 +237,38 @@ func TestCrashResumeAtUpload(t *testing.T) {
 	})
 }
 
+// killInsideFinalizeCreate arms a kill that fires INSIDE finalize's own
+// tree create (the streamCreates+1-th create attempt): the collection is
+// CLAIMED — a late, non-terminal row — but never created. The review's
+// Class B found the earlier version of this boundary (kill after the last
+// stream create) never reached finalize at all: the post-stream guard
+// tripped first and the ledger held no collection row, so the
+// Late-non-terminal drop rule it claimed to pin was untested.
+func killInsideFinalizeCreate(fx *Fixture, streamCreates int32, cancel context.CancelCauseFunc) {
+	var creates atomic.Int32
+	fx.Space.BeforeCreate = func(id string) error {
+		if creates.Add(1) == streamCreates+1 {
+			cancel(importv2.ErrSuspended)
+			return context.Canceled
+		}
+		return nil
+	}
+}
+
 func TestCrashResumeAtFinalize(t *testing.T) {
-	t.Run("killed entering finalize: the resumed run builds ONE collection", func(t *testing.T) {
-		// given: the kill lands after the last stream create, so finalize's
-		// own create fails on the dead context — the collection is claimed
-		// (a late, non-terminal row) but never created. The resumed finalize
-		// re-claims a fresh key, which shifts the collection's minted id;
-		// equivalence is asserted id-normalized, plus the only-one-collection
-		// pin the id shift threatens.
+	t.Run("killed inside finalize's create: the resumed run builds ONE collection", func(t *testing.T) {
+		// given: the interrupted finalize claim is a late non-terminal row
+		// under the SAME source key the resumed finalize re-claims (the
+		// stub factory's name is stable — and the adapter's date suffix has
+		// minute granularity, so a fast crash-restart lands on the same key
+		// there too): the re-claim displaces the abandoned id.
 		root := crashTree(t)
 		control, controlResult := runControl(t, root)
 		streamCreates := int32(len(control.Space.Created) - 1) // minus the collection
 		fx := NewFixture(t)
 		dir := filepath.Join(t.TempDir(), "run-crash")
-		var creates atomic.Int32
 		inc1 := interrupt(t, fx, root, dir, func(cancel context.CancelCauseFunc) {
-			fx.Space.AfterCreate = func(id string) {
-				if creates.Add(1) == streamCreates {
-					cancel(importv2.ErrSuspended)
-				}
-			}
+			killInsideFinalizeCreate(fx, streamCreates, cancel)
 		})
 		require.Error(t, inc1.Err)
 		require.True(t, inc1.Suspended)
@@ -271,6 +283,46 @@ func TestCrashResumeAtFinalize(t *testing.T) {
 		assert.Equal(t, normalizeDump(control.Dump()), normalizeDump(fx.Dump()),
 			"the object set must be identical up to the re-minted collection id")
 		assert.NotEmpty(t, resumed.RootCollectionId)
+	})
+
+	t.Run("killed inside finalize TWICE: displaced claims never become phantoms", func(t *testing.T) {
+		// given — the review's executed Class B repro: two crashes across
+		// finalize under one collection key. The second incarnation's
+		// re-claim displaces the first's abandoned id into a synthetic row;
+		// incarnation 3 must not read that synthetic as a stream row (a
+		// phantom 'claimed object was never emitted' on every resume, and a
+		// second collection).
+		root := crashTree(t)
+		control, controlResult := runControl(t, root)
+		streamCreates := int32(len(control.Space.Created) - 1)
+		fx := NewFixture(t)
+		dir := filepath.Join(t.TempDir(), "run-crash")
+		inc1 := interrupt(t, fx, root, dir, func(cancel context.CancelCauseFunc) {
+			killInsideFinalizeCreate(fx, streamCreates, cancel)
+		})
+		require.True(t, inc1.Suspended)
+
+		// incarnation 2: same kill, one create later (the collection create
+		// is now the FIRST create — everything else replays skipped)
+		ctx2, cancel2 := context.WithCancelCause(context.Background())
+		defer cancel2(nil)
+		fx.Space.BeforeCreate = func(id string) error {
+			cancel2(importv2.ErrSuspended)
+			return context.Canceled
+		}
+		inc2 := fx.ResumeDurable(ctx2, t, dir, request(false, false))
+		fx.Space.BeforeCreate = nil
+		require.Error(t, inc2.Err)
+		require.True(t, inc2.Suspended)
+
+		// when: the third incarnation runs to completion
+		resumed := fx.ResumeDurable(context.Background(), t, dir, request(false, false))
+
+		// then
+		assertResumedClean(t, resumed, controlResult)
+		assert.Equal(t, 1, countCollections(fx),
+			"two abandoned finalize claims must yield ONE collection, not three")
+		assert.Equal(t, normalizeDump(control.Dump()), normalizeDump(fx.Dump()))
 	})
 }
 

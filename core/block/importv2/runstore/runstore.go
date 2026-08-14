@@ -509,7 +509,8 @@ func (s *Store) RecordUpdated(ctx context.Context, sourceKey, objectId string) e
 // synthetic row is the only record of the incoming effect.
 func (s *Store) recordEntry(ctx context.Context, sourceKey, objectId, mode, action string) error {
 	rank := int(s.rank.Add(1))
-	var displacedId, displacedMode, displacedStatus, keptId string
+	var displacedId, displacedMode, displacedStatus, displacedAction, keptId string
+	var displacedLate bool
 	tx, err := s.db.WriteTx(ctx)
 	if err != nil {
 		return fmt.Errorf("entry tx: %w", err)
@@ -520,8 +521,11 @@ func (s *Store) recordEntry(ctx context.Context, sourceKey, objectId, mode, acti
 			if string(v.GetStringBytes("mode")) == modeMinted {
 				if existingId != "" && existingId != objectId {
 					// the INCOMING effect would vanish (minted-sticky keeps
-					// the row): it persisted, so it carries that status
+					// the row): it persisted, so it carries that status —
+					// and the classification a fresh effect row would get
 					displacedId, displacedMode, displacedStatus = objectId, mode, statusPersisted
+					displacedAction = action
+					displacedLate = s.materializeStarted.Load()
 					keptId = existingId
 					return v, false, nil
 				}
@@ -544,10 +548,14 @@ func (s *Store) recordEntry(ctx context.Context, sourceKey, objectId, mode, acti
 					return v, true, nil
 				}
 				// the EXISTING row would vanish (this write replaces it):
-				// it carries ITS mode and status into the synthetic row
+				// it carries ITS classification into the synthetic row —
+				// mode, status, action and late all belong to the origin
+				// row, not to the current phase (review Class B)
 				displacedId = existingId
 				displacedMode = string(v.GetStringBytes("mode"))
 				displacedStatus = string(v.GetStringBytes("status"))
+				displacedAction = string(v.GetStringBytes("action"))
+				displacedLate = v.GetBool("late")
 				keptId = objectId
 			}
 			v.Set("objectId", arena.NewString(objectId))
@@ -576,30 +584,53 @@ func (s *Store) recordEntry(ctx context.Context, sourceKey, objectId, mode, acti
 	}
 	log.With("sourceKey", sourceKey, "kept", keptId, "displaced", displacedId).
 		Errorf("conflicting objectId recorded under one source key — identity invariant violation; preserving both in the ledger")
-	if err = s.recordSyntheticEntry(tx.Context(), sourceKey, displacedId, displacedMode, displacedStatus); err != nil {
+	if err = s.recordSyntheticEntry(tx.Context(), sourceKey, syntheticRow{
+		objectId: displacedId, mode: displacedMode, status: displacedStatus,
+		action: displacedAction, late: displacedLate,
+	}); err != nil {
 		return rollback(tx.Rollback(), err)
 	}
 	return tx.Commit()
 }
 
-// recordSyntheticEntry preserves a displaced id under a synthetic key with
-// its ORIGINAL mode and status: the mode keeps matched ids undeletable, the
-// status keeps a displaced claim behind the MaterializeStarted gate (all
-// three reviewers found the unconditional-persisted stamp independently).
-// Placement goes through placeRow: never over a different occupant.
-func (s *Store) recordSyntheticEntry(ctx context.Context, sourceKey, objectId, mode, status string) error {
+// syntheticRow is a displaced row's FULL classification: mode keeps
+// matched ids undeletable, status keeps a displaced claim behind the
+// MaterializeStarted gate, and late/action belong to the origin row —
+// dropping any of them re-classifies the row (review Class B: an unmarked
+// displaced finalize claim read as an ordinary stream row and broke both
+// the finalize inference and reconciliation).
+type syntheticRow struct {
+	objectId string
+	mode     string
+	status   string
+	action   string
+	late     bool
+}
+
+// recordSyntheticEntry preserves a displaced id under a synthetic key,
+// marked synthetic: a synthetic row can never have a spool row, so
+// rehydration, reconciliation, the finalize inference and the counters all
+// exclude it — it exists for compensation alone. Placement goes through
+// placeRow: never over a different occupant.
+func (s *Store) recordSyntheticEntry(ctx context.Context, sourceKey string, row syntheticRow) error {
 	rank := int(s.rank.Add(1))
-	return placeRow(ctx, s.entries, sourceKey+"#dup-"+objectId,
+	return placeRow(ctx, s.entries, sourceKey+"#dup-"+row.objectId,
 		func(v *anyenc.Value) bool {
-			return string(v.GetStringBytes("objectId")) == objectId &&
-				string(v.GetStringBytes("mode")) == mode &&
-				string(v.GetStringBytes("status")) == status
+			return string(v.GetStringBytes("objectId")) == row.objectId &&
+				string(v.GetStringBytes("mode")) == row.mode &&
+				string(v.GetStringBytes("status")) == row.status
 		},
 		func(a *anyenc.Arena, v *anyenc.Value) {
-			v.Set("objectId", a.NewString(objectId))
-			v.Set("mode", a.NewString(mode))
-			v.Set("status", a.NewString(status))
-			v.Set("action", a.NewString(actionCreated))
+			v.Set("objectId", a.NewString(row.objectId))
+			v.Set("mode", a.NewString(row.mode))
+			v.Set("status", a.NewString(row.status))
+			if row.action != "" {
+				v.Set("action", a.NewString(row.action))
+			}
+			if row.late {
+				v.Set("late", a.NewBool(true))
+			}
+			v.Set("synthetic", a.NewBool(true))
 			if v.Get("rank") == nil { // frozen at first write (recordEntry's rule)
 				v.Set("rank", a.NewNumberInt(rank))
 			}

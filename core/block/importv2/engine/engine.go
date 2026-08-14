@@ -615,8 +615,11 @@ func (r *run) stageInterrupted(ctx context.Context, err error) bool {
 func (r *run) finalize(ctx context.Context, rootSpec importv2.RootSpec) {
 	if r.resume != nil && r.resume.RootCollectionId != "" {
 		// A previous incarnation completed finalize: reuse its collection.
-		// Rebuilding would mint a SECOND one — the name is date-suffixed, so
-		// every build claims a fresh key (pinned by the finalize crash test).
+		// Rebuilding would mint a SECOND one. NOTE the key is NOT reliably
+		// fresh across incarnations — the adapter's date suffix has MINUTE
+		// granularity, so a fast crash-restart re-claims the same source
+		// key; the ledger's displacement machinery (synthetic rows) is what
+		// keeps that safe, not key freshness (review Class B).
 		r.rootCollectionId = r.resume.RootCollectionId
 		return
 	}
