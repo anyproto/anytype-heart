@@ -117,13 +117,20 @@ type State struct {
 	changeId          string
 	changes           []*pb.ChangeContent
 	changeType        domain.ChangeType // business-level type of the latest change that is applied to state
-	fileInfo          FileInfo
-	fileKeys          []pb.ChangeFileKeys // Deprecated
-	details           *domain.Details
-	localDetails      *domain.Details
-	relationLinks     pbtypes.RelationLinks
-	notifications     map[string]*model.Notification
-	deviceStore       map[string]*model.DeviceInfo
+	// integrationKey is the API integration slug to stamp on the change this
+	// state produces (APIV2_OBJECT_DELETE.md §11.4). STRICTLY per-apply, like
+	// changeType: deliberately NOT propagated by NewStateCtx, Copy or apply —
+	// a later edit on this device must not inherit the stamp, or every local
+	// change would be misattributed and the DELETE ownership gate would
+	// silently widen.
+	integrationKey string
+	fileInfo       FileInfo
+	fileKeys       []pb.ChangeFileKeys // Deprecated
+	details        *domain.Details
+	localDetails   *domain.Details
+	relationLinks  pbtypes.RelationLinks
+	notifications  map[string]*model.Notification
+	deviceStore    map[string]*model.DeviceInfo
 
 	migrationVersion uint32
 
@@ -1971,6 +1978,19 @@ func (s *State) SetOriginalCreatedTimestamp(ts int64) {
 
 func (s *State) SetChangeType(changeType domain.ChangeType) {
 	s.changeType = changeType
+}
+
+// SetIntegrationKey marks this state's change as authored via the named API
+// integration (a domain.IntegrationKeyFromAppName slug). Per-apply only —
+// see the field comment; derived states never inherit it.
+func (s *State) SetIntegrationKey(key string) {
+	s.integrationKey = key
+}
+
+// IntegrationKey returns the integration slug to stamp on this state's
+// change, or "" (no stamp).
+func (s *State) IntegrationKey() string {
+	return s.integrationKey
 }
 
 func (s *State) GetChangeType() (changeType domain.ChangeType) {

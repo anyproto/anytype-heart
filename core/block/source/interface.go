@@ -100,6 +100,12 @@ type PushChangeParams struct {
 	Time              time.Time // used to derive the lastModifiedDate; Default is time.Now()
 	DoSnapshot        bool
 	ChangeType        domain.ChangeType
+	// IntegrationKey stamps the pushed change as authored via the named API
+	// integration (pb.Change.IntegrationKey; APIV2_OBJECT_DELETE.md §11.4).
+	// Filled per-apply from the state that produced the change — today only
+	// the creation apply fills it; attribution later widens the fill sites
+	// with zero wire change.
+	IntegrationKey string
 }
 
 type IDsLister interface {
