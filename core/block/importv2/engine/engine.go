@@ -86,8 +86,11 @@ type Deps struct {
 	// OnCompensating, when set, is invoked once before the first
 	// compensation delete — the adapter persists the run's "compensating"
 	// state there, so a crash mid-cleanup is finished by the startup sweep
-	// (spec §6.5).
-	OnCompensating func()
+	// (spec §6.5). A non-nil error GATES the cleanup: without the durable
+	// marker a crash mid-compensation would make the next start RESUME a
+	// partly-compensated run, silently missing its deleted objects — so no
+	// marker, no deletes (the dir is kept via the CompensationRan rule).
+	OnCompensating func() error
 	// OnIssue, when set, receives every retained issue as it is reported —
 	// the adapter's durable issue ledger (pass-2 issues must survive to the
 	// pass-3 report page, DM spec §6.2). Called outside the issue lock; must
@@ -381,6 +384,7 @@ type run struct {
 	compensated      int
 	leaked           int
 	compensateState  int // 0 not run, 1 running, 2 done
+	compensationRan  bool
 	allStagesDone    bool
 	// suspendedRun records the engine's own verdict — the run stopped for a
 	// shutdown suspend and was NOT compensated — carried out via
@@ -798,8 +802,25 @@ func (r *run) compensate() {
 	}
 	r.compensateState = 1
 	if r.deps.OnCompensating != nil {
-		r.deps.OnCompensating()
+		if err := r.deps.OnCompensating(); err != nil {
+			// No durable marker, no deletes (see Deps.OnCompensating): keep
+			// every effect and say so — CompensationRan stays false, so the
+			// dir survives for the sweep to retry.
+			r.compensateState = 2
+			r.issueMu.Lock()
+			if len(r.issues) < importv2.IssueCap {
+				r.issues = append(r.issues, importv2.Issue{
+					Severity: importv2.SeverityWarning,
+					Code:     importv2.IssueStoreError,
+					Message:  "compensation intent could not be recorded; cleanup deferred to the sweep",
+					Err:      err,
+				})
+			}
+			r.issueMu.Unlock()
+			return
+		}
 	}
+	r.compensationRan = true
 	base := r.deps.ShutdownCtx
 	if base == nil {
 		base = context.Background()
@@ -848,6 +869,7 @@ func (r *run) buildResult(fatal importv2.Issue, rootSpec importv2.RootSpec) *imp
 		IssuesDropped:    dropped,
 		Compensated:      r.compensated,
 		Leaked:           r.leaked,
+		CompensationRan:  r.compensationRan,
 		Suspended:        r.suspendedRun,
 	}
 	if fatal.Code != "" {

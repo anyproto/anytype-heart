@@ -367,10 +367,9 @@ func (fx *Fixture) RunMarkdownDurable(ctx context.Context, t *testing.T, root st
 // ResumeDurable restarts pass 3 from the dir alone, through the same glue
 // the adapter's sweep uses: Load, rehydrated identity, the heal policy,
 // engine.Resume. No source, no network.
-func (fx *Fixture) ResumeDurable(t *testing.T, dir string, req importv2.Request) *importv2.Result {
+func (fx *Fixture) ResumeDurable(ctx context.Context, t *testing.T, dir string, req importv2.Request) *importv2.Result {
 	t.Helper()
-	ctx := context.Background()
-	store, err := runstore.Open(ctx, dir)
+	store, err := runstore.Open(context.Background(), dir)
 	require.NoError(t, err)
 	defer store.Close()
 	state, err := resume.Load(ctx, store)
@@ -378,6 +377,7 @@ func (fx *Fixture) ResumeDurable(t *testing.T, dir string, req importv2.Request)
 	deps, persister := fx.durableDeps(t, store, req,
 		resume.ClaimLedgerOption(store), state.IdentityOption())
 	persister.SetResumeHeal(state.Heal())
+	state.SeedJournal(deps.Journal)
 	return engine.Resume(ctx, req, deps, &state.Engine)
 }
 

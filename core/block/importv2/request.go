@@ -46,6 +46,13 @@ type Result struct {
 	// (with per-object detail in Issues).
 	Compensated int
 	Leaked      int
+	// CompensationRan means the engine actually executed compensation for
+	// this failure (false on suspend, on success, and on failures that never
+	// reached — or were gated out of — the cleanup). The disposal invariant
+	// reads it: no path may destroy a run dir whose effects no compensation
+	// covered, so Err != nil with CompensationRan == false keeps the dir for
+	// the sweep instead of dropping the only record of what was created.
+	CompensationRan bool
 
 	// Suspended means the run was stopped by a graceful shutdown
 	// (ErrSuspended cause) and deliberately NOT compensated — its durable

@@ -207,7 +207,14 @@ func sweepOne(ctx context.Context, dir string, objects persist.ObjectAccess, pro
 		return outcome
 	}
 	if err = store.SetState(ctx, runstore.StateCompensating); err != nil {
-		log.Errorf("sweep: mark %s compensating: %s", dir, err)
+		// Same gate as the engine's OnCompensating: no durable marker, no
+		// deletes — a crash mid-cleanup without it makes the next start
+		// resume a partly-compensated run, silently missing its deleted
+		// objects.
+		_ = store.Close()
+		outcome.Action = sweepSkippedError
+		outcome.Err = fmt.Errorf("mark compensating: %w", err)
+		return outcome
 	}
 	outcome.Result = persist.CompensateIds(ctx, objects, inputs.Created, inputs.OwnedFiles, inputs.Updated)
 	if outcome.Result.Leaked > 0 {

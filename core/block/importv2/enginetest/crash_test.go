@@ -103,12 +103,70 @@ func TestCrashResumeMidCreate(t *testing.T) {
 			"the kill must land mid-materialize or the test proves nothing")
 
 		// when: resumed from the dir alone
-		resumed := fx.ResumeDurable(t, dir, request(false, false))
+		resumed := fx.ResumeDurable(context.Background(), t, dir, request(false, false))
 
 		// then
 		assertResumedClean(t, resumed, controlResult)
 		assert.Equal(t, control.Dump(), fx.Dump(),
 			"the final object set must be identical to the uninterrupted run")
+	})
+}
+
+func TestResumedCancelCompensatesEveryIncarnation(t *testing.T) {
+	t.Run("cancel on a resumed run removes ALL incarnations' objects", func(t *testing.T) {
+		// given — the review's Class A: the engine compensates from the
+		// in-memory journal, and a resumed incarnation's fresh journal knew
+		// nothing about the crash's ledger. A user pressing Cancel on the
+		// auto-resumed import at app launch is the ordinary trigger; the
+		// wire advertises CancelEffect = RemovesCreated on exactly these
+		// runs, so a partial undo is a broken promise plus orphans.
+		root := crashTree(t)
+		fx := NewFixture(t)
+		dir := filepath.Join(t.TempDir(), "run-crash")
+		var creates atomic.Int32
+		inc1 := interrupt(t, fx, root, dir, func(cancel context.CancelCauseFunc) {
+			fx.Space.BeforeCreate = func(id string) error {
+				if creates.Add(1) == 3 {
+					cancel(importv2.ErrSuspended)
+					return context.Canceled
+				}
+				return nil
+			}
+		})
+		require.Error(t, inc1.Err)
+		require.True(t, inc1.Suspended)
+		fx.Space.mu.Lock()
+		leftBehind := len(fx.Space.Created)
+		fx.Space.mu.Unlock()
+		require.Positive(t, leftBehind, "incarnation 1 must have created something to orphan")
+
+		// when: the resumed incarnation is cancelled mid-flight with a
+		// PLAIN cause (user cancel — the engine compensates)
+		ctx, cancel := context.WithCancelCause(context.Background())
+		defer cancel(nil)
+		var resumeCreates atomic.Int32
+		fx.Space.BeforeCreate = func(id string) error {
+			if resumeCreates.Add(1) == 2 {
+				cancel(nil)
+				return context.Canceled
+			}
+			return nil
+		}
+		resumed := fx.ResumeDurable(ctx, t, dir, request(false, false))
+		fx.Space.BeforeCreate = nil
+
+		// then: the cancel undoes EVERYTHING the run ever created, across
+		// incarnations, and reports it truthfully
+		require.Error(t, resumed.Err)
+		assert.False(t, resumed.Suspended)
+		fx.Space.mu.Lock()
+		remaining := len(fx.Space.Created)
+		fx.Space.mu.Unlock()
+		assert.Zero(t, remaining,
+			"cancel on a resumed run must remove every incarnation's objects, not only its own")
+		assert.Zero(t, resumed.Leaked)
+		assert.GreaterOrEqual(t, int64(resumed.Compensated), int64(leftBehind),
+			"the compensation count must cover the previous incarnation's objects")
 	})
 }
 
@@ -144,7 +202,7 @@ func TestCrashResumeTornCreate(t *testing.T) {
 		fx.Space.mu.Unlock()
 
 		// when
-		resumed := fx.ResumeDurable(t, dir, request(false, false))
+		resumed := fx.ResumeDurable(context.Background(), t, dir, request(false, false))
 
 		// then: the hollow tree carries the full imported state again
 		assertResumedClean(t, resumed, controlResult)
@@ -171,7 +229,7 @@ func TestCrashResumeAtUpload(t *testing.T) {
 		require.Empty(t, fx.Uploader.Uploads, "the kill must land before the upload recorded")
 
 		// when
-		resumed := fx.ResumeDurable(t, dir, request(false, false))
+		resumed := fx.ResumeDurable(context.Background(), t, dir, request(false, false))
 
 		// then: uploaded exactly once, everything else identical
 		assertResumedClean(t, resumed, controlResult)
@@ -205,7 +263,7 @@ func TestCrashResumeAtFinalize(t *testing.T) {
 		require.Len(t, fx.Space.Created, int(streamCreates), "the collection must not exist yet")
 
 		// when
-		resumed := fx.ResumeDurable(t, dir, request(false, false))
+		resumed := fx.ResumeDurable(context.Background(), t, dir, request(false, false))
 
 		// then
 		assertResumedClean(t, resumed, controlResult)
@@ -243,7 +301,7 @@ func TestCrashResumeAfterFinalize(t *testing.T) {
 		require.Equal(t, 1, countCollections(fx), "the collection must exist before the resume")
 
 		// when
-		resumed := fx.ResumeDurable(t, dir, request(false, false))
+		resumed := fx.ResumeDurable(context.Background(), t, dir, request(false, false))
 
 		// then: byte-identical, ids included — nothing was re-minted
 		assertResumedClean(t, resumed, controlResult)

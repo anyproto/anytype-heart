@@ -47,6 +47,16 @@ func (s *service) resumeRun(ctx context.Context, store *runstore.Store, manifest
 		outcome.Action, outcome.Err = sweepSkippedError, fmt.Errorf("get space: %w", err)
 		return outcome
 	}
+	// The spool opens in the PROLOGUE: a transient failure here must keep
+	// the dir via the skipped-error path (retry next start, attempts-capped)
+	// — never flow into the delivery path as a fatal result for a run that
+	// never started (review Class A, the spool-open sibling site).
+	spool, err := store.Spool(ctx)
+	if err != nil {
+		_ = store.Close()
+		outcome.Action, outcome.Err = sweepSkippedError, fmt.Errorf("open spool: %w", err)
+		return outcome
+	}
 
 	request := importv2.Request{
 		SpaceID:        manifest.SpaceId,
@@ -92,7 +102,7 @@ func (s *service) resumeRun(ctx context.Context, store *runstore.Store, manifest
 		untrack:  s.trackLive(manifest.RunId, store, model.ImportType(manifest.ImportType)),
 	}
 	defer lc.release()
-	result := s.resumeEngine(runCtx, request, spc, lc, progress, state)
+	result := s.resumeEngine(runCtx, request, spc, lc, progress, state, spool)
 	s.finishRun(lc, result)
 
 	outcome.Result = persist.CompensationResult{Compensated: result.Compensated, Leaked: result.Leaked}
@@ -118,15 +128,12 @@ func (s *service) resumeRun(ctx context.Context, store *runstore.Store, manifest
 // resumeEngine wires the resumed engine run: the same per-run components as
 // runEngine, plus the rehydrated identity, the heal policy and the resumed
 // progress total.
-func (s *service) resumeEngine(ctx context.Context, request importv2.Request, spc clientspace.Space, lc *runLifecycle, progress process.Progress, st *resume.State) *importv2.Result {
-	spool, err := lc.store.Spool(ctx)
-	if err != nil {
-		return stopFatal(ctx, importv2.IssueStoreError, fmt.Errorf("open spool: %w", err))
-	}
+func (s *service) resumeEngine(ctx context.Context, request importv2.Request, spc clientspace.Space, lc *runLifecycle, progress process.Progress, st *resume.State, spool engine.Spool) *importv2.Result {
 	deps, persister := s.engineDeps(request, spc, lc, progress,
 		[]identity.Option{resume.ClaimLedgerOption(lc.store), st.IdentityOption()})
 	deps.Spool = spool
 	persister.SetResumeHeal(st.Heal())
+	st.SeedJournal(deps.Journal)
 	deps.Reporter.AddTotal(int64(st.SpoolCount))
 	return engine.Resume(ctx, request, deps, &st.Engine)
 }

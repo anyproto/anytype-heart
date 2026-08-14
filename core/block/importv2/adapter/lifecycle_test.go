@@ -297,9 +297,10 @@ func TestLifecycleInvariants(t *testing.T) {
 			require.NoError(t, lc.store.RecordCreated(ctx, "page.md", "obj-1"))
 			// the engine compensated and could not delete obj-1
 			return &importv2.Result{
-				Err:         importv2.Fatal(importv2.IssueStoreError, assert.AnError),
-				Compensated: 0,
-				Leaked:      1,
+				Err:             importv2.Fatal(importv2.IssueStoreError, assert.AnError),
+				Compensated:     0,
+				Leaked:          1,
+				CompensationRan: true,
 			}
 		})
 

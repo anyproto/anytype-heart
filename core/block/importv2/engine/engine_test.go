@@ -509,11 +509,12 @@ func TestRunModes(t *testing.T) {
 		deleter := fx.deps.Objects.(*deleterFake)
 		var deletedWhenMarked int
 		marked := 0
-		fx.deps.OnCompensating = func() {
+		fx.deps.OnCompensating = func() error {
 			marked++
 			deleter.mu.Lock()
 			deletedWhenMarked = len(deleter.deleted)
 			deleter.mu.Unlock()
+			return nil
 		}
 		fx.persister.failKeys["bad.md"] = assert.AnError
 		fx.persister.delayKeys = map[string]time.Duration{"bad.md": 100 * time.Millisecond}
@@ -531,10 +532,69 @@ func TestRunModes(t *testing.T) {
 
 		// and: a clean run never marks
 		fx = newEngineFixture(t)
-		fx.deps.OnCompensating = func() { marked += 10 }
+		fx.deps.OnCompensating = func() error { marked += 10; return nil }
 		result = Run(context.Background(), importv2.Request{}, converter2(), fx.deps)
 		require.NoError(t, result.Err)
 		assert.Equal(t, 1, marked)
+	})
+}
+
+func TestCompensationGate(t *testing.T) {
+	t.Run("a failed compensation marker aborts the cleanup, not just the logging", func(t *testing.T) {
+		// given — review Class A/G: State is now the resume-vs-compensate
+		// switch, so deleting past a failed "compensating" write means the
+		// next start RESUMES a partly-compensated run whose deleted objects
+		// have terminal rows and are silently skipped. No marker, no deletes.
+		fx := newEngineFixture(t)
+		deleter := fx.deps.Objects.(*deleterFake)
+		fx.deps.OnCompensating = func() error { return assert.AnError }
+		fx.persister.failKeys["bad.md"] = assert.AnError
+		converter := &scriptConverter{objects: []*importv2.Object{
+			pageObj("a.md", false), pageObj("bad.md", false),
+		}}
+
+		// when
+		result := Run(context.Background(), importv2.Request{Mode: importv2.ModeAllOrNothing}, converter, fx.deps)
+
+		// then
+		require.Error(t, result.Err)
+		deleter.mu.Lock()
+		deleted := len(deleter.deleted)
+		deleter.mu.Unlock()
+		assert.Zero(t, deleted, "no durable marker, no deletes")
+		assert.False(t, result.CompensationRan, "the dir-disposal invariant reads this")
+		assert.Zero(t, result.Compensated)
+	})
+
+	t.Run("a normal abort reports that compensation ran", func(t *testing.T) {
+		// given
+		fx := newEngineFixture(t)
+		fx.persister.failKeys["bad.md"] = assert.AnError
+		converter := &scriptConverter{objects: []*importv2.Object{
+			pageObj("a.md", false), pageObj("bad.md", false),
+		}}
+
+		// when
+		result := Run(context.Background(), importv2.Request{Mode: importv2.ModeAllOrNothing}, converter, fx.deps)
+
+		// then
+		require.Error(t, result.Err)
+		assert.True(t, result.CompensationRan)
+	})
+
+	t.Run("a suspend reports that compensation did NOT run", func(t *testing.T) {
+		// given: suspend-shaped cancel before the run starts streaming
+		fx := newEngineFixture(t)
+		ctx, cancel := context.WithCancelCause(context.Background())
+		cancel(importv2.ErrSuspended)
+
+		// when
+		result := Run(ctx, importv2.Request{}, converter2(), fx.deps)
+
+		// then
+		require.Error(t, result.Err)
+		assert.True(t, result.Suspended)
+		assert.False(t, result.CompensationRan)
 	})
 }
 
@@ -583,7 +643,7 @@ func TestRunCancellation(t *testing.T) {
 		fx := newEngineFixture(t)
 		fx.persister.delay = 20 * time.Millisecond
 		marked := false
-		fx.deps.OnCompensating = func() { marked = true }
+		fx.deps.OnCompensating = func() error { marked = true; return nil }
 		objects := make([]*importv2.Object, 200)
 		for i := range objects {
 			objects[i] = pageObj(fmt.Sprintf("p-%03d.md", i), false)

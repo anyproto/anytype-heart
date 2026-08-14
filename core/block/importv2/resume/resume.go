@@ -17,6 +17,7 @@ import (
 	importv2 "github.com/anyproto/anytype-heart/core/block/importv2"
 	"github.com/anyproto/anytype-heart/core/block/importv2/engine"
 	"github.com/anyproto/anytype-heart/core/block/importv2/identity"
+	"github.com/anyproto/anytype-heart/core/block/importv2/persist"
 	"github.com/anyproto/anytype-heart/core/block/importv2/report"
 	"github.com/anyproto/anytype-heart/core/block/importv2/runstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -41,11 +42,33 @@ type State struct {
 	identityEntries []identity.RehydratedEntry
 	identityFiles   []identity.RehydratedFile
 	healKeys        map[string]struct{}
+	compensation    runstore.CompensationInputs
 }
 
 // IdentityOption seeds a fresh identity.Service with the rehydrated index.
 func (st *State) IdentityOption() identity.Option {
 	return identity.WithRehydrated(st.identityEntries, st.identityFiles)
+}
+
+// SeedJournal pre-loads the resumed incarnation's journal with the
+// ledger's compensation view, so IN-PROCESS compensation (a user cancel on
+// the resumed run, a fatal under ALL_OR_NOTHING) covers every incarnation
+// — the one compensation rule, in-process and sweep alike. Without it a
+// resumed abort deleted only its own objects, reported Leaked: 0, and the
+// dir — the only record of the rest — was dropped as settled.
+func (st *State) SeedJournal(j *persist.Journal) {
+	// CompensationInputs is newest-first; the journal appends in effect
+	// order and reverses at Compensate — seed oldest-first so the merged
+	// order stays newest-first overall.
+	j.Seed(reverse(st.compensation.Created), reverse(st.compensation.OwnedFiles), st.compensation.Updated)
+}
+
+func reverse(ids []string) []string {
+	out := make([]string, 0, len(ids))
+	for i := len(ids) - 1; i >= 0; i-- {
+		out = append(out, ids[i])
+	}
+	return out
 }
 
 // Heal is the persister's resumed-incarnation ErrTreeExists policy
@@ -90,11 +113,19 @@ func Load(ctx context.Context, store *runstore.Store) (*State, error) {
 	if err != nil {
 		return nil, err
 	}
+	// The ledger's compensation view seeds the resumed journal (SeedJournal)
+	// — read here so the seed is part of the same load, not a second scan at
+	// abort time.
+	compensation, err := store.CompensationInputs(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	st := &State{
-		Manifest:   manifest,
-		SpoolCount: spoolCount,
-		healKeys:   map[string]struct{}{},
+		Manifest:     manifest,
+		SpoolCount:   spoolCount,
+		healKeys:     map[string]struct{}{},
+		compensation: compensation,
 	}
 	skip := map[string]struct{}{}
 	var created, updated int64

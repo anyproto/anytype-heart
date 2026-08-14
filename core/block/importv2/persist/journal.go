@@ -124,6 +124,21 @@ func (j *Journal) Updated() []string {
 	return append([]string(nil), j.updated...)
 }
 
+// Seed pre-loads the journal with previous incarnations' effects (read
+// from the durable ledger) so IN-PROCESS compensation of a resumed run
+// covers every incarnation, not only its own — one compensation rule,
+// whichever process runs it. Slices are OLDEST-FIRST (Compensate reverses
+// append order into newest-first). Call once, at construction, before any
+// run activity; re-recorded ids (a healed create re-journals the id its
+// claim seeded) are deduplicated by CompensateIds.
+func (j *Journal) Seed(created, ownedFiles, updated []string) {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	j.created = append(j.created, created...)
+	j.ownedFiles = append(j.ownedFiles, ownedFiles...)
+	j.updated = append(j.updated, updated...)
+}
+
 // ledgerIssue wraps a durable-write failure as a fatal store issue: the
 // single abort predicate then stops the run regardless of mode.
 func ledgerIssue(err error) error {
@@ -172,9 +187,13 @@ func newestFirst(ids []string) []string {
 // are expected newest-first (runstore.CompensationInputs' order). An
 // already-gone object counts as compensated, not leaked: compensation must
 // be idempotent so a crash mid-cleanup can simply re-run it (§6.5).
+// Duplicate ids are deleted once (their first — newest — occurrence): a
+// seeded journal and the live incarnation legitimately both know an id
+// (the claim seeded it, the heal re-journaled it), and displaced synthetic
+// ledger rows can repeat one.
 func CompensateIds(ctx context.Context, objects ObjectAccess, created, ownedFiles, updated []string) CompensationResult {
 	result := CompensationResult{Uncovered: updated}
-	remaining := append(append([]string(nil), created...), ownedFiles...)
+	remaining := dedupe(append(append([]string(nil), created...), ownedFiles...))
 	for i, id := range remaining {
 		// A3: the context is a real bound between deletes (each individual
 		// DeleteObject still has no ctx — pre-existing seam limitation).
@@ -194,6 +213,19 @@ func CompensateIds(ctx context.Context, objects ObjectAccess, created, ownedFile
 		deleteOne(id, objects, &result)
 	}
 	return result
+}
+
+func dedupe(ids []string) []string {
+	seen := make(map[string]struct{}, len(ids))
+	out := ids[:0]
+	for _, id := range ids {
+		if _, dup := seen[id]; dup {
+			continue
+		}
+		seen[id] = struct{}{}
+		out = append(out, id)
+	}
+	return out
 }
 
 func deleteOne(id string, objects ObjectAccess, result *CompensationResult) {

@@ -124,6 +124,19 @@ func (s *service) finishRun(lc *runLifecycle, result *importv2.Result) {
 		log.With("dir", lc.store.Dir()).Warnf("import run suspended for shutdown; state kept for the startup sweep")
 		return
 	}
+	if result.Err != nil && !result.CompensationRan {
+		// The disposal invariant (review Class A): a failure whose effects no
+		// compensation covered must not destroy the dir — it is the only
+		// record of what was created. Keep it EXACTLY as it is (no state
+		// change): the sweep decides — resume (attempts-capped) or
+		// compensate. Covers prologue failures (spool open, load), the
+		// engine's nil-spool guard, and a gated-out compensation alike.
+		if err := lc.store.Close(); err != nil {
+			log.Errorf("close unsettled failed run: %s", err)
+		}
+		log.With("dir", lc.store.Dir()).Warnf("run failed before compensation could run; dir kept for the sweep")
+		return
+	}
 	if result.Err != nil && result.Leaked > 0 {
 		// Invariant 2, the in-process half (the sweep already obeys it): a
 		// compensation that leaked keeps the dir so the next start retries
@@ -188,14 +201,19 @@ func (s *service) onFetched(lc *runLifecycle) func(importv2.RootSpec) error {
 // onCompensating persists the compensating state before the engine's first
 // compensation delete (spec §6.5) so a crash mid-cleanup is finished by the
 // sweep. nil in volatile mode.
-func (s *service) onCompensating(lc *runLifecycle) func() {
+func (s *service) onCompensating(lc *runLifecycle) func() error {
 	if lc.store == nil {
 		return nil
 	}
-	return func() {
+	return func() error {
 		if err := lc.store.SetState(context.Background(), runstore.StateCompensating); err != nil {
+			// The engine treats this as a GATE: no durable marker, no
+			// deletes (a crash mid-cleanup without it would make the next
+			// start resume a partly-compensated run).
 			log.Errorf("mark run compensating: %s", err)
+			return fmt.Errorf("mark run compensating: %w", err)
 		}
+		return nil
 	}
 }
 

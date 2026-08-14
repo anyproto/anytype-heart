@@ -74,12 +74,15 @@ func TestFinishRun(t *testing.T) {
 	t.Run("a finished run is disposed whole — success, failure, or an abort that merely raced a Close", func(t *testing.T) {
 		for _, result := range []*importv2.Result{
 			{},
-			{Err: importv2.Fatal(importv2.IssueStoreError, assert.AnError)},
+			// failures model the engine contract: a non-suspend fatal always
+			// ran compensation before returning (the disposal invariant keeps
+			// the dir otherwise — see the test below)
+			{Err: importv2.Fatal(importv2.IssueStoreError, assert.AnError), CompensationRan: true},
 			// P1-3's confirmed disagreement scenario: the run aborted (and
 			// compensated) for its own reasons, then a Close raced in. The
 			// engine's verdict says NOT suspended — the dir must be disposed,
 			// never wrongly promoted backwards to "suspended".
-			{Err: importv2.Fatal(importv2.IssueObjectFailed, assert.AnError), Suspended: false},
+			{Err: importv2.Fatal(importv2.IssueObjectFailed, assert.AnError), Suspended: false, CompensationRan: true},
 		} {
 			// given
 			s := &service{config: &config.Config{RepoPath: t.TempDir()}}
@@ -94,6 +97,37 @@ func TestFinishRun(t *testing.T) {
 			_, statErr := os.Stat(dir)
 			assert.True(t, os.IsNotExist(statErr))
 		}
+	})
+
+	t.Run("a failure whose effects no compensation covered keeps the dir", func(t *testing.T) {
+		// given — review Class A, the invariant half: a result that never ran
+		// compensation (a prologue failure, the engine's nil-spool guard, a
+		// gated-out cleanup) must not destroy the dir — its ledger is the
+		// only record of what was created.
+		s := &service{config: &config.Config{RepoPath: t.TempDir()}}
+		lc, err := s.beginRun(context.Background(), testRequest(), "Markdown", 0)
+		require.NoError(t, err)
+		require.NoError(t, lc.store.RecordCreated(context.Background(), "page-1", "obj-1"))
+		dir := lc.store.Dir()
+
+		// when
+		s.finishRun(lc, &importv2.Result{
+			Err: importv2.Fatal(importv2.IssueStoreError, assert.AnError),
+			// CompensationRan false: nothing was undone
+		})
+
+		// then: the dir survives, state untouched (the sweep decides), and
+		// the store handle is released
+		reopened, err := runstore.Open(context.Background(), dir)
+		require.NoError(t, err, "the dir must survive a failure that compensated nothing")
+		defer reopened.Close()
+		manifest, err := reopened.Manifest(context.Background())
+		require.NoError(t, err)
+		assert.Equal(t, runstore.StateRunning, manifest.State,
+			"no state is forced: the sweep chooses resume or compensate")
+		inputs, err := reopened.CompensationInputs(context.Background())
+		require.NoError(t, err)
+		assert.Equal(t, []string{"obj-1"}, inputs.Created, "the ledger's record must be intact")
 	})
 
 	t.Run("a suspended run keeps its dir, flushed, in the suspended state", func(t *testing.T) {
