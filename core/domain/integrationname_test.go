@@ -15,10 +15,10 @@ func TestIntegrationNameCtx(t *testing.T) {
 
 	t.Run("the value is the RAW name — never normalized", func(t *testing.T) {
 		// the F2/F3 root fix: names that the old slug collapsed ("Claude
-		// Desktop" vs "Claude/Desktop" → claude-desktop) or erased ("привет"
+		// Desktop" vs "Claude/Desktop" → claude-desktop) or erased ("日本語アプリ"
 		// → "") must ride the carrier byte-for-byte. Each row fails if any
 		// normalization creeps back into the carrier.
-		for _, name := range []string{"Claude/Desktop", "CLAUDE DESKTOP", "привет", "🙂", "!!!"} {
+		for _, name := range []string{"Claude/Desktop", "CLAUDE DESKTOP", "日本語アプリ", "🙂", "!!!"} {
 			ctx := CtxWithIntegrationName(context.Background(), name)
 			assert.Equal(t, name, IntegrationNameFromCtx(ctx), "name %q must not be rewritten", name)
 		}

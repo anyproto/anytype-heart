@@ -67,7 +67,7 @@ func TestEnsureAuthenticatedInstallsIntegrationName(t *testing.T) {
 		// output became permanently undeletable). A revert to slug
 		// derivation fails every row: the first yields "claude-desktop",
 		// the others install no carrier at all.
-		for _, name := range []string{"Claude/Desktop", "привет", "🙂"} {
+		for _, name := range []string{"Claude/Desktop", "日本語アプリ", "🙂"} {
 			c := mintWithAppName(t, name)
 			require.Equal(t, name, domain.IntegrationNameFromCtx(c.Request.Context()), "AppName %q", name)
 		}

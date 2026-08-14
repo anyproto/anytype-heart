@@ -263,19 +263,19 @@ func TestDeleteObject(t *testing.T) {
 	})
 
 	t.Run("a non-Latin app name can delete its own output — the F3 regression", func(t *testing.T) {
-		// given: recorded and caller both "привет". The old normalization
+		// given: recorded and caller both "日本語アプリ". The old normalization
 		// slugged every Cyrillic/CJK/emoji name to "", so such a key's
 		// objects were permanently unprovenanced and undeletable by their
 		// own creator, with no signal at pairing time. An all-ASCII fixture
 		// could never catch this; a revert that normalizes the caller name
 		// turns it empty and this DELETE refuses as "nameless".
-		fx := newDeleteFixture(t, true, "привет")
+		fx := newDeleteFixture(t, true, "日本語アプリ")
 		fx.mwMock.On("ObjectSetIsArchived", mock.Anything, &pb.RpcObjectSetIsArchivedRequest{
 			ContextId: deleteObjId, IsArchived: true,
 		}).Return(&pb.RpcObjectSetIsArchivedResponse{
 			Error: &pb.RpcObjectSetIsArchivedResponseError{Code: pb.RpcObjectSetIsArchivedResponseError_NULL},
 		}).Once()
-		ctx := domain.CtxWithIntegrationName(context.Background(), "привет")
+		ctx := domain.CtxWithIntegrationName(context.Background(), "日本語アプリ")
 
 		got, err := fx.DeleteObject(ctx, testSpaceId, deleteObjId, false)
 
