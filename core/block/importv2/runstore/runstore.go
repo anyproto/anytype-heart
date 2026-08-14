@@ -140,6 +140,10 @@ type Store struct {
 	arenas   *anyenc.ArenaPool
 	rank     atomic.Int64
 	issueSeq atomic.Int64
+	// readOnly marks a status-reader store (OpenStatusReader): collections
+	// were opened without create, no guard is held, and callers must not
+	// write. Spool() honors it by opening rather than creating.
+	readOnly bool
 	// materializeStarted mirrors the manifest's sticky marker so writers can
 	// stamp late claims (claims recorded after materialization began are
 	// finalize-stage claims, not converter entities); incarnation mirrors
@@ -249,6 +253,56 @@ func markInactive(dir string) {
 // RunsRoot is where all run dirs live for an account repo.
 func RunsRoot(repoPath string) string {
 	return filepath.Join(repoPath, "importv2", "runs")
+}
+
+// OpenStatusReader opens a run dir for ADVISORY reads only (the §15 pull
+// surface). Three deliberate differences from Open, each closing a
+// confirmed hazard of using the full open for status polls (review
+// Class E):
+//   - NO active-dir guard: a status poll must never make the sweep skip a
+//     dir (the sweep runs once per start — a skipped dir waits a whole
+//     session);
+//   - NO sentinel machinery: Open's quick-check clears the dirty sentinel
+//     (MarkCleanAfterCheck), disarming corruption detection on exactly the
+//     dirs most likely damaged — the reader must not observe-and-destroy;
+//   - NO writes: collections are OPENED, never created, and no index is
+//     ensured. A dir missing its collections (a creation-time crash) is an
+//     error the caller skips.
+//
+// The returned Store must only be used for reads; Close releases only the
+// db handle. Concurrent with a live writer this is a plain extra SQLite
+// connection (WAL) — safe, at the documented cost of read-transaction
+// pressure on the writer's latency.
+func OpenStatusReader(ctx context.Context, dir string) (*Store, error) {
+	db, err := anystore.Open(ctx, filepath.Join(dir, dbFileName), &anystore.Config{ReadConnections: 1})
+	if err != nil {
+		return nil, fmt.Errorf("open run db (status): %w", err)
+	}
+	s := &Store{dir: dir, db: db, arenas: &anyenc.ArenaPool{}, readOnly: true}
+	s.released.Store(true) // no guard was taken; Close must not release one
+	for _, coll := range []struct {
+		name   string
+		target *anystore.Collection
+	}{
+		{collManifest, &s.manifest},
+		{collEntries, &s.entries},
+		{collFiles, &s.files},
+		{collPayloads, &s.payloads},
+		{collIssues, &s.issues},
+		{collKv, &s.kv},
+	} {
+		if *coll.target, err = db.OpenCollection(ctx, coll.name); err != nil {
+			_ = db.Close()
+			return nil, fmt.Errorf("open collection %s (status): %w", coll.name, err)
+		}
+	}
+	m, err := s.Manifest(ctx)
+	if err != nil {
+		_ = s.Close()
+		return nil, fmt.Errorf("read manifest: %w", err)
+	}
+	s.seedFromManifest(m)
+	return s, nil
 }
 
 // RunIdOfDir maps a run dir back to its runId — the dir is named by the

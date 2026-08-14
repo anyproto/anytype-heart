@@ -2,6 +2,10 @@ package runstore
 
 import (
 	"context"
+	"fmt"
+	"os"
+
+	anystore "github.com/anyproto/any-store"
 	"path/filepath"
 	"testing"
 
@@ -193,6 +197,116 @@ func TestReadEntries(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, records, 1)
 		assert.True(t, records[0].Late, "materialize-started must be seeded from the manifest on open")
+	})
+}
+
+func TestReadEntriesConcurrentWithClaims(t *testing.T) {
+	t.Run("a poll never observes an entry without its payload", func(t *testing.T) {
+		// given — review Class E, measured live (4/27 loads, 3/9 polls
+		// failed): the payload scan ran BEFORE the entries scan in two
+		// separate read transactions, so a claim batch committing between
+		// them read as a payload-less entry — which the strict reader
+		// classifies as corruption. Entries-first makes the shape impossible
+		// by construction (a batch commits both in ONE tx, so any observed
+		// entry's payload is already visible to the later scan).
+		ctx := context.Background()
+		store := createStore(t, filepath.Join(t.TempDir(), "run-1"))
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			for batch := 0; batch < 150; batch++ {
+				claims := make([]ClaimRecord, 0, 4)
+				for i := 0; i < 4; i++ {
+					id := fmt.Sprintf("obj-%d-%d", batch, i)
+					claims = append(claims, ClaimRecord{
+						SourceKey:    fmt.Sprintf("page-%d-%d", batch, i),
+						ObjectId:     id,
+						PayloadRoot:  []byte("root-" + id),
+						PayloadHeads: []string{id},
+					})
+				}
+				if err := store.RecordClaims(ctx, claims); err != nil {
+					t.Errorf("writer: %s", err)
+					return
+				}
+			}
+		}()
+		polls := 0
+		for {
+			select {
+			case <-done:
+				require.Positive(t, polls, "the reader must have overlapped the writer")
+				return
+			default:
+			}
+			records, err := store.ReadEntries(ctx)
+			require.NoError(t, err)
+			for _, record := range records {
+				if !record.Matched && !record.Derived && !record.Terminal {
+					require.NotEmpty(t, record.PayloadRoot,
+						"observed entry %q without its payload — the scan-order window", record.SourceKey)
+				}
+			}
+			polls++
+		}
+	})
+}
+
+func TestOpenStatusReader(t *testing.T) {
+	t.Run("reads beside a live holder without guard or sentinel side effects", func(t *testing.T) {
+		// given — review Class E: the full Open (a) registered in the
+		// active-dir guard, making the once-per-start sweep skip the dir for
+		// a whole session, and (b) ran the quick-check + MarkClean, REMOVING
+		// the dirty sentinel under the live writer — the next start then
+		// opened a possibly-torn db as clean, so a status poll disarmed
+		// corruption detection on exactly the dirs most likely damaged.
+		ctx := context.Background()
+		dir := filepath.Join(t.TempDir(), "run-1")
+		holder := createStore(t, dir)
+		_, err := holder.Spool(ctx)
+		require.NoError(t, err)
+		require.NoError(t, holder.RecordCreated(ctx, "page-1", "obj-1"))
+		sentinel := filepath.Join(dir, "run.db.lock")
+		require.FileExists(t, sentinel, "the live writer's dirty sentinel")
+
+		// when
+		reader, err := OpenStatusReader(ctx, dir)
+		require.NoError(t, err)
+		manifest, err := reader.Manifest(ctx)
+		require.NoError(t, err)
+		records, err := reader.ReadEntries(ctx)
+		require.NoError(t, err)
+		spool, err := reader.Spool(ctx)
+		require.NoError(t, err)
+		_, _, err = spool.Census(ctx)
+		require.NoError(t, err)
+		require.NoError(t, reader.Close())
+
+		// then
+		assert.Equal(t, "run-1", manifest.RunId)
+		assert.Len(t, records, 1)
+		assert.FileExists(t, sentinel,
+			"a status read must not clear the dirty sentinel (corruption detection stays armed)")
+		assert.True(t, IsActive(dir), "the holder's guard is untouched")
+		require.NoError(t, holder.Close())
+		assert.False(t, IsActive(dir), "and the reader added no hold of its own")
+	})
+
+	t.Run("a dir missing its collections is an error, not a create", func(t *testing.T) {
+		// given: a creation-time crash shape — db exists, collections never
+		// made (the reader must not write them into existence)
+		ctx := context.Background()
+		dir := filepath.Join(t.TempDir(), "run-1")
+		require.NoError(t, os.MkdirAll(dir, 0o700))
+		db, err := anystore.Open(ctx, filepath.Join(dir, "run.db"), nil)
+		require.NoError(t, err)
+		require.NoError(t, db.Close())
+
+		// when
+		_, err = OpenStatusReader(ctx, dir)
+
+		// then
+		require.Error(t, err)
 	})
 }
 

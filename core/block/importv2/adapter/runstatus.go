@@ -79,14 +79,22 @@ func (s *service) RunStatus(ctx context.Context, importId string) (*pb.RpcObject
 		if runstore.RunIdOfDir(dir) != importId {
 			continue
 		}
-		store, err := runstore.Open(ctx, dir)
-		if err != nil {
-			return nil, fmt.Errorf("open run %s: %w", importId, err)
-		}
-		defer store.Close()
-		return buildRunStatus(ctx, store, false)
+		return statusOfDormantDir(ctx, dir)
 	}
 	return nil, ErrRunNotFound
+}
+
+// statusOfDormantDir reads one dormant dir through the advisory reader:
+// no guard (the sweep must never be made to skip a dir by a poll), no
+// sentinel touch (corruption detection stays armed), no writes, and the
+// handle is released on every path including panics (review Class E).
+func statusOfDormantDir(ctx context.Context, dir string) (*pb.RpcObjectImportRunStatusRun, error) {
+	store, err := runstore.OpenStatusReader(ctx, dir)
+	if err != nil {
+		return nil, fmt.Errorf("open run %s: %w", runstore.RunIdOfDir(dir), err)
+	}
+	defer store.Close()
+	return buildRunStatus(ctx, store, false)
 }
 
 // RunList reports every known run: live ones first-hand, dormant dirs from
@@ -117,15 +125,9 @@ func (s *service) RunList(ctx context.Context) ([]*pb.RpcObjectImportRunStatusRu
 		if ctx.Err() != nil {
 			return runs, ctx.Err()
 		}
-		store, err := runstore.Open(ctx, dir)
+		run, err := statusOfDormantDir(ctx, dir)
 		if err != nil {
 			log.With("dir", dir).Warnf("run list: skipping unreadable run dir: %s", err)
-			continue
-		}
-		run, err := buildRunStatus(ctx, store, false)
-		_ = store.Close()
-		if err != nil {
-			log.With("dir", dir).Warnf("run list: skipping unreadable run ledger: %s", err)
 			continue
 		}
 		runs = append(runs, run)
@@ -138,6 +140,13 @@ func buildRunStatus(ctx context.Context, store *runstore.Store, live bool) (*pb.
 	manifest, err := store.Manifest(ctx)
 	if err != nil {
 		return nil, err
+	}
+	if manifest.SchemaVersion > runstore.SchemaVersion {
+		// The sweep's hands-off rule applies to reads too (review Class E):
+		// a newer binary owns this run and this binary cannot interpret its
+		// ledger honestly.
+		return nil, fmt.Errorf("run %s: schema %d is newer than this binary's %d",
+			manifest.RunId, manifest.SchemaVersion, runstore.SchemaVersion)
 	}
 	status := &pb.EventImportStatistic{
 		ImportId:     manifest.RunId,

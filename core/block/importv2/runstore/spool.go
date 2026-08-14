@@ -40,7 +40,16 @@ type Spool struct {
 // any existing rows — E2: a per-instance counter restarting at zero let a
 // second handle overwrite rows and reorder the replay.
 func (s *Store) Spool(ctx context.Context) (*Spool, error) {
-	coll, err := s.db.Collection(ctx, collSpool)
+	var coll anystore.Collection
+	var err error
+	if s.readOnly {
+		// A status reader never creates: a dir without a spool collection is
+		// a creation-time crash the caller skips (review Class E: the pull
+		// surface must not write on a read path).
+		coll, err = s.db.OpenCollection(ctx, collSpool)
+	} else {
+		coll, err = s.db.Collection(ctx, collSpool)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("open spool collection: %w", err)
 	}

@@ -64,20 +64,21 @@ type FileRecord struct {
 }
 
 // ReadEntries returns every identity-ledger row with payloads joined.
+//
+// Scan order is load-bearing (review Class E, measured live: 4/27 loads
+// failed against a claiming run): ENTRIES first, payloads second. A claim
+// batch commits both in one tx, so any entry this scan observes already
+// has its payload committed — the later payload scan can only see MORE
+// rows, never fewer. The inverted order had a window (batch lands between
+// the two scans) where a fresh entry read as payload-less, which the
+// strict check classifies as corruption.
 func (s *Store) ReadEntries(ctx context.Context) ([]EntryRecord, error) {
-	payloads := map[string]payloadRecord{}
-	err := s.scanStrict(ctx, s.payloads, func(v *anyenc.Value) error {
-		payloads[string(v.GetStringBytes("id"))] = payloadRecord{
-			root:  append([]byte(nil), v.GetBytes("root")...),
-			heads: readHeads(v),
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
+	type rawEntry struct {
+		record EntryRecord
+		minted bool
 	}
-	var records []EntryRecord
-	err = s.scanStrict(ctx, s.entries, func(v *anyenc.Value) error {
+	var raw []rawEntry
+	err := s.scanStrict(ctx, s.entries, func(v *anyenc.Value) error {
 		objectId := string(v.GetStringBytes("objectId"))
 		if objectId == "" {
 			return fmt.Errorf("entry %q: missing objectId", v.GetStringBytes("id"))
@@ -94,15 +95,30 @@ func (s *Store) ReadEntries(ctx context.Context) ([]EntryRecord, error) {
 			Late:      v.GetBool("late"),
 			Synthetic: v.GetBool("synthetic"),
 		}
-		if payload, ok := payloads[objectId]; ok && !record.Matched {
-			record.PayloadRoot = payload.root
-			record.PayloadHeads = payload.heads
-		}
-		records = append(records, record)
+		raw = append(raw, rawEntry{record: record, minted: !record.Matched && !record.Derived})
 		return nil
 	})
 	if err != nil {
 		return nil, err
+	}
+	payloads := map[string]payloadRecord{}
+	err = s.scanStrict(ctx, s.payloads, func(v *anyenc.Value) error {
+		payloads[string(v.GetStringBytes("id"))] = payloadRecord{
+			root:  append([]byte(nil), v.GetBytes("root")...),
+			heads: readHeads(v),
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	records := make([]EntryRecord, 0, len(raw))
+	for _, entry := range raw {
+		if payload, ok := payloads[entry.record.ObjectId]; ok && entry.minted {
+			entry.record.PayloadRoot = payload.root
+			entry.record.PayloadHeads = payload.heads
+		}
+		records = append(records, entry.record)
 	}
 	return records, nil
 }
