@@ -4039,6 +4039,15 @@ and the explicit no-op `isArchived Condition:None` filter is what suppresses
 the store's injected `isArchived: false` default so the second is visible at
 all. Both arms are pinned.)
 
+> **CORRECTION (§8.40).** The parenthesis above was half right and the fix
+> was therefore half dead. A UI-deleted relation carries `isUninstalled`
+> **and** `isDeleted` — the same Apply stamps the second — so suppressing
+> only the `isArchived` default made this tolerance work for archived
+> corpses and do nothing for uninstalled ones, which are the common case.
+> Every fixture modelled `{isUninstalled}` alone and could not see it.
+> §8.40 adds the `isDeleted Condition None` clause and runs the corpse
+> fixtures over both store shapes.
+
 *The asymmetry left standing, on purpose.* PATCH `setProperties` still
 refuses a corpse-held key the target object does not already carry, with the
 same near-miss did-you-mean — so the F2 argument above ("the hint steers the
@@ -6031,4 +6040,182 @@ deterministic-derivation decision is still pending, and only the `isHidden`
 candidate filter was changed. v1's type and tag cross-space subscriptions
 keep their `isUninstalled` gap (named above). `cmd/anyblockroundtrip` still
 needs an account and was not run; the running server predates this HEAD, so
+verification here is unit and handler tests only.
+
+### 8.40 The corpse policy, applied where it was only half-applied (2026-08-14 — decisions as built)
+
+The round that pinned corpse addressability (`corpse_addressability_test.go`)
+left three findings marked as gaps, deliberately, with tests that pinned the
+broken behaviour loudly. This section is those three fixed, plus the spec
+correction the round's framing fact demanded.
+
+**The framing fact, first, because two of the three defects are the same
+mistake.** A production corpse has **two flags, not one**. A UI delete sets
+`isUninstalled=true` (`core/block/delete.go:113-127`) and the *same Apply*
+stamps `isDeleted=true` beside it (`smartblock/detailsinject.go:219-226`);
+`BeforeDelete` tombstones the index row, the tree survives, and the next
+space load re-indexes it with **both** flags and full details. Every plain
+store query injects `isDeleted != true` (`database.go:109-123`), so a prod
+corpse is hidden from queries even where nothing filters `isUninstalled`.
+
+Every pre-existing corpse fixture in this repo modelled `{isUninstalled}`
+alone — a shape production never has — so any probe that suppressed only
+`isArchived` looked correct in tests and did nothing in the field. Both fixed
+probes now suppress **both** defaults, and every fixture in this file runs
+over **both** shapes.
+
+#### 1. The §8.29 clone tolerance was dead in production
+
+`propertyKeyHeldByAnyRelation` is the round-trip escape that lets a pasted
+read body create a copy when the body carries a value of a UI-deleted
+property. Its query suppressed the injected `isArchived` default and not
+`isDeleted`, so it found archived corpses and missed uninstalled ones — the
+common case, and the one the tolerance was written for. The advertised loop
+`GET → POST` returned 400 `unknown property keys` on a document the API
+itself had just served.
+
+**Fixed** by the explicit no-op `isDeleted Condition None` clause beside the
+`isArchived` one (`Condition None` compiles to no filter at all, so this is
+pure default suppression). The probe is now one shared helper,
+`relationObjectHoldingKey`, which returns the holding relation object rather
+than a bool — fixes 1 and 2 need the same row, and a second query shape would
+have been a second place to forget a default.
+
+Before/after, both shapes: flag-only accepted → accepted (unchanged); prod
+**400 → accepted**, value landing under the stored key it was served under.
+
+#### 2. The type read-edit loop minted garbage duplicates — resolve, not refuse
+
+`GET /v2/spaces/{s}/types/{key}` serves a corpse property inside
+`typeProperties` under its stored BSON key with its name: `recommendedRelations`
+resolves BY ID, and the by-id path (`GetRelationById` → `GetDetails`) is
+unfiltered, so it escapes even the `isDeleted` default. PATCHing that served
+list back walked `creatingResolvers.PropertyId`, whose resolution chain is
+corpse-aware by design, missed, and therefore **minted a brand-new property**
+— name duplicated, `apiObjectKey` the snake-cased hex
+(`6_a_7663_db_61_fab_21_cd_4_b_9_e_201`), once per PATCH, forever.
+
+**Decision: resolve to the holder, never refuse, never mint.**
+
+- Minting is wrong either way: a 24-hex stored key arriving in a key slot has
+  never been a legitimate mint request. That much was settled before this
+  round.
+- Refusing would break the loop the guides document. `typeProperties` is a
+  **whole-list replace**, so the caller's only repair would be hand-stripping
+  an entry from a body the API served — the §8.34 unactionable-refusal
+  defect — and doing so would silently DELETE the type's reference to that
+  relation. A refusal here trades a garbage duplicate for data loss.
+- Resolving is an identity: the id returned is the id already sitting in
+  `recommendedRelations`. Nothing is created, no value moves, no side effect
+  is reported. It is the `typeProperties` counterpart of §8.29's create
+  tolerance, and holder-based for the same reason that one is.
+- It is deliberately **key-only**. The corpse's *slug* vacated the namespace
+  (§8-OQ2) and still resolves to nothing here, so naming the slug in
+  `typeProperties` still mints a fresh property — pinned as its own subtest,
+  because a resolve that answered the slug would re-aim a vacated address
+  onto a corpse.
+
+**Should the READ serve corpse entries at all?** Concluded yes, unchanged.
+The type document mirrors the list the type actually stores; dropping corpse
+rows would make the documented read-modify-write loop a silent deletion of
+every corpse reference it touches. The read stays faithful, and the write
+half is what had to learn to read it back.
+
+Before/after, both shapes: a mint of `6_a_7663_db_61_fab_21_cd_4_b_9_e_201`
+→ `recommendedRelations` unchanged at `["rel-corpse-bson"]`, `created` nil.
+Both shapes behaved identically here (the by-id read escapes both defaults),
+which is why the fix is at the write half, not the read.
+
+#### 3. Bundled corpses: refuse the write, loudly and actionably
+
+Uninstalling a bundled relation removed it from listings and 404'd its
+routes, but `due_date` stayed a valid DOCUMENT key in every space — the
+bundled vocabulary (chain step 3, `propertyKeyExistsIn`'s `bundle.HasRelation`
+arm) answers for a bundled key forever, regardless of any object's state. So
+a create landed new data on a property the user had deleted, and a reinstall
+would light it back up. "Nothing new lands in an uninstalled property" simply
+did not hold for bundled corpses.
+
+**Decided: refuse** — consistent with this API's standing rule that a write
+must not silently land somewhere the caller did not ask for.
+
+**The distinction that makes it safe is never-installed vs uninstalled**, and
+it is drawn from the store, not from the bundle: `uninstalledBundledKeys`
+queries relation objects with `isUninstalled=true` (both injected defaults
+suppressed, so the prod shape is seen) and keeps only those whose stored key
+`bundle.HasRelation` knows. A bundled relation nobody ever installed has **no
+relation object at all**, is absent from that set, and keeps working exactly
+as before — install-on-write is correct and is the common case in a fresh
+space. Conflating the two would have broken ordinary writes in every space,
+so the never-installed case is pinned by its own subtest, and so is the
+boundary in the other direction: an **archived** (v2-deleted) bundled
+relation is *not* in the set and still accepts writes. Whether it should is
+an open question this round did not settle; the test pins today's answer so
+that widening the probe cannot pass silently.
+
+The refusal names the repair (§8.34): `property "due_date" was removed from
+this space — nothing new lands on a removed property`, with a hint pointing
+at restoring it or listing the live ones. It spells the **served slug**, not
+the canonicalized stored key the validator happens to be holding.
+
+Channels, and why each is where it is:
+
+| channel | before | after |
+|---|---|---|
+| `POST /objects` (document create) | value landed on `dueDate` | 400, repair named |
+| `PATCH … setProperties`, key NOT on the document | value landed | 400, repair named |
+| `PATCH … setProperties`, key already on the document | edit/unset allowed | **unchanged** — the two-tier rule (§8.17, `checkKey`'s `inDoc`) keeps a document's own values editable, and `unset` is the only cleanup channel a caller has left |
+| `updateView` introducing the key | 400 (`unknown property key`) | **unchanged, verified** — view documents spell slugs, and the bundled slug stops resolving the moment the relation is uninstalled, so `validateViewKeys` already refused at its unknown-key branch. A removal check there would have been dead code; the closure is pinned by test regardless of which branch closes it |
+
+The asymmetry with §8.29's tolerance is deliberate and lives in the entities,
+not the policy: a **custom** corpse's stored key is a BSON id that can never
+be reinstalled or re-derived, so a document value on it is inert freight the
+tolerance carries; a **bundled** corpse's key is reinstallable, so a value
+landing there resurrects into a property the user deleted the moment it comes
+back. Both classes appear in one fixture, and the subtest that proves the
+custom tolerance survives the bundled refusal is what keeps that line honest.
+
+#### 4. ADDRESSING §2.3-6 corrected
+
+The finding read "uninstalled relations remain fully visible … nothing
+filters `isUninstalled`". That describes the flag-only fixture world. It now
+carries the two-flag / tombstone / reindex reality, states that the injected
+`isDeleted` default is what actually hides corpses in production while v2's
+explicit `isUninstalled` filters are belt-and-braces, and names the two
+residual visibility channels that do survive (unfiltered point lookups by id;
+probes that suppress the defaults). The correction ends with the rule this
+round paid for twice: any claim about corpse visibility must name which of
+the two shapes it is about.
+
+**Verification.** Every fix has a test that fails on revert, and each revert
+was run:
+
+| fix | revert | fails |
+|---|---|---|
+| 1 clone tolerance | drop `isDeleted Condition None` from `relationObjectHoldingKey` | `TestV2CloneToleranceSurvivesTheProdShape` **prod leg** (plus the prod legs of the type-echo and custom-corpse subtests — flag-only legs stay green, which is the point) |
+| 2 typeProperties resolve | drop the `relationObjectHoldingKey` arm from `PropertyId` | `TestV2TypePropertiesCorpseEchoResolvesToItsHolder/PATCHing…` on **both** shapes — the `6_a_7663_…` duplicate reappears |
+| 3 create refusal | drop the `removedPropertyIssue` arm from `validatePropertyKeys` | `TestV2UninstalledBundledPropertyRefusesWrites/create refuses…` both shapes |
+| 3 PATCH refusal | drop the arm from `stateops` `checkKey` | `…/PATCH refuses it off-document…` both shapes |
+| 3 never-installed boundary | widen `uninstalledBundledKeys` to `isUninstalled Condition None` | `…/an ARCHIVED bundled property is outside this refusal` |
+
+Fixture discipline: every corpse fixture in this file is BSON-keyed **with** a
+stored `apiObjectKey` and runs over both store shapes — the one shape that
+can tell the two vocabularies apart, and the only pairing that can catch an
+`isDeleted`-default mistake. The single exception is stated in the test
+itself: the bundled corpse **cannot** be BSON-keyed (its key is `dueDate` by
+definition and its slug is derived in code, never stored), which is precisely
+the entity class the refusal is about; the BSON-keyed corpse rides along in
+the same fixture to prove the refusal does not leak into the tolerance.
+
+**Not done, deliberately.** The read-emit/write-refuse split stays rejected —
+emitting a corpse's slug would put it into every post-uninstall export, and
+those documents silently re-bind when the vacated slug is re-minted, which is
+exactly what the corpse policy exists to allow; today's degrade-to-stored-key
+is what pins a value to its entity. No `?include=uninstalled` discovery
+surface. The backfill migration is untouched. v1's type and tag subscriptions
+keep their missing corpse filter (masked in production by the `isDeleted`
+default; adding it would drop UI-deleted types from v1's listings, a wider
+behaviour change than this round covers) — its gap-marked test stays as-is.
+No served schema or annotation changed, so `make openapi` was not needed and
+both documents are byte-identical. The running server predates this HEAD;
 verification here is unit and handler tests only.
