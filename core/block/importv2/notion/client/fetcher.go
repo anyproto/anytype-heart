@@ -70,7 +70,7 @@ func (f *httpFetcher) Fetch(ctx context.Context, url string, dst io.Writer) erro
 		if lastErr == nil {
 			return nil
 		}
-		if !isRetryable(lastErr) || ctx.Err() != nil {
+		if !IsRetryable(lastErr) || ctx.Err() != nil {
 			return lastErr
 		}
 		// A partially written dst cannot be retried into blindly; the

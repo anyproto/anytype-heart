@@ -90,9 +90,13 @@ func IsExpiredUrl(err error) bool {
 	return apiErr.status == http.StatusForbidden || apiErr.status == http.StatusBadRequest
 }
 
-// isRetryable: network errors, rate limiting (429/529) and 5xx. Client
+// IsRetryable: network errors, rate limiting (429/529) and 5xx. Client
 // errors (auth, not-found, validation) return to the caller immediately.
-func isRetryable(err error) bool {
+// Exported for the adapter's crawl-resume settlement, which reuses THIS
+// classification (one rule): a retryable-shaped fatal is a transient
+// condition — offline laptop, Notion outage, exhausted rate budget — so
+// the run dir is kept for the next start instead of destroyed.
+func IsRetryable(err error) bool {
 	var transport *transportError
 	if errors.As(err, &transport) {
 		return true

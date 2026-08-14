@@ -31,6 +31,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/importv2/persist"
 	"github.com/anyproto/anytype-heart/core/block/importv2/resolve"
 	"github.com/anyproto/anytype-heart/core/block/importv2/runstore"
+	"github.com/anyproto/anytype-heart/core/block/importv2/schemaplan"
 	"github.com/anyproto/anytype-heart/core/block/importv2/source"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -104,6 +105,13 @@ type service struct {
 	// nil keeps the phase-A compensate-everything sweep — the lifecycle
 	// harness's default, and the safe degradation if wiring ever misses it).
 	resumeRunner resumeFn
+	// crawlResumeRunner is the sweep's pass-2 crawl-resume branch (DM spec
+	// §8.3; resumeCrawlRun in production). Same nil degradation: a mid-crawl
+	// dir then compensates — trivially, to nothing — as before DM-3.
+	crawlResumeRunner resumeFn
+	// notionClientOpts extend every constructed Notion client (test seam for
+	// the API base URL; empty in production).
+	notionClientOpts []notionclient.Option
 	fileObjectService fileobject.Service
 	installer         objectcreator.Service
 	detailsService    detailservice.Service
@@ -145,6 +153,7 @@ func (s *service) Init(a *app.App) error {
 	s.objects = s.blockService
 	s.engineRunner = s.runEngine
 	s.resumeRunner = s.resumeRun
+	s.crawlResumeRunner = s.resumeCrawlRun
 	s.fileObjectService = app.MustComponent[fileobject.Service](a)
 	s.installer = app.MustComponent[objectcreator.Service](a)
 	s.detailsService = app.MustComponent[detailservice.Service](a)
@@ -386,33 +395,49 @@ func (s *service) executeMarkdown(ctx context.Context, request importv2.Request,
 	params.Planner = plannerFromRequest(req)
 	request.NoCollection = params.NoCollection
 
-	// Multiple paths run as independent sequential engine runs (v1 built one
-	// merged run; parity for multi-path selections is a phase-3 item).
 	combined := &importv2.Result{}
-	for pathIndex, importPath := range paths {
-		result := s.runOne(ctx, request, spc, importPath, pathIndex, params, progress)
-		combined.Created += result.Created
-		combined.Updated += result.Updated
-		combined.Skipped += result.Skipped
-		combined.Failed += result.Failed
-		combined.Compensated += result.Compensated
-		combined.Leaked += result.Leaked
-		combined.Issues = append(combined.Issues, result.Issues...)
-		combined.IssuesDropped += result.IssuesDropped
-		if result.RootCollectionId != "" {
-			combined.RootCollectionId = result.RootCollectionId
-			combined.WidgetLayout = result.WidgetLayout
-		}
-		if result.ReportObjectId != "" {
-			combined.ReportObjectId = result.ReportObjectId
-		}
-		if result.Err != nil {
-			combined.Err = result.Err
-			combined.Suspended = result.Suspended
+	s.runMarkdownPaths(ctx, request, req, spc, progress, paths, params, 0, combined)
+	return combined
+}
+
+// runMarkdownPaths runs paths[from:] as independent sequential engine runs
+// (v1 built one merged run; parity for multi-path selections is a phase-3
+// item), folding each result into combined and stopping on the first
+// failure. Shared with the crawl-resume continuation (a multi-path request
+// resumed at path k finishes paths k+1.. fresh) so the rules cannot drift.
+func (s *service) runMarkdownPaths(ctx context.Context, request importv2.Request, req *pb.RpcObjectImportRequest, spc clientspace.Space, progress process.Progress, paths []string, params mdParams, from int, combined *importv2.Result) {
+	for pathIndex := from; pathIndex < len(paths); pathIndex++ {
+		result := s.runOne(ctx, request, req, spc, paths[pathIndex], pathIndex, params, progress)
+		if combinePathResult(combined, result) {
 			break
 		}
 	}
-	return combined
+}
+
+// combinePathResult folds one engine run's result into a multi-path
+// request's combined result; true stops the path loop.
+func combinePathResult(combined, result *importv2.Result) bool {
+	combined.Created += result.Created
+	combined.Updated += result.Updated
+	combined.Skipped += result.Skipped
+	combined.Failed += result.Failed
+	combined.Compensated += result.Compensated
+	combined.Leaked += result.Leaked
+	combined.Issues = append(combined.Issues, result.Issues...)
+	combined.IssuesDropped += result.IssuesDropped
+	if result.RootCollectionId != "" {
+		combined.RootCollectionId = result.RootCollectionId
+		combined.WidgetLayout = result.WidgetLayout
+	}
+	if result.ReportObjectId != "" {
+		combined.ReportObjectId = result.ReportObjectId
+	}
+	if result.Err != nil {
+		combined.Err = result.Err
+		combined.Suspended = result.Suspended
+		return true
+	}
+	return false
 }
 
 func (s *service) executeNotion(ctx context.Context, request importv2.Request, req *pb.RpcObjectImportRequest, spc clientspace.Space, progress process.Progress) *importv2.Result {
@@ -420,24 +445,31 @@ func (s *service) executeNotion(ctx context.Context, request importv2.Request, r
 	if params == nil || params.GetApiKey() == "" {
 		return &importv2.Result{Err: importv2.Fatal(importv2.IssueAuthFailed, fmt.Errorf("notion import requires an api key"))}
 	}
-	lc, err := s.beginRun(ctx, request, "Notion", 0)
+	lc, err := s.beginRun(ctx, request, req, "Notion", 0)
 	if err != nil {
 		return stopFatal(ctx, importv2.IssueStoreError, err)
 	}
 	defer lc.release() // Invariant 3: a panic below must not leak the registry hold
-	apiClient := notionclient.NewClient(params.GetApiKey())
-	var opts []notion.Option
+	converter := s.notionConverter(req, lc, schemaplan.Reuse{Record: s.planRecorder(lc)})
+	result := s.engineRunner(ctx, request, converter, spc, lc, progress)
+	s.finishRun(lc, result)
+	return result
+}
+
+// notionConverter builds the per-run Notion converter from the wire request
+// — ONE construction for the fresh run and the crawl resume, so the two
+// cannot drift. notionClientOpts is the test seam for the API base URL.
+func (s *service) notionConverter(req *pb.RpcObjectImportRequest, lc *runLifecycle, reuse schemaplan.Reuse) *notion.Converter {
+	apiClient := notionclient.NewClient(req.GetNotionParams().GetApiKey(), s.notionClientOpts...)
+	opts := []notion.Option{notion.WithPlanReuse(reuse)}
 	if planner := plannerFromRequest(req); planner.planner != nil {
 		opts = append(opts, notion.WithPlanner(planner.planner))
 		if planner.includeSamples {
 			opts = append(opts, notion.WithContentSamples())
 		}
 	}
-	converter := notion.New(apiClient, notionclient.NewFileFetcher(),
+	return notion.New(apiClient, notionclient.NewFileFetcher(),
 		&collectionFactory{service: s.collectionService}, lc.spillDir, opts...)
-	result := s.engineRunner(ctx, request, converter, spc, lc, progress)
-	s.finishRun(lc, result)
-	return result
 }
 
 type mdParams struct {
@@ -467,28 +499,36 @@ func markdownParams(req *pb.RpcObjectImportRequest) ([]string, mdParams, error) 
 	}, nil
 }
 
-func (s *service) runOne(ctx context.Context, request importv2.Request, spc clientspace.Space, importPath string, pathIndex int, params mdParams, progress process.Progress) *importv2.Result {
+func (s *service) runOne(ctx context.Context, request importv2.Request, req *pb.RpcObjectImportRequest, spc clientspace.Space, importPath string, pathIndex int, params mdParams, progress process.Progress) *importv2.Result {
 	src, err := source.Open(importPath)
 	if err != nil {
 		return stopFatal(ctx, importv2.IssueSourceInvalid, fmt.Errorf("open source: %w", err))
 	}
 	defer src.Close()
 
-	lc, err := s.beginRun(ctx, request, "Markdown", pathIndex)
+	lc, err := s.beginRun(ctx, request, req, "Markdown", pathIndex)
 	if err != nil {
 		return stopFatal(ctx, importv2.IssueStoreError, err)
 	}
 	defer lc.release() // Invariant 3: a panic below must not leak the registry hold
-	converter := markdown.New(src, markdown.Params{
+	converter := markdown.New(src, s.markdownParamsFor(params, lc, schemaplan.Reuse{Record: s.planRecorder(lc)}),
+		&collectionFactory{service: s.collectionService})
+	result := s.engineRunner(ctx, request, converter, spc, lc, progress)
+	s.finishRun(lc, result)
+	return result
+}
+
+// markdownParamsFor is the one translation of adapter params onto the
+// converter's — shared between the fresh run and the crawl resume.
+func (s *service) markdownParamsFor(params mdParams, lc *runLifecycle, reuse schemaplan.Reuse) markdown.Params {
+	return markdown.Params{
 		CreateDirectoryPages:     params.CreateDirectoryPages,
 		IncludePropertiesAsBlock: params.IncludePropertiesAsBlock,
 		Flavour:                  params.Flavour,
 		Planner:                  params.Planner.planner,
 		IncludeContentSamples:    params.Planner.includeSamples,
-	}, &collectionFactory{service: s.collectionService})
-	result := s.engineRunner(ctx, request, converter, spc, lc, progress)
-	s.finishRun(lc, result)
-	return result
+		PlanReuse:                reuse,
+	}
 }
 
 // runEngine wires one engine run's per-run components over the app seams.

@@ -158,6 +158,19 @@ func (j *Journal) Updated() []string {
 	return append([]string(nil), j.updated...)
 }
 
+// IsEmpty reports a journal with no recorded (or seeded) effects at all —
+// nothing created, uploaded, or updated by any incarnation. The engine's
+// compensation short-circuit reads it: an abort during passes 1–2 has
+// nothing to undo (DM spec §7), and skipping the zero-delete cleanup also
+// skips the durable compensating marker that would otherwise scrub the
+// manifest's crawl request and burn the dir's crawl-resumable state.
+func (j *Journal) IsEmpty() bool {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	return len(j.created) == 0 && len(j.ownedFiles) == 0 &&
+		len(j.matchedFiles) == 0 && len(j.updated) == 0
+}
+
 // Seed pre-loads the journal with previous incarnations' effects (read
 // from the durable ledger) so IN-PROCESS compensation of a resumed run
 // covers every incarnation, not only its own — one compensation rule,

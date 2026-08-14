@@ -130,7 +130,7 @@ func (c *Client) Request(ctx context.Context, method, path string, body any, out
 			}
 			return nil
 		}
-		if !isRetryable(lastErr) {
+		if !IsRetryable(lastErr) {
 			return lastErr
 		}
 		if retryAfter := retryAfterOf(lastErr); retryAfter > 0 {

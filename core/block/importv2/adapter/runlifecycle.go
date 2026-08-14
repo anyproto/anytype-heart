@@ -2,6 +2,7 @@ package adapter
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,6 +13,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/importv2/identity"
 	"github.com/anyproto/anytype-heart/core/block/importv2/resume"
 	"github.com/anyproto/anytype-heart/core/block/importv2/runstore"
+	"github.com/anyproto/anytype-heart/core/block/importv2/schemaplan"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/util/vcs"
 )
 
@@ -62,14 +65,25 @@ func (lc *runLifecycle) release() {
 
 // beginRun creates the run dir + store before the engine starts. A store
 // creation failure fails the run (spec §7.2: a run that cannot journal must
-// not create objects).
-func (s *service) beginRun(ctx context.Context, request importv2.Request, converterName string, pathIndex int) (*runLifecycle, error) {
+// not create objects). The serialized wire request rides the manifest so a
+// crawl interrupted mid-pass-2 can rebuild its converter on the next start
+// (DM spec §8.3 / OQ2 as decided — stored as-is, scrubbed by the store on
+// every transition out of the crawl-resumable states).
+func (s *service) beginRun(ctx context.Context, request importv2.Request, wireReq *pb.RpcObjectImportRequest, converterName string, pathIndex int) (*runLifecycle, error) {
 	if s.config.RepoPath == "" {
 		spillDir, err := os.MkdirTemp("", "anytype-import-v2-*")
 		if err != nil {
 			return nil, fmt.Errorf("create spill dir: %w", err)
 		}
 		return &runLifecycle{spillDir: spillDir, cleanup: func() { _ = os.RemoveAll(spillDir) }}, nil
+	}
+	requestBlob, err := wireReq.Marshal()
+	if err != nil {
+		// The run can proceed — only the crawl-resume class is lost. Loud:
+		// this should never happen for a request that already crossed the
+		// wire.
+		log.Errorf("serialize import request for the run manifest: %s", err)
+		requestBlob = nil
 	}
 	runId := bson.NewObjectId().Hex()
 	store, err := runstore.Create(ctx, filepath.Join(runstore.RunsRoot(s.config.RepoPath), runId), runstore.Manifest{
@@ -82,6 +96,7 @@ func (s *service) beginRun(ctx context.Context, request importv2.Request, conver
 		PathIndex:      pathIndex,
 		Converter:      converterName,
 		AppVersion:     vcs.GetVCSInfo().Version(),
+		Request:        requestBlob,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create run store: %w", err)
@@ -91,6 +106,25 @@ func (s *service) beginRun(ctx context.Context, request importv2.Request, conver
 		spillDir: store.SpillDir(),
 		untrack:  s.trackLive(runId, store, request.Origin.ImportType),
 	}, nil
+}
+
+// planRecorder persists a fresh run's sanitized structure plan to the run
+// kv (08-13 §6.3: a resumed crawl reuses the recording, never replans). nil
+// in volatile mode — schemaplan.Resolve treats a nil recorder as no-op.
+func (s *service) planRecorder(lc *runLifecycle) func(schemaplan.Plan) error {
+	if lc.store == nil {
+		return nil
+	}
+	return func(plan schemaplan.Plan) error {
+		data, err := json.Marshal(plan)
+		if err != nil {
+			return fmt.Errorf("marshal structure plan: %w", err)
+		}
+		// Detached: the plan write is journaling (its loss would make a
+		// resumed crawl replan divergently), same discipline as every
+		// ledger write.
+		return lc.store.SetPlanJSON(context.Background(), data)
+	}
 }
 
 // finishRun settles a run's durable state. A run the ENGINE says was

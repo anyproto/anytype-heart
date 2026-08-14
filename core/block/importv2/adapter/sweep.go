@@ -70,7 +70,7 @@ type sweepOutcome struct {
 // snapshot, and dirs a live Store holds open are skipped via the active
 // registry — an active run is never touched. A dead ctx (the component is
 // closing) stops the walk: remaining dirs settle on the next start.
-func sweepRuns(ctx context.Context, root string, objects persist.ObjectAccess, probe spaceProbe, resume resumeFn) []sweepOutcome {
+func sweepRuns(ctx context.Context, root string, objects persist.ObjectAccess, probe spaceProbe, resume, crawlResume resumeFn) []sweepOutcome {
 	dirs, err := runstore.ListRunDirs(root)
 	if err != nil {
 		log.Errorf("sweep: list run dirs: %s", err)
@@ -81,7 +81,7 @@ func sweepRuns(ctx context.Context, root string, objects persist.ObjectAccess, p
 		if ctx.Err() != nil {
 			return outcomes
 		}
-		outcomes = append(outcomes, sweepOneGuarded(ctx, dir, objects, probe, resume))
+		outcomes = append(outcomes, sweepOneGuarded(ctx, dir, objects, probe, resume, crawlResume))
 	}
 	return outcomes
 }
@@ -89,7 +89,7 @@ func sweepRuns(ctx context.Context, root string, objects persist.ObjectAccess, p
 // sweepOneGuarded contains a panic to ITS dir: one poison dir must not
 // abort the rest of the sweep (previously the recover sat a level up, so
 // aaa-poison left zzz-healthy uncompensated on every start, forever).
-func sweepOneGuarded(ctx context.Context, dir string, objects persist.ObjectAccess, probe spaceProbe, resume resumeFn) (outcome sweepOutcome) {
+func sweepOneGuarded(ctx context.Context, dir string, objects persist.ObjectAccess, probe spaceProbe, resume, crawlResume resumeFn) (outcome sweepOutcome) {
 	defer func() {
 		if rec := recover(); rec != nil {
 			outcome.Dir = dir
@@ -98,7 +98,7 @@ func sweepOneGuarded(ctx context.Context, dir string, objects persist.ObjectAcce
 			log.With("dir", dir).Errorf("sweep of one run dir panicked; continuing with the rest: %v", rec)
 		}
 	}()
-	return sweepOne(ctx, dir, objects, probe, resume)
+	return sweepOne(ctx, dir, objects, probe, resume, crawlResume)
 }
 
 // resumable reports whether the manifest describes a run whose pass 2
@@ -128,7 +128,21 @@ func resumable(m runstore.Manifest) bool {
 	}
 }
 
-func sweepOne(ctx context.Context, dir string, objects persist.ObjectAccess, probe spaceProbe, resume resumeFn) sweepOutcome {
+// crawlResumable is the DM-3 §8.3 class, disjoint from resumable() by the
+// sticky marker: a run interrupted BEFORE its crawl completed — crashed
+// (running) or suspended pre-materialize — whose manifest still carries the
+// request that rebuilds its converter. Dirs written by pre-DM-3 binaries
+// have no request and keep the old disposition (compensate — trivially, to
+// nothing). Same version gate as resumable (§4.4: resume only within a
+// version), belt-checked again in resume.LoadCrawl.
+func crawlResumable(m runstore.Manifest) bool {
+	if m.SchemaVersion != runstore.SchemaVersion || m.MaterializeStarted || len(m.Request) == 0 {
+		return false
+	}
+	return m.State == runstore.StateRunning || m.State == runstore.StateSuspended
+}
+
+func sweepOne(ctx context.Context, dir string, objects persist.ObjectAccess, probe spaceProbe, resume, crawlResume resumeFn) sweepOutcome {
 	outcome := sweepOutcome{Dir: dir}
 	// OpenExclusive takes the guard atomically with the liveness check —
 	// the IsActive-then-Open pair had a gap a DM-2 resume could slip into.
@@ -213,6 +227,14 @@ func sweepOne(ctx context.Context, dir string, objects persist.ObjectAccess, pro
 		// capped; exhaustion falls through to compensation below.
 		return resume(ctx, store, manifest)
 	}
+	if crawlResume != nil && crawlResumable(manifest) && manifest.ResumeAttempts < maxResumeAttempts {
+		// running | suspended mid-crawl, request stored: re-run the crawl
+		// with the spool as the skip set (§8.3) — this needs the source and
+		// its credentials, which is exactly what the manifest's request
+		// carries. Attempts share the same cap; exhaustion falls through to
+		// compensation (trivially nothing — pass 2 touched no space).
+		return crawlResume(ctx, store, manifest)
+	}
 
 	// running | suspended | cancelling | compensating — and resumable runs
 	// whose attempts are exhausted: compensate from the frozen-core view
@@ -284,7 +306,7 @@ func (s *service) sweepAbandoned() {
 			log.Errorf("sweep panic: %v\n%s", rec, debug.Stack())
 		}
 	}()
-	outcomes := sweepRuns(s.componentCtx, runstore.RunsRoot(s.config.RepoPath), s.objects, s.probeSpace, s.resumeRunner)
+	outcomes := sweepRuns(s.componentCtx, runstore.RunsRoot(s.config.RepoPath), s.objects, s.probeSpace, s.resumeRunner, s.crawlResumeRunner)
 	for _, outcome := range outcomes {
 		logger := log.With(
 			"dir", outcome.Dir,

@@ -928,6 +928,18 @@ func (r *run) compensate() {
 		return
 	}
 	r.compensateState = 1
+	if r.deps.Journal.IsEmpty() {
+		// Nothing to undo — an abort during passes 1–2, where compensation
+		// is definitionally Drop() (DM spec §7). Vacuously complete: the
+		// zero-delete cleanup is skipped TOGETHER WITH the OnCompensating
+		// marker, which exists so a crash mid-cleanup is finished by the
+		// sweep — there is no cleanup to finish, and the marker's durable
+		// state transition would scrub the manifest's crawl request and
+		// burn the dir's crawl-resumable class (DM-3 §8.3) over nothing.
+		r.compensateState = 2
+		r.compensationRan = true
+		return
+	}
 	if r.deps.OnCompensating != nil {
 		if err := r.deps.OnCompensating(); err != nil {
 			// No durable marker, no deletes (see Deps.OnCompensating): keep
