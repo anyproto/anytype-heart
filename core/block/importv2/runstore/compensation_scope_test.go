@@ -42,4 +42,44 @@ func TestCompensationScope(t *testing.T) {
 		require.NoError(t, err)
 		assert.Len(t, inputs.Created, 2)
 	})
+
+	t.Run("an own file deduped twice leaks WITH a trace, never silently", func(t *testing.T) {
+		// given — two source files with identical bytes: the first upload is
+		// fresh (the run created the object), the second dedups onto it and
+		// classifies pre-existing only because the first upload indexed it.
+		store := createStore(t, filepath.Join(t.TempDir(), "run-1"))
+		require.NoError(t, store.RecordFile(ctx, "assets/a.png", "file-HASH", false))
+		require.NoError(t, store.RecordFile(ctx, "assets/copy.png", "file-HASH", true))
+
+		// when
+		inputs, err := store.CompensationInputs(ctx)
+
+		// then: the id-scoped protection stands (this exact ledger shape is
+		// also what a crashed-then-resumed re-upload of a GENUINE user file
+		// leaves, so deleting on it would be a guess) — but the run's own
+		// fresh-upload row proves something was dropped, and a leak must
+		// never leave the record without a word: the id joins Updated, the
+		// derived-claimed skip's rule.
+		require.NoError(t, err)
+		assert.Empty(t, inputs.OwnedFiles,
+			"id-scoped protection: never delete what any row says pre-existed")
+		assert.Equal(t, []string{"file-HASH"}, inputs.Updated,
+			"the dropped own-file id must leave a trace in the record")
+	})
+
+	t.Run("a purely pre-existing dedup stays silent", func(t *testing.T) {
+		// given — the common case: the upload deduped onto the user's file;
+		// no row claims ownership, nothing of the run's was dropped, so
+		// there is nothing to say.
+		store := createStore(t, filepath.Join(t.TempDir(), "run-1"))
+		require.NoError(t, store.RecordFile(ctx, "assets/a.png", "file-USER", true))
+
+		// when
+		inputs, err := store.CompensationInputs(ctx)
+
+		// then
+		require.NoError(t, err)
+		assert.Empty(t, inputs.OwnedFiles)
+		assert.Empty(t, inputs.Updated, "an untouched pre-existing file needs no trace")
+	})
 }

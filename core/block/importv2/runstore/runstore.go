@@ -1012,7 +1012,20 @@ func (s *Store) CompensationInputs(ctx context.Context) (CompensationInputs, err
 			return fmt.Errorf("row %q: missing objectId", v.GetStringBytes("id"))
 		}
 		if _, protected := neverDelete[objectId]; protected {
-			return nil // id-scoped: some row says this file pre-existed
+			// id-scoped: some row says this file pre-existed. When THIS row
+			// claims ownership — a fresh upload whose id another row then
+			// classified pre-existing (two identical source files deduping
+			// onto one object) — the protection drops the run's OWN file.
+			// The drop stands: the same ledger shape is left by a
+			// crashed-then-resumed re-upload of a GENUINE user file (the
+			// resumed checker sees the earlier incarnation's object), so
+			// deleting on cross-row reconstruction would be a guess, and the
+			// bias is leak-never-guess. But never wordlessly (the
+			// derived-claimed rule above): the id joins the uncovered list.
+			if !v.GetBool("preExisting") {
+				inputs.Updated = append(inputs.Updated, objectId)
+			}
+			return nil
 		}
 		if !v.GetBool("preExisting") {
 			ownedFiles = append(ownedFiles, rankedId{id: objectId, rank: v.GetInt("rank")})
