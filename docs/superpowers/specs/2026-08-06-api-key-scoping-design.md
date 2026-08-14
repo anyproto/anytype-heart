@@ -255,20 +255,21 @@ it from ctx — no new service constructor params).
   registry. Chat `POST …/read` is classified **write** (it mutates the
   synced read watermark); revisit if agents genuinely need it read-only.
 
-**Deletes — recorded direction (decided 2026-08-06, implemented later).**
-Scoped keys will be allowed to delete only objects **created via that key**
-— `readwrite` grants create/edit broadly but destructive delete only of the
-key's own output (this also answers Airtable's loudest complaint, research
-§5: write silently including destructive delete). Mechanism sketch: the API
-create paths record the issuing key's `appHash` as a **device-local detail
-in objectstore** at creation time (not a CRDT change — provenance never
-syncs); the delete path looks it up and 403s on mismatch. Device-local is
-exactly the right locality: an app key only works on the device whose
-wallet repo holds its app-link file, so key and provenance live and die
-together. Nothing to build in P1 — v2 has no object-delete route yet; when
-it lands (Phase 8 surfaces), it ships with this rule for scoped keys. Open
-detail for then: whether schema deletes (`DELETE …/types`, `…/properties`)
-follow the same own-output rule or stay plain `readwrite`.
+**Deletes — recorded direction (decided 2026-08-06). SUPERSEDED on the
+mechanism (2026-08-14): see `core/api/APIV2_OBJECT_DELETE.md` §4, built as
+APIV2.md §8.42.** The RULE stands and shipped: delete only objects
+**created via that key** — `readwrite` grants create/edit broadly but
+destructive delete only of the key's own output (this also answers
+Airtable's loudest complaint, research §5: write silently including
+destructive delete). The MECHANISM below did not survive design review:
+a device-local `appHash` detail in objectstore dies with every store
+rebuild/reindex and account recovery (provenance lost, objects permanently
+undeletable by their own creator) and can never serve attribution. What
+shipped instead is a synced, member-signed record — the integration slug
+on the object's CREATING change (`pb.Change.integrationKey`), immutable
+the way `createdDate` is, read back from validated storage at delete time.
+The open detail stays open: whether schema deletes (`DELETE …/types`,
+`…/properties`) follow the same own-output rule or stay plain `readwrite`.
 
 **`/v1` rejection**: one line in the `/v1` group after auth — `Grant !=
 nil` → 403 `v1_not_available_for_scoped_keys` pointing at `/v2`. Note the

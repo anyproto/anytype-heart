@@ -116,7 +116,7 @@ GET /v2/spaces/{spaceId}/objects/{objectId}
     ?ids=compact|full               # document shape (C4); default compact (edit)
     ?format=anyblock|md             # md read-only, with warnings (C11)
 GET /v2/spaces/{spaceId}/objects            # minimal rows (C5)
-DELETE /v2/spaces/{spaceId}/objects/{objectId}   # archive (v1 parity); ?permanent=true later  [build — never registered, see below]
+DELETE /v2/spaces/{spaceId}/objects/{objectId}   # archive, OWN OUTPUT ONLY (creator provenance, §8.42); ?permanent=true later
 GET /v2/spaces                              # spaces list (read)
 GET /v2/spaces/{spaceId}/members            # members list (read) — agents need member ids for assignee/creator values
 GET /v2/spaces/{spaceId}/types              # keys + names (paginated, C10)
@@ -552,9 +552,11 @@ strict schema (FLAT.md §7.3) · `?permanent=true` hard delete.
   `describe` in its sanctioned degraded form (wrapper-side composition,
   §8.6), so this item no longer blocks the wrapper — landing it collapses
   the wrapper's composition to one GET.
-- **`DELETE /v2/spaces/{spaceId}/objects/{objectId}` (archive)** — specced
-  with Phase 1, never registered; still open after Phase 5 (deliberately
-  NOT a wrapper tool until it exists — §7.2/§2 Phase 5).
+- ~~**`DELETE /v2/spaces/{spaceId}/objects/{objectId}` (archive)**~~ —
+  **BUILT 2026-08-14** (plan 3.3, APIV2_OBJECT_DELETE.md, §8.42):
+  registered, own-output-only via creator provenance, fail-closed on
+  everything created before it shipped. The wrapper-tool question
+  (§7.2) is now unblocked but not exercised here.
 - **the D′1 escape decision** for `edit_text`/`replaceText` (§7.1) — still
   open; the tool description and SKILL.md carry the markup caveat.
 - **md-export loss detector** (converter/md has no warning channel).
@@ -6467,3 +6469,61 @@ guess — the store has nothing to spell and inventing a spelling from the id
 is not recoverable. No served schema or annotation changed, so
 `make openapi` was not needed and both documents are byte-identical. The
 running server predates this HEAD; verification is unit and handler tests.
+
+### 8.42 Object DELETE: creator provenance and the own-output rule (2026-08-14 — decisions as built)
+
+Plan 3.3, built to `core/api/APIV2_OBJECT_DELETE.md` (the design record;
+§ references below are into it). `DELETE /v2/spaces/{spaceId}/objects/
+{objectId}` is registered: archive semantics (Bin, reversible in the app —
+v1 parity and uniformity with the type/property DELETEs), C8 idempotency +
+write rate limit + `V2DeleteObject` analytics, C9 `?dry_run=true` as the
+deletability probe (full verdict incl. provenance, no write). `?permanent=
+true` stays reserved and unimplemented.
+
+**The rule.** Deletion is permitted only for objects the calling API key
+created. The record is the `integrationKey` field on the object's CREATING
+change (`pb.Change` field 10 — the same field, number and value the
+integration-attribution spec defined; §12's zero-wire-diff claim held), a
+normalized slug of the session's app name stamped by heart per-apply at
+creation — never accepted from a request, never persisted on the state, so
+a later local edit cannot inherit it. Enforcement reads BOTH clauses from
+validated change storage via a history-tree build (§10): signed root
+identity = this account, AND first content change carries this account's
+identity + the caller's slug. Details are never consulted — a detail is
+overwritable by any member with write access, which is the forgery the
+requirement excludes.
+
+**Fail-closed, and its stated consequence.** No recorded key → 403
+`not_created_by_this_key`, for every caller, permanently: **DELETE does not
+clean up objects created before it shipped** — everything pre-existing
+(including today's v2-created eval fixtures), everything created in the
+app, by import, or by another member stays undeletable through v2, by the
+settled §8 decision (no backfill, no grandfathering). The two eval
+documents in the test account still need one manual archive. Any future
+"delete arbitrary objects" capability is a separate product decision
+(§17.2), not a gap here. Every error path refuses too: provenance read
+failure, nil provenance dependency, ambiguous history — none reach the
+archive RPC (pinned by strict-mock tests).
+
+**Surface details as built.** The refusal names what IS recorded (§9.5's
+three variants + a fourth for a nameless caller, each carrying the dry-run
+probe hint); type/property/option targets steer to their own routes BEFORE
+the provenance read; re-delete of an archived object is a 200 no-op with a
+warning; the grant conjunction is ordered (space_not_granted /
+write_not_granted fire before ownership, pinned by expectation-free
+mocks). v1 is untouched except that its creations now carry the stamp for
+free (§8a — both surfaces converge in objectcreator and share
+ensureAuthenticated): v1's DELETE stays the unrestricted grandfathered
+escape, and v1's OpenAPI document is byte-identical. Key issuance now
+requires an app name (CreateApp and the challenge flow, §11.7) so no new
+key can mint itself into permanently-unprovenanced output.
+
+**Deliberately not built** (attribution's, later — §11): the integration
+object + icons, `createdVia`/`lastModifiedVia`, StoreChange/ChatMessage
+fields, history surfacing, gRPC session labeling, any UI. Derived-tree
+objects (chats included) can never pass the root clause; their deletes
+refuse with the app named as the repair. One deviation from the spec's
+letter, recorded: the slug is normalized per request in the auth
+middleware rather than cached on the session entry (§13 suggested caching)
+— one derivation input beats a second stored copy, and the cost is a
+sub-microsecond string walk.

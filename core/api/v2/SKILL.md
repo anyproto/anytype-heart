@@ -59,6 +59,7 @@ whether you may write. Ask this instead of discovering limits through 403s
 | show/hide a view column, edit a view | op `updateView` — works on sets, collections and a type's default view (PATCH the type OBJECT id from `GET …/types/{key}`) |
 | add / reorder / remove a view | ops `insertView` (`copyFrom` duplicates one) · `moveView` (`position:"first"` = default tab) · `deleteView` |
 | create an object | `POST …/objects` — shortcut `{type, name, properties, markdown}` covers most cases |
+| delete an object you created | `DELETE …/objects/{id}` — archives (Bin, reversible in the app). Only works on objects THIS key created after provenance shipped; anything else → 403 `not_created_by_this_key`, permanently — don't retry, archive in the app instead. Probe first with `?dry_run=true` |
 | curate a collection | PATCH ops `addItems` / `removeItems` on the collection object |
 | read a set / collection | `GET …/sets/{id}/objects` · `…/collections/{id}/objects` (`?view=`, `?fields=`) |
 | new type / property | `POST …/types` · `POST …/properties`; select options ride the property or create-missing |
@@ -262,8 +263,12 @@ read: no `Idempotency-Key`, `dry_run` ignored.
 
 ## Not in v2 (yet)
 
-- **No object archive/delete** — `DELETE …/objects/{id}` does not exist;
-  only types and properties have DELETE. Archive via the app or v1.
+- **Object DELETE is own-output-only** — `DELETE …/objects/{id}` archives
+  only objects THIS key created (recorded at creation, immutably). Objects
+  created before that shipped, in the app, by import or by other members
+  are permanently 403 for every key — there is no "delete arbitrary
+  objects" capability. `?dry_run=true` is the cheap deletability probe;
+  types/properties still use their own DELETE routes.
 - **No file byte download** under /v2 (Phase 8; bytes live on v1's
   `GET /v1/spaces/{id}/files/{fileId}` — unreachable for space-scoped
   keys, which /v1 refuses). No file content extraction ("read this PDF")
