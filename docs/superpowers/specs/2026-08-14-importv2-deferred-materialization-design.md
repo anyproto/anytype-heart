@@ -366,12 +366,20 @@ scoped to this phase only) and converter cooperation (the 08-13 §6.3 seam, unch
   (byte-identical object sets vs today's direct path — the equivalence gate); **plus the
   outstanding fixes that interact** (§13): finalize-cancel guard, finishRun leak-keep,
   identityPass suspend verdict.
+  DM-1 also carries the **importStatistic core** (§15): the status seam, the event with
+  phases/counters/three-state model/cancel semantics/ETA, the coalescer, and the
+  `Analyzing structure` phase — the engine restructure rewrites the reporting path anyway,
+  so the event rides the same change.
 - **DM-2 — pass-3 restart + sweep branch** (§8.1). Crash tests: kill during pass 3 at
-  create/upload/finalize boundaries; resume; assert final object set identical.
+  create/upload/finalize boundaries; resume; assert final object set identical. Plus the
+  **pull side of §15**: `ImportRunStatus`/`ImportRunList` served from manifest+ledger for
+  runs with no live engine — it needs exactly the dormant-run reading DM-2 builds, and it
+  subsumes what Phase D wanted from "manifest-driven run enumeration for operators".
 - **DM-3 — pass-2 crawl resume** (§8.3; the old Phase C, shrunk). OQ2 decision needed here
-  and not before.
-- **Phase D — unchanged** (operator surface, notifications, config knobs), plus the §13.4
-  lifecycle test harness which should land *early* in DM-1, not at the end.
+  and not before. `safeToClose` becomes true during pass 2 only here (§15.4 — the field
+  exists from DM-1, honest-false until resume exists).
+- **Phase D — unchanged minus what DM-2 absorbed** (notifications, config knobs), plus the
+  §13.4 lifecycle test harness which should land *early* in DM-1, not at the end.
 
 Markdown goes through the spool too — one pipeline, one golden harness, one equivalence
 proof; the cost to a fast local import is seconds (§10) and the clean-space property is as
@@ -406,25 +414,26 @@ is rejected alternative R4.
   dir already does today (downloads sat in the temp/spill dir before; snapshots now join
   them). Same trust domain as the objectstore (08-13 §4.1 argument); flagged, not solved —
   it is not a new class, but it is more bytes of it.
-- **What the user sees**: pass 2 reports phase "Fetching content" with per-entity progress
-  ticks (the `Reporter.Phase`/`Step` seam, `engine.go:40-44`, already exists); pass 3
-  reports "Creating objects". Total = 2× claims so the bar moves through both passes; the
-  wire `process` surface needs no proto change, but whether clients *display* the phase
-  string is OQ-DM3 (§11). During pass 2 the space shows nothing — that is the feature — and
-  the import surfaces only in the progress process.
+- **What the user sees**: during pass 2 the space shows nothing — that is the feature — and
+  the import surfaces only through progress reporting. The legacy `process` bar
+  (`adapter/wiring.go:104-120`) is kept compatible; the real answer to "what does a
+  multi-hour, throttled, two-pass import look like" is the structured `importStatistic`
+  event, designed in §15 with a per-phase client table.
 
 ## 11. Open questions
 
 - **OQ-DM1 — spool row granularity for huge objects.** One row per object with a 48 MB cap
   is simple and verified safe (fact 2); if profiling ever shows large-row parse spikes in
   pass 3, chunked snapshot storage is the escape. Not designed now.
-- **OQ-DM2 — should pass 3 start automatically?** Default: yes, immediately after
-  `fetched`, same run, no user gate. A "review before materialize" gate (user confirms
-  after seeing the fetch summary) is a product option this architecture makes cheap —
-  flagged for product, not designed.
-- **OQ-DM3 — progress UX.** Whether clients render the phase name, and whether a
-  long-fetching import needs an intermediate notification ("fetched, creating objects").
-  Client-facing; phase D territory.
+- **OQ-DM2 — RESOLVED (requester, 2026-08-14): pass 3 auto-starts.** Immediately after
+  `fetched`, same run, no user gate. The reasoning: **observability replaces the gate** —
+  the user's confidence comes from being able to see what is happening (§15's phases,
+  counters, cancel semantics), not from being asked to approve it. The architecture keeps
+  a gate cheap should product ever revisit, but none is designed.
+- **OQ-DM3 — superseded by §15.** The event contract now exists; what remains client-side
+  is rendering choice, and the residual question (an intermediate push notification for
+  clients that are not watching the event stream — "fetched, creating objects") stays
+  phase-D polish.
 - **OQ-DM4 — spool of updated-object targets.** `updateExisting` runs reset existing
   objects in pass 3; the half-built-window argument applies to *modifications* too
   (updates trickling over hours today → minutes under this design). No extra machinery
@@ -544,3 +553,158 @@ into DM-1 because the redesign touches the same code:
 | Pass-2 memory | O(1) objects + ~4 streaming downloads | §5.3; new residency test |
 | Pass-3 memory | `2C + K` unchanged | gauge test retargeted to spool reader |
 | Cancel during crawl | O(1): drop dir | §7 |
+
+## 15. Progress and observability — the `importStatistic` event
+
+### 15.1 Why the current surface cannot carry a two-pass import
+
+Everything the engine can say today is one message string, one total and one done counter:
+exactly three `Reporter.Phase` calls exist (`engine.go:249,274,435`), and the adapter
+down-projects them onto the legacy process scalar (`adapter/wiring.go:104-120` —
+`SetProgressMessage`/`SetTotalPreservingRatio`/`AddDone`). For a multi-hour, rate-limited,
+two-pass import that is structurally too thin: it cannot distinguish throttled from stuck,
+cannot say what cancel would do, cannot separate pages from files, and stalls unexplained
+for the 10–20 s the LLM plan step runs (specified as `Reporter.Phase("Analyzing
+structure")` in ImportV2LLM.md:67 and never implemented). The legacy surface stays,
+untouched, for compatibility; the new event rides alongside it (proto extension of the
+import event family — API changes sanctioned, ImportV2Design.md §13.7, the
+`EventImportFinish` precedent at `adapter.go:176-186`).
+
+### 15.2 Event shape (proto sketch — names final at implementation)
+
+```proto
+EventImportStatistic {
+  string importId;                 // = runId (manifest); stable across restarts
+  string processId;                // correlates with the legacy progress process
+  model.ImportType importType;
+
+  Phase phase;                     // SCANNING | ANALYZING | FETCHING | CREATING | FINALIZING
+  int64 phaseStartedAt;            // unix ms — clients show elapsed without their own clock
+
+  bool totalsKnown;                // false while the total is indeterminate (see 15.3)
+  int64 pagesTotal, pagesDone;     // pages and files are SEPARATE counters by requirement
+  int64 filesTotal, filesDone;
+  int64 bytesTotal, bytesDone;     // files only, 0 when unknown — 500 small files and one
+                                   //   2 GB file behave nothing alike
+
+  State state;                     // RUNNING | THROTTLED | RETRYING | ERROR
+  int64 resumesInMs;               // THROTTLED: when the pacer window reopens
+  int32 attempt, attemptsMax;      // RETRYING: backoff attempt N of M
+  string errorMessage;             // ERROR only
+
+  double itemsPerSecond;           // recent-window rate, per phase
+  int64 estimatedRemainingMs;      // 0 = unknown; honest computation only (15.3)
+
+  CancelEffect cancelEffect;       // NOTHING_TO_UNDO | REMOVES_CREATED
+  int64 objectsCreated;            // for phrasing "stop and remove the N objects created"
+  bool safeToClose;                // closing now loses nothing (suspend+resume exists
+                                   //   for the current phase)
+
+  int64 warningCount, errorCount;  // LIVE issue-ledger counts — abort a bad import at
+                                   //   minute 20, not minute 110
+
+  string currentItem;              // "Fetching: Q3 Planning" — the strongest not-stuck
+                                   //   signal. USER CONTENT: displayable, NEVER loggable
+}
+```
+
+**The three-state model is the load-bearing reframe.** Rate limiting is not an error: 3 rps
+is Notion's documented ceiling and a large import spends most of its life throttled —
+modelling that as an error makes every healthy import look broken. `THROTTLED` is expected
+and calm (carries `resumesIn`); `RETRYING` is a transient failure under backoff (attempt N
+of M); `ERROR` means something is actually wrong. The sources exist and are exact: the
+shared pacer knows when it is sleeping, the retry policy (`client/retry.go:13`, bounded
+attempts) knows its attempt count — they need a reporting seam, not new detection.
+
+**Cancel semantics fall out of the pass model** and are the event's best UX win: during
+passes 1–2 `cancelEffect = NOTHING_TO_UNDO` ("nothing has been added to your space yet" —
+cancel is instant, §7); during pass 3, `REMOVES_CREATED` with `objectsCreated` live from
+the effect journal. `safeToClose` is phase-dependent: true during pass 3 from DM-2
+(restartable from the dir), true during pass 2 only from DM-3 — the field exists from
+DM-1 and stays honestly false until the resume behind it ships.
+
+**`currentItem` privacy**: page titles are user content. The field is for display only and
+must never reach logs — the structured end-of-run log line and sweep logs carry counts and
+codes, never titles (same discipline the §13 review pressed on logging generally).
+
+### 15.3 Three modelling traps, designed around
+
+- **Indeterminate totals.** `/search` does not know the entity count until the cursor
+  chain ends — during SCANNING only "discovered so far" exists. `totalsKnown=false` makes
+  that explicit; clients render a count-up ("Scanning — 3,412 found"), never a fake bar or
+  a division by zero. Totals become known at the pass-1/pass-2 boundary and stay known.
+- **No single overall percentage — deliberately absent from the schema.** Pass 2 runs at
+  ~1.5 items/s (pacer ceiling), pass 3 at ~50–200/s: any blended percentage crawls for an
+  hour and then leaps to done, which reads as broken. The event carries per-phase progress
+  plus the phase indicator; a client that wants one bar owns that choice.
+- **Emission throttling.** Per-item emission is fine at 1.5/s and floods at pass-3 rates:
+  the adapter coalesces to ~1 event per 250 ms, with immediate emission on phase change
+  and on every state transition (RUNNING ↔ THROTTLED ↔ RETRYING ↔ ERROR), so the calm/alarm
+  edge is never delayed behind a coalescing window.
+
+**ETA honesty**: during FETCHING, `pagesRemaining / min(observedRate, pacerCeiling)` — the
+~2 req/page against 3 rps gives a known ~1.5 pages/s ceiling, so once pass 1 fixes the
+total, remaining time is computable, not guessed. During CREATING the observed-rate window
+alone (no ceiling is known a priori). `estimatedRemainingMs = 0` whenever the inputs are
+not there; the client phrases, the engine only computes what it can defend.
+
+### 15.4 Where the numbers come from — and restart behavior
+
+| Field | Live run | Dormant run / restart rehydration |
+|---|---|---|
+| phase, state | engine + status seam | manifest.state mapping |
+| pagesDone/filesDone | engine counters | spool terminal-status rows, split by file flag |
+| pagesTotal/filesTotal | claims count / spool rows | same collections — identical reads |
+| objectsCreated | effect-journal counters | `entries` rows (mode-based) |
+| warning/errorCount | run issue funnel | `issues` collection |
+| bytesDone/bytesTotal | download pool / spill sizes | spill dir + spool file rows |
+| itemsPerSecond, ETA | in-memory rate window | not served (0/unknown) |
+| currentItem | in-memory only | empty |
+
+Every counter that matters is a ledger read or trivially derived from one — which is what
+makes both halves cheap: a **pass-3 restart resumes the numbers, not just the work**
+(pagesDone continues from the spool cursor instead of snapping to zero), and a dormant run
+is reportable with no engine at all.
+
+The producer side is one new seam: the engine's `Reporter` grows into a `StatusReporter`
+owned by the adapter per run, injected into both the engine and the converter at
+construction (the pacer/retry/currentItem/ANALYZING signals originate converter-side; the
+counters engine-side). It is advisory telemetry only — it never affects control flow,
+carries no determinism requirement, and the golden harness ignores it.
+
+### 15.5 The same payload as a pull RPC
+
+`ObjectImportRunStatus(importId)` returns the same message (plus `manifestState` and a
+`live` flag), and `ObjectImportRunList()` returns it for every run — live runs served from
+the adapter's registry snapshot, dormant runs from manifest + ledger (§15.4's right-hand
+column; near-free since every field already lives there). Enumeration is a **sibling RPC**,
+not an empty-id overload — magic sentinel arguments are a foot-gun and the two calls have
+different authorization stories server-side.
+
+Why pull, when an event stream exists: the desktop client wants the push, but driver 3's
+server-side operator — ee-cloud driving a headless sidecar — wants to poll job state, not
+hold a session stream open across sidecar restarts, where re-attaching and correlating an
+in-flight run to an existing job is genuinely awkward. Polling `importId` (= the runId
+minted at `beginRun`, returned to the driver) is restart-proof by construction. This also
+subsumes Phase D's "manifest-driven run enumeration for operators" — same payload, same
+reads.
+
+### 15.6 What a client shows, per phase
+
+| Phase | Bar | Text pattern | Cancel affordance |
+|---|---|---|---|
+| SCANNING | indeterminate | "Scanning source — 3,412 found" | "Cancel (nothing added yet)" |
+| ANALYZING | indeterminate + elapsed | "Analyzing structure" | same |
+| FETCHING | determinate, pages | "Fetching 812/9,650 pages · 41/230 files · ~1h 38m left"; calm "waiting for Notion (4s)" badge when THROTTLED; "retrying (2/5)" when RETRYING; currentItem as subtitle | "Cancel (nothing added yet)"; "safe to close" once DM-3 |
+| CREATING | determinate, fast | "Creating 4,120/9,650 objects" | "Stop and remove 4,120 created objects" |
+| FINALIZING | brief | "Finishing up" | same as CREATING |
+
+### 15.7 Phasing
+
+DM-1: the status seam, event proto, phases (including ANALYZING), separate page/file
+counters, three-state model with pacer/retry hooks, cancel semantics, live issue counts,
+ETA/rate, coalescer, currentItem, bytes where the download pool already knows them —
+the engine restructure rewrites the reporting path anyway, so this is the moment. DM-2:
+restart-rehydrated counters, the pull RPC pair, dormant-run serving. DM-3: `safeToClose`
+turns true for pass 2. Phase D keeps only client-side rendering guidance and the residual
+intermediate-notification question (OQ-DM3).
