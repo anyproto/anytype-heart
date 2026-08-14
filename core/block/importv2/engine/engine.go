@@ -243,7 +243,7 @@ type run struct {
 	reportObjectId   string
 	compensated      int
 	leaked           int
-	didCompensate    bool
+	compensateState  int // 0 not run, 1 running, 2 done
 	// suspendedRun records the engine's own verdict — the run stopped for a
 	// shutdown suspend and was NOT compensated — carried out via
 	// Result.Suspended so the adapter never re-derives it from a context.
@@ -600,18 +600,35 @@ func (r *run) emitReport(ctx context.Context, claimed bool, title string) {
 }
 
 func (r *run) compensate() {
-	if r.didCompensate {
-		// finish() runs once per exit, but a panic inside compensation
-		// itself would re-enter through the panic guard — never twice.
+	switch r.compensateState {
+	case 2:
+		return
+	case 1:
+		// Re-entered through the panic guard: the pass did NOT complete.
+		// A2: an incomplete compensation must report as leaked — a clean
+		// zero here made finishRun drop the run dir while the run's objects
+		// remained in the space (the evidence deleted itself).
+		r.compensateState = 2
+		r.leaked++
+		r.issueMu.Lock()
+		if len(r.issues) < importv2.IssueCap {
+			r.issues = append(r.issues, importv2.Issue{
+				Severity: importv2.SeverityWarning,
+				Code:     importv2.IssueStoreError,
+				Message:  "compensation aborted by a panic; the run dir is kept for the sweep to retry",
+			})
+		}
+		r.issueMu.Unlock()
 		return
 	}
-	r.didCompensate = true
+	r.compensateState = 1
 	if r.deps.OnCompensating != nil {
 		r.deps.OnCompensating()
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), compensationTimeout)
 	defer cancel()
 	result := r.deps.Journal.Compensate(ctx, r.deps.Objects)
+	r.compensateState = 2
 	r.compensated = result.Compensated
 	r.leaked = result.Leaked
 	r.issueMu.Lock()

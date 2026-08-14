@@ -169,10 +169,23 @@ func newestFirst(ids []string) []string {
 // be idempotent so a crash mid-cleanup can simply re-run it (§6.5).
 func CompensateIds(ctx context.Context, objects ObjectAccess, created, ownedFiles, updated []string) CompensationResult {
 	result := CompensationResult{Uncovered: updated}
-	for _, id := range created {
-		deleteOne(id, objects, &result)
-	}
-	for _, id := range ownedFiles {
+	remaining := append(append([]string(nil), created...), ownedFiles...)
+	for i, id := range remaining {
+		// A3: the context is a real bound between deletes (each individual
+		// DeleteObject still has no ctx — pre-existing seam limitation).
+		// Everything not reached is leaked, loudly, so the run dir is kept
+		// and the next start retries.
+		if err := ctx.Err(); err != nil {
+			left := len(remaining) - i
+			result.Leaked += left
+			result.Issues = append(result.Issues, importv2.Issue{
+				Severity: importv2.SeverityWarning,
+				Code:     importv2.IssueStoreError,
+				Message:  fmt.Sprintf("compensation interrupted with %d deletes remaining", left),
+				Err:      err,
+			})
+			return result
+		}
 		deleteOne(id, objects, &result)
 	}
 	return result

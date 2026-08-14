@@ -65,6 +65,8 @@ type fakeObjects struct {
 	objects map[string]smartblock.SmartBlock
 	deleted []string
 	failIds map[string]error
+	// onDelete fires after a successful delete (compensation-bounds tests).
+	onDelete func(id string)
 }
 
 func (f *fakeObjects) GetObject(ctx context.Context, objectId string) (smartblock.SmartBlock, error) {
@@ -84,6 +86,9 @@ func (f *fakeObjects) DeleteObject(objectId string) error {
 		return err
 	}
 	f.deleted = append(f.deleted, objectId)
+	if f.onDelete != nil {
+		f.onDelete(objectId)
+	}
 	return nil
 }
 

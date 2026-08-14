@@ -23,8 +23,18 @@ func TestClaims(t *testing.T) {
 			{SourceKey: "page-2", ObjectId: "obj-2", Matched: true}, // dedup match: no payload
 		}))
 
-		// then: the minted claim is deletable-if-created, the matched one is not
+		// then: before materialization begins, claims are pure intent —
+		// nothing enters the compensation view (A1)
 		inputs, err := store.CompensationInputs(ctx)
+		require.NoError(t, err)
+		assert.Empty(t, inputs.Created)
+		assert.Empty(t, inputs.Updated)
+
+		// and: once pass 3 starts, the minted claim is the crash window of a
+		// possible create (deletable, not-found tolerated); matched stays out
+		// of the delete set
+		require.NoError(t, store.SetState(ctx, StateMaterializing))
+		inputs, err = store.CompensationInputs(ctx)
 		require.NoError(t, err)
 		assert.Equal(t, []string{"obj-1"}, inputs.Created,
 			"a minted claim is attributable from claim time (write-ahead intent)")

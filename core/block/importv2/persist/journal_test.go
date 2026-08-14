@@ -174,3 +174,41 @@ func TestCompensateIds(t *testing.T) {
 		assert.Equal(t, importv2.IssueStoreError, result.Issues[0].Code)
 	})
 }
+
+func TestCompensationBounded(t *testing.T) {
+	t.Run("a dead context stops compensation between deletes; the rest is leaked loudly", func(t *testing.T) {
+		// given — A3 (CONFIRMED): compensation ignored its context entirely,
+		// so the engine's timeout was dead code and Close's grace no bound.
+		ctx, cancel := context.WithCancel(context.Background())
+		objects := &fakeObjects{}
+		objects.onDelete = func(id string) {
+			if id == "obj-3" {
+				cancel() // dies after the first delete completes
+			}
+		}
+
+		// when
+		result := CompensateIds(ctx, objects,
+			[]string{"obj-3", "obj-2", "obj-1"}, []string{"file-1"}, nil)
+
+		// then
+		assert.Equal(t, 1, result.Compensated)
+		assert.Equal(t, 3, result.Leaked, "everything not reached counts leaked")
+		require.NotEmpty(t, result.Issues)
+	})
+
+	t.Run("an already-dead context leaks everything and touches nothing", func(t *testing.T) {
+		// given
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		objects := &fakeObjects{}
+
+		// when
+		result := CompensateIds(ctx, objects, []string{"a", "b"}, []string{"f"}, nil)
+
+		// then
+		assert.Empty(t, objects.deleted)
+		assert.Zero(t, result.Compensated)
+		assert.Equal(t, 3, result.Leaked)
+	})
+}

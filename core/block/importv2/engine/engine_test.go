@@ -349,8 +349,9 @@ func newEngineFixture() *engineFixture {
 }
 
 type deleterFake struct {
-	mu      sync.Mutex
-	deleted []string
+	mu       sync.Mutex
+	deleted  []string
+	panicIds map[string]bool
 }
 
 func (d *deleterFake) GetObject(ctx context.Context, objectId string) (smartblock.SmartBlock, error) {
@@ -362,6 +363,9 @@ func (d *deleterFake) GetObjectByFullID(ctx context.Context, id domain.FullID) (
 }
 
 func (d *deleterFake) DeleteObject(objectId string) error {
+	if d.panicIds[objectId] {
+		panic("injected delete panic: " + objectId)
+	}
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.deleted = append(d.deleted, objectId)
@@ -743,6 +747,30 @@ func TestRunStopClassification(t *testing.T) {
 		case <-time.After(5 * time.Second):
 			t.Fatal("run did not stop")
 		}
+	})
+}
+
+func TestCompensationEvidence(t *testing.T) {
+	t.Run("a panic inside compensation reports leaked, never a clean zero", func(t *testing.T) {
+		// given — A2 (CONFIRMED regression): the re-entrancy guard returned
+		// silently with Leaked=0, so finishRun's leak gate failed and the
+		// run dir was DROPPED while its objects remained in the space.
+		fx := newEngineFixture()
+		deleter := fx.deps.Objects.(*deleterFake)
+		deleter.panicIds = map[string]bool{"id-b.md": true}
+		fx.persister.failKeys["bad.md"] = assert.AnError
+		fx.persister.delayKeys = map[string]time.Duration{"bad.md": 100 * time.Millisecond}
+		converter := &scriptConverter{objects: []*importv2.Object{
+			pageObj("a.md", false), pageObj("b.md", false), pageObj("bad.md", false),
+		}}
+
+		// when: the abort compensates; deleting id-b.md panics mid-pass
+		result := Run(context.Background(), importv2.Request{Mode: importv2.ModeAllOrNothing}, converter, fx.deps)
+
+		// then
+		require.Error(t, result.Err)
+		assert.Positive(t, result.Leaked,
+			"an incomplete compensation must report leaked so the dir is kept")
 	})
 }
 

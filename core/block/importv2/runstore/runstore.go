@@ -81,11 +81,18 @@ type Manifest struct {
 	PathIndex      int
 	Converter      string
 	AppVersion     string
+	// MaterializeStarted is STICKY: set the moment the run enters pass 3
+	// and never cleared by later transitions (suspend overwrites State, not
+	// this). It is the compensation-scope switch — before it, claims are
+	// pure intent and nothing exists in the space to delete (A1).
+	MaterializeStarted bool
 }
 
 // CompensationInputs is the frozen-core view: exactly what compensation
-// needs, ordered newest-first (matching the in-memory journal's delete
-// order), readable against any schema version by the §4.4 freeze policy.
+// needs, ordered by rank descending — which is FIRST-WRITE order reversed
+// (claim order once claims write rows, effect order otherwise), not strict
+// persist order — readable against any schema version by the §4.4 freeze
+// policy.
 type CompensationInputs struct {
 	Created    []string // run-created object ids, newest first
 	OwnedFiles []string // run-uploaded file object ids (pre-existing excluded), newest first
@@ -345,6 +352,9 @@ func (s *Store) SetState(ctx context.Context, state State) error {
 		return err
 	}
 	m.State = state
+	if state == StateMaterializing {
+		m.MaterializeStarted = true
+	}
 	m.UpdatedAt = time.Now().Truncate(time.Second)
 	return s.writeManifest(ctx, m)
 }
@@ -500,12 +510,26 @@ type rankedId struct {
 // skipped, never fatal (a damaged row must not block cleaning up the rest).
 func (s *Store) CompensationInputs(ctx context.Context) (CompensationInputs, error) {
 	var inputs CompensationInputs
+	// A1: pass-1 claims are pure intent. Before materialization begins,
+	// nothing exists in the space — rows still in the claimed status must
+	// not enter the delete set (a suspended 20k-page crawl must sweep to
+	// ZERO deletes). Once pass 3 has started (the sticky manifest marker),
+	// a still-claimed row IS the crash window of a possible create and is
+	// deleted with not-found tolerance.
+	manifest, err := s.Manifest(ctx)
+	if err != nil {
+		return CompensationInputs{}, fmt.Errorf("read manifest for compensation scope: %w", err)
+	}
+	deleteClaimed := manifest.MaterializeStarted
 	var created []rankedId
-	err := s.scan(ctx, s.entries, func(v *anyenc.Value) error {
+	err = s.scan(ctx, s.entries, func(v *anyenc.Value) error {
 		objectId := string(v.GetStringBytes("objectId"))
 		mode := string(v.GetStringBytes("mode"))
 		if objectId == "" || mode == "" {
 			return fmt.Errorf("row %q: missing objectId or mode", v.GetStringBytes("id"))
+		}
+		if string(v.GetStringBytes("status")) == statusClaimed && !deleteClaimed {
+			return nil
 		}
 		switch mode {
 		case modeMatched:
@@ -633,6 +657,7 @@ func marshalManifest(arena *anyenc.Arena, m Manifest) *anyenc.Value {
 	obj.Set("pathIndex", arena.NewNumberInt(m.PathIndex))
 	obj.Set("converter", arena.NewString(m.Converter))
 	obj.Set("appVersion", arena.NewString(m.AppVersion))
+	obj.Set("materializeStarted", arena.NewBool(m.MaterializeStarted))
 	return obj
 }
 
@@ -653,5 +678,7 @@ func unmarshalManifest(v *anyenc.Value) Manifest {
 		PathIndex:      v.GetInt("pathIndex"),
 		Converter:      string(v.GetStringBytes("converter")),
 		AppVersion:     string(v.GetStringBytes("appVersion")),
+
+		MaterializeStarted: v.GetBool("materializeStarted"),
 	}
 }
