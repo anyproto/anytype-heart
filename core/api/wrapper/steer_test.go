@@ -131,9 +131,9 @@ func TestObjectRefSteering(t *testing.T) {
 	t.Run("a block reference in object says where a block goes", func(t *testing.T) {
 		fx := newFixture(t)
 		fx.seedSession("space1", Handle{N: 1, Id: "bafyobj1"})
-		// edit_text with no block locates it from the snippet: the object read
-		// is the call that 404s
-		fx.stub("GET /v2/spaces/space1/objects/767cb", 404, notFound("767cb"))
+		// edit_text with no block sends the id-less PATCH (the server locates,
+		// §8.43): the PATCH is the call that 404s on the bad object ref
+		fx.stub("PATCH /v2/spaces/space1/objects/767cb", 404, notFound("767cb"))
 
 		_, err := fx.Run(ctx, "edit_text", map[string]any{
 			"object": "767cb", "find": "Q3", "replace": "Q4",

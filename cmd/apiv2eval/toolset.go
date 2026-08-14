@@ -146,7 +146,8 @@ func newMCPToolset(ctx context.Context, runner *wrapper.Runner, tier wrapper.Tie
 // locateBlock would have derived from the snippet.
 //
 // The variants rewrite the tools/list ENTRY and nothing else. The same
-// Runner, the same locateBlock and the same validateArgs table execute every
+// Runner, the same server-side locator (§8.43 — resolution moved down from
+// the wrapper's locateBlock) and the same validateArgs table execute every
 // call, so a `block` a model sends under B1 is still accepted and still
 // works — the server's behaviour must be identical across arms or a
 // difference between them is not attributable to the surface. What the model

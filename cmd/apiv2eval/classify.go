@@ -112,9 +112,12 @@ const (
 	wasteReadBeforeSnippetEdit = "full_read_before_snippet_edit"
 )
 
-// locateBlock's two refusals, recognised by the product's own words. A
-// harness test drives the real wrapper into each one, so a rewording breaks
-// the test rather than silently zeroing the count.
+// The locator's two refusals, recognised by the product's own words. They
+// are produced by the SERVER (§8.43, v2/service/locator.go) and re-spelled
+// into the tool register by the wrapper (opsVocab: "retry with id naming"
+// → "retry with block naming"); a harness test drives the real wrapper
+// over server-shaped bodies, and the wording pins live where each half is
+// produced (v2/service/edit_test.go, wrapper/tools_smallmodel_test.go).
 const (
 	snippetNoMatchText   = "no block contains"
 	snippetAmbiguousText = "retry with block naming one of"

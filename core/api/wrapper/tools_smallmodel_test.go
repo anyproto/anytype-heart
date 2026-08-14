@@ -1,37 +1,47 @@
 package wrapper
 
-// tools_smallmodel_test.go — the §8.21 benchmark fixes: edit_text locating
-// its block from the find snippet (with the mandatory ambiguity refusals),
-// and case-folded type/property keys. Each behavior here was a measured
-// small-model failure: both benchmarked models routed around edit_text
-// because block was required, and every argument error in the run was a
+// tools_smallmodel_test.go — the §8.21 benchmark fixes: edit_text taking a
+// snippet instead of a required block (the locate now lives in the SERVER —
+// §8.43 moved it down a layer, retiring the wrapper's read-then-patch
+// TOCTOU; the wrapper's job is passing the op through id-less and
+// re-spelling the server's refusals in the tool register), and case-folded
+// type/property keys. Each behavior here was a measured small-model
+// failure: both benchmarked models routed around edit_text because block
+// was required, and every argument error in the run was a
 // naming/capitalisation guess.
 
 import (
 	"context"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// snippetDoc has three text blocks covering every locate case: "Q3" is
-// unique to e0001; "budget" appears in e0002 AND e0003 (two candidate
-// blocks); "todo" appears only in e0003 but twice there.
-const snippetDoc = `{"version":1,"type":"page","properties":{"name":"Plan"},"blocks":[` +
-	`{"id":"e0001","type":"heading1","text":"Q3 planning"},` +
-	`{"id":"e0002","type":"paragraph","text":"the draft budget is due"},` +
-	`{"id":"e0003","type":"paragraph","text":"todo todo budget"}]}`
+// The server-shaped locator refusals (locator.go), as the wire serves them.
+// The candidate ids are FULL stored ids — the applier's view is the
+// canonical document, and a full id is always a valid retry value.
+const (
+	locatorZeroBody = `{"status":404,"code":"not_found",` +
+		`"message":"no block contains \"Q9\" — copy the find text exactly, including inline markup (text is markdown source: ** [ ] etc. count)",` +
+		`"issues":[{"path":"ops[0].find","message":"the find text must appear in exactly one block for the locator to resolve",` +
+		`"hint":"GET the object with ?outline=true to list them, then copy the text exactly as a read serves it — or give the block id"}]}`
+	locatorAmbiguousBody = `{"status":400,"code":"ambiguous_input",` +
+		`"message":"\"budget\" appears in 2 blocks — retry with id naming one of:\n  block aaaaaaaaaaaaaaaaaaaae0002 (paragraph): \"the draft budget is due\"\n  block aaaaaaaaaaaaaaaaaaaae0003 (paragraph): \"todo todo budget\"",` +
+		`"issues":[{"path":"ops[0].find","message":"the find text appears in 2 blocks — a locator must identify exactly one",` +
+		`"hint":"add surrounding text to find until it appears in one block only, or give the block id"}]}`
+	locatorMultiOccurrenceBody = `{"status":400,"code":"validation_failed",` +
+		`"message":"found 2 matches for \"todo\" in block \"aaaaaaaaaaaaaaaaaaaae0003\" — provide more context to make the match unique, or set \"replace_all\": true",` +
+		`"issues":[{"path":"ops[0].find","message":"2 matches in the block's text"}]}`
+)
 
 func TestEditTextLocatesBlock(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("omitted block resolves from a snippet unique in the document", func(t *testing.T) {
+	t.Run("omitted block sends the op id-less — the server locates under its lock", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
 		fx.seedSession("space1", Handle{N: 1, Id: "bafyobj1"})
-		fx.stub("GET /v2/spaces/space1/objects/bafyobj1", 200, snippetDoc)
 		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 200, editOKBody)
 
 		// when: the turn-one call a small model can actually make — no block
@@ -39,19 +49,22 @@ func TestEditTextLocatesBlock(t *testing.T) {
 			"object": "1", "find": "Q3", "replace": "Q4",
 		})
 
-		// then
+		// then: ONE request total — the locate read is gone (it was a
+		// read-then-patch TOCTOU: the document could move between the GET
+		// and the PATCH; in-API resolution runs under the object lock)
 		require.NoError(t, err)
+		assert.Empty(t, fx.sent("GET /v2/spaces/space1/objects/bafyobj1"), "no client-side locate read")
 		patches := fx.sent("PATCH /v2/spaces/space1/objects/bafyobj1")
 		require.Len(t, patches, 1)
 		op := firstOp(t, patches[0])
-		assert.Equal(t, "e0001", op["id"], "the located block's served id is sent — the server resolves it")
+		assert.NotContains(t, op, "id", "id omitted — find IS the locator, resolved server-side")
 		assert.Equal(t, "Q3", op["find"])
 	})
 
-	t.Run("zero matches refuses and steers to read mode=outline", func(t *testing.T) {
+	t.Run("zero matches: the server's refusal arrives re-spelled for the tool register", func(t *testing.T) {
 		fx := newFixture(t)
 		fx.seedSession("space1", Handle{N: 1, Id: "bafyobj1"})
-		fx.stub("GET /v2/spaces/space1/objects/bafyobj1", 200, snippetDoc)
+		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 404, locatorZeroBody)
 
 		_, err := fx.Run(ctx, "edit_text", map[string]any{
 			"object": "1", "find": "Q9", "replace": "Q4",
@@ -59,17 +72,18 @@ func TestEditTextLocatesBlock(t *testing.T) {
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), `no block contains "Q9"`)
-		assert.Contains(t, err.Error(), "read with mode=outline")
+		assert.Contains(t, err.Error(), "read with mode=outline", "the REST outline steer is re-spelled (§8.34)")
+		assert.NotContains(t, err.Error(), "?outline=true", "no REST vocabulary reaches the model")
 		assert.Contains(t, err.Error(), "markdown source", "the snippet may have missed only because of markup")
-		assert.Empty(t, fx.sent("PATCH /v2/spaces/space1/objects/bafyobj1"), "a refusal never writes")
+		assert.Contains(t, err.Error(), "or pass block")
 	})
 
-	t.Run("several matching blocks refuse and LIST the candidates with context", func(t *testing.T) {
-		// the point of the fix: a silent wrong edit is far worse than a
-		// refusal — the candidates carry labels the retry can pass as block
+	t.Run("several matching blocks: the candidate list arrives with block as the retry slot", func(t *testing.T) {
+		// the point of the design: a silent wrong edit is far worse than a
+		// refusal — the candidates carry ids the retry can pass as block
 		fx := newFixture(t)
 		fx.seedSession("space1", Handle{N: 1, Id: "bafyobj1"})
-		fx.stub("GET /v2/spaces/space1/objects/bafyobj1", 200, snippetDoc)
+		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 400, locatorAmbiguousBody)
 
 		_, err := fx.Run(ctx, "edit_text", map[string]any{
 			"object": "1", "find": "budget", "replace": "plan",
@@ -77,32 +91,35 @@ func TestEditTextLocatesBlock(t *testing.T) {
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), `"budget" appears in 2 blocks`)
-		assert.Contains(t, err.Error(), "retry with block naming one of")
-		assert.Contains(t, err.Error(), "block e0002 (paragraph)")
-		assert.Contains(t, err.Error(), "block e0003 (paragraph)")
+		assert.Contains(t, err.Error(), "retry with block naming one of", "the op's id slot is re-spelled as block")
+		assert.Contains(t, err.Error(), "block aaaaaaaaaaaaaaaaaaaae0002 (paragraph)")
 		assert.Contains(t, err.Error(), "the draft budget is due", "context distinguishes the candidates")
-		assert.NotContains(t, err.Error(), "aaaabbbbccccddddeeee", "candidates use labels, never 24-hex ids")
-		assert.Empty(t, fx.sent("PATCH /v2/spaces/space1/objects/bafyobj1"), "a refusal never writes")
+		assert.Len(t, fx.sent("PATCH /v2/spaces/space1/objects/bafyobj1"), 1,
+			"a locator ambiguity is not the suffix-collision race — no rewrite retry fires")
+		assert.Empty(t, fx.sent("GET /v2/spaces/space1/objects/bafyobj1"),
+			"and no re-read either: with id absent there is nothing to rewrite")
 	})
 
-	t.Run("one block but several occurrences gets the more-context refusal", func(t *testing.T) {
-		// the existing must-occur-exactly-once rule, enforced during the
-		// locate so the model gets the tip without a wasted PATCH
+	t.Run("one block but several occurrences gets the more-context refusal, replace_all stripped", func(t *testing.T) {
+		// the existing must-occur-exactly-once rule, now enforced where the
+		// lock is — the server resolves the block and refuses from there;
+		// the replace_all escape names an argument edit_text does not take
+		// (§8.6), so opsVocab strips it as it always has
 		fx := newFixture(t)
 		fx.seedSession("space1", Handle{N: 1, Id: "bafyobj1"})
-		fx.stub("GET /v2/spaces/space1/objects/bafyobj1", 200, snippetDoc)
+		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 400, locatorMultiOccurrenceBody)
 
 		_, err := fx.Run(ctx, "edit_text", map[string]any{
 			"object": "1", "find": "todo", "replace": "done",
 		})
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), `found 2 matches for "todo" in block e0003`)
+		assert.Contains(t, err.Error(), `found 2 matches for "todo"`)
 		assert.Contains(t, err.Error(), "provide more context to make the match unique")
-		assert.Empty(t, fx.sent("PATCH /v2/spaces/space1/objects/bafyobj1"), "a refusal never writes")
+		assert.NotContains(t, err.Error(), "replace_all")
 	})
 
-	t.Run("an explicit block still skips the locate read entirely", func(t *testing.T) {
+	t.Run("an explicit block goes into the op's id and skips any locating", func(t *testing.T) {
 		fx := newFixture(t)
 		fx.seedSession("space1", Handle{N: 1, Id: "bafyobj1"})
 		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 200, editOKBody)
@@ -112,7 +129,9 @@ func TestEditTextLocatesBlock(t *testing.T) {
 		})
 
 		require.NoError(t, err)
-		assert.Empty(t, fx.sent("GET /v2/spaces/space1/objects/bafyobj1"), "no locate read when block is given")
+		assert.Empty(t, fx.sent("GET /v2/spaces/space1/objects/bafyobj1"))
+		op := firstOp(t, fx.sent("PATCH /v2/spaces/space1/objects/bafyobj1")[0])
+		assert.Equal(t, "e0002", op["id"])
 	})
 }
 
@@ -328,24 +347,6 @@ func TestPropertyKeyCaseFold(t *testing.T) {
 	})
 }
 
-func TestSnippetContext(t *testing.T) {
-	t.Run("short text passes whole", func(t *testing.T) {
-		assert.Equal(t, "the Q3 budget", snippetContext("the Q3 budget", "Q3"))
-	})
-	t.Run("long text windows with ellipses", func(t *testing.T) {
-		text := strings.Repeat("a", 100) + " needle " + strings.Repeat("b", 100)
-		got := snippetContext(text, "needle")
-		assert.True(t, strings.HasPrefix(got, "…"))
-		assert.True(t, strings.HasSuffix(got, "…"))
-		assert.Contains(t, got, "needle")
-		assert.Less(t, len(got), 80)
-	})
-	t.Run("never slices mid-rune", func(t *testing.T) {
-		text := strings.Repeat("é", 40) + "needle" + strings.Repeat("Ω", 40)
-		got := snippetContext(text, "needle")
-		assert.True(t, strings.HasPrefix(got, "…"))
-		for _, r := range got {
-			assert.NotEqual(t, '�', r, "excerpt must stay valid UTF-8")
-		}
-	})
-}
+// snippetContext's windowing tests moved to the server with the function
+// itself (v2/service/locator_test.go TestLocatorContext) — the locate is
+// no longer a wrapper concern.

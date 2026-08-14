@@ -6,12 +6,10 @@ package wrapper
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/url"
 	"strconv"
 	"strings"
-	"unicode/utf8"
 
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 )
@@ -414,123 +412,30 @@ func (r *Runner) runEditText(ctx context.Context, session *Session, args map[str
 	if err != nil {
 		return nil, err
 	}
-	find := strArg(args, "find")
-	blockRef := strArg(args, "block")
-	if blockRef == "" {
-		// block omitted (§8.21): locate it from the snippet — only when the
-		// snippet identifies exactly ONE block; anything else refuses with a
-		// repair tip, never guesses
-		blockRef, err = r.locateBlock(ctx, session, space, objectId, find)
-		if err != nil {
-			return nil, err
-		}
-	}
 	op := map[string]any{
 		"op":      "replaceText",
-		"id":      blockRef,
-		"find":    find,
+		"find":    strArg(args, "find"),
 		"replace": strArg(args, "replace"),
 	}
-	result, err := r.patchOps(ctx, session, space, objectId, op, []string{"id"})
+	// block omitted (§8.21): the op's id is omitted too, and the SERVER
+	// locates the block from the find snippet under the object lock
+	// (APIV2.md §8.43) — same one-match-or-refuse rule this function used
+	// to implement with its own GET, minus the read-then-patch TOCTOU (the
+	// document could move between the locate read and the PATCH). The
+	// refusals arrive server-shaped and steer.go/opsVocab re-spell them in
+	// the tool vocabulary. No ref field is passed when id is absent: the
+	// ambiguity retry has nothing to rewrite, so a locator ambiguity
+	// surfaces directly instead of costing a wasted re-read.
+	var refFields []string
+	if blockRef := strArg(args, "block"); blockRef != "" {
+		op["id"] = blockRef
+		refFields = []string{"id"}
+	}
+	result, err := r.patchOps(ctx, session, space, objectId, op, refFields)
 	if err != nil {
 		return nil, err
 	}
 	return &Result{Text: editSummary(targetLabel(session, strArg(args, "object")), result), JSON: result}, nil
-}
-
-// maxSnippetCandidates bounds how many candidate blocks an ambiguity
-// refusal lists.
-const maxSnippetCandidates = 8
-
-// locateBlock resolves edit_text's block from the find snippet when the
-// model omitted it (§8.21: a required block id is unknowable on turn one,
-// so small models routed around the tool and called read instead). The
-// ambiguity rule is the point of the feature: the snippet must identify
-// exactly ONE block — zero matches steer to read mode=outline, several
-// matching blocks list the candidates with context so the retry can pass
-// block explicitly, and several occurrences within the one block get the
-// same more-context refusal the explicit-block path earns from the server.
-// A silent wrong edit is far worse than any of these refusals.
-func (r *Runner) locateBlock(ctx context.Context, session *Session, spaceId, objectId, find string) (string, error) {
-	doc, err := r.client.raw(ctx, apiRequest{
-		method: "GET",
-		path:   "/v2/spaces/" + seg(spaceId) + "/objects/" + seg(objectId),
-	})
-	if err != nil {
-		return "", err
-	}
-	// the served ids ARE the reference vocabulary (the server labels minted
-	// ids itself), so the refusals below name blocks exactly as a read shows
-	// them, and the resolved id goes straight into the op
-	var envelope struct {
-		Blocks []struct {
-			Id   string `json:"id"`
-			Type string `json:"type"`
-			Text string `json:"text"`
-		} `json:"blocks"`
-	}
-	if err := json.Unmarshal(doc, &envelope); err != nil {
-		return "", fmt.Errorf("decode document: %w", err)
-	}
-	type candidate struct {
-		id, typ, text string
-		count         int
-	}
-	var candidates []candidate
-	for _, b := range envelope.Blocks {
-		if n := strings.Count(b.Text, find); n > 0 {
-			candidates = append(candidates, candidate{id: b.Id, typ: b.Type, text: b.Text, count: n})
-		}
-	}
-	switch len(candidates) {
-	case 0:
-		return "", fmt.Errorf("no block contains %q — run read with mode=outline to see the blocks, and copy the find text exactly as read shows it (text is markdown source: ** [ ] etc. count)", find)
-	case 1:
-		if c := candidates[0]; c.count > 1 {
-			return "", fmt.Errorf("found %d matches for %q in block %s — provide more context to make the match unique", c.count, find, c.id)
-		}
-		return candidates[0].id, nil
-	default:
-		var b strings.Builder
-		fmt.Fprintf(&b, "%q appears in %d blocks — retry with block naming one of:", find, len(candidates))
-		for i, c := range candidates {
-			if i == maxSnippetCandidates {
-				fmt.Fprintf(&b, "\n  … and %d more", len(candidates)-maxSnippetCandidates)
-				break
-			}
-			fmt.Fprintf(&b, "\n  block %s (%s): %q", c.id, c.typ, snippetContext(c.text, find))
-		}
-		return "", fmt.Errorf("%s", b.String())
-	}
-}
-
-// snippetContextWindow is how much surrounding text an ambiguity candidate
-// carries on each side of the snippet.
-const snippetContextWindow = 30
-
-// snippetContext excerpts the text around the snippet's first occurrence —
-// enough context to tell candidate blocks apart without dumping whole
-// blocks into the refusal.
-func snippetContext(text, find string) string {
-	idx := strings.Index(text, find)
-	start := idx - snippetContextWindow
-	prefix := "…"
-	if start <= 0 {
-		start, prefix = 0, ""
-	}
-	end := idx + len(find) + snippetContextWindow
-	suffix := "…"
-	if end >= len(text) {
-		end, suffix = len(text), ""
-	}
-	// never slice mid-rune: move both cuts forward to rune boundaries
-	for start < len(text) && !utf8.RuneStart(text[start]) {
-		start++
-	}
-	for end < len(text) && !utf8.RuneStart(text[end]) {
-		end++
-	}
-	return prefix + text[start:end] + suffix
 }
 
 func (r *Runner) runSetCell(ctx context.Context, session *Session, args map[string]any) (*Result, error) {

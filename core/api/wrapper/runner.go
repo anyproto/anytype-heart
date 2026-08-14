@@ -506,6 +506,10 @@ var opsVocab = []struct{ from, to string }{
 	// edit_text deliberately has no replace_all (§8.6) — the server's escape
 	// hint would steer the model into an argument the tool rejects
 	{`, or set "replace_all": true`, ""},
+	// the find-as-locator refusals (§8.43) name the op's id slot; the tool's
+	// slot is `block` — same §8.21-measured refusal, re-spelled
+	{"retry with id naming", "retry with block naming"},
+	{"or give the block id", "or pass block"},
 }
 
 // translateOpsError rewrites a *ToolError's text and issue paths from the op

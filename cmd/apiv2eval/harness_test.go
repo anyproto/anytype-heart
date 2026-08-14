@@ -27,6 +27,15 @@ type stubAPI struct {
 	// refuseFirstPatch answers the first PATCH with a C6 400 naming a path.
 	refuseFirstPatch bool
 	doc              string
+	// patchQueue scripts PATCH answers in order (e.g. the server's locator
+	// refusals, §8.43); when empty, the editOK default answers.
+	patchQueue []stubResponse
+}
+
+// stubResponse is one scripted HTTP answer.
+type stubResponse struct {
+	status int
+	body   string
 }
 
 func newStubAPI(doc string) *httptest.Server {
@@ -51,7 +60,16 @@ func (s *stubAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		s.mu.Lock()
 		first := len(s.patches) == 0
 		s.patches = append(s.patches, body.Ops...)
+		var scripted *stubResponse
+		if len(s.patchQueue) > 0 {
+			scripted, s.patchQueue = &s.patchQueue[0], s.patchQueue[1:]
+		}
 		s.mu.Unlock()
+		if scripted != nil {
+			w.WriteHeader(scripted.status)
+			fmt.Fprint(w, scripted.body)
+			return
+		}
 		if first && s.refuseFirstPatch {
 			w.WriteHeader(http.StatusBadRequest)
 			fmt.Fprint(w, `{"status":400,"code":"invalid_input","message":"block \"zz\" not found",`+
@@ -224,7 +242,9 @@ func TestTheEditTextArmsShareOneExecutor(t *testing.T) {
 			defer ts.close()
 			_ = ts.call(context.Background(), "find", map[string]any{"space": "space1", "query": "Quarterly"})
 
-			// when — no block: locateBlock resolves it from the snippet
+			// when — no block: the op goes out id-less and the SERVER locates
+			// the block from find, under its own lock (§8.43 — the wrapper's
+			// client-side locate and its read are gone)
 			out := ts.call(context.Background(), "edit_text",
 				map[string]any{"object": "1", "find": "Q3", "replace": "Q4"})
 
@@ -234,8 +254,9 @@ func TestTheEditTextArmsShareOneExecutor(t *testing.T) {
 				stub.mu.Lock()
 				defer stub.mu.Unlock()
 				require.Len(t, stub.patches, 1)
-				assert.Contains(t, string(stub.patches[0]), `"id":"d4e5f"`,
-					"every arm resolves the snippet to the same block, server-side")
+				assert.Contains(t, string(stub.patches[0]), `"find":"Q3"`)
+				assert.NotContains(t, string(stub.patches[0]), `"id"`,
+					"every arm sends the same id-less op — resolution is the server's")
 			}()
 
 			// and a block sent to the arm that does not publish one still
@@ -243,21 +264,40 @@ func TestTheEditTextArmsShareOneExecutor(t *testing.T) {
 			out = ts.call(context.Background(), "edit_text",
 				map[string]any{"object": "1", "find": "Q3", "replace": "Q4", "block": "d4e5f"})
 			assert.False(t, out.IsError, out.Text)
+			func() {
+				stub.mu.Lock()
+				defer stub.mu.Unlock()
+				require.Len(t, stub.patches, 2)
+				assert.Contains(t, string(stub.patches[1]), `"id":"d4e5f"`,
+					"an explicit block rides the op's id, on every arm")
+			}()
 		})
 	}
 }
 
-// locateBlock's refusals are recognised by the product's own words, so this
-// drives the real wrapper into each one rather than asserting on a string
-// the harness wrote. It is the price B1 pays for snippet-only location, and
-// a rewording must break a test, not zero a count.
+// The locator refusals are produced by the SERVER now (§8.43 —
+// v2/service/locator.go, re-spelled into the tool register by the
+// wrapper's opsVocab/restVocab), so this drives the real wrapper over
+// stubbed server refusals whose bodies mirror the server's wire shape.
+// The classifier phrases must match the text a model actually sees; the
+// end-to-end wording pins live where each half is produced —
+// v2/service/edit_test.go for the server texts, wrapper's
+// tools_smallmodel_test.go for the translation.
 func TestSnippetRefusalsAreCountedFromTheProductsOwnText(t *testing.T) {
-	// given — "Q3" is in two blocks of this document
-	const ambiguousDoc = `{"id":"obj1","blocks":[` +
-		`{"id":"a1b2c","type":"paragraph","text":"Revenue target for Q3 is 1.2M."},` +
-		`{"id":"d4e5f","type":"paragraph","text":"Q3 review is due."}]}`
+	// given — the server's two locator refusals, as locator.go serves them
+	// for a document where "Q3" is in two blocks and "Q9" in none
+	const ambiguousBody = `{"status":400,"code":"ambiguous_input",` +
+		`"message":"\"Q3\" appears in 2 blocks — retry with id naming one of:\n  block a1b2c (paragraph): \"Revenue target for Q3 is 1.2M.\"\n  block d4e5f (paragraph): \"Q3 review is due.\"",` +
+		`"issues":[{"path":"ops[0].find","message":"the find text appears in 2 blocks — a locator must identify exactly one","hint":"add surrounding text to find until it appears in one block only, or give the block id"}]}`
+	const noMatchBody = `{"status":404,"code":"not_found",` +
+		`"message":"no block contains \"Q9\" — copy the find text exactly, including inline markup (text is markdown source: ** [ ] etc. count)",` +
+		`"issues":[{"path":"ops[0].find","message":"the find text must appear in exactly one block for the locator to resolve","hint":"GET the object with ?outline=true to list them, then copy the text exactly as a read serves it — or give the block id"}]}`
+	stub := &stubAPI{doc: servedDoc, patchQueue: []stubResponse{
+		{status: http.StatusBadRequest, body: ambiguousBody},
+		{status: http.StatusNotFound, body: noMatchBody},
+	}}
 	client := wrapper.NewClient("http://stub", "key")
-	client.HTTP = &http.Client{Transport: &stubTransport{handler: &stubAPI{doc: ambiguousDoc}}}
+	client.HTTP = &http.Client{Transport: &stubTransport{handler: stub}}
 	ts, err := newMCPToolset(context.Background(), wrapper.NewRunner(client, wrapper.NewMemoryStore()),
 		wrapper.TierSmall, editTextNoBlock)
 	require.NoError(t, err)
