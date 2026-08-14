@@ -311,6 +311,19 @@ Two rules make the freeze bite in both directions (review hardening):
   `entries.status` passed the entire suite until this pin existed (confirmed by review).
   Fixture regeneration refuses to overwrite an existing fixture dir.
 
+**The writer obligation, exercised (v2, DM-2 review round — the precedent for the next new
+enum value).** `entries.mode: "derived"` rows whose status is still `claimed` must NOT be
+deleted: the id is deterministic, so the row may point at an EARLIER import's object. A v1
+reader's unrecognized-mode rule would delete exactly those rows — so the obligation applied
+MECHANICALLY and `SchemaVersion` became 2, even though at bump time the only v1 binaries
+were dev builds. That "only dev builds" observation was argued as a reason not to bump and
+was overruled: the contract's value is that it needs no case-by-case judgement, and the
+un-bumped failure mode (a v1 binary deleting rows that may belong to another import) is the
+actively harmful direction, while bumped, v1 sees `schemaVersion > ours` and hands off.
+Accepted cost, also per contract: v1 dirs are compensated rather than resumed by v2
+binaries ("resume only within a version"), now enforced at the sweep's resumable() gate and
+belt-checked in resume.Load, with a `frozen-v2` fixture pinned beside v1.
+
 ## 5. The write path — and each invariant it must preserve
 
 ### 5.1 Wiring

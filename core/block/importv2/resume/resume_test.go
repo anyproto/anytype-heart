@@ -3,6 +3,10 @@ package resume
 import (
 	"context"
 	"path/filepath"
+
+	anystore "github.com/anyproto/any-store"
+	"github.com/anyproto/any-store/anyenc"
+	"github.com/anyproto/any-store/query"
 	"testing"
 	"time"
 
@@ -79,6 +83,32 @@ func interruptedRun(t *testing.T) *runstore.Store {
 
 func TestLoad(t *testing.T) {
 	ctx := context.Background()
+
+	t.Run("a cross-version dir refuses to load", func(t *testing.T) {
+		// given — §4.4, live since the v2 bump: only the frozen compensation
+		// core is promised across versions, and Load rehydrates far more
+		// than the core. The belt behind the sweep's resumable() gate: any
+		// caller gets the refusal, and the dir routes to compensate-only.
+		store := interruptedRun(t)
+		db, err := anystore.Open(ctx, filepath.Join(store.Dir(), "run.db"), nil)
+		require.NoError(t, err)
+		coll, err := db.Collection(ctx, "manifest")
+		require.NoError(t, err)
+		_, err = coll.UpsertId(ctx, "manifest", query.ModifyFunc(
+			func(a *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
+				v.Set("schemaVersion", a.NewNumberInt(runstore.SchemaVersion-1))
+				return v, true, nil
+			}))
+		require.NoError(t, err)
+		require.NoError(t, db.Close())
+
+		// when
+		_, err = Load(ctx, store)
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "cannot be resumed")
+	})
 
 	t.Run("the restart seed is a pure function of the ledger", func(t *testing.T) {
 		// given

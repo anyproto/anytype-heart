@@ -2,6 +2,7 @@ package runstore
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sync/atomic"
@@ -535,11 +536,17 @@ func TestRunsRoot(t *testing.T) {
 // forever. The fixture is a real store committed under testdata; generation
 // (RUNSTORE_UPDATE_FIXTURE=1) REFUSES to overwrite an existing fixture —
 // the pin is only ever created once per schema version, in a NEW dir.
+// frozenFixtureVersions lists every committed freeze pin. Each schema
+// version gets its OWN dir, created once and never regenerated (v2:
+// SchemaVersion bumped because derived-claimed rows must not be deleted by
+// v1 readers — §4.4's writer obligation, honoured mechanically).
+var frozenFixtureVersions = []int{1, 2}
+
 func TestFrozenCoreFixture(t *testing.T) {
 	ctx := context.Background()
-	fixtureDir := filepath.Join("testdata", "frozen-v1")
 
 	if os.Getenv("RUNSTORE_UPDATE_FIXTURE") == "1" {
+		fixtureDir := filepath.Join("testdata", fmt.Sprintf("frozen-v%d", SchemaVersion))
 		if _, err := os.Stat(fixtureDir); err == nil {
 			t.Fatalf("refusing to overwrite %s: the freeze pin must never be regenerated in place — a failing freeze test means the CODE broke the freeze; a new schema version gets a NEW fixture dir", fixtureDir)
 		}
@@ -557,26 +564,32 @@ func TestFrozenCoreFixture(t *testing.T) {
 		require.NoError(t, os.RemoveAll(filepath.Join(fixtureDir, "spill")))
 	}
 
-	// The committed fixture is read-only for the test: copy it aside so
-	// opening (which may write WAL/sentinel files) never dirties testdata.
-	workDir := filepath.Join(t.TempDir(), "frozen-v1")
-	copyDir(t, fixtureDir, workDir)
+	for _, version := range frozenFixtureVersions {
+		t.Run(fmt.Sprintf("v%d stays compensable", version), func(t *testing.T) {
+			// The committed fixture is read-only for the test: copy it aside
+			// so opening (which may write WAL/sentinel files) never dirties
+			// testdata.
+			name := fmt.Sprintf("frozen-v%d", version)
+			workDir := filepath.Join(t.TempDir(), name)
+			copyDir(t, filepath.Join("testdata", name), workDir)
 
-	store, err := Open(ctx, workDir)
-	require.NoError(t, err)
-	defer store.Close()
+			store, err := Open(ctx, workDir)
+			require.NoError(t, err)
+			defer store.Close()
 
-	manifest, err := store.Manifest(ctx)
-	require.NoError(t, err)
-	assert.Equal(t, 1, manifest.SchemaVersion)
-	assert.Equal(t, StateCancelling, manifest.State)
-	assert.Equal(t, "space-1", manifest.SpaceId)
+			manifest, err := store.Manifest(ctx)
+			require.NoError(t, err)
+			assert.Equal(t, version, manifest.SchemaVersion)
+			assert.Equal(t, StateCancelling, manifest.State)
+			assert.Equal(t, "space-1", manifest.SpaceId)
 
-	inputs, err := store.CompensationInputs(ctx)
-	require.NoError(t, err)
-	assert.Equal(t, []string{"obj-2", "obj-1"}, inputs.Created)
-	assert.Equal(t, []string{"file-obj-1"}, inputs.OwnedFiles)
-	assert.Equal(t, []string{"obj-3"}, inputs.Updated)
+			inputs, err := store.CompensationInputs(ctx)
+			require.NoError(t, err)
+			assert.Equal(t, []string{"obj-2", "obj-1"}, inputs.Created)
+			assert.Equal(t, []string{"file-obj-1"}, inputs.OwnedFiles)
+			assert.Equal(t, []string{"obj-3"}, inputs.Updated)
+		})
+	}
 }
 
 // TestFrozenCoreRawFields pins presence AND anyenc type of every frozen
@@ -591,11 +604,14 @@ func TestFrozenCoreFixture(t *testing.T) {
 func TestFrozenCoreRawFields(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("the committed v1 fixture carries every frozen field", func(t *testing.T) {
-		workDir := filepath.Join(t.TempDir(), "frozen-v1")
-		copyDir(t, filepath.Join("testdata", "frozen-v1"), workDir)
-		assertFrozenFields(t, filepath.Join(workDir, "run.db"))
-	})
+	for _, version := range frozenFixtureVersions {
+		t.Run(fmt.Sprintf("the committed v%d fixture carries every frozen field", version), func(t *testing.T) {
+			name := fmt.Sprintf("frozen-v%d", version)
+			workDir := filepath.Join(t.TempDir(), name)
+			copyDir(t, filepath.Join("testdata", name), workDir)
+			assertFrozenFields(t, filepath.Join(workDir, "run.db"))
+		})
+	}
 
 	t.Run("today's writer still writes every frozen field", func(t *testing.T) {
 		dir := filepath.Join(t.TempDir(), "run-1")

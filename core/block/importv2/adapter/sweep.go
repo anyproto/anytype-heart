@@ -107,7 +107,17 @@ func sweepOneGuarded(ctx context.Context, dir string, objects persist.ObjectAcce
 // suspend BEFORE materialization began is not in the class (its crawl is
 // resumable only with DM-3's pass-2 seam) and keeps compensating —
 // trivially, to nothing.
+//
+// Resume also happens only WITHIN a schema version (§4.4: only the frozen
+// compensation core is promised across versions, and resume rehydrates far
+// more than the core). An older-schema dir falls through to the compensate
+// branch below, which reads only frozen fields — "resume is refused,
+// compensation is guaranteed". Newer-schema dirs never reach here (the
+// hands-off check above).
 func resumable(m runstore.Manifest) bool {
+	if m.SchemaVersion != runstore.SchemaVersion {
+		return false
+	}
 	switch m.State {
 	case runstore.StateFetched, runstore.StateMaterializing:
 		return true

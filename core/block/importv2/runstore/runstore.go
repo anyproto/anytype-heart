@@ -39,7 +39,17 @@ var log = logging.Logger("import-v2-runstore")
 // State, SpaceId}, entries.{id, objectId, mode, status, rank},
 // files.{id, objectId, status, preExisting} — may only ever gain siblings, so
 // CompensationInputs stays readable against any past version.
-const SchemaVersion = 1
+//
+// v2 (DM-2 review round): entries mode "derived" whose status is still
+// "claimed" must NOT be deleted — the id is deterministic, so the row may
+// point at an EARLIER import's object. A v1 reader's unrecognized-mode
+// rule would delete exactly those rows, so §4.4's writer obligation ("a
+// mode that must not be deleted cannot ride an old schemaVersion") applies
+// MECHANICALLY: the bump makes v1 binaries see schemaVersion > theirs and
+// hand off — the safe direction. The accepted cost: v1 dirs are
+// compensated rather than resumed by v2 binaries (§4.4: resume only
+// within a version; compensation forever).
+const SchemaVersion = 2
 
 // State is the manifest lifecycle state. The full enum is part of the v1
 // schema even though phase A's sweep treats every non-terminal state the

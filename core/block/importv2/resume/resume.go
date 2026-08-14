@@ -97,6 +97,14 @@ func Load(ctx context.Context, store *runstore.Store) (*State, error) {
 	if err != nil {
 		return nil, fmt.Errorf("read manifest: %w", err)
 	}
+	if manifest.SchemaVersion != runstore.SchemaVersion {
+		// The belt behind the sweep's resumable() gate (§4.4): resume only
+		// within a version — a cross-version load would interpret old rows
+		// under new rules. Any caller landing here routes the dir to the
+		// compensate-only path its version is promised.
+		return nil, fmt.Errorf("run schema v%d cannot be resumed by a v%d binary (compensation only)",
+			manifest.SchemaVersion, runstore.SchemaVersion)
+	}
 	rootSpec, _, err := store.ReadRootSpec(ctx)
 	if err != nil {
 		return nil, err

@@ -9,6 +9,9 @@ import (
 	"testing"
 	"time"
 
+	anystore "github.com/anyproto/any-store"
+	"github.com/anyproto/any-store/anyenc"
+	"github.com/anyproto/any-store/query"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -126,6 +129,56 @@ func TestSweepResumeAttemptCap(t *testing.T) {
 		assert.Equal(t, []string{"obj-1"}, deleter.deleted)
 		_, err = os.Stat(dir)
 		assert.True(t, os.IsNotExist(err))
+	})
+}
+
+// downgradeSchema rewrites a dir's manifest to an older schema version —
+// the shape a v(n-1) binary's dir has when a v(n) binary sweeps it.
+func downgradeSchema(t *testing.T, dir string, version int) {
+	t.Helper()
+	ctx := context.Background()
+	db, err := anystore.Open(ctx, filepath.Join(dir, "run.db"), nil)
+	require.NoError(t, err)
+	defer func() { require.NoError(t, db.Close()) }()
+	coll, err := db.Collection(ctx, "manifest")
+	require.NoError(t, err)
+	_, err = coll.UpsertId(ctx, "manifest", query.ModifyFunc(
+		func(a *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
+			v.Set("schemaVersion", a.NewNumberInt(version))
+			return v, true, nil
+		}))
+	require.NoError(t, err)
+}
+
+func TestSweepRefusesCrossVersionResume(t *testing.T) {
+	t.Run("an older-schema dir is compensated, never resumed", func(t *testing.T) {
+		// given — §4.4's 'schemaVersion < ours ⇒ resume is refused,
+		// compensation is guaranteed', live for the first time now that
+		// SchemaVersion moved past 1: resume rehydrates far more than the
+		// frozen core, and only the frozen core is promised across
+		// versions. The v1 dir must go straight to the compensate branch
+		// (which reads only frozen fields), not through a resume that
+		// would interpret v1 rows under v2 rules.
+		fx, _ := resumeFixture(t)
+		dir := makeResumableRun(t, runstore.RunsRoot(fx.repo), "old-schema")
+		store, err := runstore.Open(context.Background(), dir)
+		require.NoError(t, err)
+		require.NoError(t, store.RecordCreated(context.Background(), "page-1", "obj-1"))
+		require.NoError(t, store.Close())
+		downgradeSchema(t, dir, runstore.SchemaVersion-1)
+		fx.service.resumeRunner = func(context.Context, *runstore.Store, runstore.Manifest) sweepOutcome {
+			t.Error("a cross-version dir must never reach the resume branch")
+			return sweepOutcome{}
+		}
+		deleter := fx.service.objects.(*sweepDeleter)
+
+		// when
+		fx.service.sweepAbandoned()
+
+		// then: compensated from the frozen core and disposed
+		assert.Contains(t, deleter.deleted, "obj-1")
+		_, statErr := os.Stat(dir)
+		assert.True(t, os.IsNotExist(statErr), "the compensated dir is disposed")
 	})
 }
 
