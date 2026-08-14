@@ -337,6 +337,10 @@ type Fixture struct {
 	Store    *objectstore.StoreFixture
 	Uploader *FakeUploader
 	Journal  *persist.Journal
+	// WrapSpool, when set, wraps the durable spool handed to the engine —
+	// the crash-injection point for mid-crawl kills (an append boundary is
+	// where a pass-2 suspend lands by construction).
+	WrapSpool func(engine.Spool) engine.Spool
 }
 
 func NewFixture(t *testing.T) *Fixture {
@@ -409,6 +413,10 @@ func (fx *Fixture) durableDeps(t *testing.T, store *runstore.Store, req importv2
 	)
 	spool, err := store.Spool(context.Background())
 	require.NoError(t, err)
+	var engineSpool engine.Spool = spool
+	if fx.WrapSpool != nil {
+		engineSpool = fx.WrapSpool(spool)
+	}
 	deps := engine.Deps{
 		Identity:   identitySvc,
 		Persister:  persister,
@@ -417,7 +425,7 @@ func (fx *Fixture) durableDeps(t *testing.T, store *runstore.Store, req importv2
 		Formats:    formats,
 		Keys:       keys,
 		Collection: stubCollectionFactory{},
-		Spool:      spool,
+		Spool:      engineSpool,
 		SpillDir:   store.SpillDir(),
 		OnFetched: func(rootSpec importv2.RootSpec) error {
 			return store.MarkFetched(context.Background(), rootSpec)
@@ -463,6 +471,27 @@ func (fx *Fixture) ResumeDurable(ctx context.Context, t *testing.T, dir string, 
 	persister.SetResumeHeal(state.Heal())
 	state.SeedJournal(deps.Journal)
 	return engine.Resume(ctx, req, deps, &state.Engine)
+}
+
+// ResumeCrawlDurable restarts a run killed MID-CRAWL (DM spec §8.3),
+// through the same glue the adapter's sweep uses: LoadCrawl, reclaimable
+// identity, a converter rebuilt over the live source, engine.ResumeCrawl.
+// Unlike ResumeDurable this needs the source — that is the class's defining
+// property, and why the manifest stores the request for it.
+func (fx *Fixture) ResumeCrawlDurable(ctx context.Context, t *testing.T, dir, root string, req importv2.Request) *importv2.Result {
+	t.Helper()
+	store, err := runstore.Open(context.Background(), dir)
+	require.NoError(t, err)
+	defer store.Close()
+	state, err := resume.LoadCrawl(ctx, store)
+	require.NoError(t, err)
+	src, err := source.Open(root)
+	require.NoError(t, err)
+	defer src.Close()
+	deps, _ := fx.durableDeps(t, store, req,
+		resume.ClaimLedgerOption(store), state.IdentityOption())
+	converter := markdown.New(src, markdown.Params{}, stubCollectionFactory{})
+	return engine.ResumeCrawl(ctx, req, converter, deps, &state.Engine)
 }
 
 // OriginalTimestamps maps object name → the persisted state's original
