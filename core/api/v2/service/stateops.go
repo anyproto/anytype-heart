@@ -1452,19 +1452,33 @@ func (a *v2StateApplier) applyReplaceText(op opReplaceText, opPath string) error
 	if err != nil {
 		return err
 	}
-	idx, err := a.resolveRef(doc, op.Id, opPath+".id")
-	if err != nil {
-		return err
-	}
 	if op.Find == "" {
 		return v2model.ValidationFailed("find must not be empty",
 			v2model.Issue{Path: opPath + ".find", Message: "give the exact text to replace"})
 	}
+	var idx int
+	if op.Id == "" {
+		// id omitted: find IS the locator (Wave 2.1a, §8.43) — resolved here,
+		// per op, against the live view, one match or refuse. doc is fresh
+		// under the object lock, so op i resolves against op i−1's edits.
+		idx, err = resolveByFind(doc, op.Find, opPath+".find")
+	} else {
+		idx, err = a.resolveRef(doc, op.Id, opPath+".id")
+	}
+	if err != nil {
+		return err
+	}
 	block := doc.blocks[idx]
+	// error texts name the block as the caller addressed it — the reference
+	// it sent, or the id the locator resolved (always a valid retry value)
+	ref := op.Id
+	if ref == "" {
+		ref = blockId(block)
+	}
 	typ := blockType(block)
 	if !anyblockjson.TextBlockType(typ) {
 		return v2model.ValidationFailed(
-			fmt.Sprintf("block %q is a %q block and has no text", op.Id, typ),
+			fmt.Sprintf("block %q is a %q block and has no text", ref, typ),
 			v2model.Issue{Path: opPath + ".id", Message: "replaceText only applies to text-bearing blocks"})
 	}
 	// the find/replace runs on the block's document text — markup source for
@@ -1475,11 +1489,14 @@ func (a *v2StateApplier) applyReplaceText(op opReplaceText, opPath string) error
 	switch {
 	case count == 0:
 		return v2model.ValidationFailed(
-			fmt.Sprintf("no match found for %q in block %q — read the block and copy the find text exactly, including inline markup", op.Find, op.Id),
+			fmt.Sprintf("no match found for %q in block %q — read the block and copy the find text exactly, including inline markup", op.Find, ref),
 			v2model.Issue{Path: opPath + ".find", Message: "0 matches in the block's text"})
 	case count > 1 && !op.ReplaceAll:
+		// the locator path lands here too: several occurrences WITHIN the one
+		// matched block are replace_all's (later nth's) territory (§5.3), not
+		// a resolution failure
 		return v2model.ValidationFailed(
-			fmt.Sprintf("found %d matches for %q in block %q — provide more context to make the match unique, or set \"replace_all\": true", count, op.Find, op.Id),
+			fmt.Sprintf("found %d matches for %q in block %q — provide more context to make the match unique, or set \"replace_all\": true", count, op.Find, ref),
 			v2model.Issue{Path: opPath + ".find", Message: fmt.Sprintf("%d matches in the block's text", count)})
 	}
 	if op.ReplaceAll {
@@ -1531,7 +1548,7 @@ func (a *v2StateApplier) applyReplaceText(op opReplaceText, opPath string) error
 		content.Latex.Text = text // literal (§8.4)
 	default:
 		return v2model.ValidationFailed(
-			fmt.Sprintf("block %q is a %q block and has no text", op.Id, typ),
+			fmt.Sprintf("block %q is a %q block and has no text", ref, typ),
 			v2model.Issue{Path: opPath + ".id", Message: "replaceText only applies to text-bearing blocks"})
 	}
 	a.st.Set(simple.New(m))

@@ -262,12 +262,12 @@ var v2OpSchemas = map[string]v2SchemaKind{
 	},
 	"replaceText": {
 		endpoint: v2OpsEndpoint,
-		schema: opSchema("replaceText", []string{"id", "find", "replace"},
-			`"id":{"$ref":"#/$defs/blockRef"}`,
-			`"find":{"type":"string","minLength":1,"maxLength":65536,"description":"exact text within this one block's text (inline markup included) — must match exactly once unless replace_all"}`,
+		schema: opSchema("replaceText", []string{"find", "replace"},
+			`"id":{"$ref":"#/$defs/blockRef","description":"optional — omit it and find locates the block: the find text must appear in exactly ONE block, or the op refuses (several matching blocks → the error lists candidate ids to retry with)"}`,
+			`"find":{"type":"string","minLength":1,"maxLength":65536,"description":"exact text within one block's text (inline markup included) — must match exactly once in that block unless replace_all; with id omitted it is also the locator and must identify exactly one block"}`,
 			`"replace":{"type":"string","maxLength":65536}`,
-			`"replace_all":{"type":"boolean","description":"default false"}`),
-		example: `{"op":"replaceText","id":"b2","find":"Q3","replace":"Q4"}`,
+			`"replace_all":{"type":"boolean","description":"default false — replaces every occurrence WITHIN the one matched block; it never widens the locator to several blocks"}`),
+		example: `{"op":"replaceText","find":"Q3","replace":"Q4"}`,
 	},
 	"setCell": {
 		endpoint: v2OpsEndpoint,

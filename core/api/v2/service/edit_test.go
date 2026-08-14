@@ -50,6 +50,17 @@ const editSoleParentDoc = `{"version":1,"id":"obj1","type":"page","blocks":[` +
 	`{"id":"blockParent1","type":"paragraph","text":"parent"},` +
 	`{"indent":1,"id":"blockChild1","type":"paragraph","text":"child"}]}`
 
+// editTwinDoc mirrors §5.4's locator eval doc: two sections whose body text
+// is IDENTICAL ("Budget: TBD" under both Planning and Execution). A fixture
+// whose blocks all have distinct text cannot catch the ambiguity refusal —
+// a resolver that guesses the first match would sail through it — so the
+// twin text is the point of this document.
+const editTwinDoc = `{"version":1,"id":"obj1","type":"page","blocks":[` +
+	`{"id":"secPlanning1","type":"heading1","text":"Planning"},` +
+	`{"id":"budgetPlan1","type":"paragraph","text":"Budget: TBD"},` +
+	`{"id":"secExec1","type":"heading1","text":"Execution"},` +
+	`{"id":"budgetExec1","type":"paragraph","text":"Budget: TBD"}]}`
+
 // editTableCellChildDoc holds a table whose only cell is the F10 array form:
 // a toggle cell block (no id — derived) with one minted-id DESCENDANT. Cell
 // descendants render as flat blocks, carry ids and are in the relabel pool —
@@ -791,6 +802,169 @@ func TestPatchObject(t *testing.T) {
 		require.NoError(t, err)
 		blocks := docBlocks(stateDoc(t, *captured))
 		assert.Equal(t, "the Q4 report and Q4 plan", blocks[3]["text"])
+	})
+
+	// ---- find-as-locator (Wave 2.1a, §8.43): id omitted, find locates ----
+
+	t.Run("locator: omitted id resolves the one block containing find", func(t *testing.T) {
+		// the fixture has FOUR blocks and the snippet lives in the LAST one —
+		// a resolver that guessed the first block (or any fixed index) would
+		// either error or edit the wrong text, and the full-texts assertion
+		// would show it
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
+		want := v2model.DiffStats{BlocksChanged: 1}
+
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"replaceText","find":"Q3 report","replace":"Q4 report"}`), "", false)
+
+		require.NoError(t, err)
+		assert.Equal(t, want, result.DiffStats)
+		assert.Equal(t, []string{"Section", "parent", "child", "the Q4 report and Q3 plan"},
+			blockTexts(docBlocks(stateDoc(t, *captured))), "the edit lands on the located block and nowhere else")
+	})
+
+	t.Run("locator: zero matches is a 404 steering to the outline read", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		fx.expectMutate(editRead(t, editBaseDoc))
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"replaceText","find":"Q9","replace":"Q4"}`), "", false)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusNotFound, apiErr.Status)
+		assert.Equal(t, v2model.CodeNotFound, apiErr.Code)
+		assert.Contains(t, apiErr.Message, `no block contains "Q9"`)
+		assert.Contains(t, apiErr.Message, "copy the find text exactly, including inline markup")
+		assert.Contains(t, apiErr.Message, "markdown source", "the snippet may have missed only because of markup")
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "ops[0].find", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Hint, "?outline=true")
+	})
+
+	t.Run("locator: several matching blocks refuse and list the candidates", func(t *testing.T) {
+		// twin fixture: two blocks carry IDENTICAL text, so a guessed first
+		// match would succeed here — the test demands the refusal instead,
+		// with both blocks named for the retry
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editTwinDoc))
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"replaceText","find":"Budget: TBD","replace":"Budget: $40k"}`), "", false)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
+		assert.Equal(t, v2model.CodeAmbiguousInput, apiErr.Code)
+		assert.Contains(t, apiErr.Message, `"Budget: TBD" appears in 2 blocks`)
+		assert.Contains(t, apiErr.Message, "retry with id naming one of")
+		assert.Contains(t, apiErr.Message, "block budgetPlan1 (paragraph)")
+		assert.Contains(t, apiErr.Message, "block budgetExec1 (paragraph)")
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "ops[0].find", apiErr.Issues[0].Path)
+		assert.Nil(t, *captured, "a refusal never writes")
+	})
+
+	t.Run("locator: several occurrences within the ONE matching block get the more-context refusal, not ambiguity", func(t *testing.T) {
+		// "Q3" appears twice in blockSibling2 and nowhere else — a fixture
+		// where the snippet appears once per block could not tell this class
+		// (within-block multiplicity, replace_all's territory) apart from the
+		// several-blocks ambiguity above
+		fx := newV2Fixture(t)
+		fx.expectMutate(editRead(t, editBaseDoc))
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"replaceText","find":"Q3","replace":"Q4"}`), "", false)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code, "within-block multiplicity is not ambiguous_input")
+		assert.Contains(t, apiErr.Message, `found 2 matches for "Q3" in block "blockSibling2"`,
+			"the refusal names the RESOLVED block — a valid retry value")
+		assert.Contains(t, apiErr.Message, "provide more context")
+		assert.Contains(t, apiErr.Message, `"replace_all": true`)
+	})
+
+	t.Run("locator: replace_all resolves the block and replaces within it", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"replaceText","find":"Q3","replace":"Q4","replace_all":true}`), "", false)
+
+		require.NoError(t, err)
+		blocks := docBlocks(stateDoc(t, *captured))
+		assert.Equal(t, "the Q4 report and Q4 plan", blocks[3]["text"])
+	})
+
+	t.Run("locator: replace_all never widens the locator across blocks", func(t *testing.T) {
+		// replace_all licenses every occurrence WITHIN the one matched block
+		// (§5.3); on the twin fixture the locator still refuses
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editTwinDoc))
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"replaceText","find":"Budget: TBD","replace":"Budget: $40k","replace_all":true}`), "", false)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, v2model.CodeAmbiguousInput, apiErr.Code)
+		assert.Nil(t, *captured, "a refusal never writes")
+	})
+
+	t.Run("locator mid-batch: op i resolves against op i-1's edits (in-place view path)", func(t *testing.T) {
+		// op 0 (itself a locator op, so the view is maintained in place — M7)
+		// INTRODUCES the only occurrence of "needle"; op 1 locates by it. A
+		// single-op test cannot catch mid-batch staleness: against the
+		// pre-batch document op 1 has zero matches and the batch would refuse.
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(
+			`{"op":"replaceText","find":"child","replace":"a needle appears"}`,
+			`{"op":"replaceText","find":"needle","replace":"pin"}`,
+		), "", false)
+
+		require.NoError(t, err)
+		assert.Equal(t, []string{"Section", "parent", "a pin appears", "the Q3 report and Q3 plan"},
+			blockTexts(docBlocks(stateDoc(t, *captured))))
+	})
+
+	t.Run("locator mid-batch: an earlier op's edit makes a later locator ambiguous — refuse, never the stale unique match", func(t *testing.T) {
+		// op 0 (a view-REBUILDING op, the other freshness path) writes "child"
+		// into a second block. Against the pre-batch document op 1's find is
+		// unique — so a resolver reading a stale view would silently edit
+		// blockChild1; the fresh view demands the ambiguity refusal naming
+		// both blocks. This is the silent-wrong-match failure the design
+		// exists to prevent, pinned in the direction that hurts.
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editBaseDoc))
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(
+			`{"op":"updateBlock","id":"blockParent1","set":{"text":"child of mine"}}`,
+			`{"op":"replaceText","find":"child","replace":"kid"}`,
+		), "", false)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, v2model.CodeAmbiguousInput, apiErr.Code)
+		assert.Contains(t, apiErr.Message, "appears in 2 blocks")
+		assert.Contains(t, apiErr.Message, "blockParent1")
+		assert.Contains(t, apiErr.Message, "blockChild1")
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "ops[1].find", apiErr.Issues[0].Path, "the failing op is the one addressed")
+		assert.Nil(t, *captured, "the whole batch refuses — nothing is committed")
+	})
+
+	t.Run("locator: a dry run resolves identically and commits nothing (C9)", func(t *testing.T) {
+		// no mutator expectation is wired at all — the dry run must never
+		// reach it; resolution runs at apply time on the private state
+		fx := newV2Fixture(t)
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").
+			Return(editRead(t, editBaseDoc), nil)
+
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"replaceText","find":"Q3 report","replace":"Q4 report"}`), "", true)
+
+		require.NoError(t, err)
+		assert.True(t, result.DryRun)
+		assert.Equal(t, v2model.DiffStats{BlocksChanged: 1}, result.DiffStats)
 	})
 
 	t.Run("setCell writes one cell", func(t *testing.T) {
@@ -1690,6 +1864,26 @@ func TestApplierRenderCounts(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, 2, applier.marshalCount,
 			"50 replaceText ops must cost begin + final renders only")
+	})
+
+	t.Run("a locator batch renders the document exactly twice too", func(t *testing.T) {
+		// find-as-locator resolution reads the SAME live view the op already
+		// holds (§8.43) — it must add zero renders, or a 512-op locator batch
+		// would re-inherit the O(ops × document) product M7 removed
+		fx := newV2Fixture(t)
+		applier := newApplier(t, fx, editBaseDoc)
+		_, err := applier.begin()
+		require.NoError(t, err)
+
+		op := json.RawMessage(`{"op":"replaceText","find":"report","replace":"report"}`)
+		for i := 0; i < 50; i++ {
+			require.NoError(t, applier.apply(i, op))
+		}
+		_, err = applier.currentDoc()
+
+		require.NoError(t, err)
+		assert.Equal(t, 2, applier.marshalCount,
+			"50 id-less replaceText ops must cost begin + final renders only")
 	})
 
 	t.Run("structural ops still rebuild the view per op", func(t *testing.T) {
