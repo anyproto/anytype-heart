@@ -2,6 +2,7 @@ package adapter
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
@@ -19,6 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/importv2/runstore"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 )
 
@@ -202,6 +204,51 @@ func TestCloseSuspendsSweepResume(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, runstore.StateSuspended, manifest.State)
 		assert.True(t, manifest.MaterializeStarted, "still in the resumable class")
-		assert.Equal(t, 1, manifest.ResumeAttempts)
+		assert.Zero(t, manifest.ResumeAttempts,
+			"an ORDERLY suspend refunds its attempt (review Class F: three clean "+
+				"quits during a long materialization exhausted the cap and the sweep "+
+				"compensated-and-dropped an import that never crashed)")
+	})
+}
+
+// cancellingSpaceGetter cancels the given cancel func on first use and then
+// fails — the shape of a Close landing inside the resume prologue.
+type cancellingSpaceGetter struct {
+	cancel context.CancelCauseFunc
+}
+
+func (g *cancellingSpaceGetter) Get(ctx context.Context, spaceId string) (clientspace.Space, error) {
+	g.cancel(importv2.ErrSuspended)
+	return nil, fmt.Errorf("get space: %w", context.Canceled)
+}
+
+func TestResumePrologueShutdown(t *testing.T) {
+	t.Run("a Close inside the prologue refunds the attempt and keeps calm", func(t *testing.T) {
+		// given — review Class F aggravation: the counter moves before
+		// Load and Get, so a Close in that window spent an attempt having
+		// done ZERO work; review Class G: the prologue exits carried no stop
+		// classification, so the shutdown read as a loud skipped-error.
+		fx, _ := resumeFixture(t)
+		dir := makeResumableRun(t, runstore.RunsRoot(fx.repo), "crashed")
+		ctx, cancel := context.WithCancelCause(context.Background())
+		defer cancel(nil)
+		fx.service.spaceService = &cancellingSpaceGetter{cancel: cancel}
+		store, err := runstore.OpenExclusive(context.Background(), dir)
+		require.NoError(t, err)
+		manifest, err := store.Manifest(context.Background())
+		require.NoError(t, err)
+
+		// when
+		outcome := fx.service.resumeRun(ctx, store, manifest)
+
+		// then: calm suspend-shaped outcome, dir kept, attempt refunded
+		assert.Equal(t, sweepResumedSuspended, outcome.Action)
+		assert.NoError(t, outcome.Err, "a shutdown is calm, not an error")
+		reopened, err := runstore.Open(context.Background(), dir)
+		require.NoError(t, err, "the dir must survive")
+		defer reopened.Close()
+		m, err := reopened.Manifest(context.Background())
+		require.NoError(t, err)
+		assert.Zero(t, m.ResumeAttempts, "zero work done, zero budget spent")
 	})
 }

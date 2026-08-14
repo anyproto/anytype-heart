@@ -370,9 +370,18 @@ func TestCreateGuardsItsDir(t *testing.T) {
 						return
 					default:
 					}
-					if _, err := os.Stat(dir); err == nil && !IsActive(dir) {
-						violated.Store(true)
-						return
+					// Read IsActive FIRST (review Class H: this test was the
+					// phase's second flake — Stat-then-IsActive raced benignly,
+					// Drop completing between the two reads). Once observed
+					// inactive, correct code has already unlinked (release
+					// strictly follows RemoveAll), so a dir that still Stats is
+					// a REAL violation — and the broken release-before-unlink
+					// shape is exactly what this ordering fires on.
+					if !IsActive(dir) {
+						if _, err := os.Stat(dir); err == nil {
+							violated.Store(true)
+							return
+						}
 					}
 				}
 			}()
@@ -453,9 +462,18 @@ func TestDropGuardOrder(t *testing.T) {
 						return
 					default:
 					}
-					if _, err := os.Stat(dir); err == nil && !IsActive(dir) {
-						violated.Store(true)
-						return
+					// Read IsActive FIRST (review Class H: this test was the
+					// phase's second flake — Stat-then-IsActive raced benignly,
+					// Drop completing between the two reads). Once observed
+					// inactive, correct code has already unlinked (release
+					// strictly follows RemoveAll), so a dir that still Stats is
+					// a REAL violation — and the broken release-before-unlink
+					// shape is exactly what this ordering fires on.
+					if !IsActive(dir) {
+						if _, err := os.Stat(dir); err == nil {
+							violated.Store(true)
+							return
+						}
 					}
 				}
 			}()

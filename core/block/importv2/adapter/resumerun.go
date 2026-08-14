@@ -35,17 +35,11 @@ func (s *service) resumeRun(ctx context.Context, store *runstore.Store, manifest
 	}
 	state, err := resume.Load(ctx, store)
 	if err != nil {
-		// The dir is kept: the attempt was spent, so a state that never
-		// loads reaches the compensation fallback within the cap.
-		_ = store.Close()
-		outcome.Action, outcome.Err = sweepSkippedError, fmt.Errorf("load resume state: %w", err)
-		return outcome
+		return s.resumePrologueExit(ctx, store, outcome, fmt.Errorf("load resume state: %w", err))
 	}
 	spc, err := s.spaceService.Get(ctx, manifest.SpaceId)
 	if err != nil {
-		_ = store.Close()
-		outcome.Action, outcome.Err = sweepSkippedError, fmt.Errorf("get space: %w", err)
-		return outcome
+		return s.resumePrologueExit(ctx, store, outcome, fmt.Errorf("get space: %w", err))
 	}
 	// The spool opens in the PROLOGUE: a transient failure here must keep
 	// the dir via the skipped-error path (retry next start, attempts-capped)
@@ -53,9 +47,7 @@ func (s *service) resumeRun(ctx context.Context, store *runstore.Store, manifest
 	// never started (review Class A, the spool-open sibling site).
 	spool, err := store.Spool(ctx)
 	if err != nil {
-		_ = store.Close()
-		outcome.Action, outcome.Err = sweepSkippedError, fmt.Errorf("open spool: %w", err)
-		return outcome
+		return s.resumePrologueExit(ctx, store, outcome, fmt.Errorf("open spool: %w", err))
 	}
 
 	request := importv2.Request{
@@ -103,6 +95,14 @@ func (s *service) resumeRun(ctx context.Context, store *runstore.Store, manifest
 	}
 	defer lc.release()
 	result := s.resumeEngine(runCtx, request, spc, lc, progress, state, spool)
+	if result.Suspended {
+		// An orderly suspend refunds its attempt (review Class F): the cap
+		// bounds CRASH loops, and a crash never reaches this settlement
+		// path. Before finishRun — it closes the store.
+		if err := store.RefundResumeAttempt(context.Background()); err != nil {
+			log.Errorf("refund resume attempt: %s", err)
+		}
+	}
 	s.finishRun(lc, result)
 
 	outcome.Result = persist.CompensationResult{Compensated: result.Compensated, Leaked: result.Leaked}
@@ -122,6 +122,32 @@ func (s *service) resumeRun(ctx context.Context, store *runstore.Store, manifest
 			s.createRootWidget(spc.DerivedIDs().Widgets, result)
 		}
 	}
+	return outcome
+}
+
+// resumePrologueExit settles a resume that failed before the engine
+// started. The stop classification reaches this exit like every other
+// (review Class G, the fourth-strike shape: a Load iterator dying on a
+// closing component surfaces sqlite 'interrupted', not a ctx error): a
+// shutdown-shaped exit is CALM — attempt refunded (zero work was done,
+// review Class F), dir kept, resumed-suspended — while a genuine failure
+// keeps the spent attempt so the cap still routes a never-loading dir to
+// compensation.
+func (s *service) resumePrologueExit(ctx context.Context, store *runstore.Store, outcome sweepOutcome, err error) sweepOutcome {
+	if ctx.Err() != nil {
+		if refundErr := store.RefundResumeAttempt(context.Background()); refundErr != nil {
+			log.Errorf("refund resume attempt: %s", refundErr)
+		}
+		if flushErr := store.Flush(context.Background()); flushErr != nil {
+			log.Errorf("flush after prologue suspend: %s", flushErr)
+		}
+		_ = store.Close()
+		log.With("dir", outcome.Dir).Warnf("resume interrupted by shutdown before it started: %s", err)
+		outcome.Action = sweepResumedSuspended
+		return outcome
+	}
+	_ = store.Close()
+	outcome.Action, outcome.Err = sweepSkippedError, err
 	return outcome
 }
 

@@ -207,6 +207,25 @@ func (s *Store) ReadRootSpec(ctx context.Context) (spec importv2.RootSpec, found
 	}, true, nil
 }
 
+// RefundResumeAttempt gives back one resume attempt (floor zero): an
+// ORDERLY suspend is not a crash, and the cap exists to bound crash loops
+// (review Class F: three clean quits during a long materialization
+// exhausted the cap and the sweep compensated-and-dropped an import that
+// never crashed). Crashes never refund — no settlement path runs — so the
+// crash-loop bound is untouched.
+func (s *Store) RefundResumeAttempt(ctx context.Context) error {
+	m, err := s.Manifest(ctx)
+	if err != nil {
+		return err
+	}
+	if m.ResumeAttempts == 0 {
+		return nil
+	}
+	m.ResumeAttempts--
+	m.UpdatedAt = nowSecond()
+	return s.writeManifest(ctx, m)
+}
+
 // MarkFetched records the pass-2/pass-3 boundary durably (DM spec §4.1 +
 // §6.4), in the one order that keeps every prefix resumable: RootSpec
 // first (a fetched manifest without it would restart pass 3 missing

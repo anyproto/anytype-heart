@@ -322,7 +322,13 @@ func IssueRecorder(store *runstore.Store) func(importv2.Issue) {
 		if issue.Err != nil {
 			record.Error = issue.Err.Error()
 		}
-		if err := store.AppendIssue(context.Background(), record); err != nil {
+		// Detached AND bounded (review Class G): this runs on worker and
+		// converter goroutines, so an unbounded write on a stalled disk
+		// would park them beyond Close's reach — the same P0-1 discipline
+		// as the claim ledger two functions up.
+		ctx, cancel := context.WithTimeout(context.Background(), ledgerWriteTimeout)
+		defer cancel()
+		if err := store.AppendIssue(ctx, record); err != nil {
 			log.Errorf("append issue to run ledger: %s", err)
 		}
 	}
