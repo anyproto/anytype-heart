@@ -310,6 +310,67 @@ func TestPersistCreate(t *testing.T) {
 	})
 }
 
+// resettableObject models the one real-smartblock behavior smarttest lacks:
+// ResetToVersion receiving a state (smarttest's is a silent no-op, which
+// would hide a heal that never applied anything).
+type resettableObject struct {
+	*smarttest.SmartTest
+	resetTo *state.State
+}
+
+func (r *resettableObject) ResetToVersion(s *state.State) error {
+	r.resetTo = s
+	return nil
+}
+
+func TestPersistHeal(t *testing.T) {
+	t.Run("a ledger-proven interrupted create heals by update, attributed created", func(t *testing.T) {
+		// given — DM spec §8.1 (08-13 §6.2, D4): on a resumed incarnation a
+		// tree written by an interrupted create may be HOLLOW (root change
+		// present, state never applied). Skip-and-read would keep it hollow
+		// and record ActionSkipped for an object this run made — wrong twice.
+		fx := newFixture(t)
+		fx.space.createErr = treestorage.ErrTreeExists
+		hollow := &resettableObject{SmartTest: smarttest.New("newId")}
+		fx.objects.objects["newId"] = hollow
+		fx.SetResumeHeal(func(sourceKey string) bool { return sourceKey == "docs/page.md" })
+
+		// when
+		outcome, err := fx.Persist(context.Background(), pageObject("docs/page.md"),
+			Target{Id: "newId", Payload: payloadFor("newId")}, fx.report)
+
+		// then: the imported state landed and the action says created — the
+		// ledger's mode proves this run made the tree, so compensation
+		// attribution stays exact
+		require.NoError(t, err)
+		assert.Equal(t, ActionCreated, outcome.Action)
+		require.NotNil(t, hollow.resetTo, "the heal must reset the tree to the imported state")
+		assert.Equal(t, "Page", hollow.resetTo.Details().GetString(bundle.RelationKeyName))
+		result := fx.journal.Compensate(context.Background(), fx.objects)
+		assert.Equal(t, 1, result.Compensated, "a healed create is journaled created (deletable)")
+	})
+
+	t.Run("without ledger proof the fallback stays skip-and-read", func(t *testing.T) {
+		// given — a deterministic derived id can collide with a genuinely
+		// pre-existing tree (index lag, the fallback's designed case); with
+		// no minted non-terminal row, healing would overwrite what might be
+		// user data. Bias: leak, never delete or rewrite user data.
+		fx := newFixture(t)
+		fx.space.createErr = treestorage.ErrTreeExists
+		fx.space.existing["newId"] = smarttest.New("newId")
+		fx.SetResumeHeal(func(string) bool { return false })
+
+		// when
+		outcome, err := fx.Persist(context.Background(), pageObject("docs/page.md"),
+			Target{Id: "newId", Payload: payloadFor("newId")}, fx.report)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, ActionSkipped, outcome.Action)
+		assert.Empty(t, fx.objects.deleted)
+	})
+}
+
 func TestPersistUpdate(t *testing.T) {
 	t.Run("revision guard skips objects newer than the import", func(t *testing.T) {
 		// given

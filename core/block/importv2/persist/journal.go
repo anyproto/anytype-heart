@@ -33,7 +33,12 @@ type EffectLedger interface {
 // additionally write through to durable storage; a ledger failure is
 // returned as a fatal issue (spec §7.2 — a run that cannot journal must not
 // keep creating objects) while the in-memory record is kept, so in-process
-// compensation still covers the effect that just happened.
+// compensation still covers the effect that just happened — on ABORT paths
+// only (spec §13 item 7): under a shutdown suspend, compensation is
+// deliberately skipped, so an effect whose detached write failed
+// (disk-full-shaped) is covered by neither record — one object per crash,
+// the same magnitude as the §5.3 post-upload window, disclosed rather than
+// closed.
 type Journal struct {
 	ledger EffectLedger // nil => volatile (tests, sync callers)
 

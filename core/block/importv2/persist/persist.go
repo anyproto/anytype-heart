@@ -104,6 +104,19 @@ type Persister struct {
 	journal   *Journal
 	checker   ObjectChecker
 	spillDir  string
+	heal      func(sourceKey string) bool
+}
+
+// SetResumeHeal installs the resumed-incarnation ErrTreeExists policy
+// (DM spec §8.1; 08-13 §6.2, D4): heal reports whether the ledger proves
+// THIS run created the colliding tree (a minted, non-terminal entry — an
+// interrupted create whose tree may be hollow). Proven trees heal by
+// update and record ActionCreated; everything else keeps the plain
+// skip-and-read fallback — a deterministic derived id can collide with a
+// genuinely pre-existing tree, and healing that would overwrite user data.
+// nil (first incarnations) keeps the fallback everywhere.
+func (p *Persister) SetResumeHeal(heal func(sourceKey string) bool) {
+	p.heal = heal
 }
 
 func New(
@@ -225,6 +238,13 @@ func (p *Persister) createObject(ctx context.Context, sourceKey string, target T
 		return Outcome{Id: target.Id, Action: ActionCreated, Details: details}, nil
 	}
 	if errors.Is(err, treestorage.ErrTreeExists) {
+		if p.heal != nil && p.heal(sourceKey) {
+			// Resumed incarnation, ledger-proven ours: the tree is an
+			// interrupted create and may be hollow — reset it to the
+			// imported state instead of silently keeping whatever half
+			// survived the crash.
+			return p.healInterruptedCreate(sourceKey, target.Id, doc)
+		}
 		// An index-invisible tree already exists (prior run, index lag):
 		// read it instead of failing so re-import stays idempotent.
 		var details *domain.Details
@@ -238,6 +258,30 @@ func (p *Persister) createObject(ctx context.Context, sourceKey string, target T
 		return Outcome{Id: target.Id, Action: ActionSkipped, Details: details}, nil
 	}
 	return Outcome{}, fmt.Errorf("create tree object %s: %w", target.Id, err)
+}
+
+// healInterruptedCreate applies the imported state over a tree this run's
+// previous incarnation created but may not have finished initializing, and
+// records the CREATE the crash interrupted: the ledger's mode proves the
+// run made the object, so ActionSkipped would corrupt compensation
+// attribution. No revision guard: the target is provably this run's own
+// unfinished object, not a matched existing one.
+func (p *Persister) healInterruptedCreate(sourceKey, objectId string, doc *state.State) (Outcome, error) {
+	var details *domain.Details
+	err := cache.Do(p.objects, objectId, func(sb smartblock.SmartBlock) error {
+		if err := history.ResetToVersion(sb, doc); err != nil {
+			return fmt.Errorf("reset to imported state: %w", err)
+		}
+		details = sb.CombinedDetails()
+		return nil
+	})
+	if err != nil {
+		return Outcome{}, fmt.Errorf("heal interrupted create %s: %w", objectId, err)
+	}
+	if err = p.journal.CreatedObject(sourceKey, objectId); err != nil {
+		return Outcome{}, err
+	}
+	return Outcome{Id: objectId, Action: ActionCreated, Details: details}, nil
 }
 
 // updateObject overwrites a matched existing object with the imported state

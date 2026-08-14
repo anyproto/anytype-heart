@@ -169,6 +169,13 @@ func Run(ctx context.Context, req importv2.Request, converter importv2.Converter
 
 	// Pass 3 — materialize: the existing streaming pipeline fed by the
 	// recording. rootSpec comes from pass 2; the replay's own is empty.
+	return r.materializeTail(runCtx, spool, rootSpec, reportTitle(rootSpec, converter))
+}
+
+// materializeTail is pass 3 through the exit: replay, finalize, reconcile,
+// report, finish. Shared verbatim between a first run and a resumed one so
+// the two paths cannot drift.
+func (r *run) materializeTail(runCtx context.Context, spool Spool, rootSpec importv2.RootSpec, title string) *importv2.Result {
 	r.streamPass(runCtx, &spoolReplayConverter{spool: spool})
 	if r.fatalIssue() != nil || runCtx.Err() != nil {
 		return r.finish(runCtx, importv2.RootSpec{})
@@ -179,9 +186,109 @@ func Run(ctx context.Context, req importv2.Request, converter importv2.Converter
 	if r.fatalIssue() != nil || runCtx.Err() != nil {
 		return r.finish(runCtx, importv2.RootSpec{})
 	}
-	r.emitReport(runCtx, reportClaimed, reportTitle(rootSpec, converter))
+	r.emitReport(runCtx, reportClaimed, title)
 	r.allStagesDone = true
 	return r.finish(runCtx, rootSpec)
+}
+
+// ResumeState seeds a pass-3 restart (DM spec §8.1): everything the run
+// carries across incarnations beyond what the identity service rehydrates.
+type ResumeState struct {
+	// RootSpec is pass 2's persisted output — a restart has no converter to
+	// re-produce it.
+	RootSpec importv2.RootSpec
+	// ConverterName is the report-title fallback (manifest.Converter).
+	ConverterName string
+	// SkipKeys are rows a previous incarnation finished (terminal entries,
+	// done files): the sink acknowledges and drops them — membership and
+	// progress, no persist. Derived-class rows are never skipped whatever
+	// this set says (their re-derivation reseeds the format/key registries
+	// and converges via dedup or deterministic derivation).
+	SkipKeys map[string]struct{}
+	// RootCollectionId, when non-empty, marks finalize complete in a
+	// previous incarnation: it is reused, never rebuilt (a rebuilt
+	// collection would mint a second one — the name is date-suffixed, so
+	// every build claims a fresh key).
+	RootCollectionId string
+	// ReportObjectId, when non-empty, marks the report page persisted in a
+	// previous incarnation. Issues the RESUMED incarnation adds do not
+	// reach that page (they still reach the result and the wire counts) —
+	// accepted: re-persisting the report would re-open the very
+	// crash-window class this phase closes.
+	ReportObjectId string
+	// Created/Updated continue the ledger's counts (§15.4: a restart
+	// resumes the numbers, not just the work). Skipped/Failed are not
+	// durable and restart at zero — recorded, not hidden.
+	Created int64
+	Updated int64
+	// Issues are the previous incarnations' retained issues: seeded
+	// directly (no re-report — the abort predicate and the durable ledger
+	// already saw them in their own incarnation).
+	Issues []importv2.Issue
+}
+
+// Resume is pass 3 restarted from the recorded spool: no pass 1, no
+// pass 2, no converter, no network — the run is a function of (run dir,
+// space). deps.Identity must be rehydrated (identity.WithRehydrated) and
+// deps.Spool must be the run's durable spool.
+func Resume(ctx context.Context, req importv2.Request, deps Deps, state *ResumeState) (result *importv2.Result) {
+	if deps.Reporter == nil {
+		deps.Reporter = noopReporter{}
+	}
+	if deps.Gauge == nil {
+		deps.Gauge = func(int) {}
+	}
+	runCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	r := &run{
+		req:        req,
+		deps:       deps,
+		cancel:     cancel,
+		failedKeys: map[string]struct{}{},
+		issuedKeys: map[string]struct{}{},
+		resume:     state,
+	}
+	defer func() {
+		if rec := recover(); rec != nil {
+			r.report(importv2.Fatal(importv2.IssueInvariant, panicError("import resume", rec)))
+			result = r.finish(runCtx, importv2.RootSpec{})
+		}
+	}()
+	if deps.Spool == nil {
+		r.report(importv2.Fatal(importv2.IssueInvariant, fmt.Errorf("resume requires the run's durable spool")))
+		return r.finish(runCtx, importv2.RootSpec{})
+	}
+	r.created.Store(state.Created)
+	r.updated.Store(state.Updated)
+	r.seedIssues(state.Issues)
+	title := "Import report — " + state.ConverterName
+	if state.RootSpec.CollectionName != "" {
+		title = "Import report — " + state.RootSpec.CollectionName
+	}
+	return r.materializeTail(runCtx, deps.Spool, state.RootSpec, title)
+}
+
+// seedIssues restores previous incarnations' issues without re-reporting
+// them: no OnIssue (the durable ledger already holds them), no abort
+// predicate (they aborted or not in their own incarnation — in particular
+// the interrupted incarnation's own cancelled fatal must not abort the
+// resumed one).
+func (r *run) seedIssues(issues []importv2.Issue) {
+	r.issueMu.Lock()
+	defer r.issueMu.Unlock()
+	for _, issue := range issues {
+		if len(r.issues) < importv2.IssueCap {
+			r.issues = append(r.issues, issue)
+		} else {
+			r.issuesDropped++
+		}
+		if issue.SourceKey != "" {
+			r.issuedKeys[issue.SourceKey] = struct{}{}
+		}
+		if issue.Severity >= importv2.SeverityWarning {
+			r.loudIssues++
+		}
+	}
 }
 
 // finish is the SINGLE exit classification (Invariant 1): every path out of
@@ -278,6 +385,10 @@ type run struct {
 	// shutdown suspend and was NOT compensated — carried out via
 	// Result.Suspended so the adapter never re-derives it from a context.
 	suspendedRun bool
+	// resume is non-nil on a resumed incarnation (engine.Resume): the sink
+	// consults its skip set, finalize and the report consult its recorded
+	// outcomes.
+	resume *ResumeState
 }
 
 // report is the single issue funnel: collects (capped) and applies the one
@@ -497,6 +608,13 @@ func (r *run) stageInterrupted(ctx context.Context, err error) bool {
 }
 
 func (r *run) finalize(ctx context.Context, rootSpec importv2.RootSpec) {
+	if r.resume != nil && r.resume.RootCollectionId != "" {
+		// A previous incarnation completed finalize: reuse its collection.
+		// Rebuilding would mint a SECOND one — the name is date-suffixed, so
+		// every build claims a fresh key (pinned by the finalize crash test).
+		r.rootCollectionId = r.resume.RootCollectionId
+		return
+	}
 	if r.req.NoCollection {
 		return
 	}
@@ -591,6 +709,11 @@ func (r *run) hasIssues() bool {
 // already exist — issues never shrink, so the report is then guaranteed to be
 // emitted (a claim without a later object would be a reconciliation gap).
 func (r *run) maybeClaimReport(ctx context.Context) bool {
+	if r.resume != nil && r.resume.ReportObjectId != "" {
+		// The report page persisted in a previous incarnation: reuse it.
+		r.reportObjectId = r.resume.ReportObjectId
+		return false
+	}
 	if !r.hasIssues() {
 		return false
 	}
@@ -609,6 +732,9 @@ func (r *run) maybeClaimReport(ctx context.Context) bool {
 // (§16 item 1). Its own failures degrade to warnings: a report problem must
 // never abort — or compensate away — an otherwise finished import.
 func (r *run) emitReport(ctx context.Context, claimed bool, title string) {
+	if r.resume != nil && r.resume.ReportObjectId != "" {
+		return // reused from a previous incarnation (see maybeClaimReport)
+	}
 	if !r.hasIssues() {
 		return
 	}

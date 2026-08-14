@@ -31,6 +31,10 @@ func (s *engineSink) Object(ctx context.Context, object *importv2.Object) error 
 		}
 	}
 
+	if s.skipResumed(object) {
+		return nil
+	}
+
 	w := work{object: object}
 	switch {
 	case isFileClass(object.SbType):
@@ -89,6 +93,35 @@ func (s *engineSink) Object(ctx context.Context, object *importv2.Object) error 
 		}
 		return ctx.Err()
 	}
+}
+
+// skipResumed drops a replayed row a previous incarnation already finished
+// (its ledger entry is terminal / its file row is done): the object is
+// acknowledged — root-collection membership recorded in stream order,
+// progress stepped — and NOT re-persisted or re-counted (the counters were
+// rehydrated from the ledger). Derived-class rows are exempt: their
+// re-derivation reseeds the format registry and key table, which are
+// process memory a crash lost, and converges via dedup or deterministic
+// derivation. File rows ride the rehydrated already-resolved future, so
+// RegisterFile is a no-op and later references resolve instantly.
+func (s *engineSink) skipResumed(object *importv2.Object) bool {
+	resume := s.run.resume
+	if resume == nil || isDerivedClass(object.SbType) {
+		return false
+	}
+	if _, skip := resume.SkipKeys[object.SourceKey]; !skip {
+		return false
+	}
+	if isFileClass(object.SbType) {
+		s.run.deps.Identity.RegisterFile(object.SourceKey)
+	}
+	if object.IsRootCandidate {
+		s.run.rootMu.Lock()
+		s.run.rootCandidates = append(s.run.rootCandidates, object.SourceKey)
+		s.run.rootMu.Unlock()
+	}
+	s.run.deps.Reporter.Step(1)
+	return true
 }
 
 // errIfAborting turns a reported per-object issue into a converter stop
