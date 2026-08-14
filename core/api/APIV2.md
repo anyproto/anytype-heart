@@ -6540,11 +6540,31 @@ change).
 
 **Deliberately not built** (attribution's, later — §11): the integration
 object + icons, `createdVia`/`lastModifiedVia`, StoreChange/ChatMessage
-fields, history surfacing, gRPC session labeling, any UI. Derived-tree
-objects (chats included) can never pass the root clause; their deletes
-refuse with the app named as the repair. The §13 caching suggestion is
-moot since the raw-name revision: the middleware installs the session's
-AppName itself — no derivation exists to cache.
+fields, history surfacing, gRPC session labeling, any UI. The §13 caching
+suggestion is moot since the raw-name revision: the middleware installs
+the session's AppName itself — no derivation exists to cache.
+
+**Correction (second review round, F1 — replaces this section's earlier
+"derived-tree objects can never pass the root clause", which was FALSE).**
+There are two derive payload shapes: `derivePersonalPayload` builds a
+SIGNED root with the account identity, and `objectcache/tree.go` picks it
+whenever `personalSpaceId == space.Id()` OR `params.UseAccountSignature` —
+which `objectcreator` sets for every FileObject, in every space. Executed:
+a file object on that path yields `accountMatch=true`. So the root clause
+alone does not exclude system/derived objects (and `IsDerived` is false on
+the personal shape — no cheap flag recovers it); latently, a derived tree
+whose root exists locally with no content change yet could take its FIRST
+content change — stamp included — from an API request (`cacheLoad` sets
+`IsNewObject` unconditionally; `smartBlock.Init` refuses only a non-empty
+doc; derived ids are deterministic). What the code now guarantees instead:
+`DeleteObject` runs a POSITIVE sbType allowlist — user content only
+(`Page`, `Template`, `FileObject`, `ChatDerivedObject`,
+`DiscussionObject`, derived from the creation surface's
+`objectTypeKeysToSmartBlockType`) — before the provenance read, so
+Workspace/Archive/Home/Widget/SpaceView/Participant/Profile/Date and every
+other system surface refuses regardless of what provenance says (the
+steered schema trio keeps its more useful per-route steer). Provenance
+answers "whose is it"; the allowlist answers "is this deletable content".
 
 ### 8.43 Wave 2.1a — find-as-locator on replaceText (2026-08-14 — decisions as built)
 

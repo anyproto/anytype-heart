@@ -515,9 +515,18 @@ dryRun)`):
 2. Resolve the object row; absent or `isDeleted` → 404 `not_found`.
 3. Layout steer: type/property/tag-option targets → 400 `validation_failed`
    naming `DELETE /v2/spaces/{id}/types/{key}` (resp. `/properties`) — those
-   routes exist and carry their own semantics; participants, space views and
-   other restriction-protected objects → let `ObjectSetIsArchived`'s
-   restriction error map to 403 `forbidden` with the restriction named.
+   routes exist and carry their own semantics.
+3a. **sbType allowlist (added by the second review round, F1 —
+   supersedes this step's earlier "let the restriction error handle system
+   objects").** User content only — `Page`, `Template`, `FileObject`, the
+   store-backed chat shapes — refuses everything else with 403 `forbidden`
+   BEFORE the provenance read. Load-bearing, not cosmetic: derived roots
+   are account-SIGNED on the personal-space derive path and for every
+   FileObject (`derivePersonalPayload`), so the root clause alone does not
+   exclude system objects, and a derived tree whose root exists locally
+   without a content change could even take its first content change from
+   an API request. Provenance answers "whose is it"; the allowlist answers
+   "is this deletable content".
 4. **Provenance check** (§10). Mismatch → 403 `not_created_by_this_key`.
 5. Already archived → 200 with `warnings: [{message: "already archived"}]`
    (idempotent no-op, consistent with C8 retry semantics).

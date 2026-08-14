@@ -23,7 +23,14 @@ import (
 //     change can predate its base snapshot;
 //  2. the root clause: the signed root header's identity must be this
 //     account (the §2-grade guarantee that this account created the
-//     object; derived trees have no root identity and fail here);
+//     object). NOT every derived tree fails here: BuildDerivedRoot emits
+//     unsigned roots, but derivePersonalPayload (objectcache/payload.go)
+//     signs derived roots with the ACCOUNT identity — taken whenever
+//     personalSpaceId == space.Id() or UseAccountSignature, and
+//     objectcreator sets UseAccountSignature for every FileObject — so
+//     accountMatch=true means "this account signed the root", never "this
+//     is created-tree user content". The DELETE route's sbType allowlist
+//     owns that exclusion;
 //  3. the key clause: the FIRST non-root change, in tree order, must carry
 //     the same identity, and its pb.Change.IntegrationName is the recorded
 //     provenance (the raw app name, served verbatim — the caller compares).
@@ -80,8 +87,11 @@ type provenanceTree interface {
 func creatorProvenanceFromTree(tree provenanceTree, ownAccount string) (accountMatch bool, integrationName string, err error) {
 	root := tree.UnmarshalledHeader()
 	if root == nil || root.Identity == nil || ownAccount == "" || root.Identity.Account() != ownAccount {
-		// derived trees (no signed root identity) and other members' objects:
-		// the root clause fails, the key clause is not consulted
+		// other members' objects and UNSIGNED derived roots: the root clause
+		// fails, the key clause is not consulted. Account-signed derived
+		// shapes (personal-space derives, FileObjects everywhere) pass this
+		// clause — see the header note; the caller's allowlist excludes the
+		// system ones.
 		return false, "", nil
 	}
 

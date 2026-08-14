@@ -13,6 +13,7 @@ package v2service
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
 
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
@@ -58,6 +59,25 @@ func (s *V2Service) DeleteObject(ctx context.Context, spaceId, objectId string, 
 	if err := steerSchemaDelete(read.SbType, spaceId); err != nil {
 		return nil, err
 	}
+	// POSITIVE user-content allowlist, BEFORE the provenance read: anything
+	// outside it refuses regardless of what provenance would say. This is
+	// load-bearing, not belt-and-braces — "derived trees can never pass the
+	// root clause" is FALSE: derivePersonalPayload signs derived roots with
+	// the account identity whenever personalSpaceId == space.Id() or
+	// UseAccountSignature (objectcache/tree.go:81), and objectcreator sets
+	// UseAccountSignature for EVERY FileObject (smartblock.go:143) — so a
+	// derived system object can show accountMatch=true, and a derived tree
+	// whose root exists locally with no content change yet could even take
+	// its first content change (stamp included) from an API request
+	// (cacheLoad sets IsNewObject unconditionally; smartBlock.Init refuses
+	// only a non-empty doc). Provenance answers "whose is it", never "is
+	// this deletable content" — this list answers that.
+	if !deletableSbType(read.SbType) {
+		return nil, v2model.NewError(http.StatusForbidden, v2model.CodeForbidden,
+			fmt.Sprintf("%s objects are not deletable through the API — DELETE serves user content only (pages, templates, files, chats). "+
+				"This is a system or derived surface; manage it in the Anytype app.", read.SbType.String()),
+			v2model.Issue{Path: "objectId", Message: fmt.Sprintf("object %s is a %s", objectId, read.SbType.String())})
+	}
 
 	// the provenance conjunction (§10): both clauses from validated storage
 	if err := s.checkDeleteProvenance(ctx, spaceId, objectId); err != nil {
@@ -89,11 +109,37 @@ func (s *V2Service) DeleteObject(ctx context.Context, spaceId, objectId string, 
 	return result, nil
 }
 
+// deletableSbType is the positive allowlist of what object-DELETE may ever
+// archive: user content only. Derived from the creation surface —
+// objectTypeKeysToSmartBlockType (core/block/object/objectcreator/
+// smartblock.go) produces exactly Page (every layout-based object: pages,
+// notes, tasks, bookmarks, sets, collections), Template, FileObject and the
+// store-backed chat shapes (ChatDerivedObject, DiscussionObject) as user
+// content; the schema trio it also produces is steered to its own routes
+// before this check. Everything else — Workspace, Archive, Home, Widget,
+// SpaceView, Participant, Profile, Date, the deprecated chat container,
+// tech-space shapes — is a system surface and refuses here, whatever its
+// root signature looks like. Note the chat shapes are allowlisted as user
+// content but still refuse at the provenance read today (their changes are
+// StoreChange, which carries no stamp): the list states the product
+// surface, provenance stays fail-closed.
+func deletableSbType(sbType model.SmartBlockType) bool {
+	switch sbType {
+	case model.SmartBlockType_Page,
+		model.SmartBlockType_Template,
+		model.SmartBlockType_FileObject,
+		model.SmartBlockType_ChatDerivedObject,
+		model.SmartBlockType_DiscussionObject:
+		return true
+	}
+	return false
+}
+
 // steerSchemaDelete refuses type/property/tag-option targets with the route
-// that owns their deletion. Participants, space views and other system
-// objects are NOT steered — they flow into the provenance check, which
-// refuses them (derived or foreign roots never match), and the message
-// names the app as the repair.
+// that owns their deletion — a steer is more useful than the allowlist's
+// generic refusal, so it runs first. Participants, space views and other
+// system objects are not steered: the deletableSbType allowlist refuses
+// them, and the message names the app as the repair.
 func steerSchemaDelete(sbType model.SmartBlockType, spaceId string) error {
 	switch sbType {
 	case model.SmartBlockType_STType:

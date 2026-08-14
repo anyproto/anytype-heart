@@ -159,6 +159,66 @@ func TestDeleteObject(t *testing.T) {
 		}
 	})
 
+	t.Run("system objects refuse whatever provenance would say — the F1 allowlist", func(t *testing.T) {
+		// The claim "derived trees can never pass the root clause" was false:
+		// derivePersonalPayload signs derived roots with the account identity
+		// (personal space; and UseAccountSignature = every FileObject), so
+		// provenance CAN answer accountMatch=true for system objects. These
+		// cases are deliberately NON-steered types — a test using only the
+		// steered trio would pass with no allowlist at all. No provenance
+		// expectation is set: reaching the read fails the test, which pins
+		// that the allowlist short-circuits BEFORE provenance; and under an
+		// allowlist revert the strict mocks fail on the unexpected calls.
+		for _, sbType := range []model.SmartBlockType{
+			model.SmartBlockType_Workspace,
+			model.SmartBlockType_Archive,
+			model.SmartBlockType_Home,
+			model.SmartBlockType_Widget,
+			model.SmartBlockType_SpaceView,
+			model.SmartBlockType_Participant,
+			model.SmartBlockType_ProfilePage,
+			model.SmartBlockType_Date,
+			model.SmartBlockType_ChatObjectDeprecated,
+		} {
+			fx := newV2Fixture(t)
+			fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, deleteObjId).Return(deleteRead(sbType), nil).Once()
+
+			_, err := fx.DeleteObject(callerCtx(), testSpaceId, deleteObjId, false)
+
+			var v2Err *v2model.Error
+			require.ErrorAs(t, err, &v2Err, sbType.String())
+			assert.Equal(t, http.StatusForbidden, v2Err.Status, sbType.String())
+			assert.Equal(t, v2model.CodeForbidden, v2Err.Code, sbType.String())
+			assert.Contains(t, v2Err.Message, "user content only", sbType.String())
+		}
+	})
+
+	t.Run("user-content types pass the allowlist — files and templates stay deletable", func(t *testing.T) {
+		// the other direction: an allowlist that quietly excluded FileObject
+		// (the very shape F1 found passing the root clause — account-signed
+		// derived roots) would break legitimate own-file deletion. Full
+		// provenance match → archive succeeds.
+		for _, sbType := range []model.SmartBlockType{
+			model.SmartBlockType_FileObject,
+			model.SmartBlockType_Template,
+		} {
+			fx := newV2Fixture(t)
+			fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, deleteObjId).Return(deleteRead(sbType), nil).Once()
+			fx.provenanceMock.EXPECT().CreatorProvenance(mock.Anything, testSpaceId, deleteObjId).Return(true, "Claude Desktop", nil).Once()
+			fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+				bundle.RelationKeyId:             domain.String(deleteObjId),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+			}})
+			fx.mwMock.On("ObjectSetIsArchived", mock.Anything, mock.Anything).Return(&pb.RpcObjectSetIsArchivedResponse{
+				Error: &pb.RpcObjectSetIsArchivedResponseError{Code: pb.RpcObjectSetIsArchivedResponseError_NULL},
+			}).Once()
+
+			_, err := fx.DeleteObject(callerCtx(), testSpaceId, deleteObjId, false)
+
+			require.NoError(t, err, sbType.String())
+		}
+	})
+
 	t.Run("no recorded key refuses — the legacy/app/import shape", func(t *testing.T) {
 		// same fixture as the allow case, ONLY the recorded name removed —
 		// so this refusal is attributable to the missing record, not to a
