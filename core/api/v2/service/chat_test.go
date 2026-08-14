@@ -746,7 +746,7 @@ func TestV2ToggleChatReaction(t *testing.T) {
 			bundle.RelationKeyId:             domain.String(testChatId),
 			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_chatDerived)),
 		}})
-		svc := NewV2Service(mwMock, nil, nil, nil, store, objectstore.TestTechSpaceId, "" /* no accountId */)
+		svc := NewV2Service(mwMock, nil, nil, nil, nil, store, objectstore.TestTechSpaceId, "" /* no accountId */)
 		msg := chatProtoMessage()
 		msg.Reactions = &model.ChatMessageReactions{Reactions: map[string]*model.ChatMessageReactionsIdentityList{
 			"👍": {Ids: []string{"someoneElse"}},

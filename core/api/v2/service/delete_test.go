@@ -1,0 +1,327 @@
+package v2service
+
+// DELETE /v2/spaces/{spaceId}/objects/{objectId} service tests
+// (APIV2_OBJECT_DELETE.md §15). The fixture discipline: deleteFixture wires
+// the FULL allow shape — live object, store row, matching provenance,
+// matching caller — and every refusal case flips exactly ONE input. The
+// success case is what makes each refusal meaningful: a fixture that can
+// only refuse cannot distinguish "refused because legacy" from "refused
+// because the check is broken". The ClientCommands mock is strict, so any
+// path that archives when it must not (an error path falling through to the
+// RPC) fails on the unexpected call, not silently.
+
+import (
+	"context"
+	"errors"
+	"net/http"
+	"testing"
+
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
+	"github.com/gogo/protobuf/types"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
+	apicore "github.com/anyproto/anytype-heart/core/api/core"
+	"github.com/anyproto/anytype-heart/core/api/util"
+	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
+)
+
+const deleteObjId = "objDel1"
+
+// callerCtx is the request context the auth middleware produces for a key
+// named "Claude Desktop" (slug claude-desktop).
+func callerCtx() context.Context {
+	return domain.CtxWithIntegrationKey(context.Background(), "claude-desktop")
+}
+
+// deleteRead is the live read of an ordinary deletable page.
+func deleteRead(sbType model.SmartBlockType) apicore.ObjectRead {
+	return apicore.ObjectRead{
+		SbType: sbType,
+		Snapshot: &model.SmartBlockSnapshotBase{
+			Details: &types.Struct{Fields: map[string]*types.Value{
+				"id":   pbtypes.String(deleteObjId),
+				"name": pbtypes.String("Doomed"),
+			}},
+			ObjectTypes: []string{"ot-page"},
+			Blocks:      []*model.Block{{Id: deleteObjId, Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}},
+		},
+		Heads: []string{"headA"},
+	}
+}
+
+// newDeleteFixture wires the COMPLETE allow shape; tests then break one
+// input each. recordedSlug parameterizes what provenance recorded.
+func newDeleteFixture(t *testing.T, accountMatch bool, recordedSlug string) *v2Fixture {
+	fx := newV2Fixture(t)
+	fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, deleteObjId).Return(deleteRead(model.SmartBlockType_Page), nil).Maybe()
+	fx.provenanceMock.EXPECT().CreatorProvenance(mock.Anything, testSpaceId, deleteObjId).Return(accountMatch, recordedSlug, nil).Maybe()
+	fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+		bundle.RelationKeyId:             domain.String(deleteObjId),
+		bundle.RelationKeyName:           domain.String("Doomed"),
+		bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+	}})
+	return fx
+}
+
+func requireNotCreatedByThisKey(t *testing.T, err error) *v2model.Error {
+	t.Helper()
+	var v2Err *v2model.Error
+	require.ErrorAs(t, err, &v2Err)
+	assert.Equal(t, http.StatusForbidden, v2Err.Status)
+	assert.Equal(t, v2model.CodeNotCreatedByThisKey, v2Err.Code)
+	// every ownership refusal carries the §9.5 probe hint
+	require.NotEmpty(t, v2Err.Issues)
+	assert.Contains(t, v2Err.Issues[0].Hint, "dry_run=true")
+	return v2Err
+}
+
+func TestDeleteObject(t *testing.T) {
+	t.Run("the allow shape archives", func(t *testing.T) {
+		// given: created by this account via this key — the ONE shape that
+		// may archive. This case is what gives every refusal below its
+		// meaning: the same fixture with one input flipped must refuse.
+		fx := newDeleteFixture(t, true, "claude-desktop")
+		fx.mwMock.On("ObjectSetIsArchived", mock.Anything, &pb.RpcObjectSetIsArchivedRequest{
+			ContextId: deleteObjId, IsArchived: true,
+		}).Return(&pb.RpcObjectSetIsArchivedResponse{
+			Error: &pb.RpcObjectSetIsArchivedResponseError{Code: pb.RpcObjectSetIsArchivedResponseError_NULL},
+		}).Once()
+		want := &v2model.CreateResult{Id: deleteObjId, Type: "page"}
+
+		// when
+		got, err := fx.DeleteObject(callerCtx(), testSpaceId, deleteObjId, false)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("unknown object is a 404", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "ghost").Return(apicore.ObjectRead{}, treestorage.ErrUnknownTreeId).Once()
+
+		_, err := fx.DeleteObject(callerCtx(), testSpaceId, "ghost", false)
+
+		var v2Err *v2model.Error
+		require.ErrorAs(t, err, &v2Err)
+		assert.Equal(t, http.StatusNotFound, v2Err.Status)
+	})
+
+	t.Run("a tombstoned row is a 404 even though its tree survives", func(t *testing.T) {
+		// given: the corpse shape — the live read still answers (derived
+		// trees survive deletion) but the row says isDeleted
+		fx := newDeleteFixture(t, true, "claude-desktop")
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:        domain.String(deleteObjId),
+			bundle.RelationKeyIsDeleted: domain.Bool(true),
+		}})
+
+		_, err := fx.DeleteObject(callerCtx(), testSpaceId, deleteObjId, false)
+
+		var v2Err *v2model.Error
+		require.ErrorAs(t, err, &v2Err)
+		assert.Equal(t, http.StatusNotFound, v2Err.Status)
+	})
+
+	t.Run("type and property targets are steered to their own routes", func(t *testing.T) {
+		// provenance mock deliberately has NO expectation here: the steer
+		// must fire BEFORE the provenance read, or a type created via this
+		// key would archive through the wrong route
+		cases := []struct {
+			sbType model.SmartBlockType
+			hint   string
+		}{
+			{model.SmartBlockType_STType, "/types/"},
+			{model.SmartBlockType_STRelation, "/properties/"},
+			{model.SmartBlockType_STRelationOption, "options"},
+		}
+		for _, tc := range cases {
+			fx := newV2Fixture(t)
+			fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, deleteObjId).Return(deleteRead(tc.sbType), nil).Once()
+
+			_, err := fx.DeleteObject(callerCtx(), testSpaceId, deleteObjId, false)
+
+			var v2Err *v2model.Error
+			require.ErrorAs(t, err, &v2Err)
+			assert.Equal(t, http.StatusBadRequest, v2Err.Status, tc.sbType.String())
+			assert.Equal(t, v2model.CodeValidationFailed, v2Err.Code, tc.sbType.String())
+			require.NotEmpty(t, v2Err.Issues, tc.sbType.String())
+			assert.Contains(t, v2Err.Issues[0].Hint, tc.hint, tc.sbType.String())
+		}
+	})
+
+	t.Run("no recorded key refuses — the legacy/app/import shape", func(t *testing.T) {
+		// same fixture as the allow case, ONLY the recorded slug removed —
+		// so this refusal is attributable to the missing record, not to a
+		// broken check (the fixture rule)
+		fx := newDeleteFixture(t, true, "")
+
+		_, err := fx.DeleteObject(callerCtx(), testSpaceId, deleteObjId, false)
+
+		v2Err := requireNotCreatedByThisKey(t, err)
+		assert.Contains(t, v2Err.Message, "no API key is recorded")
+		assert.Contains(t, v2Err.Message, "archive it in the Anytype app")
+	})
+
+	t.Run("a different integration's object refuses, naming both slugs", func(t *testing.T) {
+		fx := newDeleteFixture(t, true, "linear")
+
+		_, err := fx.DeleteObject(callerCtx(), testSpaceId, deleteObjId, false)
+
+		v2Err := requireNotCreatedByThisKey(t, err)
+		assert.Contains(t, v2Err.Message, `"linear"`)
+		assert.Contains(t, v2Err.Message, `"claude-desktop"`)
+	})
+
+	t.Run("another member's object refuses", func(t *testing.T) {
+		fx := newDeleteFixture(t, false, "")
+
+		_, err := fx.DeleteObject(callerCtx(), testSpaceId, deleteObjId, false)
+
+		v2Err := requireNotCreatedByThisKey(t, err)
+		assert.Contains(t, v2Err.Message, "another space member")
+	})
+
+	t.Run("a nameless caller can never delete, even its own output", func(t *testing.T) {
+		// recorded provenance exists; the CALLER has no slug (§5 empty
+		// AppName) — flip is on the caller side only
+		fx := newDeleteFixture(t, true, "claude-desktop")
+
+		_, err := fx.DeleteObject(context.Background(), testSpaceId, deleteObjId, false)
+
+		v2Err := requireNotCreatedByThisKey(t, err)
+		assert.Contains(t, v2Err.Message, "no recorded app name")
+		assert.Contains(t, v2Err.Message, `"claude-desktop"`)
+	})
+
+	t.Run("a provenance read failure refuses and never archives", func(t *testing.T) {
+		// fail-closed on the ERROR path: the strict mw mock has no
+		// ObjectSetIsArchived expectation, so falling through to the archive
+		// fails the test on the unexpected call
+		fx := newV2Fixture(t)
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, deleteObjId).Return(deleteRead(model.SmartBlockType_Page), nil).Once()
+		fx.provenanceMock.EXPECT().CreatorProvenance(mock.Anything, testSpaceId, deleteObjId).Return(false, "", errors.New("storage failure")).Once()
+
+		_, err := fx.DeleteObject(callerCtx(), testSpaceId, deleteObjId, false)
+
+		require.Error(t, err)
+		var v2Err *v2model.Error
+		assert.False(t, errors.As(err, &v2Err), "an infrastructure failure is a 500, not a shaped refusal")
+	})
+
+	t.Run("a nil provenance dependency refuses and never archives", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		fx.V2Service = NewV2Service(fx.mwMock, fx.readerMock, fx.creatorMock, fx.mutatorMock, nil, fx.objectStore, objectstore.TestTechSpaceId, testAccountId)
+		fx.registerSpace(t, testSpaceId)
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, deleteObjId).Return(deleteRead(model.SmartBlockType_Page), nil).Once()
+
+		_, err := fx.DeleteObject(callerCtx(), testSpaceId, deleteObjId, false)
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "not configured")
+	})
+
+	t.Run("already archived is an idempotent 200 with a warning", func(t *testing.T) {
+		// no ObjectSetIsArchived expectation: the no-op must not re-archive
+		fx := newDeleteFixture(t, true, "claude-desktop")
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:         domain.String(deleteObjId),
+			bundle.RelationKeyIsArchived: domain.Bool(true),
+		}})
+		want := &v2model.CreateResult{
+			Id: deleteObjId, Type: "page",
+			Warnings: []v2model.Issue{{Message: "already archived"}},
+		}
+
+		got, err := fx.DeleteObject(callerCtx(), testSpaceId, deleteObjId, false)
+
+		require.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("dry run allowed: full verdict, no archive", func(t *testing.T) {
+		// C9's real-not-writing assertion: allowed verdict, and the strict
+		// mw mock proves nothing was written
+		fx := newDeleteFixture(t, true, "claude-desktop")
+		want := &v2model.CreateResult{Id: deleteObjId, Type: "page", DryRun: true}
+
+		got, err := fx.DeleteObject(callerCtx(), testSpaceId, deleteObjId, true)
+
+		require.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("dry run refused: the same 403 as the real call", func(t *testing.T) {
+		fx := newDeleteFixture(t, true, "linear")
+
+		_, err := fx.DeleteObject(callerCtx(), testSpaceId, deleteObjId, true)
+
+		requireNotCreatedByThisKey(t, err)
+	})
+
+	t.Run("the grant conjunction fires before provenance", func(t *testing.T) {
+		// scoped-key ordering (§9.3): space_not_granted / write_not_granted
+		// win over the ownership check. No reader and no provenance
+		// expectations — reaching either fails the test, which is what pins
+		// the ordering rather than just the final code.
+		t.Run("space not granted", func(t *testing.T) {
+			fx := newV2Fixture(t)
+			ctx := util.CtxWithApiGrant(callerCtx(), &util.ApiGrant{Spaces: []string{"someOtherSpace"}, Perms: util.GrantPermsReadWrite})
+
+			_, err := fx.DeleteObject(ctx, testSpaceId, deleteObjId, false)
+
+			requireSpaceNotGranted(t, err)
+		})
+		t.Run("write not granted", func(t *testing.T) {
+			fx := newV2Fixture(t)
+			ctx := util.CtxWithApiGrant(callerCtx(), &util.ApiGrant{Spaces: []string{testSpaceId}, Perms: util.GrantPermsRead})
+
+			_, err := fx.DeleteObject(ctx, testSpaceId, deleteObjId, false)
+
+			var v2Err *v2model.Error
+			require.ErrorAs(t, err, &v2Err)
+			assert.Equal(t, v2model.CodeWriteNotGranted, v2Err.Code)
+		})
+	})
+
+	t.Run("an archive-RPC restriction refusal maps to a permanent 403", func(t *testing.T) {
+		fx := newDeleteFixture(t, true, "claude-desktop")
+		fx.mwMock.On("ObjectSetIsArchived", mock.Anything, mock.Anything).Return(&pb.RpcObjectSetIsArchivedResponse{
+			Error: &pb.RpcObjectSetIsArchivedResponseError{
+				Code:        pb.RpcObjectSetIsArchivedResponseError_UNKNOWN_ERROR,
+				Description: "restricted",
+			},
+		}).Once()
+
+		_, err := fx.DeleteObject(callerCtx(), testSpaceId, deleteObjId, false)
+
+		var v2Err *v2model.Error
+		require.ErrorAs(t, err, &v2Err)
+		assert.Equal(t, http.StatusForbidden, v2Err.Status)
+		assert.Equal(t, v2model.CodeForbidden, v2Err.Code)
+		assert.Contains(t, v2Err.Message, "do not retry")
+	})
+
+	t.Run("an archive-RPC failure surfaces as an internal error", func(t *testing.T) {
+		fx := newDeleteFixture(t, true, "claude-desktop")
+		fx.mwMock.On("ObjectSetIsArchived", mock.Anything, mock.Anything).Return(&pb.RpcObjectSetIsArchivedResponse{
+			Error: &pb.RpcObjectSetIsArchivedResponseError{
+				Code:        pb.RpcObjectSetIsArchivedResponseError_UNKNOWN_ERROR,
+				Description: "boom",
+			},
+		}).Once()
+
+		_, err := fx.DeleteObject(callerCtx(), testSpaceId, deleteObjId, false)
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "archive object")
+	})
+}

@@ -285,6 +285,16 @@ func registerEditRoutes(v2 *gin.RouterGroup, deps RouteDeps, idempotencyMW gin.H
 		deps.AnalyticsEvent("V2PatchObject"),
 		v2handler.PatchObjectV2Handler(deps.Service),
 	)
+	// Plan 3.3 (APIV2_OBJECT_DELETE.md): archive, own-output-only — the
+	// creator-provenance gate runs in the service; C8 idempotency because a
+	// blindly retried delete after an already-archived answer must stay a
+	// clean replay, C9 dry-run is the deletability probe.
+	v2.DELETE("/spaces/:space_id/objects/:object_id",
+		deps.WriteRateLimit,
+		idempotencyMW,
+		deps.AnalyticsEvent("V2DeleteObject"),
+		v2handler.DeleteObjectV2Handler(deps.Service),
+	)
 }
 
 // registerCreateRoutes registers the Phase-2 create surface (APIV2.md §2).

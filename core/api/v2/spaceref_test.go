@@ -54,7 +54,7 @@ func newSpaceRefEngine(t *testing.T, grant *util.ApiGrant, spaceIds ...string) *
 			bundle.RelationKeyName:           domain.String("Space " + string(rune('A'+i))),
 		}})
 	}
-	svc := v2service.NewV2Service(nil, nil, nil, nil, store, objectstore.TestTechSpaceId, "")
+	svc := v2service.NewV2Service(nil, nil, nil, nil, nil, store, objectstore.TestTechSpaceId, "")
 
 	router := gin.New()
 	group := router.Group("/v2")

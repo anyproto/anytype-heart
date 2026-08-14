@@ -31,10 +31,14 @@ var log = logging.Logger("api-v2-service")
 // APIV2.md §8, not via ObjectShow and not via lagging store snapshots for
 // object content.
 type V2Service struct {
-	mw          apicore.ClientCommands
-	reader      apicore.ObjectReader
-	creator     apicore.ObjectCreator
-	mutator     apicore.ObjectMutator
+	mw      apicore.ClientCommands
+	reader  apicore.ObjectReader
+	creator apicore.ObjectCreator
+	mutator apicore.ObjectMutator
+	// provenance is the DELETE enforcement read (APIV2_OBJECT_DELETE.md §10):
+	// creator provenance from validated change storage, never from details.
+	// nil refuses every object DELETE — fail closed.
+	provenance  apicore.ObjectProvenance
 	store       objectstore.ObjectStore
 	techSpaceId string
 	// accountId is the caller's account identity — the input of the SPEC
@@ -46,10 +50,11 @@ type V2Service struct {
 
 // NewV2Service creates the API v2 service. creator may be nil when only the
 // read surface is served (the router skips the create routes then); mutator
-// may be nil when the edit surface is not served. accountId may be empty
-// (degraded placeholder substitution only).
-func NewV2Service(mw apicore.ClientCommands, reader apicore.ObjectReader, creator apicore.ObjectCreator, mutator apicore.ObjectMutator, store objectstore.ObjectStore, techSpaceId, accountId string) *V2Service {
-	return &V2Service{mw: mw, reader: reader, creator: creator, mutator: mutator, store: store, techSpaceId: techSpaceId, accountId: accountId}
+// may be nil when the edit surface is not served; provenance may be nil
+// (object DELETE then refuses everything — fail closed). accountId may be
+// empty (degraded placeholder substitution only).
+func NewV2Service(mw apicore.ClientCommands, reader apicore.ObjectReader, creator apicore.ObjectCreator, mutator apicore.ObjectMutator, provenance apicore.ObjectProvenance, store objectstore.ObjectStore, techSpaceId, accountId string) *V2Service {
+	return &V2Service{mw: mw, reader: reader, creator: creator, mutator: mutator, provenance: provenance, store: store, techSpaceId: techSpaceId, accountId: accountId}
 }
 
 // ensureSpaceGranted is the space half of the service-level backstop of the

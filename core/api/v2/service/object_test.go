@@ -34,11 +34,12 @@ const (
 
 type v2Fixture struct {
 	*V2Service
-	mwMock      *mock_apicore.MockClientCommands
-	readerMock  *mock_apicore.MockObjectReader
-	creatorMock *mock_apicore.MockObjectCreator
-	mutatorMock *mock_apicore.MockObjectMutator
-	objectStore *objectstore.StoreFixture
+	mwMock         *mock_apicore.MockClientCommands
+	readerMock     *mock_apicore.MockObjectReader
+	creatorMock    *mock_apicore.MockObjectCreator
+	mutatorMock    *mock_apicore.MockObjectMutator
+	provenanceMock *mock_apicore.MockObjectProvenance
+	objectStore    *objectstore.StoreFixture
 }
 
 // newV2FixtureBare builds the service with an empty tech space (no space
@@ -49,6 +50,7 @@ func newV2FixtureBare(t *testing.T) *v2Fixture {
 	readerMock := mock_apicore.NewMockObjectReader(t)
 	creatorMock := mock_apicore.NewMockObjectCreator(t)
 	mutatorMock := mock_apicore.NewMockObjectMutator(t)
+	provenanceMock := mock_apicore.NewMockObjectProvenance(t)
 	objectStore := objectstore.NewStoreFixture(t)
 	// Deterministic derived-id stubs (ADDRESSING §2.4: a derived object's id
 	// is a pure function of space and key; the mock's function is `drv-rel-`
@@ -67,12 +69,13 @@ func newV2FixtureBare(t *testing.T) *v2Fixture {
 			return "drv-ot-" + string(key), nil
 		}).Maybe()
 	return &v2Fixture{
-		V2Service:   NewV2Service(mwMock, readerMock, creatorMock, mutatorMock, objectStore, objectstore.TestTechSpaceId, testAccountId),
-		mwMock:      mwMock,
-		readerMock:  readerMock,
-		creatorMock: creatorMock,
-		mutatorMock: mutatorMock,
-		objectStore: objectStore,
+		V2Service:      NewV2Service(mwMock, readerMock, creatorMock, mutatorMock, provenanceMock, objectStore, objectstore.TestTechSpaceId, testAccountId),
+		mwMock:         mwMock,
+		readerMock:     readerMock,
+		creatorMock:    creatorMock,
+		mutatorMock:    mutatorMock,
+		provenanceMock: provenanceMock,
+		objectStore:    objectStore,
 	}
 }
 

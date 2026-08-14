@@ -30,6 +30,10 @@ const (
 	CodeSpaceNotGranted             = "space_not_granted"
 	CodeWriteNotGranted             = "write_not_granted"
 	CodeV1NotAvailableForScopedKeys = "v1_not_available_for_scoped_keys"
+	// The object-DELETE ownership refusal (APIV2_OBJECT_DELETE.md §9.5):
+	// deletion is limited to objects the calling API key created, and the
+	// message names what IS recorded so the repair is discoverable.
+	CodeNotCreatedByThisKey = "not_created_by_this_key"
 )
 
 // Issue is one path-addressed problem (C6): path into the request
@@ -94,6 +98,13 @@ func WriteNotGranted(message string) *Error {
 // served on /v1 unchanged).
 func V1NotAvailableForScopedKeys(message string) *Error {
 	return NewError(http.StatusForbidden, CodeV1NotAvailableForScopedKeys, message)
+}
+
+// NotCreatedByThisKey is the 403 for an object DELETE outside the calling
+// key's own output (APIV2_OBJECT_DELETE.md §9.5). Not a scope failure: the
+// WWW-Authenticate insufficient_scope channel is deliberately NOT used.
+func NotCreatedByThisKey(message string, issues ...Issue) *Error {
+	return NewError(http.StatusForbidden, CodeNotCreatedByThisKey, message, issues...)
 }
 
 // RequestTooLarge is the 413 for an oversized request body (C3).

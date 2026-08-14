@@ -59,7 +59,7 @@ func newV2HandlerFixture(t *testing.T) *v2HandlerFixture {
 		func(_ context.Context, _ string, key domain.TypeKey) (string, error) {
 			return "drv-ot-" + string(key), nil
 		}).Maybe()
-	svc := v2service.NewV2Service(mwMock, readerMock, creatorMock, mock_apicore.NewMockObjectMutator(t), store, objectstore.TestTechSpaceId, testAccountId)
+	svc := v2service.NewV2Service(mwMock, readerMock, creatorMock, mock_apicore.NewMockObjectMutator(t), nil, store, objectstore.TestTechSpaceId, testAccountId)
 	return &v2HandlerFixture{svc: svc, mwMock: mwMock, readerMock: readerMock, creatorMock: creatorMock, store: store, router: gin.New()}
 }
 

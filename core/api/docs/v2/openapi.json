@@ -2884,6 +2884,89 @@
       }
     },
     "/v2/spaces/{space_id}/objects/{object_id}": {
+      "delete": {
+        "description": "Archives the object (moves it to Bin — reversible in the Anytype app; hard delete is a deferred ?permanent extension). Deletion is permitted ONLY for objects this API key created: provenance is recorded immutably on the object's creating change at creation time, so objects created before this route shipped, objects created in the Anytype app, imports and other members' objects all refuse with 403 not_created_by_this_key — for every key, permanently (fail-closed, no backfill). Types and properties refuse with a steer to their own DELETE routes. ?dry_run=true is the deletability probe: it runs every check including the provenance verdict and skips only the archive. Honors Idempotency-Key; re-deleting an archived object is a 200 no-op with a warning.",
+        "operationId": "v2_delete_object",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Object id",
+            "in": "path",
+            "name": "object_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Probe deletability without writing",
+            "in": "query",
+            "name": "dry_run",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateResult"
+                }
+              }
+            },
+            "description": "Archived object (or the dry-run verdict)"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Type/property target — use their own DELETE routes"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "not_created_by_this_key: the recorded creator (or its absence) is named"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Object or space not found"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Delete object (archive, own output only)",
+        "tags": [
+          "V2"
+        ]
+      },
       "get": {
         "description": "Returns the object as a flat AnyBlock JSON document read from the live editor state, with an advisory etag (C7) in the envelope and the ETag header. Supports include=properties,blocks; outline=true (block skeleton with compact labels); block={blockId} (one contiguous subtree, marked \"subtree\": true — a partial body no write path accepts); ids=compact|full (the two document shapes, C4 — compact is the edit read where machine-minted block ids relabel to short suffixes, full is the export read with full ids everywhere: the shape that PUTs back). Object refs are always full inline. format=anyblock|md (markdown is read-only).",
         "operationId": "v2_get_object",

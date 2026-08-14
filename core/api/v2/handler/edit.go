@@ -54,3 +54,30 @@ func PatchObjectV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 		respondV2Edit(c, result)
 	}
 }
+
+// DeleteObjectV2Handler archives an object the calling key created
+//
+//	@Summary		Delete object (archive, own output only)
+//	@Description	Archives the object (moves it to Bin — reversible in the Anytype app; hard delete is a deferred ?permanent extension). Deletion is permitted ONLY for objects this API key created: provenance is recorded immutably on the object's creating change at creation time, so objects created before this route shipped, objects created in the Anytype app, imports and other members' objects all refuse with 403 not_created_by_this_key — for every key, permanently (fail-closed, no backfill). Types and properties refuse with a steer to their own DELETE routes. ?dry_run=true is the deletability probe: it runs every check including the provenance verdict and skips only the archive. Honors Idempotency-Key; re-deleting an archived object is a 200 no-op with a warning.
+//	@Id				v2_delete_object
+//	@Tags			V2
+//	@Produce		json
+//	@Param			space_id	path		string					true	"Space id"
+//	@Param			object_id	path		string					true	"Object id"
+//	@Param			dry_run		query		bool					false	"Probe deletability without writing"
+//	@Success		200			{object}	v2model.CreateResult	"Archived object (or the dry-run verdict)"
+//	@Failure		400			{object}	v2model.Error			"Type/property target — use their own DELETE routes"
+//	@Failure		403			{object}	v2model.Error			"not_created_by_this_key: the recorded creator (or its absence) is named"
+//	@Failure		404			{object}	v2model.Error			"Object or space not found"
+//	@Security		bearerauth
+//	@Router			/v2/spaces/{space_id}/objects/{object_id} [delete]
+func DeleteObjectV2Handler(s *v2service.V2Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		result, err := s.DeleteObject(c.Request.Context(), c.Param("space_id"), c.Param("object_id"), isV2DryRun(c))
+		if err != nil {
+			RespondV2Error(c, err)
+			return
+		}
+		c.JSON(http.StatusOK, result)
+	}
+}
