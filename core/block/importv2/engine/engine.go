@@ -104,6 +104,12 @@ type Deps struct {
 	// OnFetched, when set, fires between pass 2 and pass 3 — the adapter
 	// marks the manifest fetched/materializing there (DM spec §6.4).
 	OnFetched func()
+	// ShutdownCtx, when set, bounds compensation (S1): it must survive the
+	// RUN's cancellation (compensation runs exactly when the run ctx is
+	// dead) but die with the COMPONENT, so Close actually reaches the
+	// between-deletes check instead of burning its grace while deletes
+	// continue into closing services. nil falls back to Background.
+	ShutdownCtx context.Context
 }
 
 // Run executes one import. The passed ctx is the run's single cancellation
@@ -643,7 +649,11 @@ func (r *run) compensate() {
 	if r.deps.OnCompensating != nil {
 		r.deps.OnCompensating()
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), compensationTimeout)
+	base := r.deps.ShutdownCtx
+	if base == nil {
+		base = context.Background()
+	}
+	ctx, cancel := context.WithTimeout(base, compensationTimeout)
 	defer cancel()
 	result := r.deps.Journal.Compensate(ctx, r.deps.Objects)
 	r.compensateState = 2

@@ -375,6 +375,7 @@ type deleterFake struct {
 	mu       sync.Mutex
 	deleted  []string
 	panicIds map[string]bool
+	onDelete func(id string)
 }
 
 func (d *deleterFake) GetObject(ctx context.Context, objectId string) (smartblock.SmartBlock, error) {
@@ -390,8 +391,12 @@ func (d *deleterFake) DeleteObject(objectId string) error {
 		panic("injected delete panic: " + objectId)
 	}
 	d.mu.Lock()
-	defer d.mu.Unlock()
 	d.deleted = append(d.deleted, objectId)
+	hook := d.onDelete
+	d.mu.Unlock()
+	if hook != nil {
+		hook(objectId)
+	}
 	return nil
 }
 
@@ -839,6 +844,37 @@ func TestLateClaimsFlush(t *testing.T) {
 		require.NotEmpty(t, events)
 		assert.Equal(t, "flush", events[len(events)-1],
 			"the run must end with a flush after the last claim, got %v", events)
+	})
+}
+
+func TestCompensationCancellable(t *testing.T) {
+	t.Run("component shutdown reaches in-process compensation between deletes", func(t *testing.T) {
+		// given — S1 (CONFIRMED): compensate() ran on a bare Background
+		// timeout no one could cancel — Close burned its full grace (half of
+		// any-sync's StopDeadline, whose overrun panics the process) and the
+		// goroutine kept deleting into closing services for up to 5 minutes.
+		fx := newEngineFixture(t)
+		shutdownCtx, shutdown := context.WithCancel(context.Background())
+		fx.deps.ShutdownCtx = shutdownCtx
+		deleter := fx.deps.Objects.(*deleterFake)
+		deleter.onDelete = func(id string) { shutdown() } // dies after the first delete
+		fx.persister.failKeys["bad.md"] = assert.AnError
+		fx.persister.delayKeys = map[string]time.Duration{"bad.md": 100 * time.Millisecond}
+		converter := &scriptConverter{objects: []*importv2.Object{
+			pageObj("a.md", false), pageObj("b.md", false), pageObj("c.md", false), pageObj("bad.md", false),
+		}}
+
+		// when
+		result := Run(context.Background(), importv2.Request{Mode: importv2.ModeAllOrNothing}, converter, fx.deps)
+
+		// then: exactly one delete happened; the rest is leaked loudly so
+		// finishRun keeps the dir for the sweep
+		require.Error(t, result.Err)
+		deleter.mu.Lock()
+		deleted := len(deleter.deleted)
+		deleter.mu.Unlock()
+		assert.Equal(t, 1, deleted, "shutdown must stop compensation between deletes")
+		assert.Positive(t, result.Leaked)
 	})
 }
 

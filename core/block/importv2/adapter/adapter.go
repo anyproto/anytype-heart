@@ -170,6 +170,8 @@ func (s *service) Close(ctx context.Context) error {
 	}()
 	select {
 	case <-done:
+	case <-ctx.Done():
+		log.Warn("import close cut short by caller deadline; runs may still be draining")
 	case <-time.After(30 * time.Second):
 		log.Warn("import runs did not drain within close grace period")
 	}
@@ -508,6 +510,7 @@ func (s *service) runEngine(ctx context.Context, request importv2.Request, conve
 		Spool:          spool,
 		SpillDir:       lc.spillDir,
 		OnFetched:      s.onFetched(lc),
+		ShutdownCtx:    s.componentCtx,
 	})
 }
 
