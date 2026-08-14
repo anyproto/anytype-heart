@@ -225,6 +225,9 @@ func Load(ctx context.Context, store *runstore.Store) (*State, error) {
 		}
 	}
 	for _, file := range files {
+		if file.Synthetic {
+			continue // compensation-only (see the entries twin above)
+		}
 		st.identityFiles = append(st.identityFiles, identity.RehydratedFile{
 			SourceKey: file.SourceKey,
 			ObjectId:  file.ObjectId,

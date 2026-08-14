@@ -333,6 +333,35 @@ func TestReadFiles(t *testing.T) {
 	})
 }
 
+func TestFileDisplacementIsSynthetic(t *testing.T) {
+	t.Run("a displaced file id is compensation-only", func(t *testing.T) {
+		// given — own-audit sibling of Class B on the files ledger: a
+		// displaced file row rehydrated as a phantom future and inflated
+		// FilesDone
+		ctx := context.Background()
+		store := createStore(t, filepath.Join(t.TempDir(), "run-1"))
+		require.NoError(t, store.RecordFile(ctx, "f", "file-a", false))
+		require.NoError(t, store.RecordFile(ctx, "f", "file-b", false)) // displaced
+
+		// when
+		records, err := store.ReadFiles(ctx)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, records, 2)
+		byId := map[string]FileRecord{}
+		for _, record := range records {
+			byId[record.ObjectId] = record
+		}
+		assert.False(t, byId["file-a"].Synthetic)
+		assert.True(t, byId["file-b"].Synthetic, "the displaced id must be marked compensation-only")
+		// and both stay in the delete set
+		inputs, err := store.CompensationInputs(ctx)
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []string{"file-a", "file-b"}, inputs.OwnedFiles)
+	})
+}
+
 func TestRootSpecKV(t *testing.T) {
 	ctx := context.Background()
 

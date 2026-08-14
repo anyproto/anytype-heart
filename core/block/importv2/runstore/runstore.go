@@ -794,6 +794,10 @@ func (s *Store) RecordFile(ctx context.Context, sourceKey, objectId string, preE
 			v.Set("objectId", a.NewString(displacedId))
 			v.Set("status", a.NewString(statusDone))
 			v.Set("preExisting", a.NewBool(displacedPreExisting))
+			// same rule as entries synthetics (Class B, own-audit sibling):
+			// a displaced row exists for compensation alone — rehydration
+			// and the counters must be able to exclude it
+			v.Set("synthetic", a.NewBool(true))
 			if v.Get("rank") == nil { // frozen at first write (recordEntry's rule)
 				v.Set("rank", a.NewNumberInt(displacedRank))
 			}

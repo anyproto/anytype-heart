@@ -61,6 +61,9 @@ type FileRecord struct {
 	SourceKey   string
 	ObjectId    string
 	PreExisting bool
+	// Synthetic marks a displaced-id preservation row (identity conflict
+	// upstream): compensation-only, excluded from rehydration and counters.
+	Synthetic bool
 }
 
 // ReadEntries returns every identity-ledger row with payloads joined.
@@ -140,6 +143,7 @@ func (s *Store) ReadFiles(ctx context.Context) ([]FileRecord, error) {
 			SourceKey:   string(v.GetStringBytes("id")),
 			ObjectId:    objectId,
 			PreExisting: v.GetBool("preExisting"),
+			Synthetic:   v.GetBool("synthetic"),
 		})
 		return nil
 	})
