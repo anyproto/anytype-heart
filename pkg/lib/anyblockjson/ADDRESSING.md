@@ -167,13 +167,54 @@ cross-property name reuse as a duplicate.
    declared format ignored (`resolver.go:357-363`), and `createRelation`
    validates only that the format is present and a valid enum
    (`relation.go:24-30`) — never against an existing same-key relation.
-6. **Uninstalled relations remain fully visible.** UI delete of a
-   relation sets only `isUninstalled` (`delete.go:113-127`); the query
-   layer's injected defaults exclude `isArchived` and `isDeleted` but
-   **not** `isUninstalled` (`database.go:109-123`), and nothing under
-   `core/api/` filters it either — so a UI-deleted property still
-   resolves by key, still appears in v2 `GET /properties`, and blocks a
-   same-key create with "already exists" pointing at a corpse (§7.5-2).
+6. **A production corpse carries TWO flags, and `isDeleted` is what
+   actually hides it.** *(Corrected 2026-08-14 — the original text below
+   described a shape production never has, and every corpse fixture in
+   the repo inherited it.)*
+
+   `deleteDerivedObject` sets `isUninstalled=true`
+   (`core/block/delete.go:113-127`), and the **same Apply** stamps
+   `isDeleted=true` beside it: `injectDerivedDetails` writes `isDeleted`
+   whenever `isUninstalled` is present on the state
+   (`smartblock/detailsinject.go:219-226`). `BeforeDelete` then tombstones
+   the index row, and because the tree itself survives (§2.4-5) the next
+   space load re-indexes it — the row comes back with **full details and
+   both flags**. So the persisted shape of a UI delete is
+   `{isUninstalled:true, isDeleted:true}`, never `{isUninstalled:true}`
+   alone.
+
+   That matters for what is visible to whom. Every plain store query
+   injects `isDeleted != true` (`database.go:109-123`), so a production
+   corpse is **already invisible** to ordinary queries — including the
+   ones under `core/api/` that filter nothing themselves. The explicit
+   `isUninstalled` filters v2 added (`livePropertyFilters`,
+   `liveTypeFilters`) are therefore belt-and-braces rather than the sole
+   defence: they pin the corpse policy to the flag that *means* "the user
+   deleted this", instead of leaning on an injected default that any
+   query suppressing it — or any point lookup that never had it — loses.
+
+   Two consequences of that lean survive and are load-bearing:
+
+   - **Point lookups by id are unfiltered.** `GetRelationById` falls back
+     to reading details directly, so a corpse referenced by a type's
+     `recommendedRelations` is still served in `typeProperties`, both
+     flags and all (§8.40).
+   - **A query that suppresses the defaults sees corpses again.** Any
+     probe written with `Condition None` — the round-trip tolerance, the
+     removal set — must suppress **both** `isArchived` and `isDeleted`, or
+     it silently sees only the fixtures' shape and never production's
+     (the §8.40 defect: a tolerance that worked for archived properties
+     and not for the uninstalled ones it was written for).
+
+   The original finding, corrected: "nothing filters it, so a corpse
+   remains fully visible" holds only for the `{isUninstalled}`-alone shape
+   — the fixtures' shape. For the shape production persists, a plain
+   query hides the corpse on the `isDeleted` default alone, and what
+   remains visible is narrower and more specific: the channels that
+   bypass those defaults (point lookups by id, probes that suppress them)
+   and the derivation layer, where a same-key create meets the surviving
+   tree with no store query involved at all (§7.5-2). Any claim about
+   corpse visibility must name which of the two shapes it is about.
 
 ### 2.4 How unique keys derive object ids (verified — it decides §7.5)
 
