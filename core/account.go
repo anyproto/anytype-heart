@@ -260,19 +260,31 @@ func (mw *Middleware) AccountChangeJsonApiAddr(ctx context.Context, req *pb.RpcA
 	}
 }
 
-func (mw *Middleware) AccountLocalLinkNewChallenge(ctx context.Context, request *pb.RpcAccountLocalLinkNewChallengeRequest) *pb.RpcAccountLocalLinkNewChallengeResponse {
-	info := getClientInfo(ctx)
-	info.Name = request.AppName
-	challengeId, err := mw.applicationService.LinkLocalStartNewChallenge(request.Scope, &info, request.RequestedGrant)
-	code := mapErrorCode(err,
+// accountLocalLinkNewChallengeErrorCode is AccountLocalLinkNewChallenge's
+// error mapping, extracted so the mapping itself is pinned by test: the
+// challenge flow's §11.7 issuance guards (empty / over-long app name) join
+// with application.ErrBadInput, and without the ErrBadInput row — which its
+// sibling CreateApp always had — a pairing client saw code 1 UNKNOWN_ERROR
+// ("something went wrong") instead of BAD_INPUT ("app name is required")
+// for a permanent input mistake (review H2).
+func accountLocalLinkNewChallengeErrorCode(err error) pb.RpcAccountLocalLinkNewChallengeResponseErrorCode {
+	return mapErrorCode(err,
 		errToCode(session.ErrTooManyChallengeRequests, pb.RpcAccountLocalLinkNewChallengeResponseError_TOO_MANY_REQUESTS),
 		errToCode(session.ErrChallengeAttemptsExceeded, pb.RpcAccountLocalLinkNewChallengeResponseError_TOO_MANY_REQUESTS),
 		// same rejected-scope error, same code as CreateApp — the two guards
 		// are a deliberate pair
 		errToCode(session.ErrInvalidScope, pb.RpcAccountLocalLinkNewChallengeResponseError_BAD_INPUT),
 		errToCode(walletComp.ErrInvalidGrant, pb.RpcAccountLocalLinkNewChallengeResponseError_BAD_INPUT),
+		errToCode(application.ErrBadInput, pb.RpcAccountLocalLinkNewChallengeResponseError_BAD_INPUT),
 		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountLocalLinkNewChallengeResponseError_ACCOUNT_IS_NOT_RUNNING),
 	)
+}
+
+func (mw *Middleware) AccountLocalLinkNewChallenge(ctx context.Context, request *pb.RpcAccountLocalLinkNewChallengeRequest) *pb.RpcAccountLocalLinkNewChallengeResponse {
+	info := getClientInfo(ctx)
+	info.Name = request.AppName
+	challengeId, err := mw.applicationService.LinkLocalStartNewChallenge(request.Scope, &info, request.RequestedGrant)
+	code := accountLocalLinkNewChallengeErrorCode(err)
 
 	return &pb.RpcAccountLocalLinkNewChallengeResponse{
 		ChallengeId: challengeId,
