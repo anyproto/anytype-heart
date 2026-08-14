@@ -178,6 +178,28 @@ func (s *Store) ReadRootSpec(ctx context.Context) (spec importv2.RootSpec, found
 	}, true, nil
 }
 
+// MarkFetched records the pass-2/pass-3 boundary durably (DM spec §4.1 +
+// §6.4), in the one order that keeps every prefix resumable: RootSpec
+// first (a fetched manifest without it would restart pass 3 missing
+// pass 2's output), then fetched flushed to disk, then materializing.
+// One implementation for the adapter and every harness — the transition
+// is journaling, and a drifted copy is how pass-boundary invariants die.
+func (s *Store) MarkFetched(ctx context.Context, spec importv2.RootSpec) error {
+	if err := s.SetRootSpec(ctx, spec); err != nil {
+		return fmt.Errorf("persist root spec: %w", err)
+	}
+	if err := s.SetState(ctx, StateFetched); err != nil {
+		return fmt.Errorf("mark run fetched: %w", err)
+	}
+	if err := s.Flush(ctx); err != nil {
+		return fmt.Errorf("flush fetched run: %w", err)
+	}
+	if err := s.SetState(ctx, StateMaterializing); err != nil {
+		return fmt.Errorf("mark run materializing: %w", err)
+	}
+	return nil
+}
+
 // BeginResume durably opens one resume attempt: incarnation and the attempt
 // counter move BEFORE any work — a crash loop is bounded by the cap however
 // early the crash lands — and the state enters materializing (setting the

@@ -552,6 +552,14 @@ func (s *Store) recordEntry(ctx context.Context, sourceKey, objectId, mode, acti
 				v.Set("rank", arena.NewNumberInt(rank))
 			}
 			v.Set("incarnation", arena.NewNumberInt(s.currentIncarnation()))
+			if v.Get("late") == nil && s.materializeStarted.Load() {
+				// A FRESH effect row during pass 3 belongs to an object with
+				// no earlier claim row: a finalize-stage object (whose
+				// buffered claim flushes only at finish) or a derived-class
+				// definition. Same marker, same reason as RecordClaims —
+				// the restart's finalize inference depends on it.
+				v.Set("late", arena.NewBool(true))
+			}
 			return v, true, nil
 		}))
 	if err != nil {

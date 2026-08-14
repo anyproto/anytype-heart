@@ -5,13 +5,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sync/atomic"
-	"time"
 
 	"github.com/globalsign/mgo/bson"
 
 	"github.com/anyproto/anytype-heart/core/block/importv2"
 	"github.com/anyproto/anytype-heart/core/block/importv2/identity"
+	"github.com/anyproto/anytype-heart/core/block/importv2/resume"
 	"github.com/anyproto/anytype-heart/core/block/importv2/runstore"
 	"github.com/anyproto/anytype-heart/util/vcs"
 )
@@ -139,86 +138,34 @@ func (s *service) finishRun(lc *runLifecycle, result *importv2.Result) {
 	}
 }
 
-// claimLedger adapts identity's claim records onto the run store.
-type claimLedger struct {
-	store *runstore.Store
-}
-
-func (l *claimLedger) RecordClaims(ctx context.Context, claims []identity.ClaimLedgerRecord) error {
-	// Intent must land even when the run context is dying (the P0-1 rule
-	// that already governs effect writes): detach, bounded.
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	records := make([]runstore.ClaimRecord, 0, len(claims))
-	for _, c := range claims {
-		records = append(records, runstore.ClaimRecord{
-			SourceKey:    c.SourceKey,
-			ObjectId:     c.ObjectId,
-			Matched:      c.Matched,
-			PayloadRoot:  c.PayloadRoot,
-			PayloadHeads: c.PayloadHeads,
-		})
-	}
-	return l.store.RecordClaims(ctx, records)
-}
-
-// identityOptions attaches the durable claim ledger in durable mode.
+// identityOptions attaches the durable claim ledger in durable mode (one
+// implementation, resume.ClaimLedgerOption — shared with the harnesses).
 func (lc *runLifecycle) identityOptions() []identity.Option {
 	if lc.store == nil {
 		return nil
 	}
-	return []identity.Option{identity.WithClaimLedger(&claimLedger{store: lc.store})}
+	return []identity.Option{resume.ClaimLedgerOption(lc.store)}
 }
 
-// onIssue writes every retained issue to the durable ledger (pass-2 issues
-// must survive to the pass-3 report, DM spec §6.2), capped like the
-// in-memory list. Errors degrade to a log line: an issue-ledger problem must
-// never abort a run that is otherwise fine.
+// onIssue writes every retained issue to the durable ledger (one
+// implementation, resume.IssueRecorder). nil in volatile mode.
 func (s *service) onIssue(lc *runLifecycle) func(importv2.Issue) {
 	if lc.store == nil {
 		return nil
 	}
-	var count atomic.Int64
-	return func(issue importv2.Issue) {
-		if count.Add(1) > importv2.IssueCap {
-			return
-		}
-		record := runstore.IssueRecord{
-			Severity:  int(issue.Severity),
-			Code:      string(issue.Code),
-			SourceKey: issue.SourceKey,
-			ObjectId:  issue.ObjectId,
-			Message:   issue.Message,
-		}
-		if issue.Err != nil {
-			record.Error = issue.Err.Error()
-		}
-		if err := lc.store.AppendIssue(context.Background(), record); err != nil {
-			log.Errorf("append issue to run ledger: %s", err)
-		}
-	}
+	return resume.IssueRecorder(lc.store)
 }
 
-// onFetched marks the pass-2/pass-3 boundary durably (DM spec §6.4):
-// fetched — the spool is whole — flushed to disk, then materializing. A
-// crash between the two resumes from the spool once DM-2 lands; until then
-// both states sweep into the compensate branch. nil in volatile mode.
-func (s *service) onFetched(lc *runLifecycle) func() error {
+// onFetched marks the pass-2/pass-3 boundary durably (DM spec §4.1 +
+// §6.4): RootSpec, then fetched flushed to disk, then materializing — the
+// one-place transition (runstore.MarkFetched) shared with every harness. A
+// crash after fetched resumes from the spool. nil in volatile mode.
+func (s *service) onFetched(lc *runLifecycle) func(importv2.RootSpec) error {
 	if lc.store == nil {
 		return nil
 	}
-	return func() error {
-		ctx := context.Background()
-		if err := lc.store.SetState(ctx, runstore.StateFetched); err != nil {
-			return fmt.Errorf("mark run fetched: %w", err)
-		}
-		if err := lc.store.Flush(ctx); err != nil {
-			return fmt.Errorf("flush fetched run: %w", err)
-		}
-		if err := lc.store.SetState(ctx, runstore.StateMaterializing); err != nil {
-			return fmt.Errorf("mark run materializing: %w", err)
-		}
-		return nil
+	return func(rootSpec importv2.RootSpec) error {
+		return lc.store.MarkFetched(context.Background(), rootSpec)
 	}
 }
 

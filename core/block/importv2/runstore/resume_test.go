@@ -81,6 +81,34 @@ func TestReadEntries(t *testing.T) {
 		assert.True(t, byKey["collection:Import"].Late)
 	})
 
+	t.Run("a fresh effect row during pass 3 is late; a claimed row's effect is not", func(t *testing.T) {
+		// given — the finalize-stage objects (root collection, report page)
+		// write their EFFECT row before their buffered claim flushes, so the
+		// late stamp must live on recordEntry's fresh branch too, not only
+		// on RecordClaims — or the restart's finalize inference reads them
+		// as ordinary stream rows.
+		store := createStore(t, filepath.Join(t.TempDir(), "run-1"))
+		require.NoError(t, store.RecordClaims(ctx, []ClaimRecord{
+			{SourceKey: "crawled", ObjectId: "obj-1", PayloadRoot: []byte("r")},
+		}))
+		require.NoError(t, store.SetState(ctx, StateMaterializing))
+
+		// when: the stream object's effect merges into its claim row; the
+		// finalize object's effect writes a fresh row
+		require.NoError(t, store.RecordCreated(ctx, "crawled", "obj-1"))
+		require.NoError(t, store.RecordCreated(ctx, "collection:Import", "obj-2"))
+
+		// then
+		records, err := store.ReadEntries(ctx)
+		require.NoError(t, err)
+		byKey := map[string]EntryRecord{}
+		for _, record := range records {
+			byKey[record.SourceKey] = record
+		}
+		assert.False(t, byKey["crawled"].Late)
+		assert.True(t, byKey["collection:Import"].Late)
+	})
+
 	t.Run("the late marker survives a reopen", func(t *testing.T) {
 		// given: a run that reached materializing, then a new process
 		dir := filepath.Join(t.TempDir(), "run-1")
@@ -162,6 +190,28 @@ func TestRootSpecKV(t *testing.T) {
 		read, found, err := reopened.ReadRootSpec(ctx)
 
 		// then
+		require.NoError(t, err)
+		assert.True(t, found)
+		assert.Equal(t, spec, read)
+	})
+}
+
+func TestMarkFetched(t *testing.T) {
+	t.Run("the pass boundary lands root spec, fetched and materializing in order", func(t *testing.T) {
+		// given
+		ctx := context.Background()
+		store := createStore(t, filepath.Join(t.TempDir(), "run-1"))
+		spec := importv2.RootSpec{CollectionName: "Import"}
+
+		// when
+		require.NoError(t, store.MarkFetched(ctx, spec))
+
+		// then
+		manifest, err := store.Manifest(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, StateMaterializing, manifest.State)
+		assert.True(t, manifest.MaterializeStarted)
+		read, found, err := store.ReadRootSpec(ctx)
 		require.NoError(t, err)
 		assert.True(t, found)
 		assert.Equal(t, spec, read)

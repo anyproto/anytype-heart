@@ -810,7 +810,7 @@ func TestOnFetchedFailureIsFatal(t *testing.T) {
 		// objects; the fetched/materializing transition IS journaling (the
 		// A1 gate depends on it), so its failure was log-and-continue.
 		fx := newEngineFixture(t)
-		fx.deps.OnFetched = func() error { return assert.AnError }
+		fx.deps.OnFetched = func(importv2.RootSpec) error { return assert.AnError }
 		converter := &scriptConverter{objects: []*importv2.Object{pageObj("a.md", false)}}
 
 		// when

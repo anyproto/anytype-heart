@@ -101,12 +101,13 @@ type Deps struct {
 	// spooled object carries a plain path. Empty keeps closures in place
 	// (memory-spool mode only).
 	SpillDir string
-	// OnFetched, when set, fires between pass 2 and pass 3 — the adapter
-	// marks the manifest fetched/materializing there (DM spec §6.4). Its
-	// failure is FATAL (S6): the transition is journaling — the A1
-	// compensation gate depends on it — and §7.2 forbids creating objects
-	// past a failed journal write.
-	OnFetched func() error
+	// OnFetched, when set, fires between pass 2 and pass 3 with pass 2's
+	// RootSpec — the adapter persists it and marks the manifest
+	// fetched/materializing there (DM spec §4.1 + §6.4: a restart has no
+	// converter to re-produce the RootSpec). Its failure is FATAL (S6): the
+	// transition is journaling — the A1 compensation gate depends on it —
+	// and §7.2 forbids creating objects past a failed journal write.
+	OnFetched func(rootSpec importv2.RootSpec) error
 	// ShutdownCtx, when set, bounds compensation (S1): it must survive the
 	// RUN's cancellation (compensation runs exactly when the run ctx is
 	// dead) but die with the COMPONENT, so Close actually reaches the
@@ -161,7 +162,7 @@ func Run(ctx context.Context, req importv2.Request, converter importv2.Converter
 		return r.finish(runCtx, importv2.RootSpec{})
 	}
 	if r.deps.OnFetched != nil {
-		if err := r.deps.OnFetched(); err != nil {
+		if err := r.deps.OnFetched(rootSpec); err != nil {
 			r.report(importv2.Fatal(importv2.IssueStoreError, fmt.Errorf("mark pass boundary: %w", err)))
 			return r.finish(runCtx, importv2.RootSpec{})
 		}
