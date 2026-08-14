@@ -436,8 +436,15 @@ func Create(ctx context.Context, dir string, m Manifest) (*Store, error) {
 func nowSecond() time.Time { return time.Now().Truncate(time.Second) }
 
 // dbOpTimeout bounds one store operation on the detached context below.
-// Generous: the largest measured op (a full 5k-row scan) is ~10ms.
-const dbOpTimeout = time.Minute
+// Generous: the largest measured op (a full 5k-row scan) is ~10ms. It is
+// deliberately UNDER the adapter's 30-second close grace
+// (adapter.go Close) with room to spare: a wedged store (the
+// ReadConnections:1 leak this machinery exists for) must fail its op
+// VISIBLY inside the grace — leaving the run time to classify the store
+// failure and settle on the write path — not silently burn the entire
+// grace and be abandoned mid-drain with nothing logged but "did not
+// drain".
+const dbOpTimeout = 15 * time.Second
 
 // opCtx returns the context for ONE database operation: values preserved,
 // CANCELLATION DROPPED, bounded by a generous timeout.
