@@ -173,6 +173,28 @@ func (sp *Spool) Replay(ctx context.Context, emit func(o *importv2.Object) error
 	}
 }
 
+// SourceKeys returns the spooled source-key set and the row count without
+// decoding any snapshot — the restart's cheap census (which rehydrated
+// claims have a spool row; how much replay remains).
+func (sp *Spool) SourceKeys(ctx context.Context) (map[string]struct{}, int, error) {
+	iter, err := sp.coll.Find(nil).Iter(ctx)
+	if err != nil {
+		return nil, 0, fmt.Errorf("iterate spool keys: %w", err)
+	}
+	defer iter.Close()
+	keys := map[string]struct{}{}
+	count := 0
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return nil, 0, fmt.Errorf("read spool doc: %w", err)
+		}
+		keys[string(doc.Value().GetStringBytes("sourceKey"))] = struct{}{}
+		count++
+	}
+	return keys, count, nil
+}
+
 // readChunk reads and decodes up to spoolChunkSize rows after lastId, then
 // releases the read transaction before returning.
 func (sp *Spool) readChunk(ctx context.Context, lastId string) ([]*importv2.Object, string, error) {

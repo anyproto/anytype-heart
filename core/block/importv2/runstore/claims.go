@@ -64,7 +64,14 @@ func (s *Store) RecordClaims(ctx context.Context, claims []ClaimRecord) error {
 				v.Set("mode", a.NewString(mode))
 				v.Set("status", a.NewString(statusClaimed))
 				v.Set("rank", a.NewNumberInt(rank))
-				v.Set("incarnation", a.NewNumberInt(1))
+				v.Set("incarnation", a.NewNumberInt(s.currentIncarnation()))
+				if s.materializeStarted.Load() {
+					// A claim recorded after materialization began is a
+					// finalize-stage claim (root collection, report page): it
+					// has no spool row, so a restart re-claims it fresh
+					// instead of reconciling it against the replay.
+					v.Set("late", a.NewBool(true))
+				}
 				return v, true, nil
 			}))
 		if upErr != nil {

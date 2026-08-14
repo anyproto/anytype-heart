@@ -107,6 +107,7 @@ const (
 	collManifest = "manifest"
 	collEntries  = "entries"
 	collFiles    = "files"
+	collKv       = "kv"
 
 	modeMinted  = "minted"
 	modeMatched = "matched"
@@ -128,9 +129,18 @@ type Store struct {
 	files    anystore.Collection
 	payloads anystore.Collection
 	issues   anystore.Collection
+	kv       anystore.Collection
 	arenas   *anyenc.ArenaPool
 	rank     atomic.Int64
 	issueSeq atomic.Int64
+	// materializeStarted mirrors the manifest's sticky marker so writers can
+	// stamp late claims (claims recorded after materialization began are
+	// finalize-stage claims, not converter entities); incarnation mirrors
+	// the manifest's counter so rows record which incarnation wrote them.
+	// Both are seeded from the manifest on open and advanced by
+	// SetState/BeginResume.
+	materializeStarted atomic.Bool
+	incarnation        atomic.Int64
 	// closed makes Close idempotent, so each Store releases its active-dir
 	// registry hold exactly once whatever combination of Close/Drop/deferred
 	// release paths runs; released tracks the guard separately so Drop can
@@ -185,10 +195,12 @@ func OpenExclusive(ctx context.Context, dir string) (*Store, error) {
 		markInactive(dir)
 		return nil, err
 	}
-	if _, err = s.Manifest(ctx); err != nil {
+	m, err := s.Manifest(ctx)
+	if err != nil {
 		_ = s.Close()
 		return nil, fmt.Errorf("read manifest: %w", err)
 	}
+	s.seedFromManifest(m)
 	if err = s.seedRank(ctx); err != nil {
 		_ = s.Close()
 		return nil, fmt.Errorf("seed rank: %w", err)
@@ -309,7 +321,8 @@ func Create(ctx context.Context, dir string, m Manifest) (*Store, error) {
 	m.SchemaVersion = SchemaVersion
 	m.State = StateRunning
 	m.Incarnation = 1
-	now := time.Now().Truncate(time.Second)
+	m.MaterializeStarted = false
+	now := nowSecond()
 	m.CreatedAt = now
 	m.UpdatedAt = now
 	if err = s.writeManifest(ctx, m); err != nil {
@@ -318,8 +331,23 @@ func Create(ctx context.Context, dir string, m Manifest) (*Store, error) {
 		s.releaseGuard()
 		return nil, fmt.Errorf("write manifest: %w", err)
 	}
+	s.seedFromManifest(m)
 	return s, nil
 }
+
+func nowSecond() time.Time { return time.Now().Truncate(time.Second) }
+
+// seedFromManifest aligns the store's in-memory markers with the manifest.
+func (s *Store) seedFromManifest(m Manifest) {
+	s.materializeStarted.Store(m.MaterializeStarted)
+	incarnation := int64(m.Incarnation)
+	if incarnation < 1 {
+		incarnation = 1
+	}
+	s.incarnation.Store(incarnation)
+}
+
+func (s *Store) currentIncarnation() int { return int(s.incarnation.Load()) }
 
 // Open opens an existing run dir. It fails when the db is missing, corrupted
 // (see IsCorrupted) or carries no manifest.
@@ -330,10 +358,12 @@ func Open(ctx context.Context, dir string) (*Store, error) {
 		markInactive(dir)
 		return nil, err
 	}
-	if _, err = s.Manifest(ctx); err != nil {
+	m, err := s.Manifest(ctx)
+	if err != nil {
 		_ = s.Close() // releases the guard
 		return nil, fmt.Errorf("read manifest: %w", err)
 	}
+	s.seedFromManifest(m)
 	if err = s.seedRank(ctx); err != nil {
 		_ = s.Close()
 		return nil, fmt.Errorf("seed rank: %w", err)
@@ -362,6 +392,7 @@ func open(ctx context.Context, dir string) (*Store, error) {
 		{collFiles, &s.files},
 		{collPayloads, &s.payloads},
 		{collIssues, &s.issues},
+		{collKv, &s.kv},
 	} {
 		if *coll.target, err = db.Collection(ctx, coll.name); err != nil {
 			_ = db.Close()
@@ -421,8 +452,14 @@ func (s *Store) SetState(ctx context.Context, state State) error {
 	if state == StateMaterializing {
 		m.MaterializeStarted = true
 	}
-	m.UpdatedAt = time.Now().Truncate(time.Second)
-	return s.writeManifest(ctx, m)
+	m.UpdatedAt = nowSecond()
+	if err = s.writeManifest(ctx, m); err != nil {
+		return err
+	}
+	if state == StateMaterializing {
+		s.materializeStarted.Store(true)
+	}
+	return nil
 }
 
 func (s *Store) writeManifest(ctx context.Context, m Manifest) error {
@@ -514,7 +551,7 @@ func (s *Store) recordEntry(ctx context.Context, sourceKey, objectId, mode, acti
 			if v.Get("rank") == nil {
 				v.Set("rank", arena.NewNumberInt(rank))
 			}
-			v.Set("incarnation", arena.NewNumberInt(1))
+			v.Set("incarnation", arena.NewNumberInt(s.currentIncarnation()))
 			return v, true, nil
 		}))
 	if err != nil {
@@ -552,7 +589,7 @@ func (s *Store) recordSyntheticEntry(ctx context.Context, sourceKey, objectId, m
 			if v.Get("rank") == nil { // frozen at first write (recordEntry's rule)
 				v.Set("rank", a.NewNumberInt(rank))
 			}
-			v.Set("incarnation", a.NewNumberInt(1))
+			v.Set("incarnation", a.NewNumberInt(s.currentIncarnation()))
 		})
 }
 
@@ -585,7 +622,7 @@ func (s *Store) RecordFile(ctx context.Context, sourceKey, objectId string, preE
 			v.Set("status", arena.NewString(statusDone))
 			v.Set("preExisting", arena.NewBool(preExisting))
 			v.Set("rank", arena.NewNumberInt(rank))
-			v.Set("incarnation", arena.NewNumberInt(1))
+			v.Set("incarnation", arena.NewNumberInt(s.currentIncarnation()))
 			return v, true, nil
 		}))
 	if err != nil {
@@ -609,7 +646,7 @@ func (s *Store) RecordFile(ctx context.Context, sourceKey, objectId string, preE
 			if v.Get("rank") == nil { // frozen at first write (recordEntry's rule)
 				v.Set("rank", a.NewNumberInt(displacedRank))
 			}
-			v.Set("incarnation", a.NewNumberInt(1))
+			v.Set("incarnation", a.NewNumberInt(s.currentIncarnation()))
 		})
 	if err != nil {
 		return rollback(tx.Rollback(), err)
