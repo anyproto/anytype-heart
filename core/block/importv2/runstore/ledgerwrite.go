@@ -53,6 +53,11 @@ func seedMaxSequenceId(ctx context.Context, coll anystore.Collection) (int64, er
 // until it finds a slot that is empty or holds the IDENTICAL row
 // (idempotent re-record). isSame decides identity over the FULL row, not
 // the objectId alone.
+//
+// The idempotent branch re-invokes write over the identical row, so write
+// callbacks must guard frozen fields themselves — rank in particular is
+// set only when absent (recordEntry's first-write rule; compensation
+// ordering depends on it).
 func placeRow(ctx context.Context, coll anystore.Collection, baseKey string,
 	isSame func(v *anyenc.Value) bool, write func(a *anyenc.Arena, v *anyenc.Value)) error {
 	key := baseKey

@@ -183,6 +183,50 @@ func TestFileDisplacedWrite(t *testing.T) {
 	})
 }
 
+func TestDisplacedRankFrozen(t *testing.T) {
+	t.Run("re-displacing the same entry id does not reorder the delete set", func(t *testing.T) {
+		// given — the last instance of the frozen-rank defect class:
+		// recordEntry freezes rank at the row's first write (compensation
+		// ordering depends on it), but the placeRow write callbacks stamped
+		// it unconditionally, so an idempotent re-displacement re-ranked the
+		// row and reordered compensation. Creation order A, B, Z must come
+		// back newest-first as Z, B, A whatever repeats itself.
+		ctx := context.Background()
+		store := createStore(t, filepath.Join(t.TempDir(), "run-1"))
+		require.NoError(t, store.SetState(ctx, StateMaterializing))
+		require.NoError(t, store.RecordCreated(ctx, "k", "A")) // keeps row "k"
+		require.NoError(t, store.RecordCreated(ctx, "k", "B")) // displaced → synthetic row
+		require.NoError(t, store.RecordCreated(ctx, "k", "Z")) // displaced → synthetic row
+
+		// when: B's displacement repeats (identical row — placeRow's
+		// idempotent branch)
+		require.NoError(t, store.RecordCreated(ctx, "k", "B"))
+
+		// then: first-write order still decides deletion order
+		inputs, err := store.CompensationInputs(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"Z", "B", "A"}, inputs.Created,
+			"rank is frozen at first write; a re-displacement must not re-stamp it")
+	})
+
+	t.Run("re-displacing the same file id does not reorder the delete set", func(t *testing.T) {
+		// given — the sibling site: RecordFile's displaced write callback
+		ctx := context.Background()
+		store := createStore(t, filepath.Join(t.TempDir(), "run-1"))
+		require.NoError(t, store.RecordFile(ctx, "f", "file-a", false))
+		require.NoError(t, store.RecordFile(ctx, "f", "file-b", false)) // displaced
+		require.NoError(t, store.RecordFile(ctx, "f", "file-c", false)) // displaced
+
+		// when
+		require.NoError(t, store.RecordFile(ctx, "f", "file-b", false)) // idempotent re-record
+
+		// then
+		inputs, err := store.CompensationInputs(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"file-c", "file-b", "file-a"}, inputs.OwnedFiles)
+	})
+}
+
 func TestSyntheticKeyCollision(t *testing.T) {
 	t.Run("a source key shaped like a synthetic key cannot collide", func(t *testing.T) {
 		// given — E5: filenames can contain '#'; the old "#dup-" suffix let

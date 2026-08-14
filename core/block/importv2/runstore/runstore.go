@@ -534,7 +534,9 @@ func (s *Store) recordSyntheticEntry(ctx context.Context, sourceKey, objectId, m
 			v.Set("mode", a.NewString(mode))
 			v.Set("status", a.NewString(status))
 			v.Set("action", a.NewString(actionCreated))
-			v.Set("rank", a.NewNumberInt(rank))
+			if v.Get("rank") == nil { // frozen at first write (recordEntry's rule)
+				v.Set("rank", a.NewNumberInt(rank))
+			}
 			v.Set("incarnation", a.NewNumberInt(1))
 		})
 }
@@ -581,7 +583,9 @@ func (s *Store) RecordFile(ctx context.Context, sourceKey, objectId string, preE
 			v.Set("objectId", a.NewString(displacedId))
 			v.Set("status", a.NewString(statusDone))
 			v.Set("preExisting", a.NewBool(displacedPreExisting))
-			v.Set("rank", a.NewNumberInt(displacedRank))
+			if v.Get("rank") == nil { // frozen at first write (recordEntry's rule)
+				v.Set("rank", a.NewNumberInt(displacedRank))
+			}
 			v.Set("incarnation", a.NewNumberInt(1))
 		})
 }

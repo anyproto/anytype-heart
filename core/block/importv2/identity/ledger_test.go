@@ -3,6 +3,8 @@ package identity
 import (
 	"context"
 	"fmt"
+	"runtime"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -87,6 +89,34 @@ func (l *blockingLedger) RecordClaims(ctx context.Context, claims []ClaimLedgerR
 	return nil
 }
 
+// waitSecondFlushArrived parks the test until the overlap is REAL: either a
+// second goroutine is observably blocked inside FlushClaims acquiring the
+// flush lock (the fixed shape — A holds it across the ledger call), or the
+// ledger has seen a second call (the broken take/unlock/write/trim shape,
+// where B sails past the lock straight into a duplicate delivery). Without
+// this handshake the release fired when B was merely LAUNCHED, so at
+// -cpu=1 B could run entirely after A and the test passed on broken code.
+func waitSecondFlushArrived(t *testing.T, ledger *blockingLedger) {
+	t.Helper()
+	buf := make([]byte, 1<<20)
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		if ledger.calls.Load() >= 2 {
+			return // broken shape revealed itself; let the assertions catch it
+		}
+		stacks := string(buf[:runtime.Stack(buf, true)])
+		for _, goroutineStack := range strings.Split(stacks, "\n\n") {
+			if strings.Contains(goroutineStack, "FlushClaims") &&
+				strings.Contains(goroutineStack, "runtime_SemacquireMutex") {
+				return // B is parked on the flush lock while A holds it
+			}
+		}
+		time.Sleep(time.Millisecond)
+	}
+	t.Fatalf("second flush never arrived at the ledger or the flush lock:\n%s",
+		buf[:runtime.Stack(buf, true)])
+}
+
 func TestFlushOverlap(t *testing.T) {
 	t.Run("overlapping flushes never panic or lose records", func(t *testing.T) {
 		// given — CONFIRMED 'slice bounds out of range [4:0]': the lock
@@ -109,15 +139,17 @@ func TestFlushOverlap(t *testing.T) {
 			}))
 		}
 
-		// when: flush A blocks inside the ledger; flush B arrives while A
-		// is parked. Under the broken take/unlock/write/trim shape, B
-		// completed a duplicate delivery and A then panicked on the trim
-		// (reproduced: slice bounds [4:0]); the fix serializes the whole
-		// transaction, so B waits and then finds nothing to do.
+		// when: flush A parks inside the ledger; flush B provably ARRIVES
+		// while A is parked (the handshake above) before A is released.
+		// Under the broken take/unlock/write/trim shape, B completed a
+		// duplicate delivery and A then panicked on the trim (reproduced:
+		// slice bounds [4:0]); the fix serializes the whole transaction, so
+		// B waits on the lock and then finds nothing to do.
 		done := make(chan error, 2)
 		go func() { done <- service.FlushClaims(context.Background()) }()
 		<-ledger.entered
 		go func() { done <- service.FlushClaims(context.Background()) }()
+		waitSecondFlushArrived(t, ledger)
 		close(ledger.release)
 		require.NoError(t, <-done)
 		require.NoError(t, <-done)

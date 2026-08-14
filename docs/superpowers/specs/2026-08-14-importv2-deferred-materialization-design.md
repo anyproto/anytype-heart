@@ -394,6 +394,32 @@ proof; the cost to a fast local import is seconds (§10) and the clean-space pro
 desirable there as for Notion. A per-format split (spool for notion, direct for markdown)
 is rejected alternative R4.
 
+### 9.1 DM-2 entry checklist
+
+Three DM-1 leftovers become live the moment resume exists. They are closed deliberately,
+first, before any restart code is written — each was identified during DM-1 review as
+latent-until-resume:
+
+1. **`payloads` gets an occupancy rule.** The payload write is a blind `UpsertOne` keyed
+   on the objectId (`runstore/claims.go`), and the collection has no reader in the
+   package — DM-2's replay is its first. Last-writer-wins is the wrong default for the
+   write-ahead create payload: the id *is* the hash of the root bytes, so a differing
+   re-record under one id is an identity violation upstream. Rule: first record wins
+   entirely (the files-ledger rule); a differing re-record is logged loudly and refused,
+   never silently preferred.
+2. **The primary+displacement write pair becomes atomic.** `recordEntry` and `RecordFile`
+   write the primary row and the displaced-id row in two separate commits (`RecordClaims`
+   already wraps both in one `WriteTx`). A crash in the window loses the displaced id —
+   and in the minted-sticky branch the primary write is a no-op, so the unprotected second
+   write is the *only* record of the incoming effect. Both pairs move into one write
+   transaction.
+3. **`Spool.Append` rides a cancellable context — re-decided, kept.** A durable write on
+   the run ctx is defensible only while a truncated spool can never be replayed. DM-2
+   resumes only runs at `fetched` or later (spool provably whole — the fetch-complete
+   marker), and pass 3 never appends, so the property holds. The moment DM-3's pass-2
+   crawl resume reads a *partial* spool, the append must detach like the effect/claim
+   ledgers (P0-1 rule); this is a named DM-3 entry item, not folklore.
+
 ## 10. Costs — what this is worse at, honestly
 
 - **Disk, worst case**: spool ≈ 2× serialized snapshot bytes (measured overhead factor,
