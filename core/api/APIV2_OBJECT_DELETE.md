@@ -22,6 +22,13 @@ DELETE needs, and do not build the integrations feature now.** §11 is the
 minimal build; §12 is the proof that attribution can be added on top without
 changing the on-wire format.
 
+Two decisions from Roman (2026-08-14) are folded in as settled: **legacy
+objects are fail-closed, final** — no backfill, no grandfathering, deletion
+applies only to objects created after this ships through the API (§8) — and
+**v1 creations carry the stamp**, because the trace shows it is free (§8a:
+both surfaces converge in `objectcreator` with the shared middleware's ctx
+carriers already in hand).
+
 The self-test this spec applies to itself: *would adding integration
 attribution later require changing the on-wire format?* Answer: **no** — the
 field DELETE ships (§5) is byte-for-byte the field the attribution spec
@@ -350,20 +357,77 @@ object came from an API" is not new member-visible information — only
   slug so the repair ("re-pair under the old name") is discoverable.
   Accepted; documenting "keep the app name stable" costs one sentence in the
   key-management docs.
-- **Legacy objects** (everything created before this ships — the vast
-  majority of every account, including today's v2-created eval fixtures) and
-  **objects created by other members, by the apps themselves, by import, or
-  by any unstamped path**: no record → **DELETE refused, fail-closed**, for
-  every key including legacy unscoped ones (uniform rule on v2; Roman's
-  requirement is unqualified, and v1 remains the grandfathered escape hatch
-  for legacy keys). There is no backfill and must not be one: a backfill
-  would be a detail-grade assertion of exactly the kind the requirement
-  bans. Consequence stated honestly: the plan's "only way to clean up test
-  data" motivation (3.3) is served **going forward only**; the two existing
-  eval documents still need one manual archive.
-- **No separate capability is specced** for "delete anything" (e.g. a grant
-  bit). Recorded as an open product decision (§17) rather than designed
-  here — the requirement's whole point is that shipping without it is safe.
+- **Legacy objects — DECIDED (Roman, 2026-08-14): fail-closed, final.**
+  Everything created before this ships — the vast majority of every account,
+  including today's v2-created eval fixtures — and **objects created by
+  other members, by the apps themselves, by import, or by any unstamped
+  path**: no record → **DELETE refused**, for every key including legacy
+  unscoped ones. Deletion applies only to objects created *after* this
+  ships, through the API (v2, and v1 per §8a). **No backfill, no
+  grandfathering scheme, no migration** — a backfill would be a detail-grade
+  assertion of exactly the kind the requirement bans, and none is wanted.
+  This is the design, not a cost awaiting mitigation. Its consequence bites
+  immediately and is accepted with it: the v2 eval fixtures already
+  accumulating in the test account remain undeletable through v2 — plan
+  3.3's fixture-cleanup motivation is served **going forward only**, and the
+  two existing eval documents still need one manual archive. If anyone ever
+  wants an explicit "delete arbitrary objects" capability, that is a
+  **separate future product decision (§17.2), not a gap in this design**.
+
+## 8a. API v1 creations: stamped for free — decided
+
+Roman's rider on the fail-closed decision: *"only for new objects created
+via apiv2 (same for apiv1 if it comes for free)"*. That is a question about
+**recording provenance on v1-created objects**, not about restricting v1's
+delete (which stays the grandfathered full-archive escape, §6/§8a-3). The
+answer, traced rather than assumed: **it is free, so v1 creations are
+stamped.**
+
+**8a-1. The trace — both surfaces converge upstream of the stamping point.**
+The v1 create path is `CreateObjectHandler` →
+`s.CreateObject(c.Request.Context(), …)`
+(`core/api/handler/object.go:129`) → `s.mw.ObjectCreate(ctx, …)`
+(`core/api/service/object.go:138`) → `Middleware.ObjectCreate(cctx, …)` →
+`creator.CreateObjectUsingObjectUniqueTypeKey(cctx, …)`
+(`core/create.go:17,36`; the bookmark variant likewise:
+`creator.CreateObject(cctx, …)`, `core/create.go:131`). That is the **same
+`objectcreator.Service`** the v2 adapter calls directly, entered with the
+HTTP request context intact — upstream of §11.4's stamping point
+(`CreateSmartBlockFromState` → `CreateTreeObject(ctx)`), which is therefore
+version-agnostic. And the ctx carrier the stamp reads is installed by
+`ensureAuthenticated`, which **both** groups share (`router.go:49` for v1,
+the `Auth` dep for v2; the carriers at `middleware.go:186-195` are
+installed unconditionally) — so §11.3's neutral integration-key carrier
+rides v1 requests with **zero v1-specific code**. Nothing to build, nothing
+to gate: the "free" case is the actual case.
+
+**8a-2. Legacy keys have a usable identity on that path.** `AppName` is a
+persisted field of every app-link file (`core/wallet/applink.go:102,294`),
+returned for app-key sessions by `CreateSession`
+(`core/application/sessions.go:66`, `AppName: appLink.AppName`), cached in
+`ApiSessionEntry.AppName`, and observable today on a legacy key via
+`whoami` (a real legacy key shows `"name":"22"`, `keyStatus: legacy`). The
+slug is derived from it exactly as for v2 keys — stable per key, however
+inelegant the name (`"22"` → slug `22`; functional, and the same key
+produces the same slug on both surfaces). The §5 empty-name rule applies
+unchanged: no name → no stamp → that key's creations stay unprovenanced.
+One recorded caveat, not affecting HTTP: sessions derived from a *token*
+(`WalletCreateSession(token:)`) deliberately carry no app attributes
+(`sessions.go`, the NOTE at the derive branch) — that is the gRPC-side
+path, relevant to attribution's later gRPC labeling, never to v1/v2 HTTP
+requests, which always authenticate by app key.
+
+**8a-3. The resulting asymmetry, stated rather than discovered.** v1's
+DELETE stays unrestricted (§6): a legacy key can archive, via v1, objects
+it did not create — including objects another key's stamp marks as that
+other key's — while the very same key on v2 can delete only its own output.
+Deliberate: v1 is the escape hatch and changes "not at all" (the migration
+stance); grant presence, not surface, is the durable boundary, and scoped
+keys never reach v1. Conversely the stamp composes across surfaces: it is
+slug-keyed and session-derived, so **the same underlying key used through
+v1 and later through v2 produces the same slug, and v2 DELETE recognizes
+its v1-created objects as its own** — v1 creations become deletable through
+v2 from day one, which is most of what "free" buys.
 
 ## 9. The DELETE surface
 
@@ -523,7 +587,9 @@ independently reviewable; together they are one shippable PR train:
 3. **Neutral ctx carrier**: a `domain`-level (not `core/api/util`-level)
    `CtxWithIntegrationKey`/`CtxIntegrationKey`, installed by the API auth
    middleware next to the existing carriers (`middleware.go:186-195`),
-   computed once per session from `AppName`. Attribution's future gRPC
+   computed once per session from `AppName`. `ensureAuthenticated` serves
+   **both** route groups, so v1 creations are stamped by the same lines —
+   the §8a decision costs nothing here. Attribution's future gRPC
    interceptor installs the same carrier — that is the shared plumbing
    seam, and it is one function each side.
 4. **Stamping**: `source.PushChangeParams` gains `IntegrationKey string`
@@ -533,7 +599,9 @@ independently reviewable; together they are one shippable PR train:
    has the request ctx in hand end-to-end
    (`CreateSmartBlockFromState` → `CreateTreeObject(ctx…)` →
    `InitContext.Ctx`, `core/block/editor/smartblock/smartblock.go:212-225`),
-   so the creating Apply can carry the value into `PushChangeParams`.
+   so the creating Apply can carry the value into `PushChangeParams`. This
+   point is downstream of where v1 and v2 creation converge (§8a-1), so the
+   fill site is version-agnostic by construction.
    Implementation caution, pinned by test: the value must be **per-apply**,
    never persisted on the state object — a later UI edit on this device
    must NOT inherit the stamp (assert: second Apply's change carries no
@@ -552,7 +620,12 @@ independently reviewable; together they are one shippable PR train:
    issuance change.
 8. **Docs**: APIV2.md §3 build-item closure note; SKILL.md gets the
    delete verb + the dry-run probe idiom; scoping design §3 paragraph gets a
-   superseded-by pointer.
+   superseded-by pointer. The plan-3.3 row and the APIV2.md note must say
+   plainly that **DELETE does not clean up existing objects**: it applies
+   only to objects created after it ships (the §8 decision), so the eval
+   fixtures already in the test account still need one manual archive, and
+   any future "delete arbitrary objects" capability is a separate product
+   decision (§17.2), not part of this route.
 
 Explicitly **not built** (attribution's, later): `SmartBlockTypeIntegration`
 + derived object + icon pipeline, `createdVia`/`lastModifiedVia` relations,
@@ -612,11 +685,14 @@ Stated as prominently as the case for, per the brief:
    is airtight only for scoped keys — which are exactly the keys agents
    should hold, but the spec must not be read as "no API caller can archive
    others' objects".
-2. **Fail-closed strands real use-cases**: today's v2-created objects, and
-   any "agent, clean up this space" request over human-created objects, get
-   a 403 whose only repair is the app. If product wants agent-driven
-   cleanup of arbitrary objects, that needs the explicit capability §17
-   leaves open — this design deliberately cannot express it.
+2. **Fail-closed on pre-existing objects is settled, and its consequence
+   is immediate** (§8, decided): today's v2-created objects, and any
+   "agent, clean up this space" request over human-created objects, get a
+   403 whose only repair is the app — including the eval fixtures plan 3.3
+   partly cited as motivation. This design deliberately cannot express
+   arbitrary-object cleanup; if that is ever wanted it is a separate
+   future capability (§17.2), not a gap here. Listed so the limitation is
+   read before shipping, not to reopen the decision.
 3. **The retention assumption** (§10): provenance lives in full tree
    history; a future history-truncation feature inherits a hard constraint
    from this spec.
@@ -675,7 +751,8 @@ that spec's §3, built early.
    unchanged. The provenance read works for derived trees via their signed
    creating change if the answer is ever yes.)
 2. A "delete any" capability for keys that should manage whole spaces
-   (grant bit? bot accounts?) — product call; nothing here precludes it.
+   (grant bit? bot accounts?) — a separate future product decision, not a
+   gap in this design (§8, decided); nothing here precludes it.
 3. Whether `whoami` should surface the key's slug (cheap, helps agents
    predict deletability against a future `createdVia` read) — lean yes,
    one field, but it is attribution-adjacent disclosure and can wait.
