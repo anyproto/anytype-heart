@@ -95,6 +95,10 @@ type service struct {
 	widgets           widgetCreator
 	objects           persist.ObjectAccess
 	engineRunner      engineRunFn
+	// resumeRunner is the sweep's resume branch (resumeRun in production;
+	// nil keeps the phase-A compensate-everything sweep — the lifecycle
+	// harness's default, and the safe degradation if wiring ever misses it).
+	resumeRunner resumeFn
 	fileObjectService fileobject.Service
 	installer         objectcreator.Service
 	detailsService    detailservice.Service
@@ -130,6 +134,7 @@ func (s *service) Init(a *app.App) error {
 	s.widgets = s.blockService
 	s.objects = s.blockService
 	s.engineRunner = s.runEngine
+	s.resumeRunner = s.resumeRun
 	s.fileObjectService = app.MustComponent[fileobject.Service](a)
 	s.installer = app.MustComponent[objectcreator.Service](a)
 	s.detailsService = app.MustComponent[detailservice.Service](a)
@@ -246,23 +251,25 @@ func (s *service) runImport(req *pb.RpcObjectImportRequest) {
 	}()
 
 	result := s.execute(runCtx, req, progress)
+	s.settleRun(req, progress, result)
+	progressSettled = true
+}
 
+// settleRun delivers a finished run's end-of-run surface — shared verbatim
+// between a fresh import and a sweep-resumed one, so the delivery rules
+// cannot drift. A suspended result gets no finish notification and no
+// import events: the process is going away and the run is not over (its
+// durable state is kept for the next start's sweep).
+func (s *service) settleRun(req *pb.RpcObjectImportRequest, progress process.Progress, result *importv2.Result) {
 	if result.Suspended {
-		// Shutdown suspend (the engine's own verdict — it skipped
-		// compensation and the state is on disk for the startup sweep). No
-		// finish notification, no import events — the process is going away
-		// and the run is not over.
 		log.With("importType", req.Type.String(), "spaceId", req.SpaceId).
 			Warnf("import suspended for shutdown")
 		s.fileSync.ClearImportEvents()
 		progress.Finish(result.Err)
-		progressSettled = true
 		return
 	}
-
 	logRunResult(req, result)
 	s.finishProgress(progress, req, result)
-	progressSettled = true
 	if result.Err == nil {
 		s.fileSync.SendImportEvents()
 	}
@@ -488,13 +495,22 @@ func (s *service) runEngine(ctx context.Context, request importv2.Request, conve
 		defer standalone.Close()
 		spool = standalone
 	}
+	deps, _ := s.engineDeps(request, spc, lc, progress, lc.identityOptions())
+	deps.Spool = spool
+	return engine.Run(ctx, request, converter, deps)
+}
+
+// engineDeps builds the per-run components shared verbatim between a first
+// run and a resumed one (only the spool provisioning and the identity
+// options differ) — one wiring, so the two paths cannot drift.
+func (s *service) engineDeps(request importv2.Request, spc clientspace.Space, lc *runLifecycle, progress process.Progress, identityOpts []identity.Option) (engine.Deps, *persist.Persister) {
 	journal := persist.NewJournal()
 	if lc.store != nil {
 		journal = persist.NewJournalWithLedger(lc.store)
 	}
 	formats := resolve.NewFormats()
 	keys := engine.NewKeyTable()
-	identitySvc := identity.NewService(spc, s.objectStore.SpaceIndex(request.SpaceID), request.UpdateExisting, time.Now(), lc.identityOptions()...)
+	identitySvc := identity.NewService(spc, s.objectStore.SpaceIndex(request.SpaceID), request.UpdateExisting, time.Now(), identityOpts...)
 	resolver := resolve.New(identitySvc, keys, formats)
 	persister := persist.New(
 		request.SpaceID,
@@ -509,7 +525,7 @@ func (s *service) runEngine(ctx context.Context, request importv2.Request, conve
 		&existsChecker{store: s.objectStore.SpaceIndex(request.SpaceID)},
 		lc.spillDir,
 	)
-	return engine.Run(ctx, request, converter, engine.Deps{
+	return engine.Deps{
 		Identity:  identitySvc,
 		Persister: persister,
 		Journal:   journal,
@@ -521,11 +537,10 @@ func (s *service) runEngine(ctx context.Context, request importv2.Request, conve
 		Reporter:       &progressReporter{progress: progress},
 		OnCompensating: s.onCompensating(lc),
 		OnIssue:        s.onIssue(lc),
-		Spool:          spool,
 		SpillDir:       lc.spillDir,
 		OnFetched:      s.onFetched(lc),
 		ShutdownCtx:    s.componentCtx,
-	})
+	}, persister
 }
 
 // ValidateNotionToken probes the API with the given token (the frontend

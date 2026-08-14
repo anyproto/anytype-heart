@@ -78,7 +78,7 @@ func TestSweepRuns(t *testing.T) {
 		deleter := &sweepDeleter{}
 
 		// when
-		outcomes := sweepRuns(ctx, root, deleter, alwaysOK)
+		outcomes := sweepRuns(ctx, root, deleter, alwaysOK, nil)
 
 		// then
 		require.Len(t, outcomes, 2)
@@ -104,7 +104,7 @@ func TestSweepRuns(t *testing.T) {
 			deleter := &sweepDeleter{}
 
 			// when
-			outcomes := sweepRuns(ctx, root, deleter, alwaysOK)
+			outcomes := sweepRuns(ctx, root, deleter, alwaysOK, nil)
 
 			// then
 			require.Len(t, outcomes, 1, state)
@@ -127,7 +127,7 @@ func TestSweepRuns(t *testing.T) {
 		deleter := &sweepDeleter{}
 
 		// when
-		outcomes := sweepRuns(ctx, root, deleter, alwaysOK)
+		outcomes := sweepRuns(ctx, root, deleter, alwaysOK, nil)
 
 		// then
 		require.Len(t, outcomes, 1)
@@ -151,7 +151,7 @@ func TestSweepRuns(t *testing.T) {
 		deleter := &sweepDeleter{}
 
 		// when
-		outcomes := sweepRuns(ctx, root, deleter, alwaysOK)
+		outcomes := sweepRuns(ctx, root, deleter, alwaysOK, nil)
 
 		// then
 		require.Len(t, outcomes, 1)
@@ -171,7 +171,7 @@ func TestSweepRuns(t *testing.T) {
 		require.NoError(t, db.Close())
 
 		// when
-		outcomes := sweepRuns(ctx, root, &sweepDeleter{}, alwaysOK)
+		outcomes := sweepRuns(ctx, root, &sweepDeleter{}, alwaysOK, nil)
 
 		// then
 		require.Len(t, outcomes, 1)
@@ -198,7 +198,7 @@ func TestSweepRuns(t *testing.T) {
 		deleter := &sweepDeleter{}
 
 		// when
-		outcomes := sweepRuns(ctx, root, deleter, alwaysOK)
+		outcomes := sweepRuns(ctx, root, deleter, alwaysOK, nil)
 
 		// then
 		require.Len(t, outcomes, 1)
@@ -215,7 +215,7 @@ func TestSweepRuns(t *testing.T) {
 
 		// when
 		outcomes := sweepRuns(ctx, root, deleter,
-			func(context.Context, string) spaceStatus { return spaceGone })
+			func(context.Context, string) spaceStatus { return spaceGone }, nil)
 
 		// then
 		require.Len(t, outcomes, 1)
@@ -233,7 +233,7 @@ func TestSweepRuns(t *testing.T) {
 
 		// when
 		outcomes := sweepRuns(ctx, root, deleter,
-			func(context.Context, string) spaceStatus { return spaceUnknown })
+			func(context.Context, string) spaceStatus { return spaceUnknown }, nil)
 
 		// then
 		require.Len(t, outcomes, 1)
@@ -251,7 +251,7 @@ func TestSweepRuns(t *testing.T) {
 		deleter := &sweepDeleter{failIds: map[string]error{"obj-1": assert.AnError}}
 
 		// when
-		outcomes := sweepRuns(ctx, root, deleter, alwaysOK)
+		outcomes := sweepRuns(ctx, root, deleter, alwaysOK, nil)
 
 		// then: partial result, dir kept in the compensating state
 		require.Len(t, outcomes, 1)
@@ -269,7 +269,7 @@ func TestSweepRuns(t *testing.T) {
 		// and: once the failure clears, the next sweep finishes the job
 		// (already-deleted objects count compensated, not leaked)
 		deleter.failIds = nil
-		outcomes = sweepRuns(ctx, root, deleter, alwaysOK)
+		outcomes = sweepRuns(ctx, root, deleter, alwaysOK, nil)
 		require.Len(t, outcomes, 1)
 		assert.Equal(t, sweepCompensated, outcomes[0].Action)
 		assert.Zero(t, outcomes[0].Result.Leaked)
@@ -290,7 +290,7 @@ func TestSweepRuns(t *testing.T) {
 		deleter := &sweepDeleter{}
 
 		// when: swept while the run still holds its store open
-		outcomes := sweepRuns(ctx, root, deleter, alwaysOK)
+		outcomes := sweepRuns(ctx, root, deleter, alwaysOK, nil)
 
 		// then
 		require.Len(t, outcomes, 1)
@@ -300,7 +300,7 @@ func TestSweepRuns(t *testing.T) {
 
 		// and: once the run lets go, the sweep settles it normally
 		require.NoError(t, store.Close())
-		outcomes = sweepRuns(ctx, root, deleter, alwaysOK)
+		outcomes = sweepRuns(ctx, root, deleter, alwaysOK, nil)
 		require.Len(t, outcomes, 1)
 		assert.Equal(t, sweepCompensated, outcomes[0].Action)
 		_, statErr := os.Stat(dir)
@@ -318,7 +318,7 @@ func TestSweepRuns(t *testing.T) {
 		cancel()
 
 		// when
-		outcomes := sweepRuns(dead, root, deleter, alwaysOK)
+		outcomes := sweepRuns(dead, root, deleter, alwaysOK, nil)
 
 		// then
 		assert.Empty(t, outcomes)

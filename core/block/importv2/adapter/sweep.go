@@ -12,11 +12,11 @@ import (
 	"github.com/anyproto/anytype-heart/space"
 )
 
-// The startup sweep (spec §6.1, phase A subset): every run dir left behind
-// by a previous process is either finished being deleted, or compensated
-// from its durable ledger and then deleted. There is no resume branch yet —
-// running/suspended runs are compensated (spec §10 phase A) — so every
-// branch below ends in "dir gone" except the two explicit skips.
+// The startup sweep (spec §6.1 + DM spec §8.1): every run dir left behind
+// by a previous process is finished being deleted, RESUMED (a run whose
+// pass 2 completed — fetched/materializing, or suspended after
+// materialization began — restarts pass 3 from its spool, attempts-capped),
+// or compensated from its durable ledger and then deleted.
 
 type spaceStatus int
 
@@ -41,7 +41,22 @@ const (
 	sweepSkippedNewerSchema      sweepAction = "skipped-newer-schema"
 	sweepSkippedSpaceUnavailable sweepAction = "skipped-space-unavailable"
 	sweepSkippedError            sweepAction = "skipped-error"
+	sweepResumedCompleted        sweepAction = "resumed-completed"
+	sweepResumedSuspended        sweepAction = "resumed-suspended" // shut down again mid-resume; dir kept
+	sweepResumedFailed           sweepAction = "resumed-failed"
 )
+
+// maxResumeAttempts caps resume-and-crash loops (08-13 §6.1): the counter
+// moves durably BEFORE each attempt (runstore.BeginResume), so however
+// early the crash lands, the run reaches compensation after this many
+// tries.
+const maxResumeAttempts = 3
+
+// resumeFn restarts a resumable run from its open store. The store's
+// ownership passes to the callee (it settles or keeps the dir; sweepOne's
+// deferred Close is idempotent insurance). nil disables resume — every
+// resumable state then falls through to compensation, the phase-A shape.
+type resumeFn func(ctx context.Context, store *runstore.Store, manifest runstore.Manifest) sweepOutcome
 
 type sweepOutcome struct {
 	Dir    string
@@ -55,7 +70,7 @@ type sweepOutcome struct {
 // snapshot, and dirs a live Store holds open are skipped via the active
 // registry — an active run is never touched. A dead ctx (the component is
 // closing) stops the walk: remaining dirs settle on the next start.
-func sweepRuns(ctx context.Context, root string, objects persist.ObjectAccess, probe spaceProbe) []sweepOutcome {
+func sweepRuns(ctx context.Context, root string, objects persist.ObjectAccess, probe spaceProbe, resume resumeFn) []sweepOutcome {
 	dirs, err := runstore.ListRunDirs(root)
 	if err != nil {
 		log.Errorf("sweep: list run dirs: %s", err)
@@ -66,7 +81,7 @@ func sweepRuns(ctx context.Context, root string, objects persist.ObjectAccess, p
 		if ctx.Err() != nil {
 			return outcomes
 		}
-		outcomes = append(outcomes, sweepOneGuarded(ctx, dir, objects, probe))
+		outcomes = append(outcomes, sweepOneGuarded(ctx, dir, objects, probe, resume))
 	}
 	return outcomes
 }
@@ -74,7 +89,7 @@ func sweepRuns(ctx context.Context, root string, objects persist.ObjectAccess, p
 // sweepOneGuarded contains a panic to ITS dir: one poison dir must not
 // abort the rest of the sweep (previously the recover sat a level up, so
 // aaa-poison left zzz-healthy uncompensated on every start, forever).
-func sweepOneGuarded(ctx context.Context, dir string, objects persist.ObjectAccess, probe spaceProbe) (outcome sweepOutcome) {
+func sweepOneGuarded(ctx context.Context, dir string, objects persist.ObjectAccess, probe spaceProbe, resume resumeFn) (outcome sweepOutcome) {
 	defer func() {
 		if rec := recover(); rec != nil {
 			outcome.Dir = dir
@@ -83,10 +98,27 @@ func sweepOneGuarded(ctx context.Context, dir string, objects persist.ObjectAcce
 			log.With("dir", dir).Errorf("sweep of one run dir panicked; continuing with the rest: %v", rec)
 		}
 	}()
-	return sweepOne(ctx, dir, objects, probe)
+	return sweepOne(ctx, dir, objects, probe, resume)
 }
 
-func sweepOne(ctx context.Context, dir string, objects persist.ObjectAccess, probe spaceProbe) sweepOutcome {
+// resumable reports whether the manifest describes a run whose pass 2
+// completed — the DM spec §8.1 class: the spool is provably whole (the
+// fetched marker or later), so pass 3 can restart from the dir alone. A
+// suspend BEFORE materialization began is not in the class (its crawl is
+// resumable only with DM-3's pass-2 seam) and keeps compensating —
+// trivially, to nothing.
+func resumable(m runstore.Manifest) bool {
+	switch m.State {
+	case runstore.StateFetched, runstore.StateMaterializing:
+		return true
+	case runstore.StateSuspended:
+		return m.MaterializeStarted
+	default:
+		return false
+	}
+}
+
+func sweepOne(ctx context.Context, dir string, objects persist.ObjectAccess, probe spaceProbe, resume resumeFn) sweepOutcome {
 	outcome := sweepOutcome{Dir: dir}
 	// OpenExclusive takes the guard atomically with the liveness check —
 	// the IsActive-then-Open pair had a gap a DM-2 resume could slip into.
@@ -155,9 +187,18 @@ func sweepOne(ctx context.Context, dir string, objects persist.ObjectAccess, pro
 		return outcome
 	}
 
-	// running | suspended | cancelling | compensating: compensate from the
-	// frozen-core view (§4.4) — CompensateIds tolerates already-deleted
-	// objects, so re-running a crashed compensation is safe (§6.5).
+	if resume != nil && resumable(manifest) && manifest.ResumeAttempts < maxResumeAttempts {
+		// fetched | materializing | suspended-mid-materialize: finish the
+		// materialization from the dir instead of destroying it (§8.1) —
+		// headlessly: no source, no credentials, no network. Attempts are
+		// capped; exhaustion falls through to compensation below.
+		return resume(ctx, store, manifest)
+	}
+
+	// running | suspended | cancelling | compensating — and resumable runs
+	// whose attempts are exhausted: compensate from the frozen-core view
+	// (§4.4) — CompensateIds tolerates already-deleted objects, so
+	// re-running a crashed compensation is safe (§6.5).
 	inputs, err := store.CompensationInputs(ctx)
 	if err != nil {
 		_ = store.Close()
@@ -208,7 +249,7 @@ func (s *service) sweepAbandoned() {
 			log.Errorf("sweep panic: %v\n%s", rec, debug.Stack())
 		}
 	}()
-	outcomes := sweepRuns(s.componentCtx, runstore.RunsRoot(s.config.RepoPath), s.objects, s.probeSpace)
+	outcomes := sweepRuns(s.componentCtx, runstore.RunsRoot(s.config.RepoPath), s.objects, s.probeSpace, s.resumeRunner)
 	for _, outcome := range outcomes {
 		logger := log.With(
 			"dir", outcome.Dir,

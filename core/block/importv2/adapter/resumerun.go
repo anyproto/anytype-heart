@@ -1,0 +1,128 @@
+package adapter
+
+import (
+	"context"
+	"fmt"
+
+	importv2 "github.com/anyproto/anytype-heart/core/block/importv2"
+	"github.com/anyproto/anytype-heart/core/block/importv2/engine"
+	"github.com/anyproto/anytype-heart/core/block/importv2/identity"
+	"github.com/anyproto/anytype-heart/core/block/importv2/persist"
+	"github.com/anyproto/anytype-heart/core/block/importv2/resume"
+	"github.com/anyproto/anytype-heart/core/block/importv2/runstore"
+	"github.com/anyproto/anytype-heart/core/block/process"
+	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
+	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space/clientspace"
+)
+
+// resumeRun is the sweep's resume branch (DM spec §8.1): restart pass 3 of
+// a fetched/materializing/suspended-mid-materialize run from its dir alone.
+// Headless by construction — the manifest carries no request blob and no
+// credentials (OQ2 stays avoided): everything pass 3 consumes is the
+// ledger, the spool and the space. The store's ownership arrives from the
+// sweep; every path out settles or keeps it via the run lifecycle rules.
+func (s *service) resumeRun(ctx context.Context, store *runstore.Store, manifest runstore.Manifest) (outcome sweepOutcome) {
+	outcome.Dir = store.Dir()
+	// Attempts move durably BEFORE any work: a resume-and-crash loop is
+	// bounded by the cap however early the crash lands.
+	manifest, err := store.BeginResume(ctx)
+	if err != nil {
+		_ = store.Close()
+		outcome.Action, outcome.Err = sweepSkippedError, fmt.Errorf("begin resume: %w", err)
+		return outcome
+	}
+	state, err := resume.Load(ctx, store)
+	if err != nil {
+		// The dir is kept: the attempt was spent, so a state that never
+		// loads reaches the compensation fallback within the cap.
+		_ = store.Close()
+		outcome.Action, outcome.Err = sweepSkippedError, fmt.Errorf("load resume state: %w", err)
+		return outcome
+	}
+	spc, err := s.spaceService.Get(ctx, manifest.SpaceId)
+	if err != nil {
+		_ = store.Close()
+		outcome.Action, outcome.Err = sweepSkippedError, fmt.Errorf("get space: %w", err)
+		return outcome
+	}
+
+	request := importv2.Request{
+		SpaceID:        manifest.SpaceId,
+		Origin:         objectorigin.Import(model.ImportType(manifest.ImportType)),
+		Mode:           importv2.Mode(manifest.Mode),
+		UpdateExisting: manifest.UpdateExisting,
+		NoCollection:   manifest.NoCollection,
+	}
+	// The wire-facing request is reconstructed minimally: notification and
+	// event delivery need the type and space, nothing else survives the
+	// restart (and nothing else was stored).
+	wireReq := &pb.RpcObjectImportRequest{
+		SpaceId:               manifest.SpaceId,
+		Type:                  model.ImportType(manifest.ImportType),
+		UpdateExistingObjects: manifest.UpdateExisting,
+	}
+
+	progress := s.setupProgress(wireReq)
+	progressSettled := false
+	defer func() {
+		if !progressSettled {
+			progress.Finish(fmt.Errorf("import resume aborted"))
+			s.fileSync.ClearImportEvents()
+		}
+	}()
+	runCtx, cancel := context.WithCancelCause(s.componentCtx)
+	defer cancel(nil)
+	handle := s.registerRun(cancel) // Close suspends a mid-flight resume like any run
+	defer s.unregisterRun(handle)
+	watchDone := make(chan struct{})
+	defer close(watchDone)
+	go func() {
+		select {
+		case <-progress.Canceled():
+			cancel(nil) // user cancel: plain cause — the engine compensates
+		case <-watchDone:
+		}
+	}()
+
+	lc := &runLifecycle{store: store, spillDir: store.SpillDir()}
+	defer lc.release()
+	result := s.resumeEngine(runCtx, request, spc, lc, progress, state)
+	s.finishRun(lc, result)
+
+	outcome.Result = persist.CompensationResult{Compensated: result.Compensated, Leaked: result.Leaked}
+	s.settleRun(wireReq, progress, result)
+	progressSettled = true
+	switch {
+	case result.Suspended:
+		outcome.Action = sweepResumedSuspended
+	case result.Err != nil:
+		outcome.Action = sweepResumedFailed
+		outcome.Err = result.Err
+	default:
+		outcome.Action = sweepResumedCompleted
+		if result.RootCollectionId != "" {
+			// checkDuplicatedTarget makes this idempotent across a crash
+			// that landed between the collection and its widget.
+			s.createRootWidget(spc.DerivedIDs().Widgets, result)
+		}
+	}
+	return outcome
+}
+
+// resumeEngine wires the resumed engine run: the same per-run components as
+// runEngine, plus the rehydrated identity, the heal policy and the resumed
+// progress total.
+func (s *service) resumeEngine(ctx context.Context, request importv2.Request, spc clientspace.Space, lc *runLifecycle, progress process.Progress, st *resume.State) *importv2.Result {
+	spool, err := lc.store.Spool(ctx)
+	if err != nil {
+		return stopFatal(ctx, importv2.IssueStoreError, fmt.Errorf("open spool: %w", err))
+	}
+	deps, persister := s.engineDeps(request, spc, lc, progress,
+		[]identity.Option{resume.ClaimLedgerOption(lc.store), st.IdentityOption()})
+	deps.Spool = spool
+	persister.SetResumeHeal(st.Heal())
+	deps.Reporter.AddTotal(int64(st.SpoolCount))
+	return engine.Resume(ctx, request, deps, &st.Engine)
+}
