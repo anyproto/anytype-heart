@@ -1048,6 +1048,24 @@ func TestV2RemovedBundledSlugEqualsKeyClass(t *testing.T) {
 		}
 	})
 
+	t.Run("insertView runs the same gate", func(t *testing.T) {
+		// insertView shares validateViewKeys with updateView — pinned so a
+		// future split of the two paths cannot reopen one of them
+		plainViewDoc := `{"version":1,"id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
+			`{"id":"dataview","type":"dataview","properties":[{"key":"name","format":"text"}],` +
+			`"views":[{"id":"viewAll1","name":"All","columns":[{"property":"name"}]}]}]}`
+		corpseShapes(t, func(t *testing.T, shape corpseShape) {
+			fx := newV2Fixture(t)
+			addRemoved(t, fx, "tag", shape)
+			fx.expectMutate(editRead(t, plainViewDoc), "headB")
+
+			_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+				patchBody(`{"op":"insertView","name":"Grouped","set":{"groupBy":"tag"}}`), "", false)
+
+			requireRemovalRefusal(t, err, "tag")
+		})
+	})
+
 	t.Run("a view already showing the removed key stays editable (§8.17)", func(t *testing.T) {
 		// the preKnown escape: an edit must not reject what the surface
 		// already shows — the in-document twin of the PATCH escape
