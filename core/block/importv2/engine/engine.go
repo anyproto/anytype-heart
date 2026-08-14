@@ -126,7 +126,43 @@ type Deps struct {
 // invariant issue, never a process crash — per object in persistGuarded, per
 // goroutine in the converter/worker spawns, and here as the last resort for
 // the main-goroutine stages (identity pass, finalize, compensation).
-func Run(ctx context.Context, req importv2.Request, converter importv2.Converter, deps Deps) (result *importv2.Result) {
+func Run(ctx context.Context, req importv2.Request, converter importv2.Converter, deps Deps) *importv2.Result {
+	return startRun(ctx, req, converter, deps, nil)
+}
+
+// CrawlResumeState seeds a pass-2 crawl restart (DM spec §8.3): a run
+// interrupted mid-crawl re-runs both passes against the live source, with
+// the spool's recorded keys as the skip set — no separate status
+// bookkeeping, the recording IS the progress.
+type CrawlResumeState struct {
+	// SpooledKeys are the rows a previous incarnation recorded: the
+	// converter's Skip set (ResumableConverter) and the sink backstop's
+	// drop set — a re-emission of a recorded key is absorbed before any
+	// download or append, and the replay materializes the recorded row.
+	SpooledKeys map[string]struct{}
+	// PriorClaims are previous incarnations' claim keys. A prior claim that
+	// neither re-enumerates this incarnation nor sits in the spool is
+	// SOURCE DRIFT (a page deleted between sessions, 08-13 §5.4) — dropped
+	// with a data-loss warning at reconciliation, where a fresh claim in
+	// the same gap stays the invariant violation it always was.
+	PriorClaims map[string]struct{}
+	// Issues are previous incarnations' retained issues, seeded without
+	// re-reporting (as engine.Resume).
+	Issues []importv2.Issue
+}
+
+// ResumeCrawl is pass 2 restarted against the live source (DM spec §8.3):
+// pass 1 re-runs with a rehydrated identity (claims are reuses — the
+// adapter wires identity.WithRehydrated with reclaimable entries), pass 2
+// re-crawls skipping what the spool already holds, and pass 3 then
+// materializes the whole recording exactly as a fresh run would. Unlike
+// engine.Resume this DOES need the source and its credentials — which is
+// why the manifest carries the request for exactly this class of run.
+func ResumeCrawl(ctx context.Context, req importv2.Request, converter importv2.Converter, deps Deps, state *CrawlResumeState) *importv2.Result {
+	return startRun(ctx, req, converter, deps, state)
+}
+
+func startRun(ctx context.Context, req importv2.Request, converter importv2.Converter, deps Deps, crawl *CrawlResumeState) (result *importv2.Result) {
 	if deps.Reporter == nil {
 		deps.Reporter = noopReporter{}
 	}
@@ -141,6 +177,26 @@ func Run(ctx context.Context, req importv2.Request, converter importv2.Converter
 		cancel:     cancel,
 		failedKeys: map[string]struct{}{},
 		issuedKeys: map[string]struct{}{},
+	}
+	if crawl != nil {
+		if deps.Spool == nil {
+			// INERT failure, the Resume nil-spool sibling (review P1-D): the
+			// memory fallback cannot hold incarnation 1's rows, so running on
+			// would silently re-import half the source. Nothing happened here,
+			// so nothing may be undone: CompensationRan stays false and the
+			// disposal invariant keeps the dir for the sweep.
+			issue := importv2.Fatal(importv2.IssueInvariant, fmt.Errorf("crawl resume requires the run's durable spool"))
+			return &importv2.Result{Err: issue, Issues: []importv2.Issue{issue}}
+		}
+		r.crawlResume = crawl
+		r.claimedNow = map[string]struct{}{}
+		r.seedIssues(crawl.Issues)
+		if rc, ok := converter.(importv2.ResumableConverter); ok {
+			rc.SetSkip(func(sourceKey string) bool {
+				_, spooled := crawl.SpooledKeys[sourceKey]
+				return spooled
+			})
+		}
 	}
 	defer func() {
 		if rec := recover(); rec != nil {
@@ -401,6 +457,56 @@ type run struct {
 	// consults its skip set, finalize and the report consult its recorded
 	// outcomes.
 	resume *ResumeState
+	// crawlResume is non-nil on a crawl-resumed incarnation (ResumeCrawl):
+	// the spool sink consults its recorded-key set, reconciliation its
+	// prior-claim set.
+	crawlResume *CrawlResumeState
+	// claimedNow records claims arriving in THIS incarnation (crawl resume
+	// only) — the input separating source drift from converter bugs at
+	// reconciliation. Guarded by claimMu: claims arrive on the main
+	// goroutine (pass 1), the converter goroutine (late claims) and the
+	// replay goroutine (pass 3), sequential phases on different goroutines.
+	claimMu    sync.Mutex
+	claimedNow map[string]struct{}
+}
+
+// noteClaimed records one claim of the current incarnation (crawl resume
+// only — a fresh run has no prior claims to separate from).
+func (r *run) noteClaimed(sourceKey string) {
+	if r.crawlResume == nil {
+		return
+	}
+	r.claimMu.Lock()
+	r.claimedNow[sourceKey] = struct{}{}
+	r.claimMu.Unlock()
+}
+
+// recordedInSpool reports whether a previous incarnation already recorded
+// the key (crawl resume): the sink backstop drops such a re-emission before
+// any download or append — the replay materializes the recorded row.
+func (r *run) recordedInSpool(sourceKey string) bool {
+	if r.crawlResume == nil {
+		return false
+	}
+	_, ok := r.crawlResume.SpooledKeys[sourceKey]
+	return ok
+}
+
+// staleAcrossIncarnations reports whether an unassigned claim is source
+// drift on a crawl-resumed run: claimed by a previous incarnation, never
+// spooled, and never re-enumerated by this incarnation's pass 1 — the
+// entity disappeared from the source between sessions (08-13 §5.4).
+func (r *run) staleAcrossIncarnations(key string) bool {
+	if r.crawlResume == nil {
+		return false
+	}
+	if _, prior := r.crawlResume.PriorClaims[key]; !prior {
+		return false
+	}
+	r.claimMu.Lock()
+	defer r.claimMu.Unlock()
+	_, reclaimed := r.claimedNow[key]
+	return !reclaimed
 }
 
 // report is the single issue funnel: collects (capped) and applies the one
@@ -449,6 +555,7 @@ func (r *run) identityPass(ctx context.Context, converter importv2.Converter) *i
 		if err := r.deps.Identity.Claim(ctx, claim); err != nil {
 			return err
 		}
+		r.noteClaimed(claim.SourceKey)
 		count++
 		return nil
 	})
@@ -703,6 +810,16 @@ func (r *run) reconcileClaims() {
 		_, loud := r.issuedKeys[key]
 		r.issueMu.Unlock()
 		if loud {
+			continue
+		}
+		if r.staleAcrossIncarnations(key) {
+			// Expected drift on a crawl-resumed run, not a converter bug
+			// (08-13 §5.4): the entity was claimed in a previous session,
+			// never recorded, and the source no longer offers it. Loud but
+			// non-failing — the invariant's teeth stay for claims made (or
+			// re-made) within the current incarnation.
+			r.report(importv2.Warning(importv2.IssueDataLoss, key,
+				"source entity disappeared between import sessions; its identity claim was dropped"))
 			continue
 		}
 		r.failed.Add(1)

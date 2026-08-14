@@ -79,6 +79,19 @@ type Sink interface {
 	Claim(ctx context.Context, claim IdentityClaim) error
 }
 
+// ResumableConverter is implemented by converters that can cheaply skip
+// re-converting objects a previous incarnation already recorded (the 08-13
+// §6.3 seam, serving DM-3's pass-2 crawl resume: the spool is the skip set).
+// Skip is engine-provided, safe for concurrent use, and purely an
+// optimization — the engine enforces recorded-row dedup at the sink
+// regardless, so a converter that ignores the seam is merely slower, never
+// incorrect. For Notion each skipped page saves the ~2 requests that make an
+// interrupted crawl expensive to redo.
+type ResumableConverter interface {
+	Converter
+	SetSkip(skip func(sourceKey string) bool)
+}
+
 // CollectionFactory builds a collection object whose membership references
 // other stream objects by source key (the resolver maps them to final ids).
 // Implementations are pure state builders — no store access.

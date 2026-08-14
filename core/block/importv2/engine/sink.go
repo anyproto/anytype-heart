@@ -147,6 +147,7 @@ func (s *engineSink) Claim(ctx context.Context, claim importv2.IdentityClaim) er
 	if err := s.run.deps.Identity.Claim(ctx, claim); err != nil {
 		return err
 	}
+	s.run.noteClaimed(claim.SourceKey)
 	s.run.deps.Reporter.AddTotal(1)
 	return nil
 }

@@ -66,6 +66,20 @@ func (s *spoolSink) Object(ctx context.Context, object *importv2.Object) error {
 			Message:  "converter emitted an empty object",
 		}
 	}
+	if s.run.recordedInSpool(object.SourceKey) {
+		// The crawl-resume backstop (08-13 §6.2 item 5): a previous
+		// incarnation already recorded this key, so the re-emission is
+		// absorbed — BEFORE the file drain (a recorded file must not
+		// re-download; its bytes sit in the spill dir next to its row) and
+		// before the append (a duplicate row would materialize twice). The
+		// replay serves the recorded version; if the source changed the
+		// object between sessions, the recording wins — the crawl artifact
+		// is the run's ground truth, drift lands on the next import.
+		// Emission order is safe: old rows keep their recorded positions and
+		// new rows append after them, so a definition is always at or ahead
+		// of its first referencer whichever incarnation recorded either.
+		return nil
+	}
 	s.run.deps.Gauge(1)
 	defer s.run.deps.Gauge(-1)
 	if object.File != nil && s.spillDir != "" && (object.File.Open != nil || object.File.Path != "") {
@@ -93,15 +107,15 @@ func (s *spoolSink) Object(ctx context.Context, object *importv2.Object) error {
 	if err := s.spool.Append(ctx, object); err != nil {
 		if ctx.Err() != nil {
 			// The run is being stopped; the failed append is the stop, not
-			// a store failure (finish classifies). AMENDED at the fix-round
-			// blocker (spec §9.1 item 3 as-built): the append's DB operation
-			// now runs on the store's detached opCtx — any-store leaks its
-			// connection when an op dies mid-prepare on a cancelled ctx,
-			// wedging the whole store — while TRUNCATION semantics are
-			// unchanged: this sink checks the run ctx before every append,
-			// so a suspended pass 2 still stops between objects and a
-			// partial spool is still never replayed (resume needs the
-			// fetched marker).
+			// a store failure (finish classifies). The §9.1-item-3 entry
+			// obligation, discharged for DM-3: the append's DB operation
+			// runs on the store's detached opCtx (runstore opCtx — added at
+			// the DM-2 fix-round blocker for the connection leak), so a
+			// suspend can never truncate a row mid-write; cancellation lands
+			// only BETWEEN objects, at this sink's own ctx checks. That
+			// whole-rows-only property is now load-bearing, not incidental:
+			// a partial spool IS replayed (the crawl resume extends it), and
+			// its partiality must always be at an object boundary.
 			return ctx.Err()
 		}
 		// A spool that cannot absorb is the run store failing: fatal, §7.2.
@@ -189,6 +203,7 @@ func (s *spoolSink) Claim(ctx context.Context, claim importv2.IdentityClaim) err
 	if err := s.run.deps.Identity.Claim(ctx, claim); err != nil {
 		return err
 	}
+	s.run.noteClaimed(claim.SourceKey)
 	s.run.deps.Reporter.AddTotal(1)
 	return nil
 }
