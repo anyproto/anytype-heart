@@ -211,6 +211,52 @@ func TestCrashResumeTornCreate(t *testing.T) {
 	})
 }
 
+func TestCrashResumeTornDerivedCreate(t *testing.T) {
+	t.Run("a torn derived-class create heals on resume", func(t *testing.T) {
+		// given — review Class C (executed): derived-class objects are never
+		// claimed in pass 1, so their only row was the effect row written
+		// AFTER the create. A tear in that window left no ledger proof at
+		// all: the hollow tree came back empty (skip-and-read), counters
+		// diverged, and the object was unrepairable afterwards (canUpdate
+		// excludes Relation/RelationOption; the origin guard refuses hollow
+		// types). The write-ahead intent row closes the window; this test
+		// reproduces the tear by rewinding the row to its pre-effect state
+		// and blanking the tree.
+		root := crashTree(t)
+		control, controlResult := runControl(t, root)
+		fx := NewFixture(t)
+		dir := filepath.Join(t.TempDir(), "run-crash")
+		var tornId atomic.Value
+		inc1 := interrupt(t, fx, root, dir, func(cancel context.CancelCauseFunc) {
+			fx.Space.AfterCreate = func(id string) {
+				fx.Space.mu.Lock()
+				name := fx.Space.Created[id].CombinedDetails().GetString(bundle.RelationKeyName)
+				fx.Space.mu.Unlock()
+				if name == "Author" { // the derived relation from the front matter
+					tornId.Store(id)
+					cancel(importv2.ErrSuspended)
+				}
+			}
+		})
+		require.Error(t, inc1.Err)
+		require.True(t, inc1.Suspended)
+		id, ok := tornId.Load().(string)
+		require.True(t, ok, "the derived relation must have been created before the kill")
+		rewindEntryToClaimed(t, dir, id)
+		fx.Space.mu.Lock()
+		fx.Space.Created[id] = hollowState(id)
+		fx.Space.mu.Unlock()
+
+		// when
+		resumed := fx.ResumeDurable(context.Background(), t, dir, request(false, false))
+
+		// then: the hollow relation carries its full definition again
+		assertResumedClean(t, resumed, controlResult)
+		assert.Equal(t, control.Dump(), fx.Dump(),
+			"the healed derived object must leave the set identical to the uninterrupted run")
+	})
+}
+
 func TestCrashResumeAtUpload(t *testing.T) {
 	t.Run("killed at the upload: the resumed run re-uploads and converges", func(t *testing.T) {
 		// given

@@ -42,6 +42,7 @@ type State struct {
 	identityEntries []identity.RehydratedEntry
 	identityFiles   []identity.RehydratedFile
 	healKeys        map[string]struct{}
+	healDerived     map[string]struct{}
 	compensation    runstore.CompensationInputs
 }
 
@@ -73,9 +74,16 @@ func reverse(ids []string) []string {
 
 // Heal is the persister's resumed-incarnation ErrTreeExists policy
 // (persist.SetResumeHeal): true exactly for keys whose ledger row proves an
-// interrupted create by this run (minted, non-terminal).
-func (st *State) Heal() func(sourceKey string) bool {
-	return func(sourceKey string) bool {
+// interrupted create by this run — CLASS-GUARDED (review Class C): minted
+// proof heals only minted-class creates, derived intent proof only
+// derived-class ones, so cross-class key reuse can never turn proof into a
+// ResetToVersion of a pre-existing user object.
+func (st *State) Heal() func(sourceKey string, derived bool) bool {
+	return func(sourceKey string, derived bool) bool {
+		if derived {
+			_, ok := st.healDerived[sourceKey]
+			return ok
+		}
 		_, ok := st.healKeys[sourceKey]
 		return ok
 	}
@@ -125,6 +133,7 @@ func Load(ctx context.Context, store *runstore.Store) (*State, error) {
 		Manifest:     manifest,
 		SpoolCount:   spoolCount,
 		healKeys:     map[string]struct{}{},
+		healDerived:  map[string]struct{}{},
 		compensation: compensation,
 	}
 	skip := map[string]struct{}{}
@@ -140,6 +149,26 @@ func Load(ctx context.Context, store *runstore.Store) (*State, error) {
 			// into the inference or the counters re-classifies a conflict as
 			// content. It exists for compensation alone — CompensationInputs
 			// reads it separately (review Class B).
+			continue
+		}
+		if entry.Derived {
+			// A derived-class row: no pass-1 claim, no payload, never
+			// identity-rehydrated — the replay re-derives it (deterministic
+			// derivation or dedup). Terminal rows count and skip-list as
+			// usual (the sink exempts derived rows by TYPE regardless);
+			// a non-terminal row is the torn-create window and becomes heal
+			// proof for its class.
+			if entry.Terminal {
+				skip[entry.SourceKey] = struct{}{}
+				switch entry.Action {
+				case "created":
+					created++
+				case "updated":
+					updated++
+				}
+			} else {
+				st.healDerived[entry.SourceKey] = struct{}{}
+			}
 			continue
 		}
 		_, inSpool := spoolKeys[entry.SourceKey]

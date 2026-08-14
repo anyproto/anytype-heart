@@ -116,3 +116,20 @@ type FileSource struct {
 
 	ImageKind model.ImageKind
 }
+
+// IsDerivedClass reports whether the type's identity derives from a unique
+// key on demand (relation, option, type, profile): never claimed in pass 1,
+// deterministic tree derivation, re-derived on a resumed replay. ONE
+// predicate — the engine's sink routing and persist's write-ahead intent
+// must never disagree about the class.
+func IsDerivedClass(sbType coresb.SmartBlockType) bool {
+	switch sbType {
+	case coresb.SmartBlockTypeRelation,
+		coresb.SmartBlockTypeRelationOption,
+		coresb.SmartBlockTypeObjectType,
+		coresb.SmartBlockTypeProfilePage:
+		return true
+	default:
+		return false
+	}
+}

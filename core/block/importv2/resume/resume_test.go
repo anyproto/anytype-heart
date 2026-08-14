@@ -94,9 +94,10 @@ func TestLoad(t *testing.T) {
 		assert.Equal(t, map[string]struct{}{
 			"page-1": {}, "page-3": {}, "rel-1": {}, "img.png": {},
 		}, state.Engine.SkipKeys)
-		assert.True(t, state.Heal()("page-2"), "the unfinished minted create heals on ErrTreeExists")
-		assert.False(t, state.Heal()("page-3"), "a matched row never heals")
-		assert.False(t, state.Heal()("page-1"), "a terminal row is skipped, not healed")
+		assert.True(t, state.Heal()("page-2", false), "the unfinished minted create heals on ErrTreeExists")
+		assert.False(t, state.Heal()("page-2", true), "minted proof never heals a derived-class collision (class guard)")
+		assert.False(t, state.Heal()("page-3", false), "a matched row never heals")
+		assert.False(t, state.Heal()("page-1", false), "a terminal row is skipped, not healed")
 
 		// and — finalize inference: the collection and report are reused,
 		// the interrupted finalize claim is dropped

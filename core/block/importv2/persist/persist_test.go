@@ -39,9 +39,15 @@ type fakeSpace struct {
 	existing    map[string]smartblock.SmartBlock
 	initStates  []*state.State
 	lastInitCtx *smartblock.InitContext
+	// beforeCreate observes the moment of the tree write (write-ahead
+	// ordering assertions).
+	beforeCreate func()
 }
 
 func (f *fakeSpace) CreateTreeObjectWithPayload(ctx context.Context, payload treestorage.TreeStorageCreatePayload, initFunc smartblock.InitFunc) (smartblock.SmartBlock, error) {
+	if f.beforeCreate != nil {
+		f.beforeCreate()
+	}
 	if f.createErr != nil {
 		return nil, f.createErr
 	}
@@ -333,7 +339,7 @@ func TestPersistHeal(t *testing.T) {
 		fx.space.createErr = treestorage.ErrTreeExists
 		hollow := &resettableObject{SmartTest: smarttest.New("newId")}
 		fx.objects.objects["newId"] = hollow
-		fx.SetResumeHeal(func(sourceKey string) bool { return sourceKey == "docs/page.md" })
+		fx.SetResumeHeal(func(sourceKey string, derived bool) bool { return sourceKey == "docs/page.md" && !derived })
 
 		// when
 		outcome, err := fx.Persist(context.Background(), pageObject("docs/page.md"),
@@ -350,6 +356,70 @@ func TestPersistHeal(t *testing.T) {
 		assert.Equal(t, 1, result.Compensated, "a healed create is journaled created (deletable)")
 	})
 
+	t.Run("a derived-class create records intent BEFORE the tree write", func(t *testing.T) {
+		// given — review Class C: derived objects have no pass-1 claim, so
+		// this intent row is their only pre-effect record; written after the
+		// create it would protect nothing.
+		fx := newFixture(t)
+		ledger := &fakeLedger{}
+		fx.Persister = New(
+			testSpaceId, objectorigin.Import(model.Import_Markdown), fx.space, fx.objects,
+			fx.uploader, fx.flags, noopRewriter{}, NewInstallCoordinator(fx.installer),
+			NewJournalWithLedger(ledger), fx.checker, t.TempDir(),
+		)
+		var events []string
+		fx.space.beforeCreate = func() { events = append(events, "tree-write") }
+
+		// when
+		_, err := fx.Persist(context.Background(), typeObject("type:Meeting"),
+			Target{Id: "typeId", Payload: payloadFor("typeId")}, fx.report)
+
+		// then
+		require.NoError(t, err)
+		require.NotEmpty(t, ledger.calls)
+		assert.Equal(t, "intent", ledger.calls[0].kind)
+		assert.Equal(t, []string{"tree-write"}, events,
+			"exactly one tree write, after the intent record")
+
+		// and: a minted-class page records no intent (its claim already is one)
+		ledger.calls = nil
+		_, err = fx.Persist(context.Background(), pageObject("docs/page.md"),
+			Target{Id: "pageId", Payload: payloadFor("pageId")}, fx.report)
+		require.NoError(t, err)
+		for _, call := range ledger.calls {
+			assert.NotEqual(t, "intent", call.kind, "pages are claim-covered; no intent row")
+		}
+	})
+
+	t.Run("derived collisions heal only on derived-class proof", func(t *testing.T) {
+		// given — the class guard: minted proof must never heal a derived
+		// collision (a deterministic derived id can collide with a genuinely
+		// pre-existing user object; ResetToVersion there is data loss)
+		fx := newFixture(t)
+		fx.space.createErr = treestorage.ErrTreeExists
+		hollow := &resettableObject{SmartTest: smarttest.New("typeId")}
+		fx.objects.objects["typeId"] = hollow
+		fx.space.existing["typeId"] = hollow
+		fx.SetResumeHeal(func(sourceKey string, derived bool) bool { return !derived }) // minted proof only
+
+		// when
+		outcome, err := fx.Persist(context.Background(), typeObject("type:Meeting"),
+			Target{Id: "typeId", Payload: payloadFor("typeId")}, fx.report)
+
+		// then: fallback, not heal
+		require.NoError(t, err)
+		assert.Equal(t, ActionSkipped, outcome.Action)
+		assert.Nil(t, hollow.resetTo, "minted proof must not reset a derived-class collision")
+
+		// and: derived proof does heal it
+		fx.SetResumeHeal(func(sourceKey string, derived bool) bool { return derived })
+		outcome, err = fx.Persist(context.Background(), typeObject("type:Meeting"),
+			Target{Id: "typeId", Payload: payloadFor("typeId")}, fx.report)
+		require.NoError(t, err)
+		assert.Equal(t, ActionCreated, outcome.Action)
+		assert.NotNil(t, hollow.resetTo)
+	})
+
 	t.Run("without ledger proof the fallback stays skip-and-read", func(t *testing.T) {
 		// given — a deterministic derived id can collide with a genuinely
 		// pre-existing tree (index lag, the fallback's designed case); with
@@ -358,7 +428,7 @@ func TestPersistHeal(t *testing.T) {
 		fx := newFixture(t)
 		fx.space.createErr = treestorage.ErrTreeExists
 		fx.space.existing["newId"] = smarttest.New("newId")
-		fx.SetResumeHeal(func(string) bool { return false })
+		fx.SetResumeHeal(func(string, bool) bool { return false })
 
 		// when
 		outcome, err := fx.Persist(context.Background(), pageObject("docs/page.md"),

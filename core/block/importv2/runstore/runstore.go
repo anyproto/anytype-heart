@@ -111,6 +111,13 @@ const (
 
 	modeMinted  = "minted"
 	modeMatched = "matched"
+	// modeDerived marks a derived-class create's write-ahead intent (review
+	// Class C): derived objects are never claimed in pass 1, so this row is
+	// their ONLY pre-effect record — the heal proof and the compensation
+	// attribution for a create torn between the tree write and its effect
+	// row. Older binaries read it through the §4.4 rule (an unrecognized
+	// mode is DELETABLE), which is exactly the right disposition.
+	modeDerived = "derived"
 
 	statusPersisted = "persisted"
 	statusDone      = "done"
@@ -636,6 +643,33 @@ func (s *Store) recordSyntheticEntry(ctx context.Context, sourceKey string, row 
 			}
 			v.Set("incarnation", a.NewNumberInt(s.currentIncarnation()))
 		})
+}
+
+// RecordCreateIntent writes the write-ahead intent for a derived-class
+// create (mode "derived", status claimed): recorded BEFORE the tree write,
+// so a tear between the create and its effect row leaves attribution and
+// heal proof instead of nothing. Merge rule: an existing row is kept whole
+// (a replayed derived create re-records intent over its terminal row — a
+// no-op; a conflicting id would be an identity violation and is preserved
+// via the entries displacement machinery on the effect write).
+func (s *Store) RecordCreateIntent(ctx context.Context, sourceKey, objectId string) error {
+	rank := int(s.rank.Add(1))
+	_, err := s.entries.UpsertId(ctx, sourceKey, query.ModifyFunc(
+		func(arena *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
+			if string(v.GetStringBytes("objectId")) != "" {
+				return v, false, nil // never downgrade an existing row (E1)
+			}
+			v.Set("objectId", arena.NewString(objectId))
+			v.Set("mode", arena.NewString(modeDerived))
+			v.Set("status", arena.NewString(statusClaimed))
+			v.Set("rank", arena.NewNumberInt(rank))
+			v.Set("incarnation", arena.NewNumberInt(s.currentIncarnation()))
+			if s.materializeStarted.Load() {
+				v.Set("late", arena.NewBool(true))
+			}
+			return v, true, nil
+		}))
+	return err
 }
 
 // RecordFile journals a file-upload outcome. preExisting marks a

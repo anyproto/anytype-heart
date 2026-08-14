@@ -104,18 +104,20 @@ type Persister struct {
 	journal   *Journal
 	checker   ObjectChecker
 	spillDir  string
-	heal      func(sourceKey string) bool
+	heal      func(sourceKey string, derived bool) bool
 }
 
 // SetResumeHeal installs the resumed-incarnation ErrTreeExists policy
 // (DM spec §8.1; 08-13 §6.2, D4): heal reports whether the ledger proves
-// THIS run created the colliding tree (a minted, non-terminal entry — an
-// interrupted create whose tree may be hollow). Proven trees heal by
-// update and record ActionCreated; everything else keeps the plain
-// skip-and-read fallback — a deterministic derived id can collide with a
-// genuinely pre-existing tree, and healing that would overwrite user data.
-// nil (first incarnations) keeps the fallback everywhere.
-func (p *Persister) SetResumeHeal(heal func(sourceKey string) bool) {
+// THIS run created the colliding tree (a non-terminal minted claim, or a
+// non-terminal derived intent row — an interrupted create whose tree may
+// be hollow). The proof is CLASS-GUARDED (review Class C): a key is
+// healable only against proof of its own class, so a converter claiming a
+// key it later emits as a derived object can never turn minted proof into
+// a ResetToVersion of a pre-existing user object. Everything unproven
+// keeps the plain skip-and-read fallback. nil (first incarnations) keeps
+// the fallback everywhere.
+func (p *Persister) SetResumeHeal(heal func(sourceKey string, derived bool) bool) {
 	p.heal = heal
 }
 
@@ -202,7 +204,18 @@ func (p *Persister) persistRegular(ctx context.Context, o *importv2.Object, targ
 
 	outcome := Outcome{Id: target.Id, Action: ActionSkipped}
 	if target.Payload.RootRawChange != nil {
-		outcome, err = p.createObject(ctx, o.SourceKey, target, doc)
+		derived := importv2.IsDerivedClass(o.SbType)
+		if derived {
+			// Write-ahead intent (review Class C): derived-class objects
+			// have no pass-1 claim, so without this row a create torn
+			// between the tree write and its effect row leaves NO record —
+			// unhealable, uncompensable, silently hollow. Failure aborts
+			// (§7.2: a run that cannot journal must not create objects).
+			if err = p.journal.CreateIntent(o.SourceKey, target.Id); err != nil {
+				return Outcome{}, err
+			}
+		}
+		outcome, err = p.createObject(ctx, o.SourceKey, target, doc, derived)
 		if err != nil {
 			return Outcome{}, err
 		}
@@ -217,7 +230,7 @@ func (p *Persister) persistRegular(ctx context.Context, o *importv2.Object, targ
 	return outcome, nil
 }
 
-func (p *Persister) createObject(ctx context.Context, sourceKey string, target Target, doc *state.State) (Outcome, error) {
+func (p *Persister) createObject(ctx context.Context, sourceKey string, target Target, doc *state.State, derived bool) (Outcome, error) {
 	sb, err := p.space.CreateTreeObjectWithPayload(ctx, target.Payload, func(id string) *smartblock.InitContext {
 		return &smartblock.InitContext{
 			Ctx:         ctx,
@@ -238,7 +251,7 @@ func (p *Persister) createObject(ctx context.Context, sourceKey string, target T
 		return Outcome{Id: target.Id, Action: ActionCreated, Details: details}, nil
 	}
 	if errors.Is(err, treestorage.ErrTreeExists) {
-		if p.heal != nil && p.heal(sourceKey) {
+		if p.heal != nil && p.heal(sourceKey, derived) {
 			// Resumed incarnation, ledger-proven ours: the tree is an
 			// interrupted create and may be hollow — reset it to the
 			// imported state instead of silently keeping whatever half

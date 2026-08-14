@@ -27,6 +27,11 @@ type EntryRecord struct {
 	// Matched means the claim dedup-matched an existing object (mode
 	// "matched"): update path, never deletable, no payload.
 	Matched bool
+	// Derived means the row is a derived-class create's write-ahead intent
+	// (mode "derived", review Class C) or its completed effect: no pass-1
+	// claim, no payload — the replay re-derives it deterministically, and a
+	// non-terminal row is heal proof for its class.
+	Derived bool
 	// Terminal means the object reached a terminal status in a previous
 	// incarnation — the replay skips it.
 	Terminal bool
@@ -77,10 +82,12 @@ func (s *Store) ReadEntries(ctx context.Context) ([]EntryRecord, error) {
 		if objectId == "" {
 			return fmt.Errorf("entry %q: missing objectId", v.GetStringBytes("id"))
 		}
+		mode := string(v.GetStringBytes("mode"))
 		record := EntryRecord{
 			SourceKey: string(v.GetStringBytes("id")),
 			ObjectId:  objectId,
-			Matched:   string(v.GetStringBytes("mode")) == modeMatched,
+			Matched:   mode == modeMatched,
+			Derived:   mode == modeDerived,
 			Terminal:  string(v.GetStringBytes("status")) == statusPersisted,
 			Action:    string(v.GetStringBytes("action")),
 			Rank:      v.GetInt("rank"),

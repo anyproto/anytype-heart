@@ -888,18 +888,10 @@ func classifyFatal(err error, fallback importv2.IssueCode) importv2.Issue {
 	return importv2.AsIssue(err, importv2.SeverityFatal, fallback)
 }
 
-// isDerivedClass reports whether the object's identity derives from a unique
-// key on demand (never claimed in pass 1).
+// isDerivedClass delegates to the root predicate (shared with persist's
+// write-ahead intent — the two must never disagree about the class).
 func isDerivedClass(sbType coresb.SmartBlockType) bool {
-	switch sbType {
-	case coresb.SmartBlockTypeRelation,
-		coresb.SmartBlockTypeRelationOption,
-		coresb.SmartBlockTypeObjectType,
-		coresb.SmartBlockTypeProfilePage:
-		return true
-	default:
-		return false
-	}
+	return importv2.IsDerivedClass(sbType)
 }
 
 func isFileClass(sbType coresb.SmartBlockType) bool {

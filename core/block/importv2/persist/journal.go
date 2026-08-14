@@ -26,6 +26,11 @@ type EffectLedger interface {
 	RecordCreated(ctx context.Context, sourceKey, objectId string) error
 	RecordUpdated(ctx context.Context, sourceKey, objectId string) error
 	RecordFile(ctx context.Context, sourceKey, objectId string, preExisting bool) error
+	// RecordCreateIntent is the derived-class write-ahead record (review
+	// Class C): derived objects have no pass-1 claim, so without it a
+	// create torn between the tree write and its effect row left no proof
+	// at all — unhealable, uncompensable, silently hollow.
+	RecordCreateIntent(ctx context.Context, sourceKey, objectId string) error
 }
 
 // Journal records every effect of a run, in order, for compensation.
@@ -95,6 +100,18 @@ func (j *Journal) CreatedFile(sourceKey, id string, preExisting bool) error {
 	}
 	return j.record(func(ctx context.Context) error {
 		return j.ledger.RecordFile(ctx, sourceKey, id, preExisting)
+	})
+}
+
+// CreateIntent records a derived-class create's write-ahead intent —
+// durable only (an intent is not an effect: the in-memory journal records
+// nothing until the create actually happens). No-op in volatile mode.
+func (j *Journal) CreateIntent(sourceKey, id string) error {
+	if j.ledger == nil {
+		return nil
+	}
+	return j.record(func(ctx context.Context) error {
+		return j.ledger.RecordCreateIntent(ctx, sourceKey, id)
 	})
 }
 
