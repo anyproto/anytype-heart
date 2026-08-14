@@ -245,13 +245,34 @@ func Load(ctx context.Context, store *runstore.Store) (*State, error) {
 		st.FilesDone++
 	}
 
-	issues := make([]importv2.Issue, 0, len(issueRecords))
-	for _, record := range issueRecords {
-		if record.Code == string(importv2.IssueCancelled) {
-			// The interrupted incarnation's own abort record (suspend or
-			// cancel classified fatal) — lifecycle noise, not content: it
-			// must not reach the resumed run's report as if an object had a
-			// problem.
+	issues := rehydrateIssues(issueRecords)
+
+	st.Engine = engine.ResumeState{
+		RootSpec:         rootSpec,
+		ConverterName:    manifest.Converter,
+		SkipKeys:         skip,
+		RootCollectionId: rootCandidateId,
+		ReportObjectId:   reportId,
+		Created:          created,
+		Updated:          updated,
+		Issues:           issues,
+	}
+	return st, nil
+}
+
+// rehydrateIssues converts durable issue records into a resumed run's seed
+// — ONE rule for both resume classes. FATAL-severity records are dropped: a
+// fatal aborted its own incarnation, so on a run that nevertheless resumes
+// it is lifecycle history — the suspend's cancelled fatal, a transient
+// crawl failure (rate-limit exhaustion, network down) whose dir was kept
+// for retry — never content. It must not reach the resumed run's report as
+// if an object had a problem. (Generalizes the original cancelled-only
+// filter: every fatal that can coexist with a resumable dir is by
+// construction the abort that made the dir dormant.)
+func rehydrateIssues(records []runstore.IssueRecord) []importv2.Issue {
+	issues := make([]importv2.Issue, 0, len(records))
+	for _, record := range records {
+		if importv2.Severity(record.Severity) >= importv2.SeverityFatal {
 			continue
 		}
 		issue := importv2.Issue{
@@ -266,16 +287,107 @@ func Load(ctx context.Context, store *runstore.Store) (*State, error) {
 		}
 		issues = append(issues, issue)
 	}
+	return issues
+}
 
-	st.Engine = engine.ResumeState{
-		RootSpec:         rootSpec,
-		ConverterName:    manifest.Converter,
-		SkipKeys:         skip,
-		RootCollectionId: rootCandidateId,
-		ReportObjectId:   reportId,
-		Created:          created,
-		Updated:          updated,
-		Issues:           issues,
+// CrawlState is everything a pass-2 crawl restart (DM spec §8.3) rehydrates
+// from a run dir: the reclaimable identity seeds, the spool census, the
+// recorded plan, and the manifest whose Request blob rebuilds the converter.
+type CrawlState struct {
+	Manifest runstore.Manifest
+	// PlanJSON is the recorded structure plan; nil when the crawl died
+	// before the plan phase completed — nothing was spooled then, so
+	// replanning from scratch is safe (schemaplan.Reuse).
+	PlanJSON []byte
+	// Engine seeds engine.ResumeCrawl.
+	Engine engine.CrawlResumeState
+
+	identityEntries []identity.RehydratedEntry
+}
+
+// IdentityOption seeds a fresh identity.Service with the prior claims,
+// reclaimable: the resumed pass 1 re-enumerates the live source and its
+// claims are reuses of the recorded decisions.
+func (st *CrawlState) IdentityOption() identity.Option {
+	return identity.WithRehydrated(st.identityEntries, nil)
+}
+
+// LoadCrawl reads a mid-crawl run dir into a restart seed. Strict by design,
+// like Load: a ledger that contradicts its own manifest (effect rows without
+// the materialize marker) or a claim without its payload fails the resume
+// loudly — the sweep's attempt cap then routes the dir to compensation —
+// rather than replaying wrong.
+func LoadCrawl(ctx context.Context, store *runstore.Store) (*CrawlState, error) {
+	manifest, err := store.Manifest(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("read manifest: %w", err)
+	}
+	if manifest.SchemaVersion != runstore.SchemaVersion {
+		// The same belt as Load (§4.4): resume only within a version.
+		return nil, fmt.Errorf("run schema v%d cannot be resumed by a v%d binary (compensation only)",
+			manifest.SchemaVersion, runstore.SchemaVersion)
+	}
+	if manifest.MaterializeStarted {
+		// The two resume classes are disjoint by the sticky marker; crossing
+		// them would rehydrate effect rows as reclaimable claims.
+		return nil, fmt.Errorf("run has begun materializing; the crawl loader does not apply")
+	}
+	spool, err := store.Spool(ctx)
+	if err != nil {
+		return nil, err
+	}
+	spooledKeys, _, err := spool.SourceKeys(ctx)
+	if err != nil {
+		return nil, err
+	}
+	entries, err := store.ReadEntries(ctx)
+	if err != nil {
+		return nil, err
+	}
+	files, err := store.ReadFiles(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(files) > 0 {
+		return nil, fmt.Errorf("crawl-phase run carries %d file-effect rows; the ledger contradicts its own manifest", len(files))
+	}
+	issueRecords, err := store.ReadIssues(ctx)
+	if err != nil {
+		return nil, err
+	}
+	planJSON, err := store.ReadPlanJSON(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	st := &CrawlState{Manifest: manifest, PlanJSON: planJSON}
+	st.Engine = engine.CrawlResumeState{
+		SpooledKeys: spooledKeys,
+		PriorClaims: map[string]struct{}{},
+		Issues:      rehydrateIssues(issueRecords),
+	}
+	for _, entry := range entries {
+		if entry.Synthetic {
+			continue // displaced-id preservation, compensation-only
+		}
+		if entry.Derived || entry.Late || entry.Terminal {
+			return nil, fmt.Errorf("claim %q carries effect state in a crawl-phase run; the ledger contradicts its own manifest", entry.SourceKey)
+		}
+		if !entry.Matched && len(entry.PayloadRoot) == 0 {
+			// The Load sibling rule: the id is the hash of exactly those
+			// bytes, and RecordClaims writes both in one tx — this shape is
+			// corruption.
+			return nil, fmt.Errorf("minted claim %q has no create payload; the run cannot be resumed", entry.SourceKey)
+		}
+		st.identityEntries = append(st.identityEntries, identity.RehydratedEntry{
+			SourceKey:    entry.SourceKey,
+			ObjectId:     entry.ObjectId,
+			Matched:      entry.Matched,
+			PayloadRoot:  entry.PayloadRoot,
+			PayloadHeads: entry.PayloadHeads,
+			Reclaimable:  true,
+		})
+		st.Engine.PriorClaims[entry.SourceKey] = struct{}{}
 	}
 	return st, nil
 }
