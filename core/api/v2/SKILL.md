@@ -59,7 +59,7 @@ whether you may write. Ask this instead of discovering limits through 403s
 | show/hide a view column, edit a view | op `updateView` — works on sets, collections and a type's default view (PATCH the type OBJECT id from `GET …/types/{key}`) |
 | add / reorder / remove a view | ops `insertView` (`copyFrom` duplicates one) · `moveView` (`position:"first"` = default tab) · `deleteView` |
 | create an object | `POST …/objects` — shortcut `{type, name, properties, markdown}` covers most cases |
-| delete an object you created | `DELETE …/objects/{id}` — archives (Bin, reversible in the app). Only works on objects THIS key created after provenance shipped; anything else → 403 `not_created_by_this_key`, permanently — don't retry, archive in the app instead. Probe first with `?dry_run=true` |
+| delete an object you created | `DELETE …/objects/{id}` — archives (Bin, reversible in the app). Only works on objects THIS key created after provenance shipped; anything else → 403 `not_created_by_this_key`, permanently — don't retry, archive in the app instead. Ownership is matched on the app name EXACTLY (byte-for-byte — re-pair under the identical name to keep delete rights). User content only: system objects 403. Probe first with `?dry_run=true` |
 | curate a collection | PATCH ops `addItems` / `removeItems` on the collection object |
 | read a set / collection | `GET …/sets/{id}/objects` · `…/collections/{id}/objects` (`?view=`, `?fields=`) |
 | new type / property | `POST …/types` · `POST …/properties`; select options ride the property or create-missing |

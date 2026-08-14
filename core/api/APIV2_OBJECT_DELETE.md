@@ -204,7 +204,7 @@ list touches the wire representation of the first (§12).
 
 ## 4. Where the record lives — the carriers compared
 
-| | (A) root `ChangePayload` (extend `model.ObjectChangePayload`) | (B) first content change (`pb.Change.integrationKey`) — **recommended** | (C) device-local `appHash` detail (scoping design §3) | (D) synced detail | (E) per-key ACL identities |
+| | (A) root `ChangePayload` (extend `model.ObjectChangePayload`) | (B) first content change (`pb.Change.integrationName`) — **recommended** | (C) device-local `appHash` detail (scoping design §3) | (D) synced detail | (E) per-key ACL identities |
 |---|---|---|---|---|---|
 | Immutable | yes — id commits to it (§2a) | yes — signed, CID-addressed, append-only (§2) | no CRDT record at all; objectstore row, wiped/rebuilt with the store | **no — any member with write access can overwrite; this is the forgery Roman's requirement excludes** | yes, cryptographically per key |
 | Forgeable by other members | no | no (signature+ACL, §2b/c) | n/a (local) | yes | no |
