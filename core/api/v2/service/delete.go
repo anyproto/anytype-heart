@@ -35,8 +35,15 @@ var deleteProbeIssue = v2model.Issue{
 // (§9.4). The authorization is a CONJUNCTION (§9.3): for scoped keys the
 // space and write grants run first and unchanged; the creator check is in
 // addition — a readwrite grant means "create and edit broadly, destroy only
-// your own output". A dry run executes every step including the provenance
-// verdict and skips only the archive (§9.6 — the deletability probe).
+// your own output". A dry run executes every check this route OWNS —
+// existence, steer, allowlist, grant, provenance — and skips the archive
+// (§9.6 — the deletability probe). Its contract, stated plainly: archive-
+// time restriction checks (restriction.CheckRestrictions, CanDeleteFile)
+// run inside the archive RPC only, so a dry run does NOT evaluate them — a
+// "deletable" verdict can still meet a 403 on the real call. Deliberate:
+// those checks have no read-only surface, and after the allowlist (which
+// excludes every restriction-carrying system type) and the provenance
+// clause (own-account creations only) they are all but unreachable.
 func (s *V2Service) DeleteObject(ctx context.Context, spaceId, objectId string, dryRun bool) (*v2model.CreateResult, error) {
 	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
@@ -99,12 +106,19 @@ func (s *V2Service) DeleteObject(ctx context.Context, spaceId, objectId string, 
 
 	resp := s.mw.ObjectSetIsArchived(ctx, &pb.RpcObjectSetIsArchivedRequest{ContextId: objectId, IsArchived: true})
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSetIsArchivedResponseError_NULL {
-		// a restriction refusal is PERMANENT for this object — 403, not a
-		// retry-shaped 500 (the mapWriteError lesson, M2a)
-		if strings.Contains(resp.Error.Description, "restricted") {
-			return nil, restrictionForbidden(objectId, fmt.Errorf("%s", resp.Error.Description))
+		// a permanent refusal is a 403, not a retry-shaped 500 (the
+		// mapWriteError lesson, M2a). The RPC serves only UNKNOWN_ERROR plus
+		// a description, so the match is textual — and there are TWO
+		// permanent shapes behind it, not one: restriction.ErrRestricted
+		// ("restricted") and fileobject CanDeleteFile's
+		// "can't delete other's file" (fileobject/service.go). The first
+		// build matched only the former; the review (F4) executed the
+		// latter into a 500 two lines under the M2a citation.
+		desc := resp.Error.Description
+		if strings.Contains(desc, "restricted") || strings.Contains(desc, "can't delete other's file") {
+			return nil, restrictionForbidden(objectId, fmt.Errorf("%s", desc))
 		}
-		return nil, fmt.Errorf("archive object %s: %s", objectId, resp.Error.Description)
+		return nil, fmt.Errorf("archive object %s: %s", objectId, desc)
 	}
 	return result, nil
 }

@@ -565,6 +565,17 @@ filterable detail) is attribution's, is advisory-only by construction (a
 detail — §2), and is not needed to ship (agents track their own created ids
 from create receipts; C8 makes those receipts reliable under retry).
 
+**Contract boundary, decided (second review round, F4/H3-1):** the dry run
+verifies what this route OWNS — existence, steer, allowlist, grant,
+provenance. Archive-time restriction checks
+(`restriction.CheckRestrictions`, `CanDeleteFile`) run inside the archive
+RPC pipeline only and have no read-only surface, so the dry run does NOT
+evaluate them: a "deletable" verdict can, rarely, still meet a 403 on the
+real call. Accepted rather than built, because after the 3a allowlist
+(which excludes every restriction-carrying system type) and the provenance
+clause (own-account creations only) those refusals are all but
+unreachable; the OpenAPI description states the boundary.
+
 **9.7 Reserved, unchanged:** `?permanent=true` (hard delete through the bin
 pipeline) — when it comes, it consumes the same provenance under the same
 rule and inherits the DerivedDeleteConsistency findings; not designed here.

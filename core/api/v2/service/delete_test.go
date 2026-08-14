@@ -412,6 +412,29 @@ func TestDeleteObject(t *testing.T) {
 		assert.Contains(t, v2Err.Message, "do not retry")
 	})
 
+	t.Run("the file-ownership refusal is a permanent 403, not a 500 — F4", func(t *testing.T) {
+		// CanDeleteFile's refusal reads "can't delete other's file" — it does
+		// NOT contain "restricted", so a match on that word alone (the first
+		// build) let this permanent refusal fall through to the retry-shaped
+		// 500 branch. The fixture uses the exact fileobject/service.go text;
+		// it fails if either textual match is narrowed back.
+		fx := newDeleteFixture(t, true, "Claude Desktop")
+		fx.mwMock.On("ObjectSetIsArchived", mock.Anything, mock.Anything).Return(&pb.RpcObjectSetIsArchivedResponse{
+			Error: &pb.RpcObjectSetIsArchivedResponseError{
+				Code:        pb.RpcObjectSetIsArchivedResponseError_UNKNOWN_ERROR,
+				Description: "can't delete other's file",
+			},
+		}).Once()
+
+		_, err := fx.DeleteObject(callerCtx(), testSpaceId, deleteObjId, false)
+
+		var v2Err *v2model.Error
+		require.ErrorAs(t, err, &v2Err)
+		assert.Equal(t, http.StatusForbidden, v2Err.Status)
+		assert.Equal(t, v2model.CodeForbidden, v2Err.Code)
+		assert.Contains(t, v2Err.Message, "do not retry")
+	})
+
 	t.Run("an archive-RPC failure surfaces as an internal error", func(t *testing.T) {
 		fx := newDeleteFixture(t, true, "Claude Desktop")
 		fx.mwMock.On("ObjectSetIsArchived", mock.Anything, mock.Anything).Return(&pb.RpcObjectSetIsArchivedResponse{
