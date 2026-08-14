@@ -113,52 +113,52 @@ func Run(ctx context.Context, req importv2.Request, converter importv2.Converter
 	defer func() {
 		if rec := recover(); rec != nil {
 			r.report(importv2.Fatal(importv2.IssueInvariant, panicError("import run", rec)))
-			r.compensate()
-			result = r.buildResult(*r.fatalIssue(), importv2.RootSpec{})
+			result = r.finish(runCtx, importv2.RootSpec{})
 		}
 	}()
 
-	// A graceful-shutdown suspend (cause importv2.ErrSuspended, spec §6.4)
-	// stops the run like a cancel but skips compensation: the durable state
-	// is kept for the startup sweep instead of being torn down mid-shutdown.
-	suspended := func() bool {
-		return errors.Is(context.Cause(runCtx), importv2.ErrSuspended)
-	}
-
 	if fatal := r.identityPass(runCtx, converter); fatal != nil {
-		return r.buildResult(*fatal, importv2.RootSpec{})
+		r.report(*fatal)
+		return r.finish(runCtx, importv2.RootSpec{})
 	}
 	rootSpec := r.streamPass(runCtx, converter)
-
-	// A cancellation that races the end of the stream may leave no fatal
-	// behind: with lanes holding 2*C+K objects, a small import's converter
-	// has already returned cleanly, and interrupted persists are accounted
-	// skipped — nobody else reports the abort. Without this the run would
-	// finalize into a silent "success" (user cancel) or a silent partial
-	// import (suspend). Any dead runCtx here means the run was stopped.
-	if runCtx.Err() != nil && r.fatalIssue() == nil {
-		r.report(importv2.Fatal(importv2.IssueCancelled, context.Cause(runCtx)))
-	}
-
-	if fatal := r.fatalIssue(); fatal != nil {
-		if r.suspendedRun = suspended(); !r.suspendedRun {
-			r.compensate()
-		}
-		return r.buildResult(*fatal, importv2.RootSpec{})
+	if r.fatalIssue() != nil || runCtx.Err() != nil {
+		return r.finish(runCtx, importv2.RootSpec{})
 	}
 	reportClaimed := r.maybeClaimReport(runCtx)
 	r.finalize(runCtx, rootSpec)
 	r.reconcileClaims()
-	if fatal := r.fatalIssue(); fatal != nil {
-		if r.suspendedRun = suspended(); !r.suspendedRun {
-			r.compensate()
-		}
-		return r.buildResult(*fatal, importv2.RootSpec{})
+	if r.fatalIssue() != nil || runCtx.Err() != nil {
+		return r.finish(runCtx, importv2.RootSpec{})
 	}
 	r.emitReport(runCtx, reportClaimed, reportTitle(rootSpec, converter))
-	result = r.buildResult(importv2.Issue{}, rootSpec)
-	result.Err = nil
-	return result
+	return r.finish(runCtx, rootSpec)
+}
+
+// finish is the SINGLE exit classification (Invariant 1): every path out of
+// a run — pass-1 failure, stream abort, finalize-stage fatal, panic, and the
+// success path itself — consults the stop state here. A dead run context
+// with no recorded fatal becomes a cancelled fatal (with lanes holding
+// 2*C+K objects, a small import is fully buffered when cancel fires: the
+// converter has already returned cleanly, interrupted persists are
+// accounted skipped, and nobody else reports the abort — without this, a
+// user cancel yielded a silent "success" and the review confirmed the same
+// hole again during finalize). On any fatal, the suspend verdict (cause
+// importv2.ErrSuspended, spec §6.4) decides compensation: a suspend keeps
+// the durable state for the startup sweep; everything else compensates.
+func (r *run) finish(runCtx context.Context, rootSpec importv2.RootSpec) *importv2.Result {
+	if runCtx.Err() != nil && r.fatalIssue() == nil {
+		r.report(importv2.Fatal(importv2.IssueCancelled, context.Cause(runCtx)))
+	}
+	fatal := r.fatalIssue()
+	if fatal == nil {
+		return r.buildResult(importv2.Issue{}, rootSpec)
+	}
+	r.suspendedRun = errors.Is(context.Cause(runCtx), importv2.ErrSuspended)
+	if !r.suspendedRun {
+		r.compensate()
+	}
+	return r.buildResult(*fatal, importv2.RootSpec{})
 }
 
 func reportTitle(rootSpec importv2.RootSpec, converter importv2.Converter) string {
@@ -207,6 +207,7 @@ type run struct {
 	reportObjectId   string
 	compensated      int
 	leaked           int
+	didCompensate    bool
 	// suspendedRun records the engine's own verdict — the run stopped for a
 	// shutdown suspend and was NOT compensated — carried out via
 	// Result.Suspended so the adapter never re-derives it from a context.
@@ -555,6 +556,12 @@ func (r *run) emitReport(ctx context.Context, claimed bool, title string) {
 }
 
 func (r *run) compensate() {
+	if r.didCompensate {
+		// finish() runs once per exit, but a panic inside compensation
+		// itself would re-enter through the panic guard — never twice.
+		return
+	}
+	r.didCompensate = true
 	if r.deps.OnCompensating != nil {
 		r.deps.OnCompensating()
 	}

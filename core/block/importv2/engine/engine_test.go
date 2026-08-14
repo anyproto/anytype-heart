@@ -643,6 +643,90 @@ func TestRunCancellation(t *testing.T) {
 	})
 }
 
+// cancellingFactory fires the run's cancellation from inside finalize — the
+// window the review mutation-verified: after the post-stream guard, before
+// the success return.
+type cancellingFactory struct {
+	inner  fakeCollectionFactory
+	cancel context.CancelFunc
+}
+
+func (f *cancellingFactory) MakeCollection(name string, memberSourceKeys []string) (*importv2.Object, error) {
+	f.cancel()
+	return f.inner.MakeCollection(name, memberSourceKeys)
+}
+
+// blockingEnumConverter parks in pass 1 until the run context dies.
+type blockingEnumConverter struct {
+	started chan struct{}
+}
+
+func (c *blockingEnumConverter) Name() string { return "blocking" }
+
+func (c *blockingEnumConverter) EnumerateIdentities(ctx context.Context, yield func(importv2.IdentityClaim) error) error {
+	close(c.started)
+	<-ctx.Done()
+	return ctx.Err()
+}
+
+func (c *blockingEnumConverter) Convert(ctx context.Context, sink importv2.Sink) (importv2.RootSpec, error) {
+	return importv2.RootSpec{}, nil
+}
+
+func TestRunStopClassification(t *testing.T) {
+	t.Run("cancel during finalize can never yield success (IGNORE_ERRORS)", func(t *testing.T) {
+		// given — Invariant 1 (CONFIRMED by review): in IGNORE_ERRORS a
+		// cancel after the post-stream guard produced Err=nil, wire NULL,
+		// zero compensation — and the adapter dropped the dir as completed.
+		fx := newEngineFixture()
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		fx.deps.Collection = &cancellingFactory{cancel: cancel}
+		converter := &scriptConverter{
+			objects:  []*importv2.Object{pageObj("a.md", true), pageObj("b.md", true)},
+			rootSpec: importv2.RootSpec{CollectionName: "Import"},
+		}
+
+		// when
+		result := Run(ctx, importv2.Request{Mode: importv2.ModeContinueOnError}, converter, fx.deps)
+
+		// then
+		require.Error(t, result.Err, "a stopped run may never report success")
+		issue := importv2.AsIssue(result.Err, importv2.SeverityFatal, importv2.IssueStoreError)
+		assert.Equal(t, importv2.IssueCancelled, issue.Code)
+		assert.False(t, result.Suspended)
+		assert.Positive(t, result.Compensated, "user cancel during finalize must compensate")
+		assert.NotEmpty(t, fx.deps.Objects.(*deleterFake).deleted)
+	})
+
+	t.Run("suspend during pass 1 carries the suspend verdict", func(t *testing.T) {
+		// given — Invariant 1: identityPass's early return skipped the
+		// classification, so a shutdown during pass 1 fired a spurious
+		// cancelled notification instead of a quiet suspend.
+		fx := newEngineFixture()
+		converter := &blockingEnumConverter{started: make(chan struct{})}
+		ctx, cancel := context.WithCancelCause(context.Background())
+		done := make(chan *importv2.Result, 1)
+		go func() {
+			done <- Run(ctx, importv2.Request{}, converter, fx.deps)
+		}()
+		<-converter.started
+
+		// when
+		cancel(importv2.ErrSuspended)
+
+		// then
+		select {
+		case result := <-done:
+			require.Error(t, result.Err)
+			assert.True(t, result.Suspended, "the engine owns the suspend verdict on every exit path")
+			assert.Zero(t, result.Compensated)
+		case <-time.After(5 * time.Second):
+			t.Fatal("run did not stop")
+		}
+	})
+}
+
 func TestRunMemoryBound(t *testing.T) {
 	t.Run("in-flight heavy objects never exceed the pipeline bound", func(t *testing.T) {
 		// given
