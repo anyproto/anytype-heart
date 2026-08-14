@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/filter"
 	"github.com/anyproto/anytype-heart/core/api/util"
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -192,6 +193,14 @@ func (srv *Server) ensureAuthenticated(mw apicore.ClientCommands) gin.HandlerFun
 			ExpiresAt: apiSession.ExpireAt,
 			Scope:     apiSession.Scope,
 		})
+		// The integration-key carrier (APIV2_OBJECT_DELETE.md §11.3): the
+		// session's slug rides the request ctx into the object-creation
+		// pipeline, which stamps it on the creating change. Installed by this
+		// SHARED middleware, so v1 and v2 creations are stamped by the same
+		// line (§8a — the "free" case is the actual case). Derived here from
+		// the same AppName the ApiKeyInfo carrier serves — one input, no
+		// second stored copy to drift. Empty AppName ⇒ no carrier ⇒ no stamp.
+		ctx = domain.CtxWithIntegrationKey(ctx, domain.IntegrationKeyFromAppName(apiSession.AppName))
 		c.Request = c.Request.WithContext(ctx)
 		srv.emitKeyStatusSignals(c, apiSession)
 		c.Next()

@@ -13,9 +13,62 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/api/util"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
+
+// The integration-key carrier (APIV2_OBJECT_DELETE.md §11.3) must ride the
+// REQUEST context: it is what the object-creation pipeline stamps onto the
+// creating change, and ensureAuthenticated serves BOTH route groups, so this
+// one install is also what makes v1 creations carry provenance (§8a). The
+// mint below goes through the real middleware — if the install line is
+// dropped, or the slug stops being derived from the session AppName, the
+// carrier reads empty and the first subtest fails.
+func TestEnsureAuthenticatedInstallsIntegrationKey(t *testing.T) {
+	mintWithAppName := func(t *testing.T, appName string) *gin.Context {
+		fx := newFixture(t)
+		fx.KeyToToken = make(map[string]ApiSessionEntry)
+		fx.mwMock.
+			On("WalletCreateSession", mock.Anything, mock.Anything).
+			Return(&pb.RpcWalletCreateSessionResponse{
+				Token:        "tok",
+				AccountScope: model.AccountAuth_JsonAPI,
+				AppName:      appName,
+				Error: &pb.RpcWalletCreateSessionResponseError{
+					Code: pb.RpcWalletCreateSessionResponseError_NULL,
+				},
+			}, nil).Once()
+		middleware := fx.ensureAuthenticated(fx.mwMock)
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		req := httptest.NewRequest("GET", "/", nil)
+		req.Header.Set("Authorization", "Bearer someKey")
+		c.Request = req
+		middleware(c)
+		require.False(t, c.IsAborted())
+		return c
+	}
+
+	t.Run("the session AppName rides the request ctx as its slug", func(t *testing.T) {
+		// given/when: the raw display name is NOT the slug — asserting on
+		// "Claude Desktop"→"claude-desktop" also fails an implementation that
+		// installs the un-normalized name
+		c := mintWithAppName(t, "Claude Desktop")
+
+		// then
+		require.Equal(t, "claude-desktop", domain.IntegrationKeyFromCtx(c.Request.Context()))
+	})
+
+	t.Run("a nameless key installs no carrier", func(t *testing.T) {
+		// §5: empty AppName ⇒ no stamp — that key's creations stay
+		// unprovenanced rather than carrying a garbage slug
+		c := mintWithAppName(t, "")
+
+		// then
+		require.Equal(t, "", domain.IntegrationKeyFromCtx(c.Request.Context()))
+	})
+}
 
 func TestEnsureMetadataHeader(t *testing.T) {
 	t.Run("sets correct header", func(t *testing.T) {
