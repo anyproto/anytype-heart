@@ -307,6 +307,7 @@ POST should use — not as "the PUT read".
 
 ```json
 { "op": "replaceText", "id": "b2", "find": "Q3", "replace": "Q4" }
+{ "op": "replaceText", "find": "Q3 report", "replace": "Q4 report" }
 ```
 
 Exact-match within one block, must match exactly once, Anthropic-style
@@ -318,6 +319,17 @@ through whole-block verbatim reproduction — the documented 3B collapse
 mode. The server does the replace deterministically; the model supplies
 only the short anchor. B1 now only measures whether large models *also*
 prefer it over `updateBlock`.
+
+**`id` is optional (Wave 2.1a, §8.43): `find` doubles as the locator.**
+Omitted, the find text must appear in exactly ONE block or the op refuses
+— zero matches 404 with the outline steer, several matching blocks are
+`ambiguous_input` listing ≤8 candidate block ids with context, several
+occurrences within the one matched block get the existing more-context
+refusal (`replace_all`'s territory). Resolution runs per-op against the
+applier's live document view under the object lock, so op *i* locates
+against op *i−1*'s edits, and a dry run resolves identically (C9,
+advisory). `id` itself is unchanged — the locator is an additive
+alternative, never a change to what `id` means.
 
 **(d) `setCell` — scoped table-cell write (LAUNCH)**
 
@@ -6527,3 +6539,88 @@ letter, recorded: the slug is normalized per request in the auth
 middleware rather than cached on the session entry (§13 suggested caching)
 — one derivation input beats a second stored copy, and the cost is a
 sub-microsecond string walk.
+
+### 8.43 Wave 2.1a — find-as-locator on replaceText (2026-08-14 — decisions as built)
+
+The first locator slice (TOKENS §5, plan 2.1a): `replaceText`'s `id` is
+now optional, and when omitted `find` doubles as the locator. This is
+shipped behaviour moved down a layer, not new behaviour: the wrapper's
+`edit_text` has resolved an omitted `block` from the find snippet since
+§8.21 — measured there, making the id optional took small-model tool
+selection from 7/8 (gemma4:e4b) and 6/8 (e2b) to 8/8 — and §5.5's
+argument for moving it is also the correctness win. The wrapper's
+`locateBlock` was a read-then-patch TOCTOU: GET the document, resolve
+client-side, PATCH by id, with the document free to move in between.
+In-API resolution runs under the object lock and the race disappears.
+
+**The rule as built (`locator.go` resolveByFind, §5.3 verbatim).** The
+find text must be contained in exactly ONE block's text, or the op
+refuses — never a guess:
+
+- **Zero matches** → 404-class C6: "no block contains %q — copy the find
+  text exactly, including inline markup (text is markdown source: ** [ ]
+  etc. count)", with the outline-read steer in the issue hint. The
+  exact-copy phrase is the id path's shipped repair text; the
+  markdown-source note is the wrapper's measured one — the snippet may
+  have missed only because text is markup source.
+- **Several matching blocks** → `ambiguous_input` listing ≤8 candidates,
+  each as `block <id> (<type>): "<~30 chars context>"` (the wrapper's
+  measured refusal shape: 54 tokens, repaired first-try), plus "… and N
+  more" past the cap. Candidates are FULL stored ids — the applier's view
+  is the canonical document, and a full id is always a valid retry value.
+- **Several occurrences within the one matched block** → the existing
+  more-context refusal, verbatim, naming the RESOLVED block id (a valid
+  retry value): that multiplicity is `replace_all`'s (and later `nth`'s)
+  territory, not a resolution failure. Consequently `replace_all` composes
+  with the locator within one block and **never widens it across blocks**
+  — on a two-block match it still refuses.
+
+Only text-bearing blocks participate in the scan (code/embed included,
+§8.4): replaceText can only edit those, so a block the op would refuse can
+neither capture a match nor make a unique one ambiguous. Table-cell text
+is not scanned — cells are not entries of the blocks array (setCell's
+territory), same as the wrapper's locate.
+
+**Mid-batch freshness is by construction, and pinned.** Resolution reads
+`a.doc()` — the same live view id-suffix resolution uses, which
+replaceText maintains in place (M7) and every rebuilding op invalidates —
+so op *i* locates against op *i−1*'s edits on both view paths. Two tests
+pin the two directions: an op-0 edit that CREATES op-1's only match (a
+stale view would 404), and an op-0 edit that makes op-1's find ambiguous
+(a stale view would resolve it uniquely — the silent wrong match; the
+fresh view demands the refusal naming both blocks). Dry-run and apply
+resolve identically at apply time on the same code path (C9 advisory).
+Resolution adds ZERO renders — `TestApplierRenderCounts` pins a 50-op
+locator batch at begin + final, so an id-less batch keeps M7's
+O(document) product.
+
+**Schema and surface.** The served op schema drops `id` from required
+(`find`/`replace` remain), documents the locator on the `id` and `find`
+descriptions, and the served example is now the id-less form — the
+cheapest correct loop is what the example teaches. The PATCH handler
+description carries one sentence on it; v1's OpenAPI document is
+byte-identical.
+
+**The wrapper dropped its double-read in the same pass.** `edit_text`
+keeps its exact interface; with `block` absent it simply omits the op's
+`id` (and passes no ref fields, so the ambiguity-rewrite retry — which
+would have nothing to rewrite — never fires on a locator refusal).
+`locateBlock`, `snippetContext` and their constants are gone; the
+windowing tests moved to `locator_test.go` with the function. The server's
+refusals reach the tool register through the existing two translators:
+restVocab already rewrote the outline steer ("run read with mode=outline
+…"), and opsVocab gained two rows ("retry with id naming" → "retry with
+block naming", "or give the block id" → "or pass block") beside the
+replace_all strip it already had. Net effect on the wire: the happy path
+is ONE request instead of two, and a locate failure costs one PATCH-shaped
+refusal instead of one GET — the refusal texts the §8.21 benchmark
+measured survive nearly verbatim.
+
+**What §5 got right on contact, and the one deviation.** The §5.5 cost
+estimate held (resolveByFind is ~50 lines + the context excerpt; no new
+parser). The one place the built thing deviates from the wrapper it
+mirrors: the wrapper's candidate list spelled served LABELS (its locate
+read served the compact shape); the server lists canonical full ids, which
+its view holds and which resolve exactly — the label spelling would have
+required threading the serving layer's relabeler into the applier for a
+cosmetic saving on an error path.

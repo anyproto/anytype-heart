@@ -51,7 +51,7 @@ whether you may write. Ask this instead of discovering limits through 403s
 | read one object | `GET …/objects/{id}` — start with `?outline=true` |
 | change property values | PATCH op `setProperties` — `add`/`remove` for list values, `set` for scalars |
 | complete a task object | `setProperties` (`"set":{"done":true}` or the status option) — a property, not a block edit |
-| change a word/phrase | op `replaceText` `{id, find, replace}` — never retype the block |
+| change a word/phrase | op `replaceText` `{find, replace}` — `id` optional; never retype the block |
 | toggle a checkbox block | op `updateBlock` `{"id":…,"set":{"checked":true}}` — merge; text untouched |
 | add content | op `insertBlocks` with a `markdown` payload — write markdown, the server parses it |
 | restructure | ops `moveBlock` / `replaceSubtree` / `deleteBlock` |
@@ -72,6 +72,9 @@ whether you may write. Ask this instead of discovering limits through 403s
   (text on headings only) — structure + addressable ids at a fraction of
   the tokens. Follow up with `?block={id}` for one subtree, or PATCH
   directly: **editing needs no prior full read once you know the ids**.
+- When the request already quotes the text to change, skip the read
+  entirely: `replaceText {find, replace}` locates the block itself (one
+  match, or a refusal listing the candidates).
 - `?include=properties` or `?include=blocks` reads half the object.
   `?format=md` is a read-only markdown rendering.
 - Echo block ids back exactly as a read served them; if one is rejected as
@@ -92,7 +95,7 @@ whether you may write. Ask this instead of discovering limits through 403s
   { "op": "setProperties", "set": {"status": ["Done"]}, "unset": ["oldKey"],
     "add": {"tags": ["urgent"]}, "remove": {"assignee": ["bafy…"]} },
   { "op": "updateBlock",  "id": "b5", "set": {"checked": true} },
-  { "op": "replaceText",  "id": "b2", "find": "Q3", "replace": "Q4" },
+  { "op": "replaceText",  "find": "Q3 report", "replace": "Q4 report" },
   { "op": "insertBlocks", "after": "b3", "markdown": "## Notes\n- first\n- second" },
   { "op": "moveBlock",    "id": "b9", "inside": "b2", "position": "last" },
   { "op": "deleteBlock",  "id": "b4", "recursive": true },
@@ -110,10 +113,13 @@ whether you may write. Ask this instead of discovering limits through 403s
   = present-but-empty; `unset` removes presence.
 - **`updateBlock`** is THE block-field op (merge; explicit `null` clears a
   field) — checkbox, color, language, retype, or full text rewrite.
-- **`replaceText`**: `find` must match exactly once ("found 2 matches —
-  provide more context"); `replace_all: true` is the escape. Preferred over
-  `updateBlock` for word-level edits. `replaceSubtree {id, blocks}` swaps a
-  block plus descendants.
+- **`replaceText`**: `id` is optional — omitted, `find` locates the block
+  and must appear in exactly ONE block (zero or several matching blocks
+  refuse; the ambiguity error lists candidate ids to retry with). Within
+  the matched block `find` must match exactly once ("found 2 matches —
+  provide more context"); `replace_all: true` is the escape, within that
+  one block only. Preferred over `updateBlock` for word-level edits.
+  `replaceSubtree {id, blocks}` swaps a block plus descendants.
 - **`insertBlocks`**: `blocks` (flat array) or `markdown` — mutually
   exclusive, same targeting. Target with one of `after`/`before`/`inside`
   (+`position: first|last` inside that container); omit all three and
