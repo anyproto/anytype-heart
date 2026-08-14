@@ -42,6 +42,11 @@ type Params struct {
 	// IncludeContentSamples lets the planner see member page titles
 	// (request flag includeContentSamples).
 	IncludeContentSamples bool
+	// PlanReuse wires the crawl-resume plan recording/reuse (08-13 §6.3,
+	// same seam as notion.WithPlanReuse): the markdown crawl resume re-runs
+	// pass 2 whole, and a recomputed LLM plan would diverge from what the
+	// spool already holds.
+	PlanReuse schemaplan.Reuse
 }
 
 type Converter struct {

@@ -74,6 +74,13 @@ type Converter struct {
 	// one property scope (see propertyScope).
 	propertyScopes map[string]string
 	schemaFetches  map[string]*schemaFetch
+
+	// skip marks entities a previous incarnation already recorded
+	// (ResumableConverter, DM spec §8.3); nil on a fresh run. planReuse is
+	// the matching plan wiring: record on a fresh run, preset on a resumed
+	// one (08-13 §6.3 — the plan is never recomputed).
+	skip      func(sourceKey string) bool
+	planReuse schemaplan.Reuse
 }
 
 // Option configures a per-run converter.
@@ -90,6 +97,20 @@ func WithPlanner(planner schemaplan.Planner) Option {
 func WithContentSamples() Option {
 	return func(c *Converter) { c.includeSamples = true }
 }
+
+// WithPlanReuse wires the crawl-resume plan recording/reuse (08-13 §6.3).
+func WithPlanReuse(reuse schemaplan.Reuse) Option {
+	return func(c *Converter) { c.planReuse = reuse }
+}
+
+// SetSkip implements importv2.ResumableConverter: skip reports entities a
+// previous incarnation already recorded, so the resumed crawl spends zero
+// requests on them (the payoff case — each skipped page saves its page
+// fetch and block-tree crawl; the re-search itself costs ~1 request per
+// 100 entities).
+func (c *Converter) SetSkip(skip func(sourceKey string) bool) { c.skip = skip }
+
+func (c *Converter) skipRecorded(id string) bool { return c.skip != nil && c.skip(id) }
 
 // New builds a per-run converter. tempDir is the run-scoped download
 // directory (removed by the adapter with the run).
@@ -167,7 +188,24 @@ func (c *Converter) Convert(ctx context.Context, sink importv2.Sink) (importv2.R
 	// Pages pipeline: fetches run ahead in parallel (bounded, shared pacer),
 	// emission stays in stub order on this goroutine. On an early return the
 	// engine cancels the run context, which unblocks producer and workers.
-	fetched := c.prefetchPages(ctx, c.pages, sink)
+	// On a resumed crawl, recorded pages are dropped BEFORE the pipeline —
+	// their stubs stay in entityById (hierarchy, titles, root-candidate
+	// checks all keep working) but they cost zero requests; the engine's
+	// replay serves their recorded objects. Databases are deliberately NOT
+	// skipped above: rows converting in this incarnation need their property
+	// mappings in converter memory, and a schema re-fetch is ~1 request per
+	// data source (08-13 §6.3).
+	pages := c.pages
+	if c.skip != nil {
+		pages = make([]Entity, 0, len(c.pages))
+		for _, page := range c.pages {
+			if c.skipRecorded(page.Id) {
+				continue
+			}
+			pages = append(pages, page)
+		}
+	}
+	fetched := c.prefetchPages(ctx, pages, sink)
 	for f := range fetched {
 		select {
 		case <-f.done:
@@ -182,6 +220,12 @@ func (c *Converter) Convert(ctx context.Context, sink importv2.Sink) (importv2.R
 	// drains — a late page's blocks may reference further omitted children.
 	for i := 0; i < len(c.pending); i++ {
 		entity := c.pending[i]
+		if !entity.isCollectionLike() && c.skipRecorded(entity.Id) {
+			// A prior incarnation's late discovery, re-discovered and already
+			// recorded: same skip rule as the pass-1 pages above. Collection-
+			// like discoveries re-convert regardless (property mappings).
+			continue
+		}
 		var err error
 		if entity.isCollectionLike() {
 			err = c.convertDatabase(ctx, entity, sink)

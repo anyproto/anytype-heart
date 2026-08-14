@@ -44,16 +44,18 @@ func (c *Converter) planStructure(ctx context.Context, sink importv2.Sink) error
 	for _, schema := range schemas {
 		c.planned[schema.Id] = true
 	}
-	plan, err := c.planner.Plan(ctx, schemas)
+	// Resolve is the shared reuse rule (schemaplan.Reuse): a resumed crawl
+	// gets the recorded plan back verbatim; a fresh run plans, degrades to
+	// naive on failure, sanitizes and records. The `planned` marking above
+	// covers THIS incarnation's schema list either way: a container first
+	// discovered on a resumed session is absent from the recorded plan and
+	// imports on the default type — conservative, deterministic, and
+	// consistent with containers the recorded plan deliberately declined.
+	plan, err := schemaplan.Resolve(ctx, c.planReuse, c.planner, schemas, sink.Issue)
 	if err != nil {
-		if ctx.Err() != nil {
-			return fmt.Errorf("plan structure: %w", ctx.Err())
-		}
-		sink.Issue(importv2.Warning(importv2.IssueLLMPlanFailed, "plan",
-			fmt.Sprintf("structure analysis unavailable (%s); imported with built-in rules", schemaplan.SummarizeError(err))))
-		plan, _ = schemaplan.NewNaive().Plan(ctx, schemas)
+		return err
 	}
-	c.plan = schemaplan.Sanitize(plan, schemas, sink.Issue)
+	c.plan = plan
 	return c.emitPlanTypes(ctx, sink)
 }
 

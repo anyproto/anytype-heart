@@ -42,16 +42,14 @@ func (c *Converter) planStructure(ctx context.Context, sink importv2.Sink) error
 		c.planned[schema.Id] = true
 		order = append(order, schema.Id)
 	}
-	plan, err := c.planner.Plan(ctx, schemas)
+	// The shared reuse rule (schemaplan.Resolve — the Notion sibling calls
+	// the same function): a resumed crawl reuses the recorded plan verbatim,
+	// a fresh run plans, degrades to naive on failure, sanitizes, records.
+	plan, err := schemaplan.Resolve(ctx, c.params.PlanReuse, c.planner, schemas, sink.Issue)
 	if err != nil {
-		if ctx.Err() != nil {
-			return fmt.Errorf("plan structure: %w", ctx.Err())
-		}
-		sink.Issue(importv2.Warning(importv2.IssueLLMPlanFailed, "plan",
-			fmt.Sprintf("structure analysis unavailable (%s); imported with built-in rules", schemaplan.SummarizeError(err))))
-		plan, _ = schemaplan.NewNaive().Plan(ctx, schemas)
+		return err
 	}
-	c.plan = schemaplan.Sanitize(plan, schemas, sink.Issue)
+	c.plan = plan
 	if err := c.emitPlanTypes(ctx, sink); err != nil {
 		return err
 	}
