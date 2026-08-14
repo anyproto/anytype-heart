@@ -208,10 +208,14 @@ func NewFixture(t *testing.T) *Fixture {
 	}
 }
 
-// RunMarkdown imports a markdown directory through the full engine — always
-// via the DURABLE spool, so every golden fixture proves the pass-2
-// serialize → pass-3 materialize round-trip byte-identical to the direct
-// path the goldens were recorded from (DM-1's equivalence gate).
+// RunMarkdown imports a markdown directory through the full engine, always
+// via the DURABLE spool. Scope of the claim, stated precisely: the golden
+// fixtures in this package assert a JSON projection of the materialized
+// object set (details, blocks, links, membership) over markdown-shaped
+// inputs; field-level completeness of the spool round-trip — including the
+// Notion-shaped fields no golden carries — is pinned separately by
+// runstore's TestSpoolRoundTripEveryField, and the engine unit suite runs
+// on a durable spool as well.
 func (fx *Fixture) RunMarkdown(t *testing.T, root string, req importv2.Request) *importv2.Result {
 	t.Helper()
 	src, err := source.Open(root)

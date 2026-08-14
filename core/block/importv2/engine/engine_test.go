@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/importv2"
 	"github.com/anyproto/anytype-heart/core/block/importv2/identity"
 	"github.com/anyproto/anytype-heart/core/block/importv2/persist"
+	"github.com/anyproto/anytype-heart/core/block/importv2/runstore"
 	"github.com/anyproto/anytype-heart/core/block/importv2/resolve"
 	"github.com/anyproto/anytype-heart/core/domain"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -342,13 +343,21 @@ func fileObj(key string) *importv2.Object {
 	}
 }
 
-func newEngineFixture() *engineFixture {
+// newEngineFixture wires the engine over a DURABLE temp spool by default
+// (F2: the whole engine suite exercises the serialization round-trip, not
+// only the four goldens; memorySpool remains only for callers that pass no
+// spool at all).
+func newEngineFixture(t *testing.T) *engineFixture {
 	journal := persist.NewJournal()
 	fx := &engineFixture{
 		identity:  newFakeIdentity(),
 		persister: &fakePersister{journal: journal, failKeys: map[string]error{}},
 		journal:   journal,
 	}
+	spillDir := t.TempDir()
+	spool, err := runstore.OpenStandaloneSpool(context.Background(), spillDir)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = spool.Close() })
 	fx.deps = Deps{
 		Identity:  fx.identity,
 		Persister: fx.persister,
@@ -356,6 +365,8 @@ func newEngineFixture() *engineFixture {
 		Objects:   &deleterFake{},
 		Formats:   resolve.NewFormats(),
 		Keys:      NewKeyTable(),
+		Spool:     spool,
+		SpillDir:  spillDir,
 	}
 	return fx
 }
@@ -387,7 +398,7 @@ func (d *deleterFake) DeleteObject(objectId string) error {
 func TestRunHappyPath(t *testing.T) {
 	t.Run("streams, persists, builds root collection", func(t *testing.T) {
 		// given
-		fx := newEngineFixture()
+		fx := newEngineFixture(t)
 		factory := &fakeCollectionFactory{}
 		fx.deps.Collection = factory
 		converter := &scriptConverter{
@@ -411,7 +422,7 @@ func TestRunHappyPath(t *testing.T) {
 
 	t.Run("no objects is fatal", func(t *testing.T) {
 		// given
-		fx := newEngineFixture()
+		fx := newEngineFixture(t)
 		converter := &scriptConverter{}
 
 		// when
@@ -424,7 +435,7 @@ func TestRunHappyPath(t *testing.T) {
 
 	t.Run("root object key routes the widget without a collection", func(t *testing.T) {
 		// given
-		fx := newEngineFixture()
+		fx := newEngineFixture(t)
 		converter := &scriptConverter{
 			objects:  []*importv2.Object{pageObj("dir", true)},
 			rootSpec: importv2.RootSpec{RootObjectKey: "dir"},
@@ -442,7 +453,7 @@ func TestRunHappyPath(t *testing.T) {
 func TestRunModes(t *testing.T) {
 	t.Run("continue-on-error skips the failed object", func(t *testing.T) {
 		// given
-		fx := newEngineFixture()
+		fx := newEngineFixture(t)
 		fx.persister.failKeys["bad.md"] = assert.AnError
 		converter := &scriptConverter{objects: []*importv2.Object{
 			pageObj("a.md", false), pageObj("bad.md", false), pageObj("c.md", false),
@@ -461,7 +472,7 @@ func TestRunModes(t *testing.T) {
 	t.Run("all-or-nothing aborts and compensates", func(t *testing.T) {
 		// given — the failing object is delayed so earlier objects are
 		// already committed when the abort fires.
-		fx := newEngineFixture()
+		fx := newEngineFixture(t)
 		fx.persister.failKeys["bad.md"] = assert.AnError
 		fx.persister.delayKeys = map[string]time.Duration{"bad.md": 100 * time.Millisecond}
 		objects := []*importv2.Object{pageObj("a.md", false), pageObj("b.md", false), pageObj("bad.md", false)}
@@ -481,7 +492,7 @@ func TestRunModes(t *testing.T) {
 		// given — the durable manifest must say "compensating" BEFORE the
 		// first delete, so a crash mid-cleanup is finished by the sweep
 		// (spec §6.5).
-		fx := newEngineFixture()
+		fx := newEngineFixture(t)
 		deleter := fx.deps.Objects.(*deleterFake)
 		var deletedWhenMarked int
 		marked := 0
@@ -506,7 +517,7 @@ func TestRunModes(t *testing.T) {
 		assert.Zero(t, deletedWhenMarked, "state must be durable before the first delete")
 
 		// and: a clean run never marks
-		fx = newEngineFixture()
+		fx = newEngineFixture(t)
 		fx.deps.OnCompensating = func() { marked += 10 }
 		result = Run(context.Background(), importv2.Request{}, converter2(), fx.deps)
 		require.NoError(t, result.Err)
@@ -523,7 +534,7 @@ func converter2() *scriptConverter {
 func TestRunCancellation(t *testing.T) {
 	t.Run("cancel interrupts a slow run promptly and compensates", func(t *testing.T) {
 		// given
-		fx := newEngineFixture()
+		fx := newEngineFixture(t)
 		fx.persister.delay = 50 * time.Millisecond
 		objects := make([]*importv2.Object, 200)
 		for i := range objects {
@@ -556,7 +567,7 @@ func TestRunCancellation(t *testing.T) {
 		// given — a shutdown suspend must preserve the run's work for the
 		// startup sweep instead of tearing it down (spec §6.4): compensation
 		// is skipped, journal effects stay, OnCompensating never fires.
-		fx := newEngineFixture()
+		fx := newEngineFixture(t)
 		fx.persister.delay = 20 * time.Millisecond
 		marked := false
 		fx.deps.OnCompensating = func() { marked = true }
@@ -600,7 +611,7 @@ func TestRunCancellation(t *testing.T) {
 		// already returned cleanly and cannot be the one to report the
 		// cancellation. The run must still end cancelled and compensated,
 		// never as a silent success.
-		fx := newEngineFixture()
+		fx := newEngineFixture(t)
 		fx.persister.delay = 20 * time.Millisecond
 		objects := make([]*importv2.Object, 20)
 		for i := range objects {
@@ -642,7 +653,7 @@ func TestRunCancellation(t *testing.T) {
 		// cancellation; a fatal issue that happens to wrap a context error
 		// (a durable-journal write timing out during shutdown) must abort
 		// loudly, or the effect goes unrecorded in silence.
-		fx := newEngineFixture()
+		fx := newEngineFixture(t)
 		fatal := importv2.Fatal(importv2.IssueStoreError,
 			fmt.Errorf("journal effect: %w", context.DeadlineExceeded))
 		fx.persister.failOnCancelKeys = map[string]error{"x.md": fatal}
@@ -713,7 +724,7 @@ func TestRunStopClassification(t *testing.T) {
 		// given — Invariant 1 (CONFIRMED by review): in IGNORE_ERRORS a
 		// cancel after the post-stream guard produced Err=nil, wire NULL,
 		// zero compensation — and the adapter dropped the dir as completed.
-		fx := newEngineFixture()
+		fx := newEngineFixture(t)
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		fx.deps.Collection = &cancellingFactory{cancel: cancel}
@@ -738,7 +749,7 @@ func TestRunStopClassification(t *testing.T) {
 		// given — Invariant 1: identityPass's early return skipped the
 		// classification, so a shutdown during pass 1 fired a spurious
 		// cancelled notification instead of a quiet suspend.
-		fx := newEngineFixture()
+		fx := newEngineFixture(t)
 		converter := &blockingEnumConverter{started: make(chan struct{})}
 		ctx, cancel := context.WithCancelCause(context.Background())
 		done := make(chan *importv2.Result, 1)
@@ -769,7 +780,7 @@ func TestSuspendAfterCompletion(t *testing.T) {
 		// the next sweep compensate a COMPLETE import — new data loss. A
 		// user cancel in the same window still undoes (that is the cancel
 		// contract); only the shutdown suspend is terminal-success.
-		fx := newEngineFixture()
+		fx := newEngineFixture(t)
 		ctx, cancel := context.WithCancelCause(context.Background())
 		defer cancel(nil)
 		// the report page is the last mutating stage: fire the suspend from
@@ -810,7 +821,7 @@ func TestLateClaimsFlush(t *testing.T) {
 		// given — E4: FlushClaims ran at the ends of passes 1 and 2 only;
 		// the root-collection and report-page claims (made in finalize)
 		// stayed buffered forever — write-ahead intent that never wrote.
-		fx := newEngineFixture()
+		fx := newEngineFixture(t)
 		fx.deps.Collection = &fakeCollectionFactory{}
 		converter := &scriptConverter{
 			objects:  []*importv2.Object{pageObj("a.md", true)},
@@ -836,7 +847,7 @@ func TestCompensationEvidence(t *testing.T) {
 		// given — A2 (CONFIRMED regression): the re-entrancy guard returned
 		// silently with Leaked=0, so finishRun's leak gate failed and the
 		// run dir was DROPPED while its objects remained in the space.
-		fx := newEngineFixture()
+		fx := newEngineFixture(t)
 		deleter := fx.deps.Objects.(*deleterFake)
 		deleter.panicIds = map[string]bool{"id-b.md": true}
 		fx.persister.failKeys["bad.md"] = assert.AnError
@@ -858,7 +869,7 @@ func TestCompensationEvidence(t *testing.T) {
 func TestRunMemoryBound(t *testing.T) {
 	t.Run("in-flight heavy objects never exceed the pipeline bound", func(t *testing.T) {
 		// given
-		fx := newEngineFixture()
+		fx := newEngineFixture(t)
 		fx.persister.delay = time.Millisecond
 		var inFlight, maxInFlight atomic.Int64
 		fx.deps.Gauge = func(delta int) {
@@ -891,7 +902,7 @@ func TestRunMemoryBound(t *testing.T) {
 func TestClaimsReconciliation(t *testing.T) {
 	t.Run("silently dropped claim becomes an invariant issue", func(t *testing.T) {
 		// given
-		fx := newEngineFixture()
+		fx := newEngineFixture(t)
 		converter := &gapConverter{
 			scriptConverter: scriptConverter{objects: []*importv2.Object{pageObj("a.md", false)}},
 			gapKeys:         []string{"dropped.md"},
@@ -911,7 +922,7 @@ func TestClaimsReconciliation(t *testing.T) {
 
 	t.Run("loudly skipped claim is not double-flagged", func(t *testing.T) {
 		// given
-		fx := newEngineFixture()
+		fx := newEngineFixture(t)
 		converter := &gapConverter{
 			scriptConverter: scriptConverter{objects: []*importv2.Object{pageObj("a.md", false)}},
 			loudKeys:        []string{"skipped.md"},
@@ -929,7 +940,7 @@ func TestClaimsReconciliation(t *testing.T) {
 
 	t.Run("all-or-nothing aborts and compensates on a silent gap", func(t *testing.T) {
 		// given
-		fx := newEngineFixture()
+		fx := newEngineFixture(t)
 		converter := &gapConverter{
 			scriptConverter: scriptConverter{objects: []*importv2.Object{pageObj("a.md", false)}},
 			gapKeys:         []string{"dropped.md"},
@@ -949,7 +960,7 @@ func TestClaimsReconciliation(t *testing.T) {
 func TestImportReport(t *testing.T) {
 	t.Run("run with issues persists a report page listed in the root collection", func(t *testing.T) {
 		// given
-		fx := newEngineFixture()
+		fx := newEngineFixture(t)
 		factory := &fakeCollectionFactory{}
 		fx.deps.Collection = factory
 		fx.persister.failKeys["bad.md"] = assert.AnError
@@ -971,7 +982,7 @@ func TestImportReport(t *testing.T) {
 
 	t.Run("clean run creates no report", func(t *testing.T) {
 		// given
-		fx := newEngineFixture()
+		fx := newEngineFixture(t)
 		converter := &scriptConverter{objects: []*importv2.Object{pageObj("a.md", false)}}
 
 		// when
@@ -986,7 +997,7 @@ func TestImportReport(t *testing.T) {
 	t.Run("info-only diagnostics do not cause a report page", func(t *testing.T) {
 		// given — flavour/type-suggestion info fires on most imports; a
 		// report page must mean something actually went wrong.
-		fx := newEngineFixture()
+		fx := newEngineFixture(t)
 		converter := &issueConverter{
 			scriptConverter: scriptConverter{objects: []*importv2.Object{pageObj("a.md", false)}},
 			issue:           importv2.Info(importv2.IssueFlavourDetected, "notion-export"),
@@ -1004,7 +1015,7 @@ func TestImportReport(t *testing.T) {
 
 	t.Run("report persist failure degrades to a warning, never aborts", func(t *testing.T) {
 		// given
-		fx := newEngineFixture()
+		fx := newEngineFixture(t)
 		fx.persister.failKeys["bad.md"] = assert.AnError
 		fx.persister.failKeys["import-report"] = assert.AnError
 		converter := &scriptConverter{objects: []*importv2.Object{pageObj("a.md", false), pageObj("bad.md", false)}}
@@ -1029,7 +1040,7 @@ func TestImportReport(t *testing.T) {
 func TestPanicFirewall(t *testing.T) {
 	t.Run("persist panic fails one object, run continues", func(t *testing.T) {
 		// given
-		fx := newEngineFixture()
+		fx := newEngineFixture(t)
 		fx.persister.panicKeys = map[string]bool{"bad.md": true}
 		converter := &scriptConverter{objects: []*importv2.Object{
 			pageObj("a.md", false), pageObj("bad.md", false), pageObj("c.md", false),
@@ -1051,7 +1062,7 @@ func TestPanicFirewall(t *testing.T) {
 
 	t.Run("persist panic on a file still completes the future", func(t *testing.T) {
 		// given
-		fx := newEngineFixture()
+		fx := newEngineFixture(t)
 		fx.persister.panicKeys = map[string]bool{"img.png": true}
 		// A page rides along: file objects are never claimed in pass 1, so a
 		// file-only source would trip the noObjects gate before the stream.
@@ -1079,7 +1090,7 @@ func TestPanicFirewall(t *testing.T) {
 		// any pass-2 abort) now strands zero objects by construction. This
 		// test previously asserted the emitted object was compensated; the
 		// stronger property is that there is nothing to compensate at all.
-		fx := newEngineFixture()
+		fx := newEngineFixture(t)
 		converter := &panicConvertConverter{scriptConverter{objects: []*importv2.Object{pageObj("a.md", false)}}}
 
 		// when
@@ -1097,7 +1108,7 @@ func TestPanicFirewall(t *testing.T) {
 
 	t.Run("identity-pass panic returns a fatal result instead of crashing", func(t *testing.T) {
 		// when
-		result := Run(context.Background(), importv2.Request{}, &panicEnumConverter{}, newEngineFixture().deps)
+		result := Run(context.Background(), importv2.Request{}, &panicEnumConverter{}, newEngineFixture(t).deps)
 
 		// then
 		require.Error(t, result.Err)
@@ -1115,7 +1126,7 @@ func TestFileLane(t *testing.T) {
 		// persists. Routing files through the shared lane would park all
 		// shared workers behind a file they queued in front of — this test
 		// times out with per-object failures if the lane is removed.
-		fx := newEngineFixture()
+		fx := newEngineFixture(t)
 		fx.persister.fileReady = make(chan struct{})
 		var objects []*importv2.Object
 		// 20 referencing pages ≤ workers-1 + channel capacity, so the

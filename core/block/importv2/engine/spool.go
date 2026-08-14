@@ -212,7 +212,13 @@ func (c *spoolReplayConverter) EnumerateIdentities(ctx context.Context, yield fu
 }
 
 func (c *spoolReplayConverter) Convert(ctx context.Context, sink importv2.Sink) (importv2.RootSpec, error) {
-	return importv2.RootSpec{}, c.spool.Replay(ctx, func(o *importv2.Object) error {
+	err := c.spool.Replay(ctx, func(o *importv2.Object) error {
 		return sink.Object(ctx, o)
 	})
+	if err != nil && ctx.Err() == nil {
+		// A replay failure is OUR storage failing, not the user's source
+		// (the source was fine — pass 2 finished): classify accordingly.
+		err = importv2.Fatal(importv2.IssueStoreError, err)
+	}
+	return importv2.RootSpec{}, err
 }

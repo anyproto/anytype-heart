@@ -10,6 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/gogo/protobuf/types"
+
 	importv2 "github.com/anyproto/anytype-heart/core/block/importv2"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -214,5 +216,127 @@ func TestSpoolReplayDoesNotPinTheDb(t *testing.T) {
 		close(release)
 		require.NoError(t, <-replayDone)
 		assert.Equal(t, 40, emitted)
+	})
+}
+
+// TestSpoolRoundTripEveryField is the field-completeness half of the
+// equivalence gate (F1): the goldens exercise the markdown-shaped subset,
+// so every field — including the Notion-shaped ones no golden carries —
+// is pinned here, on both legs of the serialization.
+func TestSpoolRoundTripEveryField(t *testing.T) {
+	ctx := context.Background()
+	spool, err := OpenStandaloneSpool(ctx, t.TempDir())
+	require.NoError(t, err)
+	defer spool.Close()
+
+	original := &importv2.Object{
+		SourceKey: "notion-page-1",
+		SbType:    coresb.SmartBlockTypeFileObject,
+		Payload: &importv2.Snapshot{
+			Blocks: []*model.Block{{Id: "b1", Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{Text: "hello"},
+			}}},
+			Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				"aString":     domain.String("s"),
+				"anInt":       domain.Int64(42),
+				"aFloat":      domain.Float64(4.5),
+				"aBool":       domain.Bool(true),
+				"aStringList": domain.StringList([]string{"x", "y"}),
+				"aFloatList":  domain.Float64List([]float64{1.5, 2.5}),
+			}),
+			FileKeys:                 &types.Struct{Fields: map[string]*types.Value{"k": {Kind: &types.Value_StringValue{StringValue: "v"}}}},
+			ExtraRelations:           []*model.Relation{{Key: "extraRel", Format: model.RelationFormat_longtext}},
+			ObjectTypes:              []string{"ot-page"},
+			Collections:              &types.Struct{Fields: map[string]*types.Value{"objects": {Kind: &types.Value_StringValue{StringValue: "m"}}}},
+			RemovedCollectionKeys:    []string{"removed-1"},
+			RelationLinks:            []*model.RelationLink{{Key: "linked", Format: model.RelationFormat_date}},
+			Key:                      "internal-key",
+			OriginalCreatedTimestamp: 1700000123,
+			FileInfo:                 &model.FileInfo{FileId: "bafyfile", EncryptionKeys: []*model.FileEncryptionKey{{Path: "/0/", Key: "kk"}}},
+		},
+		File: &importv2.FileSource{
+			Path:           "/spill/img.png",
+			Name:           "img.png",
+			URL:            "https://prod-files-secure.s3.amazonaws.com/img.png?sig=x",
+			ImageKind:      model.ImageKind_Icon,
+			EncryptionKeys: map[string]string{"/0/": "enc"},
+		},
+		IsRootCandidate: true,
+		Favorite:        true,
+		Archived:        true,
+	}
+
+	require.NoError(t, spool.Append(ctx, original))
+	var replayed *importv2.Object
+	require.NoError(t, spool.Replay(ctx, func(o *importv2.Object) error {
+		replayed = o
+		return nil
+	}))
+	require.NotNil(t, replayed)
+
+	// envelope
+	assert.Equal(t, original.SourceKey, replayed.SourceKey)
+	assert.Equal(t, original.SbType, replayed.SbType)
+	assert.Equal(t, original.IsRootCandidate, replayed.IsRootCandidate)
+	assert.Equal(t, original.Favorite, replayed.Favorite)
+	assert.Equal(t, original.Archived, replayed.Archived)
+	// file source, field by field
+	require.NotNil(t, replayed.File)
+	assert.Equal(t, original.File.Path, replayed.File.Path)
+	assert.Equal(t, original.File.Name, replayed.File.Name)
+	assert.Equal(t, original.File.URL, replayed.File.URL)
+	assert.Equal(t, original.File.ImageKind, replayed.File.ImageKind)
+	assert.Equal(t, original.File.EncryptionKeys, replayed.File.EncryptionKeys)
+	// the whole snapshot, on the wire representation
+	assert.Equal(t, original.Payload.ToProto(), replayed.Payload.ToProto())
+}
+
+// TestSpoolKnownCoercions pins the two deliberate/known deviations of the
+// reverse leg so any change to them is loud (F3 + the nil-Details change).
+func TestSpoolKnownCoercions(t *testing.T) {
+	ctx := context.Background()
+	spool, err := OpenStandaloneSpool(ctx, t.TempDir())
+	require.NoError(t, err)
+	defer spool.Close()
+
+	t.Run("an EMPTY float list round-trips as an empty string list", func(t *testing.T) {
+		// F3 (CONFIRMED): domain.ValueFromProto cannot distinguish empty
+		// list kinds and falls through to StringList. Value-empty either
+		// way; pinned so a domain-layer change is noticed here.
+		object := spoolObject("empty-list.md", false)
+		object.Payload.Details = domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			"emptyFloats": domain.Float64List(nil),
+		})
+		require.NoError(t, spool.Append(ctx, object))
+		var replayed *importv2.Object
+		require.NoError(t, spool.Replay(ctx, func(o *importv2.Object) error {
+			if o.SourceKey == "empty-list.md" {
+				replayed = o
+			}
+			return nil
+		}))
+		require.NotNil(t, replayed)
+		value := replayed.Payload.Details.Get("emptyFloats")
+		_, isStringList := value.TryStringList()
+		assert.True(t, isStringList, "known coercion: empty lists come back as string lists")
+	})
+
+	t.Run("nil Details come back as empty Details, not nil", func(t *testing.T) {
+		// Previously a nil-Details object panicked into a per-object
+		// invariant issue at persist; through the spool it arrives as an
+		// empty, non-nil Details. Documented behaviour change.
+		object := spoolObject("nil-details.md", false)
+		object.Payload.Details = nil
+		require.NoError(t, spool.Append(ctx, object))
+		var replayed *importv2.Object
+		require.NoError(t, spool.Replay(ctx, func(o *importv2.Object) error {
+			if o.SourceKey == "nil-details.md" {
+				replayed = o
+			}
+			return nil
+		}))
+		require.NotNil(t, replayed)
+		require.NotNil(t, replayed.Payload.Details)
+		assert.Equal(t, 0, replayed.Payload.Details.Len())
 	})
 }

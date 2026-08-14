@@ -45,7 +45,7 @@ func TestSpoolPass(t *testing.T) {
 	t.Run("pass 2 drains Open closures to the spill dir; pass 3 sees a plain path", func(t *testing.T) {
 		// given — the unserializable-closure problem dissolves by eager
 		// download (DM spec fact 3): the spooled object carries a path.
-		fx := newEngineFixture()
+		fx := newEngineFixture(t)
 		spool, spillDir := durableSpool(t)
 		fx.deps.Spool = spool
 		fx.deps.SpillDir = spillDir
@@ -70,7 +70,7 @@ func TestSpoolPass(t *testing.T) {
 
 	t.Run("a failed download fails the file object, not the run (continue mode)", func(t *testing.T) {
 		// given
-		fx := newEngineFixture()
+		fx := newEngineFixture(t)
 		spool, spillDir := durableSpool(t)
 		fx.deps.Spool = spool
 		fx.deps.SpillDir = spillDir
@@ -89,10 +89,14 @@ func TestSpoolPass(t *testing.T) {
 		assert.Equal(t, int64(1), result.Failed)
 	})
 
-	t.Run("nothing enters the space until pass 2 completes", func(t *testing.T) {
-		// given — the clean-space property itself: the persister must see
-		// its first object only after the converter has fully returned.
-		fx := newEngineFixture()
+	t.Run("no persist or journal effect occurs before Convert returns", func(t *testing.T) {
+		// given — this pins the SHAPE of the clean-space property at the two
+		// seams this fixture has (the persister call and the effect
+		// journal); the full property — no uploads, installs, flag writes or
+		// minting either — holds by construction (pass 3 owns those code
+		// paths) and by the reviewed call-graph audit, which a unit fixture
+		// cannot observe.
+		fx := newEngineFixture(t)
 		spool, spillDir := durableSpool(t)
 		fx.deps.Spool = spool
 		fx.deps.SpillDir = spillDir
@@ -143,7 +147,7 @@ func TestRunMemoryBoundDurableSpool(t *testing.T) {
 		// given — the §5 invariant, re-proven for the split: pass 2 holds
 		// O(1) objects (spooling is transient residency), pass 3 the same
 		// 2C+K the lanes always bounded. The disk absorbs the rest.
-		fx := newEngineFixture()
+		fx := newEngineFixture(t)
 		spool, spillDir := durableSpool(t)
 		fx.deps.Spool = spool
 		fx.deps.SpillDir = spillDir
