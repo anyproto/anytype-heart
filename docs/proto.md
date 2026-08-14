@@ -2743,6 +2743,7 @@ the element of change tree used to store and internal apply smartBlock history
 | timestamp | [int64](#int64) |  | creation timestamp |
 | version | [uint32](#uint32) |  | version of business logic |
 | changeType | [uint32](#uint32) |  | business-level type of change applied to object |
+| integrationKey | [string](#string) |  | integrationKey identifies the integration (a normalized slug of the paired app&#39;s name) whose API key authored this change. Stamped by heart from the authenticated session — never accepted from a request. Empty for changes not authored through an API key. |
 
 
 
@@ -3223,6 +3224,7 @@ the element of change tree used to store and internal apply smartBlock history
 | timestamp | [int64](#int64) |  | creation timestamp |
 | version | [uint32](#uint32) |  | version of business logic |
 | changeType | [uint32](#uint32) |  | business-level type of change applied to object |
+| integrationKey | [string](#string) |  | integrationKey mirrors Change.integrationKey (the two messages share wire numbers by design; 1/2/5 are historical — do not reuse). |
 
 
 

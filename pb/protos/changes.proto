@@ -21,6 +21,11 @@ message Change {
     uint32 version = 8;
     // business-level type of change applied to object
     uint32 changeType = 9;
+    // integrationKey identifies the integration (a normalized slug of the
+    // paired app's name) whose API key authored this change. Stamped by
+    // heart from the authenticated session — never accepted from a request.
+    // Empty for changes not authored through an API key.
+    string integrationKey = 10;
 
     message Snapshot {
         // logId -> lastChangeId
@@ -188,6 +193,9 @@ message ChangeNoSnapshot {
     uint32 version = 8;
     // business-level type of change applied to object
     uint32 changeType = 9;
+    // integrationKey mirrors Change.integrationKey (the two messages share
+    // wire numbers by design; 1/2/5 are historical — do not reuse).
+    string integrationKey = 10;
 }
 
 message StoreChange {
