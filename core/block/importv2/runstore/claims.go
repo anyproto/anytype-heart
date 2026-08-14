@@ -76,7 +76,7 @@ func (s *Store) RecordClaims(ctx context.Context, claims []ClaimRecord) error {
 		if displacedId != "" {
 			log.With("sourceKey", claim.SourceKey, "displaced", displacedId).
 				Errorf("claim conflicts with an existing ledger id — preserving both")
-			if err = s.recordSyntheticEntry(txCtx, claim.SourceKey, displacedId, mode); err != nil {
+			if err = s.recordSyntheticEntry(txCtx, claim.SourceKey, displacedId, mode, statusClaimed); err != nil {
 				return fmt.Errorf("claim %q synthetic: %w", claim.SourceKey, rollback(tx.Rollback(), err))
 			}
 		}

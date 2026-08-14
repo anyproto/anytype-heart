@@ -2,6 +2,7 @@ package runstore
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"testing"
 
@@ -110,6 +111,78 @@ func TestClaimMergeRules(t *testing.T) {
 	})
 }
 
+func TestDisplacedStatusCarries(t *testing.T) {
+	t.Run("a displaced pass-1 claim stays behind the materialize gate", func(t *testing.T) {
+		// given — found by all three reviewers: recordSyntheticEntry
+		// stamped statusPersisted unconditionally, so a displaced CLAIM
+		// bypassed the MaterializeStarted gate and was deletable for an
+		// object that never existed.
+		ctx := context.Background()
+		store := createStore(t, filepath.Join(t.TempDir(), "run-1"))
+		require.NoError(t, store.RecordClaims(ctx, []ClaimRecord{{SourceKey: "k", ObjectId: "obj-a", PayloadRoot: []byte("r")}}))
+
+		// when: a conflicting claim displaces obj-b into a synthetic row,
+		// still BEFORE materialization
+		require.NoError(t, store.RecordClaims(ctx, []ClaimRecord{{SourceKey: "k", ObjectId: "obj-b", PayloadRoot: []byte("r")}}))
+		inputs, err := store.CompensationInputs(ctx)
+
+		// then: nothing is deletable yet — both ids are pure intent
+		require.NoError(t, err)
+		assert.Empty(t, inputs.Created, "a displaced claim must carry the claimed status, not persisted")
+
+		// and: after the gate opens, both ids join the delete set
+		require.NoError(t, store.SetState(ctx, StateMaterializing))
+		inputs, err = store.CompensationInputs(ctx)
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []string{"obj-a", "obj-b"}, inputs.Created)
+	})
+
+	t.Run("a same-id occupant never has its mode flipped", func(t *testing.T) {
+		// given — the occupancy probe keyed on objectId alone: a same-id
+		// minted displacement could overwrite a matched synthetic row,
+		// flipping a never-deletable id into the delete set.
+		ctx := context.Background()
+		store := createStore(t, filepath.Join(t.TempDir(), "run-1"))
+		require.NoError(t, store.SetState(ctx, StateMaterializing))
+		// a matched synthetic row for obj-x under key "k"
+		require.NoError(t, store.RecordCreated(ctx, "k", "obj-keep"))
+		require.NoError(t, store.RecordUpdated(ctx, "k", "obj-x")) // displaced matched
+		// a minted displacement of the SAME id (identity violation upstream)
+		require.NoError(t, store.RecordClaims(ctx, []ClaimRecord{{SourceKey: "k#dup-obj-x", ObjectId: "obj-y", PayloadRoot: []byte("r")}}))
+		require.NoError(t, store.RecordCreated(ctx, "k#dup-obj-x", "obj-x"))
+
+		// when
+		inputs, err := store.CompensationInputs(ctx)
+
+		// then: obj-x's matched identity survives somewhere in the ledger
+		require.NoError(t, err)
+		assert.Contains(t, inputs.Updated, "obj-x",
+			"a matched (pre-existing, never-deletable) id must never flip to minted")
+	})
+}
+
+func TestFileDisplacedWrite(t *testing.T) {
+	t.Run("a displaced file id cannot clobber a real files row", func(t *testing.T) {
+		// given — confirmed by two reviewers: RecordFile's displaced write
+		// was a blind UpsertOne; markdown file source keys are raw archive
+		// entry names (attacker-shaped), exactly why entries was hardened.
+		ctx := context.Background()
+		store := createStore(t, filepath.Join(t.TempDir(), "run-1"))
+		// a REAL file whose source key has the synthetic shape
+		require.NoError(t, store.RecordFile(ctx, "f#dup-file-b", "file-real", false))
+		// key "f" records file-a, then a conflicting re-record displaces file-b
+		require.NoError(t, store.RecordFile(ctx, "f", "file-a", false))
+		require.NoError(t, store.RecordFile(ctx, "f", "file-b", false))
+
+		// when
+		inputs, err := store.CompensationInputs(ctx)
+
+		// then: all three run-owned file ids stay in the delete set
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []string{"file-real", "file-a", "file-b"}, inputs.OwnedFiles)
+	})
+}
+
 func TestSyntheticKeyCollision(t *testing.T) {
 	t.Run("a source key shaped like a synthetic key cannot collide", func(t *testing.T) {
 		// given — E5: filenames can contain '#'; the old "#dup-" suffix let
@@ -134,6 +207,32 @@ func TestSyntheticKeyCollision(t *testing.T) {
 }
 
 func TestIssues(t *testing.T) {
+	t.Run("the issue sequence survives a reopen", func(t *testing.T) {
+		// given — the sibling divergence: rank and the spool seq were
+		// seeded on open, issueSeq still restarted at 0 (CONFIRMED: 3 rows
+		// + reopen + 2 appends left 3 rows, silently overwritten).
+		ctx := context.Background()
+		dir := filepath.Join(t.TempDir(), "run-1")
+		store := createStore(t, dir)
+		for i := 0; i < 3; i++ {
+			require.NoError(t, store.AppendIssue(ctx, IssueRecord{Code: fmt.Sprintf("first-%d", i)}))
+		}
+		require.NoError(t, store.Close())
+
+		// when
+		reopened, err := Open(ctx, dir)
+		require.NoError(t, err)
+		defer reopened.Close()
+		require.NoError(t, reopened.AppendIssue(ctx, IssueRecord{Code: "second-0"}))
+		require.NoError(t, reopened.AppendIssue(ctx, IssueRecord{Code: "second-1"}))
+		records, err := reopened.ReadIssues(ctx)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, records, 5, "a reopened issue ledger must append, not overwrite")
+		assert.Equal(t, "second-1", records[4].Code)
+	})
+
 	t.Run("issues append durably in order", func(t *testing.T) {
 		// given
 		ctx := context.Background()

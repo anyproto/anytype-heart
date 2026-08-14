@@ -51,23 +51,14 @@ func (s *Store) Spool(ctx context.Context) (*Spool, error) {
 	return sp, nil
 }
 
-// seedSeq continues the append sequence after the highest existing row id.
+// seedSeq continues the append sequence after the highest existing row id
+// (the shared seeding rule, ledgerwrite.go).
 func (sp *Spool) seedSeq(ctx context.Context) error {
-	iter, err := sp.coll.Find(nil).Sort("-id").Iter(ctx)
+	last, err := seedMaxSequenceId(ctx, sp.coll)
 	if err != nil {
 		return fmt.Errorf("seed spool seq: %w", err)
 	}
-	defer iter.Close()
-	if iter.Next() {
-		doc, err := iter.Doc()
-		if err != nil {
-			return fmt.Errorf("seed spool seq: %w", err)
-		}
-		var last int64
-		if _, err = fmt.Sscanf(string(doc.Value().GetStringBytes("id")), "%d", &last); err == nil {
-			sp.seq.Store(last)
-		}
-	}
+	sp.seq.Store(last)
 	return nil
 }
 

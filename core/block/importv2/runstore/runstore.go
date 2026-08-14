@@ -288,6 +288,12 @@ func Open(ctx context.Context, dir string) (*Store, error) {
 		_ = s.Close()
 		return nil, fmt.Errorf("seed rank: %w", err)
 	}
+	issueSeq, err := seedMaxSequenceId(ctx, s.issues)
+	if err != nil {
+		_ = s.Close()
+		return nil, fmt.Errorf("seed issue sequence: %w", err)
+	}
+	s.issueSeq.Store(issueSeq)
 	return s, nil
 }
 
@@ -405,14 +411,16 @@ func (s *Store) RecordUpdated(ctx context.Context, sourceKey, objectId string) e
 //     the conflict — an identity violation upstream — is logged loudly.
 func (s *Store) recordEntry(ctx context.Context, sourceKey, objectId, mode, action string) error {
 	rank := int(s.rank.Add(1))
-	var displacedId, displacedMode string
+	var displacedId, displacedMode, displacedStatus, keptId string
 	_, err := s.entries.UpsertId(ctx, sourceKey, query.ModifyFunc(
 		func(arena *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
 			existingId := string(v.GetStringBytes("objectId"))
 			if string(v.GetStringBytes("mode")) == modeMinted {
 				if existingId != "" && existingId != objectId {
-					// the INCOMING id would vanish (minted-sticky keeps the row)
-					displacedId, displacedMode = objectId, mode
+					// the INCOMING effect would vanish (minted-sticky keeps
+					// the row): it persisted, so it carries that status
+					displacedId, displacedMode, displacedStatus = objectId, mode, statusPersisted
+					keptId = existingId
 					return v, false, nil
 				}
 				// same id: the effect completes the claim — status/action
@@ -422,9 +430,23 @@ func (s *Store) recordEntry(ctx context.Context, sourceKey, objectId, mode, acti
 				v.Set("action", arena.NewString(action))
 				return v, true, nil
 			}
-			if existingId != "" && existingId != objectId {
-				// the EXISTING id would vanish (this write replaces the row)
-				displacedId, displacedMode = existingId, string(v.GetStringBytes("mode"))
+			if existingId != "" {
+				if existingId == objectId {
+					// same id over a non-minted row: advance status/action
+					// only. Mode is IDENTITY and identity does not change —
+					// in particular a matched (pre-existing, user-owned) id
+					// must never flip into the delete set (bias: leak,
+					// never delete user data).
+					v.Set("status", arena.NewString(statusPersisted))
+					v.Set("action", arena.NewString(action))
+					return v, true, nil
+				}
+				// the EXISTING row would vanish (this write replaces it):
+				// it carries ITS mode and status into the synthetic row
+				displacedId = existingId
+				displacedMode = string(v.GetStringBytes("mode"))
+				displacedStatus = string(v.GetStringBytes("status"))
+				keptId = objectId
 			}
 			v.Set("objectId", arena.NewString(objectId))
 			v.Set("mode", arena.NewString(mode))
@@ -439,44 +461,32 @@ func (s *Store) recordEntry(ctx context.Context, sourceKey, objectId, mode, acti
 	if err != nil || displacedId == "" {
 		return err
 	}
-	log.With("sourceKey", sourceKey, "kept", objectId, "displaced", displacedId).
+	log.With("sourceKey", sourceKey, "kept", keptId, "displaced", displacedId).
 		Errorf("conflicting objectId recorded under one source key — identity invariant violation; preserving both in the ledger")
-	return s.recordSyntheticEntry(ctx, sourceKey, displacedId, displacedMode)
+	return s.recordSyntheticEntry(ctx, sourceKey, displacedId, displacedMode, displacedStatus)
 }
 
-// recordSyntheticEntry writes a displaced id under a synthetic key so it
-// stays in the compensation view with its original mode. E5: the write
-// itself must not clobber a REAL row whose key happens to share the
-// synthetic shape (source keys can contain '#') — on a different-id
-// occupant the key is suffixed until free.
-func (s *Store) recordSyntheticEntry(ctx context.Context, sourceKey, objectId, mode string) error {
-	key := sourceKey + "#dup-" + objectId
-	for attempt := 0; attempt < 100; attempt++ {
-		rank := int(s.rank.Add(1))
-		occupied := false
-		_, err := s.entries.UpsertId(ctx, key, query.ModifyFunc(
-			func(a *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
-				if existing := string(v.GetStringBytes("objectId")); existing != "" && existing != objectId {
-					occupied = true
-					return v, false, nil
-				}
-				v.Set("objectId", a.NewString(objectId))
-				v.Set("mode", a.NewString(mode))
-				v.Set("status", a.NewString(statusPersisted))
-				v.Set("action", a.NewString(actionCreated))
-				v.Set("rank", a.NewNumberInt(rank))
-				v.Set("incarnation", a.NewNumberInt(1))
-				return v, true, nil
-			}))
-		if err != nil {
-			return err
-		}
-		if !occupied {
-			return nil
-		}
-		key = fmt.Sprintf("%s#dup-%s-%d", sourceKey, objectId, attempt+2)
-	}
-	return fmt.Errorf("synthetic key for %q could not be placed after 100 attempts", sourceKey)
+// recordSyntheticEntry preserves a displaced id under a synthetic key with
+// its ORIGINAL mode and status: the mode keeps matched ids undeletable, the
+// status keeps a displaced claim behind the MaterializeStarted gate (all
+// three reviewers found the unconditional-persisted stamp independently).
+// Placement goes through placeRow: never over a different occupant.
+func (s *Store) recordSyntheticEntry(ctx context.Context, sourceKey, objectId, mode, status string) error {
+	rank := int(s.rank.Add(1))
+	return placeRow(ctx, s.entries, sourceKey+"#dup-"+objectId,
+		func(v *anyenc.Value) bool {
+			return string(v.GetStringBytes("objectId")) == objectId &&
+				string(v.GetStringBytes("mode")) == mode &&
+				string(v.GetStringBytes("status")) == status
+		},
+		func(a *anyenc.Arena, v *anyenc.Value) {
+			v.Set("objectId", a.NewString(objectId))
+			v.Set("mode", a.NewString(mode))
+			v.Set("status", a.NewString(status))
+			v.Set("action", a.NewString(actionCreated))
+			v.Set("rank", a.NewNumberInt(rank))
+			v.Set("incarnation", a.NewNumberInt(1))
+		})
 }
 
 // RecordFile journals a file-upload outcome. preExisting marks a
@@ -511,19 +521,19 @@ func (s *Store) RecordFile(ctx context.Context, sourceKey, objectId string, preE
 	}
 	log.With("sourceKey", sourceKey, "displaced", displacedId).
 		Errorf("conflicting file objectId recorded under one source key — preserving both in the ledger")
-	arena := s.arenas.Get()
-	defer func() {
-		arena.Reset()
-		s.arenas.Put(arena)
-	}()
-	row := arena.NewObject()
-	row.Set("id", arena.NewString(sourceKey+"#dup-"+displacedId))
-	row.Set("objectId", arena.NewString(displacedId))
-	row.Set("status", arena.NewString(statusDone))
-	row.Set("preExisting", arena.NewBool(displacedPreExisting))
-	row.Set("rank", arena.NewNumberInt(int(s.rank.Add(1))))
-	row.Set("incarnation", arena.NewNumberInt(1))
-	return s.files.UpsertOne(ctx, row)
+	displacedRank := int(s.rank.Add(1))
+	return placeRow(ctx, s.files, sourceKey+"#dup-"+displacedId,
+		func(v *anyenc.Value) bool {
+			return string(v.GetStringBytes("objectId")) == displacedId &&
+				v.GetBool("preExisting") == displacedPreExisting
+		},
+		func(a *anyenc.Arena, v *anyenc.Value) {
+			v.Set("objectId", a.NewString(displacedId))
+			v.Set("status", a.NewString(statusDone))
+			v.Set("preExisting", a.NewBool(displacedPreExisting))
+			v.Set("rank", a.NewNumberInt(displacedRank))
+			v.Set("incarnation", a.NewNumberInt(1))
+		})
 }
 
 type rankedId struct {
