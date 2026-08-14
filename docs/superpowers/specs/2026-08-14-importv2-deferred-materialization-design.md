@@ -369,6 +369,56 @@ spool itself is the skip set — no separate status bookkeeping). Notion re-sear
 100 entities) then skips fetching spooled pages. This needs the request/token (OQ2 returns,
 scoped to this phase only) and converter cooperation (the 08-13 §6.3 seam, unchanged).
 
+**As built (DM-3, 2026-08-15).** Shipped as specified, with the details a build always
+surfaces:
+
+- **Mechanics.** `engine.ResumeCrawl` re-runs pass 1 against the live source with the
+  identity index rehydrated *reclaimable* (a re-claim reuses the recorded id and payload —
+  no re-mint, no dedup re-query, no ledger re-record; one-shot, so the duplicate-claim
+  error keeps catching converter bugs), then pass 2 with two redundant enforcement layers:
+  the `importv2.ResumableConverter` seam (Notion skips recorded pages before the prefetch
+  pipeline — zero requests; databases deliberately re-fetch their ~1-request schemas for
+  row mappings) and the spool sink's backstop, which absorbs re-emissions of recorded keys
+  BEFORE the file drain and the append — a seam-ignorant converter (markdown) is merely
+  slower, never incorrect. `resume.LoadCrawl` is the one loader (strict-loud like `Load`,
+  disjoint from it by the sticky materialize marker, checked from both sides); the sweep
+  branch (`crawlResumable`: running/suspended, pre-materialize, request present, shared
+  attempt cap) and `runstore.BeginCrawlResume` (attempts move durably first; state stays
+  `running` — the A1 compensation gate must NOT flip) mirror their DM-2 siblings.
+- **Reconciliation's one new case** (08-13 §5.4, now live): a prior incarnation's claim
+  that neither re-enumerates nor sits in the spool is source drift — `Warning(dataLoss)`,
+  not the invariant error; a claim made or re-made within the current incarnation keeps
+  the invariant's teeth. Pinned end to end (a page deleted between sessions).
+- **The plan is reused, never recomputed** (08-13 §6.3): `schemaplan.Resolve` is the one
+  reuse rule both converters call — a fresh durable run records the *sanitized* plan to
+  `kv` before any emission (a record failure is a fatal store issue), a resumed crawl gets
+  it back verbatim (no planner call, no re-sanitize — re-sanitizing would duplicate its
+  warnings against the rehydrated issue ledger). A crawl that died before the plan phase
+  completed recorded nothing and spooled nothing, so replanning there is safe. A container
+  first discovered on a resumed session is absent from the recording and imports on the
+  default type — conservative, deterministic, consistent with containers the plan declined.
+- **§9.1 item 3, discharged**: `Spool.Append`'s DB operation already ran on the detached
+  per-op context (the DM-2 fix-round blocker's opCtx); DM-3 makes that property
+  load-bearing rather than incidental — a suspend truncates only at object boundaries,
+  which is exactly the partiality the resumed crawl replays and extends. The site's
+  comment now says so instead of resting on "a partial spool is never replayed".
+- **Transient failures keep the artifact.** A crawl resume that fails retryable-shaped
+  (the Notion client's own `IsRetryable` — offline laptop, outage, exhausted rate budget)
+  keeps the dir exactly as the engine left it, attempt spent, and retries next start.
+  This required one engine-side rule found during the build: **an abort with an empty
+  journal skips compensation entirely, durable marker included** — the `compensating`
+  transition would scrub the request and burn the dir's resumable class to authorize zero
+  deletes. (An abort during passes 1–2 is §7's "compensation is Drop()", now literally.)
+- **Semantics under drift, recorded**: if the source *changed* an already-recorded page
+  between sessions, the recording wins — the crawl artifact is the run's ground truth and
+  the edit lands on the next import. Deletions warn (above); additions import.
+- **Known gaps, deliberate**: (1) a multi-path markdown request resumed in *pass 3* still
+  finishes only its own path — the request is scrubbed at `fetched`, so the DM-2-era gap
+  stands for that class (the crawl resume DOES finish remaining paths — markdown requests
+  carry no token, so keeping their request past `fetched` is a possible refinement);
+  (2) a FRESH import's transient mid-crawl failure still fails-and-drops as it always
+  did — auto-suspending it instead is a product call, flagged, not built.
+
 ## 9. Phase plan, reshaped
 
 - **DM-1 — the split itself** (replaces 08-13 Phase B): claims/payloads/issues durable
@@ -430,6 +480,11 @@ latent-until-resume:
    marker), and pass 3 never appends, so the property holds. The moment DM-3's pass-2
    crawl resume reads a *partial* spool, the append must detach like the effect/claim
    ledgers (P0-1 rule); this is a named DM-3 entry item, not folklore.
+   **DISCHARGED at DM-3 entry (2026-08-15):** the amendment above had already detached
+   the append's DB operation, so the obligation reduced to verifying the property and
+   rewriting the sink comment whose justification ("a partial spool is never replayed")
+   the phase falsifies — partiality is now always at an object boundary, and that is
+   exactly what the resumed crawl replays and extends (§8.3 as-built).
 
 ## 10. Costs — what this is worse at, honestly
 
@@ -483,9 +538,26 @@ latent-until-resume:
   objects in pass 3; the half-built-window argument applies to *modifications* too
   (updates trickling over hours today → minutes under this design). No extra machinery
   needed, but the review should confirm updates need no staging beyond this.
-- **OQ2 (08-13) narrows**: token at rest is now needed only for pass-2 crawl resume (DM-3),
-  not for the flagship pass-3 restart. OQ1 (auto-resume UX) now splits per pass with
-  different stakes (resuming pass 3 is invisible and safe; resuming a crawl re-opens OQ2).
+- **OQ2 (08-13) — RESOLVED (requester, 2026-08-14; built in DM-3): store the serialized
+  request, token included, in the run manifest AS-IS — no application-level encryption.**
+  Two reasons, the second decisive: (a) the run dir already sits in the account repo
+  beside the wallet and the objectstore — the same trust domain; (b) **anytype is
+  migrating to an encrypted any-store**, so the token will be protected by the storage
+  layer alongside the ledger, spool and payloads — building account-derived-key blob
+  encryption now would mean owning key management forever for something the storage layer
+  is about to provide. Until encrypted any-store lands this is a real, time-boxed
+  exposure (today the token never touched disk at all), bounded by two built mitigations:
+  1. **Scrub on every transition out of the crawl** — enforced at the single manifest
+     write site (`writeManifest`, which returns exactly what it wrote), so `fetched`,
+     `materializing`, `compensating`, `cancelling`, `completed` and `failed` all clear
+     the blob mechanically, whatever writer performs the transition. The window shrinks
+     from "every run dir until disposal" to "a run actually mid-crawl".
+  2. **No projection carries it** — `ObjectImportRunStatus`/`ObjectImportRunList` build
+     from named fields (pinned by marshaling the responses against the token bytes), and
+     sweep/lifecycle log lines log dirs, actions and counts, never the manifest blob.
+  OQ1 (auto-resume UX) now splits per pass with different stakes (resuming pass 3 is
+  invisible and safe; resuming a crawl consumes the stored request — built as automatic,
+  matching the fire-and-forget contract).
 - **OQ8 (08-13) grows teeth**: run dirs are now large (§10), so the sweepAttempts/age bound
   design should be scheduled with DM-2 rather than indefinitely deferred.
 
@@ -753,6 +825,12 @@ the engine restructure rewrites the reporting path anyway, so this is the moment
 restart-rehydrated counters, the pull RPC pair, dormant-run serving. DM-3: `safeToClose`
 turns true for pass 2. Phase D keeps only client-side rendering guidance and the residual
 intermediate-notification question (OQ-DM3).
+
+**As built (DM-3, 2026-08-15).** `safeToClose` turned true for pass 2 as §15.7
+scheduled: the pull surface now reports it whenever SOME resume class covers the run —
+materialize-started (DM-2's class, the `fetched` instant included) or a manifest still
+carrying its request (DM-3's class). Honesty is per-dir: a pre-DM-3 dir without a stored
+request is still lost on close mid-crawl, and still says false.
 
 **As built (DM-2, 2026-08-14).** DM-1 did not carry the event core; DM-2 shipped the
 WIRE CONTRACT whole and the pull side complete: `Event.Import.Statistic` (the full
