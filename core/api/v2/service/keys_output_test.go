@@ -174,6 +174,14 @@ func TestV2ListingsServeSlugs(t *testing.T) {
 			keys, err := fx.typeKeysById(testSpaceId)
 			require.NoError(t, err)
 			assert.Equal(t, "meeting_note", keys["type-meeting"], "the live holder keeps the slug")
+			if shape != corpseTombstone {
+				// the bulk map itself must hold the corpse (the suppression fix):
+				// without it the prod row was served by the per-row point-lookup
+				// fallback — same spelling, so the row assertion above cannot
+				// tell the paths apart, and the corpse branch was dead code
+				assert.Equal(t, "6a7663db61fab21cd4b9e106", keys["type-corpse"],
+					"the corpse is in the bulk map, not just the per-row fallback")
+			}
 		})
 	})
 }
