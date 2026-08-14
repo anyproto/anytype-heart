@@ -8,6 +8,7 @@ package wrapper
 import (
 	"context"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -256,6 +257,36 @@ func TestRetryLoopKeepsErrorBody(t *testing.T) {
 	assert.Contains(t, err.Error(), "write budget exhausted — wait a second and retry")
 	assert.NotContains(t, err.Error(), "server answered 429")
 	assert.Len(t, fx.sent("PATCH /v2/spaces/space1/objects/bafyobj1"), 3, "the full retry budget ran")
+}
+
+func TestTranslateOpsErrorRewritesHints(t *testing.T) {
+	// Both of locator.go's refusals put the repair in the issue HINT
+	// ("…or give the block id"), and edit_text's slot is `block` with no
+	// `id` argument under additionalProperties:false — a model following
+	// the un-rewritten hint emits a schema-invalid call. deRest rewrites
+	// Hint; translateOpsError must too, or the opsVocab locator rows are
+	// dead code that never fires (H1). This test fails if the Hint loop is
+	// dropped OR if either locator row is removed from opsVocab.
+	te := &ToolError{
+		Status: 404,
+		Code:   "not_found",
+		Text:   `"snippet" appears in 0 blocks — retry with id naming one of:`,
+		Issues: []v2model.Issue{{
+			Path:    "ops[0].find",
+			Message: "the find text must appear in exactly one block for the locator to resolve",
+			Hint:    "add surrounding text to find until it appears in one block only, or give the block id",
+		}},
+	}
+
+	got := translateOpsError(te)
+
+	var gotTe *ToolError
+	require.ErrorAs(t, got, &gotTe)
+	assert.Equal(t, "retry with block naming one of:", gotTe.Text[strings.Index(gotTe.Text, "retry"):])
+	assert.Equal(t, "find", gotTe.Issues[0].Path, "the ops[0]. prefix strips from paths")
+	assert.Equal(t, "add surrounding text to find until it appears in one block only, or pass block",
+		gotTe.Issues[0].Hint, "the hint's repair must speak the tool vocabulary")
+	assert.NotContains(t, gotTe.Issues[0].Hint, "block id")
 }
 
 func TestConcurrentRunsDoNotRace(t *testing.T) {

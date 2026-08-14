@@ -526,6 +526,13 @@ func translateOpsError(err error) error {
 		for _, sub := range opsVocab {
 			te.Issues[i].Path = strings.ReplaceAll(te.Issues[i].Path, sub.from, sub.to)
 			te.Issues[i].Message = strings.ReplaceAll(te.Issues[i].Message, sub.from, sub.to)
+			// Hint too — deRest already rewrites it, and the locator refusals
+			// (§8.43) put the repair in the Hint: without this line the
+			// "or give the block id" row can never fire, and a model
+			// following the un-rewritten hint emits a schema-invalid call
+			// (edit_text's slot is `block`; wrapper schemas are
+			// additionalProperties:false).
+			te.Issues[i].Hint = strings.ReplaceAll(te.Issues[i].Hint, sub.from, sub.to)
 		}
 	}
 	return te
