@@ -255,12 +255,6 @@ func (e *statEmitter) Retrying(attempt, attemptsMax int) {
 func (e *statEmitter) Recovered() {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	if e.snap.state == pb.EventImportStatistic_Error {
-		// A transport recovery says the last REQUEST worked; it says nothing
-		// about the fatal that is stopping the run. Only a run can leave the
-		// error state, and it does so by ending.
-		return
-	}
 	e.setStateLocked(pb.EventImportStatistic_Running, func() {
 		e.snap.resumesIn, e.snap.attempt, e.snap.attemptsMax = 0, 0, 0
 	})
@@ -269,7 +263,20 @@ func (e *statEmitter) Recovered() {
 // setStateLocked applies a state EDGE. A repeat of the state already shown
 // is not an edge and must not jump the coalescing window — every worker's
 // request meets the same pushback, so the hooks fire in bursts.
+//
+// ERROR is TERMINAL here, and that rule lives at this ONE setter rather than
+// at its callers (review item 5: the guard sat on Recovered while Throttled
+// and Retrying set the state unconditionally — two of three). All three
+// speak for the TRANSPORT: a pacer window, a backoff attempt, a request that
+// finally worked. None of them knows anything about the fatal that is
+// stopping the run, and they fire from prefetch workers that outlive the
+// run's own cancel, so a failed run's TERMINAL event could sign off reading
+// "waiting for Notion". Only a run can leave the error state, and it does so
+// by ending.
 func (e *statEmitter) setStateLocked(state pb.EventImportStatisticState, apply func()) {
+	if e.snap.state == pb.EventImportStatistic_Error && state != pb.EventImportStatistic_Error {
+		return
+	}
 	changed := e.snap.state != state
 	e.snap.state = state
 	apply()

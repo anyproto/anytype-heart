@@ -648,3 +648,37 @@ func TestStatEmitterCreatedLevel(t *testing.T) {
 		assert.Equal(t, int64(4000), emitter.Snapshot().ObjectsCreated)
 	})
 }
+
+func TestStatEmitterErrorIsTerminal(t *testing.T) {
+	t.Run("no transport state may repaint a failed run calm", func(t *testing.T) {
+		// given — review item 5: the guard lived on Recovered alone, while
+		// Throttled and Retrying set the state unconditionally. Both fire from
+		// prefetch workers that outlive the run's cancel and neither checks a
+		// ctx, so a run whose TERMINAL event should read ERROR could sign off
+		// with "waiting for Notion".
+		clock := newFakeClock()
+		emitter, sink := newTestEmitter(t, clock)
+		emitter.Phase(importv2.PhaseFetching)
+		emitter.Issue(importv2.Fatal(importv2.IssueStoreError, assertError{}))
+		require.Equal(t, pb.EventImportStatistic_Error, emitter.Snapshot().State)
+
+		// when: the doomed run's in-flight requests keep reporting
+		for _, report := range []func(){
+			func() { emitter.Throttled(4 * time.Second) },
+			func() { emitter.Retrying(2, 5) },
+			func() { emitter.Recovered() },
+		} {
+			report()
+
+			// then
+			assert.Equal(t, pb.EventImportStatistic_Error, emitter.Snapshot().State,
+				"only a run can leave the error state, and it does so by ending")
+		}
+		assert.Zero(t, emitter.Snapshot().ResumesInMs, "a failed run has no reopening window")
+		assert.NotEmpty(t, emitter.Snapshot().ErrorMessage, "the fatal's message survives")
+
+		// and: the terminal event says so too
+		emitter.Close()
+		assert.Equal(t, pb.EventImportStatistic_Error, sink.last().State)
+	})
+}
