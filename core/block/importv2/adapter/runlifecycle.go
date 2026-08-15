@@ -47,7 +47,7 @@ type runLifecycle struct {
 // registry hold used to be wired at three sites and the statistic emitter
 // would have made that four — the recurring shape where a rule holds in one
 // sibling and not in the next.
-func (s *service) newLifecycle(store *runstore.Store, manifest runstore.Manifest, progress process.Progress, ceiling float64) *runLifecycle {
+func (s *service) newLifecycle(store *runstore.Store, manifest runstore.Manifest, progress process.Progress, ceiling float64, seeded []importv2.Issue) *runLifecycle {
 	fetching, materializing := safeToCloseFor(manifest)
 	send := func(*pb.EventImportStatistic) {}
 	if s.eventSender != nil {
@@ -69,6 +69,10 @@ func (s *service) newLifecycle(store *runstore.Store, manifest runstore.Manifest
 			safeToCloseMaterializing: materializing,
 		}),
 	}
+	// A resumed run inherits its predecessors' issue counts here, at the one
+	// construction site, rather than at each resume branch (see
+	// statEmitter.SeedIssues).
+	lc.stats.SeedIssues(seeded)
 	if store != nil {
 		lc.spillDir = store.SpillDir()
 		lc.untrack = s.trackLive(manifest.RunId, store, lc)
@@ -133,7 +137,12 @@ func (lc *runLifecycle) release() {
 		if err := lc.store.Close(); err != nil {
 			log.Errorf("release unsettled run store: %s", err)
 		}
-		log.With("dir", lc.store.Dir()).Errorf("import run was abandoned without settling; dir left for the startup sweep")
+		// stats.Close already flushed the terminal event; the loggable
+		// rendering (codes and counts, never content) says how far the
+		// abandoned run got, which is otherwise unknowable until the sweep
+		// opens the dir.
+		log.With("dir", lc.store.Dir(), "stats", lc.stats.stateForLog()).
+			Errorf("import run was abandoned without settling; dir left for the startup sweep")
 		return
 	}
 	if lc.cleanup != nil {
@@ -157,7 +166,7 @@ func (s *service) beginRun(ctx context.Context, request importv2.Request, wireRe
 		// Volatile mode still emits: the statistic is the run's progress
 		// surface, and a run without a durable dir has no importId to poll
 		// by — which the empty id says honestly, rather than by silence.
-		lc := s.newLifecycle(nil, runstore.Manifest{ImportType: int64(request.Origin.ImportType)}, progress, ceiling)
+		lc := s.newLifecycle(nil, runstore.Manifest{ImportType: int64(request.Origin.ImportType)}, progress, ceiling, nil)
 		lc.spillDir = spillDir
 		lc.cleanup = func() { _ = os.RemoveAll(spillDir) }
 		return lc, nil
@@ -192,7 +201,7 @@ func (s *service) beginRun(ctx context.Context, request importv2.Request, wireRe
 	if written, readErr := store.Manifest(ctx); readErr == nil {
 		manifest = written
 	}
-	return s.newLifecycle(store, manifest, progress, ceiling), nil
+	return s.newLifecycle(store, manifest, progress, ceiling, nil), nil
 }
 
 // pageRateCeilingFor is the fastest the SOURCE can yield pages, per import

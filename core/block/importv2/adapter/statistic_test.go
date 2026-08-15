@@ -418,6 +418,27 @@ func TestStatEmitterIssuesAndErrors(t *testing.T) {
 			"a per-object failure is not the run being wrong")
 	})
 
+	t.Run("a resumed run inherits its predecessors' counts", func(t *testing.T) {
+		// given: the engine re-seeds a previous incarnation's issues WITHOUT
+		// re-reporting them (no OnIssue, no abort predicate), so without a
+		// separate door the live surface of a resumed run would show fewer
+		// problems than the same dir shows when polled dormant
+		clock := newFakeClock()
+		emitter, _ := newTestEmitter(t, clock)
+
+		// when
+		emitter.SeedIssues([]importv2.Issue{
+			importv2.Warning(importv2.IssueDataLoss, "k1", "lost"),
+			importv2.ObjectError(importv2.IssueObjectFailed, "k2", assertError{}),
+		})
+		emitter.Issue(importv2.Warning(importv2.IssueDataLoss, "k3", "lost"))
+		status := emitter.Snapshot()
+
+		// then
+		assert.Equal(t, int64(2), status.WarningCount)
+		assert.Equal(t, int64(1), status.ErrorCount)
+	})
+
 	t.Run("a fatal turns the state to error; a cancel never does", func(t *testing.T) {
 		// given
 		clock := newFakeClock()

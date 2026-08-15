@@ -284,6 +284,27 @@ func (e *statEmitter) Issue(issue importv2.Issue) {
 	e.mark(false)
 }
 
+// SeedIssues folds a previous incarnation's retained issues into the live
+// counts. A resumed run's surface must not report FEWER problems than the
+// same dir reports when polled dormant: the ledger holds every
+// incarnation's, and the engine deliberately re-seeds them without
+// re-reporting (no OnIssue, no abort predicate — they aborted or did not in
+// their own incarnation), so the counts have to arrive here by another
+// door. Fatal records never reach this: resume.rehydrateIssues drops them
+// on load, because a fatal that coexists with a resumable dir IS the abort
+// that made it dormant.
+func (e *statEmitter) SeedIssues(issues []importv2.Issue) {
+	if len(issues) == 0 {
+		return
+	}
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	for _, issue := range issues {
+		countIssue(issue.Severity, &e.snap.warningCount, &e.snap.errorCount)
+	}
+	e.mark(false)
+}
+
 // issueMessage renders a fatal for the wire's errorMessage. It may carry a
 // source key (a Notion id, a markdown path) — displayable, like currentItem,
 // and for the same reason never fed to a log from here.
