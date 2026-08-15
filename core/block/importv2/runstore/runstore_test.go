@@ -811,6 +811,30 @@ func TestOpCtxBudget(t *testing.T) {
 		assert.LessOrEqual(t, remaining, dbOpTimeout)
 	})
 
+	t.Run("an ALREADY-SPENT enclosing budget mints a fresh one, never a born-dead ctx", func(t *testing.T) {
+		// given — review item 10: the inherit test is `time.Until(deadline) <
+		// dbOpTimeout`, which is true for NEGATIVE remainders too, so an
+		// enclosing budget a composite's earlier nested op had already spent
+		// was re-imposed verbatim. The op then ran on a context that was dead
+		// before its first statement — exactly the input any-store v0.4.7
+		// leaks a read connection on, which is the whole reason this
+		// detachment exists.
+		expired, expiredDone := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
+		defer expiredDone()
+		require.Error(t, expired.Err(), "premise: the enclosing budget is spent")
+
+		// when
+		op, opDone := opCtx(expired)
+		defer opDone()
+
+		// then
+		require.NoError(t, op.Err(), "an op must never begin on a dead context")
+		deadline, ok := op.Deadline()
+		require.True(t, ok)
+		assert.Positive(t, time.Until(deadline))
+		assert.LessOrEqual(t, time.Until(deadline), dbOpTimeout)
+	})
+
 	t.Run("an enclosing deadline LOOSER than the op budget is capped at the op budget", func(t *testing.T) {
 		// given: an outside caller with a long budget (an RPC with a
 		// 10-minute deadline) must not stretch one db op to match it.

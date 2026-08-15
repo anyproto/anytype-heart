@@ -502,8 +502,19 @@ const dbOpTimeout = 15 * time.Second
 // live run's single read connection).
 func opCtx(ctx context.Context) (context.Context, context.CancelFunc) {
 	detached := context.WithoutCancel(ctx)
-	if deadline, ok := ctx.Deadline(); ok && time.Until(deadline) < dbOpTimeout {
-		return context.WithDeadline(detached, deadline)
+	if deadline, ok := ctx.Deadline(); ok {
+		// The remaining budget must be POSITIVE to be worth inheriting
+		// (review item 10): `remaining < dbOpTimeout` alone is true for
+		// negatives too, so an enclosing budget an earlier nested op had
+		// already spent was re-imposed verbatim and the operation began on
+		// a context that was dead before its first statement — precisely
+		// the input the any-store connection leak this function exists to
+		// avoid needs. A spent budget cannot bound anything; the op takes a
+		// fresh bounded one, which is still detached from cancellation and
+		// still capped at dbOpTimeout.
+		if remaining := time.Until(deadline); remaining > 0 && remaining < dbOpTimeout {
+			return context.WithDeadline(detached, deadline)
+		}
 	}
 	return context.WithTimeout(detached, dbOpTimeout)
 }
