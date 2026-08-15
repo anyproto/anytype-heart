@@ -785,6 +785,19 @@ func (r *run) finalize(ctx context.Context, rootSpec importv2.RootSpec) {
 		r.report(importv2.ObjectError(importv2.IssueObjectFailed, object.SourceKey, fmt.Errorf("claim root collection: %w", err)))
 		return
 	}
+	// Write-ahead order, the finalize site of the P0-D rule: the claim must
+	// be durable BEFORE the create it authorizes — a crash inside the
+	// persist below would otherwise leave a tree with no ledger row at all
+	// (the buffered claim was intent that never wrote), invisible to
+	// compensation. finish()'s E4 flush is completeness insurance, not
+	// ordering.
+	if err := r.deps.Identity.FlushClaims(ctx); err != nil {
+		if r.stageInterrupted(ctx, err) {
+			return
+		}
+		r.report(importv2.ObjectError(importv2.IssueObjectFailed, object.SourceKey, fmt.Errorf("flush root collection claim: %w", err)))
+		return
+	}
 	assignment, err := r.deps.Identity.Assign(object.SourceKey)
 	if err != nil {
 		r.report(importv2.ObjectError(importv2.IssueObjectFailed, object.SourceKey, fmt.Errorf("assign root collection: %w", err)))
@@ -874,6 +887,13 @@ func (r *run) maybeClaimReport(ctx context.Context) bool {
 			fmt.Sprintf("claim import report: %s", err)))
 		return false
 	}
+	// Write-ahead order (the P0-D rule, finalize site): durable before the
+	// create it authorizes — see finalize.
+	if err := r.deps.Identity.FlushClaims(ctx); err != nil {
+		r.report(importv2.Warning(importv2.IssueObjectFailed, report.SourceKey,
+			fmt.Sprintf("flush import report claim: %s", err)))
+		return false
+	}
 	r.rootMu.Lock()
 	r.rootCandidates = append(r.rootCandidates, report.SourceKey)
 	r.rootMu.Unlock()
@@ -896,6 +916,12 @@ func (r *run) emitReport(ctx context.Context, claimed bool, title string) {
 		if err := r.deps.Identity.Claim(ctx, importv2.IdentityClaim{SourceKey: report.SourceKey, SbType: coresb.SmartBlockTypePage}); err != nil {
 			r.report(importv2.Warning(importv2.IssueObjectFailed, report.SourceKey,
 				fmt.Sprintf("claim import report: %s", err)))
+			return
+		}
+		// Write-ahead order (the P0-D rule, finalize site).
+		if err := r.deps.Identity.FlushClaims(ctx); err != nil {
+			r.report(importv2.Warning(importv2.IssueObjectFailed, report.SourceKey,
+				fmt.Sprintf("flush import report claim: %s", err)))
 			return
 		}
 	}

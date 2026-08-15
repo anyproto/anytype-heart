@@ -1089,6 +1089,47 @@ func TestLateClaimsFlush(t *testing.T) {
 		assert.Equal(t, "flush", events[len(events)-1],
 			"the run must end with a flush after the last claim, got %v", events)
 	})
+
+	t.Run("a finalize claim is durable BEFORE the create it authorizes", func(t *testing.T) {
+		// given — the finalize site of the P0-D write-ahead rule: the root
+		// collection's claim used to sit in the buffer until finish(), so a
+		// crash inside its persist left a created tree with no ledger row at
+		// all — invisible to compensation. The rule everywhere: a claim is
+		// durable before any durable artifact that depends on it.
+		fx := newEngineFixture(t)
+		fx.deps.Collection = &fakeCollectionFactory{}
+		fx.persister.observeKeyed = func(sourceKey string) {
+			fx.identity.note("persist:" + sourceKey)
+		}
+		converter := &scriptConverter{
+			objects:  []*importv2.Object{pageObj("a.md", true)},
+			rootSpec: importv2.RootSpec{CollectionName: "Import"},
+		}
+
+		// when
+		result := Run(context.Background(), importv2.Request{Mode: importv2.ModeContinueOnError}, converter, fx.deps)
+
+		// then: claim:root-collection … flush … persist:root-collection
+		require.NoError(t, result.Err)
+		events := fx.identity.eventLog()
+		claimAt, flushAfterClaim, persistAt := -1, -1, -1
+		for i, event := range events {
+			switch {
+			case event == "claim:root-collection":
+				claimAt = i
+			case event == "flush" && claimAt >= 0 && flushAfterClaim < 0:
+				flushAfterClaim = i
+			case event == "persist:root-collection":
+				persistAt = i
+			}
+		}
+		require.GreaterOrEqual(t, claimAt, 0, "%v", events)
+		require.GreaterOrEqual(t, persistAt, 0, "%v", events)
+		require.GreaterOrEqual(t, flushAfterClaim, 0,
+			"the finalize claim must flush before its persist, not at finish: %v", events)
+		assert.Less(t, flushAfterClaim, persistAt,
+			"the claim must be durable BEFORE the create it authorizes: %v", events)
+	})
 }
 
 func TestCompensationCancellable(t *testing.T) {
