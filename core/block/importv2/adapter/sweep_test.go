@@ -16,6 +16,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/importv2/runstore"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 )
 
 type sweepDeleter struct {
@@ -44,6 +46,15 @@ func (d *sweepDeleter) DeleteObject(objectId string) error {
 }
 
 func alwaysOK(context.Context, string) spaceStatus { return spaceOK }
+
+// notExistsSpaceGetter answers ErrSpaceNotExists whatever the ctx says —
+// the shape techspace.SpaceViewExists produces for an UNREADABLE view as
+// well as an absent one.
+type notExistsSpaceGetter struct{}
+
+func (g *notExistsSpaceGetter) Get(context.Context, string) (clientspace.Space, error) {
+	return nil, space.ErrSpaceNotExists
+}
 
 // makeRun builds a closed run dir in the given state, optionally with
 // recorded effects.
@@ -223,6 +234,49 @@ func TestSweepRuns(t *testing.T) {
 		assert.Empty(t, deleter.deleted)
 		_, err := os.Stat(dir)
 		assert.True(t, os.IsNotExist(err))
+	})
+
+	t.Run("a space-gone answer arriving on a dead ctx keeps the dir", func(t *testing.T) {
+		// given — review item 8: the space-gone branch UNLINKS the ledger, and
+		// its premise (ErrSpaceNotExists is definitive) does not hold while
+		// the stop is live. techspace.SpaceViewExists returns exists=(GetObject
+		// error == nil), so a cancelled or timed-out view read during shutdown
+		// answers "the space does not exist" for a space that is merely
+		// unreadable. Every other destructive branch in this sweep already
+		// consults the stop first (the OpenExclusive corrupt branch); this one
+		// did not.
+		root := t.TempDir()
+		dir := makeRun(t, root, "shutting-down", runstore.StateRunning, true)
+		deleter := &sweepDeleter{}
+		stopping, cancel := context.WithCancel(context.Background())
+
+		// when: the probe answers gone, but only because the stop killed the
+		// read it was waiting on
+		outcomes := sweepRuns(stopping, root, deleter,
+			func(context.Context, string) spaceStatus { cancel(); return spaceGone }, nil, nil)
+
+		// then
+		require.Len(t, outcomes, 1)
+		assert.NotEqual(t, sweepDeletedSpaceGone, outcomes[0].Action)
+		assert.Empty(t, deleter.deleted)
+		assert.DirExists(t, dir, "a shutdown must never be read as a deleted space")
+	})
+
+	t.Run("probeSpace answers unknown once the stop is live", func(t *testing.T) {
+		// given — the same rule at the classifier. This is not hypothetical:
+		// techspace.SpaceViewExists returns exists = (GetObject error == nil),
+		// so a cancelled or spaceViewCheckTimeout-ed view read reaches Get as
+		// a flat ErrSpaceNotExists — indistinguishable, by shape, from a space
+		// that was really deleted.
+		s := &service{spaceService: &notExistsSpaceGetter{}}
+		dead, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		// when / then
+		assert.Equal(t, spaceGone, s.probeSpace(context.Background(), "space-1"),
+			"on a live ctx the answer is still taken at face value")
+		assert.Equal(t, spaceUnknown, s.probeSpace(dead, "space-1"),
+			"while the stop is live the same answer is not evidence")
 	})
 
 	t.Run("a transient space error keeps the dir for the next start", func(t *testing.T) {

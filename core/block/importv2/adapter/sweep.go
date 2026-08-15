@@ -210,6 +210,20 @@ func sweepOne(ctx context.Context, dir string, objects persist.ObjectAccess, pro
 
 	switch probe(ctx, manifest.SpaceId) {
 	case spaceGone:
+		if ctx.Err() != nil {
+			// The stop is consulted BEFORE the destructive branch, the same
+			// rule the corrupt branch above obeys (review P0-A) and for the
+			// same reason: this branch UNLINKS the ledger, and "the space is
+			// gone" is not something a closing process can establish. The
+			// answer arrives through techspace, whose SpaceViewExists reports
+			// exists = (view read succeeded) — so a shutdown mid-read is
+			// indistinguishable, by shape, from a deleted space (review item
+			// 8). The dir keeps; the next start asks again.
+			outcome.Action = sweepSkippedError
+			outcome.Err = fmt.Errorf("sweep stopped: %w", ctx.Err())
+			_ = store.Close()
+			return outcome
+		}
 		// Nothing to compensate into; the objects died with the space.
 		outcome.Action = sweepDeletedSpaceGone
 		dropStore(store, &outcome)
@@ -337,17 +351,25 @@ func (s *service) sweepAbandoned() {
 // definitive not-exists/deleted answer allows deleting the run dir without
 // compensation; anything else is retried on the next start.
 //
-// ErrSpaceNotExists IS definitive here, reviewed 2026-08-13: Get →
-// ensureSpaceStarted (space/load.go) falls through to resolveDerivedInfo in
-// lazy mode, which reads the space view directly from techspace rather than
-// from deferred statuses — a space that was ever an import target on this
-// device has a view here, so a lazily-not-yet-started space resolves fine
-// and never reaches the ErrSpaceNotExists branch.
+// ErrSpaceNotExists is taken as definitive only while the STOP is not live
+// (review item 8). The 2026-08-13 review reasoned that Get →
+// ensureSpaceStarted → resolveDerivedInfo reads the space view directly from
+// techspace, so a lazily-not-yet-started space resolves rather than
+// answering not-exists — true, but it is not the only rung: the waiter
+// consults techspace.SpaceViewExists first, which returns
+// exists = (objectCache.GetObject error == nil) and therefore reports "no
+// such space" for a view read that was CANCELLED or hit its
+// spaceViewCheckTimeout. The startup sweep runs concurrently with techspace
+// warm-up and with shutdown, so that read failing is ordinary — and the
+// branch this feeds unlinks a ledger.
 func (s *service) probeSpace(ctx context.Context, spaceId string) spaceStatus {
 	if spaceId == "" {
 		return spaceGone
 	}
 	_, err := s.spaceService.Get(ctx, spaceId)
+	if err != nil && ctx.Err() != nil {
+		return spaceUnknown
+	}
 	switch {
 	case err == nil:
 		return spaceOK
