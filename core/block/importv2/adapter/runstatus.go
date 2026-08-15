@@ -99,7 +99,7 @@ func statusOfDormantDir(ctx context.Context, dir string) (*pb.RpcObjectImportRun
 		return nil, fmt.Errorf("open run %s: %w", runstore.RunIdOfDir(dir), err)
 	}
 	defer store.Close()
-	return buildRunStatus(ctx, store, false)
+	return buildDormantRunStatus(ctx, store)
 }
 
 // RunList reports every known run: live ones first-hand, dormant dirs from
@@ -157,8 +157,10 @@ func buildLiveRunStatus(ctx context.Context, live *liveRunInfo) (*pb.RpcObjectIm
 	}, nil
 }
 
-// buildRunStatus derives the §15.4 ledger-backed columns from a run store.
-func buildRunStatus(ctx context.Context, store *runstore.Store, live bool) (*pb.RpcObjectImportRunStatusRun, error) {
+// buildDormantRunStatus derives the §15.4 ledger-backed columns from a run
+// dir with no engine behind it. Live runs never come here — they are served
+// from their emitter — so there is no `live` flag to get wrong.
+func buildDormantRunStatus(ctx context.Context, store *runstore.Store) (*pb.RpcObjectImportRunStatusRun, error) {
 	manifest, err := store.Manifest(ctx)
 	if err != nil {
 		return nil, err
@@ -179,7 +181,6 @@ func buildRunStatus(ctx context.Context, store *runstore.Store, live bool) (*pb.
 				CancelEffect: cancelEffectOf(manifest),
 			},
 			ManifestState: string(manifest.State),
-			Live:          live,
 		}, nil
 	}
 	status := &pb.EventImportStatistic{
@@ -187,9 +188,10 @@ func buildRunStatus(ctx context.Context, store *runstore.Store, live bool) (*pb.
 		ImportType:   model.ImportType(manifest.ImportType),
 		Phase:        phaseOf(manifest),
 		CancelEffect: cancelEffectOf(manifest),
-		// The three-state model describes a running engine; ledger-backed
-		// serving has no throttle/retry signal yet (event core), so the
-		// state stays Running and manifestState carries the lifecycle.
+		// The three-state model describes a RUNNING engine — the pacer's
+		// pause, the retry loop's attempt count. A dormant dir has neither,
+		// so the state stays Running and manifestState carries the
+		// lifecycle instead.
 		State: pb.EventImportStatistic_Running,
 	}
 	if (resumable(manifest) && manifest.ResumeAttempts < maxResumeAttempts) ||
@@ -258,7 +260,6 @@ func buildRunStatus(ctx context.Context, store *runstore.Store, live bool) (*pb.
 	return &pb.RpcObjectImportRunStatusRun{
 		Status:        status,
 		ManifestState: string(manifest.State),
-		Live:          live,
 	}, nil
 }
 
