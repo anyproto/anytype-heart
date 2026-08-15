@@ -448,6 +448,7 @@ type run struct {
 	leaked           int
 	compensateState  int // 0 not run, 1 running, 2 done
 	compensationRan  bool
+	nothingToUndo    bool
 	allStagesDone    bool
 	// suspendedRun records the engine's own verdict — the run stopped for a
 	// shutdown suspend and was NOT compensated — carried out via
@@ -930,14 +931,19 @@ func (r *run) compensate() {
 	r.compensateState = 1
 	if r.deps.Journal.IsEmpty() {
 		// Nothing to undo — an abort during passes 1–2, where compensation
-		// is definitionally Drop() (DM spec §7). Vacuously complete: the
-		// zero-delete cleanup is skipped TOGETHER WITH the OnCompensating
-		// marker, which exists so a crash mid-cleanup is finished by the
-		// sweep — there is no cleanup to finish, and the marker's durable
-		// state transition would scrub the manifest's crawl request and
-		// burn the dir's crawl-resumable class (DM-3 §8.3) over nothing.
+		// is definitionally Drop() (DM spec §7). The zero-delete cleanup is
+		// skipped TOGETHER WITH the OnCompensating marker, which exists so a
+		// crash mid-cleanup is finished by the sweep — there is no cleanup
+		// to finish, and the marker's durable state transition would scrub
+		// the manifest's crawl request and burn the dir's crawl-resumable
+		// class (DM-3 §8.3) over nothing. CompensationRan stays FALSE
+		// (review P0-B): nothing ran, and the flag is consumed downstream as
+		// disposal authority — setting it here destroyed the crawl artifact
+		// on every non-transient mid-crawl failure. The vacuousness travels
+		// as its own field; the adapter disposes only a user-cancelled
+		// nothing-to-undo run.
 		r.compensateState = 2
-		r.compensationRan = true
+		r.nothingToUndo = true
 		return
 	}
 	if r.deps.OnCompensating != nil {
@@ -1009,6 +1015,7 @@ func (r *run) buildResult(fatal importv2.Issue, rootSpec importv2.RootSpec) *imp
 		Compensated:      r.compensated,
 		Leaked:           r.leaked,
 		CompensationRan:  r.compensationRan,
+		NothingToUndo:    r.nothingToUndo,
 		Suspended:        r.suspendedRun,
 	}
 	if fatal.Code != "" {

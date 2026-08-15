@@ -47,12 +47,25 @@ type Result struct {
 	Compensated int
 	Leaked      int
 	// CompensationRan means the engine actually executed compensation for
-	// this failure (false on suspend, on success, and on failures that never
-	// reached — or were gated out of — the cleanup). The disposal invariant
+	// this failure (false on suspend, on success, on failures that never
+	// reached — or were gated out of — the cleanup, and on aborts whose
+	// journal was EMPTY: nothing ran there either). The disposal invariant
 	// reads it: no path may destroy a run dir whose effects no compensation
 	// covered, so Err != nil with CompensationRan == false keeps the dir for
 	// the sweep instead of dropping the only record of what was created.
 	CompensationRan bool
+	// NothingToUndo means the abort found an EMPTY journal — no incarnation
+	// put anything in the space, so compensation was vacuous and was skipped
+	// together with its durable marker (review P0-B: the compensating
+	// transition would scrub the manifest's crawl request and burn the dir's
+	// crawl-resumable class to authorize zero deletes). It is a separate
+	// proposition from CompensationRan on purpose: "there was nothing to
+	// undo" does not mean "the dir is disposable" — a mid-crawl abort's dir
+	// IS the crawl artifact DM-3 exists to keep. The adapter disposes such a
+	// dir only when the user cancelled (the one intent that discards the
+	// artifact); every other failure keeps it for the sweep's
+	// attempts-capped retry.
+	NothingToUndo bool
 
 	// Suspended means the run was stopped by a graceful shutdown
 	// (ErrSuspended cause) and deliberately NOT compensated — its durable

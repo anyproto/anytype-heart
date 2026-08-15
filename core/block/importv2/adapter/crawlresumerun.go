@@ -155,7 +155,7 @@ func (s *service) resumeCrawlRun(ctx context.Context, store *runstore.Store, man
 		outcome.Action = sweepResumedSuspended
 		return outcome
 	}
-	if result.Err != nil && s.transientCrawlFailure(store, result.Err) {
+	if s.transientCrawlFailure(store, result) {
 		// Offline laptop, Notion outage, exhausted rate budget: the crawl
 		// artifact must survive the condition that interrupted it — the
 		// attempt stays spent (the cap bounds a never-healing dir), the dir
@@ -204,13 +204,34 @@ func (s *service) resumeCrawlRun(ctx context.Context, store *runstore.Store, man
 	return outcome
 }
 
-// transientCrawlFailure reports a crawl-resume failure worth keeping the
-// dir for: transient-shaped by the Notion client's OWN retryability rule
-// (one classification, not a parallel list), on a run still in the
-// crawl-resumable state — the belt: a post-materialize or compensated
-// failure must settle normally, never dodge its disposal.
-func (s *service) transientCrawlFailure(store *runstore.Store, err error) bool {
-	if !notionclient.IsRetryable(err) {
+// userCancelled reports a result whose fatal is the USER's cancel — the one
+// stop that means "discard this import" rather than "finish it later". A
+// suspend also carries IssueCancelled (its cause is ErrSuspended), so
+// Suspended is consulted first. Every settlement path that decides an
+// outcome from an error's SHAPE must consult this before any retryability
+// classification (review P0-C): a cancelled Notion call is retryable-shaped
+// — "retries exhausted" wrapping a transport context.Canceled — so without
+// the stop check the transient-keep branch preserved a cancelled import's
+// dir, token intact, and the next start silently re-ran it.
+func userCancelled(result *importv2.Result) bool {
+	if result.Err == nil || result.Suspended {
+		return false
+	}
+	return importv2.AsIssue(result.Err, importv2.SeverityFatal, importv2.IssueStoreError).Code == importv2.IssueCancelled
+}
+
+// transientCrawlFailure reports a crawl-resume failure worth the QUIET keep
+// (no failure notification, dir untouched): the stop is
+// consulted first (userCancelled — a cancel is never transient however
+// retryable its wrap looks), then transient-shaped by the Notion client's
+// OWN retryability rule (one classification, not a parallel list), on a run
+// still in the crawl-resumable state — the belt: a post-materialize or
+// compensated failure must settle normally, never dodge its disposal.
+// Non-transient failures are not the destructive complement anymore: they
+// settle loudly through finishRun, whose empty-journal rule keeps the crawl
+// artifact for the sweep regardless of shape (review P0-B).
+func (s *service) transientCrawlFailure(store *runstore.Store, result *importv2.Result) bool {
+	if result.Err == nil || userCancelled(result) || !notionclient.IsRetryable(result.Err) {
 		return false
 	}
 	m, merr := store.Manifest(context.Background())

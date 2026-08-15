@@ -158,13 +158,21 @@ func (s *service) finishRun(lc *runLifecycle, result *importv2.Result) {
 		log.With("dir", lc.store.Dir()).Warnf("import run suspended for shutdown; state kept for the startup sweep")
 		return
 	}
-	if result.Err != nil && !result.CompensationRan {
+	if result.Err != nil && !result.CompensationRan && !(userCancelled(result) && result.NothingToUndo) {
 		// The disposal invariant (review Class A): a failure whose effects no
 		// compensation covered must not destroy the dir — it is the only
 		// record of what was created. Keep it EXACTLY as it is (no state
 		// change): the sweep decides — resume (attempts-capped) or
 		// compensate. Covers prologue failures (spool open, load), the
-		// engine's nil-spool guard, and a gated-out compensation alike.
+		// engine's nil-spool guard, a gated-out compensation, and (review
+		// P0-B) every mid-crawl abort with an empty journal — the crawl
+		// artifact survives whatever interrupted it, structurally, not by a
+		// retryability allowlist. The ONE exception is the user's cancel
+		// with nothing to undo: the user discarded the import and the space
+		// is clean, so keeping the dir would silently resurrect a cancelled
+		// import on the next start (review P0-C's disposal half). A cancel
+		// whose compensation was gated or leaked stays kept — uncompensated
+		// effects outrank the cancel.
 		if err := lc.store.Close(); err != nil {
 			log.Errorf("close unsettled failed run: %s", err)
 		}

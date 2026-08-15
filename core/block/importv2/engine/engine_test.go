@@ -625,8 +625,12 @@ func TestCompensationGate(t *testing.T) {
 		// is Drop()): an abort whose journal is empty must not write the
 		// compensating transition, which would scrub the manifest's crawl
 		// request and burn the dir's crawl-resumable state to authorize
-		// zero deletes. Vacuously complete: CompensationRan true, so a
-		// genuinely failed run still disposes.
+		// zero deletes. And it must SAY nothing ran (review P0-B):
+		// CompensationRan is consumed downstream as "the dir may be
+		// destroyed", while an empty journal is precisely the class the
+		// crawl resume exists to keep — the two propositions travel as two
+		// fields, and disposal is the adapter's call (dispose on user
+		// cancel, keep on failure).
 		fx := newEngineFixture(t)
 		gateCalled := false
 		fx.deps.OnCompensating = func() error {
@@ -642,9 +646,29 @@ func TestCompensationGate(t *testing.T) {
 		// then
 		require.Error(t, result.Err)
 		assert.False(t, gateCalled, "no effects, no durable compensating transition")
-		assert.True(t, result.CompensationRan, "vacuously complete — disposal may proceed")
+		assert.False(t, result.CompensationRan, "no deletes ran — the flag must not authorize disposal")
+		assert.True(t, result.NothingToUndo, "the vacuousness travels as its own proposition")
 		assert.Zero(t, result.Compensated)
 		assert.Zero(t, result.Leaked)
+	})
+
+	t.Run("a real compensation never claims NothingToUndo", func(t *testing.T) {
+		// given: one journaled effect, then an abort — the two flags must
+		// never both be true, whatever path produced them.
+		fx := newEngineFixture(t)
+		fx.persister.failKeys["bad.md"] = assert.AnError
+		fx.persister.delayKeys = map[string]time.Duration{"bad.md": 150 * time.Millisecond}
+		converter := &scriptConverter{objects: []*importv2.Object{
+			pageObj("a.md", false), pageObj("bad.md", false),
+		}}
+
+		// when
+		result := Run(context.Background(), importv2.Request{Mode: importv2.ModeAllOrNothing}, converter, fx.deps)
+
+		// then
+		require.Error(t, result.Err)
+		assert.True(t, result.CompensationRan)
+		assert.False(t, result.NothingToUndo)
 	})
 
 	t.Run("a suspend reports that compensation did NOT run", func(t *testing.T) {

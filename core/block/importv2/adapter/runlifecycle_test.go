@@ -131,6 +131,77 @@ func TestFinishRun(t *testing.T) {
 		assert.Equal(t, []string{"obj-1"}, inputs.Created, "the ledger's record must be intact")
 	})
 
+	t.Run("a mid-crawl failure with nothing to undo keeps the crawl artifact", func(t *testing.T) {
+		// given — review P0-B: an abort with an empty journal has nothing to
+		// compensate, and the dir IS the crawl artifact DM-3 exists to keep.
+		// This is the structural rule, not the Notion-retryability allowlist:
+		// noObjects on an eventually-consistent /search, a rotated token, a
+		// markdown store failure — all keep the artifact for the sweep's
+		// attempts-capped retry.
+		s := &service{config: &config.Config{RepoPath: t.TempDir()}}
+		lc, err := s.beginRun(context.Background(), testRequest(),
+			&pb.RpcObjectImportRequest{SpaceId: "space-1", Type: model.Import_Notion}, "Notion", 0)
+		require.NoError(t, err)
+		dir := lc.store.Dir()
+
+		// when
+		s.finishRun(lc, &importv2.Result{
+			Err:           importv2.Fatal(importv2.IssueSourceInvalid, assert.AnError),
+			NothingToUndo: true,
+		})
+
+		// then: dir kept, state untouched, request intact — still crawl-resumable
+		reopened, err := runstore.Open(context.Background(), dir)
+		require.NoError(t, err, "a mid-crawl failure must not destroy the crawl artifact")
+		defer reopened.Close()
+		manifest, err := reopened.Manifest(context.Background())
+		require.NoError(t, err)
+		assert.Equal(t, runstore.StateRunning, manifest.State)
+		assert.NotEmpty(t, manifest.Request, "the request must survive for the crawl resume")
+	})
+
+	t.Run("a user cancel with nothing to undo disposes the dir", func(t *testing.T) {
+		// given — the cancel carve-out (review P0-C's disposal half): the
+		// user discarded the import, nothing is in the space, so keeping the
+		// dir would silently resurrect a cancelled import on the next start.
+		s := &service{config: &config.Config{RepoPath: t.TempDir()}}
+		lc, err := s.beginRun(context.Background(), testRequest(), &pb.RpcObjectImportRequest{}, "Notion", 0)
+		require.NoError(t, err)
+		dir := lc.store.Dir()
+
+		// when
+		s.finishRun(lc, &importv2.Result{
+			Err:           importv2.Fatal(importv2.IssueCancelled, context.Canceled),
+			NothingToUndo: true,
+		})
+
+		// then
+		_, statErr := os.Stat(dir)
+		assert.True(t, os.IsNotExist(statErr), "a cancelled import must not survive as a resumable dir")
+	})
+
+	t.Run("a user cancel whose compensation was GATED still keeps the dir", func(t *testing.T) {
+		// given: effects exist (non-empty journal) but the compensating
+		// marker could not be written — the disposal invariant outranks the
+		// cancel carve-out, because the ledger is the only record of what
+		// was created.
+		s := &service{config: &config.Config{RepoPath: t.TempDir()}}
+		lc, err := s.beginRun(context.Background(), testRequest(), &pb.RpcObjectImportRequest{}, "Notion", 0)
+		require.NoError(t, err)
+		require.NoError(t, lc.store.RecordCreated(context.Background(), "page-1", "obj-1"))
+		dir := lc.store.Dir()
+
+		// when: cancelled, CompensationRan false, NothingToUndo false
+		s.finishRun(lc, &importv2.Result{
+			Err: importv2.Fatal(importv2.IssueCancelled, context.Canceled),
+		})
+
+		// then
+		reopened, err := runstore.Open(context.Background(), dir)
+		require.NoError(t, err, "uncompensated effects outrank the cancel: the dir is the only record")
+		defer reopened.Close()
+	})
+
 	t.Run("a suspended run keeps its dir, flushed, in the suspended state", func(t *testing.T) {
 		// given — the verdict comes from the engine's Result, the single
 		// source of truth (deriving it twice from two contexts disagreed).

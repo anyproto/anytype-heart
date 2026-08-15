@@ -272,6 +272,82 @@ func TestCrawlResumeTransientKeep(t *testing.T) {
 	})
 }
 
+func TestCrawlResumeNonTransientKeep(t *testing.T) {
+	t.Run("a NON-retryable mid-crawl failure also keeps the artifact — the rule is structural, not an allowlist", func(t *testing.T) {
+		// given — review P0-B's confirmed asymmetry: a rotated token (401)
+		// is not in the Notion client's retryable set, and everything
+		// outside that set used to destroy the crawl artifact. The rule is
+		// the empty journal, not the error's provider shape: nothing is in
+		// the space, so the dir survives for the attempts-capped retry —
+		// loudly (a finish notification), unlike the quiet transient keep.
+		unauthorized := &recordingCrawlHandler{}
+		unauthorized.inner = func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusUnauthorized)
+		}
+		fx, _ := crawlFixture(t, unauthorized)
+		dir := makeCrawlRun(t, runstore.RunsRoot(fx.repo), "rotated-token", runstore.StateSuspended)
+
+		// when
+		fx.service.sweepAbandoned()
+
+		// then: dir kept, still crawl-resumable, and the failure was delivered
+		store, err := runstore.Open(context.Background(), dir)
+		require.NoError(t, err, "a mid-crawl failure must keep the crawl artifact whatever its shape")
+		defer store.Close()
+		manifest, err := store.Manifest(context.Background())
+		require.NoError(t, err)
+		assert.Equal(t, runstore.StateRunning, manifest.State)
+		assert.NotEmpty(t, manifest.Request, "the request must survive for the next attempt")
+		assert.Equal(t, 1, fx.finishEvents(), "a non-transient failure settles loudly, unlike the quiet transient keep")
+	})
+}
+
+func TestTransientCrawlFailureConsultsTheStop(t *testing.T) {
+	t.Run("a user cancel is never transient, however retryable its wrap looks", func(t *testing.T) {
+		// given — review P0-C, the exact proven shape: a Notion call
+		// abandoned by the user's cancel fails as 'retries exhausted'
+		// wrapping a transport context.Canceled, which the retryability
+		// rule matches. Produce it with a REAL client whose in-flight
+		// request the cancel kills.
+		ctx, cancel := context.WithCancel(context.Background())
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			cancel()              // the user cancels while the call is in flight
+			<-r.Context().Done() // hold until the client abandons the request
+		}))
+		t.Cleanup(server.Close)
+		apiClient := notionclient.NewClient("token",
+			notionclient.WithBaseURL(server.URL),
+			notionclient.WithRateLimit(1000),
+			notionclient.WithRetryPolicy(notionclient.RetryPolicy{
+				MaxAttempts: 1, BaseDelay: time.Millisecond, MaxDelay: time.Millisecond, TotalBudget: time.Second,
+			}))
+		callErr := apiClient.Request(ctx, http.MethodPost, "/search", nil, nil)
+		require.Error(t, callErr)
+		require.True(t, notionclient.IsRetryable(callErr),
+			"premise: the cancelled call must be retryable-SHAPED, or this test pins nothing")
+
+		// and a dir still mid-crawl
+		fx, _ := resumeFixture(t)
+		dir := makeCrawlRun(t, runstore.RunsRoot(fx.repo), "cancelled-crawl", runstore.StateRunning)
+		store, err := runstore.Open(context.Background(), dir)
+		require.NoError(t, err)
+		defer store.Close()
+
+		// when / then: the cancel decides BEFORE the retryability shape
+		cancelled := &importv2.Result{Err: importv2.Fatal(importv2.IssueCancelled, callErr)}
+		assert.False(t, fx.service.transientCrawlFailure(store, cancelled),
+			"a cancelled import must never be kept for a silent restart")
+
+		// and the SAME wrap on a non-cancel fatal stays transient-keepable
+		failed := &importv2.Result{Err: importv2.Fatal(importv2.IssueSourceInvalid, callErr)}
+		assert.True(t, fx.service.transientCrawlFailure(store, failed))
+
+		// and a suspend is not the user's cancel (Suspended is consulted first)
+		suspended := &importv2.Result{Err: importv2.Fatal(importv2.IssueCancelled, callErr), Suspended: true}
+		assert.False(t, userCancelled(suspended))
+	})
+}
+
 func TestCrawlRunStatusSurface(t *testing.T) {
 	t.Run("a mid-crawl run is safeToClose and its projection never carries the token", func(t *testing.T) {
 		// given
