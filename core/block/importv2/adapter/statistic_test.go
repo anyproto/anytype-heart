@@ -717,3 +717,49 @@ func TestStatEmitterStallDetection(t *testing.T) {
 		assert.Zero(t, stalled.EstimatedRemainingMs, "and no ETA it could defend")
 	})
 }
+
+func TestStatEmitterDenominatorInvariant(t *testing.T) {
+	t.Run("a resumed crawl never reports more done than total", func(t *testing.T) {
+		// given — review item 9: a crawl resume fills its two counters from
+		// DIFFERENT sets. Pass 1 discovers only what /search re-enumerated,
+		// while pass 2's seed counts the whole spool — including rows for
+		// entities a previous incarnation found through a parent's block tree,
+		// which /search never returns. The dormant surface of the same dir
+		// reads 2/2; the live one read 2/1.
+		clock := newFakeClock()
+		emitter, _ := newTestEmitter(t, clock)
+		emitter.Phase(importv2.PhaseScanning)
+		emitter.Discovered(importv2.KindPage, 1) // /search re-enumerates one page
+
+		// when: the spool already holds two recorded rows
+		emitter.Phase(importv2.PhaseFetching)
+		emitter.Completed(importv2.KindPage, 2)
+		seeded := emitter.Snapshot()
+
+		// then
+		assert.Equal(t, int64(2), seeded.PagesDone)
+		assert.GreaterOrEqual(t, seeded.PagesTotal, seeded.PagesDone,
+			"a denominator that exists may never be smaller than its own numerator")
+
+		// and: the crawl's further discoveries still move the denominator
+		emitter.Discovered(importv2.KindPage, 3)
+		assert.Equal(t, int64(5), emitter.Snapshot().PagesTotal)
+	})
+
+	t.Run("an unknown denominator stays unknown", func(t *testing.T) {
+		// given: filesTotal is 0 = UNKNOWN during the crawl (files are found by
+		// crawling), and the schema's convention for unknown is zero. Turning
+		// it into "exactly what is done" would render a finished file bar over
+		// a crawl that has not found its files yet.
+		clock := newFakeClock()
+		emitter, _ := newTestEmitter(t, clock)
+		emitter.Phase(importv2.PhaseFetching)
+
+		// when
+		emitter.Completed(importv2.KindFile, 2)
+
+		// then
+		assert.Zero(t, emitter.Snapshot().FilesTotal)
+		assert.Equal(t, int64(2), emitter.Snapshot().FilesDone)
+	})
+}

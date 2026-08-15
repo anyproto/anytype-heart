@@ -192,8 +192,37 @@ func (e *statEmitter) Completed(kind importv2.Kind, delta int64) {
 	} else {
 		e.snap.pagesDone += delta
 	}
+	e.keepDenominatorsHonestLocked()
 	e.sampleLocked()
 	e.mark(false)
+}
+
+// keepDenominatorsHonestLocked restores the one arithmetic invariant a
+// progress surface has: a denominator that EXISTS is at least its own
+// numerator.
+//
+// It is not decoration. A crawl-resumed run fills the two counters from
+// different sets: pass 1 discovers only what /search re-enumerated, while
+// pass 2 seeds done from the whole spool census — which holds rows for
+// entities a previous incarnation found through a parent's block tree, and
+// /search never returns those (review item 9). The live surface then read
+// 2/1 for a dir whose dormant poll reads 2/2, and the ETA answered "unknown"
+// for the rest of the crawl, because a negative remainder is not a
+// remainder. Raising the total to what is provably done agrees with the
+// dormant read exactly, and the crawl's further discoveries move it on from
+// there.
+//
+// A ZERO total is left alone: zero means UNKNOWN in this schema, which is
+// what filesTotal deliberately is for the whole crawl (files are found BY
+// crawling). Turning it into "exactly what is done" would paint a finished
+// file bar over a crawl that has not looked for its files yet.
+func (e *statEmitter) keepDenominatorsHonestLocked() {
+	if e.snap.pagesTotal > 0 && e.snap.pagesDone > e.snap.pagesTotal {
+		e.snap.pagesTotal = e.snap.pagesDone
+	}
+	if e.snap.filesTotal > 0 && e.snap.filesDone > e.snap.filesTotal {
+		e.snap.filesTotal = e.snap.filesDone
+	}
 }
 
 func (e *statEmitter) Bytes(total int64) {
