@@ -35,19 +35,49 @@ const (
 	compensationTimeout = 5 * time.Minute
 )
 
-// Reporter is the rich internal progress seam; the adapter down-projects it
-// onto process.Progress. Implementations must be safe for concurrent use.
+// Reporter is the rich internal progress seam (deferred-materialization
+// spec §15.4): the adapter down-projects it onto process.Progress AND feeds
+// the coalescing importStatistic emitter from it. Implementations must be
+// safe for concurrent use, and must never affect control flow — every call
+// here is advisory telemetry.
+//
+// The counters are PER KIND and PER PHASE, which is the whole point of the
+// redesign. The legacy seam blended pages, files and definitions into one
+// `Step(1)`, so no honest `pagesDone` could be published under a field name
+// the wire contract had already fixed (§15.7). And blending the two passes
+// into one denominator is what §15.3 forbids outright: pass 2 runs at the
+// pacer's ~1.5 items/s and pass 3 at persist speed, so one bar crawls for an
+// hour and then leaps.
 type Reporter interface {
-	Phase(name string)
-	AddTotal(delta int64)
-	Step(delta int64)
+	// Phase announces a stage. It RE-BASES the counters: fetching counts
+	// spooled rows against pass 1's claim count, materializing counts
+	// persisted rows against the spool census.
+	Phase(p importv2.Phase)
+	// Discovered adds to the current phase's denominator for one kind.
+	Discovered(kind importv2.Kind, delta int64)
+	// Completed adds to the current phase's numerator for one kind.
+	Completed(kind importv2.Kind, delta int64)
+	// Bytes adds transferred file bytes (bytesDone). No total accompanies
+	// them: Notion's file blocks carry no size, so bytesTotal stays the
+	// schema's documented 0-is-unknown.
+	Bytes(delta int64)
+	// Created publishes the run's created-object count as a LEVEL — the
+	// cancel affordance's "stop and remove the N objects created". A level
+	// and not a delta because a resumed run starts at the ledger's count.
+	Created(count int64)
+	// Item sets the displayable current item (user content; see
+	// importv2.DisplayText).
+	Item(item importv2.DisplayText)
 }
 
 type noopReporter struct{}
 
-func (noopReporter) Phase(string)   {}
-func (noopReporter) AddTotal(int64) {}
-func (noopReporter) Step(int64)     {}
+func (noopReporter) Phase(importv2.Phase)            {}
+func (noopReporter) Discovered(importv2.Kind, int64) {}
+func (noopReporter) Completed(importv2.Kind, int64)  {}
+func (noopReporter) Bytes(int64)                     {}
+func (noopReporter) Created(int64)                   {}
+func (noopReporter) Item(importv2.DisplayText)       {}
 
 // IdentityService is the identity seam (implemented by identity.Service).
 type IdentityService interface {
@@ -250,10 +280,12 @@ func startRun(ctx context.Context, req importv2.Request, converter importv2.Conv
 // report, finish. Shared verbatim between a first run and a resumed one so
 // the two paths cannot drift.
 func (r *run) materializeTail(runCtx context.Context, spool Spool, rootSpec importv2.RootSpec, title string) *importv2.Result {
+	r.beginMaterialize(runCtx, spool)
 	r.streamPass(runCtx, &spoolReplayConverter{spool: spool})
 	if r.fatalIssue() != nil || runCtx.Err() != nil {
 		return r.finish(runCtx, importv2.RootSpec{})
 	}
+	r.deps.Reporter.Phase(importv2.PhaseFinalizing)
 	reportClaimed := r.maybeClaimReport(runCtx)
 	r.finalize(runCtx, rootSpec)
 	r.reconcileClaims()
@@ -263,6 +295,40 @@ func (r *run) materializeTail(runCtx context.Context, spool Spool, rootSpec impo
 	r.emitReport(runCtx, reportClaimed, title)
 	r.allStagesDone = true
 	return r.finish(runCtx, rootSpec)
+}
+
+// beginMaterialize announces pass 3 and fixes its denominators from the
+// spool census — the SAME rows the pull surface counts for a dormant run
+// (§15.4), so a run that is polled and a run that is pushed cannot report
+// different totals. A census failure costs telemetry only: the seam is
+// advisory and must never fail a run that is otherwise fine.
+func (r *run) beginMaterialize(ctx context.Context, spool Spool) {
+	r.deps.Reporter.Phase(importv2.PhaseCreating)
+	pages, files, _, err := spool.Census(ctx)
+	if err != nil {
+		// Swallowed deliberately, and not turned into an issue: the replay
+		// reads the same rows a moment later and fails LOUDLY there
+		// (storeError, §7.2) — reporting it twice would put a telemetry
+		// failure on the user's report page under its own code.
+		return
+	}
+	r.deps.Reporter.Discovered(importv2.KindPage, int64(pages))
+	r.deps.Reporter.Discovered(importv2.KindFile, int64(files))
+}
+
+// countObject is the ONE classification behind every per-kind counter, used
+// by pass 2 (rows spooled) and pass 3 (rows materialized) alike so the two
+// halves of the run cannot disagree about what a "page" is. Derived-class
+// definitions — relations, types, options — are counted by neither kind:
+// they are engine bookkeeping with no pass-1 claim, and counting them would
+// push done past a total that is the claim count.
+func (r *run) countObject(o *importv2.Object) {
+	switch {
+	case isFileClass(o.SbType):
+		r.deps.Reporter.Completed(importv2.KindFile, 1)
+	case !isDerivedClass(o.SbType):
+		r.deps.Reporter.Completed(importv2.KindPage, 1)
+	}
 }
 
 // ResumeState seeds a pass-3 restart (DM spec §8.1): everything the run
@@ -341,6 +407,10 @@ func Resume(ctx context.Context, req importv2.Request, deps Deps, state *ResumeS
 	}
 	r.created.Store(state.Created)
 	r.updated.Store(state.Updated)
+	// A restart resumes the NUMBERS, not just the work (§15.4): the cancel
+	// affordance must say "remove the N objects created" counting every
+	// incarnation, not only this one's.
+	deps.Reporter.Created(state.Created)
 	r.seedIssues(state.Issues)
 	title := "Import report — " + state.ConverterName
 	if state.RootSpec.CollectionName != "" {
@@ -561,7 +631,7 @@ func (r *run) fatalIssue() *importv2.Issue {
 }
 
 func (r *run) identityPass(ctx context.Context, converter importv2.Converter) *importv2.Issue {
-	r.deps.Reporter.Phase("Scanning source")
+	r.deps.Reporter.Phase(importv2.PhaseScanning)
 	count := int64(0)
 	err := converter.EnumerateIdentities(ctx, func(claim importv2.IdentityClaim) error {
 		if err := ctx.Err(); err != nil {
@@ -572,6 +642,11 @@ func (r *run) identityPass(ctx context.Context, converter importv2.Converter) *i
 		}
 		r.noteClaimed(claim.SourceKey)
 		count++
+		// Per claim, not once at the end: a cursor-chained /search does not
+		// know its own count until the chain ends, so SCANNING publishes a
+		// count-up ("3,412 found") and totalsKnown stays false until the
+		// pass-1/pass-2 boundary (§15.3).
+		r.deps.Reporter.Discovered(importv2.KindPage, 1)
 		return nil
 	})
 	if err != nil {
@@ -586,12 +661,10 @@ func (r *run) identityPass(ctx context.Context, converter importv2.Converter) *i
 		issue := classifyFatal(err, importv2.IssueStoreError)
 		return &issue
 	}
-	r.deps.Reporter.AddTotal(count)
 	return nil
 }
 
 func (r *run) streamPass(ctx context.Context, converter importv2.Converter) importv2.RootSpec {
-	r.deps.Reporter.Phase("Creating objects")
 	objectCh := make(chan work, channelCapacity)
 	fileCh := make(chan work, channelCapacity)
 	sink := &engineSink{run: r, objectCh: objectCh, fileCh: fileCh}
@@ -709,13 +782,18 @@ func (r *run) process(ctx context.Context, w work) {
 	}
 	switch outcome.Action {
 	case persist.ActionCreated:
-		r.created.Add(1)
+		r.deps.Reporter.Created(r.created.Add(1))
 	case persist.ActionUpdated:
 		r.updated.Add(1)
 	default:
 		r.skipped.Add(1)
 	}
-	r.deps.Reporter.Step(1)
+	// Counted for every outcome the pass FINISHED, skips included — as the
+	// blended Step(1) did. A dormant run's poll cannot see the skips (they
+	// write no ledger row, exactly as Result.Skipped is not durable and
+	// restarts at zero), so a restarted run re-earns them: the numbers
+	// converge, and neither surface ever invents one.
+	r.countObject(w.object)
 }
 
 // persistGuarded is the per-object firewall: a panic in persist/resolve/store
@@ -772,7 +850,6 @@ func (r *run) finalize(ctx context.Context, rootSpec importv2.RootSpec) {
 	if rootSpec.CollectionName == "" || len(candidates) == 0 || r.deps.Collection == nil {
 		return
 	}
-	r.deps.Reporter.Phase("Finalizing")
 	object, err := r.deps.Collection.MakeCollection(rootSpec.CollectionName, candidates)
 	if err != nil {
 		r.report(importv2.ObjectError(importv2.IssueObjectFailed, "", fmt.Errorf("make root collection: %w", err)))

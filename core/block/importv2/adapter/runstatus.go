@@ -195,14 +195,18 @@ func buildRunStatus(ctx context.Context, store *runstore.Store, live bool) (*pb.
 	if err != nil {
 		return nil, err
 	}
-	pages, files, err := spool.Census(ctx)
+	pages, files, _, err := spool.Census(ctx)
 	if err != nil {
 		return nil, err
 	}
+	// Derived-class definitions are counted by neither user-facing counter,
+	// on this surface and in the engine alike (run.countObject): they carry
+	// no pass-1 claim, so folding them in made pagesDone outrun a fetching
+	// denominator that IS the claim count.
 	status.PagesTotal = int64(pages)
 	status.FilesTotal = int64(files)
 	status.FilesDone = state.FilesDone
-	status.PagesDone = state.Engine.Created - state.FilesDone + state.Engine.Updated
+	status.PagesDone = state.PagesDone
 	status.ObjectsCreated = state.Engine.Created
 	for _, issue := range state.Engine.Issues {
 		switch {

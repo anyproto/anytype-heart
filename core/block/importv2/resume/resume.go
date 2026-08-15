@@ -36,6 +36,14 @@ type State struct {
 	// FilesDone counts completed uploads (the files-ledger rows) — the
 	// status surface's separate file counter (§15.4).
 	FilesDone int64
+	// PagesDone counts materialized MINTED objects: the §15.4 page counter,
+	// derived-class definitions and files excluded. It is the ledger twin of
+	// the engine's run.countObject classification — the two must agree, or
+	// the same field means one thing pushed and another polled. Finalize-
+	// stage rows (root collection, report page) are excluded for the same
+	// reason the spool census cannot see them: they were never spooled, so
+	// counting them would push done past total.
+	PagesDone int64
 	// Engine seeds engine.Resume.
 	Engine engine.ResumeState
 
@@ -220,6 +228,7 @@ func Load(ctx context.Context, store *runstore.Store) (*State, error) {
 		})
 		if entry.Terminal {
 			skip[entry.SourceKey] = struct{}{}
+			st.PagesDone++
 			switch entry.Action {
 			case "created":
 				created++

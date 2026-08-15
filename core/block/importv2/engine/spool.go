@@ -19,6 +19,12 @@ import (
 type Spool interface {
 	Append(ctx context.Context, o *importv2.Object) error
 	Replay(ctx context.Context, emit func(o *importv2.Object) error) error
+	// Census counts the recorded rows split by class without decoding a
+	// single snapshot — the §15.4 totals. Pass 3's denominator, and on a
+	// resumed crawl pass 2's already-earned numerator. Derived-class
+	// definitions are reported apart because they belong to neither user-
+	// facing counter (see run.countObject).
+	Census(ctx context.Context) (pages, files, derived int, err error)
 }
 
 type memorySpool struct {
@@ -43,6 +49,22 @@ func (m *memorySpool) Replay(ctx context.Context, emit func(o *importv2.Object) 
 		}
 	}
 	return nil
+}
+
+func (m *memorySpool) Census(ctx context.Context) (pages, files, derived int, err error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for _, o := range m.objects {
+		switch {
+		case isFileClass(o.SbType):
+			files++
+		case isDerivedClass(o.SbType):
+			derived++
+		default:
+			pages++
+		}
+	}
+	return pages, files, derived, nil
 }
 
 // spoolSink receives the converter's stream in pass 2. Nothing here touches
@@ -122,6 +144,11 @@ func (s *spoolSink) Object(ctx context.Context, object *importv2.Object) error {
 		s.run.report(importv2.Fatal(importv2.IssueStoreError, fmt.Errorf("spool: %w", err)))
 		return s.errIfAborting(ctx)
 	}
+	// Counted only after the row is durable: fetching progress IS the
+	// recording (§8.3), so a row that failed to land must not be reported
+	// as fetched. The backstop above deliberately does not count — those
+	// rows are in spoolPass's census seed already.
+	s.run.countObject(object)
 	return nil
 }
 
@@ -149,7 +176,12 @@ func (s *spoolSink) drainFile(ctx context.Context, object *importv2.Object) erro
 	if err != nil {
 		return fmt.Errorf("create spill file: %w", err)
 	}
-	_, err = io.Copy(spillFile, ctxReader{ctx: ctx, r: reader})
+	copied, err := io.Copy(spillFile, ctxReader{ctx: ctx, r: reader})
+	// Reported whatever the copy's outcome: the bytes crossed the wire, and
+	// a half-downloaded 2 GB file is precisely the case bytesDone exists to
+	// explain (§15.2 — 500 small files and one huge one behave nothing
+	// alike).
+	s.run.deps.Reporter.Bytes(copied)
 	closeErr := spillFile.Close()
 	if err == nil {
 		err = closeErr
@@ -218,17 +250,26 @@ func (s *spoolSink) Claim(ctx context.Context, claim importv2.IdentityClaim) err
 		return err
 	}
 	s.run.noteClaimed(claim.SourceKey)
-	s.run.deps.Reporter.AddTotal(1)
+	s.run.deps.Reporter.Discovered(importv2.KindPage, 1)
 	return nil
 }
 
-func (s *spoolSink) Progress(delta int64) {
-	s.run.deps.Reporter.Step(delta)
-}
+func (s *spoolSink) Phase(p importv2.Phase) { s.run.deps.Reporter.Phase(p) }
+
+func (s *spoolSink) Item(item importv2.DisplayText) { s.run.deps.Reporter.Item(item) }
 
 // spoolPass is pass 2: fetch, convert, spool — nothing enters the space.
 func (r *run) spoolPass(ctx context.Context, converter importv2.Converter, spool Spool) importv2.RootSpec {
-	r.deps.Reporter.Phase("Fetching content")
+	r.deps.Reporter.Phase(importv2.PhaseFetching)
+	// A resumed crawl inherits the rows a previous incarnation recorded and
+	// its converter SKIPS them, so without this seed the fetch counter
+	// would restart at zero and the surface would claim the hours already
+	// spent had been lost. Advisory: a census failure costs telemetry only
+	// (the replay reads the same rows and fails loudly if they are gone).
+	if pages, files, _, err := spool.Census(ctx); err == nil {
+		r.deps.Reporter.Completed(importv2.KindPage, int64(pages))
+		r.deps.Reporter.Completed(importv2.KindFile, int64(files))
+	}
 	sink := &spoolSink{run: r, spool: spool, spillDir: r.deps.SpillDir}
 	var rootSpec importv2.RootSpec
 	var convertErr error

@@ -120,7 +120,10 @@ func (s *engineSink) skipResumed(object *importv2.Object) bool {
 		s.run.rootCandidates = append(s.run.rootCandidates, object.SourceKey)
 		s.run.rootMu.Unlock()
 	}
-	s.run.deps.Reporter.Step(1)
+	// The row IS done — a previous incarnation's ledger says so — so it
+	// counts, through the same classification every other counted object
+	// goes through.
+	s.run.countObject(object)
 	return true
 }
 
@@ -148,10 +151,10 @@ func (s *engineSink) Claim(ctx context.Context, claim importv2.IdentityClaim) er
 		return err
 	}
 	s.run.noteClaimed(claim.SourceKey)
-	s.run.deps.Reporter.AddTotal(1)
+	s.run.deps.Reporter.Discovered(importv2.KindPage, 1)
 	return nil
 }
 
-func (s *engineSink) Progress(delta int64) {
-	s.run.deps.Reporter.Step(delta)
-}
+func (s *engineSink) Phase(p importv2.Phase) { s.run.deps.Reporter.Phase(p) }
+
+func (s *engineSink) Item(item importv2.DisplayText) { s.run.deps.Reporter.Item(item) }

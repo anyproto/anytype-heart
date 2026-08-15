@@ -99,21 +99,62 @@ func (f *collectionFactory) MakeCollection(name string, memberSourceKeys []strin
 	}, nil
 }
 
-// progressReporter down-projects the engine's rich progress onto the wire
-// scalar (total/done + message).
+// progressReporter down-projects the engine's per-kind, per-phase counters
+// onto the legacy wire scalar (one total, one done, one message). The legacy
+// surface stays untouched by the §15 work — it is the compatibility path —
+// so this projection reproduces exactly what the pre-§15 seam produced,
+// with one repair the split made free: the denominator re-bases onto the
+// spool census when materialization starts, for a fresh run and a resumed
+// one alike (the resume path used to do that by hand in resumerun.go, the
+// classic rule-in-one-sibling shape).
 type progressReporter struct {
 	progress process.Progress
 	total    atomic.Int64
+	// scanned gates the FIRST publish of the total. Pass 1 now discovers
+	// claims one at a time (the SCANNING count-up), and
+	// SetTotalPreservingRatio is not idempotent once done is non-zero — on a
+	// multi-path markdown request, where path 2 starts with path 1's done
+	// already counted, publishing per claim would run its ratio arithmetic
+	// thousands of times. So pass 1's count reaches the scalar once, at the
+	// pass-1/pass-2 boundary, exactly as the single AddTotal(count) did.
+	scanned atomic.Bool
+	// materializing gates the DONE counter onto pass 3. The legacy scalar
+	// has one bar: pass 2's spooling counted into it would fill it once and
+	// then pass 3 would fill it again.
+	materializing atomic.Bool
 }
 
-func (r *progressReporter) Phase(name string) {
-	r.progress.SetProgressMessage(name)
+func (r *progressReporter) Phase(p importv2.Phase) {
+	r.progress.SetProgressMessage(p.String())
+	if p == importv2.PhaseCreating {
+		r.materializing.Store(true)
+		r.total.Store(0) // re-based by the census Discovered calls that follow
+		return
+	}
+	if p > importv2.PhaseScanning && r.scanned.CompareAndSwap(false, true) {
+		r.progress.SetTotalPreservingRatio(r.total.Load())
+	}
 }
 
-func (r *progressReporter) AddTotal(delta int64) {
-	r.progress.SetTotalPreservingRatio(r.total.Add(delta))
+func (r *progressReporter) Discovered(kind importv2.Kind, delta int64) {
+	total := r.total.Add(delta)
+	if r.scanned.Load() {
+		// Late claims during pass 2 and the pass-3 census publish
+		// immediately, as AddTotal always did; pass 1 accumulates silently.
+		r.progress.SetTotalPreservingRatio(total)
+	}
 }
 
-func (r *progressReporter) Step(delta int64) {
+func (r *progressReporter) Completed(kind importv2.Kind, delta int64) {
+	if !r.materializing.Load() {
+		return
+	}
 	r.progress.AddDone(delta)
 }
+
+// The legacy scalar carries none of these: bytes and the created level are
+// new with §15, and currentItem is user content that has no place in a
+// process message.
+func (r *progressReporter) Bytes(int64)               {}
+func (r *progressReporter) Created(int64)             {}
+func (r *progressReporter) Item(importv2.DisplayText) {}

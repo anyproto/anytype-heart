@@ -17,7 +17,8 @@ type issueRecorder struct {
 
 func (r *issueRecorder) Object(ctx context.Context, o *importv2.Object) error { return nil }
 func (r *issueRecorder) Issue(i importv2.Issue)                               { r.issues = append(r.issues, i) }
-func (r *issueRecorder) Progress(delta int64)                                 {}
+func (r *issueRecorder) Phase(p importv2.Phase)                               {}
+func (r *issueRecorder) Item(i importv2.DisplayText)                          {}
 
 func (r *issueRecorder) Claim(ctx context.Context, claim importv2.IdentityClaim) error { return nil }
 

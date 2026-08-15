@@ -31,8 +31,9 @@ type fetchedPage struct {
 }
 
 // fetchSink is the fetch-phase sink shim. Only Issue (buffered per page) and
-// Progress (thread-safe per the Sink contract) are legal off the converter
-// goroutine; Object and Claim during a fetch are contract violations.
+// the status signals (thread-safe per the Sink contract) are legal off the
+// converter goroutine; Object and Claim during a fetch are contract
+// violations.
 type fetchSink struct {
 	page *fetchedPage
 	sink importv2.Sink
@@ -52,7 +53,13 @@ func (s *fetchSink) Claim(ctx context.Context, claim importv2.IdentityClaim) err
 
 func (s *fetchSink) Issue(i importv2.Issue) { s.page.issues = append(s.page.issues, i) }
 
-func (s *fetchSink) Progress(delta int64) { s.sink.Progress(delta) }
+func (s *fetchSink) Phase(p importv2.Phase) { s.sink.Phase(p) }
+
+// Item is deliberately NOT forwarded: prefetch workers run ahead of the
+// ordered emit loop, so a worker's title would name a page the user will
+// only see minutes later. The emit loop announces the current item itself,
+// in stub order.
+func (s *fetchSink) Item(importv2.DisplayText) {}
 
 // prefetchPages pipelines page fetches ahead of the emit loop: up to
 // prefetchInFlight pages fetch concurrently while the consumer emits strictly

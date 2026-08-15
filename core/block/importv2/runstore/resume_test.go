@@ -278,7 +278,7 @@ func TestOpenStatusReader(t *testing.T) {
 		require.NoError(t, err)
 		spool, err := reader.Spool(ctx)
 		require.NoError(t, err)
-		_, _, err = spool.Census(ctx)
+		_, _, _, err = spool.Census(ctx)
 		require.NoError(t, err)
 		require.NoError(t, reader.Close())
 

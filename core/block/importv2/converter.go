@@ -53,8 +53,8 @@ type IdentityClaim struct {
 }
 
 // Sink is the converter's only output. Implementations are provided by the
-// engine and are safe for use from a single converter goroutine; Issue and
-// Progress are additionally safe for concurrent use (converter-internal
+// engine and are safe for use from a single converter goroutine; Issue,
+// Phase and Item are additionally safe for concurrent use (converter-internal
 // worker pools).
 type Sink interface {
 	// Object hands one object to the engine, blocking for backpressure.
@@ -66,9 +66,20 @@ type Sink interface {
 	// aborts by itself; the engine applies the single mode predicate.
 	Issue(i Issue)
 
-	// Progress adds fine-grained progress ticks beyond the engine's
-	// per-object accounting (e.g. per search page during a crawl).
-	Progress(delta int64)
+	// Phase announces a converter-side stage the engine cannot see — today
+	// only PhaseAnalyzing, the structure-plan step that runs before the
+	// first object and stalls silently for 10-20 s under an LLM planner
+	// (§15.1). The converter announces the phase it returns TO
+	// (PhaseFetching) when the stage ends; the engine owns every other
+	// transition. Advisory telemetry: it never affects control flow.
+	Phase(p Phase)
+
+	// Item names the entity being worked on right now — the strongest
+	// not-stuck signal a multi-hour crawl has (§15.2). It is a DisplayText
+	// and not a string on purpose: page titles are USER CONTENT,
+	// displayable but never loggable, and the type is what enforces that.
+	// Safe for concurrent use, like Issue.
+	Item(item DisplayText)
 
 	// Claim registers a late identity claim for an entity discovered only
 	// during pass 2 (second-chance discovery, §16 item 3 — e.g. a Notion

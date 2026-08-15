@@ -214,30 +214,39 @@ func (sp *Spool) SourceKeys(ctx context.Context) (map[string]coresb.SmartBlockTy
 	return keys, count, nil
 }
 
-// Census counts the spooled rows split pages/files without decoding any
+// Census counts the spooled rows split by class without decoding any
 // snapshot — the status surface's totals (§15.4: pages and files are
 // separate counters by requirement).
-func (sp *Spool) Census(ctx context.Context) (pages, files int, err error) {
+//
+// Derived-class rows (relations, types, options) are counted APART from
+// pages: they carry no pass-1 claim, so folding them into the page counter
+// made pagesDone outrun a pagesTotal that is the claim count. The
+// classification is the shared root predicate, the same one the engine's
+// countObject uses — the two must never disagree about what a page is.
+func (sp *Spool) Census(ctx context.Context) (pages, files, derived int, err error) {
 	ctx, opDone := opCtx(ctx)
 	defer opDone()
 
 	iter, err := sp.coll.Find(nil).Iter(ctx)
 	if err != nil {
-		return 0, 0, fmt.Errorf("iterate spool census: %w", err)
+		return 0, 0, 0, fmt.Errorf("iterate spool census: %w", err)
 	}
 	defer iter.Close()
 	for iter.Next() {
 		doc, err := iter.Doc()
 		if err != nil {
-			return 0, 0, fmt.Errorf("read spool doc: %w", err)
+			return 0, 0, 0, fmt.Errorf("read spool doc: %w", err)
 		}
-		if doc.Value().Get("file") != nil {
+		switch sbType := coresb.SmartBlockType(doc.Value().GetInt("sbType")); {
+		case doc.Value().Get("file") != nil || importv2.IsFileClass(sbType):
 			files++
-		} else {
+		case importv2.IsDerivedClass(sbType):
+			derived++
+		default:
 			pages++
 		}
 	}
-	return pages, files, nil
+	return pages, files, derived, nil
 }
 
 // readChunk reads and decodes up to spoolChunkSize rows after lastId, then

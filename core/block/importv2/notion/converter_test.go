@@ -25,6 +25,8 @@ type recordingSink struct {
 	objects []*importv2.Object
 	issues  []importv2.Issue
 	claims  []importv2.IdentityClaim
+	phases  []importv2.Phase
+	items   []importv2.DisplayText
 }
 
 func (s *recordingSink) Object(ctx context.Context, o *importv2.Object) error {
@@ -32,8 +34,9 @@ func (s *recordingSink) Object(ctx context.Context, o *importv2.Object) error {
 	return nil
 }
 
-func (s *recordingSink) Issue(i importv2.Issue) { s.issues = append(s.issues, i) }
-func (s *recordingSink) Progress(delta int64)   {}
+func (s *recordingSink) Issue(i importv2.Issue)      { s.issues = append(s.issues, i) }
+func (s *recordingSink) Phase(p importv2.Phase)      { s.phases = append(s.phases, p) }
+func (s *recordingSink) Item(i importv2.DisplayText) { s.items = append(s.items, i) }
 
 func (s *recordingSink) Claim(ctx context.Context, claim importv2.IdentityClaim) error {
 	s.claims = append(s.claims, claim)

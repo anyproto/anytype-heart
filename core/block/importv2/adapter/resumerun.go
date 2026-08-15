@@ -166,6 +166,8 @@ func (s *service) resumeEngine(ctx context.Context, request importv2.Request, sp
 	deps.Spool = spool
 	persister.SetResumeHeal(st.Heal())
 	st.SeedJournal(deps.Journal)
-	deps.Reporter.AddTotal(int64(st.SpoolCount))
+	// The resumed run's progress total is no longer set here: the engine
+	// re-bases it from the spool census at the start of pass 3, on this path
+	// and the fresh one alike (§15.4's one derivation).
 	return engine.Resume(ctx, request, deps, &st.Engine)
 }
