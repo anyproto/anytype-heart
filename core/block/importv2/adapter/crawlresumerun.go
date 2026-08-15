@@ -39,17 +39,17 @@ func (s *service) resumeCrawlRun(ctx context.Context, store *runstore.Store, man
 	}
 	st, err := resume.LoadCrawl(ctx, store)
 	if err != nil {
-		return s.resumePrologueExit(ctx, store, outcome, fmt.Errorf("load crawl state: %w", err))
+		return s.resumePrologueExit(ctx, store, outcome, store.RefundCrawlResumeAttempt, fmt.Errorf("load crawl state: %w", err))
 	}
 	wireReq := &pb.RpcObjectImportRequest{}
 	if err = wireReq.Unmarshal(st.Manifest.Request); err != nil {
-		return s.resumePrologueExit(ctx, store, outcome, fmt.Errorf("decode stored request: %w", err))
+		return s.resumePrologueExit(ctx, store, outcome, store.RefundCrawlResumeAttempt, fmt.Errorf("decode stored request: %w", err))
 	}
 	var preset *schemaplan.Plan
 	if len(st.PlanJSON) > 0 {
 		preset = &schemaplan.Plan{}
 		if err = json.Unmarshal(st.PlanJSON, preset); err != nil {
-			return s.resumePrologueExit(ctx, store, outcome, fmt.Errorf("decode recorded plan: %w", err))
+			return s.resumePrologueExit(ctx, store, outcome, store.RefundCrawlResumeAttempt, fmt.Errorf("decode recorded plan: %w", err))
 		}
 	}
 	// Markdown inputs parse in the prologue: a broken request never reaches
@@ -63,30 +63,30 @@ func (s *service) resumeCrawlRun(ctx context.Context, store *runstore.Store, man
 	switch importType {
 	case model.Import_Notion:
 		if wireReq.GetNotionParams().GetApiKey() == "" {
-			return s.resumePrologueExit(ctx, store, outcome, fmt.Errorf("stored request carries no api key"))
+			return s.resumePrologueExit(ctx, store, outcome, store.RefundCrawlResumeAttempt, fmt.Errorf("stored request carries no api key"))
 		}
 	case model.Import_Markdown, model.Import_Obsidian:
 		if paths, params, err = markdownParams(wireReq); err != nil {
-			return s.resumePrologueExit(ctx, store, outcome, fmt.Errorf("stored request: %w", err))
+			return s.resumePrologueExit(ctx, store, outcome, store.RefundCrawlResumeAttempt, fmt.Errorf("stored request: %w", err))
 		}
 		params.Planner = plannerFromRequest(wireReq)
 		if manifest.PathIndex >= len(paths) {
-			return s.resumePrologueExit(ctx, store, outcome, fmt.Errorf("stored request has %d paths, run is path %d", len(paths), manifest.PathIndex))
+			return s.resumePrologueExit(ctx, store, outcome, store.RefundCrawlResumeAttempt, fmt.Errorf("stored request has %d paths, run is path %d", len(paths), manifest.PathIndex))
 		}
 		if src, err = source.Open(paths[manifest.PathIndex]); err != nil {
-			return s.resumePrologueExit(ctx, store, outcome, fmt.Errorf("open source: %w", err))
+			return s.resumePrologueExit(ctx, store, outcome, store.RefundCrawlResumeAttempt, fmt.Errorf("open source: %w", err))
 		}
 		defer src.Close()
 	default:
-		return s.resumePrologueExit(ctx, store, outcome, fmt.Errorf("import type %s has no crawl resume", importType))
+		return s.resumePrologueExit(ctx, store, outcome, store.RefundCrawlResumeAttempt, fmt.Errorf("import type %s has no crawl resume", importType))
 	}
 	spc, err := s.spaceService.Get(ctx, manifest.SpaceId)
 	if err != nil {
-		return s.resumePrologueExit(ctx, store, outcome, fmt.Errorf("get space: %w", err))
+		return s.resumePrologueExit(ctx, store, outcome, store.RefundCrawlResumeAttempt, fmt.Errorf("get space: %w", err))
 	}
 	spool, err := store.Spool(ctx)
 	if err != nil {
-		return s.resumePrologueExit(ctx, store, outcome, fmt.Errorf("open spool: %w", err))
+		return s.resumePrologueExit(ctx, store, outcome, store.RefundCrawlResumeAttempt, fmt.Errorf("open spool: %w", err))
 	}
 
 	request := importv2.Request{
@@ -146,8 +146,8 @@ func (s *service) resumeCrawlRun(ctx context.Context, store *runstore.Store, man
 	if result.Suspended {
 		// An orderly suspend refunds its attempt (review Class F) — the cap
 		// bounds CRASH loops. Before finishRun, which closes the store.
-		if err := store.RefundResumeAttempt(context.Background()); err != nil {
-			log.Errorf("refund resume attempt: %s", err)
+		if err := store.RefundCrawlResumeAttempt(context.Background()); err != nil {
+			log.Errorf("refund crawl resume attempt: %s", err)
 		}
 		s.finishRun(lc, result)
 		s.settleRun(wireReq, progress, result)
@@ -158,10 +158,15 @@ func (s *service) resumeCrawlRun(ctx context.Context, store *runstore.Store, man
 	if s.transientCrawlFailure(store, result) {
 		// Offline laptop, Notion outage, exhausted rate budget: the crawl
 		// artifact must survive the condition that interrupted it — the
-		// attempt stays spent (the cap bounds a never-healing dir), the dir
+		// attempt is REFUNDED (review P1: with it spent, four offline app
+		// starts destroyed a two-hour crawl; the cap bounds crash loops and
+		// genuine failures, which never reach this settlement), the dir
 		// stays exactly as the engine left it (state running, request
 		// intact — the empty-journal compensation skip guarantees no
 		// compensating transition fired), and the next start retries.
+		if err := store.RefundCrawlResumeAttempt(context.Background()); err != nil {
+			log.Errorf("refund crawl resume attempt: %s", err)
+		}
 		lc.settled = true
 		lc.settleTracking()
 		if err := store.Close(); err != nil {

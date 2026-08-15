@@ -259,7 +259,12 @@ func TestCrawlResumeTransientKeep(t *testing.T) {
 		// when
 		fx.service.sweepAbandoned()
 
-		// then: the dir survives, still crawl-resumable, one attempt spent
+		// then: the dir survives, still crawl-resumable, the attempt REFUNDED
+		// (review P1: with the attempt spent, four offline app starts walked a
+		// two-hour crawl to compensation — 'dir exists = false,
+		// action=compensated' — with nothing in the status surface warning).
+		// The cap still bounds crash loops: a crash never reaches this
+		// settlement path, so its attempt stays spent.
 		store, err := runstore.Open(context.Background(), dir)
 		require.NoError(t, err, "the crawl artifact must survive a transient failure")
 		defer store.Close()
@@ -267,7 +272,9 @@ func TestCrawlResumeTransientKeep(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, runstore.StateRunning, manifest.State)
 		assert.NotEmpty(t, manifest.Request, "the request must survive for the next attempt")
-		assert.Equal(t, 1, manifest.ResumeAttempts, "the attempt stays spent: the cap bounds a never-healing dir")
+		assert.Zero(t, manifest.CrawlResumeAttempts,
+			"a transient failure refunds its attempt: offline starts must never walk the artifact to destruction")
+		assert.Zero(t, manifest.ResumeAttempts, "the pass-3 budget is never the crawl's to spend")
 		assert.Zero(t, fx.finishEvents(), "the import is not over — no finish event")
 	})
 }
@@ -373,6 +380,32 @@ func TestCrawlRunStatusSurface(t *testing.T) {
 		listRaw, err := runs[0].Marshal()
 		require.NoError(t, err)
 		assert.NotContains(t, string(listRaw), testNotionToken)
+	})
+
+	t.Run("exhausted attempts are honestly unsafe to close", func(t *testing.T) {
+		// given — review P1: with the cap spent, the very next sweep routes
+		// the dir to compensation, so 'closing is lossless' is a lie exactly
+		// when it matters most. The predicate must be 'a resume class covers
+		// this run AND can still be attempted' — the sweep's own gate.
+		fx, _ := resumeFixture(t)
+		dir := makeCrawlRun(t, runstore.RunsRoot(fx.repo), "worn-crawl", runstore.StateSuspended)
+		ctx := context.Background()
+		store, err := runstore.Open(ctx, dir)
+		require.NoError(t, err)
+		for i := 0; i < maxResumeAttempts; i++ {
+			_, err = store.BeginCrawlResume(ctx)
+			require.NoError(t, err)
+		}
+		require.NoError(t, store.SetState(ctx, runstore.StateSuspended))
+		require.NoError(t, store.Close())
+
+		// when
+		run, err := fx.service.RunStatus(ctx, "worn-crawl")
+		require.NoError(t, err)
+
+		// then
+		assert.False(t, run.Status.SafeToClose,
+			"the next sweep will compensate this dir — closing loses the crawl, say so")
 	})
 
 	t.Run("a pre-DM-3 dir without a request stays honestly unsafe to close mid-crawl", func(t *testing.T) {

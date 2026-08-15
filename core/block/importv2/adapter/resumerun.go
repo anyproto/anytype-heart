@@ -39,11 +39,11 @@ func (s *service) resumeRun(ctx context.Context, store *runstore.Store, manifest
 	}
 	state, err := resume.Load(ctx, store)
 	if err != nil {
-		return s.resumePrologueExit(ctx, store, outcome, fmt.Errorf("load resume state: %w", err))
+		return s.resumePrologueExit(ctx, store, outcome, store.RefundResumeAttempt, fmt.Errorf("load resume state: %w", err))
 	}
 	spc, err := s.spaceService.Get(ctx, manifest.SpaceId)
 	if err != nil {
-		return s.resumePrologueExit(ctx, store, outcome, fmt.Errorf("get space: %w", err))
+		return s.resumePrologueExit(ctx, store, outcome, store.RefundResumeAttempt, fmt.Errorf("get space: %w", err))
 	}
 	// The spool opens in the PROLOGUE: a transient failure here must keep
 	// the dir via the skipped-error path (retry next start, attempts-capped)
@@ -51,7 +51,7 @@ func (s *service) resumeRun(ctx context.Context, store *runstore.Store, manifest
 	// never started (review Class A, the spool-open sibling site).
 	spool, err := store.Spool(ctx)
 	if err != nil {
-		return s.resumePrologueExit(ctx, store, outcome, fmt.Errorf("open spool: %w", err))
+		return s.resumePrologueExit(ctx, store, outcome, store.RefundResumeAttempt, fmt.Errorf("open spool: %w", err))
 	}
 
 	request := importv2.Request{
@@ -136,10 +136,12 @@ func (s *service) resumeRun(ctx context.Context, store *runstore.Store, manifest
 // shutdown-shaped exit is CALM — attempt refunded (zero work was done,
 // review Class F), dir kept, resumed-suspended — while a genuine failure
 // keeps the spent attempt so the cap still routes a never-loading dir to
-// compensation.
-func (s *service) resumePrologueExit(ctx context.Context, store *runstore.Store, outcome sweepOutcome, err error) sweepOutcome {
+// compensation. refund is the caller's OWN counter (review P1: the two
+// resume classes budget separately) — RefundResumeAttempt for the pass-3
+// branch, RefundCrawlResumeAttempt for the crawl branch.
+func (s *service) resumePrologueExit(ctx context.Context, store *runstore.Store, outcome sweepOutcome, refund func(context.Context) error, err error) sweepOutcome {
 	if ctx.Err() != nil {
-		if refundErr := store.RefundResumeAttempt(context.Background()); refundErr != nil {
+		if refundErr := refund(context.Background()); refundErr != nil {
 			log.Errorf("refund resume attempt: %s", refundErr)
 		}
 		if flushErr := store.Flush(context.Background()); flushErr != nil {

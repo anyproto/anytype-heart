@@ -66,13 +66,25 @@ func TestManifestRequestLifetime(t *testing.T) {
 		resumed, err := store.BeginCrawlResume(ctx)
 		require.NoError(t, err)
 
-		// then: state back to running, budget spent, request intact
+		// then: state back to running, the CRAWL budget spent, request intact
 		assert.Equal(t, StateRunning, resumed.State)
 		assert.Equal(t, 2, resumed.Incarnation)
-		assert.Equal(t, 1, resumed.ResumeAttempts)
+		assert.Equal(t, 1, resumed.CrawlResumeAttempts)
+		assert.Zero(t, resumed.ResumeAttempts,
+			"a cheap crawl attempt must not spend the pass-3 budget, whose exhaustion is the destructive one (review P1)")
 		assert.False(t, resumed.MaterializeStarted,
 			"a crawl resume must NOT flip the compensation-scope switch")
 		assert.Equal(t, token, resumed.Request)
+
+		// and the counter is durable
+		dir := store.Dir()
+		require.NoError(t, store.Close())
+		reopened, err := Open(ctx, dir)
+		require.NoError(t, err)
+		defer reopened.Close()
+		persisted, err := reopened.Manifest(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, 1, persisted.CrawlResumeAttempts)
 	})
 
 	t.Run("MarkFetched scrubs the request: its useful life ends with the crawl", func(t *testing.T) {
@@ -124,12 +136,14 @@ func TestManifestRequestLifetime(t *testing.T) {
 		_, err := store.BeginCrawlResume(ctx)
 		require.NoError(t, err)
 
-		// when: the orderly-suspend refund (review Class F machinery, reused)
-		require.NoError(t, store.RefundResumeAttempt(ctx))
+		// when: the orderly-suspend refund (review Class F machinery), on the
+		// counter the crawl attempt actually spent
+		require.NoError(t, store.RefundCrawlResumeAttempt(ctx))
 
 		// then
 		m, err := store.Manifest(ctx)
 		require.NoError(t, err)
+		assert.Zero(t, m.CrawlResumeAttempts)
 		assert.Zero(t, m.ResumeAttempts)
 		assert.Equal(t, token, m.Request)
 	})

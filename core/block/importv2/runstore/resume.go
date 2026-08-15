@@ -262,13 +262,16 @@ func (s *Store) ReadPlanJSON(ctx context.Context) ([]byte, error) {
 	return bytesCopy(doc.Value().GetBytes("json")), nil
 }
 
-// RefundResumeAttempt gives back one resume attempt (floor zero): an
+// RefundResumeAttempt gives back one pass-3 resume attempt (floor zero): an
 // ORDERLY suspend is not a crash, and the cap exists to bound crash loops
 // (review Class F: three clean quits during a long materialization
 // exhausted the cap and the sweep compensated-and-dropped an import that
 // never crashed). Crashes never refund — no settlement path runs — so the
 // crash-loop bound is untouched.
 func (s *Store) RefundResumeAttempt(ctx context.Context) error {
+	ctx, opDone := opCtx(ctx)
+	defer opDone()
+
 	m, err := s.Manifest(ctx)
 	if err != nil {
 		return err
@@ -282,6 +285,28 @@ func (s *Store) RefundResumeAttempt(ctx context.Context) error {
 	return err
 }
 
+// RefundCrawlResumeAttempt is the crawl counter's twin (review P1): orderly
+// suspends AND transient failures (offline laptop, Notion outage) refund —
+// the cap bounds crash loops and genuinely failing attempts, and repeated
+// offline starts must never walk a mid-crawl artifact to destruction.
+// Crashes never refund, as above.
+func (s *Store) RefundCrawlResumeAttempt(ctx context.Context) error {
+	ctx, opDone := opCtx(ctx)
+	defer opDone()
+
+	m, err := s.Manifest(ctx)
+	if err != nil {
+		return err
+	}
+	if m.CrawlResumeAttempts == 0 {
+		return nil
+	}
+	m.CrawlResumeAttempts--
+	m.UpdatedAt = nowSecond()
+	_, err = s.writeManifest(ctx, m)
+	return err
+}
+
 // MarkFetched records the pass-2/pass-3 boundary durably (DM spec §4.1 +
 // §6.4), in the one order that keeps every prefix resumable: RootSpec
 // first (a fetched manifest without it would restart pass 3 missing
@@ -289,6 +314,11 @@ func (s *Store) RefundResumeAttempt(ctx context.Context) error {
 // One implementation for the adapter and every harness — the transition
 // is journaling, and a drifted copy is how pass-boundary invariants die.
 func (s *Store) MarkFetched(ctx context.Context, spec importv2.RootSpec) error {
+	// One budget for the whole composite (P1 opCtx rule): the nested ops
+	// below share this deadline instead of each minting a fresh one.
+	ctx, opDone := opCtx(ctx)
+	defer opDone()
+
 	if err := s.SetRootSpec(ctx, spec); err != nil {
 		return fmt.Errorf("persist root spec: %w", err)
 	}
@@ -311,13 +341,19 @@ func (s *Store) MarkFetched(ctx context.Context, spec importv2.RootSpec) error {
 // compensation-scope switch here would turn its pure-intent claims into
 // deletables (A1). The request blob survives by the writeManifest rule
 // (running keeps it): the resumed crawl is exactly what it exists for.
+// The CRAWL counter moves, not ResumeAttempts (review P1): a crawl attempt
+// costs ~1 request, and spending the pass-3 budget on it meant cheap
+// failures consumed the cap reserved for the expensive destructive class.
 func (s *Store) BeginCrawlResume(ctx context.Context) (Manifest, error) {
+	ctx, opDone := opCtx(ctx)
+	defer opDone()
+
 	m, err := s.Manifest(ctx)
 	if err != nil {
 		return Manifest{}, err
 	}
 	m.Incarnation++
-	m.ResumeAttempts++
+	m.CrawlResumeAttempts++
 	m.State = StateRunning
 	m.UpdatedAt = nowSecond()
 	if m, err = s.writeManifest(ctx, m); err != nil {
@@ -336,6 +372,9 @@ func (s *Store) BeginCrawlResume(ctx context.Context) (Manifest, error) {
 // sticky compensation gate: from here a still-claimed row is the crash
 // window of a possible create).
 func (s *Store) BeginResume(ctx context.Context) (Manifest, error) {
+	ctx, opDone := opCtx(ctx)
+	defer opDone()
+
 	m, err := s.Manifest(ctx)
 	if err != nil {
 		return Manifest{}, err

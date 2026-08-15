@@ -173,15 +173,18 @@ func buildRunStatus(ctx context.Context, store *runstore.Store, live bool) (*pb.
 		// run still crawling has none (§15.3: count-up, never a fake bar).
 		TotalsKnown: manifest.MaterializeStarted || manifest.State == runstore.StateFetched,
 	}
-	if manifest.MaterializeStarted || manifest.State == runstore.StateFetched || len(manifest.Request) > 0 {
-		// Closing is lossless when SOME resume class covers the run: pass-3
-		// restart once materialization began (DM-2; the fetched instant
-		// rides along — its spool is provably whole), and crawl resume
-		// while the manifest still carries the request (DM-3 §8.3 — the
-		// user-facing point of the phase: quit a two-hour import mid-crawl
-		// and lose nothing). The request check doubles as honesty for old
-		// dirs: a pre-DM-3 run without a stored request is still lost on
-		// close, and still says so.
+	if (resumable(manifest) && manifest.ResumeAttempts < maxResumeAttempts) ||
+		(crawlResumable(manifest) && manifest.CrawlResumeAttempts < maxResumeAttempts) {
+		// Closing is lossless when SOME resume class covers the run AND can
+		// still be attempted (review P1: keyed off the request alone, this
+		// reported true with the attempt cap exhausted — and the very next
+		// sweep dropped the dir). The predicates are the sweep's OWN
+		// (resumable/crawlResumable, same caps), so this surface and the
+		// sweep's actual behavior cannot drift apart. Live runs read the
+		// same way: mid-crawl is the crawlResumable shape (running, request
+		// held), mid-materialize the resumable one (materializing). A
+		// pre-DM-3 run without a stored request is still lost on close, and
+		// still says so; so does a dir the next sweep will compensate.
 		status.SafeToClose = true
 	}
 	state, err := resume.Load(ctx, store)

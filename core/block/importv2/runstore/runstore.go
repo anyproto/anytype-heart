@@ -76,21 +76,30 @@ const (
 // storing it raises the token-at-rest question (spec OQ2) that phase A can
 // simply avoid.
 type Manifest struct {
-	SchemaVersion  int
-	RunId          string
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
-	State          State
-	Incarnation    int
-	ResumeAttempts int
-	SpaceId        string
-	ImportType     int64
-	Mode           int64
-	UpdateExisting bool
-	NoCollection   bool
-	PathIndex      int
-	Converter      string
-	AppVersion     string
+	SchemaVersion int
+	RunId         string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	State         State
+	Incarnation   int
+	// ResumeAttempts counts pass-3 (materialize) restarts; its exhaustion is
+	// the destructive disposition (compensate + drop). CrawlResumeAttempts
+	// counts pass-2 (crawl) restarts separately (review P1): a crawl attempt
+	// costs ~1 request and must not spend the budget reserved for the
+	// expensive materialize phase — and a transient crawl failure (offline
+	// laptop) refunds its attempt, so repeated offline starts can never
+	// destroy a mid-crawl artifact. Additive field: absent in pre-split dirs,
+	// which read as zero — a full fresh budget, the generous direction.
+	ResumeAttempts      int
+	CrawlResumeAttempts int
+	SpaceId             string
+	ImportType          int64
+	Mode                int64
+	UpdateExisting      bool
+	NoCollection        bool
+	PathIndex           int
+	Converter           string
+	AppVersion          string
 	// MaterializeStarted is STICKY: set the moment the run enters pass 3
 	// and never cleared by later transitions (suspend overwrites State, not
 	// this). It is the compensation-scope switch — before it, claims are
@@ -457,27 +466,46 @@ func nowSecond() time.Time { return time.Now().Truncate(time.Second) }
 // VISIBLY inside the grace — leaving the run time to classify the store
 // failure and settle on the write path — not silently burn the entire
 // grace and be abandoned mid-drain with nothing logged but "did not
-// drain".
+// drain". Nested calls SHARE one budget (opCtx below), so the bound holds
+// per composite settlement step, not merely per innermost call — a
+// multi-write settlement (suspend marker + flush) still fits the grace.
 const dbOpTimeout = 15 * time.Second
 
 // opCtx returns the context for ONE database operation: values preserved,
-// CANCELLATION DROPPED, bounded by a generous timeout.
+// CANCELLATION DROPPED, bounded — by the enclosing operation's own budget
+// when one is already running (an inherited deadline tighter than
+// dbOpTimeout), by a fresh dbOpTimeout otherwise.
 //
-// This is the fix for the review blocker, diagnosed by stack capture:
-// any-store v0.4.7 leaks the acquired connection when a query fails
-// mid-prepare on a cancelled context (query.go Iter: getReadTx acquired,
-// conn.Query returns 'sqlite: prepare: interrupted', the tx is never
-// committed) — and with ReadConnections:1 that wedges EVERY later read on
-// the handle into GetRead's eternal one-second retry: the resume's refund
-// and suspend markers hung forever and Close burned its whole grace. A
-// suspend cancels the ctx mid-replay by design, so the trigger is our own
-// normal shutdown. The rule, applied to every operation on this store:
-// cancellation is honored BETWEEN operations (the sinks and loops already
-// check their run contexts); the operation itself runs undisturbed on a
-// bounded detached context, exactly like the detached ledger writes
+// The detachment is the fix for the review blocker, diagnosed by stack
+// capture: any-store v0.4.7 leaks the acquired connection when a query
+// fails mid-prepare on a cancelled context (query.go Iter: getReadTx
+// acquired, conn.Query returns 'sqlite: prepare: interrupted', the tx is
+// never committed) — and with ReadConnections:1 that wedges EVERY later
+// read on the handle into GetRead's eternal one-second retry: the resume's
+// refund and suspend markers hung forever and Close burned its whole
+// grace. A suspend cancels the ctx mid-replay by design, so the trigger is
+// our own normal shutdown. The rule, applied to every operation on this
+// store: cancellation is honored BETWEEN operations (the sinks and loops
+// already check their run contexts); the operation itself runs undisturbed
+// on a bounded detached context, exactly like the detached ledger writes
 // (P0-1) — this is that rule's read-side twin.
+//
+// The deadline handling is the review P1 refinement: WithoutCancel drops
+// the deadline TOO, so nested ops (SetState → Manifest → writeManifest;
+// every composite in resume.go) each minted a fresh full budget — up to
+// ~75s of cancellation-immune settlement against a 30s close grace. An
+// inherited deadline under dbOpTimeout is re-imposed on the detached
+// context (same wall-clock instant: nested calls share, never extend); a
+// looser or absent one is capped at dbOpTimeout as before. Cancellation
+// stays stripped in every case — a deadline must never smuggle the
+// parent's cancel back in (a status poll's dead RPC ctx would wedge the
+// live run's single read connection).
 func opCtx(ctx context.Context) (context.Context, context.CancelFunc) {
-	return context.WithTimeout(context.WithoutCancel(ctx), dbOpTimeout)
+	detached := context.WithoutCancel(ctx)
+	if deadline, ok := ctx.Deadline(); ok && time.Until(deadline) < dbOpTimeout {
+		return context.WithDeadline(detached, deadline)
+	}
+	return context.WithTimeout(detached, dbOpTimeout)
 }
 
 // seedFromManifest aligns the store's in-memory markers with the manifest.
@@ -1180,6 +1208,7 @@ func marshalManifest(arena *anyenc.Arena, m Manifest) *anyenc.Value {
 	obj.Set("state", arena.NewString(string(m.State)))
 	obj.Set("incarnation", arena.NewNumberInt(m.Incarnation))
 	obj.Set("resumeAttempts", arena.NewNumberInt(m.ResumeAttempts))
+	obj.Set("crawlResumeAttempts", arena.NewNumberInt(m.CrawlResumeAttempts))
 	obj.Set("spaceId", arena.NewString(m.SpaceId))
 	obj.Set("importType", arena.NewNumberInt(int(m.ImportType)))
 	obj.Set("mode", arena.NewNumberInt(int(m.Mode)))
@@ -1197,21 +1226,22 @@ func marshalManifest(arena *anyenc.Arena, m Manifest) *anyenc.Value {
 
 func unmarshalManifest(v *anyenc.Value) Manifest {
 	return Manifest{
-		SchemaVersion:  v.GetInt("schemaVersion"),
-		RunId:          string(v.GetStringBytes("runId")),
-		CreatedAt:      time.Unix(int64(v.GetInt("createdAt")), 0).UTC(),
-		UpdatedAt:      time.Unix(int64(v.GetInt("updatedAt")), 0).UTC(),
-		State:          State(v.GetStringBytes("state")),
-		Incarnation:    v.GetInt("incarnation"),
-		ResumeAttempts: v.GetInt("resumeAttempts"),
-		SpaceId:        string(v.GetStringBytes("spaceId")),
-		ImportType:     int64(v.GetInt("importType")),
-		Mode:           int64(v.GetInt("mode")),
-		UpdateExisting: v.GetBool("updateExisting"),
-		NoCollection:   v.GetBool("noCollection"),
-		PathIndex:      v.GetInt("pathIndex"),
-		Converter:      string(v.GetStringBytes("converter")),
-		AppVersion:     string(v.GetStringBytes("appVersion")),
+		SchemaVersion:       v.GetInt("schemaVersion"),
+		RunId:               string(v.GetStringBytes("runId")),
+		CreatedAt:           time.Unix(int64(v.GetInt("createdAt")), 0).UTC(),
+		UpdatedAt:           time.Unix(int64(v.GetInt("updatedAt")), 0).UTC(),
+		State:               State(v.GetStringBytes("state")),
+		Incarnation:         v.GetInt("incarnation"),
+		ResumeAttempts:      v.GetInt("resumeAttempts"),
+		CrawlResumeAttempts: v.GetInt("crawlResumeAttempts"),
+		SpaceId:             string(v.GetStringBytes("spaceId")),
+		ImportType:          int64(v.GetInt("importType")),
+		Mode:                int64(v.GetInt("mode")),
+		UpdateExisting:      v.GetBool("updateExisting"),
+		NoCollection:        v.GetBool("noCollection"),
+		PathIndex:           v.GetInt("pathIndex"),
+		Converter:           string(v.GetStringBytes("converter")),
+		AppVersion:          string(v.GetStringBytes("appVersion")),
 
 		MaterializeStarted: v.GetBool("materializeStarted"),
 		Request:            bytesCopy(v.GetBytes("request")),

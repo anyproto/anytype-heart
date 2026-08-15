@@ -227,12 +227,16 @@ func sweepOne(ctx context.Context, dir string, objects persist.ObjectAccess, pro
 		// capped; exhaustion falls through to compensation below.
 		return resume(ctx, store, manifest)
 	}
-	if crawlResume != nil && crawlResumable(manifest) && manifest.ResumeAttempts < maxResumeAttempts {
+	if crawlResume != nil && crawlResumable(manifest) && manifest.CrawlResumeAttempts < maxResumeAttempts {
 		// running | suspended mid-crawl, request stored: re-run the crawl
 		// with the spool as the skip set (§8.3) — this needs the source and
 		// its credentials, which is exactly what the manifest's request
-		// carries. Attempts share the same cap; exhaustion falls through to
-		// compensation (trivially nothing — pass 2 touched no space).
+		// carries. The CRAWL counter gates (review P1: one shared counter
+		// let cheap ~1-request crawl attempts spend the pass-3 budget, whose
+		// exhaustion is the destructive one); same cap value, exhaustion
+		// falls through to compensation (trivially nothing — pass 2 touched
+		// no space). Transient failures refund their attempt, so only
+		// crashes and genuine failures walk toward the cap.
 		return crawlResume(ctx, store, manifest)
 	}
 

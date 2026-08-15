@@ -756,3 +756,74 @@ func copyDir(t *testing.T, from, to string) {
 		require.NoError(t, os.WriteFile(filepath.Join(to, dirEntry.Name()), data, 0o600))
 	}
 }
+
+func TestOpCtxBudget(t *testing.T) {
+	t.Run("a nested op SHARES the enclosing budget instead of minting a fresh one", func(t *testing.T) {
+		// given — review P1: opCtx used WithoutCancel, which drops the
+		// deadline along with the cancellation, so every NESTED op got a
+		// fresh full dbOpTimeout. SetState (Manifest + writeManifest) alone
+		// compounded to 3x; the crawl-resume suspend settlement compounded
+		// to ~75s of cancellation-immune work against a 30s close grace.
+		// The dbOpTimeout comment ("deliberately UNDER the close grace")
+		// was true per-op, false per-settlement.
+		outer, outerDone := context.WithTimeout(context.Background(), 3*time.Second)
+		defer outerDone()
+		outerDeadline, _ := outer.Deadline()
+
+		// when
+		nested, nestedDone := opCtx(outer)
+		defer nestedDone()
+
+		// then
+		nestedDeadline, ok := nested.Deadline()
+		require.True(t, ok)
+		assert.Equal(t, outerDeadline, nestedDeadline,
+			"a nested op must inherit the enclosing budget, not extend it")
+	})
+
+	t.Run("cancellation stays stripped whatever the deadline does", func(t *testing.T) {
+		// given — the connection-leak rule this machinery exists for: the
+		// operation itself runs undisturbed; cancellation is honored only
+		// BETWEEN operations. A deadline must never smuggle the parent's
+		// cancel back in (a status poll's dead RPC ctx would wedge the live
+		// run's single read connection).
+		parent, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+
+		// when
+		op, opDone := opCtx(parent)
+		defer opDone()
+		cancel()
+
+		// then
+		assert.NoError(t, op.Err(), "the parent's cancellation must not reach the op")
+	})
+
+	t.Run("no enclosing deadline mints the standard per-op budget", func(t *testing.T) {
+		// when
+		op, opDone := opCtx(context.Background())
+		defer opDone()
+
+		// then
+		deadline, ok := op.Deadline()
+		require.True(t, ok)
+		remaining := time.Until(deadline)
+		assert.Greater(t, remaining, dbOpTimeout-time.Second)
+		assert.LessOrEqual(t, remaining, dbOpTimeout)
+	})
+
+	t.Run("an enclosing deadline LOOSER than the op budget is capped at the op budget", func(t *testing.T) {
+		// given: an outside caller with a long budget (an RPC with a
+		// 10-minute deadline) must not stretch one db op to match it.
+		outer, outerDone := context.WithTimeout(context.Background(), 10*time.Minute)
+		defer outerDone()
+
+		// when
+		op, opDone := opCtx(outer)
+		defer opDone()
+
+		// then
+		deadline, ok := op.Deadline()
+		require.True(t, ok)
+		assert.LessOrEqual(t, time.Until(deadline), dbOpTimeout)
+	})
+}
