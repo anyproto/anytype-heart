@@ -464,8 +464,8 @@ func (s *service) notionConverter(req *pb.RpcObjectImportRequest, lc *runLifecyc
 	// when and how long it is sleeping and the retry loop knows its bounded
 	// attempt count, so throttling reaches the surface as the CALM state it
 	// is rather than as an error.
-	opts0 := append([]notionclient.Option{notionclient.WithStatusHook(lc.stats)}, s.notionClientOpts...)
-	apiClient := notionclient.NewClient(req.GetNotionParams().GetApiKey(), opts0...)
+	clientOpts := append([]notionclient.Option{notionclient.WithStatusHook(lc.stats)}, s.notionClientOpts...)
+	apiClient := notionclient.NewClient(req.GetNotionParams().GetApiKey(), clientOpts...)
 	opts := []notion.Option{notion.WithPlanReuse(reuse)}
 	if planner := plannerFromRequest(req); planner.planner != nil {
 		opts = append(opts, notion.WithPlanner(planner.planner))

@@ -316,16 +316,23 @@ func cancelEffectOf(m runstore.Manifest) pb.EventImportStatisticCancelEffect {
 // phaseOf maps the durable lifecycle onto the coarse phase indicator: a
 // dormant run has no in-flight stage, so the mapping names the stage the
 // run stopped in.
+//
+// The materialize marker is consulted FIRST, whatever lifecycle label the
+// run carries. A dir cancelled or compensating mid-crawl used to report
+// FINALIZING while cancelEffect — which reads the marker — reported
+// NothingToUndo, so one message said "finishing up" and "nothing has
+// entered your space" at once; the same contradiction picked the wrong
+// counter column. Past the marker the phase is CREATING or later, before it
+// the run never left pass 2, and that is exactly the boundary the live
+// emitter derives its own cancel effect from.
 func phaseOf(m runstore.Manifest) pb.EventImportStatisticPhase {
-	switch m.State {
-	case runstore.StateRunning:
+	if !m.MaterializeStarted && m.State != runstore.StateFetched {
 		return pb.EventImportStatistic_Fetching
+	}
+	switch m.State {
 	case runstore.StateCompleted, runstore.StateFailed, runstore.StateCompensating, runstore.StateCancelling:
 		return pb.EventImportStatistic_Finalizing
-	default: // fetched | materializing | suspended
-		if m.MaterializeStarted || m.State == runstore.StateFetched {
-			return pb.EventImportStatistic_Creating
-		}
-		return pb.EventImportStatistic_Fetching
+	default: // fetched | materializing | suspended | running
+		return pb.EventImportStatistic_Creating
 	}
 }

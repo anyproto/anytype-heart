@@ -141,6 +141,28 @@ func TestRunStatusDormant(t *testing.T) {
 		assert.Zero(t, run.Status.PagesDone)
 	})
 
+	t.Run("a mid-crawl dir being compensated does not claim to be finishing up", func(t *testing.T) {
+		// given: the phase indicator and the cancel effect are read from
+		// different places — the lifecycle label and the materialize marker
+		// — and a cancelled or compensating crawl put them in contradiction:
+		// "Finishing up" next to "nothing has entered your space yet", and
+		// the wrong counter column with them.
+		fx := newLifecycleFixture(t)
+		ctx := context.Background()
+		dir := makeCrawlRun(t, runstore.RunsRoot(fx.repo), "abandoned", runstore.StateCompensating)
+		require.DirExists(t, dir)
+
+		// when
+		run, err := fx.service.RunStatus(ctx, "abandoned")
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, pb.EventImportStatistic_Fetching, run.Status.Phase,
+			"nothing entered the space, so the run never left pass 2")
+		assert.Equal(t, pb.EventImportStatistic_NothingToUndo, run.Status.CancelEffect)
+		assert.Equal(t, int64(1), run.Status.PagesDone, "the crawl column, not the materialize one")
+	})
+
 	t.Run("an unknown importId is not found", func(t *testing.T) {
 		// given
 		fx := newLifecycleFixture(t)
