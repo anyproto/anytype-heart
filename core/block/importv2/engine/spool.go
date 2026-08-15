@@ -177,11 +177,6 @@ func (s *spoolSink) drainFile(ctx context.Context, object *importv2.Object) erro
 		return fmt.Errorf("create spill file: %w", err)
 	}
 	copied, err := io.Copy(spillFile, ctxReader{ctx: ctx, r: reader})
-	// Reported whatever the copy's outcome: the bytes crossed the wire, and
-	// a half-downloaded 2 GB file is precisely the case bytesDone exists to
-	// explain (§15.2 — 500 small files and one huge one behave nothing
-	// alike).
-	s.run.deps.Reporter.Bytes(copied)
 	closeErr := spillFile.Close()
 	if err == nil {
 		err = closeErr
@@ -190,6 +185,11 @@ func (s *spoolSink) drainFile(ctx context.Context, object *importv2.Object) erro
 		_ = os.Remove(spillFile.Name())
 		return fmt.Errorf("spill file source: %w", err)
 	}
+	// Counted only once the bytes are on disk and staying there: a partial
+	// download whose file was just discarded is work to redo, not progress,
+	// and counting it would put this level above what the dormant surface
+	// can see in the same dir.
+	s.run.deps.Reporter.Bytes(s.run.spilledBytes.Add(copied))
 	object.File.Path = spillFile.Name()
 	object.File.Open = nil
 	return nil
@@ -270,6 +270,10 @@ func (r *run) spoolPass(ctx context.Context, converter importv2.Converter, spool
 		r.deps.Reporter.Completed(importv2.KindPage, int64(pages))
 		r.deps.Reporter.Completed(importv2.KindFile, int64(files))
 	}
+	// Same seed for the byte level: a resumed crawl's downloads are already
+	// on disk, and its converter will not fetch them again.
+	r.spilledBytes.Store(importv2.SpillBytes(r.deps.SpillDir))
+	r.deps.Reporter.Bytes(r.spilledBytes.Load())
 	sink := &spoolSink{run: r, spool: spool, spillDir: r.deps.SpillDir}
 	var rootSpec importv2.RootSpec
 	var convertErr error

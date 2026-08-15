@@ -2,6 +2,8 @@ package engine
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"sync"
 	"testing"
 
@@ -58,10 +60,11 @@ func (r *recordingReporter) record(name string, kind importv2.Kind, delta int64)
 	r.events = append(r.events, reporterEvent{phase: r.phase, name: name, kind: kind, delta: delta})
 }
 
-func (r *recordingReporter) Bytes(delta int64) {
+// Bytes is a LEVEL, so the reporter keeps the newest value.
+func (r *recordingReporter) Bytes(total int64) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.bytes += delta
+	r.bytes = total
 }
 
 func (r *recordingReporter) Created(count int64) {
@@ -149,6 +152,30 @@ func TestReporterPerKindCounters(t *testing.T) {
 
 		// and: bytes drained to the spill are reported
 		assert.Equal(t, int64(len("bytes-img.png")), reporter.bytes)
+	})
+
+	t.Run("bytes are a level on disk, so a resumed crawl keeps its predecessor's", func(t *testing.T) {
+		// given: a spill dir a previous incarnation already downloaded into.
+		// bytesDone is MEASURED, not accumulated, precisely so the number a
+		// resumed run pushes and the number its dir answers when polled are
+		// the same number.
+		fx := newEngineFixture(t)
+		reporter := &recordingReporter{}
+		fx.deps.Reporter = reporter
+		inherited := filepath.Join(fx.deps.SpillDir, importv2.SpoolSpillPrefix+"999-old.png")
+		require.NoError(t, os.WriteFile(inherited, []byte("previously downloaded"), 0o600))
+		converter := &scriptConverter{objects: []*importv2.Object{
+			pageObj("page-1", false), fileObj("img.png"),
+		}}
+
+		// when
+		result := Run(context.Background(), importv2.Request{}, converter, fx.deps)
+
+		// then
+		require.NoError(t, result.Err)
+		assert.Equal(t, importv2.SpillBytes(fx.deps.SpillDir), reporter.bytes,
+			"the run's spool db and the persister's own spills must not be counted")
+		assert.Equal(t, int64(len("previously downloaded")+len("bytes-img.png")), reporter.bytes)
 	})
 
 	t.Run("the phase sequence is scanning, fetching, creating, finalizing", func(t *testing.T) {

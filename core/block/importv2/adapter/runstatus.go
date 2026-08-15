@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
-	"strings"
 
 	importv2 "github.com/anyproto/anytype-heart/core/block/importv2"
 	"github.com/anyproto/anytype-heart/core/block/importv2/resume"
@@ -252,7 +250,9 @@ func buildDormantRunStatus(ctx context.Context, store *runstore.Store) (*pb.RpcO
 		// fake bar (§15.3).
 		status.TotalsKnown = pages+files > 0
 	}
-	status.BytesDone = spillBytes(store.SpillDir())
+	// The same measurement the engine publishes as a level, so the two
+	// halves of bytesDone cannot mean different things.
+	status.BytesDone = importv2.SpillBytes(store.SpillDir())
 	status.ObjectsCreated = state.Engine.Created
 	for _, issue := range state.Engine.Issues {
 		countIssue(issue.Severity, &status.WarningCount, &status.ErrorCount)
@@ -261,31 +261,6 @@ func buildDormantRunStatus(ctx context.Context, store *runstore.Store) (*pb.RpcO
 		Status:        status,
 		ManifestState: string(manifest.State),
 	}, nil
-}
-
-// spillBytes sums the pass-2 download spill — the dormant column's
-// bytesDone (§15.4: "spill dir + spool file rows"). ONLY the spool sink's
-// own files count: the persister spills uploads into the same dir under its
-// own prefix, and those bytes are the same content read back, not new
-// transfer. An unreadable dir reports zero, which the schema already means
-// as unknown; a status read must never fail over telemetry.
-func spillBytes(dir string) int64 {
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return 0
-	}
-	var total int64
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasPrefix(entry.Name(), importv2.SpoolSpillPrefix) {
-			continue
-		}
-		info, err := entry.Info()
-		if err != nil {
-			continue
-		}
-		total += info.Size()
-	}
-	return total
 }
 
 // countIssue is the ONE severity → wire-counter classification, shared by

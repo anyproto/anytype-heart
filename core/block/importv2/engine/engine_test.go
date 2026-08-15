@@ -18,15 +18,15 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/importv2"
 	"github.com/anyproto/anytype-heart/core/block/importv2/identity"
 	"github.com/anyproto/anytype-heart/core/block/importv2/persist"
-	"github.com/anyproto/anytype-heart/core/block/importv2/runstore"
 	"github.com/anyproto/anytype-heart/core/block/importv2/resolve"
+	"github.com/anyproto/anytype-heart/core/block/importv2/runstore"
 	"github.com/anyproto/anytype-heart/core/domain"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 )
 
 // fakeIdentity assigns deterministic ids without store or space.
 type fakeIdentity struct {
-	events []string
+	events   []string
 	mu       sync.Mutex
 	claims   []importv2.IdentityClaim
 	assigned map[string]bool

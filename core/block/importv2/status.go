@@ -3,6 +3,8 @@ package importv2
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"os"
+	"strings"
 )
 
 // The vocabulary of the §15 progress surface (deferred-materialization spec
@@ -63,6 +65,37 @@ func (p Phase) String() string {
 // read back rather than new transfer — so this prefix is exactly what keeps
 // them out of the count.
 const SpoolSpillPrefix = "spool-"
+
+// SpillBytes sums the pass-2 download spill in dir: the §15 `bytesDone`,
+// defined as BYTES ON DISK rather than bytes ever transferred. That is the
+// only definition both halves of the surface can hold — a dormant dir can
+// count nothing else, a resumed crawl inherits its predecessor's downloads,
+// and a failed download whose partial file was discarded is work that must
+// be redone, not progress.
+//
+// Only the spool sink's own files count: the persister spills uploads into
+// the same dir under a different prefix, and those bytes are the same
+// content read back, not new transfer. An unreadable dir sums to zero,
+// which the schema already means as unknown — this is telemetry and must
+// never fail a caller.
+func SpillBytes(dir string) int64 {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return 0
+	}
+	var total int64
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasPrefix(entry.Name(), SpoolSpillPrefix) {
+			continue
+		}
+		info, err := entry.Info()
+		if err != nil {
+			continue
+		}
+		total += info.Size()
+	}
+	return total
+}
 
 // Kind separates the two counted classes. They are separate BY REQUIREMENT
 // (§15.2): 500 small files and one 2 GB file behave nothing alike, and the

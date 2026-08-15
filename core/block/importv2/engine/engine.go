@@ -57,10 +57,13 @@ type Reporter interface {
 	Discovered(kind importv2.Kind, delta int64)
 	// Completed adds to the current phase's numerator for one kind.
 	Completed(kind importv2.Kind, delta int64)
-	// Bytes adds transferred file bytes (bytesDone). No total accompanies
-	// them: Notion's file blocks carry no size, so bytesTotal stays the
-	// schema's documented 0-is-unknown.
-	Bytes(delta int64)
+	// Bytes publishes the run's downloaded bytes as a LEVEL — bytes ON
+	// DISK in the spill dir, which is the only definition the dormant
+	// surface can also hold (importv2.SpillBytes). A level and not a delta
+	// because a resumed run inherits its predecessor's downloads. No total
+	// accompanies it: Notion's file blocks carry no size, so bytesTotal
+	// stays the schema's documented 0-is-unknown.
+	Bytes(total int64)
 	// Created publishes the run's created-object count as a LEVEL — the
 	// cancel affordance's "stop and remove the N objects created". A level
 	// and not a delta because a resumed run starts at the ledger's count.
@@ -304,6 +307,10 @@ func (r *run) materializeTail(runCtx context.Context, spool Spool, rootSpec impo
 // advisory and must never fail a run that is otherwise fine.
 func (r *run) beginMaterialize(ctx context.Context, spool Spool) {
 	r.deps.Reporter.Phase(importv2.PhaseCreating)
+	// Bytes are a RUN level measured from the spill, so a pass-3 restart —
+	// which never runs spoolPass — still reports its predecessor's
+	// downloads instead of zero.
+	r.deps.Reporter.Bytes(importv2.SpillBytes(r.deps.SpillDir))
 	pages, files, _, err := spool.Census(ctx)
 	if err != nil {
 		// Swallowed deliberately, and not turned into an issue: the replay
@@ -507,6 +514,9 @@ type run struct {
 	updated atomic.Int64
 	skipped atomic.Int64
 	failed  atomic.Int64
+	// spilledBytes is the pass-2 download level, seeded from the spill dir
+	// so a resumed crawl continues its predecessor's count.
+	spilledBytes atomic.Int64
 
 	issueMu sync.Mutex
 	issues  []importv2.Issue

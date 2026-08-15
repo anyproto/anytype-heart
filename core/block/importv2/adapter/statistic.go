@@ -83,9 +83,10 @@ type statSnapshot struct {
 
 	pagesTotal, pagesDone int64
 	filesTotal, filesDone int64
-	// bytesDone is a RUN total, not a phase one: the bytes are on disk in
-	// the spill dir and stay there across the pass boundary, which is also
-	// how the dormant surface reads them (§15.4).
+	// bytesDone is a RUN level, not a phase one: the bytes are on disk in
+	// the spill dir and stay there across the pass boundary — and across
+	// incarnations — which is exactly how the dormant surface reads them
+	// (importv2.SpillBytes).
 	bytesDone int64
 
 	state        pb.EventImportStatisticState
@@ -195,10 +196,10 @@ func (e *statEmitter) Completed(kind importv2.Kind, delta int64) {
 	e.mark(false)
 }
 
-func (e *statEmitter) Bytes(delta int64) {
+func (e *statEmitter) Bytes(total int64) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	e.snap.bytesDone += delta
+	e.snap.bytesDone = total
 	e.mark(false)
 }
 
