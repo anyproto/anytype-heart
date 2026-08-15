@@ -600,6 +600,16 @@ func storeConfig() *anystore.Config {
 
 func (s *Store) Dir() string { return s.dir }
 
+// MaterializeStarted exposes the sticky compensation-scope marker from the
+// in-memory mirror the writers already keep — the SAME switch
+// CompensationInputs reads to decide whether a still-claimed row is a
+// possible create. Callers deciding a dir's fate need exactly that
+// proposition and must not re-derive it: an in-memory oracle (the engine's
+// journal was empty) says nothing about what the DURABLE rows still owe
+// (review item 3). Lock-free by design — a settlement path must not cost a
+// manifest read.
+func (s *Store) MaterializeStarted() bool { return s.materializeStarted.Load() }
+
 // SpillDir is where the run's file bytes go (archive-entry spills, notion
 // downloads). It shares the run dir's lifetime: bytes survive a crash and
 // are collected by Drop.

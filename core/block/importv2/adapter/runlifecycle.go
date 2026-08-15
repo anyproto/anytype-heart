@@ -265,7 +265,7 @@ func (s *service) finishRun(lc *runLifecycle, result *importv2.Result) {
 		log.With("dir", lc.store.Dir()).Warnf("import run suspended for shutdown; state kept for the startup sweep")
 		return
 	}
-	if result.Err != nil && !result.CompensationRan && !(userCancelled(result) && result.NothingToUndo) {
+	if result.Err != nil && !result.CompensationRan && !discardable(lc, result) {
 		// The disposal invariant (review Class A): a failure whose effects no
 		// compensation covered must not destroy the dir — it is the only
 		// record of what was created. Keep it EXACTLY as it is (no state
@@ -275,11 +275,12 @@ func (s *service) finishRun(lc *runLifecycle, result *importv2.Result) {
 		// P0-B) every mid-crawl abort with an empty journal — the crawl
 		// artifact survives whatever interrupted it, structurally, not by a
 		// retryability allowlist. The ONE exception is the user's cancel
-		// with nothing to undo: the user discarded the import and the space
-		// is clean, so keeping the dir would silently resurrect a cancelled
-		// import on the next start (review P0-C's disposal half). A cancel
-		// whose compensation was gated or leaked stays kept — uncompensated
-		// effects outrank the cancel.
+		// with nothing to undo whose pass 3 never began (discardable): the
+		// user discarded the import and the space is clean, so keeping the
+		// dir would silently resurrect a cancelled import on the next start
+		// (review P0-C's disposal half). A cancel whose compensation was
+		// gated or leaked stays kept — uncompensated effects outrank the
+		// cancel.
 		if err := lc.store.Close(); err != nil {
 			log.Errorf("close unsettled failed run: %s", err)
 		}
@@ -314,6 +315,27 @@ func (s *service) finishRun(lc *runLifecycle, result *importv2.Result) {
 	if err := lc.store.Drop(); err != nil {
 		log.Errorf("drop run dir: %s", err)
 	}
+}
+
+// discardable is the ONE exception to the disposal invariant: the user
+// cancelled, and this dir provably owes the space nothing.
+//
+// Both halves are needed because they answer different questions.
+// Result.NothingToUndo is an IN-MEMORY oracle — the engine's journal held no
+// entry — while the durable compensation scope is the manifest's sticky
+// MaterializeStarted marker, which is what runstore.CompensationInputs
+// consults: past it, a still-claimed row is the crash window of a possible
+// create and enters the delete set. A cancel early in pass 3 tears up to
+// workerCount in-flight creates and STILL finds an empty journal (review
+// item 3), and those claim rows are the only attribution the hollow trees
+// left behind will ever have. Before pass 3 the two agree — nothing has
+// entered the space by construction (DM spec §7) — so the crawl-cancel
+// carve-out this exists for is untouched.
+func discardable(lc *runLifecycle, result *importv2.Result) bool {
+	if !userCancelled(result) || !result.NothingToUndo {
+		return false
+	}
+	return lc.store == nil || !lc.store.MaterializeStarted()
 }
 
 // identityOptions attaches the durable claim ledger in durable mode (one

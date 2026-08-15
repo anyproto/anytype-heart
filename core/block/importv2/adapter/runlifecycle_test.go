@@ -212,6 +212,43 @@ func TestFinishRun(t *testing.T) {
 		assert.NotEmpty(t, manifest.Request, "the dir stays crawl-resumable")
 	})
 
+	t.Run("a user cancel with nothing to undo keeps the dir once pass 3 has begun", func(t *testing.T) {
+		// given — review item 3: NothingToUndo is an IN-MEMORY oracle (the
+		// engine's journal), but the DURABLE compensation scope is the
+		// manifest's sticky MaterializeStarted marker. Past it a still-claimed
+		// row IS the crash window of a possible create, and
+		// runstore.CompensationInputs deletes it — those rows are the only
+		// attribution the hollow trees an interrupted pass 3 leaves behind
+		// will ever have. A cancel early in pass 3 tears up to workerCount
+		// in-flight creates and still finds an empty journal, so the carve-out
+		// dropped the dir and the attribution with it.
+		ctx := context.Background()
+		s := &service{config: &config.Config{RepoPath: t.TempDir()}}
+		lc, err := s.beginRun(ctx, testRequest(), &pb.RpcObjectImportRequest{}, "Notion", 0, process.NewNoOp())
+		require.NoError(t, err)
+		require.NoError(t, lc.store.RecordClaims(ctx, []runstore.ClaimRecord{
+			{SourceKey: "p1", ObjectId: "obj-p1", PayloadRoot: []byte("raw-p1"), PayloadHeads: []string{"obj-p1"}},
+		}))
+		require.NoError(t, lc.store.MarkFetched(ctx, importv2.RootSpec{}))
+		dir := lc.store.Dir()
+
+		// when
+		s.finishRun(lc, &importv2.Result{
+			Err:           importv2.Fatal(importv2.IssueCancelled, context.Canceled),
+			Cancelled:     true,
+			NothingToUndo: true,
+		})
+
+		// then: the dir survives with its claim rows still in the delete set
+		reopened, err := runstore.Open(ctx, dir)
+		require.NoError(t, err, "an interrupted pass 3 keeps the only record of what it may have created")
+		defer reopened.Close()
+		inputs, err := reopened.CompensationInputs(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"obj-p1"}, inputs.Created,
+			"past MaterializeStarted a claimed row is a possible create, and must stay compensable")
+	})
+
 	t.Run("a user cancel whose compensation was GATED still keeps the dir", func(t *testing.T) {
 		// given: effects exist (non-empty journal) but the compensating
 		// marker could not be written — the disposal invariant outranks the

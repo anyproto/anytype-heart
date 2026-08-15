@@ -63,8 +63,11 @@ type Result struct {
 	// undo" does not mean "the dir is disposable" — a mid-crawl abort's dir
 	// IS the crawl artifact DM-3 exists to keep. The adapter disposes such a
 	// dir only when the user cancelled (the one intent that discards the
-	// artifact); every other failure keeps it for the sweep's
-	// attempts-capped retry.
+	// artifact) AND pass 3 never began; every other failure keeps it for the
+	// sweep's attempts-capped retry. The second condition is not redundant:
+	// this flag is an IN-MEMORY oracle, and past the manifest's sticky
+	// MaterializeStarted marker the durable claim rows are compensation
+	// inputs the journal never saw (review item 3).
 	NothingToUndo bool
 
 	// Suspended means the run was stopped by a graceful shutdown
