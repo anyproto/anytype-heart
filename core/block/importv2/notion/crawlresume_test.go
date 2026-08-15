@@ -250,7 +250,7 @@ func TestSetRecoverRefetchesUnrecordedClaims(t *testing.T) {
 	})
 
 	t.Run("a positively-gone claim warns dataLoss once — the API's answer, not a guess", func(t *testing.T) {
-		// given: both fetch shapes answer not-found — the entity is gone (or
+		// given: every fetch shape answers not-found — the entity is gone (or
 		// the integration lost access; either way the source no longer
 		// offers it)
 		handler := recoveryWorkspace(t, searchP1, map[string]apiResponse{
@@ -258,6 +258,7 @@ func TestSetRecoverRefetchesUnrecordedClaims(t *testing.T) {
 			"GET /blocks/p1/children": {body: `{"results":[],"has_more":false,"next_cursor":null}`},
 			"GET /pages/gone":         notFound,
 			"GET /data_sources/gone":  notFound,
+			"GET /databases/gone":     notFound,
 		})
 		converter := recoveryConverter(t, handler)
 		converter.SetRecover([]string{"gone"})
@@ -283,6 +284,7 @@ func TestSetRecoverRefetchesUnrecordedClaims(t *testing.T) {
 			"GET /blocks/p1/children": {body: `{"results":[],"has_more":false,"next_cursor":null}`},
 			"GET /pages/flaky":        unavailable,
 			"GET /data_sources/flaky": unavailable,
+			"GET /databases/flaky":    unavailable,
 		})
 		converter := recoveryConverter(t, handler)
 		converter.SetRecover([]string{"flaky"})
@@ -374,5 +376,122 @@ func TestSkipCarveOutForCollections(t *testing.T) {
 			"the recorded data source's schema must be re-fetched: row mappings live in converter memory")
 		assert.NotNil(t, sink.byKey("ds1"),
 			"a collection-like discovery re-converts even when recorded (the drain carve-out)")
+	})
+}
+
+// TestRecoveryConsultsTheStop and TestRecoveryProbesEveryIdShape cover the
+// two halves of the recovery ladder the review found broken: it classified
+// from the error's SHAPE without asking whether the run was still alive, and
+// it probed two of the three id shapes pass 1 can claim.
+func TestRecoveryConsultsTheStop(t *testing.T) {
+	searchP1 := `{"results":[
+		{"object":"page","id":"p1","parent":{"type":"workspace","workspace":true},
+		 "properties":{"Name":{"type":"title","title":[{"plain_text":"One","type":"text"}]}}}
+	],"has_more":false,"next_cursor":null}`
+	livePage := `{"id":"p1","archived":false,
+		"created_time":"2024-02-01T10:00:00.000Z","last_edited_time":"2024-02-02T10:00:00.000Z",
+		"properties":{"Name":{"id":"title","type":"title","title":[{"plain_text":"One","type":"text"}]}}}`
+
+	t.Run("a recovery the user's cancel interrupts is the stop, not an object failure", func(t *testing.T) {
+		// given — review item 1, the second direction: recoverOne issued
+		// IssueObjectFailed for a cancellation without ever consulting
+		// ctx.Err(), so a cancelled import reported a retryable-shaped
+		// failure — and the settlement above kept its dir, token intact, and
+		// silently re-ran it on the next start.
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		handler := recoveryWorkspace(t, searchP1, map[string]apiResponse{
+			"GET /pages/p1":           {body: livePage},
+			"GET /blocks/p1/children": {body: `{"results":[],"has_more":false,"next_cursor":null}`},
+		})
+		inner := handler.inner
+		handler.inner = func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/pages/c1" {
+				cancel()             // the user cancels while the probe is in flight
+				<-r.Context().Done() // hold until the client abandons it
+				return
+			}
+			inner(w, r)
+		}
+		converter := recoveryConverter(t, handler)
+		converter.SetRecover([]string{"c1"})
+		require.NoError(t, converter.EnumerateIdentities(context.Background(),
+			func(importv2.IdentityClaim) error { return nil }))
+
+		// when
+		sink := &recordingSink{}
+		_, err := converter.Convert(ctx, sink)
+
+		// then: the crawl stops and says so; no verdict is invented about c1
+		require.Error(t, err, "a cancelled crawl must abort, not carry on reporting failures")
+		assert.ErrorIs(t, err, context.Canceled)
+		for _, issue := range sink.issues {
+			assert.NotEqual(t, "c1", issue.SourceKey,
+				"a cancellation is not evidence about the entity: %v", issue)
+		}
+	})
+}
+
+func TestRecoveryProbesEveryIdShape(t *testing.T) {
+	searchP1 := `{"results":[
+		{"object":"page","id":"p1","parent":{"type":"workspace","workspace":true},
+		 "properties":{"Name":{"type":"title","title":[{"plain_text":"One","type":"text"}]}}}
+	],"has_more":false,"next_cursor":null}`
+	livePage := `{"id":"p1","archived":false,
+		"created_time":"2024-02-01T10:00:00.000Z","last_edited_time":"2024-02-02T10:00:00.000Z",
+		"properties":{"Name":{"id":"title","type":"title","title":[{"plain_text":"One","type":"text"}]}}}`
+	notFound := apiResponse{status: http.StatusNotFound, body: `{"code":"object_not_found","message":"gone"}`}
+
+	t.Run("a bare DATABASE claim recovers instead of being reported deleted", func(t *testing.T) {
+		// given — review item 2: /search yields three object shapes and
+		// EnumerateIdentities claims all of them, but the ladder probed only
+		// /pages and /data_sources. A live database 404s on both and was
+		// reported as deleted — verbatim the P0-A symptom this round removed.
+		handler := recoveryWorkspace(t, searchP1, map[string]apiResponse{
+			"GET /pages/p1":           {body: livePage},
+			"GET /blocks/p1/children": {body: `{"results":[],"has_more":false,"next_cursor":null}`},
+			"GET /pages/db1":          notFound,
+			"GET /data_sources/db1":   notFound,
+			"GET /databases/db1": {body: `{"id":"db1","title":[{"plain_text":"Tasks","type":"text"}],
+				"parent":{"type":"workspace","workspace":true},
+				"data_sources":[{"id":"ds1","name":"Tasks"}]}`},
+			"GET /data_sources/ds1": {body: `{"id":"ds1","title":[{"plain_text":"Tasks","type":"text"}],
+				"created_time":"2024-01-01T10:00:00.000Z","last_edited_time":"2024-01-02T10:00:00.000Z",
+				"properties":{"Name":{"id":"title","type":"title","name":"Name"}}}`},
+		})
+		converter := recoveryConverter(t, handler)
+		converter.SetRecover([]string{"db1"})
+
+		// when
+		sink := driveConverter(t, converter)
+
+		// then: the claim key itself converts, and nothing claims it is gone
+		require.NotNil(t, sink.byKey("db1"),
+			"a live database must import under the id pass 1 claimed")
+		for _, issue := range sink.issues {
+			assert.NotEqual(t, importv2.IssueDataLoss, issue.Code,
+				"a live database must never be reported as deleted: %v", issue)
+		}
+	})
+
+	t.Run("a positively-gone claim still warns once, all three shapes consulted", func(t *testing.T) {
+		// given: the third rung must not turn honest drift into a loud failure
+		handler := recoveryWorkspace(t, searchP1, map[string]apiResponse{
+			"GET /pages/p1":           {body: livePage},
+			"GET /blocks/p1/children": {body: `{"results":[],"has_more":false,"next_cursor":null}`},
+			"GET /pages/gone":         notFound,
+			"GET /data_sources/gone":  notFound,
+			"GET /databases/gone":     notFound,
+		})
+		converter := recoveryConverter(t, handler)
+		converter.SetRecover([]string{"gone"})
+
+		// when
+		sink := driveConverter(t, converter)
+
+		// then
+		require.Len(t, sink.issues, 1)
+		assert.Equal(t, importv2.IssueDataLoss, sink.issues[0].Code)
+		assert.Equal(t, "gone", sink.issues[0].SourceKey)
 	})
 }

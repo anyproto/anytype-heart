@@ -285,7 +285,8 @@ func (c *Converter) drainPending(ctx context.Context, sink importv2.Sink, draine
 // GET settles each one three ways: alive → adopted and converted like any
 // late discovery; positively gone (404/403 from the API) → an honest
 // data-loss warning; anything else → a loud object failure that keeps its
-// retryable shape — never a drift claim nobody established.
+// retryable shape — never a drift claim nobody established. The STOP is the
+// fourth way out and it is not a verdict at all: it aborts the crawl.
 func (c *Converter) recoverUnrecorded(ctx context.Context, sink importv2.Sink) error {
 	for _, key := range c.recoverKeys {
 		if err := ctx.Err(); err != nil {
@@ -294,12 +295,27 @@ func (c *Converter) recoverUnrecorded(ctx context.Context, sink importv2.Sink) e
 		if _, seen := c.entityById[key]; seen {
 			continue // re-enumerated by /search, or re-discovered from an unrecorded parent
 		}
-		c.recoverOne(ctx, key, sink)
+		if err := c.recoverOne(ctx, key, sink); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-func (c *Converter) recoverOne(ctx context.Context, key string, sink importv2.Sink) {
+// recoverOne probes ONE claim key through every id shape pass 1 can claim.
+// /search yields pages, data sources AND bare databases (search.go's three
+// entity kinds), and EnumerateIdentities claims all three under the entity's
+// own id — so a ladder that stops at two rungs 404s on a live database and
+// reports it deleted, which is verbatim the symptom the recovery seam exists
+// to remove (review item 2).
+//
+// It returns an error only for the STOP. A probe the run's cancellation
+// killed proves nothing about the entity, and the classification below used
+// to read the error's SHAPE without consulting ctx.Err() (review item 1): a
+// cancelled import then reported a retryable-shaped object failure, so the
+// settlement kept its dir — token intact — and the next start silently
+// re-ran the import the user had discarded.
+func (c *Converter) recoverOne(ctx context.Context, key string, sink importv2.Sink) error {
 	// GET /pages/{id} carries the same stub shape /search results do.
 	var page searchResult
 	pageErr := c.client.Request(ctx, http.MethodGet, "/pages/"+key, nil, &page)
@@ -307,7 +323,10 @@ func (c *Converter) recoverOne(ctx context.Context, key string, sink importv2.Si
 		// Adoption failures (discovery cap, claim error) issue their own
 		// warnings under this key — reconciliation stays satisfied.
 		c.adoptLateEntity(ctx, Entity{Id: page.Id, Parent: page.Parent, Title: titleOf(page)}, sink)
-		return
+		return nil
+	}
+	if err := ctx.Err(); err != nil {
+		return err
 	}
 	// Not fetchable as a page — a late-discovered DATA SOURCE has the same
 	// claim shape. Resolve it through its owning database: the proven
@@ -322,7 +341,7 @@ func (c *Converter) recoverOne(ctx context.Context, key string, sink importv2.Si
 		if source.Parent.DatabaseId != "" {
 			c.discoverDatabase(ctx, source.Parent.DatabaseId, sink)
 			if _, seen := c.entityById[key]; seen {
-				return
+				return nil
 			}
 		}
 		// The data source EXISTS but could not be adopted (its database
@@ -331,21 +350,45 @@ func (c *Converter) recoverOne(ctx context.Context, key string, sink importv2.Si
 		// lie this path exists to remove.
 		sink.Issue(importv2.ObjectError(importv2.IssueObjectFailed, key,
 			fmt.Errorf("recover claimed data source: could not adopt via its database")))
-		return
+		return nil
 	}
-	if claimGone(pageErr) && claimGone(sourceErr) {
-		// POSITIVE not-found from the API, both shapes: the source no longer
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	// The third shape: a bare DATABASE result. Pass 1 claims it under the
+	// database id and pass 2 converts it as a collection-like stub whose
+	// schema resolves through its first data source (fetchSchema's
+	// kindDatabase branch) — so recovery adopts it in exactly that form,
+	// under the id that was claimed.
+	var database databaseStub
+	dbErr := c.client.Request(ctx, http.MethodGet, "/databases/"+key, nil, &database)
+	if dbErr == nil && database.Id != "" {
+		c.adoptLateEntity(ctx, Entity{
+			Id:         database.Id,
+			Kind:       kindDatabase,
+			Title:      plainText(database.Title),
+			Parent:     database.Parent,
+			DatabaseId: database.Id,
+		}, sink)
+		return nil
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if claimGone(pageErr) && claimGone(sourceErr) && claimGone(dbErr) {
+		// POSITIVE not-found from the API, every shape: the source no longer
 		// offers the entity — deleted, or no longer shared with the
 		// integration. This is the honest drift report (08-13 §5.4).
 		sink.Issue(importv2.Warning(importv2.IssueDataLoss, key,
 			"object found by an interrupted import session no longer exists in Notion (or is no longer shared with the integration); it was not imported"))
-		return
+		return nil
 	}
 	// Transport trouble, rate limits, 5xx: the entity may well still exist.
 	// Loud, and the wrapped cause keeps its retryable shape so an
 	// all-or-nothing abort classifies as transient and keeps the dir.
 	sink.Issue(importv2.ObjectError(importv2.IssueObjectFailed, key,
-		fmt.Errorf("re-fetch claimed object: %w", errors.Join(pageErr, sourceErr))))
+		fmt.Errorf("re-fetch claimed object: %w", errors.Join(pageErr, sourceErr, dbErr))))
+	return nil
 }
 
 // claimGone reports a positive the-source-no-longer-offers-it answer: 404
