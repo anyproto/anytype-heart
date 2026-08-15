@@ -205,20 +205,20 @@ func (s *service) resumeCrawlRun(ctx context.Context, store *runstore.Store, man
 	return outcome
 }
 
-// userCancelled reports a result whose fatal is the USER's cancel — the one
-// stop that means "discard this import" rather than "finish it later". A
-// suspend also carries IssueCancelled (its cause is ErrSuspended), so
-// Suspended is consulted first. Every settlement path that decides an
-// outcome from an error's SHAPE must consult this before any retryability
-// classification (review P0-C): a cancelled Notion call is retryable-shaped
-// — "retries exhausted" wrapping a transport context.Canceled — so without
-// the stop check the transient-keep branch preserved a cancelled import's
-// dir, token intact, and the next start silently re-ran it.
+// userCancelled reports a failed run the USER stopped — the one stop that
+// means "discard this import" rather than "finish it later". It reads the
+// engine's STOP SOURCE (Result.Cancelled), never the fatal's code: a code is
+// a shape, and it lied in both directions (review item 1). A cancelled
+// Notion call is retryable-SHAPED — "retries exhausted" wrapping a transport
+// context.Canceled — so a retryability test alone kept a cancelled import's
+// dir, token intact, for the next start to silently re-run (review P0-C);
+// and a transport DEADLINE — the client's own http.Client{Timeout:
+// time.Minute} — wore the cancel's code, so reading the code let a
+// 60-second server hang delete a two-hour crawl. A suspend is not a cancel
+// (its cause is ErrSuspended), and the engine says so on both fields;
+// Suspended is consulted first anyway, belt to the engine's braces.
 func userCancelled(result *importv2.Result) bool {
-	if result.Err == nil || result.Suspended {
-		return false
-	}
-	return importv2.AsIssue(result.Err, importv2.SeverityFatal, importv2.IssueStoreError).Code == importv2.IssueCancelled
+	return result.Err != nil && !result.Suspended && result.Cancelled
 }
 
 // transientCrawlFailure reports a crawl-resume failure worth the QUIET keep

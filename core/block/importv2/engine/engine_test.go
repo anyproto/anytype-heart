@@ -1487,3 +1487,103 @@ func TestFileLane(t *testing.T) {
 		}
 	})
 }
+
+// transportTimeoutConverter fails pass 2 the way the Notion client's own
+// http.Client{Timeout: time.Minute} does: an error WRAPPING
+// context.DeadlineExceeded, on a run context that is perfectly alive.
+type transportTimeoutConverter struct{ scriptConverter }
+
+func (c *transportTimeoutConverter) Convert(context.Context, importv2.Sink) (importv2.RootSpec, error) {
+	return importv2.RootSpec{}, fmt.Errorf("search: %w", context.DeadlineExceeded)
+}
+
+// TestStopSourceVerdict pins the STOP SOURCE as the engine's own verdict
+// (review item 1). Everything downstream that decides a run dir's fate used
+// to read the fatal's CODE instead, and a code is a shape: a transport
+// timeout wears the cancel's, and a cancelled Notion call wears a retryable
+// failure's. The cause of the ctx the run was given is unambiguous, so the
+// engine answers the question once, here.
+func TestStopSourceVerdict(t *testing.T) {
+	t.Run("a transport timeout on a live run context is not the user's cancel", func(t *testing.T) {
+		// given — the 60-second server hang: classifyFatal painted it
+		// IssueCancelled, and the adapter read that code as "the user
+		// discarded this import" and deleted a two-hour crawl.
+		fx := newEngineFixture(t)
+		converter := &transportTimeoutConverter{
+			scriptConverter{objects: []*importv2.Object{pageObj("a.md", false)}}}
+
+		// when
+		result := Run(context.Background(), importv2.Request{Mode: importv2.ModeAllOrNothing}, converter, fx.deps)
+
+		// then
+		require.Error(t, result.Err)
+		assert.False(t, result.Cancelled, "nobody cancelled this run")
+		assert.False(t, result.Suspended)
+		issue := importv2.AsIssue(result.Err, importv2.SeverityFatal, importv2.IssueStoreError)
+		assert.Equal(t, importv2.IssueSourceInvalid, issue.Code,
+			"a transport deadline is a source failure, keeping its retryable shape")
+	})
+
+	t.Run("an engine self-abort is not the user's cancel", func(t *testing.T) {
+		// given — the engine cancels its OWN derived context on any
+		// all-or-nothing abort, so context.Cause of that context reads
+		// context.Canceled exactly like a user cancel does. The verdict must
+		// come from the ctx the CALLER owns.
+		fx := newEngineFixture(t)
+		fx.persister.failKeys = map[string]error{"a.md": assert.AnError}
+		converter := &scriptConverter{objects: []*importv2.Object{pageObj("a.md", false), pageObj("b.md", false)}}
+
+		// when
+		result := Run(context.Background(), importv2.Request{Mode: importv2.ModeAllOrNothing}, converter, fx.deps)
+
+		// then
+		require.Error(t, result.Err)
+		assert.False(t, result.Cancelled, "the run aborted for its own reasons; the user is still waiting")
+	})
+
+	t.Run("the user's cancel carries the cancelled verdict", func(t *testing.T) {
+		// given
+		fx := newEngineFixture(t)
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		converter := &cancelAfterFirstConverter{
+			scriptConverter: scriptConverter{objects: []*importv2.Object{
+				pageObj("a.md", false), pageObj("b.md", false), pageObj("c.md", false),
+			}},
+			cancel: cancel,
+		}
+
+		// when
+		result := Run(ctx, importv2.Request{Mode: importv2.ModeContinueOnError}, converter, fx.deps)
+
+		// then
+		require.Error(t, result.Err)
+		assert.True(t, result.Cancelled)
+		assert.False(t, result.Suspended, "a cancel is not a shutdown")
+	})
+
+	t.Run("a shutdown suspend is not the user's cancel", func(t *testing.T) {
+		// given
+		fx := newEngineFixture(t)
+		converter := &blockingEnumConverter{started: make(chan struct{})}
+		ctx, cancel := context.WithCancelCause(context.Background())
+		done := make(chan *importv2.Result, 1)
+		go func() {
+			done <- Run(ctx, importv2.Request{}, converter, fx.deps)
+		}()
+		<-converter.started
+
+		// when
+		cancel(importv2.ErrSuspended)
+
+		// then
+		select {
+		case result := <-done:
+			require.Error(t, result.Err)
+			assert.True(t, result.Suspended)
+			assert.False(t, result.Cancelled, "the shutdown keeps the run for the sweep; the user discarded nothing")
+		case <-time.After(5 * time.Second):
+			t.Fatal("run did not stop")
+		}
+	})
+}

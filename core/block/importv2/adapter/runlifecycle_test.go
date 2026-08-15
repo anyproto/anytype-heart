@@ -2,6 +2,7 @@ package adapter
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -173,12 +174,42 @@ func TestFinishRun(t *testing.T) {
 		// when
 		s.finishRun(lc, &importv2.Result{
 			Err:           importv2.Fatal(importv2.IssueCancelled, context.Canceled),
+			Cancelled:     true,
 			NothingToUndo: true,
 		})
 
 		// then
 		_, statErr := os.Stat(dir)
 		assert.True(t, os.IsNotExist(statErr), "a cancelled import must not survive as a resumable dir")
+	})
+
+	t.Run("a transport timeout wearing the cancel's code keeps the crawl artifact", func(t *testing.T) {
+		// given — review item 1, the destructive direction: the Notion
+		// client's own http.Client{Timeout: time.Minute} fires on a server
+		// hang, classifyFatal painted anything wrapping DeadlineExceeded
+		// IssueCancelled, and this disposal read that CODE as the user's
+		// intent. A 60-second hang then deleted a two-hour crawl. The stop
+		// source, not the shape, decides: nobody cancelled here.
+		s := &service{config: &config.Config{RepoPath: t.TempDir()}}
+		lc, err := s.beginRun(context.Background(), testRequest(),
+			&pb.RpcObjectImportRequest{SpaceId: "space-1", Type: model.Import_Notion}, "Notion", 0, process.NewNoOp())
+		require.NoError(t, err)
+		dir := lc.store.Dir()
+
+		// when
+		s.finishRun(lc, &importv2.Result{
+			Err:           importv2.Fatal(importv2.IssueCancelled, fmt.Errorf("search: %w", context.DeadlineExceeded)),
+			NothingToUndo: true,
+			// Cancelled false: the run context is alive, nobody stopped it
+		})
+
+		// then
+		reopened, err := runstore.Open(context.Background(), dir)
+		require.NoError(t, err, "a network hang must not destroy the crawl artifact")
+		defer reopened.Close()
+		manifest, err := reopened.Manifest(context.Background())
+		require.NoError(t, err)
+		assert.NotEmpty(t, manifest.Request, "the dir stays crawl-resumable")
 	})
 
 	t.Run("a user cancel whose compensation was GATED still keeps the dir", func(t *testing.T) {
@@ -194,7 +225,8 @@ func TestFinishRun(t *testing.T) {
 
 		// when: cancelled, CompensationRan false, NothingToUndo false
 		s.finishRun(lc, &importv2.Result{
-			Err: importv2.Fatal(importv2.IssueCancelled, context.Canceled),
+			Err:       importv2.Fatal(importv2.IssueCancelled, context.Canceled),
+			Cancelled: true,
 		})
 
 		// then

@@ -286,11 +286,11 @@ func (r *run) spoolPass(ctx context.Context, converter importv2.Converter, spool
 		rootSpec, convertErr = converter.Convert(ctx, sink)
 	}()
 	if convertErr != nil && r.fatalIssue() == nil {
-		r.report(classifyFatal(convertErr, importv2.IssueSourceInvalid))
+		r.report(classifyFatal(ctx, convertErr, importv2.IssueSourceInvalid))
 	}
 	// Late (second-chance) claims buffered during pass 2 flush with pass 2.
 	if err := r.deps.Identity.FlushClaims(ctx); err != nil && r.fatalIssue() == nil {
-		r.report(classifyFatal(err, importv2.IssueStoreError))
+		r.report(classifyFatal(ctx, err, importv2.IssueStoreError))
 	}
 	return rootSpec
 }

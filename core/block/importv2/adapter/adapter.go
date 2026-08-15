@@ -434,7 +434,12 @@ func combinePathResult(combined, result *importv2.Result) bool {
 	}
 	if result.Err != nil {
 		combined.Err = result.Err
+		// Both stop verdicts travel with the fatal they belong to — they are
+		// one proposition about how this run ended, and a combined result
+		// that kept the error but dropped its source would be the same
+		// shape-versus-source confusion review item 1 removed.
 		combined.Suspended = result.Suspended
+		combined.Cancelled = result.Cancelled
 		return true
 	}
 	return false
@@ -687,9 +692,16 @@ func (s *service) finishProgress(progress process.Progress, req *pb.RpcObjectImp
 // shutdown or cancel), never an INTERNAL_ERROR notification.
 func stopFatal(ctx context.Context, code importv2.IssueCode, err error) *importv2.Result {
 	if ctx.Err() != nil {
+		// The stop SOURCE travels with the verdict, exactly as the engine's
+		// own exit carries it (review item 1): these results reach finishRun
+		// too — runEngine's spool-open failure settles the run it was
+		// starting — and the disposal rule there reads Cancelled rather than
+		// guessing the intent back out of an error code.
+		suspended := errors.Is(context.Cause(ctx), importv2.ErrSuspended)
 		return &importv2.Result{
 			Err:       importv2.Fatal(importv2.IssueCancelled, context.Cause(ctx)),
-			Suspended: errors.Is(context.Cause(ctx), importv2.ErrSuspended),
+			Suspended: suspended,
+			Cancelled: !suspended,
 		}
 	}
 	return &importv2.Result{Err: importv2.Fatal(code, err)}

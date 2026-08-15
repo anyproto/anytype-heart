@@ -76,6 +76,19 @@ type Result struct {
 	// the two contexts).
 	Suspended bool
 
+	// Cancelled means the USER stopped this run — the one intent that says
+	// "discard this import" rather than "finish it later". It is a STOP
+	// SOURCE, read from the cancel cause of the context the caller owns,
+	// never from the fatal's code: a code is a shape, and both shapes lie
+	// in opposite directions (review item 1). A transport deadline — the
+	// Notion client's own http.Client{Timeout: time.Minute} — wears the
+	// cancel's shape while nobody cancelled, so reading the code deleted a
+	// two-hour crawl on a 60-second server hang; a cancelled Notion call
+	// wears a retryable failure's shape, so reading the code kept a
+	// cancelled import's dir, token intact, and silently re-ran it. Like
+	// Suspended, the engine is the single source of this verdict.
+	Cancelled bool
+
 	// Err is the fatal error when the run aborted, nil otherwise.
 	Err error
 }

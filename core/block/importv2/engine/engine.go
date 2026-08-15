@@ -208,6 +208,7 @@ func startRun(ctx context.Context, req importv2.Request, converter importv2.Conv
 		req:        req,
 		deps:       deps,
 		cancel:     cancel,
+		stopCtx:    ctx,
 		failedKeys: map[string]struct{}{},
 		issuedKeys: map[string]struct{}{},
 	}
@@ -391,6 +392,7 @@ func Resume(ctx context.Context, req importv2.Request, deps Deps, state *ResumeS
 		req:        req,
 		deps:       deps,
 		cancel:     cancel,
+		stopCtx:    ctx,
 		failedKeys: map[string]struct{}{},
 		issuedKeys: map[string]struct{}{},
 		resume:     state,
@@ -461,6 +463,14 @@ func (r *run) seedIssues(issues []importv2.Issue) {
 // importv2.ErrSuspended, spec §6.4) decides compensation: a suspend keeps
 // the durable state for the startup sweep; everything else compensates.
 func (r *run) finish(runCtx context.Context, rootSpec importv2.RootSpec) *importv2.Result {
+	// The STOP SOURCE, decided once and carried out on the Result (review
+	// item 1): every downstream decision about this run's dir used to read
+	// the fatal's CODE, and a code is a shape both a transport deadline and
+	// a cancelled Notion call wear wrongly. The caller's context is
+	// unambiguous — progress.Canceled() fires cancel(nil), shutdown fires
+	// cancel(ErrSuspended) — so ask it, not the error.
+	r.cancelledRun = r.stopCtx != nil && r.stopCtx.Err() != nil &&
+		!errors.Is(context.Cause(r.stopCtx), importv2.ErrSuspended)
 	// E4: claims made after pass 2 (root collection, report page) must
 	// reach the ledger — every exit passes through here, so this is the
 	// one flush that cannot be skipped. Detached ctx: the run context is
@@ -548,6 +558,15 @@ type run struct {
 	// shutdown suspend and was NOT compensated — carried out via
 	// Result.Suspended so the adapter never re-derives it from a context.
 	suspendedRun bool
+	// cancelledRun is the sibling verdict: the USER stopped this run,
+	// carried out via Result.Cancelled. Read from stopCtx below.
+	cancelledRun bool
+	// stopCtx is the context the CALLER owns — the only unambiguous stop
+	// source. The engine derives runCtx from it and cancels THAT itself on
+	// every abort, so context.Cause(runCtx) reads context.Canceled for a
+	// self-abort exactly as it does for a user cancel; only the caller's
+	// context tells the two apart.
+	stopCtx context.Context
 	// resume is non-nil on a resumed incarnation (engine.Resume): the sink
 	// consults its skip set, finalize and the report consult its recorded
 	// outcomes.
@@ -660,7 +679,7 @@ func (r *run) identityPass(ctx context.Context, converter importv2.Converter) *i
 		return nil
 	})
 	if err != nil {
-		issue := classifyFatal(err, importv2.IssueSourceInvalid)
+		issue := classifyFatal(ctx, err, importv2.IssueSourceInvalid)
 		return &issue
 	}
 	if count == 0 {
@@ -668,7 +687,7 @@ func (r *run) identityPass(ctx context.Context, converter importv2.Converter) *i
 		return &issue
 	}
 	if err := r.deps.Identity.FlushClaims(ctx); err != nil {
-		issue := classifyFatal(err, importv2.IssueStoreError)
+		issue := classifyFatal(ctx, err, importv2.IssueStoreError)
 		return &issue
 	}
 	return nil
@@ -736,7 +755,7 @@ func (r *run) streamPass(ctx context.Context, converter importv2.Converter) impo
 	wg.Wait()
 
 	if convertErr != nil && r.fatalIssue() == nil {
-		r.report(classifyFatal(convertErr, importv2.IssueSourceInvalid))
+		r.report(classifyFatal(ctx, convertErr, importv2.IssueSourceInvalid))
 	}
 	return rootSpec
 }
@@ -1149,6 +1168,7 @@ func (r *run) buildResult(fatal importv2.Issue, rootSpec importv2.RootSpec) *imp
 		CompensationRan:  r.compensationRan,
 		NothingToUndo:    r.nothingToUndo,
 		Suspended:        r.suspendedRun,
+		Cancelled:        r.cancelledRun,
 	}
 	if fatal.Code != "" {
 		result.Err = fatal
@@ -1156,8 +1176,17 @@ func (r *run) buildResult(fatal importv2.Issue, rootSpec importv2.RootSpec) *imp
 	return result
 }
 
-func classifyFatal(err error, fallback importv2.IssueCode) importv2.Issue {
-	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+// classifyFatal decides whether a stage's failure IS the run's stop, by
+// asking the run CONTEXT — the same discipline process(), stageInterrupted,
+// stopFatal and runstore.IsCorrupted already follow. It used to read the
+// error's shape instead, and matched anything wrapping
+// context.DeadlineExceeded: including the Notion client's own
+// http.Client{Timeout: time.Minute}, so a 60-second server hang reported
+// itself as the user's cancel (review item 1). A ctx-shaped error on a LIVE
+// context is a source failure like any other, and keeps its retryable shape
+// for the transient-keep classification.
+func classifyFatal(ctx context.Context, err error, fallback importv2.IssueCode) importv2.Issue {
+	if ctx.Err() != nil {
 		return importv2.Fatal(importv2.IssueCancelled, err)
 	}
 	return importv2.AsIssue(err, importv2.SeverityFatal, fallback)

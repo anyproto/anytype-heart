@@ -411,7 +411,7 @@ func TestTransientCrawlFailureConsultsTheStop(t *testing.T) {
 		defer store.Close()
 
 		// when / then: the cancel decides BEFORE the retryability shape
-		cancelled := &importv2.Result{Err: importv2.Fatal(importv2.IssueCancelled, callErr)}
+		cancelled := &importv2.Result{Err: importv2.Fatal(importv2.IssueCancelled, callErr), Cancelled: true}
 		assert.False(t, fx.service.transientCrawlFailure(store, cancelled),
 			"a cancelled import must never be kept for a silent restart")
 
@@ -422,6 +422,15 @@ func TestTransientCrawlFailureConsultsTheStop(t *testing.T) {
 		// and a suspend is not the user's cancel (Suspended is consulted first)
 		suspended := &importv2.Result{Err: importv2.Fatal(importv2.IssueCancelled, callErr), Suspended: true}
 		assert.False(t, userCancelled(suspended))
+
+		// and the OPPOSITE direction (review item 1): a fatal wearing the
+		// cancel's CODE with nobody having cancelled — the transport timeout
+		// classifyFatal used to paint IssueCancelled — is a transient failure
+		// like any other, and its dir is kept.
+		timedOut := &importv2.Result{Err: importv2.Fatal(importv2.IssueCancelled, callErr)}
+		assert.False(t, userCancelled(timedOut),
+			"the stop source decides an outcome, never the error's shape")
+		assert.True(t, fx.service.transientCrawlFailure(store, timedOut))
 	})
 }
 
