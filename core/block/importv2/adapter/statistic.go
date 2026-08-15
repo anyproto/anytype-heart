@@ -294,7 +294,11 @@ func issueMessage(issue importv2.Issue) string {
 // mark publishes or schedules. The caller holds mu, and the send happens
 // UNDER it: two goroutines building concurrently and sending afterwards
 // could deliver an older statistic after a newer one, and a progress
-// surface that goes backwards is worse than one that is 250 ms late.
+// surface that goes backwards is worse than one that is 250 ms late. That
+// is safe because the sender is non-blocking by contract — Broadcast
+// enqueues onto each session's bounded queue and closes a client that
+// overflows it (core/event/event_grpc.go sendEvent) — so no client can hold
+// this lock, and with it a persist worker, for its own reasons.
 func (e *statEmitter) mark(immediate bool) {
 	if e.closed {
 		return

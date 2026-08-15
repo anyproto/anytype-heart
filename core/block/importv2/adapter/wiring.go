@@ -172,6 +172,13 @@ func (r *progressReporter) Phase(p importv2.Phase) {
 	if p == importv2.PhaseCreating {
 		r.materializing.Store(true)
 		r.total.Store(0) // re-based by the census Discovered calls that follow
+		// The scanning stage is over by definition — and on a pass-3 RESTART
+		// it never happened at all (engine.Resume's first phase is this one).
+		// Without this the gate below stayed shut and a resumed import filled
+		// its bar against a total of zero: resumerun.go used to set that
+		// total by hand, and the gate is what the move into the engine
+		// would otherwise have quietly dropped.
+		r.scanned.Store(true)
 		return
 	}
 	if p > importv2.PhaseScanning && r.scanned.CompareAndSwap(false, true) {

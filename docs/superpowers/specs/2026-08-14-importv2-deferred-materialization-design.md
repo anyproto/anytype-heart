@@ -861,6 +861,53 @@ restart-rehydrated counters, the pull RPC pair, dormant-run serving. DM-3: `safe
 turns true for pass 2. Phase D keeps only client-side rendering guidance and the residual
 intermediate-notification question (OQ-DM3).
 
+**As built (the §15 push producer, 2026-08-15).** The remainder shipped: the coalescing
+emitter, the converter-side ANALYZING phase and `currentItem`, bytes, rate/ETA, and the
+pacer/retry hooks wired through to the stream. Six things the spec left open or got
+wrong, decided here:
+
+1. **The Reporter seam was redesigned first, as §15.7 required.** The legacy
+   `Phase(string)/AddTotal/Step` became `Phase(Phase)` plus `Discovered(Kind, δ)`,
+   `Completed(Kind, δ)`, `Bytes`, `Created` and `Item` over `importv2.Phase` and
+   `importv2.Kind`; `Sink` traded its never-called `Progress(δ)` for the two
+   converter-side signals the engine cannot see.
+2. **A "page" is a MINTED content object.** Derived-class definitions — relations,
+   types, options — are counted by neither kind. They carry no pass-1 claim, so folding
+   them into `pagesDone` made it outrun a fetching denominator that IS the claim count.
+   `run.countObject` is the one classification; the spool census and `resume.Load` are
+   its ledger twins.
+3. **The counters are per PHASE, in two epochs** (scanning/analyzing/fetching, then
+   creating/finalizing), so the converter can flip ANALYZING on and off mid-crawl
+   without erasing the crawl's progress. Fetching counts spool rows against the claim
+   count; materializing counts persisted rows against the spool census. §15.4's table
+   implied exactly this ("claims count / spool rows") but the DM-2 pull side served the
+   materializing column in both, so a mid-crawl poll answered `0/N` for the phase a
+   large import spends hours in. Both sides were fixed together. `filesTotal` stays
+   0-is-unknown while fetching, since files are found BY crawling — the schema's own
+   convention, borrowed from `bytesTotal`.
+4. **Live runs are served from the emitter's `Snapshot`** — the same builder over the
+   same state the push event uses, which makes §15.5's "push and pull must agree" a
+   property of the code rather than a promise. The dormant column keeps its ledger
+   derivation and differs only where the ledger genuinely cannot see: in-flight skips
+   (not durable, exactly as `Result.Skipped` already is not) and the in-memory-only
+   fields.
+5. **`currentItem` is a `DisplayText`, not a string.** Its `String` is the md5 this
+   codebase already hashes user text with before logging it (v1 notion's `hashText`), so
+   a stray `%s` cannot leak a page title; the plaintext has one accessor with one caller.
+   It is announced from the EMISSION loop, never from a prefetch worker — notion runs six
+   fetches ahead of what the user is being shown.
+6. **`totalsKnown` for a dormant run is derived from "the spool has a row"**, which
+   proves pass 1 flushed its claims (the spool sink's write-ahead rule). Nothing on disk
+   separates a dir that died mid-`/search` from one that died just after, so a
+   spool-less dir answers the conservative unknown — never a fake bar.
+
+Two defects fell out of the audit rather than the feature. A run killed during pass 1 has
+no spool COLLECTION, and the read-only handle errored on it — so such a dir failed its own
+status poll and vanished silently from `RunList`; an absent collection is now an empty
+spool. And `phaseOf` read the lifecycle label while `cancelEffectOf` read the materialize
+marker, so a dir cancelled or compensating mid-crawl reported FINALIZING and
+NothingToUndo in one message; the marker now decides both.
+
 **As built (DM-3, 2026-08-15; predicate corrected in the fix round).** `safeToClose`
 turned true for pass 2 as §15.7 scheduled — and the fix round corrected its predicate:
 "some resume class covers the run" keyed off the stored request alone, which reported

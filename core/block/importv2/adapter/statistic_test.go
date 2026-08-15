@@ -95,12 +95,15 @@ func TestStatEmitterCoalescing(t *testing.T) {
 	t.Run("a burst of counter ticks yields one event, not one per tick", func(t *testing.T) {
 		// given: pass 3 rates (50-200 objects/s) would flood a per-item
 		// emitter — §15.3's reason for the window
+		// The window is an hour of FAKE time on purpose: the real trailing
+		// timer then cannot fire inside the test, so "exactly one" is a
+		// statement about the rule and not about how loaded the machine is.
 		clock := newFakeClock()
-		emitter, sink := newTestEmitter(t, clock, func(c *statConfig) { c.window = statWindow })
+		emitter, sink := newTestEmitter(t, clock)
 		emitter.Phase(importv2.PhaseCreating)
 
 		// when: the window from the phase event has elapsed, then a burst
-		clock.advance(2 * statWindow)
+		clock.advance(2 * time.Hour)
 		before := sink.len()
 		for i := 0; i < 500; i++ {
 			emitter.Completed(importv2.KindPage, 1)
@@ -110,11 +113,15 @@ func TestStatEmitterCoalescing(t *testing.T) {
 		assert.Equal(t, 1, sink.len()-before)
 
 		// and: the next window admits exactly one more
-		clock.advance(2 * statWindow)
+		clock.advance(2 * time.Hour)
 		for i := 0; i < 500; i++ {
 			emitter.Completed(importv2.KindPage, 1)
 		}
 		assert.Equal(t, 2, sink.len()-before)
+		assert.Equal(t, int64(501), sink.last().PagesDone,
+			"an event carries the state at the moment it was let through")
+		assert.Equal(t, int64(1000), emitter.Snapshot().PagesDone,
+			"coalescing delays the stream; it never makes the poll stale")
 	})
 
 	t.Run("a phase change is never held behind the window", func(t *testing.T) {
