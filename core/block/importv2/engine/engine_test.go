@@ -52,6 +52,21 @@ func (f *fakeIdentity) Claim(ctx context.Context, c importv2.IdentityClaim) erro
 	return nil
 }
 
+// note appends an externally observed event (a spool append, say) into the
+// same ordered log the identity events land in — the durability-order
+// assertions read one merged sequence.
+func (f *fakeIdentity) note(event string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.events = append(f.events, event)
+}
+
+func (f *fakeIdentity) eventLog() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]string(nil), f.events...)
+}
+
 func (f *fakeIdentity) FlushClaims(ctx context.Context) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()

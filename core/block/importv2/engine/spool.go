@@ -203,6 +203,20 @@ func (s *spoolSink) Claim(ctx context.Context, claim importv2.IdentityClaim) err
 	if err := s.run.deps.Identity.Claim(ctx, claim); err != nil {
 		return err
 	}
+	// Write-ahead order (review P0-D): the claim must be DURABLE before any
+	// spool row that depends on it, and the converter appends the claimed
+	// entity's object right after this call while Spool.Append commits
+	// immediately. The batch-at-pass-end justification ("an unflushed
+	// batch's loss is harmless — the resumed pass simply re-mints",
+	// identity claimBatchSize) expired when DM-3 made the spool a durable
+	// artifact a resume replays: a spool row whose claim was lost fails the
+	// resumed pass 3 on 'object was not claimed in pass 1'. Late claims are
+	// rare (capped second-chance discovery), so the per-claim flush costs
+	// one small tx each; pass-1 claims keep the batch — they all flush
+	// before pass 2 appends anything.
+	if err := s.run.deps.Identity.FlushClaims(ctx); err != nil {
+		return err
+	}
 	s.run.noteClaimed(claim.SourceKey)
 	s.run.deps.Reporter.AddTotal(1)
 	return nil

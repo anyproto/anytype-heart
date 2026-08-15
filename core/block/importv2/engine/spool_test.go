@@ -177,3 +177,78 @@ func TestRunMemoryBoundDurableSpool(t *testing.T) {
 			"heavy-object residency must stay bounded by the pipeline, not the source")
 	})
 }
+
+// lateClaimConverter models second-chance discovery: mid-pass-2 it claims an
+// entity it only just found, then emits that entity's object.
+type lateClaimConverter struct {
+	scriptConverter
+	late *importv2.Object
+}
+
+func (c *lateClaimConverter) Convert(ctx context.Context, sink importv2.Sink) (importv2.RootSpec, error) {
+	if _, err := c.scriptConverter.Convert(ctx, sink); err != nil {
+		return importv2.RootSpec{}, err
+	}
+	if err := sink.Claim(ctx, importv2.IdentityClaim{SourceKey: c.late.SourceKey, SbType: c.late.SbType}); err != nil {
+		return importv2.RootSpec{}, err
+	}
+	if err := sink.Object(ctx, c.late); err != nil {
+		return importv2.RootSpec{}, err
+	}
+	return c.rootSpec, nil
+}
+
+// notingSpool logs every append into the identity fake's merged event log.
+type notingSpool struct {
+	Spool
+	identity *fakeIdentity
+}
+
+func (s *notingSpool) Append(ctx context.Context, o *importv2.Object) error {
+	if err := s.Spool.Append(ctx, o); err != nil {
+		return err
+	}
+	s.identity.note("append:" + o.SourceKey)
+	return nil
+}
+
+func TestLateClaimDurabilityOrder(t *testing.T) {
+	t.Run("a pass-2 late claim reaches the ledger BEFORE its object reaches the spool", func(t *testing.T) {
+		// given — the P0-D shape: spool.Append commits immediately while the
+		// claim batch used to flush only at the end of pass 2. A process kill
+		// between the two left a spool row the claim ledger never got, and the
+		// crawl-resumed pass 3 then failed the whole import on
+		// 'object was not claimed in pass 1'. The write-ahead rule: a claim is
+		// durable before any spool row that depends on it.
+		fx := newEngineFixture(t)
+		fx.deps.Spool = &notingSpool{Spool: fx.deps.Spool, identity: fx.identity}
+		converter := &lateClaimConverter{
+			scriptConverter: scriptConverter{objects: []*importv2.Object{pageObj("a.md", false)}},
+			late:            pageObj("late.md", false),
+		}
+
+		// when
+		result := Run(context.Background(), importv2.Request{Mode: importv2.ModeContinueOnError}, converter, fx.deps)
+
+		// then: claim:late.md … flush … append:late.md, in that order
+		require.NoError(t, result.Err)
+		events := fx.identity.eventLog()
+		claimAt, flushAfterClaim, appendAt := -1, -1, -1
+		for i, event := range events {
+			switch {
+			case event == "claim:late.md":
+				claimAt = i
+			case event == "flush" && claimAt >= 0 && flushAfterClaim < 0:
+				flushAfterClaim = i
+			case event == "append:late.md":
+				appendAt = i
+			}
+		}
+		require.GreaterOrEqual(t, claimAt, 0, "the late claim must be recorded: %v", events)
+		require.GreaterOrEqual(t, appendAt, 0, "the late object must be spooled: %v", events)
+		require.GreaterOrEqual(t, flushAfterClaim, 0,
+			"the late claim must flush before its spool row, not at pass end: %v", events)
+		assert.Less(t, flushAfterClaim, appendAt,
+			"the claim must be durable BEFORE the spool row exists: %v", events)
+	})
+}

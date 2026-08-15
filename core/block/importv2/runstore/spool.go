@@ -188,10 +188,11 @@ func (sp *Spool) Replay(ctx context.Context, emit func(o *importv2.Object) error
 	}
 }
 
-// SourceKeys returns the spooled source-key set and the row count without
-// decoding any snapshot — the restart's cheap census (which rehydrated
-// claims have a spool row; how much replay remains).
-func (sp *Spool) SourceKeys(ctx context.Context) (map[string]struct{}, int, error) {
+// SourceKeys returns the spooled source keys with their recorded classes
+// (SbType) and the row count, without decoding any snapshot — the restart's
+// cheap census (which rehydrated claims have a spool row; how much replay
+// remains; which rows the claim/spool cross-check may demand a claim for).
+func (sp *Spool) SourceKeys(ctx context.Context) (map[string]coresb.SmartBlockType, int, error) {
 	ctx, opDone := opCtx(ctx)
 	defer opDone()
 
@@ -200,14 +201,14 @@ func (sp *Spool) SourceKeys(ctx context.Context) (map[string]struct{}, int, erro
 		return nil, 0, fmt.Errorf("iterate spool keys: %w", err)
 	}
 	defer iter.Close()
-	keys := map[string]struct{}{}
+	keys := map[string]coresb.SmartBlockType{}
 	count := 0
 	for iter.Next() {
 		doc, err := iter.Doc()
 		if err != nil {
 			return nil, 0, fmt.Errorf("read spool doc: %w", err)
 		}
-		keys[string(doc.Value().GetStringBytes("sourceKey"))] = struct{}{}
+		keys[string(doc.Value().GetStringBytes("sourceKey"))] = coresb.SmartBlockType(doc.Value().GetInt("sbType"))
 		count++
 	}
 	return keys, count, nil

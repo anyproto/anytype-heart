@@ -1030,8 +1030,10 @@ func isDerivedClass(sbType coresb.SmartBlockType) bool {
 	return importv2.IsDerivedClass(sbType)
 }
 
+// isFileClass delegates to the root predicate (shared with the crawl
+// loader's claim/spool cross-check — the two must never disagree).
 func isFileClass(sbType coresb.SmartBlockType) bool {
-	return sbType == coresb.SmartBlockTypeFileObject || sbType == coresb.SmartBlockTypeFile
+	return importv2.IsFileClass(sbType)
 }
 
 // registerRelationMeta feeds the format registry and key-adoption table from

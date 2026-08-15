@@ -362,9 +362,12 @@ func LoadCrawl(ctx context.Context, store *runstore.Store) (*CrawlState, error) 
 
 	st := &CrawlState{Manifest: manifest, PlanJSON: planJSON}
 	st.Engine = engine.CrawlResumeState{
-		SpooledKeys: spooledKeys,
+		SpooledKeys: make(map[string]struct{}, len(spooledKeys)),
 		PriorClaims: map[string]struct{}{},
 		Issues:      rehydrateIssues(issueRecords),
+	}
+	for key := range spooledKeys {
+		st.Engine.SpooledKeys[key] = struct{}{}
 	}
 	for _, entry := range entries {
 		if entry.Synthetic {
@@ -388,6 +391,21 @@ func LoadCrawl(ctx context.Context, store *runstore.Store) (*CrawlState, error) 
 			Reclaimable:  true,
 		})
 		st.Engine.PriorClaims[entry.SourceKey] = struct{}{}
+	}
+	// The claim/spool cross-check (review P0-D): a page-class spool row is
+	// written only AFTER its claim flushed (the spool sink's write-ahead
+	// rule), so a row without its claim is corruption — and replaying it
+	// would fail the whole resumed import at pass 3 ('object was not claimed
+	// in pass 1'), after the re-crawl spent its requests. Derived-class rows
+	// (re-derived by the replay) and file rows (futures, never claimed) are
+	// exactly the classes the replay serves without a claim.
+	for key, sbType := range spooledKeys {
+		if importv2.IsDerivedClass(sbType) || importv2.IsFileClass(sbType) {
+			continue
+		}
+		if _, claimed := st.Engine.PriorClaims[key]; !claimed {
+			return nil, fmt.Errorf("spooled object %q has no claim row; the run cannot be resumed", key)
+		}
 	}
 	return st, nil
 }

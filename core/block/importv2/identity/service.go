@@ -91,8 +91,13 @@ type ClaimLedger interface {
 }
 
 // claimBatchSize batches ledger writes (08-13 §5.2: measured 3-4x over
-// per-claim commits; an unflushed batch's loss is harmless — no side
-// effects exist at claim time, the resumed pass simply re-mints).
+// per-claim commits). The batch's loss-harmlessness argument ("no side
+// effects exist at claim time, the resumed pass simply re-mints") holds for
+// PASS-1 claims only — they all flush before pass 2 appends anything. It
+// EXPIRED for pass-2 late claims when DM-3 made the spool a durable
+// artifact a resume replays: a spool row whose claim was lost fails the
+// resumed pass 3, so the engine's spool sink flushes each late claim
+// through before appending the claimed object (review P0-D).
 const claimBatchSize = 500
 
 // Option configures a Service.

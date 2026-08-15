@@ -138,3 +138,11 @@ func IsDerivedClass(sbType coresb.SmartBlockType) bool {
 		return false
 	}
 }
+
+// IsFileClass reports the file lane's class (upload path, id via future,
+// never a pass-1 claim). ONE predicate, like IsDerivedClass above: the
+// engine's lane routing and the crawl loader's claim/spool cross-check must
+// never disagree about which spool rows require a claim row.
+func IsFileClass(sbType coresb.SmartBlockType) bool {
+	return sbType == coresb.SmartBlockTypeFileObject || sbType == coresb.SmartBlockTypeFile
+}

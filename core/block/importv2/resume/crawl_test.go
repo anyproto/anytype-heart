@@ -146,6 +146,52 @@ func TestLoadCrawl(t *testing.T) {
 		require.Error(t, err)
 	})
 
+	t.Run("a spooled page without its claim row refuses loudly", func(t *testing.T) {
+		// given — review P0-D: spool rows commit immediately, claims used to
+		// batch until the end of pass 2, and a kill between the two left this
+		// exact shape. Since the write-ahead fix (a late claim flushes before
+		// its append) it can only mean corruption — and replaying it would
+		// fail the whole resumed import at pass 3 ('object was not claimed in
+		// pass 1'), AFTER the re-crawl spent its requests. Strict-loud here,
+		// like every other load contradiction.
+		store := interruptedCrawl(t)
+		spool, err := store.Spool(ctx)
+		require.NoError(t, err)
+		require.NoError(t, spool.Append(ctx, &importv2.Object{
+			SourceKey: "orphan-page", SbType: coresb.SmartBlockTypePage, Payload: &importv2.Snapshot{},
+		}))
+
+		// when
+		_, err = LoadCrawl(ctx, store)
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "orphan-page")
+	})
+
+	t.Run("derived and file spool rows need no claim row", func(t *testing.T) {
+		// given: relations/types/options are never pass-1 claims (the replay
+		// re-derives them) and files ride futures — the claim/spool
+		// cross-check must exempt exactly those classes.
+		store := interruptedCrawl(t)
+		spool, err := store.Spool(ctx)
+		require.NoError(t, err)
+		require.NoError(t, spool.Append(ctx, &importv2.Object{
+			SourceKey: "relation:tags", SbType: coresb.SmartBlockTypeRelation, Payload: &importv2.Snapshot{},
+		}))
+		require.NoError(t, spool.Append(ctx, &importv2.Object{
+			SourceKey: "pic.png", SbType: coresb.SmartBlockTypeFileObject, Payload: &importv2.Snapshot{},
+		}))
+
+		// when
+		state, err := LoadCrawl(ctx, store)
+
+		// then
+		require.NoError(t, err)
+		assert.Contains(t, state.Engine.SpooledKeys, "relation:tags")
+		assert.Contains(t, state.Engine.SpooledKeys, "pic.png")
+	})
+
 	t.Run("the recorded plan rides the seed", func(t *testing.T) {
 		// given
 		store := interruptedCrawl(t)

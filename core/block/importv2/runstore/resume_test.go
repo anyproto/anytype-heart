@@ -557,16 +557,20 @@ func TestBeginResume(t *testing.T) {
 }
 
 func TestSpoolSourceKeys(t *testing.T) {
-	t.Run("the spool's key set and count read back without decoding snapshots", func(t *testing.T) {
+	t.Run("the spool's keys read back with their classes, without decoding snapshots", func(t *testing.T) {
 		// given
 		ctx := context.Background()
 		store := createStore(t, filepath.Join(t.TempDir(), "run-1"))
 		spool, err := store.Spool(ctx)
 		require.NoError(t, err)
-		for _, key := range []string{"page-1", "page-2"} {
+		for key, sbType := range map[string]coresb.SmartBlockType{
+			"page-1":  coresb.SmartBlockTypePage,
+			"page-2":  coresb.SmartBlockTypePage,
+			"rel-tag": coresb.SmartBlockTypeRelation,
+		} {
 			require.NoError(t, spool.Append(ctx, &importv2.Object{
 				SourceKey: key,
-				SbType:    coresb.SmartBlockTypePage,
+				SbType:    sbType,
 				Payload:   &importv2.Snapshot{},
 			}))
 		}
@@ -574,9 +578,14 @@ func TestSpoolSourceKeys(t *testing.T) {
 		// when
 		keys, count, err := spool.SourceKeys(ctx)
 
-		// then
+		// then: the class rides along — the crawl loader's claim/spool
+		// cross-check exempts derived and file rows by it
 		require.NoError(t, err)
-		assert.Equal(t, 2, count)
-		assert.Equal(t, map[string]struct{}{"page-1": {}, "page-2": {}}, keys)
+		assert.Equal(t, 3, count)
+		assert.Equal(t, map[string]coresb.SmartBlockType{
+			"page-1":  coresb.SmartBlockTypePage,
+			"page-2":  coresb.SmartBlockTypePage,
+			"rel-tag": coresb.SmartBlockTypeRelation,
+		}, keys)
 	})
 }
