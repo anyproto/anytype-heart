@@ -381,14 +381,33 @@ surfaces:
   row mappings) and the spool sink's backstop, which absorbs re-emissions of recorded keys
   BEFORE the file drain and the append — a seam-ignorant converter (markdown) is merely
   slower, never incorrect. `resume.LoadCrawl` is the one loader (strict-loud like `Load`,
-  disjoint from it by the sticky materialize marker, checked from both sides); the sweep
-  branch (`crawlResumable`: running/suspended, pre-materialize, request present, shared
-  attempt cap) and `runstore.BeginCrawlResume` (attempts move durably first; state stays
-  `running` — the A1 compensation gate must NOT flip) mirror their DM-2 siblings.
-- **Reconciliation's one new case** (08-13 §5.4, now live): a prior incarnation's claim
-  that neither re-enumerates nor sits in the spool is source drift — `Warning(dataLoss)`,
-  not the invariant error; a claim made or re-made within the current incarnation keeps
-  the invariant's teeth. Pinned end to end (a page deleted between sessions).
+  disjoint from it by the sticky materialize marker, checked from both sides; the fix
+  round added the claim/spool cross-check — a page-class spool row without its claim row
+  refuses loudly); the sweep branch (`crawlResumable`: running/suspended, pre-materialize,
+  request present) and `runstore.BeginCrawlResume` (attempts move durably first; state
+  stays `running` — the A1 compensation gate must NOT flip) mirror their DM-2 siblings,
+  on the crawl's OWN attempt counter (fix round: one shared counter let cheap ~1-request
+  crawl retries spend the pass-3 budget, whose exhaustion is the destructive one).
+- **The recovery half of the seam** (fix-round P0-A, the round's design call): the skip
+  set suppresses re-walking recorded parents, so an entity discovered only through a
+  parent's block tree (`/search` never returns it — the GO-5273 class) that was claimed
+  but not yet spooled would never be re-found, and reconciliation misreported it as
+  source drift while the run REPORTED SUCCESS. `ResumableConverter.SetRecover` now hands
+  the converter `PriorClaims \ SpooledKeys` (the claim key IS the source id): Notion
+  re-fetches each key it did not re-encounter — alive → adopted and converted like any
+  late discovery (children drain transitively); a data-source id resolves through its
+  owning database; positively gone (404/403 on both shapes) → an honest data-loss
+  warning backed by the API's own answer; anything else → a loud object failure whose
+  wrapped cause keeps its retryable shape. A converter with COMPLETE pass-1 enumeration
+  (markdown) may ignore the set — for it, non-re-enumeration IS a positive answer — and
+  the engine's reconciliation fallback covers it, now worded to state only what the
+  engine knows (the claim was not found again), never a deletion it cannot establish.
+- **Late claims write ahead of their spool rows** (fix-round P0-D): the identity batch's
+  loss-harmlessness argument ("the resumed pass simply re-mints") was written when pass 2
+  was unresumable and expired with DM-3 — a spool row whose claim was lost failed the
+  whole resumed import at pass 3. The spool sink now flushes each pass-2 late claim
+  through the ledger before the claimed object can reach the spool; pass-1 claims keep
+  the batch (they all flush before pass 2 appends anything).
 - **The plan is reused, never recomputed** (08-13 §6.3): `schemaplan.Resolve` is the one
   reuse rule both converters call — a fresh durable run records the *sanitized* plan to
   `kv` before any emission (a record failure is a fatal store issue), a resumed crawl gets
@@ -402,22 +421,38 @@ surfaces:
   load-bearing rather than incidental — a suspend truncates only at object boundaries,
   which is exactly the partiality the resumed crawl replays and extends. The site's
   comment now says so instead of resting on "a partial spool is never replayed".
-- **Transient failures keep the artifact.** A crawl resume that fails retryable-shaped
-  (the Notion client's own `IsRetryable` — offline laptop, outage, exhausted rate budget)
-  keeps the dir exactly as the engine left it, attempt spent, and retries next start.
-  This required one engine-side rule found during the build: **an abort with an empty
-  journal skips compensation entirely, durable marker included** — the `compensating`
-  transition would scrub the request and burn the dir's resumable class to authorize zero
-  deletes. (An abort during passes 1–2 is §7's "compensation is Drop()", now literally.)
+  (Fix round: opCtx also stopped minting a fresh budget per NESTED op — WithoutCancel
+  drops the deadline too, so composite settlements compounded to ~75s of
+  cancellation-immune work against a 30s close grace; nested ops now share one budget.)
+- **A mid-crawl abort keeps the artifact — structurally** (fix-round P0-B/P0-C,
+  replacing the retryability allowlist this section originally described): an abort with
+  an empty journal skips compensation entirely, durable marker included (the
+  `compensating` transition would scrub the request and burn the dir's resumable class
+  to authorize zero deletes) — and it now also reports `CompensationRan: false` with
+  `NothingToUndo: true`, because "nothing to undo" and "the dir is disposable" are
+  different propositions. finishRun keeps every failed run whose effects no compensation
+  covered — offline laptop AND rotated token AND `noObjects` on an eventually-consistent
+  `/search` AND markdown failures alike, attempts-capped via the sweep. The ONE
+  exception is the user's cancel with nothing to undo: keeping that dir would silently
+  resurrect a cancelled import on the next start — and since a cancelled Notion call is
+  retryable-SHAPED ("retries exhausted" wrapping a transport `context.Canceled`), every
+  settlement path consults the stop BEFORE any retryability classification. The Notion
+  `IsRetryable` check survives only as the QUIET keep (no failure notification, attempt
+  refunded) for transient shapes; everything else keeps the dir loudly.
 - **Semantics under drift, recorded**: if the source *changed* an already-recorded page
   between sessions, the recording wins — the crawl artifact is the run's ground truth and
-  the edit lands on the next import. Deletions warn (above); additions import.
+  the edit lands on the next import. Deletions warn (above); additions import. A RENAME
+  across the crash boundary is a deletion plus an addition and imports twice, silently —
+  decided and pinned (fix round): rename detection would need content identity that
+  path-shaped source keys cannot carry, and the orphan lands on the next
+  `updateExisting` import as an ordinary duplicate.
 - **Known gaps, deliberate**: (1) a multi-path markdown request resumed in *pass 3* still
   finishes only its own path — the request is scrubbed at `fetched`, so the DM-2-era gap
   stands for that class (the crawl resume DOES finish remaining paths — markdown requests
   carry no token, so keeping their request past `fetched` is a possible refinement);
-  (2) a FRESH import's transient mid-crawl failure still fails-and-drops as it always
-  did — auto-suspending it instead is a product call, flagged, not built.
+  (2) a FRESH import's mid-crawl failure now keeps its dir for the sweep (the fix-round
+  P0-B rule) — what remains a product call is only the NOTIFICATION shape: the user sees
+  a failure notice and the next start silently retries, up to the cap.
 
 ## 9. Phase plan, reshaped
 
@@ -826,11 +861,14 @@ restart-rehydrated counters, the pull RPC pair, dormant-run serving. DM-3: `safe
 turns true for pass 2. Phase D keeps only client-side rendering guidance and the residual
 intermediate-notification question (OQ-DM3).
 
-**As built (DM-3, 2026-08-15).** `safeToClose` turned true for pass 2 as §15.7
-scheduled: the pull surface now reports it whenever SOME resume class covers the run —
-materialize-started (DM-2's class, the `fetched` instant included) or a manifest still
-carrying its request (DM-3's class). Honesty is per-dir: a pre-DM-3 dir without a stored
-request is still lost on close mid-crawl, and still says false.
+**As built (DM-3, 2026-08-15; predicate corrected in the fix round).** `safeToClose`
+turned true for pass 2 as §15.7 scheduled — and the fix round corrected its predicate:
+"some resume class covers the run" keyed off the stored request alone, which reported
+true with the attempt cap exhausted, exactly when the very next sweep would compensate
+the dir. It now evaluates the sweep's OWN predicates (`resumable`/`crawlResumable`) plus
+the same attempt caps, so the surface and the sweep's actual behavior cannot drift
+apart. Honesty is per-dir: a pre-DM-3 dir without a stored request is still lost on
+close mid-crawl and still says false; so does a dir whose budget is spent.
 
 **As built (DM-2, 2026-08-14).** DM-1 did not carry the event core; DM-2 shipped the
 WIRE CONTRACT whole and the pull side complete: `Event.Import.Statistic` (the full
