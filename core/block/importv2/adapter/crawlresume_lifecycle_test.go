@@ -388,7 +388,7 @@ func TestTransientCrawlFailureConsultsTheStop(t *testing.T) {
 		// request the cancel kills.
 		ctx, cancel := context.WithCancel(context.Background())
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			cancel()              // the user cancels while the call is in flight
+			cancel()             // the user cancels while the call is in flight
 			<-r.Context().Done() // hold until the client abandons the request
 		}))
 		t.Cleanup(server.Close)

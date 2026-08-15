@@ -254,10 +254,10 @@ func TestSetRecoverRefetchesUnrecordedClaims(t *testing.T) {
 		// the integration lost access; either way the source no longer
 		// offers it)
 		handler := recoveryWorkspace(t, searchP1, map[string]apiResponse{
-			"GET /pages/p1":            {body: `{"id":"p1","archived":false,"created_time":"2024-02-01T10:00:00.000Z","last_edited_time":"2024-02-02T10:00:00.000Z","properties":{"Name":{"id":"title","type":"title","title":[{"plain_text":"One","type":"text"}]}}}`},
-			"GET /blocks/p1/children":  {body: `{"results":[],"has_more":false,"next_cursor":null}`},
-			"GET /pages/gone":          notFound,
-			"GET /data_sources/gone":   notFound,
+			"GET /pages/p1":           {body: `{"id":"p1","archived":false,"created_time":"2024-02-01T10:00:00.000Z","last_edited_time":"2024-02-02T10:00:00.000Z","properties":{"Name":{"id":"title","type":"title","title":[{"plain_text":"One","type":"text"}]}}}`},
+			"GET /blocks/p1/children": {body: `{"results":[],"has_more":false,"next_cursor":null}`},
+			"GET /pages/gone":         notFound,
+			"GET /data_sources/gone":  notFound,
 		})
 		converter := recoveryConverter(t, handler)
 		converter.SetRecover([]string{"gone"})
