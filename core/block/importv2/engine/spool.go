@@ -172,7 +172,7 @@ func (s *spoolSink) drainFile(ctx context.Context, object *importv2.Object) erro
 		return fmt.Errorf("open file source: %w", err)
 	}
 	defer reader.Close()
-	spillFile, err := os.CreateTemp(s.spillDir, "spool-*-"+sanitizeBaseName(object.File.Name))
+	spillFile, err := os.CreateTemp(s.spillDir, importv2.SpoolSpillPrefix+"*-"+sanitizeBaseName(object.File.Name))
 	if err != nil {
 		return fmt.Errorf("create spill file: %w", err)
 	}

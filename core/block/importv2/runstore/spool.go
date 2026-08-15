@@ -2,6 +2,7 @@ package runstore
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"sync/atomic"
@@ -34,6 +35,10 @@ type Spool struct {
 	arenas *anyenc.ArenaPool
 	seq    atomic.Int64
 	ownDb  anystore.DB // standalone mode only; nil when backed by a Store
+	// absent marks a read-only handle on a dir whose spool collection was
+	// never created — a run killed during pass 1, before its first append.
+	// That is an EMPTY spool, not a broken one (see Store.Spool).
+	absent bool
 }
 
 // Spool opens the run db's spool collection, continuing the sequence from
@@ -46,10 +51,18 @@ func (s *Store) Spool(ctx context.Context) (*Spool, error) {
 	var coll anystore.Collection
 	var err error
 	if s.readOnly {
-		// A status reader never creates: a dir without a spool collection is
-		// a creation-time crash the caller skips (review Class E: the pull
-		// surface must not write on a read path).
+		// A status reader never creates (review Class E: the pull surface
+		// must not write on a read path).
 		coll, err = s.db.OpenCollection(ctx, collSpool)
+		if errors.Is(err, anystore.ErrCollectionNotFound) {
+			// A run killed during pass 1 — before its first append — has no
+			// spool collection at all. That is an EMPTY spool, not a broken
+			// dir, and erroring here made exactly such a run fail its own
+			// status poll and vanish silently from the listing: the Class-E
+			// symptom through a third door. Read methods answer zero; a
+			// write would be a caller bug and says so.
+			return &Spool{arenas: s.arenas, absent: true}, nil
+		}
 	} else {
 		coll, err = s.db.Collection(ctx, collSpool)
 	}
@@ -108,6 +121,9 @@ func (sp *Spool) Close() error {
 // have drained any Open closure to the spill dir first — a closure reaching
 // the spool is a contract violation, reported loudly, never a silent loss.
 func (sp *Spool) Append(ctx context.Context, o *importv2.Object) error {
+	if sp.absent {
+		return fmt.Errorf("spool %q: this handle is read-only", o.SourceKey)
+	}
 	ctx, opDone := opCtx(ctx)
 	defer opDone()
 
@@ -170,6 +186,9 @@ const spoolChunkSize = 16
 // snapshot-isolated across chunks — fine while pass 2 strictly precedes
 // pass 3, but late spooling would change that.
 func (sp *Spool) Replay(ctx context.Context, emit func(o *importv2.Object) error) error {
+	if sp.absent {
+		return nil
+	}
 	lastId := ""
 	for {
 		objects, nextId, err := sp.readChunk(ctx, lastId)
@@ -193,6 +212,9 @@ func (sp *Spool) Replay(ctx context.Context, emit func(o *importv2.Object) error
 // cheap census (which rehydrated claims have a spool row; how much replay
 // remains; which rows the claim/spool cross-check may demand a claim for).
 func (sp *Spool) SourceKeys(ctx context.Context) (map[string]coresb.SmartBlockType, int, error) {
+	if sp.absent {
+		return map[string]coresb.SmartBlockType{}, 0, nil
+	}
 	ctx, opDone := opCtx(ctx)
 	defer opDone()
 
@@ -224,6 +246,9 @@ func (sp *Spool) SourceKeys(ctx context.Context) (map[string]coresb.SmartBlockTy
 // classification is the shared root predicate, the same one the engine's
 // countObject uses — the two must never disagree about what a page is.
 func (sp *Spool) Census(ctx context.Context) (pages, files, derived int, err error) {
+	if sp.absent {
+		return 0, 0, 0, nil
+	}
 	ctx, opDone := opCtx(ctx)
 	defer opDone()
 

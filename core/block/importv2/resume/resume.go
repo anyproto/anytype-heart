@@ -36,6 +36,12 @@ type State struct {
 	// FilesDone counts completed uploads (the files-ledger rows) — the
 	// status surface's separate file counter (§15.4).
 	FilesDone int64
+	// ClaimsTotal counts pass-1 identity claims: the FETCHING phase's
+	// denominator (§15.4 — "claims count / spool rows"). It is the ledger
+	// twin of the engine's per-claim Discovered(KindPage) during SCANNING,
+	// and it is what makes a mid-crawl poll say "812 of 9,650" instead of
+	// reporting a materialize counter that has not started moving.
+	ClaimsTotal int64
 	// PagesDone counts materialized MINTED objects: the §15.4 page counter,
 	// derived-class definitions and files excluded. It is the ledger twin of
 	// the engine's run.countObject classification — the two must agree, or
@@ -210,6 +216,10 @@ func Load(ctx context.Context, store *runstore.Store) (*State, error) {
 			}
 			continue
 		}
+		// Past the synthetic, derived and finalize-stage branches: what is
+		// left is a pass-1 (or second-chance) claim, which is exactly the
+		// fetching denominator.
+		st.ClaimsTotal++
 		if !entry.Matched && !entry.Terminal && len(entry.PayloadRoot) == 0 {
 			// A minted claim without its payload cannot be replayed — the id
 			// is the hash of exactly those bytes, and re-minting would break

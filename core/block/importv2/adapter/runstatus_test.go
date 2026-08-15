@@ -74,6 +74,73 @@ func TestRunStatusDormant(t *testing.T) {
 		assert.False(t, runstore.IsActive(dir), "the status read must release its hold")
 	})
 
+	t.Run("a dir killed mid-crawl reports the FETCHING counters, not the materializing ones", func(t *testing.T) {
+		// given: the phase a big Notion import spends hours in. The counters
+		// are per phase (§15.3), so while fetching they must measure the
+		// crawl — spool rows against the pass-1 claim count — and not
+		// materialization, which has not started. Serving the materializing
+		// column here reported "0 of 2 pages" for a crawl that had fetched
+		// two thirds of the workspace.
+		fx := newLifecycleFixture(t)
+		ctx := context.Background()
+		dir := makeCrawlRun(t, runstore.RunsRoot(fx.repo), "crawling", runstore.StateRunning)
+		store, err := runstore.Open(ctx, dir)
+		require.NoError(t, err)
+		require.NoError(t, store.RecordClaims(ctx, []runstore.ClaimRecord{
+			{SourceKey: "p2", ObjectId: "obj-p2", PayloadRoot: []byte("r"), PayloadHeads: []string{"obj-p2"}},
+			{SourceKey: "p3", ObjectId: "obj-p3", PayloadRoot: []byte("r"), PayloadHeads: []string{"obj-p3"}},
+		}))
+		spool, err := store.Spool(ctx)
+		require.NoError(t, err)
+		require.NoError(t, spool.Append(ctx, &importv2.Object{
+			SourceKey: "rel-status", SbType: coresb.SmartBlockTypeRelation, Payload: &importv2.Snapshot{},
+		}))
+		require.NoError(t, spool.Append(ctx, &importv2.Object{
+			SourceKey: "img.png", SbType: coresb.SmartBlockTypeFileObject,
+			Payload: &importv2.Snapshot{}, File: &importv2.FileSource{Name: "img.png", Path: "/x/img.png"},
+		}))
+		spillFile := filepath.Join(store.SpillDir(), "spool-123-img.png")
+		require.NoError(t, os.WriteFile(spillFile, []byte("downloaded bytes"), 0o600))
+		require.NoError(t, store.Close())
+
+		// when
+		run, err := fx.service.RunStatus(ctx, "crawling")
+
+		// then
+		require.NoError(t, err)
+		status := run.Status
+		assert.Equal(t, pb.EventImportStatistic_Fetching, status.Phase)
+		assert.Equal(t, pb.EventImportStatistic_NothingToUndo, status.CancelEffect)
+		assert.Equal(t, int64(3), status.PagesTotal, "the claim count is the fetch denominator")
+		assert.Equal(t, int64(1), status.PagesDone, "one page spooled; the relation is a definition")
+		assert.Equal(t, int64(1), status.FilesDone)
+		assert.Zero(t, status.FilesTotal, "files are found by crawling; 0 means unknown")
+		assert.Equal(t, int64(len("downloaded bytes")), status.BytesDone)
+		assert.True(t, status.TotalsKnown, "a spool row proves pass 1 finished")
+		assert.Zero(t, status.ObjectsCreated, "nothing has entered the space yet")
+	})
+
+	t.Run("a dir killed before it spooled anything admits it knows no total", func(t *testing.T) {
+		// given: crashed during the /search chain — the claim batch may not
+		// even have flushed, and nothing on disk can prove pass 1 ended
+		fx := newLifecycleFixture(t)
+		ctx := context.Background()
+		dir := filepath.Join(runstore.RunsRoot(fx.repo), "scanning")
+		store, err := runstore.Create(ctx, dir, runstore.Manifest{
+			RunId: "scanning", SpaceId: "space-1", Converter: "Notion",
+		})
+		require.NoError(t, err)
+		require.NoError(t, store.Close())
+
+		// when
+		run, err := fx.service.RunStatus(ctx, "scanning")
+
+		// then
+		require.NoError(t, err)
+		assert.False(t, run.Status.TotalsKnown, "never a fake bar, never a division by zero")
+		assert.Zero(t, run.Status.PagesDone)
+	})
+
 	t.Run("an unknown importId is not found", func(t *testing.T) {
 		// given
 		fx := newLifecycleFixture(t)

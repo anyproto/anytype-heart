@@ -55,6 +55,15 @@ func (p Phase) String() string {
 	}
 }
 
+// SpoolSpillPrefix names the files pass 2 drains its downloads into, inside
+// the run's spill dir. It lives here because TWO packages depend on the
+// naming: the engine writes them, and the status surface sums their sizes
+// for a dormant run's bytesDone (§15.4). The persister spills uploads into
+// the same dir under a different prefix — those bytes are the same content
+// read back rather than new transfer — so this prefix is exactly what keeps
+// them out of the count.
+const SpoolSpillPrefix = "spool-"
+
 // Kind separates the two counted classes. They are separate BY REQUIREMENT
 // (§15.2): 500 small files and one 2 GB file behave nothing alike, and the
 // legacy blended scalar — one `Step(1)` for a page and for a file — is

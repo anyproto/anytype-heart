@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"strings"
 
 	importv2 "github.com/anyproto/anytype-heart/core/block/importv2"
 	"github.com/anyproto/anytype-heart/core/block/importv2/resume"
@@ -189,9 +191,6 @@ func buildRunStatus(ctx context.Context, store *runstore.Store, live bool) (*pb.
 		// serving has no throttle/retry signal yet (event core), so the
 		// state stays Running and manifestState carries the lifecycle.
 		State: pb.EventImportStatistic_Running,
-		// Totals become known at the pass-1/2 boundary and stay known; a
-		// run still crawling has none (§15.3: count-up, never a fake bar).
-		TotalsKnown: manifest.MaterializeStarted || manifest.State == runstore.StateFetched,
 	}
 	if (resumable(manifest) && manifest.ResumeAttempts < maxResumeAttempts) ||
 		(crawlResumable(manifest) && manifest.CrawlResumeAttempts < maxResumeAttempts) {
@@ -223,10 +222,35 @@ func buildRunStatus(ctx context.Context, store *runstore.Store, live bool) (*pb.
 	// on this surface and in the engine alike (run.countObject): they carry
 	// no pass-1 claim, so folding them in made pagesDone outrun a fetching
 	// denominator that IS the claim count.
-	status.PagesTotal = int64(pages)
-	status.FilesTotal = int64(files)
-	status.FilesDone = state.FilesDone
-	status.PagesDone = state.PagesDone
+	//
+	// The counters are PER PHASE, exactly as the live emitter's are. A dir
+	// that stopped mid-crawl must be read as a crawl — spool rows against
+	// the claim count — or the same field means one thing pushed and another
+	// polled for the phase a big import spends hours in.
+	if status.Phase >= pb.EventImportStatistic_Creating {
+		status.PagesTotal = int64(pages)
+		status.FilesTotal = int64(files)
+		status.PagesDone = state.PagesDone
+		status.FilesDone = state.FilesDone
+		status.TotalsKnown = true
+	} else {
+		status.PagesTotal = state.ClaimsTotal
+		status.PagesDone = int64(pages)
+		status.FilesDone = int64(files)
+		// filesTotal stays 0 = unknown: files are found by crawling, so
+		// during the crawl there is no denominator to render against, and
+		// the schema's own convention for that is zero (bytesTotal says so
+		// in as many words).
+		//
+		// A spool row can only exist after pass 1 flushed its claims (the
+		// write-ahead rule in the spool sink), so ONE row proves the crawl
+		// began and the claim count is final. Nothing on disk distinguishes
+		// a dir that died mid-/search from one that died just after, so a
+		// spool-less dir answers with the conservative "unknown" — never a
+		// fake bar (§15.3).
+		status.TotalsKnown = pages+files > 0
+	}
+	status.BytesDone = spillBytes(store.SpillDir())
 	status.ObjectsCreated = state.Engine.Created
 	for _, issue := range state.Engine.Issues {
 		countIssue(issue.Severity, &status.WarningCount, &status.ErrorCount)
@@ -236,6 +260,31 @@ func buildRunStatus(ctx context.Context, store *runstore.Store, live bool) (*pb.
 		ManifestState: string(manifest.State),
 		Live:          live,
 	}, nil
+}
+
+// spillBytes sums the pass-2 download spill — the dormant column's
+// bytesDone (§15.4: "spill dir + spool file rows"). ONLY the spool sink's
+// own files count: the persister spills uploads into the same dir under its
+// own prefix, and those bytes are the same content read back, not new
+// transfer. An unreadable dir reports zero, which the schema already means
+// as unknown; a status read must never fail over telemetry.
+func spillBytes(dir string) int64 {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return 0
+	}
+	var total int64
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasPrefix(entry.Name(), importv2.SpoolSpillPrefix) {
+			continue
+		}
+		info, err := entry.Info()
+		if err != nil {
+			continue
+		}
+		total += info.Size()
+	}
+	return total
 }
 
 // countIssue is the ONE severity → wire-counter classification, shared by
