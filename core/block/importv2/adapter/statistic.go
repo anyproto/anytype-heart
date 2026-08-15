@@ -469,6 +469,19 @@ func (e *statEmitter) sampleLocked() {
 		return
 	}
 	e.samples = append(e.samples, sample)
+	e.pruneSamplesLocked(now)
+	if over := len(e.samples) - rateSampleCap; over > 0 {
+		e.samples = append(e.samples[:0], e.samples[over:]...)
+	}
+}
+
+// pruneSamplesLocked drops entries that have fallen out of the rolling span.
+// It is called from the READ path too, because time passes whether or not
+// anything is completing (review item 6): pruning only on a completion meant
+// a run that stopped completing kept whatever samples it had, forever.
+// One entry always survives — it is the anchor a later completion measures
+// against.
+func (e *statEmitter) pruneSamplesLocked(now time.Time) {
 	cutoff := now.Add(-rateWindowSpan)
 	drop := 0
 	for drop < len(e.samples)-1 && e.samples[drop].at.Before(cutoff) {
@@ -477,19 +490,32 @@ func (e *statEmitter) sampleLocked() {
 	if drop > 0 {
 		e.samples = append(e.samples[:0], e.samples[drop:]...)
 	}
-	if over := len(e.samples) - rateSampleCap; over > 0 {
-		e.samples = append(e.samples[:0], e.samples[over:]...)
-	}
 }
 
 // ratesLocked reports the observed pages/s and items/s over the window, or
 // zero when the window is too short to defend a number.
+//
+// The window ends at NOW, not at the newest sample. A rate measured between
+// two samples answers "how fast was it going while it was going", which is
+// not the question: a stalled run kept reporting its last healthy rate and,
+// with it, a frozen ETA that never moved — the throttled-vs-stuck
+// distinction §15.1 exists to draw, inverted. Measuring to now makes the
+// rate decay while nothing completes, and once the whole span has passed
+// with no completion the pruning leaves one anchor, no rate, and an ETA of
+// unknown, which is the honest answer.
+//
+// The cost is the documented one: the newest entry's counts are up to
+// rateSampleInterval stale (sampleLocked deliberately does not move it
+// forward), so the rate reads slightly LOW — the safe direction for an ETA,
+// and negligible over any window long enough to be quoted at all.
 func (e *statEmitter) ratesLocked() (pageRate, itemRate float64) {
+	now := e.cfg.now()
+	e.pruneSamplesLocked(now)
 	if len(e.samples) < 2 {
 		return 0, 0
 	}
 	first, last := e.samples[0], e.samples[len(e.samples)-1]
-	span := last.at.Sub(first.at)
+	span := now.Sub(first.at)
 	if span < rateWindowMin {
 		return 0, 0
 	}

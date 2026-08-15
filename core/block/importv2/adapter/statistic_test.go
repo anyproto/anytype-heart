@@ -682,3 +682,38 @@ func TestStatEmitterErrorIsTerminal(t *testing.T) {
 		assert.Equal(t, pb.EventImportStatistic_Error, sink.last().State)
 	})
 }
+
+func TestStatEmitterStallDetection(t *testing.T) {
+	t.Run("a stalled run stops claiming the rate it no longer has", func(t *testing.T) {
+		// given — review item 6: the rolling window was pruned only inside
+		// sampleLocked, which runs only from Completed, and ratesLocked never
+		// consulted the clock. A run that stops completing anything therefore
+		// reported its last healthy rate and a frozen ETA forever — exactly
+		// the throttled-vs-stuck distinction §15.1 exists to draw.
+		clock := newFakeClock()
+		emitter, _ := newTestEmitter(t, clock)
+		emitter.Phase(importv2.PhaseCreating)
+		emitter.Discovered(importv2.KindPage, 100)
+		clock.advance(time.Second)
+		emitter.Completed(importv2.KindPage, 10)
+		clock.advance(time.Second)
+		emitter.Completed(importv2.KindPage, 10)
+		healthy := emitter.Snapshot()
+		require.InDelta(t, 10.0, healthy.ItemsPerSecond, 0.01)
+		require.Positive(t, healthy.EstimatedRemainingMs)
+
+		// when: nothing completes for ten seconds
+		clock.advance(10 * time.Second)
+		stalling := emitter.Snapshot()
+
+		// then: the observed rate decays and the wait grows
+		assert.Less(t, stalling.ItemsPerSecond, healthy.ItemsPerSecond)
+		assert.Greater(t, stalling.EstimatedRemainingMs, healthy.EstimatedRemainingMs)
+
+		// and: past the whole window there is no defensible rate left
+		clock.advance(rateWindowSpan)
+		stalled := emitter.Snapshot()
+		assert.Zero(t, stalled.ItemsPerSecond, "a run that has done nothing for 30 s has no rate")
+		assert.Zero(t, stalled.EstimatedRemainingMs, "and no ETA it could defend")
+	})
+}
