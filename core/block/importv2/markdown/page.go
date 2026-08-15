@@ -29,6 +29,10 @@ import (
 // definitions, referenced file objects, then the page. Nothing about the
 // page is retained afterwards.
 func (c *Converter) convertPage(ctx context.Context, entry source.Entry, sink importv2.Sink) error {
+	// The §15 currentItem. The entry name is a path inside the user's own
+	// tree — user content, so it travels as a DisplayText and reaches the
+	// wire but never a log line.
+	sink.Item(importv2.DisplayText(entry.Name))
 	content, err := c.readEntry(ctx, entry.Name)
 	if err != nil {
 		sink.Issue(importv2.ObjectError(importv2.IssueObjectFailed, entry.Name, fmt.Errorf("read: %w", err)))

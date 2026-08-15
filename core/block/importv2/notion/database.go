@@ -41,6 +41,7 @@ func (d *databaseObject) title() string {
 // options, then the collection object whose members are the data source's
 // pages (known from the pass-1 hierarchy).
 func (c *Converter) convertDatabase(ctx context.Context, stub Entity, sink importv2.Sink) error {
+	sink.Item(importv2.DisplayText(stub.Title)) // §15 currentItem, see emitFetchedPage
 	fetch := c.schemaFetches[stub.Id]
 	if fetch == nil {
 		// Late discovery — pass-1 schemas were prefetched by the plan phase,

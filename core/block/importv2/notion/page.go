@@ -97,6 +97,12 @@ func (c *Converter) convertPage(ctx context.Context, stub Entity, sink importv2.
 // replays buffered fetch issues in page order, then maps and emits — all
 // shared-state work (properties store, file registry, discovery) lives here.
 func (c *Converter) emitFetchedPage(ctx context.Context, f *fetchedPage, sink importv2.Sink) error {
+	// The §15 currentItem, announced HERE and not in the prefetch worker:
+	// fetches run up to prefetchInFlight pages ahead of this loop, so a
+	// worker's title would name a page the user only sees much later. A
+	// Notion page title is user content — hence a DisplayText, which reaches
+	// the wire but never a log line.
+	sink.Item(importv2.DisplayText(f.stub.Title))
 	for _, issue := range f.issues {
 		sink.Issue(issue)
 	}
