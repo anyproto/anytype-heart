@@ -43,6 +43,14 @@ const (
 	rateWindowMin = time.Second
 	// rateSampleCap bounds the sample ring.
 	rateSampleCap = 64
+	// rateSampleInterval is the minimum gap between RING ENTRIES. Without
+	// it, pass 3's 50-200 objects/s fills the ring in under a second, the
+	// retained span drops below rateWindowMin, and the rate — with the ETA
+	// behind it — reads permanently zero in exactly the phase where it is
+	// cheapest to compute. Ticks inside the interval update the newest entry
+	// instead of adding one, so the ring always covers at least
+	// cap*interval of history.
+	rateSampleInterval = 250 * time.Millisecond
 )
 
 type statConfig struct {
@@ -361,7 +369,7 @@ func (e *statEmitter) Snapshot() *pb.EventImportStatistic {
 }
 
 func (e *statEmitter) buildLocked(now time.Time) *pb.EventImportStatistic {
-	pageRate, itemRate := e.ratesLocked(now)
+	pageRate, itemRate := e.ratesLocked()
 	return &pb.EventImportStatistic{
 		ImportId:       e.cfg.importId,
 		ProcessId:      e.cfg.processId,
@@ -403,11 +411,23 @@ func (e *statEmitter) safeToCloseLocked() bool {
 // sampleLocked records one point of the rolling rate window.
 func (e *statEmitter) sampleLocked() {
 	now := e.cfg.now()
-	e.samples = append(e.samples, rateSample{
+	sample := rateSample{
 		at:    now,
 		pages: e.snap.pagesDone,
 		items: e.snap.pagesDone + e.snap.filesDone,
-	})
+	}
+	if n := len(e.samples); n > 0 && now.Sub(e.samples[n-1].at) < rateSampleInterval {
+		// The tick lands inside the newest entry's interval: drop it. The
+		// entry is NOT moved forward — doing that would keep the ring at one
+		// element (the newest is also the oldest) or, with two, stretch the
+		// "window" over the whole phase and turn a recent-window rate into a
+		// lifetime average that no slowdown could move. The cost is that the
+		// newest entry's count is up to one interval stale, which biases the
+		// rate slightly LOW over a multi-second window: the safe direction
+		// for an ETA.
+		return
+	}
+	e.samples = append(e.samples, sample)
 	cutoff := now.Add(-rateWindowSpan)
 	drop := 0
 	for drop < len(e.samples)-1 && e.samples[drop].at.Before(cutoff) {
@@ -423,7 +443,7 @@ func (e *statEmitter) sampleLocked() {
 
 // ratesLocked reports the observed pages/s and items/s over the window, or
 // zero when the window is too short to defend a number.
-func (e *statEmitter) ratesLocked(now time.Time) (pageRate, itemRate float64) {
+func (e *statEmitter) ratesLocked() (pageRate, itemRate float64) {
 	if len(e.samples) < 2 {
 		return 0, 0
 	}

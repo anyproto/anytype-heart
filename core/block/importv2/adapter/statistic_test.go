@@ -354,6 +354,29 @@ func TestStatEmitterRateAndETA(t *testing.T) {
 		assert.Zero(t, emitter.Snapshot().EstimatedRemainingMs)
 	})
 
+	t.Run("pass-3 rates do not sample themselves out of a rate", func(t *testing.T) {
+		// given: 200 objects/s is the estimated persist speed. A sample per
+		// object fills any bounded ring in a fraction of a second, and a
+		// window shorter than rateWindowMin is not a rate — so the ETA would
+		// read zero for the whole of the phase it is cheapest to compute in.
+		clock := newFakeClock()
+		emitter, _ := newTestEmitter(t, clock)
+		emitter.Phase(importv2.PhaseCreating)
+		emitter.Discovered(importv2.KindPage, 4000)
+
+		// when: 2,000 objects at 200/s, one report each
+		for i := 0; i < 2000; i++ {
+			clock.advance(5 * time.Millisecond)
+			emitter.Completed(importv2.KindPage, 1)
+		}
+		status := emitter.Snapshot()
+
+		// then
+		assert.InDelta(t, 200.0, status.ItemsPerSecond, 5.0)
+		assert.InDelta(t, 10000.0, float64(status.EstimatedRemainingMs), 500,
+			"2,000 left at 200/s is ten seconds, and the engine can defend that")
+	})
+
 	t.Run("the rate window does not carry across the pass boundary", func(t *testing.T) {
 		// given: pass 2 crawls at ~1/s, pass 3 runs orders of magnitude
 		// faster — carrying the window over would produce the "one hour
