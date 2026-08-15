@@ -412,7 +412,7 @@ func (e *statEmitter) buildLocked() *pb.EventImportStatistic {
 		AttemptsMax:          e.snap.attemptsMax,
 		ErrorMessage:         e.snap.errorMessage,
 		ItemsPerSecond:       itemRate,
-		EstimatedRemainingMs: e.etaLocked(pageRate),
+		EstimatedRemainingMs: e.etaLocked(pageRate, itemRate),
 		CancelEffect:         wireCancelEffect(e.snap.phase),
 		ObjectsCreated:       e.snap.objectsCreated,
 		SafeToClose:          e.safeToCloseLocked(),
@@ -481,18 +481,30 @@ func (e *statEmitter) ratesLocked() (pageRate, itemRate float64) {
 // every input is present. Fetching is additionally capped by the source's
 // own ceiling — an unrepresentative burst must not promise the user a
 // finish time the API cannot deliver.
-func (e *statEmitter) etaLocked(pageRate float64) int64 {
+func (e *statEmitter) etaLocked(pageRate, itemRate float64) int64 {
 	if e.snap.phase == importv2.PhaseScanning {
 		return 0 // no total to subtract from
 	}
-	remaining := e.snap.pagesTotal - e.snap.pagesDone
-	if remaining <= 0 || pageRate <= 0 {
+	remaining, rate := e.snap.pagesTotal-e.snap.pagesDone, pageRate
+	if e.epoch == 0 {
+		// FETCHING: pages only, against a pages/s ceiling. filesTotal is
+		// unknown while crawling (files are found BY crawling), so there is
+		// no file remainder to add — and the ceiling is a page ceiling.
+		if e.cfg.pageRateCeiling > 0 && rate > e.cfg.pageRateCeiling {
+			rate = e.cfg.pageRateCeiling
+		}
+	} else {
+		// MATERIALIZING: both totals come from the same spool census, so
+		// both remainders are known — and file uploads are real work, not a
+		// rounding error, on an import with an image per page. Pricing them
+		// at zero would under-report the wait by half on such a run.
+		remaining += e.snap.filesTotal - e.snap.filesDone
+		rate = itemRate
+	}
+	if remaining <= 0 || rate <= 0 {
 		return 0
 	}
-	if e.epoch == 0 && e.cfg.pageRateCeiling > 0 && pageRate > e.cfg.pageRateCeiling {
-		pageRate = e.cfg.pageRateCeiling
-	}
-	return int64(float64(remaining) / pageRate * 1000)
+	return int64(float64(remaining) / rate * 1000)
 }
 
 // stateForLog is the ONLY rendering of an emitter that may reach a log

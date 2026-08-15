@@ -311,22 +311,28 @@ func TestStatEmitterRateAndETA(t *testing.T) {
 		assert.InDelta(t, 10.0, status.ItemsPerSecond, 0.01)
 	})
 
-	t.Run("materializing uses the observed rate alone", func(t *testing.T) {
-		// given: no ceiling is known a priori for persist speed
+	t.Run("materializing uses the observed rate alone, and counts the files", func(t *testing.T) {
+		// given: no ceiling is known a priori for persist speed, and both
+		// totals come from the same spool census — so pending uploads are
+		// known work, not a rounding error, on an import with an image per
+		// page
 		clock := newFakeClock()
 		emitter, _ := newTestEmitter(t, clock, func(c *statConfig) { c.pageRateCeiling = 1.5 })
 		emitter.Phase(importv2.PhaseCreating)
 		emitter.Discovered(importv2.KindPage, 100)
+		emitter.Discovered(importv2.KindFile, 20)
 
-		// when: 20 pages in 4 s
+		// when: 20 objects in 4 s
 		clock.advance(2 * time.Second)
 		emitter.Completed(importv2.KindPage, 10)
 		clock.advance(2 * time.Second)
-		emitter.Completed(importv2.KindPage, 10)
+		emitter.Completed(importv2.KindFile, 10)
 		status := emitter.Snapshot()
 
-		// then: 80 remaining at 5/s
-		assert.InDelta(t, 16000.0, float64(status.EstimatedRemainingMs), 200)
+		// then: 90 pages + 10 files left at 5 items/s. Pricing the uploads
+		// at zero would answer 18 s for 20 s of work.
+		assert.InDelta(t, 5.0, status.ItemsPerSecond, 0.01)
+		assert.InDelta(t, 20000.0, float64(status.EstimatedRemainingMs), 300)
 	})
 
 	t.Run("the ETA is zero whenever its inputs are not there", func(t *testing.T) {
