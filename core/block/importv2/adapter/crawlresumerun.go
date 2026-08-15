@@ -119,7 +119,11 @@ func (s *service) resumeCrawlRun(ctx context.Context, store *runstore.Store, man
 		}
 	}()
 
-	lc := s.newLifecycle(store, manifest, progress, pageRateCeilingFor(importType), st.Engine.Issues)
+	// A crawl resume re-runs pass 1, so only the issue counts carry over:
+	// its denominators are about to be re-discovered and nothing it may have
+	// created exists yet (the marker says so, and Seed reads it).
+	lc := s.newLifecycle(store, manifest, progress, pageRateCeilingFor(importType),
+		statSeed{issues: st.Engine.Issues})
 	defer lc.release()
 	// The converter is rebuilt from the stored request through the SAME
 	// builders the fresh run uses; the plan reuse carries the recording (a

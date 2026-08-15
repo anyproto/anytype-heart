@@ -334,22 +334,57 @@ func (e *statEmitter) Issue(issue importv2.Issue) {
 	e.mark(false)
 }
 
-// SeedIssues folds a previous incarnation's retained issues into the live
-// counts. A resumed run's surface must not report FEWER problems than the
-// same dir reports when polled dormant: the ledger holds every
-// incarnation's, and the engine deliberately re-seeds them without
-// re-reporting (no OnIssue, no abort predicate — they aborted or did not in
-// their own incarnation), so the counts have to arrive here by another
-// door. Fatal records never reach this: resume.rehydrateIssues drops them
-// on load, because a fatal that coexists with a resumable dir IS the abort
-// that made it dormant.
-func (e *statEmitter) SeedIssues(issues []importv2.Issue) {
-	if len(issues) == 0 {
-		return
-	}
+// statSeed is everything a RESUMED run's live surface already knows before
+// its engine has started — §15.4's right-hand column, the same reads the
+// dormant poll of this dir performs.
+//
+// It exists because the emitter is built (and registered live) in
+// newLifecycle, while the engine only starts after the ledger load, the
+// identity rehydration and the spool open. Everything the surface says in
+// that window it says out of its ZERO VALUE unless it is seeded — and the
+// zero value is phase SCANNING with cancelEffect NOTHING_TO_UNDO, which
+// §15.6 renders as "Cancel (nothing added yet)" for a run whose cancel is
+// about to compensate thousands of real objects (review item 4).
+type statSeed struct {
+	// materializing is the manifest's sticky marker, derived at the ONE
+	// lifecycle construction site — the same switch cancelEffectOf and
+	// phaseOf read for a dormant run, so push and pull cannot disagree
+	// about which side of the pass boundary this run is on.
+	materializing bool
+	// issues are previous incarnations' retained issues. A resumed run's
+	// surface must not report FEWER problems than the same dir reports when
+	// polled dormant: the ledger holds every incarnation's, and the engine
+	// deliberately re-seeds them without re-reporting (no OnIssue, no abort
+	// predicate — they aborted or did not in their own incarnation), so the
+	// counts have to arrive here by another door. Fatal records never reach
+	// this: resume.rehydrateIssues drops them on load, because a fatal that
+	// coexists with a resumable dir IS the abort that made it dormant.
+	issues []importv2.Issue
+	// created is the ledger's object count — §15.4's "a restart resumes the
+	// NUMBERS, not just the work". The engine publishes it again the moment
+	// it starts; this is the same number, one rehydration earlier.
+	created int64
+	// The pass-3 counters, from the spool census and the resume state. Left
+	// zero for a fresh run and a crawl resume, whose denominators are still
+	// being discovered.
+	pagesTotal, pagesDone int64
+	filesTotal, filesDone int64
+}
+
+// Seed applies a resumed run's starting state. Called once, at construction,
+// before the emitter is handed to anything.
+func (e *statEmitter) Seed(seed statSeed) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	for _, issue := range issues {
+	if seed.materializing {
+		e.snap.phase = importv2.PhaseCreating
+		e.epoch = counterEpoch(importv2.PhaseCreating)
+	}
+	e.snap.objectsCreated = seed.created
+	e.snap.pagesTotal, e.snap.pagesDone = seed.pagesTotal, seed.pagesDone
+	e.snap.filesTotal, e.snap.filesDone = seed.filesTotal, seed.filesDone
+	e.keepDenominatorsHonestLocked()
+	for _, issue := range seed.issues {
 		countIssue(issue.Severity, &e.snap.warningCount, &e.snap.errorCount)
 	}
 	e.mark(false)

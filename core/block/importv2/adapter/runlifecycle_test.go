@@ -316,3 +316,57 @@ func TestSuspendRuns(t *testing.T) {
 		assert.ErrorIs(t, context.Cause(ctx), importv2.ErrSuspended)
 	})
 }
+
+// A resumed run's live surface must be right from its FIRST word. The
+// emitter is built in newLifecycle and registered live there, while the
+// engine only starts after the ledger load, the identity rehydration and
+// the spool open — so everything the surface says during that window it
+// says out of its own zero value unless it is seeded (review item 4).
+func TestLifecycleStatSeed(t *testing.T) {
+	t.Run("a resumed run says what cancel would do before its engine starts", func(t *testing.T) {
+		// given — the harm §15.6 renders: phase SCANNING and cancelEffect
+		// NOTHING_TO_UNDO read as "Cancel (nothing added yet)" for a run that
+		// is about to compensate thousands of real objects.
+		s := &service{config: &config.Config{}}
+		manifest := runstore.Manifest{
+			RunId: "run-1", State: runstore.StateMaterializing, MaterializeStarted: true,
+		}
+
+		// when
+		lc := s.newLifecycle(nil, manifest, process.NewNoOp(), 0, statSeed{
+			created:    1200,
+			pagesTotal: 900, pagesDone: 400,
+			filesTotal: 60, filesDone: 12,
+		})
+
+		// then
+		snap := lc.stats.Snapshot()
+		assert.Equal(t, pb.EventImportStatistic_Creating, snap.Phase)
+		assert.Equal(t, pb.EventImportStatistic_RemovesCreated, snap.CancelEffect,
+			"the same marker the dormant surface reads (cancelEffectOf)")
+		assert.Equal(t, int64(1200), snap.ObjectsCreated)
+		assert.Equal(t, int64(900), snap.PagesTotal)
+		assert.Equal(t, int64(400), snap.PagesDone)
+		assert.Equal(t, int64(60), snap.FilesTotal)
+		assert.Equal(t, int64(12), snap.FilesDone)
+		assert.True(t, snap.TotalsKnown, "a resumed pass 3 knows its census before it starts")
+	})
+
+	t.Run("a fresh run and a resumed CRAWL both start in the scanning regime", func(t *testing.T) {
+		// given: neither has put anything in the space, and the marker says so
+		s := &service{config: &config.Config{}}
+		for _, manifest := range []runstore.Manifest{
+			{RunId: "fresh"},
+			{RunId: "mid-crawl", State: runstore.StateRunning, Request: []byte("stored")},
+		} {
+			// when
+			lc := s.newLifecycle(nil, manifest, process.NewNoOp(), 0, statSeed{})
+
+			// then
+			snap := lc.stats.Snapshot()
+			assert.Equal(t, pb.EventImportStatistic_Scanning, snap.Phase, manifest.RunId)
+			assert.Equal(t, pb.EventImportStatistic_NothingToUndo, snap.CancelEffect, manifest.RunId)
+			assert.False(t, snap.TotalsKnown, manifest.RunId)
+		}
+	})
+}

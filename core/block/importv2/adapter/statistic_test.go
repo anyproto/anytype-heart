@@ -434,10 +434,10 @@ func TestStatEmitterIssuesAndErrors(t *testing.T) {
 		emitter, _ := newTestEmitter(t, clock)
 
 		// when
-		emitter.SeedIssues([]importv2.Issue{
+		emitter.Seed(statSeed{issues: []importv2.Issue{
 			importv2.Warning(importv2.IssueDataLoss, "k1", "lost"),
 			importv2.ObjectError(importv2.IssueObjectFailed, "k2", assertError{}),
-		})
+		}})
 		emitter.Issue(importv2.Warning(importv2.IssueDataLoss, "k3", "lost"))
 		status := emitter.Snapshot()
 

@@ -47,7 +47,7 @@ type runLifecycle struct {
 // registry hold used to be wired at three sites and the statistic emitter
 // would have made that four — the recurring shape where a rule holds in one
 // sibling and not in the next.
-func (s *service) newLifecycle(store *runstore.Store, manifest runstore.Manifest, progress process.Progress, ceiling float64, seeded []importv2.Issue) *runLifecycle {
+func (s *service) newLifecycle(store *runstore.Store, manifest runstore.Manifest, progress process.Progress, ceiling float64, seed statSeed) *runLifecycle {
 	fetching, materializing := safeToCloseFor(manifest)
 	send := func(*pb.EventImportStatistic) {}
 	if s.eventSender != nil {
@@ -69,10 +69,13 @@ func (s *service) newLifecycle(store *runstore.Store, manifest runstore.Manifest
 			safeToCloseMaterializing: materializing,
 		}),
 	}
-	// A resumed run inherits its predecessors' issue counts here, at the one
-	// construction site, rather than at each resume branch (see
-	// statEmitter.SeedIssues).
-	lc.stats.SeedIssues(seeded)
+	// A resumed run inherits its predecessors' numbers here, at the one
+	// construction site, rather than at each resume branch (see statSeed).
+	// The pass-boundary half is derived from the manifest rather than
+	// passed: it is the SAME sticky marker the dormant surface reads, so a
+	// run cannot be mid-materialize when polled and mid-scan when pushed.
+	seed.materializing = manifest.MaterializeStarted
+	lc.stats.Seed(seed)
 	if store != nil {
 		lc.spillDir = store.SpillDir()
 		lc.untrack = s.trackLive(manifest.RunId, store, lc)
@@ -166,7 +169,7 @@ func (s *service) beginRun(ctx context.Context, request importv2.Request, wireRe
 		// Volatile mode still emits: the statistic is the run's progress
 		// surface, and a run without a durable dir has no importId to poll
 		// by — which the empty id says honestly, rather than by silence.
-		lc := s.newLifecycle(nil, runstore.Manifest{ImportType: int64(request.Origin.ImportType)}, progress, ceiling, nil)
+		lc := s.newLifecycle(nil, runstore.Manifest{ImportType: int64(request.Origin.ImportType)}, progress, ceiling, statSeed{})
 		lc.spillDir = spillDir
 		lc.cleanup = func() { _ = os.RemoveAll(spillDir) }
 		return lc, nil
@@ -201,7 +204,7 @@ func (s *service) beginRun(ctx context.Context, request importv2.Request, wireRe
 	if written, readErr := store.Manifest(ctx); readErr == nil {
 		manifest = written
 	}
-	return s.newLifecycle(store, manifest, progress, ceiling, nil), nil
+	return s.newLifecycle(store, manifest, progress, ceiling, statSeed{}), nil
 }
 
 // pageRateCeilingFor is the fastest the SOURCE can yield pages, per import

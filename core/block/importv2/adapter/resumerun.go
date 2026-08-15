@@ -92,7 +92,21 @@ func (s *service) resumeRun(ctx context.Context, store *runstore.Store, manifest
 		}
 	}()
 
-	lc := s.newLifecycle(store, manifest, progress, pageRateCeilingFor(model.ImportType(manifest.ImportType)), state.Engine.Issues)
+	// The resumed run's surface starts where its predecessor stopped, from
+	// the SAME reads the dormant poll of this dir performs (§15.4's
+	// right-hand column): the spool census as the pass-3 denominators, the
+	// ledger's terminal rows as its numerators, the ledger's object count as
+	// the cancel affordance. Without it the whole rehydration window — the
+	// load above, the identity rehydration and the engine's own start —
+	// reported the emitter's zero value, which reads as "Scanning, nothing
+	// added yet" for a run about to compensate everything it made. Advisory,
+	// like every census read: a failure costs telemetry only.
+	seed := statSeed{issues: state.Engine.Issues, created: state.Engine.Created}
+	if pages, files, _, censusErr := spool.Census(ctx); censusErr == nil {
+		seed.pagesTotal, seed.filesTotal = int64(pages), int64(files)
+		seed.pagesDone, seed.filesDone = state.PagesDone, state.FilesDone
+	}
+	lc := s.newLifecycle(store, manifest, progress, pageRateCeilingFor(model.ImportType(manifest.ImportType)), seed)
 	defer lc.release()
 	result := s.resumeEngine(runCtx, request, spc, lc, progress, state, spool)
 	if result.Suspended {
