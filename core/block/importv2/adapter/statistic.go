@@ -349,7 +349,7 @@ func (e *statEmitter) mark(immediate bool) {
 func (e *statEmitter) publishLocked(now time.Time) {
 	e.pending = false
 	e.nextAt = now.Add(e.cfg.window)
-	e.cfg.send(e.buildLocked(now))
+	e.cfg.send(e.buildLocked())
 }
 
 func (e *statEmitter) onTimer() {
@@ -375,8 +375,7 @@ func (e *statEmitter) Close() {
 		e.timer.Stop()
 		e.timer = nil
 	}
-	now := e.cfg.now()
-	e.cfg.send(e.buildLocked(now))
+	e.cfg.send(e.buildLocked())
 	e.closed = true
 }
 
@@ -386,10 +385,10 @@ func (e *statEmitter) Close() {
 func (e *statEmitter) Snapshot() *pb.EventImportStatistic {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	return e.buildLocked(e.cfg.now())
+	return e.buildLocked()
 }
 
-func (e *statEmitter) buildLocked(now time.Time) *pb.EventImportStatistic {
+func (e *statEmitter) buildLocked() *pb.EventImportStatistic {
 	pageRate, itemRate := e.ratesLocked()
 	return &pb.EventImportStatistic{
 		ImportId:       e.cfg.importId,
