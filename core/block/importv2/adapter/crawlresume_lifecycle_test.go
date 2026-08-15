@@ -193,6 +193,76 @@ func TestSweepResumesCrawl(t *testing.T) {
 		assert.False(t, runstore.IsActive(dir))
 	})
 
+	t.Run("a late-discovered child claimed but never recorded is RECOVERED, not lost as fake drift", func(t *testing.T) {
+		// given — the review P0-A reproduction, end to end: incarnation 1
+		// crawled parent p1, found child c1 only through p1's block tree
+		// (/search never returns it), claimed c1 durably, and died before
+		// c1's spool row. On resume p1 is recorded → skipped → its block
+		// tree is never re-walked, so without recovery c1 was silently
+		// dropped and the run REPORTED SUCCESS with a bogus
+		// 'disappeared between sessions' warning — while the page still
+		// exists in Notion.
+		handler := crawlWorkspace(t)
+		routes := map[string]string{
+			"GET /pages/c1": `{"id":"c1","archived":false,
+				"created_time":"2024-02-01T10:00:00.000Z","last_edited_time":"2024-02-02T10:00:00.000Z",
+				"parent":{"type":"page_id","page_id":"p1"},
+				"properties":{"Name":{"id":"title","type":"title","title":[{"plain_text":"Child","type":"text"}]}}}`,
+			"GET /blocks/c1/children": `{"results":[],"has_more":false,"next_cursor":null}`,
+		}
+		base := handler.inner
+		handler.inner = func(w http.ResponseWriter, r *http.Request) {
+			if response, ok := routes[r.Method+" "+r.URL.Path]; ok {
+				fmt.Fprint(w, response)
+				return
+			}
+			base(w, r)
+		}
+		fx, spc := crawlFixture(t, handler)
+		dir := makeCrawlRun(t, runstore.RunsRoot(fx.repo), "late-child", runstore.StateSuspended)
+		store, err := runstore.Open(context.Background(), dir)
+		require.NoError(t, err)
+		require.NoError(t, store.RecordClaims(context.Background(), []runstore.ClaimRecord{{
+			SourceKey: "c1", ObjectId: "obj-c1",
+			PayloadRoot: []byte("raw-c1"), PayloadHeads: []string{"obj-c1"},
+		}}))
+		require.NoError(t, store.Close())
+		var createdIds []string
+		var mu sync.Mutex
+		spc.EXPECT().CreateTreePayload(mock.Anything, mock.Anything).RunAndReturn(
+			func(ctx context.Context, _ payloadcreator.PayloadCreationParams) (treestorage.TreeStorageCreatePayload, error) {
+				return treestorage.TreeStorageCreatePayload{RootRawChange: &treechangeproto.RawTreeChangeWithId{
+					Id: "obj-p2", RawChange: []byte("raw-p2"),
+				}, Heads: []string{"obj-p2"}}, nil
+			}).Once() // only p2 mints: c1's recorded claim must be REUSED
+		spc.EXPECT().CreateTreeObjectWithPayload(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(
+			func(ctx context.Context, payload treestorage.TreeStorageCreatePayload, initFunc smartblock.InitFunc) (smartblock.SmartBlock, error) {
+				mu.Lock()
+				createdIds = append(createdIds, payload.RootRawChange.Id)
+				mu.Unlock()
+				sb := smarttest.New(payload.RootRawChange.Id)
+				if initCtx := initFunc(payload.RootRawChange.Id); initCtx.State != nil {
+					require.NoError(t, sb.Apply(initCtx.State))
+				}
+				return sb, nil
+			}).Times(3)
+
+		// when
+		fx.service.sweepAbandoned()
+
+		// then: the child MATERIALIZED under its recorded id — no data was
+		// lost and none was reported lost
+		assert.ElementsMatch(t, []string{"obj-p1", "obj-p2", "obj-c1"}, createdIds,
+			"the recovered child must materialize under the id its claim recorded")
+		for _, request := range handler.requests() {
+			assert.NotContains(t, []string{"GET /pages/p1", "GET /blocks/p1/children"}, request,
+				"the recorded parent still costs zero requests")
+		}
+		_, err = os.Stat(dir)
+		assert.True(t, os.IsNotExist(err), "the recovered resume completes and disposes the dir")
+		assert.Equal(t, 1, fx.finishEvents())
+	})
+
 	t.Run("a CRASHED crawl (state running) resumes the same way", func(t *testing.T) {
 		// given — §8.3 covers crash and suspend alike: running at sweep time
 		// IS the crash detector.

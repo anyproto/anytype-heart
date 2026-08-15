@@ -2,6 +2,7 @@ package notion
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -147,5 +148,188 @@ func TestPlanReuse(t *testing.T) {
 		// then: the recorder saw exactly the plan the run converted under
 		require.NotNil(t, recordedPlan, "the plan must be recorded before any emission")
 		assert.Equal(t, converter.plan, *recordedPlan)
+	})
+}
+
+// apiResponse scripts one route, failures included — the recovery
+// classification depends on exact status shapes.
+type apiResponse struct {
+	status int
+	body   string
+}
+
+// recoveryWorkspace is a tiny scripted API for the claim-recovery tests:
+// /search returns the given results; every other route must be scripted,
+// scripted failures included.
+func recoveryWorkspace(t *testing.T, search string, routes map[string]apiResponse) *recordingHandler {
+	t.Helper()
+	handler := &recordingHandler{}
+	handler.inner = func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost && r.URL.Path == "/search" {
+			fmt.Fprint(w, search)
+			return
+		}
+		if response, ok := routes[r.Method+" "+r.URL.Path]; ok {
+			if response.status != 0 {
+				w.WriteHeader(response.status)
+			}
+			fmt.Fprint(w, response.body)
+			return
+		}
+		t.Errorf("unexpected api call: %s %s", r.Method, r.URL.Path)
+		w.WriteHeader(http.StatusNotFound)
+	}
+	return handler
+}
+
+func recoveryConverter(t *testing.T, handler http.Handler) *Converter {
+	t.Helper()
+	server := httptest.NewServer(handler)
+	t.Cleanup(server.Close)
+	apiClient := client.NewClient("token",
+		client.WithBaseURL(server.URL),
+		client.WithRateLimit(1000),
+		client.WithRetryPolicy(client.RetryPolicy{MaxAttempts: 2, BaseDelay: time.Millisecond, MaxDelay: time.Millisecond, TotalBudget: time.Second}),
+	)
+	return New(apiClient, client.NewFileFetcher(), stubFactory{}, t.TempDir())
+}
+
+func driveConverter(t *testing.T, converter *Converter) *recordingSink {
+	t.Helper()
+	require.NoError(t, converter.EnumerateIdentities(context.Background(), func(importv2.IdentityClaim) error {
+		return nil
+	}))
+	sink := &recordingSink{}
+	_, err := converter.Convert(context.Background(), sink)
+	require.NoError(t, err)
+	return sink
+}
+
+// The recovery half of the seam (review P0-A): a previous incarnation's
+// claim with no spool row belongs to an entity /search never returns — it
+// was found through a parent's block tree, and on resume the recorded
+// parent is skipped, so the block tree is never re-walked. The claim key IS
+// the Notion id: recovery re-fetches it directly.
+func TestSetRecoverRefetchesUnrecordedClaims(t *testing.T) {
+	searchP1 := `{"results":[
+		{"object":"page","id":"p1","parent":{"type":"workspace","workspace":true},
+		 "properties":{"Name":{"type":"title","title":[{"plain_text":"One","type":"text"}]}}}
+	],"has_more":false,"next_cursor":null}`
+	childPage := `{"id":"c1","archived":false,
+		"created_time":"2024-02-01T10:00:00.000Z","last_edited_time":"2024-02-02T10:00:00.000Z",
+		"parent":{"type":"page_id","page_id":"p1"},
+		"properties":{"Name":{"id":"title","type":"title","title":[{"plain_text":"Child","type":"text"}]}}}`
+	notFound := apiResponse{status: http.StatusNotFound, body: `{"code":"object_not_found","message":"gone"}`}
+
+	t.Run("a live unrecorded claim is re-fetched directly and converted — no drift report", func(t *testing.T) {
+		// given: p1 recorded (skipped — its block tree, which references c1,
+		// is never re-walked), c1 claimed but never spooled
+		handler := recoveryWorkspace(t, searchP1, map[string]apiResponse{
+			"GET /pages/c1":           {body: childPage},
+			"GET /blocks/c1/children": {body: `{"results":[],"has_more":false,"next_cursor":null}`},
+		})
+		converter := recoveryConverter(t, handler)
+		converter.SetSkip(func(sourceKey string) bool { return sourceKey == "p1" })
+		converter.SetRecover([]string{"c1", "p1"}) // p1 re-enumerated: filtered by the converter
+
+		// when
+		sink := driveConverter(t, converter)
+
+		// then: the page imported; nothing was misreported as loss
+		require.NotNil(t, sink.byKey("c1"), "the recovered page must convert: it still exists in the source")
+		assert.Empty(t, sink.issues, "recovering a live page is not an issue of any kind")
+		var claimed []string
+		for _, claim := range sink.claims {
+			claimed = append(claimed, claim.SourceKey)
+		}
+		assert.Contains(t, claimed, "c1", "the recovered entity is re-claimed (absorbed as a reuse by identity)")
+		for _, request := range handler.requests() {
+			assert.NotContains(t, []string{"GET /pages/p1", "GET /blocks/p1/children"}, request,
+				"the recorded parent still costs zero requests")
+		}
+	})
+
+	t.Run("a positively-gone claim warns dataLoss once — the API's answer, not a guess", func(t *testing.T) {
+		// given: both fetch shapes answer not-found — the entity is gone (or
+		// the integration lost access; either way the source no longer
+		// offers it)
+		handler := recoveryWorkspace(t, searchP1, map[string]apiResponse{
+			"GET /pages/p1":            {body: `{"id":"p1","archived":false,"created_time":"2024-02-01T10:00:00.000Z","last_edited_time":"2024-02-02T10:00:00.000Z","properties":{"Name":{"id":"title","type":"title","title":[{"plain_text":"One","type":"text"}]}}}`},
+			"GET /blocks/p1/children":  {body: `{"results":[],"has_more":false,"next_cursor":null}`},
+			"GET /pages/gone":          notFound,
+			"GET /data_sources/gone":   notFound,
+		})
+		converter := recoveryConverter(t, handler)
+		converter.SetRecover([]string{"gone"})
+
+		// when
+		sink := driveConverter(t, converter)
+
+		// then
+		require.Len(t, sink.issues, 1)
+		assert.Equal(t, importv2.SeverityWarning, sink.issues[0].Severity)
+		assert.Equal(t, importv2.IssueDataLoss, sink.issues[0].Code)
+		assert.Equal(t, "gone", sink.issues[0].SourceKey)
+		assert.Nil(t, sink.byKey("gone"))
+	})
+
+	t.Run("a transient recovery failure is a loud object error, never drift", func(t *testing.T) {
+		// given: the API is misbehaving — the entity may well still exist,
+		// so classifying this as dataLoss would assert a deletion nobody
+		// established
+		unavailable := apiResponse{status: http.StatusServiceUnavailable, body: `{"code":"service_unavailable"}`}
+		handler := recoveryWorkspace(t, searchP1, map[string]apiResponse{
+			"GET /pages/p1":           {body: `{"id":"p1","archived":false,"created_time":"2024-02-01T10:00:00.000Z","last_edited_time":"2024-02-02T10:00:00.000Z","properties":{"Name":{"id":"title","type":"title","title":[{"plain_text":"One","type":"text"}]}}}`},
+			"GET /blocks/p1/children": {body: `{"results":[],"has_more":false,"next_cursor":null}`},
+			"GET /pages/flaky":        unavailable,
+			"GET /data_sources/flaky": unavailable,
+		})
+		converter := recoveryConverter(t, handler)
+		converter.SetRecover([]string{"flaky"})
+
+		// when
+		sink := driveConverter(t, converter)
+
+		// then: loud, retryable-shaped (so an all-or-nothing abort keeps the
+		// dir via the transient-keep rule), and NOT a drift claim
+		require.Len(t, sink.issues, 1)
+		assert.Equal(t, importv2.SeverityObjectError, sink.issues[0].Severity)
+		assert.Equal(t, importv2.IssueObjectFailed, sink.issues[0].Code)
+		assert.Equal(t, "flaky", sink.issues[0].SourceKey)
+		assert.True(t, client.IsRetryable(sink.issues[0].Err),
+			"the wrapped cause must keep its retryable shape for the dir-keep classification")
+	})
+
+	t.Run("a data-source claim recovers through its owning database", func(t *testing.T) {
+		// given: ds1 was adopted late (a child_database block in a page now
+		// recorded); its id is not a page, so the ladder goes
+		// /pages (404) → /data_sources → /databases/{owner}, which adopts
+		// every data source with proper parents through the proven
+		// discovery path.
+		handler := recoveryWorkspace(t, searchP1, map[string]apiResponse{
+			"GET /pages/p1":           {body: `{"id":"p1","archived":false,"created_time":"2024-02-01T10:00:00.000Z","last_edited_time":"2024-02-02T10:00:00.000Z","properties":{"Name":{"id":"title","type":"title","title":[{"plain_text":"One","type":"text"}]}}}`},
+			"GET /blocks/p1/children": {body: `{"results":[],"has_more":false,"next_cursor":null}`},
+			"GET /pages/ds1":          notFound,
+			"GET /data_sources/ds1": {body: `{"id":"ds1","title":[{"plain_text":"Tasks","type":"text"}],
+				"parent":{"type":"database_id","database_id":"realdb"},
+				"created_time":"2024-01-01T10:00:00.000Z","last_edited_time":"2024-01-02T10:00:00.000Z",
+				"properties":{"Name":{"id":"title","type":"title","name":"Name"}}}`},
+			"GET /databases/realdb": {body: `{"id":"realdb","title":[{"plain_text":"Tasks","type":"text"}],
+				"parent":{"type":"workspace","workspace":true},
+				"data_sources":[{"id":"ds1","name":"Tasks"}]}`},
+		})
+		converter := recoveryConverter(t, handler)
+		converter.SetRecover([]string{"ds1"})
+
+		// when
+		sink := driveConverter(t, converter)
+
+		// then: the collection converted (schema fetched, rows mappable);
+		// nothing warning-or-worse (the type-suggestor info line is the
+		// normal late-database path speaking)
+		require.NotNil(t, sink.byKey("ds1"), "the recovered data source must convert as a collection")
+		for _, issue := range sink.issues {
+			assert.Less(t, issue.Severity, importv2.SeverityWarning, "unexpected issue: %v", issue)
+		}
 	})
 }

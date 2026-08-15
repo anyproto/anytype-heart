@@ -2,6 +2,7 @@ package notion
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -76,11 +77,15 @@ type Converter struct {
 	schemaFetches  map[string]*schemaFetch
 
 	// skip marks entities a previous incarnation already recorded
-	// (ResumableConverter, DM spec §8.3); nil on a fresh run. planReuse is
-	// the matching plan wiring: record on a fresh run, preset on a resumed
-	// one (08-13 §6.3 — the plan is never recomputed).
-	skip      func(sourceKey string) bool
-	planReuse schemaplan.Reuse
+	// (ResumableConverter, DM spec §8.3); nil on a fresh run. recoverKeys
+	// are prior claims the spool never got (the seam's obligation half,
+	// review P0-A) — re-fetched directly after the drain, because the skip
+	// set suppresses re-walking the recorded parents that discovered them.
+	// planReuse is the matching plan wiring: record on a fresh run, preset
+	// on a resumed one (08-13 §6.3 — the plan is never recomputed).
+	skip        func(sourceKey string) bool
+	recoverKeys []string
+	planReuse   schemaplan.Reuse
 }
 
 // Option configures a per-run converter.
@@ -109,6 +114,14 @@ func WithPlanReuse(reuse schemaplan.Reuse) Option {
 // fetch and block-tree crawl; the re-search itself costs ~1 request per
 // 100 entities).
 func (c *Converter) SetSkip(skip func(sourceKey string) bool) { c.skip = skip }
+
+// SetRecover implements the seam's obligation half (importv2
+// .ResumableConverter, review P0-A): /search is eventually consistent, so
+// enumeration is INCOMPLETE here — a prior claim that neither re-enumerates
+// nor sits in the spool may still exist (a page found through a recorded
+// parent's block tree, which the skip set now suppresses re-walking). Each
+// key is re-fetched directly after the drain; see recoverUnrecorded.
+func (c *Converter) SetRecover(unrecordedClaims []string) { c.recoverKeys = unrecordedClaims }
 
 func (c *Converter) skipRecorded(id string) bool { return c.skip != nil && c.skip(id) }
 
@@ -218,8 +231,36 @@ func (c *Converter) Convert(ctx context.Context, sink importv2.Sink) (importv2.R
 	}
 	// Drain second-chance discoveries (§16 item 3). The queue grows while it
 	// drains — a late page's blocks may reference further omitted children.
-	for i := 0; i < len(c.pending); i++ {
-		entity := c.pending[i]
+	drained := 0
+	if err := c.drainPending(ctx, sink, &drained); err != nil {
+		return importv2.RootSpec{}, err
+	}
+	// Claim recovery (review P0-A, resumed crawls only): prior claims the
+	// spool never got are re-fetched directly — the skip set suppressed
+	// re-walking the recorded parents that discovered them, so the drain
+	// alone cannot re-find them. Recovered entities join c.pending and
+	// drain like any late discovery, their own children included: the loss
+	// was transitive, so the recovery is too.
+	if len(c.recoverKeys) > 0 {
+		if err := c.recoverUnrecorded(ctx, sink); err != nil {
+			return importv2.RootSpec{}, err
+		}
+		if err := c.drainPending(ctx, sink, &drained); err != nil {
+			return importv2.RootSpec{}, err
+		}
+	}
+	return importv2.RootSpec{
+		CollectionName: rootCollectionName,
+		WidgetLayout:   model.BlockContentWidget_CompactList,
+	}, nil
+}
+
+// drainPending converts queued late discoveries from *drained onward,
+// advancing the cursor so a later drain pass continues where this one
+// stopped (the queue grows while it drains).
+func (c *Converter) drainPending(ctx context.Context, sink importv2.Sink, drained *int) error {
+	for ; *drained < len(c.pending); *drained++ {
+		entity := c.pending[*drained]
 		if !entity.isCollectionLike() && c.skipRecorded(entity.Id) {
 			// A prior incarnation's late discovery, re-discovered and already
 			// recorded: same skip rule as the pass-1 pages above. Collection-
@@ -233,13 +274,85 @@ func (c *Converter) Convert(ctx context.Context, sink importv2.Sink) (importv2.R
 			err = c.convertPage(ctx, entity, sink)
 		}
 		if err != nil {
-			return importv2.RootSpec{}, err
+			return err
 		}
 	}
-	return importv2.RootSpec{
-		CollectionName: rootCollectionName,
-		WidgetLayout:   model.BlockContentWidget_CompactList,
-	}, nil
+	return nil
+}
+
+// recoverUnrecorded re-fetches every recovery key this incarnation has not
+// re-encountered (review P0-A). The claim key IS the Notion id, so a direct
+// GET settles each one three ways: alive → adopted and converted like any
+// late discovery; positively gone (404/403 from the API) → an honest
+// data-loss warning; anything else → a loud object failure that keeps its
+// retryable shape — never a drift claim nobody established.
+func (c *Converter) recoverUnrecorded(ctx context.Context, sink importv2.Sink) error {
+	for _, key := range c.recoverKeys {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if _, seen := c.entityById[key]; seen {
+			continue // re-enumerated by /search, or re-discovered from an unrecorded parent
+		}
+		c.recoverOne(ctx, key, sink)
+	}
+	return nil
+}
+
+func (c *Converter) recoverOne(ctx context.Context, key string, sink importv2.Sink) {
+	// GET /pages/{id} carries the same stub shape /search results do.
+	var page searchResult
+	pageErr := c.client.Request(ctx, http.MethodGet, "/pages/"+key, nil, &page)
+	if pageErr == nil && page.Id != "" {
+		// Adoption failures (discovery cap, claim error) issue their own
+		// warnings under this key — reconciliation stays satisfied.
+		c.adoptLateEntity(ctx, Entity{Id: page.Id, Parent: page.Parent, Title: titleOf(page)}, sink)
+		return
+	}
+	// Not fetchable as a page — a late-discovered DATA SOURCE has the same
+	// claim shape. Resolve it through its owning database: the proven
+	// discovery path, proper parents included, and it adopts sibling data
+	// sources exactly as the original discovery did.
+	var source struct {
+		Id     string `json:"id"`
+		Parent Parent `json:"parent"`
+	}
+	sourceErr := c.client.Request(ctx, http.MethodGet, "/data_sources/"+key, nil, &source)
+	if sourceErr == nil {
+		if source.Parent.DatabaseId != "" {
+			c.discoverDatabase(ctx, source.Parent.DatabaseId, sink)
+			if _, seen := c.entityById[key]; seen {
+				return
+			}
+		}
+		// The data source EXISTS but could not be adopted (its database
+		// fetch failed, the cap, an odd parent shape): loud failure below —
+		// classifying a confirmed-alive entity as drift would be the exact
+		// lie this path exists to remove.
+		sink.Issue(importv2.ObjectError(importv2.IssueObjectFailed, key,
+			fmt.Errorf("recover claimed data source: could not adopt via its database")))
+		return
+	}
+	if claimGone(pageErr) && claimGone(sourceErr) {
+		// POSITIVE not-found from the API, both shapes: the source no longer
+		// offers the entity — deleted, or no longer shared with the
+		// integration. This is the honest drift report (08-13 §5.4).
+		sink.Issue(importv2.Warning(importv2.IssueDataLoss, key,
+			"object found by an interrupted import session no longer exists in Notion (or is no longer shared with the integration); it was not imported"))
+		return
+	}
+	// Transport trouble, rate limits, 5xx: the entity may well still exist.
+	// Loud, and the wrapped cause keeps its retryable shape so an
+	// all-or-nothing abort classifies as transient and keeps the dir.
+	sink.Issue(importv2.ObjectError(importv2.IssueObjectFailed, key,
+		fmt.Errorf("re-fetch claimed object: %w", errors.Join(pageErr, sourceErr))))
+}
+
+// claimGone reports a positive the-source-no-longer-offers-it answer: 404
+// (deleted) or 403 (sharing revoked). Anything else — transport failures,
+// rate limits, 5xx — proves nothing about the entity.
+func claimGone(err error) bool {
+	return errors.Is(err, client.ErrNotFound) || errors.Is(err, client.ErrForbidden)
 }
 
 // discoverPage is the second-chance fetch for a page id referenced by a

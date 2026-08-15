@@ -18,15 +18,19 @@ import (
 // engine drops the already-recorded rows before any download.
 
 // skippableConverter is a scriptConverter implementing the 08-13 §6.3 seam:
-// it consults Skip per object before "fetching" (emitting) it.
+// it consults Skip per object before "fetching" (emitting) it, and records
+// the recovery set the engine hands it (the P0-A half of the seam).
 type skippableConverter struct {
 	scriptConverter
 	skip      func(sourceKey string) bool
 	skipCalls int
 	fetched   []string
+	recovered []string
 }
 
 func (c *skippableConverter) SetSkip(skip func(sourceKey string) bool) { c.skip = skip }
+
+func (c *skippableConverter) SetRecover(keys []string) { c.recovered = keys }
 
 func (c *skippableConverter) Convert(ctx context.Context, sink importv2.Sink) (importv2.RootSpec, error) {
 	for _, o := range c.objects {
@@ -92,6 +96,33 @@ func TestResumeCrawlSkipSeam(t *testing.T) {
 		assert.Equal(t, []string{"a", "b", "c", "d"}, spoolKeys(t, fx),
 			"the spool must extend in emission order, old rows first")
 		assert.Equal(t, int64(4), result.Created)
+	})
+}
+
+func TestResumeCrawlRecoverSeam(t *testing.T) {
+	t.Run("the engine hands the converter exactly the prior claims the spool never got", func(t *testing.T) {
+		// given — review P0-A: an entity discoverable ONLY through a parent's
+		// block tree (the GO-5273 class) is claimed on sight; if the crash
+		// lands before its spool row, the resumed crawl skips the recorded
+		// parent, never re-walks its blocks, and the entity is silently lost
+		// — misreported as source drift. The claim key IS the source id, so
+		// the converter can re-fetch it directly; the engine's half is
+		// handing over the set: PriorClaims \ SpooledKeys, sorted.
+		fx := newEngineFixture(t)
+		fillSpool(t, fx, pageObj("a", false))
+		converter := &skippableConverter{scriptConverter: scriptConverter{
+			objects: []*importv2.Object{pageObj("a", false), pageObj("b", false)},
+		}}
+
+		// when: a spooled, b re-enumerating, c and z claimed-but-unrecorded
+		result := ResumeCrawl(context.Background(), resumeRequest(), converter, fx.deps,
+			crawlState([]string{"a"}, []string{"a", "z", "c", "b"}))
+
+		// then: the unrecorded claims arrive sorted; the converter filters
+		// re-encountered ones itself (b re-enumerates and converts normally)
+		require.NoError(t, result.Err)
+		assert.Equal(t, []string{"b", "c", "z"}, converter.recovered,
+			"every prior claim without a spool row must be offered for recovery")
 	})
 }
 
@@ -164,6 +195,13 @@ func TestResumeCrawlStaleClaims(t *testing.T) {
 		assert.Equal(t, importv2.SeverityWarning, result.Issues[0].Severity)
 		assert.Equal(t, importv2.IssueDataLoss, result.Issues[0].Code)
 		assert.Equal(t, "vanished", result.Issues[0].SourceKey)
+		// The wording states what the engine KNOWS — the claim was not found
+		// again — never a deletion it cannot establish (review P0-A: for a
+		// converter with incomplete enumeration the entity may still exist;
+		// such converters carry their own recovery and their own precise
+		// messages, and this fallback must stay honest for the rest).
+		assert.NotContains(t, result.Issues[0].Message, "disappeared",
+			"the fallback warning must not assert a deletion the engine cannot establish")
 	})
 
 	t.Run("a claim RE-ENUMERATED this incarnation and then dropped is still a converter bug", func(t *testing.T) {

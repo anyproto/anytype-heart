@@ -87,9 +87,23 @@ type Sink interface {
 // regardless, so a converter that ignores the seam is merely slower, never
 // incorrect. For Notion each skipped page saves the ~2 requests that make an
 // interrupted crawl expensive to redo.
+//
+// SetRecover is the seam's obligation half (review P0-A): keys a previous
+// incarnation CLAIMED but never recorded. On a resumed crawl the skip set
+// suppresses re-walking recorded parents, so an entity reachable only
+// through a parent's content (Notion's second-chance discovery — /search is
+// eventually consistent and omits it) would never be re-found: claimed,
+// unspooled, and silently lost as bogus "source drift". A converter whose
+// enumeration is INCOMPLETE must re-fetch each key directly (the claim key
+// IS the source id) — importing it if it still exists, reporting its own
+// precise issue otherwise. A converter whose pass-1 enumeration is a
+// complete listing of the source may ignore the set: for it,
+// non-re-enumeration positively establishes the entity is gone, and the
+// engine's reconciliation warning covers the class.
 type ResumableConverter interface {
 	Converter
 	SetSkip(skip func(sourceKey string) bool)
+	SetRecover(unrecordedClaims []string)
 }
 
 // CollectionFactory builds a collection object whose membership references

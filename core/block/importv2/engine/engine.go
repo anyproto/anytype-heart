@@ -196,6 +196,20 @@ func startRun(ctx context.Context, req importv2.Request, converter importv2.Conv
 				_, spooled := crawl.SpooledKeys[sourceKey]
 				return spooled
 			})
+			// The seam's obligation half (review P0-A): every prior claim
+			// without a spool row is offered for recovery — the skip set
+			// suppresses re-walking recorded parents, so a claim made during
+			// pass-2 discovery would otherwise never be re-found and would
+			// misreport as source drift. Sorted for determinism; the
+			// converter filters keys it re-encounters on its own.
+			unrecorded := make([]string, 0, len(crawl.PriorClaims))
+			for key := range crawl.PriorClaims {
+				if _, spooled := crawl.SpooledKeys[key]; !spooled {
+					unrecorded = append(unrecorded, key)
+				}
+			}
+			sort.Strings(unrecorded)
+			rc.SetRecover(unrecorded)
 		}
 	}
 	defer func() {
@@ -816,11 +830,16 @@ func (r *run) reconcileClaims() {
 		if r.staleAcrossIncarnations(key) {
 			// Expected drift on a crawl-resumed run, not a converter bug
 			// (08-13 §5.4): the entity was claimed in a previous session,
-			// never recorded, and the source no longer offers it. Loud but
-			// non-failing — the invariant's teeth stay for claims made (or
-			// re-made) within the current incarnation.
+			// never recorded, and this session did not find it again. Loud
+			// but non-failing — the invariant's teeth stay for claims made
+			// (or re-made) within the current incarnation. The wording
+			// states only what the engine KNOWS (review P0-A): whether
+			// non-re-enumeration proves deletion depends on the converter's
+			// enumeration completeness — a converter that can re-fetch by
+			// key does so via the recovery seam and reports its own precise
+			// issue, which excludes the key from this fallback.
 			r.report(importv2.Warning(importv2.IssueDataLoss, key,
-				"source entity disappeared between import sessions; its identity claim was dropped"))
+				"object claimed by an interrupted import session was not found when the import resumed; it was not imported"))
 			continue
 		}
 		r.failed.Add(1)
