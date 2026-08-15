@@ -337,9 +337,6 @@ None of these require client changes; they are worth knowing for support and rel
 
 Be aware of these when planning UI:
 
-- **No dedicated progress phase for the AI analysis step.** The plan runs between "Scanning source"
-  and "Importing objects" and can take seconds on a local model with no visible label change. A
-  `Reporter.Phase("Analyzing structure")` is planned; until then the progress bar simply pauses.
 - **No "test connection" RPC** for the AI endpoint; the first import is the test.
 - **No chunking for very large workspaces**: the whole schema goes in one prompt. An oversized
   workspace fails closed (built-in rules + `llmPlanFailed` warning), it does not error the import.

@@ -64,7 +64,9 @@ known while **nothing has been emitted yet**:
 
 This keeps the plan step backpressure-safe (blocking the converter goroutine just pauses the
 stream), gives it the run's `ctx` for cancellation for free, and needs no new engine pass. Progress
-surfaces as a `Reporter.Phase("Analyzing structure")` between enumeration and conversion.
+surfaces as the ANALYZING phase of the `importStatistic` event (deferred-materialization spec
+§15), announced by the converter around its own plan step and bracketed unconditionally, so a
+client that saw the stage open always sees it close.
 
 **Converter-contract note.** Rule 5 (deterministic output) is restated as: deterministic *given the
 plan*. The plan itself is captured per run; tests script it (§8), so goldens and cassettes stay
