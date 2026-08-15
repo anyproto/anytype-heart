@@ -333,3 +333,46 @@ func TestSetRecoverRefetchesUnrecordedClaims(t *testing.T) {
 		}
 	})
 }
+
+func TestSkipCarveOutForCollections(t *testing.T) {
+	t.Run("a RECORDED data source re-discovered late still re-converts — rows need its property mappings", func(t *testing.T) {
+		// given — the deliberate carve-out in the pending drain (review P2:
+		// removing it broke no test in the tree, so this one exists): the
+		// skip set spares recorded PAGES their fetches, but a collection-like
+		// discovery must re-convert regardless, because its schema fetch
+		// rebuilds the property mappings THIS incarnation's row conversions
+		// need — converter memory a crash lost. Here p-live's link_to_page
+		// re-discovers realdb whose data source ds1 is already recorded.
+		search := `{"results":[
+			{"object":"page","id":"p-live","parent":{"type":"workspace","workspace":true},
+			 "properties":{"Name":{"type":"title","title":[{"plain_text":"Live","type":"text"}]}}}
+		],"has_more":false,"next_cursor":null}`
+		handler := recoveryWorkspace(t, search, map[string]apiResponse{
+			"GET /pages/p-live": {body: `{"id":"p-live","archived":false,
+				"created_time":"2024-02-01T10:00:00.000Z","last_edited_time":"2024-02-02T10:00:00.000Z",
+				"properties":{"Name":{"id":"title","type":"title","title":[{"plain_text":"Live","type":"text"}]}}}`},
+			"GET /blocks/p-live/children": {body: `{"results":[
+				{"id":"lb1","type":"link_to_page","has_children":false,"link_to_page":{"type":"database_id","database_id":"realdb"}}
+			],"has_more":false,"next_cursor":null}`},
+			"GET /databases/realdb": {body: `{"id":"realdb","title":[{"plain_text":"Tasks","type":"text"}],
+				"parent":{"type":"workspace","workspace":true},
+				"data_sources":[{"id":"ds1","name":"Tasks"}]}`},
+			"GET /data_sources/ds1": {body: `{"id":"ds1","title":[{"plain_text":"Tasks","type":"text"}],
+				"created_time":"2024-01-01T10:00:00.000Z","last_edited_time":"2024-01-02T10:00:00.000Z",
+				"properties":{"Name":{"id":"title","type":"title","name":"Name"}}}`},
+		})
+		converter := recoveryConverter(t, handler)
+		converter.SetSkip(func(sourceKey string) bool { return sourceKey == "ds1" }) // ds1 recorded
+
+		// when
+		sink := driveConverter(t, converter)
+
+		// then: the schema was re-fetched and the collection re-emitted (the
+		// engine's sink backstop absorbs the duplicate row; the converter's
+		// job is the property mappings)
+		assert.Contains(t, handler.requests(), "GET /data_sources/ds1",
+			"the recorded data source's schema must be re-fetched: row mappings live in converter memory")
+		assert.NotNil(t, sink.byKey("ds1"),
+			"a collection-like discovery re-converts even when recorded (the drain carve-out)")
+	})
+}

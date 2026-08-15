@@ -526,3 +526,126 @@ func TestStoredRequestRoundTrip(t *testing.T) {
 		assert.Equal(t, want, stored)
 	})
 }
+
+// markdownCrawlRequest is a two-path markdown wire request over real temp
+// dirs (one page each).
+func markdownCrawlRequest(t *testing.T) (*pb.RpcObjectImportRequest, []string) {
+	t.Helper()
+	dir1, dir2 := t.TempDir(), t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir1, "a.md"), []byte("# A"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(dir2, "b.md"), []byte("# B"), 0o600))
+	return &pb.RpcObjectImportRequest{
+		SpaceId:    "space-1",
+		Type:       model.Import_Markdown,
+		NoProgress: true,
+		Params: &pb.RpcObjectImportRequestParamsOfMarkdownParams{
+			MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{
+				Path:         []string{dir1, dir2},
+				NoCollection: true,
+			},
+		},
+	}, []string{dir1, dir2}
+}
+
+// makeMarkdownCrawlRun builds a run dir imitating a markdown import killed
+// mid-crawl on its FIRST path: a.md claimed and spooled, no fetched marker,
+// the two-path request stored at the given pathIndex.
+func makeMarkdownCrawlRun(t *testing.T, root, name string, wireReq *pb.RpcObjectImportRequest, pathIndex int) string {
+	t.Helper()
+	ctx := context.Background()
+	requestBlob, err := wireReq.Marshal()
+	require.NoError(t, err)
+	dir := filepath.Join(root, name)
+	store, err := runstore.Create(ctx, dir, runstore.Manifest{
+		RunId: name, SpaceId: "space-1", Converter: "Markdown",
+		ImportType:   int64(model.Import_Markdown),
+		NoCollection: true,
+		PathIndex:    pathIndex,
+		Request:      requestBlob,
+	})
+	require.NoError(t, err)
+	require.NoError(t, store.RecordClaims(ctx, []runstore.ClaimRecord{{
+		SourceKey: "a.md", ObjectId: "obj-a",
+		PayloadRoot: []byte("raw-a"), PayloadHeads: []string{"obj-a"},
+	}}))
+	spool, err := store.Spool(ctx)
+	require.NoError(t, err)
+	require.NoError(t, spool.Append(ctx, &importv2.Object{
+		SourceKey: "a.md",
+		SbType:    coresb.SmartBlockTypePage,
+		Payload:   &importv2.Snapshot{},
+	}))
+	require.NoError(t, store.SetState(ctx, runstore.StateSuspended))
+	require.NoError(t, store.Close())
+	return dir
+}
+
+// The markdown branch of resumeCrawlRun had no adapter-level coverage
+// (review P2): the stored-request re-parse, the PathIndex bounds check, and
+// the multi-path continuation all run here.
+func TestCrawlResumeMarkdown(t *testing.T) {
+	t.Run("a multi-path markdown crawl resumes its path and finishes the remaining paths fresh", func(t *testing.T) {
+		// given
+		fx, spc := resumeFixture(t)
+		fx.service.crawlResumeRunner = fx.service.resumeCrawlRun // the real branch
+		fx.service.engineRunner = fx.service.runEngine           // the continuation runs paths k+1.. as FRESH runs
+		wireReq, _ := markdownCrawlRequest(t)
+		dir := makeMarkdownCrawlRun(t, runstore.RunsRoot(fx.repo), "md-crawl", wireReq, 0)
+		var createdIds []string
+		var mu sync.Mutex
+		spc.EXPECT().CreateTreePayload(mock.Anything, mock.Anything).RunAndReturn(
+			func(ctx context.Context, _ payloadcreator.PayloadCreationParams) (treestorage.TreeStorageCreatePayload, error) {
+				return treestorage.TreeStorageCreatePayload{RootRawChange: &treechangeproto.RawTreeChangeWithId{
+					Id: "obj-b", RawChange: []byte("raw-b"),
+				}, Heads: []string{"obj-b"}}, nil
+			}).Once() // only path 2's page mints; a.md's recorded claim is reused
+		spc.EXPECT().CreateTreeObjectWithPayload(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(
+			func(ctx context.Context, payload treestorage.TreeStorageCreatePayload, initFunc smartblock.InitFunc) (smartblock.SmartBlock, error) {
+				mu.Lock()
+				createdIds = append(createdIds, payload.RootRawChange.Id)
+				mu.Unlock()
+				sb := smarttest.New(payload.RootRawChange.Id)
+				if initCtx := initFunc(payload.RootRawChange.Id); initCtx.State != nil {
+					require.NoError(t, sb.Apply(initCtx.State))
+				}
+				return sb, nil
+			}).Times(2)
+
+		// when
+		fx.service.sweepAbandoned()
+
+		// then: the resumed path materialized its recording; the second path
+		// ran as a fresh run; every dir settled; one combined finish
+		assert.ElementsMatch(t, []string{"obj-a", "obj-b"}, createdIds,
+			"path 1's recorded page and path 2's fresh page must both materialize")
+		remaining, err := runstore.ListRunDirs(runstore.RunsRoot(fx.repo))
+		require.NoError(t, err)
+		assert.Empty(t, remaining, "the resumed dir and the continuation's own dir must both settle")
+		_, statErr := os.Stat(dir)
+		assert.True(t, os.IsNotExist(statErr))
+		assert.Equal(t, 1, fx.finishEvents(), "one combined finish for the whole request")
+	})
+
+	t.Run("a stored request whose PathIndex is out of bounds keeps the dir, attempt spent", func(t *testing.T) {
+		// given: the strict prologue — a contradiction between manifest and
+		// request must not reach the engine, and must not destroy the dir
+		// either (the sweep's cap routes it to compensation eventually)
+		fx, _ := resumeFixture(t)
+		fx.service.crawlResumeRunner = fx.service.resumeCrawlRun
+		wireReq, _ := markdownCrawlRequest(t)
+		dir := makeMarkdownCrawlRun(t, runstore.RunsRoot(fx.repo), "md-oob", wireReq, 7)
+
+		// when
+		fx.service.sweepAbandoned()
+
+		// then
+		store, err := runstore.Open(context.Background(), dir)
+		require.NoError(t, err, "a prologue failure keeps the dir for the capped retry")
+		defer store.Close()
+		manifest, err := store.Manifest(context.Background())
+		require.NoError(t, err)
+		assert.Equal(t, 1, manifest.CrawlResumeAttempts,
+			"a genuine (non-shutdown) prologue failure keeps its attempt spent — the cap must still bound it")
+		assert.Zero(t, fx.finishEvents())
+	})
+}

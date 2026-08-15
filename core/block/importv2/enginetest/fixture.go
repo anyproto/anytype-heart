@@ -9,6 +9,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -34,6 +35,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/importv2/resolve"
 	"github.com/anyproto/anytype-heart/core/block/importv2/resume"
 	"github.com/anyproto/anytype-heart/core/block/importv2/runstore"
+	"github.com/anyproto/anytype-heart/core/block/importv2/schemaplan"
 	"github.com/anyproto/anytype-heart/core/block/importv2/source"
 	"github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -435,6 +437,19 @@ func (fx *Fixture) durableDeps(t *testing.T, store *runstore.Store, req importv2
 	return deps, persister
 }
 
+// planRecorder mirrors the adapter's: the sanitized plan lands in the run
+// kv before any emission, so a crawl resume can reuse it (08-13 §6.3).
+func planRecorder(t *testing.T, store *runstore.Store) func(schemaplan.Plan) error {
+	t.Helper()
+	return func(plan schemaplan.Plan) error {
+		data, err := json.Marshal(plan)
+		if err != nil {
+			return err
+		}
+		return store.SetPlanJSON(context.Background(), data)
+	}
+}
+
 // RunMarkdownDurable runs one incarnation over a real run store in dir.
 // The store is closed but the dir is NOT settled — an interrupted run
 // (ctx cancelled with importv2.ErrSuspended mid-materialize) leaves
@@ -450,7 +465,9 @@ func (fx *Fixture) RunMarkdownDurable(ctx context.Context, t *testing.T, root st
 	})
 	require.NoError(t, err)
 	deps, _ := fx.durableDeps(t, store, req, resume.ClaimLedgerOption(store))
-	converter := markdown.New(src, markdown.Params{}, stubCollectionFactory{})
+	converter := markdown.New(src, markdown.Params{
+		PlanReuse: schemaplan.Reuse{Record: planRecorder(t, store)},
+	}, stubCollectionFactory{})
 	result := engine.Run(ctx, req, converter, deps)
 	require.NoError(t, store.Close())
 	return result
@@ -475,9 +492,13 @@ func (fx *Fixture) ResumeDurable(ctx context.Context, t *testing.T, dir string, 
 
 // ResumeCrawlDurable restarts a run killed MID-CRAWL (DM spec §8.3),
 // through the same glue the adapter's sweep uses: LoadCrawl, reclaimable
-// identity, a converter rebuilt over the live source, engine.ResumeCrawl.
-// Unlike ResumeDurable this needs the source — that is the class's defining
-// property, and why the manifest stores the request for it.
+// identity, a converter rebuilt over the live source with the RECORDED
+// plan preset (review P2: the fixture previously discarded the loaded
+// PlanJSON, so plan reuse was pinned only at unit level — here the planner
+// is poisoned whenever a recording exists, making the reuse load-bearing
+// in every crawl-crash test), engine.ResumeCrawl. Unlike ResumeDurable
+// this needs the source — that is the class's defining property, and why
+// the manifest stores the request for it.
 func (fx *Fixture) ResumeCrawlDurable(ctx context.Context, t *testing.T, dir, root string, req importv2.Request) *importv2.Result {
 	t.Helper()
 	store, err := runstore.Open(context.Background(), dir)
@@ -490,7 +511,17 @@ func (fx *Fixture) ResumeCrawlDurable(ctx context.Context, t *testing.T, dir, ro
 	defer src.Close()
 	deps, _ := fx.durableDeps(t, store, req,
 		resume.ClaimLedgerOption(store), state.IdentityOption())
-	converter := markdown.New(src, markdown.Params{}, stubCollectionFactory{})
+	params := markdown.Params{PlanReuse: schemaplan.Reuse{Record: planRecorder(t, store)}}
+	if len(state.PlanJSON) > 0 {
+		preset := &schemaplan.Plan{}
+		require.NoError(t, json.Unmarshal(state.PlanJSON, preset))
+		params.PlanReuse.Preset = preset
+		params.Planner = schemaplan.PlannerFunc(func(context.Context, []schemaplan.ContainerSchema) (schemaplan.Plan, error) {
+			t.Error("a resumed crawl with a recorded plan must never replan (08-13 §6.3)")
+			return schemaplan.Plan{}, nil
+		})
+	}
+	converter := markdown.New(src, params, stubCollectionFactory{})
 	return engine.ResumeCrawl(ctx, req, converter, deps, &state.Engine)
 }
 
