@@ -27,7 +27,18 @@ const (
 	// requestsPerSecond follows Notion's documented average; bursts are
 	// allowed by the API, pushback is handled via Retry-After.
 	requestsPerSecond = 3
+	// requestsPerPage is what one page costs: the page object plus its block
+	// tree (notion/prefetch.go). Deep trees cost more, so this is the
+	// OPTIMISTIC figure — which is what a ceiling must be.
+	requestsPerPage = 2
 )
+
+// PageRateCeiling is the fastest a crawl of this API can possibly go, in
+// pages per second. The §15.3 fetching ETA is capped by it so a burst can
+// never promise the user a finish time Notion will not allow.
+func PageRateCeiling() float64 {
+	return float64(requestsPerSecond) / requestsPerPage
+}
 
 // Transport performs exactly one Notion API round trip. Production wraps
 // http.Client; tests substitute recorders or hostile fakes.

@@ -6,15 +6,20 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/globalsign/mgo/bson"
 
 	"github.com/anyproto/anytype-heart/core/block/importv2"
 	"github.com/anyproto/anytype-heart/core/block/importv2/identity"
+	notionclient "github.com/anyproto/anytype-heart/core/block/importv2/notion/client"
 	"github.com/anyproto/anytype-heart/core/block/importv2/resume"
 	"github.com/anyproto/anytype-heart/core/block/importv2/runstore"
 	"github.com/anyproto/anytype-heart/core/block/importv2/schemaplan"
+	"github.com/anyproto/anytype-heart/core/block/process"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/vcs"
 )
 
@@ -28,15 +33,88 @@ type runLifecycle struct {
 	spillDir string
 	cleanup  func()
 	settled  bool
+	// stats is the run's §15 statistic emitter — never nil, so every call
+	// site can report unconditionally. It is the push producer AND what the
+	// pull RPCs serve for this run while it is live.
+	stats *statEmitter
 	// untrack removes the run from the live-status registry (runstatus.go);
 	// called on every settlement path exactly once via settleTracking.
 	untrack func()
+}
+
+// newLifecycle is the ONE construction of a run's lifecycle handle, shared
+// by the fresh run and both resume branches. It exists because the live
+// registry hold used to be wired at three sites and the statistic emitter
+// would have made that four — the recurring shape where a rule holds in one
+// sibling and not in the next.
+func (s *service) newLifecycle(store *runstore.Store, manifest runstore.Manifest, progress process.Progress, ceiling float64) *runLifecycle {
+	fetching, materializing := safeToCloseFor(manifest)
+	send := func(*pb.EventImportStatistic) {}
+	if s.eventSender != nil {
+		send = func(status *pb.EventImportStatistic) {
+			s.eventSender.Broadcast(event.NewEventSingleMessage("",
+				&pb.EventMessageValueOfImportStatistic{ImportStatistic: status}))
+		}
+	}
+	lc := &runLifecycle{
+		store: store,
+		stats: newStatEmitter(statConfig{
+			importId:                 manifest.RunId,
+			processId:                progressId(progress),
+			importType:               model.ImportType(manifest.ImportType),
+			send:                     send,
+			now:                      time.Now,
+			pageRateCeiling:          ceiling,
+			safeToCloseFetching:      fetching,
+			safeToCloseMaterializing: materializing,
+		}),
+	}
+	if store != nil {
+		lc.spillDir = store.SpillDir()
+		lc.untrack = s.trackLive(manifest.RunId, store, lc)
+	}
+	return lc
+}
+
+func progressId(progress process.Progress) string {
+	if progress == nil {
+		return ""
+	}
+	return progress.Id()
+}
+
+// safeToCloseFor evaluates the SWEEP's own resume predicates for the state
+// this run will be dormant in if the app closes during each phase: mid-crawl
+// the dir is `running` with its request held, mid-materialize it is
+// `materializing`. Same functions, same attempt caps — so the surface and
+// the sweep's actual behavior cannot drift apart, which is the exact defect
+// the DM-3 fix round found in the pull side of this field.
+//
+// Evaluated once per run because the inputs move only at lifecycle
+// transitions: a mid-run poll must not cost a manifest read per event.
+func safeToCloseFor(m runstore.Manifest) (fetching, materializing bool) {
+	crawl := m
+	crawl.State = runstore.StateRunning
+	crawl.MaterializeStarted = false
+	fetching = crawlResumable(crawl) && crawl.CrawlResumeAttempts < maxResumeAttempts
+
+	mat := m
+	mat.State = runstore.StateMaterializing
+	mat.MaterializeStarted = true
+	materializing = resumable(mat) && mat.ResumeAttempts < maxResumeAttempts
+	return fetching, materializing
 }
 
 func (lc *runLifecycle) settleTracking() {
 	if lc.untrack != nil {
 		lc.untrack()
 		lc.untrack = nil
+	}
+	if lc.stats != nil {
+		// Flushes the run's terminal numbers past the coalescing window and
+		// silences the emitter, on EVERY settlement path (release and
+		// finishRun both come through here).
+		lc.stats.Close()
 	}
 }
 
@@ -69,13 +147,20 @@ func (lc *runLifecycle) release() {
 // crawl interrupted mid-pass-2 can rebuild its converter on the next start
 // (DM spec §8.3 / OQ2 as decided — stored as-is, scrubbed by the store on
 // every transition out of the crawl-resumable states).
-func (s *service) beginRun(ctx context.Context, request importv2.Request, wireReq *pb.RpcObjectImportRequest, converterName string, pathIndex int) (*runLifecycle, error) {
+func (s *service) beginRun(ctx context.Context, request importv2.Request, wireReq *pb.RpcObjectImportRequest, converterName string, pathIndex int, progress process.Progress) (*runLifecycle, error) {
+	ceiling := pageRateCeilingFor(request.Origin.ImportType)
 	if s.config.RepoPath == "" {
 		spillDir, err := os.MkdirTemp("", "anytype-import-v2-*")
 		if err != nil {
 			return nil, fmt.Errorf("create spill dir: %w", err)
 		}
-		return &runLifecycle{spillDir: spillDir, cleanup: func() { _ = os.RemoveAll(spillDir) }}, nil
+		// Volatile mode still emits: the statistic is the run's progress
+		// surface, and a run without a durable dir has no importId to poll
+		// by — which the empty id says honestly, rather than by silence.
+		lc := s.newLifecycle(nil, runstore.Manifest{ImportType: int64(request.Origin.ImportType)}, progress, ceiling)
+		lc.spillDir = spillDir
+		lc.cleanup = func() { _ = os.RemoveAll(spillDir) }
+		return lc, nil
 	}
 	requestBlob, err := wireReq.Marshal()
 	if err != nil {
@@ -86,7 +171,7 @@ func (s *service) beginRun(ctx context.Context, request importv2.Request, wireRe
 		requestBlob = nil
 	}
 	runId := bson.NewObjectId().Hex()
-	store, err := runstore.Create(ctx, filepath.Join(runstore.RunsRoot(s.config.RepoPath), runId), runstore.Manifest{
+	manifest := runstore.Manifest{
 		RunId:          runId,
 		SpaceId:        request.SpaceID,
 		ImportType:     int64(request.Origin.ImportType),
@@ -97,15 +182,28 @@ func (s *service) beginRun(ctx context.Context, request importv2.Request, wireRe
 		Converter:      converterName,
 		AppVersion:     vcs.GetVCSInfo().Version(),
 		Request:        requestBlob,
-	})
+	}
+	store, err := runstore.Create(ctx, filepath.Join(runstore.RunsRoot(s.config.RepoPath), runId), manifest)
 	if err != nil {
 		return nil, fmt.Errorf("create run store: %w", err)
 	}
-	return &runLifecycle{
-		store:    store,
-		spillDir: store.SpillDir(),
-		untrack:  s.trackLive(runId, store, request.Origin.ImportType),
-	}, nil
+	// Create stamps the schema version; safeToCloseFor's predicates gate on
+	// it, so read back what was written rather than the caller's struct.
+	if written, readErr := store.Manifest(ctx); readErr == nil {
+		manifest = written
+	}
+	return s.newLifecycle(store, manifest, progress, ceiling), nil
+}
+
+// pageRateCeilingFor is the fastest the SOURCE can yield pages, per import
+// type — the input the fetching ETA is capped by (§15.3). Only Notion has a
+// documented one; a local markdown tree is bounded by disk, which is not a
+// number this may promise anything about.
+func pageRateCeilingFor(importType model.ImportType) float64 {
+	if importType == model.Import_Notion {
+		return notionclient.PageRateCeiling()
+	}
+	return 0
 }
 
 // planRecorder persists a fresh run's sanitized structure plan to the run
@@ -218,13 +316,19 @@ func (lc *runLifecycle) identityOptions() []identity.Option {
 	return []identity.Option{resume.ClaimLedgerOption(lc.store)}
 }
 
-// onIssue writes every retained issue to the durable ledger (one
-// implementation, resume.IssueRecorder). nil in volatile mode.
+// onIssue is the run's issue fan-out: the live §15 counts (so a run pouring
+// out warnings can be abandoned at minute 20, not minute 110) and the
+// durable ledger, whose rows are what the dormant surface counts later. Both
+// halves in one hook — the counts must not exist on one path only.
 func (s *service) onIssue(lc *runLifecycle) func(importv2.Issue) {
-	if lc.store == nil {
-		return nil
+	record := func(importv2.Issue) {}
+	if lc.store != nil {
+		record = resume.IssueRecorder(lc.store)
 	}
-	return resume.IssueRecorder(lc.store)
+	return func(issue importv2.Issue) {
+		lc.stats.Issue(issue)
+		record(issue)
+	}
 }
 
 // onFetched marks the pass-2/pass-3 boundary durably (DM spec §4.1 +

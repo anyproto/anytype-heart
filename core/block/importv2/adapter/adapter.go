@@ -34,12 +34,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/importv2/schemaplan"
 	"github.com/anyproto/anytype-heart/core/block/importv2/source"
 	"github.com/anyproto/anytype-heart/core/block/process"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/filesync"
 	"github.com/anyproto/anytype-heart/core/notifications"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -93,14 +93,14 @@ type widgetCreator interface {
 type engineRunFn func(ctx context.Context, request importv2.Request, converter importv2.Converter, spc clientspace.Space, lc *runLifecycle, progress process.Progress) *importv2.Result
 
 type service struct {
-	config            *config.Config
-	spaceService      spaceGetter
-	objectStore       objectstore.ObjectStore
-	blockService      *block.Service
-	processes         processAdder
-	widgets           widgetCreator
-	objects           persist.ObjectAccess
-	engineRunner      engineRunFn
+	config       *config.Config
+	spaceService spaceGetter
+	objectStore  objectstore.ObjectStore
+	blockService *block.Service
+	processes    processAdder
+	widgets      widgetCreator
+	objects      persist.ObjectAccess
+	engineRunner engineRunFn
 	// resumeRunner is the sweep's resume branch (resumeRun in production;
 	// nil keeps the phase-A compensate-everything sweep — the lifecycle
 	// harness's default, and the safe degradation if wiring ever misses it).
@@ -111,7 +111,7 @@ type service struct {
 	crawlResumeRunner resumeFn
 	// notionClientOpts extend every constructed Notion client (test seam for
 	// the API base URL; empty in production).
-	notionClientOpts []notionclient.Option
+	notionClientOpts  []notionclient.Option
 	fileObjectService fileobject.Service
 	installer         objectcreator.Service
 	detailsService    detailservice.Service
@@ -445,7 +445,7 @@ func (s *service) executeNotion(ctx context.Context, request importv2.Request, r
 	if params == nil || params.GetApiKey() == "" {
 		return &importv2.Result{Err: importv2.Fatal(importv2.IssueAuthFailed, fmt.Errorf("notion import requires an api key"))}
 	}
-	lc, err := s.beginRun(ctx, request, req, "Notion", 0)
+	lc, err := s.beginRun(ctx, request, req, "Notion", 0, progress)
 	if err != nil {
 		return stopFatal(ctx, importv2.IssueStoreError, err)
 	}
@@ -460,7 +460,12 @@ func (s *service) executeNotion(ctx context.Context, request importv2.Request, r
 // — ONE construction for the fresh run and the crawl resume, so the two
 // cannot drift. notionClientOpts is the test seam for the API base URL.
 func (s *service) notionConverter(req *pb.RpcObjectImportRequest, lc *runLifecycle, reuse schemaplan.Reuse) *notion.Converter {
-	apiClient := notionclient.NewClient(req.GetNotionParams().GetApiKey(), s.notionClientOpts...)
+	// The three-state model's producer (§15.2): the pacer knows exactly
+	// when and how long it is sleeping and the retry loop knows its bounded
+	// attempt count, so throttling reaches the surface as the CALM state it
+	// is rather than as an error.
+	opts0 := append([]notionclient.Option{notionclient.WithStatusHook(lc.stats)}, s.notionClientOpts...)
+	apiClient := notionclient.NewClient(req.GetNotionParams().GetApiKey(), opts0...)
 	opts := []notion.Option{notion.WithPlanReuse(reuse)}
 	if planner := plannerFromRequest(req); planner.planner != nil {
 		opts = append(opts, notion.WithPlanner(planner.planner))
@@ -506,7 +511,7 @@ func (s *service) runOne(ctx context.Context, request importv2.Request, req *pb.
 	}
 	defer src.Close()
 
-	lc, err := s.beginRun(ctx, request, req, "Markdown", pathIndex)
+	lc, err := s.beginRun(ctx, request, req, "Markdown", pathIndex, progress)
 	if err != nil {
 		return stopFatal(ctx, importv2.IssueStoreError, err)
 	}
@@ -589,8 +594,11 @@ func (s *service) engineDeps(request importv2.Request, spc clientspace.Space, lc
 		Formats:   formats,
 		Keys:      keys,
 		// The run's root collection carries the import date in its name.
-		Collection:     &collectionFactory{service: s.collectionService, addDate: true},
-		Reporter:       &progressReporter{progress: progress},
+		Collection: &collectionFactory{service: s.collectionService, addDate: true},
+		// One reporter wiring for the fresh run and both resume branches:
+		// the legacy scalar and the §15 emitter, fanned out here so neither
+		// can be attached to one path and missed on another.
+		Reporter:       teeReporter{&progressReporter{progress: progress}, lc.stats},
 		OnCompensating: s.onCompensating(lc),
 		OnIssue:        s.onIssue(lc),
 		SpillDir:       lc.spillDir,

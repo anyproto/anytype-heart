@@ -19,29 +19,32 @@ import (
 // dormant-run reading the pass-3 restart is built on, which is what makes
 // polling by importId restart-proof (§15.5).
 //
-// Scope, stated honestly: the in-memory-only fields of the statistic —
-// itemsPerSecond, ETA, currentItem, live throttle/retry state, bytes —
-// are served zero/empty until the §15 push event core (the coalescing
-// emitter with its pacer/retry hooks) lands; every ledger-derived field
-// is exact. That matches §15.4's dormant column; live runs are served the
-// same column for now.
+// Scope, stated honestly. A LIVE run is served from its own statistic
+// emitter — the same builder over the same state the push event uses, so
+// polling and listening cannot disagree by construction (§15.5's "served
+// from the adapter's registry snapshot"). A DORMANT run is served from the
+// ledger alone, which is everything a restart itself could resume from;
+// the purely in-memory fields — itemsPerSecond, ETA, currentItem, live
+// throttle/retry state — are then honestly absent, exactly as §15.4's
+// dormant column says.
 
 // ErrRunNotFound reports an importId with neither a live run nor a run dir.
 var ErrRunNotFound = errors.New("import run not found")
 
-// liveRunInfo tracks one durable run whose engine is running right now, so
-// status reads share its store handle instead of second-opening a live db.
+// liveRunInfo tracks one durable run whose engine is running right now: its
+// store handle (so a status read never second-opens a live db) and its
+// statistic emitter (the live numbers).
 type liveRunInfo struct {
-	store      *runstore.Store
-	importType model.ImportType
+	store *runstore.Store
+	stats *statEmitter
 }
 
-func (s *service) trackLive(runId string, store *runstore.Store, importType model.ImportType) func() {
+func (s *service) trackLive(runId string, store *runstore.Store, lc *runLifecycle) func() {
 	s.liveStatusMu.Lock()
 	if s.liveStatus == nil {
 		s.liveStatus = map[string]*liveRunInfo{}
 	}
-	s.liveStatus[runId] = &liveRunInfo{store: store, importType: importType}
+	s.liveStatus[runId] = &liveRunInfo{store: store, stats: lc.stats}
 	s.liveStatusMu.Unlock()
 	return func() {
 		s.liveStatusMu.Lock()
@@ -69,7 +72,7 @@ func (s *service) liveRunIds() map[string]struct{} {
 // RunStatus reports one run by its durable importId (= runId).
 func (s *service) RunStatus(ctx context.Context, importId string) (*pb.RpcObjectImportRunStatusRun, error) {
 	if live := s.liveRun(importId); live != nil {
-		return buildRunStatus(ctx, live.store, true)
+		return buildLiveRunStatus(ctx, live)
 	}
 	dirs, err := runstore.ListRunDirs(runstore.RunsRoot(s.config.RepoPath))
 	if err != nil {
@@ -106,7 +109,7 @@ func (s *service) RunList(ctx context.Context) ([]*pb.RpcObjectImportRunStatusRu
 	live := s.liveRunIds()
 	for id := range live {
 		if info := s.liveRun(id); info != nil {
-			run, err := buildRunStatus(ctx, info.store, true)
+			run, err := buildLiveRunStatus(ctx, info)
 			if err != nil {
 				log.Warnf("run list: live run %s: %s", id, err)
 				continue
@@ -133,6 +136,23 @@ func (s *service) RunList(ctx context.Context) ([]*pb.RpcObjectImportRunStatusRu
 		runs = append(runs, run)
 	}
 	return runs, nil
+}
+
+// buildLiveRunStatus serves a running import from its own emitter — the
+// SAME builder the push event uses over the SAME state (§15.5). This is
+// what makes "push and pull agree" a property of the code rather than a
+// promise: there is no second derivation to drift. Only the durable
+// lifecycle label is read from the store.
+func buildLiveRunStatus(ctx context.Context, live *liveRunInfo) (*pb.RpcObjectImportRunStatusRun, error) {
+	manifest, err := live.store.Manifest(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.RpcObjectImportRunStatusRun{
+		Status:        live.stats.Snapshot(),
+		ManifestState: string(manifest.State),
+		Live:          true,
+	}, nil
 }
 
 // buildRunStatus derives the §15.4 ledger-backed columns from a run store.
@@ -209,18 +229,32 @@ func buildRunStatus(ctx context.Context, store *runstore.Store, live bool) (*pb.
 	status.PagesDone = state.PagesDone
 	status.ObjectsCreated = state.Engine.Created
 	for _, issue := range state.Engine.Issues {
-		switch {
-		case issue.Severity >= importv2.SeverityObjectError:
-			status.ErrorCount++
-		case issue.Severity == importv2.SeverityWarning:
-			status.WarningCount++
-		}
+		countIssue(issue.Severity, &status.WarningCount, &status.ErrorCount)
 	}
 	return &pb.RpcObjectImportRunStatusRun{
 		Status:        status,
 		ManifestState: string(manifest.State),
 		Live:          live,
 	}, nil
+}
+
+// countIssue is the ONE severity → wire-counter classification, shared by
+// the live emitter and this dormant ledger read. Info diagnostics are not
+// problems and count as neither.
+//
+// A live run counts its own fatal into errorCount; a dormant one does not,
+// because resume.rehydrateIssues drops fatal records on load — by design,
+// since a fatal that coexists with a resumable dir IS the abort that made
+// the dir dormant, not a content problem. That asymmetry belongs to the
+// resume seed, not to this classification, which is why it lives in one
+// function.
+func countIssue(severity importv2.Severity, warnings, errors *int64) {
+	switch {
+	case severity >= importv2.SeverityObjectError:
+		*errors++
+	case severity == importv2.SeverityWarning:
+		*warnings++
+	}
 }
 
 func cancelEffectOf(m runstore.Manifest) pb.EventImportStatisticCancelEffect {

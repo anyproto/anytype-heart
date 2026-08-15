@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/importv2"
 	"github.com/anyproto/anytype-heart/core/block/importv2/runstore"
+	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -33,7 +34,7 @@ func TestBeginRun(t *testing.T) {
 		s := &service{config: &config.Config{RepoPath: repo}}
 
 		// when
-		lc, err := s.beginRun(context.Background(), testRequest(), &pb.RpcObjectImportRequest{}, "Notion", 3)
+		lc, err := s.beginRun(context.Background(), testRequest(), &pb.RpcObjectImportRequest{}, "Notion", 3, process.NewNoOp())
 
 		// then
 		require.NoError(t, err)
@@ -57,7 +58,7 @@ func TestBeginRun(t *testing.T) {
 		s := &service{config: &config.Config{}}
 
 		// when
-		lc, err := s.beginRun(context.Background(), testRequest(), &pb.RpcObjectImportRequest{}, "Markdown", 0)
+		lc, err := s.beginRun(context.Background(), testRequest(), &pb.RpcObjectImportRequest{}, "Markdown", 0, process.NewNoOp())
 
 		// then
 		require.NoError(t, err)
@@ -87,7 +88,7 @@ func TestFinishRun(t *testing.T) {
 		} {
 			// given
 			s := &service{config: &config.Config{RepoPath: t.TempDir()}}
-			lc, err := s.beginRun(context.Background(), testRequest(), &pb.RpcObjectImportRequest{}, "Markdown", 0)
+			lc, err := s.beginRun(context.Background(), testRequest(), &pb.RpcObjectImportRequest{}, "Markdown", 0, process.NewNoOp())
 			require.NoError(t, err)
 			dir := lc.store.Dir()
 
@@ -106,7 +107,7 @@ func TestFinishRun(t *testing.T) {
 		// gated-out cleanup) must not destroy the dir — its ledger is the
 		// only record of what was created.
 		s := &service{config: &config.Config{RepoPath: t.TempDir()}}
-		lc, err := s.beginRun(context.Background(), testRequest(), &pb.RpcObjectImportRequest{}, "Markdown", 0)
+		lc, err := s.beginRun(context.Background(), testRequest(), &pb.RpcObjectImportRequest{}, "Markdown", 0, process.NewNoOp())
 		require.NoError(t, err)
 		require.NoError(t, lc.store.RecordCreated(context.Background(), "page-1", "obj-1"))
 		dir := lc.store.Dir()
@@ -140,7 +141,7 @@ func TestFinishRun(t *testing.T) {
 		// attempts-capped retry.
 		s := &service{config: &config.Config{RepoPath: t.TempDir()}}
 		lc, err := s.beginRun(context.Background(), testRequest(),
-			&pb.RpcObjectImportRequest{SpaceId: "space-1", Type: model.Import_Notion}, "Notion", 0)
+			&pb.RpcObjectImportRequest{SpaceId: "space-1", Type: model.Import_Notion}, "Notion", 0, process.NewNoOp())
 		require.NoError(t, err)
 		dir := lc.store.Dir()
 
@@ -165,7 +166,7 @@ func TestFinishRun(t *testing.T) {
 		// user discarded the import, nothing is in the space, so keeping the
 		// dir would silently resurrect a cancelled import on the next start.
 		s := &service{config: &config.Config{RepoPath: t.TempDir()}}
-		lc, err := s.beginRun(context.Background(), testRequest(), &pb.RpcObjectImportRequest{}, "Notion", 0)
+		lc, err := s.beginRun(context.Background(), testRequest(), &pb.RpcObjectImportRequest{}, "Notion", 0, process.NewNoOp())
 		require.NoError(t, err)
 		dir := lc.store.Dir()
 
@@ -186,7 +187,7 @@ func TestFinishRun(t *testing.T) {
 		// cancel carve-out, because the ledger is the only record of what
 		// was created.
 		s := &service{config: &config.Config{RepoPath: t.TempDir()}}
-		lc, err := s.beginRun(context.Background(), testRequest(), &pb.RpcObjectImportRequest{}, "Notion", 0)
+		lc, err := s.beginRun(context.Background(), testRequest(), &pb.RpcObjectImportRequest{}, "Notion", 0, process.NewNoOp())
 		require.NoError(t, err)
 		require.NoError(t, lc.store.RecordCreated(context.Background(), "page-1", "obj-1"))
 		dir := lc.store.Dir()
@@ -206,7 +207,7 @@ func TestFinishRun(t *testing.T) {
 		// given — the verdict comes from the engine's Result, the single
 		// source of truth (deriving it twice from two contexts disagreed).
 		s := &service{config: &config.Config{RepoPath: t.TempDir()}}
-		lc, err := s.beginRun(context.Background(), testRequest(), &pb.RpcObjectImportRequest{}, "Notion", 0)
+		lc, err := s.beginRun(context.Background(), testRequest(), &pb.RpcObjectImportRequest{}, "Notion", 0, process.NewNoOp())
 		require.NoError(t, err)
 		require.NoError(t, lc.store.RecordCreated(context.Background(), "page-1", "obj-1"))
 		dir := lc.store.Dir()

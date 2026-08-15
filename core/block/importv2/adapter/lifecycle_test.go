@@ -21,17 +21,17 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
-	objectcreator "github.com/anyproto/anytype-heart/core/block/object/objectcreator"
-	"github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
-	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/core/block/importv2"
 	"github.com/anyproto/anytype-heart/core/block/importv2/runstore"
+	objectcreator "github.com/anyproto/anytype-heart/core/block/object/objectcreator"
+	"github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
 	"github.com/anyproto/anytype-heart/core/block/process"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files/filesync"
 	"github.com/anyproto/anytype-heart/core/notifications"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
@@ -145,6 +145,29 @@ func (fx *lifecycleFixture) script(run engineRunFn) *pb.RpcObjectImportRequest {
 			MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{Path: []string{dir}},
 		},
 	}
+}
+
+// statistics returns every importStatistic pushed onto the event stream so
+// far, in order.
+func (fx *lifecycleFixture) statistics() []*pb.EventImportStatistic {
+	fx.eventsMu.Lock()
+	defer fx.eventsMu.Unlock()
+	var out []*pb.EventImportStatistic
+	for _, e := range fx.events {
+		for _, msg := range e.Messages {
+			if status := msg.GetImportStatistic(); status != nil {
+				out = append(out, status)
+			}
+		}
+	}
+	return out
+}
+
+func (fx *lifecycleFixture) lastStatistic(t *testing.T) *pb.EventImportStatistic {
+	t.Helper()
+	all := fx.statistics()
+	require.NotEmpty(t, all, "the run must have pushed at least one statistic")
+	return all[len(all)-1]
 }
 
 func (fx *lifecycleFixture) finishEvents() int {

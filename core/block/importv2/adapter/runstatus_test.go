@@ -136,13 +136,21 @@ func TestRunListStrayDir(t *testing.T) {
 }
 
 func TestRunStatusLive(t *testing.T) {
-	t.Run("a running import answers live from its own store handle", func(t *testing.T) {
-		// given: a scripted engine parked mid-run with effects recorded
+	t.Run("a running import answers live from its own statistic emitter", func(t *testing.T) {
+		// given: a scripted engine parked mid-run, reporting through the seam
+		// a real engine reports through. §15.5 serves a live run from the
+		// registry snapshot, not from a second derivation over the ledger —
+		// the push event and this answer are then the same message.
 		fx := newLifecycleFixture(t)
 		started := make(chan string, 1)
 		barrier := make(chan struct{})
 		req := fx.script(func(ctx context.Context, request importv2.Request, converter importv2.Converter, spc clientspace.Space, lc *runLifecycle, progress process.Progress) *importv2.Result {
 			require.NoError(t, lc.store.RecordCreated(ctx, "page-1", "obj-1"))
+			lc.stats.Phase(importv2.PhaseCreating)
+			lc.stats.Discovered(importv2.KindPage, 2)
+			lc.stats.Completed(importv2.KindPage, 1)
+			lc.stats.Created(1)
+			lc.stats.Item("Q3 Planning")
 			started <- runstore.RunIdOfDir(lc.store.Dir())
 			<-barrier
 			return &importv2.Result{Created: 1}
@@ -162,7 +170,23 @@ func TestRunStatusLive(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, run.Live)
 		assert.Equal(t, model.Import_Markdown, run.Status.ImportType)
+		assert.Equal(t, importId, run.Status.ImportId)
 		assert.Equal(t, int64(1), run.Status.ObjectsCreated)
+		assert.Equal(t, int64(2), run.Status.PagesTotal)
+		assert.Equal(t, int64(1), run.Status.PagesDone)
+		assert.Equal(t, pb.EventImportStatistic_Creating, run.Status.Phase)
+		assert.Equal(t, pb.EventImportStatistic_RemovesCreated, run.Status.CancelEffect)
+		assert.Equal(t, "Q3 Planning", run.Status.CurrentItem,
+			"currentItem is in-memory only, so only a live run can carry it")
+
+		// and: once the coalescing window closes, the pushed event carries
+		// exactly what the poll answered. Coalescing may DELAY the stream;
+		// it may never make it contradict the poll, because both are one
+		// builder over one state (§15.5).
+		require.Eventually(t, func() bool {
+			all := fx.statistics()
+			return len(all) > 0 && all[len(all)-1].String() == run.Status.String()
+		}, 5*time.Second, 10*time.Millisecond)
 
 		// and: after the run finishes and disposes its dir, the id is gone
 		close(barrier)

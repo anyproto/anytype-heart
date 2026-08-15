@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/importv2"
+	"github.com/anyproto/anytype-heart/core/block/importv2/engine"
 	objectcreator "github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -97,6 +98,48 @@ func (f *collectionFactory) MakeCollection(name string, memberSourceKeys []strin
 			Collections: st.Store(),
 		},
 	}, nil
+}
+
+// teeReporter fans the seam out to every consumer of a run's progress: the
+// legacy process scalar and the §15 statistic emitter. There is exactly one
+// construction site (engineDeps), so a consumer cannot be wired into the
+// fresh-run path and forgotten in the two resume ones.
+type teeReporter []engine.Reporter
+
+func (t teeReporter) Phase(p importv2.Phase) {
+	for _, r := range t {
+		r.Phase(p)
+	}
+}
+
+func (t teeReporter) Discovered(kind importv2.Kind, delta int64) {
+	for _, r := range t {
+		r.Discovered(kind, delta)
+	}
+}
+
+func (t teeReporter) Completed(kind importv2.Kind, delta int64) {
+	for _, r := range t {
+		r.Completed(kind, delta)
+	}
+}
+
+func (t teeReporter) Bytes(delta int64) {
+	for _, r := range t {
+		r.Bytes(delta)
+	}
+}
+
+func (t teeReporter) Created(count int64) {
+	for _, r := range t {
+		r.Created(count)
+	}
+}
+
+func (t teeReporter) Item(item importv2.DisplayText) {
+	for _, r := range t {
+		r.Item(item)
+	}
 }
 
 // progressReporter down-projects the engine's per-kind, per-phase counters

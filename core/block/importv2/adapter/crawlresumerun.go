@@ -119,11 +119,7 @@ func (s *service) resumeCrawlRun(ctx context.Context, store *runstore.Store, man
 		}
 	}()
 
-	lc := &runLifecycle{
-		store:    store,
-		spillDir: store.SpillDir(),
-		untrack:  s.trackLive(manifest.RunId, store, importType),
-	}
+	lc := s.newLifecycle(store, manifest, progress, pageRateCeilingFor(importType))
 	defer lc.release()
 	// The converter is rebuilt from the stored request through the SAME
 	// builders the fresh run uses; the plan reuse carries the recording (a

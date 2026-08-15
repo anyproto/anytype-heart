@@ -92,11 +92,7 @@ func (s *service) resumeRun(ctx context.Context, store *runstore.Store, manifest
 		}
 	}()
 
-	lc := &runLifecycle{
-		store:    store,
-		spillDir: store.SpillDir(),
-		untrack:  s.trackLive(manifest.RunId, store, model.ImportType(manifest.ImportType)),
-	}
+	lc := s.newLifecycle(store, manifest, progress, pageRateCeilingFor(model.ImportType(manifest.ImportType)))
 	defer lc.release()
 	result := s.resumeEngine(runCtx, request, spc, lc, progress, state, spool)
 	if result.Suspended {
