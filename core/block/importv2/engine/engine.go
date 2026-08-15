@@ -324,6 +324,33 @@ func (r *run) beginMaterialize(ctx context.Context, spool Spool) {
 	r.deps.Reporter.Discovered(importv2.KindFile, int64(files))
 }
 
+// publishCreated announces the created LEVEL, and never a lower one than it
+// has already announced.
+//
+// Reporter.Created takes a level rather than a delta because a resumed run
+// starts at its ledger's count — but workerCount persist workers publish
+// created.Add(1) concurrently, and the atomic orders the INCREMENTS, not the
+// calls: worker B can take 6, worker A take 5, and A announce after B. The
+// surface then counts DOWN (measured regressing on every run of a 600-page
+// import, one settling at 598/600), which is §15.4's cancel affordance —
+// "stop and remove the N objects created" — and disagrees with the exact
+// ledger count the same run answers when polled dormant (§15.5).
+//
+// The lock is held ACROSS the call on purpose: dropping it first would order
+// the high-water mark and leave the announcements to race again. The seam is
+// advisory and non-blocking by contract (the emitter sends under its own
+// lock for the same reason), and this costs one uncontended mutex per
+// created object.
+func (r *run) publishCreated(level int64) {
+	r.createdMu.Lock()
+	defer r.createdMu.Unlock()
+	if level <= r.createdPublished {
+		return
+	}
+	r.createdPublished = level
+	r.deps.Reporter.Created(level)
+}
+
 // countObject is the ONE classification behind every per-kind counter, used
 // by pass 2 (rows spooled) and pass 3 (rows materialized) alike so the two
 // halves of the run cannot disagree about what a "page" is. Derived-class
@@ -418,8 +445,10 @@ func Resume(ctx context.Context, req importv2.Request, deps Deps, state *ResumeS
 	r.updated.Store(state.Updated)
 	// A restart resumes the NUMBERS, not just the work (§15.4): the cancel
 	// affordance must say "remove the N objects created" counting every
-	// incarnation, not only this one's.
-	deps.Reporter.Created(state.Created)
+	// incarnation, not only this one's. Through publishCreated like every
+	// other publication, so this incarnation's workers start ABOVE the seed
+	// rather than beside it.
+	r.publishCreated(state.Created)
 	r.seedIssues(state.Issues)
 	title := "Import report — " + state.ConverterName
 	if state.RootSpec.CollectionName != "" {
@@ -524,6 +553,12 @@ type run struct {
 	updated atomic.Int64
 	skipped atomic.Int64
 	failed  atomic.Int64
+	// createdMu/createdPublished serialize the created LEVEL's publication.
+	// See publishCreated: the counter is atomic, but a level is an ORDERED
+	// quantity and nothing else here orders the increment against the call
+	// that announces it.
+	createdMu        sync.Mutex
+	createdPublished int64
 	// spilledBytes is the pass-2 download level, seeded from the spill dir
 	// so a resumed crawl continues its predecessor's count.
 	spilledBytes atomic.Int64
@@ -811,7 +846,7 @@ func (r *run) process(ctx context.Context, w work) {
 	}
 	switch outcome.Action {
 	case persist.ActionCreated:
-		r.deps.Reporter.Created(r.created.Add(1))
+		r.publishCreated(r.created.Add(1))
 	case persist.ActionUpdated:
 		r.updated.Add(1)
 	default:

@@ -203,9 +203,22 @@ func (e *statEmitter) Bytes(total int64) {
 	e.mark(false)
 }
 
+// Created takes a LEVEL, and a level published from racing producers can
+// arrive out of order: the engine's persist workers each publish
+// created.Add(1) with nothing ordering the increment against the publish, so
+// the LOWER level lands last (review item 7 — measured regressing on every
+// run of a 600-page import, one settling at 598/600). The engine now
+// publishes a high-water mark of its own; this is the surface's own guard,
+// because objectsCreated is §15.4's cancel affordance ("stop and remove the
+// N objects created") and the dormant poll of the same run serves the exact
+// ledger count. A level that only rises is also the only reading that can
+// agree with a durable counter.
 func (e *statEmitter) Created(count int64) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
+	if count <= e.snap.objectsCreated {
+		return
+	}
 	e.snap.objectsCreated = count
 	e.mark(false)
 }

@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
@@ -97,6 +98,14 @@ func (r *recordingReporter) phaseOrder() []importv2.Phase {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return append([]importv2.Phase(nil), r.phases...)
+}
+
+// createdLevels returns the published sequence in arrival order — the shape
+// a consumer of the LEVEL actually sees.
+func (r *recordingReporter) createdLevels() []int64 {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return append([]int64(nil), r.created...)
 }
 
 func (r *recordingReporter) lastCreated() int64 {
@@ -242,5 +251,43 @@ func TestReporterConverterSideSignals(t *testing.T) {
 			importv2.PhaseFinalizing,
 		}, reporter.phaseOrder())
 		assert.Equal(t, []importv2.DisplayText{"Q3 Planning"}, reporter.items)
+	})
+}
+
+// TestCreatedLevelIsMonotone pins the LEVEL contract at the producer (review
+// item 7). Reporter.Created takes a level rather than a delta because a
+// resumed run starts at its ledger's count — but the persist workers publish
+// created.Add(1) with nothing ordering the increment against the publish, so
+// eight of them interleave and the LOWER level lands last. Every consumer
+// sees it: the wire's objectsCreated (§15.4's "stop and remove the N objects
+// created", which the dormant poll of the same run answers from the ledger),
+// and the existing per-kind test above, which was flaky at ~7 runs in 1000
+// under -race for exactly this reason.
+func TestCreatedLevelIsMonotone(t *testing.T) {
+	t.Run("the level published from eight workers never walks backwards", func(t *testing.T) {
+		// given: enough objects that the workers really overlap
+		fx := newEngineFixture(t)
+		reporter := &recordingReporter{}
+		fx.deps.Reporter = reporter
+		objects := make([]*importv2.Object, 300)
+		for i := range objects {
+			objects[i] = pageObj(fmt.Sprintf("p-%03d.md", i), false)
+		}
+		converter := &scriptConverter{objects: objects}
+
+		// when
+		result := Run(context.Background(), importv2.Request{Mode: importv2.ModeContinueOnError}, converter, fx.deps)
+
+		// then
+		require.NoError(t, result.Err)
+		require.Equal(t, int64(300), result.Created)
+		levels := reporter.createdLevels()
+		require.NotEmpty(t, levels)
+		for i := 1; i < len(levels); i++ {
+			require.GreaterOrEqual(t, levels[i], levels[i-1],
+				"a level that goes backwards is a counter the user watches count down")
+		}
+		assert.Equal(t, result.Created, levels[len(levels)-1],
+			"the last level published IS the run's own count")
 	})
 }

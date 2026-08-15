@@ -3,6 +3,7 @@ package adapter
 import (
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -597,5 +598,53 @@ func TestStatEmitterLogSafety(t *testing.T) {
 		assert.NotContains(t, rendered, "Salary")
 		assert.NotContains(t, rendered, "confidential")
 		assert.True(t, strings.Contains(rendered, "fetching"), rendered)
+	})
+}
+
+func TestStatEmitterCreatedLevel(t *testing.T) {
+	t.Run("the created level never walks backwards", func(t *testing.T) {
+		// given — review item 7: the engine publishes objectsCreated as a
+		// LEVEL from workerCount goroutines (Created(r.created.Add(1))), and
+		// nothing orders the increment against the publish. Two workers
+		// interleave and the LOWER level arrives last. This is §15.4's cancel
+		// affordance — "stop and remove the N objects created" — and the
+		// dormant poll of the same run serves the exact ledger count, so a
+		// number that walks backwards also breaks §15.5.
+		clock := newFakeClock()
+		emitter, _ := newTestEmitter(t, clock)
+		emitter.Phase(importv2.PhaseCreating)
+
+		// when
+		emitter.Created(6)
+		emitter.Created(5)
+
+		// then
+		assert.Equal(t, int64(6), emitter.Snapshot().ObjectsCreated)
+	})
+
+	t.Run("racing workers still leave the run's own count standing", func(t *testing.T) {
+		// given: the real shape — one shared counter, eight publishers
+		emitter := newStatEmitter(statConfig{
+			importId: "run-1", window: time.Hour, now: time.Now,
+			send: func(*pb.EventImportStatistic) {},
+		})
+		defer emitter.Close()
+		var counter atomic.Int64
+		var wg sync.WaitGroup
+
+		// when
+		for i := 0; i < 8; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				for n := 0; n < 500; n++ {
+					emitter.Created(counter.Add(1))
+				}
+			}()
+		}
+		wg.Wait()
+
+		// then
+		assert.Equal(t, int64(4000), emitter.Snapshot().ObjectsCreated)
 	})
 }
