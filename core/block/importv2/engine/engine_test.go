@@ -819,6 +819,18 @@ func TestRunCancellation(t *testing.T) {
 		fatal := importv2.Fatal(importv2.IssueStoreError,
 			fmt.Errorf("journal effect: %w", context.DeadlineExceeded))
 		fx.persister.failOnCancelKeys = map[string]error{"x.md": fatal}
+		// The premise is "x.md is interrupted MID-persist", so the cancel
+		// must wait for x.md's Persist to be ENTERED — waiting for a.md's
+		// completion raced it (found at -race -count=25: a cancel landing
+		// while x.md was still queued made process() skip it at entry, no
+		// store fatal was ever produced, and the run classified as a plain
+		// cancel — the gate-test-races-its-own-premise class again).
+		xEntered := make(chan struct{})
+		fx.persister.observeKeyed = func(sourceKey string) {
+			if sourceKey == "x.md" {
+				close(xEntered)
+			}
+		}
 		converter := &scriptConverter{objects: []*importv2.Object{
 			pageObj("a.md", false), pageObj("x.md", false),
 		}}
@@ -829,11 +841,11 @@ func TestRunCancellation(t *testing.T) {
 		go func() {
 			done <- Run(ctx, importv2.Request{Mode: importv2.ModeAllOrNothing}, converter, fx.deps)
 		}()
-		require.Eventually(t, func() bool {
-			fx.persister.mu.Lock()
-			defer fx.persister.mu.Unlock()
-			return len(fx.persister.persisted) >= 1
-		}, 5*time.Second, 5*time.Millisecond)
+		select {
+		case <-xEntered:
+		case <-time.After(5 * time.Second):
+			t.Fatal("x.md never reached Persist")
+		}
 
 		// when
 		cancel()
