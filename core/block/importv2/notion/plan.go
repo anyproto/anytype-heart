@@ -342,10 +342,11 @@ func (c *Converter) adoptDatabaseIdentity(ctx context.Context, object *importv2.
 		// Nothing to inherit; keep the icon the plan chose.
 		return nil
 	}
-	// The database's own icon is the more faithful one, and two icon details on
-	// one object leave the rendered choice up to the client.
-	object.Payload.Details.Delete(bundle.RelationKeyIconName)
-	return c.applyIcon(ctx, object, database.Icon, database.Cover, "/data_sources/"+fetch.schemaId, sink)
+	// The database's own icon is the more faithful one when a type can render
+	// it at all — applyDatabaseTypeIcon decides that and keeps the plan's icon
+	// otherwise, so a database we cannot follow never leaves the type blank.
+	icon := applyDatabaseTypeIcon(object.Payload.Details, database.Icon)
+	return c.applyIcon(ctx, object, icon, database.Cover, "/data_sources/"+fetch.schemaId, sink)
 }
 
 // applyPlanType is suggestPageType's plan-driven counterpart for containers

@@ -23,7 +23,18 @@ type iconValue struct {
 		Url string `json:"url"`
 	} `json:"file"`
 	CustomEmoji *customEmoji `json:"custom_emoji"`
+	// Icon is Notion's own built-in icon set (type "icon"), a name plus a
+	// color rather than a file — by far the most common icon kind in a
+	// template-heavy workspace. See icons.go.
+	Icon *notionNamedIcon `json:"icon"`
 }
+
+type notionNamedIcon struct {
+	Name  string `json:"name"`
+	Color string `json:"color"`
+}
+
+func (i *iconValue) isEmoji() bool { return i != nil && i.Type == "emoji" }
 
 // isExternal reports a user-provided external URL — its query string is
 // part of the file's identity, unlike Notion-hosted signed URLs whose query
