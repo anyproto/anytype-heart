@@ -74,7 +74,8 @@ func TestRenderInline_Golden(t *testing.T) {
 		{"single tilde literal", "~x", nil, "~x"},
 		{"escape bracket", "[note]", nil, `\[note]`},
 		{"escape whitelisted tag", "<u>", nil, `\<u>`},
-		{"unknown tag literal", "<div>x", nil, "<div>x"},
+		// escaped on shape, not on the whitelist: reserved syntax space (§8.2)
+		{"escape unknown tag", "<div>x", nil, `\<div>x`},
 		{"escape entity", "&lt;", nil, `\&lt;`},
 		{"bare ampersand literal", "R&D", nil, "R&D"},
 		{"escape underscore", "_x_", nil, `\_x\_`},
@@ -117,6 +118,43 @@ func TestRenderInline_Golden(t *testing.T) {
 			require.NoError(t, err)
 			again := renderInline(txt, marks)
 			assert.Equal(t, got, again, "Export ∘ Import must be byte-stable")
+		})
+	}
+}
+
+// TestRenderInline_ReservesTagSyntaxSpace pins the syntax space the tag
+// namespace reserves (§8.2, §10). Escaping only the three tags version 1
+// happens to know would leave literal `<sub>x</sub>` bytes in canonical
+// output that a version that adds `sub` reads as markup — and no reader can
+// tell 1-literal from 2-markup from the text string alone. So the escape is
+// anchored on the *shape* `</?[A-Za-z]`, not on the whitelist, and the
+// delimiter namespace stays closed instead (`==x==`, `~x~` are literal
+// forever, because a future mark arrives as a tag).
+func TestRenderInline_ReservesTagSyntaxSpace(t *testing.T) {
+	tests := []struct {
+		name string
+		text string
+		want string
+	}{
+		{"unknown tag", "<sub>x</sub>", `\<sub>x\</sub>`},
+		{"unknown closing tag", "</p>", `\</p>`},
+		{"known tag", "<u>x</u>", `\<u>x\</u>`},
+		{"tag-shaped with no terminator", "a<b", `a\<b`},
+		{"tag shape needs a letter", "<3 and </3", "<3 and </3"},
+		{"lone bracket stays literal", "a < b", "a < b"},
+		{"closed delimiter namespace stays literal", "==mark== ~one~", "==mark== ~one~"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := renderInline(tc.text, nil)
+			assert.Equal(t, tc.want, got)
+
+			// the escape has to be readable back as the same literal text,
+			// with no marks invented from the tag-shaped bytes
+			back, marks, err := parseInline(got)
+			require.NoError(t, err)
+			assert.Equal(t, tc.text, back, "escaped output must parse back verbatim")
+			assert.Empty(t, marks)
 		})
 	}
 }

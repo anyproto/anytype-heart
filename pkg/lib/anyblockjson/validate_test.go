@@ -13,6 +13,42 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
+// A tag-shaped sequence the grammar does not recognize is literal text and
+// never an error (§10) — that leniency is what keeps a stored document
+// readable across a version that adds a tag. But canonical export escapes
+// those bytes (§8.2), so finding them unescaped means the text was
+// hand-written or produced by a version that knows the tag, which is worth
+// one warning and no more.
+func TestValidate_UnknownTagStaysLiteralAndWarns(t *testing.T) {
+	warningsFor := func(t *testing.T, doc string) []Issue {
+		var got []Issue
+		require.NoError(t, ValidateWarn([]byte(doc), func(i Issue) { got = append(got, i) }),
+			"an unknown tag is not a validation error")
+		return got
+	}
+
+	t.Run("unrecognized tag warns once and known tags do not", func(t *testing.T) {
+		got := warningsFor(t, `{"version": 1, "blocks": [
+			{"type": "paragraph", "text": "<sub>x</sub> and <u>y</u>"}]}`)
+		require.Len(t, got, 1, "one warning per unrecognized name, not per occurrence")
+		assert.Equal(t, "/blocks/0/text", got[0].Path)
+		assert.Contains(t, got[0].Message, `"<sub"`)
+	})
+
+	t.Run("escaped tag is unambiguous, so no warning", func(t *testing.T) {
+		assert.Empty(t, warningsFor(t, `{"version": 1, "blocks": [
+			{"type": "paragraph", "text": "\\<sub>x\\</sub>"}]}`))
+	})
+
+	t.Run("a table cell string is warned about too", func(t *testing.T) {
+		got := warningsFor(t, `{"version": 1, "blocks": [
+			{"type": "table", "columns": [{"id": "c1"}],
+			 "rows": [{"id": "r1", "cells": ["<mark>hi</mark>"]}]}]}`)
+		require.Len(t, got, 1)
+		assert.Equal(t, "/blocks/0/rows/0/cells/0", got[0].Path)
+	})
+}
+
 func TestValidate_Valid(t *testing.T) {
 	tests := []struct {
 		name string

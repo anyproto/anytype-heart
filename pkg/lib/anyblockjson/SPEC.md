@@ -1085,12 +1085,33 @@ boundaries the unseen neighbor is treated as punctuation, conservatively):
 - `[` — always escaped in prose (a bare `[` could assemble a false link
   with text from a later mark segment; no local lookahead can rule it out).
 - `]` — escaped only inside link labels.
-- `<` — escaped only before a whitelisted tag prefix (`</?` + `u`/`font`/
-  `mention` + delimiter).
+- `<` — escaped before any **tag-shaped** sequence: `<`, an optional `/`,
+  then at least one ASCII letter. Deliberately wider than the three tag
+  names version 1 knows: `<sub>x</sub>` in prose exports as
+  `\<sub>x\</sub>`. This is the tag namespace's **reserved syntax space**
+  (§10) — see the note below.
 - `&` — escaped only where a valid entity follows. Recognized entities:
   `lt gt amp quot apos nbsp` and numeric (`&#65;`, `&#x41;`).
 - `\` — escaped when followed by ASCII punctuation (input accepts a
   backslash before any ASCII punctuation as an escape, per CommonMark).
+
+**Reserved syntax space** (the one escaping rule that is not minimal, and
+why). A `text` string carries no version marker, so bytes are the only thing
+a later version has to work with. If canonical output escaped `<` only for
+`u`/`font`/`mention`, a version-1 document could contain a literal
+`<sub>x</sub>`, and the day a version adds `sub` those same bytes read as
+markup — the reader cannot tell version-1-literal from version-2-markup, and
+because a malformed instance of a *known* tag is an error (§8.3), a stored
+document that was valid could become invalid. Escaping the tag *shape*
+closes that: in canonical output, an unescaped `<` is never followed by a
+letter, so the entire `</?[A-Za-z]…>` space is free for any future version to
+define, with no text-rewriting migration and no ambiguity. The cost is a
+backslash on prose that looks like markup (`a\<b`).
+
+The delimiter namespace is closed instead of reserved: `**`, `*`, `~~`,
+`` ` ``, `[…](…)` are the complete set (§10), and a future mark arrives as a
+tag rather than as new punctuation. That is what makes `==mark==`, `~one~`,
+`^sup^` and friends safe to leave literal and unescaped forever.
 
 Link destinations render bare with `\`-escaped `` \ ( ) & < [ ] ` ``, or
 angle-wrapped (`<…>`) when the URL contains whitespace (brackets and
@@ -1302,11 +1323,11 @@ keeps a stored document readable across a bump is that the reader recognizes
 *exactly* the syntax its version defines and treats everything else as
 literal. This binds three namespaces:
 
-| namespace | version 1 recognizes | anything else |
-|---|---|---|
-| inline tags (§8.1) | `u`, `font`, `mention` | literal text, never an error |
-| Markdown delimiters (§8.1) | `**` `*` `~~` `` ` `` `[…](…)` | literal text |
-| `anytype://` destinations (§8.1) | `anytype://object?objectId=<id>`, one parameter | a plain Link, preserved verbatim |
+| namespace | version 1 recognizes | anything else | status |
+|---|---|---|---|
+| inline tags (§8.1) | `u`, `font`, `mention` | literal text, never an error — reported as a warning, since canonical output would have escaped it | **reserved**: canonical output escapes every tag-shaped `<` (§8.2), so the whole `</?[A-Za-z]` space is free for later versions |
+| Markdown delimiters (§8.1) | `**` `*` `~~` `` ` `` `[…](…)` | literal text | **closed**: the set is complete; a future mark is a tag, never new punctuation |
+| `anytype://` destinations (§8.1) | `anytype://object?objectId=<id>`, one parameter | a plain Link, preserved verbatim | matched by exact form, so a second parameter is available to a later version |
 
 Being exact is what makes a later migration possible: when a version adds a
 tag, a delimiter, or a deep-link parameter, the migration escapes or rewrites
@@ -1314,6 +1335,14 @@ the prior occurrences that a stored document meant literally, and it can only
 do that if version 1's rule was unambiguous. A reader that guessed — matching
 a deep link by prefix, say, and taking whatever followed as the id — would
 have already destroyed the information a migration needs.
+
+The reservation is what keeps that migration from being needed at all for
+canonical documents: because export escapes tag-shaped `<`, a version that
+adds a tag can read version-1 documents as they are. Only hand-written
+documents can carry an unescaped tag-shaped sequence, which is why import
+warns about one instead of silently accepting it — the warning is the
+author's notice that those bytes are only literal by virtue of the document's
+`version`, and that canonical form spells them `\<`.
 
 **The cost this accepts.** When version 2 ships, a client still on version 1
 cannot open *any* document a version-2 client exported — refused, not

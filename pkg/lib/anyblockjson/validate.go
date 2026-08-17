@@ -459,6 +459,22 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 		}
 	}
 
+	// checkInline parses one text string for grammar errors, and reports the
+	// tag-shaped sequences the grammar does not recognize: those stay literal
+	// (§10), but canonical export escapes them (§8.2), so an unescaped one
+	// says the text did not come from this version's export.
+	checkInline := func(text, path string) {
+		_, _, notes, err := parseInlineNotes(text)
+		if err != nil {
+			addIssue(path, "inline markup: %v", err)
+			return
+		}
+		for _, name := range notes.unknownTags {
+			warnIssue(path, "tag-shaped %q is not markup this version recognizes — "+
+				"kept as literal text; canonical output escapes the \"<\"", "<"+name)
+		}
+	}
+
 	checkText := func(block map[string]any, path string) {
 		typ, _ := block["type"].(string)
 		if !textBearing(typ) {
@@ -468,9 +484,7 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 		if text == "" {
 			return
 		}
-		if _, _, err := parseInline(text); err != nil {
-			addIssue(path+"/text", "inline markup: %v", err)
-		}
+		checkInline(text, path+"/text")
 	}
 
 	var checkFlatRun func(blocks []any, basePath string, inCell bool)
@@ -485,7 +499,7 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 			addIssue(path, "language and fields.lang are both set")
 		}
 		if typ == "table" {
-			walkTable(block, path, claimId, addIssue, walkBlock, checkFlatRun)
+			walkTable(block, path, claimId, addIssue, checkInline, walkBlock, checkFlatRun)
 		}
 		if typ == "dataview" {
 			checkDataviewViews(block, path, addIssue, warnIssue)
@@ -570,6 +584,7 @@ func codeLangConflict(block map[string]any) bool {
 
 func walkTable(block map[string]any, path string,
 	claimId func(id, path string), addIssue func(path, format string, args ...any),
+	checkInline func(text, path string),
 	walkBlock func(block map[string]any, path string),
 	checkFlatRun func(blocks []any, basePath string, inCell bool)) {
 
@@ -604,9 +619,7 @@ func walkTable(block map[string]any, path string,
 			switch cell := c.(type) {
 			case string:
 				if cell != "" {
-					if _, _, err := parseInline(cell); err != nil {
-						addIssue(cellPath, "inline markup: %v", err)
-					}
+					checkInline(cell, cellPath)
 				}
 			case map[string]any:
 				// a full walk: the cell joins the id uniqueness domain and

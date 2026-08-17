@@ -754,7 +754,7 @@ func escapeProse(s string, atBOL, atEOL, inLabel bool) string {
 				b.WriteByte(']')
 			}
 		case '<':
-			if tagLikeAhead(rs[i:]) {
+			if tagShaped(rs[i:]) {
 				b.WriteString(`\<`)
 			} else {
 				b.WriteByte('<')
@@ -772,9 +772,29 @@ func escapeProse(s string, atBOL, atEOL, inLabel bool) string {
 	return b.String()
 }
 
-// tagLikeAhead reports whether rs starts a whitelisted tag prefix — the only
-// case where a literal '<' needs escaping.
-func tagLikeAhead(rs []rune) bool {
+// tagShaped reports whether rs starts a tag-shaped sequence: '<', an optional
+// '/', then at least one ASCII letter. This is the whole reserved syntax space
+// of the tag namespace, not just the three names version 1 knows (§8.2).
+//
+// Anchoring the escape on the whitelist instead would leave literal
+// `<sub>x</sub>` bytes in canonical output, and the day a version adds `sub`
+// those bytes become markup — with nothing in the text string to say which
+// version wrote them, and a stricter reading (§8.3 makes a malformed instance
+// of a *known* tag an error) turning old valid documents invalid. Escaping the
+// shape costs a backslash on text that looks like markup and buys a tag
+// namespace a later version can extend without a text-rewriting migration.
+//
+// It is deliberately the exact complement of the parser's leniency: import
+// keeps an unrecognized tag-shaped sequence literal and warns (§10), and
+// export escapes exactly what import warns about.
+func tagShaped(rs []rune) bool {
+	_, ok := tagShapedName(rs)
+	return ok
+}
+
+// tagShapedName returns the name of the tag-shaped sequence at rs[0] and
+// whether rs is tag-shaped at all.
+func tagShapedName(rs []rune) (string, bool) {
 	j := 1
 	if j < len(rs) && rs[j] == '/' {
 		j++
@@ -783,14 +803,10 @@ func tagLikeAhead(rs []rune) bool {
 	for j < len(rs) && isASCIILetter(rs[j]) {
 		j++
 	}
-	name := string(rs[start:j])
-	if name != "u" && name != "font" && name != "mention" {
-		return false
+	if j == start {
+		return "", false
 	}
-	if j >= len(rs) {
-		return false
-	}
-	return rs[j] == '>' || rs[j] == '/' || unicode.IsSpace(rs[j])
+	return string(rs[start:j]), true
 }
 
 func entityAhead(rs []rune) bool {
@@ -876,21 +892,51 @@ func inlineErr(rs []rune, pos int, msg string) error {
 	return &inlineError{Msg: msg, Snippet: string(rs[start:end])}
 }
 
+// inlineNotes collects what a caller may want to report as warnings about a
+// text string it parsed successfully (§12). Nothing here makes a document
+// invalid, so the parser records instead of failing, and a nil sink is the
+// no-op case for callers that do not report.
+type inlineNotes struct {
+	// unknownTags names the tag-shaped sequences the grammar does not
+	// recognize (§10), deduplicated in first-seen order: one occurrence of
+	// `<sub>x</sub>` is one fact about the text, not two.
+	unknownTags []string
+}
+
+func (n *inlineNotes) unknownTag(name string) {
+	if n == nil {
+		return
+	}
+	for _, seen := range n.unknownTags {
+		if seen == name {
+			return
+		}
+	}
+	n.unknownTags = append(n.unknownTags, name)
+}
+
 // parseInline parses §8 inline Markdown back into plain text and marks with
 // UTF-16 code-unit ranges.
 func parseInline(md string) (string, []*model.BlockContentTextMark, error) {
+	txt, marks, _, err := parseInlineNotes(md)
+	return txt, marks, err
+}
+
+// parseInlineNotes is parseInline plus the notes worth surfacing as warnings.
+func parseInlineNotes(md string) (string, []*model.BlockContentTextMark, *inlineNotes, error) {
 	rs := []rune(md)
-	toks, err := tokenizeInline(rs, 0)
+	notes := &inlineNotes{}
+	toks, err := tokenizeInline(rs, 0, notes)
 	if err != nil {
-		return "", nil, err
+		return "", nil, nil, err
 	}
 	ib := &inlineBuilder{}
 	if err := resolveTokens(toks, ib); err != nil {
-		return "", nil, err
+		return "", nil, nil, err
 	}
 	ib.applyInserts()
 	marks := canonicalizeMarks(ib.marks)
-	return text.UTF16ToStr(ib.out), marks, nil
+	return text.UTF16ToStr(ib.out), marks, notes, nil
 }
 
 // Resource bounds (deterministic local rules, recorded in SPEC §8): they keep
@@ -995,7 +1041,7 @@ type token struct {
 	dest              string            // tokLink
 }
 
-func tokenizeInline(rs []rune, depth int) ([]token, error) {
+func tokenizeInline(rs []rune, depth int, notes *inlineNotes) ([]token, error) {
 	ctx := newInlineScanCtx(rs)
 	var toks []token
 	var pending strings.Builder
@@ -1046,6 +1092,12 @@ func tokenizeInline(rs []rune, depth int) ([]token, error) {
 				return nil, err
 			}
 			if !isTag {
+				// tag-shaped but not a tag this version parses: literal text,
+				// never an error (§10) — recorded so a caller can say so,
+				// because canonical output would have escaped these bytes
+				if name, shaped := tagShapedName(rs[i:]); shaped {
+					notes.unknownTag(name)
+				}
 				appendText("<")
 				i++
 				break
@@ -1055,7 +1107,7 @@ func tokenizeInline(rs []rune, depth int) ([]token, error) {
 			}
 			i += size
 		case '[':
-			tok, size, ok, err := parseLink(rs, i, ctx, depth)
+			tok, size, ok, err := parseLink(rs, i, ctx, depth, notes)
 			if err != nil {
 				return nil, err
 			}
@@ -1482,7 +1534,7 @@ func scanBareDest(rs []rune, k, limit int) (string, int, bool) {
 	}
 }
 
-func parseLink(rs []rune, i int, ctx *inlineScanCtx, depth int) (*token, int, bool, error) {
+func parseLink(rs []rune, i int, ctx *inlineScanCtx, depth int, notes *inlineNotes) (*token, int, bool, error) {
 	if depth >= maxLinkNesting {
 		return nil, 0, false, nil
 	}
@@ -1490,7 +1542,7 @@ func parseLink(rs []rune, i int, ctx *inlineScanCtx, depth int) (*token, int, bo
 	if !ok {
 		return nil, 0, false, nil
 	}
-	labelToks, err := tokenizeInline(rs[i+1:labelEnd], depth+1)
+	labelToks, err := tokenizeInline(rs[i+1:labelEnd], depth+1, notes)
 	if err != nil {
 		return nil, 0, false, err
 	}
