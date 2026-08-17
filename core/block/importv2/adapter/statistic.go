@@ -89,8 +89,15 @@ type statSnapshot struct {
 	// (importv2.SpillBytes).
 	bytesDone int64
 
-	state        pb.EventImportStatisticState
-	resumesIn    time.Duration
+	state pb.EventImportStatisticState
+	// resumesAt is the INSTANT the pacer window reopens, not the duration
+	// until it does (review item 16). A duration captured when the pacer
+	// signalled never moved again, so a poller's countdown sat at "4s" for
+	// as long as it cared to ask; every other time-valued field on this
+	// event is already an instant for precisely that reason (§15.2's
+	// phaseStartedAt is unix ms so "clients show elapsed without their own
+	// clock"). Zero means no window is pending.
+	resumesAt    time.Time
 	attempt      int32
 	attemptsMax  int32
 	errorMessage string
@@ -268,7 +275,7 @@ func (e *statEmitter) Throttled(resumeIn time.Duration) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.setStateLocked(pb.EventImportStatistic_Throttled, func() {
-		e.snap.resumesIn = resumeIn
+		e.snap.resumesAt = e.cfg.now().Add(resumeIn)
 	})
 }
 
@@ -277,7 +284,7 @@ func (e *statEmitter) Retrying(attempt, attemptsMax int) {
 	defer e.mu.Unlock()
 	e.setStateLocked(pb.EventImportStatistic_Retrying, func() {
 		e.snap.attempt, e.snap.attemptsMax = int32(attempt), int32(attemptsMax)
-		e.snap.resumesIn = 0
+		e.snap.resumesAt = time.Time{}
 	})
 }
 
@@ -285,7 +292,7 @@ func (e *statEmitter) Recovered() {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.setStateLocked(pb.EventImportStatistic_Running, func() {
-		e.snap.resumesIn, e.snap.attempt, e.snap.attemptsMax = 0, 0, 0
+		e.snap.resumesAt, e.snap.attempt, e.snap.attemptsMax = time.Time{}, 0, 0
 	})
 }
 
@@ -539,7 +546,7 @@ func (e *statEmitter) buildLocked() *pb.EventImportStatistic {
 		FilesDone:            e.snap.filesDone,
 		BytesDone:            e.snap.bytesDone,
 		State:                e.snap.state,
-		ResumesInMs:          e.snap.resumesIn.Milliseconds(),
+		ResumesInMs:          e.resumesInLocked(),
 		Attempt:              e.snap.attempt,
 		AttemptsMax:          e.snap.attemptsMax,
 		ErrorMessage:         e.snap.errorMessage,
@@ -577,6 +584,20 @@ func (e *statEmitter) totalsKnownLocked() bool {
 		return false
 	}
 	return e.snap.pagesTotal > 0 || e.snap.filesTotal > 0
+}
+
+// resumesInLocked renders the pending pacer window as what remains of it
+// AT READ TIME, so a poll counts down and a window that has already
+// reopened reads zero rather than negative time.
+func (e *statEmitter) resumesInLocked() int64 {
+	if e.snap.resumesAt.IsZero() {
+		return 0
+	}
+	remaining := e.snap.resumesAt.Sub(e.cfg.now())
+	if remaining <= 0 {
+		return 0
+	}
+	return remaining.Milliseconds()
 }
 
 func (e *statEmitter) safeToCloseLocked() bool {

@@ -721,6 +721,46 @@ func TestStatEmitterErrorIsTerminal(t *testing.T) {
 	})
 }
 
+func TestStatEmitterThrottleCountdown(t *testing.T) {
+	t.Run("the reopening window counts DOWN as it is polled", func(t *testing.T) {
+		// given — review item 16: resumesIn was a DURATION frozen at signal
+		// time, so a poller watching the calm badge saw "4s" for as long as
+		// it cared to ask. Every other time-valued field on this event is an
+		// INSTANT for exactly this reason — §15.2's phaseStartedAt is unix ms
+		// so "clients show elapsed without their own clock" — and this one
+		// was the exception.
+		clock := newFakeClock()
+		emitter, _ := newTestEmitter(t, clock)
+		emitter.Phase(importv2.PhaseFetching)
+
+		// when
+		emitter.Throttled(4 * time.Second)
+
+		// then
+		assert.Equal(t, int64(4000), emitter.Snapshot().ResumesInMs)
+		clock.advance(3 * time.Second)
+		assert.Equal(t, int64(1000), emitter.Snapshot().ResumesInMs)
+
+		// and: a window that has already reopened is not negative time
+		clock.advance(5 * time.Second)
+		assert.Zero(t, emitter.Snapshot().ResumesInMs)
+	})
+
+	t.Run("recovery clears the countdown outright", func(t *testing.T) {
+		// given
+		clock := newFakeClock()
+		emitter, _ := newTestEmitter(t, clock)
+		emitter.Phase(importv2.PhaseFetching)
+		emitter.Throttled(time.Minute)
+
+		// when
+		emitter.Recovered()
+
+		// then
+		assert.Zero(t, emitter.Snapshot().ResumesInMs)
+	})
+}
+
 func TestStatEmitterTerminalVerdict(t *testing.T) {
 	t.Run("an all-or-nothing abort's terminal event says ERROR", func(t *testing.T) {
 		// given — review item 11, the sibling of item 5 and its shared root:
