@@ -376,7 +376,7 @@ func TestOmitIds(t *testing.T) {
 	assert.NotContains(t, s, `"id": "s1"`)
 	assert.NotContains(t, s, `"id": "f1"`)
 	assert.NotContains(t, s, `"groups"`)
-	assert.NotContains(t, s, `"objectOrders"`)
+	assert.NotContains(t, s, `"object_orders"`)
 	// the envelope id stays (§9)
 	assert.Contains(t, s, `"id": "bafyreiobject"`)
 
@@ -398,7 +398,7 @@ func TestCompactIds(t *testing.T) {
 	// a refs legend appears, mentions use short labels
 	assert.Contains(t, s, `"refs"`)
 	assert.Contains(t, s, `"roman": "bafyreiroman"`)
-	assert.Contains(t, s, `<mention objectId=\"roman\">`)
+	assert.Contains(t, s, `<mention object_id=\"roman\">`)
 	// stripped properties leave no unused legend entries (§9a)
 	assert.NotContains(t, s, `bafyreitypepage`)
 	// the envelope id is never compacted (§9a)
@@ -432,7 +432,7 @@ func TestEnvelope_Variants(t *testing.T) {
 		require.NoError(t, err)
 		s := string(data)
 		assert.Contains(t, s, `"type": "template"`)
-		assert.Contains(t, s, `"templateFor": "task"`)
+		assert.Contains(t, s, `"template_for": "task"`)
 		assert.NotContains(t, s, `"kind"`)
 
 		sbType, snap2, err := Unmarshal(data, Options{GenerateId: seqIds("g")})
@@ -447,7 +447,7 @@ func TestEnvelope_Variants(t *testing.T) {
 		}
 		data, err := Marshal(model.SmartBlockType_ProfilePage, snap, Options{})
 		require.NoError(t, err)
-		assert.Contains(t, string(data), `"kind": "profilePage"`)
+		assert.Contains(t, string(data), `"kind": "profile_page"`)
 		sbType, _, err := Unmarshal(data, Options{GenerateId: seqIds("g")})
 		require.NoError(t, err)
 		assert.Equal(t, model.SmartBlockType_ProfilePage, sbType)
@@ -501,8 +501,8 @@ func TestEnvelope_Variants(t *testing.T) {
 
 func TestImport_Aliases(t *testing.T) {
 	doc := `{"version": 1, "blocks": [
-		{"type": "heading4", "text": "deep"},
-		{"type": "header4", "text": "deeper"},
+		{"type": "heading_4", "text": "deep"},
+		{"type": "header_4", "text": "deeper"},
 		{"type": "equation", "text": "E=mc^2"},
 		{"type": "embed", "processor": "youtube", "url": "https://youtu.be/x"}
 	]}`
@@ -523,7 +523,7 @@ func TestImport_TitleAbsorption(t *testing.T) {
 	doc := `{"version": 1, "blocks": [
 		{"type": "title", "text": "My **Title**"},
 		{"type": "description", "text": "Sub"},
-		{"type": "featuredProperties"},
+		{"type": "featured_properties"},
 		{"type": "paragraph", "text": "body"}
 	]}`
 	_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
@@ -561,7 +561,7 @@ func TestGeneratedDocs_ByteStable(t *testing.T) {
 	rnd := rand.New(rand.NewSource(7))
 	texts := []string{
 		"plain", "**bold** and *it*", "`code` span", "a\\*b", "😀 astral 𝒜",
-		"<u>under</u>", "~~gone~~", "x <mention objectId=\"bafyreiperson\">P</mention>",
+		"<u>under</u>", "~~gone~~", "x <mention object_id=\"bafyreiperson\">P</mention>",
 		"[link](https://x.io)", "line\nbreak", "_alias_", "&lt;tag&gt;",
 	}
 	blockGens := []func(i int) string{
@@ -572,15 +572,15 @@ func TestGeneratedDocs_ByteStable(t *testing.T) {
 			return fmt.Sprintf(`{"type": "checkbox", "checked": %v, "text": %q}`, i%2 == 0, texts[i%len(texts)])
 		},
 		func(i int) string {
-			return fmt.Sprintf(`{"type": "heading%d", "text": "h"},{"indent": 1, "type": "paragraph", "text": %q}`,
+			return fmt.Sprintf(`{"type": "heading_%d", "text": "h"},{"indent": 1, "type": "paragraph", "text": %q}`,
 				1+i%3, texts[i%len(texts)])
 		},
 		func(i int) string {
 			// a deep chain: covers the real-world ~6-level maximum and beyond
 			depth := 4 + i%8
-			parts := []string{fmt.Sprintf(`{"type": "bulletedListItem", "text": %q}`, texts[i%len(texts)])}
+			parts := []string{fmt.Sprintf(`{"type": "bulleted_list_item", "text": %q}`, texts[i%len(texts)])}
 			for d := 1; d <= depth; d++ {
-				parts = append(parts, fmt.Sprintf(`{"indent": %d, "type": "bulletedListItem", "text": %q}`,
+				parts = append(parts, fmt.Sprintf(`{"indent": %d, "type": "bulleted_list_item", "text": %q}`,
 					d, texts[(i+d)%len(texts)]))
 			}
 			return strings.Join(parts, ",")
@@ -597,12 +597,12 @@ func TestGeneratedDocs_ByteStable(t *testing.T) {
 			return fmt.Sprintf(`{"type": "table",
 				"columns": [{"id": "ca%d"}, {"id": "cb%d"}],
 				"rows": [
-					{"id": "ra%d", "isHeader": true, "cells": [%q]},
+					{"id": "ra%d", "is_header": true, "cells": [%q]},
 					{"id": "rb%d", "cells": [null, %q]}
 				]}`, i, i, i, texts[i%len(texts)], i, texts[(i+1)%len(texts)])
 		},
 		func(i int) string {
-			return fmt.Sprintf(`{"type": "dataview", "objectId": "bafyreiset%d",
+			return fmt.Sprintf(`{"type": "dataview", "object_id": "bafyreiset%d",
 				"properties": [{"key": "name", "format": "text"}],
 				"views": [{"type": "list", "name": "v",
 					"sorts": [{"property": "name", "direction": "desc"}],
@@ -612,7 +612,7 @@ func TestGeneratedDocs_ByteStable(t *testing.T) {
 			return fmt.Sprintf(`{"type": "code", "language": "go", "text": %q}`, texts[i%len(texts)])
 		},
 		func(i int) string {
-			return fmt.Sprintf(`{"type": "callout", "iconEmoji": "💡", "text": %q}`, texts[i%len(texts)])
+			return fmt.Sprintf(`{"type": "callout", "icon_emoji": "💡", "text": %q}`, texts[i%len(texts)])
 		},
 	}
 	for i := 0; i < 300; i++ {

@@ -446,9 +446,9 @@ func schemaIssueMessage(e *jsonschema.ValidationError, printer *message.Printer)
 // markup; code/embed text is literal (§8.4).
 func textBearing(typ string) bool {
 	switch typ {
-	case "paragraph", "heading1", "heading2", "heading3", "heading4", "header4",
-		"quote", "checkbox", "bulletedListItem", "numberedListItem", "toggle",
-		"callout", "toggleHeading1", "toggleHeading2", "toggleHeading3",
+	case "paragraph", "heading_1", "heading_2", "heading_3", "heading_4", "header_4",
+		"quote", "checkbox", "bulleted_list_item", "numbered_list_item", "toggle",
+		"callout", "toggle_heading_1", "toggle_heading_2", "toggle_heading_3",
 		"title", "description":
 		return true
 	}
@@ -461,7 +461,7 @@ func textBearing(typ string) bool {
 var leafBlockTypes = map[string]bool{
 	"embed": true, "equation": true, "bookmark": true, "link": true,
 	"divider": true, "table": true, "property": true, "dataview": true,
-	"icon": true, "tableOfContents": true, "featuredProperties": true,
+	"icon": true, "table_of_contents": true, "featured_properties": true,
 	"chat": true,
 }
 
@@ -572,9 +572,9 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 	// Go decode error carrying no JSON pointer — the divergence §12 rules out.
 	checkNumbers(doc, "", addIssue)
 
-	if _, ok := doc["templateFor"]; ok {
+	if _, ok := doc["template_for"]; ok {
 		if typ, _ := doc["type"].(string); typ != "template" {
-			addIssue("/templateFor", `templateFor is only valid on templates (type "template")`)
+			addIssue("/template_for", `template_for is only valid on templates (type "template")`)
 		}
 	}
 
@@ -602,23 +602,23 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 		}
 	}
 
-	if _, ok := doc["typeProperties"]; ok {
-		if kind, _ := doc["kind"].(string); kind != "objectType" {
-			addIssue("/typeProperties", `typeProperties is only valid on type documents (kind "objectType")`)
+	if _, ok := doc["type_properties"]; ok {
+		if kind, _ := doc["kind"].(string); kind != "object_type" {
+			addIssue("/type_properties", `type_properties is only valid on type documents (kind "object_type")`)
 		}
 		// typeProperties replaces the recommended-relation lists (§2a): a
 		// document carrying both is ambiguous
 		if props, _ := doc["properties"].(map[string]any); props != nil {
 			for _, l := range recommendedListKeys {
 				if _, dup := props[l.detailKey]; dup {
-					addIssue("/properties/"+l.detailKey, "conflicts with typeProperties, which replaces this list")
+					addIssue("/properties/"+l.detailKey, "conflicts with type_properties, which replaces this list")
 				}
 			}
 		}
 		// name is used only when the property has to be created (§2a); an
 		// existing one keeps its own, so renaming a bundled key here reads as
 		// working and silently does nothing
-		if list, _ := doc["typeProperties"].([]any); list != nil {
+		if list, _ := doc["type_properties"].([]any); list != nil {
 			for i, raw := range list {
 				tp, ok := raw.(map[string]any)
 				if !ok {
@@ -629,13 +629,13 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 				// order (§2a); on any other format there is nothing to
 				// declare and the array would be silently dropped
 				if opts, has := tp["options"].([]any); has && len(opts) > 0 {
-					if f, _ := tp["format"].(string); f != "select" && f != "multiSelect" {
+					if f, _ := tp["format"].(string); f != "select" && f != "multi_select" {
 						shown := f
 						if shown == "" {
 							shown = "text"
 						}
-						addIssue(fmt.Sprintf("/typeProperties/%d/options", i),
-							"options is only meaningful on select/multiSelect, not %q", shown)
+						addIssue(fmt.Sprintf("/type_properties/%d/options", i),
+							"options is only meaningful on select/multi_select, not %q", shown)
 					}
 					// an option is a bare name or an object carrying a color
 					// (§2a), and the two forms name the same vocabulary: the
@@ -644,7 +644,7 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 					for j, o := range opts {
 						n := optionEntryName(o)
 						if seen[n] {
-							addIssue(fmt.Sprintf("/typeProperties/%d/options/%d", i, j),
+							addIssue(fmt.Sprintf("/type_properties/%d/options/%d", i, j),
 								"duplicate option %q", n)
 						}
 						seen[n] = true
@@ -653,14 +653,14 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 				// objectTypes restricts what an object reference may point
 				// at; on any other format there is nothing to restrict and
 				// the array would be silently dropped
-				if ots, has := tp["objectTypes"].([]any); has && len(ots) > 0 {
+				if ots, has := tp["object_types"].([]any); has && len(ots) > 0 {
 					if f, _ := tp["format"].(string); f != "objects" && f != "files" {
 						shown := f
 						if shown == "" {
 							shown = "text"
 						}
-						addIssue(fmt.Sprintf("/typeProperties/%d/objectTypes", i),
-							"objectTypes is only meaningful on objects/files, not %q", shown)
+						addIssue(fmt.Sprintf("/type_properties/%d/object_types", i),
+							"object_types is only meaningful on objects/files, not %q", shown)
 					}
 				}
 				// a bundled property is used as-is: only the wiring's
@@ -669,12 +669,12 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 				if key != "" {
 					if rel, err := bundle.GetRelation(domain.RelationKey(key)); err == nil && rel != nil {
 						if name, _ := tp["name"].(string); name != "" && name != rel.Name {
-							warnIssue(fmt.Sprintf("/typeProperties/%d/name", i),
+							warnIssue(fmt.Sprintf("/type_properties/%d/name", i),
 								"%q is a bundled property named %q — this name is ignored; mint a custom key if the label matters",
 								key, rel.Name)
 						}
-						if ots, has := tp["objectTypes"].([]any); has && len(ots) > 0 {
-							warnIssue(fmt.Sprintf("/typeProperties/%d/objectTypes", i),
+						if ots, has := tp["object_types"].([]any); has && len(ots) > 0 {
+							warnIssue(fmt.Sprintf("/type_properties/%d/object_types", i),
 								"%q is a bundled property; its target types are fixed by the bundle and this list is ignored — mint a custom key to target different types",
 								key)
 						}
@@ -1031,7 +1031,7 @@ func walkTable(block map[string]any, path string,
 // exactly these formats (core/kanban.Service.Init), and the client offers the
 // same set (Relation.getGroupTypes). Every other view type ignores groupBy.
 var groupableFormats = map[string]map[string]struct{}{
-	"kanban":   {"select": {}, "multiSelect": {}, "checkbox": {}},
+	"kanban":   {"select": {}, "multi_select": {}, "checkbox": {}},
 	"calendar": {"date": {}},
 }
 
@@ -1069,18 +1069,18 @@ func checkDataviewViews(block map[string]any, path string, addIssue, warnIssue f
 			continue
 		}
 		checkDateFilters(view, formats, fmt.Sprintf("%s/views/%d", path, i), addIssue, warnIssue)
-		groupBy, _ := view["groupBy"].(string)
+		groupBy, _ := view["group_by"].(string)
 		if groupBy == "" {
 			continue
 		}
-		vPath := fmt.Sprintf("%s/views/%d/groupBy", path, i)
+		vPath := fmt.Sprintf("%s/views/%d/group_by", path, i)
 		viewType, _ := view["type"].(string)
 		if viewType == "" {
 			viewType = "table" // §6.2: the default view type
 		}
 		allowed, groups := groupableFormats[viewType]
 		if !groups {
-			warnIssue(vPath, "%q views do not group; groupBy is ignored", viewType)
+			warnIssue(vPath, "%q views do not group; group_by is ignored", viewType)
 			continue
 		}
 		// a key absent from properties has no declared format to check
@@ -1104,8 +1104,8 @@ func sortedKeys(m map[string]struct{}) []string {
 	return out
 }
 
-// checkDateFilters warns about `less`/`lessOrEqual` on a date property that
-// is not guarded by a `notEmpty`/`exists` on the same property in an
+// checkDateFilters warns about `less`/`less_or_equal` on a date property that
+// is not guarded by a `not_empty`/`exists` on the same property in an
 // enclosing AND. An object with no value for that date matches: the filter's
 // value is set and the record's is not, so domain.Value.Compare returns 1,
 // which is exactly what Less tests for. A freshness view written the obvious
@@ -1135,7 +1135,7 @@ func checkDateFilters(view map[string]any, formats map[string]string, path strin
 				}
 				cond, _ := n["condition"].(string)
 				if prop, _ := n["property"].(string); prop != "" &&
-					(cond == "notEmpty" || cond == "exists") {
+					(cond == "not_empty" || cond == "exists") {
 					scope[prop] = true
 				}
 			}
@@ -1154,10 +1154,10 @@ func checkDateFilters(view map[string]any, formats map[string]string, path strin
 			// the day-count presets read their operand from value; without
 			// one the count is 0, which quietly means "today" rather than
 			// "n days ago" (pkg/lib/database.getDateRange)
-			if preset, _ := n["datePreset"].(string); preset != "" {
+			if preset, _ := n["date_preset"].(string); preset != "" {
 				if _, counts := countingPresetNames[preset]; counts {
 					if _, has := n["value"]; !has {
-						addIssue(nPath, "datePreset %q needs a day count in \"value\"; without one it means 0 days, i.e. today", preset)
+						addIssue(nPath, "date_preset %q needs a day count in \"value\"; without one it means 0 days, i.e. today", preset)
 					}
 				}
 			}
@@ -1173,7 +1173,7 @@ func checkDateFilters(view map[string]any, formats map[string]string, path strin
 				}
 			}
 			cond, _ := n["condition"].(string)
-			if cond != "less" && cond != "lessOrEqual" {
+			if cond != "less" && cond != "less_or_equal" {
 				continue
 			}
 			prop, _ := n["property"].(string)
@@ -1182,7 +1182,7 @@ func checkDateFilters(view map[string]any, formats map[string]string, path strin
 			}
 			warnIssue(nPath, "%q on date %q also matches objects with no %s; "+
 				"pair it with a %q leaf in an \"and\" group to exclude them",
-				cond, prop, prop, "notEmpty")
+				cond, prop, prop, "not_empty")
 		}
 	}
 	walk(nodes, path+"/filters", true, map[string]bool{})

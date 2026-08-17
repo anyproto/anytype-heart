@@ -18,12 +18,12 @@ func TestIndex_Roundtrip(t *testing.T) {
 		"version": 1,
 		"name": "Company Wiki",
 		"description": "Everything we know, with an owner.",
-		"iconEmoji": "📚",
+		"icon_emoji": "📚",
 		"homepage": "page-wiki-home",
 		"widgets": [
 			{ "target": "page-wiki-home" },
 			{ "target": "type-wiki-page", "layout": "view", "limit": 6 },
-			{ "target": "favorite", "layout": "compactList" }
+			{ "target": "favorite", "layout": "compact_list" }
 		]
 	}`
 	idx, err := UnmarshalIndex([]byte(doc))
@@ -190,15 +190,15 @@ func TestIndex_ImportableWidgetTargets(t *testing.T) {
 // installer resolves the space icon by name (getNewAvatarId).
 func TestIndex_IconImage(t *testing.T) {
 	idx, err := UnmarshalIndex([]byte(`{"version": 1, "name": "Wiki",
-		"iconImage": "acme-logo"}`))
+		"icon_image": "acme-logo"}`))
 	require.NoError(t, err)
 	assert.Equal(t, "acme-logo", idx.IconImage)
 
 	out, err := MarshalIndex(idx)
 	require.NoError(t, err)
-	assert.Contains(t, string(out), `"iconImage": "acme-logo"`)
+	assert.Contains(t, string(out), `"icon_image": "acme-logo"`)
 
 	// both icon forms may be present; the installer prefers the image
-	_, err = UnmarshalIndex([]byte(`{"version": 1, "iconEmoji": "📚", "iconImage": "logo"}`))
+	_, err = UnmarshalIndex([]byte(`{"version": 1, "icon_emoji": "📚", "icon_image": "logo"}`))
 	assert.NoError(t, err)
 }

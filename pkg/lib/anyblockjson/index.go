@@ -90,7 +90,7 @@ type Index struct {
 	Version     int    `json:"version"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
-	IconEmoji   string `json:"iconEmoji"`
+	IconEmoji   string `json:"icon_emoji"`
 	// IconImage is the object id of an image in the bundle — the same thing
 	// iconImage means on any object (§3), so an author never has to remember a
 	// second convention. The installer resolves the space icon by image *name*
@@ -98,7 +98,7 @@ type Index struct {
 	// wiring looks the name up from this id; that asymmetry is the wire
 	// format's, not the author's. Needs the image object and its file in the
 	// archive, which is why a generated bundle sets IconEmoji instead.
-	IconImage string `json:"iconImage"`
+	IconImage string `json:"icon_image"`
 	// Entrypoint is the object opened once, right after the space is created
 	// — the first thing a user ever sees. Distinct from Homepage, which is
 	// what opens on every later entry, and deliberately not the widget order:
@@ -219,8 +219,8 @@ func MarshalIndex(idx *Index) ([]byte, error) {
 	doc.set("version", FormatVersion)
 	doc.setNonEmpty("name", idx.Name)
 	doc.setNonEmpty("description", idx.Description)
-	doc.setNonEmpty("iconEmoji", idx.IconEmoji)
-	doc.setNonEmpty("iconImage", idx.IconImage)
+	doc.setNonEmpty("icon_emoji", idx.IconEmoji)
+	doc.setNonEmpty("icon_image", idx.IconImage)
 	doc.setNonEmpty("entrypoint", idx.Entrypoint)
 	doc.setNonEmpty("homepage", idx.Homepage)
 

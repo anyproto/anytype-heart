@@ -233,10 +233,10 @@ func TestLeafTypes_ExportAgreement(t *testing.T) {
 		"icon": func() (*model.Block, []*model.Block) {
 			return &model.Block{Id: "leaf", Content: &model.BlockContentOfIcon{Icon: &model.BlockContentIcon{Name: "smile"}}}, nil
 		},
-		"tableOfContents": func() (*model.Block, []*model.Block) {
+		"table_of_contents": func() (*model.Block, []*model.Block) {
 			return &model.Block{Id: "leaf", Content: &model.BlockContentOfTableOfContents{TableOfContents: &model.BlockContentTableOfContents{}}}, nil
 		},
-		"featuredProperties": func() (*model.Block, []*model.Block) {
+		"featured_properties": func() (*model.Block, []*model.Block) {
 			return &model.Block{Id: "leaf", Content: &model.BlockContentOfFeaturedRelations{FeaturedRelations: &model.BlockContentFeaturedRelations{}}}, nil
 		},
 		"chat": func() (*model.Block, []*model.Block) {

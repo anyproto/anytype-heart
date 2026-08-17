@@ -36,7 +36,7 @@ func TestWriteProfile(t *testing.T) {
 		Widgets: []anyblockjson.Widget{
 			{Target: "page-home", Layout: "tree"},
 			{Target: "type-page", Layout: "view", Limit: 6},
-			{Target: "favorite", Layout: "compactList"},
+			{Target: "favorite", Layout: "compact_list"},
 			{Target: "chat-requests"}, // no layout: link, the zero value
 		},
 	}

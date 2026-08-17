@@ -1,5 +1,11 @@
 # Flat AnyBlock — research dossier and work brief
 
+> **Vocabulary note (SPEC v0.8):** this document predates the `snake_case`
+> rename and spells identifiers as the draft did then (`bulletedListItem`,
+> `objectId`). The encoding it describes is unchanged; for current spellings
+> see SPEC §1 *Naming*.
+
+
 Status: approved-for-implementation draft · 2026-07-23 · GO-7383, branch `go-7383-anyblockjson`
 Audience: the agent implementing the flat block encoding in `pkg/lib/anyblockjson`.
 This document is self-contained: it carries the decision, the evidence (with

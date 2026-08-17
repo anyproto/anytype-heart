@@ -270,8 +270,8 @@ func TestExport_SuffixCollisionFallsBackToFullId(t *testing.T) {
 	s := string(data)
 	// both ids share the suffix "11111": neither may claim it
 	assert.NotContains(t, s, `"11111"`)
-	assert.Contains(t, s, `objectId=\"bafyreiaaaa11111\"`)
-	assert.Contains(t, s, `objectId=\"bafyreibbbb11111\"`)
+	assert.Contains(t, s, `object_id=\"bafyreiaaaa11111\"`)
+	assert.Contains(t, s, `object_id=\"bafyreibbbb11111\"`)
 
 	impOpts := Options{GenerateId: seqIds("g")}
 	_, snap2, err := Unmarshal(data, impOpts)

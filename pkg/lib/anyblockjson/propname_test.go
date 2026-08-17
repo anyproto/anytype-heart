@@ -13,8 +13,8 @@ import (
 )
 
 func typeDoc(tp string) string {
-	return `{"version": 1, "kind": "objectType", "id": "t1", "key": "k",
-		"typeProperties": [` + tp + `]}`
+	return `{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
+		"type_properties": [` + tp + `]}`
 }
 
 func TestValidate_BundledPropertyRenameWarns(t *testing.T) {
@@ -29,7 +29,7 @@ func TestValidate_BundledPropertyRenameWarns(t *testing.T) {
 				func(i Issue) { got = append(got, i) }))
 			require.Len(t, got, 1)
 			assert.Contains(t, got[0].Message, tc.bundled)
-			assert.Contains(t, got[0].Path, "/typeProperties/0/name")
+			assert.Contains(t, got[0].Path, "/type_properties/0/name")
 		})
 	}
 }

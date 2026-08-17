@@ -1,5 +1,13 @@
 # AnyBlock JSON — pre-freeze review (SPEC v0.6, format version 1)
 
+> **Vocabulary note:** this review was written against the camelCase draft, so
+> its examples spell identifiers as the format did then (`bulletedListItem`,
+> `typeProperties`). The format switched to `snake_case` in SPEC v0.8, after
+> the Tier 1 pass — see §1 *Naming* there. Finding 6's example
+> (`"type": "bulleted_list_item"`, an LLM writing the snake form against a
+> camelCase reader) is left verbatim: it is the evidence that prompted the
+> rename.
+
 Three independent adversarial reviews of the format at `a6218db49`, each with a
 distinct lens, each running probes against the package rather than reading only:
 

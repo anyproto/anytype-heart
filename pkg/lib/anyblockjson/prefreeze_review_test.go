@@ -120,9 +120,9 @@ func TestExport_FileAddedAtOutsideRangeIsOmitted(t *testing.T) {
 		OnWarning: func(i Issue) { warnings = append(warnings, i) }})
 	require.NoError(t, err)
 	require.NoError(t, Validate(data))
-	assert.NotContains(t, string(data), "addedAt")
+	assert.NotContains(t, string(data), "added_at")
 	require.Len(t, warnings, 1)
-	assert.Contains(t, warnings[0].Message, "addedAt")
+	assert.Contains(t, warnings[0].Message, "added_at")
 }
 
 // ---- Tier 1 #1: one id domain ----
@@ -343,11 +343,11 @@ func TestValidate_PropertyKeyShape(t *testing.T) {
 // key or a bson id.
 func TestValidate_EnvelopeKeyCharset(t *testing.T) {
 	for _, key := range []string{"ot/page", "a b", "", "page\n"} {
-		doc := fmt.Sprintf(`{"version": 1, "kind": "objectType", "id": "t1", "key": %q}`, key)
+		doc := fmt.Sprintf(`{"version": 1, "kind": "object_type", "id": "t1", "key": %q}`, key)
 		assert.Error(t, Validate([]byte(doc)), "key %q", key)
 	}
 	for _, key := range []string{"page", "68f0d9c3b3c8a94e0d0b0a12", "my-type_2"} {
-		doc := fmt.Sprintf(`{"version": 1, "kind": "objectType", "id": "t1", "key": %q}`, key)
+		doc := fmt.Sprintf(`{"version": 1, "kind": "object_type", "id": "t1", "key": %q}`, key)
 		assert.NoError(t, Validate([]byte(doc)), "key %q", key)
 	}
 }

@@ -16,7 +16,7 @@ import (
 
 func filterDoc(props, filters string) string {
 	return `{"version": 1, "id": "p1", "refs": {"dana": "bafyreirealid"}, "blocks": [{"type": "dataview",
-		"objectId": "someSet", "properties": [` + props + `],
+		"object_id": "someSet", "properties": [` + props + `],
 		"views": [{"name": "Mine", "filters": [` + filters + `]}]}]}`
 }
 

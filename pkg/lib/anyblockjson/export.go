@@ -253,12 +253,12 @@ func (e *exporter) buildDoc(sbType model.SmartBlockType) (*omap, error) {
 	doc.setNonEmpty("id", e.objectId())
 	doc.setNonEmpty("type", typeKey)
 	if typeKey == "template" && len(typeKeys) > 1 {
-		doc.setNonEmpty("templateFor", typeKeys[1])
+		doc.setNonEmpty("template_for", typeKeys[1])
 	}
 	doc.setNonEmpty("key", e.snapshot.Key)
 	doc.setNonEmpty("properties", e.buildProperties())
 	if tp := e.buildTypeProperties(); tp != nil {
-		doc.set("typeProperties", tp) // present even when empty (§2a)
+		doc.set("type_properties", tp) // present even when empty (§2a)
 	}
 
 	if len(e.objectRefs) > 0 {
@@ -330,7 +330,7 @@ func (e *exporter) buildRootEscape() *omap {
 	if root.Fields != nil && len(root.Fields.Fields) > 0 {
 		m.set("fields", protoStructToJSON(root.Fields))
 	}
-	m.setNonEmpty("backgroundColor", root.BackgroundColor)
+	m.setNonEmpty("background_color", root.BackgroundColor)
 	return m
 }
 
@@ -628,17 +628,17 @@ func (e *exporter) blockToJSON(b *model.Block, depth int) (*omap, bool, error) {
 		bm := orEmpty(c.Bookmark)
 		m.set("type", "bookmark")
 		m.setNonEmpty("url", bm.Url)
-		m.setNonEmpty("objectId", e.compactObjectId(bm.TargetObjectId))
+		m.setNonEmpty("object_id", e.compactObjectId(bm.TargetObjectId))
 		withChildren = false
 	case *model.BlockContentOfLink:
 		l := orEmpty(c.Link)
 		m.set("type", "link")
-		m.setNonEmpty("objectId", e.compactObjectId(l.TargetBlockId))
+		m.setNonEmpty("object_id", e.compactObjectId(l.TargetBlockId))
 		if l.CardStyle != model.BlockContentLink_Text {
-			m.setNonEmpty("cardStyle", cardStyleNames.name(l.CardStyle))
+			m.setNonEmpty("card_style", cardStyleNames.name(l.CardStyle))
 		}
 		if l.IconSize != model.BlockContentLink_SizeNone {
-			m.setNonEmpty("iconSize", iconSizeNames.name(l.IconSize))
+			m.setNonEmpty("icon_size", iconSizeNames.name(l.IconSize))
 		}
 		if l.Description != model.BlockContentLink_None {
 			m.setNonEmpty("description", linkDescriptionNames.name(l.Description))
@@ -677,7 +677,7 @@ func (e *exporter) blockToJSON(b *model.Block, depth int) (*omap, bool, error) {
 		m.setNonEmpty("text", lx.Text)
 		withChildren = false
 	case *model.BlockContentOfTableOfContents:
-		m.set("type", "tableOfContents")
+		m.set("type", "table_of_contents")
 		withChildren = false
 	case *model.BlockContentOfRelation:
 		m.set("type", "property")
@@ -695,13 +695,13 @@ func (e *exporter) blockToJSON(b *model.Block, depth int) (*omap, bool, error) {
 			m.setNonEmpty("layout", widgetLayoutNames.name(w.Layout))
 		}
 		m.setNonEmpty("limit", w.Limit)
-		m.setNonEmpty("viewId", w.ViewId)
-		m.setNonEmpty("autoAdded", w.AutoAdded)
+		m.setNonEmpty("view_id", w.ViewId)
+		m.setNonEmpty("auto_added", w.AutoAdded)
 	case *model.BlockContentOfChat:
 		m.set("type", "chat")
 		withChildren = false
 	case *model.BlockContentOfFeaturedRelations:
-		m.set("type", "featuredProperties")
+		m.set("type", "featured_properties")
 		withChildren = false
 	case *model.BlockContentOfIcon:
 		m.set("type", "icon")
@@ -724,9 +724,9 @@ func (e *exporter) finishBlockJSON(m *omap, b *model.Block, liftedFields map[str
 		m.setNonEmpty("align", alignNames.name(b.Align))
 	}
 	if b.VerticalAlign != model.Block_VerticalAlignTop {
-		m.setNonEmpty("verticalAlign", verticalAlignNames.name(b.VerticalAlign))
+		m.setNonEmpty("vertical_align", verticalAlignNames.name(b.VerticalAlign))
 	}
-	m.setNonEmpty("backgroundColor", b.BackgroundColor)
+	m.setNonEmpty("background_color", b.BackgroundColor)
 	m.setNonEmpty("fields", e.fieldsToJSON(b.Fields, liftedFields))
 }
 
@@ -764,8 +764,8 @@ func (e *exporter) textToJSON(m *omap, b *model.Block, t *model.BlockContentText
 		m.setNonEmpty("checked", t.Checked)
 	}
 	if style == model.BlockContentText_Callout {
-		m.setNonEmpty("iconEmoji", t.IconEmoji)
-		m.setNonEmpty("iconImage", e.compactObjectId(t.IconImage))
+		m.setNonEmpty("icon_emoji", t.IconEmoji)
+		m.setNonEmpty("icon_image", e.compactObjectId(t.IconImage))
 	}
 	if style == model.BlockContentText_Code {
 		if b.Fields != nil {
@@ -821,9 +821,9 @@ func (e *exporter) fileToJSON(m *omap, f *model.BlockContentFile) {
 	if objectId == "" {
 		objectId = f.Hash // legacy content address migrates to objectId
 	}
-	m.setNonEmpty("objectId", e.compactObjectId(objectId))
+	m.setNonEmpty("object_id", e.compactObjectId(objectId))
 	m.setNonEmpty("name", f.Name)
-	m.setNonEmpty("mimeType", f.Mime)
+	m.setNonEmpty("mime_type", f.Mime)
 	m.setNonEmpty("size", f.Size_)
 	if f.Style != model.BlockContentFile_Auto {
 		m.setNonEmpty("style", fileStyleNames.name(f.Style))
@@ -833,9 +833,9 @@ func (e *exporter) fileToJSON(m *omap, f *model.BlockContentFile) {
 		// fall back to (§5): an unrepresentable timestamp is dropped rather
 		// than written as a string no reader can parse back
 		if s, ok := formatDate(f.AddedAt); ok {
-			m.set("addedAt", s)
+			m.set("added_at", s)
 		} else {
-			e.warn("", "file block: addedAt %d has no RFC 3339 form (outside years 0000-9999), so it is omitted", f.AddedAt)
+			e.warn("", "file block: added_at %d has no RFC 3339 form (outside years 0000-9999), so it is omitted", f.AddedAt)
 		}
 	}
 }

@@ -11,7 +11,7 @@ import (
 )
 
 // copyBundleFiles copies a bundle's files/ directory — the real binary
-// assets a "fileObject" document's "source" property points at (SPEC.md
+// assets a "file_object" document's "source" property points at (SPEC.md
 // §2c, §3: iconImage and any object-level image/file reference resolve by
 // looking up that property) — into the output archive at the same relative
 // path.

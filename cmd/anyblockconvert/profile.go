@@ -34,11 +34,11 @@ import (
 // widgetLayouts maps §2c layout names to the wire enum. Absent means link,
 // the enum's own zero value.
 var widgetLayouts = map[string]model.BlockContentWidgetLayout{
-	"link":        model.BlockContentWidget_Link,
-	"tree":        model.BlockContentWidget_Tree,
-	"list":        model.BlockContentWidget_List,
-	"compactList": model.BlockContentWidget_CompactList,
-	"view":        model.BlockContentWidget_View,
+	"link":         model.BlockContentWidget_Link,
+	"tree":         model.BlockContentWidget_Tree,
+	"list":         model.BlockContentWidget_List,
+	"compact_list": model.BlockContentWidget_CompactList,
+	"view":         model.BlockContentWidget_View,
 }
 
 // writeProfile renders index.json as the archive's profile file.
@@ -70,10 +70,10 @@ func writeProfile(outDir string, idx *anyblockjson.Index, names map[string]strin
 	if idx.IconImage != "" {
 		name, ok := names[idx.IconImage]
 		if !ok {
-			return fmt.Errorf("iconImage %q names no object in the bundle", idx.IconImage)
+			return fmt.Errorf("icon_image %q names no object in the bundle", idx.IconImage)
 		}
 		if name == "" {
-			return fmt.Errorf("iconImage %q has no name, and the installer resolves the space icon by name", idx.IconImage)
+			return fmt.Errorf("icon_image %q has no name, and the installer resolves the space icon by name", idx.IconImage)
 		}
 		profile.Avatar = name
 	}

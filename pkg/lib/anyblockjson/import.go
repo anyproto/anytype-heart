@@ -27,10 +27,10 @@ type jsonDoc struct {
 	Kind        string              `json:"kind"`
 	Id          string              `json:"id"`
 	Type        string              `json:"type"`
-	TemplateFor string              `json:"templateFor"`
+	TemplateFor string              `json:"template_for"`
 	Key         string              `json:"key"`
 	Properties  map[string]any      `json:"properties"`
-	TypeProps   *[]jsonTypeProperty `json:"typeProperties"` // pointer: [] and absent differ (§2a)
+	TypeProps   *[]jsonTypeProperty `json:"type_properties"` // pointer: [] and absent differ (§2a)
 	Refs        map[string]string   `json:"refs"`
 	Blocks      []*jsonBlock        `json:"blocks"`
 	Items       []string            `json:"items"`
@@ -40,7 +40,7 @@ type jsonDoc struct {
 
 type jsonRootEscape struct {
 	Fields          map[string]any `json:"fields"`
-	BackgroundColor string         `json:"backgroundColor"`
+	BackgroundColor string         `json:"background_color"`
 }
 
 // jsonBlock is the union of every §5 block shape; the schema guarantees only
@@ -60,19 +60,19 @@ type jsonBlock struct {
 	Color     string `json:"color"`
 	Text      string `json:"text"`
 	Language  string `json:"language"`
-	IconEmoji string `json:"iconEmoji"`
-	IconImage string `json:"iconImage"`
+	IconEmoji string `json:"icon_emoji"`
+	IconImage string `json:"icon_image"`
 
-	ObjectId    string          `json:"objectId"`
+	ObjectId    string          `json:"object_id"`
 	Name        string          `json:"name"`
-	MimeType    string          `json:"mimeType"`
+	MimeType    string          `json:"mime_type"`
 	Size        json.Number     `json:"size"`
 	Style       string          `json:"style"`
-	AddedAt     string          `json:"addedAt"`
+	AddedAt     string          `json:"added_at"`
 	Hash        string          `json:"hash"`
 	Url         string          `json:"url"`
-	CardStyle   string          `json:"cardStyle"`
-	IconSize    string          `json:"iconSize"`
+	CardStyle   string          `json:"card_style"`
+	IconSize    string          `json:"icon_size"`
 	Description string          `json:"description"`
 	Properties  json.RawMessage `json:"properties"` // link: []string; dataview: []jsonDvProperty
 	Processor   string          `json:"processor"`
@@ -80,19 +80,19 @@ type jsonBlock struct {
 
 	Layout    string      `json:"layout"`
 	Limit     json.Number `json:"limit"`
-	ViewId    string      `json:"viewId"`
-	AutoAdded bool        `json:"autoAdded"`
+	ViewId    string      `json:"view_id"`
+	AutoAdded bool        `json:"auto_added"`
 
 	Columns []jsonTableColumn `json:"columns"`
 	Rows    []jsonTableRow    `json:"rows"`
 
-	IsCollection bool       `json:"isCollection"`
+	IsCollection bool       `json:"is_collection"`
 	Source       []string   `json:"source"`
 	Views        []jsonView `json:"views"`
 
 	Align           string         `json:"align"`
-	VerticalAlign   string         `json:"verticalAlign"`
-	BackgroundColor string         `json:"backgroundColor"`
+	VerticalAlign   string         `json:"vertical_align"`
+	BackgroundColor string         `json:"background_color"`
 	Fields          map[string]any `json:"fields"`
 }
 
@@ -446,7 +446,7 @@ func (imp *importer) topLevelBlocks(details *types.Struct) ([]*jsonBlock, []int)
 				imp.absorbIntoProperty(details, "name", jb.Text)
 			case "description":
 				imp.absorbIntoProperty(details, "description", jb.Text)
-			case "featuredProperties":
+			case "featured_properties":
 			default:
 				structural = false
 			}
@@ -497,8 +497,8 @@ func (imp *importer) flatSubtree(jbs []*jsonBlock, indents []int, root *model.Bl
 
 // textStyleAliases extends the canonical inventory with the §5 input aliases.
 var textStyleAliases = map[string]model.BlockContentTextStyle{
-	"heading4": model.BlockContentText_Header3,
-	"header4":  model.BlockContentText_Header3,
+	"heading_4": model.BlockContentText_Header3,
+	"header_4":  model.BlockContentText_Header3,
 }
 
 func (imp *importer) parseText(md string) (string, *model.BlockContentTextMarks, error) {
@@ -664,7 +664,7 @@ func (imp *importer) blockFromJSON(jb *jsonBlock, forcedId string) ([]*model.Blo
 			Text:      text,
 			Processor: processor,
 		}}
-	case jb.Type == "tableOfContents":
+	case jb.Type == "table_of_contents":
 		b.Content = &model.BlockContentOfTableOfContents{TableOfContents: &model.BlockContentTableOfContents{}}
 	case jb.Type == "property":
 		b.Content = &model.BlockContentOfRelation{Relation: &model.BlockContentRelation{Key: jb.Key}}
@@ -683,7 +683,7 @@ func (imp *importer) blockFromJSON(jb *jsonBlock, forcedId string) ([]*model.Blo
 		}}
 	case jb.Type == "chat":
 		b.Content = &model.BlockContentOfChat{Chat: &model.BlockContentChat{}}
-	case jb.Type == "featuredProperties":
+	case jb.Type == "featured_properties":
 		b.Content = &model.BlockContentOfFeaturedRelations{FeaturedRelations: &model.BlockContentFeaturedRelations{}}
 	case jb.Type == "icon":
 		b.Content = &model.BlockContentOfIcon{Icon: &model.BlockContentIcon{Name: jb.Name}}

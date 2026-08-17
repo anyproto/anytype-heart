@@ -35,7 +35,7 @@ func TestConvert_TemplateTargetTypeBecomesDetail(t *testing.T) {
 	  "version": 1,
 	  "id": "template-wiki-article",
 	  "type": "template",
-	  "templateFor": "wikiPage",
+	  "template_for": "wikiPage",
 	  "properties": {"name": "Wiki Article"}
 	}`)
 
@@ -56,7 +56,7 @@ func TestConvert_AuthoredTargetObjectTypeWinsAndIsScalar(t *testing.T) {
 	  "version": 1,
 	  "id": "template-wiki-guide",
 	  "type": "template",
-	  "templateFor": "wikiPage",
+	  "template_for": "wikiPage",
 	  "properties": {"name": "Wiki Guide", "targetObjectType": "type-authored"}
 	}`)
 
@@ -91,7 +91,7 @@ func TestConvert_SurfacesDocumentWarnings(t *testing.T) {
 	  "version": 1,
 	  "id": "set-1",
 	  "properties": {"name": "Tasks"},
-	  "blocks": [{"type": "dataview", "views": [{"name": "All", "groupBy": "status"}]}]
+	  "blocks": [{"type": "dataview", "views": [{"name": "All", "group_by": "status"}]}]
 	}`), 0o644))
 
 	var warnings []string
@@ -112,5 +112,5 @@ func TestConvert_SurfacesDocumentWarnings(t *testing.T) {
 	}
 	require.NotNil(t, view, "dataview block survived")
 	assert.Equal(t, "status", view.GroupRelationKey,
-		"the warned groupBy is kept, not dropped — a table view just never honours it")
+		"the warned group_by is kept, not dropped — a table view just never honours it")
 }

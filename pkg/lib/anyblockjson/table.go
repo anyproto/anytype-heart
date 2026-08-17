@@ -97,7 +97,7 @@ func (e *exporter) tableToJSON(m *omap, b *model.Block) error {
 		if !e.opts.OmitIds {
 			rm.setNonEmpty("id", e.tableInnerId(row.Id))
 		}
-		rm.setNonEmpty("isHeader", isHeader(row))
+		rm.setNonEmpty("is_header", isHeader(row))
 
 		// cells sorted into column order; orphans dropped
 		byCol := map[string]*model.Block{}
@@ -217,7 +217,7 @@ type jsonTableColumn struct {
 
 type jsonTableRow struct {
 	Id       string     `json:"id"`
-	IsHeader bool       `json:"isHeader"`
+	IsHeader bool       `json:"is_header"`
 	Cells    []jsonCell `json:"cells"`
 }
 

@@ -27,7 +27,7 @@ func sampleIndex() *anyblockjson.Index {
 		Widgets: []anyblockjson.Widget{
 			{Target: "page-okr-hub", Layout: "tree"},
 			{Target: "type-objective", Layout: "view", Limit: 6},
-			{Target: "favorite", Layout: "compactList"},
+			{Target: "favorite", Layout: "compact_list"},
 			{Target: "chat-goal-proposals"}, // no layout: link, the zero value
 		},
 	}

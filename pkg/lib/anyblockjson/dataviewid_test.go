@@ -36,7 +36,7 @@ func importDoc(t *testing.T, doc string) *model.SmartBlockSnapshotBase {
 
 func TestImport_PrimaryDataviewGetsFixedId(t *testing.T) {
 	t.Run("type document", func(t *testing.T) {
-		doc := `{"version": 1, "kind": "objectType", "id": "t1", "key": "wikiCategory",
+		doc := `{"version": 1, "kind": "object_type", "id": "t1", "key": "wikiCategory",
 			"blocks": [{"type": "dataview", "views": [{"name": "All"}]}]}`
 		snap := importDoc(t, doc)
 		assert.Equal(t, []string{"dataview"}, blockIds(t, snap, "t1"))
@@ -46,7 +46,7 @@ func TestImport_PrimaryDataviewGetsFixedId(t *testing.T) {
 	// so the rule must not key on kind.
 	t.Run("collection document", func(t *testing.T) {
 		doc := `{"version": 1, "id": "c1", "type": "collection",
-			"blocks": [{"type": "dataview", "isCollection": true, "views": [{"name": "All"}]}]}`
+			"blocks": [{"type": "dataview", "is_collection": true, "views": [{"name": "All"}]}]}`
 		snap := importDoc(t, doc)
 		assert.Equal(t, []string{"dataview"}, blockIds(t, snap, "c1"))
 	})
@@ -55,7 +55,7 @@ func TestImport_PrimaryDataviewGetsFixedId(t *testing.T) {
 	// must keep a generated id or it would shadow the object's own.
 	t.Run("inline view keeps generated id", func(t *testing.T) {
 		doc := `{"version": 1, "id": "p1",
-			"blocks": [{"type": "dataview", "objectId": "otherSet", "views": [{"name": "All"}]}]}`
+			"blocks": [{"type": "dataview", "object_id": "otherSet", "views": [{"name": "All"}]}]}`
 		snap := importDoc(t, doc)
 		assert.Equal(t, []string{"g1"}, blockIds(t, snap, "p1"))
 	})
@@ -69,7 +69,7 @@ func TestImport_PrimaryDataviewGetsFixedId(t *testing.T) {
 	})
 
 	t.Run("only the first is pinned", func(t *testing.T) {
-		doc := `{"version": 1, "kind": "objectType", "id": "t1", "key": "k", "blocks": [
+		doc := `{"version": 1, "kind": "object_type", "id": "t1", "key": "k", "blocks": [
 			{"type": "dataview", "views": [{"name": "A"}]},
 			{"type": "dataview", "views": [{"name": "B"}]}]}`
 		snap := importDoc(t, doc)
@@ -81,7 +81,7 @@ func TestImport_PrimaryDataviewGetsFixedId(t *testing.T) {
 
 	// an explicit id stays authoritative; pinning must not mint a duplicate.
 	t.Run("explicit claim wins", func(t *testing.T) {
-		doc := `{"version": 1, "kind": "objectType", "id": "t1", "key": "k", "blocks": [
+		doc := `{"version": 1, "kind": "object_type", "id": "t1", "key": "k", "blocks": [
 			{"type": "dataview", "views": [{"name": "A"}]},
 			{"type": "dataview", "id": "dataview", "views": [{"name": "B"}]}]}`
 		snap := importDoc(t, doc)

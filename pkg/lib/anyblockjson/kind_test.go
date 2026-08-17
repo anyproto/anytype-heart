@@ -40,7 +40,7 @@ func TestRoundtrip_ChatKind(t *testing.T) {
 	data, err := Marshal(model.SmartBlockType_ChatDerivedObject, snapshot, testOptions())
 	require.NoError(t, err)
 	assert.Contains(t, string(data), `"kind": "chat"`)
-	assert.NotContains(t, string(data), "chatDerived")
+	assert.NotContains(t, string(data), "chat_derived")
 
 	sbType, back, err := Unmarshal(data, Options{GenerateId: seqIds("g")})
 	require.NoError(t, err)
@@ -51,12 +51,12 @@ func TestRoundtrip_ChatKind(t *testing.T) {
 // the old name is gone from the vocabulary, and the deprecated sibling kind
 // stays distinct from it
 func TestValidate_ChatDerivedNameRejected(t *testing.T) {
-	_, _, err := Unmarshal([]byte(`{"version": 1, "kind": "chatDerived", "key": "k"}`),
+	_, _, err := Unmarshal([]byte(`{"version": 1, "kind": "chat_derived", "key": "k"}`),
 		Options{GenerateId: seqIds("g")})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "kind")
 
-	sbType, _, err := Unmarshal([]byte(`{"version": 1, "kind": "chatObject", "key": "k"}`),
+	sbType, _, err := Unmarshal([]byte(`{"version": 1, "kind": "chat_object", "key": "k"}`),
 		Options{GenerateId: seqIds("g")})
 	require.NoError(t, err)
 	assert.Equal(t, model.SmartBlockType_ChatObjectDeprecated, sbType)

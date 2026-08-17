@@ -28,7 +28,7 @@ func TestImport_LayoutNameToNumber(t *testing.T) {
 		{"collection", model.ObjectType_collection},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			doc := `{"version": 1, "kind": "objectType", "id": "t1", "key": "k",
+			doc := `{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
 				"properties": {"recommendedLayout": "` + tc.name + `"}}`
 			_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 			require.NoError(t, err)
@@ -44,7 +44,7 @@ func TestImport_LayoutNameToNumber(t *testing.T) {
 
 // legacy documents that wrote the raw enum still import unchanged
 func TestImport_LayoutNumberStillAccepted(t *testing.T) {
-	doc := `{"version": 1, "kind": "objectType", "id": "t1", "key": "k",
+	doc := `{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
 		"properties": {"recommendedLayout": 1}}`
 	_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 	require.NoError(t, err)
@@ -71,7 +71,7 @@ func TestExport_LayoutNumberToName(t *testing.T) {
 }
 
 func TestRoundtrip_LayoutSurvives(t *testing.T) {
-	doc := `{"version": 1, "kind": "objectType", "id": "t1", "key": "k",
+	doc := `{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
 		"properties": {"recommendedLayout": "profile"}}`
 	_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 	require.NoError(t, err)
@@ -82,7 +82,7 @@ func TestRoundtrip_LayoutSurvives(t *testing.T) {
 
 // a typo must not reach the snapshot as a bare string
 func TestValidate_UnknownLayoutRejected(t *testing.T) {
-	doc := `{"version": 1, "kind": "objectType", "id": "t1", "key": "k",
+	doc := `{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
 		"properties": {"recommendedLayout": "Profile"}}`
 	_, _, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 	require.Error(t, err)

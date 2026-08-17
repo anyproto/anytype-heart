@@ -157,7 +157,7 @@ func (e *exporter) buildTypeProperties() []any {
 			m.setNonEmpty("name", def.Name)
 			m.setNonEmpty("format", formatName(def.Format))
 			m.setNonEmpty("options", optionsToAny(def.Options))
-			m.setNonEmpty("objectTypes", stringsToAny(def.ObjectTypes))
+			m.setNonEmpty("object_types", stringsToAny(def.ObjectTypes))
 			m.setNonEmpty("section", l.section)
 			out = append(out, m)
 		}
@@ -192,7 +192,7 @@ type jsonTypeProperty struct {
 	Name        string             `json:"name"`
 	Format      string             `json:"format"`
 	Options     []OptionDefinition `json:"options"`
-	ObjectTypes []string           `json:"objectTypes"`
+	ObjectTypes []string           `json:"object_types"`
 	Section     string             `json:"section"`
 }
 

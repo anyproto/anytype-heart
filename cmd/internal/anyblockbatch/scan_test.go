@@ -26,12 +26,12 @@ func writeDocs(t *testing.T, docs map[string]string) []string {
 	return files
 }
 
-const wikiPageType = `{"version": 1, "kind": "objectType", "key": "wikiPage", "id": "type-wiki-page"}`
+const wikiPageType = `{"version": 1, "kind": "object_type", "key": "wikiPage", "id": "type-wiki-page"}`
 
 func TestCheckTemplateTargets_ResolvableTargetPasses(t *testing.T) {
 	files := writeDocs(t, map[string]string{
 		"types/wiki-page.type.json": wikiPageType,
-		"templates/article.json":    `{"version": 1, "type": "template", "templateFor": "wikiPage"}`,
+		"templates/article.json":    `{"version": 1, "type": "template", "template_for": "wikiPage"}`,
 	})
 	typeIds, err := TypeIds(files)
 	require.NoError(t, err)
@@ -46,7 +46,7 @@ func TestCheckTemplateTargets_ResolvableTargetPasses(t *testing.T) {
 // no type in the space
 func TestCheckTemplateTargets_BundledTargetIsReported(t *testing.T) {
 	files := writeDocs(t, map[string]string{
-		"templates/note.json": `{"version": 1, "type": "template", "templateFor": "page"}`,
+		"templates/note.json": `{"version": 1, "type": "template", "template_for": "page"}`,
 	})
 	bad, err := CheckTemplateTargets(files, map[string]string{})
 	require.NoError(t, err)
@@ -57,7 +57,7 @@ func TestCheckTemplateTargets_BundledTargetIsReported(t *testing.T) {
 
 func TestCheckTemplateTargets_UndefinedTargetIsReported(t *testing.T) {
 	files := writeDocs(t, map[string]string{
-		"templates/article.json": `{"version": 1, "type": "template", "templateFor": "wikiPage"}`,
+		"templates/article.json": `{"version": 1, "type": "template", "template_for": "wikiPage"}`,
 	})
 	bad, err := CheckTemplateTargets(files, map[string]string{})
 	require.NoError(t, err)
@@ -68,8 +68,8 @@ func TestCheckTemplateTargets_UndefinedTargetIsReported(t *testing.T) {
 // a type document with no id has nothing for the detail to point at
 func TestCheckTemplateTargets_IdlessTargetIsReported(t *testing.T) {
 	files := writeDocs(t, map[string]string{
-		"types/wiki-page.type.json": `{"version": 1, "kind": "objectType", "key": "wikiPage"}`,
-		"templates/article.json":    `{"version": 1, "type": "template", "templateFor": "wikiPage"}`,
+		"types/wiki-page.type.json": `{"version": 1, "kind": "object_type", "key": "wikiPage"}`,
+		"templates/article.json":    `{"version": 1, "type": "template", "template_for": "wikiPage"}`,
 	})
 	typeIds, err := TypeIds(files)
 	require.NoError(t, err)
@@ -96,7 +96,7 @@ func TestCheckTemplateTargets_MissingTemplateForIsReported(t *testing.T) {
 // document is wired whatever templateFor resolves to
 func TestCheckTemplateTargets_AuthoredTargetObjectTypePasses(t *testing.T) {
 	files := writeDocs(t, map[string]string{
-		"templates/article.json": `{"version": 1, "type": "template", "templateFor": "page",
+		"templates/article.json": `{"version": 1, "type": "template", "template_for": "page",
 		  "properties": {"targetObjectType": "type-page"}}`,
 	})
 	bad, err := CheckTemplateTargets(files, map[string]string{})

@@ -29,8 +29,10 @@ func TestValidate_ErrorsDoNotCascade(t *testing.T) {
 	}
 
 	t.Run("a bad type is one issue, not three", func(t *testing.T) {
+		// the camelCase spelling is now the plausible mistake: it is what the
+		// pre-snake_case draft used, and what a model trained on it emits
 		got := issues(t, `{"version": 1, "blocks": [
-			{"type": "bulleted_list_item", "text": "x"}]}`)
+			{"type": "bulletedListItem", "text": "x"}]}`)
 		require.Len(t, got, 1, "got: %v", got)
 		assert.Equal(t, "/blocks/0/type", got[0].Path)
 		assert.Contains(t, got[0].Message, "value must be one of")
@@ -149,10 +151,10 @@ func TestValidate_Valid(t *testing.T) {
 			"type": "page",
 			"properties": {"name": "Test", "iconEmoji": "🔥", "status": ["In progress"], "priority": 3, "done": false},
 			"blocks": [
-				{"id": "b1", "type": "heading2", "text": "Goals"},
+				{"id": "b1", "type": "heading_2", "text": "Goals"},
 				{"id": "b2", "type": "paragraph", "text": "Ship the **new export**"},
-				{"type": "bulletedListItem", "text": "item"},
-				{"indent": 1, "type": "bulletedListItem", "text": "nested"},
+				{"type": "bulleted_list_item", "text": "item"},
+				{"indent": 1, "type": "bulleted_list_item", "text": "nested"},
 				{"type": "checkbox", "checked": true, "text": "Draft"},
 				{"type": "code", "language": "go", "text": "func main() {}"},
 				{"type": "divider", "style": "dots"},
@@ -167,32 +169,32 @@ func TestValidate_Valid(t *testing.T) {
 			{"type": "table",
 			 "columns": [{"id": "c1"}, {"id": "c2", "width": 120}],
 			 "rows": [
-				{"id": "r1", "isHeader": true, "cells": ["Name", "Status"]},
+				{"id": "r1", "is_header": true, "cells": ["Name", "Status"]},
 				{"id": "r2", "cells": ["Export", {"type": "checkbox", "checked": true, "text": "done"}]},
 				{"id": "r3", "cells": [null]}
 			 ]}
 		]}`},
 		{"dataview", `{"version": 1, "blocks": [
-			{"type": "dataview", "objectId": "bafyset",
+			{"type": "dataview", "object_id": "bafyset",
 			 "properties": [{"key": "name", "format": "text"}, {"key": "status", "format": "select"}],
 			 "views": [
-				{"id": "v1", "type": "kanban", "name": "By status", "groupBy": "status",
-				 "sorts": [{"property": "dueDate", "direction": "asc", "emptyPlacement": "end"}],
+				{"id": "v1", "type": "kanban", "name": "By status", "group_by": "status",
+				 "sorts": [{"property": "dueDate", "direction": "asc", "empty_placement": "end"}],
 				 "filters": [
-					{"property": "dueDate", "condition": "less", "datePreset": "currentWeek"},
+					{"property": "dueDate", "condition": "less", "date_preset": "current_week"},
 					{"operator": "or", "filters": [
 						{"property": "done", "condition": "equal", "value": false},
 						{"property": "done", "condition": "empty"}
 					]}
 				 ],
-				 "columns": [{"property": "name"}, {"property": "status", "width": 30, "aggregation": "countDistinct", "align": "right"}]}
+				 "columns": [{"property": "name"}, {"property": "status", "width": 30, "aggregation": "count_distinct", "align": "right"}]}
 			 ]}
 		]}`},
-		{"template", `{"version": 1, "type": "template", "templateFor": "task"}`},
+		{"template", `{"version": 1, "type": "template", "template_for": "task"}`},
 		{"collection items", `{"version": 1, "type": "collection", "items": ["obj1", "obj2"]}`},
 		{"widget", `{"version": 1, "kind": "widget", "blocks": [
 			{"type": "widget", "layout": "tree", "limit": 6},
-			{"indent": 1, "type": "link", "objectId": "obj1"}
+			{"indent": 1, "type": "link", "object_id": "obj1"}
 		]}`},
 		{"explicit indent 0", `{"version": 1, "blocks": [{"indent": 0, "type": "paragraph", "text": "x"}]}`},
 		{"cell array with descendants", `{"version": 1, "blocks": [
@@ -201,7 +203,7 @@ func TestValidate_Valid(t *testing.T) {
 				{"indent": 1, "type": "paragraph", "text": "nested"}
 			]]}]}
 		]}`},
-		{"heading4 alias", `{"version": 1, "blocks": [{"type": "heading4", "text": "deep"}]}`},
+		{"heading_4 alias", `{"version": 1, "blocks": [{"type": "heading_4", "text": "deep"}]}`},
 		{"equation alias", `{"version": 1, "blocks": [{"type": "equation", "text": "E=mc^2"}]}`},
 		{"refs", `{"version": 1, "refs": {"roman": "bafyreiabc", "x_1-2": "bafyreidef"}}`},
 	}
@@ -270,7 +272,7 @@ func TestValidate_Invalid(t *testing.T) {
 		{"table inner id with dash", `{"version": 1, "blocks": [
 			{"type": "table", "columns": [{"id": "c-1"}], "rows": []}
 		]}`, "/blocks/0/columns/0/id"},
-		{"templateFor without template type", `{"version": 1, "type": "page", "templateFor": "task"}`, "templateFor"},
+		{"template_for without template type", `{"version": 1, "type": "page", "template_for": "task"}`, "template_for"},
 		{"language and fields.lang conflict", `{"version": 1, "blocks": [
 			{"type": "code", "language": "go", "fields": {"lang": "go"}}
 		]}`, "fields.lang"},

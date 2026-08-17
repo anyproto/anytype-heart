@@ -69,7 +69,7 @@ func TestCheckFileSources_FlagsMissingFile(t *testing.T) {
 	in := t.TempDir()
 	f := writeJSON(t, in, "icon.json", `{
 	  "version": 1,
-	  "kind": "fileObject",
+	  "kind": "file_object",
 	  "id": "icon-1",
 	  "properties": {"name": "icon-1", "source": "files/icon.png"}
 	}`)
@@ -86,7 +86,7 @@ func TestCheckFileSources_PassesWhenFileExists(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(in, "files", "icon.png"), []byte("x"), 0o644))
 	f := writeJSON(t, in, "icon.json", `{
 	  "version": 1,
-	  "kind": "fileObject",
+	  "kind": "file_object",
 	  "id": "icon-1",
 	  "properties": {"name": "icon-1", "source": "files/icon.png"}
 	}`)

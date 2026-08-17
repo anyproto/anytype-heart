@@ -48,7 +48,7 @@ func TestRenderInline_Golden(t *testing.T) {
 		{"bold italic overlap", "abc", []*model.BlockContentTextMark{mark(mBold, 0, 2, ""), mark(mItalic, 1, 3, "")}, "**a*b****c*"},
 		{"link", "docs here", []*model.BlockContentTextMark{mark(mLink, 0, 4, "https://x.io")}, "[docs](https://x.io) here"},
 		{"object link", "docs here", []*model.BlockContentTextMark{mark(mObject, 0, 4, "bafy1")}, "[docs](anytype://object?objectId=bafy1) here"},
-		{"mention", "ping Roman", []*model.BlockContentTextMark{mark(mMention, 5, 10, "bafyid")}, `ping <mention objectId="bafyid">Roman</mention>`},
+		{"mention", "ping Roman", []*model.BlockContentTextMark{mark(mMention, 5, 10, "bafyid")}, `ping <mention object_id="bafyid">Roman</mention>`},
 		{"underline", "docs", []*model.BlockContentTextMark{mark(mUnder, 0, 4, "")}, "<u>docs</u>"},
 		{"text color", "x", []*model.BlockContentTextMark{mark(mColor, 0, 1, "red")}, `<font color="red">x</font>`},
 		{"background", "x", []*model.BlockContentTextMark{mark(mBg, 0, 1, "yellow")}, `<font background="yellow">x</font>`},
@@ -93,7 +93,7 @@ func TestRenderInline_Golden(t *testing.T) {
 		{"astral bold", "𝒜b", []*model.BlockContentTextMark{mark(mBold, 0, 2, "")}, "**𝒜**b"},
 		{"escaped chars inside mention", "see *x*",
 			[]*model.BlockContentTextMark{mark(mMention, 4, 7, "id1")},
-			`see <mention objectId="id1">\*x\*</mention>`},
+			`see <mention object_id="id1">\*x\*</mention>`},
 		{"bracket inside link label", "a[b]c",
 			[]*model.BlockContentTextMark{mark(mLink, 0, 5, "u")},
 			`[a\[b\]c](u)`},
@@ -178,14 +178,14 @@ func TestParseInline_Golden(t *testing.T) {
 		{"link", "[a](u)", "a", []*model.BlockContentTextMark{mark(mLink, 0, 1, "u")}},
 		{"object link", "[a](anytype://object?objectId=id1)", "a",
 			[]*model.BlockContentTextMark{mark(mObject, 0, 1, "id1")}},
-		{"mention", `<mention objectId="id1">Roman</mention>`, "Roman",
+		{"mention", `<mention object_id="id1">Roman</mention>`, "Roman",
 			[]*model.BlockContentTextMark{mark(mMention, 0, 5, "id1")}},
-		{"mention single quotes attr", `<mention objectId='id1'>R</mention>`, "R",
+		{"mention single quotes attr", `<mention object_id='id1'>R</mention>`, "R",
 			[]*model.BlockContentTextMark{mark(mMention, 0, 1, "id1")}},
 		{"font attr order and spaces", `<font  background = "y"  color = "r" >x</font>`, "x",
 			[]*model.BlockContentTextMark{mark(mColor, 0, 1, "r"), mark(mBg, 0, 1, "y")}},
 		{"underline", "<u>x</u>", "x", []*model.BlockContentTextMark{mark(mUnder, 0, 1, "")}},
-		{"zero-length tag dropped", `a<mention objectId="x"></mention>b`, "ab", nil},
+		{"zero-length tag dropped", `a<mention object_id="x"></mention>b`, "ab", nil},
 		{"self-closing tag dropped", `a<u/>b`, "ab", nil},
 		{"entities", "&lt;u&gt; &amp; &#65;", "<u> & A", nil},
 		{"escapes", `\*x\* \[y] \~\~`, "*x* [y] ~~", nil},
@@ -229,7 +229,7 @@ func TestParseInline_Errors(t *testing.T) {
 	}{
 		{"unclosed u tag", "<u>x"},
 		{"unmatched closing tag", "x</u>"},
-		{"mention without objectId", "<mention>x</mention>"},
+		{"mention without object_id", "<mention>x</mention>"},
 		{"font without attrs", "<font>x</font>"},
 		{"unknown font attr", `<font size="2">x</font>`},
 		{"unquoted attr value", `<font color=red>x</font>`},
@@ -295,8 +295,8 @@ func TestInline_PropertyRoundTrip(t *testing.T) {
 }
 
 // An Object mark's target is Anytype's deep link, and the form is exact: a
-// single "objectId" parameter, nothing else (§8.1). Matching it by prefix
-// took everything after "objectId=" as the id, so the platform's own
+// single "object_id" parameter, nothing else (§8.1). Matching it by prefix
+// took everything after "object_id=" as the id, so the platform's own
 // two-parameter link (core/block/export/writer.go) produced the object id
 // "<id>&spaceId=<space>" — byte-stable, and wrong forever.
 func TestInline_ObjectDeepLinkStrictParse(t *testing.T) {
@@ -311,13 +311,13 @@ func TestInline_ObjectDeepLinkStrictParse(t *testing.T) {
 
 		// every one of these was, or would be, mis-parsed as an object id
 		{"platform two-parameter link", "anytype://object?objectId=bafy1&spaceId=s1", mLink, "anytype://object?objectId=bafy1&spaceId=s1"},
-		{"parameters reversed", "anytype://object?spaceId=s1&objectId=bafy1", mLink, "anytype://object?spaceId=s1&objectId=bafy1"},
+		{"parameters reversed", "anytype://object?spaceId=s1&object_id=bafy1", mLink, "anytype://object?spaceId=s1&object_id=bafy1"},
 		{"an extra parameter", "anytype://object?objectId=bafy1&mention=1", mLink, "anytype://object?objectId=bafy1&mention=1"},
-		{"repeated parameter", "anytype://object?objectId=a&objectId=b", mLink, "anytype://object?objectId=a&objectId=b"},
+		{"repeated parameter", "anytype://object?objectId=a&object_id=b", mLink, "anytype://object?objectId=a&object_id=b"},
 		{"empty id", "anytype://object?objectId=", mLink, "anytype://object?objectId="},
 		{"another host", "anytype://date?timestamp=123", mLink, "anytype://date?timestamp=123"},
 		{"a path", "anytype://invite/?cid=x&key=y", mLink, "anytype://invite/?cid=x&key=y"},
-		{"another scheme", "https://object?objectId=bafy1", mLink, "https://object?objectId=bafy1"},
+		{"another scheme", "https://object?object_id=bafy1", mLink, "https://object?object_id=bafy1"},
 	}
 
 	for _, tc := range tests {

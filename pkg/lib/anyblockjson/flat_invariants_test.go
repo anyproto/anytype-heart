@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -186,9 +187,9 @@ var hostileDocs = []string{
 	`{"version": 1, "blocks": [{"type": "widget", "limit": 1e1}]}`,
 	`{"version": 1, "blocks": [{"type": "widget", "limit": 1e20}]}`,
 	`{"version": 1, "blocks": [{"type": "widget", "limit": -3}]}`,
-	`{"version": 1, "blocks": [{"type": "dataview", "views": [{"id": "v1", "pageSize": 50.0}]}]}`,
-	`{"version": 1, "blocks": [{"type": "dataview", "views": [{"id": "v1", "pageSize": 1e19}]}]}`,
-	`{"version": 1, "blocks": [{"type": "dataview", "views": [{"id": "v1", "pageSize": 0}]}]}`,
+	`{"version": 1, "blocks": [{"type": "dataview", "views": [{"id": "v1", "page_size": 50.0}]}]}`,
+	`{"version": 1, "blocks": [{"type": "dataview", "views": [{"id": "v1", "page_size": 1e19}]}]}`,
+	`{"version": 1, "blocks": [{"type": "dataview", "views": [{"id": "v1", "page_size": 0}]}]}`,
 	`{"version": 1, "blocks": [{"type": "table", "columns": [{"id": "c1", "width": 120.7}], "rows": []}]}`,
 	`{"version": 1, "blocks": [{"type": "table", "columns": [{"id": "c1", "width": 1e30}], "rows": []}]}`,
 	`{"version": 1, "blocks": [{"type": "table", "columns": [{"id": "c1", "width": -5}], "rows": []}]}`,
@@ -289,4 +290,93 @@ func TestExport_ValidIdsAreNeverRenamed(t *testing.T) {
 	assert.Equal(t, "keep-me", got.Blocks[1].Id)
 	assert.Equal(t, "c1", got.Blocks[2].Columns[0].Id)
 	assert.Equal(t, "r1", got.Blocks[2].Rows[0].Id)
+}
+
+// I3: every identifier the format defines is snake_case (§1 Naming). The rule
+// is worth a test rather than a review habit — the vocabulary grows one enum
+// value at a time, and a camelCase addition would be invisible until a
+// generating model tripped over it, which is the failure the rename fixed.
+//
+// It covers the Go name tables as well as the schema: some vocabulary (the
+// layout names) exists only in Go, which is exactly where a stray name hides.
+func TestInvariant_VocabularyIsSnakeCase(t *testing.T) {
+	// platform identifiers are quoted, not translated (§1 Naming)
+	platform := map[string]bool{"allObjects": true, "recentOpen": true}
+	snake := regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
+
+	check := func(t *testing.T, where, ident string) {
+		t.Helper()
+		if platform[ident] || strings.HasPrefix(ident, "$") {
+			return
+		}
+		assert.Regexp(t, snake, ident, "%s: %q is not snake_case", where, ident)
+	}
+
+	for _, schema := range [][]byte{schemaJSON, indexSchemaJSON} {
+		var doc any
+		require.NoError(t, json.Unmarshal(schema, &doc))
+		var walk func(node any)
+		walk = func(node any) {
+			switch n := node.(type) {
+			case map[string]any:
+				for key, v := range n {
+					switch key {
+					case "properties":
+						if props, ok := v.(map[string]any); ok {
+							for name, sub := range props {
+								check(t, "schema property", name)
+								walk(sub)
+							}
+							continue
+						}
+					case "enum":
+						if list, ok := v.([]any); ok {
+							for _, e := range list {
+								if s, isStr := e.(string); isStr {
+									check(t, "schema enum", s)
+								}
+							}
+							continue
+						}
+					}
+					walk(v)
+				}
+			case []any:
+				for _, v := range n {
+					walk(v)
+				}
+			}
+		}
+		walk(doc)
+	}
+
+	for name, values := range map[string][]string{
+		"kind":           namesOf(kindNames.toName),
+		"textStyle":      namesOf(textStyleNames.toName),
+		"fileType":       namesOf(fileTypeNames.toName),
+		"processor":      namesOf(processorNames.toName),
+		"widgetLayout":   namesOf(widgetLayoutNames.toName),
+		"viewType":       namesOf(viewTypeNames.toName),
+		"condition":      namesOf(conditionNames.toName),
+		"datePreset":     namesOf(datePresetNames.toName),
+		"aggregation":    namesOf(aggregationNames.toName),
+		"format":         namesOf(formatNames.toName),
+		"layout":         namesOf(layoutNames.toName),
+		"cardStyle":      namesOf(cardStyleNames.toName),
+		"cardSize":       namesOf(cardSizeNames.toName),
+		"listSize":       namesOf(listSizeNames.toName),
+		"emptyPlacement": namesOf(emptyPlacementNames.toName),
+	} {
+		for _, v := range values {
+			check(t, name+" name table", v)
+		}
+	}
+}
+
+func namesOf[T comparable](m map[T]string) []string {
+	out := make([]string, 0, len(m))
+	for _, v := range m {
+		out = append(out, v)
+	}
+	return out
 }

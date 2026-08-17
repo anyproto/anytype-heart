@@ -18,15 +18,15 @@
   },
   "blocks": [
     {
-      "type": "heading2",
+      "type": "heading_2",
       "text": "Goals"
     },
     {
       "type": "paragraph",
-      "text": "Ship the **new export** with <mention objectId=\"bafyreiroman\">Roman</mention>"
+      "text": "Ship the **new export** with <mention object_id=\"bafyreiroman\">Roman</mention>"
     },
     {
-      "type": "bulletedListItem",
+      "type": "bulleted_list_item",
       "text": "Nested item"
     },
     {
@@ -44,16 +44,16 @@
     },
     {
       "type": "image",
-      "objectId": "bafyreiimage",
+      "object_id": "bafyreiimage",
       "name": "cat.png",
-      "mimeType": "image/png",
+      "mime_type": "image/png",
       "size": 2048,
-      "addedAt": "2025-07-06T08:44:05Z"
+      "added_at": "2025-07-06T08:44:05Z"
     },
     {
       "type": "bookmark",
       "url": "https://anytype.io",
-      "objectId": "bafyreibookmark"
+      "object_id": "bafyreibookmark"
     },
     {
       "type": "row"
@@ -86,7 +86,7 @@
       ],
       "rows": [
         {
-          "isHeader": true,
+          "is_header": true,
           "cells": [
             "Name",
             "Status"
@@ -111,7 +111,7 @@
     },
     {
       "type": "dataview",
-      "objectId": "bafyreitasks",
+      "object_id": "bafyreitasks",
       "properties": [
         {
           "key": "name",
@@ -130,18 +130,18 @@
         {
           "type": "kanban",
           "name": "By status",
-          "groupBy": "customStatus",
+          "group_by": "customStatus",
           "sorts": [
             {
               "property": "dueDate",
-              "emptyPlacement": "end"
+              "empty_placement": "end"
             }
           ],
           "filters": [
             {
               "property": "dueDate",
               "condition": "less",
-              "datePreset": "currentWeek"
+              "date_preset": "current_week"
             },
             {
               "operator": "or",
@@ -169,7 +169,7 @@
               "property": "dueDate",
               "hidden": true,
               "width": 120,
-              "aggregation": "countDistinct",
+              "aggregation": "count_distinct",
               "align": "right"
             }
           ]

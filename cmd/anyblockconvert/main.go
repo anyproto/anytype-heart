@@ -120,7 +120,7 @@ func run(inDir, outDir string, normalizeIndent, lenient bool, format outputForma
 		return fmt.Errorf("check target types: %w", err)
 	}
 	if len(badTargets) > 0 {
-		return fmt.Errorf("%d unresolvable objectTypes target%s:\n%s",
+		return fmt.Errorf("%d unresolvable object_types target%s:\n%s",
 			len(badTargets), map[bool]string{true: "", false: "s"}[len(badTargets) == 1],
 			anyblockbatch.ReportTargets(badTargets))
 	}

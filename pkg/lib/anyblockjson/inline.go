@@ -19,9 +19,9 @@ import (
 )
 
 // An Object mark's target renders as Anytype's deep link. The form is exact:
-// scheme "anytype", host "object", and a single "objectId" query parameter —
+// scheme "anytype", host "object", and a single "object_id" query parameter —
 // nothing else. Matching it by string prefix instead would take everything
-// after "objectId=" as the id, so the platform's own two-parameter link
+// after "object_id=" as the id, so the platform's own two-parameter link
 // (core/block/export/writer.go) would yield the id "<id>&spaceId=<space>",
 // and an id could smuggle query parameters into a link other tools resolve.
 const (
@@ -565,7 +565,7 @@ func renderNode(b *strings.Builder, u16 []uint16, n *treeNode, inLabel bool) {
 	}
 	switch n.item.typ {
 	case model.BlockContentTextMark_Mention:
-		b.WriteString(`<mention objectId="` + escapeAttr(n.item.param) + `">`)
+		b.WriteString(`<mention object_id="` + escapeAttr(n.item.param) + `">`)
 		renderKids(inLabel)
 		b.WriteString(`</mention>`)
 	case model.BlockContentTextMark_Object:
@@ -800,11 +800,11 @@ func tagShapedName(rs []rune) (string, bool) {
 		j++
 	}
 	start := j
-	for j < len(rs) && isASCIILetter(rs[j]) {
-		j++
+	if j >= len(rs) || !isASCIILetter(rs[j]) {
+		return "", false // a tag name starts with a letter, always
 	}
-	if j == start {
-		return "", false
+	for j < len(rs) && (isASCIILetter(rs[j]) || rs[j] == '_') {
+		j++
 	}
 	return string(rs[start:j]), true
 }
@@ -1339,7 +1339,9 @@ func parseTag(rs []rune, i int) (*token, int, bool, error) {
 			return nil, 0, false, inlineErr(rs, i, fmt.Sprintf("closing </%s> tag with attributes", name))
 		}
 		attrStart := j
-		for j < len(rs) && isASCIILetter(rs[j]) {
+		// attribute names are snake_case like every other identifier the
+		// format defines (§8.1), so '_' is part of the name, not a terminator
+		for j < len(rs) && (isASCIILetter(rs[j]) || rs[j] == '_') {
 			j++
 		}
 		attrName := string(rs[attrStart:j])
@@ -1408,12 +1410,12 @@ func validateTagAttrs(name string, attrs map[string]string) string {
 		}
 	case "mention":
 		for k := range attrs {
-			if k != "objectId" {
+			if k != "object_id" {
 				return fmt.Sprintf("unknown attribute %q on <mention> tag", k)
 			}
 		}
-		if _, ok := attrs["objectId"]; !ok {
-			return "<mention> tag needs an objectId attribute"
+		if _, ok := attrs["object_id"]; !ok {
+			return "<mention> tag needs an object_id attribute"
 		}
 	}
 	return ""
@@ -1740,7 +1742,7 @@ func emitTagMarks(ib *inlineBuilder, e openEntry) {
 		ib.addMark(model.BlockContentTextMark_TextColor, e.attrs["color"], e.start16, end)
 		ib.addMark(model.BlockContentTextMark_BackgroundColor, e.attrs["background"], e.start16, end)
 	case "mention":
-		ib.addMark(model.BlockContentTextMark_Mention, e.attrs["objectId"], e.start16, end)
+		ib.addMark(model.BlockContentTextMark_Mention, e.attrs["object_id"], e.start16, end)
 	}
 }
 
