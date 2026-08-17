@@ -388,3 +388,23 @@ func TestValidate_PropertyValueShapeWarns(t *testing.T) {
 			"dueDate": null, "done": null}}`))
 	})
 }
+
+// The mention attribute is snake_case like every other identifier the format
+// defines, which the tag grammar had to learn: its attribute-name scanner read
+// ASCII letters only, so `object_id` parsed as the attribute `object` and then
+// failed on the underscore (§8.1).
+func TestInline_MentionAttributeIsSnakeCase(t *testing.T) {
+	md := `ping <mention object_id="bafyid">Roman</mention>`
+	text, marks, err := parseInline(md)
+	require.NoError(t, err)
+	assert.Equal(t, "ping Roman", text)
+	require.Len(t, marks, 1)
+	assert.Equal(t, "bafyid", marks[0].Param)
+	assert.Equal(t, md, renderInline(text, marks), "canonical form is byte-stable")
+
+	// the previous draft's spelling is an error that names the attribute,
+	// rather than a silently dropped mention
+	_, _, err = parseInline(`ping <mention objectId="bafyid">Roman</mention>`)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `unknown attribute "objectId"`)
+}

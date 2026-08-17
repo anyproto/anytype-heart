@@ -1150,9 +1150,14 @@ with no Markdown equivalent:
 | `<font background="yellow">text</font>` | BackgroundColor | coincident color+background ranges combine into one tag: `<font color="red" background="yellow">` |
 | — | Emoji | not writable: export **materializes** the mark by splicing its emoji over the covered text (the mark's semantics are replacement; this matches the Markdown export and the chat renderer). On import emoji are plain text |
 
-Inline tags: import accepts any attribute order, single or double quotes,
-and surrounding whitespace; canonical form is double quotes, single spaces,
-`color` before `background`. Zero-length tags (e.g.
+Inline tags: a tag name and an attribute name are `[A-Za-z][A-Za-z_]*` —
+snake_case like every other identifier the format defines (§1 *Naming*), which
+is why `object_id` is an attribute name and not the attribute `object`
+followed by a stray character. Import accepts any attribute order, single or
+double quotes, and surrounding whitespace; canonical form is double quotes,
+single spaces, `color` before `background`. An attribute the tag does not
+define is an error naming it (§12), so a document written against an older
+draft fails loudly rather than dropping the mark. Zero-length tags (e.g.
 `<mention object_id="x"></mention>`) are dropped on input.
 
 Everything else is literal text. No other Markdown constructs are recognized
