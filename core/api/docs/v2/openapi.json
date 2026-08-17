@@ -1106,7 +1106,7 @@
     "/v2/auth/whoami": {
       "get": {
         "description": "Describes the CREDENTIAL presented in the Authorization header — never the person; there is only one account on this API. `grant.scoped` is the load-bearing field: false means a legacy unscoped key (then `spaces` is `[]` and `permission` is null — never null spaces), true means enforcement constrains the key to exactly the listed spaces with the listed permission. `spaces[]` entries carry a per-entry `permission` (uniform today; per-space grants land without a wire change) and a `name` resolved through the same grant-intersected path as GET /v2/spaces. `keyStatus`/`notice` repeat the Anytype-Key-Status/Anytype-Notice header signal in the body. The token is read ONLY from the Authorization header; it is never accepted as a query or body parameter, and an unknown or revoked key gets a plain 401.",
-        "operationId": "v2_auth_whoami",
+        "operationId": "auth_whoami",
         "parameters": [
           {
             "description": "How grant.spaces[].id is spelled: compact (default) = the short space reference; full = the full <cid>.<replicationKey> id — the spelling to persist outside this API",
@@ -1163,7 +1163,7 @@
     "/v2/schemas": {
       "get": {
         "description": "The §5 discovery index: every create kind with its endpoint and schema URL.",
-        "operationId": "v2_list_schemas",
+        "operationId": "list_schemas",
         "responses": {
           "200": {
             "content": {
@@ -1190,7 +1190,7 @@
     "/v2/schemas/ops/{op}": {
       "get": {
         "description": "One op's tiny strict schema (C13) and a minimal example that is an INSTANCE of it — one op object, ready to drop into the PATCH body's ops array. Ops: setProperties, updateBlock, replaceSubtree, insertBlocks, moveBlock, deleteBlock, replaceText, setCell, updateView, insertView, moveView, deleteView, addItems, removeItems.",
-        "operationId": "v2_get_op_schema",
+        "operationId": "get_op_schema",
         "parameters": [
           {
             "description": "Op name",
@@ -1238,7 +1238,7 @@
     "/v2/schemas/{kind}": {
       "get": {
         "description": "One kind's JSON Schema and worked example (C12/C13). Kinds: object, shortcut, type, template, property, set, collection, file, filters.",
-        "operationId": "v2_get_schema",
+        "operationId": "get_schema",
         "parameters": [
           {
             "description": "Schema kind",
@@ -1286,7 +1286,7 @@
     "/v2/search": {
       "post": {
         "description": "Searches all spaces: type keys and option names resolve per space (a reference that resolves in only some spaces queries those and warns about the rest), results merge by the requested sort, total is the sum of per-space store counts (honest totals). Rows carry spaceId. Same request shape as the space search.",
-        "operationId": "v2_search_global",
+        "operationId": "search_global",
         "parameters": [
           {
             "description": "Items to skip",
@@ -1362,7 +1362,7 @@
     "/v2/spaces": {
       "get": {
         "description": "Returns {id, name, description} rows for the account's LIVE spaces — deleted, left and still-joining spaces are filtered out (the same predicate GET /v2/spaces/{space_id} and the global search use).",
-        "operationId": "v2_list_spaces",
+        "operationId": "list_spaces",
         "parameters": [
           {
             "description": "compact (default) = the short space reference; full = the full <cid>.<replicationKey> id — the export spelling, and the one to persist outside this API (a short reference is unique only against the spaces you can currently see)",
@@ -1397,7 +1397,7 @@
       },
       "post": {
         "description": "Creates a space: {name, description?} → the same shape. Thin over WorkspaceCreate. Both fields are capped at 4096 characters (the space kind's advertised maxLength — enforced). Honors Idempotency-Key (C8) — an auto-retried space create without a key duplicates an entire space — and ?dry_run=true (C9): the dry run validates the body only, a space create cannot be simulated.",
-        "operationId": "v2_create_space",
+        "operationId": "create_space",
         "parameters": [
           {
             "description": "Validate the body without creating",
@@ -1471,7 +1471,7 @@
     "/v2/spaces/{space_id}": {
       "get": {
         "description": "Returns the space row {id, name, description} read from the tech space's space view — one store query, no workspace opens. Only LIVE spaces are served: a deleted, left or still-joining space 404s (the same predicate as the spaces list). gatewayUrl/networkId are client-infrastructure fields and are deliberately absent from v2.",
-        "operationId": "v2_get_space",
+        "operationId": "get_space",
         "parameters": [
           {
             "description": "Space id",
@@ -1525,7 +1525,7 @@
       },
       "patch": {
         "description": "Updates the space's name and/or description (omitted fields stay unchanged; at least one is required; 4096-character cap) → the resulting row. Thin over WorkspaceSetInfo. A space that is deleted or gone answers 404; a role that may not change the space info answers 403. Honors Idempotency-Key (C8) and ?dry_run=true (C9).",
-        "operationId": "v2_update_space",
+        "operationId": "update_space",
         "parameters": [
           {
             "description": "Space id",
@@ -1628,7 +1628,7 @@
     "/v2/spaces/{space_id}/chats": {
       "get": {
         "description": "C5 rows {id, name} via a store query — no chat opens, so the list is cheap at any size. Deliberately counter-free (Q3): per-chat unread state comes free on the messages read. No etag (C7 exemption: chats use order ids and lastStateId as their concurrency vocabulary).",
-        "operationId": "v2_list_chats",
+        "operationId": "list_chats",
         "parameters": [
           {
             "description": "Space id",
@@ -1692,7 +1692,7 @@
       },
       "post": {
         "description": "Creates a chat object: {name}. A thin create with the chat_derived type — messages live in the chat store, not blocks. Honors Idempotency-Key (C8) and ?dry_run=true (C9). No If-Match (C7 exemption).",
-        "operationId": "v2_create_chat",
+        "operationId": "create_chat",
         "parameters": [
           {
             "description": "Space id",
@@ -1767,7 +1767,7 @@
     "/v2/spaces/{space_id}/chats/{chat_id}/messages": {
       "get": {
         "description": "Cursor-paged messages (ascending order): ?after=/?before= are EXCLUSIVE order-id bounds, ?limit defaults to 25. A forward walk uses ?after alone and continues with the response's nextAfter; every OTHER query — ?before, no cursor, or BOTH bounds — is anchored at its NEWEST end (the newest N in range) and pages backward with nextBefore, so after+before does NOT walk forward through the window. has_more says more messages exist inside the requested bounds. The response carries state (unread counters, oldest unread orders, lastStateId — the mark-read race guard) and messageCount (the chat's LIFETIME total, not the range size) at zero extra cost; a poll is a limit=1 read. Message text is §8 inline markup (blocksText carries block-composed content read-only); reactions is always emoji counts ({\"👍\":2}); ?reactions=full adds reactedBy (participant-id lists) in its own slot. Offset pagination does not apply — page with the cursors.",
-        "operationId": "v2_get_chat_messages",
+        "operationId": "get_chat_messages",
         "parameters": [
           {
             "description": "Space id",
@@ -1865,7 +1865,7 @@
       },
       "post": {
         "description": "Sends one message: {text, replyTo?, attachments?}. Text is §8 markup SOURCE — *, [, ` and <mention objectId=\"…\"> syntax mint real marks (the D′1 caveat; escape literal specials with a backslash) — capped at 8000 UTF-16 code units (an emoji counts 2+). Attachments are bare object ids, at most 32; the kind is inferred from each target's layout (image → image, other file layouts → file, anything else → link). Honors Idempotency-Key (C8 — a double-sent chat message is user-visible damage) and ?dry_run=true (C9, validate-only).",
-        "operationId": "v2_add_chat_message",
+        "operationId": "add_chat_message",
         "parameters": [
           {
             "description": "Space id",
@@ -1959,7 +1959,7 @@
     "/v2/spaces/{space_id}/chats/{chat_id}/messages/{message_id}": {
       "delete": {
         "description": "Deletes one message. IRREVERSIBLE side effect: attachments whose ONLY reference was this message are permanently deleted afterwards (not moved to the bin, asynchronously) — the response's warnings name the attachment ids at risk, and the dry run reports the same warnings without deleting. A missing message is a 404 on both the real call and the dry run (C9). Honors Idempotency-Key (C8 — chat DELETE is keyed too, a Phase-6 widening) and ?dry_run=true.",
-        "operationId": "v2_delete_chat_message",
+        "operationId": "delete_chat_message",
         "parameters": [
           {
             "description": "Space id",
@@ -2039,7 +2039,7 @@
       },
       "patch": {
         "description": "Text-only MERGE: {text} replaces the message text (parsed as §8 markup source, capped at 8000 UTF-16 code units — the D′1 caveat: ALL marks are re-derived from the string, and an Emoji mark read back as its literal emoji stays literal); the message's attachments, reply target, style and blocks are preserved. Editing another member's message is a 403 forbidden. Honors Idempotency-Key (C8) and ?dry_run=true (C9).",
-        "operationId": "v2_edit_chat_message",
+        "operationId": "edit_chat_message",
         "parameters": [
           {
             "description": "Space id",
@@ -2142,7 +2142,7 @@
     "/v2/spaces/{space_id}/chats/{chat_id}/messages/{message_id}/reactions": {
       "post": {
         "description": "Toggles the caller's {emoji} reaction on a message → {added}. A missing message is a 404. Honors Idempotency-Key (C8) and ?dry_run=true (C9 — the dry run reads the message and reports the would-be outcome; when the service has no account identity to predict with, added is omitted and a warning says so).",
-        "operationId": "v2_toggle_chat_reaction",
+        "operationId": "toggle_chat_reaction",
         "parameters": [
           {
             "description": "Space id",
@@ -2245,7 +2245,7 @@
     "/v2/spaces/{space_id}/chats/{chat_id}/read": {
       "post": {
         "description": "Moves the read watermark: {upTo, lastStateId, scope?}. upTo is the INCLUSIVE order id to mark read up to and lastStateId is the race guard — BOTH are required for scopes messages/mentions and both ride the same GET messages response (the newest message's order + state.lastStateId); an empty value for either would silently mark nothing, so it is rejected instead. Messages that arrived after lastStateId's state stay unread. scope defaults to messages; mentions marks @-mentions; reactions marks ALL unread reactions and takes no upTo/lastStateId. Honors Idempotency-Key (C8) and ?dry_run=true (C9, validate-only).",
-        "operationId": "v2_read_chat",
+        "operationId": "read_chat",
         "parameters": [
           {
             "description": "Space id",
@@ -2339,7 +2339,7 @@
     "/v2/spaces/{space_id}/collections": {
       "post": {
         "description": "Creates a collection: {name, items?}. Items are validated against the space. The body binds strictly (unknown fields rejected) and the collection schema's advertised bounds (name length, item count) are enforced. Honors Idempotency-Key and ?dry_run=true.",
-        "operationId": "v2_create_collection",
+        "operationId": "create_collection",
         "parameters": [
           {
             "description": "Space id",
@@ -2414,7 +2414,7 @@
     "/v2/spaces/{space_id}/collections/{collection_id}/objects": {
       "get": {
         "description": "Reads the collection's curated membership (the store slice, in its order), optionally through one stored view's filters and sorts (?view=). Rows are C5 minimal; fields= expands.",
-        "operationId": "v2_get_collection_objects",
+        "operationId": "get_collection_objects",
         "parameters": [
           {
             "description": "Space id",
@@ -2515,7 +2515,7 @@
     "/v2/spaces/{space_id}/collections/{collection_id}/views": {
       "get": {
         "description": "Returns the collection's stored views as SPEC §6.2 view objects. Paginated (C10).",
-        "operationId": "v2_get_collection_views",
+        "operationId": "get_collection_views",
         "parameters": [
           {
             "description": "Space id",
@@ -2600,7 +2600,7 @@
     "/v2/spaces/{space_id}/files": {
       "post": {
         "description": "Uploads one file and returns the file object id that file/image blocks and icon_image values reference (R11). Send multipart/form-data with a file field, or JSON {\"url\": …} — the JSON body binds strictly (unknown fields rejected, 1 MiB cap). A URL the source refuses or that cannot be fetched is a 400 naming /url; only genuine server faults answer 500.",
-        "operationId": "v2_upload_file",
+        "operationId": "upload_file",
         "parameters": [
           {
             "description": "Space id",
@@ -2674,7 +2674,7 @@
     },
     "/v2/spaces/{space_id}/members": {
       "get": {
-        "operationId": "v2_list_members",
+        "operationId": "list_members",
         "parameters": [
           {
             "description": "Space id",
@@ -2711,7 +2711,7 @@
     },
     "/v2/spaces/{space_id}/members/me": {
       "get": {
-        "operationId": "v2_get_member_me",
+        "operationId": "get_member_me",
         "parameters": [
           {
             "description": "Space id",
@@ -2759,7 +2759,7 @@
     "/v2/spaces/{space_id}/objects": {
       "get": {
         "description": "Returns paginated minimal rows: id, name, type (a type key) plus the property values requested via fields= (comma-separated property keys). Type objects are never embedded (C5).",
-        "operationId": "v2_list_objects",
+        "operationId": "list_objects",
         "parameters": [
           {
             "description": "Space id",
@@ -2821,7 +2821,7 @@
       },
       "post": {
         "description": "Creates one object. The body is either a full flat AnyBlock document (discriminator: presence of version or blocks) or the shortcut {type, name, properties, markdown}. Unknown select option names are created (SPEC §3); unknown type or property keys are rejected with did-you-mean errors. Honors Idempotency-Key (C8) and ?dry_run=true (C9).",
-        "operationId": "v2_create_object",
+        "operationId": "create_object",
         "parameters": [
           {
             "description": "Space id",
@@ -2886,7 +2886,7 @@
     "/v2/spaces/{space_id}/objects/{object_id}": {
       "delete": {
         "description": "Archives the object (moves it to Bin — reversible in the Anytype app; hard delete is a deferred ?permanent extension). Deletion is permitted ONLY for objects this API key created: provenance is recorded immutably on the object's creating change at creation time, so objects created before this route shipped, objects created in the Anytype app, imports and other members' objects all refuse with 403 not_created_by_this_key — for every key, permanently (fail-closed, no backfill). Only user content is deletable (pages, templates, files, chats); system objects refuse with 403, and types and properties refuse with a steer to their own DELETE routes. ?dry_run=true is the deletability probe: it verifies existence, grant and the provenance verdict without writing — archive-time restriction checks run only on the real call, so a deletable verdict can rarely still meet a 403. Honors Idempotency-Key; re-deleting an archived object is a 200 no-op with a warning.",
-        "operationId": "v2_delete_object",
+        "operationId": "delete_object",
         "parameters": [
           {
             "description": "Space id",
@@ -2969,7 +2969,7 @@
       },
       "get": {
         "description": "Returns the object as a flat AnyBlock JSON document read from the live editor state, with an advisory etag (C7) in the envelope and the ETag header. Supports include=properties,blocks; outline=true (block skeleton with compact labels); block={blockId} (one contiguous subtree, marked \"subtree\": true — a partial body no write path accepts); ids=compact|full (the two document shapes, C4 — compact is the edit read where machine-minted block ids relabel to short suffixes, full is the export read with full ids everywhere: the shape that PUTs back). Object refs are always full inline. format=anyblock|md (markdown is read-only).",
-        "operationId": "v2_get_object",
+        "operationId": "get_object",
         "parameters": [
           {
             "description": "Space id",
@@ -3075,7 +3075,7 @@
       },
       "patch": {
         "description": "Applies the closed, id-addressed op set — setProperties, updateBlock, replaceSubtree, insertBlocks, moveBlock, deleteBlock, replaceText, setCell, updateView, insertView, moveView, deleteView, addItems, removeItems — atomically (one change set). EVERY id slot resolves the same way, in references and in payloads alike: a full id or a unique suffix, so a document echoed back from a read keeps its identity instead of being renamed. An id always names an EXISTING element: one that matches nothing is refused, and the ops that only ever create (insertBlocks) publish no id slot at all — omit it and the server mints one, reported in createdBlocks under the payload path that produced it (nested row, column and cell-descendant slots included; minted view ids land in createdViews). replaceText's id is itself optional: omitted, find doubles as the locator and must identify exactly ONE block — zero or several matching blocks refuse (the ambiguity refusal lists candidate ids), and resolution runs per-op under the object lock, so a later op resolves against the earlier ops' edits. updateBlock and deleteBlock take the same locator as `match` (exact text from the block) instead of an id — one of the two, never both, and the same one-match-or-refuse rule, which on deleteBlock is what stops a locator from removing the wrong subtree. The post-op document must satisfy the AnyBlock semantic checks (SPEC §12); any violation rejects the whole PATCH with path-addressed errors. If-Match is advisory (C7): absent = last-write-wins, stale = 409 with the current etag. Responds with the new etag, the minted-block id map keyed by payload position, and diffStats. Honors ?dry_run=true (C9). GET /v2/schemas/ops/{op} documents each op.",
-        "operationId": "v2_patch_object",
+        "operationId": "patch_object",
         "parameters": [
           {
             "description": "Space id",
@@ -3176,7 +3176,7 @@
     },
     "/v2/spaces/{space_id}/properties": {
       "get": {
-        "operationId": "v2_list_properties",
+        "operationId": "list_properties",
         "parameters": [
           {
             "description": "Space id",
@@ -3212,7 +3212,7 @@
       },
       "post": {
         "description": "Creates a property: {key?, name, format, options?:[{name,color?}]}. Formats use the AnyBlock vocabulary (text, select, multiSelect, …). The body binds strictly: unknown fields are rejected with the field named, and the bounds the property schema advertises (name/key lengths, key pattern, option count) are enforced. Honors Idempotency-Key and ?dry_run=true.",
-        "operationId": "v2_create_property",
+        "operationId": "create_property",
         "parameters": [
           {
             "description": "Space id",
@@ -3287,7 +3287,7 @@
     "/v2/spaces/{space_id}/properties/{key}": {
       "delete": {
         "description": "Archives the property object.",
-        "operationId": "v2_delete_property",
+        "operationId": "delete_property",
         "parameters": [
           {
             "description": "Space id",
@@ -3342,7 +3342,7 @@
       },
       "patch": {
         "description": "Updates a property's display name. The key is identity and cannot change. The body binds strictly: unknown fields are rejected with the field named.",
-        "operationId": "v2_update_property",
+        "operationId": "update_property",
         "parameters": [
           {
             "description": "Space id",
@@ -3427,7 +3427,7 @@
     },
     "/v2/spaces/{space_id}/properties/{key}/options": {
       "get": {
-        "operationId": "v2_list_property_options",
+        "operationId": "list_property_options",
         "parameters": [
           {
             "description": "Space id",
@@ -3492,7 +3492,7 @@
     "/v2/spaces/{space_id}/search": {
       "post": {
         "description": "Searches one space with full-text (query), a type scope, and either the compact filter string (filter) or the structured filter array (filters) — mutually exclusive, both landing on one internal tree. Sorts accept any property key. Rows are C5 minimal (id, name, type + requested fields). Search is a read: Idempotency-Key is not honored and dry_run is ignored. Pagination via ?offset=&limit= (C10).",
-        "operationId": "v2_search_space",
+        "operationId": "search_space",
         "parameters": [
           {
             "description": "Space id",
@@ -3579,7 +3579,7 @@
     "/v2/spaces/{space_id}/sets": {
       "post": {
         "description": "Creates a set querying one type: {name, type, filters?, sorts?, views?}. The set's initial state carries a fully-formed dataview block, so filters/sorts/views land atomically (§8/R10). Filter/sort property keys are validated against the type's actual keys (R9). The body binds strictly (unknown fields rejected) and the set schema's advertised bounds are enforced. Honors Idempotency-Key and ?dry_run=true.",
-        "operationId": "v2_create_set",
+        "operationId": "create_set",
         "parameters": [
           {
             "description": "Space id",
@@ -3654,7 +3654,7 @@
     "/v2/spaces/{space_id}/sets/{set_id}/objects": {
       "get": {
         "description": "Executes the set's stored query (its set_of source) directly against the store, optionally through one stored view's filters and sorts (?view=, exact id or unique suffix). Stored-view execution substitutes the SPEC §6.2 dynamic placeholders server-side; unresolvable placeholders degrade to warnings, never a silent no-match. Rows are C5 minimal; fields= expands.",
-        "operationId": "v2_get_set_objects",
+        "operationId": "get_set_objects",
         "parameters": [
           {
             "description": "Space id",
@@ -3755,7 +3755,7 @@
     "/v2/spaces/{space_id}/sets/{set_id}/views": {
       "get": {
         "description": "Returns the set's stored views as SPEC §6.2 view objects (sorts, filters, columns — option names resolved, the format vocabulary). Paginated (C10).",
-        "operationId": "v2_get_set_views",
+        "operationId": "get_set_views",
         "parameters": [
           {
             "description": "Space id",
@@ -3840,7 +3840,7 @@
     "/v2/spaces/{space_id}/templates": {
       "post": {
         "description": "Creates a template: an AnyBlock document with templateFor naming the target type key, routed through the generic object-create path. Honors Idempotency-Key and ?dry_run=true.",
-        "operationId": "v2_create_template",
+        "operationId": "create_template",
         "parameters": [
           {
             "description": "Space id",
@@ -3904,7 +3904,7 @@
     },
     "/v2/spaces/{space_id}/types": {
       "get": {
-        "operationId": "v2_list_types",
+        "operationId": "list_types",
         "parameters": [
           {
             "description": "Space id",
@@ -3940,7 +3940,7 @@
       },
       "post": {
         "description": "Creates an object type from a kind:\"objectType\" AnyBlock document. typeProperties entries naming unknown property keys create those properties atomically with the type (SPEC §2a create-missing). Honors Idempotency-Key and ?dry_run=true.",
-        "operationId": "v2_create_type",
+        "operationId": "create_type",
         "parameters": [
           {
             "description": "Space id",
@@ -4005,7 +4005,7 @@
     "/v2/spaces/{space_id}/types/{type}": {
       "delete": {
         "description": "Archives the type object (v1 parity; hard delete is a deferred ?permanent extension).",
-        "operationId": "v2_delete_type",
+        "operationId": "delete_type",
         "parameters": [
           {
             "description": "Space id",
@@ -4059,7 +4059,7 @@
         ]
       },
       "get": {
-        "operationId": "v2_get_type",
+        "operationId": "get_type",
         "parameters": [
           {
             "description": "Space id",
@@ -4123,7 +4123,7 @@
       },
       "patch": {
         "description": "Partial type-document update: properties changes the type's own details (name, description, icon_emoji, recommended_layout); typeProperties, when present, rebuilds the recommended property lists, creating missing properties (SPEC §2a).",
-        "operationId": "v2_update_type",
+        "operationId": "update_type",
         "parameters": [
           {
             "description": "Space id",
@@ -4188,7 +4188,7 @@
     },
     "/v2/spaces/{space_id}/types/{type}/schema": {
       "get": {
-        "operationId": "v2_get_type_schema",
+        "operationId": "get_type_schema",
         "parameters": [
           {
             "description": "Space id",
@@ -4235,7 +4235,7 @@
     "/v2/validate": {
       "post": {
         "description": "Checks the request body against the AnyBlock JSON schema and the format's semantic rules. Structural and format-semantic only: referential checks against a space (option names, a type's property keys) are not performed here. Findings are returned as data — a valid document yields empty issue lists.",
-        "operationId": "v2_validate",
+        "operationId": "validate",
         "requestBody": {
           "content": {
             "application/json": {

@@ -85,7 +85,7 @@ func unknownFieldName(err error) (string, bool) {
 //
 //	@Summary		Search objects (space)
 //	@Description	Searches one space with full-text (query), a type scope, and either the compact filter string (filter) or the structured filter array (filters) — mutually exclusive, both landing on one internal tree. Sorts accept any property key. Rows are C5 minimal (id, name, type + requested fields). Search is a read: Idempotency-Key is not honored and dry_run is ignored. Pagination via ?offset=&limit= (C10).
-//	@Id				v2_search_space
+//	@Id				search_space
 //	@Tags			Search
 //	@Accept			json
 //	@Produce		json
@@ -121,7 +121,7 @@ func SearchObjectsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //
 //	@Summary		Search objects (global)
 //	@Description	Searches all spaces: type keys and option names resolve per space (a reference that resolves in only some spaces queries those and warns about the rest), results merge by the requested sort, total is the sum of per-space store counts (honest totals). Rows carry spaceId. Same request shape as the space search.
-//	@Id				v2_search_global
+//	@Id				search_global
 //	@Tags			Search
 //	@Accept			json
 //	@Produce		json

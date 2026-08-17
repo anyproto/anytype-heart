@@ -25,7 +25,7 @@ import (
 //
 //	@Summary		Introspect the API key
 //	@Description	Describes the CREDENTIAL presented in the Authorization header — never the person; there is only one account on this API. `grant.scoped` is the load-bearing field: false means a legacy unscoped key (then `spaces` is `[]` and `permission` is null — never null spaces), true means enforcement constrains the key to exactly the listed spaces with the listed permission. `spaces[]` entries carry a per-entry `permission` (uniform today; per-space grants land without a wire change) and a `name` resolved through the same grant-intersected path as GET /v2/spaces. `keyStatus`/`notice` repeat the Anytype-Key-Status/Anytype-Notice header signal in the body. The token is read ONLY from the Authorization header; it is never accepted as a query or body parameter, and an unknown or revoked key gets a plain 401.
-//	@Id				v2_auth_whoami
+//	@Id				auth_whoami
 //	@Tags			Auth
 //	@Produce		json
 //	@Param			ids	query		string					false	"How grant.spaces[].id is spelled: compact (default) = the short space reference; full = the full <cid>.<replicationKey> id — the spelling to persist outside this API"

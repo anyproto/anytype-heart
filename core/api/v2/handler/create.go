@@ -72,7 +72,7 @@ func respondV2Create(c *gin.Context, result *v2model.CreateResult, createdStatus
 //
 //	@Summary		Create object (AnyBlock)
 //	@Description	Creates one object. The body is either a full flat AnyBlock document (discriminator: presence of version or blocks) or the shortcut {type, name, properties, markdown}. Unknown select option names are created (SPEC §3); unknown type or property keys are rejected with did-you-mean errors. Honors Idempotency-Key (C8) and ?dry_run=true (C9).
-//	@Id				v2_create_object
+//	@Id				create_object
 //	@Tags			Objects
 //	@Accept			json
 //	@Produce		json
@@ -101,7 +101,7 @@ func CreateObjectV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //
 //	@Summary		Create template (AnyBlock)
 //	@Description	Creates a template: an AnyBlock document with templateFor naming the target type key, routed through the generic object-create path. Honors Idempotency-Key and ?dry_run=true.
-//	@Id				v2_create_template
+//	@Id				create_template
 //	@Tags			Templates
 //	@Accept			json
 //	@Produce		json
@@ -130,7 +130,7 @@ func CreateTemplateV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //
 //	@Summary		Create type (AnyBlock type document)
 //	@Description	Creates an object type from a kind:"objectType" AnyBlock document. typeProperties entries naming unknown property keys create those properties atomically with the type (SPEC §2a create-missing). Honors Idempotency-Key and ?dry_run=true.
-//	@Id				v2_create_type
+//	@Id				create_type
 //	@Tags			Types
 //	@Accept			json
 //	@Produce		json
@@ -159,7 +159,7 @@ func CreateTypeV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //
 //	@Summary		Update type
 //	@Description	Partial type-document update: properties changes the type's own details (name, description, icon_emoji, recommended_layout); typeProperties, when present, rebuilds the recommended property lists, creating missing properties (SPEC §2a).
-//	@Id				v2_update_type
+//	@Id				update_type
 //	@Tags			Types
 //	@Accept			json
 //	@Produce		json
@@ -188,7 +188,7 @@ func UpdateTypeV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //
 //	@Summary		Delete type (archive)
 //	@Description	Archives the type object (v1 parity; hard delete is a deferred ?permanent extension).
-//	@Id				v2_delete_type
+//	@Id				delete_type
 //	@Tags			Types
 //	@Produce		json
 //	@Param			space_id	path		string					true	"Space id"
@@ -212,7 +212,7 @@ func DeleteTypeV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //
 //	@Summary		Create property
 //	@Description	Creates a property: {key?, name, format, options?:[{name,color?}]}. Formats use the AnyBlock vocabulary (text, select, multiSelect, …). The body binds strictly: unknown fields are rejected with the field named, and the bounds the property schema advertises (name/key lengths, key pattern, option count) are enforced. Honors Idempotency-Key and ?dry_run=true.
-//	@Id				v2_create_property
+//	@Id				create_property
 //	@Tags			Properties
 //	@Accept			json
 //	@Produce		json
@@ -244,7 +244,7 @@ func CreatePropertyV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //
 //	@Summary		Update property
 //	@Description	Updates a property's display name. The key is identity and cannot change. The body binds strictly: unknown fields are rejected with the field named.
-//	@Id				v2_update_property
+//	@Id				update_property
 //	@Tags			Properties
 //	@Accept			json
 //	@Produce		json
@@ -277,7 +277,7 @@ func UpdatePropertyV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //
 //	@Summary		Delete property (archive)
 //	@Description	Archives the property object.
-//	@Id				v2_delete_property
+//	@Id				delete_property
 //	@Tags			Properties
 //	@Produce		json
 //	@Param			space_id	path		string					true	"Space id"
@@ -301,7 +301,7 @@ func DeletePropertyV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //
 //	@Summary		Create set
 //	@Description	Creates a set querying one type: {name, type, filters?, sorts?, views?}. The set's initial state carries a fully-formed dataview block, so filters/sorts/views land atomically (§8/R10). Filter/sort property keys are validated against the type's actual keys (R9). The body binds strictly (unknown fields rejected) and the set schema's advertised bounds are enforced. Honors Idempotency-Key and ?dry_run=true.
-//	@Id				v2_create_set
+//	@Id				create_set
 //	@Tags			Lists
 //	@Accept			json
 //	@Produce		json
@@ -333,7 +333,7 @@ func CreateSetV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //
 //	@Summary		Create collection
 //	@Description	Creates a collection: {name, items?}. Items are validated against the space. The body binds strictly (unknown fields rejected) and the collection schema's advertised bounds (name length, item count) are enforced. Honors Idempotency-Key and ?dry_run=true.
-//	@Id				v2_create_collection
+//	@Id				create_collection
 //	@Tags			Lists
 //	@Accept			json
 //	@Produce		json
@@ -365,7 +365,7 @@ func CreateCollectionV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //
 //	@Summary		Upload file
 //	@Description	Uploads one file and returns the file object id that file/image blocks and icon_image values reference (R11). Send multipart/form-data with a file field, or JSON {"url": …} — the JSON body binds strictly (unknown fields rejected, 1 MiB cap). A URL the source refuses or that cannot be fetched is a 400 naming /url; only genuine server faults answer 500.
-//	@Id				v2_upload_file
+//	@Id				upload_file
 //	@Tags			Files
 //	@Accept			multipart/form-data
 //	@Produce		json
@@ -467,7 +467,7 @@ func stageV2Upload(c *gin.Context) (localPath string, cleanup func(), ok bool) {
 //
 //	@Summary		List schemas
 //	@Description	The §5 discovery index: every create kind with its endpoint and schema URL.
-//	@Id				v2_list_schemas
+//	@Id				list_schemas
 //	@Tags			Schemas
 //	@Produce		json
 //	@Success		200	{object}	v2model.SchemaIndex	"Schema index"
@@ -483,7 +483,7 @@ func SchemaIndexV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //
 //	@Summary		Get schema for a kind
 //	@Description	One kind's JSON Schema and worked example (C12/C13). Kinds: object, shortcut, type, template, property, set, collection, file, filters.
-//	@Id				v2_get_schema
+//	@Id				get_schema
 //	@Tags			Schemas
 //	@Produce		json
 //	@Param			kind	path		string				true	"Schema kind"
@@ -506,7 +506,7 @@ func SchemaKindV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //
 //	@Summary		Get schema for a PATCH op
 //	@Description	One op's tiny strict schema (C13) and a minimal example that is an INSTANCE of it — one op object, ready to drop into the PATCH body's ops array. Ops: setProperties, updateBlock, replaceSubtree, insertBlocks, moveBlock, deleteBlock, replaceText, setCell, updateView, insertView, moveView, deleteView, addItems, removeItems.
-//	@Id				v2_get_op_schema
+//	@Id				get_op_schema
 //	@Tags			Schemas
 //	@Produce		json
 //	@Param			op	path		string				true	"Op name"

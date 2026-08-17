@@ -17,7 +17,7 @@ const maxValidateBodySize = 10 << 20 // 10 MiB
 //
 //	@Summary		Validate an AnyBlock document
 //	@Description	Checks the request body against the AnyBlock JSON schema and the format's semantic rules. Structural and format-semantic only: referential checks against a space (option names, a type's property keys) are not performed here. Findings are returned as data — a valid document yields empty issue lists.
-//	@Id				v2_validate
+//	@Id				validate
 //	@Tags			Schemas
 //	@Accept			json
 //	@Produce		json

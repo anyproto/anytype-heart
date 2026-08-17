@@ -14,7 +14,7 @@ import (
 //
 //	@Summary		List spaces (minimal rows)
 //	@Description	Returns {id, name, description} rows for the account's LIVE spaces — deleted, left and still-joining spaces are filtered out (the same predicate GET /v2/spaces/{space_id} and the global search use).
-//	@Id				v2_list_spaces
+//	@Id				list_spaces
 //	@Tags			Spaces
 //	@Produce		json
 //	@Param			ids	query		string									false	"compact (default) = the short space reference; full = the full <cid>.<replicationKey> id — the export spelling, and the one to persist outside this API (a short reference is unique only against the spaces you can currently see)"
@@ -38,7 +38,7 @@ func ListSpacesV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 // ListMembersV2Handler lists space members as minimal rows
 //
 //	@Summary	List members (minimal rows)
-//	@Id			v2_list_members
+//	@Id			list_members
 //	@Tags		Members
 //	@Produce	json
 //	@Param		space_id	path		string									true	"Space id"
@@ -62,7 +62,7 @@ func ListMembersV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 // GetMemberMeV2Handler returns the caller's own member row
 //
 //	@Summary	Get the calling member (server-side identity, §7.3 @me)
-//	@Id			v2_get_member_me
+//	@Id			get_member_me
 //	@Tags		Members
 //	@Produce	json
 //	@Param		space_id	path		string				true	"Space id"
@@ -84,7 +84,7 @@ func GetMemberMeV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 // ListTypesV2Handler lists type keys and names
 //
 //	@Summary	List types (keys + names)
-//	@Id			v2_list_types
+//	@Id			list_types
 //	@Tags		Types
 //	@Produce	json
 //	@Param		space_id	path		string									true	"Space id"
@@ -108,7 +108,7 @@ func ListTypesV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 // GetTypeV2Handler reads one type as its AnyBlock document
 //
 //	@Summary	Get type (AnyBlock document)
-//	@Id			v2_get_type
+//	@Id			get_type
 //	@Tags		Types
 //	@Produce	json
 //	@Param		space_id	path		string			true	"Space id"
@@ -134,7 +134,7 @@ func GetTypeV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 // GetTypeSchemaV2Handler is the [build] GenerateSchema endpoint stub
 //
 //	@Summary	Get type schema (not implemented)
-//	@Id			v2_get_type_schema
+//	@Id			get_type_schema
 //	@Tags		Types
 //	@Produce	json
 //	@Param		space_id	path		string			true	"Space id"
@@ -151,7 +151,7 @@ func GetTypeSchemaV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 // ListPropertiesV2Handler lists properties as key/name/format rows
 //
 //	@Summary	List properties (key, name, format)
-//	@Id			v2_list_properties
+//	@Id			list_properties
 //	@Tags		Properties
 //	@Produce	json
 //	@Param		space_id	path		string										true	"Space id"
@@ -175,7 +175,7 @@ func ListPropertiesV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 // ListPropertyOptionsV2Handler lists option names of one property
 //
 //	@Summary	List property options (names + colors)
-//	@Id			v2_list_property_options
+//	@Id			list_property_options
 //	@Tags		Properties
 //	@Produce	json
 //	@Param		space_id	path		string									true	"Space id"

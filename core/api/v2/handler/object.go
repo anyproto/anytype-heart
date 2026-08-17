@@ -15,7 +15,7 @@ import (
 //
 //	@Summary		Get object (AnyBlock)
 //	@Description	Returns the object as a flat AnyBlock JSON document read from the live editor state, with an advisory etag (C7) in the envelope and the ETag header. Supports include=properties,blocks; outline=true (block skeleton with compact labels); block={blockId} (one contiguous subtree, marked "subtree": true — a partial body no write path accepts); ids=compact|full (the two document shapes, C4 — compact is the edit read where machine-minted block ids relabel to short suffixes, full is the export read with full ids everywhere: the shape that PUTs back). Object refs are always full inline. format=anyblock|md (markdown is read-only).
-//	@Id				v2_get_object
+//	@Id				get_object
 //	@Tags			Objects
 //	@Produce		json
 //	@Param			space_id	path		string			true	"Space id"
@@ -53,7 +53,7 @@ func GetObjectV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //
 //	@Summary		List objects (minimal rows)
 //	@Description	Returns paginated minimal rows: id, name, type (a type key) plus the property values requested via fields= (comma-separated property keys). Type objects are never embedded (C5).
-//	@Id				v2_list_objects
+//	@Id				list_objects
 //	@Tags			Objects
 //	@Produce		json
 //	@Param			space_id	path		string									true	"Space id"
