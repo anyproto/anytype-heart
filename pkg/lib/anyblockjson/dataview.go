@@ -5,6 +5,7 @@ package anyblockjson
 // top-level AND, and select values as option names.
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
 
@@ -27,8 +28,8 @@ func (e *exporter) dvFormat(dv *model.BlockContentDataview, key string) (model.R
 
 func (e *exporter) dataviewToJSON(m *omap, dv *model.BlockContentDataview) error {
 	m.set("type", "dataview")
-	m.setNonEmpty("objectId", e.compactObjectId(dv.TargetObjectId))
-	m.setNonEmpty("isCollection", dv.IsCollection)
+	m.setNonEmpty("object_id", e.compactObjectId(dv.TargetObjectId))
+	m.setNonEmpty("is_collection", dv.IsCollection)
 	m.setNonEmpty("source", stringsToAny(dv.Source))
 
 	var props []any
@@ -74,23 +75,23 @@ func (e *exporter) viewToJSON(v *model.BlockContentDataviewView, dv *model.Block
 		vm.setNonEmpty("type", viewTypeNames.name(v.Type))
 	}
 	vm.setNonEmpty("name", v.Name)
-	vm.setNonEmpty("groupBy", e.opts.propertySlug(v.GroupRelationKey))
-	vm.setNonEmpty("coverProperty", e.opts.propertySlug(v.CoverRelationKey))
-	vm.setNonEmpty("endProperty", e.opts.propertySlug(v.EndRelationKey))
-	vm.setNonEmpty("hideIcon", v.HideIcon)
+	vm.setNonEmpty("group_by", e.opts.propertySlug(v.GroupRelationKey))
+	vm.setNonEmpty("cover_property", e.opts.propertySlug(v.CoverRelationKey))
+	vm.setNonEmpty("end_property", e.opts.propertySlug(v.EndRelationKey))
+	vm.setNonEmpty("hide_icon", v.HideIcon)
 	if v.CardSize != model.BlockContentDataviewView_Small {
-		vm.setNonEmpty("cardSize", cardSizeNames.name(v.CardSize))
+		vm.setNonEmpty("card_size", cardSizeNames.name(v.CardSize))
 	}
-	vm.setNonEmpty("coverFit", v.CoverFit)
-	vm.setNonEmpty("coloredGroups", v.GroupBackgroundColors)
-	vm.setNonEmpty("pageSize", v.PageLimit)
-	vm.setNonEmpty("defaultTemplateId", e.compactObjectId(v.DefaultTemplateId))
-	vm.setNonEmpty("defaultTypeId", e.compactObjectId(v.DefaultObjectTypeId))
-	vm.setNonEmpty("wrapContent", v.WrapContent)
+	vm.setNonEmpty("cover_fit", v.CoverFit)
+	vm.setNonEmpty("colored_groups", v.GroupBackgroundColors)
+	vm.setNonEmpty("page_size", v.PageLimit)
+	vm.setNonEmpty("default_template_id", e.compactObjectId(v.DefaultTemplateId))
+	vm.setNonEmpty("default_type_id", e.compactObjectId(v.DefaultObjectTypeId))
+	vm.setNonEmpty("wrap_content", v.WrapContent)
 	if v.ListSize != model.BlockContentDataviewView_Compact {
-		vm.setNonEmpty("listSize", listSizeNames.name(v.ListSize))
+		vm.setNonEmpty("list_size", listSizeNames.name(v.ListSize))
 	}
-	vm.setNonEmpty("alternateRows", v.AlternateRows)
+	vm.setNonEmpty("alternate_rows", v.AlternateRows)
 
 	var sorts []any
 	for _, s := range v.Sorts {
@@ -122,7 +123,7 @@ func (e *exporter) viewToJSON(v *model.BlockContentDataviewView, dv *model.Block
 
 	if !e.opts.OmitIds {
 		vm.setNonEmpty("groups", e.viewGroupsToJSON(v.Id, dv))
-		vm.setNonEmpty("objectOrders", e.objectOrdersToJSON(v.Id, dv))
+		vm.setNonEmpty("object_orders", e.objectOrdersToJSON(v.Id, dv))
 	}
 	return vm, nil
 }
@@ -146,7 +147,7 @@ func (e *exporter) viewGroupsToJSON(viewId string, dv *model.BlockContentDatavie
 			gm := &omap{}
 			gm.setNonEmpty("id", g.GroupId)
 			gm.setNonEmpty("hidden", g.Hidden)
-			gm.setNonEmpty("backgroundColor", g.BackgroundColor)
+			gm.setNonEmpty("background_color", g.BackgroundColor)
 			out = append(out, gm)
 		}
 	}
@@ -160,14 +161,14 @@ func (e *exporter) objectOrdersToJSON(viewId string, dv *model.BlockContentDatav
 			continue
 		}
 		om := &omap{}
-		om.setNonEmpty("groupId", oo.GroupId)
+		om.setNonEmpty("group_id", oo.GroupId)
 		var ids []any
 		for _, id := range oo.ObjectIds {
 			if id != "" {
 				ids = append(ids, e.compactObjectId(id))
 			}
 		}
-		om.setNonEmpty("objectIds", ids)
+		om.setNonEmpty("object_ids", ids)
 		out = append(out, om)
 	}
 	return out
@@ -184,13 +185,13 @@ func (e *exporter) sortToJSON(s *model.BlockContentDataviewSort, dv *model.Block
 		for _, cv := range s.CustomOrder {
 			order = append(order, e.dvValueToJSON(dv, s.RelationKey, cv))
 		}
-		sm.set("customOrder", order)
+		sm.set("custom_order", order)
 	}
 	if s.EmptyPlacement != model.BlockContentDataviewSort_NotSpecified {
-		sm.setNonEmpty("emptyPlacement", emptyPlacementNames.name(s.EmptyPlacement))
+		sm.setNonEmpty("empty_placement", emptyPlacementNames.name(s.EmptyPlacement))
 	}
-	sm.setNonEmpty("includeTime", s.IncludeTime)
-	sm.setNonEmpty("noCollate", s.NoCollate)
+	sm.setNonEmpty("include_time", s.IncludeTime)
+	sm.setNonEmpty("no_collate", s.NoCollate)
 	if !e.opts.OmitIds {
 		sm.setNonEmpty("id", s.Id)
 	}
@@ -247,10 +248,10 @@ func (e *exporter) filterToJSON(f *model.BlockContentDataviewFilter, dv *model.B
 		}
 	}
 	if f.QuickOption != model.BlockContentDataviewFilter_ExactDate {
-		fm.setNonEmpty("datePreset", datePresetNames.name(f.QuickOption))
+		fm.setNonEmpty("date_preset", datePresetNames.name(f.QuickOption))
 	}
-	fm.setNonEmpty("includeTime", f.IncludeTime)
-	fm.setNonEmpty("nestedProperty", f.RelationProperty)
+	fm.setNonEmpty("include_time", f.IncludeTime)
+	fm.setNonEmpty("nested_property", f.RelationProperty)
 	if !e.opts.OmitIds {
 		fm.setNonEmpty("id", f.Id)
 	}
@@ -310,33 +311,33 @@ type jsonView struct {
 	Id                string            `json:"id"`
 	Type              string            `json:"type"`
 	Name              string            `json:"name"`
-	GroupBy           string            `json:"groupBy"`
-	CoverProperty     string            `json:"coverProperty"`
-	EndProperty       string            `json:"endProperty"`
-	HideIcon          bool              `json:"hideIcon"`
-	CardSize          string            `json:"cardSize"`
-	CoverFit          bool              `json:"coverFit"`
-	ColoredGroups     bool              `json:"coloredGroups"`
-	PageSize          int32             `json:"pageSize"`
-	DefaultTemplateId string            `json:"defaultTemplateId"`
-	DefaultTypeId     string            `json:"defaultTypeId"`
-	WrapContent       bool              `json:"wrapContent"`
-	ListSize          string            `json:"listSize"`
-	AlternateRows     bool              `json:"alternateRows"`
+	GroupBy           string            `json:"group_by"`
+	CoverProperty     string            `json:"cover_property"`
+	EndProperty       string            `json:"end_property"`
+	HideIcon          bool              `json:"hide_icon"`
+	CardSize          string            `json:"card_size"`
+	CoverFit          bool              `json:"cover_fit"`
+	ColoredGroups     bool              `json:"colored_groups"`
+	PageSize          json.Number       `json:"page_size"`
+	DefaultTemplateId string            `json:"default_template_id"`
+	DefaultTypeId     string            `json:"default_type_id"`
+	WrapContent       bool              `json:"wrap_content"`
+	ListSize          string            `json:"list_size"`
+	AlternateRows     bool              `json:"alternate_rows"`
 	Sorts             []jsonSort        `json:"sorts"`
 	Filters           []jsonFilter      `json:"filters"`
 	Columns           []jsonViewColumn  `json:"columns"`
 	Groups            []jsonViewGroup   `json:"groups"`
-	ObjectOrders      []jsonObjectOrder `json:"objectOrders"`
+	ObjectOrders      []jsonObjectOrder `json:"object_orders"`
 }
 
 type jsonSort struct {
 	Property       string `json:"property"`
 	Direction      string `json:"direction"`
-	CustomOrder    []any  `json:"customOrder"`
-	EmptyPlacement string `json:"emptyPlacement"`
-	IncludeTime    bool   `json:"includeTime"`
-	NoCollate      bool   `json:"noCollate"`
+	CustomOrder    []any  `json:"custom_order"`
+	EmptyPlacement string `json:"empty_placement"`
+	IncludeTime    bool   `json:"include_time"`
+	NoCollate      bool   `json:"no_collate"`
 	Id             string `json:"id"`
 }
 
@@ -347,29 +348,31 @@ type jsonFilter struct {
 	Property       string `json:"property"`
 	Condition      string `json:"condition"`
 	Value          any    `json:"value"`
-	DatePreset     string `json:"datePreset"`
-	IncludeTime    bool   `json:"includeTime"`
-	NestedProperty string `json:"nestedProperty"`
+	DatePreset     string `json:"date_preset"`
+	IncludeTime    bool   `json:"include_time"`
+	NestedProperty string `json:"nested_property"`
 	Id             string `json:"id"`
 }
 
 type jsonViewColumn struct {
-	Property    string  `json:"property"`
-	Hidden      bool    `json:"hidden"`
-	Width       float64 `json:"width"`
-	Aggregation string  `json:"aggregation"`
-	Align       string  `json:"align"`
+	Property string `json:"property"`
+	Hidden   bool   `json:"hidden"`
+	// pixels, stored as an int32 (§6.2) — so json.Number, bounded by the
+	// schema to int32 range, rather than a float64 that would truncate
+	Width       json.Number `json:"width"`
+	Aggregation string      `json:"aggregation"`
+	Align       string      `json:"align"`
 }
 
 type jsonViewGroup struct {
 	Id              string `json:"id"`
 	Hidden          bool   `json:"hidden"`
-	BackgroundColor string `json:"backgroundColor"`
+	BackgroundColor string `json:"background_color"`
 }
 
 type jsonObjectOrder struct {
-	GroupId   string   `json:"groupId"`
-	ObjectIds []string `json:"objectIds"`
+	GroupId   string   `json:"group_id"`
+	ObjectIds []string `json:"object_ids"`
 }
 
 func (imp *importer) dataviewFromJSON(jb *jsonBlock) (*model.BlockContentDataview, error) {
@@ -407,7 +410,7 @@ func (imp *importer) dataviewFromJSON(jb *jsonBlock) (*model.BlockContentDatavie
 			CardSize:              cardSizeNames.value(jv.CardSize),
 			CoverFit:              jv.CoverFit,
 			GroupBackgroundColors: jv.ColoredGroups,
-			PageLimit:             jv.PageSize,
+			PageLimit:             jsonInt32(jv.PageSize),
 			DefaultTemplateId:     imp.resolveId(jv.DefaultTemplateId),
 			DefaultObjectTypeId:   imp.resolveId(jv.DefaultTypeId),
 			WrapContent:           jv.WrapContent,
@@ -424,7 +427,7 @@ func (imp *importer) dataviewFromJSON(jb *jsonBlock) (*model.BlockContentDatavie
 			view.Relations = append(view.Relations, &model.BlockContentDataviewRelation{
 				Key:       imp.opts.propertyKey(jc.Property),
 				IsVisible: !jc.Hidden,
-				Width:     int32(jc.Width),
+				Width:     jsonInt32(jc.Width),
 				Formula:   aggregationNames.value(jc.Aggregation),
 				Align:     alignNames.value(jc.Align),
 			})

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.anytype.io/anyblock/1.0/object.schema.json",
+  "$id": "https://schemas.anytype.io/anyblock/1/object.schema.json",
   "title": "AnyBlock object",
   "description": "A single Anytype object in AnyBlock JSON interchange format, version 1",
   "x-app": "Anytype",
@@ -10,21 +10,21 @@
     "version": { "const": 1 },
     "kind": {
       "enum": [
-        "accountOld", "page", "profilePage", "home", "archive", "widget",
-        "file", "template", "bundledTemplate", "bundledRelation", "subObject",
-        "bundledObjectType", "anytypeProfile", "date", "workspace",
-        "relation", "objectType", "relationOption", "spaceView", "identity",
-        "participant", "missingObject", "fileObject", "notification",
-        "devices", "chatObject", "chat", "account", "discussion",
-        "techSpace", "techSpaceVirtual"
+        "account_old", "page", "profile_page", "home", "archive", "widget",
+        "file", "template", "bundled_template", "bundled_relation", "sub_object",
+        "bundled_object_type", "anytype_profile", "date", "workspace",
+        "relation", "object_type", "relation_option", "space_view", "identity",
+        "participant", "missing_object", "file_object", "notification",
+        "devices", "chat_object", "chat", "account", "discussion",
+        "tech_space", "tech_space_virtual"
       ]
     },
     "id": { "type": "string" },
     "type": { "type": "string" },
-    "templateFor": { "type": "string" },
-    "key": { "type": "string" },
+    "template_for": { "type": "string" },
+    "key": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" },
     "properties": { "$ref": "#/$defs/propertyMap" },
-    "typeProperties": { "type": "array", "items": { "$ref": "#/$defs/typeProperty" } },
+    "type_properties": { "type": "array", "items": { "$ref": "#/$defs/typeProperty" } },
     "refs": {
       "type": "object",
       "propertyNames": { "pattern": "^[A-Za-z0-9_-]{1,64}$" },
@@ -40,6 +40,7 @@
   "$defs": {
     "propertyMap": {
       "type": "object",
+      "propertyNames": { "pattern": "^[^\u0000-\u001f\u007f]+$", "maxLength": 128 },
       "additionalProperties": {
         "anyOf": [
           { "type": ["string", "number", "boolean", "null"] },
@@ -83,19 +84,19 @@
         "id": { "$ref": "#/$defs/blockId" },
         "type": {
           "enum": [
-            "paragraph", "heading1", "heading2", "heading3", "heading4",
-            "header4", "quote", "code", "title", "description", "checkbox",
-            "bulletedListItem", "numberedListItem", "toggle", "callout",
-            "toggleHeading1", "toggleHeading2", "toggleHeading3", "file",
+            "paragraph", "heading_1", "heading_2", "heading_3", "heading_4",
+            "header_4", "quote", "code", "title", "description", "checkbox",
+            "bulleted_list_item", "numbered_list_item", "toggle", "callout",
+            "toggle_heading_1", "toggle_heading_2", "toggle_heading_3", "file",
             "image", "video", "audio", "pdf", "bookmark", "link", "divider",
             "row", "column", "group", "table", "embed", "equation",
-            "tableOfContents", "property", "dataview", "widget", "chat",
-            "featuredProperties", "icon"
+            "table_of_contents", "property", "dataview", "widget", "chat",
+            "featured_properties", "icon"
           ]
         },
         "align": { "enum": ["left", "center", "right", "justify"] },
-        "verticalAlign": { "enum": ["top", "middle", "bottom"] },
-        "backgroundColor": { "type": "string" },
+        "vertical_align": { "enum": ["top", "middle", "bottom"] },
+        "background_color": { "type": "string" },
         "fields": { "type": "object", "x-output-only": true }
       },
       "allOf": [
@@ -104,9 +105,9 @@
             "properties": {
               "type": {
                 "enum": [
-                  "paragraph", "quote", "toggle", "bulletedListItem",
-                  "numberedListItem", "toggleHeading1", "toggleHeading2",
-                  "toggleHeading3", "title", "description"
+                  "paragraph", "quote", "toggle", "bulleted_list_item",
+                  "numbered_list_item", "toggle_heading_1", "toggle_heading_2",
+                  "toggle_heading_3", "title", "description"
                 ]
               }
             },
@@ -122,7 +123,7 @@
         {
           "if": {
             "properties": {
-              "type": { "enum": ["heading1", "heading2", "heading3", "heading4", "header4"] }
+              "type": { "enum": ["heading_1", "heading_2", "heading_3", "heading_4", "header_4"] }
             },
             "required": ["type"]
           },
@@ -156,8 +157,8 @@
           "if": { "properties": { "type": { "const": "callout" } }, "required": ["type"] },
           "then": {
             "properties": {
-              "iconEmoji": { "type": "string" },
-              "iconImage": { "type": "string" },
+              "icon_emoji": { "type": "string" },
+              "icon_image": { "type": "string" },
               "color": { "$ref": "#/$defs/color" },
               "text": { "type": "string" }
             }
@@ -170,9 +171,9 @@
               "processor": {
                 "enum": [
                   "latex", "mermaid", "chart", "youtube", "vimeo",
-                  "soundcloud", "googleMaps", "miro", "figma", "twitter",
-                  "openStreetMap", "reddit", "facebook", "instagram",
-                  "telegram", "githubGist", "codepen", "bilibili",
+                  "soundcloud", "google_maps", "miro", "figma", "twitter",
+                  "open_street_map", "reddit", "facebook", "instagram",
+                  "telegram", "github_gist", "codepen", "bilibili",
                   "excalidraw", "kroki", "graphviz", "sketchfab", "image",
                   "drawio", "spotify"
                 ]
@@ -189,12 +190,12 @@
           },
           "then": {
             "properties": {
-              "objectId": { "type": "string" },
+              "object_id": { "type": "string" },
               "name": { "type": "string" },
-              "mimeType": { "type": "string" },
-              "size": { "type": "integer" },
+              "mime_type": { "type": "string" },
+              "size": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
               "style": { "enum": ["auto", "link", "embed"] },
-              "addedAt": { "type": "string" },
+              "added_at": { "type": "string" },
               "hash": { "type": "string" }
             }
           }
@@ -204,7 +205,7 @@
           "then": {
             "properties": {
               "url": { "type": "string" },
-              "objectId": { "type": "string" }
+              "object_id": { "type": "string" }
             }
           }
         },
@@ -212,9 +213,9 @@
           "if": { "properties": { "type": { "const": "link" } }, "required": ["type"] },
           "then": {
             "properties": {
-              "objectId": { "type": "string" },
-              "cardStyle": { "enum": ["text", "card", "inline"] },
-              "iconSize": { "enum": ["none", "small", "medium"] },
+              "object_id": { "type": "string" },
+              "card_style": { "enum": ["text", "card", "inline"] },
+              "icon_size": { "enum": ["none", "small", "medium"] },
               "description": { "enum": ["none", "manual", "content"] },
               "properties": { "type": "array", "items": { "type": "string" } }
             }
@@ -240,8 +241,8 @@
           "if": { "properties": { "type": { "const": "dataview" } }, "required": ["type"] },
           "then": {
             "properties": {
-              "objectId": { "type": "string" },
-              "isCollection": { "type": "boolean" },
+              "object_id": { "type": "string" },
+              "is_collection": { "type": "boolean" },
               "source": {
                 "type": "array",
                 "items": { "type": "string" },
@@ -256,10 +257,10 @@
           "if": { "properties": { "type": { "const": "widget" } }, "required": ["type"] },
           "then": {
             "properties": {
-              "layout": { "enum": ["link", "tree", "list", "compactList", "view"] },
-              "limit": { "type": "integer" },
-              "viewId": { "type": "string" },
-              "autoAdded": { "type": "boolean" }
+              "layout": { "enum": ["link", "tree", "list", "compact_list", "view"] },
+              "limit": { "type": "integer", "minimum": 0, "maximum": 2147483647 },
+              "view_id": { "type": "string" },
+              "auto_added": { "type": "boolean" }
             }
           }
         },
@@ -286,7 +287,7 @@
       "type": "object",
       "properties": {
         "id": { "$ref": "#/$defs/tableInnerId" },
-        "isHeader": { "type": "boolean" },
+        "is_header": { "type": "boolean" },
         "cells": { "type": "array", "items": { "$ref": "#/$defs/tableCell" } }
       },
       "additionalProperties": false
@@ -313,13 +314,13 @@
         "name": { "type": "string" },
         "format": {
           "enum": [
-            "text", "number", "select", "multiSelect", "date",
+            "text", "number", "select", "multi_select", "date",
             "files", "checkbox", "url", "email", "phone", "emoji", "objects",
             "properties"
           ]
         },
         "options": { "type": "array", "items": { "$ref": "#/$defs/vocabularyOption" } },
-        "objectTypes": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "object_types": { "type": "array", "items": { "type": "string", "minLength": 1 } },
         "section": { "enum": ["featured", "hidden", "file"] }
       },
       "required": ["key"],
@@ -351,7 +352,7 @@
         "key": { "type": "string" },
         "format": {
           "enum": [
-            "text", "number", "select", "multiSelect", "date",
+            "text", "number", "select", "multi_select", "date",
             "files", "checkbox", "url", "email", "phone", "emoji", "objects",
             "properties"
           ]
@@ -366,19 +367,19 @@
         "id": { "type": "string" },
         "type": { "enum": ["table", "list", "gallery", "kanban", "calendar", "graph"] },
         "name": { "type": "string" },
-        "groupBy": { "type": "string" },
-        "coverProperty": { "type": "string" },
-        "endProperty": { "type": "string" },
-        "hideIcon": { "type": "boolean" },
-        "cardSize": { "enum": ["small", "medium", "large"] },
-        "coverFit": { "type": "boolean" },
-        "coloredGroups": { "type": "boolean" },
-        "pageSize": { "type": "integer" },
-        "defaultTemplateId": { "type": "string" },
-        "defaultTypeId": { "type": "string" },
-        "wrapContent": { "type": "boolean" },
-        "listSize": { "enum": ["compact", "regular"] },
-        "alternateRows": { "type": "boolean" },
+        "group_by": { "type": "string" },
+        "cover_property": { "type": "string" },
+        "end_property": { "type": "string" },
+        "hide_icon": { "type": "boolean" },
+        "card_size": { "enum": ["small", "medium", "large"] },
+        "cover_fit": { "type": "boolean" },
+        "colored_groups": { "type": "boolean" },
+        "page_size": { "type": "integer", "minimum": 0, "maximum": 2147483647 },
+        "default_template_id": { "type": "string" },
+        "default_type_id": { "type": "string" },
+        "wrap_content": { "type": "boolean" },
+        "list_size": { "enum": ["compact", "regular"] },
+        "alternate_rows": { "type": "boolean" },
         "sorts": { "type": "array", "items": { "$ref": "#/$defs/sort" } },
         "filters": { "type": "array", "items": { "$ref": "#/$defs/filterNode" } },
         "columns": { "type": "array", "items": { "$ref": "#/$defs/viewColumn" } },
@@ -387,7 +388,7 @@
           "items": { "$ref": "#/$defs/viewGroup" },
           "x-output-only": true
         },
-        "objectOrders": {
+        "object_orders": {
           "type": "array",
           "items": { "$ref": "#/$defs/objectOrder" },
           "x-output-only": true
@@ -400,10 +401,10 @@
       "properties": {
         "property": { "type": "string" },
         "direction": { "enum": ["asc", "desc", "custom"] },
-        "customOrder": { "type": "array" },
-        "emptyPlacement": { "enum": ["start", "end"] },
-        "includeTime": { "type": "boolean" },
-        "noCollate": { "type": "boolean" },
+        "custom_order": { "type": "array" },
+        "empty_placement": { "enum": ["start", "end"] },
+        "include_time": { "type": "boolean" },
+        "no_collate": { "type": "boolean" },
         "id": { "type": "string", "x-output-only": true }
       },
       "required": ["property"],
@@ -426,23 +427,23 @@
             "property": { "type": "string" },
             "condition": {
               "enum": [
-                "equal", "notEqual", "greater", "less", "greaterOrEqual",
-                "lessOrEqual", "contains", "notContains", "in", "notIn",
-                "empty", "notEmpty", "allIn", "notAllIn", "exactIn",
-                "notExactIn", "exists"
+                "equal", "not_equal", "greater", "less", "greater_or_equal",
+                "less_or_equal", "contains", "not_contains", "in", "not_in",
+                "empty", "not_empty", "all_in", "not_all_in", "exact_in",
+                "not_exact_in", "exists"
               ]
             },
             "value": {},
-            "datePreset": {
+            "date_preset": {
               "enum": [
-                "yesterday", "today", "tomorrow", "lastWeek", "currentWeek",
-                "nextWeek", "lastMonth", "currentMonth", "nextMonth",
-                "numberOfDaysAgo", "numberOfDaysNow", "lastYear",
-                "currentYear", "nextYear"
+                "yesterday", "today", "tomorrow", "last_week", "current_week",
+                "next_week", "last_month", "current_month", "next_month",
+                "number_of_days_ago", "number_of_days_now", "last_year",
+                "current_year", "next_year"
               ]
             },
-            "includeTime": { "type": "boolean" },
-            "nestedProperty": { "type": "string", "x-output-only": true },
+            "include_time": { "type": "boolean" },
+            "nested_property": { "type": "string", "x-output-only": true },
             "id": { "type": "string", "x-output-only": true }
           },
           "additionalProperties": false
@@ -454,11 +455,11 @@
       "properties": {
         "property": { "type": "string" },
         "hidden": { "type": "boolean" },
-        "width": { "type": "number" },
+        "width": { "type": "integer", "minimum": 0, "maximum": 2147483647 },
         "aggregation": {
           "enum": [
-            "count", "countValue", "countDistinct", "countEmpty",
-            "countNotEmpty", "percentEmpty", "percentNotEmpty", "sum",
+            "count", "count_value", "count_distinct", "count_empty",
+            "count_not_empty", "percent_empty", "percent_not_empty", "sum",
             "average", "median", "min", "max", "range"
           ]
         },
@@ -472,15 +473,15 @@
       "properties": {
         "id": { "type": "string" },
         "hidden": { "type": "boolean" },
-        "backgroundColor": { "type": "string" }
+        "background_color": { "type": "string" }
       },
       "additionalProperties": false
     },
     "objectOrder": {
       "type": "object",
       "properties": {
-        "groupId": { "type": "string" },
-        "objectIds": { "type": "array", "items": { "type": "string" } }
+        "group_id": { "type": "string" },
+        "object_ids": { "type": "array", "items": { "type": "string" } }
       },
       "additionalProperties": false
     }

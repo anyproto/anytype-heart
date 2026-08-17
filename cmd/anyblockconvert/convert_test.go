@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -18,7 +19,7 @@ func convertDoc(t *testing.T, b *batch, name, body string) (model.SmartBlockType
 	dir := t.TempDir()
 	path := filepath.Join(dir, name)
 	require.NoError(t, os.WriteFile(path, []byte(body), 0o644))
-	_, sbType, snap, err := convertFile(dir, path, b, false)
+	_, sbType, snap, err := convertFile(dir, path, b, false, nil)
 	require.NoError(t, err)
 	return sbType, snap
 }
@@ -34,7 +35,7 @@ func TestConvert_TemplateTargetTypeBecomesDetail(t *testing.T) {
 	  "version": 1,
 	  "id": "template-wiki-article",
 	  "type": "template",
-	  "templateFor": "wikiPage",
+	  "template_for": "wikiPage",
 	  "properties": {"name": "Wiki Article"}
 	}`)
 
@@ -55,7 +56,7 @@ func TestConvert_AuthoredTargetObjectTypeWinsAndIsScalar(t *testing.T) {
 	  "version": 1,
 	  "id": "template-wiki-guide",
 	  "type": "template",
-	  "templateFor": "wikiPage",
+	  "template_for": "wikiPage",
 	  "properties": {"name": "Wiki Guide", "targetObjectType": "type-authored"}
 	}`)
 
@@ -75,4 +76,41 @@ func TestConvert_NonTemplateGetsNoTargetObjectType(t *testing.T) {
 	}`)
 
 	assert.NotContains(t, snap.Details.GetFields(), detailTargetObjectType)
+}
+
+// convert surfaces the per-document warning tier: an authored thing that
+// converts but silently does nothing must not be invisible in the tool that
+// produces the archive. A groupBy on a table view is exactly that — it
+// survives the round trip, so nothing downstream drops it, but no view
+// type other than kanban/calendar ever groups by it (§6.2).
+func TestConvert_SurfacesDocumentWarnings(t *testing.T) {
+	b := newBatch(nil, nil)
+	dir := t.TempDir()
+	path := filepath.Join(dir, "tasks.json")
+	require.NoError(t, os.WriteFile(path, []byte(`{
+	  "version": 1,
+	  "id": "set-1",
+	  "properties": {"name": "Tasks"},
+	  "blocks": [{"type": "dataview", "views": [{"name": "All", "group_by": "status"}]}]
+	}`), 0o644))
+
+	var warnings []string
+	_, _, snap, err := convertFile(dir, path, b, false, func(is anyblockjson.Issue) {
+		warnings = append(warnings, is.String())
+	})
+
+	require.NoError(t, err)
+	require.Len(t, warnings, 1)
+	assert.Contains(t, warnings[0], "do not group")
+
+	var view *model.BlockContentDataviewView
+	for _, blk := range snap.Blocks {
+		if dv := blk.GetDataview(); dv != nil {
+			require.Len(t, dv.Views, 1)
+			view = dv.Views[0]
+		}
+	}
+	require.NotNil(t, view, "dataview block survived")
+	assert.Equal(t, "status", view.GroupRelationKey,
+		"the warned group_by is kept, not dropped — a table view just never honours it")
 }

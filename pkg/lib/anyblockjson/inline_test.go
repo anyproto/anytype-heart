@@ -48,7 +48,7 @@ func TestRenderInline_Golden(t *testing.T) {
 		{"bold italic overlap", "abc", []*model.BlockContentTextMark{mark(mBold, 0, 2, ""), mark(mItalic, 1, 3, "")}, "**a*b****c*"},
 		{"link", "docs here", []*model.BlockContentTextMark{mark(mLink, 0, 4, "https://x.io")}, "[docs](https://x.io) here"},
 		{"object link", "docs here", []*model.BlockContentTextMark{mark(mObject, 0, 4, "bafy1")}, "[docs](anytype://object?objectId=bafy1) here"},
-		{"mention", "ping Roman", []*model.BlockContentTextMark{mark(mMention, 5, 10, "bafyid")}, `ping <mention objectId="bafyid">Roman</mention>`},
+		{"mention", "ping Roman", []*model.BlockContentTextMark{mark(mMention, 5, 10, "bafyid")}, `ping <mention object_id="bafyid">Roman</mention>`},
 		{"underline", "docs", []*model.BlockContentTextMark{mark(mUnder, 0, 4, "")}, "<u>docs</u>"},
 		{"text color", "x", []*model.BlockContentTextMark{mark(mColor, 0, 1, "red")}, `<font color="red">x</font>`},
 		{"background", "x", []*model.BlockContentTextMark{mark(mBg, 0, 1, "yellow")}, `<font background="yellow">x</font>`},
@@ -74,7 +74,8 @@ func TestRenderInline_Golden(t *testing.T) {
 		{"single tilde literal", "~x", nil, "~x"},
 		{"escape bracket", "[note]", nil, `\[note]`},
 		{"escape whitelisted tag", "<u>", nil, `\<u>`},
-		{"unknown tag literal", "<div>x", nil, "<div>x"},
+		// escaped on shape, not on the whitelist: reserved syntax space (§8.2)
+		{"escape unknown tag", "<div>x", nil, `\<div>x`},
 		{"escape entity", "&lt;", nil, `\&lt;`},
 		{"bare ampersand literal", "R&D", nil, "R&D"},
 		{"escape underscore", "_x_", nil, `\_x\_`},
@@ -92,7 +93,7 @@ func TestRenderInline_Golden(t *testing.T) {
 		{"astral bold", "𝒜b", []*model.BlockContentTextMark{mark(mBold, 0, 2, "")}, "**𝒜**b"},
 		{"escaped chars inside mention", "see *x*",
 			[]*model.BlockContentTextMark{mark(mMention, 4, 7, "id1")},
-			`see <mention objectId="id1">\*x\*</mention>`},
+			`see <mention object_id="id1">\*x\*</mention>`},
 		{"bracket inside link label", "a[b]c",
 			[]*model.BlockContentTextMark{mark(mLink, 0, 5, "u")},
 			`[a\[b\]c](u)`},
@@ -121,6 +122,43 @@ func TestRenderInline_Golden(t *testing.T) {
 	}
 }
 
+// TestRenderInline_ReservesTagSyntaxSpace pins the syntax space the tag
+// namespace reserves (§8.2, §10). Escaping only the three tags version 1
+// happens to know would leave literal `<sub>x</sub>` bytes in canonical
+// output that a version that adds `sub` reads as markup — and no reader can
+// tell 1-literal from 2-markup from the text string alone. So the escape is
+// anchored on the *shape* `</?[A-Za-z]`, not on the whitelist, and the
+// delimiter namespace stays closed instead (`==x==`, `~x~` are literal
+// forever, because a future mark arrives as a tag).
+func TestRenderInline_ReservesTagSyntaxSpace(t *testing.T) {
+	tests := []struct {
+		name string
+		text string
+		want string
+	}{
+		{"unknown tag", "<sub>x</sub>", `\<sub>x\</sub>`},
+		{"unknown closing tag", "</p>", `\</p>`},
+		{"known tag", "<u>x</u>", `\<u>x\</u>`},
+		{"tag-shaped with no terminator", "a<b", `a\<b`},
+		{"tag shape needs a letter", "<3 and </3", "<3 and </3"},
+		{"lone bracket stays literal", "a < b", "a < b"},
+		{"closed delimiter namespace stays literal", "==mark== ~one~", "==mark== ~one~"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := renderInline(tc.text, nil)
+			assert.Equal(t, tc.want, got)
+
+			// the escape has to be readable back as the same literal text,
+			// with no marks invented from the tag-shaped bytes
+			back, marks, err := parseInline(got)
+			require.NoError(t, err)
+			assert.Equal(t, tc.text, back, "escaped output must parse back verbatim")
+			assert.Empty(t, marks)
+		})
+	}
+}
+
 // TestParseInline_Golden checks the parser on canonical and liberal input.
 func TestParseInline_Golden(t *testing.T) {
 	tests := []struct {
@@ -140,14 +178,14 @@ func TestParseInline_Golden(t *testing.T) {
 		{"link", "[a](u)", "a", []*model.BlockContentTextMark{mark(mLink, 0, 1, "u")}},
 		{"object link", "[a](anytype://object?objectId=id1)", "a",
 			[]*model.BlockContentTextMark{mark(mObject, 0, 1, "id1")}},
-		{"mention", `<mention objectId="id1">Roman</mention>`, "Roman",
+		{"mention", `<mention object_id="id1">Roman</mention>`, "Roman",
 			[]*model.BlockContentTextMark{mark(mMention, 0, 5, "id1")}},
-		{"mention single quotes attr", `<mention objectId='id1'>R</mention>`, "R",
+		{"mention single quotes attr", `<mention object_id='id1'>R</mention>`, "R",
 			[]*model.BlockContentTextMark{mark(mMention, 0, 1, "id1")}},
 		{"font attr order and spaces", `<font  background = "y"  color = "r" >x</font>`, "x",
 			[]*model.BlockContentTextMark{mark(mColor, 0, 1, "r"), mark(mBg, 0, 1, "y")}},
 		{"underline", "<u>x</u>", "x", []*model.BlockContentTextMark{mark(mUnder, 0, 1, "")}},
-		{"zero-length tag dropped", `a<mention objectId="x"></mention>b`, "ab", nil},
+		{"zero-length tag dropped", `a<mention object_id="x"></mention>b`, "ab", nil},
 		{"self-closing tag dropped", `a<u/>b`, "ab", nil},
 		{"entities", "&lt;u&gt; &amp; &#65;", "<u> & A", nil},
 		{"escapes", `\*x\* \[y] \~\~`, "*x* [y] ~~", nil},
@@ -191,7 +229,7 @@ func TestParseInline_Errors(t *testing.T) {
 	}{
 		{"unclosed u tag", "<u>x"},
 		{"unmatched closing tag", "x</u>"},
-		{"mention without objectId", "<mention>x</mention>"},
+		{"mention without object_id", "<mention>x</mention>"},
 		{"font without attrs", "<font>x</font>"},
 		{"unknown font attr", `<font size="2">x</font>`},
 		{"unquoted attr value", `<font color=red>x</font>`},
@@ -253,5 +291,92 @@ func TestInline_PropertyRoundTrip(t *testing.T) {
 		require.NoError(t, err)
 		require.Equalf(t, text1, text2, "case %d", i)
 		require.Equalf(t, marks1, marks2, "case %d: marks not stable: md=%q", i, md1)
+	}
+}
+
+// An Object mark's target is Anytype's deep link, and the form is exact: a
+// single "object_id" parameter, nothing else (§8.1). Matching it by prefix
+// took everything after "object_id=" as the id, so the platform's own
+// two-parameter link (core/block/export/writer.go) produced the object id
+// "<id>&spaceId=<space>" — byte-stable, and wrong forever.
+func TestInline_ObjectDeepLinkStrictParse(t *testing.T) {
+	tests := []struct {
+		name     string
+		dest     string
+		wantType model.BlockContentTextMarkType
+		wantID   string // for an Object mark; for a Link, the dest verbatim
+	}{
+		{"canonical single parameter", "anytype://object?objectId=bafy1", mObject, "bafy1"},
+		{"percent-encoded id decodes", "anytype://object?objectId=a%26b", mObject, "a&b"},
+
+		// every one of these was, or would be, mis-parsed as an object id
+		{"platform two-parameter link", "anytype://object?objectId=bafy1&spaceId=s1", mLink, "anytype://object?objectId=bafy1&spaceId=s1"},
+		{"parameters reversed", "anytype://object?spaceId=s1&object_id=bafy1", mLink, "anytype://object?spaceId=s1&object_id=bafy1"},
+		{"an extra parameter", "anytype://object?objectId=bafy1&mention=1", mLink, "anytype://object?objectId=bafy1&mention=1"},
+		{"repeated parameter", "anytype://object?objectId=a&object_id=b", mLink, "anytype://object?objectId=a&object_id=b"},
+		{"empty id", "anytype://object?objectId=", mLink, "anytype://object?objectId="},
+		{"another host", "anytype://date?timestamp=123", mLink, "anytype://date?timestamp=123"},
+		{"a path", "anytype://invite/?cid=x&key=y", mLink, "anytype://invite/?cid=x&key=y"},
+		{"another scheme", "https://object?object_id=bafy1", mLink, "https://object?object_id=bafy1"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// given
+			md := "[Roman](" + tc.dest + ")"
+
+			// when
+			txt, marks, err := parseInline(md)
+
+			// then
+			require.NoError(t, err)
+			assert.Equal(t, "Roman", txt)
+			require.Len(t, marks, 1)
+			assert.Equal(t, tc.wantType, marks[0].Type)
+			assert.Equal(t, tc.wantID, marks[0].Param,
+				"a destination this reader does not recognize must survive verbatim, not be reinterpreted")
+
+			// and the round trip is byte-stable, so nothing degrades on re-export
+			md2 := renderInline(txt, marks)
+			txt3, marks3, err := parseInline(md2)
+			require.NoError(t, err)
+			assert.Equal(t, txt, txt3)
+			assert.Equal(t, marks, marks3)
+		})
+	}
+}
+
+// An object id is percent-encoded on the way out, so it cannot introduce a
+// second query parameter — otherwise an id containing "&spaceId=" would
+// render a link that other tools resolve to a different space.
+func TestInline_ObjectDeepLinkEncodesId(t *testing.T) {
+	tests := []struct {
+		name     string
+		id       string
+		wantDest string
+	}{
+		{"an ordinary CID is unchanged", "bafyreiabc123", "anytype://object?objectId=bafyreiabc123"},
+		{"an id smuggling a parameter", "a&spaceId=evil", "anytype://object?objectId=a%26spaceId%3Devil"},
+		{"an id with a query terminator", "a?b#c", "anytype://object?objectId=a%3Fb%23c"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// given
+			marks := []*model.BlockContentTextMark{mark(mObject, 0, 1, tc.id)}
+
+			// when
+			md := renderInline("x", marks)
+
+			// then
+			assert.Contains(t, md, tc.wantDest)
+
+			// and the id survives the round trip exactly
+			_, got, err := parseInline(md)
+			require.NoError(t, err)
+			require.Len(t, got, 1)
+			assert.Equal(t, mObject, got[0].Type)
+			assert.Equal(t, tc.id, got[0].Param)
+		})
 	}
 }

@@ -163,11 +163,24 @@ func TestExport_PageWithTemplateTypeKeepsKind(t *testing.T) {
 	assert.Equal(t, model.SmartBlockType_Page, sbType)
 }
 
-// Finding 7: a stray properties.id / properties.type in the document must
-// not clobber the envelope-lifted details.
+// Finding 7: a stray properties.id / properties.type in the document must not
+// clobber the envelope-lifted details. It used to be dropped in silence, which
+// left an author wondering why the id they wrote had no effect; since the
+// pre-freeze pass on property-key admission (Tier 1 #5) it is refused by name,
+// and the envelope stays the only place either one is set.
 func TestImport_PropertiesIdDoesNotLeak(t *testing.T) {
 	doc := `{"version": 1, "id": "realid", "properties": {"id": "fakeid", "type": "faketype", "name": "N"}}`
-	_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
+	err := Validate([]byte(doc))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `/properties/id: "id" belongs in the envelope`)
+	assert.Contains(t, err.Error(), `/properties/type: "type" belongs in the envelope`)
+
+	_, _, err = Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
+	require.Error(t, err)
+
+	// and the envelope keeps working on its own
+	_, snap, err := Unmarshal([]byte(`{"version": 1, "id": "realid", "properties": {"name": "N"}}`),
+		Options{GenerateId: seqIds("g")})
 	require.NoError(t, err)
 	assert.Equal(t, "realid", snap.Details.Fields["id"].GetStringValue())
 	assert.Nil(t, snap.Details.Fields["type"])

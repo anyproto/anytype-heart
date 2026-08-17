@@ -73,7 +73,7 @@ func TestUnmarshalFilters(t *testing.T) {
 
 	t.Run("or group with date preset", func(t *testing.T) {
 		raw := json.RawMessage(`[{"operator":"or","filters":[
-			{"property":"dueDate","condition":"less","datePreset":"currentWeek"},
+			{"property":"dueDate","condition":"less","date_preset":"current_week"},
 			{"property":"dueDate","condition":"empty"}]}]`)
 
 		got, err := UnmarshalFilters(raw, fragFilterOpts())
@@ -97,12 +97,12 @@ func TestUnmarshalFilters(t *testing.T) {
 		require.Len(t, ve.Issues, 1)
 		assert.Equal(t, "/filters/0/condition", ve.Issues[0].Path)
 		assert.Contains(t, ve.Issues[0].Message, `unknown condition "equals"`)
-		assert.Contains(t, ve.Issues[0].Message, "equal, notEqual, greater")
+		assert.Contains(t, ve.Issues[0].Message, "equal, not_equal, greater")
 	})
 
 	t.Run("unknown datePreset and operator error", func(t *testing.T) {
 		raw := json.RawMessage(`[{"operator":"xor","filters":[
-			{"property":"dueDate","condition":"less","datePreset":"thisWeek"}]}]`)
+			{"property":"dueDate","condition":"less","date_preset":"thisWeek"}]}]`)
 
 		_, err := UnmarshalFilters(raw, fragFilterOpts())
 
@@ -116,7 +116,7 @@ func TestUnmarshalFilters(t *testing.T) {
 	})
 
 	t.Run("counting preset without a value errors (the document rule)", func(t *testing.T) {
-		raw := json.RawMessage(`[{"property":"dueDate","condition":"greater","datePreset":"numberOfDaysAgo"}]`)
+		raw := json.RawMessage(`[{"property":"dueDate","condition":"greater","date_preset":"number_of_days_ago"}]`)
 
 		_, err := UnmarshalFilters(raw, fragFilterOpts())
 
@@ -128,7 +128,7 @@ func TestUnmarshalFilters(t *testing.T) {
 	})
 
 	t.Run("unguarded date less warns on the OnWarning channel", func(t *testing.T) {
-		raw := json.RawMessage(`[{"property":"dueDate","condition":"less","datePreset":"today"}]`)
+		raw := json.RawMessage(`[{"property":"dueDate","condition":"less","date_preset":"today"}]`)
 		opts := fragFilterOpts()
 		var warnings []Issue
 		opts.OnWarning = func(i Issue) { warnings = append(warnings, i) }
@@ -140,13 +140,13 @@ func TestUnmarshalFilters(t *testing.T) {
 		require.Len(t, warnings, 1)
 		assert.Equal(t, "/filters/0", warnings[0].Path)
 		assert.Contains(t, warnings[0].Message, "also matches objects with no dueDate")
-		assert.Contains(t, warnings[0].Message, "notEmpty")
+		assert.Contains(t, warnings[0].Message, "not_empty")
 	})
 
 	t.Run("guarded date less is clean", func(t *testing.T) {
 		raw := json.RawMessage(`[
-			{"property":"dueDate","condition":"notEmpty"},
-			{"property":"dueDate","condition":"less","datePreset":"today"}]`)
+			{"property":"dueDate","condition":"not_empty"},
+			{"property":"dueDate","condition":"less","date_preset":"today"}]`)
 		opts := fragFilterOpts()
 		var warnings []Issue
 		opts.OnWarning = func(i Issue) { warnings = append(warnings, i) }
@@ -182,7 +182,7 @@ func TestUnmarshalFilters(t *testing.T) {
 		// the string form's emitted array is the same shape this codec takes
 		raw := json.RawMessage(`[{"property":"done","condition":"equal","value":false},` +
 			`{"operator":"or","filters":[` +
-			`{"property":"dueDate","condition":"less","datePreset":"currentWeek"},` +
+			`{"property":"dueDate","condition":"less","date_preset":"current_week"},` +
 			`{"property":"dueDate","condition":"empty"}]}]`)
 
 		got, err := UnmarshalFilters(raw, fragFilterOpts())
@@ -195,7 +195,7 @@ func TestUnmarshalFilters(t *testing.T) {
 
 func TestUnmarshalSorts(t *testing.T) {
 	t.Run("direction, emptyPlacement and format rehydrate", func(t *testing.T) {
-		raw := json.RawMessage(`[{"property":"dueDate","direction":"desc","emptyPlacement":"end","includeTime":true}]`)
+		raw := json.RawMessage(`[{"property":"dueDate","direction":"desc","empty_placement":"end","include_time":true}]`)
 
 		got, err := UnmarshalSorts(raw, fragFilterOpts())
 

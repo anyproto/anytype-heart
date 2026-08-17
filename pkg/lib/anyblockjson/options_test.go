@@ -29,8 +29,8 @@ func (r *recordingPropertyResolver) PropertyId(def PropertyDefinition) (string, 
 }
 
 func TestImport_OptionsReachTheWiring(t *testing.T) {
-	doc := `{"version": 1, "kind": "objectType", "id": "t1", "key": "k",
-		"typeProperties": [
+	doc := `{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
+		"type_properties": [
 			{"key": "stage", "name": "Stage", "format": "select",
 			 "options": ["Backlog", "In progress", "Done"]},
 			{"key": "note", "name": "Note", "format": "text"}]}`
@@ -49,8 +49,8 @@ func TestImport_OptionsReachTheWiring(t *testing.T) {
 // A color is declared on the option it belongs to rather than in a parallel
 // array, so inserting or reordering an option cannot shift it (§2a).
 func TestImport_OptionColorsReachTheWiring(t *testing.T) {
-	doc := `{"version": 1, "kind": "objectType", "id": "t1", "key": "k",
-		"typeProperties": [{"key": "stage", "name": "Stage", "format": "select",
+	doc := `{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
+		"type_properties": [{"key": "stage", "name": "Stage", "format": "select",
 			"options": ["Backlog", {"name": "In progress", "color": "blue"},
 				{"name": "Done", "color": "lime"}]}]}`
 	want := []OptionDefinition{
@@ -68,8 +68,8 @@ func TestImport_OptionColorsReachTheWiring(t *testing.T) {
 }
 
 func TestExport_OptionsRoundTrip(t *testing.T) {
-	doc := `{"version": 1, "kind": "objectType", "id": "t1", "key": "k",
-		"typeProperties": [{"key": "stage", "name": "Stage", "format": "select",
+	doc := `{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
+		"type_properties": [{"key": "stage", "name": "Stage", "format": "select",
 			"options": ["Backlog", "In progress", "Done"]}]}`
 	_, snap, err := Unmarshal([]byte(doc), Options{
 		GenerateId: seqIds("g"), ResolveProperties: &recordingPropertyResolver{}})
@@ -87,8 +87,8 @@ func TestExport_OptionsRoundTrip(t *testing.T) {
 // The bare string is canonical whenever the option carries no color, the
 // object form otherwise — the rule §6.1 already gives table cells.
 func TestExport_ColorlessOptionStaysABareString(t *testing.T) {
-	doc := `{"version": 1, "kind": "objectType", "id": "t1", "key": "k",
-		"typeProperties": [{"key": "stage", "name": "Stage", "format": "select",
+	doc := `{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
+		"type_properties": [{"key": "stage", "name": "Stage", "format": "select",
 			"options": ["Backlog", {"name": "Done", "color": "lime"}]}]}`
 	_, snap, err := Unmarshal([]byte(doc), Options{
 		GenerateId: seqIds("g"), ResolveProperties: &recordingPropertyResolver{}})
@@ -102,7 +102,7 @@ func TestExport_ColorlessOptionStaysABareString(t *testing.T) {
 	var out struct {
 		TypeProps []struct {
 			Options []any `json:"options"`
-		} `json:"typeProperties"`
+		} `json:"type_properties"`
 	}
 	require.NoError(t, json.Unmarshal(data, &out))
 	require.Len(t, out.TypeProps, 1)
@@ -118,27 +118,27 @@ func TestExport_ColorlessOptionStaysABareString(t *testing.T) {
 
 func TestValidate_OptionColorRules(t *testing.T) {
 	t.Run("unknown color rejected", func(t *testing.T) {
-		err := Validate([]byte(`{"version": 1, "kind": "objectType", "id": "t1", "key": "k",
-			"typeProperties": [{"key": "stage", "format": "select",
+		err := Validate([]byte(`{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
+			"type_properties": [{"key": "stage", "format": "select",
 				"options": [{"name": "a", "color": "chartreuse"}]}]}`))
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "options/0/color")
 	})
 	t.Run("colored options are not duplicates of each other", func(t *testing.T) {
-		assert.NoError(t, Validate([]byte(`{"version": 1, "kind": "objectType", "id": "t1", "key": "k",
-			"typeProperties": [{"key": "stage", "format": "select",
+		assert.NoError(t, Validate([]byte(`{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
+			"type_properties": [{"key": "stage", "format": "select",
 				"options": ["a", {"name": "b", "color": "blue"}, {"name": "c", "color": "lime"}]}]}`)))
 	})
 	t.Run("duplicate across the two forms rejected", func(t *testing.T) {
-		err := Validate([]byte(`{"version": 1, "kind": "objectType", "id": "t1", "key": "k",
-			"typeProperties": [{"key": "stage", "format": "select",
+		err := Validate([]byte(`{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
+			"type_properties": [{"key": "stage", "format": "select",
 				"options": ["a", {"name": "a", "color": "blue"}]}]}`))
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "duplicate option")
 	})
 	t.Run("object form on a non-select rejected", func(t *testing.T) {
-		err := Validate([]byte(`{"version": 1, "kind": "objectType", "id": "t1", "key": "k",
-			"typeProperties": [{"key": "note", "format": "text", "options": [{"name": "a"}]}]}`))
+		err := Validate([]byte(`{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
+			"type_properties": [{"key": "note", "format": "text", "options": [{"name": "a"}]}]}`))
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "only meaningful on select")
 	})
@@ -174,30 +174,30 @@ func (r *staticPropertyResolver) PropertyId(def PropertyDefinition) (string, boo
 
 func TestValidate_OptionsRules(t *testing.T) {
 	t.Run("rejected on a non-select format", func(t *testing.T) {
-		err := Validate([]byte(`{"version": 1, "kind": "objectType", "id": "t1", "key": "k",
-			"typeProperties": [{"key": "note", "format": "text", "options": ["a"]}]}`))
+		err := Validate([]byte(`{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
+			"type_properties": [{"key": "note", "format": "text", "options": ["a"]}]}`))
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "only meaningful on select")
 	})
 	t.Run("duplicates rejected", func(t *testing.T) {
-		err := Validate([]byte(`{"version": 1, "kind": "objectType", "id": "t1", "key": "k",
-			"typeProperties": [{"key": "stage", "format": "select", "options": ["a", "b", "a"]}]}`))
+		err := Validate([]byte(`{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
+			"type_properties": [{"key": "stage", "format": "select", "options": ["a", "b", "a"]}]}`))
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "duplicate option")
 	})
-	t.Run("accepted on select and multiSelect", func(t *testing.T) {
-		for _, f := range []string{"select", "multiSelect"} {
-			assert.NoError(t, Validate([]byte(`{"version": 1, "kind": "objectType", "id": "t1", "key": "k",
-				"typeProperties": [{"key": "stage", "format": "`+f+`", "options": ["a", "b"]}]}`)), f)
+	t.Run("accepted on select and multi_select", func(t *testing.T) {
+		for _, f := range []string{"select", "multi_select"} {
+			assert.NoError(t, Validate([]byte(`{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
+				"type_properties": [{"key": "stage", "format": "`+f+`", "options": ["a", "b"]}]}`)), f)
 		}
 	})
 }
 
 func TestImport_ObjectTypesReachTheWiring(t *testing.T) {
-	doc := `{"version": 1, "kind": "objectType", "id": "t1", "key": "k",
-		"typeProperties": [
+	doc := `{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
+		"type_properties": [
 			{"key": "owner", "name": "Owner", "format": "objects",
-			 "objectTypes": ["wikiPerson", "participant"]},
+			 "object_types": ["wikiPerson", "participant"]},
 			{"key": "anything", "name": "Anything", "format": "objects"}]}`
 	r := &recordingPropertyResolver{}
 	_, _, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g"), ResolveProperties: r})
@@ -212,16 +212,16 @@ func TestImport_ObjectTypesReachTheWiring(t *testing.T) {
 func TestValidate_ObjectTypesRules(t *testing.T) {
 	t.Run("rejected on a non-object format", func(t *testing.T) {
 		for _, f := range []string{"select", "date", "text"} {
-			err := Validate([]byte(`{"version": 1, "kind": "objectType", "id": "t1", "key": "k",
-				"typeProperties": [{"key": "p", "format": "` + f + `", "objectTypes": ["participant"]}]}`))
+			err := Validate([]byte(`{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
+				"type_properties": [{"key": "p", "format": "` + f + `", "object_types": ["participant"]}]}`))
 			require.Error(t, err, f)
 			assert.Contains(t, err.Error(), "only meaningful on objects/files")
 		}
 	})
 	t.Run("accepted on objects and files", func(t *testing.T) {
 		for _, f := range []string{"objects", "files"} {
-			assert.NoError(t, Validate([]byte(`{"version": 1, "kind": "objectType", "id": "t1", "key": "k",
-				"typeProperties": [{"key": "p", "format": "`+f+`", "objectTypes": ["participant"]}]}`)), f)
+			assert.NoError(t, Validate([]byte(`{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
+				"type_properties": [{"key": "p", "format": "`+f+`", "object_types": ["participant"]}]}`)), f)
 		}
 	})
 }

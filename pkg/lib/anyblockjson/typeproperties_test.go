@@ -62,10 +62,10 @@ func typeSnapshot() *model.SmartBlockSnapshotBase {
 }
 
 func TestTypePropertiesExport(t *testing.T) {
-	t.Run("recommended lists become typeProperties in section order", func(t *testing.T) {
+	t.Run("recommended lists become type_properties in section order", func(t *testing.T) {
 		// given
 		opts := Options{ResolveProperties: newTestPropertyResolver()}
-		want := `"typeProperties": [
+		want := `"type_properties": [
     {
       "key": "due_date",
       "name": "Due date",
@@ -127,12 +127,12 @@ func TestTypePropertiesExport(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.NotContains(t, string(data), "typeProperties")
+		assert.NotContains(t, string(data), "type_properties")
 		assert.Contains(t, string(data), "recommended_featured_relations")
 		assert.Contains(t, string(data), "relid-dueDate")
 	})
 
-	t.Run("non-type documents never emit typeProperties", func(t *testing.T) {
+	t.Run("non-type documents never emit type_properties", func(t *testing.T) {
 		// given
 		snapshot := &model.SmartBlockSnapshotBase{
 			Details: fields(map[string]*types.Value{
@@ -146,7 +146,7 @@ func TestTypePropertiesExport(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.NotContains(t, string(data), "typeProperties")
+		assert.NotContains(t, string(data), "type_properties")
 	})
 
 	t.Run("all-empty lists emit an explicit empty array", func(t *testing.T) {
@@ -163,7 +163,7 @@ func TestTypePropertiesExport(t *testing.T) {
 		// then: presence of the (empty) array is what lets import rebuild
 		// the four lists as explicit empty lists
 		require.NoError(t, err)
-		assert.Contains(t, string(data), `"typeProperties": []`)
+		assert.Contains(t, string(data), `"type_properties": []`)
 	})
 
 	t.Run("bare bundle key entries resolve via the bundle fallback", func(t *testing.T) {
@@ -200,10 +200,10 @@ func TestTypePropertiesExport(t *testing.T) {
 func TestTypePropertiesImport(t *testing.T) {
 	docJSON := `{
   "version": 1,
-  "kind": "objectType",
+  "kind": "object_type",
   "key": "task",
   "properties": { "name": "Task" },
-  "typeProperties": [
+  "type_properties": [
     { "key": "due_date", "name": "Due date", "format": "date", "section": "featured" },
     { "key": "status", "name": "Status", "format": "select" },
     { "key": "origin", "section": "hidden" }
@@ -243,7 +243,7 @@ func TestTypePropertiesImport(t *testing.T) {
 
 	t.Run("empty array rebuilds all four lists as empty", func(t *testing.T) {
 		// given
-		doc := `{"version": 1, "kind": "objectType", "key": "task", "typeProperties": []}`
+		doc := `{"version": 1, "kind": "object_type", "key": "task", "type_properties": []}`
 
 		// when
 		_, snapshot, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("id")})
@@ -256,9 +256,9 @@ func TestTypePropertiesImport(t *testing.T) {
 		}
 	})
 
-	t.Run("absent typeProperties leaves the lists absent", func(t *testing.T) {
+	t.Run("absent type_properties leaves the lists absent", func(t *testing.T) {
 		// given
-		doc := `{"version": 1, "kind": "objectType", "key": "task"}`
+		doc := `{"version": 1, "kind": "object_type", "key": "task"}`
 
 		// when
 		_, snapshot, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("id")})
@@ -322,23 +322,23 @@ func TestTypePropertiesRoundTrip(t *testing.T) {
 func TestTypePropertiesValidation(t *testing.T) {
 	t.Run("rejected outside type documents", func(t *testing.T) {
 		// given
-		doc := `{"version": 1, "typeProperties": [{"key": "due_date"}]}`
+		doc := `{"version": 1, "type_properties": [{"key": "due_date"}]}`
 
 		// when
 		err := Validate([]byte(doc))
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), `kind "objectType"`)
+		assert.Contains(t, err.Error(), `kind "object_type"`)
 	})
 
 	t.Run("rejected alongside raw recommended lists", func(t *testing.T) {
 		// given
 		doc := `{
   "version": 1,
-  "kind": "objectType",
+  "kind": "object_type",
   "properties": { "recommendedRelations": ["relid-status"] },
-  "typeProperties": [{"key": "due_date"}]
+  "type_properties": [{"key": "due_date"}]
 }`
 
 		// when
@@ -346,14 +346,14 @@ func TestTypePropertiesValidation(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "conflicts with typeProperties")
+		assert.Contains(t, err.Error(), "conflicts with type_properties")
 	})
 
 	t.Run("unknown section and missing key rejected by schema", func(t *testing.T) {
 		for _, doc := range []string{
-			`{"version": 1, "kind": "objectType", "typeProperties": [{"key": "a", "section": "sidebar"}]}`,
-			`{"version": 1, "kind": "objectType", "typeProperties": [{"name": "No key"}]}`,
-			`{"version": 1, "kind": "objectType", "typeProperties": [{"key": "a", "format": "status"}]}`,
+			`{"version": 1, "kind": "object_type", "type_properties": [{"key": "a", "section": "sidebar"}]}`,
+			`{"version": 1, "kind": "object_type", "type_properties": [{"name": "No key"}]}`,
+			`{"version": 1, "kind": "object_type", "type_properties": [{"key": "a", "format": "status"}]}`,
 		} {
 			assert.Error(t, Validate([]byte(doc)), strings.ReplaceAll(doc, "\n", " "))
 		}
@@ -362,9 +362,9 @@ func TestTypePropertiesValidation(t *testing.T) {
 	t.Run("valid type document passes", func(t *testing.T) {
 		doc := `{
   "version": 1,
-  "kind": "objectType",
+  "kind": "object_type",
   "key": "task",
-  "typeProperties": [
+  "type_properties": [
     { "key": "due_date", "name": "Due date", "format": "date", "section": "featured" }
   ]
 }`

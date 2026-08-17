@@ -119,9 +119,9 @@ func TestDocumentSpellsSlugs(t *testing.T) {
 	t.Run("a dataview's key slots follow the same vocabulary", func(t *testing.T) {
 		doc := `{"version": 1, "id": "o1", "blocks": [{"id": "dv", "type": "dataview",
 			"properties": [{"key": "due_date", "format": "date"}],
-			"views": [{"id": "v1", "type": "table", "groupBy": "due_date",
+			"views": [{"id": "v1", "type": "table", "group_by": "due_date",
 				"sorts": [{"property": "due_date"}],
-				"filters": [{"property": "due_date", "condition": "notEmpty"}],
+				"filters": [{"property": "due_date", "condition": "not_empty"}],
 				"columns": [{"property": "due_date"}]}]}]}`
 
 		_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
@@ -147,7 +147,7 @@ func TestDocumentSpellsSlugs(t *testing.T) {
 	})
 
 	t.Run("the envelope type is a slug too", func(t *testing.T) {
-		doc := `{"version": 1, "kind": "objectType", "id": "t1", "type": "object_type"}`
+		doc := `{"version": 1, "kind": "object_type", "id": "t1", "type": "object_type"}`
 		_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 		require.NoError(t, err)
 		require.Len(t, snap.ObjectTypes, 1)
@@ -250,9 +250,9 @@ func TestBuildPropertiesRefusesASlugAnotherStoredKeyOwns(t *testing.T) {
 func TestObjectTypesIsAKeySlot(t *testing.T) {
 	t.Run("import inverts the slug to the stored type key", func(t *testing.T) {
 		// given
-		doc := `{"version": 1, "kind": "objectType", "id": "t1", "key": "k",
-			"typeProperties": [{"key": "owner", "name": "Owner", "format": "objects",
-			 "objectTypes": ["object_type", "wikiPerson"]}]}`
+		doc := `{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
+			"type_properties": [{"key": "owner", "name": "Owner", "format": "objects",
+			 "object_types": ["object_type", "wikiPerson"]}]}`
 		r := &recordingPropertyResolver{}
 
 		// when
@@ -281,7 +281,7 @@ func TestObjectTypesIsAKeySlot(t *testing.T) {
 
 		require.NoError(t, err)
 		var doc struct {
-			TypeProperties []TypeProperty `json:"typeProperties"`
+			TypeProperties []TypeProperty `json:"type_properties"`
 		}
 		require.NoError(t, json.Unmarshal(data, &doc))
 		require.Len(t, doc.TypeProperties, 1)
@@ -333,7 +333,7 @@ func TestImportRefusesTwoSpellingsOfOneStoredKey(t *testing.T) {
 		// given — a stored key the bundled table resolves elsewhere:
 		// `icon_emoji` inverts to `iconEmoji`, which is also a literal
 		// stored key, so both spellings land on one detail
-		doc := `{"version": 1, "kind": "objectType", "id": "t1", "key": "k",
+		doc := `{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
 			"properties": {"name": "T", "icon_emoji": "A", "iconEmoji": "B"}}`
 
 		for i := 0; i < 32; i++ {

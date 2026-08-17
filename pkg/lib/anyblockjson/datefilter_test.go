@@ -20,7 +20,7 @@ import (
 
 func dateFilterDoc(filters string) string {
 	return `{"version": 1, "id": "p1", "blocks": [{"type": "dataview",
-		"objectId": "someSet",
+		"object_id": "someSet",
 		"properties": [{"key": "verifiedUntil", "format": "date"},
 		               {"key": "status", "format": "select"}],
 		"views": [{"name": "Needs review", "filters": [` + filters + `]}]}]}`
@@ -34,29 +34,29 @@ func warningsFor(t *testing.T, doc string) []Issue {
 }
 
 func TestValidate_UnguardedDateLessWarns(t *testing.T) {
-	for _, cond := range []string{"less", "lessOrEqual"} {
+	for _, cond := range []string{"less", "less_or_equal"} {
 		t.Run(cond, func(t *testing.T) {
 			w := warningsFor(t, dateFilterDoc(
-				`{"property": "verifiedUntil", "condition": "`+cond+`", "datePreset": "today"}`))
+				`{"property": "verifiedUntil", "condition": "`+cond+`", "date_preset": "today"}`))
 			require.Len(t, w, 1)
 			assert.Contains(t, w[0].Message, "no verifiedUntil")
-			assert.Contains(t, w[0].Message, "notEmpty")
+			assert.Contains(t, w[0].Message, "not_empty")
 		})
 	}
 }
 
 func TestValidate_GuardedDateLessIsClean(t *testing.T) {
-	t.Run("notEmpty sibling in the implicit top-level AND", func(t *testing.T) {
+	t.Run("not_empty sibling in the implicit top-level AND", func(t *testing.T) {
 		assert.Empty(t, warningsFor(t, dateFilterDoc(
-			`{"property": "verifiedUntil", "condition": "notEmpty"},
-			 {"property": "verifiedUntil", "condition": "less", "datePreset": "today"}`)))
+			`{"property": "verifiedUntil", "condition": "not_empty"},
+			 {"property": "verifiedUntil", "condition": "less", "date_preset": "today"}`)))
 	})
 
-	t.Run("notEmpty in an enclosing and-group", func(t *testing.T) {
+	t.Run("not_empty in an enclosing and-group", func(t *testing.T) {
 		assert.Empty(t, warningsFor(t, dateFilterDoc(
 			`{"operator": "and", "filters": [
-				{"property": "verifiedUntil", "condition": "notEmpty"},
-				{"property": "verifiedUntil", "condition": "less", "datePreset": "today"}]}`)))
+				{"property": "verifiedUntil", "condition": "not_empty"},
+				{"property": "verifiedUntil", "condition": "less", "date_preset": "today"}]}`)))
 	})
 
 	// the real shape from the wiki: the guarded pair lives inside an OR branch
@@ -64,15 +64,15 @@ func TestValidate_GuardedDateLessIsClean(t *testing.T) {
 		assert.Empty(t, warningsFor(t, dateFilterDoc(
 			`{"operator": "or", "filters": [
 				{"operator": "and", "filters": [
-					{"property": "verifiedUntil", "condition": "notEmpty"},
-					{"property": "verifiedUntil", "condition": "less", "datePreset": "today"}]},
+					{"property": "verifiedUntil", "condition": "not_empty"},
+					{"property": "verifiedUntil", "condition": "less", "date_preset": "today"}]},
 				{"property": "status", "condition": "in", "value": ["Needs update"]}]}`)))
 	})
 
 	t.Run("exists guards too", func(t *testing.T) {
 		assert.Empty(t, warningsFor(t, dateFilterDoc(
 			`{"property": "verifiedUntil", "condition": "exists"},
-			 {"property": "verifiedUntil", "condition": "less", "datePreset": "today"}`)))
+			 {"property": "verifiedUntil", "condition": "less", "date_preset": "today"}`)))
 	})
 }
 
@@ -84,14 +84,14 @@ func TestValidate_EmptySiblingUnderOrSuppressesTheWarning(t *testing.T) {
 	t.Run("empty on the same property under the same OR", func(t *testing.T) {
 		assert.Empty(t, warningsFor(t, dateFilterDoc(
 			`{"operator": "or", "filters": [
-				{"property": "verifiedUntil", "condition": "less", "datePreset": "currentWeek"},
+				{"property": "verifiedUntil", "condition": "less", "date_preset": "current_week"},
 				{"property": "verifiedUntil", "condition": "empty"}]}`)))
 	})
 
 	t.Run("empty on a DIFFERENT property does not suppress", func(t *testing.T) {
 		w := warningsFor(t, dateFilterDoc(
 			`{"operator": "or", "filters": [
-				{"property": "verifiedUntil", "condition": "less", "datePreset": "currentWeek"},
+				{"property": "verifiedUntil", "condition": "less", "date_preset": "current_week"},
 				{"property": "status", "condition": "empty"}]}`))
 		require.Len(t, w, 1)
 		assert.Contains(t, w[0].Message, "no verifiedUntil")
@@ -102,8 +102,8 @@ func TestValidate_EmptySiblingUnderOrSuppressesTheWarning(t *testing.T) {
 func TestValidate_NotEmptyUnderOrDoesNotGuard(t *testing.T) {
 	w := warningsFor(t, dateFilterDoc(
 		`{"operator": "or", "filters": [
-			{"property": "verifiedUntil", "condition": "notEmpty"},
-			{"property": "verifiedUntil", "condition": "less", "datePreset": "today"}]}`))
+			{"property": "verifiedUntil", "condition": "not_empty"},
+			{"property": "verifiedUntil", "condition": "less", "date_preset": "today"}]}`))
 	require.Len(t, w, 1)
 	assert.Contains(t, w[0].Message, "no verifiedUntil")
 }
@@ -112,7 +112,7 @@ func TestValidate_DateFilterNonTriggers(t *testing.T) {
 	t.Run("greater is unaffected", func(t *testing.T) {
 		// an unset value compares as 1, and Greater tests for -1
 		assert.Empty(t, warningsFor(t, dateFilterDoc(
-			`{"property": "verifiedUntil", "condition": "greater", "datePreset": "today"}`)))
+			`{"property": "verifiedUntil", "condition": "greater", "date_preset": "today"}`)))
 	})
 
 	t.Run("less on a non-date property", func(t *testing.T) {
@@ -125,30 +125,30 @@ func TestValidate_DateFilterNonTriggers(t *testing.T) {
 // (getDateRange calls f.Value.Int64()). With no value the count is 0, so
 // "edited in the last 30 days" silently becomes "edited today".
 func TestValidate_CountingPresetNeedsValue(t *testing.T) {
-	for _, preset := range []string{"numberOfDaysAgo", "numberOfDaysNow"} {
+	for _, preset := range []string{"number_of_days_ago", "number_of_days_now"} {
 		t.Run(preset+" without value", func(t *testing.T) {
 			err := Validate([]byte(dateFilterDoc(
-				`{"property": "verifiedUntil", "condition": "greater", "datePreset": "` + preset + `"}`)))
+				`{"property": "verifiedUntil", "condition": "greater", "date_preset": "` + preset + `"}`)))
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "needs a day count")
 		})
 		t.Run(preset+" with value", func(t *testing.T) {
 			assert.NoError(t, Validate([]byte(dateFilterDoc(
-				`{"property": "verifiedUntil", "condition": "greater", "datePreset": "`+preset+`", "value": 30}`))))
+				`{"property": "verifiedUntil", "condition": "greater", "date_preset": "`+preset+`", "value": 30}`))))
 		})
 	}
 
 	// a zero count is explicit and legal — it just has to be written down
 	t.Run("explicit zero is accepted", func(t *testing.T) {
 		assert.NoError(t, Validate([]byte(dateFilterDoc(
-			`{"property": "verifiedUntil", "condition": "greater", "datePreset": "numberOfDaysAgo", "value": 0}`))))
+			`{"property": "verifiedUntil", "condition": "greater", "date_preset": "number_of_days_ago", "value": 0}`))))
 	})
 
 	// fixed-period presets take no operand
 	t.Run("fixed presets need no value", func(t *testing.T) {
-		for _, preset := range []string{"today", "lastWeek", "currentMonth", "nextYear"} {
+		for _, preset := range []string{"today", "last_week", "current_month", "next_year"} {
 			assert.NoError(t, Validate([]byte(dateFilterDoc(
-				`{"property": "verifiedUntil", "condition": "greater", "datePreset": "`+preset+`"}`))), preset)
+				`{"property": "verifiedUntil", "condition": "greater", "date_preset": "`+preset+`"}`))), preset)
 		}
 	})
 }
@@ -167,7 +167,7 @@ func TestRoundtrip_ZeroDayCountSurvives(t *testing.T) {
 		}}
 		data, err := Marshal(model.SmartBlockType_Page, snapshot, testOptions())
 		require.NoError(t, err)
-		assert.Contains(t, string(data), `"datePreset": "numberOfDaysAgo"`)
+		assert.Contains(t, string(data), `"date_preset": "number_of_days_ago"`)
 		assert.Contains(t, string(data), `"value": `+fmt.Sprint(days))
 
 		require.NoError(t, Validate(data), "exported document must validate")

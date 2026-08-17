@@ -48,7 +48,7 @@ func mustSchemaBlockTypes() []string {
 // caller can author: whatever is written into one, the block does not survive
 // the round trip.
 var structuralBlockTypes = map[string]bool{
-	"title": true, "description": true, "featuredProperties": true,
+	"title": true, "description": true, "featured_properties": true,
 }
 
 // StructuralBlockType reports whether typ is a §7 structural block. Exported

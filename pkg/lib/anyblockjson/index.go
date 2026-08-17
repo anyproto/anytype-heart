@@ -4,11 +4,12 @@ package anyblockjson
 // in this format describes one object; index.json describes the set — the
 // space's name, what opens on entry, and what the sidebar shows.
 //
-// It exists because none of that is expressible per-object. The installer
-// reads it from a `profile` file at the archive root (pb.Profile, consumed by
-// util/builtinobjects.inject): spaceDashboardId becomes the space's homepage,
-// widgets[] become sidebar widgets, and widgets[0] is the object the install
-// opens. A bundle without one imports as an undifferentiated object list.
+// It exists because none of that is expressible per-object. The wiring splits
+// it across two outputs, because the installer takes them from two places: a
+// `profile` file at the archive root (pb.Profile, read by util/builtinobjects)
+// carries spaceDashboardId, and the sidebar travels as a Widget snapshot among
+// the objects, the way an app export carries it. See §2c. A bundle without an
+// index imports as an undifferentiated object list.
 
 import (
 	"bytes"
@@ -17,15 +18,10 @@ import (
 	"sync"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
-	"golang.org/x/text/language"
-	"golang.org/x/text/message"
 )
 
 //go:embed schema/index.schema.json
 var indexSchemaJSON []byte
-
-// IndexSchemaURL is the published location of the index schema.
-const IndexSchemaURL = "https://schemas.anytype.io/anyblock/1.0/index.schema.json"
 
 // IndexFileName is the name a bundle's index must have, at the bundle root.
 const IndexFileName = "index.json"
@@ -44,10 +40,34 @@ var reservedWidgetTargets = map[string]struct{}{
 	"allObjects": {}, "recentOpen": {},
 }
 
+// importableWidgetTargets are the reserved targets the *importer* recognises:
+// exactly widget.IsPredefinedWidgetTargetId, which is what
+// common.handleLinkBlock consults before deciding a link target it cannot
+// resolve is broken.
+//
+// allObjects and recentOpen are real targets in a live space — the All Objects
+// widget is created by WidgetObject's migration 3 — but they are not in that
+// list, and the difference is not cosmetic: a bundle declaring one gets its
+// link rewritten to addr.MissingObject, and WidgetObject.Init then strips the
+// link *and* its now-empty wrapper. The widget disappears with no error and no
+// diagnostic beyond a log line. So a bundle may not name them, and the wiring
+// says so rather than shipping one that silently loses a widget.
+var importableWidgetTargets = map[string]struct{}{
+	"favorite": {}, "recent": {}, "set": {}, "collection": {},
+}
+
 // IsReservedWidgetTarget reports whether target names a built-in listing, in
-// which case it does not have to resolve to an object in the bundle.
+// which case it does not name an object in the bundle.
 func IsReservedWidgetTarget(target string) bool {
 	_, ok := reservedWidgetTargets[target]
+	return ok
+}
+
+// IsImportableWidgetTarget reports whether a reserved target survives import.
+// A target that is reserved but not importable is the one case where a widget
+// is dropped silently, so callers must reject it rather than emit it.
+func IsImportableWidgetTarget(target string) bool {
+	_, ok := importableWidgetTargets[target]
 	return ok
 }
 
@@ -70,7 +90,7 @@ type Index struct {
 	Version     int    `json:"version"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
-	IconEmoji   string `json:"iconEmoji"`
+	IconEmoji   string `json:"icon_emoji"`
 	// IconImage is the object id of an image in the bundle — the same thing
 	// iconImage means on any object (§3), so an author never has to remember a
 	// second convention. The installer resolves the space icon by image *name*
@@ -78,7 +98,7 @@ type Index struct {
 	// wiring looks the name up from this id; that asymmetry is the wire
 	// format's, not the author's. Needs the image object and its file in the
 	// archive, which is why a generated bundle sets IconEmoji instead.
-	IconImage string `json:"iconImage"`
+	IconImage string `json:"icon_image"`
 	// Entrypoint is the object opened once, right after the space is created
 	// — the first thing a user ever sees. Distinct from Homepage, which is
 	// what opens on every later entry, and deliberately not the widget order:
@@ -161,32 +181,25 @@ func UnmarshalIndex(data []byte) (*Index, error) {
 	if err != nil {
 		return nil, &ValidationError{Issues: []Issue{{Message: fmt.Sprintf("invalid JSON: %v", err)}}}
 	}
+	doc, ok := raw.(map[string]any)
+	if !ok {
+		return nil, &ValidationError{Issues: []Issue{{Message: "index must be a JSON object"}}}
+	}
+	// An index shares the format version and its rules with object documents
+	// (§10): gate on it here, before the schema can turn a newer version into
+	// a generic "value must be 1" that says nothing about why.
+	if err := checkVersion(doc); err != nil {
+		return nil, err
+	}
+	// MIGRATION SEAM: an older version is migrated forward here, between the
+	// version gate and schema validation. The schema pins the version to a
+	// const, so it doubles as the assertion that migration ran (§10).
 	sch, err := compileIndexSchema()
 	if err != nil {
 		return nil, fmt.Errorf("embedded index schema: %w", err)
 	}
 	if err := sch.Validate(raw); err != nil {
-		ve := &ValidationError{}
-		printer := message.NewPrinter(language.English)
-		var flatten func(e *jsonschema.ValidationError)
-		flatten = func(e *jsonschema.ValidationError) {
-			if len(e.Causes) == 0 {
-				ve.Issues = append(ve.Issues, Issue{
-					Path:    jsonPath(e.InstanceLocation),
-					Message: schemaIssueMessage(e, printer),
-				})
-				return
-			}
-			for _, c := range e.Causes {
-				flatten(c)
-			}
-		}
-		if verr, ok := err.(*jsonschema.ValidationError); ok {
-			flatten(verr)
-		} else {
-			ve.Issues = append(ve.Issues, Issue{Message: err.Error()})
-		}
-		return nil, ve
+		return nil, &ValidationError{Issues: schemaIssues(err)}
 	}
 
 	var idx Index
@@ -206,8 +219,8 @@ func MarshalIndex(idx *Index) ([]byte, error) {
 	doc.set("version", FormatVersion)
 	doc.setNonEmpty("name", idx.Name)
 	doc.setNonEmpty("description", idx.Description)
-	doc.setNonEmpty("iconEmoji", idx.IconEmoji)
-	doc.setNonEmpty("iconImage", idx.IconImage)
+	doc.setNonEmpty("icon_emoji", idx.IconEmoji)
+	doc.setNonEmpty("icon_image", idx.IconImage)
 	doc.setNonEmpty("entrypoint", idx.Entrypoint)
 	doc.setNonEmpty("homepage", idx.Homepage)
 

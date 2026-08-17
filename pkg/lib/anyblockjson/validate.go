@@ -10,16 +10,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
+	"unicode/utf8"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/santhosh-tekuri/jsonschema/v6/kind"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
@@ -37,16 +38,29 @@ func SchemaJSON() []byte {
 
 const (
 	// FormatVersion is the AnyBlock JSON format version this package reads
-	// and writes (§10).
+	// and writes (§10). It is a single integer with no minor axis: every
+	// format change bumps it, and a reader rejects anything newer than its
+	// own while migrating anything older.
 	FormatVersion = 1
-	// SchemaURL is the published schema location written into exported
-	// documents.
-	SchemaURL = "https://schemas.anytype.io/anyblock/1.0/object.schema.json"
+
+	// schemaBaseURL is where the published schemas live, one directory per
+	// format version.
+	schemaBaseURL = "https://schemas.anytype.io/anyblock/"
 
 	// maxBlockIndent is the F4 resource bound on nesting depth, mirrored by
 	// the schema's indent maximum. Export enforces it too — Marshal must
 	// never emit output its own Validate rejects.
 	maxBlockIndent = 32
+)
+
+// SchemaURL and IndexSchemaURL are the published schema locations written
+// into exported documents. Both are derived from FormatVersion so a version
+// bump carries them along and they cannot drift out of sync with it; the
+// $id inside each embedded schema file is checked against them by
+// TestVersionIdentity, which is the one copy the compiler cannot keep honest.
+var (
+	SchemaURL      = schemaBaseURL + strconv.Itoa(FormatVersion) + "/object.schema.json"
+	IndexSchemaURL = schemaBaseURL + strconv.Itoa(FormatVersion) + "/index.schema.json"
 )
 
 // Issue is a single path-addressed validation problem.
@@ -65,8 +79,8 @@ func (i Issue) String() string {
 // ValidationError aggregates every issue found in a document (§12).
 type ValidationError struct {
 	Issues []Issue
-	// NewerFormat is set when the document cites a newer 1.x schema, so the
-	// failure likely means "produced by a newer version" (§10).
+	// NewerFormat is set when the document declares a format version newer
+	// than this package reads, which a reader always rejects outright (§10).
 	NewerFormat bool
 }
 
@@ -150,38 +164,19 @@ func validateToDoc(data []byte, lenient bool, warn func(Issue)) (map[string]any,
 	if err := checkVersion(doc); err != nil {
 		return nil, err
 	}
-	newer := citesNewerSchema(doc)
-
+	// MIGRATION SEAM: an older version is migrated forward here, between the
+	// version gate and schema validation. The schema pins the version to a
+	// const, so it doubles as the assertion that migration ran (§10).
 	sch, err := compileSchema()
 	if err != nil {
 		return nil, fmt.Errorf("embedded schema: %w", err)
 	}
 	if err := sch.Validate(doc); err != nil {
-		ve := &ValidationError{NewerFormat: newer}
-		var flatten func(e *jsonschema.ValidationError)
-		printer := message.NewPrinter(language.English)
-		flatten = func(e *jsonschema.ValidationError) {
-			if len(e.Causes) == 0 {
-				ve.Issues = append(ve.Issues, Issue{
-					Path:    jsonPath(e.InstanceLocation),
-					Message: schemaIssueMessage(e, printer),
-				})
-				return
-			}
-			for _, c := range e.Causes {
-				flatten(c)
-			}
-		}
-		if verr, ok := err.(*jsonschema.ValidationError); ok {
-			flatten(verr)
-		} else {
-			ve.Issues = append(ve.Issues, Issue{Message: err.Error()})
-		}
-		return nil, ve
+		return nil, &ValidationError{Issues: schemaIssues(err)}
 	}
 
 	if issues := semanticIssues(doc, lenient, warn); len(issues) > 0 {
-		return nil, &ValidationError{Issues: issues, NewerFormat: newer}
+		return nil, &ValidationError{Issues: issues}
 	}
 	return doc, nil
 }
@@ -217,24 +212,222 @@ func checkVersion(doc map[string]any) error {
 	return nil
 }
 
-var schemaMinorRe = regexp.MustCompile(`anyblock/1\.(\d+)/object\.schema\.json$`)
-
-func citesNewerSchema(doc map[string]any) bool {
-	url, _ := doc["$schema"].(string)
-	m := schemaMinorRe.FindStringSubmatch(url)
-	if m == nil {
-		return false
-	}
-	minor, err := strconv.Atoi(m[1])
-	return err == nil && minor > 0
-}
-
 func jsonPath(tokens []string) string {
 	if len(tokens) == 0 {
 		return ""
 	}
 	return "/" + strings.Join(tokens, "/")
 }
+
+// schemaIssues turns a jsonschema error tree into the flat, path-addressed
+// issue list §12 promises. Flattening the tree verbatim does not produce that
+// list: it produces the tree's own bookkeeping, in which two mechanics report
+// problems the document does not have.
+//
+//   - `unevaluatedProperties: false` (the closed-set check on blocks) only
+//     sees the properties that *successfully* evaluated subschemas annotated.
+//     When a block's type-specific subschema fails — a bad `type`, one field
+//     of the wrong shape — its annotations are discarded and every property of
+//     that block is reported unevaluated, i.e. "not allowed". So a document
+//     whose only fault is `"type": "bulleted_list_item"` is also told to
+//     remove `type` and `text`.
+//   - an `anyOf` reports every branch it tried. A table cell written as an
+//     object collects the three "wrong shape" verdicts from the string, null
+//     and array branches alongside the one real complaint.
+//
+// Both are confidently wrong rather than merely noisy, and the format's
+// purpose is the generate → validate → feed-back loop: an agent told
+// `property "type" is not allowed` deletes `type` and its next attempt is
+// worse. So the noise is pruned here rather than explained in the spec.
+func schemaIssues(err error) []Issue {
+	verr, ok := err.(*jsonschema.ValidationError)
+	if !ok {
+		return []Issue{{Message: err.Error()}}
+	}
+	printer := message.NewPrinter(language.English)
+	leaves := collectSchemaLeaves(verr, printer)
+
+	// a leaf that is not an unevaluated-property verdict is a real fault, and
+	// it makes the closed-set verdict on its enclosing objects unreliable
+	realAt := map[string]bool{}
+	for _, l := range leaves {
+		if l.unevaluated {
+			continue
+		}
+		for p := l.path; ; p = parentPath(p) {
+			realAt[p] = true
+			if p == "" {
+				break
+			}
+		}
+	}
+	vocabulary := schemaPropertyNames()
+	out := make([]Issue, 0, len(leaves))
+	for _, l := range leaves {
+		// "not allowed" is dropped only where it is unreliable: a name the
+		// schema knows somewhere, inside an object that failed for another
+		// reason. A name the schema never mentions is inadmissible under
+		// every reading, so that verdict stands and the author gets both
+		// facts in one round.
+		if l.unevaluated && vocabulary[l.property] && realAt[parentPath(l.path)] {
+			continue
+		}
+		out = append(out, Issue{Path: l.path, Message: l.message})
+	}
+	return out
+}
+
+// schemaLeaf is one rendered schema complaint plus what the pruning needs to
+// know about where it came from.
+type schemaLeaf struct {
+	path        string
+	message     string
+	unevaluated bool   // reported by unevaluatedProperties, not by a rule
+	property    string // the property name, for an unevaluated verdict
+}
+
+func collectSchemaLeaves(e *jsonschema.ValidationError, printer *message.Printer) []schemaLeaf {
+	if len(e.Causes) == 0 {
+		l := schemaLeaf{path: jsonPath(e.InstanceLocation), message: schemaIssueMessage(e, printer)}
+		if strings.Contains(e.SchemaURL, "/unevaluatedProperties") {
+			l.unevaluated = true
+			if toks := e.InstanceLocation; len(toks) > 0 {
+				l.property = toks[len(toks)-1]
+			}
+		}
+		return []schemaLeaf{l}
+	}
+	switch e.ErrorKind.(type) {
+	case *kind.AnyOf, *kind.OneOf:
+		return branchLeaves(e, printer)
+	}
+	var out []schemaLeaf
+	for _, c := range e.Causes {
+		out = append(out, collectSchemaLeaves(c, printer)...)
+	}
+	return out
+}
+
+// branchLeaves reports the alternatives of an anyOf/oneOf. A branch whose only
+// complaint is the instance's own type never applied — the author did not write
+// a string where this branch wanted a string — so reporting it says nothing
+// about the document. When some branch did apply, only those are reported;
+// when none did, the shape is wrong and the alternatives merge into one issue
+// naming all of them, which is the whole content of a failed anyOf.
+func branchLeaves(e *jsonschema.ValidationError, printer *message.Printer) []schemaLeaf {
+	at := jsonPath(e.InstanceLocation)
+	var applied []schemaLeaf
+	var inapplicable []*kind.Type
+	for _, c := range e.Causes {
+		leaves := collectSchemaLeaves(c, printer)
+		// a branch that failed only on the instance's own type is a branch
+		// the instance was never a candidate for
+		types := branchTypeErrors(c)
+		if len(types) == len(leaves) && allAt(leaves, at) {
+			inapplicable = append(inapplicable, types...)
+			continue
+		}
+		applied = append(applied, leaves...)
+	}
+	if len(applied) > 0 {
+		return applied
+	}
+	if len(inapplicable) == 0 {
+		// nothing to merge and nothing applied: report the tree verbatim
+		// rather than swallow the failure into an error with no issues
+		var out []schemaLeaf
+		for _, c := range e.Causes {
+			out = append(out, collectSchemaLeaves(c, printer)...)
+		}
+		return out
+	}
+	want := make([]string, 0, len(inapplicable))
+	for _, t := range inapplicable {
+		want = append(want, t.Want...)
+	}
+	return []schemaLeaf{{
+		path:    at,
+		message: fmt.Sprintf("got %s, want %s", inapplicable[0].Got, strings.Join(dedupe(want), ", ")),
+	}}
+}
+
+func allAt(leaves []schemaLeaf, path string) bool {
+	for _, l := range leaves {
+		if l.path != path {
+			return false
+		}
+	}
+	return true
+}
+
+// branchTypeErrors returns the type mismatches of one anyOf branch, and
+// nothing when the branch failed for any other reason.
+func branchTypeErrors(e *jsonschema.ValidationError) []*kind.Type {
+	if t, isType := e.ErrorKind.(*kind.Type); isType {
+		return []*kind.Type{t}
+	}
+	var out []*kind.Type
+	for _, c := range e.Causes {
+		out = append(out, branchTypeErrors(c)...)
+	}
+	return out
+}
+
+func dedupe(in []string) []string {
+	out := make([]string, 0, len(in))
+	seen := map[string]bool{}
+	for _, s := range in {
+		if !seen[s] {
+			seen[s] = true
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+// parentPath returns the JSON pointer of the container holding path.
+func parentPath(path string) string {
+	if i := strings.LastIndex(path, "/"); i >= 0 {
+		return path[:i]
+	}
+	return ""
+}
+
+// schemaPropertyNames is every property name the embedded schema mentions
+// anywhere. It answers one question: could this name have been admitted under
+// some reading of the schema? A name that is absent could not, whatever else
+// failed — which is what makes the "not allowed" verdict on it trustworthy.
+var schemaPropertyNames = sync.OnceValue(func() map[string]bool {
+	names := map[string]bool{}
+	var doc any
+	if err := json.Unmarshal(schemaJSON, &doc); err != nil {
+		return names
+	}
+	var walk func(node any)
+	walk = func(node any) {
+		switch n := node.(type) {
+		case map[string]any:
+			for key, v := range n {
+				if key == "properties" {
+					if props, isMap := v.(map[string]any); isMap {
+						for name, sub := range props {
+							names[name] = true
+							walk(sub)
+						}
+						continue
+					}
+				}
+				walk(v)
+			}
+		case []any:
+			for _, v := range n {
+				walk(v)
+			}
+		}
+	}
+	walk(doc)
+	return names
+})
 
 // schemaIssueMessage renders one schema error. Unknown properties fail
 // against a `false` schema (unevaluatedProperties / removed keys), whose
@@ -260,9 +453,9 @@ func schemaIssueMessage(e *jsonschema.ValidationError, printer *message.Printer)
 // markup; code/embed text is literal (§8.4).
 func textBearing(typ string) bool {
 	switch typ {
-	case "paragraph", "heading1", "heading2", "heading3", "heading4", "header4",
-		"quote", "checkbox", "bulletedListItem", "numberedListItem", "toggle",
-		"callout", "toggleHeading1", "toggleHeading2", "toggleHeading3",
+	case "paragraph", "heading_1", "heading_2", "heading_3", "heading_4", "header_4",
+		"quote", "checkbox", "bulleted_list_item", "numbered_list_item", "toggle",
+		"callout", "toggle_heading_1", "toggle_heading_2", "toggle_heading_3",
 		"title", "description":
 		return true
 	}
@@ -275,7 +468,7 @@ func textBearing(typ string) bool {
 var leafBlockTypes = map[string]bool{
 	"embed": true, "equation": true, "bookmark": true, "link": true,
 	"divider": true, "table": true, "property": true, "dataview": true,
-	"icon": true, "tableOfContents": true, "featuredProperties": true,
+	"icon": true, "table_of_contents": true, "featured_properties": true,
 	"chat": true,
 }
 
@@ -330,6 +523,34 @@ func jsonIntValue(num json.Number) (int64, bool) {
 	return int64(f), true
 }
 
+// jsonInt64 and jsonInt32 read a schema-integer field into the stored type.
+// They are the decode-side half of the agreement rule: the schema admits
+// integer-valued floats and bounds each field to its stored type's range, so
+// these accept exactly what it accepts, and an absent field (the zero
+// json.Number) reads as 0.
+//
+// The clamp is unreachable while the schema carries the bounds — Unmarshal
+// always validates first — and is here so that a bound removed from the schema
+// costs a wrong pixel width rather than a wrapped negative one.
+func jsonInt64(num json.Number) int64 {
+	v, _ := jsonIntValue(num)
+	return v
+}
+
+func jsonInt32(num json.Number) int32 {
+	v, ok := jsonIntValue(num)
+	if !ok {
+		return 0
+	}
+	if v > math.MaxInt32 {
+		return math.MaxInt32
+	}
+	if v < math.MinInt32 {
+		return math.MinInt32
+	}
+	return int32(v)
+}
+
 // indentOf reads a block's indent; absent means 0. The schema guarantees an
 // integer in [0, 32] (V4) when present, which includes integer-valued
 // floats — jsonIntValue keeps this reader in agreement with the schema and
@@ -368,44 +589,61 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 		}
 	}
 
-	if _, ok := doc["templateFor"]; ok {
+	// Every number in the document has to land in a float64: the loose surfaces
+	// (§3 properties, block fields, store, filter values) decode into a proto
+	// Struct, whose numbers are doubles, and the schema cannot bound them
+	// without closing surfaces the format deliberately leaves open. Left
+	// unchecked, Validate accepted 1e400 and Unmarshal then failed with a bare
+	// Go decode error carrying no JSON pointer — the divergence §12 rules out.
+	checkNumbers(doc, "", addIssue)
+
+	if _, ok := doc["template_for"]; ok {
 		if typ, _ := doc["type"].(string); typ != "template" {
-			addIssue("/templateFor", `templateFor is only valid on templates (type "template")`)
+			addIssue("/template_for", `template_for is only valid on templates (type "template")`)
 		}
 	}
 
-	// layout properties are named, not numbered (§3). A typo would otherwise
-	// import as a raw string onto a number-format property: no error anywhere,
-	// and every consumer reads it with an int getter and silently sees "basic".
 	if props, _ := doc["properties"].(map[string]any); props != nil {
-		for key, v := range props {
-			s, isStr := v.(string)
-			if !isLayoutKey(key) || !isStr {
+		for _, key := range sortedMapKeys(props) {
+			v := props[key]
+			path := "/properties/" + escapeJSONPointer(key)
+			if reason, denied := deniedPropertyKey(key); denied {
+				addIssue(path, "%s", reason)
+				continue
+			}
+			// layout properties are named, not numbered (§3). A typo would
+			// otherwise import as a raw string onto a number-format property:
+			// no error anywhere, and every consumer reads it with an int getter
+			// and silently sees "basic".
+			if s, isStr := v.(string); isLayoutKey(key) && isStr {
+				if !layoutNames.has(s) {
+					addIssue(path, "unknown layout %q", s)
+				}
 				continue // a raw number is still accepted (§3)
 			}
-			if !layoutNames.has(s) {
-				addIssue("/properties/"+key, "unknown layout %q", s)
+			if reason, wrong := wrongShapeForFormat(key, v); wrong {
+				warnIssue(path, "%s", reason)
 			}
 		}
 	}
 
-	if _, ok := doc["typeProperties"]; ok {
-		if kind, _ := doc["kind"].(string); kind != "objectType" {
-			addIssue("/typeProperties", `typeProperties is only valid on type documents (kind "objectType")`)
+	if _, ok := doc["type_properties"]; ok {
+		if kind, _ := doc["kind"].(string); kind != "object_type" {
+			addIssue("/type_properties", `type_properties is only valid on type documents (kind "object_type")`)
 		}
 		// typeProperties replaces the recommended-relation lists (§2a): a
 		// document carrying both is ambiguous
 		if props, _ := doc["properties"].(map[string]any); props != nil {
 			for _, l := range recommendedListKeys {
 				if _, dup := props[l.detailKey]; dup {
-					addIssue("/properties/"+l.detailKey, "conflicts with typeProperties, which replaces this list")
+					addIssue("/properties/"+l.detailKey, "conflicts with type_properties, which replaces this list")
 				}
 			}
 		}
 		// name is used only when the property has to be created (§2a); an
 		// existing one keeps its own, so renaming a bundled key here reads as
 		// working and silently does nothing
-		if list, _ := doc["typeProperties"].([]any); list != nil {
+		if list, _ := doc["type_properties"].([]any); list != nil {
 			for i, raw := range list {
 				tp, ok := raw.(map[string]any)
 				if !ok {
@@ -416,13 +654,13 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 				// order (§2a); on any other format there is nothing to
 				// declare and the array would be silently dropped
 				if opts, has := tp["options"].([]any); has && len(opts) > 0 {
-					if f, _ := tp["format"].(string); f != "select" && f != "multiSelect" {
+					if f, _ := tp["format"].(string); f != "select" && f != "multi_select" {
 						shown := f
 						if shown == "" {
 							shown = "text"
 						}
-						addIssue(fmt.Sprintf("/typeProperties/%d/options", i),
-							"options is only meaningful on select/multiSelect, not %q", shown)
+						addIssue(fmt.Sprintf("/type_properties/%d/options", i),
+							"options is only meaningful on select/multi_select, not %q", shown)
 					}
 					// an option is a bare name or an object carrying a color
 					// (§2a), and the two forms name the same vocabulary: the
@@ -431,7 +669,7 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 					for j, o := range opts {
 						n := optionEntryName(o)
 						if seen[n] {
-							addIssue(fmt.Sprintf("/typeProperties/%d/options/%d", i, j),
+							addIssue(fmt.Sprintf("/type_properties/%d/options/%d", i, j),
 								"duplicate option %q", n)
 						}
 						seen[n] = true
@@ -440,14 +678,14 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 				// objectTypes restricts what an object reference may point
 				// at; on any other format there is nothing to restrict and
 				// the array would be silently dropped
-				if ots, has := tp["objectTypes"].([]any); has && len(ots) > 0 {
+				if ots, has := tp["object_types"].([]any); has && len(ots) > 0 {
 					if f, _ := tp["format"].(string); f != "objects" && f != "files" {
 						shown := f
 						if shown == "" {
 							shown = "text"
 						}
-						addIssue(fmt.Sprintf("/typeProperties/%d/objectTypes", i),
-							"objectTypes is only meaningful on objects/files, not %q", shown)
+						addIssue(fmt.Sprintf("/type_properties/%d/object_types", i),
+							"object_types is only meaningful on objects/files, not %q", shown)
 					}
 				}
 				// a bundled property is used as-is: only the wiring's
@@ -456,12 +694,12 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 				if key != "" {
 					if rel, err := bundle.GetRelation(domain.RelationKey(key)); err == nil && rel != nil {
 						if name, _ := tp["name"].(string); name != "" && name != rel.Name {
-							warnIssue(fmt.Sprintf("/typeProperties/%d/name", i),
+							warnIssue(fmt.Sprintf("/type_properties/%d/name", i),
 								"%q is a bundled property named %q — this name is ignored; mint a custom key if the label matters",
 								key, rel.Name)
 						}
-						if ots, has := tp["objectTypes"].([]any); has && len(ots) > 0 {
-							warnIssue(fmt.Sprintf("/typeProperties/%d/objectTypes", i),
+						if ots, has := tp["object_types"].([]any); has && len(ots) > 0 {
+							warnIssue(fmt.Sprintf("/type_properties/%d/object_types", i),
 								"%q is a bundled property; its target types are fixed by the bundle and this list is ignored — mint a custom key to target different types",
 								key)
 						}
@@ -483,6 +721,22 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 		}
 	}
 
+	// checkInline parses one text string for grammar errors, and reports the
+	// tag-shaped sequences the grammar does not recognize: those stay literal
+	// (§10), but canonical export escapes them (§8.2), so an unescaped one
+	// says the text did not come from this version's export.
+	checkInline := func(text, path string) {
+		_, _, notes, err := parseInlineNotes(text)
+		if err != nil {
+			addIssue(path, "inline markup: %v", err)
+			return
+		}
+		for _, name := range notes.unknownTags {
+			warnIssue(path, "tag-shaped %q is not markup this version recognizes — "+
+				"kept as literal text; canonical output escapes the \"<\"", "<"+name)
+		}
+	}
+
 	checkText := func(block map[string]any, path string) {
 		typ, _ := block["type"].(string)
 		if !textBearing(typ) {
@@ -492,9 +746,7 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 		if text == "" {
 			return
 		}
-		if _, _, err := parseInline(text); err != nil {
-			addIssue(path+"/text", "inline markup: %v", err)
-		}
+		checkInline(text, path+"/text")
 	}
 
 	var checkFlatRun func(blocks []any, basePath string, inCell bool)
@@ -509,7 +761,7 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 			addIssue(path, "language and fields.lang are both set")
 		}
 		if typ == "table" {
-			walkTable(block, path, claimId, addIssue, walkBlock, checkFlatRun)
+			walkTable(block, path, claimId, addIssue, checkInline, walkBlock, checkFlatRun)
 		}
 		if typ == "dataview" {
 			checkDataviewViews(block, path, addIssue, warnIssue)
@@ -578,6 +830,147 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 	return issues
 }
 
+// neverWritableProperties are the keys import must refuse even though they are
+// not bundled relations, so strippedDetailKeys does not know about them. They
+// are the importer's own resolution vectors: existingobject.go picks which
+// existing object in the space a snapshot merges into using oldAnytypeID,
+// uniqueKey and sourceFilePath, so a document that sets them aims itself at an
+// object it did not create.
+var neverWritableProperties = map[string]string{
+	"oldAnytypeID":   "oldAnytypeID selects which existing object a document merges into and cannot be set by a document",
+	"sourceFilePath": "sourceFilePath selects which existing object a document merges into and cannot be set by a document",
+}
+
+// maxPropertyKeyLen mirrors the schema's propertyNames maxLength (§3).
+const maxPropertyKeyLen = 128
+
+// isWritablePropertyKey reports whether a key can be a property name at all,
+// mirroring the schema's propertyNames rule: non-empty, no control characters,
+// and inside the length bound. Both directions consult it — validation through
+// the schema, export directly — because a stored detail key is not guaranteed
+// to be one: an empty key and a key holding a newline both exist in real data,
+// and neither survives as a JSON property name that means anything.
+func isWritablePropertyKey(key string) bool {
+	if key == "" || utf8.RuneCountInString(key) > maxPropertyKeyLen {
+		return false
+	}
+	for _, r := range key {
+		if r <= 0x1f || r == 0x7f {
+			return false
+		}
+	}
+	return true
+}
+
+// deniedPropertyKey reports whether a property key may be written at all, and
+// why not. The rule is a single sentence — **import refuses exactly what export
+// strips** (§3, §4a) — and it is derived from the export side's own list rather
+// than restated, because a restated list is how the two surfaces drifted apart
+// in the first place: import used to accept isArchived, spaceId, restrictions,
+// uniqueKey and the empty key, all of which export removes.
+func deniedPropertyKey(key string) (string, bool) {
+	if reason, never := neverWritableProperties[key]; never {
+		return reason, true
+	}
+	if key == detailKeyId || key == detailKeyType {
+		return fmt.Sprintf("%q belongs in the envelope, not in properties (§2)", key), true
+	}
+	if strippedDetailKeys()[key] {
+		return fmt.Sprintf("%q is internal: export strips it, so import does not accept it (§3)", key), true
+	}
+	return "", false
+}
+
+// wrongShapeForFormat reports a property value whose JSON shape its property's
+// format cannot hold — "next Friday" on a date, "yes" on a checkbox — which is
+// stored verbatim and then read as the format's zero value forever, with
+// nothing to show that anything went wrong.
+//
+// Only bundled properties can be checked: Validate takes no resolver, so a
+// custom key's format is unknown here. And it is a **warning**, not an error,
+// for a reason worth writing down: the same check on the export path would make
+// one already-corrupt stored value enough to make an object unexportable, and
+// "Marshal never emits what Validate rejects" (§11) is the stronger promise.
+// Reporting it costs nothing and catches the authoring case, which is the one
+// that can still be fixed.
+func wrongShapeForFormat(key string, v any) (string, bool) {
+	if v == nil {
+		return "", false // an explicit null is a value: the key was set (§3)
+	}
+	rel, err := bundle.GetRelation(domain.RelationKey(key))
+	if err != nil || rel == nil {
+		return "", false
+	}
+	switch rel.Format {
+	case model.RelationFormat_date:
+		// a number is unix seconds — including the raw number export writes for
+		// a date with no RFC 3339 form (§3)
+		if _, isNum := v.(json.Number); isNum {
+			return "", false
+		}
+		if s, isStr := v.(string); isStr {
+			if _, ok := parseDate(s); ok {
+				return "", false
+			}
+		}
+		return fmt.Sprintf("%q is a date property: a value that is neither unix seconds nor an "+
+			"RFC 3339 string is stored as written and reads as no date at all", key), true
+	case model.RelationFormat_checkbox:
+		if _, isBool := v.(bool); !isBool {
+			return fmt.Sprintf("%q is a checkbox property: anything but true/false reads as false", key), true
+		}
+	case model.RelationFormat_number:
+		if _, isNum := v.(json.Number); !isNum {
+			return fmt.Sprintf("%q is a number property: a non-number reads as 0", key), true
+		}
+	case model.RelationFormat_longtext, model.RelationFormat_shorttext,
+		model.RelationFormat_url, model.RelationFormat_email,
+		model.RelationFormat_phone, model.RelationFormat_emoji:
+		if _, isStr := v.(string); !isStr {
+			return fmt.Sprintf("%q is a text property: a non-string reads as empty", key), true
+		}
+	}
+	return "", false
+}
+
+// checkNumbers walks every number in the document and reports the ones no
+// reader can hold. A JSON number has no range limit; float64 does, and that is
+// where every number in this format ends up — so a value outside it is not a
+// number this format has, whatever surface it sits on.
+func checkNumbers(node any, path string, addIssue func(path, format string, args ...any)) {
+	switch n := node.(type) {
+	case map[string]any:
+		for _, k := range sortedMapKeys(n) {
+			checkNumbers(n[k], path+"/"+escapeJSONPointer(k), addIssue)
+		}
+	case []any:
+		for i, v := range n {
+			checkNumbers(v, fmt.Sprintf("%s/%d", path, i), addIssue)
+		}
+	case json.Number:
+		if _, err := n.Float64(); err != nil {
+			addIssue(path, "number %s is out of range: values must fit a 64-bit float", n.String())
+		}
+	}
+}
+
+func sortedMapKeys(m map[string]any) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+// escapeJSONPointer escapes the two characters a JSON pointer token cannot
+// carry literally (RFC 6901): a property key is author-controlled, and the
+// loose surfaces accept any key at all.
+func escapeJSONPointer(token string) string {
+	token = strings.ReplaceAll(token, "~", "~0")
+	return strings.ReplaceAll(token, "/", "~1")
+}
+
 // codeLangConflict reports a code block carrying both the first-class
 // language prop and the internal fields.lang it lifts (§5.1).
 func codeLangConflict(block map[string]any) bool {
@@ -594,6 +987,7 @@ func codeLangConflict(block map[string]any) bool {
 
 func walkTable(block map[string]any, path string,
 	claimId func(id, path string), addIssue func(path, format string, args ...any),
+	checkInline func(text, path string),
 	walkBlock func(block map[string]any, path string),
 	checkFlatRun func(blocks []any, basePath string, inCell bool)) {
 
@@ -619,18 +1013,27 @@ func walkTable(block map[string]any, path string,
 		if len(cells) > len(columns) {
 			addIssue(rowPath+"/cells", "row has %d cells but the table has %d columns", len(cells), len(columns))
 		}
+		// every row×column pair joins the id uniqueness domain (§4), whether
+		// or not the cell is written: the id belongs to the table either way,
+		// and the editor materializes the missing cell at exactly that id the
+		// first time it is filled. Claiming only the written cells left the
+		// rest of the grid free for a block to take.
+		for j, colId := range colIds {
+			if rowId == "" || colId == "" {
+				continue
+			}
+			at := rowPath
+			if j < len(cells) {
+				at = fmt.Sprintf("%s/cells/%d", rowPath, j)
+			}
+			claimId(rowId+"-"+colId, at)
+		}
 		for j, c := range cells {
 			cellPath := fmt.Sprintf("%s/cells/%d", rowPath, j)
-			// derived cell ids join the uniqueness domain (§4)
-			if rowId != "" && j < len(colIds) && colIds[j] != "" {
-				claimId(rowId+"-"+colIds[j], cellPath)
-			}
 			switch cell := c.(type) {
 			case string:
 				if cell != "" {
-					if _, _, err := parseInline(cell); err != nil {
-						addIssue(cellPath, "inline markup: %v", err)
-					}
+					checkInline(cell, cellPath)
 				}
 			case map[string]any:
 				// a full walk: the cell joins the id uniqueness domain and
@@ -653,7 +1056,7 @@ func walkTable(block map[string]any, path string,
 // exactly these formats (core/kanban.Service.Init), and the client offers the
 // same set (Relation.getGroupTypes). Every other view type ignores groupBy.
 var groupableFormats = map[string]map[string]struct{}{
-	"kanban":   {"select": {}, "multiSelect": {}, "checkbox": {}},
+	"kanban":   {"select": {}, "multi_select": {}, "checkbox": {}},
 	"calendar": {"date": {}},
 }
 
@@ -731,18 +1134,18 @@ func checkDataviewViews(block map[string]any, path string, addIssue, warnIssue f
 			continue
 		}
 		checkDateFilters(view, formats, fmt.Sprintf("%s/views/%d", path, i), addIssue, warnIssue)
-		groupBy, _ := view["groupBy"].(string)
+		groupBy, _ := view["group_by"].(string)
 		if groupBy == "" {
 			continue
 		}
-		vPath := fmt.Sprintf("%s/views/%d/groupBy", path, i)
+		vPath := fmt.Sprintf("%s/views/%d/group_by", path, i)
 		viewType, _ := view["type"].(string)
 		if viewType == "" {
 			viewType = "table" // §6.2: the default view type
 		}
 		allowed, groups := groupableFormats[viewType]
 		if !groups {
-			warnIssue(vPath, "%q views do not group; groupBy is ignored", viewType)
+			warnIssue(vPath, "%q views do not group; group_by is ignored", viewType)
 			continue
 		}
 		// a key absent from properties has no declared format to check
@@ -766,8 +1169,8 @@ func sortedKeys(m map[string]struct{}) []string {
 	return out
 }
 
-// checkDateFilters warns about `less`/`lessOrEqual` on a date property that
-// is not guarded by a `notEmpty`/`exists` on the same property in an
+// checkDateFilters warns about `less`/`less_or_equal` on a date property that
+// is not guarded by a `not_empty`/`exists` on the same property in an
 // enclosing AND. An object with no value for that date matches: the filter's
 // value is set and the record's is not, so domain.Value.Compare returns 1,
 // which is exactly what Less tests for. A freshness view written the obvious
@@ -797,7 +1200,7 @@ func checkDateFilters(view map[string]any, formats map[string]string, path strin
 				}
 				cond, _ := n["condition"].(string)
 				if prop, _ := n["property"].(string); prop != "" &&
-					(cond == "notEmpty" || cond == "exists") {
+					(cond == "not_empty" || cond == "exists") {
 					scope[prop] = true
 				}
 			}
@@ -837,10 +1240,10 @@ func checkDateFilters(view map[string]any, formats map[string]string, path strin
 			// the day-count presets read their operand from value; without
 			// one the count is 0, which quietly means "today" rather than
 			// "n days ago" (pkg/lib/database.getDateRange)
-			if preset, _ := n["datePreset"].(string); preset != "" {
+			if preset, _ := n["date_preset"].(string); preset != "" {
 				if _, counts := countingPresetNames[preset]; counts {
 					if _, has := n["value"]; !has {
-						addIssue(nPath, "datePreset %q needs a day count in \"value\"; without one it means 0 days, i.e. today", preset)
+						addIssue(nPath, "date_preset %q needs a day count in \"value\"; without one it means 0 days, i.e. today", preset)
 					}
 				}
 			}
@@ -856,7 +1259,7 @@ func checkDateFilters(view map[string]any, formats map[string]string, path strin
 				}
 			}
 			cond, _ := n["condition"].(string)
-			if cond != "less" && cond != "lessOrEqual" {
+			if cond != "less" && cond != "less_or_equal" {
 				continue
 			}
 			prop, _ := n["property"].(string)
@@ -865,7 +1268,7 @@ func checkDateFilters(view map[string]any, formats map[string]string, path strin
 			}
 			warnIssue(nPath, "%q on date %q also matches objects with no %s; "+
 				"pair it with a %q leaf in an \"and\" group to exclude them",
-				cond, prop, prop, "notEmpty")
+				cond, prop, prop, "not_empty")
 		}
 	}
 	walk(nodes, path+"/filters", true, map[string]bool{})

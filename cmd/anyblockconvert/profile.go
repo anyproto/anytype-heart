@@ -1,10 +1,24 @@
 package main
 
 // profile.go writes the archive's `profile` file from index.json (§2c). It is
-// the one output that describes the bundle rather than an object, and the only
-// way an installed space gets a name, an entry point and a sidebar:
+// the one output that describes the bundle rather than an object:
 // util/builtinobjects reads it with pb.Profile.Unmarshal, so it is raw
 // protobuf regardless of the snapshot format.
+//
+// How much of it is honoured depends on which path installs the archive, and
+// a bundle only ever takes one of them:
+//
+//   - inject() — the built-in use-case archives — reads all of it: name,
+//     avatar, spaceDashboardId, and widgets (getWidgets + createWidgets).
+//   - CreateObjectsForExperience — what ObjectImportExperience calls, and so
+//     what every bundle this tool produces goes through — reads
+//     spaceDashboardId and nothing else. It calls setWorkspaceSettings with
+//     isBundle=false, which drops Name and Avatar, and it never calls
+//     getWidgets or createWidgets.
+//
+// So on a bundle's actual path this file is one field. The sidebar arrives
+// instead as a Widget snapshot in the archive (widgets.go), which is how a
+// real app export carries it.
 
 import (
 	"fmt"
@@ -20,11 +34,11 @@ import (
 // widgetLayouts maps §2c layout names to the wire enum. Absent means link,
 // the enum's own zero value.
 var widgetLayouts = map[string]model.BlockContentWidgetLayout{
-	"link":        model.BlockContentWidget_Link,
-	"tree":        model.BlockContentWidget_Tree,
-	"list":        model.BlockContentWidget_List,
-	"compactList": model.BlockContentWidget_CompactList,
-	"view":        model.BlockContentWidget_View,
+	"link":         model.BlockContentWidget_Link,
+	"tree":         model.BlockContentWidget_Tree,
+	"list":         model.BlockContentWidget_List,
+	"compact_list": model.BlockContentWidget_CompactList,
+	"view":         model.BlockContentWidget_View,
 }
 
 // writeProfile renders index.json as the archive's profile file.
@@ -38,6 +52,10 @@ var widgetLayouts = map[string]model.BlockContentWidgetLayout{
 // declared entrypoint that is not the first widget is therefore not honoured,
 // and anyblockvalidate warns about it rather than this reordering the sidebar
 // behind the author's back.
+//
+// Name, Avatar and Widgets are written for symmetry with the built-in
+// archives, and are inert on the path a bundle takes — see the file comment.
+// The sidebar the user gets comes from widgets.go.
 func writeProfile(outDir string, idx *anyblockjson.Index, names map[string]string) error {
 	profile := &pb.Profile{
 		Name: idx.Name,
@@ -52,14 +70,17 @@ func writeProfile(outDir string, idx *anyblockjson.Index, names map[string]strin
 	if idx.IconImage != "" {
 		name, ok := names[idx.IconImage]
 		if !ok {
-			return fmt.Errorf("iconImage %q names no object in the bundle", idx.IconImage)
+			return fmt.Errorf("icon_image %q names no object in the bundle", idx.IconImage)
 		}
 		if name == "" {
-			return fmt.Errorf("iconImage %q has no name, and the installer resolves the space icon by name", idx.IconImage)
+			return fmt.Errorf("icon_image %q has no name, and the installer resolves the space icon by name", idx.IconImage)
 		}
 		profile.Avatar = name
 	}
 
+	// inert on the experience path: CreateObjectsForExperience never calls
+	// getWidgets, so nothing reads these. Kept so an archive this tool produces
+	// is also a valid built-in archive, where inject() does read them.
 	for i, w := range idx.Widgets {
 		layout, ok := widgetLayouts[w.Layout]
 		if w.Layout != "" && !ok {

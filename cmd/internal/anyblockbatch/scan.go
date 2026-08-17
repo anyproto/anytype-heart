@@ -27,17 +27,17 @@ import (
 // stored format is shorttext are the bundled ones, which this tool never
 // mints — anyblockjson resolves those by key.
 var FormatByName = map[string]model.RelationFormat{
-	"text":        model.RelationFormat_longtext,
-	"number":      model.RelationFormat_number,
-	"select":      model.RelationFormat_status,
-	"multiSelect": model.RelationFormat_tag,
-	"date":        model.RelationFormat_date,
-	"files":       model.RelationFormat_file,
-	"checkbox":    model.RelationFormat_checkbox,
-	"url":         model.RelationFormat_url,
-	"email":       model.RelationFormat_email,
-	"phone":       model.RelationFormat_phone,
-	"objects":     model.RelationFormat_object,
+	"text":         model.RelationFormat_longtext,
+	"number":       model.RelationFormat_number,
+	"select":       model.RelationFormat_status,
+	"multi_select": model.RelationFormat_tag,
+	"date":         model.RelationFormat_date,
+	"files":        model.RelationFormat_file,
+	"checkbox":     model.RelationFormat_checkbox,
+	"url":          model.RelationFormat_url,
+	"email":        model.RelationFormat_email,
+	"phone":        model.RelationFormat_phone,
+	"objects":      model.RelationFormat_object,
 }
 
 // FormatInfo is what the batch knows about a custom property key, gathered
@@ -62,11 +62,11 @@ type typePropRaw struct {
 	// a color), so the prescan shares one decoder with anyblockjson rather
 	// than restating the union.
 	Options     []anyblockjson.OptionDefinition `json:"options"`
-	ObjectTypes []string                        `json:"objectTypes"`
+	ObjectTypes []string                        `json:"object_types"`
 }
 
 type prescanDoc struct {
-	TypeProperties *[]typePropRaw `json:"typeProperties"`
+	TypeProperties *[]typePropRaw `json:"type_properties"`
 }
 
 // ScanFormats reads every document's typeProperties (§2a) once, up front, to
@@ -200,7 +200,7 @@ func DiscoverJSONFiles(root string) ([]string, error) {
 func Report(us []Undeclared) string {
 	var b strings.Builder
 	for _, u := range us {
-		fmt.Fprintf(&b, "  %s: property %q has no declared format — add it to some type's typeProperties\n", u.File, u.Key)
+		fmt.Fprintf(&b, "  %s: property %q has no declared format — add it to some type's type_properties\n", u.File, u.Key)
 	}
 	return b.String()
 }
@@ -223,7 +223,7 @@ func TypeIds(files []string) (map[string]string, error) {
 		if err := json.Unmarshal(data, &probe); err != nil {
 			return nil, fmt.Errorf("parse %s: %w", f, err)
 		}
-		if probe.Kind == "objectType" && probe.Key != "" {
+		if probe.Kind == "object_type" && probe.Key != "" {
 			// an id-less type still has to be registered: without it,
 			// objectTypeIds cannot tell "defined here, but unaddressable"
 			// from "bundled", and silently emits a bundled url for a type
@@ -253,7 +253,7 @@ func OrderTypesFirst(files []string) ([]string, error) {
 		if err := json.Unmarshal(data, &probe); err != nil {
 			return nil, fmt.Errorf("parse %s: %w", f, err)
 		}
-		if probe.Kind == "objectType" {
+		if probe.Kind == "object_type" {
 			types = append(types, f)
 		} else {
 			rest = append(rest, f)
@@ -297,12 +297,12 @@ func CheckSharedSelects(files []string) ([]SharedSelect, error) {
 		var doc struct {
 			Kind           string        `json:"kind"`
 			Key            string        `json:"key"`
-			TypeProperties []typePropRaw `json:"typeProperties"`
+			TypeProperties []typePropRaw `json:"type_properties"`
 		}
 		if err := json.Unmarshal(data, &doc); err != nil {
 			return nil, fmt.Errorf("parse %s: %w", f, err)
 		}
-		if doc.Kind != "objectType" {
+		if doc.Kind != "object_type" {
 			continue
 		}
 		typeName := doc.Key
@@ -310,7 +310,7 @@ func CheckSharedSelects(files []string) ([]SharedSelect, error) {
 			typeName = filepath.Base(f)
 		}
 		for _, tp := range doc.TypeProperties {
-			if tp.Format != "select" && tp.Format != "multiSelect" {
+			if tp.Format != "select" && tp.Format != "multi_select" {
 				continue
 			}
 			d, ok := byKey[tp.Key]
@@ -358,7 +358,7 @@ func CheckTargetTypes(files []string, typeIds map[string]string) ([]BadTarget, e
 			return nil, fmt.Errorf("read %s: %w", f, err)
 		}
 		var doc struct {
-			TypeProperties []typePropRaw `json:"typeProperties"`
+			TypeProperties []typePropRaw `json:"type_properties"`
 		}
 		if err := json.Unmarshal(data, &doc); err != nil {
 			return nil, fmt.Errorf("parse %s: %w", f, err)
@@ -427,7 +427,7 @@ func CheckTemplateTargets(files []string, typeIds map[string]string) ([]BadTempl
 		}
 		var doc struct {
 			Type        string                     `json:"type"`
-			TemplateFor string                     `json:"templateFor"`
+			TemplateFor string                     `json:"template_for"`
 			Properties  map[string]json.RawMessage `json:"properties"`
 		}
 		if err := json.Unmarshal(data, &doc); err != nil {
@@ -443,14 +443,14 @@ func CheckTemplateTargets(files []string, typeIds map[string]string) ([]BadTempl
 		}
 		if doc.TemplateFor == "" {
 			out = append(out, BadTemplateTarget{File: f,
-				Reason: `no "templateFor": the template would belong to no type, and no type would list it`})
+				Reason: `no "template_for": the template would belong to no type, and no type would list it`})
 			continue
 		}
 		id, defined := typeIds[doc.TemplateFor]
 		switch {
 		case !defined && bundle.HasObjectTypeByKey(domain.TypeKey(doc.TemplateFor)):
 			out = append(out, BadTemplateTarget{File: f, Target: doc.TemplateFor,
-				Reason: `that type is bundled, but a template's target must be a document in this bundle: a bundled url is never relinked on import, so it would match no type — add an objectType document with this key and an "id"`})
+				Reason: `that type is bundled, but a template's target must be a document in this bundle: a bundled url is never relinked on import, so it would match no type — add an object_type document with this key and an "id"`})
 		case !defined:
 			out = append(out, BadTemplateTarget{File: f, Target: doc.TemplateFor,
 				Reason: "no such type: not bundled, and not defined by this bundle"})
@@ -470,7 +470,7 @@ func ReportTemplateTargets(bs []BadTemplateTarget) string {
 			fmt.Fprintf(&b, "  %s: %s\n", t.File, t.Reason)
 			continue
 		}
-		fmt.Fprintf(&b, "  %s: templateFor %q — %s\n", t.File, t.Target, t.Reason)
+		fmt.Fprintf(&b, "  %s: template_for %q — %s\n", t.File, t.Target, t.Reason)
 	}
 	return b.String()
 }
@@ -496,6 +496,12 @@ func IndexPath(root string) (string, bool) {
 // CheckIndexTargets finds index.json references that name nothing the bundle
 // defines. Reserved homepages and reserved widget targets name built-in
 // screens and listings, so they are not expected to resolve.
+//
+// A widget target is checked harder than the others, because it is the only
+// reference in the format whose failure is silent: an unresolvable link target
+// becomes addr.MissingObject (common.handleLinkBlock), and WidgetObject.Init
+// then removes the link and its wrapper. No error reaches the import result —
+// the widget simply is not there.
 func CheckIndexTargets(idx *anyblockjson.Index, files []string) []BadTarget {
 	ids := map[string]bool{}
 	for _, f := range files {
@@ -525,13 +531,23 @@ func CheckIndexTargets(idx *anyblockjson.Index, files []string) []BadTarget {
 		})
 	}
 	for i, w := range idx.Widgets {
-		if anyblockjson.IsReservedWidgetTarget(w.Target) || ids[w.Target] {
-			continue
+		switch {
+		case anyblockjson.IsReservedWidgetTarget(w.Target):
+			if anyblockjson.IsImportableWidgetTarget(w.Target) {
+				continue
+			}
+			out = append(out, BadTarget{
+				File: anyblockjson.IndexFileName, Property: fmt.Sprintf("widgets[%d]", i), Target: w.Target,
+				Reason: "a reserved listing the importer does not recognise — " +
+					"widget.IsPredefinedWidgetTargetId knows only favorite, recent, set and collection, " +
+					"so this link is rewritten to _missing_object and the widget is dropped without an error",
+			})
+		case !ids[w.Target]:
+			out = append(out, BadTarget{
+				File: anyblockjson.IndexFileName, Property: fmt.Sprintf("widgets[%d]", i), Target: w.Target,
+				Reason: "no object with that id in the bundle (and it is not a reserved widget target)",
+			})
 		}
-		out = append(out, BadTarget{
-			File: anyblockjson.IndexFileName, Property: fmt.Sprintf("widgets[%d]", i), Target: w.Target,
-			Reason: "no object with that id in the bundle (and it is not a reserved widget target)",
-		})
 	}
 	return out
 }

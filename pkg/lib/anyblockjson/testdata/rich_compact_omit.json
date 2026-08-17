@@ -1,5 +1,5 @@
 {
-  "$schema": "https://schemas.anytype.io/anyblock/1.0/object.schema.json",
+  "$schema": "https://schemas.anytype.io/anyblock/1/object.schema.json",
   "version": 1,
   "id": "bafyreiobject",
   "type": "page",
@@ -25,15 +25,15 @@
   },
   "blocks": [
     {
-      "type": "heading2",
+      "type": "heading_2",
       "text": "Goals"
     },
     {
       "type": "paragraph",
-      "text": "Ship the **new export** with <mention objectId=\"roman\">Roman</mention>"
+      "text": "Ship the **new export** with <mention object_id=\"roman\">Roman</mention>"
     },
     {
-      "type": "bulletedListItem",
+      "type": "bulleted_list_item",
       "text": "Nested item"
     },
     {
@@ -51,16 +51,16 @@
     },
     {
       "type": "image",
-      "objectId": "image",
+      "object_id": "image",
       "name": "cat.png",
-      "mimeType": "image/png",
+      "mime_type": "image/png",
       "size": 2048,
-      "addedAt": "2025-07-06T08:44:05Z"
+      "added_at": "2025-07-06T08:44:05Z"
     },
     {
       "type": "bookmark",
       "url": "https://anytype.io",
-      "objectId": "kmark"
+      "object_id": "kmark"
     },
     {
       "type": "row"
@@ -93,7 +93,7 @@
       ],
       "rows": [
         {
-          "isHeader": true,
+          "is_header": true,
           "cells": [
             "Name",
             "Status"
@@ -118,7 +118,7 @@
     },
     {
       "type": "dataview",
-      "objectId": "tasks",
+      "object_id": "tasks",
       "properties": [
         {
           "key": "name",
@@ -137,18 +137,18 @@
         {
           "type": "kanban",
           "name": "By status",
-          "groupBy": "customStatus",
+          "group_by": "customStatus",
           "sorts": [
             {
               "property": "due_date",
-              "emptyPlacement": "end"
+              "empty_placement": "end"
             }
           ],
           "filters": [
             {
               "property": "due_date",
               "condition": "less",
-              "datePreset": "currentWeek"
+              "date_preset": "current_week"
             },
             {
               "operator": "or",
@@ -176,7 +176,7 @@
               "property": "due_date",
               "hidden": true,
               "width": 120,
-              "aggregation": "countDistinct",
+              "aggregation": "count_distinct",
               "align": "right"
             }
           ]

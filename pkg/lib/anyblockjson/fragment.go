@@ -28,7 +28,7 @@ import (
 // not carry (the whole-document import absorbs or drops them silently; a
 // fragment rejects them loudly instead).
 var fragmentStructuralTypes = map[string]bool{
-	"title": true, "description": true, "featuredProperties": true,
+	"title": true, "description": true, "featured_properties": true,
 }
 
 // validateFragmentRun wraps the run in a minimal synthetic page document and

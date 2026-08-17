@@ -24,16 +24,16 @@ import (
 
 // filterConditionList renders the condition vocabulary for error messages.
 var filterConditionList = strings.Join([]string{
-	"equal", "notEqual", "greater", "less", "greaterOrEqual", "lessOrEqual",
-	"contains", "notContains", "in", "notIn", "empty", "notEmpty",
-	"allIn", "notAllIn", "exactIn", "notExactIn", "exists",
+	"equal", "not_equal", "greater", "less", "greater_or_equal", "less_or_equal",
+	"contains", "not_contains", "in", "not_in", "empty", "not_empty",
+	"all_in", "not_all_in", "exact_in", "not_exact_in", "exists",
 }, ", ")
 
 // datePresetList renders the date-preset vocabulary for error messages.
 var datePresetList = strings.Join([]string{
-	"yesterday", "today", "tomorrow", "lastWeek", "currentWeek", "nextWeek",
-	"lastMonth", "currentMonth", "nextMonth", "numberOfDaysAgo",
-	"numberOfDaysNow", "lastYear", "currentYear", "nextYear",
+	"yesterday", "today", "tomorrow", "last_week", "current_week", "next_week",
+	"last_month", "current_month", "next_month", "number_of_days_ago",
+	"number_of_days_now", "last_year", "current_year", "next_year",
 }, ", ")
 
 // UnmarshalFilters converts a §6.2 structured filters array (the top-level

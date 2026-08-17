@@ -1,5 +1,5 @@
 {
-  "$schema": "https://schemas.anytype.io/anyblock/1.0/object.schema.json",
+  "$schema": "https://schemas.anytype.io/anyblock/1/object.schema.json",
   "version": 1,
   "id": "bafyreiobject",
   "type": "page",
@@ -26,17 +26,17 @@
   "blocks": [
     {
       "id": "b1",
-      "type": "heading2",
+      "type": "heading_2",
       "text": "Goals"
     },
     {
       "id": "b2",
       "type": "paragraph",
-      "text": "Ship the **new export** with <mention objectId=\"roman\">Roman</mention>"
+      "text": "Ship the **new export** with <mention object_id=\"roman\">Roman</mention>"
     },
     {
       "id": "b3",
-      "type": "bulletedListItem",
+      "type": "bulleted_list_item",
       "text": "Nested item"
     },
     {
@@ -58,17 +58,17 @@
     {
       "id": "b8",
       "type": "image",
-      "objectId": "image",
+      "object_id": "image",
       "name": "cat.png",
-      "mimeType": "image/png",
+      "mime_type": "image/png",
       "size": 2048,
-      "addedAt": "2025-07-06T08:44:05Z"
+      "added_at": "2025-07-06T08:44:05Z"
     },
     {
       "id": "b9",
       "type": "bookmark",
       "url": "https://anytype.io",
-      "objectId": "kmark"
+      "object_id": "kmark"
     },
     {
       "id": "row1",
@@ -111,7 +111,7 @@
       "rows": [
         {
           "id": "r1",
-          "isHeader": true,
+          "is_header": true,
           "cells": [
             "Name",
             "Status"
@@ -139,7 +139,7 @@
     {
       "id": "dv1",
       "type": "dataview",
-      "objectId": "tasks",
+      "object_id": "tasks",
       "properties": [
         {
           "key": "name",
@@ -159,11 +159,11 @@
           "id": "v1",
           "type": "kanban",
           "name": "By status",
-          "groupBy": "customStatus",
+          "group_by": "customStatus",
           "sorts": [
             {
               "property": "due_date",
-              "emptyPlacement": "end",
+              "empty_placement": "end",
               "id": "s1"
             }
           ],
@@ -171,7 +171,7 @@
             {
               "property": "due_date",
               "condition": "less",
-              "datePreset": "currentWeek",
+              "date_preset": "current_week",
               "id": "f1"
             },
             {
@@ -202,24 +202,24 @@
               "property": "due_date",
               "hidden": true,
               "width": 120,
-              "aggregation": "countDistinct",
+              "aggregation": "count_distinct",
               "align": "right"
             }
           ],
           "groups": [
             {
               "id": "g1",
-              "backgroundColor": "red"
+              "background_color": "red"
             },
             {
               "id": "g2",
               "hidden": true
             }
           ],
-          "objectOrders": [
+          "object_orders": [
             {
-              "groupId": "g1",
-              "objectIds": [
+              "group_id": "g1",
+              "object_ids": [
                 "task1"
               ]
             }

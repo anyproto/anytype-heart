@@ -9,6 +9,7 @@ package anyblockjson
 
 import (
 	"fmt"
+	"net/url"
 	"sort"
 	"strings"
 	"unicode"
@@ -17,7 +18,57 @@ import (
 	"github.com/anyproto/anytype-heart/util/text"
 )
 
-const objectLinkPrefix = "anytype://object?objectId="
+// An Object mark's target renders as Anytype's deep link. The form is exact:
+// scheme "anytype", host "object", and a single "object_id" query parameter —
+// nothing else. Matching it by string prefix instead would take everything
+// after "object_id=" as the id, so the platform's own two-parameter link
+// (core/block/export/writer.go) would yield the id "<id>&spaceId=<space>",
+// and an id could smuggle query parameters into a link other tools resolve.
+const (
+	objectLinkScheme = "anytype"
+	objectLinkHost   = "object"
+	objectLinkParam  = "objectId"
+)
+
+// objectLinkDest renders an object id as the canonical deep link, percent-
+// encoding the id so it cannot introduce a second parameter. Ordinary ids are
+// CIDs, so in practice nothing is escaped and the bytes are unchanged.
+func objectLinkDest(id string) string {
+	return objectLinkScheme + "://" + objectLinkHost + "?" +
+		url.Values{objectLinkParam: {id}}.Encode()
+}
+
+// parseObjectLink reports the object id a destination names, and whether the
+// destination is exactly that canonical link. Anything else — extra query
+// parameters, another host, another scheme, a path — is not an object
+// reference: it stays a plain Link, preserved verbatim, which is lossless.
+// Accepting a superset and dropping the extras would not be (§8.1).
+func parseObjectLink(dest string) (string, bool) {
+	if !strings.HasPrefix(dest, objectLinkScheme+"://"+objectLinkHost+"?") {
+		return "", false
+	}
+	u, err := url.Parse(dest)
+	if err != nil || u.Scheme != objectLinkScheme || u.Host != objectLinkHost ||
+		u.Path != "" || u.Fragment != "" || u.User != nil {
+		return "", false
+	}
+	q, err := url.ParseQuery(u.RawQuery)
+	if err != nil || len(q) != 1 || len(q[objectLinkParam]) != 1 {
+		return "", false
+	}
+	id := q[objectLinkParam][0]
+	if id == "" {
+		return "", false
+	}
+	return id, true
+}
+
+// isObjectLink reports whether a Link mark's target is the canonical object
+// deep link, and so renders as an Object mark (§8.3).
+func isObjectLink(dest string) bool {
+	_, ok := parseObjectLink(dest)
+	return ok
+}
 
 // markNesting is the fixed outermost→innermost nesting order (§8.3 step 5).
 var markNesting = []model.BlockContentTextMarkType{
@@ -108,9 +159,11 @@ func sanitizeSpans(u16 []uint16, marks []*model.BlockContentTextMark) []span {
 		// a Link whose target is an object deep-link renders identically to
 		// an Object mark, so it normalizes to one — otherwise the parse-back
 		// type flip would break same-type overlap resolution (§8.3)
-		if typ == model.BlockContentTextMark_Link && strings.HasPrefix(param, objectLinkPrefix) {
-			typ = model.BlockContentTextMark_Object
-			param = param[len(objectLinkPrefix):]
+		if typ == model.BlockContentTextMark_Link {
+			if id, ok := parseObjectLink(param); ok {
+				typ = model.BlockContentTextMark_Object
+				param = id
+			}
 		}
 		if markNeedsParam(typ) {
 			if param == "" {
@@ -129,7 +182,7 @@ func sanitizeSpans(u16 []uint16, marks []*model.BlockContentTextMark) []span {
 				continue
 			}
 		case model.BlockContentTextMark_Object:
-			if len(objectLinkPrefix)+text.UTF16RuneCountString(param) > maxLinkDestLen {
+			if text.UTF16RuneCountString(objectLinkDest(param)) > maxLinkDestLen {
 				continue
 			}
 		case model.BlockContentTextMark_Emoji:
@@ -512,13 +565,13 @@ func renderNode(b *strings.Builder, u16 []uint16, n *treeNode, inLabel bool) {
 	}
 	switch n.item.typ {
 	case model.BlockContentTextMark_Mention:
-		b.WriteString(`<mention objectId="` + escapeAttr(n.item.param) + `">`)
+		b.WriteString(`<mention object_id="` + escapeAttr(n.item.param) + `">`)
 		renderKids(inLabel)
 		b.WriteString(`</mention>`)
 	case model.BlockContentTextMark_Object:
 		b.WriteByte('[')
 		renderKids(true)
-		b.WriteString("](" + escapeDest(objectLinkPrefix+n.item.param) + ")")
+		b.WriteString("](" + escapeDest(objectLinkDest(n.item.param)) + ")")
 	case model.BlockContentTextMark_Link:
 		b.WriteByte('[')
 		renderKids(true)
@@ -701,7 +754,7 @@ func escapeProse(s string, atBOL, atEOL, inLabel bool) string {
 				b.WriteByte(']')
 			}
 		case '<':
-			if tagLikeAhead(rs[i:]) {
+			if tagShaped(rs[i:]) {
 				b.WriteString(`\<`)
 			} else {
 				b.WriteByte('<')
@@ -719,25 +772,41 @@ func escapeProse(s string, atBOL, atEOL, inLabel bool) string {
 	return b.String()
 }
 
-// tagLikeAhead reports whether rs starts a whitelisted tag prefix — the only
-// case where a literal '<' needs escaping.
-func tagLikeAhead(rs []rune) bool {
+// tagShaped reports whether rs starts a tag-shaped sequence: '<', an optional
+// '/', then at least one ASCII letter. This is the whole reserved syntax space
+// of the tag namespace, not just the three names version 1 knows (§8.2).
+//
+// Anchoring the escape on the whitelist instead would leave literal
+// `<sub>x</sub>` bytes in canonical output, and the day a version adds `sub`
+// those bytes become markup — with nothing in the text string to say which
+// version wrote them, and a stricter reading (§8.3 makes a malformed instance
+// of a *known* tag an error) turning old valid documents invalid. Escaping the
+// shape costs a backslash on text that looks like markup and buys a tag
+// namespace a later version can extend without a text-rewriting migration.
+//
+// It is deliberately the exact complement of the parser's leniency: import
+// keeps an unrecognized tag-shaped sequence literal and warns (§10), and
+// export escapes exactly what import warns about.
+func tagShaped(rs []rune) bool {
+	_, ok := tagShapedName(rs)
+	return ok
+}
+
+// tagShapedName returns the name of the tag-shaped sequence at rs[0] and
+// whether rs is tag-shaped at all.
+func tagShapedName(rs []rune) (string, bool) {
 	j := 1
 	if j < len(rs) && rs[j] == '/' {
 		j++
 	}
 	start := j
-	for j < len(rs) && isASCIILetter(rs[j]) {
+	if j >= len(rs) || !isASCIILetter(rs[j]) {
+		return "", false // a tag name starts with a letter, always
+	}
+	for j < len(rs) && (isASCIILetter(rs[j]) || rs[j] == '_') {
 		j++
 	}
-	name := string(rs[start:j])
-	if name != "u" && name != "font" && name != "mention" {
-		return false
-	}
-	if j >= len(rs) {
-		return false
-	}
-	return rs[j] == '>' || rs[j] == '/' || unicode.IsSpace(rs[j])
+	return string(rs[start:j]), true
 }
 
 func entityAhead(rs []rune) bool {
@@ -823,21 +892,51 @@ func inlineErr(rs []rune, pos int, msg string) error {
 	return &inlineError{Msg: msg, Snippet: string(rs[start:end])}
 }
 
+// inlineNotes collects what a caller may want to report as warnings about a
+// text string it parsed successfully (§12). Nothing here makes a document
+// invalid, so the parser records instead of failing, and a nil sink is the
+// no-op case for callers that do not report.
+type inlineNotes struct {
+	// unknownTags names the tag-shaped sequences the grammar does not
+	// recognize (§10), deduplicated in first-seen order: one occurrence of
+	// `<sub>x</sub>` is one fact about the text, not two.
+	unknownTags []string
+}
+
+func (n *inlineNotes) unknownTag(name string) {
+	if n == nil {
+		return
+	}
+	for _, seen := range n.unknownTags {
+		if seen == name {
+			return
+		}
+	}
+	n.unknownTags = append(n.unknownTags, name)
+}
+
 // parseInline parses §8 inline Markdown back into plain text and marks with
 // UTF-16 code-unit ranges.
 func parseInline(md string) (string, []*model.BlockContentTextMark, error) {
+	txt, marks, _, err := parseInlineNotes(md)
+	return txt, marks, err
+}
+
+// parseInlineNotes is parseInline plus the notes worth surfacing as warnings.
+func parseInlineNotes(md string) (string, []*model.BlockContentTextMark, *inlineNotes, error) {
 	rs := []rune(md)
-	toks, err := tokenizeInline(rs, 0)
+	notes := &inlineNotes{}
+	toks, err := tokenizeInline(rs, 0, notes)
 	if err != nil {
-		return "", nil, err
+		return "", nil, nil, err
 	}
 	ib := &inlineBuilder{}
 	if err := resolveTokens(toks, ib); err != nil {
-		return "", nil, err
+		return "", nil, nil, err
 	}
 	ib.applyInserts()
 	marks := canonicalizeMarks(ib.marks)
-	return text.UTF16ToStr(ib.out), marks, nil
+	return text.UTF16ToStr(ib.out), marks, notes, nil
 }
 
 // Resource bounds (deterministic local rules, recorded in SPEC §8): they keep
@@ -942,7 +1041,7 @@ type token struct {
 	dest              string            // tokLink
 }
 
-func tokenizeInline(rs []rune, depth int) ([]token, error) {
+func tokenizeInline(rs []rune, depth int, notes *inlineNotes) ([]token, error) {
 	ctx := newInlineScanCtx(rs)
 	var toks []token
 	var pending strings.Builder
@@ -993,6 +1092,12 @@ func tokenizeInline(rs []rune, depth int) ([]token, error) {
 				return nil, err
 			}
 			if !isTag {
+				// tag-shaped but not a tag this version parses: literal text,
+				// never an error (§10) — recorded so a caller can say so,
+				// because canonical output would have escaped these bytes
+				if name, shaped := tagShapedName(rs[i:]); shaped {
+					notes.unknownTag(name)
+				}
 				appendText("<")
 				i++
 				break
@@ -1002,7 +1107,7 @@ func tokenizeInline(rs []rune, depth int) ([]token, error) {
 			}
 			i += size
 		case '[':
-			tok, size, ok, err := parseLink(rs, i, ctx, depth)
+			tok, size, ok, err := parseLink(rs, i, ctx, depth, notes)
 			if err != nil {
 				return nil, err
 			}
@@ -1234,7 +1339,9 @@ func parseTag(rs []rune, i int) (*token, int, bool, error) {
 			return nil, 0, false, inlineErr(rs, i, fmt.Sprintf("closing </%s> tag with attributes", name))
 		}
 		attrStart := j
-		for j < len(rs) && isASCIILetter(rs[j]) {
+		// attribute names are snake_case like every other identifier the
+		// format defines (§8.1), so '_' is part of the name, not a terminator
+		for j < len(rs) && (isASCIILetter(rs[j]) || rs[j] == '_') {
 			j++
 		}
 		attrName := string(rs[attrStart:j])
@@ -1303,12 +1410,12 @@ func validateTagAttrs(name string, attrs map[string]string) string {
 		}
 	case "mention":
 		for k := range attrs {
-			if k != "objectId" {
+			if k != "object_id" {
 				return fmt.Sprintf("unknown attribute %q on <mention> tag", k)
 			}
 		}
-		if _, ok := attrs["objectId"]; !ok {
-			return "<mention> tag needs an objectId attribute"
+		if _, ok := attrs["object_id"]; !ok {
+			return "<mention> tag needs an object_id attribute"
 		}
 	}
 	return ""
@@ -1429,7 +1536,7 @@ func scanBareDest(rs []rune, k, limit int) (string, int, bool) {
 	}
 }
 
-func parseLink(rs []rune, i int, ctx *inlineScanCtx, depth int) (*token, int, bool, error) {
+func parseLink(rs []rune, i int, ctx *inlineScanCtx, depth int, notes *inlineNotes) (*token, int, bool, error) {
 	if depth >= maxLinkNesting {
 		return nil, 0, false, nil
 	}
@@ -1437,7 +1544,7 @@ func parseLink(rs []rune, i int, ctx *inlineScanCtx, depth int) (*token, int, bo
 	if !ok {
 		return nil, 0, false, nil
 	}
-	labelToks, err := tokenizeInline(rs[i+1:labelEnd], depth+1)
+	labelToks, err := tokenizeInline(rs[i+1:labelEnd], depth+1, notes)
 	if err != nil {
 		return nil, 0, false, err
 	}
@@ -1609,8 +1716,8 @@ func resolveTokens(toks []token, ib *inlineBuilder) error {
 			if err := resolveTokens(t.label, ib); err != nil {
 				return err
 			}
-			if strings.HasPrefix(t.dest, objectLinkPrefix) {
-				ib.addMark(model.BlockContentTextMark_Object, t.dest[len(objectLinkPrefix):], start, len(ib.out))
+			if id, ok := parseObjectLink(t.dest); ok {
+				ib.addMark(model.BlockContentTextMark_Object, id, start, len(ib.out))
 			} else {
 				ib.addMark(model.BlockContentTextMark_Link, t.dest, start, len(ib.out))
 			}
@@ -1635,7 +1742,7 @@ func emitTagMarks(ib *inlineBuilder, e openEntry) {
 		ib.addMark(model.BlockContentTextMark_TextColor, e.attrs["color"], e.start16, end)
 		ib.addMark(model.BlockContentTextMark_BackgroundColor, e.attrs["background"], e.start16, end)
 	case "mention":
-		ib.addMark(model.BlockContentTextMark_Mention, e.attrs["objectId"], e.start16, end)
+		ib.addMark(model.BlockContentTextMark_Mention, e.attrs["object_id"], e.start16, end)
 	}
 }
 

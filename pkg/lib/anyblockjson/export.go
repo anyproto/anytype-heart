@@ -6,6 +6,7 @@ package anyblockjson
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/gogo/protobuf/types"
@@ -38,7 +39,7 @@ type Options struct {
 	CompactBlockLabels bool             // export only: relabel doc-local block/row/column/view ids to short suffixes (§9a; legend-less, lossy)
 	GenerateId         func() string    // import only: id generator for missing ids; nil = random 24-hex
 	NormalizeIndent    bool             // import only: clamp over-deep indents instead of rejecting (§4)
-	OnWarning          func(Issue)      // optional sink for warning-grade issues (NormalizeIndent clamps)
+	OnWarning          func(Issue)      // optional sink for warning-grade issues, both directions (indent clamps, unrepresentable dates, …)
 }
 
 // compactObjectRefs reports whether object-ref compaction (refs legend) is on.
@@ -115,10 +116,87 @@ type exporter struct {
 	objectRefs map[string]string // full object id -> refs label (§9a)
 	localIds   map[string]string // block/row/column/view id -> short label
 
-	// tableIds maps a stored row/column id to the sanitized label written for
-	// it (§6.1), and tableIdsUsed keeps those labels distinct.
-	tableIds     map[string]string
-	tableIdsUsed map[string]struct{}
+	// idLabels maps a stored block/row/column id to the id written for it, and
+	// idsUsed is every id this document has written. One set for every id
+	// surface, because they share one uniqueness domain (§4): a sanitized
+	// column id, a compact label and a verbatim block id all land in the same
+	// document, and any two of them colliding is a document Validate rejects.
+	idLabels map[string]string
+	idsUsed  map[string]struct{}
+}
+
+// seedIdLabels reserves the id each block will be written with, before any
+// sanitizing starts. Without it the first block to need sanitizing could take
+// the name of a block that was going to be written verbatim — renaming a
+// perfectly good authored id, or duplicating it.
+func (e *exporter) seedIdLabels() {
+	e.idLabels = map[string]string{}
+	e.idsUsed = map[string]struct{}{}
+	for id, b := range e.blocks {
+		// map order is irrelevant here: every id seeded is written as-is, so
+		// no two of them compete for the same label
+		want := e.localId(id)
+		if e.isTableInner(b) {
+			if isValidTableInnerId(want) {
+				e.idLabels[id] = want
+				e.idsUsed[want] = struct{}{}
+			}
+			continue
+		}
+		if isValidRefsKey(want) { // the blockId charset: [A-Za-z0-9_-]{1,64}
+			e.idLabels[id] = want
+			e.idsUsed[want] = struct{}{}
+		}
+	}
+}
+
+func (e *exporter) isTableInner(b *model.Block) bool {
+	switch b.GetContent().(type) {
+	case *model.BlockContentOfTableRow, *model.BlockContentOfTableColumn:
+		return true
+	}
+	return false
+}
+
+// idLabel is the one place a stored id becomes the id written in the document.
+// It sanitizes with the charset of the position, then disambiguates against
+// every id the document has already written, and remembers its answer so the
+// same stored id always renders the same way.
+func (e *exporter) idLabel(stored string, sanitize func(string) string) string {
+	if stored == "" {
+		return ""
+	}
+	if e.idLabels == nil {
+		e.seedIdLabels()
+	}
+	if got, ok := e.idLabels[stored]; ok {
+		return got
+	}
+	base := sanitize(e.localId(stored))
+	label := base
+	for n := 2; ; n++ {
+		if _, taken := e.idsUsed[label]; !taken {
+			e.idsUsed[label] = struct{}{}
+			e.idLabels[stored] = label
+			return label
+		}
+		suffix := "_" + strconv.Itoa(n)
+		trimmed := base
+		if len(trimmed)+len(suffix) > maxIdLen {
+			trimmed = trimmed[:maxIdLen-len(suffix)]
+		}
+		label = trimmed + suffix
+	}
+}
+
+// blockLabel renders a block's stored id for output (§9). Stored ids are not
+// guaranteed to match the schema's block charset: legacy accounts hold ids
+// with dots and slashes, and Options.GenerateId belongs to the caller — the
+// convert wiring derives ids from file paths. Writing one verbatim made
+// Marshal emit a document its own Validate rejects, i.e. an archive that fails
+// at import, discovered long after the export.
+func (e *exporter) blockLabel(stored string) string {
+	return e.idLabel(stored, sanitizeBlockId)
 }
 
 func (e *exporter) detail(key string) *types.Value {
@@ -195,12 +273,12 @@ func (e *exporter) buildDoc(sbType model.SmartBlockType) (*omap, error) {
 	doc.setNonEmpty("id", e.objectId())
 	doc.setNonEmpty("type", typeKey)
 	if typeKey == "template" && len(typeKeys) > 1 {
-		doc.setNonEmpty("templateFor", typeKeys[1])
+		doc.setNonEmpty("template_for", typeKeys[1])
 	}
 	doc.setNonEmpty("key", e.snapshot.Key)
 	doc.setNonEmpty("properties", e.buildProperties())
 	if tp := e.buildTypeProperties(); tp != nil {
-		doc.set("typeProperties", tp) // present even when empty (§2a)
+		doc.set("type_properties", tp) // present even when empty (§2a)
 	}
 
 	if len(e.objectRefs) > 0 {
@@ -272,7 +350,7 @@ func (e *exporter) buildRootEscape() *omap {
 	if root.Fields != nil && len(root.Fields.Fields) > 0 {
 		m.set("fields", protoStructToJSON(root.Fields))
 	}
-	m.setNonEmpty("backgroundColor", root.BackgroundColor)
+	m.setNonEmpty("background_color", root.BackgroundColor)
 	return m
 }
 
@@ -281,12 +359,22 @@ func (e *exporter) buildRootEscape() *omap {
 //
 
 // strippedDetailKeys are the internal/derived properties export removes (§3).
+// strippedDetailKeys is the internal-property list, and it is the single
+// source of truth for both directions: export removes these keys, and import
+// refuses them (§3, §4a — deniedPropertyKey reads this same set). Two lists
+// would drift, which is how the import surface ended up strictly wider than
+// the export surface.
 func strippedDetailKeys() map[string]bool {
 	stripped := map[string]bool{detailKeyId: true, detailKeyType: true}
 	for _, k := range bundle.LocalAndDerivedRelationKeys {
 		if !propertiesKeptOnExport[string(k)] {
 			stripped[string(k)] = true
 		}
+	}
+	// the importer's own resolution vectors are not bundled relations, so the
+	// list above does not cover them; they are internal all the same
+	for k := range neverWritableProperties {
+		stripped[k] = true
 	}
 	return stripped
 }
@@ -299,9 +387,19 @@ func (e *exporter) buildProperties() *omap {
 	lifted := e.typePropDetailKeys()
 	var keys []string
 	for k := range e.snapshot.Details.Fields {
-		if !stripped[k] && !lifted[k] {
-			keys = append(keys, k)
+		if stripped[k] || lifted[k] {
+			continue
 		}
+		// a stored detail key is not necessarily a property name: real data
+		// holds an empty key and keys with control characters in them, and
+		// there is no way to write those (§3). Dropping them is what keeps
+		// Marshal's output valid — emitting one produced a document its own
+		// Validate rejects, which is the invariant §11 states.
+		if !isWritablePropertyKey(k) {
+			e.warn("/properties", "property key %q cannot be written in this format and is dropped", k)
+			continue
+		}
+		keys = append(keys, k)
 	}
 	// the document spells slugs (§7.5a), so the canonical alphabetical order
 	// is over the SPELLINGS, not the stored keys — the reader sorts what it
@@ -360,6 +458,16 @@ func (e *exporter) buildProperties() *omap {
 	return m
 }
 
+// warn reports a warning-grade issue through the caller's sink (§13): a thing
+// export had to do that the author would want to know about, but that does not
+// make the output invalid. Silent when no sink is wired.
+func (e *exporter) warn(path, format string, args ...any) {
+	if e.opts.OnWarning == nil {
+		return
+	}
+	e.opts.OnWarning(Issue{Path: path, Message: fmt.Sprintf(format, args...)})
+}
+
 func (e *exporter) resolveFormat(key string) (model.RelationFormat, bool) {
 	return resolveFormatWith(e.opts, key)
 }
@@ -393,7 +501,16 @@ func (e *exporter) propertyValue(key string, v *types.Value) any {
 	switch format {
 	case model.RelationFormat_date:
 		if n, isNum := v.GetKind().(*types.Value_NumberValue); isNum {
-			return formatDate(int64(n.NumberValue))
+			if s, ok := formatDateValue(n.NumberValue); ok {
+				return s
+			}
+			// no RFC 3339 form: emitting one anyway would write a string
+			// parseDate cannot read, so the value would come back as a string
+			// on a date property and stay that way (byte-stable, so nothing
+			// corrects it). The raw number round-trips instead.
+			e.warn("/properties/"+key,
+				"date %v has no RFC 3339 form (outside years 0000-9999), so it is written as a raw number; "+
+					"a value this large is usually milliseconds where seconds belong", n.NumberValue)
 		}
 	case model.RelationFormat_status, model.RelationFormat_tag:
 		var out []any
@@ -540,7 +657,7 @@ func (e *exporter) blockToJSON(b *model.Block, depth int) (*omap, bool, error) {
 	m := &omap{}
 	m.setNonEmpty("indent", depth)
 	if !e.opts.OmitIds {
-		m.setNonEmpty("id", e.localId(b.Id))
+		m.setNonEmpty("id", e.blockLabel(b.Id))
 	}
 	liftedFields := map[string]bool{}
 	withChildren := true
@@ -568,17 +685,17 @@ func (e *exporter) blockToJSON(b *model.Block, depth int) (*omap, bool, error) {
 		bm := orEmpty(c.Bookmark)
 		m.set("type", "bookmark")
 		m.setNonEmpty("url", bm.Url)
-		m.setNonEmpty("objectId", e.compactObjectId(bm.TargetObjectId))
+		m.setNonEmpty("object_id", e.compactObjectId(bm.TargetObjectId))
 		withChildren = false
 	case *model.BlockContentOfLink:
 		l := orEmpty(c.Link)
 		m.set("type", "link")
-		m.setNonEmpty("objectId", e.compactObjectId(l.TargetBlockId))
+		m.setNonEmpty("object_id", e.compactObjectId(l.TargetBlockId))
 		if l.CardStyle != model.BlockContentLink_Text {
-			m.setNonEmpty("cardStyle", cardStyleNames.name(l.CardStyle))
+			m.setNonEmpty("card_style", cardStyleNames.name(l.CardStyle))
 		}
 		if l.IconSize != model.BlockContentLink_SizeNone {
-			m.setNonEmpty("iconSize", iconSizeNames.name(l.IconSize))
+			m.setNonEmpty("icon_size", iconSizeNames.name(l.IconSize))
 		}
 		if l.Description != model.BlockContentLink_None {
 			m.setNonEmpty("description", linkDescriptionNames.name(l.Description))
@@ -617,7 +734,7 @@ func (e *exporter) blockToJSON(b *model.Block, depth int) (*omap, bool, error) {
 		m.setNonEmpty("text", lx.Text)
 		withChildren = false
 	case *model.BlockContentOfTableOfContents:
-		m.set("type", "tableOfContents")
+		m.set("type", "table_of_contents")
 		withChildren = false
 	case *model.BlockContentOfRelation:
 		m.set("type", "property")
@@ -635,13 +752,13 @@ func (e *exporter) blockToJSON(b *model.Block, depth int) (*omap, bool, error) {
 			m.setNonEmpty("layout", widgetLayoutNames.name(w.Layout))
 		}
 		m.setNonEmpty("limit", w.Limit)
-		m.setNonEmpty("viewId", w.ViewId)
-		m.setNonEmpty("autoAdded", w.AutoAdded)
+		m.setNonEmpty("view_id", w.ViewId)
+		m.setNonEmpty("auto_added", w.AutoAdded)
 	case *model.BlockContentOfChat:
 		m.set("type", "chat")
 		withChildren = false
 	case *model.BlockContentOfFeaturedRelations:
-		m.set("type", "featuredProperties")
+		m.set("type", "featured_properties")
 		withChildren = false
 	case *model.BlockContentOfIcon:
 		m.set("type", "icon")
@@ -670,9 +787,9 @@ func (e *exporter) finishBlockJSON(m *omap, b *model.Block, liftedFields map[str
 		m.setNonEmpty("align", alignNames.name(b.Align))
 	}
 	if b.VerticalAlign != model.Block_VerticalAlignTop {
-		m.setNonEmpty("verticalAlign", verticalAlignNames.name(b.VerticalAlign))
+		m.setNonEmpty("vertical_align", verticalAlignNames.name(b.VerticalAlign))
 	}
-	m.setNonEmpty("backgroundColor", b.BackgroundColor)
+	m.setNonEmpty("background_color", b.BackgroundColor)
 	m.setNonEmpty("fields", e.fieldsToJSON(b.Fields, liftedFields))
 }
 
@@ -710,8 +827,8 @@ func (e *exporter) textToJSON(m *omap, b *model.Block, t *model.BlockContentText
 		m.setNonEmpty("checked", t.Checked)
 	}
 	if style == model.BlockContentText_Callout {
-		m.setNonEmpty("iconEmoji", t.IconEmoji)
-		m.setNonEmpty("iconImage", e.compactObjectId(t.IconImage))
+		m.setNonEmpty("icon_emoji", t.IconEmoji)
+		m.setNonEmpty("icon_image", e.compactObjectId(t.IconImage))
 	}
 	if style == model.BlockContentText_Code {
 		if b.Fields != nil {
@@ -744,10 +861,11 @@ func (e *exporter) compactMarks(marks []*model.BlockContentTextMark) []*model.Bl
 			clone := *mk
 			clone.Param = e.compactObjectId(mk.Param)
 			out = append(out, &clone)
-		case mk.Type == model.BlockContentTextMark_Link && strings.HasPrefix(mk.Param, objectLinkPrefix):
+		case mk.Type == model.BlockContentTextMark_Link && isObjectLink(mk.Param):
 			// rendered as an Object mark (§8.3), so its target compacts too
+			id, _ := parseObjectLink(mk.Param)
 			clone := *mk
-			clone.Param = objectLinkPrefix + e.compactObjectId(strings.TrimPrefix(mk.Param, objectLinkPrefix))
+			clone.Param = objectLinkDest(e.compactObjectId(id))
 			out = append(out, &clone)
 		default:
 			out = append(out, mk)
@@ -766,15 +884,22 @@ func (e *exporter) fileToJSON(m *omap, f *model.BlockContentFile) {
 	if objectId == "" {
 		objectId = f.Hash // legacy content address migrates to objectId
 	}
-	m.setNonEmpty("objectId", e.compactObjectId(objectId))
+	m.setNonEmpty("object_id", e.compactObjectId(objectId))
 	m.setNonEmpty("name", f.Name)
-	m.setNonEmpty("mimeType", f.Mime)
+	m.setNonEmpty("mime_type", f.Mime)
 	m.setNonEmpty("size", f.Size_)
 	if f.Style != model.BlockContentFile_Auto {
 		m.setNonEmpty("style", fileStyleNames.name(f.Style))
 	}
 	if f.AddedAt != 0 {
-		m.set("addedAt", formatDate(f.AddedAt))
+		// addedAt is a string in the schema, so there is no number form to
+		// fall back to (§5): an unrepresentable timestamp is dropped rather
+		// than written as a string no reader can parse back
+		if s, ok := formatDate(f.AddedAt); ok {
+			m.set("added_at", s)
+		} else {
+			e.warn("", "file block: added_at %d has no RFC 3339 form (outside years 0000-9999), so it is omitted", f.AddedAt)
+		}
 	}
 }
 
@@ -830,9 +955,10 @@ func (e *exporter) buildCompactIds() {
 				switch {
 				case mk.Type == model.BlockContentTextMark_Mention || mk.Type == model.BlockContentTextMark_Object:
 					addObject(mk.Param)
-				case mk.Type == model.BlockContentTextMark_Link && strings.HasPrefix(mk.Param, objectLinkPrefix):
+				case mk.Type == model.BlockContentTextMark_Link && isObjectLink(mk.Param):
 					// normalizes to an Object mark on render (§8.3)
-					addObject(strings.TrimPrefix(mk.Param, objectLinkPrefix))
+					id, _ := parseObjectLink(mk.Param)
+					addObject(id)
 				}
 			}
 			addObject(t.IconImage)

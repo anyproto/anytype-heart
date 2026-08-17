@@ -13,12 +13,12 @@ func ViewTypeNames() []string {
 	return []string{"table", "list", "gallery", "kanban", "calendar", "graph"}
 }
 
-// ViewCardSizeNames lists the §6.2 cardSize values. `small` is the default.
+// ViewCardSizeNames lists the §6.2 card_size values. `small` is the default.
 func ViewCardSizeNames() []string {
 	return []string{"small", "medium", "large"}
 }
 
-// ViewListSizeNames lists the §6.2 listSize values. `compact` is the default.
+// ViewListSizeNames lists the §6.2 list_size values. `compact` is the default.
 func ViewListSizeNames() []string {
 	return []string{"compact", "regular"}
 }
@@ -32,8 +32,8 @@ func ColumnAlignNames() []string {
 // means none.
 func ColumnAggregationNames() []string {
 	return []string{
-		"count", "countValue", "countDistinct", "countEmpty", "countNotEmpty",
-		"percentEmpty", "percentNotEmpty", "sum", "average", "median", "min",
+		"count", "count_value", "count_distinct", "count_empty", "count_not_empty",
+		"percent_empty", "percent_not_empty", "sum", "average", "median", "min",
 		"max", "range",
 	}
 }

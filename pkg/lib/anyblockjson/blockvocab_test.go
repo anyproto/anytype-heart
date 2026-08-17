@@ -47,7 +47,7 @@ func TestAuthorableVocabularyDropsTheStructuralTypes(t *testing.T) {
 
 	// then
 	assert.Len(t, authorable, len(BlockTypeNames())-len(structuralBlockTypes))
-	for _, typ := range []string{"title", "description", "featuredProperties"} {
+	for _, typ := range []string{"title", "description", "featured_properties"} {
 		assert.True(t, StructuralBlockType(typ), "%s is structural (§7)", typ)
 		assert.NotContains(t, authorable, typ)
 		assert.Contains(t, BlockTypeNames(), typ, "it is still part of the format's vocabulary")
@@ -68,7 +68,7 @@ func TestStructuralTypesAreDroppedOnImport(t *testing.T) {
 		t.Run(typ, func(t *testing.T) {
 			// given — featuredProperties carries no text of its own (§5)
 			structural := fmt.Sprintf(`{"type":%q,"text":"structural"}`, typ)
-			if typ == "featuredProperties" {
+			if typ == "featured_properties" {
 				structural = fmt.Sprintf(`{"type":%q}`, typ)
 			}
 			doc := fmt.Sprintf(`{"version":1,"type":"page","blocks":[%s,{"type":"paragraph","text":"body"}]}`, structural)

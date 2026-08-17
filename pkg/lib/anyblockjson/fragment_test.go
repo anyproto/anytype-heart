@@ -62,9 +62,9 @@ func TestUnmarshalBlocks(t *testing.T) {
 
 	t.Run("structural block types are rejected explicitly", func(t *testing.T) {
 		for typ, body := range map[string]string{
-			"title":              `{"type":"title","text":"x"}`,
-			"description":        `{"type":"description","text":"x"}`,
-			"featuredProperties": `{"type":"featuredProperties"}`,
+			"title":               `{"type":"title","text":"x"}`,
+			"description":         `{"type":"description","text":"x"}`,
+			"featured_properties": `{"type":"featured_properties"}`,
 		} {
 			_, _, err := UnmarshalBlocks(rawRun(body), Options{})
 

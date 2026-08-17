@@ -24,7 +24,7 @@ package anyblockjson
 //
 // Deliberate scope bounds (deterministic > clever, recorded for SKILL/docs):
 //   - ATX headings only (`#`…); `---` after a paragraph is a divider, never a
-//     setext underline. Levels 4–6 clamp to heading3 (§5's own alias rule).
+//     setext underline. Levels 4–6 clamp to heading_3 (§5's own alias rule).
 //   - One quote level: `>` prefixes strip one level; consecutive quote lines
 //     join into one quote block. No lazy continuation — a plain line after a
 //     quote starts a new paragraph.
@@ -180,7 +180,7 @@ func (p *mdParser) feed(line string) {
 		if depth > 3 {
 			depth = 3
 		}
-		p.emit(mdBlock{indent: level, typ: "heading" + string(rune('0'+depth)), text: m[2], hasText: true})
+		p.emit(mdBlock{indent: level, typ: "heading_" + string(rune('0'+depth)), text: m[2], hasText: true})
 		return
 	}
 
@@ -235,12 +235,12 @@ func (p *mdParser) feed(line string) {
 			p.emit(block)
 			return
 		}
-		p.emit(mdBlock{indent: level, typ: "bulletedListItem", text: rest, hasText: true})
+		p.emit(mdBlock{indent: level, typ: "bulleted_list_item", text: rest, hasText: true})
 		return
 	}
 	if m := mdNumberRe.FindStringSubmatch(stripped); m != nil {
 		p.flush()
-		p.emit(mdBlock{indent: level, typ: "numberedListItem", text: m[2], hasText: true})
+		p.emit(mdBlock{indent: level, typ: "numbered_list_item", text: m[2], hasText: true})
 		return
 	}
 
@@ -318,7 +318,7 @@ func (p *mdParser) emitTable() {
 	header := splitMdRow(p.tableLines[0])
 	width := len(header)
 	rows := make([]map[string]any, 0, len(p.tableLines)-1)
-	rows = append(rows, map[string]any{"isHeader": true, "cells": mdCells(header)})
+	rows = append(rows, map[string]any{"is_header": true, "cells": mdCells(header)})
 	for _, line := range p.tableLines[2:] {
 		cells := splitMdRow(line)
 		if len(cells) > width {

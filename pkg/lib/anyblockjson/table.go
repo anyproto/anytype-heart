@@ -7,7 +7,6 @@ package anyblockjson
 import (
 	"fmt"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/gogo/protobuf/types"
@@ -57,7 +56,7 @@ func (e *exporter) tableToJSON(m *omap, b *model.Block) error {
 		colIds = append(colIds, colId)
 		cm := &omap{}
 		if !e.opts.OmitIds {
-			cm.setNonEmpty("id", e.tableInnerId(e.localId(colId)))
+			cm.setNonEmpty("id", e.tableInnerId(colId))
 		}
 		lifted := map[string]bool{}
 		if col.Fields != nil {
@@ -96,9 +95,9 @@ func (e *exporter) tableToJSON(m *omap, b *model.Block) error {
 	for _, row := range rowBlocks {
 		rm := &omap{}
 		if !e.opts.OmitIds {
-			rm.setNonEmpty("id", e.tableInnerId(e.localId(row.Id)))
+			rm.setNonEmpty("id", e.tableInnerId(row.Id))
 		}
-		rm.setNonEmpty("isHeader", isHeader(row))
+		rm.setNonEmpty("is_header", isHeader(row))
 
 		// cells sorted into column order; orphans dropped
 		byCol := map[string]*model.Block{}
@@ -218,7 +217,7 @@ type jsonTableColumn struct {
 
 type jsonTableRow struct {
 	Id       string     `json:"id"`
-	IsHeader bool       `json:"isHeader"`
+	IsHeader bool       `json:"is_header"`
 	Cells    []jsonCell `json:"cells"`
 }
 
@@ -389,13 +388,10 @@ func (imp *importer) cellFromJSON(cell jsonCell, cellId string) ([]*model.Block,
 }
 
 // claimTableInnerId reserves an authored row/column id so a generated one
-// cannot collide with it.
+// cannot collide with it. claimAuthoredIds has normally seen it already; this
+// keeps the guarantee local to the caller rather than assuming that.
 func (imp *importer) claimTableInnerId(id string) string {
-	if imp.tableIds == nil {
-		imp.tableIds = map[string]struct{}{}
-	}
-	imp.tableIds[id] = struct{}{}
-	return id
+	return imp.claimId(id)
 }
 
 // newTableInnerId mints a row or column id that is safe to build a cell id
@@ -410,23 +406,9 @@ func (imp *importer) claimTableInnerId(id string) string {
 // full of dashes. So sanitize rather than trust, and disambiguate on
 // collision instead of hoping the sanitized forms stay distinct.
 func (imp *importer) newTableInnerId() string {
-	base := sanitizeTableInnerId(imp.genId())
-	if imp.tableIds == nil {
-		imp.tableIds = map[string]struct{}{}
-	}
-	id := base
-	for n := 2; ; n++ {
-		if _, taken := imp.tableIds[id]; !taken {
-			imp.tableIds[id] = struct{}{}
-			return id
-		}
-		suffix := "_" + strconv.Itoa(n)
-		trimmed := base
-		if len(trimmed)+len(suffix) > maxTableInnerId {
-			trimmed = trimmed[:maxTableInnerId-len(suffix)]
-		}
-		id = trimmed + suffix
-	}
+	// genId already claimed its answer; the sanitized form is a different
+	// string, so it has to be claimed on its own
+	return imp.claimId(uniqueLabel(sanitizeTableInnerId(imp.genId()), imp.idTaken))
 }
 
 // maxTableInnerId mirrors the schema's tableInnerId length bound, so a
@@ -460,27 +442,10 @@ func sanitizeTableInnerId(s string) string {
 // the cell-id separator. Emitting one verbatim would make Marshal write a
 // document its own Validate rejects, so normalize it once here. Only the
 // label changes — the cell mapping keys off the stored id.
+//
+// The uniqueness domain is the whole document, not the table: a column id
+// sanitized to "c_1" has to avoid a sibling paragraph already called "c_1"
+// just as much as it has to avoid another column (§4).
 func (e *exporter) tableInnerId(stored string) string {
-	if e.tableIds == nil {
-		e.tableIds = map[string]string{}
-		e.tableIdsUsed = map[string]struct{}{}
-	}
-	if got, ok := e.tableIds[stored]; ok {
-		return got
-	}
-	base := sanitizeTableInnerId(stored)
-	id := base
-	for n := 2; ; n++ {
-		if _, taken := e.tableIdsUsed[id]; !taken {
-			e.tableIdsUsed[id] = struct{}{}
-			e.tableIds[stored] = id
-			return id
-		}
-		suffix := "_" + strconv.Itoa(n)
-		trimmed := base
-		if len(trimmed)+len(suffix) > maxTableInnerId {
-			trimmed = trimmed[:maxTableInnerId-len(suffix)]
-		}
-		id = trimmed + suffix
-	}
+	return e.idLabel(stored, sanitizeTableInnerId)
 }

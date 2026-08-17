@@ -159,9 +159,9 @@ func (e *exporter) buildTypeProperties() []any {
 			m.setNonEmpty("name", def.Name)
 			m.setNonEmpty("format", formatName(def.Format))
 			m.setNonEmpty("options", optionsToAny(def.Options))
-			// objectTypes is a TYPE key slot (§7.5a) — it names types, so it
+			// object_types is a TYPE key slot (§7.5a) — it names types, so it
 			// speaks the same vocabulary the envelope `type` does
-			m.setNonEmpty("objectTypes", stringsToAny(e.opts.typeSlugs(def.ObjectTypes)))
+			m.setNonEmpty("object_types", stringsToAny(e.opts.typeSlugs(def.ObjectTypes)))
 			m.setNonEmpty("section", l.section)
 			out = append(out, m)
 		}
@@ -199,7 +199,7 @@ type TypeProperty struct {
 	Name        string             `json:"name"`
 	Format      string             `json:"format"`
 	Options     []OptionDefinition `json:"options"`
-	ObjectTypes []string           `json:"objectTypes"`
+	ObjectTypes []string           `json:"object_types"`
 	Section     string             `json:"section"`
 }
 

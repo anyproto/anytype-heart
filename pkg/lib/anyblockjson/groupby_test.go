@@ -13,7 +13,7 @@ import (
 
 func dataviewDoc(props, view string) string {
 	return `{"version": 1, "id": "p1", "blocks": [{"type": "dataview",
-		"objectId": "someSet", "properties": [` + props + `],
+		"object_id": "someSet", "properties": [` + props + `],
 		"views": [` + view + `]}]}`
 }
 
@@ -24,19 +24,19 @@ func TestValidate_GroupByImpossibleIsError(t *testing.T) {
 		{
 			name:    "kanban on an object relation",
 			props:   `{"key": "category", "format": "objects"}`,
-			view:    `{"type": "kanban", "name": "By category", "groupBy": "category"}`,
+			view:    `{"type": "kanban", "name": "By category", "group_by": "category"}`,
 			wantMsg: `cannot group by "category"`,
 		},
 		{
 			name:    "kanban on a date",
 			props:   `{"key": "due", "format": "date"}`,
-			view:    `{"type": "kanban", "name": "By due", "groupBy": "due"}`,
+			view:    `{"type": "kanban", "name": "By due", "group_by": "due"}`,
 			wantMsg: `cannot group by "due"`,
 		},
 		{
 			name:    "calendar on a select",
 			props:   `{"key": "status", "format": "select"}`,
-			view:    `{"type": "calendar", "name": "Cal", "groupBy": "status"}`,
+			view:    `{"type": "calendar", "name": "Cal", "group_by": "status"}`,
 			wantMsg: `cannot group by "status"`,
 		},
 	} {
@@ -51,13 +51,13 @@ func TestValidate_GroupByImpossibleIsError(t *testing.T) {
 func TestValidate_GroupByValidCombinations(t *testing.T) {
 	for _, tc := range []struct{ name, props, view string }{
 		{"kanban + select", `{"key": "status", "format": "select"}`,
-			`{"type": "kanban", "name": "K", "groupBy": "status"}`},
-		{"kanban + multiSelect", `{"key": "tags", "format": "multiSelect"}`,
-			`{"type": "kanban", "name": "K", "groupBy": "tags"}`},
+			`{"type": "kanban", "name": "K", "group_by": "status"}`},
+		{"kanban + multi_select", `{"key": "tags", "format": "multi_select"}`,
+			`{"type": "kanban", "name": "K", "group_by": "tags"}`},
 		{"kanban + checkbox", `{"key": "done", "format": "checkbox"}`,
-			`{"type": "kanban", "name": "K", "groupBy": "done"}`},
+			`{"type": "kanban", "name": "K", "group_by": "done"}`},
 		{"calendar + date", `{"key": "due", "format": "date"}`,
-			`{"type": "calendar", "name": "C", "groupBy": "due"}`},
+			`{"type": "calendar", "name": "C", "group_by": "due"}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			assert.NoError(t, Validate([]byte(dataviewDoc(tc.props, tc.view))))
@@ -72,9 +72,9 @@ func TestValidate_GroupByValidCombinations(t *testing.T) {
 func TestValidate_GroupByOnNonGroupingViewOnlyWarns(t *testing.T) {
 	for _, viewType := range []string{"table", "list", "gallery", "graph"} {
 		t.Run(viewType, func(t *testing.T) {
-			view := `{"type": "` + viewType + `", "name": "V", "groupBy": "status"}`
+			view := `{"type": "` + viewType + `", "name": "V", "group_by": "status"}`
 			if viewType == "table" {
-				view = `{"name": "V", "groupBy": "status"}` // table is the default type
+				view = `{"name": "V", "group_by": "status"}` // table is the default type
 			}
 			doc := dataviewDoc(`{"key": "status", "format": "select"}`, view)
 
@@ -88,7 +88,7 @@ func TestValidate_GroupByOnNonGroupingViewOnlyWarns(t *testing.T) {
 			require.NoError(t, err)
 			require.Len(t, warnings, 1)
 			assert.Contains(t, warnings[0].Message, "do not group")
-			assert.Contains(t, warnings[0].Path, "groupBy")
+			assert.Contains(t, warnings[0].Path, "group_by")
 		})
 	}
 }
@@ -96,6 +96,6 @@ func TestValidate_GroupByOnNonGroupingViewOnlyWarns(t *testing.T) {
 // nothing to check against when the key carries no declared format
 func TestValidate_GroupByUndeclaredKeyIsAccepted(t *testing.T) {
 	doc := dataviewDoc(`{"key": "other", "format": "select"}`,
-		`{"type": "kanban", "name": "K", "groupBy": "notInProperties"}`)
+		`{"type": "kanban", "name": "K", "group_by": "notInProperties"}`)
 	assert.NoError(t, Validate([]byte(doc)))
 }

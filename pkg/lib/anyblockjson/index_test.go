@@ -4,6 +4,8 @@ package anyblockjson
 // one object: the space's name, what opens on entry, what the sidebar shows.
 
 import (
+	"errors"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -16,12 +18,12 @@ func TestIndex_Roundtrip(t *testing.T) {
 		"version": 1,
 		"name": "Company Wiki",
 		"description": "Everything we know, with an owner.",
-		"iconEmoji": "📚",
+		"icon_emoji": "📚",
 		"homepage": "page-wiki-home",
 		"widgets": [
 			{ "target": "page-wiki-home" },
 			{ "target": "type-wiki-page", "layout": "view", "limit": 6 },
-			{ "target": "favorite", "layout": "compactList" }
+			{ "target": "favorite", "layout": "compact_list" }
 		]
 	}`
 	idx, err := UnmarshalIndex([]byte(doc))
@@ -129,26 +131,74 @@ func TestIndex_Validation(t *testing.T) {
 		assert.True(t, IsReservedWidgetTarget("favorite"))
 	})
 
-	// version 1 is the only version, like every other document (§10)
-	t.Run("a newer version is rejected", func(t *testing.T) {
-		_, err := UnmarshalIndex([]byte(`{"version": 2}`))
+	// an index shares the format version and its rules with object documents
+	// (§10): a newer one is rejected with both versions named, not with a
+	// generic schema constraint failure
+	t.Run("a newer version is rejected, naming both versions", func(t *testing.T) {
+		// given a bundle index from a future format version, carrying a key
+		// this reader has never heard of
+		data := []byte(`{"version": 2, "name": "Wiki", "futureKey": true}`)
+
+		// when
+		_, err := UnmarshalIndex(data)
+
+		// then
 		require.Error(t, err)
+		var ve *ValidationError
+		require.True(t, errors.As(err, &ve))
+		assert.True(t, ve.NewerFormat, "must be flagged as a newer format, not a constraint failure")
+		assert.Contains(t, err.Error(), "newer version")
+		assert.Contains(t, err.Error(), "2")
+		assert.Contains(t, err.Error(), strconv.Itoa(FormatVersion))
+		// the version gate ran before the schema, so the unknown key never
+		// produced an issue of its own
+		assert.NotContains(t, err.Error(), "futureKey")
 	})
+
+	t.Run("a missing version is rejected", func(t *testing.T) {
+		_, err := UnmarshalIndex([]byte(`{"name": "Wiki"}`))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "version is required")
+	})
+
+	t.Run("a non-object index is rejected cleanly", func(t *testing.T) {
+		_, err := UnmarshalIndex([]byte(`[1, 2, 3]`))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "index must be a JSON object")
+	})
+}
+
+// Not every reserved listing survives import. handleLinkBlock leaves a target
+// alone only when widget.IsPredefinedWidgetTargetId knows it; anything else it
+// cannot resolve becomes addr.MissingObject, and WidgetObject.Init then strips
+// the link and its wrapper. So allObjects and recentOpen — real targets in a
+// live space — would cost the author a widget with no error to explain it,
+// which is why the two questions are asked separately.
+func TestIndex_ImportableWidgetTargets(t *testing.T) {
+	for _, target := range []string{"favorite", "recent", "set", "collection"} {
+		assert.True(t, IsReservedWidgetTarget(target), target)
+		assert.True(t, IsImportableWidgetTarget(target), target)
+	}
+	for _, target := range []string{"allObjects", "recentOpen"} {
+		assert.True(t, IsReservedWidgetTarget(target), "still names a built-in, not an object: "+target)
+		assert.False(t, IsImportableWidgetTarget(target), "the importer does not know it: "+target)
+	}
+	assert.False(t, IsImportableWidgetTarget("page-wiki-home"))
 }
 
 // iconImage names an image object rather than referencing its id, because the
 // installer resolves the space icon by name (getNewAvatarId).
 func TestIndex_IconImage(t *testing.T) {
 	idx, err := UnmarshalIndex([]byte(`{"version": 1, "name": "Wiki",
-		"iconImage": "acme-logo"}`))
+		"icon_image": "acme-logo"}`))
 	require.NoError(t, err)
 	assert.Equal(t, "acme-logo", idx.IconImage)
 
 	out, err := MarshalIndex(idx)
 	require.NoError(t, err)
-	assert.Contains(t, string(out), `"iconImage": "acme-logo"`)
+	assert.Contains(t, string(out), `"icon_image": "acme-logo"`)
 
 	// both icon forms may be present; the installer prefers the image
-	_, err = UnmarshalIndex([]byte(`{"version": 1, "iconEmoji": "📚", "iconImage": "logo"}`))
+	_, err = UnmarshalIndex([]byte(`{"version": 1, "icon_emoji": "📚", "icon_image": "logo"}`))
 	assert.NoError(t, err)
 }

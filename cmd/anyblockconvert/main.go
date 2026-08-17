@@ -37,6 +37,7 @@ import (
 	"github.com/anyproto/anytype-heart/cmd/internal/anyblockbatch"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"os"
+	"path/filepath"
 )
 
 func main() {
@@ -119,7 +120,7 @@ func run(inDir, outDir string, normalizeIndent, lenient bool, format outputForma
 		return fmt.Errorf("check target types: %w", err)
 	}
 	if len(badTargets) > 0 {
-		return fmt.Errorf("%d unresolvable objectTypes target%s:\n%s",
+		return fmt.Errorf("%d unresolvable object_types target%s:\n%s",
 			len(badTargets), map[bool]string{true: "", false: "s"}[len(badTargets) == 1],
 			anyblockbatch.ReportTargets(badTargets))
 	}
@@ -134,6 +135,17 @@ func run(inDir, outDir string, normalizeIndent, lenient bool, format outputForma
 			len(badTemplates), map[bool]string{true: "", false: "s"}[len(badTemplates) == 1],
 			anyblockbatch.ReportTemplateTargets(badTemplates))
 	}
+	// a fileObject's real bytes are found by its "source" property
+	// (SPEC.md §3) at import time — catch a bundle pointing at a file that
+	// was never placed under files/ now, not as a silently blank icon later
+	danglingSources, err := checkFileSources(inDir, files)
+	if err != nil {
+		return fmt.Errorf("check file sources: %w", err)
+	}
+	if len(danglingSources) > 0 {
+		return fmt.Errorf("%d dangling file source%s:\n%s",
+			len(danglingSources), plural2(len(danglingSources)), reportDanglingSources(danglingSources))
+	}
 
 	b := newBatch(formats, typeIds)
 
@@ -141,10 +153,25 @@ func run(inDir, outDir string, normalizeIndent, lenient bool, format outputForma
 		return fmt.Errorf("mkdir %s: %w", outDir, err)
 	}
 
+	// real binary assets (SPEC.md §2c, §3: iconImage, fileObject "source")
+	// live in files/ alongside the JSON documents; DiscoverJSONFiles only
+	// ever sees the *.json ones, so nothing else copies these into outDir
+	copiedFiles, err := copyBundleFiles(inDir, outDir)
+	if err != nil {
+		return fmt.Errorf("copy bundle files: %w", err)
+	}
+	if copiedFiles > 0 {
+		fmt.Printf("copied %d file(s) into %s\n", copiedFiles, filepath.Join(outDir, "files"))
+	}
+
 	var failed int
 	var converted int
+	var warned int
 	for _, f := range files {
-		id, sbType, snap, err := convertFile(inDir, f, b, normalizeIndent)
+		id, sbType, snap, err := convertFile(inDir, f, b, normalizeIndent, func(is anyblockjson.Issue) {
+			warned++
+			fmt.Fprintf(os.Stderr, "warning: %s: %v\n", f, is)
+		})
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "FAIL %s: %v\n", f, err)
 			failed++
@@ -158,9 +185,11 @@ func run(inDir, outDir string, normalizeIndent, lenient bool, format outputForma
 		converted++
 	}
 
-	// the bundle index (§2c) becomes the archive's profile file: the space's
-	// name, its entry point and its sidebar. Written after the snapshots so a
-	// failed conversion does not leave a profile pointing at nothing.
+	// the bundle index (§2c) becomes two outputs: the profile file, which the
+	// installer reads for the space's homepage, and a Widget snapshot, which is
+	// how the sidebar reaches a space installed as an experience (see
+	// widgets.go). Written after the snapshots so a failed conversion does not
+	// leave either pointing at nothing.
 	if idxPath, ok := anyblockbatch.IndexPath(inDir); ok {
 		data, readErr := os.ReadFile(idxPath)
 		if readErr != nil {
@@ -182,14 +211,31 @@ func run(inDir, outDir string, normalizeIndent, lenient bool, format outputForma
 		if err := writeProfile(outDir, idx, names); err != nil {
 			return fmt.Errorf("write profile: %w", err)
 		}
+		// the Widget snapshot carries the id "widgets"; an object claiming the
+		// same one would share both that id — and so the importer's relinking
+		// entry for it — and the output file with the sidebar
+		if _, taken := names[widgetsObjectId]; taken {
+			return fmt.Errorf("an object in the bundle has id %q, which is reserved for the sidebar snapshot (SPEC.md §2c) — rename it", widgetsObjectId)
+		}
+		if err := writeWidgets(outDir, idx, format); err != nil {
+			return fmt.Errorf("write widgets: %w", err)
+		}
 		entry := idx.EffectiveEntryPoint()
 		if entry == "" {
 			entry = "(nothing — no widget names an object)"
 		}
-		fmt.Printf("profile written: space %q, install opens %s, %d widget(s)\n",
-			idx.Name, entry, len(idx.Widgets))
+		home := idx.SpaceHomepage()
+		if home == "" {
+			home = "(the widgets screen)"
+		}
+		fmt.Printf("profile written: space %q, homepage %s\n", idx.Name, home)
+		fmt.Printf("widgets written: %d sidebar widget(s), in index.json order\n", len(idx.Widgets))
+		// TEMPORARY: on the built-in-archive path inject() opens
+		// widgets[0].targetObjectId, because pb.Profile has no entry-point
+		// field. (On the experience path nothing opens once at all — see §2c —
+		// so there the entrypoint only matters through the homepage fallback.)
 		if declared := idx.EntryPoint(); declared != "" && declared != entry {
-			fmt.Fprintf(os.Stderr, "warning: entrypoint %q is not the first widget, so it is not what opens — the installer uses widgets[0] (%s)\n",
+			fmt.Fprintf(os.Stderr, "warning: entrypoint %q is not the first widget, so on the built-in-archive path it is not what opens — inject uses widgets[0] (%s)\n",
 				declared, entry)
 		}
 	} else {
@@ -203,7 +249,11 @@ func run(inDir, outDir string, normalizeIndent, lenient bool, format outputForma
 		}
 	}
 
-	fmt.Printf("\n%d documents converted, %d failed\n", converted, failed)
+	fmt.Printf("\n%d documents converted, %d failed", converted, failed)
+	if warned > 0 {
+		fmt.Printf(", %d warning(s)", warned)
+	}
+	fmt.Println()
 	fmt.Printf("synthesized %d relations, %d relation options\n", b.relationCount(), b.optionCount())
 	fmt.Println("output:", outDir)
 	if failed > 0 {

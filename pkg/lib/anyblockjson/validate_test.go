@@ -3,6 +3,7 @@ package anyblockjson
 import (
 	"encoding/json"
 	"errors"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -11,6 +12,131 @@ import (
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
+
+// The whole reason this format exists is the generate → validate → feed-back
+// loop (§12), so a confident wrong issue is worse than a verbose one: an
+// agent told `/blocks/0/type: property "type" is not allowed` deletes `type`.
+// Two schema mechanics produce those: `unevaluatedProperties: false` reports
+// every property of an object whose type-specific subschema failed (its
+// annotations are discarded), and an `anyOf` reports every branch it tried.
+func TestValidate_ErrorsDoNotCascade(t *testing.T) {
+	issues := func(t *testing.T, doc string) []Issue {
+		err := Validate([]byte(doc))
+		require.Error(t, err)
+		var ve *ValidationError
+		require.True(t, errors.As(err, &ve))
+		return ve.Issues
+	}
+
+	t.Run("a bad type is one issue, not three", func(t *testing.T) {
+		// the camelCase spelling is now the plausible mistake: it is what the
+		// pre-snake_case draft used, and what a model trained on it emits
+		got := issues(t, `{"version": 1, "blocks": [
+			{"type": "bulletedListItem", "text": "x"}]}`)
+		require.Len(t, got, 1, "got: %v", got)
+		assert.Equal(t, "/blocks/0/type", got[0].Path)
+		assert.Contains(t, got[0].Message, "value must be one of")
+	})
+
+	t.Run("a bad field type is one issue, not four", func(t *testing.T) {
+		got := issues(t, `{"version": 1, "blocks": [
+			{"type": "checkbox", "checked": "yes", "text": "x"}]}`)
+		require.Len(t, got, 1, "got: %v", got)
+		assert.Equal(t, "/blocks/0/checked", got[0].Path)
+		assert.Contains(t, got[0].Message, "got string, want boolean")
+	})
+
+	t.Run("the anyOf branch the author meant is the one reported", func(t *testing.T) {
+		got := issues(t, `{"version": 1, "blocks": [
+			{"type": "table", "columns": [{"id": "c1"}],
+			 "rows": [{"id": "r1", "cells": [{"type": "paragraph", "id": "x1", "text": "a"}]}]}]}`)
+		require.Len(t, got, 1, "got: %v", got)
+		assert.Equal(t, "/blocks/0/rows/0/cells/0/id", got[0].Path)
+	})
+
+	t.Run("a cell of no admissible shape names every shape once", func(t *testing.T) {
+		got := issues(t, `{"version": 1, "blocks": [
+			{"type": "table", "columns": [{"id": "c1"}],
+			 "rows": [{"id": "r1", "cells": [7]}]}]}`)
+		require.Len(t, got, 1, "got: %v", got)
+		assert.Equal(t, "/blocks/0/rows/0/cells/0", got[0].Path)
+		for _, want := range []string{"number", "string", "null", "object", "array"} {
+			assert.Contains(t, got[0].Message, want)
+		}
+	})
+
+	t.Run("an unknown key is still reported when it is the only fault", func(t *testing.T) {
+		got := issues(t, `{"version": 1, "blocks": [
+			{"type": "paragraph", "text": "x", "bogus": 1}]}`)
+		require.Len(t, got, 1, "got: %v", got)
+		assert.Equal(t, "/blocks/0/bogus", got[0].Path)
+		assert.Contains(t, got[0].Message, `property "bogus" is not allowed`)
+	})
+
+	t.Run("an unknown key survives a sibling error", func(t *testing.T) {
+		// suppression is aimed at names the schema knows and could not
+		// evaluate; a hallucinated key is never admissible, so the verdict
+		// on it stands and the agent gets both facts in one round
+		got := issues(t, `{"version": 1, "blocks": [
+			{"type": "checkbox", "checked": "yes", "bogus": 1}]}`)
+		require.Len(t, got, 2, "got: %v", got)
+		paths := []string{got[0].Path, got[1].Path}
+		assert.Contains(t, paths, "/blocks/0/checked")
+		assert.Contains(t, paths, "/blocks/0/bogus")
+	})
+
+	t.Run("the children migration hint survives", func(t *testing.T) {
+		got := issues(t, `{"version": 1, "blocks": [
+			{"type": "paragraph", "text": "x", "children": []}]}`)
+		require.Len(t, got, 1, "got: %v", got)
+		assert.Contains(t, got[0].Message, "nest with indent instead")
+	})
+
+	t.Run("a wrong field on the right type is still reported", func(t *testing.T) {
+		// `checked` belongs to checkbox, and nothing else in this block
+		// failed, so the closed-set verdict is trustworthy
+		got := issues(t, `{"version": 1, "blocks": [
+			{"type": "paragraph", "checked": true}]}`)
+		require.Len(t, got, 1, "got: %v", got)
+		assert.Equal(t, "/blocks/0/checked", got[0].Path)
+	})
+}
+
+// A tag-shaped sequence the grammar does not recognize is literal text and
+// never an error (§10) — that leniency is what keeps a stored document
+// readable across a version that adds a tag. But canonical export escapes
+// those bytes (§8.2), so finding them unescaped means the text was
+// hand-written or produced by a version that knows the tag, which is worth
+// one warning and no more.
+func TestValidate_UnknownTagStaysLiteralAndWarns(t *testing.T) {
+	warningsFor := func(t *testing.T, doc string) []Issue {
+		var got []Issue
+		require.NoError(t, ValidateWarn([]byte(doc), func(i Issue) { got = append(got, i) }),
+			"an unknown tag is not a validation error")
+		return got
+	}
+
+	t.Run("unrecognized tag warns once and known tags do not", func(t *testing.T) {
+		got := warningsFor(t, `{"version": 1, "blocks": [
+			{"type": "paragraph", "text": "<sub>x</sub> and <u>y</u>"}]}`)
+		require.Len(t, got, 1, "one warning per unrecognized name, not per occurrence")
+		assert.Equal(t, "/blocks/0/text", got[0].Path)
+		assert.Contains(t, got[0].Message, `"<sub"`)
+	})
+
+	t.Run("escaped tag is unambiguous, so no warning", func(t *testing.T) {
+		assert.Empty(t, warningsFor(t, `{"version": 1, "blocks": [
+			{"type": "paragraph", "text": "\\<sub>x\\</sub>"}]}`))
+	})
+
+	t.Run("a table cell string is warned about too", func(t *testing.T) {
+		got := warningsFor(t, `{"version": 1, "blocks": [
+			{"type": "table", "columns": [{"id": "c1"}],
+			 "rows": [{"id": "r1", "cells": ["<mark>hi</mark>"]}]}]}`)
+		require.Len(t, got, 1)
+		assert.Equal(t, "/blocks/0/rows/0/cells/0", got[0].Path)
+	})
+}
 
 func TestValidate_Valid(t *testing.T) {
 	tests := []struct {
@@ -25,10 +151,10 @@ func TestValidate_Valid(t *testing.T) {
 			"type": "page",
 			"properties": {"name": "Test", "iconEmoji": "🔥", "status": ["In progress"], "priority": 3, "done": false},
 			"blocks": [
-				{"id": "b1", "type": "heading2", "text": "Goals"},
+				{"id": "b1", "type": "heading_2", "text": "Goals"},
 				{"id": "b2", "type": "paragraph", "text": "Ship the **new export**"},
-				{"type": "bulletedListItem", "text": "item"},
-				{"indent": 1, "type": "bulletedListItem", "text": "nested"},
+				{"type": "bulleted_list_item", "text": "item"},
+				{"indent": 1, "type": "bulleted_list_item", "text": "nested"},
 				{"type": "checkbox", "checked": true, "text": "Draft"},
 				{"type": "code", "language": "go", "text": "func main() {}"},
 				{"type": "divider", "style": "dots"},
@@ -43,32 +169,32 @@ func TestValidate_Valid(t *testing.T) {
 			{"type": "table",
 			 "columns": [{"id": "c1"}, {"id": "c2", "width": 120}],
 			 "rows": [
-				{"id": "r1", "isHeader": true, "cells": ["Name", "Status"]},
+				{"id": "r1", "is_header": true, "cells": ["Name", "Status"]},
 				{"id": "r2", "cells": ["Export", {"type": "checkbox", "checked": true, "text": "done"}]},
 				{"id": "r3", "cells": [null]}
 			 ]}
 		]}`},
 		{"dataview", `{"version": 1, "blocks": [
-			{"type": "dataview", "objectId": "bafyset",
+			{"type": "dataview", "object_id": "bafyset",
 			 "properties": [{"key": "name", "format": "text"}, {"key": "status", "format": "select"}],
 			 "views": [
-				{"id": "v1", "type": "kanban", "name": "By status", "groupBy": "status",
-				 "sorts": [{"property": "dueDate", "direction": "asc", "emptyPlacement": "end"}],
+				{"id": "v1", "type": "kanban", "name": "By status", "group_by": "status",
+				 "sorts": [{"property": "dueDate", "direction": "asc", "empty_placement": "end"}],
 				 "filters": [
-					{"property": "dueDate", "condition": "less", "datePreset": "currentWeek"},
+					{"property": "dueDate", "condition": "less", "date_preset": "current_week"},
 					{"operator": "or", "filters": [
 						{"property": "done", "condition": "equal", "value": false},
 						{"property": "done", "condition": "empty"}
 					]}
 				 ],
-				 "columns": [{"property": "name"}, {"property": "status", "width": 30, "aggregation": "countDistinct", "align": "right"}]}
+				 "columns": [{"property": "name"}, {"property": "status", "width": 30, "aggregation": "count_distinct", "align": "right"}]}
 			 ]}
 		]}`},
-		{"template", `{"version": 1, "type": "template", "templateFor": "task"}`},
+		{"template", `{"version": 1, "type": "template", "template_for": "task"}`},
 		{"collection items", `{"version": 1, "type": "collection", "items": ["obj1", "obj2"]}`},
 		{"widget", `{"version": 1, "kind": "widget", "blocks": [
 			{"type": "widget", "layout": "tree", "limit": 6},
-			{"indent": 1, "type": "link", "objectId": "obj1"}
+			{"indent": 1, "type": "link", "object_id": "obj1"}
 		]}`},
 		{"explicit indent 0", `{"version": 1, "blocks": [{"indent": 0, "type": "paragraph", "text": "x"}]}`},
 		{"cell array with descendants", `{"version": 1, "blocks": [
@@ -77,7 +203,7 @@ func TestValidate_Valid(t *testing.T) {
 				{"indent": 1, "type": "paragraph", "text": "nested"}
 			]]}]}
 		]}`},
-		{"heading4 alias", `{"version": 1, "blocks": [{"type": "heading4", "text": "deep"}]}`},
+		{"heading_4 alias", `{"version": 1, "blocks": [{"type": "heading_4", "text": "deep"}]}`},
 		{"equation alias", `{"version": 1, "blocks": [{"type": "equation", "text": "E=mc^2"}]}`},
 		{"refs", `{"version": 1, "refs": {"roman": "bafyreiabc", "x_1-2": "bafyreidef"}}`},
 		// view-id uniqueness is scoped to the dataview BLOCK (§6.2): the app
@@ -85,8 +211,8 @@ func TestValidate_Valid(t *testing.T) {
 		// creating an inline set from one copies its views verbatim, so a
 		// page with two inline collections legitimately holds two "default"s
 		{"one view id in two dataviews", `{"version": 1, "blocks": [
-			{"type": "dataview", "objectId": "bafyone", "views": [{"id": "default", "name": "A"}]},
-			{"type": "dataview", "objectId": "bafytwo", "views": [{"id": "default", "name": "B"}]}
+			{"type": "dataview", "object_id": "bafyone", "views": [{"id": "default", "name": "A"}]},
+			{"type": "dataview", "object_id": "bafytwo", "views": [{"id": "default", "name": "B"}]}
 		]}`},
 	}
 	for _, tc := range tests {
@@ -154,7 +280,7 @@ func TestValidate_Invalid(t *testing.T) {
 		{"table inner id with dash", `{"version": 1, "blocks": [
 			{"type": "table", "columns": [{"id": "c-1"}], "rows": []}
 		]}`, "/blocks/0/columns/0/id"},
-		{"templateFor without template type", `{"version": 1, "type": "page", "templateFor": "task"}`, "templateFor"},
+		{"template_for without template type", `{"version": 1, "type": "page", "template_for": "task"}`, "template_for"},
 		{"language and fields.lang conflict", `{"version": 1, "blocks": [
 			{"type": "code", "language": "go", "fields": {"lang": "go"}}
 		]}`, "fields.lang"},
@@ -190,19 +316,86 @@ func TestValidate_Invalid(t *testing.T) {
 }
 
 func TestValidate_NewerFormatHint(t *testing.T) {
-	// a document citing schema 1.3 with an unknown field must be reported as
-	// produced by a newer version (§10)
-	doc := `{
-		"$schema": "https://schemas.anytype.io/anyblock/1.3/object.schema.json",
-		"version": 1,
-		"blocks": [{"type": "paragraph", "sparkles": true}]
-	}`
-	err := Validate([]byte(doc))
-	require.Error(t, err)
-	var ve *ValidationError
-	require.True(t, errors.As(err, &ve))
-	assert.True(t, ve.NewerFormat)
-	assert.True(t, strings.Contains(err.Error(), "newer version"))
+	// the version integer is the sole authority on format identity (§10): a
+	// document declaring a newer one is rejected outright, named in the error,
+	// and never reaches schema validation
+	t.Run("newer version is rejected and named", func(t *testing.T) {
+		// given
+		doc := `{"version": 2, "blocks": [{"type": "paragraph", "sparkles": true}]}`
+
+		// when
+		err := Validate([]byte(doc))
+
+		// then
+		require.Error(t, err)
+		var ve *ValidationError
+		require.True(t, errors.As(err, &ve))
+		assert.True(t, ve.NewerFormat)
+		assert.True(t, strings.Contains(err.Error(), "newer version"))
+		assert.True(t, strings.Contains(err.Error(), "2"))
+		// the unknown field never got a chance to produce a constraint failure
+		assert.False(t, strings.Contains(err.Error(), "sparkles"))
+	})
+
+	t.Run("$schema does not affect format identity", func(t *testing.T) {
+		// a stale or invented $schema is decorative; only "version" gates
+		// given
+		doc := `{
+			"$schema": "https://schemas.anytype.io/anyblock/9/object.schema.json",
+			"version": 1,
+			"blocks": [{"type": "paragraph", "text": "fine"}]
+		}`
+
+		// when
+		err := Validate([]byte(doc))
+
+		// then
+		require.NoError(t, err)
+	})
+}
+
+// TestVersionIdentity pins the one copy of the format version the compiler
+// cannot keep honest: the $id and the version const inside each embedded
+// schema file. The Go URLs are derived from FormatVersion, so a bump moves
+// them automatically — this catches the JSON that a bump must move by hand.
+func TestVersionIdentity(t *testing.T) {
+	// given
+	want := map[string]struct {
+		raw []byte
+		url string
+	}{
+		"object": {raw: schemaJSON, url: SchemaURL},
+		"index":  {raw: indexSchemaJSON, url: IndexSchemaURL},
+	}
+
+	for name, tc := range want {
+		t.Run(name, func(t *testing.T) {
+			// when
+			var got struct {
+				Id      string `json:"$id"`
+				Version struct {
+					Const *int `json:"const"`
+				} `json:"-"`
+			}
+			require.NoError(t, json.Unmarshal(tc.raw, &got))
+
+			var props struct {
+				Properties struct {
+					Version struct {
+						Const *int `json:"const"`
+					} `json:"version"`
+				} `json:"properties"`
+			}
+			require.NoError(t, json.Unmarshal(tc.raw, &props))
+
+			// then
+			assert.Equal(t, tc.url, got.Id, "schema $id must equal the derived URL")
+			require.NotNil(t, props.Properties.Version.Const, "schema must pin the version")
+			assert.Equal(t, FormatVersion, *props.Properties.Version.Const)
+			assert.True(t, strings.HasPrefix(tc.url, schemaBaseURL+strconv.Itoa(FormatVersion)+"/"),
+				"URL must carry FormatVersion and no minor axis")
+		})
+	}
 }
 
 func TestValidate_PathAddressing(t *testing.T) {
