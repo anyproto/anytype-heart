@@ -908,6 +908,78 @@ spool. And `phaseOf` read the lifecycle label while `cancelEffectOf` read the ma
 marker, so a dir cancelled or compensating mid-crawl reported FINALIZING and
 NothingToUndo in one message; the marker now decides both.
 
+**As built (fix round 2, 2026-08-17 — items 11-17 plus one disposal branch).** Seven
+corrections, and three of them are the same defect wearing different clothes: a rule
+implemented on one side of a branch and not the other.
+
+1. **`totalsKnown` is a fact about the DENOMINATOR, not about the phase.** Reading it as
+   `phase != SCANNING` was true of the pass-1/pass-2 boundary the rule was written for
+   and false everywhere else: announcing CREATING re-bases the counters to zero and the
+   spool census that fills them arrives after, so every fresh import published one
+   CREATING event claiming a known total of zero — §15.3's fake bar, from the code §15.3
+   is the rationale for. The dormant reader already derived this correctly for a crawling
+   dir (as-built item 6 above) and hard-coded `true` for a materializing one three lines
+   away. Both sides ask the same question now.
+2. **A swallowed pass-3 census leaves the surface honest rather than inverted.** The
+   census failure is still swallowed — the replay reads the same rows and fails loudly
+   there — but the §15 counters now read UNKNOWN instead of climbing past a zero
+   denominator, and the LEGACY scalar is seeded from the same census `statSeed` already
+   reads. That seeding closes a decision whose precondition had expired: moving the
+   resumed run's total out of `resumerun.go` into the engine's one derivation assumed the
+   engine always publishes it, and a failed census means it does not.
+3. **The terminal `state` is the RUN's verdict.** Every hook that could set it before
+   settlement speaks for the transport, and the issue funnel escalates only at
+   `SeverityFatal` — so an ALL_OR_NOTHING abort, which aborts on a `SeverityObjectError`
+   the engine carries out as `Result.Err` without re-reporting, could never reach ERROR.
+   `Close` takes the verdict now, at the one settlement point, which also covers the abort
+   shapes that never reach the funnel at all. The stop SOURCE decides, not the fatal's
+   code: a cancel and a suspend stay calm, a transport deadline wearing the cancel's code
+   does not.
+4. **`resumesInMs` is computed from an INSTANT.** It was a duration captured when the
+   pacer signalled and never moved again, so a poller's countdown never counted down.
+   Every other time-valued field on the event is already an instant for exactly this
+   reason. The wire field keeps its name and now means it.
+5. **A sweep attempt whose dir survives is not a finished import.** Keep-and-retry is
+   deliberate, but every attempt settled through the user-facing delivery path, so one
+   failure the user watched became three notifications across three app starts. A run the
+   SWEEP started reports only when it is that run's last word. The crawl branch had this
+   rule for its transient keep and drew the line at transient-vs-not, which is the wrong
+   axis.
+6. **Claim recovery is bounded like every other pass-2 discovery.** A vanished claim costs
+   a three-rung id ladder at ~3 rps, and the loop was bounded only by how many claims the
+   interrupted session made: 10,000 deleted pages meant over two hours of silent 404s
+   before pass 2 could begin. Capped at `lateDiscoveryCap`'s number, with the unprobed
+   remainder stated once.
+7. **The advisory telemetry seam contains its own panics.** "Never affects control flow"
+   was a comment; the seam runs on persist workers, whose recover turns a panic into a
+   fatal that then compensates the import away, and on the settlement, which flushes the
+   terminal event before disposing the store. Contained at the tee's fan-out (per
+   consumer) and at the emitter's own entry points.
+
+And the disposal branch, same class as the fix round's item 3: `finishRun` dropped a
+failed run's dir on `CompensationRan && Leaked == 0`, but in-process compensation walks the
+IN-MEMORY journal while the durable scope is `CompensationInputs`. A pass-3 create torn
+between the tree write and its effect row leaves a row still `claimed` — invisible to the
+journal, inside the delete set — so it was neither deleted nor kept. Past the materialize
+marker the dir is now kept for the sweep; before it the two scopes provably agree.
+
+**Scheduled expiry — `Reporter.Bytes` and the download pool.** `spoolSink.drainFile`
+publishes `Reporter.Bytes(spilledBytes.Add(copied))`: an atomic Add whose RESULT is
+announced outside any ordering, which is item 7's defect verbatim (`Created` published a
+level from eight workers and settled at 598/600). It is safe today only because the whole
+drain runs on the converter's single goroutine — `Sink.Object` is contractually
+single-goroutine, and Notion's prefetch workers buffer per page and emit from the
+converter goroutine. §4.1 above defers "a small bounded download pool (concurrency ~4)";
+**landing that pool reintroduces item 7 on `bytesDone`, and must ship with the ordering.**
+
+Not by copying `Created`'s surface guard, though. That guard refuses any level below the
+one already published, which is right for a counter that only ever rises; `bytesDone` is
+also fed by a MEASUREMENT of the spill dir (`SpillBytes`, re-read at the pass boundary and
+on a resumed crawl), and nothing about a directory's size is structurally monotone — it
+happens to be so today only because pass 3 never prunes the spill as it uploads. So the
+high-water mark belongs on the PRODUCER side, where `publishCreated` puts it: the pool
+orders its own publications and the surface keeps taking the level it is given.
+
 **As built (DM-3, 2026-08-15; predicate corrected in the fix round).** `safeToClose`
 turned true for pass 2 as §15.7 scheduled — and the fix round corrected its predicate:
 "some resume class covers the run" keyed off the stored request alone, which reported
