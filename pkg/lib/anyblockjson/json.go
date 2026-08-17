@@ -10,6 +10,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"math"
 	"sort"
 	"strings"
 	"time"
@@ -631,9 +632,40 @@ func jsonMapToProtoStruct(m map[string]any) *types.Struct {
 // ---- dates ----
 //
 
-// formatDate renders unix seconds in the full UTC RFC 3339 form (§3).
-func formatDate(sec int64) string {
-	return time.Unix(sec, 0).UTC().Format(time.RFC3339)
+// The range of unix seconds RFC 3339 can represent: its year is four digits,
+// so a timestamp outside years 0000–9999 has no form in it. The bound is not a
+// matter of taste — outside it, Format produces a string (`57482-01-22…`,
+// `-0044-03-15…`) that parseDate cannot read back, so a caller that writes one
+// anyway has silently changed the value's type on the way home.
+//
+// It is reachable from ordinary data: a millisecond timestamp stored where
+// seconds belong (1751791445000) lands in year 57482, and that mistake is
+// common enough to be a corruption class rather than a curiosity.
+var (
+	minDateSec = time.Date(0, time.January, 1, 0, 0, 0, 0, time.UTC).Unix()
+	maxDateSec = time.Date(9999, time.December, 31, 23, 59, 59, 0, time.UTC).Unix()
+)
+
+// formatDate renders unix seconds in the full UTC RFC 3339 form (§3),
+// reporting false when the value has no representation there. Callers must
+// handle false rather than write the string anyway: parseDate cannot read it
+// back, and the round trip would turn a date into a string.
+func formatDate(sec int64) (string, bool) {
+	if sec < minDateSec || sec > maxDateSec {
+		return "", false
+	}
+	return time.Unix(sec, 0).UTC().Format(time.RFC3339), true
+}
+
+// formatDateValue is formatDate for a stored property value, which is a
+// float64. It range-checks before converting: a float too large for an int64
+// converts to an implementation-defined value in Go, so checking after would
+// be checking the wrong number.
+func formatDateValue(f float64) (string, bool) {
+	if math.IsNaN(f) || f < float64(minDateSec) || f > float64(maxDateSec) {
+		return "", false
+	}
+	return formatDate(int64(f))
 }
 
 // parseDate accepts RFC 3339 (with offsets and fractional seconds truncated)

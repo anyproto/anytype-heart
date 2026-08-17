@@ -35,7 +35,7 @@ type Options struct {
 	CompactIds        bool             // export only: shorten ids, emit refs legend (§9a)
 	GenerateId        func() string    // import only: id generator for missing ids; nil = random 24-hex
 	NormalizeIndent   bool             // import only: clamp over-deep indents instead of rejecting (§4)
-	OnWarning         func(Issue)      // optional sink for warning-grade issues (NormalizeIndent clamps)
+	OnWarning         func(Issue)      // optional sink for warning-grade issues, both directions (indent clamps, unrepresentable dates, …)
 }
 
 const (
@@ -310,6 +310,16 @@ func (e *exporter) buildProperties() *omap {
 	return m
 }
 
+// warn reports a warning-grade issue through the caller's sink (§13): a thing
+// export had to do that the author would want to know about, but that does not
+// make the output invalid. Silent when no sink is wired.
+func (e *exporter) warn(path, format string, args ...any) {
+	if e.opts.OnWarning == nil {
+		return
+	}
+	e.opts.OnWarning(Issue{Path: path, Message: fmt.Sprintf(format, args...)})
+}
+
 func (e *exporter) resolveFormat(key string) (model.RelationFormat, bool) {
 	return resolveFormatWith(e.opts, key)
 }
@@ -343,7 +353,16 @@ func (e *exporter) propertyValue(key string, v *types.Value) any {
 	switch format {
 	case model.RelationFormat_date:
 		if n, isNum := v.GetKind().(*types.Value_NumberValue); isNum {
-			return formatDate(int64(n.NumberValue))
+			if s, ok := formatDateValue(n.NumberValue); ok {
+				return s
+			}
+			// no RFC 3339 form: emitting one anyway would write a string
+			// parseDate cannot read, so the value would come back as a string
+			// on a date property and stay that way (byte-stable, so nothing
+			// corrects it). The raw number round-trips instead.
+			e.warn("/properties/"+key,
+				"date %v has no RFC 3339 form (outside years 0000-9999), so it is written as a raw number; "+
+					"a value this large is usually milliseconds where seconds belong", n.NumberValue)
 		}
 	case model.RelationFormat_status, model.RelationFormat_tag:
 		var out []any
@@ -712,7 +731,14 @@ func (e *exporter) fileToJSON(m *omap, f *model.BlockContentFile) {
 		m.setNonEmpty("style", fileStyleNames.name(f.Style))
 	}
 	if f.AddedAt != 0 {
-		m.set("addedAt", formatDate(f.AddedAt))
+		// addedAt is a string in the schema, so there is no number form to
+		// fall back to (§5): an unrepresentable timestamp is dropped rather
+		// than written as a string no reader can parse back
+		if s, ok := formatDate(f.AddedAt); ok {
+			m.set("addedAt", s)
+		} else {
+			e.warn("", "file block: addedAt %d has no RFC 3339 form (outside years 0000-9999), so it is omitted", f.AddedAt)
+		}
 	}
 }
 
