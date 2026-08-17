@@ -370,3 +370,33 @@ func TestSweepResumeQuietRetry(t *testing.T) {
 		assert.Len(t, notes.sent, 1)
 	})
 }
+
+func TestSweepResumeStatisticDenominator(t *testing.T) {
+	t.Run("a resumed run's denominator is its census, counted once", func(t *testing.T) {
+		// given — the whole seam end to end, which is where the double count
+		// hid: resumeRun seeds the surface from the spool census so the
+		// rehydration window is not a lie, and engine.Resume then announces
+		// the SAME census through Discovered, which is a delta. Neither half
+		// is wrong on its own; together they published twice the total, and
+		// no unit test sees both halves.
+		fx, spc := resumeFixture(t)
+		makeResumableRun(t, runstore.RunsRoot(fx.repo), "crashed")
+		spc.EXPECT().CreateTreeObjectWithPayload(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(
+			func(ctx context.Context, payload treestorage.TreeStorageCreatePayload, initFunc smartblock.InitFunc) (smartblock.SmartBlock, error) {
+				sb := smarttest.New(payload.RootRawChange.Id)
+				if initCtx := initFunc(payload.RootRawChange.Id); initCtx.State != nil {
+					require.NoError(t, sb.Apply(initCtx.State))
+				}
+				return sb, nil
+			}).Once()
+
+		// when
+		fx.service.sweepAbandoned()
+
+		// then: the dir holds exactly one spooled page, and the run ends on it
+		last := fx.lastStatistic(t)
+		assert.Equal(t, int64(1), last.PagesTotal, "one census, counted once")
+		assert.Equal(t, int64(1), last.PagesDone, "and materialization reached it")
+		assert.True(t, last.TotalsKnown)
+	})
+}
