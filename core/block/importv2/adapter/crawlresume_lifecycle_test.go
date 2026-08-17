@@ -355,8 +355,7 @@ func TestCrawlResumeNonTransientKeep(t *testing.T) {
 		// is not in the Notion client's retryable set, and everything
 		// outside that set used to destroy the crawl artifact. The rule is
 		// the empty journal, not the error's provider shape: nothing is in
-		// the space, so the dir survives for the attempts-capped retry —
-		// loudly (a finish notification), unlike the quiet transient keep.
+		// the space, so the dir survives for the attempts-capped retry.
 		unauthorized := &recordingCrawlHandler{}
 		unauthorized.inner = func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -367,7 +366,7 @@ func TestCrawlResumeNonTransientKeep(t *testing.T) {
 		// when
 		fx.service.sweepAbandoned()
 
-		// then: dir kept, still crawl-resumable, and the failure was delivered
+		// then: dir kept, still crawl-resumable
 		store, err := runstore.Open(context.Background(), dir)
 		require.NoError(t, err, "a mid-crawl failure must keep the crawl artifact whatever its shape")
 		defer store.Close()
@@ -375,7 +374,14 @@ func TestCrawlResumeNonTransientKeep(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, runstore.StateRunning, manifest.State)
 		assert.NotEmpty(t, manifest.Request, "the request must survive for the next attempt")
-		assert.Equal(t, 1, fx.finishEvents(), "a non-transient failure settles loudly, unlike the quiet transient keep")
+
+		// and: silently. The previous round drew the loud/quiet line at
+		// transient-vs-not, which is the wrong axis (review item 14): what
+		// decides is whether the run is OVER and whether the user asked for
+		// this attempt. Both keeps are sweep attempts whose dir survives, so
+		// neither is a finished import — otherwise one failure the user
+		// watched becomes three notifications across three app starts.
+		assert.Zero(t, fx.finishEvents(), "a kept dir means the run is not over")
 	})
 }
 

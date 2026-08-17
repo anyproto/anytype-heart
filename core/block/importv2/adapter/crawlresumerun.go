@@ -168,13 +168,15 @@ func (s *service) resumeCrawlRun(ctx context.Context, store *runstore.Store, man
 			log.Errorf("refund crawl resume attempt: %s", err)
 		}
 		lc.settled = true
+		lc.kept = true
 		lc.settleTracking(verdictOf(result))
 		if err := store.Close(); err != nil {
 			log.Errorf("close kept crawl run: %s", err)
 		}
 		log.With("dir", outcome.Dir).Warnf("crawl resume hit a transient failure; dir kept for the next start: %s", result.Err)
-		progress.Finish(result.Err)
-		s.fileSync.ClearImportEvents()
+		// The quiet keep, through the ONE rule now (settleResumedRun): a
+		// sweep attempt whose dir survives is not a finished import.
+		s.settleResumedRun(lc, wireReq, progress, result)
 		progressSettled = true
 		outcome.Action, outcome.Err = sweepSkippedError, result.Err
 		return outcome
@@ -192,7 +194,7 @@ func (s *service) resumeCrawlRun(ctx context.Context, store *runstore.Store, man
 	}
 
 	outcome.Result = persist.CompensationResult{Compensated: combined.Compensated, Leaked: combined.Leaked}
-	s.settleRun(wireReq, progress, combined)
+	s.settleResumedRun(lc, wireReq, progress, combined)
 	progressSettled = true
 	switch {
 	case combined.Suspended:

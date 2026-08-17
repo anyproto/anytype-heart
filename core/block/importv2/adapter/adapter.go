@@ -310,6 +310,34 @@ func (s *service) settleRun(req *pb.RpcObjectImportRequest, progress process.Pro
 	}))
 }
 
+// settleResumedRun is settleRun for a run the SWEEP started rather than the
+// user (review item 14).
+//
+// Keep-and-retry is deliberate — it is what saves a two-hour crawl from an
+// offline laptop — but every attempt settled through the user-facing
+// delivery path, so ONE failure the user watched became THREE failure
+// notifications across three app starts, one per attempt the sweep made on
+// its own initiative. A run whose dir survived is not over: the user was
+// told when their foreground run stopped, and the retries they never asked
+// for say nothing. The progress still settles (an unfinished process leaks),
+// and a resume that FINISHES reports exactly as a foreground run's finish
+// does.
+//
+// The keep is read from finishRun's own verdict rather than re-derived: a
+// second copy of that ladder is precisely what drifts. The crawl branch's
+// transient keep — the same rule, hand-written there first — comes through
+// this door too.
+func (s *service) settleResumedRun(lc *runLifecycle, req *pb.RpcObjectImportRequest, progress process.Progress, result *importv2.Result) {
+	if result.Err != nil && lc.kept {
+		log.With("importType", req.Type.String(), "spaceId", req.SpaceId).
+			Warnf("sweep resume failed and kept its dir; the next start retries, so no failure is reported: %s", result.Err)
+		s.fileSync.ClearImportEvents()
+		progress.Finish(result.Err)
+		return
+	}
+	s.settleRun(req, progress, result)
+}
+
 // issuesCount is the wire-facing issue count: warning-or-worse issues plus
 // the overflow the capped list did not retain (info diagnostics excluded).
 func issuesCount(result *importv2.Result) int64 {

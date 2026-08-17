@@ -21,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	importv2 "github.com/anyproto/anytype-heart/core/block/importv2"
 	"github.com/anyproto/anytype-heart/core/block/importv2/runstore"
+	"github.com/anyproto/anytype-heart/core/block/process"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/space/clientspace"
@@ -303,5 +304,69 @@ func TestResumePrologueShutdown(t *testing.T) {
 		m, err := reopened.Manifest(context.Background())
 		require.NoError(t, err)
 		assert.Zero(t, m.ResumeAttempts, "zero work done, zero budget spent")
+	})
+}
+
+func TestSweepResumeQuietRetry(t *testing.T) {
+	t.Run("a background resume that keeps its dir for another attempt tells nobody", func(t *testing.T) {
+		// given — review item 14: keep-and-retry is deliberate (it is what
+		// saves a two-hour crawl), but every attempt settled through the
+		// user-facing delivery path, so ONE failure the user watched became
+		// three failure notifications across three app starts. The user did
+		// not ask for the retries, and a run whose dir is kept is not over.
+		fx, spc := resumeFixture(t)
+		notes := &fakeNotifications{}
+		fx.service.notificationsSvc = notes
+		procs := &capturingProcesses{}
+		fx.service.processes = procs
+		dir := makeResumableRun(t, runstore.RunsRoot(fx.repo), "crashed")
+		spc.EXPECT().CreateTreeObjectWithPayload(mock.Anything, mock.Anything, mock.Anything).
+			Return(nil, assert.AnError).Maybe()
+
+		// when
+		fx.service.sweepAbandoned()
+
+		// then: the dir is kept — the sweep will look at it again
+		require.DirExists(t, dir)
+
+		// and: nothing was delivered as a finished import
+		assert.Zero(t, fx.finishEvents(), "a run that is not over has not finished")
+		require.NotNil(t, procs.progress)
+		if sender, ok := procs.progress.(process.NotificationSender); ok {
+			sender.SendNotification()
+		}
+		assert.Empty(t, notes.sent, "the user already heard about this failure once")
+	})
+
+	t.Run("a background resume that finishes still reports", func(t *testing.T) {
+		// given: the quiet rule is about a run that is NOT over. One that is
+		// — successfully, dir disposed — is delivered exactly as a
+		// foreground run's finish is.
+		fx, spc := resumeFixture(t)
+		notes := &fakeNotifications{}
+		fx.service.notificationsSvc = notes
+		procs := &capturingProcesses{}
+		fx.service.processes = procs
+		dir := makeResumableRun(t, runstore.RunsRoot(fx.repo), "crashed")
+		spc.EXPECT().CreateTreeObjectWithPayload(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(
+			func(ctx context.Context, payload treestorage.TreeStorageCreatePayload, initFunc smartblock.InitFunc) (smartblock.SmartBlock, error) {
+				sb := smarttest.New(payload.RootRawChange.Id)
+				if initCtx := initFunc(payload.RootRawChange.Id); initCtx.State != nil {
+					require.NoError(t, sb.Apply(initCtx.State))
+				}
+				return sb, nil
+			}).Once()
+
+		// when
+		fx.service.sweepAbandoned()
+
+		// then
+		require.NoDirExists(t, dir)
+		assert.Equal(t, 1, fx.finishEvents())
+		require.NotNil(t, procs.progress)
+		sender, ok := procs.progress.(process.NotificationSender)
+		require.True(t, ok)
+		sender.SendNotification()
+		assert.Len(t, notes.sent, 1)
 	})
 }

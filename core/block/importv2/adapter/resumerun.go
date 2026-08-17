@@ -120,7 +120,7 @@ func (s *service) resumeRun(ctx context.Context, store *runstore.Store, manifest
 	s.finishRun(lc, result)
 
 	outcome.Result = persist.CompensationResult{Compensated: result.Compensated, Leaked: result.Leaked}
-	s.settleRun(wireReq, progress, result)
+	s.settleResumedRun(lc, wireReq, progress, result)
 	progressSettled = true
 	switch {
 	case result.Suspended:

@@ -45,6 +45,12 @@ type runLifecycle struct {
 	// (engineDeps). Zero for a fresh run and a crawl resume, whose
 	// denominators are still being discovered.
 	seedTotal int64
+	// kept records the DISPOSAL verdict finishRun reached: the dir survived
+	// this settlement, so something will look at it again. Recorded rather
+	// than re-derived, because the predicate that decides it is finishRun's
+	// own ladder and a second copy of it would drift (review item 14 needs
+	// the answer; discardable and the invariant branches produce it).
+	kept bool
 }
 
 // newLifecycle is the ONE construction of a run's lifecycle handle, shared
@@ -278,6 +284,7 @@ func (s *service) finishRun(lc *runLifecycle, result *importv2.Result) {
 		if err := lc.store.Close(); err != nil {
 			log.Errorf("close suspended run: %s", err)
 		}
+		lc.kept = true
 		log.With("dir", lc.store.Dir()).Warnf("import run suspended for shutdown; state kept for the startup sweep")
 		return
 	}
@@ -300,6 +307,7 @@ func (s *service) finishRun(lc *runLifecycle, result *importv2.Result) {
 		if err := lc.store.Close(); err != nil {
 			log.Errorf("close unsettled failed run: %s", err)
 		}
+		lc.kept = true
 		log.With("dir", lc.store.Dir()).Warnf("run failed before compensation could run; dir kept for the sweep")
 		return
 	}
@@ -318,6 +326,7 @@ func (s *service) finishRun(lc *runLifecycle, result *importv2.Result) {
 		if err := lc.store.Close(); err != nil {
 			log.Errorf("close leaked run: %s", err)
 		}
+		lc.kept = true
 		log.With("dir", lc.store.Dir()).Warnf("compensation leaked %d objects; dir kept for the startup sweep to retry", result.Leaked)
 		return
 	}
@@ -344,6 +353,7 @@ func (s *service) finishRun(lc *runLifecycle, result *importv2.Result) {
 		if err := lc.store.Close(); err != nil {
 			log.Errorf("close compensated materializing run: %s", err)
 		}
+		lc.kept = true
 		log.With("dir", lc.store.Dir()).
 			Warnf("pass 3 failed; dir kept so the sweep can compensate the durable scope the journal cannot see")
 		return
