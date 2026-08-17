@@ -956,6 +956,18 @@ implemented on one side of a branch and not the other.
    terminal event before disposing the store. Contained at the tee's fan-out (per
    consumer) and at the emitter's own entry points.
 
+And a regression the review could not have seen, because the round it audited
+introduced it: **a resumed pass 3 reported twice its own denominator.** `resumeRun` seeds
+the surface from the spool census (item 4's rehydration window), then `engine.Resume`
+announces CREATING and publishes the SAME census through `Discovered` — a DELTA, because
+pass 1 counts claims up one at a time. Nothing re-based between the two: `Seed` had
+already put the emitter in the pass-3 epoch, so `Phase(CREATING)` found no epoch change
+and skipped its reset. A run 400 of 900 through materialization read 400/1800 and sat at
+half for the rest of its life. A seeded DENOMINATOR is now provisional — it holds the
+rehydration window and yields on the engine's first word about the same thing — while the
+seeded NUMERATOR is not, since the engine never republishes it (a resumed replay skips
+what is already done).
+
 And the disposal branch, same class as the fix round's item 3: `finishRun` dropped a
 failed run's dir on `CompensationRan && Leaked == 0`, but in-process compensation walks the
 IN-MEMORY journal while the durable scope is `CompensationInputs`. A pass-3 create torn
