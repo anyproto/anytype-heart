@@ -112,16 +112,19 @@ func safeToCloseFor(m runstore.Manifest) (fetching, materializing bool) {
 	return fetching, materializing
 }
 
-func (lc *runLifecycle) settleTracking() {
+// settleTracking releases the run's live-registry hold and flushes its
+// terminal event, on EVERY settlement path (release, finishRun and the
+// crawl-resume's transient keep all come through here). The VERDICT travels
+// with it (review item 11): the emitter's own hooks only ever speak for the
+// transport, so without it the last word of a failed import was a pacer
+// window or a retry attempt.
+func (lc *runLifecycle) settleTracking(verdict statVerdict) {
 	if lc.untrack != nil {
 		lc.untrack()
 		lc.untrack = nil
 	}
 	if lc.stats != nil {
-		// Flushes the run's terminal numbers past the coalescing window and
-		// silences the emitter, on EVERY settlement path (release and
-		// finishRun both come through here).
-		lc.stats.Close()
+		lc.stats.Close(verdict)
 	}
 }
 
@@ -135,7 +138,11 @@ func (lc *runLifecycle) release() {
 		return
 	}
 	lc.settled = true
-	lc.settleTracking()
+	// A run that reached here never settled — the owner panicked between
+	// beginRun and finishRun. Its outcome is unknown, but it certainly did
+	// not finish, and the surface saying so beats a terminal Running that
+	// never moves again.
+	lc.settleTracking(statVerdict{failed: true, message: "import run ended without settling"})
 	if lc.store != nil {
 		if err := lc.store.Close(); err != nil {
 			log.Errorf("release unsettled run store: %s", err)
@@ -247,7 +254,7 @@ func (s *service) planRecorder(lc *runLifecycle) func(schemaplan.Plan) error {
 // on the failure path.
 func (s *service) finishRun(lc *runLifecycle, result *importv2.Result) {
 	lc.settled = true
-	lc.settleTracking()
+	lc.settleTracking(verdictOf(result))
 	if lc.store == nil {
 		if lc.cleanup != nil {
 			lc.cleanup()

@@ -168,7 +168,7 @@ func (s *service) resumeCrawlRun(ctx context.Context, store *runstore.Store, man
 			log.Errorf("refund crawl resume attempt: %s", err)
 		}
 		lc.settled = true
-		lc.settleTracking()
+		lc.settleTracking(verdictOf(result))
 		if err := store.Close(); err != nil {
 			log.Errorf("close kept crawl run: %s", err)
 		}

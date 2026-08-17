@@ -1,6 +1,7 @@
 package adapter
 
 import (
+	"context"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -88,7 +89,7 @@ func newTestEmitter(t *testing.T, clock *fakeClock, opts ...func(*statConfig)) (
 		opt(&cfg)
 	}
 	emitter := newStatEmitter(cfg)
-	t.Cleanup(emitter.Close)
+	t.Cleanup(func() { emitter.Close(statVerdict{}) })
 	return emitter, sink
 }
 
@@ -174,7 +175,7 @@ func TestStatEmitterCoalescing(t *testing.T) {
 		emitter := newStatEmitter(statConfig{
 			importId: "run-1", window: time.Millisecond, now: time.Now, send: sink.send,
 		})
-		defer emitter.Close()
+		defer emitter.Close(statVerdict{})
 		emitter.Phase(importv2.PhaseCreating)
 
 		// when
@@ -199,10 +200,10 @@ func TestStatEmitterCoalescing(t *testing.T) {
 		emitter.Completed(importv2.KindPage, 7)
 
 		// when
-		emitter.Close()
+		emitter.Close(statVerdict{})
 		after := sink.len()
 		emitter.Phase(importv2.PhaseFinalizing)
-		emitter.Close()
+		emitter.Close(statVerdict{})
 
 		// then
 		assert.Equal(t, int64(7), sink.all()[after-1].PagesDone)
@@ -527,7 +528,7 @@ func TestStatEmitterPushEqualsPull(t *testing.T) {
 		emitter.Issue(importv2.Warning(importv2.IssueDataLoss, "k", "lost"))
 
 		// when: the emitter is closed, which flushes the terminal event
-		emitter.Close()
+		emitter.Close(statVerdict{})
 
 		// then
 		pushed := sink.last()
@@ -552,7 +553,7 @@ func TestStatEmitterConcurrentUse(t *testing.T) {
 			importId: "run-1", window: time.Millisecond, now: time.Now,
 			send: func(*pb.EventImportStatistic) {},
 		})
-		defer emitter.Close()
+		defer emitter.Close(statVerdict{})
 
 		// when
 		var wg sync.WaitGroup
@@ -628,7 +629,7 @@ func TestStatEmitterCreatedLevel(t *testing.T) {
 			importId: "run-1", window: time.Hour, now: time.Now,
 			send: func(*pb.EventImportStatistic) {},
 		})
-		defer emitter.Close()
+		defer emitter.Close(statVerdict{})
 		var counter atomic.Int64
 		var wg sync.WaitGroup
 
@@ -678,7 +679,87 @@ func TestStatEmitterErrorIsTerminal(t *testing.T) {
 		assert.NotEmpty(t, emitter.Snapshot().ErrorMessage, "the fatal's message survives")
 
 		// and: the terminal event says so too
-		emitter.Close()
+		emitter.Close(statVerdict{})
+		assert.Equal(t, pb.EventImportStatistic_Error, sink.last().State)
+	})
+}
+
+func TestStatEmitterTerminalVerdict(t *testing.T) {
+	t.Run("an all-or-nothing abort's terminal event says ERROR", func(t *testing.T) {
+		// given — review item 11, the sibling of item 5 and its shared root:
+		// the three hooks that CAN set the state all speak for the TRANSPORT,
+		// and Close took no argument, so the terminal state was always a
+		// transport artifact and never the run's verdict. An ALL_OR_NOTHING
+		// abort — the commonest real failure — aborts on SeverityObjectError,
+		// which the issue funnel does not escalate (it escalates at
+		// SeverityFatal), and the engine returns that issue as Result.Err
+		// without re-reporting it. ERROR was therefore unreachable for it.
+		clock := newFakeClock()
+		emitter, sink := newTestEmitter(t, clock)
+		emitter.Phase(importv2.PhaseCreating)
+		emitter.Issue(importv2.ObjectError(importv2.IssueObjectFailed, "page-7", assertError{}))
+		require.Equal(t, pb.EventImportStatistic_Running, emitter.Snapshot().State,
+			"an object error is not, on its own, the run's verdict")
+
+		// when: the run settles with that issue as its fatal
+		emitter.Close(verdictOf(&importv2.Result{
+			Err: importv2.ObjectError(importv2.IssueObjectFailed, "page-7", assertError{}),
+		}))
+
+		// then
+		assert.Equal(t, pb.EventImportStatistic_Error, sink.last().State)
+		assert.Contains(t, sink.last().ErrorMessage, "boom")
+	})
+
+	t.Run("a deliberate stop is not an error, however its fatal is shaped", func(t *testing.T) {
+		// given: §15's ERROR means something is actually WRONG. A user cancel
+		// and a shutdown suspend are neither, and painting the UI red on the
+		// way out of a deliberate stop is the same category error as painting
+		// it red for a rate limit. The STOP SOURCE decides (review item 1's
+		// rule, applied to the surface): Result.Cancelled / Result.Suspended,
+		// never the fatal's code.
+		for _, tc := range []struct {
+			name   string
+			result *importv2.Result
+		}{
+			{"success", &importv2.Result{}},
+			{"user cancel", &importv2.Result{
+				Err:       importv2.Fatal(importv2.IssueCancelled, context.Canceled),
+				Cancelled: true,
+			}},
+			{"shutdown suspend", &importv2.Result{
+				Err:       importv2.Fatal(importv2.IssueCancelled, importv2.ErrSuspended),
+				Suspended: true,
+			}},
+		} {
+			// when
+			clock := newFakeClock()
+			emitter, sink := newTestEmitter(t, clock)
+			emitter.Phase(importv2.PhaseCreating)
+			emitter.Close(verdictOf(tc.result))
+
+			// then
+			assert.Equal(t, pb.EventImportStatistic_Running, sink.last().State, tc.name)
+			assert.Empty(t, sink.last().ErrorMessage, tc.name)
+		}
+	})
+
+	t.Run("a transport timeout wearing the cancel's CODE is still an error", func(t *testing.T) {
+		// given — the destructive direction of review item 1, read on this
+		// surface: the Notion client's own http.Client{Timeout: time.Minute}
+		// makes classifyFatal issue IssueCancelled for a server hang. Nobody
+		// cancelled, so the run failed and must say so.
+		clock := newFakeClock()
+		emitter, sink := newTestEmitter(t, clock)
+		emitter.Phase(importv2.PhaseFetching)
+
+		// when
+		emitter.Close(verdictOf(&importv2.Result{
+			Err: importv2.Fatal(importv2.IssueCancelled, context.DeadlineExceeded),
+			// Cancelled false: the caller's context is alive
+		}))
+
+		// then
 		assert.Equal(t, pb.EventImportStatistic_Error, sink.last().State)
 	})
 }

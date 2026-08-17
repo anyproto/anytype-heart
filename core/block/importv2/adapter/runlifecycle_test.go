@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/importv2/runstore"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -350,6 +351,37 @@ func TestLifecycleStatSeed(t *testing.T) {
 		assert.Equal(t, int64(60), snap.FilesTotal)
 		assert.Equal(t, int64(12), snap.FilesDone)
 		assert.True(t, snap.TotalsKnown, "a resumed pass 3 knows its census before it starts")
+	})
+
+	t.Run("the settlement hands the run's verdict to its terminal event", func(t *testing.T) {
+		// given — review item 11: every settlement path flushes the emitter
+		// through settleTracking, and it did so without telling the emitter
+		// how the run ended. The commonest real failure (an ALL_OR_NOTHING
+		// abort on an object error) never reaches the issue funnel's
+		// escalation, so the last thing a failed import said was whatever the
+		// Notion transport happened to say last.
+		var events []*pb.EventImportStatistic
+		s := &service{
+			config: &config.Config{},
+			eventSender: event.NewCallbackSender(func(e *pb.Event) {
+				for _, msg := range e.Messages {
+					if stat := msg.GetImportStatistic(); stat != nil {
+						events = append(events, stat)
+					}
+				}
+			}),
+		}
+		lc := s.newLifecycle(nil, runstore.Manifest{RunId: "run-1"}, process.NewNoOp(), 0, statSeed{})
+
+		// when
+		s.finishRun(lc, &importv2.Result{
+			Err: importv2.ObjectError(importv2.IssueObjectFailed, "page-7", assert.AnError),
+		})
+
+		// then
+		require.NotEmpty(t, events)
+		assert.Equal(t, pb.EventImportStatistic_Error, events[len(events)-1].State)
+		assert.NotEmpty(t, events[len(events)-1].ErrorMessage)
 	})
 
 	t.Run("a fresh run and a resumed CRAWL both start in the scanning regime", func(t *testing.T) {

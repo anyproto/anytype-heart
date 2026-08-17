@@ -101,7 +101,7 @@ func TestTeeReporterFansOut(t *testing.T) {
 		// given
 		progress := &recordingProgress{}
 		emitter := newStatEmitter(statConfig{importId: "run-1", send: func(*pb.EventImportStatistic) {}})
-		defer emitter.Close()
+		defer emitter.Close(statVerdict{})
 		reporter := teeReporter{&progressReporter{progress: progress}, emitter}
 
 		// when

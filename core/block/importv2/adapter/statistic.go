@@ -447,14 +447,65 @@ func (e *statEmitter) onTimer() {
 	e.publishLocked(e.cfg.now())
 }
 
+// statVerdict is the RUN's own outcome, and the only honest source of a
+// terminal state.
+//
+// Every hook that can move the state before this point speaks for the
+// TRANSPORT — a pacer window, a backoff attempt, a request that worked —
+// and the issue funnel escalates only at SeverityFatal. An ALL_OR_NOTHING
+// abort, the commonest real failure, aborts on a SeverityObjectError that
+// the funnel therefore leaves calm, and the engine carries it out as
+// Result.Err without re-reporting it: ERROR was unreachable for it (review
+// item 11). Item 5 fixed the setter so nothing may LEAVE the error state;
+// this is the missing half — how a run ENTERS it on its way out. Fixed
+// here, at the settlement, rather than by teaching the funnel about modes,
+// because every abort shape that never reaches the funnel at all — the
+// inert nil-spool guard, a prologue failure — settles through this door too.
+type statVerdict struct {
+	// failed marks a run that stopped because something was WRONG.
+	failed bool
+	// message is what the run failed with, for the wire's errorMessage. Like
+	// currentItem it may carry a source key, so it is displayable and never
+	// logged from here.
+	message string
+}
+
+// verdictOf classifies a settled run. The STOP SOURCE decides, never the
+// fatal's code (review item 1): a user cancel and a shutdown suspend are
+// deliberate stops and not errors, while a transport deadline WEARING the
+// cancel's code — the Notion client's own http.Client{Timeout: time.Minute}
+// — is a failure whatever it is labelled.
+func verdictOf(result *importv2.Result) statVerdict {
+	if result == nil || result.Err == nil || result.Suspended || result.Cancelled {
+		return statVerdict{}
+	}
+	return statVerdict{
+		failed:  true,
+		message: issueMessage(importv2.AsIssue(result.Err, importv2.SeverityFatal, importv2.IssueInvariant)),
+	}
+}
+
 // Close flushes the terminal numbers and silences the emitter. Called from
 // the run lifecycle's single settlement point, so a run cannot end with its
-// last state stuck behind a coalescing window.
-func (e *statEmitter) Close() {
+// last state stuck behind a coalescing window — nor, now, with a state that
+// describes its transport instead of its outcome.
+//
+// The state is set here rather than through setStateLocked because this is
+// not an edge to be published on its own: the flush below IS the
+// publication, and routing it through the setter would emit the terminal
+// event twice. The setter's rule is untouched — it forbids LEAVING the
+// error state, and a verdict only ever enters it.
+func (e *statEmitter) Close(verdict statVerdict) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	if e.closed {
 		return
+	}
+	if verdict.failed {
+		e.snap.state = pb.EventImportStatistic_Error
+		if verdict.message != "" {
+			e.snap.errorMessage = verdict.message
+		}
 	}
 	if e.timer != nil {
 		e.timer.Stop()
