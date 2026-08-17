@@ -2914,3 +2914,37 @@ paths:
       - Schemas
 servers:
 - url: http://127.0.0.1:31009
+tags:
+- description: What the calling key may do — ask this before discovering limits through
+    403s.
+  name: Auth
+- description: The containers everything else lives in. Nearly every other route is
+    scoped to one.
+  name: Spaces
+- description: 'Read and write whole AnyBlock documents: one GET returns an editable
+    document, one PATCH edits it.'
+  name: Objects
+- description: Find objects by query, filter and sort — within a space or across all
+    of them.
+  name: Search
+- description: 'An object''s shape: the properties it recommends and the views it
+    opens with.'
+  name: Types
+- description: The typed key-value fields objects carry, and the option vocabularies
+    select fields draw from.
+  name: Properties
+- description: Sets (a live query over a type) and collections (a hand-curated list),
+    with their views.
+  name: Lists
+- description: Messages, reactions and read state. Chats store messages outside blocks,
+    paged by order-id cursors.
+  name: Chat
+- description: Who is in a space, and which of them you are.
+  name: Members
+- description: Upload bytes and get the id that file blocks and chat attachments reference.
+  name: Files
+- description: Starting documents for a type.
+  name: Templates
+- description: 'The format itself: what a valid document looks like, what each PATCH
+    op accepts, and a validator to check one against them. Read these before writing.'
+  name: Schemas

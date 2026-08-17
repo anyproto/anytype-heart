@@ -15,6 +15,30 @@
 //	@description					Schemas are discoverable at runtime and strict-mode-compatible for constrained decoding (C12, C13): GET /v2/schemas lists the kinds, GET /v2/schemas/{kind} returns one, and GET /v2/schemas/ops/{op} returns the schema of a single PATCH op.
 //	@description					Spaces are served by a SHORT reference — the last six characters of the space id's CID half — and every route that takes a space accepts either that short reference or the full `<cid>.<replicationKey>` id. Resolution is exact id first, then a unique suffix, within the spaces the credential can see; an ambiguous reference is a 400 listing the candidates, and two spaces whose tails collide are both served in full. The full id keeps working everywhere.
 //	@description					A short reference is an addressing convenience, not a stable identifier: it is unique only against the spaces the credential can currently see, so joining a space with a colliding tail retires it. `?ids=full` — the same parameter that asks an object read for the export shape — makes every space id in the response the full one instead: use it whenever a reference is going to be stored outside this API (a config file, a script, a log line, another API).
+//	@tag.name						Auth
+//	@tag.description				What the calling key may do — ask this before discovering limits through 403s.
+//	@tag.name						Spaces
+//	@tag.description				The containers everything else lives in. Nearly every other route is scoped to one.
+//	@tag.name						Objects
+//	@tag.description				Read and write whole AnyBlock documents: one GET returns an editable document, one PATCH edits it.
+//	@tag.name						Search
+//	@tag.description				Find objects by query, filter and sort — within a space or across all of them.
+//	@tag.name						Types
+//	@tag.description				An object's shape: the properties it recommends and the views it opens with.
+//	@tag.name						Properties
+//	@tag.description				The typed key-value fields objects carry, and the option vocabularies select fields draw from.
+//	@tag.name						Lists
+//	@tag.description				Sets (a live query over a type) and collections (a hand-curated list), with their views.
+//	@tag.name						Chat
+//	@tag.description				Messages, reactions and read state. Chats store messages outside blocks, paged by order-id cursors.
+//	@tag.name						Members
+//	@tag.description				Who is in a space, and which of them you are.
+//	@tag.name						Files
+//	@tag.description				Upload bytes and get the id that file blocks and chat attachments reference.
+//	@tag.name						Templates
+//	@tag.description				Starting documents for a type.
+//	@tag.name						Schemas
+//	@tag.description				The format itself: what a valid document looks like, what each PATCH op accepts, and a validator to check one against them. Read these before writing.
 //	@termsOfService					https://anytype.io/terms_of_use
 //	@contact.name					Anytype Support
 //	@contact.url					https://anytype.io/contact
