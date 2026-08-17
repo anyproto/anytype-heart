@@ -295,6 +295,63 @@ func TestStatEmitterCounterEpochs(t *testing.T) {
 		assert.True(t, emitter.Snapshot().TotalsKnown)
 	})
 
+	t.Run("a seeded denominator yields to the engine's own reading of it", func(t *testing.T) {
+		// given: a resumed pass 3. Its surface is seeded from the spool
+		// census before the engine starts (review item 4's rehydration
+		// window), and then the engine announces CREATING and publishes the
+		// SAME census through Discovered — which is a DELTA, because pass 1
+		// counts claims up one at a time. The epoch does not change (Seed
+		// already put the emitter in it), so nothing re-based, and the
+		// resumed run's denominator came out at exactly twice its census:
+		// 400/1800 for a run that is 400/900 done, stuck at half for its
+		// whole life.
+		clock := newFakeClock()
+		emitter, _ := newTestEmitter(t, clock)
+		emitter.Seed(statSeed{
+			materializing: true,
+			pagesTotal:    900, pagesDone: 400,
+			filesTotal: 60, filesDone: 12,
+		})
+
+		// when
+		emitter.Phase(importv2.PhaseCreating)
+		emitter.Discovered(importv2.KindPage, 900)
+		emitter.Discovered(importv2.KindFile, 60)
+
+		// then: one census, counted once — and the numerator, which the
+		// engine does NOT republish (its replay skips what is already done),
+		// still carries its predecessors' work
+		snap := emitter.Snapshot()
+		assert.Equal(t, int64(900), snap.PagesTotal)
+		assert.Equal(t, int64(60), snap.FilesTotal)
+		assert.Equal(t, int64(400), snap.PagesDone)
+		assert.Equal(t, int64(12), snap.FilesDone)
+
+		// and: this incarnation's own progress still counts on from there
+		emitter.Completed(importv2.KindPage, 1)
+		assert.Equal(t, int64(401), emitter.Snapshot().PagesDone)
+	})
+
+	t.Run("a seeded denominator survives an engine census that never lands", func(t *testing.T) {
+		// given: the same resumed run, whose engine-side census fails —
+		// swallowed by design (review item 13). The seed is what the
+		// rehydration window was for, and with nothing to replace it, it
+		// stands.
+		clock := newFakeClock()
+		emitter, _ := newTestEmitter(t, clock)
+		emitter.Seed(statSeed{materializing: true, pagesTotal: 900, pagesDone: 400})
+
+		// when
+		emitter.Phase(importv2.PhaseCreating)
+		emitter.Completed(importv2.KindPage, 1)
+
+		// then
+		snap := emitter.Snapshot()
+		assert.Equal(t, int64(900), snap.PagesTotal)
+		assert.Equal(t, int64(401), snap.PagesDone)
+		assert.True(t, snap.TotalsKnown)
+	})
+
 	t.Run("cancel effect turns at the pass boundary, not before", func(t *testing.T) {
 		// given
 		clock := newFakeClock()

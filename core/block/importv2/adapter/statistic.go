@@ -124,6 +124,10 @@ type statEmitter struct {
 	pending bool
 	nextAt  time.Time
 	timer   *time.Timer
+	// totalsSeeded marks a denominator that came from Seed rather than from
+	// the engine — PROVISIONAL, and cleared by the engine's first Discovered
+	// in the pass it belongs to. See Discovered.
+	totalsSeeded bool
 }
 
 func newStatEmitter(cfg statConfig) *statEmitter {
@@ -208,6 +212,20 @@ func (e *statEmitter) Discovered(kind importv2.Kind, delta int64) {
 	defer containTelemetry("discovered")
 	e.mu.Lock()
 	defer e.mu.Unlock()
+	if e.totalsSeeded {
+		// The engine has begun publishing the denominator itself, and on a
+		// resumed run its first act is to announce the SAME spool census the
+		// seed was taken from. Discovered is a DELTA — pass 1 counts claims
+		// up one at a time — and the epoch does not change on this path
+		// (Seed already put the emitter in it), so nothing re-based and the
+		// census landed twice: a run 400 of 900 through its pass 3 reported
+		// 400/1800 and sat at half forever. The seed holds the rehydration
+		// window and yields the moment the engine has its own reading; when
+		// the engine's census fails (review item 13) nothing arrives here
+		// and the seed rightly stands.
+		e.totalsSeeded = false
+		e.snap.pagesTotal, e.snap.filesTotal = 0, 0
+	}
 	if kind == importv2.KindFile {
 		e.snap.filesTotal += delta
 	} else {
@@ -424,6 +442,7 @@ func (e *statEmitter) Seed(seed statSeed) {
 	e.snap.objectsCreated = seed.created
 	e.snap.pagesTotal, e.snap.pagesDone = seed.pagesTotal, seed.pagesDone
 	e.snap.filesTotal, e.snap.filesDone = seed.filesTotal, seed.filesDone
+	e.totalsSeeded = seed.pagesTotal > 0 || seed.filesTotal > 0
 	e.keepDenominatorsHonestLocked()
 	for _, issue := range seed.issues {
 		countIssue(issue.Severity, &e.snap.warningCount, &e.snap.errorCount)
