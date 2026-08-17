@@ -682,7 +682,62 @@ func TestTypeObject(t *testing.T) {
 		assert.Equal(t, "checkbox", object.Payload.Details.GetString(bundle.RelationKeyIconName))
 	})
 
-	t.Run("omits plural name and icon when the plan gave none", func(t *testing.T) {
+	t.Run("a named icon always carries a color", func(t *testing.T) {
+		// given — the client tints a type's icon by iconOption, and option 0
+		// is not a color: an icon without one renders untinted next to every
+		// bundled type, which is how a minted type reads as unfinished.
+		def := TypeDefinition{Key: "sprintTask", Name: "Sprint task", IconName: "checkbox"}
+
+		// when
+		object, _, err := TypeObject(def)
+
+		// then
+		option := object.Payload.Details.GetInt64(bundle.RelationKeyIconOption)
+		require.NoError(t, err)
+		assert.GreaterOrEqual(t, option, int64(1))
+		assert.LessOrEqual(t, option, int64(10))
+	})
+
+	t.Run("colors spread across the palette but stay put per type", func(t *testing.T) {
+		// given — "one of a random color" per type, without the randomness:
+		// re-importing the same workspace must not repaint everything.
+		colors := map[int64]int{}
+		for _, name := range []string{"Task", "Recipe", "Contact", "Meeting", "Invoice", "Trip", "Bug", "Book"} {
+			object, _, err := TypeObject(TypeDefinition{Key: domain.TypeKey(name), Name: name, IconName: "checkbox"})
+			require.NoError(t, err)
+			option := object.Payload.Details.GetInt64(bundle.RelationKeyIconOption)
+
+			again, _, err := TypeObject(TypeDefinition{Key: domain.TypeKey(name), Name: name, IconName: "checkbox"})
+			require.NoError(t, err)
+			assert.Equal(t, option, again.Payload.Details.GetInt64(bundle.RelationKeyIconOption), "%s", name)
+			colors[option]++
+		}
+
+		// then — not all one color
+		assert.Greater(t, len(colors), 3, "colors: %v", colors)
+	})
+
+	t.Run("a type with no planned icon still gets one", func(t *testing.T) {
+		// given — an icon-less type falls back to the puzzle glyph, which is
+		// what every unnamed imported type looked like
+		cases := map[model.ObjectTypeLayout]string{
+			model.ObjectType_todo:    "checkbox",
+			model.ObjectType_profile: "person",
+			model.ObjectType_note:    "document",
+			model.ObjectType_basic:   "document",
+		}
+		for layout, want := range cases {
+			// when
+			object, _, err := TypeObject(TypeDefinition{Key: "sprintTask", Name: "Sprint task", Layout: layout})
+
+			// then
+			require.NoError(t, err)
+			assert.Equal(t, want, object.Payload.Details.GetString(bundle.RelationKeyIconName))
+			assert.NotZero(t, object.Payload.Details.GetInt64(bundle.RelationKeyIconOption))
+		}
+	})
+
+	t.Run("omits the plural name when the plan gave none", func(t *testing.T) {
 		// given
 		def := TypeDefinition{Key: "sprintTask", Name: "Sprint task"}
 
@@ -692,7 +747,6 @@ func TestTypeObject(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.False(t, object.Payload.Details.Has(bundle.RelationKeyPluralName))
-		assert.False(t, object.Payload.Details.Has(bundle.RelationKeyIconName))
 	})
 }
 

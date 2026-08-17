@@ -1,6 +1,7 @@
 package schemaplan
 
 import (
+	"crypto/sha256"
 	"fmt"
 
 	importv2 "github.com/anyproto/anytype-heart/core/block/importv2"
@@ -51,6 +52,27 @@ func RelationObject(planKey domain.RelationKey, name string, format model.Relati
 	}
 }
 
+// defaultIconName is the icon for a type the plan left unnamed — the closest
+// thing the layout says about what its members are.
+func defaultIconName(layout model.ObjectTypeLayout) string {
+	switch layout {
+	case model.ObjectType_todo:
+		return "checkbox"
+	case model.ObjectType_profile:
+		return "person"
+	default:
+		return "document"
+	}
+}
+
+// StableIconOption picks one of Anytype's ten icon colors for a key. Types
+// want the variety of a random color, but a re-import must not repaint the
+// space, so the color is a hash of the key rather than a draw.
+func StableIconOption(key string) int64 {
+	sum := sha256.Sum256([]byte(key))
+	return int64(sum[0])%10 + 1
+}
+
 // TypeSourceKey is the stream reference for a plan-defined type.
 func TypeSourceKey(planKey domain.TypeKey) string {
 	return "type:" + CustomTypeKey(planKey).String()
@@ -91,9 +113,16 @@ func TypeObject(def TypeDefinition) (*importv2.Object, domain.TypeKey, error) {
 	if def.PluralName != "" {
 		details.SetString(bundle.RelationKeyPluralName, def.PluralName)
 	}
-	if def.IconName != "" {
-		details.SetString(bundle.RelationKeyIconName, def.IconName)
+	// An icon is not optional: with none the client falls back to the default
+	// glyph, so a plan that named no icon — or whose icon Sanitize dropped —
+	// would land the type among the bundled ones wearing a puzzle piece. The
+	// layout is the only thing known about such a type, so it picks the icon.
+	iconName := def.IconName
+	if iconName == "" {
+		iconName = defaultIconName(layout)
 	}
+	details.SetString(bundle.RelationKeyIconName, iconName)
+	details.SetInt64(bundle.RelationKeyIconOption, StableIconOption(string(def.Key)))
 	if len(featured) > 0 {
 		details.SetStringList(bundle.RelationKeyRecommendedFeaturedRelations, featured)
 	}

@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	importv2 "github.com/anyproto/anytype-heart/core/block/importv2"
+	"github.com/anyproto/anytype-heart/core/block/importv2/schemaplan"
 	"github.com/anyproto/anytype-heart/core/block/importv2/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -205,7 +206,7 @@ func (c *Converter) emitSchemaType(ctx context.Context, schemaType *schema.Type,
 	}
 	details := schemaType.ToDetails()
 	if details.GetString(bundle.RelationKeyIconName) != "" && !details.Get(bundle.RelationKeyIconOption).IsInt64() {
-		details.SetInt64(bundle.RelationKeyIconOption, stableIconOption(schemaType.Key))
+		details.SetInt64(bundle.RelationKeyIconOption, schemaplan.StableIconOption(schemaType.Key))
 	}
 	object := &importv2.Object{
 		SourceKey: typeSourceKey(schemaType.Name),

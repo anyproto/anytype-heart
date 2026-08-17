@@ -183,12 +183,6 @@ func (c *Converter) emitPropertyDefinitions(ctx context.Context, properties []ya
 	return details, links, typeKey, nil
 }
 
-// stableIconOption derives a 1..10 icon color deterministically.
-func stableIconOption(key string) int64 {
-	sum := sha256.Sum256([]byte(key))
-	return int64(sum[0])%10 + 1
-}
-
 // resolveObjectValues rewrites object/file property values (source-relative
 // paths from the yaml parser) to entry source keys, emitting file objects
 // for non-page targets. Unknown values are left as-is (resolver leniency).

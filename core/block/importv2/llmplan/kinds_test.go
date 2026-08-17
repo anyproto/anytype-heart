@@ -163,6 +163,24 @@ func TestPlanKinds(t *testing.T) {
 		require.NoError(t, err)
 		assert.Contains(t, string(rawSchema), `"musical-notes"`, "the icon enum must be generated into the schema")
 		assert.NotContains(t, string(rawSchema), `"key"`, "the response carries no model-invented keys")
+
+		// An icon-less type renders as the default glyph, so "no icon" is not
+		// on offer: the enum is the vocabulary and nothing else.
+		var parsed struct {
+			Properties struct {
+				Kinds struct {
+					Items struct {
+						Properties struct {
+							Icon struct {
+								Enum []string `json:"enum"`
+							} `json:"icon"`
+						} `json:"properties"`
+					} `json:"items"`
+				} `json:"kinds"`
+			} `json:"properties"`
+		}
+		require.NoError(t, json.Unmarshal(rawSchema, &parsed))
+		assert.Equal(t, schemaplan.AllowedIcons, parsed.Properties.Kinds.Items.Properties.Icon.Enum)
 	})
 
 	t.Run("out-of-range ordinal is dropped", func(t *testing.T) {
