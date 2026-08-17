@@ -163,6 +163,33 @@ func TestRunStatusDormant(t *testing.T) {
 		assert.Equal(t, int64(1), run.Status.PagesDone, "the crawl column, not the materialize one")
 	})
 
+	t.Run("a pass-3 dir with an empty spool admits it knows no total either", func(t *testing.T) {
+		// given — the sibling of review item 12, on the pull side: the crawl
+		// branch derives totalsKnown from "the spool has a row" (§15's own
+		// as-built rule) and the materializing branch three lines up
+		// hard-coded true. The same field then meant one thing on one side of
+		// an `if` and another on the other, and a spool-less pass-3 dir
+		// answered "known: 0 of 0" where its crawling sibling answers the
+		// honest unknown.
+		fx := newLifecycleFixture(t)
+		ctx := context.Background()
+		dir := filepath.Join(runstore.RunsRoot(fx.repo), "empty-pass3")
+		store, err := runstore.Create(ctx, dir, runstore.Manifest{
+			RunId: "empty-pass3", SpaceId: "space-1", Converter: "Markdown",
+		})
+		require.NoError(t, err)
+		require.NoError(t, store.MarkFetched(ctx, importv2.RootSpec{}))
+		require.NoError(t, store.Close())
+
+		// when
+		run, err := fx.service.RunStatus(ctx, "empty-pass3")
+
+		// then
+		require.NoError(t, err)
+		require.Equal(t, pb.EventImportStatistic_Creating, run.Status.Phase)
+		assert.False(t, run.Status.TotalsKnown, "never a fake bar, never a division by zero")
+	})
+
 	t.Run("an unknown importId is not found", func(t *testing.T) {
 		// given
 		fx := newLifecycleFixture(t)

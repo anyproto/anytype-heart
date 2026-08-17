@@ -40,6 +40,11 @@ type runLifecycle struct {
 	// untrack removes the run from the live-status registry (runstatus.go);
 	// called on every settlement path exactly once via settleTracking.
 	untrack func()
+	// seedTotal is the resumed run's pass-3 denominator, kept here so the
+	// LEGACY scalar can be seeded from the same census the §15 emitter is
+	// (engineDeps). Zero for a fresh run and a crawl resume, whose
+	// denominators are still being discovered.
+	seedTotal int64
 }
 
 // newLifecycle is the ONE construction of a run's lifecycle handle, shared
@@ -76,6 +81,7 @@ func (s *service) newLifecycle(store *runstore.Store, manifest runstore.Manifest
 	// run cannot be mid-materialize when polled and mid-scan when pushed.
 	seed.materializing = manifest.MaterializeStarted
 	lc.stats.Seed(seed)
+	lc.seedTotal = seed.pagesTotal + seed.filesTotal
 	if store != nil {
 		lc.spillDir = store.SpillDir()
 		lc.untrack = s.trackLive(manifest.RunId, store, lc)

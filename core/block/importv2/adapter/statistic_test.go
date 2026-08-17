@@ -258,6 +258,43 @@ func TestStatEmitterCounterEpochs(t *testing.T) {
 		assert.Equal(t, int64(2048), creating.BytesDone, "bytes on disk are a run total, not a phase one")
 	})
 
+	t.Run("a phase is not a denominator: totalsKnown is a fact about the totals", func(t *testing.T) {
+		// given — review item 12: totalsKnown read `phase != SCANNING`, so
+		// beginMaterialize's very first act — announcing CREATING, which
+		// re-bases the counters to zero before the census that fills them —
+		// published one event per run claiming a KNOWN total of zero. §15.3
+		// exists to stop exactly that: clients render a count-up, never a fake
+		// bar or a division by zero.
+		//
+		// Item 13 is the same reading held for a whole pass: a swallowed
+		// census failure leaves the pass-3 denominators at zero, and the
+		// numerator then climbs past a total that says it is known.
+		clock := newFakeClock()
+		emitter, sink := newTestEmitter(t, clock)
+		emitter.Phase(importv2.PhaseScanning)
+		emitter.Discovered(importv2.KindPage, 40)
+		emitter.Phase(importv2.PhaseFetching)
+		require.True(t, emitter.Snapshot().TotalsKnown)
+
+		// when: pass 3 opens — the census has not answered yet
+		emitter.Phase(importv2.PhaseCreating)
+
+		// then
+		assert.False(t, sink.last().TotalsKnown,
+			"the re-base emptied the denominator; nothing knows it yet")
+		assert.Zero(t, sink.last().PagesTotal)
+
+		// and: a census failure keeps it unknown however far the run gets
+		emitter.Completed(importv2.KindPage, 12)
+		assert.False(t, emitter.Snapshot().TotalsKnown)
+		assert.Zero(t, emitter.Snapshot().EstimatedRemainingMs,
+			"no denominator, no defensible estimate")
+
+		// and: the census landing is what makes it known
+		emitter.Discovered(importv2.KindPage, 50)
+		assert.True(t, emitter.Snapshot().TotalsKnown)
+	})
+
 	t.Run("cancel effect turns at the pass boundary, not before", func(t *testing.T) {
 		// given
 		clock := newFakeClock()

@@ -527,15 +527,12 @@ func (e *statEmitter) Snapshot() *pb.EventImportStatistic {
 func (e *statEmitter) buildLocked() *pb.EventImportStatistic {
 	pageRate, itemRate := e.ratesLocked()
 	return &pb.EventImportStatistic{
-		ImportId:       e.cfg.importId,
-		ProcessId:      e.cfg.processId,
-		ImportType:     e.cfg.importType,
-		Phase:          wirePhase(e.snap.phase),
-		PhaseStartedAt: e.snap.phaseStartedAt.UnixMilli(),
-		// Totals are indeterminate exactly while pass 1 is running: the
-		// cursor chain does not know its own length. They become known at
-		// the pass-1/pass-2 boundary and stay known (§15.3).
-		TotalsKnown:          e.snap.phase != importv2.PhaseScanning,
+		ImportId:             e.cfg.importId,
+		ProcessId:            e.cfg.processId,
+		ImportType:           e.cfg.importType,
+		Phase:                wirePhase(e.snap.phase),
+		PhaseStartedAt:       e.snap.phaseStartedAt.UnixMilli(),
+		TotalsKnown:          e.totalsKnownLocked(),
 		PagesTotal:           e.snap.pagesTotal,
 		PagesDone:            e.snap.pagesDone,
 		FilesTotal:           e.snap.filesTotal,
@@ -555,6 +552,31 @@ func (e *statEmitter) buildLocked() *pb.EventImportStatistic {
 		ErrorCount:           e.snap.errorCount,
 		CurrentItem:          e.snap.currentItem.Display(),
 	}
+}
+
+// totalsKnownLocked answers whether this run HAS a denominator — a fact
+// about the totals, not about the phase.
+//
+// Reading it as `phase != SCANNING` was true of the pass-1/pass-2 boundary
+// the rule was written for and false everywhere else (review item 12).
+// Announcing CREATING re-bases the counters to zero, and the spool census
+// that fills them arrives after: every import published one CREATING event
+// claiming a KNOWN total of zero, which §15.3 exists to forbid — clients
+// render a count-up, never a fake bar or a division by zero. Item 13 is the
+// same reading held for a whole pass rather than one event: a swallowed
+// census failure leaves the pass-3 denominators at zero while the numerator
+// climbs past them.
+//
+// Zero means UNKNOWN throughout this schema (filesTotal says so for the
+// whole crawl, bytesTotal in as many words), and the dormant reader already
+// derived this field the same way for a crawling dir. The phase clause
+// stays for SCANNING alone, where the counter genuinely IS the count-up and
+// a rising number must not read as a fixed denominator.
+func (e *statEmitter) totalsKnownLocked() bool {
+	if e.snap.phase == importv2.PhaseScanning {
+		return false
+	}
+	return e.snap.pagesTotal > 0 || e.snap.filesTotal > 0
 }
 
 func (e *statEmitter) safeToCloseLocked() bool {

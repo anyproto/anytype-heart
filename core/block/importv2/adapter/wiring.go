@@ -167,11 +167,35 @@ type progressReporter struct {
 	materializing atomic.Bool
 }
 
+// Seed publishes a RESUMED run's pass-3 denominator before its engine
+// starts, from the same spool census the §15 emitter is seeded with
+// (statSeed) — one derivation, both consumers, applied at the one lifecycle
+// construction site.
+//
+// It exists because the engine's re-base can fail (review item 13).
+// beginMaterialize swallows a census error deliberately — the replay reads
+// the same rows a moment later and fails loudly there — but the swallow
+// leaves this projection with nothing to re-base ONTO. Phase(CREATING)
+// resets only the internal accumulator, so a fresh run keeps showing pass
+// 1's claim count, a defensible approximation; a pass-3 restart never ran
+// pass 1, so its bar filled against a total of zero, which is 563049ff5's
+// bug returning through a different door. The decision that moved the
+// resumed run's total out of resumerun.go rested on "the engine always
+// publishes the pass-3 denominator", and that was never quite true.
+func (r *progressReporter) Seed(total int64) {
+	if total <= 0 {
+		return
+	}
+	r.progress.SetTotalPreservingRatio(total)
+}
+
 func (r *progressReporter) Phase(p importv2.Phase) {
 	r.progress.SetProgressMessage(p.String())
 	if p == importv2.PhaseCreating {
 		r.materializing.Store(true)
-		r.total.Store(0) // re-based by the census Discovered calls that follow
+		// Only the ACCUMULATOR: the published total stands until a census
+		// replaces it (see Seed).
+		r.total.Store(0)
 		// The scanning stage is over by definition — and on a pass-3 RESTART
 		// it never happened at all (engine.Resume's first phase is this one).
 		// Without this the gate below stayed shut and a resumed import filled

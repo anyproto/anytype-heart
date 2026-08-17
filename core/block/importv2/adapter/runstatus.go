@@ -232,7 +232,13 @@ func buildDormantRunStatus(ctx context.Context, store *runstore.Store) (*pb.RpcO
 		status.FilesTotal = int64(files)
 		status.PagesDone = state.PagesDone
 		status.FilesDone = state.FilesDone
-		status.TotalsKnown = true
+		// The same rule as the crawl branch below and as the live emitter's
+		// (totalsKnownLocked): a denominator is known when it EXISTS. This
+		// branch hard-coded true, so a pass-3 dir whose spool is empty
+		// answered "known: 0 of 0" where its crawling sibling three lines
+		// down answers the honest unknown — one field meaning two things on
+		// two sides of one `if`.
+		status.TotalsKnown = pages+files > 0
 	} else {
 		status.PagesTotal = state.ClaimsTotal
 		status.PagesDone = int64(pages)

@@ -94,6 +94,33 @@ func TestProgressReporterProjection(t *testing.T) {
 		assert.Equal(t, int64(9), progress.total)
 		assert.Equal(t, int64(9), progress.done)
 	})
+
+	t.Run("a pass-3 restart whose census fails still has a total", func(t *testing.T) {
+		// given — review item 13: beginMaterialize swallows a census failure
+		// deliberately (the replay reads the same rows and fails loudly a
+		// moment later), and the projection's re-base then has nothing to
+		// re-base ONTO. On a fresh run the previously published claim count
+		// stands; on a restart pass 1 never ran, so the bar filled against a
+		// total of zero — 563049ff5's bug, restored through a different door.
+		//
+		// The seed is the same census resumeRun already reads for the §15
+		// emitter (review item 4's statSeed): one derivation, both consumers.
+		progress := &recordingProgress{}
+		reporter := &progressReporter{progress: progress}
+		reporter.Seed(96)
+
+		// when: the engine announces pass 3 and its census read fails
+		reporter.Phase(importv2.PhaseCreating)
+		reporter.Completed(importv2.KindPage, 9)
+
+		// then
+		assert.Equal(t, int64(96), progress.total, "the seeded denominator stands")
+		assert.Equal(t, int64(9), progress.done)
+
+		// and: a census that DOES land still wins — it is the newer reading
+		reporter.Discovered(importv2.KindPage, 100)
+		assert.Equal(t, int64(100), progress.total)
+	})
 }
 
 func TestTeeReporterFansOut(t *testing.T) {

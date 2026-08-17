@@ -591,6 +591,12 @@ func (s *service) engineDeps(request importv2.Request, spc clientspace.Space, lc
 		&existsChecker{store: s.objectStore.SpaceIndex(request.SpaceID)},
 		lc.spillDir,
 	)
+	// The legacy scalar is seeded from the SAME census the §15 emitter is
+	// (runLifecycle.seedTotal): a resumed run's denominator then exists
+	// before its engine starts, and survives an engine census that fails to
+	// land (review item 13).
+	scalar := &progressReporter{progress: progress}
+	scalar.Seed(lc.seedTotal)
 	return engine.Deps{
 		Identity:  identitySvc,
 		Persister: persister,
@@ -603,7 +609,7 @@ func (s *service) engineDeps(request importv2.Request, spc clientspace.Space, lc
 		// One reporter wiring for the fresh run and both resume branches:
 		// the legacy scalar and the §15 emitter, fanned out here so neither
 		// can be attached to one path and missed on another.
-		Reporter:       teeReporter{&progressReporter{progress: progress}, lc.stats},
+		Reporter:       teeReporter{scalar, lc.stats},
 		OnCompensating: s.onCompensating(lc),
 		OnIssue:        s.onIssue(lc),
 		SpillDir:       lc.spillDir,

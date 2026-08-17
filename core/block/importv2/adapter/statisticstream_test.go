@@ -108,14 +108,31 @@ func TestImportStatisticStream(t *testing.T) {
 		assert.Equal(t, model.Import_Markdown, last.ImportType)
 		assert.NotEmpty(t, last.ImportId, "a durable run is pollable by its id")
 
-		// and: the SCANNING events are the only ones that admit no total —
-		// §15.3's count-up, never a fake bar
+		// and: no event ever claims a total it does not have — §15.3's rule,
+		// which is about the NUMBER and not about the phase
 		for _, e := range events {
-			assert.Equal(t, e.Phase != pb.EventImportStatistic_Scanning, e.TotalsKnown,
-				"totals become known at the pass-1/pass-2 boundary and stay known")
+			if e.TotalsKnown {
+				assert.NotEqual(t, pb.EventImportStatistic_Scanning, e.Phase,
+					"a cursor-chained scan renders as a count-up, never a bar")
+				assert.Positive(t, e.PagesTotal+e.FilesTotal, "a known total is one that exists")
+			}
 			assert.LessOrEqual(t, e.PagesDone, e.PagesTotal,
 				"a definition must never push done past a denominator that is the claim count")
 		}
+
+		// and: the run really does publish the event review item 12 is about
+		// — announcing CREATING re-bases the counters, and the spool census
+		// that fills them arrives after, so every fresh import emitted one
+		// CREATING event over a zero denominator. It is fine that it exists;
+		// it is not fine for it to call that denominator known.
+		preCensus := 0
+		for _, e := range events {
+			if e.Phase == pb.EventImportStatistic_Creating && e.PagesTotal+e.FilesTotal == 0 {
+				preCensus++
+				assert.False(t, e.TotalsKnown)
+			}
+		}
+		assert.Positive(t, preCensus, "the pre-census CREATING event is the one under test")
 	})
 }
 
