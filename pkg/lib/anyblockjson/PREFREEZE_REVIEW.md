@@ -203,24 +203,44 @@ freeze because it changes canonical bytes**.
 
 ### Tier 1 — fix before freeze (correctness, localized, cheap)
 
-1. **Unify the id domain** (§1.1) — one document-wide id set + the
+> **All six are done** (commits `GO-7383 Reserve the inline tag syntax space` …
+> `GO-7383 Property-key admission control`). What was implemented, what was
+> deliberately left, and what the fixes turned up that this review did not, is
+> in §5 below. Each item is annotated **[fixed]** with its regression test.
+
+1. **[fixed]** **Unify the id domain** (§1.1) — one document-wide id set + the
    `Validate(Marshal(S))` property test with hostile generators. Six confirmed
    instances, two of which lose data.
-2. **Reserve the inline-grammar syntax space** (§1.6) — escape `<` before any
-   `</?[A-Za-z]`, and define unknown-tag leniency (a tag-shaped sequence a
-   reader does not know stays literal with a warning, never an error).
-   Byte-changing, so pre-freeze or never.
-3. **`Validate`/`Unmarshal` agreement** (§1.2) — `json.Number` + schema bounds
-   + the corpus test.
+   *Tests*: six instance tests in `prefreeze_review_test.go`, invariant I1 in
+   `flat_invariants_test.go`.
+2. **[fixed]** **Reserve the inline-grammar syntax space** (§1.6) — escape `<`
+   before any `</?[A-Za-z]`, and define unknown-tag leniency (a tag-shaped
+   sequence a reader does not know stays literal with a warning, never an
+   error). Byte-changing, so pre-freeze or never.
+   *Tests*: `TestRenderInline_ReservesTagSyntaxSpace`,
+   `TestValidate_UnknownTagStaysLiteralAndWarns`.
+3. **[fixed]** **`Validate`/`Unmarshal` agreement** (§1.2) — `json.Number` +
+   schema bounds + the corpus test.
+   *Tests*: invariant I2 in `flat_invariants_test.go` (28 hand-written
+   documents).
 4. **Date out of RFC 3339 range silently flips number → string**
    **[confirmed]**: `customDate = 1751791445000` (ms stored where s belong, a
    real corruption class) exports as `"57482-01-22T22:43:20Z"`, which
    `parseDate` cannot read back, so the detail becomes a *string* on a
    date-format property — permanent and quiet, and byte-stable thereafter.
    Emit the raw number when outside representable range, or fail loudly.
-5. **Property-key admission control + format-shape validation** (§1.4) — the
-   deny-list, the key charset, the `key`/`type` charsets, and path-addressed
-   format errors.
+   **[fixed]** — raw number + warning for a property value; omitted + warning
+   for a file block's `addedAt`, which has no number form in the schema.
+   *Tests*: `TestExport_DateOutsideRFC3339RangeKeepsTheNumber`,
+   `TestFormatDate_RangeIsExactlyWhatParsesBack`.
+5. **[fixed, one part deliberately downgraded]** **Property-key admission
+   control + format-shape validation** (§1.4) — the deny-list, the key charset,
+   the `key`/`type` charsets, and path-addressed format errors. Format-shape
+   problems are **warnings**, not errors — see §5.2.
+   *Tests*: `TestValidate_ImportRefusesWhatExportStrips`,
+   `TestValidate_ResolutionVectorPropertiesRefused`,
+   `TestValidate_PropertyKeyShape`, `TestValidate_EnvelopeKeyCharset`,
+   `TestValidate_PropertyValueShapeWarns`.
 6. **Fix the validation error cascade** — **[confirmed]** an LLM writing
    `"type": "bulleted_list_item"` is told `/blocks/0/type: property "type" is
    not allowed` **and** `text is not allowed`; a wrong `checked` type produces
@@ -231,6 +251,11 @@ freeze because it changes canonical bytes**.
    *confident* "not allowed". §12 promises exactly the opposite. An agent that
    follows this feedback deletes `type`. Since the agent-retry loop is the
    format's reason to exist, this is a Tier 1 item, not polish.
+   **[fixed]** — both noise generators are pruned where they are unreliable,
+   and `index.json` (which held a byte-identical copy of the flattener) shares
+   the one implementation now.
+   *Tests*: `TestValidate_ErrorsDoNotCascade`, eight cases including the three
+   that must *not* be pruned.
 
 ### Tier 2 — decide and document before freeze (policy; some byte-changing)
 
@@ -405,6 +430,10 @@ recording because the finding list above is long:
 Not ready to freeze as v1, but nothing found requires a redesign — every item
 is fixable inside this branch, and the fixes are mostly small and local.
 
+*(Post-pass note: Tier 1 is now done and the two property tests below exist —
+§5. Tier 2–4 are untouched, so the verdict stands: the remaining blockers are
+the evolution policy, not correctness.)*
+
 The pattern across all three lenses is the same: **rules were discovered,
 written down in a comment or a review note, and then applied to the single
 instance that prompted them instead of to the class.** `tableInnerId`
@@ -431,3 +460,79 @@ the comparator to marks, structure, dataviews and title-block text or restate
 the claim as what it measures — "canonical stability, details, and text
 preserved". The residual 0.14% is benign, but the metric cannot see the
 corruption classes found here, two of which would score 100%.
+
+---
+
+## 5. What the Tier 1 pass actually changed (SPEC v0.7)
+
+Written after the fixes, for the next reader: what landed, what was left on
+purpose, and what the work turned up that this review had not found.
+
+### 5.1 Landed
+
+| # | Change | Byte-changing? |
+|---|---|---|
+| 2 | `escapeProse` escapes `<` ahead of any tag *shape* (`</?[A-Za-z]`), not just `u`/`font`/`mention`. The parser is the exact complement: an unrecognized tag-shaped sequence stays literal (unchanged) and is reported through the warning sink. §8.2 gained the reservation rule; §10's namespace table now marks the tag namespace **reserved** and the delimiter namespace **closed** — a future mark arrives as a tag, which is what keeps `==x==` and `~x~` safe to leave literal. | **yes**, for text containing tag-shaped literals. No golden changed: the fixture's only `<` is a rendered `<mention>` |
+| 6 | `schemaIssues` prunes the two noise generators: an `unevaluatedProperties` "not allowed" verdict is dropped when its object failed for another reason *and* the schema knows the name (so a hallucinated key still reports, in the same round), and an `anyOf` reports only the branches that applied, merging the rest into one message. `index.json` shares it. | no |
+| 4 | `formatDate` reports representability; a property value outside years 0000–9999 is written as the raw number with a warning, `addedAt` is omitted with one. The range is asserted by round-trippability, not chosen. | only for data that was already being corrupted |
+| 1 | One `idLabel` ledger in the exporter (block ids, table inner ids, compact labels), seeded so an id that needs no repair is never renamed; the local relabeller now avoids full local ids the way the refs path always did; one `usedIds` set in the importer, seeded from the document before anything is generated, consulted by `genId`, `newTableInnerId` and `pinPrimaryDataview`; validation claims every row×column derived cell id. | no |
+| 3 | Every schema-integer field is `json.Number` with `minimum`/`maximum` in the schema (`size`, `limit`, `pageSize`, view-column `width`, and the envelope `version`, which this review's list missed). View-column `width` becomes an `integer`. A number outside `float64` is rejected with a path wherever it appears. | no |
+| 5 | `strippedDetailKeys` is now the single source for both directions; `oldAnytypeID`/`sourceFilePath` join it (so export strips them too); property keys must be writable (`propertyNames`); the envelope `key` gets a closed charset. | no |
+
+Both property tests the verdict asked for exist, in `flat_invariants_test.go`:
+I1 `Validate(Marshal(S)) == nil` over 300 hostile snapshots × 3 option sets,
+I2 `Validate(d) == nil ⇔ Unmarshal(d)` succeeds over 28 hand-written documents.
+Every fix was written test-first and each was re-reverted afterwards to confirm
+its test fails without it.
+
+### 5.2 Deliberately left
+
+- **Format-shape violations are warnings, not the errors item 5 asked for.**
+  As errors they would break the stronger promise: a snapshot already holding a
+  string on a date property (which is what finding 4 *produced*) would export to
+  a document that fails its own `Validate`, so one corrupt stored value would
+  make an object unexportable in a backup pipeline — the failure mode Tier 4
+  already objects to for stray `TableRow` blocks. The warning catches the
+  authoring case, which is the one that can still be fixed. Reversing this needs
+  an export-side answer for corrupt stored values first.
+- **The property-key rule is a deny rule, not the allowlist charset item 5
+  implies.** Real keys include bare names from old accounts (ANOMALIES §7), and
+  `Marshal` must not fail on a key some account already holds. An allowlist is
+  safe only after the acceptance sweep re-runs and reports the key shapes it
+  finds — which is §1.5's pending work anyway.
+- **§1.4's forward-looking half is untouched**: nothing yet declares the loose
+  surfaces contractually frozen (Tier 2 #8), and `key` still accepts `page`,
+  i.e. a document can still name the bundled type's derived id. That is a policy
+  decision, not a bug fix.
+- **Everything in Tier 2–4 is still open.** Note that #11's first half landed
+  before this pass (`SchemaURL` derives from `FormatVersion`, `UnmarshalIndex`
+  gates on version); the `SchemaMinor`/`citesNewerSchema` half is moot now that
+  §10 fixes a single integer with no minor axis, so #11 reduces to the bundle
+  version-skew rule.
+
+### 5.3 Found while fixing, not by the review
+
+- **The `Validate`/`Unmarshal` divergence class is wider than the four
+  instances in §1.2.** The envelope `version` itself is a fifth (`{"version":
+  1.0}` validated and then failed to decode), and a JSON number too large for
+  `float64` (`1e400`) is a sixth through *six* different surfaces — property
+  values, `store`, block `fields`, filter values, table column `width` — all of
+  which reached `json.Unmarshal` and produced the bare `decode document` error
+  §13 rules out. Reading found the int fields; only the corpus invariant found
+  the float ones.
+- **The I1 invariant caught two violations introduced by the item 5 fix itself**,
+  both from details real accounts hold: a `propertyNames` pattern made an empty
+  or control-character detail key unwritable while export still wrote it, and
+  the deny-list refused `oldAnytypeID` while export still emitted it. Both are
+  fixed (export drops the first with a warning, strips the second); the point is
+  that a hostile fixture caught them in the same minute, and the golden corpus
+  could not have.
+- **§1.1's instance (b) needs a hostile fixture to reproduce at all.** A row
+  with an explicit `null` cell already claimed the derived id; only a *trailing
+  absent* cell left it free. The first fixture written for it passed against the
+  unfixed code.
+- **A wrong fixture can hide a confirmed finding.** The first date fixture
+  resolved no property format, so the export path under test never ran and the
+  test "passed" while the bug was live. `ResolveFormat` is what makes that
+  fixture real — worth remembering for any finding whose path is behind a
+  resolver.

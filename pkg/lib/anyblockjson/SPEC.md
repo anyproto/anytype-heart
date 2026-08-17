@@ -1,6 +1,6 @@
 # AnyBlock JSON — format specification
 
-Status: **draft v0.6** · Format version: **1** · Package: `pkg/lib/anyblockjson`
+Status: **draft v0.7** · Format version: **1** · Package: `pkg/lib/anyblockjson`
 
 A human- and agent-readable JSON serialization of Anytype objects (the "anyblock"
 model), designed for export, import, and generation by external tools and LLM
@@ -14,6 +14,21 @@ strings; the vocabulary follows Notion's API and Anytype's public REST API
 (`core/api`) wherever an established term exists — the format should be
 readable, and mostly writable, by someone who has never seen Anytype
 internals.
+
+Changes from v0.6 (pre-freeze review, `PREFREEZE_REVIEW.md` Tier 1). One
+byte-changing rule and five reader rules, all inside format version 1:
+**canonical output escapes every tag-shaped `<`**, reserving the whole
+`</?[A-Za-z]` space for later versions and closing the delimiter set in
+exchange (§8.2, §10); one **id domain** across every id surface, so sanitizing,
+compacting and generating cannot collide, and a derived cell id is claimed
+whether or not its cell is written (§4, §6.1, §9); **Validate and Unmarshal
+agree** — schema-integer fields read as JSON numbers with `minimum`/`maximum`,
+column `width` is an integer, and a number outside `float64` is rejected
+wherever it appears (§12); a **date with no RFC 3339 form** is written as a raw
+number instead of an unreadable string (§3); **property-key admission** is
+symmetric with export's stripping, with a writable-key rule and format-shape
+warnings (§3, §4a); and **one fault produces one validation issue** rather than
+the validator's own bookkeeping (§12).
 
 Changes from v0.3 (freeze review): select values are option names in filters
 and custom orders too, not only in properties; canonical key order redefined
