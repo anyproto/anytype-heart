@@ -163,7 +163,7 @@ func TestEnsureIdempotency(t *testing.T) {
 
 	t.Run("a replayed PATCH with the same key and body runs the handler once", func(t *testing.T) {
 		// C8 v0.3.5: PATCH is where a blind agent retry does damage — a
-		// retried successful insertBlocks duplicates blocks — so the
+		// retried successful insert_blocks duplicates blocks — so the
 		// middleware covers it exactly like POST.
 		// given
 		gin.SetMode(gin.TestMode)
@@ -176,7 +176,7 @@ func TestEnsureIdempotency(t *testing.T) {
 		})
 		patch := func() *httptest.ResponseRecorder {
 			req := httptest.NewRequest(http.MethodPatch, "/v2/spaces/space1/objects/obj1",
-				strings.NewReader(`{"ops":[{"op":"deleteBlock","id":"b1"}]}`))
+				strings.NewReader(`{"ops":[{"op":"delete_block","id":"b1"}]}`))
 			req.Header.Set(IdempotencyKeyHeader, "key1")
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, req)
@@ -242,7 +242,7 @@ func TestEnsureIdempotency(t *testing.T) {
 		})
 		patch := func(objectId string) *httptest.ResponseRecorder {
 			req := httptest.NewRequest(http.MethodPatch, "/v2/spaces/space1/objects/"+objectId,
-				strings.NewReader(`{"ops":[{"op":"updateBlock","id":"b5","set":{"checked":true}}]}`))
+				strings.NewReader(`{"ops":[{"op":"update_block","id":"b5","set":{"checked":true}}]}`))
 			req.Header.Set(IdempotencyKeyHeader, "key1")
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, req)

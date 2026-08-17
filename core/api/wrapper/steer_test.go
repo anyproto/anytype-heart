@@ -267,7 +267,7 @@ func TestRestVocabulary(t *testing.T) {
 			},
 			{
 				name: "type keys (shortcut create, literal placeholder)",
-				from: `the shortcut needs a type key (list keys with GET /v2/spaces/{spaceId}/types)`,
+				from: `the shortcut needs a type key (list keys with GET /v2/spaces/{space_id}/types)`,
 				want: "check the type key (find results show each object's type)",
 			},
 			{
@@ -277,7 +277,7 @@ func TestRestVocabulary(t *testing.T) {
 			},
 			{
 				name: "option names",
-				from: `too many new options in one request (creating an option is permanent and there is no delete surface — check the names against GET /v2/spaces/{spaceId}/properties/{propertyKey}/options, or set values in smaller batches if they are all genuinely new)`,
+				from: `too many new options in one request (creating an option is permanent and there is no delete surface — check the names against GET /v2/spaces/{space_id}/properties/{property_key}/options, or set values in smaller batches if they are all genuinely new)`,
 				want: "check the names against describe, which lists the live option names",
 			},
 			{
@@ -287,7 +287,7 @@ func TestRestVocabulary(t *testing.T) {
 			},
 			{
 				name: "members",
-				from: `the caller's account identity is not available on this server — list members with GET /v2/spaces/{spaceId}/members instead`,
+				from: `the caller's account identity is not available on this server — list members with GET /v2/spaces/{space_id}/members instead`,
 				want: "the tool set has no member listing",
 			},
 			{
@@ -302,7 +302,7 @@ func TestRestVocabulary(t *testing.T) {
 			},
 			{
 				name: "a hint this table has never seen",
-				from: `"image" objects come from file uploads (POST /v2/spaces/{spaceId}/files)`,
+				from: `"image" objects come from file uploads (POST /v2/spaces/{space_id}/files)`,
 				want: "the HTTP API",
 			},
 		}

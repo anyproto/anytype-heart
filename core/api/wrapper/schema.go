@@ -3,9 +3,9 @@ package wrapper
 // schema.go renders each tool's argument schema from the same Arg table the
 // CLI flags and the GBNF come from. Every schema is C13
 // strict-mode-compatible: flat, non-recursive, additionalProperties: false,
-// bounded. The one non-scalar shape (ArgObject) is the setProperties value
+// bounded. The one non-scalar shape (ArgObject) is the set_properties value
 // map — string keys to scalar-or-array values, the same shape the shipped
-// setProperties op schema uses.
+// set_properties op schema uses.
 
 import (
 	"encoding/json"

@@ -5,9 +5,9 @@ package main
 // the model actually emitted, never a judgment the model reported about
 // itself.
 //
-//  1. Did an insertBlocks payload carry an `id`? The schema stopped
+//  1. Did an insert_blocks payload carry an `id`? The schema stopped
 //     publishing one (§8.30/§8.31) precisely because a decoder emits the
-//     fields it is shown. replaceSubtree — which still publishes one — is
+//     fields it is shown. replace_subtree — which still publishes one — is
 //     the control: the same model, the same run, one schema with the field
 //     and one without.
 //  2. When a block id was echoed back, was it the exact string the read
@@ -186,13 +186,13 @@ var opToolNames = func() map[string]bool {
 var readingTools = map[string]bool{"read": true, "read_object": true}
 
 // refArgs are the arguments that carry a block reference, per surface. The
-// wrapper renames the op vocabulary (inside→under, id→block, tableId→table)
+// wrapper renames the op vocabulary (inside→under, id→block, table_id→table)
 // and the ops arm keeps the raw names; both are listed because one harness
 // classifies both arms.
 var refArgs = map[string]bool{
 	"block": true, "after": true, "under": true, "table": true,
 	"row": true, "col": true, "id": true, "before": true,
-	"inside": true, "tableId": true,
+	"inside": true, "table_id": true,
 }
 
 // analyze computes the signals of one attempt from its call list.
@@ -214,7 +214,7 @@ func analyze(calls []callRecord) signals {
 
 		// H1 — the payload id question, and its control
 		switch call.Tool {
-		case "insertBlocks":
+		case "insert_blocks":
 			s.InsertBlocksCalls++
 			found := collectIdPaths(args, "")
 			if len(found) > 0 {
@@ -224,7 +224,7 @@ func analyze(calls []callRecord) signals {
 				e.Turn, e.Tool = call.Turn, call.Tool
 				s.IdEmissions = append(s.IdEmissions, e)
 			}
-		case "replaceSubtree":
+		case "replace_subtree":
 			s.ReplaceSubtreeCalls++
 			// the control counts ids in the PAYLOAD (blocks[…]), not the op's
 			// own required `id` — that one names the block being replaced and

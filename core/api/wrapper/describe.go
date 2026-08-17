@@ -50,7 +50,7 @@ type describeProperty struct {
 	// lists) — a subset of the settable set, not a bound on it.
 	OnType bool `json:"onType,omitempty"`
 	// ReadOnly marks an output-only property (v2model, SPEC §4a): a read
-	// serves it, setProperties refuses it.
+	// serves it, set_properties refuses it.
 	ReadOnly bool `json:"readOnly,omitempty"`
 }
 

@@ -40,7 +40,7 @@ const slugDataviewDoc = `{"version":1,"id":"obj1","type":"set","properties":{"na
 func TestV2WriteVocabularyIsTheReadVocabulary(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("updateView re-import keeps the stored relation key, not the slug", func(t *testing.T) {
+	t.Run("update_view re-import keeps the stored relation key, not the slug", func(t *testing.T) {
 		// given: the executed defect — the whole-dataview re-import behind
 		// every view op rewrote the stored key to the literal slug, so the
 		// dataview named a relation key no relation object owns
@@ -49,7 +49,7 @@ func TestV2WriteVocabularyIsTheReadVocabulary(t *testing.T) {
 
 		// when: the column is addressed by the slug the listings serve
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","columns":{"manual_property":{"hidden":false}}}`), "", false)
+			patchBody(`{"op":"update_view","columns":{"manual_property":{"hidden":false}}}`), "", false)
 
 		// then
 		require.NoError(t, err)
@@ -108,14 +108,14 @@ func TestV2WriteVocabularyIsTheReadVocabulary(t *testing.T) {
 			"the value must not land on the bundled property")
 	})
 
-	t.Run("insertBlocks lands a property block on the stored key", func(t *testing.T) {
+	t.Run("insert_blocks lands a property block on the stored key", func(t *testing.T) {
 		// the fragment-import channel (stateops importOptions): a `property`
 		// block's key is a key slot, so it inverts through the same vocabulary
 		fx := slugSpaceFixture(t)
 		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insertBlocks","blocks":[{"type":"property","key":"manual_property"}]}`), "", false)
+			patchBody(`{"op":"insert_blocks","blocks":[{"type":"property","key":"manual_property"}]}`), "", false)
 
 		require.NoError(t, err)
 		var keys []string

@@ -81,7 +81,7 @@ func TestSummaryReportsTheInsertBlocksControlSideBySide(t *testing.T) {
 
 	// then
 	require.Contains(t, got, "H1 — does the model emit an id where the schema does not show one?")
-	assert.Contains(t, got, "replaceSubtree still does — the control")
+	assert.Contains(t, got, "replace_subtree still does — the control")
 	assert.Contains(t, got, "4")
 }
 

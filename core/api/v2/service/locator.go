@@ -2,8 +2,8 @@ package v2service
 
 // locator.go resolves a PATCH op's block from CONTENT instead of an id —
 // Wave 2.1a/2.1b (APIV2_TOKENS.md §5, APIV2.md §8.43, §8.45): on
-// replaceText the find text doubles as the locator when id is omitted; on
-// updateBlock and deleteBlock the same job is done by `match`, an exact
+// replace_text the find text doubles as the locator when id is omitted; on
+// update_block and delete_block the same job is done by `match`, an exact
 // substring of the block's text. The resolution rule is the shipped
 // wrapper rule (§8.21 locateBlock), moved down a layer and run per-op
 // against the applier's live document view under the object lock: the
@@ -15,16 +15,16 @@ package v2service
 // or the op refuses — zero matches steer to the outline read, several
 // matching blocks list ≤8 candidates with context. Never a guess: a
 // silent wrong match is the failure this design exists to prevent, and on
-// deleteBlock it is a wrongly deleted subtree. ONE resolver serves every
+// delete_block it is a wrongly deleted subtree. ONE resolver serves every
 // op, so there is never a second rule or a second refusal vocabulary;
 // what an op contributes is its scope (which blocks it can act on at all)
 // and the name of the field that carried the text. Later slices (2.1c–d)
 // grow this file with the `under`/`nth` scoping vocabulary and the
-// moveBlock/insertBlocks anchors.
+// move_block/insert_blocks anchors.
 //
 // Multiplicity WITHIN the one matched block is not this function's
 // business: it identifies a block, and every op here acts on the block as
-// a whole. replaceText alone splices text and therefore keeps its own
+// a whole. replace_text alone splices text and therefore keeps its own
 // more-context refusal (stateops.go applyReplaceText) once the block is
 // resolved — that is replace_all's (and later nth's) territory, not a
 // resolution failure.
@@ -55,27 +55,27 @@ const locatorContextWindow = 30
 // AMBIGUOUS, which is the direction that hurts on a destructive op.
 type locatorScope func(blockType string) bool
 
-// textBlocksOnly is replaceText's scope: only text-bearing blocks (code and
-// embed included, §8.4). replaceText can edit nothing else, so a block it
+// textBlocksOnly is replace_text's scope: only text-bearing blocks (code and
+// embed included, §8.4). replace_text can edit nothing else, so a block it
 // would refuse must neither capture the match nor make a unique one
 // ambiguous.
 func textBlocksOnly(typ string) bool { return anyblockjson.TextBlockType(typ) }
 
-// everyBlock is updateBlock's and deleteBlock's scope: those ops address any
+// everyBlock is update_block's and delete_block's scope: those ops address any
 // block, so nothing may be filtered out of their candidate set. Today the
 // two scopes coincide — the exporter writes `text` only on the types
 // TextBlockType covers — so this is not an observable difference but the
 // record of WHY each op has the scope it has: were a non-text block ever to
-// carry text, filtering it out of a deleteBlock's candidates would turn a
+// carry text, filtering it out of a delete_block's candidates would turn a
 // two-block ambiguity into a silent, wrong, destructive match.
 func everyBlock(string) bool { return true }
 
 // resolveByText maps a locator's text to the ONE view block whose text
 // contains it. field is the op field that carried it ("find" on
-// replaceText, "match" on updateBlock/deleteBlock) — it appears in the
+// replace_text, "match" on update_block/delete_block) — it appears in the
 // refusals so the repair names the caller's own vocabulary. The doc is the
 // applier's LIVE view — mid-batch, op i scans the document op i−1 left,
-// whether that op maintained the view in place (replaceText, M7) or forced
+// whether that op maintained the view in place (replace_text, M7) or forced
 // a rebuild.
 func resolveByText(doc *v2EditDoc, text, field, path string, scope locatorScope) (int, error) {
 	var matches []int

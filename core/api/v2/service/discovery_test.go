@@ -217,7 +217,7 @@ func TestV2GetMemberMe(t *testing.T) {
 		// then
 		apiErr := v2Err(t, err)
 		assert.Equal(t, v2model.CodeNotFound, apiErr.Code)
-		assert.Contains(t, apiErr.Message, "GET /v2/spaces/{spaceId}/members")
+		assert.Contains(t, apiErr.Message, "GET /v2/spaces/{space_id}/members")
 	})
 }
 

@@ -3,7 +3,7 @@ package v2handler
 // chat.go holds the Phase-6 chat handlers (APIV2.md §8.7). Message text
 // is §8 inline markup in BOTH directions (the D′1 caveat applies verbatim:
 // find/replace-style specials mint real marks). C7 etag/If-Match does NOT
-// apply to chats — order ids and lastStateId are the stream's native
+// apply to chats — order ids and last_state_id are the stream's native
 // concurrency vocabulary; this is a deliberate, documented exemption like
 // search's C8/C9 one. All mutations honor Idempotency-Key (C8) and
 // ?dry_run=true (C9).
@@ -44,7 +44,7 @@ func respondChatMutation(c *gin.Context, dryRun bool, createdStatus int, payload
 // ListChatsHandler lists the space's chats as C5 rows
 //
 //	@Summary		List chats
-//	@Description	C5 rows {id, name} via a store query — no chat opens, so the list is cheap at any size. Deliberately counter-free (Q3): per-chat unread state comes free on the messages read. No etag (C7 exemption: chats use order ids and lastStateId as their concurrency vocabulary).
+//	@Description	C5 rows {id, name} via a store query — no chat opens, so the list is cheap at any size. Deliberately counter-free (Q3): per-chat unread state comes free on the messages read. No etag (C7 exemption: chats use order ids and last_state_id as their concurrency vocabulary).
 //	@Id				list_chats
 //	@Tags			Chat
 //	@Produce		json
@@ -103,7 +103,7 @@ func CreateChatHandler(s *v2service.Service) gin.HandlerFunc {
 // GetChatMessagesHandler reads messages with the state passthrough
 //
 //	@Summary		Get chat messages
-//	@Description	Cursor-paged messages (ascending order): ?after=/?before= are EXCLUSIVE order-id bounds, ?limit defaults to 25. A forward walk uses ?after alone and continues with the response's nextAfter; every OTHER query — ?before, no cursor, or BOTH bounds — is anchored at its NEWEST end (the newest N in range) and pages backward with nextBefore, so after+before does NOT walk forward through the window. has_more says more messages exist inside the requested bounds. The response carries state (unread counters, oldest unread orders, lastStateId — the mark-read race guard) and messageCount (the chat's LIFETIME total, not the range size) at zero extra cost; a poll is a limit=1 read. Message text is §8 inline markup (blocksText carries block-composed content read-only); reactions is always emoji counts ({"👍":2}); ?reactions=full adds reactedBy (participant-id lists) in its own slot. Offset pagination does not apply — page with the cursors.
+//	@Description	Cursor-paged messages (ascending order): ?after=/?before= are EXCLUSIVE order-id bounds, ?limit defaults to 25. A forward walk uses ?after alone and continues with the response's next_after; every OTHER query — ?before, no cursor, or BOTH bounds — is anchored at its NEWEST end (the newest N in range) and pages backward with next_before, so after+before does NOT walk forward through the window. has_more says more messages exist inside the requested bounds. The response carries state (unread counters, oldest unread orders, last_state_id — the mark-read race guard) and message_count (the chat's LIFETIME total, not the range size) at zero extra cost; a poll is a limit=1 read. Message text is §8 inline markup (blocks_text carries block-composed content read-only); reactions is always emoji counts ({"👍":2}); ?reactions=full adds reacted_by (participant-id lists) in its own slot. Offset pagination does not apply — page with the cursors.
 //	@Id				get_chat_messages
 //	@Tags			Chat
 //	@Produce		json
@@ -113,7 +113,7 @@ func CreateChatHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Param			before		query		string							false	"Return messages before this order id (exclusive)"
 //	@Param			limit		query		int								false	"Messages to return"	default(25)
 //	@Param			reactions	query		string							false	"counts (default) | full"
-//	@Success		200			{object}	v2model.ChatMessagesResponse	"Messages + state + messageCount"
+//	@Success		200			{object}	v2model.ChatMessagesResponse	"Messages + state + message_count"
 //	@Failure		400			{object}	v2model.Error					"Not a chat, or invalid params"
 //	@Failure		404			{object}	v2model.Error					"Chat not found"
 //	@Security		bearerauth
@@ -152,7 +152,7 @@ func GetChatMessagesHandler(s *v2service.Service) gin.HandlerFunc {
 // AddChatMessageHandler sends a message
 //
 //	@Summary		Send chat message
-//	@Description	Sends one message: {text, replyTo?, attachments?}. Text is §8 markup SOURCE — *, [, ` and <mention objectId="…"> syntax mint real marks (the D′1 caveat; escape literal specials with a backslash) — capped at 8000 UTF-16 code units (an emoji counts 2+). Attachments are bare object ids, at most 32; the kind is inferred from each target's layout (image → image, other file layouts → file, anything else → link). Honors Idempotency-Key (C8 — a double-sent chat message is user-visible damage) and ?dry_run=true (C9, validate-only).
+//	@Description	Sends one message: {text, reply_to?, attachments?}. Text is §8 markup SOURCE — *, [, ` and <mention objectId="…"> syntax mint real marks (the D′1 caveat; escape literal specials with a backslash) — capped at 8000 UTF-16 code units (an emoji counts 2+). Attachments are bare object ids, at most 32; the kind is inferred from each target's layout (image → image, other file layouts → file, anything else → link). Honors Idempotency-Key (C8 — a double-sent chat message is user-visible damage) and ?dry_run=true (C9, validate-only).
 //	@Id				add_chat_message
 //	@Tags			Chat
 //	@Accept			json
@@ -170,7 +170,7 @@ func GetChatMessagesHandler(s *v2service.Service) gin.HandlerFunc {
 func AddChatMessageHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req v2model.AddChatMessageRequest
-		if !decodeChatBody(c, &req, "the message body takes text, replyTo, attachments") {
+		if !decodeChatBody(c, &req, "the message body takes text, reply_to, attachments") {
 			return
 		}
 		result, err := s.AddChatMessage(c.Request.Context(), c.Param("space_id"), c.Param("chat_id"), req, isV2DryRun(c))
@@ -280,7 +280,7 @@ func ToggleChatReactionHandler(s *v2service.Service) gin.HandlerFunc {
 // ReadChatHandler moves the read watermark
 //
 //	@Summary		Mark chat read
-//	@Description	Moves the read watermark: {upTo, lastStateId, scope?}. upTo is the INCLUSIVE order id to mark read up to and lastStateId is the race guard — BOTH are required for scopes messages/mentions and both ride the same GET messages response (the newest message's order + state.lastStateId); an empty value for either would silently mark nothing, so it is rejected instead. Messages that arrived after lastStateId's state stay unread. scope defaults to messages; mentions marks @-mentions; reactions marks ALL unread reactions and takes no upTo/lastStateId. Honors Idempotency-Key (C8) and ?dry_run=true (C9, validate-only).
+//	@Description	Moves the read watermark: {up_to, last_state_id, scope?}. up_to is the INCLUSIVE order id to mark read up to and last_state_id is the race guard — BOTH are required for scopes messages/mentions and both ride the same GET messages response (the newest message's order + state.last_state_id); an empty value for either would silently mark nothing, so it is rejected instead. Messages that arrived after last_state_id's state stay unread. scope defaults to messages; mentions marks @-mentions; reactions marks ALL unread reactions and takes no up_to/last_state_id. Honors Idempotency-Key (C8) and ?dry_run=true (C9, validate-only).
 //	@Id				read_chat
 //	@Tags			Chat
 //	@Accept			json
@@ -298,7 +298,7 @@ func ToggleChatReactionHandler(s *v2service.Service) gin.HandlerFunc {
 func ReadChatHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req v2model.ChatReadRequest
-		if !decodeChatBody(c, &req, "the read body takes upTo, lastStateId, scope") {
+		if !decodeChatBody(c, &req, "the read body takes up_to, last_state_id, scope") {
 			return
 		}
 		result, err := s.ReadChat(c.Request.Context(), c.Param("space_id"), c.Param("chat_id"), req, isV2DryRun(c))

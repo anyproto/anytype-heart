@@ -4,7 +4,7 @@ package v2model
 // §5) and the inline-markup bridge: message text crosses the API as SPEC §8
 // markup source in BOTH directions (the anyblockjson inline codec — one
 // vocabulary with block text, C2); offset mark arrays never cross the API.
-// Reactions are counts ({"👍":2}, Q4); ?reactions=full adds reactedBy
+// Reactions are counts ({"👍":2}, Q4); ?reactions=full adds reacted_by
 // (participant-id lists) in its own slot so neither field ever changes
 // type. The SSE stream (Phase 8) reuses these DTOs.
 
@@ -39,14 +39,14 @@ type ChatMessage struct {
 	Id          string              `json:"id"`
 	Order       string              `json:"order"`
 	Author      string              `json:"author,omitempty"`
-	AuthorId    string              `json:"authorId,omitempty"`
+	AuthorId    string              `json:"author_id,omitempty"`
 	At          string              `json:"at,omitempty"`
-	EditedAt    string              `json:"editedAt,omitempty"`
+	EditedAt    string              `json:"edited_at,omitempty"`
 	Text        string              `json:"text"`
-	BlocksText  string              `json:"blocksText,omitempty"`
-	ReplyTo     string              `json:"replyTo,omitempty"`
+	BlocksText  string              `json:"blocks_text,omitempty"`
+	ReplyTo     string              `json:"reply_to,omitempty"`
 	Reactions   map[string]int      `json:"reactions,omitempty"`
-	ReactedBy   map[string][]string `json:"reactedBy,omitempty"`
+	ReactedBy   map[string][]string `json:"reacted_by,omitempty"`
 	Attachments []ChatAttachment    `json:"attachments,omitempty"`
 	Pinned      bool                `json:"pinned,omitempty"`
 }
@@ -59,19 +59,19 @@ type ChatAttachment struct {
 }
 
 // ChatState is the model.ChatState passthrough the v1 DTO dropped: the
-// poll peek (unread counters) and the mark-read race guard (lastStateId —
+// poll peek (unread counters) and the mark-read race guard (last_state_id —
 // POST read forwards it).
 type ChatState struct {
-	UnreadMessages           int    `json:"unreadMessages"`
-	UnreadMentions           int    `json:"unreadMentions"`
-	OldestUnreadOrder        string `json:"oldestUnreadOrder,omitempty"`
-	OldestUnreadMentionOrder string `json:"oldestUnreadMentionOrder,omitempty"`
-	UnreadReactionOrder      string `json:"unreadReactionOrder,omitempty"`
-	LastStateId              string `json:"lastStateId,omitempty"`
+	UnreadMessages           int    `json:"unread_messages"`
+	UnreadMentions           int    `json:"unread_mentions"`
+	OldestUnreadOrder        string `json:"oldest_unread_order,omitempty"`
+	OldestUnreadMentionOrder string `json:"oldest_unread_mention_order,omitempty"`
+	UnreadReactionOrder      string `json:"unread_reaction_order,omitempty"`
+	LastStateId              string `json:"last_state_id,omitempty"`
 }
 
 // ChatMessagesResponse is the GET messages payload: ascending-order
-// messages plus the state+messageCount the underlying RPC already returns
+// messages plus the state+message_count the underlying RPC already returns
 // (zero extra cost — the Phase-6 finding). A poll is a limit=1 read of this
 // shape. Cursor-paged (after/before order ids), not C10 offset pagination.
 // MessageCount is the chat's LIFETIME total, not the size of the requested
@@ -82,10 +82,10 @@ type ChatState struct {
 type ChatMessagesResponse struct {
 	Messages     []ChatMessage `json:"messages"`
 	State        *ChatState    `json:"state,omitempty"`
-	MessageCount int           `json:"messageCount"`
+	MessageCount int           `json:"message_count"`
 	HasMore      bool          `json:"has_more"`
-	NextAfter    string        `json:"nextAfter,omitempty"`
-	NextBefore   string        `json:"nextBefore,omitempty"`
+	NextAfter    string        `json:"next_after,omitempty"`
+	NextBefore   string        `json:"next_before,omitempty"`
 }
 
 // CreateChatRequest is the POST chats body.
@@ -107,7 +107,7 @@ type ChatResult struct {
 // else → link).
 type AddChatMessageRequest struct {
 	Text        string   `json:"text"`
-	ReplyTo     string   `json:"replyTo,omitempty"`
+	ReplyTo     string   `json:"reply_to,omitempty"`
 	Attachments []string `json:"attachments,omitempty"`
 }
 
@@ -143,15 +143,15 @@ type ChatReactionResult struct {
 // ChatReadRequest is the POST read body. UpTo is an order id, INCLUSIVE,
 // required for the messages/mentions scopes (an empty bound would silently
 // mark nothing — the v1 read_all trap). LastStateId is EQUALLY required for
-// those scopes: the repository ANDs `stateId <= lastStateId` and every
+// those scopes: the repository ANDs `stateId <= last_state_id` and every
 // stored message carries a non-empty state id, so an empty guard marks
 // nothing just as silently. Both ride the same GET messages response
-// (newest order + state.lastStateId). Scope defaults to "messages";
+// (newest order + state.last_state_id). Scope defaults to "messages";
 // "reactions" marks all unread reactions and takes no UpTo/LastStateId
 // (the backend reads all).
 type ChatReadRequest struct {
-	UpTo        string `json:"upTo,omitempty"`
-	LastStateId string `json:"lastStateId,omitempty"`
+	UpTo        string `json:"up_to,omitempty"`
+	LastStateId string `json:"last_state_id,omitempty"`
 	Scope       string `json:"scope,omitempty"`
 }
 
@@ -270,7 +270,7 @@ func blocksText(blocks []*model.ChatMessageMessageBlock) string {
 
 // reactionsFromProto compacts reactions to counts (always — the stable
 // slot) and, in full mode, additionally maps the raw identities to
-// participant ids for reactedBy (one vocabulary with AuthorId, C2). Two
+// participant ids for reacted_by (one vocabulary with AuthorId, C2). Two
 // return slots so neither JSON field ever changes type.
 func reactionsFromProto(reactions *model.ChatMessageReactions, opts ChatMessageOptions) (map[string]int, map[string][]string) {
 	if reactions == nil || len(reactions.Reactions) == 0 {

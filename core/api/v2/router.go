@@ -220,7 +220,7 @@ func RegisterRoutes(router *gin.Engine, deps RouteDeps) {
 // that now covers every v2 DELETE — runs behind the idempotency middleware:
 // a double-sent chat message is user-visible damage, and a blindly retried
 // delete 404s misleadingly. C7 etag/If-Match deliberately does not apply
-// (order ids and lastStateId are the chat's native concurrency vocabulary).
+// (order ids and last_state_id are the chat's native concurrency vocabulary).
 func registerChatRoutes(v2 *gin.RouterGroup, deps RouteDeps, idempotencyMW gin.HandlerFunc) {
 	v2.GET("/spaces/:space_id/chats",
 		deps.AnalyticsEvent("V2ListChats"),

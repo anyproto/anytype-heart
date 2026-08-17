@@ -2,7 +2,7 @@
 
 Status: specification, not implemented. 2026-08-14, branch `go-7383-apiv2-phase0`.
 
-Covers plan item 3.3 (`DELETE /v2/spaces/{spaceId}/objects/{objectId}`, specced
+Covers plan item 3.3 (`DELETE /v2/spaces/{space_id}/objects/{object_id}`, specced
 with Phase 1, never registered — APIV2.md §3, APIV2_PLAN.md Wave 3) together
 with the requirement that makes it safe to ship:
 
@@ -350,7 +350,7 @@ What remains inside the trust domain, stated plainly rather than hidden:
   property of the v2 surface, not a global guarantee. For **scoped** keys it
   is a real boundary: they are refused on `/v1` wholesale
   (`v1_not_available_for_scoped_keys`), and on `/v2` the only archive
-  channels are this route (gated) and `setProperties` — where `isArchived`
+  channels are this route (gated) and `set_properties` — where `isArchived`
   is **output-only** and refused
   (`core/api/v2/service/stateops.go:811-814`, pinned by
   `TestIsOutputOnlyProperty`, `core/api/v2/model/model_test.go:113`). Traced:
@@ -469,7 +469,7 @@ persisted field of every app-link file (`core/wallet/applink.go:102,294`),
 returned for app-key sessions by `CreateSession`
 (`core/application/sessions.go:66`, `AppName: appLink.AppName`), cached in
 `ApiSessionEntry.AppName`, and observable today on a legacy key via
-`whoami` (a real legacy key shows `"name":"22"`, `keyStatus: legacy`). The
+`whoami` (a real legacy key shows `"name":"22"`, `key_status: legacy`). The
 raw name is stamped verbatim, exactly as for v2 keys — stable per key,
 however inelegant (`"22"` stays `"22"`; functional, and the same key
 records the same name on both surfaces). The §5 empty-name rule applies
@@ -494,7 +494,7 @@ v2 from day one, which is most of what "free" buys.
 
 ## 9. The DELETE surface
 
-**9.1 Semantics: archive.** `DELETE /v2/spaces/{spaceId}/objects/{objectId}`
+**9.1 Semantics: archive.** `DELETE /v2/spaces/{space_id}/objects/{object_id}`
 archives (Bin, reversible in the app) via `ObjectSetIsArchived` — v1 parity
 (`core/api/service/object.go:224`) and v2 uniformity (`DeleteType`/
 `DeleteProperty`, `core/api/v2/service/schema_write.go:580,792`). Real
@@ -528,7 +528,7 @@ means "create and edit broadly, destroy only your own output", which is the
 recorded direction of the scoping design and Airtable's loudest lesson. For
 unscoped keys the creator check is the only gate beyond auth.
 
-**9.4 Service flow** (`V2Service.DeleteObject(ctx, spaceId, objectId,
+**9.4 Service flow** (`V2Service.DeleteObject(ctx, space_id, objectId,
 dryRun)`):
 
 1. `ensureSpace` (existing backstop; grant-aware).
@@ -699,7 +699,7 @@ independently reviewable; together they are one shippable PR train:
    fill sites, zero wire change.
 5. **Provenance read port**: a small `apicore` port (implemented beside the
    existing adapters in package `api`, which already owns the heart-internal
-   composition) exposing `CreatorProvenance(ctx, spaceId, objectId)
+   composition) exposing `CreatorProvenance(ctx, space_id, objectId)
    (accountMatch bool, integrationName string, err error)` per §10.
 6. **Surface**: `V2Service.DeleteObject` (§9.4), handler, route + authz
    registry entry + `V2DeleteObject` analytics id, the

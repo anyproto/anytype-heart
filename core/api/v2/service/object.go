@@ -1,7 +1,7 @@
 package v2service
 
 // object.go implements the Phase-1 object read surface (APIV2.md):
-// GET /v2/spaces/{spaceId}/objects/{objectId} with include/outline/block/
+// GET /v2/spaces/{space_id}/objects/{object_id} with include/outline/block/
 // ids/format, and the C5 minimal-row object list.
 
 import (
@@ -435,7 +435,7 @@ func buildOutlineEnvelope(fields map[string]json.RawMessage, keepProperties bool
 // exact id or by unique suffix (§9a) against the SERVED ids first, then
 // against the stored ids (storedIds) — so BOTH spellings of a relabeled
 // block address it: the short label a default read shows, and the full
-// stored id a `?ids=full` read, PATCH `createdBlocks` or another client
+// stored id a `?ids=full` read, PATCH `created_blocks` or another client
 // holds. Without the stored-id fallback the full id 404ed on the default
 // shape — an addressability hole between the two vocabularies.
 //
@@ -443,7 +443,7 @@ func buildOutlineEnvelope(fields map[string]json.RawMessage, keepProperties bool
 // shape is partial by construction. Without the marker the subtree body was
 // schema-valid, and PUT of that exact body silently deleted every block
 // outside the subtree (reproduced: 6-block page, GET ?block= then PUT →
-// blocksRemoved: 5). The marker makes every write path refuse it — the
+// blocks_removed: 5). The marker makes every write path refuse it — the
 // AnyBlock envelope is additionalProperties:false, so Validate rejects it
 // structurally, and PUT/create name it precisely before that.
 //
@@ -596,7 +596,7 @@ func resolveBlockRef(ids []string, ref string) (int, error) {
 // serves ids that live INSIDE a block: table row and column ids, the ids of
 // blocks nested in table cells, dataview view ids. Those are real stored ids
 // and they relabel like any other, but they are not block references: they
-// are addressed through the slot that owns them (setCell's row/col, the view
+// are addressed through the slot that owns them (set_cell's row/col, the view
 // ops' view), and a block nested in a cell has no addressing slot at all —
 // it is reached by rewriting its cell.
 //
@@ -606,7 +606,7 @@ func resolveBlockRef(ids []string, ref string) (int, error) {
 // entry that says "this is not a sibling of the top-level run").
 const (
 	v2AddressableBlocksMessage = "the addressable blocks are the entries of the document's blocks array"
-	v2AddressableBlocksHint    = "GET the object with ?outline=true to list them. Ids nested inside a block are served but are not block references: a table's rows and columns are addressed by setCell's row/col, a dataview's views by the view ops, and a block inside a table cell is not individually addressable — rewrite its cell with setCell."
+	v2AddressableBlocksHint    = "GET the object with ?outline=true to list them. Ids nested inside a block are served but are not block references: a table's rows and columns are addressed by set_cell's row/col, a dataview's views by the view ops, and a block inside a table cell is not individually addressable — rewrite its cell with set_cell."
 )
 
 //
@@ -716,7 +716,7 @@ type objectRowBuilder struct {
 	fields   []string
 	opts     anyblockjson.Options
 	spaceId  string // the store-facing full id
-	// spaceRef is what a row's spaceId FIELD carries when includeSpaceId
+	// spaceRef is what a row's space_id FIELD carries when includeSpaceId
 	// (global search): the §8.35 short reference by default, the full id
 	// when its tail collides with another visible space's. Defaults to
 	// spaceId so a builder constructed without a census still serves a

@@ -2,13 +2,63 @@ package v2model
 
 import (
 	"encoding/json"
+	"go/ast"
+	"go/parser"
+	"go/token"
+	"path/filepath"
 	"reflect"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// TestJSONTagsAreSnakeCase pins C2 across the WHOLE DTO package: v2's own
+// wire vocabulary is snake_case, in every body, in both directions. It reads
+// the package's own source rather than a hand-kept list of types, so a DTO
+// added later cannot land with a camelCase tag merely by not being listed —
+// the drift class §8.31 is about. The format's own field names are NOT
+// covered here: v2 forwards those inside AnyBlock documents, which are
+// json.RawMessage at this layer.
+func TestJSONTagsAreSnakeCase(t *testing.T) {
+	sources, err := filepath.Glob("*.go")
+	require.NoError(t, err)
+
+	snake := regexp.MustCompile(`^[a-z][a-z0-9]*(_[a-z0-9]+)*$`)
+	fset := token.NewFileSet()
+	tagged := 0
+
+	for _, source := range sources {
+		if strings.HasSuffix(source, "_test.go") {
+			continue
+		}
+		file, parseErr := parser.ParseFile(fset, source, nil, 0)
+		require.NoError(t, parseErr)
+
+		ast.Inspect(file, func(node ast.Node) bool {
+			field, ok := node.(*ast.Field)
+			if !ok || field.Tag == nil {
+				return true
+			}
+			raw, unquoteErr := strconv.Unquote(field.Tag.Value)
+			require.NoError(t, unquoteErr)
+			name, _, _ := strings.Cut(reflect.StructTag(raw).Get("json"), ",")
+			if name == "" || name == "-" {
+				return true
+			}
+			tagged++
+			assert.Regexp(t, snake, name,
+				"%s: json tag %q is not snake_case — C2 is one vocabulary, and it is the transport's",
+				fset.Position(field.Pos()), name)
+			return true
+		})
+	}
+
+	assert.Greater(t, tagged, 80, "the walker must actually have reached the DTO tags")
+}
 
 func TestErrorShape(t *testing.T) {
 	t.Run("serializes the C6 envelope", func(t *testing.T) {
@@ -101,7 +151,7 @@ func TestSearchRequestDocMirrorsSearchRequest(t *testing.T) {
 // §7.5a) — the wrapper's describe passes SERVED keys straight in — so the
 // bundled fallback is what keeps `created_date` output-only. Revert it and
 // the two surfaces that share this predicate start disagreeing, silently:
-// a setProperties naming created_date would be accepted, and describe would
+// a set_properties naming created_date would be accepted, and describe would
 // advertise it as settable.
 func TestIsOutputOnlyProperty(t *testing.T) {
 	t.Run("both spellings of an output-only key answer the same", func(t *testing.T) {

@@ -50,15 +50,15 @@ type ObjectRead struct {
 	// conclusion as the real edit (review C′3). nil means that axis is
 	// editable. They are separate because the restrictions are: a set and a
 	// collection carry Restrictions_Blocks but NOT Restrictions_Details, so
-	// one blanket verdict made renaming a set — and every addItems — refuse
+	// one blanket verdict made renaming a set — and every add_items — refuse
 	// (surface review M1).
 	BlocksRefused  error
 	DetailsRefused error
 }
 
 // EditNeeds declares which object-level restriction axes an edit touches, so
-// the gate can be per-op instead of per-request. Item ops (addItems /
-// removeItems) need NEITHER: they mutate the collection store, which no
+// the gate can be per-op instead of per-request. Item ops (add_items /
+// remove_items) need NEITHER: they mutate the collection store, which no
 // object restriction governs — matching v1's ObjectCollectionAdd.
 type EditNeeds struct {
 	Blocks  bool
@@ -125,7 +125,7 @@ type ObjectMutator interface {
 
 // ObjectProvenance reads an object's creator provenance from validated
 // change storage — never from details (APIV2_OBJECT_DELETE.md §10). It is
-// the enforcement read behind DELETE /v2/spaces/{spaceId}/objects/{objectId}:
+// the enforcement read behind DELETE /v2/spaces/{space_id}/objects/{object_id}:
 //
 //   - accountMatch reports the root clause — the tree's signed root carries
 //     this account's identity (other members' objects report false; note

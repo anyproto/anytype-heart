@@ -1,7 +1,7 @@
 package v2service
 
 // search.go implements the Phase-4 query surface (APIV2.md §2 Phase 4):
-// POST /v2/spaces/{spaceId}/search and POST /v2/search (global). Both filter
+// POST /v2/spaces/{space_id}/search and POST /v2/search (global). Both filter
 // forms — the compact string (SPEC §6.2.1, parsed by anyblockjson/
 // filterstring) and the structured array — land on ONE internal tree via
 // anyblockjson.UnmarshalFilters, then translate to a direct store query
@@ -84,7 +84,7 @@ func validateSearchShape(req v2model.SearchRequest) error {
 	return nil
 }
 
-// SearchObjects implements POST /v2/spaces/{spaceId}/search.
+// SearchObjects implements POST /v2/spaces/{space_id}/search.
 func (s *Service) SearchObjects(ctx context.Context, spaceId string, req v2model.SearchRequest, offset, limit int) ([]v2model.ObjectRow, int, bool, []v2model.Issue, error) {
 	if err := s.ensureSpace(ctx, spaceId); err != nil {
 		return nil, 0, false, nil, err
@@ -946,7 +946,7 @@ func (s *Service) GlobalSearchObjects(ctx context.Context, req v2model.SearchReq
 			v2model.Issue{
 				Path:    "offset",
 				Message: fmt.Sprintf("offset %d exceeds the global-search maximum of %d — the cross-space merge materializes offset+limit rows per space", offset, maxGlobalSearchOffset),
-				Hint:    "narrow with filter, type or query, or page one space with POST /v2/spaces/{spaceId}/search",
+				Hint:    "narrow with filter, type or query, or page one space with POST /v2/spaces/{space_id}/search",
 			})
 	}
 	spaces, err := s.spaceRefs(ctx)
@@ -1006,7 +1006,7 @@ func (s *Service) GlobalSearchObjects(ctx context.Context, req v2model.SearchReq
 	sortGlobalRecords(merged, mergeSorts)
 	page := merged[minInt(offset, len(merged)):minInt(need, len(merged))]
 
-	// the row's spaceId field is served in the §8.35 short form, minted over
+	// the row's space_id field is served in the §8.35 short form, minted over
 	// the SAME visible set the fan-out ran on — a global-search row is the
 	// one place an agent learns a space id it did not itself name
 	shortRefs := map[string]string{}

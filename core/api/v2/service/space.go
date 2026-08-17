@@ -1,7 +1,7 @@
 package v2service
 
 // space.go implements the Phase-7 space surface (APIV2_SURFACES.md §2):
-// GET /v2/spaces/{spaceId}, POST /v2/spaces, PATCH /v2/spaces/{spaceId}.
+// GET /v2/spaces/{space_id}, POST /v2/spaces, PATCH /v2/spaces/{space_id}.
 // The read is one tech-space store query — NOT v1's WorkspaceOpen +
 // ObjectShow RPC pair per space (service/space.go getSpaceInfo), which is
 // the N+1 shape the phase bans. The mutations are thin over WorkspaceCreate
@@ -58,7 +58,7 @@ func isLiveSpaceView(details *domain.Details) bool {
 	return account == model.SpaceStatus_Unknown || account == model.SpaceStatus_SpaceActive
 }
 
-// GetSpace implements GET /v2/spaces/{spaceId}: the space row read from the
+// GetSpace implements GET /v2/spaces/{space_id}: the space row read from the
 // tech space's space view (the view mirrors the workspace object's name and
 // description — editor/spaceview.go workspaceKeysToCopy), so the read costs
 // one store query and zero RPCs. Only LIVE spaces are served
@@ -199,9 +199,9 @@ func (s *Service) CreateSpace(ctx context.Context, req v2model.CreateSpaceReques
 	return &v2model.Space{Id: s.servedSpaceRef(ctx, resp.SpaceId), Name: name, Description: description}, nil
 }
 
-// UpdateSpace implements PATCH /v2/spaces/{spaceId}: thin over
+// UpdateSpace implements PATCH /v2/spaces/{space_id}: thin over
 // WorkspaceSetInfo. Omitted fields stay unchanged; at least one field is
-// required (the setProperties empty-op precedent — an accepted no-op PATCH
+// required (the set_properties empty-op precedent — an accepted no-op PATCH
 // would let an agent believe it renamed something). The response overlays
 // the patch onto the current space-view row rather than re-reading it: the
 // workspace-object write propagates to the tech-space view asynchronously,

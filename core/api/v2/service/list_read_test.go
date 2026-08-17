@@ -287,8 +287,8 @@ func TestV2GetCollectionObjects(t *testing.T) {
 		// then
 		apiErr := v2Err(t, err)
 		assert.Contains(t, apiErr.Message, "neither a set nor a collection")
-		assert.Contains(t, apiErr.Message, "/sets/{setId}/objects")
-		assert.Contains(t, apiErr.Message, "/collections/{collectionId}/objects")
+		assert.Contains(t, apiErr.Message, "/sets/{set_id}/objects")
+		assert.Contains(t, apiErr.Message, "/collections/{collection_id}/objects")
 	})
 
 	t.Run("an offset past the membership is an empty page, has_more false", func(t *testing.T) {

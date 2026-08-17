@@ -166,7 +166,7 @@ func TestV2CreateObjectShortcut(t *testing.T) {
 		_, err := fx.CreateObject(context.Background(), testSpaceId,
 			[]byte(`{"type":"page","name":"Doc","markdown":"   \n\t\n"}`), false)
 
-		// then: the same contract as the insertBlocks markdown channel (C6)
+		// then: the same contract as the insert_blocks markdown channel (C6)
 		apiErr := v2Err(t, err)
 		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
 		assert.Equal(t, "markdown produced no blocks", apiErr.Message)
@@ -194,7 +194,7 @@ func TestV2CreateObjectShortcut(t *testing.T) {
 		require.Len(t, apiErr.Issues, 1)
 		assert.Equal(t, "/markdown", apiErr.Issues[0].Path)
 		assert.Contains(t, apiErr.Issues[0].Message, "2048")
-		assert.Contains(t, apiErr.Issues[0].Message, "insertBlocks")
+		assert.Contains(t, apiErr.Issues[0].Message, "insert_blocks")
 	})
 
 	t.Run("markdown-derived issue paths readdress /blocks to /markdown", func(t *testing.T) {

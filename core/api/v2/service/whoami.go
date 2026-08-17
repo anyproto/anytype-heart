@@ -135,7 +135,7 @@ func scopeName(scope model.AccountAuthLocalApiScope) string {
 }
 
 // unixToRfc3339 renders a unix timestamp as RFC 3339 UTC; 0 stays null
-// (unknown for createdAt, never for expiresAt).
+// (unknown for created_at, never for expires_at).
 func unixToRfc3339(unix int64) *string {
 	if unix == 0 {
 		return nil

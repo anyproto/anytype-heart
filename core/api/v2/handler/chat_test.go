@@ -77,7 +77,7 @@ func serveChat(fx *v2HandlerFixture, method, target, body string) *httptest.Resp
 }
 
 func TestGetChatMessagesV2HandlerQueryPlumbing(t *testing.T) {
-	t.Run("?reactions=full reaches the service — reactedBy appears, counts keep their slot", func(t *testing.T) {
+	t.Run("?reactions=full reaches the service — reacted_by appears, counts keep their slot", func(t *testing.T) {
 		// given
 		fx := chatRouterFixture(t)
 		fx.mwMock.EXPECT().ChatGetMessages(mock.Anything, mock.Anything).
@@ -89,10 +89,10 @@ func TestGetChatMessagesV2HandlerQueryPlumbing(t *testing.T) {
 
 		// then
 		require.Equal(t, http.StatusOK, wFull.Code)
-		assert.Contains(t, wFull.Body.String(), `"reactedBy"`,
+		assert.Contains(t, wFull.Body.String(), `"reacted_by"`,
 			"?reactions=full must plumb through to the DTO — the whole Q4 feature dies silently otherwise")
 		require.Equal(t, http.StatusOK, wDefault.Code)
-		assert.NotContains(t, wDefault.Body.String(), `"reactedBy"`)
+		assert.NotContains(t, wDefault.Body.String(), `"reacted_by"`)
 		assert.Contains(t, wDefault.Body.String(), `"reactions":{"👍":2}`)
 	})
 
@@ -195,7 +195,7 @@ func TestChatMutationDryRunPlumbing(t *testing.T) {
 
 	t.Run("POST read with dry_run forwards nothing", func(t *testing.T) {
 		fx := chatRouterFixture(t)
-		w := serveChat(fx, "POST", "/v2/spaces/space1/chats/chat1/read?dry_run=true", `{"upTo":"00a1","lastStateId":"state42"}`)
+		w := serveChat(fx, "POST", "/v2/spaces/space1/chats/chat1/read?dry_run=true", `{"up_to":"00a1","last_state_id":"state42"}`)
 		require.Equal(t, http.StatusOK, w.Code)
 		assert.Contains(t, w.Body.String(), `"dry_run":true`)
 	})
@@ -229,6 +229,6 @@ func TestChatBodyDecoding(t *testing.T) {
 		fx := chatRouterFixture(t)
 		w := serveChat(fx, "POST", "/v2/spaces/space1/chats/chat1/messages", "")
 		require.Equal(t, http.StatusBadRequest, w.Code)
-		assert.Contains(t, w.Body.String(), "text, replyTo, attachments")
+		assert.Contains(t, w.Body.String(), "text, reply_to, attachments")
 	})
 }

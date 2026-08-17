@@ -12,13 +12,13 @@ package v2service
 // slots did not — they were handed to the format importer verbatim, which
 // takes an id as an identity. So the documented loop
 //
-//	GET ?block=aaaa1  →  PATCH replaceSubtree {id:"aaaa1", blocks:<that array>}
+//	GET ?block=aaaa1  →  PATCH replace_subtree {id:"aaaa1", blocks:<that array>}
 //
 // answered 200 and PERMANENTLY renamed the block to "aaaa1": other clients'
 // cached ids 404ed, the id was no longer minted-shaped so it never relabeled
 // again (and reserved that label in the exporter's avoid-set forever), and
 // the CRDT recorded a delete plus a create instead of an edit. The same held
-// for updateBlock set:{rows|columns|views} and setCell value — the ops whose
+// for update_block set:{rows|columns|views} and set_cell value — the ops whose
 // payload REPLACES the label's own owner, which is exactly the set the
 // leaving-subtree subtraction in the old checkFreshIds excluded from its
 // tail scan.
@@ -26,7 +26,7 @@ package v2service
 // Resolving instead of refusing makes that loop CORRECT rather than merely
 // rejected: a payload id names the block it was read from, identity is
 // preserved, and echoing a subtree back unchanged is a genuine no-op —
-// diffStats 0, not "2 added, 2 removed".
+// diff_stats 0, not "2 added, 2 removed".
 //
 // An id that resolves to nothing is REFUSED, not minted (§8.29): a payload
 // id names an existing block, exactly as every other id slot does, and
@@ -35,7 +35,7 @@ package v2service
 // new block — the same class of silent-wrong-thing this file exists to
 // close — while the refusal costs a caller who meant new content one edit.
 //
-// Which leaves a payload with NO existing content to name — insertBlocks —
+// Which leaves a payload with NO existing content to name — insert_blocks —
 // with an id slot in which every value is an error. Those ops resolve
 // nothing: they reject the field outright (rejectOrMintSlot below), and
 // their op schema does not publish it (§8.30). Two meanings ("name this
@@ -90,7 +90,7 @@ const maxListedIdCandidates = 8
 // read can serve resolves back through it.
 //
 // "Pre-op" includes the subtree the op is about to replace — the whole point:
-// replaceSubtree's payload legitimately names the blocks it is replacing, and
+// replace_subtree's payload legitimately names the blocks it is replacing, and
 // subtracting them (as the old freshness guard did) is what left those ops
 // with no id rule at all.
 func (a *v2StateApplier) payloadIdVocabulary() ([]string, error) {
@@ -114,7 +114,7 @@ func (a *v2StateApplier) payloadIdVocabulary() ([]string, error) {
 //     VIEW ids.
 //
 // The guard used to ask st.Exists alone. A view id was therefore resolvable
-// but never claimable: `updateBlock set:{views:[…]}` could store two views
+// but never claimable: `update_block set:{views:[…]}` could store two views
 // under one id (every later view op then addressed the first one forever),
 // and a payload block could adopt a live view's id — an identity collision
 // no read can distinguish.
@@ -188,7 +188,7 @@ func walkPayloadIdSlots(block map[string]any, path string, fn slotVisitor) error
 }
 
 // walkEntryIdSlots visits the id slots of ONE rows/columns/views array.
-// updateBlock resolves the caller's arrays field by field — the live fields
+// update_block resolves the caller's arrays field by field — the live fields
 // merged in already carry stored ids — so this half of the walk is reachable
 // on its own.
 func walkEntryIdSlots(entries []any, field, path string, fn slotVisitor) error {
@@ -221,7 +221,7 @@ func walkEntryIdSlots(entries []any, field, path string, fn slotVisitor) error {
 // walkCellRunIdSlots visits the id slots of a cell's array form (§6.1 F10).
 // Element 0 is the cell block itself, whose id is DERIVED (rowId-colId) and
 // forced by the importer, so the walk starts at 1; the rest are ordinary
-// flat blocks. setCell's value channel is the same shape, so it shares this.
+// flat blocks. set_cell's value channel is the same shape, so it shares this.
 func walkCellRunIdSlots(run []any, path string, fn slotVisitor) error {
 	for i := 1; i < len(run); i++ {
 		el, ok := run[i].(map[string]any)
@@ -283,16 +283,16 @@ func (a *v2StateApplier) rejectOrMintSlot(op string) slotVisitor {
 //
 // Minting here rather than leaving it to the format importer is what makes
 // the refusals' promise true. Both of them tell the caller to omit the id
-// because "the server mints one and returns it in createdBlocks" — but
-// createdBlocks used to be written only for TOP-LEVEL run blocks, so a
+// because "the server mints one and returns it in created_blocks" — but
+// created_blocks used to be written only for TOP-LEVEL run blocks, so a
 // minted view id, a minted cell descendant and the row/column ids of a table
-// created through insertBlocks were all unreported. Those are precisely the
+// created through insert_blocks were all unreported. Those are precisely the
 // slots the refusals fire on, so the API was telling a model to do something
 // and then withholding the answer it had promised; the model's only recovery
 // was a re-read, a whole round trip to learn an id it had just created.
 //
-// A view id goes to createdViews, not createdBlocks: a view is not a block,
-// and createdViews is already the view-family twin of that map.
+// A view id goes to created_views, not created_blocks: a view is not a block,
+// and created_views is already the view-family twin of that map.
 func (a *v2StateApplier) mintSlotId(s payloadIdSlot) {
 	id := a.mintBlockId()
 	s.m["id"] = id
@@ -304,13 +304,13 @@ func (a *v2StateApplier) mintSlotId(s payloadIdSlot) {
 }
 
 // resolveIdEntries resolves (and mints into) the id slots of one payload
-// rows/columns/views array — updateBlock's set channel, which hands over one
+// rows/columns/views array — update_block's set channel, which hands over one
 // field at a time.
 func (a *v2StateApplier) resolveIdEntries(vocab []string, entries []any, field, path string) error {
 	return walkEntryIdSlots(entries, field, path, a.resolveOrMintSlot(vocab))
 }
 
-// resolveCellValueIds resolves (and mints into) the id slots a setCell value
+// resolveCellValueIds resolves (and mints into) the id slots a set_cell value
 // carries. Only the array form has any, and only past element 0 (the cell
 // block, derived id).
 func (a *v2StateApplier) resolveCellValueIds(vocab []string, value any, path string) error {
@@ -334,7 +334,7 @@ func newContentIdError(op, id, path string) error {
 		v2model.Issue{
 			Path:    path,
 			Message: fmt.Sprintf("id %q is not part of this op: an id names an EXISTING element, and %s only creates them; no value of this field can succeed, so the op's schema does not have it", id, op),
-			Hint:    fmt.Sprintf("drop the id — the server mints one and reports it under this exact path in createdBlocks (createdViews for a view); see GET /v2/schemas/ops/%s. To change an existing block use updateBlock, or replaceSubtree to swap it whole", op),
+			Hint:    fmt.Sprintf("drop the id — the server mints one and reports it under this exact path in created_blocks (created_views for a view); see GET /v2/schemas/ops/%s. To change an existing block use update_block, or replace_subtree to swap it whole", op),
 		})
 }
 
@@ -360,7 +360,7 @@ func unresolvedPayloadIdError(path, id string) error {
 		v2model.Issue{
 			Path:    path,
 			Message: "a payload id names an EXISTING element whose identity the op keeps — a full id or a unique suffix, the same rule every other id slot follows; it is not a way to choose the id of new content",
-			Hint:    "omit id to author something new — the server mints one and reports it under this exact path in createdBlocks (createdViews for a view); if you meant an existing element, re-read the object (GET ?outline=true lists block ids) — it may have changed under you",
+			Hint:    "omit id to author something new — the server mints one and reports it under this exact path in created_blocks (created_views for a view); if you meant an existing element, re-read the object (GET ?outline=true lists block ids) — it may have changed under you",
 		})
 }
 
@@ -389,7 +389,7 @@ func (a *v2StateApplier) duplicateIdError(path string, id string) error {
 		v2model.Issue{
 			Path:    path,
 			Message: detail,
-			Hint:    "omit id on new content — the server mints one; to change the existing element, address it with updateBlock or replaceSubtree",
+			Hint:    "omit id on new content — the server mints one; to change the existing element, address it with update_block or replace_subtree",
 		})
 }
 

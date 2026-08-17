@@ -216,7 +216,7 @@ func TestTaskTableIsWellFormed(t *testing.T) {
 			fx := &fixture{Title: fixtureTitle(), ObjectId: "obj1"}
 			prompt := task.Prompt(fx)
 			assert.Contains(t, prompt, fx.Title, "the prompt must name the object the model has to find")
-			assert.NotContains(t, prompt, "insertBlocks", "a prompt must not name the tool to use")
+			assert.NotContains(t, prompt, "insert_blocks", "a prompt must not name the tool to use")
 			assert.NotContains(t, prompt, "edit_text", "a prompt must not name the tool to use")
 
 			// the fixture body must not already satisfy the check, or the task
@@ -294,7 +294,7 @@ func TestCellsAreSkippedWhenTheArmPublishesNoToolForTheTask(t *testing.T) {
 		assert.True(t, cells[cellKey{"m", arm, "edit-one-word"}], "edit_text is served to the small tier")
 	}
 	assert.True(t, cells[cellKey{"m", armWrapperLarge, "fill-table-cell"}])
-	assert.True(t, cells[cellKey{"m", armOps, "fill-table-cell"}], "the ops arm publishes setCell")
+	assert.True(t, cells[cellKey{"m", armOps, "fill-table-cell"}], "the ops arm publishes set_cell")
 	assert.True(t, cells[cellKey{"m", armOps, "restructure-section"}])
 
 	// and the gate reads the tier table rather than restating it

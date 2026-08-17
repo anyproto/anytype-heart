@@ -120,7 +120,7 @@ func SearchObjectsHandler(s *v2service.Service) gin.HandlerFunc {
 // GlobalSearchObjectsHandler searches every space
 //
 //	@Summary		Search objects (global)
-//	@Description	Searches all spaces: type keys and option names resolve per space (a reference that resolves in only some spaces queries those and warns about the rest), results merge by the requested sort, total is the sum of per-space store counts (honest totals). Rows carry spaceId. Same request shape as the space search.
+//	@Description	Searches all spaces: type keys and option names resolve per space (a reference that resolves in only some spaces queries those and warns about the rest), results merge by the requested sort, total is the sum of per-space store counts (honest totals). Rows carry space_id. Same request shape as the space search.
 //	@Id				search_global
 //	@Tags			Search
 //	@Accept			json
@@ -128,8 +128,8 @@ func SearchObjectsHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Param			request	body		v2model.SearchRequestDoc				true	"Search request"
 //	@Param			offset	query		int										false	"Items to skip"		default(0)
 //	@Param			limit	query		int										false	"Items to return"	default(25)
-//	@Param			ids		query		string									false	"How each row's spaceId is spelled: compact (default) = the short space reference; full = the full <cid>.<replicationKey> id — the spelling to persist outside this API"
-//	@Success		200		{object}	v2model.ListResponse[v2model.ObjectRow]	"Minimal object rows with spaceId"
+//	@Param			ids		query		string									false	"How each row's space_id is spelled: compact (default) = the short space reference; full = the full <cid>.<replicationKey> id — the spelling to persist outside this API"
+//	@Success		200		{object}	v2model.ListResponse[v2model.ObjectRow]	"Minimal object rows with space_id"
 //	@Failure		400		{object}	v2model.Error							"Invalid request"
 //	@Security		bearerauth
 //	@Router			/v2/search [post]

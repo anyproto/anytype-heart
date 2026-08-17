@@ -9,7 +9,7 @@ package main
 //     real MCP host would show it, repair tips and all.
 //   - the ops arm serves the per-op schemas the API itself publishes at
 //     GET /v2/schemas/ops/{op} as the tools' parameters, and executes each
-//     call as a single-op PATCH. This is the surface the insertBlocks
+//     call as a single-op PATCH. This is the surface the insert_blocks
 //     payload-id question lives on: the wrapper's add_blocks takes markdown
 //     and has no id channel at all, so only here can a model emit one.
 //
@@ -139,7 +139,7 @@ func newMCPToolset(ctx context.Context, runner *wrapper.Runner, tier wrapper.Tie
 // The hypothesis is §8.30's mechanism — a small model fills the fields a
 // schema shows it, even when they are documented optional — measured on the
 // one field these models demonstrably do emit. §8.30 removed `id` from
-// insertBlocks on that argument and the 210-call probe could not confirm it
+// insert_blocks on that argument and the 210-call probe could not confirm it
 // (the models emit no payload id either way, so the control fired). `block`
 // is different: gemma4:e2b supplied edit_text's documented-optional `block`
 // on 3 of 3 attempts, reading the whole document first to obtain a value
@@ -329,14 +329,14 @@ func (t *mcpToolset) close() error {
 // realistic edit reaches for, kept under the small-model tool cliff. The
 // view and collection ops are out of scope for these tasks.
 var opsArmOps = []string{
-	"insertBlocks",
-	"replaceText",
-	"replaceSubtree",
-	"updateBlock",
-	"moveBlock",
-	"deleteBlock",
-	"setCell",
-	"setProperties",
+	"insert_blocks",
+	"replace_text",
+	"replace_subtree",
+	"update_block",
+	"move_block",
+	"delete_block",
+	"set_cell",
+	"set_properties",
 }
 
 // readObjectSchema is the ONE harness-authored schema in the run: a GET has

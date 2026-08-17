@@ -5,7 +5,7 @@ package v2service
 // candidate cap (documents with >8 matching blocks) and the per-op scope
 // (the real format never puts `text` on a non-text block, so the scopes are
 // unobservable through PatchObject — they are the invariants that a block
-// replaceText cannot edit never captures or contaminates ITS match, while
+// replace_text cannot edit never captures or contaminates ITS match, while
 // nothing is ever filtered out of a destructive op's candidate set).
 // locatorContext's windowing tests moved here from the wrapper with the
 // function itself.
@@ -47,7 +47,7 @@ func TestResolveByText(t *testing.T) {
 		assert.Contains(t, apiErr.Message, "… and 2 more")
 	})
 
-	t.Run("a non-text block never captures replaceText's match", func(t *testing.T) {
+	t.Run("a non-text block never captures replace_text's match", func(t *testing.T) {
 		// were a non-text block to carry the snippet, resolving to it would
 		// produce an op the applier must then refuse — so it must not count
 		doc := findDoc(t,
@@ -60,7 +60,7 @@ func TestResolveByText(t *testing.T) {
 		assert.Equal(t, 1, idx)
 	})
 
-	t.Run("a snippet found only in a non-text block is zero matches for replaceText", func(t *testing.T) {
+	t.Run("a snippet found only in a non-text block is zero matches for replace_text", func(t *testing.T) {
 		doc := findDoc(t,
 			`{"id":"bmOne1","type":"bookmark","text":"needle"}`,
 			`{"id":"parOne1","type":"paragraph","text":"other"}`)
@@ -86,7 +86,7 @@ func TestResolveByText(t *testing.T) {
 	// destructive op's candidate set ----
 
 	t.Run("a non-text block IS a candidate for match, so two candidates refuse", func(t *testing.T) {
-		// the same document replaceText resolves uniquely above. deleteBlock
+		// the same document replace_text resolves uniquely above. delete_block
 		// can delete a bookmark, so filtering it out would answer a genuinely
 		// two-block question with one silent, wrong, destructive match. The
 		// exporter never writes `text` on a bookmark today — this fixture is
@@ -105,7 +105,7 @@ func TestResolveByText(t *testing.T) {
 	})
 
 	t.Run("the refusals name the field that carried the text", func(t *testing.T) {
-		// the repair has to speak the caller's own vocabulary: an updateBlock
+		// the repair has to speak the caller's own vocabulary: an update_block
 		// told to "add surrounding text to find" is told to edit a field it
 		// does not have
 		doc := findDoc(t, `{"id":"parOne1","type":"paragraph","text":"other"}`)
@@ -121,8 +121,8 @@ func TestResolveByText(t *testing.T) {
 
 	t.Run("repeats within the one block still resolve it", func(t *testing.T) {
 		// within-block multiplicity is not a resolution failure: this
-		// function identifies a BLOCK, and updateBlock/deleteBlock act on the
-		// block as a whole. Only replaceText, which has to splice one
+		// function identifies a BLOCK, and update_block/delete_block act on the
+		// block as a whole. Only replace_text, which has to splice one
 		// occurrence, refuses on the count (applyReplaceText)
 		doc := findDoc(t,
 			`{"id":"parOne1","type":"paragraph","text":"the Q3 report and the Q3 plan"}`,

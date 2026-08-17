@@ -375,7 +375,7 @@ func TestV2PatchCorpseKeyChannels(t *testing.T) {
 
 		// when
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"setProperties","set":{"`+corpseBsonKey+`":"2030-12-31"}}`), "", false)
+			patchBody(`{"op":"set_properties","set":{"`+corpseBsonKey+`":"2030-12-31"}}`), "", false)
 
 		// then
 		require.NoError(t, err)
@@ -388,7 +388,7 @@ func TestV2PatchCorpseKeyChannels(t *testing.T) {
 		fx.expectMutate(editRead(t, cleanDocNoCorpse), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"setProperties","set":{"`+corpseBsonKey+`":"2030-12-31"}}`), "", false)
+			patchBody(`{"op":"set_properties","set":{"`+corpseBsonKey+`":"2030-12-31"}}`), "", false)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -401,7 +401,7 @@ func TestV2PatchCorpseKeyChannels(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, corpseDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"setProperties","unset":["`+corpseBsonKey+`"]}`), "", false)
+			patchBody(`{"op":"set_properties","unset":["`+corpseBsonKey+`"]}`), "", false)
 
 		require.NoError(t, err)
 		_, present := (*captured).CombinedDetails().TryString(domain.RelationKey(corpseBsonKey))
@@ -414,14 +414,14 @@ func TestV2PatchCorpseKeyChannels(t *testing.T) {
 		fx.expectMutate(editRead(t, corpseDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"setProperties","set":{"`+corpseSlug+`":"2030-12-31"}}`), "", false)
+			patchBody(`{"op":"set_properties","set":{"`+corpseSlug+`":"2030-12-31"}}`), "", false)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
 	})
 }
 
-// TestV2ViewOpsCorpseKeys: updateView applies the same two-tier rule — a
+// TestV2ViewOpsCorpseKeys: update_view applies the same two-tier rule — a
 // corpse key already ON the dataview (a column, filter or sort the surface
 // already shows) stays editable and referencable (§8.17: an edit must not
 // reject what the surface already shows), while introducing that key to a
@@ -447,7 +447,7 @@ func TestV2ViewOpsCorpseKeys(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, corpseViewDocBody), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","view":"viewAll1","set":{"name":"Renamed"}}`), "", false)
+			patchBody(`{"op":"update_view","view":"viewAll1","set":{"name":"Renamed"}}`), "", false)
 
 		require.NoError(t, err)
 		require.NotNil(t, *captured)
@@ -459,7 +459,7 @@ func TestV2ViewOpsCorpseKeys(t *testing.T) {
 		fx.expectMutate(editRead(t, corpseViewDocBody), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","view":"viewAll1","set":{"groupBy":"`+corpseBsonKey+`"}}`), "", false)
+			patchBody(`{"op":"update_view","view":"viewAll1","set":{"groupBy":"`+corpseBsonKey+`"}}`), "", false)
 
 		require.NoError(t, err)
 	})
@@ -468,8 +468,8 @@ func TestV2ViewOpsCorpseKeys(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.addCorpseProperty(t, corpseProd)
 		for _, op := range []string{
-			`{"op":"updateView","view":"viewAll1","set":{"groupBy":"` + corpseBsonKey + `"}}`,
-			`{"op":"updateView","view":"viewAll1","columns":{"` + corpseBsonKey + `":{"width":80}}}`,
+			`{"op":"update_view","view":"viewAll1","set":{"groupBy":"` + corpseBsonKey + `"}}`,
+			`{"op":"update_view","view":"viewAll1","columns":{"` + corpseBsonKey + `":{"width":80}}}`,
 		} {
 			fx.expectMutate(editRead(t, plainViewDocBody), "headB")
 			_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(op), "", false)
@@ -633,7 +633,7 @@ func TestV2UninstalledBundledPropertyRefusesWrites(t *testing.T) {
 				fx.expectMutate(editRead(t, cleanDoc), "headB")
 
 				_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-					patchBody(`{"op":"setProperties","set":{"due_date":"2030-12-31"}}`), "", false)
+					patchBody(`{"op":"set_properties","set":{"due_date":"2030-12-31"}}`), "", false)
 
 				requireRemovalRefusal(t, err, "due_date")
 			})
@@ -643,7 +643,7 @@ func TestV2UninstalledBundledPropertyRefusesWrites(t *testing.T) {
 				captured := fx.expectMutate(editRead(t, holdingDoc), "headB")
 
 				_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-					patchBody(`{"op":"setProperties","unset":["due_date"]}`), "", false)
+					patchBody(`{"op":"set_properties","unset":["due_date"]}`), "", false)
 
 				require.NoError(t, err)
 				_, present := (*captured).CombinedDetails().TryString(bundle.RelationKeyDueDate)
@@ -667,7 +667,7 @@ func TestV2UninstalledBundledPropertyRefusesWrites(t *testing.T) {
 			fx.expectMutate(editRead(t, plainViewDoc), "headB")
 
 			_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-				patchBody(`{"op":"updateView","view":"viewAll1","columns":{"due_date":{"width":80}}}`), "", false)
+				patchBody(`{"op":"update_view","view":"viewAll1","columns":{"due_date":{"width":80}}}`), "", false)
 
 			requireRemovalRefusal(t, err, "due_date")
 		})
@@ -1015,23 +1015,23 @@ func TestV2RemovedBundledSlugEqualsKeyClass(t *testing.T) {
 			fx.expectMutate(editRead(t, cleanDoc), "headB")
 
 			_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-				patchBody(`{"op":"setProperties","set":{"description":"x"}}`), "", false)
+				patchBody(`{"op":"set_properties","set":{"description":"x"}}`), "", false)
 
 			requireRemovalRefusal(t, err, "description")
 		})
 	})
 
-	t.Run("updateView refuses it on every channel", func(t *testing.T) {
+	t.Run("update_view refuses it on every channel", func(t *testing.T) {
 		// the executed §8.41-2 matrix: columns, groupBy, filters, sorts —
 		// the four channels that accepted a removed `tag` 40 times out of 40
 		plainViewDoc := `{"version":1,"id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
 			`{"id":"dataview","type":"dataview","properties":[{"key":"name","format":"text"}],` +
 			`"views":[{"id":"viewAll1","name":"All","columns":[{"property":"name"}]}]}]}`
 		ops := map[string]string{
-			"columns": `{"op":"updateView","view":"viewAll1","columns":{"tag":{"width":80}}}`,
-			"groupBy": `{"op":"updateView","view":"viewAll1","set":{"groupBy":"tag"}}`,
-			"filters": `{"op":"updateView","view":"viewAll1","set":{"filters":[{"property":"tag","condition":"empty"}]}}`,
-			"sorts":   `{"op":"updateView","view":"viewAll1","set":{"sorts":[{"property":"tag","direction":"asc"}]}}`,
+			"columns": `{"op":"update_view","view":"viewAll1","columns":{"tag":{"width":80}}}`,
+			"groupBy": `{"op":"update_view","view":"viewAll1","set":{"groupBy":"tag"}}`,
+			"filters": `{"op":"update_view","view":"viewAll1","set":{"filters":[{"property":"tag","condition":"empty"}]}}`,
+			"sorts":   `{"op":"update_view","view":"viewAll1","set":{"sorts":[{"property":"tag","direction":"asc"}]}}`,
 		}
 		for channel, op := range ops {
 			t.Run(channel, func(t *testing.T) {
@@ -1048,8 +1048,8 @@ func TestV2RemovedBundledSlugEqualsKeyClass(t *testing.T) {
 		}
 	})
 
-	t.Run("insertView runs the same gate", func(t *testing.T) {
-		// insertView shares validateViewKeys with updateView — pinned so a
+	t.Run("insert_view runs the same gate", func(t *testing.T) {
+		// insert_view shares validateViewKeys with update_view — pinned so a
 		// future split of the two paths cannot reopen one of them
 		plainViewDoc := `{"version":1,"id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
 			`{"id":"dataview","type":"dataview","properties":[{"key":"name","format":"text"}],` +
@@ -1060,7 +1060,7 @@ func TestV2RemovedBundledSlugEqualsKeyClass(t *testing.T) {
 			fx.expectMutate(editRead(t, plainViewDoc), "headB")
 
 			_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-				patchBody(`{"op":"insertView","name":"Grouped","set":{"groupBy":"tag"}}`), "", false)
+				patchBody(`{"op":"insert_view","name":"Grouped","set":{"groupBy":"tag"}}`), "", false)
 
 			requireRemovalRefusal(t, err, "tag")
 		})
@@ -1078,7 +1078,7 @@ func TestV2RemovedBundledSlugEqualsKeyClass(t *testing.T) {
 			fx.expectMutate(editRead(t, holdingViewDoc), "headB")
 
 			_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-				patchBody(`{"op":"updateView","view":"viewAll1","set":{"groupBy":"tag"}}`), "", false)
+				patchBody(`{"op":"update_view","view":"viewAll1","set":{"groupBy":"tag"}}`), "", false)
 
 			require.NoError(t, err)
 		})

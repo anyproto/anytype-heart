@@ -1,6 +1,6 @@
 package v2service
 
-// delete.go implements DELETE /v2/spaces/{spaceId}/objects/{objectId}
+// delete.go implements DELETE /v2/spaces/{space_id}/objects/{object_id}
 // (plan 3.3, APIV2_OBJECT_DELETE.md): archive semantics (Bin, reversible in
 // the app — v1 parity and v2 uniformity with DeleteType/DeleteProperty),
 // gated by CREATOR PROVENANCE — deletion is permitted only for objects the
@@ -31,7 +31,7 @@ var deleteProbeIssue = v2model.Issue{
 		"the created_date/creator properties on GET show who created the object",
 }
 
-// DeleteObject implements DELETE /v2/spaces/{spaceId}/objects/{objectId}
+// DeleteObject implements DELETE /v2/spaces/{space_id}/objects/{object_id}
 // (§9.4). The authorization is a CONJUNCTION (§9.3): for scoped keys the
 // space and write grants run first and unchanged; the creator check is in
 // addition — a readwrite grant means "create and edit broadly, destroy only
@@ -165,12 +165,12 @@ func steerSchemaDelete(sbType model.SmartBlockType, spaceId string) error {
 		return v2model.ValidationFailed("properties are deleted through their own route",
 			v2model.Issue{Path: "objectId",
 				Message: "this object is a property",
-				Hint:    fmt.Sprintf("use DELETE /v2/spaces/%s/properties/{propertyKey}", spaceId)})
+				Hint:    fmt.Sprintf("use DELETE /v2/spaces/%s/properties/{property_key}", spaceId)})
 	case model.SmartBlockType_STRelationOption:
 		return v2model.ValidationFailed("tag options are managed through their property",
 			v2model.Issue{Path: "objectId",
 				Message: "this object is a select/multiSelect option",
-				Hint:    fmt.Sprintf("options are edited via their property — see GET /v2/spaces/%s/properties/{propertyKey}/options", spaceId)})
+				Hint:    fmt.Sprintf("options are edited via their property — see GET /v2/spaces/%s/properties/{property_key}/options", spaceId)})
 	}
 	return nil
 }

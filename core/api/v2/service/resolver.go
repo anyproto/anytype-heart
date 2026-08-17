@@ -139,7 +139,7 @@ func (s *Service) newCreatingResolvers(ctx context.Context, spaceId string, dryR
 //
 // Every import channel of this service rides these Options: create.go's
 // document import, schema_write.go's type import, and stateops.go's
-// insertBlocks/replaceSubtree fragments and whole-dataview re-import behind
+// insert_blocks/replace_subtree fragments and whole-dataview re-import behind
 // every view op.
 func (r *creatingResolvers) Options() anyblockjson.Options {
 	return anyblockjson.Options{
@@ -225,8 +225,8 @@ func (r *creatingResolvers) OptionId(key domain.RelationKey, name string) (strin
 
 // prewarmCreateMissing resolves a PATCH's create-missing references BEFORE
 // the object lock is taken (review B6/A6): the create surfaces in PATCH
-// payloads are setProperties select/multiSelect option names and the option
-// names an updateView filter or custom sort order carries, so those are
+// payloads are set_properties select/multiSelect option names and the option
+// names an update_view filter or custom sort order carries, so those are
 // resolved (and, on a real run, created) here; in-lock resolution then hits
 // the resolver's cache and never fires a create-RPC while holding the edited
 // object's lock. The M5 bound counts what this pass records, so a channel
@@ -247,17 +247,17 @@ func (s *Service) prewarmCreateMissing(ops []json.RawMessage, resolvers *creatin
 		if err := json.Unmarshal(raw, &probe); err != nil {
 			continue
 		}
-		if probe.Op == "updateView" || probe.Op == "insertView" {
+		if probe.Op == "update_view" || probe.Op == "insert_view" {
 			// both carry the same set channel — the ONLY channel through which
 			// a view op may introduce option names. Everything else a view op
-			// serializes (untouched views, copyFrom clones) is restored from
+			// serializes (untouched views, copy_from clones) is restored from
 			// the live proto at commit and imported with a no-create resolver
 			// (viewops.go commitDataviewBlock), so this prewarm is exhaustive:
 			// a name it cannot see is a name the commit will not mint.
 			s.prewarmViewOptionValues(probe.Set, resolvers)
 			continue
 		}
-		if probe.Op != "setProperties" {
+		if probe.Op != "set_properties" {
 			continue
 		}
 		for field, values := range map[string]map[string]json.RawMessage{"set": probe.Set, "add": probe.Add} {
@@ -310,11 +310,11 @@ type viewFilterProbe struct {
 	Filters   []viewFilterProbe `json:"filters"`
 }
 
-// prewarmViewOptionValues resolves the option names an updateView's set
+// prewarmViewOptionValues resolves the option names an update_view's set
 // channel carries — filter leaf values and custom sort orders on select
 // properties, both of which the dataview import resolves with create-missing
 // (SPEC §6.2/§3) — so the creates run before the object lock and the M5
-// bound sees them. Same leniency contract as the setProperties pass.
+// bound sees them. Same leniency contract as the set_properties pass.
 func (s *Service) prewarmViewOptionValues(set map[string]json.RawMessage, resolvers *creatingResolvers) {
 	resolveSelect := func(rawKey string, value json.RawMessage) {
 		key := resolvers.canonicalPropertyKey(rawKey)

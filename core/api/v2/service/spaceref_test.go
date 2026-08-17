@@ -384,7 +384,7 @@ func TestSpacesSurfaceServesFullRefsOnRequest(t *testing.T) {
 		assert.Equal(t, want, got)
 	})
 
-	t.Run("the global-search fan-out spells rows' spaceId in full", func(t *testing.T) {
+	t.Run("the global-search fan-out spells rows' space_id in full", func(t *testing.T) {
 		// given
 		fx := newV2FixtureBare(t)
 		fx.registerSpaceView(t, realSpaceEval, "APIv2 eval", "")
@@ -397,7 +397,7 @@ func TestSpacesSurfaceServesFullRefsOnRequest(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, refs, 2)
 		for _, ref := range refs {
-			assert.Equal(t, ref.id, ref.short, "the served spaceId must be the full id")
+			assert.Equal(t, ref.id, ref.short, "the served space_id must be the full id")
 		}
 	})
 

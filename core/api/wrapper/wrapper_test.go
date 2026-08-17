@@ -159,7 +159,7 @@ func propertiesResponse(rows ...v2model.PropertyRow) string {
 	return string(data)
 }
 
-const editOKBody = `{"diffStats":{"blocksAdded":0,"blocksRemoved":0,"blocksChanged":1,"blocksMoved":0,"propertiesChanged":0}}`
+const editOKBody = `{"diff_stats":{"blocks_added":0,"blocks_removed":0,"blocks_changed":1,"blocks_moved":0,"properties_changed":0}}`
 
 func TestRunValidation(t *testing.T) {
 	t.Run("unknown tool lists the tool set", func(t *testing.T) {

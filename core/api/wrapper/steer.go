@@ -228,7 +228,7 @@ const spacesListRepair = "list them with the `spaces` tool"
 // sent it nowhere.
 //
 // The space id in these patterns is interpolated by the server, so the
-// patterns match it as a segment; some hints ship the literal `{spaceId}`
+// patterns match it as a segment; some hints ship the literal `{space_id}`
 // placeholder and those match too.
 var restVocab = []struct {
 	from *regexp.Regexp

@@ -54,12 +54,12 @@ func TestWhoami(t *testing.T) {
 		}
 		fx.eventMock.On("Broadcast", mock.Anything).Return(nil).Maybe()
 		want := fmt.Sprintf(`{
-			"key": {"id":"hash1","name":"Claude Desktop","createdAt":"2023-11-14T22:13:20Z","expiresAt":null},
+			"key": {"id":"hash1","name":"Claude Desktop","created_at":"2023-11-14T22:13:20Z","expires_at":null},
 			"scope": "jsonApi",
 			"grant": {"scoped":true,"permission":"readwrite",
 			          "spaces":[{"id":"spaceA","name":"Work","permission":"readwrite"}]},
 			"api": {"version":%q},
-			"keyStatus": "scoped"
+			"key_status": "scoped"
 		}`, util.ApiVersion)
 
 		// when
@@ -89,11 +89,11 @@ func TestWhoami(t *testing.T) {
 		}
 		fx.eventMock.On("Broadcast", mock.Anything).Return(nil).Maybe()
 		want := fmt.Sprintf(`{
-			"key": {"id":"hash2","name":"old-script","createdAt":null,"expiresAt":"2030-03-17T17:46:40Z"},
+			"key": {"id":"hash2","name":"old-script","created_at":null,"expires_at":"2030-03-17T17:46:40Z"},
 			"scope": "jsonApi",
 			"grant": {"scoped":false,"permission":null,"spaces":[]},
 			"api": {"version":%q},
-			"keyStatus": "legacy",
+			"key_status": "legacy",
 			"notice": %q
 		}`, util.ApiVersion, util.LegacyKeyNotice)
 
@@ -131,7 +131,7 @@ func TestWhoami(t *testing.T) {
 		assert.Equal(t, util.KeyStatusLegacy, w.Header().Get(util.KeyStatusHeader))
 		assert.Empty(t, w.Header().Get(util.NoticeHeader), "the notice is JsonAPI-only")
 		assert.Empty(t, w.Header().Values("Link"), "the deprecation link is JsonAPI-only")
-		assert.Contains(t, w.Body.String(), `"keyStatus":"legacy"`)
+		assert.Contains(t, w.Body.String(), `"key_status":"legacy"`)
 		assert.NotContains(t, w.Body.String(), `"notice"`, "the body notice is JsonAPI-only")
 	})
 

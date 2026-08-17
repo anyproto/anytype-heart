@@ -100,8 +100,8 @@ func buildSummary(runId string, attempts []attemptRecord, skipped []skippedCell,
 	}
 
 	b.WriteString("\n## H1 — does the model emit an id where the schema does not show one?\n")
-	b.WriteString("(insertBlocks publishes no id slot since §8.30/§8.31; replaceSubtree still does — the control)\n\n")
-	b.WriteString(fmt.Sprintf("%-14s %-14s %14s %14s %16s %16s\n", "model", "arm", "insertBlocks", "…with id", "replaceSubtree", "…with id"))
+	b.WriteString("(insert_blocks publishes no id slot since §8.30/§8.31; replace_subtree still does — the control)\n\n")
+	b.WriteString(fmt.Sprintf("%-14s %-14s %14s %14s %16s %16s\n", "model", "arm", "insert_blocks", "…with id", "replace_subtree", "…with id"))
 	h1 := map[cellKey]*[4]int{}
 	for _, a := range attempts {
 		k := cellKey{a.Model, a.Arm, ""}

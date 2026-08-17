@@ -6,7 +6,7 @@ package main
 // account of what it did, and none is a string match on chat output.
 //
 // Tasks are also chosen to reach the three instrumented questions: the
-// add-content task is the one where insertBlocks authors a payload, the
+// add-content task is the one where insert_blocks authors a payload, the
 // table and restructure tasks are where block ids must be echoed, and the
 // deliberately ambiguous snippet in the table task is a refusal a model has
 // to repair from.
@@ -78,8 +78,11 @@ func (t task) runsOnArm(arm string) bool {
 
 // capability is one thing a task cannot be done without, named once for both
 // surfaces. Tasks declare capabilities rather than tool names because the
-// wrapper renames the op vocabulary (setCell → set_cell, replaceText →
-// edit_text), and the gate has to ask both surfaces the same question.
+// wrapper re-verbs the op vocabulary (replace_text → edit_text, insert_blocks
+// → add_blocks) and the gate has to ask both surfaces the same question.
+// Since the C2 rename (APIV2.md §8.46) most of the pairs coincide — both
+// surfaces spell snake_case now — but the mapping stays: the two that differ
+// still differ, and it is also what says a tier serves the tool at all.
 type capability string
 
 const (
@@ -99,11 +102,11 @@ const (
 // up from the schema).
 var capabilityTools = map[capability]map[string]string{
 	capRead:          {surfaceWrapper: "read", surfaceOps: "read_object"},
-	capEditText:      {surfaceWrapper: "edit_text", surfaceOps: "replaceText"},
-	capAddBlocks:     {surfaceWrapper: "add_blocks", surfaceOps: "insertBlocks"},
-	capSetCell:       {surfaceWrapper: "set_cell", surfaceOps: "setCell"},
-	capDeleteBlock:   {surfaceWrapper: "delete_block", surfaceOps: "deleteBlock"},
-	capSetProperties: {surfaceWrapper: "set_properties", surfaceOps: "setProperties"},
+	capEditText:      {surfaceWrapper: "edit_text", surfaceOps: "replace_text"},
+	capAddBlocks:     {surfaceWrapper: "add_blocks", surfaceOps: "insert_blocks"},
+	capSetCell:       {surfaceWrapper: "set_cell", surfaceOps: "set_cell"},
+	capDeleteBlock:   {surfaceWrapper: "delete_block", surfaceOps: "delete_block"},
+	capSetProperties: {surfaceWrapper: "set_properties", surfaceOps: "set_properties"},
 }
 
 // capabilityTool returns the surface's tool for a capability.

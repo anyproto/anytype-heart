@@ -26,10 +26,10 @@ func TestProbeToolSpecsComeFromThePublishedSchemas(t *testing.T) {
 	// the matched pair the probe exists for: one schema publishes the payload
 	// id slot, the other does not — if this ever stops holding, the probe is
 	// measuring nothing
-	insert := string(byName["insertBlocks"].Parameters)
-	replace := string(byName["replaceSubtree"].Parameters)
-	assert.NotContains(t, insert, `"id"`, "insertBlocks must publish no id slot anywhere (§8.30/§8.31)")
-	assert.Contains(t, replace, `"id"`, "replaceSubtree still publishes one — it is the control")
+	insert := string(byName["insert_blocks"].Parameters)
+	replace := string(byName["replace_subtree"].Parameters)
+	assert.NotContains(t, insert, `"id"`, "insert_blocks must publish no id slot anywhere (§8.30/§8.31)")
+	assert.Contains(t, replace, `"id"`, "replace_subtree still publishes one — it is the control")
 }
 
 func TestStaticRefusalRisks(t *testing.T) {
@@ -43,34 +43,34 @@ func TestStaticRefusalRisks(t *testing.T) {
 			// the shape gemma4:e2b produced 20/20 times: it is no longer a
 			// refusal, so it is no longer a risk (§8.32)
 			name: "position with no targeting field targets the document",
-			op:   "insertBlocks",
-			args: `{"op":"insertBlocks","blocks":[{"type":"paragraph"}],"position":"last"}`,
+			op:   "insert_blocks",
+			args: `{"op":"insert_blocks","blocks":[{"type":"paragraph"}],"position":"last"}`,
 		},
 		{
 			name: "the same shape asking for the start of the document",
-			op:   "insertBlocks",
-			args: `{"op":"insertBlocks","blocks":[{"type":"paragraph"}],"position":"first"}`,
+			op:   "insert_blocks",
+			args: `{"op":"insert_blocks","blocks":[{"type":"paragraph"}],"position":"first"}`,
 		},
 		{
 			name: "position alongside after is refused too",
-			op:   "insertBlocks",
-			args: `{"op":"insertBlocks","after":"b3","blocks":[{"type":"paragraph"}],"position":"last"}`,
+			op:   "insert_blocks",
+			args: `{"op":"insert_blocks","after":"b3","blocks":[{"type":"paragraph"}],"position":"last"}`,
 			want: []string{riskPositionNotIside},
 		},
 		{
 			name: "position with inside is the one legal use",
-			op:   "insertBlocks",
-			args: `{"op":"insertBlocks","inside":"b3","blocks":[{"type":"paragraph"}],"position":"first"}`,
+			op:   "insert_blocks",
+			args: `{"op":"insert_blocks","inside":"b3","blocks":[{"type":"paragraph"}],"position":"first"}`,
 		},
 		{
 			name: "no position, no risk",
-			op:   "insertBlocks",
-			args: `{"op":"insertBlocks","markdown":"## Risks"}`,
+			op:   "insert_blocks",
+			args: `{"op":"insert_blocks","markdown":"## Risks"}`,
 		},
 		{
 			name: "ops without targeting are out of scope",
-			op:   "replaceSubtree",
-			args: `{"op":"replaceSubtree","id":"b7","blocks":[{"type":"paragraph"}],"position":"last"}`,
+			op:   "replace_subtree",
+			args: `{"op":"replace_subtree","id":"b7","blocks":[{"type":"paragraph"}],"position":"last"}`,
 		},
 	}
 	for _, tt := range tests {
@@ -150,7 +150,7 @@ func TestProbeRecordsWhatWasWrittenIntoTheDiscriminator(t *testing.T) {
 		wantMissing bool
 		wantValue   string
 	}{
-		{name: "the const, correctly", args: `{"op":"insertBlocks","markdown":"x"}`},
+		{name: "the const, correctly", args: `{"op":"insert_blocks","markdown":"x"}`},
 		{name: "absent", args: `{"markdown":"x"}`, wantMissing: true},
 		{name: "a positional word", args: `{"op":"append","markdown":"x"}`, wantValue: `"append"`},
 		{name: "an empty object", args: `{"op":{},"markdown":"x"}`, wantValue: `{}`},
@@ -158,12 +158,12 @@ func TestProbeRecordsWhatWasWrittenIntoTheDiscriminator(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// given
-			model, _ := newScriptedModel(toolCallTurn("insertBlocks", tt.args))
+			model, _ := newScriptedModel(toolCallTurn("insert_blocks", tt.args))
 			defer model.Close()
 
 			// when
 			got := probeOnce(context.Background(), newChatClient(model.URL, "", 30*time.Second),
-				"stub", probeCase{id: "c", wantOp: "insertBlocks"}, nil, "sys", options{}, "run1", 1)
+				"stub", probeCase{id: "c", wantOp: "insert_blocks"}, nil, "sys", options{}, "run1", 1)
 
 			// then
 			assert.Equal(t, tt.wantMissing, got.MissingOpConst)

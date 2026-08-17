@@ -1,6 +1,6 @@
 package v2service
 
-// diff.go computes the Phase-3 diffStats (APIV2.md §2 Phase 3): both
+// diff.go computes the Phase-3 diff_stats (APIV2.md §2 Phase 3): both
 // PATCH and PUT diff the canonical before-document (the live state's
 // marshal) against the canonical after-document (the applied snapshot's
 // marshal), so normalization noise cancels and the numbers reflect real
@@ -90,7 +90,7 @@ func (s *diffDocShape) prevCommonSibling(i int, other *diffDocShape) string {
 	return ""
 }
 
-// diffEditDocs computes the diffStats between two canonical documents.
+// diffEditDocs computes the diff_stats between two canonical documents.
 func diffEditDocs(beforeDoc, afterDoc []byte) (v2model.DiffStats, error) {
 	var stats v2model.DiffStats
 	before, err := parseDiffDoc(beforeDoc)

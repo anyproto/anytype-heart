@@ -181,7 +181,7 @@ func TestV2CreateChat(t *testing.T) {
 }
 
 func TestV2GetChatMessages(t *testing.T) {
-	t.Run("state and messageCount pass through — the fields v1 dropped", func(t *testing.T) {
+	t.Run("state and message_count pass through — the fields v1 dropped", func(t *testing.T) {
 		// given
 		fx := newV2Fixture(t)
 		fx.addChat(t, testChatId, "Team chat", 1000)
@@ -204,12 +204,12 @@ func TestV2GetChatMessages(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, 812, got.MessageCount, "messageCount must pass through (the peek)")
+		assert.Equal(t, 812, got.MessageCount, "message_count must pass through (the peek)")
 		require.NotNil(t, got.State, "chatState must pass through")
 		assert.Equal(t, 3, got.State.UnreadMessages)
 		assert.Equal(t, 1, got.State.UnreadMentions)
 		assert.Equal(t, "state42", got.State.LastStateId,
-			"lastStateId must reach the client — without it the mark-read race guard is unreachable")
+			"last_state_id must reach the client — without it the mark-read race guard is unreachable")
 
 		require.Len(t, got.Messages, 1)
 		msg := got.Messages[0]
@@ -221,7 +221,7 @@ func TestV2GetChatMessages(t *testing.T) {
 		assert.False(t, got.HasMore)
 	})
 
-	t.Run("reactions=full adds reactedBy participant ids — counts keep their slot (C2)", func(t *testing.T) {
+	t.Run("reactions=full adds reacted_by participant ids — counts keep their slot (C2)", func(t *testing.T) {
 		// given
 		fx := newV2Fixture(t)
 		fx.addChat(t, testChatId, "Team chat", 1000)
@@ -243,7 +243,7 @@ func TestV2GetChatMessages(t *testing.T) {
 			"reactions stays the counts map in full mode — one slot, one type")
 	})
 
-	t.Run("forward paging trims the newest extra and continues with nextAfter", func(t *testing.T) {
+	t.Run("forward paging trims the newest extra and continues with next_after", func(t *testing.T) {
 		// given: ?after alone is the one ASC query — the RPC is asked for
 		// limit+1 and returns 3 ascending messages for limit=2
 		fx := newV2Fixture(t)
@@ -272,7 +272,7 @@ func TestV2GetChatMessages(t *testing.T) {
 		assert.Empty(t, got.NextBefore)
 	})
 
-	t.Run("newest-anchored paging trims the oldest extra and continues with nextBefore", func(t *testing.T) {
+	t.Run("newest-anchored paging trims the oldest extra and continues with next_before", func(t *testing.T) {
 		// given: no ?after — the repository sorts DESC (newest N) and the
 		// service receives them ascending; the OLDEST message is the extra
 		fx := newV2Fixture(t)
@@ -776,7 +776,7 @@ func TestV2ToggleChatReaction(t *testing.T) {
 }
 
 func TestV2ReadChat(t *testing.T) {
-	t.Run("messages scope forwards upTo AND lastStateId — the race guard v1 made unreachable", func(t *testing.T) {
+	t.Run("messages scope forwards up_to AND last_state_id — the race guard v1 made unreachable", func(t *testing.T) {
 		// given
 		fx := newV2Fixture(t)
 		fx.addChat(t, testChatId, "Team chat", 1000)
@@ -812,9 +812,9 @@ func TestV2ReadChat(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("upTo AND lastStateId are required — an empty bound OR guard silently marks nothing", func(t *testing.T) {
+	t.Run("up_to AND last_state_id are required — an empty bound OR guard silently marks nothing", func(t *testing.T) {
 		// given: no RPC expectation — the request must never reach the RPC.
-		// The range query ANDs `orderId <= upTo` with `stateId <= lastStateId`
+		// The range query ANDs `orderId <= up_to` with `stateId <= last_state_id`
 		// and every stored message carries a non-empty state id, so EITHER
 		// empty value is the same silent no-op (markedCount 0, HTTP 200)
 		fx := newV2Fixture(t)
@@ -828,14 +828,14 @@ func TestV2ReadChat(t *testing.T) {
 		var v2Err *v2model.Error
 		require.ErrorAs(t, err, &v2Err)
 		require.Len(t, v2Err.Issues, 2)
-		assert.Equal(t, "/upTo", v2Err.Issues[0].Path)
-		assert.Equal(t, "/lastStateId", v2Err.Issues[1].Path)
+		assert.Equal(t, "/up_to", v2Err.Issues[0].Path)
+		assert.Equal(t, "/last_state_id", v2Err.Issues[1].Path)
 	})
 
-	t.Run("upTo alone is NOT enough — the omitted race guard is the v1 trap one field over", func(t *testing.T) {
+	t.Run("up_to alone is NOT enough — the omitted race guard is the v1 trap one field over", func(t *testing.T) {
 		// given: no RPC expectation. Forwarding LastStateId:"" would make
 		// MarkReadMessages mark ZERO messages and still answer 200 — the
-		// exact silent no-op requiring upTo was meant to close
+		// exact silent no-op requiring up_to was meant to close
 		fx := newV2Fixture(t)
 		fx.addChat(t, testChatId, "Team chat", 1000)
 
@@ -848,8 +848,8 @@ func TestV2ReadChat(t *testing.T) {
 		var v2Err *v2model.Error
 		require.ErrorAs(t, err, &v2Err)
 		require.Len(t, v2Err.Issues, 1)
-		assert.Equal(t, "/lastStateId", v2Err.Issues[0].Path)
-		assert.Contains(t, v2Err.Issues[0].Hint, "state.lastStateId")
+		assert.Equal(t, "/last_state_id", v2Err.Issues[0].Path)
+		assert.Contains(t, v2Err.Issues[0].Hint, "state.last_state_id")
 	})
 
 	t.Run("reactions scope marks all unread reactions", func(t *testing.T) {
@@ -868,7 +868,7 @@ func TestV2ReadChat(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("reactions scope rejects upTo — the backend takes no bound", func(t *testing.T) {
+	t.Run("reactions scope rejects up_to — the backend takes no bound", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.addChat(t, testChatId, "Team chat", 1000)
 		_, err := fx.ReadChat(context.Background(), testSpaceId, testChatId,
@@ -899,7 +899,7 @@ func TestV2ReadChat(t *testing.T) {
 		assert.True(t, got.DryRun)
 	})
 
-	t.Run("the forwarded RPC request never carries an empty lastStateId", func(t *testing.T) {
+	t.Run("the forwarded RPC request never carries an empty last_state_id", func(t *testing.T) {
 		// given: the regression pin for the silent no-op — whatever shape
 		// reaches the RPC must carry a non-empty guard
 		fx := newV2Fixture(t)

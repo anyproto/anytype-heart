@@ -3,10 +3,10 @@ package v2service
 // list_read.go implements the Phase-4 sets/collections read path
 // (APIV2.md §2 Phase 4):
 //
-//	GET /v2/spaces/{spaceId}/sets/{setId}/objects?view=&fields=
-//	GET /v2/spaces/{spaceId}/sets/{setId}/views
-//	GET /v2/spaces/{spaceId}/collections/{collectionId}/objects?view=&fields=
-//	GET /v2/spaces/{spaceId}/collections/{collectionId}/views
+//	GET /v2/spaces/{space_id}/sets/{set_id}/objects?view=&fields=
+//	GET /v2/spaces/{space_id}/sets/{set_id}/views
+//	GET /v2/spaces/{space_id}/collections/{collection_id}/objects?view=&fields=
+//	GET /v2/spaces/{space_id}/collections/{collection_id}/views
 //
 // One implementation branches on layout exactly as v1's GetObjectsInList
 // does — but a set addressed through the collections route (or vice versa)
@@ -64,22 +64,22 @@ type listTarget struct {
 	dataview *model.BlockContentDataview // nil when the object has none
 }
 
-// GetSetViews implements GET /v2/spaces/{spaceId}/sets/{setId}/views.
+// GetSetViews implements GET /v2/spaces/{space_id}/sets/{set_id}/views.
 func (s *Service) GetSetViews(ctx context.Context, spaceId, setId string, offset, limit int) ([]json.RawMessage, int, bool, error) {
 	return s.listViews(ctx, spaceId, setId, listKindSet, offset, limit)
 }
 
-// GetCollectionViews implements GET /v2/spaces/{spaceId}/collections/{collectionId}/views.
+// GetCollectionViews implements GET /v2/spaces/{space_id}/collections/{collection_id}/views.
 func (s *Service) GetCollectionViews(ctx context.Context, spaceId, collectionId string, offset, limit int) ([]json.RawMessage, int, bool, error) {
 	return s.listViews(ctx, spaceId, collectionId, listKindCollection, offset, limit)
 }
 
-// GetSetObjects implements GET /v2/spaces/{spaceId}/sets/{setId}/objects.
+// GetSetObjects implements GET /v2/spaces/{space_id}/sets/{set_id}/objects.
 func (s *Service) GetSetObjects(ctx context.Context, spaceId, setId, viewRef string, fields []string, offset, limit int) ([]v2model.ObjectRow, int, bool, []v2model.Issue, error) {
 	return s.listObjects(ctx, spaceId, setId, listKindSet, viewRef, fields, offset, limit)
 }
 
-// GetCollectionObjects implements GET /v2/spaces/{spaceId}/collections/{collectionId}/objects.
+// GetCollectionObjects implements GET /v2/spaces/{space_id}/collections/{collection_id}/objects.
 func (s *Service) GetCollectionObjects(ctx context.Context, spaceId, collectionId, viewRef string, fields []string, offset, limit int) ([]v2model.ObjectRow, int, bool, []v2model.Issue, error) {
 	return s.listObjects(ctx, spaceId, collectionId, listKindCollection, viewRef, fields, offset, limit)
 }
@@ -113,7 +113,7 @@ func (s *Service) readListTarget(ctx context.Context, spaceId, listId string, wa
 			fmt.Sprintf("object %q is a set, not a collection — use GET /v2/spaces/%s/sets/%s/objects", listId, spaceId, listId))
 	case !isSet && !isCollection:
 		return listTarget{}, v2model.ValidationFailed(
-			fmt.Sprintf("object %q is neither a set nor a collection — sets read via /v2/spaces/{spaceId}/sets/{setId}/objects, collections via /v2/spaces/{spaceId}/collections/{collectionId}/objects", listId))
+			fmt.Sprintf("object %q is neither a set nor a collection — sets read via /v2/spaces/{space_id}/sets/{set_id}/objects, collections via /v2/spaces/{space_id}/collections/{collection_id}/objects", listId))
 	}
 
 	target := listTarget{read: read}

@@ -1,6 +1,6 @@
 package v2service
 
-// DELETE /v2/spaces/{spaceId}/objects/{objectId} service tests
+// DELETE /v2/spaces/{space_id}/objects/{object_id} service tests
 // (APIV2_OBJECT_DELETE.md §15). The fixture discipline: deleteFixture wires
 // the FULL allow shape — live object, store row, matching provenance,
 // matching caller — and every refusal case flips exactly ONE input. The

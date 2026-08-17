@@ -32,12 +32,12 @@ type v2SchemaKind struct {
 
 var v2SchemaKinds = map[string]v2SchemaKind{
 	"object": {
-		endpoint: "POST /v2/spaces/{spaceId}/objects",
+		endpoint: "POST /v2/spaces/{space_id}/objects",
 		// the full AnyBlock document schema is served verbatim (schema: "")
 		example: `{"version":1,"type":"task","properties":{"name":"Prepare the Q3 report","status":["In progress"],"due_date":"2026-08-01T00:00:00Z"},"blocks":[{"type":"heading2","text":"Steps"},{"type":"checkbox","text":"Collect the numbers"},{"indent":1,"type":"paragraph","text":"Ask **finance** first"}]}`,
 	},
 	"shortcut": {
-		endpoint: "POST /v2/spaces/{spaceId}/objects",
+		endpoint: "POST /v2/spaces/{space_id}/objects",
 		schema: `{"type":"object","additionalProperties":false,"required":["type"],"properties":{` +
 			`"type":{"type":"string","maxLength":256,"description":"type key, e.g. page or task"},` +
 			`"name":{"type":"string","maxLength":4096},` +
@@ -46,16 +46,16 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 		example: `{"type":"task","name":"Buy milk","properties":{"due_date":"2026-08-01T00:00:00Z"},"markdown":"- [ ] oat\n- [ ] whole"}`,
 	},
 	"type": {
-		endpoint: "POST /v2/spaces/{spaceId}/types",
+		endpoint: "POST /v2/spaces/{space_id}/types",
 		// a type document is an AnyBlock document (kind objectType)
 		example: `{"version":1,"kind":"objectType","key":"task","properties":{"name":"Task","icon_emoji":"✅","recommended_layout":"todo"},"typeProperties":[{"key":"due_date","name":"Due date","format":"date","section":"featured"},{"key":"status","name":"Status","format":"select"}]}`,
 	},
 	"template": {
-		endpoint: "POST /v2/spaces/{spaceId}/templates",
+		endpoint: "POST /v2/spaces/{space_id}/templates",
 		example:  `{"version":1,"type":"template","templateFor":"task","properties":{"name":"Weekly task"},"blocks":[{"type":"heading2","text":"Checklist"},{"type":"checkbox","text":"First step"}]}`,
 	},
 	"property": {
-		endpoint: "POST /v2/spaces/{spaceId}/properties",
+		endpoint: "POST /v2/spaces/{space_id}/properties",
 		schema: `{"type":"object","additionalProperties":false,"required":["name","format"],"properties":{` +
 			`"key":{"type":"string","maxLength":256,"pattern":"^[a-zA-Z0-9_]+$"},` +
 			`"name":{"type":"string","maxLength":4096},` +
@@ -65,7 +65,7 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 		example: `{"key":"priority","name":"Priority","format":"select","options":[{"name":"High","color":"red"},{"name":"Low"}]}`,
 	},
 	"set": {
-		endpoint: "POST /v2/spaces/{spaceId}/sets",
+		endpoint: "POST /v2/spaces/{space_id}/sets",
 		schema: `{"type":"object","additionalProperties":false,"required":["name","type"],"properties":{` +
 			`"name":{"type":"string","maxLength":4096},` +
 			`"type":{"type":"string","maxLength":256,"description":"the queried type's key"},` +
@@ -76,21 +76,21 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 		example: `{"name":"Open tasks","type":"task","filter":"done = false","sorts":[{"property":"due_date","direction":"asc"}]}`,
 	},
 	"collection": {
-		endpoint: "POST /v2/spaces/{spaceId}/collections",
+		endpoint: "POST /v2/spaces/{space_id}/collections",
 		schema: `{"type":"object","additionalProperties":false,"required":["name"],"properties":{` +
 			`"name":{"type":"string","maxLength":4096},` +
 			`"items":{"type":"array","maxItems":1000,"items":{"type":"string","maxLength":256,"description":"member object id"}}}}`,
 		example: `{"name":"Reading list","items":["bafyreieqh63jv…","bafyreidfmzjh…"]}`,
 	},
 	"file": {
-		endpoint: "POST /v2/spaces/{spaceId}/files",
+		endpoint: "POST /v2/spaces/{space_id}/files",
 		schema: `{"type":"object","additionalProperties":false,"required":["url"],"properties":{` +
 			`"url":{"type":"string","maxLength":4096,"description":"source URL; alternatively upload bytes as multipart/form-data with a file field"},` +
 			`"name":{"type":"string","maxLength":4096}}}`,
 		example: `{"url":"https://example.org/report.pdf"}`,
 	},
 	"search": {
-		endpoint: "POST /v2/spaces/{spaceId}/search (and POST /v2/search global)",
+		endpoint: "POST /v2/spaces/{space_id}/search (and POST /v2/search global)",
 		schema: `{"type":"object","additionalProperties":false,"properties":{` +
 			`"query":{"type":"string","maxLength":4096,"description":"full-text query"},` +
 			`"type":{"type":"string","maxLength":256,"description":"one type key; multi-type queries use the type pseudo-key in the filter channel; naming a file type (file, image, video, audio) opts file objects into the results — they are excluded otherwise"},` +
@@ -101,51 +101,51 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 		example: `{"query":"report","type":"task","filter":"done = false AND (due_date < currentWeek() OR due_date IS EMPTY)","sorts":[{"property":"due_date","direction":"asc"}],"fields":["name","due_date","status"]}`,
 	},
 	"space": {
-		endpoint: "POST /v2/spaces (PATCH /v2/spaces/{spaceId} takes the same fields, both optional — at least one)",
+		endpoint: "POST /v2/spaces (PATCH /v2/spaces/{space_id} takes the same fields, both optional — at least one)",
 		schema: `{"type":"object","additionalProperties":false,"required":["name"],"properties":{` +
 			`"name":{"type":"string","minLength":1,"maxLength":4096},` +
 			`"description":{"type":"string","maxLength":4096}}}`,
 		example: `{"name":"Research","description":"Scratch space for the Q3 analysis"}`,
 	},
 	"chat": {
-		endpoint: "POST /v2/spaces/{spaceId}/chats",
+		endpoint: "POST /v2/spaces/{space_id}/chats",
 		schema: `{"type":"object","additionalProperties":false,"required":["name"],"properties":{` +
 			`"name":{"type":"string","minLength":1,"maxLength":4096}}}`,
 		example: `{"name":"Project chat"}`,
 	},
 	"chatMessage": {
-		endpoint: "POST /v2/spaces/{spaceId}/chats/{chatId}/messages",
+		endpoint: "POST /v2/spaces/{space_id}/chats/{chat_id}/messages",
 		// text maxLength mirrors chatmodel.MaxMessageLength (8000 UTF-16
 		// units, the STORE's cap) — advertising more turns schema-obedient
 		// callers into rejected requests; a drift test pins the two together
 		schema: `{"type":"object","additionalProperties":false,"properties":{` +
 			`"text":{"type":"string","maxLength":8000,"description":"inline markup SOURCE (SPEC §8): *, [, backtick and <mention objectId=\"…\"> mint real marks; escape literal specials with a backslash; at most 8000 UTF-16 code units (an emoji counts 2+); required unless attachments are given"},` +
-			`"replyTo":{"type":"string","maxLength":256,"description":"message id being replied to"},` +
+			`"reply_to":{"type":"string","maxLength":256,"description":"message id being replied to"},` +
 			`"attachments":{"type":"array","maxItems":32,"items":{"type":"string","maxLength":256},"description":"object ids, at most 32 (enforced); the kind is inferred from each target's layout (image → image, other file layouts → file, anything else → link)"}}}`,
 		example: `{"text":"can you **check** the doc?","attachments":["bafyreie6n5l5nkbjal37su54cha4coy"]}`,
 	},
 	"chatMessageEdit": {
-		endpoint: "PATCH /v2/spaces/{spaceId}/chats/{chatId}/messages/{messageId}",
+		endpoint: "PATCH /v2/spaces/{space_id}/chats/{chat_id}/messages/{message_id}",
 		schema: `{"type":"object","additionalProperties":false,"required":["text"],"properties":{` +
 			`"text":{"type":"string","maxLength":8000,"description":"replacement inline markup SOURCE (SPEC §8), at most 8000 UTF-16 code units; ALL marks are re-derived from this string (the D′1 caveat bites hardest here — escape literal specials); the message's attachments, reply target, style and blocks are preserved"}}}`,
 		example: `{"text":"updated: can you **check** the doc?"}`,
 	},
 	"chatReaction": {
-		endpoint: "POST /v2/spaces/{spaceId}/chats/{chatId}/messages/{messageId}/reactions",
+		endpoint: "POST /v2/spaces/{space_id}/chats/{chat_id}/messages/{message_id}/reactions",
 		schema: `{"type":"object","additionalProperties":false,"required":["emoji"],"properties":{` +
 			`"emoji":{"type":"string","minLength":1,"maxLength":64,"description":"the reaction emoji to toggle, e.g. 👍 — the response's added reports whether it was added or removed"}}}`,
 		example: `{"emoji":"👍"}`,
 	},
 	"chatRead": {
-		endpoint: "POST /v2/spaces/{spaceId}/chats/{chatId}/read",
+		endpoint: "POST /v2/spaces/{space_id}/chats/{chat_id}/read",
 		schema: `{"type":"object","additionalProperties":false,"properties":{` +
-			`"upTo":{"type":"string","maxLength":256,"description":"INCLUSIVE order id to mark read up to — take it from the newest message of a GET messages read; REQUIRED for scopes messages/mentions, absent for reactions"},` +
-			`"lastStateId":{"type":"string","maxLength":256,"description":"race guard, REQUIRED for scopes messages/mentions (absent for reactions): the state.lastStateId from the same messages read — messages that arrived after that state stay unread; an empty guard would silently mark nothing"},` +
+			`"up_to":{"type":"string","maxLength":256,"description":"INCLUSIVE order id to mark read up to — take it from the newest message of a GET messages read; REQUIRED for scopes messages/mentions, absent for reactions"},` +
+			`"last_state_id":{"type":"string","maxLength":256,"description":"race guard, REQUIRED for scopes messages/mentions (absent for reactions): the state.last_state_id from the same messages read — messages that arrived after that state stay unread; an empty guard would silently mark nothing"},` +
 			`"scope":{"type":"string","enum":["messages","mentions","reactions"],"description":"defaults to messages; reactions marks ALL unread reactions"}}}`,
-		example: `{"upTo":"00a1b2c3d4e5f6","lastStateId":"66f2a1b0c9d8e7f6a5b4c3d2","scope":"messages"}`,
+		example: `{"up_to":"00a1b2c3d4e5f6","last_state_id":"66f2a1b0c9d8e7f6a5b4c3d2","scope":"messages"}`,
 	},
 	"filters": {
-		endpoint: "POST /v2/spaces/{spaceId}/search (filters field) · POST /v2/spaces/{spaceId}/sets (filters field)",
+		endpoint: "POST /v2/spaces/{space_id}/search (filters field) · POST /v2/spaces/{space_id}/sets (filters field)",
 		// documented C13 exception: the structured filter tree is recursive
 		// (SPEC §12 filterNode) and therefore not constrained-decodable
 		schema: `{"$defs":{"filterNode":{"oneOf":[` +

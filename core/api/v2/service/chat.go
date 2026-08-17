@@ -2,13 +2,13 @@ package v2service
 
 // chat.go implements the Phase-6 chat surface (APIV2.md §8.7,
 // APIV2_SURFACES.md §5). The phase's finding: the middleware already
-// returns chatState and messageCount on every messages read and v1 drops
+// returns chatState and message_count on every messages read and v1 drops
 // both — so a polling agent has no cheap peek and the ChatReadMessages
-// lastStateId race guard was unreachable (no v1 response ever carried a
+// last_state_id race guard was unreachable (no v1 response ever carried a
 // state id). v2 passes both through and POST read forwards the guard.
 //
 // C7 etag/If-Match deliberately does NOT apply to chats: order ids and
-// lastStateId are the stream's native concurrency vocabulary.
+// last_state_id are the stream's native concurrency vocabulary.
 
 import (
 	"context"
@@ -95,7 +95,7 @@ func (s *Service) ListChats(ctx context.Context, spaceId string, offset, limit i
 	return rows, total, hasMore, nil
 }
 
-// CreateChat implements POST /v2/spaces/{spaceId}/chats: a thin ObjectCreate
+// CreateChat implements POST /v2/spaces/{space_id}/chats: a thin ObjectCreate
 // with the chatDerived type (NOT the Phase-2 snapshot path, which has never
 // been exercised for store-backed smartblocks).
 func (s *Service) CreateChat(ctx context.Context, spaceId string, req v2model.CreateChatRequest, dryRun bool) (*v2model.ChatResult, error) {
@@ -121,7 +121,7 @@ func (s *Service) CreateChat(ctx context.Context, spaceId string, req v2model.Cr
 }
 
 //
-// ---- messages read (state + messageCount passthrough) ----
+// ---- messages read (state + message_count passthrough) ----
 //
 
 // ChatMessagesQuery carries the GET messages parameters: exclusive
@@ -133,15 +133,15 @@ type ChatMessagesQuery struct {
 	FullReactions bool
 }
 
-// GetChatMessages implements GET .../chats/{chatId}/messages. The response
-// carries the chatState and messageCount the RPC already returns — the
+// GetChatMessages implements GET .../chats/{chat_id}/messages. The response
+// carries the chatState and message_count the RPC already returns — the
 // passthrough v1 dropped (zero extra RPC cost). Messages come back in
 // ascending order-id order. The RPC is asked for limit+1 to detect
 // has_more without guessing from len==limit (the C10 spirit): a forward
 // walk (?after alone — the only ASC query in the repository) trims the
-// newest extra and continues with nextAfter; every other query is anchored
+// newest extra and continues with next_after; every other query is anchored
 // at its newest end (the repository sorts DESC), so the OLDEST extra is
-// trimmed and paging continues backward with nextBefore.
+// trimmed and paging continues backward with next_before.
 func (s *Service) GetChatMessages(ctx context.Context, spaceId, chatId string, q ChatMessagesQuery) (*v2model.ChatMessagesResponse, error) {
 	if err := s.ensureChat(ctx, spaceId, chatId); err != nil {
 		return nil, err
@@ -243,7 +243,7 @@ func (s *Service) AddChatMessage(ctx context.Context, spaceId, chatId string, re
 	return &v2model.ChatMessageResult{Id: resp.MessageId}, nil
 }
 
-// EditChatMessage implements PATCH .../messages/{messageId} as a text-only
+// EditChatMessage implements PATCH .../messages/{message_id} as a text-only
 // MERGE: the middleware's edit replaces the whole message content
 // (attachments included — chatmodel content = {message, attachments,
 // blocks}), so the service reads the message first and carries its style,
@@ -294,7 +294,7 @@ func (s *Service) EditChatMessage(ctx context.Context, spaceId, chatId, messageI
 	return &v2model.ChatMessageResult{Id: messageId}, nil
 }
 
-// DeleteChatMessage implements DELETE .../messages/{messageId}. BOTH paths
+// DeleteChatMessage implements DELETE .../messages/{message_id}. BOTH paths
 // run the existence check: the store handler treats deleting a missing
 // document as success, so without it the real call would answer 200 for a
 // message that never existed while the dry run 404s — C9's contract is
@@ -325,7 +325,7 @@ func (s *Service) DeleteChatMessage(ctx context.Context, spaceId, chatId, messag
 	return &v2model.ChatMessageResult{Id: messageId, Warnings: warnings}, nil
 }
 
-// ToggleChatReaction implements POST .../messages/{messageId}/reactions.
+// ToggleChatReaction implements POST .../messages/{message_id}/reactions.
 // Both paths read the message first: the RPC surfaces a missing message as
 // an opaque UNKNOWN_ERROR (HasMyReaction's FindId), so the check turns it
 // into a clean 404. A dry run reports the would-be outcome — added is true
@@ -381,20 +381,20 @@ func (s *Service) ToggleChatReaction(ctx context.Context, spaceId, chatId, messa
 // ---- read watermark ----
 //
 
-// ReadChat implements POST .../chats/{chatId}/read, forwarding
-// {upTo, lastStateId, scope} to ChatReadMessages / ChatReadReactions.
-// upTo is INCLUSIVE and required for the messages/mentions scopes: the
-// underlying range query is `orderId <= upTo`, so an empty bound would
+// ReadChat implements POST .../chats/{chat_id}/read, forwarding
+// {up_to, last_state_id, scope} to ChatReadMessages / ChatReadReactions.
+// up_to is INCLUSIVE and required for the messages/mentions scopes: the
+// underlying range query is `orderId <= up_to`, so an empty bound would
 // silently mark nothing (v1's read_all rides exactly that trap).
-// lastStateId — the race guard this phase finally makes reachable — is
+// last_state_id — the race guard this phase finally makes reachable — is
 // required for the SAME reason: the repository additionally ANDs
-// `stateId <= lastStateId` and every stored message carries a non-empty
+// `stateId <= last_state_id` and every stored message carries a non-empty
 // bson state id, so `stateId <= ""` matches nothing and an omitted guard
 // is the identical silent no-op one field over. Both values ride the same
-// GET messages response (the newest order + state.lastStateId), so
+// GET messages response (the newest order + state.last_state_id), so
 // requiring them costs the agent no extra call. The reactions scope marks
 // ALL unread reactions (the backend takes no bound) and therefore rejects
-// upTo/lastStateId.
+// up_to/last_state_id.
 func (s *Service) ReadChat(ctx context.Context, spaceId, chatId string, req v2model.ChatReadRequest, dryRun bool) (*v2model.ChatReadResult, error) {
 	if err := s.ensureChatWrite(ctx, spaceId, chatId); err != nil {
 		return nil, err
@@ -403,15 +403,15 @@ func (s *Service) ReadChat(ctx context.Context, spaceId, chatId string, req v2mo
 	case "", v2model.ChatReadScopeMessages, v2model.ChatReadScopeMentions:
 		var missing []v2model.Issue
 		if req.UpTo == "" {
-			missing = append(missing, v2model.Issue{Path: "/upTo", Message: "the inclusive order id to mark read up to",
+			missing = append(missing, v2model.Issue{Path: "/up_to", Message: "the inclusive order id to mark read up to",
 				Hint: "use the newest message's order from GET .../messages (a limit=1 read returns it)"})
 		}
 		if req.LastStateId == "" {
-			missing = append(missing, v2model.Issue{Path: "/lastStateId", Message: "the race guard from the same messages read",
-				Hint: "use state.lastStateId from GET .../messages — an empty guard matches no message and would silently mark nothing"})
+			missing = append(missing, v2model.Issue{Path: "/last_state_id", Message: "the race guard from the same messages read",
+				Hint: "use state.last_state_id from GET .../messages — an empty guard matches no message and would silently mark nothing"})
 		}
 		if len(missing) > 0 {
-			return nil, v2model.ValidationFailed("the read watermark needs upTo and lastStateId", missing...)
+			return nil, v2model.ValidationFailed("the read watermark needs up_to and last_state_id", missing...)
 		}
 		if dryRun {
 			return &v2model.ChatReadResult{DryRun: true}, nil
@@ -429,7 +429,7 @@ func (s *Service) ReadChat(ctx context.Context, spaceId, chatId string, req v2mo
 		if resp.Error != nil && resp.Error.Code != pb.RpcChatReadMessagesResponseError_NULL {
 			if resp.Error.Code == pb.RpcChatReadMessagesResponseError_MESSAGES_NOT_FOUND {
 				return nil, v2model.ValidationFailed("no messages matched the read range",
-					v2model.Issue{Path: "/upTo", Message: "the chat is empty or upTo is not a valid order id", Hint: "read GET .../messages and use a returned order value"})
+					v2model.Issue{Path: "/up_to", Message: "the chat is empty or up_to is not a valid order id", Hint: "read GET .../messages and use a returned order value"})
 			}
 			return nil, v2ChatRpcError("mark chat read", int32(resp.Error.Code), int32(pb.RpcChatReadMessagesResponseError_BAD_INPUT), resp.Error.Description)
 		}
@@ -438,10 +438,10 @@ func (s *Service) ReadChat(ctx context.Context, spaceId, chatId string, req v2mo
 	case v2model.ChatReadScopeReactions:
 		var issues []v2model.Issue
 		if req.UpTo != "" {
-			issues = append(issues, v2model.Issue{Path: "/upTo", Message: "the reactions scope marks ALL unread reactions — it takes no upTo"})
+			issues = append(issues, v2model.Issue{Path: "/up_to", Message: "the reactions scope marks ALL unread reactions — it takes no up_to"})
 		}
 		if req.LastStateId != "" {
-			issues = append(issues, v2model.Issue{Path: "/lastStateId", Message: "the reactions scope marks ALL unread reactions — it takes no lastStateId"})
+			issues = append(issues, v2model.Issue{Path: "/last_state_id", Message: "the reactions scope marks ALL unread reactions — it takes no last_state_id"})
 		}
 		if len(issues) > 0 {
 			return nil, v2model.ValidationFailed("the reactions scope is all-or-nothing", issues...)
@@ -545,7 +545,7 @@ func (s *Service) resolveChatAttachments(spaceId string, ids []string) ([]*model
 			return nil, v2model.ValidationFailed("attachment target not found",
 				v2model.Issue{Path: fmt.Sprintf("/attachments/%d", i),
 					Message: fmt.Sprintf("object %q not found in space %q", id, spaceId),
-					Hint:    "upload files via POST /v2/spaces/{spaceId}/files first, or pass an existing object id"})
+					Hint:    "upload files via POST /v2/spaces/{space_id}/files first, or pass an existing object id"})
 		}
 		layout := model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyResolvedLayout))
 		attachmentType := model.ChatMessageAttachment_LINK

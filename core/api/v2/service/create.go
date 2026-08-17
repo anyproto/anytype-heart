@@ -1,7 +1,7 @@
 package v2service
 
 // create.go implements the Phase-2 object create surface (APIV2.md §2):
-// POST /v2/spaces/{spaceId}/objects (full AnyBlock document or the
+// POST /v2/spaces/{space_id}/objects (full AnyBlock document or the
 // {type, name, properties, markdown} shortcut — discriminated per §8/R7 on
 // the presence of version/blocks) and POST .../templates. The create path is
 // snapshot-based: anyblockjson.Unmarshal → apicore.ObjectCreator (one change
@@ -56,7 +56,7 @@ type docCreateOptions struct {
 	requireTemplate bool // POST /templates: templateFor is mandatory
 }
 
-// CreateObject implements POST /v2/spaces/{spaceId}/objects.
+// CreateObject implements POST /v2/spaces/{space_id}/objects.
 func (s *Service) CreateObject(ctx context.Context, spaceId string, body []byte, dryRun bool) (*v2model.CreateResult, error) {
 	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
@@ -76,7 +76,7 @@ func (s *Service) CreateObject(ctx context.Context, spaceId string, body []byte,
 	return s.createFromShortcut(ctx, spaceId, fields, dryRun)
 }
 
-// CreateTemplate implements POST /v2/spaces/{spaceId}/templates: an AnyBlock
+// CreateTemplate implements POST /v2/spaces/{space_id}/templates: an AnyBlock
 // document with templateFor, routed through the generic object-create path
 // (no create-from-body template RPC exists — APIV2.md Phase 2).
 func (s *Service) CreateTemplate(ctx context.Context, spaceId string, body []byte, dryRun bool) (*v2model.CreateResult, error) {
@@ -113,7 +113,7 @@ func (s *Service) createFromShortcut(ctx context.Context, spaceId string, fields
 	}
 	if shortcut.Type == "" {
 		return nil, v2model.ValidationFailed("type is required",
-			v2model.Issue{Path: "/type", Message: "the shortcut needs a type key", Hint: "list keys with GET /v2/spaces/{spaceId}/types"})
+			v2model.Issue{Path: "/type", Message: "the shortcut needs a type key", Hint: "list keys with GET /v2/spaces/{space_id}/types"})
 	}
 
 	doc := map[string]json.RawMessage{}
@@ -143,11 +143,11 @@ func (s *Service) createFromShortcut(ctx context.Context, spaceId string, fields
 		if exceeded {
 			return nil, v2model.ValidationFailed("markdown produced too many blocks",
 				v2model.Issue{Path: "/markdown", Message: fmt.Sprintf(
-					"the markdown parses to more than %d blocks — the create limit is %d; create with a shorter body and add the rest with PATCH insertBlocks",
+					"the markdown parses to more than %d blocks — the create limit is %d; create with a shorter body and add the rest with PATCH insert_blocks",
 					v2MaxCreateMarkdownBlocks, v2MaxCreateMarkdownBlocks)})
 		}
 		if len(run) == 0 {
-			// same contract as the insertBlocks markdown channel — a silent
+			// same contract as the insert_blocks markdown channel — a silent
 			// empty object teaches the caller nothing (C6)
 			return nil, v2model.ValidationFailed("markdown produced no blocks",
 				v2model.Issue{Path: "/markdown", Message: "the markdown body contains no content — give at least one non-blank line, or omit markdown"})
@@ -172,7 +172,7 @@ func (s *Service) createFromShortcut(ctx context.Context, spaceId string, fields
 }
 
 // v2MaxCreateMarkdownBlocks caps how many blocks a create shortcut's markdown
-// body may parse to. Wider than the per-op insertBlocks cap (a whole document
+// body may parse to. Wider than the per-op insert_blocks cap (a whole document
 // vs one insertion) but still a hard bound: the byte-bounded markdown channel
 // would otherwise reach hundreds of thousands of blocks in one change set.
 const v2MaxCreateMarkdownBlocks = 2048
@@ -180,8 +180,8 @@ const v2MaxCreateMarkdownBlocks = 2048
 // rebaseMarkdownCreateError rewrites /blocks/<j>… issue paths onto
 // /markdown[<j>]… — the create-shortcut caller sent markdown, never a blocks
 // array, so a path into the synthesized document is unactionable (C6). j is
-// the parsed block position, the same convention the insertBlocks op's
-// createdBlocks keys document.
+// the parsed block position, the same convention the insert_blocks op's
+// created_blocks keys document.
 func rebaseMarkdownCreateError(err error) error {
 	var v2Err *v2model.Error
 	if !errors.As(err, &v2Err) {
@@ -607,7 +607,7 @@ func rejectRestrictedType(typeKey string) error {
 	switch key {
 	case bundle.TypeKeyFile, bundle.TypeKeyImage, bundle.TypeKeyAudio, bundle.TypeKeyVideo:
 		return v2model.ValidationFailed("file objects are created by upload",
-			v2model.Issue{Path: "/type", Message: fmt.Sprintf("%q objects come from file uploads", typeKey), Hint: "POST /v2/spaces/{spaceId}/files"})
+			v2model.Issue{Path: "/type", Message: fmt.Sprintf("%q objects come from file uploads", typeKey), Hint: "POST /v2/spaces/{space_id}/files"})
 	}
 	return nil
 }

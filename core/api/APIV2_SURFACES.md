@@ -45,7 +45,7 @@ snake_case auth bodies (§10.1). "A v2 home for every capability" is the goal;
 | Spaces | (c) | **(c)** unchanged | List shipped; add GET-one/POST/PATCH — v1's list does N+1 RPCs and misses every v2 convention. |
 | Members | (c) | **(c)** unchanged | List shipped; the real gap is `GET /members/me`; member admin is disabled even in v1 — nothing to port. |
 | Files | (c), download stays v1 | **(c) incl. download** | Upload shipped; download gets `/v2` bytes (HTTP conventions still apply *around* the stream); the search file-layout blindness is the live bug. |
-| Chats | (c) | **(c)** unchanged, incl. SSE | v1 drops chatState/messageCount the RPC already returns; rows/marks are token-hostile — passthrough + compact shapes, and the stream comes too. |
+| Chats | (c) | **(c)** unchanged, incl. SSE | v1 drops chatState/message_count the RPC already returns; rows/marks are token-hostile — passthrough + compact shapes, and the stream comes too. |
 | Lists (v1 `/lists`) | — | — | Superseded by Phase-4 sets/collections; nothing to do. |
 | Tags admin | (a) | **(c)**, Phase 8 | Rename semantics under names-as-identity must be resolved (Q5), not dodged. |
 | Templates read | (a) | **(b/c)**, Phase 8 | Trivial to port; ports for completeness rather than demonstrated demand. |
@@ -114,9 +114,9 @@ fields — leave them out of v2 rows (they remain reachable via v1).
 **v2 additions** (C6/C8/C9/C10 semantics throughout):
 
 ```
-GET   /v2/spaces/{spaceId}            → {"id","name","description"}
+GET   /v2/spaces/{space_id}            → {"id","name","description"}
 POST  /v2/spaces                      body {"name", "description"?} → the same shape
-PATCH /v2/spaces/{spaceId}            body {"name"?, "description"?} → the same shape
+PATCH /v2/spaces/{space_id}            body {"name"?, "description"?} → the same shape
 ```
 
 Create/patch are thin over `WorkspaceCreate`/`WorkspaceSetInfo` exactly as
@@ -136,7 +136,7 @@ service code (`member.go:146-208`) but its route is **commented out** pending
 granular permissions (`router.go:459-464`) — there is no live member-write
 surface in v1 today.
 
-**What v2 has.** `GET /v2/spaces/{spaceId}/members` shipped
+**What v2 has.** `GET /v2/spaces/{space_id}/members` shipped
 (`router.go:106`): active participants, minimal rows `{id, name, role,
 identity}` (`v2_discovery.go:57-99`).
 
@@ -144,12 +144,12 @@ identity}` (`v2_discovery.go:57-99`).
 property values (`assignee`, `creator` hold participant ids). The shipped
 list serves that. The missing piece is self-identity — `@me` in filters and
 "assign to me" — which only the server knows; APIV2.md §3 already names
-**`GET /v2/spaces/{spaceId}/members/me`** as a Phase-5 build item (the same
+**`GET /v2/spaces/{space_id}/members/me`** as a Phase-5 build item (the same
 identity Phase 4's placeholder substitution uses, `v2_list_read.go:453-467`
 via `V2Deps.AccountId`). Shape:
 
 ```
-GET /v2/spaces/{spaceId}/members/me   → {"id","name","role","identity"}
+GET /v2/spaces/{space_id}/members/me   → {"id","name","role","identity"}
 ```
 
 Not building: get-one-member (the paginated list covers realistic space
@@ -167,7 +167,7 @@ sanitization (`handler/file.go:38-76`, `service/file.go:68-162`), `DELETE
 /files/{id}` = archive-or-purge of the file *object*
 (`ObjectSetIsArchived`/`ObjectListDelete`, `service/file.go:189-208`).
 
-**What v2 has.** `POST /v2/spaces/{spaceId}/files` shipped — multipart *or*
+**What v2 has.** `POST /v2/spaces/{space_id}/files` shipped — multipart *or*
 `{"url": …}`, returns `{id, name, mimeType, size}`, stamps `origin: api`
 (`v2/service/file.go:21-50`, route `router.go:264`). APIV2.md already calls
 it load-bearing (R11): file/image blocks and `iconImage` need the id.
@@ -187,7 +187,7 @@ for a capability the middleware does not have (Q7).
   (ranges, conditional GET); none of C2-C13 applies to it. Document
   `GET /v1/spaces/{id}/files/{fileId}?width=` as the transport endpoint.
 - **Delete: no v2 file route.** A file object is an object; the pending
-  `DELETE /v2/spaces/{spaceId}/objects/{objectId}` archive (§3 build item,
+  `DELETE /v2/spaces/{space_id}/objects/{object_id}` archive (§3 build item,
   due before Phase 5) covers it — v1's own DeleteFile is exactly that RPC.
 - **The real gap — discovery (BUILT, Phase 7 — APIV2.md §8.8).** The gap
   was: the v2 query surface scoped rows to `util.ObjectLayouts`, which
@@ -229,7 +229,7 @@ toggle reaction; read-all / read-range / read-reactions; per-chat FT search
 
 **What the middleware can do that v1 hides.** `ChatGetMessages` returns
 `chatState` — unread messages *and* mentions `{oldestOrderId, counter}`,
-`unreadReactionOrderId`, `lastStateId` — plus `messageCount`
+`unreadReactionOrderId`, `last_state_id` — plus `message_count`
 (`pb/protos/commands.proto:9179-9205`;
 `pkg/lib/pb/model/protos/models.proto:1638-1648`). The v1 service **drops
 both** and returns bare messages (`service/chat.go:88-103`). Three concrete
@@ -264,42 +264,42 @@ DTO layer. That is the definition of (c).
 **v2 chat surface** (all C6 errors; C8 `Idempotency-Key` on every mutation —
 a double-sent chat message is user-visible damage; C9 `dry_run` =
 validate-only; C7 etag/If-Match **does not apply** — order ids and
-`lastStateId` are the stream's native concurrency vocabulary, documented as
+`last_state_id` are the stream's native concurrency vocabulary, documented as
 a deliberate exemption like search's C8/C9 one):
 
 ```
-GET    /v2/spaces/{spaceId}/chats                       # C5 rows {id,name} — store query, no chat opens
-POST   /v2/spaces/{spaceId}/chats                       # {name} → row (thin over ObjectCreate, v1 parity)
-GET    /v2/spaces/{spaceId}/chats/{chatId}/messages     # ?after=&before=&limit=25
-POST   /v2/spaces/{spaceId}/chats/{chatId}/messages     # {text, replyTo?, attachments?:[fileId…]} → {id}
-PATCH  /v2/spaces/{spaceId}/chats/{chatId}/messages/{messageId}   # {text}
-DELETE /v2/spaces/{spaceId}/chats/{chatId}/messages/{messageId}
-POST   /v2/spaces/{spaceId}/chats/{chatId}/messages/{messageId}/reactions   # {emoji} → {added:bool}
-POST   /v2/spaces/{spaceId}/chats/{chatId}/read         # {upTo, lastStateId?, scope?:"messages"|"mentions"}
+GET    /v2/spaces/{space_id}/chats                       # C5 rows {id,name} — store query, no chat opens
+POST   /v2/spaces/{space_id}/chats                       # {name} → row (thin over ObjectCreate, v1 parity)
+GET    /v2/spaces/{space_id}/chats/{chat_id}/messages     # ?after=&before=&limit=25
+POST   /v2/spaces/{space_id}/chats/{chat_id}/messages     # {text, reply_to?, attachments?:[fileId…]} → {id}
+PATCH  /v2/spaces/{space_id}/chats/{chat_id}/messages/{message_id}   # {text}
+DELETE /v2/spaces/{space_id}/chats/{chat_id}/messages/{message_id}
+POST   /v2/spaces/{space_id}/chats/{chat_id}/messages/{message_id}/reactions   # {emoji} → {added:bool}
+POST   /v2/spaces/{space_id}/chats/{chat_id}/read         # {up_to, last_state_id?, scope?:"messages"|"mentions"}
 ```
 
 GET messages response (compact JSON, C3):
 
 ```json
 {"messages":[
-   {"id":"…","order":"…","author":"Alice","authorId":"_participant_…",
-    "at":1717405200,"text":"can you **check** the doc?","replyTo":"…",
+   {"id":"…","order":"…","author":"Alice","author_id":"_participant_…",
+    "at":1717405200,"text":"can you **check** the doc?","reply_to":"…",
     "reactions":{"👍":2},"attachments":[{"id":"bafy…","type":"image"}]}],
- "state":{"unreadMessages":3,"unreadMentions":1,"oldestUnreadOrder":"…","lastStateId":"…"},
- "messageCount":812}
+ "state":{"unread_messages":3,"unread_mentions":1,"oldest_unread_order":"…","last_state_id":"…"},
+ "message_count":812}
 ```
 
 The three reshapes that carry the phase:
 
-- **State passthrough.** `state` + `messageCount` on every messages read —
+- **State passthrough.** `state` + `message_count` on every messages read —
   zero extra RPC cost (the fields are already in the response the service
   throws away). This closes both the peek problem (poll = `limit=1` read)
-  and the mark-read race (`lastStateId` finally reaches the client;
+  and the mark-read race (`last_state_id` finally reaches the client;
   `POST …/read` forwards it).
 - **Text is §8 inline markup, both directions.** Read: marks render into the
   text via the anyblockjson inline codec (the same serialization block text
   uses — one vocabulary, C2); write: `text` parses as markdown source
-  exactly like `replaceText`/`insertBlocks` payloads (the D′1 caveat applies
+  exactly like `replace_text`/`insert_blocks` payloads (the D′1 caveat applies
   verbatim and is documented on the endpoint). Offset mark arrays never
   cross the API. `style` is dropped from the default read (it is
   `"paragraph"` in practice) and not accepted on write for now.
@@ -321,7 +321,7 @@ from startup; see Q3.
 
 - **Lists** (`/v1/spaces/{id}/lists/*`, `router.go:426-446`): superseded by
   the shipped Phase-4 sets/collections reads and the Phase-3
-  `addItems`/`removeItems` ops. v1 keeps serving legacy clients until
+  `add_items`/`remove_items` ops. v1 keeps serving legacy clients until
   deprecation. Done.
 - **Tags** (`/v1/…/properties/{id}/tags/*`, `router.go:559-584`): v2 reads
   options (`GET /properties/{key}/options`) and creates them by name
@@ -376,13 +376,13 @@ profile/manifest — the >15-tool cliff (§7) rules out widening the core set.
 2. **[built]** `GET /chats` C5 rows (store query over `ChatLayouts`, no chat
    opens — the test fails on any RPC) + `POST /chats` (thin `ObjectCreate`
    with the `chatDerived` type; non-empty name required).
-3. **[built]** `GET /messages` with `state`+`messageCount` passthrough
+3. **[built]** `GET /messages` with `state`+`message_count` passthrough
    (`v2/service/chat.go`).
 4. **[built]** `POST`/`PATCH`/`DELETE` message + reactions toggle, C8 on all
    (the middleware's method set widened to DELETE for the chat delete
    route), C9 dry runs (PATCH is a read-merge — the edit RPC replaces the
    whole content, a naive text forward would wipe attachments).
-5. **[built]** `POST /read` forwarding `{upTo, lastStateId, scope}`; upTo
+5. **[built]** `POST /read` forwarding `{up_to, last_state_id, scope}`; up_to
    required+inclusive for messages/mentions (an empty bound silently marks
    nothing); the reactions scope is all-or-nothing (the backend ignores its
    order id) and rejects bounds.
@@ -397,11 +397,11 @@ token cost than the v1 flow, and a double-send retry is absorbed by C8.
 
 ### Phase 7 — periphery (BUILT 2026-08-06 — APIV2.md §8.8)
 
-1. **[built]** Spaces: `GET /v2/spaces/{spaceId}`, `POST /v2/spaces`,
-   `PATCH /v2/spaces/{spaceId}` (§2 shapes; C8 on both mutations — the
+1. **[built]** Spaces: `GET /v2/spaces/{space_id}`, `POST /v2/spaces`,
+   `PATCH /v2/spaces/{space_id}` (§2 shapes; C8 on both mutations — the
    router test pins both; PATCH additionally requires at least one field
    and a non-empty name).
-2. **[already shipped]** `GET /v2/spaces/{spaceId}/members/me` — verified
+2. **[already shipped]** `GET /v2/spaces/{space_id}/members/me` — verified
    Phase 5 landed it (route + `GetMemberMe` + tests); nothing rebuilt.
 3. **[built]** the search file-layout opt-in keyed off the type channel
    (§4): top-level file `type` or a positive (`=`/`IN`) `type` filter
@@ -425,7 +425,7 @@ token cost than the v1 flow, and a double-send retry is absorbed by C8.
   "version-neutral plumbing" turns out to have been half right: not because
   the URL prefix is harmless, but because *issuance does not belong to the
   HTTP API at all*.
-- **Q2 · Space orientation one-shot.** A `GET /v2/spaces/{spaceId}/context`
+- **Q2 · Space orientation one-shot.** A `GET /v2/spaces/{space_id}/context`
   returning `{space, me, types[], propertyKeys[]}` would collapse the
   cold-start 3-4 calls into one (~1 s of round trips, a few hundred tokens).
   Against it: it duplicates three shipped discovery lists behind a second
@@ -441,7 +441,7 @@ token cost than the v1 flow, and a double-send retry is absorbed by C8.
   if list counters are ever demanded; it is middleware work, not API work.
 - **Q4 · Reactions default — DECIDED (Phase 6, as recommended):
   counts-by-default** (`{"👍":2}`); `?reactions=full` restores identity
-  lists, carrying participant ids (one vocabulary with `authorId`, C2),
+  lists, carrying participant ids (one vocabulary with `author_id`, C2),
   never raw identities.
 - **Q5 · Tag/option administration.** Leave rename/recolor/delete on v1
   until deprecation (recommended), or spec
@@ -498,7 +498,7 @@ content; Phase 8 is new and exists only because of the v0.2 decision.
    call, v1 or v2. The docs must say this plainly: **v2 has no minting
    endpoint by design; obtain a key in the app.** Revisit only if headless
    issuance ever becomes a real requirement.
-2. **[build] `GET /v2/spaces/{spaceId}/files/{fileId}/content`** — the byte
+2. **[build] `GET /v2/spaces/{space_id}/files/{fileId}/content`** — the byte
    stream. HTTP is the convention *inside* the response (Content-Type,
    Content-Length, Range, ETag as a real validator), but everything around it
    is v2: path shape, C6 errors on the failure paths, and the 404/403
@@ -585,8 +585,8 @@ content; Phase 8 is new and exists only because of the v0.2 decision.
 
 Not completeness and not a token knob — a surface simplification that
 happens to save tokens. **Object ids are content-addressed (the CID of the
-object header), so they are unique across spaces**; the `spaceId` in
-`/v2/spaces/{spaceId}/objects/{objectId}` is redundant whenever the object
+object header), so they are unique across spaces**; the `space_id` in
+`/v2/spaces/{space_id}/objects/{object_id}` is redundant whenever the object
 id is known.
 
 The binding already exists and is a keyed point lookup, not a scan:
@@ -607,7 +607,7 @@ is the argument a model is most likely to omit or invent, because it never
 appears in the user's request.
 
 **Measured, 2026-08-11 (APIV2.md §8.34).** The prediction above is right
-about *which* argument and wrong about the failure mode: `spaceId` is the
+about *which* argument and wrong about the failure mode: `space_id` is the
 argument a small model most often **mangles**, not the one it omits. A space
 id is two dot-joined parts (`bafyrei….28y6mgnwgodt7` — CID plus base36
 replication key, and the suffix is load-bearing: it is what
@@ -633,7 +633,7 @@ it needs no resolver, no new route class and no D2 decision.
 
 1. **[build]** an `apicore` port for the resolver, carried on `V2Deps` (the
    same shape as the existing object adapters).
-2. **[build]** space-optional routes (`GET /v2/objects/{objectId}` and the
+2. **[build]** space-optional routes (`GET /v2/objects/{object_id}` and the
    object-addressed mutations), resolving the space before anything else.
    **Use `ResolveSpaceIdWithRetry`** — the binding is eventual, so a plain
    resolve immediately after a create will intermittently 404, which is the

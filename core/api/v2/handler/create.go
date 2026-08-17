@@ -505,7 +505,7 @@ func SchemaKindHandler(s *v2service.Service) gin.HandlerFunc {
 // SchemaOpHandler serves one PATCH op's schema + minimal example
 //
 //	@Summary		Get schema for a PATCH op
-//	@Description	One op's tiny strict schema (C13) and a minimal example that is an INSTANCE of it — one op object, ready to drop into the PATCH body's ops array. Ops: setProperties, updateBlock, replaceSubtree, insertBlocks, moveBlock, deleteBlock, replaceText, setCell, updateView, insertView, moveView, deleteView, addItems, removeItems.
+//	@Description	One op's tiny strict schema (C13) and a minimal example that is an INSTANCE of it — one op object, ready to drop into the PATCH body's ops array. Ops: set_properties, update_block, replace_subtree, insert_blocks, move_block, delete_block, replace_text, set_cell, update_view, insert_view, move_view, delete_view, add_items, remove_items.
 //	@Id				get_op_schema
 //	@Tags			Schemas
 //	@Produce		json

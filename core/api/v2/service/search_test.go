@@ -95,7 +95,7 @@ func TestV2SearchObjects(t *testing.T) {
 		assert.Equal(t, "chore1", rows[0].Id)
 		assert.Equal(t, "Fix the sink", rows[0].Name)
 		assert.Equal(t, "chore", rows[0].Type, "rows carry the type KEY (C2), never the type object")
-		assert.Empty(t, rows[0].SpaceId, "space-scoped rows carry no spaceId")
+		assert.Empty(t, rows[0].SpaceId, "space-scoped rows carry no space_id")
 	})
 
 	t.Run("the compact filter string lands on the same tree (one execution path)", func(t *testing.T) {
@@ -918,7 +918,7 @@ func TestV2GlobalSearchObjects(t *testing.T) {
 		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
 		assert.Contains(t, apiErr.Message, "global search pages at most 2000 rows deep")
 		require.Len(t, apiErr.Issues, 1)
-		assert.Contains(t, apiErr.Issues[0].Hint, "POST /v2/spaces/{spaceId}/search")
+		assert.Contains(t, apiErr.Issues[0].Hint, "POST /v2/spaces/{space_id}/search")
 	})
 
 	t.Run("identical per-space warnings dedupe to one", func(t *testing.T) {

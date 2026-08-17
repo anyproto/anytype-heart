@@ -24,11 +24,11 @@ func call(turn int, tool, args string) callRecord {
 }
 
 func TestAnalyzeInsertBlocksIdEmission(t *testing.T) {
-	t.Run("an id anywhere in an insertBlocks payload is counted, with its path", func(t *testing.T) {
+	t.Run("an id anywhere in an insert_blocks payload is counted, with its path", func(t *testing.T) {
 		// given
 		calls := []callRecord{
-			call(0, "insertBlocks", `{"op":"insertBlocks","blocks":[{"id":"b17","type":"paragraph","text":"hi"}]}`),
-			call(1, "insertBlocks", `{"op":"insertBlocks","markdown":"## Risks"}`),
+			call(0, "insert_blocks", `{"op":"insert_blocks","blocks":[{"id":"b17","type":"paragraph","text":"hi"}]}`),
+			call(1, "insert_blocks", `{"op":"insert_blocks","markdown":"## Risks"}`),
 		}
 
 		// when
@@ -45,7 +45,7 @@ func TestAnalyzeInsertBlocksIdEmission(t *testing.T) {
 	t.Run("a nested row id counts too — the schema stopped showing that one as well", func(t *testing.T) {
 		// given
 		calls := []callRecord{
-			call(0, "insertBlocks", `{"op":"insertBlocks","blocks":[{"type":"table","rows":[{"id":"r7","cells":["a"]}]}]}`),
+			call(0, "insert_blocks", `{"op":"insert_blocks","blocks":[{"type":"table","rows":[{"id":"r7","cells":["a"]}]}]}`),
 		}
 
 		// when
@@ -57,11 +57,11 @@ func TestAnalyzeInsertBlocksIdEmission(t *testing.T) {
 		assert.Equal(t, "blocks[0].rows[0].id", got.IdEmissions[0].Path)
 	})
 
-	t.Run("replaceSubtree is the control: the op's own id does not count, a payload id does", func(t *testing.T) {
+	t.Run("replace_subtree is the control: the op's own id does not count, a payload id does", func(t *testing.T) {
 		// given
 		calls := []callRecord{
-			call(0, "replaceSubtree", `{"op":"replaceSubtree","id":"d4e5f","blocks":[{"type":"paragraph","text":"x"}]}`),
-			call(1, "replaceSubtree", `{"op":"replaceSubtree","id":"d4e5f","blocks":[{"id":"d4e5f","type":"paragraph","text":"x"}]}`),
+			call(0, "replace_subtree", `{"op":"replace_subtree","id":"d4e5f","blocks":[{"type":"paragraph","text":"x"}]}`),
+			call(1, "replace_subtree", `{"op":"replace_subtree","id":"d4e5f","blocks":[{"id":"d4e5f","type":"paragraph","text":"x"}]}`),
 		}
 
 		// when
@@ -209,9 +209,9 @@ func TestAnalyzeRepairAfterRefusal(t *testing.T) {
 	t.Run("an op-path issue names the field at its last segment", func(t *testing.T) {
 		// given
 		calls := []callRecord{
-			refused(0, "insertBlocks", `{"op":"insertBlocks","blocks":[{"id":"x","type":"paragraph"}]}`,
-				"ops[0].blocks[0].id", "id is not part of insertBlocks"),
-			call(1, "insertBlocks", `{"op":"insertBlocks","blocks":[{"type":"paragraph"}]}`),
+			refused(0, "insert_blocks", `{"op":"insert_blocks","blocks":[{"id":"x","type":"paragraph"}]}`,
+				"ops[0].blocks[0].id", "id is not part of insert_blocks"),
+			call(1, "insert_blocks", `{"op":"insert_blocks","blocks":[{"type":"paragraph"}]}`),
 		}
 
 		// when
@@ -266,9 +266,9 @@ func TestAnalyzeCountsTheOpDiscriminator(t *testing.T) {
 	// omits it or writes a positional word into it never fails for that;
 	// the reading skill is still worth a number
 	calls := []callRecord{
-		call(0, "insertBlocks", `{"op":"insertBlocks","markdown":"## Risks"}`),
-		call(1, "insertBlocks", `{"markdown":"## Risks"}`),
-		call(2, "insertBlocks", `{"op":"last","markdown":"## Risks"}`),
+		call(0, "insert_blocks", `{"op":"insert_blocks","markdown":"## Risks"}`),
+		call(1, "insert_blocks", `{"markdown":"## Risks"}`),
+		call(2, "insert_blocks", `{"op":"last","markdown":"## Risks"}`),
 		call(3, "edit_text", `{"object":"1","find":"a","replace":"b"}`),
 	}
 

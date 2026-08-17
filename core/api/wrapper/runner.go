@@ -491,7 +491,7 @@ func (r *Runner) retryAmbiguous(ctx context.Context, spaceId, objectId string, o
 
 // opsVocab maps the op-path vocabulary of server error texts back onto the
 // tool-argument vocabulary the model actually speaks: the wrapper renames
-// `inside`→`under`, `id`→`block`, `tableId`→`table` and strips the ops[0]
+// `inside`→`under`, `id`→`block`, `table_id`→`table` and strips the ops[0]
 // prefix (the wrapper never batches). Without this, a model that follows the
 // server's own hint (`retry with inside`) earns the wrapper's rejection — two
 // dead retries on the most common anchoring mistake. Order matters: longest
@@ -500,7 +500,7 @@ func (r *Runner) retryAmbiguous(ctx context.Context, spaceId, objectId string, o
 // all of them (§8.34).
 var opsVocab = []struct{ from, to string }{
 	{"ops[0].inside", "under"},
-	{"ops[0].tableId", "table"},
+	{"ops[0].table_id", "table"},
 	{"ops[0].id", "block"},
 	{"ops[0].", ""},
 	// edit_text deliberately has no replace_all (§8.6) — the server's escape

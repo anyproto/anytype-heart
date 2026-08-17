@@ -52,7 +52,7 @@
             "type": "array",
             "uniqueItems": false
           },
-          "replyTo": {
+          "reply_to": {
             "type": "string"
           },
           "text": {
@@ -87,13 +87,13 @@
           "author": {
             "type": "string"
           },
-          "authorId": {
+          "author_id": {
             "type": "string"
           },
-          "blocksText": {
+          "blocks_text": {
             "type": "string"
           },
-          "editedAt": {
+          "edited_at": {
             "type": "string"
           },
           "id": {
@@ -105,7 +105,7 @@
           "pinned": {
             "type": "boolean"
           },
-          "reactedBy": {
+          "reacted_by": {
             "additionalProperties": {
               "items": {
                 "type": "string"
@@ -120,7 +120,7 @@
             },
             "type": "object"
           },
-          "replyTo": {
+          "reply_to": {
             "type": "string"
           },
           "text": {
@@ -152,7 +152,7 @@
           "has_more": {
             "type": "boolean"
           },
-          "messageCount": {
+          "message_count": {
             "type": "integer"
           },
           "messages": {
@@ -162,10 +162,10 @@
             "type": "array",
             "uniqueItems": false
           },
-          "nextAfter": {
+          "next_after": {
             "type": "string"
           },
-          "nextBefore": {
+          "next_before": {
             "type": "string"
           },
           "state": {
@@ -202,13 +202,13 @@
       },
       "ChatReadRequest": {
         "properties": {
-          "lastStateId": {
+          "last_state_id": {
             "type": "string"
           },
           "scope": {
             "type": "string"
           },
-          "upTo": {
+          "up_to": {
             "type": "string"
           }
         },
@@ -249,22 +249,22 @@
       },
       "ChatState": {
         "properties": {
-          "lastStateId": {
+          "last_state_id": {
             "type": "string"
           },
-          "oldestUnreadMentionOrder": {
+          "oldest_unread_mention_order": {
             "type": "string"
           },
-          "oldestUnreadOrder": {
+          "oldest_unread_order": {
             "type": "string"
           },
-          "unreadMentions": {
+          "unread_mentions": {
             "type": "integer"
           },
-          "unreadMessages": {
+          "unread_messages": {
             "type": "integer"
           },
-          "unreadReactionOrder": {
+          "unread_reaction_order": {
             "type": "string"
           }
         },
@@ -343,19 +343,19 @@
       },
       "DiffStats": {
         "properties": {
-          "blocksAdded": {
+          "blocks_added": {
             "type": "integer"
           },
-          "blocksChanged": {
+          "blocks_changed": {
             "type": "integer"
           },
-          "blocksMoved": {
+          "blocks_moved": {
             "type": "integer"
           },
-          "blocksRemoved": {
+          "blocks_removed": {
             "type": "integer"
           },
-          "propertiesChanged": {
+          "properties_changed": {
             "type": "integer"
           }
         },
@@ -374,21 +374,21 @@
           "created": {
             "$ref": "#/components/schemas/SideEffects"
           },
-          "createdBlocks": {
+          "created_blocks": {
             "additionalProperties": {
               "type": "string"
             },
-            "description": "CreatedBlocks maps each payload position that CREATED a block to the id\nthe server minted for it — the top-level run positions\n(\"ops[3].blocks[0]\") and the NESTED id slots alike: a table's rows and\ncolumns (\"ops[3].blocks[0].rows[1]\") and the blocks inside a cell run\n(\"ops[3].value[1]\"). Those nested slots are exactly the ones the id\nrefusals tell a caller to leave empty, so leaving them unreported made\nthe API withhold the answer it had promised. A payload position\ncarrying an id is absent: since §8.29 that id resolves to an existing\nblock whose identity the op keeps, and reporting a preserved block as\ncreated would be the same lie diffStats used to tell.",
+            "description": "CreatedBlocks maps each payload position that CREATED a block to the id\nthe server minted for it — the top-level run positions\n(\"ops[3].blocks[0]\") and the NESTED id slots alike: a table's rows and\ncolumns (\"ops[3].blocks[0].rows[1]\") and the blocks inside a cell run\n(\"ops[3].value[1]\"). Those nested slots are exactly the ones the id\nrefusals tell a caller to leave empty, so leaving them unreported made\nthe API withhold the answer it had promised. A payload position\ncarrying an id is absent: since §8.29 that id resolves to an existing\nblock whose identity the op keeps, and reporting a preserved block as\ncreated would be the same lie diff_stats used to tell.",
             "type": "object"
           },
-          "createdViews": {
+          "created_views": {
             "additionalProperties": {
               "type": "string"
             },
-            "description": "CreatedViews maps each payload position that CREATED a dataview view to\nthe view id the server minted: an insertView op (\"ops[i]\") or a view\nslot of an updateBlock set channel (\"ops[i].set.views[2]\"). View ids\nare always server-minted; a view is not a block, so it is reported\nhere rather than in CreatedBlocks.",
+            "description": "CreatedViews maps each payload position that CREATED a dataview view to\nthe view id the server minted: an insert_view op (\"ops[i]\") or a view\nslot of an update_block set channel (\"ops[i].set.views[2]\"). View ids\nare always server-minted; a view is not a block, so it is reported\nhere rather than in CreatedBlocks.",
             "type": "object"
           },
-          "diffStats": {
+          "diff_stats": {
             "$ref": "#/components/schemas/DiffStats"
           },
           "dry_run": {
@@ -436,7 +436,7 @@
           "id": {
             "type": "string"
           },
-          "mimeType": {
+          "mime_type": {
             "type": "string"
           },
           "name": {
@@ -763,7 +763,7 @@
             "additionalProperties": {},
             "type": "object"
           },
-          "spaceId": {
+          "space_id": {
             "type": "string"
           },
           "type": {
@@ -808,7 +808,7 @@
           "grammar": {
             "type": "string"
           },
-          "grammarExamples": {
+          "grammar_examples": {
             "items": {
               "type": "string"
             },
@@ -1033,10 +1033,10 @@
       },
       "WhoamiKey": {
         "properties": {
-          "createdAt": {
+          "created_at": {
             "type": "string"
           },
-          "expiresAt": {
+          "expires_at": {
             "type": "string"
           },
           "id": {
@@ -1060,7 +1060,8 @@
           "key": {
             "$ref": "#/components/schemas/WhoamiKey"
           },
-          "keyStatus": {
+          "key_status": {
+            "description": "\"legacy\" | \"scoped\", always present",
             "type": "string"
           },
           "notice": {
@@ -1089,7 +1090,7 @@
       "name": "Anytype Support",
       "url": "https://anytype.io/contact"
     },
-    "description": "The agent-oriented Anytype local API. Objects are AnyBlock JSON documents (pkg/lib/anyblockjson/SPEC.md) rather than block trees, so one read returns a whole editable document and one PATCH edits it.\nOne vocabulary throughout (C2): camelCase, property keys, option names, and `type` as a type key — never an id, never snake_case. Responses are compact JSON (C3); object refs are always full inline, and the default object read relabels machine-minted block ids to short doc-local suffixes — `?ids=full` returns the export shape with full ids everywhere — the backup shape, and the read to clone from (C4); list and search rows carry id, name, type and the properties you asked for, and never embed type objects (C5).\nErrors share one shape (C6): {status, code, message, issues:[{path, message, hint}]}, path-addressed and naming the allowed values, so a failed call tells an agent how to repair it. Reads never fail on unknown content — anything a representation cannot express is reported in `warnings` (C11).\nEvery object read returns an `etag` derived from the tree heads plus an ETag header; mutations take `If-Match` and are advisory by default (C7). Every mutation honours `Idempotency-Key` (C8) and `?dry_run=true` (C9). Every list surface is paginated with limit=25 by default and steers you when it truncates (C10).\nSchemas are discoverable at runtime and strict-mode-compatible for constrained decoding (C12, C13): GET /v2/schemas lists the kinds, GET /v2/schemas/{kind} returns one, and GET /v2/schemas/ops/{op} returns the schema of a single PATCH op.\nSpaces are served by a SHORT reference — the last six characters of the space id's CID half — and every route that takes a space accepts either that short reference or the full `<cid>.<replicationKey>` id. Resolution is exact id first, then a unique suffix, within the spaces the credential can see; an ambiguous reference is a 400 listing the candidates, and two spaces whose tails collide are both served in full. The full id keeps working everywhere.\nA short reference is an addressing convenience, not a stable identifier: it is unique only against the spaces the credential can currently see, so joining a space with a colliding tail retires it. `?ids=full` — the same parameter that asks an object read for the export shape — makes every space id in the response the full one instead: use it whenever a reference is going to be stored outside this API (a config file, a script, a log line, another API).",
+    "description": "The agent-oriented Anytype local API. Objects are AnyBlock JSON documents (pkg/lib/anyblockjson/SPEC.md) rather than block trees, so one read returns a whole editable document and one PATCH edits it.\nOne vocabulary throughout (C2): snake_case everywhere this API names something of its own — path and query params, request and response fields, and the PATCH op names alike. Things are addressed by name, never by id: property keys, option names, and `type` as a type key. Inside an object's `blocks` and `properties` you are reading the AnyBlock format's own vocabulary, which passes through unchanged. Responses are compact JSON (C3); object refs are always full inline, and the default object read relabels machine-minted block ids to short doc-local suffixes — `?ids=full` returns the export shape with full ids everywhere — the backup shape, and the read to clone from (C4); list and search rows carry id, name, type and the properties you asked for, and never embed type objects (C5).\nErrors share one shape (C6): {status, code, message, issues:[{path, message, hint}]}, path-addressed and naming the allowed values, so a failed call tells an agent how to repair it. Reads never fail on unknown content — anything a representation cannot express is reported in `warnings` (C11).\nEvery object read returns an `etag` derived from the tree heads plus an ETag header; mutations take `If-Match` and are advisory by default (C7). Every mutation honours `Idempotency-Key` (C8) and `?dry_run=true` (C9). Every list surface is paginated with limit=25 by default and steers you when it truncates (C10).\nSchemas are discoverable at runtime and strict-mode-compatible for constrained decoding (C12, C13): GET /v2/schemas lists the kinds, GET /v2/schemas/{kind} returns one, and GET /v2/schemas/ops/{op} returns the schema of a single PATCH op.\nSpaces are served by a SHORT reference — the last six characters of the space id's CID half — and every route that takes a space accepts either that short reference or the full `<cid>.<replicationKey>` id. Resolution is exact id first, then a unique suffix, within the spaces the credential can see; an ambiguous reference is a 400 listing the candidates, and two spaces whose tails collide are both served in full. The full id keeps working everywhere.\nA short reference is an addressing convenience, not a stable identifier: it is unique only against the spaces the credential can currently see, so joining a space with a colliding tail retires it. `?ids=full` — the same parameter that asks an object read for the export shape — makes every space id in the response the full one instead: use it whenever a reference is going to be stored outside this API (a config file, a script, a log line, another API).",
     "license": {
       "name": "Any Source Available License 1.0",
       "url": "https://github.com/anyproto/anytype-api/blob/main/LICENSE.md"
@@ -1105,7 +1106,7 @@
   "paths": {
     "/v2/auth/whoami": {
       "get": {
-        "description": "Describes the CREDENTIAL presented in the Authorization header — never the person; there is only one account on this API. `grant.scoped` is the load-bearing field: false means a legacy unscoped key (then `spaces` is `[]` and `permission` is null — never null spaces), true means enforcement constrains the key to exactly the listed spaces with the listed permission. `spaces[]` entries carry a per-entry `permission` (uniform today; per-space grants land without a wire change) and a `name` resolved through the same grant-intersected path as GET /v2/spaces. `keyStatus`/`notice` repeat the Anytype-Key-Status/Anytype-Notice header signal in the body. The token is read ONLY from the Authorization header; it is never accepted as a query or body parameter, and an unknown or revoked key gets a plain 401.",
+        "description": "Describes the CREDENTIAL presented in the Authorization header — never the person; there is only one account on this API. `grant.scoped` is the load-bearing field: false means a legacy unscoped key (then `spaces` is `[]` and `permission` is null — never null spaces), true means enforcement constrains the key to exactly the listed spaces with the listed permission. `spaces[]` entries carry a per-entry `permission` (uniform today; per-space grants land without a wire change) and a `name` resolved through the same grant-intersected path as GET /v2/spaces. `key_status`/`notice` repeat the Anytype-Key-Status/Anytype-Notice header signal in the body. The token is read ONLY from the Authorization header; it is never accepted as a query or body parameter, and an unknown or revoked key gets a plain 401.",
         "operationId": "auth_whoami",
         "parameters": [
           {
@@ -1189,7 +1190,7 @@
     },
     "/v2/schemas/ops/{op}": {
       "get": {
-        "description": "One op's tiny strict schema (C13) and a minimal example that is an INSTANCE of it — one op object, ready to drop into the PATCH body's ops array. Ops: setProperties, updateBlock, replaceSubtree, insertBlocks, moveBlock, deleteBlock, replaceText, setCell, updateView, insertView, moveView, deleteView, addItems, removeItems.",
+        "description": "One op's tiny strict schema (C13) and a minimal example that is an INSTANCE of it — one op object, ready to drop into the PATCH body's ops array. Ops: set_properties, update_block, replace_subtree, insert_blocks, move_block, delete_block, replace_text, set_cell, update_view, insert_view, move_view, delete_view, add_items, remove_items.",
         "operationId": "get_op_schema",
         "parameters": [
           {
@@ -1285,7 +1286,7 @@
     },
     "/v2/search": {
       "post": {
-        "description": "Searches all spaces: type keys and option names resolve per space (a reference that resolves in only some spaces queries those and warns about the rest), results merge by the requested sort, total is the sum of per-space store counts (honest totals). Rows carry spaceId. Same request shape as the space search.",
+        "description": "Searches all spaces: type keys and option names resolve per space (a reference that resolves in only some spaces queries those and warns about the rest), results merge by the requested sort, total is the sum of per-space store counts (honest totals). Rows carry space_id. Same request shape as the space search.",
         "operationId": "search_global",
         "parameters": [
           {
@@ -1307,7 +1308,7 @@
             }
           },
           {
-            "description": "How each row's spaceId is spelled: compact (default) = the short space reference; full = the full <cid>.<replicationKey> id — the spelling to persist outside this API",
+            "description": "How each row's space_id is spelled: compact (default) = the short space reference; full = the full <cid>.<replicationKey> id — the spelling to persist outside this API",
             "in": "query",
             "name": "ids",
             "schema": {
@@ -1335,7 +1336,7 @@
                 }
               }
             },
-            "description": "Minimal object rows with spaceId"
+            "description": "Minimal object rows with space_id"
           },
           "400": {
             "content": {
@@ -1627,7 +1628,7 @@
     },
     "/v2/spaces/{space_id}/chats": {
       "get": {
-        "description": "C5 rows {id, name} via a store query — no chat opens, so the list is cheap at any size. Deliberately counter-free (Q3): per-chat unread state comes free on the messages read. No etag (C7 exemption: chats use order ids and lastStateId as their concurrency vocabulary).",
+        "description": "C5 rows {id, name} via a store query — no chat opens, so the list is cheap at any size. Deliberately counter-free (Q3): per-chat unread state comes free on the messages read. No etag (C7 exemption: chats use order ids and last_state_id as their concurrency vocabulary).",
         "operationId": "list_chats",
         "parameters": [
           {
@@ -1766,7 +1767,7 @@
     },
     "/v2/spaces/{space_id}/chats/{chat_id}/messages": {
       "get": {
-        "description": "Cursor-paged messages (ascending order): ?after=/?before= are EXCLUSIVE order-id bounds, ?limit defaults to 25. A forward walk uses ?after alone and continues with the response's nextAfter; every OTHER query — ?before, no cursor, or BOTH bounds — is anchored at its NEWEST end (the newest N in range) and pages backward with nextBefore, so after+before does NOT walk forward through the window. has_more says more messages exist inside the requested bounds. The response carries state (unread counters, oldest unread orders, lastStateId — the mark-read race guard) and messageCount (the chat's LIFETIME total, not the range size) at zero extra cost; a poll is a limit=1 read. Message text is §8 inline markup (blocksText carries block-composed content read-only); reactions is always emoji counts ({\"👍\":2}); ?reactions=full adds reactedBy (participant-id lists) in its own slot. Offset pagination does not apply — page with the cursors.",
+        "description": "Cursor-paged messages (ascending order): ?after=/?before= are EXCLUSIVE order-id bounds, ?limit defaults to 25. A forward walk uses ?after alone and continues with the response's next_after; every OTHER query — ?before, no cursor, or BOTH bounds — is anchored at its NEWEST end (the newest N in range) and pages backward with next_before, so after+before does NOT walk forward through the window. has_more says more messages exist inside the requested bounds. The response carries state (unread counters, oldest unread orders, last_state_id — the mark-read race guard) and message_count (the chat's LIFETIME total, not the range size) at zero extra cost; a poll is a limit=1 read. Message text is §8 inline markup (blocks_text carries block-composed content read-only); reactions is always emoji counts ({\"👍\":2}); ?reactions=full adds reacted_by (participant-id lists) in its own slot. Offset pagination does not apply — page with the cursors.",
         "operationId": "get_chat_messages",
         "parameters": [
           {
@@ -1830,7 +1831,7 @@
                 }
               }
             },
-            "description": "Messages + state + messageCount"
+            "description": "Messages + state + message_count"
           },
           "400": {
             "content": {
@@ -1864,7 +1865,7 @@
         ]
       },
       "post": {
-        "description": "Sends one message: {text, replyTo?, attachments?}. Text is §8 markup SOURCE — *, [, ` and <mention objectId=\"…\"> syntax mint real marks (the D′1 caveat; escape literal specials with a backslash) — capped at 8000 UTF-16 code units (an emoji counts 2+). Attachments are bare object ids, at most 32; the kind is inferred from each target's layout (image → image, other file layouts → file, anything else → link). Honors Idempotency-Key (C8 — a double-sent chat message is user-visible damage) and ?dry_run=true (C9, validate-only).",
+        "description": "Sends one message: {text, reply_to?, attachments?}. Text is §8 markup SOURCE — *, [, ` and <mention objectId=\"…\"> syntax mint real marks (the D′1 caveat; escape literal specials with a backslash) — capped at 8000 UTF-16 code units (an emoji counts 2+). Attachments are bare object ids, at most 32; the kind is inferred from each target's layout (image → image, other file layouts → file, anything else → link). Honors Idempotency-Key (C8 — a double-sent chat message is user-visible damage) and ?dry_run=true (C9, validate-only).",
         "operationId": "add_chat_message",
         "parameters": [
           {
@@ -2244,7 +2245,7 @@
     },
     "/v2/spaces/{space_id}/chats/{chat_id}/read": {
       "post": {
-        "description": "Moves the read watermark: {upTo, lastStateId, scope?}. upTo is the INCLUSIVE order id to mark read up to and lastStateId is the race guard — BOTH are required for scopes messages/mentions and both ride the same GET messages response (the newest message's order + state.lastStateId); an empty value for either would silently mark nothing, so it is rejected instead. Messages that arrived after lastStateId's state stay unread. scope defaults to messages; mentions marks @-mentions; reactions marks ALL unread reactions and takes no upTo/lastStateId. Honors Idempotency-Key (C8) and ?dry_run=true (C9, validate-only).",
+        "description": "Moves the read watermark: {up_to, last_state_id, scope?}. up_to is the INCLUSIVE order id to mark read up to and last_state_id is the race guard — BOTH are required for scopes messages/mentions and both ride the same GET messages response (the newest message's order + state.last_state_id); an empty value for either would silently mark nothing, so it is rejected instead. Messages that arrived after last_state_id's state stay unread. scope defaults to messages; mentions marks @-mentions; reactions marks ALL unread reactions and takes no up_to/last_state_id. Honors Idempotency-Key (C8) and ?dry_run=true (C9, validate-only).",
         "operationId": "read_chat",
         "parameters": [
           {
@@ -3074,7 +3075,7 @@
         ]
       },
       "patch": {
-        "description": "Applies the closed, id-addressed op set — setProperties, updateBlock, replaceSubtree, insertBlocks, moveBlock, deleteBlock, replaceText, setCell, updateView, insertView, moveView, deleteView, addItems, removeItems — atomically (one change set). EVERY id slot resolves the same way, in references and in payloads alike: a full id or a unique suffix, so a document echoed back from a read keeps its identity instead of being renamed. An id always names an EXISTING element: one that matches nothing is refused, and the ops that only ever create (insertBlocks) publish no id slot at all — omit it and the server mints one, reported in createdBlocks under the payload path that produced it (nested row, column and cell-descendant slots included; minted view ids land in createdViews). replaceText's id is itself optional: omitted, find doubles as the locator and must identify exactly ONE block — zero or several matching blocks refuse (the ambiguity refusal lists candidate ids), and resolution runs per-op under the object lock, so a later op resolves against the earlier ops' edits. updateBlock and deleteBlock take the same locator as `match` (exact text from the block) instead of an id — one of the two, never both, and the same one-match-or-refuse rule, which on deleteBlock is what stops a locator from removing the wrong subtree. The post-op document must satisfy the AnyBlock semantic checks (SPEC §12); any violation rejects the whole PATCH with path-addressed errors. If-Match is advisory (C7): absent = last-write-wins, stale = 409 with the current etag. Responds with the new etag, the minted-block id map keyed by payload position, and diffStats. Honors ?dry_run=true (C9). GET /v2/schemas/ops/{op} documents each op.",
+        "description": "Applies the closed, id-addressed op set — set_properties, update_block, replace_subtree, insert_blocks, move_block, delete_block, replace_text, set_cell, update_view, insert_view, move_view, delete_view, add_items, remove_items — atomically (one change set). EVERY id slot resolves the same way, in references and in payloads alike: a full id or a unique suffix, so a document echoed back from a read keeps its identity instead of being renamed. An id always names an EXISTING element: one that matches nothing is refused, and the ops that only ever create (insert_blocks) publish no id slot at all — omit it and the server mints one, reported in created_blocks under the payload path that produced it (nested row, column and cell-descendant slots included; minted view ids land in created_views). replace_text's id is itself optional: omitted, find doubles as the locator and must identify exactly ONE block — zero or several matching blocks refuse (the ambiguity refusal lists candidate ids), and resolution runs per-op under the object lock, so a later op resolves against the earlier ops' edits. update_block and delete_block take the same locator as `match` (exact text from the block) instead of an id — one of the two, never both, and the same one-match-or-refuse rule, which on delete_block is what stops a locator from removing the wrong subtree. The post-op document must satisfy the AnyBlock semantic checks (SPEC §12); any violation rejects the whole PATCH with path-addressed errors. If-Match is advisory (C7): absent = last-write-wins, stale = 409 with the current etag. Responds with the new etag, the minted-block id map keyed by payload position, and diff_stats. Honors ?dry_run=true (C9). GET /v2/schemas/ops/{op} documents each op.",
         "operationId": "patch_object",
         "parameters": [
           {
@@ -3130,7 +3131,7 @@
                 }
               }
             },
-            "description": "New etag + created block ids + diffStats"
+            "description": "New etag + created block ids + diff_stats"
           },
           "400": {
             "content": {

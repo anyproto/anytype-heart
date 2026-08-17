@@ -117,7 +117,7 @@ func TestV2CreateSet(t *testing.T) {
 		apiErr := v2Err(t, err)
 		require.Len(t, apiErr.Issues, 1)
 		assert.Contains(t, apiErr.Issues[0].Message, `a set is already scoped to type "chore" — drop the type filter`)
-		assert.Contains(t, apiErr.Issues[0].Hint, "POST /v2/spaces/{spaceId}/search")
+		assert.Contains(t, apiErr.Issues[0].Hint, "POST /v2/spaces/{space_id}/search")
 	})
 
 	t.Run("a type filter gets the targeted message in the structured form too", func(t *testing.T) {

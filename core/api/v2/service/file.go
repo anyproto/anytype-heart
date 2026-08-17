@@ -1,6 +1,6 @@
 package v2service
 
-// file.go implements POST /v2/spaces/{spaceId}/files (APIV2.md §2 —
+// file.go implements POST /v2/spaces/{space_id}/files (APIV2.md §2 —
 // load-bearing, R11): upload by multipart (staged to a local path by the
 // handler) or by URL, returning the file object id that file/image blocks
 // and iconImage values need.

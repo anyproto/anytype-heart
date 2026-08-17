@@ -166,7 +166,7 @@ type ObjectRow struct {
 	Id         string         `json:"id"`
 	Name       string         `json:"name"`
 	Type       string         `json:"type"`
-	SpaceId    string         `json:"spaceId,omitempty"`
+	SpaceId    string         `json:"space_id,omitempty"`
 	Properties map[string]any `json:"properties,omitempty"`
 }
 
@@ -204,7 +204,7 @@ type CreateSpaceRequest struct {
 	Description string `json:"description,omitempty"`
 }
 
-// UpdateSpaceRequest is the PATCH /v2/spaces/{spaceId} body: omitted
+// UpdateSpaceRequest is the PATCH /v2/spaces/{space_id} body: omitted
 // fields stay unchanged (pointers distinguish absent from present-but-empty;
 // at least one field is required).
 type UpdateSpaceRequest struct {
@@ -225,7 +225,7 @@ type WhoamiResponse struct {
 	Scope     string      `json:"scope"` // "jsonApi" | "full" | "limited"
 	Grant     WhoamiGrant `json:"grant"`
 	Api       WhoamiApi   `json:"api"`
-	KeyStatus string      `json:"keyStatus"`        //nolint:tagliatelle // C2: v2 bodies are camelCase; "legacy" | "scoped", always present
+	KeyStatus string      `json:"key_status"`       // "legacy" | "scoped", always present
 	Notice    string      `json:"notice,omitempty"` // the legacy sentence, verbatim printable
 }
 
@@ -234,8 +234,8 @@ type WhoamiResponse struct {
 type WhoamiKey struct {
 	Id        string  `json:"id"` // the app link's hash — the id the key list shows
 	Name      string  `json:"name"`
-	CreatedAt *string `json:"createdAt"` //nolint:tagliatelle // C2: v2 bodies are camelCase
-	ExpiresAt *string `json:"expiresAt"` //nolint:tagliatelle // C2: v2 bodies are camelCase
+	CreatedAt *string `json:"created_at"`
+	ExpiresAt *string `json:"expires_at"`
 }
 
 // WhoamiGrant is the credential's space grant as enforced. Scoped is the
@@ -399,10 +399,15 @@ type UploadFileRequest struct {
 
 // FileUploadResult is the POST files response: the file object id that
 // file/image blocks and iconImage values need (R11).
+//
+// mime_type is v2's OWN response field and follows C2's snake_case. The
+// query surface's `mimeType` field alias (object.go v2FieldAliases) is a
+// different thing wearing the same word — the FORMAT's file-block field
+// name — and is renamed on the anyblock branch, not here.
 type FileUploadResult struct {
 	Id       string `json:"id"`
 	Name     string `json:"name,omitempty"`
-	MimeType string `json:"mimeType,omitempty"`
+	MimeType string `json:"mime_type,omitempty"`
 	Size     int64  `json:"size,omitempty"`
 	DryRun   bool   `json:"dry_run,omitempty"`
 }
@@ -448,11 +453,11 @@ type SearchRequestDoc struct {
 // DiffStats summarizes what a mutation changed (APIV2.md Phase 3): the
 // accidental-full-rewrite signal on PUT, the receipt on PATCH.
 type DiffStats struct {
-	BlocksAdded       int `json:"blocksAdded"`
-	BlocksRemoved     int `json:"blocksRemoved"`
-	BlocksChanged     int `json:"blocksChanged"`
-	BlocksMoved       int `json:"blocksMoved"`
-	PropertiesChanged int `json:"propertiesChanged"`
+	BlocksAdded       int `json:"blocks_added"`
+	BlocksRemoved     int `json:"blocks_removed"`
+	BlocksChanged     int `json:"blocks_changed"`
+	BlocksMoved       int `json:"blocks_moved"`
+	PropertiesChanged int `json:"properties_changed"`
 }
 
 // EditResult is the PATCH response: the new etag, the created-block id map
@@ -472,16 +477,16 @@ type EditResult struct {
 	// the API withhold the answer it had promised. A payload position
 	// carrying an id is absent: since §8.29 that id resolves to an existing
 	// block whose identity the op keeps, and reporting a preserved block as
-	// created would be the same lie diffStats used to tell.
-	CreatedBlocks map[string]string `json:"createdBlocks,omitempty"`
+	// created would be the same lie diff_stats used to tell.
+	CreatedBlocks map[string]string `json:"created_blocks,omitempty"`
 	// CreatedViews maps each payload position that CREATED a dataview view to
-	// the view id the server minted: an insertView op ("ops[i]") or a view
-	// slot of an updateBlock set channel ("ops[i].set.views[2]"). View ids
+	// the view id the server minted: an insert_view op ("ops[i]") or a view
+	// slot of an update_block set channel ("ops[i].set.views[2]"). View ids
 	// are always server-minted; a view is not a block, so it is reported
 	// here rather than in CreatedBlocks.
-	CreatedViews map[string]string `json:"createdViews,omitempty"`
+	CreatedViews map[string]string `json:"created_views,omitempty"`
 	Created      *SideEffects      `json:"created,omitempty"`
-	DiffStats    DiffStats         `json:"diffStats"`
+	DiffStats    DiffStats         `json:"diff_stats"`
 	Warnings     []Issue           `json:"warnings,omitempty"`
 }
 
@@ -496,7 +501,7 @@ type SchemaEntry struct {
 	Schema          json.RawMessage `json:"schema" swaggertype:"object"`
 	Example         json.RawMessage `json:"example" swaggertype:"object"`
 	Grammar         string          `json:"grammar,omitempty"`
-	GrammarExamples []string        `json:"grammarExamples,omitempty"`
+	GrammarExamples []string        `json:"grammar_examples,omitempty"`
 }
 
 // SchemaIndex is the GET /v2/schemas payload. Ops lists the Phase-3 PATCH
@@ -520,7 +525,7 @@ type SchemaIndexEntry struct {
 // outputOnlyPropertyKeys are the SPEC §4a output-only property keys: an
 // export writes them, a write must not. They live here, in the leaf model
 // package, because two layers need the SAME answer — the service refuses a
-// setProperties naming one (stateops.go), and the wrapper's describe must
+// set_properties naming one (stateops.go), and the wrapper's describe must
 // not advertise one as settable. A hand-copied second list is the drift
 // class §8.31 was about.
 //

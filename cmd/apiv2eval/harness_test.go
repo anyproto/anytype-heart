@@ -76,7 +76,7 @@ func (s *stubAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				`"issues":[{"path":"ops[0].id","message":"no block matches \"zz\"","hint":"GET the object with ?outline=true to list block ids"}]}`)
 			return
 		}
-		fmt.Fprint(w, `{"etag":"e1","diffStats":{"blocksChanged":1}}`)
+		fmt.Fprint(w, `{"etag":"e1","diff_stats":{"blocks_changed":1}}`)
 	case strings.HasPrefix(r.URL.Path, "/v2/schemas/ops/"):
 		op := strings.TrimPrefix(r.URL.Path, "/v2/schemas/ops/")
 		fmt.Fprintf(w, `{"kind":%q,"endpoint":"PATCH","schema":{"type":"object","x-op":%q},"example":{"ops":[]}}`, op, op)
@@ -422,8 +422,8 @@ func TestOpsArmSendsThePayloadAsOneOpAndSurfacesTheRefusal(t *testing.T) {
 	require.NoError(t, err)
 
 	// when
-	refused := ts.call(context.Background(), "insertBlocks", map[string]any{"markdown": "## Risks"})
-	ok := ts.call(context.Background(), "insertBlocks", map[string]any{"markdown": "## Risks"})
+	refused := ts.call(context.Background(), "insert_blocks", map[string]any{"markdown": "## Risks"})
+	ok := ts.call(context.Background(), "insert_blocks", map[string]any{"markdown": "## Risks"})
 
 	// then
 	assert.True(t, refused.IsError)
@@ -434,7 +434,7 @@ func TestOpsArmSendsThePayloadAsOneOpAndSurfacesTheRefusal(t *testing.T) {
 	stub.mu.Lock()
 	defer stub.mu.Unlock()
 	require.Len(t, stub.patches, 2)
-	assert.JSONEq(t, `{"op":"insertBlocks","markdown":"## Risks"}`, string(stub.patches[0]),
+	assert.JSONEq(t, `{"op":"insert_blocks","markdown":"## Risks"}`, string(stub.patches[0]),
 		"the op name comes from the tool name when the model omits the const")
 }
 
@@ -524,14 +524,14 @@ func TestOpsArmSetsTheDiscriminatorFromTheToolName(t *testing.T) {
 	require.NoError(t, err)
 
 	// when
-	out := ts.call(context.Background(), "insertBlocks", map[string]any{"op": "last", "markdown": "## Risks"})
+	out := ts.call(context.Background(), "insert_blocks", map[string]any{"op": "last", "markdown": "## Risks"})
 
 	// then
 	assert.False(t, out.IsError)
 	stub.mu.Lock()
 	defer stub.mu.Unlock()
 	require.Len(t, stub.patches, 1)
-	assert.JSONEq(t, `{"op":"insertBlocks","markdown":"## Risks"}`, string(stub.patches[0]))
+	assert.JSONEq(t, `{"op":"insert_blocks","markdown":"## Risks"}`, string(stub.patches[0]))
 }
 
 func TestWaitSearchableReturnsWhenTheIndexCatchesUp(t *testing.T) {

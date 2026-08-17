@@ -25,7 +25,7 @@ import (
 // editor add a second, default dataview at first open.
 const dataviewBlockId = "dataview"
 
-// CreateSet implements POST /v2/spaces/{spaceId}/sets.
+// CreateSet implements POST /v2/spaces/{space_id}/sets.
 func (s *Service) CreateSet(ctx context.Context, spaceId string, req v2model.CreateSetRequest, dryRun bool) (*v2model.CreateResult, error) {
 	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
@@ -162,7 +162,7 @@ func (s *Service) CreateSet(ctx context.Context, spaceId string, req v2model.Cre
 	return s.createFromDocument(ctx, spaceId, doc, docCreateOptions{dryRun: dryRun})
 }
 
-// CreateCollection implements POST /v2/spaces/{spaceId}/collections: the
+// CreateCollection implements POST /v2/spaces/{space_id}/collections: the
 // AnyBlock items import path builds the collection store.
 func (s *Service) CreateCollection(ctx context.Context, spaceId string, req v2model.CreateCollectionRequest, dryRun bool) (*v2model.CreateResult, error) {
 	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
@@ -181,7 +181,7 @@ func (s *Service) CreateCollection(ctx context.Context, spaceId string, req v2mo
 		return nil, v2model.ValidationFailed("too many items",
 			v2model.Issue{Path: "/items",
 				Message: fmt.Sprintf("%d items — the cap is %d (the advertised maxItems)", len(req.Items), maxV2CollectionItems),
-				Hint:    "create the collection with the first items, then add the rest with the addItems PATCH op"})
+				Hint:    "create the collection with the first items, then add the rest with the add_items PATCH op"})
 	}
 
 	// referential validation: items must be existing objects in the space
@@ -193,7 +193,7 @@ func (s *Service) CreateCollection(ctx context.Context, spaceId string, req v2mo
 			issues = append(issues, v2model.Issue{
 				Path:    fmt.Sprintf("/items/%d", i),
 				Message: fmt.Sprintf("object %q not found in space %q", itemId, spaceId),
-				Hint:    "items are full object ids — find them with GET /v2/spaces/{spaceId}/objects",
+				Hint:    "items are full object ids — find them with GET /v2/spaces/{space_id}/objects",
 			})
 		}
 	}
@@ -381,7 +381,7 @@ func (s *Service) validateViewKeys(ctx context.Context, spaceId, typeId, typeKey
 			issues = append(issues, v2model.Issue{
 				Path:    ref.path,
 				Message: fmt.Sprintf("a set is already scoped to type %q — drop the type filter", typeKey),
-				Hint:    "to query across types use POST /v2/spaces/{spaceId}/search, where type is a filterable pseudo-key",
+				Hint:    "to query across types use POST /v2/spaces/{space_id}/search, where type is a filterable pseudo-key",
 			})
 			continue
 		}

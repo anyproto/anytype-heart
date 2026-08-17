@@ -25,7 +25,7 @@ import (
 )
 
 // v2OpsEndpoint is the endpoint every op schema belongs to.
-const v2OpsEndpoint = "PATCH /v2/spaces/{spaceId}/objects/{objectId}"
+const v2OpsEndpoint = "PATCH /v2/spaces/{space_id}/objects/{object_id}"
 
 // The payload block comes in TWO shapes, and the split is the whole point
 // (§8.30). `id` in a payload means "name an EXISTING block, keep its
@@ -49,10 +49,10 @@ const v2OpsEndpoint = "PATCH /v2/spaces/{spaceId}/objects/{objectId}"
 // share, split only so the id slot can sit in its historical position. The
 // full inventory is SPEC §5 — served as GET /v2/schemas/object; these defs
 // cover the fields a generated edit realistically touches.
-const v2OpBlockIndentProp = `"indent":{"type":"integer","minimum":0,"maximum":32,"description":"relative: 0 = the anchor's level (after/before/replaceSubtree) or the container's child level (inside)"}`
+const v2OpBlockIndentProp = `"indent":{"type":"integer","minimum":0,"maximum":32,"description":"relative: 0 = the anchor's level (after/before/replace_subtree) or the container's child level (inside)"}`
 
 // v2OpBlockIdProp is the EXISTING-content id slot.
-const v2OpBlockIdProp = `"id":{"type":"string","pattern":"^[A-Za-z0-9_-]{1,64}$","description":"optional; when present it must name an EXISTING block of this object — full id or unique suffix, resolved like every other id slot — and the payload keeps that block's identity. Omit it to author new content: the server mints an id and returns it in createdBlocks under this payload path. An id that matches nothing is refused, never minted over."}`
+const v2OpBlockIdProp = `"id":{"type":"string","pattern":"^[A-Za-z0-9_-]{1,64}$","description":"optional; when present it must name an EXISTING block of this object — full id or unique suffix, resolved like every other id slot — and the payload keeps that block's identity. Omit it to author new content: the server mints an id and returns it in created_blocks under this payload path. An id that matches nothing is refused, never minted over."}`
 
 // v2OpBlockTypeProp publishes the block-type vocabulary itself (§8.32). It
 // used to be a bare {"type":"string","maxLength":64} beside a description
@@ -102,7 +102,7 @@ var v2OpBlockCommonProps = v2OpBlockTypeProp + `,` +
 // column. Its charset has no dash on purpose: a cell's id is rowId+"-"+colId
 // and the editor recovers the column by splitting on the first dash (SPEC
 // §6.1), so a dash in either would be unrecoverable.
-const v2OpTableInnerIdProp = `"id":{"type":"string","pattern":"^[A-Za-z0-9_]{1,64}$","description":"optional; names an EXISTING row/column of this table (full id or unique suffix) and keeps its identity. Omit it to author a new one — the server mints the id and returns it in createdBlocks under this payload path."}`
+const v2OpTableInnerIdProp = `"id":{"type":"string","pattern":"^[A-Za-z0-9_]{1,64}$","description":"optional; names an EXISTING row/column of this table (full id or unique suffix) and keeps its identity. Omit it to author a new one — the server mints the id and returns it in created_blocks under this payload path."}`
 
 // v2OpCellDef types one table cell. The four cell forms are SPEC §6.1; the
 // array form's interior is left untyped — see the file header.
@@ -126,7 +126,7 @@ func opTableProps(withId bool) string {
 		`"rows":{"type":"array","maxItems":1024,"items":` + row + `,"description":"table rows (SPEC §6.1)"}`
 }
 
-// v2OpBlockDef is the EXISTING-content payload block (replaceSubtree): it
+// v2OpBlockDef is the EXISTING-content payload block (replace_subtree): it
 // publishes the id slot — on the block and on its row/column entries —
 // because naming what the op replaces is what makes echoing a read back a
 // no-op instead of a rename.
@@ -134,13 +134,13 @@ var v2OpBlockDef = `{"type":"object","additionalProperties":false,"required":["t
 	`"description":"a flat AnyBlock block; the full field inventory is GET /v2/schemas/object (SPEC §5)",` +
 	`"properties":{` + v2OpBlockIndentProp + `,` + v2OpBlockIdProp + `,` + v2OpBlockCommonProps + `,` + opTableProps(true) + `}}`
 
-// v2OpNewBlockDef is the NEW-content payload block (insertBlocks): no id
+// v2OpNewBlockDef is the NEW-content payload block (insert_blocks): no id
 // slot anywhere the schema reaches — not on the block, not on its row or
 // column entries. There is no `views` property on EITHER shape, so a payload
 // block cannot name a dataview view at all through this channel; views are
-// authored by the view-family ops and by updateBlock's untyped `set`.
+// authored by the view-family ops and by update_block's untyped `set`.
 var v2OpNewBlockDef = `{"type":"object","additionalProperties":false,"required":["type"],` +
-	`"description":"a flat AnyBlock block to CREATE. There is no id slot — not here and not on its rows or columns: this op only ever makes new content, so the server mints every id and returns it in createdBlocks keyed by the payload path that produced it (a table's row and column ids included). Ids name EXISTING blocks, which is what the other ops address. The full field inventory is GET /v2/schemas/object (SPEC §5)",` +
+	`"description":"a flat AnyBlock block to CREATE. There is no id slot — not here and not on its rows or columns: this op only ever makes new content, so the server mints every id and returns it in created_blocks keyed by the payload path that produced it (a table's row and column ids included). Ids name EXISTING blocks, which is what the other ops address. The full field inventory is GET /v2/schemas/object (SPEC §5)",` +
 	`"properties":{` + v2OpBlockIndentProp + `,` + v2OpBlockCommonProps + `,` + opTableProps(false) + `}}`
 
 // v2BlockRefDef is a block reference: full id (canonical) or unique suffix.
@@ -177,7 +177,7 @@ func opSchema(op string, required []string, props ...string) string {
 // view-family ops.
 const v2ViewBlockPropDef = `"block":{"$ref":"#/$defs/blockRef","description":"a dataview block — optional when the object has exactly one (types, sets and collections do)"}`
 
-// v2ViewSetPropDef is the shared `set` channel of updateView and insertView:
+// v2ViewSetPropDef is the shared `set` channel of update_view and insert_view:
 // the authorable §6.2 view-level fields, merge semantics.
 const v2ViewSetPropDef = `"set":{"type":"object","maxProperties":18,"additionalProperties":false,"description":"merge semantics: only the named view fields change, null clears one back to its default; sorts and filters replace whole (small ordered lists); filter is the compact-string alternative to filters (give at most one of the two); columns are NOT set here — use the columns channel","properties":{` +
 	`"name":{"type":["string","null"],"maxLength":4096},` +
@@ -206,8 +206,8 @@ const v2ViewColumnsPropDef = `"columns":{"type":"object","maxProperties":64,"des
 	`"align":{"type":["string","null"],"enum":["left","center","right","justify",null]},` +
 	`"aggregation":{"type":["string","null"],"enum":["count","countValue","countDistinct","countEmpty","countNotEmpty","percentEmpty","percentNotEmpty","sum","average","median","min","max","range",null]}}}}`
 
-// v2ViewSetPropDefNoName is insertView's set channel: identical, minus name
-// — insertView's name is the op's required top-level field, and a set.name
+// v2ViewSetPropDefNoName is insert_view's set channel: identical, minus name
+// — insert_view's name is the op's required top-level field, and a set.name
 // (null included) would silently defeat it (§8.19-E).
 var v2ViewSetPropDefNoName = strings.Replace(strings.Replace(v2ViewSetPropDef,
 	`"name":{"type":["string","null"],"maxLength":4096},`, "", 1),
@@ -215,127 +215,127 @@ var v2ViewSetPropDefNoName = strings.Replace(strings.Replace(v2ViewSetPropDef,
 
 // v2OpSchemas maps each PATCH op to its strict schema + single-op example.
 var v2OpSchemas = map[string]v2SchemaKind{
-	"setProperties": {
+	"set_properties": {
 		endpoint: v2OpsEndpoint,
-		schema: opSchema("setProperties", nil,
+		schema: opSchema("set_properties", nil,
 			`"set":{"type":"object","maxProperties":128,"additionalProperties":{"type":["string","number","boolean","array","null"]},"description":"property key → value; presence is meaningful — an empty array means present-but-empty (SPEC §3); unknown select option NAMES are created"}`,
 			`"unset":{"type":"array","maxItems":128,"items":{"type":"string","maxLength":256},"description":"property keys to remove"}`,
 			`"add":{"type":"object","maxProperties":128,"additionalProperties":{"type":"array","maxItems":128,"items":{"type":"string","maxLength":4096}},"description":"list-shaped keys only (select, multiSelect, objects, files): append entries without rewriting the array — existing entries are never duplicated; unknown option NAMES are created"}`,
 			`"remove":{"type":"object","maxProperties":128,"additionalProperties":{"type":"array","maxItems":128,"items":{"type":"string","maxLength":4096}},"description":"list-shaped keys only: delete matching entries — absent entries (and absent keys) are a no-op; a key may appear in only one of set/unset/add/remove"}`),
-		example: `{"op":"setProperties","set":{"status":["Done"]},"add":{"tags":["Urgent"]},"unset":["due_date"]}`,
+		example: `{"op":"set_properties","set":{"status":["Done"]},"add":{"tags":["Urgent"]},"unset":["due_date"]}`,
 	},
-	"updateBlock": {
+	"update_block": {
 		endpoint: v2OpsEndpoint,
-		schema: opSchema("updateBlock", []string{"set"},
+		schema: opSchema("update_block", []string{"set"},
 			`"id":{"$ref":"#/$defs/blockRef","description":"the block to update — give this or match, never both"}`,
 			v2OpMatchPropDef,
-			`"set":{"type":"object","maxProperties":32,"description":"merge semantics: only the named fields change — text included only if named; null clears a field; id and indent are rejected (use moveBlock to re-nest)"}`),
-		example: `{"op":"updateBlock","match":"Draft timeline","set":{"checked":true}}`,
+			`"set":{"type":"object","maxProperties":32,"description":"merge semantics: only the named fields change — text included only if named; null clears a field; id and indent are rejected (use move_block to re-nest)"}`),
+		example: `{"op":"update_block","match":"Draft timeline","set":{"checked":true}}`,
 	},
-	"replaceSubtree": {
+	"replace_subtree": {
 		endpoint: v2OpsEndpoint,
-		schema: opSchema("replaceSubtree", []string{"id", "blocks"},
+		schema: opSchema("replace_subtree", []string{"id", "blocks"},
 			`"id":{"$ref":"#/$defs/blockRef"}`,
 			`"blocks":{"type":"array","minItems":1,"maxItems":256,"items":{"$ref":"#/$defs/block"},"description":"replaces the block AND its descendants; indent 0 = the replaced block's level"}`),
-		example: `{"op":"replaceSubtree","id":"b7","blocks":[{"type":"bulletedListItem","text":"a"},{"indent":1,"type":"paragraph","text":"b"}]}`,
+		example: `{"op":"replace_subtree","id":"b7","blocks":[{"type":"bulletedListItem","text":"a"},{"indent":1,"type":"paragraph","text":"b"}]}`,
 	},
-	"insertBlocks": {
+	"insert_blocks": {
 		endpoint: v2OpsEndpoint,
-		schema: opSchema("insertBlocks", nil,
+		schema: opSchema("insert_blocks", nil,
 			`"after":{"$ref":"#/$defs/blockRef","description":"insert after this block's subtree, at its level"}`,
 			`"before":{"$ref":"#/$defs/blockRef","description":"insert before this block, at its level"}`,
 			`"inside":{"$ref":"#/$defs/blockRef","description":"insert as children of this block"}`,
 			`"position":{"type":"string","enum":["first","last"],"description":"which end to insert at: of the inside container, or — with NO targeting field — of the document itself, so first inserts at the start of the document and last appends at its end (the default either way)"}`,
 			`"blocks":{"type":"array","minItems":1,"maxItems":256,"items":{"$ref":"#/$defs/block"},"description":"at most one of after/before/inside targets the run — omit all three to insert at the end of the document (position:first for the start; both work on an empty object); indent 0 = the insertion level"}`,
-			`"markdown":{"type":"string","minLength":1,"maxLength":1048576,"description":"authoring alternative to blocks (give exactly one): the server parses markdown into flat blocks — headings, lists, checkboxes, fences, quotes, dividers, tables; same targeting; at most 256 parsed blocks per op (the blocks channel's cap); createdBlocks keys read markdown[j] for the j-th parsed block"}`),
-		example: `{"op":"insertBlocks","after":"b3","markdown":"- [ ] todo"}`,
+			`"markdown":{"type":"string","minLength":1,"maxLength":1048576,"description":"authoring alternative to blocks (give exactly one): the server parses markdown into flat blocks — headings, lists, checkboxes, fences, quotes, dividers, tables; same targeting; at most 256 parsed blocks per op (the blocks channel's cap); created_blocks keys read markdown[j] for the j-th parsed block"}`),
+		example: `{"op":"insert_blocks","after":"b3","markdown":"- [ ] todo"}`,
 	},
-	"moveBlock": {
+	"move_block": {
 		endpoint: v2OpsEndpoint,
-		schema: opSchema("moveBlock", []string{"id"},
+		schema: opSchema("move_block", []string{"id"},
 			`"id":{"$ref":"#/$defs/blockRef","description":"the block to move — its whole subtree moves with it; omit after/before/inside to move it to the end of the document (position:first for the start)"}`,
 			`"after":{"$ref":"#/$defs/blockRef"}`,
 			`"before":{"$ref":"#/$defs/blockRef"}`,
 			`"inside":{"$ref":"#/$defs/blockRef","description":"moving into the moved block's own subtree is a cycle → error"}`,
 			`"position":{"type":"string","enum":["first","last"],"description":"which end to move to: of the inside container, or — with NO targeting field — of the document itself, so first moves the block to the start of the document and last to its end (the default either way)"}`),
-		example: `{"op":"moveBlock","id":"b9","inside":"b2","position":"last"}`,
+		example: `{"op":"move_block","id":"b9","inside":"b2","position":"last"}`,
 	},
-	"deleteBlock": {
+	"delete_block": {
 		endpoint: v2OpsEndpoint,
-		schema: opSchema("deleteBlock", nil,
+		schema: opSchema("delete_block", nil,
 			`"id":{"$ref":"#/$defs/blockRef","description":"the block to delete — give this or match, never both"}`,
 			v2OpMatchPropDef,
 			`"recursive":{"type":"boolean","description":"default false — deleting a block that has descendants without it is an error naming the descendant count and the resolved block id"}`),
-		example: `{"op":"deleteBlock","match":"Obsolete section","recursive":true}`,
+		example: `{"op":"delete_block","match":"Obsolete section","recursive":true}`,
 	},
-	"replaceText": {
+	"replace_text": {
 		endpoint: v2OpsEndpoint,
-		schema: opSchema("replaceText", []string{"find", "replace"},
+		schema: opSchema("replace_text", []string{"find", "replace"},
 			`"id":{"$ref":"#/$defs/blockRef","description":"optional — omit it and find locates the block: the find text must appear in exactly ONE block, or the op refuses (several matching blocks → the error lists candidate ids to retry with)"}`,
 			`"find":{"type":"string","minLength":1,"maxLength":65536,"description":"exact text within one block's text (inline markup included) — must match exactly once in that block unless replace_all; with id omitted it is also the locator and must identify exactly one block"}`,
 			`"replace":{"type":"string","maxLength":65536}`,
 			`"replace_all":{"type":"boolean","description":"default false — replaces every occurrence WITHIN the one matched block; it never widens the locator to several blocks"}`),
-		example: `{"op":"replaceText","find":"Q3","replace":"Q4"}`,
+		example: `{"op":"replace_text","find":"Q3","replace":"Q4"}`,
 	},
-	"setCell": {
+	"set_cell": {
 		endpoint: v2OpsEndpoint,
-		schema: opSchema("setCell", []string{"tableId", "row", "col", "value"},
-			`"tableId":{"$ref":"#/$defs/blockRef","description":"a table block"}`,
+		schema: opSchema("set_cell", []string{"table_id", "row", "col", "value"},
+			`"table_id":{"$ref":"#/$defs/blockRef","description":"a table block"}`,
 			`"row":{"type":"string","minLength":1,"maxLength":64,"description":"row id — full or unique suffix"}`,
 			`"col":{"type":"string","minLength":1,"maxLength":64,"description":"column id — full or unique suffix"}`,
 			`"value":{"type":["string","null","object","array"],"description":"string = paragraph shorthand, null = clear, or a block object / array of blocks (SPEC §6.1 cell forms)"}`),
-		example: `{"op":"setCell","tableId":"t1","row":"r2","col":"c1","value":"done"}`,
+		example: `{"op":"set_cell","table_id":"t1","row":"r2","col":"c1","value":"done"}`,
 	},
-	"updateView": {
+	"update_view": {
 		endpoint: v2OpsEndpoint,
-		schema: opSchema("updateView", nil,
+		schema: opSchema("update_view", nil,
 			v2ViewBlockPropDef,
 			`"view":{"type":"string","minLength":1,"maxLength":64,"description":"view id, full or unique suffix — optional when the dataview has exactly one view"}`,
 			v2ViewSetPropDef,
 			v2ViewColumnsPropDef),
-		example: `{"op":"updateView","columns":{"status":{"hidden":false}}}`,
+		example: `{"op":"update_view","columns":{"status":{"hidden":false}}}`,
 	},
-	"insertView": {
+	"insert_view": {
 		endpoint: v2OpsEndpoint,
-		schema: opSchema("insertView", []string{"name"},
+		schema: opSchema("insert_view", []string{"name"},
 			v2ViewBlockPropDef,
 			`"name":{"type":"string","minLength":1,"maxLength":4096,"description":"the new view's name (its tab label)"}`,
-			`"copyFrom":{"type":"string","minLength":1,"maxLength":64,"description":"duplicate this view of the same dataview (columns, sorts, filters, type — everything but id and name), then apply set/columns on top; omitted = defaults (every listed property visible, sorted by last_modified_date desc)"}`,
+			`"copy_from":{"type":"string","minLength":1,"maxLength":64,"description":"duplicate this view of the same dataview (columns, sorts, filters, type — everything but id and name), then apply set/columns on top; omitted = defaults (every listed property visible, sorted by last_modified_date desc)"}`,
 			`"after":{"type":"string","minLength":1,"maxLength":64,"description":"insert after this view (id, full or unique suffix)"}`,
 			`"before":{"type":"string","minLength":1,"maxLength":64,"description":"insert before this view"}`,
 			`"position":{"type":"string","enum":["first","last"],"description":"at most one of after/before/position; omitted = append; the FIRST view is the client's default tab"}`,
 			v2ViewSetPropDefNoName,
 			v2ViewColumnsPropDef),
-		example: `{"op":"insertView","name":"Board","copyFrom":"viewAll1","set":{"type":"kanban","groupBy":"status"}}`,
+		example: `{"op":"insert_view","name":"Board","copy_from":"viewAll1","set":{"type":"kanban","groupBy":"status"}}`,
 	},
-	"moveView": {
+	"move_view": {
 		endpoint: v2OpsEndpoint,
-		schema: opSchema("moveView", []string{"view"},
+		schema: opSchema("move_view", []string{"view"},
 			v2ViewBlockPropDef,
 			`"view":{"type":"string","minLength":1,"maxLength":64,"description":"the view to move (id, full or unique suffix)"}`,
 			`"after":{"type":"string","minLength":1,"maxLength":64,"description":"move after this view"}`,
 			`"before":{"type":"string","minLength":1,"maxLength":64,"description":"move before this view"}`,
 			`"position":{"type":"string","enum":["first","last"],"description":"give exactly one of after/before/position — a destination is required; first makes the view the client's default tab"}`),
-		example: `{"op":"moveView","view":"viewBoard2","position":"first"}`,
+		example: `{"op":"move_view","view":"viewBoard2","position":"first"}`,
 	},
-	"deleteView": {
+	"delete_view": {
 		endpoint: v2OpsEndpoint,
-		schema: opSchema("deleteView", []string{"view"},
+		schema: opSchema("delete_view", []string{"view"},
 			v2ViewBlockPropDef,
 			`"view":{"type":"string","minLength":1,"maxLength":64,"description":"the view to delete (id, full or unique suffix) — deleting the last view is refused; per-view editor state goes with it"}`),
-		example: `{"op":"deleteView","view":"viewBoard2"}`,
+		example: `{"op":"delete_view","view":"viewBoard2"}`,
 	},
-	"addItems": {
+	"add_items": {
 		endpoint: v2OpsEndpoint,
-		schema: opSchema("addItems", []string{"items"},
+		schema: opSchema("add_items", []string{"items"},
 			`"items":{"type":"array","minItems":1,"maxItems":1000,"items":{"type":"string","maxLength":256},"description":"member object ids to add to the collection (already-present ids are ignored)"}`),
-		example: `{"op":"addItems","items":["bafyreieqh63jv…"]}`,
+		example: `{"op":"add_items","items":["bafyreieqh63jv…"]}`,
 	},
-	"removeItems": {
+	"remove_items": {
 		endpoint: v2OpsEndpoint,
-		schema: opSchema("removeItems", []string{"items"},
+		schema: opSchema("remove_items", []string{"items"},
 			`"items":{"type":"array","minItems":1,"maxItems":1000,"items":{"type":"string","maxLength":256},"description":"member object ids to remove from the collection (absent ids are ignored)"}`),
-		example: `{"op":"removeItems","items":["bafyreieqh63jv…"]}`,
+		example: `{"op":"remove_items","items":["bafyreieqh63jv…"]}`,
 	},
 }
 

@@ -22,30 +22,30 @@ import (
 )
 
 // v2OpNames is the closed op set, in documentation order. replaceBlock was
-// deliberately folded into updateBlock before release (v0.3.5): four routes
+// deliberately folded into update_block before release (v0.3.5): four routes
 // to changing a block's text was the surface's largest disambiguation load,
 // and replaceBlock's silent text-wipe (a checkbox toggle losing the text)
-// was the documented small-model trap. updateBlock's merge-with-null-clears
+// was the documented small-model trap. update_block's merge-with-null-clears
 // expresses everything replaceBlock did except the wipe.
 var v2OpNames = []string{
-	"setProperties", "updateBlock", "replaceSubtree",
-	"insertBlocks", "moveBlock", "deleteBlock", "replaceText", "setCell",
-	"updateView", "insertView", "moveView", "deleteView",
-	"addItems", "removeItems",
+	"set_properties", "update_block", "replace_subtree",
+	"insert_blocks", "move_block", "delete_block", "replace_text", "set_cell",
+	"update_view", "insert_view", "move_view", "delete_view",
+	"add_items", "remove_items",
 }
 
 // v2OpEditNeeds maps each op to the object-level restriction axes it
 // touches, so the edit gate is per-op rather than per-request (surface
 // review M1). Sets and collections carry Restrictions_Blocks but NOT
 // Restrictions_Details, so demanding both of every batch made renaming a set
-// impossible and left addItems/removeItems — the only v2 route into an
+// impossible and left add_items/remove_items — the only v2 route into an
 // existing collection — permanently refused.
 //
 // Item ops need NEITHER axis: they mutate the collection store
 // (template.CollectionStoreKey), which no object restriction governs. That
 // matches v1, whose ObjectCollectionAdd/Remove is likewise ungated.
 //
-// The VIEW FAMILY (updateView, insertView, moveView, deleteView) needs
+// The VIEW FAMILY (update_view, insert_view, move_view, delete_view) needs
 // NEITHER axis either, and getting this wrong recreates the M1 bug exactly:
 // sets, collections AND object types all carry Restrictions_Blocks
 // (restriction/object.go objRestrictEdit / objRestrictEditAndTemplate) —
@@ -60,20 +60,20 @@ var v2OpNames = []string{
 // table; viewops_test.go pins the whole family's classification through
 // PatchObject.
 var v2OpEditNeeds = map[string]apicore.EditNeeds{
-	"setProperties":  {Details: true},
-	"updateBlock":    {Blocks: true},
-	"replaceSubtree": {Blocks: true},
-	"insertBlocks":   {Blocks: true},
-	"moveBlock":      {Blocks: true},
-	"deleteBlock":    {Blocks: true},
-	"replaceText":    {Blocks: true},
-	"setCell":        {Blocks: true},
-	"updateView":     {},
-	"insertView":     {},
-	"moveView":       {},
-	"deleteView":     {},
-	"addItems":       {},
-	"removeItems":    {},
+	"set_properties":  {Details: true},
+	"update_block":    {Blocks: true},
+	"replace_subtree": {Blocks: true},
+	"insert_blocks":   {Blocks: true},
+	"move_block":      {Blocks: true},
+	"delete_block":    {Blocks: true},
+	"replace_text":    {Blocks: true},
+	"set_cell":        {Blocks: true},
+	"update_view":     {},
+	"insert_view":     {},
+	"move_view":       {},
+	"delete_view":     {},
+	"add_items":       {},
+	"remove_items":    {},
 }
 
 // editNeedsForOps unions the restriction axes a batch touches and refuses the
@@ -144,7 +144,7 @@ func restrictionRefusal(refused error, op, opPath, axis string) error {
 // field no value of which can succeed — so the two literals that used to
 // state this independently are gone.
 var v2NewContentOps = map[string]bool{
-	"insertBlocks": true,
+	"insert_blocks": true,
 }
 
 // v2OpRebuildsView marks the ops whose apply invalidates the document view
@@ -154,37 +154,37 @@ var v2NewContentOps = map[string]bool{
 // view valid in place. Unknown op names never reach a rebuild — the batch
 // fails at dispatch first.
 var v2OpRebuildsView = map[string]bool{
-	"setProperties":  true,
-	"updateBlock":    true,
-	"replaceSubtree": true,
-	"insertBlocks":   true,
-	"moveBlock":      true,
-	"deleteBlock":    true,
-	// replaceText maintains the view in place (stateops.go textEdited): it
+	"set_properties":  true,
+	"update_block":    true,
+	"replace_subtree": true,
+	"insert_blocks":   true,
+	"move_block":      true,
+	"delete_block":    true,
+	// replace_text maintains the view in place (stateops.go textEdited): it
 	// changes exactly one exported field of one block, and it writes the
 	// canonical rendering a re-marshal would emit. It is also the one op that
 	// inherently arrives many-per-batch (one find/replace each), so exempting
 	// it is what lets an agent batch hundreds of text edits on a large
 	// document without tripping the render-work bound.
-	"replaceText": false,
-	"setCell":     true,
-	"updateView":  true,
-	"insertView":  true,
-	"moveView":    true,
-	"deleteView":  true,
-	"addItems":    true,
-	"removeItems": true,
+	"replace_text": false,
+	"set_cell":     true,
+	"update_view":  true,
+	"insert_view":  true,
+	"move_view":    true,
+	"delete_view":  true,
+	"add_items":    true,
+	"remove_items": true,
 }
 
 // v2OutputOnlyPropertyKeys reports whether a key is one of the SPEC §4a
-// output-only property keys a setProperties must reject. The set itself
+// output-only property keys a set_properties must reject. The set itself
 // lives in v2model (the leaf both layers share): the wrapper's describe
 // must not advertise an output-only key as settable, and a second copy of
 // the list there would be the §8.31 drift class.
 func v2OutputOnlyPropertyKeys(key string) bool { return v2model.IsOutputOnlyProperty(key) }
 
 // v2ListShapedFormats are the property formats whose SPEC §3 value encoding
-// is a list — the only formats setProperties add/remove apply to.
+// is a list — the only formats set_properties add/remove apply to.
 var v2ListShapedFormats = map[model.RelationFormat]bool{
 	model.RelationFormat_status: true, // select
 	model.RelationFormat_tag:    true, // multiSelect
@@ -374,8 +374,8 @@ type opInsertBlocks struct {
 	// Markdown is the authoring-channel alternative to Blocks (§7.1, v0.4):
 	// the server parses it into a flat run (anyblockjson.ParseMarkdownBlocks)
 	// and the op proceeds exactly as if that run had been supplied as Blocks —
-	// same targeting (incl. root-append), validation, createdBlocks and
-	// diffStats. Mutually exclusive with Blocks.
+	// same targeting (incl. root-append), validation, created_blocks and
+	// diff_stats. Mutually exclusive with Blocks.
 	Markdown string `json:"markdown"`
 }
 
@@ -408,7 +408,7 @@ type opReplaceText struct {
 
 type opSetCell struct {
 	Op      string          `json:"op"`
-	TableId string          `json:"tableId"`
+	TableId string          `json:"table_id"`
 	Row     string          `json:"row"`
 	Col     string          `json:"col"`
 	Value   json.RawMessage `json:"value"`
@@ -425,7 +425,7 @@ type opUpdateView struct {
 	// leniency as resolveViewRef on the read surface). Optional when the
 	// dataview has exactly one view.
 	View string `json:"view"`
-	// Set merges §6.2 view-level fields (updateBlock's merge semantics: only
+	// Set merges §6.2 view-level fields (update_block's merge semantics: only
 	// named fields change, explicit null clears one). sorts and filters
 	// replace whole when named — they are small ordered lists; filter is the
 	// compact-string alternative to filters. columns is NOT accepted here —
@@ -439,14 +439,14 @@ type opUpdateView struct {
 	Columns map[string]json.RawMessage `json:"columns"`
 }
 
-// opInsertView creates ONE view. Singular where insertBlocks is plural, on
+// opInsertView creates ONE view. Singular where insert_blocks is plural, on
 // purpose: a blocks payload is a structured run (indent-nested, ordered);
 // views have no internal structure, and several views are several ops in
 // the already-atomic batch. The base view is either sensible defaults
 // (every property of the dataview visible, lastModifiedDate-desc sort —
 // the native CreateView default, minus its everything-hidden columns) or a
-// duplicate of CopyFrom; Set/Columns then merge on top with updateView's
-// exact semantics, so create is "updateView aimed at a fresh view".
+// duplicate of CopyFrom; Set/Columns then merge on top with update_view's
+// exact semantics, so create is "update_view aimed at a fresh view".
 type opInsertView struct {
 	Op    string `json:"op"`
 	Block string `json:"block"`
@@ -455,7 +455,7 @@ type opInsertView struct {
 	// CopyFrom duplicates an existing view of the same dataview (columns,
 	// sorts, filters, type, groupBy, editor state — everything but id and
 	// name); "like that one, but…" is the common intent.
-	CopyFrom string `json:"copyFrom"`
+	CopyFrom string `json:"copy_from"`
 	// Targeting within the views list (at most one): after/before a view
 	// ref, or position "first"|"last". Omitted = append. The FIRST view is
 	// the client's default tab, so position "first" is "make this the
@@ -520,7 +520,7 @@ func countBlocks(n int) string {
 func leafWithDescendantsError(id, newType string, descendants int, path string) error {
 	return v2model.ValidationFailed(
 		fmt.Sprintf("cannot change block %q to leaf type %q — it has %s; %q blocks cannot have children", id, newType, countBlocks(descendants), newType),
-		v2model.Issue{Path: path, Message: "move or delete the descendants first, or use replaceSubtree"})
+		v2model.Issue{Path: path, Message: "move or delete the descendants first, or use replace_subtree"})
 }
 
 // resolveTablePart resolves a row/column reference (exact id or unique

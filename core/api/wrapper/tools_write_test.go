@@ -109,7 +109,7 @@ func TestCreate(t *testing.T) {
 func TestSetProperties(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("set and add become one setProperties op", func(t *testing.T) {
+	t.Run("set and add become one set_properties op", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
 		fx.seedSession("space1", Handle{N: 1, Id: "bafyobj1"})
@@ -119,7 +119,7 @@ func TestSetProperties(t *testing.T) {
 		fx.stub("GET /v2/spaces/space1/properties/tags/options", 200,
 			`{"data":[{"name":"urgent"}],"total":1,"offset":0,"limit":50,"has_more":false}`)
 		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 200,
-			`{"diffStats":{"blocksAdded":0,"blocksRemoved":0,"blocksChanged":0,"blocksMoved":0,"propertiesChanged":2}}`)
+			`{"diff_stats":{"blocks_added":0,"blocks_removed":0,"blocks_changed":0,"blocks_moved":0,"properties_changed":2}}`)
 
 		// when
 		result, err := fx.Run(ctx, "set_properties", map[string]any{
@@ -135,7 +135,7 @@ func TestSetProperties(t *testing.T) {
 		require.Len(t, sent, 1)
 		assert.NotEmpty(t, sent[0].Header.Get("Idempotency-Key"))
 		op := firstOp(t, sent[0])
-		assert.Equal(t, "setProperties", op["op"])
+		assert.Equal(t, "set_properties", op["op"])
 		assert.Equal(t, map[string]any{"status": "Done"}, op["set"], "scalar stays scalar — the server coerces list shapes")
 		assert.Equal(t, map[string]any{"tags": []any{"urgent"}}, op["add"])
 	})
@@ -175,7 +175,7 @@ func TestBlockTools(t *testing.T) {
 		fx.seedSession("space1", Handle{N: 1, Id: "bafyobj1"})
 	}
 
-	t.Run("check_item passes the served label through and sends updateBlock", func(t *testing.T) {
+	t.Run("check_item passes the served label through and sends update_block", func(t *testing.T) {
 		fx := newFixture(t)
 		seed(fx)
 		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 200, editOKBody)
@@ -185,7 +185,7 @@ func TestBlockTools(t *testing.T) {
 		require.NoError(t, err)
 		assert.Contains(t, result.Text, "1 changed")
 		op := firstOp(t, fx.sent("PATCH /v2/spaces/space1/objects/bafyobj1")[0])
-		assert.Equal(t, "updateBlock", op["op"])
+		assert.Equal(t, "update_block", op["op"])
 		assert.Equal(t, "e0001", op["id"], "the ref goes to the server as the model spoke it — resolution is server-side")
 		assert.Equal(t, map[string]any{"checked": true}, op["set"])
 	})
@@ -201,7 +201,7 @@ func TestBlockTools(t *testing.T) {
 
 		require.NoError(t, err)
 		op := firstOp(t, fx.sent("PATCH /v2/spaces/space1/objects/bafyobj1")[0])
-		assert.Equal(t, "insertBlocks", op["op"])
+		assert.Equal(t, "insert_blocks", op["op"])
 		assert.Equal(t, "- [ ] follow up", op["markdown"])
 		assert.Equal(t, "e0001", op["inside"], "under maps to the op's inside, verbatim")
 		assert.NotContains(t, op, "blocks")
@@ -217,7 +217,7 @@ func TestBlockTools(t *testing.T) {
 		assert.Contains(t, err.Error(), "give after or under, not both")
 	})
 
-	t.Run("edit_text sends replaceText without replace_all", func(t *testing.T) {
+	t.Run("edit_text sends replace_text without replace_all", func(t *testing.T) {
 		fx := newFixture(t)
 		seed(fx)
 		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 200, editOKBody)
@@ -228,7 +228,7 @@ func TestBlockTools(t *testing.T) {
 
 		require.NoError(t, err)
 		op := firstOp(t, fx.sent("PATCH /v2/spaces/space1/objects/bafyobj1")[0])
-		assert.Equal(t, "replaceText", op["op"])
+		assert.Equal(t, "replace_text", op["op"])
 		assert.Equal(t, "Q3", op["find"])
 		assert.Equal(t, "Q4", op["replace"])
 		assert.NotContains(t, op, "replace_all", "single-match only for the small tier")
@@ -245,8 +245,8 @@ func TestBlockTools(t *testing.T) {
 
 		require.NoError(t, err)
 		op := firstOp(t, fx.sent("PATCH /v2/spaces/space1/objects/bafyobj1")[0])
-		assert.Equal(t, "setCell", op["op"])
-		assert.Equal(t, "e0001", op["tableId"])
+		assert.Equal(t, "set_cell", op["op"])
+		assert.Equal(t, "e0001", op["table_id"])
 		assert.Equal(t, "row2", op["row"])
 		assert.Equal(t, "col1", op["col"])
 		assert.Equal(t, "done", op["value"])
@@ -261,7 +261,7 @@ func TestBlockTools(t *testing.T) {
 
 		require.NoError(t, err)
 		op := firstOp(t, fx.sent("PATCH /v2/spaces/space1/objects/bafyobj1")[0])
-		assert.Equal(t, "moveBlock", op["op"])
+		assert.Equal(t, "move_block", op["op"])
 		assert.NotContains(t, op, "after")
 		assert.NotContains(t, op, "inside")
 	})

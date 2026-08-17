@@ -68,14 +68,14 @@ func TestCheckObjectEditable(t *testing.T) {
 	})
 
 	// M1: a set and a collection restrict Blocks but NOT Details. Demanding
-	// both of every edit made renaming a set — and every addItems, the only
+	// both of every edit made renaming a set — and every add_items, the only
 	// v2 route into an existing collection — permanently refuse.
 	t.Run("M1: a block-restricted object still accepts a property edit", func(t *testing.T) {
 		require.NoError(t, checkObjectEditable(blockRestricted(), apicore.EditNeeds{Details: true}))
 	})
 
 	t.Run("M1: a block-restricted object still accepts an item edit", func(t *testing.T) {
-		// addItems/removeItems mutate the collection store, which no object
+		// add_items/remove_items mutate the collection store, which no object
 		// restriction governs — so they need neither axis.
 		require.NoError(t, checkObjectEditable(blockRestricted(), apicore.EditNeeds{}))
 	})
@@ -96,10 +96,10 @@ func TestCheckObjectEditable(t *testing.T) {
 		}
 	})
 
-	t.Run("a custom object type restricts blocks — the fact updateView's classification rests on", func(t *testing.T) {
+	t.Run("a custom object type restricts blocks — the fact update_view's classification rests on", func(t *testing.T) {
 		// pinned against the LIVE table (getRestrictionsForUniqueKey): a
 		// custom type object carries Restrictions_Blocks (like sets and
-		// collections) and not Details. The updateView op is classified as
+		// collections) and not Details. The update_view op is classified as
 		// needing NEITHER axis (v2OpEditNeeds) precisely because all three
 		// dataview-bearing object classes refuse the Blocks axis while the
 		// native dataview view surface (v1's BlockDataviewView* RPCs) is

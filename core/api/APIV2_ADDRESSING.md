@@ -266,7 +266,7 @@ keys. Confirmed, and sharper than folklore:
 - A derived object's change payload is a **pure function of (smartblock
   type, internal key)** — `createChangePayload`,
   `objectcache/payload.go:18-28`.
-- In a **shared space**, the tree derives from (spaceId, that payload)
+- In a **shared space**, the tree derives from (space_id, that payload)
   with **no account key, no timestamp, no randomness** —
   `derivePayload`/`DeriveTree`, `payload.go:30-38`, `tree.go:90-95`. So the
   object id is a pure function of (space, kind, internal key): **any member
@@ -346,7 +346,7 @@ per design, for the two critical windows:
 | **Ids only** | Restore resolves `o1` → correct. | Agent cannot plausibly author ids; DOA. |
 | **Composite `High#6a76`** | Suffix resolves → correct; stale name half is cosmetic (Stack Overflow slug-URL semantics). | Only if the agent echoes the suffix — small models won't; bare "High" must stay legal → the race returns. |
 | **Inline `{id,name}`** | id wins → correct (Notion semantics). | Same caveat: agents author bare strings; both forms legal forever. |
-| **Pins + strict writes (recommended)** | Pin `"High": "o1"` resolves by id → correct; the label is cosmetic. | Document paths (create) carry pins → resolve by id. Bare ops (`setProperties`) hit the strict default: "High" no longer matches → **400 with did-you-mean ("Critical") and the `create:true` remedy** — loud, before damage (§7.4). |
+| **Pins + strict writes (recommended)** | Pin `"High": "o1"` resolves by id → correct; the label is cosmetic. | Document paths (create) carry pins → resolve by id. Bare ops (`set_properties`) hit the strict default: "High" no longer matches → **400 with did-you-mean ("Critical") and the `create:true` remedy** — loud, before damage (§7.4). |
 | **Two profiles** | Backup profile (ids) → correct. | Agent profile is names-only → the race, unmitigated, plus a reader fork. |
 
 Property/type renames are the benign half **because the stored key never
@@ -1111,7 +1111,7 @@ leniency for block suffixes. The wrapper's case-fold becomes a subset.
 **4. Scope: keys are snake; the envelope stays camel — deliberately.**
 "Snake_case everywhere" means the *user vocabulary*: type keys and
 property keys, wherever they appear. Envelope and DTO field names stay
-camelCase per C2 (`spaceId`, `etag`), with `dry_run` and `has_more` the
+camelCase per C2 (`space_id`, `etag`), with `dry_run` and `has_more` the
 existing recorded carve-outs (§8.8, C10); enum *values* stay lowerCamel —
 `objectType` the layout **value** coexists with `object_type` the type
 **key**, and that is intended. v1 has always mixed snake keys into a camel

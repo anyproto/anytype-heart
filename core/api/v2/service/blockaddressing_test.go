@@ -64,7 +64,7 @@ func TestBlockNotFoundHintsAreTrue(t *testing.T) {
 		fx.expectMutate(editRead(t, editTableCellChildDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"replaceText","id":"dddd1","find":"inside","replace":"x"}`), "", false)
+			patchBody(`{"op":"replace_text","id":"dddd1","find":"inside","replace":"x"}`), "", false)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusNotFound, apiErr.Status)
@@ -83,7 +83,7 @@ func assertAddressabilityHint(t *testing.T, issue v2model.Issue) {
 	assert.Contains(t, issue.Hint, "?outline=true")
 	assert.Contains(t, issue.Hint, "not individually addressable",
 		"the hint must admit the cell-descendant gap rather than send the caller round the outline again")
-	assert.Contains(t, issue.Hint, "setCell", "and name the op that does reach it")
+	assert.Contains(t, issue.Hint, "set_cell", "and name the op that does reach it")
 }
 
 // TestServedLabelsAvoidTailCollisions pins §8.28 property 1 at the read:

@@ -57,7 +57,7 @@ func TestIdempotencyIdentity(t *testing.T) {
 		// key across ?dry_run=true and the real request is a hard 409
 		fx := newFixture(t)
 		fx.seedSession("space1", Handle{N: 1, Id: "bafyobj1"})
-		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 200, `{"diffStats":{},"dry_run":true}`)
+		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 200, `{"diff_stats":{},"dry_run":true}`)
 		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 200, editOKBody)
 
 		fx.DryRun = true

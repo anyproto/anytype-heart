@@ -1,16 +1,16 @@
 package v2service
 
-// viewops.go implements the updateView PATCH op (APIV2.md §8.17): the
+// viewops.go implements the update_view PATCH op (APIV2.md §8.17): the
 // targeted edit of ONE dataview view — the write path for view and column
 // configuration that GET …/views could read but nothing could change. The
 // op speaks SPEC §6.2's vocabulary throughout: the merge happens on the
 // block's exported JSON form and the result re-imports through the format
-// codec, exactly the setCell pattern for tables — untouched views, columns
+// codec, exactly the set_cell pattern for tables — untouched views, columns
 // and editor state (groups, objectOrders) round-trip unchanged.
 //
 // Two merge channels, both scoped so one flip never rewrites an array (the
 // documented small-model trap):
-//   - `set` merges §6.2 view-level fields (updateBlock semantics: named
+//   - `set` merges §6.2 view-level fields (update_block semantics: named
 //     fields change, explicit null clears one; sorts/filters replace whole —
 //     they are small ordered lists; `filter` is the compact-string
 //     alternative to `filters`);
@@ -36,7 +36,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-// maxV2ViewColumns bounds one updateView's columns map — the maxProperties
+// maxV2ViewColumns bounds one update_view's columns map — the maxProperties
 // the served op schema advertises (M6: advertised bounds are enforced).
 const maxV2ViewColumns = 64
 
@@ -99,7 +99,7 @@ var v2ColumnFields = map[string]bool{
 	"hidden": true, "width": true, "align": true, "aggregation": true,
 }
 
-// viewKeyUse records one property key an updateView references, with the
+// viewKeyUse records one property key an update_view references, with the
 // issue path a rejection should carry.
 type viewKeyUse struct {
 	key  string
@@ -108,9 +108,9 @@ type viewKeyUse struct {
 
 func (a *v2StateApplier) applyUpdateView(op opUpdateView, opPath string) error {
 	if len(op.Set) == 0 && len(op.Columns) == 0 {
-		return v2model.ValidationFailed("updateView needs set and/or columns",
+		return v2model.ValidationFailed("update_view needs set and/or columns",
 			v2model.Issue{Path: opPath, Message: "set (view-level fields) and columns (per-column patches) are both empty",
-				Hint: "GET /v2/schemas/ops/updateView for the op's schema and example"})
+				Hint: "GET /v2/schemas/ops/update_view for the op's schema and example"})
 	}
 	doc, err := a.doc()
 	if err != nil {
@@ -159,7 +159,7 @@ func (a *v2StateApplier) applyUpdateView(op opUpdateView, opPath string) error {
 	a.validateViewKeys(edited, preKnown, keyUses, &issues)
 
 	if len(issues) > 0 {
-		return v2model.ValidationFailed("updateView rejected", issues...)
+		return v2model.ValidationFailed("update_view rejected", issues...)
 	}
 
 	views[vi] = view
@@ -191,16 +191,16 @@ func setNames(set map[string]json.RawMessage, field string) bool {
 // unauthored content makes the codec round-trip a no-op for it.
 type viewCommitPlan struct {
 	// authored maps a view id to what the op wrote there. A view id absent
-	// from the map was not touched at all: it is restored wholly (moveView
-	// and deleteView author nothing; updateView and insertView author one
+	// from the map was not touched at all: it is restored wholly (move_view
+	// and delete_view author nothing; update_view and insert_view author one
 	// view).
 	authored map[string]viewAuthored
 }
 
 // viewAuthored describes the op's writes within one view. Fields the op did
 // not author restore from the live view restoreFrom names — the view's own
-// id normally, the copyFrom source for a fresh copy, empty when there is no
-// live source (a bare insertView, whose constructed content carries no
+// id normally, the copy_from source for a fresh copy, empty when there is no
+// live source (a bare insert_view, whose constructed content carries no
 // resolvable values).
 type viewAuthored struct {
 	restoreFrom string
@@ -299,7 +299,7 @@ func cloneDataviewView(in *model.BlockContentDataviewView) *model.BlockContentDa
 }
 
 // applyViewSet validates and merges the view-level `set` channel into the
-// view's JSON form. nameViaOp marks insertView, whose name rides the op's
+// view's JSON form. nameViaOp marks insert_view, whose name rides the op's
 // required top-level field — set.name there would silently override it (or,
 // as null, defeat the requirement), so it is rejected with the steer.
 func (a *v2StateApplier) applyViewSet(set map[string]json.RawMessage, edited, view map[string]any, opPath string, nameViaOp bool, issues *[]v2model.Issue, keyUses *[]viewKeyUse) error {
@@ -318,7 +318,7 @@ func (a *v2StateApplier) applyViewSet(set map[string]json.RawMessage, edited, vi
 		raw := set[field]
 		if nameViaOp && field == "name" {
 			*issues = append(*issues, v2model.Issue{Path: path,
-				Message: "insertView's name is the op's required top-level field — drop set.name"})
+				Message: "insert_view's name is the op's required top-level field — drop set.name"})
 			continue
 		}
 		switch field {
@@ -658,7 +658,7 @@ func (a *v2StateApplier) applyViewColumns(patches map[string]json.RawMessage, vi
 		return nil
 	}
 	if len(patches) > maxV2ViewColumns {
-		return v2model.ValidationFailed("too many columns in one updateView",
+		return v2model.ValidationFailed("too many columns in one update_view",
 			v2model.Issue{Path: opPath + ".columns",
 				Message: fmt.Sprintf("%d column patches — the cap is %d (the advertised maxProperties)", len(patches), maxV2ViewColumns)})
 	}
@@ -893,7 +893,7 @@ func (a *v2StateApplier) resolveDataviewBlock(doc *v2EditDoc, ref, opPath string
 		if typ := blockType(doc.blocks[idx]); typ != "dataview" {
 			return -1, v2model.ValidationFailed(
 				fmt.Sprintf("block %q is a %q block, not a dataview", ref, typ),
-				v2model.Issue{Path: opPath + ".block", Message: "updateView addresses a dataview block (SPEC §6.2)"})
+				v2model.Issue{Path: opPath + ".block", Message: "update_view addresses a dataview block (SPEC §6.2)"})
 		}
 		return idx, nil
 	}
@@ -979,7 +979,7 @@ func resolveViewIndex(views []any, ref, opPath string) (int, error) {
 // to an insertion index in the views list. Views are a flat ordered list —
 // there is no `inside` — and the FIRST view is the client's default tab, so
 // position "first" is the "make this the default" verb. Omitting all three
-// appends (the moveBlock root-append precedent).
+// appends (the move_block root-append precedent).
 func (a *v2StateApplier) resolveViewListTarget(views []any, after, before, position, opPath string) (int, error) {
 	var fields []string
 	if after != "" {
@@ -1125,14 +1125,14 @@ func isJSONNull(raw json.RawMessage) bool {
 }
 
 //
-// ---- insertView / moveView / deleteView (§8.18) ----
+// ---- insert_view / move_view / delete_view (§8.18) ----
 //
 
 func (a *v2StateApplier) applyInsertView(op opInsertView, opPath string) error {
 	if op.Name == "" {
 		return v2model.ValidationFailed("a view needs a name",
 			v2model.Issue{Path: opPath + ".name", Message: "name is required — a view is a named tab",
-				Hint: "GET /v2/schemas/ops/insertView for the op's schema and example"})
+				Hint: "GET /v2/schemas/ops/insert_view for the op's schema and example"})
 	}
 	if length := utf8.RuneCountInString(op.Name); length > maxV2NameLength {
 		return v2model.ValidationFailed("name is too long",
@@ -1166,7 +1166,7 @@ func (a *v2StateApplier) applyInsertView(op opInsertView, opPath string) error {
 	var view map[string]any
 	var copySourceId string
 	if op.CopyFrom != "" {
-		si, err := matchViewRef(views, op.CopyFrom, opPath+".copyFrom")
+		si, err := matchViewRef(views, op.CopyFrom, opPath+".copy_from")
 		if err != nil {
 			return err
 		}
@@ -1213,8 +1213,8 @@ func (a *v2StateApplier) applyInsertView(op opInsertView, opPath string) error {
 	}
 	view["name"] = op.Name
 
-	// set/columns merge on top of the base — updateView's exact channels, so
-	// create is "updateView aimed at a fresh view" (name rides the op's own
+	// set/columns merge on top of the base — update_view's exact channels, so
+	// create is "update_view aimed at a fresh view" (name rides the op's own
 	// required field, so set.name is rejected — nameViaOp)
 	if err := a.applyViewSet(op.Set, edited, view, opPath, true, &issues, &keyUses); err != nil {
 		return err
@@ -1224,7 +1224,7 @@ func (a *v2StateApplier) applyInsertView(op opInsertView, opPath string) error {
 	}
 	a.validateViewKeys(edited, preKnown, keyUses, &issues)
 	if len(issues) > 0 {
-		return v2model.ValidationFailed("insertView rejected", issues...)
+		return v2model.ValidationFailed("insert_view rejected", issues...)
 	}
 
 	newId := a.mintViewId(views)
@@ -1247,7 +1247,7 @@ func (a *v2StateApplier) applyInsertView(op opInsertView, opPath string) error {
 func (a *v2StateApplier) applyMoveView(op opMoveView, opPath string) error {
 	if op.View == "" {
 		return v2model.ValidationFailed("view is required",
-			v2model.Issue{Path: opPath + ".view", Message: "moveView moves one view — name it by id (full or unique suffix)"})
+			v2model.Issue{Path: opPath + ".view", Message: "move_view moves one view — name it by id (full or unique suffix)"})
 	}
 	doc, err := a.doc()
 	if err != nil {
@@ -1268,13 +1268,13 @@ func (a *v2StateApplier) applyMoveView(op opMoveView, opPath string) error {
 	if err != nil {
 		return err
 	}
-	// a destination is required (unlike insertView's append default and
-	// moveBlock's end default): the end of the views list has no special
-	// meaning while its FRONT is the default tab, so a target-less moveView
+	// a destination is required (unlike insert_view's append default and
+	// move_block's end default): the end of the views list has no special
+	// meaning while its FRONT is the default tab, so a target-less move_view
 	// is far more likely a forgotten field than an intent — and it would
 	// silently change which view a fresh client opens (§8.19)
 	if op.After == "" && op.Before == "" && op.Position == "" {
-		return v2model.ValidationFailed("moveView needs a destination",
+		return v2model.ValidationFailed("move_view needs a destination",
 			v2model.Issue{Path: opPath,
 				Message: "give one of after, before, position",
 				Hint:    `position "first" makes the view the default tab; "last" moves it to the end`})
@@ -1290,7 +1290,7 @@ func (a *v2StateApplier) applyMoveView(op opMoveView, opPath string) error {
 	}
 	views = slices.Insert(views, target, moved)
 	edited["views"] = views
-	// moveView authors nothing inside any view — every view is restored from
+	// move_view authors nothing inside any view — every view is restored from
 	// the live proto; only the ORDER comes from the splice
 	return a.commitDataviewBlock(edited, fullId, opPath, viewCommitPlan{})
 }
@@ -1298,7 +1298,7 @@ func (a *v2StateApplier) applyMoveView(op opMoveView, opPath string) error {
 func (a *v2StateApplier) applyDeleteView(op opDeleteView, opPath string) error {
 	if op.View == "" {
 		return v2model.ValidationFailed("view is required",
-			v2model.Issue{Path: opPath + ".view", Message: "deleteView deletes one view — name it by id (full or unique suffix)"})
+			v2model.Issue{Path: opPath + ".view", Message: "delete_view deletes one view — name it by id (full or unique suffix)"})
 	}
 	doc, err := a.doc()
 	if err != nil {
@@ -1326,7 +1326,7 @@ func (a *v2StateApplier) applyDeleteView(op opDeleteView, opPath string) error {
 		return v2model.ValidationFailed("cannot delete the last view",
 			v2model.Issue{Path: opPath + ".view",
 				Message: "a dataview needs at least one view",
-				Hint:    "insertView a replacement first, or updateView to fix this one in place"})
+				Hint:    "insert_view a replacement first, or update_view to fix this one in place"})
 	}
 	// per-view editor state (groups, objectOrders) nests inside the view in
 	// the §6.2 form, so it vanishes with it — no orphaned group orders. A
@@ -1334,7 +1334,7 @@ func (a *v2StateApplier) applyDeleteView(op opDeleteView, opPath string) error {
 	// first view (activeView is local UI state, §6.2).
 	views = slices.Delete(views, vi, vi+1)
 	edited["views"] = views
-	// deleteView authors nothing inside the surviving views — all restored
+	// delete_view authors nothing inside the surviving views — all restored
 	// from the live proto; only the membership comes from the splice
 	return a.commitDataviewBlock(edited, fullId, opPath, viewCommitPlan{})
 }

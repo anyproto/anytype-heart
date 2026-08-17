@@ -41,7 +41,7 @@ const (
 	ArgInteger ArgType = "integer"
 	ArgBoolean ArgType = "boolean"
 	// ArgObject is a flat string-keyed map of scalar/array values (the
-	// setProperties value shape). The one non-scalar arg type.
+	// set_properties value shape). The one non-scalar arg type.
 	ArgObject ArgType = "object"
 )
 

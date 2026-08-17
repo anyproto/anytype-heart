@@ -116,7 +116,7 @@ func TestMutationReceiptsNameTheTarget(t *testing.T) {
 		fx.seedSession("space1", Handle{N: 1, Id: "bafyobj1", Name: "Groceries", Type: "task"})
 		fx.stub("GET /v2/spaces/space1/properties", 200, propertiesBody)
 		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 200,
-			`{"diffStats":{"propertiesChanged":1}}`)
+			`{"diff_stats":{"properties_changed":1}}`)
 
 		result, err := fx.Run(ctx, "set_properties", map[string]any{
 			"object": "1", "remove": map[string]any{"tags": []any{"x"}},
@@ -143,7 +143,7 @@ func TestMutationReceiptsNameTheTarget(t *testing.T) {
 		fx.DryRun = true
 		fx.seedSession("space1", Handle{N: 1, Id: "bafyobj1", Name: "Plan", Type: "page"})
 		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 200,
-			`{"diffStats":{"blocksChanged":1},"dry_run":true}`)
+			`{"diff_stats":{"blocks_changed":1},"dry_run":true}`)
 
 		result, err := fx.Run(ctx, "check_item", map[string]any{"object": "1", "block": "b", "checked": true})
 
@@ -190,7 +190,7 @@ func TestTableReadPassThrough(t *testing.T) {
 
 		require.NoError(t, err)
 		op := firstOp(t, fx.sent("PATCH /v2/spaces/space1/objects/bafyobj1")[0])
-		assert.Equal(t, "4ff02", op["tableId"])
+		assert.Equal(t, "4ff02", op["table_id"])
 		assert.Equal(t, "00d02", op["row"])
 		assert.Equal(t, "bbbbccccddddeeee00000c01", op["col"])
 	})

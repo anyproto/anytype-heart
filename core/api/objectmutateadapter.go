@@ -100,7 +100,7 @@ func checkRestriction(sb smartblock.SmartBlock, r model.RestrictionsObjectRestri
 //
 // The check is per-axis (surface review M1): a set and a collection carry
 // Restrictions_Blocks but NOT Restrictions_Details, so demanding both of
-// every edit made renaming a set — and every addItems/removeItems, the only
+// every edit made renaming a set — and every add_items/remove_items, the only
 // v2 route into an existing collection — permanently refuse. needs comes
 // from the ops the batch actually contains.
 func checkObjectEditable(sb smartblock.SmartBlock, needs apicore.EditNeeds) error {

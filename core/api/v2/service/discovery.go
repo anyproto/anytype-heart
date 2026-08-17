@@ -154,7 +154,7 @@ func (s *Service) ListMembers(ctx context.Context, spaceId string, offset, limit
 	return rows, total, hasMore, nil
 }
 
-// GetMemberMe implements GET /v2/spaces/{spaceId}/members/me: the caller's
+// GetMemberMe implements GET /v2/spaces/{space_id}/members/me: the caller's
 // own member row (§7.3 — the server-side identity behind the wrapper's `@me`
 // sentinel; the same identity Phase 4's placeholder substitution uses). The
 // participant id is deterministic, so the row is served even before the
@@ -166,7 +166,7 @@ func (s *Service) GetMemberMe(ctx context.Context, spaceId string) (v2model.Memb
 	}
 	if s.accountId == "" {
 		return v2model.MemberRow{}, v2model.NotFound(
-			"the caller's account identity is not available on this server — list members with GET /v2/spaces/{spaceId}/members instead")
+			"the caller's account identity is not available on this server — list members with GET /v2/spaces/{space_id}/members instead")
 	}
 	row := v2model.MemberRow{
 		Id:       domain.NewParticipantId(spaceId, s.accountId),

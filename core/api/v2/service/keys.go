@@ -290,7 +290,7 @@ func (s *Service) resolveTypeInput(input string, entries []typeEntry) (typeEntry
 // chain step 2 shadows a different key in the bundled vocabulary — the
 // live-defect shape ADDRESSING §7.5a-6 names: a UI property named "Due Date"
 // took `due_date`, which is bundled `dueDate`'s derived slug, and every
-// `setProperties {"set": {"due_date": …}}` since has landed in that property
+// `set_properties {"set": {"due_date": …}}` since has landed in that property
 // instead of the bundled one. Silently.
 //
 // New shadows are unreachable through every write channel that stamps

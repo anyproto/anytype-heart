@@ -78,13 +78,13 @@ func blockIdsOf(blocks []map[string]any) []string {
 // TestPatchPayloadIdsResolve is F1: the payload id slots that used to take a
 // served id LITERALLY. Each case is the documented loop — read the object,
 // echo what it served back into an op — and asserts the stored ids are
-// UNCHANGED and diffStats reports the truth (a preserved-identity replace is
+// UNCHANGED and diff_stats reports the truth (a preserved-identity replace is
 // not "added + removed").
 func TestPatchPayloadIdsResolve(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("replaceSubtree echoing a compact ?block= read is a no-op", func(t *testing.T) {
-		// before: 200 with blocksAdded/blocksRemoved, and the stored 24-hex
+	t.Run("replace_subtree echoing a compact ?block= read is a no-op", func(t *testing.T) {
+		// before: 200 with blocks_added/blocks_removed, and the stored 24-hex
 		// id permanently replaced by the 5-char label
 		fx := newV2Fixture(t)
 		captured := fx.expectMutate(editRead(t, editMintedDoc), "headB")
@@ -93,7 +93,7 @@ func TestPatchPayloadIdsResolve(t *testing.T) {
 		require.Contains(t, string(blocks), `"id":"aaaa1"`, "the default read serves the compact label")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			[]byte(`{"ops":[{"op":"replaceSubtree","id":"aaaa1","blocks":`+string(blocks)+`}]}`), "", false)
+			[]byte(`{"ops":[{"op":"replace_subtree","id":"aaaa1","blocks":`+string(blocks)+`}]}`), "", false)
 
 		require.NoError(t, err)
 		assert.Equal(t, v2model.DiffStats{}, result.DiffStats, "echoing a subtree back unchanged is a genuine no-op")
@@ -102,14 +102,14 @@ func TestPatchPayloadIdsResolve(t *testing.T) {
 			blockIdsOf(docBlocks(stateDoc(t, *captured))), "the stored ids survive the echo")
 	})
 
-	t.Run("replaceSubtree still edits through the label", func(t *testing.T) {
+	t.Run("replace_subtree still edits through the label", func(t *testing.T) {
 		// identity preserved is not "nothing happened": the same op with
 		// edited text changes the block in place
 		fx := newV2Fixture(t)
 		captured := fx.expectMutate(editRead(t, editMintedDoc), "headB")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"replaceSubtree","id":"aaaa1","blocks":[{"id":"aaaa1","type":"heading1","text":"Renamed"}]}`), "", false)
+			patchBody(`{"op":"replace_subtree","id":"aaaa1","blocks":[{"id":"aaaa1","type":"heading1","text":"Renamed"}]}`), "", false)
 
 		require.NoError(t, err)
 		assert.Equal(t, v2model.DiffStats{BlocksChanged: 1}, result.DiffStats)
@@ -118,7 +118,7 @@ func TestPatchPayloadIdsResolve(t *testing.T) {
 		assert.Equal(t, "Renamed", blocks[0]["text"])
 	})
 
-	t.Run("updateBlock set.rows echoing a compact read keeps the row ids", func(t *testing.T) {
+	t.Run("update_block set.rows echoing a compact read keeps the row ids", func(t *testing.T) {
 		// before: 200 reported as the innocuous BlocksChanged:1 while every
 		// row id became its label
 		fx := newV2Fixture(t)
@@ -130,7 +130,7 @@ func TestPatchPayloadIdsResolve(t *testing.T) {
 		require.Contains(t, string(rows), `"id":"0dd11"`, "the default read serves relabeled row ids")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			[]byte(`{"ops":[{"op":"updateBlock","id":"0aaa1","set":{"rows":`+string(rows)+`}}]}`), "", false)
+			[]byte(`{"ops":[{"op":"update_block","id":"0aaa1","set":{"rows":`+string(rows)+`}}]}`), "", false)
 
 		require.NoError(t, err)
 		assert.Equal(t, v2model.DiffStats{}, result.DiffStats)
@@ -138,7 +138,7 @@ func TestPatchPayloadIdsResolve(t *testing.T) {
 		assert.Equal(t, []any{"00000000000000000000dd11", "00000000000000000000dd22"}, rowIdsOf(stored))
 	})
 
-	t.Run("setCell value echoing a compact read keeps the cell descendant id", func(t *testing.T) {
+	t.Run("set_cell value echoing a compact read keeps the cell descendant id", func(t *testing.T) {
 		// cell descendants are served relabeled and are the one id domain no
 		// reference slot addresses (F4) — so the echo was the only way to
 		// reach them, and it renamed them
@@ -150,7 +150,7 @@ func TestPatchPayloadIdsResolve(t *testing.T) {
 		require.Contains(t, string(cell), `"id":"dddd1"`, "the default read serves the relabeled descendant")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			[]byte(`{"ops":[{"op":"setCell","tableId":"tblOne1","row":"rowA","col":"colA","value":`+string(cell)+`}]}`), "", false)
+			[]byte(`{"ops":[{"op":"set_cell","table_id":"tblOne1","row":"rowA","col":"colA","value":`+string(cell)+`}]}`), "", false)
 
 		require.NoError(t, err)
 		assert.Equal(t, v2model.DiffStats{}, result.DiffStats)
@@ -167,7 +167,7 @@ func TestPatchPayloadIdsResolve(t *testing.T) {
 		fx.expectMutate(editRead(t, editBaseDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"replaceSubtree","id":"blockParent1","blocks":[{"id":"notAnId","type":"paragraph","text":"x"}]}`), "", false)
+			patchBody(`{"op":"replace_subtree","id":"blockParent1","blocks":[{"id":"notAnId","type":"paragraph","text":"x"}]}`), "", false)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -182,7 +182,7 @@ func TestPatchPayloadIdsResolve(t *testing.T) {
 		fx.expectMutate(editRead(t, editTailCollisionDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"replaceSubtree","id":"1111111111111111117ffff9","blocks":[{"id":"7ffff9","type":"paragraph","text":"x"}]}`), "", false)
+			patchBody(`{"op":"replace_subtree","id":"1111111111111111117ffff9","blocks":[{"id":"7ffff9","type":"paragraph","text":"x"}]}`), "", false)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -199,7 +199,7 @@ func TestPatchPayloadIdsResolve(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editTableDoc), "headB")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateBlock","id":"tblOne1","set":{"rows":[`+
+			patchBody(`{"op":"update_block","id":"tblOne1","set":{"rows":[`+
 				`{"id":"rowH","isHeader":true,"cells":["Name","Status"]},`+
 				`{"id":"rowB","cells":["Export"]},`+
 				`{"cells":["Fresh"]}]}}`), "", false)
@@ -213,14 +213,14 @@ func TestPatchPayloadIdsResolve(t *testing.T) {
 		assert.NotEmpty(t, ids[2], "the unnamed row got a minted id")
 	})
 
-	t.Run("authoring a whole new table through insertBlocks needs no ids", func(t *testing.T) {
+	t.Run("authoring a whole new table through insert_blocks needs no ids", func(t *testing.T) {
 		// the capability the refuse-unmatched decision is measured against:
 		// nothing a caller AUTHORS has to name an id, tables included
 		fx := newV2Fixture(t)
 		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insertBlocks","blocks":[{"type":"table",`+
+			patchBody(`{"op":"insert_blocks","blocks":[{"type":"table",`+
 				`"columns":[{},{}],`+
 				`"rows":[{"isHeader":true,"cells":["Name","Status"]},{"cells":["Export","Done"]}]}]}`), "", false)
 
@@ -233,7 +233,7 @@ func TestPatchPayloadIdsResolve(t *testing.T) {
 		}
 	})
 
-	t.Run("an id nested in an insertBlocks payload is refused as not part of the op", func(t *testing.T) {
+	t.Run("an id nested in an insert_blocks payload is refused as not part of the op", func(t *testing.T) {
 		// §8.30: the nested id slots go the same way as the block's own —
 		// the row id below names a REAL row of the document, so before the
 		// split it resolved and then failed as a duplicate, which reads as a
@@ -242,7 +242,7 @@ func TestPatchPayloadIdsResolve(t *testing.T) {
 		fx.expectMutate(editRead(t, editTableDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insertBlocks","blocks":[{"type":"table",`+
+			patchBody(`{"op":"insert_blocks","blocks":[{"type":"table",`+
 				`"columns":[{}],"rows":[{"id":"rowH","cells":["Fresh"]}]}]}`), "", false)
 
 		apiErr := v2Err(t, err)
@@ -258,7 +258,7 @@ func TestPatchPayloadIdsResolve(t *testing.T) {
 		fx.expectMutate(editRead(t, editBaseDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"replaceSubtree","id":"blockParent1","blocks":[{"id":"blockHeading1","type":"paragraph","text":"x"}]}`), "", false)
+			patchBody(`{"op":"replace_subtree","id":"blockParent1","blocks":[{"id":"blockHeading1","type":"paragraph","text":"x"}]}`), "", false)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -279,7 +279,7 @@ func TestPatchPayloadIdsResolve(t *testing.T) {
 		fx.expectMutate(editRead(t, editMintedDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"replaceSubtree","id":"aaaa1","blocks":[{"id":"bbbb1","type":"paragraph","text":"x"}]}`), "", false)
+			patchBody(`{"op":"replace_subtree","id":"aaaa1","blocks":[{"id":"bbbb1","type":"paragraph","text":"x"}]}`), "", false)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -301,7 +301,7 @@ func TestPatchPayloadIdSeam(t *testing.T) {
 
 	t.Run("two views cannot share an id in one payload", func(t *testing.T) {
 		// before: 200, and the document stored TWO views under "viewAll1" —
-		// a later updateView renamed only the first, so every subsequent view
+		// a later update_view renamed only the first, so every subsequent view
 		// op addressed view #1 forever. Columns and rows in the identical
 		// position were refused correctly; views were the only slot claiming
 		// nothing.
@@ -314,7 +314,7 @@ func TestPatchPayloadIdSeam(t *testing.T) {
 		fx.expectMutate(editRead(t, editSetDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateBlock","id":"dataview","set":{"views":[`+
+			patchBody(`{"op":"update_block","id":"dataview","set":{"views":[`+
 				`{"id":"viewAll1","name":"All","columns":[{"property":"name"}]},`+
 				`{"id":"viewAll1","name":"Second","columns":[{"property":"name"}]}]}}`), "", false)
 
@@ -336,7 +336,7 @@ func TestPatchPayloadIdSeam(t *testing.T) {
 		fx.expectMutate(editRead(t, editTwoDataviewsDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateBlock","id":"dvFirst1","set":{"views":[`+
+			patchBody(`{"op":"update_block","id":"dvFirst1","set":{"views":[`+
 				`{"id":"blockPara1","name":"All","columns":[{"property":"name"}]}]}}`), "", false)
 
 		apiErr := v2Err(t, err)
@@ -356,7 +356,7 @@ func TestPatchPayloadIdSeam(t *testing.T) {
 		fx.expectMutate(editRead(t, editTwoDataviewsDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"replaceSubtree","id":"blockPara1","blocks":[{"id":"viewA1","type":"paragraph","text":"x"}]}`), "", false)
+			patchBody(`{"op":"replace_subtree","id":"blockPara1","blocks":[{"id":"viewA1","type":"paragraph","text":"x"}]}`), "", false)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -373,7 +373,7 @@ func TestPatchPayloadIdSeam(t *testing.T) {
 		fx.expectMutate(editRead(t, editTwoDataviewsDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"replaceSubtree","id":"blockPara1","blocks":[{"id":"ewA1","type":"paragraph","text":"x"}]}`), "", false)
+			patchBody(`{"op":"replace_subtree","id":"blockPara1","blocks":[{"id":"ewA1","type":"paragraph","text":"x"}]}`), "", false)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -390,7 +390,7 @@ func TestPatchPayloadIdSeam(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editTwoViewsDoc), "headB")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateBlock","id":"dataview","set":{"views":[`+
+			patchBody(`{"op":"update_block","id":"dataview","set":{"views":[`+
 				`{"id":"viewAll1","name":"All","columns":[{"property":"name"}]},`+
 				`{"id":"viewBoard2","name":"Board","type":"kanban","groupBy":"severity","columns":[{"property":"name"},{"property":"severity","hidden":true}]}]}}`), "", false)
 
@@ -409,7 +409,7 @@ func TestPatchPayloadIdSeam(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editSharedViewIdDoc), "headB")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","block":"dvSecond2","view":"default","set":{"name":"Renamed"}}`), "", false)
+			patchBody(`{"op":"update_view","block":"dvSecond2","view":"default","set":{"name":"Renamed"}}`), "", false)
 
 		require.NoError(t, err)
 		assert.Equal(t, v2model.DiffStats{BlocksChanged: 1}, result.DiffStats)
@@ -422,7 +422,7 @@ func TestPatchPayloadIdSeam(t *testing.T) {
 
 // TestPatchReportsMintedNestedIds pins the receipt the refusals promise. Both
 // unresolvedPayloadIdError and newContentIdError tell the caller to omit the
-// id because the server mints one and reports it — but createdBlocks used to
+// id because the server mints one and reports it — but created_blocks used to
 // be written only for TOP-LEVEL run blocks, so exactly the slots those
 // refusals fire on (a table's rows and columns, a cell descendant, a view)
 // went unreported and the caller had to re-read to learn an id it had just
@@ -430,12 +430,12 @@ func TestPatchPayloadIdSeam(t *testing.T) {
 func TestPatchReportsMintedNestedIds(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("a table created through insertBlocks reports its row and column ids", func(t *testing.T) {
+	t.Run("a table created through insert_blocks reports its row and column ids", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insertBlocks","blocks":[{"type":"table",`+
+			patchBody(`{"op":"insert_blocks","blocks":[{"type":"table",`+
 				`"columns":[{},{}],`+
 				`"rows":[{"isHeader":true,"cells":["Name","Status"]},{"cells":["Export","Done"]}]}]}`), "", false)
 
@@ -456,7 +456,7 @@ func TestPatchReportsMintedNestedIds(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editTableDoc), "headB")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"setCell","tableId":"tblOne1","row":"rowB","col":"colA",`+
+			patchBody(`{"op":"set_cell","table_id":"tblOne1","row":"rowB","col":"colA",`+
 				`"value":[{"type":"toggle","text":"cell"},{"indent":1,"type":"paragraph","text":"inside"}]}`), "", false)
 
 		require.NoError(t, err)
@@ -465,14 +465,14 @@ func TestPatchReportsMintedNestedIds(t *testing.T) {
 		assert.Contains(t, cellDescendantIds(t, docBlocks(stateDoc(t, *captured))[0]), minted)
 	})
 
-	t.Run("a view minted through updateBlock is reported in createdViews", func(t *testing.T) {
+	t.Run("a view minted through update_block is reported in created_views", func(t *testing.T) {
 		// a view is not a block, so it lands in the view-family map — the
-		// same map insertView already reports through
+		// same map insert_view already reports through
 		fx := newV2Fixture(t)
 		captured := fx.expectMutate(editRead(t, editSetDoc), "headB")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateBlock","id":"dataview","set":{"views":[`+
+			patchBody(`{"op":"update_block","id":"dataview","set":{"views":[`+
 				`{"id":"viewAll1","name":"All","columns":[{"property":"name"}]},`+
 				`{"name":"Fresh","columns":[{"property":"name"}]}]}}`), "", false)
 

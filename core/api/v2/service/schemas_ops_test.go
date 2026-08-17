@@ -80,14 +80,14 @@ func TestSchemaOp(t *testing.T) {
 	// nested slots are TYPED. They were not — columns/rows were bare
 	// {"type":"array"} with no items — so "no nested id is published" held
 	// because there was no nested schema at all, and would have passed
-	// identically for replaceSubtree.
+	// identically for replace_subtree.
 	t.Run("the nested table entries are typed, and their id slot follows the same split", func(t *testing.T) {
 		for _, tc := range []struct {
 			op       string
 			nestedId bool
 		}{
-			{"insertBlocks", false},
-			{"replaceSubtree", true},
+			{"insert_blocks", false},
+			{"replace_subtree", true},
 		} {
 			entry, err := fx.SchemaOp(tc.op)
 			require.NoError(t, err, tc.op)
@@ -108,17 +108,17 @@ func TestSchemaOp(t *testing.T) {
 		// the block def's own claim: neither shape has a `views` property, so
 		// with additionalProperties:false no decoder can name a dataview view
 		// through this channel at all
-		for _, op := range []string{"insertBlocks", "replaceSubtree"} {
+		for _, op := range []string{"insert_blocks", "replace_subtree"} {
 			entry, err := fx.SchemaOp(op)
 			require.NoError(t, err, op)
 			assert.NotContains(t, opBlockDefProps(t, entry), "views", op)
 		}
 	})
 
-	t.Run("replaceSubtree keeps the id slot its payload needs", func(t *testing.T) {
+	t.Run("replace_subtree keeps the id slot its payload needs", func(t *testing.T) {
 		// naming the block it replaces is what makes echoing a read back a
 		// no-op instead of a rename (§8.29)
-		entry, err := fx.SchemaOp("replaceSubtree")
+		entry, err := fx.SchemaOp("replace_subtree")
 
 		require.NoError(t, err)
 		assert.Contains(t, opBlockDefProps(t, entry), "id",
@@ -132,7 +132,7 @@ func TestSchemaOp(t *testing.T) {
 	// The enum is derived, never copied: a hand-kept list is the drift class
 	// §8.31 was about.
 	t.Run("both payload block defs publish the block-type vocabulary", func(t *testing.T) {
-		for _, op := range []string{"insertBlocks", "replaceSubtree"} {
+		for _, op := range []string{"insert_blocks", "replace_subtree"} {
 			entry, err := fx.SchemaOp(op)
 			require.NoError(t, err, op)
 
@@ -147,7 +147,7 @@ func TestSchemaOp(t *testing.T) {
 		// §7 structural types are in the format's vocabulary but import
 		// absorbs or drops them — the §8.30 rule, one level down: a VALUE no
 		// caller can succeed with does not appear in the enum
-		entry, err := fx.SchemaOp("insertBlocks")
+		entry, err := fx.SchemaOp("insert_blocks")
 		require.NoError(t, err)
 		published := publishedBlockTypes(t, entry)
 		require.NotEmpty(t, published)
@@ -171,7 +171,7 @@ func TestSchemaOp(t *testing.T) {
 	// name they publish must exist in the format's own block schema. That
 	// turns the exclusion from prose into something the build enforces.
 	t.Run("every published block property exists in the format's block schema", func(t *testing.T) {
-		for _, op := range []string{"insertBlocks", "replaceSubtree"} {
+		for _, op := range []string{"insert_blocks", "replace_subtree"} {
 			entry, err := fx.SchemaOp(op)
 			require.NoError(t, err, op)
 
@@ -200,16 +200,65 @@ func TestSchemaOp(t *testing.T) {
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusNotFound, apiErr.Status)
-		assert.Contains(t, apiErr.Message, "replaceText")
+		assert.Contains(t, apiErr.Message, "replace_text")
 	})
 
 	t.Run("the index lists the ops", func(t *testing.T) {
 		index := fx.SchemaIndex()
 
 		require.Len(t, index.Ops, len(v2OpNames))
-		assert.Equal(t, "setProperties", index.Ops[0].Kind)
-		assert.Equal(t, "/v2/schemas/ops/setProperties", index.Ops[0].Url)
+		assert.Equal(t, "set_properties", index.Ops[0].Kind)
+		assert.Equal(t, "/v2/schemas/ops/set_properties", index.Ops[0].Url)
 	})
+}
+
+// TestOpVocabularyIsSnakeCase pins C2 on the op set — the most agent-visible
+// strings in the API, since a model types one on every edit. Both halves
+// matter: the served set must be snake_case, and the pre-rename camelCase
+// spelling must be REFUSED rather than quietly still accepted, so a caller
+// written against the old vocabulary fails loudly at the first op instead of
+// half-working. There is no GBNF to keep in step here (the wrapper's grammars
+// constrain tool ARGUMENTS, never op names), so this is the pin that stands
+// in for the grammar-acceptance guard the tool surface has.
+func TestOpVocabularyIsSnakeCase(t *testing.T) {
+	t.Run("every served op name is snake_case", func(t *testing.T) {
+		for _, op := range v2OpNames {
+			assert.Regexp(t, `^[a-z][a-z0-9]*(_[a-z0-9]+)*$`, op)
+		}
+	})
+
+	t.Run("the pre-rename camelCase spelling is refused", func(t *testing.T) {
+		ctx := context.Background()
+		for _, op := range v2OpNames {
+			camel := snakeToCamelForTest(op)
+			require.NotEqual(t, op, camel, "every op name must have an underscore to have been renamed")
+
+			t.Run(camel, func(t *testing.T) {
+				// given
+				fx := newV2Fixture(t)
+				fx.expectMutate(editRead(t, editBaseDoc))
+
+				// when
+				_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+					patchBody(`{"op":"`+camel+`"}`), "", false)
+
+				// then
+				apiErr := v2Err(t, err)
+				assert.Contains(t, apiErr.Message, `unknown op "`+camel+`"`)
+			})
+		}
+	})
+}
+
+// snakeToCamelForTest spells a snake_case op the way v2 spelled it before the
+// C2 rename ("set_properties" → "setProperties") — the string the server must
+// now refuse.
+func snakeToCamelForTest(s string) string {
+	parts := strings.Split(s, "_")
+	for i := 1; i < len(parts); i++ {
+		parts[i] = strings.ToUpper(parts[i][:1]) + parts[i][1:]
+	}
+	return strings.Join(parts, "")
 }
 
 // TestServedOpExampleValidatesAgainstItsOwnSchema is the pin the wrapper
@@ -245,7 +294,7 @@ func TestServedOpExampleValidatesAgainstItsOwnSchema(t *testing.T) {
 // gemma4:e4b omitted on 9 of 60 calls when shown the wrapped example).
 func TestExampleValidatorIsHonest(t *testing.T) {
 	fx := newV2Fixture(t)
-	entry, err := fx.SchemaOp("insertBlocks")
+	entry, err := fx.SchemaOp("insert_blocks")
 	require.NoError(t, err)
 
 	assert.Error(t, validateAgainstSchema(t, entry.Schema,
@@ -302,7 +351,7 @@ func TestMatchLocatorIsPublishedExactlyWhereItWorks(t *testing.T) {
 func TestLocatorOpsDropTheRequiredId(t *testing.T) {
 	fx := newV2Fixture(t)
 
-	for _, op := range []string{"updateBlock", "deleteBlock"} {
+	for _, op := range []string{"update_block", "delete_block"} {
 		t.Run(op, func(t *testing.T) {
 			entry, err := fx.SchemaOp(op)
 			require.NoError(t, err)

@@ -107,7 +107,7 @@ func TestUpdateViewOp(t *testing.T) {
 
 		// when: no block, no view — both default (one dataview, one view)
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","columns":{"severity":{"hidden":false}}}`), "", false)
+			patchBody(`{"op":"update_view","columns":{"severity":{"hidden":false}}}`), "", false)
 
 		// then
 		require.NoError(t, err)
@@ -127,12 +127,12 @@ func TestUpdateViewOp(t *testing.T) {
 		require.Len(t, sorts, 1, "sorts are untouched")
 	})
 
-	t.Run("updateView works on a type document (the reported target)", func(t *testing.T) {
+	t.Run("update_view works on a type document (the reported target)", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		captured := fx.expectMutate(editRead(t, editTypeDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","columns":{"severity":{"hidden":false}}}`), "", false)
+			patchBody(`{"op":"update_view","columns":{"severity":{"hidden":false}}}`), "", false)
 
 		require.NoError(t, err)
 		view := viewsOf(t, dataviewOf(t, *captured, "dataview"))[0]
@@ -142,11 +142,11 @@ func TestUpdateViewOp(t *testing.T) {
 		assert.False(t, stillHidden)
 	})
 
-	t.Run("updateView needs neither restriction axis — the M1 lesson applied", func(t *testing.T) {
+	t.Run("update_view needs neither restriction axis — the M1 lesson applied", func(t *testing.T) {
 		// sets, collections AND object types all carry Restrictions_Blocks —
 		// classifying the view edit as a block op would refuse it on exactly
 		// the objects it exists to edit. This test fails if v2OpEditNeeds ever
-		// reclassifies updateView.
+		// reclassifies update_view.
 		fx := newV2Fixture(t)
 		read := editRead(t, editSetDoc)
 		read.BlocksRefused = blocksRefusedProduction()
@@ -168,10 +168,10 @@ func TestUpdateViewOp(t *testing.T) {
 			})
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","columns":{"severity":{"hidden":false}}}`), "", false)
+			patchBody(`{"op":"update_view","columns":{"severity":{"hidden":false}}}`), "", false)
 
 		require.NoError(t, err, "a blocks-and-details-restricted set must still accept a view edit")
-		assert.Equal(t, apicore.EditNeeds{}, got, "updateView must demand neither restriction axis")
+		assert.Equal(t, apicore.EditNeeds{}, got, "update_view must demand neither restriction axis")
 	})
 
 	t.Run("the dry run reaches the same verdict on a restricted object (C9)", func(t *testing.T) {
@@ -181,7 +181,7 @@ func TestUpdateViewOp(t *testing.T) {
 		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(read, nil)
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","columns":{"severity":{"hidden":false}}}`), "", true)
+			patchBody(`{"op":"update_view","columns":{"severity":{"hidden":false}}}`), "", true)
 
 		require.NoError(t, err)
 		assert.True(t, result.DryRun)
@@ -195,7 +195,7 @@ func TestUpdateViewOp(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editSetDoc), "headB")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","columns":{"tags":{"width":90}}}`), "", false)
+			patchBody(`{"op":"update_view","columns":{"tags":{"width":90}}}`), "", false)
 
 		require.NoError(t, err)
 		assert.Equal(t, v2model.DiffStats{BlocksChanged: 1}, result.DiffStats)
@@ -217,7 +217,7 @@ func TestUpdateViewOp(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editSetDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","columns":{"dueDate":null,"neverWasAColumn":null}}`), "", false)
+			patchBody(`{"op":"update_view","columns":{"dueDate":null,"neverWasAColumn":null}}`), "", false)
 
 		require.NoError(t, err)
 		view := viewsOf(t, dataviewOf(t, *captured, "dataview"))[0]
@@ -231,7 +231,7 @@ func TestUpdateViewOp(t *testing.T) {
 		fx.expectMutate(editRead(t, editSetDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","columns":{"severty":{"hidden":false}}}`), "", false)
+			patchBody(`{"op":"update_view","columns":{"severty":{"hidden":false}}}`), "", false)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -244,7 +244,7 @@ func TestUpdateViewOp(t *testing.T) {
 		fx.expectMutate(editRead(t, editSetDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","columns":{"severity":{"visible":true}}}`), "", false)
+			patchBody(`{"op":"update_view","columns":{"severity":{"visible":true}}}`), "", false)
 
 		apiErr := v2Err(t, err)
 		assert.Contains(t, apiErr.Issues[0].Message, "allowed: hidden, width, align, aggregation")
@@ -256,7 +256,7 @@ func TestUpdateViewOp(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editSetDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","set":{"name":"Open bugs","type":"kanban","groupBy":"severity"}}`), "", false)
+			patchBody(`{"op":"update_view","set":{"name":"Open bugs","type":"kanban","groupBy":"severity"}}`), "", false)
 
 		require.NoError(t, err)
 		view := viewsOf(t, dataviewOf(t, *captured, "dataview"))[0]
@@ -271,7 +271,7 @@ func TestUpdateViewOp(t *testing.T) {
 		fx.expectMutate(editRead(t, editSetDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","set":{"type":"board"}}`), "", false)
+			patchBody(`{"op":"update_view","set":{"type":"board"}}`), "", false)
 
 		apiErr := v2Err(t, err)
 		assert.Contains(t, apiErr.Issues[0].Message, "table, list, gallery, kanban, calendar, graph")
@@ -282,7 +282,7 @@ func TestUpdateViewOp(t *testing.T) {
 		fx.expectMutate(editRead(t, editSetDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","set":{"columns":[{"property":"name"}]}}`), "", false)
+			patchBody(`{"op":"update_view","set":{"columns":[{"property":"name"}]}}`), "", false)
 
 		apiErr := v2Err(t, err)
 		assert.Contains(t, apiErr.Issues[0].Message, "columns channel")
@@ -293,7 +293,7 @@ func TestUpdateViewOp(t *testing.T) {
 		fx.expectMutate(editRead(t, editSetDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","set":{"groups":[]}}`), "", false)
+			patchBody(`{"op":"update_view","set":{"groups":[]}}`), "", false)
 
 		apiErr := v2Err(t, err)
 		assert.Contains(t, apiErr.Issues[0].Message, "output-only")
@@ -304,7 +304,7 @@ func TestUpdateViewOp(t *testing.T) {
 		fx.expectMutate(editRead(t, editSetDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","set":{"nam":"Open"}}`), "", false)
+			patchBody(`{"op":"update_view","set":{"nam":"Open"}}`), "", false)
 
 		apiErr := v2Err(t, err)
 		assert.Contains(t, apiErr.Issues[0].Message, `unknown view field "nam"`)
@@ -316,7 +316,7 @@ func TestUpdateViewOp(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editTwoViewsDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","view":"viewBoard2","set":{"groupBy":null,"type":null}}`), "", false)
+			patchBody(`{"op":"update_view","view":"viewBoard2","set":{"groupBy":null,"type":null}}`), "", false)
 
 		require.NoError(t, err)
 		view := viewsOf(t, dataviewOf(t, *captured, "dataview"))[1]
@@ -331,7 +331,7 @@ func TestUpdateViewOp(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editSetDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","set":{"sorts":[{"property":"severity","direction":"desc"}]}}`), "", false)
+			patchBody(`{"op":"update_view","set":{"sorts":[{"property":"severity","direction":"desc"}]}}`), "", false)
 
 		require.NoError(t, err)
 		view := viewsOf(t, dataviewOf(t, *captured, "dataview"))[0]
@@ -347,7 +347,7 @@ func TestUpdateViewOp(t *testing.T) {
 		fx.expectMutate(editRead(t, editSetDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","set":{"sorts":[{"property":"severity","direction":"down"}]}}`), "", false)
+			patchBody(`{"op":"update_view","set":{"sorts":[{"property":"severity","direction":"down"}]}}`), "", false)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, "ops[0].set.sorts[0].direction", apiErr.Issues[0].Path)
@@ -362,7 +362,7 @@ func TestUpdateViewOp(t *testing.T) {
 		fx.expectMutate(editRead(t, editSetDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","set":{"filters":[{"operator":"and","property":"severity","condition":"equal","value":"High"}]}}`), "", false)
+			patchBody(`{"op":"update_view","set":{"filters":[{"operator":"and","property":"severity","condition":"equal","value":"High"}]}}`), "", false)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -374,7 +374,7 @@ func TestUpdateViewOp(t *testing.T) {
 		fx.expectMutate(editRead(t, editSetDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","set":{"filters":[{"property":"severity","condition":"equals","value":"High"}]}}`), "", false)
+			patchBody(`{"op":"update_view","set":{"filters":[{"property":"severity","condition":"equals","value":"High"}]}}`), "", false)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, "ops[0].set.filters[0].condition", apiErr.Issues[0].Path)
@@ -387,7 +387,7 @@ func TestUpdateViewOp(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editSetDoc), "headB")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","set":{"filters":[{"property":"severity","condition":"equal","value":"High"}]}}`), "", false)
+			patchBody(`{"op":"update_view","set":{"filters":[{"property":"severity","condition":"equal","value":"High"}]}}`), "", false)
 
 		require.NoError(t, err)
 		assert.Nil(t, result.Created, "an existing option name creates nothing")
@@ -406,15 +406,15 @@ func TestUpdateViewOp(t *testing.T) {
 			Return(editRead(t, editSetDoc), nil)
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","set":{"filters":[{"property":"severity","condition":"equal","value":"BrandNew"}]}}`), "", true)
+			patchBody(`{"op":"update_view","set":{"filters":[{"property":"severity","condition":"equal","value":"BrandNew"}]}}`), "", true)
 
 		require.NoError(t, err)
-		require.NotNil(t, result.Created, "the M5 machinery must see updateView's option channel")
+		require.NotNil(t, result.Created, "the M5 machinery must see update_view's option channel")
 		require.Len(t, result.Created.Options, 1)
 		assert.Equal(t, "BrandNew", result.Created.Options[0].Name)
 	})
 
-	t.Run("the M5 bound counts updateView's filter options", func(t *testing.T) {
+	t.Run("the M5 bound counts update_view's filter options", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.addTagProperty(t)
 		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").
@@ -427,7 +427,7 @@ func TestUpdateViewOp(t *testing.T) {
 			names = append(names, `"NewTag`+string(rune('A'+i%26))+string(rune('0'+i/26))+`"`)
 		}
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","set":{"filters":[{"property":"tags","condition":"in","value":[`+joinStrings(names, ",")+`]}]}}`), "", false)
+			patchBody(`{"op":"update_view","set":{"filters":[{"property":"tags","condition":"in","value":[`+joinStrings(names, ",")+`]}]}}`), "", false)
 
 		apiErr := v2Err(t, err)
 		assert.Contains(t, apiErr.Message, "too many new options")
@@ -439,7 +439,7 @@ func TestUpdateViewOp(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editSetDoc), "headB")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","set":{"filters":[{"property":"severity","condition":"empty","value":"Ghost"}]}}`), "", false)
+			patchBody(`{"op":"update_view","set":{"filters":[{"property":"severity","condition":"empty","value":"Ghost"}]}}`), "", false)
 
 		require.NoError(t, err)
 		assert.Nil(t, result.Created, "a value on an empty-condition leaf must not mint an option")
@@ -455,7 +455,7 @@ func TestUpdateViewOp(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editSetDoc), "headB")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","set":{"filters":[{"property":"dueDate","condition":"less","datePreset":"today"}]}}`), "", false)
+			patchBody(`{"op":"update_view","set":{"filters":[{"property":"dueDate","condition":"less","datePreset":"today"}]}}`), "", false)
 
 		require.NoError(t, err)
 		require.NotEmpty(t, result.Warnings, "the §6.2 empty-date trap rides the warnings channel")
@@ -471,7 +471,7 @@ func TestUpdateViewOp(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editSetDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","set":{"filter":"severity = \"High\""}}`), "", false)
+			patchBody(`{"op":"update_view","set":{"filter":"severity = \"High\""}}`), "", false)
 
 		require.NoError(t, err)
 		view := viewsOf(t, dataviewOf(t, *captured, "dataview"))[0]
@@ -487,7 +487,7 @@ func TestUpdateViewOp(t *testing.T) {
 		fx.expectMutate(editRead(t, editSetDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","set":{"filter":"name != \"\"","filters":[]}}`), "", false)
+			patchBody(`{"op":"update_view","set":{"filter":"name != \"\"","filters":[]}}`), "", false)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, v2model.CodeAmbiguousInput, apiErr.Code)
@@ -498,7 +498,7 @@ func TestUpdateViewOp(t *testing.T) {
 		fx.expectMutate(editRead(t, editSetDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","set":{"filter":"severity ="}}`), "", false)
+			patchBody(`{"op":"update_view","set":{"filter":"severity ="}}`), "", false)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, "ops[0].set.filter", apiErr.Issues[0].Path)
@@ -510,7 +510,7 @@ func TestUpdateViewOp(t *testing.T) {
 		fx.expectMutate(editRead(t, editTwoViewsDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","columns":{"severity":{"hidden":false}}}`), "", false)
+			patchBody(`{"op":"update_view","columns":{"severity":{"hidden":false}}}`), "", false)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, v2model.CodeAmbiguousInput, apiErr.Code)
@@ -523,7 +523,7 @@ func TestUpdateViewOp(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editTwoViewsDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","view":"Board2","columns":{"severity":{"hidden":false}}}`), "", false)
+			patchBody(`{"op":"update_view","view":"Board2","columns":{"severity":{"hidden":false}}}`), "", false)
 
 		require.NoError(t, err)
 		view := viewsOf(t, dataviewOf(t, *captured, "dataview"))[1]
@@ -537,7 +537,7 @@ func TestUpdateViewOp(t *testing.T) {
 		fx.expectMutate(editRead(t, editTwoViewsDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","view":"viewGone9","set":{"name":"X"}}`), "", false)
+			patchBody(`{"op":"update_view","view":"viewGone9","set":{"name":"X"}}`), "", false)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusNotFound, apiErr.Status)
@@ -549,7 +549,7 @@ func TestUpdateViewOp(t *testing.T) {
 		fx.expectMutate(editRead(t, editBaseDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","set":{"name":"X"}}`), "", false)
+			patchBody(`{"op":"update_view","set":{"name":"X"}}`), "", false)
 
 		apiErr := v2Err(t, err)
 		assert.Contains(t, apiErr.Message, "no dataview block")
@@ -560,7 +560,7 @@ func TestUpdateViewOp(t *testing.T) {
 		fx.expectMutate(editRead(t, editTwoDataviewsDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","set":{"name":"X"}}`), "", false)
+			patchBody(`{"op":"update_view","set":{"name":"X"}}`), "", false)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, v2model.CodeAmbiguousInput, apiErr.Code)
@@ -573,7 +573,7 @@ func TestUpdateViewOp(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editTwoDataviewsDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","block":"dvSecond2","columns":{"name":{"hidden":false}}}`), "", false)
+			patchBody(`{"op":"update_view","block":"dvSecond2","columns":{"name":{"hidden":false}}}`), "", false)
 
 		require.NoError(t, err)
 		second := viewsOf(t, dataviewOf(t, *captured, "dvSecond2"))[0]
@@ -589,7 +589,7 @@ func TestUpdateViewOp(t *testing.T) {
 		fx.expectMutate(editRead(t, editTwoDataviewsDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","block":"blockPara1","set":{"name":"X"}}`), "", false)
+			patchBody(`{"op":"update_view","block":"blockPara1","set":{"name":"X"}}`), "", false)
 
 		apiErr := v2Err(t, err)
 		assert.Contains(t, apiErr.Message, "not a dataview")
@@ -600,14 +600,14 @@ func TestUpdateViewOp(t *testing.T) {
 		fx.expectMutate(editRead(t, editSetDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView"}`), "", false)
+			patchBody(`{"op":"update_view"}`), "", false)
 
 		apiErr := v2Err(t, err)
 		assert.Contains(t, apiErr.Message, "set and/or columns")
-		assert.Contains(t, apiErr.Issues[0].Hint, "schemas/ops/updateView")
+		assert.Contains(t, apiErr.Issues[0].Hint, "schemas/ops/update_view")
 	})
 
-	t.Run("a failing updateView leaves the batch atomic", func(t *testing.T) {
+	t.Run("a failing update_view leaves the batch atomic", func(t *testing.T) {
 		// the op validates against a private copy: an invalid second op must
 		// not leave the first op's changes half-applied to the view document
 		fx := newV2Fixture(t)
@@ -615,8 +615,8 @@ func TestUpdateViewOp(t *testing.T) {
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
 			patchBody(
-				`{"op":"updateView","columns":{"severity":{"hidden":false}}}`,
-				`{"op":"updateView","set":{"type":"board"}}`), "", false)
+				`{"op":"update_view","columns":{"severity":{"hidden":false}}}`,
+				`{"op":"update_view","set":{"type":"board"}}`), "", false)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -637,7 +637,7 @@ func TestUpdateViewOp(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, doc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","columns":{"severity":{"hidden":false}}}`), "", false)
+			patchBody(`{"op":"update_view","columns":{"severity":{"hidden":false}}}`), "", false)
 
 		require.NoError(t, err)
 		view := viewsOf(t, dataviewOf(t, *captured, "dataview"))[0]
@@ -654,7 +654,7 @@ func TestUpdateViewOp(t *testing.T) {
 func TestUpdateViewSchema(t *testing.T) {
 	fx := newV2Fixture(t)
 
-	entry, err := fx.SchemaOp("updateView")
+	entry, err := fx.SchemaOp("update_view")
 
 	require.NoError(t, err)
 	var schema map[string]any
@@ -664,18 +664,18 @@ func TestUpdateViewSchema(t *testing.T) {
 	require.NoError(t, json.Unmarshal(entry.Example, &example))
 }
 
-// TestViewFamilyOps covers insertView / moveView / deleteView (§8.18).
+// TestViewFamilyOps covers insert_view / move_view / delete_view (§8.18).
 func TestViewFamilyOps(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("bare insertView appends a usable view: every property visible, latest first", func(t *testing.T) {
+	t.Run("bare insert_view appends a usable view: every property visible, latest first", func(t *testing.T) {
 		// given: the create-defaults decision — NOT the native CreateView
 		// default, which hides every column but name (the GO-5969 disease)
 		fx := newV2Fixture(t)
 		captured := fx.expectMutate(editRead(t, editSetDoc), "headB")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insertView","name":"Recent"}`), "", false)
+			patchBody(`{"op":"insert_view","name":"Recent"}`), "", false)
 
 		// then
 		require.NoError(t, err)
@@ -699,12 +699,12 @@ func TestViewFamilyOps(t *testing.T) {
 		assert.Equal(t, "desc", sorts[0].(map[string]any)["direction"])
 	})
 
-	t.Run("insertView with set and columns is updateView aimed at a fresh view", func(t *testing.T) {
+	t.Run("insert_view with set and columns is update_view aimed at a fresh view", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		captured := fx.expectMutate(editRead(t, editSetDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insertView","name":"Board","set":{"type":"kanban","groupBy":"severity"},"columns":{"dueDate":{"hidden":true}}}`), "", false)
+			patchBody(`{"op":"insert_view","name":"Board","set":{"type":"kanban","groupBy":"severity"},"columns":{"dueDate":{"hidden":true}}}`), "", false)
 
 		require.NoError(t, err)
 		view := viewsOf(t, dataviewOf(t, *captured, "dataview"))[1]
@@ -715,12 +715,12 @@ func TestViewFamilyOps(t *testing.T) {
 		assert.Equal(t, true, dueDate["hidden"], "the columns channel merges onto the defaults")
 	})
 
-	t.Run("copyFrom duplicates everything but identity, then set overrides", func(t *testing.T) {
+	t.Run("copy_from duplicates everything but identity, then set overrides", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		captured := fx.expectMutate(editRead(t, editTwoViewsDoc), "headB")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insertView","name":"Board copy","copyFrom":"viewBoard2","set":{"cardSize":"large"}}`), "", false)
+			patchBody(`{"op":"insert_view","name":"Board copy","copy_from":"viewBoard2","set":{"cardSize":"large"}}`), "", false)
 
 		require.NoError(t, err)
 		views := viewsOf(t, dataviewOf(t, *captured, "dataview"))
@@ -735,12 +735,12 @@ func TestViewFamilyOps(t *testing.T) {
 		assert.Equal(t, result.CreatedViews["ops[0]"], copied["id"])
 	})
 
-	t.Run("insertView targets a position; first is the default tab", func(t *testing.T) {
+	t.Run("insert_view targets a position; first is the default tab", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		captured := fx.expectMutate(editRead(t, editTwoViewsDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insertView","name":"Lead","position":"first"}`), "", false)
+			patchBody(`{"op":"insert_view","name":"Lead","position":"first"}`), "", false)
 
 		require.NoError(t, err)
 		views := viewsOf(t, dataviewOf(t, *captured, "dataview"))
@@ -749,71 +749,71 @@ func TestViewFamilyOps(t *testing.T) {
 		assert.Equal(t, "All", views[1]["name"])
 	})
 
-	t.Run("insertView after a view ref lands between", func(t *testing.T) {
+	t.Run("insert_view after a view ref lands between", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		captured := fx.expectMutate(editRead(t, editTwoViewsDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insertView","name":"Middle","after":"viewAll1"}`), "", false)
+			patchBody(`{"op":"insert_view","name":"Middle","after":"viewAll1"}`), "", false)
 
 		require.NoError(t, err)
 		views := viewsOf(t, dataviewOf(t, *captured, "dataview"))
 		assert.Equal(t, "Middle", views[1]["name"])
 	})
 
-	t.Run("insertView needs a name", func(t *testing.T) {
+	t.Run("insert_view needs a name", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.expectMutate(editRead(t, editSetDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insertView"}`), "", false)
+			patchBody(`{"op":"insert_view"}`), "", false)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, "ops[0].name", apiErr.Issues[0].Path)
-		assert.Contains(t, apiErr.Issues[0].Hint, "schemas/ops/insertView")
+		assert.Contains(t, apiErr.Issues[0].Hint, "schemas/ops/insert_view")
 	})
 
-	t.Run("insertView with an unknown copyFrom lists the views", func(t *testing.T) {
+	t.Run("insert_view with an unknown copy_from lists the views", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.expectMutate(editRead(t, editTwoViewsDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insertView","name":"X","copyFrom":"viewGone9"}`), "", false)
+			patchBody(`{"op":"insert_view","name":"X","copy_from":"viewGone9"}`), "", false)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusNotFound, apiErr.Status)
 		assert.Contains(t, apiErr.Message, `viewAll1 ("All")`)
 	})
 
-	t.Run("insertView with two targeting fields is ambiguous", func(t *testing.T) {
+	t.Run("insert_view with two targeting fields is ambiguous", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.expectMutate(editRead(t, editTwoViewsDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insertView","name":"X","after":"viewAll1","position":"first"}`), "", false)
+			patchBody(`{"op":"insert_view","name":"X","after":"viewAll1","position":"first"}`), "", false)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, v2model.CodeAmbiguousInput, apiErr.Code)
 		assert.Contains(t, apiErr.Message, "at most one of after, before, position")
 	})
 
-	t.Run("insertView validates its channels like updateView", func(t *testing.T) {
+	t.Run("insert_view validates its channels like update_view", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.expectMutate(editRead(t, editSetDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insertView","name":"X","set":{"type":"board"}}`), "", false)
+			patchBody(`{"op":"insert_view","name":"X","set":{"type":"board"}}`), "", false)
 
 		apiErr := v2Err(t, err)
 		assert.Contains(t, apiErr.Issues[0].Message, "table, list, gallery, kanban, calendar, graph")
 	})
 
-	t.Run("moveView reorders without resending the list", func(t *testing.T) {
+	t.Run("move_view reorders without resending the list", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		captured := fx.expectMutate(editRead(t, editTwoViewsDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"moveView","view":"viewBoard2","position":"first"}`), "", false)
+			patchBody(`{"op":"move_view","view":"viewBoard2","position":"first"}`), "", false)
 
 		require.NoError(t, err)
 		views := viewsOf(t, dataviewOf(t, *captured, "dataview"))
@@ -823,12 +823,12 @@ func TestViewFamilyOps(t *testing.T) {
 		require.Len(t, columnsOf(t, views[0]), 2, "the moved view's content is untouched")
 	})
 
-	t.Run("moveView after a later view adjusts the splice correctly", func(t *testing.T) {
+	t.Run("move_view after a later view adjusts the splice correctly", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		captured := fx.expectMutate(editRead(t, editTwoViewsDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"moveView","view":"viewAll1","after":"viewBoard2"}`), "", false)
+			patchBody(`{"op":"move_view","view":"viewAll1","after":"viewBoard2"}`), "", false)
 
 		require.NoError(t, err)
 		views := viewsOf(t, dataviewOf(t, *captured, "dataview"))
@@ -836,18 +836,18 @@ func TestViewFamilyOps(t *testing.T) {
 		assert.Equal(t, "viewAll1", views[1]["id"])
 	})
 
-	t.Run("moveView requires the view", func(t *testing.T) {
+	t.Run("move_view requires the view", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.expectMutate(editRead(t, editTwoViewsDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"moveView","position":"first"}`), "", false)
+			patchBody(`{"op":"move_view","position":"first"}`), "", false)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, "ops[0].view", apiErr.Issues[0].Path)
 	})
 
-	t.Run("deleteView removes the view and its editor state", func(t *testing.T) {
+	t.Run("delete_view removes the view and its editor state", func(t *testing.T) {
 		doc := `{"version":1,"id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
 			`{"id":"dataview","type":"dataview",` +
 			`"properties":[{"key":"name","format":"text"},{"key":"severity","format":"select"}],` +
@@ -859,7 +859,7 @@ func TestViewFamilyOps(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, doc), "headB")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"deleteView","view":"viewBoard2"}`), "", false)
+			patchBody(`{"op":"delete_view","view":"viewBoard2"}`), "", false)
 
 		require.NoError(t, err)
 		assert.Equal(t, v2model.DiffStats{BlocksChanged: 1}, result.DiffStats)
@@ -873,16 +873,16 @@ func TestViewFamilyOps(t *testing.T) {
 		fx.expectMutate(editRead(t, editSetDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"deleteView","view":"viewAll1"}`), "", false)
+			patchBody(`{"op":"delete_view","view":"viewAll1"}`), "", false)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
 		assert.Contains(t, apiErr.Message, "cannot delete the last view")
-		assert.Contains(t, apiErr.Issues[0].Hint, "insertView")
+		assert.Contains(t, apiErr.Issues[0].Hint, "insert_view")
 	})
 
 	t.Run("insert-then-delete in one batch makes the last-view guard count the insert", func(t *testing.T) {
-		// the batch is atomic and sequential: after insertView there are two
+		// the batch is atomic and sequential: after insert_view there are two
 		// views, so deleting the formerly-only one is legal — replacing a
 		// type's default view is exactly this two-op batch
 		fx := newV2Fixture(t)
@@ -890,8 +890,8 @@ func TestViewFamilyOps(t *testing.T) {
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
 			patchBody(
-				`{"op":"insertView","name":"Better","copyFrom":"viewAll1","columns":{"severity":{"hidden":false}}}`,
-				`{"op":"deleteView","view":"viewAll1"}`), "", false)
+				`{"op":"insert_view","name":"Better","copy_from":"viewAll1","columns":{"severity":{"hidden":false}}}`,
+				`{"op":"delete_view","view":"viewAll1"}`), "", false)
 
 		require.NoError(t, err)
 		views := viewsOf(t, dataviewOf(t, *captured, "dataview"))
@@ -926,15 +926,15 @@ func TestViewFamilyOps(t *testing.T) {
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
 			patchBody(
-				`{"op":"insertView","name":"Extra"}`,
-				`{"op":"moveView","view":"viewBoard2","position":"first"}`,
-				`{"op":"deleteView","view":"viewAll1"}`), "", false)
+				`{"op":"insert_view","name":"Extra"}`,
+				`{"op":"move_view","view":"viewBoard2","position":"first"}`,
+				`{"op":"delete_view","view":"viewAll1"}`), "", false)
 
 		require.NoError(t, err, "a fully restricted set must still accept the whole view family")
 		assert.Equal(t, apicore.EditNeeds{}, got)
 	})
 
-	t.Run("the M5 bound counts insertView's filter options", func(t *testing.T) {
+	t.Run("the M5 bound counts insert_view's filter options", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.addTagProperty(t)
 		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").
@@ -945,7 +945,7 @@ func TestViewFamilyOps(t *testing.T) {
 			names = append(names, `"NewTag`+string(rune('A'+i%26))+string(rune('0'+i/26))+`"`)
 		}
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insertView","name":"Tagged","set":{"filters":[{"property":"tags","condition":"in","value":[`+joinStrings(names, ",")+`]}]}}`), "", false)
+			patchBody(`{"op":"insert_view","name":"Tagged","set":{"filters":[{"property":"tags","condition":"in","value":[`+joinStrings(names, ",")+`]}]}}`), "", false)
 
 		apiErr := v2Err(t, err)
 		assert.Contains(t, apiErr.Message, "too many new options")
@@ -980,7 +980,7 @@ func TestViewOpReviewFixes(t *testing.T) {
 		// no ObjectCreateRelationOption expectation: any create RPC fails the test
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"moveView","view":"viewOld2","position":"first"}`), "", false)
+			patchBody(`{"op":"move_view","view":"viewOld2","position":"first"}`), "", false)
 
 		require.NoError(t, err)
 		assert.Nil(t, result.Created, "an op that authors no values must create nothing")
@@ -1028,7 +1028,7 @@ func TestViewOpReviewFixes(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, doc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","view":"viewAll1","columns":{"severity":{"hidden":false}}}`), "", false)
+			patchBody(`{"op":"update_view","view":"viewAll1","columns":{"severity":{"hidden":false}}}`), "", false)
 
 		require.NoError(t, err)
 		views := viewsOf(t, dataviewOf(t, *captured, "dataview"))
@@ -1060,7 +1060,7 @@ func TestViewOpReviewFixes(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, doc), "headB")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","set":{"filters":[{"property":"legacy","condition":"equal","value":"Ghost"}]}}`), "", false)
+			patchBody(`{"op":"update_view","set":{"filters":[{"property":"legacy","condition":"equal","value":"Ghost"}]}}`), "", false)
 
 		require.NoError(t, err)
 		assert.Nil(t, result.Created, "the narrow prewarm/import disagreement must not mint under the lock")
@@ -1070,7 +1070,7 @@ func TestViewOpReviewFixes(t *testing.T) {
 		assert.Equal(t, "Ghost", filters[0].(map[string]any)["value"], "the unresolvable value passes through verbatim")
 	})
 
-	t.Run("A: copyFrom preserves the source's exact option ids", func(t *testing.T) {
+	t.Run("A: copy_from preserves the source's exact option ids", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.addSelectProperty(t) // opt-high exists
 		doc := `{"version":1,"id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
@@ -1081,7 +1081,7 @@ func TestViewOpReviewFixes(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, doc), "headB")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insertView","name":"Copy","copyFrom":"viewAll1"}`), "", false)
+			patchBody(`{"op":"insert_view","name":"Copy","copy_from":"viewAll1"}`), "", false)
 
 		require.NoError(t, err)
 		assert.Nil(t, result.Created)
@@ -1094,7 +1094,7 @@ func TestViewOpReviewFixes(t *testing.T) {
 	})
 
 	t.Run("B: the render bound sees dataview weight, not one block", func(t *testing.T) {
-		// a fully legal 512×insertView batch on a wide set held the lock for
+		// a fully legal 512×insert_view batch on a wide set held the lock for
 		// tens of seconds while scoring 0.05% of the budget — the dataview is
 		// one block whose marshal cost is O(views × columns)
 		fx := newV2Fixture(t)
@@ -1135,7 +1135,7 @@ func TestViewOpReviewFixes(t *testing.T) {
 
 		ops := make([]string, 0, v2MaxOpsPerPatch)
 		for i := 0; i < v2MaxOpsPerPatch; i++ {
-			ops = append(ops, fmt.Sprintf(`{"op":"insertView","name":"Extra %d"}`, i))
+			ops = append(ops, fmt.Sprintf(`{"op":"insert_view","name":"Extra %d"}`, i))
 		}
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(ops...), "", false)
 
@@ -1156,7 +1156,7 @@ func TestViewOpReviewFixes(t *testing.T) {
 		_, err = applier.begin()
 		require.NoError(t, err)
 
-		op := json.RawMessage(`{"op":"moveView","view":"viewBoard2","position":"first"}`)
+		op := json.RawMessage(`{"op":"move_view","view":"viewBoard2","position":"first"}`)
 		for i := 0; i < 2; i++ {
 			require.NoError(t, applier.apply(i, op))
 		}
@@ -1164,19 +1164,19 @@ func TestViewOpReviewFixes(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, 3, applier.marshalCount, "2 view ops = begin + one rebuild + the final render")
-		for _, opName := range []string{"updateView", "insertView", "moveView", "deleteView"} {
+		for _, opName := range []string{"update_view", "insert_view", "move_view", "delete_view"} {
 			assert.True(t, v2OpRebuildsView[opName],
 				"%s re-marshals per op (measured above) and must be counted by the M7 bound", opName)
 		}
 	})
 
-	t.Run("E: insertView rejects set.name — including the null that defeated the requirement", func(t *testing.T) {
+	t.Run("E: insert_view rejects set.name — including the null that defeated the requirement", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.expectMutate(editRead(t, editSetDoc))
 
 		for _, body := range []string{
-			`{"op":"insertView","name":"Real","set":{"name":"Sneaky"}}`,
-			`{"op":"insertView","name":"Real","set":{"name":null}}`,
+			`{"op":"insert_view","name":"Real","set":{"name":"Sneaky"}}`,
+			`{"op":"insert_view","name":"Real","set":{"name":null}}`,
 		} {
 			_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(body), "", false)
 			apiErr := v2Err(t, err)
@@ -1196,7 +1196,7 @@ func TestViewOpReviewFixes(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, doc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","columns":{"name":{"hidden":false}}}`), "", false)
+			patchBody(`{"op":"update_view","columns":{"name":{"hidden":false}}}`), "", false)
 
 		require.NoError(t, err)
 		blocks := docBlocks(stateDoc(t, *captured))
@@ -1216,7 +1216,7 @@ func TestViewOpReviewFixes(t *testing.T) {
 		fx.expectMutate(editRead(t, doc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","columns":{"name":null}}`), "", false)
+			patchBody(`{"op":"update_view","columns":{"name":null}}`), "", false)
 
 		require.NoError(t, err, "a removal no-op must not write columns:null into the block")
 	})
@@ -1230,7 +1230,7 @@ func TestViewOpReviewFixes(t *testing.T) {
 			entries[i] = fmt.Sprintf(`"v%d"`, i)
 		}
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","set":{"sorts":[{"property":"severity","customOrder":[`+joinStrings(entries, ",")+`]}]}}`), "", false)
+			patchBody(`{"op":"update_view","set":{"sorts":[{"property":"severity","customOrder":[`+joinStrings(entries, ",")+`]}]}}`), "", false)
 		apiErr := v2Err(t, err)
 		assert.Equal(t, "ops[0].set.sorts[0].customOrder", apiErr.Issues[0].Path)
 
@@ -1239,7 +1239,7 @@ func TestViewOpReviewFixes(t *testing.T) {
 			nodes[i] = `{"property":"severity","condition":"notEmpty"}`
 		}
 		_, err = fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","set":{"filters":[`+joinStrings(nodes, ",")+`]}}`), "", false)
+			patchBody(`{"op":"update_view","set":{"filters":[`+joinStrings(nodes, ",")+`]}}`), "", false)
 		apiErr = v2Err(t, err)
 		assert.Contains(t, apiErr.Issues[0].Message, "top-level filter nodes")
 	})
@@ -1252,7 +1252,7 @@ func TestViewOpReviewFixes(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editTwoViewsDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","view":"viewAll1","set":{"filter":"severity IS NOT EMPTY"}}`), "", false)
+			patchBody(`{"op":"update_view","view":"viewAll1","set":{"filter":"severity IS NOT EMPTY"}}`), "", false)
 
 		require.NoError(t, err, "the string form must accept keys the structured form accepts")
 		view := viewsOf(t, dataviewOf(t, *captured, "dataview"))[0]
@@ -1261,12 +1261,12 @@ func TestViewOpReviewFixes(t *testing.T) {
 		assert.Equal(t, "severity", filters[0].(map[string]any)["property"])
 	})
 
-	t.Run("minor: a target-less moveView is refused, not a silent default-tab change", func(t *testing.T) {
+	t.Run("minor: a target-less move_view is refused, not a silent default-tab change", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.expectMutate(editRead(t, editTwoViewsDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"moveView","view":"viewAll1"}`), "", false)
+			patchBody(`{"op":"move_view","view":"viewAll1"}`), "", false)
 
 		apiErr := v2Err(t, err)
 		assert.Contains(t, apiErr.Message, "needs a destination")
@@ -1281,7 +1281,7 @@ func TestViewOpReviewFixes(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editSetDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insertView","name":"One"}`, `{"op":"insertView","name":"Two"}`), "", false)
+			patchBody(`{"op":"insert_view","name":"One"}`, `{"op":"insert_view","name":"Two"}`), "", false)
 
 		require.NoError(t, err)
 		views := viewsOf(t, dataviewOf(t, *captured, "dataview"))
@@ -1290,7 +1290,7 @@ func TestViewOpReviewFixes(t *testing.T) {
 		assert.Len(t, columnsOf(t, views[2]), 3, "the second bare insert must not inherit a column the first one's sort minted")
 	})
 
-	t.Run("minor: copyFrom carries the source's kanban editor state", func(t *testing.T) {
+	t.Run("minor: copy_from carries the source's kanban editor state", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		doc := `{"version":1,"id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
 			`{"id":"dataview","type":"dataview",` +
@@ -1302,7 +1302,7 @@ func TestViewOpReviewFixes(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, doc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insertView","name":"Board 2","copyFrom":"viewBoard1"}`), "", false)
+			patchBody(`{"op":"insert_view","name":"Board 2","copy_from":"viewBoard1"}`), "", false)
 
 		require.NoError(t, err)
 		views := viewsOf(t, dataviewOf(t, *captured, "dataview"))
@@ -1316,7 +1316,7 @@ func TestViewOpReviewFixes(t *testing.T) {
 
 // TestViewSchemaDrift pins the served schemas to the implementation: the
 // §6.2 enum vocabulary comes from viewvocab.go, the sorts item accepts the
-// id every read emits, and insertView's set has no name slot.
+// id every read emits, and insert_view's set has no name slot.
 func TestViewSchemaDrift(t *testing.T) {
 	fx := newV2Fixture(t)
 
@@ -1341,7 +1341,7 @@ func TestViewSchemaDrift(t *testing.T) {
 		return out
 	}
 
-	entry, err := fx.SchemaOp("updateView")
+	entry, err := fx.SchemaOp("update_view")
 	require.NoError(t, err)
 	var schema map[string]any
 	require.NoError(t, json.Unmarshal(entry.Schema, &schema))
@@ -1367,14 +1367,14 @@ func TestViewSchemaDrift(t *testing.T) {
 		assert.Equal(t, float64(maxV2ViewFilterNodes), filters["maxItems"])
 	})
 
-	t.Run("insertView's set has no name slot", func(t *testing.T) {
-		entry, err := fx.SchemaOp("insertView")
+	t.Run("insert_view's set has no name slot", func(t *testing.T) {
+		entry, err := fx.SchemaOp("insert_view")
 		require.NoError(t, err)
 		var schema map[string]any
 		require.NoError(t, json.Unmarshal(entry.Schema, &schema))
 		insertSetProps := dig(t, schema, "properties", "set", "properties")
 		_, hasName := insertSetProps["name"]
-		assert.False(t, hasName, "insertView's name is the op's required top-level field")
+		assert.False(t, hasName, "insert_view's name is the op's required top-level field")
 	})
 }
 
@@ -1394,7 +1394,7 @@ func TestViewOpKeySpellings(t *testing.T) {
 
 		// when
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","columns":{"dueDate":{"hidden":false}}}`), "", false)
+			patchBody(`{"op":"update_view","columns":{"dueDate":{"hidden":false}}}`), "", false)
 
 		// then
 		require.NoError(t, err)
@@ -1414,7 +1414,7 @@ func TestViewOpKeySpellings(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editSetDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"updateView","set":{"groupBy":"DueDate","sorts":[{"property":"due-date","direction":"desc"}]}}`), "", false)
+			patchBody(`{"op":"update_view","set":{"groupBy":"DueDate","sorts":[{"property":"due-date","direction":"desc"}]}}`), "", false)
 
 		require.NoError(t, err)
 		view := viewsOf(t, dataviewOf(t, *captured, "dataview"))[0]

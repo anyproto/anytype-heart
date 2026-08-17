@@ -189,7 +189,7 @@ func isStreamedUpload(r *http.Request) bool {
 // body returns the stored result; the same key with a different body → 409
 // idempotency_conflict. Requests without the header pass through. PATCH is
 // where a blind agent retry does the most damage — a retried successful
-// insertBlocks duplicates blocks, a retried deleteBlock 404s misleadingly —
+// insert_blocks duplicates blocks, a retried delete_block 404s misleadingly —
 // so the middleware covers it like POST (v0.3.5).
 //
 // The gate is a METHOD classifier, not a route list, so PUT stays in the

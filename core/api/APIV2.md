@@ -25,11 +25,11 @@ option resolution, per-space global semantics, the empty-date warning,
 §6.2 dynamic placeholders, search is declared a read (exempt from C8/C9),
 and the internal build-vs-reuse inventory is named. **Phase 5's §7 was
 aligned with the shipped op set**: create-missing option names per R9,
-`add`/`remove` on `set_properties`, a `check_item` tool over `updateBlock`,
-markdown decided as an `insertBlocks` payload alternative, the reference
+`add`/`remove` on `set_properties`, a `check_item` tool over `update_block`,
+markdown decided as an `insert_blocks` payload alternative, the reference
 and editing channels qualified (full-read relabeling; D′1 markup caveat),
 and the hard dependency order stated. §3/§4 refreshed so every gate is
-still decidable (B1/B2 reworded — `replaceText`/`setCell` and both filter
+still decidable (B1/B2 reworded — `replace_text`/`set_cell` and both filter
 forms ship regardless). The SPEC §6.2.1 contradiction is **resolved**: the
 filter grammar + parser ship now as a library
 (`pkg/lib/anyblockjson/filterstring`) consumed by the API; only the
@@ -44,14 +44,14 @@ full REST API, identical to the Phase-5 CLI verb-set, exposed as CLI verbs
 and an on-device function-calling/MCP manifest. It picks agent-friendly
 *channels* the raw REST body can't (markdown-in for authoring, anchor-in for
 editing, enumerated handles for reference), which closes the review's three
-structural findings. Consequently `replaceText` and `setCell` become
+structural findings. Consequently `replace_text` and `set_cell` become
 **launch primitives** (the wrapper depends on them), the filter-string parser
 becomes a launch dependency, and the primary worked examples switch to
 single-op / single-filter forms. See §7 and the reweighted §2/§3/§4.
 
 Changes from v0.1 (carried): the 3-lens review (`core/api/APIV2_REVIEW.md`,
 R1–R15) — block ids full on edit reads (R1); `revision` → advisory `etag`
-(R2); `inside` indent + `updateBlock` (R3/R4); post-op validity normative
+(R2); `inside` indent + `update_block` (R3/R4); post-op validity normative
 (R5); build-items marked (R6); `type` everywhere (R7); C13 strict schemas
 (R8); `/validate` split (R9); sets path (R10); files/spaces/members/archive
 (R11); read matrix (R12); benchmarks (R13); op gaps (R14); errors (R15).
@@ -69,14 +69,14 @@ repair loop with path-addressed errors.
 | # | Convention | Rationale (research ref) |
 |---|---|---|
 | C1 | Base path `/v2`, localhost, bearer auth and `Anytype-Version` date header as in v1. | migration §4.8 |
-| C2 | **One vocabulary: the format's.** camelCase, property **keys**, option **names** — everywhere, both directions. The object-type field is **`type`** (a type key) on every surface: envelope, rows, search, shortcuts. No id/key duality, no snake_case. Object ids remain ids. | v1's top agent trap (§2.1) |
+| C2 | **One vocabulary, and it is the transport's: `snake_case`** (revised §8.46 — the original read "the format's, camelCase", which two later decisions had already contradicted). Every name **v2 itself owns** is snake_case, in every layer and both directions: path segments and path params (`/v2/spaces/{space_id}/objects/{object_id}`), query params (`dry_run`, `ids`), response and request body fields (`space_id`, `author_id`, `diff_stats`, `created_blocks`, `last_state_id`), and the PATCH op names (`set_properties`, `replace_text`, `insert_blocks`, …). Addressing is still **by name, never by id**: property **keys** and option **names**, no id/key duality, and the object-type field is **`type`** (a type key) on every surface — envelope, rows, search, shortcuts. Object ids remain ids. **The version lives in the path (`/v2`), never in a name** — no `v2_` prefix on a schema, an operationId, an op or a field. **Boundary:** the AnyBlock document is the FORMAT's vocabulary, not v2's — whatever SPEC spells inside `blocks`/`properties` crosses through unchanged and v2 never re-spells it (the query surface's `mimeType`/`size` field aliases are the format's names too, and follow it). | v1's top agent trap (§2.1); the Wave 1.3 property slugs (ADDRESSING §7.5a-4) |
 | C3 | **Compact JSON always** (no pretty-printing) — **all the way down, not just the envelope**. `anyblockjson.Marshal` returns the format's canonical byte form, which is two-space **indented** (SPEC §4), and the v2 envelope re-embeds those bytes verbatim; until Wave 0.1 every object read was therefore compact on top and pretty-printed underneath, costing a measured 16–26 %. *(Built: `encodeEnvelope` compacts each embedded value — the serving layer, so the format's canonical form and its `Export ∘ Import` byte-stability are untouched; §8.24.)* | free 38–46% (§3.6); 16–26% (TOKENS §1.1) |
-| C4 | **Two document shapes, one id axis** (revised Wave 0.2, hardened §8.26; TOKENS §1.2/§10). `?ids=compact` (**the default — the *edit* shape**): **machine-minted** block/row/column/view ids — 24-hex bson and view UUIDs, `isMintedLocalId` — relabel to their 5-char suffixes (legend-less, **lossy**); every id that could carry meaning (`dataview`, `title`, readable imported ids) keeps its full spelling and is **reserved**, so no label can alias a served id. `?ids=full` (**the *export* shape**): full ids everywhere — the **backup/export** read (§3(b)), and the read to clone from when a POST should reuse the source's real ids. Object refs are **full inline on every shape**: the `refs` legend was a measured net loss **on the measured corpus** (85–90 % of refs used once; §1.2's own model has it winning only at ≥2× reuse) and its indirection trapped write-back, so no shape serves one — but legend **resolution on input stays total** (SPEC §9a), so a document arriving with a legend still resolves. Every write channel resolves a block/view/row/column id by exact id **or unique suffix** (`matchBlockRef`), which is what makes the lossy edit shape addressable — **in payload slots as well as reference slots since §8.29**, so no channel takes an id **literally**, which is what made the compact shape a trap (§8.26). *(§8.27 claimed this was already true once PUT was gone. It was not: PATCH resolved `updateBlock.id`, `replaceSubtree.id`, the targeting refs and the table/view refs, but handed `replaceSubtree.blocks[].id`, `updateBlock.set.{rows,columns,views}[].id` and `setCell.value[].id` to the format importer verbatim — reproduced as permanent id corruption on the documented read-then-echo loop.)* A payload id resolving to nothing is refused, not minted over; omitting it is how new content is authored. Never require echoing a full CID. *(Built: `Options.CompactBlockLabels` composed by `objectReadPlan`; `Options.CompactObjectRefs` remains a format-package option no API shape sets. Wave 2 renames the two values to `?mode=edit\|full` with no change of bytes.)* **Outline exception (T7)**: the outline fixes the axis — short labels — and ignores `?ids=`. | ~24×/id, −89% id errors (§3.6); block labels −19…−22% on minted-id documents, the legend a net **loss** of 0.9–11.5% on the measured corpus (TOKENS §1.2, live-measured); id round-trip contract (R1) |
+| C4 | **Two document shapes, one id axis** (revised Wave 0.2, hardened §8.26; TOKENS §1.2/§10). `?ids=compact` (**the default — the *edit* shape**): **machine-minted** block/row/column/view ids — 24-hex bson and view UUIDs, `isMintedLocalId` — relabel to their 5-char suffixes (legend-less, **lossy**); every id that could carry meaning (`dataview`, `title`, readable imported ids) keeps its full spelling and is **reserved**, so no label can alias a served id. `?ids=full` (**the *export* shape**): full ids everywhere — the **backup/export** read (§3(b)), and the read to clone from when a POST should reuse the source's real ids. Object refs are **full inline on every shape**: the `refs` legend was a measured net loss **on the measured corpus** (85–90 % of refs used once; §1.2's own model has it winning only at ≥2× reuse) and its indirection trapped write-back, so no shape serves one — but legend **resolution on input stays total** (SPEC §9a), so a document arriving with a legend still resolves. Every write channel resolves a block/view/row/column id by exact id **or unique suffix** (`matchBlockRef`), which is what makes the lossy edit shape addressable — **in payload slots as well as reference slots since §8.29**, so no channel takes an id **literally**, which is what made the compact shape a trap (§8.26). *(§8.27 claimed this was already true once PUT was gone. It was not: PATCH resolved `update_block.id`, `replace_subtree.id`, the targeting refs and the table/view refs, but handed `replace_subtree.blocks[].id`, `update_block.set.{rows,columns,views}[].id` and `set_cell.value[].id` to the format importer verbatim — reproduced as permanent id corruption on the documented read-then-echo loop.)* A payload id resolving to nothing is refused, not minted over; omitting it is how new content is authored. Never require echoing a full CID. *(Built: `Options.CompactBlockLabels` composed by `objectReadPlan`; `Options.CompactObjectRefs` remains a format-package option no API shape sets. Wave 2 renames the two values to `?mode=edit\|full` with no change of bytes.)* **Outline exception (T7)**: the outline fixes the axis — short labels — and ignores `?ids=`. | ~24×/id, −89% id errors (§3.6); block labels −19…−22% on minted-id documents, the legend a net **loss** of 0.9–11.5% on the measured corpus (TOKENS §1.2, live-measured); id round-trip contract (R1) |
 | C5 | Minimal rows: list/search responses carry `id, name, type` + requested property values. **Never embed type objects.** `fields=` expands. | v1's N× multiplier (§2.1) |
 | C6 | Error shape everywhere: `{status, code, message, issues:[{path, message, hint}]}` — path-addressed, naming allowed values. Required codes include: `validation_failed`, `version_unsupported` (surfaces SPEC §10's "produced by a newer version" verbatim, naming both versions), `idempotency_conflict` (same key, different body), `etag_mismatch`, `ambiguous_input` (e.g. both `filter` and `filters` supplied), `forbidden` (403 — an operation the caller's identity may not perform, e.g. editing another member's chat message; added by the Phase-6 review; also the `/v2` key-scope gate's refusal of a non-JsonAPI key, which answers in the shared v1 envelope — §8.9). Error text is API surface; test it. | repair loop (§3.2, §4.6); R15 |
-| C7 | Every object read returns **`etag`** (short opaque token, ≤8 chars, derived from tree heads — NOT the object's `revision` property, which stays in `properties`) plus an `ETag` header. Mutations accept **`If-Match` header only** (the AnyBlock body has no envelope slot for it). **Advisory by default**: without `If-Match`, ops apply last-write-wins and `diffStats` reports the outcome; with it, mismatch → 409 `etag_mismatch` carrying the current etag. Note: the etag advances on background sync, not only on agent edits — strict If-Match will 409 on sync noise; block-scoped preconditions (ops apply iff the *addressed* blocks are unchanged) are the deferred v2.x refinement. | R2; optimistic concurrency (§3.2) |
+| C7 | Every object read returns **`etag`** (short opaque token, ≤8 chars, derived from tree heads — NOT the object's `revision` property, which stays in `properties`) plus an `ETag` header. Mutations accept **`If-Match` header only** (the AnyBlock body has no envelope slot for it). **Advisory by default**: without `If-Match`, ops apply last-write-wins and `diff_stats` reports the outcome; with it, mismatch → 409 `etag_mismatch` carrying the current etag. Note: the etag advances on background sync, not only on agent edits — strict If-Match will 409 on sync noise; block-scoped preconditions (ops apply iff the *addressed* blocks are unchanged) are the deferred v2.x refinement. | R2; optimistic concurrency (§3.2) |
 | C8 | `Idempotency-Key` honored on all mutations (POST, PATCH, DELETE — v0.3.5/Phase 6; was POST-only); replay with the same key returns the stored result; same key with a different body → 409 `idempotency_conflict`. Response always returns created ids. | agent auto-retry (§3.7); R15 |
-| C9 | `?dry_run=true` on every mutation → would-be diff summary + issues, nothing committed. **Recorded C2 carve-out**: the response's `dry_run` echo keeps the query parameter's snake_case spelling (uniform across all v2 mutation DTOs — §8.8). | highest-leverage affordance (§3.7) |
+| C9 | `?dry_run=true` on every mutation → would-be diff summary + issues, nothing committed. The response's `dry_run` echo is spelled exactly like the query parameter it answers. *(This was recorded as a C2 carve-out while C2 said camelCase; since §8.46 it is simply the rule, and the carve-out is gone.)* | highest-leverage affordance (§3.7) |
 | C10 | Pagination on **every** list surface — objects, search, and the discovery lists (types, properties, **options**): default `limit=25`, `has_more`, truncation messages steer ("312 matches — narrow with filter…"). Options lists take a `prefix=` filter (tag-like properties can hold thousands of options). | Linear/AXI (§3.4, §3.7); R-minor |
 | C11 | Reads never fail on unknown *content*; anything a representation cannot express is listed in `warnings` (array of the C6 issue shape, warning-grade). Writes never pass through a lossy representation. | ADF disaster (§3.3) |
 | C12 | Every endpoint documents **one worked example + its JSON Schema**, embedded in OpenAPI and fetchable (§5 discovery). | examples 72→90% (§3.4) |
@@ -102,7 +102,7 @@ that does not exist yet and must be built (not assumed).
   against a scratch space, scores **apply-success, corruption
   (round-trip backtranslation, DELEGATE-52 method), output tokens, turns**.
   Task set: append paragraph · edit one word · toggle a checkbox ·
-  restructure a section · fill a table cell (`setCell`) · create task with
+  restructure a section · fill a table cell (`set_cell`) · create task with
   properties · build a set with filter. Model tiers: small (3–8B local), mid (Haiku-class),
   frontier. **The small tier runs under grammar-constrained decoding**
   (XGrammar-class) — without that floor, 3–8B loops produce null data and
@@ -111,21 +111,21 @@ that does not exist yet and must be built (not assumed).
 ### Phase 1 — read
 
 ```
-GET /v2/spaces/{spaceId}/objects/{objectId}
+GET /v2/spaces/{space_id}/objects/{object_id}
     ?include=properties,blocks      # subset; default both
     ?outline=true                   # block skeleton, see below
     ?block={blockId}                # subtree only (contiguous indent-run)
     ?ids=compact|full               # document shape (C4); default compact (edit)
     ?format=anyblock|md             # md read-only, with warnings (C11)
-GET /v2/spaces/{spaceId}/objects            # minimal rows (C5)
-DELETE /v2/spaces/{spaceId}/objects/{objectId}   # archive, OWN OUTPUT ONLY (creator provenance, §8.42); ?permanent=true later
+GET /v2/spaces/{space_id}/objects            # minimal rows (C5)
+DELETE /v2/spaces/{space_id}/objects/{object_id}   # archive, OWN OUTPUT ONLY (creator provenance, §8.42); ?permanent=true later
 GET /v2/spaces                              # spaces list (read)
-GET /v2/spaces/{spaceId}/members            # members list (read) — agents need member ids for assignee/creator values
-GET /v2/spaces/{spaceId}/types              # keys + names (paginated, C10)
-GET /v2/spaces/{spaceId}/types/{type}       # the kind:"objectType" AnyBlock document
-GET /v2/spaces/{spaceId}/types/{type}/schema?flavor=json-schema|table|example   [build]
-GET /v2/spaces/{spaceId}/properties         # key, name, format (paginated)
-GET /v2/spaces/{spaceId}/properties/{key}/options    # option names (+color), paginated + prefix=
+GET /v2/spaces/{space_id}/members            # members list (read) — agents need member ids for assignee/creator values
+GET /v2/spaces/{space_id}/types              # keys + names (paginated, C10)
+GET /v2/spaces/{space_id}/types/{type}       # the kind:"objectType" AnyBlock document
+GET /v2/spaces/{space_id}/types/{type}/schema?flavor=json-schema|table|example   [build]
+GET /v2/spaces/{space_id}/properties         # key, name, format (paginated)
+GET /v2/spaces/{space_id}/properties/{key}/options    # option names (+color), paginated + prefix=
 ```
 
 - **`outline=true` returns the full block skeleton**: every block's
@@ -169,16 +169,16 @@ GET /v2/spaces/{spaceId}/properties/{key}/options    # option names (+color), pa
 ### Phase 2 — create (one-shot)
 
 ```
-POST /v2/spaces/{spaceId}/objects       # body: AnyBlock document (ids optional — id-less input, SPEC §9)
+POST /v2/spaces/{space_id}/objects       # body: AnyBlock document (ids optional — id-less input, SPEC §9)
                                         # or shortcut {type, name, properties, markdown}
-POST /v2/spaces/{spaceId}/types         # kind:"objectType" doc — typeProperties creates missing properties
-POST /v2/spaces/{spaceId}/properties    # {key?, name, format, options?:[{name,color?}]}
-POST /v2/spaces/{spaceId}/sets          # {name, type, filters|filter, sorts?, views?}
-POST /v2/spaces/{spaceId}/collections   # {name, items?}
-POST /v2/spaces/{spaceId}/templates     # AnyBlock doc with templateFor → generic object-create path
-POST /v2/spaces/{spaceId}/files         # upload (multipart or URL) → file object id
-PATCH/DELETE /v2/spaces/{spaceId}/types/{type}        # update (type doc semantics) / archive
-PATCH/DELETE /v2/spaces/{spaceId}/properties/{key}    # update / archive
+POST /v2/spaces/{space_id}/types         # kind:"objectType" doc — typeProperties creates missing properties
+POST /v2/spaces/{space_id}/properties    # {key?, name, format, options?:[{name,color?}]}
+POST /v2/spaces/{space_id}/sets          # {name, type, filters|filter, sorts?, views?}
+POST /v2/spaces/{space_id}/collections   # {name, items?}
+POST /v2/spaces/{space_id}/templates     # AnyBlock doc with templateFor → generic object-create path
+POST /v2/spaces/{space_id}/files         # upload (multipart or URL) → file object id
+PATCH/DELETE /v2/spaces/{space_id}/types/{type}        # update (type doc semantics) / archive
+PATCH/DELETE /v2/spaces/{space_id}/properties/{key}    # update / archive
 ```
 
 - `POST /objects` body discriminator (R7): presence of `version` or
@@ -212,46 +212,46 @@ Two modes at launch, one gated addition, additive extensions later.
 **Normative rule first (R5):** the post-op document must satisfy the
 format's semantic checks (SPEC §12, V1–V5 — monotonicity, leaf containment,
 row→column, bounds, id uniqueness). Any violation rejects the **whole
-PATCH** with path-addressed errors (`ops[i]` + block path). `moveBlock`
-into the moved block's own subtree is a cycle → error. `updateBlock`
+PATCH** with path-addressed errors (`ops[i]` + block path). `move_block`
+into the moved block's own subtree is a cycle → error. `update_block`
 changing a parent's type to a leaf type while descendants exist → error
 naming the descendant count.
 
-**(a) `PATCH /v2/spaces/{spaceId}/objects/{objectId}` — batched ops (default path)**
+**(a) `PATCH /v2/spaces/{space_id}/objects/{object_id}` — batched ops (default path)**
 
 ```json
 { "ops": [
-    { "op": "setProperties", "set": { "status": ["Done"] }, "unset": ["oldKey"] },
-    { "op": "updateBlock",   "id": "b5", "set": { "checked": true } },
-    { "op": "updateBlock",   "id": "b3", "set": { "text": "new **text**" } },
-    { "op": "replaceSubtree","id": "b7", "blocks": [ { "type": "bulletedListItem", "text": "a" },
+    { "op": "set_properties", "set": { "status": ["Done"] }, "unset": ["oldKey"] },
+    { "op": "update_block",   "id": "b5", "set": { "checked": true } },
+    { "op": "update_block",   "id": "b3", "set": { "text": "new **text**" } },
+    { "op": "replace_subtree","id": "b7", "blocks": [ { "type": "bulletedListItem", "text": "a" },
                                                      { "indent": 1, "type": "paragraph", "text": "b" } ] },
-    { "op": "insertBlocks",  "after": "b3", "blocks": [ { "type": "checkbox", "text": "todo" } ] },
-    { "op": "moveBlock",     "id": "b9", "inside": "b2", "position": "last" },
-    { "op": "deleteBlock",   "id": "b4", "recursive": true }
+    { "op": "insert_blocks",  "after": "b3", "blocks": [ { "type": "checkbox", "text": "todo" } ] },
+    { "op": "move_block",     "id": "b9", "inside": "b2", "position": "last" },
+    { "op": "delete_block",   "id": "b4", "recursive": true }
   ] }
 ```
 
 - Closed op set, id-addressed, atomic (one `state.Apply` per request), no
   positional/index/offset addressing anywhere (§3.1–3.2).
-- **`updateBlock` (R4)**: THE one block-update op (v0.3.5 — `replaceBlock`
+- **`update_block` (R4)**: THE one block-update op (v0.3.5 — `replaceBlock`
   removed). Merge semantics — only the fields in `set` change; everything
   else (including `text`) is untouched; explicit `null` clears a field. The
   op for checkbox toggles, color/align changes, language switches, retypes
-  and text rewrites alike. `replaceSubtree` swaps block + descendants for
+  and text rewrites alike. `replace_subtree` swaps block + descendants for
   the payload run.
 - **Relative indent in payloads** (R3): for `after`/`before` and
-  `replaceSubtree`, payload `indent: 0` = the anchor's level. For
+  `replace_subtree`, payload `indent: 0` = the anchor's level. For
   `inside`, payload `indent: 0` = **the container's child level**
   (anchor + 1). Worked examples:
-  sibling-insert — `{"op":"insertBlocks","after":"b3","blocks":[{"type":"paragraph","text":"same level as b3"}]}`;
-  child-insert — `{"op":"insertBlocks","inside":"b3","position":"last","blocks":[{"type":"paragraph","text":"child of b3"},{"indent":1,"type":"paragraph","text":"grandchild"}]}`.
-- **`moveBlock`** takes the same targeting as `insertBlocks`:
+  sibling-insert — `{"op":"insert_blocks","after":"b3","blocks":[{"type":"paragraph","text":"same level as b3"}]}`;
+  child-insert — `{"op":"insert_blocks","inside":"b3","position":"last","blocks":[{"type":"paragraph","text":"child of b3"},{"indent":1,"type":"paragraph","text":"grandchild"}]}`.
+- **`move_block`** takes the same targeting as `insert_blocks`:
   `after`/`before`/`inside`+`position: first|last` — so reorder-to-slot,
   indent (`inside` previous sibling), and outdent (`after` the parent) are
   all expressible (R14).
 - **Root targeting (v0.3.5)**: omitting all of `after`/`before`/`inside` on
-  `insertBlocks` and `moveBlock` appends at the **end of the document root**.
+  `insert_blocks` and `move_block` appends at the **end of the document root**.
   This is the ops-path into an empty object: SPEC §7 keeps title/description
   out of the document, so a fresh object has zero addressable blocks and an
   anchor-required contract left PUT as the only way to give it content — the
@@ -261,25 +261,25 @@ naming the descendant count.
   the document when nothing else is targeted — `first` the start, `last` (or
   absent) the end (§8.32; the original shape had no root-prepend and refused
   `position` here at all).
-- **`deleteBlock`**: `recursive` defaults to false; deleting a block that
+- **`delete_block`**: `recursive` defaults to false; deleting a block that
   has descendants without `recursive:true` → error naming the descendant
   count and the resolved block id (R14).
-- **`match` — the id alternative on `updateBlock` and `deleteBlock`**
+- **`match` — the id alternative on `update_block` and `delete_block`**
   (Wave 2.1b, §8.45): an exact substring of the block's text, which must
   appear in exactly ONE block or the op refuses — the same rule
-  `replaceText`'s `find` follows (§8.43), resolved per-op against the live
+  `replace_text`'s `find` follows (§8.43), resolved per-op against the live
   document view under the object lock.
-  `{"op":"updateBlock","match":"Draft timeline","set":{"checked":true}}`.
+  `{"op":"update_block","match":"Draft timeline","set":{"checked":true}}`.
   Give `id` or `match`, **never both** — the combination is refused rather
   than ranked, and giving neither is refused too. Repeats *within* the one
   matched block are fine: `match` addresses a block, not an occurrence.
-- **`setProperties`** (R14): `set` writes presence — `"k": []` means
+- **`set_properties`** (R14): `set` writes presence — `"k": []` means
   present-but-empty (SPEC §3 presence-is-meaningful); `unset` removes
   presence. Output-only properties (SPEC §4a) are rejected with a
   path-addressed error.
-- **`setProperties` `add`/`remove` (v0.3.5)**: per-key list edits for
+- **`set_properties` `add`/`remove` (v0.3.5)**: per-key list edits for
   list-shaped formats only (select, multiSelect, objects, files — SPEC §3).
-  `{"op":"setProperties","add":{"tags":["urgent"]},"remove":{"assignee":["bafy…"]}}`
+  `{"op":"set_properties","add":{"tags":["urgent"]},"remove":{"assignee":["bafy…"]}}`
   — `add` appends entries without duplicating existing ones; `remove`
   deletes matching entries and is a no-op when absent (never creates
   presence, never creates the option it names). Scalar-format keys are
@@ -287,22 +287,22 @@ naming the descendant count.
   in at most one of `set`/`unset`/`add`/`remove` per op. Rationale:
   appending one tag to a 40-entry multiSelect used to require read →
   whole-array rewrite → write — the corruption pattern in miniature, plus a
-  token tax; collections already had `addItems`/`removeItems`.
-- Collection ops: `addItems` / `removeItems` (member ids).
+  token tax; collections already had `add_items`/`remove_items`.
+- Collection ops: `add_items` / `remove_items` (member ids).
 - Block-id references accept full ids (canonical) and unique-suffix labels
   (lenient, C4).
 - Response: new `etag`, created-block id map **keyed by payload position**
   (`ops[3].blocks[0] → "b1a2…"`; client-supplied ids are echoed as-is)
-  (R14), `diffStats`.
-- **`diffStats` schema**: `{blocksAdded, blocksRemoved, blocksChanged,
-  blocksMoved, propertiesChanged}` (integers).
+  (R14), `diff_stats`.
+- **`diff_stats` schema**: `{blocks_added, blocks_removed, blocks_changed,
+  blocks_moved, properties_changed}` (integers).
 - Implementation: build child state from live state, apply ops via
   `simple.Block`/`state.State` mutations, one `sb.Apply` — the pattern
   Block* RPC handlers use internally (research §2.3; feasibility-verified).
 
 **(b) There is no full-document replace — removed §8.27**
 
-`PUT /v2/spaces/{spaceId}/objects/{objectId}` existed through the Phase-3
+`PUT /v2/spaces/{space_id}/objects/{object_id}` existed through the Phase-3
 hardening and is **gone**, with its whole pipeline: the route, the handler,
 `PutObject`/`putPipeline`/`normalizePutBody`/`checkPutBlockIds`, the
 `ObjectMutator.ResetObject` port and the `preserveEditorOwnedState` repair
@@ -314,11 +314,11 @@ write path accepts it (create names it by path). `?ids=full` survives as
 the **backup/export shape** (C4) and as the id vocabulary a clone-from-read
 POST should use — not as "the PUT read".
 
-**(c) `replaceText` — str_replace scoped to one block's `text` (LAUNCH)**
+**(c) `replace_text` — str_replace scoped to one block's `text` (LAUNCH)**
 
 ```json
-{ "op": "replaceText", "id": "b2", "find": "Q3", "replace": "Q4" }
-{ "op": "replaceText", "find": "Q3 report", "replace": "Q4 report" }
+{ "op": "replace_text", "id": "b2", "find": "Q3", "replace": "Q4" }
+{ "op": "replace_text", "find": "Q3 report", "replace": "Q4 report" }
 ```
 
 Exact-match within one block, must match exactly once, Anthropic-style
@@ -329,7 +329,7 @@ review showed deferring it forces the commonest edit (change-one-word)
 through whole-block verbatim reproduction — the documented 3B collapse
 mode. The server does the replace deterministically; the model supplies
 only the short anchor. B1 now only measures whether large models *also*
-prefer it over `updateBlock`.
+prefer it over `update_block`.
 
 **`id` is optional (Wave 2.1a, §8.43): `find` doubles as the locator.**
 Omitted, the find text must appear in exactly ONE block or the op refuses
@@ -342,10 +342,10 @@ against op *i−1*'s edits, and a dry run resolves identically (C9,
 advisory). `id` itself is unchanged — the locator is an additive
 alternative, never a change to what `id` means.
 
-**(d) `setCell` — scoped table-cell write (LAUNCH)**
+**(d) `set_cell` — scoped table-cell write (LAUNCH)**
 
 ```json
-{ "op": "setCell", "tableId": "t1", "row": "r2", "col": "c1", "value": "done" }
+{ "op": "set_cell", "table_id": "t1", "row": "r2", "col": "c1", "value": "done" }
 ```
 
 `value` is a string (paragraph-cell shorthand), `null` (clear), or a block
@@ -361,11 +361,11 @@ preconditions (C7 note).
 ### Phase 4 — query
 
 ```
-POST /v2/spaces/{spaceId}/search        (+ POST /v2/search global)
-GET  /v2/spaces/{spaceId}/sets/{setId}/objects?view={viewId}&fields=…
-GET  /v2/spaces/{spaceId}/sets/{setId}/views
-GET  /v2/spaces/{spaceId}/collections/{collectionId}/objects?fields=…
-GET  /v2/spaces/{spaceId}/collections/{collectionId}/views
+POST /v2/spaces/{space_id}/search        (+ POST /v2/search global)
+GET  /v2/spaces/{space_id}/sets/{set_id}/objects?view={viewId}&fields=…
+GET  /v2/spaces/{space_id}/sets/{set_id}/views
+GET  /v2/spaces/{space_id}/collections/{collection_id}/objects?fields=…
+GET  /v2/spaces/{space_id}/collections/{collection_id}/views
 ```
 
 Primary worked example (single-filter form — the small-model form, C12):
@@ -461,7 +461,7 @@ illustration):
   the store query; any other placeholder degrades to a C6 warning on the
   response, never a silent no-match.
 - **Sets AND collections both get a read path.** Phases 2–3 shipped a full
-  collection write surface (POST /collections, `addItems`/`removeItems`)
+  collection write surface (POST /collections, `add_items`/`remove_items`)
   with no read/query endpoint — a collection's members were readable only
   as the raw `items` id array on GET object (unpaginated bare ids), a
   regression vs v1's `/lists/{listId}`. The GET routes above cover both:
@@ -515,7 +515,7 @@ Both are thin over the same server primitives; bulk work via scripts.
   a 501 stub today; an interim degraded describe can be assembled
   wrapper-side from `GET /types/{t}` + `GET /properties/{key}/options` so
   wrapper development can start; (3) the **markdown→flat-blocks parser**
-  as an `insertBlocks` `markdown` payload alternative — backs `add_blocks`
+  as an `insert_blocks` `markdown` payload alternative — backs `add_blocks`
   and upgrades the create shortcut off the two-change-set paste path
   (§8.1). Everything else — handle state, full-read relabeling, `@me`,
   relative dates, the GBNF artifacts, the D′1 escape decision — is §7.4
@@ -530,13 +530,13 @@ Both are thin over the same server primitives; bulk work via scripts.
 ## 3. Decisions ledger
 
 **Decided**: id-addressed closed op set, no RFC 6902, no index/offset
-addressing · `updateBlock` merge op + `replaceText` + `setCell` in the
+addressing · `update_block` merge op + `replace_text` + `set_cell` in the
 launch op set (they back wrapper tools — §7/S1) · **no full-document
 replace at all** (PUT shipped through Phase 3 and was removed — §8.27:
 snapshots are for creates, edits are ops), full-block-id round-trip
-default, diffStats · flat AnyBlock as the primary content
+default, diff_stats · flat AnyBlock as the primary content
 representation on the REST write path, plus **one markdown-in alternative:
-an `insertBlocks` `markdown` payload** (mutually exclusive with `blocks`,
+an `insert_blocks` `markdown` payload** (mutually exclusive with `blocks`,
 same targeting incl. root-append — the server parses; it backs the
 wrapper's `add_blocks` channel and, once landed, the create shortcut);
 markdown read-only otherwise · compact object ids + full block ids on REST
@@ -557,7 +557,7 @@ wrapper handler (§7.3) · **the small-model contract is the task-tool
 wrapper (§7), not a REST mode**.
 
 **Benchmark-gated**: B1 — whether *large*-model docs/steering prefer
-`replaceText`/`setCell` over `updateBlock` (all are launch ops; nothing
+`replace_text`/`set_cell` over `update_block` (all are launch ops; nothing
 ships or unships on B1) · B2 — which filter form the docs/steering
 recommend per tier (both forms ship regardless; small-model primacy of the
 string is settled — R8) · B3 tabular result format · B4 wrapper-tool
@@ -575,12 +575,12 @@ strict schema · `?permanent=true` hard delete.
   `describe` in its sanctioned degraded form (wrapper-side composition,
   §8.6), so this item no longer blocks the wrapper — landing it collapses
   the wrapper's composition to one GET.
-- ~~**`DELETE /v2/spaces/{spaceId}/objects/{objectId}` (archive)**~~ —
+- ~~**`DELETE /v2/spaces/{space_id}/objects/{object_id}` (archive)**~~ —
   **BUILT 2026-08-14** (plan 3.3, APIV2_OBJECT_DELETE.md, §8.42):
   registered, own-output-only via creator provenance, fail-closed on
   everything created before it shipped. The wrapper-tool question
   (§7.2) is now unblocked but not exercised here.
-- **the D′1 escape decision** for `edit_text`/`replaceText` (§7.1) — still
+- **the D′1 escape decision** for `edit_text`/`replace_text` (§7.1) — still
   open; the tool description and SKILL.md carry the markup caveat.
 - **md-export loss detector** (converter/md has no warning channel).
 
@@ -600,7 +600,7 @@ collection store slice, with placeholder substitution — Phase 4, §8.4) ·
 §8.4) · **POST /sets `filter` wiring** (the §8.1 501 is gone) · the
 Phase-4 discovery additions (`search` kind; the grammar on the `filters`
 kind) and the R9 sets-rule system-key widening · **markdown→flat-blocks
-parser** (`anyblockjson.ParseMarkdownBlocks` + the `insertBlocks`
+parser** (`anyblockjson.ParseMarkdownBlocks` + the `insert_blocks`
 `markdown` payload + the single-change-set create fold — Phase 5, §8.6) ·
 **the task-tool wrapper** (`core/api/wrapper`: the 12-tool table, manifest,
 schemas, per-tool GBNF + the filter-string GBNF, handle/label session
@@ -609,20 +609,20 @@ option pre-validation, degraded `describe` — Phase 5, §8.6) · **the CLI
 verb-set** (`cmd/anytype`, generated from the same table) · **the MCP
 server** (`anytype mcp`, stdio, tier-filtered over the same table —
 §8.20) ·
-**`GET /v2/spaces/{spaceId}/members/me`** (server-side identity) ·
+**`GET /v2/spaces/{space_id}/members/me`** (server-side identity) ·
 **the Phase-6 chat surface** (§8.7: v2 chat DTOs + the inline-markup
 bridge both directions, `GET/POST /chats` as C5 rows over a store query,
-`GET /messages` with the state+messageCount passthrough + has_more
+`GET /messages` with the state+message_count passthrough + has_more
 cursors, message POST/PATCH/DELETE + the reactions toggle with C8/C9,
-`POST /read` requiring `{upTo, lastStateId}`, the five chat discovery
+`POST /read` requiring `{up_to, last_state_id}`, the five chat discovery
 kinds, and the C8 DELETE widening — now uniform across every v2 DELETE)
-· **the Phase-6 review hardening** (§8.7, 2026-08-06: the lastStateId
+· **the Phase-6 review hardening** (§8.7, 2026-08-06: the last_state_id
 silent-no-op closed, chat RPC error classification incl. the new C6
 `forbidden` code, text/attachment caps enforced + schema drift tests,
 delete/toggle existence checks + file-GC warnings, RFC 3339 chat dates,
-the reactions/reactedBy split, `blocksText`, and the chat handler test
+the reactions/reacted_by split, `blocks_text`, and the chat handler test
 layer) · **the Phase-7 periphery** (§8.8, 2026-08-06: the space surface —
-`GET /v2/spaces/{spaceId}` as an RPC-free tech-space-view read,
+`GET /v2/spaces/{space_id}` as an RPC-free tech-space-view read,
 `POST /v2/spaces` as ONE WorkspaceCreate call, `PATCH` with the
 at-least-one-field contract, C8 on both mutations; the search
 file-layout opt-in keyed off the type channel — positive type leaves
@@ -648,15 +648,15 @@ All on the Phase-0 harness; small tiers run under constrained decoding
 output tokens, turns; per model tier.
 
 - **B1 — edit-primitive steering** (tunes documentation; ships nothing —
-  `replaceText`/`setCell` are launch ops per §2(c)/(d), so B1 no longer
-  gates them): arms = **updateBlock-only** (`replaceText`/`setCell`
+  `replace_text`/`set_cell` are launch ops per §2(c)/(d), so B1 no longer
+  gates them): arms = **update_block-only** (`replace_text`/`set_cell`
   withheld from the prompt) · **full launch op set**. The DELEGATE-52
   corruption baseline was to be a **PUT-only** arm; with PUT removed
   (§8.27) that arm is a *simulated* whole-document rewrite (read the
-  document, regenerate it, `replaceSubtree` the root run) — it never was a
+  document, regenerate it, `replace_subtree` the root run) — it never was a
   gate arm. Decision rule: whether the
-  REST docs and B4 guidance point *large* models at `replaceText`/`setCell`
-  for text/cell edits or leave them on `updateBlock` (small-model steering
+  REST docs and B4 guidance point *large* models at `replace_text`/`set_cell`
+  for text/cell edits or leave them on `update_block` (small-model steering
   is settled — the wrapper channels).
 - **B2 — filter-form steering**: both forms ship regardless (the array is
   load-bearing for sets creation and round-trip; the string is the settled
@@ -752,10 +752,10 @@ than the REST body:
 
 - **Authoring channel = markdown** (not AnyBlock JSON). `add_blocks` takes a
   markdown string; the server parses it to flat blocks. **Decided (v0.4):
-  the parser's home is an `insertBlocks` `markdown` payload alternative** —
+  the parser's home is an `insert_blocks` `markdown` payload alternative** —
   mutually exclusive with `blocks`, same targeting incl. root-append — so
-  markdown-in rides the whole op pipeline (validation, `createdBlocks`,
-  `diffStats`, dry-run, idempotency) and the CLI vendors nothing; this is
+  markdown-in rides the whole op pipeline (validation, `created_blocks`,
+  `diff_stats`, dry-run, idempotency) and the CLI vendors nothing; this is
   the "real server-side primitive" §7.3 item 1 demands (the create
   shortcut's two-change-set BlockPaste stopgap, §8.1, cannot back it).
   Removes inline-markup-in-JSON escaping (the top 3B failure) and the
@@ -763,15 +763,15 @@ than the REST body:
   `indent`). [closes S2]
 - **Editing channel = anchor + deterministic server edit.** `edit_text`
   takes `find`/`replace`; the server does the string replace in code and
-  applies it via the `replaceText` primitive. The model supplies a short
+  applies it via the `replace_text` primitive. The model supplies a short
   anchor, never reproduces the block. [closes S1's change-one-word collapse]
-  **Caveat — anchors and replacements are markup SOURCE**: `replaceText`
+  **Caveat — anchors and replacements are markup SOURCE**: `replace_text`
   matches the block's §8 markup text and re-parses the result, so a
   replacement containing `*`, `[` or mention syntax mints real marks —
   JSON-escaping is removed, markup-awareness is NOT (the open D′1 debt,
   a **named Phase-5 dependency for the small tier**; until it lands the
   tool description must say find/replace text is treated as markup). The
-  tool also deliberately omits `replaceText`'s `replace_all` — single-match
+  tool also deliberately omits `replace_text`'s `replace_all` — single-match
   only for the small tier; the CLI may expose `--all` for larger consumers.
 - **Reference channel = enumerated handles.** `find` returns `1,2,3`; `read`
   exposes short block labels **in outline mode — full body-bearing reads
@@ -790,12 +790,12 @@ than the REST body:
 | `read` | `object, mode=full\|outline` | Phase 1 read | outline returns short block labels; `full` carries full block ids the wrapper relabels (§7.1/§7.4) |
 | `describe` | `space, type` | Phase 1 `types/{type}/schema?flavor=table` **[build — 501 stub today]** | the accuracy lever, **called before create/set** (folds A1 into the flow); interim degraded form assembled wrapper-side (§2 Phase 5); every backing GET is space-scoped, so the tool takes `space` too. *Since §8.33 it reports what is SETTABLE — the type's recommended lists were neither a superset nor a subset of that, and hid `name` and `description`* |
 | `create` | `space, type, name, properties?, markdown?` | Phase 2 create | type and property keys validated with did-you-mean; **select option names create-missing by default (R9/§8.1)** — the small-tier pre-validation guard is wrapper-side (§7.4); markdown caveats until the parser lands (below) |
-| `set_properties` | `object, set?{key: value}, add?{key: […]}, remove?{key: […]}` | `setProperties` op incl. per-key `add`/`remove` (§8.3) | mirrors the op so a one-tag append never rewrites the whole array (the op's entire rationale — reintroducing the read→rewrite→write trap at the wrapper layer would defeat it); `add` on a non-empty select errors, steering to `set`; scalar→array coercion is server-side |
-| `check_item` | `object, block, checked` | `updateBlock` op | the one block-field tool: checkbox **blocks** are a common note shape and `updateBlock` is THE block-update op post-§8.3; other block-field updates (color/align/language/retype) stay excluded — SKILL.md steers task completion to properties (the E4 recipe) |
-| `add_blocks` | `object, after?\|under?, markdown` | `insertBlocks` op, `markdown` payload **[build]** | **markdown channel**; server parses → flat blocks (§7.1) |
-| `edit_text` | `object, block, find, replace` | `replaceText` op | **anchor channel**; deterministic server replace; find/replace text is markup source until D′1 lands (§7.1); an EMPTY `replace` deletes the found text (Required means present, not non-empty — §8.6) |
-| `set_cell` | `object, table, row, col, value` | `setCell` op | flat cell write (as built the tool takes `object` too — the REST op addresses a table within one object, and a table-only reference would need a hidden cross-object table registry; §8.6); row/col take the labels full read mints (rows and columns relabel like blocks); an EMPTY `value` clears the cell (null on the wire) |
-| `move_block` / `delete_block` | `object, block, after?\|under?` / `object, block, recursive?` | `moveBlock`/`deleteBlock` ops | handle-addressed |
+| `set_properties` | `object, set?{key: value}, add?{key: […]}, remove?{key: […]}` | `set_properties` op incl. per-key `add`/`remove` (§8.3) | mirrors the op so a one-tag append never rewrites the whole array (the op's entire rationale — reintroducing the read→rewrite→write trap at the wrapper layer would defeat it); `add` on a non-empty select errors, steering to `set`; scalar→array coercion is server-side |
+| `check_item` | `object, block, checked` | `update_block` op | the one block-field tool: checkbox **blocks** are a common note shape and `update_block` is THE block-update op post-§8.3; other block-field updates (color/align/language/retype) stay excluded — SKILL.md steers task completion to properties (the E4 recipe) |
+| `add_blocks` | `object, after?\|under?, markdown` | `insert_blocks` op, `markdown` payload **[build]** | **markdown channel**; server parses → flat blocks (§7.1) |
+| `edit_text` | `object, block, find, replace` | `replace_text` op | **anchor channel**; deterministic server replace; find/replace text is markup source until D′1 lands (§7.1); an EMPTY `replace` deletes the found text (Required means present, not non-empty — §8.6) |
+| `set_cell` | `object, table, row, col, value` | `set_cell` op | flat cell write (as built the tool takes `object` too — the REST op addresses a table within one object, and a table-only reference would need a hidden cross-object table registry; §8.6); row/col take the labels full read mints (rows and columns relabel like blocks); an EMPTY `value` clears the cell (null on the wire) |
+| `move_block` / `delete_block` | `object, block, after?\|under?` / `object, block, recursive?` | `move_block`/`delete_block` ops | handle-addressed |
 
 Excluded from the wrapper: whole-document replace (the DELEGATE-52
 corruption vector — and since §8.27 excluded from the REST surface too,
@@ -820,7 +820,7 @@ survives only so the old caveats are not re-derived.
 ### 7.3 What the wrapper does NOT let us skip
 
 1. **The bounded server primitives must exist** — `edit_text`/`set_cell` are
-   safe only because `replaceText`/`setCell` are real server-side scoped ops
+   safe only because `replace_text`/`set_cell` are real server-side scoped ops
    (the S1 launch reweighting in §3). A wrapper that implemented them as
    GET+regenerate+write-the-whole-document would reintroduce corruption —
    which is the same argument §8.27 later applied to the REST PUT itself.
@@ -834,7 +834,7 @@ survives only so the old caveats are not re-derived.
 3. **Conveniences, placed** — scalar→array coercion is **already served**
    (`anyblockjson.UnmarshalPropertyValue` wraps scalars of list-shaped
    formats; every write path routes through it — not wrapper work). Still
-   to build, placement decided: `GET /v2/spaces/{spaceId}/members/me`
+   to build, placement decided: `GET /v2/spaces/{space_id}/members/me`
    **server-side** (only the server knows the account identity — the same
    identity Phase 4's placeholder substitution uses); `@me` sentinel
    resolution and relative-date math **in the wrapper handler** (simplest,
@@ -850,7 +850,7 @@ survives only so the old caveats are not re-derived.
 
 Beyond §3's list:
 
-- **markdown→flat-blocks parser** — the `insertBlocks` `markdown` payload
+- **markdown→flat-blocks parser** — the `insert_blocks` `markdown` payload
   alternative (§7.1; also dissolves the create-shortcut caveats in §7.2).
 - **handle↔CID resolver, fully stated**: (a) *handle state outlives a CLI
   invocation* — persisted in a session file (scratch dir, keyed by space),
@@ -895,7 +895,7 @@ Beyond §3's list:
   text-bearing blocks, or plain-text find/replace with offset-shifted
   marks; a named Phase-5 dependency for the small tier).
 
-These join `replaceText`/`setCell` (launch ops) and the filter-string
+These join `replace_text`/`set_cell` (launch ops) and the filter-string
 parser (a launch dependency) as the small-model launch set. Benchmark
 **B4** tunes the wrapper's tool descriptions / SKILL guidance per model
 tier.
@@ -1088,7 +1088,7 @@ restriction checks, records undo, fires hooks/events, and emits the
 minimal id-matched change diff with no forced full snapshot. The flat
 document is still rendered under the lock, but only as the **read-only
 view** the ops address (refs, suffixes, indent arithmetic, error texts —
-the same shape agents read) and as the diffStats input; payload blocks
+the same shape agents read) and as the diff_stats input; payload blocks
 are interpreted by the format package at **fragment granularity**
 (`anyblockjson.UnmarshalBlocks`/`UnmarshalBlock`/`UnmarshalPropertyValue`
 + the inline codec), so only the format package ever parses AnyBlock
@@ -1096,7 +1096,7 @@ JSON.
 
 **The mutation port (v0.3.4; single-method since §8.27).**
 `apicore.ObjectMutator` has ONE method.
-`MutateObject(ctx, spaceId, objectId, needs, apply func(edit ObjectEdit) error)`
+`MutateObject(ctx, space_id, objectId, needs, apply func(edit ObjectEdit) error)`
 is PATCH: the adapter locks the object, checks the object-level
 Blocks/Details restrictions on the axes the batch touches, hands `apply`
 an `ObjectEdit{SbType, Heads, State}` (State = `sb.NewState()`), runs the
@@ -1108,25 +1108,25 @@ state inherits everything that repair had to reconstruct, so nothing
 replaced it. Dry runs never touch the mutator: the same op applier runs
 on a private `state.NewDocFromSnapshot` of a plain read.
 
-**Ops → state, exact.** setProperties → `st.SetDetail`/`RemoveDetail` +
+**Ops → state, exact.** set_properties → `st.SetDetail`/`RemoveDetail` +
 `st.AddRelationLinks` for the key (mandatory — a value without its link
 is wiped on replay, the A1 class); values decode via
 `UnmarshalPropertyValue` (dates, option names, ref lists — §3 rules).
-updateBlock → merge on the block's exported JSON form → `UnmarshalBlock`
+update_block → merge on the block's exported JSON form → `UnmarshalBlock`
 with the forced id → set in place, live ChildrenIds kept (non-table).
-replaceSubtree → fragment run →
+replace_subtree → fragment run →
 unlink old subtree, splice the run's top blocks at the old position (id
-reuse from the replaced subtree is allowed). insertBlocks →
+reuse from the replaced subtree is allowed). insert_blocks →
 `st.InsertTo` (after→Bottom, before→Top, inside last→Inner, inside
-first→InnerFirst). moveBlock → `st.Unlink` + `st.InsertTo` (children
-ride along). deleteBlock → `st.Unlink` (apply-side normalization drops
-the orphaned subtree). replaceText → find/replace on the block's
+first→InnerFirst). move_block → `st.Unlink` + `st.InsertTo` (children
+ride along). delete_block → `st.Unlink` (apply-side normalization drops
+the orphaned subtree). replace_text → find/replace on the block's
 document text (markup source; literal for code/embed §8.4) →
-`ParseInlineText` back to text+marks. setCell → edit the cell on the
+`ParseInlineText` back to text+marks. set_cell → edit the cell on the
 table's document form, re-import the one table block (rows/columns/
 derived cell ids round-trip, so untouched cells land unchanged; the
 internal wrapper blocks are re-minted — accepted churn, strictly less
-than v0.3.3's whole-document reimport). addItems/removeItems →
+than v0.3.3's whole-document reimport). add_items/remove_items →
 `st.GetStoreSlice("objects")`/`UpdateStoreSlice`.
 
 **R5 post-op validity: fragment pre-checks + the restored whole-document
@@ -1153,14 +1153,14 @@ running against the view. **On top of the pre-checks, the R5
 whole-document net is ON by default and rejecting**:
 `anyblockjson.Validate` runs on the marshaled would-be after-document —
 nearly free, since the after-document is already marshaled for
-diffStats — restoring the invariants no single fragment can see (V3
+diff_stats — restoring the invariants no single fragment can see (V3
 row→column containment, the document-wide id domain, the absolute
 nesting bound). A failure rejects the whole PATCH under the same
 message. `ANYTYPE_API_V2_SKIP_EDIT_VALIDATE=1` is the **debug-only
 disable** (for a suspected false rejection); there is no log-only mode.
 
 **Create-missing runs before the lock (v0.3.4, review B6/A6).** The only
-create surface in PATCH payloads is setProperties select/multiSelect
+create surface in PATCH payloads is set_properties select/multiSelect
 option names; a lenient pre-pass resolves (and creates) them before
 `MutateObject`, so no create-RPC ever runs while holding the edited
 object's lock. In-lock resolution hits the resolver cache. Trade-off,
@@ -1171,7 +1171,7 @@ nonexistent/restricted object or with a stale If-Match no longer creates
 the options it named (v0.3.3 leaked the same way for post-Unmarshal
 failures).
 
-**diffStats stay the canonical document diff.** Considered and rejected:
+**diff_stats stay the canonical document diff.** Considered and rejected:
 deriving them from `st.GetChanges()` — the change list only exists after
 a real Apply, so dry runs (which never Apply) would diverge from real
 runs, breaking C9's dry≡real contract. The before/after documents are
@@ -1197,38 +1197,38 @@ warnings instead; with PUT gone (§8.27) the guard has no exemption left,
 and the 422's advice is now "edit it in the app" rather than "replace it
 wholesale".
 
-**diffStats.** Canonical-before vs canonical-after document diff (the after
+**diff_stats.** Canonical-before vs canonical-after document diff (the after
 side is the applied snapshot re-marshaled, so import/export normalization
 cancels): added/removed by block-id set; changed = same id, different
 content (block JSON minus indent/id); moved = parent changed OR the nearest
 *common* preceding sibling changed (pure insertions don't mark their
-followers moved). `propertiesChanged` counts differing keys.
-`addItems`/`removeItems` changes are not counted (no diffStats field for
+followers moved). `properties_changed` counts differing keys.
+`add_items`/`remove_items` changes are not counted (no diff_stats field for
 membership; deliberate — the schema is closed at the five integers).
 
 **Relative indent (R3), exact.** Payload `indent` 0 = the anchor's level
-(after/before/replaceSubtree) or the container's child level (inside);
+(after/before/replace_subtree) or the container's child level (inside);
 payload runs must start at 0 and obey +1 monotonicity internally, checked
 with `ops[i].blocks[j].indent` paths before the document-level net.
-`insertBlocks` inserts after the anchor's whole subtree for `after`;
+`insert_blocks` inserts after the anchor's whole subtree for `after`;
 `inside` defaults `position` to `last`; `position` with `after`/`before` is
 an error; `position` with NO targeting field names an end of the document
-(§8.32). `moveBlock` moves the whole subtree and re-bases its indents.
+(§8.32). `move_block` moves the whole subtree and re-bases its indents.
 
-**Small op decisions.** `updateBlock`: `set` is merge; explicit `null`
-clears a field; `id`/`indent` in `set` are rejected (steering to moveBlock);
-the addressed id and indent survive a retype. `replaceSubtree`
+**Small op decisions.** `update_block`: `set` is merge; explicit `null`
+clears a field; `id`/`indent` in `set` are rejected (steering to move_block);
+the addressed id and indent survive a retype. `replace_subtree`
 mints fresh ids for id-less payload blocks (the old subtree's ids die with
 it). Every payload block — minted or client-supplied — lands in
-`createdBlocks` keyed `ops[i].blocks[j]`. `replaceText` requires a
+`created_blocks` keyed `ops[i].blocks[j]`. `replace_text` requires a
 text-bearing type and a non-empty `find`; error texts are the Anthropic
 shapes ("no match found…", "found N matches — provide more context…").
-`setCell` resolves row/col ids with the same unique-suffix leniency as block
+`set_cell` resolves row/col ids with the same unique-suffix leniency as block
 refs and accepts all §6.1 cell forms (string, null, block object, array);
-invalid inner shapes fall to the R5 net. `addItems`/`removeItems` require a
+invalid inner shapes fall to the R5 net. `add_items`/`remove_items` require a
 collection (type `collection` or a collection-layout type), dedupe/no-op
 respectively, and do not existence-check member ids (v1 parity).
-`setProperties`: §4a output-only keys rejected (`isFavorite` stays
+`set_properties`: §4a output-only keys rejected (`isFavorite` stays
 authorable per SPEC §3), unknown keys rejected with did-you-mean (Phase-2
 policy), select option names create-missing and ride `created`, `unset` of
 an absent key is a no-op, a key in both `set` and `unset` is an error.
@@ -1264,7 +1264,7 @@ index (`GET /v2/schemas`) grew an `ops` list.
 Six contract changes from the modification-surface design review, taken
 while the API is unreleased and breaking changes are cheap.
 
-**Root targeting for `insertBlocks`/`moveBlock`.** Omitting all of
+**Root targeting for `insert_blocks`/`move_block`.** Omitting all of
 `after`/`before`/`inside` appends at the end of the document root (state:
 `InsertTo("", Block_Inner)`). Chosen shape: the omitted-anchor form, not an
 explicit `at: "start"|"end"` field — fewer fields for a small model, and it
@@ -1282,18 +1282,18 @@ is legal now).
 Payload indents stay R3-relative: at root, indent 0 = document top level.
 
 **`replaceBlock` removed (BREAKING, deliberate — the API is unreleased).**
-Four routes to changing a block's text (updateBlock/replaceBlock/
-replaceSubtree/replaceText) was the surface's largest disambiguation load,
+Four routes to changing a block's text (update_block/replaceBlock/
+replace_subtree/replace_text) was the surface's largest disambiguation load,
 and `replaceBlock`'s silent text-wipe (a checkbox toggle via replaceBlock
 losing the text) was the documented small-model trap; BlockNote and Tiptap
-each ship ONE block-update op. `updateBlock {id, set}` — merge with
+each ship ONE block-update op. `update_block {id, set}` — merge with
 explicit-null-clears — expresses everything replaceBlock did except the
 wipe (a full wipe is `set` naming every field, `null`ing the rest, or
-`replaceSubtree`). The op set is 10 ops. An agent that sends `replaceBlock`
-gets the unknown-op error with a hint that names updateBlock's semantics
+`replace_subtree`). The op set is 10 ops. An agent that sends `replaceBlock`
+gets the unknown-op error with a hint that names update_block's semantics
 before listing the allowed ops. All other error texts are unchanged.
 
-**`setProperties` per-key `add`/`remove`.** Only for list-shaped formats
+**`set_properties` per-key `add`/`remove`.** Only for list-shaped formats
 (select/multiSelect/objects/files); scalar-format keys are rejected
 path-addressed, naming the format. `add` resolves entries with the same
 create-missing option-name semantics as `set` — including in the pre-lock
@@ -1305,13 +1305,13 @@ nothing. `remove` of the last entry leaves the key present-but-empty
 presence semantics unchanged: `set: []` still means present-but-empty. Key
 validation matches `set` (output-only rejected, unknown keys did-you-mean);
 a key in more than one of set/unset/add/remove is a path-addressed error.
-The empty-op error is now "setProperties needs at least one of set, unset,
+The empty-op error is now "set_properties needs at least one of set, unset,
 add, remove".
 
 **Idempotency-Key covers PATCH (C8 widened).** The store, request hash,
 in-flight reservation and replay were POST-only wiring; agents auto-retry
 on timeout, and PATCH is where a blind retry does damage (a retried
-successful `insertBlocks` duplicates blocks; a retried `deleteBlock` 404s
+successful `insert_blocks` duplicates blocks; a retried `delete_block` 404s
 misleadingly). The middleware acts on every mutation METHOD — POST, PATCH,
 PUT, DELETE — and is registered on the object PATCH route and the
 types/properties PATCH routes. (PUT stays in the method set although
@@ -1326,7 +1326,7 @@ V3 row→column containment, the document-wide id domain, the absolute
 nesting bound — so the whole-document `anyblockjson.Validate` runs on the
 marshaled would-be after-document **by default** and **rejects** the PATCH
 on failure (same agent-facing message; nearly free — the after-document is
-already marshaled for diffStats). `ANYTYPE_API_V2_SKIP_EDIT_VALIDATE=1` is
+already marshaled for diff_stats). `ANYTYPE_API_V2_SKIP_EDIT_VALIDATE=1` is
 the debug-only disable. §8.2's post-op-validity paragraph is corrected
 accordingly (it previously described a dropped-checks draft with an opt-in
 log-only net that never shipped).
@@ -1368,7 +1368,7 @@ is a write where option names create-missing per R9/§8.1). Every error is
 `*filterstring.Error{Offset, Token, Message, Hint}`; the API maps it to
 one C6 issue at `/filter` carrying the offset text. The EBNF the parser
 pins is exported (`filterstring.EBNF` + `Examples`) and served on the
-`filters` discovery kind (§5) via new `grammar`/`grammarExamples` fields
+`filters` discovery kind (§5) via new `grammar`/`grammar_examples` fields
 on the schema-entry payload — every served example is
 asserted-parseable by test.
 
@@ -1405,7 +1405,7 @@ an accepted approximation of the store's order; ties break by space id
 then object id for determinism); per-space failures skip the space with a
 "space X was skipped: …" warning, and only when NO space resolves does
 the first per-space error become the response. Global rows carry
-`spaceId` (addressing info for the follow-up read — a deliberate C5
+`space_id` (addressing info for the follow-up read — a deliberate C5
 extension). `V2ListResponse` gained `warnings` (C6-shaped, deduped).
 The request schema is strict: an unknown body field 400s, and
 `limit`/`offset` in the body get the C10 steering hint. Search routes
@@ -1566,14 +1566,14 @@ alone would break (post-review fixes): a line after a §5 leaf block
 (divider, table) stays its sibling, and the F4 depth bound of 32 caps
 every level — so a run always imports (tested through `UnmarshalBlocks`
 over every block type the parser can emit, plus a fuzz target).
-`insertBlocks` gained the `markdown` payload (mutually exclusive with
+`insert_blocks` gained the `markdown` payload (mutually exclusive with
 `blocks`, same targeting incl. root-append; the op schema's `required`
 dropped to `op` with exactly-one enforced server-side, like the targeting
 exclusivity). The parsed run is CAPPED at 256 blocks per op — the blocks
 channel's own maxItems, shared so the byte-bounded markdown channel
 cannot smuggle ~350k blocks per MiB — and at 2048 on the create shortcut;
 the bounded parse stops early, and the error names the limit.
-`createdBlocks` keys read `ops[i].markdown[j]` — j = the parsed position,
+`created_blocks` keys read `ops[i].markdown[j]` — j = the parsed position,
 the honest analogue of the blocks[j] payload position. The create
 shortcut folds parsed markdown into the create snapshot: ONE change set;
 the §7.2 caveats paragraph is historical. Create-shortcut validation
@@ -1635,7 +1635,7 @@ noise 409s a small model cannot answer); the CLI exposes `--if-match`
 for scripts.
 
 **Conveniences, as placed by §7.3.** `@me` resolves through the new
-`GET /v2/spaces/{spaceId}/members/me` (participant id is deterministic —
+`GET /v2/spaces/{space_id}/members/me` (participant id is deterministic —
 served even before the participant object is indexed; no account identity
 → 404 steering to the members list), cached per space in the session; in
 `find` filters the quoted `"@me"` value substitutes textually, and in
@@ -1661,7 +1661,7 @@ takes `object` — the REST op addresses a table within one object; a bare
 table handle would need hidden cross-object state. The wrapper's `under`
 maps to the ops' `inside` (+`position: last`), and server error texts
 are translated BACK to the tool vocabulary before the model sees them
-(`inside`→`under`, `id`→`block`, `tableId`→`table`, the `ops[0].` prefix
+(`inside`→`under`, `id`→`block`, `table_id`→`table`, the `ops[0].` prefix
 stripped, `?outline=true` hints become `read mode=outline`) — without
 this the server's own repair hint names a field the tool rejects.
 `edit_text` deliberately has no `replace_all`; its `replace` and
@@ -1718,11 +1718,11 @@ tier once the benchmark runs.
 Phase 6 gave chats their /v2 home (the completeness decision, 2026-08-06:
 a v2 client never types /v1 for its task loop — but never the same shape
 at a new URL). The phase's motivating finding held under verification:
-`ChatGetMessages` returns `chatState` and `messageCount` and the v1
+`ChatGetMessages` returns `chatState` and `message_count` and the v1
 service throws both away (`service/chat.go:100` reads only
 `resp.Messages`), and NO v1 response carries a state id (the DTO omits
 it; the SSE converter has no ChatStateUpdate case,
-`model/chat.go:279-314`) — so the `ReadChatMessagesRequest.lastStateId`
+`model/chat.go:279-314`) — so the `ReadChatMessagesRequest.last_state_id`
 race guard was unreachable by construction. v2 passes both through and
 `POST read` forwards the guard.
 
@@ -1731,26 +1731,26 @@ race guard was unreachable by construction. v2 passes both through and
 `v2/model/chat.go`):
 
 ```
-GET    /v2/spaces/{spaceId}/chats                                  # C5 rows {id,name}
-POST   /v2/spaces/{spaceId}/chats                                  # {name} → row
-GET    /v2/spaces/{spaceId}/chats/{chatId}/messages                # ?after&before&limit&reactions
-POST   /v2/spaces/{spaceId}/chats/{chatId}/messages                # {text, replyTo?, attachments?} → {id}
-PATCH  /v2/spaces/{spaceId}/chats/{chatId}/messages/{messageId}    # {text} — text-only merge
-DELETE /v2/spaces/{spaceId}/chats/{chatId}/messages/{messageId}
-POST   /v2/spaces/{spaceId}/chats/{chatId}/messages/{messageId}/reactions  # {emoji} → {added}
-POST   /v2/spaces/{spaceId}/chats/{chatId}/read                    # {upTo, lastStateId, scope?}
+GET    /v2/spaces/{space_id}/chats                                  # C5 rows {id,name}
+POST   /v2/spaces/{space_id}/chats                                  # {name} → row
+GET    /v2/spaces/{space_id}/chats/{chat_id}/messages                # ?after&before&limit&reactions
+POST   /v2/spaces/{space_id}/chats/{chat_id}/messages                # {text, reply_to?, attachments?} → {id}
+PATCH  /v2/spaces/{space_id}/chats/{chat_id}/messages/{message_id}    # {text} — text-only merge
+DELETE /v2/spaces/{space_id}/chats/{chat_id}/messages/{message_id}
+POST   /v2/spaces/{space_id}/chats/{chat_id}/messages/{message_id}/reactions  # {emoji} → {added}
+POST   /v2/spaces/{space_id}/chats/{chat_id}/read                    # {up_to, last_state_id, scope?}
 ```
 
 **The three reshapes, as built.** (1) *State passthrough*: the messages
-read returns `{messages, state, messageCount, has_more, nextAfter?,
-nextBefore?}`; `state` carries
-`unreadMessages/unreadMentions/oldestUnreadOrder/oldestUnreadMentionOrder/
-unreadReactionOrder/lastStateId`; `messageCount` is the chat's LIFETIME
+read returns `{messages, state, message_count, has_more, next_after?,
+next_before?}`; `state` carries
+`unread_messages/unread_mentions/oldest_unread_order/oldest_unread_mention_order/
+unread_reaction_order/last_state_id`; `message_count` is the chat's LIFETIME
 total, not the range size — `has_more` (fetched via limit+1, the
 ListChats pattern) plus the boundary cursors are the range signal, so an
 agent never infers "more" from `len==limit` (C10's spirit). A poll is a
 `limit=1` read; the exit flow "summarize what's new and mark it read" is
-two calls (GET messages → POST read `{upTo, lastStateId}`). (2) *Inline
+two calls (GET messages → POST read `{up_to, last_state_id}`). (2) *Inline
 markup both directions*: read renders `text` via
 `anyblockjson.RenderInlineText` (mentions as `<mention objectId="…">`
 tags); write parses via `ParseInlineText` — the D′1 caveat is documented
@@ -1759,21 +1759,21 @@ is dropped on read and not accepted on write (a fresh message is always
 `paragraph`; an edit preserves the stored style). Block-composed content
 (desktop quotes, rich pastes — a message may be VALID with empty text
 and only blocks, `chatmodel.Validate`) surfaces read-only as
-`blocksText`: text-bearing blocks rendered as §8 markup, newline-joined;
+`blocks_text`: text-bearing blocks rendered as §8 markup, newline-joined;
 link/embed blocks stay invisible (recorded deferral). (3) *C5 rows +
 compact reactions*: chat rows are `{id, name}` (Q3 as recommended —
 counter-free list; computing list-wide counters means opening every
 chat, the GO-7302 cost; `ListChats` is a pure store query over
 `ChatLayouts` and its test would fail on ANY RPC call). Reactions are
 ALWAYS the counts map `{"👍":2}` (Q4 as recommended);
-`?reactions=full` adds `reactedBy` — **participant-id** lists (one
-vocabulary with `authorId`, C2), never raw identities — in its OWN slot,
+`?reactions=full` adds `reacted_by` — **participant-id** lists (one
+vocabulary with `author_id`, C2), never raw identities — in its OWN slot,
 so neither field ever changes type (C2: the review killed the original
 polymorphic `reactions` slot, which no strict response schema could
 describe).
 
 **C7 exemption, stated.** No chat response carries an etag and no chat
-mutation reads If-Match: order ids and `lastStateId` are the chat's
+mutation reads If-Match: order ids and `last_state_id` are the chat's
 native concurrency vocabulary. Documented on every chat endpoint (the
 deliberate exemption class search's C8/C9 one established).
 
@@ -1792,17 +1792,17 @@ now it replays.
 
 **Decisions the spec left open.**
 
-- **`upTo` AND `lastStateId` are BOTH REQUIRED for scopes
+- **`up_to` AND `last_state_id` are BOTH REQUIRED for scopes
   messages/mentions.** The RPC's range query bounds with
-  `orderId <= beforeOrderId` AND `stateId <= lastStateId`
+  `orderId <= beforeOrderId` AND `stateId <= last_state_id`
   (`chatrepository/repository.go:387-392`), and every stored message
   carries a non-empty bson state id (`chathandler.go:116`) — so an
   empty value for EITHER selects nothing and returns success, the
   silent no-op trap (v1's `read_all` path sends exactly that shape; the
-  phase's first build required only `upTo` and the review reproduced
-  markedCount=0 with a 200 when `lastStateId` was omitted — the same
+  phase's first build required only `up_to` and the review reproduced
+  markedCount=0 with a 200 when `last_state_id` was omitted — the same
   trap one field over). Both values ride the same GET messages response
-  (the newest order + `state.lastStateId`), so requiring both costs the
+  (the newest order + `state.last_state_id`), so requiring both costs the
   agent nothing; the missing-field 400 is path-addressed to each.
   Server-side filling was REJECTED: a guard resolved at POST time is
   newer than the client's read and would mark late-arriving unseen
@@ -1815,8 +1815,8 @@ now it replays.
 - **The reactions scope is all-or-nothing.** `ChatReadReactions`
   *ignores* its `orderId` (`core/chats.go:325` calls
   `ReadReaction(ctx, chatObjectId)` without it), so the planned
-  "`upTo` → read reactions" forwarding is impossible today; scope
-  `reactions` rejects `upTo`/`lastStateId` with path-addressed 400s
+  "`up_to` → read reactions" forwarding is impossible today; scope
+  `reactions` rejects `up_to`/`last_state_id` with path-addressed 400s
   rather than pretending a bound exists.
 - **Chat RPC failures are classified in v2 — the RPC codes are dead.**
   `core/chats.go` maps no chat errors (`mapErrorCode` with no
@@ -1883,10 +1883,10 @@ now it replays.
   in the store: unknown → 404 steering to GET /chats; a non-chat layout
   → targeted 400 (the sets/collections wrong-layout precedent) — the
   chat RPCs' own failure for a bad target is opaque.
-- **Message DTO shape**: `{id, order, author?, authorId?, at, editedAt?,
-  text, blocksText?, replyTo?, reactions?, reactedBy?, attachments?,
-  pinned?}` — `editedAt` only when the message was edited; sync/read
-  flags deliberately absent (agent noise). `at`/`editedAt` are
+- **Message DTO shape**: `{id, order, author?, author_id?, at, edited_at?,
+  text, blocks_text?, reply_to?, reactions?, reacted_by?, attachments?,
+  pinned?}` — `edited_at` only when the message was edited; sync/read
+  flags deliberately absent (agent noise). `at`/`edited_at` are
   **RFC 3339 UTC strings** — the review fixed the original unix-epoch
   ints: one date shape across v2 (AnyBlock dates, search filters, file
   addedAt all render RFC 3339), and Phase 8's SSE stream reuses these
@@ -1895,7 +1895,7 @@ now it replays.
   offset paging the RPC does not do). Cursor asymmetry documented on
   the endpoint: only `?after` alone walks forward (the repository's one
   ASC sort); `?before`, no cursor, or BOTH bounds anchor at the newest
-  end and page backward via `nextBefore` — after+before does NOT
+  end and page backward via `next_before` — after+before does NOT
   advance a forward cursor through the window.
 - **Reaction dry run needs an identity.** `V2Service.accountId` may be
   empty (documented degraded mode); with no identity nothing matches
@@ -1931,8 +1931,8 @@ ChatStateUpdate, closing the converter gap this phase documented).
 Per-chat FT search (`…/messages/search`) stays on v1 (named exception).
 Not ported: v1's GET single message (not in the surface — PATCH/DELETE
 address by id, reads page by cursor), editing attachments on PATCH
-(v1 keeps that), message pinning writes, and `read_all` (see `upTo`).
-Link/embed message blocks have no `blocksText` rendering (only
+(v1 keeps that), message pinning writes, and `read_all` (see `up_to`).
+Link/embed message blocks have no `blocks_text` rendering (only
 text-bearing blocks appear); a full `blocks` array is deferred until a
 consumer needs it. Open (needs a real account to verify): the
 space-level chat is created name-less (`AddChatDerivedObject` sets only
@@ -1941,12 +1941,12 @@ space-name fallback or `isSpaceChat` flag is the candidate fix once
 runtime-verified, incl. whether the object is indexed unhidden.
 
 **Tests that pin the phase** (each fails if its behavior reverts):
-state+messageCount passthrough incl. `lastStateId`
+state+message_count passthrough incl. `last_state_id`
 (`v2/service/chat_test.go`), the markup bridge both directions + the
 round-trip (`v2/model/chat_test.go`), reactions counts/full as
 participant ids, the no-chat-opens list (any RPC fails the mock), the
-edit merge preserving attachments, `upTo` required / reactions-scope
-bounds rejected, lastStateId forwarding on POST read, C8 wiring on all
+edit merge preserving attachments, `up_to` required / reactions-scope
+bounds rejected, last_state_id forwarding on POST read, C8 wiring on all
 six chat mutations incl. the DELETE replay
 (`server/v2_router_test.go`, `api/v2/middleware_test.go`), and the
 chat discovery kinds' strictness (`v2/service/schemas_test.go`).
@@ -2031,9 +2031,9 @@ upload a file (POST /files) and never find it again. As built:
 **The space surface (APIV2_SURFACES.md §2 shapes).**
 
 ```
-GET   /v2/spaces/{spaceId}     → {"id","name","description"}
+GET   /v2/spaces/{space_id}     → {"id","name","description"}
 POST  /v2/spaces               {"name","description"?} → the same shape (201)
-PATCH /v2/spaces/{spaceId}     {"name"?,"description"?} → the same shape
+PATCH /v2/spaces/{space_id}     {"name"?,"description"?} → the same shape
 ```
 
 (`v2/handler/space.go`, `v2/service/space.go`, DTOs in `v2/model/model.go`;
@@ -2088,7 +2088,7 @@ onto the agent).
   create dry run validates the body only and says so (a space create
   cannot be simulated); the PATCH dry run reports the would-be row.
 - **PATCH contract.** At least one of `name`/`description` (the
-  setProperties empty-op precedent — an accepted `{}` would let an agent
+  set_properties empty-op precedent — an accepted `{}` would let an agent
   believe it renamed something); `name` present-but-empty is rejected
   (the POST /chats precedent: the C5 row is `{id, name}`), while
   `description: ""` clears. Unknown space 404s before body validation.
@@ -2166,10 +2166,11 @@ end-to-end keyed `POST /v2/spaces` replay (`server/v2_router_test.go` —
 `Idempotency-Replayed`), and the set-over-a-file-type read rendering
 `?fields=mimeType,size` (`v2_list_read_test.go`). Two C2/C8 footnotes
 recorded rather than changed: `dry_run` keeps its snake_case spelling
-in response bodies — a deliberate, uniform C2 carve-out across all
-eight v2 mutation DTOs (the echo mirrors the `?dry_run=` query
-parameter it answers; renaming mid-stream would fork the dialect the
-shipped phases already speak); and an Idempotency-Key reused across
+in response bodies — then a deliberate carve-out from a camelCase C2
+across all eight v2 mutation DTOs (the echo mirrors the `?dry_run=`
+query parameter it answers), *since §8.46 not a carve-out at all but
+the plain rule, the rest of the vocabulary having moved to meet it*;
+and an Idempotency-Key reused across
 `POST /v2/spaces` and `POST /v2/validate` (the two space-less routes
 sharing the empty-space key namespace) answers 409
 `idempotency_conflict`, which is correct — a key names one logical
@@ -2264,7 +2265,7 @@ Design: `docs/superpowers/specs/2026-08-06-api-key-scoping-design.md`.
   required to parse it): 401 → `Bearer realm="anytype"` (bare when no
   credential was sent, `error="invalid_token"` otherwise); 403 →
   `Bearer error="insufficient_scope"`, with
-  `scope="space:<spaceId>:<read|readwrite>"` when the request addressed
+  `scope="space:<space_id>:<read|readwrite>"` when the request addressed
   one space — the scope-string shape is implementation-defined
   (RFC 6750 §3.1) and this is the documented one.
 - **Grant edits bite immediately**: `LinkLocalUpdateApp` evicts the
@@ -2287,10 +2288,10 @@ does nothing useful. Design:
 `docs/superpowers/specs/2026-08-06-api-key-scoping-design.md` (P1 §6).
 
 - **`GET /v2/auth/whoami`** (authenticated) describes the CREDENTIAL,
-  never the person. Body (camelCase per C2, RFC 3339 UTC dates):
-  `{key: {id, name, createdAt, expiresAt}, scope, grant: {scoped,
+  never the person. Body (snake_case per C2, RFC 3339 UTC dates):
+  `{key: {id, name, created_at, expires_at}, scope, grant: {scoped,
   permission, spaces: [{id, name, permission}]}, api: {version},
-  keyStatus, notice?}`.
+  key_status, notice?}`.
   - `grant.scoped` is the REQUIRED explicit boolean and the load-bearing
     field. A legacy unscoped key is `{scoped: false, spaces: [],
     permission: null}` — NEVER `spaces: null`: consumers get the
@@ -2323,7 +2324,7 @@ does nothing useful. Design:
     space, and its body's space names come from the service's own
     grant-intersected path, the exact pattern the class names.
     `data-free-allow` would be wrong: names are space data.
-  - The `key.id`/`createdAt` plumbing is two additive
+  - The `key.id`/`created_at` plumbing is two additive
     `WalletCreateSession` response fields (`appHash`, `appCreatedAt`),
     cached on the session entry like scope and grant.
   - **`key.id` is credential-adjacent**: it is the app link's hash —
@@ -2362,7 +2363,7 @@ does nothing useful. Design:
   credential cannot follow the "re-issue as a scoped key" advice; those
   keys still read `Anytype-Key-Status: legacy` (they ARE unscoped) but
   get no impossible instruction. The whoami body repeats the signal
-  (`keyStatus`, `notice`) under the same rule — agents read bodies, not
+  (`key_status`, `notice`) under the same rule — agents read bodies, not
   headers. A rate-limited INFO log line (once per key per process
   start, re-armed hourly; nothing is wrong, so never warn) names the
   key id and app name for nil-grant JsonAPI keys only — it exists so WE
@@ -2462,7 +2463,7 @@ advertises it — recorded, not fixed here).
 `Restrictions_Blocks` and `Restrictions_Details` of every edit. Sets and
 collections carry Blocks but NOT Details (`objRestrictEdit`), so a PATCH to
 either was refused whatever it contained: renames, which restrictions never
-forbade, and `addItems`/`removeItems`, the only v2 route into an existing
+forbade, and `add_items`/`remove_items`, the only v2 route into an existing
 collection. A collection was write-once — seedable at POST, immutable after —
 even though §6 retires v1's `AddObjectsToList` in favour of these ops.
 
@@ -2592,7 +2593,7 @@ bounds the op count, but every mutating op invalidates the applier's view,
 so the next op re-marshals the WHOLE document — under the smartblock lock,
 where the cost is not latency for one caller but starvation for every
 reader and writer of the object: ObjectOpen, sync, the app's own UI.
-Reproduced before changing anything: 400 trivial replaceText ops measured
+Reproduced before changing anything: 400 trivial replace_text ops measured
 12.2 s on a 4,200-block document and 71.4 s on a 24,000-block one (~7 µs
 per block-render), linear in the document exactly as the O(ops × document)
 product predicts; the 10 MiB body cap × 512 ops extrapolates to 15–20
@@ -2602,8 +2603,8 @@ minutes from a single request.
 
 1. **The per-op blocks cap** (`v2MaxBlocksPerOp` = 256, enforced in
    `decodePayloadRun`): the served op schemas ALWAYS advertised
-   `maxItems: 256` on the blocks channel of insertBlocks and
-   replaceSubtree; nothing enforced it, so one op could inflate the
+   `maxItems: 256` on the blocks channel of insert_blocks and
+   replace_subtree; nothing enforced it, so one op could inflate the
    document by 24,000 blocks for every later op to re-render. The markdown
    channel already enforced the same number; the two channels now share
    `v2MaxBlocksPerOp` by definition. No schema text changed — the schema
@@ -2620,7 +2621,7 @@ minutes from a single request.
    probe pass, the dry run and the locked run all reach the same verdict
    (C9 dry≡real). Like the 512-op cap it is server-side behavior, not a
    schema-advertised bound.
-3. **replaceText maintains the view in place** (`textEdited`): it changes
+3. **replace_text maintains the view in place** (`textEdited`): it changes
    exactly one exported field of one block — no ids, no structure, no
    indents — and it is the one op that inherently arrives many-per-batch
    (one find/replace each). It writes the CANONICAL rendering a re-marshal
@@ -2631,28 +2632,28 @@ minutes from a single request.
    can leave adjacent marks (`**re****port**`) whose re-marshal reads
    `**report**`, and the next op's find must match what the agent would
    read back. With the exemption in `v2OpRebuildsView`, a full 512-op
-   replaceText batch on a large document is legal again AND cheap:
+   replace_text batch on a large document is legal again AND cheap:
    400 ops on 24,000 blocks went 71.4 s → 0.8 s, on 4,200 blocks
    12.2 s → 0.15 s — the two remaining renders are begin + the final
-   after-document, which diffStats and the R5 net need regardless.
+   after-document, which diff_stats and the R5 net need regardless.
 
 **Tests that fail if the fix is reverted** (verified by reverting): the
 per-op cap and work-bound rejections in `TestPatchObject`, the work-bound
-exemption for replaceText, and `TestApplierRenderCounts`, which pins the
+exemption for replace_text, and `TestApplierRenderCounts`, which pins the
 bounded-work property in the unit that cannot flake in CI — whole-document
 renders (`marshalCount`): exactly 2 for a 50-op text batch, per-op for
 structural ops. Two semantics tests (sequential-canonical, an
-updateBlock merging after a replaceText) pass on BOTH code paths —
+update_block merging after a replace_text) pass on BOTH code paths —
 they pin that the in-place update is byte-equivalent to the re-marshal
 it replaces.
 
 **Deliberately NOT done.** Incremental view maintenance for the
-structural ops (insertBlocks, moveBlock, deleteBlock, updateBlock,
-replaceSubtree, setCell): their exported form is produced by the
+structural ops (insert_blocks, move_block, delete_block, update_block,
+replace_subtree, set_cell): their exported form is produced by the
 exporter's tree walk — normalization, indent clamping with the C11/B′2
 warning contract, table wrapper pinning, the document-wide id domain —
 and replicating that per op in the applier is the applier rewrite this
-review round warned against. Nor for setProperties/addItems/removeItems:
+review round warned against. Nor for set_properties/add_items/remove_items:
 they batch naturally into ONE op (maps and arrays), so the product term
 barely exists for them, and the properties view has real staleness corner
 cases (a key unset and re-set in one batch must re-check space existence).
@@ -2668,7 +2669,7 @@ reject — the same floor its GET costs. The exact worst case a caller can
 reach is therefore max(two renders of the document, the render budget),
 never minutes.
 
-### 8.17 The view write path: updateView (2026-08-07 — decisions as built)
+### 8.17 The view write path: update_view (2026-08-07 — decisions as built)
 
 **The gap, as reported by an agent using the API.** Dataview views were
 readable three ways (the object document, `GET …/sets/{id}/views`,
@@ -2683,7 +2684,7 @@ passed relation links stopped being marked visible; fixed at the generator,
 pinned in `collection_test.go` — a freshly created type now gets a usable
 view and the write path is a repair tool, not a required rite of passage).
 
-**Surface: an eleventh PATCH op, `updateView` — not a route.** Views are
+**Surface: an eleventh PATCH op, `update_view` — not a route.** Views are
 part of the object's document (SPEC §6.2); C2 says one concept, one slot,
 and the object-edit slot is `PATCH …/objects/{id}`. A dedicated
 `PATCH …/views/{viewId}` was rejected: it would be a second way to edit one
@@ -2692,9 +2693,9 @@ atomically with other ops, and it would need THREE registrations (sets,
 collections, types) plus a fourth story for inline dataviews — the op works
 on all four today, including `PATCH …/objects/{typeObjectId}` with the id
 from `GET …/types/{key}` (type objects pass `checkEditPreconditions`; it
-was only PUT's kind-gate that refused them, and PUT is gone — §8.27). Whole-array rewrite via `updateBlock` was
+was only PUT's kind-gate that refused them, and PUT is gone — §8.27). Whole-array rewrite via `update_block` was
 rejected twice over: it is the documented small-model trap (resend every
-view to flip one bit), and updateBlock's `{Blocks: true}` classification
+view to flip one bit), and update_block's `{Blocks: true}` classification
 refuses it on exactly the three object classes that carry dataviews.
 
 **Shape.** `{op, block?, view?, set?, columns?}` — at least one of
@@ -2704,7 +2705,7 @@ to the only view; both resolve by full id or unique suffix (the C4 rule
 `resolveViewRef` already applies on the read surface — resolution by NAME
 was considered and dropped: names collide and localize, and every
 ambiguity/not-found error lists `id ("name")` pairs so the repair needs no
-second read). `set` merges §6.2 view-level fields with updateBlock
+second read). `set` merges §6.2 view-level fields with update_block
 semantics (named fields change, explicit null clears one); `sorts` and
 `filters` replace whole when named — small ordered lists; `filter` is the
 compact-string alternative to `filters` (parsed exactly as POST /sets
@@ -2716,7 +2717,7 @@ column for a deleted property must stay removable). `id` immutable,
 `set.columns` steered to the columns channel, `groups`/`objectOrders`
 rejected as §4a output-only — but they SURVIVE the edit: the merge happens
 on the block's exported JSON and re-imports through the format codec
-(`UnmarshalBlock`, the setCell pattern), and the importer round-trips
+(`UnmarshalBlock`, the set_cell pattern), and the importer round-trips
 kanban editor state, so untouched views, columns, group orders and manual
 object orders land back bit-identical. All validation runs against a
 private deep copy first — a failing op leaves state and view untouched.
@@ -2736,7 +2737,7 @@ unguarded-date-comparison finding rides the C11 warnings channel — PATCH
 responses now carry `warnings` for the first time.
 
 **THE RESTRICTION CLASSIFICATION — the decision that could have recreated
-M1.** `v2OpEditNeeds["updateView"] = {}` — neither axis. Sets and
+M1.** `v2OpEditNeeds["update_view"] = {}` — neither axis. Sets and
 collections carry `Restrictions_Blocks` (`objRestrictEdit`) and object
 types carry it too (`objRestrictEditAndTemplate`) — the three
 dataview-bearing classes, so a Blocks-classified view op would be refused
@@ -2788,10 +2789,10 @@ here is false rejections on every generated view.
 §6.2: the editor's own range is 54…1000; omitted/null lets the client pick
 per format), name ≤ 4096, keys/ids ≤ 256. The op rebuilds the document view
 (`v2OpRebuildsView`), so the M7 render-work bound counts it with no new
-plumbing. Served schema: `GET /v2/schemas/ops/updateView`, C13-strict
+plumbing. Served schema: `GET /v2/schemas/ops/update_view`, C13-strict
 except the documented `filters` recursion (small models steered to
 `filter`); the example is the one-line repair of the reported gap:
-`{"ops":[{"op":"updateView","columns":{"status":{"hidden":false}}}]}`.
+`{"ops":[{"op":"update_view","columns":{"status":{"hidden":false}}}]}`.
 
 **Tests that fail if reverted** (each verified by actually reverting):
 the generator-regression case in `collection_test.go` (stash the
@@ -2803,7 +2804,7 @@ enum tables; and removing the op registration trivially fails the whole
 
 **Deliberately NOT built** *(superseded by §8.18 — the view family shipped
 the same day)*. View create/delete/reorder (`addView`/
-`deleteView` — POST /sets seeds multiple views at creation; editing was the
+`delete_view` — POST /sets seeds multiple views at creation; editing was the
 reported gap; creation-after-the-fact is a separate, smaller decision and
 the native RPC precedent has its own last-view invariant). Name-based view
 addressing (see above). A dataview-properties op (the `properties` list
@@ -2812,62 +2813,62 @@ self-maintains through key usage). Type-scoped R9 tightening for edits
 proto excludes from changes. The swagger annotation names the new op;
 `make openapi` regeneration is pending per the working agreement.
 
-### 8.18 The view family: insertView, moveView, deleteView (2026-08-07 — decisions as built)
+### 8.18 The view family: insert_view, move_view, delete_view (2026-08-07 — decisions as built)
 
 Supersedes §8.17's deferral: create, reorder and delete now exist, so the
 view surface is symmetric — everything `GET …/views` can show, PATCH can
 make, change, order and remove. The op set grows to 14, and stays learnable
 because the three additions introduce NO new grammar: the block family's
-verbs (insert/move/delete), view-scoped, sharing `updateView`'s channels
-(`set`, `columns`), `updateView`'s block/view addressing, and
-insertBlocks/moveBlock's targeting words. One noun, zero new verbs.
+verbs (insert/move/delete), view-scoped, sharing `update_view`'s channels
+(`set`, `columns`), `update_view`'s block/view addressing, and
+insert_blocks/move_block's targeting words. One noun, zero new verbs.
 
-**Naming: `insertView`, singular — a deliberate break from `insertBlocks`'
+**Naming: `insert_view`, singular — a deliberate break from `insert_blocks`'
 plural.** The blocks payload is a structured RUN (ordered, indent-nested),
 which is what the plural names; views have no internal structure, one view
 per intent is the overwhelming case, and several views are several ops in
 the already-atomic batch. The family symmetry that matters is with
-updateView/moveView/deleteView, all singular. A mode-flagged mega-op
-(`updateView` with create/delete/move modes) was rejected for the same
+update_view/move_view/delete_view, all singular. A mode-flagged mega-op
+(`update_view` with create/delete/move modes) was rejected for the same
 reason replaceBlock died in v0.3.5: mode flags are disambiguation load.
 
-**insertView = "updateView aimed at a fresh view."** The base is either
-sensible defaults or a `copyFrom` duplicate; `set`/`columns` then merge on
+**insert_view = "update_view aimed at a fresh view."** The base is either
+sensible defaults or a `copy_from` duplicate; `set`/`columns` then merge on
 top through the SAME code paths (`applyViewSet`/`applyViewColumns`), so
 everything §8.17 established — vocabulary, filter gates, key validation,
-warnings, option create-missing (prewarm covers insertView too; the M5
+warnings, option create-missing (prewarm covers insert_view too; the M5
 bound test fails if it does not) — holds for create without a second
 implementation. `name` is required (a view is a named tab; ≤4096). The
-minted id returns in a new `createdViews` response map ("ops[i]" → id);
+minted id returns in a new `created_views` response map ("ops[i]" → id);
 view ids are always server-minted — a payload has no id slot, `set.id`
 stays rejected.
 
-**The bare default is a view someone can look at.** `{"op":"insertView",
+**The bare default is a view someone can look at.** `{"op":"insert_view",
 "name":"Recent"}` produces: one column per property the dataview lists,
 ALL visible, sorted lastModifiedDate-descending. This deliberately breaks
 with the native `CreateView` default (`dataview.go:333` — every column
 hidden except name), which is the same disease the GO-5969 fix cured for
 generated type views; matching native here would have shipped the reported
 bug as the create default. The sort matches native (`DefaultLastModified-
-DateSort`). `copyFrom` duplicates an existing view of the same dataview —
+DateSort`). `copy_from` duplicates an existing view of the same dataview —
 columns, sorts, filters, type, groupBy, card options, even the per-view
 editor state, everything but id and name — because "like that one, but…"
 is the common intent; §6.2 nests `groups`/`objectOrders` per view, so the
 copied editor state re-keys to the new view id on import for free.
 
-**Reorder is targeted, never a rewrite.** `moveView {view, after|before|
-position}` — the moveBlock vocabulary minus `inside` (views are a flat
+**Reorder is targeted, never a rewrite.** `move_view {view, after|before|
+position}` — the move_block vocabulary minus `inside` (views are a flat
 list; there is no container), with `position: "first"|"last"` standing
 alone instead of riding `inside`. `position: "first"` is documented as the
 "make this the default tab" verb: `activeView` is local UI state (§6.2,
 excluded from changes), so the FIRST view is what a fresh client shows.
-*(Revised in §8.19: moveView now REQUIRES a destination — the silent
+*(Revised in §8.19: move_view now REQUIRES a destination — the silent
 append default this section originally shipped was judged a
-forgotten-field trap that quietly changes the default tab. insertView
+forgotten-field trap that quietly changes the default tab. insert_view
 keeps its append default, where appending is the natural create
 position.)* The splice adjusts the target index across the removal
 (move-after-a-later-view is the test case); moving relative to itself
-degenerates to a no-op rather than an error. insertView shares the same
+degenerates to a no-op rather than an error. insert_view shares the same
 targeting for its insertion point.
 
 **Delete has one guard and one deliberate non-behavior.** Deleting the
@@ -2891,16 +2892,16 @@ of the three in `v2OpEditNeeds` fails it (verified by flipping).
 
 **Tests verified fail-on-revert** (by actually reverting each): the family
 classification (flip → fails), the last-view guard (remove → fails), the
-insertView prewarm coverage (drop from the condition → the M5 bound test
+insert_view prewarm coverage (drop from the condition → the M5 bound test
 fails). The create-defaults decision is pinned by construction (the bare-
 insert test asserts every column visible and the sort).
 
 **Deliberately NOT built.** A per-dataview view-count cap (native has
-none; unbounded growth across requests is the insertBlocks precedent, and
+none; unbounded growth across requests is the insert_blocks precedent, and
 the M7 render-work bound covers per-request work — an advertised cap that
-existing user data already exceeds would strand updateView). Client-
+existing user data already exceeds would strand update_view). Client-
 supplied view ids (nothing needs them pre-creation; minting keeps the id
-space server-shaped). copyFrom across dataview blocks (the source must be
+space server-shaped). copy_from across dataview blocks (the source must be
 a view of the addressed dataview — cross-block copying is a read+insert
 composition the agent can already do). View duplication INTO another
 object (out of PATCH's one-object scope by definition). `make openapi`
@@ -2922,10 +2923,10 @@ never touched. Consequences, all reproduced: a dangling reference (deleted
 tag, filter keeps the id) round-tripped into a BRAND-NEW option named after
 the raw id with the filter rebound to it; those creates fired under the
 object lock (the B6 invariant §8.17 claimed could not be reached); they
-bypassed both halves of M5 (one moveView over an untouched view with 200
+bypassed both halves of M5 (one move_view over an untouched view with 200
 dangling values = 200 options past the cap of 64, and a batch REFUSED as
 atomic still left its options created); and with two options legally
-sharing a name, a pure moveView repointed a filter to the other twin by
+sharing a name, a pure move_view repointed a filter to the other twin by
 store listing order.
 
 As built, two mechanisms:
@@ -2940,30 +2941,30 @@ As built, two mechanisms:
    review flagged (dv-list says select, space says longtext): the value now
    passes through verbatim instead of creating under the lock.
 2. **Unauthored content is restored from the live proto after the import**
-   (`viewCommitPlan` / `restoreUnauthoredViews`): moveView and deleteView
+   (`viewCommitPlan` / `restoreUnauthoredViews`): move_view and delete_view
    author nothing — every surviving view is byte-restored, only
-   order/membership comes from the splice; updateView and insertView author
+   order/membership comes from the splice; update_view and insert_view author
    one view, and within it sorts/filters restore from the live (or
-   copyFrom-source) proto unless the op's set actually named them. The
+   copy_from-source) proto unless the op's set actually named them. The
    codec round-trip is thereby a no-op for everything the op did not write:
    no rebinding, no twin repointing, no drift.
 
 The fixture hole the reviews named — no test ever put content in a view
 the op does not address — is closed by four tests: dangling-value
-verbatim survival through moveView, twin-option id stability through
-updateView-on-the-other-view, format-disagreement pass-through, and
-copyFrom preserving the source's exact ids. Each verified fail-on-revert
+verbatim survival through move_view, twin-option id stability through
+update_view-on-the-other-view, format-disagreement pass-through, and
+copy_from preserving the source's exact ids. Each verified fail-on-revert
 by reverting the resolver and the restore separately.
 
 **B — the M7 bound was blind to dataview weight (fixed).** A dataview is
 ONE block whose marshal cost is O(views × columns); a fully legal
-512×insertView batch on a wide set held the lock ~25 s while scoring 0.05%
+512×insert_view batch on a wide set held the lock ~25 s while scoring 0.05%
 of the budget — and §8.18's no-view-cap justification leaned on the bound
 it was beating. `checkPatchRenderWork` now takes the parsed blocks: the
 document factor counts per-view weight (1 + columns + sorts + filters) and
-every insertView adds the document's heaviest per-view weight to the
-payload factor (the copyFrom worst case). The §8.18 justification holds
-again. Pinned by a test whose 512×insertView batch on a 10-view×50-column
+every insert_view adds the document's heaviest per-view weight to the
+payload factor (the copy_from worst case). The §8.18 justification holds
+again. Pinned by a test whose 512×insert_view batch on a 10-view×50-column
 set must be REFUSED — it passes the old cost model, so it fails if the
 model reverts (verified; the reverted run also demonstrated the 24 s hold).
 
@@ -2981,10 +2982,10 @@ accepted back). A drift test now walks the served schema and pins the enum
 lists to the `viewvocab.go` exports too — the hand-duplicated schema enums
 were the one link the vocabulary drift test did not reach.
 
-**E — insertView had two name slots (fixed).** `set.name` silently
+**E — insert_view had two name slots (fixed).** `set.name` silently
 overrode the op's required `name`, and `set.name: null` produced a
-nameless view from an op whose schema declares name required. insertView
-now rejects `set.name` with the steer (updateView keeps it — there it IS
+nameless view from an op whose schema declares name required. insert_view
+now rejects `set.name` with the steer (update_view keeps it — there it IS
 the rename channel), and its served set schema drops the name property
 (`v2ViewSetPropDefNoName`), keeping schema and server in agreement.
 
@@ -3001,13 +3002,13 @@ recursion exception). The compact filter string now validates keys against
 the same membership as the structured form (the whole dataview: properties
 list + every view's columns — it saw only the addressed view's columns, so
 the recommended input form rejected keys the structured form accepted,
-with a did-you-mean that omitted the right answer). moveView requires a
+with a did-you-mean that omitted the right answer). move_view requires a
 destination (§8.18 revision note above). The bare-insert default is built
 from pre-op membership — its default sort no longer grows the properties
-list, so two bare inserts in one batch produce identical views. copyFrom's
+list, so two bare inserts in one batch produce identical views. copy_from's
 kanban editor-state fidelity is now pinned by a fixture that has some.
 
-**Rejected, with evidence.** "copyFrom duplicates per-node sort/filter ids
+**Rejected, with evidence.** "copy_from duplicates per-node sort/filter ids
 — a state the native editor never produces": the generator itself ships
 fixed node ids on every generated view (`DefaultLastModifiedDateSort`'s
 `byLastModifiedDate`, `defaultChatSort`'s `byLastMessageDate` — identical
@@ -3307,7 +3308,7 @@ bundled vocabulary (exact or derived slug), fold layer (`DueDate`,
 never store order. Wired into route params, search/set type scopes,
 document creates (`canonicalizeDocumentKeys` — detail keys and
 `ot-` URLs are the store's vocabulary, not the wire's; it guarded PUT the
-same way until §8.27), `setProperties`
+same way until §8.27), `set_properties`
 keys, and the option-create prewarm (a slug-keyed select would otherwise
 mint options bound to the slug string). The §8.21 benchmark's Title-Case
 miss now resolves with zero retries.
@@ -3366,7 +3367,7 @@ channel the union check never inspected). Fixed with a reject list
 four, so no legitimate round trip carries them; path-addressed 400) and
 a drop list for system-managed details a round trip DOES carry
 (apiObjectKey — a supplied value bypassed the union check when the name
-slugged empty — origin, spaceId, isArchived, isDeleted, isUninstalled).
+slugged empty — origin, space_id, isArchived, isDeleted, isUninstalled).
 The same forgery's second channel — an envelope `key` on an OBJECT
 document becoming `snapshot.Key` → `uniqueKeyInternal` →
 `DeriveTreeObject` (found while fixing; the review named the details
@@ -3393,7 +3394,7 @@ fails there first.
 store error (a hiccup no longer empties the namespace and waves
 collisions through — fail closed; hint-only lists degrade); entries are
 primed once per request and mandatory in the chain (the N+1 loops in
-document validation and setProperties/view checkKey share one snapshot);
+document validation and set_properties/view checkKey share one snapshot);
 the mint remembers its own request (`mintedSlugs` — two spellings of one
 key in one document refuse instead of both minting `warranty_until`);
 the union check covers fold classes (`moodlevel` beside `mood_level`
@@ -3439,14 +3440,14 @@ derivable slug and the minted BSON stays the only address.
 
 **Rejected, with evidence:** corpse-awareness for `isCollectionType`
 (the input is the object's OWN stored type key — a data predicate;
-refusing addItems on an existing collection whose type was uninstalled
+refusing add_items on an existing collection whose type was uninstalled
 would diverge from the app) and for set-source resolution
 (`setSourceFilters` reads setOf — stored identifiers, never wire
 spellings; a set over a deleted type still lists its objects in the
 app, and v2 stays at parity).
 
-**Still deferred, restated:** view-op set channels (updateView/
-insertView filters and sorts) accept stored keys only — slug inputs
+**Still deferred, restated:** view-op set channels (update_view/
+insert_view filters and sorts) accept stored keys only — slug inputs
 there fail loud via the view-key validation, never silently; folded
 spellings are accepted on routes, documents and ops but NOT inside
 search/set filter validation sets (only stored, served and bundled-slug
@@ -3571,7 +3572,7 @@ legend, whoever produced it.
 **`GET …/types/{key}` rides along** — it delegates to `GetObject`, so a
 type document's minted view ids come back as labels too. That is safe
 because every consumer resolves by suffix
-(`updateView`/`insertView`/`moveView`/`deleteView` via `matchBlockRef`,
+(`update_view`/`insert_view`/`move_view`/`delete_view` via `matchBlockRef`,
 `?view=` via `resolveViewRef`), and because the internal documents those
 ops work on are rendered **without** compaction — `list_read.go`'s
 fixed-`"dataview"` block lookup and the applier's per-op re-render both
@@ -3623,11 +3624,11 @@ S −23.5 % · M −25.1 % · L −42.1 % · R −28.9 % · K −39.3 %; corpus 
 **The one behaviour that got worse, named plainly — and then removed.**
 PUT took the document's block ids literally. As first shipped, a
 GET(default) → edit → PUT loop on a minted-id document did not "re-mint
-with `diffStats` visibility" as this section originally claimed — it
+with `diff_stats` visibility" as this section originally claimed — it
 **adopted the 5-char labels as the stored block ids, permanently**
 (reproduced: after the PUT the stored ids *were* `1bcb9`, `1c5c4`, … and
 a PATCH with the original 24-hex id 404ed), breaking every id another
-client held; and on tables `diffStats` under-reported the rewrite (§8.26).
+client held; and on tables `diff_stats` under-reported the rewrite (§8.26).
 PATCH was never affected (it suffix-resolves). §8.26 closed the trap with
 a refusal, and **§8.27 closed it by construction**: the literal-id channel
 is gone, so no served vocabulary can reach the identity channel at all.
@@ -3670,7 +3671,7 @@ accidental one.
 **PUT refuses unowned ids instead of adopting them — SUPERSEDED by
 §8.27, which removed PUT.** Reproduced live: GET(default) → PUT stored the
 5-char labels AS the block ids, permanently — not the "re-mint visible in
-diffStats" §8.25 first claimed. The guard (`checkPutBlockIds`) collected
+diff_stats" §8.25 first claimed. The guard (`checkPutBlockIds`) collected
 the body's local ids (blocks, table columns/rows, views — the relabel
 domain) and refused any id the object's own export-shape marshal did not
 carry, before the creating resolvers ran. It was explicitly *the honest
@@ -3684,7 +3685,7 @@ real and harmless.
 **Partial reads are marked partial.** A `?block=` subtree read was a
 schema-valid envelope with nothing marking it partial, and PUT of that
 exact body deleted every block outside the subtree (reproduced:
-`blocksRemoved: 5` on a 6-block page) while the equally partial outline
+`blocks_removed: 5` on a 6-block page) while the equally partial outline
 was refused loudly. The subtree envelope carries `"subtree": true` —
 schema-invalid by `additionalProperties: false`, the way outline is
 partial by construction — and create names it precisely before the schema
@@ -3735,16 +3736,16 @@ instead of 409ing or re-applying under a fresh key.
 
 **Recorded, deliberately unfixed:**
 
-- `diffStats` under-reported a PUT identity rewrite on tables: reproduced
+- `diff_stats` under-reported a PUT identity rewrite on tables: reproduced
   4 added/4 removed while 3 row ids and 6 derived cell ids also changed
-  identity. Any §8.25-era argument that "diffStats makes it visible" was
+  identity. Any §8.25-era argument that "diff_stats makes it visible" was
   therefore half-true on tables. *(Moot since §8.27: no surface performs a
-  whole-document identity rewrite. The narrower fact — diffStats does not
+  whole-document identity rewrite. The narrower fact — diff_stats does not
   count derived table-cell identity — still holds and is still unfixed.)*
 - Table columns **with at least one stored cell** never relabel — the
   column's 5-char tail is shared with every derived cell id in that
   column, so the census counts ≥ 2 — which means a served table mixes a
-  5-char `row` with a 24-char `col`, `setCell` sends that mix back
+  5-char `row` with a 24-char `col`, `set_cell` sends that mix back
   (resolveTablePart handles both), and such columns contribute 0 % of the
   label saving. *(Scoped by the release review — "structurally never" was
   overstated: a column with NO stored cells has no derived ids in the
@@ -3786,7 +3787,7 @@ this branch with fail-on-revert tests:
   was **false as written**: "never relabel or alias afterwards" covered
   serving, not resolution. `matchBlockRef` returns on the first EXACT
   match, so an adopted label *captured the reference* — reproduced: read →
-  `insertBlocks` with the read's own label → the next `replaceText` on
+  `insert_blocks` with the read's own label → the next `replace_text` on
   that label edited the copy while the original silently lost it. PATCH
   now refuses any payload id that tails a kept block id, diagnosing the
   pasted-label shape.
@@ -3829,7 +3830,7 @@ live here):
 
 ### 8.27 PUT removed — snapshots are for creates, edits are ops (2026-08-10 — decisions as built)
 
-`PUT /v2/spaces/{spaceId}/objects/{objectId}` replaced an object's whole
+`PUT /v2/spaces/{space_id}/objects/{object_id}` replaced an object's whole
 document: the body became a `SmartBlockSnapshotBase`, `NewDocFromSnapshot`
 materialized it, and `history.ResetToVersion` diff-applied it against the
 live object. **It is gone, whole.** This section records why, so the shape
@@ -3846,14 +3847,14 @@ are to be treated as a design smell, not a shortcut.
 **Four reasons, in the order they weigh.**
 
 1. **Token cost, both ways.** Changing one word cost ~2 400 tokens to read
-   plus ~2 400 to write, against **33** for a PATCH `replaceText` op —
+   plus ~2 400 to write, against **33** for a PATCH `replace_text` op —
    two orders of magnitude, on the commonest edit there is (TOKENS §3's
-   flow table, M-24blk: "GET default → PATCH `replaceText` by id =
+   flow table, M-24blk: "GET default → PATCH `replace_text` by id =
    2 417 + 33"; PUT pays the 2 417 again on the way out).
 2. **Its one distinguishing property was conditional and unexercised.**
    The id-matched minimal CRDT diff only helped a client that had
    preserved the stored block ids. A client that had not got a full
-   rewrite — which `setProperties` + `replaceSubtree` already produce, on
+   rewrite — which `set_properties` + `replace_subtree` already produce, on
    an id-addressed path that cannot silently mutate identity.
 3. **No consumer.** Nothing in the tree called it: not the §7 wrapper
    (which excluded it by design), not the CLI, not the evals, not the
@@ -3900,10 +3901,10 @@ as does the review-debt item "PUT and `POST /sets` still run whole-document
 creating-resolver imports" for the PUT half (`POST /sets` still does).
 
 **The one capability it nominally served — "clear the document and write
-new content" — is owed a replacement.** Today that costs a `deleteBlock`
+new content" — is owed a replacement.** Today that costs a `delete_block`
 per top-level block. The named follow-up is a **range block-remove op** on
 PATCH (APIV2_PLAN.md), so the clear-and-rewrite case is one bounded op plus
-one `insertBlocks`, at op cost rather than document cost. Deliberately not
+one `insert_blocks`, at op cost rather than document cost. Deliberately not
 built here: removing the wrong shape first is what makes the right one
 easy to specify.
 
@@ -4004,20 +4005,20 @@ which reads an id as an identity. The documented loop
 
 ```
 GET ?block=aaaa1                                   # default = compact shape
-PATCH {"op":"replaceSubtree","id":"aaaa1","blocks":<that exact array>}
+PATCH {"op":"replace_subtree","id":"aaaa1","blocks":<that exact array>}
 ```
 
-answered **200** with `blocksAdded: 1, blocksRemoved: 1` and permanently
+answered **200** with `blocks_added: 1, blocks_removed: 1` and permanently
 renamed the stored `0000000000000000000aaaa1` to `aaaa1`. Consequences:
 other clients' cached ids 404; the adopted id is not minted-shaped so it
 never relabels again *and* permanently reserves that label in the
 exporter's avoid-set; the CRDT records a delete plus a create where an edit
-belonged. `updateBlock set:{rows:[…]}` did the same and reported it as the
-innocuous `blocksChanged: 1`. `setCell value` did it to cell descendants.
+belonged. `update_block set:{rows:[…]}` did the same and reported it as the
+innocuous `blocks_changed: 1`. `set_cell value` did it to cell descendants.
 
 The old guard (`checkFreshIds`) missed exactly these because
 `keptBlockIds(leaving)` **subtracts the subtree being replaced** — so it
-covered `insertBlocks` (where nothing is leaving) and skipped every op
+covered `insert_blocks` (where nothing is leaving) and skipped every op
 whose payload replaces the label's own owner.
 
 *Fix:* payload ids resolve like reference ids, against the pre-op
@@ -4026,24 +4027,24 @@ vocabulary **including the leaving subtree** (`payloadids.go`;
 cell-descendant and view ids, the exact domain relabeling covers, shared
 with create's `docLocalIds` so the two cannot drift). The loop above is now
 *correct*, not merely refused: identity is preserved and a no-op echo is a
-genuine no-op (`diffStats` all zero).
+genuine no-op (`diff_stats` all zero).
 
 *Unmatched id — refused, not minted.* A payload id that resolves to nothing
 is a 400 with the C6 hint naming both legitimate moves. Minting over it
 would silently turn a stale or mistyped id into a new block — the same
 silent-wrong-thing class F1 is about — and it would keep a literal channel
 open for non-minted-shaped ids. Refusing costs a caller who meant new
-content one edit (`id` is omitted, the server mints, `createdBlocks`
+content one edit (`id` is omitted, the server mints, `created_blocks`
 reports it), and it makes the rule total, which is what lets C4 finally say
 "no channel takes ids literally" truthfully. This retires the one
 affordance it removes: a client can no longer choose the id of a block it
 creates through PATCH. Nothing in the tree used it (the wrapper authors via
-`markdown`), and `createdBlocks` returns what was minted.
+`markdown`), and `created_blocks` returns what was minted.
 
 *Ambiguous suffix* is a 400 `ambiguous_input` listing the candidates.
 *`checkFreshIds` is gone*, rewritten as `claimPayloadIds` — resolution
 subsumed its tail-scan half, and two overlapping guards with different
-coverage were the bug. *`createdBlocks` now reports only minted ids*: a
+coverage were the bug. *`created_blocks` now reports only minted ids*: a
 resolved payload position names something that already existed.
 
 **F2 — the GET → POST clone broke on corpse-held property keys.** §8.27
@@ -4073,7 +4074,7 @@ all. Both arms are pinned.)
 > §8.40 adds the `isDeleted Condition None` clause and runs the corpse
 > fixtures over both store shapes.
 
-*The asymmetry left standing, on purpose.* PATCH `setProperties` still
+*The asymmetry left standing, on purpose.* PATCH `set_properties` still
 refuses a corpse-held key the target object does not already carry, with the
 same near-miss did-you-mean — so the F2 argument above ("the hint steers the
 caller onto an unrelated property") applies verbatim to the PATCH
@@ -4081,14 +4082,14 @@ cross-object case, and it is not being fixed. The difference is what the
 channel is FOR. Create's whole advertised loop is "a pasted read body creates
 a copy" (§3(b)): the document the caller pastes is one this API served, and
 the key is in it because the source object holds a value of that relation —
-refusing is refusing our own output. `setProperties` is not a paste channel;
+refusing is refusing our own output. `set_properties` is not a paste channel;
 it names the properties an edit changes, one at a time, and a key the object
 does not already hold arriving there is a caller writing a NEW value onto a
 dead relation, which the near-miss hint is at least approximately right
 about. The in-document escape (`checkKey` passes any key already on the
 document) covers the round-trip half of PATCH — echoing a read body back —
 which is the only part that shares create's justification. A later reader
-should take this as decided, not overlooked: the day `setProperties` grows a
+should take this as decided, not overlooked: the day `set_properties` grows a
 paste-shaped channel, the tolerance moves with it.
 
 **F3 — the system-managed exclusion lost its only coverage.** The
@@ -4099,12 +4100,12 @@ paste-shaped channel, the tolerance moves with it.
 **F4 — the 404 hints lied.** Both said *"GET the object with
 `?outline=true` to list block ids"*. Cell descendants are served by a
 default read (inside `rows[].cells[]`), resolve on **no** channel — not
-`?block=` on either spelling, not `replaceText` — and the outline does not
+`?block=` on either spelling, not `replace_text` — and the outline does not
 list them (`blockIds()` and `exportShapeBlockIds` read only top-level
 `blocks[]`). The guides' one recovery instruction therefore looped forever.
 *Fix:* the hints now scope the outline's promise to the document's blocks
 array and say outright which served ids are not block references (a table's
-rows and columns are addressed by `setCell`'s `row`/`col`, a dataview's
+rows and columns are addressed by `set_cell`'s `row`/`col`, a dataview's
 views by the view ops, and a block inside a cell is not individually
 addressable — rewrite its cell). Pinned by a property test: every outline
 entry must resolve as a `?block=` reference, and the cell descendant a
@@ -4117,10 +4118,10 @@ it would cost, so the decision is a decision and not an oversight:
    `doc.localIds()` — cheap, already built.
 2. But `resolveRef` returns an **index into `doc.blocks`**, and every
    ref-taking op works on `doc.blocks[idx]`. Cell descendants have no entry
-   there, so each of `updateBlock`, `replaceSubtree`, `moveBlock`,
-   `deleteBlock`, `replaceText` and the `insertBlocks` targeting needs a
+   there, so each of `update_block`, `replace_subtree`, `move_block`,
+   `delete_block`, `replace_text` and the `insert_blocks` targeting needs a
    second addressing mode routed through the owning table's re-import (the
-   `setCell` path) — or the flat view has to promote cell descendants to
+   `set_cell` path) — or the flat view has to promote cell descendants to
    first-class entries, which changes the served document shape.
 3. `?block=` on a cell descendant would have to serve a *partial cell run*,
    a shape the AnyBlock envelope cannot express (a cell descendant is not a
@@ -4138,7 +4139,7 @@ decision, not a bug fix.
 instead of being taken literally, and refused an id that resolves to
 nothing. Correct, and it stays. But it finished a change of meaning that had
 been half-made: after it, a payload `id` means exactly one thing — *name an
-existing element and keep its identity* — and `insertBlocks`, whose payload
+existing element and keep its identity* — and `insert_blocks`, whose payload
 has no existing content to name, was left advertising a field in which
 **every value is an error**. An id that resolves is refused as a duplicate
 (`claimPayloadIds` with an empty allow-set); one that does not resolve is
@@ -4163,19 +4164,19 @@ guard was doing all the work. Corrected and the nested entries typed in
 
 **The split.** The payload block def became two:
 
-- `v2OpNewBlockDef` — **new content** (`insertBlocks`): no `id`, on the
+- `v2OpNewBlockDef` — **new content** (`insert_blocks`): no `id`, on the
   block or nested in `rows`/`columns` (typed as such since §8.31; `views` is
   not a block property on either shape, so nothing can name one here).
-- `v2OpBlockDef` — **existing content** (`replaceSubtree`): keeps `id`,
+- `v2OpBlockDef` — **existing content** (`replace_subtree`): keeps `id`,
   because naming the block being replaced is what makes echoing a read back
   a no-op instead of a rename (§8.29).
 
-`updateBlock`'s `set.{rows,columns,views}` and `setCell`'s `value` are
+`update_block`'s `set.{rows,columns,views}` and `set_cell`'s `value` are
 existing-content payloads too — both allow ids drawn from the addressed
 block's own subtree — and their schemas publish those channels untyped, so
 they advertise no `id` to remove.
 
-The runtime is unchanged in what it accepts: `insertBlocks` still refuses an
+The runtime is unchanged in what it accepts: `insert_blocks` still refuses an
 id. What changed is the verdict's meaning — it no longer resolves the id at
 all (`rejectPayloadIds`), so it says *"id is not part of this op"* instead
 of reporting a duplicate or an unresolvable reference, neither of which
@@ -4192,19 +4193,19 @@ the same move C2 makes on the surface's nouns.
 **Boundary check.** Every id-bearing payload slot was re-derived from the
 code rather than assumed. Table rows, columns and cell descendants are real
 state blocks, so `claimPayloadIds` sees them and the always-error verdict
-holds for them in `insertBlocks`. Dataview **view** ids are the one slot no
-guard covered: they are not blocks, so an `insertBlocks` payload naming an
+holds for them in `insert_blocks`. Dataview **view** ids are the one slot no
+guard covered: they are not blocks, so an `insert_blocks` payload naming an
 existing view used to import a *second* dataview holding that view id — no
 refusal, a duplicate view id in the document. Rejecting the field closes
-that for `insertBlocks` without a new guard — but only for `insertBlocks`:
-the EXISTING-content payloads (`updateBlock set:{views}`, `replaceSubtree`)
+that for `insert_blocks` without a new guard — but only for `insert_blocks`:
+the EXISTING-content payloads (`update_block set:{views}`, `replace_subtree`)
 still had no view-id guard at all, which is the seam §8.31 closes.
-`updateView`/`insertView` `set.sorts[].id` is a
+`update_view`/`insert_view` `set.sorts[].id` is a
 different id domain (a sort's own id, output-only on reads, accepted back so
 a read round-trips) and is untouched.
 
 **Not taken.** The unreferenced `$defs.block` that every op schema carries —
-`setProperties` publishes a payload-block def it never `$ref`s — is noise,
+`set_properties` publishes a payload-block def it never `$ref`s — is noise,
 not a trap: a decoder reaches only what the root schema references. Left
 alone. The format's own document schema (`GET /v2/schemas/object`,
 `pkg/lib/anyblockjson/schema`) is a different contract — a create body is a
@@ -4232,8 +4233,8 @@ emissions, at any path, in all 210:
 
 | arm | payloads | schema publishes a payload `id`? | `id` emitted |
 |---|---|---|---|
-| `insertBlocks` | 140 | no (this section's change) | 0 |
-| `replaceSubtree` | 70 | **yes** — and half of them come from the `echo_block_existing` case, which quotes a read block WITH its id and asks for the replacement *"keeping the block's identity"* | 0 |
+| `insert_blocks` | 140 | no (this section's change) | 0 |
+| `replace_subtree` | 70 | **yes** — and half of them come from the `echo_block_existing` case, which quotes a read block WITH its id and asks for the replacement *"keeping the block's identity"* | 0 |
 
 The second row is the control, and it is what limits the claim. These models
 did not write a payload `id` **whether they were shown one or not**, so the
@@ -4251,7 +4252,7 @@ to it remains a per-field judgment, and §8.33 is the case where it was
 not.)*
 
 Where the rule *is* argued by measurement is its second instance: `position`
-on `insertBlocks` was published with a description that made it read inert,
+on `insert_blocks` was published with a description that made it read inert,
 and in the no-target shape **every** value of it was a 400 — a shape
 `gemma4:e2b` produced on 20 of its payloads, 10 of 10 in each of the two
 cases that reach for it. That is the same rule catching a second field, and
@@ -4273,9 +4274,9 @@ A dataview **view id** therefore resolved but could never collide. Two
 reproduced consequences, both 200 before:
 
 **(a) Duplicate view ids sailed through.**
-`updateBlock {"id":"dataview","set":{"views":[{"id":"viewAll1",…},{"id":"viewAll1",…}]}}`
+`update_block {"id":"dataview","set":{"views":[{"id":"viewAll1",…},{"id":"viewAll1",…}]}}`
 stored a document holding two views under one id. `matchViewRef` returns the
-first exact match, so a later `updateView {"view":"viewAll1"}` renamed only
+first exact match, so a later `update_view {"view":"viewAll1"}` renamed only
 view #1 — and every subsequent view op addressed view #1 **forever**; the
 second was unreachable for the life of the object. A column or a row in the
 identical position was refused correctly, which is what makes this a seam
@@ -4283,7 +4284,7 @@ rather than a policy: the guard covered every id slot that happened to be a
 block.
 
 **(b) A block could adopt a view's id.**
-`replaceSubtree {"id":"blockPara1","blocks":[{"id":"viewA1","type":"paragraph"}]}`
+`replace_subtree {"id":"blockPara1","blocks":[{"id":"viewA1","type":"paragraph"}]}`
 stored a paragraph whose id equals a live view's — reachable by compact
 suffix too, since view ids are in the relabel pool (§9a). Damage is bounded
 today (block refs and view refs resolve against different lists) but the
@@ -4340,19 +4341,19 @@ resolves.
 
 **The receipt the refusals promise is now delivered.** Both
 `unresolvedPayloadIdError` and `newContentIdError` tell the caller to omit
-the id because *"the server mints one and returns it in `createdBlocks`"* —
-but `createdBlocks` was written only in `decodePayloadRun`, for **top-level
+the id because *"the server mints one and returns it in `created_blocks`"* —
+but `created_blocks` was written only in `decodePayloadRun`, for **top-level
 run blocks**. A minted view id, a minted cell descendant, and the row/column
-ids of a table created through `insertBlocks` were all unreported — and
+ids of a table created through `insert_blocks` were all unreported — and
 those are precisely the slots the refusals fire on (the §8.30 test asserts
 path `ops[0].blocks[0].rows[0].id`). Reporting was chosen over rewording:
 the alternative costs a model that must re-read to learn an id it just
 created a whole round trip, and the fix is one walk. Minting moved from the
 format importer into the API's slot walk, so every empty id slot is filled
 and reported under **its own payload path** — `ops[0].blocks[0].rows[1]`,
-`ops[0].value[1]`, `ops[0].set.views[2]`. Views go to `createdViews` (a view
-is not a block; that map already existed for `insertView`), everything else
-to `createdBlocks`.
+`ops[0].value[1]`, `ops[0].set.views[2]`. Views go to `created_views` (a view
+is not a block; that map already existed for `insert_view`), everything else
+to `created_blocks`.
 
 **One walk, three passes.** Resolution and rejection used to be two hand-kept
 walkers over the same slot set (`resolvePayloadBlock` / `rejectPayloadIds`),
@@ -4370,7 +4371,7 @@ and `views` is not a property of the block def at all. The schema constrained
 the top-level slot and nothing below it; the runtime guard did all the work
 there, and the new test's `schemaPropertyOwners` found no nested `id` only
 because there was no nested schema — the same assertion would have passed for
-`replaceSubtree`. *Fix:* the nested entries are typed. `columns` and `rows`
+`replace_subtree`. *Fix:* the nested entries are typed. `columns` and `rows`
 publish `items` defs that are themselves `additionalProperties: false`, and
 the id slot inside them follows the same §8.30 split as the block's own —
 present on `v2OpBlockDef`, absent on `v2OpNewBlockDef`. What is **not** typed
@@ -4384,7 +4385,7 @@ test asserts the nested defs exist, are strict, and carry an `id` exactly on
 the existing-content shape, so it fails both if a nested slot regains an id
 and if the nested defs are removed again.
 
-**The new-content op set is one set.** The runtime literal `"insertBlocks"`
+**The new-content op set is one set.** The runtime literal `"insert_blocks"`
 and `opSchemaNewContent(…)` were independent statements of the same fact.
 Runtime-without-schema is merely strict; **schema-without-runtime re-creates
 §8.30's exact bug** — an op publishing an id no value of which can succeed.
@@ -4430,7 +4431,7 @@ targeting field is meaningless"*. The published description said *"with
 default, so naming it is harmless* — and `gemma4:e2b` wrote exactly
 
 ```json
-{"markdown":"## Risks\n- Vendor delay","op":"insertBlocks","position":"last"}
+{"markdown":"## Risks\n- Vendor delay","op":"insert_blocks","position":"last"}
 ```
 
 on 20 payloads: 10 of 10 in *add a section at the end*, 10 of 10 in *copy
@@ -4444,7 +4445,7 @@ The field was made meaningful instead: with no `after`/`before`/`inside`,
 absent) the end. That turns a guaranteed refusal into the obvious reading,
 and it gives *"insert at the beginning"* an expression that previously
 required reading the document first only to learn the first block's id.
-`moveBlock` shares `resolveTarget` and gets the same meaning: one vocabulary,
+`move_block` shares `resolveTarget` and gets the same meaning: one vocabulary,
 one meaning, in both ops that use it.
 
 **Root-first is not the state root's `InnerFirst`.** `InsertTo("")` targets
@@ -4456,7 +4457,7 @@ repairs it until the object is next initialised (`template.RequireHeader` /
 "before the first document block" — the same slot `before: <first block>`
 names, needing no knowledge of the header at all — with the append as the
 fallback when there is no document block to sit before. `rootTarget`
-(stateops.go) is that one resolution, and `moveBlock` passes it the moved
+(stateops.go) is that one resolution, and `move_block` passes it the moved
 subtree to skip, so `position:"first"` on the block that is already first
 anchors against the block *after* it instead of failing InsertTo's
 "blockIds contains target" or, worse, falling through to the append at the
@@ -4576,7 +4577,7 @@ sent to an arm that publishes none still works and is still counted.
 The field is supplied on **every single call** where the schema shows it,
 including the arm whose prose argues against it, and on **none** where the
 schema does not. This is the separation §8.30's 210-call probe could not
-produce: there the control field (`replaceSubtree`'s payload `id`) was not
+produce: there the control field (`replace_subtree`'s payload `id`) was not
 emitted *whether it was shown or not*, so the arms never diverged and the
 probe could only report that the removal cost nothing. Here the field is one
 these models reach for by default, and it moves 11/11 → 0/13 on a schema
@@ -4699,7 +4700,7 @@ The cause is that `describe` read the type's **recommended** lists — what a
 client renders in its properties panel — and served them under *"use these
 exact property keys … in create and set_properties"*. Those are different
 sets, and they disagree in both directions. Live, `page` recommends
-`createdDate` and `creator` (which `setProperties` **refuses**, SPEC §4a)
+`createdDate` and `creator` (which `set_properties` **refuses**, SPEC §4a)
 and `backlinks`, `links`, `lastModifiedBy`, `lastOpenedDate` (which it
 accepts and silently ignores — see below); it recommends neither `name` nor
 `description`.
@@ -4721,7 +4722,7 @@ added from a small always-settable list, since neither source can produce
 it.
 
 The output-only set is now stated **once**, in `v2model`, and both layers
-read it: the service refuses a `setProperties` naming one, and `describe`
+read it: the service refuses a `set_properties` naming one, and `describe`
 must not advertise one as settable. A second copy in the wrapper is the
 drift class §8.31 was about.
 
@@ -4740,9 +4741,9 @@ into a count past that.
 
 #### Also found, filed not fixed: SPEC §4a's output-only set is too small
 
-Verified live against the running API: `setProperties` accepts
+Verified live against the running API: `set_properties` accepts
 `backlinks`, `links`, `lastModifiedBy` and `lastOpenedDate`, answers **200
-with `propertiesChanged: 0`**, and writes nothing. They are derived, marked
+with `properties_changed: 0`**, and writes nothing. They are derived, marked
 `readonly` in the bundle, and absent from `v2OutputOnlyPropertyKeys`. That
 is an accepted write that does nothing, reported as success — the
 silent-wrong-action class these rounds have been spent removing, and the one
@@ -4809,7 +4810,7 @@ for e2b anywhere in the run.
 **And the ops arm is not a control.** Its tools take no `space` and no object
 id at all — the harness binds the target, and across all 39 ops-arm calls in
 the run the argument names are `op`, `id`, `find`, `replace`, `blocks`,
-`row`/`col`/`tableId`, `value`, `position`, `set`, `markdown`, `after`,
+`row`/`col`/`table_id`, `value`, `position`, `set`, `markdown`, `after`,
 `outline`, `recursive`. e4b scores 8/10 there because it never has to handle
 a space id, not because it handles one well. The two arms differ in the
 argument, not in the difficulty of the work.
@@ -4953,7 +4954,7 @@ them for a space id at all. The second is Phase 9, and it is cheaper.
 
 #### Evidence for Phase 9 (`APIV2_SURFACES.md` §10.3)
 
-The plan predicted `spaceId` would be the argument a small model most often
+The plan predicted `space_id` would be the argument a small model most often
 **omits**, because it never appears in the user's request. The measurement
 says it is the argument a model most often **mangles**: 83 of 93 `find` calls
 in e4b's wrapper attempts, zero mangles in any other argument, and an ops arm
@@ -5099,7 +5100,7 @@ answers to "which spaces exist".
 #### Serve short, accept either, echo what you were served
 
 Served short: `GET /v2/spaces` rows, `GET`/`POST`/`PATCH /v2/spaces/{id}`,
-global-search rows' `spaceId`, whoami's `grant.spaces[].id` (a granted space
+global-search rows' `space_id`, whoami's `grant.spaces[].id` (a granted space
 the caller cannot SEE has no census entry and keeps its full spelling — the
 grant echo must stay complete), and therefore the wrapper's `spaces` tool,
 which passes `SpaceRow` through verbatim. The census runs over the WHOLE
@@ -5124,7 +5125,7 @@ OpenAPI description) and here.
 
 **The compact `filter` string is unaffected.** A space id cannot appear in
 it: filter keys are the space's property keys plus the four-key system
-allowlist, and `spaceId` is not among the 38 keys the eval space publishes —
+allowlist, and `space_id` is not among the 38 keys the eval space publishes —
 checked, not assumed. So §C2's validate-before-fold exception raises no
 question here, and the string keeps treating identifiers exactly as it did.
 
@@ -5163,7 +5164,7 @@ POST /v2/spaces/hxwz2i/search         → 200                      (nested route
 GET /v2/spaces/zzzzzz/objects         → 404 space "zzzzzz" not found  (the caller's own value)
 GET /v2/spaces/hxwz2i/types/nope      → … not found in space "hxwz2i" … GET /v2/spaces/hxwz2i/types
 GET /v2/spaces/<full>/types/nope      → … not found in space "bafyrei….28y6mgnwgodt7" …
-POST /v2/search                       → rows carry "spaceId":"hxwz2i"
+POST /v2/search                       → rows carry "space_id":"hxwz2i"
 ```
 
 Through the wrapper CLI, all three `space`-taking tools: `spaces` prints the
@@ -5338,7 +5339,7 @@ and is why this change moved no existing test.
 | `GET /v2/spaces/{id}` | `id` | **honoured** |
 | `POST /v2/spaces` | the created `id` | **honoured** — a create is precisely when a caller has a new id to store |
 | `PATCH /v2/spaces/{id}` | `id` (via GET-one) | **honoured** |
-| `POST /v2/search` (global) | rows' `spaceId` | **honoured** — the one place an agent learns a space id it did not name |
+| `POST /v2/search` (global) | rows' `space_id` | **honoured** — the one place an agent learns a space id it did not name |
 | `GET /v2/auth/whoami` | `grant.spaces[].id` | **honoured**. It has no space in its path, but it does have a space id in its body, and it is the surface a holder reads to learn which spaces it holds — the answer a scoped integration writes into its own config |
 | ambiguity refusals (`ResolveSpaceRef` candidates) | the candidates | **honoured** — a refusal's repair value is part of the response |
 | `POST /v2/spaces/{id}/search`, `GET …/objects`, members, types, properties, chats, sets/collections | **no space id in the body** | parsed and ignored: there is nothing to spell |
@@ -5350,7 +5351,7 @@ Two surfaces deliberately did **not** change:
   spellings always accepted, on every route. `?ids=` is about what is
   **served**. `GET /v2/spaces/{short}?ids=full` is the round trip a caller
   makes to turn a reference it was handed into one it can store.
-- **Member ids.** `_participant_<spaceId>_<identity>` keeps the full space id
+- **Member ids.** `_participant_<space_id>_<identity>` keeps the full space id
   inside it under both shapes. It is an id of a different object, addressable
   as a unit; rewriting its interior would break it.
 
@@ -5367,7 +5368,7 @@ property value, not in a ref. The same is true of the object list and the
 space-scoped search (`includeSpaceId` is set only by the global fan-out). So
 the answer is "yes, and it is currently a no-op there" — which is the useful
 form of the answer, because the flag is already correct for the surface that
-adds a `spaceId` tomorrow.
+adds a `space_id` tomorrow.
 
 #### Not agent-facing (§8.28)
 
@@ -5488,7 +5489,7 @@ ultimately gets is ADDRESSING §8 open question 3 (lean: "floor first").
 
 **The plan's stated defect for 1.2 was mis-attributed, and the real one is
 now loud.** The wrong-entity write ("a UI property named Due Date claims
-`due_date`, so `setProperties` lands in it instead of the bundled one") is
+`due_date`, so `set_properties` lands in it instead of the bundled one") is
 not what a backfill fixes: the squatter *has* a slug, so the backfill never
 touches it. 1.1 prevents new ones; existing ones cannot be repaired without
 re-pointing an address v1 serves. What needed no permission was the failure
@@ -5537,7 +5538,7 @@ whose slugs would collapse onto one JSON key keep the honest stored
 spelling for the second — a duplicate map key loses a value.
 
 *What did NOT re-spell, deliberately* (§7.5a-4): the envelope and DTO field
-names (`spaceId`, `iconSize`, `defaultTemplateId`, `has_more`'s existing
+names (`space_id`, `iconSize`, `defaultTemplateId`, `has_more`'s existing
 carve-out), block attribute names (a callout's `iconEmoji`), enum **values**
 (`kind: "objectType"`, layout names) — `objectType` the layout value
 coexists with `object_type` the type key, and that is intended — the
@@ -5662,7 +5663,7 @@ fell through to `BundledKeyVocabulary` while the read half exported through
 
 - the bundled table does not know a BSON-keyed relation's slug, so
   `manual_property` imported as the **literal stored key** `manual_property`.
-  Executed: `PATCH …/objects/obj1 {"op":"updateView","columns":{"severity":
+  Executed: `PATCH …/objects/obj1 {"op":"update_view","columns":{"severity":
   {"hidden":false}}}` on a space whose `severity` is a UI property stored as
   `6a76…e107` rewrote the dataview's relation key to `severity` — a dataview
   naming a key no relation object owns. Columns unbind, filters and sorts
@@ -5677,8 +5678,8 @@ fell through to `BundledKeyVocabulary` while the read half exported through
 Fix: `Keys: r.reads`. `storeresolver.PropertyKey` already implements chain
 step 1 (an exact live stored key wins over the slug layer), which is exactly
 what makes it safe on every call site — `create.go`'s document import,
-`schema_write.go`'s type import, and `stateops.go`'s `insertBlocks`/
-`replaceSubtree` fragments and whole-dataview re-import. Verified per site,
+`schema_write.go`'s type import, and `stateops.go`'s `insert_blocks`/
+`replace_subtree` fragments and whole-dataview re-import. Verified per site,
 not assumed.
 
 #### 2. `PATCH /v2/spaces/{s}/types/{key}` was broken for every spelling it taught
@@ -5999,7 +6000,7 @@ fail the moment a listing used it.
   `TypeKey` implemented steps 1–3 and then degraded verbatim, while the v2
   route layer folded — so one request could resolve `Severity` through
   `/properties` and, in the same body, store it unfolded as a dataview column
-  key. Only `updateView` was covered (`canonicalViewKey`). A single folded
+  key. Only `update_view` was covered (`canonicalViewKey`). A single folded
   candidate resolves; several degrade verbatim (never a guess); hidden
   holders do not participate; an exact stored key still wins first. It folds
   over both the stored key and the stored slug, exactly as the route layer
@@ -6211,9 +6212,9 @@ Channels, and why each is where it is:
 | channel | before | after |
 |---|---|---|
 | `POST /objects` (document create) | value landed on `dueDate` | 400, repair named |
-| `PATCH … setProperties`, key NOT on the document | value landed | 400, repair named |
-| `PATCH … setProperties`, key already on the document | edit/unset allowed | **unchanged** — the two-tier rule (§8.17, `checkKey`'s `inDoc`) keeps a document's own values editable, and `unset` is the only cleanup channel a caller has left |
-| `updateView` introducing the key | 400 (`unknown property key`) | **unchanged, verified** — view documents spell slugs, and the bundled slug stops resolving the moment the relation is uninstalled, so `validateViewKeys` already refused at its unknown-key branch. A removal check there would have been dead code; the closure is pinned by test regardless of which branch closes it *(CORRECTED in §8.41-2: true only when slug ≠ key — dueDate, the one key every test here used, is one of the few. For the 41 bundled relations whose derived slug EQUALS the key — `tag`, `status`, `description`, … — the slug never stops resolving and this channel accepted all of them, 40/40 in the executed matrix. The removal check is now wired.)* |
+| `PATCH … set_properties`, key NOT on the document | value landed | 400, repair named |
+| `PATCH … set_properties`, key already on the document | edit/unset allowed | **unchanged** — the two-tier rule (§8.17, `checkKey`'s `inDoc`) keeps a document's own values editable, and `unset` is the only cleanup channel a caller has left |
+| `update_view` introducing the key | 400 (`unknown property key`) | **unchanged, verified** — view documents spell slugs, and the bundled slug stops resolving the moment the relation is uninstalled, so `validateViewKeys` already refused at its unknown-key branch. A removal check there would have been dead code; the closure is pinned by test regardless of which branch closes it *(CORRECTED in §8.41-2: true only when slug ≠ key — dueDate, the one key every test here used, is one of the few. For the 41 bundled relations whose derived slug EQUALS the key — `tag`, `status`, `description`, … — the slug never stops resolving and this channel accepted all of them, 40/40 in the executed matrix. The removal check is now wired.)* |
 
 The asymmetry with §8.29's tolerance is deliberate and lives in the entities,
 not the policy: a **custom** corpse's stored key is a BSON id that can never
@@ -6346,7 +6347,7 @@ placed at them — the same relationship production rows have to their keys.
 41 of 194 bundled relations have `ApiSlug(key) == key` — `tag`, `status`,
 `description`, `assignee`, `priority`, … `dueDate` is one of the keys where
 slug ≠ key, and every §8.40 verification used it. The consequence: §8.40's
-"the bundled slug stops resolving, so `updateView` already refuses" was true
+"the bundled slug stops resolving, so `update_view` already refuses" was true
 only for the slug≠key class. Executed: `tag`, `status`, `description`,
 `assignee`, `priority` × {columns, groupBy, filters, sorts} → **40 of 40
 accepted**, landing in `dataview.properties` and `view.columns` of removed
@@ -6448,7 +6449,7 @@ differs from the property one because a create cannot drop its type.
 - **Message/path coherence**: a removal refusal's envelope now says
   `removed property keys` (or `unknown and removed …` when mixed) — the key
   is known, "unknown" was a lie the issue text contradicted — and issue
-  paths spell the key as the CALLER sent it (create and setProperties keep
+  paths spell the key as the CALLER sent it (create and set_properties keep
   a canonical→sent spelling map), not as canonicalization rewrote it.
 - **`propertyKeyHeldByAnyRelation`'s comment** claimed a constraint the
   code never enforced ("a document that legitimately carries a value").
@@ -6496,8 +6497,8 @@ running server predates this HEAD; verification is unit and handler tests.
 ### 8.42 Object DELETE: creator provenance and the own-output rule (2026-08-14 — decisions as built)
 
 Plan 3.3, built to `core/api/APIV2_OBJECT_DELETE.md` (the design record;
-§ references below are into it). `DELETE /v2/spaces/{spaceId}/objects/
-{objectId}` is registered: archive semantics (Bin, reversible in the app —
+§ references below are into it). `DELETE /v2/spaces/{space_id}/objects/
+{object_id}` is registered: archive semantics (Bin, reversible in the app —
 v1 parity and uniformity with the type/property DELETEs), C8 idempotency +
 write rate limit + `V2DeleteObject` analytics, C9 `?dry_run=true` as the
 deletability probe (full verdict incl. provenance, no write). `?permanent=
@@ -6580,9 +6581,9 @@ other system surface refuses regardless of what provenance says (the
 steered schema trio keeps its more useful per-route steer). Provenance
 answers "whose is it"; the allowlist answers "is this deletable content".
 
-### 8.43 Wave 2.1a — find-as-locator on replaceText (2026-08-14 — decisions as built)
+### 8.43 Wave 2.1a — find-as-locator on replace_text (2026-08-14 — decisions as built)
 
-The first locator slice (TOKENS §5, plan 2.1a): `replaceText`'s `id` is
+The first locator slice (TOKENS §5, plan 2.1a): `replace_text`'s `id` is
 now optional, and when omitted `find` doubles as the locator. This is
 shipped behaviour moved down a layer, not new behaviour: the wrapper's
 `edit_text` has resolved an omitted `block` from the find snippet since
@@ -6616,14 +6617,14 @@ refuses — never a guess:
   — on a two-block match it still refuses.
 
 Only text-bearing blocks participate in the scan (code/embed included,
-§8.4): replaceText can only edit those, so a block the op would refuse can
+§8.4): replace_text can only edit those, so a block the op would refuse can
 neither capture a match nor make a unique one ambiguous. Table-cell text
-is not scanned — cells are not entries of the blocks array (setCell's
+is not scanned — cells are not entries of the blocks array (set_cell's
 territory), same as the wrapper's locate.
 
 **Mid-batch freshness is by construction, and pinned.** Resolution reads
 `a.doc()` — the same live view id-suffix resolution uses, which
-replaceText maintains in place (M7) and every rebuilding op invalidates —
+replace_text maintains in place (M7) and every rebuilding op invalidates —
 so op *i* locates against op *i−1*'s edits on both view paths. Two tests
 pin the two directions: an op-0 edit that CREATES op-1's only match (a
 stale view would 404), and an op-0 edit that makes op-1's find ambiguous
@@ -6735,13 +6736,13 @@ enumerating per-object creator integrations under a write grant; F8 —
 type/property DELETEs archive on the write grant alone ("own output only"
 is this route's property, not v2 deletion's — §17.1 stays open).
 
-### 8.45 Wave 2.1b — `match` as the id alternative on updateBlock and deleteBlock (2026-08-15 — decisions as built)
+### 8.45 Wave 2.1b — `match` as the id alternative on update_block and delete_block (2026-08-15 — decisions as built)
 
 The second locator slice (TOKENS §5.1's next two verdicts, plan 2.1b):
 `match` — an exact substring of the block's text — addresses the block
-instead of `id` on `updateBlock` (the checkbox-toggle case: `{"op":
-"updateBlock", "match": "Draft timeline", "set": {"checked": true}}`) and
-on `deleteBlock`, where §5.1 marks one-match-or-refuse as load-bearing
+instead of `id` on `update_block` (the checkbox-toggle case: `{"op":
+"update_block", "match": "Draft timeline", "set": {"checked": true}}`) and
+on `delete_block`, where §5.1 marks one-match-or-refuse as load-bearing
 *because* the op is destructive. §5.3's rule is unchanged and was not
 re-derived: exactly one block or refuse, resolved per-op against the
 applier's live document view under the object lock.
@@ -6752,18 +6753,18 @@ ops. Two parameters carry everything an op contributes:
 
 - **`field`** names the caller's own slot in the refusals ("copy the
   **match** text exactly…", "add surrounding text to **match** until it
-  appears in one block only"). An `updateBlock` told to edit `find` is
+  appears in one block only"). An `update_block` told to edit `find` is
   told to edit a field it does not have — the repair has to speak the
   vocabulary the caller wrote.
-- **`scope`** is the candidate set: `replaceText` keeps its text-bearing
+- **`scope`** is the candidate set: `replace_text` keeps its text-bearing
   gate (§8.43 — a block it could not edit must neither capture its match
-  nor make a unique one ambiguous), while `updateBlock`/`deleteBlock` scan
+  nor make a unique one ambiguous), while `update_block`/`delete_block` scan
   **every** block, because they address any block. The two scopes coincide
   today — the exporter writes `text` only on the types `TextBlockType`
   covers — so this is a stated rule rather than an observable difference;
   it is stated because the failure it prevents is asymmetric. An excluded
   block cannot capture a match, but it also cannot make a wrong match
-  AMBIGUOUS, and on `deleteBlock` that is a silently deleted wrong
+  AMBIGUOUS, and on `delete_block` that is a silently deleted wrong
   subtree. Narrowing is only ever safe where the excluded blocks could not
   be the intent AND the op would refuse them anyway.
 
@@ -6773,21 +6774,21 @@ one of the two fields silently inert, which is the failure shape this
 surface spent five review rounds removing; and reading the loser as a
 content *precondition* instead ("update b5, but only if it still says X")
 would invent a second meaning for `match` at the point of conflict, off
-§5.2's three-field vocabulary. `replaceText` is not a counter-example: its
+§5.2's three-field vocabulary. `replace_text` is not a counter-example: its
 `find` is the text to splice first and the locator only when `id` is
 absent, so there is nothing to rank there either. **Neither channel is
-refused too**: an id-less `updateBlock` used to resolve the empty string
+refused too**: an id-less `update_block` used to resolve the empty string
 and report `block "" not found`, a 404 naming nothing. Both refusals reuse
 the shipped vocabulary for alternative channels (`insertPayload`'s
 blocks-or-markdown pair): `ambiguous_input` for both, `validation_failed`
 for neither, addressed at `ops[i]`.
 
-**Decision 2 — `deleteBlock` + `recursive` under a locator.** The
+**Decision 2 — `delete_block` + `recursive` under a locator.** The
 descendant guard now names the **resolved** id (`block "blockParent1" has
 1 descendant block — pass "recursive": true …`): a locator caller never
 sent an id, and `block ""` is not a value it could retry with, while the
 resolved full id always is. The receipt is unchanged — `match` +
-`recursive` deletes the subtree and `diffStats.blocksRemoved` counts it
+`recursive` deletes the subtree and `diff_stats.blocks_removed` counts it
 exactly as the id form does. The ambiguity refusal is usable for a
 destructive retry by construction, since its candidates are full stored
 ids; a test **replays one of the listed candidates** and asserts it
@@ -6807,9 +6808,9 @@ a block whose content the batch had already replaced).
 **Within-block multiplicity is not a refusal here — the one place §5 did
 not transfer.** §5.3's third bullet ("several occurrences within the one
 block → the existing more-context refusal") is written from
-`replaceText`'s vantage and does not generalise: that refusal lives in
+`replace_text`'s vantage and does not generalise: that refusal lives in
 `applyReplaceText`, not in the resolver, and it exists only because
-replaceText must splice ONE occurrence. `updateBlock`/`deleteBlock` act on
+replace_text must splice ONE occurrence. `update_block`/`delete_block` act on
 the block, which a twice-occurring snippet identifies perfectly well —
 refusing would demand disambiguation of a question the op never asks (and
 `nth`, 2.1c, is a document-order index over BLOCKS, so it would not even
@@ -6817,7 +6818,7 @@ be the escape). The served `match` description says so outright.
 
 **Mid-batch freshness, and the render bound.** Resolution reads `a.doc()`
 — the same live view id-suffix resolution uses — so both view paths stay
-correct, and it adds **zero renders**: a match-addressed `deleteBlock`
+correct, and it adds **zero renders**: a match-addressed `delete_block`
 batch costs exactly what the id-addressed one costs (begin + one rebuild
 per structural op + the final after-document), which `TestApplierRenderCounts`
 now asserts by comparing the two. Dry run and apply resolve identically at
@@ -6827,7 +6828,7 @@ apply time (C9 advisory).
 (`v2OpMatchPropDef`) and drop `id` from `required` — an op that accepts a
 locator cannot go on requiring an id, or a schema-constrained decoder can
 never write the locator form at all. The served examples are the locator
-form (`updateBlock` is §5.1's checkbox case verbatim; `deleteBlock` keeps
+form (`update_block` is §5.1's checkbox case verbatim; `delete_block` keeps
 `recursive` in the example, which is the other thing that op has to
 teach). A new cross-check, `TestMatchLocatorIsPublishedExactlyWhereItWorks`,
 probes every op through the real decoder and requires the schema half and
@@ -6851,3 +6852,96 @@ which is §5.5's point. Nothing regresses either: `block` is a required,
 non-empty-checked wrapper argument, so the "give id or match" refusal is
 unreachable from the wrapper and no `match` vocabulary can leak into a
 tool that has no such argument.
+
+---
+
+### 8.46 C2 re-stated: v2's own vocabulary is snake_case (2026-08-17 — decisions as built)
+
+**C2's old text was wrong, and had been for two waves.** It read "one
+vocabulary: the format's — camelCase, no snake_case". Three facts
+contradicted it:
+
+1. **Path and query params were always snake.** `{space_id}`, `dry_run`,
+   `has_more` — every route v2 ever registered.
+2. **Wave 1.3 re-spelled every property key to a snake_case slug**
+   (ADDRESSING §7.5a-4, which says in as many words that it "amends C2's
+   letter"). The single largest name class on the surface stopped being
+   camelCase.
+3. **The AnyBlock format is being swept to snake_case on its own branch.**
+   The half of C2 that pointed at the format as the source of camelCase
+   stopped pointing anywhere.
+
+What was left was ~30 DTO field names and the 14 PATCH op names: the last
+camelCase in v2's own surface, following a convention nothing else did.
+Human decision (Roman, 2026-08-17): **snake_case everywhere.**
+
+**What moved.** Two categories, both v2's OWN:
+
+- **The DTO field names** (`v2/model/*.go` json tags, 31 tag sites over 29
+  distinct names): `author_id`, `blocks_added`/`_removed`/`_changed`/
+  `_moved`, `blocks_text`, `created_at`, `created_blocks`, `created_views`,
+  `diff_stats`, `edited_at`, `expires_at`, `grammar_examples`, `key_status`,
+  `last_state_id`, `message_count`, `mime_type`, `next_after`,
+  `next_before`, `oldest_unread_order`, `oldest_unread_mention_order`,
+  `properties_changed`, `reacted_by`, `reply_to`, `space_id`,
+  `unread_mentions`, `unread_messages`, `unread_reaction_order`, `up_to`.
+- **The 14 op names**: `set_properties`, `update_block`, `replace_subtree`,
+  `insert_blocks`, `move_block`, `delete_block`, `replace_text`,
+  `set_cell`, `update_view`, `insert_view`, `move_view`, `delete_view`,
+  `add_items`, `remove_items` — plus the two op FIELDS still in the old
+  spelling, `set_cell.table_id` and `insert_view.copy_from` (the same
+  vocabulary; `replace_text.replace_all` was already snake).
+
+This is a real contract change — op names are accepted on input and echoed
+in errors — and it is free exactly once, before anything ships.
+
+**What did NOT move, and why.**
+
+- **The format's own names.** Anything inside `blocks`/`properties` is the
+  AnyBlock document, which v2 forwards verbatim; it is renamed on the
+  anyblock branch, not here. The **query surface's `mimeType`/`size` field
+  aliases** are the format's file-block field names too (object.go
+  `v2FieldAliases`), so they stay and follow that branch — which means
+  `POST /files` answers `mime_type` while `?fields=mimeType` still asks in
+  the format's spelling until the two branches meet. Recorded, not fixed
+  here.
+- **Anything shared with v1.** `core/api/pagination` and `core/api/util`
+  are parsed into BOTH documents; no v2 model type embeds either (v2 has
+  its own `ListResponse`), and both already spell snake (`has_more`), so
+  nothing was touched and **v1's OpenAPI documents are byte-identical**.
+  `util/grant.go`'s `space:<spaceId>:<perm>` app-link scope string is v1's
+  and stayed.
+- **Analytics event ids** (`V2CreateObject` and siblings) — internal, and
+  one event stream shared with v1.
+
+**Carve-outs that disappear.** C9's `dry_run` footnote was a *recorded
+carve-out* only because C2 said camelCase; it is now the plain rule. The
+three `//nolint:tagliatelle` directives on `key_status`/`created_at`/
+`expires_at` are gone with it — `.golangci.yml` has always configured
+`tagliatelle` as `json: snake` for `core/api`, so the linter wanted this
+before anyone did.
+
+**The version lives in the path, not in names.** Stated in C2 now because
+it is the same question one level up: `/v2` carries the version, so no
+schema, operationId, op or field spells it.
+
+**Two guards were added**, because the rename's failure mode is a partial
+sweep:
+
+- `v2model.TestJSONTagsAreSnakeCase` walks the DTO package's **own source**
+  (go/ast over every non-test file) and asserts every json tag is
+  snake_case. No hand-kept type list, so a DTO added later cannot drift in
+  by not being listed.
+- `v2service.TestOpVocabularyIsSnakeCase` asserts every served op name is
+  snake_case **and** that each pre-rename camelCase spelling is now
+  REFUSED (`unknown op "setProperties"`), so a caller on the old vocabulary
+  fails loudly at its first op rather than half-working.
+
+**On the GBNF.** The brief's worry — a grammar still accepting strings the
+server now rejects — does not arise: the wrapper's grammars
+(`wrapper/gbnf.go`) constrain tool ARGUMENT objects, whose names were
+already snake, and the one grammar v2 serves is the compact filter string's
+EBNF, whose vocabulary is the format's (SPEC §6.2.1). No grammar has ever
+carried an op name. `TestExamplesAcceptedByOwnGBNF` and
+`TestServedOpExampleValidatesAgainstItsOwnSchema` both still pass, so every
+served example remains an instance of the schema served beside it.

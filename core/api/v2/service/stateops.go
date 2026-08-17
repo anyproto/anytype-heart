@@ -42,7 +42,7 @@ import (
 // replaced was load-bearing for invariants no single fragment can see — V3
 // row→column containment, the document-wide id domain (derived rowId-colId
 // cells, other tables' row/column ids), and the absolute nesting bound. The
-// after-document is already marshaled for diffStats, so the check is nearly
+// after-document is already marshaled for diff_stats, so the check is nearly
 // free. The escape hatch exists only for debugging a suspected false
 // rejection.
 var v2SkipPostOpValidate = os.Getenv("ANYTYPE_API_V2_SKIP_EDIT_VALIDATE") == "1"
@@ -104,11 +104,11 @@ type v2StateApplier struct {
 	marshalCount int
 
 	// warnings collects C11 warning-grade findings the ops raise (today: the
-	// §6.2 unguarded-date-comparison trap from an updateView filter edit);
+	// §6.2 unguarded-date-comparison trap from an update_view filter edit);
 	// applyPatchOps surfaces them on the EditResult.
 	warnings []v2model.Issue
 
-	// createdViews maps each insertView op ("ops[i]") to the view id it
+	// createdViews maps each insert_view op ("ops[i]") to the view id it
 	// minted — the view-family twin of createdBlocks (ids are always
 	// server-minted; a view payload has no id slot).
 	createdViews map[string]string
@@ -160,7 +160,7 @@ func (a *v2StateApplier) marshalOptions() anyblockjson.Options {
 // an ERROR, not something to swallow (review B′2). The exporter degrades
 // rather than failing when a sink is installed — it clamps an over-deep
 // indent — so a silently-clamped view made later ops in the same batch read
-// wrong depths: deleteBlock saw `descendants == 0`, skipped the recursive
+// wrong depths: delete_block saw `descendants == 0`, skipped the recursive
 // guard and dropped a whole subtree, and the clamped after-document then
 // validated clean. Failing here rejects the whole PATCH instead.
 func (a *v2StateApplier) marshalDoc(onWarning func(anyblockjson.Issue)) ([]byte, error) {
@@ -236,7 +236,7 @@ func (a *v2StateApplier) doc() (*v2EditDoc, error) {
 
 // currentDoc returns the marshaled form of the current state, reusing the
 // view's body when it is still valid (review A′2: the after-document for
-// diffStats is the view we already rendered).
+// diff_stats is the view we already rendered).
 func (a *v2StateApplier) currentDoc() ([]byte, error) {
 	if a.viewBody != nil {
 		return a.viewBody, nil
@@ -261,7 +261,7 @@ func (a *v2StateApplier) mutated() {
 // exported form of everything it changed into the view, so later ops keep
 // addressing a valid view without a whole-document re-marshal — the O(ops ×
 // document) product this op class no longer pays. The body is dropped
-// because diffStats and the R5 net need the real after-document; currentDoc
+// because diff_stats and the R5 net need the real after-document; currentDoc
 // re-marshals once, at the end. An op may only call this instead of
 // mutated() if its view update is byte-identical to a re-marshal — and must
 // then be listed false in v2OpRebuildsView.
@@ -390,79 +390,79 @@ func (a *v2StateApplier) apply(i int, raw json.RawMessage) error {
 			v2model.Issue{Path: opPath, Message: err.Error()})
 	}
 	switch probe.Op {
-	case "setProperties":
+	case "set_properties":
 		var op opSetProperties
 		if err := decodeStrictOp(raw, probe.Op, opPath, &op); err != nil {
 			return err
 		}
 		return a.applySetProperties(op, opPath)
-	case "updateBlock":
+	case "update_block":
 		var op opUpdateBlock
 		if err := decodeStrictOp(raw, probe.Op, opPath, &op); err != nil {
 			return err
 		}
 		return a.applyUpdateBlock(op, opPath)
-	case "replaceSubtree":
+	case "replace_subtree":
 		var op opReplaceSubtree
 		if err := decodeStrictOp(raw, probe.Op, opPath, &op); err != nil {
 			return err
 		}
 		return a.applyReplaceSubtree(op, opPath)
-	case "insertBlocks":
+	case "insert_blocks":
 		var op opInsertBlocks
 		if err := decodeStrictOp(raw, probe.Op, opPath, &op); err != nil {
 			return err
 		}
 		return a.applyInsertBlocks(op, opPath)
-	case "moveBlock":
+	case "move_block":
 		var op opMoveBlock
 		if err := decodeStrictOp(raw, probe.Op, opPath, &op); err != nil {
 			return err
 		}
 		return a.applyMoveBlock(op, opPath)
-	case "deleteBlock":
+	case "delete_block":
 		var op opDeleteBlock
 		if err := decodeStrictOp(raw, probe.Op, opPath, &op); err != nil {
 			return err
 		}
 		return a.applyDeleteBlock(op, opPath)
-	case "replaceText":
+	case "replace_text":
 		var op opReplaceText
 		if err := decodeStrictOp(raw, probe.Op, opPath, &op); err != nil {
 			return err
 		}
 		return a.applyReplaceText(op, opPath)
-	case "setCell":
+	case "set_cell":
 		var op opSetCell
 		if err := decodeStrictOp(raw, probe.Op, opPath, &op); err != nil {
 			return err
 		}
 		return a.applySetCell(op, opPath)
-	case "updateView":
+	case "update_view":
 		var op opUpdateView
 		if err := decodeStrictOp(raw, probe.Op, opPath, &op); err != nil {
 			return err
 		}
 		return a.applyUpdateView(op, opPath)
-	case "insertView":
+	case "insert_view":
 		var op opInsertView
 		if err := decodeStrictOp(raw, probe.Op, opPath, &op); err != nil {
 			return err
 		}
 		return a.applyInsertView(op, opPath)
-	case "moveView":
+	case "move_view":
 		var op opMoveView
 		if err := decodeStrictOp(raw, probe.Op, opPath, &op); err != nil {
 			return err
 		}
 		return a.applyMoveView(op, opPath)
-	case "deleteView":
+	case "delete_view":
 		var op opDeleteView
 		if err := decodeStrictOp(raw, probe.Op, opPath, &op); err != nil {
 			return err
 		}
 		return a.applyDeleteView(op, opPath)
-	case "addItems", "removeItems":
+	case "add_items", "remove_items":
 		var op opItems
 		if err := decodeStrictOp(raw, probe.Op, opPath, &op); err != nil {
 			return err
@@ -475,7 +475,7 @@ func (a *v2StateApplier) apply(i int, raw json.RawMessage) error {
 		hint := "allowed ops: " + strings.Join(v2OpNames, ", ")
 		if probe.Op == "replaceBlock" {
 			// removed pre-release (v0.3.5): steer to the one block-update op
-			hint = "replaceBlock was removed — use updateBlock {id, set}: name every field you want changed (text included), null clears a field, everything else stays. " + hint
+			hint = "replaceBlock was removed — use update_block {id, set}: name every field you want changed (text included), null clears a field, everything else stays. " + hint
 		}
 		return v2model.ValidationFailed(fmt.Sprintf("unknown op %q", probe.Op),
 			v2model.Issue{Path: opPath + ".op", Message: fmt.Sprintf("unknown op %q", probe.Op), Hint: hint})
@@ -492,7 +492,7 @@ func (a *v2StateApplier) apply(i int, raw json.RawMessage) error {
 // silently inert, which is the failure shape this surface has spent its
 // review rounds removing; and reading the loser as a content precondition
 // instead would be a second meaning for `match` invented at the point of
-// conflict. (replaceText is not the counter-example: its `find` is the text
+// conflict. (replace_text is not the counter-example: its `find` is the text
 // to splice FIRST and the locator only when `id` is absent, so there is
 // nothing to rank there either.) Giving neither is refused too — an
 // unaddressed block op has no subject, and the empty-string id it used to
@@ -570,8 +570,8 @@ func (a *v2StateApplier) setBlocks(blocks []*model.Block) {
 // reaches the state as a literal, it resolves to the block it labels (or
 // refuses as ambiguous/unresolvable) before the fragment import runs. What
 // survives here is the case resolution cannot decide: an id that legitimately
-// names an existing element, in an op that may not reuse it — insertBlocks
-// naming a live block, replaceSubtree naming one outside the subtree it
+// names an existing element, in an op that may not reuse it — insert_blocks
+// naming a live block, replace_subtree naming one outside the subtree it
 // replaces. Keeping only one guard is deliberate: the two overlapped, with
 // different coverage, and the gap between them was F1.
 //
@@ -722,7 +722,7 @@ func targetPosition(mode, pos string) model.BlockPosition {
 // start of the document is the slot `before: <first block>` names, and
 // anchoring there needs no knowledge of the header at all.
 //
-// skipFrom/skipEnd exclude one subtree from the anchor search: moveBlock's
+// skipFrom/skipEnd exclude one subtree from the anchor search: move_block's
 // own subtree, which InsertTo refuses as its own target. The next top-level
 // block after it gives the same final order, and when there is none the two
 // ends coincide and the append is correct.
@@ -813,12 +813,12 @@ func pinTableWrappers(st *state.State, blocks []*model.Block) {
 }
 
 //
-// ---- setProperties ----
+// ---- set_properties ----
 //
 
 func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) error {
 	if len(op.Set) == 0 && len(op.Unset) == 0 && len(op.Add) == 0 && len(op.Remove) == 0 {
-		return v2model.ValidationFailed("setProperties needs at least one of set, unset, add, remove",
+		return v2model.ValidationFailed("set_properties needs at least one of set, unset, add, remove",
 			v2model.Issue{Path: opPath, Message: "set, unset, add and remove are all empty"})
 	}
 	// §7.5a-5: property terms may arrive as api-key slugs (a v2-created
@@ -948,7 +948,7 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 	addEntries := checkListField("add", op.Add)
 	removeEntries := checkListField("remove", op.Remove)
 	if len(issues) > 0 {
-		return v2model.ValidationFailed("setProperties rejected", issues...)
+		return v2model.ValidationFailed("set_properties rejected", issues...)
 	}
 	for _, key := range setKeys {
 		var raw any
@@ -1064,7 +1064,7 @@ func (a *v2StateApplier) refusesRemovedBundled(entries []propertyEntry, key stri
 }
 
 // canonicalizeSetPropertyKeys rewrites slug-spelled property terms in a
-// setProperties op to their canonical stored keys (§7.5a-5). Rewrites apply
+// set_properties op to their canonical stored keys (§7.5a-5). Rewrites apply
 // only when the chain resolves to a DIFFERENT stored spelling; two spellings
 // landing on one key is a loud 400, as is an ambiguous slug. The returned
 // map remembers every rewrite (canonical → caller's spelling) so refusals
@@ -1152,13 +1152,13 @@ func (a *v2StateApplier) applyUpdateBlock(op opUpdateBlock, opPath string) error
 	// {"match":"Draft timeline","set":{"checked":true}} — §5.1's checkbox case
 	// — and a match-then-rewrite rename expressible at all. Mid-batch the
 	// same rule reads forward: op i matches the text op i−1 wrote, never the
-	// text it overwrote (the view is rebuilt after every updateBlock).
-	idx, err := a.resolveSubject(doc, "updateBlock", op.Id, op.Match, opPath, everyBlock)
+	// text it overwrote (the view is rebuilt after every update_block).
+	idx, err := a.resolveSubject(doc, "update_block", op.Id, op.Match, opPath, everyBlock)
 	if err != nil {
 		return err
 	}
 	if len(op.Set) == 0 {
-		return v2model.ValidationFailed("updateBlock needs a non-empty set",
+		return v2model.ValidationFailed("update_block needs a non-empty set",
 			v2model.Issue{Path: opPath + ".set", Message: "set is empty — name the fields to change (merge semantics: everything else stays)"})
 	}
 	block := doc.blocks[idx]
@@ -1176,7 +1176,7 @@ func (a *v2StateApplier) applyUpdateBlock(op opUpdateBlock, opPath string) error
 				v2model.Issue{Path: path, Message: "a block's id cannot change — insert a new block instead"})
 		case "indent":
 			return v2model.ValidationFailed("indent is structural",
-				v2model.Issue{Path: path, Message: "indent cannot be set directly — use moveBlock to re-nest the block"})
+				v2model.Issue{Path: path, Message: "indent cannot be set directly — use move_block to re-nest the block"})
 		}
 	}
 	if raw, ok := op.Set["type"]; ok {
@@ -1246,7 +1246,7 @@ func (a *v2StateApplier) applyReplaceSubtree(op opReplaceSubtree, opPath string)
 	if err != nil {
 		return err
 	}
-	run, err := a.decodePayloadRun(op.Blocks, opPath, "blocks", "replaceSubtree")
+	run, err := a.decodePayloadRun(op.Blocks, opPath, "blocks", "replace_subtree")
 	if err != nil {
 		return err
 	}
@@ -1283,7 +1283,7 @@ func (a *v2StateApplier) applyReplaceSubtree(op opReplaceSubtree, opPath string)
 }
 
 // resolveTarget resolves the shared after/before/inside targeting vocabulary
-// (insertBlocks and moveBlock, R14). It returns the anchor index, the mode
+// (insert_blocks and move_block, R14). It returns the anchor index, the mode
 // ("after"|"before"|"inside"|"root") and the position ("first"|"last").
 // Omitting all three targeting fields means the document root (§8.2 v0.3.5) —
 // the only ops-path into an object that has no addressable blocks yet (SPEC
@@ -1366,9 +1366,9 @@ func (a *v2StateApplier) applyInsertBlocks(op opInsertBlocks, opPath string) err
 	if err != nil {
 		return err
 	}
-	// insertBlocks only ever creates, so its payload carries no id slots at
+	// insert_blocks only ever creates, so its payload carries no id slots at
 	// all (§8.30) — they are refused as not part of the op, never resolved.
-	run, err := a.decodePayloadRun(payload, opPath, field, "insertBlocks")
+	run, err := a.decodePayloadRun(payload, opPath, field, "insert_blocks")
 	if err != nil {
 		return err
 	}
@@ -1396,8 +1396,8 @@ func (a *v2StateApplier) applyInsertBlocks(op opInsertBlocks, opPath string) err
 }
 
 // v2MaxBlocksPerOp caps one op's payload run — the maxItems the served op
-// schemas already advertise for the blocks channel (insertBlocks,
-// replaceSubtree). Advertised but unenforced, one op could inflate the
+// schemas already advertise for the blocks channel (insert_blocks,
+// replace_subtree). Advertised but unenforced, one op could inflate the
 // document by tens of thousands of blocks and every later op in the batch
 // re-rendered them all under the object lock (surface review M7).
 const v2MaxBlocksPerOp = 256
@@ -1409,7 +1409,7 @@ const v2MaxBlocksPerOp = 256
 // payload channels must share one cap.
 const v2MaxMarkdownBlocksPerOp = v2MaxBlocksPerOp
 
-// insertPayload picks the insertBlocks payload channel: the blocks array, or
+// insertPayload picks the insert_blocks payload channel: the blocks array, or
 // the markdown authoring alternative (§7.1) parsed into the same flat-run
 // shape. Exactly one must be given.
 func insertPayload(op opInsertBlocks, opPath string) ([]json.RawMessage, string, error) {
@@ -1418,13 +1418,13 @@ func insertPayload(op opInsertBlocks, opPath string) ([]json.RawMessage, string,
 	switch {
 	case hasBlocks && hasMarkdown:
 		return nil, "", v2model.AmbiguousInput("provide blocks or markdown, not both",
-			v2model.Issue{Path: opPath, Message: "blocks (flat AnyBlock payload) and markdown (parsed server-side) are alternative payload channels for insertBlocks"})
+			v2model.Issue{Path: opPath, Message: "blocks (flat AnyBlock payload) and markdown (parsed server-side) are alternative payload channels for insert_blocks"})
 	case hasMarkdown:
 		run, exceeded := anyblockjson.ParseMarkdownBlocksLimit(op.Markdown, v2MaxMarkdownBlocksPerOp)
 		if exceeded {
 			return nil, "", v2model.ValidationFailed("markdown produced too many blocks",
 				v2model.Issue{Path: opPath + ".markdown", Message: fmt.Sprintf(
-					"the markdown parses to more than %d blocks — the per-op limit is %d (the blocks channel's cap); split the content across several insertBlocks ops",
+					"the markdown parses to more than %d blocks — the per-op limit is %d (the blocks channel's cap); split the content across several insert_blocks ops",
 					v2MaxMarkdownBlocksPerOp, v2MaxMarkdownBlocksPerOp)})
 		}
 		if len(run) == 0 {
@@ -1435,7 +1435,7 @@ func insertPayload(op opInsertBlocks, opPath string) ([]json.RawMessage, string,
 	case hasBlocks:
 		return op.Blocks, "blocks", nil
 	default:
-		return nil, "", v2model.ValidationFailed("insertBlocks needs a payload",
+		return nil, "", v2model.ValidationFailed("insert_blocks needs a payload",
 			v2model.Issue{Path: opPath, Message: "give blocks (a flat AnyBlock run) or markdown (parsed server-side)"})
 	}
 }
@@ -1482,7 +1482,7 @@ func (a *v2StateApplier) applyDeleteBlock(op opDeleteBlock, opPath string) error
 	if err != nil {
 		return err
 	}
-	idx, err := a.resolveSubject(doc, "deleteBlock", op.Id, op.Match, opPath, everyBlock)
+	idx, err := a.resolveSubject(doc, "delete_block", op.Id, op.Match, opPath, everyBlock)
 	if err != nil {
 		return err
 	}
@@ -1498,7 +1498,7 @@ func (a *v2StateApplier) applyDeleteBlock(op opDeleteBlock, opPath string) error
 	if descendants := end - idx - 1; descendants > 0 && !op.Recursive {
 		return v2model.ValidationFailed(
 			fmt.Sprintf("block %q has %s — pass \"recursive\": true to delete the whole subtree", ref, countBlocks(descendants)),
-			v2model.Issue{Path: opPath, Message: "deleteBlock without recursive only deletes childless blocks", Hint: "or moveBlock the descendants out first"})
+			v2model.Issue{Path: opPath, Message: "delete_block without recursive only deletes childless blocks", Hint: "or move_block the descendants out first"})
 	}
 	a.st.Unlink(blockId(doc.blocks[idx])) // the unlinked subtree is dropped by apply-side normalization
 	a.mutated()
@@ -1537,7 +1537,7 @@ func (a *v2StateApplier) applyReplaceText(op opReplaceText, opPath string) error
 	if !anyblockjson.TextBlockType(typ) {
 		return v2model.ValidationFailed(
 			fmt.Sprintf("block %q is a %q block and has no text", ref, typ),
-			v2model.Issue{Path: opPath + ".id", Message: "replaceText only applies to text-bearing blocks"})
+			v2model.Issue{Path: opPath + ".id", Message: "replace_text only applies to text-bearing blocks"})
 	}
 	// the find/replace runs on the block's document text — markup source for
 	// text-bearing blocks, the literal text for code/embed (§8.4) — exactly
@@ -1607,10 +1607,10 @@ func (a *v2StateApplier) applyReplaceText(op opReplaceText, opPath string) error
 	default:
 		return v2model.ValidationFailed(
 			fmt.Sprintf("block %q is a %q block and has no text", ref, typ),
-			v2model.Issue{Path: opPath + ".id", Message: "replaceText only applies to text-bearing blocks"})
+			v2model.Issue{Path: opPath + ".id", Message: "replace_text only applies to text-bearing blocks"})
 	}
 	a.st.Set(simple.New(m))
-	// incremental view maintenance (surface review M7): replaceText changes
+	// incremental view maintenance (surface review M7): replace_text changes
 	// exactly ONE exported field of one block — no ids, no structure, no
 	// indents — so the view stays valid with that field updated in place and
 	// the whole-document re-marshal the next op would otherwise pay is
@@ -1630,7 +1630,7 @@ func (a *v2StateApplier) applySetCell(op opSetCell, opPath string) error {
 	if err != nil {
 		return err
 	}
-	idx, err := a.resolveRef(doc, op.TableId, opPath+".tableId")
+	idx, err := a.resolveRef(doc, op.TableId, opPath+".table_id")
 	if err != nil {
 		return err
 	}
@@ -1638,7 +1638,7 @@ func (a *v2StateApplier) applySetCell(op opSetCell, opPath string) error {
 	if typ := blockType(table); typ != "table" {
 		return v2model.ValidationFailed(
 			fmt.Sprintf("block %q is a %q block, not a table", op.TableId, typ),
-			v2model.Issue{Path: opPath + ".tableId", Message: "setCell addresses a table block (SPEC §6.1)"})
+			v2model.Issue{Path: opPath + ".table_id", Message: "set_cell addresses a table block (SPEC §6.1)"})
 	}
 	if op.Value == nil {
 		return v2model.ValidationFailed("value is required",
@@ -1727,9 +1727,9 @@ func (a *v2StateApplier) applyItems(op opItems, opPath string) error {
 	if len(items) == 0 && !a.s.isCollectionType(a.spaceId, doc.docType()) {
 		return v2model.ValidationFailed(
 			fmt.Sprintf("%s requires a collection — this object's type is %q", op.Op, doc.docType()),
-			v2model.Issue{Path: opPath, Message: "only collection objects carry items", Hint: "POST /v2/spaces/{spaceId}/collections creates one"})
+			v2model.Issue{Path: opPath, Message: "only collection objects carry items", Hint: "POST /v2/spaces/{space_id}/collections creates one"})
 	}
-	if op.Op == "addItems" {
+	if op.Op == "add_items" {
 		present := map[string]bool{}
 		for _, id := range items {
 			present[id] = true
@@ -1765,7 +1765,7 @@ func (a *v2StateApplier) applyItems(op opItems, opPath string) error {
 
 // decodePayloadRun decodes a flat payload run with R3 relative indents:
 // payload indent 0 = the insertion level (the anchor's level for
-// after/before and replaceSubtree, the container's child level for inside).
+// after/before and replace_subtree, the container's child level for inside).
 // The run must obey the format's monotonicity (V1) internally; the indents
 // stay run-relative — the state splice, not indent arithmetic, sets the
 // insertion level.
@@ -1774,9 +1774,9 @@ func (a *v2StateApplier) applyItems(op opItems, opPath string) error {
 // in its columns/rows/cells/views — RESOLVES against the pre-op document
 // (payloadids.go), so a compact label echoed from a read names the element it
 // labels instead of renaming it. Only MISSING ids are minted, and only those
-// land in createdBlocks (createdViews for a view) keyed by payload position:
+// land in created_blocks (created_views for a view) keyed by payload position:
 // a resolved id names something that already existed, and reporting it as
-// created would be the same kind of lie diffStats used to tell.
+// created would be the same kind of lie diff_stats used to tell.
 //
 // op names the op the run belongs to. When it is a NEW-content op
 // (v2NewContentOps — the one set the served schema reads too, §8.30) the run

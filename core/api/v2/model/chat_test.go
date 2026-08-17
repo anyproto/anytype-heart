@@ -124,7 +124,7 @@ func TestChatMessageFromProto(t *testing.T) {
 		assert.Equal(t, want, got.Reactions)
 	})
 
-	t.Run("reactions=full adds reactedBy — reactions keeps the counts type (C2)", func(t *testing.T) {
+	t.Run("reactions=full adds reacted_by — reactions keeps the counts type (C2)", func(t *testing.T) {
 		// given
 		msg := chatTestMessage()
 
@@ -166,7 +166,7 @@ func TestChatMessageFromProto(t *testing.T) {
 		assert.Equal(t, want, got.Attachments)
 	})
 
-	t.Run("editedAt appears only when the message was edited", func(t *testing.T) {
+	t.Run("edited_at appears only when the message was edited", func(t *testing.T) {
 		// given
 		msg := chatTestMessage()
 		msg.ModifiedAt = 1717405300
@@ -178,7 +178,7 @@ func TestChatMessageFromProto(t *testing.T) {
 		assert.Equal(t, "2024-06-03T09:01:40Z", got.EditedAt)
 	})
 
-	t.Run("block-composed content surfaces as blocksText — a blocks-only message is not empty", func(t *testing.T) {
+	t.Run("block-composed content surfaces as blocks_text — a blocks-only message is not empty", func(t *testing.T) {
 		// given: chatmodel.Validate accepts a message whose ONLY content is
 		// blocks (desktop quotes, rich pastes) — dropping them on read makes
 		// real content invisible to an agent
@@ -234,7 +234,7 @@ func TestChatMessageFromProto(t *testing.T) {
 }
 
 func TestChatStateFromProto(t *testing.T) {
-	t.Run("full passthrough incl. lastStateId — the field v1 dropped", func(t *testing.T) {
+	t.Run("full passthrough incl. last_state_id — the field v1 dropped", func(t *testing.T) {
 		// given
 		state := &model.ChatState{
 			Messages:              &model.ChatStateUnreadState{OldestOrderId: "00a1", Counter: 3},

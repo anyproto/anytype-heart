@@ -396,7 +396,7 @@ func TestV2Routes(t *testing.T) {
 			{"POST", "/v2/spaces/space1/files"},
 			{"GET", "/v2/schemas"},
 			{"GET", "/v2/schemas/object"},
-			{"GET", "/v2/schemas/ops/replaceText"},
+			{"GET", "/v2/schemas/ops/replace_text"},
 			{"PATCH", "/v2/spaces/space1/objects/obj1"},
 			{"POST", "/v2/search"},
 			{"POST", "/v2/spaces/space1/search"},

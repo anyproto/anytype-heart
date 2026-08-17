@@ -30,10 +30,10 @@ import (
 	v2service "github.com/anyproto/anytype-heart/core/api/v2/service"
 )
 
-// probeOps are the two ops the payload-id question is about: insertBlocks
-// publishes no id slot since §8.30/§8.31, replaceSubtree still does. Same
+// probeOps are the two ops the payload-id question is about: insert_blocks
+// publishes no id slot since §8.30/§8.31, replace_subtree still does. Same
 // model, same prompt shape, one schema with the field and one without.
-var probeOps = []string{"insertBlocks", "replaceSubtree"}
+var probeOps = []string{"insert_blocks", "replace_subtree"}
 
 // probeCase is one authoring intent.
 type probeCase struct {
@@ -48,24 +48,24 @@ func probeCases() []probeCase {
 	return []probeCase{
 		{
 			id:     "add_section",
-			wantOp: "insertBlocks",
+			wantOp: "insert_blocks",
 			prompt: "Add a section at the end of this document: a level-2 heading reading Risks, " +
 				"then two bullet points reading Vendor delay and Budget overrun.",
 		},
 		{
 			id:     "add_table",
-			wantOp: "insertBlocks",
+			wantOp: "insert_blocks",
 			prompt: "Add a table at the end of this document with two columns, a header row reading " +
 				"Component and Status, and one row reading Beta and Pending.",
 		},
 		{
 			id:     "add_after_block",
-			wantOp: "insertBlocks",
+			wantOp: "insert_blocks",
 			prompt: "The document has a paragraph with id b7. Add a checkbox item reading Follow up directly after it.",
 		},
 		{
 			id:     "replace_subtree",
-			wantOp: "replaceSubtree",
+			wantOp: "replace_subtree",
 			prompt: "The document has a bulleted list item with id b7. Replace it and everything under it with " +
 				"a single paragraph reading Deferred to Q4.",
 		},
@@ -77,14 +77,14 @@ func probeCases() []probeCase {
 		// which tool answers them.
 		{
 			id:     "copy_block_new",
-			wantOp: "insertBlocks",
+			wantOp: "insert_blocks",
 			prompt: "A read of this document returned this block:\n" +
 				`{"id":"c3f1a","type":"bulletedListItem","text":"Ship the beta"}` + "\n" +
 				"Add a second, identical bullet at the end of the document.",
 		},
 		{
 			id:     "echo_block_existing",
-			wantOp: "replaceSubtree",
+			wantOp: "replace_subtree",
 			prompt: "A read of this document returned this block:\n" +
 				`{"id":"c3f1a","type":"bulletedListItem","text":"Ship the beta"}` + "\n" +
 				"Replace that block with a paragraph reading Shipped, keeping the block's identity.",
@@ -107,7 +107,7 @@ type probeRecord struct {
 	ConstAsEnum  bool   `json:"const_as_enum,omitempty"`
 	CalledOp     string `json:"called_op,omitempty"`
 	Args         string `json:"args,omitempty"`
-	// Channel is which authoring channel an insertBlocks call used: markdown
+	// Channel is which authoring channel an insert_blocks call used: markdown
 	// (no id is expressible at all) or blocks (where the removed slot was).
 	Channel     string       `json:"channel,omitempty"`
 	IdEmissions []idEmission `json:"id_emissions,omitempty"`
@@ -220,7 +220,7 @@ func probeOnce(ctx context.Context, chat *chatClient, model string, pc probeCase
 	case args["blocks"] != nil:
 		rec.Channel = "blocks"
 	}
-	// the op's OWN id (replaceSubtree's target) is not the field under
+	// the op's OWN id (replace_subtree's target) is not the field under
 	// question — only ids inside the authored payload are
 	payload := map[string]any{}
 	if blocks, ok := args["blocks"]; ok {
@@ -261,7 +261,7 @@ const (
 // so the shape the model reaches for is the shape that works and there is no
 // risk left to name.
 func staticRefusalRisks(op string, args map[string]any) []string {
-	if op != "insertBlocks" && op != "moveBlock" {
+	if op != "insert_blocks" && op != "move_block" {
 		return nil
 	}
 	position, _ := args["position"].(string)

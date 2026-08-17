@@ -1,7 +1,7 @@
 package v2service
 
 // edit.go implements the Phase-3 edit surface (APIV2.md §2 Phase 3):
-// PATCH /v2/spaces/{spaceId}/objects/{objectId} — the batched, atomic,
+// PATCH /v2/spaces/{space_id}/objects/{object_id} — the batched, atomic,
 // id-addressed op set (ops.go). It is the ONLY edit surface: SNAPSHOTS ARE
 // FOR CREATES, EDITS ARE OPS (APIV2.md §8.27). The full-document PUT that
 // once sat beside it was removed with its whole pipeline — a surface that
@@ -13,10 +13,10 @@ package v2service
 // (stateops.go) and the adapter commits it with ONE ordinary sb.Apply —
 // the Block* RPC handler model. The flat document is still rendered under
 // the lock, but only as the read-only view the ops address (refs, indents,
-// error texts) and as the diffStats input; nothing round-trips the whole
+// error texts) and as the diff_stats input; nothing round-trips the whole
 // document through Unmarshal. Create-missing option resolution runs BEFORE
 // the object lock (resolver.go prewarm), so no create-RPC ever holds the
-// lock. diffStats come from the canonical before/after documents (diff.go).
+// lock. diff_stats come from the canonical before/after documents (diff.go).
 
 import (
 	"context"
@@ -45,7 +45,7 @@ const v2MaxOpsPerPatch = 512
 // forces the next op to re-marshal the WHOLE document, so a batch's worst
 // case is rebuildingOps × (document blocks + payload blocks) block-renders.
 // The 512-op cap bounds only the first factor (surface review M7): 400
-// trivial replaceText ops on a 24,000-block document measured 71 s inside
+// trivial replace_text ops on a 24,000-block document measured 71 s inside
 // PatchObject (~7 µs per block-render on a desktop machine) — all of it
 // while ObjectOpen, sync and every other RPC on the object wait. 2^20
 // block-renders ≈ 7 s worst case; an over-bound batch is refused before any
@@ -63,11 +63,11 @@ const v2MaxPatchRenderWork = 1 << 20
 //
 // A dataview is ONE block whose marshal cost is O(views × columns) — the
 // §8.19-B correction: counting it as one render let a fully legal
-// 512×insertView batch on a wide set hold the object lock for tens of
+// 512×insert_view batch on a wide set hold the object lock for tens of
 // seconds while scoring 0.05% of the budget. The document factor therefore
 // counts dataview weight (per view: 1 + columns + sorts + filters), and
-// every insertView adds the document's heaviest per-view weight to the
-// payload factor — the copyFrom worst case. Ops that fail to probe
+// every insert_view adds the document's heaviest per-view weight to the
+// payload factor — the copy_from worst case. Ops that fail to probe
 // contribute nothing — they fail in the applier, on their own op path,
 // before any rebuild.
 func checkPatchRenderWork(ops []json.RawMessage, blocks []map[string]any) error {
@@ -90,7 +90,7 @@ func checkPatchRenderWork(ops []json.RawMessage, blocks []map[string]any) error 
 		if probe.Markdown != "" {
 			payload += v2MaxBlocksPerOp
 		}
-		if probe.Op == "insertView" {
+		if probe.Op == "insert_view" {
 			payload += perViewWork
 		}
 	}
@@ -125,7 +125,7 @@ func dataviewRenderWork(blocks []map[string]any) int {
 }
 
 // heaviestViewRenderWork is the largest single-view weight in the document —
-// what one insertView may add (its copyFrom worst case).
+// what one insert_view may add (its copy_from worst case).
 func heaviestViewRenderWork(blocks []map[string]any) int {
 	heaviest := 1
 	for _, b := range blocks {
@@ -158,7 +158,7 @@ type v2PatchRequest struct {
 	Ops []json.RawMessage `json:"ops"`
 }
 
-// PatchObject implements PATCH /v2/spaces/{spaceId}/objects/{objectId}: the
+// PatchObject implements PATCH /v2/spaces/{space_id}/objects/{object_id}: the
 // ops apply to a child state of the live object, committed with one ordinary
 // Apply (stateops.go).
 func (s *Service) PatchObject(ctx context.Context, spaceId, objectId string, body []byte, ifMatch string, dryRun bool) (*v2model.EditResult, error) {
@@ -189,7 +189,7 @@ func (s *Service) PatchObject(ctx context.Context, spaceId, objectId string, bod
 	// the same verdict as the real edit rather than reporting a success the
 	// adapter would refuse (review C′3). Per-op, not per-request: a set and a
 	// collection restrict Blocks but not Details, so a blanket check refused
-	// renames and every addItems (surface review M1).
+	// renames and every add_items (surface review M1).
 	needs, err := editNeedsForOps(ops, cur)
 	if err != nil {
 		return nil, err
@@ -289,7 +289,7 @@ func (s *Service) guardCreateMissing(ctx context.Context, spaceId, objectId stri
 			Message: fmt.Sprintf("this batch would create %d new options (limit %d): %s",
 				len(pending), v2MaxCreatedOptionsPerPatch, describeCreateCounts(props)),
 			Hint: "creating an option is permanent and there is no delete surface — " +
-				"check the names against GET /v2/spaces/{spaceId}/properties/{propertyKey}/options, " +
+				"check the names against GET /v2/spaces/{space_id}/properties/{property_key}/options, " +
 				"or set values in smaller batches if they are all genuinely new",
 		}
 		return v2model.ValidationFailed("too many new options in one request", issue)
@@ -340,7 +340,7 @@ func editFromRead(objectId string, cur apicore.ObjectRead) (apicore.ObjectEdit, 
 // applyPatchOps runs the whole PATCH against one editing session: the C11
 // write-safety guard, the ops (each validated with its ops[i] paths and
 // applied to the state), the resolver error check, the flag-gated safety
-// net, and the diffStats. The caller commits (or, on dry run, discards) the
+// net, and the diff_stats. The caller commits (or, on dry run, discards) the
 // state.
 func (s *Service) applyPatchOps(ctx context.Context, spaceId, objectId string, ops []json.RawMessage, ifMatch string, edit apicore.ObjectEdit, resolvers *creatingResolvers) (*v2model.EditResult, error) {
 	if err := checkEditPreconditions(edit.SbType, edit.Heads, ifMatch); err != nil {

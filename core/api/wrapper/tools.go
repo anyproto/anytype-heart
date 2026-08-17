@@ -323,7 +323,7 @@ func (r *Runner) runSetProperties(ctx context.Context, session *Session, args ma
 	if err != nil {
 		return nil, err
 	}
-	op := map[string]any{"op": "setProperties"}
+	op := map[string]any{"op": "set_properties"}
 	for _, field := range []struct {
 		name string
 		m    map[string]any
@@ -359,7 +359,7 @@ func (r *Runner) runCheckItem(ctx context.Context, session *Session, args map[st
 		return nil, err
 	}
 	op := map[string]any{
-		"op":  "updateBlock",
+		"op":  "update_block",
 		"id":  strArg(args, "block"),
 		"set": map[string]any{"checked": boolArg(args, "checked")},
 	}
@@ -394,7 +394,7 @@ func (r *Runner) runAddBlocks(ctx context.Context, session *Session, args map[st
 		return nil, err
 	}
 	op := map[string]any{
-		"op":       "insertBlocks",
+		"op":       "insert_blocks",
 		"markdown": strArg(args, "markdown"),
 	}
 	if err := anchorTarget(args, op); err != nil {
@@ -413,7 +413,7 @@ func (r *Runner) runEditText(ctx context.Context, session *Session, args map[str
 		return nil, err
 	}
 	op := map[string]any{
-		"op":      "replaceText",
+		"op":      "replace_text",
 		"find":    strArg(args, "find"),
 		"replace": strArg(args, "replace"),
 	}
@@ -449,13 +449,13 @@ func (r *Runner) runSetCell(ctx context.Context, session *Session, args map[stri
 		value = nil
 	}
 	op := map[string]any{
-		"op":      "setCell",
-		"tableId": strArg(args, "table"),
-		"row":     strArg(args, "row"),
-		"col":     strArg(args, "col"),
-		"value":   value,
+		"op":       "set_cell",
+		"table_id": strArg(args, "table"),
+		"row":      strArg(args, "row"),
+		"col":      strArg(args, "col"),
+		"value":    value,
 	}
-	result, err := r.patchOps(ctx, session, space, objectId, op, []string{"tableId", "row", "col"})
+	result, err := r.patchOps(ctx, session, space, objectId, op, []string{"table_id", "row", "col"})
 	if err != nil {
 		return nil, err
 	}
@@ -468,7 +468,7 @@ func (r *Runner) runMoveBlock(ctx context.Context, session *Session, args map[st
 		return nil, err
 	}
 	op := map[string]any{
-		"op": "moveBlock",
+		"op": "move_block",
 		"id": strArg(args, "block"),
 	}
 	if err := anchorTarget(args, op); err != nil {
@@ -487,7 +487,7 @@ func (r *Runner) runDeleteBlock(ctx context.Context, session *Session, args map[
 		return nil, err
 	}
 	op := map[string]any{
-		"op": "deleteBlock",
+		"op": "delete_block",
 		"id": strArg(args, "block"),
 	}
 	if boolArg(args, "recursive") {
