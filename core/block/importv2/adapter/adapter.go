@@ -328,7 +328,8 @@ func (s *service) settleRun(req *pb.RpcObjectImportRequest, progress process.Pro
 // transient keep — the same rule, hand-written there first — comes through
 // this door too.
 func (s *service) settleResumedRun(lc *runLifecycle, req *pb.RpcObjectImportRequest, progress process.Progress, result *importv2.Result) {
-	if result.Err != nil && lc.kept {
+	// A suspend is already quiet, and settleRun owns its wording.
+	if result.Err != nil && !result.Suspended && lc.kept {
 		log.With("importType", req.Type.String(), "spaceId", req.SpaceId).
 			Warnf("sweep resume failed and kept its dir; the next start retries, so no failure is reported: %s", result.Err)
 		s.fileSync.ClearImportEvents()

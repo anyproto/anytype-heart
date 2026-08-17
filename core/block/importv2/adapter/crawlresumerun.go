@@ -150,7 +150,7 @@ func (s *service) resumeCrawlRun(ctx context.Context, store *runstore.Store, man
 			log.Errorf("refund crawl resume attempt: %s", err)
 		}
 		s.finishRun(lc, result)
-		s.settleRun(wireReq, progress, result)
+		s.settleResumedRun(lc, wireReq, progress, result)
 		progressSettled = true
 		outcome.Action = sweepResumedSuspended
 		return outcome
