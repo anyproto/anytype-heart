@@ -23,6 +23,16 @@ const rootCollectionName = "Notion Import"
 // unbounded crawl.
 const lateDiscoveryCap = 1000
 
+// recoverProbeCap bounds claim RECOVERY the same way, and for a sharper
+// version of the same reason (review item 15). A vanished claim costs a full
+// id ladder — three GETs, every one of them a not-found — and the ladder
+// runs at the pacer's ~3 rps, while the loop was bounded only by how many
+// claims the interrupted session had made. A workspace whose 10,000 claimed
+// pages were deleted between sessions therefore spent over two hours issuing
+// silent 404s before pass 2 could begin. Same number as its sibling: pass-2
+// discovery is bounded, whichever door it comes through.
+const recoverProbeCap = lateDiscoveryCap
+
 type Converter struct {
 	client  *client.Client
 	fetcher client.FileFetcher
@@ -86,6 +96,10 @@ type Converter struct {
 	skip        func(sourceKey string) bool
 	recoverKeys []string
 	planReuse   schemaplan.Reuse
+	// recoverBudget is how many claims recoverUnrecorded may still PROBE.
+	// A field rather than the bare constant so this suite can exercise the
+	// exhausted path without issuing a thousand ladders.
+	recoverBudget int
 }
 
 // Option configures a per-run converter.
@@ -140,6 +154,7 @@ func New(apiClient *client.Client, fetcher client.FileFetcher, factory importv2.
 		files:                 newFileRegistry(),
 		suggestor:             typesuggest.NewNaive(),
 		suggestedTypes:        map[string]domain.TypeKey{},
+		recoverBudget:         recoverProbeCap,
 		planner:               schemaplan.NewNaive(),
 		planned:               map[string]bool{},
 		planTypeKeys:          map[domain.TypeKey]domain.TypeKey{},
@@ -288,6 +303,7 @@ func (c *Converter) drainPending(ctx context.Context, sink importv2.Sink, draine
 // retryable shape — never a drift claim nobody established. The STOP is the
 // fourth way out and it is not a verdict at all: it aborts the crawl.
 func (c *Converter) recoverUnrecorded(ctx context.Context, sink importv2.Sink) error {
+	unprobed := 0
 	for _, key := range c.recoverKeys {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -295,9 +311,25 @@ func (c *Converter) recoverUnrecorded(ctx context.Context, sink importv2.Sink) e
 		if _, seen := c.entityById[key]; seen {
 			continue // re-enumerated by /search, or re-discovered from an unrecorded parent
 		}
+		if c.recoverBudget <= 0 {
+			// The budget is spent (review item 15). What follows is NOT
+			// probed, so nothing here knows whether those entities still
+			// exist — and the honest answer to that is one sentence, not a
+			// per-key guess and not silence. Reconciliation still reports
+			// each unrecovered key as the drift it cannot distinguish this
+			// from; this says why nobody looked.
+			unprobed++
+			continue
+		}
+		c.recoverBudget--
 		if err := c.recoverOne(ctx, key, sink); err != nil {
 			return err
 		}
+	}
+	if unprobed > 0 {
+		sink.Issue(importv2.Warning(importv2.IssueDataLoss, "", fmt.Sprintf(
+			"recovery cap (%d) reached; %d objects claimed by an interrupted import session were not re-checked and were not imported",
+			recoverProbeCap, unprobed)))
 	}
 	return nil
 }

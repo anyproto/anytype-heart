@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -472,6 +473,60 @@ func TestRecoveryProbesEveryIdShape(t *testing.T) {
 			assert.NotEqual(t, importv2.IssueDataLoss, issue.Code,
 				"a live database must never be reported as deleted: %v", issue)
 		}
+	})
+
+	t.Run("recovery stops probing at its budget and says so once", func(t *testing.T) {
+		// given — review item 15: a vanished claim costs a full id ladder,
+		// three GETs and every one of them a 404, and the loop was bounded
+		// only by how many claims the previous session made. A workspace
+		// whose 10,000 claimed pages were then deleted spent hours issuing
+		// silent not-founds at the pacer's ~3 rps before pass 2 could start.
+		// lateDiscoveryCap bounds the sibling seam for exactly this reason.
+		gone := make([]string, 0, 8)
+		routes := map[string]apiResponse{
+			"GET /pages/p1":           {body: livePage},
+			"GET /blocks/p1/children": {body: `{"results":[],"has_more":false,"next_cursor":null}`},
+		}
+		for i := 0; i < 8; i++ {
+			key := fmt.Sprintf("gone-%d", i)
+			gone = append(gone, key)
+			routes["GET /pages/"+key] = notFound
+			routes["GET /data_sources/"+key] = notFound
+			routes["GET /databases/"+key] = notFound
+		}
+		handler := recoveryWorkspace(t, searchP1, routes)
+		converter := recoveryConverter(t, handler)
+		converter.recoverBudget = 3
+		converter.SetRecover(gone)
+
+		// when
+		sink := driveConverter(t, converter)
+
+		// then: exactly three claims were probed, one ladder each
+		probed := map[string]bool{}
+		for _, request := range handler.requests() {
+			for _, key := range gone {
+				if strings.HasSuffix(request, "/"+key) {
+					probed[key] = true
+				}
+			}
+		}
+		assert.Len(t, probed, 3, "the budget bounds the probing, not the claim count")
+
+		// and: the three probed claims report their own drift, and the five
+		// unprobed ones are accounted for ONCE rather than guessed at
+		var drift, capped int
+		for _, issue := range sink.issues {
+			require.Equal(t, importv2.IssueDataLoss, issue.Code, "%v", issue)
+			if issue.SourceKey == "" {
+				capped++
+				assert.Contains(t, issue.Message, "5")
+				continue
+			}
+			drift++
+		}
+		assert.Equal(t, 3, drift)
+		assert.Equal(t, 1, capped, "the remainder is one honest sentence, never silence")
 	})
 
 	t.Run("a positively-gone claim still warns once, all three shapes consulted", func(t *testing.T) {
