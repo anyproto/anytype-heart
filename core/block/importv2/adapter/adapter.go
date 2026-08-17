@@ -647,13 +647,30 @@ func (s *service) engineDeps(request importv2.Request, spc clientspace.Space, lc
 	}, persister
 }
 
+// notionProbeEndpoint is the token probe. /users/me returns the *bot* user
+// tied to the token, so it needs no workspace user-read capability. The
+// previous probe, /users, lists workspace members and 403s with
+// "restricted_resource" whenever the integration's User Capabilities are set
+// to "No user information" — blocking import over a capability the importer
+// never uses. Nothing in the importer resolves a user id against the API;
+// created_by/last_edited_by arrive inline on the page payload.
+const notionProbeEndpoint = "/users/me"
+
 // ValidateNotionToken probes the API with the given token (the frontend
 // calls this before starting an import).
 func (s *service) ValidateNotionToken(ctx context.Context, req *pb.RpcObjectImportNotionValidateTokenRequest) pb.RpcObjectImportNotionValidateTokenResponseErrorCode {
-	apiClient := notionclient.NewClient(req.GetToken(), notionclient.WithRetryPolicy(notionclient.RetryPolicy{
+	return probeNotionToken(ctx, req.GetToken(), s.notionClientOpts...)
+}
+
+// probeNotionToken is ValidateNotionToken's body, split out so a test can
+// aim it at a stub server via WithBaseURL. Caller options win: they are
+// appended after the default retry policy.
+func probeNotionToken(ctx context.Context, token string, opts ...notionclient.Option) pb.RpcObjectImportNotionValidateTokenResponseErrorCode {
+	opts = append([]notionclient.Option{notionclient.WithRetryPolicy(notionclient.RetryPolicy{
 		MaxAttempts: 1, BaseDelay: time.Second, MaxDelay: time.Second, TotalBudget: 30 * time.Second,
-	}))
-	err := apiClient.Request(ctx, http.MethodGet, "/users?page_size=1", nil, nil)
+	})}, opts...)
+	apiClient := notionclient.NewClient(token, opts...)
+	err := apiClient.Request(ctx, http.MethodGet, notionProbeEndpoint, nil, nil)
 	switch {
 	case err == nil:
 		return pb.RpcObjectImportNotionValidateTokenResponseError_NULL
