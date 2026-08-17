@@ -258,13 +258,6 @@ func TestInvariant_ImportedDocumentReExportsValid(t *testing.T) {
 	}
 }
 
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
 // A document's ids must survive a round trip unchanged when they are already
 // valid: sanitizing is for ids that need it, and renaming one that does not
 // would break the "provided ids are preserved so re-exports diff cleanly"
