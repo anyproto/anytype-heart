@@ -55,9 +55,17 @@ func MakeDataviewContent(isCollection bool, ot *model.ObjectType, relLinks []*mo
 			commonVisibleRelations = append(commonVisibleRelations, domain.RelationKey(relLink.Key))
 		}
 	}
+	// What a FRESH view shows as columns: the source's own relations, whether
+	// they arrived as an object type or as a relation list. Only existing
+	// views (oldContent) keep commonVisibleRelations as their seed, because
+	// there the user's own column selection decides.
+	sourceRelations := make([]domain.RelationKey, 0, len(relLinks))
+	for _, relLink := range relLinks {
+		sourceRelations = append(sourceRelations, domain.RelationKey(relLink.Key))
+	}
 
 	if oldContent == nil {
-		visibleRelations := slices.Concat(defaultVisibleRelations, commonVisibleRelations)
+		visibleRelations := slices.Concat(defaultVisibleRelations, sourceRelations)
 		view := &model.BlockContentDataviewView{
 			Id:        "default",
 			Type:      DefaultViewLayout,

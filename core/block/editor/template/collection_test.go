@@ -110,7 +110,12 @@ func TestMakeDataviewContentNew(t *testing.T) {
 								Type:        model.BlockContentDataviewSort_Desc,
 							},
 						},
-						Relations: makeDataviewRelations(append(defaultDataviewRelations, bundle.RelationKeyMentions, bundle.RelationKeyLinkedProjects, bundle.RelationKeyAssignee), defaultVisibleRelations),
+						// A fresh view over a type shows that type's own properties
+						// as columns — otherwise the grid is a single Name column
+						// and every property the type defines is switched off.
+						Relations: makeDataviewRelations(
+							append(defaultDataviewRelations, bundle.RelationKeyMentions, bundle.RelationKeyLinkedProjects, bundle.RelationKeyAssignee),
+							append(defaultVisibleRelations, bundle.RelationKeyMentions, bundle.RelationKeyLinkedProjects, bundle.RelationKeyAssignee)),
 					},
 				},
 				RelationLinks: makeRelationLinks(append(defaultDataviewRelations, bundle.RelationKeyMentions, bundle.RelationKeyLinkedProjects, bundle.RelationKeyAssignee)),
