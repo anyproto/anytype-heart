@@ -18,8 +18,12 @@ func jsonUnmarshal(data []byte, v any) error {
 }
 
 type jsonDoc struct {
-	Schema      string              `json:"$schema"`
-	Version     int                 `json:"version"`
+	Schema string `json:"$schema"`
+	// json.Number for the same reason as every other schema-integer field
+	// below: 1.0 and 1e0 are integers to JSON Schema, so checkVersion accepts
+	// them, and a plain int would then fail to decode a document Validate
+	// declared valid.
+	Version     json.Number         `json:"version"`
 	Kind        string              `json:"kind"`
 	Id          string              `json:"id"`
 	Type        string              `json:"type"`
@@ -42,8 +46,12 @@ type jsonRootEscape struct {
 // jsonBlock is the union of every §5 block shape; the schema guarantees only
 // type-appropriate fields are present.
 type jsonBlock struct {
-	// json.Number, not int: the schema's integer type admits integer-valued
-	// floats like 1.0, and Unmarshal must accept everything Validate does
+	// json.Number, not int, for every schema-integer field: JSON Schema counts
+	// 2048.0 and 1e3 as integers, so Validate accepts them, and a typed int
+	// field would then fail to decode a document Validate declared valid —
+	// reported as a bare Go decode error with no JSON pointer, outside the
+	// path-addressed error contract (§13). The schema bounds each field to the
+	// stored type's range, so the conversion helpers cannot truncate.
 	Indent json.Number `json:"indent"`
 	Id     string      `json:"id"`
 	Type   string      `json:"type"`
@@ -58,7 +66,7 @@ type jsonBlock struct {
 	ObjectId    string          `json:"objectId"`
 	Name        string          `json:"name"`
 	MimeType    string          `json:"mimeType"`
-	Size        int64           `json:"size"`
+	Size        json.Number     `json:"size"`
 	Style       string          `json:"style"`
 	AddedAt     string          `json:"addedAt"`
 	Hash        string          `json:"hash"`
@@ -70,10 +78,10 @@ type jsonBlock struct {
 	Processor   string          `json:"processor"`
 	Key         string          `json:"key"`
 
-	Layout    string `json:"layout"`
-	Limit     int32  `json:"limit"`
-	ViewId    string `json:"viewId"`
-	AutoAdded bool   `json:"autoAdded"`
+	Layout    string      `json:"layout"`
+	Limit     json.Number `json:"limit"`
+	ViewId    string      `json:"viewId"`
+	AutoAdded bool        `json:"autoAdded"`
 
 	Columns []jsonTableColumn `json:"columns"`
 	Rows    []jsonTableRow    `json:"rows"`
@@ -105,16 +113,78 @@ func Unmarshal(data []byte, opts Options) (model.SmartBlockType, *model.SmartBlo
 type importer struct {
 	opts Options
 	doc  *jsonDoc
-	// tableIds tracks row/column ids already used anywhere in the document,
-	// so a generated one never collides with an authored one (§6.1).
-	tableIds map[string]struct{}
+	// usedIds is every id this document will contain: the ones it authored
+	// (envelope, blocks, table rows and columns, derived cell ids) plus the
+	// ones minted since. One set for all of them, because they end up in one
+	// block graph — a generated id that lands on an authored one produces two
+	// blocks with the same id, which validation has already finished checking
+	// by the time it happens (§9).
+	usedIds map[string]struct{}
 }
 
-func (imp *importer) genId() string {
-	if imp.opts.GenerateId != nil {
-		return imp.opts.GenerateId()
+// claimAuthoredIds records every id the document names before anything is
+// generated. It has to run before the first genId call, which is why build
+// calls it first rather than leaving it to the lazy path.
+func (imp *importer) claimAuthoredIds() {
+	imp.usedIds = map[string]struct{}{}
+	var walk func(jbs []*jsonBlock)
+	walk = func(jbs []*jsonBlock) {
+		for _, jb := range jbs {
+			if jb == nil {
+				continue
+			}
+			imp.claimId(jb.Id)
+			for _, col := range jb.Columns {
+				imp.claimId(col.Id)
+			}
+			for _, row := range jb.Rows {
+				imp.claimId(row.Id)
+				for i, cell := range row.Cells {
+					// a cell's id is derived (§6.1) but it is still a block id
+					if row.Id != "" && i < len(jb.Columns) && jb.Columns[i].Id != "" {
+						imp.claimId(row.Id + "-" + jb.Columns[i].Id)
+					}
+					if cell.Block != nil {
+						walk([]*jsonBlock{cell.Block})
+					}
+					walk(cell.Blocks)
+				}
+			}
+		}
 	}
-	return defaultGenerateId()
+	imp.claimId(imp.doc.Id)
+	walk(imp.doc.Blocks)
+}
+
+func (imp *importer) claimId(id string) string {
+	if id == "" {
+		return id
+	}
+	if imp.usedIds == nil {
+		imp.claimAuthoredIds()
+	}
+	imp.usedIds[id] = struct{}{}
+	return id
+}
+
+func (imp *importer) idTaken(id string) bool {
+	if imp.usedIds == nil {
+		imp.claimAuthoredIds()
+	}
+	_, taken := imp.usedIds[id]
+	return taken
+}
+
+// genId mints an id no other id in the document uses. The generator belongs to
+// the caller — the convert wiring derives ids from a file path and a counter,
+// both halves author-controlled — so its answer is disambiguated rather than
+// trusted.
+func (imp *importer) genId() string {
+	mint := defaultGenerateId
+	if imp.opts.GenerateId != nil {
+		mint = imp.opts.GenerateId
+	}
+	return imp.claimId(uniqueLabel(mint(), imp.idTaken))
 }
 
 // resolveId applies the §9a total resolution rule: a refs key resolves to
@@ -154,6 +224,7 @@ func (imp *importer) resolveFormat(key string) (model.RelationFormat, bool) {
 
 func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBase, error) {
 	doc := imp.doc
+	imp.claimAuthoredIds()
 	sbType := model.SmartBlockType_Page
 	switch {
 	case doc.Kind != "":
@@ -332,11 +403,14 @@ const dataviewBlockId = "dataview"
 // id, as does any dataview nested below indent 0. A block that already claims
 // the id anywhere in the document wins, so an explicit "id": "dataview" stays
 // authoritative and no duplicate is minted (§13).
-func pinPrimaryDataview(raw []*jsonBlock, indents []int) {
-	for _, jb := range raw {
-		if jb != nil && jb.Id == dataviewBlockId {
-			return
-		}
+func (imp *importer) pinPrimaryDataview(raw []*jsonBlock, indents []int) {
+	// anything already using the id wins, and "anything" means the whole
+	// document: a table row named "dataview" is a block too, and it is not in
+	// this array. Minting the id anyway produced a duplicate *after*
+	// validation had passed, and the re-export then dropped the table body
+	// whole when the id resolved to the wrong block.
+	if imp.idTaken(dataviewBlockId) {
+		return
 	}
 	for i, jb := range raw {
 		if jb == nil || indents[i] != 0 {
@@ -345,7 +419,7 @@ func pinPrimaryDataview(raw []*jsonBlock, indents []int) {
 		if jb.Type != "dataview" || jb.Id != "" || jb.ObjectId != "" {
 			continue
 		}
-		jb.Id = dataviewBlockId
+		jb.Id = imp.claimId(dataviewBlockId)
 		return
 	}
 }
@@ -357,7 +431,7 @@ func pinPrimaryDataview(raw []*jsonBlock, indents []int) {
 func (imp *importer) topLevelBlocks(details *types.Struct) ([]*jsonBlock, []int) {
 	raw := imp.doc.Blocks
 	indents := imp.blockIndents(raw, -1)
-	pinPrimaryDataview(raw, indents)
+	imp.pinPrimaryDataview(raw, indents)
 	jbs := make([]*jsonBlock, 0, len(raw))
 	kept := make([]int, 0, len(raw))
 	for i := 0; i < len(raw); i++ {
@@ -481,7 +555,7 @@ func (imp *importer) fileFromJSON(jb *jsonBlock) *model.BlockContentFile {
 		Hash:           jb.Hash,
 		Name:           jb.Name,
 		Mime:           jb.MimeType,
-		Size_:          jb.Size,
+		Size_:          jsonInt64(jb.Size),
 		Style:          fileStyleNames.value(jb.Style),
 	}
 	if jb.AddedAt != "" {
@@ -603,7 +677,7 @@ func (imp *importer) blockFromJSON(jb *jsonBlock, forcedId string) ([]*model.Blo
 	case jb.Type == "widget":
 		b.Content = &model.BlockContentOfWidget{Widget: &model.BlockContentWidget{
 			Layout:    widgetLayoutNames.value(jb.Layout),
-			Limit:     jb.Limit,
+			Limit:     jsonInt32(jb.Limit),
 			ViewId:    jb.ViewId,
 			AutoAdded: jb.AutoAdded,
 		}}

@@ -5,6 +5,7 @@ package anyblockjson
 // top-level AND, and select values as option names.
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
 
@@ -317,7 +318,7 @@ type jsonView struct {
 	CardSize          string            `json:"cardSize"`
 	CoverFit          bool              `json:"coverFit"`
 	ColoredGroups     bool              `json:"coloredGroups"`
-	PageSize          int32             `json:"pageSize"`
+	PageSize          json.Number       `json:"pageSize"`
 	DefaultTemplateId string            `json:"defaultTemplateId"`
 	DefaultTypeId     string            `json:"defaultTypeId"`
 	WrapContent       bool              `json:"wrapContent"`
@@ -354,11 +355,13 @@ type jsonFilter struct {
 }
 
 type jsonViewColumn struct {
-	Property    string  `json:"property"`
-	Hidden      bool    `json:"hidden"`
-	Width       float64 `json:"width"`
-	Aggregation string  `json:"aggregation"`
-	Align       string  `json:"align"`
+	Property string `json:"property"`
+	Hidden   bool   `json:"hidden"`
+	// pixels, stored as an int32 (§6.2) — so json.Number, bounded by the
+	// schema to int32 range, rather than a float64 that would truncate
+	Width       json.Number `json:"width"`
+	Aggregation string      `json:"aggregation"`
+	Align       string      `json:"align"`
 }
 
 type jsonViewGroup struct {
@@ -406,7 +409,7 @@ func (imp *importer) dataviewFromJSON(jb *jsonBlock) (*model.BlockContentDatavie
 			CardSize:              cardSizeNames.value(jv.CardSize),
 			CoverFit:              jv.CoverFit,
 			GroupBackgroundColors: jv.ColoredGroups,
-			PageLimit:             jv.PageSize,
+			PageLimit:             jsonInt32(jv.PageSize),
 			DefaultTemplateId:     imp.resolveId(jv.DefaultTemplateId),
 			DefaultObjectTypeId:   imp.resolveId(jv.DefaultTypeId),
 			WrapContent:           jv.WrapContent,
@@ -423,7 +426,7 @@ func (imp *importer) dataviewFromJSON(jb *jsonBlock) (*model.BlockContentDatavie
 			view.Relations = append(view.Relations, &model.BlockContentDataviewRelation{
 				Key:       jc.Property,
 				IsVisible: !jc.Hidden,
-				Width:     int32(jc.Width),
+				Width:     jsonInt32(jc.Width),
 				Formula:   aggregationNames.value(jc.Aggregation),
 				Align:     alignNames.value(jc.Align),
 			})

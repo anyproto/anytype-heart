@@ -496,6 +496,34 @@ func jsonIntValue(num json.Number) (int64, bool) {
 	return int64(f), true
 }
 
+// jsonInt64 and jsonInt32 read a schema-integer field into the stored type.
+// They are the decode-side half of the agreement rule: the schema admits
+// integer-valued floats and bounds each field to its stored type's range, so
+// these accept exactly what it accepts, and an absent field (the zero
+// json.Number) reads as 0.
+//
+// The clamp is unreachable while the schema carries the bounds — Unmarshal
+// always validates first — and is here so that a bound removed from the schema
+// costs a wrong pixel width rather than a wrapped negative one.
+func jsonInt64(num json.Number) int64 {
+	v, _ := jsonIntValue(num)
+	return v
+}
+
+func jsonInt32(num json.Number) int32 {
+	v, ok := jsonIntValue(num)
+	if !ok {
+		return 0
+	}
+	if v > math.MaxInt32 {
+		return math.MaxInt32
+	}
+	if v < math.MinInt32 {
+		return math.MinInt32
+	}
+	return int32(v)
+}
+
 // indentOf reads a block's indent; absent means 0. The schema guarantees an
 // integer in [0, 32] (V4) when present, which includes integer-valued
 // floats — jsonIntValue keeps this reader in agreement with the schema and
@@ -533,6 +561,14 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 			warn(Issue{Path: path, Message: fmt.Sprintf(format, args...)})
 		}
 	}
+
+	// Every number in the document has to land in a float64: the loose surfaces
+	// (§3 properties, block fields, store, filter values) decode into a proto
+	// Struct, whose numbers are doubles, and the schema cannot bound them
+	// without closing surfaces the format deliberately leaves open. Left
+	// unchecked, Validate accepted 1e400 and Unmarshal then failed with a bare
+	// Go decode error carrying no JSON pointer — the divergence §12 rules out.
+	checkNumbers(doc, "", addIssue)
 
 	if _, ok := doc["templateFor"]; ok {
 		if typ, _ := doc["type"].(string); typ != "template" {
@@ -758,6 +794,44 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 	return issues
 }
 
+// checkNumbers walks every number in the document and reports the ones no
+// reader can hold. A JSON number has no range limit; float64 does, and that is
+// where every number in this format ends up — so a value outside it is not a
+// number this format has, whatever surface it sits on.
+func checkNumbers(node any, path string, addIssue func(path, format string, args ...any)) {
+	switch n := node.(type) {
+	case map[string]any:
+		for _, k := range sortedMapKeys(n) {
+			checkNumbers(n[k], path+"/"+escapeJSONPointer(k), addIssue)
+		}
+	case []any:
+		for i, v := range n {
+			checkNumbers(v, fmt.Sprintf("%s/%d", path, i), addIssue)
+		}
+	case json.Number:
+		if _, err := n.Float64(); err != nil {
+			addIssue(path, "number %s is out of range: values must fit a 64-bit float", n.String())
+		}
+	}
+}
+
+func sortedMapKeys(m map[string]any) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+// escapeJSONPointer escapes the two characters a JSON pointer token cannot
+// carry literally (RFC 6901): a property key is author-controlled, and the
+// loose surfaces accept any key at all.
+func escapeJSONPointer(token string) string {
+	token = strings.ReplaceAll(token, "~", "~0")
+	return strings.ReplaceAll(token, "/", "~1")
+}
+
 // codeLangConflict reports a code block carrying both the first-class
 // language prop and the internal fields.lang it lifts (§5.1).
 func codeLangConflict(block map[string]any) bool {
@@ -800,12 +874,23 @@ func walkTable(block map[string]any, path string,
 		if len(cells) > len(columns) {
 			addIssue(rowPath+"/cells", "row has %d cells but the table has %d columns", len(cells), len(columns))
 		}
+		// every row×column pair joins the id uniqueness domain (§4), whether
+		// or not the cell is written: the id belongs to the table either way,
+		// and the editor materializes the missing cell at exactly that id the
+		// first time it is filled. Claiming only the written cells left the
+		// rest of the grid free for a block to take.
+		for j, colId := range colIds {
+			if rowId == "" || colId == "" {
+				continue
+			}
+			at := rowPath
+			if j < len(cells) {
+				at = fmt.Sprintf("%s/cells/%d", rowPath, j)
+			}
+			claimId(rowId+"-"+colId, at)
+		}
 		for j, c := range cells {
 			cellPath := fmt.Sprintf("%s/cells/%d", rowPath, j)
-			// derived cell ids join the uniqueness domain (§4)
-			if rowId != "" && j < len(colIds) && colIds[j] != "" {
-				claimId(rowId+"-"+colIds[j], cellPath)
-			}
 			switch cell := c.(type) {
 			case string:
 				if cell != "" {

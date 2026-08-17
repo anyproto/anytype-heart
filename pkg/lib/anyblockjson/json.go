@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -682,6 +683,61 @@ func parseDate(s string) (int64, bool) {
 //
 // ---- ids ----
 //
+
+// maxIdLen bounds every id this format writes: the block charset (§4) and the
+// table inner charset (§6.1) both stop at 64 characters.
+const maxIdLen = 64
+
+// sanitizeBlockId maps a stored id onto the schema's block charset
+// [A-Za-z0-9_-]{1,64}. Stored ids are not required to match it — legacy
+// accounts hold dots and slashes, and a caller's GenerateId may derive ids from
+// file paths — and writing one verbatim produces a document Validate rejects.
+// Every replacement is ASCII, so the length bound can be applied to bytes.
+func sanitizeBlockId(s string) string {
+	var b strings.Builder
+	b.Grow(len(s))
+	for _, r := range s {
+		if isLabelRune(r) || r == '-' {
+			b.WriteRune(r)
+		} else {
+			b.WriteByte('_')
+		}
+	}
+	out := b.String()
+	if out == "" {
+		out = "b"
+	}
+	if len(out) > maxIdLen {
+		out = out[:maxIdLen]
+	}
+	return out
+}
+
+// uniqueLabel returns base, or base with a "_2", "_3", … suffix — whichever is
+// the first one taken() rejects. The result stays inside maxIdLen, so
+// disambiguating never pushes an id past the charset bound.
+func uniqueLabel(base string, taken func(string) bool) string {
+	if !taken(base) {
+		return base
+	}
+	for n := 2; ; n++ {
+		suffix := "_" + strconv.Itoa(n)
+		trimmed := base
+		if len(trimmed)+len(suffix) > maxIdLen {
+			trimmed = trimmed[:maxIdLen-len(suffix)]
+		}
+		if candidate := trimmed + suffix; !taken(candidate) {
+			return candidate
+		}
+	}
+}
+
+// isValidTableInnerId reports whether s matches the schema's tableInnerId
+// pattern ^[A-Za-z0-9_]{1,64}$ — the local-label charset, which excludes '-'
+// because that separates a derived cell id (§6.1).
+func isValidTableInnerId(s string) bool {
+	return !isInvalidLocalLabel(s)
+}
 
 // defaultGenerateId mints ids shaped like the editor's (24 hex chars).
 func defaultGenerateId() string {

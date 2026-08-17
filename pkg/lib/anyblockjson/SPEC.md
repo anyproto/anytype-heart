@@ -800,7 +800,10 @@ percentEmpty · percentNotEmpty · sum · average · median · min · max · ran
 — from proto `formula`; omit `none`), `align`. Deprecated per-column
 date/time fields are dropped.
 
-**Column `width` is in pixels**, the same unit as the proto's `width` — not
+**Column `width` is in pixels**, a non-negative **integer** (the proto stores
+an `int32`, and the schema says so, so `33.3` is a validation error rather
+than a silent truncation to `33` — a fractional width is almost always a
+percentage the author meant), the same unit as the proto's `width` — not
 a percentage, and not a share of the table. A row of columns summing to
 `100` produces four unreadable slivers, not four proportional columns.
 Serialization passes the number through unchanged: the client owns
@@ -1454,6 +1457,24 @@ fail neither test belong in authoring guidance and in review.
   `language`-vs-`fields.lang` conflicts, and **inline-markup parsing** (§8)
   — grammar errors report the block's JSON path and the offending snippet.
   The indent bound [0, 32] lives in the schema.
+- **Validate and Unmarshal agree, in both directions.** Whatever Validate
+  accepts, Unmarshal decodes; whatever Validate rejects, Unmarshal rejects
+  too, with the same path-addressed issues. This is the promise that makes
+  Validate worth calling — "this document imports" — and it constrains the
+  reader in two places where JSON's value model is wider than Go's:
+  - JSON Schema counts `2048.0` and `1e3` as integers, so every
+    schema-integer field (`indent`, `size`, `limit`, `pageSize`, column
+    `width`) is read as a JSON number and converted, never decoded straight
+    into an `int64`/`int32`; and each carries `minimum`/`maximum` for the
+    range its stored type can hold, so the conversion cannot truncate.
+  - a JSON number has no range, `float64` does, and every number in this
+    format ends up in one (proto `Struct` values are doubles). A number
+    outside `float64` — `1e400` — is therefore rejected wherever it appears,
+    including on the loose surfaces (§3 property values, block `fields`,
+    `store`, filter values) that have no schema bound by design.
+  Both are enforced by a corpus invariant test over hand-written documents;
+  a corpus generated from export cannot find these, because export never
+  writes them.
 - These path-addressed errors are the guardrail for agent-generated
   documents: generate → validate → feed errors back. With the flat schema
   the generate step can also run under strict/guided decoding end to end.

@@ -8,6 +8,7 @@ package anyblockjson
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/gogo/protobuf/types"
@@ -122,4 +123,148 @@ func TestExport_FileAddedAtOutsideRangeIsOmitted(t *testing.T) {
 	assert.NotContains(t, string(data), "addedAt")
 	require.Len(t, warnings, 1)
 	assert.Contains(t, warnings[0].Message, "addedAt")
+}
+
+// ---- Tier 1 #1: one id domain ----
+//
+// The rule was known and written down (table.go: "Emitting one verbatim would
+// make Marshal write a document its own Validate rejects, so normalize it once
+// here") and then applied to table inner ids only. Every other id surface
+// skipped it, in six confirmed ways. Two of them lose data.
+
+// assertUniqueBlockIds is the snapshot-side half of the id invariant: whatever
+// import mints, no two blocks may end up with the same id.
+func assertUniqueBlockIds(t *testing.T, snap *model.SmartBlockSnapshotBase) {
+	t.Helper()
+	seen := map[string]bool{}
+	for _, b := range snap.Blocks {
+		require.False(t, seen[b.Id], "duplicate block id %q in the rebuilt snapshot", b.Id)
+		seen[b.Id] = true
+	}
+}
+
+// (a) a stored block id outside the schema's charset was written verbatim.
+func TestExport_BlockIdOutsideCharsetIsSanitized(t *testing.T) {
+	for _, stored := range []string{"a.b", "dir/file", "блок", strings.Repeat("x", 65)} {
+		t.Run(stored, func(t *testing.T) {
+			snap := &model.SmartBlockSnapshotBase{
+				Blocks: []*model.Block{
+					{Id: "obj1", ChildrenIds: []string{stored},
+						Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}},
+					{Id: stored, Content: &model.BlockContentOfText{
+						Text: &model.BlockContentText{Text: "hi"}}},
+				},
+				Details: fields(map[string]*types.Value{"id": str("obj1")}),
+			}
+			data, err := Marshal(model.SmartBlockType_Page, snap, Options{})
+			require.NoError(t, err)
+			require.NoError(t, Validate(data), "Marshal must not emit what Validate rejects:\n%s", data)
+		})
+	}
+}
+
+// (c) a sanitized column id could land on a sibling paragraph's id, because
+// the used-id set covered table inner ids only.
+func TestExport_SanitizedColumnIdCannotTakeASiblingsId(t *testing.T) {
+	snap := &model.SmartBlockSnapshotBase{
+		Blocks: []*model.Block{
+			{Id: "obj1", ChildrenIds: []string{"c_1", "t1"},
+				Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}},
+			{Id: "c_1", Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{Text: "a paragraph that got there first"}}},
+			{Id: "t1", ChildrenIds: []string{"cols", "rows"},
+				Content: &model.BlockContentOfTable{Table: &model.BlockContentTable{}}},
+			{Id: "cols", ChildrenIds: []string{"c-1"},
+				Content: &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{
+					Style: model.BlockContentLayout_TableColumns}}},
+			{Id: "c-1", Content: &model.BlockContentOfTableColumn{
+				TableColumn: &model.BlockContentTableColumn{}}},
+			{Id: "rows", ChildrenIds: []string{"r1"},
+				Content: &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{
+					Style: model.BlockContentLayout_TableRows}}},
+			{Id: "r1", Content: &model.BlockContentOfTableRow{
+				TableRow: &model.BlockContentTableRow{}}},
+		},
+		Details: fields(map[string]*types.Value{"id": str("obj1")}),
+	}
+	data, err := Marshal(model.SmartBlockType_Page, snap, Options{})
+	require.NoError(t, err)
+	require.NoError(t, Validate(data), "duplicate id across two surfaces:\n%s", data)
+	assert.Contains(t, string(data), "a paragraph that got there first",
+		"the paragraph keeps its own id and its content")
+}
+
+// (d) under CompactIds a suffix label could equal a short id that labels as
+// itself. The refs path already checked for this; the local path did not.
+func TestExport_CompactLabelCannotTakeAShortBlockId(t *testing.T) {
+	snap := &model.SmartBlockSnapshotBase{
+		Blocks: []*model.Block{
+			{Id: "obj1", ChildrenIds: []string{"block_12345", "12345"},
+				Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}},
+			{Id: "block_12345", Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{Text: "long"}}},
+			{Id: "12345", Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{Text: "short"}}},
+		},
+		Details: fields(map[string]*types.Value{"id": str("obj1")}),
+	}
+	data, err := Marshal(model.SmartBlockType_Page, snap, Options{CompactIds: true})
+	require.NoError(t, err)
+	require.NoError(t, Validate(data), "duplicate id from a suffix label:\n%s", data)
+}
+
+// (b) a derived cell id belongs to the table whether or not the cell is
+// written: the editor materializes missing cells on open, and the id it uses
+// is rowId-colId. So a block claiming one is a duplicate, and validation is
+// the only place that can say so.
+func TestValidate_DerivedCellIdIsClaimedEvenWhenTheCellIsAbsent(t *testing.T) {
+	// the trailing cell is absent from the array, so nothing in the document
+	// mentions r1-c2 — an explicit null would already have been claimed
+	doc := `{"version": 1, "blocks": [
+		{"type": "paragraph", "id": "r1-c2", "text": "x"},
+		{"type": "table",
+		 "columns": [{"id": "c1"}, {"id": "c2"}],
+		 "rows": [{"id": "r1", "cells": ["first"]}]}]}`
+	err := Validate([]byte(doc))
+	require.Error(t, err, "r1-c2 is the id the table will use when that cell is filled")
+	assert.Contains(t, err.Error(), "duplicate id")
+
+	// and the claim is not over-eager: no table, no derived ids
+	require.NoError(t, Validate([]byte(`{"version": 1, "blocks": [
+		{"type": "paragraph", "id": "r1-c2", "text": "x"}]}`)))
+}
+
+// (e) pinPrimaryDataview scanned top-level block ids only, so an authored
+// table row named "dataview" was invisible to it — and it minted the same id
+// for the dataview block *after* validation had passed. Re-export then lost
+// the whole table body.
+func TestImport_PrimaryDataviewDoesNotCollideWithATableRowId(t *testing.T) {
+	doc := `{"version": 1, "id": "obj1", "blocks": [
+		{"type": "table",
+		 "columns": [{"id": "c1"}],
+		 "rows": [{"id": "dataview", "cells": ["cell text"]}]},
+		{"type": "dataview", "views": [{"id": "v1", "name": "All"}]}]}`
+	require.NoError(t, Validate([]byte(doc)))
+	sbType, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
+	require.NoError(t, err)
+	assertUniqueBlockIds(t, snap)
+
+	out, err := Marshal(sbType, snap, Options{})
+	require.NoError(t, err)
+	require.NoError(t, Validate(out))
+	assert.Contains(t, string(out), "cell text", "the table body must survive the round trip")
+}
+
+// (f) Options.GenerateId is the caller's, and the convert wiring derives ids
+// from file paths — both halves author-controlled. genId never checked the ids
+// the document itself already used.
+func TestImport_GeneratedIdCannotTakeAnAuthoredId(t *testing.T) {
+	doc := `{"version": 1, "blocks": [
+		{"type": "paragraph", "id": "g1", "text": "authored"},
+		{"type": "paragraph", "text": "needs an id"},
+		{"type": "table", "columns": [{"id": "g2"}], "rows": [{"cells": ["c"]}]}]}`
+	require.NoError(t, Validate([]byte(doc)))
+	_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
+	require.NoError(t, err)
+	assertUniqueBlockIds(t, snap)
 }

@@ -6,6 +6,7 @@ package anyblockjson
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/gogo/protobuf/types"
@@ -95,10 +96,87 @@ type exporter struct {
 	objectRefs map[string]string // full object id -> refs label (§9a)
 	localIds   map[string]string // block/row/column/view id -> short label
 
-	// tableIds maps a stored row/column id to the sanitized label written for
-	// it (§6.1), and tableIdsUsed keeps those labels distinct.
-	tableIds     map[string]string
-	tableIdsUsed map[string]struct{}
+	// idLabels maps a stored block/row/column id to the id written for it, and
+	// idsUsed is every id this document has written. One set for every id
+	// surface, because they share one uniqueness domain (§4): a sanitized
+	// column id, a compact label and a verbatim block id all land in the same
+	// document, and any two of them colliding is a document Validate rejects.
+	idLabels map[string]string
+	idsUsed  map[string]struct{}
+}
+
+// seedIdLabels reserves the id each block will be written with, before any
+// sanitizing starts. Without it the first block to need sanitizing could take
+// the name of a block that was going to be written verbatim — renaming a
+// perfectly good authored id, or duplicating it.
+func (e *exporter) seedIdLabels() {
+	e.idLabels = map[string]string{}
+	e.idsUsed = map[string]struct{}{}
+	for id, b := range e.blocks {
+		// map order is irrelevant here: every id seeded is written as-is, so
+		// no two of them compete for the same label
+		want := e.localId(id)
+		if e.isTableInner(b) {
+			if isValidTableInnerId(want) {
+				e.idLabels[id] = want
+				e.idsUsed[want] = struct{}{}
+			}
+			continue
+		}
+		if isValidRefsKey(want) { // the blockId charset: [A-Za-z0-9_-]{1,64}
+			e.idLabels[id] = want
+			e.idsUsed[want] = struct{}{}
+		}
+	}
+}
+
+func (e *exporter) isTableInner(b *model.Block) bool {
+	switch b.GetContent().(type) {
+	case *model.BlockContentOfTableRow, *model.BlockContentOfTableColumn:
+		return true
+	}
+	return false
+}
+
+// idLabel is the one place a stored id becomes the id written in the document.
+// It sanitizes with the charset of the position, then disambiguates against
+// every id the document has already written, and remembers its answer so the
+// same stored id always renders the same way.
+func (e *exporter) idLabel(stored string, sanitize func(string) string) string {
+	if stored == "" {
+		return ""
+	}
+	if e.idLabels == nil {
+		e.seedIdLabels()
+	}
+	if got, ok := e.idLabels[stored]; ok {
+		return got
+	}
+	base := sanitize(e.localId(stored))
+	label := base
+	for n := 2; ; n++ {
+		if _, taken := e.idsUsed[label]; !taken {
+			e.idsUsed[label] = struct{}{}
+			e.idLabels[stored] = label
+			return label
+		}
+		suffix := "_" + strconv.Itoa(n)
+		trimmed := base
+		if len(trimmed)+len(suffix) > maxIdLen {
+			trimmed = trimmed[:maxIdLen-len(suffix)]
+		}
+		label = trimmed + suffix
+	}
+}
+
+// blockLabel renders a block's stored id for output (§9). Stored ids are not
+// guaranteed to match the schema's block charset: legacy accounts hold ids
+// with dots and slashes, and Options.GenerateId belongs to the caller — the
+// convert wiring derives ids from file paths. Writing one verbatim made
+// Marshal emit a document its own Validate rejects, i.e. an archive that fails
+// at import, discovered long after the export.
+func (e *exporter) blockLabel(stored string) string {
+	return e.idLabel(stored, sanitizeBlockId)
 }
 
 func (e *exporter) detail(key string) *types.Value {
@@ -502,7 +580,7 @@ func (e *exporter) blockToJSON(b *model.Block, depth int) (*omap, bool, error) {
 	m := &omap{}
 	m.setNonEmpty("indent", depth)
 	if !e.opts.OmitIds {
-		m.setNonEmpty("id", e.localId(b.Id))
+		m.setNonEmpty("id", e.blockLabel(b.Id))
 	}
 	liftedFields := map[string]bool{}
 	withChildren := true
@@ -893,8 +971,13 @@ func (e *exporter) buildCompactIds() {
 		return fullIds[candidate] || !isValidRefsKey(candidate)
 	})
 	// local relabels stay dash-free: '-' is the derived-cell-id separator
-	// and forbidden in row/column ids (§6.1)
-	e.localIds = suffixLabels(setToSlice(locals), compactIdMinLen, isInvalidLocalLabel)
+	// and forbidden in row/column ids (§6.1). They must also avoid the full
+	// local ids, exactly as refs keys avoid full object ids above: a short id
+	// labels as itself, so "block_12345" suffixing to "12345" would land on a
+	// sibling block already called "12345".
+	e.localIds = suffixLabels(setToSlice(locals), compactIdMinLen, func(candidate string) bool {
+		return locals[candidate] || isInvalidLocalLabel(candidate)
+	})
 	// short ids label as themselves; drop those the schema charsets reject
 	dropInvalidLabels(e.objectRefs, isValidRefsKey)
 	dropInvalidLabels(e.localIds, func(label string) bool { return !isInvalidLocalLabel(label) })
