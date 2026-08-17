@@ -268,3 +268,123 @@ func TestImport_GeneratedIdCannotTakeAnAuthoredId(t *testing.T) {
 	require.NoError(t, err)
 	assertUniqueBlockIds(t, snap)
 }
+
+// ---- Tier 1 #5: property-key admission control ----
+//
+// §4a claims the import surface "treats supplied values as authoritative only
+// where semantically safe". Nothing implemented that clause: import copied
+// every supplied key onto details, skipping only id/type, so the input surface
+// was strictly *wider* than the output surface — export strips
+// bundle.LocalAndDerivedRelationKeys, import took them. Among them are the keys
+// that decide which existing object a snapshot merges into.
+
+// The rule, stated once: import refuses exactly what export strips. Deriving
+// both from strippedDetailKeys is what keeps them from drifting apart again —
+// a second hand-written list would.
+func TestValidate_ImportRefusesWhatExportStrips(t *testing.T) {
+	for key := range strippedDetailKeys() {
+		doc := fmt.Sprintf(`{"version": 1, "id": "obj1", "properties": {%q: "x"}}`, key)
+		err := Validate([]byte(doc))
+		require.Error(t, err, "%s is stripped on export, so it must be refused on import", key)
+		assert.Contains(t, err.Error(), "/properties/"+key)
+	}
+}
+
+// The named resolution vectors are not bundled relations, so they are not in
+// that list, and they are the ones that matter most: existingobject.go resolves
+// which object in the victim's space a snapshot merges into from oldAnytypeID,
+// uniqueKey and sourceFilePath.
+func TestValidate_ResolutionVectorPropertiesRefused(t *testing.T) {
+	for _, key := range []string{"oldAnytypeID", "uniqueKey", "sourceFilePath"} {
+		doc := fmt.Sprintf(`{"version": 1, "id": "obj1", "properties": {%q: "x"}}`, key)
+		err := Validate([]byte(doc))
+		require.Error(t, err, key)
+		assert.Contains(t, err.Error(), "/properties/"+key)
+	}
+}
+
+// The six §3 exemptions are the whole point of the exemption list: they are
+// internal keys the importer meaningfully preserves, so they stay writable.
+func TestValidate_ExemptedInternalPropertiesStillAccepted(t *testing.T) {
+	doc := `{"version": 1, "id": "obj1", "properties": {
+		"createdDate": "2026-07-06T08:44:05Z", "lastModifiedDate": "2026-07-06T08:44:05Z",
+		"creator": "bafyparticipant", "isFavorite": true, "isArchived": false,
+		"resolvedLayout": "basic", "name": "N"}}`
+	require.NoError(t, Validate([]byte(doc)))
+}
+
+// A property key that is not a key at all — empty, or carrying a control
+// character — landed on details verbatim and was written back out.
+func TestValidate_PropertyKeyShape(t *testing.T) {
+	t.Run("refused", func(t *testing.T) {
+		for _, doc := range []string{
+			`{"version": 1, "properties": {"": "empty"}}`,
+			`{"version": 1, "properties": {"a\nb": "newline"}}`,
+			"{\"version\": 1, \"properties\": {\"a\\u0000b\": \"nul\"}}",
+			"{\"version\": 1, \"properties\": {\"a\\u007fb\": \"del\"}}",
+		} {
+			assert.Error(t, Validate([]byte(doc)), doc)
+		}
+	})
+	t.Run("accepted", func(t *testing.T) {
+		// the shapes real keys have: bundled lowerCamel, a bson-hex custom key,
+		// and the bare names old accounts carry (ANOMALIES §7). The pattern is
+		// deliberately a deny rule rather than an allowlist — an allowlist
+		// would have to be verified against every key in every account before
+		// export could depend on it.
+		doc := `{"version": 1, "properties": {
+			"dueDate": null, "68f0d9c3b3c8a94e0d0b0a12": "x", "artist": "y"}}`
+		require.NoError(t, Validate([]byte(doc)))
+	})
+}
+
+// The envelope key becomes a uniqueKey component (ot-<key>), so its charset is
+// the one place a closed allowlist is right: every real key is a bundled type
+// key or a bson id.
+func TestValidate_EnvelopeKeyCharset(t *testing.T) {
+	for _, key := range []string{"ot/page", "a b", "", "page\n"} {
+		doc := fmt.Sprintf(`{"version": 1, "kind": "objectType", "id": "t1", "key": %q}`, key)
+		assert.Error(t, Validate([]byte(doc)), "key %q", key)
+	}
+	for _, key := range []string{"page", "68f0d9c3b3c8a94e0d0b0a12", "my-type_2"} {
+		doc := fmt.Sprintf(`{"version": 1, "kind": "objectType", "id": "t1", "key": %q}`, key)
+		assert.NoError(t, Validate([]byte(doc)), "key %q", key)
+	}
+}
+
+// A value whose shape contradicts its property's format is not stored as
+// written: it reads as the format's zero forever. "next Friday" on a date is
+// the case the review names.
+func TestValidate_PropertyValueShapeWarns(t *testing.T) {
+	warningsFor := func(t *testing.T, doc string) []Issue {
+		var got []Issue
+		require.NoError(t, ValidateWarn([]byte(doc), func(i Issue) { got = append(got, i) }), doc)
+		return got
+	}
+
+	t.Run("a date that is not a date", func(t *testing.T) {
+		got := warningsFor(t, `{"version": 1, "id": "o1", "properties": {"dueDate": "next Friday"}}`)
+		require.Len(t, got, 1)
+		assert.Equal(t, "/properties/dueDate", got[0].Path)
+		assert.Contains(t, got[0].Message, "date")
+	})
+
+	t.Run("a checkbox that is not a boolean", func(t *testing.T) {
+		got := warningsFor(t, `{"version": 1, "id": "o1", "properties": {"done": "yes"}}`)
+		require.Len(t, got, 1)
+		assert.Equal(t, "/properties/done", got[0].Path)
+	})
+
+	t.Run("shapes the format does hold are quiet", func(t *testing.T) {
+		// including the raw number a date out of RFC 3339 range exports as
+		assert.Empty(t, warningsFor(t, `{"version": 1, "id": "o1", "properties": {
+			"dueDate": "2026-07-06T08:44:05Z", "createdDate": 1751791445000,
+			"done": true, "name": "N", "iconEmoji": "fire", "coverX": 12, "tag": ["a", "b"]}}`))
+	})
+
+	t.Run("null is always a value", func(t *testing.T) {
+		// §3: an explicit null records that the property was set and cleared
+		assert.Empty(t, warningsFor(t, `{"version": 1, "id": "o1", "properties": {
+			"dueDate": null, "done": null}}`))
+	})
+}

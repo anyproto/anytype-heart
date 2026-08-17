@@ -339,12 +339,22 @@ func (e *exporter) buildRootEscape() *omap {
 //
 
 // strippedDetailKeys are the internal/derived properties export removes (§3).
+// strippedDetailKeys is the internal-property list, and it is the single
+// source of truth for both directions: export removes these keys, and import
+// refuses them (§3, §4a — deniedPropertyKey reads this same set). Two lists
+// would drift, which is how the import surface ended up strictly wider than
+// the export surface.
 func strippedDetailKeys() map[string]bool {
 	stripped := map[string]bool{detailKeyId: true, detailKeyType: true}
 	for _, k := range bundle.LocalAndDerivedRelationKeys {
 		if !propertiesKeptOnExport[string(k)] {
 			stripped[string(k)] = true
 		}
+	}
+	// the importer's own resolution vectors are not bundled relations, so the
+	// list above does not cover them; they are internal all the same
+	for k := range neverWritableProperties {
+		stripped[k] = true
 	}
 	return stripped
 }
@@ -357,9 +367,19 @@ func (e *exporter) buildProperties() *omap {
 	lifted := e.typePropDetailKeys()
 	var keys []string
 	for k := range e.snapshot.Details.Fields {
-		if !stripped[k] && !lifted[k] {
-			keys = append(keys, k)
+		if stripped[k] || lifted[k] {
+			continue
 		}
+		// a stored detail key is not necessarily a property name: real data
+		// holds an empty key and keys with control characters in them, and
+		// there is no way to write those (§3). Dropping them is what keeps
+		// Marshal's output valid — emitting one produced a document its own
+		// Validate rejects, which is the invariant §11 states.
+		if !isWritablePropertyKey(k) {
+			e.warn("/properties", "property key %q cannot be written in this format and is dropped", k)
+			continue
+		}
+		keys = append(keys, k)
 	}
 	sort.Strings(keys)
 	ordered := make([]string, 0, len(keys))

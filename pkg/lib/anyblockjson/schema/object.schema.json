@@ -22,7 +22,7 @@
     "id": { "type": "string" },
     "type": { "type": "string" },
     "templateFor": { "type": "string" },
-    "key": { "type": "string" },
+    "key": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" },
     "properties": { "$ref": "#/$defs/propertyMap" },
     "typeProperties": { "type": "array", "items": { "$ref": "#/$defs/typeProperty" } },
     "refs": {
@@ -40,6 +40,7 @@
   "$defs": {
     "propertyMap": {
       "type": "object",
+      "propertyNames": { "pattern": "^[^\u0000-\u001f\u007f]+$", "maxLength": 128 },
       "additionalProperties": {
         "anyOf": [
           { "type": ["string", "number", "boolean", "null"] },

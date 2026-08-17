@@ -116,7 +116,7 @@ Fields, in **canonical order** (§4):
 | `id` | string | no | Object id. Written by export; import treats it as informational (a new id is minted on import) except for resolving intra-export links. Never compacted (§9a). |
 | `type` | string | no | The object's type key without the `ot-` prefix (`page`, `task`, `bookmark`…). Maps to `objectTypes[0]` in the snapshot. Absent when the snapshot has no object types (legacy/system objects). Import preserves the key verbatim; the import wiring resolves it — matching an existing type or creating one (the Markdown importer's behavior). |
 | `templateFor` | string | no | Only for templates: the target type key (`objectTypes[1]`). Present with `type != "template"` → validation error. |
-| `key` | string | no | Identity key of *system* objects (types, properties); matches the public API's `key`. Never emitted for ordinary documents. |
+| `key` | string | no | Identity key of *system* objects (types, properties); matches the public API's `key`. Charset `[A-Za-z0-9_-]{1,64}` — this key becomes a `uniqueKey` component (`ot-<key>`), i.e. a derived object id, so it is the one string surface with a closed allowlist. Never emitted for ordinary documents. |
 | `properties` | object | no | The object's properties, §3. |
 | `typeProperties` | array | no | Only for `kind: "objectType"` documents: the type's property definitions, §2a. Present on any other kind → validation error. |
 | `refs` | object | no | Short-id legend for compact documents (§9a): maps labels to full object ids. Placed before `blocks` so the legend precedes use when read linearly. |
@@ -484,6 +484,37 @@ designates the object a user should land on. A bundle with no favourite, no
 `homepage` and no `spaceDashboardId` imports as an undifferentiated list. `id` is lifted to the envelope and `type` to `type`. Everything else
 round-trips.
 
+**Admission is symmetric: import refuses exactly what export strips.** The
+list above is the only list — the reader derives its deny-list from it rather
+than restating it, because a restated list drifts, and the drift ran one way:
+import used to accept every key an author supplied, so `isArchived`,
+`isDeleted`, `spaceId`, `restrictions` and `uniqueKey` all landed on details
+while export removed them. Setting one is an error naming the key. Two keys
+that are not properties at all are refused with them, because they are how
+the importer decides which *existing* object a document merges into
+(`core/block/import/common/objectid/existingobject.go`): `oldAnytypeID` and
+`sourceFilePath`, alongside `uniqueKey` from the list. Export strips those
+three too, so the symmetry holds in both directions. `id` and `type` are
+refused by name as well — they are the envelope's (§2), and dropping them in
+silence left an author with no explanation for why the id they wrote had no
+effect.
+
+**A property key has to be writable.** Non-empty, no control characters, at
+most 128 characters (`propertyNames` in the schema). This is a *deny* rule and
+not an allowlist on purpose: real keys are bundled lowerCamel names, bson-hex
+ids, and bare names from old accounts, and an allowlist could only be trusted
+after checking every key in every account — while the shapes ruled out here
+(the empty key, a key with a newline in it) are keys nothing can read. Export
+drops such a stored key with a warning, since there is no way to write it.
+
+**A value whose shape its format cannot hold is a warning**, not an error, and
+only for keys the bundle resolves (`Validate` takes no resolver, §13):
+`"dueDate": "next Friday"` is stored as written and then read as no date at
+all, which nothing else would ever report. It stays a warning because the same
+check as an error would make one already-corrupt stored value enough to make an
+object unexportable, and "Marshal never emits what Validate rejects" (§11) is
+the stronger promise.
+
 Validation: the schema types `properties` loosely (`object` with scalar/array
 values). Strict per-type validation against the object-type schemas generated
 by `pkg/lib/schema` is a possible future layer (it would need a key↔name and
@@ -564,9 +595,14 @@ byte-stable over it (§11):
 
 Some fields exist purely so that export → import loses nothing. Export
 writes them; **generators should omit them** — import accepts documents
-without them and treats supplied values as authoritative only where
-semantically safe. They are annotated `x-output-only: true` in the JSON
-Schema so tooling can warn.
+without them, and where a supplied value would not be safe to take it is
+refused rather than quietly used: the internal property keys are a deny-list
+in the reader (§3), which is where "authoritative only where semantically
+safe" is actually implemented. Most output-only fields carry
+`x-output-only: true` in the JSON Schema so tooling can warn; the two that
+cannot are `coverId`/`coverType` and the six preserved internal properties,
+which live inside the free-form `propertyMap` and so have no schema node of
+their own to annotate.
 
 Output-only surfaces: `fields` (any block), `root`, `store`, `source`
 (dataview), `groups`/`objectOrders` (views, §6.2), `id` on sorts/filters,

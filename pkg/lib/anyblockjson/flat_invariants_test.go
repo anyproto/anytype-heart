@@ -102,9 +102,25 @@ func hostileSnapshot(n int) *model.SmartBlockSnapshotBase {
 				Views: []*model.BlockContentDataviewView{{Id: pick(), Name: "All"}},
 			}}})
 	}
+	// details carry the keys the import surface must refuse: if export ever
+	// emitted one, Marshal's output would fail its own Validate, which is how
+	// this invariant proves the two surfaces are still each other's mirror
+	details := map[string]*types.Value{
+		"id":             str("obj1"),
+		"name":           str("hostile"),
+		"spaceId":        str("bafyspace"),
+		"uniqueKey":      str("ot-page"),
+		"oldAnytypeID":   str("legacy1"),
+		"sourceFilePath": str("/tmp/x.md"),
+		"restrictions":   {Kind: &types.Value_NumberValue{NumberValue: 3}},
+		"isArchived":     {Kind: &types.Value_BoolValue{BoolValue: true}},
+		"":               str("empty key"),
+		"a\nb":           str("newline key"),
+		"dueDate":        str("next Friday"),
+	}
 	return &model.SmartBlockSnapshotBase{
 		Blocks:  blocks,
-		Details: fields(map[string]*types.Value{"id": str("obj1")}),
+		Details: fields(details),
 	}
 }
 

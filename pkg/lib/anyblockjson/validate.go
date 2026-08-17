@@ -14,11 +14,13 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"unicode/utf8"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/santhosh-tekuri/jsonschema/v6/kind"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
@@ -576,17 +578,26 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 		}
 	}
 
-	// layout properties are named, not numbered (§3). A typo would otherwise
-	// import as a raw string onto a number-format property: no error anywhere,
-	// and every consumer reads it with an int getter and silently sees "basic".
 	if props, _ := doc["properties"].(map[string]any); props != nil {
-		for key, v := range props {
-			s, isStr := v.(string)
-			if !isLayoutKey(key) || !isStr {
+		for _, key := range sortedMapKeys(props) {
+			v := props[key]
+			path := "/properties/" + escapeJSONPointer(key)
+			if reason, denied := deniedPropertyKey(key); denied {
+				addIssue(path, "%s", reason)
+				continue
+			}
+			// layout properties are named, not numbered (§3). A typo would
+			// otherwise import as a raw string onto a number-format property:
+			// no error anywhere, and every consumer reads it with an int getter
+			// and silently sees "basic".
+			if s, isStr := v.(string); isLayoutKey(key) && isStr {
+				if !layoutNames.has(s) {
+					addIssue(path, "unknown layout %q", s)
+				}
 				continue // a raw number is still accepted (§3)
 			}
-			if !layoutNames.has(s) {
-				addIssue("/properties/"+key, "unknown layout %q", s)
+			if reason, wrong := wrongShapeForFormat(key, v); wrong {
+				warnIssue(path, "%s", reason)
 			}
 		}
 	}
@@ -792,6 +803,109 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 		checkFlatRun(blocks, "/blocks", false)
 	}
 	return issues
+}
+
+// neverWritableProperties are the keys import must refuse even though they are
+// not bundled relations, so strippedDetailKeys does not know about them. They
+// are the importer's own resolution vectors: existingobject.go picks which
+// existing object in the space a snapshot merges into using oldAnytypeID,
+// uniqueKey and sourceFilePath, so a document that sets them aims itself at an
+// object it did not create.
+var neverWritableProperties = map[string]string{
+	"oldAnytypeID":   "oldAnytypeID selects which existing object a document merges into and cannot be set by a document",
+	"sourceFilePath": "sourceFilePath selects which existing object a document merges into and cannot be set by a document",
+}
+
+// maxPropertyKeyLen mirrors the schema's propertyNames maxLength (§3).
+const maxPropertyKeyLen = 128
+
+// isWritablePropertyKey reports whether a key can be a property name at all,
+// mirroring the schema's propertyNames rule: non-empty, no control characters,
+// and inside the length bound. Both directions consult it — validation through
+// the schema, export directly — because a stored detail key is not guaranteed
+// to be one: an empty key and a key holding a newline both exist in real data,
+// and neither survives as a JSON property name that means anything.
+func isWritablePropertyKey(key string) bool {
+	if key == "" || utf8.RuneCountInString(key) > maxPropertyKeyLen {
+		return false
+	}
+	for _, r := range key {
+		if r <= 0x1f || r == 0x7f {
+			return false
+		}
+	}
+	return true
+}
+
+// deniedPropertyKey reports whether a property key may be written at all, and
+// why not. The rule is a single sentence — **import refuses exactly what export
+// strips** (§3, §4a) — and it is derived from the export side's own list rather
+// than restated, because a restated list is how the two surfaces drifted apart
+// in the first place: import used to accept isArchived, spaceId, restrictions,
+// uniqueKey and the empty key, all of which export removes.
+func deniedPropertyKey(key string) (string, bool) {
+	if reason, never := neverWritableProperties[key]; never {
+		return reason, true
+	}
+	if key == detailKeyId || key == detailKeyType {
+		return fmt.Sprintf("%q belongs in the envelope, not in properties (§2)", key), true
+	}
+	if strippedDetailKeys()[key] {
+		return fmt.Sprintf("%q is internal: export strips it, so import does not accept it (§3)", key), true
+	}
+	return "", false
+}
+
+// wrongShapeForFormat reports a property value whose JSON shape its property's
+// format cannot hold — "next Friday" on a date, "yes" on a checkbox — which is
+// stored verbatim and then read as the format's zero value forever, with
+// nothing to show that anything went wrong.
+//
+// Only bundled properties can be checked: Validate takes no resolver, so a
+// custom key's format is unknown here. And it is a **warning**, not an error,
+// for a reason worth writing down: the same check on the export path would make
+// one already-corrupt stored value enough to make an object unexportable, and
+// "Marshal never emits what Validate rejects" (§11) is the stronger promise.
+// Reporting it costs nothing and catches the authoring case, which is the one
+// that can still be fixed.
+func wrongShapeForFormat(key string, v any) (string, bool) {
+	if v == nil {
+		return "", false // an explicit null is a value: the key was set (§3)
+	}
+	rel, err := bundle.GetRelation(domain.RelationKey(key))
+	if err != nil || rel == nil {
+		return "", false
+	}
+	switch rel.Format {
+	case model.RelationFormat_date:
+		// a number is unix seconds — including the raw number export writes for
+		// a date with no RFC 3339 form (§3)
+		if _, isNum := v.(json.Number); isNum {
+			return "", false
+		}
+		if s, isStr := v.(string); isStr {
+			if _, ok := parseDate(s); ok {
+				return "", false
+			}
+		}
+		return fmt.Sprintf("%q is a date property: a value that is neither unix seconds nor an "+
+			"RFC 3339 string is stored as written and reads as no date at all", key), true
+	case model.RelationFormat_checkbox:
+		if _, isBool := v.(bool); !isBool {
+			return fmt.Sprintf("%q is a checkbox property: anything but true/false reads as false", key), true
+		}
+	case model.RelationFormat_number:
+		if _, isNum := v.(json.Number); !isNum {
+			return fmt.Sprintf("%q is a number property: a non-number reads as 0", key), true
+		}
+	case model.RelationFormat_longtext, model.RelationFormat_shorttext,
+		model.RelationFormat_url, model.RelationFormat_email,
+		model.RelationFormat_phone, model.RelationFormat_emoji:
+		if _, isStr := v.(string); !isStr {
+			return fmt.Sprintf("%q is a text property: a non-string reads as empty", key), true
+		}
+	}
+	return "", false
 }
 
 // checkNumbers walks every number in the document and reports the ones no
