@@ -13,8 +13,8 @@ import (
 
 // GetObjectHandler reads one object as a flat AnyBlock document
 //
-//	@Summary		Get object (AnyBlock)
-//	@Description	Returns the object as a flat AnyBlock JSON document read from the live editor state, with an advisory etag (C7) in the envelope and the ETag header. Supports include=properties,blocks; outline=true (block skeleton with compact labels); block={blockId} (one contiguous subtree, marked "subtree": true — a partial body no write path accepts); ids=compact|full (the two document shapes, C4 — compact is the edit read where machine-minted block ids relabel to short suffixes, full is the export read with full ids everywhere: the shape that PUTs back). Object refs are always full inline. format=anyblock|md (markdown is read-only).
+//	@Summary		Read an object as an AnyBlock document
+//	@Description	A `block` subtree comes back flagged as a subtree, and no write path accepts that partial body. `format=md` is read-only; markdown cannot be sent back.
 //	@Id				get_object
 //	@Tags			Objects
 //	@Produce		json
@@ -23,7 +23,7 @@ import (
 //	@Param			include		query		string			false	"Subset of properties,blocks (default both)"
 //	@Param			outline		query		bool			false	"Return the block skeleton instead of full blocks"
 //	@Param			block		query		string			false	"Return only this block's subtree"
-//	@Param			ids			query		string			false	"compact (default) = the edit shape: minted block ids relabel to short suffixes. full = the export shape: full ids everywhere — the shape to PUT back. Object refs are full inline on both."
+//	@Param			ids			query		string			false	"compact (default) is the edit shape, where minted block ids relabel to short suffixes; full is the export shape, with full ids everywhere, and the shape to send back. Object references are full and inline in both."
 //	@Param			format		query		string			false	"anyblock (default) or md"
 //	@Success		200			{object}	map[string]any	"The flat AnyBlock document + etag"
 //	@Failure		400			{object}	v2model.Error	"Illegal parameter combination (ambiguous_input)"
@@ -51,18 +51,17 @@ func GetObjectHandler(s *v2service.Service) gin.HandlerFunc {
 
 // ListObjectsHandler lists objects as minimal rows
 //
-//	@Summary		List objects (minimal rows)
-//	@Description	Returns paginated minimal rows: id, name, type (a type key) plus the property values requested via fields= (comma-separated property keys). Type objects are never embedded (C5).
-//	@Id				list_objects
-//	@Tags			Objects
-//	@Produce		json
-//	@Param			space_id	path		string									true	"Space id"
-//	@Param			fields		query		string									false	"Comma-separated property keys to include per row"
-//	@Param			offset		query		int										false	"Items to skip"		default(0)
-//	@Param			limit		query		int										false	"Items to return"	default(25)
-//	@Success		200			{object}	v2model.ListResponse[v2model.ObjectRow]	"Minimal object rows"
-//	@Security		bearerauth
-//	@Router			/v2/spaces/{space_id}/objects [get]
+//	@Summary	List the objects in a space
+//	@Id			list_objects
+//	@Tags		Objects
+//	@Produce	json
+//	@Param		space_id	path		string									true	"Space id"
+//	@Param		fields		query		string									false	"Comma-separated property keys to include per row"
+//	@Param		offset		query		int										false	"Items to skip"		default(0)
+//	@Param		limit		query		int										false	"Items to return"	default(25)
+//	@Success	200			{object}	v2model.ListResponse[v2model.ObjectRow]	"Minimal object rows"
+//	@Security	bearerauth
+//	@Router		/v2/spaces/{space_id}/objects [get]
 func ListObjectsHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		offset := c.GetInt(pagination.QueryParamOffset)

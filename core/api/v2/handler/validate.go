@@ -16,13 +16,13 @@ const maxValidateBodySize = 10 << 20 // 10 MiB
 // ValidateHandler validates an AnyBlock document
 //
 //	@Summary		Validate an AnyBlock document
-//	@Description	Checks the request body against the AnyBlock JSON schema and the format's semantic rules. Structural and format-semantic only: referential checks against a space (option names, a type's property keys) are not performed here. Findings are returned as data — a valid document yields empty issue lists.
+//	@Description	Structure and format rules only. Nothing is resolved against a space, so option names and a type's property keys are not checked here. Findings come back as data: an invalid document is still a 200, carrying the issues, and a valid one carries empty lists.
 //	@Id				validate
 //	@Tags			Schemas
 //	@Accept			json
 //	@Produce		json
-//	@Success		200	{object}	v2model.ValidateResponse	"Issue and warning lists (empty when valid)"
-//	@Failure		401	{object}	util.UnauthorizedError		"Missing or invalid key — the shared auth middleware's envelope (APIV2.md §8.9 seam), not the C6 shape"
+//	@Success		200	{object}	v2model.ValidateResponse	"Issue and warning lists, empty when the document is valid"
+//	@Failure		401	{object}	util.UnauthorizedError		"Missing or invalid key. This is the shared auth envelope, not this API's error shape."
 //	@Security		bearerauth
 //	@Router			/v2/validate [post]
 func ValidateHandler(s *v2service.Service) gin.HandlerFunc {

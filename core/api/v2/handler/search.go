@@ -83,8 +83,8 @@ func unknownFieldName(err error) (string, bool) {
 
 // SearchObjectsHandler searches one space
 //
-//	@Summary		Search objects (space)
-//	@Description	Searches one space with full-text (query), a type scope, and either the compact filter string (filter) or the structured filter array (filters) — mutually exclusive, both landing on one internal tree. Sorts accept any property key. Rows are C5 minimal (id, name, type + requested fields). Search is a read: Idempotency-Key is not honored and dry_run is ignored. Pagination via ?offset=&limit= (C10).
+//	@Summary		Search one space
+//	@Description	`filter` and `filters` are two spellings of the same thing, the compact string and the structured array; sending both is refused. This is a read carried by POST because the query needs a body, so pagination stays in the query string and a `limit` or `offset` in the body is refused.
 //	@Id				search_space
 //	@Tags			Search
 //	@Accept			json
@@ -119,8 +119,8 @@ func SearchObjectsHandler(s *v2service.Service) gin.HandlerFunc {
 
 // GlobalSearchObjectsHandler searches every space
 //
-//	@Summary		Search objects (global)
-//	@Description	Searches all spaces: type keys and option names resolve per space (a reference that resolves in only some spaces queries those and warns about the rest), results merge by the requested sort, total is the sum of per-space store counts (honest totals). Rows carry space_id. Same request shape as the space search.
+//	@Summary		Search every space
+//	@Description	Type keys and option names are resolved per space. A name that resolves in only some spaces searches those and warns about the rest. `total` is the sum of the per-space counts, and each row carries its `space_id`.
 //	@Id				search_global
 //	@Tags			Search
 //	@Accept			json
@@ -128,7 +128,7 @@ func SearchObjectsHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Param			request	body		v2model.SearchRequestDoc				true	"Search request"
 //	@Param			offset	query		int										false	"Items to skip"		default(0)
 //	@Param			limit	query		int										false	"Items to return"	default(25)
-//	@Param			ids		query		string									false	"How each row's space_id is spelled: compact (default) = the short space reference; full = the full <cid>.<replicationKey> id — the spelling to persist outside this API"
+//	@Param			ids		query		string									false	"How each row's space_id is spelled: compact (default) is the short space reference; full is the whole <cid>.<replicationKey> id, and the spelling to store outside this API"
 //	@Success		200		{object}	v2model.ListResponse[v2model.ObjectRow]	"Minimal object rows with space_id"
 //	@Failure		400		{object}	v2model.Error							"Invalid request"
 //	@Security		bearerauth

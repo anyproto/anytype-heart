@@ -43,8 +43,8 @@ func respondChatMutation(c *gin.Context, dryRun bool, createdStatus int, payload
 
 // ListChatsHandler lists the space's chats as C5 rows
 //
-//	@Summary		List chats
-//	@Description	C5 rows {id, name} via a store query — no chat opens, so the list is cheap at any size. Deliberately counter-free (Q3): per-chat unread state comes free on the messages read. No etag (C7 exemption: chats use order ids and last_state_id as their concurrency vocabulary).
+//	@Summary		List the chats in a space
+//	@Description	A row carries no unread counters. Per-chat unread state comes back with the messages read instead.
 //	@Id				list_chats
 //	@Tags			Chat
 //	@Produce		json
@@ -71,15 +71,15 @@ func ListChatsHandler(s *v2service.Service) gin.HandlerFunc {
 
 // CreateChatHandler creates a chat
 //
-//	@Summary		Create chat
-//	@Description	Creates a chat object: {name}. A thin create with the chat_derived type — messages live in the chat store, not blocks. Honors Idempotency-Key (C8) and ?dry_run=true (C9). No If-Match (C7 exemption).
+//	@Summary		Create a chat
+//	@Description	Messages are not blocks. Add them through the messages route; a document edit cannot reach them.
 //	@Id				create_chat
 //	@Tags			Chat
 //	@Accept			json
 //	@Produce		json
 //	@Param			space_id		path		string						true	"Space id"
 //	@Param			dry_run			query		bool						false	"Validate and report without committing"
-//	@Param			Idempotency-Key	header		string						false	"C8 replay guard: the same key with the same body replays the stored response"
+//	@Param			Idempotency-Key	header		string						false	"Replay guard: the same key with the same body replays the stored response"
 //	@Param			request			body		v2model.CreateChatRequest	true	"The chat to create"
 //	@Success		201				{object}	v2model.ChatResult			"Created chat row"
 //	@Failure		400				{object}	v2model.Error				"Validation failure"
@@ -102,8 +102,8 @@ func CreateChatHandler(s *v2service.Service) gin.HandlerFunc {
 
 // GetChatMessagesHandler reads messages with the state passthrough
 //
-//	@Summary		Get chat messages
-//	@Description	Cursor-paged messages (ascending order): ?after=/?before= are EXCLUSIVE order-id bounds, ?limit defaults to 25. A forward walk uses ?after alone and continues with the response's next_after; every OTHER query — ?before, no cursor, or BOTH bounds — is anchored at its NEWEST end (the newest N in range) and pages backward with next_before, so after+before does NOT walk forward through the window. has_more says more messages exist inside the requested bounds. The response carries state (unread counters, oldest unread orders, last_state_id — the mark-read race guard) and message_count (the chat's LIFETIME total, not the range size) at zero extra cost; a poll is a limit=1 read. Message text is §8 inline markup (blocks_text carries block-composed content read-only); reactions is always emoji counts ({"👍":2}); ?reactions=full adds reacted_by (participant-id lists) in its own slot. Offset pagination does not apply — page with the cursors.
+//	@Summary		List chat messages
+//	@Description	`after` on its own walks forward, oldest first, continuing from `next_after`. Every other query, including `after` together with `before`, is anchored at the newest end of the range and walks backward from `next_before`. Both bounds are exclusive. `message_count` is the chat's total since it began, not the size of the range. Offset paging does not apply here, and `offset` is refused.
 //	@Id				get_chat_messages
 //	@Tags			Chat
 //	@Produce		json
@@ -112,7 +112,7 @@ func CreateChatHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Param			after		query		string							false	"Return messages after this order id (exclusive)"
 //	@Param			before		query		string							false	"Return messages before this order id (exclusive)"
 //	@Param			limit		query		int								false	"Messages to return"	default(25)
-//	@Param			reactions	query		string							false	"counts (default) | full"
+//	@Param			reactions	query		string							false	"counts (default) returns the emoji counts; full adds the participant ids behind each count"
 //	@Success		200			{object}	v2model.ChatMessagesResponse	"Messages + state + message_count"
 //	@Failure		400			{object}	v2model.Error					"Not a chat, or invalid params"
 //	@Failure		404			{object}	v2model.Error					"Chat not found"
@@ -151,8 +151,8 @@ func GetChatMessagesHandler(s *v2service.Service) gin.HandlerFunc {
 
 // AddChatMessageHandler sends a message
 //
-//	@Summary		Send chat message
-//	@Description	Sends one message: {text, reply_to?, attachments?}. Text is §8 markup SOURCE — *, [, ` and <mention objectId="…"> syntax mint real marks (the D′1 caveat; escape literal specials with a backslash) — capped at 8000 UTF-16 code units (an emoji counts 2+). Attachments are bare object ids, at most 32; the kind is inferred from each target's layout (image → image, other file layouts → file, anything else → link). Honors Idempotency-Key (C8 — a double-sent chat message is user-visible damage) and ?dry_run=true (C9, validate-only).
+//	@Summary		Send a chat message
+//	@Description	The text is markup source, so `*`, `[` and a mention tag mint real marks; escape a literal one with a backslash. The cap is 8000 UTF-16 code units, where one emoji can cost two or more. Attachments are object ids, at most 32, and each one's kind is taken from the target's layout.
 //	@Id				add_chat_message
 //	@Tags			Chat
 //	@Accept			json
@@ -160,7 +160,7 @@ func GetChatMessagesHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Param			space_id		path		string							true	"Space id"
 //	@Param			chat_id			path		string							true	"Chat object id"
 //	@Param			dry_run			query		bool							false	"Validate and report without committing"
-//	@Param			Idempotency-Key	header		string							false	"C8 replay guard: the same key with the same body replays the stored response"
+//	@Param			Idempotency-Key	header		string							false	"Replay guard: the same key with the same body replays the stored response"
 //	@Param			request			body		v2model.AddChatMessageRequest	true	"The message to send"
 //	@Success		201				{object}	v2model.ChatMessageResult		"Created message id"
 //	@Failure		400				{object}	v2model.Error					"Validation failure"
@@ -184,8 +184,8 @@ func AddChatMessageHandler(s *v2service.Service) gin.HandlerFunc {
 
 // EditChatMessageHandler edits a message's text
 //
-//	@Summary		Edit chat message
-//	@Description	Text-only MERGE: {text} replaces the message text (parsed as §8 markup source, capped at 8000 UTF-16 code units — the D′1 caveat: ALL marks are re-derived from the string, and an Emoji mark read back as its literal emoji stays literal); the message's attachments, reply target, style and blocks are preserved. Editing another member's message is a 403 forbidden. Honors Idempotency-Key (C8) and ?dry_run=true (C9).
+//	@Summary		Replace a chat message's text
+//	@Description	Every mark is re-derived from the text you send, so a mark the old text carried and the new text does not spell out is lost. Attachments, the reply target and the style survive. Editing another member's message is a 403.
 //	@Id				edit_chat_message
 //	@Tags			Chat
 //	@Accept			json
@@ -194,7 +194,7 @@ func AddChatMessageHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Param			chat_id			path		string							true	"Chat object id"
 //	@Param			message_id		path		string							true	"Message id"
 //	@Param			dry_run			query		bool							false	"Validate and report without committing"
-//	@Param			Idempotency-Key	header		string							false	"C8 replay guard: the same key with the same body replays the stored response"
+//	@Param			Idempotency-Key	header		string							false	"Replay guard: the same key with the same body replays the stored response"
 //	@Param			request			body		v2model.EditChatMessageRequest	true	"The replacement text"
 //	@Success		200				{object}	v2model.ChatMessageResult		"Edited message id"
 //	@Failure		400				{object}	v2model.Error					"Validation failure"
@@ -218,16 +218,16 @@ func EditChatMessageHandler(s *v2service.Service) gin.HandlerFunc {
 
 // DeleteChatMessageHandler deletes a message
 //
-//	@Summary		Delete chat message
-//	@Description	Deletes one message. IRREVERSIBLE side effect: attachments whose ONLY reference was this message are permanently deleted afterwards (not moved to the bin, asynchronously) — the response's warnings name the attachment ids at risk, and the dry run reports the same warnings without deleting. A missing message is a 404 on both the real call and the dry run (C9). Honors Idempotency-Key (C8 — chat DELETE is keyed too, a Phase-6 widening) and ?dry_run=true.
+//	@Summary		Delete a chat message
+//	@Description	An attachment whose only reference was this message is erased for good afterwards, not moved to Bin. The response names those ids in `warnings`, and a dry run reports the same list without deleting anything. A message that does not exist is a 404 on the dry run too.
 //	@Id				delete_chat_message
 //	@Tags			Chat
 //	@Produce		json
 //	@Param			space_id		path		string						true	"Space id"
 //	@Param			chat_id			path		string						true	"Chat object id"
 //	@Param			message_id		path		string						true	"Message id"
-//	@Param			dry_run			query		bool						false	"Report the would-be deletion (incl. file-GC warnings) without committing"
-//	@Param			Idempotency-Key	header		string						false	"C8 replay guard: the same key with the same body replays the stored response"
+//	@Param			dry_run			query		bool						false	"Report what would be deleted, attachments included, without committing"
+//	@Param			Idempotency-Key	header		string						false	"Replay guard: the same key with the same body replays the stored response"
 //	@Success		200				{object}	v2model.ChatMessageResult	"Deleted message id"
 //	@Failure		404				{object}	v2model.Error				"Chat or message not found"
 //	@Security		bearerauth
@@ -245,8 +245,8 @@ func DeleteChatMessageHandler(s *v2service.Service) gin.HandlerFunc {
 
 // ToggleChatReactionHandler toggles a reaction
 //
-//	@Summary		Toggle chat reaction
-//	@Description	Toggles the caller's {emoji} reaction on a message → {added}. A missing message is a 404. Honors Idempotency-Key (C8) and ?dry_run=true (C9 — the dry run reads the message and reports the would-be outcome; when the service has no account identity to predict with, added is omitted and a warning says so).
+//	@Summary		Toggle a reaction on a chat message
+//	@Description	`added` says which way the toggle went. A dry run predicts it, but when there is no account identity to predict with it omits the field and says so in `warnings`.
 //	@Id				toggle_chat_reaction
 //	@Tags			Chat
 //	@Accept			json
@@ -255,7 +255,7 @@ func DeleteChatMessageHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Param			chat_id			path		string						true	"Chat object id"
 //	@Param			message_id		path		string						true	"Message id"
 //	@Param			dry_run			query		bool						false	"Report the would-be outcome without committing"
-//	@Param			Idempotency-Key	header		string						false	"C8 replay guard: the same key with the same body replays the stored response"
+//	@Param			Idempotency-Key	header		string						false	"Replay guard: the same key with the same body replays the stored response"
 //	@Param			request			body		v2model.ChatReactionRequest	true	"The emoji to toggle"
 //	@Success		200				{object}	v2model.ChatReactionResult	"Toggle outcome"
 //	@Failure		400				{object}	v2model.Error				"Validation failure"
@@ -279,8 +279,8 @@ func ToggleChatReactionHandler(s *v2service.Service) gin.HandlerFunc {
 
 // ReadChatHandler moves the read watermark
 //
-//	@Summary		Mark chat read
-//	@Description	Moves the read watermark: {up_to, last_state_id, scope?}. up_to is the INCLUSIVE order id to mark read up to and last_state_id is the race guard — BOTH are required for scopes messages/mentions and both ride the same GET messages response (the newest message's order + state.last_state_id); an empty value for either would silently mark nothing, so it is rejected instead. Messages that arrived after last_state_id's state stay unread. scope defaults to messages; mentions marks @-mentions; reactions marks ALL unread reactions and takes no up_to/last_state_id. Honors Idempotency-Key (C8) and ?dry_run=true (C9, validate-only).
+//	@Summary		Move a chat's read watermark
+//	@Description	`up_to` is inclusive, and it and `last_state_id` both come from one messages read: the newest message's order, and the state's own id. An empty value for either would silently mark nothing, so it is refused. Messages that arrived after that state stay unread. The reactions scope marks every unread reaction and takes neither field.
 //	@Id				read_chat
 //	@Tags			Chat
 //	@Accept			json
@@ -288,7 +288,7 @@ func ToggleChatReactionHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Param			space_id		path		string					true	"Space id"
 //	@Param			chat_id			path		string					true	"Chat object id"
 //	@Param			dry_run			query		bool					false	"Validate and report without committing"
-//	@Param			Idempotency-Key	header		string					false	"C8 replay guard: the same key with the same body replays the stored response"
+//	@Param			Idempotency-Key	header		string					false	"Replay guard: the same key with the same body replays the stored response"
 //	@Param			request			body		v2model.ChatReadRequest	true	"The watermark move"
 //	@Success		200				{object}	v2model.ChatReadResult	"Watermark moved"
 //	@Failure		400				{object}	v2model.Error			"Validation failure"

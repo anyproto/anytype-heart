@@ -22,13 +22,13 @@ const maxSpaceRequestBody = 1 << 20 // 1 MiB
 
 // GetSpaceHandler reads one space
 //
-//	@Summary		Get space
-//	@Description	Returns the space row {id, name, description} read from the tech space's space view — one store query, no workspace opens. Only LIVE spaces are served: a deleted, left or still-joining space 404s (the same predicate as the spaces list). gatewayUrl/networkId are client-infrastructure fields and are deliberately absent from v2.
+//	@Summary		Get one space
+//	@Description	Only live spaces are served. A space that is deleted, left, or still joining is a 404.
 //	@Id				get_space
 //	@Tags			Spaces
 //	@Produce		json
 //	@Param			space_id	path		string			true	"Space id"
-//	@Param			ids			query		string			false	"compact (default) = the short space reference; full = the full <cid>.<replicationKey> id — the export spelling, and the one to persist outside this API (a short reference is unique only against the spaces you can currently see)"
+//	@Param			ids			query		string			false	"compact (default) is the short space reference; full is the whole <cid>.<replicationKey> id, and the spelling to store outside this API"
 //	@Success		200			{object}	v2model.Space	"The space row"
 //	@Failure		404			{object}	v2model.Error	"Space not found"
 //	@Security		bearerauth
@@ -46,15 +46,15 @@ func GetSpaceHandler(s *v2service.Service) gin.HandlerFunc {
 
 // CreateSpaceHandler creates a space
 //
-//	@Summary		Create space
-//	@Description	Creates a space: {name, description?} → the same shape. Thin over WorkspaceCreate. Both fields are capped at 4096 characters (the space kind's advertised maxLength — enforced). Honors Idempotency-Key (C8) — an auto-retried space create without a key duplicates an entire space — and ?dry_run=true (C9): the dry run validates the body only, a space create cannot be simulated.
+//	@Summary		Create a space
+//	@Description	A retry the server already handled makes a second space unless it carries the same idempotency key. A dry run validates the body and stops there; creating a space cannot be simulated.
 //	@Id				create_space
 //	@Tags			Spaces
 //	@Accept			json
 //	@Produce		json
 //	@Param			dry_run			query		bool						false	"Validate the body without creating"
-//	@Param			ids				query		string						false	"compact (default) = the short space reference; full = the full <cid>.<replicationKey> id of the created space — the spelling to persist outside this API"
-//	@Param			Idempotency-Key	header		string						false	"C8 replay guard: the same key with the same body replays the stored response"
+//	@Param			ids				query		string						false	"compact (default) is the short space reference; full is the whole <cid>.<replicationKey> id of the new space, and the spelling to store outside this API"
+//	@Param			Idempotency-Key	header		string						false	"Replay guard: the same key with the same body replays the stored response"
 //	@Param			request			body		v2model.CreateSpaceRequest	true	"The space to create"
 //	@Success		201				{object}	v2model.Space				"Created space"
 //	@Failure		400				{object}	v2model.Error				"Validation failure"
@@ -82,16 +82,16 @@ func CreateSpaceHandler(s *v2service.Service) gin.HandlerFunc {
 
 // UpdateSpaceHandler updates a space
 //
-//	@Summary		Update space
-//	@Description	Updates the space's name and/or description (omitted fields stay unchanged; at least one is required; 4096-character cap) → the resulting row. Thin over WorkspaceSetInfo. A space that is deleted or gone answers 404; a role that may not change the space info answers 403. Honors Idempotency-Key (C8) and ?dry_run=true (C9).
+//	@Summary		Update a space
+//	@Description	At least one of the two fields must be present; a field left out keeps its current value.
 //	@Id				update_space
 //	@Tags			Spaces
 //	@Accept			json
 //	@Produce		json
 //	@Param			space_id		path		string						true	"Space id"
 //	@Param			dry_run			query		bool						false	"Validate and report without committing"
-//	@Param			ids				query		string						false	"compact (default) = the short space reference; full = the full <cid>.<replicationKey> id — the spelling to persist outside this API"
-//	@Param			Idempotency-Key	header		string						false	"C8 replay guard"
+//	@Param			ids				query		string						false	"compact (default) is the short space reference; full is the whole <cid>.<replicationKey> id, and the spelling to store outside this API"
+//	@Param			Idempotency-Key	header		string						false	"Replay guard: the same key with the same body replays the stored response"
 //	@Param			request			body		v2model.UpdateSpaceRequest	true	"The fields to change"
 //	@Success		200				{object}	v2model.Space				"The updated space row"
 //	@Failure		400				{object}	v2model.Error				"Validation failure"

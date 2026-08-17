@@ -30,8 +30,8 @@ func listFieldsParam(c *gin.Context) []string {
 
 // GetSetObjectsHandler lists the objects a set's query matches
 //
-//	@Summary		Get set objects
-//	@Description	Executes the set's stored query (its set_of source) directly against the store, optionally through one stored view's filters and sorts (?view=, exact id or unique suffix). Stored-view execution substitutes the SPEC §6.2 dynamic placeholders server-side; unresolvable placeholders degrade to warnings, never a silent no-match. Rows are C5 minimal; fields= expands.
+//	@Summary		Run a set's query and list what it matches
+//	@Description	A stored view's dynamic placeholders, such as the current date or the calling member, are resolved here. One that cannot be resolved becomes a warning rather than a silently empty result.
 //	@Id				get_set_objects
 //	@Tags			Lists
 //	@Produce		json
@@ -64,20 +64,19 @@ func GetSetObjectsHandler(s *v2service.Service) gin.HandlerFunc {
 
 // GetSetViewsHandler lists a set's stored views
 //
-//	@Summary		Get set views
-//	@Description	Returns the set's stored views as SPEC §6.2 view objects (sorts, filters, columns — option names resolved, the format vocabulary). Paginated (C10).
-//	@Id				get_set_views
-//	@Tags			Lists
-//	@Produce		json
-//	@Param			space_id	path		string										true	"Space id"
-//	@Param			set_id		path		string										true	"Set object id"
-//	@Param			offset		query		int											false	"Items to skip"		default(0)
-//	@Param			limit		query		int											false	"Items to return"	default(25)
-//	@Success		200			{object}	v2model.ListResponse[v2model.ViewObject]	"§6.2 view objects"
-//	@Failure		400			{object}	v2model.Error								"Wrong-layout target"
-//	@Failure		404			{object}	v2model.Error								"Space or set not found"
-//	@Security		bearerauth
-//	@Router			/v2/spaces/{space_id}/sets/{set_id}/views [get]
+//	@Summary	List a set's views
+//	@Id			get_set_views
+//	@Tags		Lists
+//	@Produce	json
+//	@Param		space_id	path		string										true	"Space id"
+//	@Param		set_id		path		string										true	"Set object id"
+//	@Param		offset		query		int											false	"Items to skip"		default(0)
+//	@Param		limit		query		int											false	"Items to return"	default(25)
+//	@Success	200			{object}	v2model.ListResponse[v2model.ViewObject]	"The stored views, with their sorts, filters and columns"
+//	@Failure	400			{object}	v2model.Error								"Wrong-layout target"
+//	@Failure	404			{object}	v2model.Error								"Space or set not found"
+//	@Security	bearerauth
+//	@Router		/v2/spaces/{space_id}/sets/{set_id}/views [get]
 func GetSetViewsHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		offset := c.GetInt(pagination.QueryParamOffset)
@@ -95,8 +94,8 @@ func GetSetViewsHandler(s *v2service.Service) gin.HandlerFunc {
 
 // GetCollectionObjectsHandler lists a collection's members
 //
-//	@Summary		Get collection objects
-//	@Description	Reads the collection's curated membership (the store slice, in its order), optionally through one stored view's filters and sorts (?view=). Rows are C5 minimal; fields= expands.
+//	@Summary		List a collection's objects
+//	@Description	Members come back in the order the collection stores them, not sorted, unless a view is applied.
 //	@Id				get_collection_objects
 //	@Tags			Lists
 //	@Produce		json
@@ -129,20 +128,19 @@ func GetCollectionObjectsHandler(s *v2service.Service) gin.HandlerFunc {
 
 // GetCollectionViewsHandler lists a collection's stored views
 //
-//	@Summary		Get collection views
-//	@Description	Returns the collection's stored views as SPEC §6.2 view objects. Paginated (C10).
-//	@Id				get_collection_views
-//	@Tags			Lists
-//	@Produce		json
-//	@Param			space_id		path		string										true	"Space id"
-//	@Param			collection_id	path		string										true	"Collection object id"
-//	@Param			offset			query		int											false	"Items to skip"		default(0)
-//	@Param			limit			query		int											false	"Items to return"	default(25)
-//	@Success		200				{object}	v2model.ListResponse[v2model.ViewObject]	"§6.2 view objects"
-//	@Failure		400				{object}	v2model.Error								"Wrong-layout target"
-//	@Failure		404				{object}	v2model.Error								"Space or collection not found"
-//	@Security		bearerauth
-//	@Router			/v2/spaces/{space_id}/collections/{collection_id}/views [get]
+//	@Summary	List a collection's views
+//	@Id			get_collection_views
+//	@Tags		Lists
+//	@Produce	json
+//	@Param		space_id		path		string										true	"Space id"
+//	@Param		collection_id	path		string										true	"Collection object id"
+//	@Param		offset			query		int											false	"Items to skip"		default(0)
+//	@Param		limit			query		int											false	"Items to return"	default(25)
+//	@Success	200				{object}	v2model.ListResponse[v2model.ViewObject]	"The stored views, with their sorts, filters and columns"
+//	@Failure	400				{object}	v2model.Error								"Wrong-layout target"
+//	@Failure	404				{object}	v2model.Error								"Space or collection not found"
+//	@Security	bearerauth
+//	@Router		/v2/spaces/{space_id}/collections/{collection_id}/views [get]
 func GetCollectionViewsHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		offset := c.GetInt(pagination.QueryParamOffset)

@@ -175,12 +175,11 @@ type ObjectRow struct {
 // the canonical "list my spaces, pick one to write to" trace — withholding
 // it would force a GET-one per space (the N+1 pushed onto the agent).
 type SpaceRow struct {
-	// Id is the space's SHORT reference (§8.35) — the last six characters
-	// of its CID half — or the full id when that tail is shared with
-	// another visible space, or when the request asked for `?ids=full`
-	// (§8.36: the spelling to persist, since a short reference is unique
-	// only against the spaces you can currently see). Either spelling is
-	// accepted back on every route that takes a space.
+	// Id is the space's short reference: the last six characters of the
+	// first half of its id. It is the full id instead when that tail is
+	// shared with another visible space, or when the request asked for
+	// `?ids=full`. Either spelling is accepted back on every route that
+	// takes a space.
 	Id          string `json:"id"`
 	Name        string `json:"name"`
 	Description string `json:"description,omitempty"`
@@ -232,7 +231,7 @@ type WhoamiResponse struct {
 // WhoamiKey names the credential. CreatedAt/ExpiresAt are RFC 3339 UTC;
 // null means unknown (CreatedAt) / never (ExpiresAt).
 type WhoamiKey struct {
-	Id        string  `json:"id"` // the app link's hash — the id the key list shows
+	Id        string  `json:"id"` // the app link's hash, which is the id the key list shows
 	Name      string  `json:"name"`
 	CreatedAt *string `json:"created_at"`
 	ExpiresAt *string `json:"expires_at"`
@@ -323,9 +322,9 @@ type OutlineEntry struct {
 // outcome.
 type CreateResult struct {
 	Id       string       `json:"id,omitempty"`
-	Type     string       `json:"type,omitempty"` // type key of the created object (C2)
+	Type     string       `json:"type,omitempty"` // type key of the created object
 	Key      string       `json:"key,omitempty"`  // identity key (types, properties)
-	Etag     string       `json:"etag,omitempty"` // C7 etag of the created object
+	Etag     string       `json:"etag,omitempty"` // etag of the created object
 	DryRun   bool         `json:"dry_run,omitempty"`
 	Created  *SideEffects `json:"created,omitempty"`
 	Issues   []Issue      `json:"issues,omitempty"`
@@ -465,25 +464,30 @@ type DiffStats struct {
 // options, like Phase 2's create), and the diff stats. On a dry run nothing
 // is committed: Etag stays empty and DryRun is true; CreatedBlocks/Created/
 // DiffStats report the would-be outcome.
+//
+// The nested slots CreatedBlocks reports are exactly the ones the id
+// refusals tell a caller to leave empty, so leaving them unreported made the
+// API withhold the answer it had promised. A payload position carrying an id
+// is absent because since §8.29 that id resolves to an existing block whose
+// identity the op keeps, and reporting a preserved block as created would be
+// the same lie diff_stats used to tell. (This paragraph is deliberately on
+// the type: swag publishes a FIELD comment as the schema description, and a
+// reader outside this repository cannot follow either reference.)
 type EditResult struct {
 	Etag   string `json:"etag,omitempty"`
 	DryRun bool   `json:"dry_run,omitempty"`
-	// CreatedBlocks maps each payload position that CREATED a block to the id
-	// the server minted for it — the top-level run positions
-	// ("ops[3].blocks[0]") and the NESTED id slots alike: a table's rows and
-	// columns ("ops[3].blocks[0].rows[1]") and the blocks inside a cell run
-	// ("ops[3].value[1]"). Those nested slots are exactly the ones the id
-	// refusals tell a caller to leave empty, so leaving them unreported made
-	// the API withhold the answer it had promised. A payload position
-	// carrying an id is absent: since §8.29 that id resolves to an existing
-	// block whose identity the op keeps, and reporting a preserved block as
-	// created would be the same lie diff_stats used to tell.
+	// CreatedBlocks maps each payload position that created a block to the
+	// id the server minted for it: the top-level run positions
+	// ("ops[3].blocks[0]") and the nested slots alike, such as a table's
+	// rows and columns ("ops[3].blocks[0].rows[1]") and the blocks inside a
+	// cell run ("ops[3].value[1]"). A position that carried an id is
+	// absent, because the block it names already existed.
 	CreatedBlocks map[string]string `json:"created_blocks,omitempty"`
-	// CreatedViews maps each payload position that CREATED a dataview view to
-	// the view id the server minted: an insert_view op ("ops[i]") or a view
-	// slot of an update_block set channel ("ops[i].set.views[2]"). View ids
-	// are always server-minted; a view is not a block, so it is reported
-	// here rather than in CreatedBlocks.
+	// CreatedViews maps each payload position that created a dataview view
+	// to the view id the server minted: an insert_view op ("ops[i]"), or a
+	// view slot of an update_block set channel ("ops[i].set.views[2]").
+	// View ids are always server-minted, and a view is not a block, so they
+	// are reported here rather than in CreatedBlocks.
 	CreatedViews map[string]string `json:"created_views,omitempty"`
 	Created      *SideEffects      `json:"created,omitempty"`
 	DiffStats    DiffStats         `json:"diff_stats"`

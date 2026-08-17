@@ -83,7 +83,7 @@ type ChatMessagesResponse struct {
 	Messages     []ChatMessage `json:"messages"`
 	State        *ChatState    `json:"state,omitempty"`
 	MessageCount int           `json:"message_count"`
-	HasMore      bool          `json:"has_more"`
+	HasMore      bool          `json:"has_more"` // more messages inside the requested bounds, not in the chat as a whole
 	NextAfter    string        `json:"next_after,omitempty"`
 	NextBefore   string        `json:"next_before,omitempty"`
 }

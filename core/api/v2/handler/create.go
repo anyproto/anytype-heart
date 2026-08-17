@@ -70,8 +70,8 @@ func respondV2Create(c *gin.Context, result *v2model.CreateResult, createdStatus
 
 // CreateObjectHandler creates an object from an AnyBlock document or the shortcut
 //
-//	@Summary		Create object (AnyBlock)
-//	@Description	Creates one object. The body is either a full flat AnyBlock document (discriminator: presence of version or blocks) or the shortcut {type, name, properties, markdown}. Unknown select option names are created (SPEC §3); unknown type or property keys are rejected with did-you-mean errors. Honors Idempotency-Key (C8) and ?dry_run=true (C9).
+//	@Summary		Create an object
+//	@Description	A select value naming an option that does not exist creates that option in the space. An unknown type or property key is rejected instead, with the closest matches named. The body is either a full AnyBlock document or the shortcut {type, name, properties, markdown}; `version` or `blocks` picks the document form.
 //	@Id				create_object
 //	@Tags			Objects
 //	@Accept			json
@@ -99,8 +99,8 @@ func CreateObjectHandler(s *v2service.Service) gin.HandlerFunc {
 
 // CreateTemplateHandler creates a template from an AnyBlock document
 //
-//	@Summary		Create template (AnyBlock)
-//	@Description	Creates a template: an AnyBlock document with templateFor naming the target type key, routed through the generic object-create path. Honors Idempotency-Key and ?dry_run=true.
+//	@Summary		Create a template
+//	@Description	`templateFor` names the type key this template starts an object of.
 //	@Id				create_template
 //	@Tags			Templates
 //	@Accept			json
@@ -128,8 +128,8 @@ func CreateTemplateHandler(s *v2service.Service) gin.HandlerFunc {
 
 // CreateTypeHandler creates a type from a kind:"objectType" document
 //
-//	@Summary		Create type (AnyBlock type document)
-//	@Description	Creates an object type from a kind:"objectType" AnyBlock document. typeProperties entries naming unknown property keys create those properties atomically with the type (SPEC §2a create-missing). Honors Idempotency-Key and ?dry_run=true.
+//	@Summary		Create a type
+//	@Description	A `typeProperties` entry naming a property key that does not exist creates that property alongside the type. The body is an AnyBlock document with kind "objectType".
 //	@Id				create_type
 //	@Tags			Types
 //	@Accept			json
@@ -157,8 +157,8 @@ func CreateTypeHandler(s *v2service.Service) gin.HandlerFunc {
 
 // UpdateTypeHandler updates a type (type-document semantics)
 //
-//	@Summary		Update type
-//	@Description	Partial type-document update: properties changes the type's own details (name, description, icon_emoji, recommended_layout); typeProperties, when present, rebuilds the recommended property lists, creating missing properties (SPEC §2a).
+//	@Summary		Update a type
+//	@Description	`typeProperties`, when present, replaces the recommended property lists rather than adding to them, and creates any property key that does not exist yet. `properties` changes the type's own fields; only name, description, icon_emoji and recommended_layout can change, and any other key is refused.
 //	@Id				update_type
 //	@Tags			Types
 //	@Accept			json
@@ -186,17 +186,16 @@ func UpdateTypeHandler(s *v2service.Service) gin.HandlerFunc {
 
 // DeleteTypeHandler archives a type
 //
-//	@Summary		Delete type (archive)
-//	@Description	Archives the type object (v1 parity; hard delete is a deferred ?permanent extension).
-//	@Id				delete_type
-//	@Tags			Types
-//	@Produce		json
-//	@Param			space_id	path		string					true	"Space id"
-//	@Param			type		path		string					true	"Type key"
-//	@Success		200			{object}	v2model.CreateResult	"Archived type"
-//	@Failure		404			{object}	v2model.Error			"Type not found"
-//	@Security		bearerauth
-//	@Router			/v2/spaces/{space_id}/types/{type} [delete]
+//	@Summary	Delete a type
+//	@Id			delete_type
+//	@Tags		Types
+//	@Produce	json
+//	@Param		space_id	path		string					true	"Space id"
+//	@Param		type		path		string					true	"Type key"
+//	@Success	200			{object}	v2model.CreateResult	"Archived type"
+//	@Failure	404			{object}	v2model.Error			"No live type with this key. A type that is already deleted is a 404 too, not a second delete."
+//	@Security	bearerauth
+//	@Router		/v2/spaces/{space_id}/types/{type} [delete]
 func DeleteTypeHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		result, err := s.DeleteType(c.Request.Context(), c.Param("space_id"), c.Param("type"), isV2DryRun(c))
@@ -210,19 +209,18 @@ func DeleteTypeHandler(s *v2service.Service) gin.HandlerFunc {
 
 // CreatePropertyHandler creates a property
 //
-//	@Summary		Create property
-//	@Description	Creates a property: {key?, name, format, options?:[{name,color?}]}. Formats use the AnyBlock vocabulary (text, select, multiSelect, …). The body binds strictly: unknown fields are rejected with the field named, and the bounds the property schema advertises (name/key lengths, key pattern, option count) are enforced. Honors Idempotency-Key and ?dry_run=true.
-//	@Id				create_property
-//	@Tags			Properties
-//	@Accept			json
-//	@Produce		json
-//	@Param			space_id	path		string					true	"Space id"
-//	@Param			dry_run		query		bool					false	"Validate and report without committing"
-//	@Success		201			{object}	v2model.CreateResult	"Created property id + key"
-//	@Failure		400			{object}	v2model.Error			"Validation failure"
-//	@Failure		413			{object}	v2model.Error			"Request body exceeds the 1 MiB cap"
-//	@Security		bearerauth
-//	@Router			/v2/spaces/{space_id}/properties [post]
+//	@Summary	Create a property
+//	@Id			create_property
+//	@Tags		Properties
+//	@Accept		json
+//	@Produce	json
+//	@Param		space_id	path		string					true	"Space id"
+//	@Param		dry_run		query		bool					false	"Validate and report without committing"
+//	@Success	201			{object}	v2model.CreateResult	"Created property id + key"
+//	@Failure	400			{object}	v2model.Error			"Validation failure"
+//	@Failure	413			{object}	v2model.Error			"Request body exceeds the 1 MiB cap"
+//	@Security	bearerauth
+//	@Router		/v2/spaces/{space_id}/properties [post]
 func CreatePropertyHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req v2model.CreatePropertyRequest
@@ -242,8 +240,8 @@ func CreatePropertyHandler(s *v2service.Service) gin.HandlerFunc {
 
 // UpdatePropertyHandler updates a property
 //
-//	@Summary		Update property
-//	@Description	Updates a property's display name. The key is identity and cannot change. The body binds strictly: unknown fields are rejected with the field named.
+//	@Summary		Update a property
+//	@Description	Only the display name can change. The key is the property's identity, and its format is fixed once it exists.
 //	@Id				update_property
 //	@Tags			Properties
 //	@Accept			json
@@ -275,17 +273,16 @@ func UpdatePropertyHandler(s *v2service.Service) gin.HandlerFunc {
 
 // DeletePropertyHandler archives a property
 //
-//	@Summary		Delete property (archive)
-//	@Description	Archives the property object.
-//	@Id				delete_property
-//	@Tags			Properties
-//	@Produce		json
-//	@Param			space_id	path		string					true	"Space id"
-//	@Param			key			path		string					true	"Property key"
-//	@Success		200			{object}	v2model.CreateResult	"Archived property"
-//	@Failure		404			{object}	v2model.Error			"Property not found"
-//	@Security		bearerauth
-//	@Router			/v2/spaces/{space_id}/properties/{key} [delete]
+//	@Summary	Delete a property
+//	@Id			delete_property
+//	@Tags		Properties
+//	@Produce	json
+//	@Param		space_id	path		string					true	"Space id"
+//	@Param		key			path		string					true	"Property key"
+//	@Success	200			{object}	v2model.CreateResult	"Archived property"
+//	@Failure	404			{object}	v2model.Error			"No live property with this key. A property that is already deleted is a 404 too, not a second delete."
+//	@Security	bearerauth
+//	@Router		/v2/spaces/{space_id}/properties/{key} [delete]
 func DeletePropertyHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		result, err := s.DeleteProperty(c.Request.Context(), c.Param("space_id"), c.Param("key"), isV2DryRun(c))
@@ -299,8 +296,8 @@ func DeletePropertyHandler(s *v2service.Service) gin.HandlerFunc {
 
 // CreateSetHandler creates a set with its views in one change set
 //
-//	@Summary		Create set
-//	@Description	Creates a set querying one type: {name, type, filters?, sorts?, views?}. The set's initial state carries a fully-formed dataview block, so filters/sorts/views land atomically (§8/R10). Filter/sort property keys are validated against the type's actual keys (R9). The body binds strictly (unknown fields rejected) and the set schema's advertised bounds are enforced. Honors Idempotency-Key and ?dry_run=true.
+//	@Summary		Create a set
+//	@Description	Filter and sort property keys are checked against the type the set queries; a key that type does not carry is refused.
 //	@Id				create_set
 //	@Tags			Lists
 //	@Accept			json
@@ -331,8 +328,8 @@ func CreateSetHandler(s *v2service.Service) gin.HandlerFunc {
 
 // CreateCollectionHandler creates a collection
 //
-//	@Summary		Create collection
-//	@Description	Creates a collection: {name, items?}. Items are validated against the space. The body binds strictly (unknown fields rejected) and the collection schema's advertised bounds (name length, item count) are enforced. Honors Idempotency-Key and ?dry_run=true.
+//	@Summary		Create a collection
+//	@Description	Item ids are checked against the space; an id that does not resolve there is refused rather than dropped.
 //	@Id				create_collection
 //	@Tags			Lists
 //	@Accept			json
@@ -363,8 +360,8 @@ func CreateCollectionHandler(s *v2service.Service) gin.HandlerFunc {
 
 // UploadFileHandler uploads a file (multipart or URL)
 //
-//	@Summary		Upload file
-//	@Description	Uploads one file and returns the file object id that file/image blocks and icon_image values reference (R11). Send multipart/form-data with a file field, or JSON {"url": …} — the JSON body binds strictly (unknown fields rejected, 1 MiB cap). A URL the source refuses or that cannot be fetched is a 400 naming /url; only genuine server faults answer 500.
+//	@Summary		Upload a file
+//	@Description	Send multipart/form-data with a `file` field, or JSON {"url": …}. A source that refuses the fetch, or a URL that cannot be fetched, is a 400 naming /url; only a genuine server fault answers 500. The id that comes back is the one file blocks, image blocks and icon_image values reference.
 //	@Id				upload_file
 //	@Tags			Files
 //	@Accept			multipart/form-data
@@ -465,14 +462,13 @@ func stageV2Upload(c *gin.Context) (localPath string, cleanup func(), ok bool) {
 
 // SchemaIndexHandler lists the discoverable schemas
 //
-//	@Summary		List schemas
-//	@Description	The §5 discovery index: every create kind with its endpoint and schema URL.
-//	@Id				list_schemas
-//	@Tags			Schemas
-//	@Produce		json
-//	@Success		200	{object}	v2model.SchemaIndex	"Schema index"
-//	@Security		bearerauth
-//	@Router			/v2/schemas [get]
+//	@Summary	List the available schemas
+//	@Id			list_schemas
+//	@Tags		Schemas
+//	@Produce	json
+//	@Success	200	{object}	v2model.SchemaIndex	"Schema index"
+//	@Security	bearerauth
+//	@Router		/v2/schemas [get]
 func SchemaIndexHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.JSON(http.StatusOK, s.SchemaIndex())
@@ -481,16 +477,15 @@ func SchemaIndexHandler(s *v2service.Service) gin.HandlerFunc {
 
 // SchemaKindHandler serves one kind's schema + worked example
 //
-//	@Summary		Get schema for a kind
-//	@Description	One kind's JSON Schema and worked example (C12/C13). Kinds: object, shortcut, type, template, property, set, collection, file, filters.
-//	@Id				get_schema
-//	@Tags			Schemas
-//	@Produce		json
-//	@Param			kind	path		string				true	"Schema kind"
-//	@Success		200		{object}	v2model.SchemaEntry	"Schema + example"
-//	@Failure		404		{object}	v2model.Error		"Unknown kind"
-//	@Security		bearerauth
-//	@Router			/v2/schemas/{kind} [get]
+//	@Summary	Get the schema for one kind
+//	@Id			get_schema
+//	@Tags		Schemas
+//	@Produce	json
+//	@Param		kind	path		string				true	"Schema kind, as listed by GET /v2/schemas"
+//	@Success	200		{object}	v2model.SchemaEntry	"Schema + example"
+//	@Failure	404		{object}	v2model.Error		"Unknown kind"
+//	@Security	bearerauth
+//	@Router		/v2/schemas/{kind} [get]
 func SchemaKindHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		entry, err := s.SchemaKind(c.Param("kind"))
@@ -504,12 +499,12 @@ func SchemaKindHandler(s *v2service.Service) gin.HandlerFunc {
 
 // SchemaOpHandler serves one PATCH op's schema + minimal example
 //
-//	@Summary		Get schema for a PATCH op
-//	@Description	One op's tiny strict schema (C13) and a minimal example that is an INSTANCE of it — one op object, ready to drop into the PATCH body's ops array. Ops: set_properties, update_block, replace_subtree, insert_blocks, move_block, delete_block, replace_text, set_cell, update_view, insert_view, move_view, delete_view, add_items, remove_items.
+//	@Summary		Get the schema for one edit op
+//	@Description	The example is a single op object, ready to drop into an edit request's `ops` array, not a whole request body.
 //	@Id				get_op_schema
 //	@Tags			Schemas
 //	@Produce		json
-//	@Param			op	path		string				true	"Op name"
+//	@Param			op	path		string				true	"Op name: set_properties, update_block, replace_subtree, insert_blocks, move_block, delete_block, replace_text, set_cell, update_view, insert_view, move_view, delete_view, add_items, remove_items"
 //	@Success		200	{object}	v2model.SchemaEntry	"Schema + example"
 //	@Failure		404	{object}	v2model.Error		"Unknown op"
 //	@Security		bearerauth
