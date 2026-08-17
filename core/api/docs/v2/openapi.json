@@ -1156,7 +1156,7 @@
         ],
         "summary": "Introspect the API key",
         "tags": [
-          "V2"
+          "Auth"
         ]
       }
     },
@@ -1183,7 +1183,7 @@
         ],
         "summary": "List schemas",
         "tags": [
-          "V2"
+          "Schemas"
         ]
       }
     },
@@ -1231,7 +1231,7 @@
         ],
         "summary": "Get schema for a PATCH op",
         "tags": [
-          "V2"
+          "Schemas"
         ]
       }
     },
@@ -1279,7 +1279,7 @@
         ],
         "summary": "Get schema for a kind",
         "tags": [
-          "V2"
+          "Schemas"
         ]
       }
     },
@@ -1355,7 +1355,7 @@
         ],
         "summary": "Search objects (global)",
         "tags": [
-          "V2"
+          "Search"
         ]
       }
     },
@@ -1392,7 +1392,7 @@
         ],
         "summary": "List spaces (minimal rows)",
         "tags": [
-          "V2"
+          "Spaces"
         ]
       },
       "post": {
@@ -1464,7 +1464,7 @@
         ],
         "summary": "Create space",
         "tags": [
-          "V2"
+          "Spaces"
         ]
       }
     },
@@ -1520,7 +1520,7 @@
         ],
         "summary": "Get space",
         "tags": [
-          "V2"
+          "Spaces"
         ]
       },
       "patch": {
@@ -1621,7 +1621,7 @@
         ],
         "summary": "Update space",
         "tags": [
-          "V2"
+          "Spaces"
         ]
       }
     },
@@ -1687,7 +1687,7 @@
         ],
         "summary": "List chats",
         "tags": [
-          "V2"
+          "Chat"
         ]
       },
       "post": {
@@ -1760,7 +1760,7 @@
         ],
         "summary": "Create chat",
         "tags": [
-          "V2"
+          "Chat"
         ]
       }
     },
@@ -1860,7 +1860,7 @@
         ],
         "summary": "Get chat messages",
         "tags": [
-          "V2"
+          "Chat"
         ]
       },
       "post": {
@@ -1952,7 +1952,7 @@
         ],
         "summary": "Send chat message",
         "tags": [
-          "V2"
+          "Chat"
         ]
       }
     },
@@ -2034,7 +2034,7 @@
         ],
         "summary": "Delete chat message",
         "tags": [
-          "V2"
+          "Chat"
         ]
       },
       "patch": {
@@ -2135,7 +2135,7 @@
         ],
         "summary": "Edit chat message",
         "tags": [
-          "V2"
+          "Chat"
         ]
       }
     },
@@ -2238,7 +2238,7 @@
         ],
         "summary": "Toggle chat reaction",
         "tags": [
-          "V2"
+          "Chat"
         ]
       }
     },
@@ -2332,7 +2332,7 @@
         ],
         "summary": "Mark chat read",
         "tags": [
-          "V2"
+          "Chat"
         ]
       }
     },
@@ -2407,7 +2407,7 @@
         ],
         "summary": "Create collection",
         "tags": [
-          "V2"
+          "Lists"
         ]
       }
     },
@@ -2508,7 +2508,7 @@
         ],
         "summary": "Get collection objects",
         "tags": [
-          "V2"
+          "Lists"
         ]
       }
     },
@@ -2593,7 +2593,7 @@
         ],
         "summary": "Get collection views",
         "tags": [
-          "V2"
+          "Lists"
         ]
       }
     },
@@ -2668,7 +2668,7 @@
         ],
         "summary": "Upload file",
         "tags": [
-          "V2"
+          "Files"
         ]
       }
     },
@@ -2705,7 +2705,7 @@
         ],
         "summary": "List members (minimal rows)",
         "tags": [
-          "V2"
+          "Members"
         ]
       }
     },
@@ -2752,7 +2752,7 @@
         ],
         "summary": "Get the calling member (server-side identity, §7.3 @me)",
         "tags": [
-          "V2"
+          "Members"
         ]
       }
     },
@@ -2816,7 +2816,7 @@
         ],
         "summary": "List objects (minimal rows)",
         "tags": [
-          "V2"
+          "Objects"
         ]
       },
       "post": {
@@ -2879,7 +2879,7 @@
         ],
         "summary": "Create object (AnyBlock)",
         "tags": [
-          "V2"
+          "Objects"
         ]
       }
     },
@@ -2964,7 +2964,7 @@
         ],
         "summary": "Delete object (archive, own output only)",
         "tags": [
-          "V2"
+          "Objects"
         ]
       },
       "get": {
@@ -3070,7 +3070,7 @@
         ],
         "summary": "Get object (AnyBlock)",
         "tags": [
-          "V2"
+          "Objects"
         ]
       },
       "patch": {
@@ -3170,7 +3170,7 @@
         ],
         "summary": "Edit object (batched ops)",
         "tags": [
-          "V2"
+          "Objects"
         ]
       }
     },
@@ -3207,7 +3207,7 @@
         ],
         "summary": "List properties (key, name, format)",
         "tags": [
-          "V2"
+          "Properties"
         ]
       },
       "post": {
@@ -3280,7 +3280,7 @@
         ],
         "summary": "Create property",
         "tags": [
-          "V2"
+          "Properties"
         ]
       }
     },
@@ -3337,7 +3337,7 @@
         ],
         "summary": "Delete property (archive)",
         "tags": [
-          "V2"
+          "Properties"
         ]
       },
       "patch": {
@@ -3421,7 +3421,7 @@
         ],
         "summary": "Update property",
         "tags": [
-          "V2"
+          "Properties"
         ]
       }
     },
@@ -3485,7 +3485,7 @@
         ],
         "summary": "List property options (names + colors)",
         "tags": [
-          "V2"
+          "Properties"
         ]
       }
     },
@@ -3572,7 +3572,7 @@
         ],
         "summary": "Search objects (space)",
         "tags": [
-          "V2"
+          "Search"
         ]
       }
     },
@@ -3647,7 +3647,7 @@
         ],
         "summary": "Create set",
         "tags": [
-          "V2"
+          "Lists"
         ]
       }
     },
@@ -3748,7 +3748,7 @@
         ],
         "summary": "Get set objects",
         "tags": [
-          "V2"
+          "Lists"
         ]
       }
     },
@@ -3833,7 +3833,7 @@
         ],
         "summary": "Get set views",
         "tags": [
-          "V2"
+          "Lists"
         ]
       }
     },
@@ -3898,7 +3898,7 @@
         ],
         "summary": "Create template (AnyBlock)",
         "tags": [
-          "V2"
+          "Templates"
         ]
       }
     },
@@ -3935,7 +3935,7 @@
         ],
         "summary": "List types (keys + names)",
         "tags": [
-          "V2"
+          "Types"
         ]
       },
       "post": {
@@ -3998,7 +3998,7 @@
         ],
         "summary": "Create type (AnyBlock type document)",
         "tags": [
-          "V2"
+          "Types"
         ]
       }
     },
@@ -4055,7 +4055,7 @@
         ],
         "summary": "Delete type (archive)",
         "tags": [
-          "V2"
+          "Types"
         ]
       },
       "get": {
@@ -4118,7 +4118,7 @@
         ],
         "summary": "Get type (AnyBlock document)",
         "tags": [
-          "V2"
+          "Types"
         ]
       },
       "patch": {
@@ -4182,7 +4182,7 @@
         ],
         "summary": "Update type",
         "tags": [
-          "V2"
+          "Types"
         ]
       }
     },
@@ -4228,7 +4228,7 @@
         ],
         "summary": "Get type schema (not implemented)",
         "tags": [
-          "V2"
+          "Types"
         ]
       }
     },
@@ -4274,7 +4274,7 @@
         ],
         "summary": "Validate an AnyBlock document",
         "tags": [
-          "V2"
+          "Schemas"
         ]
       }
     }

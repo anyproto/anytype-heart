@@ -815,7 +815,7 @@ paths:
       - bearerauth: []
       summary: Introspect the API key
       tags:
-      - V2
+      - Auth
   /v2/schemas:
     get:
       description: 'The §5 discovery index: every create kind with its endpoint and
@@ -832,7 +832,7 @@ paths:
       - bearerauth: []
       summary: List schemas
       tags:
-      - V2
+      - Schemas
   /v2/schemas/{kind}:
     get:
       description: 'One kind''s JSON Schema and worked example (C12/C13). Kinds: object,
@@ -862,7 +862,7 @@ paths:
       - bearerauth: []
       summary: Get schema for a kind
       tags:
-      - V2
+      - Schemas
   /v2/schemas/ops/{op}:
     get:
       description: 'One op''s tiny strict schema (C13) and a minimal example that
@@ -895,7 +895,7 @@ paths:
       - bearerauth: []
       summary: Get schema for a PATCH op
       tags:
-      - V2
+      - Schemas
   /v2/search:
     post:
       description: 'Searches all spaces: type keys and option names resolve per space
@@ -948,7 +948,7 @@ paths:
       - bearerauth: []
       summary: Search objects (global)
       tags:
-      - V2
+      - Search
   /v2/spaces:
     get:
       description: Returns {id, name, description} rows for the account's LIVE spaces
@@ -975,7 +975,7 @@ paths:
       - bearerauth: []
       summary: List spaces (minimal rows)
       tags:
-      - V2
+      - Spaces
     post:
       description: 'Creates a space: {name, description?} → the same shape. Thin over
         WorkspaceCreate. Both fields are capped at 4096 characters (the space kind''s
@@ -1026,7 +1026,7 @@ paths:
       - bearerauth: []
       summary: Create space
       tags:
-      - V2
+      - Spaces
   /v2/spaces/{space_id}:
     get:
       description: 'Returns the space row {id, name, description} read from the tech
@@ -1067,7 +1067,7 @@ paths:
       - bearerauth: []
       summary: Get space
       tags:
-      - V2
+      - Spaces
     patch:
       description: Updates the space's name and/or description (omitted fields stay
         unchanged; at least one is required; 4096-character cap) → the resulting row.
@@ -1134,7 +1134,7 @@ paths:
       - bearerauth: []
       summary: Update space
       tags:
-      - V2
+      - Spaces
   /v2/spaces/{space_id}/chats:
     get:
       description: 'C5 rows {id, name} via a store query — no chat opens, so the list
@@ -1178,7 +1178,7 @@ paths:
       - bearerauth: []
       summary: List chats
       tags:
-      - V2
+      - Chat
     post:
       description: 'Creates a chat object: {name}. A thin create with the chat_derived
         type — messages live in the chat store, not blocks. Honors Idempotency-Key
@@ -1226,7 +1226,7 @@ paths:
       - bearerauth: []
       summary: Create chat
       tags:
-      - V2
+      - Chat
   /v2/spaces/{space_id}/chats/{chat_id}/messages:
     get:
       description: "Cursor-paged messages (ascending order): ?after=/?before= are
@@ -1300,7 +1300,7 @@ paths:
       - bearerauth: []
       summary: Get chat messages
       tags:
-      - V2
+      - Chat
     post:
       description: 'Sends one message: {text, replyTo?, attachments?}. Text is §8
         markup SOURCE — *, [, ` and <mention objectId="…"> syntax mint real marks
@@ -1364,7 +1364,7 @@ paths:
       - bearerauth: []
       summary: Send chat message
       tags:
-      - V2
+      - Chat
   /v2/spaces/{space_id}/chats/{chat_id}/messages/{message_id}:
     delete:
       description: 'Deletes one message. IRREVERSIBLE side effect: attachments whose
@@ -1422,7 +1422,7 @@ paths:
       - bearerauth: []
       summary: Delete chat message
       tags:
-      - V2
+      - Chat
     patch:
       description: 'Text-only MERGE: {text} replaces the message text (parsed as §8
         markup source, capped at 8000 UTF-16 code units — the D′1 caveat: ALL marks
@@ -1491,7 +1491,7 @@ paths:
       - bearerauth: []
       summary: Edit chat message
       tags:
-      - V2
+      - Chat
   /v2/spaces/{space_id}/chats/{chat_id}/messages/{message_id}/reactions:
     post:
       description: Toggles the caller's {emoji} reaction on a message → {added}. A
@@ -1560,7 +1560,7 @@ paths:
       - bearerauth: []
       summary: Toggle chat reaction
       tags:
-      - V2
+      - Chat
   /v2/spaces/{space_id}/chats/{chat_id}/read:
     post:
       description: 'Moves the read watermark: {upTo, lastStateId, scope?}. upTo is
@@ -1626,7 +1626,7 @@ paths:
       - bearerauth: []
       summary: Mark chat read
       tags:
-      - V2
+      - Chat
   /v2/spaces/{space_id}/collections:
     post:
       description: 'Creates a collection: {name, items?}. Items are validated against
@@ -1674,7 +1674,7 @@ paths:
       - bearerauth: []
       summary: Create collection
       tags:
-      - V2
+      - Lists
   /v2/spaces/{space_id}/collections/{collection_id}/objects:
     get:
       description: Reads the collection's curated membership (the store slice, in
@@ -1739,7 +1739,7 @@ paths:
       - bearerauth: []
       summary: Get collection objects
       tags:
-      - V2
+      - Lists
   /v2/spaces/{space_id}/collections/{collection_id}/views:
     get:
       description: Returns the collection's stored views as SPEC §6.2 view objects.
@@ -1793,7 +1793,7 @@ paths:
       - bearerauth: []
       summary: Get collection views
       tags:
-      - V2
+      - Lists
   /v2/spaces/{space_id}/files:
     post:
       description: 'Uploads one file and returns the file object id that file/image
@@ -1843,7 +1843,7 @@ paths:
       - bearerauth: []
       summary: Upload file
       tags:
-      - V2
+      - Files
   /v2/spaces/{space_id}/members:
     get:
       operationId: v2_list_members
@@ -1865,7 +1865,7 @@ paths:
       - bearerauth: []
       summary: List members (minimal rows)
       tags:
-      - V2
+      - Members
   /v2/spaces/{space_id}/members/me:
     get:
       operationId: v2_get_member_me
@@ -1893,7 +1893,7 @@ paths:
       - bearerauth: []
       summary: Get the calling member (server-side identity, §7.3 @me)
       tags:
-      - V2
+      - Members
   /v2/spaces/{space_id}/objects:
     get:
       description: 'Returns paginated minimal rows: id, name, type (a type key) plus
@@ -1935,7 +1935,7 @@ paths:
       - bearerauth: []
       summary: List objects (minimal rows)
       tags:
-      - V2
+      - Objects
     post:
       description: 'Creates one object. The body is either a full flat AnyBlock document
         (discriminator: presence of version or blocks) or the shortcut {type, name,
@@ -1977,7 +1977,7 @@ paths:
       - bearerauth: []
       summary: Create object (AnyBlock)
       tags:
-      - V2
+      - Objects
   /v2/spaces/{space_id}/objects/{object_id}:
     delete:
       description: 'Archives the object (moves it to Bin — reversible in the Anytype
@@ -2042,7 +2042,7 @@ paths:
       - bearerauth: []
       summary: Delete object (archive, own output only)
       tags:
-      - V2
+      - Objects
     get:
       description: 'Returns the object as a flat AnyBlock JSON document read from
         the live editor state, with an advisory etag (C7) in the envelope and the
@@ -2118,7 +2118,7 @@ paths:
       - bearerauth: []
       summary: Get object (AnyBlock)
       tags:
-      - V2
+      - Objects
     patch:
       description: 'Applies the closed, id-addressed op set — setProperties, updateBlock,
         replaceSubtree, insertBlocks, moveBlock, deleteBlock, replaceText, setCell,
@@ -2201,7 +2201,7 @@ paths:
       - bearerauth: []
       summary: Edit object (batched ops)
       tags:
-      - V2
+      - Objects
   /v2/spaces/{space_id}/properties:
     get:
       operationId: v2_list_properties
@@ -2223,7 +2223,7 @@ paths:
       - bearerauth: []
       summary: List properties (key, name, format)
       tags:
-      - V2
+      - Properties
     post:
       description: 'Creates a property: {key?, name, format, options?:[{name,color?}]}.
         Formats use the AnyBlock vocabulary (text, select, multiSelect, …). The body
@@ -2271,7 +2271,7 @@ paths:
       - bearerauth: []
       summary: Create property
       tags:
-      - V2
+      - Properties
   /v2/spaces/{space_id}/properties/{key}:
     delete:
       description: Archives the property object.
@@ -2306,7 +2306,7 @@ paths:
       - bearerauth: []
       summary: Delete property (archive)
       tags:
-      - V2
+      - Properties
     patch:
       description: 'Updates a property''s display name. The key is identity and cannot
         change. The body binds strictly: unknown fields are rejected with the field
@@ -2359,7 +2359,7 @@ paths:
       - bearerauth: []
       summary: Update property
       tags:
-      - V2
+      - Properties
   /v2/spaces/{space_id}/properties/{key}/options:
     get:
       operationId: v2_list_property_options
@@ -2398,7 +2398,7 @@ paths:
       - bearerauth: []
       summary: List property options (names + colors)
       tags:
-      - V2
+      - Properties
   /v2/spaces/{space_id}/search:
     post:
       description: 'Searches one space with full-text (query), a type scope, and either
@@ -2457,7 +2457,7 @@ paths:
       - bearerauth: []
       summary: Search objects (space)
       tags:
-      - V2
+      - Search
   /v2/spaces/{space_id}/sets:
     post:
       description: 'Creates a set querying one type: {name, type, filters?, sorts?,
@@ -2507,7 +2507,7 @@ paths:
       - bearerauth: []
       summary: Create set
       tags:
-      - V2
+      - Lists
   /v2/spaces/{space_id}/sets/{set_id}/objects:
     get:
       description: Executes the set's stored query (its set_of source) directly against
@@ -2574,7 +2574,7 @@ paths:
       - bearerauth: []
       summary: Get set objects
       tags:
-      - V2
+      - Lists
   /v2/spaces/{space_id}/sets/{set_id}/views:
     get:
       description: Returns the set's stored views as SPEC §6.2 view objects (sorts,
@@ -2629,7 +2629,7 @@ paths:
       - bearerauth: []
       summary: Get set views
       tags:
-      - V2
+      - Lists
   /v2/spaces/{space_id}/templates:
     post:
       description: 'Creates a template: an AnyBlock document with templateFor naming
@@ -2670,7 +2670,7 @@ paths:
       - bearerauth: []
       summary: Create template (AnyBlock)
       tags:
-      - V2
+      - Templates
   /v2/spaces/{space_id}/types:
     get:
       operationId: v2_list_types
@@ -2692,7 +2692,7 @@ paths:
       - bearerauth: []
       summary: List types (keys + names)
       tags:
-      - V2
+      - Types
     post:
       description: Creates an object type from a kind:"objectType" AnyBlock document.
         typeProperties entries naming unknown property keys create those properties
@@ -2733,7 +2733,7 @@ paths:
       - bearerauth: []
       summary: Create type (AnyBlock type document)
       tags:
-      - V2
+      - Types
   /v2/spaces/{space_id}/types/{type}:
     delete:
       description: Archives the type object (v1 parity; hard delete is a deferred
@@ -2769,7 +2769,7 @@ paths:
       - bearerauth: []
       summary: Delete type (archive)
       tags:
-      - V2
+      - Types
     get:
       operationId: v2_get_type
       parameters:
@@ -2809,7 +2809,7 @@ paths:
       - bearerauth: []
       summary: Get type (AnyBlock document)
       tags:
-      - V2
+      - Types
     patch:
       description: 'Partial type-document update: properties changes the type''s own
         details (name, description, icon_emoji, recommended_layout); typeProperties,
@@ -2851,7 +2851,7 @@ paths:
       - bearerauth: []
       summary: Update type
       tags:
-      - V2
+      - Types
   /v2/spaces/{space_id}/types/{type}/schema:
     get:
       operationId: v2_get_type_schema
@@ -2879,7 +2879,7 @@ paths:
       - bearerauth: []
       summary: Get type schema (not implemented)
       tags:
-      - V2
+      - Types
   /v2/validate:
     post:
       description: 'Checks the request body against the AnyBlock JSON schema and the
@@ -2911,6 +2911,6 @@ paths:
       - bearerauth: []
       summary: Validate an AnyBlock document
       tags:
-      - V2
+      - Schemas
 servers:
 - url: http://127.0.0.1:31009

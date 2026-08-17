@@ -33,7 +33,7 @@ func listFieldsParam(c *gin.Context) []string {
 //	@Summary		Get set objects
 //	@Description	Executes the set's stored query (its set_of source) directly against the store, optionally through one stored view's filters and sorts (?view=, exact id or unique suffix). Stored-view execution substitutes the SPEC §6.2 dynamic placeholders server-side; unresolvable placeholders degrade to warnings, never a silent no-match. Rows are C5 minimal; fields= expands.
 //	@Id				v2_get_set_objects
-//	@Tags			V2
+//	@Tags			Lists
 //	@Produce		json
 //	@Param			space_id	path		string									true	"Space id"
 //	@Param			set_id		path		string									true	"Set object id"
@@ -67,7 +67,7 @@ func GetSetObjectsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Summary		Get set views
 //	@Description	Returns the set's stored views as SPEC §6.2 view objects (sorts, filters, columns — option names resolved, the format vocabulary). Paginated (C10).
 //	@Id				v2_get_set_views
-//	@Tags			V2
+//	@Tags			Lists
 //	@Produce		json
 //	@Param			space_id	path		string										true	"Space id"
 //	@Param			set_id		path		string										true	"Set object id"
@@ -98,7 +98,7 @@ func GetSetViewsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Summary		Get collection objects
 //	@Description	Reads the collection's curated membership (the store slice, in its order), optionally through one stored view's filters and sorts (?view=). Rows are C5 minimal; fields= expands.
 //	@Id				v2_get_collection_objects
-//	@Tags			V2
+//	@Tags			Lists
 //	@Produce		json
 //	@Param			space_id		path		string									true	"Space id"
 //	@Param			collection_id	path		string									true	"Collection object id"
@@ -132,7 +132,7 @@ func GetCollectionObjectsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Summary		Get collection views
 //	@Description	Returns the collection's stored views as SPEC §6.2 view objects. Paginated (C10).
 //	@Id				v2_get_collection_views
-//	@Tags			V2
+//	@Tags			Lists
 //	@Produce		json
 //	@Param			space_id		path		string										true	"Space id"
 //	@Param			collection_id	path		string										true	"Collection object id"
