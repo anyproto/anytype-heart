@@ -304,7 +304,7 @@ const (
 // for, gets contradictory instructions. Serving both shapes turns that into
 // a measurement instead of an opinion.
 func probeToolSpecs(exampleShape string, constAsEnum bool) ([]toolSpec, error) {
-	var svc v2service.V2Service
+	var svc v2service.Service
 	specs := make([]toolSpec, 0, len(probeOps))
 	for _, op := range probeOps {
 		entry, err := svc.SchemaOp(op)

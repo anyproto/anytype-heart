@@ -49,7 +49,7 @@ type optionRef struct {
 type creatingResolvers struct {
 	ctx     context.Context
 	mw      apicore.ClientCommands
-	svc     *V2Service
+	svc     *Service
 	spaceId string
 	reads   *storeresolver.Resolvers
 	dryRun  bool
@@ -103,7 +103,7 @@ func (r *creatingResolvers) removedBundledKeys() (map[string]bool, error) {
 	return r.removedBundled, r.removedBundledErr
 }
 
-func (s *V2Service) newCreatingResolvers(ctx context.Context, spaceId string, dryRun bool) *creatingResolvers {
+func (s *Service) newCreatingResolvers(ctx context.Context, spaceId string, dryRun bool) *creatingResolvers {
 	return &creatingResolvers{
 		ctx:            ctx,
 		mw:             s.mw,
@@ -234,7 +234,7 @@ func (r *creatingResolvers) OptionId(key domain.RelationKey, name string) (strin
 // The scan is deliberately lenient — every validation error still surfaces
 // from the in-lock op pass, in unchanged order — and create failures ride
 // resolvers.err(), exactly where the in-lock path checks them.
-func (s *V2Service) prewarmCreateMissing(ops []json.RawMessage, resolvers *creatingResolvers) {
+func (s *Service) prewarmCreateMissing(ops []json.RawMessage, resolvers *creatingResolvers) {
 	for _, raw := range ops {
 		var probe struct {
 			Op  string                     `json:"op"`
@@ -315,7 +315,7 @@ type viewFilterProbe struct {
 // properties, both of which the dataview import resolves with create-missing
 // (SPEC §6.2/§3) — so the creates run before the object lock and the M5
 // bound sees them. Same leniency contract as the setProperties pass.
-func (s *V2Service) prewarmViewOptionValues(set map[string]json.RawMessage, resolvers *creatingResolvers) {
+func (s *Service) prewarmViewOptionValues(set map[string]json.RawMessage, resolvers *creatingResolvers) {
 	resolveSelect := func(rawKey string, value json.RawMessage) {
 		key := resolvers.canonicalPropertyKey(rawKey)
 		format, err := bundle.GetRelationFormat(domain.RelationKey(key))

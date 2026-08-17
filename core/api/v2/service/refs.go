@@ -24,7 +24,7 @@ const maxListedKeys = 15
 
 // typeIdInSpace resolves a type key to its object id when the type object
 // exists in the space; ok is false otherwise.
-func (s *V2Service) typeIdInSpace(spaceId, typeKey string) (string, bool) {
+func (s *Service) typeIdInSpace(spaceId, typeKey string) (string, bool) {
 	uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeObjectType, typeKey)
 	if err != nil {
 		return "", false
@@ -42,7 +42,7 @@ func (s *V2Service) typeIdInSpace(spaceId, typeKey string) (string, bool) {
 // it). Corpse-aware and chain-aware: a UI-deleted type must not gate object
 // or template creates through (review cause 2), and the served slug must
 // resolve here like everywhere else. Fail closed on a load error.
-func (s *V2Service) typeKeyExists(spaceId, typeKey string) bool {
+func (s *Service) typeKeyExists(spaceId, typeKey string) bool {
 	entries, err := s.liveTypes(spaceId)
 	if err != nil {
 		return false
@@ -56,7 +56,7 @@ func (s *V2Service) typeKeyExists(spaceId, typeKey string) bool {
 // be suggested as a remedy (§7.5-2), and a candidate list must never
 // advertise a spelling the routes reject (review cause 3). Hint-only, so a
 // load error degrades to an empty list rather than failing the request.
-func (s *V2Service) knownTypeKeys(spaceId string) []string {
+func (s *Service) knownTypeKeys(spaceId string) []string {
 	entries, err := s.liveTypes(spaceId)
 	if err != nil {
 		return nil
@@ -70,7 +70,7 @@ func (s *V2Service) knownTypeKeys(spaceId string) []string {
 }
 
 // unknownTypeKeyError is the R9 did-you-mean 400 for a type reference.
-func (s *V2Service) unknownTypeKeyError(spaceId, typeKey, path string) error {
+func (s *Service) unknownTypeKeyError(spaceId, typeKey, path string) error {
 	known := s.knownTypeKeys(spaceId)
 	return v2model.ValidationFailed(
 		fmt.Sprintf("type %q not found in space %q", typeKey, spaceId),
@@ -88,7 +88,7 @@ func (s *V2Service) unknownTypeKeyError(spaceId, typeKey, path string) error {
 // end for a small model (§8.21 — given the bare "not found" text, a
 // benchmarked 4B did not retry at all, while the key-listing property tip
 // repaired on the first retry in the same run).
-func (s *V2Service) typeNotFoundError(spaceId, typeKey string) error {
+func (s *Service) typeNotFoundError(spaceId, typeKey string) error {
 	return v2model.NotFound(notFoundWithKeys(
 		fmt.Sprintf("type %q not found in space %q", typeKey, spaceId),
 		typeKey, "type keys", s.knownTypeKeys(spaceId),
@@ -97,7 +97,7 @@ func (s *V2Service) typeNotFoundError(spaceId, typeKey string) error {
 
 // propertyNotFoundError is typeNotFoundError's sibling for property-KEY
 // routes (options listing, PATCH/DELETE properties/{key}).
-func (s *V2Service) propertyNotFoundError(spaceId, propertyKey string) error {
+func (s *Service) propertyNotFoundError(spaceId, propertyKey string) error {
 	return v2model.NotFound(notFoundWithKeys(
 		fmt.Sprintf("property %q not found in space %q", propertyKey, spaceId),
 		propertyKey, "property keys", s.knownPropertyKeys(spaceId),
@@ -194,7 +194,7 @@ func removedTypeIssue(spaceId, key, path string) v2model.Issue {
 
 // propertyKeyExists is the single-lookup form; loops prime entries once and
 // use propertyKeyExistsIn.
-func (s *V2Service) propertyKeyExists(spaceId, key string) bool {
+func (s *Service) propertyKeyExists(spaceId, key string) bool {
 	entries, err := s.liveProperties(spaceId)
 	if err != nil {
 		return false // fail closed: an unverifiable key is not "known good"
@@ -205,7 +205,7 @@ func (s *V2Service) propertyKeyExists(spaceId, key string) bool {
 // knownPropertyKeys lists the space's LIVE property keys in their SERVED
 // spelling (see knownTypeKeys) — corpse-free, load-error-tolerant
 // (hint-only).
-func (s *V2Service) knownPropertyKeys(spaceId string) []string {
+func (s *Service) knownPropertyKeys(spaceId string) []string {
 	entries, err := s.liveProperties(spaceId)
 	if err != nil {
 		return nil
@@ -356,7 +356,7 @@ var typeRecommendedListKeys = []domain.RelationKey{
 // typePropertyKeys collects the property keys a type actually recommends
 // (its four recommended-relation lists, resolved id→key) — the R9 reference
 // set for set filters and sorts.
-func (s *V2Service) typePropertyKeys(spaceId, typeId string) []string {
+func (s *Service) typePropertyKeys(spaceId, typeId string) []string {
 	details, err := s.store.SpaceIndex(spaceId).GetDetails(typeId)
 	if err != nil {
 		return nil
@@ -386,7 +386,7 @@ func (s *V2Service) typePropertyKeys(spaceId, typeId string) []string {
 // reference (§8.34/§8.41). Hint-grade lookup: an unreadable type yields an
 // empty baseline, and the write path then refuses rather than echoes —
 // fail closed.
-func (s *V2Service) recommendedRelationIds(spaceId, typeId string) map[string]bool {
+func (s *Service) recommendedRelationIds(spaceId, typeId string) map[string]bool {
 	details, err := s.store.SpaceIndex(spaceId).GetDetails(typeId)
 	if err != nil {
 		return nil

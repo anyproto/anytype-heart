@@ -343,5 +343,5 @@ func IsDryRun(c *gin.Context) bool {
 
 // respondV2Error writes a C6 error envelope and aborts the request.
 func respondV2Error(c *gin.Context, err error) {
-	v2handler.RespondV2Error(c, err)
+	v2handler.RespondError(c, err)
 }

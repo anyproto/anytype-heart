@@ -54,7 +54,7 @@ func newSpaceRefEngine(t *testing.T, grant *util.ApiGrant, spaceIds ...string) *
 			bundle.RelationKeyName:           domain.String("Space " + string(rune('A'+i))),
 		}})
 	}
-	svc := v2service.NewV2Service(nil, nil, nil, nil, nil, store, objectstore.TestTechSpaceId, "")
+	svc := v2service.NewService(nil, nil, nil, nil, nil, store, objectstore.TestTechSpaceId, "")
 
 	router := gin.New()
 	group := router.Group("/v2")
@@ -65,12 +65,12 @@ func newSpaceRefEngine(t *testing.T, grant *util.ApiGrant, spaceIds ...string) *
 	group.Use(ensureIdsShape())
 	group.Use(resolveSpaceRef(svc))
 	group.Use(ensureSpaceGrant())
-	group.GET("/spaces/:space_id", v2handler.GetSpaceV2Handler(svc))
+	group.GET("/spaces/:space_id", v2handler.GetSpaceHandler(svc))
 	group.GET("/spaces/:space_id/objects", func(c *gin.Context) {
 		c.String(http.StatusOK, c.Param(SpaceParam))
 	})
 	group.GET("/spaces/:space_id/types/:type", func(c *gin.Context) {
-		v2handler.RespondV2Error(c, v2model.NotFound(
+		v2handler.RespondError(c, v2model.NotFound(
 			"type \"page\" not found in space \""+c.Param(SpaceParam)+"\"",
 			v2model.Issue{Hint: "list all with GET /v2/spaces/" + c.Param(SpaceParam) + "/types"}))
 	})

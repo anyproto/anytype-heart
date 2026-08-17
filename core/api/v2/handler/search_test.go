@@ -23,10 +23,10 @@ func searchRouter(fx *v2HandlerFixture) {
 		MinPageSize:     1,
 		MaxPageSize:     1000,
 	}))
-	fx.router.POST("/v2/spaces/:space_id/search", SearchObjectsV2Handler(fx.svc))
+	fx.router.POST("/v2/spaces/:space_id/search", SearchObjectsHandler(fx.svc))
 }
 
-func TestSearchObjectsV2Handler(t *testing.T) {
+func TestSearchObjectsHandler(t *testing.T) {
 	t.Run("a body limit is rejected by the strict schema with C10 steering", func(t *testing.T) {
 		// given
 		fx := newV2HandlerFixture(t)
@@ -156,12 +156,12 @@ func TestSearchObjectsV2Handler(t *testing.T) {
 	})
 }
 
-func TestGlobalSearchObjectsV2Handler(t *testing.T) {
+func TestGlobalSearchObjectsHandler(t *testing.T) {
 	t.Run("global search responds with rows across spaces", func(t *testing.T) {
 		// given
 		fx := newV2HandlerFixture(t)
 		fx.router.Use(pagination.New(pagination.Config{DefaultPage: 0, DefaultPageSize: 25, MinPageSize: 1, MaxPageSize: 1000}))
-		fx.router.POST("/v2/search", GlobalSearchObjectsV2Handler(fx.svc))
+		fx.router.POST("/v2/search", GlobalSearchObjectsHandler(fx.svc))
 
 		// when
 		req := httptest.NewRequest(http.MethodPost, "/v2/search", strings.NewReader(`{}`))
@@ -179,7 +179,7 @@ func TestGlobalSearchObjectsV2Handler(t *testing.T) {
 		// given
 		fx := newV2HandlerFixture(t)
 		fx.router.Use(pagination.New(pagination.Config{DefaultPage: 0, DefaultPageSize: 25, MinPageSize: 1, MaxPageSize: 1000}))
-		fx.router.POST("/v2/search", GlobalSearchObjectsV2Handler(fx.svc))
+		fx.router.POST("/v2/search", GlobalSearchObjectsHandler(fx.svc))
 
 		// when
 		req := httptest.NewRequest(http.MethodPost, "/v2/search",

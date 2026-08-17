@@ -1152,7 +1152,7 @@ func TestViewOpReviewFixes(t *testing.T) {
 		edit, err := editFromRead("obj1", editRead(t, editTwoViewsDoc))
 		require.NoError(t, err)
 		resolvers := fx.newCreatingResolvers(ctx, testSpaceId, false)
-		applier := newV2StateApplier(fx.V2Service, testSpaceId, "obj1", edit.SbType, edit.State, resolvers)
+		applier := newV2StateApplier(fx.Service, testSpaceId, "obj1", edit.SbType, edit.State, resolvers)
 		_, err = applier.begin()
 		require.NoError(t, err)
 

@@ -340,7 +340,7 @@ var v2OpSchemas = map[string]v2SchemaKind{
 }
 
 // SchemaOp implements GET /v2/schemas/ops/{op}.
-func (s *V2Service) SchemaOp(op string) (v2model.SchemaEntry, error) {
+func (s *Service) SchemaOp(op string) (v2model.SchemaEntry, error) {
 	entry, ok := v2OpSchemas[op]
 	if !ok {
 		return v2model.SchemaEntry{}, v2model.NotFound(

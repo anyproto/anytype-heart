@@ -27,7 +27,7 @@ import (
 const testAccountId = "accountA"
 
 type v2HandlerFixture struct {
-	svc         *v2service.V2Service
+	svc         *v2service.Service
 	mwMock      *mock_apicore.MockClientCommands
 	readerMock  *mock_apicore.MockObjectReader
 	creatorMock *mock_apicore.MockObjectCreator
@@ -59,15 +59,15 @@ func newV2HandlerFixture(t *testing.T) *v2HandlerFixture {
 		func(_ context.Context, _ string, key domain.TypeKey) (string, error) {
 			return "drv-ot-" + string(key), nil
 		}).Maybe()
-	svc := v2service.NewV2Service(mwMock, readerMock, creatorMock, mock_apicore.NewMockObjectMutator(t), nil, store, objectstore.TestTechSpaceId, testAccountId)
+	svc := v2service.NewService(mwMock, readerMock, creatorMock, mock_apicore.NewMockObjectMutator(t), nil, store, objectstore.TestTechSpaceId, testAccountId)
 	return &v2HandlerFixture{svc: svc, mwMock: mwMock, readerMock: readerMock, creatorMock: creatorMock, store: store, router: gin.New()}
 }
 
-func TestValidateV2Handler(t *testing.T) {
+func TestValidateHandler(t *testing.T) {
 	t.Run("valid body returns empty issue lists", func(t *testing.T) {
 		// given
 		fx := newV2HandlerFixture(t)
-		fx.router.POST("/v2/validate", ValidateV2Handler(fx.svc))
+		fx.router.POST("/v2/validate", ValidateHandler(fx.svc))
 		want := v2model.ValidateResponse{Issues: []v2model.Issue{}, Warnings: []v2model.Issue{}}
 
 		// when
@@ -86,7 +86,7 @@ func TestValidateV2Handler(t *testing.T) {
 	t.Run("invalid body returns issues as data with status 200", func(t *testing.T) {
 		// given
 		fx := newV2HandlerFixture(t)
-		fx.router.POST("/v2/validate", ValidateV2Handler(fx.svc))
+		fx.router.POST("/v2/validate", ValidateHandler(fx.svc))
 
 		// when
 		req := httptest.NewRequest(http.MethodPost, "/v2/validate", strings.NewReader(`{"version":1,"blocks":[{"type":"wat"}]}`))
@@ -101,11 +101,11 @@ func TestValidateV2Handler(t *testing.T) {
 	})
 }
 
-func TestGetObjectV2Handler(t *testing.T) {
+func TestGetObjectHandler(t *testing.T) {
 	t.Run("conflicting params map to 400 ambiguous_input", func(t *testing.T) {
 		// given
 		fx := newV2HandlerFixture(t)
-		fx.router.GET("/v2/spaces/:space_id/objects/:object_id", GetObjectV2Handler(fx.svc))
+		fx.router.GET("/v2/spaces/:space_id/objects/:object_id", GetObjectHandler(fx.svc))
 
 		// when
 		req := httptest.NewRequest(http.MethodGet, "/v2/spaces/space1/objects/obj1?outline=true&block=b1", nil)
@@ -124,7 +124,7 @@ func TestGetObjectV2Handler(t *testing.T) {
 	t.Run("internal errors map to 500 internal_error", func(t *testing.T) {
 		// given
 		fx := newV2HandlerFixture(t)
-		fx.router.GET("/v2/spaces/:space_id/objects/:object_id", GetObjectV2Handler(fx.svc))
+		fx.router.GET("/v2/spaces/:space_id/objects/:object_id", GetObjectHandler(fx.svc))
 		fx.readerMock.EXPECT().ReadObject(mock.Anything, "space1", "obj1").Return(apicore.ObjectRead{}, assert.AnError)
 
 		// when

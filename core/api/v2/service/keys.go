@@ -91,7 +91,7 @@ func liveTypeFilters() []database.FilterRequest {
 // returned, never swallowed: the collision check and the resolution chain
 // are load-bearing, and an empty-looking namespace on a store hiccup would
 // wave every collision through (fail closed, not open).
-func (s *V2Service) liveProperties(spaceId string) ([]propertyEntry, error) {
+func (s *Service) liveProperties(spaceId string) ([]propertyEntry, error) {
 	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{Filters: livePropertyFilters()})
 	if err != nil {
 		return nil, fmt.Errorf("query live properties of space %s: %w", spaceId, err)
@@ -115,7 +115,7 @@ func (s *V2Service) liveProperties(spaceId string) ([]propertyEntry, error) {
 }
 
 // liveTypes lists the space's live type objects (error contract as above).
-func (s *V2Service) liveTypes(spaceId string) ([]typeEntry, error) {
+func (s *Service) liveTypes(spaceId string) ([]typeEntry, error) {
 	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{Filters: liveTypeFilters()})
 	if err != nil {
 		return nil, fmt.Errorf("query live types of space %s: %w", spaceId, err)
@@ -151,7 +151,7 @@ func (s *V2Service) liveTypes(spaceId string) ([]typeEntry, error) {
 // machinery owns the refusal. A resolved bundled term that is not installed
 // in the space has Id == "" — address routes require an installed entry,
 // existence checks do not.
-func (s *V2Service) resolvePropertyInput(input string, entries []propertyEntry) (propertyEntry, bool, []string) {
+func (s *Service) resolvePropertyInput(input string, entries []propertyEntry) (propertyEntry, bool, []string) {
 	// 1: exact stored key (hidden included — the stored key is always an
 	// address)
 	for _, entry := range entries {
@@ -222,7 +222,7 @@ func (s *V2Service) resolvePropertyInput(input string, entries []propertyEntry) 
 }
 
 // resolveTypeInput is resolvePropertyInput for the type namespace.
-func (s *V2Service) resolveTypeInput(input string, entries []typeEntry) (typeEntry, bool, []string) {
+func (s *Service) resolveTypeInput(input string, entries []typeEntry) (typeEntry, bool, []string) {
 	for _, entry := range entries {
 		if entry.Key == input {
 			return entry, true, nil
@@ -363,7 +363,7 @@ func ambiguousKeyError(what, input, path string, candidates []string) error {
 // requireLiveProperty resolves a property-addressing route param: ambiguity
 // is a 400, anything not installed live in the space is the keyed 404, and
 // a store failure propagates (fail closed).
-func (s *V2Service) requireLiveProperty(spaceId, input string) (propertyEntry, error) {
+func (s *Service) requireLiveProperty(spaceId, input string) (propertyEntry, error) {
 	entries, err := s.liveProperties(spaceId)
 	if err != nil {
 		return propertyEntry{}, err
@@ -379,7 +379,7 @@ func (s *V2Service) requireLiveProperty(spaceId, input string) (propertyEntry, e
 }
 
 // requireLiveType is requireLiveProperty for type routes.
-func (s *V2Service) requireLiveType(spaceId, input, path string) (typeEntry, error) {
+func (s *Service) requireLiveType(spaceId, input, path string) (typeEntry, error) {
 	entries, err := s.liveTypes(spaceId)
 	if err != nil {
 		return typeEntry{}, err
@@ -410,7 +410,7 @@ type slugHolder struct {
 // every caller, so an occupied fold class refuses too). Corpses and hidden
 // holders vacate the namespace (§8-OQ2 / propertyEntry.Hidden). The check
 // ships WITH the mint it guards (§7.6-3).
-func (s *V2Service) propertySlugConflict(slug string, entries []propertyEntry) (slugHolder, bool) {
+func (s *Service) propertySlugConflict(slug string, entries []propertyEntry) (slugHolder, bool) {
 	entry, ok, ambiguous := s.resolvePropertyInput(slug, entries)
 	if len(ambiguous) > 0 {
 		return slugHolder{Kind: "properties", Key: slug, Name: strings.Join(ambiguous, " and ")}, true
@@ -425,7 +425,7 @@ func (s *V2Service) propertySlugConflict(slug string, entries []propertyEntry) (
 }
 
 // typeSlugConflict is propertySlugConflict for the type namespace.
-func (s *V2Service) typeSlugConflict(slug string, entries []typeEntry) (slugHolder, bool) {
+func (s *Service) typeSlugConflict(slug string, entries []typeEntry) (slugHolder, bool) {
 	entry, ok, ambiguous := s.resolveTypeInput(slug, entries)
 	if len(ambiguous) > 0 {
 		return slugHolder{Kind: "types", Key: slug, Name: strings.Join(ambiguous, " and ")}, true
@@ -596,7 +596,7 @@ func corpseFlagged(details *domain.Details) bool {
 // probe, and a probe that swallowed a store or derivation error would turn
 // "could not look" into "not held" and mint a duplicate of a property that
 // exists (§7.5a-2's fail-closed rule).
-func (s *V2Service) relationObjectHoldingKey(ctx context.Context, spaceId, key string) (string, bool, error) {
+func (s *Service) relationObjectHoldingKey(ctx context.Context, spaceId, key string) (string, bool, error) {
 	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
 		Filters: []database.FilterRequest{
 			{
@@ -658,7 +658,7 @@ func (s *V2Service) relationObjectHoldingKey(ctx context.Context, spaceId, key s
 // creator port (id derivation runs in the space); a read-only service has
 // none and reports no row, which the write paths that consult this never
 // reach.
-func (s *V2Service) derivedRelationRow(ctx context.Context, spaceId, key string) (*domain.Details, string, error) {
+func (s *Service) derivedRelationRow(ctx context.Context, spaceId, key string) (*domain.Details, string, error) {
 	if s.creator == nil {
 		return nil, "", nil
 	}
@@ -689,7 +689,7 @@ func (s *V2Service) derivedRelationRow(ctx context.Context, spaceId, key string)
 // path exited the relation, a document value under its stored key is the
 // same inert freight. On a probe error the key reads as not held and create
 // refuses — fail closed, never a silent mint of presence.
-func (s *V2Service) propertyKeyHeldByAnyRelation(ctx context.Context, spaceId, key string) bool {
+func (s *Service) propertyKeyHeldByAnyRelation(ctx context.Context, spaceId, key string) bool {
 	_, held, err := s.relationObjectHoldingKey(ctx, spaceId, key)
 	return err == nil && held
 }
@@ -710,7 +710,7 @@ func (s *V2Service) propertyKeyHeldByAnyRelation(ctx context.Context, spaceId, k
 // TOMBSTONE shape is invisible to this query too (no relationKey field) —
 // per-key consultation goes through bundledPropertyRemoved, which adds the
 // derived-id probe for that window.
-func (s *V2Service) bundledRemovalSet(spaceId string) (map[string]bool, error) {
+func (s *Service) bundledRemovalSet(spaceId string) (map[string]bool, error) {
 	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
 		Filters: []database.FilterRequest{
 			{
@@ -747,7 +747,7 @@ func (s *V2Service) bundledRemovalSet(spaceId string) (map[string]bool, error) {
 // derived id carrying isDeleted and no relationKey, which no query-built set
 // can contain. A live installed entry always outvotes; a missing row means
 // never-installed and keeps install-on-write working.
-func (s *V2Service) bundledPropertyRemoved(ctx context.Context, spaceId string, entries []propertyEntry, removed map[string]bool, key string) (bool, error) {
+func (s *Service) bundledPropertyRemoved(ctx context.Context, spaceId string, entries []propertyEntry, removed map[string]bool, key string) (bool, error) {
 	if propertyKeyRemovedIn(entries, removed, key) {
 		return true, nil
 	}
@@ -771,7 +771,7 @@ func (s *V2Service) bundledPropertyRemoved(ctx context.Context, spaceId string, 
 // type keys whose type object exists and carries a removal flag. Same
 // query discipline, same never-installed boundary, same tombstone blind spot
 // (bundledTypeRemoved owns that window).
-func (s *V2Service) bundledTypeRemovalSet(spaceId string) (map[string]bool, error) {
+func (s *Service) bundledTypeRemovalSet(spaceId string) (map[string]bool, error) {
 	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
 		Filters: []database.FilterRequest{
 			{
@@ -813,7 +813,7 @@ func typeKeyInstalledIn(entries []typeEntry, key string) bool {
 }
 
 // bundledTypeRemoved is bundledPropertyRemoved for the type namespace.
-func (s *V2Service) bundledTypeRemoved(ctx context.Context, spaceId string, entries []typeEntry, removed map[string]bool, key string) (bool, error) {
+func (s *Service) bundledTypeRemoved(ctx context.Context, spaceId string, entries []typeEntry, removed map[string]bool, key string) (bool, error) {
 	if removed[key] && !typeKeyInstalledIn(entries, key) {
 		return true, nil
 	}
@@ -852,7 +852,7 @@ func (s *V2Service) bundledTypeRemoved(ctx context.Context, spaceId string, entr
 // The second return maps every REWRITTEN property key back to the spelling
 // the caller sent (canonical → original), so validation that runs after the
 // rewrite can address its refusals to the request as sent (§8.41-10).
-func (s *V2Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byte, map[string]string, error) {
+func (s *Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byte, map[string]string, error) {
 	spellings := map[string]string{}
 	fields, err := parseEnvelope(body)
 	if err != nil {

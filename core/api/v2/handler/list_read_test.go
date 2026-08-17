@@ -35,10 +35,10 @@ func listReadRouter(fx *v2HandlerFixture) {
 		MinPageSize:     1,
 		MaxPageSize:     1000,
 	}))
-	fx.router.GET("/v2/spaces/:space_id/sets/:set_id/objects", GetSetObjectsV2Handler(fx.svc))
-	fx.router.GET("/v2/spaces/:space_id/sets/:set_id/views", GetSetViewsV2Handler(fx.svc))
-	fx.router.GET("/v2/spaces/:space_id/collections/:collection_id/objects", GetCollectionObjectsV2Handler(fx.svc))
-	fx.router.GET("/v2/spaces/:space_id/collections/:collection_id/views", GetCollectionViewsV2Handler(fx.svc))
+	fx.router.GET("/v2/spaces/:space_id/sets/:set_id/objects", GetSetObjectsHandler(fx.svc))
+	fx.router.GET("/v2/spaces/:space_id/sets/:set_id/views", GetSetViewsHandler(fx.svc))
+	fx.router.GET("/v2/spaces/:space_id/collections/:collection_id/objects", GetCollectionObjectsHandler(fx.svc))
+	fx.router.GET("/v2/spaces/:space_id/collections/:collection_id/views", GetCollectionViewsHandler(fx.svc))
 }
 
 // handlerSetRead builds a live set read: layout set, setOf type-chore, and
@@ -69,7 +69,7 @@ func (fx *v2HandlerFixture) addChoreType(t *testing.T) {
 	}})
 }
 
-func TestGetSetObjectsV2Handler(t *testing.T) {
+func TestGetSetObjectsHandler(t *testing.T) {
 	t.Run("?view= reaches the service (an unknown view 404s)", func(t *testing.T) {
 		// given
 		fx := newV2HandlerFixture(t)
@@ -137,7 +137,7 @@ func TestGetSetObjectsV2Handler(t *testing.T) {
 	})
 }
 
-func TestGetCollectionObjectsV2Handler(t *testing.T) {
+func TestGetCollectionObjectsHandler(t *testing.T) {
 	collectionRead := func(dv *model.BlockContentDataview) apicore.ObjectRead {
 		snapshot := &model.SmartBlockSnapshotBase{
 			Details: &types.Struct{Fields: map[string]*types.Value{

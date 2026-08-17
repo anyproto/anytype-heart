@@ -36,12 +36,12 @@ func decodeSearchRequest(c *gin.Context) (v2model.SearchRequest, bool) {
 	var req v2model.SearchRequest
 	body, err := io.ReadAll(io.LimitReader(c.Request.Body, maxSearchRequestBody+1))
 	if err != nil {
-		RespondV2Error(c, v2model.ValidationFailed("read request body",
+		RespondError(c, v2model.ValidationFailed("read request body",
 			v2model.Issue{Message: err.Error()}))
 		return req, false
 	}
 	if len(body) > maxSearchRequestBody {
-		RespondV2Error(c, v2model.RequestTooLarge(
+		RespondError(c, v2model.RequestTooLarge(
 			fmt.Sprintf("search request body exceeds the %d-byte limit", maxSearchRequestBody)))
 		return req, false
 	}
@@ -58,7 +58,7 @@ func decodeSearchRequest(c *gin.Context) (v2model.SearchRequest, bool) {
 				issue.Hint = fmt.Sprintf("pagination is the ?offset=&limit= query params (C10), not a body field — e.g. POST …/search?%s=25", field)
 			}
 		}
-		RespondV2Error(c, v2model.ValidationFailed("invalid search request", issue))
+		RespondError(c, v2model.ValidationFailed("invalid search request", issue))
 		return req, false
 	}
 	return req, true
@@ -81,7 +81,7 @@ func unknownFieldName(err error) (string, bool) {
 	return rest[:end], true
 }
 
-// SearchObjectsV2Handler searches one space
+// SearchObjectsHandler searches one space
 //
 //	@Summary		Search objects (space)
 //	@Description	Searches one space with full-text (query), a type scope, and either the compact filter string (filter) or the structured filter array (filters) — mutually exclusive, both landing on one internal tree. Sorts accept any property key. Rows are C5 minimal (id, name, type + requested fields). Search is a read: Idempotency-Key is not honored and dry_run is ignored. Pagination via ?offset=&limit= (C10).
@@ -98,7 +98,7 @@ func unknownFieldName(err error) (string, bool) {
 //	@Failure		404			{object}	v2model.Error							"Space not found"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/search [post]
-func SearchObjectsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
+func SearchObjectsHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		req, ok := decodeSearchRequest(c)
 		if !ok {
@@ -108,16 +108,16 @@ func SearchObjectsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 		limit := c.GetInt(pagination.QueryParamLimit)
 		rows, total, hasMore, warnings, err := s.SearchObjects(c.Request.Context(), c.Param("space_id"), req, offset, limit)
 		if err != nil {
-			RespondV2Error(c, err)
+			RespondError(c, err)
 			return
 		}
-		resp := v2model.NewListResponse(rows, total, offset, limit, hasMore, v2service.V2SearchNarrowHint)
+		resp := v2model.NewListResponse(rows, total, offset, limit, hasMore, v2service.SearchNarrowHint)
 		resp.Warnings = warnings
 		c.JSON(http.StatusOK, resp)
 	}
 }
 
-// GlobalSearchObjectsV2Handler searches every space
+// GlobalSearchObjectsHandler searches every space
 //
 //	@Summary		Search objects (global)
 //	@Description	Searches all spaces: type keys and option names resolve per space (a reference that resolves in only some spaces queries those and warns about the rest), results merge by the requested sort, total is the sum of per-space store counts (honest totals). Rows carry spaceId. Same request shape as the space search.
@@ -133,7 +133,7 @@ func SearchObjectsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Failure		400		{object}	v2model.Error							"Invalid request"
 //	@Security		bearerauth
 //	@Router			/v2/search [post]
-func GlobalSearchObjectsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
+func GlobalSearchObjectsHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		req, ok := decodeSearchRequest(c)
 		if !ok {
@@ -143,10 +143,10 @@ func GlobalSearchObjectsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 		limit := c.GetInt(pagination.QueryParamLimit)
 		rows, total, hasMore, warnings, err := s.GlobalSearchObjects(c.Request.Context(), req, offset, limit)
 		if err != nil {
-			RespondV2Error(c, err)
+			RespondError(c, err)
 			return
 		}
-		resp := v2model.NewListResponse(rows, total, offset, limit, hasMore, v2service.V2SearchNarrowHint)
+		resp := v2model.NewListResponse(rows, total, offset, limit, hasMore, v2service.SearchNarrowHint)
 		resp.Warnings = warnings
 		c.JSON(http.StatusOK, resp)
 	}

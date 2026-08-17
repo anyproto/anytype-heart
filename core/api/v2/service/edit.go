@@ -161,7 +161,7 @@ type v2PatchRequest struct {
 // PatchObject implements PATCH /v2/spaces/{spaceId}/objects/{objectId}: the
 // ops apply to a child state of the live object, committed with one ordinary
 // Apply (stateops.go).
-func (s *V2Service) PatchObject(ctx context.Context, spaceId, objectId string, body []byte, ifMatch string, dryRun bool) (*v2model.EditResult, error) {
+func (s *Service) PatchObject(ctx context.Context, spaceId, objectId string, body []byte, ifMatch string, dryRun bool) (*v2model.EditResult, error) {
 	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
 	}
@@ -270,7 +270,7 @@ const v2MaxCreatedOptionsPerPatch = 64
 // existing option by name before creating, so a retry adopts what the first
 // attempt made instead of duplicating it), and detectable — created options
 // carry ObjectOrigin_api.
-func (s *V2Service) guardCreateMissing(ctx context.Context, spaceId, objectId string, ops []json.RawMessage, ifMatch string, cur apicore.ObjectRead, dryRun bool) error {
+func (s *Service) guardCreateMissing(ctx context.Context, spaceId, objectId string, ops []json.RawMessage, ifMatch string, cur apicore.ObjectRead, dryRun bool) error {
 	// a resolver in dry mode records would-be creations instead of performing
 	// them: no RPCs, no document work, just a walk of the op payloads
 	probe := s.newCreatingResolvers(ctx, spaceId, true)
@@ -342,7 +342,7 @@ func editFromRead(objectId string, cur apicore.ObjectRead) (apicore.ObjectEdit, 
 // applied to the state), the resolver error check, the flag-gated safety
 // net, and the diffStats. The caller commits (or, on dry run, discards) the
 // state.
-func (s *V2Service) applyPatchOps(ctx context.Context, spaceId, objectId string, ops []json.RawMessage, ifMatch string, edit apicore.ObjectEdit, resolvers *creatingResolvers) (*v2model.EditResult, error) {
+func (s *Service) applyPatchOps(ctx context.Context, spaceId, objectId string, ops []json.RawMessage, ifMatch string, edit apicore.ObjectEdit, resolvers *creatingResolvers) (*v2model.EditResult, error) {
 	if err := checkEditPreconditions(edit.SbType, edit.Heads, ifMatch); err != nil {
 		return nil, err
 	}

@@ -15,9 +15,9 @@ import (
 	v2service "github.com/anyproto/anytype-heart/core/api/v2/service"
 )
 
-// RespondV2Error writes the C6 error envelope and aborts the request.
+// RespondError writes the C6 error envelope and aborts the request.
 // Errors that are not *v2model.Error become 500 internal_error.
-func RespondV2Error(c *gin.Context, err error) {
+func RespondError(c *gin.Context, err error) {
 	var v2Err *v2model.Error
 	if !errors.As(err, &v2Err) {
 		v2Err = v2model.NewError(http.StatusInternalServerError, v2model.CodeInternalError, err.Error())
@@ -64,17 +64,17 @@ func echoSpaceRef(c *gin.Context, v2Err *v2model.Error) *v2model.Error {
 func decodeStrictJSONBody(c *gin.Context, into any, hint string, maxBody int64, surface string) bool {
 	body, err := io.ReadAll(io.LimitReader(c.Request.Body, maxBody+1))
 	if err != nil {
-		RespondV2Error(c, v2model.ValidationFailed("read request body",
+		RespondError(c, v2model.ValidationFailed("read request body",
 			v2model.Issue{Message: err.Error()}))
 		return false
 	}
 	if int64(len(body)) > maxBody {
-		RespondV2Error(c, v2model.RequestTooLarge(
+		RespondError(c, v2model.RequestTooLarge(
 			fmt.Sprintf("%s request body exceeds the %d-byte limit", surface, maxBody)))
 		return false
 	}
 	if len(bytes.TrimSpace(body)) == 0 {
-		RespondV2Error(c, v2model.ValidationFailed("request body is required",
+		RespondError(c, v2model.ValidationFailed("request body is required",
 			v2model.Issue{Message: hint}))
 		return false
 	}
@@ -85,7 +85,7 @@ func decodeStrictJSONBody(c *gin.Context, into any, hint string, maxBody int64, 
 		if field, ok := unknownFieldName(err); ok {
 			issue.Path = "/" + field
 		}
-		RespondV2Error(c, v2model.ValidationFailed("invalid request body", issue))
+		RespondError(c, v2model.ValidationFailed("invalid request body", issue))
 		return false
 	}
 	return true

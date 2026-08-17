@@ -56,7 +56,7 @@ const (
 	// GlobalServiceFiltered marks routes whose handlers pick their own
 	// space set INSIDE the service (the fan-out surfaces). The gate lets
 	// them through; the service intersects its space set with the ctx
-	// grant (V2Service.ListSpaces, spaceRefs).
+	// grant (Service.ListSpaces, spaceRefs).
 	GlobalServiceFiltered GlobalRouteClass = "service-filtered"
 	// GlobalScopedDenied marks routes deliberately refused for every
 	// granted key: POST /v2/spaces — a key that can mint spaces it then
@@ -154,10 +154,10 @@ var v2RouteAuthz = map[string]RouteAuthz{
 	routeKey(http.MethodGet, "/v2/docs/openapi.json"): {Verb: RouteVerbRead, Global: GlobalAuthExempt},
 }
 
-// V2RouteAuthz returns a copy of the authorization registry for the
+// RouteAuthzTable returns a copy of the authorization registry for the
 // conformance test in core/api/server (both directions: every registered
 // route classified, every classified route registered).
-func V2RouteAuthz() map[string]RouteAuthz {
+func RouteAuthzTable() map[string]RouteAuthz {
 	out := make(map[string]RouteAuthz, len(v2RouteAuthz))
 	for key, authz := range v2RouteAuthz {
 		out[key] = authz
@@ -192,7 +192,7 @@ func neededPerms(verb RouteVerb) string {
 //   - Perms == read on a write-classified route → 403 write_not_granted.
 //     A route missing a verb classification counts as write (fail closed).
 //
-// The route middleware gives the clean 403; V2Service.ensureSpace consults
+// The route middleware gives the clean 403; Service.ensureSpace consults
 // the ctx grant again as the backstop for a future route that forgets this
 // middleware or resolves ids unusually.
 func ensureSpaceGrant() gin.HandlerFunc {

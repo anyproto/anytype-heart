@@ -105,7 +105,7 @@ func TestV2RouteAuthzConformance(t *testing.T) {
 	// must add its enablement (and a flag assertion) to this fixture.
 	require.False(t, fx.v2CreateDisabled, "the conformance fixture must register the create routes")
 	require.False(t, fx.v2EditDisabled, "the conformance fixture must register the edit routes")
-	authz := apiv2.V2RouteAuthz()
+	authz := apiv2.RouteAuthzTable()
 
 	registered := map[string]bool{}
 	v2Routes := 0
@@ -228,7 +228,7 @@ func TestV2SpaceGrantGate(t *testing.T) {
 		registerGrantTestSpace(t, fx, "spaceA", "Work")
 
 		writes := 0
-		for key, authz := range apiv2.V2RouteAuthz() {
+		for key, authz := range apiv2.RouteAuthzTable() {
 			if authz.Verb != apiv2.RouteVerbWrite || authz.Global == apiv2.GlobalAuthExempt {
 				continue
 			}

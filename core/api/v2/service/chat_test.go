@@ -200,7 +200,7 @@ func TestV2GetChatMessages(t *testing.T) {
 		})
 
 		// when
-		got, err := fx.GetChatMessages(context.Background(), testSpaceId, testChatId, V2ChatMessagesQuery{After: "0090", Limit: 25})
+		got, err := fx.GetChatMessages(context.Background(), testSpaceId, testChatId, ChatMessagesQuery{After: "0090", Limit: 25})
 
 		// then
 		require.NoError(t, err)
@@ -229,7 +229,7 @@ func TestV2GetChatMessages(t *testing.T) {
 			Return(&pb.RpcChatGetMessagesResponse{Messages: []*model.ChatMessage{chatProtoMessage()}})
 
 		// when
-		got, err := fx.GetChatMessages(context.Background(), testSpaceId, testChatId, V2ChatMessagesQuery{Limit: 25, FullReactions: true})
+		got, err := fx.GetChatMessages(context.Background(), testSpaceId, testChatId, ChatMessagesQuery{Limit: 25, FullReactions: true})
 
 		// then
 		require.NoError(t, err)
@@ -260,7 +260,7 @@ func TestV2GetChatMessages(t *testing.T) {
 		})).Return(&pb.RpcChatGetMessagesResponse{Messages: protos})
 
 		// when
-		got, err := fx.GetChatMessages(context.Background(), testSpaceId, testChatId, V2ChatMessagesQuery{After: "0090", Limit: 2})
+		got, err := fx.GetChatMessages(context.Background(), testSpaceId, testChatId, ChatMessagesQuery{After: "0090", Limit: 2})
 
 		// then
 		require.NoError(t, err)
@@ -288,7 +288,7 @@ func TestV2GetChatMessages(t *testing.T) {
 			Return(&pb.RpcChatGetMessagesResponse{Messages: protos})
 
 		// when
-		got, err := fx.GetChatMessages(context.Background(), testSpaceId, testChatId, V2ChatMessagesQuery{Limit: 2})
+		got, err := fx.GetChatMessages(context.Background(), testSpaceId, testChatId, ChatMessagesQuery{Limit: 2})
 
 		// then
 		require.NoError(t, err)
@@ -309,7 +309,7 @@ func TestV2GetChatMessages(t *testing.T) {
 		}})
 
 		// when
-		_, err := fx.GetChatMessages(context.Background(), testSpaceId, "page1", V2ChatMessagesQuery{Limit: 25})
+		_, err := fx.GetChatMessages(context.Background(), testSpaceId, "page1", ChatMessagesQuery{Limit: 25})
 
 		// then
 		requireV2Code(t, err, v2model.CodeValidationFailed)
@@ -318,7 +318,7 @@ func TestV2GetChatMessages(t *testing.T) {
 
 	t.Run("an unknown chat is a 404", func(t *testing.T) {
 		fx := newV2Fixture(t)
-		_, err := fx.GetChatMessages(context.Background(), testSpaceId, "nope", V2ChatMessagesQuery{Limit: 25})
+		_, err := fx.GetChatMessages(context.Background(), testSpaceId, "nope", ChatMessagesQuery{Limit: 25})
 		requireV2Code(t, err, v2model.CodeNotFound)
 	})
 }
@@ -732,7 +732,7 @@ func TestV2ToggleChatReaction(t *testing.T) {
 	})
 
 	t.Run("dry run without an account identity omits added and warns", func(t *testing.T) {
-		// given: V2Service documents accountId as possibly empty — with no
+		// given: Service documents accountId as possibly empty — with no
 		// identity NOTHING matches the stored reactions, so asserting
 		// added=true would be wrong whenever the caller already reacted
 		mwMock := mock_apicore.NewMockClientCommands(t)
@@ -746,7 +746,7 @@ func TestV2ToggleChatReaction(t *testing.T) {
 			bundle.RelationKeyId:             domain.String(testChatId),
 			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_chatDerived)),
 		}})
-		svc := NewV2Service(mwMock, nil, nil, nil, nil, store, objectstore.TestTechSpaceId, "" /* no accountId */)
+		svc := NewService(mwMock, nil, nil, nil, nil, store, objectstore.TestTechSpaceId, "" /* no accountId */)
 		msg := chatProtoMessage()
 		msg.Reactions = &model.ChatMessageReactions{Reactions: map[string]*model.ChatMessageReactionsIdentityList{
 			"👍": {Ids: []string{"someoneElse"}},

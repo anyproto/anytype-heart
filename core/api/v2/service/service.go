@@ -25,12 +25,12 @@ import (
 // makes a v2 line greppable.
 var log = logging.Logger("api-v2-service")
 
-// V2Service implements the API v2 endpoints. It reads objects via the live
+// Service implements the API v2 endpoints. It reads objects via the live
 // smartblock state (apicore.ObjectReader), creates them via the snapshot
 // create path (apicore.ObjectCreator), and lists via the objectstore — per
 // APIV2.md §8, not via ObjectShow and not via lagging store snapshots for
 // object content.
-type V2Service struct {
+type Service struct {
 	mw      apicore.ClientCommands
 	reader  apicore.ObjectReader
 	creator apicore.ObjectCreator
@@ -48,13 +48,13 @@ type V2Service struct {
 	accountId string
 }
 
-// NewV2Service creates the API v2 service. creator may be nil when only the
+// NewService creates the API v2 service. creator may be nil when only the
 // read surface is served (the router skips the create routes then); mutator
 // may be nil when the edit surface is not served; provenance may be nil
 // (object DELETE then refuses everything — fail closed). accountId may be
 // empty (degraded placeholder substitution only).
-func NewV2Service(mw apicore.ClientCommands, reader apicore.ObjectReader, creator apicore.ObjectCreator, mutator apicore.ObjectMutator, provenance apicore.ObjectProvenance, store objectstore.ObjectStore, techSpaceId, accountId string) *V2Service {
-	return &V2Service{mw: mw, reader: reader, creator: creator, mutator: mutator, provenance: provenance, store: store, techSpaceId: techSpaceId, accountId: accountId}
+func NewService(mw apicore.ClientCommands, reader apicore.ObjectReader, creator apicore.ObjectCreator, mutator apicore.ObjectMutator, provenance apicore.ObjectProvenance, store objectstore.ObjectStore, techSpaceId, accountId string) *Service {
+	return &Service{mw: mw, reader: reader, creator: creator, mutator: mutator, provenance: provenance, store: store, techSpaceId: techSpaceId, accountId: accountId}
 }
 
 // ensureSpaceGranted is the space half of the service-level backstop of the
@@ -102,7 +102,7 @@ func ensureWriteGranted(ctx context.Context) error {
 // which deliberately treats the tech space as an ordinary space id: a
 // scoped key must not reach the tech space unless it was explicitly
 // granted.
-func (s *V2Service) ensureSpace(ctx context.Context, spaceId string) error {
+func (s *Service) ensureSpace(ctx context.Context, spaceId string) error {
 	if spaceId == "" {
 		return v2model.NotFound("space id is required")
 	}
@@ -127,7 +127,7 @@ func (s *V2Service) ensureSpace(ctx context.Context, spaceId string) error {
 // write_not_granted, and a read-only key is refused before anything
 // resolves. (ensureSpace re-runs the space check; the duplication is the
 // price of keeping each helper self-sufficiently fail-closed.)
-func (s *V2Service) ensureSpaceWrite(ctx context.Context, spaceId string) error {
+func (s *Service) ensureSpaceWrite(ctx context.Context, spaceId string) error {
 	if err := ensureSpaceGranted(ctx, spaceId); err != nil {
 		return err
 	}

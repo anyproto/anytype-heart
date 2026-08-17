@@ -49,7 +49,7 @@ type ApiSessionEntry struct {
 type Server struct {
 	engine    *gin.Engine
 	service   *service.Service
-	v2Service *v2service.V2Service
+	v2Service *v2service.Service
 	// v2CreateDisabled skips the Phase-2 create routes when no creator
 	// dependency was provided (read-only construction, e.g. in tests).
 	v2CreateDisabled bool
@@ -127,7 +127,7 @@ func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService,
 		docs:       docs,
 	}
 	if v2Deps.Reader != nil && v2Deps.Store != nil {
-		s.v2Service = v2service.NewV2Service(mw, v2Deps.Reader, v2Deps.Creator, v2Deps.Mutator, v2Deps.Provenance, v2Deps.Store, techSpaceId, v2Deps.AccountId)
+		s.v2Service = v2service.NewService(mw, v2Deps.Reader, v2Deps.Creator, v2Deps.Mutator, v2Deps.Provenance, v2Deps.Store, techSpaceId, v2Deps.AccountId)
 		s.v2CreateDisabled = v2Deps.Creator == nil
 		s.v2EditDisabled = v2Deps.Mutator == nil
 	}

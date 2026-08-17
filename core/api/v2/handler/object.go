@@ -11,7 +11,7 @@ import (
 	v2service "github.com/anyproto/anytype-heart/core/api/v2/service"
 )
 
-// GetObjectV2Handler reads one object as a flat AnyBlock document
+// GetObjectHandler reads one object as a flat AnyBlock document
 //
 //	@Summary		Get object (AnyBlock)
 //	@Description	Returns the object as a flat AnyBlock JSON document read from the live editor state, with an advisory etag (C7) in the envelope and the ETag header. Supports include=properties,blocks; outline=true (block skeleton with compact labels); block={blockId} (one contiguous subtree, marked "subtree": true — a partial body no write path accepts); ids=compact|full (the two document shapes, C4 — compact is the edit read where machine-minted block ids relabel to short suffixes, full is the export read with full ids everywhere: the shape that PUTs back). Object refs are always full inline. format=anyblock|md (markdown is read-only).
@@ -30,9 +30,9 @@ import (
 //	@Failure		404			{object}	v2model.Error	"Object or space not found"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/objects/{object_id} [get]
-func GetObjectV2Handler(s *v2service.V2Service) gin.HandlerFunc {
+func GetObjectHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		q := v2service.V2ObjectQuery{
+		q := v2service.ObjectQuery{
 			Include: c.Query("include"),
 			Outline: c.Query("outline") == "true",
 			Block:   c.Query("block"),
@@ -41,7 +41,7 @@ func GetObjectV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 		}
 		body, etag, err := s.GetObject(c.Request.Context(), c.Param("space_id"), c.Param("object_id"), q)
 		if err != nil {
-			RespondV2Error(c, err)
+			RespondError(c, err)
 			return
 		}
 		c.Header("ETag", v2service.QuoteEtag(etag))
@@ -49,7 +49,7 @@ func GetObjectV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 	}
 }
 
-// ListObjectsV2Handler lists objects as minimal rows
+// ListObjectsHandler lists objects as minimal rows
 //
 //	@Summary		List objects (minimal rows)
 //	@Description	Returns paginated minimal rows: id, name, type (a type key) plus the property values requested via fields= (comma-separated property keys). Type objects are never embedded (C5).
@@ -63,7 +63,7 @@ func GetObjectV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Success		200			{object}	v2model.ListResponse[v2model.ObjectRow]	"Minimal object rows"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/objects [get]
-func ListObjectsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
+func ListObjectsHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		offset := c.GetInt(pagination.QueryParamOffset)
 		limit := c.GetInt(pagination.QueryParamLimit)
@@ -79,7 +79,7 @@ func ListObjectsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 
 		rows, total, hasMore, err := s.ListObjects(c.Request.Context(), c.Param("space_id"), fields, offset, limit)
 		if err != nil {
-			RespondV2Error(c, err)
+			RespondError(c, err)
 			return
 		}
 		c.JSON(http.StatusOK, v2model.NewListResponse(rows, total, offset, limit, hasMore,

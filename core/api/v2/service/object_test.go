@@ -33,7 +33,7 @@ const (
 )
 
 type v2Fixture struct {
-	*V2Service
+	*Service
 	mwMock         *mock_apicore.MockClientCommands
 	readerMock     *mock_apicore.MockObjectReader
 	creatorMock    *mock_apicore.MockObjectCreator
@@ -69,7 +69,7 @@ func newV2FixtureBare(t *testing.T) *v2Fixture {
 			return "drv-ot-" + string(key), nil
 		}).Maybe()
 	return &v2Fixture{
-		V2Service:      NewV2Service(mwMock, readerMock, creatorMock, mutatorMock, provenanceMock, objectStore, objectstore.TestTechSpaceId, testAccountId),
+		Service:        NewService(mwMock, readerMock, creatorMock, mutatorMock, provenanceMock, objectStore, objectstore.TestTechSpaceId, testAccountId),
 		mwMock:         mwMock,
 		readerMock:     readerMock,
 		creatorMock:    creatorMock,
@@ -170,7 +170,7 @@ func TestV2OutlineBlockRoundTrip(t *testing.T) {
 	fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(testObjectReadLongIds(), nil).Times(2)
 
 	// outline read yields compact block labels (not the full ids)
-	outlineBody, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", V2ObjectQuery{Outline: true})
+	outlineBody, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", ObjectQuery{Outline: true})
 	require.NoError(t, err)
 	entries := decodeBody(t, outlineBody)["outline"].([]any)
 	require.Len(t, entries, 4)
@@ -181,7 +181,7 @@ func TestV2OutlineBlockRoundTrip(t *testing.T) {
 	// the label round-trips: ?block=<label> returns the parent + its child,
 	// under the SAME labels (the subtree read is the edit shape too, so the
 	// ids an agent sees never change spelling between the two calls)
-	blockBody, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", V2ObjectQuery{Block: label})
+	blockBody, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", ObjectQuery{Block: label})
 	require.NoError(t, err, "the outline label must resolve in ?block=")
 	blocks := decodeBody(t, blockBody)["blocks"].([]any)
 	require.Len(t, blocks, 2, "subtree = parent + child, not the sibling")
@@ -191,7 +191,7 @@ func TestV2OutlineBlockRoundTrip(t *testing.T) {
 	// and the export shape still spells them in full, so a GET body PUTs
 	// back as a minimal diff (APIV2.md §3(b))
 	fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(testObjectReadLongIds(), nil).Once()
-	fullBody, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", V2ObjectQuery{Ids: V2IdsFull})
+	fullBody, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", ObjectQuery{Ids: V2IdsFull})
 	require.NoError(t, err)
 	fullBlocks := decodeBody(t, fullBody)["blocks"].([]any)
 	require.Len(t, fullBlocks, 4)
@@ -239,7 +239,7 @@ func TestV2MixedIdPopulationsRoundTrip(t *testing.T) {
 	// the default read: minted ids relabel, the others serve verbatim — and
 	// the served document stays schema-valid net of the v2 envelope
 	// additions every write path strips (etag/warnings — normalizeCreateBody)
-	body, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", V2ObjectQuery{})
+	body, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", ObjectQuery{})
 	require.NoError(t, err)
 	stripped := decodeBody(t, body)
 	delete(stripped, "etag")
@@ -267,7 +267,7 @@ func TestV2MixedIdPopulationsRoundTrip(t *testing.T) {
 		{ref: "home-1", wantFirst: "pages-roadmap-home-1", wantLen: 1},               // readable, unique suffix
 		{ref: "b1", wantFirst: "b1", wantLen: 1},                                     // short id, exact
 	} {
-		sub, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", V2ObjectQuery{Block: tc.ref})
+		sub, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", ObjectQuery{Block: tc.ref})
 		require.NoErrorf(t, err, "?block=%s must resolve", tc.ref)
 		blocks := decodeBody(t, sub)["blocks"].([]any)
 		require.Lenf(t, blocks, tc.wantLen, "?block=%s subtree size", tc.ref)
@@ -307,7 +307,7 @@ func TestV2BlockRefStoredIdFallback(t *testing.T) {
 	fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(trapRead(), nil).Times(2)
 
 	// the full stored id resolves to ITS block, not the earlier suffix decoy
-	sub, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", V2ObjectQuery{Block: mintedId})
+	sub, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", ObjectQuery{Block: mintedId})
 	require.NoError(t, err)
 	blocks := decodeBody(t, sub)["blocks"].([]any)
 	require.Len(t, blocks, 1)
@@ -316,7 +316,7 @@ func TestV2BlockRefStoredIdFallback(t *testing.T) {
 	assert.Equal(t, "target", block["text"])
 
 	// the root's stored id is never served — 404, not a silent scan hit
-	_, _, err = fx.GetObject(context.Background(), testSpaceId, "obj1", V2ObjectQuery{Block: "obj1"})
+	_, _, err = fx.GetObject(context.Background(), testSpaceId, "obj1", ObjectQuery{Block: "obj1"})
 	apiErr := v2Err(t, err)
 	assert.Equal(t, http.StatusNotFound, apiErr.Status)
 }
@@ -377,7 +377,7 @@ func TestV2GetObjectCompactBody(t *testing.T) {
 	fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(testObjectRead(), nil)
 
 	// when
-	body, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", V2ObjectQuery{})
+	body, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", ObjectQuery{})
 
 	// then
 	require.NoError(t, err)
@@ -415,7 +415,7 @@ func TestV2GetObjectIdShapes(t *testing.T) {
 		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(testObjectReadWithRef(), nil)
 
 		// when
-		body, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", V2ObjectQuery{})
+		body, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", ObjectQuery{})
 
 		// then
 		require.NoError(t, err)
@@ -437,7 +437,7 @@ func TestV2GetObjectIdShapes(t *testing.T) {
 		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(testObjectReadWithRef(), nil)
 
 		// when
-		body, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", V2ObjectQuery{Ids: V2IdsFull})
+		body, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", ObjectQuery{Ids: V2IdsFull})
 
 		// then
 		require.NoError(t, err)
@@ -466,7 +466,7 @@ func TestV2GetObject(t *testing.T) {
 		wantEtag := ComputeEtag([]string{"headA", "headB"})
 
 		// when
-		body, etag, err := fx.GetObject(context.Background(), testSpaceId, "obj1", V2ObjectQuery{})
+		body, etag, err := fx.GetObject(context.Background(), testSpaceId, "obj1", ObjectQuery{})
 
 		// then
 		require.NoError(t, err)
@@ -488,7 +488,7 @@ func TestV2GetObject(t *testing.T) {
 		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(testObjectRead(), nil)
 
 		// when
-		body, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", V2ObjectQuery{Include: "properties"})
+		body, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", ObjectQuery{Include: "properties"})
 
 		// then
 		require.NoError(t, err)
@@ -503,7 +503,7 @@ func TestV2GetObject(t *testing.T) {
 		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(testObjectRead(), nil)
 
 		// when
-		body, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", V2ObjectQuery{Include: "blocks"})
+		body, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", ObjectQuery{Include: "blocks"})
 
 		// then
 		require.NoError(t, err)
@@ -524,7 +524,7 @@ func TestV2GetObject(t *testing.T) {
 		}
 
 		// when
-		body, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", V2ObjectQuery{Outline: true})
+		body, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", ObjectQuery{Outline: true})
 
 		// then
 		require.NoError(t, err)
@@ -544,7 +544,7 @@ func TestV2GetObject(t *testing.T) {
 		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(testObjectRead(), nil)
 
 		// when
-		body, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", V2ObjectQuery{Outline: true, Include: "properties"})
+		body, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", ObjectQuery{Outline: true, Include: "properties"})
 
 		// then
 		require.NoError(t, err)
@@ -559,7 +559,7 @@ func TestV2GetObject(t *testing.T) {
 		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(testObjectRead(), nil)
 
 		// when
-		body, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", V2ObjectQuery{Block: "p1"})
+		body, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", ObjectQuery{Block: "p1"})
 
 		// then
 		require.NoError(t, err)
@@ -576,7 +576,7 @@ func TestV2GetObject(t *testing.T) {
 		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(testObjectRead(), nil)
 
 		// when
-		_, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", V2ObjectQuery{Block: "nope"})
+		_, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", ObjectQuery{Block: "nope"})
 
 		// then
 		var v2Err *v2model.Error
@@ -598,7 +598,7 @@ func TestV2GetObject(t *testing.T) {
 		}).Return(&pb.RpcObjectExportResponse{Result: "# Section\n\nparent\n"})
 
 		// when
-		body, etag, err := fx.GetObject(context.Background(), testSpaceId, "obj1", V2ObjectQuery{Format: "md"})
+		body, etag, err := fx.GetObject(context.Background(), testSpaceId, "obj1", ObjectQuery{Format: "md"})
 
 		// then
 		require.NoError(t, err)
@@ -617,7 +617,7 @@ func TestV2GetObject(t *testing.T) {
 			Return(apicore.ObjectRead{}, assert.AnError)
 
 		// when
-		_, _, err := fx.GetObject(context.Background(), testSpaceId, "gone", V2ObjectQuery{})
+		_, _, err := fx.GetObject(context.Background(), testSpaceId, "gone", ObjectQuery{})
 
 		// then
 		require.ErrorIs(t, err, assert.AnError)
@@ -630,7 +630,7 @@ func TestV2GetObject(t *testing.T) {
 			Return(apicore.ObjectRead{}, treestorage.ErrUnknownTreeId)
 
 		// when
-		_, _, err := fx.GetObject(context.Background(), testSpaceId, "gone", V2ObjectQuery{})
+		_, _, err := fx.GetObject(context.Background(), testSpaceId, "gone", ObjectQuery{})
 
 		// then
 		var apiErr *v2model.Error

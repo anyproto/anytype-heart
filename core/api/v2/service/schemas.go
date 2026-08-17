@@ -164,7 +164,7 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 }
 
 // SchemaIndex implements GET /v2/schemas.
-func (s *V2Service) SchemaIndex() v2model.SchemaIndex {
+func (s *Service) SchemaIndex() v2model.SchemaIndex {
 	kinds := make([]string, 0, len(v2SchemaKinds))
 	for kind := range v2SchemaKinds {
 		kinds = append(kinds, kind)
@@ -189,7 +189,7 @@ func (s *V2Service) SchemaIndex() v2model.SchemaIndex {
 }
 
 // SchemaKind implements GET /v2/schemas/{kind}.
-func (s *V2Service) SchemaKind(kind string) (v2model.SchemaEntry, error) {
+func (s *Service) SchemaKind(kind string) (v2model.SchemaEntry, error) {
 	entry, ok := v2SchemaKinds[kind]
 	if !ok {
 		kinds := make([]string, 0, len(v2SchemaKinds))

@@ -22,7 +22,7 @@ func respondV2Edit(c *gin.Context, result *v2model.EditResult) {
 	c.JSON(http.StatusOK, result)
 }
 
-// PatchObjectV2Handler applies a batch of edit ops atomically
+// PatchObjectHandler applies a batch of edit ops atomically
 //
 //	@Summary		Edit object (batched ops)
 //	@Description	Applies the closed, id-addressed op set — setProperties, updateBlock, replaceSubtree, insertBlocks, moveBlock, deleteBlock, replaceText, setCell, updateView, insertView, moveView, deleteView, addItems, removeItems — atomically (one change set). EVERY id slot resolves the same way, in references and in payloads alike: a full id or a unique suffix, so a document echoed back from a read keeps its identity instead of being renamed. An id always names an EXISTING element: one that matches nothing is refused, and the ops that only ever create (insertBlocks) publish no id slot at all — omit it and the server mints one, reported in createdBlocks under the payload path that produced it (nested row, column and cell-descendant slots included; minted view ids land in createdViews). replaceText's id is itself optional: omitted, find doubles as the locator and must identify exactly ONE block — zero or several matching blocks refuse (the ambiguity refusal lists candidate ids), and resolution runs per-op under the object lock, so a later op resolves against the earlier ops' edits. updateBlock and deleteBlock take the same locator as `match` (exact text from the block) instead of an id — one of the two, never both, and the same one-match-or-refuse rule, which on deleteBlock is what stops a locator from removing the wrong subtree. The post-op document must satisfy the AnyBlock semantic checks (SPEC §12); any violation rejects the whole PATCH with path-addressed errors. If-Match is advisory (C7): absent = last-write-wins, stale = 409 with the current etag. Responds with the new etag, the minted-block id map keyed by payload position, and diffStats. Honors ?dry_run=true (C9). GET /v2/schemas/ops/{op} documents each op.
@@ -40,7 +40,7 @@ func respondV2Edit(c *gin.Context, result *v2model.EditResult) {
 //	@Failure		409			{object}	v2model.Error		"Stale If-Match (etag_mismatch)"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/objects/{object_id} [patch]
-func PatchObjectV2Handler(s *v2service.V2Service) gin.HandlerFunc {
+func PatchObjectHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		body := readV2Body(c)
 		if body == nil {
@@ -48,14 +48,14 @@ func PatchObjectV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 		}
 		result, err := s.PatchObject(c.Request.Context(), c.Param("space_id"), c.Param("object_id"), body, c.GetHeader("If-Match"), isV2DryRun(c))
 		if err != nil {
-			RespondV2Error(c, err)
+			RespondError(c, err)
 			return
 		}
 		respondV2Edit(c, result)
 	}
 }
 
-// DeleteObjectV2Handler archives an object the calling key created
+// DeleteObjectHandler archives an object the calling key created
 //
 //	@Summary		Delete object (archive, own output only)
 //	@Description	Archives the object (moves it to Bin — reversible in the Anytype app; hard delete is a deferred ?permanent extension). Deletion is permitted ONLY for objects this API key created: provenance is recorded immutably on the object's creating change at creation time, so objects created before this route shipped, objects created in the Anytype app, imports and other members' objects all refuse with 403 not_created_by_this_key — for every key, permanently (fail-closed, no backfill). Only user content is deletable (pages, templates, files, chats); system objects refuse with 403, and types and properties refuse with a steer to their own DELETE routes. ?dry_run=true is the deletability probe: it verifies existence, grant and the provenance verdict without writing — archive-time restriction checks run only on the real call, so a deletable verdict can rarely still meet a 403. Honors Idempotency-Key; re-deleting an archived object is a 200 no-op with a warning.
@@ -71,11 +71,11 @@ func PatchObjectV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Failure		404			{object}	v2model.Error			"Object or space not found"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/objects/{object_id} [delete]
-func DeleteObjectV2Handler(s *v2service.V2Service) gin.HandlerFunc {
+func DeleteObjectHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		result, err := s.DeleteObject(c.Request.Context(), c.Param("space_id"), c.Param("object_id"), isV2DryRun(c))
 		if err != nil {
-			RespondV2Error(c, err)
+			RespondError(c, err)
 			return
 		}
 		c.JSON(http.StatusOK, result)

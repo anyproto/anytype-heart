@@ -57,7 +57,7 @@ type docCreateOptions struct {
 }
 
 // CreateObject implements POST /v2/spaces/{spaceId}/objects.
-func (s *V2Service) CreateObject(ctx context.Context, spaceId string, body []byte, dryRun bool) (*v2model.CreateResult, error) {
+func (s *Service) CreateObject(ctx context.Context, spaceId string, body []byte, dryRun bool) (*v2model.CreateResult, error) {
 	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
 	}
@@ -79,7 +79,7 @@ func (s *V2Service) CreateObject(ctx context.Context, spaceId string, body []byt
 // CreateTemplate implements POST /v2/spaces/{spaceId}/templates: an AnyBlock
 // document with templateFor, routed through the generic object-create path
 // (no create-from-body template RPC exists — APIV2.md Phase 2).
-func (s *V2Service) CreateTemplate(ctx context.Context, spaceId string, body []byte, dryRun bool) (*v2model.CreateResult, error) {
+func (s *Service) CreateTemplate(ctx context.Context, spaceId string, body []byte, dryRun bool) (*v2model.CreateResult, error) {
 	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
 	}
@@ -92,7 +92,7 @@ func (s *V2Service) CreateTemplate(ctx context.Context, spaceId string, body []b
 // and rides the same single-change-set create as an explicit blocks array —
 // dry runs validate it, no half-built object on failure, and the C8 result
 // cache replays it safely (the §7.2 two-change-set caveats are gone).
-func (s *V2Service) createFromShortcut(ctx context.Context, spaceId string, fields map[string]json.RawMessage, dryRun bool) (*v2model.CreateResult, error) {
+func (s *Service) createFromShortcut(ctx context.Context, spaceId string, fields map[string]json.RawMessage, dryRun bool) (*v2model.CreateResult, error) {
 	for key := range fields {
 		if !shortcutKeys[key] {
 			return nil, v2model.ValidationFailed("unknown field in create shortcut",
@@ -264,7 +264,7 @@ func warnLabelShapedIds(body []byte) []v2model.Issue {
 // createFromDocument is the shared full-document create path: structural
 // validation → referential validation → Unmarshal with create-missing
 // resolvers → snapshot create (one change set) → etag read-back.
-func (s *V2Service) createFromDocument(ctx context.Context, spaceId string, body []byte, opts docCreateOptions) (*v2model.CreateResult, error) {
+func (s *Service) createFromDocument(ctx context.Context, spaceId string, body []byte, opts docCreateOptions) (*v2model.CreateResult, error) {
 	// 0. envelope normalization: a pasted read body creates a copy instead of
 	// 400ing on its own etag
 	body, err := normalizeCreateBody(body)
@@ -371,7 +371,7 @@ func (s *V2Service) createFromDocument(ctx context.Context, spaceId string, body
 // contract: path-addressed validation_failed, or version_unsupported when
 // the document was produced by a newer format version (§8: on create an
 // unparseable version must fail the write).
-func (s *V2Service) rejectInvalidDocument(body []byte) error {
+func (s *Service) rejectInvalidDocument(body []byte) error {
 	err := anyblockjson.Validate(body)
 	if err == nil {
 		return nil
@@ -406,7 +406,7 @@ func mapUnmarshalError(body []byte, err error) error {
 // POST /properties). spellings maps canonicalized keys back to the caller's
 // own spelling (canonicalizeDocumentKeys), so refusals address the request
 // that was actually sent.
-func (s *V2Service) validateDocumentRefs(ctx context.Context, spaceId string, envelope *docEnvelope, opts docCreateOptions, spellings map[string]string) error {
+func (s *Service) validateDocumentRefs(ctx context.Context, spaceId string, envelope *docEnvelope, opts docCreateOptions, spellings map[string]string) error {
 	switch envelope.Kind {
 	case "", "page", "template":
 	case "objectType":
@@ -480,7 +480,7 @@ func (s *V2Service) validateDocumentRefs(ctx context.Context, spaceId string, en
 // refuseRemovedType is the type-namespace removal gate for one canonicalized
 // type slot (§8.41). Fails closed on any probe error: an unverifiable
 // removal set must not read as "nothing was removed".
-func (s *V2Service) refuseRemovedType(ctx context.Context, spaceId, typeKey, path string) error {
+func (s *Service) refuseRemovedType(ctx context.Context, spaceId, typeKey, path string) error {
 	entries, err := s.liveTypes(spaceId)
 	if err != nil {
 		return err
@@ -534,7 +534,7 @@ func (s *V2Service) refuseRemovedType(ctx context.Context, spaceId, typeKey, pat
 // spellings maps a canonicalized key back to the caller's spelling —
 // refusal paths must address the request as sent, not the rewrite
 // (§8.41-10).
-func (s *V2Service) validatePropertyKeys(ctx context.Context, spaceId string, props map[string]json.RawMessage, spellings map[string]string) error {
+func (s *Service) validatePropertyKeys(ctx context.Context, spaceId string, props map[string]json.RawMessage, spellings map[string]string) error {
 	if len(props) == 0 {
 		return nil
 	}

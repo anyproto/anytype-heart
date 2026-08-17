@@ -2,7 +2,7 @@ package v2handler
 
 // discovery_test.go — handler-layer pins for the discovery routes. The
 // GetType ?ids= regression shipped AT THIS LAYER (the handler hardcoded
-// V2ObjectQuery{}), while the only test lived at the service layer — a
+// ObjectQuery{}), while the only test lived at the service layer — a
 // handler that stops threading the query keeps every service test green.
 
 import (
@@ -49,10 +49,10 @@ func typeReadWithMintedIds() apicore.ObjectRead {
 	}
 }
 
-func TestGetTypeV2Handler(t *testing.T) {
+func TestGetTypeHandler(t *testing.T) {
 	newTypeFixture := func(t *testing.T) *v2HandlerFixture {
 		fx := newV2HandlerFixture(t)
-		fx.router.GET("/v2/spaces/:space_id/types/:type", GetTypeV2Handler(fx.svc))
+		fx.router.GET("/v2/spaces/:space_id/types/:type", GetTypeHandler(fx.svc))
 		fx.store.AddObjects(t, "space1", []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:             domain.String("type-task"),

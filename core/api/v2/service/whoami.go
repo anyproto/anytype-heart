@@ -26,7 +26,7 @@ import (
 // mirror starts lying to the agents that plan against it. The anti-drift
 // test in core/api/server pins that this answer and the gate's decisions
 // cannot disagree for the same key.
-func (s *V2Service) Whoami(ctx context.Context) (v2model.WhoamiResponse, error) {
+func (s *Service) Whoami(ctx context.Context) (v2model.WhoamiResponse, error) {
 	info, ok := util.ApiKeyInfoFromCtx(ctx)
 	if !ok {
 		// unreachable behind the shared auth middleware; fail closed rather
@@ -101,7 +101,7 @@ func (s *V2Service) Whoami(ctx context.Context) (v2model.WhoamiResponse, error) 
 //
 // Both maps are keyed by the FULL space id, which is what a grant holds:
 // grants are keyed by space id and this method must not change that.
-func (s *V2Service) resolveGrantedSpaceNames(ctx context.Context, grant *util.ApiGrant) (names, refs map[string]string, err error) {
+func (s *Service) resolveGrantedSpaceNames(ctx context.Context, grant *util.ApiGrant) (names, refs map[string]string, err error) {
 	names = map[string]string{}
 	if grant == nil || len(grant.Spaces) == 0 {
 		return names, map[string]string{}, nil

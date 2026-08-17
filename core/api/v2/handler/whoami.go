@@ -8,14 +8,14 @@ import (
 	v2service "github.com/anyproto/anytype-heart/core/api/v2/service"
 )
 
-// WhoamiV2Handler introspects the API key
+// WhoamiHandler introspects the API key
 //
 // whoami is DISCOVERY, not enforcement, and the body is derived from the
 // SAME grant record the space-grant gate reads — the request-context
 // carriers ensureAuthenticated populated — never computed separately: a
 // second derivation path is how this mirror and the gate drift apart and
 // the mirror starts lying to agents that shape their tool surface from it
-// (the derivation itself lives in V2Service.Whoami). The credential is read
+// (the derivation itself lives in Service.Whoami). The credential is read
 // ONLY from the Authorization header, by the shared auth middleware; a
 // token is never accepted as a query or body parameter — that is what
 // would turn this endpoint into the enumeration oracle RFC 7662 §4 warns
@@ -34,11 +34,11 @@ import (
 //	@Failure		403	{object}	util.ForbiddenError		"Key scope does not admit the JSON API (e.g. Limited) — the shared scope gate's envelope"
 //	@Security		bearerauth
 //	@Router			/v2/auth/whoami [get]
-func WhoamiV2Handler(s *v2service.V2Service) gin.HandlerFunc {
+func WhoamiHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		resp, err := s.Whoami(c.Request.Context())
 		if err != nil {
-			RespondV2Error(c, err)
+			RespondError(c, err)
 			return
 		}
 		c.JSON(http.StatusOK, resp)

@@ -1576,7 +1576,7 @@ func TestPatchObject(t *testing.T) {
 				`{"op":"deleteBlock","id":"blockChild1"}`), "", false)
 
 		// M2a: the refusal is PERMANENT, so it must be the C6 403 — not the
-		// bare error RespondV2Error turns into a retryable 500
+		// bare error RespondError turns into a retryable 500
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusForbidden, apiErr.Status)
 		assert.Equal(t, v2model.CodeForbidden, apiErr.Code)
@@ -2177,7 +2177,7 @@ func TestApplierRenderCounts(t *testing.T) {
 		edit, err := editFromRead("obj1", editRead(t, doc))
 		require.NoError(t, err)
 		resolvers := fx.newCreatingResolvers(ctx, testSpaceId, false)
-		return newV2StateApplier(fx.V2Service, testSpaceId, "obj1", edit.SbType, edit.State, resolvers)
+		return newV2StateApplier(fx.Service, testSpaceId, "obj1", edit.SbType, edit.State, resolvers)
 	}
 
 	t.Run("a replaceText batch renders the document exactly twice", func(t *testing.T) {

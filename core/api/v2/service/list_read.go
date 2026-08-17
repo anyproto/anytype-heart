@@ -65,29 +65,29 @@ type listTarget struct {
 }
 
 // GetSetViews implements GET /v2/spaces/{spaceId}/sets/{setId}/views.
-func (s *V2Service) GetSetViews(ctx context.Context, spaceId, setId string, offset, limit int) ([]json.RawMessage, int, bool, error) {
+func (s *Service) GetSetViews(ctx context.Context, spaceId, setId string, offset, limit int) ([]json.RawMessage, int, bool, error) {
 	return s.listViews(ctx, spaceId, setId, listKindSet, offset, limit)
 }
 
 // GetCollectionViews implements GET /v2/spaces/{spaceId}/collections/{collectionId}/views.
-func (s *V2Service) GetCollectionViews(ctx context.Context, spaceId, collectionId string, offset, limit int) ([]json.RawMessage, int, bool, error) {
+func (s *Service) GetCollectionViews(ctx context.Context, spaceId, collectionId string, offset, limit int) ([]json.RawMessage, int, bool, error) {
 	return s.listViews(ctx, spaceId, collectionId, listKindCollection, offset, limit)
 }
 
 // GetSetObjects implements GET /v2/spaces/{spaceId}/sets/{setId}/objects.
-func (s *V2Service) GetSetObjects(ctx context.Context, spaceId, setId, viewRef string, fields []string, offset, limit int) ([]v2model.ObjectRow, int, bool, []v2model.Issue, error) {
+func (s *Service) GetSetObjects(ctx context.Context, spaceId, setId, viewRef string, fields []string, offset, limit int) ([]v2model.ObjectRow, int, bool, []v2model.Issue, error) {
 	return s.listObjects(ctx, spaceId, setId, listKindSet, viewRef, fields, offset, limit)
 }
 
 // GetCollectionObjects implements GET /v2/spaces/{spaceId}/collections/{collectionId}/objects.
-func (s *V2Service) GetCollectionObjects(ctx context.Context, spaceId, collectionId, viewRef string, fields []string, offset, limit int) ([]v2model.ObjectRow, int, bool, []v2model.Issue, error) {
+func (s *Service) GetCollectionObjects(ctx context.Context, spaceId, collectionId, viewRef string, fields []string, offset, limit int) ([]v2model.ObjectRow, int, bool, []v2model.Issue, error) {
 	return s.listObjects(ctx, spaceId, collectionId, listKindCollection, viewRef, fields, offset, limit)
 }
 
 // readListTarget reads the addressed object live and enforces the layout ↔
 // route contract: the sets route requires a set, the collections route a
 // collection, and a wrong-layout target is a 400 naming the other route.
-func (s *V2Service) readListTarget(ctx context.Context, spaceId, listId string, want listKind) (listTarget, error) {
+func (s *Service) readListTarget(ctx context.Context, spaceId, listId string, want listKind) (listTarget, error) {
 	if err := s.ensureSpace(ctx, spaceId); err != nil {
 		return listTarget{}, err
 	}
@@ -142,7 +142,7 @@ func (s *V2Service) readListTarget(ctx context.Context, spaceId, listId string, 
 // listViews returns the object's views as raw §6.2 view objects — the same
 // shape the AnyBlock document carries them in (C2: one vocabulary), with
 // option names resolved and object refs full.
-func (s *V2Service) listViews(ctx context.Context, spaceId, listId string, want listKind, offset, limit int) ([]json.RawMessage, int, bool, error) {
+func (s *Service) listViews(ctx context.Context, spaceId, listId string, want listKind, offset, limit int) ([]json.RawMessage, int, bool, error) {
 	target, err := s.readListTarget(ctx, spaceId, listId, want)
 	if err != nil {
 		return nil, 0, false, err
@@ -179,7 +179,7 @@ func (s *V2Service) listViews(ctx context.Context, spaceId, listId string, want 
 
 // listObjects executes the set query / collection membership, optionally
 // through one stored view's filters and sorts.
-func (s *V2Service) listObjects(ctx context.Context, spaceId, listId string, want listKind, viewRef string, fields []string, offset, limit int) ([]v2model.ObjectRow, int, bool, []v2model.Issue, error) {
+func (s *Service) listObjects(ctx context.Context, spaceId, listId string, want listKind, viewRef string, fields []string, offset, limit int) ([]v2model.ObjectRow, int, bool, []v2model.Issue, error) {
 	target, err := s.readListTarget(ctx, spaceId, listId, want)
 	if err != nil {
 		return nil, 0, false, nil, err
@@ -275,7 +275,7 @@ func (s *V2Service) listObjects(ctx context.Context, spaceId, listId string, wan
 // properties is indistinguishable from "no object has a value". The
 // reference set is the space's property keys plus the system allowlist (a
 // set/collection read has no top-level type to narrow by).
-func (s *V2Service) validateListFields(spaceId string, fields []string) error {
+func (s *Service) validateListFields(spaceId string, fields []string) error {
 	if len(fields) == 0 {
 		return nil
 	}
@@ -348,7 +348,7 @@ func resolveViewRef(dv *model.BlockContentDataview, viewRef, listId string) (*mo
 // object-type sources become `type In […]`, relation sources become
 // `key NotEmpty`, OR-combined — the dataview resolution order, without v1's
 // silent degradation to an unscoped query.
-func (s *V2Service) setSourceFilters(spaceId, setId string, read apicore.ObjectRead) ([]database.FilterRequest, error) {
+func (s *Service) setSourceFilters(spaceId, setId string, read apicore.ObjectRead) ([]database.FilterRequest, error) {
 	var sources []string
 	if read.Snapshot != nil && read.Snapshot.Details != nil {
 		if v, ok := read.Snapshot.Details.Fields[bundle.RelationKeySetOf.String()]; ok {
@@ -471,7 +471,7 @@ func (b *byPrecomputedKey) Swap(i, j int) {
 // is wired — drops its leaf and degrades to a C6 warning: evaluated
 // literally it would match nothing, v1's silent-empty-result bug. The
 // snapshot is a per-read copy, so substitution never touches live state.
-func (s *V2Service) substitutePlaceholders(spaceId, hostId string, filters []*model.BlockContentDataviewFilter) ([]*model.BlockContentDataviewFilter, []v2model.Issue) {
+func (s *Service) substitutePlaceholders(spaceId, hostId string, filters []*model.BlockContentDataviewFilter) ([]*model.BlockContentDataviewFilter, []v2model.Issue) {
 	var warnings []v2model.Issue
 	substitute := func(value string) (string, bool) {
 		switch value {

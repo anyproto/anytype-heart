@@ -171,7 +171,7 @@ func TestV2Routes(t *testing.T) {
 		// other /v2 route must 401. Growing the class is an API decision,
 		// not a registration accident.
 		exempt := map[string]bool{}
-		for key, entry := range apiv2.V2RouteAuthz() {
+		for key, entry := range apiv2.RouteAuthzTable() {
 			if entry.Global == apiv2.GlobalAuthExempt {
 				exempt[key] = true
 			}

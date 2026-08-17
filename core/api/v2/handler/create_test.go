@@ -27,11 +27,11 @@ func withDryRunFlag() gin.HandlerFunc {
 	}
 }
 
-func TestCreateObjectV2Handler(t *testing.T) {
+func TestCreateObjectHandler(t *testing.T) {
 	t.Run("a created object responds 201 with id and etag", func(t *testing.T) {
 		// given
 		fx := newV2HandlerFixture(t)
-		fx.router.POST("/v2/spaces/:space_id/objects", withDryRunFlag(), CreateObjectV2Handler(fx.svc))
+		fx.router.POST("/v2/spaces/:space_id/objects", withDryRunFlag(), CreateObjectHandler(fx.svc))
 		fx.creatorMock.EXPECT().CreateObjectFromSnapshot(mock.Anything, "space1", mock.Anything).Return("newObj", nil)
 		fx.readerMock.EXPECT().ReadObject(mock.Anything, "space1", "newObj").
 			Return(apicore.ObjectRead{Heads: []string{"h"}}, nil)
@@ -54,7 +54,7 @@ func TestCreateObjectV2Handler(t *testing.T) {
 	t.Run("dry_run responds 200 and commits nothing", func(t *testing.T) {
 		// given: no creator expectations — a create call would fail the test
 		fx := newV2HandlerFixture(t)
-		fx.router.POST("/v2/spaces/:space_id/objects", withDryRunFlag(), CreateObjectV2Handler(fx.svc))
+		fx.router.POST("/v2/spaces/:space_id/objects", withDryRunFlag(), CreateObjectHandler(fx.svc))
 
 		// when
 		req := httptest.NewRequest(http.MethodPost, "/v2/spaces/space1/objects?dry_run=true",
@@ -73,7 +73,7 @@ func TestCreateObjectV2Handler(t *testing.T) {
 	t.Run("validation failures respond with the C6 envelope", func(t *testing.T) {
 		// given
 		fx := newV2HandlerFixture(t)
-		fx.router.POST("/v2/spaces/:space_id/objects", withDryRunFlag(), CreateObjectV2Handler(fx.svc))
+		fx.router.POST("/v2/spaces/:space_id/objects", withDryRunFlag(), CreateObjectHandler(fx.svc))
 
 		// when
 		req := httptest.NewRequest(http.MethodPost, "/v2/spaces/space1/objects",
@@ -90,11 +90,11 @@ func TestCreateObjectV2Handler(t *testing.T) {
 	})
 }
 
-func TestCreatePropertyV2Handler(t *testing.T) {
+func TestCreatePropertyHandler(t *testing.T) {
 	t.Run("malformed body is a 400", func(t *testing.T) {
 		// given
 		fx := newV2HandlerFixture(t)
-		fx.router.POST("/v2/spaces/:space_id/properties", withDryRunFlag(), CreatePropertyV2Handler(fx.svc))
+		fx.router.POST("/v2/spaces/:space_id/properties", withDryRunFlag(), CreatePropertyHandler(fx.svc))
 
 		// when
 		req := httptest.NewRequest(http.MethodPost, "/v2/spaces/space1/properties", strings.NewReader(`{"name":`))
@@ -108,7 +108,7 @@ func TestCreatePropertyV2Handler(t *testing.T) {
 	t.Run("dry run reports the would-be property", func(t *testing.T) {
 		// given
 		fx := newV2HandlerFixture(t)
-		fx.router.POST("/v2/spaces/:space_id/properties", withDryRunFlag(), CreatePropertyV2Handler(fx.svc))
+		fx.router.POST("/v2/spaces/:space_id/properties", withDryRunFlag(), CreatePropertyHandler(fx.svc))
 
 		// when
 		req := httptest.NewRequest(http.MethodPost, "/v2/spaces/space1/properties?dry_run=true",
@@ -152,7 +152,7 @@ func TestPhase2StrictBinding(t *testing.T) {
 
 	t.Run("a typo'd options field on POST properties is a 400 naming it", func(t *testing.T) {
 		fx := newV2HandlerFixture(t)
-		fx.router.POST("/v2/spaces/:space_id/properties", withDryRunFlag(), CreatePropertyV2Handler(fx.svc))
+		fx.router.POST("/v2/spaces/:space_id/properties", withDryRunFlag(), CreatePropertyHandler(fx.svc))
 
 		w := post(t, fx, "/v2/spaces/space1/properties",
 			`{"name":"Priority","format":"select","option":[{"name":"High"}],"bogus":123}`)
@@ -166,7 +166,7 @@ func TestPhase2StrictBinding(t *testing.T) {
 
 	t.Run("an unknown field on PATCH properties is a 400", func(t *testing.T) {
 		fx := newV2HandlerFixture(t)
-		fx.router.PATCH("/v2/spaces/:space_id/properties/:key", withDryRunFlag(), UpdatePropertyV2Handler(fx.svc))
+		fx.router.PATCH("/v2/spaces/:space_id/properties/:key", withDryRunFlag(), UpdatePropertyHandler(fx.svc))
 
 		req := httptest.NewRequest(http.MethodPatch, "/v2/spaces/space1/properties/priority",
 			strings.NewReader(`{"nmae":"Priority"}`))
@@ -181,7 +181,7 @@ func TestPhase2StrictBinding(t *testing.T) {
 
 	t.Run("an unknown field on POST sets is a 400", func(t *testing.T) {
 		fx := newV2HandlerFixture(t)
-		fx.router.POST("/v2/spaces/:space_id/sets", withDryRunFlag(), CreateSetV2Handler(fx.svc))
+		fx.router.POST("/v2/spaces/:space_id/sets", withDryRunFlag(), CreateSetHandler(fx.svc))
 
 		w := post(t, fx, "/v2/spaces/space1/sets", `{"name":"Open","type":"task","filtre":"done = false"}`)
 
@@ -193,7 +193,7 @@ func TestPhase2StrictBinding(t *testing.T) {
 
 	t.Run("an unknown field on POST collections is a 400", func(t *testing.T) {
 		fx := newV2HandlerFixture(t)
-		fx.router.POST("/v2/spaces/:space_id/collections", withDryRunFlag(), CreateCollectionV2Handler(fx.svc))
+		fx.router.POST("/v2/spaces/:space_id/collections", withDryRunFlag(), CreateCollectionHandler(fx.svc))
 
 		w := post(t, fx, "/v2/spaces/space1/collections", `{"name":"List","item":["obj1"]}`)
 
@@ -205,7 +205,7 @@ func TestPhase2StrictBinding(t *testing.T) {
 
 	t.Run("an unknown field on the JSON upload body is a 400", func(t *testing.T) {
 		fx := newV2HandlerFixture(t)
-		fx.router.POST("/v2/spaces/:space_id/files", withDryRunFlag(), UploadFileV2Handler(fx.svc))
+		fx.router.POST("/v2/spaces/:space_id/files", withDryRunFlag(), UploadFileHandler(fx.svc))
 
 		w := post(t, fx, "/v2/spaces/space1/files", `{"uri":"https://example.org/a.pdf"}`)
 
@@ -219,7 +219,7 @@ func TestPhase2StrictBinding(t *testing.T) {
 		// before M6 the body cap only engaged when the idempotency
 		// middleware saw a key — a keyless request was read unbounded
 		fx := newV2HandlerFixture(t)
-		fx.router.POST("/v2/spaces/:space_id/properties", withDryRunFlag(), CreatePropertyV2Handler(fx.svc))
+		fx.router.POST("/v2/spaces/:space_id/properties", withDryRunFlag(), CreatePropertyHandler(fx.svc))
 
 		body := `{"name":"` + strings.Repeat("x", maxV2StructuredBodySize) + `","format":"text"}`
 		w := post(t, fx, "/v2/spaces/space1/properties", body)
@@ -230,7 +230,7 @@ func TestPhase2StrictBinding(t *testing.T) {
 
 	t.Run("an oversized JSON upload body is a 413", func(t *testing.T) {
 		fx := newV2HandlerFixture(t)
-		fx.router.POST("/v2/spaces/:space_id/files", withDryRunFlag(), UploadFileV2Handler(fx.svc))
+		fx.router.POST("/v2/spaces/:space_id/files", withDryRunFlag(), UploadFileHandler(fx.svc))
 
 		body := `{"url":"https://example.org/` + strings.Repeat("x", maxV2StructuredBodySize) + `"}`
 		w := post(t, fx, "/v2/spaces/space1/files", body)
@@ -239,11 +239,11 @@ func TestPhase2StrictBinding(t *testing.T) {
 	})
 }
 
-func TestUploadFileV2Handler(t *testing.T) {
+func TestUploadFileHandler(t *testing.T) {
 	t.Run("json body without url is a 400", func(t *testing.T) {
 		// given
 		fx := newV2HandlerFixture(t)
-		fx.router.POST("/v2/spaces/:space_id/files", withDryRunFlag(), UploadFileV2Handler(fx.svc))
+		fx.router.POST("/v2/spaces/:space_id/files", withDryRunFlag(), UploadFileHandler(fx.svc))
 
 		// when
 		req := httptest.NewRequest(http.MethodPost, "/v2/spaces/space1/files", strings.NewReader(`{}`))
@@ -260,8 +260,8 @@ func TestSchemaV2Handlers(t *testing.T) {
 	t.Run("index and kind round-trip", func(t *testing.T) {
 		// given
 		fx := newV2HandlerFixture(t)
-		fx.router.GET("/v2/schemas", SchemaIndexV2Handler(fx.svc))
-		fx.router.GET("/v2/schemas/:kind", SchemaKindV2Handler(fx.svc))
+		fx.router.GET("/v2/schemas", SchemaIndexHandler(fx.svc))
+		fx.router.GET("/v2/schemas/:kind", SchemaKindHandler(fx.svc))
 
 		// when: index
 		w := httptest.NewRecorder()
@@ -287,7 +287,7 @@ func TestSchemaV2Handlers(t *testing.T) {
 // through so client disconnects propagate to the middleware calls.
 func TestCreateObjectV2HandlerContext(t *testing.T) {
 	fx := newV2HandlerFixture(t)
-	fx.router.POST("/v2/spaces/:space_id/objects", withDryRunFlag(), CreateObjectV2Handler(fx.svc))
+	fx.router.POST("/v2/spaces/:space_id/objects", withDryRunFlag(), CreateObjectHandler(fx.svc))
 	var gotCtx context.Context
 	fx.creatorMock.EXPECT().CreateObjectFromSnapshot(mock.Anything, "space1", mock.Anything).
 		RunAndReturn(func(ctx context.Context, spaceId string, snapshot *model.SmartBlockSnapshotBase) (string, error) {

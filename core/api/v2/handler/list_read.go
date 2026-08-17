@@ -28,7 +28,7 @@ func listFieldsParam(c *gin.Context) []string {
 	return fields
 }
 
-// GetSetObjectsV2Handler lists the objects a set's query matches
+// GetSetObjectsHandler lists the objects a set's query matches
 //
 //	@Summary		Get set objects
 //	@Description	Executes the set's stored query (its set_of source) directly against the store, optionally through one stored view's filters and sorts (?view=, exact id or unique suffix). Stored-view execution substitutes the SPEC §6.2 dynamic placeholders server-side; unresolvable placeholders degrade to warnings, never a silent no-match. Rows are C5 minimal; fields= expands.
@@ -46,23 +46,23 @@ func listFieldsParam(c *gin.Context) []string {
 //	@Failure		404			{object}	v2model.Error							"Space, set or view not found"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/sets/{set_id}/objects [get]
-func GetSetObjectsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
+func GetSetObjectsHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		offset := c.GetInt(pagination.QueryParamOffset)
 		limit := c.GetInt(pagination.QueryParamLimit)
 		rows, total, hasMore, warnings, err := s.GetSetObjects(c.Request.Context(),
 			c.Param("space_id"), c.Param("set_id"), c.Query("view"), listFieldsParam(c), offset, limit)
 		if err != nil {
-			RespondV2Error(c, err)
+			RespondError(c, err)
 			return
 		}
-		resp := v2model.NewListResponse(rows, total, offset, limit, hasMore, v2service.V2SearchNarrowHint)
+		resp := v2model.NewListResponse(rows, total, offset, limit, hasMore, v2service.SearchNarrowHint)
 		resp.Warnings = warnings
 		c.JSON(http.StatusOK, resp)
 	}
 }
 
-// GetSetViewsV2Handler lists a set's stored views
+// GetSetViewsHandler lists a set's stored views
 //
 //	@Summary		Get set views
 //	@Description	Returns the set's stored views as SPEC §6.2 view objects (sorts, filters, columns — option names resolved, the format vocabulary). Paginated (C10).
@@ -78,14 +78,14 @@ func GetSetObjectsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Failure		404			{object}	v2model.Error								"Space or set not found"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/sets/{set_id}/views [get]
-func GetSetViewsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
+func GetSetViewsHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		offset := c.GetInt(pagination.QueryParamOffset)
 		limit := c.GetInt(pagination.QueryParamLimit)
 		views, total, hasMore, err := s.GetSetViews(c.Request.Context(),
 			c.Param("space_id"), c.Param("set_id"), offset, limit)
 		if err != nil {
-			RespondV2Error(c, err)
+			RespondError(c, err)
 			return
 		}
 		c.JSON(http.StatusOK, v2model.NewListResponse(views, total, offset, limit, hasMore,
@@ -93,7 +93,7 @@ func GetSetViewsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 	}
 }
 
-// GetCollectionObjectsV2Handler lists a collection's members
+// GetCollectionObjectsHandler lists a collection's members
 //
 //	@Summary		Get collection objects
 //	@Description	Reads the collection's curated membership (the store slice, in its order), optionally through one stored view's filters and sorts (?view=). Rows are C5 minimal; fields= expands.
@@ -111,23 +111,23 @@ func GetSetViewsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Failure		404				{object}	v2model.Error							"Space, collection or view not found"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/collections/{collection_id}/objects [get]
-func GetCollectionObjectsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
+func GetCollectionObjectsHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		offset := c.GetInt(pagination.QueryParamOffset)
 		limit := c.GetInt(pagination.QueryParamLimit)
 		rows, total, hasMore, warnings, err := s.GetCollectionObjects(c.Request.Context(),
 			c.Param("space_id"), c.Param("collection_id"), c.Query("view"), listFieldsParam(c), offset, limit)
 		if err != nil {
-			RespondV2Error(c, err)
+			RespondError(c, err)
 			return
 		}
-		resp := v2model.NewListResponse(rows, total, offset, limit, hasMore, v2service.V2SearchNarrowHint)
+		resp := v2model.NewListResponse(rows, total, offset, limit, hasMore, v2service.SearchNarrowHint)
 		resp.Warnings = warnings
 		c.JSON(http.StatusOK, resp)
 	}
 }
 
-// GetCollectionViewsV2Handler lists a collection's stored views
+// GetCollectionViewsHandler lists a collection's stored views
 //
 //	@Summary		Get collection views
 //	@Description	Returns the collection's stored views as SPEC §6.2 view objects. Paginated (C10).
@@ -143,14 +143,14 @@ func GetCollectionObjectsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Failure		404				{object}	v2model.Error								"Space or collection not found"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/collections/{collection_id}/views [get]
-func GetCollectionViewsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
+func GetCollectionViewsHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		offset := c.GetInt(pagination.QueryParamOffset)
 		limit := c.GetInt(pagination.QueryParamLimit)
 		views, total, hasMore, err := s.GetCollectionViews(c.Request.Context(),
 			c.Param("space_id"), c.Param("collection_id"), offset, limit)
 		if err != nil {
-			RespondV2Error(c, err)
+			RespondError(c, err)
 			return
 		}
 		c.JSON(http.StatusOK, v2model.NewListResponse(views, total, offset, limit, hasMore,

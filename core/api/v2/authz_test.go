@@ -216,7 +216,7 @@ func TestEnsureSpaceGrant(t *testing.T) {
 
 func TestV2RouteAuthzTable(t *testing.T) {
 	t.Run("every no-space entry carries an explicit global class", func(t *testing.T) {
-		for key, authz := range V2RouteAuthz() {
+		for key, authz := range RouteAuthzTable() {
 			// the registry key is "METHOD /path"
 			if !containsSpaceParam(key) {
 				assert.NotEmpty(t, authz.Global, "%s has no :space_id and must carry a global class", key)
@@ -234,7 +234,7 @@ func TestV2RouteAuthzTable(t *testing.T) {
 			"POST /v2/spaces/:space_id/chats/:chat_id/read": RouteVerbWrite,
 			"POST /v2/spaces":                               RouteVerbWrite,
 		}
-		table := V2RouteAuthz()
+		table := RouteAuthzTable()
 		for key, verb := range want {
 			entry, ok := table[key]
 			require.True(t, ok, "%s must be classified", key)

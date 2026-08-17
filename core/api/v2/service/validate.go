@@ -17,7 +17,7 @@ import (
 // ValidateDocument checks an AnyBlock document and returns the issue list
 // in the C6 shape. Validation findings are the endpoint's result, not an
 // error — the generate → validate → repair loop consumes them as data.
-func (s *V2Service) ValidateDocument(data []byte) v2model.ValidateResponse {
+func (s *Service) ValidateDocument(data []byte) v2model.ValidateResponse {
 	resp := v2model.ValidateResponse{Issues: []v2model.Issue{}, Warnings: []v2model.Issue{}}
 	err := anyblockjson.Validate(data)
 	if err == nil {

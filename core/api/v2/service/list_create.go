@@ -26,7 +26,7 @@ import (
 const dataviewBlockId = "dataview"
 
 // CreateSet implements POST /v2/spaces/{spaceId}/sets.
-func (s *V2Service) CreateSet(ctx context.Context, spaceId string, req v2model.CreateSetRequest, dryRun bool) (*v2model.CreateResult, error) {
+func (s *Service) CreateSet(ctx context.Context, spaceId string, req v2model.CreateSetRequest, dryRun bool) (*v2model.CreateResult, error) {
 	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
 	}
@@ -164,7 +164,7 @@ func (s *V2Service) CreateSet(ctx context.Context, spaceId string, req v2model.C
 
 // CreateCollection implements POST /v2/spaces/{spaceId}/collections: the
 // AnyBlock items import path builds the collection store.
-func (s *V2Service) CreateCollection(ctx context.Context, spaceId string, req v2model.CreateCollectionRequest, dryRun bool) (*v2model.CreateResult, error) {
+func (s *Service) CreateCollection(ctx context.Context, spaceId string, req v2model.CreateCollectionRequest, dryRun bool) (*v2model.CreateResult, error) {
 	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
 	}
@@ -330,7 +330,7 @@ func collectFilterKeys(nodes []filterNodeProbe, path string, refs *[]viewKeyRef)
 // corpse — and a NEW set filtering or sorting on it would persist a query
 // against a property the user removed (§8.41). The removal gate runs after
 // the membership pass for exactly that row.
-func (s *V2Service) validateViewKeys(ctx context.Context, spaceId, typeId, typeKey string, refs []viewKeyRef) error {
+func (s *Service) validateViewKeys(ctx context.Context, spaceId, typeId, typeKey string, refs []viewKeyRef) error {
 	if len(refs) == 0 {
 		return nil
 	}
@@ -400,7 +400,7 @@ func (s *V2Service) validateViewKeys(ctx context.Context, spaceId, typeId, typeK
 // buildSetDocument synthesizes the set's AnyBlock document: name + setOf in
 // properties, and one dataview block (id "dataview") carrying the views —
 // the §8/R10 initial-state construction.
-func (s *V2Service) buildSetDocument(spaceId, typeId string, req v2model.CreateSetRequest, referenced []viewKeyRef) ([]byte, error) {
+func (s *Service) buildSetDocument(spaceId, typeId string, req v2model.CreateSetRequest, referenced []viewKeyRef) ([]byte, error) {
 	fields := map[string]json.RawMessage{}
 	var err error
 	if fields["version"], err = rawJSON(anyblockjson.FormatVersion); err != nil {
@@ -442,7 +442,7 @@ func (s *V2Service) buildSetDocument(spaceId, typeId string, req v2model.CreateS
 // dataviewProperties lists the dataview's available properties ({key,
 // format}, §6.2): name plus every referenced key, formats resolved from the
 // space (falling back to text).
-func (s *V2Service) dataviewProperties(spaceId string, referenced []viewKeyRef) []map[string]string {
+func (s *Service) dataviewProperties(spaceId string, referenced []viewKeyRef) []map[string]string {
 	resolve := storeFormatResolver(s, spaceId)
 	keys := []string{"name"}
 	seen := map[string]bool{"name": true}
@@ -469,7 +469,7 @@ func (s *V2Service) dataviewProperties(spaceId string, referenced []viewKeyRef) 
 }
 
 // storeFormatResolver builds a bundle-aware format resolver over the space.
-func storeFormatResolver(s *V2Service, spaceId string) anyblockjson.FormatResolver {
+func storeFormatResolver(s *Service, spaceId string) anyblockjson.FormatResolver {
 	reads := s.newCreatingResolvers(context.Background(), spaceId, true)
 	return func(key domain.RelationKey) (format model.RelationFormat, ok bool) {
 		if rel, err := bundle.GetRelation(key); err == nil {

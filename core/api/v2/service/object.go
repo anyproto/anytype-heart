@@ -41,8 +41,8 @@ const (
 	V2IncludeBlocks     = "blocks"
 )
 
-// V2ObjectQuery carries the GET object query parameters as received.
-type V2ObjectQuery struct {
+// ObjectQuery carries the GET object query parameters as received.
+type ObjectQuery struct {
 	Include string // comma-separated subset of properties,blocks; "" = both
 	Outline bool
 	Block   string
@@ -50,7 +50,7 @@ type V2ObjectQuery struct {
 	Format  string // anyblock (default) | md
 }
 
-// objectReadPlan is the validated form of a V2ObjectQuery.
+// objectReadPlan is the validated form of a ObjectQuery.
 //
 // One id axis moves per shape: block-id relabeling. Object refs stay full
 // inline on EVERY shape — the `refs` legend is a measured net loss on every
@@ -78,7 +78,7 @@ type objectReadPlan struct {
 // validate applies the Phase-1 param legality matrix: outline and block are
 // mutually exclusive with each other and with format=md; illegal
 // combinations → 400 ambiguous_input naming the conflicting params.
-func (q V2ObjectQuery) validate() (objectReadPlan, error) {
+func (q ObjectQuery) validate() (objectReadPlan, error) {
 	plan := objectReadPlan{wantProperties: true, wantBlocks: true, compactBlockLabels: true}
 
 	if q.Outline && q.Block != "" {
@@ -198,7 +198,7 @@ func mapWriteError(spaceId, objectId string, err error) error {
 // anyblockjson.Marshal, and derives the etag from the same read (§8). The
 // returned body is the flat AnyBlock document with the envelope etag; the
 // caller sets the ETag header from the second return.
-func (s *V2Service) GetObject(ctx context.Context, spaceId, objectId string, q V2ObjectQuery) ([]byte, string, error) {
+func (s *Service) GetObject(ctx context.Context, spaceId, objectId string, q ObjectQuery) ([]byte, string, error) {
 	if err := s.ensureSpace(ctx, spaceId); err != nil {
 		return nil, "", err
 	}
@@ -294,7 +294,7 @@ func (s *V2Service) GetObject(ctx context.Context, spaceId, objectId string, q V
 // to the pre-§8.41 behavior for that entry (dropped), never to an error: a
 // dangling id in a recommended list has always been dropped, and the read
 // must not fail on it.
-func (s *V2Service) seedTombstonedTypeProperties(ctx context.Context, spaceId string, reads *storeresolver.Resolvers, snapshot *model.SmartBlockSnapshotBase) {
+func (s *Service) seedTombstonedTypeProperties(ctx context.Context, spaceId string, reads *storeresolver.Resolvers, snapshot *model.SmartBlockSnapshotBase) {
 	if snapshot == nil || snapshot.Details == nil {
 		return
 	}
@@ -336,7 +336,7 @@ func (s *V2Service) seedTombstonedTypeProperties(ctx context.Context, spaceId st
 // warnings. TODO(GO-7383): surface C11 warnings for nodes the markdown export
 // drops once core/converter/md grows a loss channel (APIV2.md §3 build item
 // "md-export loss detector").
-func (s *V2Service) markdownEnvelope(ctx context.Context, spaceId, objectId string) ([]byte, string, error) {
+func (s *Service) markdownEnvelope(ctx context.Context, spaceId, objectId string) ([]byte, string, error) {
 	resp := s.mw.ObjectExport(ctx, &pb.RpcObjectExportRequest{
 		SpaceId:  spaceId,
 		ObjectId: objectId,
@@ -527,7 +527,7 @@ func filterBlockSubtree(fields map[string]json.RawMessage, blockRef string, stor
 // sink, C11-degradable content fails the marshal instead). Blocks that never
 // render as flat blocks — the root, table wrappers, cells — are absent here
 // exactly as they are absent from the served array.
-func (s *V2Service) exportShapeBlockIds(spaceId string, read apicore.ObjectRead) ([]string, error) {
+func (s *Service) exportShapeBlockIds(spaceId string, read apicore.ObjectRead) ([]string, error) {
 	opts := storeresolver.New(s.store.SpaceIndex(spaceId)).Options()
 	opts.OnWarning = func(anyblockjson.Issue) {}
 	doc, err := anyblockjson.Marshal(read.SbType, read.Snapshot, opts)
@@ -615,7 +615,7 @@ const (
 
 // ListObjects returns minimal rows (id, name, type + requested fields) for
 // the space's objects, newest-modified first.
-func (s *V2Service) ListObjects(ctx context.Context, spaceId string, fields []string, offset, limit int) ([]v2model.ObjectRow, int, bool, error) {
+func (s *Service) ListObjects(ctx context.Context, spaceId string, fields []string, offset, limit int) ([]v2model.ObjectRow, int, bool, error) {
 	if err := s.ensureSpace(ctx, spaceId); err != nil {
 		return nil, 0, false, err
 	}
@@ -685,7 +685,7 @@ var v2FieldAliases = map[string]domain.RelationKey{
 // deactivates the alias space-wide (the review's corpse-blind finding:
 // one uninstalled mimeType relation silently dropped the field from every
 // file row and filter). The decision is per SPACE, never per row.
-func (s *V2Service) activeFieldAliasesIn(entries []propertyEntry) map[string]domain.RelationKey {
+func (s *Service) activeFieldAliasesIn(entries []propertyEntry) map[string]domain.RelationKey {
 	active := make(map[string]domain.RelationKey, len(v2FieldAliases))
 	for alias, backing := range v2FieldAliases {
 		if entry, ok, ambiguous := s.resolvePropertyInput(alias, entries); len(ambiguous) > 0 || (ok && entry.Id != "") {
@@ -698,7 +698,7 @@ func (s *V2Service) activeFieldAliasesIn(entries []propertyEntry) map[string]dom
 
 // activeFieldAliases is the load-owning form; on a store error no alias is
 // served (conservative — the real property, if any, must win).
-func (s *V2Service) activeFieldAliases(spaceId string) map[string]domain.RelationKey {
+func (s *Service) activeFieldAliases(spaceId string) map[string]domain.RelationKey {
 	entries, err := s.liveProperties(spaceId)
 	if err != nil {
 		return nil
@@ -729,7 +729,7 @@ type objectRowBuilder struct {
 	includeSpaceId bool
 }
 
-func (s *V2Service) newObjectRowBuilder(spaceId string, fields []string) (*objectRowBuilder, error) {
+func (s *Service) newObjectRowBuilder(spaceId string, fields []string) (*objectRowBuilder, error) {
 	typeKeys, err := s.typeKeysById(spaceId)
 	if err != nil {
 		return nil, err
@@ -818,7 +818,7 @@ func (b *objectRowBuilder) row(record database.Record) v2model.ObjectRow {
 // instead. Tombstoned rows ({id, isDeleted} only) still land here but carry
 // no uniqueKey and are skipped; their objects' rows serve an empty type for
 // the window, the only honest answer a keyless row allows.
-func (s *V2Service) typeKeysById(spaceId string) (map[string]string, error) {
+func (s *Service) typeKeysById(spaceId string) (map[string]string, error) {
 	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
 		Filters: []database.FilterRequest{
 			{

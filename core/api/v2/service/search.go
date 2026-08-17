@@ -46,8 +46,8 @@ import (
 // for set filters/sorts.
 var v2SystemQueryKeys = []string{"createdDate", "lastModifiedDate", "creator", "lastOpenedDate"}
 
-// V2SearchNarrowHint is the C10 truncation steering for search results.
-const V2SearchNarrowHint = "narrow with filter or query, or request the next offset"
+// SearchNarrowHint is the C10 truncation steering for search results.
+const SearchNarrowHint = "narrow with filter or query, or request the next offset"
 
 // maxGlobalSearchOffset bounds how deep the global merge pages: the k-way
 // merge materializes up to offset+limit records PER SPACE, so an unbounded
@@ -85,7 +85,7 @@ func validateSearchShape(req v2model.SearchRequest) error {
 }
 
 // SearchObjects implements POST /v2/spaces/{spaceId}/search.
-func (s *V2Service) SearchObjects(ctx context.Context, spaceId string, req v2model.SearchRequest, offset, limit int) ([]v2model.ObjectRow, int, bool, []v2model.Issue, error) {
+func (s *Service) SearchObjects(ctx context.Context, spaceId string, req v2model.SearchRequest, offset, limit int) ([]v2model.ObjectRow, int, bool, []v2model.Issue, error) {
 	if err := s.ensureSpace(ctx, spaceId); err != nil {
 		return nil, 0, false, nil, err
 	}
@@ -122,7 +122,7 @@ func (s *V2Service) SearchObjects(ctx context.Context, spaceId string, req v2mod
 // returned total is exact when the store had fewer matches and a lower
 // bound (offset+limit+1 → has_more true) when it clipped — honest steering
 // either way, within the engine's documented candidate budget.
-func (s *V2Service) runSearchQuery(spaceId string, plan *searchPlan, offset, limit int) ([]database.Record, int, error) {
+func (s *Service) runSearchQuery(spaceId string, plan *searchPlan, offset, limit int) ([]database.Record, int, error) {
 	index := s.store.SpaceIndex(spaceId)
 	if plan.textQuery != "" {
 		all, err := index.Query(database.Query{
@@ -176,7 +176,7 @@ func pageRecords(records []database.Record, offset, limit int) []database.Record
 // fan-out a hard error would silently drop the whole space from results
 // and total — a column request must never narrow the search — so the
 // global caller passes lenient and the key degrades to a per-space warning.
-func (s *V2Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, strictFields bool) (*searchPlan, error) {
+func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, strictFields bool) (*searchPlan, error) {
 	plan := &searchPlan{textQuery: req.Query}
 	index := s.store.SpaceIndex(spaceId)
 	reads := storeresolver.New(index)
@@ -484,7 +484,7 @@ func appendMissing(keys []string, add ...string) []string {
 
 // formatNameResolver resolves a property key to its §3 format name over one
 // space (bundle first, then the store).
-func (s *V2Service) formatNameResolver(spaceId string) func(key string) (string, bool) {
+func (s *Service) formatNameResolver(spaceId string) func(key string) (string, bool) {
 	resolve := storeFormatResolver(s, spaceId)
 	return func(key string) (string, bool) {
 		if f, ok := resolve(domain.RelationKey(key)); ok {
@@ -533,7 +533,7 @@ func rewriteAliasLeaves(filters []*model.BlockContentDataviewFilter, aliases map
 // names (read-only — rule 3). ok is false when the store lookup failed —
 // callers must then SKIP the option check instead of reporting a confident
 // "no such option" about data the code never actually listed.
-func (s *V2Service) propertyOptionNames(spaceId, key string) ([]string, bool) {
+func (s *Service) propertyOptionNames(spaceId, key string) ([]string, bool) {
 	options, err := s.store.SpaceIndex(spaceId).ListRelationOptions(domain.RelationKey(key))
 	if err != nil {
 		return nil, false
@@ -695,7 +695,7 @@ func decodeFilterNodes(raw json.RawMessage, path string) ([]searchFilterNode, er
 // option names) to the structured filters array, path-addressed with
 // did-you-mean — the same checks the string form gets offset-addressed from
 // the parser.
-func (s *V2Service) validateStructuredFilters(spaceId string, raw json.RawMessage, allowed map[string]bool, refKeys []string, formatName func(string) (string, bool), listUrl string) error {
+func (s *Service) validateStructuredFilters(spaceId string, raw json.RawMessage, allowed map[string]bool, refKeys []string, formatName func(string) (string, bool), listUrl string) error {
 	nodes, err := decodeFilterNodes(raw, "/filters")
 	if err != nil {
 		return err
@@ -801,7 +801,7 @@ func containsString(list []string, s string) bool {
 // caught `allIn` (the compact string's HAS ALL) silently returning zero
 // file rows under the earlier =/IN allowlist. Negated leaves exclude a
 // type, so they never widen the scope.
-func (s *V2Service) resolveTypeLeaves(spaceId string, filters []*model.BlockContentDataviewFilter, path string) (namedFileType bool, err error) {
+func (s *Service) resolveTypeLeaves(spaceId string, filters []*model.BlockContentDataviewFilter, path string) (namedFileType bool, err error) {
 	// one live snapshot for every leaf of this tree — chain-resolved and
 	// corpse-aware like the top-level type scope (review cause 2: the same
 	// spelling worked at top level and 400'd one level down, and a
@@ -813,7 +813,7 @@ func (s *V2Service) resolveTypeLeaves(spaceId string, filters []*model.BlockCont
 	return s.resolveTypeLeavesIn(spaceId, filters, path, typeEntries)
 }
 
-func (s *V2Service) resolveTypeLeavesIn(spaceId string, filters []*model.BlockContentDataviewFilter, path string, typeEntries []typeEntry) (namedFileType bool, err error) {
+func (s *Service) resolveTypeLeavesIn(spaceId string, filters []*model.BlockContentDataviewFilter, path string, typeEntries []typeEntry) (namedFileType bool, err error) {
 	for _, f := range filters {
 		if f == nil {
 			continue
@@ -901,7 +901,7 @@ type spaceRef struct {
 // The ctx grant intersects the INPUT set here, before any per-space work —
 // not the output rows: a non-granted space must never enter the fan-out
 // loop, where a per-space failure or warning would disclose that it exists.
-func (s *V2Service) spaceRefs(ctx context.Context) ([]spaceRef, error) {
+func (s *Service) spaceRefs(ctx context.Context) ([]spaceRef, error) {
 	rows, err := s.liveSpaceRows(ctx)
 	if err != nil {
 		return nil, err
@@ -936,7 +936,7 @@ type globalRecord struct {
 // per-space name resolution, a merge by the requested sort, and honest
 // totals — total is the sum of per-space store counts, has_more compares it
 // against the requested page (never v1's total = len(fetched)).
-func (s *V2Service) GlobalSearchObjects(ctx context.Context, req v2model.SearchRequest, offset, limit int) ([]v2model.ObjectRow, int, bool, []v2model.Issue, error) {
+func (s *Service) GlobalSearchObjects(ctx context.Context, req v2model.SearchRequest, offset, limit int) ([]v2model.ObjectRow, int, bool, []v2model.Issue, error) {
 	if err := validateSearchShape(req); err != nil {
 		return nil, 0, false, nil, err
 	}

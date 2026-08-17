@@ -48,7 +48,7 @@ const editTailCollisionDoc = `{"version":1,"id":"obj1","type":"page","blocks":[`
 	`{"id":"2222222222222222227ffff9","type":"paragraph","text":"two"}]}`
 
 // readObject wires the reader for a plain GET and returns the served body.
-func (fx *v2Fixture) readObject(t *testing.T, doc string, q V2ObjectQuery) []byte {
+func (fx *v2Fixture) readObject(t *testing.T, doc string, q ObjectQuery) []byte {
 	t.Helper()
 	fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(editRead(t, doc), nil).Maybe()
 	body, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", q)
@@ -88,7 +88,7 @@ func TestPatchPayloadIdsResolve(t *testing.T) {
 		// id permanently replaced by the 5-char label
 		fx := newV2Fixture(t)
 		captured := fx.expectMutate(editRead(t, editMintedDoc), "headB")
-		served := fx.readObject(t, editMintedDoc, V2ObjectQuery{Block: "aaaa1"})
+		served := fx.readObject(t, editMintedDoc, ObjectQuery{Block: "aaaa1"})
 		blocks := envelopeField(t, served, "blocks")
 		require.Contains(t, string(blocks), `"id":"aaaa1"`, "the default read serves the compact label")
 
@@ -123,7 +123,7 @@ func TestPatchPayloadIdsResolve(t *testing.T) {
 		// row id became its label
 		fx := newV2Fixture(t)
 		captured := fx.expectMutate(editRead(t, editMintedTableDoc), "headB")
-		served := fx.readObject(t, editMintedTableDoc, V2ObjectQuery{})
+		served := fx.readObject(t, editMintedTableDoc, ObjectQuery{})
 		table := docBlocks(mustDoc(t, served))[0]
 		rows, err := json.Marshal(table["rows"])
 		require.NoError(t, err)
@@ -144,7 +144,7 @@ func TestPatchPayloadIdsResolve(t *testing.T) {
 		// reach them, and it renamed them
 		fx := newV2Fixture(t)
 		captured := fx.expectMutate(editRead(t, editTableCellChildDoc), "headB")
-		served := fx.readObject(t, editTableCellChildDoc, V2ObjectQuery{})
+		served := fx.readObject(t, editTableCellChildDoc, ObjectQuery{})
 		cell, err := json.Marshal(firstCell(t, served))
 		require.NoError(t, err)
 		require.Contains(t, string(cell), `"id":"dddd1"`, "the default read serves the relabeled descendant")

@@ -65,7 +65,7 @@ func isLiveSpaceView(details *domain.Details) bool {
 // (isLiveSpaceView) — a deleted or left space's row is indistinguishable
 // from a live one and an agent picking it would then write into a space
 // that can never load.
-func (s *V2Service) GetSpace(ctx context.Context, spaceId string) (v2model.Space, error) {
+func (s *Service) GetSpace(ctx context.Context, spaceId string) (v2model.Space, error) {
 	if spaceId == "" {
 		return v2model.Space{}, v2model.NotFound("space id is required")
 	}
@@ -99,7 +99,7 @@ func (s *V2Service) GetSpace(ctx context.Context, spaceId string) (v2model.Space
 //
 // `?ids=full` (§8.36) short-circuits it: the full id is what the caller
 // asked for, and returning it here also spares the census its store query.
-func (s *V2Service) servedSpaceRef(ctx context.Context, spaceId string, extra ...string) string {
+func (s *Service) servedSpaceRef(ctx context.Context, spaceId string, extra ...string) string {
 	if fullIdsRequested(ctx) {
 		return spaceId
 	}
@@ -140,7 +140,7 @@ func validateSpaceField(path, value string) error {
 // except that the description rides the SAME WorkspaceCreate call
 // (CreateWorkspace applies every detail to the workspace object), where v1
 // spent a second WorkspaceSetInfo RPC on it.
-func (s *V2Service) CreateSpace(ctx context.Context, req v2model.CreateSpaceRequest, dryRun bool) (*v2model.Space, error) {
+func (s *Service) CreateSpace(ctx context.Context, req v2model.CreateSpaceRequest, dryRun bool) (*v2model.Space, error) {
 	// The route gate already refuses granted keys on POST /v2/spaces
 	// (GlobalScopedDenied); this is the service-level backstop, because a
 	// key that can mint spaces it then owns is not meaningfully scoped and
@@ -206,7 +206,7 @@ func (s *V2Service) CreateSpace(ctx context.Context, req v2model.CreateSpaceRequ
 // the patch onto the current space-view row rather than re-reading it: the
 // workspace-object write propagates to the tech-space view asynchronously,
 // so an immediate read-back could return the pre-patch name.
-func (s *V2Service) UpdateSpace(ctx context.Context, spaceId string, req v2model.UpdateSpaceRequest, dryRun bool) (*v2model.Space, error) {
+func (s *Service) UpdateSpace(ctx context.Context, spaceId string, req v2model.UpdateSpaceRequest, dryRun bool) (*v2model.Space, error) {
 	// UpdateSpace bypasses ensureSpace (GetSpace's read IS the space-view
 	// lookup), so both backstop halves are consulted directly, in the route
 	// gate's precedence: space grant first, then the write verb.

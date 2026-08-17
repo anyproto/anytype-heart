@@ -28,18 +28,18 @@ func TestBlockNotFoundHintsAreTrue(t *testing.T) {
 	t.Run("the outline lists exactly the ids a block reference resolves", func(t *testing.T) {
 		// the property the hint promises. It holds for the top-level run…
 		fx := newV2Fixture(t)
-		outline := fx.readObject(t, editTableCellChildDoc, V2ObjectQuery{Outline: true})
+		outline := fx.readObject(t, editTableCellChildDoc, ObjectQuery{Outline: true})
 		var entries []v2model.OutlineEntry
 		require.NoError(t, json.Unmarshal(envelopeField(t, outline, "outline"), &entries))
 		require.NotEmpty(t, entries)
 		for _, entry := range entries {
-			_, _, err := fx.GetObject(ctx, testSpaceId, "obj1", V2ObjectQuery{Block: entry.Id})
+			_, _, err := fx.GetObject(ctx, testSpaceId, "obj1", ObjectQuery{Block: entry.Id})
 			assert.NoError(t, err, "outline entry %q must resolve as a block reference", entry.Id)
 		}
 
 		// …and the served-but-unaddressable id is NOT in it, which is why
 		// the hint may not claim the outline lists every served id
-		served := fx.readObject(t, editTableCellChildDoc, V2ObjectQuery{})
+		served := fx.readObject(t, editTableCellChildDoc, ObjectQuery{})
 		require.Contains(t, string(served), `"id":"dddd1"`, "a default read serves the cell descendant")
 		for _, entry := range entries {
 			assert.NotEqual(t, "dddd1", entry.Id)
@@ -51,7 +51,7 @@ func TestBlockNotFoundHintsAreTrue(t *testing.T) {
 		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").
 			Return(editRead(t, editTableCellChildDoc), nil).Maybe()
 
-		_, _, err := fx.GetObject(ctx, testSpaceId, "obj1", V2ObjectQuery{Block: "dddd1"})
+		_, _, err := fx.GetObject(ctx, testSpaceId, "obj1", ObjectQuery{Block: "dddd1"})
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusNotFound, apiErr.Status)
@@ -94,7 +94,7 @@ func assertAddressabilityHint(t *testing.T, issue v2model.Issue) {
 func TestServedLabelsAvoidTailCollisions(t *testing.T) {
 	t.Run("two minted ids sharing a tail both stay full", func(t *testing.T) {
 		fx := newV2Fixture(t)
-		served := fx.readObject(t, editTailCollisionDoc, V2ObjectQuery{})
+		served := fx.readObject(t, editTailCollisionDoc, ObjectQuery{})
 
 		ids := blockIdsOf(docBlocks(mustDoc(t, served)))
 		assert.Equal(t, []string{"1111111111111111117ffff9", "2222222222222222227ffff9"}, ids)
@@ -105,7 +105,7 @@ func TestServedLabelsAvoidTailCollisions(t *testing.T) {
 		// over the whole snapshot, so slicing to one block afterwards cannot
 		// hand out a label the omitted blocks contest
 		fx := newV2Fixture(t)
-		served := fx.readObject(t, editTailCollisionDoc, V2ObjectQuery{Block: "1111111111111111117ffff9"})
+		served := fx.readObject(t, editTailCollisionDoc, ObjectQuery{Block: "1111111111111111117ffff9"})
 
 		ids := blockIdsOf(docBlocks(mustDoc(t, served)))
 		assert.Equal(t, []string{"1111111111111111117ffff9"}, ids,
@@ -117,7 +117,7 @@ func TestServedLabelsAvoidTailCollisions(t *testing.T) {
 		// the assertions above are about the guard and not about relabeling
 		// being off
 		fx := newV2Fixture(t)
-		served := fx.readObject(t, editMintedDoc, V2ObjectQuery{})
+		served := fx.readObject(t, editMintedDoc, ObjectQuery{})
 
 		assert.Equal(t, []string{"aaaa1", "bbbb1"}, blockIdsOf(docBlocks(mustDoc(t, served))))
 	})

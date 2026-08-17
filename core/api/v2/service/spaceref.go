@@ -151,7 +151,7 @@ func shortSpaceRef(ids []string, id string) string {
 // space can retire one. Anything that PERSISTS a space reference — a config
 // file, a script, a log line, a gRPC call into the heart — needs the full
 // id, and this is how it asks for it.
-func (s *V2Service) servedSpaceRefs(ctx context.Context, ids []string) map[string]string {
+func (s *Service) servedSpaceRefs(ctx context.Context, ids []string) map[string]string {
 	if fullIdsRequested(ctx) {
 		return map[string]string{}
 	}
@@ -201,7 +201,7 @@ func matchSpaceRef(ids []string, ref string) (idx, matches int) {
 //   - none → the reference is returned UNCHANGED, so the existing 404
 //     ("space %q not found") or the grant gate's 403 answers it, quoting
 //     the caller's own value.
-func (s *V2Service) ResolveSpaceRef(ctx context.Context, ref string) (string, error) {
+func (s *Service) ResolveSpaceRef(ctx context.Context, ref string) (string, error) {
 	if ref == "" || isSpaceIdShaped(ref) {
 		return ref, nil
 	}
@@ -270,7 +270,7 @@ func CtxWithSpaceEcho(ctx context.Context, full, ref string) context.Context {
 
 // SpaceEchoFromCtx returns the (full id, caller's spelling) pair recorded by
 // the resolution middleware, if any. Used by the ONE error-rendering choke
-// point (v2handler.RespondV2Error) so every message and hint a refusal
+// point (v2handler.RespondError) so every message and hint a refusal
 // carries speaks the caller's own vocabulary — the alternative was the same
 // substitution repeated at twenty Sprintf sites.
 func SpaceEchoFromCtx(ctx context.Context) (full, ref string, ok bool) {

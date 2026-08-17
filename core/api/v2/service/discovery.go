@@ -34,7 +34,7 @@ import (
 // so the gate lets it through as service-filtered and the intersection with
 // the ctx grant happens here — a non-granted space's row (id, name,
 // description alike) must never leave this method.
-func (s *V2Service) ListSpaces(ctx context.Context, offset, limit int) ([]v2model.SpaceRow, int, bool, error) {
+func (s *Service) ListSpaces(ctx context.Context, offset, limit int) ([]v2model.SpaceRow, int, bool, error) {
 	rows, err := s.liveSpaceRows(ctx)
 	if err != nil {
 		return nil, 0, false, err
@@ -71,7 +71,7 @@ func (s *V2Service) ListSpaces(ctx context.Context, offset, limit int) ([]v2mode
 //
 // Rows carry the FULL id: shortening is a serving decision, made by each
 // caller of this method.
-func (s *V2Service) liveSpaceRows(ctx context.Context) ([]v2model.SpaceRow, error) {
+func (s *Service) liveSpaceRows(ctx context.Context) ([]v2model.SpaceRow, error) {
 	grant := util.ApiGrantFromCtx(ctx)
 	records, err := s.store.SpaceIndex(s.techSpaceId).Query(database.Query{
 		Filters: []database.FilterRequest{{
@@ -110,7 +110,7 @@ func (s *V2Service) liveSpaceRows(ctx context.Context) ([]v2model.SpaceRow, erro
 
 // ListMembers returns minimal member rows (active participants) — agents
 // need member ids for assignee/creator property values.
-func (s *V2Service) ListMembers(ctx context.Context, spaceId string, offset, limit int) ([]v2model.MemberRow, int, bool, error) {
+func (s *Service) ListMembers(ctx context.Context, spaceId string, offset, limit int) ([]v2model.MemberRow, int, bool, error) {
 	if err := s.ensureSpace(ctx, spaceId); err != nil {
 		return nil, 0, false, err
 	}
@@ -160,7 +160,7 @@ func (s *V2Service) ListMembers(ctx context.Context, spaceId string, offset, lim
 // participant id is deterministic, so the row is served even before the
 // participant object reaches the store index (name/role empty then) — the id
 // is what assignee/creator values need.
-func (s *V2Service) GetMemberMe(ctx context.Context, spaceId string) (v2model.MemberRow, error) {
+func (s *Service) GetMemberMe(ctx context.Context, spaceId string) (v2model.MemberRow, error) {
 	if err := s.ensureSpace(ctx, spaceId); err != nil {
 		return v2model.MemberRow{}, err
 	}
@@ -199,7 +199,7 @@ func memberRole(permissions model.ParticipantPermissions) string {
 }
 
 // ListTypes returns minimal type rows: keys + names.
-func (s *V2Service) ListTypes(ctx context.Context, spaceId string, offset, limit int) ([]v2model.TypeRow, int, bool, error) {
+func (s *Service) ListTypes(ctx context.Context, spaceId string, offset, limit int) ([]v2model.TypeRow, int, bool, error) {
 	if err := s.ensureSpace(ctx, spaceId); err != nil {
 		return nil, 0, false, err
 	}
@@ -250,8 +250,8 @@ func (s *V2Service) ListTypes(ctx context.Context, spaceId string, offset, limit
 // read via the live smartblock state like any object (§8). The query rides
 // through to GetObject, so `?ids=full` works here exactly as on objects —
 // the export shape must be one query parameter away on every document read
-// (§8.25 promised it; hardcoding V2ObjectQuery{} broke it for types).
-func (s *V2Service) GetType(ctx context.Context, spaceId, typeKey string, q V2ObjectQuery) ([]byte, string, error) {
+// (§8.25 promised it; hardcoding ObjectQuery{} broke it for types).
+func (s *Service) GetType(ctx context.Context, spaceId, typeKey string, q ObjectQuery) ([]byte, string, error) {
 	if err := s.ensureSpace(ctx, spaceId); err != nil {
 		return nil, "", err
 	}
@@ -265,7 +265,7 @@ func (s *V2Service) GetType(ctx context.Context, spaceId, typeKey string, q V2Ob
 // GetTypeSchema is the [build] GenerateSchema endpoint — the derived
 // artifact does not exist yet (SPEC §2a: planned, not implemented), so the
 // route reports 501 until it lands.
-func (s *V2Service) GetTypeSchema(ctx context.Context, spaceId, typeKey string) error {
+func (s *Service) GetTypeSchema(ctx context.Context, spaceId, typeKey string) error {
 	if err := s.ensureSpace(ctx, spaceId); err != nil {
 		return err
 	}
@@ -274,7 +274,7 @@ func (s *V2Service) GetTypeSchema(ctx context.Context, spaceId, typeKey string) 
 }
 
 // ListProperties returns minimal property rows: key, name, format.
-func (s *V2Service) ListProperties(ctx context.Context, spaceId string, offset, limit int) ([]v2model.PropertyRow, int, bool, error) {
+func (s *Service) ListProperties(ctx context.Context, spaceId string, offset, limit int) ([]v2model.PropertyRow, int, bool, error) {
 	if err := s.ensureSpace(ctx, spaceId); err != nil {
 		return nil, 0, false, err
 	}
@@ -329,7 +329,7 @@ func (s *V2Service) ListProperties(ctx context.Context, spaceId string, offset, 
 // ListPropertyOptions returns the option names (+color) of one
 // select/multiSelect property, with a prefix filter (C10 — tag-like
 // properties can hold thousands of options).
-func (s *V2Service) ListPropertyOptions(ctx context.Context, spaceId, propertyKey, prefix string, offset, limit int) ([]v2model.OptionRow, int, bool, error) {
+func (s *Service) ListPropertyOptions(ctx context.Context, spaceId, propertyKey, prefix string, offset, limit int) ([]v2model.OptionRow, int, bool, error) {
 	if err := s.ensureSpace(ctx, spaceId); err != nil {
 		return nil, 0, false, err
 	}

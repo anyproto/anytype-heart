@@ -46,11 +46,11 @@ func TestParseIdsShape(t *testing.T) {
 
 	t.Run("the object read's plan validation IS this parse, not a second copy", func(t *testing.T) {
 		// given / when
-		compact, err := V2ObjectQuery{Ids: V2IdsCompact}.validate()
+		compact, err := ObjectQuery{Ids: V2IdsCompact}.validate()
 		require.NoError(t, err)
-		full, err := V2ObjectQuery{Ids: V2IdsFull}.validate()
+		full, err := ObjectQuery{Ids: V2IdsFull}.validate()
 		require.NoError(t, err)
-		_, unknownErr := V2ObjectQuery{Ids: "export"}.validate()
+		_, unknownErr := ObjectQuery{Ids: "export"}.validate()
 
 		// then: `full` is the export shape — full block ids, no relabeling
 		assert.True(t, compact.compactBlockLabels)

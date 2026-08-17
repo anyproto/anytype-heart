@@ -413,7 +413,7 @@ func TestV2SubstitutePlaceholders(t *testing.T) {
 	t.Run("an empty account identity degrades the user placeholder to a warning", func(t *testing.T) {
 		// given: a service wired without an account identity
 		fx := newV2Fixture(t)
-		fx.V2Service.accountId = ""
+		fx.Service.accountId = ""
 
 		// when
 		out, warnings := fx.substitutePlaceholders(testSpaceId, "set1", placeholderFilter(filterTemplateUser))

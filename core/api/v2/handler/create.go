@@ -45,11 +45,11 @@ const maxV2StructuredBodySize = 1 << 20 // 1 MiB
 func readV2Body(c *gin.Context) []byte {
 	body, err := io.ReadAll(io.LimitReader(c.Request.Body, maxV2CreateBodySize+1))
 	if err != nil {
-		RespondV2Error(c, v2model.ValidationFailed("read request body: "+err.Error()))
+		RespondError(c, v2model.ValidationFailed("read request body: "+err.Error()))
 		return nil
 	}
 	if len(body) > maxV2CreateBodySize {
-		RespondV2Error(c, v2model.RequestTooLarge("request body exceeds the 10 MiB limit"))
+		RespondError(c, v2model.RequestTooLarge("request body exceeds the 10 MiB limit"))
 		return nil
 	}
 	return body
@@ -68,7 +68,7 @@ func respondV2Create(c *gin.Context, result *v2model.CreateResult, createdStatus
 	c.JSON(status, result)
 }
 
-// CreateObjectV2Handler creates an object from an AnyBlock document or the shortcut
+// CreateObjectHandler creates an object from an AnyBlock document or the shortcut
 //
 //	@Summary		Create object (AnyBlock)
 //	@Description	Creates one object. The body is either a full flat AnyBlock document (discriminator: presence of version or blocks) or the shortcut {type, name, properties, markdown}. Unknown select option names are created (SPEC §3); unknown type or property keys are rejected with did-you-mean errors. Honors Idempotency-Key (C8) and ?dry_run=true (C9).
@@ -82,7 +82,7 @@ func respondV2Create(c *gin.Context, result *v2model.CreateResult, createdStatus
 //	@Failure		400			{object}	v2model.Error			"Validation or reference failure"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/objects [post]
-func CreateObjectV2Handler(s *v2service.V2Service) gin.HandlerFunc {
+func CreateObjectHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		body := readV2Body(c)
 		if body == nil {
@@ -90,14 +90,14 @@ func CreateObjectV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 		}
 		result, err := s.CreateObject(c.Request.Context(), c.Param("space_id"), body, isV2DryRun(c))
 		if err != nil {
-			RespondV2Error(c, err)
+			RespondError(c, err)
 			return
 		}
 		respondV2Create(c, result, http.StatusCreated)
 	}
 }
 
-// CreateTemplateV2Handler creates a template from an AnyBlock document
+// CreateTemplateHandler creates a template from an AnyBlock document
 //
 //	@Summary		Create template (AnyBlock)
 //	@Description	Creates a template: an AnyBlock document with templateFor naming the target type key, routed through the generic object-create path. Honors Idempotency-Key and ?dry_run=true.
@@ -111,7 +111,7 @@ func CreateObjectV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Failure		400			{object}	v2model.Error			"Validation or reference failure"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/templates [post]
-func CreateTemplateV2Handler(s *v2service.V2Service) gin.HandlerFunc {
+func CreateTemplateHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		body := readV2Body(c)
 		if body == nil {
@@ -119,14 +119,14 @@ func CreateTemplateV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 		}
 		result, err := s.CreateTemplate(c.Request.Context(), c.Param("space_id"), body, isV2DryRun(c))
 		if err != nil {
-			RespondV2Error(c, err)
+			RespondError(c, err)
 			return
 		}
 		respondV2Create(c, result, http.StatusCreated)
 	}
 }
 
-// CreateTypeV2Handler creates a type from a kind:"objectType" document
+// CreateTypeHandler creates a type from a kind:"objectType" document
 //
 //	@Summary		Create type (AnyBlock type document)
 //	@Description	Creates an object type from a kind:"objectType" AnyBlock document. typeProperties entries naming unknown property keys create those properties atomically with the type (SPEC §2a create-missing). Honors Idempotency-Key and ?dry_run=true.
@@ -140,7 +140,7 @@ func CreateTemplateV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Failure		400			{object}	v2model.Error			"Validation failure"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/types [post]
-func CreateTypeV2Handler(s *v2service.V2Service) gin.HandlerFunc {
+func CreateTypeHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		body := readV2Body(c)
 		if body == nil {
@@ -148,14 +148,14 @@ func CreateTypeV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 		}
 		result, err := s.CreateType(c.Request.Context(), c.Param("space_id"), body, isV2DryRun(c))
 		if err != nil {
-			RespondV2Error(c, err)
+			RespondError(c, err)
 			return
 		}
 		respondV2Create(c, result, http.StatusCreated)
 	}
 }
 
-// UpdateTypeV2Handler updates a type (type-document semantics)
+// UpdateTypeHandler updates a type (type-document semantics)
 //
 //	@Summary		Update type
 //	@Description	Partial type-document update: properties changes the type's own details (name, description, icon_emoji, recommended_layout); typeProperties, when present, rebuilds the recommended property lists, creating missing properties (SPEC §2a).
@@ -169,7 +169,7 @@ func CreateTypeV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Failure		404			{object}	v2model.Error			"Type not found"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/types/{type} [patch]
-func UpdateTypeV2Handler(s *v2service.V2Service) gin.HandlerFunc {
+func UpdateTypeHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		body := readV2Body(c)
 		if body == nil {
@@ -177,14 +177,14 @@ func UpdateTypeV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 		}
 		result, err := s.UpdateType(c.Request.Context(), c.Param("space_id"), c.Param("type"), body, isV2DryRun(c))
 		if err != nil {
-			RespondV2Error(c, err)
+			RespondError(c, err)
 			return
 		}
 		respondV2Create(c, result, http.StatusOK)
 	}
 }
 
-// DeleteTypeV2Handler archives a type
+// DeleteTypeHandler archives a type
 //
 //	@Summary		Delete type (archive)
 //	@Description	Archives the type object (v1 parity; hard delete is a deferred ?permanent extension).
@@ -197,18 +197,18 @@ func UpdateTypeV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Failure		404			{object}	v2model.Error			"Type not found"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/types/{type} [delete]
-func DeleteTypeV2Handler(s *v2service.V2Service) gin.HandlerFunc {
+func DeleteTypeHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		result, err := s.DeleteType(c.Request.Context(), c.Param("space_id"), c.Param("type"), isV2DryRun(c))
 		if err != nil {
-			RespondV2Error(c, err)
+			RespondError(c, err)
 			return
 		}
 		respondV2Create(c, result, http.StatusOK)
 	}
 }
 
-// CreatePropertyV2Handler creates a property
+// CreatePropertyHandler creates a property
 //
 //	@Summary		Create property
 //	@Description	Creates a property: {key?, name, format, options?:[{name,color?}]}. Formats use the AnyBlock vocabulary (text, select, multiSelect, …). The body binds strictly: unknown fields are rejected with the field named, and the bounds the property schema advertises (name/key lengths, key pattern, option count) are enforced. Honors Idempotency-Key and ?dry_run=true.
@@ -223,7 +223,7 @@ func DeleteTypeV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Failure		413			{object}	v2model.Error			"Request body exceeds the 1 MiB cap"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/properties [post]
-func CreatePropertyV2Handler(s *v2service.V2Service) gin.HandlerFunc {
+func CreatePropertyHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req v2model.CreatePropertyRequest
 		if !decodeStrictJSONBody(c, &req,
@@ -233,14 +233,14 @@ func CreatePropertyV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 		}
 		result, err := s.CreateProperty(c.Request.Context(), c.Param("space_id"), req, isV2DryRun(c))
 		if err != nil {
-			RespondV2Error(c, err)
+			RespondError(c, err)
 			return
 		}
 		respondV2Create(c, result, http.StatusCreated)
 	}
 }
 
-// UpdatePropertyV2Handler updates a property
+// UpdatePropertyHandler updates a property
 //
 //	@Summary		Update property
 //	@Description	Updates a property's display name. The key is identity and cannot change. The body binds strictly: unknown fields are rejected with the field named.
@@ -256,7 +256,7 @@ func CreatePropertyV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Failure		413			{object}	v2model.Error			"Request body exceeds the 1 MiB cap"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/properties/{key} [patch]
-func UpdatePropertyV2Handler(s *v2service.V2Service) gin.HandlerFunc {
+func UpdatePropertyHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req v2model.UpdatePropertyRequest
 		if !decodeStrictJSONBody(c, &req,
@@ -266,14 +266,14 @@ func UpdatePropertyV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 		}
 		result, err := s.UpdateProperty(c.Request.Context(), c.Param("space_id"), c.Param("key"), req, isV2DryRun(c))
 		if err != nil {
-			RespondV2Error(c, err)
+			RespondError(c, err)
 			return
 		}
 		respondV2Create(c, result, http.StatusOK)
 	}
 }
 
-// DeletePropertyV2Handler archives a property
+// DeletePropertyHandler archives a property
 //
 //	@Summary		Delete property (archive)
 //	@Description	Archives the property object.
@@ -286,18 +286,18 @@ func UpdatePropertyV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Failure		404			{object}	v2model.Error			"Property not found"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/properties/{key} [delete]
-func DeletePropertyV2Handler(s *v2service.V2Service) gin.HandlerFunc {
+func DeletePropertyHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		result, err := s.DeleteProperty(c.Request.Context(), c.Param("space_id"), c.Param("key"), isV2DryRun(c))
 		if err != nil {
-			RespondV2Error(c, err)
+			RespondError(c, err)
 			return
 		}
 		respondV2Create(c, result, http.StatusOK)
 	}
 }
 
-// CreateSetV2Handler creates a set with its views in one change set
+// CreateSetHandler creates a set with its views in one change set
 //
 //	@Summary		Create set
 //	@Description	Creates a set querying one type: {name, type, filters?, sorts?, views?}. The set's initial state carries a fully-formed dataview block, so filters/sorts/views land atomically (§8/R10). Filter/sort property keys are validated against the type's actual keys (R9). The body binds strictly (unknown fields rejected) and the set schema's advertised bounds are enforced. Honors Idempotency-Key and ?dry_run=true.
@@ -312,7 +312,7 @@ func DeletePropertyV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Failure		413			{object}	v2model.Error			"Request body exceeds the 1 MiB cap"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/sets [post]
-func CreateSetV2Handler(s *v2service.V2Service) gin.HandlerFunc {
+func CreateSetHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req v2model.CreateSetRequest
 		if !decodeStrictJSONBody(c, &req,
@@ -322,14 +322,14 @@ func CreateSetV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 		}
 		result, err := s.CreateSet(c.Request.Context(), c.Param("space_id"), req, isV2DryRun(c))
 		if err != nil {
-			RespondV2Error(c, err)
+			RespondError(c, err)
 			return
 		}
 		respondV2Create(c, result, http.StatusCreated)
 	}
 }
 
-// CreateCollectionV2Handler creates a collection
+// CreateCollectionHandler creates a collection
 //
 //	@Summary		Create collection
 //	@Description	Creates a collection: {name, items?}. Items are validated against the space. The body binds strictly (unknown fields rejected) and the collection schema's advertised bounds (name length, item count) are enforced. Honors Idempotency-Key and ?dry_run=true.
@@ -344,7 +344,7 @@ func CreateSetV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Failure		413			{object}	v2model.Error			"Request body exceeds the 1 MiB cap"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/collections [post]
-func CreateCollectionV2Handler(s *v2service.V2Service) gin.HandlerFunc {
+func CreateCollectionHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req v2model.CreateCollectionRequest
 		if !decodeStrictJSONBody(c, &req,
@@ -354,14 +354,14 @@ func CreateCollectionV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 		}
 		result, err := s.CreateCollection(c.Request.Context(), c.Param("space_id"), req, isV2DryRun(c))
 		if err != nil {
-			RespondV2Error(c, err)
+			RespondError(c, err)
 			return
 		}
 		respondV2Create(c, result, http.StatusCreated)
 	}
 }
 
-// UploadFileV2Handler uploads a file (multipart or URL)
+// UploadFileHandler uploads a file (multipart or URL)
 //
 //	@Summary		Upload file
 //	@Description	Uploads one file and returns the file object id that file/image blocks and icon_image values reference (R11). Send multipart/form-data with a file field, or JSON {"url": …} — the JSON body binds strictly (unknown fields rejected, 1 MiB cap). A URL the source refuses or that cannot be fetched is a 400 naming /url; only genuine server faults answer 500.
@@ -376,7 +376,7 @@ func CreateCollectionV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Failure		413			{object}	v2model.Error				"JSON request body exceeds the 1 MiB cap"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/files [post]
-func UploadFileV2Handler(s *v2service.V2Service) gin.HandlerFunc {
+func UploadFileHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		dryRun := isV2DryRun(c)
@@ -389,7 +389,7 @@ func UploadFileV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 			defer cleanup()
 			result, err := s.UploadFile(c.Request.Context(), spaceId, localPath, "", dryRun)
 			if err != nil {
-				RespondV2Error(c, err)
+				RespondError(c, err)
 				return
 			}
 			respondUpload(c, result)
@@ -404,7 +404,7 @@ func UploadFileV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 		}
 		result, err := s.UploadFile(c.Request.Context(), spaceId, "", req.Url, dryRun)
 		if err != nil {
-			RespondV2Error(c, err)
+			RespondError(c, err)
 			return
 		}
 		respondUpload(c, result)
@@ -425,19 +425,19 @@ func respondUpload(c *gin.Context, result *v2model.FileUploadResult) {
 func stageV2Upload(c *gin.Context) (localPath string, cleanup func(), ok bool) {
 	fileHeader, err := c.FormFile("file")
 	if err != nil {
-		RespondV2Error(c, v2model.ValidationFailed("missing file field in multipart form"))
+		RespondError(c, v2model.ValidationFailed("missing file field in multipart form"))
 		return "", nil, false
 	}
 	file, err := fileHeader.Open()
 	if err != nil {
-		RespondV2Error(c, v2model.ValidationFailed("read uploaded file: "+err.Error()))
+		RespondError(c, v2model.ValidationFailed("read uploaded file: "+err.Error()))
 		return "", nil, false
 	}
 	defer file.Close()
 
 	tempDir, err := os.MkdirTemp("", "anytype-upload-")
 	if err != nil {
-		RespondV2Error(c, err)
+		RespondError(c, err)
 		return "", nil, false
 	}
 	cleanup = func() { _ = os.RemoveAll(tempDir) }
@@ -450,20 +450,20 @@ func stageV2Upload(c *gin.Context) (localPath string, cleanup func(), ok bool) {
 	tempFile, err := os.Create(tempPath)
 	if err != nil {
 		cleanup()
-		RespondV2Error(c, err)
+		RespondError(c, err)
 		return "", nil, false
 	}
 	_, err = io.Copy(tempFile, file)
 	tempFile.Close()
 	if err != nil {
 		cleanup()
-		RespondV2Error(c, err)
+		RespondError(c, err)
 		return "", nil, false
 	}
 	return tempPath, cleanup, true
 }
 
-// SchemaIndexV2Handler lists the discoverable schemas
+// SchemaIndexHandler lists the discoverable schemas
 //
 //	@Summary		List schemas
 //	@Description	The §5 discovery index: every create kind with its endpoint and schema URL.
@@ -473,13 +473,13 @@ func stageV2Upload(c *gin.Context) (localPath string, cleanup func(), ok bool) {
 //	@Success		200	{object}	v2model.SchemaIndex	"Schema index"
 //	@Security		bearerauth
 //	@Router			/v2/schemas [get]
-func SchemaIndexV2Handler(s *v2service.V2Service) gin.HandlerFunc {
+func SchemaIndexHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.JSON(http.StatusOK, s.SchemaIndex())
 	}
 }
 
-// SchemaKindV2Handler serves one kind's schema + worked example
+// SchemaKindHandler serves one kind's schema + worked example
 //
 //	@Summary		Get schema for a kind
 //	@Description	One kind's JSON Schema and worked example (C12/C13). Kinds: object, shortcut, type, template, property, set, collection, file, filters.
@@ -491,18 +491,18 @@ func SchemaIndexV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Failure		404		{object}	v2model.Error		"Unknown kind"
 //	@Security		bearerauth
 //	@Router			/v2/schemas/{kind} [get]
-func SchemaKindV2Handler(s *v2service.V2Service) gin.HandlerFunc {
+func SchemaKindHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		entry, err := s.SchemaKind(c.Param("kind"))
 		if err != nil {
-			RespondV2Error(c, err)
+			RespondError(c, err)
 			return
 		}
 		c.JSON(http.StatusOK, entry)
 	}
 }
 
-// SchemaOpV2Handler serves one PATCH op's schema + minimal example
+// SchemaOpHandler serves one PATCH op's schema + minimal example
 //
 //	@Summary		Get schema for a PATCH op
 //	@Description	One op's tiny strict schema (C13) and a minimal example that is an INSTANCE of it — one op object, ready to drop into the PATCH body's ops array. Ops: setProperties, updateBlock, replaceSubtree, insertBlocks, moveBlock, deleteBlock, replaceText, setCell, updateView, insertView, moveView, deleteView, addItems, removeItems.
@@ -514,11 +514,11 @@ func SchemaKindV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Failure		404	{object}	v2model.Error		"Unknown op"
 //	@Security		bearerauth
 //	@Router			/v2/schemas/ops/{op} [get]
-func SchemaOpV2Handler(s *v2service.V2Service) gin.HandlerFunc {
+func SchemaOpHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		entry, err := s.SchemaOp(c.Param("op"))
 		if err != nil {
-			RespondV2Error(c, err)
+			RespondError(c, err)
 			return
 		}
 		c.JSON(http.StatusOK, entry)

@@ -44,7 +44,7 @@ var deleteProbeIssue = v2model.Issue{
 // those checks have no read-only surface, and after the allowlist (which
 // excludes every restriction-carrying system type) and the provenance
 // clause (own-account creations only) they are all but unreachable.
-func (s *V2Service) DeleteObject(ctx context.Context, spaceId, objectId string, dryRun bool) (*v2model.CreateResult, error) {
+func (s *Service) DeleteObject(ctx context.Context, spaceId, objectId string, dryRun bool) (*v2model.CreateResult, error) {
 	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
 	}
@@ -179,7 +179,7 @@ func steerSchemaDelete(sbType model.SmartBlockType, spaceId string) error {
 // refusal variants — each names what IS recorded, so the repair is
 // discoverable. Fail-closed: a nil provenance dependency and every read
 // error refuse.
-func (s *V2Service) checkDeleteProvenance(ctx context.Context, spaceId, objectId string) error {
+func (s *Service) checkDeleteProvenance(ctx context.Context, spaceId, objectId string) error {
 	if s.provenance == nil {
 		return fmt.Errorf("delete refused: creator-provenance reader not configured")
 	}

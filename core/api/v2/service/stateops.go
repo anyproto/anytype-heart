@@ -53,7 +53,7 @@ const v2InvalidDocMessage = "the ops would produce an invalid document — no op
 
 // v2StateApplier applies the ops of one PATCH to one child state.
 type v2StateApplier struct {
-	s        *V2Service
+	s        *Service
 	spaceId  string
 	objectId string
 	sbType   model.SmartBlockType
@@ -114,7 +114,7 @@ type v2StateApplier struct {
 	createdViews map[string]string
 }
 
-func newV2StateApplier(s *V2Service, spaceId, objectId string, sbType model.SmartBlockType, st *state.State, resolvers *creatingResolvers) *v2StateApplier {
+func newV2StateApplier(s *Service, spaceId, objectId string, sbType model.SmartBlockType, st *state.State, resolvers *creatingResolvers) *v2StateApplier {
 	return &v2StateApplier{
 		s:               s,
 		spaceId:         spaceId,

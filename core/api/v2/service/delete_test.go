@@ -321,7 +321,7 @@ func TestDeleteObject(t *testing.T) {
 
 	t.Run("a nil provenance dependency refuses and never archives", func(t *testing.T) {
 		fx := newV2Fixture(t)
-		fx.V2Service = NewV2Service(fx.mwMock, fx.readerMock, fx.creatorMock, fx.mutatorMock, nil, fx.objectStore, objectstore.TestTechSpaceId, testAccountId)
+		fx.Service = NewService(fx.mwMock, fx.readerMock, fx.creatorMock, fx.mutatorMock, nil, fx.objectStore, objectstore.TestTechSpaceId, testAccountId)
 		fx.registerSpace(t, testSpaceId)
 		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, deleteObjId).Return(deleteRead(model.SmartBlockType_Page), nil).Once()
 

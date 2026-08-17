@@ -131,7 +131,7 @@ func TestEncodeEnvelope(t *testing.T) {
 func TestV2ObjectQueryValidate(t *testing.T) {
 	tests := []struct {
 		name     string
-		query    V2ObjectQuery
+		query    ObjectQuery
 		wantErr  string // expected error code, "" = valid
 		wantPlan func(t *testing.T, plan objectReadPlan)
 	}{
@@ -140,7 +140,7 @@ func TestV2ObjectQueryValidate(t *testing.T) {
 			// are full inline on every shape (the legend is a measured loss —
 			// TOKENS §1.2, §8.26)
 			name:  "defaults: both sections, short block labels, anyblock",
-			query: V2ObjectQuery{},
+			query: ObjectQuery{},
 			wantPlan: func(t *testing.T, plan objectReadPlan) {
 				assert.True(t, plan.wantProperties)
 				assert.True(t, plan.wantBlocks)
@@ -150,7 +150,7 @@ func TestV2ObjectQueryValidate(t *testing.T) {
 		},
 		{
 			name:  "include=properties suppresses blocks",
-			query: V2ObjectQuery{Include: "properties"},
+			query: ObjectQuery{Include: "properties"},
 			wantPlan: func(t *testing.T, plan objectReadPlan) {
 				assert.True(t, plan.wantProperties)
 				assert.False(t, plan.wantBlocks)
@@ -160,14 +160,14 @@ func TestV2ObjectQueryValidate(t *testing.T) {
 			// the export shape: full block ids so a GET body PUTs back as a
 			// minimal diff; no legend here either
 			name:  "ids=full is the export shape: full block ids",
-			query: V2ObjectQuery{Ids: "full"},
+			query: ObjectQuery{Ids: "full"},
 			wantPlan: func(t *testing.T, plan objectReadPlan) {
 				assert.False(t, plan.compactBlockLabels)
 			},
 		},
 		{
 			name:  "ids=compact is the explicit spelling of the default",
-			query: V2ObjectQuery{Ids: "compact"},
+			query: ObjectQuery{Ids: "compact"},
 			wantPlan: func(t *testing.T, plan objectReadPlan) {
 				assert.True(t, plan.compactBlockLabels)
 			},
@@ -175,17 +175,17 @@ func TestV2ObjectQueryValidate(t *testing.T) {
 		{
 			// T7: the outline fixes the axis and ignores ?ids=
 			name:  "outline fixes the axis and ignores ids=full",
-			query: V2ObjectQuery{Outline: true, Ids: "full"},
+			query: ObjectQuery{Outline: true, Ids: "full"},
 			wantPlan: func(t *testing.T, plan objectReadPlan) {
 				assert.True(t, plan.compactBlockLabels)
 			},
 		},
-		{name: "outline and block conflict", query: V2ObjectQuery{Outline: true, Block: "b1"}, wantErr: "ambiguous_input"},
-		{name: "outline and md conflict", query: V2ObjectQuery{Outline: true, Format: "md"}, wantErr: "ambiguous_input"},
-		{name: "block and md conflict", query: V2ObjectQuery{Block: "b1", Format: "md"}, wantErr: "ambiguous_input"},
-		{name: "unknown ids value", query: V2ObjectQuery{Ids: "short"}, wantErr: "validation_failed"},
-		{name: "unknown format value", query: V2ObjectQuery{Format: "html"}, wantErr: "validation_failed"},
-		{name: "unknown include value", query: V2ObjectQuery{Include: "blocks,everything"}, wantErr: "validation_failed"},
+		{name: "outline and block conflict", query: ObjectQuery{Outline: true, Block: "b1"}, wantErr: "ambiguous_input"},
+		{name: "outline and md conflict", query: ObjectQuery{Outline: true, Format: "md"}, wantErr: "ambiguous_input"},
+		{name: "block and md conflict", query: ObjectQuery{Block: "b1", Format: "md"}, wantErr: "ambiguous_input"},
+		{name: "unknown ids value", query: ObjectQuery{Ids: "short"}, wantErr: "validation_failed"},
+		{name: "unknown format value", query: ObjectQuery{Format: "html"}, wantErr: "validation_failed"},
+		{name: "unknown include value", query: ObjectQuery{Include: "blocks,everything"}, wantErr: "validation_failed"},
 	}
 
 	for _, tt := range tests {

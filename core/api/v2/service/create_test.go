@@ -291,7 +291,7 @@ func TestV2CreateObjectDocument(t *testing.T) {
 		// create names it, the way the equally partial outline is named.
 		fx := newV2Fixture(t)
 		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(editRead(t, editBaseDoc), nil)
-		subtree, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", V2ObjectQuery{Block: "blockParent1"})
+		subtree, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", ObjectQuery{Block: "blockParent1"})
 		require.NoError(t, err)
 		assert.Contains(t, string(subtree), `"subtree":true`, "the subtree envelope carries the partial marker")
 		require.Error(t, anyblockjson.Validate(subtree),

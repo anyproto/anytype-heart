@@ -53,7 +53,7 @@ const defaultChatMessagesLimit = 25
 // ListChats returns C5 chat rows via a store query over the chat layouts —
 // NO chat opens (opening every chat is the GO-7302 startup cost; Q3 keeps
 // the list counter-free, per-chat state comes free on the messages read).
-func (s *V2Service) ListChats(ctx context.Context, spaceId string, offset, limit int) ([]v2model.ChatRow, int, bool, error) {
+func (s *Service) ListChats(ctx context.Context, spaceId string, offset, limit int) ([]v2model.ChatRow, int, bool, error) {
 	if err := s.ensureSpace(ctx, spaceId); err != nil {
 		return nil, 0, false, err
 	}
@@ -98,7 +98,7 @@ func (s *V2Service) ListChats(ctx context.Context, spaceId string, offset, limit
 // CreateChat implements POST /v2/spaces/{spaceId}/chats: a thin ObjectCreate
 // with the chatDerived type (NOT the Phase-2 snapshot path, which has never
 // been exercised for store-backed smartblocks).
-func (s *V2Service) CreateChat(ctx context.Context, spaceId string, req v2model.CreateChatRequest, dryRun bool) (*v2model.ChatResult, error) {
+func (s *Service) CreateChat(ctx context.Context, spaceId string, req v2model.CreateChatRequest, dryRun bool) (*v2model.ChatResult, error) {
 	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
 	}
@@ -124,9 +124,9 @@ func (s *V2Service) CreateChat(ctx context.Context, spaceId string, req v2model.
 // ---- messages read (state + messageCount passthrough) ----
 //
 
-// V2ChatMessagesQuery carries the GET messages parameters: exclusive
+// ChatMessagesQuery carries the GET messages parameters: exclusive
 // after/before order-id cursors and the Q4 reactions mode.
-type V2ChatMessagesQuery struct {
+type ChatMessagesQuery struct {
 	After         string
 	Before        string
 	Limit         int
@@ -142,7 +142,7 @@ type V2ChatMessagesQuery struct {
 // newest extra and continues with nextAfter; every other query is anchored
 // at its newest end (the repository sorts DESC), so the OLDEST extra is
 // trimmed and paging continues backward with nextBefore.
-func (s *V2Service) GetChatMessages(ctx context.Context, spaceId, chatId string, q V2ChatMessagesQuery) (*v2model.ChatMessagesResponse, error) {
+func (s *Service) GetChatMessages(ctx context.Context, spaceId, chatId string, q ChatMessagesQuery) (*v2model.ChatMessagesResponse, error) {
 	if err := s.ensureChat(ctx, spaceId, chatId); err != nil {
 		return nil, err
 	}
@@ -202,7 +202,7 @@ func (s *V2Service) GetChatMessages(ctx context.Context, spaceId, chatId string,
 // parsed by the anyblockjson inline codec (offset mark arrays never cross
 // the API); attachments are bare object ids with the kind inferred from
 // each target's layout. A dry run validates everything and sends nothing.
-func (s *V2Service) AddChatMessage(ctx context.Context, spaceId, chatId string, req v2model.AddChatMessageRequest, dryRun bool) (*v2model.ChatMessageResult, error) {
+func (s *Service) AddChatMessage(ctx context.Context, spaceId, chatId string, req v2model.AddChatMessageRequest, dryRun bool) (*v2model.ChatMessageResult, error) {
 	if err := s.ensureChatWrite(ctx, spaceId, chatId); err != nil {
 		return nil, err
 	}
@@ -249,7 +249,7 @@ func (s *V2Service) AddChatMessage(ctx context.Context, spaceId, chatId string, 
 // blocks}), so the service reads the message first and carries its style,
 // attachments and blocks through unchanged. A dry run stops after the
 // existence check.
-func (s *V2Service) EditChatMessage(ctx context.Context, spaceId, chatId, messageId string, req v2model.EditChatMessageRequest, dryRun bool) (*v2model.ChatMessageResult, error) {
+func (s *Service) EditChatMessage(ctx context.Context, spaceId, chatId, messageId string, req v2model.EditChatMessageRequest, dryRun bool) (*v2model.ChatMessageResult, error) {
 	if err := s.ensureChatWrite(ctx, spaceId, chatId); err != nil {
 		return nil, err
 	}
@@ -303,7 +303,7 @@ func (s *V2Service) EditChatMessage(ctx context.Context, spaceId, chatId, messag
 // targets orphaned by the delete, asynchronously, after the API replied —
 // the response names the ids at risk instead of hiding the irreversible
 // part behind a 200.
-func (s *V2Service) DeleteChatMessage(ctx context.Context, spaceId, chatId, messageId string, dryRun bool) (*v2model.ChatMessageResult, error) {
+func (s *Service) DeleteChatMessage(ctx context.Context, spaceId, chatId, messageId string, dryRun bool) (*v2model.ChatMessageResult, error) {
 	if err := s.ensureChatWrite(ctx, spaceId, chatId); err != nil {
 		return nil, err
 	}
@@ -332,7 +332,7 @@ func (s *V2Service) DeleteChatMessage(ctx context.Context, spaceId, chatId, mess
 // when the caller does not currently carry the reaction — unless the
 // service has no account identity to predict with, in which case added is
 // omitted with a warning instead of asserting a coin flip.
-func (s *V2Service) ToggleChatReaction(ctx context.Context, spaceId, chatId, messageId string, req v2model.ChatReactionRequest, dryRun bool) (*v2model.ChatReactionResult, error) {
+func (s *Service) ToggleChatReaction(ctx context.Context, spaceId, chatId, messageId string, req v2model.ChatReactionRequest, dryRun bool) (*v2model.ChatReactionResult, error) {
 	if err := s.ensureChatWrite(ctx, spaceId, chatId); err != nil {
 		return nil, err
 	}
@@ -395,7 +395,7 @@ func (s *V2Service) ToggleChatReaction(ctx context.Context, spaceId, chatId, mes
 // requiring them costs the agent no extra call. The reactions scope marks
 // ALL unread reactions (the backend takes no bound) and therefore rejects
 // upTo/lastStateId.
-func (s *V2Service) ReadChat(ctx context.Context, spaceId, chatId string, req v2model.ChatReadRequest, dryRun bool) (*v2model.ChatReadResult, error) {
+func (s *Service) ReadChat(ctx context.Context, spaceId, chatId string, req v2model.ChatReadRequest, dryRun bool) (*v2model.ChatReadResult, error) {
 	if err := s.ensureChatWrite(ctx, spaceId, chatId); err != nil {
 		return nil, err
 	}
@@ -468,7 +468,7 @@ func (s *V2Service) ReadChat(ctx context.Context, spaceId, chatId string, req v2
 // ensureChat verifies chatId names a chat object in the space: a clean 404
 // for an unknown id and a targeted 400 for a non-chat object, instead of
 // the RPC's opaque failure.
-func (s *V2Service) ensureChat(ctx context.Context, spaceId, chatId string) error {
+func (s *Service) ensureChat(ctx context.Context, spaceId, chatId string) error {
 	if err := s.ensureSpace(ctx, spaceId); err != nil {
 		return err
 	}
@@ -491,7 +491,7 @@ func (s *V2Service) ensureChat(ctx context.Context, spaceId, chatId string) erro
 // it mutates synced state). Route-gate precedence: grant space check, then
 // the write-verb check, then the chat lookup — a read-only key is refused
 // before anything resolves.
-func (s *V2Service) ensureChatWrite(ctx context.Context, spaceId, chatId string) error {
+func (s *Service) ensureChatWrite(ctx context.Context, spaceId, chatId string) error {
 	if err := ensureSpaceGranted(ctx, spaceId); err != nil {
 		return err
 	}
@@ -507,7 +507,7 @@ func (s *V2Service) ensureChatWrite(ctx context.Context, spaceId, chatId string)
 // design — participant objects are indexed under their deterministic ids,
 // and an unknown participant degrades to an empty name exactly like a v1
 // cache miss.
-func (s *V2Service) participantNameLookup(spaceId string) func(participantId string) string {
+func (s *Service) participantNameLookup(spaceId string) func(participantId string) string {
 	index := s.store.SpaceIndex(spaceId)
 	memo := map[string]string{}
 	return func(participantId string) string {
@@ -527,7 +527,7 @@ func (s *V2Service) participantNameLookup(spaceId string) func(participantId str
 // kind is inferred from each target's layout (image → image, other file
 // layouts → file, anything else → link). An unknown id is a path-addressed
 // 400 — attaching an object that does not exist would send a broken message.
-func (s *V2Service) resolveChatAttachments(spaceId string, ids []string) ([]*model.ChatMessageAttachment, error) {
+func (s *Service) resolveChatAttachments(spaceId string, ids []string) ([]*model.ChatMessageAttachment, error) {
 	if len(ids) == 0 {
 		return nil, nil
 	}
@@ -562,7 +562,7 @@ func (s *V2Service) resolveChatAttachments(spaceId string, ids []string) ([]*mod
 
 // getChatMessageProto fetches one message by id (existence checks, the edit
 // merge and the dry-run reaction probe).
-func (s *V2Service) getChatMessageProto(ctx context.Context, chatId, messageId string) (*model.ChatMessage, error) {
+func (s *Service) getChatMessageProto(ctx context.Context, chatId, messageId string) (*model.ChatMessage, error) {
 	resp := s.mw.ChatGetMessagesByIds(ctx, &pb.RpcChatGetMessagesByIdsRequest{
 		ChatObjectId: chatId,
 		MessageIds:   []string{messageId},

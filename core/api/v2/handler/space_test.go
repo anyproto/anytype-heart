@@ -35,9 +35,9 @@ func spaceRouterFixture(t *testing.T) *v2HandlerFixture {
 		bundle.RelationKeyDescription:    domain.String("The wiki"),
 	}})
 	fx.router.Use(withDryRunFlag())
-	fx.router.GET("/v2/spaces/:space_id", GetSpaceV2Handler(fx.svc))
-	fx.router.POST("/v2/spaces", CreateSpaceV2Handler(fx.svc))
-	fx.router.PATCH("/v2/spaces/:space_id", UpdateSpaceV2Handler(fx.svc))
+	fx.router.GET("/v2/spaces/:space_id", GetSpaceHandler(fx.svc))
+	fx.router.POST("/v2/spaces", CreateSpaceHandler(fx.svc))
+	fx.router.PATCH("/v2/spaces/:space_id", UpdateSpaceHandler(fx.svc))
 	return fx
 }
 
@@ -48,7 +48,7 @@ func serveSpace(fx *v2HandlerFixture, method, target, body string) *httptest.Res
 	return w
 }
 
-func TestGetSpaceV2Handler(t *testing.T) {
+func TestGetSpaceHandler(t *testing.T) {
 	t.Run("returns the row from the space view", func(t *testing.T) {
 		// given
 		fx := spaceRouterFixture(t)
@@ -76,7 +76,7 @@ func TestGetSpaceV2Handler(t *testing.T) {
 	})
 }
 
-func TestCreateSpaceV2Handler(t *testing.T) {
+func TestCreateSpaceHandler(t *testing.T) {
 	t.Run("creates and responds 201", func(t *testing.T) {
 		// given
 		fx := spaceRouterFixture(t)
@@ -117,7 +117,7 @@ func TestCreateSpaceV2Handler(t *testing.T) {
 	})
 }
 
-func TestUpdateSpaceV2Handler(t *testing.T) {
+func TestUpdateSpaceHandler(t *testing.T) {
 	t.Run("patches and returns the merged row", func(t *testing.T) {
 		// given
 		fx := spaceRouterFixture(t)

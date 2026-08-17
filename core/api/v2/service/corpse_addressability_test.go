@@ -184,7 +184,7 @@ func TestV2CorpseHeldValueReadsUnderStoredKey(t *testing.T) {
 		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(corpseHeldRead(), nil)
 
 		// when
-		body, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", V2ObjectQuery{})
+		body, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", ObjectQuery{})
 
 		// then
 		require.NoError(t, err)
@@ -225,7 +225,7 @@ func TestV2CorpseNeverListsNorResolves(t *testing.T) {
 			requireNotFoundError(t, err)
 		}
 		for _, input := range []string{corpseTypeBsonKey, corpseTypeSlug} {
-			_, _, err := fx.GetType(context.Background(), testSpaceId, input, V2ObjectQuery{})
+			_, _, err := fx.GetType(context.Background(), testSpaceId, input, ObjectQuery{})
 			requireNotFoundError(t, err)
 		}
 	})
@@ -866,7 +866,7 @@ func TestV2TypePropertiesCorpseEchoResolvesToItsHolder(t *testing.T) {
 			fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "type-live").Return(liveTypeRead(), nil)
 
 			// when
-			body, _, err := fx.GetType(context.Background(), testSpaceId, "livetype", V2ObjectQuery{})
+			body, _, err := fx.GetType(context.Background(), testSpaceId, "livetype", ObjectQuery{})
 
 			// then — served under the stored BSON key, with the corpse's name
 			require.NoError(t, err)
@@ -1142,7 +1142,7 @@ func TestV2RemovedBundledTypeRefusesWrites(t *testing.T) {
 					requireRemovedType(t, err, spelling.slug)
 
 					// and the route side stays coherent: the type 404s
-					_, _, err = fx.GetType(ctx, testSpaceId, spelling.input, V2ObjectQuery{})
+					_, _, err = fx.GetType(ctx, testSpaceId, spelling.input, ObjectQuery{})
 					requireNotFoundError(t, err)
 				})
 			})

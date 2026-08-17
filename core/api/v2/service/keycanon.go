@@ -20,12 +20,12 @@ import (
 
 // keyCanon is the per-request canonicalizer.
 type keyCanon struct {
-	s       *V2Service
+	s       *Service
 	entries []propertyEntry
 	aliases map[string]domain.RelationKey // chain-aware active file aliases
 }
 
-func (s *V2Service) newKeyCanon(spaceId string) (*keyCanon, error) {
+func (s *Service) newKeyCanon(spaceId string) (*keyCanon, error) {
 	entries, err := s.liveProperties(spaceId)
 	if err != nil {
 		return nil, err

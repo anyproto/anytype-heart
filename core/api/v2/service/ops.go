@@ -117,7 +117,7 @@ func editNeedsForOps(ops []json.RawMessage, cur apicore.ObjectRead) (apicore.Edi
 
 // restrictionRefusal is the 403 for an op the object's own restrictions
 // forbid: the verdict is produced HERE, where it is made, as the C6 error —
-// left bare it fell through RespondV2Error's 500 fallback, dressing a
+// left bare it fell through RespondError's 500 fallback, dressing a
 // PERMANENT refusal as a retryable fault and retry-looping the agent
 // (surface review M2a). The mutator path's in-lock re-check is classified
 // by mapWriteError on the same restriction.ErrRestricted sentinel.
@@ -571,7 +571,7 @@ func decodeOpBlock(raw json.RawMessage, path string) (map[string]any, error) {
 
 // isCollectionType reports whether a type key is the collection type or a
 // custom type with the collection layout.
-func (s *V2Service) isCollectionType(spaceId, typeKey string) bool {
+func (s *Service) isCollectionType(spaceId, typeKey string) bool {
 	if typeKey == string(bundle.TypeKeyCollection) {
 		return true
 	}

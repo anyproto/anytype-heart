@@ -39,13 +39,13 @@ func chatRouterFixture(t *testing.T) *v2HandlerFixture {
 	}})
 	fx.router.Use(pagination.New(pagination.Config{DefaultPage: 0, DefaultPageSize: 25, MinPageSize: 1, MaxPageSize: 1000}))
 	fx.router.Use(withDryRunFlag())
-	fx.router.GET("/v2/spaces/:space_id/chats/:chat_id/messages", GetChatMessagesV2Handler(fx.svc))
-	fx.router.POST("/v2/spaces/:space_id/chats", CreateChatV2Handler(fx.svc))
-	fx.router.POST("/v2/spaces/:space_id/chats/:chat_id/messages", AddChatMessageV2Handler(fx.svc))
-	fx.router.PATCH("/v2/spaces/:space_id/chats/:chat_id/messages/:message_id", EditChatMessageV2Handler(fx.svc))
-	fx.router.DELETE("/v2/spaces/:space_id/chats/:chat_id/messages/:message_id", DeleteChatMessageV2Handler(fx.svc))
-	fx.router.POST("/v2/spaces/:space_id/chats/:chat_id/messages/:message_id/reactions", ToggleChatReactionV2Handler(fx.svc))
-	fx.router.POST("/v2/spaces/:space_id/chats/:chat_id/read", ReadChatV2Handler(fx.svc))
+	fx.router.GET("/v2/spaces/:space_id/chats/:chat_id/messages", GetChatMessagesHandler(fx.svc))
+	fx.router.POST("/v2/spaces/:space_id/chats", CreateChatHandler(fx.svc))
+	fx.router.POST("/v2/spaces/:space_id/chats/:chat_id/messages", AddChatMessageHandler(fx.svc))
+	fx.router.PATCH("/v2/spaces/:space_id/chats/:chat_id/messages/:message_id", EditChatMessageHandler(fx.svc))
+	fx.router.DELETE("/v2/spaces/:space_id/chats/:chat_id/messages/:message_id", DeleteChatMessageHandler(fx.svc))
+	fx.router.POST("/v2/spaces/:space_id/chats/:chat_id/messages/:message_id/reactions", ToggleChatReactionHandler(fx.svc))
+	fx.router.POST("/v2/spaces/:space_id/chats/:chat_id/read", ReadChatHandler(fx.svc))
 	return fx
 }
 

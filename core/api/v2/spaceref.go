@@ -16,7 +16,7 @@ package apiv2
 //     by-construction argument the grant gate itself rests on.
 //
 // The resolution can only ever land inside the caller's VISIBLE spaces
-// (V2Service.ResolveSpaceRef → liveSpaceRows, live and grant-intersected),
+// (Service.ResolveSpaceRef → liveSpaceRows, live and grant-intersected),
 // so a short reference is not a way to probe a space the key does not hold:
 // a tail belonging to a non-granted space does not resolve, the param is
 // left exactly as it arrived, and the request meets the same refusal any
@@ -30,11 +30,11 @@ import (
 
 // resolveSpaceRef rewrites :space_id in place when the caller used a short
 // reference, and records the caller's own spelling on the request context so
-// refusals quote it back (v2handler.RespondV2Error).
+// refusals quote it back (v2handler.RespondError).
 //
 // A full, space-shaped id costs NOTHING here: ResolveSpaceRef returns it
 // untouched without reading the space list.
-func resolveSpaceRef(svc *v2service.V2Service) gin.HandlerFunc {
+func resolveSpaceRef(svc *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ref := c.Param(SpaceParam)
 		if ref == "" {
