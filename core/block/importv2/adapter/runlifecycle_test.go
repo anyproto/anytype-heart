@@ -250,6 +250,65 @@ func TestFinishRun(t *testing.T) {
 			"past MaterializeStarted a claimed row is a possible create, and must stay compensable")
 	})
 
+	t.Run("a clean in-process compensation past pass 3 still keeps the dir", func(t *testing.T) {
+		// given — the same class as review item 3, on the disposal branch
+		// rather than the carve-out. In-process compensation walks the
+		// IN-MEMORY journal, and the durable scope is CompensationInputs: a
+		// pass-3 create torn between the tree write and its effect row leaves
+		// a row still in the claimed status, which the journal never held and
+		// the delete set does hold. "Compensation ran and leaked nothing" is
+		// therefore a statement about the journal only, and dropping the dir
+		// on it destroyed the sole attribution of the hollow tree — the
+		// evidence deleting itself, one branch over from where A2 found it.
+		ctx := context.Background()
+		s := &service{config: &config.Config{RepoPath: t.TempDir()}}
+		lc, err := s.beginRun(ctx, testRequest(), &pb.RpcObjectImportRequest{}, "Notion", 0, process.NewNoOp())
+		require.NoError(t, err)
+		require.NoError(t, lc.store.RecordClaims(ctx, []runstore.ClaimRecord{
+			{SourceKey: "torn", ObjectId: "obj-torn", PayloadRoot: []byte("raw"), PayloadHeads: []string{"obj-torn"}},
+		}))
+		require.NoError(t, lc.store.MarkFetched(ctx, importv2.RootSpec{}))
+		dir := lc.store.Dir()
+
+		// when: the journal's own compensation completed with nothing left over
+		s.finishRun(lc, &importv2.Result{
+			Err:             importv2.Fatal(importv2.IssueStoreError, assert.AnError),
+			CompensationRan: true,
+			Leaked:          0,
+		})
+
+		// then
+		reopened, err := runstore.Open(ctx, dir)
+		require.NoError(t, err, "the journal's verdict does not cover the durable scope")
+		defer reopened.Close()
+		inputs, err := reopened.CompensationInputs(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"obj-torn"}, inputs.Created,
+			"the sweep must still get its chance at the rows the journal never saw")
+	})
+
+	t.Run("a clean in-process compensation BEFORE pass 3 disposes the dir", func(t *testing.T) {
+		// given: before the marker the two scopes provably agree — nothing
+		// has entered the space by construction (DM spec §7), so a claim row
+		// is pure intent and CompensationInputs deletes none of them. The
+		// keep above must not become "keep every failed run forever".
+		ctx := context.Background()
+		s := &service{config: &config.Config{RepoPath: t.TempDir()}}
+		lc, err := s.beginRun(ctx, testRequest(), &pb.RpcObjectImportRequest{}, "Notion", 0, process.NewNoOp())
+		require.NoError(t, err)
+		dir := lc.store.Dir()
+
+		// when
+		s.finishRun(lc, &importv2.Result{
+			Err:             importv2.Fatal(importv2.IssueStoreError, assert.AnError),
+			CompensationRan: true,
+		})
+
+		// then
+		_, statErr := os.Stat(dir)
+		assert.True(t, os.IsNotExist(statErr))
+	})
+
 	t.Run("a user cancel whose compensation was GATED still keeps the dir", func(t *testing.T) {
 		// given: effects exist (non-empty journal) but the compensating
 		// marker could not be written — the disposal invariant outranks the

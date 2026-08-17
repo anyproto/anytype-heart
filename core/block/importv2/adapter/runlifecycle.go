@@ -321,6 +321,33 @@ func (s *service) finishRun(lc *runLifecycle, result *importv2.Result) {
 		log.With("dir", lc.store.Dir()).Warnf("compensation leaked %d objects; dir kept for the startup sweep to retry", result.Leaked)
 		return
 	}
+	if result.Err != nil && lc.store.MaterializeStarted() {
+		// The disposal invariant's other half, and the same class as review
+		// item 3 one branch over. In-process compensation walks the IN-MEMORY
+		// journal; the DURABLE scope is runstore.CompensationInputs. A pass-3
+		// create torn between the tree write and its effect row leaves a row
+		// still in the claimed status — which the journal never held and the
+		// delete set does hold, past the sticky marker. "Compensation ran and
+		// leaked nothing" is therefore a statement about the journal alone,
+		// and dropping the dir on it destroyed the only attribution those
+		// hollow trees will ever have: the evidence deleting itself, exactly
+		// as in A2.
+		//
+		// The dir is left as the engine left it — the compensating marker is
+		// already on disk (OnCompensating gates the first delete), which is
+		// the state the sweep's compensate branch reads. Deleting an
+		// already-deleted id counts compensated (CompensateIds tolerates
+		// not-found), so the retry costs one pass and then drops the dir.
+		// Before the marker the two scopes provably agree — nothing has
+		// entered the space by construction (DM spec §7) — so the common
+		// mid-crawl failure is untouched.
+		if err := lc.store.Close(); err != nil {
+			log.Errorf("close compensated materializing run: %s", err)
+		}
+		log.With("dir", lc.store.Dir()).
+			Warnf("pass 3 failed; dir kept so the sweep can compensate the durable scope the journal cannot see")
+		return
+	}
 	state := runstore.StateCompleted
 	if result.Err != nil {
 		state = runstore.StateFailed
