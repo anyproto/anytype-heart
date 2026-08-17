@@ -2,9 +2,11 @@
 
 Status: **draft v0.4** · 2026-07-31 · GO-7383 follow-on
 Depends on: AnyBlock JSON v1 flat (`pkg/lib/anyblockjson/SPEC.md` v0.7).
-Evidence base: `docs/AgentApiV2Research.md` (+ Addendum A) and
-`pkg/lib/anyblockjson/FLAT.md` — decisions cite sections there instead of
-re-arguing. v1 (`/v1`) stays untouched for the deprecation window.
+Evidence base: `docs/AgentApiV2Research.md` (+ Addendum A) — decisions cite
+sections there instead of re-arguing. The flat-encoding rationale they drew
+on now lives in `SPEC.md`; the implementation brief it came from was a build
+artefact and has been removed. v1 (`/v1`) stays untouched for the
+deprecation window.
 
 Changes from v0.3.5 (this refresh): three read-only reviews checked the
 Phase-4/5 plan and the cross-cutting text against the shipped Phase-0–3
@@ -563,7 +565,7 @@ prompt/skill guidance.
 
 **Deferred**: dataview/view ops · cross-object batch · block-scoped
 preconditions · conflict rebase · events/subscriptions · core-profile
-strict schema (FLAT.md §7.3) · `?permanent=true` hard delete.
+strict schema · `?permanent=true` hard delete.
 
 **Named build items** (open today; budget them):
 
@@ -3253,7 +3255,7 @@ re-tuning of tool descriptions once the benchmark re-runs.
 
 ### 8.22 The (a) identity layer — mint, corpse policy, key resolution (2026-08-08 — decisions as built)
 
-Implements the safety core of `pkg/lib/anyblockjson/ADDRESSING.md` (§7.5,
+Implements the safety core of `core/api/APIV2_ADDRESSING.md` (§7.5,
 §7.5a, §7.6 build step 3 plus the step-5 corpse policy), superseding the
 queued "point v2 at apiObjectKey" fix — which, alone, would have imported
 the slug layer's collision problem (§2.3-1). Nine commits (seven code,
@@ -5438,7 +5440,7 @@ subtest granularity.
 ### 8.37 Wave 1 — the identity layer finished: mint, backfill, one vocabulary (2026-08-13 — decisions as built)
 
 Wave 1 of `APIV2_PLAN.md` (items 1.1–1.4), specified in
-`ADDRESSING.md` §7.5 / §7.5a. Three commits, in dependency order — the
+`APIV2_ADDRESSING.md` §7.5 / §7.5a. Three commits, in dependency order — the
 union check has to exist before the backfill can be safe, and both have to
 exist before the re-spelling sweep can be anything but silent
 mis-resolution.

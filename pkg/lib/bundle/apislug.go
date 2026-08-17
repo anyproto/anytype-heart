@@ -12,7 +12,7 @@ import (
 )
 
 // apislug.go is the derived api-slug table for bundled keys — the authority
-// the identifier-layer design names in ADDRESSING.md §7.5a-1: bundled
+// the identifier-layer design names in APIV2_ADDRESSING.md §7.5a-1: bundled
 // relations and types are addressed on the API surface by a snake_case slug
 // derived from the internal key IN CODE, both directions. The stored
 // apiObjectKey detail cannot be the authority for bundled keys (old spaces
@@ -70,7 +70,7 @@ func SanitizeApiSlug(raw string, maxLen int) string {
 	return out
 }
 
-// FoldApiKey is the forgiving-layer fold (ADDRESSING.md §7.5a-3): lowercase
+// FoldApiKey is the forgiving-layer fold (APIV2_ADDRESSING.md §7.5a-3): lowercase
 // with `_` and `-` stripped, so `dueDate`, `due_date` and `due-date` fold
 // together. Exact match always wins before folding is consulted; two keys
 // folding together is an ambiguity the caller must surface loudly, never

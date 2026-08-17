@@ -3,7 +3,7 @@ package objectcreator
 // apikey.go — mint-time uniqueness for the api key slug (`apiObjectKey`).
 //
 // The slug is identity-bearing for API v2: it is the ONLY key the surface
-// speaks for a BSON-keyed type or property (ADDRESSING.md §7.5a), so two
+// speaks for a BSON-keyed type or property (APIV2_ADDRESSING.md §7.5a), so two
 // entities answering to one slug is not a cosmetic duplicate — it is an
 // address that means two things. Until this file existed, the heart-side
 // mint (`injectApiObjectKey`) derived the slug from the create-time name and

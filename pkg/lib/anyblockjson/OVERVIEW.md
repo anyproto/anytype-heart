@@ -215,6 +215,6 @@ round-trip contract rather than merely believe it.
 |---|---|
 | `SPEC.md` | normative, complete, §14 has a full worked example |
 | `ANOMALIES.md` | every real-data oddity found, with evidence |
-| `ADDRESSING.md` | the identifier-layer dossier (naming, keys, minting) |
+| `APIV2_ADDRESSING.md` | the identifier-layer dossier (naming, keys, minting) |
 | `cmd/anyblockroundtrip` | the production sweep harness |
 | `schema/*.json` | the hand-authored JSON Schema (2020-12) |

@@ -6,7 +6,7 @@ Status: **design dossier** (research + recommendation, no normative force) ·
 constraint removed; the slugs-always surface adopted in §7.5a; the
 internal-key strategy argued to (b) and then **flipped to (a) on
 falsifying evidence** — the reversal is kept visible in §7.5 rather than
-rewritten away). Companion to `SPEC.md` (v0.7) and `FLAT.md`; feeds a
+rewritten away). Companion to `SPEC.md` (v0.7); feeds a
 SPEC revision and closes SPEC §15.3. Every claim about current behaviour is
 verified against source at the cited line; prior art was researched against
 vendor documentation (§6).

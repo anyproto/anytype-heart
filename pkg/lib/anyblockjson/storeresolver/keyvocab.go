@@ -1,6 +1,6 @@
 package storeresolver
 
-// keyvocab.go — the space-backed key vocabulary (ADDRESSING.md §7.5a).
+// keyvocab.go — the space-backed key vocabulary (APIV2_ADDRESSING.md §7.5a).
 //
 // The package default (anyblockjson.BundledKeyVocabulary) knows only the
 // bundled derived table, which is all an offline reader can know. Inside a

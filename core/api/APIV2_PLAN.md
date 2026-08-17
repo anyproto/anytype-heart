@@ -4,7 +4,7 @@ Status: plan v1.0 · 2026-08-09 · GO-7383, branch `go-7383-apiv2-phase0`.
 
 This is the **index**, not a replacement for the specs. Work is specified in
 `APIV2.md` (the API spec + §8.x as-built notes), `APIV2_SURFACES.md` (the
-remaining-surfaces decisions and phases), `ADDRESSING.md` (the identifier
+remaining-surfaces decisions and phases), `APIV2_ADDRESSING.md` (the identifier
 layer), `APIV2_TOKENS.md` (the measured token review) and
 `APIV2_SURFACE_REVIEW.md` (the whole-surface audit). Each item below says
 where it lives.

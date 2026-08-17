@@ -328,7 +328,7 @@ snake_case **api slug** spelling — `due_date`, `icon_emoji`,
 vocabulary, no aliases, no duality: a reader never has to know which kind of
 key it holds. (This overturns the earlier "as stored, camelCase" rule, and
 it is the format half of the same decision the API surface makes —
-ADDRESSING.md §7.5a, §7.3.)
+APIV2_ADDRESSING.md §7.5a, §7.3.)
 
 The mapping is a **table, both directions, never a case transform**: for
 bundled keys the derived table in `pkg/lib/bundle` (which ships with every

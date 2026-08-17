@@ -1,9 +1,18 @@
 package anyblockjson
 
-// flat_review_test.go holds the regression tests for the FLAT_REVIEW.md fix
-// pass: Marshal never emits output its own Validate rejects (findings 1, 3),
-// Validate and Unmarshal agree on every input (finding 2), and the coverage
-// gaps of findings 4–8.
+// flat_invariants_test.go pins the two invariants the flat encoding rests on,
+// each of which was violated at least once before it was pinned:
+//
+//   - Marshal never emits a document its own Validate rejects. An export that
+//     is invalid by its own schema cannot be re-imported, so the round-trip
+//     contract (SPEC §11) silently stops holding.
+//   - Validate and Unmarshal agree on every input. When they disagree, a
+//     document passes validation and then fails to import — or worse, imports
+//     as something else. The float-form indent (`1.0` read as 0) was exactly
+//     this, and it bypassed the V1/V2/V3 semantic checks.
+//
+// The remaining cases cover the leaf-containment, depth-bound and table-cell
+// rules those two invariants depend on.
 
 import (
 	"encoding/json"

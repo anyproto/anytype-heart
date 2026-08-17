@@ -1,7 +1,7 @@
 # API v2 token economics — a measured review (GO-7383)
 
 Status: review v1.0 · 2026-08-08 · companion to `APIV2.md` (C3/C4/C5, §7,
-§8.20–8.22) and `pkg/lib/anyblockjson/ADDRESSING.md` (§7.5a, §7.6).
+§8.20–8.22) and `core/api/APIV2_ADDRESSING.md` (§7.5a, §7.6).
 
 Method: everything here is **measured against the running app** (a real
 ~16-space account) unless marked *estimate* or *sim:* (simulated offline from

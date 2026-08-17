@@ -19,7 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-// These tests pin the union the mint checks (ADDRESSING.md §7.5a-6). Each
+// These tests pin the union the mint checks (APIV2_ADDRESSING.md §7.5a-6). Each
 // arm fails on revert of the corresponding branch in apikey.go: without the
 // check every case below stores the colliding slug verbatim.
 

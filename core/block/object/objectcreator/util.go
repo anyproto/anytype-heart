@@ -19,7 +19,7 @@ import (
 // It derives only. Uniqueness of the derived slug within the space is
 // ensureUniqueApiObjectKey's job (apikey.go): the slug is API v2's whole key
 // surface, so a duplicate is an address that means two things — see
-// ADDRESSING.md §7.5a-6.
+// APIV2_ADDRESSING.md §7.5a-6.
 func injectApiObjectKey(object *domain.Details, key string) {
 	if strings.TrimSpace(object.GetString(bundle.RelationKeyApiObjectKey)) == "" {
 		if key == "" {

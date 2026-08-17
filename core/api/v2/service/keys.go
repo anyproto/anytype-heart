@@ -1,6 +1,6 @@
 package v2service
 
-// keys.go — the space's live type/property key surface (ADDRESSING.md §7.5,
+// keys.go — the space's live type/property key surface (APIV2_ADDRESSING.md §7.5,
 // §7.5a): one bounded details query per kind primes entries carrying the
 // stored key, the stored api slug (apiObjectKey), name and format.
 //

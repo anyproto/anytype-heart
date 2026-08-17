@@ -359,7 +359,7 @@ func (a *v2StateApplier) applyViewSet(set map[string]json.RawMessage, edited, vi
 }
 
 // canonicalViewKey maps an inbound property key to the spelling the VIEW
-// DOCUMENT uses (ADDRESSING.md §7.5a). The view ops merge into exported
+// DOCUMENT uses (APIV2_ADDRESSING.md §7.5a). The view ops merge into exported
 // JSON, which spells slugs, so a key that arrives as a stored key — or as a
 // folded spelling, or as a bundled slug — has to be translated once, on the
 // way in, or it addresses a column that is not there and writes a filter the

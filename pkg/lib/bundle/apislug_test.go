@@ -56,7 +56,7 @@ func TestApiSlugRoundTrip(t *testing.T) {
 	})
 
 	t.Run("string inversion is not the reverse mechanism", func(t *testing.T) {
-		// the documented non-invertible cases (ADDRESSING.md §7.5a-1): the
+		// the documented non-invertible cases (APIV2_ADDRESSING.md §7.5a-1): the
 		// table must carry them because no case transform can
 		key, ok := RelationKeyByApiSlug("media_artist_url")
 		require.True(t, ok)
