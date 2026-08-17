@@ -23,7 +23,7 @@ import (
 func TestInline_ObjectDeepLinkNormalizes(t *testing.T) {
 	marks := []*model.BlockContentTextMark{
 		mark(mObject, 0, 2, "outerid"),
-		mark(mLink, 1, 2, objectLinkPrefix+"innerlink"),
+		mark(mLink, 1, 2, objectLinkDest("innerlink")),
 	}
 	md1 := renderInline("ab", marks)
 	text1, marks1, err := parseInline(md1)
@@ -32,7 +32,7 @@ func TestInline_ObjectDeepLinkNormalizes(t *testing.T) {
 	require.Equal(t, md1, md2, "must be byte-stable")
 
 	// standalone equivalence: the deep-link Link renders as an Object link
-	asLink := renderInline("x", []*model.BlockContentTextMark{mark(mLink, 0, 1, objectLinkPrefix+"id9")})
+	asLink := renderInline("x", []*model.BlockContentTextMark{mark(mLink, 0, 1, objectLinkDest("id9"))})
 	asObject := renderInline("x", []*model.BlockContentTextMark{mark(mObject, 0, 1, "id9")})
 	assert.Equal(t, asObject, asLink)
 }
@@ -225,7 +225,7 @@ func TestInline_ResourceBounds(t *testing.T) {
 
 // Lens 4: the wiring dispatches on the version/$schema markers (§13).
 func TestDetectFormat(t *testing.T) {
-	v, schema, ok := DetectFormat([]byte(`{"$schema": "https://schemas.anytype.io/anyblock/1.0/object.schema.json", "version": 1}`))
+	v, schema, ok := DetectFormat([]byte(`{"$schema": "` + SchemaURL + `", "version": 1}`))
 	require.True(t, ok)
 	assert.Equal(t, 1, v)
 	assert.Equal(t, SchemaURL, schema)

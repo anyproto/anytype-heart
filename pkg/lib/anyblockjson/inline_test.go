@@ -255,3 +255,90 @@ func TestInline_PropertyRoundTrip(t *testing.T) {
 		require.Equalf(t, marks1, marks2, "case %d: marks not stable: md=%q", i, md1)
 	}
 }
+
+// An Object mark's target is Anytype's deep link, and the form is exact: a
+// single "objectId" parameter, nothing else (§8.1). Matching it by prefix
+// took everything after "objectId=" as the id, so the platform's own
+// two-parameter link (core/block/export/writer.go) produced the object id
+// "<id>&spaceId=<space>" — byte-stable, and wrong forever.
+func TestInline_ObjectDeepLinkStrictParse(t *testing.T) {
+	tests := []struct {
+		name     string
+		dest     string
+		wantType model.BlockContentTextMarkType
+		wantID   string // for an Object mark; for a Link, the dest verbatim
+	}{
+		{"canonical single parameter", "anytype://object?objectId=bafy1", mObject, "bafy1"},
+		{"percent-encoded id decodes", "anytype://object?objectId=a%26b", mObject, "a&b"},
+
+		// every one of these was, or would be, mis-parsed as an object id
+		{"platform two-parameter link", "anytype://object?objectId=bafy1&spaceId=s1", mLink, "anytype://object?objectId=bafy1&spaceId=s1"},
+		{"parameters reversed", "anytype://object?spaceId=s1&objectId=bafy1", mLink, "anytype://object?spaceId=s1&objectId=bafy1"},
+		{"an extra parameter", "anytype://object?objectId=bafy1&mention=1", mLink, "anytype://object?objectId=bafy1&mention=1"},
+		{"repeated parameter", "anytype://object?objectId=a&objectId=b", mLink, "anytype://object?objectId=a&objectId=b"},
+		{"empty id", "anytype://object?objectId=", mLink, "anytype://object?objectId="},
+		{"another host", "anytype://date?timestamp=123", mLink, "anytype://date?timestamp=123"},
+		{"a path", "anytype://invite/?cid=x&key=y", mLink, "anytype://invite/?cid=x&key=y"},
+		{"another scheme", "https://object?objectId=bafy1", mLink, "https://object?objectId=bafy1"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// given
+			md := "[Roman](" + tc.dest + ")"
+
+			// when
+			txt, marks, err := parseInline(md)
+
+			// then
+			require.NoError(t, err)
+			assert.Equal(t, "Roman", txt)
+			require.Len(t, marks, 1)
+			assert.Equal(t, tc.wantType, marks[0].Type)
+			assert.Equal(t, tc.wantID, marks[0].Param,
+				"a destination this reader does not recognize must survive verbatim, not be reinterpreted")
+
+			// and the round trip is byte-stable, so nothing degrades on re-export
+			md2 := renderInline(txt, marks)
+			txt3, marks3, err := parseInline(md2)
+			require.NoError(t, err)
+			assert.Equal(t, txt, txt3)
+			assert.Equal(t, marks, marks3)
+		})
+	}
+}
+
+// An object id is percent-encoded on the way out, so it cannot introduce a
+// second query parameter — otherwise an id containing "&spaceId=" would
+// render a link that other tools resolve to a different space.
+func TestInline_ObjectDeepLinkEncodesId(t *testing.T) {
+	tests := []struct {
+		name     string
+		id       string
+		wantDest string
+	}{
+		{"an ordinary CID is unchanged", "bafyreiabc123", "anytype://object?objectId=bafyreiabc123"},
+		{"an id smuggling a parameter", "a&spaceId=evil", "anytype://object?objectId=a%26spaceId%3Devil"},
+		{"an id with a query terminator", "a?b#c", "anytype://object?objectId=a%3Fb%23c"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// given
+			marks := []*model.BlockContentTextMark{mark(mObject, 0, 1, tc.id)}
+
+			// when
+			md := renderInline("x", marks)
+
+			// then
+			assert.Contains(t, md, tc.wantDest)
+
+			// and the id survives the round trip exactly
+			_, got, err := parseInline(md)
+			require.NoError(t, err)
+			require.Len(t, got, 1)
+			assert.Equal(t, mObject, got[0].Type)
+			assert.Equal(t, tc.id, got[0].Param)
+		})
+	}
+}

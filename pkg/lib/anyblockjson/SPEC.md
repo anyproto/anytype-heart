@@ -97,7 +97,7 @@ The format uses six Anytype concepts; everything else is borrowed vocabulary:
 
 ```json
 {
-  "$schema": "https://schemas.anytype.io/anyblock/1.0/object.schema.json",
+  "$schema": "https://schemas.anytype.io/anyblock/1/object.schema.json",
   "version": 1,
   "id": "bafyreieqh63jv…",
   "type": "page",
@@ -234,7 +234,7 @@ object. That is `index.json`, one file at the bundle root, validated against
 
 ```json
 {
-  "$schema": "https://schemas.anytype.io/anyblock/1.0/index.schema.json",
+  "$schema": "https://schemas.anytype.io/anyblock/1/index.schema.json",
   "version": 1,
   "name": "Company Wiki",
   "description": "Everything we know, with an owner.",
@@ -254,6 +254,22 @@ object. That is `index.json`, one file at the bundle root, validated against
 | `iconImage` | the space icon as an image: the **object id** of an image in the bundle, as `iconImage` means everywhere else (§3). Needs the image object *and* its file in the archive, so a generated bundle uses `iconEmoji` |
 | `homepage` | what opens on entering the space: an object id, or the reserved `widgets` (the sidebar dashboard, the default) or `graph` |
 | `widgets` | sidebar widgets, in order. **The first one is what the install opens**, so the entry point goes first |
+
+`version` is the same format version, with the same rules, that object
+documents carry (§10): one integer, one namespace, bumped together. A reader
+rejects an index declaring a version newer than its own, naming both — the
+same dedicated error object documents get, never a generic constraint failure.
+
+**A bundle is one artifact and is versioned as one.** If the index or *any*
+document in it declares a version the reader does not support, the bundle is
+rejected as a whole and **nothing is installed** — a bundle creates a space,
+installs types and widgets and unpacks files, so a partial install leaves a
+space half-built with no way for the user to tell what is missing. (A
+conversion or validation *tool* may keep going to report every offending file
+at once, as `anyblockconvert` does, but it must still fail the run rather than
+present its output as usable.) In a well-formed bundle every file carries the
+same `version`; a bundle whose files disagree is malformed, and the reader
+gates on the highest version it finds.
 
 A widget is `{ target, layout, limit }`. `layout` is `link · tree · list ·
 compactList · view`, defaulting to `link` and omitted when default (§4).
@@ -902,9 +918,9 @@ be worse).
 
 **Status: designed but not part of v1.** v1 ships the structured `filters`
 array only. The view field name `filter` (singular, string) is **reserved**
-for this extension: v1 schemas do not define it, so introducing it later is
-an additive 1.x release (§10 — a v1.0 reader encountering it reports
-"produced by a newer version"). The two forms will coexist permanently —
+for this extension: v1 schemas do not define it, so introducing it bumps the
+format version (§10 — a v1 reader encountering a version-2 document rejects
+it, naming both versions). The two forms will coexist permanently —
 `filter` and `filters` mutually exclusive per view, import accepting both,
 export choosing via option.
 
@@ -1025,7 +1041,7 @@ with no Markdown equivalent:
 | `~~text~~` | Strikethrough | |
 | `` `text` `` | Keyboard | inline code; content is literal (CommonMark code-span rules, §8.2) |
 | `[text](url)` | Link | external URLs |
-| `[text](anytype://object?objectId=<id>)` | Object | inline link to an Anytype object — Anytype's standard deep-link shape |
+| `[text](anytype://object?objectId=<id>)` | Object | inline link to an Anytype object — Anytype's standard deep-link shape. The form is **exact**: scheme `anytype`, host `object`, and a single `objectId` parameter, with the id percent-encoded. Any other `anytype://` destination — a second parameter, a different host, a path — is **not** an object reference and stays a plain Link, preserved verbatim (§10) |
 | `<mention objectId="<id>">text</mention>` | Mention | decorated object reference (icon + name in UI) |
 | `<u>text</u>` | Underscored | standard HTML |
 | `<font color="red">text</font>` | TextColor | Anytype color names |
@@ -1122,10 +1138,13 @@ Implementation decisions (v0.4 freeze):
   (link, mention, object, colors, emoji) with an empty param is dropped;
   a param on a param-less mark type is cleared (so equal ranges merge);
   params beyond the §8.2 resource bounds are dropped. A **Link mark whose
-  param is an `anytype://object?objectId=` deep-link normalizes to an
-  Object mark** — the two render identically, and without the
-  normalization the parse-back type flip would change same-type overlap
-  resolution.
+  param is exactly the `anytype://object?objectId=<id>` deep-link (§8.1 —
+  one parameter, nothing else) normalizes to an Object mark** — the two
+  render identically, and without the normalization the parse-back type flip
+  would change same-type overlap resolution. A Link carrying any *other*
+  `anytype://` destination is left alone: reinterpreting it would have to
+  guess which part is the id, and guessing wrong is unrecoverable, whereas
+  preserving it verbatim always round-trips.
 - **Step 2 extension**: emphasis-family marks (`**`, `*`, `~~`) additionally
   exclude any whitespace run touched by a *stack-outer* mark's endpoint —
   the outer change forces the emphasis delimiter to close/reopen inside the
@@ -1244,22 +1263,67 @@ default full-id export.
 
 ## 10. Versioning and compatibility
 
-- `version` is required; readers **reject** documents with a greater version
-  than they support, with a dedicated error naming both versions (not a
-  generic schema failure).
-- Within version 1, evolution is **additive only**: new block types, new
-  props, new mark syntax. This rule binds from the first non-draft release;
-  while the format is a draft with no external consumers, breaking changes
-  may occur under version 1 (as the v0.6 children→indent change did). The published schema is re-released with a minor
-  suffix (`1.1`, `1.2`, …); documents citing an older `$schema` stay valid.
-  When validation fails and the document's `$schema` minor is newer than the
-  reader's, the error must say "produced by a newer version" rather than
-  surfacing the raw constraint failure (export-new → import-old across
-  devices is a normal user flow).
-- Third-party consumers must skip-and-preserve blocks whose `type` they don't
-  recognize (Portable Text rule). Our own importer validates against the
-  bundled schema, so an unknown type is a validation error — by construction
-  the importer is never older than the format it ships with.
+`version` is a **single integer with no minor axis**. It is required, it is
+the sole authority on format identity, and it is checked before anything else
+in the document is interpreted.
+
+- **A reader rejects any document whose `version` is greater than its own**,
+  with a dedicated error naming both versions rather than a generic schema
+  failure. There is no partial or best-effort read of a newer document and no
+  forward compatibility: a change a version-1 reader cannot handle is exactly
+  what a version bump means.
+- **A reader accepts any document whose `version` is less than or equal to its
+  own**, migrating older documents forward before parsing. Version 1 has
+  nothing to migrate from, so the migration mechanism ships with the first
+  migration that needs it; because `version` is required and unambiguous, a
+  later migration has complete information about the grammar a stored
+  document used.
+- **Every format change bumps the version.** There is no additive-within-a-
+  version rule, because there is nothing additive to have: the schema closes
+  every object (`additionalProperties: false`) and every enum is exhaustive,
+  so a new block type, a new property, a new enum value, a new mark, or a
+  renamed key is rejected whole-document by an older reader regardless of how
+  it is introduced. Saying so plainly is cheaper than a reserved-field
+  mechanism that buys nothing under the rule above.
+- The `$schema` URL carries the same integer
+  (`https://schemas.anytype.io/anyblock/<version>/object.schema.json`) and is
+  **decorative**: it is optional, no reader gates on it, and the schema at a
+  version's URL is mutable in place — a correction that does not change the
+  format is republished there rather than given a new number. Version 2 gets
+  `anyblock/2/`. Format identity lives in `version` and nowhere else.
+- `index.json` shares the same version number and the same rules (§2c), and a
+  bundle is versioned as one artifact: if the index or any document in it
+  declares an unsupported version, the whole bundle is rejected rather than
+  partially imported.
+
+**Syntax inside `text` is versioned too, and the reader is exact about it.**
+A `text` string carries no version marker of its own, so the only thing that
+keeps a stored document readable across a bump is that the reader recognizes
+*exactly* the syntax its version defines and treats everything else as
+literal. This binds three namespaces:
+
+| namespace | version 1 recognizes | anything else |
+|---|---|---|
+| inline tags (§8.1) | `u`, `font`, `mention` | literal text, never an error |
+| Markdown delimiters (§8.1) | `**` `*` `~~` `` ` `` `[…](…)` | literal text |
+| `anytype://` destinations (§8.1) | `anytype://object?objectId=<id>`, one parameter | a plain Link, preserved verbatim |
+
+Being exact is what makes a later migration possible: when a version adds a
+tag, a delimiter, or a deep-link parameter, the migration escapes or rewrites
+the prior occurrences that a stored document meant literally, and it can only
+do that if version 1's rule was unambiguous. A reader that guessed — matching
+a deep link by prefix, say, and taking whatever followed as the id — would
+have already destroyed the information a migration needs.
+
+**The cost this accepts.** When version 2 ships, a client still on version 1
+cannot open *any* document a version-2 client exported — refused, not
+degraded. For an export and interchange format written by external tools and
+agents that is the right trade: it buys a contract with exactly one rule, and
+the alternative — readers that tolerate unknown constructs — obliges every
+reader to carry a degradation behaviour for every construct that will ever be
+added. It would be the wrong trade if AnyBlock JSON became a cross-device wire
+format, so that is a deliberate constraint on where the format is used, and it
+is recorded here rather than discovered later.
 
 ## 11. Round-trip guarantees
 
@@ -1485,7 +1549,7 @@ Wiring (follow-up work, not this package):
 
 ```json
 {
-  "$schema": "https://schemas.anytype.io/anyblock/1.0/object.schema.json",
+  "$schema": "https://schemas.anytype.io/anyblock/1/object.schema.json",
   "version": 1,
   "id": "bafyreieqh63jv…",
   "type": "page",

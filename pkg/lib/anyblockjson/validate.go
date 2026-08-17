@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -30,16 +29,29 @@ var schemaJSON []byte
 
 const (
 	// FormatVersion is the AnyBlock JSON format version this package reads
-	// and writes (§10).
+	// and writes (§10). It is a single integer with no minor axis: every
+	// format change bumps it, and a reader rejects anything newer than its
+	// own while migrating anything older.
 	FormatVersion = 1
-	// SchemaURL is the published schema location written into exported
-	// documents.
-	SchemaURL = "https://schemas.anytype.io/anyblock/1.0/object.schema.json"
+
+	// schemaBaseURL is where the published schemas live, one directory per
+	// format version.
+	schemaBaseURL = "https://schemas.anytype.io/anyblock/"
 
 	// maxBlockIndent is the F4 resource bound on nesting depth, mirrored by
 	// the schema's indent maximum. Export enforces it too — Marshal must
 	// never emit output its own Validate rejects.
 	maxBlockIndent = 32
+)
+
+// SchemaURL and IndexSchemaURL are the published schema locations written
+// into exported documents. Both are derived from FormatVersion so a version
+// bump carries them along and they cannot drift out of sync with it; the
+// $id inside each embedded schema file is checked against them by
+// TestVersionIdentity, which is the one copy the compiler cannot keep honest.
+var (
+	SchemaURL      = schemaBaseURL + strconv.Itoa(FormatVersion) + "/object.schema.json"
+	IndexSchemaURL = schemaBaseURL + strconv.Itoa(FormatVersion) + "/index.schema.json"
 )
 
 // Issue is a single path-addressed validation problem.
@@ -58,8 +70,8 @@ func (i Issue) String() string {
 // ValidationError aggregates every issue found in a document (§12).
 type ValidationError struct {
 	Issues []Issue
-	// NewerFormat is set when the document cites a newer 1.x schema, so the
-	// failure likely means "produced by a newer version" (§10).
+	// NewerFormat is set when the document declares a format version newer
+	// than this package reads, which a reader always rejects outright (§10).
 	NewerFormat bool
 }
 
@@ -143,14 +155,15 @@ func validateToDoc(data []byte, lenient bool, warn func(Issue)) (map[string]any,
 	if err := checkVersion(doc); err != nil {
 		return nil, err
 	}
-	newer := citesNewerSchema(doc)
-
+	// MIGRATION SEAM: an older version is migrated forward here, between the
+	// version gate and schema validation. The schema pins the version to a
+	// const, so it doubles as the assertion that migration ran (§10).
 	sch, err := compileSchema()
 	if err != nil {
 		return nil, fmt.Errorf("embedded schema: %w", err)
 	}
 	if err := sch.Validate(doc); err != nil {
-		ve := &ValidationError{NewerFormat: newer}
+		ve := &ValidationError{}
 		var flatten func(e *jsonschema.ValidationError)
 		printer := message.NewPrinter(language.English)
 		flatten = func(e *jsonschema.ValidationError) {
@@ -174,7 +187,7 @@ func validateToDoc(data []byte, lenient bool, warn func(Issue)) (map[string]any,
 	}
 
 	if issues := semanticIssues(doc, lenient, warn); len(issues) > 0 {
-		return nil, &ValidationError{Issues: issues, NewerFormat: newer}
+		return nil, &ValidationError{Issues: issues}
 	}
 	return doc, nil
 }
@@ -208,18 +221,6 @@ func checkVersion(doc map[string]any) error {
 		return &ValidationError{Issues: []Issue{{Path: "/version", Message: fmt.Sprintf("unknown version %d", v)}}}
 	}
 	return nil
-}
-
-var schemaMinorRe = regexp.MustCompile(`anyblock/1\.(\d+)/object\.schema\.json$`)
-
-func citesNewerSchema(doc map[string]any) bool {
-	url, _ := doc["$schema"].(string)
-	m := schemaMinorRe.FindStringSubmatch(url)
-	if m == nil {
-		return false
-	}
-	minor, err := strconv.Atoi(m[1])
-	return err == nil && minor > 0
 }
 
 func jsonPath(tokens []string) string {

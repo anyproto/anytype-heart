@@ -4,6 +4,8 @@ package anyblockjson
 // one object: the space's name, what opens on entry, what the sidebar shows.
 
 import (
+	"errors"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -129,10 +131,40 @@ func TestIndex_Validation(t *testing.T) {
 		assert.True(t, IsReservedWidgetTarget("favorite"))
 	})
 
-	// version 1 is the only version, like every other document (§10)
-	t.Run("a newer version is rejected", func(t *testing.T) {
-		_, err := UnmarshalIndex([]byte(`{"version": 2}`))
+	// an index shares the format version and its rules with object documents
+	// (§10): a newer one is rejected with both versions named, not with a
+	// generic schema constraint failure
+	t.Run("a newer version is rejected, naming both versions", func(t *testing.T) {
+		// given a bundle index from a future format version, carrying a key
+		// this reader has never heard of
+		data := []byte(`{"version": 2, "name": "Wiki", "futureKey": true}`)
+
+		// when
+		_, err := UnmarshalIndex(data)
+
+		// then
 		require.Error(t, err)
+		var ve *ValidationError
+		require.True(t, errors.As(err, &ve))
+		assert.True(t, ve.NewerFormat, "must be flagged as a newer format, not a constraint failure")
+		assert.Contains(t, err.Error(), "newer version")
+		assert.Contains(t, err.Error(), "2")
+		assert.Contains(t, err.Error(), strconv.Itoa(FormatVersion))
+		// the version gate ran before the schema, so the unknown key never
+		// produced an issue of its own
+		assert.NotContains(t, err.Error(), "futureKey")
+	})
+
+	t.Run("a missing version is rejected", func(t *testing.T) {
+		_, err := UnmarshalIndex([]byte(`{"name": "Wiki"}`))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "version is required")
+	})
+
+	t.Run("a non-object index is rejected cleanly", func(t *testing.T) {
+		_, err := UnmarshalIndex([]byte(`[1, 2, 3]`))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "index must be a JSON object")
 	})
 }
 

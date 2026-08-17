@@ -25,9 +25,6 @@ import (
 //go:embed schema/index.schema.json
 var indexSchemaJSON []byte
 
-// IndexSchemaURL is the published location of the index schema.
-const IndexSchemaURL = "https://schemas.anytype.io/anyblock/1.0/index.schema.json"
-
 // IndexFileName is the name a bundle's index must have, at the bundle root.
 const IndexFileName = "index.json"
 
@@ -186,6 +183,19 @@ func UnmarshalIndex(data []byte) (*Index, error) {
 	if err != nil {
 		return nil, &ValidationError{Issues: []Issue{{Message: fmt.Sprintf("invalid JSON: %v", err)}}}
 	}
+	doc, ok := raw.(map[string]any)
+	if !ok {
+		return nil, &ValidationError{Issues: []Issue{{Message: "index must be a JSON object"}}}
+	}
+	// An index shares the format version and its rules with object documents
+	// (§10): gate on it here, before the schema can turn a newer version into
+	// a generic "value must be 1" that says nothing about why.
+	if err := checkVersion(doc); err != nil {
+		return nil, err
+	}
+	// MIGRATION SEAM: an older version is migrated forward here, between the
+	// version gate and schema validation. The schema pins the version to a
+	// const, so it doubles as the assertion that migration ran (§10).
 	sch, err := compileIndexSchema()
 	if err != nil {
 		return nil, fmt.Errorf("embedded index schema: %w", err)

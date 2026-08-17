@@ -3,6 +3,7 @@ package anyblockjson
 import (
 	"encoding/json"
 	"errors"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -172,19 +173,86 @@ func TestValidate_Invalid(t *testing.T) {
 }
 
 func TestValidate_NewerFormatHint(t *testing.T) {
-	// a document citing schema 1.3 with an unknown field must be reported as
-	// produced by a newer version (§10)
-	doc := `{
-		"$schema": "https://schemas.anytype.io/anyblock/1.3/object.schema.json",
-		"version": 1,
-		"blocks": [{"type": "paragraph", "sparkles": true}]
-	}`
-	err := Validate([]byte(doc))
-	require.Error(t, err)
-	var ve *ValidationError
-	require.True(t, errors.As(err, &ve))
-	assert.True(t, ve.NewerFormat)
-	assert.True(t, strings.Contains(err.Error(), "newer version"))
+	// the version integer is the sole authority on format identity (§10): a
+	// document declaring a newer one is rejected outright, named in the error,
+	// and never reaches schema validation
+	t.Run("newer version is rejected and named", func(t *testing.T) {
+		// given
+		doc := `{"version": 2, "blocks": [{"type": "paragraph", "sparkles": true}]}`
+
+		// when
+		err := Validate([]byte(doc))
+
+		// then
+		require.Error(t, err)
+		var ve *ValidationError
+		require.True(t, errors.As(err, &ve))
+		assert.True(t, ve.NewerFormat)
+		assert.True(t, strings.Contains(err.Error(), "newer version"))
+		assert.True(t, strings.Contains(err.Error(), "2"))
+		// the unknown field never got a chance to produce a constraint failure
+		assert.False(t, strings.Contains(err.Error(), "sparkles"))
+	})
+
+	t.Run("$schema does not affect format identity", func(t *testing.T) {
+		// a stale or invented $schema is decorative; only "version" gates
+		// given
+		doc := `{
+			"$schema": "https://schemas.anytype.io/anyblock/9/object.schema.json",
+			"version": 1,
+			"blocks": [{"type": "paragraph", "text": "fine"}]
+		}`
+
+		// when
+		err := Validate([]byte(doc))
+
+		// then
+		require.NoError(t, err)
+	})
+}
+
+// TestVersionIdentity pins the one copy of the format version the compiler
+// cannot keep honest: the $id and the version const inside each embedded
+// schema file. The Go URLs are derived from FormatVersion, so a bump moves
+// them automatically — this catches the JSON that a bump must move by hand.
+func TestVersionIdentity(t *testing.T) {
+	// given
+	want := map[string]struct {
+		raw []byte
+		url string
+	}{
+		"object": {raw: schemaJSON, url: SchemaURL},
+		"index":  {raw: indexSchemaJSON, url: IndexSchemaURL},
+	}
+
+	for name, tc := range want {
+		t.Run(name, func(t *testing.T) {
+			// when
+			var got struct {
+				Id      string `json:"$id"`
+				Version struct {
+					Const *int `json:"const"`
+				} `json:"-"`
+			}
+			require.NoError(t, json.Unmarshal(tc.raw, &got))
+
+			var props struct {
+				Properties struct {
+					Version struct {
+						Const *int `json:"const"`
+					} `json:"version"`
+				} `json:"properties"`
+			}
+			require.NoError(t, json.Unmarshal(tc.raw, &props))
+
+			// then
+			assert.Equal(t, tc.url, got.Id, "schema $id must equal the derived URL")
+			require.NotNil(t, props.Properties.Version.Const, "schema must pin the version")
+			assert.Equal(t, FormatVersion, *props.Properties.Version.Const)
+			assert.True(t, strings.HasPrefix(tc.url, schemaBaseURL+strconv.Itoa(FormatVersion)+"/"),
+				"URL must carry FormatVersion and no minor axis")
+		})
+	}
 }
 
 func TestValidate_PathAddressing(t *testing.T) {

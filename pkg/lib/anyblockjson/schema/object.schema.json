@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.anytype.io/anyblock/1.0/object.schema.json",
+  "$id": "https://schemas.anytype.io/anyblock/1/object.schema.json",
   "title": "AnyBlock object",
   "description": "A single Anytype object in AnyBlock JSON interchange format, version 1",
   "x-app": "Anytype",

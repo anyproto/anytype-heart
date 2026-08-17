@@ -9,6 +9,7 @@ package anyblockjson
 
 import (
 	"fmt"
+	"net/url"
 	"sort"
 	"strings"
 	"unicode"
@@ -17,7 +18,57 @@ import (
 	"github.com/anyproto/anytype-heart/util/text"
 )
 
-const objectLinkPrefix = "anytype://object?objectId="
+// An Object mark's target renders as Anytype's deep link. The form is exact:
+// scheme "anytype", host "object", and a single "objectId" query parameter —
+// nothing else. Matching it by string prefix instead would take everything
+// after "objectId=" as the id, so the platform's own two-parameter link
+// (core/block/export/writer.go) would yield the id "<id>&spaceId=<space>",
+// and an id could smuggle query parameters into a link other tools resolve.
+const (
+	objectLinkScheme = "anytype"
+	objectLinkHost   = "object"
+	objectLinkParam  = "objectId"
+)
+
+// objectLinkDest renders an object id as the canonical deep link, percent-
+// encoding the id so it cannot introduce a second parameter. Ordinary ids are
+// CIDs, so in practice nothing is escaped and the bytes are unchanged.
+func objectLinkDest(id string) string {
+	return objectLinkScheme + "://" + objectLinkHost + "?" +
+		url.Values{objectLinkParam: {id}}.Encode()
+}
+
+// parseObjectLink reports the object id a destination names, and whether the
+// destination is exactly that canonical link. Anything else — extra query
+// parameters, another host, another scheme, a path — is not an object
+// reference: it stays a plain Link, preserved verbatim, which is lossless.
+// Accepting a superset and dropping the extras would not be (§8.1).
+func parseObjectLink(dest string) (string, bool) {
+	if !strings.HasPrefix(dest, objectLinkScheme+"://"+objectLinkHost+"?") {
+		return "", false
+	}
+	u, err := url.Parse(dest)
+	if err != nil || u.Scheme != objectLinkScheme || u.Host != objectLinkHost ||
+		u.Path != "" || u.Fragment != "" || u.User != nil {
+		return "", false
+	}
+	q, err := url.ParseQuery(u.RawQuery)
+	if err != nil || len(q) != 1 || len(q[objectLinkParam]) != 1 {
+		return "", false
+	}
+	id := q[objectLinkParam][0]
+	if id == "" {
+		return "", false
+	}
+	return id, true
+}
+
+// isObjectLink reports whether a Link mark's target is the canonical object
+// deep link, and so renders as an Object mark (§8.3).
+func isObjectLink(dest string) bool {
+	_, ok := parseObjectLink(dest)
+	return ok
+}
 
 // markNesting is the fixed outermost→innermost nesting order (§8.3 step 5).
 var markNesting = []model.BlockContentTextMarkType{
@@ -108,9 +159,11 @@ func sanitizeSpans(u16 []uint16, marks []*model.BlockContentTextMark) []span {
 		// a Link whose target is an object deep-link renders identically to
 		// an Object mark, so it normalizes to one — otherwise the parse-back
 		// type flip would break same-type overlap resolution (§8.3)
-		if typ == model.BlockContentTextMark_Link && strings.HasPrefix(param, objectLinkPrefix) {
-			typ = model.BlockContentTextMark_Object
-			param = param[len(objectLinkPrefix):]
+		if typ == model.BlockContentTextMark_Link {
+			if id, ok := parseObjectLink(param); ok {
+				typ = model.BlockContentTextMark_Object
+				param = id
+			}
 		}
 		if markNeedsParam(typ) {
 			if param == "" {
@@ -129,7 +182,7 @@ func sanitizeSpans(u16 []uint16, marks []*model.BlockContentTextMark) []span {
 				continue
 			}
 		case model.BlockContentTextMark_Object:
-			if len(objectLinkPrefix)+text.UTF16RuneCountString(param) > maxLinkDestLen {
+			if text.UTF16RuneCountString(objectLinkDest(param)) > maxLinkDestLen {
 				continue
 			}
 		case model.BlockContentTextMark_Emoji:
@@ -518,7 +571,7 @@ func renderNode(b *strings.Builder, u16 []uint16, n *treeNode, inLabel bool) {
 	case model.BlockContentTextMark_Object:
 		b.WriteByte('[')
 		renderKids(true)
-		b.WriteString("](" + escapeDest(objectLinkPrefix+n.item.param) + ")")
+		b.WriteString("](" + escapeDest(objectLinkDest(n.item.param)) + ")")
 	case model.BlockContentTextMark_Link:
 		b.WriteByte('[')
 		renderKids(true)
@@ -1609,8 +1662,8 @@ func resolveTokens(toks []token, ib *inlineBuilder) error {
 			if err := resolveTokens(t.label, ib); err != nil {
 				return err
 			}
-			if strings.HasPrefix(t.dest, objectLinkPrefix) {
-				ib.addMark(model.BlockContentTextMark_Object, t.dest[len(objectLinkPrefix):], start, len(ib.out))
+			if id, ok := parseObjectLink(t.dest); ok {
+				ib.addMark(model.BlockContentTextMark_Object, id, start, len(ib.out))
 			} else {
 				ib.addMark(model.BlockContentTextMark_Link, t.dest, start, len(ib.out))
 			}

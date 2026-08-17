@@ -681,10 +681,11 @@ func (e *exporter) compactMarks(marks []*model.BlockContentTextMark) []*model.Bl
 			clone := *mk
 			clone.Param = e.compactObjectId(mk.Param)
 			out = append(out, &clone)
-		case mk.Type == model.BlockContentTextMark_Link && strings.HasPrefix(mk.Param, objectLinkPrefix):
+		case mk.Type == model.BlockContentTextMark_Link && isObjectLink(mk.Param):
 			// rendered as an Object mark (§8.3), so its target compacts too
+			id, _ := parseObjectLink(mk.Param)
 			clone := *mk
-			clone.Param = objectLinkPrefix + e.compactObjectId(strings.TrimPrefix(mk.Param, objectLinkPrefix))
+			clone.Param = objectLinkDest(e.compactObjectId(id))
 			out = append(out, &clone)
 		default:
 			out = append(out, mk)
@@ -767,9 +768,10 @@ func (e *exporter) buildCompactIds() {
 				switch {
 				case mk.Type == model.BlockContentTextMark_Mention || mk.Type == model.BlockContentTextMark_Object:
 					addObject(mk.Param)
-				case mk.Type == model.BlockContentTextMark_Link && strings.HasPrefix(mk.Param, objectLinkPrefix):
+				case mk.Type == model.BlockContentTextMark_Link && isObjectLink(mk.Param):
 					// normalizes to an Object mark on render (§8.3)
-					addObject(strings.TrimPrefix(mk.Param, objectLinkPrefix))
+					id, _ := parseObjectLink(mk.Param)
+					addObject(id)
 				}
 			}
 			addObject(t.IconImage)

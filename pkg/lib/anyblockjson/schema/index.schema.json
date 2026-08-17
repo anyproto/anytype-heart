@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.anytype.io/anyblock/1.0/index.schema.json",
+  "$id": "https://schemas.anytype.io/anyblock/1/index.schema.json",
   "title": "AnyBlock JSON bundle index",
   "description": "One index.json at the root of a bundle describes the bundle as a whole: what the space is called, where a user lands after installing it, and what the sidebar shows. Everything else in a bundle describes a single object; this is the only document that describes the set.",
   "type": "object",

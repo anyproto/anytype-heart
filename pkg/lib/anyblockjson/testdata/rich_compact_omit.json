@@ -1,5 +1,5 @@
 {
-  "$schema": "https://schemas.anytype.io/anyblock/1.0/object.schema.json",
+  "$schema": "https://schemas.anytype.io/anyblock/1/object.schema.json",
   "version": 1,
   "id": "bafyreiobject",
   "type": "page",
