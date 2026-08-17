@@ -18,8 +18,6 @@ import (
 	"sync"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
-	"golang.org/x/text/language"
-	"golang.org/x/text/message"
 )
 
 //go:embed schema/index.schema.json
@@ -201,27 +199,7 @@ func UnmarshalIndex(data []byte) (*Index, error) {
 		return nil, fmt.Errorf("embedded index schema: %w", err)
 	}
 	if err := sch.Validate(raw); err != nil {
-		ve := &ValidationError{}
-		printer := message.NewPrinter(language.English)
-		var flatten func(e *jsonschema.ValidationError)
-		flatten = func(e *jsonschema.ValidationError) {
-			if len(e.Causes) == 0 {
-				ve.Issues = append(ve.Issues, Issue{
-					Path:    jsonPath(e.InstanceLocation),
-					Message: schemaIssueMessage(e, printer),
-				})
-				return
-			}
-			for _, c := range e.Causes {
-				flatten(c)
-			}
-		}
-		if verr, ok := err.(*jsonschema.ValidationError); ok {
-			flatten(verr)
-		} else {
-			ve.Issues = append(ve.Issues, Issue{Message: err.Error()})
-		}
-		return nil, ve
+		return nil, &ValidationError{Issues: schemaIssues(err)}
 	}
 
 	var idx Index

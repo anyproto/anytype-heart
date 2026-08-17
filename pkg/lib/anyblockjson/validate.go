@@ -163,27 +163,7 @@ func validateToDoc(data []byte, lenient bool, warn func(Issue)) (map[string]any,
 		return nil, fmt.Errorf("embedded schema: %w", err)
 	}
 	if err := sch.Validate(doc); err != nil {
-		ve := &ValidationError{}
-		var flatten func(e *jsonschema.ValidationError)
-		printer := message.NewPrinter(language.English)
-		flatten = func(e *jsonschema.ValidationError) {
-			if len(e.Causes) == 0 {
-				ve.Issues = append(ve.Issues, Issue{
-					Path:    jsonPath(e.InstanceLocation),
-					Message: schemaIssueMessage(e, printer),
-				})
-				return
-			}
-			for _, c := range e.Causes {
-				flatten(c)
-			}
-		}
-		if verr, ok := err.(*jsonschema.ValidationError); ok {
-			flatten(verr)
-		} else {
-			ve.Issues = append(ve.Issues, Issue{Message: err.Error()})
-		}
-		return nil, ve
+		return nil, &ValidationError{Issues: schemaIssues(err)}
 	}
 
 	if issues := semanticIssues(doc, lenient, warn); len(issues) > 0 {
@@ -229,6 +209,216 @@ func jsonPath(tokens []string) string {
 	}
 	return "/" + strings.Join(tokens, "/")
 }
+
+// schemaIssues turns a jsonschema error tree into the flat, path-addressed
+// issue list §12 promises. Flattening the tree verbatim does not produce that
+// list: it produces the tree's own bookkeeping, in which two mechanics report
+// problems the document does not have.
+//
+//   - `unevaluatedProperties: false` (the closed-set check on blocks) only
+//     sees the properties that *successfully* evaluated subschemas annotated.
+//     When a block's type-specific subschema fails — a bad `type`, one field
+//     of the wrong shape — its annotations are discarded and every property of
+//     that block is reported unevaluated, i.e. "not allowed". So a document
+//     whose only fault is `"type": "bulleted_list_item"` is also told to
+//     remove `type` and `text`.
+//   - an `anyOf` reports every branch it tried. A table cell written as an
+//     object collects the three "wrong shape" verdicts from the string, null
+//     and array branches alongside the one real complaint.
+//
+// Both are confidently wrong rather than merely noisy, and the format's
+// purpose is the generate → validate → feed-back loop: an agent told
+// `property "type" is not allowed` deletes `type` and its next attempt is
+// worse. So the noise is pruned here rather than explained in the spec.
+func schemaIssues(err error) []Issue {
+	verr, ok := err.(*jsonschema.ValidationError)
+	if !ok {
+		return []Issue{{Message: err.Error()}}
+	}
+	printer := message.NewPrinter(language.English)
+	leaves := collectSchemaLeaves(verr, printer)
+
+	// a leaf that is not an unevaluated-property verdict is a real fault, and
+	// it makes the closed-set verdict on its enclosing objects unreliable
+	realAt := map[string]bool{}
+	for _, l := range leaves {
+		if l.unevaluated {
+			continue
+		}
+		for p := l.path; ; p = parentPath(p) {
+			realAt[p] = true
+			if p == "" {
+				break
+			}
+		}
+	}
+	vocabulary := schemaPropertyNames()
+	out := make([]Issue, 0, len(leaves))
+	for _, l := range leaves {
+		// "not allowed" is dropped only where it is unreliable: a name the
+		// schema knows somewhere, inside an object that failed for another
+		// reason. A name the schema never mentions is inadmissible under
+		// every reading, so that verdict stands and the author gets both
+		// facts in one round.
+		if l.unevaluated && vocabulary[l.property] && realAt[parentPath(l.path)] {
+			continue
+		}
+		out = append(out, Issue{Path: l.path, Message: l.message})
+	}
+	return out
+}
+
+// schemaLeaf is one rendered schema complaint plus what the pruning needs to
+// know about where it came from.
+type schemaLeaf struct {
+	path        string
+	message     string
+	unevaluated bool   // reported by unevaluatedProperties, not by a rule
+	property    string // the property name, for an unevaluated verdict
+}
+
+func collectSchemaLeaves(e *jsonschema.ValidationError, printer *message.Printer) []schemaLeaf {
+	if len(e.Causes) == 0 {
+		l := schemaLeaf{path: jsonPath(e.InstanceLocation), message: schemaIssueMessage(e, printer)}
+		if strings.Contains(e.SchemaURL, "/unevaluatedProperties") {
+			l.unevaluated = true
+			if toks := e.InstanceLocation; len(toks) > 0 {
+				l.property = toks[len(toks)-1]
+			}
+		}
+		return []schemaLeaf{l}
+	}
+	switch e.ErrorKind.(type) {
+	case *kind.AnyOf, *kind.OneOf:
+		return branchLeaves(e, printer)
+	}
+	var out []schemaLeaf
+	for _, c := range e.Causes {
+		out = append(out, collectSchemaLeaves(c, printer)...)
+	}
+	return out
+}
+
+// branchLeaves reports the alternatives of an anyOf/oneOf. A branch whose only
+// complaint is the instance's own type never applied — the author did not write
+// a string where this branch wanted a string — so reporting it says nothing
+// about the document. When some branch did apply, only those are reported;
+// when none did, the shape is wrong and the alternatives merge into one issue
+// naming all of them, which is the whole content of a failed anyOf.
+func branchLeaves(e *jsonschema.ValidationError, printer *message.Printer) []schemaLeaf {
+	at := jsonPath(e.InstanceLocation)
+	var applied []schemaLeaf
+	var inapplicable []*kind.Type
+	for _, c := range e.Causes {
+		leaves := collectSchemaLeaves(c, printer)
+		// a branch that failed only on the instance's own type is a branch
+		// the instance was never a candidate for
+		types := branchTypeErrors(c)
+		if len(types) == len(leaves) && allAt(leaves, at) {
+			inapplicable = append(inapplicable, types...)
+			continue
+		}
+		applied = append(applied, leaves...)
+	}
+	if len(applied) > 0 {
+		return applied
+	}
+	if len(inapplicable) == 0 {
+		// nothing to merge and nothing applied: report the tree verbatim
+		// rather than swallow the failure into an error with no issues
+		var out []schemaLeaf
+		for _, c := range e.Causes {
+			out = append(out, collectSchemaLeaves(c, printer)...)
+		}
+		return out
+	}
+	want := make([]string, 0, len(inapplicable))
+	for _, t := range inapplicable {
+		want = append(want, t.Want...)
+	}
+	return []schemaLeaf{{
+		path:    at,
+		message: fmt.Sprintf("got %s, want %s", inapplicable[0].Got, strings.Join(dedupe(want), ", ")),
+	}}
+}
+
+func allAt(leaves []schemaLeaf, path string) bool {
+	for _, l := range leaves {
+		if l.path != path {
+			return false
+		}
+	}
+	return true
+}
+
+// branchTypeErrors returns the type mismatches of one anyOf branch, and
+// nothing when the branch failed for any other reason.
+func branchTypeErrors(e *jsonschema.ValidationError) []*kind.Type {
+	if t, isType := e.ErrorKind.(*kind.Type); isType {
+		return []*kind.Type{t}
+	}
+	var out []*kind.Type
+	for _, c := range e.Causes {
+		out = append(out, branchTypeErrors(c)...)
+	}
+	return out
+}
+
+func dedupe(in []string) []string {
+	out := make([]string, 0, len(in))
+	seen := map[string]bool{}
+	for _, s := range in {
+		if !seen[s] {
+			seen[s] = true
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+// parentPath returns the JSON pointer of the container holding path.
+func parentPath(path string) string {
+	if i := strings.LastIndex(path, "/"); i >= 0 {
+		return path[:i]
+	}
+	return ""
+}
+
+// schemaPropertyNames is every property name the embedded schema mentions
+// anywhere. It answers one question: could this name have been admitted under
+// some reading of the schema? A name that is absent could not, whatever else
+// failed — which is what makes the "not allowed" verdict on it trustworthy.
+var schemaPropertyNames = sync.OnceValue(func() map[string]bool {
+	names := map[string]bool{}
+	var doc any
+	if err := json.Unmarshal(schemaJSON, &doc); err != nil {
+		return names
+	}
+	var walk func(node any)
+	walk = func(node any) {
+		switch n := node.(type) {
+		case map[string]any:
+			for key, v := range n {
+				if key == "properties" {
+					if props, isMap := v.(map[string]any); isMap {
+						for name, sub := range props {
+							names[name] = true
+							walk(sub)
+						}
+						continue
+					}
+				}
+				walk(v)
+			}
+		case []any:
+			for _, v := range n {
+				walk(v)
+			}
+		}
+	}
+	walk(doc)
+	return names
+})
 
 // schemaIssueMessage renders one schema error. Unknown properties fail
 // against a `false` schema (unevaluatedProperties / removed keys), whose

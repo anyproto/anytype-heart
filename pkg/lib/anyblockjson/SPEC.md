@@ -1457,6 +1457,27 @@ fail neither test belong in authoring guidance and in review.
 - These path-addressed errors are the guardrail for agent-generated
   documents: generate → validate → feed errors back. With the flat schema
   the generate step can also run under strict/guided decoding end to end.
+- **One fault, one issue.** Because the errors are fed back to a generator,
+  an issue that is *confidently wrong* costs more than a missing one: an
+  agent told `property "type" is not allowed` removes `type`, and its next
+  attempt is further from valid. Two mechanics in the schema produce such
+  issues, and the reader prunes both rather than passing the validator's
+  bookkeeping through (implementation decision, `validate.go`):
+  - `unevaluatedProperties: false` is what closes a block to the fields its
+    `type` admits, but it can only see the properties that *successfully*
+    evaluated subschemas annotated. One bad field makes the type's subschema
+    fail, and then every property of that block is reported as not allowed.
+    So a "not allowed" verdict is **dropped** when the object it belongs to
+    failed for some other reason *and* the property name appears somewhere in
+    the schema. A name the schema never mentions cannot be admitted under any
+    reading, so that verdict stands — a hallucinated key is still reported
+    alongside the real fault, in the same round.
+  - an `anyOf` (table cells, §6.1) reports every branch it tried. Branches
+    that failed only on the instance's type never applied, so they are
+    dropped; if none applied, they merge into one issue naming every
+    admissible shape.
+  A reader that reports more than this is not wrong about the document being
+  invalid, but its extra issues are not statements about the document.
 
 ## 13. Package layout and API
 

@@ -13,6 +13,93 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
+// The whole reason this format exists is the generate → validate → feed-back
+// loop (§12), so a confident wrong issue is worse than a verbose one: an
+// agent told `/blocks/0/type: property "type" is not allowed` deletes `type`.
+// Two schema mechanics produce those: `unevaluatedProperties: false` reports
+// every property of an object whose type-specific subschema failed (its
+// annotations are discarded), and an `anyOf` reports every branch it tried.
+func TestValidate_ErrorsDoNotCascade(t *testing.T) {
+	issues := func(t *testing.T, doc string) []Issue {
+		err := Validate([]byte(doc))
+		require.Error(t, err)
+		var ve *ValidationError
+		require.True(t, errors.As(err, &ve))
+		return ve.Issues
+	}
+
+	t.Run("a bad type is one issue, not three", func(t *testing.T) {
+		got := issues(t, `{"version": 1, "blocks": [
+			{"type": "bulleted_list_item", "text": "x"}]}`)
+		require.Len(t, got, 1, "got: %v", got)
+		assert.Equal(t, "/blocks/0/type", got[0].Path)
+		assert.Contains(t, got[0].Message, "value must be one of")
+	})
+
+	t.Run("a bad field type is one issue, not four", func(t *testing.T) {
+		got := issues(t, `{"version": 1, "blocks": [
+			{"type": "checkbox", "checked": "yes", "text": "x"}]}`)
+		require.Len(t, got, 1, "got: %v", got)
+		assert.Equal(t, "/blocks/0/checked", got[0].Path)
+		assert.Contains(t, got[0].Message, "got string, want boolean")
+	})
+
+	t.Run("the anyOf branch the author meant is the one reported", func(t *testing.T) {
+		got := issues(t, `{"version": 1, "blocks": [
+			{"type": "table", "columns": [{"id": "c1"}],
+			 "rows": [{"id": "r1", "cells": [{"type": "paragraph", "id": "x1", "text": "a"}]}]}]}`)
+		require.Len(t, got, 1, "got: %v", got)
+		assert.Equal(t, "/blocks/0/rows/0/cells/0/id", got[0].Path)
+	})
+
+	t.Run("a cell of no admissible shape names every shape once", func(t *testing.T) {
+		got := issues(t, `{"version": 1, "blocks": [
+			{"type": "table", "columns": [{"id": "c1"}],
+			 "rows": [{"id": "r1", "cells": [7]}]}]}`)
+		require.Len(t, got, 1, "got: %v", got)
+		assert.Equal(t, "/blocks/0/rows/0/cells/0", got[0].Path)
+		for _, want := range []string{"number", "string", "null", "object", "array"} {
+			assert.Contains(t, got[0].Message, want)
+		}
+	})
+
+	t.Run("an unknown key is still reported when it is the only fault", func(t *testing.T) {
+		got := issues(t, `{"version": 1, "blocks": [
+			{"type": "paragraph", "text": "x", "bogus": 1}]}`)
+		require.Len(t, got, 1, "got: %v", got)
+		assert.Equal(t, "/blocks/0/bogus", got[0].Path)
+		assert.Contains(t, got[0].Message, `property "bogus" is not allowed`)
+	})
+
+	t.Run("an unknown key survives a sibling error", func(t *testing.T) {
+		// suppression is aimed at names the schema knows and could not
+		// evaluate; a hallucinated key is never admissible, so the verdict
+		// on it stands and the agent gets both facts in one round
+		got := issues(t, `{"version": 1, "blocks": [
+			{"type": "checkbox", "checked": "yes", "bogus": 1}]}`)
+		require.Len(t, got, 2, "got: %v", got)
+		paths := []string{got[0].Path, got[1].Path}
+		assert.Contains(t, paths, "/blocks/0/checked")
+		assert.Contains(t, paths, "/blocks/0/bogus")
+	})
+
+	t.Run("the children migration hint survives", func(t *testing.T) {
+		got := issues(t, `{"version": 1, "blocks": [
+			{"type": "paragraph", "text": "x", "children": []}]}`)
+		require.Len(t, got, 1, "got: %v", got)
+		assert.Contains(t, got[0].Message, "nest with indent instead")
+	})
+
+	t.Run("a wrong field on the right type is still reported", func(t *testing.T) {
+		// `checked` belongs to checkbox, and nothing else in this block
+		// failed, so the closed-set verdict is trustworthy
+		got := issues(t, `{"version": 1, "blocks": [
+			{"type": "paragraph", "checked": true}]}`)
+		require.Len(t, got, 1, "got: %v", got)
+		assert.Equal(t, "/blocks/0/checked", got[0].Path)
+	})
+}
+
 // A tag-shaped sequence the grammar does not recognize is literal text and
 // never an error (§10) — that leniency is what keeps a stored document
 // readable across a version that adds a tag. But canonical export escapes
