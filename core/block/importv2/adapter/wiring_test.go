@@ -149,4 +149,44 @@ func TestTeeReporterFansOut(t *testing.T) {
 		assert.Equal(t, int64(2), status.ObjectsCreated)
 		assert.Equal(t, "Q3 Planning", status.CurrentItem)
 	})
+
+	t.Run("a panicking consumer costs its own telemetry and nothing else", func(t *testing.T) {
+		// given — review item 17: this seam is advisory by contract ("must
+		// never affect control flow"), and nothing enforced it. The engine
+		// calls it from the persist workers, whose recoverWorker turns any
+		// panic into a fatal invariant issue — so a bug in a progress
+		// consumer aborted, and then COMPENSATED AWAY, the import it was
+		// only supposed to watch.
+		progress := &recordingProgress{}
+		emitter := newStatEmitter(statConfig{importId: "run-1", send: func(*pb.EventImportStatistic) {}})
+		defer emitter.Close(statVerdict{})
+		reporter := teeReporter{panickingReporter{}, &progressReporter{progress: progress}, emitter}
+
+		// when: every method of the seam is exercised through the poison
+		assert.NotPanics(t, func() {
+			reporter.Phase(importv2.PhaseCreating)
+			reporter.Discovered(importv2.KindPage, 3)
+			reporter.Completed(importv2.KindPage, 2)
+			reporter.Bytes(64)
+			reporter.Created(2)
+			reporter.Item("Q3 Planning")
+		})
+
+		// then: the consumers BEHIND the poison still saw everything — one
+		// broken consumer must not silence the rest either
+		assert.Equal(t, int64(3), progress.total)
+		assert.Equal(t, int64(2), progress.done)
+		assert.Equal(t, int64(2), emitter.Snapshot().ObjectsCreated)
+		assert.Equal(t, int64(64), emitter.Snapshot().BytesDone)
+	})
 }
+
+// panickingReporter is a consumer with a bug in every method.
+type panickingReporter struct{}
+
+func (panickingReporter) Phase(importv2.Phase)            { panic("phase") }
+func (panickingReporter) Discovered(importv2.Kind, int64) { panic("discovered") }
+func (panickingReporter) Completed(importv2.Kind, int64)  { panic("completed") }
+func (panickingReporter) Bytes(int64)                     { panic("bytes") }
+func (panickingReporter) Created(int64)                   { panic("created") }
+func (panickingReporter) Item(importv2.DisplayText)       { panic("item") }

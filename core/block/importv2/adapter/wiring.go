@@ -106,40 +106,44 @@ func (f *collectionFactory) MakeCollection(name string, memberSourceKeys []strin
 // fresh-run path and forgotten in the two resume ones.
 type teeReporter []engine.Reporter
 
-func (t teeReporter) Phase(p importv2.Phase) {
+// each is the fan-out, and the seam's advisory contract made real (review
+// item 17). engine.Reporter's own documentation says implementations "must
+// never affect control flow", but the engine calls this from its persist
+// workers, whose recoverWorker turns any panic into a fatal invariant issue
+// — so a bug in a progress consumer aborted, and then compensated away, the
+// import it was only supposed to watch. Contained PER CONSUMER, because one
+// broken consumer must not silence the others either.
+func (t teeReporter) each(where string, call func(engine.Reporter)) {
 	for _, r := range t {
-		r.Phase(p)
+		func() {
+			defer containTelemetry(where)
+			call(r)
+		}()
 	}
+}
+
+func (t teeReporter) Phase(p importv2.Phase) {
+	t.each("phase", func(r engine.Reporter) { r.Phase(p) })
 }
 
 func (t teeReporter) Discovered(kind importv2.Kind, delta int64) {
-	for _, r := range t {
-		r.Discovered(kind, delta)
-	}
+	t.each("discovered", func(r engine.Reporter) { r.Discovered(kind, delta) })
 }
 
 func (t teeReporter) Completed(kind importv2.Kind, delta int64) {
-	for _, r := range t {
-		r.Completed(kind, delta)
-	}
+	t.each("completed", func(r engine.Reporter) { r.Completed(kind, delta) })
 }
 
 func (t teeReporter) Bytes(delta int64) {
-	for _, r := range t {
-		r.Bytes(delta)
-	}
+	t.each("bytes", func(r engine.Reporter) { r.Bytes(delta) })
 }
 
 func (t teeReporter) Created(count int64) {
-	for _, r := range t {
-		r.Created(count)
-	}
+	t.each("created", func(r engine.Reporter) { r.Created(count) })
 }
 
 func (t teeReporter) Item(item importv2.DisplayText) {
-	for _, r := range t {
-		r.Item(item)
-	}
+	t.each("item", func(r engine.Reporter) { r.Item(item) })
 }
 
 // progressReporter down-projects the engine's per-kind, per-phase counters

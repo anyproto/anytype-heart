@@ -443,6 +443,31 @@ func TestLifecycleStatSeed(t *testing.T) {
 		assert.NotEmpty(t, events[len(events)-1].ErrorMessage)
 	})
 
+	t.Run("a terminal event that panics does not strand the run's dir", func(t *testing.T) {
+		// given — review item 17's second half: settleTracking runs at the
+		// TOP of finishRun, so a panic in the emitter's terminal flush
+		// unwound before the store was ever settled — leaving the run dir
+		// registered active and undisposed, which is the one state the sweep
+		// deliberately will not touch.
+		s := &service{
+			config: &config.Config{RepoPath: t.TempDir()},
+			eventSender: event.NewCallbackSender(func(*pb.Event) {
+				panic("broadcast")
+			}),
+		}
+		lc, err := s.beginRun(context.Background(), testRequest(), &pb.RpcObjectImportRequest{}, "Markdown", 0, process.NewNoOp())
+		require.NoError(t, err)
+		dir := lc.store.Dir()
+
+		// when
+		assert.NotPanics(t, func() { s.finishRun(lc, &importv2.Result{}) })
+
+		// then
+		_, statErr := os.Stat(dir)
+		assert.True(t, os.IsNotExist(statErr), "a completed run must be disposed whatever its telemetry did")
+		assert.False(t, runstore.IsActive(dir))
+	})
+
 	t.Run("a fresh run and a resumed CRAWL both start in the scanning regime", func(t *testing.T) {
 		// given: neither has put anything in the space, and the marker says so
 		s := &service{config: &config.Config{}}

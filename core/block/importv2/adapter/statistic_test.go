@@ -761,6 +761,38 @@ func TestStatEmitterThrottleCountdown(t *testing.T) {
 	})
 }
 
+func TestStatEmitterContainsItsOwnFailures(t *testing.T) {
+	t.Run("a sender that panics never reaches the run it observes", func(t *testing.T) {
+		// given — review item 17: the emitter's own header promises "a slow
+		// or failing emitter must never affect a run", and nothing enforced
+		// it. The send runs UNDER the lock, on whatever goroutine reported —
+		// a persist worker, the converter, a Notion prefetch worker, the
+		// run's settlement — so a panicking event sender aborted the import
+		// through whichever of those it happened to be called from.
+		emitter := newStatEmitter(statConfig{
+			importId: "run-1", window: time.Hour, now: time.Now,
+			send: func(*pb.EventImportStatistic) { panic("broadcast") },
+		})
+
+		// when / then: every door into the emitter that a RUN can come
+		// through, including its last one
+		assert.NotPanics(t, func() {
+			emitter.Seed(statSeed{created: 3})
+			emitter.Phase(importv2.PhaseCreating)
+			emitter.Discovered(importv2.KindPage, 1)
+			emitter.Completed(importv2.KindPage, 1)
+			emitter.Bytes(8)
+			emitter.Created(4)
+			emitter.Item("Q3 Planning")
+			emitter.Throttled(time.Second)
+			emitter.Retrying(1, 3)
+			emitter.Recovered()
+			emitter.Issue(importv2.Warning(importv2.IssueDataLoss, "k", "lost"))
+			emitter.Close(statVerdict{})
+		})
+	})
+}
+
 func TestStatEmitterTerminalVerdict(t *testing.T) {
 	t.Run("an all-or-nothing abort's terminal event says ERROR", func(t *testing.T) {
 		// given — review item 11, the sibling of item 5 and its shared root:

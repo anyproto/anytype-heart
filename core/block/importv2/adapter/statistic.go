@@ -141,6 +141,29 @@ func newStatEmitter(cfg statConfig) *statEmitter {
 	return e
 }
 
+// containTelemetry is the enforcement of this file's opening promise —
+// "everything here is advisory: a slow or failing emitter must never affect
+// a run" (review item 17). It was a comment, and the code underneath it ran
+// on the run's OWN goroutines: a persist worker (whose recoverWorker turns
+// any panic into a fatal invariant issue, which then COMPENSATES AWAY the
+// import), the converter goroutine, a Notion prefetch worker, and the
+// settlement itself — which flushes the terminal event BEFORE disposing the
+// store, so a panic there stranded the run dir undisposed and registered
+// active, the one state the sweep will not touch.
+//
+// Deferred directly, so its recover() is the deferred call. The emitter's
+// state may be left half-updated by whatever panicked; that is a telemetry
+// cost, and the alternative is the run paying it.
+//
+// Snapshot is deliberately NOT wrapped: it serves an RPC and observes no
+// run, so it has nothing to protect and a nil statistic would be a worse
+// answer than a failed call.
+func containTelemetry(where string) {
+	if rec := recover(); rec != nil {
+		log.Errorf("import telemetry panicked at %s and was contained: %v", where, rec)
+	}
+}
+
 // counterEpoch groups phases into the two counting regimes. SCANNING,
 // ANALYZING and FETCHING share one — claims are the denominator, spool rows
 // the numerator — and CREATING and FINALIZING share the other, where the
@@ -157,6 +180,7 @@ func counterEpoch(p importv2.Phase) int {
 // --- engine.Reporter -------------------------------------------------------
 
 func (e *statEmitter) Phase(p importv2.Phase) {
+	defer containTelemetry("phase")
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	epoch := counterEpoch(p)
@@ -181,6 +205,7 @@ func (e *statEmitter) Phase(p importv2.Phase) {
 }
 
 func (e *statEmitter) Discovered(kind importv2.Kind, delta int64) {
+	defer containTelemetry("discovered")
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	if kind == importv2.KindFile {
@@ -192,6 +217,7 @@ func (e *statEmitter) Discovered(kind importv2.Kind, delta int64) {
 }
 
 func (e *statEmitter) Completed(kind importv2.Kind, delta int64) {
+	defer containTelemetry("completed")
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	if kind == importv2.KindFile {
@@ -233,6 +259,7 @@ func (e *statEmitter) keepDenominatorsHonestLocked() {
 }
 
 func (e *statEmitter) Bytes(total int64) {
+	defer containTelemetry("bytes")
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.snap.bytesDone = total
@@ -250,6 +277,7 @@ func (e *statEmitter) Bytes(total int64) {
 // ledger count. A level that only rises is also the only reading that can
 // agree with a durable counter.
 func (e *statEmitter) Created(count int64) {
+	defer containTelemetry("created")
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	if count <= e.snap.objectsCreated {
@@ -260,6 +288,7 @@ func (e *statEmitter) Created(count int64) {
 }
 
 func (e *statEmitter) Item(item importv2.DisplayText) {
+	defer containTelemetry("item")
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.snap.currentItem = item
@@ -272,6 +301,7 @@ func (e *statEmitter) Item(item importv2.DisplayText) {
 // the window reopens in resumeIn. It is expected — a large import spends
 // much of its life here — so it is a state, never an error.
 func (e *statEmitter) Throttled(resumeIn time.Duration) {
+	defer containTelemetry("throttled")
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.setStateLocked(pb.EventImportStatistic_Throttled, func() {
@@ -280,6 +310,7 @@ func (e *statEmitter) Throttled(resumeIn time.Duration) {
 }
 
 func (e *statEmitter) Retrying(attempt, attemptsMax int) {
+	defer containTelemetry("retrying")
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.setStateLocked(pb.EventImportStatistic_Retrying, func() {
@@ -289,6 +320,7 @@ func (e *statEmitter) Retrying(attempt, attemptsMax int) {
 }
 
 func (e *statEmitter) Recovered() {
+	defer containTelemetry("recovered")
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.setStateLocked(pb.EventImportStatistic_Running, func() {
@@ -325,6 +357,7 @@ func (e *statEmitter) setStateLocked(state pb.EventImportStatisticState, apply f
 // having them at all: a run pouring out warnings can be abandoned at minute
 // 20 instead of minute 110.
 func (e *statEmitter) Issue(issue importv2.Issue) {
+	defer containTelemetry("issue")
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	countIssue(issue.Severity, &e.snap.warningCount, &e.snap.errorCount)
@@ -381,6 +414,7 @@ type statSeed struct {
 // Seed applies a resumed run's starting state. Called once, at construction,
 // before the emitter is handed to anything.
 func (e *statEmitter) Seed(seed statSeed) {
+	defer containTelemetry("seed")
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	if seed.materializing {
@@ -503,6 +537,7 @@ func verdictOf(result *importv2.Result) statVerdict {
 // event twice. The setter's rule is untouched — it forbids LEAVING the
 // error state, and a verdict only ever enters it.
 func (e *statEmitter) Close(verdict statVerdict) {
+	defer containTelemetry("close")
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	if e.closed {
@@ -518,8 +553,10 @@ func (e *statEmitter) Close(verdict statVerdict) {
 		e.timer.Stop()
 		e.timer = nil
 	}
-	e.cfg.send(e.buildLocked())
+	// Silenced BEFORE the flush: a send that panics is contained, and an
+	// emitter left un-closed by it would go on speaking for a settled run.
 	e.closed = true
+	e.cfg.send(e.buildLocked())
 }
 
 // Snapshot is the PULL half: what ObjectImportRunStatus serves for a live
