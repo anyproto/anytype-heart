@@ -20,22 +20,11 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-// strippedKeys mirrors the export-side strip set (SPEC §3): LocalAndDerived
-// minus the keys the importer meaningfully preserves. Differences on these
-// keys are never loss.
-var strippedKeys = func() map[string]bool {
-	kept := map[string]bool{
-		"createdDate": true, "lastModifiedDate": true, "creator": true,
-		"isFavorite": true, "isArchived": true, "resolvedLayout": true,
-	}
-	out := map[string]bool{"id": true, "type": true}
-	for _, k := range bundle.LocalAndDerivedRelationKeys {
-		if !kept[string(k)] {
-			out[string(k)] = true
-		}
-	}
-	return out
-}()
+// strippedKeys is the format's own internal-property set, not a copy of it.
+// The copy that used to stand here fell out of date the moment the package
+// added the importer's provenance keys, and every object carrying one was
+// reported as data loss (§3, §11).
+var strippedKeys = anyblockjson.InternalPropertyKeys()
 
 // Compare reports every place where got diverges from orig on a
 // format-preserved axis, as human-readable findings. An empty result means

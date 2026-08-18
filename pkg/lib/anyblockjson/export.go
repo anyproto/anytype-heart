@@ -359,6 +359,18 @@ func (e *exporter) buildRootEscape() *omap {
 //
 
 // strippedDetailKeys are the internal/derived properties export removes (§3).
+// InternalPropertyKeys reports the property keys this format treats as
+// internal: export strips them and import refuses them (§3). It is exported
+// for tooling that has to agree with that set — a round-trip checker comparing
+// a snapshot with its re-import has to know which keys are *expected* to be
+// gone. Two copies of this list have now drifted: cmd/anyblockroundtrip's, and
+// the one that moved with it into snapshotdiff. Both reported 10 378 false
+// data-loss issues over a 36 808-object account the moment the package added
+// the importer's provenance keys.
+func InternalPropertyKeys() map[string]bool {
+	return strippedDetailKeys()
+}
+
 // strippedDetailKeys is the internal-property list, and it is the single
 // source of truth for both directions: export removes these keys, and import
 // refuses them (§3, §4a — deniedPropertyKey reads this same set). Two lists
