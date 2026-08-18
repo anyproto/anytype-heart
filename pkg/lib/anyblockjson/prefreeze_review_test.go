@@ -340,7 +340,9 @@ func TestValidate_PropertyKeyShape(t *testing.T) {
 
 // A value whose shape contradicts its property's format is not stored as
 // written: it reads as the format's zero forever. "next Friday" on a date is
-// the case the review names.
+// the case the review names. The fixtures spell the CANONICAL snake_case slug
+// (§3) — this test used to pass only because it spelled the stored key, which
+// made its subject dead code for every document the format itself produces.
 func TestValidate_PropertyValueShapeWarns(t *testing.T) {
 	warningsFor := func(t *testing.T, doc string) []Issue {
 		var got []Issue
@@ -349,9 +351,26 @@ func TestValidate_PropertyValueShapeWarns(t *testing.T) {
 	}
 
 	t.Run("a date that is not a date", func(t *testing.T) {
+		got := warningsFor(t, `{"version": 1, "id": "o1", "properties": {"due_date": "next Friday"}}`)
+		require.Len(t, got, 1)
+		assert.Equal(t, "/properties/due_date", got[0].Path)
+		assert.Contains(t, got[0].Message, "date")
+	})
+
+	t.Run("the stored spelling is an address too", func(t *testing.T) {
+		// §3 chain step 1: a spelling the table does not know binds verbatim,
+		// so the stored key keeps warning alongside the canonical slug
 		got := warningsFor(t, `{"version": 1, "id": "o1", "properties": {"dueDate": "next Friday"}}`)
 		require.Len(t, got, 1)
 		assert.Equal(t, "/properties/dueDate", got[0].Path)
+		assert.Contains(t, got[0].Message, "date")
+	})
+
+	t.Run("a spelling the legend binds is checked as what it resolves to", func(t *testing.T) {
+		got := warningsFor(t, `{"version": 1, "id": "o1",
+			"property_keys": {"prio": "dueDate"}, "properties": {"prio": "next Friday"}}`)
+		require.Len(t, got, 1)
+		assert.Equal(t, "/properties/prio", got[0].Path)
 		assert.Contains(t, got[0].Message, "date")
 	})
 
@@ -364,14 +383,14 @@ func TestValidate_PropertyValueShapeWarns(t *testing.T) {
 	t.Run("shapes the format does hold are quiet", func(t *testing.T) {
 		// including the raw number a date out of RFC 3339 range exports as
 		assert.Empty(t, warningsFor(t, `{"version": 1, "id": "o1", "properties": {
-			"dueDate": "2026-07-06T08:44:05Z", "createdDate": 1751791445000,
-			"done": true, "name": "N", "iconEmoji": "fire", "coverX": 12, "tag": ["a", "b"]}}`))
+			"due_date": "2026-07-06T08:44:05Z", "created_date": 1751791445000,
+			"done": true, "name": "N", "icon_emoji": "fire", "cover_x": 12, "tag": ["a", "b"]}}`))
 	})
 
 	t.Run("null is always a value", func(t *testing.T) {
 		// §3: an explicit null records that the property was set and cleared
 		assert.Empty(t, warningsFor(t, `{"version": 1, "id": "o1", "properties": {
-			"dueDate": null, "done": null}}`))
+			"due_date": null, "done": null}}`))
 	})
 }
 
@@ -429,5 +448,149 @@ func TestValidate_EnvelopeKeyRejectsUnreadable(t *testing.T) {
 		"{\"version\": 1, \"kind\": \"object_type\", \"id\": \"t1\", \"key\": \"a\\nb\"}",
 	} {
 		assert.Error(t, Validate([]byte(doc)), doc)
+	}
+}
+
+// ---- post-freeze review: admission keyed off the raw document spelling ----
+//
+// The three property checks above (deny rule, layout names, format shapes)
+// were written before §3's key vocabulary arrived, and keyed off the RAW
+// document spelling. The format's canonical spelling is the snake_case api
+// slug, so writing "unique_key" instead of "uniqueKey" walked past all three
+// — including the deny rule that stops a document from aiming itself at an
+// existing object (existingobject.go resolves merge targets from oldAnytypeID,
+// uniqueKey and sourceFilePath). The fix: every check runs on the STORED key a
+// spelling resolves to, through the same chain import uses — the document's
+// own legend, then the bundled table, then the spelling verbatim (§3).
+
+// Every stripped key is a bundled relation with an api slug, so the canonical
+// document spells the slug — and the deny rule has to hold for that spelling,
+// derived from the same set as the stored-spelling test above.
+func TestValidate_DeniedKeysRefusedInCanonicalSpelling(t *testing.T) {
+	covered := 0
+	for key := range strippedDetailKeys() {
+		slug := (BundledKeyVocabulary{}).PropertySlug(key)
+		if slug == key {
+			continue // one spelling; TestValidate_ImportRefusesWhatExportStrips covers it
+		}
+		covered++
+		doc := fmt.Sprintf(`{"version": 1, "id": "obj1", "properties": {%q: "x"}}`, slug)
+		err := Validate([]byte(doc))
+		require.Error(t, err, "%q is the canonical spelling of stripped key %q, so it must be refused", slug, key)
+		assert.Contains(t, err.Error(), "/properties/"+slug)
+	}
+	require.NotZero(t, covered, "the bundled slug table no longer differs from the stored spellings — this test went dead")
+}
+
+// The legend is consulted before any vocabulary (§3), so without a check it
+// was an unchecked rebind primitive: any spelling could be bound to any stored
+// key, denied ones included — {"prio": "uniqueKey"} landed a uniqueKey detail,
+// and {"myid": "id"} overwrote the envelope id itself (observed: details.id
+// became ["boom"]). Admission runs on the resolved key, which the legend is
+// part of resolving.
+func TestValidate_LegendCannotRebindOntoInternalKeys(t *testing.T) {
+	for name, doc := range map[string]string{
+		"resolution vector": `{"version": 1, "id": "o1", "property_keys": {"prio": "uniqueKey"}, "properties": {"prio": "ot-page"}}`,
+		"envelope id":       `{"version": 1, "id": "o1", "property_keys": {"myid": "id"}, "properties": {"myid": "boom"}}`,
+		"stripped key":      `{"version": 1, "id": "o1", "property_keys": {"s": "spaceId"}, "properties": {"s": "other"}}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			err := Validate([]byte(doc))
+			require.Error(t, err, doc)
+			_, _, unmErr := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
+			require.Error(t, unmErr, "Unmarshal must reject what Validate rejects (I2)")
+		})
+	}
+
+	// a legend entry that rebinds a spelling onto a HARMLESS key is the
+	// feature working as specified: nothing lands on an internal key
+	ok := `{"version": 1, "id": "o1", "property_keys": {"prio": "6a32d4856761631534b22f85"}, "properties": {"prio": "high"}}`
+	require.NoError(t, Validate([]byte(ok)))
+	_, snap, err := Unmarshal([]byte(ok), Options{GenerateId: seqIds("g")})
+	require.NoError(t, err)
+	require.Contains(t, snap.Details.Fields, "6a32d4856761631534b22f85")
+}
+
+// {"resolved_layout": "nonsense"} validated clean and imported the raw string
+// onto a number-format property, where every consumer reads it with an int
+// getter and silently sees "basic" — the exact silence the layout-name check
+// exists to catch, dead for every canonically-spelled document.
+func TestValidate_LayoutNameCheckedInCanonicalSpelling(t *testing.T) {
+	err := Validate([]byte(`{"version": 1, "id": "o1", "properties": {"resolved_layout": "nonsense"}}`))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "/properties/resolved_layout")
+	assert.Contains(t, err.Error(), "unknown layout")
+
+	// a real name is accepted and lands as the stored number — the import
+	// half always resolved the slug; only validation did not
+	doc := `{"version": 1, "id": "o1", "properties": {"resolved_layout": "todo"}}`
+	require.NoError(t, Validate([]byte(doc)))
+	_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
+	require.NoError(t, err)
+	v := snap.Details.Fields["resolvedLayout"]
+	require.NotNil(t, v)
+	assert.Equal(t, float64(layoutNames.value("todo")), v.GetNumberValue())
+}
+
+// A legend value is a stored key — the string that becomes a details field —
+// so it obeys the same writable-key rule as a property name (§3): non-empty,
+// no control characters, at most 128 characters. Export only ever records
+// values that passed that rule, so the schema bound keeps admission symmetric.
+func TestValidate_LegendValueMustBeAWritableKey(t *testing.T) {
+	t.Run("refused", func(t *testing.T) {
+		for name, doc := range map[string]string{
+			"empty":        `{"version": 1, "property_keys": {"p": ""}}`,
+			"over-long":    fmt.Sprintf(`{"version": 1, "property_keys": {"p": %q}}`, strings.Repeat("k", maxPropertyKeyLen+1)),
+			"control char": `{"version": 1, "property_keys": {"p": "a\nb"}}`,
+		} {
+			assert.Error(t, Validate([]byte(doc)), name)
+		}
+	})
+	t.Run("accepted", func(t *testing.T) {
+		// the shapes real stored keys have: bson-hex, and option keys carrying
+		// the option's own name, spaces and non-ASCII included (ANOMALIES §7)
+		doc := `{"version": 1, "property_keys": {
+			"prio": "6a32d4856761631534b22f85",
+			"toggles": "69a56205ccba0a47d8d8eb71_тогглы"}}`
+		require.NoError(t, Validate([]byte(doc)))
+	})
+}
+
+// rebindingVocabulary stands in for a node-backed vocabulary whose space maps
+// a slug to a stored key the bundled table never knew. Validate cannot see it
+// (it takes no resolver, §13), so admission has to run AGAIN on the importer's
+// final resolved key, at the seam where details are written.
+type rebindingVocabulary struct{ BundledKeyVocabulary }
+
+func (rebindingVocabulary) PropertyKey(slug string) (string, bool) {
+	if slug == "prio" {
+		return "uniqueKey", true
+	}
+	return BundledKeyVocabulary{}.PropertyKey(slug)
+}
+
+func TestImport_AdmissionRunsOnTheResolvedKey(t *testing.T) {
+	doc := `{"version": 1, "id": "o1", "properties": {"prio": "ot-page"}}`
+	require.NoError(t, Validate([]byte(doc)),
+		"the bundled chain resolves prio verbatim, a legal custom key — Validate cannot know better")
+	_, _, err := Unmarshal([]byte(doc), Options{Keys: rebindingVocabulary{}, GenerateId: seqIds("g")})
+	require.Error(t, err, "the wider vocabulary resolves prio onto uniqueKey, which no document may set")
+	assert.Contains(t, err.Error(), "/properties/prio")
+	assert.Contains(t, err.Error(), "uniqueKey")
+}
+
+// The same raw-spelling defect had a fourth instance in the same loop's
+// neighbourhood: the type_properties-vs-recommended-lists ambiguity check
+// indexed properties by the STORED list keys, so the canonical spelling
+// "recommended_relations" carried both representations without a word.
+func TestValidate_RecommendedListConflictCheckedInCanonicalSpelling(t *testing.T) {
+	for _, spelling := range []string{"recommendedRelations", "recommended_relations"} {
+		doc := fmt.Sprintf(`{"version": 1, "kind": "object_type", "id": "t1", "key": "page",
+			"type_properties": [{"key": "due_date", "format": "date"}],
+			"properties": {%q: ["a"]}}`, spelling)
+		err := Validate([]byte(doc))
+		require.Error(t, err, spelling)
+		assert.Contains(t, err.Error(), "/properties/"+spelling)
+		assert.Contains(t, err.Error(), "type_properties")
 	}
 }

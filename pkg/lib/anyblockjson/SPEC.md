@@ -1,6 +1,6 @@
 # AnyBlock JSON — format specification
 
-Status: **draft v0.9** · Format version: **1** · Package: `pkg/lib/anyblockjson`
+Status: **draft v0.10** · Format version: **1** · Package: `pkg/lib/anyblockjson`
 
 A human- and agent-readable JSON serialization of Anytype objects (the "anyblock"
 model), designed for export, import, and generation by external tools and LLM
@@ -14,6 +14,19 @@ strings; the vocabulary follows Notion's API and Anytype's public REST API
 (`core/api`) wherever an established term exists — the format should be
 readable, and mostly writable, by someone who has never seen Anytype
 internals.
+
+Changes in v0.10: **admission runs on the resolved stored key** (§3, §12).
+The v0.7 property checks — the internal-key deny rule, the layout-name
+check, the format-shape warning — predated the v0.9 key vocabulary and keyed
+off the raw document spelling, so the canonical slug walked past all three:
+`{"unique_key": "ot-page"}` validated clean and landed a `uniqueKey` detail,
+which is one of the keys the importer uses to pick which *existing* object a
+snapshot merges into. The `property_keys` legend was the same hole squared —
+an unchecked rebind primitive that bound any spelling to any stored key,
+`id` included. Now every `properties` key resolves (legend → bundled table →
+verbatim) before the checks run, import re-runs the deny rule on its own
+resolved key for vocabularies wider than Validate can see, and a legend value
+obeys the writable-key rule (schema-enforced).
 
 Changes in v0.9: the key vocabulary of §3 arrives from the API v2 branch —
 types and properties are named by their snake_case api slug, inverted through a
@@ -495,6 +508,18 @@ writes the entry:
   another property on the same object is stored under, the later holder is
   spelled with its stored key instead — the term belongs to the entity that
   answers to it, and the legend never rebinds a spelling out from under one.
+- **A legend value is a stored key, and obeys the writable-key rule.**
+  Non-empty, no control characters, at most 128 characters — the same shape
+  rule property names carry, enforced by the schema. Export only ever
+  records values that passed it, so the bound refuses nothing export writes.
+- **The legend cannot launder a spelling onto an internal key.** Entries are
+  honored during validation and admission exactly as during import — the
+  legend is step one of key resolution — so `{"prio": "uniqueKey"}` does not
+  smuggle a `uniqueKey` write past the §3 deny rule: the *resolved* key is
+  what admission judges (see below). Conversely, a legend entry that binds a
+  denied *slug spelling* to a harmless stored key (a space-minted
+  `apiObjectKey` may collide with a bundled spelling) is honored too: nothing
+  lands on the internal key, so nothing is refused.
 
 **What is not a key slot** (ADDRESSING §7.5a-4). The vocabulary applies where
 a document NAMES a type or property, and nowhere else. Envelope and DTO field
@@ -640,7 +665,27 @@ the importer decides which *existing* object a document merges into
 three too, so the symmetry holds in both directions. `id` and `type` are
 refused by name as well — they are the envelope's (§2), and dropping them in
 silence left an author with no explanation for why the id they wrote had no
-effect.
+effect. (Those two are refused as *spellings*: the importer lifts them into
+the envelope before any resolution runs, so the legend cannot re-purpose
+them.)
+
+**Admission runs on the resolved stored key, not on the raw spelling.** The
+document spells slugs, so a reader first lands each `properties` key on its
+stored key — the document's own legend, then the bundled table, then the
+spelling verbatim (the §3 chain) — and *then* applies the deny rule, the
+layout-name check and the format-shape warning to the result. Checked
+against the raw spelling instead, all three were dead for exactly the
+documents this format produces: `unique_key` walked past the rule that
+`uniqueKey` tripped, and a `property_keys` entry could rebind any harmless
+spelling onto any internal key — including `id` itself, which overwrote the
+envelope id from inside `properties`. `Validate` resolves with the only
+vocabulary it has (legend, bundled table, verbatim — it takes no resolver,
+§13); a reader whose vocabulary resolves *further* — a node-backed caller
+whose space maps a slug to a stored key the bundled table never knew — must
+re-run admission on **its** final resolved key, which import does at the
+seam where details are written (`importer.build`). The two agree exactly
+whenever no wider vocabulary is in force, which is what keeps Validate and
+Unmarshal accepting the same documents (§12).
 
 **A property key has to be writable.** Non-empty, no control characters, at
 most 128 characters (`propertyNames` in the schema). This is a *deny* rule and
@@ -651,12 +696,12 @@ after checking every key in every account — while the shapes ruled out here
 drops such a stored key with a warning, since there is no way to write it.
 
 **A value whose shape its format cannot hold is a warning**, not an error, and
-only for keys the bundle resolves (`Validate` takes no resolver, §13):
-`"dueDate": "next Friday"` is stored as written and then read as no date at
-all, which nothing else would ever report. It stays a warning because the same
-check as an error would make one already-corrupt stored value enough to make an
-object unexportable, and "Marshal never emits what Validate rejects" (§11) is
-the stronger promise.
+only for keys the bundle resolves after the resolution chain runs (`Validate`
+takes no resolver, §13): `"due_date": "next Friday"` is stored as written and
+then read as no date at all, which nothing else would ever report. It stays a
+warning because the same check as an error would make one already-corrupt
+stored value enough to make an object unexportable, and "Marshal never emits
+what Validate rejects" (§11) is the stronger promise.
 
 Validation: the schema types `properties` loosely (`object` with scalar/array
 values). Strict per-type validation against the object-type schemas generated
@@ -1701,9 +1746,14 @@ fail neither test belong in authoring guidance and in review.
   indents), **leaf containment** and **row→column** (§4 containment), id
   uniqueness over the whole document (§4), table shape and cell rules
   (§6.1), envelope combinations (`items`/`template_for`/`kind`, §2),
-  `language`-vs-`fields.lang` conflicts, and **inline-markup parsing** (§8)
-  — grammar errors report the block's JSON path and the offending snippet.
-  The indent bound [0, 32] lives in the schema.
+  **property-key admission on the resolved stored key** (§3 — each
+  `properties` spelling resolves legend → bundled table → verbatim before
+  the deny rule, the layout-name check and the format-shape warning run;
+  import re-runs the deny rule on its own resolved key when a wider
+  vocabulary is in force), `language`-vs-`fields.lang` conflicts, and
+  **inline-markup parsing** (§8) — grammar errors report the block's JSON
+  path and the offending snippet. The indent bound [0, 32] lives in the
+  schema.
 - **Validate and Unmarshal agree, in both directions.** Whatever Validate
   accepts, Unmarshal decodes; whatever Validate rejects, Unmarshal rejects
   too, with the same path-addressed issues. This is the promise that makes

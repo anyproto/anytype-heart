@@ -280,6 +280,18 @@ func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBas
 		}
 		// the document spells slugs (§7.5a); the store binds stored keys
 		key := imp.propertyKey(slug)
+		// admission runs on the FINAL resolved key, here at the seam where
+		// details are written (§3). Validate already refused everything its
+		// bundled chain could resolve, but a caller-supplied vocabulary can
+		// bind a slug to a stored key the bundled table never knew — including
+		// the internal keys the deny rule exists for — and Validate takes no
+		// vocabulary, deliberately (§13).
+		if reason, denied := deniedPropertyKey(key); denied {
+			return 0, nil, &ValidationError{Issues: []Issue{{
+				Path:    "/properties/" + escapeJSONPointer(slug),
+				Message: reason,
+			}}}
+		}
 		if first, dup := boundBy[key]; dup {
 			return 0, nil, &ValidationError{Issues: []Issue{{
 				Path:    "/properties/" + slug,

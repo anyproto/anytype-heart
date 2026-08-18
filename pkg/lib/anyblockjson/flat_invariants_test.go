@@ -222,6 +222,27 @@ var hostileDocs = []string{
 		"filters": [{"property": "p", "condition": "equal", "value": 1e400}]}]}]}`,
 	`{"version": 1, "blocks": [{"type": "table", "columns": [{"id": "c1"}],
 		"rows": [{"id": "r1", "cells": [["nested", {"indent": 1, "type": "paragraph", "text": "y"}]]}]}]}`,
+	// admission runs on the RESOLVED stored key (§3): the canonical slug
+	// spelling of a denied key, a property_keys legend rebinding a harmless
+	// spelling onto one, and the layout-name check behind the same resolution.
+	// These pin WHERE the rule lives as much as that it exists — a "fix" that
+	// moves the deny rule into import alone makes Validate accept what
+	// Unmarshal rejects, and this corpus is what catches that.
+	`{"version": 1, "properties": {"unique_key": "ot-page"}}`,
+	`{"version": 1, "properties": {"space_id": "other"}}`,
+	`{"version": 1, "properties": {"old_anytype_id": "legacy-1"}}`,
+	`{"version": 1, "properties": {"source_file_path": "/x/y"}}`,
+	`{"version": 1, "properties": {"resolved_layout": "nonsense"}}`,
+	`{"version": 1, "properties": {"resolved_layout": "todo"}}`,
+	`{"version": 1, "property_keys": {"prio": "uniqueKey"}, "properties": {"prio": "ot-page"}}`,
+	`{"version": 1, "property_keys": {"myid": "id"}, "properties": {"myid": "boom"}}`,
+	`{"version": 1, "property_keys": {"s": "spaceId"}, "properties": {"s": "other"}}`,
+	// a benign rebind is the legend working as specified, and flows through
+	`{"version": 1, "property_keys": {"prio": "6a32d4856761631534b22f85"}, "properties": {"prio": "high"}}`,
+	// a legend value is a stored key and obeys the writable-key rule (§3)
+	`{"version": 1, "property_keys": {"p": ""}}`,
+	`{"version": 1, "property_keys": {"p": "a\nb"}}`,
+	`{"version": 1, "property_keys": {"p": "` + strings.Repeat("k", 129) + `"}}`,
 }
 
 // I2: whatever Validate accepts, Unmarshal must decode, and whatever Validate

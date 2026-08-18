@@ -603,10 +603,38 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 		}
 	}
 
+	// Every per-key check below runs on the STORED key a document spelling
+	// resolves to — not on the raw spelling. The canonical document spells the
+	// snake_case api slug (§3), so checks keyed off the raw spelling were dead
+	// for exactly the documents this format produces: "unique_key" walked past
+	// the deny rule that "uniqueKey" tripped, and the legend could rebind any
+	// spelling onto any stored key, denied ones included. resolveDocKey is the
+	// §3 chain with the only vocabulary Validate has: the document's own
+	// legend first, then the bundled table, then the spelling verbatim — the
+	// same resolution importer.propertyKey performs with default Options. A
+	// caller-supplied vocabulary can resolve further than Validate can see,
+	// which is why importer.build re-runs admission on ITS resolved key.
+	legend, _ := doc["property_keys"].(map[string]any)
+	resolveDocKey := func(term string) string {
+		if v, ok := legend[term]; ok {
+			if key, isStr := v.(string); isStr && key != "" {
+				return key
+			}
+		}
+		key, _ := BundledKeyVocabulary{}.PropertyKey(term)
+		return key
+	}
+
 	if props, _ := doc["properties"].(map[string]any); props != nil {
-		for _, key := range sortedMapKeys(props) {
-			v := props[key]
-			path := "/properties/" + escapeJSONPointer(key)
+		for _, term := range sortedMapKeys(props) {
+			v := props[term]
+			path := "/properties/" + escapeJSONPointer(term)
+			// the importer lifts these two spellings into the envelope before
+			// any resolution runs (§2), so the legend cannot re-purpose them
+			key := term
+			if term != detailKeyId && term != detailKeyType {
+				key = resolveDocKey(term)
+			}
 			if reason, denied := deniedPropertyKey(key); denied {
 				addIssue(path, "%s", reason)
 				continue
@@ -632,11 +660,18 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 			addIssue("/type_properties", `type_properties is only valid on type documents (kind "object_type")`)
 		}
 		// typeProperties replaces the recommended-relation lists (§2a): a
-		// document carrying both is ambiguous
+		// document carrying both is ambiguous. The lists are named by whatever
+		// spelling resolves onto them — recommendedListKeys holds stored keys,
+		// and the canonical document spells recommended_relations (§3)
 		if props, _ := doc["properties"].(map[string]any); props != nil {
+			listKeys := make(map[string]bool, len(recommendedListKeys))
 			for _, l := range recommendedListKeys {
-				if _, dup := props[l.detailKey]; dup {
-					addIssue("/properties/"+l.detailKey, "conflicts with type_properties, which replaces this list")
+				listKeys[l.detailKey] = true
+			}
+			for _, term := range sortedMapKeys(props) {
+				if listKeys[resolveDocKey(term)] {
+					addIssue("/properties/"+escapeJSONPointer(term),
+						"conflicts with type_properties, which replaces this list")
 				}
 			}
 		}
@@ -690,9 +725,10 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 				}
 				// a bundled property is used as-is: only the wiring's
 				// create path reads these, and it never runs for a key that
-				// already exists (§2a)
+				// already exists (§2a). The key slot spells the api slug like
+				// every other (§3), so the lookup runs on the resolved key
 				if key != "" {
-					if rel, err := bundle.GetRelation(domain.RelationKey(key)); err == nil && rel != nil {
+					if rel, err := bundle.GetRelation(domain.RelationKey(resolveDocKey(key))); err == nil && rel != nil {
 						if name, _ := tp["name"].(string); name != "" && name != rel.Name {
 							warnIssue(fmt.Sprintf("/type_properties/%d/name", i),
 								"%q is a bundled property named %q — this name is ignored; mint a custom key if the label matters",
@@ -831,11 +867,13 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 }
 
 // neverWritableProperties are the keys import must refuse even though they are
-// not bundled relations, so strippedDetailKeys does not know about them. They
-// are the importer's own resolution vectors: existingobject.go picks which
-// existing object in the space a snapshot merges into using oldAnytypeID,
-// uniqueKey and sourceFilePath, so a document that sets them aims itself at an
-// object it did not create.
+// not in bundle.LocalAndDerivedRelationKeys, so the derived half of
+// strippedDetailKeys does not know about them. (They ARE bundled relations —
+// bundle.HasRelation is true for both and each has an api slug — they are just
+// not on the local/derived list.) They are the importer's own resolution
+// vectors: existingobject.go picks which existing object in the space a
+// snapshot merges into using oldAnytypeID, uniqueKey and sourceFilePath, so a
+// document that sets them aims itself at an object it did not create.
 var neverWritableProperties = map[string]string{
 	"oldAnytypeID":   "oldAnytypeID selects which existing object a document merges into and cannot be set by a document",
 	"sourceFilePath": "sourceFilePath selects which existing object a document merges into and cannot be set by a document",
