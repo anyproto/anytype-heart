@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 
@@ -105,6 +106,56 @@ type Persister struct {
 	checker   ObjectChecker
 	spillDir  string
 	heal      func(sourceKey string, derived bool) bool
+
+	typesMu      sync.Mutex
+	createdTypes []string
+}
+
+// TypeReconciler is the object-type editor's seam: a type brings its own
+// dataview back in line with the properties it recommends.
+type TypeReconciler interface {
+	ReconcileDataviewColumns() error
+}
+
+// ReconcileTypes settles the dataview of every type this run created. Workers
+// persist objects concurrently, so a type can be created while one of its
+// relations is still being written: the dataview template resolves relation
+// ids through the store, and a property whose relation is not there yet is
+// simply missing from the view — a column the user never gets. By the time
+// the run ends every relation exists, and this is where the types catch up.
+//
+// Best effort by design: a type that cannot be opened keeps the view it has,
+// which the editor reconciles on its next load anyway.
+func (p *Persister) ReconcileTypes(ctx context.Context) {
+	p.typesMu.Lock()
+	ids := p.createdTypes
+	p.createdTypes = nil
+	p.typesMu.Unlock()
+
+	for _, id := range ids {
+		if err := ctx.Err(); err != nil {
+			return
+		}
+		err := p.space.Do(id, func(sb smartblock.SmartBlock) error {
+			reconciler, ok := sb.(TypeReconciler)
+			if !ok {
+				return nil
+			}
+			return reconciler.ReconcileDataviewColumns()
+		})
+		if err != nil {
+			log.With("objectId", id).Warnf("reconcile type dataview: %v", err)
+		}
+	}
+}
+
+func (p *Persister) noteCreatedType(o *importv2.Object, outcome Outcome) {
+	if o.SbType != coresb.SmartBlockTypeObjectType || outcome.Action == ActionSkipped {
+		return
+	}
+	p.typesMu.Lock()
+	p.createdTypes = append(p.createdTypes, outcome.Id)
+	p.typesMu.Unlock()
 }
 
 // SetResumeHeal installs the resumed-incarnation ErrTreeExists policy
@@ -227,6 +278,7 @@ func (p *Persister) persistRegular(ctx context.Context, o *importv2.Object, targ
 	}
 
 	p.applyFlags(ctx, o, target.Id, report)
+	p.noteCreatedType(o, outcome)
 	return outcome, nil
 }
 

@@ -590,9 +590,14 @@ func (s *service) runEngine(ctx context.Context, request importv2.Request, conve
 		defer standalone.Close()
 		spool = standalone
 	}
-	deps, _ := s.engineDeps(request, spc, lc, progress, lc.identityOptions())
+	deps, persister := s.engineDeps(request, spc, lc, progress, lc.identityOptions())
 	deps.Spool = spool
-	return engine.Run(ctx, request, converter, deps)
+	result := engine.Run(ctx, request, converter, deps)
+	// Once every object exists, the types created along the way catch up with
+	// the properties whose relations were still being written when their
+	// dataview was built.
+	persister.ReconcileTypes(ctx)
+	return result
 }
 
 // engineDeps builds the per-run components shared verbatim between a first

@@ -179,5 +179,7 @@ func (s *service) resumeEngine(ctx context.Context, request importv2.Request, sp
 	// The resumed run's progress total is no longer set here: the engine
 	// re-bases it from the spool census at the start of pass 3, on this path
 	// and the fresh one alike (§15.4's one derivation).
-	return engine.Resume(ctx, request, deps, &st.Engine)
+	result := engine.Resume(ctx, request, deps, &st.Engine)
+	persister.ReconcileTypes(ctx)
+	return result
 }

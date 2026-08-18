@@ -721,3 +721,67 @@ func (c *storeChecker) Exists(id string) bool {
 	}}})
 	return err == nil && len(ids) > 0
 }
+
+// reconcilerStub stands in for the object-type editor.
+type reconcilerStub struct {
+	smartblock.SmartBlock
+	calls int
+	err   error
+}
+
+func (r *reconcilerStub) ReconcileDataviewColumns() error {
+	r.calls++
+	return r.err
+}
+
+func TestReconcileTypes(t *testing.T) {
+	t.Run("every type the run created catches up once the run ends", func(t *testing.T) {
+		// given — a type created while one of its relations was still being
+		// written has a dataview missing that column until something
+		// reconciles it
+		fx := newFixture(t)
+		_, err := fx.Persist(context.Background(), typeObject("db/meetings"), Target{Id: "typeId", Payload: payloadFor("typeId")}, fx.report)
+		require.NoError(t, err)
+		_, err = fx.Persist(context.Background(), pageObject("docs/page.md"), Target{Id: "pageId", Payload: payloadFor("pageId")}, fx.report)
+		require.NoError(t, err)
+		reconciler := &reconcilerStub{SmartBlock: smarttest.New("typeId")}
+		fx.space.existing["typeId"] = reconciler
+
+		// when
+		fx.ReconcileTypes(context.Background())
+
+		// then — the type, and only the type
+		assert.Equal(t, 1, reconciler.calls)
+
+		// and the list is drained, so a second call is not a second pass
+		fx.ReconcileTypes(context.Background())
+		assert.Equal(t, 1, reconciler.calls)
+	})
+
+	t.Run("a type that cannot be opened does not fail the run", func(t *testing.T) {
+		// given — nothing registered in the space, so Do returns an error
+		fx := newFixture(t)
+		_, err := fx.Persist(context.Background(), typeObject("db/meetings"), Target{Id: "typeId", Payload: payloadFor("typeId")}, fx.report)
+		require.NoError(t, err)
+
+		// when / then — best effort, no panic, no error surfaced
+		fx.ReconcileTypes(context.Background())
+	})
+
+	t.Run("a cancelled run stops reconciling", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		_, err := fx.Persist(context.Background(), typeObject("db/meetings"), Target{Id: "typeId", Payload: payloadFor("typeId")}, fx.report)
+		require.NoError(t, err)
+		reconciler := &reconcilerStub{SmartBlock: smarttest.New("typeId")}
+		fx.space.existing["typeId"] = reconciler
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		// when
+		fx.ReconcileTypes(ctx)
+
+		// then
+		assert.Zero(t, reconciler.calls)
+	})
+}

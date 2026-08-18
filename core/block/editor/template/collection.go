@@ -248,3 +248,92 @@ func defaultChatSort() []*model.BlockContentDataviewSort {
 func DefaultCollectionRelations() []domain.RelationKey {
 	return defaultCollectionRelations
 }
+
+// ReconcileTypeDataviewColumns brings a type's own dataview back in line with
+// the type: every property the type recommends is a column, and where nobody
+// has arranged the view those columns are switched on.
+//
+// It runs on open and after an import rather than once, because the view can
+// fall behind the type in two ways. Views built before columns were made
+// visible list the type's properties and hide every one, so the type opens as
+// a bare Name column. And a view built while a property's relation object was
+// still being written — which an import's concurrent workers do — misses that
+// property entirely.
+//
+// The two repairs read "arranged" differently, because the evidence differs:
+//
+//   - A property already in the view but hidden is only switched on when the
+//     view shows nothing except Name and Type. Anything else visible means
+//     someone chose these columns, and a hidden property is then their choice
+//     too.
+//   - A property missing from the view was never anyone's choice, so it is
+//     added switched on unless the view carries columns we would not have put
+//     there — a housekeeping relation like Created date being visible.
+//
+// Nothing is ever removed or hidden. Reports whether anything changed.
+func ReconcileTypeDataviewColumns(dv *model.BlockContentDataview, relLinks []*model.RelationLink) bool {
+	if dv == nil {
+		return false
+	}
+	typeProperties := make(map[string]struct{}, len(relLinks))
+	for _, link := range relLinks {
+		typeProperties[link.Key] = struct{}{}
+	}
+	isDefault := func(key string) bool {
+		return slices.Contains(defaultDataviewRelations, domain.RelationKey(key)) ||
+			slices.Contains(defaultVisibleRelations, domain.RelationKey(key))
+	}
+	changed := false
+	for _, view := range dv.Views {
+		var showsOnlyDefaults, showsOnlyOurs = true, true
+		present := make(map[string]struct{}, len(view.Relations))
+		for _, rel := range view.Relations {
+			present[rel.Key] = struct{}{}
+			if !rel.IsVisible || slices.Contains(defaultVisibleRelations, domain.RelationKey(rel.Key)) {
+				continue
+			}
+			showsOnlyDefaults = false
+			if _, ours := typeProperties[rel.Key]; !ours {
+				showsOnlyOurs = false
+			}
+		}
+		for _, rel := range view.Relations {
+			if _, ours := typeProperties[rel.Key]; !ours || rel.IsVisible {
+				continue
+			}
+			if showsOnlyDefaults && !isDefault(rel.Key) {
+				rel.IsVisible = true
+				changed = true
+			}
+		}
+		for _, link := range relLinks {
+			if _, ok := present[link.Key]; ok {
+				continue
+			}
+			present[link.Key] = struct{}{}
+			view.Relations = append(view.Relations, &model.BlockContentDataviewRelation{
+				Key:       link.Key,
+				IsVisible: showsOnlyOurs && !isDefault(link.Key),
+				Width:     propertyWidth(link.Format),
+			})
+			changed = true
+		}
+	}
+	if !changed {
+		return false
+	}
+	// The links carry the formats the view relations do not, and a custom
+	// relation missing from them cannot be looked up from the bundle.
+	linked := make(map[string]struct{}, len(dv.RelationLinks))
+	for _, link := range dv.RelationLinks {
+		linked[link.Key] = struct{}{}
+	}
+	for _, link := range relLinks {
+		if _, ok := linked[link.Key]; ok {
+			continue
+		}
+		linked[link.Key] = struct{}{}
+		dv.RelationLinks = append(dv.RelationLinks, link)
+	}
+	return true
+}

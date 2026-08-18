@@ -52,9 +52,9 @@ func (f *ObjectFactory) newObjectType(spaceId string, sb smartblock.SmartBlock) 
 	store := f.objectStore.SpaceIndex(spaceId)
 	fileComponent := file.NewFile(sb, f.picker, f.fileUploaderService)
 	return &ObjectType{
-		SmartBlock:     sb,
-		AllOperations:  basic.NewBasic(sb, store, f.layoutConverter, f.fileObjectService),
-		IHistory:       basic.NewHistory(sb),
+		SmartBlock:    sb,
+		AllOperations: basic.NewBasic(sb, store, f.layoutConverter, f.fileObjectService),
+		IHistory:      basic.NewHistory(sb),
 		Text: stext.NewText(
 			sb,
 			store,
@@ -82,6 +82,7 @@ func (ot *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 	}
 
 	ot.AddHook(ot.syncLayoutHook, smartblock.HookAfterApply)
+	ot.reconcileDataviewColumns(ctx.State)
 
 	oldLayout := layout.NewLayoutStateFromDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 		bundle.RelationKeyRecommendedLayout: domain.Int64(model.ObjectType_basic),
@@ -203,6 +204,64 @@ func (ot *ObjectType) syncLayoutHook(info smartblock.ApplyInfo) error {
 	newLayout := layout.NewLayoutStateFromEvents(info.Events)
 	oldLayout := layout.NewLayoutStateFromDetails(info.ParentDetails)
 	return ot.syncLayoutForObjectsAndTemplates(oldLayout, newLayout, info.ApplyOtherObjects)
+}
+
+// reconcileDataviewColumns keeps the type's own dataview in step with the
+// type's properties. It runs on every open, not once: a view can fall behind
+// because it was built before columns were made visible, or because a
+// property's relation object was not indexed yet when the view was built —
+// an import creates both within moments of each other and can outrun the
+// index. The state is only written when something actually changed.
+func (ot *ObjectType) reconcileDataviewColumns(s *state.State) bool {
+	if s == nil {
+		return false
+	}
+	block := s.Pick(state.DataviewBlockID)
+	if block == nil {
+		return false // a new type has no dataview yet; the creation migration builds it
+	}
+	reconciled := block.Copy()
+	if !template.ReconcileTypeDataviewColumns(reconciled.Model().GetDataview(), ot.recommendedRelationLinks(s.Details())) {
+		return false
+	}
+	s.Set(reconciled)
+	return true
+}
+
+// ReconcileDataviewColumns runs the same reconcile outside the init path, for
+// a type already open. The importer calls it once its run has created every
+// object: its workers run concurrently, so a type can be built while one of
+// its relations is still being written, and the view then misses that
+// property until something reloads the type.
+func (ot *ObjectType) ReconcileDataviewColumns() error {
+	st := ot.NewState()
+	if !ot.reconcileDataviewColumns(st) {
+		return nil
+	}
+	return ot.Apply(st)
+}
+
+// recommendedRelationLinks resolves the type's featured and recommended
+// relation ids into the links a dataview needs (key plus format). Ids that do
+// not resolve are skipped: reconcileDataviewColumns runs again on the next
+// open, by which time an id that was merely not indexed yet resolves.
+func (ot *ObjectType) recommendedRelationLinks(details *domain.Details) []*model.RelationLink {
+	ids := slices.Concat(
+		details.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations),
+		details.GetStringList(bundle.RelationKeyRecommendedRelations),
+	)
+	links := make([]*model.RelationLink, 0, len(ids))
+	for _, id := range ids {
+		rel, err := ot.spaceIndex.GetRelationById(id)
+		if err != nil || rel == nil {
+			continue
+		}
+		if rel.Key == bundle.RelationKeyType.String() {
+			continue
+		}
+		links = append(links, &model.RelationLink{Key: rel.Key, Format: rel.Format})
+	}
+	return links
 }
 
 func (ot *ObjectType) dataviewTemplates() []template.StateTransformer {

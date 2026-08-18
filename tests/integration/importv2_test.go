@@ -141,7 +141,7 @@ func TestImportV2TypeDataviewColumns(t *testing.T) {
 	// The type's own properties are the columns. Before the fix every one of
 	// them was listed but switched off, so an imported type opened as a bare
 	// Name column and the whole schema looked lost.
-	assert.Equal(t, []string{"name", "task_priority", "task_assignee"}, visible)
+	assert.ElementsMatch(t, []string{"name", "task_priority", "task_assignee"}, visible)
 	assert.NotContains(t, hidden, "task_priority")
 	assert.NotContains(t, hidden, "task_assignee")
 }

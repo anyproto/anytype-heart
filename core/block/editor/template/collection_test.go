@@ -575,3 +575,152 @@ func TestMakeDataviewContent_WithOldContent(t *testing.T) {
 		assert.True(t, keys[bundle.RelationKeyDone.String()])
 	})
 }
+
+func TestReconcileTypeDataviewColumns(t *testing.T) {
+	// A type's dataview as it was built before columns were made visible: the
+	// type's own properties are listed among the view's relations, all off.
+	brokenView := func() *model.BlockContentDataview {
+		return &model.BlockContentDataview{
+			RelationLinks: []*model.RelationLink{
+				{Key: bundle.RelationKeyName.String(), Format: model.RelationFormat_longtext},
+				{Key: "task_priority", Format: model.RelationFormat_status},
+			},
+			Views: []*model.BlockContentDataviewView{{
+				Id: "default",
+				Relations: []*model.BlockContentDataviewRelation{
+					{Key: bundle.RelationKeyName.String(), IsVisible: true},
+					{Key: bundle.RelationKeyCreatedDate.String(), IsVisible: false},
+					{Key: bundle.RelationKeyBacklinks.String(), IsVisible: false},
+					{Key: "task_priority", IsVisible: false},
+				},
+			}},
+		}
+	}
+	typeProperties := []*model.RelationLink{
+		{Key: bundle.RelationKeyName.String(), Format: model.RelationFormat_longtext},
+		{Key: "task_priority", Format: model.RelationFormat_status},
+		{Key: "task_assignee", Format: model.RelationFormat_shorttext},
+	}
+
+	visibleKeys := func(dv *model.BlockContentDataview) []string {
+		var keys []string
+		for _, rel := range dv.Views[0].Relations {
+			if rel.IsVisible {
+				keys = append(keys, rel.Key)
+			}
+		}
+		return keys
+	}
+	linkKeys := func(dv *model.BlockContentDataview) []string {
+		var keys []string
+		for _, link := range dv.RelationLinks {
+			keys = append(keys, link.Key)
+		}
+		return keys
+	}
+
+	t.Run("an untouched view gets the type's own properties back", func(t *testing.T) {
+		// given
+		dv := brokenView()
+
+		// when
+		changed := ReconcileTypeDataviewColumns(dv, typeProperties)
+
+		// then — the type's properties, not the housekeeping relations
+		assert.True(t, changed)
+		assert.ElementsMatch(t, []string{bundle.RelationKeyName.String(), "task_priority", "task_assignee"}, visibleKeys(dv))
+	})
+
+	t.Run("a property the view never got is added as a column", func(t *testing.T) {
+		// given — an import can create the type before the relation object is
+		// indexed, and the property is then missing from the view entirely
+		dv := brokenView()
+
+		// when
+		ReconcileTypeDataviewColumns(dv, typeProperties)
+
+		// then — both the view relation and the link carrying its format
+		assert.Contains(t, visibleKeys(dv), "task_assignee")
+		assert.Contains(t, linkKeys(dv), "task_assignee")
+		for _, link := range dv.RelationLinks {
+			if link.Key == "task_assignee" {
+				assert.Equal(t, model.RelationFormat_shorttext, link.Format)
+			}
+		}
+	})
+
+	t.Run("a property missing from a view the fix already filled is added visible", func(t *testing.T) {
+		// given — the shape the import race leaves behind: the view was built
+		// with the properties that resolved, and one never made it in
+		dv := brokenView()
+		dv.Views[0].Relations[3].IsVisible = true // task_priority, as built today
+
+		// when
+		changed := ReconcileTypeDataviewColumns(dv, typeProperties)
+
+		// then — its own columns are not evidence that anyone arranged this
+		assert.True(t, changed)
+		assert.ElementsMatch(t, []string{bundle.RelationKeyName.String(), "task_priority", "task_assignee"}, visibleKeys(dv))
+	})
+
+	t.Run("a hidden property stays hidden once someone has arranged the view", func(t *testing.T) {
+		// given — one of the type's properties on, another off: a selection
+		dv := brokenView()
+		dv.Views[0].Relations[3].IsVisible = true
+		dv.Views[0].Relations = append(dv.Views[0].Relations,
+			&model.BlockContentDataviewRelation{Key: "task_assignee", IsVisible: false})
+
+		// when
+		changed := ReconcileTypeDataviewColumns(dv, typeProperties)
+
+		// then
+		assert.False(t, changed)
+		assert.Equal(t, []string{bundle.RelationKeyName.String(), "task_priority"}, visibleKeys(dv))
+	})
+
+	t.Run("a view the user has arranged keeps its columns, and gains the rest as available", func(t *testing.T) {
+		// given — one column switched on by hand is the whole signal
+		dv := brokenView()
+		dv.Views[0].Relations[1].IsVisible = true
+
+		// when
+		changed := ReconcileTypeDataviewColumns(dv, typeProperties)
+
+		// then — nothing switched on behind their back, but the missing
+		// property is now offered in the column picker
+		assert.True(t, changed)
+		assert.Equal(t, []string{bundle.RelationKeyName.String(), bundle.RelationKeyCreatedDate.String()}, visibleKeys(dv))
+		assert.Contains(t, linkKeys(dv), "task_assignee")
+	})
+
+	t.Run("a type with no properties of its own has nothing to reconcile", func(t *testing.T) {
+		// given
+		dv := &model.BlockContentDataview{Views: []*model.BlockContentDataviewView{{
+			Relations: makeDataviewRelations(defaultDataviewRelations, defaultVisibleRelations),
+		}}}
+
+		// when
+		changed := ReconcileTypeDataviewColumns(dv, makeRelationLinks(defaultDataviewRelations))
+
+		// then
+		assert.False(t, changed)
+		assert.Equal(t, []string{bundle.RelationKeyName.String()}, visibleKeys(dv))
+	})
+
+	t.Run("a view built by the current code is already right", func(t *testing.T) {
+		// given
+		links := []*model.RelationLink{{Key: bundle.RelationKeyAssignee.String()}}
+		content := MakeDataviewContent(false, &model.ObjectType{RelationLinks: links}, nil, nil)
+
+		// when
+		changed := ReconcileTypeDataviewColumns(content.Dataview, links)
+
+		// then
+		assert.False(t, changed)
+	})
+
+	t.Run("nothing to do without a dataview", func(t *testing.T) {
+		assert.False(t, ReconcileTypeDataviewColumns(nil, typeProperties))
+		assert.False(t, ReconcileTypeDataviewColumns(&model.BlockContentDataview{}, typeProperties))
+	})
+}

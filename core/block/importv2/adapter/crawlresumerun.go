@@ -138,10 +138,11 @@ func (s *service) resumeCrawlRun(ctx context.Context, store *runstore.Store, man
 			&collectionFactory{service: s.collectionService})
 	}
 
-	deps, _ := s.engineDeps(request, spc, lc, progress,
+	deps, persister := s.engineDeps(request, spc, lc, progress,
 		[]identity.Option{resume.ClaimLedgerOption(lc.store), st.IdentityOption()})
 	deps.Spool = spool
 	result := engine.ResumeCrawl(runCtx, request, converter, deps, &st.Engine)
+	persister.ReconcileTypes(runCtx)
 
 	if result.Suspended {
 		// An orderly suspend refunds its attempt (review Class F) — the cap
