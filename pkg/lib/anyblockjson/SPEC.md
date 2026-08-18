@@ -25,8 +25,11 @@ snapshot merges into. The `property_keys` legend was the same hole squared —
 an unchecked rebind primitive that bound any spelling to any stored key,
 `id` included. Now every `properties` key resolves (legend → bundled table →
 verbatim) before the checks run, import re-runs the deny rule on its own
-resolved key for vocabularies wider than Validate can see, and a legend value
-obeys the writable-key rule (schema-enforced).
+resolved key for vocabularies wider than Validate can see, a legend value
+obeys the writable-key rule (schema-enforced), and export checks the
+writability of the *slug* it emits — not just the stored key — falling back
+to the stored spelling when a vocabulary misbehaves, so `Marshal` cannot be
+talked into output its own `Validate` rejects.
 
 Changes in v0.9: the key vocabulary of §3 arrives from the API v2 branch —
 types and properties are named by their snake_case api slug, inverted through a
@@ -694,6 +697,17 @@ ids, and bare names from old accounts, and an allowlist could only be trusted
 after checking every key in every account — while the shapes ruled out here
 (the empty key, a key with a newline in it) are keys nothing can read. Export
 drops such a stored key with a warning, since there is no way to write it.
+
+The rule binds the **spelling**, and the spelling is the slug: a vocabulary's
+slug comes from `apiObjectKey`, which is user-supplied or strcase-derived
+from the property name with no length bound, so nothing upstream guarantees
+it is writable. Export therefore checks the slug it is about to write, and an
+unwritable one (over-long, empty, control characters — on either side of a
+legend entry) falls back to the stored key, which is always its own address
+(chain step 1) — with a warning naming the vocabulary's answer. Checking the
+stored key and then emitting the slug unchecked made `Marshal` produce a
+document its own `Validate` rejects, on `/properties` and `/property_keys`
+at once, which §11 rules out.
 
 **A value whose shape its format cannot hold is a warning**, not an error, and
 only for keys the bundle resolves after the resolution chain runs (`Validate`

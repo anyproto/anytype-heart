@@ -105,19 +105,24 @@ func hostileSnapshot(n int) *model.SmartBlockSnapshotBase {
 	}
 	// details carry the keys the import surface must refuse: if export ever
 	// emitted one, Marshal's output would fail its own Validate, which is how
-	// this invariant proves the two surfaces are still each other's mirror
+	// this invariant proves the two surfaces are still each other's mirror.
+	// The two custom keys at the end exist to give a vocabulary something to
+	// slug: the hostileVocab variant maps them onto the slug shapes a real
+	// space can mint (over-long, empty, shadowing a bundled spelling).
 	details := map[string]*types.Value{
-		"id":             str("obj1"),
-		"name":           str("hostile"),
-		"spaceId":        str("bafyspace"),
-		"uniqueKey":      str("ot-page"),
-		"oldAnytypeID":   str("legacy1"),
-		"sourceFilePath": str("/tmp/x.md"),
-		"restrictions":   {Kind: &types.Value_NumberValue{NumberValue: 3}},
-		"isArchived":     {Kind: &types.Value_BoolValue{BoolValue: true}},
-		"":               str("empty key"),
-		"a\nb":           str("newline key"),
-		"dueDate":        str("next Friday"),
+		"id":                       str("obj1"),
+		"name":                     str("hostile"),
+		"spaceId":                  str("bafyspace"),
+		"uniqueKey":                str("ot-page"),
+		"oldAnytypeID":             str("legacy1"),
+		"sourceFilePath":           str("/tmp/x.md"),
+		"restrictions":             {Kind: &types.Value_NumberValue{NumberValue: 3}},
+		"isArchived":               {Kind: &types.Value_BoolValue{BoolValue: true}},
+		"":                         str("empty key"),
+		"a\nb":                     str("newline key"),
+		"dueDate":                  str("next Friday"),
+		"6a32d4856761631534b22f85": str("space-slugged"),
+		"artist":                   str("verbatim custom key"),
 	}
 	// the envelope key is a STORED identity key written verbatim (§2), and a
 	// closed charset over it was falsified by a 36 808-object sweep: relation
@@ -135,15 +140,42 @@ func hostileSnapshot(n int) *model.SmartBlockSnapshotBase {
 	}
 }
 
+// hostileVocab deliberately breaks the KeyVocabulary contract the way a real
+// space can: a slug comes from apiObjectKey, which is user-supplied or
+// strcase-derived from the property NAME (objectcreator/util.go) with no
+// length bound and no charset audit — so nothing upstream guarantees a slug
+// is a writable spelling, and a space may mint a slug that shadows a bundled
+// one. This slot had no invariant coverage, which is exactly how "check the
+// stored key, emit the slug" shipped.
+type hostileVocab struct{ BundledKeyVocabulary }
+
+func (hostileVocab) PropertySlug(key string) string {
+	switch key {
+	case "name":
+		return strings.Repeat("s", maxPropertyKeyLen+64) // apiObjectKey has no length bound
+	case "dueDate":
+		return "due\ndate" // a control character is not a spelling
+	case "artist":
+		return "" // a vocabulary with no answer at all
+	case "6a32d4856761631534b22f85":
+		// a space-minted slug shadowing a bundled internal key's spelling:
+		// only the document's own legend keeps this out of the deny rule,
+		// which pins the legend-first resolution order (§3)
+		return "unique_key"
+	}
+	return BundledKeyVocabulary{}.PropertySlug(key)
+}
+
 // I1: Marshal either fails loudly — §11 allows that for an over-deep tree or a
 // table inside a cell — or produces a document its own Validate accepts. What
 // it may never do is succeed and hand back an unimportable archive, which is a
 // failure nobody sees until the archive is needed.
 func TestInvariant_MarshalOutputValidates(t *testing.T) {
 	variants := map[string]Options{
-		"plain":   {},
-		"compact": {CompactIds: true},
-		"omitIds": {OmitIds: true},
+		"plain":        {},
+		"compact":      {CompactIds: true},
+		"omitIds":      {OmitIds: true},
+		"hostileVocab": {Keys: hostileVocab{}},
 	}
 	for name, opts := range variants {
 		t.Run(name, func(t *testing.T) {

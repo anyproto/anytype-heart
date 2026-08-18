@@ -579,6 +579,52 @@ func TestImport_AdmissionRunsOnTheResolvedKey(t *testing.T) {
 	assert.Contains(t, err.Error(), "uniqueKey")
 }
 
+// unwritableSlugVocabulary produces the slug shapes a real space can mint:
+// apiObjectKey is user-supplied or strcase-derived from the property name
+// (objectcreator/util.go), with no length bound. buildProperties checked the
+// STORED key's writability and then emitted the slug — the string that
+// actually becomes the JSON property name — unchecked, so a 192-character
+// slug made Marshal emit a document its own Validate rejects (I1).
+type unwritableSlugVocabulary struct{ BundledKeyVocabulary }
+
+func (unwritableSlugVocabulary) PropertySlug(key string) string {
+	switch key {
+	case "artist":
+		return strings.Repeat("s", maxPropertyKeyLen+64)
+	case "venue":
+		return "ve\nue"
+	case "city":
+		return ""
+	}
+	return BundledKeyVocabulary{}.PropertySlug(key)
+}
+
+func TestExport_UnwritableSlugFallsBackToTheStoredKey(t *testing.T) {
+	snap := &model.SmartBlockSnapshotBase{
+		Blocks: []*model.Block{{Id: "obj1",
+			Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}},
+		Details: fields(map[string]*types.Value{
+			"id": str("obj1"), "name": str("N"),
+			"artist": str("x"), "venue": str("y"), "city": str("z"),
+		}),
+	}
+	var warns []Issue
+	data, err := Marshal(model.SmartBlockType_Page, snap,
+		Options{Keys: unwritableSlugVocabulary{}, OnWarning: func(i Issue) { warns = append(warns, i) }})
+	require.NoError(t, err)
+	require.NoError(t, Validate(data), "Marshal must never emit what its own Validate rejects (§11):\n%s", data)
+
+	var got struct {
+		Properties map[string]any `json:"properties"`
+	}
+	require.NoError(t, json.Unmarshal(data, &got))
+	for _, k := range []string{"artist", "venue", "city"} {
+		assert.Contains(t, got.Properties, k,
+			"an unwritable slug falls back to the stored key, which is always its own address (§3)")
+	}
+	assert.NotEmpty(t, warns, "a vocabulary producing unwritable slugs is worth telling the caller about")
+}
+
 // The same raw-spelling defect had a fourth instance in the same loop's
 // neighbourhood: the type_properties-vs-recommended-lists ambiguity check
 // indexed properties by the STORED list keys, so the canonical spelling

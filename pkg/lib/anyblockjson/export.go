@@ -136,8 +136,33 @@ type exporter struct {
 // node could have produced, so the legend carries its inverse or the round
 // trip silently binds the term to a different relation.
 func (e *exporter) propertySlug(key string) string {
-	slug := e.opts.propertySlug(key)
+	slug := e.writableSlug(key)
 	e.recordPropertyKey(slug, key)
+	return slug
+}
+
+// writableSlug is the vocabulary's spelling for a stored key when that
+// spelling can actually be written, and the stored key itself otherwise. The
+// slug is the string that becomes a JSON property name (buildProperties) or a
+// legend entry's name, and slugs come from apiObjectKey — user-supplied or
+// strcase-derived with no length bound — so nothing upstream guarantees the
+// shape §3 requires of a spelling. Checking the stored key and then emitting
+// the slug unchecked is how Marshal produced a document its own Validate
+// rejects (maxLength 192 vs 128, on /properties and /property_keys at once).
+// The stored-key arm covers the mirror case: a slug for a key that cannot be a
+// legend VALUE has no invertible spelling but its own, so the verbatim key —
+// always its own address (§3 chain step 1) — is the one honest rendering.
+func (e *exporter) writableSlug(key string) string {
+	slug := e.opts.propertySlug(key)
+	if slug == key {
+		return slug
+	}
+	if !isWritablePropertyKey(slug) || !isWritablePropertyKey(key) {
+		e.warn("/property_keys",
+			"the vocabulary spells %q as %q, which cannot be a property spelling in this format; the stored key is written instead",
+			key, slug)
+		return key
+	}
 	return slug
 }
 
@@ -437,8 +462,9 @@ func strippedDetailKeys() map[string]bool {
 			stripped[string(k)] = true
 		}
 	}
-	// the importer's own resolution vectors are not bundled relations, so the
-	// list above does not cover them; they are internal all the same
+	// the importer's own resolution vectors are bundled relations but not
+	// local/derived ones, so the list above does not cover them; they are
+	// internal all the same
 	for k := range neverWritableProperties {
 		stripped[k] = true
 	}
@@ -484,7 +510,7 @@ func (e *exporter) buildProperties() *omap {
 	props := make([]prop, 0, len(keys))
 	spelled := map[string]bool{}
 	for _, k := range keys {
-		slug := e.opts.propertySlug(k)
+		slug := e.writableSlug(k)
 		// a spelling two stored keys agree on would collapse into one JSON key
 		// and lose a value. Two ways that happens in a space holding a
 		// pre-mint-check shadow: another holder already took the slug, or the
