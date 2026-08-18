@@ -15,16 +15,20 @@ strings; the vocabulary follows Notion's API and Anytype's public REST API
 readable, and mostly writable, by someone who has never seen Anytype
 internals.
 
-Changes from v0.7: **the format's own vocabulary is `snake_case`** — 100
+Changes in v0.8: **the format's own vocabulary is `snake_case`** — 100
 identifiers, every block type, field name, enum value and inline tag attribute
 the format defines, with the rule and its two exemptions written down in §1's
-*Naming*. Property keys keep their stored spelling and platform
-identifiers keep theirs. Canonical bytes change and the format version stays 1,
+*Naming*. The format itself passes property keys through as it is given them,
+and platform identifiers are quoted, not translated. A caller that wires a key
+vocabulary (§3, the API v2 path) hands the format slugs, so its documents read
+`due_date` in both halves; one that does not gets the stored `dueDate` in the
+property half and `snake_case` in the format half, and both are correct.
+Canonical bytes change and the format version stays 1,
 the same call the flat-blocks change made at v0.6: the format is a draft with
 no external consumers, so a rename now costs a golden regeneration, and after
 the freeze it costs a version.
 
-Changes from v0.6 (pre-freeze review, `PREFREEZE_REVIEW.md` Tier 1). One
+Changes in v0.7 (pre-freeze review, `PREFREEZE_REVIEW.md` Tier 1). One
 byte-changing rule and five reader rules, all inside format version 1:
 **canonical output escapes every tag-shaped `<`**, reserving the whole
 `</?[A-Za-z]` space for later versions and closing the delimiter set in
@@ -38,6 +42,17 @@ number instead of an unreadable string (§3); **property-key admission** is
 symmetric with export's stripping, with a writable-key rule and format-shape
 warnings (§3, §4a); and **one fault produces one validation issue** rather than
 the validator's own bookkeeping (§12).
+
+Changes in v0.7 (API v2 scope split): the §6.2.1 compact filter syntax is **split in scope**,
+resolving the contradiction with API v2 (`core/api/APIV2.md`), which made
+the filter-string parser a launch dependency while this document still
+called the whole feature reserved/post-v1. The grammar and its parser ship
+**now** as a library subpackage (`filterstring/`, §13) consumed by the API
+v2 search/sets request surface; the **document** side is unchanged — the
+view field `filter` stays reserved post-v1, export keeps writing the
+structured array, and a v1.0 reader on a document carrying `filter` still
+reports "produced by a newer version". §12's generation-path note updated
+to match.
 
 Changes from v0.3 (freeze review): select values are option names in filters
 and custom orders too, not only in properties; canonical key order redefined
@@ -177,9 +192,9 @@ Fields, in **canonical order** (§4):
 | `version` | int | **yes** | Format version. This spec defines `1`. Evolution is additive within a version (ADF model); a breaking change bumps it. |
 | `kind` | string | no | System-level object kind, snake_case (`page`, `profile_page`, `template`, `archive`, `widget`, `chat`, …) — from `model.SmartBlockType`. `chat` is `ChatDerivedObject`: a standalone chat object whose identity is `key`, like a type's; its messages live in the CRDT store, not in snapshots, so it always imports empty. (`chat_object` is the deprecated predecessor; `discussion` is a hidden type.) **Omitted whenever derivable**: absent means `page`, and `type: "template"` implies `template`. An unrecognized value is a validation error listing the allowed values. |
 | `id` | string | no | Object id. Written by export; import treats it as informational (a new id is minted on import) except for resolving intra-export links. Never compacted (§9a). |
-| `type` | string | no | The object's type key without the `ot-` prefix (`page`, `task`, `bookmark`…). Maps to `object_types[0]` in the snapshot. Absent when the snapshot has no object types (legacy/system objects). Import preserves the key verbatim; the import wiring resolves it — matching an existing type or creating one (the Markdown importer's behavior). |
-| `template_for` | string | no | Only for templates: the target type key (`object_types[1]`). Present with `type != "template"` → validation error. |
-| `key` | string | no | Identity key of *system* objects (types, properties); matches the public API's `key`. Charset `[A-Za-z0-9_-]{1,64}` — this key becomes a `uniqueKey` component (`ot-<key>`), i.e. a derived object id, so it is the one string surface with a closed allowlist. Never emitted for ordinary documents. |
+| `type` | string | no | The object's type **slug** (`page`, `task`, `object_type`…) — the key vocabulary of §3, not the stored `ot-`-prefixed key. Maps to `object_types[0]` in the snapshot. Absent when the snapshot has no object types (legacy/system objects). Import inverts the slug through the vocabulary in force (bundled table offline, the space's stored slugs inside a node) and hands the resulting stored key to the wiring, which resolves it — matching an existing type or creating one (the Markdown importer's behavior). A term the vocabulary does not know passes through verbatim, which is chain step 1. |
+| `template_for` | string | no | Only for templates: the target type slug (`object_types[1]`), same vocabulary as `type`. Present with `type != "template"` → validation error. |
+| `key` | string | no | Identity key of *system* objects (types, properties). This is the STORED identity key (a `uniqueKey`'s internal part), written verbatim: unlike every key slot in §3 it is **not** translated, so for an object whose stored key is a minted BSON it does not match the slug the public API serves as that object's `key`. Never emitted for ordinary documents. |
 | `properties` | object | no | The object's properties, §3. |
 | `type_properties` | array | no | Only for `kind: "object_type"` documents: the type's property definitions, §2a. Present on any other kind → validation error. |
 | `refs` | object | no | Short-id legend for compact documents (§9a): maps labels to full object ids. Placed before `blocks` so the legend precedes use when read linearly. |
@@ -218,9 +233,9 @@ involved.
   "version": 1,
   "kind": "object_type",
   "key": "task",
-  "properties": { "name": "Task", "iconEmoji": "✅", "recommendedLayout": "todo" },
+  "properties": { "name": "Task", "iconEmoji": "✅", "recommended_layout": "todo" },
   "type_properties": [
-    { "key": "dueDate",  "name": "Due date", "format": "date",    "section": "featured" },
+    { "key": "due_date",  "name": "Due date", "format": "date",    "section": "featured" },
     { "key": "assignee", "name": "Assignee", "format": "objects", "section": "featured" },
     { "key": "status",   "name": "Status",   "format": "select",
       "options": ["Backlog", {"name": "In progress", "color": "blue"},
@@ -230,10 +245,10 @@ involved.
 }
 ```
 
-The type's own details (`name`, `iconEmoji`, `recommendedLayout`, …) stay in
+The type's own details (`name`, `icon_emoji`, `recommended_layout`, …) stay in
 `properties` under their stored keys (§3). The four recommended-relation id
-lists (`recommendedFeaturedRelations`, `recommendedRelations`,
-`recommendedFileRelations`, `recommendedHiddenRelations`) are **replaced**
+lists (`recommended_featured_relations`, `recommended_relations`,
+`recommended_file_relations`, `recommended_hidden_relations`) are **replaced**
 by `type_properties` — resolved entries, never raw relation ids.
 
 `type_properties` entry fields (canonical order):
@@ -244,7 +259,7 @@ by `type_properties` — resolved entries, never raw relation ids.
 | `name` | string | no | Display name. Import uses it only when the property must be **created**; an existing property keeps its own name. Every bundled key already exists, so a name given for one is inert — `{"key": "description", "name": "Summary"}` renders as *Description*. Validation warns. If the label is the point, mint a custom key instead of reusing a bundled one. |
 | `format` | string | no | Property format (§3 names). Same import rule as `name`; a conflict with an existing property's format is an error at the wiring level (the package cannot see the space). |
 | `options` | (string \| object)[] | no | A select/multi_select property's **vocabulary, in display order**. Each entry is a bare option name, or `{"name": …, "color": …}` when the option's color is part of the design — the color belongs to the option rather than to a parallel array, so inserting or reordering an option cannot shift it. `color` is one of `grey`, `yellow`, `orange`, `red`, `pink`, `purple`, `blue`, `ice`, `teal`, `lime` (`util/constant`); anything else is a validation error rather than a silently ignored value. The bare string is **canonical** whenever the option declares no color, the object form otherwise — the same rule cells follow in §6.1. Leaving a color out does not mean *no* color: the wiring assigns one, cycling the palette in declaration order and skipping whatever the vocabulary claims explicitly, so a vocabulary that names no colors still gets distinct ones. (The app assigns one at random on every other creation path; cycling keeps a converted bundle identical run to run.) Options are otherwise discovered only from values that happen to be used, so a vocabulary entry no record carries would never exist — its kanban column simply absent — and a discovered option carries no `orderId`, which makes every select sort alphabetically (options order by `[orderId, name]`, `pkg/lib/database.BuildOrderMap`). Declaring them lets the wiring create each one up front with an order id. Every option needs one: the sort concatenates `orderId + name` before comparing, so an option missing an order id is compared by *name* against the others' order ids and lands arbitrarily — ahead of the whole vocabulary when its name sorts below the id alphabet, behind it otherwise. Names discovered from usage rather than declared are ordered after the declared ones. Only meaningful on `select`/`multi_select`; duplicate names are a validation error, across both forms. |
-| `object_types` | string[] | no | The **type keys** an `objects`/`files` property may point at, in priority order. Empty means any object — an untargeted property will happily accept a random page as a task's assignee. Listing the built-in `participant` alongside a bundle's own people type is what makes the current-user filter value usable on that property (§6.2) while still allowing the seeded people as values; the client only offers it when the relation's targets include Participant. The wiring resolves each key to an id the way it resolves properties: a type the batch defines by the id its own document carries, a bundled type by its bundled url (`_ot<key>`). Only meaningful on `objects`/`files`. |
+| `object_types` | string[] | no | The **type slugs** an `objects`/`files` property may point at, in priority order — a type-key slot like the envelope `type`, so it speaks the one key vocabulary (§3) and import inverts it; a term the vocabulary does not know passes through verbatim. Empty means any object — an untargeted property will happily accept a random page as a task's assignee. Listing the built-in `participant` alongside a bundle's own people type is what makes the current-user filter value usable on that property (§6.2) while still allowing the seeded people as values; the client only offers it when the relation's targets include Participant. The wiring resolves each key to an id the way it resolves properties: a type the batch defines by the id its own document carries, a bundled type by its bundled url (`_ot<key>`). Only meaningful on `objects`/`files`. |
 | `section` | string | no | `featured` \| `hidden` \| `file` — which list the property belongs to. Absent = a regular (sidebar) property. |
 
 Export emits entries in section order featured → regular → file → hidden,
@@ -411,7 +426,7 @@ defines and a reserved listing the importer does not recognise
 (`allObjects`, `recentOpen`). Both are therefore errors in `anyblockvalidate`
 and `anyblockconvert` rather than something an author discovers by installing.
 
-Nothing per-object substitutes for this file. In particular **`isFavorite` is
+Nothing per-object substitutes for this file. In particular **`is_favorite` is
 not an entry point**: it adds an object to Favorites and nothing more. It
 does not open anything, create a widget, or set the homepage.
 
@@ -423,9 +438,37 @@ document defines.
 
 ## 3. Properties
 
-`properties` is a JSON object keyed by **property key** (as stored,
-camelCase — note the public REST API exposes snake_case aliases for some of
-these; this format uses the stored keys so documents resolve offline).
+`properties` is a JSON object keyed by **property key**, always in the
+snake_case **api slug** spelling — `due_date`, `icon_emoji`,
+`manual_property` — bundled, API-created and UI-created keys alike. One
+vocabulary, no aliases, no duality: a reader never has to know which kind of
+key it holds. (This overturns the earlier "as stored, camelCase" rule, and
+it is the format half of the same decision the API surface makes —
+APIV2_ADDRESSING.md §7.5a, §7.3.)
+
+The mapping is a **table, both directions, never a case transform**: for
+bundled keys the derived table in `pkg/lib/bundle` (which ships with every
+reader, so documents still resolve offline), and for every other key the
+entity's stored `apiObjectKey`, which a node-backed reader primes from the
+space. `mediaArtistURL` → `media_artist_url` → `ToLowerCamel` would yield
+`mediaArtistUrl`, and `_score` does not round-trip at all — string inversion
+cannot be the reverse mechanism, and the package's tests pin both cases.
+
+A key the vocabulary does not know passes through verbatim in both
+directions: an exact stored key is always an address (the resolution chain's
+first step), which is what keeps a package-only reader — with no space to
+ask — lossless on custom keys.
+
+**What is not a key slot** (ADDRESSING §7.5a-4). The vocabulary applies where
+a document NAMES a type or property, and nowhere else. Envelope and DTO field
+names, enum *values* (`kind: "objectType"`, layout and view-type names), the
+`index.json` envelope, view field names like `defaultTemplateId`, and — the
+one most easily mistaken for a key — **block attribute names**: a callout's
+`iconEmoji` and `iconImage` are attributes of a block, not property keys, and
+stay camelCase however the `icon_emoji` *property* is spelled one section
+over. `objectType` the layout value coexists with `object_type` the type key,
+and that is intended.
+
 Values are encoded by the property's format:
 
 | Format | JSON encoding |
@@ -438,8 +481,8 @@ Values are encoded by the property's format:
 | `objects`, `files` | array of object ids (strings) |
 | unresolvable format | value passes through verbatim in both directions |
 
-**Layout is named, not numbered.** `recommendedLayout`, `layout` and
-`resolvedLayout` are stored as numbers (their bundled relations have format
+**Layout is named, not numbered.** `recommended_layout`, `layout` and
+`resolved_layout` are stored as numbers (their bundled relations have format
 `number`), but the format writes the enum **name** — `basic · profile · todo ·
 set · object_type · relation · file · dashboard · image · note · space ·
 bookmark · relation_options_list · relation_option · collection · audio · video ·
@@ -468,8 +511,8 @@ blindly:
 
 - **Export** writes `text` for both stored formats.
 - **Import** reads `text` as the key's *existing* format when that key is
-  already known to be `shorttext` — bundled properties (`name`, `iconEmoji`,
-  `coverId`, …) and anything the wiring's `ResolveFormat` recognizes. So a
+  already known to be `shorttext` — bundled properties (`name`, `icon_emoji`,
+  `cover_id`, …) and anything the wiring's `ResolveFormat` recognizes. So a
   short-text property keeps its stored format across a round-trip even
   though the document never names it.
 - Otherwise `text` means `longtext`, which is what a **new** property
@@ -511,14 +554,14 @@ just unprettified.
 |---|---|---|
 | `name` | text | the object's title |
 | `description` | text | subtitle/description line |
-| `iconEmoji` | text | page icon as emoji |
-| `iconImage` | files | page icon as image (object id) |
-| `coverId` / `coverType` | text / number | page cover — output-only (§4a) |
+| `icon_emoji` | text | page icon as emoji |
+| `icon_image` | files | page icon as image (object id) |
+| `cover_id` / `cover_type` | text / number | page cover — output-only (§4a) |
 | `done` | checkbox | completion state on task-like types |
-| `dueDate` | date | due date on task-like types |
+| `due_date` | date | due date on task-like types |
 
 **Canonical key order in `properties`** (implementation decision): the
-well-known keys `name`, `description`, `iconEmoji`, `iconImage` first (in
+well-known keys `name`, `description`, `icon_emoji`, `icon_image` first (in
 that order, when present), then all remaining keys alphabetically.
 
 **Presence is meaningful.** A key's presence in `properties` records that the
@@ -537,10 +580,10 @@ single-element lists on round-trip (§11).
 
 **Stripping.** Export removes internal/derived properties
 (`bundle.LocalAndDerivedRelationKeys`) **except** those the importer
-meaningfully preserves (mirroring `core/block/import/pb`): `createdDate`,
-`lastModifiedDate`, `creator`, `isFavorite`, `isArchived`, `resolvedLayout`.
+meaningfully preserves (mirroring `core/block/import/pb`): `created_date`,
+`last_modified_date`, `creator`, `is_favorite`, `is_archived`, `resolved_layout`.
 Those six are **output-only** (§4a): export writes them, generators should
-not — with one deliberate exception. **`isFavorite` is authorable**, because
+not — with one deliberate exception. **`is_favorite` is authorable**, because
 the pb importer reads it to choose a space's root objects
 (`core/block/import/pb/space.go`), which is how a generated bundle
 designates the object a user should land on. A bundle with no favourite, no
@@ -603,7 +646,7 @@ fails schema validation). Every block is an object:
 |---|---|---|---|
 | `indent` | integer ≥ 0 | no | Nesting depth. Absent = `0` (top level); canonical form omits `indent: 0`. Values above **32** fail validation (adversarial-input bound; real documents reach ~6). See the nesting rules below. |
 | `type` | string | **yes** | Discriminator; full inventory in §5. Unrecognized values fail schema validation (see §10 for forward compatibility). |
-| `id` | string | no | `[A-Za-z0-9_-]{1,64}`. Uniqueness is enforced over the whole document, including derived table cell ids `<rowId>-<colId>` (§6.1) — a non-table block id that collides with a derived cell id is a validation error. Export writes ids by default — the `OmitIds` option drops them (§9); import generates missing ids with the editor's standard id generator. |
+| `id` | string | no | `[A-Za-z0-9_-]{1,64}`. Uniqueness is enforced over the whole document, including derived table cell ids `<rowId>-<colId>` (§6.1) — a non-table block id that collides with a derived cell id is a validation error. Dataview **view** ids are the one exception: they are unique **within their dataview block**, not document-wide (§6.2). Export writes ids by default — the `OmitIds` option drops them (§9); import generates missing ids with the editor's standard id generator. |
 | `align` | `left · center · right · justify` | no | Omit when default (`left`). |
 | `vertical_align` | `top · middle · bottom` | no | Omit when default (`top`). |
 | `background_color` | string | no | Anytype color name. Omit when empty. |
@@ -669,7 +712,7 @@ their own to annotate.
 
 Output-only surfaces: `fields` (any block), `root`, `store`, `source`
 (dataview), `groups`/`object_orders` (views, §6.2), `id` on sorts/filters,
-filter `nested_property` (reserved), `coverId`/`coverType`, and the six
+filter `nested_property` (reserved), `cover_id`/`cover_type`, and the six
 preserved internal properties listed in §3.
 
 ## 5. Block type inventory
@@ -832,7 +875,7 @@ string enums, and defaults omitted:
   "properties": [
     { "key": "name", "format": "text" },
     { "key": "status", "format": "select" },
-    { "key": "dueDate", "format": "date" }
+    { "key": "due_date", "format": "date" }
   ],
   "views": [
     {
@@ -841,15 +884,15 @@ string enums, and defaults omitted:
       "name": "By status",
       "group_by": "status",
       "sorts": [
-        { "property": "dueDate", "direction": "asc", "empty_placement": "end" }
+        { "property": "due_date", "direction": "asc", "empty_placement": "end" }
       ],
       "filters": [
-        { "property": "dueDate", "condition": "less", "date_preset": "current_week" },
+        { "property": "due_date", "condition": "less", "date_preset": "current_week" },
         { "property": "done", "condition": "equal", "value": false }
       ],
       "columns": [
         { "property": "name" },
-        { "property": "dueDate", "width": 120, "align": "right" },
+        { "property": "due_date", "width": 120, "align": "right" },
         { "property": "status", "aggregation": "count_distinct" }
       ]
     }
@@ -881,6 +924,21 @@ omit `small`), `cover_fit`, `colored_groups` (from `groupBackgroundColors`),
 `defaultObjectTypeId`), `wrap_content`, `list_size` (`compact · regular`,
 omit `compact`), `alternate_rows`, then `sorts`, `filters`, `columns`,
 `groups`, `object_orders`.
+
+**View id uniqueness is scoped to the dataview block.** Two views of ONE
+dataview may not share an `id` — that is a validation error naming both
+positions — but two views in *different* dataview blocks may. This is the
+only id domain in the format that is not document-wide (§4), and the scope
+is the one in which a duplicate does damage: a view reference always
+resolves within a single dataview's `views` list, and the per-view editor
+state below (`groups`, `objectOrders`) is keyed by view id inside that same
+block, so a repeat inside one block makes the second view permanently
+unaddressable. Across blocks, each view is reached through its own block and
+nothing is ambiguous — and the app itself produces that case: the default
+view of every set, collection and type is minted with the literal id
+`default`, and creating an inline set from an existing object copies that
+object's views verbatim, so a page with two inline collections legitimately
+holds two views called `default`.
 
 Editor state nested per view, both output-only (§4a):
 
@@ -1016,28 +1074,44 @@ out-of-range proto enum values are omitted rather than serialized (an
 unknown *text style* is an export error — silently restyling content would
 be worse).
 
-#### 6.2.1 Compact filter syntax — reserved extension (post-v1)
+#### 6.2.1 Compact filter syntax — shipped grammar, reserved document field
 
-**Status: designed but not part of v1.** v1 ships the structured `filters`
-array only. The view field name `filter` (singular, string) is **reserved**
-for this extension: v1 schemas do not define it, so introducing it bumps the
-format version (§10 — a v1 reader encountering a version-2 document rejects
-it, naming both versions). The two forms will coexist permanently —
-`filter` and `filters` mutually exclusive per view, import accepting both,
-export choosing via option.
+**Status: split scope (v0.7).** The grammar below and its parser ship
+**now**, as the library subpackage `pkg/lib/anyblockjson/filterstring`
+(§13): parse a filter string → the §6.2 structured filter tree
+(`model.BlockContentDataviewFilter` nodes), with **offset-addressed
+errors** naming the offending token and its position. Its consumer is the
+API v2 request surface (`core/api/APIV2.md` Phase 4 — `POST …/search` and
+the `filter` field of `POST …/sets`), where the string is the documented
+small-model form and both request forms land on one internal tree. The
+grammar is thereby pinned by the parser and served via the API's discovery
+surface (APIV2.md §5).
 
-The agreed design, recorded so the extension stays buildable as specified:
-a view carries its filter as a single SQL/JQL-flavored query string:
+The **document** side is unchanged and stays reserved: v1 documents ship
+the structured `filters` array only. The view field name `filter`
+(singular, string) is **reserved** for a post-v1 extension: v1 schemas do
+not define it, so introducing it later is an additive 1.x release (§10 — a
+v1.0 reader encountering it reports "produced by a newer version"; export
+keeps writing the structured array; the `CompactFilters` export option
+stays reserved in `Options`). When that lands, the two forms coexist
+permanently — `filter` and `filters` mutually exclusive per view, import
+accepting both, export choosing via option.
+
+The design, normative for the parser (and unchanged for the future
+document extension): a view carries its filter as a single SQL/JQL-flavored
+query string:
 
 ```json
 { "type": "kanban", "group_by": "status",
-  "filter": "done = false AND (dueDate < current_week() OR dueDate IS EMPTY)" }
+  "filter": "done = false AND (due_date < current_week() OR due_date IS EMPTY)" }
 ```
 
-Grammar (informal): `OR` over `AND` over parenthesized groups over leaves;
-`AND` binds tighter, parentheses group. There is deliberately **no
-free-standing `NOT (…)`** — the internal model has no NOT-group; negation
-exists only in negated conditions, keeping string ⇄ structured 1:1.
+Grammar (informal here; the `filterstring` parser is the normative
+artifact, and the EBNF it pins is what the API discovery surface serves):
+`OR` over `AND` over parenthesized groups over leaves; `AND` binds tighter,
+parentheses group. There is deliberately **no free-standing `NOT (…)`** —
+the internal model has no NOT-group; negation exists only in negated
+conditions, keeping string ⇄ structured 1:1.
 
 | Condition | Syntax |
 |---|---|
@@ -1051,7 +1125,7 @@ exists only in negated conditions, keeping string ⇄ structured 1:1.
 | exists | `assignee EXISTS` |
 
 Values: double-quoted strings, bare numbers, `true`/`false`, RFC 3339 dates
-in quotes (`dueDate < "2026-08-01"`), and date-preset **functions** —
+in quotes (`due_date < "2026-08-01"`), and date-preset **functions** —
 `yesterday() · today() · tomorrow() · last_week() · current_week() ·
 next_week() · last_month() · current_month() · next_month() · last_year() ·
 current_year() · next_year() · daysAgo(n) · daysFromNow(n)` (the parameterized
@@ -1059,7 +1133,26 @@ pair maps to `number_of_days_ago`/`number_of_days_now` with the value as `n`;
 parens distinguish presets from string literals). Property keys are bare.
 Select/multi_select values are option **names**, per §3 (the structured form
 agrees since v0.4; only date values differ — RFC 3339 here, unix numbers
-there — with a deterministic mapping both ways).
+there). The RFC 3339 → unix conversion is **format-driven, not
+string-driven**: it happens only for keys whose format resolves to `date`
+through the consumer-wired `Options.ResolveFormat` (a date-looking string
+on a text property stays a string; a non-RFC-3339 string on a date
+property is a parse error steering to the presets). A consumer that wires
+no resolver gets string values verbatim — executing such a filter against
+date properties matches nothing, so query surfaces MUST wire the resolver.
+
+Parser interpretation calls (normative, matching the shipped parser):
+keywords match **case-insensitively** (`and` ≡ `AND`) and are **reserved**
+— none can be a bare property key (a colliding key is reachable only
+through the structured form); property keys are Unicode identifiers
+(`identStart identPart*` — letters, digits, `_`); presets are **excluded
+from value lists** and from conditions the engine does not transform
+(`notEqual`, `contains`, …: only `= > < >= <=` take a preset); set
+literals require `=` / `!=` (a list after an ordering operator errors);
+the counting presets take a whole day count in `[0, 36500]`. Bounds: the
+input is capped at **4096 bytes** and parenthesis nesting at **32** (the
+§4 document nesting bound) — both are ordinary offset-addressed parse
+errors.
 
 Canonical rendering: uppercase keywords, `", "` separators, double quotes
 with backslash escapes, parentheses only where precedence requires. Export
@@ -1083,7 +1176,7 @@ Import does **not** attempt to rebuild them: which structural blocks an
 object gets depends on its layout (note objects have no title block at all,
 todo objects bind `done`, …), which the editor resolves from the type's
 recommended layout at first open (`template.InitTemplate`). The package
-preserves `resolvedLayout` in `properties` (§3) and leaves structural blocks
+preserves `resolved_layout` in `properties` (§3) and leaves structural blocks
 absent; the editor regenerates them on open. `N(S)` in §11 is defined
 accordingly.
 
@@ -1333,8 +1426,17 @@ on such blocks are dropped on export (§5).
 ### 9a. Compact ids
 
 Full object ids are ~59-character CIDs; a single mention costs more tokens
-than the sentence around it. The `CompactIds` marshal option (§13) shortens
-ids and adds a `refs` legend to the envelope:
+than the sentence around it. Compaction has two independent halves (§13):
+`CompactObjectRefs` shortens object references and adds a `refs` legend to
+the envelope (lossless — the legend inverts it); `CompactBlockLabels`
+relabels doc-local block/row/column/view ids to short suffixes (legend-less,
+lossy). `CompactIds` remains as shorthand for both. The split exists because
+consumers legitimately want one without the other, and because the two
+halves pay differently: API v2 default reads use block labels (the server
+resolves them by unique suffix) and keep object refs full inline, while its
+export shape — the backup/round-trip shape, whose bytes must re-import to
+the same document — keeps block ids full and takes the legend (API spec
+C4). Legend example:
 
 ```json
 "refs": { "miovm": "bafyreieqh63jv…miovm", "roman": "bafyreidfmzjh…" }
@@ -1361,7 +1463,8 @@ additionally resolve unresolved ids by unique suffix against the target
 space (useful for hand-written documents referencing known objects); that
 behavior belongs to the wiring, not this package.
 
-**Coverage** — with `CompactIds`, export rewrites every id-valued surface:
+**Coverage** — with `CompactObjectRefs` (or `CompactIds`), export rewrites
+every id-valued surface:
 
 | Surface | Compacted |
 |---|---|
@@ -1375,7 +1478,8 @@ behavior belongs to the wiring, not this package.
 | filter `value` / sort `custom_order` entries of `objects`/`files` properties | yes |
 | envelope `id`, `refs` values themselves | **never** |
 
-Block/row/column/view ids are relabeled to their last 5 characters
+With `CompactBlockLabels` (or `CompactIds`), block/row/column/view ids are
+relabeled to their last 5 characters
 (doc-local, no legend needed — same rule as refs keys). Labels are
 constrained to the schema charsets (refs keys `[A-Za-z0-9_-]{1,64}`, local
 relabels additionally dash-free); an id whose suffix collides or yields no
@@ -1543,8 +1647,10 @@ fail neither test belong in authoring guidance and in review.
   decoding (see the v0.6 changelog). The one remaining recursive definition
   is the dataview **filter tree** (`filterNode` groups nest, §6.2) — it is
   inherent to the filter model; a reduced core-profile schema (planned
-  follow-up) without dataview is fully non-recursive, and the reserved
-  compact filter string (§6.2.1) removes it from the generation path. To keep validation errors usable for LLM
+  follow-up) without dataview is fully non-recursive, and the compact
+  filter string (§6.2.1 — its parser ships as the `filterstring`
+  subpackage for the API query surface; the *document* field stays
+  reserved) removes it from the generation path. To keep validation errors usable for LLM
   producers, validation dispatches on the `type` const first (per-type
   `if/then` or programmatic pre-dispatch) instead of a flat 30-branch
   `oneOf` whose error output is noise. Output-only fields carry
@@ -1624,6 +1730,21 @@ pkg/lib/anyblockjson/
   typeproperties.go          — type_properties ↔ recommended lists (§2a);
                                GenerateSchema derived artifacts are planned
                                here (post-v1)
+  filterstring/              — compact filter string parser (§6.2.1):
+                               string → §6.2 filter tree, offset-addressed
+                               errors (planned with API v2 Phase 4; the
+                               document-field integration stays post-v1)
+  markdownblocks.go          — ParseMarkdownBlocks: block-level markdown →
+                               a §4 flat run (id-less). Inline text passes
+                               through verbatim as §8 markup source; only
+                               the block slicing (headings, lists/indent,
+                               fences, quotes, dividers, tables) lives
+                               here. Never fails: unknown constructs
+                               degrade to paragraphs, indents clamp per
+                               the §4 lenient rule, and every output run
+                               imports through UnmarshalBlocks (by test).
+                               Built for API v2 Phase 5 (the insertBlocks
+                               markdown payload and the create shortcut).
   roundtrip_test.go          — §11 property tests + state assertions
   golden_gen_test.go         — golden files (testdata/, -update to refresh)
 ```
@@ -1680,7 +1801,9 @@ type Options struct {
     ResolveOptions    OptionResolver   // optional; nil = option values pass through as ids
     ResolveProperties PropertyResolver // optional; nil = type documents keep raw recommended-relation ids (§2a)
     OmitIds           bool             // export only: drop every id (§9)
-    CompactIds        bool             // export only: shorten ids, emit refs legend (§9a)
+    CompactIds        bool             // export only: shorthand for the two flags below (§9a)
+    CompactObjectRefs bool             // export only: shorten object refs, emit refs legend (§9a; lossless)
+    CompactBlockLabels bool            // export only: relabel doc-local block/row/column/view ids (§9a; lossy)
     GenerateId        func() string    // import only: id generator for missing ids;
                                       // nil = random 24-hex (editor-shaped). The wiring
                                       // passes the editor's generator.
@@ -1730,7 +1853,7 @@ Wiring (follow-up work, not this package):
   "type": "page",
   "properties": {
     "name": "Project Phoenix",
-    "iconEmoji": "🔥",
+    "icon_emoji": "🔥",
     "status": ["In progress"]
   },
   "blocks": [
@@ -1755,21 +1878,21 @@ Wiring (follow-up work, not this package):
       "properties": [
         { "key": "name", "format": "text" },
         { "key": "status", "format": "select" },
-        { "key": "dueDate", "format": "date" }
+        { "key": "due_date", "format": "date" }
       ],
       "views": [
         { "id": "v1", "type": "kanban", "name": "By status",
           "group_by": "status",
           "sorts": [
-            { "property": "dueDate", "direction": "asc", "empty_placement": "end" }
+            { "property": "due_date", "direction": "asc", "empty_placement": "end" }
           ],
           "filters": [
-            { "property": "dueDate", "condition": "less", "date_preset": "current_week" },
+            { "property": "due_date", "condition": "less", "date_preset": "current_week" },
             { "property": "done", "condition": "equal", "value": false }
           ],
           "columns": [
             { "property": "name" },
-            { "property": "dueDate", "width": 120, "align": "right" },
+            { "property": "due_date", "width": 120, "align": "right" },
             { "property": "status", "aggregation": "count_distinct" }
           ]
         }
@@ -1807,10 +1930,10 @@ Wiring (follow-up work, not this package):
    same way types are specified in §2a (resolved options by name, not id).
 9. **Trim system-property noise** (follow-up): refine §3 "presence is
    meaningful" — keys in `bundle.SystemRelations` are machine-stamped
-   metadata (`isHidden`, `revision`, `relationFormatIncludeTime`, …) and
+   metadata (`is_hidden`, `revision`, `relation_format_include_time`, …) and
    could safely omit empty/default values, keeping documents compact for
    LLMs; presence stays preserved for user-intent keys via a small
-   exception list (`name`, `description`, `iconEmoji`, `iconImage`,
+   exception list (`name`, `description`, `icon_emoji`, `icon_image`,
    `done`) and for every non-system key. Deliberately static (no
    type-schema lookup at export time) to keep the canonical form
    deterministic. Decide `done` membership and wire `buildProperties` +

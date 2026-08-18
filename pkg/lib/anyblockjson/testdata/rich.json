@@ -6,11 +6,11 @@
   "properties": {
     "name": "Project Phoenix",
     "description": "The subtitle",
-    "iconEmoji": "🔥",
+    "icon_emoji": "🔥",
     "assignee": [
       "bafyreiroman"
     ],
-    "createdDate": "2025-07-06T08:44:05Z",
+    "created_date": "2025-07-06T08:44:05Z",
     "customDate": "2025-07-06T08:44:05Z",
     "customStatus": [
       "In progress"
@@ -143,7 +143,7 @@
           "format": "select"
         },
         {
-          "key": "dueDate",
+          "key": "due_date",
           "format": "date"
         }
       ],
@@ -155,14 +155,14 @@
           "group_by": "customStatus",
           "sorts": [
             {
-              "property": "dueDate",
+              "property": "due_date",
               "empty_placement": "end",
               "id": "s1"
             }
           ],
           "filters": [
             {
-              "property": "dueDate",
+              "property": "due_date",
               "condition": "less",
               "date_preset": "current_week",
               "id": "f1"
@@ -192,7 +192,7 @@
               "property": "name"
             },
             {
-              "property": "dueDate",
+              "property": "due_date",
               "hidden": true,
               "width": 120,
               "aggregation": "count_distinct",

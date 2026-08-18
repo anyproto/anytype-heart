@@ -67,7 +67,7 @@ func TestTypePropertiesExport(t *testing.T) {
 		opts := Options{ResolveProperties: newTestPropertyResolver()}
 		want := `"type_properties": [
     {
-      "key": "dueDate",
+      "key": "due_date",
       "name": "Due date",
       "format": "date",
       "section": "featured"
@@ -84,7 +84,7 @@ func TestTypePropertiesExport(t *testing.T) {
       "format": "select"
     },
     {
-      "key": "fileExt",
+      "key": "file_ext",
       "name": "File extension",
       "format": "text",
       "section": "file"
@@ -128,7 +128,7 @@ func TestTypePropertiesExport(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.NotContains(t, string(data), "type_properties")
-		assert.Contains(t, string(data), "recommendedFeaturedRelations")
+		assert.Contains(t, string(data), "recommended_featured_relations")
 		assert.Contains(t, string(data), "relid-dueDate")
 	})
 
@@ -177,7 +177,7 @@ func TestTypePropertiesExport(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.Contains(t, string(data), `"key": "creator"`)
-		assert.Contains(t, string(data), `"key": "createdDate"`)
+		assert.Contains(t, string(data), `"key": "created_date"`)
 	})
 
 	t.Run("compact ids emit no legend entries for lifted lists", func(t *testing.T) {
@@ -204,7 +204,7 @@ func TestTypePropertiesImport(t *testing.T) {
   "key": "task",
   "properties": { "name": "Task" },
   "type_properties": [
-    { "key": "dueDate", "name": "Due date", "format": "date", "section": "featured" },
+    { "key": "due_date", "name": "Due date", "format": "date", "section": "featured" },
     { "key": "status", "name": "Status", "format": "select" },
     { "key": "origin", "section": "hidden" }
   ]
@@ -322,7 +322,7 @@ func TestTypePropertiesRoundTrip(t *testing.T) {
 func TestTypePropertiesValidation(t *testing.T) {
 	t.Run("rejected outside type documents", func(t *testing.T) {
 		// given
-		doc := `{"version": 1, "type_properties": [{"key": "dueDate"}]}`
+		doc := `{"version": 1, "type_properties": [{"key": "due_date"}]}`
 
 		// when
 		err := Validate([]byte(doc))
@@ -338,7 +338,7 @@ func TestTypePropertiesValidation(t *testing.T) {
   "version": 1,
   "kind": "object_type",
   "properties": { "recommendedRelations": ["relid-status"] },
-  "type_properties": [{"key": "dueDate"}]
+  "type_properties": [{"key": "due_date"}]
 }`
 
 		// when
@@ -365,7 +365,7 @@ func TestTypePropertiesValidation(t *testing.T) {
   "kind": "object_type",
   "key": "task",
   "type_properties": [
-    { "key": "dueDate", "name": "Due date", "format": "date", "section": "featured" }
+    { "key": "due_date", "name": "Due date", "format": "date", "section": "featured" }
   ]
 }`
 		assert.NoError(t, Validate([]byte(doc)))

@@ -46,7 +46,7 @@ rather than dropping them. **Spec**: §5 file row, §6.1.
 ## 3. Recommended-relation lists holding bare property keys
 
 Type objects predating per-space derived relation ids store bare property
-**keys** (`"creator"`, `"createdDate"`) in `recommendedHiddenRelations` and
+**keys** (`"creator"`, `"createdDate"`) in `recommended_hidden_relations` and
 friends, where object ids are expected.
 
 Volume: ~15 objects.
@@ -93,7 +93,7 @@ round-trip reports as evidence for the §15.3 open question (names vs
 
 ## 7. Default-valued details are semantically present
 
-Details like `isHidden: false`, `revision: 0`, `relationFormatIncludeTime:
+Details like `is_hidden: false`, `revision: 0`, `relation_format_include_time:
 false` appear *explicitly* on thousands of objects. Presence of a property
 key — even with a default/empty value — records that the property was set on
 the object; clients rely on it.
@@ -170,6 +170,20 @@ The v0.6 flat-blocks change carried assumptions the flat-encoding sweep
   class; export emitted its key, import could not invert it, re-export
   dropped the entry). Fixed in `cmd/anyblockroundtrip` by caching point-
   lookup hits in both directions; format and package unaffected.
+
+## 12. Charset-dirty block ids are no longer laundered by relabeling
+
+The schema's block-id pattern is `^[A-Za-z0-9_-]{1,64}$`, but stored ids
+are not guaranteed to match it (legacy/imported data could carry other
+characters; no live producer found). The pre-v0.6.1 charset relabel rule
+*accidentally laundered* such an id whenever its 5-char tail was clean —
+the served document carried the clean label and validated. Under the
+minted-shape rule (`isMintedLocalId`, API v2 Wave 0 hardening) a
+non-minted id serves verbatim, so a document holding a charset-dirty
+block id now fails its own `Validate` on export. **Handling**: accepted —
+a false relabel destroys a meaningful identifier, and no such id appeared
+in the 35 400-object sweep; should one surface, it belongs here with the
+producer named. **Spec**: §9a (relabel rule), schema `$defs/blockId`.
 
 ---
 

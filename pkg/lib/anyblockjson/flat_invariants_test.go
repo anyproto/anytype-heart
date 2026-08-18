@@ -351,21 +351,21 @@ func TestInvariant_VocabularyIsSnakeCase(t *testing.T) {
 	}
 
 	for name, values := range map[string][]string{
-		"kind":           namesOf(kindNames.toName),
-		"textStyle":      namesOf(textStyleNames.toName),
-		"fileType":       namesOf(fileTypeNames.toName),
-		"processor":      namesOf(processorNames.toName),
-		"widgetLayout":   namesOf(widgetLayoutNames.toName),
-		"viewType":       namesOf(viewTypeNames.toName),
-		"condition":      namesOf(conditionNames.toName),
-		"datePreset":     namesOf(datePresetNames.toName),
-		"aggregation":    namesOf(aggregationNames.toName),
-		"format":         namesOf(formatNames.toName),
-		"layout":         namesOf(layoutNames.toName),
-		"cardStyle":      namesOf(cardStyleNames.toName),
-		"cardSize":       namesOf(cardSizeNames.toName),
-		"listSize":       namesOf(listSizeNames.toName),
-		"emptyPlacement": namesOf(emptyPlacementNames.toName),
+		"kind":            namesOf(kindNames.toName),
+		"textStyle":       namesOf(textStyleNames.toName),
+		"fileType":        namesOf(fileTypeNames.toName),
+		"processor":       namesOf(processorNames.toName),
+		"widgetLayout":    namesOf(widgetLayoutNames.toName),
+		"viewType":        namesOf(viewTypeNames.toName),
+		"condition":       namesOf(conditionNames.toName),
+		"date_preset":     namesOf(datePresetNames.toName),
+		"aggregation":     namesOf(aggregationNames.toName),
+		"format":          namesOf(formatNames.toName),
+		"layout":          namesOf(layoutNames.toName),
+		"card_style":      namesOf(cardStyleNames.toName),
+		"card_size":       namesOf(cardSizeNames.toName),
+		"list_size":       namesOf(listSizeNames.toName),
+		"empty_placement": namesOf(emptyPlacementNames.toName),
 	} {
 		for _, v := range values {
 			check(t, name+" name table", v)

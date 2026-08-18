@@ -29,15 +29,24 @@ type OptionResolver interface {
 
 // Options configures Marshal and Unmarshal (§13).
 type Options struct {
-	ResolveFormat     FormatResolver   // optional; nil = bundle-only resolution (§3)
-	ResolveOptions    OptionResolver   // optional; nil = option values pass through as ids
-	ResolveProperties PropertyResolver // optional; nil = type documents keep raw recommended-relation ids (§2a)
-	OmitIds           bool             // export only: drop every id (§9)
-	CompactIds        bool             // export only: shorten ids, emit refs legend (§9a)
-	GenerateId        func() string    // import only: id generator for missing ids; nil = random 24-hex
-	NormalizeIndent   bool             // import only: clamp over-deep indents instead of rejecting (§4)
-	OnWarning         func(Issue)      // optional sink for warning-grade issues, both directions (indent clamps, unrepresentable dates, …)
+	ResolveFormat      FormatResolver   // optional; nil = bundle-only resolution (§3)
+	ResolveOptions     OptionResolver   // optional; nil = option values pass through as ids
+	ResolveProperties  PropertyResolver // optional; nil = type documents keep raw recommended-relation ids (§2a)
+	Keys               KeyVocabulary    // optional; nil = BundledKeyVocabulary (the derived table — keyvocab.go)
+	OmitIds            bool             // export only: drop every id (§9)
+	CompactIds         bool             // export only: shorthand for CompactObjectRefs+CompactBlockLabels (§9a)
+	CompactObjectRefs  bool             // export only: shorten object refs via the refs legend (§9a; lossless)
+	CompactBlockLabels bool             // export only: relabel doc-local block/row/column/view ids to short suffixes (§9a; legend-less, lossy)
+	GenerateId         func() string    // import only: id generator for missing ids; nil = random 24-hex
+	NormalizeIndent    bool             // import only: clamp over-deep indents instead of rejecting (§4)
+	OnWarning          func(Issue)      // optional sink for warning-grade issues, both directions (indent clamps, unrepresentable dates, …)
 }
+
+// compactObjectRefs reports whether object-ref compaction (refs legend) is on.
+func (o Options) compactObjectRefs() bool { return o.CompactObjectRefs || o.CompactIds }
+
+// compactBlockLabels reports whether doc-local id relabeling is on.
+func (o Options) compactBlockLabels() bool { return o.CompactBlockLabels || o.CompactIds }
 
 const (
 	compactIdMinLen = 5
@@ -68,6 +77,17 @@ var propertiesKeptOnExport = map[string]bool{
 // decision).
 var wellKnownPropertyOrder = []string{"name", "description", "iconEmoji", "iconImage"}
 
+// MarshalPropertyValue converts one property value to its JSON form under
+// the §3 rules (dates → RFC 3339, select options → names, object/file →
+// id lists, scalars wrap into lists for list-shaped formats). It is the
+// row-level building block for API list surfaces that carry requested
+// property values (APIV2.md C5) without a full document export. The result
+// marshals with encoding/json.
+func MarshalPropertyValue(key string, v *types.Value, opts Options) any {
+	e := &exporter{opts: opts}
+	return e.propertyValue(key, v)
+}
+
 // Marshal serializes a snapshot into canonical AnyBlock JSON (§13).
 func Marshal(sbType model.SmartBlockType, snapshot *model.SmartBlockSnapshotBase, opts Options) ([]byte, error) {
 	if snapshot == nil {
@@ -75,7 +95,7 @@ func Marshal(sbType model.SmartBlockType, snapshot *model.SmartBlockSnapshotBase
 	}
 	e := &exporter{opts: opts, snapshot: snapshot, sbType: sbType, blocks: map[string]*model.Block{}, visited: map[string]bool{}}
 	e.indexBlocks()
-	if opts.CompactIds {
+	if opts.compactObjectRefs() || opts.compactBlockLabels() {
 		e.buildCompactIds()
 	}
 	doc, err := e.buildDoc(sbType)
@@ -221,7 +241,7 @@ var typeKeyIdPrefix = domain.TypeKey("").URL()
 func (e *exporter) typeKeys() []string {
 	keys := make([]string, 0, len(e.snapshot.ObjectTypes))
 	for _, t := range e.snapshot.ObjectTypes {
-		keys = append(keys, strings.TrimPrefix(t, typeKeyIdPrefix))
+		keys = append(keys, e.opts.typeSlug(strings.TrimPrefix(t, typeKeyIdPrefix)))
 	}
 	return keys
 }
@@ -339,18 +359,6 @@ func (e *exporter) buildRootEscape() *omap {
 //
 
 // strippedDetailKeys are the internal/derived properties export removes (§3).
-// InternalPropertyKeys reports the property keys this format treats as
-// internal: export strips them and import refuses them (§3). It is exported for
-// tooling that has to agree with that set — a round-trip checker comparing a
-// snapshot with its re-import has to know which keys are *expected* to be gone,
-// and the only copy of this list that stayed correct is the one the package
-// derives. cmd/anyblockroundtrip restated it and drifted the moment
-// oldAnytypeID and sourceFilePath joined the set, reporting 62 real objects as
-// data loss.
-func InternalPropertyKeys() map[string]bool {
-	return strippedDetailKeys()
-}
-
 // strippedDetailKeys is the internal-property list, and it is the single
 // source of truth for both directions: export removes these keys, and import
 // refuses them (§3, §4a — deniedPropertyKey reads this same set). Two lists
@@ -393,29 +401,59 @@ func (e *exporter) buildProperties() *omap {
 		}
 		keys = append(keys, k)
 	}
+	// the document spells slugs (§7.5a), so the canonical alphabetical order
+	// is over the SPELLINGS, not the stored keys — the reader sorts what it
+	// sees. Values still resolve through the stored key.
+	//
+	// The collapse pass below runs over the STORED keys sorted, not over map
+	// order: which holder keeps a contested spelling must not depend on Go's
+	// map iteration, or the canonical form is not canonical and export∘import
+	// byte-stability is a coin flip on exactly the spaces that need it most.
 	sort.Strings(keys)
-	ordered := make([]string, 0, len(keys))
+	stored := make(map[string]bool, len(keys))
+	for _, k := range keys {
+		stored[k] = true
+	}
+	type prop struct{ slug, key string }
+	props := make([]prop, 0, len(keys))
+	spelled := map[string]bool{}
+	for _, k := range keys {
+		slug := e.opts.propertySlug(k)
+		// a spelling two stored keys agree on would collapse into one JSON key
+		// and lose a value. Two ways that happens in a space holding a
+		// pre-mint-check shadow: another holder already took the slug, or the
+		// slug IS another stored key on this very object (chain step 1 would
+		// bind it to that one on the way back). Either way the later holder
+		// keeps its honest stored key.
+		if slug != k && (spelled[slug] || stored[slug]) {
+			slug = k
+		}
+		spelled[slug] = true
+		props = append(props, prop{slug: slug, key: k})
+	}
+	sort.Slice(props, func(i, j int) bool { return props[i].slug < props[j].slug })
+	ordered := make([]prop, 0, len(props))
 	seen := map[string]bool{}
 	for _, wk := range wellKnownPropertyOrder {
-		for _, k := range keys {
-			if k == wk {
-				ordered = append(ordered, k)
-				seen[k] = true
+		for _, p := range props {
+			if p.key == wk {
+				ordered = append(ordered, p)
+				seen[p.key] = true
 			}
 		}
 	}
-	for _, k := range keys {
-		if !seen[k] {
-			ordered = append(ordered, k)
+	for _, p := range props {
+		if !seen[p.key] {
+			ordered = append(ordered, p)
 		}
 	}
 	m := &omap{}
-	for _, k := range ordered {
+	for _, p := range ordered {
 		// presence of a property key is meaningful — it records that the
 		// property was set on the object — so values are written verbatim,
 		// including empty and default ones (§3); the omit-empty canon applies
 		// to block attributes and envelope fields only
-		m.set(k, e.propertyValue(k, e.snapshot.Details.Fields[k]))
+		m.set(p.slug, e.propertyValue(p.key, e.snapshot.Details.Fields[p.key]))
 	}
 	return m
 }
@@ -567,10 +605,17 @@ func (e *exporter) appendBlocksFlat(out *[]any, ids []string, depth int, topLeve
 		if topLevel && isStructural(b) {
 			continue
 		}
+		emitDepth := depth
 		if depth > maxBlockIndent {
-			return fmt.Errorf("block %s: nesting depth %d exceeds the format bound %d", id, depth, maxBlockIndent)
+			if e.opts.OnWarning == nil {
+				return fmt.Errorf("block %s: nesting depth %d exceeds the format bound %d", id, depth, maxBlockIndent)
+			}
+			// read path (C11): degrade rather than fail — clamp the indent and
+			// keep the content instead of erroring the whole document.
+			e.opts.OnWarning(Issue{Path: "/blocks", Message: fmt.Sprintf("block %s: nesting depth %d exceeds the bound %d — indent clamped", id, depth, maxBlockIndent)})
+			emitDepth = maxBlockIndent
 		}
-		m, withChildren, err := e.blockToJSON(b, depth)
+		m, withChildren, err := e.blockToJSON(b, emitDepth)
 		if err != nil {
 			return err
 		}
@@ -588,7 +633,7 @@ func (e *exporter) appendBlocksFlat(out *[]any, ids []string, depth int, topLeve
 }
 
 func (e *exporter) localId(id string) string {
-	if e.opts.CompactIds {
+	if e.opts.compactBlockLabels() {
 		if short, ok := e.localIds[id]; ok {
 			return short
 		}
@@ -655,7 +700,7 @@ func (e *exporter) blockToJSON(b *model.Block, depth int) (*omap, bool, error) {
 		if l.Description != model.BlockContentLink_None {
 			m.setNonEmpty("description", linkDescriptionNames.name(l.Description))
 		}
-		m.setNonEmpty("properties", stringsToAny(l.Relations))
+		m.setNonEmpty("properties", stringsToAny(e.opts.propertySlugs(l.Relations)))
 		withChildren = false
 	case *model.BlockContentOfDiv:
 		m.set("type", "divider")
@@ -693,7 +738,7 @@ func (e *exporter) blockToJSON(b *model.Block, depth int) (*omap, bool, error) {
 		withChildren = false
 	case *model.BlockContentOfRelation:
 		m.set("type", "property")
-		m.setNonEmpty("key", orEmpty(c.Relation).Key)
+		m.setNonEmpty("key", e.opts.propertySlug(orEmpty(c.Relation).Key))
 		withChildren = false
 	case *model.BlockContentOfDataview:
 		if err := e.dataviewToJSON(m, orEmpty(c.Dataview)); err != nil {
@@ -722,6 +767,12 @@ func (e *exporter) blockToJSON(b *model.Block, depth int) (*omap, bool, error) {
 	case *model.BlockContentOfSmartblock:
 		return nil, false, nil
 	default:
+		if e.opts.OnWarning != nil {
+			// read path (C11): drop the unrepresentable block with a warning
+			// instead of failing the whole read.
+			e.opts.OnWarning(Issue{Path: "/blocks", Message: fmt.Sprintf("block %s: content type %T has no JSON mapping — dropped", b.Id, b.Content)})
+			return nil, false, nil
+		}
 		return nil, false, fmt.Errorf("block %s: content type %T has no JSON mapping", b.Id, b.Content)
 	}
 
@@ -798,7 +849,7 @@ func (e *exporter) textToJSON(m *omap, b *model.Block, t *model.BlockContentText
 // compactMarks rewrites mention/object mark targets through the refs legend
 // without mutating the snapshot (§9a).
 func (e *exporter) compactMarks(marks []*model.BlockContentTextMark) []*model.BlockContentTextMark {
-	if !e.opts.CompactIds || len(marks) == 0 {
+	if !e.opts.compactObjectRefs() || len(marks) == 0 {
 		return marks
 	}
 	out := make([]*model.BlockContentTextMark, 0, len(marks))
@@ -867,7 +918,7 @@ func stringsToAny(ss []string) []any {
 //
 
 func (e *exporter) compactObjectId(id string) string {
-	if e.opts.CompactIds && id != "" {
+	if e.opts.compactObjectRefs() && id != "" {
 		if label, ok := e.objectRefs[id]; ok {
 			return label
 		}
@@ -999,20 +1050,29 @@ func (e *exporter) buildCompactIds() {
 	for id := range locals {
 		fullIds[id] = true
 	}
-	e.objectRefs = suffixLabels(setToSlice(objects), compactIdMinLen, func(candidate string) bool {
-		return fullIds[candidate] || !isValidRefsKey(candidate)
-	})
-	// local relabels stay dash-free: '-' is the derived-cell-id separator
-	// and forbidden in row/column ids (§6.1). They must also avoid the full
-	// local ids, exactly as refs keys avoid full object ids above: a short id
-	// labels as itself, so "block_12345" suffixing to "12345" would land on a
-	// sibling block already called "12345".
-	e.localIds = suffixLabels(setToSlice(locals), compactIdMinLen, func(candidate string) bool {
-		return locals[candidate] || isInvalidLocalLabel(candidate)
-	})
-	// short ids label as themselves; drop those the schema charsets reject
-	dropInvalidLabels(e.objectRefs, isValidRefsKey)
-	dropInvalidLabels(e.localIds, func(label string) bool { return !isInvalidLocalLabel(label) })
+	// each half builds only when its flag is on (C4 split: object-ref
+	// compaction is lossless via the legend, block relabeling is lossy);
+	// the collision-avoid set always covers both id populations because
+	// un-relabeled ids stay in the document verbatim
+	if e.opts.compactObjectRefs() {
+		e.objectRefs = suffixLabels(setToSlice(objects), compactIdMinLen, func(candidate string) bool {
+			return fullIds[candidate] || !isValidRefsKey(candidate)
+		})
+		// short ids label as themselves; drop those the schema charsets reject
+		dropInvalidLabels(e.objectRefs, isValidRefsKey)
+	}
+	if e.opts.compactBlockLabels() {
+		// only machine-minted opaque ids relabel (isMintedLocalId); every id
+		// that keeps its full spelling is reserved through the fullIds
+		// avoid-set, so no label can alias a served id — and the census inside
+		// mintedSuffixLabels runs over ALL local ids, so a label cannot be an
+		// ambiguous suffix of one either. Labels stay dash-free as before:
+		// '-' is the derived-cell-id separator and forbidden in row/column
+		// ids (§6.1) — minted suffixes are hex, so the check is a backstop.
+		e.localIds = mintedSuffixLabels(setToSlice(locals), compactIdMinLen, func(candidate string) bool {
+			return fullIds[candidate] || isInvalidLocalLabel(candidate)
+		})
+	}
 }
 
 // isValidRefsKey reports whether s matches the schema's refs-key pattern

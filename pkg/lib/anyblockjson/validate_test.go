@@ -206,6 +206,14 @@ func TestValidate_Valid(t *testing.T) {
 		{"heading_4 alias", `{"version": 1, "blocks": [{"type": "heading_4", "text": "deep"}]}`},
 		{"equation alias", `{"version": 1, "blocks": [{"type": "equation", "text": "E=mc^2"}]}`},
 		{"refs", `{"version": 1, "refs": {"roman": "bafyreiabc", "x_1-2": "bafyreidef"}}`},
+		// view-id uniqueness is scoped to the dataview BLOCK (§6.2): the app
+		// mints every set/collection/type default view as "default", and
+		// creating an inline set from one copies its views verbatim, so a
+		// page with two inline collections legitimately holds two "default"s
+		{"one view id in two dataviews", `{"version": 1, "blocks": [
+			{"type": "dataview", "object_id": "bafyone", "views": [{"id": "default", "name": "A"}]},
+			{"type": "dataview", "object_id": "bafytwo", "views": [{"id": "default", "name": "B"}]}
+		]}`},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -287,6 +295,16 @@ func TestValidate_Invalid(t *testing.T) {
 		{"reserved compact filter field", `{"version": 1, "blocks": [
 			{"type": "dataview", "views": [{"id": "v", "filter": "done = false"}]}
 		]}`, "filter"},
+		// §6.2: view ids are unique WITHIN a dataview block. Until this,
+		// views[].id was the one id slot in the document with no uniqueness
+		// check at all — invalid but unvalidated on every channel, create and
+		// import included.
+		{"duplicate view id in one dataview", `{"version": 1, "blocks": [
+			{"type": "dataview", "views": [{"id": "v1", "name": "A"}, {"id": "v1", "name": "B"}]}
+		]}`, `duplicate view id "v1" in this dataview`},
+		{"duplicate view id path", `{"version": 1, "blocks": [
+			{"type": "dataview", "views": [{"id": "v1", "name": "A"}, {"id": "v1", "name": "B"}]}
+		]}`, "/blocks/0/views/1/id"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

@@ -76,6 +76,28 @@ func TestValidate_GuardedDateLessIsClean(t *testing.T) {
 	})
 }
 
+// `… OR dueDate IS EMPTY` deliberately INCLUDES the undated objects, so the
+// "also matches objects with no X" warning would contradict the filter's own
+// text — the canonical worked example (`done = false AND (dueDate <
+// currentWeek() OR dueDate IS EMPTY)`) must not warn on every execution.
+func TestValidate_EmptySiblingUnderOrSuppressesTheWarning(t *testing.T) {
+	t.Run("empty on the same property under the same OR", func(t *testing.T) {
+		assert.Empty(t, warningsFor(t, dateFilterDoc(
+			`{"operator": "or", "filters": [
+				{"property": "verifiedUntil", "condition": "less", "date_preset": "current_week"},
+				{"property": "verifiedUntil", "condition": "empty"}]}`)))
+	})
+
+	t.Run("empty on a DIFFERENT property does not suppress", func(t *testing.T) {
+		w := warningsFor(t, dateFilterDoc(
+			`{"operator": "or", "filters": [
+				{"property": "verifiedUntil", "condition": "less", "date_preset": "current_week"},
+				{"property": "status", "condition": "empty"}]}`))
+		require.Len(t, w, 1)
+		assert.Contains(t, w[0].Message, "no verifiedUntil")
+	})
+}
+
 // an OR sibling guarantees nothing — the comparison is reachable without it
 func TestValidate_NotEmptyUnderOrDoesNotGuard(t *testing.T) {
 	w := warningsFor(t, dateFilterDoc(

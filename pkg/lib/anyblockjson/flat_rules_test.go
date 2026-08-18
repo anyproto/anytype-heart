@@ -1,9 +1,13 @@
 package anyblockjson
 
-// flat_review_test.go holds the regression tests for the FLAT_REVIEW.md fix
-// pass: Marshal never emits output its own Validate rejects (findings 1, 3),
-// Validate and Unmarshal agree on every input (finding 2), and the coverage
-// gaps of findings 4–8.
+// flat_rules_test.go pins the specific flat-encoding rules the two invariants
+// in flat_invariants_test.go rest on: leaf containment, the depth bound, the
+// table-cell rules, the float-form indent (`1.0` read as 0, which passed
+// validation and then imported as something else), and the property-message
+// wording. Each was violated at least once before it was pinned.
+//
+// The invariants themselves live next door and are driven by hostile inputs;
+// these are instances, expressed as the documents that broke them.
 
 import (
 	"encoding/json"
@@ -158,6 +162,37 @@ func TestMarshal_DepthBound(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, Validate(data))
 	})
+}
+
+// M3 (C11): with an OnWarning sink the read path degrades content the format
+// can't represent (here: over-deep nesting) to a warning instead of failing
+// the whole document, and the degraded output still validates.
+func TestMarshal_OnWarningDegradesOverDeep(t *testing.T) {
+	deepChain := func(depth int) *model.SmartBlockSnapshotBase {
+		blocks := []*model.Block{{Id: "obj1", ChildrenIds: []string{"n0"},
+			Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}}
+		for i := 0; i <= depth; i++ {
+			b := textBlock(fmt.Sprintf("n%d", i), model.BlockContentText_Toggle, fmt.Sprintf("level %d", i))
+			if i < depth {
+				b.ChildrenIds = []string{fmt.Sprintf("n%d", i+1)}
+			}
+			blocks = append(blocks, b)
+		}
+		return &model.SmartBlockSnapshotBase{Blocks: blocks}
+	}
+
+	// without a sink the over-deep document still fails loudly (canonical export)
+	_, err := Marshal(model.SmartBlockType_Page, deepChain(40), Options{})
+	require.Error(t, err)
+
+	// with a sink it degrades: clamp + warn, and the result validates
+	var warnings []Issue
+	data, err := Marshal(model.SmartBlockType_Page, deepChain(40),
+		Options{OnWarning: func(i Issue) { warnings = append(warnings, i) }})
+	require.NoError(t, err, "the read must succeed with a warning sink")
+	require.NotEmpty(t, warnings, "the clamp emits a warning")
+	assert.Contains(t, warnings[0].Message, "clamped")
+	require.NoError(t, Validate(data), "clamped indents stay within the format bound")
 }
 
 // Finding 4: unknown properties are rejected with a message naming the key;

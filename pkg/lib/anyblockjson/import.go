@@ -6,6 +6,7 @@ package anyblockjson
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 
 	"github.com/gogo/protobuf/types"
 
@@ -240,19 +241,37 @@ func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBas
 
 	var objectTypes []string
 	if doc.Type != "" {
-		objectTypes = append(objectTypes, domain.TypeKey(doc.Type).URL())
+		objectTypes = append(objectTypes, domain.TypeKey(imp.opts.typeKey(doc.Type)).URL())
 		if doc.Type == "template" && doc.TemplateFor != "" {
-			objectTypes = append(objectTypes, domain.TypeKey(doc.TemplateFor).URL())
+			objectTypes = append(objectTypes, domain.TypeKey(imp.opts.typeKey(doc.TemplateFor)).URL())
 		}
 	}
 
 	details := &types.Struct{Fields: map[string]*types.Value{}}
 	details.Fields[detailKeyId] = &types.Value{Kind: &types.Value_StringValue{StringValue: objectId}}
-	for key, raw := range doc.Properties {
-		if key == detailKeyId || key == detailKeyType {
+	// Sorted, and a REFUSAL when two spellings canonicalize onto one stored
+	// key — the mirror of the export-side collapse guard (§8.38). Ranging the
+	// map made "which of two spellings wins" a per-run coin flip: the same
+	// request stored a different object run to run. The API layer refuses
+	// first, with a better-worded message (canonicalizeDocumentKeys), but the
+	// type-create channel skips it by design and so does every direct package
+	// caller (cmd/anyblockroundtrip, cmd/anyblockrecover,
+	// cmd/internal/anyblockbatch) — so the codec is the backstop.
+	boundBy := make(map[string]string, len(doc.Properties))
+	for _, slug := range sortedPropertySlugs(doc.Properties) {
+		if slug == detailKeyId || slug == detailKeyType {
 			continue // lifted into the envelope; a stray copy must not leak
 		}
-		if v := imp.propertyValue(key, raw); v != nil {
+		// the document spells slugs (§7.5a); the store binds stored keys
+		key := imp.opts.propertyKey(slug)
+		if first, dup := boundBy[key]; dup {
+			return 0, nil, &ValidationError{Issues: []Issue{{
+				Path:    "/properties/" + slug,
+				Message: fmt.Sprintf("%q and %q both address property %q — keep one", first, slug, key),
+			}}}
+		}
+		boundBy[key] = slug
+		if v := imp.propertyValue(key, doc.Properties[slug]); v != nil {
 			details.Fields[key] = v
 		}
 	}
@@ -439,23 +458,20 @@ func (imp *importer) topLevelBlocks(details *types.Struct) ([]*jsonBlock, []int)
 		if jb == nil {
 			continue
 		}
-		if indents[i] == 0 {
-			structural := true
+		// structuralBlockTypes (blockvocab.go) is the one statement of which
+		// types these are — the API surfaces that publish an authorable
+		// vocabulary read the same map
+		if indents[i] == 0 && structuralBlockTypes[jb.Type] {
 			switch jb.Type {
 			case "title":
 				imp.absorbIntoProperty(details, "name", jb.Text)
 			case "description":
 				imp.absorbIntoProperty(details, "description", jb.Text)
-			case "featured_properties":
-			default:
-				structural = false
 			}
-			if structural {
-				for i+1 < len(raw) && indents[i+1] > 0 {
-					i++
-				}
-				continue
+			for i+1 < len(raw) && indents[i+1] > 0 {
+				i++
 			}
+			continue
 		}
 		jbs = append(jbs, jb)
 		kept = append(kept, indents[i])
@@ -594,7 +610,7 @@ func (imp *importer) linkFromJSON(jb *jsonBlock) (*model.BlockContentLink, error
 		CardStyle:     cardStyleNames.value(jb.CardStyle),
 		IconSize:      iconSizeNames.value(jb.IconSize),
 		Description:   linkDescriptionNames.value(jb.Description),
-		Relations:     propKeys,
+		Relations:     imp.opts.propertyKeys(propKeys),
 	}, nil
 }
 
@@ -667,7 +683,7 @@ func (imp *importer) blockFromJSON(jb *jsonBlock, forcedId string) ([]*model.Blo
 	case jb.Type == "table_of_contents":
 		b.Content = &model.BlockContentOfTableOfContents{TableOfContents: &model.BlockContentTableOfContents{}}
 	case jb.Type == "property":
-		b.Content = &model.BlockContentOfRelation{Relation: &model.BlockContentRelation{Key: jb.Key}}
+		b.Content = &model.BlockContentOfRelation{Relation: &model.BlockContentRelation{Key: imp.opts.propertyKey(jb.Key)}}
 	case jb.Type == "dataview":
 		dv, err := imp.dataviewFromJSON(jb)
 		if err != nil {
@@ -710,4 +726,16 @@ func (imp *importer) applyBlockCommon(b *model.Block, jb *jsonBlock, liftedLang 
 		}
 		b.Fields.Fields[codeLangField] = &types.Value{Kind: &types.Value_StringValue{StringValue: liftedLang}}
 	}
+}
+
+// sortedPropertySlugs returns the document's property spellings in a fixed
+// order, so which of two colliding spellings the refusal names — and which
+// value a non-colliding document binds — never depends on map iteration.
+func sortedPropertySlugs(props map[string]any) []string {
+	out := make([]string, 0, len(props))
+	for slug := range props {
+		out = append(out, slug)
+	}
+	sort.Strings(out)
+	return out
 }

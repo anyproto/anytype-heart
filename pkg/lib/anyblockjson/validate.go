@@ -29,6 +29,13 @@ import (
 //go:embed schema/object.schema.json
 var schemaJSON []byte
 
+// SchemaJSON returns the embedded published JSON Schema (§12). Callers must
+// not mutate the returned slice; discovery surfaces (API v2 §5) serve it
+// verbatim.
+func SchemaJSON() []byte {
+	return schemaJSON
+}
+
 const (
 	// FormatVersion is the AnyBlock JSON format version this package reads
 	// and writes (§10). It is a single integer with no minor axis: every
@@ -463,6 +470,24 @@ var leafBlockTypes = map[string]bool{
 	"divider": true, "table": true, "property": true, "dataview": true,
 	"icon": true, "table_of_contents": true, "featured_properties": true,
 	"chat": true,
+}
+
+// LeafBlockType reports whether typ cannot be a parent (§5 leaf types, the
+// V2 containment check). Exported for wiring that pre-checks edits before a
+// full document validation (API v2 Phase 3).
+func LeafBlockType(typ string) bool {
+	return leafBlockTypes[typ]
+}
+
+// TextBlockType reports whether typ carries a `text` prop — the §5
+// text-bearing styles plus the literal-text blocks (`code`, `embed` and its
+// `equation` alias, §8.4). Exported for the same wiring as LeafBlockType.
+func TextBlockType(typ string) bool {
+	switch typ {
+	case "code", "embed", "equation":
+		return true
+	}
+	return textBearing(typ)
 }
 
 // clampIndents applies the §4 lenient rule in place: an indent more than one
@@ -1037,17 +1062,57 @@ var groupableFormats = map[string]map[string]struct{}{
 
 // checkDataviewViews runs the per-view semantic checks that need the
 // dataview's own properties[] to know a key's format: groupBy viability and
-// the date-filter empty trap.
+// the date-filter empty trap. It also enforces view-id uniqueness.
 //
 // It reports a groupBy a view cannot honour. An impossible pair on
 // a grouping view is an error: it can only come from authoring, and it
 // renders as a single empty group. groupBy on a non-grouping view is only a
 // warning — switching a kanban to a table in the editor leaves the stale
 // groupRelationKey behind, so real exported data legitimately carries it.
+//
+// VIEW-ID UNIQUENESS is scoped to the dataview BLOCK, not to the document —
+// the one id domain in this format that is not document-wide (§4), and
+// deliberately so:
+//
+//   - It is the scope in which a duplicate actually breaks something. Every
+//     consumer resolves a view reference within ONE dataview's views list
+//     (the API's matchViewRef, the client's view tabs), and a dataview's
+//     per-view editor state — groupOrders, objectOrders — is keyed by view
+//     id inside that same block. Two views of one dataview sharing an id
+//     make the second unaddressable forever; two views in DIFFERENT dataview
+//     blocks sharing one are each reachable through their own block.
+//   - Document-wide would reject data the app itself produces. The default
+//     view of every set, collection and type is minted with the literal id
+//     "default" (editor/template.MakeDataviewContent), and creating an
+//     inline set from an existing object copies that object's views verbatim
+//     into the new block (dataviewservice.CopyDataviewToBlock) — so a page
+//     with two inline collections legitimately holds two views called
+//     "default". A format error there would fail on real exports.
+//
+// Before this, `views[].id` was the one id slot in the document with no
+// uniqueness check at all — invalid but unvalidated on every channel,
+// create and import included, not just PATCH (§8.31).
 func checkDataviewViews(block map[string]any, path string, addIssue, warnIssue func(string, string, ...any)) {
 	views, _ := block["views"].([]any)
 	if len(views) == 0 {
 		return
+	}
+	seenViewIds := map[string]string{} // id -> path of first occurrence
+	for i, raw := range views {
+		view, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		id, _ := view["id"].(string)
+		if id == "" {
+			continue // ids are optional on input (§9); import generates them
+		}
+		idPath := fmt.Sprintf("%s/views/%d/id", path, i)
+		if first, dup := seenViewIds[id]; dup {
+			addIssue(idPath, "duplicate view id %q in this dataview (first used at %s)", id, first)
+			continue
+		}
+		seenViewIds[id] = idPath
 	}
 	formats := map[string]string{}
 	props, _ := block["properties"].([]any)
@@ -1148,7 +1213,28 @@ func checkDateFilters(view map[string]any, formats map[string]string, path strin
 			nPath := fmt.Sprintf("%s/%d", path, i)
 			if sub, isGroup := n["filters"].([]any); isGroup {
 				op, _ := n["operator"].(string)
-				walk(sub, nPath+"/filters", op != "or", scope)
+				childScope := scope
+				if op == "or" {
+					// an `empty` sibling on the same property under an OR is
+					// intent to INCLUDE the undated objects ("… OR dueDate IS
+					// EMPTY") — warning that the comparison also matches them
+					// would contradict the filter's own text
+					childScope = map[string]bool{}
+					for k := range scope {
+						childScope[k] = true
+					}
+					for _, subRaw := range sub {
+						leaf, isLeaf := subRaw.(map[string]any)
+						if !isLeaf {
+							continue
+						}
+						cond, _ := leaf["condition"].(string)
+						if prop, _ := leaf["property"].(string); prop != "" && cond == "empty" {
+							childScope[prop] = true
+						}
+					}
+				}
+				walk(sub, nPath+"/filters", op != "or", childScope)
 				continue
 			}
 			// the day-count presets read their operand from value; without
