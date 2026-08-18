@@ -338,20 +338,6 @@ func TestValidate_PropertyKeyShape(t *testing.T) {
 	})
 }
 
-// The envelope key becomes a uniqueKey component (ot-<key>), so its charset is
-// the one place a closed allowlist is right: every real key is a bundled type
-// key or a bson id.
-func TestValidate_EnvelopeKeyCharset(t *testing.T) {
-	for _, key := range []string{"ot/page", "a b", "", "page\n"} {
-		doc := fmt.Sprintf(`{"version": 1, "kind": "object_type", "id": "t1", "key": %q}`, key)
-		assert.Error(t, Validate([]byte(doc)), "key %q", key)
-	}
-	for _, key := range []string{"page", "68f0d9c3b3c8a94e0d0b0a12", "my-type_2"} {
-		doc := fmt.Sprintf(`{"version": 1, "kind": "object_type", "id": "t1", "key": %q}`, key)
-		assert.NoError(t, Validate([]byte(doc)), "key %q", key)
-	}
-}
-
 // A value whose shape contradicts its property's format is not stored as
 // written: it reads as the format's zero forever. "next Friday" on a date is
 // the case the review names.
@@ -407,4 +393,41 @@ func TestInline_MentionAttributeIsSnakeCase(t *testing.T) {
 	_, _, err = parseInline(`ping <mention objectId="bafyid">Roman</mention>`)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), `unknown attribute "objectId"`)
+}
+
+// The envelope `key` is the STORED identity key, written verbatim (§2) — so
+// the charset it can carry is whatever the store already holds, and a closed
+// allowlist over it was falsified by the first sweep that ran with one: 59
+// objects in a 36 808-object account failed their own export, every one of
+// them a relation option whose stored key is built from the option's *name*.
+// These are the real keys, from that sweep's reports.
+func TestValidate_EnvelopeKeyAcceptsRealStoredKeys(t *testing.T) {
+	for _, key := range []string{
+		"completion_status_Not Started",
+		"challenge_resolution_status_In Progress",
+		"69bbfc78877a91b1d12d1a7c_C/C++",
+		"69bbfc78877a91b1d12d1a7c_C#",
+		"69bbfc78877a91b1d12d1a84_$addToSet",
+		"69bbfc78877a91b1d12d1a7c_.NET",
+		"69aab06861fab2bc0d9afbe2_Roma Khafizianov",
+		"69a56205ccba0a47d8d8eb71_тогглы",
+		"69bbfc78877a91b1d12d1a7c_JavaScript/TypeScript",
+	} {
+		doc := fmt.Sprintf(`{"version": 1, "kind": "relation_option", "id": "o1", "key": %q}`, key)
+		assert.NoError(t, Validate([]byte(doc)), "stored key %q must round-trip", key)
+	}
+}
+
+// What a key may never be is unreadable: empty, or carrying a control
+// character. That is the same deny rule property keys get (§3), for the same
+// reason — an allowlist can only be trusted after auditing every key in every
+// account, and this one was not.
+func TestValidate_EnvelopeKeyRejectsUnreadable(t *testing.T) {
+	for _, doc := range []string{
+		`{"version": 1, "kind": "object_type", "id": "t1", "key": ""}`,
+		"{\"version\": 1, \"kind\": \"object_type\", \"id\": \"t1\", \"key\": \"a\\u0000b\"}",
+		"{\"version\": 1, \"kind\": \"object_type\", \"id\": \"t1\", \"key\": \"a\\nb\"}",
+	} {
+		assert.Error(t, Validate([]byte(doc)), doc)
+	}
 }

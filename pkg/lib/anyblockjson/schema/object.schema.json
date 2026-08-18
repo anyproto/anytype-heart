@@ -22,7 +22,7 @@
     "id": { "type": "string" },
     "type": { "type": "string" },
     "template_for": { "type": "string" },
-    "key": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" },
+    "key": { "type": "string", "pattern": "^[^\u0000-\u001f\u007f]+$", "maxLength": 255 },
     "properties": { "$ref": "#/$defs/propertyMap" },
     "type_properties": { "type": "array", "items": { "$ref": "#/$defs/typeProperty" } },
     "refs": {

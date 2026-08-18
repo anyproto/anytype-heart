@@ -119,9 +119,19 @@ func hostileSnapshot(n int) *model.SmartBlockSnapshotBase {
 		"a\nb":           str("newline key"),
 		"dueDate":        str("next Friday"),
 	}
+	// the envelope key is a STORED identity key written verbatim (§2), and a
+	// closed charset over it was falsified by a 36 808-object sweep: relation
+	// options carry their option *name* in the key, spaces and all. I1 never
+	// covered this slot, which is exactly why the bad rule shipped.
+	storedKeys := []string{
+		"", "page", "task", "completion_status_Not Started",
+		"69bbfc78877a91b1d12d1a7c_C/C++", "69a56205ccba0a47d8d8eb71_тогглы",
+		"69bbfc78877a91b1d12d1a84_$addToSet", "opt-" + strings.Repeat("x", 80),
+	}
 	return &model.SmartBlockSnapshotBase{
 		Blocks:  blocks,
 		Details: fields(details),
+		Key:     storedKeys[rnd.Intn(len(storedKeys))],
 	}
 }
 

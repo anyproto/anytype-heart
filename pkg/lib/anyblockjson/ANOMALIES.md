@@ -180,10 +180,13 @@ characters; no live producer found). The pre-v0.6.1 charset relabel rule
 the served document carried the clean label and validated. Under the
 minted-shape rule (`isMintedLocalId`, API v2 Wave 0 hardening) a
 non-minted id serves verbatim, so a document holding a charset-dirty
-block id now fails its own `Validate` on export. **Handling**: accepted —
-a false relabel destroys a meaningful identifier, and no such id appeared
-in the 35 400-object sweep; should one surface, it belongs here with the
-producer named. **Spec**: §9a (relabel rule), schema `$defs/blockId`.
+block id now fails its own `Validate` on export. **Handling**: closed, not accepted —
+the minted-shape rule decides *whether* an id is compacted, and the export
+sanitizer decides how whatever comes out is spelled, so a charset-dirty id
+is written as `a_b` rather than verbatim and `table1` keeps its name. Both
+rules landed on the same branch and compose; `TestExport_BlockIdOutsideCharsetIsSanitized`
+pins the first half and the compact golden pins the second. No such id
+appeared in either the 35 400- or the 36 808-object sweep. **Spec**: §9a (relabel rule), schema `$defs/blockId`.
 
 ---
 
