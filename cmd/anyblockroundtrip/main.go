@@ -510,21 +510,11 @@ func firstDiff(a, b []byte) string {
 // ---- loss heuristics ----
 //
 
-// strippedKeys mirrors the export-side strip set (§3): LocalAndDerived minus
-// the keys the importer meaningfully preserves.
-var strippedKeys = func() map[string]bool {
-	kept := map[string]bool{
-		"createdDate": true, "lastModifiedDate": true, "creator": true,
-		"isFavorite": true, "isArchived": true, "resolvedLayout": true,
-	}
-	out := map[string]bool{"id": true, "type": true}
-	for _, k := range bundle.LocalAndDerivedRelationKeys {
-		if !kept[string(k)] {
-			out[string(k)] = true
-		}
-	}
-	return out
-}()
+// strippedKeys is the format's own internal-property set, not a copy of it: the
+// copy that used to live here fell out of date the moment the package added the
+// importer's provenance keys, and every object carrying one was reported as
+// data loss (§3, §11).
+var strippedKeys = anyblockjson.InternalPropertyKeys()
 
 // lossIssues compares the original snapshot with the reimported one on the
 // axes the format promises to preserve: detail values (up to the documented
