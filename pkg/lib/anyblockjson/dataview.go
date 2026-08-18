@@ -38,7 +38,7 @@ func (e *exporter) dataviewToJSON(m *omap, dv *model.BlockContentDataview) error
 			continue
 		}
 		pm := &omap{}
-		pm.set("key", e.opts.propertySlug(rl.Key))
+		pm.set("key", e.propertySlug(rl.Key))
 		pm.setNonEmpty("format", formatName(rl.Format))
 		props = append(props, pm)
 	}
@@ -75,9 +75,9 @@ func (e *exporter) viewToJSON(v *model.BlockContentDataviewView, dv *model.Block
 		vm.setNonEmpty("type", viewTypeNames.name(v.Type))
 	}
 	vm.setNonEmpty("name", v.Name)
-	vm.setNonEmpty("group_by", e.opts.propertySlug(v.GroupRelationKey))
-	vm.setNonEmpty("cover_property", e.opts.propertySlug(v.CoverRelationKey))
-	vm.setNonEmpty("end_property", e.opts.propertySlug(v.EndRelationKey))
+	vm.setNonEmpty("group_by", e.propertySlug(v.GroupRelationKey))
+	vm.setNonEmpty("cover_property", e.propertySlug(v.CoverRelationKey))
+	vm.setNonEmpty("end_property", e.propertySlug(v.EndRelationKey))
 	vm.setNonEmpty("hide_icon", v.HideIcon)
 	if v.CardSize != model.BlockContentDataviewView_Small {
 		vm.setNonEmpty("card_size", cardSizeNames.name(v.CardSize))
@@ -176,7 +176,7 @@ func (e *exporter) objectOrdersToJSON(viewId string, dv *model.BlockContentDatav
 
 func (e *exporter) sortToJSON(s *model.BlockContentDataviewSort, dv *model.BlockContentDataview) *omap {
 	sm := &omap{}
-	sm.setNonEmpty("property", e.opts.propertySlug(s.RelationKey))
+	sm.setNonEmpty("property", e.propertySlug(s.RelationKey))
 	if s.Type != model.BlockContentDataviewSort_Asc {
 		sm.setNonEmpty("direction", sortDirectionNames.name(s.Type))
 	}
@@ -223,7 +223,7 @@ func (e *exporter) filterToJSON(f *model.BlockContentDataviewFilter, dv *model.B
 		fm.set("filters", nested)
 		return fm
 	}
-	fm.setNonEmpty("property", e.opts.propertySlug(f.RelationKey))
+	fm.setNonEmpty("property", e.propertySlug(f.RelationKey))
 	if f.Condition != model.BlockContentDataviewFilter_None {
 		fm.setNonEmpty("condition", conditionNames.name(f.Condition))
 	}
@@ -388,7 +388,7 @@ func (imp *importer) dataviewFromJSON(jb *jsonBlock) (*model.BlockContentDatavie
 		}
 	}
 	for _, p := range props {
-		key := imp.opts.propertyKey(p.Key)
+		key := imp.propertyKey(p.Key)
 		dv.RelationLinks = append(dv.RelationLinks, &model.RelationLink{
 			Key:    key,
 			Format: imp.declaredFormat(key, p.Format),
@@ -403,9 +403,9 @@ func (imp *importer) dataviewFromJSON(jb *jsonBlock) (*model.BlockContentDatavie
 			Id:                    viewId,
 			Type:                  viewTypeNames.value(jv.Type),
 			Name:                  jv.Name,
-			GroupRelationKey:      imp.opts.propertyKey(jv.GroupBy),
-			CoverRelationKey:      imp.opts.propertyKey(jv.CoverProperty),
-			EndRelationKey:        imp.opts.propertyKey(jv.EndProperty),
+			GroupRelationKey:      imp.propertyKey(jv.GroupBy),
+			CoverRelationKey:      imp.propertyKey(jv.CoverProperty),
+			EndRelationKey:        imp.propertyKey(jv.EndProperty),
 			HideIcon:              jv.HideIcon,
 			CardSize:              cardSizeNames.value(jv.CardSize),
 			CoverFit:              jv.CoverFit,
@@ -425,7 +425,7 @@ func (imp *importer) dataviewFromJSON(jb *jsonBlock) (*model.BlockContentDatavie
 		}
 		for _, jc := range jv.Columns {
 			view.Relations = append(view.Relations, &model.BlockContentDataviewRelation{
-				Key:       imp.opts.propertyKey(jc.Property),
+				Key:       imp.propertyKey(jc.Property),
 				IsVisible: !jc.Hidden,
 				Width:     jsonInt32(jc.Width),
 				Formula:   aggregationNames.value(jc.Aggregation),
@@ -471,7 +471,7 @@ func (imp *importer) impDvFormat(dv *model.BlockContentDataview, key string) mod
 }
 
 func (imp *importer) sortFromJSON(js jsonSort, dv *model.BlockContentDataview) *model.BlockContentDataviewSort {
-	key := imp.opts.propertyKey(js.Property)
+	key := imp.propertyKey(js.Property)
 	s := &model.BlockContentDataviewSort{
 		RelationKey:    key,
 		Type:           sortDirectionNames.value(js.Direction),
@@ -500,7 +500,7 @@ func (imp *importer) filterFromJSON(jf jsonFilter, dv *model.BlockContentDatavie
 		}
 		return f
 	}
-	key := imp.opts.propertyKey(jf.Property)
+	key := imp.propertyKey(jf.Property)
 	f := &model.BlockContentDataviewFilter{
 		Id:               jf.Id,
 		RelationKey:      key,
@@ -560,7 +560,7 @@ func (imp *importer) optionId(key, name string) string {
 
 func (e *exporter) viewColumnToJSON(r *model.BlockContentDataviewRelation) *omap {
 	cm := &omap{}
-	cm.set("property", e.opts.propertySlug(r.Key))
+	cm.set("property", e.propertySlug(r.Key))
 	// hidden is the inverse of proto isVisible; omitted means visible (§6.2)
 	cm.setNonEmpty("hidden", !r.IsVisible)
 	cm.setNonEmpty("width", r.Width)

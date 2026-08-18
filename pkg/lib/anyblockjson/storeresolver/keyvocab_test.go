@@ -365,6 +365,25 @@ func TestHiddenHoldersDoNotOwnSlugs(t *testing.T) {
 			"and the other holder does not emit a spelling the hidden stored key answers to")
 	})
 
+	t.Run("a bundled key is not taken by a custom relation slugging onto it", func(t *testing.T) {
+		// the space holds only the custom relation, so its slug index is the
+		// only index with an answer for `priority`. The bundled key must still
+		// win: it is an address every reader knows. (This documents the rule;
+		// it does NOT reproduce the 12 re-pointed objects a 36 808-object
+		// sweep found, whose mechanism is still unexplained — see
+		// PREFREEZE_REVIEW §5.)
+		r := vocabFixture(t, relationRow("rel-custom", bsonPropKey, "priority"))
+
+		key, ok := r.PropertyKey("priority")
+
+		// the bundled table answers this one (chain step 3), so ok is true —
+		// what matters is WHICH key it binds
+		assert.True(t, ok)
+		assert.Equal(t, "priority", key, "the bundled key, not the custom holder that slugged onto it")
+		assert.Equal(t, bsonPropKey, r.PropertySlug(bsonPropKey),
+			"and the custom holder does not emit a spelling that resolves elsewhere")
+	})
+
 	t.Run("the type namespace follows the same rule", func(t *testing.T) {
 		// given
 		hidden := typeRow("type-hidden", "6a7663db61fab21cd4b9e107", "invoice")

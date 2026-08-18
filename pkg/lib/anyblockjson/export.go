@@ -123,6 +123,53 @@ type exporter struct {
 	// document, and any two of them colliding is a document Validate rejects.
 	idLabels map[string]string
 	idsUsed  map[string]struct{}
+
+	// propertyKeys is the §3 legend: the slug→stored-key entries this document
+	// must carry to be invertible by a reader that cannot ask the space.
+	propertyKeys map[string]string
+}
+
+// propertySlug renders a stored property key for output and records what the
+// document owes a reader who cannot ask the space (§3). A bundled key needs no
+// entry — the derived table ships with every reader — and a key spelled as
+// itself is its own address (chain step 1). Everything else is a slug only a
+// node could have produced, so the legend carries its inverse or the round
+// trip silently binds the term to a different relation.
+func (e *exporter) propertySlug(key string) string {
+	slug := e.opts.propertySlug(key)
+	e.recordPropertyKey(slug, key)
+	return slug
+}
+
+func (e *exporter) recordPropertyKey(slug, key string) {
+	if slug == "" || slug == key {
+		return
+	}
+	if back, ok := (BundledKeyVocabulary{}).PropertyKey(slug); ok && back == key {
+		return
+	}
+	if e.propertyKeys == nil {
+		e.propertyKeys = map[string]string{}
+	}
+	e.propertyKeys[slug] = key
+}
+
+// buildPropertyKeys renders the legend in key order, or nil when the document
+// needs none — which is every document a package-only reader wrote.
+func (e *exporter) buildPropertyKeys() *omap {
+	if len(e.propertyKeys) == 0 {
+		return nil
+	}
+	slugs := make([]string, 0, len(e.propertyKeys))
+	for slug := range e.propertyKeys {
+		slugs = append(slugs, slug)
+	}
+	sort.Strings(slugs)
+	m := &omap{}
+	for _, slug := range slugs {
+		m.set(slug, e.propertyKeys[slug])
+	}
+	return m
 }
 
 // seedIdLabels reserves the id each block will be written with, before any
@@ -276,9 +323,19 @@ func (e *exporter) buildDoc(sbType model.SmartBlockType) (*omap, error) {
 		doc.setNonEmpty("template_for", typeKeys[1])
 	}
 	doc.setNonEmpty("key", e.snapshot.Key)
-	doc.setNonEmpty("properties", e.buildProperties())
-	if tp := e.buildTypeProperties(); tp != nil {
-		doc.set("type_properties", tp) // present even when empty (§2a)
+	// every surface that spells a property key runs before the envelope is
+	// assembled, so the legend they populate lands in its canonical position
+	// rather than trailing the blocks that filled it
+	properties := e.buildProperties()
+	typeProperties := e.buildTypeProperties()
+	blocks, err := e.buildBlocks()
+	if err != nil {
+		return nil, err
+	}
+
+	doc.setNonEmpty("properties", properties)
+	if typeProperties != nil {
+		doc.set("type_properties", typeProperties) // present even when empty (§2a)
 	}
 
 	if len(e.objectRefs) > 0 {
@@ -295,10 +352,7 @@ func (e *exporter) buildDoc(sbType model.SmartBlockType) (*omap, error) {
 		doc.set("refs", refs)
 	}
 
-	blocks, err := e.buildBlocks()
-	if err != nil {
-		return nil, err
-	}
+	doc.setNonEmpty("property_keys", e.buildPropertyKeys())
 	doc.setNonEmpty("blocks", blocks)
 
 	items, store := e.buildStore()
@@ -441,6 +495,7 @@ func (e *exporter) buildProperties() *omap {
 			slug = k
 		}
 		spelled[slug] = true
+		e.recordPropertyKey(slug, k)
 		props = append(props, prop{slug: slug, key: k})
 	}
 	sort.Slice(props, func(i, j int) bool { return props[i].slug < props[j].slug })

@@ -33,10 +33,14 @@ type jsonDoc struct {
 	Properties  map[string]any      `json:"properties"`
 	TypeProps   *[]jsonTypeProperty `json:"type_properties"` // pointer: [] and absent differ (§2a)
 	Refs        map[string]string   `json:"refs"`
-	Blocks      []*jsonBlock        `json:"blocks"`
-	Items       []string            `json:"items"`
-	Store       map[string]any      `json:"store"`
-	Root        *jsonRootEscape     `json:"root"`
+	// PropertyKeys is the §3 slug→stored-key legend: what this document says
+	// its own key spellings mean, consulted before any vocabulary so a reader
+	// without the space still lands on the right relation.
+	PropertyKeys map[string]string `json:"property_keys"`
+	Blocks       []*jsonBlock      `json:"blocks"`
+	Items        []string          `json:"items"`
+	Store        map[string]any    `json:"store"`
+	Root         *jsonRootEscape   `json:"root"`
 }
 
 type jsonRootEscape struct {
@@ -188,6 +192,18 @@ func (imp *importer) genId() string {
 	return imp.claimId(uniqueLabel(mint(), imp.idTaken))
 }
 
+// propertyKey inverts a key slot: the document's own legend first (§3), then
+// the vocabulary in force. The legend wins because it is the only statement
+// made by the document itself — a vocabulary belongs to the reader, and two
+// readers disagreeing about a slug is exactly how a property ends up pointing
+// at a different relation than it was exported from.
+func (imp *importer) propertyKey(slug string) string {
+	if key, ok := imp.doc.PropertyKeys[slug]; ok && key != "" {
+		return key
+	}
+	return imp.opts.propertyKey(slug)
+}
+
 // resolveId applies the §9a total resolution rule: a refs key resolves to
 // its full id; anything else is a full id already.
 func (imp *importer) resolveId(s string) string {
@@ -263,7 +279,7 @@ func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBas
 			continue // lifted into the envelope; a stray copy must not leak
 		}
 		// the document spells slugs (§7.5a); the store binds stored keys
-		key := imp.opts.propertyKey(slug)
+		key := imp.propertyKey(slug)
 		if first, dup := boundBy[key]; dup {
 			return 0, nil, &ValidationError{Issues: []Issue{{
 				Path:    "/properties/" + slug,
@@ -683,7 +699,7 @@ func (imp *importer) blockFromJSON(jb *jsonBlock, forcedId string) ([]*model.Blo
 	case jb.Type == "table_of_contents":
 		b.Content = &model.BlockContentOfTableOfContents{TableOfContents: &model.BlockContentTableOfContents{}}
 	case jb.Type == "property":
-		b.Content = &model.BlockContentOfRelation{Relation: &model.BlockContentRelation{Key: imp.opts.propertyKey(jb.Key)}}
+		b.Content = &model.BlockContentOfRelation{Relation: &model.BlockContentRelation{Key: imp.propertyKey(jb.Key)}}
 	case jb.Type == "dataview":
 		dv, err := imp.dataviewFromJSON(jb)
 		if err != nil {

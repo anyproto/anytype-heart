@@ -155,7 +155,7 @@ func (e *exporter) buildTypeProperties() []any {
 				continue
 			}
 			m := &omap{}
-			m.set("key", e.opts.propertySlug(string(def.Key)))
+			m.set("key", e.propertySlug(string(def.Key)))
 			m.setNonEmpty("name", def.Name)
 			m.setNonEmpty("format", formatName(def.Format))
 			m.setNonEmpty("options", optionsToAny(def.Options))
@@ -267,7 +267,7 @@ func (imp *importer) applyTypeProperties(details *types.Struct) {
 	}
 	lists := map[string][]*types.Value{}
 	for _, tp := range *imp.doc.TypeProps {
-		key := imp.opts.propertyKey(tp.Key)
+		key := imp.propertyKey(tp.Key)
 		def := PropertyDefinition{
 			Key:         domain.RelationKey(key),
 			Name:        tp.Name,

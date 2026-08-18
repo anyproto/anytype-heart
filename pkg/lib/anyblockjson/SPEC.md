@@ -1,6 +1,6 @@
 # AnyBlock JSON — format specification
 
-Status: **draft v0.8** · Format version: **1** · Package: `pkg/lib/anyblockjson`
+Status: **draft v0.9** · Format version: **1** · Package: `pkg/lib/anyblockjson`
 
 A human- and agent-readable JSON serialization of Anytype objects (the "anyblock"
 model), designed for export, import, and generation by external tools and LLM
@@ -14,6 +14,16 @@ strings; the vocabulary follows Notion's API and Anytype's public REST API
 (`core/api`) wherever an established term exists — the format should be
 readable, and mostly writable, by someone who has never seen Anytype
 internals.
+
+Changes in v0.9: the key vocabulary of §3 arrives from the API v2 branch —
+types and properties are named by their snake_case api slug, inverted through a
+table in both directions, never a case transform — and with it
+**`property_keys`**, the envelope legend that makes the slug layer invertible
+from the document alone (§3). Without it, a slug derived from a space's stored
+key reads back as a *different* relation in any reader that cannot ask that
+space: a 36 808-object sweep found 12 objects re-pointed exactly that way, and
+the reader-side half of the same defect — the accept side bound a spelling the
+emit side refuses to write — is fixed with it.
 
 Changes in v0.8: **the format's own vocabulary is `snake_case`** — 100
 identifiers, every block type, field name, enum value and inline tag attribute
@@ -198,6 +208,7 @@ Fields, in **canonical order** (§4):
 | `properties` | object | no | The object's properties, §3. |
 | `type_properties` | array | no | Only for `kind: "object_type"` documents: the type's property definitions, §2a. Present on any other kind → validation error. |
 | `refs` | object | no | Short-id legend for compact documents (§9a): maps labels to full object ids. Placed before `blocks` so the legend precedes use when read linearly. |
+| `property_keys` | object | no | Legend: the stored property key each slug in this document names (§3). Written only for slugs the bundled table cannot invert, i.e. a space's own keys; a reader consults it **before** its own vocabulary. Absent from documents that use only bundled and verbatim keys, which is most of them. |
 | `blocks` | array | no | The document's blocks as a **flat pre-order array**; nesting via `indent` (§4). |
 | `items` | array | no | For collection objects: member object ids, in order (from the internal collection store key `objects`). Present on a non-collection document → validation error — enforced by the import *wiring* (collection-ness resolves against the space's types, not offline); the package's `Validate` checks structure only (implementation decision). |
 | `store` | object | no | Escape hatch: remaining internal store content as a free-form JSON object, with the `objects` key lifted into `items`. Output-only (§4a). (Named `store` — its internal name — to avoid colliding with the collection concept.) |
@@ -458,6 +469,32 @@ A key the vocabulary does not know passes through verbatim in both
 directions: an exact stored key is always an address (the resolution chain's
 first step), which is what keeps a package-only reader — with no space to
 ask — lossless on custom keys.
+
+**The document carries its own inverse: `property_keys`.** The slug layer is a
+compaction of key *spelling*, and like every compaction in this format it has
+to be invertible from the document alone — the rule §9a already states for
+object ids. A slug derived from a space's stored `apiObjectKey` is not:
+`6a32d485…` spelled `priority` reads back as the key `priority` in any reader
+that cannot ask that space, which is a different relation, silently. So export
+writes the entry:
+
+```json
+"property_keys": { "priority": "6a32d4856761631534b22f85" }
+```
+
+- **Emitted only where the bundled table cannot invert.** A bundled key needs
+  no entry (`due_date` → `dueDate` ships with every reader), and a key spelled
+  as itself is its own address (chain step 1). The legend is therefore empty
+  for documents a package-only reader wrote, and costs one line per space-slugged
+  key otherwise.
+- **Consulted first, before any vocabulary.** The legend is the only statement
+  the *document* makes about its own spellings; a vocabulary belongs to the
+  reader, and two readers disagreeing about a slug is exactly how a property
+  ends up naming a different relation than it was exported from.
+- **A stored key keeps its own term.** When a slug would collide with a key
+  another property on the same object is stored under, the later holder is
+  spelled with its stored key instead — the term belongs to the entity that
+  answers to it, and the legend never rebinds a spelling out from under one.
 
 **What is not a key slot** (ADDRESSING §7.5a-4). The vocabulary applies where
 a document NAMES a type or property, and nowhere else. Envelope and DTO field

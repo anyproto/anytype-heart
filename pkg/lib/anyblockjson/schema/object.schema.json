@@ -30,6 +30,12 @@
       "propertyNames": { "pattern": "^[A-Za-z0-9_-]{1,64}$" },
       "additionalProperties": { "type": "string", "minLength": 1 }
     },
+    "property_keys": {
+      "type": "object",
+      "description": "Legend: the stored property key each slug in this document names (§3). Present only for keys the bundled table cannot invert; a reader consults it before its own vocabulary.",
+      "propertyNames": { "pattern": "^[^\u0000-\u001f\u007f]+$", "maxLength": 128 },
+      "additionalProperties": { "type": "string", "minLength": 1 }
+    },
     "blocks": { "type": "array", "items": { "$ref": "#/$defs/block" } },
     "items": { "type": "array", "items": { "type": "string" } },
     "store": { "type": "object", "x-output-only": true },
