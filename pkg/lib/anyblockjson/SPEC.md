@@ -1,6 +1,6 @@
 # AnyBlock JSON — format specification
 
-Status: **draft v0.16** · Format version: **1** · Package: `pkg/lib/anyblockjson`
+Status: **draft v0.17** · Format version: **1** · Package: `pkg/lib/anyblockjson`
 
 A human- and agent-readable JSON serialization of Anytype objects (the "anyblock"
 model), designed for export, import, and generation by external tools and LLM
@@ -14,6 +14,36 @@ strings; the vocabulary follows Notion's API and Anytype's public REST API
 (`core/api`) wherever an established term exists — the format should be
 readable, and mostly writable, by someone who has never seen Anytype
 internals.
+
+Changes in v0.17: **the legend answers to the reader that actually reads
+the document, and three things that were said but not done** (§3, §6.2,
+§11.1). (1) A term owes a legend entry when the **vocabulary in force** would
+bind it to a stored key other than the one being written, not only when the
+bundled table would. Export asked the bundled table alone, so a conforming
+vocabulary — the one a space grows by deleting a type or a property, which
+vacates the slug namespace while the objects keep the stored key — re-pointed
+an object's type in silence, and the property namespace made `Marshal` emit a
+document its own `Unmarshal` refuses (two spellings addressing one property,
+an I1 break). The entry is authoritative for every reader, which is what a
+legend is for. (2) `KeyVocabulary` gains the third precondition
+`storeresolver` has always implemented and the interface never stated: a live
+stored key outranks the vocabulary's own slug binding (§11.1). (3) §3 promises
+every dropped object type is reported; the **positional** drop — a keyed
+entry past the one type the envelope models — was silent, so a user's second
+type left the archive with nothing said. (4) The counting-preset rule reads
+the **operand**, not the member: `"value": null`, a string or a list all
+count as 0 days, which is the trap the message describes, and the day count
+carries the compact grammar's `[0, 36500]` bound. Export writes the count the
+engine reads for a stored operand that is not one, with a warning, so the
+tightened rule cannot make an object unexportable. (5) The §2a array's
+declared **format** now resolves the same way through both doors: the
+PATCH-types channel read `text` literally while the document path resolved it
+per key (§3), so the bundled `name` property was created as `longtext`
+through one endpoint and stayed `shorttext` through the other. (6) Two
+warnings addressed the wrong place (§13): a dropped `type_properties` entry
+pointed at the index the next surviving entry takes, and the template-spelling
+guard said `/type` wherever it fired, including from
+`/type_properties/N/object_types/M`, a field the pointer does not even name.
 
 Changes in v0.16: **the date-preset rules read the same gate the query
 engine does, and one fault stays one issue** (§6.2, §12). (1) A preset is
@@ -686,20 +716,44 @@ writes the entry:
 "property_keys": { "priority": "6a32d4856761631534b22f85" }
 ```
 
-- **Emitted only where the shipped table gives the wrong answer, or none.**
-  A bundled key spelled as its derived slug needs no entry (`due_date` →
-  `dueDate` ships with every reader), and a key spelled as itself where the
-  bundled table is silent is its own address (chain step 4). Two spellings
-  owe an entry: a slug the bundled table cannot invert (`priority` →
-  `6a32d485…`), and — the **identity entry** — a stored key written verbatim
-  whose spelling the bundled table binds to a *different* key. A space whose
-  relation is keyed `due_date`, beside bundled `dueDate`, exports
-  `"property_keys": {"due_date": "due_date"}`: the document's only way to
+- **Emitted only where a reader's own chain would give the wrong answer, or
+  none.** A bundled key spelled as its derived slug needs no entry
+  (`due_date` → `dueDate` ships with every reader), and a key spelled as
+  itself where nothing binds the spelling elsewhere is its own address (chain
+  step 4). Three spellings owe an entry: a slug the bundled table cannot
+  invert (`priority` → `6a32d485…`), and — the **identity entry**, in two
+  shapes — a stored key written verbatim whose spelling *something a reader
+  runs* binds to a *different* key.
+
+  The first shape is the bundled table: a space whose relation is keyed
+  `due_date`, beside bundled `dueDate`, exports
+  `"property_keys": {"due_date": "due_date"}` — the document's only way to
   tell a reader with no store that the term is a stored key (chain step 2).
   Without it, the value silently moved onto the bundled twin in every
-  package-only reader. The legend is therefore empty for documents a
-  package-only reader wrote, and costs one line per space-slugged or shadow
-  key otherwise.
+  package-only reader.
+
+  The second shape is **the vocabulary in force**, and export owes the entry
+  there too. A vocabulary is consulted *before* the bundled table (chain step
+  2 is a node-backed reader's store), so a term the bundled table inverts
+  correctly can still be bound elsewhere by the reader most likely to read
+  the document back: the writer's own space. This is not a hypothetical about
+  hand-written vocabularies — it is what a **delete** produces. A UI-deleted
+  type or property vacates the slug namespace while every object it ever
+  named keeps its stored key, and the freed spelling becomes another live
+  entity's api key: `initiative` stops being a live stored key and starts
+  being the slug of some other type, so `"type": "initiative"` written with
+  no entry came back as that other type, silently. The property namespace
+  produces the loud half of the same fault — the two spellings then address
+  one property and the document's own Unmarshal refuses it (§11, I1). Export
+  therefore asks both tables, and writes `{"initiative": "initiative"}` when
+  either would answer something other than the key being written. The entry
+  is authoritative for *every* reader, which is the point of a legend; what
+  it cannot cover is a reader whose vocabulary disagrees with the bundled
+  table in a way the writer never saw, and that is the `KeyVocabulary`
+  precondition (§11.1), not a legend rule.
+
+  The legend is therefore empty for documents a package-only reader wrote,
+  and costs one line per space-slugged, shadow, or vacated key otherwise.
 - **Consulted first, before any vocabulary.** The legend is the only statement
   the *document* makes about its own spellings; a vocabulary belongs to the
   reader, and two readers disagreeing about a slug is exactly how a property
@@ -866,8 +920,13 @@ type key is — and one rule above that deliberately does **not** carry over.
   behind it move up. Written in place it was contagious: it silenced the
   slot it landed in, and a silent `type` slot makes `template_for`
   inexpressible, so `["ot-", "ot-task"]` exported as no types at all and the
-  good entry died beside the bad one. Every drop is reported through
-  `OnWarning`, as an unwritable property key is. And only the slots actually
+  good entry died beside the bad one. **Both** kinds of drop are reported
+  through `OnWarning`, as an unwritable property key is — the keyless entry,
+  and the keyed entry the positional truncation leaves nowhere to go, each
+  naming the position it stood in among the snapshot's object types. The
+  truncation is the format's shape rather than a fault, but it is still a
+  type the caller holds and the document does not, and nothing in the
+  document says so. And only the slots actually
   written claim a term, so the legend names only types the document
   mentions: claiming a term is what records the legend entry it owes, and
   slugging an entry no slot writes published a space's slug→key mapping in a
@@ -1569,10 +1628,21 @@ a group exists only for `or` or nesting):
   (`pkg/lib/database/quickoptions.go`), so they are the one case where a
   preset and a `value` legitimately coexist, and **where the preset applies**
   — both halves of the gate above — a leaf carrying such a preset without a
-  `value` is a validation error: the count would default to `0`, silently
-  meaning today. Because the count is meaningful data rather than an absent
-  field, export writes it even when it is `0`, overriding the usual
-  empty-elision (§4). Anywhere the preset does not apply the rule does not
+  **day count** in `value` is a validation error: the count would default to
+  `0`, silently meaning today. The rule reads the operand, not the member:
+  `getDateRange` reads it with `domain.Value.Int64`, which answers `0` for a
+  `null`, a string, a list — for every kind that is not a number — so those
+  are the same silent "today" a missing member is, and a presence-only rule
+  refused one and admitted the others. A day count is a **whole number in
+  `[0, 36500]`**, the bound the compact grammar already puts on `daysAgo(n)`
+  (§6.2.1): two forms of one filter language admit the same filters. Because
+  the count is meaningful data rather than an absent field, export writes it
+  even when it is `0`, overriding the usual empty-elision (§4) — and writes
+  the count the query engine reads out of a stored operand that is not one
+  (`0` for a non-number, the truncation for a fraction, the bound for
+  anything past it), with an `OnWarning`, because the slot has one written
+  form and a document carrying the junk verbatim is one this package's own
+  `Validate` refuses (§11, I1). Anywhere the preset does not apply the rule does not
   either, because the count is never read: nothing is silently anything. That
   scope is not a nicety, on either half. The condition half is where the rule
   met the one above it, since `value` is *dropped* on
@@ -2131,19 +2201,28 @@ documents; duplicate table column/row ids are likewise dropped
 
 **What "equivalent resolvers" requires.** Both guarantees below are stated
 for export and import wired with equivalent resolvers, and for the key
-vocabulary that means two things, the second of which does not follow from
-the first (`KeyVocabulary`, §13). One: whatever `…Slug` emits, `…Key` must
+vocabulary that means three things, none of which follows from the one
+before it (`KeyVocabulary`, §13). One: whatever `…Slug` emits, `…Key` must
 invert. Two: **no answer, in either direction, may bind a spelling that the
-bundled table binds to a different key.** The second is what the legend rests
-on — a document owes an entry only for a spelling the reader's own chain
-cannot invert, and that chain is taken to be the bundled table, which ships
-with every reader — so a stored key the table already inverts is written with
-no entry at all, and a reader whose vocabulary answers differently for that
-spelling silently resolves it elsewhere. A vocabulary can satisfy the first
-rule completely and still turn a template for the bundled `task` type into a
-template for an unrelated custom type. The vocabulary this system ships
-(`storeresolver`) refuses such an answer in both directions; the rule is
-stated because `Options.Keys` accepts an implementation from anyone.
+bundled table binds to a different key.** Three: **a live stored key
+outranks the vocabulary's own slug binding** — chain step 2 as an obligation
+on the implementation, so a term that is some live entity's stored key
+answers "not a slug", and no slug is emitted that a live stored key answers
+to. Without the third, a document naming a relation by its stored key lands
+on whichever other relation minted that string as its api key.
+
+The second is what the legend can only partly rest on. A document owes an
+entry for every spelling a reader's chain would bind elsewhere, and export
+asks the two chains it can see: the bundled table, which ships with every
+reader, and the vocabulary it is running under (§3). A third reader's
+vocabulary is not one of them — so a stored key both visible chains invert is
+written with no entry, and a reader whose vocabulary disagrees with the
+bundled table for that spelling silently resolves it elsewhere. A vocabulary
+can satisfy the first rule completely and still turn a template for the
+bundled `task` type into a template for an unrelated custom type. The
+vocabulary this system ships (`storeresolver`) refuses such an answer in both
+directions; the rule is stated because `Options.Keys` accepts an
+implementation from anyone.
 
 1. `Import(Export(S)) ≡ N(S)` — state-level equality on the snapshot after
    normalization.
