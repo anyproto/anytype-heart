@@ -139,6 +139,18 @@ func hostileSnapshot(n int) (model.SmartBlockType, *model.SmartBlockSnapshotBase
 					Filters: []*model.BlockContentDataviewFilter{{
 						RelationKey: "dueDate", Condition: cond, QuickOption: preset,
 						Format: model.RelationFormat_date,
+					}, {
+						// a stored relation key that cannot be a property
+						// SPELLING, named by a BLOCK slot. /properties drops
+						// such a key before anything slugs it, and so does the
+						// census, so the stored-key half of writableSlug's
+						// guard — the one that keeps an unwritable key out of a
+						// legend VALUE — was reachable from block slots alone,
+						// and the corpus named none. Appended after the picks
+						// so it consumes no randomness and the corpus above is
+						// unchanged.
+						RelationKey: "a\nb", Condition: model.BlockContentDataviewFilter_Equal,
+						Value: str("x"),
 					}}}},
 			}}})
 	}
@@ -351,6 +363,12 @@ func (hostileVocab) PropertySlug(key string) string {
 		return "due\ndate" // a control character is not a spelling
 	case "artist":
 		return "" // a vocabulary with no answer at all
+	case "a\nb":
+		// a writable spelling for a stored key that is not writable — the
+		// mirror of the over-long slug above, and the shape that makes the
+		// guard's stored-key half load-bearing: the legend entry this
+		// spelling owes would carry a control character in its VALUE.
+		return "ab"
 	case "6a32d4856761631534b22f85":
 		// a space-minted slug shadowing a bundled internal key's spelling —
 		// which is ALSO a stored key on the hostile details, so the term
