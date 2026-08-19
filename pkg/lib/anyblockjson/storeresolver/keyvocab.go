@@ -138,10 +138,12 @@ func (m *keyMaps) key(slug string) (string, bool) {
 	// refuses to SPELL this holder with a slug the bundled table resolves
 	// elsewhere; without the same guard here, accept BINDS that spelling to
 	// this holder — so a document naming the bundled key `priority` lands on
-	// whichever custom relation claimed `priority` as its api key. A
-	// 36 808-object sweep found 12 objects re-pointed exactly that way: the
-	// index is built from every holder's stored slug, and only the emit side
-	// was filtering it.
+	// whichever custom relation claimed `priority` as its api key: the
+	// index is built from every holder's stored slug, and only the emit
+	// side was filtering it. That is the mechanism behind the 12 re-pointed
+	// objects a 36 808-object sweep found, established afterwards by the
+	// unit fixture in keyvocab_test.go rather than by re-measurement —
+	// those 12 objects have not been swept again since the guard landed.
 	if m.bundledKey != nil {
 		if other, ok := m.bundledKey(slug); ok && other != k {
 			return "", false

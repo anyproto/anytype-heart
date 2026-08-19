@@ -5,8 +5,10 @@ package anyblockjson
 // object ids). It was not: a node-backed vocabulary slugs a custom key
 // `6a32d485…` to `priority`, and a reader without that space reads `priority`
 // back as the key `priority` — a different relation. A 36 808-object sweep
-// caught it as 12 objects whose dataview silently changed which relation it
-// pointed at.
+// found 12 objects whose dataview named a relation this way; that this layer
+// was the mechanism behind them was established afterwards, by these tests
+// and storeresolver/keyvocab_test.go — those 12 objects have not been swept
+// again since the fix landed.
 
 import (
 	"encoding/json"
