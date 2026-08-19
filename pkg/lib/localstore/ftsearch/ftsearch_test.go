@@ -462,6 +462,40 @@ func TestSearchChatScopes(t *testing.T) {
 		assert.ElementsMatch(t, []string{"chat1/m/msg1", "chat2/m/msg3", "chat3/m/msg4"}, collectIds(results))
 	})
 
+	t.Run("marker matches whole m path segments only, never letters inside ids", func(t *testing.T) {
+		tmpDir, _ := os.MkdirTemp("", "")
+		fx := newFixture(tmpDir, t)
+		defer func() { _ = fx.ft.Close(nil) }()
+
+		// "m" letters embedded in id tokens must not match the marker term:
+		// the id tokenizer splits on non-alphanumerics, so every segment is one
+		// token and term queries never match substrings
+		require.NoError(t, fx.ft.Index(SearchDoc{
+			Id:      domain.NewObjectPathWithBlock("form", "mango").String(),
+			SpaceId: "space1",
+			Text:    "needle in an object block",
+		}))
+		// a message doc whose chat/message ids contain plenty of m letters
+		require.NoError(t, fx.ft.Index(SearchDoc{
+			Id:        domain.NewObjectPathWithMessage("bafymchatm", "msgmmm1").String(),
+			SpaceId:   "space1",
+			Text:      "needle in a chat message",
+			MessageId: "msgmmm1",
+		}))
+		// a lone "m" path segment on a non-message doc is the known false
+		// positive: returned at this layer, dropped by the caller's
+		// path.HasMessage() filter
+		require.NoError(t, fx.ft.Index(SearchDoc{
+			Id:      domain.NewObjectPathWithBlock("obj1", "m").String(),
+			SpaceId: "space1",
+			Text:    "needle in a block named m",
+		}))
+
+		results, err := fx.ft.SearchChat("space1", "", "needle", 0)
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []string{"bafymchatm/m/msgmmm1", "obj1/b/m"}, collectIds(results))
+	})
+
 	t.Run("messages do not compete with object docs for the candidate budget", func(t *testing.T) {
 		tmpDir, _ := os.MkdirTemp("", "")
 		fx := newFixture(tmpDir, t)
