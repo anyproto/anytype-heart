@@ -1,6 +1,6 @@
 # AnyBlock JSON — format specification
 
-Status: **draft v0.11** · Format version: **1** · Package: `pkg/lib/anyblockjson`
+Status: **draft v0.12** · Format version: **1** · Package: `pkg/lib/anyblockjson`
 
 A human- and agent-readable JSON serialization of Anytype objects (the "anyblock"
 model), designed for export, import, and generation by external tools and LLM
@@ -14,6 +14,24 @@ strings; the vocabulary follows Notion's API and Anytype's public REST API
 (`core/api`) wherever an established term exists — the format should be
 readable, and mostly writable, by someone who has never seen Anytype
 internals.
+
+Changes in v0.12: **verbatim-first, made implementable offline** (§3, §12).
+Chain step 2 — an exact stored key is always its own address, and the
+bundled table applies only to terms that are not stored keys — was
+implemented by the node-backed resolver but merely narrated to the package
+half, which resolved table-first: `{"properties": {"due_date": …}}` meant
+one relation to a node-backed reader and a different one to a package-only
+reader, silently. §3 now states the resolution chain **once**, and export
+carries the mechanism a storeless reader needs to run it: an **identity
+entry** (`{"due_date": "due_date"}`) wherever a stored key's verbatim
+spelling would otherwise fall through to the bundled table and land on a
+different key — which also restores §11 for a stored key spelled like an
+internal slug (`unique_key`), whose export used to fail its own validation.
+Export claims every spelling through one document-wide **term ledger** (a
+stored key always keeps its own term; a slug goes to its first claimant), so
+a block slot can no longer record a legend entry that rebinds a term
+`/properties` owns — which moved that property's value onto a different
+relation — nor collapse two keys into one slug.
 
 Changes in v0.11: three rules that two surfaces disagreed about, each
 found as `Marshal` emitting a document its own `Validate` rejects. **A table
@@ -505,10 +523,27 @@ space. `mediaArtistURL` → `media_artist_url` → `ToLowerCamel` would yield
 `mediaArtistUrl`, and `_score` does not round-trip at all — string inversion
 cannot be the reverse mechanism, and the package's tests pin both cases.
 
-A key the vocabulary does not know passes through verbatim in both
-directions: an exact stored key is always an address (the resolution chain's
-first step), which is what keeps a package-only reader — with no space to
-ask — lossless on custom keys.
+**Resolution — one rule, stated once.** Every key slot lands its term on a
+stored key through the same chain, first answer wins:
+
+1. **The document's own legend** (`property_keys`, identity entries
+   included) — the only statement the *document* makes about its spellings.
+2. **An exact stored key — verbatim-first.** A term that names a stored key
+   means that key, always; the bundled slug table applies only to terms that
+   are *not* stored keys. A node-backed reader answers this step from its
+   store (`storeresolver`); a package-only reader has no stored-key set and
+   knows a term is a stored key only when the legend says so — which is why
+   export owes the identity entry below wherever this step and the next
+   would disagree.
+3. **The bundled derived table**, which ships with every reader.
+4. **Verbatim** — the term *is* the stored key, which is what keeps a
+   package-only reader — with no space to ask — lossless on custom keys.
+
+A conforming document resolves identically in every conforming reader:
+steps 1, 3 and 4 need nothing but the document and the shipped table, and
+wherever step 2 would answer differently than step 3, the document carries
+the identity entry that moves that answer into step 1. Every other
+statement of resolution order in this document is shorthand for this chain.
 
 **The document carries its own inverse: `property_keys`.** The slug layer is a
 compaction of key *spelling*, and like every compaction in this format it has
@@ -522,10 +557,19 @@ writes the entry:
 "property_keys": { "priority": "6a32d4856761631534b22f85" }
 ```
 
-- **Emitted only where the bundled table cannot invert.** A bundled key needs
-  no entry (`due_date` → `dueDate` ships with every reader), and a key spelled
-  as itself is its own address (chain step 1). The legend is therefore empty
-  for documents a package-only reader wrote, and costs one line per space-slugged
+- **Emitted only where the shipped table gives the wrong answer, or none.**
+  A bundled key spelled as its derived slug needs no entry (`due_date` →
+  `dueDate` ships with every reader), and a key spelled as itself where the
+  bundled table is silent is its own address (chain step 4). Two spellings
+  owe an entry: a slug the bundled table cannot invert (`priority` →
+  `6a32d485…`), and — the **identity entry** — a stored key written verbatim
+  whose spelling the bundled table binds to a *different* key. A space whose
+  relation is keyed `due_date`, beside bundled `dueDate`, exports
+  `"property_keys": {"due_date": "due_date"}`: the document's only way to
+  tell a reader with no store that the term is a stored key (chain step 2).
+  Without it, the value silently moved onto the bundled twin in every
+  package-only reader. The legend is therefore empty for documents a
+  package-only reader wrote, and costs one line per space-slugged or shadow
   key otherwise.
 - **Consulted first, before any vocabulary.** The legend is the only statement
   the *document* makes about its own spellings; a vocabulary belongs to the
@@ -540,10 +584,17 @@ writes the entry:
   inverts only when some *other* slot in the same document happened to record
   it, which is luck rather than a guarantee; a slot that reads without the
   legend never inverts at all, even when the entry is right there.
-- **A stored key keeps its own term.** When a slug would collide with a key
-  another property on the same object is stored under, the later holder is
-  spelled with its stored key instead — the term belongs to the entity that
-  answers to it, and the legend never rebinds a spelling out from under one.
+- **One term, one key — document-wide.** Export claims every spelling
+  through a single term ledger, exactly as ids go through one id domain
+  (§4): a stored key the document names *anywhere* always keeps its own term
+  (verbatim-first — no other key's slug may take it), a slug goes to its
+  first claimant, and a later key whose slug is already claimed is spelled
+  with its stored key instead, which is always its own address. The
+  discipline covers every key slot, not just `/properties` — a `property`
+  block whose slug collided with a `/properties` spelling used to record a
+  legend entry that rebound the term, so that property's value landed on a
+  different relation, silently; and two blocks sharing one slug collapsed
+  into naming one key.
 - **A legend value is a stored key, and obeys the writable-key rule.**
   Non-empty, no control characters, at most 128 characters — the same shape
   rule property names carry, enforced by the schema. Export only ever
@@ -710,21 +761,21 @@ them.)
 
 **Admission runs on the resolved stored key, not on the raw spelling.** The
 document spells slugs, so a reader first lands each `properties` key on its
-stored key — the document's own legend, then the bundled table, then the
-spelling verbatim (the §3 chain) — and *then* applies the deny rule, the
-layout-name check and the format-shape warning to the result. Checked
-against the raw spelling instead, all three were dead for exactly the
-documents this format produces: `unique_key` walked past the rule that
+stored key through the §3 resolution chain, and *then* applies the deny
+rule, the layout-name check and the format-shape warning to the result.
+Checked against the raw spelling instead, all three were dead for exactly
+the documents this format produces: `unique_key` walked past the rule that
 `uniqueKey` tripped, and a `property_keys` entry could rebind any harmless
 spelling onto any internal key — including `id` itself, which overwrote the
-envelope id from inside `properties`. `Validate` resolves with the only
-vocabulary it has (legend, bundled table, verbatim — it takes no resolver,
-§13); a reader whose vocabulary resolves *further* — a node-backed caller
-whose space maps a slug to a stored key the bundled table never knew — must
-re-run admission on **its** final resolved key, which import does at the
-seam where details are written (`importer.build`). The two agree exactly
-whenever no wider vocabulary is in force, which is what keeps Validate and
-Unmarshal accepting the same documents (§12).
+envelope id from inside `properties`. `Validate` resolves with the chain
+steps it has — legend, bundled table, verbatim; it holds no store, so chain
+step 2 reaches it only through the identity entries export owes, and it
+takes no resolver (§13). A reader whose vocabulary resolves *further* — a
+node-backed caller whose space maps a slug to a stored key the bundled
+table never knew — must re-run admission on **its** final resolved key,
+which import does at the seam where details are written (`importer.build`).
+The two agree exactly whenever no wider vocabulary is in force, which is
+what keeps Validate and Unmarshal accepting the same documents (§12).
 
 **A property key has to be writable.** Non-empty, no control characters, at
 most 128 characters (`propertyNames` in the schema, restated in the reader so

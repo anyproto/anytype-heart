@@ -127,18 +127,126 @@ type exporter struct {
 	// propertyKeys is the §3 legend: the slug→stored-key entries this document
 	// must carry to be invertible by a reader that cannot ask the space.
 	propertyKeys map[string]string
+
+	// termOwner / termByKey / namedKeys are the §3 term ledger — the property
+	// keys' analogue of idLabels/idsUsed: one claim domain for every key slot,
+	// because the legend that inverts the terms is one document-wide map.
+	termOwner map[string]string // term -> the stored key it denotes
+	termByKey map[string]string // stored key -> the term written for it
+	namedKeys map[string]bool   // census: every stored key any slot may name
 }
 
 // propertySlug renders a stored property key for output and records what the
-// document owes a reader who cannot ask the space (§3). A bundled key needs no
-// entry — the derived table ships with every reader — and a key spelled as
-// itself is its own address (chain step 1). Everything else is a slug only a
-// node could have produced, so the legend carries its inverse or the round
-// trip silently binds the term to a different relation.
+// document owes a reader who cannot ask the space (§3). It is the term
+// ledger's claim step, and the ONLY way a key slot may spell a key: a stored
+// key always keeps its own term (§3 verbatim-first — the census reserved it),
+// a slug goes to its first claimant, and a later key whose slug is already
+// claimed — by an earlier holder or by a stored key the document names —
+// falls back to its stored key, which is always its own address. The answer
+// is remembered, so one key spells the same way in every slot; without the
+// ledger, a block slot's blind recordPropertyKey could rebind a term that
+// /properties already owns, silently moving that property's value onto a
+// different relation.
 func (e *exporter) propertySlug(key string) string {
-	slug := e.writableSlug(key)
-	e.recordPropertyKey(slug, key)
-	return slug
+	if key == "" {
+		return key
+	}
+	if e.termOwner == nil {
+		e.seedTermLedger()
+	}
+	if term, done := e.termByKey[key]; done {
+		return term
+	}
+	term := e.writableSlug(key)
+	if term != key {
+		if _, claimed := e.termOwner[term]; claimed || e.namedKeys[term] {
+			term = key
+		}
+	}
+	e.termOwner[term] = key
+	e.termByKey[key] = term
+	e.recordPropertyKey(term, key)
+	return term
+}
+
+// seedTermLedger runs the property-key census: every stored key any slot of
+// this document may name. Verbatim-first (§3) makes each of those keys its
+// own address, so no OTHER key's slug may take one as a spelling — the same
+// avoid-set discipline seedIdLabels applies to ids. The walk mirrors the emit
+// sites (buildProperties, buildTypeProperties, blockToJSON, dataviewToJSON);
+// a key from a block the emit later drops only over-reserves, which degrades
+// somebody's slug to their stored key — always correct, merely less compact.
+func (e *exporter) seedTermLedger() {
+	e.termOwner = map[string]string{}
+	e.termByKey = map[string]string{}
+	e.namedKeys = map[string]bool{}
+	name := func(key string) {
+		if key != "" {
+			e.namedKeys[key] = true
+		}
+	}
+	if e.snapshot == nil {
+		return
+	}
+	if e.snapshot.Details != nil {
+		stripped := strippedDetailKeys()
+		lifted := e.typePropDetailKeys()
+		for k := range e.snapshot.Details.Fields {
+			if !stripped[k] && !lifted[k] && isWritablePropertyKey(k) {
+				name(k)
+			}
+		}
+	}
+	if e.typePropsActive() {
+		for _, l := range recommendedListKeys {
+			for _, id := range valueStringList(e.detail(l.detailKey)) {
+				if def, ok := e.resolveTypeProperty(id); ok {
+					name(string(def.Key))
+				}
+			}
+		}
+	}
+	for _, b := range e.snapshot.Blocks {
+		if b == nil {
+			continue
+		}
+		switch c := b.Content.(type) {
+		case *model.BlockContentOfRelation:
+			name(orEmpty(c.Relation).Key)
+		case *model.BlockContentOfLink:
+			for _, k := range orEmpty(c.Link).Relations {
+				name(k)
+			}
+		case *model.BlockContentOfDataview:
+			dv := orEmpty(c.Dataview)
+			for _, rl := range dv.RelationLinks {
+				if rl != nil {
+					name(rl.Key)
+				}
+			}
+			for _, v := range dv.Views {
+				if v == nil {
+					continue
+				}
+				name(v.GroupRelationKey)
+				name(v.CoverRelationKey)
+				name(v.EndRelationKey)
+				for _, r := range v.Relations {
+					if r != nil {
+						name(r.Key)
+					}
+				}
+				for _, s := range v.Sorts {
+					if s != nil {
+						name(s.RelationKey)
+					}
+				}
+				for _, f := range flattenFilters(v.Filters) {
+					name(f.RelationKey)
+				}
+			}
+		}
+	}
 }
 
 // propertySlugs is the list form, and it lives here rather than on Options for
@@ -183,17 +291,30 @@ func (e *exporter) writableSlug(key string) string {
 	return slug
 }
 
-func (e *exporter) recordPropertyKey(slug, key string) {
-	if slug == "" || slug == key {
+// recordPropertyKey writes the legend entry a term owes, or nothing when the
+// reader's own chain already inverts it: a spelling the bundled table binds
+// to this very key needs no entry (the table ships with every reader), and a
+// key spelled as itself is its own address (§3 verbatim-first) — UNLESS the
+// bundled table would bind that spelling to a DIFFERENT key. That is the
+// shadow case ("due_date" the stored key, beside bundled dueDate): a
+// package-only reader has no stored-key set, so the identity entry
+// {"due_date": "due_date"} is the document's only way to say the term is a
+// stored key. Without it the value silently moved onto the bundled twin.
+func (e *exporter) recordPropertyKey(term, key string) {
+	if term == "" {
 		return
 	}
-	if back, ok := (BundledKeyVocabulary{}).PropertyKey(slug); ok && back == key {
+	if back, ok := (BundledKeyVocabulary{}).PropertyKey(term); ok {
+		if back == key {
+			return
+		}
+	} else if term == key {
 		return
 	}
 	if e.propertyKeys == nil {
 		e.propertyKeys = map[string]string{}
 	}
-	e.propertyKeys[slug] = key
+	e.propertyKeys[term] = key
 }
 
 // buildPropertyKeys renders the legend in key order, or nil when the document
@@ -635,32 +756,18 @@ func (e *exporter) buildProperties() *omap {
 	// is over the SPELLINGS, not the stored keys — the reader sorts what it
 	// sees. Values still resolve through the stored key.
 	//
-	// The collapse pass below runs over the STORED keys sorted, not over map
-	// order: which holder keeps a contested spelling must not depend on Go's
-	// map iteration, or the canonical form is not canonical and export∘import
+	// The claims below run over the STORED keys sorted, not over map order:
+	// which holder keeps a contested spelling must not depend on Go's map
+	// iteration, or the canonical form is not canonical and export∘import
 	// byte-stability is a coin flip on exactly the spaces that need it most.
+	// The collapse discipline itself — a spelling two stored keys agree on
+	// would merge into one JSON key and lose a value — lives in the term
+	// ledger (propertySlug), where every OTHER key slot claims through it too.
 	sort.Strings(keys)
-	stored := make(map[string]bool, len(keys))
-	for _, k := range keys {
-		stored[k] = true
-	}
 	type prop struct{ slug, key string }
 	props := make([]prop, 0, len(keys))
-	spelled := map[string]bool{}
 	for _, k := range keys {
-		slug := e.writableSlug(k)
-		// a spelling two stored keys agree on would collapse into one JSON key
-		// and lose a value. Two ways that happens in a space holding a
-		// pre-mint-check shadow: another holder already took the slug, or the
-		// slug IS another stored key on this very object (chain step 1 would
-		// bind it to that one on the way back). Either way the later holder
-		// keeps its honest stored key.
-		if slug != k && (spelled[slug] || stored[slug]) {
-			slug = k
-		}
-		spelled[slug] = true
-		e.recordPropertyKey(slug, k)
-		props = append(props, prop{slug: slug, key: k})
+		props = append(props, prop{slug: e.propertySlug(k), key: k})
 	}
 	sort.Slice(props, func(i, j int) bool { return props[i].slug < props[j].slug })
 	ordered := make([]prop, 0, len(props))
