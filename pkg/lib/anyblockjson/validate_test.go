@@ -3,6 +3,7 @@ package anyblockjson
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"sort"
 	"strconv"
 	"strings"
@@ -510,6 +511,30 @@ func TestValidate_KeySlotIssuesNameTheOffendingMember(t *testing.T) {
 	}
 }
 
+// propertyNamesSites lists every place in a schema document that constrains
+// property names, as JSON pointers. It descends through ARRAYS as well as
+// objects, because half of this schema's subschemas hang off array-valued
+// keywords — `allOf`, `anyOf`, `oneOf` (the block dispatch, the table cell,
+// the filter node) — and a walk that only follows map values would report a
+// clean sweep of a schema it had not finished reading.
+func propertyNamesSites(node any, at string) []string {
+	var sites []string
+	switch n := node.(type) {
+	case map[string]any:
+		if _, has := n["propertyNames"]; has {
+			sites = append(sites, at)
+		}
+		for _, k := range sortedMapKeys(n) {
+			sites = append(sites, propertyNamesSites(n[k], at+"/"+escapeJSONPointer(k))...)
+		}
+	case []any:
+		for i, e := range n {
+			sites = append(sites, propertyNamesSites(e, fmt.Sprintf("%s/%d", at, i))...)
+		}
+	}
+	return sites
+}
+
 // The restated rule has to cover every `propertyNames` the schema carries, or
 // a key slot loses its addressable message the moment one is added — the
 // schema's own verdict is still reported for anything this pass does not
@@ -518,21 +543,7 @@ func TestValidate_EveryPropertyNamesSiteHasAnAddressableMessage(t *testing.T) {
 	var doc any
 	require.NoError(t, json.Unmarshal(SchemaJSON(), &doc))
 
-	var sites []string
-	var walk func(node any, at string)
-	walk = func(node any, at string) {
-		m, ok := node.(map[string]any)
-		if !ok {
-			return
-		}
-		if _, has := m["propertyNames"]; has {
-			sites = append(sites, at)
-		}
-		for _, k := range sortedMapKeys(m) {
-			walk(m[k], at+"/"+escapeJSONPointer(k))
-		}
-	}
-	walk(doc, "")
+	sites := propertyNamesSites(doc, "")
 	sort.Strings(sites)
 
 	assert.Equal(t, []string{
@@ -541,6 +552,33 @@ func TestValidate_EveryPropertyNamesSiteHasAnAddressableMessage(t *testing.T) {
 		"/properties/refs",
 		"/properties/type_keys",
 	}, sites, "a new propertyNames site needs a case in propertyNameIssues")
+}
+
+// …and the sweep above is only a guarantee if the walk reaches everywhere a
+// site can be. Every site in the schema today is a plain map value, so the
+// array descent is unfalsifiable against the schema itself: this fixture is
+// what makes it fail when it stops working. The shapes are the ones the
+// schema already uses for its subschemas — a block arm under `allOf`, a table
+// cell arm under `anyOf`, a filter arm under `oneOf` — plus `prefixItems`,
+// which a tuple-shaped slot would use.
+func TestPropertyNamesSites_DescendsIntoArrayKeywords(t *testing.T) {
+	var doc any
+	require.NoError(t, json.Unmarshal([]byte(`{
+		"allOf": [{"then": {"properties": {"legend": {"propertyNames": {"maxLength": 8}}}}}],
+		"$defs": {
+			"cell": {"anyOf": [{"type": "string"}, {"propertyNames": {"maxLength": 8}}]},
+			"node": {"oneOf": [{"prefixItems": [{"propertyNames": {"maxLength": 8}}]}]}
+		}
+	}`), &doc))
+
+	sites := propertyNamesSites(doc, "")
+	sort.Strings(sites)
+
+	assert.Equal(t, []string{
+		"/$defs/cell/anyOf/1",
+		"/$defs/node/oneOf/0/prefixItems/0",
+		"/allOf/0/then/properties/legend",
+	}, sites)
 }
 
 // TestValidate_IndentErrorMessage: the V1 message is the agent-facing repair
