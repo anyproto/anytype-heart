@@ -9474,7 +9474,10 @@ message Rpc {
 
         message Search {
             message Request {
+                // empty spaceId means all spaces (chatId must also be empty then)
                 string spaceId = 1;
+                // empty chatId means all chats in spaceId; results carry chatId/spaceId per message.
+                // Note: ORDER_ID sort is only meaningful within a single chat
                 string chatId = 2;
                 repeated anytype.model.Search.Message.Sort sorts = 3;
                 string fullText = 4;

@@ -11756,8 +11756,8 @@ Get marks list in the selected range in text block.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| spaceId | [string](#string) |  |  |
-| chatId | [string](#string) |  |  |
+| spaceId | [string](#string) |  | empty spaceId means all spaces (chatId must also be empty then) |
+| chatId | [string](#string) |  | empty chatId means all chats in spaceId; results carry chatId/spaceId per message. Note: ORDER_ID sort is only meaningful within a single chat |
 | sorts | [model.Search.Message.Sort](#anytype-model-Search-Message-Sort) | repeated |  |
 | fullText | [string](#string) |  |  |
 | offset | [int32](#int32) |  |  |
@@ -36192,6 +36192,7 @@ stored |
 | highlight | [string](#string) |  | truncated text with highlights |
 | highlightRanges | [Range](#anytype-model-Range) | repeated | ranges of the highlight in the text (using utf-16 runes) |
 | message | [ChatMessage](#anytype-model-ChatMessage) |  |  |
+| spaceId | [string](#string) |  | space the chat belongs to; set in all search scopes |
 
 
 

@@ -84415,7 +84415,10 @@ func (m *RpcChatSearch) XXX_DiscardUnknown() {
 var xxx_messageInfo_RpcChatSearch proto.InternalMessageInfo
 
 type RpcChatSearchRequest struct {
-	SpaceId  string                     `protobuf:"bytes,1,opt,name=spaceId,proto3" json:"spaceId,omitempty"`
+	// empty spaceId means all spaces (chatId must also be empty then)
+	SpaceId string `protobuf:"bytes,1,opt,name=spaceId,proto3" json:"spaceId,omitempty"`
+	// empty chatId means all chats in spaceId; results carry chatId/spaceId per message.
+	// Note: ORDER_ID sort is only meaningful within a single chat
 	ChatId   string                     `protobuf:"bytes,2,opt,name=chatId,proto3" json:"chatId,omitempty"`
 	Sorts    []*model.SearchMessageSort `protobuf:"bytes,3,rep,name=sorts,proto3" json:"sorts,omitempty"`
 	FullText string                     `protobuf:"bytes,4,opt,name=fullText,proto3" json:"fullText,omitempty"`
