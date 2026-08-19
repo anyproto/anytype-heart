@@ -1,6 +1,6 @@
 # AnyBlock JSON — format specification
 
-Status: **draft v0.10** · Format version: **1** · Package: `pkg/lib/anyblockjson`
+Status: **draft v0.11** · Format version: **1** · Package: `pkg/lib/anyblockjson`
 
 A human- and agent-readable JSON serialization of Anytype objects (the "anyblock"
 model), designed for export, import, and generation by external tools and LLM
@@ -14,6 +14,25 @@ strings; the vocabulary follows Notion's API and Anytype's public REST API
 (`core/api`) wherever an established term exists — the format should be
 readable, and mostly writable, by someone who has never seen Anytype
 internals.
+
+Changes in v0.11: three rules that two surfaces disagreed about, each
+found as `Marshal` emitting a document its own `Validate` rejects. **A table
+owns its whole grid of derived cell ids** (§4, §6.1) — validation always
+claimed every `<rowId>-<colId>` pair, written or not, but export reserved only
+the cells that exist as blocks, so a snapshot with a paragraph named `r1-c1`
+beside a table with row `r1` and column `c1` exported unimportable; the plain
+block is now the side that yields, since a derived id has no spelling of its
+own. **The `property_keys` legend covers every key slot** (§3), not the ones
+that happened to route through the recording step: a link block's
+`properties` and a `property` block's `key` wrote space-slugged spellings
+with no legend entry, and the link's reader ignored the legend even when the
+entry was there. **A counting date preset needs its day count only where the
+preset's range is applied** (§6.2) — `transformDateFilter` substitutes the
+range for six conditions and leaves every other filter unchanged, so on the
+`empty`/`not_empty`/`exists` leaves whose `value` export drops, the count is
+never read and demanding it asked export for a field it must not write.
+Also: a generated row/column id that needs no sanitizing keeps the name the
+generator gave it (§6.1) instead of collecting a `_2` from its own claim.
 
 Changes in v0.10: **admission runs on the resolved stored key** (§3, §12).
 The v0.7 property checks — the internal-key deny rule, the layout-name
