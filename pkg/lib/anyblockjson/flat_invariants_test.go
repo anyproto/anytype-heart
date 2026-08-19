@@ -742,13 +742,28 @@ var hostileDocs = []string{
 	// a benign rebind is the legend working as specified, and flows through
 	`{"version": 1, "property_keys": {"prio": "6a32d4856761631534b22f85"}, "properties": {"prio": "high"}}`,
 	// a counting date preset with no count: an error where the preset's day
-	// range is applied, and nothing at all where it is inert (§6.2)
+	// range is applied, and nothing at all where it is inert (§6.2). Both
+	// halves of transformDateFilter's gate make it inert — the condition, and
+	// the property's format, which here comes from the bundled table because
+	// the block declares no properties list at all
 	`{"version": 1, "blocks": [{"type": "dataview", "views": [{"id": "v1",
 		"filters": [{"property": "due_date", "condition": "empty", "date_preset": "number_of_days_ago"}]}]}]}`,
 	`{"version": 1, "blocks": [{"type": "dataview", "views": [{"id": "v1",
 		"filters": [{"property": "due_date", "condition": "greater", "date_preset": "number_of_days_ago"}]}]}]}`,
+	`{"version": 1, "blocks": [{"type": "dataview",
+		"properties": [{"key": "due_date", "format": "text"}], "views": [{"id": "v1",
+		"filters": [{"property": "due_date", "condition": "greater", "date_preset": "number_of_days_ago"}]}]}]}`,
+	`{"version": 1, "blocks": [{"type": "dataview", "views": [{"id": "v1",
+		"filters": [{"property": "not_a_property", "condition": "greater", "date_preset": "number_of_days_ago"}]}]}]}`,
 	// a legend value is a stored key and obeys the writable-key rule (§3)
 	`{"version": 1, "property_keys": {"p": ""}}`,
+	// a key holding a JSON-pointer metacharacter: legal in a stored key and
+	// in a spelling (§3 bounds length and control characters, nothing else),
+	// so both surfaces have to address it escaped — the accepted member as
+	// much as the refused legend value
+	`{"version": 1, "properties": {"a/b": "x"}}`,
+	`{"version": 1, "properties": {"a~b": "x"}}`,
+	`{"version": 1, "property_keys": {"a/b": ""}}`,
 	`{"version": 1, "property_keys": {"p": "a\nb"}}`,
 	`{"version": 1, "property_keys": {"p": "` + strings.Repeat("k", 129) + `"}}`,
 	// the verbatim-first family (§3): twin spellings binding one stored key
