@@ -1873,6 +1873,9 @@ fail neither test belong in authoring guidance and in review.
 ```
 pkg/lib/anyblockjson/
   SPEC.md                    — this document
+  PRINCIPLES.md              — the design rules the format answers to,
+                               with the priority order for conflicts
+  PRINCIPLES_SHORT.md        — the same rules on one screen
   ANOMALIES.md               — real-world data anomalies found by prod
                                round-trip testing, and how the format
                                handles each

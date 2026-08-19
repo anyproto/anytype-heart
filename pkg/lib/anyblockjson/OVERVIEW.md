@@ -213,6 +213,8 @@ round-trip contract rather than merely believe it.
 
 | | |
 |---|---|
+| `PRINCIPLES.md` | the ten rules the format answers to, and the order they yield in |
+| `PRINCIPLES_SHORT.md` | the same ten rules on one screen |
 | `SPEC.md` | normative, complete, §14 has a full worked example |
 | `ANOMALIES.md` | every real-data oddity found, with evidence |
 | `APIV2_ADDRESSING.md` | the identifier-layer dossier (naming, keys, minting) |
