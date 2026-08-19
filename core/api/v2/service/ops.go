@@ -193,7 +193,7 @@ var v2ListShapedFormats = map[model.RelationFormat]bool{
 }
 
 // v2ListShapedFormatNames is the agent-facing list for the rejection text.
-const v2ListShapedFormatNames = "select, multiSelect, objects, files"
+const v2ListShapedFormatNames = "select, multi_select, objects, files"
 
 //
 // ---- the document view ----

@@ -165,12 +165,12 @@ func (k *keyCanon) rewriteViews(views []any, path string) error {
 			continue
 		}
 		prefix := fmt.Sprintf("%s/%d", path, i)
-		if groupBy, ok := view["groupBy"].(string); ok && groupBy != "" {
+		if groupBy, ok := view["group_by"].(string); ok && groupBy != "" {
 			canonical, err := k.canonOrErr(groupBy, prefix+"/groupBy")
 			if err != nil {
 				return err
 			}
-			view["groupBy"] = canonical
+			view["group_by"] = canonical
 		}
 		if sorts, ok := view["sorts"].([]any); ok {
 			if err := k.rewriteSorts(sorts, prefix+"/sorts"); err != nil {

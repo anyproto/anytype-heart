@@ -202,8 +202,8 @@ func EtagMatches(ifMatch string, heads []string) bool {
 // (etag, outline, markdown, warnings) slotted in. Unknown keys append
 // alphabetically after these.
 var envelopeKeyOrder = []string{
-	"$schema", "version", "etag", "kind", "id", "type", "templateFor", "key",
-	"properties", "typeProperties", "refs", "outline", "blocks", "items",
+	"$schema", "version", "etag", "kind", "id", "type", "template_for", "key",
+	"properties", "type_properties", "refs", "outline", "blocks", "items",
 	"store", "root", "markdown", "warnings",
 }
 

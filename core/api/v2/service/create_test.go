@@ -422,13 +422,13 @@ func TestV2CreateObjectDocument(t *testing.T) {
 		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
 	})
 
-	t.Run("objectType kind steers to POST types", func(t *testing.T) {
+	t.Run("object_type kind steers to POST types", func(t *testing.T) {
 		// given
 		fx := newV2Fixture(t)
 
 		// when
 		_, err := fx.CreateObject(context.Background(), testSpaceId,
-			[]byte(`{"version":1,"kind":"objectType","key":"thing","typeProperties":[]}`), false)
+			[]byte(`{"version":1,"kind":"object_type","key":"thing","type_properties":[]}`), false)
 
 		// then
 		apiErr := v2Err(t, err)
@@ -506,7 +506,7 @@ func TestV2CreateTemplate(t *testing.T) {
 
 		// when
 		result, err := fx.CreateTemplate(context.Background(), testSpaceId,
-			[]byte(`{"version":1,"type":"template","templateFor":"task","properties":{"name":"Weekly"}}`), false)
+			[]byte(`{"version":1,"type":"template","template_for":"task","properties":{"name":"Weekly"}}`), false)
 
 		// then
 		require.NoError(t, err)

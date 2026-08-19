@@ -100,7 +100,7 @@ func CreateObjectHandler(s *v2service.Service) gin.HandlerFunc {
 // CreateTemplateHandler creates a template from an AnyBlock document
 //
 //	@Summary		Create a template
-//	@Description	`templateFor` names the type key this template starts an object of.
+//	@Description	`template_for` names the type key this template starts an object of.
 //	@Id				create_template
 //	@Tags			Templates
 //	@Accept			json
@@ -126,10 +126,10 @@ func CreateTemplateHandler(s *v2service.Service) gin.HandlerFunc {
 	}
 }
 
-// CreateTypeHandler creates a type from a kind:"objectType" document
+// CreateTypeHandler creates a type from a kind:"object_type" document
 //
 //	@Summary		Create a type
-//	@Description	A `typeProperties` entry naming a property key that does not exist creates that property alongside the type. The body is an AnyBlock document with kind "objectType".
+//	@Description	A `typeProperties` entry naming a property key that does not exist creates that property alongside the type. The body is an AnyBlock document with kind "object_type".
 //	@Id				create_type
 //	@Tags			Types
 //	@Accept			json

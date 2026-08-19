@@ -246,7 +246,7 @@ func (s *Service) ListTypes(ctx context.Context, spaceId string, offset, limit i
 	return rows, total, hasMore, nil
 }
 
-// GetType returns the kind:"objectType" AnyBlock document for one type key,
+// GetType returns the kind:"object_type" AnyBlock document for one type key,
 // read via the live smartblock state like any object (§8). The query rides
 // through to GetObject, so `?ids=full` works here exactly as on objects —
 // the export shape must be one query parameter away on every document read

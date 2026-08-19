@@ -861,7 +861,7 @@ func (s *Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byte,
 	changed := false
 
 	var typeEntries []typeEntry
-	for _, field := range []string{"type", "templateFor"} {
+	for _, field := range []string{"type", "template_for"} {
 		raw, ok := fields[field]
 		if !ok {
 			continue

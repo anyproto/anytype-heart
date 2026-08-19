@@ -39,7 +39,7 @@ const editTwoViewsDoc = `{"version":1,"id":"obj1","type":"set","properties":{"na
 	`"properties":[{"key":"name","format":"text"},{"key":"severity","format":"select"}],` +
 	`"views":[` +
 	`{"id":"viewAll1","name":"All","columns":[{"property":"name"}]},` +
-	`{"id":"viewBoard2","name":"Board","type":"kanban","groupBy":"severity","columns":[{"property":"name"},{"property":"severity","hidden":true}]}]}]}`
+	`{"id":"viewBoard2","name":"Board","type":"kanban","group_by":"severity","columns":[{"property":"name"},{"property":"severity","hidden":true}]}]}]}`
 
 // editTwoDataviewsDoc is a page with two inline dataviews — block targeting
 // is required.
@@ -48,9 +48,9 @@ const editTwoDataviewsDoc = `{"version":1,"id":"obj1","type":"page","properties"
 	`{"id":"dvFirst1","type":"dataview","properties":[{"key":"name","format":"text"}],"views":[{"id":"viewA1","name":"A","columns":[{"property":"name"}]}]},` +
 	`{"id":"dvSecond2","type":"dataview","properties":[{"key":"name","format":"text"}],"views":[{"id":"viewB1","name":"B","columns":[{"property":"name","hidden":true}]}]}]}`
 
-// editTypeDoc is a kind:"objectType" document with the type's own dataview —
+// editTypeDoc is a kind:"object_type" document with the type's own dataview —
 // the reporter's actual target (the default "All" view of a custom type).
-const editTypeDoc = `{"version":1,"kind":"objectType","id":"obj1","key":"plant","properties":{"name":"Plant"},"blocks":[` +
+const editTypeDoc = `{"version":1,"kind":"object_type","id":"obj1","key":"plant","properties":{"name":"Plant"},"blocks":[` +
 	`{"id":"dataview","type":"dataview",` +
 	`"properties":[{"key":"name","format":"text"},{"key":"severity","format":"select"}],` +
 	`"views":[{"id":"viewAll1","name":"All","columns":[{"property":"name"},{"property":"severity","hidden":true}]}]}]}`
@@ -256,13 +256,13 @@ func TestUpdateViewOp(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editSetDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"update_view","set":{"name":"Open bugs","type":"kanban","groupBy":"severity"}}`), "", false)
+			patchBody(`{"op":"update_view","set":{"name":"Open bugs","type":"kanban","group_by":"severity"}}`), "", false)
 
 		require.NoError(t, err)
 		view := viewsOf(t, dataviewOf(t, *captured, "dataview"))[0]
 		assert.Equal(t, "Open bugs", view["name"])
 		assert.Equal(t, "kanban", view["type"])
-		assert.Equal(t, "severity", view["groupBy"])
+		assert.Equal(t, "severity", view["group_by"])
 		require.Len(t, columnsOf(t, view), 3, "columns are untouched by a set-only op")
 	})
 
@@ -316,11 +316,11 @@ func TestUpdateViewOp(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editTwoViewsDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"update_view","view":"viewBoard2","set":{"groupBy":null,"type":null}}`), "", false)
+			patchBody(`{"op":"update_view","view":"viewBoard2","set":{"group_by":null,"type":null}}`), "", false)
 
 		require.NoError(t, err)
 		view := viewsOf(t, dataviewOf(t, *captured, "dataview"))[1]
-		_, hasGroupBy := view["groupBy"]
+		_, hasGroupBy := view["group_by"]
 		assert.False(t, hasGroupBy)
 		_, hasType := view["type"]
 		assert.False(t, hasType, "type cleared = the table default (omitted on export)")
@@ -455,7 +455,7 @@ func TestUpdateViewOp(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editSetDoc), "headB")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"update_view","set":{"filters":[{"property":"dueDate","condition":"less","datePreset":"today"}]}}`), "", false)
+			patchBody(`{"op":"update_view","set":{"filters":[{"property":"dueDate","condition":"less","date_preset":"today"}]}}`), "", false)
 
 		require.NoError(t, err)
 		require.NotEmpty(t, result.Warnings, "the §6.2 empty-date trap rides the warnings channel")
@@ -629,9 +629,9 @@ func TestUpdateViewOp(t *testing.T) {
 		doc := `{"version":1,"id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
 			`{"id":"dataview","type":"dataview",` +
 			`"properties":[{"key":"name","format":"text"},{"key":"severity","format":"select"}],` +
-			`"views":[{"id":"viewBoard1","name":"Board","type":"kanban","groupBy":"severity",` +
+			`"views":[{"id":"viewBoard1","name":"Board","type":"kanban","group_by":"severity",` +
 			`"columns":[{"property":"name"},{"property":"severity","hidden":true}],` +
-			`"groups":[{"id":"groupA","backgroundColor":"red"},{"id":"groupB","hidden":true}],` +
+			`"groups":[{"id":"groupA","background_color":"red"},{"id":"groupB","hidden":true}],` +
 			`"objectOrders":[{"groupId":"groupA","objectIds":["objX","objY"]}]}]}]}`
 		fx := newV2Fixture(t)
 		captured := fx.expectMutate(editRead(t, doc), "headB")
@@ -704,12 +704,12 @@ func TestViewFamilyOps(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editSetDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insert_view","name":"Board","set":{"type":"kanban","groupBy":"severity"},"columns":{"dueDate":{"hidden":true}}}`), "", false)
+			patchBody(`{"op":"insert_view","name":"Board","set":{"type":"kanban","group_by":"severity"},"columns":{"dueDate":{"hidden":true}}}`), "", false)
 
 		require.NoError(t, err)
 		view := viewsOf(t, dataviewOf(t, *captured, "dataview"))[1]
 		assert.Equal(t, "kanban", view["type"])
-		assert.Equal(t, "severity", view["groupBy"])
+		assert.Equal(t, "severity", view["group_by"])
 		dueDate := columnByProperty(t, view, "due_date")
 		require.NotNil(t, dueDate)
 		assert.Equal(t, true, dueDate["hidden"], "the columns channel merges onto the defaults")
@@ -720,7 +720,7 @@ func TestViewFamilyOps(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editTwoViewsDoc), "headB")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insert_view","name":"Board copy","copy_from":"viewBoard2","set":{"cardSize":"large"}}`), "", false)
+			patchBody(`{"op":"insert_view","name":"Board copy","copy_from":"viewBoard2","set":{"card_size":"large"}}`), "", false)
 
 		require.NoError(t, err)
 		views := viewsOf(t, dataviewOf(t, *captured, "dataview"))
@@ -728,8 +728,8 @@ func TestViewFamilyOps(t *testing.T) {
 		copied := views[2]
 		assert.Equal(t, "Board copy", copied["name"])
 		assert.Equal(t, "kanban", copied["type"], "the source view's type is copied")
-		assert.Equal(t, "severity", copied["groupBy"], "the source's grouping is copied")
-		assert.Equal(t, "large", copied["cardSize"], "set overrides on top of the copy")
+		assert.Equal(t, "severity", copied["group_by"], "the source's grouping is copied")
+		assert.Equal(t, "large", copied["card_size"], "set overrides on top of the copy")
 		require.Len(t, columnsOf(t, copied), 2, "the source's columns are copied")
 		assert.NotEqual(t, "viewBoard2", copied["id"], "the copy gets a fresh id")
 		assert.Equal(t, result.CreatedViews["ops[0]"], copied["id"])
@@ -853,8 +853,8 @@ func TestViewFamilyOps(t *testing.T) {
 			`"properties":[{"key":"name","format":"text"},{"key":"severity","format":"select"}],` +
 			`"views":[` +
 			`{"id":"viewAll1","name":"All","columns":[{"property":"name"}]},` +
-			`{"id":"viewBoard2","name":"Board","type":"kanban","groupBy":"severity","columns":[{"property":"name"}],` +
-			`"groups":[{"id":"groupA","backgroundColor":"red"}]}]}]}`
+			`{"id":"viewBoard2","name":"Board","type":"kanban","group_by":"severity","columns":[{"property":"name"}],` +
+			`"groups":[{"id":"groupA","background_color":"red"}]}]}]}`
 		fx := newV2Fixture(t)
 		captured := fx.expectMutate(editRead(t, doc), "headB")
 
@@ -1230,7 +1230,7 @@ func TestViewOpReviewFixes(t *testing.T) {
 			entries[i] = fmt.Sprintf(`"v%d"`, i)
 		}
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"update_view","set":{"sorts":[{"property":"severity","customOrder":[`+joinStrings(entries, ",")+`]}]}}`), "", false)
+			patchBody(`{"op":"update_view","set":{"sorts":[{"property":"severity","custom_order":[`+joinStrings(entries, ",")+`]}]}}`), "", false)
 		apiErr := v2Err(t, err)
 		assert.Equal(t, "ops[0].set.sorts[0].customOrder", apiErr.Issues[0].Path)
 
@@ -1295,9 +1295,9 @@ func TestViewOpReviewFixes(t *testing.T) {
 		doc := `{"version":1,"id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
 			`{"id":"dataview","type":"dataview",` +
 			`"properties":[{"key":"name","format":"text"},{"key":"severity","format":"select"}],` +
-			`"views":[{"id":"viewBoard1","name":"Board","type":"kanban","groupBy":"severity",` +
+			`"views":[{"id":"viewBoard1","name":"Board","type":"kanban","group_by":"severity",` +
 			`"columns":[{"property":"name"}],` +
-			`"groups":[{"id":"groupA","backgroundColor":"red"},{"id":"groupB","hidden":true}],` +
+			`"groups":[{"id":"groupA","background_color":"red"},{"id":"groupB","hidden":true}],` +
 			`"objectOrders":[{"groupId":"groupA","objectIds":["objX"]}]}]}]}`
 		captured := fx.expectMutate(editRead(t, doc), "headB")
 
@@ -1349,8 +1349,8 @@ func TestViewSchemaDrift(t *testing.T) {
 
 	t.Run("view enums match the exported vocabulary", func(t *testing.T) {
 		assert.ElementsMatch(t, anyblockjson.ViewTypeNames(), enumOf(t, dig(t, setProps, "type")))
-		assert.ElementsMatch(t, anyblockjson.ViewCardSizeNames(), enumOf(t, dig(t, setProps, "cardSize")))
-		assert.ElementsMatch(t, anyblockjson.ViewListSizeNames(), enumOf(t, dig(t, setProps, "listSize")))
+		assert.ElementsMatch(t, anyblockjson.ViewCardSizeNames(), enumOf(t, dig(t, setProps, "card_size")))
+		assert.ElementsMatch(t, anyblockjson.ViewListSizeNames(), enumOf(t, dig(t, setProps, "list_size")))
 		colProps := dig(t, schema, "properties", "columns", "additionalProperties", "properties")
 		assert.ElementsMatch(t, anyblockjson.ColumnAlignNames(), enumOf(t, dig(t, colProps, "align")))
 		assert.ElementsMatch(t, anyblockjson.ColumnAggregationNames(), enumOf(t, dig(t, colProps, "aggregation")))
@@ -1414,11 +1414,11 @@ func TestViewOpKeySpellings(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editSetDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"update_view","set":{"groupBy":"DueDate","sorts":[{"property":"due-date","direction":"desc"}]}}`), "", false)
+			patchBody(`{"op":"update_view","set":{"group_by":"DueDate","sorts":[{"property":"due-date","direction":"desc"}]}}`), "", false)
 
 		require.NoError(t, err)
 		view := viewsOf(t, dataviewOf(t, *captured, "dataview"))[0]
-		assert.Equal(t, "due_date", view["groupBy"])
+		assert.Equal(t, "due_date", view["group_by"])
 		sorts, _ := view["sorts"].([]any)
 		require.Len(t, sorts, 1)
 		assert.Equal(t, "due_date", sorts[0].(map[string]any)["property"])

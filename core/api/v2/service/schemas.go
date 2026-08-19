@@ -47,19 +47,19 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 	},
 	"type": {
 		endpoint: "POST /v2/spaces/{space_id}/types",
-		// a type document is an AnyBlock document (kind objectType)
-		example: `{"version":1,"kind":"objectType","key":"task","properties":{"name":"Task","icon_emoji":"✅","recommended_layout":"todo"},"typeProperties":[{"key":"due_date","name":"Due date","format":"date","section":"featured"},{"key":"status","name":"Status","format":"select"}]}`,
+		// a type document is an AnyBlock document (kind object_type)
+		example: `{"version":1,"kind":"object_type","key":"task","properties":{"name":"Task","icon_emoji":"✅","recommended_layout":"todo"},"type_properties":[{"key":"due_date","name":"Due date","format":"date","section":"featured"},{"key":"status","name":"Status","format":"select"}]}`,
 	},
 	"template": {
 		endpoint: "POST /v2/spaces/{space_id}/templates",
-		example:  `{"version":1,"type":"template","templateFor":"task","properties":{"name":"Weekly task"},"blocks":[{"type":"heading2","text":"Checklist"},{"type":"checkbox","text":"First step"}]}`,
+		example:  `{"version":1,"type":"template","template_for":"task","properties":{"name":"Weekly task"},"blocks":[{"type":"heading2","text":"Checklist"},{"type":"checkbox","text":"First step"}]}`,
 	},
 	"property": {
 		endpoint: "POST /v2/spaces/{space_id}/properties",
 		schema: `{"type":"object","additionalProperties":false,"required":["name","format"],"properties":{` +
 			`"key":{"type":"string","maxLength":256,"pattern":"^[a-zA-Z0-9_]+$"},` +
 			`"name":{"type":"string","maxLength":4096},` +
-			`"format":{"type":"string","enum":["text","number","select","multiSelect","date","files","checkbox","url","email","phone","objects"]},` +
+			`"format":{"type":"string","enum":["text","number","select","multi_select","date","files","checkbox","url","email","phone","objects"]},` +
 			`"options":{"type":"array","maxItems":100,"items":{"type":"object","additionalProperties":false,"required":["name"],"properties":{` +
 			`"name":{"type":"string","maxLength":4096},"color":{"type":"string","maxLength":64}}}}}}`,
 		example: `{"key":"priority","name":"Priority","format":"select","options":[{"name":"High","color":"red"},{"name":"Low"}]}`,
@@ -71,7 +71,7 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 			`"type":{"type":"string","maxLength":256,"description":"the queried type's key"},` +
 			`"filter":{"type":"string","maxLength":4096,"description":"compact filter string (grammar on kind filters); the endpoint also accepts a recursive structured filters array, kept out of this schema so it stays strict-mode-decodable (C13) — see kind filters"},` +
 			`"sorts":{"type":"array","maxItems":10,"items":{"type":"object","additionalProperties":false,"required":["property"],"properties":{` +
-			`"property":{"type":"string","maxLength":256},"direction":{"type":"string","enum":["asc","desc"]},"emptyPlacement":{"type":"string","enum":["start","end"]}}}},` +
+			`"property":{"type":"string","maxLength":256},"direction":{"type":"string","enum":["asc","desc"]},"empty_placement":{"type":"string","enum":["start","end"]}}}},` +
 			`"views":{"type":"array","maxItems":10,"description":"full SPEC §6.2 view objects; mutually exclusive with top-level filter/sorts"}}}`,
 		example: `{"name":"Open tasks","type":"task","filter":"done = false","sorts":[{"property":"due_date","direction":"asc"}]}`,
 	},
@@ -96,7 +96,7 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 			`"type":{"type":"string","maxLength":256,"description":"one type key; multi-type queries use the type pseudo-key in the filter channel; naming a file type (file, image, video, audio) opts file objects into the results — they are excluded otherwise"},` +
 			`"filter":{"type":"string","maxLength":4096,"description":"compact filter string (grammar on kind filters); the endpoint also accepts a recursive structured filters array, kept out of this schema so it stays strict-mode-decodable (C13) — see kind filters"},` +
 			`"sorts":{"type":"array","maxItems":10,"items":{"type":"object","additionalProperties":false,"required":["property"],"properties":{` +
-			`"property":{"type":"string","maxLength":256,"description":"any property key"},"direction":{"type":"string","enum":["asc","desc"]},"emptyPlacement":{"type":"string","enum":["start","end"]}}}},` +
+			`"property":{"type":"string","maxLength":256,"description":"any property key"},"direction":{"type":"string","enum":["asc","desc"]},"empty_placement":{"type":"string","enum":["start","end"]}}}},` +
 			`"fields":{"type":"array","maxItems":25,"items":{"type":"string","maxLength":256},"description":"property keys to include per row; file rows additionally take mimeType and size — also valid filter and sort keys (they translate to the store's fileMimeType/sizeInBytes); file rows enter scope only when the type channel names a file type"}}}`,
 		example: `{"query":"report","type":"task","filter":"done = false AND (due_date < currentWeek() OR due_date IS EMPTY)","sorts":[{"property":"due_date","direction":"asc"}],"fields":["name","due_date","status"]}`,
 	},
@@ -153,13 +153,13 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 			`"operator":{"type":"string","enum":["and","or"]},"filters":{"type":"array","minItems":1,"maxItems":50,"items":{"$ref":"#/$defs/filterNode"}}}},` +
 			`{"type":"object","additionalProperties":false,"required":["property","condition"],"properties":{` +
 			`"property":{"type":"string","maxLength":256},` +
-			`"condition":{"type":"string","enum":["equal","notEqual","greater","less","greaterOrEqual","lessOrEqual","contains","notContains","in","notIn","empty","notEmpty","allIn","notAllIn","exactIn","notExactIn","exists"]},` +
+			`"condition":{"type":"string","enum":["equal","not_equal","greater","less","greater_or_equal","less_or_equal","contains","not_contains","in","not_in","empty","not_empty","all_in","not_all_in","exact_in","not_exact_in","exists"]},` +
 			`"value":{"description":"leaf value — select/multiSelect: option NAMES; date: unix SECONDS (RFC 3339 strings belong to the compact filter string, which converts them)"},` +
-			`"datePreset":{"type":"string","enum":["yesterday","today","tomorrow","lastWeek","currentWeek","nextWeek","lastMonth","currentMonth","nextMonth","numberOfDaysAgo","numberOfDaysNow","lastYear","currentYear","nextYear"]},` +
-			`"includeTime":{"type":"boolean"}}}]}},` +
+			`"date_preset":{"type":"string","enum":["yesterday","today","tomorrow","lastWeek","currentWeek","nextWeek","lastMonth","currentMonth","nextMonth","numberOfDaysAgo","numberOfDaysNow","lastYear","currentYear","nextYear"]},` +
+			`"include_time":{"type":"boolean"}}}]}},` +
 			`"type":"array","maxItems":50,"items":{"$ref":"#/$defs/filterNode"},` +
 			`"description":"RECURSIVE (documented C13 exception): top-level nodes combine with an implicit AND; select values are option names; date values are unix seconds"}`,
-		example: `[{"property":"done","condition":"equal","value":false},{"operator":"or","filters":[{"property":"due_date","condition":"less","datePreset":"currentWeek"},{"property":"due_date","condition":"empty"}]}]`,
+		example: `[{"property":"done","condition":"equal","value":false},{"operator":"or","filters":[{"property":"due_date","condition":"less","date_preset":"currentWeek"},{"property":"due_date","condition":"empty"}]}]`,
 	},
 }
 

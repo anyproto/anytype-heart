@@ -392,7 +392,7 @@ func TestPatchPayloadIdSeam(t *testing.T) {
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
 			patchBody(`{"op":"update_block","id":"dataview","set":{"views":[`+
 				`{"id":"viewAll1","name":"All","columns":[{"property":"name"}]},`+
-				`{"id":"viewBoard2","name":"Board","type":"kanban","groupBy":"severity","columns":[{"property":"name"},{"property":"severity","hidden":true}]}]}}`), "", false)
+				`{"id":"viewBoard2","name":"Board","type":"kanban","group_by":"severity","columns":[{"property":"name"},{"property":"severity","hidden":true}]}]}}`), "", false)
 
 		require.NoError(t, err)
 		assert.Empty(t, result.CreatedViews, "a resolved view id created nothing")

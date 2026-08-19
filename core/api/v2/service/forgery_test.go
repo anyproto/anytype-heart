@@ -27,7 +27,7 @@ func TestV2TypeDocumentForgery(t *testing.T) {
 
 		// when
 		_, err := fx.CreateType(context.Background(), testSpaceId,
-			[]byte(`{"kind":"objectType","key":"forged","properties":{"name":"Forged","uniqueKey":"ot-page"}}`), false)
+			[]byte(`{"kind":"object_type","key":"forged","properties":{"name":"Forged","uniqueKey":"ot-page"}}`), false)
 
 		// then
 		apiErr := v2ErrWithIssue(t, err)
@@ -40,7 +40,7 @@ func TestV2TypeDocumentForgery(t *testing.T) {
 		fx := newV2Fixture(t)
 		for _, forged := range []string{"relationKey", "isReadonly", "restrictions"} {
 			_, err := fx.CreateType(context.Background(), testSpaceId,
-				[]byte(`{"kind":"objectType","key":"forged2","properties":{"name":"Forged","`+forged+`":"x"}}`), false)
+				[]byte(`{"kind":"object_type","key":"forged2","properties":{"name":"Forged","`+forged+`":"x"}}`), false)
 			apiErr := v2ErrWithIssue(t, err)
 			require.NotEmpty(t, apiErr.Issues, forged)
 			assert.Equal(t, "/properties/"+forged, apiErr.Issues[0].Path)
@@ -65,7 +65,7 @@ func TestV2TypeDocumentForgery(t *testing.T) {
 
 		// when
 		_, err := fx.CreateType(context.Background(), testSpaceId,
-			[]byte(`{"kind":"objectType","key":"cleantype","properties":{"name":"Clean","apiObjectKey":"object_type"}}`), false)
+			[]byte(`{"kind":"object_type","key":"cleantype","properties":{"name":"Clean","apiObjectKey":"object_type"}}`), false)
 
 		// then: the checked slug wins; the forged one is gone
 		require.NoError(t, err)
@@ -87,7 +87,7 @@ func TestV2TypeDocumentForgery(t *testing.T) {
 			})
 		fx2.expectEtagRead("type-clean2")
 		_, err = fx2.CreateType(context.Background(), testSpaceId,
-			[]byte(`{"kind":"objectType","properties":{"name":"☕","apiObjectKey":"object_type"}}`), false)
+			[]byte(`{"kind":"object_type","properties":{"name":"☕","apiObjectKey":"object_type"}}`), false)
 		require.NoError(t, err)
 		require.NotNil(t, captured)
 		assert.Empty(t, pbtypes.GetString(captured.Details, bundle.RelationKeyApiObjectKey.String()))

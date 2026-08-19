@@ -26,7 +26,7 @@ import (
 // deleteProbeIssue is the C6 issue every ownership refusal carries (§9.5):
 // the probe idiom and where provenance is visible.
 var deleteProbeIssue = v2model.Issue{
-	Path: "objectId",
+	Path: "object_id",
 	Hint: "probe deletability without writing via DELETE …?dry_run=true; " +
 		"the created_date/creator properties on GET show who created the object",
 }
@@ -83,7 +83,7 @@ func (s *Service) DeleteObject(ctx context.Context, spaceId, objectId string, dr
 		return nil, v2model.NewError(http.StatusForbidden, v2model.CodeForbidden,
 			fmt.Sprintf("%s objects are not deletable through the API — DELETE serves user content only (pages, templates, files, chats). "+
 				"This is a system or derived surface; manage it in the Anytype app.", read.SbType.String()),
-			v2model.Issue{Path: "objectId", Message: fmt.Sprintf("object %s is a %s", objectId, read.SbType.String())})
+			v2model.Issue{Path: "object_id", Message: fmt.Sprintf("object %s is a %s", objectId, read.SbType.String())})
 	}
 
 	// the provenance conjunction (§10): both clauses from validated storage
@@ -158,17 +158,17 @@ func steerSchemaDelete(sbType model.SmartBlockType, spaceId string) error {
 	switch sbType {
 	case model.SmartBlockType_STType:
 		return v2model.ValidationFailed("types are deleted through their own route",
-			v2model.Issue{Path: "objectId",
+			v2model.Issue{Path: "object_id",
 				Message: "this object is a type",
 				Hint:    fmt.Sprintf("use DELETE /v2/spaces/%s/types/{typeKey}", spaceId)})
 	case model.SmartBlockType_STRelation:
 		return v2model.ValidationFailed("properties are deleted through their own route",
-			v2model.Issue{Path: "objectId",
+			v2model.Issue{Path: "object_id",
 				Message: "this object is a property",
 				Hint:    fmt.Sprintf("use DELETE /v2/spaces/%s/properties/{property_key}", spaceId)})
 	case model.SmartBlockType_STRelationOption:
 		return v2model.ValidationFailed("tag options are managed through their property",
-			v2model.Issue{Path: "objectId",
+			v2model.Issue{Path: "object_id",
 				Message: "this object is a select/multiSelect option",
 				Hint:    fmt.Sprintf("options are edited via their property — see GET /v2/spaces/%s/properties/{property_key}/options", spaceId)})
 	}

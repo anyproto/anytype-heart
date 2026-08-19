@@ -606,7 +606,7 @@ type searchFilterNode struct {
 	Property   string             `json:"property"`
 	Condition  string             `json:"condition"`
 	Value      any                `json:"value"`
-	DatePreset string             `json:"datePreset"`
+	DatePreset string             `json:"date_preset"`
 }
 
 // isGroup reports whether the node is shaped like a group. A node carrying
@@ -740,7 +740,7 @@ func (s *Service) validateStructuredFilters(spaceId string, raw json.RawMessage,
 				}
 			}
 			// rule 3: option names resolve read-only — never a silent no-match
-			if formatKnown && (format == "select" || format == "multiSelect") {
+			if formatKnown && (format == "select" || format == "multi_select") {
 				names, ok := s.propertyOptionNames(spaceId, node.Property)
 				if !ok {
 					continue // the store could not list the options — no check

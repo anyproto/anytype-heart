@@ -159,7 +159,7 @@ func TestV2WriteVocabularyIsTheReadVocabulary(t *testing.T) {
 
 		// when
 		_, err := fx.UpdateType(ctx, testSpaceId, "chore",
-			[]byte(`{"typeProperties":[{"key":"due_date","section":"featured"}]}`), false)
+			[]byte(`{"type_properties":[{"key":"due_date","section":"featured"}]}`), false)
 
 		// then
 		require.NoError(t, err)
@@ -200,8 +200,8 @@ func TestV2WriteVocabularyIsTheReadVocabulary(t *testing.T) {
 
 		// when
 		_, err := fx.CreateType(ctx, testSpaceId, []byte(`{
-			"kind":"objectType","key":"chore",
-			"typeProperties":[{"key":"due_date","section":"featured"}]}`), false)
+			"kind":"object_type","key":"chore",
+			"type_properties":[{"key":"due_date","section":"featured"}]}`), false)
 
 		// then
 		require.NoError(t, err)

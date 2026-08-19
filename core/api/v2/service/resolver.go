@@ -377,7 +377,7 @@ func (s *Service) prewarmViewOptionValues(set map[string]json.RawMessage, resolv
 	if raw, ok := set["sorts"]; ok {
 		var sorts []struct {
 			Property    string          `json:"property"`
-			CustomOrder json.RawMessage `json:"customOrder"`
+			CustomOrder json.RawMessage `json:"custom_order"`
 		}
 		if err := json.Unmarshal(raw, &sorts); err == nil {
 			for _, sort := range sorts {

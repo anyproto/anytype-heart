@@ -459,7 +459,7 @@ func TestV2ViewOpsCorpseKeys(t *testing.T) {
 		fx.expectMutate(editRead(t, corpseViewDocBody), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"update_view","view":"viewAll1","set":{"groupBy":"`+corpseBsonKey+`"}}`), "", false)
+			patchBody(`{"op":"update_view","view":"viewAll1","set":{"group_by":"`+corpseBsonKey+`"}}`), "", false)
 
 		require.NoError(t, err)
 	})
@@ -468,7 +468,7 @@ func TestV2ViewOpsCorpseKeys(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.addCorpseProperty(t, corpseProd)
 		for _, op := range []string{
-			`{"op":"update_view","view":"viewAll1","set":{"groupBy":"` + corpseBsonKey + `"}}`,
+			`{"op":"update_view","view":"viewAll1","set":{"group_by":"` + corpseBsonKey + `"}}`,
 			`{"op":"update_view","view":"viewAll1","columns":{"` + corpseBsonKey + `":{"width":80}}}`,
 		} {
 			fx.expectMutate(editRead(t, plainViewDocBody), "headB")
@@ -874,7 +874,7 @@ func TestV2TypePropertiesCorpseEchoResolvesToItsHolder(t *testing.T) {
 				TypeProperties []struct {
 					Key  string `json:"key"`
 					Name string `json:"name"`
-				} `json:"typeProperties"`
+				} `json:"type_properties"`
 			}
 			require.NoError(t, json.Unmarshal(body, &doc))
 			require.Len(t, doc.TypeProperties, 1)
@@ -907,7 +907,7 @@ func TestV2TypePropertiesCorpseEchoResolvesToItsHolder(t *testing.T) {
 
 			// when — exactly the typeProperties GET just served
 			result, err := fx.UpdateType(context.Background(), testSpaceId, "livetype",
-				[]byte(`{"typeProperties":[{"key":"`+corpseBsonKey+`","name":"Warranty until","format":"text"}]}`), false)
+				[]byte(`{"type_properties":[{"key":"`+corpseBsonKey+`","name":"Warranty until","format":"text"}]}`), false)
 
 			// then — nothing is minted and the list still points at the very
 			// relation object the GET resolved it from: a round-trip identity
@@ -943,7 +943,7 @@ func TestV2TypePropertiesCorpseEchoResolvesToItsHolder(t *testing.T) {
 				Error: &pb.RpcObjectSetDetailsResponseError{Code: pb.RpcObjectSetDetailsResponseError_NULL}}).Maybe()
 
 			_, err := fx.UpdateType(context.Background(), testSpaceId, "livetype",
-				[]byte(`{"typeProperties":[{"key":"`+corpseSlug+`","name":"Warranty until","format":"text"}]}`), false)
+				[]byte(`{"type_properties":[{"key":"`+corpseSlug+`","name":"Warranty until","format":"text"}]}`), false)
 
 			require.NoError(t, err)
 			require.Len(t, minted, 1)
@@ -1028,10 +1028,10 @@ func TestV2RemovedBundledSlugEqualsKeyClass(t *testing.T) {
 			`{"id":"dataview","type":"dataview","properties":[{"key":"name","format":"text"}],` +
 			`"views":[{"id":"viewAll1","name":"All","columns":[{"property":"name"}]}]}]}`
 		ops := map[string]string{
-			"columns": `{"op":"update_view","view":"viewAll1","columns":{"tag":{"width":80}}}`,
-			"groupBy": `{"op":"update_view","view":"viewAll1","set":{"groupBy":"tag"}}`,
-			"filters": `{"op":"update_view","view":"viewAll1","set":{"filters":[{"property":"tag","condition":"empty"}]}}`,
-			"sorts":   `{"op":"update_view","view":"viewAll1","set":{"sorts":[{"property":"tag","direction":"asc"}]}}`,
+			"columns":  `{"op":"update_view","view":"viewAll1","columns":{"tag":{"width":80}}}`,
+			"group_by": `{"op":"update_view","view":"viewAll1","set":{"group_by":"tag"}}`,
+			"filters":  `{"op":"update_view","view":"viewAll1","set":{"filters":[{"property":"tag","condition":"empty"}]}}`,
+			"sorts":    `{"op":"update_view","view":"viewAll1","set":{"sorts":[{"property":"tag","direction":"asc"}]}}`,
 		}
 		for channel, op := range ops {
 			t.Run(channel, func(t *testing.T) {
@@ -1060,7 +1060,7 @@ func TestV2RemovedBundledSlugEqualsKeyClass(t *testing.T) {
 			fx.expectMutate(editRead(t, plainViewDoc), "headB")
 
 			_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-				patchBody(`{"op":"insert_view","name":"Grouped","set":{"groupBy":"tag"}}`), "", false)
+				patchBody(`{"op":"insert_view","name":"Grouped","set":{"group_by":"tag"}}`), "", false)
 
 			requireRemovalRefusal(t, err, "tag")
 		})
@@ -1078,7 +1078,7 @@ func TestV2RemovedBundledSlugEqualsKeyClass(t *testing.T) {
 			fx.expectMutate(editRead(t, holdingViewDoc), "headB")
 
 			_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-				patchBody(`{"op":"update_view","view":"viewAll1","set":{"groupBy":"tag"}}`), "", false)
+				patchBody(`{"op":"update_view","view":"viewAll1","set":{"group_by":"tag"}}`), "", false)
 
 			require.NoError(t, err)
 		})
@@ -1155,7 +1155,7 @@ func TestV2RemovedBundledTypeRefusesWrites(t *testing.T) {
 			addRemovedType(t, fx, "task", shape)
 
 			_, err := fx.CreateTemplate(ctx, testSpaceId,
-				[]byte(`{"version":1,"type":"template","templateFor":"task","properties":{"name":"Weekly"}}`), false)
+				[]byte(`{"version":1,"type":"template","template_for":"task","properties":{"name":"Weekly"}}`), false)
 
 			requireRemovedType(t, err, "task")
 		})
@@ -1236,7 +1236,7 @@ func TestV2TypePropertiesRefusesRemovedBundledKey(t *testing.T) {
 			fx.addRemovedBundledProperty(t, shape)
 
 			_, err := fx.CreateType(ctx, testSpaceId,
-				[]byte(`{"key":"gadget","properties":{"name":"Gadget"},"typeProperties":[{"key":"due_date","format":"date"}]}`), false)
+				[]byte(`{"key":"gadget","properties":{"name":"Gadget"},"type_properties":[{"key":"due_date","format":"date"}]}`), false)
 
 			apiErr := v2Err(t, err)
 			assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -1272,7 +1272,7 @@ func TestV2TypePropertiesRefusesRemovedBundledKey(t *testing.T) {
 			})
 
 			_, err := fx.UpdateType(ctx, testSpaceId, "livetype",
-				[]byte(`{"typeProperties":[{"key":"tag"}]}`), false)
+				[]byte(`{"type_properties":[{"key":"tag"}]}`), false)
 
 			apiErr := v2Err(t, err)
 			assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -1304,7 +1304,7 @@ func TestV2TypePropertiesRefusesRemovedBundledKey(t *testing.T) {
 
 			// when — the spelling the GET serves
 			result, err := fx.UpdateType(ctx, testSpaceId, "livetype",
-				[]byte(`{"typeProperties":[{"key":"due_date","format":"date"}]}`), false)
+				[]byte(`{"type_properties":[{"key":"due_date","format":"date"}]}`), false)
 
 			// then — the reference survives, nothing minted, nothing installed
 			require.NoError(t, err)

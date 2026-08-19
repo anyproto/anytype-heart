@@ -62,24 +62,24 @@ const maxV2CustomOrderValues = 128
 // immutable — all three get targeted rejections; anything else unknown gets
 // the allowed-field listing.
 var v2ViewFieldKinds = map[string]string{
-	"name":              "name",
-	"type":              "viewType",
-	"groupBy":           "propertyKey",
-	"coverProperty":     "propertyKey",
-	"endProperty":       "propertyKey",
-	"hideIcon":          "bool",
-	"cardSize":          "cardSize",
-	"coverFit":          "bool",
-	"coloredGroups":     "bool",
-	"pageSize":          "int",
-	"defaultTemplateId": "id",
-	"defaultTypeId":     "id",
-	"wrapContent":       "bool",
-	"listSize":          "listSize",
-	"alternateRows":     "bool",
-	"sorts":             "sorts",
-	"filters":           "filters",
-	"filter":            "filterString",
+	"name":                "name",
+	"type":                "viewType",
+	"group_by":            "propertyKey",
+	"cover_property":      "propertyKey",
+	"end_property":        "propertyKey",
+	"hide_icon":           "bool",
+	"card_size":           "cardSize",
+	"cover_fit":           "bool",
+	"colored_groups":      "bool",
+	"page_size":           "int",
+	"default_template_id": "id",
+	"default_type_id":     "id",
+	"wrap_content":        "bool",
+	"list_size":           "listSize",
+	"alternate_rows":      "bool",
+	"sorts":               "sorts",
+	"filters":             "filters",
+	"filter":              "filterString",
 }
 
 // v2ViewSetFieldList renders the allowed `set` fields for error text, in a
@@ -504,11 +504,11 @@ func (a *v2StateApplier) applyViewSorts(raw json.RawMessage, view map[string]any
 			Message: fmt.Sprintf("%d sorts — the cap is %d (the advertised maxItems)", len(probes), maxV2SetSorts)})
 		return nil
 	}
-	// the advertised customOrder bound, enforced (M6: advertised = enforced)
+	// the advertised custom_order bound, enforced (M6: advertised = enforced)
 	for i, probe := range probes {
 		if len(probe.CustomOrder) > maxV2CustomOrderValues {
 			*issues = append(*issues, v2model.Issue{
-				Path:    fmt.Sprintf("%s[%d].customOrder", path, i),
+				Path:    fmt.Sprintf("%s[%d].custom_order", path, i),
 				Message: fmt.Sprintf("%d entries — the cap is %d (the advertised maxItems)", len(probe.CustomOrder), maxV2CustomOrderValues)})
 			return nil
 		}

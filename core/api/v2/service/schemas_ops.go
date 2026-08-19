@@ -81,22 +81,22 @@ var v2OpBlockCommonProps = v2OpBlockTypeProp + `,` +
 	`"language":{"type":"string","maxLength":64},` +
 	`"processor":{"type":"string","maxLength":64},` +
 	`"url":{"type":"string","maxLength":4096},` +
-	`"objectId":{"type":"string","maxLength":256},` +
+	`"object_id":{"type":"string","maxLength":256},` +
 	`"name":{"type":"string","maxLength":4096},` +
 	`"style":{"type":"string","maxLength":64},` +
 	// block ATTRIBUTE names are not key slots — §7.5a-4 excludes them by name,
 	// and the format's own schema (served verbatim as GET /v2/schemas/object)
-	// declares iconEmoji/iconImage. Re-spelled here, both defs being
+	// declares icon_emoji/icon_image. Re-spelled here, both defs being
 	// additionalProperties:false meant a grammar-constrained decoder could not
 	// author a callout icon at all, and two served schemas contradicted each
 	// other one request apart. TestOpBlockPropsExistInTheFormatSchema is the
 	// structural guard that keeps the exclusion out of prose.
-	`"iconEmoji":{"type":"string","maxLength":64},` +
-	`"iconImage":{"type":"string","maxLength":256},` +
+	`"icon_emoji":{"type":"string","maxLength":64},` +
+	`"icon_image":{"type":"string","maxLength":256},` +
 	`"key":{"type":"string","maxLength":256},` +
-	`"cardStyle":{"type":"string","maxLength":32},` +
+	`"card_style":{"type":"string","maxLength":32},` +
 	`"align":{"type":"string","enum":["left","center","right","justify"]},` +
-	`"backgroundColor":{"type":"string","maxLength":64}`
+	`"background_color":{"type":"string","maxLength":64}`
 
 // v2OpTableInnerIdProp is the EXISTING-content id slot of a table row or
 // column. Its charset has no dash on purpose: a cell's id is rowId+"-"+colId
@@ -182,20 +182,20 @@ const v2ViewBlockPropDef = `"block":{"$ref":"#/$defs/blockRef","description":"a 
 const v2ViewSetPropDef = `"set":{"type":"object","maxProperties":18,"additionalProperties":false,"description":"merge semantics: only the named view fields change, null clears one back to its default; sorts and filters replace whole (small ordered lists); filter is the compact-string alternative to filters (give at most one of the two); columns are NOT set here — use the columns channel","properties":{` +
 	`"name":{"type":["string","null"],"maxLength":4096},` +
 	`"type":{"type":["string","null"],"enum":["table","list","gallery","kanban","calendar","graph",null]},` +
-	`"groupBy":{"type":["string","null"],"maxLength":256,"description":"property key to group by (kanban/board views)"},` +
-	`"coverProperty":{"type":["string","null"],"maxLength":256},` +
-	`"endProperty":{"type":["string","null"],"maxLength":256},` +
-	`"hideIcon":{"type":["boolean","null"]},` +
-	`"cardSize":{"type":["string","null"],"enum":["small","medium","large",null]},` +
-	`"coverFit":{"type":["boolean","null"]},` +
-	`"coloredGroups":{"type":["boolean","null"]},` +
-	`"pageSize":{"type":["integer","null"],"minimum":0,"maximum":1000},` +
-	`"defaultTemplateId":{"type":["string","null"],"maxLength":256},` +
-	`"defaultTypeId":{"type":["string","null"],"maxLength":256},` +
-	`"wrapContent":{"type":["boolean","null"]},` +
-	`"listSize":{"type":["string","null"],"enum":["compact","regular",null]},` +
-	`"alternateRows":{"type":["boolean","null"]},` +
-	`"sorts":{"type":["array","null"],"maxItems":10,"items":{"type":"object","additionalProperties":false,"required":["property"],"properties":{"property":{"type":"string","maxLength":256},"direction":{"type":"string","enum":["asc","desc","custom"]},"customOrder":{"type":"array","maxItems":128},"emptyPlacement":{"type":"string","enum":["start","end"]},"includeTime":{"type":"boolean"},"noCollate":{"type":"boolean"},"id":{"type":"string","maxLength":64,"description":"output-only on reads; accepted back so a read sort round-trips"}}}},` +
+	`"group_by":{"type":["string","null"],"maxLength":256,"description":"property key to group by (kanban/board views)"},` +
+	`"cover_property":{"type":["string","null"],"maxLength":256},` +
+	`"end_property":{"type":["string","null"],"maxLength":256},` +
+	`"hide_icon":{"type":["boolean","null"]},` +
+	`"card_size":{"type":["string","null"],"enum":["small","medium","large",null]},` +
+	`"cover_fit":{"type":["boolean","null"]},` +
+	`"colored_groups":{"type":["boolean","null"]},` +
+	`"page_size":{"type":["integer","null"],"minimum":0,"maximum":1000},` +
+	`"default_template_id":{"type":["string","null"],"maxLength":256},` +
+	`"default_type_id":{"type":["string","null"],"maxLength":256},` +
+	`"wrap_content":{"type":["boolean","null"]},` +
+	`"list_size":{"type":["string","null"],"enum":["compact","regular",null]},` +
+	`"alternate_rows":{"type":["boolean","null"]},` +
+	`"sorts":{"type":["array","null"],"maxItems":10,"items":{"type":"object","additionalProperties":false,"required":["property"],"properties":{"property":{"type":"string","maxLength":256},"direction":{"type":"string","enum":["asc","desc","custom"]},"custom_order":{"type":"array","maxItems":128},"empty_placement":{"type":"string","enum":["start","end"]},"include_time":{"type":"boolean"},"no_collate":{"type":"boolean"},"id":{"type":"string","maxLength":64,"description":"output-only on reads; accepted back so a read sort round-trips"}}}},` +
 	`"filters":{"type":["array","null"],"maxItems":32,"description":"SPEC §6.2 filter nodes (GET /v2/schemas/filters), at most 32 at the top level (group more under and/or nodes) — recursive, so small models should prefer filter, the compact string"},` +
 	`"filter":{"type":"string","maxLength":4096,"description":"compact filter syntax (GET /v2/schemas/filters serves the grammar); parsed server-side into filters"}}}`
 
@@ -204,7 +204,7 @@ const v2ViewColumnsPropDef = `"columns":{"type":"object","maxProperties":64,"des
 	`"hidden":{"type":["boolean","null"],"description":"omitted/false = visible"},` +
 	`"width":{"type":["integer","null"],"minimum":0,"maximum":10000,"description":"pixels; null/omitted lets the client pick per format (SPEC §6.2)"},` +
 	`"align":{"type":["string","null"],"enum":["left","center","right","justify",null]},` +
-	`"aggregation":{"type":["string","null"],"enum":["count","countValue","countDistinct","countEmpty","countNotEmpty","percentEmpty","percentNotEmpty","sum","average","median","min","max","range",null]}}}}`
+	`"aggregation":{"type":["string","null"],"enum":["count","count_value","count_distinct","count_empty","count_not_empty","percent_empty","percent_not_empty","sum","average","median","min","max","range",null]}}}}`
 
 // v2ViewSetPropDefNoName is insert_view's set channel: identical, minus name
 // — insert_view's name is the op's required top-level field, and a set.name
@@ -220,7 +220,7 @@ var v2OpSchemas = map[string]v2SchemaKind{
 		schema: opSchema("set_properties", nil,
 			`"set":{"type":"object","maxProperties":128,"additionalProperties":{"type":["string","number","boolean","array","null"]},"description":"property key → value; presence is meaningful — an empty array means present-but-empty (SPEC §3); unknown select option NAMES are created"}`,
 			`"unset":{"type":"array","maxItems":128,"items":{"type":"string","maxLength":256},"description":"property keys to remove"}`,
-			`"add":{"type":"object","maxProperties":128,"additionalProperties":{"type":"array","maxItems":128,"items":{"type":"string","maxLength":4096}},"description":"list-shaped keys only (select, multiSelect, objects, files): append entries without rewriting the array — existing entries are never duplicated; unknown option NAMES are created"}`,
+			`"add":{"type":"object","maxProperties":128,"additionalProperties":{"type":"array","maxItems":128,"items":{"type":"string","maxLength":4096}},"description":"list-shaped keys only (select, multi_select, objects, files): append entries without rewriting the array — existing entries are never duplicated; unknown option NAMES are created"}`,
 			`"remove":{"type":"object","maxProperties":128,"additionalProperties":{"type":"array","maxItems":128,"items":{"type":"string","maxLength":4096}},"description":"list-shaped keys only: delete matching entries — absent entries (and absent keys) are a no-op; a key may appear in only one of set/unset/add/remove"}`),
 		example: `{"op":"set_properties","set":{"status":["Done"]},"add":{"tags":["Urgent"]},"unset":["due_date"]}`,
 	},
@@ -306,7 +306,7 @@ var v2OpSchemas = map[string]v2SchemaKind{
 			`"position":{"type":"string","enum":["first","last"],"description":"at most one of after/before/position; omitted = append; the FIRST view is the client's default tab"}`,
 			v2ViewSetPropDefNoName,
 			v2ViewColumnsPropDef),
-		example: `{"op":"insert_view","name":"Board","copy_from":"viewAll1","set":{"type":"kanban","groupBy":"status"}}`,
+		example: `{"op":"insert_view","name":"Board","copy_from":"viewAll1","set":{"type":"kanban","group_by":"status"}}`,
 	},
 	"move_view": {
 		endpoint: v2OpsEndpoint,

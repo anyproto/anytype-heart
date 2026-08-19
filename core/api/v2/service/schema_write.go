@@ -1,7 +1,7 @@
 package v2service
 
 // schema_write.go implements the Phase-2 schema write surface (APIV2.md
-// §2): POST/PATCH/DELETE for types (kind:"objectType" AnyBlock documents —
+// §2): POST/PATCH/DELETE for types (kind:"object_type" AnyBlock documents —
 // typeProperties creates missing properties, SPEC §2a) and properties
 // ({key?, name, format, options?}).
 
@@ -83,7 +83,7 @@ func validateV2ArrayCount(path string, raw json.RawMessage, max int) error {
 	return nil
 }
 
-// CreateType implements POST /v2/spaces/{space_id}/types: a kind:"objectType"
+// CreateType implements POST /v2/spaces/{space_id}/types: a kind:"object_type"
 // AnyBlock document; typeProperties creates missing properties atomically
 // with the type (SPEC §2a create-missing).
 func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, dryRun bool) (*v2model.CreateResult, error) {
@@ -104,15 +104,15 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 			v2model.Issue{Message: err.Error()})
 	}
 
-	// the endpoint IS the kind: inject/enforce kind objectType and default
+	// the endpoint IS the kind: inject/enforce kind object_type and default
 	// the version so a bare {key, typeProperties} document works
 	if raw, ok := fields["kind"]; ok {
 		var kind string
-		if err := json.Unmarshal(raw, &kind); err != nil || kind != "objectType" {
+		if err := json.Unmarshal(raw, &kind); err != nil || kind != "object_type" {
 			return nil, v2model.ValidationFailed("not a type document",
-				v2model.Issue{Path: "/kind", Message: "POST types accepts kind \"objectType\" documents only"})
+				v2model.Issue{Path: "/kind", Message: "POST types accepts kind \"object_type\" documents only"})
 		}
-	} else if fields["kind"], err = rawJSON("objectType"); err != nil {
+	} else if fields["kind"], err = rawJSON("object_type"); err != nil {
 		return nil, err
 	}
 	if _, ok := fields["version"]; !ok {
@@ -438,7 +438,7 @@ var updatableTypeDetailKeys = map[string]bool{
 // (SPEC §2a).
 type v2TypePatch struct {
 	Properties     map[string]json.RawMessage   `json:"properties"`
-	TypeProperties *[]anyblockjson.TypeProperty `json:"typeProperties"`
+	TypeProperties *[]anyblockjson.TypeProperty `json:"type_properties"`
 }
 
 // UpdateType implements PATCH /v2/spaces/{space_id}/types/{type}.
@@ -599,12 +599,12 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, req v2mode
 	format, ok := anyblockjson.FormatByName(req.Format)
 	if !ok {
 		return nil, v2model.ValidationFailed("unknown property format",
-			v2model.Issue{Path: "/format", Message: fmt.Sprintf("unknown format %q", req.Format), Hint: "allowed: text, number, select, multiSelect, date, files, checkbox, url, email, phone, objects"})
+			v2model.Issue{Path: "/format", Message: fmt.Sprintf("unknown format %q", req.Format), Hint: "allowed: text, number, select, multi_select, date, files, checkbox, url, email, phone, objects"})
 	}
 	isSelect := format == model.RelationFormat_status || format == model.RelationFormat_tag
 	if len(req.Options) > 0 && !isSelect {
 		return nil, v2model.ValidationFailed("options need a select format",
-			v2model.Issue{Path: "/options", Message: fmt.Sprintf("options apply to select and multiSelect properties, not %q", req.Format)})
+			v2model.Issue{Path: "/options", Message: fmt.Sprintf("options apply to select and multi_select properties, not %q", req.Format)})
 	}
 	// the bounds the property kind advertises (M6): option count, option
 	// fields, and the key's length + pattern

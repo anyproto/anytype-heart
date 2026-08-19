@@ -62,9 +62,9 @@ func TestV2CreateType(t *testing.T) {
 
 		// when
 		result, err := fx.CreateType(context.Background(), testSpaceId, []byte(`{
-			"kind":"objectType","key":"workout",
+			"kind":"object_type","key":"workout",
 			"properties":{"name":"Workout","recommendedLayout":"todo"},
-			"typeProperties":[
+			"type_properties":[
 				{"key":"severity","section":"featured"},
 				{"key":"spiciness","name":"Spiciness","format":"number"}
 			]}`), false)
@@ -130,8 +130,8 @@ func TestV2CreateType(t *testing.T) {
 
 		// when
 		_, err := fx.CreateType(context.Background(), testSpaceId, []byte(`{
-			"kind":"objectType","key":"workout",
-			"typeProperties":[{"key":"severity","section":"featured"}]}`), false)
+			"kind":"object_type","key":"workout",
+			"type_properties":[{"key":"severity","section":"featured"}]}`), false)
 
 		// then
 		require.NoError(t, err)
@@ -149,8 +149,8 @@ func TestV2CreateType(t *testing.T) {
 
 		// when
 		result, err := fx.CreateType(context.Background(), testSpaceId, []byte(`{
-			"kind":"objectType","key":"workout",
-			"typeProperties":[{"key":"spiciness","format":"number"}]}`), true)
+			"kind":"object_type","key":"workout",
+			"type_properties":[{"key":"spiciness","format":"number"}]}`), true)
 
 		// then
 		require.NoError(t, err)
@@ -168,9 +168,9 @@ func TestV2CreateType(t *testing.T) {
 		fx := newV2Fixture(t)
 
 		result, err := fx.CreateType(context.Background(), testSpaceId, []byte(`{
-			"kind":"objectType","key":"workout","etag":"abcd1234",
+			"kind":"object_type","key":"workout","etag":"abcd1234",
 			"warnings":[{"message":"from the read"}],
-			"typeProperties":[{"key":"spiciness","format":"number"}]}`), true)
+			"type_properties":[{"key":"spiciness","format":"number"}]}`), true)
 
 		require.NoError(t, err, "a GET-type body must create without hand-stripping envelope fields")
 		assert.True(t, result.DryRun)
@@ -180,8 +180,8 @@ func TestV2CreateType(t *testing.T) {
 		fx := newV2Fixture(t)
 
 		_, err := fx.CreateType(context.Background(), testSpaceId, []byte(`{
-			"kind":"objectType","key":"workout","subtree":true,
-			"typeProperties":[{"key":"spiciness","format":"number"}]}`), true)
+			"kind":"object_type","key":"workout","subtree":true,
+			"type_properties":[{"key":"spiciness","format":"number"}]}`), true)
 
 		apiErr := v2Err(t, err)
 		require.NotEmpty(t, apiErr.Issues)
@@ -195,7 +195,7 @@ func TestV2CreateType(t *testing.T) {
 
 		// when
 		_, err := fx.CreateType(context.Background(), testSpaceId,
-			[]byte(`{"kind":"objectType","key":"task"}`), false)
+			[]byte(`{"kind":"object_type","key":"task"}`), false)
 
 		// then
 		apiErr := v2Err(t, err)
@@ -212,7 +212,7 @@ func TestV2CreateType(t *testing.T) {
 
 		// when
 		_, err := fx.CreateType(context.Background(), testSpaceId,
-			[]byte(`{"kind":"objectType","key":"chore"}`), false)
+			[]byte(`{"kind":"object_type","key":"chore"}`), false)
 
 		// then
 		apiErr := v2Err(t, err)
@@ -226,7 +226,7 @@ func TestV2CreateType(t *testing.T) {
 
 		// when
 		_, err := fx.CreateType(context.Background(), testSpaceId,
-			[]byte(`{"kind":"objectType","key":"workout","blocks":[{"type":"dataview"}]}`), false)
+			[]byte(`{"kind":"object_type","key":"workout","blocks":[{"type":"dataview"}]}`), false)
 
 		// then
 		apiErr := v2Err(t, err)
@@ -243,6 +243,19 @@ func TestV2CreateType(t *testing.T) {
 			[]byte(`{"kind":"page","key":"workout"}`), false)
 
 		// then
+		apiErr := v2Err(t, err)
+		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
+	})
+
+	t.Run("the stale camelCase kind spelling is rejected too", func(t *testing.T) {
+		// "objectType" was the pre-migration spelling (GO-7383 moved the
+		// format's own vocabulary to snake_case); it must stay rejected, not
+		// silently accepted again by some future copy-paste
+		fx := newV2Fixture(t)
+
+		_, err := fx.CreateType(context.Background(), testSpaceId,
+			[]byte(`{"kind":"objectType","key":"workout"}`), false)
+
 		apiErr := v2Err(t, err)
 		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
 	})
@@ -265,7 +278,7 @@ func TestV2UpdateType(t *testing.T) {
 		// when
 		result, err := fx.UpdateType(context.Background(), testSpaceId, "chore", []byte(`{
 			"properties":{"name":"Chores"},
-			"typeProperties":[{"key":"severity","section":"featured"}]}`), false)
+			"type_properties":[{"key":"severity","section":"featured"}]}`), false)
 
 		// then
 		require.NoError(t, err)
@@ -489,7 +502,7 @@ func TestV2CreateProperty(t *testing.T) {
 			options[i] = v2model.CreateOptionRequest{Name: fmt.Sprintf("o%d", i)}
 		}
 		_, err = fx.CreateProperty(context.Background(), testSpaceId,
-			v2model.CreatePropertyRequest{Name: "Tags", Format: "multiSelect", Options: options}, false)
+			v2model.CreatePropertyRequest{Name: "Tags", Format: "multi_select", Options: options}, false)
 		apiErr = v2Err(t, err)
 		require.NotEmpty(t, apiErr.Issues)
 		assert.Equal(t, "/options", apiErr.Issues[0].Path)
@@ -507,7 +520,7 @@ func TestV2CreateProperty(t *testing.T) {
 		apiErr := v2Err(t, err)
 		require.Len(t, apiErr.Issues, 1)
 		assert.Equal(t, "/format", apiErr.Issues[0].Path)
-		assert.Contains(t, apiErr.Issues[0].Hint, "multiSelect")
+		assert.Contains(t, apiErr.Issues[0].Hint, "multi_select")
 	})
 
 	t.Run("options on a non-select format are rejected", func(t *testing.T) {

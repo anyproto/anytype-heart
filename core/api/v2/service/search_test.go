@@ -557,7 +557,7 @@ func TestV2SearchPlanConvergence(t *testing.T) {
 		{
 			name:       "date preset",
 			filter:     `verifiedUntil < currentWeek()`,
-			structured: `[{"property":"verifiedUntil","condition":"less","datePreset":"currentWeek"}]`,
+			structured: `[{"property":"verifiedUntil","condition":"less","date_preset":"currentWeek"}]`,
 		},
 		{
 			name:       "set literal on a select property",
@@ -635,7 +635,7 @@ func TestV2SearchEffectiveSorts(t *testing.T) {
 	t.Run("an explicit includeTime false is honored", func(t *testing.T) {
 		fx := searchSetup(t)
 		plan, err := fx.buildSearchPlan(testSpaceId, v2model.SearchRequest{
-			Sorts: json.RawMessage(`[{"property":"lastModifiedDate","direction":"asc","includeTime":false}]`),
+			Sorts: json.RawMessage(`[{"property":"lastModifiedDate","direction":"asc","include_time":false}]`),
 		}, true)
 		require.NoError(t, err)
 		require.NotEmpty(t, plan.sorts)

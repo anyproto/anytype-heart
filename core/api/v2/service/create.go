@@ -31,10 +31,10 @@ import (
 type docEnvelope struct {
 	Kind           string                     `json:"kind"`
 	Type           string                     `json:"type"`
-	TemplateFor    string                     `json:"templateFor"`
+	TemplateFor    string                     `json:"template_for"`
 	Key            string                     `json:"key"`
 	Properties     map[string]json.RawMessage `json:"properties"`
-	TypeProperties json.RawMessage            `json:"typeProperties"`
+	TypeProperties json.RawMessage            `json:"type_properties"`
 	Items          []string                   `json:"items"`
 }
 
@@ -409,9 +409,9 @@ func mapUnmarshalError(body []byte, err error) error {
 func (s *Service) validateDocumentRefs(ctx context.Context, spaceId string, envelope *docEnvelope, opts docCreateOptions, spellings map[string]string) error {
 	switch envelope.Kind {
 	case "", "page", "template":
-	case "objectType":
+	case "object_type":
 		return v2model.ValidationFailed("type documents are created via their own endpoint",
-			v2model.Issue{Path: "/kind", Message: "kind \"objectType\" is not accepted here", Hint: fmt.Sprintf("POST /v2/spaces/%s/types", spaceId)})
+			v2model.Issue{Path: "/kind", Message: "kind \"object_type\" is not accepted here", Hint: fmt.Sprintf("POST /v2/spaces/%s/types", spaceId)})
 	default:
 		return v2model.ValidationFailed("unsupported document kind",
 			v2model.Issue{Path: "/kind", Message: fmt.Sprintf("kind %q cannot be created through the API", envelope.Kind), Hint: "omit kind (page) or use type \"template\""})
@@ -436,10 +436,10 @@ func (s *Service) validateDocumentRefs(ctx context.Context, spaceId string, enve
 		}
 	}
 	// a template must name its target type — the editor derives the layout
-	// from it (SPEC §2 templateFor); enforced on both endpoints
+	// from it (SPEC §2 template_for); enforced on both endpoints
 	if envelope.Type == string(bundle.TypeKeyTemplate) && envelope.TemplateFor == "" {
-		return v2model.ValidationFailed("templateFor is required",
-			v2model.Issue{Path: "/templateFor", Message: "a template document names its target type key", Hint: fmt.Sprintf("list keys with GET /v2/spaces/%s/types", spaceId)})
+		return v2model.ValidationFailed("template_for is required",
+			v2model.Issue{Path: "/template_for", Message: "a template document names its target type key", Hint: fmt.Sprintf("list keys with GET /v2/spaces/%s/types", spaceId)})
 	}
 
 	if envelope.Type != "" && envelope.Type != string(bundle.TypeKeyTemplate) {
@@ -460,9 +460,9 @@ func (s *Service) validateDocumentRefs(ctx context.Context, spaceId string, enve
 	}
 	if envelope.TemplateFor != "" {
 		if !s.typeKeyExists(spaceId, envelope.TemplateFor) {
-			return s.unknownTypeKeyError(spaceId, envelope.TemplateFor, "/templateFor")
+			return s.unknownTypeKeyError(spaceId, envelope.TemplateFor, "/template_for")
 		}
-		if err := s.refuseRemovedType(ctx, spaceId, envelope.TemplateFor, "/templateFor"); err != nil {
+		if err := s.refuseRemovedType(ctx, spaceId, envelope.TemplateFor, "/template_for"); err != nil {
 			return err
 		}
 	}

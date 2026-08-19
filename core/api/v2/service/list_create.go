@@ -243,14 +243,14 @@ type sortProbe struct {
 	// IncludeTime distinguishes "omitted" from an explicit false — the
 	// search path defaults date sorts to second granularity only when the
 	// request did not decide (search.go).
-	IncludeTime *bool `json:"includeTime"`
+	IncludeTime *bool `json:"include_time"`
 	// CustomOrder is probed by the view ops for the advertised maxItems
 	// bound (viewops.go).
-	CustomOrder []json.RawMessage `json:"customOrder"`
+	CustomOrder []json.RawMessage `json:"custom_order"`
 }
 
 type viewProbe struct {
-	GroupBy string            `json:"groupBy"`
+	GroupBy string            `json:"group_by"`
 	Sorts   []sortProbe       `json:"sorts"`
 	Filters []filterNodeProbe `json:"filters"`
 	Columns []sortProbe       `json:"columns"` // columns carry `property` too
