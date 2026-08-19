@@ -1277,9 +1277,13 @@ func checkDateFilters(view map[string]any, formats map[string]string, path strin
 			}
 			// the day-count presets read their operand from value; without
 			// one the count is 0, which quietly means "today" rather than
-			// "n days ago" (pkg/lib/database.getDateRange)
+			// "n days ago" (pkg/lib/database.getDateRange) — but only where
+			// the range is applied at all (datePresetConditions)
 			if preset, _ := n["date_preset"].(string); preset != "" {
-				if _, counts := countingPresetNames[preset]; counts {
+				_, counts := countingPresetNames[preset]
+				leafCond, _ := n["condition"].(string)
+				_, applies := datePresetConditions[leafCond]
+				if counts && applies {
 					if _, has := n["value"]; !has {
 						addIssue(nPath, "date_preset %q needs a day count in \"value\"; without one it means 0 days, i.e. today", preset)
 					}

@@ -184,3 +184,54 @@ func TestRoundtrip_ZeroDayCountSurvives(t *testing.T) {
 		assert.Equal(t, float64(days), got.Value.GetNumberValue())
 	}
 }
+
+// The day count is only ever read where the preset's day range is actually
+// applied. transformDateFilter computes the range for every date filter but
+// substitutes it for six conditions only — equal, in, less, greater,
+// less_or_equal, greater_or_equal (pkg/lib/database/quickoptions.go); every
+// other condition returns the filter unchanged, so the preset is inert and a
+// missing count means nothing at all rather than "today".
+//
+// This is where the rule collided with export: `value` is dropped on
+// presence-only leaves (§11), so a stored filter with `empty` and a counting
+// preset marshalled into a document the package's own validation rejected. A
+// 36 808-object sweep found two of them.
+func TestValidate_CountingPresetOnlyWhereTheRangeApplies(t *testing.T) {
+	t.Run("applied: a missing count is still an error", func(t *testing.T) {
+		for _, cond := range []string{"equal", "in", "less", "greater", "less_or_equal", "greater_or_equal"} {
+			err := Validate([]byte(dateFilterDoc(
+				`{"property": "verifiedUntil", "condition": "` + cond + `", "date_preset": "number_of_days_ago"}`)))
+			require.Error(t, err, cond)
+			assert.Contains(t, err.Error(), "needs a day count", cond)
+		}
+	})
+
+	t.Run("not applied: the preset is inert, so nothing is missing", func(t *testing.T) {
+		// presence-only leaves are the ones export strips the value from
+		for _, cond := range []string{"empty", "not_empty", "exists", "not_equal", "not_in"} {
+			assert.NoError(t, Validate([]byte(dateFilterDoc(
+				`{"property": "verifiedUntil", "condition": "`+cond+`", "date_preset": "number_of_days_ago"}`))), cond)
+		}
+	})
+}
+
+// I1 for the same pair: a stored filter with a presence-only condition and a
+// counting preset must marshal into a document Validate accepts.
+func TestExport_CountingPresetOnPresenceOnlyLeaf(t *testing.T) {
+	for _, cond := range []model.BlockContentDataviewFilterCondition{
+		model.BlockContentDataviewFilter_Empty,
+		model.BlockContentDataviewFilter_NotEmpty,
+		model.BlockContentDataviewFilter_Exists,
+	} {
+		snapshot := dataviewSnapshot()
+		snapshot.Blocks[1].GetDataview().Views[0].Filters = []*model.BlockContentDataviewFilter{{
+			RelationKey: "due",
+			Condition:   cond,
+			QuickOption: model.BlockContentDataviewFilter_NumberOfDaysAgo,
+			Format:      model.RelationFormat_date,
+		}}
+		data, err := Marshal(model.SmartBlockType_Page, snapshot, testOptions())
+		require.NoError(t, err)
+		assert.NoError(t, Validate(data), "Marshal must not emit what Validate rejects (%v):\n%s", cond, data)
+	}
+}

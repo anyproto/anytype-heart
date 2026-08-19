@@ -415,6 +415,22 @@ var countingPresetNames = map[string]struct{}{
 	"number_of_days_now": {},
 }
 
+// datePresetConditions are the conditions that apply a preset's day range at
+// all. transformDateFilter computes the range for every date filter, then
+// substitutes it into the filter for these six and no others
+// (pkg/lib/database/quickoptions.go): on any other condition — the
+// presence-only leaves above all — it returns the filter unchanged, so the
+// preset is inert and its day count is never read. That is why a counting
+// preset without a count is an error here and nothing at all there.
+var datePresetConditions = map[string]struct{}{
+	"equal":            {},
+	"in":               {},
+	"less":             {},
+	"greater":          {},
+	"less_or_equal":    {},
+	"greater_or_equal": {},
+}
+
 var datePresetNames = newEnumNames(map[model.BlockContentDataviewFilterQuickOption]string{
 	model.BlockContentDataviewFilter_Yesterday:       "yesterday",
 	model.BlockContentDataviewFilter_Today:           "today",

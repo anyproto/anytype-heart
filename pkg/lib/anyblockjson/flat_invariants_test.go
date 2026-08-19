@@ -117,9 +117,29 @@ func hostileSnapshot(n int) *model.SmartBlockSnapshotBase {
 		}
 	}
 	if rnd.Intn(3) == 0 {
+		// a date filter carrying a preset but no value: the value-bearing
+		// conditions and the presence-only ones make export write different
+		// things, and only one of those had coverage
+		cond := []model.BlockContentDataviewFilterCondition{
+			model.BlockContentDataviewFilter_Empty,
+			model.BlockContentDataviewFilter_NotEmpty,
+			model.BlockContentDataviewFilter_Exists,
+			model.BlockContentDataviewFilter_Greater,
+			model.BlockContentDataviewFilter_Equal,
+			model.BlockContentDataviewFilter_NotEqual,
+		}[rnd.Intn(6)]
+		preset := []model.BlockContentDataviewFilterQuickOption{
+			model.BlockContentDataviewFilter_NumberOfDaysAgo,
+			model.BlockContentDataviewFilter_NumberOfDaysNow,
+			model.BlockContentDataviewFilter_Today,
+		}[rnd.Intn(3)]
 		add(&model.Block{Id: pick(), Content: &model.BlockContentOfDataview{
 			Dataview: &model.BlockContentDataview{
-				Views: []*model.BlockContentDataviewView{{Id: pick(), Name: "All"}},
+				Views: []*model.BlockContentDataviewView{{Id: pick(), Name: "All",
+					Filters: []*model.BlockContentDataviewFilter{{
+						RelationKey: "dueDate", Condition: cond, QuickOption: preset,
+						Format: model.RelationFormat_date,
+					}}}},
 			}}})
 	}
 	// details carry the keys the import surface must refuse: if export ever
@@ -290,6 +310,12 @@ var hostileDocs = []string{
 	`{"version": 1, "property_keys": {"s": "spaceId"}, "properties": {"s": "other"}}`,
 	// a benign rebind is the legend working as specified, and flows through
 	`{"version": 1, "property_keys": {"prio": "6a32d4856761631534b22f85"}, "properties": {"prio": "high"}}`,
+	// a counting date preset with no count: an error where the preset's day
+	// range is applied, and nothing at all where it is inert (§6.2)
+	`{"version": 1, "blocks": [{"type": "dataview", "views": [{"id": "v1",
+		"filters": [{"property": "due_date", "condition": "empty", "date_preset": "number_of_days_ago"}]}]}]}`,
+	`{"version": 1, "blocks": [{"type": "dataview", "views": [{"id": "v1",
+		"filters": [{"property": "due_date", "condition": "greater", "date_preset": "number_of_days_ago"}]}]}]}`,
 	// a legend value is a stored key and obeys the writable-key rule (§3)
 	`{"version": 1, "property_keys": {"p": ""}}`,
 	`{"version": 1, "property_keys": {"p": "a\nb"}}`,

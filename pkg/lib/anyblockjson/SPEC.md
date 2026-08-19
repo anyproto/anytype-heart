@@ -1170,16 +1170,30 @@ a group exists only for `or` or nesting):
   is unrelated: it fills property defaults when an object is created from a
   template, is resolved in Go, and never appears in a filter.
 
+  **A preset applies under six conditions only.** `transformDateFilter`
+  computes the range for every date filter but substitutes it into the query
+  for `equal`, `in`, `less`, `greater`, `less_or_equal` and
+  `greater_or_equal`; under any other condition it returns the filter
+  unchanged, so the preset is stored UI state with no effect on what the view
+  matches. A preset resolves to a day *range*, and the condition picks the
+  endpoint: `less`/`greater_or_equal` compare against the range start,
+  `greater`/`less_or_equal` against its end, and `equal`/`in` expand into a
+  pair bracketing both.
+
   `number_of_days_ago` and `number_of_days_now` are the two presets that **take an
   operand**: `getDateRange` reads the day count from `value`
   (`pkg/lib/database/quickoptions.go`), so they are the one case where a
-  preset and a `value` legitimately coexist, and a leaf carrying one without
-  a `value` is a validation error — the count would default to `0`, silently
-  meaning today. Because the count is meaningful data rather than an absent
-  field, export writes it even when it is `0`, overriding the usual
-  empty-elision (§4). A preset resolves to a day *range*, and the condition
-  picks the endpoint: `less`/`greater_or_equal` compare against the range
-  start, `greater`/`less_or_equal` against its end.
+  preset and a `value` legitimately coexist, and under one of the six
+  conditions above a leaf carrying such a preset without a `value` is a
+  validation error — the count would default to `0`, silently meaning today.
+  Because the count is meaningful data rather than an absent field, export
+  writes it even when it is `0`, overriding the usual empty-elision (§4).
+  Under any other condition the rule does not apply, because the count is
+  never read: nothing is silently anything. This scope is not a nicety — it
+  is where the rule met the one above it, since `value` is *dropped* on
+  `empty`/`not_empty`/`exists` leaves, so a stored filter combining one of
+  those with a counting preset made `Marshal` emit a document its own
+  `Validate` rejected (§11).
 
 Sorts and filters do **not** carry the proto's cached per-node `format`:
 import rehydrates it from the dataview `properties` list and `bundle`
