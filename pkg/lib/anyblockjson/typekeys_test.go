@@ -725,6 +725,47 @@ func TestImport_TemplateSpellingIsReservedAgainstTheVocabulary(t *testing.T) {
 		assert.Equal(t, "task", decodeEnvelope(t, out).TemplateFor)
 	})
 
+	// §13: a warning's path addresses the fault. The guard fires in three
+	// slots and named `/type` in all three, so a caller following the pointer
+	// landed on a field that was fine — or, from a type document, on one the
+	// document does not have at all.
+	t.Run("the warning addresses the slot it fired in", func(t *testing.T) {
+		for name, tc := range map[string]struct {
+			doc   string
+			paths []string
+		}{
+			"the envelope type": {
+				`{"version": 1, "type": "tpl"}`, []string{"/type"}},
+			"a template's target type": {
+				// `template` is moved by this vocabulary too, so the envelope
+				// slot refuses it as well — one warning per slot, each
+				// naming its own
+				`{"version": 1, "type": "template", "template_for": "tpl"}`,
+				[]string{"/type", "/template_for"}},
+			"a type property's object_types entry": {
+				`{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
+				  "type_properties": [{"key": "owner", "format": "objects",
+				   "object_types": ["page", "tpl"]}]}`,
+				[]string{"/type_properties/0/object_types/1"}},
+		} {
+			t.Run(name, func(t *testing.T) {
+				var warned []Issue
+				o := opts()
+				o.OnWarning = func(i Issue) { warned = append(warned, i) }
+
+				_, _, err := Unmarshal([]byte(tc.doc), o)
+
+				require.NoError(t, err)
+				var paths []string
+				for _, w := range warned {
+					assert.Contains(t, w.Message, "template semantics")
+					paths = append(paths, w.Path)
+				}
+				assert.Equal(t, tc.paths, paths)
+			})
+		}
+	})
+
 	t.Run("no other spelling may take the template key", func(t *testing.T) {
 		doc := `{"version": 1, "type": "tpl"}`
 

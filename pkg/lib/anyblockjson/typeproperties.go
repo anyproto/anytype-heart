@@ -165,8 +165,15 @@ func (e *exporter) buildTypeProperties() []any {
 			// the slot carries the term verbatim when no vocabulary spells
 			// it, and writableSlug backs a spelling off to the stored key
 			// precisely when that key is unwritable.
+			//
+			// The path is the ARRAY, not an index in it: the entry is
+			// dropped, so it has no index, and `/type_properties/<len(out)>`
+			// — the index the next SURVIVOR takes — addressed a healthy
+			// entry as the fault (§13). The message names the key, which is
+			// what identifies the drop; this is the same shape the property
+			// namespace reports a dropped key with (`/properties`).
 			if !writableTypePropertyKey(def) {
-				e.warn(fmt.Sprintf("/type_properties/%d", len(out)),
+				e.warn("/type_properties",
 					"property %q is dropped: %s", def.Key,
 					unwritableKeyReason("property key", string(def.Key)))
 				continue
@@ -355,10 +362,11 @@ func (imp *importer) applyTypeProperties(details *types.Struct) error {
 		// onto the empty key, which has no written form (§3)
 		var targets []string
 		for j, slug := range tp.ObjectTypes {
-			resolved := imp.typeKey(slug)
+			slotPath := fmt.Sprintf("/type_properties/%d/object_types/%d", i, j)
+			resolved := imp.typeKey(slug, slotPath)
 			if resolved == "" {
 				return &ValidationError{Issues: []Issue{{
-					Path:    fmt.Sprintf("/type_properties/%d/object_types/%d", i, j),
+					Path:    slotPath,
 					Message: unwritableKeyReason("resolved type key", resolved),
 				}}}
 			}

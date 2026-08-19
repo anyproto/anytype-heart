@@ -252,14 +252,19 @@ func (imp *importer) propertyKeys(slugs []string) []string {
 // derivation and the gate with it, and the two halves still agree. Only the
 // reader's vocabulary, which docTypeKey deliberately cannot see, has to be
 // held to the document's answer.
-func (imp *importer) typeKey(slug string) string {
+// The path is the SLOT being read, and it is a parameter because the guard
+// fires in three of them: the envelope `type`, `template_for`, and every
+// `type_properties[i].object_types[j]` (§2a). It used to say `/type`
+// whatever it was reading, so a caller following the pointer landed on a
+// field that was fine — or on one the document does not have (§13).
+func (imp *importer) typeKey(slug, path string) string {
 	if key, ok := imp.doc.TypeKeys[slug]; ok && key != "" {
 		return key
 	}
 	key := imp.opts.typeKey(slug)
 	docKey, _ := BundledKeyVocabulary{}.TypeKey(slug)
 	if key != docKey && (key == typeKeyTemplate || docKey == typeKeyTemplate) {
-		imp.warn("/type",
+		imp.warn(path,
 			"the vocabulary resolves %q to type %q, but the spelling `template` carries the envelope's template semantics (§2); %q is used instead",
 			slug, key, docKey)
 		return docKey
@@ -365,7 +370,7 @@ func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBas
 		// silently. That is the only refusable resolution here: a non-empty
 		// stored key of any shape round-trips verbatim, unlike a property
 		// key, which has to survive as a JSON member name.
-		typeKey := imp.typeKey(doc.Type)
+		typeKey := imp.typeKey(doc.Type, "/type")
 		if typeKey == "" {
 			return 0, nil, &ValidationError{Issues: []Issue{{
 				Path:    "/type",
@@ -374,7 +379,7 @@ func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBas
 		}
 		objectTypes = append(objectTypes, domain.TypeKey(typeKey).URL())
 		if imp.docTypeKey(doc.Type) == typeKeyTemplate && doc.TemplateFor != "" {
-			target := imp.typeKey(doc.TemplateFor)
+			target := imp.typeKey(doc.TemplateFor, "/template_for")
 			if target == "" {
 				return 0, nil, &ValidationError{Issues: []Issue{{
 					Path:    "/template_for",

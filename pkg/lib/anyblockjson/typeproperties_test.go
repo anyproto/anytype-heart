@@ -538,3 +538,38 @@ func TestTypePropertyFormatIsTheSameThroughBothDoors(t *testing.T) {
 		})
 	}
 }
+
+// §13: a path addresses the fault. A dropped §2a entry has no index in the
+// document — it is not there — and the warning used to carry
+// `/type_properties/<len(out)>`, which is the index the next SURVIVING entry
+// takes. So the diagnostic for the broken entry pointed at a healthy one, and
+// a caller that trusted the pointer read the wrong property.
+func TestExport_ADroppedTypePropertyIsReportedAtTheArray(t *testing.T) {
+	// given: k1's definition has no key at all (a vocabulary bug's residue,
+	// the shape real type objects hold), k2's is healthy
+	snapshot := &model.SmartBlockSnapshotBase{
+		Details: fields(map[string]*types.Value{
+			"id":                           str("t1"),
+			"recommendedFeaturedRelations": strList("k1", "k2"),
+		}),
+		ObjectTypes: []string{"ot-objectType"},
+	}
+	var warned []Issue
+
+	// when
+	data, err := Marshal(model.SmartBlockType_STType, snapshot, Options{
+		ResolveProperties: censusPropResolver{},
+		OnWarning:         func(i Issue) { warned = append(warned, i) },
+	})
+	require.NoError(t, err)
+
+	// then
+	doc := decodeEnvelope(t, data)
+	require.Len(t, doc.TypeProps, 1)
+	assert.Equal(t, "owner", doc.TypeProps[0].Key, "entry 0 of the document is the HEALTHY one")
+	require.Len(t, warned, 1)
+	assert.Equal(t, "/type_properties", warned[0].Path,
+		"the array is the fault's address; the dropped entry has no index in it")
+	assert.Contains(t, warned[0].Message, "is dropped",
+		"and the message names the key, which is what identifies it")
+}
