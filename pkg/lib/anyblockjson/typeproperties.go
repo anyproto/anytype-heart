@@ -234,20 +234,48 @@ type RecommendedList struct {
 // the only statement about spelling in force. A caller that lifted these slugs
 // out of a document owes them that document's legend before calling, because
 // nothing downstream of this signature can see it.
-func BuildRecommendedLists(props []TypeProperty, opts Options) []RecommendedList {
+//
+// It refuses what applyTypeProperties refuses, on the same resolved keys and
+// with the same JSON pointers, because it is the SAME array arriving through
+// the other door — the API's PATCH-type channel. A vocabulary answering "" for
+// a spelling is a vocabulary bug (a stale slug index, a hand-rolled
+// KeyVocabulary), and an unrefused one wrote the empty key straight into a
+// type's recommended lists: `recommendedRelations: [""]` and
+// `ObjectTypes: ["", "page"]`, both of which name nothing, are invisible in
+// every UI, and re-export as a shorter list than they went in as. The document
+// path has refused exactly this since the seam was written; the two doors owed
+// the same answer, or the format's guarantees hold only for whichever door the
+// caller happened to use.
+func BuildRecommendedLists(props []TypeProperty, opts Options) ([]RecommendedList, error) {
 	bySection := map[string][]string{}
-	for _, tp := range props {
+	for i, tp := range props {
 		key := opts.propertyKey(tp.Key)
+		if !isWritablePropertyKey(key) {
+			return nil, &ValidationError{Issues: []Issue{{
+				Path:    fmt.Sprintf("/type_properties/%d/key", i),
+				Message: unwritableKeyReason("resolved property key", key),
+			}}}
+		}
+		// object_types is a TYPE key slot, inverted entry by entry through the
+		// caller's vocabulary — Options.typeKey for the same reason as
+		// Options.propertyKey above: there is no document here, so there is no
+		// type_keys legend to consult. Resolved (and refused) OUTSIDE the
+		// resolver branch, so the verdict on a given input does not depend on
+		// whether the caller happened to wire a resolver — applyTypeProperties
+		// refuses unconditionally, and this is the same array.
+		var targets []string
+		for j, slug := range tp.ObjectTypes {
+			resolved := opts.typeKey(slug)
+			if resolved == "" {
+				return nil, &ValidationError{Issues: []Issue{{
+					Path:    fmt.Sprintf("/type_properties/%d/object_types/%d", i, j),
+					Message: unwritableKeyReason("resolved type key", resolved),
+				}}}
+			}
+			targets = append(targets, resolved)
+		}
 		id := key
 		if opts.ResolveProperties != nil {
-			// objectTypes is a TYPE key slot, inverted entry by entry through
-			// the caller's vocabulary — Options.typeKey for the same reason
-			// as Options.propertyKey above: there is no document here, so
-			// there is no type_keys legend to consult
-			var targets []string
-			for _, slug := range tp.ObjectTypes {
-				targets = append(targets, opts.typeKey(slug))
-			}
 			def := PropertyDefinition{
 				Key:         domain.RelationKey(key),
 				Name:        tp.Name,
@@ -269,7 +297,7 @@ func BuildRecommendedLists(props []TypeProperty, opts Options) []RecommendedList
 		}
 		out = append(out, RecommendedList{DetailKey: l.detailKey, Ids: ids})
 	}
-	return out
+	return out, nil
 }
 
 // applyTypeProperties rebuilds the four recommended-relation lists from the
@@ -284,7 +312,20 @@ func (imp *importer) applyTypeProperties(details *types.Struct) error {
 	}
 	lists := map[string][]*types.Value{}
 	for i, tp := range *imp.doc.TypeProps {
+		// `key` is a PROPERTY key slot, and the seam admits only keys export
+		// could write (§3) — the same refusal /properties makes one file over.
+		// The schema bounds the SPELLING (minLength 1), but a wider vocabulary
+		// resolves past it: PropertyKey("assignee") answering ("", true) landed
+		// the empty key in the type's recommended list, where it names nothing
+		// and disappears on re-export. Only the resolved key can be judged,
+		// which is why the schema cannot own this.
 		key := imp.propertyKey(tp.Key)
+		if !isWritablePropertyKey(key) {
+			return &ValidationError{Issues: []Issue{{
+				Path:    fmt.Sprintf("/type_properties/%d/key", i),
+				Message: unwritableKeyReason("resolved property key", key),
+			}}}
+		}
 		// object_types is a TYPE key slot (§2a): the document's own legend
 		// first, then the vocabulary — and the seam refuses a resolution
 		// onto the empty key, which has no written form (§3)

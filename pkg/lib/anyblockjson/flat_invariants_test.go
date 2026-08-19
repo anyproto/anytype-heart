@@ -502,6 +502,10 @@ var hostileDocs = []string{
 	`{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
 		"type_keys": {"task": "69bbfc78877a91b1d12d1a7c"},
 		"type_properties": [{"key": "owner", "format": "objects", "object_types": ["task", "blanktype"]}]}`,
+	// a type_properties `key` is a PROPERTY key slot and admits like one: the
+	// schema bounds the spelling, a wider vocabulary resolves past it
+	`{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
+		"type_properties": [{"key": "blank", "format": "text"}]}`,
 }
 
 // i2Vocabularies is the Options axis I2 runs over. A vocabulary can resolve

@@ -371,3 +371,92 @@ func TestTypePropertiesValidation(t *testing.T) {
 		assert.NoError(t, Validate([]byte(doc)))
 	})
 }
+
+// BuildRecommendedLists is the PATCH-types channel for the same §2a array a
+// type document carries, so it must refuse what the document path refuses —
+// on the same resolved keys, with the same JSON pointers. It refused nothing:
+// a vocabulary answering "" for a spelling (a stale slug index, a hand-rolled
+// KeyVocabulary — Options.Keys is a public interface) wrote the empty key
+// straight into a type's recommended lists, where it names nothing, is
+// invisible in every UI and disappears on the next export. The document path
+// has refused the type half of exactly this since the seam was written; the
+// property half was unrefused on BOTH paths.
+func TestBuildRecommendedListsRefusesUnwritableResolvedKeys(t *testing.T) {
+	t.Run("a property key the vocabulary resolves onto nothing", func(t *testing.T) {
+		// given — PropertyKey("blank") answers ("", true)
+		props := []TypeProperty{{Key: "blank", Name: "Blank", Section: "featured"}}
+
+		// when
+		lists, err := BuildRecommendedLists(props, Options{Keys: blankKeyVocab{}})
+
+		// then
+		require.Error(t, err, `recommendedFeaturedRelations: [""] names nothing`)
+		assert.Nil(t, lists)
+		var ve *ValidationError
+		require.ErrorAs(t, err, &ve, "the refusal is path-addressed, as on the document path")
+		assert.Contains(t, err.Error(), "/type_properties/0/key")
+	})
+
+	t.Run("an object_types entry the vocabulary resolves onto nothing", func(t *testing.T) {
+		// given — TypeKey("blanktype") answers ("", true); the good sibling
+		// stands first so a fix that merely skipped the bad entry is caught
+		props := []TypeProperty{{
+			Key:         "assignee",
+			ObjectTypes: []string{"page", "blanktype"},
+			Section:     "featured",
+		}}
+
+		// when
+		lists, err := BuildRecommendedLists(props, Options{
+			Keys:              blankTypeVocab{},
+			ResolveProperties: &recordingPropertyResolver{},
+		})
+
+		// then
+		require.Error(t, err)
+		assert.Nil(t, lists)
+		assert.Contains(t, err.Error(), "/type_properties/0/object_types/1")
+	})
+
+	t.Run("the refusal does not depend on a resolver being wired", func(t *testing.T) {
+		// object_types used to be resolved only inside the resolver branch, so
+		// the same input got two different verdicts depending on the caller's
+		// wiring — while applyTypeProperties refuses unconditionally
+		props := []TypeProperty{{Key: "assignee", ObjectTypes: []string{"blanktype"}}}
+
+		_, err := BuildRecommendedLists(props, Options{Keys: blankTypeVocab{}})
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "/type_properties/0/object_types/0")
+	})
+
+	t.Run("a resolvable array still builds", func(t *testing.T) {
+		props := []TypeProperty{{Key: "due_date", ObjectTypes: []string{"page"}, Section: "featured"}}
+
+		lists, err := BuildRecommendedLists(props, Options{Keys: blankTypeVocab{}})
+
+		require.NoError(t, err)
+		require.NotEmpty(t, lists)
+		assert.Equal(t, []string{"dueDate"}, lists[0].Ids)
+	})
+}
+
+// The document path's own property half, which had the same gap: the schema
+// bounds the SPELLING (type_properties[].key is minLength 1), but only the
+// RESOLVED key can be judged, and a wider vocabulary resolves past the schema.
+// The type half of this entry has been refused since the seam was written
+// (TestImport_SeamRefusesAnEmptyResolvedTypeKey), three lines below.
+func TestImport_TypePropertyKeyRefusesAnUnwritableResolvedKey(t *testing.T) {
+	doc := `{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
+		"type_properties": [{"key": "blank", "format": "text"}]}`
+	require.NoError(t, Validate([]byte(doc)),
+		"the document's own chain resolves blank verbatim — Validate cannot see the vocabulary")
+
+	_, _, err := Unmarshal([]byte(doc),
+		Options{GenerateId: seqIds("g"), Keys: blankKeyVocab{}, ResolveProperties: &recordingPropertyResolver{}})
+
+	require.Error(t, err)
+	var ve *ValidationError
+	require.ErrorAs(t, err, &ve, "the refusal is path-addressed")
+	assert.Contains(t, err.Error(), "/type_properties/0/key")
+}

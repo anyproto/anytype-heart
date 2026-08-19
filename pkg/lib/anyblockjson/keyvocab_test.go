@@ -306,9 +306,10 @@ func TestBuildRecommendedListsInvertsItsKeySlots(t *testing.T) {
 	}}
 
 	// when
-	lists := BuildRecommendedLists(props, Options{ResolveProperties: r})
+	lists, err := BuildRecommendedLists(props, Options{ResolveProperties: r})
 
 	// then
+	require.NoError(t, err)
 	require.Len(t, r.defs, 1)
 	assert.Equal(t, domain.RelationKey("dueDate"), r.defs[0].Key,
 		"the resolver receives the def import would hand it — stored spellings")
