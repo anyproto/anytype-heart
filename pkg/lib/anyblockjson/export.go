@@ -915,6 +915,7 @@ func (e *exporter) envelopeTypeTerms() []string {
 // key is.
 func (e *exporter) modelledTypeKeys(warn bool) []string {
 	keys := make([]string, 0, len(e.snapshot.ObjectTypes))
+	stood := make([]int, 0, len(e.snapshot.ObjectTypes)) // where each survivor stood
 	for i, t := range e.snapshot.ObjectTypes {
 		key := strings.TrimPrefix(t, typeKeyIdPrefix)
 		if key == "" {
@@ -925,14 +926,30 @@ func (e *exporter) modelledTypeKeys(warn bool) []string {
 			continue
 		}
 		keys = append(keys, key)
+		stood = append(stood, i)
 	}
 	if len(keys) == 0 {
 		return nil
 	}
+	kept := 1
 	if keys[0] == typeKeyTemplate && len(keys) > 1 {
-		return keys[:2]
+		kept = 2
 	}
-	return keys[:1]
+	// §3 promises every drop is reported, and the positional one was the
+	// silent half: a keyless entry warned, a perfectly good SECOND type just
+	// vanished. It is not a defect — the envelope models these positions and
+	// no others (§2) — but it is a loss the caller can neither see in the
+	// document nor infer from it, and the caller is the one holding the
+	// snapshot that still has the type.
+	if warn {
+		for j := kept; j < len(keys); j++ {
+			e.warn("/type",
+				"object type %d (%q) is dropped: the envelope carries one type, plus the target type on a template (§2), "+
+					"and every position is already taken; it is not written anywhere in this document",
+				stood[j], e.snapshot.ObjectTypes[stood[j]])
+		}
+	}
+	return keys[:kept]
 }
 
 func (e *exporter) buildDoc(sbType model.SmartBlockType) (*omap, error) {

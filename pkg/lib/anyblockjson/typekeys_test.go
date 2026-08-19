@@ -597,6 +597,45 @@ func TestExport_AKeylessObjectTypeIsDroppedAndDoesNotTakeItsSiblings(t *testing.
 		assert.Equal(t, []string{"ot-template", "ot-task"}, back)
 		assert.Empty(t, warned)
 	})
+
+	// The OTHER drop, and the one that was silent: an entry with a perfectly
+	// good key that the envelope has no position for (§2 models one type,
+	// plus the target type on a template). §3 says every drop is reported
+	// through OnWarning, and this one was not — a user's second type left the
+	// archive with nothing said, in a document whose own shape gives the
+	// caller no way to notice.
+	t.Run("a keyed entry past the modelled positions is reported too", func(t *testing.T) {
+		doc, warned, back := marshal(t, model.SmartBlockType_Page, "ot-page", "ot-task")
+
+		assert.Equal(t, "page", doc.Type)
+		assert.Equal(t, []string{"ot-page"}, back, "the second type is not in the document")
+		require.Len(t, warned, 1)
+		assert.Equal(t, "/type", warned[0].Path)
+		assert.Contains(t, warned[0].Message, `object type 1 ("ot-task")`,
+			"the message names the entry that was lost, at the position it stood in")
+		assert.Contains(t, warned[0].Message, "the envelope carries one type",
+			"and why: there is no position for it, not that something went wrong")
+	})
+
+	t.Run("a template reports only what is past its two positions", func(t *testing.T) {
+		_, warned, back := marshal(t, model.SmartBlockType_Template, "ot-template", "ot-task", "ot-page")
+
+		assert.Equal(t, []string{"ot-template", "ot-task"}, back)
+		require.Len(t, warned, 1, "the target type has a slot; the third entry does not")
+		assert.Contains(t, warned[0].Message, `object type 2 ("ot-page")`)
+	})
+
+	// the index is the one the SNAPSHOT holds, not the one the survivor took
+	// after closing ranks: a caller matching the warning against its own
+	// ObjectTypes must land on the entry that was dropped
+	t.Run("the reported position survives a keyless entry in front", func(t *testing.T) {
+		_, warned, back := marshal(t, model.SmartBlockType_Page, "ot-", "ot-page", "ot-task")
+
+		assert.Equal(t, []string{"ot-page"}, back)
+		require.Len(t, warned, 2)
+		assert.Contains(t, warned[0].Message, `object type 0 ("ot-")`)
+		assert.Contains(t, warned[1].Message, `object type 2 ("ot-task")`)
+	})
 }
 
 // The type legend must name only types the document actually mentions.
