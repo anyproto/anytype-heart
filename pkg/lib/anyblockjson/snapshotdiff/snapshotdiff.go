@@ -1,8 +1,8 @@
 // Package snapshotdiff compares two smartblock snapshots on the axes the
-// AnyBlock JSON format promises to preserve: detail values (up to the
-// documented normalizations) and the text content of non-structural text
-// blocks (as a multiset). It is the state-diff / text-multiset comparator
-// behind cmd/anyblockroundtrip and the API v2 eval harness's corruption
+// AnyBlock JSON format promises to preserve: the object's TYPES, detail
+// values (up to the documented normalizations) and the text content of
+// non-structural text blocks (as a multiset). It is the state-diff /
+// text-multiset comparator behind cmd/anyblockroundtrip and the API v2 eval
 // metric (DELEGATE-52 backtranslation). Findings are triage input, not
 // proof.
 package snapshotdiff
@@ -10,6 +10,7 @@ package snapshotdiff
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
@@ -31,6 +32,8 @@ var strippedKeys = anyblockjson.InternalPropertyKeys()
 // no detectable drift.
 func Compare(orig, got *model.SmartBlockSnapshotBase, opts anyblockjson.Options) []string {
 	var out []string
+
+	out = append(out, compareObjectTypes(orig, got)...)
 
 	if orig.Details != nil {
 		gotFields := map[string]*types.Value{}
@@ -87,6 +90,92 @@ func Compare(orig, got *model.SmartBlockSnapshotBase, opts anyblockjson.Options)
 		}
 	}
 	return out
+}
+
+// typeKeyIdPrefix is the "ot-" prefix an ObjectTypes entry carries.
+var typeKeyIdPrefix = domain.TypeKey("").URL()
+
+// compareObjectTypes reports divergence in the TYPE namespace — the axis
+// Compare used to be structurally blind to. It read only details and text, so
+// a 36 808-object production sweep could never have caught a type
+// substitution: every claim about type-key correctness rested on synthetic
+// tests alone. A rebinding is exactly the loss the `type_keys` legend (§3)
+// exists to prevent, and exactly what a sweep must be able to see.
+//
+// Equality is the wrong predicate here, because export normalizes the list
+// before it writes it (§2, export.envelopeTypeTerms) and every step of that is
+// by design. Measured, not assumed:
+//
+//	["ot-page","ot-task"]               -> ["ot-page"]                (truncated)
+//	["ot-template","ot-task","ot-page"] -> ["ot-template","ot-task"]  (truncated)
+//	["ot-","ot-task"]                   -> ["ot-task"]                (closed ranks)
+//	["ot-template","ot-","ot-task"]     -> ["ot-template","ot-task"]  (both)
+//
+// So the comparison applies the same two normalizations to orig — drop the
+// keyless entries, then keep the modelled positions — before demanding
+// position-for-position identity. That is detailEqual's shape: normalize both
+// sides to what the format preserves, then compare exactly, rather than
+// reporting a documented normalization as loss. Identity has to be exact
+// because order and duplicates carry meaning (`[0]` is the type, `[1]` the
+// template target) and both round-trip today. Anything got carries beyond the
+// modelled positions is drift the other way: the round trip invented a type.
+func compareObjectTypes(orig, got *model.SmartBlockSnapshotBase) []string {
+	origKeys := typeKeysOf(orig)
+	gotKeys := typeKeysOf(got)
+	modelled := modelledTypeSlots(origKeys)
+
+	var out []string
+	for i := 0; i < modelled; i++ {
+		switch {
+		case i >= len(gotKeys):
+			out = append(out, fmt.Sprintf("object type [%d] lost: %q", i, origKeys[i]))
+		case gotKeys[i] != origKeys[i]:
+			out = append(out, fmt.Sprintf("object type [%d] changed: %q -> %q", i, origKeys[i], gotKeys[i]))
+		}
+	}
+	for i := modelled; i < len(gotKeys); i++ {
+		out = append(out, fmt.Sprintf("object type [%d] added: %q", i, gotKeys[i]))
+	}
+	return out
+}
+
+// typeKeysOf is export's first normalization: the stored key of each entry,
+// with the keyless ones dropped and the survivors closing ranks. Trimming the
+// prefix is itself a normalization — a legacy row may hold a bare key, and
+// import always writes the prefixed form back. A keyless entry (`ot-`, or "")
+// names no type and export drops it with a warning rather than letting it take
+// its siblings with it, so it is not loss.
+func typeKeysOf(s *model.SmartBlockSnapshotBase) []string {
+	if s == nil {
+		return nil
+	}
+	out := make([]string, 0, len(s.ObjectTypes))
+	for _, t := range s.ObjectTypes {
+		if key := strings.TrimPrefix(t, typeKeyIdPrefix); key != "" {
+			out = append(out, key)
+		}
+	}
+	return out
+}
+
+// modelledTypeSlots is how many of the surviving keys the format has a slot
+// for — export.envelopeTypeTerms' own two conditions (§2):
+//
+//   - `type` takes the first surviving key, whatever it is;
+//   - `template_for` exists only when that key is the template key, and takes
+//     the second. The reserved spelling `template` pins that term to that
+//     stored key in both directions, in export and import alike, so reading
+//     the stored key here reaches the same verdict export does off the term.
+//
+// There is no third slot, so anything further is dropped by design.
+func modelledTypeSlots(keys []string) int {
+	if len(keys) == 0 {
+		return 0
+	}
+	if keys[0] == string(bundle.TypeKeyTemplate) && len(keys) > 1 {
+		return 2
+	}
+	return 1
 }
 
 // detailEqual compares one detail value up to the documented normalizations:
