@@ -1,6 +1,38 @@
 # API v2 eval findings — go-7383-apiv2-phase0
 
-## Status: 223 → 29 failing subtests (two commits, 87% reduction)
+## Status: 223 → 9 failing subtests (four commits, 96% reduction)
+
+Round 3 (commit `932f31318`) traced every failure that survived round 2
+instead of guessing, and found the same pattern three more times:
+`schemas_ops.go`'s table-row schema still advertised `isHeader` (real
+validator wants `is_header` — a caller following v2's own served schema for
+table rows got rejected downstream); `viewops.go`'s output-only-field guard
+for `objectOrders` (the one that gives a clear "this is output-only, don't
+write it" error) was still keyed on the old spelling, so real `object_orders`
+input silently fell through to a generic "unknown field" refusal instead;
+and the inline `<mention object_id="...">` tag — which turned out to need
+no production fix at all, `pkg/lib/anyblockjson`'s codec already speaks
+`object_id` in both directions, only a served-doc string and two test
+expectations were stale. **29 → 9 failing subtests.**
+
+**All 9 remaining now trace to exactly one place**, confirmed by adding
+temporary debug logging to print the actual validation issues rather than
+guessing from the generic error message:
+`pkg/lib/anyblockjson/filterstring/filterstring.go`, the compact filter
+STRING compiler, still emits camelCase condition/field tokens at ten
+separate call sites — every multi-word condition and the `datePreset` field
+folded in from date-preset functions like `daysAgo()`. The downstream
+validator (also in `anyblockjson`, already migrated) rejects all of them.
+Single-word conditions (`contains`, `in`, `empty`, `exists`, `equal`,
+`greater`, `less`) are unaffected — everything else (`!=`, `>=`, `<=`,
+`NOT CONTAINS`, `NOT IN`, `HAS ALL`, `NOT HAS ALL`, both set-literal forms,
+`IS NOT EMPTY`, and any use of a date-preset function) is broken. This is
+the shared-library fix flagged since round 1 — same shape of bug, same
+mechanical fix (rename ~10 string literals to match the enum the validator
+already uses), just outside `core/api/v2`'s own package boundary. Not yet
+fixed; needs a decision on touching `pkg/lib/anyblockjson`.
+
+## Status (round 2): 223 → 29 failing subtests
 
 Round 2 (commit `07e8bfa43`) found the same gap one level down: block TYPE
 names (`heading1`→`heading_1`, `bulletedListItem`→`bulleted_list_item`,
