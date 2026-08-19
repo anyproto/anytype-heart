@@ -396,9 +396,14 @@ var conditionNames = newEnumNames(map[model.BlockContentDataviewFilterCondition]
 })
 
 // countingPresets take a day count from the filter's `value` rather than
-// naming a fixed period: getDateRange reads f.Value.Int64() for these two and
-// for no others (pkg/lib/database/quickoptions.go). Without a value the count
-// is 0, which silently means "today".
+// naming a fixed period: getDateRange reads it as a NUMBER OF DAYS for these
+// two and for no others (pkg/lib/database/quickoptions.go — the exactDate
+// default reads the same field, as the timestamp it is). Without a value the
+// count is 0, which silently means "today" — but only where the range reaches
+// the query at all, which takes a date property and one of the six conditions
+// below (transformDateFilter, datePresetConditions). Everywhere else the
+// preset is inert and the count is never read, which is why the validation
+// rule this set feeds is scoped and export writes the count regardless.
 var countingPresets = map[model.BlockContentDataviewFilterQuickOption]struct{}{
 	model.BlockContentDataviewFilter_NumberOfDaysAgo: {},
 	model.BlockContentDataviewFilter_NumberOfDaysNow: {},
@@ -416,8 +421,10 @@ var countingPresetNames = map[string]struct{}{
 }
 
 // datePresetConditions are the conditions that apply a preset's day range at
-// all. transformDateFilter computes the range for every date filter, then
-// substitutes it into the filter for these six and no others
+// all — the condition half of transformDateFilter's gate. It computes the
+// range for every DATE filter (a filter of any other format it returns before
+// computing anything, which is the other half), then substitutes the range
+// into the filter for these six and no others
 // (pkg/lib/database/quickoptions.go): on any other condition — the
 // presence-only leaves above all — it returns the filter unchanged, so the
 // preset is inert and its day count is never read. That is why a counting

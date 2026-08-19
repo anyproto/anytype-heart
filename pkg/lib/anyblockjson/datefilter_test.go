@@ -7,6 +7,7 @@ package anyblockjson
 // overdue.
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -234,4 +235,95 @@ func TestExport_CountingPresetOnPresenceOnlyLeaf(t *testing.T) {
 		require.NoError(t, err)
 		assert.NoError(t, Validate(data), "Marshal must not emit what Validate rejects (%v):\n%s", cond, data)
 	}
+}
+
+// bareDateFilterDoc is dateFilterDoc without the properties list — the shape
+// a hand-written dataview actually has, where the only thing that says what
+// `due_date` is, is the bundled table.
+func bareDateFilterDoc(filters string) string {
+	return `{"version": 1, "id": "p1", "blocks": [{"type": "dataview",
+		"object_id": "someSet",
+		"views": [{"name": "Needs review", "filters": [` + filters + `]}]}]}`
+}
+
+// The day count is only read on a DATE filter. transformDateFilter returns a
+// filter of any other format untouched — before getDateRange is reached at
+// all (pkg/lib/database/quickoptions.go) — so a counting preset on a text or
+// select property is stored UI state that decides nothing, and the count it
+// does not carry is not missing. Demanding one there rejected a document the
+// app runs exactly as written.
+//
+// The fixture reaches the date path through the format and nothing else:
+// every case below is the same leaf under the same condition, and only the
+// property's resolved format moves. Where it resolves to date the error is
+// still there, which is what shows the check ran.
+func TestValidate_CountingPresetOnlyOnADateProperty(t *testing.T) {
+	const leaf = `{"property": "%s", "condition": "greater", "date_preset": "number_of_days_ago"}`
+
+	t.Run("a declared non-date property is inert", func(t *testing.T) {
+		// status is declared `select` two lines above the filter
+		assert.NoError(t, Validate([]byte(dateFilterDoc(fmt.Sprintf(leaf, "status")))))
+	})
+
+	t.Run("the declaration outranks the bundled table", func(t *testing.T) {
+		// the same key the bundle calls a date, declared as text by the
+		// block that owns the filter — impDvFormat reads the properties
+		// list first, so this filter imports as a text filter
+		doc := `{"version": 1, "blocks": [{"type": "dataview",
+			"properties": [{"key": "due_date", "format": "text"}],
+			"views": [{"filters": [` + fmt.Sprintf(leaf, "due_date") + `]}]}]}`
+		assert.NoError(t, Validate([]byte(doc)))
+	})
+
+	t.Run("a property the bundle knows as a date still errors", func(t *testing.T) {
+		// no properties list at all: `due_date` resolves through the §3
+		// chain to dueDate, whose bundled format is date, which is the
+		// format import attaches — the rule has to reach that document
+		err := Validate([]byte(bareDateFilterDoc(fmt.Sprintf(leaf, "due_date"))))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "needs a day count")
+	})
+
+	t.Run("a declared date property still errors", func(t *testing.T) {
+		err := Validate([]byte(dateFilterDoc(fmt.Sprintf(leaf, "verifiedUntil"))))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "needs a day count")
+	})
+
+	t.Run("an unknown property is not assumed to be a date", func(t *testing.T) {
+		// neither declared nor bundled: import gives it format 0, which is
+		// not date, so the preset is inert there too
+		assert.NoError(t, Validate([]byte(bareDateFilterDoc(fmt.Sprintf(leaf, "whenever")))))
+	})
+}
+
+// The same gate on the fragment surface (API v2 filters): the format comes
+// from the space through Options.ResolveFormat — via the reader's vocabulary,
+// the way import resolves the same term — instead of from a properties list.
+// ResolveProperties is a different seam and answers nothing here; a fixture
+// wired to it leaves the format unresolved and the rule never runs.
+func TestUnmarshalFilters_CountingPresetOnlyOnADateProperty(t *testing.T) {
+	countingLeaf := func(prop string) json.RawMessage {
+		return json.RawMessage(`[{"property":"` + prop + `","condition":"greater","date_preset":"number_of_days_ago"}]`)
+	}
+
+	t.Run("a non-date property is inert", func(t *testing.T) {
+		_, err := UnmarshalFilters(countingLeaf("status"), fragFilterOpts())
+		assert.NoError(t, err)
+	})
+
+	t.Run("a date property still errors", func(t *testing.T) {
+		_, err := UnmarshalFilters(countingLeaf("dueDate"), fragFilterOpts())
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "needs a day count")
+	})
+
+	t.Run("the documented slug reaches the same resolver", func(t *testing.T) {
+		// `due_date` is what the API surface documents; it resolves to
+		// dueDate through the bundled vocabulary before the format is
+		// looked up, exactly as importer.filterFromJSON resolves it
+		_, err := UnmarshalFilters(countingLeaf("due_date"), fragFilterOpts())
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "needs a day count")
+	})
 }

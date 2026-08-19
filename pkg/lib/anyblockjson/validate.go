@@ -885,7 +885,7 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 			walkTable(block, path, claimId, addIssue, checkInline, walkBlock, checkFlatRun)
 		}
 		if typ == "dataview" {
-			checkDataviewViews(block, path, addIssue, warnIssue)
+			checkDataviewViews(block, path, resolveDocKey, addIssue, warnIssue)
 		}
 	}
 
@@ -1325,7 +1325,8 @@ var groupableFormats = map[string]map[string]struct{}{
 // Before this, `views[].id` was the one id slot in the document with no
 // uniqueness check at all — invalid but unvalidated on every channel,
 // create and import included, not just PATCH (§8.31).
-func checkDataviewViews(block map[string]any, path string, addIssue, warnIssue func(string, string, ...any)) {
+func checkDataviewViews(block map[string]any, path string, resolveKey func(string) string,
+	addIssue, warnIssue func(string, string, ...any)) {
 	views, _ := block["views"].([]any)
 	if len(views) == 0 {
 		return
@@ -1361,12 +1362,26 @@ func checkDataviewViews(block map[string]any, path string, addIssue, warnIssue f
 			formats[key] = "text" // §3: an omitted format is text
 		}
 	}
+	// The date rules read the format the IMPORTER will attach, which is not
+	// always the one this block declares: impDvFormat rehydrates a filter's
+	// format from the dataview's properties list first and the bundled table
+	// second (§6.2), and a hand-written dataview usually carries no properties
+	// list at all — `due_date` is a date filter there all the same. Checking
+	// the declaration alone would leave the rules below silent on exactly the
+	// documents an agent writes.
+	isDate := func(prop string) bool {
+		if declared, listed := formats[prop]; listed {
+			return declared == "date"
+		}
+		f, err := bundle.GetRelationFormat(domain.RelationKey(resolveKey(prop)))
+		return err == nil && FormatName(f) == "date"
+	}
 	for i, raw := range views {
 		view, ok := raw.(map[string]any)
 		if !ok {
 			continue
 		}
-		checkDateFilters(view, formats, fmt.Sprintf("%s/views/%d", path, i), addIssue, warnIssue)
+		checkDateFilters(view, formats, isDate, fmt.Sprintf("%s/views/%d", path, i), addIssue, warnIssue)
 		groupBy, _ := view["group_by"].(string)
 		if groupBy == "" {
 			continue
@@ -1411,7 +1426,8 @@ func sortedKeys(m map[string]struct{}) []string {
 // object alongside the genuinely stale ones. It is a warning, not an error —
 // including undated objects is a legal thing to want, and real exported data
 // contains such filters.
-func checkDateFilters(view map[string]any, formats map[string]string, path string, addIssue, warnIssue func(string, string, ...any)) {
+func checkDateFilters(view map[string]any, formats map[string]string, isDate func(string) bool,
+	path string, addIssue, warnIssue func(string, string, ...any)) {
 	nodes, _ := view["filters"].([]any)
 	if len(nodes) == 0 {
 		return
@@ -1473,12 +1489,19 @@ func checkDateFilters(view map[string]any, formats map[string]string, path strin
 			// the day-count presets read their operand from value; without
 			// one the count is 0, which quietly means "today" rather than
 			// "n days ago" (pkg/lib/database.getDateRange) — but only where
-			// the range is applied at all (datePresetConditions)
+			// the preset's range is applied at all, which takes BOTH halves
+			// of transformDateFilter's own gate: a date property (it returns
+			// a filter of any other format untouched, before any range is
+			// computed) and one of the six conditions that substitute the
+			// range (datePresetConditions). A count nothing reads is not
+			// missing, and rejecting the document for it refused one the app
+			// runs exactly as written.
 			if preset, _ := n["date_preset"].(string); preset != "" {
 				_, counts := countingPresetNames[preset]
 				leafCond, _ := n["condition"].(string)
 				_, applies := datePresetConditions[leafCond]
-				if counts && applies {
+				prop, _ := n["property"].(string)
+				if counts && applies && isDate(prop) {
 					if _, has := n["value"]; !has {
 						addIssue(nPath, "date_preset %q needs a day count in \"value\"; without one it means 0 days, i.e. today", preset)
 					}
@@ -1500,7 +1523,7 @@ func checkDateFilters(view map[string]any, formats map[string]string, path strin
 				continue
 			}
 			prop, _ := n["property"].(string)
-			if formats[prop] != "date" || scope[prop] {
+			if !isDate(prop) || scope[prop] {
 				continue
 			}
 			warnIssue(nPath, "%q on date %q also matches objects with no %s; "+
