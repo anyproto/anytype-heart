@@ -3,6 +3,7 @@ package anyblockjson
 import (
 	"encoding/json"
 	"errors"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -288,7 +289,7 @@ func TestValidate_Invalid(t *testing.T) {
 		{"inline markup error in cell", `{"version": 1, "blocks": [
 			{"type": "table", "columns": [{"id": "c1"}], "rows": [{"id": "r1", "cells": ["<mention>x</mention>"]}]}
 		]}`, "/blocks/0/rows/0/cells/0"},
-		{"bad refs key", `{"version": 1, "refs": {"a b": "bafy1"}}`, "'a b' does not match pattern"},
+		{"bad refs key", `{"version": 1, "refs": {"a b": "bafy1"}}`, `/refs/a b: refs label "a b" is not`},
 		{"filter mixing group and leaf", `{"version": 1, "blocks": [
 			{"type": "dataview", "views": [{"id": "v", "filters": [{"operator": "and", "property": "x", "filters": []}]}]}
 		]}`, "/blocks/0/views/0/filters/0"},
@@ -410,6 +411,115 @@ func TestValidate_PathAddressing(t *testing.T) {
 	require.True(t, errors.As(err, &ve))
 	require.Len(t, ve.Issues, 1)
 	assert.Equal(t, "/blocks/2/text", ve.Issues[0].Path)
+}
+
+// A key slot the schema constrains through `propertyNames` — the `properties`
+// map, the `property_keys` legend, the `refs` legend (§3, §9a) — has to name
+// the member that broke the rule, like every other issue §12 promises. The
+// schema cannot: `propertyNames` validates each name as a standalone string
+// instance, so the library's verdict carries neither the enclosing object's
+// location nor, for a length bound, the name itself. A 200-character property
+// key came back as `maxLength: got 200, want 128` at the document ROOT, which
+// tells an agent running the generate → validate → feed-back loop (§13)
+// nothing it can act on. The rule stays in the published schema — an external
+// validator runs that and nothing else — and is restated where the key is in
+// hand, which is the verdict this package reports.
+func TestValidate_KeySlotIssuesNameTheOffendingMember(t *testing.T) {
+	long := strings.Repeat("a", maxPropertyKeyLen+1)
+	tests := []struct {
+		name     string
+		doc      string
+		wantPath string
+		wantIn   []string
+	}{
+		{
+			name:     "an over-long property key",
+			doc:      `{"version": 1, "properties": {"` + long + `": "x"}}`,
+			wantPath: "/properties/" + long,
+			wantIn:   []string{long, "129", "128"},
+		},
+		{
+			name:     "a property key carrying a control character",
+			doc:      `{"version": 1, "properties": {"a\nb": "x"}}`,
+			wantPath: "/properties/a\nb",
+			wantIn:   []string{`"a\nb"`, "control character"},
+		},
+		{
+			name:     "the empty property key",
+			doc:      `{"version": 1, "properties": {"": "x"}}`,
+			wantPath: "/properties/",
+			wantIn:   []string{"empty"},
+		},
+		{
+			name:     "an unwritable legend spelling",
+			doc:      `{"version": 1, "property_keys": {"a\nb": "due_date"}}`,
+			wantPath: "/property_keys/a\nb",
+			wantIn:   []string{`"a\nb"`, "control character"},
+		},
+		{
+			name:     "an unwritable legend stored key",
+			doc:      `{"version": 1, "property_keys": {"prio": "` + long + `"}}`,
+			wantPath: "/property_keys/prio",
+			wantIn:   []string{long, "129", "128"},
+		},
+		{
+			name:     "an empty legend stored key",
+			doc:      `{"version": 1, "property_keys": {"prio": ""}}`,
+			wantPath: "/property_keys/prio",
+			wantIn:   []string{"empty"},
+		},
+		{
+			name:     "a refs label outside the label charset",
+			doc:      `{"version": 1, "refs": {"a b": "bafyreiabc"}}`,
+			wantPath: "/refs/a b",
+			wantIn:   []string{`"a b"`},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := Validate([]byte(tc.doc))
+			require.Error(t, err)
+			var ve *ValidationError
+			require.True(t, errors.As(err, &ve))
+			require.Len(t, ve.Issues, 1, "one member, one issue: %v", ve.Issues)
+			assert.Equal(t, tc.wantPath, ve.Issues[0].Path)
+			for _, want := range tc.wantIn {
+				assert.Contains(t, ve.Issues[0].Message, want)
+			}
+		})
+	}
+}
+
+// The restated rule has to cover every `propertyNames` the schema carries, or
+// a key slot loses its addressable message the moment one is added — the
+// schema's own verdict is still reported for anything this pass does not
+// speak for, so the failure would be silent noise rather than a crash.
+func TestValidate_EveryPropertyNamesSiteHasAnAddressableMessage(t *testing.T) {
+	var doc any
+	require.NoError(t, json.Unmarshal(SchemaJSON(), &doc))
+
+	var sites []string
+	var walk func(node any, at string)
+	walk = func(node any, at string) {
+		m, ok := node.(map[string]any)
+		if !ok {
+			return
+		}
+		if _, has := m["propertyNames"]; has {
+			sites = append(sites, at)
+		}
+		for _, k := range sortedMapKeys(m) {
+			walk(m[k], at+"/"+escapeJSONPointer(k))
+		}
+	}
+	walk(doc, "")
+	sort.Strings(sites)
+
+	assert.Equal(t, []string{
+		"/$defs/propertyMap", // the properties map, via $ref from /properties
+		"/properties/property_keys",
+		"/properties/refs",
+	}, sites, "a new propertyNames site needs a case in propertyNameIssues")
 }
 
 // TestValidate_IndentErrorMessage: the V1 message is the agent-facing repair

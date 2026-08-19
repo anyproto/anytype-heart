@@ -199,7 +199,7 @@ func UnmarshalIndex(data []byte) (*Index, error) {
 		return nil, fmt.Errorf("embedded index schema: %w", err)
 	}
 	if err := sch.Validate(raw); err != nil {
-		return nil, &ValidationError{Issues: schemaIssues(err)}
+		return nil, &ValidationError{Issues: schemaIssues(err, keySlotReport{})}
 	}
 
 	var idx Index

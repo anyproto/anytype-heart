@@ -32,7 +32,11 @@ range for six conditions and leaves every other filter unchanged, so on the
 `empty`/`not_empty`/`exists` leaves whose `value` export drops, the count is
 never read and demanding it asked export for a field it must not write.
 Also: a generated row/column id that needs no sanitizing keeps the name the
-generator gave it (§6.1) instead of collecting a `_2` from its own claim.
+generator gave it (§6.1) instead of collecting a `_2` from its own claim; and
+the key-slot rules the schema states as `propertyNames` are **restated in the
+reader**, so an unwritable property key, legend spelling, legend stored key or
+`refs` label is reported against the member that carries it instead of against
+the document root (§12). Which documents are accepted does not change.
 
 Changes in v0.10: **admission runs on the resolved stored key** (§3, §12).
 The v0.7 property checks — the internal-key deny rule, the layout-name
@@ -719,7 +723,8 @@ whenever no wider vocabulary is in force, which is what keeps Validate and
 Unmarshal accepting the same documents (§12).
 
 **A property key has to be writable.** Non-empty, no control characters, at
-most 128 characters (`propertyNames` in the schema). This is a *deny* rule and
+most 128 characters (`propertyNames` in the schema, restated in the reader so
+the issue can name the offending key — §12). This is a *deny* rule and
 not an allowlist on purpose: real keys are bundled lowerCamel names, bson-hex
 ids, and bare names from old accounts, and an allowlist could only be trusted
 after checking every key in every account — while the shapes ruled out here
@@ -1867,6 +1872,22 @@ fail neither test belong in authoring guidance and in review.
     admissible shape.
   A reader that reports more than this is not wrong about the document being
   invalid, but its extra issues are not statements about the document.
+- **An issue names the member it is about.** The key slots are the one place
+  where the schema cannot: `propertyNames` — the writable-key rule on
+  `properties` and on `property_keys` spellings (§3), the label charset on
+  `refs` (§9a) — is checked by validating each name as a *standalone string
+  instance*, so the verdict carries neither the enclosing object's location
+  nor, for a length bound, the name itself. A 200-character property key was
+  reported as `maxLength: got 200, want 128` at the document **root**, which
+  names no property at all. The rule stays in the published schema, because
+  an external validator runs that and nothing else, and the reader
+  **restates** it where the key is in hand: `/properties/<key>`,
+  `/property_keys/<spelling>`, `/refs/<label>`, with the offending string in
+  the message. A `property_keys` *value* is covered the same way — the schema
+  addresses it correctly but describes the bound rather than the string. The
+  schema's own verdict is suppressed only for the members the restated check
+  spoke for, so if the two statements of a rule ever diverge the document is
+  still refused, with the schema's wording, rather than passed.
 
 ## 13. Package layout and API
 

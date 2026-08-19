@@ -171,8 +171,17 @@ func validateToDoc(data []byte, lenient bool, warn func(Issue)) (map[string]any,
 	if err != nil {
 		return nil, fmt.Errorf("embedded schema: %w", err)
 	}
+	// the key slots first: the schema states their rule but cannot say which
+	// member broke it, so this pass owns the wording and schemaIssues stays
+	// quiet about whatever it spoke for (see propertyNameIssues).
+	spoken := propertyNameIssues(doc)
 	if err := sch.Validate(doc); err != nil {
-		return nil, &ValidationError{Issues: schemaIssues(err)}
+		return nil, &ValidationError{Issues: append(spoken.issues, schemaIssues(err, spoken)...)}
+	}
+	if len(spoken.issues) > 0 {
+		// unreachable while the two statements of the rule agree; a
+		// divergence must still refuse the document rather than pass it
+		return nil, &ValidationError{Issues: spoken.issues}
 	}
 
 	if issues := semanticIssues(doc, lenient, warn); len(issues) > 0 {
@@ -239,13 +248,13 @@ func jsonPath(tokens []string) string {
 // purpose is the generate → validate → feed-back loop: an agent told
 // `property "type" is not allowed` deletes `type` and its next attempt is
 // worse. So the noise is pruned here rather than explained in the spec.
-func schemaIssues(err error) []Issue {
+func schemaIssues(err error, spoken keySlotReport) []Issue {
 	verr, ok := err.(*jsonschema.ValidationError)
 	if !ok {
 		return []Issue{{Message: err.Error()}}
 	}
 	printer := message.NewPrinter(language.English)
-	leaves := collectSchemaLeaves(verr, printer)
+	leaves := collectSchemaLeaves(verr, printer, spoken)
 
 	// a leaf that is not an unevaluated-property verdict is a real fault, and
 	// it makes the closed-set verdict on its enclosing objects unreliable
@@ -286,9 +295,18 @@ type schemaLeaf struct {
 	property    string // the property name, for an unevaluated verdict
 }
 
-func collectSchemaLeaves(e *jsonschema.ValidationError, printer *message.Printer) []schemaLeaf {
+func collectSchemaLeaves(e *jsonschema.ValidationError, printer *message.Printer, spoken keySlotReport) []schemaLeaf {
+	// a member propertyNameIssues already named: its verdict there carries a
+	// pointer and this one does not, so reporting both says the same thing
+	// twice, once unusably
+	if k, isName := e.ErrorKind.(*kind.PropertyNames); isName && spoken.names[k.Property] {
+		return nil
+	}
 	if len(e.Causes) == 0 {
 		l := schemaLeaf{path: jsonPath(e.InstanceLocation), message: schemaIssueMessage(e, printer)}
+		if spoken.values[l.path] {
+			return nil // same value, already reported by name and by rule
+		}
 		if strings.Contains(e.SchemaURL, "/unevaluatedProperties") {
 			l.unevaluated = true
 			if toks := e.InstanceLocation; len(toks) > 0 {
@@ -299,11 +317,11 @@ func collectSchemaLeaves(e *jsonschema.ValidationError, printer *message.Printer
 	}
 	switch e.ErrorKind.(type) {
 	case *kind.AnyOf, *kind.OneOf:
-		return branchLeaves(e, printer)
+		return branchLeaves(e, printer, spoken)
 	}
 	var out []schemaLeaf
 	for _, c := range e.Causes {
-		out = append(out, collectSchemaLeaves(c, printer)...)
+		out = append(out, collectSchemaLeaves(c, printer, spoken)...)
 	}
 	return out
 }
@@ -314,12 +332,12 @@ func collectSchemaLeaves(e *jsonschema.ValidationError, printer *message.Printer
 // about the document. When some branch did apply, only those are reported;
 // when none did, the shape is wrong and the alternatives merge into one issue
 // naming all of them, which is the whole content of a failed anyOf.
-func branchLeaves(e *jsonschema.ValidationError, printer *message.Printer) []schemaLeaf {
+func branchLeaves(e *jsonschema.ValidationError, printer *message.Printer, spoken keySlotReport) []schemaLeaf {
 	at := jsonPath(e.InstanceLocation)
 	var applied []schemaLeaf
 	var inapplicable []*kind.Type
 	for _, c := range e.Causes {
-		leaves := collectSchemaLeaves(c, printer)
+		leaves := collectSchemaLeaves(c, printer, spoken)
 		// a branch that failed only on the instance's own type is a branch
 		// the instance was never a candidate for
 		types := branchTypeErrors(c)
@@ -337,7 +355,7 @@ func branchLeaves(e *jsonschema.ValidationError, printer *message.Printer) []sch
 		// rather than swallow the failure into an error with no issues
 		var out []schemaLeaf
 		for _, c := range e.Causes {
-			out = append(out, collectSchemaLeaves(c, printer)...)
+			out = append(out, collectSchemaLeaves(c, printer, spoken)...)
 		}
 		return out
 	}
@@ -898,6 +916,94 @@ func isWritablePropertyKey(key string) bool {
 		}
 	}
 	return true
+}
+
+// keySlotReport is what propertyNameIssues found, plus what it spoke for so
+// the schema does not say it again: names holds the member NAMES it rejected
+// (the schema's propertyNames verdict on those is redundant and pathless),
+// values holds the pointers whose VALUE it rejected (the schema addresses
+// those correctly but says nothing about what is wrong with the string).
+type keySlotReport struct {
+	issues []Issue
+	names  map[string]bool
+	values map[string]bool
+}
+
+// propertyNameIssues states, where the key is in hand, every rule the schema
+// carries as `propertyNames`: the `properties` map and the `property_keys`
+// legend take a writable property key (§3), the `refs` legend takes a label
+// (§9a). A legend VALUE rides along because it is a stored key under the same
+// rule and the schema's verdict on it names the bound, not the string.
+//
+// The rule stays in the published schema — an external validator runs that and
+// nothing else (§12) — and is restated here because `propertyNames` cannot
+// produce the issue §12 promises. The library validates each name as a
+// standalone string instance, so its verdict carries neither the enclosing
+// object's location nor, for a length bound, the name: a 200-character
+// property key was reported as `maxLength: got 200, want 128` at the document
+// ROOT, and an agent running the generate → validate → feed-back loop (§13)
+// cannot tell from that which property to fix. The predicates are the export
+// side's own (isWritablePropertyKey, isValidRefsKey), so the two directions
+// cannot drift into Marshal emitting what Validate rejects (§11, I1).
+func propertyNameIssues(doc map[string]any) keySlotReport {
+	r := keySlotReport{names: map[string]bool{}, values: map[string]bool{}}
+	rejectName := func(path, name, reason string) {
+		r.issues = append(r.issues, Issue{Path: path, Message: reason})
+		r.names[name] = true
+	}
+	rejectValue := func(path, reason string) {
+		r.issues = append(r.issues, Issue{Path: path, Message: reason})
+		r.values[path] = true
+	}
+
+	if refs, _ := doc["refs"].(map[string]any); refs != nil {
+		for _, label := range sortedMapKeys(refs) {
+			if !isValidRefsKey(label) {
+				rejectName("/refs/"+escapeJSONPointer(label), label, fmt.Sprintf(
+					"refs label %q is not 1-64 characters of [A-Za-z0-9_-] (§9a)", label))
+			}
+		}
+	}
+	if props, _ := doc["properties"].(map[string]any); props != nil {
+		for _, term := range sortedMapKeys(props) {
+			if !isWritablePropertyKey(term) {
+				rejectName("/properties/"+escapeJSONPointer(term), term,
+					unwritableKeyReason("property key", term))
+			}
+		}
+	}
+	if legend, _ := doc["property_keys"].(map[string]any); legend != nil {
+		for _, term := range sortedMapKeys(legend) {
+			path := "/property_keys/" + escapeJSONPointer(term)
+			if !isWritablePropertyKey(term) {
+				rejectName(path, term, unwritableKeyReason("legend spelling", term))
+			}
+			key, isString := legend[term].(string)
+			if !isString {
+				continue // the schema types the value; this pass only shapes it
+			}
+			if !isWritablePropertyKey(key) {
+				rejectValue(path, unwritableKeyReason("legend stored key", key))
+			}
+		}
+	}
+	return r
+}
+
+// unwritableKeyReason names the string that broke the writable-key rule and
+// which half of it broke. Naming it is not redundant with the pointer: a
+// legend VALUE has no pointer of its own, and an over-long key makes a pointer
+// no one reads.
+func unwritableKeyReason(what, key string) string {
+	switch n := utf8.RuneCountInString(key); {
+	case key == "":
+		return what + " is empty — a key slot has to name something (§3)"
+	case n > maxPropertyKeyLen:
+		return fmt.Sprintf("%s %q is %d characters; the bound is %d (§3)",
+			what, key, n, maxPropertyKeyLen)
+	default:
+		return fmt.Sprintf("%s %q carries a control character (§3)", what, key)
+	}
 }
 
 // deniedPropertyKey reports whether a property key may be written at all, and
