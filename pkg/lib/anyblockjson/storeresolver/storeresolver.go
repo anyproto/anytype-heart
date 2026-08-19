@@ -8,6 +8,7 @@ package storeresolver
 import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -65,15 +66,51 @@ func (r *Resolvers) loadRelations() {
 			continue
 		}
 		def := anyblockjson.PropertyDefinition{
-			Key:    domain.RelationKey(rel.Key),
-			Name:   rel.Name,
-			Format: rel.Format,
+			Key:         domain.RelationKey(rel.Key),
+			Name:        rel.Name,
+			Format:      rel.Format,
+			ObjectTypes: r.targetTypeKeys(rel.ObjectTypes),
 		}
 		r.relById[rel.Id] = def
 		if _, taken := r.relKeyToId[rel.Key]; !taken {
 			r.relKeyToId[rel.Key] = rel.Id
 		}
 	}
+}
+
+// targetTypeKeys turns a relation's stored `relationFormatObjectTypes` into
+// the third type slot of §2a — `type_properties[].object_types`.
+//
+// It is a translation, not a copy: the store holds the target types' OBJECT
+// IDs (objectcreator.fillRelationFormatObjectTypes rewrites bundled urls to
+// derived ids at creation), while PropertyDefinition.ObjectTypes is defined in
+// stored type KEYS, which the codec then slugs at the document boundary. Left
+// empty — as it was — a node export of a type document silently dropped every
+// property's target types: the slot had no node-backed emitter at all, so an
+// `objects` property came back untargeted and would accept any object.
+//
+// The mapping rides the one bounded type listing the vocabulary already pays
+// for (§7.5a-2 budgets one query per kind per resolver, never one per
+// reference), plus the bundled-url arm for ids that were never rewritten. An
+// id that resolves to nothing is DROPPED, which is the policy export already
+// applies to a recommended-list entry that no longer resolves (§2a) — a
+// dangling target is not a type key, and writing one would export a document
+// naming a type no reader can find.
+func (r *Resolvers) targetTypeKeys(ids []string) []string {
+	if len(ids) == 0 {
+		return nil
+	}
+	var out []string
+	for _, id := range ids {
+		if key, err := bundle.TypeKeyFromUrl(id); err == nil && key != "" {
+			out = append(out, string(key))
+			continue
+		}
+		if key := r.typeKeyMaps().keyById[id]; key != "" {
+			out = append(out, key)
+		}
+	}
+	return out
 }
 
 // ResolveFormat implements anyblockjson.FormatResolver.
@@ -128,9 +165,10 @@ func (r *Resolvers) PropertyById(id string) (anyblockjson.PropertyDefinition, bo
 		return anyblockjson.PropertyDefinition{}, false
 	}
 	def := anyblockjson.PropertyDefinition{
-		Key:    domain.RelationKey(rel.Key),
-		Name:   rel.Name,
-		Format: rel.Format,
+		Key:         domain.RelationKey(rel.Key),
+		Name:        rel.Name,
+		Format:      rel.Format,
+		ObjectTypes: r.targetTypeKeys(rel.ObjectTypes),
 	}
 	// cache the point-lookup hit both ways: some relations resolve by id but
 	// are absent from the listing AND the by-key lookup (deleted or index

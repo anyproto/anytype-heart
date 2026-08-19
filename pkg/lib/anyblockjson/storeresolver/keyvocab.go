@@ -38,6 +38,14 @@ type keyMaps struct {
 	keyBySlug  map[string]string
 	storedKey  map[string]bool
 	keysByFold map[string][]string // chain step 4 — see fold
+	// keyById is the stored key of each live entity by OBJECT ID — not part
+	// of the resolution chain, which never sees an id, but the inverse the
+	// store speaks in: a relation's `relationFormatObjectTypes` holds the
+	// target types' object ids, and PropertyDefinition.ObjectTypes is
+	// defined in stored type KEYS (§2a). Filled from the same one bounded
+	// listing, so the mapping costs nothing extra. Hidden entities are
+	// included: identity is not the slug namespace.
+	keyById    map[string]string
 	bundledKey func(slug string) (string, bool)
 	// bundledFold is that namespace's bundled fold table (chain step 4's
 	// bundled arm), as stored-key strings.
@@ -50,6 +58,7 @@ func newKeyMaps(bundledKey func(string) (string, bool)) *keyMaps {
 		keyBySlug:  map[string]string{},
 		storedKey:  map[string]bool{},
 		keysByFold: map[string][]string{},
+		keyById:    map[string]string{},
 		bundledKey: bundledKey,
 	}
 }
@@ -261,9 +270,15 @@ func (r *Resolvers) loadKeyMaps(layout model.ObjectTypeLayout, keyOf func(*domai
 		return maps
 	}
 	for _, record := range records {
-		maps.add(keyOf(record.Details),
+		key := keyOf(record.Details)
+		maps.add(key,
 			record.Details.GetString(bundle.RelationKeyApiObjectKey),
 			record.Details.GetBool(bundle.RelationKeyIsHidden))
+		if id := record.Details.GetString(bundle.RelationKeyId); id != "" && key != "" {
+			if _, taken := maps.keyById[id]; !taken {
+				maps.keyById[id] = key
+			}
+		}
 	}
 	return maps
 }
