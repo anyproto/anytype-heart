@@ -68,6 +68,9 @@ func (s *accountServiceDummy) Init(a *app.App) error {
 
 type chatRepoServiceDummy struct {
 	repo chatrepository.Repository
+	// repos, when set, routes by chatObjectId and fails on unknown chats —
+	// multi-chat search tests use it to assert which chats are hydrated
+	repos map[string]chatrepository.Repository
 }
 
 func (s *chatRepoServiceDummy) Name() string                    { return "chatRepoServiceDummy" }
@@ -75,6 +78,13 @@ func (s *chatRepoServiceDummy) Init(a *app.App) error           { return nil }
 func (s *chatRepoServiceDummy) Run(ctx context.Context) error   { return nil }
 func (s *chatRepoServiceDummy) Close(ctx context.Context) error { return nil }
 func (s *chatRepoServiceDummy) Repository(spaceId, chatObjectId string) (chatrepository.Repository, error) {
+	if s.repos != nil {
+		repo, ok := s.repos[chatObjectId]
+		if !ok {
+			return nil, fmt.Errorf("unexpected chat %s", chatObjectId)
+		}
+		return repo, nil
+	}
 	return s.repo, nil
 }
 
@@ -83,8 +93,9 @@ func (s *chatRepoServiceDummy) Repository(spaceId, chatObjectId string) (chatrep
 // stubs (calling an unimplemented one panics, surfacing accidental coverage gaps).
 type fakeChatRepository struct {
 	chatrepository.Repository
-	pinned        []*chatmodel.Message
-	messagesByIds []*chatmodel.Message
+	pinned          []*chatmodel.Message
+	messagesByIds   []*chatmodel.Message
+	messagesByIdsFn func(messageIds []string) ([]*chatmodel.Message, error)
 }
 
 func (f *fakeChatRepository) GetPinnedMessages(ctx context.Context) ([]*chatmodel.Message, error) {
@@ -92,6 +103,9 @@ func (f *fakeChatRepository) GetPinnedMessages(ctx context.Context) ([]*chatmode
 }
 
 func (f *fakeChatRepository) GetMessagesByIds(ctx context.Context, messageIds []string) ([]*chatmodel.Message, error) {
+	if f.messagesByIdsFn != nil {
+		return f.messagesByIdsFn(messageIds)
+	}
 	return f.messagesByIds, nil
 }
 
@@ -1113,10 +1127,7 @@ func TestService_Search(t *testing.T) {
 			},
 		}, nil)
 
-		mockChatObj := mock_chatobject.NewMockStoreObject(t)
-		mockChatObj.EXPECT().Lock().Return()
-		mockChatObj.EXPECT().Unlock().Return()
-		mockChatObj.EXPECT().GetMessagesByIds(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, ids []string) ([]*chatmodel.Message, error) {
+		fx.chatRepoService.repo = &fakeChatRepository{messagesByIdsFn: func(ids []string) ([]*chatmodel.Message, error) {
 			assert.Len(t, ids, 2)
 			assert.Contains(t, ids, "msg1")
 			assert.Contains(t, ids, "msg2")
@@ -1124,8 +1135,7 @@ func TestService_Search(t *testing.T) {
 				{ChatMessage: &model.ChatMessage{Id: "msg1"}},
 				{ChatMessage: &model.ChatMessage{Id: "msg2"}},
 			}, nil
-		})
-		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatId).Return(mockChatObj, nil)
+		}}
 
 		fx.start(t)
 
@@ -1185,17 +1195,13 @@ func TestService_Search(t *testing.T) {
 			},
 		}, nil)
 
-		mockChatObj := mock_chatobject.NewMockStoreObject(t)
-		mockChatObj.EXPECT().Lock().Return()
-		mockChatObj.EXPECT().Unlock().Return()
-		mockChatObj.EXPECT().GetMessagesByIds(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, ids []string) ([]*chatmodel.Message, error) {
+		fx.chatRepoService.repo = &fakeChatRepository{messagesByIdsFn: func(ids []string) ([]*chatmodel.Message, error) {
 			messages := make([]*chatmodel.Message, len(ids))
 			for i, id := range ids {
 				messages[i] = &chatmodel.Message{ChatMessage: &model.ChatMessage{Id: id}}
 			}
 			return messages, nil
-		})
-		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatId).Return(mockChatObj, nil)
+		}}
 
 		fx.start(t)
 
@@ -1255,17 +1261,13 @@ func TestService_Search(t *testing.T) {
 			},
 		}, nil)
 
-		mockChatObj := mock_chatobject.NewMockStoreObject(t)
-		mockChatObj.EXPECT().Lock().Return()
-		mockChatObj.EXPECT().Unlock().Return()
-		mockChatObj.EXPECT().GetMessagesByIds(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, ids []string) ([]*chatmodel.Message, error) {
+		fx.chatRepoService.repo = &fakeChatRepository{messagesByIdsFn: func(ids []string) ([]*chatmodel.Message, error) {
 			messages := make([]*chatmodel.Message, len(ids))
 			for i, id := range ids {
 				messages[i] = &chatmodel.Message{ChatMessage: &model.ChatMessage{Id: id}}
 			}
 			return messages, nil
-		})
-		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatId).Return(mockChatObj, nil)
+		}}
 
 		fx.start(t)
 
@@ -1307,17 +1309,13 @@ func TestService_Search(t *testing.T) {
 		}
 		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "text", mock.Anything).Return(ftResults, nil)
 
-		mockChatObj := mock_chatobject.NewMockStoreObject(t)
-		mockChatObj.EXPECT().Lock().Return()
-		mockChatObj.EXPECT().Unlock().Return()
-		mockChatObj.EXPECT().GetMessagesByIds(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, ids []string) ([]*chatmodel.Message, error) {
+		fx.chatRepoService.repo = &fakeChatRepository{messagesByIdsFn: func(ids []string) ([]*chatmodel.Message, error) {
 			messages := make([]*chatmodel.Message, len(ids))
 			for i, id := range ids {
 				messages[i] = &chatmodel.Message{ChatMessage: &model.ChatMessage{Id: id}}
 			}
 			return messages, nil
-		})
-		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatId).Return(mockChatObj, nil)
+		}}
 
 		fx.start(t)
 
@@ -1380,17 +1378,13 @@ func TestService_Search(t *testing.T) {
 			},
 		}, nil)
 
-		mockChatObj := mock_chatobject.NewMockStoreObject(t)
-		mockChatObj.EXPECT().Lock().Return()
-		mockChatObj.EXPECT().Unlock().Return()
-		mockChatObj.EXPECT().GetMessagesByIds(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, ids []string) ([]*chatmodel.Message, error) {
+		fx.chatRepoService.repo = &fakeChatRepository{messagesByIdsFn: func(ids []string) ([]*chatmodel.Message, error) {
 			messages := make([]*chatmodel.Message, len(ids))
 			for i, id := range ids {
 				messages[i] = &chatmodel.Message{ChatMessage: &model.ChatMessage{Id: id}}
 			}
 			return messages, nil
-		})
-		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatId).Return(mockChatObj, nil)
+		}}
 
 		fx.start(t)
 
@@ -1449,10 +1443,7 @@ func TestService_Search(t *testing.T) {
 			},
 		}, nil)
 
-		mockChatObj := mock_chatobject.NewMockStoreObject(t)
-		mockChatObj.EXPECT().Lock().Return()
-		mockChatObj.EXPECT().Unlock().Return()
-		mockChatObj.EXPECT().GetMessagesByIds(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, ids []string) ([]*chatmodel.Message, error) {
+		fx.chatRepoService.repo = &fakeChatRepository{messagesByIdsFn: func(ids []string) ([]*chatmodel.Message, error) {
 			messages := make([]*chatmodel.Message, len(ids))
 			for i, id := range ids {
 				messages[i] = &chatmodel.Message{ChatMessage: &model.ChatMessage{
@@ -1461,8 +1452,7 @@ func TestService_Search(t *testing.T) {
 				}}
 			}
 			return messages, nil
-		})
-		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatId).Return(mockChatObj, nil)
+		}}
 
 		fx.start(t)
 
@@ -1521,10 +1511,7 @@ func TestService_Search(t *testing.T) {
 			},
 		}, nil)
 
-		mockChatObj := mock_chatobject.NewMockStoreObject(t)
-		mockChatObj.EXPECT().Lock().Return()
-		mockChatObj.EXPECT().Unlock().Return()
-		mockChatObj.EXPECT().GetMessagesByIds(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, ids []string) ([]*chatmodel.Message, error) {
+		fx.chatRepoService.repo = &fakeChatRepository{messagesByIdsFn: func(ids []string) ([]*chatmodel.Message, error) {
 			messages := make([]*chatmodel.Message, len(ids))
 			for i, id := range ids {
 				timestamp := int64(1000 + i) // msg1=1000, msg2=1001, msg3=1002
@@ -1534,8 +1521,7 @@ func TestService_Search(t *testing.T) {
 				}}
 			}
 			return messages, nil
-		})
-		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatId).Return(mockChatObj, nil)
+		}}
 
 		fx.start(t)
 
@@ -1594,10 +1580,7 @@ func TestService_Search(t *testing.T) {
 			},
 		}, nil)
 
-		mockChatObj := mock_chatobject.NewMockStoreObject(t)
-		mockChatObj.EXPECT().Lock().Return()
-		mockChatObj.EXPECT().Unlock().Return()
-		mockChatObj.EXPECT().GetMessagesByIds(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, ids []string) ([]*chatmodel.Message, error) {
+		fx.chatRepoService.repo = &fakeChatRepository{messagesByIdsFn: func(ids []string) ([]*chatmodel.Message, error) {
 			orderMap := map[string]string{
 				"msg1": "order_002",
 				"msg2": "order_001",
@@ -1611,8 +1594,7 @@ func TestService_Search(t *testing.T) {
 				}}
 			}
 			return messages, nil
-		})
-		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatId).Return(mockChatObj, nil)
+		}}
 
 		fx.start(t)
 
@@ -1676,10 +1658,7 @@ func TestService_Search(t *testing.T) {
 			},
 		}, nil)
 
-		mockChatObj := mock_chatobject.NewMockStoreObject(t)
-		mockChatObj.EXPECT().Lock().Return()
-		mockChatObj.EXPECT().Unlock().Return()
-		mockChatObj.EXPECT().GetMessagesByIds(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, ids []string) ([]*chatmodel.Message, error) {
+		fx.chatRepoService.repo = &fakeChatRepository{messagesByIdsFn: func(ids []string) ([]*chatmodel.Message, error) {
 			// Should only receive msg1 and msg3, not msg2 (different chat)
 			assert.Len(t, ids, 2)
 			assert.Contains(t, ids, "msg1")
@@ -1691,8 +1670,7 @@ func TestService_Search(t *testing.T) {
 				messages[i] = &chatmodel.Message{ChatMessage: &model.ChatMessage{Id: id}}
 			}
 			return messages, nil
-		})
-		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatId).Return(mockChatObj, nil)
+		}}
 
 		fx.start(t)
 
@@ -1744,12 +1722,6 @@ func TestService_Search(t *testing.T) {
 		}, nil).Maybe()
 
 		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "", mock.Anything).Return([]*ftsearch.DocumentMatch{}, nil)
-
-		mockChatObj := mock_chatobject.NewMockStoreObject(t)
-		mockChatObj.EXPECT().Lock().Return()
-		mockChatObj.EXPECT().Unlock().Return()
-		mockChatObj.EXPECT().GetMessagesByIds(mock.Anything, []string{}).Return([]*chatmodel.Message{}, nil)
-		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatId).Return(mockChatObj, nil)
 
 		fx.start(t)
 

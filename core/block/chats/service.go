@@ -840,13 +840,18 @@ func (s *service) ReadReaction(ctx context.Context, chatObjectId string) error {
 	})
 }
 
+// Search performs a fulltext search over chat messages. The scope narrows
+// with the request: chatId set = that chat only; chatId empty = all chats in
+// spaceId; both empty = all chats in all spaces (the fulltext index is a
+// single cross-space index). See docs/fts/SpecChatSearchScopes.md.
 func (s *service) Search(ctx context.Context, req *pb.RpcChatSearchRequest) ([]*model.SearchMessageResult, error) {
 	// candidate budget: Limit == 0 falls back to the ftsearch default (one
 	// 100-doc page); otherwise request at least the default page so sorting by
-	// keys other than score stays consistent across shallow pages. Known
-	// limitation: once offset+limit crosses the shared candidate budget, pages
-	// sorted by non-score keys are computed over different BM25-truncated sets
-	// and may overlap — deep chat-search pagination needs a cursor to be exact.
+	// keys other than score stays consistent across shallow pages. All chats in
+	// scope share this single budget. Known limitation: once offset+limit
+	// crosses the shared candidate budget, pages sorted by non-score keys are
+	// computed over different BM25-truncated sets and may overlap — deep
+	// chat-search pagination needs a cursor to be exact.
 	ftLimit := 0
 	if req.Limit > 0 {
 		ftLimit = int(req.Offset) + int(req.Limit)
@@ -854,14 +859,25 @@ func (s *service) Search(ctx context.Context, req *pb.RpcChatSearchRequest) ([]*
 			ftLimit = 100
 		}
 	}
-	// the search is scoped to the chat's message docs so messages don't compete
-	// with the rest of the space for the candidate limit
+	// the search is scoped to message docs so messages don't compete with the
+	// rest of the space for the candidate limit
 	ftResults, err := s.ftSearch.SearchChat(req.SpaceId, req.ChatId, req.FullText, ftLimit)
 	if err != nil {
 		return nil, fmt.Errorf("search ft: %w", err)
 	}
 
-	messageIds := make([]string, 0, len(ftResults))
+	// multi-chat scopes hydrate only chats known to the cross-space registry:
+	// stale FT docs of deleted chats are skipped and the repository accessor's
+	// create-collection side-effect is never triggered for them. The registry
+	// fills asynchronously on startup, matching the FT index's own lag.
+	var knownChats map[string]string
+	if req.ChatId == "" {
+		knownChats = s.chatRegistrySnapshot(req.SpaceId)
+	}
+
+	// group message ids per chat, preserving the FT (score) order within groups
+	var chatIds []string
+	messageIdsPerChat := make(map[string][]string)
 	ftResultsMap := make(map[string]*ftsearch.DocumentMatch, len(ftResults))
 	for _, result := range ftResults {
 		path, err := domain.NewFromPath(result.ID)
@@ -870,41 +886,75 @@ func (s *service) Search(ctx context.Context, req *pb.RpcChatSearchRequest) ([]*
 			continue
 		}
 
-		if path.MessageId == "" || path.ObjectId != req.ChatId {
+		// HasMessage also guards the false positives of the message-doc marker
+		// query (see ftsearch.SearchChat)
+		if !path.HasMessage() {
+			continue
+		}
+		if req.ChatId != "" {
+			if path.ObjectId != req.ChatId {
+				continue
+			}
+		} else if _, ok := knownChats[path.ObjectId]; !ok {
 			continue
 		}
 
-		messageIds = append(messageIds, path.MessageId)
+		if _, ok := messageIdsPerChat[path.ObjectId]; !ok {
+			chatIds = append(chatIds, path.ObjectId)
+		}
+		messageIdsPerChat[path.ObjectId] = append(messageIdsPerChat[path.ObjectId], path.MessageId)
 		ftResultsMap[path.MessageId] = result
 	}
 
-	messages := make([]*chatmodel.Message, 0, len(messageIds))
-	if err = s.chatObjectDo(ctx, req.ChatId, func(sb chatobject.StoreObject) error {
-		messages, err = sb.GetMessagesByIds(ctx, messageIds)
-		return err
-	}); err != nil {
-		return nil, err
-	}
-
-	results := make([]*model.SearchMessageResult, 0, len(messages))
+	results := make([]*model.SearchMessageResult, 0, len(ftResultsMap))
 	// keep the original float BM25 scores for sorting: the proto Score field is
 	// an integer and loses sub-integer differences
-	scores := make(map[string]float64, len(messages))
-	for _, message := range messages {
-		docMatch := ftResultsMap[message.Id]
-		ftResult, err := database.FTDocumentMatchToFulltextResult(docMatch)
+	scores := make(map[string]float64, len(ftResultsMap))
+	for _, chatId := range chatIds {
+		spaceId := req.SpaceId
+		if req.ChatId == "" {
+			spaceId = knownChats[chatId]
+		}
+		// hydrate from the anystore-backed repository (see chatRepository for
+		// the consistency caveat): search must not pay the change-tree build
+		// for every chat in scope. Messages the FT index still lists but the
+		// store no longer has are skipped.
+		repo, err := s.chatRepoService.Repository(spaceId, chatId)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("chat repository: %w", err)
+		}
+		messages, err := repo.GetMessagesByIds(ctx, messageIdsPerChat[chatId])
+		if err != nil {
+			return nil, fmt.Errorf("get messages: %w", err)
 		}
 
-		result := ftResult.MessageModel()
-		result.Message = message.ChatMessage
-		scores[result.MessageId] = ftResult.Score
+		for _, message := range messages {
+			docMatch := ftResultsMap[message.Id]
+			if docMatch == nil {
+				continue
+			}
+			ftResult, err := database.FTDocumentMatchToFulltextResult(docMatch)
+			if err != nil {
+				return nil, err
+			}
 
-		results = append(results, &result)
+			result := ftResult.MessageModel()
+			result.Message = message.ChatMessage
+			result.SpaceId = spaceId
+			scores[result.MessageId] = ftResult.Score
+
+			results = append(results, &result)
+		}
 	}
 
-	slices.SortFunc(results, getComparator(req.Sorts, scores))
+	sorts := req.Sorts
+	if len(sorts) == 0 {
+		// explicit default: hydration returns hits grouped per chat and the
+		// sort below is unstable, so without a key the grouped order would
+		// leak into the response
+		sorts = []*model.SearchMessageSort{{Key: model.SearchMessageSort_SCORE, Type: model.SearchMessageSort_Desc}}
+	}
+	slices.SortFunc(results, getComparator(sorts, scores))
 
 	if req.Offset > 0 {
 		if int(req.Offset) >= len(results) {
@@ -918,6 +968,23 @@ func (s *service) Search(ctx context.Context, req *pb.RpcChatSearchRequest) ([]*
 	}
 
 	return results, nil
+}
+
+// chatRegistrySnapshot copies the known chat objects (chatObjectId => spaceId),
+// optionally filtered by space. The registry is fed by the cross-space
+// subscription started in Run, so it also serves as an existence filter: a
+// chat present in the FT index but absent here is deleted or not loaded yet.
+func (s *service) chatRegistrySnapshot(spaceId string) map[string]string {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	snapshot := make(map[string]string, len(s.allChatObjectIds))
+	for chatObjectId, chatSpaceId := range s.allChatObjectIds {
+		if spaceId != "" && chatSpaceId != spaceId {
+			continue
+		}
+		snapshot[chatObjectId] = chatSpaceId
+	}
+	return snapshot
 }
 
 func getComparator(sorts []*model.SearchMessageSort, scores map[string]float64) func(result *model.SearchMessageResult, result2 *model.SearchMessageResult) int {
@@ -940,7 +1007,13 @@ func getComparator(sorts []*model.SearchMessageSort, scores map[string]float64) 
 				return
 			}
 		}
-		return 0
+		// deterministic tiebreak: the sort is unstable and equal keys are
+		// common (equal scores), so without this offset pagination could
+		// shuffle results between requests
+		if res = strings.Compare(a.ChatId, b.ChatId); res != 0 {
+			return
+		}
+		return strings.Compare(a.MessageId, b.MessageId)
 	}
 }
 
