@@ -18,7 +18,7 @@ a human-only format would have made.
 
 ```json
 {
-  "$schema": "https://schemas.anytype.io/anyblock/1.0/object.schema.json",
+  "$schema": "https://schemas.anytype.io/anyblock/1/object.schema.json",
   "version": 1,
   "id": "bafyreieqh63jv…",
   "type": "page",
@@ -28,11 +28,11 @@ a human-only format would have made.
     "status": ["In progress"]
   },
   "blocks": [
-    { "id": "b1", "type": "heading2", "text": "Goals" },
+    { "id": "b1", "type": "heading_2", "text": "Goals" },
     { "id": "b2", "type": "paragraph",
-      "text": "Ship the **new export** by Q3 with <mention objectId=\"bafyreidf…\">Roman</mention>" },
-    { "id": "b3", "type": "bulletedListItem", "text": "Flat JSON schema" },
-    { "indent": 1, "id": "b4", "type": "bulletedListItem", "text": "Validate in CI" },
+      "text": "Ship the **new export** by Q3 with <mention object_id=\"bafyreidf…\">Roman</mention>" },
+    { "id": "b3", "type": "bulleted_list_item", "text": "Flat JSON schema" },
+    { "indent": 1, "id": "b4", "type": "bulleted_list_item", "text": "Validate in CI" },
     { "id": "b5", "type": "checkbox", "checked": true, "text": "Draft spec" },
     { "id": "b6", "type": "code", "language": "go",
       "text": "func main() {\n\tfmt.Println(\"hi\")\n}" }
@@ -84,14 +84,14 @@ formatting is*, so editing a sentence cannot desynchronize it from its
 marks.
 
 A whitelist of tags covers what markdown lacks: `<u>`, `<mention
-objectId="…">`, `<font color|background>`. Emoji marks are materialized
+object_id="…">`, `<font color|background>`. Emoji marks are materialized
 into the text — lossy by design, and the only deliberate loss in the
 format.
 
 ### 3. Names, not ids, wherever a human wrote the name
 
-Select and multiSelect values are option **names** (`"In progress"`), in
-property values, filter values and custom orders alike. Properties are
+`select` and `multi_select` values are option **names** (`"In progress"`),
+in property values, filter values and custom orders alike. Properties are
 addressed by key; types by type key.
 
 **Why.** An id is unguessable, so a model must fetch before it can write;
@@ -116,9 +116,11 @@ attribute there genuinely means "default".
 ### 5. Vocabulary chosen for outsiders, not for the codebase
 
 `relation` → **property** everywhere. `smartBlockType` → `kind`.
-`header*` → `heading*`. `bulleted` → `bulletedListItem` (Notion's name).
-Formats are `select`/`multiSelect`/`text`/`shortText`/`files`/`objects` —
-the REST API's names, not the internal `status`/`tag`/`longtext`.
+`header*` → `heading*`. `bulleted` → `bulleted_list_item` (Notion's name).
+Formats are `select`/`multi_select`/`text`/`files`/`objects` — the REST
+API's names, not the internal `status`/`tag`/`longtext`; the stored
+shorttext/longtext split has one name between them, `text`. And everything
+the format defines is spelled `snake_case`, digits included.
 
 **Why.** The instruction was "rename everything, minimize new terms". The
 format is read by people and models with no exposure to Anytype's
@@ -182,18 +184,31 @@ instruction, so they are addressed to the exact path that is wrong.
 
 ## What it has been tested against
 
-The format was swept over a real production account — **35,369 objects**
-across 30+ spaces — exporting each to AnyBlock JSON, re-importing, and
-re-exporting, comparing both the state and the bytes.
+The format is swept over a real production account — every object exported
+to AnyBlock JSON, re-imported, and re-exported, comparing both the state and
+the bytes. That sweep is `cmd/anyblockroundtrip`; its run history and every
+figure belong in `ANOMALIES.md`.
 
-The final sweep passed **99.86%**, and the remaining failures were traced
-and fixed until only accepted anomalies remained (duplicate-named tag
-options collapsing, per decision 3). Every anomaly found along the way is
-written up in `ANOMALIES.md` rather than smoothed over — including two
-genuine silent-data-loss bugs the sweep caught that no unit test had.
+What the state comparison covers is narrower than it sounds. `snapshotdiff`
+compares detail values (up to the documented normalizations) and the plain
+text of text blocks as a multiset — not marks, not block order, not table
+shape, not dataview content, not file or bookmark metadata; and
+byte-stability is self-consistency of the pipeline, so a systematic drop can
+be byte-stable and invisible. Its own package doc says it: findings are
+triage input, not proof.
 
-That sweep is `cmd/anyblockroundtrip`, and it is the reason to trust the
-round-trip contract rather than merely believe it.
+Within those limits it earns its keep. The pre-flat sweep (run 3, 35,369
+objects) round-tripped 99.86% byte-identically; the flat-encoding sweep that
+followed (run 4, 35,372 objects) left 21 failures, all in categories already
+known. The most recent one, over a 36,808-object account, is where the last
+round of findings came from — and no pass rate for it is recorded anywhere.
+The fixes made since have unit tests, not a re-measurement.
+
+Every anomaly found along the way is written up in `ANOMALIES.md` rather
+than smoothed over — including two genuine silent-data-loss bugs the sweeps
+caught that no unit test had. That is the reason to check the round-trip
+contract against real data instead of merely believing it, and the same
+reason not to read a pass rate as a proof of it.
 
 ---
 

@@ -1,6 +1,6 @@
 # AnyBlock JSON — design principles
 
-Status: living document · applies to format version 1 (SPEC v0.10) ·
+Status: living document · applies to format version 1 (SPEC v0.11) ·
 Package: `pkg/lib/anyblockjson`
 
 `SPEC.md` says what the format *is*. This document says what it is *for*
@@ -73,9 +73,13 @@ canon applies to block attributes and envelope fields only (§3) — and
 in `fields`, `root` and `store` (§2, §4a). The accepted losses are few and
 listed, never smoothed over: emoji marks materialize into text (§8.1),
 same-named options of one property collapse (§3), block-label compaction is
-lossy and opt-in (§9a). The contract is proven, not believed: a
-35,369-object production sweep (`cmd/anyblockroundtrip`) round-tripped
-99.86% byte-identically and every remaining case is in `ANOMALIES.md`.
+lossy and opt-in (§9a). The contract is checked against real data rather
+than merely asserted: `cmd/anyblockroundtrip` exports, re-imports and
+re-exports a production account, and every case it turns up is in
+`ANOMALIES.md`. Evidence, not proof — its comparator sees detail values and
+text-block text, not marks, block order, tables or dataviews — so the
+figures stay with the run history in `ANOMALIES.md`, where what they measure
+is written down.
 
 ### 2. Readable by a stranger
 
@@ -191,10 +195,13 @@ it came from.**
 Every compaction carries its own inverse in the document: `refs` for object
 ids, `property_keys` for a space's own property slugs (§3, §9a) — a slug
 that reads back as a *different* property in a reader that cannot ask the
-space is how twelve objects were silently re-pointed in a sweep before the
-legend existed. A type document carries its property definitions with their
-option vocabularies, colors and target types, in one file (§2a); a bundle
-carries `index.json` and is versioned as one artifact (§2c).
+space is the defect a sweep saw as twelve objects whose dataview came back
+pointing at another property. The mechanism behind it was established after
+that sweep, and its guard is demonstrated by unit test, not by a
+re-measurement: those twelve have not been swept again since it landed. A
+type document carries its property definitions with their option
+vocabularies, colors and target types, in one file (§2a); a bundle carries
+`index.json` and is versioned as one artifact (§2c).
 
 The intention goes further than the format currently does. The structural
 facts a reader needs about an object — which format a custom property has,

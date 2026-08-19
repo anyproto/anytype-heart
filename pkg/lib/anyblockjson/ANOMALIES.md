@@ -1,12 +1,14 @@
 # Real-world data anomalies
 
 Findings from round-trip testing `pkg/lib/anyblockjson` against a production
-account (`cmd/anyblockroundtrip`, 2026-07-23: ~35 400 objects across ~48
-spaces, three iterations). Each entry records a shape that real snapshots
-contain but the clean data model does not predict, and how the format
-handles it. Kept separate from SPEC.md: the spec defines the format, this
-file explains *why* several of its rules exist and what future importers and
-migrations must expect in old accounts.
+account (`cmd/anyblockroundtrip`): four iterations on 2026-07-23 over
+~35 400 objects across ~48 spaces, and a later sweep over a 36 808-object
+account during the v0.9–v0.11 work. Which figure belongs to which run, and
+what a pass rate measures, is the ledger at the end of this file. Each entry
+records a shape that real snapshots contain but the clean data model does
+not predict, and how the format handles it. Kept separate from SPEC.md: the
+spec defines the format, this file explains *why* several of its rules exist
+and what future importers and migrations must expect in old accounts.
 
 Legend: **handling** = what export/import does today; **spec** = where the
 rule lives.
@@ -113,7 +115,7 @@ lists; hand-authored documents may omit them entirely. The two must not be
 conflated: run 3 caught a type with *all four* lists empty round-tripping to
 absent keys.
 
-**Handling**: type documents always carry `typeProperties`, even as `[]` —
+**Handling**: type documents always carry `type_properties`, even as `[]` —
 presence of the array is the trigger to rebuild all four lists (empty
 sections become explicit empty lists); a document without the field leaves
 the lists untouched. **Spec**: §2a.
@@ -145,7 +147,7 @@ The same 24-hex block ids recur verbatim in dozens of distinct objects
 often matches). Harmless for this format — ids are document-scoped — but any
 tooling assuming account-wide block-id uniqueness will be wrong.
 
-## 11. Flat encoding: pending sweep verifications (v0.6)
+## 11. Flat encoding: the sweep verifications (v0.6)
 
 The v0.6 flat-blocks change carried assumptions the flat-encoding sweep
 (run 4, 2026-07-23, 35 372 objects) checked; measured results:
@@ -186,11 +188,50 @@ sanitizer decides how whatever comes out is spelled, so a charset-dirty id
 is written as `a_b` rather than verbatim and `table1` keeps its name. Both
 rules landed on the same branch and compose; `TestExport_BlockIdOutsideCharsetIsSanitized`
 pins the first half and the compact golden pins the second. No such id
-appeared in either the 35 400- or the 36 808-object sweep. **Spec**: §9a (relabel rule), schema `$defs/blockId`.
+appeared in the 2026-07-23 sweeps (~35 400 objects) or the later
+36 808-object one. **Spec**: §9a (relabel rule), schema `$defs/blockId`.
 
 ---
 
-Final state after all fixes: 35 369 objects, 0 export/import errors, 0
-byte-stability failures expected except the accepted duplicate-name option
-swaps (#6). The v0.6 flat-encoding rerun (acceptance: pass rate ≥ 99.86%,
-no new failure categories) is pending.
+## Run ledger
+
+Four object counts circulate in this file and in the package, because the
+account grew between sweeps. Each belongs to one run, and none of them is a
+statement about the others.
+
+What a pass rate measures here: `snapshotdiff` compares detail values (up to
+the documented normalizations) and the plain text of text blocks as a
+multiset, and the harness compares the re-exported bytes with the exported
+ones. Marks, block order, table shape, dataview content and file/bookmark
+metadata are not compared, so a systematic loss in any of them is
+byte-stable and invisible to the number (PREFREEZE_REVIEW §1.5). The
+comparator says so itself: its findings are triage input, not proof.
+
+- **Runs 1–3** (2026-07-23, ~35 400 objects across ~48 spaces, pre-flat).
+  Run 1 flagged 14 032 issue lines on 5 577 objects, all default-valued
+  details (#7); run 2 failed 277 objects on content-less blocks, ~67% of its
+  failures (#1). Final state after those fixes: 35 369 objects, 0
+  export/import errors, 99.86% byte-identical, the remainder the accepted
+  duplicate-name option swaps (#6). That 99.86% is a pre-flat number and
+  belongs to run 3 alone.
+- **Run 4** (2026-07-23, 35 372 objects) is the v0.6 flat-encoding sweep;
+  its results are §11 — 21 failures = 7 accepted swaps (#6) + 14 from a
+  resolver asymmetry in the harness (#9), fixed there. This file used to
+  close by calling that rerun pending — a line added by the same commit that
+  recorded §11's measured results, so it was stale on arrival. The run
+  happened: 21 failures in 35 372 objects is 99.94%, above the ≥ 99.86% bar
+  that line set, with neither failure category new.
+- **The 36 808-object sweep** (August 2026, during the v0.9–v0.11 work) has
+  **no pass rate recorded anywhere** — only the findings it produced: 59
+  objects failing their own export on the envelope `key` charset (SPEC §2's
+  deny rule; `TestValidate_EnvelopeKeyAcceptsRealStoredKeys` carries the
+  real keys), 12 objects whose dataview came back pointing at another
+  property (SPEC §3's `property_keys` legend; `storeresolver/keyvocab.go`),
+  two date-filter documents export emitted and validation rejected
+  (`datefilter_test.go`), and 10 378 false data-loss issues caused by the
+  harness's own stale copy of the internal-property list (now
+  `InternalPropertyKeys`, `export.go`).
+- **Nothing since has been measured against real data.** Every v0.9–v0.11
+  fix is demonstrated by unit test, not by a sweep — the 12 re-pointed
+  objects have not been swept again since the guard landed — and no sweep is
+  recorded against the package as it stands after them.
