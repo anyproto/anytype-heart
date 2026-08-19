@@ -1297,7 +1297,10 @@ func (e *exporter) buildCompactIds() {
 		// that keeps its full spelling is reserved through the fullIds
 		// avoid-set, so no label can alias a served id — and the census inside
 		// mintedSuffixLabels runs over ALL local ids, so a label cannot be an
-		// ambiguous suffix of one either. Labels stay dash-free as before:
+		// ambiguous suffix of one either. For the LOCAL population the census
+		// is the binding guard (it counts a short id as itself, which the refs
+		// labeller does not); the avoid-set carries the object population,
+		// which the census never sees. Labels stay dash-free as before:
 		// '-' is the derived-cell-id separator and forbidden in row/column
 		// ids (§6.1) — minted suffixes are hex, so the check is a backstop.
 		e.localIds = mintedSuffixLabels(setToSlice(locals), compactIdMinLen, func(candidate string) bool {
