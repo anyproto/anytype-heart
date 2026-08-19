@@ -1,8 +1,10 @@
 package storeresolver
 
 import (
+	"encoding/json"
 	"testing"
 
+	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -563,4 +565,104 @@ func TestCorpseSlugLifecycleInDocumentVocabulary(t *testing.T) {
 		assert.Equal(t, bsonTwinKey, key)
 		assert.Equal(t, "warranty_until", r.PropertySlug(bsonTwinKey), "the new holder owns the spelling")
 	})
+}
+
+// TestCorpseStoredKeyStillNamesItsObjects is the corpse story from the OTHER
+// side, and the one that loses data: not the corpse's slug, but the corpse's
+// STORED KEY, which every object it ever typed or tagged still carries.
+//
+// The delete vacates the slug namespace (loadKeyMaps' isUninstalled filter),
+// so `initiative` stops being a live stored key — while a live entity holds
+// `initiative` as its api key, which is how a user frees a name and reuses
+// it. This vocabulary is doing exactly what it should: it emits the corpse's
+// stored key verbatim (nothing else is an address), and it binds the spelling
+// `initiative` to the live holder (nothing else is a slug). The DOCUMENT is
+// what has to say which of the two it means, and the identity entry is that
+// statement (§3).
+//
+// Both arms run the real exporter over the real resolver, because the defect
+// was in the question export asked — it consulted the bundled table, which is
+// silent on `initiative`, and never asked the vocabulary standing right
+// beside it.
+func TestCorpseStoredKeyStillNamesItsObjects(t *testing.T) {
+	t.Run("a type whose key the space no longer reserves", func(t *testing.T) {
+		// given
+		dead := typeRow("t-dead", "initiative", "")
+		dead[bundle.RelationKeyIsUninstalled] = domain.Bool(true)
+		r := vocabFixture(t, dead, typeRow("t-live", bsonTypeKey, "initiative"))
+		require.Equal(t, "initiative", r.TypeSlug("initiative"),
+			"the corpse's stored key is its own address — there is no slug to spell it with")
+		key, ok := r.TypeKey("initiative")
+		require.True(t, ok)
+		require.Equal(t, bsonTypeKey, key,
+			"and the spelling now belongs to the live holder — the fixture is the collision")
+
+		snapshot := &model.SmartBlockSnapshotBase{
+			Details:     &types.Struct{Fields: map[string]*types.Value{"id": strValue("obj1")}},
+			ObjectTypes: []string{"ot-initiative"},
+		}
+
+		// when
+		data, err := anyblockjson.Marshal(model.SmartBlockType_Page, snapshot, r.Options())
+		require.NoError(t, err)
+
+		// then
+		require.NoError(t, anyblockjson.Validate(data))
+		var doc struct {
+			Type     string            `json:"type"`
+			TypeKeys map[string]string `json:"type_keys"`
+		}
+		require.NoError(t, json.Unmarshal(data, &doc))
+		assert.Equal(t, "initiative", doc.Type)
+		assert.Equal(t, map[string]string{"initiative": "initiative"}, doc.TypeKeys,
+			"the document says the term is a stored key, or the reader takes it for the slug")
+
+		_, back, err := anyblockjson.Unmarshal(data, r.Options())
+		require.NoError(t, err)
+		assert.Equal(t, []string{"ot-initiative"}, back.ObjectTypes,
+			"without the entry the object comes back typed ot-"+bsonTypeKey+", silently")
+	})
+
+	t.Run("a property whose key the space no longer reserves", func(t *testing.T) {
+		// given
+		dead := relationRow("rel-dead", "initiative", "")
+		dead[bundle.RelationKeyIsUninstalled] = domain.Bool(true)
+		r := vocabFixture(t, dead, relationRow("rel-live", bsonPropKey, "initiative"))
+
+		snapshot := &model.SmartBlockSnapshotBase{Details: &types.Struct{Fields: map[string]*types.Value{
+			"id":         strValue("obj1"),
+			"initiative": strValue("value of the deleted property"),
+			bsonPropKey:  strValue("value of the live one"),
+		}}}
+
+		// when
+		data, err := anyblockjson.Marshal(model.SmartBlockType_Page, snapshot, r.Options())
+		require.NoError(t, err)
+
+		// then
+		require.NoError(t, anyblockjson.Validate(data))
+		var doc struct {
+			Properties   map[string]string `json:"properties"`
+			PropertyKeys map[string]string `json:"property_keys"`
+		}
+		require.NoError(t, json.Unmarshal(data, &doc))
+		assert.Equal(t, "value of the deleted property", doc.Properties["initiative"])
+		assert.Equal(t, "value of the live one", doc.Properties[bsonPropKey],
+			"the live holder's slug is taken by the stored key, so it keeps its own address")
+		assert.Equal(t, map[string]string{"initiative": "initiative"}, doc.PropertyKeys)
+
+		// and both values come home. Without the entry both spellings address
+		// the live holder, and Unmarshal refuses the document Marshal just
+		// wrote (§11, I1).
+		_, back, err := anyblockjson.Unmarshal(data, r.Options())
+		require.NoError(t, err)
+		assert.Equal(t, "value of the deleted property",
+			back.Details.Fields["initiative"].GetStringValue())
+		assert.Equal(t, "value of the live one",
+			back.Details.Fields[bsonPropKey].GetStringValue())
+	})
+}
+
+func strValue(s string) *types.Value {
+	return &types.Value{Kind: &types.Value_StringValue{StringValue: s}}
 }

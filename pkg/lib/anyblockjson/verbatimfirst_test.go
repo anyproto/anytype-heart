@@ -166,10 +166,13 @@ func TestExport_BlockSlugMayNotTakeAStoredKeysTerm(t *testing.T) {
 	require.Len(t, doc.Blocks, 1)
 	assert.Equal(t, "6a32d4856761631534b22f85", doc.Blocks[0].Key,
 		"the slug is taken — dueDate spells due_date, and a stored key always keeps its own term")
-	assert.NotContains(t, doc.PropertyKeys, "due_date",
-		"no legend entry may rebind a term a stored key answers to")
+	assert.Equal(t, "dueDate", doc.PropertyKeys["due_date"],
+		"the legend states the term's OWN key: `due_date` is dueDate's spelling in this "+
+			"document, never the custom key that wanted it. (The entry is owed because "+
+			"this vocabulary binds `due_date` to the custom key — the round trip below "+
+			"is what it buys.)")
 
-	// and a package-only reader gets both relations back intact
+	// a package-only reader gets both relations back intact
 	_, back, err := Unmarshal(data, Options{GenerateId: seqIds("g")})
 	require.NoError(t, err)
 	assert.NotNil(t, back.Details.Fields["dueDate"], "dueDate must survive the round trip")
@@ -180,6 +183,14 @@ func TestExport_BlockSlugMayNotTakeAStoredKeysTerm(t *testing.T) {
 			assert.Equal(t, "6a32d4856761631534b22f85", c.Relation.Key)
 		}
 	}
+
+	// and so does the writer's own reader, which resolves `due_date` to the
+	// custom key unless the legend says otherwise
+	_, back, err = Unmarshal(data, Options{GenerateId: seqIds("h"), Keys: vocab})
+	require.NoError(t, err)
+	assert.NotNil(t, back.Details.Fields["dueDate"],
+		"without the entry dueDate's value lands on the custom key instead")
+	assert.Nil(t, back.Details.Fields["6a32d4856761631534b22f85"])
 }
 
 // The ledger, arm two: when buildProperties backs a slug off (the term is

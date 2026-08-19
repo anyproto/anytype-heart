@@ -374,12 +374,25 @@ func TestExport_TypeTermLedgerBacksACollidingSlugOff(t *testing.T) {
 		"the slug is not emitted — its spelling belongs to the stored key wiki_person")
 	require.Len(t, doc.TypeProps, 1)
 	assert.Equal(t, []string{"wiki_person"}, doc.TypeProps[0].ObjectTypes)
-	assert.Empty(t, doc.TypeKeys,
-		"both keys travel verbatim, and the bundled table is silent on both — no entry owed")
+	assert.Equal(t, map[string]string{"wiki_person": "wiki_person"}, doc.TypeKeys,
+		"the bundled table is silent on both keys, but THIS vocabulary binds the "+
+			"spelling `wiki_person` to customTypeKey — so the stored key written verbatim "+
+			"owes the identity entry, or its own space reads the target type back as the "+
+			"type that took its spelling")
 
+	// a package-only reader, which has no vocabulary at all
 	_, snap2, err := Unmarshal(data, Options{GenerateId: seqIds("g")})
 	require.NoError(t, err)
 	assert.Equal(t, []string{"ot-" + customTypeKey}, snap2.ObjectTypes)
+
+	// and the writer's OWN reader, which is the one the entry is for
+	r := &recordingPropertyResolver{}
+	_, snap3, err := Unmarshal(data, Options{GenerateId: seqIds("h"), Keys: vocab, ResolveProperties: r})
+	require.NoError(t, err)
+	assert.Equal(t, []string{"ot-" + customTypeKey}, snap3.ObjectTypes)
+	require.Len(t, r.defs, 1)
+	assert.Equal(t, []string{"wiki_person"}, r.defs[0].ObjectTypes,
+		"without the entry this reads back as customTypeKey — the target type re-pointed, silently")
 }
 
 // `template` is an envelope-semantic spelling: export keys template_for

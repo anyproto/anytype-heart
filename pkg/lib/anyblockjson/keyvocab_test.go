@@ -95,12 +95,16 @@ func typeSlugShadowsBundled(v KeyVocabulary, key string) bool {
 // spelling the bundled table binds elsewhere.
 //
 // The vocabulary here is a strict inverse pair — it satisfies the weaker
-// contract completely — and the type is still lost. Export spells the bundled
-// `task` key `task` and records NO legend entry, because the bundled table
-// inverts that spelling itself and ships with every reader; the reader's own
-// vocabulary is consulted first and answers `69bbfc…`. A template for the
-// bundled Task type comes back as a template for an unrelated custom type,
-// with no error anywhere.
+// contract completely — and the type is still lost. Stating that honestly
+// takes TWO parties, which is the precondition's whole point: a WRITER
+// holding this vocabulary is covered, because export records the legend
+// entry for every term its own vocabulary would bind elsewhere
+// (recordTypeKey / termInverts), and the second arm below shows that
+// document surviving. What no writer can cover is a READER it never met.
+// The document in the first arm is written by the package default, owes no
+// entry by any rule anyone can compute, and the shadowing reader still binds
+// `task` to `69bbfc…` — a template for the bundled Task type comes back as a
+// template for an unrelated custom type, with no error anywhere.
 //
 // This is not a live defect. storeresolver, the only vocabulary the product
 // wires, refuses both halves: keyMaps.roundTrips will not SPELL a key with a
@@ -116,25 +120,53 @@ func TestKeyVocabulary_ShadowingSlugBreaksInversion(t *testing.T) {
 		"the fixture has to break the precondition, or this test proves nothing")
 
 	snap := typedSnapshot("ot-template", "ot-task")
-	data, err := Marshal(model.SmartBlockType_Template, snap, Options{Keys: shadowing})
-	require.NoError(t, err)
-	assert.NotContains(t, string(data), "type_keys",
-		"the bundled table inverts `task`, so the document owes no entry — which is exactly why the reader is on its own")
 
-	_, back, err := Unmarshal(data, Options{GenerateId: seqIds("g"), Keys: shadowing})
-	require.NoError(t, err)
-	assert.Equal(t, []string{"ot-template", "ot-" + customTypeKey}, back.ObjectTypes,
-		"a shadowing vocabulary re-points the template's target type, silently — the failure the precondition forbids")
+	t.Run("a shadowing READER re-points a document no writer could have warned it about", func(t *testing.T) {
+		// given — written by the package default: `task` is the bundled
+		// table's own spelling of the bundled key, and no vocabulary this
+		// writer holds says otherwise
+		data, err := Marshal(model.SmartBlockType_Template, snap, Options{})
+		require.NoError(t, err)
+		assert.NotContains(t, string(data), "type_keys",
+			"nothing here owes an entry — which is exactly why the reader is on its own")
 
-	// the same document, the same shape of vocabulary, one conforming answer
-	conforming := typedSpaceVocabulary{typeSlugOf: map[string]string{customTypeKey: "tsk7"}}
-	require.False(t, typeSlugShadowsBundled(conforming, customTypeKey))
-	data, err = Marshal(model.SmartBlockType_Template, snap, Options{Keys: conforming})
-	require.NoError(t, err)
-	_, back, err = Unmarshal(data, Options{GenerateId: seqIds("h"), Keys: conforming})
-	require.NoError(t, err)
-	assert.Equal(t, []string{"ot-template", "ot-task"}, back.ObjectTypes,
-		"a conforming vocabulary round-trips the same document (§11.1, equivalent resolvers)")
+		// when
+		_, back, err := Unmarshal(data, Options{GenerateId: seqIds("g"), Keys: shadowing})
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []string{"ot-template", "ot-" + customTypeKey}, back.ObjectTypes,
+			"a shadowing vocabulary re-points the template's target type, silently — the failure the precondition forbids")
+	})
+
+	t.Run("a shadowing WRITER says so in the legend, and its own reader is safe", func(t *testing.T) {
+		// when
+		data, err := Marshal(model.SmartBlockType_Template, snap, Options{Keys: shadowing})
+		require.NoError(t, err)
+
+		// then — the term `task` is written for the stored key `task`, and
+		// this vocabulary would bind it elsewhere, so the identity entry is
+		// owed (§3) even though the bundled table inverts it
+		assert.Equal(t, map[string]string{"task": "task"}, decodeEnvelope(t, data).TypeKeys)
+
+		_, back, err := Unmarshal(data, Options{GenerateId: seqIds("g"), Keys: shadowing})
+		require.NoError(t, err)
+		assert.Equal(t, []string{"ot-template", "ot-task"}, back.ObjectTypes,
+			"the legend is chain step 1, ahead of the reader's vocabulary")
+	})
+
+	t.Run("a conforming vocabulary needs neither", func(t *testing.T) {
+		// the same document, the same shape of vocabulary, one conforming answer
+		conforming := typedSpaceVocabulary{typeSlugOf: map[string]string{customTypeKey: "tsk7"}}
+		require.False(t, typeSlugShadowsBundled(conforming, customTypeKey))
+		data, err := Marshal(model.SmartBlockType_Template, snap, Options{Keys: conforming})
+		require.NoError(t, err)
+		assert.NotContains(t, string(data), "type_keys")
+		_, back, err := Unmarshal(data, Options{GenerateId: seqIds("h"), Keys: conforming})
+		require.NoError(t, err)
+		assert.Equal(t, []string{"ot-template", "ot-task"}, back.ObjectTypes,
+			"a conforming vocabulary round-trips the same document (§11.1, equivalent resolvers)")
+	})
 }
 
 // The vocabulary I1's round-trip axis reads with has to conform, or that axis
@@ -451,5 +483,128 @@ func TestImportRefusesTwoSpellingsOfOneStoredKey(t *testing.T) {
 		require.NoError(t, err)
 		assert.Contains(t, snap.Details.Fields, "iconEmoji")
 		assert.Contains(t, snap.Details.Fields, "dueDate")
+	})
+}
+
+// corpseVocabulary is the vocabulary a space grows by DELETING things, and it
+// is fully conforming: a strict inverse pair in both namespaces, and no
+// answer touches a spelling the bundled table binds. A UI-deleted type or
+// property vacates the slug namespace (storeresolver's corpse policy —
+// loadKeyMaps filters `isUninstalled != true`), so its stored key stops being
+// a live stored key while every object that used it still carries it; the
+// freed spelling is then another live entity's api key. `initiative` is that
+// spelling here, in both namespaces, and it binds to the BSON key.
+type corpseVocabulary struct{}
+
+// corpsePropKey is a space-minted (bson) relation key, the property
+// namespace's customTypeKey.
+const corpsePropKey = "6a32d4856761631534b22f85"
+
+func (corpseVocabulary) PropertySlug(key string) string {
+	if key == corpsePropKey {
+		return "initiative"
+	}
+	return BundledKeyVocabulary{}.PropertySlug(key)
+}
+
+func (corpseVocabulary) PropertyKey(slug string) (string, bool) {
+	if slug == "initiative" {
+		return corpsePropKey, true
+	}
+	return BundledKeyVocabulary{}.PropertyKey(slug)
+}
+
+func (corpseVocabulary) TypeSlug(key string) string {
+	if key == customTypeKey {
+		return "initiative"
+	}
+	return BundledKeyVocabulary{}.TypeSlug(key)
+}
+
+func (corpseVocabulary) TypeKey(slug string) (string, bool) {
+	if slug == "initiative" {
+		return customTypeKey, true
+	}
+	return BundledKeyVocabulary{}.TypeKey(slug)
+}
+
+// TestKeyVocabulary_VocabularyInForceIsAReaderToo is the §3 legend rule
+// stated the way export has to apply it: a term owes an entry when ANY
+// resolver a conforming reader may run binds it to a different stored key —
+// not only when the BUNDLED table does.
+//
+// Export used to ask the bundled table alone (recordTypeKey /
+// recordPropertyKey), which is the wrong table for the reader most likely to
+// read the document: the writer's own space. Both symptoms below come from
+// that one question, and both need a vocabulary that CONFORMS — the
+// preconditions on KeyVocabulary do not forbid this shape, and storeresolver
+// grows it on its own the moment a user deletes a type whose slug someone
+// else has taken.
+func TestKeyVocabulary_VocabularyInForceIsAReaderToo(t *testing.T) {
+	require.False(t, typeSlugShadowsBundled(corpseVocabulary{}, customTypeKey),
+		"the fixture must CONFORM, or it proves only that a broken vocabulary breaks")
+
+	t.Run("the type namespace: a stored key written verbatim, re-pointed in silence", func(t *testing.T) {
+		// given: the object is typed with the DELETED type's stored key,
+		// which the space no longer reserves — while the live type's api key
+		// is that very spelling
+		snap := typedSnapshot("ot-initiative")
+
+		// when
+		data, err := Marshal(model.SmartBlockType_Page, snap, Options{Keys: corpseVocabulary{}})
+		require.NoError(t, err)
+
+		// then: `initiative` is written verbatim, and the identity entry is
+		// what says so — the bundled table is silent on the term, so nothing
+		// else in the document can
+		doc := decodeEnvelope(t, data)
+		assert.Equal(t, "initiative", doc.Type)
+		assert.Equal(t, map[string]string{"initiative": "initiative"}, doc.TypeKeys)
+		require.NoError(t, Validate(data))
+
+		// and the writer's own reader binds it back to the type it came from
+		_, back, err := Unmarshal(data, Options{GenerateId: seqIds("g"), Keys: corpseVocabulary{}})
+		require.NoError(t, err)
+		assert.Equal(t, []string{"ot-initiative"}, back.ObjectTypes,
+			"without the entry this is ot-"+customTypeKey+" — a different type, no error anywhere")
+
+		// as does a package-only reader, which is what an archive gets
+		_, back, err = Unmarshal(data, Options{GenerateId: seqIds("h")})
+		require.NoError(t, err)
+		assert.Equal(t, []string{"ot-initiative"}, back.ObjectTypes)
+	})
+
+	t.Run("the property namespace: Marshal emits what its own Unmarshal refuses", func(t *testing.T) {
+		// given: the object holds BOTH the BSON key and the stored key whose
+		// spelling this vocabulary hands to it
+		snap := &model.SmartBlockSnapshotBase{
+			Details: &types.Struct{Fields: map[string]*types.Value{
+				"initiative":  pbtypes.String("value of the deleted property"),
+				corpsePropKey: pbtypes.String("value of the live one"),
+			}},
+		}
+
+		// when
+		data, err := Marshal(model.SmartBlockType_Page, snap, Options{Keys: corpseVocabulary{}})
+		require.NoError(t, err)
+
+		// then: the ledger backs the slug off (the census named the stored
+		// key) — and the term it fell back to still owes the entry, because
+		// this reader binds `initiative` elsewhere
+		doc := decodeEnvelope(t, data)
+		assert.Equal(t, "value of the deleted property", doc.Properties["initiative"])
+		assert.Equal(t, "value of the live one", doc.Properties[corpsePropKey])
+		assert.Equal(t, map[string]string{"initiative": "initiative"}, doc.PropertyKeys)
+		require.NoError(t, Validate(data))
+
+		// and both values come home, on the stored keys they left on. Without
+		// the entry the two spellings both address corpsePropKey, and
+		// Unmarshal refuses the document Marshal has just written — I1.
+		_, back, err := Unmarshal(data, Options{GenerateId: seqIds("g"), Keys: corpseVocabulary{}})
+		require.NoError(t, err)
+		assert.Equal(t, "value of the deleted property",
+			back.Details.Fields["initiative"].GetStringValue())
+		assert.Equal(t, "value of the live one",
+			back.Details.Fields[corpsePropKey].GetStringValue())
 	})
 }

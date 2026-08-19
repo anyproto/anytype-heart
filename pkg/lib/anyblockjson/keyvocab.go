@@ -30,8 +30,8 @@ import (
 )
 
 // KeyVocabulary translates between the STORED keys the snapshot carries and
-// the SLUGS the document spells, in both directions. Implementations owe two
-// things, and the second one is not implied by the first.
+// the SLUGS the document spells, in both directions. Implementations owe
+// three things, and none of them is implied by the one before it.
 //
 //  1. **Inversion.** Whatever `…Slug` emits, `…Key` must invert, or a document
 //     does not round-trip.
@@ -42,18 +42,38 @@ import (
 //     than `key`, and `…Key(slug)` must not answer for a slug the table binds
 //     elsewhere.
 //
-// The second rule is what makes §11's round-trip guarantee true, and a
-// vocabulary can satisfy the first completely while breaking it. The legend
-// is the reason: a document owes a `type_keys`/`property_keys` entry only for
-// a spelling the reader's own chain cannot invert, and "the reader's own
-// chain" is taken to mean the bundled table, which ships with every reader.
-// So a stored key the table already inverts — `task`, spelled `task` — is
-// written with NO legend entry, and a reader whose vocabulary answers
-// `TypeKey("task") == "69bbfc…"` resolves it through that answer instead. A
-// template for the bundled Task type comes back as a template for an
-// unrelated custom type, silently. The property namespace has the same shape:
-// a bundled `description` reads back as whatever custom key claimed the
-// spelling.
+//  3. **A live stored key outranks the vocabulary's own slug binding.** This
+//     is §3 chain step 2 (verbatim-first) stated as an obligation on the
+//     implementation: when a term is the stored key of a live entity,
+//     `…Key(term)` must answer "not a slug" (ok == false) even when some
+//     other holder carries that term as its api key, and `…Slug(key)` must
+//     not emit a spelling that some live stored key answers to.
+//     storeresolver has implemented this from the start and the interface
+//     never said so — `keyMaps.key`'s `if m.storedKey[slug] { return "",
+//     false }` is the accept half, `roundTrips`' first refusal the emit half.
+//     Without it, a document naming a relation by its stored key lands on
+//     whichever OTHER relation minted that string as its `apiObjectKey` — the
+//     document names one entity and the reader writes another, with no error
+//     — and the emit half labels a value with an address that resolves to
+//     somebody else's row. Two live entities can always be told apart by
+//     their stored keys; if the slug layer is allowed to outrank them,
+//     nothing can.
+//
+// The second rule is what makes §11's round-trip guarantee true for a reader
+// export never met, and a vocabulary can satisfy the first completely while
+// breaking it. The legend is the reason: a document owes a
+// `type_keys`/`property_keys` entry only for a spelling the READER's chain
+// cannot invert, and export can only ask the chains it can see — the bundled
+// table, which ships with every reader, and the vocabulary it is running
+// under (recordTypeKey / termInverts; that second half was missing, and a
+// conforming vocabulary lost a type because of it). A third reader's
+// vocabulary is not one of them. So a stored key both visible chains invert —
+// `task`, spelled `task` — is written with NO legend entry, and a reader whose
+// vocabulary answers `TypeKey("task") == "69bbfc…"` resolves it through that
+// answer instead. A template for the bundled Task type comes back as a
+// template for an unrelated custom type, silently. The property namespace has
+// the same shape: a bundled `description` reads back as whatever custom key
+// claimed the spelling.
 //
 // storeresolver, the vocabulary the product wires, refuses both halves —
 // keyMaps.roundTrips will not SPELL a key with a slug the bundled table binds
@@ -61,6 +81,14 @@ import (
 // this is a rule for hand-written implementations, which Options.Keys accepts
 // from anyone. TestKeyVocabulary_ShadowingSlugBreaksInversion pins what
 // happens when it is broken.
+//
+// What NO rule here can prevent, and the legend therefore must: the third
+// rule lets a live slug binding win once the stored key stops being live,
+// which is what a UI delete does (storeresolver's corpse policy). A fully
+// conforming vocabulary then binds a spelling that objects still carry as a
+// stored key, so export writes the identity entry for it —
+// TestKeyVocabulary_VocabularyInForceIsAReaderToo and
+// TestCorpseStoredKeyStillNamesItsObjects.
 type KeyVocabulary interface {
 	// PropertySlug is the wire spelling of a stored relation key. Returning
 	// the input unchanged is always valid ("no slug for this key").

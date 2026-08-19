@@ -337,30 +337,70 @@ func (e *exporter) writableSlug(key string) string {
 	return slug
 }
 
-// recordPropertyKey writes the legend entry a term owes, or nothing when the
-// reader's own chain already inverts it: a spelling the bundled table binds
-// to this very key needs no entry (the table ships with every reader), and a
-// key spelled as itself is its own address (§3 verbatim-first) — UNLESS the
-// bundled table would bind that spelling to a DIFFERENT key. That is the
-// shadow case ("due_date" the stored key, beside bundled dueDate): a
+// recordPropertyKey writes the legend entry a term owes, or nothing when
+// every reader's own chain already inverts it: a spelling the bundled table
+// binds to this very key needs no entry (the table ships with every reader),
+// and a key spelled as itself is its own address (§3 verbatim-first) —
+// UNLESS some reader would bind that spelling to a DIFFERENT key. That is
+// the shadow case ("due_date" the stored key, beside bundled dueDate): a
 // package-only reader has no stored-key set, so the identity entry
 // {"due_date": "due_date"} is the document's only way to say the term is a
 // stored key. Without it the value silently moved onto the bundled twin.
+//
+// "Some reader" is TWO tables, not one — see termInverts.
 func (e *exporter) recordPropertyKey(term, key string) {
 	if term == "" {
 		return
 	}
-	if back, ok := (BundledKeyVocabulary{}).PropertyKey(term); ok {
-		if back == key {
-			return
-		}
-	} else if term == key {
+	if termInverts(term, key, (BundledKeyVocabulary{}).PropertyKey) &&
+		termInverts(term, key, e.opts.keys().PropertyKey) {
 		return
 	}
 	if e.propertyKeys == nil {
 		e.propertyKeys = map[string]string{}
 	}
 	e.propertyKeys[term] = key
+}
+
+// termInverts reports whether `term`, written for the stored key `key` with
+// NO legend entry, reads back as `key` through one reader's table. It asks
+// the table the same way the importer does — Options.propertyKey/typeKey
+// take the answer and drop the ok flag, and a table that does not know a
+// term answers the term itself (chain step 4, verbatim), which is what makes
+// the two forms one question.
+//
+// Export asks it of TWO tables, and the second one is the fix for a defect
+// that lost user data. The bundled table is the reader that always exists,
+// so a spelling it binds elsewhere has always owed an entry. But the
+// vocabulary this export runs under is a reader too — the writer's own
+// space, the one most likely to read the document back — and it answers
+// FIRST, before the bundled table (importer.propertyKey / typeKey run
+// Options' vocabulary, which is the whole chain a node-backed reader has).
+// Asking only the bundled table wrote a term with no legend that the
+// writer's own vocabulary then bound to a different stored key:
+//
+//   - the type namespace lost data in silence. A type UI-deleted from the
+//     space vacates the slug namespace (storeresolver's corpse policy), so
+//     `initiative` stops being a live stored key while objects still carry
+//     `ot-initiative`; the same listing binds the slug `initiative` to a
+//     live type keyed `69bbfc…`. Export wrote `"type": "initiative"` with no
+//     entry and import bound it to `69bbfc…` — the object came back typed as
+//     a different type, no error anywhere.
+//   - the property namespace broke I1 out loud. A vocabulary spelling
+//     `alpha` as `beta`, over an object holding both `alpha` and `beta`,
+//     wrote both keys verbatim (the ledger backs `alpha` off its contested
+//     slug, correctly) — and then the reader's own vocabulary bound `beta`
+//     to `alpha`, so two spellings addressed one property and Unmarshal
+//     refused a document Marshal had just emitted.
+//
+// The entry fixes both for EVERY reader, not just for the one whose table
+// prompted it: the legend is chain step 1, ahead of any vocabulary. What it
+// cannot fix is a reader whose table shadows the bundled one in a way the
+// writer never saw — that is precondition 2 on KeyVocabulary, and it stays a
+// precondition for exactly this reason.
+func termInverts(term, key string, table func(string) (string, bool)) bool {
+	back, _ := table(term)
+	return back == key
 }
 
 // buildPropertyKeys renders the legend in key order, or nil when the document
@@ -492,21 +532,21 @@ func (e *exporter) writableTypeSlug(key string) string {
 }
 
 // recordTypeKey writes the type legend entry a term owes, or nothing when
-// the reader's own chain already inverts it — recordPropertyKey's rule
-// through the type half of the bundled table, identity entries included: a
-// stored type key written verbatim whose spelling the table binds to a
-// DIFFERENT key (`object_type` the stored key beside bundled `objectType`)
+// every reader's own chain already inverts it — recordPropertyKey's rule
+// through the type half of the two tables, identity entries included: a
+// stored type key written verbatim whose spelling the bundled table binds to
+// a DIFFERENT key (`object_type` the stored key beside bundled `objectType`)
 // gets `{"object_type": "object_type"}`, the document's only way to tell a
-// storeless reader the term is a stored key.
+// storeless reader the term is a stored key — and the same entry, for the
+// same reason, when the vocabulary in force is the one that binds it
+// elsewhere (`initiative` the stored key of a UI-deleted type, beside the
+// live type whose api key is `initiative`). See termInverts.
 func (e *exporter) recordTypeKey(term, key string) {
 	if term == "" {
 		return
 	}
-	if back, ok := (BundledKeyVocabulary{}).TypeKey(term); ok {
-		if back == key {
-			return
-		}
-	} else if term == key {
+	if termInverts(term, key, (BundledKeyVocabulary{}).TypeKey) &&
+		termInverts(term, key, e.opts.keys().TypeKey) {
 		return
 	}
 	if e.typeKeys == nil {

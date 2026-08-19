@@ -210,6 +210,15 @@ func hostileSnapshot(n int) (model.SmartBlockType, *model.SmartBlockSnapshotBase
 		// entry existed.
 		"unique_key": str("custom, not the resolution vector"),
 		"due_date":   str("custom, beside dueDate"),
+		// the third shadow shape, and the only one the bundled table cannot
+		// see: a stored key whose spelling the VOCABULARY IN FORCE binds to a
+		// different key (shadowVocab below slugs the BSON key onto it). Real
+		// spaces mint it by deleting a property — a UI-deleted entity vacates
+		// the slug namespace, so its stored key stops being reserved while
+		// objects still carry it, and the freed spelling is another
+		// property's api key. Both keys are written verbatim here, and
+		// without the identity entry the reader binds one of them twice.
+		"initiative": str("custom, whose spelling this space now gives away"),
 	}
 	// the envelope key is a STORED identity key written verbatim (§2), and a
 	// closed charset over it was falsified by a 36 808-object sweep: relation
@@ -539,6 +548,60 @@ func (roundTripVocab) TypeKey(slug string) (string, bool) {
 	return BundledKeyVocabulary{}.TypeKey(slug)
 }
 
+// shadowVocab is roundTripVocab's third twin, and the one that says the
+// legend is not only about the bundled table. It CONFORMS — a strict inverse
+// pair, and no answer touches a spelling the bundled table binds (`initiative`
+// and `squatter` are not in it, in either namespace) — and it still binds two
+// spellings the corpus carries as STORED keys: the BSON property key is
+// slugged onto `initiative`, which the details hold verbatim, and the BSON
+// type key onto `squatter`, which the type pools and hp1's `object_types`
+// hold verbatim.
+//
+// That is the shape a real space grows on its own: deleting a type or a
+// property vacates the slug namespace (storeresolver's corpse policy) while
+// the objects that used it keep the stored key, and the freed spelling
+// becomes somebody else's api key. Export backs the slug off — the census
+// reserved the stored key — and then wrote the stored key with no legend
+// entry, so this very vocabulary bound it to the other holder on the way
+// back: a re-pointed type in silence, and two spellings of one property
+// loudly (Unmarshal refuses a document Marshal just wrote — I1).
+type shadowVocab struct{}
+
+var shadowPropertySlugs = map[string]string{"6a32d4856761631534b22f85": "initiative"}
+var shadowTypeSlugs = map[string]string{customTypeKey: "squatter"}
+
+func (shadowVocab) PropertySlug(key string) string {
+	if slug, ok := shadowPropertySlugs[key]; ok {
+		return slug
+	}
+	return BundledKeyVocabulary{}.PropertySlug(key)
+}
+
+func (shadowVocab) PropertyKey(slug string) (string, bool) {
+	for key, s := range shadowPropertySlugs {
+		if s == slug {
+			return key, true
+		}
+	}
+	return BundledKeyVocabulary{}.PropertyKey(slug)
+}
+
+func (shadowVocab) TypeSlug(key string) string {
+	if slug, ok := shadowTypeSlugs[key]; ok {
+		return slug
+	}
+	return BundledKeyVocabulary{}.TypeSlug(key)
+}
+
+func (shadowVocab) TypeKey(slug string) (string, bool) {
+	for key, s := range shadowTypeSlugs {
+		if s == slug {
+			return key, true
+		}
+	}
+	return BundledKeyVocabulary{}.TypeKey(slug)
+}
+
 // I1: Marshal either fails loudly — §11 allows that for an over-deep tree or a
 // table inside a cell — or produces a document its own Validate accepts AND
 // its own Unmarshal imports. What it may never do is succeed and hand back an
@@ -564,6 +627,7 @@ func TestInvariant_MarshalOutputValidates(t *testing.T) {
 		"omitIds":        {write: Options{OmitIds: true}},
 		"hostileVocab":   {write: Options{Keys: hostileVocab{}}},
 		"roundTripVocab": {write: Options{Keys: roundTripVocab{}}, read: roundTripVocab{}},
+		"shadowVocab":    {write: Options{Keys: shadowVocab{}}, read: shadowVocab{}},
 	}
 	for name, variant := range variants {
 		t.Run(name, func(t *testing.T) {
