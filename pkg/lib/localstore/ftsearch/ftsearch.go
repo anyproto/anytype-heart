@@ -587,6 +587,14 @@ func (f *ftSearch) SearchChat(spaceId, chatId, query string, limit int) ([]*Docu
 			// the MessageId field is not expressible in tantivy-go, so the token is
 			// the message-doc marker; callers drop the rare false positive via
 			// path.HasMessage(). Boost 0 keeps the clause out of BM25 scoring.
+			//
+			// Index efficiency: the Must intersection is driven by the rarer text
+			// postings and only seeks into the "m" posting list via block skip
+			// lists, so cost scales with text matches, not with total messages.
+			// The per-chat phrase clause above walks the same "m" postings (plus
+			// position checks); a dedicated doc-type field would have an identical
+			// posting-list profile while requiring an index-version bump + full
+			// reindex.
 			qb.Query(tantivy.Must, fieldId, "m", tantivy.TermQuery, 0.0)
 		}
 		f.buildDetailedQuery(qb, query)
