@@ -33,10 +33,17 @@ type pendingSnapshot struct {
 // snapshots the same way core/block/import/csv and core/block/import/notion
 // build them for their own generated relations and options.
 type batch struct {
+	// formats is keyed by the STORED property key, which is what every
+	// reader below hands it: anyblockjson resolves a `properties` key or a
+	// `type_properties[].key` through the document's own property_keys legend
+	// and the bundled table (§3, importer.propertyKey) before it calls
+	// ResolveFormat or builds a PropertyDefinition. anyblockbatch.ScanFormats
+	// runs the same chain when it builds the table — keying it by the raw
+	// spelling instead made every legend-backed property a silent miss here.
 	formats map[string]anyblockbatch.FormatInfo
 
-	relIDs map[string]string // property key -> minted relation object id
-	optIDs map[string]string // "key\x00name" -> minted option object id
+	relIDs map[string]string // stored property key -> minted relation object id
+	optIDs map[string]string // "stored key\x00name" -> minted option object id
 
 	// optOrder is the last order id handed out per property key. Every option
 	// needs one: options sort on orderId+name concatenated
@@ -69,6 +76,13 @@ type batch struct {
 // some object is minted without an orderId, and the directory walk reaches
 // objects/ before types/, so declaring lazily would leave the used values
 // unordered and the unused ones ordered.
+//
+// The map key IS the relation key the options are declared under — it has to
+// be the stored key, since that is what OptionId is later called with. That
+// holds because ScanFormats resolves the term (§3) before keying; when it
+// did not, a legend-backed vocabulary was pre-minted under the SPELLING, so
+// the declared options sat on a relation nothing referenced while the values
+// that actually arrived minted a second, order-less set under the real key.
 func newBatch(formats map[string]anyblockbatch.FormatInfo, typeIds map[string]string) (b *batch) {
 	b = &batch{
 		formats:    formats,
@@ -93,7 +107,8 @@ func newBatch(formats map[string]anyblockbatch.FormatInfo, typeIds map[string]st
 func (b *batch) relationCount() int { return len(b.relIDs) }
 func (b *batch) optionCount() int   { return len(b.optIDs) }
 
-// resolveFormat implements anyblockjson.FormatResolver.
+// resolveFormat implements anyblockjson.FormatResolver. `key` arrives already
+// resolved (importer.propertyKey), which is why formats is keyed the same way.
 func (b *batch) resolveFormat(key domain.RelationKey) (model.RelationFormat, bool) {
 	if fi, ok := b.formats[string(key)]; ok {
 		return fi.Format, true

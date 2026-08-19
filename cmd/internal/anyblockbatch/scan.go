@@ -42,7 +42,9 @@ var FormatByName = map[string]model.RelationFormat{
 
 // FormatInfo is what the batch knows about a custom property key, gathered
 // from every objectType document's typeProperties (§2a) before any document
-// is actually converted.
+// is actually converted. The map that holds it is keyed by the STORED
+// property key each entry's `key` term resolves to (propertyterm.go), which
+// is what the converter reads it by.
 type FormatInfo struct {
 	Format     model.RelationFormat
 	FormatName string
@@ -66,6 +68,7 @@ type typePropRaw struct {
 }
 
 type prescanDoc struct {
+	PropertyKeys   propertyLegend `json:"property_keys"`
 	TypeProperties *[]typePropRaw `json:"type_properties"`
 }
 
@@ -76,6 +79,13 @@ type prescanDoc struct {
 // "person" object referencing "team" only resolves correctly if some type
 // document's typeProperties already declared "team"'s format — regardless of
 // which file the directory walk visits first.
+//
+// The table is keyed by the STORED key each entry's `key` term resolves to,
+// because that is what the converter reads it by: anyblockjson hands
+// Options.ResolveFormat the output of importer.propertyKey, never the
+// spelling. `type_properties[].key` is a translated slot (§3), so it runs the
+// chain — this document's own property_keys legend, the bundled table,
+// verbatim — first; see propertyterm.go for what keying it raw costs.
 func ScanFormats(files []string) (map[string]FormatInfo, error) {
 	out := map[string]FormatInfo{}
 	for _, f := range files {
@@ -94,6 +104,7 @@ func ScanFormats(files []string) (map[string]FormatInfo, error) {
 			if tp.Key == "" {
 				continue
 			}
+			key := resolvePropertyTerm(doc.PropertyKeys, tp.Key)
 			format, ok := FormatByName[tp.Format]
 			if !ok {
 				// unrecognized or absent format: leave unresolved so the
@@ -102,21 +113,25 @@ func ScanFormats(files []string) (map[string]FormatInfo, error) {
 				// SPEC.md §3).
 				continue
 			}
+			// the fallback display name is the SPELLING, not the resolved
+			// key: a legend exists precisely because the stored key is a
+			// minted bson nobody wants to read, and this name is what
+			// mintRelation writes when the entry declares none.
 			name := tp.Name
 			if name == "" {
 				name = tp.Key
 			}
-			if existing, seen := out[tp.Key]; seen && len(tp.Options) == 0 && len(existing.Options) > 0 {
+			if existing, seen := out[key]; seen && len(tp.Options) == 0 && len(existing.Options) > 0 {
 				// a second type referencing the same property need not
 				// repeat its vocabulary
 				continue
 			}
-			if existing, seen := out[tp.Key]; seen && existing.Format != format {
+			if existing, seen := out[key]; seen && existing.Format != format {
 				fmt.Fprintf(os.Stderr, "warning: %s: property %q declared with conflicting formats (%s vs %s) — keeping the first seen\n",
-					f, tp.Key, existing.FormatName, tp.Format)
+					f, tp.Key+resolvedPropertyNote(tp.Key, key), existing.FormatName, tp.Format)
 				continue
 			}
-			out[tp.Key] = FormatInfo{Format: format, FormatName: tp.Format, Name: name, Options: tp.Options, ObjectTypes: tp.ObjectTypes}
+			out[key] = FormatInfo{Format: format, FormatName: tp.Format, Name: name, Options: tp.Options, ObjectTypes: tp.ObjectTypes}
 		}
 	}
 	return out, nil
@@ -126,7 +141,13 @@ func ScanFormats(files []string) (map[string]FormatInfo, error) {
 // declares.
 type Undeclared struct {
 	File string
-	Key  string
+	// Key is the term as spelled in the document, so the author can find it.
+	Key string
+	// Resolved is the stored key that term binds to (§3) — what the
+	// converter will actually look up, and what a type_properties entry has
+	// to end up naming for the finding to go away. Equal to Key whenever the
+	// document spells the stored key itself.
+	Resolved string
 }
 
 // CheckPropertyFormats finds property values whose format cannot be resolved.
@@ -141,6 +162,16 @@ type Undeclared struct {
 //
 // Nothing downstream reports this — the document validates and converts — so
 // the batch has to catch it.
+//
+// A `properties` key is a translated slot (§3): it spells the api slug, and
+// binds to a stored key through this document's own property_keys legend,
+// then the bundled table, then verbatim (propertyterm.go). Both lookups below
+// take the RESOLVED key — the bundled one because `bundle` is keyed by stored
+// keys and knows nothing of `due_date`, the batch one because the converter
+// reads that table by the resolved key too. Comparing spellings instead was
+// wrong both ways: it reported every canonically-spelled bundled property as
+// undeclared (a hard error in anyblockconvert), and waved through a
+// legend-backed slug whose stored key nothing declares.
 func CheckPropertyFormats(files []string, formats map[string]FormatInfo) ([]Undeclared, error) {
 	var out []Undeclared
 	for _, f := range files {
@@ -149,7 +180,8 @@ func CheckPropertyFormats(files []string, formats map[string]FormatInfo) ([]Unde
 			return nil, fmt.Errorf("read %s: %w", f, err)
 		}
 		var doc struct {
-			Properties map[string]json.RawMessage `json:"properties"`
+			PropertyKeys propertyLegend             `json:"property_keys"`
+			Properties   map[string]json.RawMessage `json:"properties"`
 		}
 		if err := json.Unmarshal(data, &doc); err != nil {
 			return nil, fmt.Errorf("parse %s: %w", f, err)
@@ -160,17 +192,20 @@ func CheckPropertyFormats(files []string, formats map[string]FormatInfo) ([]Unde
 		}
 		sort.Strings(keys)
 		for _, k := range keys {
-			// id and type are lifted into the envelope, not property values
+			// id and type are lifted into the envelope, not property values —
+			// and the codec skips them on the SPELLING, before any
+			// resolution (importer.build), so this must too
 			if k == "id" || k == "type" {
 				continue
 			}
-			if _, err := bundle.GetRelationFormat(domain.RelationKey(k)); err == nil {
+			key := resolvePropertyTerm(doc.PropertyKeys, k)
+			if _, err := bundle.GetRelationFormat(domain.RelationKey(key)); err == nil {
 				continue
 			}
-			if _, declared := formats[k]; declared {
+			if _, declared := formats[key]; declared {
 				continue
 			}
-			out = append(out, Undeclared{File: f, Key: k})
+			out = append(out, Undeclared{File: f, Key: k, Resolved: key})
 		}
 	}
 	return out, nil
@@ -197,10 +232,14 @@ func DiscoverJSONFiles(root string) ([]string, error) {
 }
 
 // Report renders undeclared properties as one line each, most useful first.
+// A term whose legend moves it names the stored key too: the entry that fixes
+// the finding has to resolve to THAT key, which the spelling alone does not
+// say.
 func Report(us []Undeclared) string {
 	var b strings.Builder
 	for _, u := range us {
-		fmt.Fprintf(&b, "  %s: property %q has no declared format — add it to some type's type_properties\n", u.File, u.Key)
+		fmt.Fprintf(&b, "  %s: property %q has no declared format%s — add it to some type's type_properties\n",
+			u.File, u.Key, resolvedPropertyNote(u.Key, u.Resolved))
 	}
 	return b.String()
 }
@@ -264,6 +303,9 @@ func OrderTypesFirst(files []string) ([]string, error) {
 
 // SharedSelect is a select property declared by more than one type.
 type SharedSelect struct {
+	// Key is the STORED property key the declarations share — what the space
+	// keys the one option pool by, and what makes them the same property even
+	// when two documents spell it differently (§3).
 	Key   string
 	Types []string // type keys, in declaration order
 }
@@ -281,6 +323,13 @@ type SharedSelect struct {
 //
 // Reported rather than rejected: only the author knows whether the union is
 // the point.
+//
+// Grouped by the STORED key each `key` term resolves to (§3, propertyterm.go),
+// not by its spelling: what merges two vocabularies is naming one property,
+// and two documents naming it two ways — one through its property_keys
+// legend, one verbatim — merge exactly as hard as two spelling it alike.
+// Grouping by spelling missed precisely the collision an author cannot see by
+// reading the files side by side.
 func CheckSharedSelects(files []string) ([]SharedSelect, error) {
 	type decl struct {
 		types []string
@@ -295,9 +344,10 @@ func CheckSharedSelects(files []string) ([]SharedSelect, error) {
 			return nil, fmt.Errorf("read %s: %w", f, err)
 		}
 		var doc struct {
-			Kind           string        `json:"kind"`
-			Key            string        `json:"key"`
-			TypeProperties []typePropRaw `json:"type_properties"`
+			Kind           string         `json:"kind"`
+			Key            string         `json:"key"`
+			PropertyKeys   propertyLegend `json:"property_keys"`
+			TypeProperties []typePropRaw  `json:"type_properties"`
 		}
 		if err := json.Unmarshal(data, &doc); err != nil {
 			return nil, fmt.Errorf("parse %s: %w", f, err)
@@ -305,6 +355,8 @@ func CheckSharedSelects(files []string) ([]SharedSelect, error) {
 		if doc.Kind != "object_type" {
 			continue
 		}
+		// the envelope `key` is the raw stored key and is never translated
+		// (§2), so it is the right label for the type as it stands
 		typeName := doc.Key
 		if typeName == "" {
 			typeName = filepath.Base(f)
@@ -313,11 +365,12 @@ func CheckSharedSelects(files []string) ([]SharedSelect, error) {
 			if tp.Format != "select" && tp.Format != "multi_select" {
 				continue
 			}
-			d, ok := byKey[tp.Key]
+			key := resolvePropertyTerm(doc.PropertyKeys, tp.Key)
+			d, ok := byKey[key]
 			if !ok {
 				d = &decl{seen: map[string]bool{}}
-				byKey[tp.Key] = d
-				order = append(order, tp.Key)
+				byKey[key] = d
+				order = append(order, key)
 			}
 			if !d.seen[typeName] {
 				d.seen[typeName] = true
@@ -437,10 +490,11 @@ func CheckTemplateTargets(files []string, typeIds map[string]string) ([]BadTempl
 			return nil, fmt.Errorf("read %s: %w", f, err)
 		}
 		var doc struct {
-			Type        string                     `json:"type"`
-			TemplateFor string                     `json:"template_for"`
-			TypeKeys    typeLegend                 `json:"type_keys"`
-			Properties  map[string]json.RawMessage `json:"properties"`
+			Type         string                     `json:"type"`
+			TemplateFor  string                     `json:"template_for"`
+			TypeKeys     typeLegend                 `json:"type_keys"`
+			PropertyKeys propertyLegend             `json:"property_keys"`
+			Properties   map[string]json.RawMessage `json:"properties"`
 		}
 		if err := json.Unmarshal(data, &doc); err != nil {
 			return nil, fmt.Errorf("parse %s: %w", f, err)
@@ -448,7 +502,7 @@ func CheckTemplateTargets(files []string, typeIds map[string]string) ([]BadTempl
 		if resolveTypeTerm(doc.TypeKeys, doc.Type) != templateTypeKey {
 			continue
 		}
-		if _, authored := doc.Properties[string(bundle.RelationKeyTargetObjectType)]; authored {
+		if authoredTargetObjectType(doc.PropertyKeys, doc.Properties) {
 			// an explicit id (what a round-tripped export carries) is what the
 			// converter keeps, whatever templateFor says
 			continue
@@ -474,6 +528,30 @@ func CheckTemplateTargets(files []string, typeIds map[string]string) ([]BadTempl
 		}
 	}
 	return out, nil
+}
+
+// authoredTargetObjectType reports whether the document writes the
+// targetObjectType detail itself — the value patchTemplateTarget keeps
+// whatever template_for says.
+//
+// The converter reads that detail off the CONVERTED snapshot, i.e. under the
+// stored key, so the question here is which SPELLING lands on it — a
+// translated property slot, resolved through this document's own
+// property_keys legend, then the bundled table, then verbatim (§3). Probing
+// the map for the stored key alone was wrong both ways: `target_object_type`
+// is the canonical api-slug spelling (§3) and reached the detail while this
+// check missed it, reporting a template the converter wires perfectly (a hard
+// error in anyblockconvert); and a legend rebinding the `targetObjectType`
+// spelling onto some other key means the detail is NOT written, which this
+// check took as authored and skipped — the template then imports belonging to
+// no type, unreported, which is the whole point of the check.
+func authoredTargetObjectType(legend propertyLegend, props map[string]json.RawMessage) bool {
+	for slug := range props {
+		if resolvePropertyTerm(legend, slug) == string(bundle.RelationKeyTargetObjectType) {
+			return true
+		}
+	}
+	return false
 }
 
 // ReportTemplateTargets renders unwirable template targets, one per line.
