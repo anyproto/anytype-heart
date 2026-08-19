@@ -37,7 +37,11 @@ the deny rule runs on the value itself, member or no member spelling it —
 and export never mints the refused shapes, because a denied key never takes
 a slug and a vocabulary answer of `id`/`type` (the spellings refused before
 any resolution) falls back to the stored key like an over-long slug always
-did.
+did. And validation now mirrors the importer's details seam refusal for
+refusal — denied resolved key, **unwritable** resolved key (new at the seam
+too, closing the vocabulary that resolved a spelling onto `""`), and two
+spellings binding onto one stored key — so `Validate` and `Unmarshal`
+accept and reject the same documents under default `Options` (§12).
 
 Changes in v0.11: three rules that two surfaces disagreed about, each
 found as `Marshal` emitting a document its own `Validate` rejects. **A table
@@ -790,8 +794,15 @@ takes no resolver (§13). A reader whose vocabulary resolves *further* — a
 node-backed caller whose space maps a slug to a stored key the bundled
 table never knew — must re-run admission on **its** final resolved key,
 which import does at the seam where details are written (`importer.build`).
-The two agree exactly whenever no wider vocabulary is in force, which is
-what keeps Validate and Unmarshal accepting the same documents (§12).
+Admission at that seam is three refusals, and validation mirrors every one
+of them: a **denied** resolved key; an **unwritable** resolved key (a wider
+vocabulary can resolve a spelling onto the empty string, which used to land
+`details[""]` in silence and vanish on re-export); and **two spellings
+binding onto one stored key** (refused only at import for a while, so a
+hand-written `{"iconEmoji": …, "icon_emoji": …}` validated clean and then
+failed to import). The two halves agree exactly whenever no wider
+vocabulary is in force, which is what keeps Validate and Unmarshal
+accepting the same documents (§12).
 
 **A property key has to be writable.** Non-empty, no control characters, at
 most 128 characters (`propertyNames` in the schema, restated in the reader so
@@ -1900,10 +1911,14 @@ fail neither test belong in authoring guidance and in review.
   uniqueness over the whole document (§4), table shape and cell rules
   (§6.1), envelope combinations (`items`/`template_for`/`kind`, §2),
   **property-key admission on the resolved stored key** (§3 — each
-  `properties` spelling resolves legend → bundled table → verbatim before
-  the deny rule, the layout-name check and the format-shape warning run;
-  import re-runs the deny rule on its own resolved key when a wider
-  vocabulary is in force), `language`-vs-`fields.lang` conflicts, and
+  `properties` spelling resolves through the §3 chain before the deny rule,
+  the layout-name check and the format-shape warning run; validation
+  mirrors the importer's details seam refusal for refusal — a **denied**
+  resolved key, an **unwritable** resolved key, and **two spellings binding
+  onto one stored key** are all errors — and a `property_keys` *value* is
+  admitted like the stored key it is, deny rule included; import re-runs
+  the seam's checks on its own resolved key when a wider vocabulary is in
+  force), `language`-vs-`fields.lang` conflicts, and
   **inline-markup parsing** (§8) — grammar errors report the block's JSON
   path and the offending snippet. The indent bound [0, 32] lives in the
   schema.

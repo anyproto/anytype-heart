@@ -659,7 +659,15 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 		}
 	}
 
+	// The loop below is the MIRROR of the importer's details seam
+	// (importer.build), refusal for refusal — denied resolved key, unwritable
+	// resolved key, two spellings binding one key — in the same sorted order,
+	// so with default Options the two verdicts cannot differ (§12, I2). The
+	// duplicate-binding refusal used to live in the seam alone, and a
+	// hand-written {"iconEmoji": …, "icon_emoji": …} validated clean and then
+	// failed to import.
 	if props, _ := doc["properties"].(map[string]any); props != nil {
+		boundBy := make(map[string]string, len(props))
 		for _, term := range sortedMapKeys(props) {
 			v := props[term]
 			path := "/properties/" + escapeJSONPointer(term)
@@ -673,6 +681,20 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 				addIssue(path, "%s", reason)
 				continue
 			}
+			// the document's own chain can hardly resolve a shape-checked
+			// term onto an unwritable key — legend values and spellings were
+			// vetted before this runs — but the seam refuses one however it
+			// arrives, and this pass mirrors the seam, not an argument about
+			// reachability
+			if !isWritablePropertyKey(key) {
+				addIssue(path, "%s", unwritableKeyReason("resolved property key", key))
+				continue
+			}
+			if first, dup := boundBy[key]; dup {
+				addIssue(path, "%q and %q both address property %q — keep one", first, term, key)
+				continue
+			}
+			boundBy[key] = term
 			// layout properties are named, not numbered (§3). A typo would
 			// otherwise import as a raw string onto a number-format property:
 			// no error anywhere, and every consumer reads it with an int getter

@@ -431,3 +431,53 @@ func TestExport_ASlugRefusedAsASpellingFallsBackToTheStoredKey(t *testing.T) {
 	assert.Equal(t, "v", back.Details.Fields["artist"].GetStringValue())
 	assert.Equal(t, "w", back.Details.Fields["myGenre"].GetStringValue())
 }
+
+// blankKeyVocab resolves a spelling to the empty string — a vocabulary bug a
+// caller can really ship, and one the import seam used to let through.
+type blankKeyVocab struct{ BundledKeyVocabulary }
+
+func (blankKeyVocab) PropertyKey(slug string) (string, bool) {
+	if slug == "blank" {
+		return "", true
+	}
+	return BundledKeyVocabulary{}.PropertyKey(slug)
+}
+
+// The seam admits only keys export could write: it ran the deny rule on the
+// resolved key but not the writable-key rule, so a vocabulary resolving
+// "blank" to "" landed details[""] — Validate clean, Unmarshal clean, and
+// re-export then dropped the property with only a warning. A property lost
+// in silence.
+func TestImport_SeamRefusesAnUnwritableResolvedKey(t *testing.T) {
+	doc := `{"version": 1, "properties": {"blank": "x"}}`
+	require.NoError(t, Validate([]byte(doc)),
+		"the document's own chain resolves blank verbatim — Validate cannot see the vocabulary")
+
+	_, _, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g"), Keys: blankKeyVocab{}})
+
+	require.Error(t, err, "an unwritable resolved key must be refused at the seam, like a denied one")
+	var ve *ValidationError
+	require.ErrorAs(t, err, &ve, "the refusal is path-addressed")
+	assert.Contains(t, err.Error(), "/properties/blank")
+}
+
+// Validation mirrors ALL of the seam's refusals, not one of three: importer.
+// build refuses two spellings binding onto one stored key, semanticIssues did
+// not, so with DEFAULT Options a hand-written {"iconEmoji": …, "icon_emoji":
+// …} split Validate from Unmarshal — the exact divergence I2 forbids.
+func TestValidate_MirrorsTheSeamsDuplicateBindingRefusal(t *testing.T) {
+	for name, doc := range map[string]string{
+		"bundled twin":   `{"version": 1, "properties": {"iconEmoji": "a", "icon_emoji": "b"}}`,
+		"date twin":      `{"version": 1, "properties": {"dueDate": "x", "due_date": "y"}}`,
+		"legend-induced": `{"version": 1, "property_keys": {"prio": "customKey"}, "properties": {"prio": 1, "customKey": 2}}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			err := Validate([]byte(doc))
+			require.Error(t, err, "Unmarshal refuses this document, so Validate must too (I2)")
+			assert.Contains(t, err.Error(), "both address")
+
+			_, _, unmErr := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
+			require.Error(t, unmErr)
+		})
+	}
+}

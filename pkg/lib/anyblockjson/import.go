@@ -313,9 +313,20 @@ func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBas
 				Message: reason,
 			}}}
 		}
+		// the seam admits only keys export could write (§3): a wider
+		// vocabulary can resolve a spelling onto a key with no writable form
+		// — the empty string included — which used to land details[""]
+		// silently, Validate clean and Unmarshal clean, and the re-export
+		// then dropped the property with only a warning.
+		if !isWritablePropertyKey(key) {
+			return 0, nil, &ValidationError{Issues: []Issue{{
+				Path:    "/properties/" + escapeJSONPointer(slug),
+				Message: unwritableKeyReason("resolved property key", key),
+			}}}
+		}
 		if first, dup := boundBy[key]; dup {
 			return 0, nil, &ValidationError{Issues: []Issue{{
-				Path:    "/properties/" + slug,
+				Path:    "/properties/" + escapeJSONPointer(slug),
 				Message: fmt.Sprintf("%q and %q both address property %q — keep one", first, slug, key),
 			}}}
 		}
