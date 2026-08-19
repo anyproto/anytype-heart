@@ -409,6 +409,15 @@ func ReportSharedSelects(ss []SharedSelect) string {
 // before anything is looked up. typeIds is keyed by the untranslated envelope
 // key (§2), and matching a term against it raw is both a fail-closed and a
 // fail-open bug; see typeterm.go.
+//
+// The arms are ordered the way batch.objectTypeIds orders them — LOCAL first,
+// bundled only as the fallthrough — because a lint that asks the questions in
+// a different order than the code it lints answers a different question.
+// Checking bundled first short-circuited a bundle that defines an
+// `object_type` document with a bundled key and no `id`: the converter takes
+// the local arm, finds the empty id, and appends an EMPTY STRING to
+// relationFormatObjectTypes, which names nothing and is invisible in every
+// UI — while the lint saw `page` in the bundle table and reported clean.
 func CheckTargetTypes(files []string, typeIds map[string]string) ([]BadTarget, error) {
 	var out []BadTarget
 	for _, f := range files {
@@ -426,16 +435,21 @@ func CheckTargetTypes(files []string, typeIds map[string]string) ([]BadTarget, e
 		for _, tp := range doc.TypeProperties {
 			for _, target := range tp.ObjectTypes {
 				key := resolveTypeTerm(doc.TypeKeys, target)
-				if bundle.HasObjectTypeByKey(domain.TypeKey(key)) {
-					continue
-				}
 				id, defined := typeIds[key]
 				note := resolvedNote(target, key)
+				shadows := ""
+				if bundle.HasObjectTypeByKey(domain.TypeKey(key)) {
+					shadows = " (this bundle defines a document with that key, and the converter prefers it over the bundled type of the same name)"
+				}
 				switch {
-				case !defined:
+				case defined && id == "":
+					out = append(out, BadTarget{File: f, Property: tp.Key, Target: target, Reason: "that type is defined here but its document carries no \"id\", so nothing can reference it" + shadows + note})
+				case defined:
+					// a document in this bundle, with an id to point at
+				case bundle.HasObjectTypeByKey(domain.TypeKey(key)):
+					// bundled, and this bundle does not shadow it
+				default:
 					out = append(out, BadTarget{File: f, Property: tp.Key, Target: target, Reason: "no such type: not bundled, and not defined by this bundle" + note})
-				case id == "":
-					out = append(out, BadTarget{File: f, Property: tp.Key, Target: target, Reason: "that type is defined here but its document carries no \"id\", so nothing can reference it" + note})
 				}
 			}
 		}

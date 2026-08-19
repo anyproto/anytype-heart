@@ -19,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/cmd/internal/anyblockbatch"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/constant"
 )
@@ -243,6 +244,24 @@ func TestBatch_ObjectTypeIdsSplitLocalAndBundled(t *testing.T) {
 func TestBatch_NoObjectTypesLeavesPropertyUntargeted(t *testing.T) {
 	b := newBatch(nil, nil)
 	assert.Nil(t, b.objectTypeIds(anyblockjson.PropertyDefinition{Key: "owner"}))
+}
+
+// The converter half of anyblockbatch's CheckTargetTypes ordering: a type this
+// bundle DEFINES wins over the bundled type of the same name, even when its
+// document carries no id — and then the target is the empty string, which
+// names nothing anywhere. This is not a behaviour to keep, it is the reason
+// CheckTargetTypes has to ask typeIds before it asks the bundle; the lint
+// rejects such a bundle so this never runs in anger. If this assertion ever
+// changes, TestCheckTargetTypes_BundledKeyDefinedLocallyWithoutIdIsReported
+// has to change with it.
+func TestBatch_IdlessLocalTypeYieldsAnEmptyTargetId(t *testing.T) {
+	require.True(t, bundle.HasObjectTypeByKey("page"),
+		"the fixture only bites while `page` really is bundled, i.e. while the two arms disagree")
+	b := newBatch(nil, map[string]string{"page": ""})
+	assert.Equal(t, []string{""}, b.objectTypeIds(anyblockjson.PropertyDefinition{
+		Key:         "owner",
+		ObjectTypes: []string{"page"},
+	}), "the local arm wins and has nothing to offer — not the bundled url")
 }
 
 // End to end, over the real seam: a bundle whose property_keys legend backs a
