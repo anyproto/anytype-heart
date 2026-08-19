@@ -1,6 +1,35 @@
 # API v2 eval findings — go-7383-apiv2-phase0
 
-## Status: vocabulary sweep done — 223 → 172 failing subtests
+## Status: 223 → 29 failing subtests (two commits, 87% reduction)
+
+Round 2 (commit `07e8bfa43`) found the same gap one level down: block TYPE
+names (`heading1`→`heading_1`, `bulletedListItem`→`bulleted_list_item`,
+`toggleHeading1-3`→`toggle_heading_1-3`), already migrated in
+`pkg/lib/anyblockjson`'s enum, still spelled the old way in `object.go`,
+two served-schema examples, and 5 test files. One confirmed functional
+regression in that round: `object.go`'s `outlineHeadingTypes` map — the one
+deciding whether a block's text shows up in a `?outline=true` read — was
+still keyed on the old spellings, so it matched nothing and outline reads
+silently stopped showing heading text for every object. Fixed. **170 → 29
+failing subtests** from this round alone.
+
+**Remaining 29**, not yet fixed, roughly three buckets:
+- Chat/object mention-tag rendering (`TestChatMessageFromProto`,
+  `TestV2GetObjectIdShapes`) — test expects `<mention objectId="...">`,
+  the renderer already emits `<mention object_id="...">`. Deliberately not
+  touched: this is the inline-markup GRAMMAR (an XML-style attribute inside
+  markdown text), not a JSON field — a bigger, more product-visible decision
+  than a struct-tag rename, and out of scope without explicit sign-off.
+- `TestViewOpReviewFixes` (3) and part of `TestV2SearchPlanConvergence`/
+  `TestV2SearchFileLayoutOptIn` — look adjacent to the `filterstring.go`
+  boundary already flagged above (out of scope: shared library).
+- `TestPatchObject` (`set_cell`×4, `insert_blocks_inside_a_leaf_block`,
+  `set_properties_add_on_a_scalar_format`), `TestPatchPayloadIdsResolve`
+  (4), `TestPatchReportsMintedNestedIds` (2), `TestV2CreateSet` (2),
+  `TestUpdateViewOp` (1) — not traced yet; didn't show an obvious single
+  shared root cause in a first pass the way the last two rounds did.
+
+## Status (round 1): 223 → 172 failing subtests
 
 `go test ./core/api/v2/...` on HEAD (before anything in this doc) had **223
 failing subtests** — hidden until now because piping the run through
