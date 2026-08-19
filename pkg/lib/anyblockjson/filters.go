@@ -110,8 +110,8 @@ func UnmarshalSorts(raw json.RawMessage, opts Options) ([]*model.BlockContentDat
 		}
 		if js.EmptyPlacement != "" && !emptyPlacementNames.has(js.EmptyPlacement) {
 			issues = append(issues, Issue{
-				Path:    fmt.Sprintf("/sorts/%d/emptyPlacement", i),
-				Message: fmt.Sprintf("unknown emptyPlacement %q — allowed: start, end", js.EmptyPlacement),
+				Path:    fmt.Sprintf("/sorts/%d/empty_placement", i),
+				Message: fmt.Sprintf("unknown empty_placement %q — allowed: start, end", js.EmptyPlacement),
 			})
 		}
 	}
