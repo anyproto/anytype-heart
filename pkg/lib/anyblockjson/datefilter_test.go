@@ -415,3 +415,140 @@ func TestExport_InertPresetWarnsButNeverRejects(t *testing.T) {
 		assert.Contains(t, warnings[0].Message, "is ignored")
 	}
 }
+
+// The day-count rule reads the OPERAND, not the member. It used to check only
+// that "value" was present, so `"value": null` — and a string, and a boolean —
+// passed both Validate and Unmarshal (no I2 break: both accepted) while the
+// engine read the very 0 the message warns about: domain.Value.Int64 answers
+// 0 for every kind that is not a number. The bound is the one the compact
+// grammar already applies to daysAgo(n) (§6.2.1); two forms of one filter
+// language admit the same filters.
+func TestValidate_CountingPresetOperandIsADayCount(t *testing.T) {
+	leaf := func(value string) string {
+		return dateFilterDoc(`{"property": "verifiedUntil", "condition": "greater",
+			"date_preset": "number_of_days_ago", "value": ` + value + `}`)
+	}
+
+	t.Run("refused", func(t *testing.T) {
+		for name, tc := range map[string]struct{ value, says string }{
+			"null":           {"null", "null counts as 0 days"},
+			"a string":       {`"30"`, "a string counts as 0 days"},
+			"a boolean":      {"true", "a boolean counts as 0 days"},
+			"an array":       {"[30]", "an array counts as 0 days"},
+			"a fraction":     {"3.5", "3.5 is not a whole day count"},
+			"a negative":     {"-1", "-1 is not a whole day count"},
+			"past the bound": {"36501", "36501 is not a whole day count"},
+		} {
+			t.Run(name, func(t *testing.T) {
+				// when
+				err := Validate([]byte(leaf(tc.value)))
+
+				// then
+				require.Error(t, err, "an operand the engine reads as 0 is the trap the message describes")
+				var ve *ValidationError
+				require.ErrorAs(t, err, &ve)
+				require.Len(t, ve.Issues, 1)
+				assert.Equal(t, "/blocks/0/views/0/filters/0/value", ve.Issues[0].Path,
+					"the fault is the operand, not the leaf that carries it (§13)")
+				assert.Contains(t, ve.Issues[0].Message, tc.says)
+
+				// and I2: Unmarshal reaches the same verdict
+				_, _, err = Unmarshal([]byte(leaf(tc.value)), Options{GenerateId: seqIds("g")})
+				require.Error(t, err)
+				assert.Equal(t, ve.Issues, err.(*ValidationError).Issues)
+			})
+		}
+	})
+
+	// a number no float64 can hold is refused, once: checkNumbers owns that
+	// fault and addresses the same pointer, and one fault is one issue (§12)
+	t.Run("a number out of float64 range is somebody else's issue", func(t *testing.T) {
+		err := Validate([]byte(leaf("1e400")))
+		var ve *ValidationError
+		require.ErrorAs(t, err, &ve)
+		require.Len(t, ve.Issues, 1)
+		assert.Equal(t, "/blocks/0/views/0/filters/0/value", ve.Issues[0].Path)
+		assert.Contains(t, ve.Issues[0].Message, "out of range: values must fit a 64-bit float")
+	})
+
+	t.Run("accepted", func(t *testing.T) {
+		for _, value := range []string{"0", "1", "30", "36500"} {
+			t.Run(value, func(t *testing.T) {
+				require.NoError(t, Validate([]byte(leaf(value))))
+				_, _, err := Unmarshal([]byte(leaf(value)), Options{GenerateId: seqIds("g")})
+				require.NoError(t, err)
+			})
+		}
+	})
+
+	// the gate is unchanged: an operand nothing reads is not a fault
+	t.Run("still inert where the preset is", func(t *testing.T) {
+		assert.NoError(t, Validate([]byte(dateFilterDoc(
+			`{"property": "status", "condition": "greater",
+			  "date_preset": "number_of_days_ago", "value": null}`))),
+			"a non-date property never reaches the preset's range")
+	})
+}
+
+// Export's half of the same rule: a stored operand that is not a day count
+// has no written form, so it may not travel verbatim — that document is one
+// this package's own Validate refuses (§11, I1). It is written as the count
+// the query engine reads out of it, and the caller is told.
+func TestExport_CountingPresetOperandIsWritableOrReported(t *testing.T) {
+	marshal := func(t *testing.T, value *types.Value) (string, []Issue) {
+		t.Helper()
+		var warned []Issue
+		root := &model.Block{Id: "o1", ChildrenIds: []string{"dv"},
+			Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}
+		snap := &model.SmartBlockSnapshotBase{Blocks: []*model.Block{root, {Id: "dv",
+			Content: &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{
+				RelationLinks: []*model.RelationLink{{Key: "dueDate", Format: model.RelationFormat_date}},
+				Views: []*model.BlockContentDataviewView{{Id: "v1",
+					Filters: []*model.BlockContentDataviewFilter{{
+						RelationKey: "dueDate",
+						Condition:   model.BlockContentDataviewFilter_Greater,
+						QuickOption: model.BlockContentDataviewFilter_NumberOfDaysAgo,
+						Format:      model.RelationFormat_date,
+						Value:       value,
+					}}}},
+			}}}}}
+		data, err := Marshal(model.SmartBlockType_Page, snap,
+			Options{OnWarning: func(i Issue) { warned = append(warned, i) }})
+		require.NoError(t, err)
+		require.NoError(t, Validate(data), "Marshal may never emit what its own Validate refuses:\n%s", data)
+		return string(data), warned
+	}
+
+	t.Run("a whole count in range travels untouched", func(t *testing.T) {
+		data, warned := marshal(t, &types.Value{Kind: &types.Value_NumberValue{NumberValue: 30}})
+		assert.Contains(t, data, `"value": 30`)
+		assert.Empty(t, warned)
+	})
+
+	t.Run("no operand is the stored shape of today, and stays quiet", func(t *testing.T) {
+		data, warned := marshal(t, nil)
+		assert.Contains(t, data, `"value": 0`)
+		assert.Empty(t, warned)
+	})
+
+	t.Run("a string operand is written as the count the engine reads", func(t *testing.T) {
+		data, warned := marshal(t, str("a week"))
+		assert.Contains(t, data, `"value": 0`)
+		require.Len(t, warned, 1)
+		assert.Contains(t, warned[0].Message, `carries a week as its day count`)
+		assert.Contains(t, warned[0].Message, "0 is written instead")
+	})
+
+	t.Run("a count past the bound is pinned to it and reported", func(t *testing.T) {
+		data, warned := marshal(t, &types.Value{Kind: &types.Value_NumberValue{NumberValue: 40000}})
+		assert.Contains(t, data, `"value": 36500`)
+		require.Len(t, warned, 1)
+		assert.Contains(t, warned[0].Message, "36500 is written instead")
+	})
+
+	t.Run("a fraction is truncated the way the engine truncates it", func(t *testing.T) {
+		data, warned := marshal(t, &types.Value{Kind: &types.Value_NumberValue{NumberValue: 3.7}})
+		assert.Contains(t, data, `"value": 3`)
+		require.Len(t, warned, 1)
+	})
+}

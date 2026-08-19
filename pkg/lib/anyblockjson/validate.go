@@ -1187,6 +1187,57 @@ func checkNumbers(node any, path string, addIssue func(path, format string, args
 	}
 }
 
+// maxDayCount bounds a counting preset's operand — the same bound the compact
+// filter grammar puts on `daysAgo(n)` (filterstring.maxDayCount, §6.2.1), and
+// for the same reason: past ~100 years the day arithmetic wraps and the range
+// stops meaning anything. The two forms of one filter language must admit the
+// same filters, so the structured form carries it too.
+const maxDayCount = 36500
+
+// dayCountFault reports why a counting preset's operand is not a day count,
+// or "" when it is one. Numbers arrive as json.Number here (the document is
+// decoded with UseNumber), and as float64 through the fragment surfaces.
+func dayCountFault(v any) string {
+	var n float64
+	switch num := v.(type) {
+	case json.Number:
+		f, err := num.Float64()
+		if err != nil {
+			// a number no float64 can hold is checkNumbers' fault to report,
+			// at this very pointer; saying it twice is the one-fault-one-issue
+			// rule broken (§12)
+			return ""
+		}
+		n = f
+	case float64:
+		n = num
+	default:
+		return fmt.Sprintf("%s counts as 0 days, i.e. today — the engine reads the operand as a number or not at all", jsonKindName(v))
+	}
+	if n != math.Trunc(n) || n < 0 || n > maxDayCount {
+		return fmt.Sprintf("%v is not a whole day count between 0 and %d", n, maxDayCount)
+	}
+	return ""
+}
+
+// jsonKindName names a decoded JSON value's kind for a diagnostic, in the
+// grammatical form the messages above read it in.
+func jsonKindName(v any) string {
+	switch v.(type) {
+	case nil:
+		return "null"
+	case bool:
+		return "a boolean"
+	case string:
+		return "a string"
+	case []any:
+		return "an array"
+	case map[string]any:
+		return "an object"
+	}
+	return "a non-numeric value"
+}
+
 func sortedMapKeys(m map[string]any) []string {
 	keys := make([]string, 0, len(m))
 	for k := range m {
@@ -1524,8 +1575,21 @@ func checkDateFilters(view map[string]any, formats map[string]string, isDate fun
 					warnIssue(nPath, "date_preset %q is ignored under %s; a preset's range is applied on %s",
 						preset, under, strings.Join(sortedKeys(datePresetConditions), " · "))
 				case counts && isDate(prop):
-					if _, has := n["value"]; !has {
+					// the operand has to BE a day count, not merely be
+					// present: the engine reads it with domain.Value.Int64,
+					// which answers 0 for a null, a string or anything else
+					// that is not a number — the very reading this message
+					// warns about. A presence-only rule refused the missing
+					// operand and admitted `"value": null`, which means the
+					// same thing and says it less honestly.
+					v, has := n["value"]
+					switch {
+					case !has:
 						addIssue(nPath, "date_preset %q needs a day count in \"value\"; without one it means 0 days, i.e. today", preset)
+					default:
+						if fault := dayCountFault(v); fault != "" {
+							addIssue(nPath+"/value", "date_preset %q needs a day count in \"value\": %s", preset, fault)
+						}
 					}
 				}
 			}

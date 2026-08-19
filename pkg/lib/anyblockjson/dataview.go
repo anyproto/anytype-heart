@@ -238,11 +238,7 @@ func (e *exporter) filterToJSON(f *model.BlockContentDataviewFilter, dv *model.B
 		// survive the usual empty-elision, or the document silently stops
 		// saying which day it means
 		if countingPreset(f.QuickOption) {
-			if f.Value == nil {
-				fm.set("value", float64(0))
-			} else {
-				fm.set("value", e.dvValueToJSON(dv, f.RelationKey, f.Value))
-			}
+			fm.set("value", e.dayCountOperand(f))
 		} else if f.Value != nil {
 			fm.setNonEmpty("value", e.dvValueToJSON(dv, f.RelationKey, f.Value))
 		}
@@ -260,6 +256,43 @@ func (e *exporter) filterToJSON(f *model.BlockContentDataviewFilter, dv *model.B
 		return nil
 	}
 	return fm
+}
+
+// dayCountOperand renders a counting preset's operand (§6.2): the whole day
+// count in [0, maxDayCount] the format admits, which is also what the query
+// engine reads out of the stored value — domain.Value.Int64 is int64(float)
+// for a number and 0 for every other kind, so a null, a string or a list all
+// mean "0 days, i.e. today" to the engine already.
+//
+// The stored value is untrusted like everything else in a snapshot, and the
+// slot has exactly one written form, so the junk cannot travel: writing it
+// verbatim hands back a document this package's own Validate refuses (§11,
+// I1), and dropping the member says "today" while claiming nothing. Writing
+// the count the engine reads says what the filter does. A count outside the
+// bound is the one case where the two part ways — the engine would keep
+// counting and the format cannot spell it — so it is pinned to the bound and
+// reported.
+func (e *exporter) dayCountOperand(f *model.BlockContentDataviewFilter) float64 {
+	if f.Value == nil {
+		// no operand at all is not a fault to report: it is the stored shape
+		// of "today", and 0 is how this format spells it
+		return 0
+	}
+	raw := f.Value.GetNumberValue() // 0 for every non-number kind
+	count := int64(raw)
+	bounded := count
+	switch {
+	case bounded < 0:
+		bounded = 0
+	case bounded > maxDayCount:
+		bounded = maxDayCount
+	}
+	if _, isNumber := f.Value.GetKind().(*types.Value_NumberValue); !isNumber || float64(count) != raw || count != bounded {
+		e.warn("", "the %s filter on %q carries %v as its day count, which is not one this format can write "+
+			"(a whole number between 0 and %d); %d is written instead",
+			datePresetNames.name(f.QuickOption), f.RelationKey, protoValueToJSON(f.Value), maxDayCount, bounded)
+	}
+	return float64(bounded)
 }
 
 // dvValueToJSON converts a filter value or custom-order entry: option names

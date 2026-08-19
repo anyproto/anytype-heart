@@ -176,6 +176,18 @@ func hostileSnapshot(n int) (model.SmartBlockType, *model.SmartBlockSnapshotBase
 						// unchanged.
 						RelationKey: "a\nb", Condition: model.BlockContentDataviewFilter_Equal,
 						Value: str("x"),
+					}, {
+						// a counting preset whose stored operand is not a day
+						// count. The engine reads it as 0 (domain.Value.Int64
+						// answers 0 for every non-number kind) and the format
+						// admits only the count, so export has one honest
+						// rendering and the junk may not travel: written
+						// verbatim it is a document Validate refuses — I1.
+						// Appended after the picks so it consumes no
+						// randomness and the corpus above is unchanged.
+						RelationKey: "dueDate", Condition: model.BlockContentDataviewFilter_Greater,
+						QuickOption: model.BlockContentDataviewFilter_NumberOfDaysAgo,
+						Value:       str("a week"),
 					}}}},
 			}}})
 	}
