@@ -85,8 +85,9 @@ type FTSearch interface {
 	// Search returns up to limit best-scoring doc matches (limit <= 0 means
 	// the default of 100). The limit applies to docs, not objects.
 	Search(spaceId string, query string, limit int) (results []*DocumentMatch, err error)
-	// SearchChat searches only the chat's message documents ("chatId/m/...")
-	// so messages don't compete with the rest of the space for the limit
+	// SearchChat searches only message documents ("chatId/m/...") so messages
+	// don't compete with the rest of the space for the limit. Empty chatId
+	// searches messages of all chats; empty spaceId searches all spaces.
 	SearchChat(spaceId string, chatId string, query string, limit int) (results []*DocumentMatch, err error)
 	// NamePrefixSearch special prefix case search
 	NamePrefixSearch(spaceId string, query string, limit int) (results []*DocumentMatch, err error)
@@ -579,6 +580,14 @@ func (f *ftSearch) SearchChat(spaceId, chatId, query string, limit int) ([]*Docu
 			// silently truncate: prefix expansion is capped at ~50 terms per
 			// segment. Boost 0 keeps the clause out of BM25 scoring.
 			qb.Query(tantivy.Must, fieldId, chatId+"/m", tantivy.PhraseQuery, 0.0)
+		} else {
+			// all message docs: every "chatId/m/msgId" id contains the token "m"
+			// (the id tokenizer has no stopword filter) while object/relation/block
+			// doc ids tokenize to longer alphanumeric tokens. An exists-query on
+			// the MessageId field is not expressible in tantivy-go, so the token is
+			// the message-doc marker; callers drop the rare false positive via
+			// path.HasMessage(). Boost 0 keeps the clause out of BM25 scoring.
+			qb.Query(tantivy.Must, fieldId, "m", tantivy.TermQuery, 0.0)
 		}
 		f.buildDetailedQuery(qb, query)
 	})

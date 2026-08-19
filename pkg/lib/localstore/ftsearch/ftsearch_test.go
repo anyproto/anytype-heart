@@ -385,3 +385,106 @@ func TestFtSearch_Close(t *testing.T) {
 	// then
 	assert.NoError(t, err)
 }
+
+func TestSearchChatScopes(t *testing.T) {
+	indexAll := func(t *testing.T, ft FTSearch) {
+		// object docs that match the query and would compete for the candidate budget
+		require.NoError(t, ft.Index(SearchDoc{
+			Id:      domain.NewObjectPathWithBlock("obj1", "b1").String(),
+			SpaceId: "space1",
+			Text:    "needle in an object block",
+		}))
+		require.NoError(t, ft.Index(SearchDoc{
+			Id:      domain.NewObjectPathWithRelation("obj2", "name").String(),
+			SpaceId: "space1",
+			Title:   "needle in a relation",
+		}))
+		for chatId, msgs := range map[string]map[string]string{
+			"chat1": {"msg1": "needle in chat1", "msg2": "nothing here"},
+			"chat2": {"msg3": "needle in chat2"},
+		} {
+			for msgId, text := range msgs {
+				require.NoError(t, ft.Index(SearchDoc{
+					Id:        domain.NewObjectPathWithMessage(chatId, msgId).String(),
+					SpaceId:   "space1",
+					Text:      text,
+					MessageId: msgId,
+				}))
+			}
+		}
+		require.NoError(t, ft.Index(SearchDoc{
+			Id:        domain.NewObjectPathWithMessage("chat3", "msg4").String(),
+			SpaceId:   "space2",
+			Text:      "needle in chat3",
+			MessageId: "msg4",
+		}))
+	}
+
+	collectIds := func(results []*DocumentMatch) []string {
+		ids := make([]string, 0, len(results))
+		for _, r := range results {
+			ids = append(ids, r.ID)
+		}
+		return ids
+	}
+
+	t.Run("single chat scope is unchanged", func(t *testing.T) {
+		tmpDir, _ := os.MkdirTemp("", "")
+		fx := newFixture(tmpDir, t)
+		defer func() { _ = fx.ft.Close(nil) }()
+		indexAll(t, fx.ft)
+
+		results, err := fx.ft.SearchChat("space1", "chat1", "needle", 0)
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []string{"chat1/m/msg1"}, collectIds(results))
+	})
+
+	t.Run("empty chatId searches message docs of all chats in the space", func(t *testing.T) {
+		tmpDir, _ := os.MkdirTemp("", "")
+		fx := newFixture(tmpDir, t)
+		defer func() { _ = fx.ft.Close(nil) }()
+		indexAll(t, fx.ft)
+
+		results, err := fx.ft.SearchChat("space1", "", "needle", 0)
+		require.NoError(t, err)
+		// message docs only: no object docs, no other-space messages
+		assert.ElementsMatch(t, []string{"chat1/m/msg1", "chat2/m/msg3"}, collectIds(results))
+	})
+
+	t.Run("empty spaceId and chatId searches message docs of all spaces", func(t *testing.T) {
+		tmpDir, _ := os.MkdirTemp("", "")
+		fx := newFixture(tmpDir, t)
+		defer func() { _ = fx.ft.Close(nil) }()
+		indexAll(t, fx.ft)
+
+		results, err := fx.ft.SearchChat("", "", "needle", 0)
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []string{"chat1/m/msg1", "chat2/m/msg3", "chat3/m/msg4"}, collectIds(results))
+	})
+
+	t.Run("messages do not compete with object docs for the candidate budget", func(t *testing.T) {
+		tmpDir, _ := os.MkdirTemp("", "")
+		fx := newFixture(tmpDir, t)
+		defer func() { _ = fx.ft.Close(nil) }()
+
+		// many object docs matching the query better than the single message
+		for i := 0; i < 150; i++ {
+			require.NoError(t, fx.ft.Index(SearchDoc{
+				Id:      domain.NewObjectPathWithBlock(fmt.Sprintf("obj%d", i), "b").String(),
+				SpaceId: "space1",
+				Text:    "needle needle needle",
+			}))
+		}
+		require.NoError(t, fx.ft.Index(SearchDoc{
+			Id:        domain.NewObjectPathWithMessage("chat1", "msg1").String(),
+			SpaceId:   "space1",
+			Text:      "a long message that mentions the needle once between other words",
+			MessageId: "msg1",
+		}))
+
+		// a small limit still returns the message: object docs are out of the scoped set
+		results, err := fx.ft.SearchChat("space1", "", "needle", 10)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"chat1/m/msg1"}, collectIds(results))
+	})
+}
