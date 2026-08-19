@@ -120,7 +120,7 @@ func opTableProps(withId bool) string {
 	column := `{"type":"object","additionalProperties":false,"properties":{` + innerId +
 		`"width":{"type":"number","minimum":0,"maximum":10000}}}`
 	row := `{"type":"object","additionalProperties":false,"properties":{` + innerId +
-		`"isHeader":{"type":"boolean"},` +
+		`"is_header":{"type":"boolean"},` +
 		`"cells":{"type":"array","maxItems":64,"items":` + v2OpCellDef + `}}}`
 	return `"columns":{"type":"array","maxItems":64,"items":` + column + `,"description":"table columns (SPEC §6.1)"},` +
 		`"rows":{"type":"array","maxItems":1024,"items":` + row + `,"description":"table rows (SPEC §6.1)"}`

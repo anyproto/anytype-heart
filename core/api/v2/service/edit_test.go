@@ -37,7 +37,7 @@ const editBaseDoc = `{"version":1,"id":"obj1","type":"page","properties":{"name"
 const editTableDoc = `{"version":1,"id":"obj1","type":"page","blocks":[` +
 	`{"id":"tblOne1","type":"table",` +
 	`"columns":[{"id":"colA"},{"id":"colB"}],` +
-	`"rows":[{"id":"rowH","isHeader":true,"cells":["Name","Status"]},{"id":"rowB","cells":["Export"]}]}]}`
+	`"rows":[{"id":"rowH","is_header":true,"cells":["Name","Status"]},{"id":"rowB","cells":["Export"]}]}]}`
 
 // editEmptyDoc has no blocks at all — SPEC §7 keeps title/description out of
 // the document, so a fresh object has zero addressable blocks.
@@ -1956,7 +1956,7 @@ func TestPatchObject(t *testing.T) {
 		apiErr := v2Err(t, err)
 		require.Len(t, apiErr.Issues, 1)
 		assert.Equal(t, "ops[0].add.done", apiErr.Issues[0].Path)
-		assert.Equal(t, `"done" has format "checkbox" — add only applies to list-shaped formats (select, multiSelect, objects, files); use set`, apiErr.Issues[0].Message)
+		assert.Equal(t, `"done" has format "checkbox" — add only applies to list-shaped formats (select, multi_select, objects, files); use set`, apiErr.Issues[0].Message)
 	})
 
 	t.Run("set_properties rejects a key in more than one of set/unset/add/remove", func(t *testing.T) {

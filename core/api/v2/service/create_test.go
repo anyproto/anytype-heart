@@ -527,7 +527,7 @@ func TestV2CreateTemplate(t *testing.T) {
 		// then
 		apiErr := v2Err(t, err)
 		require.Len(t, apiErr.Issues, 1)
-		assert.Equal(t, "/templateFor", apiErr.Issues[0].Path)
+		assert.Equal(t, "/template_for", apiErr.Issues[0].Path)
 	})
 
 	t.Run("unknown space is a 404", func(t *testing.T) {

@@ -29,7 +29,7 @@ import (
 const editMintedTableDoc = `{"version":1,"id":"obj1","type":"page","blocks":[` +
 	`{"id":"00000000000000000000aaa1","type":"table",` +
 	`"columns":[{"id":"00000000000000000000cc11"},{"id":"00000000000000000000cc22"}],` +
-	`"rows":[{"id":"00000000000000000000dd11","isHeader":true,"cells":["Name","Status"]},` +
+	`"rows":[{"id":"00000000000000000000dd11","is_header":true,"cells":["Name","Status"]},` +
 	`{"id":"00000000000000000000dd22","cells":["Export"]}]}]}`
 
 // editSharedViewIdDoc is a page with two inline dataviews whose views share
@@ -200,7 +200,7 @@ func TestPatchPayloadIdsResolve(t *testing.T) {
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
 			patchBody(`{"op":"update_block","id":"tblOne1","set":{"rows":[`+
-				`{"id":"rowH","isHeader":true,"cells":["Name","Status"]},`+
+				`{"id":"rowH","is_header":true,"cells":["Name","Status"]},`+
 				`{"id":"rowB","cells":["Export"]},`+
 				`{"cells":["Fresh"]}]}}`), "", false)
 
@@ -222,7 +222,7 @@ func TestPatchPayloadIdsResolve(t *testing.T) {
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
 			patchBody(`{"op":"insert_blocks","blocks":[{"type":"table",`+
 				`"columns":[{},{}],`+
-				`"rows":[{"isHeader":true,"cells":["Name","Status"]},{"cells":["Export","Done"]}]}]}`), "", false)
+				`"rows":[{"is_header":true,"cells":["Name","Status"]},{"cells":["Export","Done"]}]}]}`), "", false)
 
 		require.NoError(t, err)
 		assert.Equal(t, v2model.DiffStats{BlocksAdded: 1}, result.DiffStats)
@@ -437,7 +437,7 @@ func TestPatchReportsMintedNestedIds(t *testing.T) {
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
 			patchBody(`{"op":"insert_blocks","blocks":[{"type":"table",`+
 				`"columns":[{},{}],`+
-				`"rows":[{"isHeader":true,"cells":["Name","Status"]},{"cells":["Export","Done"]}]}]}`), "", false)
+				`"rows":[{"is_header":true,"cells":["Name","Status"]},{"cells":["Export","Done"]}]}]}`), "", false)
 
 		require.NoError(t, err)
 		table := docBlocks(stateDoc(t, *captured))[4]

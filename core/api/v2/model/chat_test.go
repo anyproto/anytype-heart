@@ -90,7 +90,7 @@ func TestChatMessageFromProto(t *testing.T) {
 		got := ChatMessageFromProto(msg, ChatMessageOptions{SpaceId: "space1"})
 
 		// then
-		assert.Equal(t, `hi <mention objectId="participantObj1">Alice</mention>`, got.Text)
+		assert.Equal(t, `hi <mention object_id="participantObj1">Alice</mention>`, got.Text)
 	})
 
 	t.Run("author becomes the participant id plus the enriched name", func(t *testing.T) {

@@ -1073,7 +1073,7 @@ func TestV2RemovedBundledSlugEqualsKeyClass(t *testing.T) {
 			fx := newV2Fixture(t)
 			addRemoved(t, fx, "tag", shape)
 			holdingViewDoc := `{"version":1,"id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
-				`{"id":"dataview","type":"dataview","properties":[{"key":"name","format":"text"},{"key":"tag","format":"multiSelect"}],` +
+				`{"id":"dataview","type":"dataview","properties":[{"key":"name","format":"text"},{"key":"tag","format":"multi_select"}],` +
 				`"views":[{"id":"viewAll1","name":"All","columns":[{"property":"name"},{"property":"tag"}]}]}]}`
 			fx.expectMutate(editRead(t, holdingViewDoc), "headB")
 

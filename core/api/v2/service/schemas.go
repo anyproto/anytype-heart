@@ -119,7 +119,7 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 		// units, the STORE's cap) — advertising more turns schema-obedient
 		// callers into rejected requests; a drift test pins the two together
 		schema: `{"type":"object","additionalProperties":false,"properties":{` +
-			`"text":{"type":"string","maxLength":8000,"description":"inline markup SOURCE (SPEC §8): *, [, backtick and <mention objectId=\"…\"> mint real marks; escape literal specials with a backslash; at most 8000 UTF-16 code units (an emoji counts 2+); required unless attachments are given"},` +
+			`"text":{"type":"string","maxLength":8000,"description":"inline markup SOURCE (SPEC §8): *, [, backtick and <mention object_id=\"…\"> mint real marks; escape literal specials with a backslash; at most 8000 UTF-16 code units (an emoji counts 2+); required unless attachments are given"},` +
 			`"reply_to":{"type":"string","maxLength":256,"description":"message id being replied to"},` +
 			`"attachments":{"type":"array","maxItems":32,"items":{"type":"string","maxLength":256},"description":"object ids, at most 32 (enforced); the kind is inferred from each target's layout (image → image, other file layouts → file, anything else → link)"}}}`,
 		example: `{"text":"can you **check** the doc?","attachments":["bafyreie6n5l5nkbjal37su54cha4coy"]}`,

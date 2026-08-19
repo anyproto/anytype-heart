@@ -330,7 +330,7 @@ func (a *v2StateApplier) applyViewSet(set map[string]json.RawMessage, edited, vi
 			*issues = append(*issues, v2model.Issue{Path: path,
 				Message: "columns are not set wholesale — use the op's columns channel, keyed by property key, so one change never rewrites the array"})
 			continue
-		case "groups", "objectOrders":
+		case "groups", "object_orders":
 			*issues = append(*issues, v2model.Issue{Path: path,
 				Message: fmt.Sprintf("%q is output-only editor state (SPEC §4a) — export writes it, writes must not", field)})
 			continue

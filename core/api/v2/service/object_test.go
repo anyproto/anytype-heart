@@ -424,7 +424,7 @@ func TestV2GetObjectIdShapes(t *testing.T) {
 		blocks := doc["blocks"].([]any)
 		require.Len(t, blocks, 5)
 		assert.Equal(t, "bbbb1", blocks[1].(map[string]any)["id"], "block ids relabel to their short suffix")
-		assert.Equal(t, testLinkTargetId, blocks[4].(map[string]any)["objectId"], "object refs stay full inline — no legend hop to write one back")
+		assert.Equal(t, testLinkTargetId, blocks[4].(map[string]any)["object_id"], "object refs stay full inline — no legend hop to write one back")
 	})
 
 	t.Run("ids=full: full block ids AND full inline object refs — no legend", func(t *testing.T) {
@@ -446,7 +446,7 @@ func TestV2GetObjectIdShapes(t *testing.T) {
 		require.Len(t, blocks, 5)
 		assert.Equal(t, testMintedParentId, blocks[1].(map[string]any)["id"], "the export shape must not relabel — relabeling is lossy")
 		assert.NotContains(t, doc, "refs", "no shape serves the legend (input resolution stays total, SPEC §9a)")
-		assert.Equal(t, testLinkTargetId, blocks[4].(map[string]any)["objectId"], "object refs are full inline")
+		assert.Equal(t, testLinkTargetId, blocks[4].(map[string]any)["object_id"], "object refs are full inline")
 	})
 
 }

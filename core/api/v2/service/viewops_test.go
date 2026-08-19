@@ -632,7 +632,7 @@ func TestUpdateViewOp(t *testing.T) {
 			`"views":[{"id":"viewBoard1","name":"Board","type":"kanban","group_by":"severity",` +
 			`"columns":[{"property":"name"},{"property":"severity","hidden":true}],` +
 			`"groups":[{"id":"groupA","background_color":"red"},{"id":"groupB","hidden":true}],` +
-			`"objectOrders":[{"groupId":"groupA","objectIds":["objX","objY"]}]}]}]}`
+			`"object_orders":[{"group_id":"groupA","object_ids":["objX","objY"]}]}]}]}`
 		fx := newV2Fixture(t)
 		captured := fx.expectMutate(editRead(t, doc), "headB")
 
@@ -644,7 +644,7 @@ func TestUpdateViewOp(t *testing.T) {
 		groups, _ := view["groups"].([]any)
 		require.Len(t, groups, 2, "kanban group order survives the edit")
 		assert.Equal(t, "groupA", groups[0].(map[string]any)["id"])
-		orders, _ := view["objectOrders"].([]any)
+		orders, _ := view["object_orders"].([]any)
 		require.Len(t, orders, 1, "manual object order survives the edit")
 	})
 }
@@ -1232,7 +1232,7 @@ func TestViewOpReviewFixes(t *testing.T) {
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
 			patchBody(`{"op":"update_view","set":{"sorts":[{"property":"severity","custom_order":[`+joinStrings(entries, ",")+`]}]}}`), "", false)
 		apiErr := v2Err(t, err)
-		assert.Equal(t, "ops[0].set.sorts[0].customOrder", apiErr.Issues[0].Path)
+		assert.Equal(t, "ops[0].set.sorts[0].custom_order", apiErr.Issues[0].Path)
 
 		nodes := make([]string, maxV2ViewFilterNodes+1)
 		for i := range nodes {
@@ -1298,7 +1298,7 @@ func TestViewOpReviewFixes(t *testing.T) {
 			`"views":[{"id":"viewBoard1","name":"Board","type":"kanban","group_by":"severity",` +
 			`"columns":[{"property":"name"}],` +
 			`"groups":[{"id":"groupA","background_color":"red"},{"id":"groupB","hidden":true}],` +
-			`"objectOrders":[{"groupId":"groupA","objectIds":["objX"]}]}]}]}`
+			`"object_orders":[{"group_id":"groupA","object_ids":["objX"]}]}]}]}`
 		captured := fx.expectMutate(editRead(t, doc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
@@ -1309,7 +1309,7 @@ func TestViewOpReviewFixes(t *testing.T) {
 		require.Len(t, views, 2)
 		groups, _ := views[1]["groups"].([]any)
 		require.Len(t, groups, 2, "group order and colors ride the copy")
-		orders, _ := views[1]["objectOrders"].([]any)
+		orders, _ := views[1]["object_orders"].([]any)
 		require.Len(t, orders, 1, "manual object order rides the copy")
 	})
 }
