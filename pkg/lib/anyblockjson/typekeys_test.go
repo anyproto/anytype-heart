@@ -608,3 +608,23 @@ func TestImport_TemplateSpellingIsReservedAgainstTheVocabulary(t *testing.T) {
 		assert.Equal(t, []string{"ot-template", "ot-page"}, snap.ObjectTypes)
 	})
 }
+
+// The one property-namespace rule the type namespace deliberately does NOT
+// carry: `/properties` refuses two spellings that bind one stored key, because
+// two members collapse into one details field and one of the two values is
+// lost with nothing to say which. Two type slots collapse into nothing —
+// ObjectTypes is an ordered list, and a repeated entry displaces no value — so
+// the document is accepted. This is a decision, not an oversight: it is pinned
+// here so that adding the refusal has to argue with §3 first.
+func TestTypeNamespaceHasNoDuplicateBindingRefusal(t *testing.T) {
+	doc := `{"version": 1, "type": "a", "template_for": "b",
+		"type_keys": {"a": "template", "b": "template"}}`
+
+	require.NoError(t, Validate([]byte(doc)))
+	sbType, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
+
+	require.NoError(t, err)
+	assert.Equal(t, model.SmartBlockType_Template, sbType)
+	assert.Equal(t, []string{"ot-template", "ot-template"}, snap.ObjectTypes,
+		"a repeated entry is a repeated entry; nothing was displaced")
+}

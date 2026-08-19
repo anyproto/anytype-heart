@@ -1,6 +1,6 @@
 # AnyBlock JSON — format specification
 
-Status: **draft v0.13** · Format version: **1** · Package: `pkg/lib/anyblockjson`
+Status: **draft v0.14** · Format version: **1** · Package: `pkg/lib/anyblockjson`
 
 A human- and agent-readable JSON serialization of Anytype objects (the "anyblock"
 model), designed for export, import, and generation by external tools and LLM
@@ -14,6 +14,36 @@ strings; the vocabulary follows Notion's API and Anytype's public REST API
 (`core/api`) wherever an established term exists — the format should be
 readable, and mostly writable, by someone who has never seen Anytype
 internals.
+
+Changes in v0.14: **the type namespace's own rules, made true and made
+two-sided** (§3). Four corrections, one clarification, one recorded
+asymmetry. (1) Export dropped a keyless object type in silence AND took its
+siblings with it — a stored `ot-` has no spelling, so the slot it landed in
+went unwritten, and an unwritten `type` slot makes `template_for`
+inexpressible: `["ot-", "ot-task"]` exported as no types at all. Keyless
+entries are now dropped with a warning and the survivors close ranks. (2)
+The type legend recorded a line for every object type, written or not,
+publishing a space's slug→key mapping for a type the document never spells;
+only written slots claim a term now, matching the property side, which
+filters before it slugs. (3) The `template` spelling reservation was
+one-sided: export refused a vocabulary answer that moved it, import took
+one, so a Template smartblock could come back with no `template` in its
+object type keys — invisible to every template check. The reservation binds
+the vocabulary on both sides now; the document's own legend still moves the
+spelling, because the kind derivation moves with it. (4)
+`BuildRecommendedLists`, the PATCH channel for `type_properties`, refused
+nothing, so a vocabulary bug wrote the empty key into a type's recommended
+lists; it now refuses what the document path refuses, and returns an error.
+(5) §3's justification for having no type deny rule was false as written —
+merge resolution is steerable, through `name`, `relation_key`,
+`relation_format` and `source_object`, all writable properties. The
+conclusion stands on a better argument: every effect a document-chosen type
+key can produce is separately and more directly writable through the
+property namespace. Those properties stay writable — export must stay
+lossless — and the guarantee against rewriting an existing object's identity
+belongs at the object layer. (6) The type namespace has no duplicate-binding
+refusal, deliberately: two type entries duplicate in an ordered list, where
+two property spellings would collapse and lose a value. §3 now records it.
 
 Changes in v0.13: **the type namespace gets the property treatment** (§2,
 §2a, §3, §12): `type_keys`, the envelope legend that makes type spellings
@@ -29,8 +59,9 @@ the stored key beside bundled `objectType`), and slugs claimed through the
 same census-and-back-off discipline. The `Options.typeSlugs`/`typeKeys` list
 helpers — the last key slots reachable without the ledger — are gone, like
 their property twins before them. Two rules are the namespace's own: there
-is **no deny rule** (export strips no object types, and a type key is not a
-resolution vector), and the reserved spelling is **`template`** — export
+is **no deny rule** (export strips no object types; see v0.14 for the
+argument that replaced the "a type key is not a resolution vector" one
+originally given here), and the reserved spelling is **`template`** — export
 refuses to move it in either direction, and the template gate and the kind
 derivation run on the stored key the spelling resolves to through the
 document's own chain, in validation and import alike (§12). The seam refuses
@@ -292,7 +323,7 @@ Fields, in **canonical order** (§4):
 | `version` | int | **yes** | Format version. This spec defines `1`. Evolution is additive within a version (ADF model); a breaking change bumps it. |
 | `kind` | string | no | System-level object kind, snake_case (`page`, `profile_page`, `template`, `archive`, `widget`, `chat`, …) — from `model.SmartBlockType`. `chat` is `ChatDerivedObject`: a standalone chat object whose identity is `key`, like a type's; its messages live in the CRDT store, not in snapshots, so it always imports empty. (`chat_object` is the deprecated predecessor; `discussion` is a hidden type.) **Omitted whenever derivable**: absent means `page`, and `type: "template"` implies `template`. An unrecognized value is a validation error listing the allowed values. |
 | `id` | string | no | Object id. Written by export; import treats it as informational (a new id is minted on import) except for resolving intra-export links. Never compacted (§9a). |
-| `type` | string | no | The object's type **slug** (`page`, `task`, `object_type`…) — the key vocabulary of §3, not the stored `ot-`-prefixed key. Maps to `object_types[0]` in the snapshot. Absent when the snapshot has no object types (legacy/system objects). Import inverts the term through the §3 chain in the type namespace — the document's own `type_keys` legend first, then the vocabulary in force (bundled table offline, the space's stored slugs inside a node) — and hands the resulting stored key to the wiring, which resolves it — matching an existing type or creating one (the Markdown importer's behavior). A term the chain does not know passes through verbatim — an exact stored key is always its own address (§3). The spelling `template` is **reserved** for the template type: the kind derivation and `template_for` key off the stored key it resolves to, and export refuses a vocabulary answer that moves it in either direction (§3). |
+| `type` | string | no | The object's type **slug** (`page`, `task`, `object_type`…) — the key vocabulary of §3, not the stored `ot-`-prefixed key. Maps to `object_types[0]` in the snapshot. Absent when the snapshot has no object types (legacy/system objects). Import inverts the term through the §3 chain in the type namespace — the document's own `type_keys` legend first, then the vocabulary in force (bundled table offline, the space's stored slugs inside a node) — and hands the resulting stored key to the wiring, which resolves it — matching an existing type or creating one (the Markdown importer's behavior). A term the chain does not know passes through verbatim — an exact stored key is always its own address (§3). The spelling `template` is **reserved** for the template type: the kind derivation and `template_for` key off the stored key it resolves to through the DOCUMENT's own chain, and both directions refuse a vocabulary answer that moves it — export writes the stored key instead, import uses the document's own answer, each with a warning (§3). |
 | `template_for` | string | no | Only for templates: the target type slug (`object_types[1]`), same vocabulary and legend as `type`. Present when `type` does not **resolve** to the template key — through the document's own chain, `type_keys` legend first (§3) — → validation error. |
 | `key` | string | no | Identity key of *system* objects (types, properties). This is the STORED identity key (a `uniqueKey`'s internal part), written verbatim: unlike every key slot in §3 it is **not** translated, so for an object whose stored key is a minted BSON it does not match the slug the public API serves as that object's `key`. Because it is verbatim, its charset is whatever the store already holds: a relation option's key is built from the option's *name*, so `completion_status_Not Started`, `…_C/C++` and `…_тогглы` are all real stored keys. The rule is therefore a deny rule — non-empty, no control characters, at most 255 characters — not an allowlist. An allowlist was tried and falsified: it failed 59 objects of a 36 808-object account, every one a relation option. Never emitted for ordinary documents. |
 | `properties` | object | no | The object's properties, §3. |
@@ -671,33 +702,106 @@ through a term ledger of the namespace's own, seeded by the same census
 definitions name), and writes identity entries under the same trigger: a
 custom type stored as `object_type`, beside bundled `objectType`, exports
 `"type_keys": {"object_type": "object_type"}` or a package-only reader lands
-on the bundled twin. Two rules are the namespace's own, each from what a
-type key is:
+on the bundled twin. Four rules are the namespace's own, each from what a
+type key is — and one rule above that deliberately does **not** carry over.
 
-- **No deny rule.** The property deny rule is *import refuses exactly what
-  export strips*, and export strips no object types — the type list
-  round-trips whole, so the derived set is empty. Nor is a type key a
-  resolution vector: which existing object a document merges into derives
-  from `key`, `uniqueKey` and `oldAnytypeID` (`objectid`'s inputs, §2/§3 —
-  all already guarded); a type key only names the type the wiring resolves
-  or creates, which is this format's stated behavior for any type term. A
-  `type_keys` value is therefore admitted by shape alone — the writable-key
-  rule the schema enforces on both legends.
-- **The reserved spelling is `template`.** Export keys `template_for`
-  emission off the spelled term, validation gates `/template_for` on it, and
-  import derives the smartblock kind from it (§2) — all through the
-  *document* half of the chain (legend → bundled table → verbatim, no
-  reader vocabulary), so a reader's vocabulary can re-bind what `type`
-  *stores* but never flip what kind of document it is. A vocabulary answer
-  that moves the spelling in either direction — the template key spelled
-  otherwise, or another key spelled `template` — is refused with a warning
-  and the stored key is written instead, like an unwritable slug. The
-  import seam refuses exactly one resolution here: a term resolving to the
-  **empty** type key (a vocabulary bug), which would store the unwritable
-  `ot-` and re-export as no type at all, silently. A non-empty stored type
-  key of any shape round-trips verbatim — a type term is a JSON value, not
-  a member name, so the member-name shape rule does not bind the verbatim
-  spelling.
+- **No duplicate-binding refusal.** `/properties` refuses two spellings that
+  bind one stored key; the type namespace admits them.
+  `{"type": "a", "template_for": "b", "type_keys": {"a": "template",
+  "b": "template"}}` validates, and yields `ObjectTypes:
+  ["ot-template", "ot-template"]`. The property refusal exists because two
+  members collapse into one details field, so one of the two values is lost
+  with nothing to say which — a document that means two things and stores
+  one. Two type entries collapse into nothing: `ObjectTypes` is an ordered
+  list, a repeated entry is a repeated entry, and no value is displaced.
+  Refusing here would buy nothing and would refuse documents that lose
+  nothing.
+- **No deny rule** — and the reason is not that the type namespace is
+  harmless. The property deny rule is *import refuses exactly what export
+  strips*, and export strips no object types — the type list round-trips
+  whole, so the derived set is empty. The stronger reason is that a deny
+  rule here would guard nothing: **every effect a document-chosen type key
+  can produce is separately, and more directly, writable through the
+  property namespace.** Layout — `"type": "participant"` reaches
+  `resolved_layout` through that type's own `recommended_layout` — is
+  reachable as `{"properties": {"layout": …}}`, and `layout` is the FIRST
+  thing the resolver that computes `resolved_layout` consults, above the
+  type's answer. There is one place a type key selects a code path in the
+  import wiring — a legacy `sub_object` document, whose first object type
+  picks which real kind it migrates into — and all that path does is set the
+  smartblock kind, which is `kind`, and fill in `source_object` when the
+  document left it empty, which is `{"properties": {"source_object": …}}`.
+  And merge resolution never reads the type list at all: the importer
+  derives a document's identity from `kind` plus the envelope `key`, and
+  from `unique_key` — never from the object types.
+
+  Merge resolution *is* steerable, but through **properties**, not through
+  type keys. `name`, `relation_key`, `relation_format` and `source_object`
+  are ordinary writable properties, and the importer uses them to pick which
+  existing object a document merges into: a relation matches on
+  `relation_format` together with `name` or `relation_key`, and a TYPE
+  document matches on `name` alone, since this format strips `unique_key`
+  and the name is then the only filter left. They stay writable
+  deliberately. Neither half of this codec reads them — they travel the
+  generic details path in both directions — so denying them would force
+  export to strip them, and a stripped property that import refuses is a
+  lossy export: "Marshal never emits a document its own Validate rejects"
+  (§11, I1) is the stronger promise. The guarantee that an imported
+  document cannot rewrite an EXISTING relation's or type's identity
+  therefore belongs at the object layer, which every writer passes through,
+  rather than in this format, which is one writer among several. A
+  `type_keys` value is admitted by shape alone — the writable-key rule the
+  schema enforces on both legends.
+- **The primary type slots are unbounded, on purpose.** A `type_keys`
+  spelling and a `type_keys` value both carry the writable-key rule (1–128
+  characters, no control characters) — the first because it is a JSON
+  member name, the second because it is a legend value like any other. The
+  envelope `type` and `template_for` carry neither: no pattern, no length
+  bound. A term written there is a JSON string *value*, so the member-name
+  shape rule does not bind it, and a non-empty stored type key of any shape
+  round-trips verbatim. One consequence is worth naming rather than fixing:
+  a type key containing `-` yields the object-type unique key `ot-a-b`,
+  which does not parse — a unique key is at most two `-`-separated parts —
+  so such a type is invisible to a space-backed vocabulary, which reads its
+  stored type keys back out of `unique_key`. It still round-trips through
+  this format verbatim, and that is the point: the format carries what the
+  store holds; which of the store's keys the rest of the system can address
+  is not its ruling to make. The one resolution the import seam refuses is
+  the **empty** type key (a vocabulary bug), which would store the
+  unwritable `ot-` and re-export as no type at all, silently.
+- **The reserved spelling is `template` — in both directions, and against
+  the reader as well as the writer.** Export keys `template_for` emission
+  off the spelled term, validation gates `/template_for` on it, and import
+  derives the smartblock kind from it (§2) — all through the *document*
+  half of the chain (legend → bundled table → verbatim, no reader
+  vocabulary). The document's own **legend** may therefore move the spelling
+  freely: it moves the kind derivation and the gate with it, so the two stay
+  in agreement. A reader's **vocabulary** may not, precisely because that
+  half of the chain cannot see it. A vocabulary answering some other stored
+  key for `template`, or landing another spelling on the template key,
+  splits the two resolutions of one field: export refuses such an answer
+  with a warning and writes the stored key, and import refuses it with a
+  warning and uses the document's own answer. Without the import half,
+  `{"type": "template", "template_for": "task"}` read through a vocabulary
+  that re-binds `template` produced a Template smartblock whose object type
+  keys do not contain `template` — invisible to every template check
+  downstream, all of which test for exactly that key — and whose re-export
+  then dropped the target type outright. No shipped vocabulary can give that
+  answer; a hand-written `Options.Keys` can, and this is what stops it.
+- **Export writes only the slots §2 models, and says what it drops.** The
+  envelope carries one type, plus the target type on a template; entries
+  past those are not written. An entry with **no key** — a stored `ot-`,
+  which older builds wrote whenever a vocabulary resolved a spelling onto
+  the empty key — has no spelling at all, so it is dropped and the entries
+  behind it move up. Written in place it was contagious: it silenced the
+  slot it landed in, and a silent `type` slot makes `template_for`
+  inexpressible, so `["ot-", "ot-task"]` exported as no types at all and the
+  good entry died beside the bad one. Every drop is reported through
+  `OnWarning`, as an unwritable property key is. And only the slots actually
+  written claim a term, so the legend names only types the document
+  mentions: claiming a term is what records the legend entry it owes, and
+  slugging an entry no slot writes published a space's slug→key mapping in a
+  `type_keys` line naming a type the document never spells.
 
 **What is not a key slot** (ADDRESSING §7.5a-4). The vocabulary applies where
 a document NAMES a type or property, and nowhere else. Envelope and DTO field
@@ -1903,7 +2007,10 @@ normalized and ids canonicalized
 fields and `value` on `empty`/`not_empty`/`exists` leaves dropped, group
 `index` derived from order (§6.2); scalar-stored select/objects/files
 property values become single-element lists and the legacy file `hash`
-migrates into `object_id` (§3, §5).
+migrates into `object_id` (§3, §5); object types reduced to the positions §2
+models — one type, plus the target type on a template — with keyless
+entries (`ot-`, `""`) dropped first, so the remaining entries close ranks
+rather than lose the slot a keyless one would have silenced (§3).
 
 Export emits `blocks` in pre-order with exact depths, so export can never
 produce a monotonicity violation and the flat shape does not disturb
