@@ -152,17 +152,19 @@ func (e *exporter) buildTypeProperties() []any {
 	for _, l := range recommendedListKeys {
 		for _, id := range valueStringList(e.detail(l.detailKey)) {
 			def, ok := e.resolveTypeProperty(id)
-			if !ok || def.Key == "" {
+			if !ok {
 				continue
 			}
-			// the import seam refuses a resolved key it could not write back
-			// (§2a), so emitting one hands back an archive its own Unmarshal
-			// rejects — I1, and the one failure nobody sees until the archive
-			// is needed. The slot carries the term verbatim when no
-			// vocabulary spells it, and writableSlug backs a spelling off to
-			// the stored key when the key is unwritable, so no legend can
-			// rescue it: drop the entry and say so, as /properties does for
-			// the same key.
+			// An entry whose stored key is not writable is dropped, and the
+			// drop is reported: the empty key a vocabulary bug once resolved
+			// onto (which names nothing and is invisible in every UI), and
+			// one past the legend bound alike. The import seam refuses such a
+			// key (§2a), so emitting one hands back an archive its own
+			// Unmarshal rejects — I1, the failure nobody sees until the
+			// archive is needed. Nothing can rescue it on the way out either:
+			// the slot carries the term verbatim when no vocabulary spells
+			// it, and writableSlug backs a spelling off to the stored key
+			// precisely when that key is unwritable.
 			if !writableTypePropertyKey(def) {
 				e.warn(fmt.Sprintf("/type_properties/%d", len(out)),
 					"property %q is dropped: %s", def.Key,
