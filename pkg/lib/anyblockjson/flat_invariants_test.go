@@ -216,6 +216,12 @@ func hostileSnapshot(n int) (model.SmartBlockType, *model.SmartBlockSnapshotBase
 // positional write emitted no `type`, which made `template_for` inexpressible
 // too and took the good sibling down with it; a store that ran an older build
 // holds exactly these.
+// overLongTypeKey is a stored type key past the 128-character bound the
+// schema puts on a LEGEND value (§3). The primary slots are unbounded, so it
+// round-trips verbatim through `type` — but no legend line may name it, and a
+// vocabulary that spells it as something writable is what tries to.
+var overLongTypeKey = strings.Repeat("y", 140)
+
 var hostileTypePools = [][]string{
 	nil,
 	{"ot-page"},
@@ -223,7 +229,7 @@ var hostileTypePools = [][]string{
 	{"ot-object_type"},
 	{"ot-template", "ot-69bbfc78877a91b1d12d1a7c"},
 	{"ot-template", "ot-task"},
-	{"ot-" + strings.Repeat("y", 140)},
+	{"ot-" + overLongTypeKey},
 	{"ot-longslugged"},
 	{"ot-blankslugged"},
 	{"ot-squatter"},
@@ -248,7 +254,7 @@ func (hostileTypePropResolver) PropertyById(id string) (PropertyDefinition, bool
 			ObjectTypes: []string{"69bbfc78877a91b1d12d1a7c", "task", "squatter"}}, true
 	case "hp2":
 		return PropertyDefinition{Key: "genre", Format: model.RelationFormat_object,
-			ObjectTypes: []string{"longslugged", strings.Repeat("y", 140)}}, true
+			ObjectTypes: []string{"longslugged", overLongTypeKey}}, true
 	}
 	return PropertyDefinition{}, false
 }
@@ -374,6 +380,16 @@ func (hostileVocab) TypeSlug(key string) string {
 		return "template"
 	case "template":
 		return "tmpl"
+	case overLongTypeKey:
+		// a perfectly good spelling for a stored key that is NOT one. The
+		// slug half of the guard is what an over-long *slug* trips; this is
+		// the mirror, and it was unreachable while the vocabulary had no
+		// answer for this key — `slug == key` short-circuits before the
+		// guard runs. Emitting the slug regardless writes
+		// `type_keys: {"diary": "yyy…(140)"}`, a legend value 12 characters
+		// past the 128 the schema bounds it to: Marshal producing a document
+		// its own Validate rejects, which is I1.
+		return "diary"
 	}
 	return BundledKeyVocabulary{}.TypeSlug(key)
 }
