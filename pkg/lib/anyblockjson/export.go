@@ -54,7 +54,14 @@ const (
 	// well-known internal keys that get lifted into the envelope
 	detailKeyId   = "id"
 	detailKeyType = "type"
-	storeKeyItems = "objects"
+	// typeKeyTemplate is the ONE reserved spelling of the type namespace
+	// (§3). It is envelope-semantic: export keys template_for emission off
+	// it, validation gates /template_for on it, and import derives the
+	// smartblock kind from it — so neither direction lets a reader's
+	// vocabulary move it (writableTypeSlug, importer.typeKey). Named rather
+	// than spelled inline so the reservation is one greppable thing.
+	typeKeyTemplate = "template"
+	storeKeyItems   = "objects"
 	// codeLangField is the internal fields key holding a code block's
 	// language (§5.1)
 	codeLangField = "lang"
@@ -463,13 +470,13 @@ func (e *exporter) writableTypeSlug(key string) string {
 			key, slug)
 		return key
 	}
-	if key == "template" {
+	if key == typeKeyTemplate {
 		e.warn("/type_keys",
 			"the vocabulary spells the template type as %q, but the spelling `template` carries the envelope's template semantics (§2); the stored key is written instead",
 			slug)
 		return key
 	}
-	if slug == "template" {
+	if slug == typeKeyTemplate {
 		e.warn("/type_keys",
 			"the vocabulary spells %q as `template`, the spelling reserved for the template type (§2); the stored key is written instead",
 			key)
@@ -758,12 +765,52 @@ var typeKeyIdPrefix = domain.TypeKey("").URL()
 // envelopeTypeTerms are the spellings written for the snapshot's object
 // types — the `type`/`template_for` slots — each claimed through the type
 // term ledger so the legend it owes is recorded (§3).
+//
+// Two disciplines run here, and both are buildProperties' own:
+//
+//   - **A keyless entry is dropped WITH a warning, and the survivors close
+//     ranks.** A stored `ot-` (or a bare "") carries no type key: typeSlug
+//     answers "" for it and setNonEmpty then omits the slot, so a positional
+//     write lost that entry AND everything behind it. A template stored as
+//     ["ot-", "ot-task"] emitted no `type` at all, which made `template_for`
+//     inexpressible too — so the perfectly good `ot-task` vanished beside its
+//     bad neighbour, silently, and the document read back as no types at all.
+//     Filtering first is what lets the good sibling survive; the warning is
+//     what buildProperties already owes an unwritable *property* key, and
+//     what the import seam refuses outright and path-addressed.
+//   - **Only the slots actually WRITTEN claim a term.** typeSlug is the term
+//     ledger's claim step, so slugging an entry no slot emits still records
+//     the legend entry that spelling owes: a document then carried a
+//     `type_keys` line naming a type it never mentions, publishing a space's
+//     slug→key mapping for nothing. buildProperties cannot do this because it
+//     filters before it slugs; the type side now does the same.
+//
+// The list still truncates to the positions §2 models — one type, plus the
+// target type on a template. That is the format's shape, not a defect, and
+// the census (seedTypeTermLedger) still reserves every stored type key the
+// snapshot names, so a dropped entry's key can never be taken as another
+// key's spelling.
 func (e *exporter) envelopeTypeTerms() []string {
 	keys := make([]string, 0, len(e.snapshot.ObjectTypes))
-	for _, t := range e.snapshot.ObjectTypes {
-		keys = append(keys, e.typeSlug(strings.TrimPrefix(t, typeKeyIdPrefix)))
+	for i, t := range e.snapshot.ObjectTypes {
+		key := strings.TrimPrefix(t, typeKeyIdPrefix)
+		if key == "" {
+			e.warn("/type",
+				"object type %d (%q) carries no type key and is dropped; the remaining types move up", i, t)
+			continue
+		}
+		keys = append(keys, key)
 	}
-	return keys
+	if len(keys) == 0 {
+		return nil
+	}
+	terms := []string{e.typeSlug(keys[0])}
+	// the second slot exists only on a template (§2); claiming terms for
+	// entries past it would record legend lines for types no slot names
+	if terms[0] == typeKeyTemplate && len(keys) > 1 {
+		terms = append(terms, e.typeSlug(keys[1]))
+	}
+	return terms
 }
 
 func (e *exporter) buildDoc(sbType model.SmartBlockType) (*omap, error) {
@@ -782,8 +829,8 @@ func (e *exporter) buildDoc(sbType model.SmartBlockType) (*omap, error) {
 	// Template from the type. The term check equals a stored-key check:
 	// writableTypeSlug pins the spelling "template" to the stored key
 	// "template", both directions.
-	derivable := (sbType == model.SmartBlockType_Page && typeTerm != "template") ||
-		(sbType == model.SmartBlockType_Template && typeTerm == "template")
+	derivable := (sbType == model.SmartBlockType_Page && typeTerm != typeKeyTemplate) ||
+		(sbType == model.SmartBlockType_Template && typeTerm == typeKeyTemplate)
 	if !derivable {
 		name := kindNames.name(sbType)
 		if name == "" {
@@ -794,7 +841,7 @@ func (e *exporter) buildDoc(sbType model.SmartBlockType) (*omap, error) {
 
 	doc.setNonEmpty("id", e.objectId())
 	doc.setNonEmpty("type", typeTerm)
-	if typeTerm == "template" && len(typeTerms) > 1 {
+	if typeTerm == typeKeyTemplate && len(typeTerms) > 1 {
 		doc.setNonEmpty("template_for", typeTerms[1])
 	}
 	doc.setNonEmpty("key", e.snapshot.Key)

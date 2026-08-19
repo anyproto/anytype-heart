@@ -426,3 +426,107 @@ func TestValidate_TypeKeysLegendShape(t *testing.T) {
 	}
 	assert.NoError(t, Validate([]byte(`{"version": 1, "type_keys": {"task": "`+customTypeKey+`"}}`)))
 }
+
+// A snapshot's ObjectTypes is untrusted data, and real stores hold entries
+// with no type key in them — a bare "ot-", which older builds of this very
+// package wrote back whenever a vocabulary resolved a spelling to "". Such an
+// entry has no spelling, so setNonEmpty omits the slot it lands in; written
+// positionally, it was therefore CONTAGIOUS. An empty `type` slot makes
+// `template_for` inexpressible (export keys it off the spelled term), so
+// ["ot-", "ot-task"] came back as no types at all — the good sibling gone
+// with the bad one, and OnWarning never called, while the import seam refuses
+// exactly this shape loudly and path-addressed.
+func TestExport_AKeylessObjectTypeIsDroppedAndDoesNotTakeItsSiblings(t *testing.T) {
+	marshal := func(t *testing.T, sbType model.SmartBlockType, ots ...string) (envelopeTypeDoc, []Issue, []string) {
+		t.Helper()
+		var warned []Issue
+		data, err := Marshal(sbType, typedSnapshot(ots...),
+			Options{OnWarning: func(i Issue) { warned = append(warned, i) }})
+		require.NoError(t, err)
+		_, back, err := Unmarshal(data, Options{GenerateId: seqIds("g")})
+		require.NoError(t, err)
+		return decodeEnvelope(t, data), warned, back.ObjectTypes
+	}
+
+	t.Run("a hole in front: the target type moves up into the type slot", func(t *testing.T) {
+		doc, warned, back := marshal(t, model.SmartBlockType_Template, "ot-", "ot-task")
+
+		assert.Equal(t, "task", doc.Type, "the good sibling survives its bad neighbour")
+		assert.Equal(t, "template", doc.Kind,
+			"the type term is no longer `template`, so the kind must be spelled out")
+		assert.Equal(t, []string{"ot-task"}, back)
+		require.Len(t, warned, 1, "a dropped type owes a diagnostic, as a dropped property key does")
+		assert.Equal(t, "/type", warned[0].Path)
+		assert.Contains(t, warned[0].Message, "no type key")
+	})
+
+	t.Run("a hole behind: the type survives and the drop is still reported", func(t *testing.T) {
+		doc, warned, back := marshal(t, model.SmartBlockType_Template, "ot-template", "ot-")
+
+		assert.Equal(t, "template", doc.Type)
+		assert.Empty(t, doc.TemplateFor, "there is no second type to name")
+		assert.Equal(t, []string{"ot-template"}, back)
+		require.Len(t, warned, 1)
+		assert.Equal(t, "/type", warned[0].Path)
+	})
+
+	t.Run("a hole between: template_for takes the next real entry", func(t *testing.T) {
+		doc, warned, back := marshal(t, model.SmartBlockType_Template, "ot-template", "ot-", "ot-"+customTypeKey)
+
+		assert.Equal(t, "template", doc.Type)
+		assert.Equal(t, customTypeKey, doc.TemplateFor)
+		assert.Equal(t, []string{"ot-template", "ot-" + customTypeKey}, back)
+		require.Len(t, warned, 1)
+	})
+
+	t.Run("nothing but holes is nothing, quietly reported", func(t *testing.T) {
+		doc, warned, back := marshal(t, model.SmartBlockType_Page, "ot-", "")
+
+		assert.Empty(t, doc.Type)
+		assert.Empty(t, back)
+		assert.Len(t, warned, 2, "one per dropped entry")
+	})
+
+	t.Run("a whole list needs no warning", func(t *testing.T) {
+		_, warned, back := marshal(t, model.SmartBlockType_Template, "ot-template", "ot-task")
+
+		assert.Equal(t, []string{"ot-template", "ot-task"}, back)
+		assert.Empty(t, warned)
+	})
+}
+
+// The type legend must name only types the document actually mentions.
+// envelopeTypeTerms slugged every ObjectTypes entry, and typeSlug is the term
+// ledger's CLAIM step — it records the legend entry the spelling owes — so a
+// document carried a `type_keys` line for a type no slot names, publishing a
+// space's slug→key mapping for nothing. buildProperties cannot do this,
+// because it filters before it slugs.
+func TestExport_TypeLegendNamesOnlyTypesTheDocumentMentions(t *testing.T) {
+	vocab := typedSpaceVocabulary{typeSlugOf: map[string]string{customTypeKey: "task"}}
+
+	t.Run("a second type no slot writes leaves no legend line", func(t *testing.T) {
+		data, err := Marshal(model.SmartBlockType_Page,
+			typedSnapshot("ot-page", "ot-"+customTypeKey), Options{Keys: vocab})
+		require.NoError(t, err)
+
+		doc := decodeEnvelope(t, data)
+		assert.Equal(t, "page", doc.Type)
+		assert.Empty(t, doc.TypeKeys,
+			"the document never spells `task`, so it owes no entry inverting it")
+		assert.NotContains(t, string(data), customTypeKey,
+			"and the space's stored key does not appear anywhere")
+	})
+
+	// the control: when the second slot IS written, the line is owed and
+	// written — without this the test above would pass on a legend that never
+	// works at all
+	t.Run("a second type template_for writes keeps its legend line", func(t *testing.T) {
+		data, err := Marshal(model.SmartBlockType_Template,
+			typedSnapshot("ot-template", "ot-"+customTypeKey), Options{Keys: vocab})
+		require.NoError(t, err)
+
+		doc := decodeEnvelope(t, data)
+		assert.Equal(t, "task", doc.TemplateFor)
+		assert.Equal(t, map[string]string{"task": customTypeKey}, doc.TypeKeys)
+	})
+}

@@ -211,7 +211,11 @@ func hostileSnapshot(n int) (model.SmartBlockType, *model.SmartBlockSnapshotBase
 // (the §3 shadow shape — it owes an identity entry), template pairs whose
 // second entry only survives if the `template` spelling stays put, keys whose
 // vocabulary slug is unwritable or reserved, a prefix-less entry, and an
-// entry with no key at all.
+// entry with no key at all, and — the collateral-damage shapes — a keyless
+// entry STANDING BESIDE a good one. Stored `ot-` has no spelling, so a
+// positional write emitted no `type`, which made `template_for` inexpressible
+// too and took the good sibling down with it; a store that ran an older build
+// holds exactly these.
 var hostileTypePools = [][]string{
 	nil,
 	{"ot-page"},
@@ -225,6 +229,11 @@ var hostileTypePools = [][]string{
 	{"ot-squatter"},
 	{"page"},
 	{"ot-"},
+	{"ot-", "ot-task"},
+	{"", "ot-69bbfc78877a91b1d12d1a7c"},
+	{"ot-template", "ot-"},
+	{"ot-template", "ot-", "ot-task"},
+	{"ot-", "ot-template", "ot-task"},
 }
 
 // hostileTypePropResolver serves the two property definitions the type-seed
@@ -251,22 +260,27 @@ func (hostileTypePropResolver) PropertyId(PropertyDefinition) (string, bool) { r
 // `template_for` when [0] is the template key — each spelled through the
 // vocabulary in force and inverted through the document's own legend, so the
 // stored KEYS must survive whatever the vocabulary did to their spellings.
-// Entries normalize to the `ot-` URL form; an entry with no key ("ot-", "")
-// has no spelling and is dropped; a non-template's types past the first are
-// not modeled by the format (§2).
+// Entries normalize to the `ot-` URL form; a non-template's types past the
+// first are not modeled by the format (§2).
+//
+// An entry with no key ("ot-", "") has no spelling and is dropped — and the
+// survivors CLOSE RANKS, which is the load-bearing half. Dropping in place
+// made a keyless entry contagious: it silenced the slot it sat in, and a
+// silent `type` slot makes `template_for` inexpressible, so a template stored
+// as ["ot-", "ot-task"] came back as no types at all rather than as ot-task.
 func invertedTypes(objectTypes []string) []string {
-	if len(objectTypes) == 0 {
-		return nil
-	}
-	first := strings.TrimPrefix(objectTypes[0], "ot-")
-	if first == "" {
-		return nil
-	}
-	out := []string{"ot-" + first}
-	if first == "template" && len(objectTypes) > 1 {
-		if second := strings.TrimPrefix(objectTypes[1], "ot-"); second != "" {
-			out = append(out, "ot-"+second)
+	keys := make([]string, 0, len(objectTypes))
+	for _, t := range objectTypes {
+		if key := strings.TrimPrefix(t, "ot-"); key != "" {
+			keys = append(keys, key)
 		}
+	}
+	if len(keys) == 0 {
+		return nil
+	}
+	out := []string{"ot-" + keys[0]}
+	if keys[0] == "template" && len(keys) > 1 {
+		out = append(out, "ot-"+keys[1])
 	}
 	return out
 }
