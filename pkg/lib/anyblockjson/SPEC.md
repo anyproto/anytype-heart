@@ -507,6 +507,15 @@ writes the entry:
   the *document* makes about its own spellings; a vocabulary belongs to the
   reader, and two readers disagreeing about a slug is exactly how a property
   ends up naming a different relation than it was exported from.
+- **It covers every key slot, not just `properties`.** Wherever the format
+  names a property — a `property` block's `key`, a link block's `properties`
+  list, a dataview's `property`/`group_by`/`cover_property`/`end_property`,
+  a filter's or sort's `property`, a `type_properties` entry's `key` — the
+  slug is written through the same recording step and read back through the
+  legend first. A slot that writes the slug without recording the entry
+  inverts only when some *other* slot in the same document happened to record
+  it, which is luck rather than a guarantee; a slot that reads without the
+  legend never inverts at all, even when the entry is right there.
 - **A stored key keeps its own term.** When a slug would collide with a key
   another property on the same object is stored under, the later holder is
   spelled with its stored key instead — the term belongs to the entity that

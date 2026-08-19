@@ -211,6 +211,20 @@ func (imp *importer) propertyKey(slug string) string {
 	return imp.opts.propertyKey(slug)
 }
 
+// propertyKeys is the list form (a link block's shown properties). Like the
+// singular one it belongs to the importer, not to Options: Options holds the
+// reader's vocabulary, and the document's own legend outranks it.
+func (imp *importer) propertyKeys(slugs []string) []string {
+	if len(slugs) == 0 {
+		return slugs
+	}
+	out := make([]string, len(slugs))
+	for i, slug := range slugs {
+		out[i] = imp.propertyKey(slug)
+	}
+	return out
+}
+
 // resolveId applies the §9a total resolution rule: a refs key resolves to
 // its full id; anything else is a full id already.
 func (imp *importer) resolveId(s string) string {
@@ -645,7 +659,7 @@ func (imp *importer) linkFromJSON(jb *jsonBlock) (*model.BlockContentLink, error
 		CardStyle:     cardStyleNames.value(jb.CardStyle),
 		IconSize:      iconSizeNames.value(jb.IconSize),
 		Description:   linkDescriptionNames.value(jb.Description),
-		Relations:     imp.opts.propertyKeys(propKeys),
+		Relations:     imp.propertyKeys(propKeys),
 	}, nil
 }
 

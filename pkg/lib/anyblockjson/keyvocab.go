@@ -144,26 +144,3 @@ func (o Options) typeKeys(slugs []string) []string {
 	}
 	return out
 }
-
-// propertySlugs / propertyKeys map a list in place-free fashion.
-func (o Options) propertySlugs(keys []string) []string {
-	if len(keys) == 0 {
-		return keys
-	}
-	out := make([]string, len(keys))
-	for i, key := range keys {
-		out[i] = o.propertySlug(key)
-	}
-	return out
-}
-
-func (o Options) propertyKeys(slugs []string) []string {
-	if len(slugs) == 0 {
-		return slugs
-	}
-	out := make([]string, len(slugs))
-	for i, slug := range slugs {
-		out[i] = o.propertyKey(slug)
-	}
-	return out
-}

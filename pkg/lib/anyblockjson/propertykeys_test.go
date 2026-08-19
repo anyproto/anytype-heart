@@ -113,3 +113,79 @@ func TestExport_StoredKeyKeepsItsOwnTerm(t *testing.T) {
 	assert.Equal(t, float64(3), back.Details.Fields["6a32d4856761631534b22f85"].GetNumberValue(),
 		"and the custom one is still itself")
 }
+
+// Every key slot is a slug slot, and the legend has to cover all of them. A
+// link's `properties` and a `property` block's `key` name relations exactly
+// as `/properties` does, so a space-slugged key in one of them needs the same
+// inverse — and it needs it whether or not some other surface in the same
+// document happened to record the entry.
+func TestExport_LegendCoversBlockKeySlots(t *testing.T) {
+	vocab := spaceVocabulary{slugOf: map[string]string{"6a32d4856761631534b22f85": "priority"}}
+	snap := &model.SmartBlockSnapshotBase{
+		Blocks: []*model.Block{
+			{Id: "o1", ChildrenIds: []string{"lnk", "rel"},
+				Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}},
+			{Id: "lnk", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
+				TargetBlockId: "target1", Relations: []string{"6a32d4856761631534b22f85"}}}},
+			{Id: "rel", Content: &model.BlockContentOfRelation{
+				Relation: &model.BlockContentRelation{Key: "6a32d4856761631534b22f85"}}},
+		},
+		// no property of that key on the object: nothing else can record the
+		// entry, which is what made the legend look like it worked
+		Details: fields(map[string]*types.Value{"id": str("o1"), "name": str("x")}),
+	}
+
+	data, err := Marshal(model.SmartBlockType_Page, snap, Options{Keys: vocab})
+	require.NoError(t, err)
+	require.NoError(t, Validate(data))
+
+	var doc struct {
+		PropertyKeys map[string]string `json:"property_keys"`
+		Blocks       []struct {
+			Type       string   `json:"type"`
+			Key        string   `json:"key"`
+			Properties []string `json:"properties"`
+		} `json:"blocks"`
+	}
+	require.NoError(t, json.Unmarshal(data, &doc))
+	require.Len(t, doc.Blocks, 2)
+	assert.Equal(t, []string{"priority"}, doc.Blocks[0].Properties)
+	assert.Equal(t, "priority", doc.Blocks[1].Key)
+	assert.Equal(t, map[string]string{"priority": "6a32d4856761631534b22f85"}, doc.PropertyKeys,
+		"the slug in a block key slot is no more invertible than one in /properties")
+
+	// and a reader with no space gets the stored key back for both slots
+	_, back, err := Unmarshal(data, Options{GenerateId: seqIds("g")})
+	require.NoError(t, err)
+	var gotLink, gotRel string
+	for _, b := range back.Blocks {
+		switch c := b.Content.(type) {
+		case *model.BlockContentOfLink:
+			require.Len(t, c.Link.Relations, 1)
+			gotLink = c.Link.Relations[0]
+		case *model.BlockContentOfRelation:
+			gotRel = c.Relation.Key
+		}
+	}
+	assert.Equal(t, "6a32d4856761631534b22f85", gotLink, "link relations must invert")
+	assert.Equal(t, "6a32d4856761631534b22f85", gotRel, "the property block key must invert")
+}
+
+// The accept side of the same slot: the legend is the document's own
+// statement about its spellings and is consulted first, wherever a key is
+// read (§3). A link block bypassing it never inverted even when the entry
+// was present.
+func TestImport_LinkPropertiesConsultTheLegend(t *testing.T) {
+	doc := `{"version": 1, "id": "o1",
+		"property_keys": {"priority": "6a32d4856761631534b22f85"},
+		"blocks": [{"type": "link", "id": "lnk", "object_id": "target1",
+			"properties": ["priority", "due_date"]}]}`
+	_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
+	require.NoError(t, err)
+
+	for _, b := range snap.Blocks {
+		if c, ok := b.Content.(*model.BlockContentOfLink); ok {
+			assert.Equal(t, []string{"6a32d4856761631534b22f85", "dueDate"}, c.Link.Relations)
+		}
+	}
+}

@@ -141,6 +141,23 @@ func (e *exporter) propertySlug(key string) string {
 	return slug
 }
 
+// propertySlugs is the list form, and it lives here rather than on Options for
+// the same reason the singular one does: a key list (a link block's shown
+// properties) is a key slot like any other, and a slug written without the
+// legend entry that inverts it is a slug that reads back as a different
+// relation. Options carries the vocabulary; only the exporter can record what
+// the document owes for using it.
+func (e *exporter) propertySlugs(keys []string) []string {
+	if len(keys) == 0 {
+		return keys
+	}
+	out := make([]string, len(keys))
+	for i, key := range keys {
+		out[i] = e.propertySlug(key)
+	}
+	return out
+}
+
 // writableSlug is the vocabulary's spelling for a stored key when that
 // spelling can actually be written, and the stored key itself otherwise. The
 // slug is the string that becomes a JSON property name (buildProperties) or a
@@ -914,7 +931,7 @@ func (e *exporter) blockToJSON(b *model.Block, depth int) (*omap, bool, error) {
 		if l.Description != model.BlockContentLink_None {
 			m.setNonEmpty("description", linkDescriptionNames.name(l.Description))
 		}
-		m.setNonEmpty("properties", stringsToAny(e.opts.propertySlugs(l.Relations)))
+		m.setNonEmpty("properties", stringsToAny(e.propertySlugs(l.Relations)))
 		withChildren = false
 	case *model.BlockContentOfDiv:
 		m.set("type", "divider")
@@ -952,7 +969,7 @@ func (e *exporter) blockToJSON(b *model.Block, depth int) (*omap, bool, error) {
 		withChildren = false
 	case *model.BlockContentOfRelation:
 		m.set("type", "property")
-		m.setNonEmpty("key", e.opts.propertySlug(orEmpty(c.Relation).Key))
+		m.setNonEmpty("key", e.propertySlug(orEmpty(c.Relation).Key))
 		withChildren = false
 	case *model.BlockContentOfDataview:
 		if err := e.dataviewToJSON(m, orEmpty(c.Dataview)); err != nil {

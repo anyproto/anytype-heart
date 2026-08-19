@@ -225,6 +225,12 @@ type RecommendedList struct {
 // is the PATCH channel for the same array `applyTypeProperties` reads out of a
 // document. Both must invert through the same vocabulary, or the two ways of
 // writing one type's property list disagree about what a key means.
+//
+// Options.propertyKey, not the importer's: there is no document here, so there
+// is no `property_keys` legend to consult (§3) — the caller's vocabulary is
+// the only statement about spelling in force. A caller that lifted these slugs
+// out of a document owes them that document's legend before calling, because
+// nothing downstream of this signature can see it.
 func BuildRecommendedLists(props []TypeProperty, opts Options) []RecommendedList {
 	bySection := map[string][]string{}
 	for _, tp := range props {
