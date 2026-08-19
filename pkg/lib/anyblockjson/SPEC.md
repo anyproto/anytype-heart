@@ -1,6 +1,6 @@
 # AnyBlock JSON — format specification
 
-Status: **draft v0.14** · Format version: **1** · Package: `pkg/lib/anyblockjson`
+Status: **draft v0.15** · Format version: **1** · Package: `pkg/lib/anyblockjson`
 
 A human- and agent-readable JSON serialization of Anytype objects (the "anyblock"
 model), designed for export, import, and generation by external tools and LLM
@@ -14,6 +14,35 @@ strings; the vocabulary follows Notion's API and Anytype's public REST API
 (`core/api`) wherever an established term exists — the format should be
 readable, and mostly writable, by someone who has never seen Anytype
 internals.
+
+Changes in v0.15: **the round-trip invariants, held where they were only
+stated** (§3, §11). (1) §11's "equivalent resolvers" precondition is written
+out, because it is stronger than `KeyVocabulary` said: a vocabulary may not
+bind a spelling the bundled table binds to a different key. One that does can
+still be a strict inverse pair, and it turns a template for the bundled
+`task` type into a template for an unrelated custom type — the legend cannot
+help, because a spelling the bundled table inverts is written with no legend
+entry at all. No shipped vocabulary can do it; `Options.Keys` takes one from
+anyone. (2) §11 gains the snapshot-anchored guarantee, `Export(S) =
+Export(Import(Export(S)))`, and §3 the census rule that makes it true: the
+term census reserves the keys the document SPELLS, not every key the snapshot
+holds. Reserving more backed a real slug off, so one object exported before
+and after a round trip produced two documents. (3) A property key slot carries
+the writable-key rule wherever it is, including `type_properties[].key`,
+which is a JSON string value the schema could only bound at `minLength: 1`:
+a 140-character key validated clean and then failed to import. Export drops
+such an entry now rather than emit one the seam refuses. (4) §3's argument
+for having no type deny rule no longer rests on "export strips no object
+types", which is false — export truncates to the positions §2 models. What it
+strips is positional, never a particular key, which is what the derivation
+needs. (5) Two documentation corrections in the same family: §1's Naming
+section still described the pre-vocabulary rule (property keys "written
+exactly as stored: `iconEmoji`, `dueDate`") and §3's "what is not a key slot"
+paragraph still named the format's own fields in their pre-snake_case
+spellings (`kind: "objectType"`, `defaultTemplateId`, a callout's
+`iconEmoji`), which the schema has not used since v0.8. The §2a type-document
+example spelled `iconEmoji` in `properties` two lines above prose calling it
+`icon_emoji`.
 
 Changes in v0.14: **the type namespace's own rules, made true and made
 two-sided** (§3). Four corrections, one clarification, one recorded
@@ -59,9 +88,10 @@ the stored key beside bundled `objectType`), and slugs claimed through the
 same census-and-back-off discipline. The `Options.typeSlugs`/`typeKeys` list
 helpers — the last key slots reachable without the ledger — are gone, like
 their property twins before them. Two rules are the namespace's own: there
-is **no deny rule** (export strips no object types; see v0.14 for the
-argument that replaced the "a type key is not a resolution vector" one
-originally given here), and the reserved spelling is **`template`** — export
+is **no deny rule** (no type KEY is denied — what export drops is positional;
+see v0.14 for the argument that replaced the "a type key is not a resolution
+vector" one originally given here), and the reserved spelling is
+**`template`** — export
 refuses to move it in either direction, and the template gate and the kind
 derivation run on the stored key the spelling resolves to through the
 document's own chain, in validation and import alike (§12). The seam refuses
@@ -252,12 +282,17 @@ draft, which the reader then had to reject.
 **Two kinds of string are exempt, both because they name something outside the
 format.** They are not inconsistencies to be tidied away later:
 
-- **Property keys** (§3) are stored relation keys, written exactly as stored:
-  `iconEmoji`, `dueDate`, `lastModifiedDate`. Renaming them would need a
-  key ↔ key mapping the reader cannot invert (`Validate` takes no resolver),
-  and it would reintroduce a collision class the format currently does not
-  have (§11). When the API's snake_case property keys become the stored keys,
-  this exemption disappears on its own with no format change.
+- **Property and type keys** (§3) name relations and types, which live in a
+  space rather than in this format. Their canonical spelling is the api slug,
+  which is snake_case anyway — `icon_emoji`, `due_date`,
+  `last_modified_date` — so most of the time the exemption does not show. It
+  shows for a key the vocabulary has no slug for: a legacy `wikiPerson`, a
+  minted `6a32d4856761631534b22f85`. Those are written verbatim, whatever
+  their shape, because an exact stored key is always its own address (§3).
+  This section once said the key ↔ key mapping was impossible because
+  `Validate` takes no resolver; the answer was to put the mapping in the
+  DOCUMENT — the `property_keys` / `type_keys` legends, which a reader with no
+  space at all can invert.
 - **Platform identifiers** — the reserved widget targets `allObjects` and
   `recentOpen` (§2c), the `dataview` block id (§7), and the `objectId`
   parameter of the `anytype://object` deep link (§8.1) — name things that
@@ -268,9 +303,11 @@ neither: they are schema-internal labels a document never contains, and they
 keep JSON Schema's conventional camelCase.)
 
 So `{"type": "callout", "icon_emoji": "💡"}` and
-`{"properties": {"iconEmoji": "🔥"}}` are both correct in the same document:
-the first is a field this format defines, the second is a key belonging to
-the data.
+`{"properties": {"icon_emoji": "🔥"}}` are both correct in the same document,
+and they are not the same thing spelled twice: the first is a field this
+format defines, the second is a key belonging to the data, which happens to
+be spelled the same way. `{"properties": {"wikiPerson": …}}` is where the two
+part company.
 
 ### Terminology
 
@@ -366,7 +403,7 @@ involved.
   "version": 1,
   "kind": "object_type",
   "key": "task",
-  "properties": { "name": "Task", "iconEmoji": "✅", "recommended_layout": "todo" },
+  "properties": { "name": "Task", "icon_emoji": "✅", "recommended_layout": "todo" },
   "type_properties": [
     { "key": "due_date",  "name": "Due date", "format": "date",    "section": "featured" },
     { "key": "assignee", "name": "Assignee", "format": "objects", "section": "featured" },
@@ -682,6 +719,21 @@ writes the entry:
   ever seeing it. Export never writes either refused shape: a denied key
   never takes a slug (its spelling is written verbatim, where no entry is
   owed), and unwritable values were already never recorded.
+- **A property key slot carries the writable-key rule wherever it is,
+  including where it is a JSON string VALUE.** `/properties` and the legends
+  are member names, so the schema states the rule as `propertyNames`; a
+  `type_properties` entry's `key` (§2a) is an ordinary string value the
+  schema can only reach as one, and for a while `minLength: 1` was the only
+  bound it had — a 140-character key, or one carrying a newline, validated
+  clean and then failed to import. The rule is the namespace's, not the
+  slot's: `/properties` is the property namespace's home surface and cannot
+  express a key that is not a member name, so a property with such a key
+  cannot appear in a document at all, and a slot that could carry one would
+  be offering an address the rest of the format has no way to use. (The type
+  namespace answers the same question the other way, and for the same reason
+  — its home surface is `type`, a value. See its own rules below.) Export
+  drops a type-property entry whose stored key is unwritable, with a warning,
+  rather than emit one the seam refuses.
 - **The legend cannot launder a spelling onto an internal key.** Entries are
   honored during validation and admission exactly as during import — the
   legend is step one of key resolution — so `{"prio": "uniqueKey"}` does not
@@ -718,8 +770,9 @@ type key is — and one rule above that deliberately does **not** carry over.
   nothing.
 - **No deny rule** — and the reason is not that the type namespace is
   harmless. The property deny rule is *import refuses exactly what export
-  strips*, and export strips no object types — the type list round-trips
-  whole, so the derived set is empty. The stronger reason is that a deny
+  strips*, and export strips no type KEY: what it drops is positional (the
+  entries past the slots §2 models, and keyless entries, both below), never a
+  particular key, so the derived set is empty. The stronger reason is that a deny
   rule here would guard nothing: **every effect a document-chosen type key
   can produce is separately, and more directly, writable through the
   property namespace.** Layout — `"type": "participant"` reaches
@@ -803,15 +856,30 @@ type key is — and one rule above that deliberately does **not** carry over.
   slugging an entry no slot writes published a space's slug→key mapping in a
   `type_keys` line naming a type the document never spells.
 
+  **The census sees the same list.** Verbatim-first reserves every stored type
+  key the document NAMES, and reserving more than that is not merely
+  wasteful: a key no slot spells backs another key's slug off, so the same
+  object exported before and after a round trip through this format produced
+  two different documents — one with the stored key, one with the slug and a
+  legend line to invert it. `["ot-custom1", "ot-cust"]`, with a vocabulary
+  spelling `custom1` as `cust`, is the whole shape. So the census runs the
+  reduction above, and asks of a type property exactly what the emit asks:
+  will this entry be written? Nothing is lost by the narrower reservation —
+  a key the document never names cannot be taken as another key's spelling by
+  a reader who never sees it.
+
 **What is not a key slot** (ADDRESSING §7.5a-4). The vocabulary applies where
 a document NAMES a type or property, and nowhere else. Envelope and DTO field
-names, enum *values* (`kind: "objectType"`, layout and view-type names), the
-`index.json` envelope, view field names like `defaultTemplateId`, and — the
+names, enum *values* (`kind: "object_type"`, layout and view-type names), the
+`index.json` envelope, view field names like `default_template_id`, and — the
 one most easily mistaken for a key — **block attribute names**: a callout's
-`iconEmoji` and `iconImage` are attributes of a block, not property keys, and
-stay camelCase however the `icon_emoji` *property* is spelled one section
-over. `objectType` the layout value coexists with `object_type` the type key,
-and that is intended.
+`icon_emoji` and `icon_image` are attributes of a block, not property keys.
+They are the format's own vocabulary and follow the format's own rule (§1
+Naming, all snake_case); the vocabulary never touches them, so they would
+keep their spelling whatever the `icon_emoji` *property* were called one
+section over. The layout VALUE `object_type` coexists with the type key
+spelled `object_type` — one is an enum this format defines, the other is a
+name in the space — and that is intended.
 
 Values are encoded by the property's format:
 
@@ -2027,6 +2095,22 @@ The snapshot's block graph is untrusted: export emits each block **once**
 documents; duplicate table column/row ids are likewise dropped
 (implementation decision).
 
+**What "equivalent resolvers" requires.** Both guarantees below are stated
+for export and import wired with equivalent resolvers, and for the key
+vocabulary that means two things, the second of which does not follow from
+the first (`KeyVocabulary`, §13). One: whatever `…Slug` emits, `…Key` must
+invert. Two: **no answer, in either direction, may bind a spelling that the
+bundled table binds to a different key.** The second is what the legend rests
+on — a document owes an entry only for a spelling the reader's own chain
+cannot invert, and that chain is taken to be the bundled table, which ships
+with every reader — so a stored key the table already inverts is written with
+no entry at all, and a reader whose vocabulary answers differently for that
+spelling silently resolves it elsewhere. A vocabulary can satisfy the first
+rule completely and still turn a template for the bundled `task` type into a
+template for an unrelated custom type. The vocabulary this system ships
+(`storeresolver`) refuses such an answer in both directions; the rule is
+stated because `Options.Keys` accepts an implementation from anyone.
+
 1. `Import(Export(S)) ≡ N(S)` — state-level equality on the snapshot after
    normalization.
 2. `Export ∘ Import` is **idempotent and byte-stable**: for any valid
@@ -2035,6 +2119,14 @@ documents; duplicate table column/row ids are likewise dropped
    *original* `J` holds only when `J` is already canonical — import mints
    missing ids, merges marks, maps aliases like `heading_4`/`equation`,
    absorbs top-level title/description blocks.)
+3. `Export(S) = Export(Import(Export(S)))` — the same guarantee anchored on
+   the SNAPSHOT rather than on a document, and the one an object exported
+   twice depends on: once directly, once after a round trip through this
+   format. It is what §9's "re-exports diff cleanly" means for everything
+   that is not an id, and it is why the term census reserves only the keys
+   the document spells (§3). Ids are the documented exception in the same
+   direction as (2): a snapshot carrying a block or view with no id exports a
+   document that is not canonical, and import mints one.
 
 Both properties are enforced by tests in the package: golden-file tests for
 representative documents plus property-based round-trip tests over generated
