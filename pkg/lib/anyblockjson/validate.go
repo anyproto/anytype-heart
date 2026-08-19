@@ -986,7 +986,9 @@ type keySlotReport struct {
 // carries as `propertyNames`: the `properties` map and the `property_keys` /
 // `type_keys` legends take a writable key (§3), the `refs` legend takes a
 // label (§9a). A legend VALUE rides along because it is a stored key under the
-// same rule and the schema's verdict on it names the bound, not the string.
+// same rule and the schema's verdict on it names the bound, not the string —
+// and so does a `type_properties` entry's `key`, a key slot the schema can
+// only reach as an ordinary string value.
 //
 // The rule stays in the published schema — an external validator runs that and
 // nothing else (§12) — and is restated here because `propertyNames` cannot
@@ -1023,6 +1025,25 @@ func propertyNameIssues(doc map[string]any) keySlotReport {
 				rejectName("/properties/"+escapeJSONPointer(term), term,
 					unwritableKeyReason("property key", term))
 			}
+		}
+	}
+	// a type_properties `key` is a property key slot too (§2a), and the only
+	// one that is a JSON string VALUE rather than a member name: the schema
+	// carries the rule, but `propertyNames` never sees this slot, so its
+	// verdict names a bound or prints a regex instead of saying what is wrong
+	// with the string. Same rule, same wording as the members above — and the
+	// same reason it is a rule at all: the import seam refuses a key export
+	// could not write back, so a document carrying one validated clean and
+	// then failed to import (I2).
+	if list, _ := doc["type_properties"].([]any); list != nil {
+		for i, raw := range list {
+			tp, _ := raw.(map[string]any)
+			key, isString := tp["key"].(string)
+			if !isString || isWritablePropertyKey(key) {
+				continue
+			}
+			rejectValue(fmt.Sprintf("/type_properties/%d/key", i),
+				unwritableKeyReason("property key", key))
 		}
 	}
 	for _, field := range []string{"property_keys", "type_keys"} {

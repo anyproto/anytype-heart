@@ -322,7 +322,7 @@
     "typeProperty": {
       "type": "object",
       "properties": {
-        "key": { "type": "string", "minLength": 1 },
+        "key": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[^\u0000-\u001f\u007f]+$" },
         "name": { "type": "string" },
         "format": {
           "enum": [

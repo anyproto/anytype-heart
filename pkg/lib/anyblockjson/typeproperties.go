@@ -155,6 +155,20 @@ func (e *exporter) buildTypeProperties() []any {
 			if !ok || def.Key == "" {
 				continue
 			}
+			// the import seam refuses a resolved key it could not write back
+			// (§2a), so emitting one hands back an archive its own Unmarshal
+			// rejects — I1, and the one failure nobody sees until the archive
+			// is needed. The slot carries the term verbatim when no
+			// vocabulary spells it, and writableSlug backs a spelling off to
+			// the stored key when the key is unwritable, so no legend can
+			// rescue it: drop the entry and say so, as /properties does for
+			// the same key.
+			if !isWritablePropertyKey(string(def.Key)) {
+				e.warn(fmt.Sprintf("/type_properties/%d", len(out)),
+					"property %q is dropped: %s", def.Key,
+					unwritableKeyReason("property key", string(def.Key)))
+				continue
+			}
 			m := &omap{}
 			m.set("key", e.propertySlug(string(def.Key)))
 			m.setNonEmpty("name", def.Name)

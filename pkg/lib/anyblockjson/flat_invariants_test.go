@@ -30,6 +30,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -213,6 +214,7 @@ func hostileSnapshot(n int) (model.SmartBlockType, *model.SmartBlockSnapshotBase
 		sbType = model.SmartBlockType_STType
 		snap.Details.Fields["recommendedFeaturedRelations"] = strList("hp1")
 		snap.Details.Fields["recommendedRelations"] = strList("hp2")
+		snap.Details.Fields["recommendedHiddenRelations"] = strList("hp3")
 	}
 	return sbType, snap
 }
@@ -233,6 +235,10 @@ func hostileSnapshot(n int) (model.SmartBlockType, *model.SmartBlockSnapshotBase
 // round-trips verbatim through `type` — but no legend line may name it, and a
 // vocabulary that spells it as something writable is what tries to.
 var overLongTypeKey = strings.Repeat("y", 140)
+
+// overLongPropertyKey is its property-namespace twin: a stored relation key
+// no key slot can carry, member name or value (§3).
+var overLongPropertyKey = strings.Repeat("k", maxPropertyKeyLen+12)
 
 var hostileTypePools = [][]string{
 	nil,
@@ -267,6 +273,12 @@ func (hostileTypePropResolver) PropertyById(id string) (PropertyDefinition, bool
 	case "hp2":
 		return PropertyDefinition{Key: "genre", Format: model.RelationFormat_object,
 			ObjectTypes: []string{"longslugged", overLongTypeKey}}, true
+	case "hp3":
+		// a stored property key past the legend bound. The §2a `key` slot is
+		// a JSON value, so the schema bounded only its minLength for a while
+		// and export wrote such a key straight through — a document the seam
+		// then refused, which is I1.
+		return PropertyDefinition{Key: domain.RelationKey(overLongPropertyKey), Name: "Ledger"}, true
 	}
 	return PropertyDefinition{}, false
 }
@@ -285,7 +297,9 @@ type typePropTargets struct {
 // wantTypePropTargets is what a faithful reader owes back for a type-document
 // seed, read off hostileTypePropResolver itself so the expectation cannot
 // drift from the fixture — the definitions in §2a section order (featured
-// first, then the regular list), each with its target types intact.
+// first, then the regular list), each with its target types intact. hp3 is
+// deliberately absent: its stored key cannot be written, so export drops the
+// entry with a warning rather than emit one the seam refuses (§2a).
 func wantTypePropTargets() []typePropTargets {
 	out := make([]typePropTargets, 0, 2)
 	for _, id := range []string{"hp1", "hp2"} {
@@ -595,9 +609,16 @@ var hostileDocs = []string{
 		"type_keys": {"task": "69bbfc78877a91b1d12d1a7c"},
 		"type_properties": [{"key": "owner", "format": "objects", "object_types": ["task", "blanktype"]}]}`,
 	// a type_properties `key` is a PROPERTY key slot and admits like one: the
-	// schema bounds the spelling, a wider vocabulary resolves past it
+	// schema bounds the spelling, a wider vocabulary resolves past it — and
+	// the two shapes the seam refuses with the DEFAULT vocabulary, where no
+	// resolution widens anything and the schema's `minLength: 1` is the only
+	// bound the slot ever had
 	`{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
 		"type_properties": [{"key": "blank", "format": "text"}]}`,
+	`{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
+		"type_properties": [{"key": "` + strings.Repeat("k", maxPropertyKeyLen+1) + `"}]}`,
+	`{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
+		"type_properties": [{"key": "a\nb"}]}`,
 	// the reserved `template` spelling, straight through the envelope: the
 	// type-moves-template vocabulary answers a different stored key for it,
 	// and both halves must still agree about what kind of document this is
