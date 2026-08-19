@@ -37,10 +37,13 @@ type jsonDoc struct {
 	// its own key spellings mean, consulted before any vocabulary so a reader
 	// without the space still lands on the right relation.
 	PropertyKeys map[string]string `json:"property_keys"`
-	Blocks       []*jsonBlock      `json:"blocks"`
-	Items        []string          `json:"items"`
-	Store        map[string]any    `json:"store"`
-	Root         *jsonRootEscape   `json:"root"`
+	// TypeKeys is the same legend for the TYPE namespace — separate map,
+	// because the namespaces share spellings by design (§3).
+	TypeKeys map[string]string `json:"type_keys"`
+	Blocks   []*jsonBlock      `json:"blocks"`
+	Items    []string          `json:"items"`
+	Store    map[string]any    `json:"store"`
+	Root     *jsonRootEscape   `json:"root"`
 }
 
 type jsonRootEscape struct {
@@ -225,6 +228,29 @@ func (imp *importer) propertyKeys(slugs []string) []string {
 	return out
 }
 
+// typeKey inverts a TYPE key slot: the document's own legend first (§3),
+// then the vocabulary in force — propertyKey on the type namespace's legend.
+func (imp *importer) typeKey(slug string) string {
+	if key, ok := imp.doc.TypeKeys[slug]; ok && key != "" {
+		return key
+	}
+	return imp.opts.typeKey(slug)
+}
+
+// docTypeKey resolves a type spelling through the document's own chain alone
+// — legend, bundled table, verbatim — deliberately without the caller's
+// vocabulary. The template gate and the kind derivation are document
+// semantics (§2), and Validate, which takes no vocabulary (§13), must reach
+// the same verdict on them (§12); binding the spelling to a stored key is
+// the vocabulary's domain, and typeKey above handles it.
+func (imp *importer) docTypeKey(slug string) string {
+	if key, ok := imp.doc.TypeKeys[slug]; ok && key != "" {
+		return key
+	}
+	key, _ := BundledKeyVocabulary{}.TypeKey(slug)
+	return key
+}
+
 // resolveId applies the §9a total resolution rule: a refs key resolves to
 // its full id; anything else is a full id already.
 func (imp *importer) resolveId(s string) string {
@@ -267,7 +293,10 @@ func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBas
 	switch {
 	case doc.Kind != "":
 		sbType = kindNames.value(doc.Kind)
-	case doc.Type == "template":
+	case imp.docTypeKey(doc.Type) == "template":
+		// the kind derives from the STORED key the spelling resolves to
+		// through the document's own chain — a legend may bind the spelling
+		// `template` elsewhere, or another spelling onto the template key
 		sbType = model.SmartBlockType_Template
 	}
 
@@ -278,9 +307,29 @@ func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBas
 
 	var objectTypes []string
 	if doc.Type != "" {
-		objectTypes = append(objectTypes, domain.TypeKey(imp.opts.typeKey(doc.Type)).URL())
-		if doc.Type == "template" && doc.TemplateFor != "" {
-			objectTypes = append(objectTypes, domain.TypeKey(imp.opts.typeKey(doc.TemplateFor)).URL())
+		// the seam refuses a resolution onto the empty key (§3): a
+		// vocabulary can answer "" for a non-empty spelling, which became
+		// the ObjectTypes entry "ot-" and re-exported as no type at all —
+		// silently. That is the only refusable resolution here: a non-empty
+		// stored key of any shape round-trips verbatim, unlike a property
+		// key, which has to survive as a JSON member name.
+		typeKey := imp.typeKey(doc.Type)
+		if typeKey == "" {
+			return 0, nil, &ValidationError{Issues: []Issue{{
+				Path:    "/type",
+				Message: unwritableKeyReason("resolved type key", typeKey),
+			}}}
+		}
+		objectTypes = append(objectTypes, domain.TypeKey(typeKey).URL())
+		if imp.docTypeKey(doc.Type) == "template" && doc.TemplateFor != "" {
+			target := imp.typeKey(doc.TemplateFor)
+			if target == "" {
+				return 0, nil, &ValidationError{Issues: []Issue{{
+					Path:    "/template_for",
+					Message: unwritableKeyReason("resolved type key", target),
+				}}}
+			}
+			objectTypes = append(objectTypes, domain.TypeKey(target).URL())
 		}
 	}
 
@@ -335,7 +384,9 @@ func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBas
 			details.Fields[key] = v
 		}
 	}
-	imp.applyTypeProperties(details)
+	if err := imp.applyTypeProperties(details); err != nil {
+		return 0, nil, err
+	}
 
 	root := &model.Block{
 		Id:      objectId,

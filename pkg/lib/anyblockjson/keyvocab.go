@@ -88,9 +88,13 @@ func (o Options) keys() KeyVocabulary {
 	return BundledKeyVocabulary{}
 }
 
-// propertySlug / propertyKey / typeSlug / typeKey are the boundary helpers
-// every emit and accept site uses; empty terms pass through untouched so no
-// site has to special-case them.
+// propertySlug / propertyKey / typeSlug / typeKey are the raw vocabulary
+// lookups; empty terms pass through untouched so no site has to special-case
+// them. They are NOT the key-slot boundary: every slot goes through the
+// exporter's claim step (propertySlug/typeSlug on *exporter — the term
+// ledgers and the legends they owe) and the importer's legend-first read
+// (propertyKey/typeKey on *importer). Options carries only the vocabulary;
+// the document's own statements live with the codec halves.
 func (o Options) propertySlug(key string) string {
 	if key == "" {
 		return key
@@ -119,29 +123,4 @@ func (o Options) typeKey(slug string) string {
 	}
 	key, _ := o.keys().TypeKey(slug)
 	return key
-}
-
-// typeSlugs / typeKeys map a list of TYPE key slots (typeProperties[].
-// objectTypes — §2a's target-type restriction, which is a key slot like any
-// other and speaks the same vocabulary).
-func (o Options) typeSlugs(keys []string) []string {
-	if len(keys) == 0 {
-		return keys
-	}
-	out := make([]string, len(keys))
-	for i, key := range keys {
-		out[i] = o.typeSlug(key)
-	}
-	return out
-}
-
-func (o Options) typeKeys(slugs []string) []string {
-	if len(slugs) == 0 {
-		return slugs
-	}
-	out := make([]string, len(slugs))
-	for i, slug := range slugs {
-		out[i] = o.typeKey(slug)
-	}
-	return out
 }

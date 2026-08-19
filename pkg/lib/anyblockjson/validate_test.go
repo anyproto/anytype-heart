@@ -519,6 +519,7 @@ func TestValidate_EveryPropertyNamesSiteHasAnAddressableMessage(t *testing.T) {
 		"/$defs/propertyMap", // the properties map, via $ref from /properties
 		"/properties/property_keys",
 		"/properties/refs",
+		"/properties/type_keys",
 	}, sites, "a new propertyNames site needs a case in propertyNameIssues")
 }
 

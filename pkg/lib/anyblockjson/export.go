@@ -134,6 +134,19 @@ type exporter struct {
 	termOwner map[string]string // term -> the stored key it denotes
 	termByKey map[string]string // stored key -> the term written for it
 	namedKeys map[string]bool   // census: every stored key any slot may name
+
+	// typeKeys is the §3 legend for the TYPE namespace, and typeTermOwner /
+	// typeTermByKey / typeNamedKeys its term ledger. One ledger and one
+	// legend PER NAMESPACE, deliberately: a property slug and a type slug may
+	// coincide without conflict (§3 — `object_type` the type key coexists
+	// with `objectType` the layout value, and a space can slug a relation and
+	// a type onto the same term), so a shared claim domain would back a key
+	// off a slug the other namespace owns — a spurious conflict, and one
+	// legend map could not carry both meanings of the shared term at all.
+	typeKeys      map[string]string
+	typeTermOwner map[string]string
+	typeTermByKey map[string]string
+	typeNamedKeys map[string]bool
 }
 
 // propertySlug renders a stored property key for output and records what the
@@ -351,6 +364,159 @@ func (e *exporter) buildPropertyKeys() *omap {
 	m := &omap{}
 	for _, slug := range slugs {
 		m.set(slug, e.propertyKeys[slug])
+	}
+	return m
+}
+
+// typeSlug renders a stored type key for output and records what the
+// document owes a reader who cannot ask the space (§3) — the type
+// namespace's claim step, propertySlug on a ledger of its own. The same
+// discipline for the same reason: a stored type key named anywhere in the
+// document always keeps its own term (verbatim-first), a slug goes to its
+// first claimant, and a contested slug falls back to the stored key, which
+// is always its own address.
+func (e *exporter) typeSlug(key string) string {
+	if key == "" {
+		return key
+	}
+	if e.typeTermOwner == nil {
+		e.seedTypeTermLedger()
+	}
+	if term, done := e.typeTermByKey[key]; done {
+		return term
+	}
+	term := e.writableTypeSlug(key)
+	if term != key {
+		if _, claimed := e.typeTermOwner[term]; claimed || e.typeNamedKeys[term] {
+			term = key
+		}
+	}
+	e.typeTermOwner[term] = key
+	e.typeTermByKey[key] = term
+	e.recordTypeKey(term, key)
+	return term
+}
+
+// typeSlugs is the list form (a type property's object_types, §2a).
+func (e *exporter) typeSlugs(keys []string) []string {
+	if len(keys) == 0 {
+		return keys
+	}
+	out := make([]string, len(keys))
+	for i, key := range keys {
+		out[i] = e.typeSlug(key)
+	}
+	return out
+}
+
+// seedTypeTermLedger runs the type-key census: every stored type key any
+// slot of this document may name — the snapshot's object types (envelope
+// `type`/`template_for`) and the target types of the resolved type-property
+// definitions (§2a object_types). Verbatim-first (§3) makes each its own
+// address, so no other key's slug may take one as a spelling.
+func (e *exporter) seedTypeTermLedger() {
+	e.typeTermOwner = map[string]string{}
+	e.typeTermByKey = map[string]string{}
+	e.typeNamedKeys = map[string]bool{}
+	if e.snapshot == nil {
+		return
+	}
+	for _, t := range e.snapshot.ObjectTypes {
+		if key := strings.TrimPrefix(t, typeKeyIdPrefix); key != "" {
+			e.typeNamedKeys[key] = true
+		}
+	}
+	if e.typePropsActive() {
+		for _, l := range recommendedListKeys {
+			for _, id := range valueStringList(e.detail(l.detailKey)) {
+				if def, ok := e.resolveTypeProperty(id); ok {
+					for _, key := range def.ObjectTypes {
+						if key != "" {
+							e.typeNamedKeys[key] = true
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+// writableTypeSlug is writableSlug for the type namespace: the vocabulary's
+// spelling when it can actually be written and honored, the stored key
+// itself otherwise. The shape rule is the same — a slug becomes a legend
+// spelling and a stored key a legend value, both bounded by the schema. The
+// reserved spelling differs: where properties refuse `id`/`type`, the type
+// namespace refuses to move **`template`** in either direction, because it
+// is envelope-semantic — export keys template_for emission off the spelled
+// term, validation gates /template_for on it, and import derives the
+// smartblock kind from it (§2). A vocabulary spelling the template key as
+// anything else would silently drop a template's target type; one spelling
+// another key as `template` would hand that machinery to the wrong type.
+func (e *exporter) writableTypeSlug(key string) string {
+	slug := e.opts.typeSlug(key)
+	if slug == key {
+		return slug
+	}
+	if !isWritablePropertyKey(slug) || !isWritablePropertyKey(key) {
+		e.warn("/type_keys",
+			"the vocabulary spells type %q as %q, which cannot be a type spelling in this format; the stored key is written instead",
+			key, slug)
+		return key
+	}
+	if key == "template" {
+		e.warn("/type_keys",
+			"the vocabulary spells the template type as %q, but the spelling `template` carries the envelope's template semantics (§2); the stored key is written instead",
+			slug)
+		return key
+	}
+	if slug == "template" {
+		e.warn("/type_keys",
+			"the vocabulary spells %q as `template`, the spelling reserved for the template type (§2); the stored key is written instead",
+			key)
+		return key
+	}
+	return slug
+}
+
+// recordTypeKey writes the type legend entry a term owes, or nothing when
+// the reader's own chain already inverts it — recordPropertyKey's rule
+// through the type half of the bundled table, identity entries included: a
+// stored type key written verbatim whose spelling the table binds to a
+// DIFFERENT key (`object_type` the stored key beside bundled `objectType`)
+// gets `{"object_type": "object_type"}`, the document's only way to tell a
+// storeless reader the term is a stored key.
+func (e *exporter) recordTypeKey(term, key string) {
+	if term == "" {
+		return
+	}
+	if back, ok := (BundledKeyVocabulary{}).TypeKey(term); ok {
+		if back == key {
+			return
+		}
+	} else if term == key {
+		return
+	}
+	if e.typeKeys == nil {
+		e.typeKeys = map[string]string{}
+	}
+	e.typeKeys[term] = key
+}
+
+// buildTypeKeys renders the type legend in term order, or nil when the
+// document needs none — which is every document that names only bundled and
+// verbatim, unshadowed type keys.
+func (e *exporter) buildTypeKeys() *omap {
+	if len(e.typeKeys) == 0 {
+		return nil
+	}
+	terms := make([]string, 0, len(e.typeKeys))
+	for term := range e.typeKeys {
+		terms = append(terms, term)
+	}
+	sort.Strings(terms)
+	m := &omap{}
+	for _, term := range terms {
+		m.set(term, e.typeKeys[term])
 	}
 	return m
 }
@@ -589,10 +755,13 @@ func (e *exporter) indexBlocks() {
 // typeKeyIdPrefix is the "ot-" prefix ObjectTypes entries carry.
 var typeKeyIdPrefix = domain.TypeKey("").URL()
 
-func (e *exporter) typeKeys() []string {
+// envelopeTypeTerms are the spellings written for the snapshot's object
+// types — the `type`/`template_for` slots — each claimed through the type
+// term ledger so the legend it owes is recorded (§3).
+func (e *exporter) envelopeTypeTerms() []string {
 	keys := make([]string, 0, len(e.snapshot.ObjectTypes))
 	for _, t := range e.snapshot.ObjectTypes {
-		keys = append(keys, e.opts.typeSlug(strings.TrimPrefix(t, typeKeyIdPrefix)))
+		keys = append(keys, e.typeSlug(strings.TrimPrefix(t, typeKeyIdPrefix)))
 	}
 	return keys
 }
@@ -602,17 +771,19 @@ func (e *exporter) buildDoc(sbType model.SmartBlockType) (*omap, error) {
 	doc.set("$schema", SchemaURL)
 	doc.set("version", FormatVersion)
 
-	typeKeys := e.typeKeys()
-	typeKey := ""
-	if len(typeKeys) > 0 {
-		typeKey = typeKeys[0]
+	typeTerms := e.envelopeTypeTerms()
+	typeTerm := ""
+	if len(typeTerms) > 0 {
+		typeTerm = typeTerms[0]
 	}
 
-	// kind is omitted whenever derivable (§2). A Page whose type key is
+	// kind is omitted whenever derivable (§2). A Page whose type term is
 	// "template" must keep its explicit kind, or import would derive
-	// Template from the type.
-	derivable := (sbType == model.SmartBlockType_Page && typeKey != "template") ||
-		(sbType == model.SmartBlockType_Template && typeKey == "template")
+	// Template from the type. The term check equals a stored-key check:
+	// writableTypeSlug pins the spelling "template" to the stored key
+	// "template", both directions.
+	derivable := (sbType == model.SmartBlockType_Page && typeTerm != "template") ||
+		(sbType == model.SmartBlockType_Template && typeTerm == "template")
 	if !derivable {
 		name := kindNames.name(sbType)
 		if name == "" {
@@ -622,14 +793,14 @@ func (e *exporter) buildDoc(sbType model.SmartBlockType) (*omap, error) {
 	}
 
 	doc.setNonEmpty("id", e.objectId())
-	doc.setNonEmpty("type", typeKey)
-	if typeKey == "template" && len(typeKeys) > 1 {
-		doc.setNonEmpty("template_for", typeKeys[1])
+	doc.setNonEmpty("type", typeTerm)
+	if typeTerm == "template" && len(typeTerms) > 1 {
+		doc.setNonEmpty("template_for", typeTerms[1])
 	}
 	doc.setNonEmpty("key", e.snapshot.Key)
-	// every surface that spells a property key runs before the envelope is
-	// assembled, so the legend they populate lands in its canonical position
-	// rather than trailing the blocks that filled it
+	// every surface that spells a property or type key runs before the
+	// envelope is assembled, so the legends they populate land in their
+	// canonical positions rather than trailing the blocks that filled them
 	properties := e.buildProperties()
 	typeProperties := e.buildTypeProperties()
 	blocks, err := e.buildBlocks()
@@ -657,6 +828,7 @@ func (e *exporter) buildDoc(sbType model.SmartBlockType) (*omap, error) {
 	}
 
 	doc.setNonEmpty("property_keys", e.buildPropertyKeys())
+	doc.setNonEmpty("type_keys", e.buildTypeKeys())
 	doc.setNonEmpty("blocks", blocks)
 
 	items, store := e.buildStore()

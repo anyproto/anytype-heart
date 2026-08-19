@@ -36,6 +36,12 @@
       "propertyNames": { "pattern": "^[^\u0000-\u001f\u007f]+$", "maxLength": 128 },
       "additionalProperties": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[^\u0000-\u001f\u007f]+$" }
     },
+    "type_keys": {
+      "type": "object",
+      "description": "Legend: the stored type key each type slug in this document names (§3). Same rule as property_keys, on a legend of the type namespace's own: present only for spellings the bundled table cannot invert; a reader consults it before its own vocabulary. A value is a stored type key and obeys the writable-key rule (§3).",
+      "propertyNames": { "pattern": "^[^\u0000-\u001f\u007f]+$", "maxLength": 128 },
+      "additionalProperties": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[^\u0000-\u001f\u007f]+$" }
+    },
     "blocks": { "type": "array", "items": { "$ref": "#/$defs/block" } },
     "items": { "type": "array", "items": { "type": "string" } },
     "store": { "type": "object", "x-output-only": true },

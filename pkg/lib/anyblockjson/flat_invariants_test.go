@@ -50,7 +50,7 @@ var hostileIds = []string{
 // of text blocks, and optionally a table and a dataview, with every id drawn
 // from hostileIds — including duplicates, which the snapshot graph is allowed
 // to contain because it is untrusted (§11).
-func hostileSnapshot(n int) *model.SmartBlockSnapshotBase {
+func hostileSnapshot(n int) (model.SmartBlockType, *model.SmartBlockSnapshotBase) {
 	rnd := rand.New(rand.NewSource(int64(n)))
 	pick := func() string { return hostileIds[rnd.Intn(len(hostileIds))] }
 
@@ -183,11 +183,92 @@ func hostileSnapshot(n int) *model.SmartBlockSnapshotBase {
 		"69bbfc78877a91b1d12d1a7c_C/C++", "69a56205ccba0a47d8d8eb71_тогглы",
 		"69bbfc78877a91b1d12d1a84_$addToSet", "opt-" + strings.Repeat("x", 80),
 	}
-	return &model.SmartBlockSnapshotBase{
+	snap := &model.SmartBlockSnapshotBase{
 		Blocks:  blocks,
 		Details: fields(details),
 		Key:     storedKeys[rnd.Intn(len(storedKeys))],
 	}
+	// the TYPE key slots (§3): the envelope `type`/`template_for` pair and —
+	// on type-document seeds — `type_properties[].object_types`. Drawn after
+	// every other pick so adding them did not reshuffle the corpus above.
+	snap.ObjectTypes = hostileTypePools[rnd.Intn(len(hostileTypePools))]
+	sbType := model.SmartBlockType_Page
+	if rnd.Intn(4) == 0 {
+		// a type document: the recommended lists resolve through
+		// hostileTypePropResolver, whose definitions carry the object_types
+		// shapes (custom key the vocabulary slugs onto `task`, an unwritable
+		// slug, the reserved `template` spelling)
+		sbType = model.SmartBlockType_STType
+		snap.Details.Fields["recommendedFeaturedRelations"] = strList("hp1")
+		snap.Details.Fields["recommendedRelations"] = strList("hp2")
+	}
+	return sbType, snap
+}
+
+// hostileTypePools are the ObjectTypes shapes that make the type namespace
+// compete with its readers: a custom key a hostile vocabulary slugs onto the
+// bundled `task` key, a stored key spelling the bundled objectType's slug
+// (the §3 shadow shape — it owes an identity entry), template pairs whose
+// second entry only survives if the `template` spelling stays put, keys whose
+// vocabulary slug is unwritable or reserved, a prefix-less entry, and an
+// entry with no key at all.
+var hostileTypePools = [][]string{
+	nil,
+	{"ot-page"},
+	{"ot-69bbfc78877a91b1d12d1a7c"},
+	{"ot-object_type"},
+	{"ot-template", "ot-69bbfc78877a91b1d12d1a7c"},
+	{"ot-template", "ot-task"},
+	{"ot-" + strings.Repeat("y", 140)},
+	{"ot-longslugged"},
+	{"ot-blankslugged"},
+	{"ot-squatter"},
+	{"page"},
+	{"ot-"},
+}
+
+// hostileTypePropResolver serves the two property definitions the type-seed
+// recommended lists name. PropertyId answers false so import-side wiring is
+// exercised without it.
+type hostileTypePropResolver struct{}
+
+func (hostileTypePropResolver) PropertyById(id string) (PropertyDefinition, bool) {
+	switch id {
+	case "hp1":
+		return PropertyDefinition{Key: "owner", Name: "Owner", Format: model.RelationFormat_object,
+			ObjectTypes: []string{"69bbfc78877a91b1d12d1a7c", "task", "squatter"}}, true
+	case "hp2":
+		return PropertyDefinition{Key: "genre", Format: model.RelationFormat_object,
+			ObjectTypes: []string{"longslugged", strings.Repeat("y", 140)}}, true
+	}
+	return PropertyDefinition{}, false
+}
+
+func (hostileTypePropResolver) PropertyId(PropertyDefinition) (string, bool) { return "", false }
+
+// invertedTypes is what a faithful reader owes back for a snapshot's
+// ObjectTypes: the format writes object_types[0] as `type` — and [1] as
+// `template_for` when [0] is the template key — each spelled through the
+// vocabulary in force and inverted through the document's own legend, so the
+// stored KEYS must survive whatever the vocabulary did to their spellings.
+// Entries normalize to the `ot-` URL form; an entry with no key ("ot-", "")
+// has no spelling and is dropped; a non-template's types past the first are
+// not modeled by the format (§2).
+func invertedTypes(objectTypes []string) []string {
+	if len(objectTypes) == 0 {
+		return nil
+	}
+	first := strings.TrimPrefix(objectTypes[0], "ot-")
+	if first == "" {
+		return nil
+	}
+	out := []string{"ot-" + first}
+	if first == "template" && len(objectTypes) > 1 {
+		if second := strings.TrimPrefix(objectTypes[1], "ot-"); second != "" {
+			out = append(out, "ot-"+second)
+		}
+	}
+	return out
 }
 
 // hostileVocab deliberately breaks the KeyVocabulary contract the way a real
@@ -218,6 +299,28 @@ func (hostileVocab) PropertySlug(key string) string {
 	return BundledKeyVocabulary{}.PropertySlug(key)
 }
 
+// TypeSlug breaks the contract the same ways the property half does, plus
+// the two shapes only the type namespace has: a slug that collides with a
+// bundled TYPE key (the confirmed defect — `69bbfc…` spelled `task` read
+// back as the bundled Task type by a package-only reader), and answers that
+// move the reserved `template` spelling in either direction, which silently
+// drops a template's target type.
+func (hostileVocab) TypeSlug(key string) string {
+	switch key {
+	case "69bbfc78877a91b1d12d1a7c":
+		return "task"
+	case "longslugged":
+		return strings.Repeat("t", maxPropertyKeyLen+64)
+	case "blankslugged":
+		return ""
+	case "squatter":
+		return "template"
+	case "template":
+		return "tmpl"
+	}
+	return BundledKeyVocabulary{}.TypeSlug(key)
+}
+
 // I1: Marshal either fails loudly — §11 allows that for an over-deep tree or a
 // table inside a cell — or produces a document its own Validate accepts AND
 // its own Unmarshal imports. What it may never do is succeed and hand back an
@@ -237,15 +340,25 @@ func TestInvariant_MarshalOutputValidates(t *testing.T) {
 	for name, opts := range variants {
 		t.Run(name, func(t *testing.T) {
 			for n := 0; n < 300; n++ {
-				snap := hostileSnapshot(n)
-				data, err := Marshal(model.SmartBlockType_Page, snap, opts)
+				sbType, snap := hostileSnapshot(n)
+				o := opts
+				if sbType == model.SmartBlockType_STType {
+					o.ResolveProperties = hostileTypePropResolver{}
+				}
+				data, err := Marshal(sbType, snap, o)
 				if err != nil {
 					continue // a loud failure is allowed; silent invalidity is not
 				}
 				require.NoError(t, Validate(data), "seed %d produced:\n%s", n, data)
-				_, _, err = Unmarshal(data, Options{GenerateId: seqIds(fmt.Sprintf("g%d_", n))})
+				_, back, err := Unmarshal(data, Options{GenerateId: seqIds(fmt.Sprintf("g%d_", n))})
 				require.NoError(t, err,
 					"seed %d produced a valid document its own Unmarshal refuses:\n%s", n, data)
+				// the type slots must INVERT, not merely import: binding the
+				// spelling to a different stored type is exactly the silent
+				// failure the type_keys legend exists to close (§3), and no
+				// error marks it
+				assert.Equal(t, invertedTypes(snap.ObjectTypes), back.ObjectTypes,
+					"seed %d: the archive must bind back to the types it came from:\n%s", n, data)
 			}
 		})
 	}
@@ -356,6 +469,25 @@ var hostileDocs = []string{
 	// that widen resolution exercise the §3 seam through these
 	`{"version": 1, "properties": {"prio": "bare"}}`,
 	`{"version": 1, "properties": {"blank": "x"}}`,
+	// the TYPE namespace mirrors the legend rules (§3): a benign rebind and
+	// an identity entry flow through, a legend value obeys the writable-key
+	// rule, the template gate runs on the RESOLVED type key, and two
+	// spellings a wider vocabulary resolves further than the document's own
+	// chain (the type-axis i2Vocabularies entries widen through these)
+	`{"version": 1, "type": "task"}`,
+	`{"version": 1, "type": "tsk"}`,
+	`{"version": 1, "type": "blanktype"}`,
+	`{"version": 1, "type": "template", "template_for": "blanktype"}`,
+	`{"version": 1, "type_keys": {"task": "69bbfc78877a91b1d12d1a7c"}, "type": "task"}`,
+	`{"version": 1, "type_keys": {"object_type": "object_type"}, "type": "object_type"}`,
+	`{"version": 1, "type_keys": {"t": ""}}`,
+	`{"version": 1, "type_keys": {"t": "a\nb"}}`,
+	`{"version": 1, "type_keys": {"t": "` + strings.Repeat("k", 129) + `"}}`,
+	`{"version": 1, "type_keys": {"template": "custom1"}, "type": "template", "template_for": "page"}`,
+	`{"version": 1, "type_keys": {"tpl": "template"}, "type": "tpl", "template_for": "page"}`,
+	`{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
+		"type_keys": {"task": "69bbfc78877a91b1d12d1a7c"},
+		"type_properties": [{"key": "owner", "format": "objects", "object_types": ["task", "blanktype"]}]}`,
 }
 
 // i2Vocabularies is the Options axis I2 runs over. A vocabulary can resolve
@@ -381,6 +513,21 @@ var i2Vocabularies = map[string]struct {
 	// the two resolutions the seam exists to refuse
 	"resolves-denied":     {rebindingVocabulary{}, true},
 	"resolves-unwritable": {blankKeyVocab{}, true},
+	// the TYPE axis of the same matrix: a symmetric node-backed vocabulary,
+	// an asymmetric one whose accept side answers for a slug the emit side
+	// never writes, and the unwritable resolution the type seam refuses
+	"type-space":               {typedSpaceVocabulary{typeSlugOf: map[string]string{customTypeKey: "task2"}}, true},
+	"type-asymmetric":          {asymmetricTypeVocab{}, true},
+	"type-resolves-unwritable": {blankTypeVocab{}, true},
+}
+
+type asymmetricTypeVocab struct{ BundledKeyVocabulary }
+
+func (asymmetricTypeVocab) TypeKey(slug string) (string, bool) {
+	if slug == "tsk" {
+		return "69bbfc78877a91b1d12d1a7c", true
+	}
+	return BundledKeyVocabulary{}.TypeKey(slug)
 }
 
 type asymmetricVocab struct{ BundledKeyVocabulary }

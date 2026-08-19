@@ -4,6 +4,7 @@ package anyblockjson
 // from the four recommended-relation id lists on the snapshot's details.
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/gogo/protobuf/types"
@@ -160,8 +161,10 @@ func (e *exporter) buildTypeProperties() []any {
 			m.setNonEmpty("format", formatName(def.Format))
 			m.setNonEmpty("options", optionsToAny(def.Options))
 			// object_types is a TYPE key slot (§7.5a) — it names types, so it
-			// speaks the same vocabulary the envelope `type` does
-			m.setNonEmpty("object_types", stringsToAny(e.opts.typeSlugs(def.ObjectTypes)))
+			// speaks the same vocabulary the envelope `type` does, claims its
+			// spellings through the same term ledger, and owes the same
+			// type_keys legend (§3)
+			m.setNonEmpty("object_types", stringsToAny(e.typeSlugs(def.ObjectTypes)))
 			m.setNonEmpty("section", l.section)
 			out = append(out, m)
 		}
@@ -237,12 +240,20 @@ func BuildRecommendedLists(props []TypeProperty, opts Options) []RecommendedList
 		key := opts.propertyKey(tp.Key)
 		id := key
 		if opts.ResolveProperties != nil {
+			// objectTypes is a TYPE key slot, inverted entry by entry through
+			// the caller's vocabulary — Options.typeKey for the same reason
+			// as Options.propertyKey above: there is no document here, so
+			// there is no type_keys legend to consult
+			var targets []string
+			for _, slug := range tp.ObjectTypes {
+				targets = append(targets, opts.typeKey(slug))
+			}
 			def := PropertyDefinition{
 				Key:         domain.RelationKey(key),
 				Name:        tp.Name,
 				Format:      formatNames.value(tp.Format),
 				Options:     tp.Options,
-				ObjectTypes: opts.typeKeys(tp.ObjectTypes),
+				ObjectTypes: targets,
 			}
 			if resolved, ok := opts.ResolveProperties.PropertyId(def); ok {
 				id = resolved
@@ -267,19 +278,33 @@ func BuildRecommendedLists(props []TypeProperty, opts Options) []RecommendedList
 // the key passes through in place of an id for the wiring to reconcile. The
 // field's presence (even as an empty array) is the trigger: absent means the
 // document does not carry the lists at all.
-func (imp *importer) applyTypeProperties(details *types.Struct) {
+func (imp *importer) applyTypeProperties(details *types.Struct) error {
 	if imp.doc.TypeProps == nil {
-		return
+		return nil
 	}
 	lists := map[string][]*types.Value{}
-	for _, tp := range *imp.doc.TypeProps {
+	for i, tp := range *imp.doc.TypeProps {
 		key := imp.propertyKey(tp.Key)
+		// object_types is a TYPE key slot (§2a): the document's own legend
+		// first, then the vocabulary — and the seam refuses a resolution
+		// onto the empty key, which has no written form (§3)
+		var targets []string
+		for j, slug := range tp.ObjectTypes {
+			resolved := imp.typeKey(slug)
+			if resolved == "" {
+				return &ValidationError{Issues: []Issue{{
+					Path:    fmt.Sprintf("/type_properties/%d/object_types/%d", i, j),
+					Message: unwritableKeyReason("resolved type key", resolved),
+				}}}
+			}
+			targets = append(targets, resolved)
+		}
 		def := PropertyDefinition{
 			Key:         domain.RelationKey(key),
 			Name:        tp.Name,
 			Format:      imp.declaredFormat(key, tp.Format),
 			Options:     tp.Options,
-			ObjectTypes: imp.opts.typeKeys(tp.ObjectTypes),
+			ObjectTypes: targets,
 		}
 		id := key
 		if imp.opts.ResolveProperties != nil {
@@ -302,4 +327,5 @@ func (imp *importer) applyTypeProperties(details *types.Struct) {
 			Kind: &types.Value_ListValue{ListValue: &types.ListValue{Values: vals}},
 		}
 	}
+	return nil
 }

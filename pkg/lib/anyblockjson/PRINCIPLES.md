@@ -193,10 +193,10 @@ reimport (§3).
 it came from.**
 
 Every compaction carries its own inverse in the document: `refs` for object
-ids, `property_keys` for a space's own property slugs (§3, §9a) — a slug
-that reads back as a *different* property in a reader that cannot ask the
-space is the defect a sweep saw as twelve objects whose dataview came back
-pointing at another property. The mechanism behind it was established after
+ids, `property_keys` and `type_keys` for a space's own property and type
+slugs (§3, §9a) — a slug that reads back as a *different* property or type
+in a reader that cannot ask the space is the defect a sweep saw as twelve
+objects whose dataview came back pointing at another property. The mechanism behind it was established after
 that sweep, and its guard is demonstrated by unit test, not by a
 re-measurement: those twelve have not been swept again since it landed. A
 type document carries its property definitions with their option

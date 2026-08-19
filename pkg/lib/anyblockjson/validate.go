@@ -615,8 +615,23 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 	// Go decode error carrying no JSON pointer — the divergence §12 rules out.
 	checkNumbers(doc, "", addIssue)
 
+	// The template gate runs on the STORED key the type spelling resolves to
+	// through the document's own chain — type_keys legend, bundled table,
+	// verbatim — not on the raw spelling: a legend may bind the spelling
+	// `template` to another key, or another spelling onto the template key,
+	// and the gate must agree with the importer's kind derivation (§12).
+	typeLegend, _ := doc["type_keys"].(map[string]any)
+	resolveDocTypeKey := func(term string) string {
+		if v, ok := typeLegend[term]; ok {
+			if key, isStr := v.(string); isStr && key != "" {
+				return key
+			}
+		}
+		key, _ := BundledKeyVocabulary{}.TypeKey(term)
+		return key
+	}
 	if _, ok := doc["template_for"]; ok {
-		if typ, _ := doc["type"].(string); typ != "template" {
+		if typ, _ := doc["type"].(string); resolveDocTypeKey(typ) != "template" {
 			addIssue("/template_for", `template_for is only valid on templates (type "template")`)
 		}
 	}
@@ -968,10 +983,10 @@ type keySlotReport struct {
 }
 
 // propertyNameIssues states, where the key is in hand, every rule the schema
-// carries as `propertyNames`: the `properties` map and the `property_keys`
-// legend take a writable property key (§3), the `refs` legend takes a label
-// (§9a). A legend VALUE rides along because it is a stored key under the same
-// rule and the schema's verdict on it names the bound, not the string.
+// carries as `propertyNames`: the `properties` map and the `property_keys` /
+// `type_keys` legends take a writable key (§3), the `refs` legend takes a
+// label (§9a). A legend VALUE rides along because it is a stored key under the
+// same rule and the schema's verdict on it names the bound, not the string.
 //
 // The rule stays in the published schema — an external validator runs that and
 // nothing else (§12) — and is restated here because `propertyNames` cannot
@@ -1010,9 +1025,10 @@ func propertyNameIssues(doc map[string]any) keySlotReport {
 			}
 		}
 	}
-	if legend, _ := doc["property_keys"].(map[string]any); legend != nil {
+	for _, field := range []string{"property_keys", "type_keys"} {
+		legend, _ := doc[field].(map[string]any)
 		for _, term := range sortedMapKeys(legend) {
-			path := "/property_keys/" + escapeJSONPointer(term)
+			path := "/" + field + "/" + escapeJSONPointer(term)
 			if !isWritablePropertyKey(term) {
 				rejectName(path, term, unwritableKeyReason("legend spelling", term))
 			}
