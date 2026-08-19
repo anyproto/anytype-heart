@@ -1,6 +1,38 @@
 # API v2 eval findings — go-7383-apiv2-phase0
 
-## Status: 223 → 9 failing subtests (four commits, 96% reduction)
+## Status: 223 → 0 failing subtests — closed (five commits)
+
+Round 4 (commit `db3e38124`) fixed the last piece: `pkg/lib/anyblockjson`'s
+`filterstring` package, the compact filter STRING compiler. It's a shared
+library outside `core/api/v2`, so this needed its own explicit go-ahead —
+given, and fixed.
+
+Same shape as everything before it, ten hardcoded call sites plus one JSON
+struct tag plus a value table, all confirmed against `anyblockjson`'s own
+canonical enums before touching anything:
+
+- the ten condition tokens (`notEqual`, `greaterOrEqual`, `lessOrEqual`,
+  `notContains`, `notIn`, `allIn`, `notAllIn`, `exactIn`, `notExactIn`,
+  `notEmpty`) → their snake_case forms
+- the emitted node's `date_preset` JSON tag (was `datePreset`)
+- the `datePresets` VALUE table (`daysAgo()` → `number_of_days_ago`,
+  `currentWeek()` → `current_week`, etc.) — the map KEYS (the compact
+  syntax's own function names the user types, e.g. `currentWeek()`)
+  correctly stay camelCase; that's a separate, intentional vocabulary,
+  confirmed against the served EBNF grammar, not part of this migration
+- the `multiSelect` format check inside `stringValue`
+- `schemas.go`'s structured `filters` kind: the `date_preset` field's
+  documented enum and worked example were teaching the same stale values
+- every consumer's own stale expectations: `filterstring`'s own test suite,
+  and `core/api/v2/service`'s `search_test.go` / `list_create_test.go` /
+  `viewops_test.go`, all of which hardcode either the compiler's output or
+  raw structured-filter JSON using the old spelling directly
+
+`go test ./core/api/v2/... ./pkg/lib/anyblockjson/...`: **all green.**
+`go build ./...`, `go vet`, and `gofmt` all clean. Five commits total on
+this branch, `223 → 0` failing subtests.
+
+## Status (round 3): 223 → 9 failing subtests
 
 Round 3 (commit `932f31318`) traced every failure that survived round 2
 instead of guessing, and found the same pattern three more times:
