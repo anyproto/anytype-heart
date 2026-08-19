@@ -368,10 +368,18 @@ func TestHiddenHoldersDoNotOwnSlugs(t *testing.T) {
 	t.Run("a bundled key is not taken by a custom relation slugging onto it", func(t *testing.T) {
 		// the space holds only the custom relation, so its slug index is the
 		// only index with an answer for `priority`. The bundled key must still
-		// win: it is an address every reader knows. (This documents the rule;
-		// it does NOT reproduce the 12 re-pointed objects a 36 808-object
-		// sweep found, whose mechanism is still unexplained — see
-		// PREFREEZE_REVIEW §5.)
+		// win: it is an address every reader knows.
+		//
+		// This is the accept side of the mechanism behind the 12 re-pointed
+		// objects a 36 808-object sweep found (PREFREEZE_REVIEW §5), and that
+		// mechanism is no longer unexplained: `keyMaps.roundTrips` refuses to
+		// SPELL a holder with a slug the bundled table resolves elsewhere,
+		// while `keyMaps.key` had no such guard and bound the spelling to that
+		// holder — so a document naming the bundled key landed on whichever
+		// custom relation had claimed it as its api key. The guard was added
+		// to `key()`, and this fixture is its demonstration. That is a
+		// unit-level demonstration, not a re-measurement: those 12 objects
+		// have not been swept again since the guard landed.
 		r := vocabFixture(t, relationRow("rel-custom", bsonPropKey, "priority"))
 
 		key, ok := r.PropertyKey("priority")

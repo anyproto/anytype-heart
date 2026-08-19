@@ -16,6 +16,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -392,16 +394,33 @@ func TestValidate_ImportRefusesWhatExportStrips(t *testing.T) {
 	}
 }
 
-// The named resolution vectors are not bundled relations, so they are not in
-// that list, and they are the ones that matter most: existingobject.go resolves
-// which object in the victim's space a snapshot merges into from oldAnytypeID,
-// uniqueKey and sourceFilePath.
+// The named resolution vectors matter most: existingobject.go resolves which
+// object in the victim's space a snapshot merges into from oldAnytypeID,
+// uniqueKey and sourceFilePath. All three ARE bundled relations — what makes
+// two of them need naming by hand is that bundle.LocalAndDerivedRelationKeys,
+// the list the deny-rule derives from, does not carry them.
 func TestValidate_ResolutionVectorPropertiesRefused(t *testing.T) {
 	for _, key := range []string{"oldAnytypeID", "uniqueKey", "sourceFilePath"} {
 		doc := fmt.Sprintf(`{"version": 1, "id": "obj1", "properties": {%q: "x"}}`, key)
 		err := Validate([]byte(doc))
 		require.Error(t, err, key)
 		assert.Contains(t, err.Error(), "/properties/"+key)
+	}
+
+	// the comment above, pinned — the claim that these are not bundled
+	// relations survived in three places, and neverWritableProperties exists
+	// only because of the second half of it
+	onList := map[string]bool{}
+	for _, k := range bundle.LocalAndDerivedRelationKeys {
+		onList[string(k)] = true
+	}
+	for key, wantOnList := range map[string]bool{
+		"oldAnytypeID": false, "sourceFilePath": false, "uniqueKey": true,
+	} {
+		assert.True(t, bundle.HasRelation(domain.RelationKey(key)),
+			"%s is a bundled relation", key)
+		assert.Equal(t, wantOnList, onList[key],
+			"%s in bundle.LocalAndDerivedRelationKeys", key)
 	}
 }
 

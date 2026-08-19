@@ -62,7 +62,8 @@ from the document alone (§3). Without it, a slug derived from a space's stored
 key reads back as a *different* relation in any reader that cannot ask that
 space: a 36 808-object sweep found 12 objects re-pointed exactly that way, and
 the reader-side half of the same defect — the accept side bound a spelling the
-emit side refuses to write — is fixed with it.
+emit side refuses to write — is fixed with it. That fix is demonstrated by
+unit test; those 12 objects have not been swept again since it landed.
 
 Changes in v0.8: **the format's own vocabulary is `snake_case`** — 100
 identifiers, every block type, field name, enum value and inline tag attribute
@@ -692,11 +693,14 @@ list above is the only list — the reader derives its deny-list from it rather
 than restating it, because a restated list drifts, and the drift ran one way:
 import used to accept every key an author supplied, so `isArchived`,
 `isDeleted`, `spaceId`, `restrictions` and `uniqueKey` all landed on details
-while export removed them. Setting one is an error naming the key. Two keys
-that are not properties at all are refused with them, because they are how
-the importer decides which *existing* object a document merges into
+while export removed them. Setting one is an error naming the key. Two more keys
+are refused with them, because they are how the importer decides which
+*existing* object a document merges into
 (`core/block/import/common/objectid/existingobject.go`): `oldAnytypeID` and
-`sourceFilePath`, alongside `uniqueKey` from the list. Export strips those
+`sourceFilePath`, alongside `uniqueKey` from the list. Those two are bundled
+relations like any other — each has an api slug — but they are absent from
+`bundle.LocalAndDerivedRelationKeys`, which is the list the deny-rule derives
+from, so they have to be named by hand. Export strips those
 three too, so the symmetry holds in both directions. `id` and `type` are
 refused by name as well — they are the envelope's (§2), and dropping them in
 silence left an author with no explanation for why the id they wrote had no
