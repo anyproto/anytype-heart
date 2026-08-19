@@ -327,3 +327,91 @@ func TestUnmarshalFilters_CountingPresetOnlyOnADateProperty(t *testing.T) {
 		assert.Contains(t, err.Error(), "needs a day count")
 	})
 }
+
+// A preset under a condition that does not apply is inert: transformDateFilter
+// substitutes the range for six conditions and returns every other filter
+// unchanged, so the view matches on the condition alone and the preset is UI
+// state. That is worth saying — the author wrote "the last week" and got
+// something else — but it is a WARNING, because export has to stay lossless:
+// stored filters carry these pairs, and refusing them would make an
+// unexportable object out of every one that has one (§11, I1).
+func TestValidate_InertPresetWarns(t *testing.T) {
+	for _, cond := range []string{"not_equal", "not_in", "empty", "not_empty", "exists", "contains"} {
+		t.Run(cond, func(t *testing.T) {
+			doc := dateFilterDoc(
+				`{"property": "verifiedUntil", "condition": "` + cond + `", "date_preset": "current_week"}`)
+			w := warningsFor(t, doc) // warningsFor requires Validate to pass
+			require.Len(t, w, 1)
+			assert.Equal(t, "/blocks/0/views/0/filters/0", w[0].Path)
+			assert.Contains(t, w[0].Message, `date_preset "current_week" is ignored`)
+			assert.Contains(t, w[0].Message, cond)
+			assert.Contains(t, w[0].Message, "greater_or_equal", "the message names the conditions that do apply")
+		})
+	}
+
+	t.Run("a leaf with no condition", func(t *testing.T) {
+		// an absent condition is proto None, which substitutes nothing either
+		w := warningsFor(t, dateFilterDoc(`{"property": "verifiedUntil", "date_preset": "today"}`))
+		require.Len(t, w, 1)
+		assert.Contains(t, w[0].Message, "a leaf with no condition")
+	})
+
+	t.Run("the six that apply say nothing", func(t *testing.T) {
+		for _, cond := range []string{"equal", "in", "greater", "greater_or_equal"} {
+			assert.Empty(t, warningsFor(t, dateFilterDoc(
+				`{"property": "verifiedUntil", "condition": "`+cond+`", "date_preset": "current_week"}`)), cond)
+		}
+		// less and less_or_equal apply too; their one warning is the
+		// unguarded-comparison trap, not this rule
+		for _, cond := range []string{"less", "less_or_equal"} {
+			w := warningsFor(t, dateFilterDoc(
+				`{"property": "verifiedUntil", "condition": "`+cond+`", "date_preset": "current_week"}`))
+			require.Len(t, w, 1, cond)
+			assert.NotContains(t, w[0].Message, "is ignored", cond)
+		}
+	})
+
+	t.Run("the document still imports, preset and all", func(t *testing.T) {
+		doc := dateFilterDoc(`{"property": "verifiedUntil", "condition": "empty", "date_preset": "current_week"}`)
+		_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
+		require.NoError(t, err)
+		var got *model.BlockContentDataviewFilter
+		for _, b := range snap.Blocks {
+			if dv := b.GetDataview(); dv != nil && len(dv.Views) > 0 && len(dv.Views[0].Filters) > 0 {
+				got = dv.Views[0].Filters[0]
+			}
+		}
+		require.NotNil(t, got)
+		assert.Equal(t, model.BlockContentDataviewFilter_CurrentWeek, got.QuickOption,
+			"a warning must not cost the document the field it warned about")
+	})
+}
+
+// I1 for the same pairing, from the export side: Marshal writes a preset
+// beside a presence-only condition because the stored filter has one, so the
+// verdict on its own output may be a warning and may never be a refusal.
+func TestExport_InertPresetWarnsButNeverRejects(t *testing.T) {
+	for _, cond := range []model.BlockContentDataviewFilterCondition{
+		model.BlockContentDataviewFilter_Empty,
+		model.BlockContentDataviewFilter_NotEmpty,
+		model.BlockContentDataviewFilter_Exists,
+		model.BlockContentDataviewFilter_NotEqual,
+	} {
+		snapshot := dataviewSnapshot()
+		snapshot.Blocks[1].GetDataview().Views[0].Filters = []*model.BlockContentDataviewFilter{{
+			RelationKey: "due",
+			Condition:   cond,
+			QuickOption: model.BlockContentDataviewFilter_CurrentWeek,
+			Format:      model.RelationFormat_date,
+		}}
+		data, err := Marshal(model.SmartBlockType_Page, snapshot, testOptions())
+		require.NoError(t, err)
+		require.Contains(t, string(data), `"date_preset": "current_week"`, "export keeps the preset")
+
+		var warnings []Issue
+		require.NoError(t, ValidateWarn(data, func(i Issue) { warnings = append(warnings, i) }),
+			"Marshal must not emit what Validate rejects (%v):\n%s", cond, data)
+		require.Len(t, warnings, 1, "%v: %v", cond, warnings)
+		assert.Contains(t, warnings[0].Message, "is ignored")
+	}
+}

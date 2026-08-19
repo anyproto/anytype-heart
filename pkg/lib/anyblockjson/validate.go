@@ -1501,7 +1501,29 @@ func checkDateFilters(view map[string]any, formats map[string]string, isDate fun
 				leafCond, _ := n["condition"].(string)
 				_, applies := datePresetConditions[leafCond]
 				prop, _ := n["property"].(string)
-				if counts && applies && isDate(prop) {
+				switch {
+				case !applies:
+					// the condition in front of us settles it: this preset
+					// decides nothing, and a view written as "edited in the
+					// last week" matches on the condition alone. A WARNING
+					// and not an error, because export must stay lossless —
+					// stored filters carry these pairs, the app keeps them as
+					// UI state, and refusing them would make one unexportable
+					// object out of every one that has one (§11, I1).
+					//
+					// The format half of the same gate stays silent on
+					// purpose: on the document path a filter's format usually
+					// comes from outside the document, so "not a date" there
+					// is as often "not known here", and a warning that fires
+					// on a correct filter is what makes every warning cheaper
+					// to ignore (§12).
+					under := "a leaf with no condition"
+					if leafCond != "" {
+						under = fmt.Sprintf("condition %q", leafCond)
+					}
+					warnIssue(nPath, "date_preset %q is ignored under %s; a preset's range is applied on %s",
+						preset, under, strings.Join(sortedKeys(datePresetConditions), " · "))
+				case counts && isDate(prop):
 					if _, has := n["value"]; !has {
 						addIssue(nPath, "date_preset %q needs a day count in \"value\"; without one it means 0 days, i.e. today", preset)
 					}
