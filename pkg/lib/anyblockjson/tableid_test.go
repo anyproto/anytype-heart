@@ -8,6 +8,7 @@ package anyblockjson
 // the same rule, and Options.GenerateId belongs to the caller.
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -221,4 +222,61 @@ func TestImport_GeneratedIdAvoidsUnwrittenCellId(t *testing.T) {
 		ids[b.Id] = true
 	}
 	assert.False(t, ids["r1-c1"], "a generated id took the (r1,c1) cell id")
+}
+
+// Sanitizing is for ids that need it. A generated id that is already a legal
+// row/column id keeps its name — nothing renames it, and above all not the
+// disambiguation pass, which used to find the id taken by the generator's own
+// claim and hand back `<id>_2` for every row and column ever minted.
+func TestImport_GeneratedTableInnerIdsKeepTheirName(t *testing.T) {
+	doc := `{"version": 1, "blocks": [{"type": "table",
+		"columns": [{}, {}], "rows": [{"cells": ["a", "b"]}, {"cells": ["c", "d"]}]}]}`
+
+	t.Run("legal generated ids are untouched", func(t *testing.T) {
+		_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
+		require.NoError(t, err)
+		var inner []string
+		for _, b := range snap.Blocks {
+			switch b.Content.(type) {
+			case *model.BlockContentOfTableRow, *model.BlockContentOfTableColumn:
+				inner = append(inner, b.Id)
+			}
+		}
+		require.Len(t, inner, 4)
+		for _, id := range inner {
+			assert.Regexp(t, `^g\d+$`, id, "a generated id that needs no sanitizing keeps its name")
+		}
+	})
+
+	t.Run("the default generator's shape survives", func(t *testing.T) {
+		_, snap, err := Unmarshal([]byte(doc), Options{})
+		require.NoError(t, err)
+		for _, b := range snap.Blocks {
+			switch b.Content.(type) {
+			case *model.BlockContentOfTableRow, *model.BlockContentOfTableColumn:
+				assert.Regexp(t, `^[0-9a-f]{24}$`, b.Id, "24 hex chars, like every other minted id")
+			}
+		}
+	})
+
+	t.Run("a sanitized id takes the sanitized name, nothing more", func(t *testing.T) {
+		// a dashed generator (the convert wiring's shape): every id sanitizes
+		// to a name nothing else holds, so the suffix pass has no work to do
+		n := 0
+		_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: func() string {
+			n++
+			return fmt.Sprintf("x-%d", n)
+		}})
+		require.NoError(t, err)
+		seen := map[string]bool{}
+		for _, b := range snap.Blocks {
+			switch b.Content.(type) {
+			case *model.BlockContentOfTableRow, *model.BlockContentOfTableColumn:
+				assert.False(t, seen[b.Id], "duplicate table inner id %q", b.Id)
+				seen[b.Id] = true
+				assert.Regexp(t, `^x_\d+$`, b.Id, "sanitized, and not suffixed on top of it")
+			}
+		}
+		require.Len(t, seen, 4)
+	})
 }

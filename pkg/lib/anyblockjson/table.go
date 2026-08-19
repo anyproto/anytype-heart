@@ -412,9 +412,18 @@ func (imp *importer) claimTableInnerId(id string) string {
 // full of dashes. So sanitize rather than trust, and disambiguate on
 // collision instead of hoping the sanitized forms stay distinct.
 func (imp *importer) newTableInnerId() string {
-	// genId already claimed its answer; the sanitized form is a different
-	// string, so it has to be claimed on its own
-	return imp.claimId(uniqueLabel(sanitizeTableInnerId(imp.genId()), imp.idTaken))
+	id := imp.genId()
+	sanitized := sanitizeTableInnerId(id)
+	if sanitized == id {
+		// nothing to sanitize: genId's answer is already unique and claimed,
+		// and running it through the disambiguation pass would find it taken
+		// by its own claim and rename it to <id>_2 — which is what every
+		// generated row and column id used to be called
+		return id
+	}
+	// the sanitized form is a different string, so it has to be claimed on
+	// its own; the raw one stays claimed, which costs nothing
+	return imp.claimId(uniqueLabel(sanitized, imp.idTaken))
 }
 
 // maxTableInnerId mirrors the schema's tableInnerId length bound, so a

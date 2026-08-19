@@ -951,7 +951,10 @@ machinery:
   wrong column. `Options.GenerateId` belongs to the caller and need not
   respect that — the convert wiring derives ids from file paths — so import
   sanitizes generated ids into `[A-Za-z0-9_]{1,64}` and disambiguates
-  collisions rather than trusting the generator. Export sanitizes stored ids
+  collisions rather than trusting the generator. Both apply only where they
+  are needed: a generated id that already fits the charset and collides with
+  nothing keeps the name the generator gave it, as every other minted id does
+  (§9). Export sanitizes stored ids
   the same way, since data predating this rule contains dashes and `Marshal`
   must never emit a document its own `Validate` rejects.
 - **A table owns its whole grid of derived ids, written cells or not.** The
