@@ -1,7 +1,8 @@
 # Spec: chat message search scopes — cross-chat (space) and cross-space (vault)
 
-Status: proposed (resolves the open point in `SpecSearchLimits.md` §2: "an empty ChatId can
-legitimately mean 'all chats in the space' … decide with product").
+Status: implemented; revised after a 3-lens review round (2026-08-19, see "Review outcomes").
+Resolves the open point in `SpecSearchLimits.md` §2 ("an empty ChatId can legitimately mean 'all
+chats in the space' … decide with product").
 Issue: GO-7449.
 
 ## Product ask
@@ -75,7 +76,7 @@ Scope is whatever the caller narrows to; no new endpoint, no request proto chang
 
 | `spaceId` | `chatId` | scope                                   |
 |-----------|----------|-----------------------------------------|
-| set       | set      | one chat (behavior unchanged)           |
+| set       | set      | one chat (results identical; see "Single-chat deltas") |
 | set       | empty    | **all chats in the space** (new)        |
 | empty     | empty    | **all chats in all spaces** (new)       |
 | empty     | set      | one chat, FT unscoped by space (works today via the chatId clause; kept as-is, discouraged in the comment) |
@@ -154,26 +155,37 @@ Single code path for all scopes:
 
 1. **FT query** — unchanged call, now meaningful with empty ids:
    `s.ftSearch.SearchChat(req.SpaceId, req.ChatId, req.FullText, ftLimit)`; same
-   `ftLimit = max(offset+limit, 100)` budget (0 → default page).
-2. **Post-filter** — replace the equality filter with:
+   `ftLimit = max(offset+limit, 100)` budget (0 → default page), capped at 2000
+   (`ftCandidatesHardLimit` parity — the limit sizes tantivy's per-segment top-K heap).
+2. **Post-filter** —
    - `!path.HasMessage()` → drop (guards `m`-token false positives);
    - `req.ChatId != "" && path.ObjectId != req.ChatId` → drop (unchanged single-chat guarantee);
-   - multi-chat scopes only: `path.ObjectId` not in the registry snapshot → drop (stale FT docs
-     for deleted chats; also prevents `getOrInitRepository`'s CreateCollection side-effect).
-     Registry snapshot: copy `allChatObjectIds` (filtered by `req.SpaceId` when set) under
-     `s.lock` once per request.
-3. **Group** message ids by `path.ObjectId`, preserving FT (score) order within each group.
+   - multi-chat scopes only, at hydration time: `isLiveChat(spaceId, chatId)` — the chat must
+     exist in the per-space object index with layout `chatDerived` **or** `discussion` (object
+     chats' messages are FT-indexed too) and not be deleted. This drops stale FT docs of deleted
+     chats and prevents `getOrInitRepository`'s CreateCollection side-effect. The object index —
+     not the preview registry `allChatObjectIds` — is the gate: the registry covers only
+     `chatDerived`, fills asynchronously behind the cross-space subscription bootstrap (its
+     `s.lock` is held across the whole subscribe fan-out), and widening it would leak object
+     chats into previews/ReadAll.
+3. **Group** message ids by `path.ObjectId`, preserving FT (score) order within each group. The
+   chat's space comes from `req.SpaceId` when set, otherwise from the hit's stored `SpaceID`
+   field (`DocumentMatch.SpaceId`) — so attribution is correct in every scope, including the
+   discouraged `chatId`-set/`spaceId`-empty combo.
 4. **Hydrate** per chat via the tree-free path: `s.chatRepoService.Repository(spaceId, chatId)` →
-   `repo.GetMessagesByIds(ctx, ids)` (spaceId from the registry). Missing messages (FT lag after
-   delete/edit) are skipped, as today. **Unify the single-chat scope onto the same path** —
+   `repo.GetMessagesByIds(ctx, ids)`. Missing messages (FT lag after delete/edit) are skipped,
+   as today. In multi-chat scopes a failing chat (space mid-deletion, transiently unavailable
+   store) is logged and skipped — one chat must not abort the whole search; the single-chat
+   scope keeps the hard error since the caller named the chat. **Unify the single-chat scope
+   onto the same path** —
    replaces `chatObjectDo`+smartblock open; consistent with the GO-7340 decision that shipped
    `ChatGetMessagesByIds`/pinned reads tree-free, and single-chat search is issued from an open
    (warm) chat anyway. The cold-start staleness caveat (service.go:954) applies equally to the
    FT index itself (messages are FT-indexed *from* the materialized view,
    `core/indexer/fulltext.go:378-384`), so hydration cannot be meaningfully more stale than the
    hit list.
-5. **Attribute**: set `result.SpaceId` (registry value; `req.SpaceId` when set), keep `ChatId`
-   from the path.
+5. **Attribute**: set `result.SpaceId` (`req.SpaceId` when set, else the hit's stored space),
+   keep `ChatId` from the path.
 6. **Sort** with `getComparator`, two fixes:
    - empty `req.Sorts` → default to `[{SCORE, Desc}]` explicitly. Today the order survives only
      because hits arrive score-ordered and `slices.SortFunc` (unstable) happens not to shuffle
@@ -204,18 +216,29 @@ Sort-key semantics across chats (document in the proto comment):
 
 ## Edge cases
 
-- **Registry warm-up**: `allChatObjectIds` fills asynchronously in `Run` (after the cross-space
-  subscription responds, i.e. after stores load). A vault-wide search issued in the first
-  moments of startup may return fewer chats. Acceptable: search UIs appear later; the FT index
-  itself lags similarly. Do not fall back to the resolver for unknown ids (it would defeat the
-  deleted-chat filter and re-open the CreateCollection side-effect).
+- **Gate freshness**: the liveness gate reads the per-space object index directly
+  (`SpaceIndex(spaceId).GetDetails`), which is readable as soon as the space index opens — no
+  dependency on the cross-space subscription bootstrap, no shared lock with it, no startup
+  warm-up window beyond the FT index's own lag. A missing id returns empty details and fails
+  the layout check.
+- **Page shrink** (known limitation): post-filter drops (stale FT docs, `m` false positives)
+  happen after the `ftLimit` budget is applied, so a page can come back shorter than `limit`
+  even when more matches exist, and items falling between two pages' differently-filtered
+  candidate sets can be skipped. Same class as the cursor limitation above; the object-search
+  escalate-on-starvation loop (`SpecSearchLimits.md` §1) is the known fix if it bites.
 - **Deleted space / deleted chat**: FT docs are cleaned by object/space deletion paths; any
   residue is dropped by the registry filter.
 - **techspace / marketplace**: no message docs, nothing matches; no special-casing.
-- **Just-sent messages**: `ObjectSearch` flushes the FT queue via `indexer.ForceFTIndex()` when
-  `fullText != ""` (`core/object.go:93`); `ChatSearch` never has. Optional consistency
-  improvement for all scopes — include it, but as a separate commit so it can be reverted alone
-  if queue-flush cost shows up on mobile.
+- **Single-chat CreateCollection side-effect** (accepted): in the single-chat scope the
+  liveness gate is not applied, so an FT-residue chatId of a deleted chat makes the repository
+  accessor create an empty `{chatId}chats` collection — the same behavior `ChatGetMessagesByIds`
+  and pinned reads have today. Bounded: a caller cannot conjure arbitrary ids into hydration
+  (a chat with no FT message docs produces zero hits), so it is limited to residue of once-real
+  chats. Gate it too if that ever proves wrong.
+- **Just-sent messages**: `ObjectSearch` nudges the FT queue via `indexer.ForceFTIndex()` when
+  `fullText != ""` (`core/object.go:93`); `ChatSearch` now does the same. Best-effort only —
+  the nudge is non-blocking and rate-limited on the consumer side, so it shortens the lag for
+  upcoming searches rather than guaranteeing freshness of the current one.
 - **Empty `fullText`**: `prepareQuery` returns empty → nil results (unchanged). "Browse all
   messages" is not a search feature; `ChatGetMessages` covers per-chat browsing.
 
@@ -232,9 +255,41 @@ Sort-key semantics across chats (document in the proto comment):
   `ftsVer` bump → full reindex for every account (known peak-heap pain on mobile). Not worth it
   for a filter the `m` token already provides; revisit only if `m`-token false positives are
   ever observed in practice (the post-filter makes them a non-issue for correctness).
-- **Returning stored `fieldSpace` from tantivy for attribution** (extend `parseSearchResult`
-  includeFields): works (field is stored), but the registry is needed anyway for the
-  deleted-chat filter and already carries spaceId — one source of truth, zero FT changes.
+- **Registry (`allChatObjectIds`) as the liveness/attribution source** (the first
+  implementation): rejected in review — it covers only `chatDerived` (object chats' messages
+  are FT-indexed too), shares `s.lock` with the subscription bootstrap (a space-wide search
+  early in a session would block behind the whole cross-space subscribe fan-out), and lags
+  space-index openings. Replaced by the per-space object index gate + the hit's stored
+  `SpaceID` field for attribution.
+
+## Single-chat deltas (observable changes for existing callers)
+
+1. Nonexistent / never-loaded chat: was an object-load error, now empty results (API v2: `200
+   {results: []}` instead of `500`).
+2. Latency: the 30s smartblock-load wait is gone; searching a not-yet-loaded chat is fast, and
+   no longer warms the chat's smartblock as a side effect. No staleness delta: the old
+   `sb.GetMessagesByIds` was already a one-line delegate to the same repository, and the FT
+   index is built from that same view.
+3. Ordering: default `SCORE desc` + `(chatId, messageId)` tiebreak — deterministic where
+   equal-score order was previously arbitrary.
+4. `result.SpaceId` is now populated in every scope.
+
+## Review outcomes (2026-08-19, 3-lens review)
+
+- F1 (high): registry gate missed `discussion`-layout object chats → replaced registry with the
+  object-index liveness gate admitting both chat layouts; regression test added.
+- F2 (major): one failing chat aborted the whole multi-chat search → log-and-skip per chat in
+  multi-chat scopes; regression test added. Also closes the deleted-space resurrection window
+  (`GetCrdtDb` on a stale entry could recreate a deleted space's crdt.db).
+- F3 (major): `chatRegistrySnapshot` serialized search behind the `s.lock` startup hold →
+  gone with the registry.
+- SpaceId attribution in the `chatId`-set/`spaceId`-empty combo → fixed via the stored `SpaceID`
+  field.
+- `ftLimit` uncapped → capped at 2000 (`ftCandidatesHardLimit` parity).
+- Verified clean by the reviews: `m`-marker analyzer semantics (id tokenizer is hardcoded
+  English, independent of `FtsPrimaryLang`), score-neutrality (identical BM25 with either scope
+  clause), Chinese-query branch, highlights, proto wire compat (descriptors decoded), message-id
+  global uniqueness (change CIDs), hydration equivalence.
 
 ## Tests
 
@@ -248,8 +303,10 @@ FT layer (`pkg/lib/localstore/ftsearch`, real index via `newFixture`, `ftsearch_
 
 Service layer (`core/block/chats`, fixture `service_test.go:130`; `chatRepoServiceDummy` needs a
 per-chat repo map):
-- multi-chat grouping + `spaceId` attribution from the registry;
-- FT hit for a chatId absent from the registry is skipped (no repo call);
+- multi-chat grouping + `spaceId` attribution (request space / stored space field);
+- FT hit for a chatId the object index doesn't know as a live chat is skipped (no repo call);
+- discussion-layout (object chat) hits are included; non-chat layouts excluded;
+- a failing chat is skipped, the rest of the results survive;
 - default SCORE-desc ordering across chats when `sorts` is empty (hits hydrated grouped-by-chat
   must come back interleaved by score);
 - `CREATED_AT` sort across chats; offset/limit slicing; deterministic tiebreak on equal scores

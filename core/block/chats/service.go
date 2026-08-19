@@ -858,6 +858,11 @@ func (s *service) Search(ctx context.Context, req *pb.RpcChatSearchRequest) ([]*
 		if ftLimit < 100 {
 			ftLimit = 100
 		}
+		// same candidate ceiling as object search (ftCandidatesHardLimit):
+		// the limit sizes tantivy's per-segment top-K heap
+		if ftLimit > 2000 {
+			ftLimit = 2000
+		}
 	}
 	// the search is scoped to message docs so messages don't compete with the
 	// rest of the space for the candidate limit
@@ -866,18 +871,12 @@ func (s *service) Search(ctx context.Context, req *pb.RpcChatSearchRequest) ([]*
 		return nil, fmt.Errorf("search ft: %w", err)
 	}
 
-	// multi-chat scopes hydrate only chats known to the cross-space registry:
-	// stale FT docs of deleted chats are skipped and the repository accessor's
-	// create-collection side-effect is never triggered for them. The registry
-	// fills asynchronously on startup, matching the FT index's own lag.
-	var knownChats map[string]string
-	if req.ChatId == "" {
-		knownChats = s.chatRegistrySnapshot(req.SpaceId)
-	}
-
-	// group message ids per chat, preserving the FT (score) order within groups
+	// group message ids per chat, preserving the FT (score) order within groups.
+	// The chat's space comes from the request when given, otherwise from the
+	// hit's stored space field, so results are attributable in every scope.
 	var chatIds []string
 	messageIdsPerChat := make(map[string][]string)
+	chatSpaceIds := make(map[string]string)
 	ftResultsMap := make(map[string]*ftsearch.DocumentMatch, len(ftResults))
 	for _, result := range ftResults {
 		path, err := domain.NewFromPath(result.ID)
@@ -891,16 +890,17 @@ func (s *service) Search(ctx context.Context, req *pb.RpcChatSearchRequest) ([]*
 		if !path.HasMessage() {
 			continue
 		}
-		if req.ChatId != "" {
-			if path.ObjectId != req.ChatId {
-				continue
-			}
-		} else if _, ok := knownChats[path.ObjectId]; !ok {
+		if req.ChatId != "" && path.ObjectId != req.ChatId {
 			continue
 		}
 
 		if _, ok := messageIdsPerChat[path.ObjectId]; !ok {
 			chatIds = append(chatIds, path.ObjectId)
+			spaceId := req.SpaceId
+			if spaceId == "" {
+				spaceId = result.SpaceId
+			}
+			chatSpaceIds[path.ObjectId] = spaceId
 		}
 		messageIdsPerChat[path.ObjectId] = append(messageIdsPerChat[path.ObjectId], path.MessageId)
 		ftResultsMap[path.MessageId] = result
@@ -911,9 +911,14 @@ func (s *service) Search(ctx context.Context, req *pb.RpcChatSearchRequest) ([]*
 	// an integer and loses sub-integer differences
 	scores := make(map[string]float64, len(ftResultsMap))
 	for _, chatId := range chatIds {
-		spaceId := req.SpaceId
-		if req.ChatId == "" {
-			spaceId = knownChats[chatId]
+		spaceId := chatSpaceIds[chatId]
+		// multi-chat scopes hydrate only chats the object index knows as live:
+		// stale FT docs of deleted chats are skipped and the repository
+		// accessor's create-collection side-effect is never triggered for them.
+		// In the single-chat scope the caller named the chat, so it keeps the
+		// permissive behavior of GetMessagesByIds.
+		if req.ChatId == "" && !s.isLiveChat(spaceId, chatId) {
+			continue
 		}
 		// hydrate from the anystore-backed repository (see chatRepository for
 		// the consistency caveat): search must not pay the change-tree build
@@ -921,10 +926,20 @@ func (s *service) Search(ctx context.Context, req *pb.RpcChatSearchRequest) ([]*
 		// store no longer has are skipped.
 		repo, err := s.chatRepoService.Repository(spaceId, chatId)
 		if err != nil {
+			// a chat must not abort the whole multi-chat search: a space can
+			// be mid-deletion or its store transiently unavailable
+			if req.ChatId == "" {
+				log.Error("chat search: get repository", zap.String("chatId", chatId), zap.Error(err))
+				continue
+			}
 			return nil, fmt.Errorf("chat repository: %w", err)
 		}
 		messages, err := repo.GetMessagesByIds(ctx, messageIdsPerChat[chatId])
 		if err != nil {
+			if req.ChatId == "" {
+				log.Error("chat search: get messages", zap.String("chatId", chatId), zap.Error(err))
+				continue
+			}
 			return nil, fmt.Errorf("get messages: %w", err)
 		}
 
@@ -935,7 +950,7 @@ func (s *service) Search(ctx context.Context, req *pb.RpcChatSearchRequest) ([]*
 			}
 			ftResult, err := database.FTDocumentMatchToFulltextResult(docMatch)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("convert ft result: %w", err)
 			}
 
 			result := ftResult.MessageModel()
@@ -970,21 +985,25 @@ func (s *service) Search(ctx context.Context, req *pb.RpcChatSearchRequest) ([]*
 	return results, nil
 }
 
-// chatRegistrySnapshot copies the known chat objects (chatObjectId => spaceId),
-// optionally filtered by space. The registry is fed by the cross-space
-// subscription started in Run, so it also serves as an existence filter: a
-// chat present in the FT index but absent here is deleted or not loaded yet.
-func (s *service) chatRegistrySnapshot(spaceId string) map[string]string {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-	snapshot := make(map[string]string, len(s.allChatObjectIds))
-	for chatObjectId, chatSpaceId := range s.allChatObjectIds {
-		if spaceId != "" && chatSpaceId != spaceId {
-			continue
-		}
-		snapshot[chatObjectId] = chatSpaceId
+// isLiveChat reports whether chatObjectId is a live chat object in spaceId —
+// a space chat (chatDerived) or an object chat (discussion), both of which
+// have their messages fulltext-indexed. The per-space object index is the
+// source of truth: unlike the preview registry (allChatObjectIds, chatDerived
+// only, filled asynchronously by the cross-space subscription) it covers
+// object chats, needs no lock shared with the subscription bootstrap, and is
+// current the moment the space index is readable. Missing and deleted objects
+// fail the layout check (GetDetails returns empty details for unknown ids).
+func (s *service) isLiveChat(spaceId, chatObjectId string) bool {
+	details, err := s.objectStore.SpaceIndex(spaceId).GetDetails(chatObjectId)
+	if err != nil {
+		log.Warn("chat search: get chat details", zap.String("chatId", chatObjectId), zap.Error(err))
+		return false
 	}
-	return snapshot
+	if details.GetBool(bundle.RelationKeyIsDeleted) {
+		return false
+	}
+	layout := details.GetInt64(bundle.RelationKeyResolvedLayout)
+	return layout == int64(model.ObjectType_chatDerived) || layout == int64(model.ObjectType_discussion)
 }
 
 func getComparator(sorts []*model.SearchMessageSort, scores map[string]float64) func(result *model.SearchMessageResult, result2 *model.SearchMessageResult) int {

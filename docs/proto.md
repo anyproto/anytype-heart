@@ -11756,9 +11756,9 @@ Get marks list in the selected range in text block.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| spaceId | [string](#string) |  | empty spaceId means all spaces (chatId must also be empty then) |
-| chatId | [string](#string) |  | empty chatId means all chats in spaceId; results carry chatId/spaceId per message. Note: ORDER_ID sort is only meaningful within a single chat |
-| sorts | [model.Search.Message.Sort](#anytype-model-Search-Message-Sort) | repeated |  |
+| spaceId | [string](#string) |  | empty spaceId means all spaces (usually combined with empty chatId) |
+| chatId | [string](#string) |  | empty chatId means all chats in spaceId; results carry chatId/spaceId per message |
+| sorts | [model.Search.Message.Sort](#anytype-model-Search-Message-Sort) | repeated | Note: ORDER_ID sort is only meaningful within a single chat |
 | fullText | [string](#string) |  |  |
 | offset | [int32](#int32) |  |  |
 | limit | [int32](#int32) |  |  |

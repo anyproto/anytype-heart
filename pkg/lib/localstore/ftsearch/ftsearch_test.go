@@ -460,6 +460,14 @@ func TestSearchChatScopes(t *testing.T) {
 		results, err := fx.ft.SearchChat("", "", "needle", 0)
 		require.NoError(t, err)
 		assert.ElementsMatch(t, []string{"chat1/m/msg1", "chat2/m/msg3", "chat3/m/msg4"}, collectIds(results))
+		// hits carry their stored space for attribution
+		for _, r := range results {
+			want := "space1"
+			if r.ID == "chat3/m/msg4" {
+				want = "space2"
+			}
+			assert.Equal(t, want, r.SpaceId, r.ID)
+		}
 	})
 
 	t.Run("marker matches whole m path segments only, never letters inside ids", func(t *testing.T) {

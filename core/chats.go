@@ -342,8 +342,10 @@ func (mw *Middleware) ChatSearch(cctx context.Context, req *pb.RpcChatSearchRequ
 	chatService := mustService[chats.Service](mw)
 
 	if req.FullText != "" {
-		// nudge the FT queue (non-blocking, same as ObjectSearch) so recently
-		// sent messages have a chance to be indexed before the query runs
+		// best-effort nudge of the FT queue (non-blocking and rate-limited on
+		// the consumer side, same as ObjectSearch); it shortens the indexing
+		// lag for upcoming searches rather than guaranteeing freshness of this
+		// one
 		mustService[indexer.Indexer](mw).ForceFTIndex()
 	}
 

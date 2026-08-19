@@ -124,6 +124,7 @@ type Highlight struct {
 type DocumentMatch struct {
 	Score     float64
 	ID        string
+	SpaceId   string
 	Fragments map[string]*Highlight
 	Fields    map[string]any
 }
@@ -639,6 +640,7 @@ func (f *ftSearch) performSearch(spaceId, query string, limit int, withHighlight
 			return parseSearchResult(json, p)
 		},
 		fieldId,
+		fieldSpace,
 	)
 }
 
@@ -723,8 +725,11 @@ func parseSearchResult(json string, parser *fastjson.Parser) (*DocumentMatch, er
 	}
 
 	return &DocumentMatch{
-		Score:     value.GetFloat64(score),
-		ID:        string(value.GetStringBytes(fieldId)),
+		Score: value.GetFloat64(score),
+		ID:    string(value.GetStringBytes(fieldId)),
+		// the doc's stored space field: lets cross-space searches attribute
+		// hits without extra lookups
+		SpaceId:   string(value.GetStringBytes(fieldSpace)),
 		Fragments: fragments,
 	}, nil
 }
