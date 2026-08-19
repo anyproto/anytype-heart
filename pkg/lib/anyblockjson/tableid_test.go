@@ -132,3 +132,93 @@ func TestExport_DashedTableIdsAreNormalized(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, string(data), string(again), "export must be byte-stable (§11)")
 }
+
+// A cell's id is derived, so a table owns every rowId-colId of its grid
+// whether or not that cell is materialized (§4, §6.1): validation claims the
+// whole grid, and the editor materializes the missing cell at exactly that id
+// the first time it is filled. Export has to reserve the same ids, or a
+// perfectly legal snapshot — every block id unique — marshals into a document
+// Validate rejects.
+func TestExport_UnwrittenDerivedCellIdIsReserved(t *testing.T) {
+	snap := &model.SmartBlockSnapshotBase{
+		Blocks: []*model.Block{
+			{Id: "root", ChildrenIds: []string{"tbl", "r1-c1"},
+				Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}},
+			{Id: "tbl", ChildrenIds: []string{"cols", "rows"},
+				Content: &model.BlockContentOfTable{Table: &model.BlockContentTable{}}},
+			{Id: "cols", ChildrenIds: []string{"c1"},
+				Content: &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_TableColumns}}},
+			{Id: "rows", ChildrenIds: []string{"r1"},
+				Content: &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_TableRows}}},
+			{Id: "c1", Content: &model.BlockContentOfTableColumn{TableColumn: &model.BlockContentTableColumn{}}},
+			// the (r1,c1) cell is not materialized: the row has no children
+			{Id: "r1", Content: &model.BlockContentOfTableRow{TableRow: &model.BlockContentTableRow{}}},
+			textBlock("r1-c1", model.BlockContentText_Paragraph, "sibling"),
+		},
+		Details: fields(map[string]*types.Value{"id": str("root")}),
+	}
+	// the fixture is not a bad fixture: every stored id in it is unique
+	seen := map[string]bool{}
+	for _, b := range snap.Blocks {
+		require.False(t, seen[b.Id], "fixture id %q is not unique", b.Id)
+		seen[b.Id] = true
+	}
+
+	data, err := Marshal(model.SmartBlockType_Page, snap, testOptions())
+	require.NoError(t, err)
+	assert.NoError(t, Validate(data), "Marshal must not emit what Validate rejects")
+
+	// the table's ids are what the derived id is made of, so they stay; the
+	// plain block spelling a derived cell id is the one that yields (§4)
+	assert.Contains(t, string(data), `"id": "c1"`)
+	assert.Contains(t, string(data), `"id": "r1"`)
+	assert.Contains(t, string(data), `"id": "r1-c1_2"`)
+	assert.Contains(t, string(data), "sibling", "the block keeps its content")
+}
+
+// A cell rendered through the string shorthand never reaches blockToJSON,
+// which is where the emit-once mark is set (§11). Without the mark, a block
+// that is both a cell and a child somewhere else is written twice — once as
+// the cell's text and once as a block carrying the derived cell id, which is a
+// duplicate id in the output.
+func TestExport_StringShorthandCellIsEmittedOnce(t *testing.T) {
+	snap := &model.SmartBlockSnapshotBase{
+		Blocks: []*model.Block{
+			{Id: "root", ChildrenIds: []string{"tbl", "r1-c1"},
+				Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}},
+			{Id: "tbl", ChildrenIds: []string{"cols", "rows"},
+				Content: &model.BlockContentOfTable{Table: &model.BlockContentTable{}}},
+			{Id: "cols", ChildrenIds: []string{"c1"},
+				Content: &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_TableColumns}}},
+			{Id: "rows", ChildrenIds: []string{"r1"},
+				Content: &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_TableRows}}},
+			{Id: "c1", Content: &model.BlockContentOfTableColumn{TableColumn: &model.BlockContentTableColumn{}}},
+			{Id: "r1", ChildrenIds: []string{"r1-c1"},
+				Content: &model.BlockContentOfTableRow{TableRow: &model.BlockContentTableRow{}}},
+			// one block, two parents: the row's cell and a top-level child
+			textBlock("r1-c1", model.BlockContentText_Paragraph, "shared"),
+		},
+		Details: fields(map[string]*types.Value{"id": str("root")}),
+	}
+	data, err := Marshal(model.SmartBlockType_Page, snap, testOptions())
+	require.NoError(t, err)
+	assert.NoError(t, Validate(data), "Marshal must not emit what Validate rejects")
+	assert.Equal(t, 1, strings.Count(string(data), "shared"), "the block is emitted once:\n%s", data)
+}
+
+// The mirror of the export rule on the import side: a generated id may not
+// land on a cell id the document's table already implies, materialized or not.
+func TestImport_GeneratedIdAvoidsUnwrittenCellId(t *testing.T) {
+	doc := `{"version": 1, "id": "p1", "blocks": [
+		{"type": "table", "id": "tbl", "columns": [{"id": "c1"}], "rows": [{"id": "r1"}]},
+		{"type": "paragraph", "text": "x"}]}`
+	_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: func() string { return "r1-c1" }})
+	require.NoError(t, err)
+
+	ids := map[string]bool{}
+	for _, b := range snap.Blocks {
+		assert.False(t, ids[b.Id], "duplicate block id %q", b.Id)
+		ids[b.Id] = true
+	}
+	assert.False(t, ids["r1-c1"], "a generated id took the (r1,c1) cell id")
+}

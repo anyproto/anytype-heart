@@ -36,11 +36,13 @@ import (
 // hostileIds are the id shapes that broke the id domain, plus the ones that
 // make two surfaces compete: `a.b` and `dir/file` miss the schema's charset,
 // `c-1` sanitizes onto `c_1`, `block_12345` suffixes onto `12345` under
-// CompactIds, `r1-c1` is what a table derives for its own cell, `dataview` is
+// CompactIds, `r1-c1` is what a table derives for its own cell, `c_1-c1` is
+// what one derives after a dashed row id has been sanitized, `dataview` is
 // the id the importer pins, and the long one exceeds the 64-character bound.
 var hostileIds = []string{
 	"", "a.b", "a-b", "a_b", "dir/file", "блок", "c-1", "c_1", "c1", "r1",
-	"r1-c1", "r1-c2", "12345", "block_12345", "dataview", "-", "_",
+	"r1-c1", "r1-c2", "c_1-c1", "c_1-c_1", "r1-c_1", "12345", "block_12345",
+	"dataview", "-", "_",
 	strings.Repeat("x", 70), "R1-C1", "a b", "id\n2", "obj1",
 }
 
@@ -83,6 +85,7 @@ func hostileSnapshot(n int) *model.SmartBlockSnapshotBase {
 			blocks = append(blocks, &model.Block{Id: id,
 				Content: &model.BlockContentOfTableColumn{TableColumn: &model.BlockContentTableColumn{}}})
 		}
+		var unwritten []string
 		for _, rowId := range rowIds {
 			rows.ChildrenIds = append(rows.ChildrenIds, rowId)
 			row := &model.Block{Id: rowId,
@@ -90,11 +93,27 @@ func hostileSnapshot(n int) *model.SmartBlockSnapshotBase {
 			blocks = append(blocks, row)
 			for _, colId := range colIds {
 				cellId := rowId + "-" + colId
+				// a grid cell nobody has filled: no block exists for it, but
+				// the id is the table's all the same (§6.1) — the editor
+				// materializes the cell at exactly that id the first time it
+				// is filled, and validation claims the whole grid
+				if rnd.Intn(3) == 0 {
+					unwritten = append(unwritten, cellId)
+					continue
+				}
 				row.ChildrenIds = append(row.ChildrenIds, cellId)
 				blocks = append(blocks, &model.Block{Id: cellId,
 					Content: &model.BlockContentOfText{
 						Text: &model.BlockContentText{Text: "cell " + cellId}}})
 			}
+		}
+		// a plain block sitting on a derived cell id. While every cell was
+		// materialized the id was reserved by the cell block itself, so this
+		// slot — the one collision the emit side never made — had no coverage.
+		if len(unwritten) > 0 {
+			add(&model.Block{Id: unwritten[rnd.Intn(len(unwritten))],
+				Content: &model.BlockContentOfText{
+					Text: &model.BlockContentText{Text: "sits on a cell id"}}})
 		}
 	}
 	if rnd.Intn(3) == 0 {

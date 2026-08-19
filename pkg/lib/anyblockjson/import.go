@@ -144,11 +144,18 @@ func (imp *importer) claimAuthoredIds() {
 			}
 			for _, row := range jb.Rows {
 				imp.claimId(row.Id)
-				for i, cell := range row.Cells {
-					// a cell's id is derived (§6.1) but it is still a block id
-					if row.Id != "" && i < len(jb.Columns) && jb.Columns[i].Id != "" {
-						imp.claimId(row.Id + "-" + jb.Columns[i].Id)
+				// a cell's id is derived (§6.1) but it is still a block id,
+				// and the table owns the whole grid whether or not the cell is
+				// written: the editor materializes the missing cell at exactly
+				// that id the first time it is filled, so a generated id may
+				// not be sitting on it. This is the same claim validation
+				// makes (§4).
+				for _, col := range jb.Columns {
+					if row.Id != "" && col.Id != "" {
+						imp.claimId(row.Id + "-" + col.Id)
 					}
+				}
+				for _, cell := range row.Cells {
 					if cell.Block != nil {
 						walk([]*jsonBlock{cell.Block})
 					}

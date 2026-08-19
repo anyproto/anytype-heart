@@ -742,7 +742,7 @@ fails schema validation). Every block is an object:
 |---|---|---|---|
 | `indent` | integer ≥ 0 | no | Nesting depth. Absent = `0` (top level); canonical form omits `indent: 0`. Values above **32** fail validation (adversarial-input bound; real documents reach ~6). See the nesting rules below. |
 | `type` | string | **yes** | Discriminator; full inventory in §5. Unrecognized values fail schema validation (see §10 for forward compatibility). |
-| `id` | string | no | `[A-Za-z0-9_-]{1,64}`. Uniqueness is enforced over the whole document, including derived table cell ids `<rowId>-<colId>` (§6.1) — a non-table block id that collides with a derived cell id is a validation error. Dataview **view** ids are the one exception: they are unique **within their dataview block**, not document-wide (§6.2). Export writes ids by default — the `OmitIds` option drops them (§9); import generates missing ids with the editor's standard id generator. |
+| `id` | string | no | `[A-Za-z0-9_-]{1,64}`. Uniqueness is enforced over the whole document, including derived table cell ids `<rowId>-<colId>` — the whole grid, written cells and unwritten ones alike (§6.1) — so a non-table block id that collides with a derived cell id is a validation error. Dataview **view** ids are the one exception: they are unique **within their dataview block**, not document-wide (§6.2). Export writes ids by default — the `OmitIds` option drops them (§9); import generates missing ids with the editor's standard id generator. |
 | `align` | `left · center · right · justify` | no | Omit when default (`left`). |
 | `vertical_align` | `top · middle · bottom` | no | Omit when default (`top`). |
 | `background_color` | string | no | Anytype color name. Omit when empty. |
@@ -945,6 +945,18 @@ machinery:
   collisions rather than trusting the generator. Export sanitizes stored ids
   the same way, since data predating this rule contains dashes and `Marshal`
   must never emit a document its own `Validate` rejects.
+- **A table owns its whole grid of derived ids, written cells or not.** The
+  id `<rowId>-<colId>` belongs to the table for every row×column pair,
+  because the editor materializes a missing cell at exactly that id the
+  first time it is filled — an unwritten cell's id is reserved, not free.
+  All three surfaces claim the same set: validation over the grid, export
+  before it labels any other block, import before it generates any id.
+  **The plain block is the side that yields.** A derived id has no spelling
+  of its own — it is whatever the row and column ids make it — so a block
+  whose stored id collides with one is written under a disambiguated label
+  (`r1-c1` → `r1-c1_2`) while the row and column keep theirs. The reverse
+  would rename two authored ids to move one grid, and move every other
+  derived id in the table with it.
 - Header rows must come first (editor invariant); import reorders
   (normalizes) rather than rejects, same as the editor does.
 - Export normalizes before flattening, mirroring the editor's own table

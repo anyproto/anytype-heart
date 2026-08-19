@@ -201,25 +201,146 @@ func (e *exporter) buildPropertyKeys() *omap {
 // sanitizing starts. Without it the first block to need sanitizing could take
 // the name of a block that was going to be written verbatim — renaming a
 // perfectly good authored id, or duplicating it.
+//
+// The order below is what makes export's reservations the same id domain
+// validation checks (§4). Rows and columns come first, because the derived
+// cell ids are built from their labels; then the grid those imply — every
+// rowId-colId pair, written or not, since the table owns the id either way and
+// the editor materializes the cell at exactly that id the first time it is
+// filled (§6.1); then everything else, which yields to the grid, because "a
+// non-table block id that collides with a derived cell id is a validation
+// error" (§4) and the derived id is the one that cannot move.
 func (e *exporter) seedIdLabels() {
 	e.idLabels = map[string]string{}
 	e.idsUsed = map[string]struct{}{}
-	for id, b := range e.blocks {
-		// map order is irrelevant here: every id seeded is written as-is, so
-		// no two of them compete for the same label
-		want := e.localId(id)
-		if e.isTableInner(b) {
-			if isValidTableInnerId(want) {
-				e.idLabels[id] = want
-				e.idsUsed[want] = struct{}{}
-			}
+	if e.snapshot == nil {
+		return
+	}
+
+	// snapshot order, not map order: the reservations are order-dependent now,
+	// so ranging over the id-keyed map would make the output nondeterministic.
+	// wanted collects the label every block would take verbatim; it is an
+	// avoid-set rather than a reservation, because sanitizing a row id must
+	// not take the name of a block written as-is, and that block cannot be
+	// reserved before the grid it may collide with.
+	var order []*model.Block
+	seen := map[string]bool{}
+	wanted := map[string]struct{}{}
+	for _, b := range e.snapshot.Blocks {
+		if b == nil || b.Id == "" || seen[b.Id] {
 			continue
 		}
-		if isValidRefsKey(want) { // the blockId charset: [A-Za-z0-9_-]{1,64}
-			e.idLabels[id] = want
+		seen[b.Id] = true
+		order = append(order, e.blocks[b.Id]) // the indexed block wins, as everywhere else
+		wanted[e.localId(b.Id)] = struct{}{}
+	}
+
+	for _, b := range order {
+		if !e.isTableInner(b) {
+			continue
+		}
+		if want := e.localId(b.Id); isValidTableInnerId(want) {
+			e.idLabels[b.Id] = want
 			e.idsUsed[want] = struct{}{}
 		}
 	}
+	for _, b := range order {
+		if !e.isTableInner(b) {
+			continue
+		}
+		if _, done := e.idLabels[b.Id]; done {
+			continue
+		}
+		e.idLabels[b.Id] = e.reserveLabel(sanitizeTableInnerId(e.localId(b.Id)), wanted)
+	}
+	for _, id := range e.derivedCellIds() {
+		e.idsUsed[id] = struct{}{}
+	}
+	for _, b := range order {
+		if e.isTableInner(b) {
+			continue
+		}
+		want := e.localId(b.Id)
+		if !isValidRefsKey(want) { // the blockId charset: [A-Za-z0-9_-]{1,64}
+			continue
+		}
+		if _, taken := e.idsUsed[want]; taken {
+			continue // a derived cell id holds the name; idLabel disambiguates
+		}
+		e.idLabels[b.Id] = want
+		e.idsUsed[want] = struct{}{}
+	}
+}
+
+// reserveLabel takes base, or the first _n form of it that no id has taken and
+// no id is going to take verbatim.
+func (e *exporter) reserveLabel(base string, wanted map[string]struct{}) string {
+	label := base
+	for n := 2; ; n++ {
+		_, used := e.idsUsed[label]
+		_, want := wanted[label]
+		if !used && !want {
+			e.idsUsed[label] = struct{}{}
+			return label
+		}
+		suffix := "_" + strconv.Itoa(n)
+		trimmed := base
+		if len(trimmed)+len(suffix) > maxIdLen {
+			trimmed = trimmed[:maxIdLen-len(suffix)]
+		}
+		label = trimmed + suffix
+	}
+}
+
+// derivedCellIds lists the cell id every table in the snapshot implies:
+// rowLabel + "-" + colLabel for the whole grid, materialized or not (§6.1).
+// It runs after every row and column has its label, and mirrors the structure
+// tableToJSON reads — wrappers by layout style, children by content type — so
+// that the ids reserved are the ones the exported tables actually derive.
+func (e *exporter) derivedCellIds() []string {
+	var out []string
+	for _, b := range e.snapshot.Blocks {
+		if b == nil || b.Id == "" || e.blocks[b.Id] != b {
+			continue
+		}
+		if _, isTable := b.Content.(*model.BlockContentOfTable); !isTable {
+			continue
+		}
+		var cols, rows []string
+		for _, id := range b.ChildrenIds {
+			wrapper := e.blocks[id]
+			l, ok := wrapper.GetContent().(*model.BlockContentOfLayout)
+			if !ok {
+				continue
+			}
+			for _, innerId := range wrapper.ChildrenIds {
+				inner := e.blocks[innerId]
+				if inner == nil {
+					continue
+				}
+				label := e.idLabels[innerId]
+				if label == "" {
+					continue
+				}
+				switch l.Layout.GetStyle() {
+				case model.BlockContentLayout_TableColumns:
+					if _, ok := inner.Content.(*model.BlockContentOfTableColumn); ok {
+						cols = append(cols, label)
+					}
+				case model.BlockContentLayout_TableRows:
+					if _, ok := inner.Content.(*model.BlockContentOfTableRow); ok {
+						rows = append(rows, label)
+					}
+				}
+			}
+		}
+		for _, row := range rows {
+			for _, col := range cols {
+				out = append(out, row+"-"+col)
+			}
+		}
+	}
+	return out
 }
 
 func (e *exporter) isTableInner(b *model.Block) bool {

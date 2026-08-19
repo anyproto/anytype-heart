@@ -149,6 +149,12 @@ func (e *exporter) cellToJSON(cell *model.Block) (any, error) {
 			cell.BackgroundColor == "" &&
 			(cell.Fields == nil || len(cell.Fields.Fields) == 0) &&
 			len(cell.ChildrenIds) == 0 {
+			// the shorthand renders the block without going through
+			// blockToJSON, which is where the emit-once mark is set (§11).
+			// Unmarked, a block that is both this cell and a child elsewhere
+			// is written twice — the second time with its id, which is the
+			// derived cell id this row already claims.
+			e.visited[cell.Id] = true
 			md := renderInline(t.Text, e.compactMarks(t.Marks.GetMarks()))
 			if md == "" {
 				return nil, nil // empty paragraph collapses to an empty cell (§11)
