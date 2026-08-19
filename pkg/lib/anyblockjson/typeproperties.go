@@ -163,7 +163,7 @@ func (e *exporter) buildTypeProperties() []any {
 			// the stored key when the key is unwritable, so no legend can
 			// rescue it: drop the entry and say so, as /properties does for
 			// the same key.
-			if !isWritablePropertyKey(string(def.Key)) {
+			if !writableTypePropertyKey(def) {
 				e.warn(fmt.Sprintf("/type_properties/%d", len(out)),
 					"property %q is dropped: %s", def.Key,
 					unwritableKeyReason("property key", string(def.Key)))
@@ -184,6 +184,14 @@ func (e *exporter) buildTypeProperties() []any {
 		}
 	}
 	return out
+}
+
+// writableTypePropertyKey reports whether buildTypeProperties will emit this
+// resolved definition — the question the type-key census (seedTypeTermLedger)
+// has to ask too, or it reserves the target types of an entry no slot writes
+// and export stops being a fixpoint (see modelledTypeKeys).
+func writableTypePropertyKey(def PropertyDefinition) bool {
+	return isWritablePropertyKey(string(def.Key))
 }
 
 // resolveTypeProperty resolves one recommended-list entry. Entries are

@@ -195,7 +195,13 @@ func (e *exporter) propertySlug(key string) string {
 // avoid-set discipline seedIdLabels applies to ids. The walk mirrors the emit
 // sites (buildProperties, buildTypeProperties, blockToJSON, dataviewToJSON);
 // a key from a block the emit later drops only over-reserves, which degrades
-// somebody's slug to their stored key — always correct, merely less compact.
+// somebody's slug to their stored key — always correct, merely less compact,
+// and it costs one thing worth naming: an over-reservation that the next
+// generation does not repeat makes export stop being a fixpoint for that
+// object (modelledTypeKeys says the same in the type namespace, where the
+// gap was computable and is now closed). Which blocks survive is decided
+// during buildBlocks, so this walk cannot know; the type-namespace shapes
+// were reachable through ordinary data, this one needs a block export drops.
 func (e *exporter) seedTermLedger() {
 	e.termOwner = map[string]string{}
 	e.termByKey = map[string]string{}
@@ -428,19 +434,19 @@ func (e *exporter) seedTypeTermLedger() {
 	if e.snapshot == nil {
 		return
 	}
-	for _, t := range e.snapshot.ObjectTypes {
-		if key := strings.TrimPrefix(t, typeKeyIdPrefix); key != "" {
-			e.typeNamedKeys[key] = true
-		}
+	for _, key := range e.modelledTypeKeys(false) {
+		e.typeNamedKeys[key] = true
 	}
 	if e.typePropsActive() {
 		for _, l := range recommendedListKeys {
 			for _, id := range valueStringList(e.detail(l.detailKey)) {
-				if def, ok := e.resolveTypeProperty(id); ok {
-					for _, key := range def.ObjectTypes {
-						if key != "" {
-							e.typeNamedKeys[key] = true
-						}
+				def, ok := e.resolveTypeProperty(id)
+				if !ok || !writableTypePropertyKey(def) {
+					continue
+				}
+				for _, key := range def.ObjectTypes {
+					if key != "" {
+						e.typeNamedKeys[key] = true
 					}
 				}
 			}
@@ -791,12 +797,45 @@ var typeKeyIdPrefix = domain.TypeKey("").URL()
 // snapshot names, so a dropped entry's key can never be taken as another
 // key's spelling.
 func (e *exporter) envelopeTypeTerms() []string {
+	keys := e.modelledTypeKeys(true)
+	terms := make([]string, 0, len(keys))
+	for _, key := range keys {
+		terms = append(terms, e.typeSlug(key))
+	}
+	return terms
+}
+
+// modelledTypeKeys reduces the snapshot's object types to the stored keys the
+// envelope will actually spell: keyless entries dropped, survivors closing
+// ranks, then the positions §2 models — one type, plus the target type on a
+// template. `warn` reports each keyless drop, and only the emitting call
+// passes it, because the CENSUS runs this reduction too and must not report
+// the same drop twice.
+//
+// The census has to see exactly this list rather than every object type,
+// which is where it started. Reserving a key no slot spells makes export stop
+// being a fixpoint: a snapshot whose truncated-away second type is the first
+// one's slug backed that slug off, while the same object exported after one
+// round trip — the second type gone, the census one key smaller — spelled it.
+// Two documents, the same object, differing in the term and in a legend line;
+// §9's "re-exports diff cleanly" is the promise that breaks. Nothing was
+// protected by the wider reservation either: a key the document never names
+// cannot be taken as another key's spelling by a reader that never sees it.
+//
+// The template test is on the KEY, where the emit side tested the spelled
+// TERM. They are the same test: writableTypeSlug pins the spelling `template`
+// to the stored key `template` in both directions, and the ledger's back-off
+// only ever answers the stored key, so a term is `template` exactly when its
+// key is.
+func (e *exporter) modelledTypeKeys(warn bool) []string {
 	keys := make([]string, 0, len(e.snapshot.ObjectTypes))
 	for i, t := range e.snapshot.ObjectTypes {
 		key := strings.TrimPrefix(t, typeKeyIdPrefix)
 		if key == "" {
-			e.warn("/type",
-				"object type %d (%q) carries no type key and is dropped; the remaining types move up", i, t)
+			if warn {
+				e.warn("/type",
+					"object type %d (%q) carries no type key and is dropped; the remaining types move up", i, t)
+			}
 			continue
 		}
 		keys = append(keys, key)
@@ -804,13 +843,10 @@ func (e *exporter) envelopeTypeTerms() []string {
 	if len(keys) == 0 {
 		return nil
 	}
-	terms := []string{e.typeSlug(keys[0])}
-	// the second slot exists only on a template (§2); claiming terms for
-	// entries past it would record legend lines for types no slot names
-	if terms[0] == typeKeyTemplate && len(keys) > 1 {
-		terms = append(terms, e.typeSlug(keys[1]))
+	if keys[0] == typeKeyTemplate && len(keys) > 1 {
+		return keys[:2]
 	}
-	return terms
+	return keys[:1]
 }
 
 func (e *exporter) buildDoc(sbType model.SmartBlockType) (*omap, error) {

@@ -258,6 +258,19 @@ var hostileTypePools = [][]string{
 	{"ot-template", "ot-"},
 	{"ot-template", "ot-", "ot-task"},
 	{"ot-", "ot-template", "ot-task"},
+	// a NON-template with a second type, and one with a third: the format
+	// models neither position, so both are truncated away — and the entries
+	// the census reserved for them are keys no slot ends up spelling. The
+	// pools above are all templates or single types, so the truncating
+	// branch had no shape at all. The second entry here is deliberately the
+	// FIRST one's slug under hostileVocab, which is what makes the
+	// reservation observable.
+	{"ot-69bbfc78877a91b1d12d1a7c", "ot-task"},
+	{"ot-page", "ot-task", "ot-squatter"},
+	// every entry keyless: the whole type list is lost, and the document
+	// must still be a document. `{"ot-"}` covers the single-entry case; this
+	// is the one where closing ranks has nothing to close onto.
+	{"ot-", ""},
 }
 
 // hostileTypePropResolver serves the two property definitions the type-seed
@@ -283,7 +296,21 @@ func (hostileTypePropResolver) PropertyById(id string) (PropertyDefinition, bool
 	return PropertyDefinition{}, false
 }
 
-func (hostileTypePropResolver) PropertyId(PropertyDefinition) (string, bool) { return "", false }
+// PropertyId maps a definition back to the id that serves it, which is what a
+// real wiring does: a re-export resolves a recommended list that came back as
+// bare KEYS (no resolver on the reader) through this reverse lookup, so a
+// second generation carries the same definitions as the first.
+func (hostileTypePropResolver) PropertyId(def PropertyDefinition) (string, bool) {
+	switch def.Key {
+	case "owner":
+		return "hp1", true
+	case "genre":
+		return "hp2", true
+	case domain.RelationKey(overLongPropertyKey):
+		return "hp3", true
+	}
+	return "", false
+}
 
 // typePropTargets is one type_properties entry reduced to its two KEY slots:
 // the resolved property key and the resolved target type keys of
@@ -552,6 +579,30 @@ func TestInvariant_MarshalOutputValidates(t *testing.T) {
 				// silently replaced by a custom type sharing its spelling.
 				assert.Equal(t, wantProps, capture.got,
 					"seed %d: the type properties must bind back to the types they came from:\n%s", n, data)
+				// §11.2 states byte-stability from a DOCUMENT, and
+				// TestInvariant_ImportedDocumentReExportsValid checks it
+				// there. This is the snapshot-side half — Export(S) ==
+				// Export(Import(Export(S))) — which is what §9's "re-exports
+				// diff cleanly" means for an object exported twice, once
+				// before a round trip through the format and once after.
+				//
+				// Both generations are compared with ids OMITTED, because
+				// import mints an id wherever the snapshot had none (§9): a
+				// snapshot carrying an id-less block or view exports a
+				// document that is not canonical, and a second generation
+				// then differs by exactly those minted ids (§11.2 says so).
+				// Ids have their own assertions above and in
+				// TestExport_ValidIdsAreNeverRenamed; what this one asks is
+				// whether everything else — the terms, the legends, and the
+				// census that chose them — is a fixpoint.
+				stripped := o
+				stripped.OmitIds = true
+				gen1, err := Marshal(sbType, snap, stripped)
+				require.NoError(t, err, "seed %d", n)
+				gen2, err := Marshal(sbType, back, stripped)
+				require.NoError(t, err, "seed %d", n)
+				assert.Equal(t, string(gen1), string(gen2),
+					"seed %d: exporting the snapshot that came back must reproduce the document", n)
 				if variant.read == nil {
 					continue
 				}

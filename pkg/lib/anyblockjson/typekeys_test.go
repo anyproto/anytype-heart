@@ -92,6 +92,97 @@ func decodeEnvelope(t *testing.T, data []byte) envelopeTypeDoc {
 	return doc
 }
 
+// censusPropResolver serves two recommended-list entries, one of which
+// buildTypeProperties drops: its definition carries no key, which real type
+// objects hold whenever a vocabulary once resolved a spelling onto the empty
+// key. Both name target types, and only the surviving one's target reaches
+// the document.
+type censusPropResolver struct{}
+
+func (censusPropResolver) PropertyById(id string) (PropertyDefinition, bool) {
+	switch id {
+	case "k1":
+		return PropertyDefinition{Key: "", Format: model.RelationFormat_object,
+			ObjectTypes: []string{"cust"}}, true
+	case "k2":
+		return PropertyDefinition{Key: "owner", Format: model.RelationFormat_object,
+			ObjectTypes: []string{"custom1"}}, true
+	}
+	return PropertyDefinition{}, false
+}
+
+func (censusPropResolver) PropertyId(def PropertyDefinition) (string, bool) {
+	if def.Key == "owner" {
+		return "k2", true
+	}
+	return "", false
+}
+
+// TestExport_IsAFixpointWhenTheCensusShrinks: exporting an object, importing
+// it and exporting it again must produce the same document (§9 — "provided
+// ids are preserved so re-exports diff cleanly" is worth nothing if the terms
+// move instead).
+//
+// The census is what threatened it. It reserved every stored type key the
+// SNAPSHOT named, while the document spells only the keys §2 models — one
+// type, plus a template's target — and only the type properties export
+// actually writes. Every key in the gap was reserved for a term no reader
+// ever sees, and it backed a real slug off: generation 1 wrote the stored key
+// verbatim, generation 2 — one round trip later, with the extra keys gone
+// from the snapshot — wrote the slug and a legend line to invert it. Same
+// object, two documents.
+//
+// Both halves of the gap are here. Neither needs a hostile vocabulary: the
+// vocabulary is an ordinary space-backed one, and the shapes are an object
+// with a second type the format does not model and a type object holding a
+// keyless entry in a recommended list.
+func TestExport_IsAFixpointWhenTheCensusShrinks(t *testing.T) {
+	regenerate := func(t *testing.T, sbType model.SmartBlockType,
+		snap *model.SmartBlockSnapshotBase, opts Options) (string, string) {
+		t.Helper()
+		gen1, err := Marshal(sbType, snap, opts)
+		require.NoError(t, err)
+		read := opts
+		read.GenerateId = seqIds("g")
+		_, back, err := Unmarshal(gen1, read)
+		require.NoError(t, err)
+		gen2, err := Marshal(sbType, back, opts)
+		require.NoError(t, err)
+		return string(gen1), string(gen2)
+	}
+	vocab := typedSpaceVocabulary{typeSlugOf: map[string]string{"custom1": "cust"}}
+
+	t.Run("an object type the envelope does not model", func(t *testing.T) {
+		// given: `cust` is the first type's slug AND the second type's stored
+		// key, and the second type is past the only position §2 models
+		snap := typedSnapshot("ot-custom1", "ot-cust")
+
+		// when
+		gen1, gen2 := regenerate(t, model.SmartBlockType_Page, snap, Options{Keys: vocab})
+
+		// then
+		assert.Equal(t, gen1, gen2, "the second generation must repeat the first")
+		assert.Contains(t, gen1, `"type": "cust"`,
+			"the truncated entry is not in the document, so its key reserves nothing")
+		assert.Contains(t, gen1, `"cust": "custom1"`, "and the spelling owes its legend line")
+	})
+
+	t.Run("a type property no slot writes", func(t *testing.T) {
+		// given: the keyless entry names `cust` and is dropped; the entry that
+		// survives targets `custom1`, whose slug is `cust`
+		snap := typedSnapshot("ot-page")
+		snap.Details.Fields["recommendedFeaturedRelations"] = strList("k1", "k2")
+
+		// when
+		gen1, gen2 := regenerate(t, model.SmartBlockType_STType, snap,
+			Options{Keys: vocab, ResolveProperties: censusPropResolver{}})
+
+		// then
+		assert.Equal(t, gen1, gen2, "the second generation must repeat the first")
+		assert.Contains(t, gen1, `"cust"`, "the dropped definition's target reserves nothing")
+	})
+}
+
 // The legend carries exactly what the bundled table cannot invert — the
 // mirror of TestExport_PropertyKeysLegendCarriesWhatTheTableCannot for the
 // type namespace.
