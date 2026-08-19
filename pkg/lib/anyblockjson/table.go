@@ -142,6 +142,16 @@ func (e *exporter) cellToJSON(cell *model.Block) (any, error) {
 	}
 	if c, ok := cell.Content.(*model.BlockContentOfText); ok {
 		t := orEmpty(c.Text)
+		if cell.Id != "" && e.visited[cell.Id] {
+			// the mark this branch sets, read back. A block reached twice is
+			// emitted once (§11) — blockToJSON drops the second arrival, and
+			// the shorthand, which never goes through blockToJSON, has to drop
+			// it too. Setting the mark without consulting it only ordered the
+			// two arrivals: a cell reached first silenced the other parent,
+			// while a cell reached second wrote the block A SECOND TIME, so
+			// one stored block came back from import as two.
+			return nil, nil
+		}
 		if t.Style == model.BlockContentText_Paragraph &&
 			t.Color == "" && !t.Checked &&
 			cell.Align == model.Block_AlignLeft &&

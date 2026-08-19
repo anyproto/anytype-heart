@@ -47,6 +47,12 @@ var hostileIds = []string{
 	strings.Repeat("x", 70), "R1-C1", "a b", "id\n2", "obj1",
 }
 
+// sharedCellMarker is the text of the corpus's two-parent cell — the block
+// that is both a table cell and a child of a plain block standing before the
+// table. Nothing else in a hostile document spells it, so counting it in the
+// output counts emissions of that one block.
+const sharedCellMarker = "sharedcell"
+
 // hostileSnapshot builds a deterministic snapshot for seed n: a root, a handful
 // of text blocks, and optionally a table and a dataview, with every id drawn
 // from hostileIds — including duplicates, which the snapshot graph is allowed
@@ -79,6 +85,17 @@ func hostileSnapshot(n int) (model.SmartBlockType, *model.SmartBlockSnapshotBase
 			Content: &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{
 				Style: model.BlockContentLayout_TableRows}}}
 		table.ChildrenIds = []string{cols.Id, rows.Id}
+		// a block with TWO parents: the table's first cell, and a plain block
+		// standing before the table. The emit reaches it through the holder
+		// first, which is the arrival order the cell shorthand never handled —
+		// it set the emit-once mark without reading it, so the cell wrote the
+		// block a second time and one stored block imported back as two. Added
+		// before the table so the holder is walked first, and consuming no
+		// randomness so the corpus above is unchanged.
+		add(&model.Block{Id: "holder" + fmt.Sprint(n),
+			ChildrenIds: []string{rowIds[0] + "-" + colIds[0]},
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{Text: "holder"}}})
 		add(table)
 		blocks = append(blocks, cols, rows)
 		for _, id := range colIds {
@@ -102,10 +119,17 @@ func hostileSnapshot(n int) (model.SmartBlockType, *model.SmartBlockSnapshotBase
 					unwritten = append(unwritten, cellId)
 					continue
 				}
+				text := "cell " + cellId
+				if cellId == rowIds[0]+"-"+colIds[0] {
+					// the two-parent cell above, marked so the emit can be
+					// counted: whichever parent reaches it first, the phrase
+					// may appear in the document at most once (§11)
+					text = sharedCellMarker
+				}
 				row.ChildrenIds = append(row.ChildrenIds, cellId)
 				blocks = append(blocks, &model.Block{Id: cellId,
 					Content: &model.BlockContentOfText{
-						Text: &model.BlockContentText{Text: "cell " + cellId}}})
+						Text: &model.BlockContentText{Text: text}}})
 			}
 		}
 		// a plain block sitting on a derived cell id. While every cell was
@@ -556,6 +580,14 @@ func TestInvariant_MarshalOutputValidates(t *testing.T) {
 					continue // a loud failure is allowed; silent invalidity is not
 				}
 				require.NoError(t, Validate(data), "seed %d produced:\n%s", n, data)
+				// a block reached twice is written once (§11). The mark that
+				// says so is set in blockToJSON, and every emit path has to
+				// consult it — including the table cell's string shorthand,
+				// which does not go through blockToJSON at all. The corpus's
+				// two-parent cell is reached from a plain block and from its
+				// row, so a path that writes without checking writes it twice.
+				assert.LessOrEqual(t, strings.Count(string(data), sharedCellMarker), 1,
+					"seed %d emitted one block twice:\n%s", n, data)
 				capture := &capturedTypeProps{}
 				_, back, err := Unmarshal(data, Options{
 					GenerateId:        seqIds(fmt.Sprintf("g%d_", n)),

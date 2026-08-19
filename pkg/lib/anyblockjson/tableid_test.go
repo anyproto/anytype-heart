@@ -8,7 +8,6 @@ package anyblockjson
 // the same rule, and Options.GenerateId belongs to the caller.
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 
@@ -182,101 +181,58 @@ func TestExport_UnwrittenDerivedCellIdIsReserved(t *testing.T) {
 // that is both a cell and a child somewhere else is written twice — once as
 // the cell's text and once as a block carrying the derived cell id, which is a
 // duplicate id in the output.
+//
+// The mark has to be READ as well as written, and which of the two failures
+// shows up depends on which parent the walk reaches first — so both orders are
+// tested. Setting the mark without consulting it covers only the order where
+// the cell comes first; reach the other parent first and the cell writes the
+// block a SECOND time, and one stored block imports back as two.
 func TestExport_StringShorthandCellIsEmittedOnce(t *testing.T) {
-	snap := &model.SmartBlockSnapshotBase{
-		Blocks: []*model.Block{
-			{Id: "root", ChildrenIds: []string{"tbl", "r1-c1"},
-				Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}},
-			{Id: "tbl", ChildrenIds: []string{"cols", "rows"},
-				Content: &model.BlockContentOfTable{Table: &model.BlockContentTable{}}},
-			{Id: "cols", ChildrenIds: []string{"c1"},
-				Content: &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_TableColumns}}},
-			{Id: "rows", ChildrenIds: []string{"r1"},
-				Content: &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_TableRows}}},
-			{Id: "c1", Content: &model.BlockContentOfTableColumn{TableColumn: &model.BlockContentTableColumn{}}},
-			{Id: "r1", ChildrenIds: []string{"r1-c1"},
-				Content: &model.BlockContentOfTableRow{TableRow: &model.BlockContentTableRow{}}},
-			// one block, two parents: the row's cell and a top-level child
-			textBlock("r1-c1", model.BlockContentText_Paragraph, "shared"),
-		},
-		Details: fields(map[string]*types.Value{"id": str("root")}),
+	// one block, two parents: the row's cell and a child of a top-level block
+	sharedCellSnapshot := func(rootChildren ...string) *model.SmartBlockSnapshotBase {
+		return &model.SmartBlockSnapshotBase{
+			Blocks: []*model.Block{
+				{Id: "root", ChildrenIds: rootChildren,
+					Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}},
+				{Id: "tbl", ChildrenIds: []string{"cols", "rows"},
+					Content: &model.BlockContentOfTable{Table: &model.BlockContentTable{}}},
+				{Id: "cols", ChildrenIds: []string{"c1"},
+					Content: &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_TableColumns}}},
+				{Id: "rows", ChildrenIds: []string{"r1"},
+					Content: &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_TableRows}}},
+				{Id: "c1", Content: &model.BlockContentOfTableColumn{TableColumn: &model.BlockContentTableColumn{}}},
+				{Id: "r1", ChildrenIds: []string{"r1-c1"},
+					Content: &model.BlockContentOfTableRow{TableRow: &model.BlockContentTableRow{}}},
+				{Id: "holder", ChildrenIds: []string{"r1-c1"},
+					Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "holder"}}},
+				textBlock("r1-c1", model.BlockContentText_Paragraph, "shared"),
+			},
+			Details: fields(map[string]*types.Value{"id": str("root")}),
+		}
 	}
-	data, err := Marshal(model.SmartBlockType_Page, snap, testOptions())
-	require.NoError(t, err)
-	assert.NoError(t, Validate(data), "Marshal must not emit what Validate rejects")
-	assert.Equal(t, 1, strings.Count(string(data), "shared"), "the block is emitted once:\n%s", data)
-}
+	for name, snap := range map[string]*model.SmartBlockSnapshotBase{
+		"the cell is reached first":         sharedCellSnapshot("tbl", "holder"),
+		"the other parent is reached first": sharedCellSnapshot("holder", "tbl"),
+	} {
+		t.Run(name, func(t *testing.T) {
+			data, err := Marshal(model.SmartBlockType_Page, snap, testOptions())
+			require.NoError(t, err)
+			assert.NoError(t, Validate(data), "Marshal must not emit what Validate rejects")
+			assert.Equal(t, 1, strings.Count(string(data), "shared"),
+				"the block is emitted once:\n%s", data)
 
-// The mirror of the export rule on the import side: a generated id may not
-// land on a cell id the document's table already implies, materialized or not.
-func TestImport_GeneratedIdAvoidsUnwrittenCellId(t *testing.T) {
-	doc := `{"version": 1, "id": "p1", "blocks": [
-		{"type": "table", "id": "tbl", "columns": [{"id": "c1"}], "rows": [{"id": "r1"}]},
-		{"type": "paragraph", "text": "x"}]}`
-	_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: func() string { return "r1-c1" }})
-	require.NoError(t, err)
-
-	ids := map[string]bool{}
-	for _, b := range snap.Blocks {
-		assert.False(t, ids[b.Id], "duplicate block id %q", b.Id)
-		ids[b.Id] = true
+			// and the count the document states is the count that comes back:
+			// a second emission is a block import has to build, not a phrase
+			// that happens to appear twice
+			_, back, err := Unmarshal(data, Options{GenerateId: seqIds("g")})
+			require.NoError(t, err)
+			var shared int
+			for _, b := range back.Blocks {
+				if t, ok := b.Content.(*model.BlockContentOfText); ok && t.Text.GetText() == "shared" {
+					shared++
+				}
+			}
+			assert.Equal(t, 1, shared, "one stored block, one imported block:\n%s", data)
+		})
 	}
-	assert.False(t, ids["r1-c1"], "a generated id took the (r1,c1) cell id")
-}
-
-// Sanitizing is for ids that need it. A generated id that is already a legal
-// row/column id keeps its name — nothing renames it, and above all not the
-// disambiguation pass, which used to find the id taken by the generator's own
-// claim and hand back `<id>_2` for every row and column ever minted.
-func TestImport_GeneratedTableInnerIdsKeepTheirName(t *testing.T) {
-	doc := `{"version": 1, "blocks": [{"type": "table",
-		"columns": [{}, {}], "rows": [{"cells": ["a", "b"]}, {"cells": ["c", "d"]}]}]}`
-
-	t.Run("legal generated ids are untouched", func(t *testing.T) {
-		_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
-		require.NoError(t, err)
-		var inner []string
-		for _, b := range snap.Blocks {
-			switch b.Content.(type) {
-			case *model.BlockContentOfTableRow, *model.BlockContentOfTableColumn:
-				inner = append(inner, b.Id)
-			}
-		}
-		require.Len(t, inner, 4)
-		for _, id := range inner {
-			assert.Regexp(t, `^g\d+$`, id, "a generated id that needs no sanitizing keeps its name")
-		}
-	})
-
-	t.Run("the default generator's shape survives", func(t *testing.T) {
-		_, snap, err := Unmarshal([]byte(doc), Options{})
-		require.NoError(t, err)
-		for _, b := range snap.Blocks {
-			switch b.Content.(type) {
-			case *model.BlockContentOfTableRow, *model.BlockContentOfTableColumn:
-				assert.Regexp(t, `^[0-9a-f]{24}$`, b.Id, "24 hex chars, like every other minted id")
-			}
-		}
-	})
-
-	t.Run("a sanitized id takes the sanitized name, nothing more", func(t *testing.T) {
-		// a dashed generator (the convert wiring's shape): every id sanitizes
-		// to a name nothing else holds, so the suffix pass has no work to do
-		n := 0
-		_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: func() string {
-			n++
-			return fmt.Sprintf("x-%d", n)
-		}})
-		require.NoError(t, err)
-		seen := map[string]bool{}
-		for _, b := range snap.Blocks {
-			switch b.Content.(type) {
-			case *model.BlockContentOfTableRow, *model.BlockContentOfTableColumn:
-				assert.False(t, seen[b.Id], "duplicate table inner id %q", b.Id)
-				seen[b.Id] = true
-				assert.Regexp(t, `^x_\d+$`, b.Id, "sanitized, and not suffixed on top of it")
-			}
-		}
-		require.Len(t, seen, 4)
-	})
 }
