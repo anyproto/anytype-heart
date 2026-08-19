@@ -39,7 +39,8 @@ type KeyVocabulary interface {
 	PropertySlug(key string) string
 	// PropertyKey inverts PropertySlug. ok is false when the term is not a
 	// known slug — the caller then treats it as a stored key verbatim, which
-	// is chain step 1 (an exact stored key always wins over the slug layer).
+	// is the §3 verbatim-first rule (an exact stored key always wins over
+	// the slug layer).
 	PropertyKey(slug string) (key string, ok bool)
 
 	TypeSlug(key string) string
