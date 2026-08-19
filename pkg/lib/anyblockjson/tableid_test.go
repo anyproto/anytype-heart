@@ -8,6 +8,7 @@ package anyblockjson
 // the same rule, and Options.GenerateId belongs to the caller.
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -329,4 +330,154 @@ func cellIdOf(t *testing.T, snap *model.SmartBlockSnapshotBase) string {
 	}
 	t.Fatal("no table row in the snapshot")
 	return ""
+}
+
+// A snapshot's block list is not its block tree: unlinked subtrees survive in
+// it, and a table among them is not in the document at all. Its grid of
+// derived ids therefore claims nothing — reserving it renamed a block the
+// document DOES contain on the authority of one nobody can see, which is
+// exactly the rename §9 promises never happens to an id that is already legal.
+func TestExport_UnreachableTableReservesNoIds(t *testing.T) {
+	reachable := []*model.Block{
+		{Id: "root", ChildrenIds: []string{"r9-c9"},
+			Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}},
+		textBlock("r9-c9", model.BlockContentText_Paragraph, "in the document"),
+	}
+	// an orphan table: nothing links to "orphan", so the emit never arrives
+	orphan := []*model.Block{
+		{Id: "orphan", ChildrenIds: []string{"cols9", "rows9"},
+			Content: &model.BlockContentOfTable{Table: &model.BlockContentTable{}}},
+		{Id: "cols9", ChildrenIds: []string{"c9"},
+			Content: &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_TableColumns}}},
+		{Id: "rows9", ChildrenIds: []string{"r9"},
+			Content: &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_TableRows}}},
+		{Id: "c9", Content: &model.BlockContentOfTableColumn{TableColumn: &model.BlockContentTableColumn{}}},
+		{Id: "r9", Content: &model.BlockContentOfTableRow{TableRow: &model.BlockContentTableRow{}}},
+	}
+	details := fields(map[string]*types.Value{"id": str("root")})
+
+	withOrphan, err := Marshal(model.SmartBlockType_Page, &model.SmartBlockSnapshotBase{
+		Blocks: append(append([]*model.Block{}, reachable...), orphan...), Details: details}, testOptions())
+	require.NoError(t, err)
+	assert.Contains(t, string(withOrphan), `"id": "r9-c9"`,
+		"the reachable block keeps the id it was authored with:\n%s", withOrphan)
+
+	without, err := Marshal(model.SmartBlockType_Page, &model.SmartBlockSnapshotBase{
+		Blocks: reachable, Details: details}, testOptions())
+	require.NoError(t, err)
+	assert.Equal(t, string(without), string(withOrphan),
+		"a block the document does not contain may not change the document")
+}
+
+// The fragment export's entry point is the caller's subtree[0], not the root
+// indexBlocks infers — and an inferred root is what a fragment slice least
+// deserves to be judged by: it is "the first block nobody references", which a
+// slice carrying its own parent, or any spare entry, moves somewhere else.
+// Reserve from the wrong entry point and the table that IS emitted reserves
+// nothing, so the plain block on its derived cell id keeps that id and Marshal
+// writes a duplicate — a run its own Validate rejects (I1).
+func TestMarshalBlockSubtree_ReservesFromTheCallersRoot(t *testing.T) {
+	subtree := []*model.Block{
+		// [0] is what the caller addresses; it holds the table and a plain
+		// block spelling the (r1,c1) cell id the table derives
+		{Id: "holder", ChildrenIds: []string{"tbl", "r1-c1"},
+			Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "holder"}}},
+		{Id: "tbl", ChildrenIds: []string{"cols", "rows"},
+			Content: &model.BlockContentOfTable{Table: &model.BlockContentTable{}}},
+		{Id: "cols", ChildrenIds: []string{"c1"},
+			Content: &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_TableColumns}}},
+		{Id: "rows", ChildrenIds: []string{"r1"},
+			Content: &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_TableRows}}},
+		{Id: "c1", Content: &model.BlockContentOfTableColumn{TableColumn: &model.BlockContentTableColumn{}}},
+		{Id: "r1", Content: &model.BlockContentOfTableRow{TableRow: &model.BlockContentTableRow{}}},
+		textBlock("r1-c1", model.BlockContentText_Paragraph, "sits on a cell id"),
+		// a spare entry the emit never visits, and the caller's own parent —
+		// between them, "the first block nobody references" is neither the
+		// table's owner nor anything that leads to it
+		textBlock("spare", model.BlockContentText_Paragraph, "unreferenced"),
+		{Id: "parent", ChildrenIds: []string{"holder"},
+			Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "parent"}}},
+	}
+	run, err := MarshalBlockSubtree(subtree, Options{})
+	require.NoError(t, err)
+
+	// the run is validated the way a fragment is: as the blocks of a document
+	doc, err := json.Marshal(map[string]any{"version": FormatVersion, "blocks": json.RawMessage(run)})
+	require.NoError(t, err)
+	assert.NoError(t, Validate(doc), "Marshal must not emit what Validate rejects:\n%s", run)
+	assert.Contains(t, string(run), `"r1-c1_2"`, "the plain block yields to the grid:\n%s", run)
+}
+
+// The mirror of the export rule on the import side: a generated id may not
+// land on a cell id the document's table already implies, materialized or not.
+func TestImport_GeneratedIdAvoidsUnwrittenCellId(t *testing.T) {
+	doc := `{"version": 1, "id": "p1", "blocks": [
+		{"type": "table", "id": "tbl", "columns": [{"id": "c1"}], "rows": [{"id": "r1"}]},
+		{"type": "paragraph", "text": "x"}]}`
+	_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: func() string { return "r1-c1" }})
+	require.NoError(t, err)
+
+	ids := map[string]bool{}
+	for _, b := range snap.Blocks {
+		assert.False(t, ids[b.Id], "duplicate block id %q", b.Id)
+		ids[b.Id] = true
+	}
+	assert.False(t, ids["r1-c1"], "a generated id took the (r1,c1) cell id")
+}
+
+// Sanitizing is for ids that need it. A generated id that is already a legal
+// row/column id keeps its name — nothing renames it, and above all not the
+// disambiguation pass, which used to find the id taken by the generator's own
+// claim and hand back `<id>_2` for every row and column ever minted.
+func TestImport_GeneratedTableInnerIdsKeepTheirName(t *testing.T) {
+	doc := `{"version": 1, "blocks": [{"type": "table",
+		"columns": [{}, {}], "rows": [{"cells": ["a", "b"]}, {"cells": ["c", "d"]}]}]}`
+
+	t.Run("legal generated ids are untouched", func(t *testing.T) {
+		_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
+		require.NoError(t, err)
+		var inner []string
+		for _, b := range snap.Blocks {
+			switch b.Content.(type) {
+			case *model.BlockContentOfTableRow, *model.BlockContentOfTableColumn:
+				inner = append(inner, b.Id)
+			}
+		}
+		require.Len(t, inner, 4)
+		for _, id := range inner {
+			assert.Regexp(t, `^g\d+$`, id, "a generated id that needs no sanitizing keeps its name")
+		}
+	})
+
+	t.Run("the default generator's shape survives", func(t *testing.T) {
+		_, snap, err := Unmarshal([]byte(doc), Options{})
+		require.NoError(t, err)
+		for _, b := range snap.Blocks {
+			switch b.Content.(type) {
+			case *model.BlockContentOfTableRow, *model.BlockContentOfTableColumn:
+				assert.Regexp(t, `^[0-9a-f]{24}$`, b.Id, "24 hex chars, like every other minted id")
+			}
+		}
+	})
+
+	t.Run("a sanitized id takes the sanitized name, nothing more", func(t *testing.T) {
+		// a dashed generator (the convert wiring's shape): every id sanitizes
+		// to a name nothing else holds, so the suffix pass has no work to do
+		n := 0
+		_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: func() string {
+			n++
+			return fmt.Sprintf("x-%d", n)
+		}})
+		require.NoError(t, err)
+		seen := map[string]bool{}
+		for _, b := range snap.Blocks {
+			switch b.Content.(type) {
+			case *model.BlockContentOfTableRow, *model.BlockContentOfTableColumn:
+				assert.False(t, seen[b.Id], "duplicate table inner id %q", b.Id)
+				seen[b.Id] = true
+				assert.Regexp(t, `^x_\d+$`, b.Id, "sanitized, and not suffixed on top of it")
+			}
+		}
+		require.Len(t, seen, 4)
+	})
 }

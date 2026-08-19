@@ -547,12 +547,23 @@ func (e *exporter) buildTypeKeys() *omap {
 // filled (§6.1); then everything else, which yields to the grid, because "a
 // non-table block id that collides with a derived cell id is a validation
 // error" (§4) and the derived id is the one that cannot move.
+//
+// Only blocks the emit can REACH are reserved. A snapshot's block list is not
+// its block tree: orphaned subtrees outlive the block that held them (state
+// apply unlinks without deleting), and a table among them owns a whole grid of
+// derived ids — reserving that grid renamed a perfectly good authored id on a
+// block the document does contain, on the authority of one nobody can see. The
+// walk over-approximates on purpose: it descends every ChildrenIds edge from
+// the export's entry point, including the ones blockToJSON declines to follow,
+// because under-reserving is the dangerous direction — a grid that IS emitted
+// and not reserved is a document Marshal's own Validate rejects (I1).
 func (e *exporter) seedIdLabels() {
 	e.idLabels = map[string]string{}
 	e.idsUsed = map[string]struct{}{}
 	if e.snapshot == nil {
 		return
 	}
+	reachable := e.reachableBlocks()
 
 	// snapshot order, not map order: the reservations are order-dependent now,
 	// so ranging over the id-keyed map would make the output nondeterministic.
@@ -564,7 +575,7 @@ func (e *exporter) seedIdLabels() {
 	seen := map[string]bool{}
 	wanted := map[string]struct{}{}
 	for _, b := range e.snapshot.Blocks {
-		if b == nil || b.Id == "" || seen[b.Id] {
+		if b == nil || b.Id == "" || seen[b.Id] || !reachable[b.Id] {
 			continue
 		}
 		seen[b.Id] = true
@@ -590,7 +601,7 @@ func (e *exporter) seedIdLabels() {
 		}
 		e.idLabels[b.Id] = e.reserveLabel(sanitizeTableInnerId(e.localId(b.Id)), wanted)
 	}
-	for _, id := range e.derivedCellIds() {
+	for _, id := range e.derivedCellIds(reachable) {
 		e.idsUsed[id] = struct{}{}
 	}
 	for _, b := range order {
@@ -629,15 +640,17 @@ func (e *exporter) reserveLabel(base string, wanted map[string]struct{}) string 
 	}
 }
 
-// derivedCellIds lists the cell id every table in the snapshot implies:
+// derivedCellIds lists the cell id every table the export can REACH implies:
 // rowLabel + "-" + colLabel for the whole grid, materialized or not (§6.1).
 // It runs after every row and column has its label, and mirrors the structure
 // tableToJSON reads — wrappers by layout style, children by content type — so
-// that the ids reserved are the ones the exported tables actually derive.
-func (e *exporter) derivedCellIds() []string {
+// that the ids reserved are the ones the exported tables actually derive. A
+// table no emit reaches derives nothing, so it reserves nothing: its grid is
+// not in the document, and the ids of the blocks that are may not turn on it.
+func (e *exporter) derivedCellIds(reachable map[string]bool) []string {
 	var out []string
 	for _, b := range e.snapshot.Blocks {
-		if b == nil || b.Id == "" || e.blocks[b.Id] != b {
+		if b == nil || b.Id == "" || e.blocks[b.Id] != b || !reachable[b.Id] {
 			continue
 		}
 		if _, isTable := b.Content.(*model.BlockContentOfTable); !isTable {
@@ -675,6 +688,39 @@ func (e *exporter) derivedCellIds() []string {
 			for _, col := range cols {
 				out = append(out, row+"-"+col)
 			}
+		}
+	}
+	return out
+}
+
+// reachableBlocks is the ChildrenIds closure of the export's entry point —
+// every block the emit can arrive at, and therefore every block whose id the
+// document may contain. Everything else is an orphan: present in the snapshot,
+// absent from the output, and with no claim on the id domain (§4).
+//
+// It is deliberately coarser than the emit: blockToJSON stops descending into
+// a bookmark, a link or a divider, and drops structural and content-less
+// blocks entirely, but this walk follows those edges anyway. Reserving for a
+// block the emit turns out to drop costs a disambiguation suffix; failing to
+// reserve for one it keeps costs a document that fails its own Validate.
+//
+// The walk is iterative: a snapshot's block graph is untrusted, and a
+// pathological chain is not the place to find out how deep the stack goes.
+func (e *exporter) reachableBlocks() map[string]bool {
+	out := map[string]bool{}
+	if e.rootId == "" {
+		return out
+	}
+	stack := []string{e.rootId}
+	for len(stack) > 0 {
+		id := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		if id == "" || out[id] {
+			continue
+		}
+		out[id] = true
+		if b := e.blocks[id]; b != nil {
+			stack = append(stack, b.ChildrenIds...)
 		}
 	}
 	return out

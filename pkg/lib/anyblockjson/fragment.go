@@ -137,6 +137,10 @@ func MarshalBlockSubtree(subtree []*model.Block, opts Options) (json.RawMessage,
 		visited:  map[string]bool{},
 	}
 	e.indexBlocks()
+	// the fragment's root is the caller's, not the one indexBlocks infers from
+	// an id-less snapshot: the emit below starts at subtree[0], so that is the
+	// entry point the id reservations have to be reachable from (§4).
+	e.rootId = subtree[0].Id
 	if opts.compactObjectRefs() || opts.compactBlockLabels() {
 		e.buildCompactIds()
 	}
