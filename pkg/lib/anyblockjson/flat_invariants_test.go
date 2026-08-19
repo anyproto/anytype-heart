@@ -162,6 +162,17 @@ func hostileSnapshot(n int) *model.SmartBlockSnapshotBase {
 		"dueDate":                  str("next Friday"),
 		"6a32d4856761631534b22f85": str("space-slugged"),
 		"artist":                   str("verbatim custom key"),
+		// the two shadow shapes of the verbatim-first family (§3): a custom
+		// stored key spelling an INTERNAL bundled key's slug, and one
+		// spelling a WRITABLE bundled key's slug beside that bundled key
+		// itself ("dueDate" above). Both are slug-shaped stored keys the
+		// details carried none of, which is exactly how "export writes it
+		// verbatim, the reader resolves it elsewhere" stayed invisible: the
+		// first made seed 0 fail I1's Validate leg outright, the second made
+		// every seed a valid-but-unimportable archive until the identity
+		// entry existed.
+		"unique_key": str("custom, not the resolution vector"),
+		"due_date":   str("custom, beside dueDate"),
 	}
 	// the envelope key is a STORED identity key written verbatim (§2), and a
 	// closed charset over it was falsified by a 36 808-object sweep: relation
@@ -197,18 +208,25 @@ func (hostileVocab) PropertySlug(key string) string {
 	case "artist":
 		return "" // a vocabulary with no answer at all
 	case "6a32d4856761631534b22f85":
-		// a space-minted slug shadowing a bundled internal key's spelling:
-		// only the document's own legend keeps this out of the deny rule,
-		// which pins the legend-first resolution order (§3)
+		// a space-minted slug shadowing a bundled internal key's spelling —
+		// which is ALSO a stored key on the hostile details, so the term
+		// ledger must refuse the claim outright (§3: a stored key always
+		// keeps its own term, and this one owes an identity entry). The
+		// corpus's legend-rebind documents cover the honored-entry case.
 		return "unique_key"
 	}
 	return BundledKeyVocabulary{}.PropertySlug(key)
 }
 
 // I1: Marshal either fails loudly — §11 allows that for an over-deep tree or a
-// table inside a cell — or produces a document its own Validate accepts. What
-// it may never do is succeed and hand back an unimportable archive, which is a
-// failure nobody sees until the archive is needed.
+// table inside a cell — or produces a document its own Validate accepts AND
+// its own Unmarshal imports. What it may never do is succeed and hand back an
+// unimportable archive, which is a failure nobody sees until the archive is
+// needed. The Unmarshal leg runs as a package-only reader, because that is
+// what an archive's consumer is: it checks that the document plus its legend
+// resolve without the vocabulary that wrote them — this leg, gated on
+// Validate alone for a while, is where a valid-but-unimportable document (a
+// shadow twin pair; a backed-off slug a block slot recorded anyway) hid.
 func TestInvariant_MarshalOutputValidates(t *testing.T) {
 	variants := map[string]Options{
 		"plain":        {},
@@ -225,6 +243,9 @@ func TestInvariant_MarshalOutputValidates(t *testing.T) {
 					continue // a loud failure is allowed; silent invalidity is not
 				}
 				require.NoError(t, Validate(data), "seed %d produced:\n%s", n, data)
+				_, _, err = Unmarshal(data, Options{GenerateId: seqIds(fmt.Sprintf("g%d_", n))})
+				require.NoError(t, err,
+					"seed %d produced a valid document its own Unmarshal refuses:\n%s", n, data)
 			}
 		})
 	}
@@ -320,25 +341,97 @@ var hostileDocs = []string{
 	`{"version": 1, "property_keys": {"p": ""}}`,
 	`{"version": 1, "property_keys": {"p": "a\nb"}}`,
 	`{"version": 1, "property_keys": {"p": "` + strings.Repeat("k", 129) + `"}}`,
+	// the verbatim-first family (§3): twin spellings binding one stored key
+	// are refused by BOTH halves with default Options; an identity entry
+	// makes a shadow spelling a stored key in every reader; a legend VALUE is
+	// admitted like the stored key it is, member or no member spelling it
+	`{"version": 1, "properties": {"iconEmoji": "a", "icon_emoji": "b"}}`,
+	`{"version": 1, "properties": {"dueDate": "2025-01-01T00:00:00Z", "due_date": "x"}}`,
+	`{"version": 1, "property_keys": {"unique_key": "unique_key"}, "properties": {"unique_key": "custom"}}`,
+	`{"version": 1, "property_keys": {"unique_key": "6a32d4856761631534b22f85"}, "properties": {"unique_key": "high"}}`,
+	`{"version": 1, "property_keys": {"sneaky": "uniqueKey"}}`,
+	`{"version": 1, "property_keys": {"p": "oldAnytypeID"}}`,
+	// two spellings the document's own chain accepts that a WIDER vocabulary
+	// resolves onto a denied / an unwritable key — the i2Vocabularies entries
+	// that widen resolution exercise the §3 seam through these
+	`{"version": 1, "properties": {"prio": "bare"}}`,
+	`{"version": 1, "properties": {"blank": "x"}}`,
+}
+
+// i2Vocabularies is the Options axis I2 runs over. A vocabulary can resolve
+// spellings the document's own chain (legend → bundled table → verbatim)
+// cannot, and §3 licenses import to refuse MORE than Validate then: admission
+// re-runs at the details seam on the wider resolved key, which Validate —
+// deliberately vocabulary-less (§13) — never sees. For those configurations
+// the invariant is containment plus path-addressed refusals; where nothing
+// widens resolution, it is exact agreement.
+var i2Vocabularies = map[string]struct {
+	keys   KeyVocabulary
+	widens bool
+}{
+	"default": {nil, false},
+	"bundled": {BundledKeyVocabulary{}, false},
+	// a symmetric node-backed vocabulary: both directions agree
+	"space": {spaceVocabulary{slugOf: map[string]string{"6a32d4856761631534b22f85": "priority"}}, true},
+	// PropertySlug and PropertyKey are NOT inverses — the accept side answers
+	// for a slug the emit side never writes, the way a stale or hand-rolled
+	// vocabulary really breaks; the target is an ordinary custom key, so only
+	// the binding moves, never admission
+	"asymmetric": {asymmetricVocab{}, true},
+	// the two resolutions the seam exists to refuse
+	"resolves-denied":     {rebindingVocabulary{}, true},
+	"resolves-unwritable": {blankKeyVocab{}, true},
+}
+
+type asymmetricVocab struct{ BundledKeyVocabulary }
+
+func (asymmetricVocab) PropertyKey(slug string) (string, bool) {
+	if slug == "prio" {
+		return "6a32d4856761631534b22f85", true
+	}
+	return BundledKeyVocabulary{}.PropertyKey(slug)
 }
 
 // I2: whatever Validate accepts, Unmarshal must decode, and whatever Validate
-// rejects, Unmarshal must reject too. A disagreement means the guarantee
-// Validate offers — "this document imports" — is not true, and the failure
-// arrives as a bare Go decode error with no JSON pointer, outside the
-// path-addressed error contract §13 promises.
+// rejects, Unmarshal must reject too — exactly, for every Options
+// configuration that does not widen resolution, and as containment (Unmarshal
+// accepts a subset, refusing only through path-addressed admission) for the
+// vocabularies that do. A disagreement means the guarantee Validate offers —
+// "this document imports" — is not true, and the failure arrives as a bare Go
+// decode error with no JSON pointer, outside the path-addressed error
+// contract §13 promises.
 func TestInvariant_ValidateAndUnmarshalAgree(t *testing.T) {
-	for _, doc := range hostileDocs {
-		t.Run(doc[:min(len(doc), 60)], func(t *testing.T) {
-			valErr := Validate([]byte(doc))
-			_, _, unmErr := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
-			assert.Equal(t, valErr == nil, unmErr == nil,
-				"Validate says %v, Unmarshal says %v", valErr, unmErr)
-			if valErr != nil {
-				// a rejection must still be path-addressed, not a raw decode
-				// error escaping from the Go layer
-				assert.NotContains(t, unmErr.Error(), "decode document",
-					"the reason must come from validation, not from json.Unmarshal")
+	for vocabName, vocab := range i2Vocabularies {
+		t.Run(vocabName, func(t *testing.T) {
+			for i, doc := range hostileDocs {
+				t.Run(doc[:min(len(doc), 60)], func(t *testing.T) {
+					valErr := Validate([]byte(doc))
+					_, _, unmErr := Unmarshal([]byte(doc),
+						Options{GenerateId: seqIds(fmt.Sprintf("g%d_", i)), Keys: vocab.keys})
+					switch {
+					case valErr != nil:
+						assert.Error(t, unmErr,
+							"Validate rejects this document, so Unmarshal must too: %v", valErr)
+					case !vocab.widens:
+						assert.NoError(t, unmErr,
+							"Validate accepts and nothing widens resolution, so Unmarshal must accept")
+					case unmErr != nil:
+						var ve *ValidationError
+						assert.ErrorAs(t, unmErr, &ve,
+							"a wider vocabulary may refuse more, but only through path-addressed admission")
+					}
+					if unmErr != nil {
+						// every rejection is path-addressed — never a raw
+						// decode error escaping from the Go layer. Checked
+						// whenever Unmarshal fails: the old clause ran only
+						// under valErr != nil, where Unmarshal returns
+						// validateToDoc's error unchanged — so it could never
+						// fire — and nil-panicked when Unmarshal wrongly
+						// accepted what Validate refused.
+						assert.NotContains(t, unmErr.Error(), "decode document",
+							"the reason must come from validation, not from json.Unmarshal")
+					}
+				})
 			}
 		})
 	}
