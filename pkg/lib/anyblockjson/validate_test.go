@@ -474,6 +474,26 @@ func TestValidate_KeySlotIssuesNameTheOffendingMember(t *testing.T) {
 			wantPath: "/refs/a b",
 			wantIn:   []string{`"a b"`},
 		},
+		// A spelling carrying a pointer metacharacter is escaped (RFC 6901),
+		// and the escape is what keeps the count at one: the schema's own
+		// verdict on the same value is suppressed through a ledger keyed by
+		// pointer, so an unescaped location missed it and the one empty value
+		// was reported three times, twice at a location the document has no
+		// member at. Both metacharacters are legal in a stored key and in a
+		// spelling — the writable-key rule bounds length and control
+		// characters, nothing else (§3).
+		{
+			name:     "a legend spelling holding a slash",
+			doc:      `{"version": 1, "property_keys": {"a/b": ""}}`,
+			wantPath: "/property_keys/a~1b",
+			wantIn:   []string{"empty"},
+		},
+		{
+			name:     "a type legend spelling holding a tilde",
+			doc:      `{"version": 1, "type_keys": {"a~b": ""}}`,
+			wantPath: "/type_keys/a~0b",
+			wantIn:   []string{"empty"},
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

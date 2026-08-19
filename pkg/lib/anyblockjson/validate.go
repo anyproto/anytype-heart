@@ -221,11 +221,25 @@ func checkVersion(doc map[string]any) error {
 	return nil
 }
 
+// jsonPath renders a schema error's instance location as the JSON pointer §12
+// promises. The library hands back RAW tokens — a member name exactly as the
+// document spells it — so each is escaped before it is joined (RFC 6901), the
+// same way the restated key-slot checks build theirs (propertyNameIssues).
+// Joining them verbatim addressed the wrong place for any key carrying `/` or
+// `~`, and cost §12's one fault, one issue on top: the schema's verdict is
+// suppressed for the members those checks spoke for, and that ledger is keyed
+// by pointer — so an unescaped pointer missed the escaped entry and one empty
+// legend value came back three times, once as `/property_keys/a~1b` and twice
+// more at `/property_keys/a/b`, a location the document does not have.
 func jsonPath(tokens []string) string {
 	if len(tokens) == 0 {
 		return ""
 	}
-	return "/" + strings.Join(tokens, "/")
+	escaped := make([]string, len(tokens))
+	for i, token := range tokens {
+		escaped[i] = escapeJSONPointer(token)
+	}
+	return "/" + strings.Join(escaped, "/")
 }
 
 // schemaIssues turns a jsonschema error tree into the flat, path-addressed
