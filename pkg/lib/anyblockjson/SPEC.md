@@ -1,6 +1,6 @@
 # AnyBlock JSON — format specification
 
-Status: **draft v0.15** · Format version: **1** · Package: `pkg/lib/anyblockjson`
+Status: **draft v0.16** · Format version: **1** · Package: `pkg/lib/anyblockjson`
 
 A human- and agent-readable JSON serialization of Anytype objects (the "anyblock"
 model), designed for export, import, and generation by external tools and LLM
@@ -14,6 +14,23 @@ strings; the vocabulary follows Notion's API and Anytype's public REST API
 (`core/api`) wherever an established term exists — the format should be
 readable, and mostly writable, by someone who has never seen Anytype
 internals.
+
+Changes in v0.16: **the date-preset rules read the same gate the query
+engine does, and one fault stays one issue** (§6.2, §12). (1) A preset is
+applied only on a `date` filter — `transformDateFilter` returns a filter of
+any other format before it computes a range — and the counting-preset operand
+rule checked the condition half of that gate and not the format half, so
+`status greater number_of_days_ago` was refused for a count nothing would
+have read. The gate now resolves the format the way import does: the
+dataview's `properties` list first, `bundle` on the resolved stored key
+second. (2) A preset under a condition it does not apply to is a **warning**
+now rather than nothing, and deliberately not an error: export writes the
+pairing because stored filters carry it, so refusing it would make an
+unexportable object out of every one that has one. (3) Issue paths are JSON
+pointers and a segment taken from the document is escaped as one (RFC 6901).
+Joining the raw tokens addressed the wrong place for a key holding `/` or
+`~`, and — because the suppression of the schema's second opinion is keyed by
+pointer — reported one empty legend value three times.
 
 Changes in v0.15: **the round-trip invariants, held where they were only
 stated** (§3, §11). (1) §11's "equivalent resolvers" precondition is written
@@ -1525,30 +1542,47 @@ a group exists only for `or` or nesting):
   is unrelated: it fills property defaults when an object is created from a
   template, is resolved in Go, and never appears in a filter.
 
-  **A preset applies under six conditions only.** `transformDateFilter`
-  computes the range for every date filter but substitutes it into the query
-  for `equal`, `in`, `less`, `greater`, `less_or_equal` and
-  `greater_or_equal`; under any other condition it returns the filter
-  unchanged, so the preset is stored UI state with no effect on what the view
-  matches. A preset resolves to a day *range*, and the condition picks the
-  endpoint: `less`/`greater_or_equal` compare against the range start,
+  **A preset applies on a date property, under six conditions only.**
+  `transformDateFilter` returns a filter whose format is not `date` before it
+  computes anything at all; on a date filter it computes the range but
+  substitutes it into the query for `equal`, `in`, `less`, `greater`,
+  `less_or_equal` and `greater_or_equal` only. Fail either half — a preset on
+  a text or select property, a preset under `not_equal` — and the preset is
+  stored UI state with no effect on what the view matches. A preset resolves
+  to a day *range*, and the condition picks the endpoint:
+  `less`/`greater_or_equal` compare against the range start,
   `greater`/`less_or_equal` against its end, and `equal`/`in` expand into a
   pair bracketing both.
+
+  A preset under a condition that does not apply is a **warning**, not an
+  error: the author wrote "verified this week" and the view means "verified,
+  ever", which is worth saying, but export writes the pairing because stored
+  filters carry it, and refusing it would make one stored filter enough to
+  make an object unexportable (§11, I1). The format half is not warned about,
+  because the format of a filter's property usually comes from outside the
+  document — the bundled table, the space — so "not a date" is as often "not
+  known here", and a warning that fires on a correct filter makes every
+  warning cheaper to ignore (§12).
 
   `number_of_days_ago` and `number_of_days_now` are the two presets that **take an
   operand**: `getDateRange` reads the day count from `value`
   (`pkg/lib/database/quickoptions.go`), so they are the one case where a
-  preset and a `value` legitimately coexist, and under one of the six
-  conditions above a leaf carrying such a preset without a `value` is a
-  validation error — the count would default to `0`, silently meaning today.
-  Because the count is meaningful data rather than an absent field, export
-  writes it even when it is `0`, overriding the usual empty-elision (§4).
-  Under any other condition the rule does not apply, because the count is
-  never read: nothing is silently anything. This scope is not a nicety — it
-  is where the rule met the one above it, since `value` is *dropped* on
+  preset and a `value` legitimately coexist, and **where the preset applies**
+  — both halves of the gate above — a leaf carrying such a preset without a
+  `value` is a validation error: the count would default to `0`, silently
+  meaning today. Because the count is meaningful data rather than an absent
+  field, export writes it even when it is `0`, overriding the usual
+  empty-elision (§4). Anywhere the preset does not apply the rule does not
+  either, because the count is never read: nothing is silently anything. That
+  scope is not a nicety, on either half. The condition half is where the rule
+  met the one above it, since `value` is *dropped* on
   `empty`/`not_empty`/`exists` leaves, so a stored filter combining one of
   those with a counting preset made `Marshal` emit a document its own
-  `Validate` rejected (§11).
+  `Validate` rejected (§11); the format half was refusing a document the app
+  runs exactly as written, since a preset on a `select` property is read by
+  nothing. The format the check reads is the one import attaches (below): the
+  dataview's own `properties` list first, then `bundle` on the stored key the
+  §3 chain resolves the term to.
 
 Sorts and filters do **not** carry the proto's cached per-node `format`:
 import rehydrates it from the dataview `properties` list and `bundle`
@@ -2254,7 +2288,12 @@ fail neither test belong in authoring guidance and in review.
   addresses it correctly but describes the bound rather than the string. The
   schema's own verdict is suppressed only for the members the restated check
   spoke for, so if the two statements of a rule ever diverge the document is
-  still refused, with the schema's wording, rather than passed.
+  still refused, with the schema's wording, rather than passed. Every issue
+  path is a JSON **pointer**, so a segment taken from the document is escaped
+  as one (RFC 6901: `~` → `~0`, `/` → `~1`); a stored key may hold either
+  character. Both statements of a rule build it that way, which is what makes
+  the suppression above possible at all — it is keyed by pointer, so one
+  unescaped spelling is one fault reported twice.
 
 ## 13. Package layout and API
 
