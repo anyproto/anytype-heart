@@ -128,7 +128,7 @@ func TestSchemaOp(t *testing.T) {
 	// §8.32: the payload block's `type` published no vocabulary — a bare
 	// string beside a description naming another fetch, which a decoder cannot
 	// make. Asked for a checkbox item, gemma4:e2b answered
-	// {"type":"bulletedListItem","text":"[ ] Follow up"} 10 times out of 10.
+	// {"type":"bulleted_list_item","text":"[ ] Follow up"} 10 times out of 10.
 	// The enum is derived, never copied: a hand-kept list is the drift class
 	// §8.31 was about.
 	t.Run("both payload block defs publish the block-type vocabulary", func(t *testing.T) {

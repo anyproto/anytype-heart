@@ -109,7 +109,7 @@ func TestPatchPayloadIdsResolve(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editMintedDoc), "headB")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"replace_subtree","id":"aaaa1","blocks":[{"id":"aaaa1","type":"heading1","text":"Renamed"}]}`), "", false)
+			patchBody(`{"op":"replace_subtree","id":"aaaa1","blocks":[{"id":"aaaa1","type":"heading_1","text":"Renamed"}]}`), "", false)
 
 		require.NoError(t, err)
 		assert.Equal(t, v2model.DiffStats{BlocksChanged: 1}, result.DiffStats)

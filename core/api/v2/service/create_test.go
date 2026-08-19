@@ -251,7 +251,7 @@ func TestV2CreateObjectDocument(t *testing.T) {
 		fx.expectEtagRead("cloneObj")
 		body := `{"version":1,"etag":"abcd1234","id":"sourceObj","type":"page",` +
 			`"warnings":[{"message":"from the read"}],` +
-			`"blocks":[{"id":"blockHeading1","type":"heading1","text":"Section"}]}`
+			`"blocks":[{"id":"blockHeading1","type":"heading_1","text":"Section"}]}`
 
 		result, err := fx.CreateObject(context.Background(), testSpaceId, []byte(body), false)
 

@@ -28,7 +28,7 @@ import (
 // editBaseDoc is the base test document: a heading, a parent paragraph with
 // one child, and a sibling whose text has two "Q3" occurrences.
 const editBaseDoc = `{"version":1,"id":"obj1","type":"page","properties":{"name":"Doc","description":"about"},"blocks":[` +
-	`{"id":"blockHeading1","type":"heading1","text":"Section"},` +
+	`{"id":"blockHeading1","type":"heading_1","text":"Section"},` +
 	`{"id":"blockParent1","type":"paragraph","text":"parent"},` +
 	`{"indent":1,"id":"blockChild1","type":"paragraph","text":"child"},` +
 	`{"id":"blockSibling2","type":"paragraph","text":"the Q3 report and Q3 plan"}]}`
@@ -56,9 +56,9 @@ const editSoleParentDoc = `{"version":1,"id":"obj1","type":"page","blocks":[` +
 // a resolver that guesses the first match would sail through it — so the
 // twin text is the point of this document.
 const editTwinDoc = `{"version":1,"id":"obj1","type":"page","blocks":[` +
-	`{"id":"secPlanning1","type":"heading1","text":"Planning"},` +
+	`{"id":"secPlanning1","type":"heading_1","text":"Planning"},` +
 	`{"id":"budgetPlan1","type":"paragraph","text":"Budget: TBD"},` +
-	`{"id":"secExec1","type":"heading1","text":"Execution"},` +
+	`{"id":"secExec1","type":"heading_1","text":"Execution"},` +
 	`{"id":"budgetExec1","type":"paragraph","text":"Budget: TBD"}]}`
 
 // editChecklistDoc is §5.1's checkbox case ("check 'Draft timeline' under
@@ -67,10 +67,10 @@ const editTwinDoc = `{"version":1,"id":"obj1","type":"page","blocks":[` +
 // fixture, or one that asserted only the target, could not catch a locator
 // that toggled the wrong box.
 const editChecklistDoc = `{"version":1,"id":"obj1","type":"page","blocks":[` +
-	`{"id":"secPlanning1","type":"heading1","text":"Planning"},` +
+	`{"id":"secPlanning1","type":"heading_1","text":"Planning"},` +
 	`{"id":"taskDraft1","type":"checkbox","text":"Draft timeline"},` +
 	`{"id":"taskBudget1","type":"checkbox","text":"Budget review"},` +
-	`{"id":"secExec1","type":"heading1","text":"Execution"},` +
+	`{"id":"secExec1","type":"heading_1","text":"Execution"},` +
 	`{"id":"taskShip1","type":"checkbox","text":"Ship the release"}]}`
 
 // editTableCellChildDoc holds a table whose only cell is the F10 array form:
@@ -86,7 +86,7 @@ const editTableCellChildDoc = `{"version":1,"id":"obj1","type":"page","blocks":[
 // editMintedDoc mirrors the base document with editor-shaped (24-hex) block
 // ids — the documents whose default read serves compact labels.
 const editMintedDoc = `{"version":1,"id":"obj1","type":"page","blocks":[` +
-	`{"id":"0000000000000000000aaaa1","type":"heading1","text":"Section"},` +
+	`{"id":"0000000000000000000aaaa1","type":"heading_1","text":"Section"},` +
 	`{"id":"0000000000000000000bbbb1","type":"paragraph","text":"parent"}]}`
 
 // editCollectionDoc is a collection with one member.
@@ -105,7 +105,7 @@ const editLayoutDoc = `{"version":1,"id":"obj1","type":"page","blocks":[` +
 func editManyBlocksDoc(n int) string {
 	var sb strings.Builder
 	sb.WriteString(`{"version":1,"id":"obj1","type":"page","properties":{"name":"Doc"},"blocks":[` +
-		`{"id":"blockHeading1","type":"heading1","text":"Section"},` +
+		`{"id":"blockHeading1","type":"heading_1","text":"Section"},` +
 		`{"id":"blockParent1","type":"paragraph","text":"parent"},` +
 		`{"indent":1,"id":"blockChild1","type":"paragraph","text":"child"},` +
 		`{"id":"blockSibling2","type":"paragraph","text":"the Q3 report and Q3 plan"}`)
@@ -373,7 +373,7 @@ func TestPatchObject(t *testing.T) {
 
 		// when
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insert_blocks","blocks":[{"type":"heading1","text":"First"},{"type":"paragraph","text":"body"}]}`), "", false)
+			patchBody(`{"op":"insert_blocks","blocks":[{"type":"heading_1","text":"First"},{"type":"paragraph","text":"body"}]}`), "", false)
 
 		// then
 		require.NoError(t, err)
@@ -413,7 +413,7 @@ func TestPatchObject(t *testing.T) {
 		// when: the direction that used to require reading the document first
 		// just to learn the id of the block to sit before
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insert_blocks","position":"first","blocks":[{"type":"heading2","text":"Summary"},{"indent":1,"type":"paragraph","text":"note"}]}`), "", false)
+			patchBody(`{"op":"insert_blocks","position":"first","blocks":[{"type":"heading_2","text":"Summary"},{"indent":1,"type":"paragraph","text":"note"}]}`), "", false)
 
 		// then
 		require.NoError(t, err)
@@ -557,7 +557,7 @@ func TestPatchObject(t *testing.T) {
 		assert.Equal(t, v2model.DiffStats{BlocksAdded: 2}, result.DiffStats)
 		blocks := docBlocks(stateDoc(t, *captured))
 		assert.Equal(t, []string{"First", "body"}, blockTexts(blocks))
-		assert.Equal(t, "heading1", blocks[0]["type"])
+		assert.Equal(t, "heading_1", blocks[0]["type"])
 	})
 
 	t.Run("insert_blocks with both blocks and markdown is ambiguous", func(t *testing.T) {
@@ -659,7 +659,7 @@ func TestPatchObject(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"replace_subtree","id":"blockParent1","blocks":[{"type":"bulletedListItem","text":"a"},{"indent":1,"type":"paragraph","text":"b"}]}`), "", false)
+			patchBody(`{"op":"replace_subtree","id":"blockParent1","blocks":[{"type":"bulleted_list_item","text":"a"},{"indent":1,"type":"paragraph","text":"b"}]}`), "", false)
 
 		require.NoError(t, err)
 		assert.Equal(t, v2model.DiffStats{BlocksAdded: 2, BlocksRemoved: 2}, result.DiffStats)

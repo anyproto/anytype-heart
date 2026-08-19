@@ -517,7 +517,7 @@ func TestV2GetObject(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(testObjectRead(), nil)
 		want := []v2model.OutlineEntry{
-			{Indent: 0, Id: "h1", Type: "heading1", Text: "Section"},
+			{Indent: 0, Id: "h1", Type: "heading_1", Text: "Section"},
 			{Indent: 0, Id: "p1", Type: "paragraph"},
 			{Indent: 1, Id: "p2", Type: "paragraph"},
 			{Indent: 0, Id: "p3", Type: "paragraph"},

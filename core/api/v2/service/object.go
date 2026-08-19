@@ -389,8 +389,8 @@ type outlineSource struct {
 
 // outlineHeadingTypes are the block types whose text appears in the outline.
 var outlineHeadingTypes = map[string]bool{
-	"heading1": true, "heading2": true, "heading3": true,
-	"toggleHeading1": true, "toggleHeading2": true, "toggleHeading3": true,
+	"heading_1": true, "heading_2": true, "heading_3": true,
+	"toggle_heading_1": true, "toggle_heading_2": true, "toggle_heading_3": true,
 }
 
 // buildOutlineEnvelope replaces the blocks array with the outline shape:

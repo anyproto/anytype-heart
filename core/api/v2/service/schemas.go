@@ -34,7 +34,7 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 	"object": {
 		endpoint: "POST /v2/spaces/{space_id}/objects",
 		// the full AnyBlock document schema is served verbatim (schema: "")
-		example: `{"version":1,"type":"task","properties":{"name":"Prepare the Q3 report","status":["In progress"],"due_date":"2026-08-01T00:00:00Z"},"blocks":[{"type":"heading2","text":"Steps"},{"type":"checkbox","text":"Collect the numbers"},{"indent":1,"type":"paragraph","text":"Ask **finance** first"}]}`,
+		example: `{"version":1,"type":"task","properties":{"name":"Prepare the Q3 report","status":["In progress"],"due_date":"2026-08-01T00:00:00Z"},"blocks":[{"type":"heading_2","text":"Steps"},{"type":"checkbox","text":"Collect the numbers"},{"indent":1,"type":"paragraph","text":"Ask **finance** first"}]}`,
 	},
 	"shortcut": {
 		endpoint: "POST /v2/spaces/{space_id}/objects",
@@ -52,7 +52,7 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 	},
 	"template": {
 		endpoint: "POST /v2/spaces/{space_id}/templates",
-		example:  `{"version":1,"type":"template","template_for":"task","properties":{"name":"Weekly task"},"blocks":[{"type":"heading2","text":"Checklist"},{"type":"checkbox","text":"First step"}]}`,
+		example:  `{"version":1,"type":"template","template_for":"task","properties":{"name":"Weekly task"},"blocks":[{"type":"heading_2","text":"Checklist"},{"type":"checkbox","text":"First step"}]}`,
 	},
 	"property": {
 		endpoint: "POST /v2/spaces/{space_id}/properties",

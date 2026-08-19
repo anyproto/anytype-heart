@@ -57,7 +57,7 @@ const v2OpBlockIdProp = `"id":{"type":"string","pattern":"^[A-Za-z0-9_-]{1,64}$"
 // v2OpBlockTypeProp publishes the block-type vocabulary itself (§8.32). It
 // used to be a bare {"type":"string","maxLength":64} beside a description
 // pointing at another fetch — and a decoder cannot fetch. Asked for a
-// checkbox item, gemma4:e2b wrote {"type":"bulletedListItem","text":"[ ]
+// checkbox item, gemma4:e2b wrote {"type":"bulleted_list_item","text":"[ ]
 // Follow up"} 10 times out of 10: a plausible type plus a literal markdown
 // checkbox in the text, which is what inventing a vocabulary looks like. The
 // names come from anyblockjson.AuthorableBlockTypeNames — the format's own
@@ -237,7 +237,7 @@ var v2OpSchemas = map[string]v2SchemaKind{
 		schema: opSchema("replace_subtree", []string{"id", "blocks"},
 			`"id":{"$ref":"#/$defs/blockRef"}`,
 			`"blocks":{"type":"array","minItems":1,"maxItems":256,"items":{"$ref":"#/$defs/block"},"description":"replaces the block AND its descendants; indent 0 = the replaced block's level"}`),
-		example: `{"op":"replace_subtree","id":"b7","blocks":[{"type":"bulletedListItem","text":"a"},{"indent":1,"type":"paragraph","text":"b"}]}`,
+		example: `{"op":"replace_subtree","id":"b7","blocks":[{"type":"bulleted_list_item","text":"a"},{"indent":1,"type":"paragraph","text":"b"}]}`,
 	},
 	"insert_blocks": {
 		endpoint: v2OpsEndpoint,
