@@ -52,8 +52,6 @@ type FormatInfo struct {
 	// Options is the declared select vocabulary, in display order (§2a),
 	// each entry carrying the color it declares (empty = the batch picks).
 	Options []anyblockjson.OptionDefinition
-	// ObjectTypes are the type keys an objects/files property may point at.
-	ObjectTypes []string
 }
 
 type typePropRaw struct {
@@ -131,7 +129,7 @@ func ScanFormats(files []string) (map[string]FormatInfo, error) {
 					f, tp.Key+resolvedPropertyNote(tp.Key, key), existing.FormatName, tp.Format)
 				continue
 			}
-			out[key] = FormatInfo{Format: format, FormatName: tp.Format, Name: name, Options: tp.Options, ObjectTypes: tp.ObjectTypes}
+			out[key] = FormatInfo{Format: format, FormatName: tp.Format, Name: name, Options: tp.Options}
 		}
 	}
 	return out, nil
