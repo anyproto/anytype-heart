@@ -506,6 +506,11 @@ var hostileDocs = []string{
 	// schema bounds the spelling, a wider vocabulary resolves past it
 	`{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
 		"type_properties": [{"key": "blank", "format": "text"}]}`,
+	// the reserved `template` spelling, straight through the envelope: the
+	// type-moves-template vocabulary answers a different stored key for it,
+	// and both halves must still agree about what kind of document this is
+	`{"version": 1, "type": "template", "template_for": "task"}`,
+	`{"version": 1, "type": "tpl", "template_for": "task"}`,
 }
 
 // i2Vocabularies is the Options axis I2 runs over. A vocabulary can resolve
@@ -537,6 +542,12 @@ var i2Vocabularies = map[string]struct {
 	"type-space":               {typedSpaceVocabulary{typeSlugOf: map[string]string{customTypeKey: "task2"}}, true},
 	"type-asymmetric":          {asymmetricTypeVocab{}, true},
 	"type-resolves-unwritable": {blankTypeVocab{}, true},
+	// a vocabulary that moves the reserved `template` spelling in either
+	// direction. It widens nothing — the reservation holds it to the
+	// document's own answer (importer.typeKey), so the two halves must agree
+	// EXACTLY; a regression that lets the vocabulary through shows up here as
+	// a snapshot whose kind and type key disagree, not as an error
+	"type-moves-template": {templateMovingVocab{}, false},
 }
 
 type asymmetricTypeVocab struct{ BundledKeyVocabulary }

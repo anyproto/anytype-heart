@@ -631,7 +631,7 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 		return key
 	}
 	if _, ok := doc["template_for"]; ok {
-		if typ, _ := doc["type"].(string); resolveDocTypeKey(typ) != "template" {
+		if typ, _ := doc["type"].(string); resolveDocTypeKey(typ) != typeKeyTemplate {
 			addIssue("/template_for", `template_for is only valid on templates (type "template")`)
 		}
 	}

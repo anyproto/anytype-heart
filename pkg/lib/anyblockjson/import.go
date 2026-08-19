@@ -230,11 +230,50 @@ func (imp *importer) propertyKeys(slugs []string) []string {
 
 // typeKey inverts a TYPE key slot: the document's own legend first (§3),
 // then the vocabulary in force — propertyKey on the type namespace's legend.
+//
+// With one reservation, the mirror of writableTypeSlug's: the VOCABULARY may
+// not move the `template` spelling in either direction. Export refuses that
+// answer already, and the two halves of the same field must not disagree —
+// the kind derivation and the /template_for gate run through the document's
+// own chain alone (docTypeKey, §2), so a vocabulary answering
+// TypeKey("template") == "69bbfc…" produced a Template smartblock whose
+// ObjectTypeKeys do not contain `template`, which every downstream template
+// check misses (they all test lo.Contains(ObjectTypeKeys, TypeKeyTemplate)),
+// and whose re-export then drops the target type outright. The mirror case —
+// a vocabulary landing some other spelling on the stored key `template` —
+// hands that same machinery to a document that is not a template. Neither is
+// reachable through a shipped vocabulary: storeresolver's keyMaps.key refuses
+// any slug the bundled table binds elsewhere, and the stored key wins when
+// Template is installed. It is reachable through a hand-written
+// Options.Keys, which is what this closes.
+//
+// The document's own legend is NOT bound by the reservation: docTypeKey
+// consults it too, so a legend that moves the spelling moves the kind
+// derivation and the gate with it, and the two halves still agree. Only the
+// reader's vocabulary, which docTypeKey deliberately cannot see, has to be
+// held to the document's answer.
 func (imp *importer) typeKey(slug string) string {
 	if key, ok := imp.doc.TypeKeys[slug]; ok && key != "" {
 		return key
 	}
-	return imp.opts.typeKey(slug)
+	key := imp.opts.typeKey(slug)
+	docKey, _ := BundledKeyVocabulary{}.TypeKey(slug)
+	if key != docKey && (key == typeKeyTemplate || docKey == typeKeyTemplate) {
+		imp.warn("/type",
+			"the vocabulary resolves %q to type %q, but the spelling `template` carries the envelope's template semantics (§2); %q is used instead",
+			slug, key, docKey)
+		return docKey
+	}
+	return key
+}
+
+// warn reports a warning-grade issue through the caller's sink (§13) — the
+// import half of exporter.warn. Silent when no sink is wired.
+func (imp *importer) warn(path, format string, args ...any) {
+	if imp.opts.OnWarning == nil {
+		return
+	}
+	imp.opts.OnWarning(Issue{Path: path, Message: fmt.Sprintf(format, args...)})
 }
 
 // docTypeKey resolves a type spelling through the document's own chain alone
@@ -293,7 +332,7 @@ func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBas
 	switch {
 	case doc.Kind != "":
 		sbType = kindNames.value(doc.Kind)
-	case imp.docTypeKey(doc.Type) == "template":
+	case imp.docTypeKey(doc.Type) == typeKeyTemplate:
 		// the kind derives from the STORED key the spelling resolves to
 		// through the document's own chain — a legend may bind the spelling
 		// `template` elsewhere, or another spelling onto the template key
@@ -321,7 +360,7 @@ func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBas
 			}}}
 		}
 		objectTypes = append(objectTypes, domain.TypeKey(typeKey).URL())
-		if imp.docTypeKey(doc.Type) == "template" && doc.TemplateFor != "" {
+		if imp.docTypeKey(doc.Type) == typeKeyTemplate && doc.TemplateFor != "" {
 			target := imp.typeKey(doc.TemplateFor)
 			if target == "" {
 				return 0, nil, &ValidationError{Issues: []Issue{{
