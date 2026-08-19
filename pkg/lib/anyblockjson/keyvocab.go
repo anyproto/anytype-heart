@@ -30,9 +30,37 @@ import (
 )
 
 // KeyVocabulary translates between the STORED keys the snapshot carries and
-// the SLUGS the document spells, in both directions. Implementations must be
-// consistent: whatever `…Slug` emits, `…Key` must invert, or a document does
-// not round-trip.
+// the SLUGS the document spells, in both directions. Implementations owe two
+// things, and the second one is not implied by the first.
+//
+//  1. **Inversion.** Whatever `…Slug` emits, `…Key` must invert, or a document
+//     does not round-trip.
+//
+//  2. **No shadowing of the bundled table.** No answer, in either direction,
+//     may bind a spelling that the bundled table binds to a DIFFERENT key:
+//     `…Slug(key)` must not return a slug the table inverts to something other
+//     than `key`, and `…Key(slug)` must not answer for a slug the table binds
+//     elsewhere.
+//
+// The second rule is what makes §11's round-trip guarantee true, and a
+// vocabulary can satisfy the first completely while breaking it. The legend
+// is the reason: a document owes a `type_keys`/`property_keys` entry only for
+// a spelling the reader's own chain cannot invert, and "the reader's own
+// chain" is taken to mean the bundled table, which ships with every reader.
+// So a stored key the table already inverts — `task`, spelled `task` — is
+// written with NO legend entry, and a reader whose vocabulary answers
+// `TypeKey("task") == "69bbfc…"` resolves it through that answer instead. A
+// template for the bundled Task type comes back as a template for an
+// unrelated custom type, silently. The property namespace has the same shape:
+// a bundled `description` reads back as whatever custom key claimed the
+// spelling.
+//
+// storeresolver, the vocabulary the product wires, refuses both halves —
+// keyMaps.roundTrips will not SPELL a key with a slug the bundled table binds
+// elsewhere, and the bundledKey check in keyMaps.key will not BIND one — so
+// this is a rule for hand-written implementations, which Options.Keys accepts
+// from anyone. TestKeyVocabulary_ShadowingSlugBreaksInversion pins what
+// happens when it is broken.
 type KeyVocabulary interface {
 	// PropertySlug is the wire spelling of a stored relation key. Returning
 	// the input unchanged is always valid ("no slug for this key").

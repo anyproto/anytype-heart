@@ -426,6 +426,68 @@ func (hostileVocab) TypeSlug(key string) string {
 	return BundledKeyVocabulary{}.TypeSlug(key)
 }
 
+// roundTripVocab is hostileVocab's CONFORMING twin, and the only vocabulary
+// in this file that is a genuine inverse pair: whatever a `…Slug` emits, the
+// matching `…Key` inverts, and no answer binds a spelling the bundled table
+// binds to a different key — the precondition KeyVocabulary states (§3,
+// keyvocab.go). hostileVocab satisfies neither half; it is a WRITER
+// vocabulary, aimed at what export must refuse.
+//
+// It exists because §11.1 states the round-trip guarantee for export and
+// import "wired with equivalent resolvers", and nothing exercised that: every
+// reader in this sweep is package-only, so a stored key whose spelling only
+// the writer's vocabulary knows was never read back through it.
+//
+// The pathological shapes are kept — an over-long slug, a slug for a stored
+// key that is over-long — because export BACKS THOSE OFF, so the document
+// never carries them and the reader inverts the stored key verbatim. That is
+// the conforming half of the same hostility.
+type roundTripVocab struct{}
+
+var roundTripTypeSlugs = map[string]string{
+	customTypeKey:   "tsk7",
+	"squatter":      "sqtr",
+	"longslugged":   strings.Repeat("t", maxPropertyKeyLen+64),
+	overLongTypeKey: "diary",
+}
+
+var roundTripPropertySlugs = map[string]string{
+	"6a32d4856761631534b22f85": "prio",
+	"artist":                   "artist_name",
+}
+
+func (roundTripVocab) PropertySlug(key string) string {
+	if slug, ok := roundTripPropertySlugs[key]; ok {
+		return slug
+	}
+	return BundledKeyVocabulary{}.PropertySlug(key)
+}
+
+func (roundTripVocab) PropertyKey(slug string) (string, bool) {
+	for key, s := range roundTripPropertySlugs {
+		if s == slug {
+			return key, true
+		}
+	}
+	return BundledKeyVocabulary{}.PropertyKey(slug)
+}
+
+func (roundTripVocab) TypeSlug(key string) string {
+	if slug, ok := roundTripTypeSlugs[key]; ok {
+		return slug
+	}
+	return BundledKeyVocabulary{}.TypeSlug(key)
+}
+
+func (roundTripVocab) TypeKey(slug string) (string, bool) {
+	for key, s := range roundTripTypeSlugs {
+		if s == slug {
+			return key, true
+		}
+	}
+	return BundledKeyVocabulary{}.TypeKey(slug)
+}
+
 // I1: Marshal either fails loudly — §11 allows that for an over-deep tree or a
 // table inside a cell — or produces a document its own Validate accepts AND
 // its own Unmarshal imports. What it may never do is succeed and hand back an
@@ -436,17 +498,27 @@ func (hostileVocab) TypeSlug(key string) string {
 // Validate alone for a while, is where a valid-but-unimportable document (a
 // shadow twin pair; a backed-off slug a block slot recorded anyway) hid.
 func TestInvariant_MarshalOutputValidates(t *testing.T) {
-	variants := map[string]Options{
-		"plain":        {},
-		"compact":      {CompactIds: true},
-		"omitIds":      {OmitIds: true},
-		"hostileVocab": {Keys: hostileVocab{}},
+	variants := map[string]struct {
+		write Options
+		// read is the vocabulary the READER is wired with. Empty is the
+		// default and the archive case — a package-only reader, which is what
+		// an archive's consumer is. roundTripVocab is the other precondition
+		// §11.1 offers, "equivalent resolvers", and the two are different
+		// promises: one says the document plus its legend stand alone, the
+		// other says the document plus the writer's own vocabulary do.
+		read KeyVocabulary
+	}{
+		"plain":          {},
+		"compact":        {write: Options{CompactIds: true}},
+		"omitIds":        {write: Options{OmitIds: true}},
+		"hostileVocab":   {write: Options{Keys: hostileVocab{}}},
+		"roundTripVocab": {write: Options{Keys: roundTripVocab{}}, read: roundTripVocab{}},
 	}
-	for name, opts := range variants {
+	for name, variant := range variants {
 		t.Run(name, func(t *testing.T) {
 			for n := 0; n < 300; n++ {
 				sbType, snap := hostileSnapshot(n)
-				o := opts
+				o := variant.write
 				var wantProps []typePropTargets
 				if sbType == model.SmartBlockType_STType {
 					o.ResolveProperties = hostileTypePropResolver{}
@@ -460,6 +532,7 @@ func TestInvariant_MarshalOutputValidates(t *testing.T) {
 				capture := &capturedTypeProps{}
 				_, back, err := Unmarshal(data, Options{
 					GenerateId:        seqIds(fmt.Sprintf("g%d_", n)),
+					Keys:              variant.read,
 					ResolveProperties: capture,
 				})
 				require.NoError(t, err,
@@ -479,6 +552,27 @@ func TestInvariant_MarshalOutputValidates(t *testing.T) {
 				// silently replaced by a custom type sharing its spelling.
 				assert.Equal(t, wantProps, capture.got,
 					"seed %d: the type properties must bind back to the types they came from:\n%s", n, data)
+				if variant.read == nil {
+					continue
+				}
+				// With equivalent resolvers on both ends (§11.1), the
+				// vocabulary is a spelling choice and nothing else: the
+				// snapshot that comes back must be the one a package-only
+				// round trip produces. Anything else means a term bound to a
+				// different stored key on the way home — which is where the
+				// PROPERTY namespace's half of this hole lives, since the
+				// assertions above watch only the type slots.
+				plainOpts := Options{}
+				if sbType == model.SmartBlockType_STType {
+					plainOpts.ResolveProperties = hostileTypePropResolver{}
+				}
+				plainData, err := Marshal(sbType, snap, plainOpts)
+				require.NoError(t, err, "seed %d", n)
+				_, plainBack, err := Unmarshal(plainData,
+					Options{GenerateId: seqIds(fmt.Sprintf("g%d_", n))})
+				require.NoError(t, err, "seed %d", n)
+				assert.Equal(t, plainBack, back,
+					"seed %d: a vocabulary spells the same snapshot differently; it may not mean a different one:\n%s", n, data)
 			}
 		})
 	}
@@ -652,7 +746,11 @@ var i2Vocabularies = map[string]struct {
 	// the TYPE axis of the same matrix: a symmetric node-backed vocabulary,
 	// an asymmetric one whose accept side answers for a slug the emit side
 	// never writes, and the unwritable resolution the type seam refuses
-	"type-space":               {typedSpaceVocabulary{typeSlugOf: map[string]string{customTypeKey: "task2"}}, true},
+	// the space-minted slug SHADOWS the bundled `task` spelling, which is
+	// the collision this axis exists for — with a slug no document spells
+	// (`task2`) the axis was inert by construction, and the corpus's
+	// `{"type": "task"}` never met a vocabulary that answers for it
+	"type-space":               {typedSpaceVocabulary{typeSlugOf: map[string]string{customTypeKey: "task"}}, true},
 	"type-asymmetric":          {asymmetricTypeVocab{}, true},
 	"type-resolves-unwritable": {blankTypeVocab{}, true},
 	// a vocabulary that moves the reserved `template` spelling in either

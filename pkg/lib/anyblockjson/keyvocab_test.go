@@ -72,6 +72,81 @@ func TestKeyVocabulary_ReverseIsATableNotACaseTransform(t *testing.T) {
 	})
 }
 
+// typeSlugShadowsBundled is the second KeyVocabulary precondition as a
+// predicate: does this vocabulary bind a spelling the bundled table binds to
+// a DIFFERENT key? Written out rather than described, so "conforming" is
+// something a test can assert instead of something a reader has to check by
+// eye.
+func typeSlugShadowsBundled(v KeyVocabulary, key string) bool {
+	slug := v.TypeSlug(key)
+	if other, ok := (BundledKeyVocabulary{}).TypeKey(slug); ok && other != key {
+		return true // the emit direction
+	}
+	if back, ok := v.TypeKey(slug); ok {
+		if other, isBundled := (BundledKeyVocabulary{}).TypeKey(slug); isBundled && back != other {
+			return true // the accept direction
+		}
+	}
+	return false
+}
+
+// TestKeyVocabulary_ShadowingSlugBreaksInversion pins the precondition
+// KeyVocabulary states beyond "…Key inverts …Slug": no answer may bind a
+// spelling the bundled table binds elsewhere.
+//
+// The vocabulary here is a strict inverse pair — it satisfies the weaker
+// contract completely — and the type is still lost. Export spells the bundled
+// `task` key `task` and records NO legend entry, because the bundled table
+// inverts that spelling itself and ships with every reader; the reader's own
+// vocabulary is consulted first and answers `69bbfc…`. A template for the
+// bundled Task type comes back as a template for an unrelated custom type,
+// with no error anywhere.
+//
+// This is not a live defect. storeresolver, the only vocabulary the product
+// wires, refuses both halves: keyMaps.roundTrips will not SPELL a key with a
+// slug the bundled table binds elsewhere, and the bundledKey check in
+// keyMaps.key will not BIND one — its comment records 12 re-pointed objects
+// in a 36 808-object sweep as the cost of missing the second half. A
+// hand-written Options.Keys can still do it, so the rule is written on the
+// interface and held here, and the conforming twin below shows the same
+// document surviving.
+func TestKeyVocabulary_ShadowingSlugBreaksInversion(t *testing.T) {
+	shadowing := typedSpaceVocabulary{typeSlugOf: map[string]string{customTypeKey: "task"}}
+	require.True(t, typeSlugShadowsBundled(shadowing, customTypeKey),
+		"the fixture has to break the precondition, or this test proves nothing")
+
+	snap := typedSnapshot("ot-template", "ot-task")
+	data, err := Marshal(model.SmartBlockType_Template, snap, Options{Keys: shadowing})
+	require.NoError(t, err)
+	assert.NotContains(t, string(data), "type_keys",
+		"the bundled table inverts `task`, so the document owes no entry — which is exactly why the reader is on its own")
+
+	_, back, err := Unmarshal(data, Options{GenerateId: seqIds("g"), Keys: shadowing})
+	require.NoError(t, err)
+	assert.Equal(t, []string{"ot-template", "ot-" + customTypeKey}, back.ObjectTypes,
+		"a shadowing vocabulary re-points the template's target type, silently — the failure the precondition forbids")
+
+	// the same document, the same shape of vocabulary, one conforming answer
+	conforming := typedSpaceVocabulary{typeSlugOf: map[string]string{customTypeKey: "tsk7"}}
+	require.False(t, typeSlugShadowsBundled(conforming, customTypeKey))
+	data, err = Marshal(model.SmartBlockType_Template, snap, Options{Keys: conforming})
+	require.NoError(t, err)
+	_, back, err = Unmarshal(data, Options{GenerateId: seqIds("h"), Keys: conforming})
+	require.NoError(t, err)
+	assert.Equal(t, []string{"ot-template", "ot-task"}, back.ObjectTypes,
+		"a conforming vocabulary round-trips the same document (§11.1, equivalent resolvers)")
+}
+
+// The vocabulary I1's round-trip axis reads with has to conform, or that axis
+// measures the wrong thing — it would fail for the reason above rather than
+// for a regression in the codec.
+func TestKeyVocabulary_RoundTripVocabConforms(t *testing.T) {
+	for key := range roundTripTypeSlugs {
+		assert.False(t, typeSlugShadowsBundled(roundTripVocab{}, key),
+			"roundTripVocab must not shadow the bundled table for %q", key)
+	}
+}
+
 func TestKeyVocabulary_CustomKeysPassThrough(t *testing.T) {
 	vocab := BundledKeyVocabulary{}
 
