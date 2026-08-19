@@ -266,3 +266,168 @@ func (v twinSlugVocab) TypeSlug(key string) string { return BundledKeyVocabulary
 func (v twinSlugVocab) TypeKey(slug string) (string, bool) {
 	return BundledKeyVocabulary{}.TypeKey(slug)
 }
+
+// A legend value is a stored key, and admission judges it like one: the deny
+// rule runs on the value itself, not only on whatever /properties member
+// happens to spell the entry. Unchecked, {"sneaky": "uniqueKey"} was a
+// laundering primitive — admission resolved ONE hop and checked the value
+// only for writability.
+func TestValidate_LegendValueObeysTheDenyRule(t *testing.T) {
+	for name, doc := range map[string]string{
+		"resolution vector": `{"version": 1, "property_keys": {"sneaky": "uniqueKey"}}`,
+		"merge selector":    `{"version": 1, "property_keys": {"p": "oldAnytypeID"}}`,
+		"envelope key":      `{"version": 1, "property_keys": {"myid": "id"}}`,
+		"stripped key":      `{"version": 1, "property_keys": {"s": "spaceId"}}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			err := Validate([]byte(doc))
+			require.Error(t, err, doc)
+			assert.Contains(t, err.Error(), "/property_keys/")
+			_, _, unmErr := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
+			require.Error(t, unmErr, "I2: Unmarshal refuses what Validate refuses")
+		})
+	}
+}
+
+// The other half of the laundering defect, pinned as settled behavior: under
+// verbatim-first a legend value of "unique_key" names the CUSTOM stored key —
+// never bundled uniqueKey — and the re-export is a document validation
+// accepts (it used to emit /properties/unique_key with no legend entry and
+// then reject its own output).
+func TestImport_LegendBindingToACustomShadowKeyIsNotLaundering(t *testing.T) {
+	doc := `{"version": 1, "id": "o1", "property_keys": {"x": "unique_key"}, "properties": {"x": "ot-page"}}`
+	require.NoError(t, Validate([]byte(doc)))
+	sbType, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
+	require.NoError(t, err)
+	assert.Equal(t, "ot-page", snap.Details.Fields["unique_key"].GetStringValue(),
+		"the value binds to the custom key the legend names")
+	assert.NotContains(t, snap.Details.Fields, "uniqueKey",
+		"nothing lands on the importer's resolution vector")
+
+	out, err := Marshal(sbType, snap, Options{})
+	require.NoError(t, err)
+	require.NoError(t, Validate(out), "re-export:\n%s", out)
+}
+
+// deniedKeyVocab slugs an internal key — plausible, because apiObjectKey is
+// strcase(transliterate(Name)) with no reserved-word check, so a property
+// named after an internal one produces exactly this.
+type deniedKeyVocab struct{ BundledKeyVocabulary }
+
+func (deniedKeyVocab) PropertySlug(key string) string {
+	if key == "uniqueKey" {
+		return "sneaky"
+	}
+	return BundledKeyVocabulary{}.PropertySlug(key)
+}
+
+// Export never writes a legend whose value the deny rule refuses: a denied
+// stored key never takes a slug, because the slug's legend entry would carry
+// that value. The verbatim key is the one honest rendering.
+func TestExport_ADeniedKeyNeverTakesASlug(t *testing.T) {
+	t.Run("property block", func(t *testing.T) {
+		// given
+		snap := blockKeySnapshot(map[string]*types.Value{"name": str("x")}, "uniqueKey")
+
+		// when
+		data, err := Marshal(model.SmartBlockType_Page, snap, Options{Keys: deniedKeyVocab{}})
+
+		// then
+		require.NoError(t, err)
+		require.NoError(t, Validate(data), "emitted:\n%s", data)
+		doc := decodeDoc(t, data)
+		require.Len(t, doc.Blocks, 1)
+		assert.Equal(t, "uniqueKey", doc.Blocks[0].Key)
+		assert.Empty(t, doc.PropertyKeys, "a denied key cannot be a legend value")
+	})
+
+	t.Run("type properties key slot", func(t *testing.T) {
+		// given — the confirmed input: a PropertyResolver answering an
+		// internal key for a recommended-list entry
+		snap := &model.SmartBlockSnapshotBase{
+			Blocks: []*model.Block{{Id: "t1",
+				Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}},
+			Details: fields(map[string]*types.Value{
+				"id": str("t1"),
+				"recommendedRelations": {Kind: &types.Value_ListValue{ListValue: &types.ListValue{
+					Values: []*types.Value{str("p1")}}}},
+			}),
+		}
+		resolver := stubPropertyResolver{byId: map[string]PropertyDefinition{
+			"p1": {Key: "uniqueKey"},
+		}}
+
+		// when
+		data, err := Marshal(model.SmartBlockType_STType, snap,
+			Options{Keys: deniedKeyVocab{}, ResolveProperties: resolver})
+
+		// then
+		require.NoError(t, err)
+		require.NoError(t, Validate(data), "emitted:\n%s", data)
+		var doc struct {
+			TypeProperties []struct {
+				Key string `json:"key"`
+			} `json:"type_properties"`
+			PropertyKeys map[string]string `json:"property_keys"`
+		}
+		require.NoError(t, json.Unmarshal(data, &doc))
+		require.Len(t, doc.TypeProperties, 1)
+		assert.Equal(t, "uniqueKey", doc.TypeProperties[0].Key)
+		assert.Empty(t, doc.PropertyKeys)
+	})
+}
+
+type stubPropertyResolver struct{ byId map[string]PropertyDefinition }
+
+func (r stubPropertyResolver) PropertyById(id string) (PropertyDefinition, bool) {
+	def, ok := r.byId[id]
+	return def, ok
+}
+
+func (r stubPropertyResolver) PropertyId(def PropertyDefinition) (string, bool) { return "", false }
+
+// envelopeSlugVocab spells stored keys as the two spellings validation
+// refuses BEFORE any resolution ("id"/"type" belong to the envelope, and the
+// legend cannot re-purpose them) — a property named "ID" or "Type" really
+// produces this slug.
+type envelopeSlugVocab struct{ BundledKeyVocabulary }
+
+func (envelopeSlugVocab) PropertySlug(key string) string {
+	switch key {
+	case "artist":
+		return "id"
+	case "myGenre":
+		return "type"
+	}
+	return BundledKeyVocabulary{}.PropertySlug(key)
+}
+
+// writableSlug treats a spelling the deny rule refuses AS A SPELLING as
+// unwritable, exactly as it does an over-long slug: the stored key is
+// written instead, with a warning. Emitting the slug made Marshal produce
+// {"properties": {"id": …}}, which its own Validate refuses and no legend
+// can rescue.
+func TestExport_ASlugRefusedAsASpellingFallsBackToTheStoredKey(t *testing.T) {
+	// given
+	snap := customKeySnapshot(map[string]*types.Value{"artist": str("v"), "myGenre": str("w")})
+	var warned []Issue
+
+	// when
+	data, err := Marshal(model.SmartBlockType_Page, snap,
+		Options{Keys: envelopeSlugVocab{}, OnWarning: func(i Issue) { warned = append(warned, i) }})
+
+	// then
+	require.NoError(t, err)
+	require.NoError(t, Validate(data), "emitted:\n%s", data)
+	doc := decodeDoc(t, data)
+	assert.Contains(t, doc.Properties, "artist")
+	assert.Contains(t, doc.Properties, "myGenre")
+	assert.NotContains(t, doc.Properties, "id")
+	assert.NotContains(t, doc.Properties, "type")
+	assert.NotEmpty(t, warned, "the fallback is reported, like every vocabulary answer export cannot honor")
+
+	_, back, err := Unmarshal(data, Options{GenerateId: seqIds("g")})
+	require.NoError(t, err)
+	assert.Equal(t, "v", back.Details.Fields["artist"].GetStringValue())
+	assert.Equal(t, "w", back.Details.Fields["myGenre"].GetStringValue())
+}

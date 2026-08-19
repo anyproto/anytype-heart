@@ -643,6 +643,22 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 		return key
 	}
 
+	// A legend VALUE is a stored key, and admission judges it as one: the
+	// deny rule runs on the value itself, whether or not any member spells
+	// the entry. Checked only where a /properties member resolved through it,
+	// {"sneaky": "uniqueKey"} sat in the legend unchallenged — a laundering
+	// primitive for any key slot outside /properties, and one export never
+	// writes (a denied key never takes a slug — writableSlug).
+	for _, term := range sortedMapKeys(legend) {
+		key, isStr := legend[term].(string)
+		if !isStr {
+			continue
+		}
+		if reason, denied := deniedPropertyKey(key); denied {
+			addIssue("/property_keys/"+escapeJSONPointer(term), "legend value: %s", reason)
+		}
+	}
+
 	if props, _ := doc["properties"].(map[string]any); props != nil {
 		for _, term := range sortedMapKeys(props) {
 			v := props[term]

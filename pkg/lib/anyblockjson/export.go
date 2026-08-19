@@ -276,7 +276,15 @@ func (e *exporter) propertySlugs(keys []string) []string {
 // rejects (maxLength 192 vs 128, on /properties and /property_keys at once).
 // The stored-key arm covers the mirror case: a slug for a key that cannot be a
 // legend VALUE has no invertible spelling but its own, so the verbatim key —
-// always its own address (§3 chain step 1) — is the one honest rendering.
+// always its own address (§3 verbatim-first) — is the one honest rendering.
+//
+// The same fate for a slug validation refuses on other grounds than shape:
+// "id" and "type" are refused as SPELLINGS before any resolution (§2 — the
+// legend cannot re-purpose them, so it cannot rescue them either), and a
+// DENIED key never takes a slug at all, because the slug's legend entry would
+// carry a value the §3 deny rule refuses. Both used to make Marshal emit what
+// its own Validate rejects — or, for the denied key, emit a legend a
+// pre-admission reader would happily resolve.
 func (e *exporter) writableSlug(key string) string {
 	slug := e.opts.propertySlug(key)
 	if slug == key {
@@ -285,6 +293,18 @@ func (e *exporter) writableSlug(key string) string {
 	if !isWritablePropertyKey(slug) || !isWritablePropertyKey(key) {
 		e.warn("/property_keys",
 			"the vocabulary spells %q as %q, which cannot be a property spelling in this format; the stored key is written instead",
+			key, slug)
+		return key
+	}
+	if slug == detailKeyId || slug == detailKeyType {
+		e.warn("/property_keys",
+			"the vocabulary spells %q as %q, a spelling this format refuses before any resolution (§2); the stored key is written instead",
+			key, slug)
+		return key
+	}
+	if _, denied := deniedPropertyKey(key); denied {
+		e.warn("/property_keys",
+			"%q cannot be a legend value (§3 deny rule), so its slug %q is not written; the stored key is its own address",
 			key, slug)
 		return key
 	}

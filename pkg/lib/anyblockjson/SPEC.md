@@ -31,7 +31,13 @@ Export claims every spelling through one document-wide **term ledger** (a
 stored key always keeps its own term; a slug goes to its first claimant), so
 a block slot can no longer record a legend entry that rebinds a term
 `/properties` owns — which moved that property's value onto a different
-relation — nor collapse two keys into one slug.
+relation — nor collapse two keys into one slug. The legend can no longer
+launder: a `property_keys` value is admitted like the stored key it is —
+the deny rule runs on the value itself, member or no member spelling it —
+and export never mints the refused shapes, because a denied key never takes
+a slug and a vocabulary answer of `id`/`type` (the spellings refused before
+any resolution) falls back to the stored key like an over-long slug always
+did.
 
 Changes in v0.11: three rules that two surfaces disagreed about, each
 found as `Marshal` emitting a document its own `Validate` rejects. **A table
@@ -595,18 +601,28 @@ writes the entry:
   legend entry that rebound the term, so that property's value landed on a
   different relation, silently; and two blocks sharing one slug collapsed
   into naming one key.
-- **A legend value is a stored key, and obeys the writable-key rule.**
-  Non-empty, no control characters, at most 128 characters — the same shape
-  rule property names carry, enforced by the schema. Export only ever
-  records values that passed it, so the bound refuses nothing export writes.
+- **A legend value is a stored key, and is admitted like one.** It obeys the
+  writable-key rule — non-empty, no control characters, at most 128
+  characters, the same shape rule property names carry, enforced by the
+  schema — **and the §3 deny rule**: a value naming an internal key
+  (`uniqueKey`, `oldAnytypeID`, `spaceId`, `id`, …) is refused, by
+  validation and import alike, whether or not any member spells the entry.
+  The legend is step one of resolution, so an unchecked value was a
+  laundering primitive: it could bind any harmless spelling onto a key
+  admission refuses — in a key slot outside `/properties`, without admission
+  ever seeing it. Export never writes either refused shape: a denied key
+  never takes a slug (its spelling is written verbatim, where no entry is
+  owed), and unwritable values were already never recorded.
 - **The legend cannot launder a spelling onto an internal key.** Entries are
   honored during validation and admission exactly as during import — the
   legend is step one of key resolution — so `{"prio": "uniqueKey"}` does not
-  smuggle a `uniqueKey` write past the §3 deny rule: the *resolved* key is
-  what admission judges (see below). Conversely, a legend entry that binds a
-  denied *slug spelling* to a harmless stored key (a space-minted
-  `apiObjectKey` may collide with a bundled spelling) is honored too: nothing
-  lands on the internal key, so nothing is refused.
+  smuggle a `uniqueKey` write past the §3 deny rule twice over: the entry
+  itself is refused (previous bullet), and the *resolved* key is what
+  admission judges regardless (see below). Conversely, a legend entry that
+  binds a denied *slug spelling* to a harmless stored key (a space-minted
+  `apiObjectKey` may collide with a bundled spelling, and an identity entry
+  for a shadow stored key is exactly this shape) is honored: nothing lands
+  on the internal key, so nothing is refused.
 
 **What is not a key slot** (ADDRESSING §7.5a-4). The vocabulary applies where
 a document NAMES a type or property, and nowhere else. Envelope and DTO field
@@ -788,14 +804,20 @@ drops such a stored key with a warning, since there is no way to write it.
 
 The rule binds the **spelling**, and the spelling is the slug: a vocabulary's
 slug comes from `apiObjectKey`, which is user-supplied or strcase-derived
-from the property name with no length bound, so nothing upstream guarantees
-it is writable. Export therefore checks the slug it is about to write, and an
-unwritable one (over-long, empty, control characters — on either side of a
-legend entry) falls back to the stored key, which is always its own address
-(chain step 1) — with a warning naming the vocabulary's answer. Checking the
-stored key and then emitting the slug unchecked made `Marshal` produce a
-document its own `Validate` rejects, on `/properties` and `/property_keys`
-at once, which §11 rules out.
+from the property name with no length bound and no reserved-word check, so
+nothing upstream guarantees it is a spelling this format accepts. Export
+therefore checks the slug it is about to write, and one it cannot honor
+falls back to the stored key — always its own address (verbatim-first) —
+with a warning naming the vocabulary's answer. Three answers export cannot
+honor: an **unwritable** slug (over-long, empty, control characters — on
+either side of a legend entry); a slug the deny rule refuses **as a
+spelling** before any resolution (`id`, `type` — the envelope's, which the
+legend cannot re-purpose and therefore cannot rescue; a property named "ID"
+really mints this slug); and any slug for a **denied key**, whose legend
+entry would carry a value admission refuses. Checking the stored key and
+then emitting the slug unchecked made `Marshal` produce a document its own
+`Validate` rejects, on `/properties` and `/property_keys` at once, which
+§11 rules out.
 
 **A value whose shape its format cannot hold is a warning**, not an error, and
 only for keys the bundle resolves after the resolution chain runs (`Validate`
