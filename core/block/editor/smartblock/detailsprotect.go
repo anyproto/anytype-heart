@@ -7,12 +7,17 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 )
 
-// identityDetails say what a relation or a type object IS, as opposed to how it looks.
-// relationKey is the key every value of the relation is stored under, relationFormat is how those
-// values are read back, and sourceObject is the bundled definition the object was installed from -
-// the key InstallBundledObjects matches an installed object on. Repointing one of them on an object
-// that already exists reinterprets or orphans every value ever written under it, and no editor,
-// migration or importer has a reason to, so the stored value wins over whatever a writer brings.
+// identityDetails say what a relation, an option of one, or a type object IS, as opposed to how it
+// looks. relationKey is the key every value of the relation is stored under, and on an option the
+// relation it belongs to; relationFormat is how those values are read back; sourceObject is the
+// bundled definition the object was installed from - the key InstallBundledObjects matches an
+// installed object on. Repointing one of them on an object that already exists reinterprets or
+// orphans every value ever written under it, and no editor, migration or importer has a reason to,
+// so the stored value wins over whatever a writer brings.
+//
+// One list serves all three kinds rather than a set per type. Options never carry relationFormat or
+// sourceObject, and nothing writes either one onto an existing option, so guarding them there costs
+// nothing and keeps the rule one sentence long.
 //
 // Two neighbouring keys are deliberately not here:
 //   - relationFormatObjectTypes, which SystemObjectReviser extends when a bundled definition gains
@@ -29,7 +34,14 @@ var identityDetails = []domain.RelationKey{
 // The bundled counterparts live in the read-only marketplace space and are rebuilt from the bundle
 // on every read, so there is nothing to preserve for them.
 func hasIdentityDetails(sbType smartblock.SmartBlockType) bool {
-	return sbType == smartblock.SmartBlockTypeRelation || sbType == smartblock.SmartBlockTypeObjectType
+	switch sbType {
+	case smartblock.SmartBlockTypeRelation,
+		smartblock.SmartBlockTypeRelationOption,
+		smartblock.SmartBlockTypeObjectType:
+		return true
+	default:
+		return false
+	}
 }
 
 // preserveIdentityDetails restores every identityDetails value that the incoming state changes or

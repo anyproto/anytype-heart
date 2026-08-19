@@ -220,6 +220,87 @@ func TestPreserveIdentityDetails_UnrelatedType(t *testing.T) {
 	})
 }
 
+func TestPreserveIdentityDetails_RelationOption(t *testing.T) {
+	// an option's relationKey is the relation it belongs to: repointing it moves the option to
+	// another relation and orphans every value already written under it
+	t.Run("creation sets the relation the option belongs to", func(t *testing.T) {
+		// given
+		fx := newIdentityFixture(t, smartblock.SmartBlockTypeRelationOption)
+		rejections := captureLog(t)
+		s := fx.NewState()
+		s.SetDetail(bundle.RelationKeyRelationKey, domain.String("tag"))
+		s.SetDetail(bundle.RelationKeyName, domain.String("Urgent"))
+
+		// when
+		require.NoError(t, fx.Apply(s))
+
+		// then
+		assert.Equal(t, "tag", fx.Details().GetString(bundle.RelationKeyRelationKey))
+		assert.Empty(t, rejections())
+	})
+
+	t.Run("moving an option to another relation is ignored", func(t *testing.T) {
+		// given
+		fx := newIdentityFixture(t, smartblock.SmartBlockTypeRelationOption)
+		applyOption(t, fx, "tag", "Urgent")
+		rejections := captureLog(t)
+		s := fx.NewState()
+		s.SetDetail(bundle.RelationKeyRelationKey, domain.String("status"))
+		s.SetDetail(bundle.RelationKeyName, domain.String("Renamed"))
+
+		// when
+		require.NoError(t, fx.Apply(s))
+
+		// then - the name is the option's to change, the relation it belongs to is not
+		details := fx.Details()
+		assert.Equal(t, "tag", details.GetString(bundle.RelationKeyRelationKey))
+		assert.Equal(t, "Renamed", details.GetString(bundle.RelationKeyName))
+		assert.Len(t, rejections(), 1)
+	})
+
+	t.Run("rewriting the same relation is a silent no-op", func(t *testing.T) {
+		// given
+		fx := newIdentityFixture(t, smartblock.SmartBlockTypeRelationOption)
+		applyOption(t, fx, "tag", "Urgent")
+		rejections := captureLog(t)
+		s := fx.NewState()
+		s.SetDetail(bundle.RelationKeyRelationKey, domain.String("tag"))
+
+		// when
+		require.NoError(t, fx.Apply(s))
+
+		// then
+		assert.Equal(t, "tag", fx.Details().GetString(bundle.RelationKeyRelationKey))
+		assert.Empty(t, rejections())
+	})
+
+	t.Run("backfill of a missing relation key is allowed", func(t *testing.T) {
+		// given - an option that never got a relationKey
+		fx := newIdentityFixture(t, smartblock.SmartBlockTypeRelationOption)
+		s := fx.NewState()
+		s.SetDetail(bundle.RelationKeyName, domain.String("Urgent"))
+		require.NoError(t, fx.Apply(s))
+		rejections := captureLog(t)
+
+		// when
+		s = fx.NewState()
+		s.SetDetail(bundle.RelationKeyRelationKey, domain.String("tag"))
+		require.NoError(t, fx.Apply(s))
+
+		// then
+		assert.Equal(t, "tag", fx.Details().GetString(bundle.RelationKeyRelationKey))
+		assert.Empty(t, rejections())
+	})
+}
+
+func applyOption(t *testing.T, fx *fixture, relationKey, name string) {
+	s := fx.NewState()
+	s.SetDetail(bundle.RelationKeyRelationKey, domain.String(relationKey))
+	s.SetDetail(bundle.RelationKeyName, domain.String(name))
+	require.NoError(t, fx.Apply(s))
+	require.Equal(t, relationKey, fx.Details().GetString(bundle.RelationKeyRelationKey))
+}
+
 func applyIdentity(t *testing.T, fx *fixture, relationKey string, format model.RelationFormat, sourceObject string) {
 	s := fx.NewState()
 	s.SetDetail(bundle.RelationKeyRelationKey, domain.String(relationKey))
