@@ -350,6 +350,12 @@ func ReportSharedSelects(ss []SharedSelect) string {
 // *and* gives an id — a document without an id has nothing for a reference to
 // point at, and the reference would otherwise be emitted as a bundled url for
 // a type that is not bundled: valid, converted, and dangling.
+//
+// object_types is a translated type-key slot (§2a), so each entry runs the §3
+// chain — this document's own type_keys legend, the bundled table, verbatim —
+// before anything is looked up. typeIds is keyed by the untranslated envelope
+// key (§2), and matching a term against it raw is both a fail-closed and a
+// fail-open bug; see typeterm.go.
 func CheckTargetTypes(files []string, typeIds map[string]string) ([]BadTarget, error) {
 	var out []BadTarget
 	for _, f := range files {
@@ -358,6 +364,7 @@ func CheckTargetTypes(files []string, typeIds map[string]string) ([]BadTarget, e
 			return nil, fmt.Errorf("read %s: %w", f, err)
 		}
 		var doc struct {
+			TypeKeys       typeLegend    `json:"type_keys"`
 			TypeProperties []typePropRaw `json:"type_properties"`
 		}
 		if err := json.Unmarshal(data, &doc); err != nil {
@@ -365,21 +372,17 @@ func CheckTargetTypes(files []string, typeIds map[string]string) ([]BadTarget, e
 		}
 		for _, tp := range doc.TypeProperties {
 			for _, target := range tp.ObjectTypes {
-				// objectTypes is a type-key slot, so it spells the slug
-				// (§7.5a) — and a stored key still passes through verbatim,
-				// which is chain step 1. Both must resolve here.
-				if _, isBundledSlug := bundle.TypeKeyByApiSlug(target); isBundledSlug {
+				key := resolveTypeTerm(doc.TypeKeys, target)
+				if bundle.HasObjectTypeByKey(domain.TypeKey(key)) {
 					continue
 				}
-				if bundle.HasObjectTypeByKey(domain.TypeKey(target)) {
-					continue
-				}
-				id, defined := typeIds[target]
+				id, defined := typeIds[key]
+				note := resolvedNote(target, key)
 				switch {
 				case !defined:
-					out = append(out, BadTarget{File: f, Property: tp.Key, Target: target, Reason: "no such type: not bundled, and not defined by this bundle"})
+					out = append(out, BadTarget{File: f, Property: tp.Key, Target: target, Reason: "no such type: not bundled, and not defined by this bundle" + note})
 				case id == "":
-					out = append(out, BadTarget{File: f, Property: tp.Key, Target: target, Reason: "that type is defined here but its document carries no \"id\", so nothing can reference it"})
+					out = append(out, BadTarget{File: f, Property: tp.Key, Target: target, Reason: "that type is defined here but its document carries no \"id\", so nothing can reference it" + note})
 				}
 			}
 		}
@@ -418,6 +421,14 @@ type BadTemplateTarget struct {
 // Nothing downstream reports any of this — the document validates, converts
 // and imports; the template simply never appears under a type — so the batch
 // has to catch it.
+//
+// Both slots read here are translated (§2): `type` gates the whole check and
+// `template_for` names the target, and each resolves through this document's
+// own type_keys legend before the bundled table and verbatim (§3, typeterm.go).
+// The gate especially: whether a document IS a template is decided by the
+// stored key its `type` term resolves to, so a document spelling another type
+// `template` is not one, and a document whose legend binds some other spelling
+// onto the template key is.
 func CheckTemplateTargets(files []string, typeIds map[string]string) ([]BadTemplateTarget, error) {
 	var out []BadTemplateTarget
 	for _, f := range files {
@@ -428,12 +439,13 @@ func CheckTemplateTargets(files []string, typeIds map[string]string) ([]BadTempl
 		var doc struct {
 			Type        string                     `json:"type"`
 			TemplateFor string                     `json:"template_for"`
+			TypeKeys    typeLegend                 `json:"type_keys"`
 			Properties  map[string]json.RawMessage `json:"properties"`
 		}
 		if err := json.Unmarshal(data, &doc); err != nil {
 			return nil, fmt.Errorf("parse %s: %w", f, err)
 		}
-		if doc.Type != "template" {
+		if resolveTypeTerm(doc.TypeKeys, doc.Type) != templateTypeKey {
 			continue
 		}
 		if _, authored := doc.Properties[string(bundle.RelationKeyTargetObjectType)]; authored {
@@ -446,17 +458,19 @@ func CheckTemplateTargets(files []string, typeIds map[string]string) ([]BadTempl
 				Reason: `no "template_for": the template would belong to no type, and no type would list it`})
 			continue
 		}
-		id, defined := typeIds[doc.TemplateFor]
+		key := resolveTypeTerm(doc.TypeKeys, doc.TemplateFor)
+		id, defined := typeIds[key]
+		note := resolvedNote(doc.TemplateFor, key)
 		switch {
-		case !defined && bundle.HasObjectTypeByKey(domain.TypeKey(doc.TemplateFor)):
+		case !defined && bundle.HasObjectTypeByKey(domain.TypeKey(key)):
 			out = append(out, BadTemplateTarget{File: f, Target: doc.TemplateFor,
-				Reason: `that type is bundled, but a template's target must be a document in this bundle: a bundled url is never relinked on import, so it would match no type — add an object_type document with this key and an "id"`})
+				Reason: `that type is bundled, but a template's target must be a document in this bundle: a bundled url is never relinked on import, so it would match no type — add an object_type document with this key and an "id"` + note})
 		case !defined:
 			out = append(out, BadTemplateTarget{File: f, Target: doc.TemplateFor,
-				Reason: "no such type: not bundled, and not defined by this bundle"})
+				Reason: "no such type: not bundled, and not defined by this bundle" + note})
 		case id == "":
 			out = append(out, BadTemplateTarget{File: f, Target: doc.TemplateFor,
-				Reason: `that type is defined here but its document carries no "id", so nothing can reference it`})
+				Reason: `that type is defined here but its document carries no "id", so nothing can reference it` + note})
 		}
 	}
 	return out, nil
