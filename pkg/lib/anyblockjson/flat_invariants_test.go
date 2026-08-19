@@ -255,6 +255,49 @@ func (hostileTypePropResolver) PropertyById(id string) (PropertyDefinition, bool
 
 func (hostileTypePropResolver) PropertyId(PropertyDefinition) (string, bool) { return "", false }
 
+// typePropTargets is one type_properties entry reduced to its two KEY slots:
+// the resolved property key and the resolved target type keys of
+// `object_types` (§2a). Both are what a reader ends up storing, so both must
+// invert.
+type typePropTargets struct {
+	Key     string
+	Targets []string
+}
+
+// wantTypePropTargets is what a faithful reader owes back for a type-document
+// seed, read off hostileTypePropResolver itself so the expectation cannot
+// drift from the fixture — the definitions in §2a section order (featured
+// first, then the regular list), each with its target types intact.
+func wantTypePropTargets() []typePropTargets {
+	out := make([]typePropTargets, 0, 2)
+	for _, id := range []string{"hp1", "hp2"} {
+		def, ok := hostileTypePropResolver{}.PropertyById(id)
+		if !ok {
+			panic("hostileTypePropResolver no longer serves " + id)
+		}
+		out = append(out, typePropTargets{Key: string(def.Key), Targets: def.ObjectTypes})
+	}
+	return out
+}
+
+// capturedTypeProps is a reader-side PropertyResolver that records what the
+// type-property seam hands it. It is the ONLY way to see the `object_types`
+// slot from outside: applyTypeProperties resolves those terms and passes them
+// in the definition, while the recommended-relation lists it writes into the
+// snapshot carry property ids, not targets. Answering false keeps the
+// snapshot identical to the resolver-less read (the key passes through in
+// place of an id), so the capture observes without steering.
+type capturedTypeProps struct{ got []typePropTargets }
+
+func (c *capturedTypeProps) PropertyById(string) (PropertyDefinition, bool) {
+	return PropertyDefinition{}, false
+}
+
+func (c *capturedTypeProps) PropertyId(def PropertyDefinition) (string, bool) {
+	c.got = append(c.got, typePropTargets{Key: string(def.Key), Targets: def.ObjectTypes})
+	return "", false
+}
+
 // invertedTypes is what a faithful reader owes back for a snapshot's
 // ObjectTypes: the format writes object_types[0] as `type` — and [1] as
 // `template_for` when [0] is the template key — each spelled through the
@@ -356,15 +399,21 @@ func TestInvariant_MarshalOutputValidates(t *testing.T) {
 			for n := 0; n < 300; n++ {
 				sbType, snap := hostileSnapshot(n)
 				o := opts
+				var wantProps []typePropTargets
 				if sbType == model.SmartBlockType_STType {
 					o.ResolveProperties = hostileTypePropResolver{}
+					wantProps = wantTypePropTargets()
 				}
 				data, err := Marshal(sbType, snap, o)
 				if err != nil {
 					continue // a loud failure is allowed; silent invalidity is not
 				}
 				require.NoError(t, Validate(data), "seed %d produced:\n%s", n, data)
-				_, back, err := Unmarshal(data, Options{GenerateId: seqIds(fmt.Sprintf("g%d_", n))})
+				capture := &capturedTypeProps{}
+				_, back, err := Unmarshal(data, Options{
+					GenerateId:        seqIds(fmt.Sprintf("g%d_", n)),
+					ResolveProperties: capture,
+				})
 				require.NoError(t, err,
 					"seed %d produced a valid document its own Unmarshal refuses:\n%s", n, data)
 				// the type slots must INVERT, not merely import: binding the
@@ -373,6 +422,15 @@ func TestInvariant_MarshalOutputValidates(t *testing.T) {
 				// error marks it
 				assert.Equal(t, invertedTypes(snap.ObjectTypes), back.ObjectTypes,
 					"seed %d: the archive must bind back to the types it came from:\n%s", n, data)
+				// and so must the OTHER type slot. `type_properties[].object_types`
+				// shares the envelope's term ledger and its legend, but nothing
+				// asserted it: the envelope truncates to one type, so the census's
+				// whole stated purpose — a type document naming many types — lived
+				// entirely in a slot no assertion watched. Dropping the ledger
+				// back-off left this corpus green while a bundled target was
+				// silently replaced by a custom type sharing its spelling.
+				assert.Equal(t, wantProps, capture.got,
+					"seed %d: the type properties must bind back to the types they came from:\n%s", n, data)
 			}
 		})
 	}
