@@ -287,11 +287,24 @@ func (imp *importer) tableFromJSON(jb *jsonBlock, tableId string) (*model.Block,
 	}
 	table.ChildrenIds = []string{colsWrapper.Id, rowsWrapper.Id}
 
+	// the rows' authored ids, known before a single column is minted: a
+	// generated column id has to keep the whole column of derived ids it
+	// implies clear, and the authored rows are the half of the grid that
+	// cannot move.
+	authoredRowIds := make([]string, 0, len(jb.Rows))
+	for _, jr := range jb.Rows {
+		if jr.Id != "" {
+			authoredRowIds = append(authoredRowIds, jr.Id)
+		}
+	}
+
 	colIds := make([]string, 0, len(jb.Columns))
 	for _, jc := range jb.Columns {
 		id := jc.Id
 		if id == "" {
-			id = imp.newTableInnerId()
+			id = imp.newTableInnerId(func(colId string) bool {
+				return imp.derivedIdTaken(authoredRowIds, func(rowId string) string { return rowId + "-" + colId })
+			})
 		} else {
 			imp.claimTableInnerId(id)
 		}
@@ -320,13 +333,32 @@ func (imp *importer) tableFromJSON(jb *jsonBlock, tableId string) (*model.Block,
 	copy(rows, jb.Rows)
 	sort.SliceStable(rows, func(i, j int) bool { return rows[i].IsHeader && !rows[j].IsHeader })
 
-	for _, jr := range rows {
-		rowId := jr.Id
-		if rowId == "" {
-			rowId = imp.newTableInnerId()
-		} else {
-			imp.claimTableInnerId(rowId)
+	// Every row id is resolved — and the WHOLE grid claimed — before a cell is
+	// built, because building one generates ids (a cell block's descendants,
+	// the next table) and the grid is not free for them to take: the table
+	// owns `<rowId>-<colId>` for every pair, written or not (§6.1). Only the
+	// authored half of that grid was ever claimed, so a generated row or
+	// column left its whole row of derived ids unreserved — and an authored
+	// block sitting on one came back from import as a second block with the
+	// same id, which is a snapshot no editor can resolve.
+	rowIds := make([]string, len(rows))
+	for i, jr := range rows {
+		if jr.Id != "" {
+			rowIds[i] = imp.claimTableInnerId(jr.Id)
+			continue
 		}
+		rowIds[i] = imp.newTableInnerId(func(rowId string) bool {
+			return imp.derivedIdTaken(colIds, func(colId string) string { return rowId + "-" + colId })
+		})
+	}
+	for _, rowId := range rowIds {
+		for _, colId := range colIds {
+			imp.claimId(rowId + "-" + colId)
+		}
+	}
+
+	for rowIdx, jr := range rows {
+		rowId := rowIds[rowIdx]
 		row := &model.Block{
 			Id:      rowId,
 			Content: &model.BlockContentOfTableRow{TableRow: &model.BlockContentTableRow{IsHeader: jr.IsHeader}},
@@ -421,10 +453,16 @@ func (imp *importer) claimTableInnerId(id string) string {
 // to the caller: the convert wiring derives ids from file paths, which are
 // full of dashes. So sanitize rather than trust, and disambiguate on
 // collision instead of hoping the sanitized forms stay distinct.
-func (imp *importer) newTableInnerId() string {
+//
+// derived reports whether a candidate would make a cell id that is already
+// somebody's: a row or column id is never alone, it names a whole line of the
+// grid, and a line landing on an existing id is the same collision as the id
+// itself landing on one. The candidate is what moves, because a derived id has
+// no spelling of its own (§6.1).
+func (imp *importer) newTableInnerId(derived func(string) bool) string {
 	id := imp.genId()
 	sanitized := sanitizeTableInnerId(id)
-	if sanitized == id {
+	if sanitized == id && !derived(id) {
 		// nothing to sanitize: genId's answer is already unique and claimed,
 		// and running it through the disambiguation pass would find it taken
 		// by its own claim and rename it to <id>_2 — which is what every
@@ -433,7 +471,20 @@ func (imp *importer) newTableInnerId() string {
 	}
 	// the sanitized form is a different string, so it has to be claimed on
 	// its own; the raw one stays claimed, which costs nothing
-	return imp.claimId(uniqueLabel(sanitized, imp.idTaken))
+	return imp.claimId(uniqueLabel(sanitized, func(candidate string) bool {
+		return imp.idTaken(candidate) || derived(candidate)
+	}))
+}
+
+// derivedIdTaken reports whether any cell id the candidate implies is already
+// claimed — cellId maps each id of the opposite axis to the pair's derived id.
+func (imp *importer) derivedIdTaken(others []string, cellId func(string) string) bool {
+	for _, other := range others {
+		if imp.idTaken(cellId(other)) {
+			return true
+		}
+	}
+	return false
 }
 
 // maxTableInnerId mirrors the schema's tableInnerId length bound, so a

@@ -8,6 +8,7 @@ package anyblockjson
 // the same rule, and Options.GenerateId belongs to the caller.
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -235,4 +236,97 @@ func TestExport_StringShorthandCellIsEmittedOnce(t *testing.T) {
 			assert.Equal(t, 1, shared, "one stored block, one imported block:\n%s", data)
 		})
 	}
+}
+
+// A table's grid belongs to the table whether the ids were authored or
+// generated (§6.1). Only the authored half was ever claimed, so a generated
+// row or column left every cell id it implies free — free for an authored
+// block to be sitting on already, and free for the next generated id to take.
+// Either way the document imported to two blocks with one id, a snapshot no
+// editor can resolve.
+//
+// Both fixtures calibrate themselves: they import the table alone to learn
+// what the generator will call the row and the column, and only then build the
+// collision. Hard-coding the generator's answer would make the test pass
+// vacuously the day the number of genId calls changes.
+func TestImport_GeneratedGridIsClaimed(t *testing.T) {
+	tableOnly := `{"version": 1, "id": "p1", "blocks": [
+		{"type": "table", "columns": [{}], "rows": [{"cells": ["cell"]}]},
+		{"type": "paragraph", "text": "trailing"}]}`
+	mints := 0
+	_, probe, err := Unmarshal([]byte(tableOnly), Options{
+		GenerateId: func() string { mints++; return fmt.Sprintf("g%d", mints) }})
+	require.NoError(t, err)
+	var rowId, colId string
+	for _, b := range probe.Blocks {
+		switch b.Content.(type) {
+		case *model.BlockContentOfTableRow:
+			rowId = b.Id
+		case *model.BlockContentOfTableColumn:
+			colId = b.Id
+		}
+	}
+	require.NotEmpty(t, rowId, "the fixture's row id is generated")
+	require.NotEmpty(t, colId, "the fixture's column id is generated")
+	derived := rowId + "-" + colId
+	require.Contains(t, blockIds(t, probe, "p1"), derived, "the cell block is built at the derived id")
+	require.NotZero(t, mints, "the fixture generates ids")
+
+	noDuplicateIds := func(t *testing.T, snap *model.SmartBlockSnapshotBase) {
+		t.Helper()
+		seen := map[string]bool{}
+		for _, b := range snap.Blocks {
+			assert.False(t, seen[b.Id], "duplicate block id %q — the generated grid landed on a taken id", b.Id)
+			seen[b.Id] = true
+		}
+	}
+
+	t.Run("an authored block is already sitting on the grid", func(t *testing.T) {
+		doc := fmt.Sprintf(`{"version": 1, "id": "p1", "blocks": [
+			{"type": "paragraph", "id": %q, "text": "authored"},
+			{"type": "table", "columns": [{}], "rows": [{"cells": ["cell"]}]}]}`, derived)
+		require.NoError(t, Validate([]byte(doc)), "the document itself is legal: %s", doc)
+
+		_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
+		require.NoError(t, err)
+		noDuplicateIds(t, snap)
+		// the authored block keeps its id and the generated grid moves off it:
+		// a derived id has no spelling of its own, so the generated side — the
+		// only side with a free choice — is the one that yields
+		assert.Contains(t, blockIds(t, snap, "p1"), derived, "the authored block keeps its id")
+		assert.NotEqual(t, derived, cellIdOf(t, snap), "the cell moved off the authored id")
+	})
+
+	t.Run("a later generated id lands on the grid", func(t *testing.T) {
+		// the same document and the same generator, except that its LAST
+		// answer — the trailing paragraph's — is the cell id the table just
+		// derived. A generator is the caller's (the convert wiring derives ids
+		// from file paths), so its answers are not the package's to trust.
+		n := 0
+		_, snap, err := Unmarshal([]byte(tableOnly), Options{GenerateId: func() string {
+			n++
+			if n == mints {
+				return derived
+			}
+			return fmt.Sprintf("g%d", n)
+		}})
+		require.NoError(t, err)
+		noDuplicateIds(t, snap)
+		assert.Equal(t, derived, cellIdOf(t, snap),
+			"the table's own cell is unmoved — nothing else claimed its id first")
+	})
+}
+
+// cellIdOf returns the id of the single table cell in a snapshot: the one
+// child of the one row.
+func cellIdOf(t *testing.T, snap *model.SmartBlockSnapshotBase) string {
+	t.Helper()
+	for _, b := range snap.Blocks {
+		if _, ok := b.Content.(*model.BlockContentOfTableRow); ok {
+			require.Len(t, b.ChildrenIds, 1, "the fixture's row holds one cell")
+			return b.ChildrenIds[0]
+		}
+	}
+	t.Fatal("no table row in the snapshot")
+	return ""
 }
