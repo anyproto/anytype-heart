@@ -1,6 +1,7 @@
 package anyblockjson
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -459,4 +460,81 @@ func TestImport_TypePropertyKeyRefusesAnUnwritableResolvedKey(t *testing.T) {
 	var ve *ValidationError
 	require.ErrorAs(t, err, &ve, "the refusal is path-addressed")
 	assert.Contains(t, err.Error(), "/type_properties/0/key")
+}
+
+// The two doors into the §2a array must also agree on what a DECLARED FORMAT
+// means. `text` is one name for two stored formats, and §3 makes it resolve
+// per key: a key already known to be shorttext — every bundled `name`,
+// `icon_emoji`, `cover_id`, and whatever the wiring's ResolveFormat
+// recognizes — keeps that format, and only an unknown key becomes longtext.
+// The document door ran that rule (declaredFormat); the PATCH door read the
+// name literally, so the same array minted the bundled `name` property as
+// longtext through one endpoint and left it shorttext through the other.
+func TestTypePropertyFormatIsTheSameThroughBothDoors(t *testing.T) {
+	viaDocument := func(t *testing.T, opts Options, tp TypeProperty) []PropertyDefinition {
+		t.Helper()
+		r := &recordingPropertyResolver{}
+		opts.ResolveProperties = r
+		opts.GenerateId = seqIds("g")
+		entry := &omap{}
+		entry.set("key", tp.Key)
+		entry.setNonEmpty("name", tp.Name)
+		entry.setNonEmpty("format", tp.Format)
+		entry.setNonEmpty("section", tp.Section)
+		raw, err := json.Marshal(entry)
+		require.NoError(t, err)
+		doc := `{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
+			"type_properties": [` + string(raw) + `]}`
+		_, _, err = Unmarshal([]byte(doc), opts)
+		require.NoError(t, err)
+		return r.defs
+	}
+	viaPatch := func(t *testing.T, opts Options, tp TypeProperty) []PropertyDefinition {
+		t.Helper()
+		r := &recordingPropertyResolver{}
+		opts.ResolveProperties = r
+		_, err := BuildRecommendedLists([]TypeProperty{tp}, opts)
+		require.NoError(t, err)
+		return r.defs
+	}
+
+	cases := map[string]struct {
+		opts Options
+		tp   TypeProperty
+		want model.RelationFormat
+	}{
+		"a bundled short-text key keeps its stored format": {
+			tp:   TypeProperty{Key: "name", Name: "Name", Format: "text", Section: "featured"},
+			want: model.RelationFormat_shorttext,
+		},
+		"a key the wiring resolves as short text keeps it too": {
+			opts: Options{ResolveFormat: func(key domain.RelationKey) (model.RelationFormat, bool) {
+				return model.RelationFormat_shorttext, key == "headline"
+			}},
+			tp:   TypeProperty{Key: "headline", Name: "Headline", Format: "text"},
+			want: model.RelationFormat_shorttext,
+		},
+		"a new key declared as text is long text": {
+			tp:   TypeProperty{Key: "summary", Name: "Summary", Format: "text"},
+			want: model.RelationFormat_longtext,
+		},
+		"any other name is taken literally": {
+			tp:   TypeProperty{Key: "name", Name: "Name", Format: "number"},
+			want: model.RelationFormat_number,
+		},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			// when
+			doorA := viaDocument(t, tc.opts, tc.tp)
+			doorB := viaPatch(t, tc.opts, tc.tp)
+
+			// then
+			require.Len(t, doorA, 1)
+			require.Len(t, doorB, 1)
+			assert.Equal(t, tc.want, doorA[0].Format, "the document door")
+			assert.Equal(t, tc.want, doorB[0].Format, "the PATCH door")
+			assert.Equal(t, doorA[0], doorB[0], "one array, one meaning")
+		})
+	}
 }

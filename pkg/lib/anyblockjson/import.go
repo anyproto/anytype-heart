@@ -311,11 +311,24 @@ func (imp *importer) resolveId(s string) string {
 // other name is taken literally: the document is authoritative about which
 // format a property has, and only the text/text collapse needs repairing.
 func (imp *importer) declaredFormat(key, name string) model.RelationFormat {
+	return declaredFormatWith(imp.opts, key, name)
+}
+
+// declaredFormatWith is that rule with nothing but Options behind it, because
+// the §2a array arrives through TWO doors and the rule is the array's, not the
+// document's: BuildRecommendedLists — the API's PATCH-type channel — read the
+// name literally, so `{"key": "name", "format": "text"}` created the bundled
+// `name` property as longtext through one door and kept it shorttext through
+// the other. The whole point of the collapse is that `text` resolves per key
+// (§3); a door that skips the resolution re-introduces exactly the loss the
+// collapse was designed not to have, and the two doors then disagree about
+// what one array means.
+func declaredFormatWith(opts Options, key, name string) model.RelationFormat {
 	f := formatNames.value(name)
 	if f != model.RelationFormat_longtext {
 		return f
 	}
-	if resolved, ok := imp.resolveFormat(key); ok && resolved == model.RelationFormat_shorttext {
+	if resolved, ok := resolveFormatWith(opts, key); ok && resolved == model.RelationFormat_shorttext {
 		return resolved
 	}
 	return f

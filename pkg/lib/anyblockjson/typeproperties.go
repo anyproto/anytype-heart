@@ -303,7 +303,7 @@ func BuildRecommendedLists(props []TypeProperty, opts Options) ([]RecommendedLis
 			def := PropertyDefinition{
 				Key:         domain.RelationKey(key),
 				Name:        tp.Name,
-				Format:      formatNames.value(tp.Format),
+				Format:      declaredFormatWith(opts, key, tp.Format),
 				Options:     tp.Options,
 				ObjectTypes: targets,
 			}
