@@ -216,7 +216,7 @@ func TestV2SearchObjects(t *testing.T) {
 		fx := searchSetup(t)
 		req := v2model.SearchRequest{
 			Type:    "chore",
-			Filters: json.RawMessage(`[{"property":"sevirity","condition":"notEmpty"}]`),
+			Filters: json.RawMessage(`[{"property":"sevirity","condition":"not_empty"}]`),
 		}
 
 		// when
@@ -369,7 +369,7 @@ func TestV2SearchObjects(t *testing.T) {
 		require.Len(t, warnings, 1)
 		assert.Equal(t, "/filter", warnings[0].Path)
 		assert.Contains(t, warnings[0].Message, "also matches objects with no lastModifiedDate")
-		assert.Contains(t, warnings[0].Message, "notEmpty")
+		assert.Contains(t, warnings[0].Message, "not_empty")
 	})
 
 	t.Run("unknown fields keys are rejected (rule 1 covers field keys)", func(t *testing.T) {
@@ -557,12 +557,12 @@ func TestV2SearchPlanConvergence(t *testing.T) {
 		{
 			name:       "date preset",
 			filter:     `verifiedUntil < currentWeek()`,
-			structured: `[{"property":"verifiedUntil","condition":"less","date_preset":"currentWeek"}]`,
+			structured: `[{"property":"verifiedUntil","condition":"less","date_preset":"current_week"}]`,
 		},
 		{
 			name:       "set literal on a select property",
 			filter:     `severity = ("High")`,
-			structured: `[{"property":"severity","condition":"exactIn","value":["High"]}]`,
+			structured: `[{"property":"severity","condition":"exact_in","value":["High"]}]`,
 		},
 		{
 			name:       "boolean",
@@ -1075,7 +1075,7 @@ func TestV2SearchFileLayoutOptIn(t *testing.T) {
 
 		// when: excluding a type is not asking for files
 		rows, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId,
-			v2model.SearchRequest{Filters: json.RawMessage(`[{"property":"type","condition":"notEqual","value":"image"}]`)}, 0, 25)
+			v2model.SearchRequest{Filters: json.RawMessage(`[{"property":"type","condition":"not_equal","value":"image"}]`)}, 0, 25)
 
 		// then: neither the negated type's rows nor OTHER file rows leak in —
 		// pdf1 (type "file", untouched by the filter) is the probe that the
@@ -1110,7 +1110,7 @@ func TestV2SearchFileLayoutOptIn(t *testing.T) {
 
 		// when: both request forms
 		structured, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId,
-			v2model.SearchRequest{Filters: json.RawMessage(`[{"property":"type","condition":"allIn","value":["image"]}]`)}, 0, 25)
+			v2model.SearchRequest{Filters: json.RawMessage(`[{"property":"type","condition":"all_in","value":["image"]}]`)}, 0, 25)
 		require.NoError(t, err)
 		fromString, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId,
 			v2model.SearchRequest{Filter: `type HAS ALL ("image")`}, 0, 25)

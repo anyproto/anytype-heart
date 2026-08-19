@@ -1236,7 +1236,7 @@ func TestViewOpReviewFixes(t *testing.T) {
 
 		nodes := make([]string, maxV2ViewFilterNodes+1)
 		for i := range nodes {
-			nodes[i] = `{"property":"severity","condition":"notEmpty"}`
+			nodes[i] = `{"property":"severity","condition":"not_empty"}`
 		}
 		_, err = fx.PatchObject(ctx, testSpaceId, "obj1",
 			patchBody(`{"op":"update_view","set":{"filters":[`+joinStrings(nodes, ",")+`]}}`), "", false)

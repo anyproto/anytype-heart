@@ -42,21 +42,21 @@ func TestParse_Grammar(t *testing.T) {
 		{
 			name:  "not equal number",
 			input: `priority != 3`,
-			want:  `[{"property":"priority","condition":"notEqual","value":3}]`,
+			want:  `[{"property":"priority","condition":"not_equal","value":3}]`,
 		},
 		{
 			name:  "all comparison operators",
 			input: `a > 1 AND b < 2 AND c >= 3 AND d <= 4`,
 			want: `[{"property":"a","condition":"greater","value":1},` +
 				`{"property":"b","condition":"less","value":2},` +
-				`{"property":"c","condition":"greaterOrEqual","value":3},` +
-				`{"property":"d","condition":"lessOrEqual","value":4}]`,
+				`{"property":"c","condition":"greater_or_equal","value":3},` +
+				`{"property":"d","condition":"less_or_equal","value":4}]`,
 		},
 		{
 			name:  "contains and not contains",
 			input: `name CONTAINS "report" AND name NOT CONTAINS "draft"`,
 			want: `[{"property":"name","condition":"contains","value":"report"},` +
-				`{"property":"name","condition":"notContains","value":"draft"}]`,
+				`{"property":"name","condition":"not_contains","value":"draft"}]`,
 		},
 		{
 			name:  "in list",
@@ -66,31 +66,31 @@ func TestParse_Grammar(t *testing.T) {
 		{
 			name:  "not in list",
 			input: `status NOT IN ("Done")`,
-			want:  `[{"property":"status","condition":"notIn","value":["Done"]}]`,
+			want:  `[{"property":"status","condition":"not_in","value":["Done"]}]`,
 		},
 		{
 			name:  "has all and not has all",
 			input: `tags HAS ALL ("urgent", "q3") OR tags NOT HAS ALL ("later")`,
 			want: `[{"operator":"or","filters":[` +
-				`{"property":"tags","condition":"allIn","value":["urgent","q3"]},` +
-				`{"property":"tags","condition":"notAllIn","value":["later"]}]}]`,
+				`{"property":"tags","condition":"all_in","value":["urgent","q3"]},` +
+				`{"property":"tags","condition":"not_all_in","value":["later"]}]}]`,
 		},
 		{
 			name:  "set literal is exactIn",
 			input: `tags = ("a", "b")`,
-			want:  `[{"property":"tags","condition":"exactIn","value":["a","b"]}]`,
+			want:  `[{"property":"tags","condition":"exact_in","value":["a","b"]}]`,
 		},
 		{
 			name:  "negated set literal is notExactIn",
 			input: `tags != ("a")`,
-			want:  `[{"property":"tags","condition":"notExactIn","value":["a"]}]`,
+			want:  `[{"property":"tags","condition":"not_exact_in","value":["a"]}]`,
 		},
 		{
 			name:  "is empty and is not empty",
 			input: `assignee IS EMPTY OR assignee IS NOT EMPTY`,
 			want: `[{"operator":"or","filters":[` +
 				`{"property":"assignee","condition":"empty"},` +
-				`{"property":"assignee","condition":"notEmpty"}]}]`,
+				`{"property":"assignee","condition":"not_empty"}]}]`,
 		},
 		{
 			name:  "exists",
@@ -100,17 +100,17 @@ func TestParse_Grammar(t *testing.T) {
 		{
 			name:  "valueless date preset",
 			input: `dueDate < currentWeek()`,
-			want:  `[{"property":"dueDate","condition":"less","datePreset":"currentWeek"}]`,
+			want:  `[{"property":"dueDate","condition":"less","date_preset":"current_week"}]`,
 		},
 		{
 			name:  "counting preset keeps its operand as value",
 			input: `lastModifiedDate > daysAgo(7)`,
-			want:  `[{"property":"lastModifiedDate","condition":"greater","value":7,"datePreset":"numberOfDaysAgo"}]`,
+			want:  `[{"property":"lastModifiedDate","condition":"greater","value":7,"date_preset":"number_of_days_ago"}]`,
 		},
 		{
 			name:  "daysFromNow maps to numberOfDaysNow",
 			input: `dueDate <= daysFromNow(0)`,
-			want:  `[{"property":"dueDate","condition":"lessOrEqual","value":0,"datePreset":"numberOfDaysNow"}]`,
+			want:  `[{"property":"dueDate","condition":"less_or_equal","value":0,"date_preset":"number_of_days_now"}]`,
 		},
 		{
 			name:  "keywords are case-insensitive",
@@ -155,7 +155,7 @@ func TestParse_Precedence(t *testing.T) {
 		// the worked SPEC example: top-level implicit AND, group only for OR
 		want := `[{"property":"done","condition":"equal","value":false},` +
 			`{"operator":"or","filters":[` +
-			`{"property":"dueDate","condition":"less","datePreset":"currentWeek"},` +
+			`{"property":"dueDate","condition":"less","date_preset":"current_week"},` +
 			`{"property":"dueDate","condition":"empty"}]}]`
 		assert.Equal(t, want, parse(t, `done = false AND (dueDate < currentWeek() OR dueDate IS EMPTY)`, Options{}))
 	})
@@ -436,7 +436,7 @@ func TestParse_PresetConditions(t *testing.T) {
 		pe := parseErr(t, `dueDate != today()`, Options{})
 		assert.Equal(t, 11, pe.Offset, "the error addresses the preset, not the closing paren")
 		assert.Equal(t, "today", pe.Token)
-		assert.Contains(t, pe.Message, "a date preset cannot be used with notEqual")
+		assert.Contains(t, pe.Message, "a date preset cannot be used with not_equal")
 		assert.Contains(t, pe.Hint, "negate by range")
 	})
 

@@ -268,7 +268,7 @@ func TestV2CreateSet(t *testing.T) {
 		_, err := fx.CreateSet(context.Background(), testSpaceId, v2model.CreateSetRequest{
 			Name: "X", Type: "chore",
 			Views:   json.RawMessage(`[{"name":"V"}]`),
-			Filters: json.RawMessage(`[{"property":"severity","condition":"notEmpty"}]`),
+			Filters: json.RawMessage(`[{"property":"severity","condition":"not_empty"}]`),
 		}, false)
 
 		// then
@@ -301,7 +301,7 @@ func TestV2CreateSet(t *testing.T) {
 		// when
 		result, err := fx.CreateSet(context.Background(), testSpaceId, v2model.CreateSetRequest{
 			Name: "Open chores", Type: "chore",
-			Filters: json.RawMessage(`[{"property":"severity","condition":"notEmpty"}]`),
+			Filters: json.RawMessage(`[{"property":"severity","condition":"not_empty"}]`),
 		}, true)
 
 		// then
