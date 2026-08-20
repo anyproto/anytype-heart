@@ -872,9 +872,19 @@ func (s *service) Search(ctx context.Context, req *pb.RpcChatSearchRequest) ([]*
 	}
 	// the search is scoped to message docs so messages don't compete with the
 	// rest of the space for the candidate limit
-	ftResults, err := s.ftSearch.SearchChat(req.SpaceId, req.ChatId, req.FullText, ftLimit)
+	ftResults, err := s.ftSearch.SearchChat(req.SpaceId, req.ChatId, req.FullText, req.Creators, ftLimit)
 	if err != nil {
 		return nil, fmt.Errorf("search ft: %w", err)
+	}
+
+	// the FT clause already scopes candidates to the requested authors; this
+	// set backstops it at hydration (stale FT docs after an edit)
+	var creatorSet map[string]struct{}
+	if len(req.Creators) > 0 {
+		creatorSet = make(map[string]struct{}, len(req.Creators))
+		for _, creator := range req.Creators {
+			creatorSet[creator] = struct{}{}
+		}
 	}
 
 	// group message ids per chat, preserving the FT (score) order within groups.
@@ -953,6 +963,11 @@ func (s *service) Search(ctx context.Context, req *pb.RpcChatSearchRequest) ([]*
 			docMatch := ftResultsMap[message.Id]
 			if docMatch == nil {
 				continue
+			}
+			if creatorSet != nil {
+				if _, ok := creatorSet[message.Creator]; !ok {
+					continue
+				}
 			}
 			ftResult, err := database.FTDocumentMatchToFulltextResult(docMatch)
 			if err != nil {
@@ -1086,7 +1101,12 @@ func (s *service) browseLastMessages(ctx context.Context, req *pb.RpcChatSearchR
 			}
 			return nil, fmt.Errorf("chat repository: %w", err)
 		}
-		messages, err := repo.GetLastMessages(ctx, uint(candidatesPerChat))
+		var messages []*chatmodel.Message
+		if len(req.Creators) > 0 {
+			messages, err = repo.GetLastMessagesByCreators(ctx, req.Creators, uint(candidatesPerChat))
+		} else {
+			messages, err = repo.GetLastMessages(ctx, uint(candidatesPerChat))
+		}
 		if err != nil {
 			if req.ChatId == "" {
 				log.Error("chat browse: get last messages", zap.String("chatId", chat.chatId), zap.Error(err))

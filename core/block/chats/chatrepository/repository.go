@@ -184,6 +184,10 @@ type Repository interface {
 	HasMyReaction(ctx context.Context, myIdentity string, messageId string, emoji string) (bool, error)
 	GetMessagesByIds(ctx context.Context, messageIds []string) ([]*chatmodel.Message, error)
 	GetLastMessages(ctx context.Context, limit uint) ([]*chatmodel.Message, error)
+	// GetLastMessagesByCreators returns the newest messages authored by any of
+	// the given identities (exact match), in ascending order like
+	// GetLastMessages
+	GetLastMessagesByCreators(ctx context.Context, creators []string, limit uint) ([]*chatmodel.Message, error)
 	SetSyncedByMaxOrderId(ctx context.Context, maxOrderId string) ([]string, error)
 	// GetAllMessageAttachments returns attachment info from all messages, optionally filtered by afterOrderId.
 	GetAllMessageAttachments(ctx context.Context, afterOrderId string) ([]MessageAttachmentInfo, error)
@@ -648,6 +652,21 @@ func (s *repository) GetMessagesByIds(ctx context.Context, messageIds []string) 
 
 func (s *repository) GetLastMessages(ctx context.Context, limit uint) ([]*chatmodel.Message, error) {
 	qry := s.collection.Find(nil).Sort(descOrder).Limit(limit)
+	return s.queryMessages(ctx, qry)
+}
+
+func (s *repository) GetLastMessagesByCreators(ctx context.Context, creators []string, limit uint) ([]*chatmodel.Message, error) {
+	arena := s.arenaPool.Get()
+	defer s.arenaPool.Put(arena)
+
+	values := make([]*anyenc.Value, 0, len(creators))
+	for _, creator := range creators {
+		values = append(values, arena.NewString(creator))
+	}
+	qry := s.collection.Find(query.Key{
+		Path:   []string{chatmodel.CreatorKey},
+		Filter: query.NewInValue(values...),
+	}).Sort(descOrder).Limit(limit)
 	return s.queryMessages(ctx, qry)
 }
 

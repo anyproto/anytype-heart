@@ -434,7 +434,7 @@ func TestSearchChatScopes(t *testing.T) {
 		defer func() { _ = fx.ft.Close(nil) }()
 		indexAll(t, fx.ft)
 
-		results, err := fx.ft.SearchChat("space1", "chat1", "needle", 0)
+		results, err := fx.ft.SearchChat("space1", "chat1", "needle", nil, 0)
 		require.NoError(t, err)
 		assert.ElementsMatch(t, []string{"chat1/m/msg1"}, collectIds(results))
 	})
@@ -445,7 +445,7 @@ func TestSearchChatScopes(t *testing.T) {
 		defer func() { _ = fx.ft.Close(nil) }()
 		indexAll(t, fx.ft)
 
-		results, err := fx.ft.SearchChat("space1", "", "needle", 0)
+		results, err := fx.ft.SearchChat("space1", "", "needle", nil, 0)
 		require.NoError(t, err)
 		// message docs only: no object docs, no other-space messages
 		assert.ElementsMatch(t, []string{"chat1/m/msg1", "chat2/m/msg3"}, collectIds(results))
@@ -457,7 +457,7 @@ func TestSearchChatScopes(t *testing.T) {
 		defer func() { _ = fx.ft.Close(nil) }()
 		indexAll(t, fx.ft)
 
-		results, err := fx.ft.SearchChat("", "", "needle", 0)
+		results, err := fx.ft.SearchChat("", "", "needle", nil, 0)
 		require.NoError(t, err)
 		assert.ElementsMatch(t, []string{"chat1/m/msg1", "chat2/m/msg3", "chat3/m/msg4"}, collectIds(results))
 		// hits carry their stored space for attribution
@@ -468,6 +468,45 @@ func TestSearchChatScopes(t *testing.T) {
 			}
 			assert.Equal(t, want, r.SpaceId, r.ID)
 		}
+	})
+
+	t.Run("creator filter restricts to the given authors", func(t *testing.T) {
+		tmpDir, _ := os.MkdirTemp("", "")
+		fx := newFixture(tmpDir, t)
+		defer func() { _ = fx.ft.Close(nil) }()
+
+		// identities are raw-indexed: exact, case-sensitive match
+		index := func(msgId, author string) {
+			require.NoError(t, fx.ft.Index(SearchDoc{
+				Id:        domain.NewObjectPathWithMessage("chat1", msgId).String(),
+				SpaceId:   "space1",
+				Text:      "needle from " + author,
+				Author:    author,
+				MessageId: msgId,
+			}))
+		}
+		index("msgAlice1", "A5aLiCe")
+		index("msgBob", "B7bob")
+		index("msgAlice2", "A5aLiCe")
+		index("msgCarol", "C9carol")
+
+		single, err := fx.ft.SearchChat("space1", "chat1", "needle", []string{"A5aLiCe"}, 0)
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []string{"chat1/m/msgAlice1", "chat1/m/msgAlice2"}, collectIds(single))
+
+		multi, err := fx.ft.SearchChat("space1", "", "needle", []string{"A5aLiCe", "B7bob"}, 0)
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []string{"chat1/m/msgAlice1", "chat1/m/msgAlice2", "chat1/m/msgBob"}, collectIds(multi))
+
+		// wrong case must not match the raw-indexed identity
+		wrongCase, err := fx.ft.SearchChat("space1", "", "needle", []string{"a5alice"}, 0)
+		require.NoError(t, err)
+		assert.Empty(t, wrongCase)
+
+		// empty creator strings are ignored, not match-nothing
+		blank, err := fx.ft.SearchChat("space1", "", "needle", []string{""}, 0)
+		require.NoError(t, err)
+		assert.Len(t, blank, 4)
 	})
 
 	t.Run("marker matches whole m path segments only, never letters inside ids", func(t *testing.T) {
@@ -499,7 +538,7 @@ func TestSearchChatScopes(t *testing.T) {
 			Text:    "needle in a block named m",
 		}))
 
-		results, err := fx.ft.SearchChat("space1", "", "needle", 0)
+		results, err := fx.ft.SearchChat("space1", "", "needle", nil, 0)
 		require.NoError(t, err)
 		assert.ElementsMatch(t, []string{"bafymchatm/m/msgmmm1", "obj1/b/m"}, collectIds(results))
 	})
@@ -525,7 +564,7 @@ func TestSearchChatScopes(t *testing.T) {
 		}))
 
 		// a small limit still returns the message: object docs are out of the scoped set
-		results, err := fx.ft.SearchChat("space1", "", "needle", 10)
+		results, err := fx.ft.SearchChat("space1", "", "needle", nil, 10)
 		require.NoError(t, err)
 		assert.Equal(t, []string{"chat1/m/msg1"}, collectIds(results))
 	})

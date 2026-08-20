@@ -11768,6 +11768,7 @@ Get marks list in the selected range in text block.
 | fullText | [string](#string) |  | empty fullText browses the latest messages in scope (default sort CREATED_AT desc); non-empty fullText is a relevance search (default sort SCORE desc) |
 | offset | [int32](#int32) |  |  |
 | limit | [int32](#int32) |  |  |
+| creators | [string](#string) | repeated | (optional) restrict to messages authored by these identities; empty = all authors |
 
 
 
