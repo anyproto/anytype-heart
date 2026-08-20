@@ -1303,7 +1303,9 @@ func (s *dsObjectStore) resolveSpaceFulltext(store spaceindex.Store, q database.
 	if err != nil {
 		return nil, fmt.Errorf("compile filters: %w", err)
 	}
-	items, err := store.QueryFromFulltext(results, *filters, needed, 0, q.TextQuery)
+	// injections off: their per-group queries are unindexed collection scans,
+	// and at N-space scale they dominate the request
+	items, err := store.QueryFromFulltext(results, *filters, needed, 0, q.TextQuery, false)
 	if err != nil {
 		return nil, fmt.Errorf("resolve fulltext candidates: %w", err)
 	}

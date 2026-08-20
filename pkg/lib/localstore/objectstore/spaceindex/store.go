@@ -53,7 +53,9 @@ type Store interface {
 	// store: details, filters, related-object injections, final score, head
 	// re-rank. Used by cross-space search, which runs the tantivy query
 	// globally and resolves candidates per space.
-	QueryFromFulltext(results []database.FulltextResult, params database.Filters, limit int, offset int, ftsSearch string) ([]database.Record, error)
+	// withInjections=false skips the related-object injections, whose
+	// per-group store queries are unindexed collection scans
+	QueryFromFulltext(results []database.FulltextResult, params database.Filters, limit int, offset int, ftsSearch string, withInjections bool) ([]database.Record, error)
 	// QueryAndCount runs the query (with limit/offset) and additionally returns the total number of
 	// objects matching the filters, ignoring limit/offset. The filters are compiled only once.
 	// It applies the same implicit filters as Query. Fulltext queries are not supported.

@@ -47,7 +47,7 @@ func (s *invalidStore) Query(q database.Query) (records []database.Record, err e
 	return nil, s.err
 }
 
-func (s *invalidStore) QueryFromFulltext(results []database.FulltextResult, params database.Filters, limit int, offset int, ftsSearch string) ([]database.Record, error) {
+func (s *invalidStore) QueryFromFulltext(results []database.FulltextResult, params database.Filters, limit int, offset int, ftsSearch string, withInjections bool) ([]database.Record, error) {
 	return nil, s.err
 }
 
