@@ -29808,6 +29808,9 @@ func (m *RpcObjectSearchSubscribeResponseError) GetDescription() string {
 // spaces whose object stores are loaded at the moment of the call —
 // stores load sequentially on app start, so early calls can see a
 // partial space set; the response reports it via allStoresLoaded.
+// Tech-space and marketplace objects are excluded. No total is
+// returned. fullText uses the detailed matching of
+// ObjectSearchWithMeta (not ObjectSearch's name-prefix mode).
 type RpcObjectCrossSpaceSearch struct {
 }
 
@@ -29933,10 +29936,11 @@ func (m *RpcObjectCrossSpaceSearchRequest) GetKeys() []string {
 type RpcObjectCrossSpaceSearchResponse struct {
 	Error   *RpcObjectCrossSpaceSearchResponseError `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 	Records []*types.Struct                         `protobuf:"bytes,2,rep,name=records,proto3" json:"records,omitempty"`
-	// false = the sequential per-space store warm-up had not
-	// finished when the query ran, so records cover only the
-	// spaces loaded so far. Retry later for the complete view, or
-	// use ObjectCrossSpaceSearchSubscribe, which streams
+	// false = records are a partial view: the sequential
+	// per-space store warm-up had not finished when the query
+	// ran, or a space's store failed and was skipped. Retry
+	// later for the complete view, or use
+	// ObjectCrossSpaceSearchSubscribe, which streams
 	// later-loading spaces as they open.
 	AllStoresLoaded bool `protobuf:"varint,3,opt,name=allStoresLoaded,proto3" json:"allStoresLoaded,omitempty"`
 }

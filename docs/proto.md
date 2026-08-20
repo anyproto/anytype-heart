@@ -17370,6 +17370,9 @@ one-shot cross-space search, no subscription overhead. Queries the
 spaces whose object stores are loaded at the moment of the call —
 stores load sequentially on app start, so early calls can see a
 partial space set; the response reports it via allStoresLoaded.
+Tech-space and marketplace objects are excluded. No total is
+returned. fullText uses the detailed matching of
+ObjectSearchWithMeta (not ObjectSearch&#39;s name-prefix mode).
 
 
 
@@ -17406,7 +17409,7 @@ partial space set; the response reports it via allStoresLoaded.
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.CrossSpaceSearch.Response.Error](#anytype-Rpc-Object-CrossSpaceSearch-Response-Error) |  |  |
 | records | [google.protobuf.Struct](#google-protobuf-Struct) | repeated |  |
-| allStoresLoaded | [bool](#bool) |  | false = the sequential per-space store warm-up had not finished when the query ran, so records cover only the spaces loaded so far. Retry later for the complete view, or use ObjectCrossSpaceSearchSubscribe, which streams later-loading spaces as they open. |
+| allStoresLoaded | [bool](#bool) |  | false = records are a partial view: the sequential per-space store warm-up had not finished when the query ran, or a space&#39;s store failed and was skipped. Retry later for the complete view, or use ObjectCrossSpaceSearchSubscribe, which streams later-loading spaces as they open. |
 
 
 

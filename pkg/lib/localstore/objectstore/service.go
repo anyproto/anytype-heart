@@ -27,7 +27,6 @@ Fulltext queue flow:
 */
 
 import (
-	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -75,14 +74,18 @@ type CrossSpace interface {
 	QueryCrossSpace(ctx context.Context, q database.Query) (records []database.Record, err error)
 	// QueryCrossSpaceNoWait queries only the spaces whose object stores are
 	// open right now, without waiting for the background warm-up (stores load
-	// sequentially on app start). allStoresLoaded reports whether the warm-up
-	// had already covered the full authoritative space set when the query ran
-	// — when false the result is a partial view. A failing space is logged
-	// and skipped instead of failing the whole read. q.Offset/q.Limit are
-	// applied after the cross-space merge (per space the limit only bounds
-	// candidates); with a fulltext query and no sorts the merged set is
-	// ordered by the injected _final_score.
-	QueryCrossSpaceNoWait(q database.Query) (records []database.Record, allStoresLoaded bool, err error)
+	// sequentially on app start). allStoresLoaded reports whether the result
+	// covers the full authoritative space set: false when the warm-up had not
+	// finished OR when a space's store failed and was skipped (failures are
+	// logged, never fail the whole read). The tech space and the marketplace
+	// are excluded, matching the fulltext iteration and the cross-space
+	// subscription. q.SpaceId is overwritten per space (the fulltext scope
+	// must follow the store being queried); q.Offset/q.Limit are applied
+	// after the cross-space merge (per space they only bound candidates).
+	// The merged order reproduces the order each store cut its candidates
+	// with — the requested sorts plus the implicit score-first order of
+	// fulltext queries — with a final id tiebreak for stable paging.
+	QueryCrossSpaceNoWait(ctx context.Context, q database.Query) (records []database.Record, allStoresLoaded bool, err error)
 	QueryByIdCrossSpace(ctx context.Context, ids []string) (records []database.Record, err error)
 
 	ListIdsCrossSpace(ctx context.Context) ([]string, error)
@@ -1035,7 +1038,16 @@ func (s *dsObjectStore) QueryCrossSpace(ctx context.Context, q database.Query) (
 	})
 }
 
-func (s *dsObjectStore) QueryCrossSpaceNoWait(q database.Query) ([]database.Record, bool, error) {
+func (s *dsObjectStore) QueryCrossSpaceNoWait(ctx context.Context, q database.Query) ([]database.Record, bool, error) {
+	// negative paging from the wire must not disable the per-space candidate
+	// bound (a negative limit reads as unlimited downstream)
+	if q.Offset < 0 {
+		q.Offset = 0
+	}
+	if q.Limit < 0 {
+		q.Limit = 0
+	}
+
 	// read the flag before snapshotting the store set: if the warm-up had
 	// finished by then, the snapshot is guaranteed to cover the full set
 	allStoresLoaded := false
@@ -1046,38 +1058,65 @@ func (s *dsObjectStore) QueryCrossSpaceNoWait(q database.Query) ([]database.Reco
 	}
 
 	// per space the caller's paging only bounds candidates: each space
-	// returns its top offset+limit records, the global top offset+limit is a
-	// subset of their union (top-K merge property), and the real slicing
-	// happens after the merge
-	perSpaceQuery := q
-	perSpaceQuery.Offset = 0
+	// returns its top offset+limit records under the same order the merge
+	// applies below, so the global top offset+limit is a subset of their
+	// union (top-K merge property) and the real slicing happens after the
+	// merge
+	perSpaceLimit := 0
 	if q.Limit > 0 {
-		perSpaceQuery.Limit = q.Offset + q.Limit
+		perSpaceLimit = q.Offset + q.Limit
 	}
 
 	stores := s.beginCrossSpaceIteration()
 	defer s.endCrossSpaceIteration()
+	// deterministic space order: the snapshot iterates a map, ties in the
+	// merged sort fall back to concatenation order, and offset paging must be
+	// stable across identical calls
+	slices.SortFunc(stores, func(a, b spaceindex.Store) int {
+		return strings.Compare(a.SpaceId(), b.SpaceId())
+	})
 
 	var records []database.Record
-	var orderStore spaceindex.Store
+	queried := make([]spaceindex.Store, 0, len(stores))
 	for _, store := range stores {
+		// parity with iterateSpacesForFulltext and the cross-space
+		// subscription: system spaces are not user-facing search results
+		if store.SpaceId() == s.techSpaceId || store.SpaceId() == addr.AnytypeMarketplaceWorkspace {
+			continue
+		}
+		if err := ctx.Err(); err != nil {
+			return nil, false, fmt.Errorf("cross-space query: %w", err)
+		}
 		if err := store.Init(); err != nil {
 			log.Error("cross-space query: init store", zap.String("spaceId", store.SpaceId()), zap.Error(err))
+			// a skipped space makes the view partial
+			allStoresLoaded = false
 			continue
 		}
 		s.markSpaceIndexOpened(store.SpaceId())
+		perSpaceQuery := q
+		perSpaceQuery.Offset = 0
+		perSpaceQuery.Limit = perSpaceLimit
+		// scope the fulltext to the space being queried: without this every
+		// space runs the same global search, resolves the global candidate
+		// list against its own store and drops everyone else's hits — spaces
+		// whose matches don't rank in the global top candidates silently
+		// return nothing, at N× the cost
+		perSpaceQuery.SpaceId = store.SpaceId()
+		// the per-space filter compilation mutates nested filters in place:
+		// give every space its own copy
+		perSpaceQuery.Filters = slices.Clone(q.Filters)
 		items, err := store.Query(perSpaceQuery)
 		if err != nil {
 			log.Error("cross-space query: query store", zap.String("spaceId", store.SpaceId()), zap.Error(err))
+			allStoresLoaded = false
 			continue
 		}
-		if orderStore == nil {
-			orderStore = store
-		}
+		queried = append(queried, store)
 		records = append(records, items...)
 	}
 
-	s.sortMergedRecords(records, q, orderStore)
+	s.sortMergedRecords(records, q, queried)
 
 	if q.Offset > 0 {
 		if q.Offset >= len(records) {
@@ -1092,38 +1131,105 @@ func (s *dsObjectStore) QueryCrossSpaceNoWait(q database.Query) ([]database.Reco
 }
 
 // sortMergedRecords restores a global order over records merged from several
-// spaces: the requested sorts when given (relation formats resolved via
-// orderStore — bundled relations are identical across spaces), else the
-// per-space fulltext _final_score for text queries. Without either, the
-// per-space concatenation order is kept.
-func (s *dsObjectStore) sortMergedRecords(records []database.Record, q database.Query, orderStore spaceindex.Store) {
+// spaces, reproducing exactly the order each store cut its candidates with:
+// database.InjectDefaultOrder supplies the implicit score-first order of
+// fulltext queries and database.NewSetOrder the per-sort includeTime and
+// custom-order handling — without this the per-space cut and the merged
+// order disagree and offset paging duplicates and drops records. Relation
+// formats and option/object order maps are resolved across all queried
+// stores (an option or linked object lives only in its record's own space).
+// Ties end on the object id so the order is stable across calls.
+func (s *dsObjectStore) sortMergedRecords(records []database.Record, q database.Query, queried []spaceindex.Store) {
 	if len(records) < 2 {
 		return
 	}
-	if len(q.Sorts) > 0 && orderStore != nil {
+	var order database.Order
+	sorts := database.InjectDefaultOrder(q, q.Sorts)
+	if len(sorts) > 0 && len(queried) > 0 {
 		arena := s.arenaPool.Get()
 		defer s.arenaPool.Put(arena)
-		collatorBuffer := &collate.Buffer{}
-		orders := make([]database.Order, 0, len(q.Sorts))
-		for _, sortRequest := range q.Sorts {
-			orders = append(orders, database.NewKeyOrder(orderStore, arena, collatorBuffer, sortRequest))
-		}
-		slices.SortStableFunc(records, func(a, b database.Record) int {
-			for _, order := range orders {
-				if comp := order.Compare(a.Details, b.Details); comp != 0 {
-					return comp
-				}
+		order = database.NewSetOrder(unionOrderStore{stores: queried}, arena, &collate.Buffer{}, sorts)
+	}
+	slices.SortStableFunc(records, func(a, b database.Record) int {
+		if order != nil {
+			if comp := order.Compare(a.Details, b.Details); comp != 0 {
+				return comp
 			}
-			return 0
-		})
-		return
+		}
+		return strings.Compare(a.Details.GetString(bundle.RelationKeyId), b.Details.GetString(bundle.RelationKeyId))
+	})
+}
+
+// unionOrderStore lets the merge's order builder resolve relation formats and
+// option/object order maps across every queried space instead of a single
+// representative one. Only the methods the order path uses do real cross-store
+// work (GetRelationFormatByKey, ListRelationOptions, QueryIterate); the rest
+// delegate per store and concatenate.
+type unionOrderStore struct {
+	stores []spaceindex.Store
+}
+
+func (u unionOrderStore) SpaceId() string {
+	return ""
+}
+
+func (u unionOrderStore) Query(q database.Query) ([]database.Record, error) {
+	var records []database.Record
+	for _, store := range u.stores {
+		items, err := store.Query(q)
+		if err != nil {
+			return nil, fmt.Errorf("query space %s: %w", store.SpaceId(), err)
+		}
+		records = append(records, items...)
 	}
-	if q.TextQuery != "" {
-		slices.SortStableFunc(records, func(a, b database.Record) int {
-			// descending final score
-			return cmp.Compare(b.Details.GetFloat64(bundle.RelationKey_final_score), a.Details.GetFloat64(bundle.RelationKey_final_score))
-		})
+	return records, nil
+}
+
+func (u unionOrderStore) QueryRaw(filters *database.Filters, limit int, offset int) ([]database.Record, error) {
+	var records []database.Record
+	for _, store := range u.stores {
+		items, err := store.QueryRaw(filters, limit, offset)
+		if err != nil {
+			return nil, fmt.Errorf("query raw space %s: %w", store.SpaceId(), err)
+		}
+		records = append(records, items...)
 	}
+	return records, nil
+}
+
+func (u unionOrderStore) QueryIterate(q database.Query, proc func(details *domain.Details)) error {
+	for _, store := range u.stores {
+		if err := store.QueryIterate(q, proc); err != nil {
+			return fmt.Errorf("iterate space %s: %w", store.SpaceId(), err)
+		}
+	}
+	return nil
+}
+
+func (u unionOrderStore) GetRelationFormatByKey(key domain.RelationKey) (model.RelationFormat, error) {
+	var lastErr error
+	for _, store := range u.stores {
+		format, err := store.GetRelationFormatByKey(key)
+		if err == nil {
+			return format, nil
+		}
+		lastErr = err
+	}
+	return 0, fmt.Errorf("relation format not found in any space: %w", lastErr)
+}
+
+func (u unionOrderStore) ListRelationOptions(relationKey domain.RelationKey) ([]*model.RelationOption, error) {
+	var options []*model.RelationOption
+	for _, store := range u.stores {
+		items, err := store.ListRelationOptions(relationKey)
+		if err != nil {
+			// an option set missing in one space must not void the others
+			log.Warn("cross-space order: list relation options", zap.String("spaceId", store.SpaceId()), zap.Error(err))
+			continue
+		}
+		options = append(options, items...)
+	}
+	return options, nil
 }
 
 func (s *dsObjectStore) SubscribeLinksUpdate(callback func(info spaceindex.LinksUpdateInfo)) {

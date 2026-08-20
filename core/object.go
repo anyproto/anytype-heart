@@ -226,7 +226,7 @@ func (mw *Middleware) ObjectCrossSpaceSearch(cctx context.Context, req *pb.RpcOb
 	// one-shot snapshot of the currently-loaded spaces: unlike QueryCrossSpace
 	// this does not wait for the store warm-up; AllStoresLoaded tells the
 	// caller whether the view was complete
-	records, allStoresLoaded, err := ds.QueryCrossSpaceNoWait(database.Query{
+	records, allStoresLoaded, err := ds.QueryCrossSpaceNoWait(cctx, database.Query{
 		Filters:   database.FiltersFromProto(req.Filters),
 		Sorts:     database.SortsFromProto(req.Sorts),
 		Offset:    int(req.Offset),

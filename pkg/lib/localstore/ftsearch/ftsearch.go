@@ -613,7 +613,12 @@ func (f *ftSearch) performSearch(spaceId, query string, limit int, withHighlight
 
 	qb := tantivy.NewQueryBuilder()
 	if len(spaceId) != 0 {
-		qb.Query(tantivy.Must, fieldSpace, spaceId, tantivy.TermQuery, 1.0)
+		// boost 0 keeps the scope clause out of BM25 scoring: the space term's
+		// IDF depends on the space's share of the index, so at boost 1 it
+		// added a per-space additive bias (larger for smaller spaces) that
+		// made scores incomparable across spaces. Within one space the term
+		// contributed a constant, so per-space ranking is unchanged.
+		qb.Query(tantivy.Must, fieldSpace, spaceId, tantivy.TermQuery, 0.0)
 	}
 
 	buildQueryFunc(qb, query)

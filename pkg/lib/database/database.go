@@ -161,6 +161,15 @@ func hasDefaultFilters(filters []FilterRequest) (bool, bool, bool) {
 	return hasArchivedFilter, hasDeletedFilter, hasTypeFilter
 }
 
+// InjectDefaultOrder returns the sorts a store query effectively applies for
+// qry: fulltext queries get _final_score desc prepended unless a score sort
+// was requested. Callers that merge records from several stores must build
+// their merge order from this, not from qry.Sorts — otherwise the per-store
+// candidate cut and the merged order disagree and offset paging breaks.
+func InjectDefaultOrder(qry Query, sorts []SortRequest) []SortRequest {
+	return injectDefaultOrder(qry, sorts)
+}
+
 func injectDefaultOrder(qry Query, sorts []SortRequest) []SortRequest {
 	var (
 		hasScoreSort bool
@@ -262,25 +271,40 @@ func getSpaceIDFromFilters(filters []FilterRequest) string {
 }
 
 func (b *queryBuilder) extractOrder(sorts []SortRequest) setOrder {
+	return extractOrder(b.objectStore, b.arena, b.collatorBuffer, sorts)
+}
+
+// NewSetOrder builds the composite order a store query applies for the given
+// sorts — including the per-sort includeTime resolution and custom orders —
+// so callers merging records from several stores can reproduce the stores'
+// own ordering. Returns nil when sorts is empty.
+func NewSetOrder(store ObjectStore, arena *anyenc.Arena, collatorBuffer *collate.Buffer, sorts []SortRequest) Order {
+	if order := extractOrder(store, arena, collatorBuffer, sorts); order != nil {
+		return order
+	}
+	return nil
+}
+
+func extractOrder(store ObjectStore, arena *anyenc.Arena, collatorBuffer *collate.Buffer, sorts []SortRequest) setOrder {
 	if len(sorts) > 0 {
 		order := setOrder{}
 		for _, sort := range sorts {
-			ko := NewKeyOrder(b.objectStore, b.arena, b.collatorBuffer, sort).(*keyOrder)
+			ko := NewKeyOrder(store, arena, collatorBuffer, sort).(*keyOrder)
 			ko.includeTime = isIncludeTime(sorts, sort)
-			order = b.appendCustomOrder(sort, order, ko)
+			order = appendCustomOrder(arena, sort, order, ko)
 		}
 		return order
 	}
 	return nil
 }
 
-func (b *queryBuilder) appendCustomOrder(sort SortRequest, orders setOrder, order *keyOrder) setOrder {
-	defer b.arena.Reset()
+func appendCustomOrder(arena *anyenc.Arena, sort SortRequest, orders setOrder, order *keyOrder) setOrder {
+	defer arena.Reset()
 	if sort.Type == model.BlockContentDataviewSort_Custom && len(sort.CustomOrder) > 0 {
 		idsIndices := make(map[string]int, len(sort.CustomOrder))
 		var idx int
 		for _, it := range sort.CustomOrder {
-			val := it.ToAnyEnc(b.arena)
+			val := it.ToAnyEnc(arena)
 
 			raw := string(val.MarshalTo(nil))
 			if raw != "" {
@@ -288,7 +312,7 @@ func (b *queryBuilder) appendCustomOrder(sort SortRequest, orders setOrder, orde
 				idx++
 			}
 		}
-		orders = append(orders, newCustomOrder(b.arena, sort.RelationKey, idsIndices, order))
+		orders = append(orders, newCustomOrder(arena, sort.RelationKey, idsIndices, order))
 	} else {
 		orders = append(orders, order)
 	}
