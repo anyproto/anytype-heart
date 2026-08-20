@@ -215,39 +215,27 @@ func TestQueryCrossSpaceNoWait(t *testing.T) {
 		assert.NotEqual(t, "s2-lonely", records[0].Details.GetString(bundle.RelationKeyId))
 	})
 
-	t.Run("parallel per-space querying keeps the deterministic order", func(t *testing.T) {
-		// per-space queries run concurrently (capped): completion order must
-		// not leak into the result — slots are concatenated in sorted-space
-		// order and the merge comparator is total
+	t.Run("no sorts and no text default to newest-first browse order", func(t *testing.T) {
+		// the client's browse request (filters+limit only) must return the
+		// newest objects across spaces, not an arbitrary id-ordered prefix
 		fx := NewStoreFixture(t)
-		want := make([]string, 0, 12)
-		for spaceN := 1; spaceN <= 6; spaceN++ {
-			spaceId := fmt.Sprintf("space%d", spaceN)
-			for objN := 1; objN <= 2; objN++ {
-				id := fmt.Sprintf("obj-%d-%d", spaceN, objN)
-				fx.AddObjects(t, spaceId, []TestObject{
-					{bundle.RelationKeyId: domain.String(id), bundle.RelationKeyName: domain.String("same name")},
-				})
-				want = append(want, id)
-			}
-		}
+		fx.AddObjects(t, "space1", []TestObject{
+			{bundle.RelationKeyId: domain.String("obj-old"), bundle.RelationKeyName: domain.String("old"), bundle.RelationKeyLastModifiedDate: domain.Int64(1_700_000_100)},
+			{bundle.RelationKeyId: domain.String("obj-newest"), bundle.RelationKeyName: domain.String("newest"), bundle.RelationKeyLastModifiedDate: domain.Int64(1_700_000_400)},
+		})
+		fx.AddObjects(t, "space2", []TestObject{
+			{bundle.RelationKeyId: domain.String("obj-newer"), bundle.RelationKeyName: domain.String("newer"), bundle.RelationKeyLastModifiedDate: domain.Int64(1_700_000_300)},
+			{bundle.RelationKeyId: domain.String("obj-oldest"), bundle.RelationKeyName: domain.String("oldest"), bundle.RelationKeyLastModifiedDate: domain.Int64(1_700_000_000)},
+		})
 		require.NoError(t, fx.WaitStoresLoaded(context.Background()))
 
-		for i := 0; i < 5; i++ {
-			records, allLoaded, err := fx.QueryCrossSpaceNoWait(context.Background(), database.Query{
-				Sorts: []database.SortRequest{
-					{RelationKey: bundle.RelationKeyName, Type: model.BlockContentDataviewSort_Asc},
-				},
-			})
-			require.NoError(t, err)
-			assert.True(t, allLoaded)
-			got := make([]string, 0, len(records))
-			for _, rec := range records {
-				got = append(got, rec.Details.GetString(bundle.RelationKeyId))
-			}
-			// all names tie: the id tiebreak yields one fixed global order
-			require.Equal(t, want, got, "call %d", i)
+		records, _, err := fx.QueryCrossSpaceNoWait(context.Background(), database.Query{Limit: 3})
+		require.NoError(t, err)
+		got := make([]string, 0, len(records))
+		for _, rec := range records {
+			got = append(got, rec.Details.GetString(bundle.RelationKeyId))
 		}
+		assert.Equal(t, []string{"obj-newest", "obj-newer", "obj-old"}, got)
 	})
 
 	t.Run("parallel per-space querying keeps the deterministic order", func(t *testing.T) {

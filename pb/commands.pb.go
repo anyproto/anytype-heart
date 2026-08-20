@@ -29848,10 +29848,14 @@ func (m *RpcObjectCrossSpaceSearch) XXX_DiscardUnknown() {
 var xxx_messageInfo_RpcObjectCrossSpaceSearch proto.InternalMessageInfo
 
 type RpcObjectCrossSpaceSearchRequest struct {
-	Filters  []*model.BlockContentDataviewFilter `protobuf:"bytes,1,rep,name=filters,proto3" json:"filters,omitempty"`
-	Sorts    []*model.BlockContentDataviewSort   `protobuf:"bytes,2,rep,name=sorts,proto3" json:"sorts,omitempty"`
-	FullText string                              `protobuf:"bytes,3,opt,name=fullText,proto3" json:"fullText,omitempty"`
-	// offset and limit apply to the merged cross-space result
+	Filters []*model.BlockContentDataviewFilter `protobuf:"bytes,1,rep,name=filters,proto3" json:"filters,omitempty"`
+	// empty sorts: fullText queries default to relevance order,
+	// browse queries (empty fullText) to lastModifiedDate desc
+	Sorts    []*model.BlockContentDataviewSort `protobuf:"bytes,2,rep,name=sorts,proto3" json:"sorts,omitempty"`
+	FullText string                            `protobuf:"bytes,3,opt,name=fullText,proto3" json:"fullText,omitempty"`
+	// offset and limit apply to the merged cross-space result.
+	// Always set a limit: an unlimited request materializes every
+	// space in full
 	Offset int32 `protobuf:"varint,4,opt,name=offset,proto3" json:"offset,omitempty"`
 	Limit  int32 `protobuf:"varint,5,opt,name=limit,proto3" json:"limit,omitempty"`
 	// keys to return in records; empty = all

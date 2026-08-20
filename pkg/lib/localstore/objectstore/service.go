@@ -87,7 +87,8 @@ type CrossSpace interface {
 	// after the cross-space merge (per space they only bound candidates).
 	// The merged order reproduces the order each store cut its candidates
 	// with — the requested sorts plus the implicit score-first order of
-	// fulltext queries — with a final id tiebreak for stable paging.
+	// fulltext queries — with a final id tiebreak for stable paging. Empty
+	// sorts without a text query default to lastModifiedDate desc (browse).
 	QueryCrossSpaceNoWait(ctx context.Context, q database.Query) (records []database.Record, allStoresLoaded bool, err error)
 	QueryByIdCrossSpace(ctx context.Context, ids []string) (records []database.Record, err error)
 
@@ -1054,6 +1055,21 @@ func (s *dsObjectStore) QueryCrossSpaceNoWait(ctx context.Context, q database.Qu
 	}
 	if q.Limit < 0 {
 		q.Limit = 0
+	}
+
+	// browse default, mirroring chat search: without a text query or explicit
+	// sorts the merged order would be the meaningless object-id order and the
+	// per-space candidates an arbitrary prefix. Recency is what vault-wide
+	// browse UIs want, and the sort is served by the per-space
+	// lastModifiedDate index, so per-space candidates become the newest
+	// offset+limit objects
+	if len(q.Sorts) == 0 && q.TextQuery == "" {
+		q.Sorts = []database.SortRequest{{
+			RelationKey: bundle.RelationKeyLastModifiedDate,
+			Type:        model.BlockContentDataviewSort_Desc,
+			Format:      model.RelationFormat_date,
+			IncludeTime: true,
+		}}
 	}
 
 	// read the flag before snapshotting the store set: if the warm-up had

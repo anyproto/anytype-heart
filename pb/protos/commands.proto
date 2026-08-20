@@ -2487,9 +2487,13 @@ message Rpc {
         message CrossSpaceSearch {
             message Request {
                 repeated anytype.model.Block.Content.Dataview.Filter filters = 1;
+                // empty sorts: fullText queries default to relevance order,
+                // browse queries (empty fullText) to lastModifiedDate desc
                 repeated anytype.model.Block.Content.Dataview.Sort sorts = 2;
                 string fullText = 3;
-                // offset and limit apply to the merged cross-space result
+                // offset and limit apply to the merged cross-space result.
+                // Always set a limit: an unlimited request materializes every
+                // space in full
                 int32 offset = 4;
                 int32 limit = 5;
                 // keys to return in records; empty = all

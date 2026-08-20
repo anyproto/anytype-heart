@@ -17388,9 +17388,9 @@ ObjectSearchWithMeta (not ObjectSearch&#39;s name-prefix mode).
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | filters | [model.Block.Content.Dataview.Filter](#anytype-model-Block-Content-Dataview-Filter) | repeated |  |
-| sorts | [model.Block.Content.Dataview.Sort](#anytype-model-Block-Content-Dataview-Sort) | repeated |  |
+| sorts | [model.Block.Content.Dataview.Sort](#anytype-model-Block-Content-Dataview-Sort) | repeated | empty sorts: fullText queries default to relevance order, browse queries (empty fullText) to lastModifiedDate desc |
 | fullText | [string](#string) |  |  |
-| offset | [int32](#int32) |  | offset and limit apply to the merged cross-space result |
+| offset | [int32](#int32) |  | offset and limit apply to the merged cross-space result. Always set a limit: an unlimited request materializes every space in full |
 | limit | [int32](#int32) |  |  |
 | keys | [string](#string) | repeated | keys to return in records; empty = all |
 
