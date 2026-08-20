@@ -35,7 +35,7 @@ func TestService_SearchScoreSorting(t *testing.T) {
 		}, nil).Maybe()
 
 		// float scores closer than 1.0 to each other
-		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "query", mock.Anything).Return([]*ftsearch.DocumentMatch{
+		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "query", mock.Anything, mock.Anything).Return([]*ftsearch.DocumentMatch{
 			{Score: 2.1, ID: domain.NewObjectPathWithMessage(chatId, "msgLow").String()},
 			{Score: 2.9, ID: domain.NewObjectPathWithMessage(chatId, "msgHigh").String()},
 			{Score: 0.9, ID: domain.NewObjectPathWithMessage(chatId, "msgLowest").String()},
@@ -92,7 +92,7 @@ func TestService_SearchOffsetBeyondEnd(t *testing.T) {
 		Records: []*domain.Details{},
 	}, nil).Maybe()
 
-	fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "query", mock.Anything).Return([]*ftsearch.DocumentMatch{
+	fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "query", mock.Anything, mock.Anything).Return([]*ftsearch.DocumentMatch{
 		{Score: 2.0, ID: domain.NewObjectPathWithMessage(chatId, "msg1").String()},
 		{Score: 1.0, ID: domain.NewObjectPathWithMessage(chatId, "msg2").String()},
 	}, nil)

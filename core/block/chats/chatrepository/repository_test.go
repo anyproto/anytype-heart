@@ -316,7 +316,7 @@ func TestSetReadFlag(t *testing.T) {
 
 		assert.Equal(t, []string{"msg1"}, modified)
 		assert.True(t, fx.getMessage(t, "msg1").MentionRead)
-		assert.True(t, fx.getMessage(t, "msg2").MentionRead) // was already true
+		assert.True(t, fx.getMessage(t, "msg2").MentionRead)  // was already true
 		assert.False(t, fx.getMessage(t, "msg3").MentionRead) // no mention, not modified
 	})
 
@@ -443,7 +443,7 @@ func TestClearUnreadReactions(t *testing.T) {
 		fx := newFixture(t)
 		// Message has two reactions with different order IDs
 		fx.addMessageWithUnreadReactions(t, "msg1", "order2", map[string]map[string]chatmodel.ReactionChangeEntry{
-			"👍": {"user1": {ChangeId: "ch1", OrderId: "order1"}},
+			"👍":  {"user1": {ChangeId: "ch1", OrderId: "order1"}},
 			"❤️": {"user2": {ChangeId: "ch2", OrderId: "order3"}},
 		})
 
@@ -501,5 +501,57 @@ func TestClearUnreadReactions(t *testing.T) {
 			id := fmt.Sprintf("msg%03d", i)
 			assert.False(t, fx.getMessage(t, id).UnreadReaction, id)
 		}
+	})
+}
+
+func TestGetLastMessagesByCreators(t *testing.T) {
+	// given
+	fx := newFixture(t)
+	ctx := context.Background()
+	addMsg := func(id, orderId, creator string) {
+		require.NoError(t, fx.repo.AddTestMessage(ctx, &chatmodel.Message{
+			ChatMessage: &model.ChatMessage{
+				Id:      id,
+				OrderId: orderId,
+				Creator: creator,
+				Message: &model.ChatMessageMessageContent{Text: "test"},
+			},
+		}))
+	}
+	// identities are case-sensitive: A5alice vs a5alice are different authors
+	addMsg("msg1", "o1", "A5alice")
+	addMsg("msg2", "o2", "B7bob")
+	addMsg("msg3", "o3", "A5alice")
+	addMsg("msg4", "o4", "a5alice")
+
+	t.Run("single creator: newest selected, ascending order like GetLastMessages", func(t *testing.T) {
+		// when
+		got, err := fx.repo.GetLastMessagesByCreators(ctx, []string{"A5alice"}, 10)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, got, 2)
+		assert.Equal(t, "msg1", got[0].Id)
+		assert.Equal(t, "msg3", got[1].Id)
+	})
+
+	t.Run("multiple creators with limit selects the newest", func(t *testing.T) {
+		// when: limit 2 must keep the newest two of alice+bob (msg2, msg3)
+		got, err := fx.repo.GetLastMessagesByCreators(ctx, []string{"A5alice", "B7bob"}, 2)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, got, 2)
+		assert.Equal(t, "msg2", got[0].Id)
+		assert.Equal(t, "msg3", got[1].Id)
+	})
+
+	t.Run("unknown creator returns empty", func(t *testing.T) {
+		// when
+		got, err := fx.repo.GetLastMessagesByCreators(ctx, []string{"nobody"}, 10)
+
+		// then
+		require.NoError(t, err)
+		assert.Empty(t, got)
 	})
 }

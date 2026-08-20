@@ -88,7 +88,9 @@ type FTSearch interface {
 	// SearchChat searches only message documents ("chatId/m/...") so messages
 	// don't compete with the rest of the space for the limit. Empty chatId
 	// searches messages of all chats; empty spaceId searches all spaces.
-	SearchChat(spaceId string, chatId string, query string, limit int) (results []*DocumentMatch, err error)
+	// Non-empty creators restrict to messages authored by those identities
+	// (exact match), scoping the candidate budget to their messages.
+	SearchChat(spaceId string, chatId string, query string, creators []string, limit int) (results []*DocumentMatch, err error)
 	// NamePrefixSearch special prefix case search
 	NamePrefixSearch(spaceId string, query string, limit int) (results []*DocumentMatch, err error)
 	ListByIdPrefix(prefix string) (ids []string, err error)
@@ -573,8 +575,28 @@ func (f *ftSearch) Search(spaceId, query string, limit int) ([]*DocumentMatch, e
 	return f.performSearch(spaceId, query, limit, true, f.buildDetailedQuery)
 }
 
-func (f *ftSearch) SearchChat(spaceId, chatId, query string, limit int) ([]*DocumentMatch, error) {
+func (f *ftSearch) SearchChat(spaceId, chatId, query string, creators []string, limit int) ([]*DocumentMatch, error) {
 	return f.performSearch(spaceId, query, limit, true, func(qb *tantivy.QueryBuilder, query string) {
+		// restrict to the given authors: the Author field is raw-indexed, so
+		// term queries match the exact identity string. Scoping here rather
+		// than post-filtering keeps the candidate budget on the requested
+		// authors' messages. Boost 0 keeps the clause out of BM25 scoring.
+		authors := make([]string, 0, len(creators))
+		for _, creator := range creators {
+			// an empty term would compile to a match-nothing clause
+			if creator != "" {
+				authors = append(authors, creator)
+			}
+		}
+		if len(authors) == 1 {
+			qb.Query(tantivy.Must, fieldAuthor, authors[0], tantivy.TermQuery, 0.0)
+		} else if len(authors) > 1 {
+			nested := qb.NestedBuilder()
+			for _, author := range authors {
+				nested.Query(tantivy.Should, fieldAuthor, author, tantivy.TermQuery, 0.0)
+			}
+			qb.BooleanQuery(tantivy.Must, nested, 0.0)
+		}
 		if chatId != "" {
 			// restrict to the chat's message docs ("chatId/m/msgId") via a phrase
 			// match on the tokenized id field. A prefix query on IdRaw would

@@ -56,7 +56,7 @@ func TestService_SearchAllChatsInSpace(t *testing.T) {
 		addChatObject(t, fx, "chat1", spaceId, model.ObjectType_chatDerived)
 		addChatObject(t, fx, "chat2", spaceId, model.ObjectType_chatDerived)
 
-		fx.ftSearch.EXPECT().SearchChat(spaceId, "", "query", mock.Anything).Return([]*ftsearch.DocumentMatch{
+		fx.ftSearch.EXPECT().SearchChat(spaceId, "", "query", mock.Anything, mock.Anything).Return([]*ftsearch.DocumentMatch{
 			{Score: 3.0, ID: domain.NewObjectPathWithMessage("chat1", "msg1").String()},
 			{Score: 5.0, ID: domain.NewObjectPathWithMessage("chat2", "msg2").String()},
 			// an "m"-token false positive: a block doc, not a message doc
@@ -106,7 +106,7 @@ func TestService_SearchAllChatsInSpace(t *testing.T) {
 		// even if FT returned another space's message (it should not thanks to
 		// the space clause), the liveness gate checks the requested space's
 		// index and drops it
-		fx.ftSearch.EXPECT().SearchChat(spaceId, "", "query", mock.Anything).Return([]*ftsearch.DocumentMatch{
+		fx.ftSearch.EXPECT().SearchChat(spaceId, "", "query", mock.Anything, mock.Anything).Return([]*ftsearch.DocumentMatch{
 			{Score: 2.0, ID: domain.NewObjectPathWithMessage("chat1", "msg1").String()},
 			{Score: 9.0, ID: domain.NewObjectPathWithMessage("chatOther", "msgOther").String()},
 		}, nil)
@@ -140,7 +140,7 @@ func TestService_SearchAllChatsInSpace(t *testing.T) {
 		addChatObject(t, fx, "chat1", spaceId, model.ObjectType_chatDerived)
 		addChatObject(t, fx, "chat2", spaceId, model.ObjectType_chatDerived)
 
-		fx.ftSearch.EXPECT().SearchChat(spaceId, "", "query", mock.Anything).Return([]*ftsearch.DocumentMatch{
+		fx.ftSearch.EXPECT().SearchChat(spaceId, "", "query", mock.Anything, mock.Anything).Return([]*ftsearch.DocumentMatch{
 			{Score: 5.0, ID: domain.NewObjectPathWithMessage("chat1", "msgOld").String()},
 			{Score: 1.0, ID: domain.NewObjectPathWithMessage("chat2", "msgNew").String()},
 		}, nil)
@@ -179,7 +179,7 @@ func TestService_SearchAllChatsInSpace(t *testing.T) {
 		addChatObject(t, fx, "chat1", spaceId, model.ObjectType_chatDerived)
 		addChatObject(t, fx, "chat2", spaceId, model.ObjectType_chatDerived)
 
-		fx.ftSearch.EXPECT().SearchChat(spaceId, "", "query", mock.Anything).Return([]*ftsearch.DocumentMatch{
+		fx.ftSearch.EXPECT().SearchChat(spaceId, "", "query", mock.Anything, mock.Anything).Return([]*ftsearch.DocumentMatch{
 			{Score: 1.0, ID: domain.NewObjectPathWithMessage("chat2", "msgC").String()},
 			{Score: 1.0, ID: domain.NewObjectPathWithMessage("chat1", "msgB").String()},
 			{Score: 1.0, ID: domain.NewObjectPathWithMessage("chat1", "msgA").String()},
@@ -224,7 +224,7 @@ func TestService_SearchSpaceScopeIncludesObjectChats(t *testing.T) {
 	// a plain object caught by a stale/foreign FT doc must stay excluded
 	addChatObject(t, fx, "notAChat", spaceId, model.ObjectType_basic)
 
-	fx.ftSearch.EXPECT().SearchChat(spaceId, "", "query", mock.Anything).Return([]*ftsearch.DocumentMatch{
+	fx.ftSearch.EXPECT().SearchChat(spaceId, "", "query", mock.Anything, mock.Anything).Return([]*ftsearch.DocumentMatch{
 		{Score: 2.0, ID: domain.NewObjectPathWithMessage("spaceChat", "msg1").String()},
 		{Score: 1.0, ID: domain.NewObjectPathWithMessage("objectChat", "msg2").String()},
 		{Score: 3.0, ID: domain.NewObjectPathWithMessage("notAChat", "msg3").String()},
@@ -265,7 +265,7 @@ func TestService_SearchSurvivesBrokenChat(t *testing.T) {
 	addChatObject(t, fx, "chatBroken", spaceId, model.ObjectType_chatDerived)
 	addChatObject(t, fx, "chatOk", spaceId, model.ObjectType_chatDerived)
 
-	fx.ftSearch.EXPECT().SearchChat(spaceId, "", "query", mock.Anything).Return([]*ftsearch.DocumentMatch{
+	fx.ftSearch.EXPECT().SearchChat(spaceId, "", "query", mock.Anything, mock.Anything).Return([]*ftsearch.DocumentMatch{
 		{Score: 2.0, ID: domain.NewObjectPathWithMessage("chatBroken", "msgB").String()},
 		{Score: 1.0, ID: domain.NewObjectPathWithMessage("chatOk", "msgOk").String()},
 	}, nil)
@@ -404,6 +404,82 @@ func TestService_BrowseLastMessages(t *testing.T) {
 	})
 }
 
+func TestService_SearchCreatorFilter(t *testing.T) {
+	spaceId := "space1"
+	chatId := "chat1"
+
+	t.Run("creators are passed to FT and backstopped at hydration", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		ctx := context.Background()
+
+		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{
+			Records: []*domain.Details{},
+		}, nil).Maybe()
+
+		// FT receives the creators for budget scoping...
+		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "query", []string{"A5alice"}, mock.Anything).Return([]*ftsearch.DocumentMatch{
+			{Score: 2.0, ID: domain.NewObjectPathWithMessage(chatId, "msgAlice").String()},
+			// ...but a stale FT doc can still resolve to a foreign author
+			{Score: 1.0, ID: domain.NewObjectPathWithMessage(chatId, "msgBobEdited").String()},
+		}, nil)
+
+		fx.chatRepoService.repo = &fakeChatRepository{messagesByIds: []*chatmodel.Message{
+			{ChatMessage: &model.ChatMessage{Id: "msgAlice", Creator: "A5alice"}},
+			{ChatMessage: &model.ChatMessage{Id: "msgBobEdited", Creator: "B7bob"}},
+		}}
+
+		fx.start(t)
+
+		// when
+		results, err := fx.Search(ctx, &pb.RpcChatSearchRequest{
+			SpaceId:  spaceId,
+			ChatId:   chatId,
+			FullText: "query",
+			Creators: []string{"A5alice"},
+		})
+
+		// then: the foreign-author message is dropped at hydration
+		require.NoError(t, err)
+		require.Len(t, results, 1)
+		assert.Equal(t, "msgAlice", results[0].MessageId)
+	})
+
+	t.Run("browse mode filters by creators via the repository", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		ctx := context.Background()
+
+		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{
+			Records: []*domain.Details{},
+		}, nil).Maybe()
+		addChatObject(t, fx, chatId, spaceId, model.ObjectType_chatDerived)
+
+		// no ftSearch expectation: browse must not query the index
+		fx.chatRepoService.repos = map[string]chatrepository.Repository{
+			chatId: &fakeChatRepository{lastMessages: []*chatmodel.Message{
+				{ChatMessage: &model.ChatMessage{Id: "msgNewBob", Creator: "B7bob", CreatedAt: 300}},
+				{ChatMessage: &model.ChatMessage{Id: "msgAlice", Creator: "A5alice", CreatedAt: 200}},
+				{ChatMessage: &model.ChatMessage{Id: "msgOldBob", Creator: "B7bob", CreatedAt: 100}},
+			}},
+		}
+
+		fx.start(t)
+
+		// when
+		results, err := fx.Search(ctx, &pb.RpcChatSearchRequest{
+			SpaceId:  spaceId,
+			Creators: []string{"B7bob"},
+		})
+
+		// then: only bob's messages, newest first (browse default sort)
+		require.NoError(t, err)
+		require.Len(t, results, 2)
+		assert.Equal(t, "msgNewBob", results[0].MessageId)
+		assert.Equal(t, "msgOldBob", results[1].MessageId)
+	})
+}
+
 func TestService_SearchAllSpaces(t *testing.T) {
 	// given
 	fx := newFixture(t)
@@ -416,7 +492,7 @@ func TestService_SearchAllSpaces(t *testing.T) {
 	addChatObject(t, fx, "chat2", "space2", model.ObjectType_chatDerived)
 
 	// in the all-spaces scope the hit's stored space field drives attribution
-	fx.ftSearch.EXPECT().SearchChat("", "", "query", mock.Anything).Return([]*ftsearch.DocumentMatch{
+	fx.ftSearch.EXPECT().SearchChat("", "", "query", mock.Anything, mock.Anything).Return([]*ftsearch.DocumentMatch{
 		{Score: 2.0, ID: domain.NewObjectPathWithMessage("chat1", "msg1").String(), SpaceId: "space1"},
 		{Score: 1.0, ID: domain.NewObjectPathWithMessage("chat2", "msg2").String(), SpaceId: "space2"},
 	}, nil)

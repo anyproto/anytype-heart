@@ -9533,6 +9533,8 @@ message Rpc {
                 string fullText = 4;
                 int32 offset = 5;
                 int32 limit = 6;
+                // (optional) restrict to messages authored by these identities; empty = all authors
+                repeated string creators = 7;
             }
 
             message Response {
