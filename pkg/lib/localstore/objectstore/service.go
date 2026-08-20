@@ -27,6 +27,7 @@ Fulltext queue flow:
 */
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -40,6 +41,7 @@ import (
 	"github.com/anyproto/any-sync/app/debugstat"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	"go.uber.org/zap"
+	"golang.org/x/text/collate"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -71,6 +73,16 @@ var ErrSpaceDeleted = errors.New("space index is deleted")
 
 type CrossSpace interface {
 	QueryCrossSpace(ctx context.Context, q database.Query) (records []database.Record, err error)
+	// QueryCrossSpaceNoWait queries only the spaces whose object stores are
+	// open right now, without waiting for the background warm-up (stores load
+	// sequentially on app start). allStoresLoaded reports whether the warm-up
+	// had already covered the full authoritative space set when the query ran
+	// — when false the result is a partial view. A failing space is logged
+	// and skipped instead of failing the whole read. q.Offset/q.Limit are
+	// applied after the cross-space merge (per space the limit only bounds
+	// candidates); with a fulltext query and no sorts the merged set is
+	// ordered by the injected _final_score.
+	QueryCrossSpaceNoWait(q database.Query) (records []database.Record, allStoresLoaded bool, err error)
 	QueryByIdCrossSpace(ctx context.Context, ids []string) (records []database.Record, err error)
 
 	ListIdsCrossSpace(ctx context.Context) ([]string, error)
@@ -1021,6 +1033,97 @@ func (s *dsObjectStore) QueryCrossSpace(ctx context.Context, q database.Query) (
 	return collectCrossSpace(ctx, s, func(store spaceindex.Store) ([]database.Record, error) {
 		return store.Query(q)
 	})
+}
+
+func (s *dsObjectStore) QueryCrossSpaceNoWait(q database.Query) ([]database.Record, bool, error) {
+	// read the flag before snapshotting the store set: if the warm-up had
+	// finished by then, the snapshot is guaranteed to cover the full set
+	allStoresLoaded := false
+	select {
+	case <-s.loadedCh:
+		allStoresLoaded = true
+	default:
+	}
+
+	// per space the caller's paging only bounds candidates: each space
+	// returns its top offset+limit records, the global top offset+limit is a
+	// subset of their union (top-K merge property), and the real slicing
+	// happens after the merge
+	perSpaceQuery := q
+	perSpaceQuery.Offset = 0
+	if q.Limit > 0 {
+		perSpaceQuery.Limit = q.Offset + q.Limit
+	}
+
+	stores := s.beginCrossSpaceIteration()
+	defer s.endCrossSpaceIteration()
+
+	var records []database.Record
+	var orderStore spaceindex.Store
+	for _, store := range stores {
+		if err := store.Init(); err != nil {
+			log.Error("cross-space query: init store", zap.String("spaceId", store.SpaceId()), zap.Error(err))
+			continue
+		}
+		s.markSpaceIndexOpened(store.SpaceId())
+		items, err := store.Query(perSpaceQuery)
+		if err != nil {
+			log.Error("cross-space query: query store", zap.String("spaceId", store.SpaceId()), zap.Error(err))
+			continue
+		}
+		if orderStore == nil {
+			orderStore = store
+		}
+		records = append(records, items...)
+	}
+
+	s.sortMergedRecords(records, q, orderStore)
+
+	if q.Offset > 0 {
+		if q.Offset >= len(records) {
+			return nil, allStoresLoaded, nil
+		}
+		records = records[q.Offset:]
+	}
+	if q.Limit > 0 && len(records) > q.Limit {
+		records = records[:q.Limit]
+	}
+	return records, allStoresLoaded, nil
+}
+
+// sortMergedRecords restores a global order over records merged from several
+// spaces: the requested sorts when given (relation formats resolved via
+// orderStore — bundled relations are identical across spaces), else the
+// per-space fulltext _final_score for text queries. Without either, the
+// per-space concatenation order is kept.
+func (s *dsObjectStore) sortMergedRecords(records []database.Record, q database.Query, orderStore spaceindex.Store) {
+	if len(records) < 2 {
+		return
+	}
+	if len(q.Sorts) > 0 && orderStore != nil {
+		arena := s.arenaPool.Get()
+		defer s.arenaPool.Put(arena)
+		collatorBuffer := &collate.Buffer{}
+		orders := make([]database.Order, 0, len(q.Sorts))
+		for _, sortRequest := range q.Sorts {
+			orders = append(orders, database.NewKeyOrder(orderStore, arena, collatorBuffer, sortRequest))
+		}
+		slices.SortStableFunc(records, func(a, b database.Record) int {
+			for _, order := range orders {
+				if comp := order.Compare(a.Details, b.Details); comp != 0 {
+					return comp
+				}
+			}
+			return 0
+		})
+		return
+	}
+	if q.TextQuery != "" {
+		slices.SortStableFunc(records, func(a, b database.Record) int {
+			// descending final score
+			return cmp.Compare(b.Details.GetFloat64(bundle.RelationKey_final_score), a.Details.GetFloat64(bundle.RelationKey_final_score))
+		})
+	}
 }
 
 func (s *dsObjectStore) SubscribeLinksUpdate(callback func(info spaceindex.LinksUpdateInfo)) {

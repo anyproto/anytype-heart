@@ -201,6 +201,53 @@ func (mw *Middleware) ObjectSearchWithMeta(cctx context.Context, req *pb.RpcObje
 	return response(pb.RpcObjectSearchWithMetaResponseError_NULL, resultsModels, nil)
 }
 
+func (mw *Middleware) ObjectCrossSpaceSearch(cctx context.Context, req *pb.RpcObjectCrossSpaceSearchRequest) *pb.RpcObjectCrossSpaceSearchResponse {
+	response := func(code pb.RpcObjectCrossSpaceSearchResponseErrorCode, records []*types.Struct, allStoresLoaded bool, err error) *pb.RpcObjectCrossSpaceSearchResponse {
+		m := &pb.RpcObjectCrossSpaceSearchResponse{
+			Error:           &pb.RpcObjectCrossSpaceSearchResponseError{Code: code},
+			Records:         records,
+			AllStoresLoaded: allStoresLoaded,
+		}
+		if err != nil {
+			m.Error.Description = getErrorDescription(err)
+		}
+		return m
+	}
+
+	if mw.applicationService.GetApp() == nil {
+		return response(pb.RpcObjectCrossSpaceSearchResponseError_BAD_INPUT, nil, false, fmt.Errorf("account must be started"))
+	}
+
+	if req.FullText != "" {
+		mw.applicationService.GetApp().MustComponent(indexer.CName).(indexer.Indexer).ForceFTIndex()
+	}
+
+	ds := mw.applicationService.GetApp().MustComponent(objectstore.CName).(objectstore.ObjectStore)
+	// one-shot snapshot of the currently-loaded spaces: unlike QueryCrossSpace
+	// this does not wait for the store warm-up; AllStoresLoaded tells the
+	// caller whether the view was complete
+	records, allStoresLoaded, err := ds.QueryCrossSpaceNoWait(database.Query{
+		Filters:   database.FiltersFromProto(req.Filters),
+		Sorts:     database.SortsFromProto(req.Sorts),
+		Offset:    int(req.Offset),
+		Limit:     int(req.Limit),
+		TextQuery: req.FullText,
+	})
+	if err != nil {
+		return response(pb.RpcObjectCrossSpaceSearchResponseError_UNKNOWN_ERROR, nil, allStoresLoaded, err)
+	}
+
+	protoRecords := make([]*types.Struct, 0, len(records))
+	for _, rec := range records {
+		details := rec.Details
+		if len(req.Keys) > 0 {
+			details = details.CopyOnlyKeys(slice.StringsInto[domain.RelationKey](req.Keys)...)
+		}
+		protoRecords = append(protoRecords, details.ToProto())
+	}
+	return response(pb.RpcObjectCrossSpaceSearchResponseError_NULL, protoRecords, allStoresLoaded, nil)
+}
+
 func (mw *Middleware) ObjectSearchSubscribe(cctx context.Context, req *pb.RpcObjectSearchSubscribeRequest) *pb.RpcObjectSearchSubscribeResponse {
 	errResponse := func(err error) *pb.RpcObjectSearchSubscribeResponse {
 		r := &pb.RpcObjectSearchSubscribeResponse{

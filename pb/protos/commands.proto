@@ -2477,6 +2477,46 @@ message Rpc {
             }
         }
 
+        // one-shot cross-space search, no subscription overhead. Queries the
+        // spaces whose object stores are loaded at the moment of the call —
+        // stores load sequentially on app start, so early calls can see a
+        // partial space set; the response reports it via allStoresLoaded.
+        message CrossSpaceSearch {
+            message Request {
+                repeated anytype.model.Block.Content.Dataview.Filter filters = 1;
+                repeated anytype.model.Block.Content.Dataview.Sort sorts = 2;
+                string fullText = 3;
+                // offset and limit apply to the merged cross-space result
+                int32 offset = 4;
+                int32 limit = 5;
+                // keys to return in records; empty = all
+                repeated string keys = 6;
+            }
+
+            message Response {
+                Error error = 1;
+                repeated google.protobuf.Struct records = 2;
+                // false = the sequential per-space store warm-up had not
+                // finished when the query ran, so records cover only the
+                // spaces loaded so far. Retry later for the complete view, or
+                // use ObjectCrossSpaceSearchSubscribe, which streams
+                // later-loading spaces as they open.
+                bool allStoresLoaded = 3;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
         message CrossSpaceSearchSubscribe {
             message Request {
                 // (optional) subscription identifier
