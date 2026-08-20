@@ -83,8 +83,11 @@ type FTSearch interface {
 	// "objectId/m/messageId"; bare-id documents are deleted as well)
 	BatchDeleteObjects(ids []string) (err error)
 	// Search returns up to limit best-scoring doc matches (limit <= 0 means
-	// the default of 100). The limit applies to docs, not objects.
-	Search(spaceId string, query string, limit int) (results []*DocumentMatch, err error)
+	// the default of 100). The limit applies to docs, not objects. Highlight
+	// generation costs up to ~130µs per matched doc with large stored text and
+	// is pure waste for record-only responses — pass withHighlights=false
+	// unless the caller returns highlight fragments to the client.
+	Search(spaceId string, query string, limit int, withHighlights bool) (results []*DocumentMatch, err error)
 	// SearchChat searches only message documents ("chatId/m/...") so messages
 	// don't compete with the rest of the space for the limit. Empty chatId
 	// searches messages of all chats; empty spaceId searches all spaces.
@@ -571,8 +574,8 @@ func (f *ftSearch) NamePrefixSearch(spaceId, query string, limit int) ([]*Docume
 	return f.performSearch(spaceId, query, limit, false, f.buildObjectQuery)
 }
 
-func (f *ftSearch) Search(spaceId, query string, limit int) ([]*DocumentMatch, error) {
-	return f.performSearch(spaceId, query, limit, true, f.buildDetailedQuery)
+func (f *ftSearch) Search(spaceId, query string, limit int, withHighlights bool) ([]*DocumentMatch, error) {
+	return f.performSearch(spaceId, query, limit, withHighlights, f.buildDetailedQuery)
 }
 
 func (f *ftSearch) SearchChat(spaceId, chatId, query string, creators []string, limit int) ([]*DocumentMatch, error) {

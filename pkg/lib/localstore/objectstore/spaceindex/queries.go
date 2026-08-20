@@ -572,7 +572,7 @@ func (s *dsObjectStore) performFulltextQuery(q database.Query, filters *database
 		if q.PrefixNameQuery {
 			return s.fts.NamePrefixSearch(q.SpaceId, q.TextQuery, limit)
 		}
-		return s.fts.Search(q.SpaceId, q.TextQuery, limit)
+		return s.fts.Search(q.SpaceId, q.TextQuery, limit, true)
 	}
 
 	needed := 0
@@ -631,7 +631,22 @@ func (s *dsObjectStore) performFulltextSearch(enforceMinScore bool, search func(
 	if err != nil {
 		return nil, 0, fmt.Errorf("fullText search: %w", err)
 	}
+	results, err := GroupFulltextResults(ftsResults, enforceMinScore)
+	if err != nil {
+		return nil, 0, err
+	}
+	return results, len(ftsResults), nil
+}
 
+// GroupFulltextResults groups raw doc matches per object, selects each
+// object's best (budget-stable) doc, orders objects deterministically and
+// converts them to fulltext results. Exported for cross-space search, which
+// runs one global tantivy query and groups per space before resolution; the
+// caller must pass matches of a single space (object ids are only unique
+// within one). enforceMinScore drops near-zero-score results without
+// highlights — disable it whenever the matches were produced without
+// highlight generation.
+func GroupFulltextResults(ftsResults []*ftsearch.DocumentMatch, enforceMinScore bool) ([]database.FulltextResult, error) {
 	var resultsByObjectId = make(map[string][]*ftsearch.DocumentMatch)
 	for _, result := range ftsResults {
 		path, err := domain.NewFromPath(result.ID)
@@ -698,7 +713,7 @@ func (s *dsObjectStore) performFulltextSearch(enforceMinScore bool, search func(
 	for _, docMatch := range objectResults {
 		result, err := database.FTDocumentMatchToFulltextResult(docMatch)
 		if err != nil {
-			return nil, 0, fmt.Errorf("fullText search: %w", err)
+			return nil, fmt.Errorf("fullText search: %w", err)
 		}
 		// the name boost must derive from the budget-stable BEST doc, not from
 		// the representative doc: the pluralName preference can switch the
@@ -712,7 +727,7 @@ func (s *dsObjectStore) performFulltextSearch(enforceMinScore bool, search func(
 
 	}
 
-	return results, len(ftsResults), nil
+	return results, nil
 }
 
 // isNameDocId reports whether the doc id is the object's name or pluralName

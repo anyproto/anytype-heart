@@ -49,6 +49,11 @@ type Store interface {
 
 	// Query adds implicit filters on isArchived, isDeleted and objectType relations! To avoid them use QueryRaw
 	Query(q database.Query) (records []database.Record, err error)
+	// QueryFromFulltext resolves already-grouped fulltext results against the
+	// store: details, filters, related-object injections, final score, head
+	// re-rank. Used by cross-space search, which runs the tantivy query
+	// globally and resolves candidates per space.
+	QueryFromFulltext(results []database.FulltextResult, params database.Filters, limit int, offset int, ftsSearch string) ([]database.Record, error)
 	// QueryAndCount runs the query (with limit/offset) and additionally returns the total number of
 	// objects matching the filters, ignoring limit/offset. The filters are compiled only once.
 	// It applies the same implicit filters as Query. Fulltext queries are not supported.

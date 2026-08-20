@@ -169,12 +169,13 @@ func TestQueryCrossSpaceNoWait(t *testing.T) {
 		assert.Len(t, records, 1)
 	})
 
-	t.Run("fulltext is scoped per space: a small space's match survives a noisy space", func(t *testing.T) {
-		// review F1/F6: an unscoped query made every space run the same
-		// global search — spaces whose matches don't rank in the global
-		// candidate budget silently returned nothing
+	t.Run("fulltext: one global query, per-space resolution, relevance-merged", func(t *testing.T) {
+		// GO-7455: the fulltext scope runs a single global tantivy query and
+		// resolves candidates per space — every space's matches compete in one
+		// global relevance ranking (scores are comparable: the space clause is
+		// score-neutral)
 		fx := NewStoreFixture(t)
-		for i := 0; i < 150; i++ {
+		for i := 0; i < 50; i++ {
 			id := fmt.Sprintf("s1-obj-%03d", i)
 			fx.AddObjects(t, "space1", []TestObject{
 				{bundle.RelationKeyId: domain.String(id), bundle.RelationKeyName: domain.String("apple apple apple")},
@@ -195,24 +196,28 @@ func TestQueryCrossSpaceNoWait(t *testing.T) {
 		}))
 		require.NoError(t, fx.WaitStoresLoaded(context.Background()))
 
-		// no limit: before the fix even the unlimited query dropped the
-		// space2 match — every space resolved the same global candidate page
-		// and kept only its own docs, so a space whose matches don't rank in
-		// the global page returned nothing at all
 		records, allLoaded, err := fx.QueryCrossSpaceNoWait(context.Background(), database.Query{
 			TextQuery: "apple",
 		})
 		require.NoError(t, err)
 		assert.True(t, allLoaded)
+		// all matches fit the global candidate budget: both spaces represented
+		require.Len(t, records, 51)
 		found := false
 		for _, rec := range records {
 			if rec.Details.GetString(bundle.RelationKeyId) == "s2-lonely" {
 				found = true
 			}
 		}
-		assert.True(t, found, "the weaker space2 match must not be starved by space1's candidates")
-		// stronger space1 matches still outrank it: score-first merge order
+		assert.True(t, found, "the weaker space2 match is part of the global ranking")
+		// stronger space1 matches outrank it: global relevance order
 		assert.NotEqual(t, "s2-lonely", records[0].Details.GetString(bundle.RelationKeyId))
+		assert.Equal(t, "s2-lonely", records[len(records)-1].Details.GetString(bundle.RelationKeyId))
+
+		// paging comes from the merged global ranking
+		page, _, err := fx.QueryCrossSpaceNoWait(context.Background(), database.Query{TextQuery: "apple", Limit: 10})
+		require.NoError(t, err)
+		assert.Len(t, page, 10)
 	})
 
 	t.Run("no sorts and no text default to newest-first browse order", func(t *testing.T) {
