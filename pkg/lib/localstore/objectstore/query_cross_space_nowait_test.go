@@ -215,6 +215,76 @@ func TestQueryCrossSpaceNoWait(t *testing.T) {
 		assert.NotEqual(t, "s2-lonely", records[0].Details.GetString(bundle.RelationKeyId))
 	})
 
+	t.Run("parallel per-space querying keeps the deterministic order", func(t *testing.T) {
+		// per-space queries run concurrently (capped): completion order must
+		// not leak into the result — slots are concatenated in sorted-space
+		// order and the merge comparator is total
+		fx := NewStoreFixture(t)
+		want := make([]string, 0, 12)
+		for spaceN := 1; spaceN <= 6; spaceN++ {
+			spaceId := fmt.Sprintf("space%d", spaceN)
+			for objN := 1; objN <= 2; objN++ {
+				id := fmt.Sprintf("obj-%d-%d", spaceN, objN)
+				fx.AddObjects(t, spaceId, []TestObject{
+					{bundle.RelationKeyId: domain.String(id), bundle.RelationKeyName: domain.String("same name")},
+				})
+				want = append(want, id)
+			}
+		}
+		require.NoError(t, fx.WaitStoresLoaded(context.Background()))
+
+		for i := 0; i < 5; i++ {
+			records, allLoaded, err := fx.QueryCrossSpaceNoWait(context.Background(), database.Query{
+				Sorts: []database.SortRequest{
+					{RelationKey: bundle.RelationKeyName, Type: model.BlockContentDataviewSort_Asc},
+				},
+			})
+			require.NoError(t, err)
+			assert.True(t, allLoaded)
+			got := make([]string, 0, len(records))
+			for _, rec := range records {
+				got = append(got, rec.Details.GetString(bundle.RelationKeyId))
+			}
+			// all names tie: the id tiebreak yields one fixed global order
+			require.Equal(t, want, got, "call %d", i)
+		}
+	})
+
+	t.Run("parallel per-space querying keeps the deterministic order", func(t *testing.T) {
+		// per-space queries run concurrently (capped): completion order must
+		// not leak into the result — slots are concatenated in sorted-space
+		// order and the merge comparator is total
+		fx := NewStoreFixture(t)
+		want := make([]string, 0, 12)
+		for spaceN := 1; spaceN <= 6; spaceN++ {
+			spaceId := fmt.Sprintf("space%d", spaceN)
+			for objN := 1; objN <= 2; objN++ {
+				id := fmt.Sprintf("obj-%d-%d", spaceN, objN)
+				fx.AddObjects(t, spaceId, []TestObject{
+					{bundle.RelationKeyId: domain.String(id), bundle.RelationKeyName: domain.String("same name")},
+				})
+				want = append(want, id)
+			}
+		}
+		require.NoError(t, fx.WaitStoresLoaded(context.Background()))
+
+		for i := 0; i < 5; i++ {
+			records, allLoaded, err := fx.QueryCrossSpaceNoWait(context.Background(), database.Query{
+				Sorts: []database.SortRequest{
+					{RelationKey: bundle.RelationKeyName, Type: model.BlockContentDataviewSort_Asc},
+				},
+			})
+			require.NoError(t, err)
+			assert.True(t, allLoaded)
+			got := make([]string, 0, len(records))
+			for _, rec := range records {
+				got = append(got, rec.Details.GetString(bundle.RelationKeyId))
+			}
+			// all names tie: the id tiebreak yields one fixed global order
+			require.Equal(t, want, got, "call %d", i)
+		}
+	})
+
 	t.Run("reports partial view while the warm-up has not finished", func(t *testing.T) {
 		// given: a store whose warm-up never completed (loadedCh open)
 		s := &dsObjectStore{loadedCh: make(chan struct{})}
