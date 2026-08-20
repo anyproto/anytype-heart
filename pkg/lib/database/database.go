@@ -428,12 +428,21 @@ type Filters struct {
 	Order     Order
 }
 
-// ComputeFinalScore blends a Tantivy BM25 score with two additive signals:
+// participantLayoutBoost is a tie-break signal for participant (space member)
+// objects: deliberately an order of magnitude below the 1.0-weight signals so
+// a person wins over an otherwise-equal regular object (same match, same
+// recency) without ever overcoming a real relevance difference.
+const participantLayoutBoost = 0.1
+
+// ComputeFinalScore blends a Tantivy BM25 score with additive signals:
 //   - recency: exponential decay on the more-recent of lastOpenedDate / lastModifiedDate (30-day half-life, [0,1])
 //   - nameBoost: 1.0 when the fulltext match landed in the "name" relation field, 0 otherwise
+//   - participantLayoutBoost: 0.1 for participant objects (tie-break only)
 //
-// Formula: ln(1+bm25) + recency + nameBoost
+// Formula: ln(1+bm25) + recency + nameBoost + participantBoost
 // Log-compressing the BM25 score keeps recency and nameBoost as equal-weight additive signals.
+// All signals derive from the doc itself, keeping the score budget-stable
+// (identical across page requests regardless of the candidate set).
 func ComputeFinalScore(bm25Score float64, details *domain.Details, nameMatch bool) float64 {
 	if details == nil {
 		return math.Log1p(bm25Score)
@@ -454,7 +463,11 @@ func ComputeFinalScore(bm25Score float64, details *domain.Details, nameMatch boo
 	if nameMatch {
 		nameBoost = 1.0
 	}
-	return math.Log1p(bm25Score) + recency + nameBoost
+	participantBoost := 0.0
+	if details.GetInt64(bundle.RelationKeyResolvedLayout) == int64(model.ObjectType_participant) {
+		participantBoost = participantLayoutBoost
+	}
+	return math.Log1p(bm25Score) + recency + nameBoost + participantBoost
 }
 
 // recencyDecay returns exp(-ln(2)/30 * age_in_days) clamped to [0,1].

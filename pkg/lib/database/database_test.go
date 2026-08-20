@@ -901,6 +901,24 @@ func TestComputeFinalScore(t *testing.T) {
 		assert.InDelta(t, withoutBoost+1.0, withBoost, 1e-9)
 	})
 
+	t.Run("participant layout adds the tie-break boost", func(t *testing.T) {
+		// given
+		regular := domain.NewDetails()
+		regular.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_basic))
+		participant := domain.NewDetails()
+		participant.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_participant))
+		score := 2.77
+
+		// when
+		regularScore := ComputeFinalScore(score, regular, false)
+		participantScore := ComputeFinalScore(score, participant, false)
+
+		// then: participant wins an otherwise-equal tie...
+		assert.InDelta(t, regularScore+participantLayoutBoost, participantScore, 1e-9)
+		// ...but never overcomes a real signal like a name match
+		assert.Greater(t, ComputeFinalScore(score, regular, true), participantScore)
+	})
+
 	t.Run("fresh open adds recency on top of log-score", func(t *testing.T) {
 		// given
 		details := domain.NewDetails()
