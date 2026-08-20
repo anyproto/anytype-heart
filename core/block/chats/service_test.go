@@ -96,6 +96,7 @@ type fakeChatRepository struct {
 	pinned          []*chatmodel.Message
 	messagesByIds   []*chatmodel.Message
 	messagesByIdsFn func(messageIds []string) ([]*chatmodel.Message, error)
+	lastMessages    []*chatmodel.Message
 }
 
 func (f *fakeChatRepository) GetPinnedMessages(ctx context.Context) ([]*chatmodel.Message, error) {
@@ -107,6 +108,13 @@ func (f *fakeChatRepository) GetMessagesByIds(ctx context.Context, messageIds []
 		return f.messagesByIdsFn(messageIds)
 	}
 	return f.messagesByIds, nil
+}
+
+func (f *fakeChatRepository) GetLastMessages(ctx context.Context, limit uint) ([]*chatmodel.Message, error) {
+	if int(limit) < len(f.lastMessages) {
+		return f.lastMessages[:limit], nil
+	}
+	return f.lastMessages, nil
 }
 
 type fileGCDummy struct{}
@@ -1712,7 +1720,7 @@ func TestService_Search(t *testing.T) {
 		assert.Contains(t, err.Error(), "search ft")
 	})
 
-	t.Run("empty query returns empty results", func(t *testing.T) {
+	t.Run("empty query browses the chat's last messages, no FT involved", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
 		ctx := context.Background()
@@ -1721,7 +1729,12 @@ func TestService_Search(t *testing.T) {
 			Records: []*domain.Details{},
 		}, nil).Maybe()
 
-		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "", mock.Anything).Return([]*ftsearch.DocumentMatch{}, nil)
+		// no ftSearch expectation: browse must not query the index
+		fx.chatRepoService.repo = &fakeChatRepository{lastMessages: []*chatmodel.Message{
+			{ChatMessage: &model.ChatMessage{Id: "msgNew", CreatedAt: 300}},
+			{ChatMessage: &model.ChatMessage{Id: "msgMid", CreatedAt: 200}},
+			{ChatMessage: &model.ChatMessage{Id: "msgOld", CreatedAt: 100}},
+		}}
 
 		fx.start(t)
 
@@ -1734,7 +1747,12 @@ func TestService_Search(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		assert.Empty(t, results)
+		require.Len(t, results, 3)
+		got := []string{results[0].MessageId, results[1].MessageId, results[2].MessageId}
+		// default browse order: CREATED_AT desc
+		assert.Equal(t, []string{"msgNew", "msgMid", "msgOld"}, got)
+		assert.Equal(t, chatId, results[0].ChatId)
+		assert.Equal(t, spaceId, results[0].SpaceId)
 	})
 }
 

@@ -39,7 +39,7 @@ func fakeRepoWithMessages(msgs ...*model.ChatMessage) chatrepository.Repository 
 	for _, m := range msgs {
 		messages = append(messages, &chatmodel.Message{ChatMessage: m})
 	}
-	return &fakeChatRepository{messagesByIds: messages}
+	return &fakeChatRepository{messagesByIds: messages, lastMessages: messages}
 }
 
 func TestService_SearchAllChatsInSpace(t *testing.T) {
@@ -287,6 +287,121 @@ func TestService_SearchSurvivesBrokenChat(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	assert.Equal(t, "msgOk", results[0].MessageId)
+}
+
+func TestService_BrowseLastMessages(t *testing.T) {
+	// empty fullText = browse: latest messages in scope from the stores,
+	// default CREATED_AT desc, no FT query
+	spaceId := "space1"
+
+	t.Run("space scope merges chats newest-first", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		ctx := context.Background()
+
+		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{
+			Records: []*domain.Details{},
+		}, nil).Maybe()
+		addChatObject(t, fx, "chat1", spaceId, model.ObjectType_chatDerived)
+		addChatObject(t, fx, "objectChat", spaceId, model.ObjectType_discussion)
+		// a non-chat object must not be browsed
+		addChatObject(t, fx, "notAChat", spaceId, model.ObjectType_basic)
+
+		fx.chatRepoService.repos = map[string]chatrepository.Repository{
+			"chat1": fakeRepoWithMessages(
+				&model.ChatMessage{Id: "msg3", CreatedAt: 300},
+				&model.ChatMessage{Id: "msg1", CreatedAt: 100},
+			),
+			"objectChat": fakeRepoWithMessages(
+				&model.ChatMessage{Id: "msg2", CreatedAt: 200},
+			),
+		}
+
+		fx.start(t)
+
+		// when
+		results, err := fx.Search(ctx, &pb.RpcChatSearchRequest{
+			SpaceId: spaceId,
+			Sorts: []*model.SearchMessageSort{
+				{Key: model.SearchMessageSort_CREATED_AT, Type: model.SearchMessageSort_Desc},
+			},
+			Limit: 2,
+		})
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, results, 2)
+		assert.Equal(t, "msg3", results[0].MessageId)
+		assert.Equal(t, "chat1", results[0].ChatId)
+		assert.Equal(t, "msg2", results[1].MessageId)
+		assert.Equal(t, "objectChat", results[1].ChatId)
+		for _, r := range results {
+			assert.Equal(t, spaceId, r.SpaceId)
+		}
+	})
+
+	t.Run("vault scope browses across spaces with attribution", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		ctx := context.Background()
+
+		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{
+			Records: []*domain.Details{},
+		}, nil).Maybe()
+		addChatObject(t, fx, "chat1", "space1", model.ObjectType_chatDerived)
+		addChatObject(t, fx, "chat2", "space2", model.ObjectType_chatDerived)
+
+		fx.chatRepoService.repos = map[string]chatrepository.Repository{
+			"chat1": fakeRepoWithMessages(&model.ChatMessage{Id: "msg1", CreatedAt: 100}),
+			"chat2": fakeRepoWithMessages(&model.ChatMessage{Id: "msg2", CreatedAt: 200}),
+		}
+
+		fx.start(t)
+
+		// when: no sorts — browse defaults to CREATED_AT desc
+		results, err := fx.Search(ctx, &pb.RpcChatSearchRequest{})
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, results, 2)
+		assert.Equal(t, "msg2", results[0].MessageId)
+		assert.Equal(t, "space2", results[0].SpaceId)
+		assert.Equal(t, "msg1", results[1].MessageId)
+		assert.Equal(t, "space1", results[1].SpaceId)
+	})
+
+	t.Run("offset pagination", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		ctx := context.Background()
+
+		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{
+			Records: []*domain.Details{},
+		}, nil).Maybe()
+		addChatObject(t, fx, "chat1", spaceId, model.ObjectType_chatDerived)
+
+		fx.chatRepoService.repos = map[string]chatrepository.Repository{
+			"chat1": fakeRepoWithMessages(
+				&model.ChatMessage{Id: "msg3", CreatedAt: 300},
+				&model.ChatMessage{Id: "msg2", CreatedAt: 200},
+				&model.ChatMessage{Id: "msg1", CreatedAt: 100},
+			),
+		}
+
+		fx.start(t)
+
+		// when
+		results, err := fx.Search(ctx, &pb.RpcChatSearchRequest{
+			SpaceId: spaceId,
+			Offset:  1,
+			Limit:   1,
+		})
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, results, 1)
+		assert.Equal(t, "msg2", results[0].MessageId)
+	})
 }
 
 func TestService_SearchAllSpaces(t *testing.T) {

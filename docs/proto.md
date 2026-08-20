@@ -11759,7 +11759,7 @@ Get marks list in the selected range in text block.
 | spaceId | [string](#string) |  | empty spaceId means all spaces (usually combined with empty chatId) |
 | chatId | [string](#string) |  | empty chatId means all chats in spaceId; results carry chatId/spaceId per message |
 | sorts | [model.Search.Message.Sort](#anytype-model-Search-Message-Sort) | repeated | Note: ORDER_ID sort is only meaningful within a single chat |
-| fullText | [string](#string) |  |  |
+| fullText | [string](#string) |  | empty fullText browses the latest messages in scope (default sort CREATED_AT desc); non-empty fullText is a relevance search (default sort SCORE desc) |
 | offset | [int32](#int32) |  |  |
 | limit | [int32](#int32) |  |  |
 

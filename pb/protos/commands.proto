@@ -9480,6 +9480,8 @@ message Rpc {
                 string chatId = 2;
                 // Note: ORDER_ID sort is only meaningful within a single chat
                 repeated anytype.model.Search.Message.Sort sorts = 3;
+                // empty fullText browses the latest messages in scope (default sort CREATED_AT desc);
+                // non-empty fullText is a relevance search (default sort SCORE desc)
                 string fullText = 4;
                 int32 offset = 5;
                 int32 limit = 6;

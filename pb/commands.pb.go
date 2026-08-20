@@ -84420,10 +84420,12 @@ type RpcChatSearchRequest struct {
 	// empty chatId means all chats in spaceId; results carry chatId/spaceId per message
 	ChatId string `protobuf:"bytes,2,opt,name=chatId,proto3" json:"chatId,omitempty"`
 	// Note: ORDER_ID sort is only meaningful within a single chat
-	Sorts    []*model.SearchMessageSort `protobuf:"bytes,3,rep,name=sorts,proto3" json:"sorts,omitempty"`
-	FullText string                     `protobuf:"bytes,4,opt,name=fullText,proto3" json:"fullText,omitempty"`
-	Offset   int32                      `protobuf:"varint,5,opt,name=offset,proto3" json:"offset,omitempty"`
-	Limit    int32                      `protobuf:"varint,6,opt,name=limit,proto3" json:"limit,omitempty"`
+	Sorts []*model.SearchMessageSort `protobuf:"bytes,3,rep,name=sorts,proto3" json:"sorts,omitempty"`
+	// empty fullText browses the latest messages in scope (default sort CREATED_AT desc);
+	// non-empty fullText is a relevance search (default sort SCORE desc)
+	FullText string `protobuf:"bytes,4,opt,name=fullText,proto3" json:"fullText,omitempty"`
+	Offset   int32  `protobuf:"varint,5,opt,name=offset,proto3" json:"offset,omitempty"`
+	Limit    int32  `protobuf:"varint,6,opt,name=limit,proto3" json:"limit,omitempty"`
 }
 
 func (m *RpcChatSearchRequest) Reset()         { *m = RpcChatSearchRequest{} }

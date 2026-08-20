@@ -235,6 +235,14 @@ Sort-key semantics across chats (document in the proto comment):
   and pinned reads have today. Bounded: a caller cannot conjure arbitrary ids into hydration
   (a chat with no FT message docs produces zero hits), so it is limited to residue of once-real
   chats. Gate it too if that ever proves wrong.
+- **Browse mode** (empty `fullText`): returns the latest messages in scope instead of nothing —
+  the search screen's entry state. Served from the message stores, not FT (authoritative, no
+  indexing lag — a just-sent message appears immediately): chats enumerated from the object
+  index (`chatsInScope`, layout `chatDerived|discussion`, not deleted; cross-space query for the
+  vault scope), each contributing its newest `offset+limit` messages by orderId (capped 2000),
+  merged and sorted — default `CREATED_AT desc`. Known approximation: per-chat candidates are
+  orderId-windowed, so a late-arriving concurrent message can fall just outside a deep page.
+  Deep single-chat history should keep using `ChatGetMessages` (exact orderId cursors).
 - **Just-sent messages**: `ObjectSearch` nudges the FT queue via `indexer.ForceFTIndex()` when
   `fullText != ""` (`core/object.go:93`); `ChatSearch` now does the same. Best-effort only —
   the nudge is non-blocking and rate-limited on the consumer side, so it shortens the lag for
