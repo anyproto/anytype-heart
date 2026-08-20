@@ -27,6 +27,39 @@ import (
 // reported as data loss (§3, §11).
 var strippedKeys = anyblockjson.InternalPropertyKeys()
 
+// recommendedListKeys are the four role lists a type keeps its recommended
+// properties in. typeProperties (§2a) collapses them into one labelled array,
+// and import rebuilds all four from it — writing an empty list for a role
+// nothing occupies. Most types have no file-role property, so the store
+// usually has no recommendedFileRelations key at all and the round trip adds
+// an empty one.
+//
+// That is a difference, and it is normalization rather than drift: an absent
+// list and an empty list say the same thing, and the empty list is the only
+// way the format can express a role being cleared, since typeProperties
+// cannot name a section that exists with no members. Left unrecorded it
+// buried the sweep — 1 344 of 1 351 differing objects in a 34 339-object
+// account differed by nothing else. Whether the object state itself should
+// carry all four consistently is GO-7451, not this comparator's call.
+var recommendedListKeys = map[string]bool{
+	bundle.RelationKeyRecommendedFeaturedRelations.String(): true,
+	bundle.RelationKeyRecommendedRelations.String():         true,
+	bundle.RelationKeyRecommendedFileRelations.String():     true,
+	bundle.RelationKeyRecommendedHiddenRelations.String():   true,
+}
+
+// isEmptyRecommendedList reports whether an ADDED detail is one of those four
+// arriving empty. A recommended list that arrives with members is a real
+// difference and is still reported: this suppresses the absent-to-empty step
+// only, never a list that gained content.
+func isEmptyRecommendedList(key string, v *types.Value) bool {
+	if !recommendedListKeys[key] {
+		return false
+	}
+	list := v.GetListValue()
+	return list != nil && len(list.Values) == 0
+}
+
 // Compare reports every place where got diverges from orig on a
 // format-preserved axis, as human-readable findings. An empty result means
 // no detectable drift.
@@ -74,6 +107,9 @@ func Compare(orig, got *model.SmartBlockSnapshotBase, opts anyblockjson.Options)
 		}
 		sort.Strings(gotOnly)
 		for _, k := range gotOnly {
+			if isEmptyRecommendedList(k, got.Details.Fields[k]) {
+				continue
+			}
 			out = append(out, fmt.Sprintf("detail %q added: %s", k, valuePreview(got.Details.Fields[k])))
 		}
 	}

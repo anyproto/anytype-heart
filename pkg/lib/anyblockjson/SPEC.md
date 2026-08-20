@@ -2182,7 +2182,15 @@ property values become single-element lists and the legacy file `hash`
 migrates into `object_id` (§3, §5); object types reduced to the positions §2
 models — one type, plus the target type on a template — with keyless
 entries (`ot-`, `""`) dropped first, so the remaining entries close ranks
-rather than lose the slot a keyless one would have silenced (§3).
+rather than lose the slot a keyless one would have silenced (§3); and a type
+object gains an empty list for every recommended role nothing occupies —
+`type_properties` (§2a) collapses the four role lists into one labelled
+array, and import rebuilds all four from it, so a role the store left absent
+comes back as `[]`. An absent list and an empty one say the same thing, and
+the empty list is the only way this format can express a role being
+*cleared*, since `type_properties` cannot name a section that exists with no
+members. Whether the object state itself should carry all four consistently
+is a question about the state, not the format (GO-7451).
 
 Export emits `blocks` in pre-order with exact depths, so export can never
 produce a monotonicity violation and the flat shape does not disturb
