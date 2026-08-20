@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/chats"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
+	"github.com/anyproto/anytype-heart/core/indexer"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -339,6 +340,14 @@ func (mw *Middleware) ChatReadReactions(cctx context.Context, req *pb.RpcChatRea
 
 func (mw *Middleware) ChatSearch(cctx context.Context, req *pb.RpcChatSearchRequest) *pb.RpcChatSearchResponse {
 	chatService := mustService[chats.Service](mw)
+
+	if req.FullText != "" {
+		// best-effort nudge of the FT queue (non-blocking and rate-limited on
+		// the consumer side, same as ObjectSearch); it shortens the indexing
+		// lag for upcoming searches rather than guaranteeing freshness of this
+		// one
+		mustService[indexer.Indexer](mw).ForceFTIndex()
+	}
 
 	results, err := chatService.Search(cctx, req)
 	if err != nil {

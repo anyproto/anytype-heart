@@ -1012,6 +1012,10 @@
     - [Rpc.Object.CreateSet.Request](#anytype-Rpc-Object-CreateSet-Request)
     - [Rpc.Object.CreateSet.Response](#anytype-Rpc-Object-CreateSet-Response)
     - [Rpc.Object.CreateSet.Response.Error](#anytype-Rpc-Object-CreateSet-Response-Error)
+    - [Rpc.Object.CrossSpaceSearch](#anytype-Rpc-Object-CrossSpaceSearch)
+    - [Rpc.Object.CrossSpaceSearch.Request](#anytype-Rpc-Object-CrossSpaceSearch-Request)
+    - [Rpc.Object.CrossSpaceSearch.Response](#anytype-Rpc-Object-CrossSpaceSearch-Response)
+    - [Rpc.Object.CrossSpaceSearch.Response.Error](#anytype-Rpc-Object-CrossSpaceSearch-Response-Error)
     - [Rpc.Object.CrossSpaceSearchSubscribe](#anytype-Rpc-Object-CrossSpaceSearchSubscribe)
     - [Rpc.Object.CrossSpaceSearchSubscribe.Request](#anytype-Rpc-Object-CrossSpaceSearchSubscribe-Request)
     - [Rpc.Object.CrossSpaceSearchSubscribe.Response](#anytype-Rpc-Object-CrossSpaceSearchSubscribe-Response)
@@ -1769,6 +1773,7 @@
     - [Rpc.Object.CreateRelation.Response.Error.Code](#anytype-Rpc-Object-CreateRelation-Response-Error-Code)
     - [Rpc.Object.CreateRelationOption.Response.Error.Code](#anytype-Rpc-Object-CreateRelationOption-Response-Error-Code)
     - [Rpc.Object.CreateSet.Response.Error.Code](#anytype-Rpc-Object-CreateSet-Response-Error-Code)
+    - [Rpc.Object.CrossSpaceSearch.Response.Error.Code](#anytype-Rpc-Object-CrossSpaceSearch-Response-Error-Code)
     - [Rpc.Object.CrossSpaceSearchSubscribe.Response.Error.Code](#anytype-Rpc-Object-CrossSpaceSearchSubscribe-Response-Error-Code)
     - [Rpc.Object.CrossSpaceSearchUnsubscribe.Response.Error.Code](#anytype-Rpc-Object-CrossSpaceSearchUnsubscribe-Response-Error-Code)
     - [Rpc.Object.DateByTimestamp.Response.Error.Code](#anytype-Rpc-Object-DateByTimestamp-Response-Error-Code)
@@ -2455,6 +2460,7 @@
 | ObjectSearch | [Rpc.Object.Search.Request](#anytype-Rpc-Object-Search-Request) | [Rpc.Object.Search.Response](#anytype-Rpc-Object-Search-Response) |  |
 | ObjectSearchWithMeta | [Rpc.Object.SearchWithMeta.Request](#anytype-Rpc-Object-SearchWithMeta-Request) | [Rpc.Object.SearchWithMeta.Response](#anytype-Rpc-Object-SearchWithMeta-Response) |  |
 | ObjectSearchSubscribe | [Rpc.Object.SearchSubscribe.Request](#anytype-Rpc-Object-SearchSubscribe-Request) | [Rpc.Object.SearchSubscribe.Response](#anytype-Rpc-Object-SearchSubscribe-Response) |  |
+| ObjectCrossSpaceSearch | [Rpc.Object.CrossSpaceSearch.Request](#anytype-Rpc-Object-CrossSpaceSearch-Request) | [Rpc.Object.CrossSpaceSearch.Response](#anytype-Rpc-Object-CrossSpaceSearch-Response) |  |
 | ObjectCrossSpaceSearchSubscribe | [Rpc.Object.CrossSpaceSearchSubscribe.Request](#anytype-Rpc-Object-CrossSpaceSearchSubscribe-Request) | [Rpc.Object.CrossSpaceSearchSubscribe.Response](#anytype-Rpc-Object-CrossSpaceSearchSubscribe-Response) |  |
 | ObjectCrossSpaceSearchUnsubscribe | [Rpc.Object.CrossSpaceSearchUnsubscribe.Request](#anytype-Rpc-Object-CrossSpaceSearchUnsubscribe-Request) | [Rpc.Object.CrossSpaceSearchUnsubscribe.Response](#anytype-Rpc-Object-CrossSpaceSearchUnsubscribe-Response) |  |
 | ObjectSubscribeIds | [Rpc.Object.SubscribeIds.Request](#anytype-Rpc-Object-SubscribeIds-Request) | [Rpc.Object.SubscribeIds.Response](#anytype-Rpc-Object-SubscribeIds-Response) |  |
@@ -11756,10 +11762,10 @@ Get marks list in the selected range in text block.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| spaceId | [string](#string) |  |  |
-| chatId | [string](#string) |  |  |
-| sorts | [model.Search.Message.Sort](#anytype-model-Search-Message-Sort) | repeated |  |
-| fullText | [string](#string) |  |  |
+| spaceId | [string](#string) |  | empty spaceId means all spaces (usually combined with empty chatId) |
+| chatId | [string](#string) |  | empty chatId means all chats in spaceId; results carry chatId/spaceId per message |
+| sorts | [model.Search.Message.Sort](#anytype-model-Search-Message-Sort) | repeated | Note: ORDER_ID sort is only meaningful within a single chat |
+| fullText | [string](#string) |  | empty fullText browses the latest messages in scope (default sort CREATED_AT desc); non-empty fullText is a relevance search (default sort SCORE desc) |
 | offset | [int32](#int32) |  |  |
 | limit | [int32](#int32) |  |  |
 
@@ -17350,6 +17356,75 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Object.CreateSet.Response.Error.Code](#anytype-Rpc-Object-CreateSet-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CrossSpaceSearch"></a>
+
+### Rpc.Object.CrossSpaceSearch
+one-shot cross-space search, no subscription overhead. Queries the
+spaces whose object stores are loaded at the moment of the call —
+stores load sequentially on app start, so early calls can see a
+partial space set; the response reports it via allStoresLoaded.
+Tech-space and marketplace objects are excluded. No total is
+returned. fullText uses the detailed matching of
+ObjectSearchWithMeta (not ObjectSearch&#39;s name-prefix mode).
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CrossSpaceSearch-Request"></a>
+
+### Rpc.Object.CrossSpaceSearch.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| filters | [model.Block.Content.Dataview.Filter](#anytype-model-Block-Content-Dataview-Filter) | repeated |  |
+| sorts | [model.Block.Content.Dataview.Sort](#anytype-model-Block-Content-Dataview-Sort) | repeated | empty sorts: fullText queries default to relevance order, browse queries (empty fullText) to lastModifiedDate desc |
+| fullText | [string](#string) |  |  |
+| offset | [int32](#int32) |  | offset and limit apply to the merged cross-space result. Always set a limit: an unlimited request materializes every space in full |
+| limit | [int32](#int32) |  |  |
+| keys | [string](#string) | repeated | keys to return in records; empty = all |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CrossSpaceSearch-Response"></a>
+
+### Rpc.Object.CrossSpaceSearch.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.CrossSpaceSearch.Response.Error](#anytype-Rpc-Object-CrossSpaceSearch-Response-Error) |  |  |
+| records | [google.protobuf.Struct](#google-protobuf-Struct) | repeated |  |
+| allStoresLoaded | [bool](#bool) |  | false = records are a partial view: the sequential per-space store warm-up had not finished when the query ran, or a space&#39;s store failed and was skipped. Retry later for the complete view, or use ObjectCrossSpaceSearchSubscribe, which streams later-loading spaces as they open. |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CrossSpaceSearch-Response-Error"></a>
+
+### Rpc.Object.CrossSpaceSearch.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.CrossSpaceSearch.Response.Error.Code](#anytype-Rpc-Object-CrossSpaceSearch-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -28262,6 +28337,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Object-CrossSpaceSearch-Response-Error-Code"></a>
+
+### Rpc.Object.CrossSpaceSearch.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype-Rpc-Object-CrossSpaceSearchSubscribe-Response-Error-Code"></a>
 
 ### Rpc.Object.CrossSpaceSearchSubscribe.Response.Error.Code
@@ -36192,6 +36280,7 @@ stored |
 | highlight | [string](#string) |  | truncated text with highlights |
 | highlightRanges | [Range](#anytype-model-Range) | repeated | ranges of the highlight in the text (using utf-16 runes) |
 | message | [ChatMessage](#anytype-model-ChatMessage) |  |  |
+| spaceId | [string](#string) |  | space the chat belongs to; set in all search scopes |
 
 
 

@@ -840,28 +840,49 @@ func (s *service) ReadReaction(ctx context.Context, chatObjectId string) error {
 	})
 }
 
+// Search performs a fulltext search over chat messages. The scope narrows
+// with the request: chatId set = that chat only; chatId empty = all chats in
+// spaceId; both empty = all chats in all spaces (the fulltext index is a
+// single cross-space index). See docs/fts/SpecChatSearchScopes.md.
 func (s *service) Search(ctx context.Context, req *pb.RpcChatSearchRequest) ([]*model.SearchMessageResult, error) {
+	if req.FullText == "" {
+		// no query = browse: the latest messages in scope, straight from the
+		// message stores (authoritative — no FT indexing lag), default sorted
+		// by CREATED_AT desc. This is the search screen's entry state.
+		return s.browseLastMessages(ctx, req)
+	}
 	// candidate budget: Limit == 0 falls back to the ftsearch default (one
 	// 100-doc page); otherwise request at least the default page so sorting by
-	// keys other than score stays consistent across shallow pages. Known
-	// limitation: once offset+limit crosses the shared candidate budget, pages
-	// sorted by non-score keys are computed over different BM25-truncated sets
-	// and may overlap — deep chat-search pagination needs a cursor to be exact.
+	// keys other than score stays consistent across shallow pages. All chats in
+	// scope share this single budget. Known limitation: once offset+limit
+	// crosses the shared candidate budget, pages sorted by non-score keys are
+	// computed over different BM25-truncated sets and may overlap — deep
+	// chat-search pagination needs a cursor to be exact.
 	ftLimit := 0
 	if req.Limit > 0 {
 		ftLimit = int(req.Offset) + int(req.Limit)
 		if ftLimit < 100 {
 			ftLimit = 100
 		}
+		// same candidate ceiling as object search (ftCandidatesHardLimit):
+		// the limit sizes tantivy's per-segment top-K heap
+		if ftLimit > 2000 {
+			ftLimit = 2000
+		}
 	}
-	// the search is scoped to the chat's message docs so messages don't compete
-	// with the rest of the space for the candidate limit
+	// the search is scoped to message docs so messages don't compete with the
+	// rest of the space for the candidate limit
 	ftResults, err := s.ftSearch.SearchChat(req.SpaceId, req.ChatId, req.FullText, ftLimit)
 	if err != nil {
 		return nil, fmt.Errorf("search ft: %w", err)
 	}
 
-	messageIds := make([]string, 0, len(ftResults))
+	// group message ids per chat, preserving the FT (score) order within groups.
+	// The chat's space comes from the request when given, otherwise from the
+	// hit's stored space field, so results are attributable in every scope.
+	var chatIds []string
+	messageIdsPerChat := make(map[string][]string)
+	chatSpaceIds := make(map[string]string)
 	ftResultsMap := make(map[string]*ftsearch.DocumentMatch, len(ftResults))
 	for _, result := range ftResults {
 		path, err := domain.NewFromPath(result.ID)
@@ -870,41 +891,91 @@ func (s *service) Search(ctx context.Context, req *pb.RpcChatSearchRequest) ([]*
 			continue
 		}
 
-		if path.MessageId == "" || path.ObjectId != req.ChatId {
+		// HasMessage also guards the false positives of the message-doc marker
+		// query (see ftsearch.SearchChat)
+		if !path.HasMessage() {
+			continue
+		}
+		if req.ChatId != "" && path.ObjectId != req.ChatId {
 			continue
 		}
 
-		messageIds = append(messageIds, path.MessageId)
+		if _, ok := messageIdsPerChat[path.ObjectId]; !ok {
+			chatIds = append(chatIds, path.ObjectId)
+			spaceId := req.SpaceId
+			if spaceId == "" {
+				spaceId = result.SpaceId
+			}
+			chatSpaceIds[path.ObjectId] = spaceId
+		}
+		messageIdsPerChat[path.ObjectId] = append(messageIdsPerChat[path.ObjectId], path.MessageId)
 		ftResultsMap[path.MessageId] = result
 	}
 
-	messages := make([]*chatmodel.Message, 0, len(messageIds))
-	if err = s.chatObjectDo(ctx, req.ChatId, func(sb chatobject.StoreObject) error {
-		messages, err = sb.GetMessagesByIds(ctx, messageIds)
-		return err
-	}); err != nil {
-		return nil, err
-	}
-
-	results := make([]*model.SearchMessageResult, 0, len(messages))
+	results := make([]*model.SearchMessageResult, 0, len(ftResultsMap))
 	// keep the original float BM25 scores for sorting: the proto Score field is
 	// an integer and loses sub-integer differences
-	scores := make(map[string]float64, len(messages))
-	for _, message := range messages {
-		docMatch := ftResultsMap[message.Id]
-		ftResult, err := database.FTDocumentMatchToFulltextResult(docMatch)
+	scores := make(map[string]float64, len(ftResultsMap))
+	for _, chatId := range chatIds {
+		spaceId := chatSpaceIds[chatId]
+		// multi-chat scopes hydrate only chats the object index knows as live:
+		// stale FT docs of deleted chats are skipped and the repository
+		// accessor's create-collection side-effect is never triggered for them.
+		// In the single-chat scope the caller named the chat, so it keeps the
+		// permissive behavior of GetMessagesByIds.
+		if req.ChatId == "" && !s.isLiveChat(spaceId, chatId) {
+			continue
+		}
+		// hydrate from the anystore-backed repository (see chatRepository for
+		// the consistency caveat): search must not pay the change-tree build
+		// for every chat in scope. Messages the FT index still lists but the
+		// store no longer has are skipped.
+		repo, err := s.chatRepoService.Repository(spaceId, chatId)
 		if err != nil {
-			return nil, err
+			// a chat must not abort the whole multi-chat search: a space can
+			// be mid-deletion or its store transiently unavailable
+			if req.ChatId == "" {
+				log.Error("chat search: get repository", zap.String("chatId", chatId), zap.Error(err))
+				continue
+			}
+			return nil, fmt.Errorf("chat repository: %w", err)
+		}
+		messages, err := repo.GetMessagesByIds(ctx, messageIdsPerChat[chatId])
+		if err != nil {
+			if req.ChatId == "" {
+				log.Error("chat search: get messages", zap.String("chatId", chatId), zap.Error(err))
+				continue
+			}
+			return nil, fmt.Errorf("get messages: %w", err)
 		}
 
-		result := ftResult.MessageModel()
-		result.Message = message.ChatMessage
-		scores[result.MessageId] = ftResult.Score
+		for _, message := range messages {
+			docMatch := ftResultsMap[message.Id]
+			if docMatch == nil {
+				continue
+			}
+			ftResult, err := database.FTDocumentMatchToFulltextResult(docMatch)
+			if err != nil {
+				return nil, fmt.Errorf("convert ft result: %w", err)
+			}
 
-		results = append(results, &result)
+			result := ftResult.MessageModel()
+			result.Message = message.ChatMessage
+			result.SpaceId = spaceId
+			scores[result.MessageId] = ftResult.Score
+
+			results = append(results, &result)
+		}
 	}
 
-	slices.SortFunc(results, getComparator(req.Sorts, scores))
+	sorts := req.Sorts
+	if len(sorts) == 0 {
+		// explicit default: hydration returns hits grouped per chat and the
+		// sort below is unstable, so without a key the grouped order would
+		// leak into the response
+		sorts = []*model.SearchMessageSort{{Key: model.SearchMessageSort_SCORE, Type: model.SearchMessageSort_Desc}}
+	}
+	slices.SortFunc(results, getComparator(sorts, scores))
 
 	if req.Offset > 0 {
 		if int(req.Offset) >= len(results) {
@@ -918,6 +989,160 @@ func (s *service) Search(ctx context.Context, req *pb.RpcChatSearchRequest) ([]*
 	}
 
 	return results, nil
+}
+
+type scopedChat struct {
+	chatId  string
+	spaceId string
+}
+
+// chatsInScope enumerates the chats the request addresses: the named chat, or
+// every live chat (space chats and object chats) of the space / all spaces,
+// straight from the object index.
+func (s *service) chatsInScope(ctx context.Context, req *pb.RpcChatSearchRequest) ([]scopedChat, error) {
+	if req.ChatId != "" {
+		spaceId := req.SpaceId
+		if spaceId == "" {
+			var err error
+			spaceId, err = s.spaceIdResolver.ResolveSpaceID(req.ChatId)
+			if err != nil {
+				// unknown chat: same empty result the FT path produces
+				log.Warn("chat browse: resolve space id", zap.String("chatId", req.ChatId), zap.Error(err))
+				return nil, nil
+			}
+		}
+		return []scopedChat{{chatId: req.ChatId, spaceId: spaceId}}, nil
+	}
+
+	query := database.Query{
+		Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout,
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       domain.Int64List([]model.ObjectTypeLayout{model.ObjectType_chatDerived, model.ObjectType_discussion}),
+			},
+			{
+				RelationKey: bundle.RelationKeyIsDeleted,
+				Condition:   model.BlockContentDataviewFilter_NotEqual,
+				Value:       domain.Bool(true),
+			},
+		},
+	}
+	var (
+		records []database.Record
+		err     error
+	)
+	if req.SpaceId != "" {
+		records, err = s.objectStore.SpaceIndex(req.SpaceId).Query(query)
+	} else {
+		records, err = s.objectStore.QueryCrossSpace(ctx, query)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("query chats: %w", err)
+	}
+	chats := make([]scopedChat, 0, len(records))
+	for _, rec := range records {
+		spaceId := req.SpaceId
+		if spaceId == "" {
+			spaceId = rec.Details.GetString(bundle.RelationKeySpaceId)
+		}
+		chats = append(chats, scopedChat{
+			chatId:  rec.Details.GetString(bundle.RelationKeyId),
+			spaceId: spaceId,
+		})
+	}
+	return chats, nil
+}
+
+// browseLastMessages serves the empty-query search: the newest messages of
+// every chat in scope, merged. Candidates are each chat's latest offset+limit
+// messages by orderId (the chat's canonical order, which tracks creation time
+// closely — a late-arriving concurrent message can fall just outside the
+// candidate window; accepted approximation), then the requested sorts order
+// the merged set.
+func (s *service) browseLastMessages(ctx context.Context, req *pb.RpcChatSearchRequest) ([]*model.SearchMessageResult, error) {
+	limit := int(req.Limit)
+	if limit <= 0 {
+		// parity with the FT default page
+		limit = 100
+	}
+	candidatesPerChat := int(req.Offset) + limit
+	if candidatesPerChat > 2000 {
+		candidatesPerChat = 2000
+	}
+
+	chats, err := s.chatsInScope(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("chats in scope: %w", err)
+	}
+
+	var results []*model.SearchMessageResult
+	for _, chat := range chats {
+		repo, err := s.chatRepoService.Repository(chat.spaceId, chat.chatId)
+		if err != nil {
+			if req.ChatId == "" {
+				log.Error("chat browse: get repository", zap.String("chatId", chat.chatId), zap.Error(err))
+				continue
+			}
+			return nil, fmt.Errorf("chat repository: %w", err)
+		}
+		messages, err := repo.GetLastMessages(ctx, uint(candidatesPerChat))
+		if err != nil {
+			if req.ChatId == "" {
+				log.Error("chat browse: get last messages", zap.String("chatId", chat.chatId), zap.Error(err))
+				continue
+			}
+			return nil, fmt.Errorf("get last messages: %w", err)
+		}
+		for _, message := range messages {
+			results = append(results, &model.SearchMessageResult{
+				ChatId:    chat.chatId,
+				SpaceId:   chat.spaceId,
+				MessageId: message.Id,
+				Message:   message.ChatMessage,
+			})
+		}
+	}
+
+	sorts := req.Sorts
+	if len(sorts) == 0 {
+		// scores don't exist without a query; newest-first is the natural
+		// browse order
+		sorts = []*model.SearchMessageSort{{Key: model.SearchMessageSort_CREATED_AT, Type: model.SearchMessageSort_Desc}}
+	}
+	slices.SortFunc(results, getComparator(sorts, nil))
+
+	if req.Offset > 0 {
+		if int(req.Offset) >= len(results) {
+			return nil, nil
+		}
+		results = results[req.Offset:]
+	}
+	if len(results) > limit {
+		results = results[:limit]
+	}
+	return results, nil
+}
+
+// isLiveChat reports whether chatObjectId is a live chat object in spaceId —
+// a space chat (chatDerived) or an object chat (discussion), both of which
+// have their messages fulltext-indexed. The per-space object index is the
+// source of truth: unlike the preview registry (allChatObjectIds, chatDerived
+// only, filled asynchronously by the cross-space subscription) it covers
+// object chats, needs no lock shared with the subscription bootstrap, and is
+// current the moment the space index is readable. Missing and deleted objects
+// fail the layout check (GetDetails returns empty details for unknown ids).
+func (s *service) isLiveChat(spaceId, chatObjectId string) bool {
+	details, err := s.objectStore.SpaceIndex(spaceId).GetDetails(chatObjectId)
+	if err != nil {
+		log.Warn("chat search: get chat details", zap.String("chatId", chatObjectId), zap.Error(err))
+		return false
+	}
+	if details.GetBool(bundle.RelationKeyIsDeleted) {
+		return false
+	}
+	layout := details.GetInt64(bundle.RelationKeyResolvedLayout)
+	return layout == int64(model.ObjectType_chatDerived) || layout == int64(model.ObjectType_discussion)
 }
 
 func getComparator(sorts []*model.SearchMessageSort, scores map[string]float64) func(result *model.SearchMessageResult, result2 *model.SearchMessageResult) int {
@@ -940,7 +1165,13 @@ func getComparator(sorts []*model.SearchMessageSort, scores map[string]float64) 
 				return
 			}
 		}
-		return 0
+		// deterministic tiebreak: the sort is unstable and equal keys are
+		// common (equal scores), so without this offset pagination could
+		// shuffle results between requests
+		if res = strings.Compare(a.ChatId, b.ChatId); res != 0 {
+			return
+		}
+		return strings.Compare(a.MessageId, b.MessageId)
 	}
 }
 
