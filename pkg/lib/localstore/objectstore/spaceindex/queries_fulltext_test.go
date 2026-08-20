@@ -1138,6 +1138,41 @@ func TestQueryFromFulltext_FinalScore(t *testing.T) {
 		assert.InDelta(t, math.Log1p(score), records[0].Details.GetFloat64(bundle.RelationKey_final_score), 1e-9)
 	})
 
+	t.Run("participant layout wins an otherwise-equal tie", func(t *testing.T) {
+		// given: two objects with the same match and no other signals
+		s := NewStoreFixture(t)
+		s.AddObjects(t, []TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("teammate"),
+				bundle.RelationKeyName:           domain.String("Sergey Fuksman"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+			},
+			{
+				bundle.RelationKeyId:             domain.String("member"),
+				bundle.RelationKeyName:           domain.String("Sergey Fuksman"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
+			},
+		})
+
+		score := 2.77
+		results := []database.FulltextResult{
+			{Path: domain.ObjectPath{ObjectId: "teammate", RelationKey: bundle.RelationKeyName.String()}, Score: score, NameMatch: true},
+			{Path: domain.ObjectPath{ObjectId: "member", RelationKey: bundle.RelationKeyName.String()}, Score: score, NameMatch: true},
+		}
+
+		// when: a text query injects the default _final_score desc order that
+		// production search paths re-rank the head with
+		textFilters, err := database.NewFilters(database.Query{TextQuery: "fuksman"}, s, &anyenc.Arena{}, &collate.Buffer{})
+		require.NoError(t, err)
+		records, err := s.QueryFromFulltext(results, *textFilters, 10, 0, "fuksman")
+
+		// then: the space member ranks first on the tie-break boost
+		require.NoError(t, err)
+		require.Len(t, records, 2)
+		assert.Equal(t, "member", records[0].Details.GetString(bundle.RelationKeyId))
+		assert.Equal(t, "teammate", records[1].Details.GetString(bundle.RelationKeyId))
+	})
+
 	t.Run("_final_score gets name_boost when match is in name field", func(t *testing.T) {
 		// given
 		s := NewStoreFixture(t)

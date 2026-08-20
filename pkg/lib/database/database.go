@@ -428,33 +428,57 @@ type Filters struct {
 	Order     Order
 }
 
-// ComputeFinalScore blends a Tantivy BM25 score with two additive signals:
-//   - recency: exponential decay on the more-recent of lastOpenedDate / lastModifiedDate (30-day half-life, [0,1])
+// participantLayoutBoost is a tie-break signal for participant (space member)
+// objects: deliberately an order of magnitude below the 1.0-weight signals so
+// a person wins over an otherwise-equal regular object without overcoming a
+// real relevance difference like a name match. Combined with the pinned
+// recency below it puts a matching person above ANY equally-matching regular
+// object regardless of how recently that object was edited (1.0 + 0.1 vs the
+// regular maximum of 1.0).
+const participantLayoutBoost = 0.1
+
+// ComputeFinalScore blends a Tantivy BM25 score with additive signals:
+//   - recency: exponential decay on the more-recent of lastOpenedDate / lastModifiedDate (30-day half-life, [0,1]).
+//     Participant objects are pinned to 1.0: their lastModifiedDate moves only
+//     on profile changes, so the decayed value is noise, and a person must not
+//     sink below recently edited objects on it.
 //   - nameBoost: 1.0 when the fulltext match landed in the "name" relation field, 0 otherwise
+//   - participantLayoutBoost: 0.1 for participant objects (tie-break)
 //
-// Formula: ln(1+bm25) + recency + nameBoost
+// Formula: ln(1+bm25) + recency + nameBoost + participantBoost
 // Log-compressing the BM25 score keeps recency and nameBoost as equal-weight additive signals.
+// All signals derive from the doc itself, keeping the score budget-stable
+// (identical across page requests regardless of the candidate set).
 func ComputeFinalScore(bm25Score float64, details *domain.Details, nameMatch bool) float64 {
 	if details == nil {
 		return math.Log1p(bm25Score)
 	}
-	// hour granularity: the recency signal must be stable between consecutive
-	// page requests, or the re-ranked result order drifts mid-pagination and
-	// pages overlap; with a 30-day half-life the precision loss is negligible
-	now := time.Now().Truncate(time.Hour).Unix()
-	lastOpened := details.GetInt64(bundle.RelationKeyLastOpenedDate)
-	lastModified := details.GetInt64(bundle.RelationKeyLastModifiedDate)
+	isParticipant := details.GetInt64(bundle.RelationKeyResolvedLayout) == int64(model.ObjectType_participant)
 	var recency float64
-	if lastOpened > lastModified {
-		recency = recencyDecay(now, lastOpened)
+	if isParticipant {
+		recency = 1.0
 	} else {
-		recency = recencyDecay(now, lastModified)
+		// hour granularity: the recency signal must be stable between consecutive
+		// page requests, or the re-ranked result order drifts mid-pagination and
+		// pages overlap; with a 30-day half-life the precision loss is negligible
+		now := time.Now().Truncate(time.Hour).Unix()
+		lastOpened := details.GetInt64(bundle.RelationKeyLastOpenedDate)
+		lastModified := details.GetInt64(bundle.RelationKeyLastModifiedDate)
+		if lastOpened > lastModified {
+			recency = recencyDecay(now, lastOpened)
+		} else {
+			recency = recencyDecay(now, lastModified)
+		}
 	}
 	nameBoost := 0.0
 	if nameMatch {
 		nameBoost = 1.0
 	}
-	return math.Log1p(bm25Score) + recency + nameBoost
+	participantBoost := 0.0
+	if isParticipant {
+		participantBoost = participantLayoutBoost
+	}
+	return math.Log1p(bm25Score) + recency + nameBoost + participantBoost
 }
 
 // recencyDecay returns exp(-ln(2)/30 * age_in_days) clamped to [0,1].
