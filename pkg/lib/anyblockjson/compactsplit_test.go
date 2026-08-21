@@ -7,6 +7,7 @@ package anyblockjson
 
 import (
 	"encoding/json"
+	"errors"
 	"testing"
 
 	"github.com/gogo/protobuf/types"
@@ -189,4 +190,65 @@ func TestExport_MintedShapeRelabeling(t *testing.T) {
 	for id, n := range seen {
 		assert.Equalf(t, 1, n, "served id %q appears %d times", id, n)
 	}
+}
+
+// The `refs` legend is not merely unwritten — a document that CARRIES one is
+// refused, and refused at an address the writer can act on.
+//
+// This is the headline deletion of v0.20, and until now nothing stood on it.
+// The exporter no longer emits `refs`, so every export-side assertion passes
+// whether or not a reader would accept one; what makes the deletion real is
+// the read side refusing the member, and that rests on a single token in the
+// schema — the envelope's `additionalProperties: false`. Re-admitting `refs`
+// there (as a permissive object, which is how it was spelled) leaves every
+// other test in this package green, and the format quietly grows back a
+// legend whose values nothing resolves: the labels inside the document would
+// then be read as literal object ids, silently re-pointing every reference.
+//
+// The refusal has to say WHICH member to drop (§12) — an agent regenerating a
+// document from a pre-v0.20 memory needs the name, not "the document is bad
+// somewhere" — and at the envelope root that name arrives in the MESSAGE, not
+// in the path. The root closes with `additionalProperties: false`, which the
+// validator reports once for the object and lists the offending names in its
+// text; inside a block the same refusal comes from `unevaluatedProperties`,
+// which is reported per member and so carries `/blocks/0/bogus`
+// (TestValidate_ErrorsDoNotCascade). The assertions below pin what the
+// refusal actually says, message included, so a member-addressed root path
+// would be a deliberate change and not a silent one.
+func TestValidate_TheRefsLegendIsRefused(t *testing.T) {
+	refused := func(t *testing.T, doc string) []Issue {
+		t.Helper()
+		err := Validate([]byte(doc))
+		require.Error(t, err, "a document carrying a `refs` legend must not validate")
+		var ve *ValidationError
+		require.True(t, errors.As(err, &ve), "got %v", err)
+		return ve.Issues
+	}
+
+	t.Run("the legend a pre-v0.20 exporter wrote", func(t *testing.T) {
+		// the exact shape: short labels in the body, the legend to invert them
+		got := refused(t, `{"version": 1, "id": "bafyreiselfobjectidxxxxxxx",
+			"refs": {"idxxx": "bafyreimentiontargetidxxx"},
+			"blocks": [{"id": "b1", "type": "paragraph",
+				"text": "ping <mention object_id=\"idxxx\">Roman</mention>"}]}`)
+		require.Len(t, got, 1, "got: %v", got)
+		assert.Equal(t, "", got[0].Path, "the root refusal addresses the envelope itself")
+		assert.Contains(t, got[0].Message, "'refs'", "and names the member to drop")
+	})
+
+	t.Run("an empty legend is refused as well", func(t *testing.T) {
+		// nothing about the refusal may depend on the legend's CONTENTS: a
+		// schema node admitting `refs` and constraining it would still let
+		// this through
+		got := refused(t, `{"version": 1, "refs": {}}`)
+		require.Len(t, got, 1, "got: %v", got)
+		assert.Contains(t, got[0].Message, "'refs'")
+	})
+
+	t.Run("import refuses it too, so no reader takes the labels literally", func(t *testing.T) {
+		_, _, err := Unmarshal([]byte(`{"version": 1, "refs": {"idxxx": "bafyreitarget"},
+			"blocks": [{"type": "paragraph", "text": "x"}]}`), Options{})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "refs")
+	})
 }
