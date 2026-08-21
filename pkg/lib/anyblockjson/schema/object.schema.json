@@ -27,7 +27,13 @@
     "type_properties": { "type": "array", "items": { "$ref": "#/$defs/typeProperty" } },
     "refs": {
       "type": "object",
-      "propertyNames": { "pattern": "^[A-Za-z0-9_-]{1,64}$" },
+      "description": "Legend of full object ids, in two disjoint key shapes (\u00a79a). A key WITHOUT '#' is a compaction label: wherever an object id is expected, a value that is one of these keys resolves to the id it names. A key WITH '#' is a qualified option key, '<option name>#<property key>', split at the LAST '#': it carries the id of the option a select value names (\u00a73), is reachable only from a select value under that property, and never from an object-id slot. Each half of a qualified key obeys the writable-key rule (1-128 characters, no control characters).",
+      "propertyNames": {
+        "anyOf": [
+          { "pattern": "^[A-Za-z0-9_-]{1,64}$" },
+          { "pattern": "^[^\u0000-\u001f\u007f]{1,128}#[^\u0000-\u001f\u007f#]{1,128}$" }
+        ]
+      },
       "additionalProperties": { "type": "string", "minLength": 1 }
     },
     "property_keys": {

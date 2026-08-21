@@ -649,7 +649,7 @@ func (e *exporter) seedIdLabels() {
 			continue
 		}
 		want := e.localId(b.Id)
-		if !isValidRefsKey(want) { // the blockId charset: [A-Za-z0-9_-]{1,64}
+		if !isPlainRefsLabel(want) { // the blockId charset: [A-Za-z0-9_-]{1,64}
 			continue
 		}
 		if _, taken := e.idsUsed[want]; taken {
@@ -1772,10 +1772,10 @@ func (e *exporter) buildCompactIds() {
 	// un-relabeled ids stay in the document verbatim
 	if e.opts.compactObjectRefs() {
 		e.objectRefs = suffixLabels(setToSlice(objects), compactIdMinLen, func(candidate string) bool {
-			return fullIds[candidate] || !isValidRefsKey(candidate)
+			return fullIds[candidate] || !isPlainRefsLabel(candidate)
 		})
 		// short ids label as themselves; drop those the schema charsets reject
-		dropInvalidLabels(e.objectRefs, isValidRefsKey)
+		dropInvalidLabels(e.objectRefs, isPlainRefsLabel)
 	}
 	if e.opts.compactBlockLabels() {
 		// only machine-minted opaque ids relabel (isMintedLocalId); every id
@@ -1794,9 +1794,20 @@ func (e *exporter) buildCompactIds() {
 	}
 }
 
-// isValidRefsKey reports whether s matches the schema's refs-key pattern
-// ^[A-Za-z0-9_-]{1,64}$.
+// isValidRefsKey admits either `refs` key shape (§9a): a plain compaction
+// label, or a qualified option key. The two are told apart by the separator
+// and nothing else, so no key can belong to both populations.
 func isValidRefsKey(s string) bool {
+	if isQualifiedRefsKey(s) {
+		return isQualifiedOptionRefKey(s)
+	}
+	return isPlainRefsLabel(s)
+}
+
+// isPlainRefsLabel reports whether s matches the compaction-label pattern
+// ^[A-Za-z0-9_-]{1,64}$ — the charset the schema puts on a plain `refs` key,
+// and the same one block/row/column ids carry (§4, §9a).
+func isPlainRefsLabel(s string) bool {
 	if len(s) == 0 || len(s) > 64 {
 		return false
 	}

@@ -1027,10 +1027,22 @@ func propertyNameIssues(doc map[string]any) keySlotReport {
 
 	if refs, _ := doc["refs"].(map[string]any); refs != nil {
 		for _, label := range sortedMapKeys(refs) {
-			if !isValidRefsKey(label) {
-				rejectName("/refs/"+escapeJSONPointer(label), label, fmt.Sprintf(
-					"refs label %q is not 1-64 characters of [A-Za-z0-9_-] (§9a)", label))
+			if isValidRefsKey(label) {
+				continue
 			}
+			// the two shapes are told apart by the separator alone (§9a), so
+			// the reason names the shape the key was reaching for — telling a
+			// malformed `High#` that it is not [A-Za-z0-9_-] says nothing
+			// about what it got wrong
+			reason := fmt.Sprintf(
+				"refs label %q is not 1-64 characters of [A-Za-z0-9_-] (§9a)", label)
+			if isQualifiedRefsKey(label) {
+				reason = fmt.Sprintf("refs key %q is not <option name>#<property key>: "+
+					"each half of a qualified key, split at the last %q, is 1-%d characters "+
+					"with no control characters (§3, §9a)",
+					label, optionRefSeparator, maxPropertyKeyLen)
+			}
+			rejectName("/refs/"+escapeJSONPointer(label), label, reason)
 		}
 	}
 	if props, _ := doc["properties"].(map[string]any); props != nil {

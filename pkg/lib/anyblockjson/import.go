@@ -295,11 +295,17 @@ func (imp *importer) docTypeKey(slug string) string {
 	return key
 }
 
-// resolveId applies the §9a total resolution rule: a refs key resolves to
-// its full id; anything else is a full id already.
+// resolveId applies the §9a resolution rule: a refs key resolves to its full
+// id; anything else is a full id already. The rule is total over the legend's
+// PLAIN key population and blind to the qualified option keys — those name an
+// option under a property, they are reachable only from a select value, and a
+// document that spelled one in an object-id slot would be addressing an
+// option pool from a position that has no property to qualify it. Reading the
+// key's shape is not a "short-looking" heuristic on the value §9a rules out:
+// it is the same disjointness that lets one map carry two populations at all.
 func (imp *importer) resolveId(s string) string {
-	if s == "" {
-		return ""
+	if s == "" || isQualifiedRefsKey(s) {
+		return s
 	}
 	if full, ok := imp.doc.Refs[s]; ok {
 		return full
