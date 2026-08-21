@@ -195,6 +195,12 @@ func MarshalBlockSubtree(subtree []*model.Block, opts Options) (json.RawMessage,
 	if m := e.buildPropertyKeys(); m != nil {
 		env.set("property_keys", m)
 	}
+	// The type half is UNREACHABLE from every fragment slot today: typeSlug is
+	// called only from envelopeTypeTerms and buildTypeProperties, and neither
+	// is on this path, so no subtree can owe a type_keys line. Kept anyway,
+	// because the cost is three lines and the failure mode of removing it is a
+	// fragment that silently omits a legend the day a block slot starts
+	// carrying a type term. A probe confirms the branch never fires.
 	if m := e.buildTypeKeys(); m != nil {
 		env.set("type_keys", m)
 	}

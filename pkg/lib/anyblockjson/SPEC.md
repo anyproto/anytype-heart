@@ -49,6 +49,14 @@ inversion: asking one table instead of two was measured, and it drops
 `{"due_date": "dueDate"}` (a bundled value lands on a custom relation). Cost:
 +93 bytes on each of the four goldens, ~2%.
 
+"Every spelling" means every KEY SLOT — the twelve property-key slots and the
+four type-key slots §3 enumerates. A dataview's `source` is not one of them: it
+carries stored type keys (`ot-initiative`) verbatim in both directions, with no
+slug and no legend line, in fragments and whole documents alike. That is
+pre-existing and symmetric, so it costs no round trip, but it is the one place
+a non-bundled key travels outside the legends, and a reader that cannot resolve
+it gets no help from the document.
+
 (3) **A key slot has to name something, at all sixteen slots and through all
 three doors** (§3, §6, §12). Three slots enforced it; thirteen took an empty
 spelling from a plain document — no vocabulary needed — and silently lost the
@@ -3170,7 +3178,8 @@ validated by wrapping it in a synthetic document, so §4 monotonicity and the
 
 ```go
 // MarshalBlockSubtree serializes one block subtree into a fragment envelope:
-// {"property_keys": {…}, "type_keys": {…}, "option_ids": {…}, "blocks": […]}
+// {"property_keys": {…}, "option_ids": {…}, "blocks": […]} — plus "type_keys",
+// which no block slot can owe today, so it never appears in practice
 // — the flat §4 run beside the legends its blocks owe, in the envelope's own
 // member order. OmitIds and the compaction flags are REFUSED here.
 func MarshalBlockSubtree(subtree []*model.Block, opts Options) (json.RawMessage, error)

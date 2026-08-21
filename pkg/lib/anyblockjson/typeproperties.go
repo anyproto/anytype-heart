@@ -291,9 +291,10 @@ func BuildRecommendedLists(props []TypeProperty, opts Options) ([]RecommendedLis
 			}}}
 		}
 		// object_types is a TYPE key slot, inverted entry by entry through the
-		// caller's vocabulary — Options.typeKey for the same reason as
-		// Options.propertyKey above: there is no document here, so there is no
-		// type_keys legend to consult. Resolved (and refused) OUTSIDE the
+		// same chain as the key above: Options.Legend's type half first — a
+		// PATCH caller states what its slugs mean the way a document does with
+		// type_keys (§13.1) — then the caller's vocabulary. Resolved (and
+		// refused) OUTSIDE the
 		// resolver branch, so the verdict on a given input does not depend on
 		// whether the caller happened to wire a resolver — applyTypeProperties
 		// refuses unconditionally, and this is the same array.
