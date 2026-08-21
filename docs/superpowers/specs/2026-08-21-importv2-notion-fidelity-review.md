@@ -104,11 +104,36 @@ before, 1746 after, byte-identical output.
   info under `dataLoss` rather than earning a code of their own. The report groups by
   severity and message, so the vocabulary buys nothing.
 
-## 7. Numbers, before → after
+## 7. What the review pass changed after the fact
+
+An adversarial review of the diff (five dimensions, every finding re-checked by a
+second agent trying to refute it) confirmed eight things. Two were mine and serious:
+
+- **A package-global map counting block kinds** had been left in `mapBlock` by an
+  investigation. Imports are not serialised — a resumed crawl and a user-started
+  import run at once — so two Notion runs would write it concurrently. The verifier
+  reproduced `fatal error: concurrent map writes`, which no `recover()` can catch.
+- **Grouping by message text** meant the markdown converter, whose messages still
+  interpolated file names, would produce one summary row per issue: a vault with 300
+  broken references measured at a 301-row table. Its messages were migrated, and the
+  table now folds everything past 40 kinds into one counted line, so an unusual run
+  degrades instead of exploding.
+
+The rest: occurrences labelled as objects, an occurrence count called a line count,
+names remembered at emission rather than at persist (which would mention-link objects
+whose persist then failed), type suggestions interpolating type and reason into the
+message, and three values in the emoji table that are not emoji.
+
+Also caught by reading the cache code: the synced-original cache was keyed by block id
+alone, but a walk's answer depends on the depth budget it ran under — a subtree first
+fetched near the depth guard comes back cut short, and every shallower reference would
+have reused the truncated copy.
+
+## 8. Numbers, before → after
 
 | | before | after |
 |---|-------|-------|
-| issues in the ledger | 960 | 818 |
+| issues in the ledger | 960 | 396 rows, 818 occurrences |
 | report lines | 954 | ~200 |
 | placeholder paragraphs in page bodies | 606 | 0 |
 | objects with an icon | 5 | 250 |
