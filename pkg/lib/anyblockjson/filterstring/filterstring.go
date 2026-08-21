@@ -54,13 +54,13 @@ type Options struct {
 	// a key outside it is an offset-addressed parse error with did-you-mean.
 	KnownKeys []string
 	// ResolveFormat, when non-nil, resolves a property key to its §3 format
-	// name ("date", "select", "multiSelect", …). It drives the RFC 3339 →
+	// name ("date", "select", "multi_select", …). It drives the RFC 3339 →
 	// unix conversion for date properties (the §6.2.1 mapping: the string
 	// form uses RFC 3339, the structured form unix numbers) and targets the
 	// option-name validation at select-shaped keys.
 	ResolveFormat func(key string) (format string, ok bool)
 	// KnownOptions, when non-nil, lists the existing option names of a
-	// select/multiSelect property (ok=false: unknown property — no check).
+	// select/multi_select property (ok=false: unknown property — no check).
 	// A name outside the list is an offset-addressed parse error with
 	// did-you-mean: the query path resolves option names READ-ONLY, and a
 	// silent no-match would be worse than an error (APIV2.md Phase-4 rule 3).
@@ -89,23 +89,26 @@ func (e *Error) Error() string {
 	return msg
 }
 
-// datePresets maps the preset function names (SPEC §6.2.1) to the structured
-// form's datePreset names (§6.2). The two counting presets take an operand.
+// datePresets maps the preset function names (SPEC §6.2.1, the compact
+// syntax's own camelCase function-name vocabulary — unrelated to the
+// snake_case §3 wire vocabulary) to the structured form's date_preset names
+// (§6.2, snake_case — anyblockjson's datePresetNames). The two counting
+// presets take an operand.
 var datePresets = map[string]string{
 	"yesterday":    "yesterday",
 	"today":        "today",
 	"tomorrow":     "tomorrow",
-	"lastWeek":     "lastWeek",
-	"currentWeek":  "currentWeek",
-	"nextWeek":     "nextWeek",
-	"lastMonth":    "lastMonth",
-	"currentMonth": "currentMonth",
-	"nextMonth":    "nextMonth",
-	"lastYear":     "lastYear",
-	"currentYear":  "currentYear",
-	"nextYear":     "nextYear",
-	"daysAgo":      "numberOfDaysAgo",
-	"daysFromNow":  "numberOfDaysNow",
+	"lastWeek":     "last_week",
+	"currentWeek":  "current_week",
+	"nextWeek":     "next_week",
+	"lastMonth":    "last_month",
+	"currentMonth": "current_month",
+	"nextMonth":    "next_month",
+	"lastYear":     "last_year",
+	"currentYear":  "current_year",
+	"nextYear":     "next_year",
+	"daysAgo":      "number_of_days_ago",
+	"daysFromNow":  "number_of_days_now",
 }
 
 // countingPresets are the preset functions that require a day-count operand.
@@ -477,7 +480,7 @@ func (p *parser) parseLeaf() (*node, error) {
 	case keyword(op, "in"):
 		return p.parseListLeaf(key, "in")
 	case keyword(op, "has"):
-		return p.parseHasAll(key, op, "allIn")
+		return p.parseHasAll(key, op, "all_in")
 	case keyword(op, "is"):
 		return p.parseIs(key)
 	case keyword(op, "exists"):
@@ -486,11 +489,11 @@ func (p *parser) parseLeaf() (*node, error) {
 		after := p.next()
 		switch {
 		case keyword(after, "contains"):
-			return p.parseValueLeaf(key, "notContains")
+			return p.parseValueLeaf(key, "not_contains")
 		case keyword(after, "in"):
-			return p.parseListLeaf(key, "notIn")
+			return p.parseListLeaf(key, "not_in")
 		case keyword(after, "has"):
-			return p.parseHasAll(key, after, "notAllIn")
+			return p.parseHasAll(key, after, "not_all_in")
 		default:
 			return nil, &Error{Offset: after.offset, Token: after.raw,
 				Message: "expected CONTAINS, IN or HAS ALL after NOT",
@@ -509,17 +512,17 @@ func (p *parser) parseComparison(key string, op token) (*node, error) {
 	if p.peek().kind == tokLParen {
 		switch op.text {
 		case "=":
-			return p.parseListLeaf(key, "exactIn")
+			return p.parseListLeaf(key, "exact_in")
 		case "!=":
-			return p.parseListLeaf(key, "notExactIn")
+			return p.parseListLeaf(key, "not_exact_in")
 		default:
 			return nil, &Error{Offset: p.peek().offset, Token: "(",
 				Message: fmt.Sprintf("a value list is only allowed after = or != (set literal), not after %s", op.text)}
 		}
 	}
 	condition := map[string]string{
-		"=": "equal", "!=": "notEqual",
-		">": "greater", "<": "less", ">=": "greaterOrEqual", "<=": "lessOrEqual",
+		"=": "equal", "!=": "not_equal",
+		">": "greater", "<": "less", ">=": "greater_or_equal", "<=": "less_or_equal",
 	}[op.text]
 	return p.parseValueLeaf(key, condition)
 }
@@ -543,7 +546,7 @@ func (p *parser) parseValueLeaf(key, condition string) (*node, error) {
 	// question, so the parser rejects it up front
 	if preset != "" && condition != "equal" &&
 		condition != "greater" && condition != "less" &&
-		condition != "greaterOrEqual" && condition != "lessOrEqual" {
+		condition != "greater_or_equal" && condition != "less_or_equal" {
 		return nil, &Error{Offset: p.presetTok.offset, Token: p.presetTok.raw,
 			Message: fmt.Sprintf("a date preset cannot be used with %s", condition),
 			Hint:    `presets work with = > < >= <=; negate by range instead, e.g. due_date < today() OR due_date > today()`}
@@ -607,7 +610,7 @@ func (p *parser) parseIs(key string) (*node, error) {
 	if keyword(tok, "not") {
 		after := p.next()
 		if keyword(after, "empty") {
-			return &node{property: key, condition: "notEmpty"}, nil
+			return &node{property: key, condition: "not_empty"}, nil
 		}
 		return nil, &Error{Offset: after.offset, Token: after.raw,
 			Message: "expected EMPTY after IS NOT"}
@@ -703,7 +706,7 @@ func (p *parser) stringValue(key string, tok token) (any, string, error) {
 		}
 		return float64(sec), "", nil
 	}
-	if formatKnown && (format == "select" || format == "multiSelect") && p.opts.KnownOptions != nil {
+	if formatKnown && (format == "select" || format == "multi_select") && p.opts.KnownOptions != nil {
 		if names, ok := p.opts.KnownOptions(key); ok {
 			if !containsString(names, tok.text) {
 				return nil, "", &Error{Offset: tok.offset, Token: tok.raw,
@@ -789,7 +792,7 @@ type emitNode struct {
 	Property   string     `json:"property,omitempty"`
 	Condition  string     `json:"condition,omitempty"`
 	Value      *any       `json:"value,omitempty"`
-	DatePreset string     `json:"datePreset,omitempty"`
+	DatePreset string     `json:"date_preset,omitempty"`
 }
 
 func emitOne(n *node) emitNode {

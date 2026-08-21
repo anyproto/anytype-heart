@@ -10,7 +10,7 @@ andExpr     = primary , { "AND" , primary } ;
 primary     = "(" , orExpr , ")" | leaf ;
 leaf        = key , condition ;
 condition   = compare , value
-            | ( "=" | "!=" ) , valueList            (* set literal: exactIn / notExactIn *)
+            | ( "=" | "!=" ) , valueList            (* set literal: exact_in / not_exact_in *)
             | [ "NOT" ] , "CONTAINS" , value
             | [ "NOT" ] , "IN" , valueList
             | [ "NOT" ] , "HAS" , "ALL" , valueList
