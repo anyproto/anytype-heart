@@ -373,6 +373,8 @@ func (e *exporter) writableSlug(key string) string {
 // stored key. Without it the value silently moved onto the bundled twin.
 //
 // "Some reader" is TWO tables, not one — see termInverts.
+//
+// An entry the LEGEND cannot hold is not written — see legendEntryRefusal.
 func (e *exporter) recordPropertyKey(term, key string) {
 	if term == "" {
 		return
@@ -381,10 +383,59 @@ func (e *exporter) recordPropertyKey(term, key string) {
 		termInverts(term, key, e.opts.keys().PropertyKey) {
 		return
 	}
+	if reason, refused := legendEntryRefusal(term, key, true); refused {
+		e.warn("/property_keys", "%s", reason)
+		return
+	}
 	if e.propertyKeys == nil {
 		e.propertyKeys = map[string]string{}
 	}
 	e.propertyKeys[term] = key
+}
+
+// legendEntryRefusal reports whether a `property_keys` / `type_keys` entry is
+// one the format can actually carry, and why not. It is the recording site's
+// share of I1 ("Marshal never emits what Validate rejects", §11): every other
+// key slot admits before it writes, and the two legends did not — the ONLY
+// admission on the way in was writableSlug/writableTypeSlug, which returns
+// early when the vocabulary has no slug for a key, so the stored key reached
+// the ledger unvetted. Marshal then wrote `{"a\nb": "a\nb"}` and its own
+// Validate rejected the whole document; the object was unexportable and
+// nothing said so. Reproduced first-hand at a dataview FILTER slot (which,
+// unlike /properties, does not pre-filter unwritable keys) and at the
+// envelope `type`, on `a\nb` and on a 140-character key, in both namespaces.
+//
+// The rule is the two Validate already states — a legend spelling and a
+// legend stored key are both writable keys (propertyNameIssues), and a legend
+// VALUE in the property namespace is a stored key the deny rule judges
+// (§3 §4a) — asked here so the answers cannot drift.
+//
+// **Refusing the entry loses nothing the document was carrying.** The term is
+// written verbatim either way (the ledger backed it off to the stored key
+// long before this point), so the object still round-trips through any reader
+// whose chain reaches step 4. What is lost is PORTABILITY for that one key:
+// a reader whose vocabulary binds the spelling elsewhere has nothing to
+// override it with. That is a strictly smaller loss than the alternative,
+// which was the whole document, and the warning says which key it applies to.
+func legendEntryRefusal(term, key string, deny bool) (string, bool) {
+	if !isWritablePropertyKey(term) {
+		return fmt.Sprintf("%s, so no legend entry is written for it; the term is "+
+			"spelled verbatim and a reader that binds it elsewhere cannot be corrected",
+			unwritableKeyReason("legend spelling", term)), true
+	}
+	if !isWritablePropertyKey(key) {
+		return fmt.Sprintf("%s, so no legend entry is written for it; the term is "+
+			"spelled verbatim and a reader that binds it elsewhere cannot be corrected",
+			unwritableKeyReason("legend stored key", key)), true
+	}
+	if !deny {
+		return "", false
+	}
+	if reason, denied := deniedPropertyKey(key); denied {
+		return fmt.Sprintf("legend value: %s — so no legend entry is written for %q; "+
+			"the term is spelled verbatim", reason, term), true
+	}
+	return "", false
 }
 
 // termInverts reports whether `term`, written for the stored key `key` with
@@ -566,12 +617,22 @@ func (e *exporter) writableTypeSlug(key string) string {
 // same reason, when the vocabulary in force is the one that binds it
 // elsewhere (`initiative` the stored key of a UI-deleted type, beside the
 // live type whose api key is `initiative`). See termInverts.
+//
+// An entry the legend cannot hold is not written here either
+// (legendEntryRefusal) — minus the deny rule, which is the property
+// namespace's alone: `strippedDetailKeys` and the importer's resolution
+// vectors are relation keys, and Validate states no deny rule over a
+// `type_keys` value.
 func (e *exporter) recordTypeKey(term, key string) {
 	if term == "" {
 		return
 	}
 	if termInverts(term, key, (BundledKeyVocabulary{}).TypeKey) &&
 		termInverts(term, key, e.opts.keys().TypeKey) {
+		return
+	}
+	if reason, refused := legendEntryRefusal(term, key, false); refused {
+		e.warn("/type_keys", "%s", reason)
 		return
 	}
 	if e.typeKeys == nil {

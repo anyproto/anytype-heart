@@ -1,6 +1,6 @@
 # AnyBlock JSON — format specification
 
-Status: **draft v0.20** · Format version: **1** · Package: `pkg/lib/anyblockjson`
+Status: **draft v0.21** · Format version: **1** · Package: `pkg/lib/anyblockjson`
 
 A human- and agent-readable JSON serialization of Anytype objects (the "anyblock"
 model), designed for export, import, and generation by external tools and LLM
@@ -16,7 +16,24 @@ strings; the vocabulary follows Notion's API and Anytype's public REST API
 readable, and mostly writable, by someone who has never seen Anytype
 internals.
 
-Changes in v0.20: **three legends, and one compaction that carries none**
+Changes in v0.21: **every key slot admits before it writes** (§3, §12).
+(1) The two key legends now admit an entry before recording it. `property_keys`
+and `type_keys` were the last key slots in the format with no admission on the
+way in: the two guards that were supposed to cover them — a denied key never
+takes a slug, an unwritable slug is never spelled — both sit on the *slug*
+path, and a stored key with no slug at all skips both. A vocabulary that binds
+such a key's spelling to a different stored key (which `Options.Keys` accepts
+from anyone, and which a **deleted** relation or type produces in ordinary
+data) then made the identity entry owed, and the entry was one the schema
+refuses: `Marshal` emitted a legend its own `Validate` and `Unmarshal` reject,
+so the whole object was unexportable and nothing said so. Confirmed on a
+140-character stored key and on one carrying a newline, in both namespaces, and
+on an internal key at the deny rule. The entry is now dropped with a warning;
+the term is written verbatim either way, so nothing the document carried is
+lost — only portability for that one key, which had no writable spelling in
+this format under any rule.
+
+Changes in v0.20 (superseded by v0.21): **three legends, and one compaction that carries none**
 (§2, §3, §9, §9a, §11, §12, §13). The envelope's indirection is now exactly
 `property_keys`, `type_keys` and `option_ids`; **`refs` is deleted**, both
 populations with it. (1) A select value's id moves out of the flat `refs`
@@ -989,9 +1006,28 @@ writes the entry:
   The legend is step one of resolution, so an unchecked value was a
   laundering primitive: it could bind any harmless spelling onto a key
   admission refuses — in a key slot outside `/properties`, without admission
-  ever seeing it. Export never writes either refused shape: a denied key
-  never takes a slug (its spelling is written verbatim, where no entry is
-  owed), and unwritable values were already never recorded.
+  ever seeing it.
+
+  **Export admits an entry before it records one**, and drops the entry, with
+  a warning, when it cannot. Two guards were supposed to cover this and both
+  had the same hole: a denied key never takes a slug, and an unwritable slug
+  is never spelled — but a key with *no* slug at all skips both checks, and
+  the term that reaches the ledger is then the raw stored key. So a stored
+  key of 140 characters, or one carrying a newline, or an internal one,
+  reached the legend as an identity entry the moment the vocabulary in force
+  bound its spelling elsewhere; `Marshal` emitted a legend its own `Validate`
+  and `Unmarshal` reject, and the object became unexportable with nothing
+  said. Reachable through `Options.Keys` alone, which this format accepts
+  from anyone.
+
+  Dropping the entry is the smaller loss, and it is not a loss of content: the
+  term is written **verbatim** either way — the ledger backed it off to the
+  stored key long before this point — so the object still round-trips through
+  any reader that reaches chain step 4. What it gives up is *portability for
+  that one key*: a reader whose vocabulary binds that spelling elsewhere has
+  no statement in the document to override it with. Such a key has no writable
+  spelling anywhere in this format, so no legend entry could have been written
+  for it under any rule; the warning names it.
 - **A property key slot carries the writable-key rule wherever it is,
   including where it is a JSON string VALUE.** `/properties` and the legends
   are member names, so the schema states the rule as `propertyNames`; a
