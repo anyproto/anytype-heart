@@ -11,6 +11,7 @@ package anyblockjson
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -660,4 +661,258 @@ func (v slugVocab) PropertyKey(slug string) (string, bool) {
 		}
 	}
 	return BundledKeyVocabulary{}.PropertyKey(slug)
+}
+
+//
+// ---- the property vocabulary (optionrefs.go) ----
+//
+
+// refsWarnings keeps the warnings addressed at the legend and drops the rest,
+// so a corpus that legitimately warns about something else (an unguarded date
+// filter, a tag-shaped literal) cannot make one of these tests pass or fail
+// for a reason it is not about.
+func refsWarnings(issues []Issue) []Issue {
+	var out []Issue
+	for _, i := range issues {
+		if strings.HasPrefix(i.Path, "/refs/") {
+			out = append(out, i)
+		}
+	}
+	return out
+}
+
+// A qualified key whose property half names no property the document uses
+// qualifies nothing: import builds its lookup key from the spelling the slot
+// it is resolving wrote, so `High#priorty` is never asked for and the value
+// falls back to name resolution — the silent degradation the warning exists
+// to say out loud. §9a keeps it a warning: an unused `refs` entry is ignored,
+// and hard-rejecting one would contradict that.
+//
+// The pool lists a same-named DECOY first, so name resolution and the legend
+// answer different ids: without it both branches would land on one id and the
+// test would pass while asking nothing.
+func TestOptionRefs_AQualifiedKeyForAPropertyTheDocumentDoesNotUse(t *testing.T) {
+	space := spaceOptions{"tag": {
+		{id: "bafyname", name: "High"},   // what the NAME resolves to
+		{id: "bafylegend", name: "High"}, // what the LEGEND names
+	}}
+	for _, tc := range []struct {
+		name     string
+		key      string
+		wantWarn bool
+		wantId   string
+	}{
+		{"a typo in the property half", "High#priorty", true, "bafyname"},
+		{"the spelling the document uses", "High#tag", false, "bafylegend"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// given
+			doc := fmt.Sprintf(`{"version": 1, "id": "obj1",
+				"properties": {"tag": ["High"]}, "refs": {%q: "bafylegend"}}`, tc.key)
+
+			// when
+			var warned []Issue
+			validateErr := ValidateWarn([]byte(doc), func(i Issue) { warned = append(warned, i) })
+			_, back, err := Unmarshal([]byte(doc), Options{ResolveOptions: space, GenerateId: seqIds("g")})
+
+			// then
+			require.NoError(t, validateErr, "an unreachable entry is a warning, not an error (§9a)")
+			require.NoError(t, err)
+			got := refsWarnings(warned)
+			if tc.wantWarn {
+				require.Len(t, got, 1, "warnings: %v", warned)
+				assert.Equal(t, "/refs/"+tc.key, got[0].Path)
+				assert.Contains(t, got[0].Message, `qualifies "priorty"`)
+			} else {
+				assert.Empty(t, got, "the document spells this property; nothing to report")
+			}
+			assert.Equal(t, []string{tc.wantId}, storedList(t, back, "tag"))
+		})
+	}
+}
+
+// The census is a statement about the DOCUMENT, not about one slot: a
+// property a document uses only in a dataview filter — or only in a sort's
+// custom order — is a property it knows, and the legend under it has to be
+// honored. A census that read the `properties` map alone would turn these
+// entries away, and it would do it in silence, because the value still
+// resolves by name afterwards. So the pool lists a same-named decoy FIRST:
+// name resolution answers `bafydecoy`, and only the legend can answer
+// `bafylegend`.
+//
+// Written as documents rather than round trips on purpose. An exported
+// dataview carries a `properties` list naming its own properties, which would
+// put `tag` in the census by a second route and leave the filter and sort
+// positions untested.
+func TestOptionRefs_PropertySpelledOnlyInsideADataview(t *testing.T) {
+	space := spaceOptions{"tag": {
+		{id: "bafydecoy", name: "High"},
+		{id: "bafylegend", name: "High"},
+	}}
+	for _, tc := range []struct {
+		name string
+		view string
+	}{
+		{"only in a filter", `{"id": "v1", "filters":
+			[{"property": "tag", "condition": "in", "value": ["High"]}]}`},
+		{"only in a nested filter", `{"id": "v1", "filters": [{"operator": "or", "filters":
+			[{"property": "tag", "condition": "in", "value": ["High"]}]}]}`},
+		{"only in a sort's custom order", `{"id": "v1", "sorts":
+			[{"property": "tag", "direction": "custom", "custom_order": ["High"]}]}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// given
+			doc := fmt.Sprintf(`{"version": 1, "id": "obj1", "refs": {"High#tag": "bafylegend"},
+				"blocks": [{"id": "dv1", "type": "dataview", "views": [%s]}]}`, tc.view)
+
+			// when
+			var warned []Issue
+			validateErr := ValidateWarn([]byte(doc), func(i Issue) { warned = append(warned, i) })
+			_, back, err := Unmarshal([]byte(doc), Options{ResolveOptions: space, GenerateId: seqIds("g")})
+
+			// then
+			require.NoError(t, validateErr, doc)
+			require.NoError(t, err)
+			assert.Empty(t, refsWarnings(warned), "the document spells `tag` in this dataview")
+			assert.Equal(t, []string{"bafylegend"}, resolvedOptionIds(t, back),
+				"the legend under a filter-only property must still be honored")
+			// and the fallback the legend overrides really does answer the
+			// other option, so this cannot pass by the two agreeing
+			id, ok := space.OptionId("tag", "High")
+			require.True(t, ok)
+			assert.Equal(t, "bafydecoy", id, "the fixture must reproduce the first-match scan")
+		})
+	}
+}
+
+// resolvedOptionIds reads back whatever select values an imported dataview
+// carries — the filter value or the sort's custom order, whichever the
+// document had.
+func resolvedOptionIds(t *testing.T, snap *model.SmartBlockSnapshotBase) []string {
+	t.Helper()
+	view := backView(t, snap)
+	var out []string
+	var walk func(fs []*model.BlockContentDataviewFilter)
+	walk = func(fs []*model.BlockContentDataviewFilter) {
+		for _, f := range fs {
+			out = append(out, valueStringList(f.Value)...)
+			walk(f.NestedFilters)
+		}
+	}
+	walk(view.Filters)
+	for _, s := range view.Sorts {
+		for _, v := range s.CustomOrder {
+			out = append(out, v.GetStringValue())
+		}
+	}
+	return out
+}
+
+// The census itself, position by position (optionrefs.go). Each document
+// spells one probe in exactly one place, and both readers have to find it —
+// the importer's, over the decoded document, and Validate's, over the
+// undecoded one. The last two entries are the boundary: a filter's
+// `nested_property` names a property of the object the filter walks TO, and
+// a `refs` key is not a use of the property it qualifies, or every typo would
+// vouch for itself.
+func TestOptionRefs_ThePropertyCensusCoversEveryPosition(t *testing.T) {
+	const probe = "probe_property"
+	for _, tc := range []struct {
+		name    string
+		doc     string
+		counted bool
+	}{
+		{"a properties member", `{"properties": {"probe_property": ["High"]}}`, true},
+		{"a property_keys spelling", `{"property_keys": {"probe_property": "storedKey"}}`, true},
+		{"a type_properties key", `{"kind": "object_type",
+			"type_properties": [{"key": "probe_property", "format": "select"}]}`, true},
+		{"a property block's key", `{"blocks":
+			[{"type": "property", "key": "probe_property"}]}`, true},
+		{"a link block's shown properties", `{"blocks":
+			[{"type": "link", "object_id": "bafyreitarget", "properties": ["probe_property"]}]}`, true},
+		{"a dataview's properties list", `{"blocks": [{"type": "dataview",
+			"properties": [{"key": "probe_property", "format": "select"}]}]}`, true},
+		{"a view's group_by", `{"blocks": [{"type": "dataview",
+			"views": [{"id": "v1", "group_by": "probe_property"}]}]}`, true},
+		{"a view's cover_property", `{"blocks": [{"type": "dataview",
+			"views": [{"id": "v1", "cover_property": "probe_property"}]}]}`, true},
+		{"a view's end_property", `{"blocks": [{"type": "dataview",
+			"views": [{"id": "v1", "end_property": "probe_property"}]}]}`, true},
+		{"a view column", `{"blocks": [{"type": "dataview", "views":
+			[{"id": "v1", "columns": [{"property": "probe_property"}]}]}]}`, true},
+		{"a sort", `{"blocks": [{"type": "dataview", "views":
+			[{"id": "v1", "sorts": [{"property": "probe_property"}]}]}]}`, true},
+		{"a filter", `{"blocks": [{"type": "dataview", "views":
+			[{"id": "v1", "filters": [{"property": "probe_property", "condition": "in"}]}]}]}`, true},
+		{"a nested filter", `{"blocks": [{"type": "dataview", "views": [{"id": "v1", "filters":
+			[{"operator": "and", "filters": [{"property": "probe_property"}]}]}]}]}`, true},
+		{"a property block inside a table cell", `{"blocks": [{"type": "table",
+			"columns": [{"id": "c1"}], "rows": [{"id": "r1", "cells":
+			[{"type": "property", "key": "probe_property"}]}]}]}`, true},
+		{"a dataview inside a table cell", `{"blocks": [{"type": "table",
+			"columns": [{"id": "c1"}], "rows": [{"id": "r1", "cells": [[{"type": "dataview",
+			"views": [{"id": "v1", "filters": [{"property": "probe_property"}]}]}]]}]}]}`, true},
+		{"a filter's nested_property", `{"blocks": [{"type": "dataview", "views": [{"id": "v1",
+			"filters": [{"property": "assignee", "nested_property": "probe_property"}]}]}]}`, false},
+		{"the refs key itself", `{"refs": {"High#probe_property": "bafyreiopt"}}`, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// given
+			data := []byte(`{"version": 1, "id": "obj1",` + strings.TrimPrefix(tc.doc, "{"))
+
+			// when
+			var typed jsonDoc
+			require.NoError(t, json.Unmarshal(data, &typed))
+			var raw map[string]any
+			require.NoError(t, json.Unmarshal(data, &raw))
+
+			// then
+			assert.Equal(t, tc.counted, typed.propertySpellings()[probe], "the decoded census")
+			assert.Equal(t, tc.counted, rawPropertySpellings(raw)[probe], "the undecoded census")
+			assert.Equal(t, rawPropertySpellings(raw), typed.propertySpellings(),
+				"the two censuses must answer the same document identically")
+		})
+	}
+}
+
+// The document-aware layer under a microscope. Import builds its lookup key
+// from the spelling the slot it is resolving wrote, so a document whose
+// legend and whose census disagree about a property cannot arrive through the
+// public API at all — which is exactly why this asks optionIdFromRefs
+// directly. The guard is defence in depth, and what it defends against is the
+// day a census stops covering a position, or a caller hands the resolver a
+// spelling its document never wrote: with the guard, such an entry is not an
+// answer; without it, a key assembled out of two halves that never met
+// resolves an option.
+func TestOptionRefs_TheCensusGuardsTheLegendLookup(t *testing.T) {
+	space := spaceOptions{"tag": {{id: "bafyopt", name: "High"}}}
+	refs := map[string]string{"High#tag": "bafyopt"}
+	for _, tc := range []struct {
+		name string
+		doc  *jsonDoc
+		want bool
+	}{
+		{"the document uses the property", &jsonDoc{
+			Refs: refs, Properties: map[string]any{"tag": []any{"High"}}}, true},
+		{"the document uses it only in a filter", &jsonDoc{
+			Refs: refs, Blocks: []*jsonBlock{{Type: "dataview", Views: []jsonView{
+				{Id: "v1", Filters: []jsonFilter{{Property: "tag"}}}}}}}, true},
+		{"the document does not use it at all", &jsonDoc{Refs: refs}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// given
+			imp := &importer{opts: Options{ResolveOptions: space}, doc: tc.doc}
+
+			// when
+			id, ok := imp.optionIdFromRefs("tag", "tag", "High")
+
+			// then
+			assert.Equal(t, tc.want, ok)
+			if tc.want {
+				assert.Equal(t, "bafyopt", id)
+			} else {
+				assert.Empty(t, id, "an entry qualifying a property the document never spells")
+			}
+		})
+	}
 }

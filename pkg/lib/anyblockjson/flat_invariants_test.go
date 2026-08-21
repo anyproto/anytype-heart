@@ -22,6 +22,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -685,7 +687,16 @@ func TestInvariant_MarshalOutputValidates(t *testing.T) {
 				if err != nil {
 					continue // a loud failure is allowed; silent invalidity is not
 				}
-				require.NoError(t, Validate(data), "seed %d produced:\n%s", n, data)
+				var warned []Issue
+				require.NoError(t, ValidateWarn(data, func(i Issue) { warned = append(warned, i) }),
+					"seed %d produced:\n%s", n, data)
+				// I1's option-legend half: a qualified `refs` key names a
+				// property SPELLING, and export writes the spelling it just
+				// used — so a key it emits is in the document's own property
+				// census by construction, and Validate has nothing to report
+				// about the legend. If it ever does, the legend export wrote
+				// is one import will step over in silence (optionrefs.go).
+				assert.Empty(t, refsWarnings(warned), "seed %d produced:\n%s", n, data)
 				// a block reached twice is written once (§11). The mark that
 				// says so is set in blockToJSON, and every emit path has to
 				// consult it — including the table cell's string shorthand,
@@ -800,7 +811,9 @@ func TestInvariant_MarshalOutputValidates_RichFixture(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			data, err := Marshal(model.SmartBlockType_Page, richSnapshot(), opts)
 			require.NoError(t, err)
-			require.NoError(t, Validate(data))
+			var warned []Issue
+			require.NoError(t, ValidateWarn(data, func(i Issue) { warned = append(warned, i) }))
+			assert.Empty(t, refsWarnings(warned), "%s", data)
 		})
 	}
 }
@@ -1212,4 +1225,62 @@ func namesOf[T comparable](m map[T]string) []string {
 		out = append(out, v)
 	}
 	return out
+}
+
+// The option legend's property census has two readers, because the two
+// directions hold the document in two shapes: the importer's runs over the
+// decoded document, Validate's over the undecoded one, and it must answer
+// before anything is decoded (optionrefs.go). A document is entitled to the
+// same answer from both — one census wider than the other means Validate
+// warns about an entry import honors, or stays quiet about one import steps
+// over. The corpus is the hostile snapshots, the hand-written hostile
+// documents, and the frozen goldens, so a position that only real output
+// reaches and a position that only a hand-written document reaches are both
+// in it.
+func TestInvariant_ThePropertyCensusesAgree(t *testing.T) {
+	check := func(t *testing.T, what string, data []byte) {
+		t.Helper()
+		var typed jsonDoc
+		if err := json.Unmarshal(data, &typed); err != nil {
+			return // not a decodable document; neither census is asked
+		}
+		var raw map[string]any
+		if err := json.Unmarshal(data, &raw); err != nil {
+			return
+		}
+		assert.Equal(t, rawPropertySpellings(raw), typed.propertySpellings(),
+			"%s:\n%s", what, data)
+	}
+
+	t.Run("hostile snapshots", func(t *testing.T) {
+		for n := 0; n < 300; n++ {
+			sbType, snap := hostileSnapshot(n)
+			o := Options{ResolveOptions: hostileOptions}
+			if sbType == model.SmartBlockType_STType {
+				o.ResolveProperties = hostileTypePropResolver{}
+			}
+			data, err := Marshal(sbType, snap, o)
+			if err != nil {
+				continue
+			}
+			check(t, fmt.Sprintf("seed %d", n), data)
+		}
+	})
+
+	t.Run("hostile documents", func(t *testing.T) {
+		for i, doc := range hostileDocs {
+			check(t, fmt.Sprintf("hostileDocs[%d]", i), []byte(doc))
+		}
+	})
+
+	t.Run("goldens", func(t *testing.T) {
+		goldens, err := filepath.Glob(filepath.Join("testdata", "*.json"))
+		require.NoError(t, err)
+		require.NotEmpty(t, goldens)
+		for _, path := range goldens {
+			data, err := os.ReadFile(path)
+			require.NoError(t, err)
+			check(t, path, data)
+		}
+	})
 }

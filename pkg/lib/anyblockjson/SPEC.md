@@ -1,6 +1,6 @@
 # AnyBlock JSON — format specification
 
-Status: **draft v0.18** · Format version: **1** · Package: `pkg/lib/anyblockjson`
+Status: **draft v0.19** · Format version: **1** · Package: `pkg/lib/anyblockjson`
 
 A human- and agent-readable JSON serialization of Anytype objects (the "anyblock"
 model), designed for export, import, and generation by external tools and LLM
@@ -14,6 +14,23 @@ strings; the vocabulary follows Notion's API and Anytype's public REST API
 (`core/api`) wherever an established term exists — the format should be
 readable, and mostly writable, by someone who has never seen Anytype
 internals.
+
+Changes in v0.19: **a qualified `refs` key has to name a property the
+document uses** (§3, §9a, §12). The key shape admits any `<name>#<spelling>`
+whose halves are writable strings — it has to, because both directions must
+sort a key into its population knowing nothing but the key — but the right
+half is a *property spelling*, and a spelling the document never writes
+qualifies nothing: import builds its lookup key from the spelling the slot it
+is resolving wrote, so such an entry can never be consulted. The document's
+**property census** — every position where a spelling can appear, from a
+`properties` member to a nested filter's `property` — is now a layer on top of
+the shape check. Import honours an entry only when its property half is in the
+census (defence in depth: export writes the spelling it just used, so its keys
+are in the census by construction), and Validate **warns** about one that is
+not. A warning, not an error, because §9a freezes the opposite rule for the
+other population — an unused `refs` entry is ignored — but `"High#priorty"`
+validating clean and then silently degrading to name resolution is exactly the
+kind of silence this format reports everywhere else.
 
 Changes in v0.18: **a select value says which option it means** (§3, §9a,
 §11). Option values are spelled by NAME because a bundle carries no option
@@ -1077,9 +1094,13 @@ no option at all, because it is identity rather than compaction.
 
 1. **The document's qualified `refs` entry** for `<name>#<the spelling this
    slot used>` — honored only when the id it names is a **live option of that
-   relation** in the target space. That check is the whole reason the entry is
-   safe to write unconditionally: an id from a space the reader never had is
-   simply not an answer, and the document falls through as if it carried none.
+   relation** in the target space, and only when the property half names a
+   property this document uses (§9a — the key is built from the spelling this
+   slot wrote, so that holds by construction; it is the layer that keeps the
+   shape rule from being the only thing a legend key has to satisfy). The
+   liveness check is the whole reason the entry is safe to write
+   unconditionally: an id from a space the reader never had is simply not an
+   answer, and the document falls through as if it carried none.
 2. **Name resolution** against the property's existing options, as before.
 3. **The value unchanged** — creating the missing option is the wiring's job.
 
@@ -2181,6 +2202,27 @@ population carries the ID of the option a select value NAMES (§3):
   enforces both halves. The name half deliberately admits what a compaction
   label cannot: `import issue#tag` is a real entry, and the old
   `[A-Za-z0-9_-]` rule refused ordinary tag names outright.
+- **The property half must name a property this document uses.** The shape
+  rule above admits any `<name>#<spelling>` of two writable halves, and it has
+  to: both directions sort a key into its population knowing nothing but the
+  key. But the right half is a property *spelling*, and one the document never
+  writes qualifies nothing — import builds its lookup key from the spelling
+  the slot it is resolving wrote, so the entry is unreachable. The document's
+  **property census** is every position where a spelling can appear:
+  `properties` and `property_keys` members, `type_properties[].key`, a
+  `property` block's `key`, a `link` block's `properties[]`, a `dataview`
+  block's `properties[].key`, and a view's `group_by`, `cover_property`,
+  `end_property`, `columns[].property`, `sorts[].property` and
+  `filters[].property` through nested groups — inside a table cell as well as
+  outside one. A filter's `nested_property` is not in it: it names a property
+  of the object the filter walks *to*, not a key slot of this document. Import
+  honours an entry only when its property half is in the census — defence in
+  depth, since export writes the spelling it just used and its keys are in the
+  census by construction — and **Validate warns** about one that is not
+  (§12). A warning rather than an error, because an unused `refs` entry is
+  ignored by the rule above and a legend may carry more than one document
+  needs; but an entry that can never be consulted degrades to name resolution
+  in silence, and this format says such things out loud.
 - **Value**: the full option id, exactly like every other `refs` value.
 - **Written whenever export substitutes a name for an id** — that is, exactly
   where §3 says option values are names — in property values, dataview filter
@@ -2440,7 +2482,10 @@ fail neither test belong in authoring guidance and in review.
   the document's own chain — `type_keys` legend first — in validation and
   import alike, a `type_keys` spelling or value gets the same writable-key
   restatement as `property_keys`, and the import seam refuses a term a
-  vocabulary resolves onto the empty type key, §3), `language`-vs-`fields.lang` conflicts, and
+  vocabulary resolves onto the empty type key, §3), `language`-vs-`fields.lang` conflicts, a **qualified `refs` key whose
+  property half is outside the document's property census** (§9a — a warning:
+  the entry can never be consulted and the value degrades to name resolution),
+  and
   **inline-markup parsing** (§8) — grammar errors report the block's JSON
   path and the offending snippet. The indent bound [0, 32] lives in the
   schema.
@@ -2525,6 +2570,11 @@ pkg/lib/anyblockjson/
   inline.go                  — marks ↔ inline markup codec (§8)
   table.go                   — table subtree ↔ columns/rows
   dataview.go                — dataview content mapping (§6.2)
+  optionrefs.go              — the qualified option legend and the whole of
+                               option resolution (§3, §9a): the export site
+                               that records an entry, the one import function
+                               that resolves a select value, and the property
+                               census both are checked against
   validate.go                — schema + semantic validation
   json.go                    — ordered canonical-JSON writer, enum tables,
                                proto value bridges, id helpers

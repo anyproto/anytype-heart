@@ -688,6 +688,39 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 		}
 	}
 
+	// A qualified `refs` entry qualifies an option name with a PROPERTY
+	// SPELLING (§9a), and one naming a property the document never spells
+	// qualifies nothing: import builds the lookup key from the spelling the
+	// slot it is resolving wrote, so such an entry is unreachable and the
+	// value it was written for resolves by name as if the legend were absent.
+	//
+	// A warning, not an error, because §9a freezes the opposite rule for the
+	// other half of this map — an unused `refs` entry is IGNORED — and a
+	// legend is allowed to carry more than one document needs. But ignored in
+	// SILENCE is how `High#priorty` validates clean and then quietly loses
+	// the identity it was written to carry, which is the degradation this
+	// format reports everywhere else. The census is taken only when a
+	// qualified key is present.
+	if refs, _ := doc["refs"].(map[string]any); len(refs) > 0 {
+		var spellings map[string]bool
+		for _, label := range sortedMapKeys(refs) {
+			name, slug, qualified := splitQualifiedOptionRefKey(label)
+			if !qualified {
+				continue
+			}
+			if spellings == nil {
+				spellings = rawPropertySpellings(doc)
+			}
+			if spellings[slug] {
+				continue
+			}
+			warnIssue("/refs/"+escapeJSONPointer(label),
+				"qualifies %q, which no property in this document spells — "+
+					"this entry can never be consulted, and %q resolves by name (§3, §9a)",
+				slug, name)
+		}
+	}
+
 	// The loop below is the MIRROR of the importer's details seam
 	// (importer.build), refusal for refusal — denied resolved key, unwritable
 	// resolved key, two spellings binding one key — in the same sorted order,

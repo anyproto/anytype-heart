@@ -128,6 +128,10 @@ type importer struct {
 	// blocks with the same id, which validation has already finished checking
 	// by the time it happens (§9).
 	usedIds map[string]struct{}
+	// propertyVocab is the set of property spellings this document uses
+	// (optionrefs.go), computed on first use because only the qualified
+	// option legend asks for it.
+	propertyVocab map[string]bool
 }
 
 // claimAuthoredIds records every id the document names before anything is
