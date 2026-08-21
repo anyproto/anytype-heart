@@ -547,15 +547,18 @@ func (imp *importer) filterFromJSON(jf jsonFilter, dv *model.BlockContentDatavie
 }
 
 // dvValueFromJSON reverses dvValueToJSON: option names back to ids where a
-// resolver knows them, ref labels back to full object ids, verbatim
-// otherwise (§3, §9a).
+// resolver knows them, everything else verbatim (§3, §9a).
+//
+// Objects and files have no arm here. They had one while the format carried a
+// `refs` legend — it mapped each short label back to the full id — and when
+// that legend was deleted (§9a) the arm was left behind mapping every id
+// through an identity function, which is what the verbatim path below already
+// does. There is nothing to invert now: every object id is written in full.
 func (imp *importer) dvValueFromJSON(dv *model.BlockContentDataview, key, slug string, v any) *types.Value {
 	format := imp.impDvFormat(dv, key)
 	switch format {
 	case model.RelationFormat_status, model.RelationFormat_tag:
 		return mapJSONStrings(v, func(name string) string { return imp.resolveOption(key, slug, name) })
-	case model.RelationFormat_object, model.RelationFormat_file:
-		return mapJSONStrings(v, func(id string) string { return id })
 	}
 	return jsonToProtoValue(v)
 }
