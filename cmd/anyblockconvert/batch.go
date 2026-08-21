@@ -45,6 +45,13 @@ type batch struct {
 	relIDs map[string]string // stored property key -> minted relation object id
 	optIDs map[string]string // "stored key\x00name" -> minted option object id
 
+	// optNames is optIDs read backwards — "stored key\x00option id" -> name —
+	// and it is what makes OptionName answerable here. The batch is the space
+	// this conversion imports into, so the set of options it has minted IS the
+	// set of live options, and an id outside it names nothing the archive
+	// carries (see OptionName).
+	optNames map[string]string
+
 	// optOrder is the last order id handed out per property key. Every option
 	// needs one: options sort on orderId+name concatenated
 	// (database.OrderMap.BuildOrder), so an option without an order id is
@@ -88,6 +95,7 @@ func newBatch(formats map[string]anyblockbatch.FormatInfo, typeIds map[string]st
 		formats:    formats,
 		relIDs:     map[string]string{},
 		optIDs:     map[string]string{},
+		optNames:   map[string]string{},
 		optOrder:   map[string]string{},
 		optColor:   map[string]int{},
 		optClaimed: map[string]map[string]bool{},
@@ -128,10 +136,34 @@ func (b *batch) OptionId(key domain.RelationKey, name string) (string, bool) {
 	return id, true
 }
 
-// OptionName implements anyblockjson.OptionResolver. Only used on export;
-// this tool only imports, so it's never called.
+// OptionName implements anyblockjson.OptionResolver. This tool only imports,
+// but the call is NOT export-only: it is also the liveness question a
+// document's `option_ids` entry is checked against (§3, §9a — an id is
+// honoured only where the resolver answers for it as an option of that
+// relation). A resolver that stubs this out disables the legend for
+// everything it converts, which is what this one used to do, silently and on
+// the strength of a stale doc comment.
+//
+// The archive being built is the space that answers here, and its options are
+// exactly the ones this batch has minted, so optNames IS the liveness table.
+// That keeps the safety property the legend leans on: an id this method
+// confirms always has a RelationOption object in `pending`, so honouring one
+// can never write a reference the archive does not carry.
+//
+// What it means in practice, said plainly rather than left to be inferred: a
+// bundle exported from another space carries THAT space's option ids, and
+// none of them can be live here, since every id in this archive is derived
+// from (property key, option name) by optionLocalKey. Those entries fail
+// liveness and their values resolve by name, which is the fallback §3
+// prescribes and the only thing a fresh-space converter could do with a
+// foreign id anyway. Where the legend does bite is an id this batch itself
+// minted, which is any id naming an option the archive already carries: the
+// value lands on that option even when the name beside it has moved on, so a
+// renamed vocabulary re-points its old values instead of minting a second
+// option under the stale name (the resurrection §3 describes).
 func (b *batch) OptionName(key domain.RelationKey, id string) (string, bool) {
-	return "", false
+	name, ok := b.optNames[string(key)+"\x00"+id]
+	return name, ok
 }
 
 // PropertyId implements anyblockjson.PropertyResolver: allocates a stable
@@ -325,6 +357,11 @@ func (b *batch) mintOption(key domain.RelationKey, name, orderId, color string) 
 		panic(err)
 	}
 	id := uk.Marshal()
+	// the reverse entry is recorded HERE, at the one place an option object
+	// comes into existence, so "this batch can name the id" and "this batch
+	// carries the object" are the same statement — OptionName's liveness
+	// answer is only safe while that holds.
+	b.optNames[string(key)+"\x00"+id] = name
 
 	details := &types.Struct{Fields: map[string]*types.Value{
 		detailID:          strVal(id),

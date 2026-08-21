@@ -22,6 +22,30 @@ type FormatResolver func(key domain.RelationKey) (model.RelationFormat, bool)
 
 // OptionResolver maps select/multiSelect option ids to names on export and
 // names to ids on import (creating options is the import wiring's job, §3).
+//
+// OptionName has TWO duties, and the second one is not an export call:
+//
+//  1. export — what is this option id called? The name is what the document
+//     writes for the value (§3), and the id it stood for rides along in the
+//     `option_ids` legend (§9a).
+//  2. import — is this id a live option of this relation HERE? That is the
+//     liveness question every `option_ids` entry is checked against
+//     (optionrefs.go): the legend is a hint, honoured only for an id the
+//     target space still serves under that key, and OptionName answering is
+//     precisely what "still serves" means. Nothing else asks it, so a
+//     resolver's answer here is the whole of the check.
+//
+// A resolver that cannot answer OptionName gives up the legend entirely: it
+// says "no id is live", so every entry fails step 1 of §3's chain and every
+// value falls back to name resolution, exactly as it did before `option_ids`
+// existed — including the two losses the legend was added to close, a name
+// shared by two options of one property (the first one answers) and an option
+// renamed since the export (nothing answers, and the wiring mints a second
+// option under the stale name). That is a legitimate position for a resolver
+// with no option store to consult, and returning false is then the honest
+// answer; it is not a stub to leave in place unexamined, because it disables
+// a feature for everything that reader imports, silently. `OptionId` without
+// `OptionName` is the shape to look at twice.
 type OptionResolver interface {
 	OptionName(key domain.RelationKey, id string) (string, bool)
 	OptionId(key domain.RelationKey, name string) (string, bool)
