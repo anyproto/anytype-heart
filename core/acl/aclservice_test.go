@@ -4,15 +4,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace/acl/aclclient"
 	"github.com/anyproto/any-sync/commonspace/acl/aclclient/mock_aclclient"
 	"github.com/anyproto/any-sync/commonspace/mock_commonspace"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/commonspace/object/acl/aclrecordproto"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
+	"github.com/anyproto/any-sync/commonspace/object/acl/list/listtest"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list/mock_list"
 	"github.com/anyproto/any-sync/commonspace/object/acl/recordverifier"
 	"github.com/anyproto/any-sync/commonspace/object/acl/syncacl"
@@ -25,8 +29,10 @@ import (
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	"github.com/anyproto/any-sync/net/peer"
 	"github.com/anyproto/any-sync/nodeconf"
+	"github.com/anyproto/any-sync/nodeconf/mock_nodeconf"
 	"github.com/anyproto/any-sync/util/cidutil"
 	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/anyproto/any-sync/util/strkey"
 	"github.com/cheggaaa/mb/v3"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/mock"
@@ -37,13 +43,14 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/invitecleanup/mock_invitecleanup"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/core/inviteservice/mock_inviteservice"
-	"github.com/anyproto/anytype-heart/pb"
 	subscriptionservice "github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub/mock_crossspacesub"
 	"github.com/anyproto/anytype-heart/core/subscription/mock_subscription"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/clientspace"
@@ -82,6 +89,7 @@ type fixture struct {
 	mockSubscriptionService *mock_subscription.MockService
 	mockAccountService      *mock_account.MockService
 	mockInviteService       *mock_inviteservice.MockInviteService
+	mockInviteCleanup       *mock_invitecleanup.MockService
 	mockCoordinatorClient   *mock_coordinatorclient.MockCoordinatorClient
 	mockTechSpace           *mock_techspace.MockTechSpace
 	mockSpaceView           *mock_techspace.MockSpaceView
@@ -105,6 +113,7 @@ func newFixture(t *testing.T) *fixture {
 		mockSubscriptionService: mock_subscription.NewMockService(t),
 		mockAccountService:      mock_account.NewMockService(t),
 		mockInviteService:       mock_inviteservice.NewMockInviteService(t),
+		mockInviteCleanup:       mock_invitecleanup.NewMockService(t),
 		mockCoordinatorClient:   mock_coordinatorclient.NewMockCoordinatorClient(ctrl),
 		mockTechSpace:           mock_techspace.NewMockTechSpace(t),
 		mockSpaceView:           mock_techspace.NewMockSpaceView(t),
@@ -116,15 +125,31 @@ func newFixture(t *testing.T) *fixture {
 		mockAcl:                 mock_list.NewMockAclList(ctrl),
 		mockConfig:              &mockConfig{},
 	}
+	_, netPub, err := crypto.GenerateRandomEd25519KeyPair()
+	require.NoError(t, err)
+	netPubRaw, err := netPub.Raw()
+	require.NoError(t, err)
+	networkId, err := strkey.Encode(strkey.NetworkAddressVersionByte, netPubRaw)
+	require.NoError(t, err)
+
+	mockNodeConf := mock_nodeconf.NewMockService(ctrl)
+	mockNodeConf.EXPECT().Name().Return(nodeconf.CName).AnyTimes()
+	mockNodeConf.EXPECT().Init(gomock.Any()).AnyTimes()
+	mockNodeConf.EXPECT().Run(gomock.Any()).AnyTimes()
+	mockNodeConf.EXPECT().Close(gomock.Any()).AnyTimes()
+	mockNodeConf.EXPECT().Configuration().Return(nodeconf.Configuration{NetworkId: networkId}).AnyTimes()
+
 	fx.a.Register(testutil.PrepareMock(ctx, fx.a, fx.mockAccountService)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockWallet)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockJoiningClient)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockSpaceService)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockInviteService)).
+		Register(testutil.PrepareMock(ctx, fx.a, fx.mockInviteCleanup)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockSubscriptionService)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockCoordinatorClient)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockCrossSpace)).
 		Register(fx.mockConfig).
+		Register(mockNodeConf).
 		Register(fx.aclService)
 	keys, err := accountdata.NewRandom()
 	require.NoError(t, err)
@@ -241,7 +266,7 @@ func TestService_StopSharing(t *testing.T) {
 		fx.mockAcl.EXPECT().RLock().AnyTimes()
 		fx.mockAcl.EXPECT().RUnlock().AnyTimes()
 		fx.mockAcl.EXPECT().Head().Return(&list.AclRecord{Id: "headId"})
-		fx.mockInviteService.EXPECT().RemoveExisting(ctx, "spaceId").Return(nil)
+		fx.mockInviteService.EXPECT().RemoveExisting(ctx, "spaceId").Return(domain.InviteInfo{}, nil)
 		sleepTime = time.Millisecond
 		fx.mockCoordinatorClient.EXPECT().SpaceMakeUnshareable(ctx, "spaceId", "headId").Return(coordinatorproto.ErrAclHeadIsMissing)
 		fx.mockCoordinatorClient.EXPECT().SpaceMakeUnshareable(ctx, "spaceId", "headId").Return(nil)
@@ -269,7 +294,7 @@ func TestService_StopSharing(t *testing.T) {
 		fx.mockAcl.EXPECT().RLock().AnyTimes()
 		fx.mockAcl.EXPECT().RUnlock().AnyTimes()
 		fx.mockAcl.EXPECT().Head().Return(&list.AclRecord{Id: "headId"})
-		fx.mockInviteService.EXPECT().RemoveExisting(ctx, "spaceId").Return(nil)
+		fx.mockInviteService.EXPECT().RemoveExisting(ctx, "spaceId").Return(domain.InviteInfo{}, nil)
 		err := fx.StopSharing(ctx, "spaceId")
 		require.NoError(t, err)
 	})
@@ -362,7 +387,7 @@ func TestService_ViewInvite(t *testing.T) {
 		require.NoError(t, err)
 		inv, err := aclList.RecordBuilder().BuildInvite()
 		require.NoError(t, err)
-		err = aclList.AddRawRecord(list.WrapAclRecord(inv.InviteRec))
+		err = aclList.AddRawRecord(listtest.WrapAclRecord(inv.InviteRec))
 		require.NoError(t, err)
 		recs, err := aclList.RecordsAfter(ctx, "")
 		require.NoError(t, err)
@@ -393,14 +418,14 @@ func TestService_ViewInvite(t *testing.T) {
 		require.NoError(t, err)
 		inv, err := aclList.RecordBuilder().BuildInvite()
 		require.NoError(t, err)
-		err = aclList.AddRawRecord(list.WrapAclRecord(inv.InviteRec))
+		err = aclList.AddRawRecord(listtest.WrapAclRecord(inv.InviteRec))
 		require.NoError(t, err)
 		invRecIds := aclList.AclState().InviteIds()
 		removeInv, err := aclList.RecordBuilder().BuildBatchRequest(list.BatchRequestPayload{
 			InviteRevokes: invRecIds,
 		})
 		require.NoError(t, err)
-		err = aclList.AddRawRecord(list.WrapAclRecord(removeInv.Rec))
+		err = aclList.AddRawRecord(listtest.WrapAclRecord(removeInv.Rec))
 		require.NoError(t, err)
 		recs, err := aclList.RecordsAfter(ctx, "")
 		require.NoError(t, err)
@@ -433,6 +458,7 @@ func TestService_ChangeInvite(t *testing.T) {
 		fx.mockInviteService.EXPECT().GetCurrent(ctx, spaceId).Return(domain.InviteInfo{
 			InviteType:    domain.InviteTypeAnyone,
 			InviteFileCid: "testCid",
+			HeldByOwner:   true,
 		}, nil)
 		fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(mockSpace, nil)
 		mockSpace.EXPECT().CommonSpace().Return(mockCommonSpace)
@@ -459,6 +485,25 @@ func TestService_ChangeInvite(t *testing.T) {
 		err := fx.ChangeInvite(ctx, spaceId, model.ParticipantPermissions_Writer)
 		require.NoError(t, err)
 	})
+	t.Run("a shared invite anyone can join with cannot be raised above read access", func(t *testing.T) {
+		// given an anyoneCanJoin invite that every member of the space holds
+		fx := newFixture(t)
+		defer fx.finish(t)
+		spaceId := "spaceId"
+		fx.mockAccountService.EXPECT().PersonalSpaceID().Return("personal")
+		fx.mockInviteService.EXPECT().GetCurrent(ctx, spaceId).Return(domain.InviteInfo{
+			InviteType:    domain.InviteTypeAnyone,
+			InviteFileCid: "testCid",
+			Permissions:   list.AclPermissionsReader,
+		}, nil)
+
+		// when it is changed to let whoever joins through it write
+		err := fx.ChangeInvite(ctx, spaceId, model.ParticipantPermissions_Writer)
+
+		// then it is refused: generating such an invite is not allowed, and neither is turning one into it
+		require.ErrorIs(t, err, inviteservice.ErrInviteNotShareable)
+	})
+
 	t.Run("different invite type", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
@@ -473,7 +518,220 @@ func TestService_ChangeInvite(t *testing.T) {
 	})
 }
 
+// newAcl builds a real acl owned by "a" with the given executor commands already applied, so tests can
+// exercise code that inspects the acl state (e.g. whether an anyone-can-join invite is present).
+func newAcl(t *testing.T, cmds ...string) mockSyncAcl {
+	exec := list.NewAclExecutor("spaceId")
+	require.NoError(t, exec.Execute("a.init::a"))
+	for _, cmd := range cmds {
+		require.NoError(t, exec.Execute(cmd))
+	}
+	return mockSyncAcl{exec.ActualAccounts()["a"].Acl}
+}
+
+func TestService_RevokeInvite(t *testing.T) {
+	revokeMocks := func(fx *fixture, acl mockSyncAcl) {
+		fx.mockSpaceService.EXPECT().Get(ctx, "spaceId").Return(fx.mockClientSpace, nil)
+		fx.mockClientSpace.EXPECT().CommonSpace().Return(fx.mockCommonSpace)
+		fx.mockCommonSpace.EXPECT().AclClient().Return(fx.mockSpaceClient)
+		fx.mockCommonSpace.EXPECT().Acl().Return(acl)
+	}
+
+	t.Run("revoked invite file is deleted", func(t *testing.T) {
+		// given a request-to-join invite (no anyone-can-join invite in the acl, so no rotation)
+		fx := newFixture(t)
+		defer fx.finish(t)
+		revoked := domain.InviteInfo{
+			InviteFileCid: "cid",
+			InviteFileKey: "key",
+			InviteType:    domain.InviteTypeAnyone,
+		}
+		revokeMocks(fx, newAcl(t))
+		fx.mockSpaceClient.EXPECT().RevokeAllInvites(ctx).Return(nil)
+		fx.mockInviteService.EXPECT().RemoveExisting(ctx, "spaceId").Return(revoked, nil)
+		fx.mockInviteCleanup.EXPECT().InviteRevoked(ctx, "spaceId", revoked).Return(nil)
+
+		// when it is revoked
+		err := fx.RevokeInvite(ctx, "spaceId")
+
+		// then its file is handed to the cleanup service
+		require.NoError(t, err)
+	})
+
+	t.Run("revoking an anyone-can-join invite rotates the read key", func(t *testing.T) {
+		// given a space whose acl offers an invite anyone can join with -- it embedded the read key
+		fx := newFixture(t)
+		defer fx.finish(t)
+		revoked := domain.InviteInfo{
+			InviteFileCid: "cid",
+			InviteFileKey: "key",
+			InviteType:    domain.InviteTypeAnyone,
+		}
+		revokeMocks(fx, newAcl(t, "a.invite_anyone::invId,r"))
+		// the rotating variant is used, so the key the invite handed out stops working
+		fx.mockSpaceClient.EXPECT().RevokeAllInvitesAndRotate(ctx, gomock.Any()).Return(nil)
+		fx.mockInviteService.EXPECT().RemoveExisting(ctx, "spaceId").Return(revoked, nil)
+		fx.mockInviteCleanup.EXPECT().InviteRevoked(ctx, "spaceId", revoked).Return(nil)
+
+		err := fx.RevokeInvite(ctx, "spaceId")
+
+		require.NoError(t, err)
+	})
+
+	t.Run("nothing is deleted when the revoke fails", func(t *testing.T) {
+		// given an acl that refuses the revocation. The invite still works, so its key must not
+		// reach the coordinator: no InviteRevoked expectation is set, and the mock fails the test if
+		// it is called anyway.
+		fx := newFixture(t)
+		defer fx.finish(t)
+		revokeMocks(fx, newAcl(t))
+		fx.mockSpaceClient.EXPECT().RevokeAllInvites(ctx).Return(errors.New("acl unreachable"))
+
+		err := fx.RevokeInvite(ctx, "spaceId")
+
+		require.Error(t, err)
+	})
+
+	t.Run("cleanup failure does not fail the revoke", func(t *testing.T) {
+		// given a cleanup that cannot reach the coordinator. The invite is revoked either way, and
+		// the background pass will retry the deletion.
+		fx := newFixture(t)
+		defer fx.finish(t)
+		revoked := domain.InviteInfo{
+			InviteFileCid: "cid",
+			InviteFileKey: "key",
+			InviteType:    domain.InviteTypeAnyone,
+		}
+		revokeMocks(fx, newAcl(t))
+		fx.mockSpaceClient.EXPECT().RevokeAllInvites(ctx).Return(nil)
+		fx.mockInviteService.EXPECT().RemoveExisting(ctx, "spaceId").Return(revoked, nil)
+		fx.mockInviteCleanup.EXPECT().InviteRevoked(ctx, "spaceId", revoked).Return(errors.New("coordinator unreachable"))
+
+		err := fx.RevokeInvite(ctx, "spaceId")
+
+		require.NoError(t, err)
+	})
+}
+
 func TestService_GenerateInvite(t *testing.T) {
+	t.Run("replacing an invite reports the one it revoked", func(t *testing.T) {
+		// given a space with an anyoneCanJoin invite. Asking for an invite of a different type goes
+		// through ReplaceInvite, which revokes the existing one -- so its file has to be cleaned up.
+		fx := newFixture(t)
+		defer fx.finish(t)
+		spaceId := "spaceId"
+		keys, err := accountdata.NewRandom()
+		require.NoError(t, err)
+		replaced := domain.InviteInfo{
+			InviteFileCid: "cid",
+			InviteFileKey: "key",
+			InviteType:    domain.InviteTypeAnyone,
+		}
+		fx.mockAccountService.EXPECT().PersonalSpaceID().Return("personal")
+		fx.mockInviteService.EXPECT().GetCurrent(ctx, spaceId).Return(replaced, nil)
+		mockSpace := mock_clientspace.NewMockSpace(t)
+		mockCommonSpace := mock_commonspace.NewMockSpace(fx.ctrl)
+		mockAclClient := mock_aclclient.NewMockAclSpaceClient(fx.ctrl)
+		mockSpace.EXPECT().CommonSpace().Return(mockCommonSpace)
+		mockCommonSpace.EXPECT().AclClient().Return(mockAclClient)
+		mockCommonSpace.EXPECT().Acl().Return(newAcl(t))
+		fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(mockSpace, nil)
+		rec := &consensusproto.RawRecord{Payload: []byte("test")}
+		mockAclClient.EXPECT().ReplaceInvite(gomock.Any(), gomock.Any()).
+			Return(list.InviteResult{InviteRec: rec, InviteKey: keys.SignKey}, nil)
+		mockAclClient.EXPECT().AddRecord(ctx, rec).Return(nil)
+		fx.mockInviteService.EXPECT().Generate(ctx, mock.Anything, mock.Anything).
+			RunAndReturn(func(ctx2 context.Context, params inviteservice.GenerateInviteParams, f func() error) (domain.InviteInfo, error) {
+				return domain.InviteInfo{InviteFileCid: "newCid"}, f()
+			})
+		fx.mockInviteCleanup.EXPECT().InviteRevoked(ctx, spaceId, replaced).Return(nil)
+
+		// when an invite of another type is generated
+		info, err := fx.GenerateInvite(ctx, spaceId, model.InviteType_Member, model.ParticipantPermissions_Reader, false)
+
+		// then the replaced invite is handed to the cleanup service
+		require.NoError(t, err)
+		require.Equal(t, "newCid", info.InviteFileCid)
+	})
+
+	t.Run("replacing an anyone-can-join invite rotates the read key before creating the new one", func(t *testing.T) {
+		// given a space whose current invite is one anyone can join with -- it embedded the read key
+		fx := newFixture(t)
+		defer fx.finish(t)
+		spaceId := "spaceId"
+		keys, err := accountdata.NewRandom()
+		require.NoError(t, err)
+		replaced := domain.InviteInfo{
+			InviteFileCid: "cid",
+			InviteFileKey: "key",
+			InviteType:    domain.InviteTypeAnyone,
+		}
+		fx.mockAccountService.EXPECT().PersonalSpaceID().Return("personal")
+		fx.mockInviteService.EXPECT().GetCurrent(ctx, spaceId).Return(replaced, nil)
+		mockSpace := mock_clientspace.NewMockSpace(t)
+		mockCommonSpace := mock_commonspace.NewMockSpace(fx.ctrl)
+		mockAclClient := mock_aclclient.NewMockAclSpaceClient(fx.ctrl)
+		mockSpace.EXPECT().CommonSpace().Return(mockCommonSpace)
+		mockCommonSpace.EXPECT().AclClient().Return(mockAclClient)
+		mockCommonSpace.EXPECT().Acl().Return(newAcl(t, "a.invite_anyone::invId,r"))
+		fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(mockSpace, nil)
+		rec := &consensusproto.RawRecord{Payload: []byte("test")}
+		// the leaked key is rotated away first, then the replacement invite is created against the new key
+		rotate := mockAclClient.EXPECT().RevokeAllInvitesAndRotate(ctx, gomock.Any()).Return(nil)
+		// the rotation record revoked the old invite, so its details are cleared right away
+		fx.mockInviteService.EXPECT().RemoveExisting(ctx, spaceId).Return(replaced, nil)
+		mockAclClient.EXPECT().ReplaceInvite(gomock.Any(), gomock.Any()).After(rotate).
+			Return(list.InviteResult{InviteRec: rec, InviteKey: keys.SignKey}, nil)
+		mockAclClient.EXPECT().AddRecord(ctx, rec).Return(nil)
+		fx.mockInviteService.EXPECT().Generate(ctx, mock.Anything, mock.Anything).
+			RunAndReturn(func(ctx2 context.Context, params inviteservice.GenerateInviteParams, f func() error) (domain.InviteInfo, error) {
+				return domain.InviteInfo{InviteFileCid: "newCid"}, f()
+			})
+		fx.mockInviteCleanup.EXPECT().InviteRevoked(ctx, spaceId, replaced).Return(nil)
+
+		// when a request-to-join invite is generated to replace it
+		info, err := fx.GenerateInvite(ctx, spaceId, model.InviteType_Member, model.ParticipantPermissions_Reader, false)
+
+		require.NoError(t, err)
+		require.Equal(t, "newCid", info.InviteFileCid)
+	})
+
+	t.Run("a failure after the rotation leaves no dead invite advertised", func(t *testing.T) {
+		// given a space whose anyone-can-join invite was revoked and rotated away, but creating the
+		// replacement fails mid-flight. The details were already cleared when the rotation landed, so
+		// GetCurrent answers "no invite" instead of a dead link, and a retry generates cleanly.
+		fx := newFixture(t)
+		defer fx.finish(t)
+		spaceId := "spaceId"
+		replaced := domain.InviteInfo{
+			InviteFileCid: "cid",
+			InviteFileKey: "key",
+			InviteType:    domain.InviteTypeAnyone,
+		}
+		fx.mockAccountService.EXPECT().PersonalSpaceID().Return("personal")
+		fx.mockInviteService.EXPECT().GetCurrent(ctx, spaceId).Return(replaced, nil)
+		mockSpace := mock_clientspace.NewMockSpace(t)
+		mockCommonSpace := mock_commonspace.NewMockSpace(fx.ctrl)
+		mockAclClient := mock_aclclient.NewMockAclSpaceClient(fx.ctrl)
+		mockSpace.EXPECT().CommonSpace().Return(mockCommonSpace)
+		mockCommonSpace.EXPECT().AclClient().Return(mockAclClient)
+		mockCommonSpace.EXPECT().Acl().Return(newAcl(t, "a.invite_anyone::invId,r"))
+		fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(mockSpace, nil)
+		rotate := mockAclClient.EXPECT().RevokeAllInvitesAndRotate(ctx, gomock.Any()).Return(nil)
+		fx.mockInviteService.EXPECT().RemoveExisting(ctx, spaceId).Return(replaced, nil)
+		mockAclClient.EXPECT().ReplaceInvite(gomock.Any(), gomock.Any()).After(rotate).
+			Return(list.InviteResult{}, errors.New("network gone"))
+		// the old invite is revoked all the same, so its file still goes to the cleanup
+		fx.mockInviteCleanup.EXPECT().InviteRevoked(ctx, spaceId, replaced).Return(nil)
+
+		// when the replacement fails after the rotation record landed
+		_, err := fx.GenerateInvite(ctx, spaceId, model.InviteType_Member, model.ParticipantPermissions_Reader, false)
+
+		// then the caller sees the failure -- and the details were cleared, not left pointing at a
+		// revoked invite
+		require.Error(t, err)
+	})
+
 	t.Run("new default invite", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
@@ -487,6 +745,7 @@ func TestService_GenerateInvite(t *testing.T) {
 		mockAclClient := mock_aclclient.NewMockAclSpaceClient(fx.ctrl)
 		mockSpace.EXPECT().CommonSpace().Return(mockCommonSpace)
 		mockCommonSpace.EXPECT().AclClient().Return(mockAclClient)
+		mockCommonSpace.EXPECT().Acl().Return(newAcl(t))
 		fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(mockSpace, nil)
 		rec := &consensusproto.RawRecord{
 			Payload: []byte("test"),
@@ -509,7 +768,7 @@ func TestService_GenerateInvite(t *testing.T) {
 					InviteFileCid: "testCid",
 				}, f()
 			})
-		info, err := fx.GenerateInvite(ctx, spaceId, model.InviteType_Member, model.ParticipantPermissions_Reader)
+		info, err := fx.GenerateInvite(ctx, spaceId, model.InviteType_Member, model.ParticipantPermissions_Reader, false)
 		require.NoError(t, err)
 		require.Equal(t, "testCid", info.InviteFileCid)
 	})
@@ -526,6 +785,7 @@ func TestService_GenerateInvite(t *testing.T) {
 		mockAclClient := mock_aclclient.NewMockAclSpaceClient(fx.ctrl)
 		mockSpace.EXPECT().CommonSpace().Return(mockCommonSpace)
 		mockCommonSpace.EXPECT().AclClient().Return(mockAclClient)
+		mockCommonSpace.EXPECT().Acl().Return(newAcl(t))
 		fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(mockSpace, nil)
 		rec := &consensusproto.RawRecord{
 			Payload: []byte("test"),
@@ -548,7 +808,7 @@ func TestService_GenerateInvite(t *testing.T) {
 					InviteFileCid: "testCid",
 				}, f()
 			})
-		info, err := fx.GenerateInvite(ctx, spaceId, model.InviteType_WithoutApprove, model.ParticipantPermissions_Reader)
+		info, err := fx.GenerateInvite(ctx, spaceId, model.InviteType_WithoutApprove, model.ParticipantPermissions_Reader, false)
 		require.NoError(t, err)
 		require.Equal(t, "testCid", info.InviteFileCid)
 	})
@@ -567,6 +827,7 @@ func TestService_GenerateInvite(t *testing.T) {
 		mockAclClient := mock_aclclient.NewMockAclSpaceClient(fx.ctrl)
 		mockSpace.EXPECT().CommonSpace().Return(mockCommonSpace)
 		mockCommonSpace.EXPECT().AclClient().Return(mockAclClient)
+		mockCommonSpace.EXPECT().Acl().Return(newAcl(t))
 		fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(mockSpace, nil)
 		rec := &consensusproto.RawRecord{
 			Payload: []byte("test"),
@@ -589,10 +850,70 @@ func TestService_GenerateInvite(t *testing.T) {
 					InviteFileCid: "testCid",
 				}, f()
 			})
-		info, err := fx.GenerateInvite(ctx, spaceId, model.InviteType_WithoutApprove, model.ParticipantPermissions_Reader)
+		info, err := fx.GenerateInvite(ctx, spaceId, model.InviteType_WithoutApprove, model.ParticipantPermissions_Reader, false)
 		require.NoError(t, err)
 		require.Equal(t, "testCid", info.InviteFileCid)
 	})
+	t.Run("an invite the owner holds is published into the workspace", func(t *testing.T) {
+		// given an invite of the requested type that the owner keeps in their own account
+		fx := newFixture(t)
+		defer fx.finish(t)
+		spaceId := "spaceId"
+		current := domain.InviteInfo{
+			InviteFileCid: "testCid",
+			InviteFileKey: "testKey",
+			InviteType:    domain.InviteTypeDefault,
+			HeldByOwner:   true,
+		}
+		shared := current
+		shared.HeldByOwner = false
+		fx.mockAccountService.EXPECT().PersonalSpaceID().Return("personal")
+		fx.mockInviteService.EXPECT().GetCurrent(ctx, spaceId).Return(current, nil)
+		fx.mockInviteService.EXPECT().ShareWithinSpace(ctx, spaceId).Return(shared, nil)
+
+		// when the same invite is asked for with shareWithinSpace
+		info, err := fx.GenerateInvite(ctx, spaceId, model.InviteType_Member, model.ParticipantPermissions_Reader, true)
+
+		// then it is published as it stands: no acl record is replaced, no invite file is stored, and the
+		// link the owner already handed out keeps working
+		require.NoError(t, err)
+		require.Equal(t, shared, info)
+	})
+
+	t.Run("an invite anyone can join with is shareable only as a reader's link", func(t *testing.T) {
+		// given a space
+		fx := newFixture(t)
+		defer fx.finish(t)
+		fx.mockAccountService.EXPECT().PersonalSpaceID().Return("personal")
+
+		// when an anyoneCanJoin invite that grants write access is asked to be shared within the space
+		_, err := fx.GenerateInvite(ctx, "spaceId", model.InviteType_WithoutApprove, model.ParticipantPermissions_Writer, true)
+
+		// then it is refused before anything is generated: nobody approves a join through such a link, so
+		// it stays in the owner's account
+		require.ErrorIs(t, err, inviteservice.ErrInviteNotShareable)
+	})
+
+	t.Run("an invite shared within the space cannot be taken back", func(t *testing.T) {
+		// given an invite of the requested type that the members of the space already hold
+		fx := newFixture(t)
+		defer fx.finish(t)
+		spaceId := "spaceId"
+		fx.mockAccountService.EXPECT().PersonalSpaceID().Return("personal")
+		fx.mockInviteService.EXPECT().GetCurrent(ctx, spaceId).Return(domain.InviteInfo{
+			InviteFileCid: "testCid",
+			InviteFileKey: "testKey",
+			InviteType:    domain.InviteTypeAnyone,
+		}, nil)
+
+		// when the same invite is asked to be held by the owner instead
+		_, err := fx.GenerateInvite(ctx, spaceId, model.InviteType_WithoutApprove, model.ParticipantPermissions_Reader, false)
+
+		// then it is refused: the workspace's history has already handed the invite to every member, and
+		// only revoking it takes it back
+		require.ErrorIs(t, err, ErrInviteAlreadyShared)
+	})
+
 	t.Run("invite already exists", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
@@ -601,10 +922,44 @@ func TestService_GenerateInvite(t *testing.T) {
 		fx.mockInviteService.EXPECT().GetCurrent(ctx, spaceId).Return(domain.InviteInfo{
 			InviteType:    domain.InviteTypeAnyone,
 			InviteFileCid: "testCid",
+			HeldByOwner:   true,
 		}, nil)
-		info, err := fx.GenerateInvite(ctx, spaceId, model.InviteType_WithoutApprove, model.ParticipantPermissions_Reader)
+		info, err := fx.GenerateInvite(ctx, spaceId, model.InviteType_WithoutApprove, model.ParticipantPermissions_Reader, false)
 		require.NoError(t, err)
 		require.Equal(t, "testCid", info.InviteFileCid)
+	})
+
+	t.Run("admin cannot generate invite", func(t *testing.T) {
+		// given a space where "e" is an admin, not the owner
+		fx := newFixture(t)
+		defer fx.finish(t)
+		spaceId := "spaceId"
+		fx.mockAccountService.EXPECT().PersonalSpaceID().Return("personal")
+		fx.mockInviteService.EXPECT().GetCurrent(ctx, spaceId).Return(domain.InviteInfo{}, inviteservice.ErrInviteNotExists)
+		mockSpace := mock_clientspace.NewMockSpace(t)
+		mockCommonSpace := mock_commonspace.NewMockSpace(fx.ctrl)
+		mockSpace.EXPECT().CommonSpace().Return(mockCommonSpace)
+		fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(mockSpace, nil)
+
+		exec := list.NewAclExecutor(spaceId)
+		cmds := []struct {
+			cmd string
+			err error
+		}{
+			{"a.init::a", nil},
+			{"a.invite::invId", nil},
+			{"e.join::invId", nil},
+			{"a.approve::e,adm", nil},
+		}
+		for _, c := range cmds {
+			require.Equal(t, c.err, exec.Execute(c.cmd), c.cmd)
+		}
+		// the acl is seen from the admin's point of view, so the owner check fails before any invite is built
+		mockCommonSpace.EXPECT().Acl().Return(mockSyncAcl{exec.ActualAccounts()["e"].Acl})
+
+		info, err := fx.GenerateInvite(ctx, spaceId, model.InviteType_Member, model.ParticipantPermissions_Reader, false)
+		require.ErrorIs(t, err, ErrIncorrectPermissions)
+		require.Empty(t, info.InviteFileCid)
 	})
 }
 
@@ -737,21 +1092,43 @@ func TestService_Leave(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 		spaceId := "spaceId"
-		
+
 		// Mock ACL getter to return ACL records
 		keys, err := accountdata.NewRandom()
 		require.NoError(t, err)
 		aclList, err := list.NewInMemoryDerivedAcl(spaceId, keys)
 		require.NoError(t, err)
-		
+
 		// Get the raw records from the ACL to return them in the mock
 		records, err := aclList.RecordsAfter(ctx, "")
 		require.NoError(t, err)
-		
+
 		fx.mockJoiningClient.EXPECT().AclGetRecords(ctx, spaceId, "").Return(records, nil)
 		fx.mockJoiningClient.EXPECT().RequestSelfRemove(ctx, spaceId, gomock.Any()).Return(nil)
 		err = fx.Leave(ctx, spaceId)
 		require.NoError(t, err)
+	})
+	t.Run("leave evicts acl from getter cache", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish(t)
+		spaceId := "spaceId"
+
+		keys, err := accountdata.NewRandom()
+		require.NoError(t, err)
+		aclList, err := list.NewInMemoryDerivedAcl(spaceId, keys)
+		require.NoError(t, err)
+		records, err := aclList.RecordsAfter(ctx, "")
+		require.NoError(t, err)
+
+		fx.mockJoiningClient.EXPECT().AclGetRecords(ctx, spaceId, "").Return(records, nil)
+		fx.mockJoiningClient.EXPECT().RequestSelfRemove(ctx, spaceId, gomock.Any()).Return(nil)
+
+		err = fx.Leave(ctx, spaceId)
+		require.NoError(t, err)
+
+		// the network-fetched acl must not linger in the getter cache after leaving
+		_, cached := fx.getter.currentAcls[spaceId]
+		require.False(t, cached, "acl should be evicted from getter cache after leave")
 	})
 	t.Run("leave fail if acl getter error is known", func(t *testing.T) {
 		errs := []error{
@@ -794,7 +1171,7 @@ func TestService_Leave(t *testing.T) {
 				fx := newFixture(t)
 				defer fx.finish(t)
 				spaceId := "spaceId"
-				
+
 				// Mock ACL getter to return ACL records
 				keys, err := accountdata.NewRandom()
 				require.NoError(t, err)
@@ -802,10 +1179,10 @@ func TestService_Leave(t *testing.T) {
 				require.NoError(t, err)
 				records, err := aclList.RecordsAfter(ctx, "")
 				require.NoError(t, err)
-				
+
 				fx.mockJoiningClient.EXPECT().AclGetRecords(ctx, spaceId, "").Return(records, nil)
 				fx.mockJoiningClient.EXPECT().RequestSelfRemove(ctx, spaceId, gomock.Any()).Return(testErr)
-				
+
 				actualErr := fx.Leave(ctx, spaceId)
 				require.Error(t, actualErr)
 				// Check the expected error conversion based on the error type
@@ -827,7 +1204,7 @@ func TestService_Leave(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 		spaceId := "spaceId"
-		
+
 		// Mock ACL getter to return ACL records
 		keys, err := accountdata.NewRandom()
 		require.NoError(t, err)
@@ -835,10 +1212,10 @@ func TestService_Leave(t *testing.T) {
 		require.NoError(t, err)
 		records, err := aclList.RecordsAfter(ctx, "")
 		require.NoError(t, err)
-		
+
 		fx.mockJoiningClient.EXPECT().AclGetRecords(ctx, spaceId, "").Return(records, nil)
 		fx.mockJoiningClient.EXPECT().RequestSelfRemove(ctx, spaceId, gomock.Any()).Return(fmt.Errorf("unknown error"))
-		
+
 		err = fx.Leave(ctx, spaceId)
 		require.True(t, errors.Is(err, ErrAclRequestFailed))
 	})
@@ -851,10 +1228,336 @@ func TestService_Leave(t *testing.T) {
 
 		// Mock ACL getter to fail with "no such account" error (guest user scenario)
 		fx.mockJoiningClient.EXPECT().AclGetRecords(ctx, spaceId, "").Return(nil, list.ErrNoSuchAccount)
-		
+
 		err := fx.Leave(ctx, spaceId)
 		require.Error(t, err)
 		// ErrNoSuchAccount should be wrapped as ErrNoSuchAccount (converted in convertedOrAclRequestError)
 		require.True(t, errors.Is(err, ErrNoSuchAccount))
 	})
+}
+
+func TestService_ConcurrentInviteGeneration(t *testing.T) {
+	fx := newFixture(t)
+	defer fx.finish(t)
+	spaceId := "spaceId"
+	goroutines := 5
+
+	keys, err := accountdata.NewRandom()
+	require.NoError(t, err)
+
+	var concurrent atomic.Int32
+	var maxConcurrent atomic.Int32
+
+	fx.mockAccountService.EXPECT().PersonalSpaceID().Return("personal").Maybe()
+
+	// First call has no existing invite; subsequent ones find the invite already exists
+	fx.mockInviteService.EXPECT().GetCurrent(ctx, spaceId).
+		Return(domain.InviteInfo{}, inviteservice.ErrInviteNotExists).Once()
+	fx.mockInviteService.EXPECT().GetCurrent(ctx, spaceId).
+		Return(domain.InviteInfo{
+			InviteType:    domain.InviteTypeDefault,
+			InviteFileCid: "testCid",
+			HeldByOwner:   true,
+		}, nil).Maybe()
+
+	mockSpace := mock_clientspace.NewMockSpace(t)
+	mockCommonSpace := mock_commonspace.NewMockSpace(fx.ctrl)
+	mockAclClient := mock_aclclient.NewMockAclSpaceClient(fx.ctrl)
+
+	mockSpace.EXPECT().CommonSpace().Return(mockCommonSpace).Maybe()
+	mockCommonSpace.EXPECT().AclClient().Return(mockAclClient).AnyTimes()
+	mockCommonSpace.EXPECT().Acl().Return(newAcl(t)).AnyTimes()
+	fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(mockSpace, nil).Maybe()
+
+	rec := &consensusproto.RawRecord{Payload: []byte("test")}
+	mockAclClient.EXPECT().ReplaceInvite(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, payload aclclient.InvitePayload) (list.InviteResult, error) {
+			cur := concurrent.Add(1)
+			for {
+				old := maxConcurrent.Load()
+				if cur <= old || maxConcurrent.CompareAndSwap(old, cur) {
+					break
+				}
+			}
+			time.Sleep(50 * time.Millisecond)
+			concurrent.Add(-1)
+			return list.InviteResult{
+				InviteRec: rec,
+				InviteKey: keys.SignKey,
+			}, nil
+		}).AnyTimes()
+
+	mockAclClient.EXPECT().AddRecord(ctx, rec).
+		DoAndReturn(func(ctx context.Context, rec *consensusproto.RawRecord) error {
+			cur := concurrent.Add(1)
+			for {
+				old := maxConcurrent.Load()
+				if cur <= old || maxConcurrent.CompareAndSwap(old, cur) {
+					break
+				}
+			}
+			time.Sleep(50 * time.Millisecond)
+			concurrent.Add(-1)
+			return nil
+		}).AnyTimes()
+
+	fx.mockInviteService.EXPECT().Generate(ctx, mock.Anything, mock.Anything).
+		RunAndReturn(func(ctx2 context.Context, params inviteservice.GenerateInviteParams, f func() error) (domain.InviteInfo, error) {
+			return domain.InviteInfo{InviteFileCid: "testCid"}, f()
+		}).Maybe()
+
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+	for i := 0; i < goroutines; i++ {
+		go func() {
+			defer wg.Done()
+			_, genErr := fx.GenerateInvite(ctx, spaceId, model.InviteType_Member, model.ParticipantPermissions_Reader, false)
+			require.NoError(t, genErr)
+		}()
+	}
+	wg.Wait()
+
+	require.Equal(t, int32(1), maxConcurrent.Load(), "expected operations to be serialized, but observed concurrent execution")
+}
+
+func TestService_ConcurrentInviteAndAddAccounts(t *testing.T) {
+	fx := newFixture(t)
+	defer fx.finish(t)
+	spaceId := "spaceId"
+
+	keys, err := accountdata.NewRandom()
+	require.NoError(t, err)
+
+	var concurrent atomic.Int32
+	var maxConcurrent atomic.Int32
+
+	trackConcurrency := func(duration time.Duration) {
+		cur := concurrent.Add(1)
+		for {
+			old := maxConcurrent.Load()
+			if cur <= old || maxConcurrent.CompareAndSwap(old, cur) {
+				break
+			}
+		}
+		time.Sleep(duration)
+		concurrent.Add(-1)
+	}
+
+	fx.mockAccountService.EXPECT().PersonalSpaceID().Return("personal").Maybe()
+	fx.mockInviteService.EXPECT().GetCurrent(ctx, spaceId).
+		Return(domain.InviteInfo{}, inviteservice.ErrInviteNotExists).Maybe()
+
+	mockSpace := mock_clientspace.NewMockSpace(t)
+	mockCommonSpace := mock_commonspace.NewMockSpace(fx.ctrl)
+	mockAclClient := mock_aclclient.NewMockAclSpaceClient(fx.ctrl)
+
+	mockSpace.EXPECT().CommonSpace().Return(mockCommonSpace).Maybe()
+	mockCommonSpace.EXPECT().AclClient().Return(mockAclClient).AnyTimes()
+	mockCommonSpace.EXPECT().Acl().Return(newAcl(t)).AnyTimes()
+	fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(mockSpace, nil).Maybe()
+
+	rec := &consensusproto.RawRecord{Payload: []byte("test")}
+	mockAclClient.EXPECT().ReplaceInvite(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, payload aclclient.InvitePayload) (list.InviteResult, error) {
+			trackConcurrency(50 * time.Millisecond)
+			return list.InviteResult{
+				InviteRec: rec,
+				InviteKey: keys.SignKey,
+			}, nil
+		}).AnyTimes()
+
+	mockAclClient.EXPECT().AddRecord(ctx, rec).
+		DoAndReturn(func(ctx context.Context, rec *consensusproto.RawRecord) error {
+			trackConcurrency(50 * time.Millisecond)
+			return nil
+		}).AnyTimes()
+
+	mockAclClient.EXPECT().AddAccounts(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, payload list.AccountsAddPayload) error {
+			trackConcurrency(50 * time.Millisecond)
+			return nil
+		}).AnyTimes()
+
+	fx.mockInviteService.EXPECT().Generate(ctx, mock.Anything, mock.Anything).
+		RunAndReturn(func(ctx2 context.Context, params inviteservice.GenerateInviteParams, f func() error) (domain.InviteInfo, error) {
+			return domain.InviteInfo{InviteFileCid: "testCid"}, f()
+		}).Maybe()
+
+	var wg sync.WaitGroup
+	wg.Add(4)
+
+	// 2 concurrent invite generations
+	for i := 0; i < 2; i++ {
+		go func() {
+			defer wg.Done()
+			_, genErr := fx.GenerateInvite(ctx, spaceId, model.InviteType_Member, model.ParticipantPermissions_Reader, false)
+			require.NoError(t, genErr)
+		}()
+	}
+
+	// 2 concurrent AddAccounts
+	for i := 0; i < 2; i++ {
+		go func() {
+			defer wg.Done()
+			addErr := fx.AddAccounts(ctx, spaceId, []list.AccountAdd{
+				{Identity: keys.SignKey.GetPublic(), Permissions: list.AclPermissionsReader, Metadata: []byte("meta")},
+			})
+			require.NoError(t, addErr)
+		}()
+	}
+
+	wg.Wait()
+
+	require.Equal(t, int32(1), maxConcurrent.Load(), "expected operations to be serialized, but observed concurrent execution")
+}
+
+func TestService_ChangePermissions_Admin(t *testing.T) {
+	fx := newFixture(t)
+	defer fx.finish(t)
+	spaceId := "spaceId"
+	mockSpace := mock_clientspace.NewMockSpace(t)
+	mockCommonSpace := mock_commonspace.NewMockSpace(fx.ctrl)
+	fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(mockSpace, nil)
+	mockSpace.EXPECT().CommonSpace().Times(2).Return(mockCommonSpace)
+	exec := list.NewAclExecutor(spaceId)
+	type cmdErr struct {
+		cmd string
+		err error
+	}
+	cmds := []cmdErr{
+		{"a.init::a", nil},
+		{"a.invite::invId", nil},
+		{"b.join::invId", nil},
+		{"a.approve::b,r", nil},
+	}
+	for _, cmd := range cmds {
+		err := exec.Execute(cmd.cmd)
+		require.Equal(t, cmd.err, err, cmd)
+	}
+	identityB := exec.ActualAccounts()["b"].Keys.SignKey.GetPublic()
+	acl := mockSyncAcl{exec.ActualAccounts()["a"].Acl}
+	mockCommonSpace.EXPECT().Acl().Return(acl)
+	aclClient := mock_aclclient.NewMockAclSpaceClient(fx.ctrl)
+	mockCommonSpace.EXPECT().AclClient().Return(aclClient)
+	aclClient.EXPECT().ChangePermissions(ctx, gomock.Any()).DoAndReturn(func(ctx context.Context, payload list.PermissionChangesPayload) error {
+		require.Len(t, payload.Changes, 1)
+		require.True(t, payload.Changes[0].Identity.Equals(identityB))
+		require.Equal(t, list.AclPermissionsAdmin, payload.Changes[0].Permissions)
+		return nil
+	}).Return(nil)
+	err := fx.ChangePermissions(ctx, spaceId, []AccountPermissions{{
+		Account:     identityB,
+		Permissions: model.ParticipantPermissions_Admin,
+	}})
+	require.NoError(t, err)
+}
+
+func TestService_Accept_Admin(t *testing.T) {
+	fx := newFixture(t)
+	defer fx.finish(t)
+	spaceId := "spaceId"
+	mockSpace := mock_clientspace.NewMockSpace(t)
+	mockCommonSpace := mock_commonspace.NewMockSpace(fx.ctrl)
+	fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(mockSpace, nil)
+	mockSpace.EXPECT().CommonSpace().Times(2).Return(mockCommonSpace)
+	exec := list.NewAclExecutor(spaceId)
+	type cmdErr struct {
+		cmd string
+		err error
+	}
+	cmds := []cmdErr{
+		{"a.init::a", nil},
+		{"a.invite::invId", nil},
+		// b joins but is not yet approved
+		{"b.join::invId", nil},
+	}
+	for _, cmd := range cmds {
+		err := exec.Execute(cmd.cmd)
+		require.Equal(t, cmd.err, err, cmd)
+	}
+	identityB := exec.ActualAccounts()["b"].Keys.SignKey.GetPublic()
+	acl := mockSyncAcl{exec.ActualAccounts()["a"].Acl}
+	mockCommonSpace.EXPECT().Acl().Return(acl)
+	aclClient := mock_aclclient.NewMockAclSpaceClient(fx.ctrl)
+	mockCommonSpace.EXPECT().AclClient().Return(aclClient)
+	aclClient.EXPECT().AcceptRequest(ctx, gomock.Any()).DoAndReturn(func(ctx context.Context, payload list.RequestAcceptPayload) error {
+		require.Equal(t, list.AclPermissionsAdmin, payload.Permissions)
+		return nil
+	}).Return(nil)
+	err := fx.Accept(ctx, spaceId, identityB, model.ParticipantPermissions_Admin)
+	require.NoError(t, err)
+}
+
+func TestService_ChangePermissions_AdminRejectedByValidator(t *testing.T) {
+	fx := newFixture(t)
+	defer fx.finish(t)
+	spaceId := "spaceId"
+	mockSpace := mock_clientspace.NewMockSpace(t)
+	mockCommonSpace := mock_commonspace.NewMockSpace(fx.ctrl)
+	fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(mockSpace, nil)
+	mockSpace.EXPECT().CommonSpace().Times(2).Return(mockCommonSpace)
+	exec := list.NewAclExecutor(spaceId)
+	type cmdErr struct {
+		cmd string
+		err error
+	}
+	cmds := []cmdErr{
+		{"a.init::a", nil},
+		{"a.invite::invId", nil},
+		{"b.join::invId", nil},
+		{"a.approve::b,r", nil},
+	}
+	for _, cmd := range cmds {
+		err := exec.Execute(cmd.cmd)
+		require.Equal(t, cmd.err, err, cmd)
+	}
+	identityB := exec.ActualAccounts()["b"].Keys.SignKey.GetPublic()
+	acl := mockSyncAcl{exec.ActualAccounts()["a"].Acl}
+	mockCommonSpace.EXPECT().Acl().Return(acl)
+	aclClient := mock_aclclient.NewMockAclSpaceClient(fx.ctrl)
+	mockCommonSpace.EXPECT().AclClient().Return(aclClient)
+	// Simulate the underlying any-sync validator rejecting the change because the
+	// caller is not the owner. The heart should wrap this as ErrAclRequestFailed.
+	aclClient.EXPECT().ChangePermissions(ctx, gomock.Any()).Return(list.ErrInsufficientPermissions)
+
+	err := fx.ChangePermissions(ctx, spaceId, []AccountPermissions{{
+		Account:     identityB,
+		Permissions: model.ParticipantPermissions_Admin,
+	}})
+	require.Error(t, err)
+	require.ErrorIs(t, err, ErrAclRequestFailed)
+	require.ErrorIs(t, err, list.ErrInsufficientPermissions)
+}
+
+// TestAclGetter_ConcurrentNoRace guards the aclGetter map: Leave runs without aclClientLock, so concurrent
+// Leaves write currentAcls concurrently via GetOrRefreshAcl/RemoveAcl. Without the getter mutex this is a
+// fatal `concurrent map writes`; the mutex makes it safe. The getter is built directly (no app.Start) to
+// isolate the map fix from an unrelated pre-existing race in aclService.Run's background loop. Run under -race.
+func TestAclGetter_ConcurrentNoRace(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	keys, err := accountdata.NewRandom()
+	require.NoError(t, err)
+	aclList, err := list.NewInMemoryDerivedAcl("spaceId", keys)
+	require.NoError(t, err)
+	records, err := aclList.RecordsAfter(ctx, "")
+	require.NoError(t, err)
+
+	mockClient := mock_aclclient.NewMockAclJoiningClient(ctrl)
+	mockClient.EXPECT().AclGetRecords(gomock.Any(), gomock.Any(), gomock.Any()).Return(records, nil).AnyTimes()
+	mockNodeConf := mock_nodeconf.NewMockService(ctrl)
+	mockNodeConf.EXPECT().Configuration().Return(nodeconf.Configuration{NetworkId: ""}).AnyTimes()
+
+	g := newAclGetter(mockClient, keys, mockNodeConf)
+
+	var wg sync.WaitGroup
+	for i := 0; i < 25; i++ {
+		wg.Add(1)
+		go func(n int) {
+			defer wg.Done()
+			sp := fmt.Sprintf("space-%d", n)
+			_, _ = g.GetOrRefreshAcl(ctx, sp)
+			_ = g.RemoveAcl(ctx, sp)
+		}(i)
+	}
+	wg.Wait()
 }

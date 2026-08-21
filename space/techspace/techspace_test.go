@@ -84,6 +84,14 @@ func (s *spaceViewStub) GetSharedSpacesLimit() (limits int) {
 	return
 }
 
+func (s *spaceViewStub) SetInviteCleanupDone(coveredRevocation string) (err error) {
+	return
+}
+
+func (s *spaceViewStub) GetInviteCleanupDone() (coveredRevocation string) {
+	return
+}
+
 func (s *spaceViewStub) SetOwner(owner string, createdDate int64) (err error) {
 	return
 }
@@ -96,7 +104,7 @@ func (s *spaceViewStub) GetLocalInfo() spaceinfo.SpaceLocalInfo {
 	return spaceinfo.NewSpaceLocalInfo("spaceId")
 }
 
-func (s *spaceViewStub) SetInviteFileInfo(fileCid string, fileKey string) (err error) {
+func (s *spaceViewStub) SetInviteFileInfo(info domain.InviteInfo) (err error) {
 	return
 }
 
@@ -104,7 +112,7 @@ func (s *spaceViewStub) SetAclInfo(empty bool, pushKey crypto.PrivKey, pushEncKe
 	return
 }
 
-func (s *spaceViewStub) RemoveExistingInviteInfo() (fileCid string, err error) {
+func (s *spaceViewStub) RemoveExistingInviteInfo() (info domain.InviteInfo, err error) {
 	return
 }
 
@@ -112,7 +120,7 @@ func (s *spaceViewStub) GetSpaceDescription() (data spaceinfo.SpaceDescription) 
 	return
 }
 
-func (s *spaceViewStub) GetExistingInviteInfo() (fileCid string, fileKey string) {
+func (s *spaceViewStub) GetExistingInviteInfo() (info domain.InviteInfo) {
 	return
 }
 
@@ -312,6 +320,10 @@ func newFixture(t *testing.T, storeIDs []string) *fixture {
 		require.Equal(t, peer.CtxResponsiblePeers, peerId)
 		return nil, nil
 	}).Times(1)
+
+	// techspace.Run derives the personal favorites store after accountObject.
+	fx.objectCache.EXPECT().DeriveTreeObject(mock.Anything, mock.Anything).Return(nil, nil).Maybe()
+
 	require.NoError(t, fx.a.Start(ctx))
 	err := fx.TechSpace.Run(fx.techCore, fx.objectCache, false)
 	require.NoError(t, err)

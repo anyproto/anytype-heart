@@ -26,6 +26,7 @@ const (
 	ftSequenceKey      = "seq" // used to store the opstamp of the fulltext commit for the specific object
 	ftOrderIdKey       = "ord"
 	ftDeletedMsgIdsKey = "del" // used to store deleted message IDs for chat messages
+	ftGenKey           = "gen" // entry generation: bumped on every enqueue, checked on mark-as-indexed
 	ftRecheckKey       = "_ft_recheck"
 
 	FtAllOrderId = "_all" // constant to fetch all messages on fulltext reindex
@@ -43,8 +44,10 @@ var emptyBuffer = make([]byte, 8)
 var ftQueueCounter atomic.Uint64
 
 // GenerateFTQueueCounter returns next monotonic counter (unixTs*10000 + seqNum)
-// Uses lock-free CAS loop for thread safety
-// IMPORTANT NOTE: WILL sleep in case of > 10000 ops/sec
+// Uses lock-free CAS loop for thread safety. The timestamp component is
+// advanced synthetically on sequence exhaustion or a backwards clock step, so
+// the call never sleeps and never goes backwards; consumers only rely on
+// ordering, not on wall-clock accuracy.
 func GenerateFTQueueCounter() uint64 {
 	for {
 		current := ftQueueCounter.Load()
@@ -52,19 +55,25 @@ func GenerateFTQueueCounter() uint64 {
 		currentSeq := current % 10000
 
 		now := time.Now().Unix()
+		if now < currentTs {
+			// the wall clock stepped backwards: stay monotonic, the generation
+			// check in FtQueueMarkAsIndexed relies on fresh counters never
+			// colliding with previously issued ones
+			now = currentTs
+		}
 		var newVal uint64
 
 		if now == currentTs {
 			if currentSeq >= 9999 {
-				// Wait for next second
-				time.Sleep(time.Until(time.Unix(now+1, 0)))
-				continue // retry with new timestamp
+				// sequence exhausted within this (possibly pinned) second:
+				// borrow the next second instead of sleeping — sleeping until a
+				// PINNED future timestamp would stall callers for the whole
+				// clock-step duration
+				newVal = uint64(currentTs+1) * 10000
+			} else {
+				newVal = current + 1
 			}
-			newVal = current + 1
 		} else {
-			if currentSeq > 10 {
-				fmt.Printf("### %d ops/sec on fulltext queue detected\n", currentSeq)
-			}
 			newVal = uint64(now) * 10000
 		}
 
@@ -93,8 +102,10 @@ func (s *dsObjectStore) FtQueueReconcileWithSeq(ctx context.Context, ftIndexSeq 
 	}()
 
 	emptyVal := arena.NewBinary(emptyBuffer)
+	genVal := arena.NewNumberFloat64(float64(GenerateFTQueueCounter()))
 	res, err := s.fulltextQueue.Find(ftQueueFilterSeq(ftIndexSeq, query.CompOpGt, arena)).Update(txn.Context(), query.ModifyFunc(func(arena *anyenc.Arena, val *anyenc.Value) (*anyenc.Value, bool, error) {
 		val.Set(ftSequenceKey, emptyVal)
+		val.Set(ftGenKey, genVal)
 		return val, true, nil
 	}))
 
@@ -145,6 +156,7 @@ func (s *dsObjectStore) AddToIndexQueueWithCounter(ctx context.Context, ftQueueC
 	}()
 
 	obj := arena.NewObject()
+	genVal := arena.NewNumberFloat64(float64(ftQueueCtr))
 	var modified int
 	var uniqueSpaceIds = make(map[string]struct{})
 	for _, id := range ids {
@@ -152,9 +164,13 @@ func (s *dsObjectStore) AddToIndexQueueWithCounter(ctx context.Context, ftQueueC
 		obj.Set(spaceIdKey, arena.NewString(id.SpaceID))
 		uniqueSpaceIds[id.SpaceID] = struct{}{}
 		obj.Set(ftSequenceKey, arena.NewBinary(emptyBuffer))
+		obj.Set(ftGenKey, genVal)
 		res, err := s.fulltextQueue.UpsertId(txn.Context(), id.ObjectID, query.ModifyFunc(func(a *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
-			if anyencutil.Equal(v, obj) || v.GetString(ftOrderIdKey) != "" {
-				return v, false, nil
+			if v.GetString(ftOrderIdKey) != "" {
+				// chat entry with a pending message order id: keep it as is, but
+				// bump the generation so an in-flight mark-as-indexed is voided
+				v.Set(ftGenKey, genVal)
+				return v, true, nil
 			}
 
 			return obj, true, nil
@@ -198,24 +214,32 @@ func (s *dsObjectStore) AddChatMessageToIndexQueue(ctx context.Context, chatId d
 		s.arenaPool.Put(arena)
 	}()
 
+	gen := GenerateFTQueueCounter()
 	obj := arena.NewObject()
+	genVal := arena.NewNumberFloat64(float64(gen))
 	obj.Set(idKey, arena.NewString(chatId.ObjectID))
 	obj.Set(spaceIdKey, arena.NewString(chatId.SpaceID))
 	obj.Set(ftOrderIdKey, arena.NewString(orderId))
 	obj.Set(ftSequenceKey, arena.NewBinary(emptyBuffer))
+	obj.Set(ftGenKey, genVal)
 	_, err = s.fulltextQueue.UpsertId(txn.Context(), chatId.ObjectID, query.ModifyFunc(func(a *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
-		if anyencutil.Equal(v, obj) {
-			return v, false, nil
-		}
-
 		if existingDeleteList := v.Get(ftDeletedMsgIdsKey); existingDeleteList != nil && existingDeleteList.GetArray() != nil {
 			obj.Set(ftDeletedMsgIdsKey, existingDeleteList)
 		}
 
 		currentOrderId := v.GetString(ftOrderIdKey)
-		if currentOrderId != "" && (currentOrderId < orderId || currentOrderId == FtAllOrderId) {
-			// we take messages with orderId equal and more than saved in the queue
-			return v, false, nil
+		// An incoming FtAllOrderId ("_all") means "reindex the whole history" and
+		// must always win: it covers a strictly wider range than any real order
+		// id. We can't lean on string comparison for that — "_all" (0x5F '_')
+		// sorts AFTER every real order id (which start with 0x21 '!'), so
+		// `currentOrderId < orderId` would wrongly keep a pending real order id
+		// and the full-history backfill would silently index only messages from
+		// that order id forward (GO-7316).
+		if orderId != FtAllOrderId && currentOrderId != "" && (currentOrderId < orderId || currentOrderId == FtAllOrderId) {
+			// we take messages with orderId equal and more than saved in the queue;
+			// still bump the generation so an in-flight mark-as-indexed is voided
+			v.Set(ftGenKey, genVal)
+			return v, true, nil
 		}
 
 		return obj, true, nil
@@ -243,6 +267,7 @@ func (s *dsObjectStore) AddChatMessageDeleteToIndexQueue(ctx context.Context, ch
 	obj.Set(idKey, arena.NewString(chatId.ObjectID))
 	obj.Set(spaceIdKey, arena.NewString(chatId.SpaceID))
 	obj.Set(ftSequenceKey, arena.NewBinary(emptyBuffer))
+	obj.Set(ftGenKey, arena.NewNumberFloat64(float64(GenerateFTQueueCounter())))
 
 	_, err = s.fulltextQueue.UpsertId(txn.Context(), chatId.ObjectID, query.ModifyFunc(func(a *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
 		// Preserve orderId if exists
@@ -285,7 +310,7 @@ func (s *dsObjectStore) BatchProcessFullTextQueue(spaceIds func() []string, limi
 		}
 		if len(succeedIds) == 0 {
 			// special case to prevent infinite loop
-			return fmt.Errorf("all ids failed to process")
+			return fmt.Errorf("all ids failed to process (batch capped to limit: %v)", len(ids) == int(limit))
 		}
 		err = s.FtQueueMarkAsIndexed(succeedIds, ftIndexSeq)
 		if err != nil {
@@ -332,6 +357,7 @@ func (s *dsObjectStore) ListIdsFromFullTextQueue(spaceIds []string, limit uint) 
 			SpaceId:       doc.Value().GetString(spaceIdKey),
 			MsgOrderId:    doc.Value().GetString(ftOrderIdKey),
 			DeletedMsgIds: deletedMsgIds,
+			Gen:           uint64(doc.Value().GetFloat64(ftGenKey)),
 		})
 	}
 	return objects, nil
@@ -368,14 +394,15 @@ func ftSeq(seq uint64, arena *anyenc.Arena) *anyenc.Value {
 	return arena.NewBinary(buf)
 }
 
-func (s *dsObjectStore) FtQueueMarkAsIndexed(ids []domain.FullID, ftIndexSeq uint64) error {
+// FtQueueMarkAsIndexed stamps the given queue entries with the fulltext commit opstamp.
+// An entry is only marked when its generation still equals the one captured at listing
+// time; entries re-dirtied while the batch was processing stay pending, with all their
+// fields (e.g. chat order id, deleted message ids) intact.
+func (s *dsObjectStore) FtQueueMarkAsIndexed(objects []domain.FullTextQueuedObject, ftIndexSeq uint64) error {
 	txn, err := s.WriteTx(s.componentCtx)
 	if err != nil {
 		return fmt.Errorf("start write tx: %w", err)
 	}
-	defer func() {
-		_ = txn.Rollback()
-	}()
 
 	arena := s.arenaPool.Get()
 	defer func() {
@@ -384,23 +411,35 @@ func (s *dsObjectStore) FtQueueMarkAsIndexed(ids []domain.FullID, ftIndexSeq uin
 		s.arenaPool.Put(arena)
 	}()
 
-	obj := arena.NewObject()
 	buf := make([]byte, 8)
 	binary.BigEndian.PutUint64(buf, ftIndexSeq)
-	obj.Set(ftSequenceKey, arena.NewBinary(buf))
-	for _, id := range ids {
-		obj.Set(idKey, arena.NewString(id.ObjectID))
-		obj.Set(spaceIdKey, arena.NewString(id.SpaceID))
-		// stateKey is set outside the loop
-		err := s.fulltextQueue.UpdateOne(txn.Context(), obj)
+	seqVal := arena.NewBinary(buf)
+	for _, obj := range objects {
+		listedGen := obj.Gen
+		_, err := s.fulltextQueue.UpdateId(txn.Context(), obj.ObjectId, query.ModifyFunc(func(a *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
+			if uint64(v.GetFloat64(ftGenKey)) != listedGen {
+				// the entry was re-enqueued while the batch was processing: it must
+				// stay pending so the newer change gets indexed
+				return v, false, nil
+			}
+			v.Set(ftSequenceKey, seqVal)
+			// the generation match proves no enqueue raced the batch, so the
+			// order id and deletion list were fully processed; they must not
+			// survive the mark — a stale order id would make the next
+			// AddChatMessageToIndexQueue keep the entry marked as indexed,
+			// silently stopping chat indexing
+			v.Del(ftOrderIdKey)
+			v.Del(ftDeletedMsgIdsKey)
+			return v, true, nil
+		}))
 		if errors.Is(err, anystore.ErrDocNotFound) {
 			// should not happen
-			log.Warnf("tried to remove %s from fulltext queue, but it was not found", id)
+			log.Warnf("tried to remove %s from fulltext queue, but it was not found", obj.ObjectId)
 			continue
 		}
 		if err != nil {
 			// if we have the error here we have nothing to do but retry later
-			log.Errorf("failed to remove %s from index, will redo the fulltext index: %v", id, err)
+			log.Errorf("failed to remove %s from index, will redo the fulltext index: %v", obj.ObjectId, err)
 		}
 	}
 

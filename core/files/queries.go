@@ -1,6 +1,7 @@
 package files
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -25,8 +26,8 @@ func collectKeysFromVariants(variants []*storage.FileInfo) map[string]string {
 	return keys
 }
 
-func (s *service) getFileVariantBySourceChecksum(mill string, sourceChecksum string, options string) (*existingFile, error) {
-	recs, err := s.objectStore.QueryCrossSpace(database.Query{
+func (s *service) getFileVariantBySourceChecksum(ctx context.Context, mill string, sourceChecksum string, options string) (*existingFile, error) {
+	recs, err := s.objectStore.QueryCrossSpace(ctx, database.Query{
 		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyFileVariantMills,
@@ -42,6 +43,13 @@ func (s *service) getFileVariantBySourceChecksum(mill string, sourceChecksum str
 				RelationKey: bundle.RelationKeyFileVariantOptions,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.String(options),
+			},
+			{
+				// A deleted file's blocks may be gone from the node, so its
+				// DAG must not be reused
+				RelationKey: bundle.RelationKeyIsDeleted,
+				Condition:   model.BlockContentDataviewFilter_NotEqual,
+				Value:       domain.Bool(true),
 			},
 		},
 		Limit: 1,
@@ -75,8 +83,8 @@ func (s *service) getFileVariantBySourceChecksum(mill string, sourceChecksum str
 	}, nil
 }
 
-func (s *service) getFileVariantByChecksum(mill string, variantChecksum string) (*existingFile, *storage.FileInfo, error) {
-	recs, err := s.objectStore.QueryCrossSpace(database.Query{
+func (s *service) getFileVariantByChecksum(ctx context.Context, mill string, variantChecksum string) (*existingFile, *storage.FileInfo, error) {
+	recs, err := s.objectStore.QueryCrossSpace(ctx, database.Query{
 		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyFileVariantMills,
@@ -87,6 +95,13 @@ func (s *service) getFileVariantByChecksum(mill string, variantChecksum string) 
 				RelationKey: bundle.RelationKeyFileVariantChecksums,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.String(variantChecksum),
+			},
+			{
+				// A deleted file's blocks may be gone from the node, so its
+				// DAG must not be reused
+				RelationKey: bundle.RelationKeyIsDeleted,
+				Condition:   model.BlockContentDataviewFilter_NotEqual,
+				Value:       domain.Bool(true),
 			},
 		},
 		Limit: 1,

@@ -7,8 +7,6 @@ import (
 
 	app "github.com/anyproto/any-sync/app"
 
-	domain "github.com/anyproto/anytype-heart/core/domain"
-
 	mock "github.com/stretchr/testify/mock"
 
 	pb "github.com/anyproto/anytype-heart/pb"
@@ -121,7 +119,7 @@ func (_c *MockService_Init_Call) RunAndReturn(run func(*app.App) error) *MockSer
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockService) Name() string {
 	ret := _m.Called()
 
@@ -328,65 +326,6 @@ func (_c *MockService_SubscribeGroups_Call) RunAndReturn(run func(subscription.S
 	return _c
 }
 
-// SubscribeIds provides a mock function with given fields: subId, ids
-func (_m *MockService) SubscribeIds(subId string, ids []string) ([]*domain.Details, error) {
-	ret := _m.Called(subId, ids)
-
-	if len(ret) == 0 {
-		panic("no return value specified for SubscribeIds")
-	}
-
-	var r0 []*domain.Details
-	var r1 error
-	if rf, ok := ret.Get(0).(func(string, []string) ([]*domain.Details, error)); ok {
-		return rf(subId, ids)
-	}
-	if rf, ok := ret.Get(0).(func(string, []string) []*domain.Details); ok {
-		r0 = rf(subId, ids)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*domain.Details)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(string, []string) error); ok {
-		r1 = rf(subId, ids)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockService_SubscribeIds_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SubscribeIds'
-type MockService_SubscribeIds_Call struct {
-	*mock.Call
-}
-
-// SubscribeIds is a helper method to define mock.On call
-//   - subId string
-//   - ids []string
-func (_e *MockService_Expecter) SubscribeIds(subId interface{}, ids interface{}) *MockService_SubscribeIds_Call {
-	return &MockService_SubscribeIds_Call{Call: _e.mock.On("SubscribeIds", subId, ids)}
-}
-
-func (_c *MockService_SubscribeIds_Call) Run(run func(subId string, ids []string)) *MockService_SubscribeIds_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].([]string))
-	})
-	return _c
-}
-
-func (_c *MockService_SubscribeIds_Call) Return(records []*domain.Details, err error) *MockService_SubscribeIds_Call {
-	_c.Call.Return(records, err)
-	return _c
-}
-
-func (_c *MockService_SubscribeIds_Call) RunAndReturn(run func(string, []string) ([]*domain.Details, error)) *MockService_SubscribeIds_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // SubscribeIdsReq provides a mock function with given fields: req
 func (_m *MockService) SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (*pb.RpcObjectSubscribeIdsResponse, error) {
 	ret := _m.Called(req)
@@ -445,7 +384,7 @@ func (_c *MockService_SubscribeIdsReq_Call) RunAndReturn(run func(pb.RpcObjectSu
 	return _c
 }
 
-// SubscriptionIDs provides a mock function with given fields:
+// SubscriptionIDs provides a mock function with no fields
 func (_m *MockService) SubscriptionIDs() []string {
 	ret := _m.Called()
 
@@ -547,51 +486,6 @@ func (_c *MockService_Unsubscribe_Call) Return(err error) *MockService_Unsubscri
 }
 
 func (_c *MockService_Unsubscribe_Call) RunAndReturn(run func(...string) error) *MockService_Unsubscribe_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// UnsubscribeAll provides a mock function with given fields:
-func (_m *MockService) UnsubscribeAll() error {
-	ret := _m.Called()
-
-	if len(ret) == 0 {
-		panic("no return value specified for UnsubscribeAll")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func() error); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockService_UnsubscribeAll_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UnsubscribeAll'
-type MockService_UnsubscribeAll_Call struct {
-	*mock.Call
-}
-
-// UnsubscribeAll is a helper method to define mock.On call
-func (_e *MockService_Expecter) UnsubscribeAll() *MockService_UnsubscribeAll_Call {
-	return &MockService_UnsubscribeAll_Call{Call: _e.mock.On("UnsubscribeAll")}
-}
-
-func (_c *MockService_UnsubscribeAll_Call) Run(run func()) *MockService_UnsubscribeAll_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *MockService_UnsubscribeAll_Call) Return(err error) *MockService_UnsubscribeAll_Call {
-	_c.Call.Return(err)
-	return _c
-}
-
-func (_c *MockService_UnsubscribeAll_Call) RunAndReturn(run func() error) *MockService_UnsubscribeAll_Call {
 	_c.Call.Return(run)
 	return _c
 }

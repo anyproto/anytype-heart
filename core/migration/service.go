@@ -91,6 +91,14 @@ func (s *service) Close() error {
 // In network mode (not local-only), it also waits for the node to be connected to the network
 // to ensure remote changes have been received before running migrations.
 func (s *service) RunMigrationsWhenIdle(spaceId string, derivedIDs threads.DerivedSmartblockIds) {
+	// Fast path: every migration run by runAllMigrations is gated by a persisted marker.
+	// When all markers are already set there is nothing to wait for, so exit before the
+	// polling loop instead of keeping a per-space goroutine ticking for the whole session.
+	// A new migration added to runAllMigrations must extend this check with its own gate.
+	if s.isObjectContextMigrationDone(s.objectStore.SpaceIndex(spaceId), derivedIDs.Workspace) {
+		return
+	}
+
 	isLocalOnly := s.networkConfig.GetNetworkMode() == pb.RpcAccount_LocalOnly
 	onlineSince := time.Time{}
 	for {

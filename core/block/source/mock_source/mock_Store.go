@@ -5,8 +5,10 @@ package mock_source
 import (
 	context "context"
 
-	pb "github.com/anyproto/anytype-heart/pb"
+	list "github.com/anyproto/any-sync/commonspace/object/acl/list"
 	mock "github.com/stretchr/testify/mock"
+
+	pb "github.com/anyproto/anytype-heart/pb"
 
 	smartblock "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 
@@ -30,7 +32,54 @@ func (_m *MockStore) EXPECT() *MockStore_Expecter {
 	return &MockStore_Expecter{mock: &_m.Mock}
 }
 
-// Close provides a mock function with given fields:
+// AclList provides a mock function with no fields
+func (_m *MockStore) AclList() list.AclList {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for AclList")
+	}
+
+	var r0 list.AclList
+	if rf, ok := ret.Get(0).(func() list.AclList); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(list.AclList)
+		}
+	}
+
+	return r0
+}
+
+// MockStore_AclList_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AclList'
+type MockStore_AclList_Call struct {
+	*mock.Call
+}
+
+// AclList is a helper method to define mock.On call
+func (_e *MockStore_Expecter) AclList() *MockStore_AclList_Call {
+	return &MockStore_AclList_Call{Call: _e.mock.On("AclList")}
+}
+
+func (_c *MockStore_AclList_Call) Run(run func()) *MockStore_AclList_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockStore_AclList_Call) Return(_a0 list.AclList) *MockStore_AclList_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockStore_AclList_Call) RunAndReturn(run func() list.AclList) *MockStore_AclList_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Close provides a mock function with no fields
 func (_m *MockStore) Close() error {
 	ret := _m.Called()
 
@@ -75,7 +124,7 @@ func (_c *MockStore_Close_Call) RunAndReturn(run func() error) *MockStore_Close_
 	return _c
 }
 
-// GetCreationInfo provides a mock function with given fields:
+// GetCreationInfo provides a mock function with no fields
 func (_m *MockStore) GetCreationInfo() (string, int64, error) {
 	ret := _m.Called()
 
@@ -137,7 +186,7 @@ func (_c *MockStore_GetCreationInfo_Call) RunAndReturn(run func() (string, int64
 	return _c
 }
 
-// GetFileKeysSnapshot provides a mock function with given fields:
+// GetFileKeysSnapshot provides a mock function with no fields
 func (_m *MockStore) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 	ret := _m.Called()
 
@@ -184,7 +233,7 @@ func (_c *MockStore_GetFileKeysSnapshot_Call) RunAndReturn(run func() []*pb.Chan
 	return _c
 }
 
-// Heads provides a mock function with given fields:
+// Heads provides a mock function with no fields
 func (_m *MockStore) Heads() []string {
 	ret := _m.Called()
 
@@ -231,7 +280,7 @@ func (_c *MockStore_Heads_Call) RunAndReturn(run func() []string) *MockStore_Hea
 	return _c
 }
 
-// Id provides a mock function with given fields:
+// Id provides a mock function with no fields
 func (_m *MockStore) Id() string {
 	ret := _m.Called()
 
@@ -545,7 +594,7 @@ func (_c *MockStore_ReadDoc_Call) RunAndReturn(run func(context.Context, source.
 	return _c
 }
 
-// ReadOnly provides a mock function with given fields:
+// ReadOnly provides a mock function with no fields
 func (_m *MockStore) ReadOnly() bool {
 	ret := _m.Called()
 
@@ -668,7 +717,7 @@ func (_c *MockStore_RegisterDiffManager_Call) Return() *MockStore_RegisterDiffMa
 }
 
 func (_c *MockStore_RegisterDiffManager_Call) RunAndReturn(run func(string, func([]string))) *MockStore_RegisterDiffManager_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -701,11 +750,11 @@ func (_c *MockStore_SetPushChangeHook_Call) Return() *MockStore_SetPushChangeHoo
 }
 
 func (_c *MockStore_SetPushChangeHook_Call) RunAndReturn(run func(source.PushChangeHook)) *MockStore_SetPushChangeHook_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
-// SpaceID provides a mock function with given fields:
+// SpaceID provides a mock function with no fields
 func (_m *MockStore) SpaceID() string {
 	ret := _m.Called()
 
@@ -797,7 +846,7 @@ func (_c *MockStore_StoreSeenHeads_Call) RunAndReturn(run func(context.Context, 
 	return _c
 }
 
-// Type provides a mock function with given fields:
+// Type provides a mock function with no fields
 func (_m *MockStore) Type() smartblock.SmartBlockType {
 	ret := _m.Called()
 

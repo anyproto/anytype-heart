@@ -19,6 +19,7 @@ const (
 	FileStatePendingDeletion
 	FileStateDone
 	FileStateDeleted
+	FileStateMissingBlocks // File's local blocks are missing, upload is paused
 )
 
 // IsUploadingState returns true if a state related to the uploading process, including uploaded (Done) state
@@ -44,6 +45,10 @@ type FileInfo struct {
 	BytesToUploadOrBind int
 	CidsToBind          map[cid.Cid]struct{}
 	CidsToUpload        map[cid.Cid]struct{}
+
+	// MissingBlocksRetries counts how many times the file was found in
+	// MissingBlocks state; used to grow the retry backoff
+	MissingBlocksRetries int
 }
 
 func (i FileInfo) FullFileId() domain.FullFileId {
@@ -78,6 +83,7 @@ func marshalFileInfo(arena *anyenc.Arena, info FileInfo) *anyenc.Value {
 	obj.Set("addedByUser", newBool(arena, info.AddedByUser))
 	obj.Set("imported", newBool(arena, info.Imported))
 	obj.Set("bytesToUploadOrBind", arena.NewNumberInt(info.BytesToUploadOrBind))
+	obj.Set("missingBlocksRetries", arena.NewNumberInt(info.MissingBlocksRetries))
 
 	cidsToUpload := arena.NewArray()
 	var i int
@@ -131,16 +137,17 @@ func unmarshalFileInfo(doc *anyenc.Value) (FileInfo, error) {
 		return FileInfo{}, fmt.Errorf("invalid file id: %q", fileId.String())
 	}
 	return FileInfo{
-		FileId:              fileId,
-		SpaceId:             doc.GetString("spaceId"),
-		ObjectId:            doc.GetString("id"),
-		State:               FileState(doc.GetInt("state")),
-		ScheduledAt:         time.Unix(int64(doc.GetInt("scheduledAt")), 0).UTC(),
-		Variants:            variants,
-		AddedByUser:         doc.GetBool("addedByUser"),
-		Imported:            doc.GetBool("imported"),
-		BytesToUploadOrBind: doc.GetInt("bytesToUploadOrBind"),
-		CidsToBind:          cidsToBind,
-		CidsToUpload:        cidsToUpload,
+		FileId:               fileId,
+		SpaceId:              doc.GetString("spaceId"),
+		ObjectId:             doc.GetString("id"),
+		State:                FileState(doc.GetInt("state")),
+		ScheduledAt:          time.Unix(int64(doc.GetInt("scheduledAt")), 0).UTC(),
+		Variants:             variants,
+		AddedByUser:          doc.GetBool("addedByUser"),
+		Imported:             doc.GetBool("imported"),
+		BytesToUploadOrBind:  doc.GetInt("bytesToUploadOrBind"),
+		CidsToBind:           cidsToBind,
+		CidsToUpload:         cidsToUpload,
+		MissingBlocksRetries: doc.GetInt("missingBlocksRetries"),
 	}, nil
 }

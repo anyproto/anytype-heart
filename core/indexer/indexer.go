@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/samber/lo"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -17,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/participants"
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -26,8 +29,16 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 )
+
+// openedObjectsProvider is the part of the block service used to prioritize
+// reindex slots for spaces the user currently has objects open in; entry.Value
+// is the object's space id.
+type openedObjectsProvider interface {
+	GetOpenedObjects() []lo.Entry[string, string]
+}
 
 const (
 	CName = "indexer"
@@ -69,6 +80,9 @@ type indexer struct {
 	ftQueueStop     context.CancelFunc
 	ftQueueFinished chan struct{}
 	config          *config.Config
+	// reindexLimiter bounds cross-space concurrency of the outdated-objects
+	// reindex pass and prioritizes spaces the user is looking at
+	reindexLimiter *reindexLimiter
 
 	btHash  Hasher
 	forceFt chan struct{}
@@ -92,6 +106,21 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.picker = app.MustComponent[cache.CachedObjectGetter](a)
 	i.runCtx, i.runCtxCancel = context.WithCancel(context.Background())
 	i.forceFt = make(chan struct{})
+	// optional (absent in tests): reindex slot priority source, resolved by name
+	// to avoid importing core/block (same pattern as space/service.go's sweep)
+	var openedSpaceIds func() map[string]struct{}
+	if c := a.Component(space.BlockServiceCName); c != nil {
+		if provider, ok := c.(openedObjectsProvider); ok {
+			openedSpaceIds = func() map[string]struct{} {
+				opened := map[string]struct{}{}
+				for _, entry := range provider.GetOpenedObjects() {
+					opened[entry.Value] = struct{}{}
+				}
+				return opened
+			}
+		}
+	}
+	i.reindexLimiter = newReindexLimiter(maxConcurrentSpaceReindexFor(runtime.GOOS), openedSpaceIds)
 	i.config = app.MustComponent[*config.Config](a)
 	i.spaceIndexers = map[string]*spaceIndexer{}
 	i.techSpaceIdProvider = app.MustComponent[objectstore.TechSpaceIdProvider](a)
@@ -162,6 +191,9 @@ func (i *indexer) RemoveAclIndexes(spaceId string) (err error) {
 			},
 		},
 	})
+	if err != nil {
+		return fmt.Errorf("query participant ids: %w", err)
+	}
 	err = i.store.ClearFullTextQueue([]string{spaceId})
 	if err != nil {
 		return fmt.Errorf("remove fts: %w", err)
@@ -173,6 +205,12 @@ func (i *indexer) RemoveAclIndexes(spaceId string) (err error) {
 		return fmt.Errorf("remove acl: %w", err)
 	}
 
+	// the records are wiped, so the next space load must run full ACL processing
+	err = store.SaveLastIndexedHeadsHash(i.runCtx, participants.AclHeadMarkerId, "")
+	if err != nil {
+		return fmt.Errorf("clear participants acl head marker: %w", err)
+	}
+
 	return store.DeleteDetails(i.runCtx, ids)
 }
 
@@ -182,6 +220,12 @@ func (i *indexer) isFulltextEnabled(space smartblock.Space) bool {
 }
 
 func (i *indexer) Index(info smartblock.DocInfo, options ...smartblock.IndexOption) error {
+	if info.SmartblockType.DetailsStoreOwned() {
+		// store-owned objects (participants) are written to the object index directly
+		// by their dedicated writers; the smartblock state is only a derived view and
+		// may be stale, so writing it back here would corrupt the record
+		return nil
+	}
 	i.lock.Lock()
 	spaceInd, ok := i.spaceIndexers[info.Space.Id()]
 	if !ok {

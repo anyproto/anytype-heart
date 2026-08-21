@@ -1,7 +1,10 @@
 package spaceindex
 
 import (
+	"math"
+	"sort"
 	"testing"
+	"time"
 
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/stretchr/testify/assert"
@@ -30,502 +33,142 @@ func emptyFilters(t *testing.T, s *StoreFixture) database.Filters {
 	return newFilters(t, s, nil, nil)
 }
 
-func TestGetObjectsWithObjectInRelation(t *testing.T) {
-	t.Run("returns nil when path relation is not name or pluralName", func(t *testing.T) {
-		// given
-		s := NewStoreFixture(t)
+func TestInjectionRelationKey(t *testing.T) {
+	t.Run("skips non-name path", func(t *testing.T) {
 		details := makeDetails(TestObject{
-			bundle.RelationKeyId:             domain.String("tag1"),
-			bundle.RelationKeyName:           domain.String("myTag"),
 			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relationOption)),
-			bundle.RelationKeyRelationKey:    domain.String("tagRel"),
 		})
-		path := domain.ObjectPath{ObjectId: "tag1", RelationKey: "description"}
-
-		// when
-		result := s.getObjectsWithObjectInRelation(details, 1.0, path, 10, emptyFilters(t, s))
-
-		// then
-		assert.Nil(t, result)
+		_, ok := injectionRelationKey(details, false)
+		assert.False(t, ok)
 	})
 
-	t.Run("returns nil when object is deleted", func(t *testing.T) {
-		// given
-		s := NewStoreFixture(t)
+	t.Run("skips deleted object", func(t *testing.T) {
 		details := makeDetails(TestObject{
-			bundle.RelationKeyId:             domain.String("tag1"),
-			bundle.RelationKeyName:           domain.String("myTag"),
 			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relationOption)),
-			bundle.RelationKeyRelationKey:    domain.String("tagRel"),
 			bundle.RelationKeyIsDeleted:      domain.Bool(true),
 		})
-		path := domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}
-
-		// when
-		result := s.getObjectsWithObjectInRelation(details, 1.0, path, 10, emptyFilters(t, s))
-
-		// then
-		assert.Nil(t, result)
+		_, ok := injectionRelationKey(details, true)
+		assert.False(t, ok)
 	})
 
-	t.Run("returns nil when object is archived", func(t *testing.T) {
-		// given
-		s := NewStoreFixture(t)
+	t.Run("skips archived object", func(t *testing.T) {
 		details := makeDetails(TestObject{
-			bundle.RelationKeyId:             domain.String("tag1"),
-			bundle.RelationKeyName:           domain.String("myTag"),
 			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relationOption)),
-			bundle.RelationKeyRelationKey:    domain.String("tagRel"),
 			bundle.RelationKeyIsArchived:     domain.Bool(true),
 		})
-		path := domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}
-
-		// when
-		result := s.getObjectsWithObjectInRelation(details, 1.0, path, 10, emptyFilters(t, s))
-
-		// then
-		assert.Nil(t, result)
+		_, ok := injectionRelationKey(details, true)
+		assert.False(t, ok)
 	})
 
-	t.Run("returns nil for unsupported layout", func(t *testing.T) {
-		// given
-		s := NewStoreFixture(t)
+	t.Run("skips unsupported layout", func(t *testing.T) {
 		details := makeDetails(TestObject{
-			bundle.RelationKeyId:             domain.String("obj1"),
-			bundle.RelationKeyName:           domain.String("mySet"),
 			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_set)),
 		})
-		path := domain.ObjectPath{ObjectId: "obj1", RelationKey: bundle.RelationKeyName.String()}
-
-		// when
-		result := s.getObjectsWithObjectInRelation(details, 1.0, path, 10, emptyFilters(t, s))
-
-		// then
-		assert.Nil(t, result)
+		_, ok := injectionRelationKey(details, true)
+		assert.False(t, ok)
 	})
 
-	t.Run("returns objects with matching tag (relationOption layout)", func(t *testing.T) {
-		// given
-		s := NewStoreFixture(t)
+	for _, layout := range []model.ObjectTypeLayout{
+		model.ObjectType_basic,
+		model.ObjectType_note,
+		model.ObjectType_profile,
+		model.ObjectType_todo,
+		model.ObjectType_participant,
+	} {
+		t.Run("returns links for "+layout.String(), func(t *testing.T) {
+			details := makeDetails(TestObject{
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(layout)),
+			})
+			key, ok := injectionRelationKey(details, true)
+			require.True(t, ok)
+			assert.Equal(t, bundle.RelationKeyLinks, key)
+		})
+	}
 
-		tagObj := TestObject{
-			bundle.RelationKeyId:             domain.String("tag1"),
-			bundle.RelationKeyName:           domain.String("Important"),
+	t.Run("returns type for objectType layout", func(t *testing.T) {
+		details := makeDetails(TestObject{
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
+		})
+		key, ok := injectionRelationKey(details, true)
+		require.True(t, ok)
+		assert.Equal(t, bundle.RelationKeyType, key)
+	})
+
+	t.Run("skips relationOption without relation key", func(t *testing.T) {
+		details := makeDetails(TestObject{
 			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relationOption)),
-			bundle.RelationKeyRelationKey:    domain.String("myTagRel"),
-		}
-		obj1 := TestObject{
-			bundle.RelationKeyId:             domain.String("obj1"),
-			bundle.RelationKeyName:           domain.String("Object 1"),
-			domain.RelationKey("myTagRel"):   domain.StringList([]string{"tag1"}),
-			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
-		}
-		obj2 := TestObject{
-			bundle.RelationKeyId:             domain.String("obj2"),
-			bundle.RelationKeyName:           domain.String("Object 2"),
-			domain.RelationKey("myTagRel"):   domain.StringList([]string{"tag1", "tag2"}),
-			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
-		}
-		s.AddObjects(t, []TestObject{tagObj, obj1, obj2})
-
-		path := domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}
-
-		// when
-		result := s.getObjectsWithObjectInRelation(makeDetails(tagObj), 0.8, path, 10, emptyFilters(t, s))
-
-		// then
-		require.Len(t, result, 2)
-		gotIds := []string{
-			result[0].Details.GetString(bundle.RelationKeyId),
-			result[1].Details.GetString(bundle.RelationKeyId),
-		}
-		assert.ElementsMatch(t, []string{"obj1", "obj2"}, gotIds)
-
-		// verify score is propagated
-		for _, rec := range result {
-			assert.Equal(t, 0.8, rec.Details.GetFloat64(database.RecordScoreField))
-		}
-
-		// verify meta
-		for _, rec := range result {
-			assert.Equal(t, "myTagRel", rec.Meta.RelationKey)
-			assert.NotNil(t, rec.Meta.RelationDetails)
-		}
+		})
+		_, ok := injectionRelationKey(details, true)
+		assert.False(t, ok)
 	})
 
-	t.Run("returns objects with matching type (objectType layout)", func(t *testing.T) {
-		// given
-		s := NewStoreFixture(t)
-
-		typeObj := TestObject{
-			bundle.RelationKeyId:             domain.String("type1"),
-			bundle.RelationKeyName:           domain.String("Task"),
-			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
-		}
-		obj1 := TestObject{
-			bundle.RelationKeyId:             domain.String("obj1"),
-			bundle.RelationKeyName:           domain.String("My task"),
-			bundle.RelationKeyType:           domain.String("type1"),
-			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
-		}
-		obj2 := TestObject{
-			bundle.RelationKeyId:             domain.String("obj2"),
-			bundle.RelationKeyName:           domain.String("Another task"),
-			bundle.RelationKeyType:           domain.String("type1"),
-			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
-		}
-		obj3 := TestObject{
-			bundle.RelationKeyId:             domain.String("obj3"),
-			bundle.RelationKeyName:           domain.String("A note"),
-			bundle.RelationKeyType:           domain.String("type2"),
-			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_note)),
-		}
-		s.AddObjects(t, []TestObject{typeObj, obj1, obj2, obj3})
-
-		path := domain.ObjectPath{ObjectId: "type1", RelationKey: bundle.RelationKeyName.String()}
-
-		// when
-		result := s.getObjectsWithObjectInRelation(makeDetails(typeObj), 0.5, path, 10, emptyFilters(t, s))
-
-		// then
-		require.Len(t, result, 2)
-		gotIds := []string{
-			result[0].Details.GetString(bundle.RelationKeyId),
-			result[1].Details.GetString(bundle.RelationKeyId),
-		}
-		assert.ElementsMatch(t, []string{"obj1", "obj2"}, gotIds)
-
-		for _, rec := range result {
-			assert.Equal(t, "type", rec.Meta.RelationKey)
-		}
-	})
-
-	t.Run("returns objects linked via links relation for basic layout", func(t *testing.T) {
-		// given
-		s := NewStoreFixture(t)
-
-		linkedObj := TestObject{
-			bundle.RelationKeyId:             domain.String("linked1"),
-			bundle.RelationKeyName:           domain.String("Linked Object"),
-			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
-		}
-		obj1 := TestObject{
-			bundle.RelationKeyId:             domain.String("obj1"),
-			bundle.RelationKeyName:           domain.String("Object with link"),
-			bundle.RelationKeyLinks:          domain.StringList([]string{"linked1"}),
-			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
-		}
-		s.AddObjects(t, []TestObject{linkedObj, obj1})
-
-		path := domain.ObjectPath{ObjectId: "linked1", RelationKey: bundle.RelationKeyName.String()}
-
-		// when
-		result := s.getObjectsWithObjectInRelation(makeDetails(linkedObj), 0.7, path, 10, emptyFilters(t, s))
-
-		// then
-		require.Len(t, result, 1)
-		assert.Equal(t, "obj1", result[0].Details.GetString(bundle.RelationKeyId))
-		assert.Equal(t, "links", result[0].Meta.RelationKey)
-	})
-
-	t.Run("returns objects linked via links relation for note layout", func(t *testing.T) {
-		// given
-		s := NewStoreFixture(t)
-
-		noteObj := TestObject{
-			bundle.RelationKeyId:             domain.String("note1"),
-			bundle.RelationKeyName:           domain.String("My Note"),
-			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_note)),
-		}
-		obj1 := TestObject{
-			bundle.RelationKeyId:             domain.String("obj1"),
-			bundle.RelationKeyName:           domain.String("Linking object"),
-			bundle.RelationKeyLinks:          domain.StringList([]string{"note1"}),
-			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
-		}
-		s.AddObjects(t, []TestObject{noteObj, obj1})
-
-		path := domain.ObjectPath{ObjectId: "note1", RelationKey: bundle.RelationKeyName.String()}
-
-		// when
-		result := s.getObjectsWithObjectInRelation(makeDetails(noteObj), 0.9, path, 10, emptyFilters(t, s))
-
-		// then
-		require.Len(t, result, 1)
-		assert.Equal(t, "obj1", result[0].Details.GetString(bundle.RelationKeyId))
-		assert.Equal(t, "links", result[0].Meta.RelationKey)
-	})
-
-	t.Run("returns objects linked via links relation for profile layout", func(t *testing.T) {
-		// given
-		s := NewStoreFixture(t)
-
-		profileObj := TestObject{
-			bundle.RelationKeyId:             domain.String("profile1"),
-			bundle.RelationKeyName:           domain.String("John"),
-			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_profile)),
-		}
-		obj1 := TestObject{
-			bundle.RelationKeyId:             domain.String("obj1"),
-			bundle.RelationKeyName:           domain.String("Document by John"),
-			bundle.RelationKeyLinks:          domain.StringList([]string{"profile1"}),
-			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
-		}
-		s.AddObjects(t, []TestObject{profileObj, obj1})
-
-		path := domain.ObjectPath{ObjectId: "profile1", RelationKey: bundle.RelationKeyName.String()}
-
-		// when
-		result := s.getObjectsWithObjectInRelation(makeDetails(profileObj), 0.6, path, 10, emptyFilters(t, s))
-
-		// then
-		require.Len(t, result, 1)
-		assert.Equal(t, "obj1", result[0].Details.GetString(bundle.RelationKeyId))
-		assert.Equal(t, "links", result[0].Meta.RelationKey)
-	})
-
-	t.Run("returns objects linked via links relation for todo layout", func(t *testing.T) {
-		// given
-		s := NewStoreFixture(t)
-
-		todoObj := TestObject{
-			bundle.RelationKeyId:             domain.String("todo1"),
-			bundle.RelationKeyName:           domain.String("Buy groceries"),
-			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_todo)),
-		}
-		obj1 := TestObject{
-			bundle.RelationKeyId:             domain.String("obj1"),
-			bundle.RelationKeyName:           domain.String("Shopping plan"),
-			bundle.RelationKeyLinks:          domain.StringList([]string{"todo1"}),
-			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
-		}
-		s.AddObjects(t, []TestObject{todoObj, obj1})
-
-		path := domain.ObjectPath{ObjectId: "todo1", RelationKey: bundle.RelationKeyName.String()}
-
-		// when
-		result := s.getObjectsWithObjectInRelation(makeDetails(todoObj), 0.5, path, 10, emptyFilters(t, s))
-
-		// then
-		require.Len(t, result, 1)
-		assert.Equal(t, "obj1", result[0].Details.GetString(bundle.RelationKeyId))
-		assert.Equal(t, "links", result[0].Meta.RelationKey)
-	})
-
-	t.Run("returns objects linked via links relation for participant layout", func(t *testing.T) {
-		// given
-		s := NewStoreFixture(t)
-
-		participantObj := TestObject{
-			bundle.RelationKeyId:             domain.String("participant1"),
-			bundle.RelationKeyName:           domain.String("Alice"),
-			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
-		}
-		obj1 := TestObject{
-			bundle.RelationKeyId:             domain.String("obj1"),
-			bundle.RelationKeyName:           domain.String("Project with Alice"),
-			bundle.RelationKeyLinks:          domain.StringList([]string{"participant1"}),
-			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
-		}
-		s.AddObjects(t, []TestObject{participantObj, obj1})
-
-		path := domain.ObjectPath{ObjectId: "participant1", RelationKey: bundle.RelationKeyName.String()}
-
-		// when
-		result := s.getObjectsWithObjectInRelation(makeDetails(participantObj), 0.4, path, 10, emptyFilters(t, s))
-
-		// then
-		require.Len(t, result, 1)
-		assert.Equal(t, "obj1", result[0].Details.GetString(bundle.RelationKeyId))
-		assert.Equal(t, "links", result[0].Meta.RelationKey)
-	})
-
-	t.Run("works with pluralName path", func(t *testing.T) {
-		// given
-		s := NewStoreFixture(t)
-
-		typeObj := TestObject{
-			bundle.RelationKeyId:             domain.String("type1"),
-			bundle.RelationKeyName:           domain.String("Task"),
-			bundle.RelationKeyPluralName:     domain.String("Tasks"),
-			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
-		}
-		obj1 := TestObject{
-			bundle.RelationKeyId:             domain.String("obj1"),
-			bundle.RelationKeyName:           domain.String("My task"),
-			bundle.RelationKeyType:           domain.String("type1"),
-			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
-		}
-		s.AddObjects(t, []TestObject{typeObj, obj1})
-
-		path := domain.ObjectPath{ObjectId: "type1", RelationKey: bundle.RelationKeyPluralName.String()}
-
-		// when
-		result := s.getObjectsWithObjectInRelation(makeDetails(typeObj), 0.5, path, 10, emptyFilters(t, s))
-
-		// then
-		require.Len(t, result, 1)
-		assert.Equal(t, "obj1", result[0].Details.GetString(bundle.RelationKeyId))
-	})
-
-	t.Run("respects limit parameter", func(t *testing.T) {
-		// given
-		s := NewStoreFixture(t)
-
-		typeObj := TestObject{
-			bundle.RelationKeyId:             domain.String("type1"),
-			bundle.RelationKeyName:           domain.String("Task"),
-			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
-		}
-		for i := 0; i < 5; i++ {
-			obj := TestObject{
-				bundle.RelationKeyId:             domain.String("obj" + string(rune('A'+i))),
-				bundle.RelationKeyName:           domain.String("Task item"),
-				bundle.RelationKeyType:           domain.String("type1"),
-				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
-			}
-			s.AddObjects(t, []TestObject{obj})
-		}
-		s.AddObjects(t, []TestObject{typeObj})
-
-		path := domain.ObjectPath{ObjectId: "type1", RelationKey: bundle.RelationKeyName.String()}
-
-		// when
-		result := s.getObjectsWithObjectInRelation(makeDetails(typeObj), 0.5, path, 2, emptyFilters(t, s))
-
-		// then
-		assert.Len(t, result, 2)
-	})
-
-	t.Run("respects params filter", func(t *testing.T) {
-		// given
-		s := NewStoreFixture(t)
-
-		typeObj := TestObject{
-			bundle.RelationKeyId:             domain.String("type1"),
-			bundle.RelationKeyName:           domain.String("Task"),
-			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
-		}
-		obj1 := TestObject{
-			bundle.RelationKeyId:             domain.String("obj1"),
-			bundle.RelationKeyName:           domain.String("Active task"),
-			bundle.RelationKeyType:           domain.String("type1"),
-			bundle.RelationKeyIsArchived:     domain.Bool(false),
-			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
-		}
-		obj2 := TestObject{
-			bundle.RelationKeyId:             domain.String("obj2"),
-			bundle.RelationKeyName:           domain.String("Archived task"),
-			bundle.RelationKeyType:           domain.String("type1"),
-			bundle.RelationKeyIsArchived:     domain.Bool(true),
-			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
-		}
-		s.AddObjects(t, []TestObject{typeObj, obj1, obj2})
-
-		path := domain.ObjectPath{ObjectId: "type1", RelationKey: bundle.RelationKeyName.String()}
-		params := newFilters(t, s, []database.FilterRequest{
-			{
-				RelationKey: bundle.RelationKeyIsArchived,
-				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       domain.Bool(true),
-			},
-		}, nil)
-
-		// when
-		result := s.getObjectsWithObjectInRelation(makeDetails(typeObj), 0.5, path, 10, params)
-
-		// then
-		require.Len(t, result, 1)
-		assert.Equal(t, "obj1", result[0].Details.GetString(bundle.RelationKeyId))
-	})
-
-	t.Run("sets correct score on injected results", func(t *testing.T) {
-		// given
-		s := NewStoreFixture(t)
-
-		tagObj := TestObject{
-			bundle.RelationKeyId:             domain.String("tag1"),
-			bundle.RelationKeyName:           domain.String("Priority"),
+	t.Run("returns custom relation key for relationOption layout", func(t *testing.T) {
+		details := makeDetails(TestObject{
 			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relationOption)),
 			bundle.RelationKeyRelationKey:    domain.String("priority"),
-		}
-		obj1 := TestObject{
-			bundle.RelationKeyId:             domain.String("obj1"),
-			bundle.RelationKeyName:           domain.String("Task 1"),
-			domain.RelationKey("priority"):   domain.StringList([]string{"tag1"}),
-			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
-		}
-		s.AddObjects(t, []TestObject{tagObj, obj1})
-
-		path := domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}
-
-		// when
-		result := s.getObjectsWithObjectInRelation(makeDetails(tagObj), 1.5, path, 10, emptyFilters(t, s))
-
-		// then
-		require.Len(t, result, 1)
-		assert.Equal(t, 1.5, result[0].Details.GetFloat64(database.RecordScoreField))
-	})
-
-	t.Run("sets correct meta with filtered relation details", func(t *testing.T) {
-		// given
-		s := NewStoreFixture(t)
-
-		tagObj := TestObject{
-			bundle.RelationKeyId:                  domain.String("tag1"),
-			bundle.RelationKeyName:                domain.String("Urgent"),
-			bundle.RelationKeyType:                domain.String("optionType"),
-			bundle.RelationKeyResolvedLayout:      domain.Int64(int64(model.ObjectType_relationOption)),
-			bundle.RelationKeyRelationKey:         domain.String("priority"),
-			bundle.RelationKeyRelationOptionColor: domain.String("red"),
-			bundle.RelationKeyDescription:         domain.String("should not be included"),
-		}
-		obj1 := TestObject{
-			bundle.RelationKeyId:             domain.String("obj1"),
-			bundle.RelationKeyName:           domain.String("Task 1"),
-			domain.RelationKey("priority"):   domain.StringList([]string{"tag1"}),
-			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
-		}
-		s.AddObjects(t, []TestObject{tagObj, obj1})
-
-		path := domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}
-
-		// when
-		result := s.getObjectsWithObjectInRelation(makeDetails(tagObj), 1.0, path, 10, emptyFilters(t, s))
-
-		// then
-		require.Len(t, result, 1)
-		assert.Equal(t, "priority", result[0].Meta.RelationKey)
-
-		wantRelDetails := pbtypes.StructFilterKeys(makeDetails(tagObj).ToProto(), []string{
-			bundle.RelationKeyId.String(),
-			bundle.RelationKeyName.String(),
-			bundle.RelationKeyType.String(),
-			bundle.RelationKeyResolvedLayout.String(),
-			bundle.RelationKeyRelationOptionColor.String(),
 		})
-		assert.Equal(t, wantRelDetails, result[0].Meta.RelationDetails)
+		key, ok := injectionRelationKey(details, true)
+		require.True(t, ok)
+		assert.Equal(t, domain.RelationKey("priority"), key)
 	})
 
-	t.Run("returns empty when no objects match", func(t *testing.T) {
-		// given
-		s := NewStoreFixture(t)
+	t.Run("works with pluralName-derived name match", func(t *testing.T) {
+		details := makeDetails(TestObject{
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
+		})
+		// NameMatch is true for both name and pluralName best docs
+		_, ok := injectionRelationKey(details, true)
+		assert.True(t, ok)
+	})
+}
 
-		tagObj := TestObject{
-			bundle.RelationKeyId:             domain.String("tag1"),
-			bundle.RelationKeyName:           domain.String("Unused tag"),
-			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relationOption)),
-			bundle.RelationKeyRelationKey:    domain.String("tagRel"),
+func TestMatchHit(t *testing.T) {
+	relKey := domain.RelationKey("tags")
+
+	t.Run("returns false when no value matches", func(t *testing.T) {
+		details := makeDetails(TestObject{
+			relKey: domain.StringList([]string{"x", "y"}),
+		})
+		hitMap := map[string]injectionHit{
+			"other": {id: "other", score: 1.0},
 		}
-		s.AddObjects(t, []TestObject{tagObj})
 
-		path := domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}
+		_, ok := matchHit(details, relKey, hitMap)
+		assert.False(t, ok)
+	})
 
-		// when
-		result := s.getObjectsWithObjectInRelation(makeDetails(tagObj), 1.0, path, 10, emptyFilters(t, s))
+	t.Run("picks highest-scoring hit regardless of value order", func(t *testing.T) {
+		// given the lower-scoring hit appears first in the relation value list
+		details := makeDetails(TestObject{
+			relKey: domain.StringList([]string{"low", "high", "mid"}),
+		})
+		hitMap := map[string]injectionHit{
+			"low":  {id: "low", score: 0.5},
+			"mid":  {id: "mid", score: 1.0},
+			"high": {id: "high", score: 3.0},
+		}
 
-		// then
-		assert.Empty(t, result)
+		hit, ok := matchHit(details, relKey, hitMap)
+
+		require.True(t, ok)
+		assert.Equal(t, "high", hit.id)
+		assert.Equal(t, 3.0, hit.score)
+	})
+
+	t.Run("ties are broken deterministically by id", func(t *testing.T) {
+		// given two hits with equal score, listed in arbitrary order
+		details := makeDetails(TestObject{
+			relKey: domain.StringList([]string{"zebra", "apple"}),
+		})
+		hitMap := map[string]injectionHit{
+			"zebra": {id: "zebra", score: 1.0},
+			"apple": {id: "apple", score: 1.0},
+		}
+
+		hit, ok := matchHit(details, relKey, hitMap)
+
+		require.True(t, ok)
+		assert.Equal(t, "apple", hit.id)
 	})
 }
 
@@ -546,8 +189,8 @@ func TestQueryFromFulltext(t *testing.T) {
 		s.AddObjects(t, []TestObject{obj1, obj2})
 
 		results := []database.FulltextResult{
-			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "name"}, Score: 1.0},
-			{Path: domain.ObjectPath{ObjectId: "obj2", RelationKey: "name"}, Score: 0.5},
+			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "name"}, Score: 1.0, NameMatch: true},
+			{Path: domain.ObjectPath{ObjectId: "obj2", RelationKey: "name"}, Score: 0.5, NameMatch: true},
 		}
 
 		// when
@@ -578,8 +221,8 @@ func TestQueryFromFulltext(t *testing.T) {
 		s.AddObjects(t, []TestObject{obj1, obj2})
 
 		results := []database.FulltextResult{
-			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "name"}, Score: 1.0},
-			{Path: domain.ObjectPath{ObjectId: "obj2", RelationKey: "name"}, Score: 0.5},
+			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "name"}, Score: 1.0, NameMatch: true},
+			{Path: domain.ObjectPath{ObjectId: "obj2", RelationKey: "name"}, Score: 0.5, NameMatch: true},
 		}
 		params := newFilters(t, s, []database.FilterRequest{
 			{
@@ -609,7 +252,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		s.AddObjects(t, []TestObject{obj1})
 
 		results := []database.FulltextResult{
-			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "name"}, Score: 1.0},
+			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "name"}, Score: 1.0, NameMatch: true},
 			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "description"}, Score: 0.5},
 		}
 
@@ -640,7 +283,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		s.AddObjects(t, []TestObject{tagObj, obj1})
 
 		results := []database.FulltextResult{
-			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0},
+			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0, NameMatch: true},
 		}
 		params := newFilters(t, s, []database.FilterRequest{
 			{
@@ -658,6 +301,100 @@ func TestQueryFromFulltext(t *testing.T) {
 		require.Len(t, recs, 1)
 		assert.Equal(t, "obj1", recs[0].Details.GetString(bundle.RelationKeyId))
 		assert.Equal(t, "priority", recs[0].Meta.RelationKey)
+	})
+
+	t.Run("injected record carries hit score and recomputed final_score", func(t *testing.T) {
+		// given
+		s := NewStoreFixture(t)
+		tagObj := TestObject{
+			bundle.RelationKeyId:             domain.String("tag1"),
+			bundle.RelationKeyName:           domain.String("Priority"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relationOption)),
+			bundle.RelationKeyRelationKey:    domain.String("priority"),
+		}
+		obj1 := TestObject{
+			bundle.RelationKeyId:             domain.String("obj1"),
+			bundle.RelationKeyName:           domain.String("Task 1"),
+			domain.RelationKey("priority"):   domain.StringList([]string{"tag1"}),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+		}
+		s.AddObjects(t, []TestObject{tagObj, obj1})
+
+		results := []database.FulltextResult{
+			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.5, NameMatch: true},
+		}
+		params := newFilters(t, s, []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout,
+				Condition:   model.BlockContentDataviewFilter_NotIn,
+				Value:       domain.Int64List([]int64{int64(model.ObjectType_relationOption)}),
+			},
+		}, nil)
+
+		// when
+		recs, err := s.QueryFromFulltext(results, params, 0, 0, "Priority")
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, recs, 1)
+		injected := recs[0]
+		assert.Equal(t, "obj1", injected.Details.GetString(bundle.RelationKeyId))
+		assert.Equal(t, 1.5, injected.Details.GetFloat64(bundle.RelationKey_score))
+		// final_score is recomputed from the hit score against the injected record details (no name match path)
+		assert.InDelta(t,
+			database.ComputeFinalScore(1.5, injected.Details, false),
+			injected.Details.GetFloat64(bundle.RelationKey_final_score),
+			1e-9,
+		)
+	})
+
+	t.Run("injected Meta.RelationDetails is filtered to whitelisted keys", func(t *testing.T) {
+		// given a tag with extra fields that should NOT leak into RelationDetails
+		s := NewStoreFixture(t)
+		tagObj := TestObject{
+			bundle.RelationKeyId:                  domain.String("tag1"),
+			bundle.RelationKeyName:                domain.String("Urgent"),
+			bundle.RelationKeyType:                domain.String("optionType"),
+			bundle.RelationKeyResolvedLayout:      domain.Int64(int64(model.ObjectType_relationOption)),
+			bundle.RelationKeyRelationKey:         domain.String("priority"),
+			bundle.RelationKeyRelationOptionColor: domain.String("red"),
+			bundle.RelationKeyDescription:         domain.String("should not be included"),
+		}
+		obj1 := TestObject{
+			bundle.RelationKeyId:             domain.String("obj1"),
+			bundle.RelationKeyName:           domain.String("Task 1"),
+			domain.RelationKey("priority"):   domain.StringList([]string{"tag1"}),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+		}
+		s.AddObjects(t, []TestObject{tagObj, obj1})
+
+		results := []database.FulltextResult{
+			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0, NameMatch: true},
+		}
+		params := newFilters(t, s, []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout,
+				Condition:   model.BlockContentDataviewFilter_NotIn,
+				Value:       domain.Int64List([]int64{int64(model.ObjectType_relationOption)}),
+			},
+		}, nil)
+
+		// when
+		recs, err := s.QueryFromFulltext(results, params, 0, 0, "Urgent")
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, recs, 1)
+		assert.Equal(t, "priority", recs[0].Meta.RelationKey)
+
+		wantRelDetails := pbtypes.StructFilterKeys(makeDetails(tagObj).ToProto(), []string{
+			bundle.RelationKeyId.String(),
+			bundle.RelationKeyName.String(),
+			bundle.RelationKeyType.String(),
+			bundle.RelationKeyResolvedLayout.String(),
+			bundle.RelationKeyRelationOptionColor.String(),
+		})
+		assert.Equal(t, wantRelDetails, recs[0].Meta.RelationDetails)
 	})
 
 	t.Run("injects objects found by type name", func(t *testing.T) {
@@ -683,7 +420,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		s.AddObjects(t, []TestObject{typeObj, obj1, obj2})
 
 		results := []database.FulltextResult{
-			{Path: domain.ObjectPath{ObjectId: "type1", RelationKey: bundle.RelationKeyName.String()}, Score: 0.9},
+			{Path: domain.ObjectPath{ObjectId: "type1", RelationKey: bundle.RelationKeyName.String()}, Score: 0.9, NameMatch: true},
 		}
 		params := newFilters(t, s, []database.FilterRequest{
 			{
@@ -726,7 +463,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		s.AddObjects(t, []TestObject{linkedObj, obj1})
 
 		results := []database.FulltextResult{
-			{Path: domain.ObjectPath{ObjectId: "linked1", RelationKey: bundle.RelationKeyName.String()}, Score: 0.8},
+			{Path: domain.ObjectPath{ObjectId: "linked1", RelationKey: bundle.RelationKeyName.String()}, Score: 0.8, NameMatch: true},
 		}
 
 		// when
@@ -791,9 +528,9 @@ func TestQueryFromFulltext(t *testing.T) {
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
 		results := []database.FulltextResult{
-			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "name"}, Score: 3.0},
-			{Path: domain.ObjectPath{ObjectId: "obj2", RelationKey: "name"}, Score: 2.0},
-			{Path: domain.ObjectPath{ObjectId: "obj3", RelationKey: "name"}, Score: 1.0},
+			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "name"}, Score: 3.0, NameMatch: true},
+			{Path: domain.ObjectPath{ObjectId: "obj2", RelationKey: "name"}, Score: 2.0, NameMatch: true},
+			{Path: domain.ObjectPath{ObjectId: "obj3", RelationKey: "name"}, Score: 1.0, NameMatch: true},
 		}
 
 		// when
@@ -843,7 +580,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		s.AddObjects(t, []TestObject{obj1})
 
 		results := []database.FulltextResult{
-			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "name"}, Score: 1.0},
+			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "name"}, Score: 1.0, NameMatch: true},
 		}
 
 		// when
@@ -875,9 +612,9 @@ func TestQueryFromFulltext(t *testing.T) {
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
 		results := []database.FulltextResult{
-			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "name"}, Score: 1.0},
-			{Path: domain.ObjectPath{ObjectId: "obj2", RelationKey: "name"}, Score: 0.9},
-			{Path: domain.ObjectPath{ObjectId: "obj3", RelationKey: "name"}, Score: 0.8},
+			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "name"}, Score: 1.0, NameMatch: true},
+			{Path: domain.ObjectPath{ObjectId: "obj2", RelationKey: "name"}, Score: 0.9, NameMatch: true},
+			{Path: domain.ObjectPath{ObjectId: "obj3", RelationKey: "name"}, Score: 0.8, NameMatch: true},
 		}
 		params := newFilters(t, s, nil, []database.SortRequest{
 			{
@@ -916,8 +653,8 @@ func TestQueryFromFulltext(t *testing.T) {
 
 		// obj1 appears both as direct result and as injected result from tag
 		results := []database.FulltextResult{
-			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "name"}, Score: 2.0},
-			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0},
+			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "name"}, Score: 2.0, NameMatch: true},
+			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0, NameMatch: true},
 		}
 
 		// when
@@ -976,7 +713,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		s.AddObjects(t, []TestObject{obj1})
 
 		results := []database.FulltextResult{
-			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "name"}, Score: 3.14},
+			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "name"}, Score: 3.14, NameMatch: true},
 		}
 
 		// when
@@ -985,7 +722,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		require.Len(t, recs, 1)
-		assert.InDelta(t, 3.14, recs[0].Details.GetFloat64(database.RecordScoreField), 0.001)
+		assert.InDelta(t, 3.14, recs[0].Details.GetFloat64(bundle.RelationKey_score), 0.001)
 	})
 
 	t.Run("highlight is generated from title when not provided", func(t *testing.T) {
@@ -1074,9 +811,9 @@ func TestQueryFromFulltext(t *testing.T) {
 		s.AddObjects(t, []TestObject{tagObj, typeObj, directObj, otherObj})
 
 		results := []database.FulltextResult{
-			{Path: domain.ObjectPath{ObjectId: "direct1", RelationKey: "name"}, Score: 2.0},
-			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.5},
-			{Path: domain.ObjectPath{ObjectId: "type1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0},
+			{Path: domain.ObjectPath{ObjectId: "direct1", RelationKey: "name"}, Score: 2.0, NameMatch: true},
+			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.5, NameMatch: true},
+			{Path: domain.ObjectPath{ObjectId: "type1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0, NameMatch: true},
 		}
 
 		// when
@@ -1118,8 +855,8 @@ func TestQueryFromFulltext(t *testing.T) {
 		s.AddObjects(t, []TestObject{obj1})
 
 		results := []database.FulltextResult{
-			{Path: domain.ObjectPath{ObjectId: "nonexistent", RelationKey: "name"}, Score: 2.0},
-			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "name"}, Score: 1.0},
+			{Path: domain.ObjectPath{ObjectId: "nonexistent", RelationKey: "name"}, Score: 2.0, NameMatch: true},
+			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "name"}, Score: 1.0, NameMatch: true},
 		}
 
 		// when
@@ -1150,7 +887,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		s.AddObjects(t, []TestObject{tagObj, obj1})
 
 		results := []database.FulltextResult{
-			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0},
+			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0, NameMatch: true},
 		}
 
 		// when
@@ -1185,7 +922,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		s.AddObjects(t, objects)
 
 		results := []database.FulltextResult{
-			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0},
+			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0, NameMatch: true},
 		}
 
 		// when — no limit (upperBound = 0, injectLimit stays 0 = unlimited)
@@ -1218,20 +955,22 @@ func TestQueryFromFulltext(t *testing.T) {
 		s.AddObjects(t, objects)
 
 		results := []database.FulltextResult{
-			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0},
+			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0, NameMatch: true},
 		}
 
-		// when — limit=3 → upperBound=3
-		// After tag1 added: len(records)=1, upperBound(3) > 1 → injectLimit = 3-1 = 2
-		// Only 2 of 5 tagged objects are injected
+		// when — the injection budget is request-independent, so all 5 tagged
+		// objects join the sequence; the page is produced by slicing it
 		recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 3, 0, "Priority")
 
-		// then — tag1 + 2 injected = 3 total
+		// then — page of 3 out of tag1 + 5 injected
 		require.NoError(t, err)
 		assert.Len(t, recs, 3)
 	})
 
-	t.Run("injection is skipped when limit is already reached by direct results", func(t *testing.T) {
+	t.Run("injection is independent of the requested page", func(t *testing.T) {
+		// Injections must not depend on limit/offset: a page-derived injection
+		// budget would make different offsets paginate different sequences,
+		// producing duplicates across pages.
 		// given
 		s := NewStoreFixture(t)
 
@@ -1260,31 +999,81 @@ func TestQueryFromFulltext(t *testing.T) {
 		s.AddObjects(t, []TestObject{obj1, obj2, tagObj, taggedObj})
 
 		results := []database.FulltextResult{
-			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "name"}, Score: 3.0},
-			{Path: domain.ObjectPath{ObjectId: "obj2", RelationKey: "name"}, Score: 2.0},
-			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0},
+			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "name"}, Score: 3.0, NameMatch: true},
+			{Path: domain.ObjectPath{ObjectId: "obj2", RelationKey: "name"}, Score: 2.0, NameMatch: true},
+			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0, NameMatch: true},
 		}
 
 		params := newFilters(t, s, nil, []database.SortRequest{
 			{RelationKey: bundle.RelationKeyName, Type: model.BlockContentDataviewSort_Asc},
 		})
+		// full sequence sorted by name: tagged1 (injected), tag1, obj1, obj2
+		want := []string{"tagged1", "tag1", "obj1", "obj2"}
 
-		// when — limit=2 → upperBound=2
-		// After obj1: len=1, 2>1 → injectLimit=1 (basic, no linkers → no injection)
-		// After obj2: len=2, !(2>2), 2>0 → continue (injection skipped)
-		// After tag1: len=3, !(2>3), 2>0 → continue (injection skipped)
-		// records=[obj1,obj2,tag1], sorted by name=[tag1,obj1,obj2], sliced to 2=[tag1,obj1]
-		// tagged1 would sort first ("AAA") if injected, but injection was skipped
-		recs, err := s.QueryFromFulltext(results, params, 2, 0, "test")
-
-		// then
+		// when: pages with different limits/offsets
+		page1, err := s.QueryFromFulltext(results, params, 2, 0, "test")
 		require.NoError(t, err)
-		require.Len(t, recs, 2)
-		gotIds := []string{
-			recs[0].Details.GetString(bundle.RelationKeyId),
-			recs[1].Details.GetString(bundle.RelationKeyId),
+		page2, err := s.QueryFromFulltext(results, params, 2, 2, "test")
+		require.NoError(t, err)
+
+		// then: pages are consistent prefixes/slices of the same sequence
+		var got []string
+		for _, recs := range [][]database.Record{page1, page2} {
+			for _, rec := range recs {
+				got = append(got, rec.Details.GetString(bundle.RelationKeyId))
+			}
 		}
-		assert.NotContains(t, gotIds, "tagged1")
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("higher-scoring group wins injection budget deterministically", func(t *testing.T) {
+		// given two injection groups (tag relation and type) competing for a single budget slot
+		s := NewStoreFixture(t)
+		tagObj := TestObject{
+			bundle.RelationKeyId:             domain.String("tag1"),
+			bundle.RelationKeyName:           domain.String("Match"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relationOption)),
+			bundle.RelationKeyRelationKey:    domain.String("color"),
+		}
+		typeObj := TestObject{
+			bundle.RelationKeyId:             domain.String("type1"),
+			bundle.RelationKeyName:           domain.String("Match"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
+		}
+		taggedObj := TestObject{
+			bundle.RelationKeyId:             domain.String("objA"),
+			bundle.RelationKeyName:           domain.String("Tagged"),
+			domain.RelationKey("color"):      domain.StringList([]string{"tag1"}),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+		}
+		typedObj := TestObject{
+			bundle.RelationKeyId:             domain.String("objB"),
+			bundle.RelationKeyName:           domain.String("Typed"),
+			bundle.RelationKeyType:           domain.String("type1"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+		}
+		s.AddObjects(t, []TestObject{tagObj, typeObj, taggedObj, typedObj})
+
+		results := []database.FulltextResult{
+			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 2.0, NameMatch: true},
+			{Path: domain.ObjectPath{ObjectId: "type1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0, NameMatch: true},
+		}
+
+		// when — limit=3: tag1 and type1 fill 2 slots, budget=1; the "color" group
+		// has the higher-scoring hit, so objA must be injected, never objB
+		want := []string{"objA", "tag1", "type1"}
+		for i := 0; i < 20; i++ {
+			recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 3, 0, "Match")
+
+			// then
+			require.NoError(t, err)
+			got := make([]string, 0, len(recs))
+			for _, rec := range recs {
+				got = append(got, rec.Details.GetString(bundle.RelationKeyId))
+			}
+			sort.Strings(got)
+			require.Equal(t, want, got, "iteration %d: injection must be deterministic", i)
+		}
 	})
 
 	t.Run("archived tag does not inject results", func(t *testing.T) {
@@ -1306,7 +1095,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		s.AddObjects(t, []TestObject{tagObj, obj1})
 
 		results := []database.FulltextResult{
-			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0},
+			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0, NameMatch: true},
 		}
 
 		// when
@@ -1317,5 +1106,143 @@ func TestQueryFromFulltext(t *testing.T) {
 		for _, rec := range recs {
 			assert.NotEqual(t, "obj1", rec.Details.GetString(bundle.RelationKeyId))
 		}
+	})
+}
+
+func TestQueryFromFulltext_FinalScore(t *testing.T) {
+	t.Run("_final_score equals ln(1+score) when dates are zero and no name match", func(t *testing.T) {
+		// given
+		s := NewStoreFixture(t)
+		obj := TestObject{
+			bundle.RelationKeyId:             domain.String("obj1"),
+			bundle.RelationKeyName:           domain.String("Test Object"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+			// no date fields set, so recency contribution is zero
+		}
+		s.AddObjects(t, []TestObject{obj})
+
+		score := 2.77
+		results := []database.FulltextResult{
+			{
+				Path:  domain.ObjectPath{ObjectId: "obj1", RelationKey: "description"}, // not "name"
+				Score: score,
+			},
+		}
+
+		// when
+		records, err := s.QueryFromFulltext(results, emptyFilters(t, s), 10, 0, "test")
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, records, 1)
+		assert.InDelta(t, math.Log1p(score), records[0].Details.GetFloat64(bundle.RelationKey_final_score), 1e-9)
+	})
+
+	t.Run("participant layout wins an otherwise-equal tie", func(t *testing.T) {
+		// given: two objects with the same match and no other signals
+		s := NewStoreFixture(t)
+		s.AddObjects(t, []TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("teammate"),
+				bundle.RelationKeyName:           domain.String("Sergey Fuksman"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+			},
+			{
+				bundle.RelationKeyId:             domain.String("member"),
+				bundle.RelationKeyName:           domain.String("Sergey Fuksman"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
+			},
+		})
+
+		score := 2.77
+		results := []database.FulltextResult{
+			{Path: domain.ObjectPath{ObjectId: "teammate", RelationKey: bundle.RelationKeyName.String()}, Score: score, NameMatch: true},
+			{Path: domain.ObjectPath{ObjectId: "member", RelationKey: bundle.RelationKeyName.String()}, Score: score, NameMatch: true},
+		}
+
+		// when: a text query injects the default _final_score desc order that
+		// production search paths re-rank the head with
+		textFilters, err := database.NewFilters(database.Query{TextQuery: "fuksman"}, s, &anyenc.Arena{}, &collate.Buffer{})
+		require.NoError(t, err)
+		records, err := s.QueryFromFulltext(results, *textFilters, 10, 0, "fuksman")
+
+		// then: the space member ranks first on the tie-break boost
+		require.NoError(t, err)
+		require.Len(t, records, 2)
+		assert.Equal(t, "member", records[0].Details.GetString(bundle.RelationKeyId))
+		assert.Equal(t, "teammate", records[1].Details.GetString(bundle.RelationKeyId))
+	})
+
+	t.Run("_final_score gets name_boost when match is in name field", func(t *testing.T) {
+		// given
+		s := NewStoreFixture(t)
+		obj := TestObject{
+			bundle.RelationKeyId:             domain.String("obj1"),
+			bundle.RelationKeyName:           domain.String("Test Object"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+		}
+		s.AddObjects(t, []TestObject{obj})
+
+		score := 2.77
+		nameResults := []database.FulltextResult{
+			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: bundle.RelationKeyName.String()}, Score: score, NameMatch: true},
+		}
+		otherResults := []database.FulltextResult{
+			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "description"}, Score: score},
+		}
+
+		// when
+		nameRecords, err := s.QueryFromFulltext(nameResults, emptyFilters(t, s), 10, 0, "test")
+		require.NoError(t, err)
+		otherRecords, err := s.QueryFromFulltext(otherResults, emptyFilters(t, s), 10, 0, "test")
+		require.NoError(t, err)
+
+		// then
+		require.Len(t, nameRecords, 1)
+		require.Len(t, otherRecords, 1)
+		nameScore := nameRecords[0].Details.GetFloat64(bundle.RelationKey_final_score)
+		otherScore := otherRecords[0].Details.GetFloat64(bundle.RelationKey_final_score)
+		assert.InDelta(t, otherScore+1.0, nameScore, 1e-9, "name match should add exactly 1.0 to _final_score")
+	})
+
+	t.Run("recently opened object scores higher than stale with same BM25", func(t *testing.T) {
+		// given
+		s := NewStoreFixture(t)
+		now := time.Now().Unix()
+		sixtyDaysAgo := now - 60*86400
+
+		fresh := TestObject{
+			bundle.RelationKeyId:             domain.String("fresh"),
+			bundle.RelationKeyName:           domain.String("Object"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+			bundle.RelationKeyLastOpenedDate: domain.Int64(now),
+		}
+		stale := TestObject{
+			bundle.RelationKeyId:             domain.String("stale"),
+			bundle.RelationKeyName:           domain.String("Object"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+			bundle.RelationKeyLastOpenedDate: domain.Int64(sixtyDaysAgo),
+		}
+		// lastModifiedDate recency signal is verified at the unit level in TestComputeFinalScore
+		s.AddObjects(t, []TestObject{fresh, stale})
+
+		sameScore := 2.77
+		results := []database.FulltextResult{
+			{Path: domain.ObjectPath{ObjectId: "fresh", RelationKey: "description"}, Score: sameScore},
+			{Path: domain.ObjectPath{ObjectId: "stale", RelationKey: "description"}, Score: sameScore},
+		}
+
+		// when
+		records, err := s.QueryFromFulltext(results, emptyFilters(t, s), 10, 0, "query")
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, records, 2)
+		byId := map[string]float64{}
+		for _, r := range records {
+			id := r.Details.GetString(bundle.RelationKeyId)
+			byId[id] = r.Details.GetFloat64(bundle.RelationKey_final_score)
+		}
+		assert.Greater(t, byId["fresh"], byId["stale"], "fresh object should outscore stale one with same BM25")
 	})
 }

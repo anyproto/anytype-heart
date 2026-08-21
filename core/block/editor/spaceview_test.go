@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree/mock_objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/stretchr/testify/assert"
@@ -114,6 +115,49 @@ func TestSpaceView_Info(t *testing.T) {
 	})
 }
 
+func TestSpaceView_Info_SkipUnchanged(t *testing.T) {
+	t.Run("local info", func(t *testing.T) {
+		fx := newSpaceViewFixture(t)
+		defer fx.finish()
+		info := spaceinfo.NewSpaceLocalInfo("spaceId")
+		info.SetLocalStatus(spaceinfo.LocalStatusOk).
+			SetRemoteStatus(spaceinfo.RemoteStatusOk).
+			SetShareableStatus(spaceinfo.ShareableStatusShareable)
+		require.NoError(t, fx.SetSpaceLocalInfo(info))
+
+		// Re-applying the same info is a no-op but must keep the stored values.
+		require.NoError(t, fx.SetSpaceLocalInfo(info))
+		cur := fx.GetLocalInfo()
+		require.Equal(t, spaceinfo.LocalStatusOk, cur.GetLocalStatus())
+		require.Equal(t, spaceinfo.RemoteStatusOk, cur.GetRemoteStatus())
+		require.Equal(t, spaceinfo.ShareableStatusShareable, cur.GetShareableStatus())
+
+		// A real change still goes through.
+		changed := spaceinfo.NewSpaceLocalInfo("spaceId")
+		changed.SetLocalStatus(spaceinfo.LocalStatusLoading)
+		require.NoError(t, fx.SetSpaceLocalInfo(changed))
+		cur = fx.GetLocalInfo()
+		require.Equal(t, spaceinfo.LocalStatusLoading, cur.GetLocalStatus())
+	})
+	t.Run("persistent info", func(t *testing.T) {
+		fx := newSpaceViewFixture(t)
+		defer fx.finish()
+		info := spaceinfo.NewSpacePersistentInfo("spaceId")
+		info.SetAccountStatus(spaceinfo.AccountStatusActive)
+		require.NoError(t, fx.SetSpacePersistentInfo(info))
+
+		require.NoError(t, fx.SetSpacePersistentInfo(info))
+		cur := fx.GetPersistentInfo()
+		require.Equal(t, spaceinfo.AccountStatusActive, cur.GetAccountStatus())
+
+		changed := spaceinfo.NewSpacePersistentInfo("spaceId")
+		changed.SetAccountStatus(spaceinfo.AccountStatusDeleted)
+		require.NoError(t, fx.SetSpacePersistentInfo(changed))
+		cur = fx.GetPersistentInfo()
+		require.Equal(t, spaceinfo.AccountStatusDeleted, cur.GetAccountStatus())
+	})
+}
+
 func TestSpaceView_SharedSpacesLimit(t *testing.T) {
 	fx := newSpaceViewFixture(t)
 	defer fx.finish()
@@ -191,7 +235,12 @@ func (s *spaceServiceStub) OnWorkspaceChanged(spaceId string, details *domain.De
 func (s *spaceServiceStub) SpaceViewSetOneToOneIdentity(spaceId string, identity string) {
 }
 
-func NewSpaceViewTest(t *testing.T, targetSpaceId string, tree *mock_objecttree.MockObjectTree) (*SpaceView, error) {
+// initSpaceViewTest is the single shared construction path for SpaceView tests: it builds the
+// smarttest tree + SpaceView, optionally seeds persisted local/remote status (simulating a reload
+// from disk), then runs Init / migrations / Apply. Both NewSpaceViewTest (brand-new object) and
+// buildSpaceViewWithSeededLocalInfo (reload-from-disk) delegate here so the construction lives in
+// one place.
+func initSpaceViewTest(t *testing.T, targetSpaceId string, tree *mock_objecttree.MockObjectTree, isNewObject bool, seeded *spaceinfo.SpaceLocalInfo) (*SpaceView, error) {
 	sb := smarttest.NewWithTree("root", tree)
 	a := &SpaceView{
 		SmartBlock:    sb,
@@ -200,9 +249,6 @@ func NewSpaceViewTest(t *testing.T, targetSpaceId string, tree *mock_objecttree.
 		log:           log,
 	}
 
-	initCtx := &smartblock.InitContext{
-		IsNewObject: true,
-	}
 	changePayload := &model.ObjectChangePayload{
 		Key: targetSpaceId,
 	}
@@ -211,7 +257,29 @@ func NewSpaceViewTest(t *testing.T, targetSpaceId string, tree *mock_objecttree.
 	changeInfo := &treechangeproto.TreeChangeInfo{
 		ChangePayload: marshaled,
 	}
-	tree.EXPECT().ChangeInfo().Return(changeInfo)
+	tree.EXPECT().ChangeInfo().Return(changeInfo).AnyTimes()
+
+	initCtx := &smartblock.InitContext{
+		IsNewObject: isNewObject,
+	}
+	if seeded != nil {
+		seedState := sb.NewState()
+		seedState.SetLocalDetail(bundle.RelationKeySpaceLocalStatus, domain.Int64(int64(seeded.GetLocalStatus())))
+		seedState.SetLocalDetail(bundle.RelationKeySpaceRemoteStatus, domain.Int64(int64(seeded.GetRemoteStatus())))
+		initCtx.State = seedState
+
+		// NOTE: this only verifies our own hand-seeded state, NOT the real cross-layer carry. In
+		// production the persisted spaceLocalStatus reaches ctx.State via
+		// smartblock.Init->injectLocalDetails, which copies it because spaceLocalStatus is a
+		// source=derived relation (see relations.json / bundle.LocalAndDerivedRelationKeys). The
+		// smarttest harness has no object store and does not run injectLocalDetails, so that carry
+		// is *assumed here* (verified once, manually) rather than exercised by this test. The
+		// assertion below just pins our setup precondition so the post-Init assertion is meaningful.
+		preInfo := spaceinfo.NewSpaceLocalInfoFromState(initCtx.State)
+		require.Equal(t, seeded.GetLocalStatus(), preInfo.GetLocalStatus(),
+			"seeded localStatus must be present in ctx.State going into Init (setup precondition)")
+	}
+
 	if err := a.Init(initCtx); err != nil {
 		return nil, err
 	}
@@ -220,6 +288,43 @@ func NewSpaceViewTest(t *testing.T, targetSpaceId string, tree *mock_objecttree.
 		return nil, err
 	}
 	return a, nil
+}
+
+func NewSpaceViewTest(t *testing.T, targetSpaceId string, tree *mock_objecttree.MockObjectTree) (*SpaceView, error) {
+	return initSpaceViewTest(t, targetSpaceId, tree, true, nil)
+}
+
+func TestSpaceView_InviteFileInfo(t *testing.T) {
+	t.Run("the owner's space view holds the invite itself", func(t *testing.T) {
+		// given the owner's space view, which no member of the space syncs
+		fx := newSpaceViewFixture(t)
+		defer fx.finish()
+		want := domain.InviteInfo{
+			InviteFileCid: "fileId",
+			InviteFileKey: "fileKey",
+			InviteType:    domain.InviteTypeAnyone,
+			Permissions:   list.AclPermissionsWriter,
+			HeldByOwner:   true,
+		}
+
+		// when an invite is written to it
+		err := fx.SetInviteFileInfo(want)
+		require.NoError(t, err)
+
+		// then it reads back whole, and as held by the owner: an invite is only ever put here to be
+		// theirs to share
+		require.Equal(t, want, fx.GetExistingInviteInfo())
+
+		removed, err := fx.RemoveExistingInviteInfo()
+		require.NoError(t, err)
+		require.Equal(t, want, removed)
+		require.Empty(t, fx.GetExistingInviteInfo())
+	})
+	t.Run("no invite", func(t *testing.T) {
+		fx := newSpaceViewFixture(t)
+		defer fx.finish()
+		require.Empty(t, fx.GetExistingInviteInfo())
+	})
 }
 
 type spaceViewFixture struct {
@@ -246,4 +351,46 @@ func (f *spaceViewFixture) getAccessType() spaceinfo.AccessType {
 
 func (f *spaceViewFixture) finish() {
 	f.ctrl.Finish()
+}
+
+// buildSpaceViewWithSeededLocalInfo constructs a SpaceView whose underlying doc already has
+// localStatus/remoteStatus persisted (simulating a reload from the object store after a
+// previous session), then runs Init exactly as the production reload path does. It delegates to
+// initSpaceViewTest so SpaceView construction stays defined in one place.
+func buildSpaceViewWithSeededLocalInfo(t *testing.T, targetSpaceId string, seeded *spaceinfo.SpaceLocalInfo) *SpaceView {
+	ctrl := gomock.NewController(t)
+	t.Cleanup(ctrl.Finish)
+	tree := mock_objecttree.NewMockObjectTree(ctrl)
+
+	sv, err := initSpaceViewTest(t, targetSpaceId, tree, false, seeded)
+	require.NoError(t, err)
+	return sv
+}
+
+func TestSpaceView_Init_PreservesPersistedLocalStatus(t *testing.T) {
+	t.Run("previously Ok is preserved", func(t *testing.T) {
+		// given
+		seeded := spaceinfo.NewSpaceLocalInfo("spaceId")
+		seeded.SetLocalStatus(spaceinfo.LocalStatusOk).
+			SetRemoteStatus(spaceinfo.RemoteStatusOk)
+
+		// when
+		sv := buildSpaceViewWithSeededLocalInfo(t, "spaceId", &seeded)
+
+		// then
+		got := sv.GetLocalInfo()
+		assert.Equal(t, spaceinfo.LocalStatusOk, got.GetLocalStatus())
+		assert.Equal(t, spaceinfo.RemoteStatusOk, got.GetRemoteStatus())
+	})
+
+	t.Run("brand new spaceview defaults to Unknown", func(t *testing.T) {
+		// given no seeded local info
+		// when
+		sv := buildSpaceViewWithSeededLocalInfo(t, "spaceId", nil)
+
+		// then
+		got := sv.GetLocalInfo()
+		assert.Equal(t, spaceinfo.LocalStatusUnknown, got.GetLocalStatus())
+		assert.Equal(t, spaceinfo.RemoteStatusUnknown, got.GetRemoteStatus())
+	})
 }

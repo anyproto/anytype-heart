@@ -84,6 +84,7 @@ type ChangeSet struct {
 	Id        string
 	Order     string
 	Creator   string
+	AclHeadId string
 	Changes   []*pb.StoreChangeContent
 	Timestamp int64
 }
@@ -92,6 +93,7 @@ type Change struct {
 	Id        string
 	Order     string
 	Creator   string
+	AclHeadId string
 	Change    *pb.StoreChangeContent
 	Timestamp int64
 }
@@ -160,6 +162,7 @@ func (ss *StoreState) applyChangeSet(ctx context.Context, set ChangeSet, returnA
 			Order:     set.Order,
 			Change:    ch,
 			Creator:   set.Creator,
+			AclHeadId: set.AclHeadId,
 			Timestamp: set.Timestamp,
 		})
 		if applyErr == nil || errors.Is(applyErr, ErrIgnore) {

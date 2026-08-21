@@ -96,6 +96,11 @@ type fixture struct {
 
 	generateOrderIdFunc func(tx *storestate.StoreStateTx) string
 	lastOrder           string
+
+	// appliedChangeSets records every change set committed through applyToStore so a
+	// test can faithfully re-drive the store's replay (as storeApply does on reopen)
+	// without needing a real object tree.
+	appliedChangeSets []storestate.ChangeSet
 }
 
 const (
@@ -176,6 +181,9 @@ func newFixture(t *testing.T, opts ...fixtureOption) *fixture {
 	source.EXPECT().ReadStoreDoc(ctx, mock.Anything, mock.Anything).Return(nil)
 	source.EXPECT().PushStoreChange(mock.Anything, mock.Anything).RunAndReturn(fx.applyToStore).Maybe()
 	source.EXPECT().SetPushChangeHook(mock.Anything)
+	// Default tests don't exercise admin/owner moderation paths; nil is fine and
+	// canModerateAt() guards against it (falls back to creator-only checks).
+	source.EXPECT().AclList().Return(nil).Maybe()
 
 	onSeenHooks := map[string]func([]string){}
 	source.EXPECT().RegisterDiffManager(mock.Anything, mock.Anything).Run(func(name string, hook func([]string)) {
@@ -604,13 +612,14 @@ func (fx *fixture) applyToStore(ctx context.Context, params source.PushStoreChan
 		_ = tx.Rollback()
 	}()
 	order := fx.generateOrderId(tx)
-	err = tx.ApplyChangeSetReturnAllErrors(storestate.ChangeSet{
+	changeSet := storestate.ChangeSet{
 		Id:        changeId,
 		Order:     order,
 		Changes:   params.Changes,
 		Creator:   fx.sourceCreator,
 		Timestamp: params.Time.Unix(),
-	})
+	}
+	err = tx.ApplyChangeSetReturnAllErrors(changeSet)
 	if err != nil {
 		return "", fmt.Errorf("apply change set: %w", err)
 	}
@@ -618,6 +627,7 @@ func (fx *fixture) applyToStore(ctx context.Context, params source.PushStoreChan
 	if err != nil {
 		return "", err
 	}
+	fx.appliedChangeSets = append(fx.appliedChangeSets, changeSet)
 	fx.onUpdate()
 	return changeId, nil
 }

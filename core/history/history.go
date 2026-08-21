@@ -303,9 +303,11 @@ func (h *history) buildDetails(s *state.State, spc clientspace.Space) (details [
 		}
 
 		for _, record := range records {
+			// dependents are name/icon chips in the version view; strip the
+			// high-churn strip-by-default keys, consistent with smartblock.fetchMeta
 			details = append(details, &model.ObjectViewDetailsSet{
 				Id:      record.Details.GetString(bundle.RelationKeyId),
-				Details: record.Details.ToProto(),
+				Details: record.Details.CopyWithoutKeys(bundle.DefaultStrippedKeys...).ToProto(),
 			})
 		}
 	}

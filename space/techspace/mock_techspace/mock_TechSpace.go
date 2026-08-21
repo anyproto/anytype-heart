@@ -32,7 +32,7 @@ func (_m *MockTechSpace) EXPECT() *MockTechSpace_Expecter {
 	return &MockTechSpace_Expecter{mock: &_m.Mock}
 }
 
-// AccountObjectId provides a mock function with given fields:
+// AccountObjectId provides a mock function with no fields
 func (_m *MockTechSpace) AccountObjectId() (string, error) {
 	ret := _m.Called()
 
@@ -176,6 +176,53 @@ func (_c *MockTechSpace_DoAccountObject_Call) Return(err error) *MockTechSpace_D
 }
 
 func (_c *MockTechSpace_DoAccountObject_Call) RunAndReturn(run func(context.Context, func(techspace.AccountObject) error) error) *MockTechSpace_DoAccountObject_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// DoPersonalFavoritesStore provides a mock function with given fields: ctx, apply
+func (_m *MockTechSpace) DoPersonalFavoritesStore(ctx context.Context, apply func(techspace.PersonalFavoritesStore) error) error {
+	ret := _m.Called(ctx, apply)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DoPersonalFavoritesStore")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, func(techspace.PersonalFavoritesStore) error) error); ok {
+		r0 = rf(ctx, apply)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockTechSpace_DoPersonalFavoritesStore_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DoPersonalFavoritesStore'
+type MockTechSpace_DoPersonalFavoritesStore_Call struct {
+	*mock.Call
+}
+
+// DoPersonalFavoritesStore is a helper method to define mock.On call
+//   - ctx context.Context
+//   - apply func(techspace.PersonalFavoritesStore) error
+func (_e *MockTechSpace_Expecter) DoPersonalFavoritesStore(ctx interface{}, apply interface{}) *MockTechSpace_DoPersonalFavoritesStore_Call {
+	return &MockTechSpace_DoPersonalFavoritesStore_Call{Call: _e.mock.On("DoPersonalFavoritesStore", ctx, apply)}
+}
+
+func (_c *MockTechSpace_DoPersonalFavoritesStore_Call) Run(run func(ctx context.Context, apply func(techspace.PersonalFavoritesStore) error)) *MockTechSpace_DoPersonalFavoritesStore_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(func(techspace.PersonalFavoritesStore) error))
+	})
+	return _c
+}
+
+func (_c *MockTechSpace_DoPersonalFavoritesStore_Call) Return(err error) *MockTechSpace_DoPersonalFavoritesStore_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockTechSpace_DoPersonalFavoritesStore_Call) RunAndReturn(run func(context.Context, func(techspace.PersonalFavoritesStore) error) error) *MockTechSpace_DoPersonalFavoritesStore_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -333,7 +380,7 @@ func (_c *MockTechSpace_Init_Call) RunAndReturn(run func(*app.App) error) *MockT
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockTechSpace) Name() string {
 	ret := _m.Called()
 
@@ -374,6 +421,61 @@ func (_c *MockTechSpace_Name_Call) Return(name string) *MockTechSpace_Name_Call 
 }
 
 func (_c *MockTechSpace_Name_Call) RunAndReturn(run func() string) *MockTechSpace_Name_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// PersonalFavoritesObjectId provides a mock function with no fields
+func (_m *MockTechSpace) PersonalFavoritesObjectId() (string, error) {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for PersonalFavoritesObjectId")
+	}
+
+	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func() (string, error)); ok {
+		return rf()
+	}
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockTechSpace_PersonalFavoritesObjectId_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PersonalFavoritesObjectId'
+type MockTechSpace_PersonalFavoritesObjectId_Call struct {
+	*mock.Call
+}
+
+// PersonalFavoritesObjectId is a helper method to define mock.On call
+func (_e *MockTechSpace_Expecter) PersonalFavoritesObjectId() *MockTechSpace_PersonalFavoritesObjectId_Call {
+	return &MockTechSpace_PersonalFavoritesObjectId_Call{Call: _e.mock.On("PersonalFavoritesObjectId")}
+}
+
+func (_c *MockTechSpace_PersonalFavoritesObjectId_Call) Run(run func()) *MockTechSpace_PersonalFavoritesObjectId_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockTechSpace_PersonalFavoritesObjectId_Call) Return(_a0 string, _a1 error) *MockTechSpace_PersonalFavoritesObjectId_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockTechSpace_PersonalFavoritesObjectId_Call) RunAndReturn(run func() (string, error)) *MockTechSpace_PersonalFavoritesObjectId_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -684,7 +786,7 @@ func (_c *MockTechSpace_SpaceViewId_Call) RunAndReturn(run func(string) (string,
 }
 
 // SpaceViewSetData provides a mock function with given fields: ctx, spaceId, details
-func (_m *MockTechSpace) SpaceViewSetData(ctx context.Context, spaceId string, details *domain.Details) error {
+func (_m *MockTechSpace) SpaceViewSetData(ctx context.Context, spaceId string, details *domain.GenericMap[domain.RelationKey]) error {
 	ret := _m.Called(ctx, spaceId, details)
 
 	if len(ret) == 0 {
@@ -692,7 +794,7 @@ func (_m *MockTechSpace) SpaceViewSetData(ctx context.Context, spaceId string, d
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, *domain.Details) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, *domain.GenericMap[domain.RelationKey]) error); ok {
 		r0 = rf(ctx, spaceId, details)
 	} else {
 		r0 = ret.Error(0)
@@ -709,14 +811,14 @@ type MockTechSpace_SpaceViewSetData_Call struct {
 // SpaceViewSetData is a helper method to define mock.On call
 //   - ctx context.Context
 //   - spaceId string
-//   - details *domain.Details
+//   - details *domain.GenericMap[domain.RelationKey]
 func (_e *MockTechSpace_Expecter) SpaceViewSetData(ctx interface{}, spaceId interface{}, details interface{}) *MockTechSpace_SpaceViewSetData_Call {
 	return &MockTechSpace_SpaceViewSetData_Call{Call: _e.mock.On("SpaceViewSetData", ctx, spaceId, details)}
 }
 
-func (_c *MockTechSpace_SpaceViewSetData_Call) Run(run func(ctx context.Context, spaceId string, details *domain.Details)) *MockTechSpace_SpaceViewSetData_Call {
+func (_c *MockTechSpace_SpaceViewSetData_Call) Run(run func(ctx context.Context, spaceId string, details *domain.GenericMap[domain.RelationKey])) *MockTechSpace_SpaceViewSetData_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(*domain.Details))
+		run(args[0].(context.Context), args[1].(string), args[2].(*domain.GenericMap[domain.RelationKey]))
 	})
 	return _c
 }
@@ -726,7 +828,7 @@ func (_c *MockTechSpace_SpaceViewSetData_Call) Return(err error) *MockTechSpace_
 	return _c
 }
 
-func (_c *MockTechSpace_SpaceViewSetData_Call) RunAndReturn(run func(context.Context, string, *domain.Details) error) *MockTechSpace_SpaceViewSetData_Call {
+func (_c *MockTechSpace_SpaceViewSetData_Call) RunAndReturn(run func(context.Context, string, *domain.GenericMap[domain.RelationKey]) error) *MockTechSpace_SpaceViewSetData_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -779,7 +881,7 @@ func (_c *MockTechSpace_SpaceViewSetOneToOneIdentity_Call) RunAndReturn(run func
 	return _c
 }
 
-// StartSync provides a mock function with given fields:
+// StartSync provides a mock function with no fields
 func (_m *MockTechSpace) StartSync() {
 	_m.Called()
 }
@@ -807,11 +909,11 @@ func (_c *MockTechSpace_StartSync_Call) Return() *MockTechSpace_StartSync_Call {
 }
 
 func (_c *MockTechSpace_StartSync_Call) RunAndReturn(run func()) *MockTechSpace_StartSync_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
-// TechSpaceId provides a mock function with given fields:
+// TechSpaceId provides a mock function with no fields
 func (_m *MockTechSpace) TechSpaceId() string {
 	ret := _m.Called()
 

@@ -164,6 +164,9 @@ message Rpc {
                         SPACE_IS_DELETED = 102;
                         REQUEST_FAILED = 103;
                         INCORRECT_PERMISSIONS = 105;
+                        // the invite is shared within the space and these permissions are above read access:
+                        // whoever holds such a link is in the space, and every member holds it
+                        INVITE_NOT_SHAREABLE = 107;
                     }
                 }
             }
@@ -174,6 +177,9 @@ message Rpc {
                 string spaceId = 1;
                 model.InviteType inviteType = 2;
                 model.ParticipantPermissions permissions = 3;
+                // shareWithinSpace stores the invite in the space itself, so that every member can share it.
+                // Otherwise the invite is kept in the owner's account and only the owner can share it.
+                bool shareWithinSpace = 4;
             }
 
             message Response {
@@ -197,6 +203,12 @@ message Rpc {
                         REQUEST_FAILED = 103;
                         LIMIT_REACHED = 104;
                         NOT_SHAREABLE = 105;
+                        // the current invite is already shared within the space and cannot be taken back into the
+                        // owner's account: revoke it and generate a new one
+                        INVITE_ALREADY_SHARED = 106;
+                        // an invite anyone can join with cannot be shared within the space: whoever holds such a
+                        // link is in, so it stays in the owner's account and is theirs alone to hand out
+                        INVITE_NOT_SHAREABLE = 107;
                     }
                 }
             }
@@ -239,6 +251,9 @@ message Rpc {
                 string inviteFileKey = 3;
                 model.InviteType inviteType = 4;
                 model.ParticipantPermissions permissions = 5;
+                // heldByOwner is set when the invite is kept in the owner's account. Members get it with an
+                // empty inviteCid and inviteFileKey: only the owner can share the link.
+                bool heldByOwner = 6;
 
                 message Error {
                     Code code = 1;
@@ -639,6 +654,36 @@ message Rpc {
                 }
             }
         }
+        message ParticipantsAddList {
+            message Request {
+                string spaceId = 1;
+                repeated string identities = 2;
+                model.ParticipantPermissions permissions = 3;
+            }
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        SEND_INVITE_FAILED = 3;
+
+                        NO_SUCH_SPACE = 101;
+                        SPACE_IS_DELETED = 102;
+                        REQUEST_FAILED = 103;
+                        LIMIT_REACHED = 104;
+                        NOT_SHAREABLE = 105;
+                        INCORRECT_PERMISSIONS = 106;
+                    }
+                }
+            }
+        }
     }
 
     message Wallet {
@@ -920,6 +965,27 @@ message Rpc {
             }
         }
 
+        message PreloadRemainingSpaces {
+            message Request {
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0; // No error
+                        UNKNOWN_ERROR = 1; // Any other errors
+                        BAD_INPUT = 2;
+                        ACCOUNT_IS_NOT_RUNNING = 101;
+                    }
+                }
+            }
+        }
+
         message Migrate {
             message Request {
                 string id = 1; // Id of a selected account
@@ -986,6 +1052,7 @@ message Rpc {
                 // if true - will run membership v2 polling loop, v2 methods will be available
                 // if false - will run membership v1 polling loop, v2 methods will return error
                 bool enableMembershipV2 = 10; // optional, default is false
+                string preferredSpaceId = 11; // optional. If set and resolvable, only this space + tech space load eagerly at start; the rest are deferred until AccountPreloadRemainingSpaces, a 10s timer, or this space fails. Empty = today's eager behavior.
             }
 
             /**
@@ -2255,11 +2322,15 @@ message Rpc {
                 repeated string objectTypeFilter = 6; // DEPRECATED, GO-1926
                 // needed keys in details for return, when empty - will return all
                 repeated string keys = 7;
+                // when true, response.total is filled with the count of all objects matching the filters, ignoring limit/offset
+                bool needTotal = 9;
             }
 
             message Response {
                 Error error = 1;
                 repeated google.protobuf.Struct records = 2;
+                // total number of objects matching the filters, ignoring limit/offset; filled only when request.needTotal is true
+                int64 total = 3;
                 message Error {
                     Code code = 1;
                     string description = 2;
@@ -2391,6 +2462,54 @@ message Rpc {
                 string subId = 4;
 
                 Event.Object.Subscription.Counters counters = 5;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
+        // one-shot cross-space search, no subscription overhead. Queries the
+        // spaces whose object stores are loaded at the moment of the call —
+        // stores load sequentially on app start, so early calls can see a
+        // partial space set; the response reports it via allStoresLoaded.
+        // Tech-space and marketplace objects are excluded. No total is
+        // returned. fullText uses the detailed matching of
+        // ObjectSearchWithMeta (not ObjectSearch's name-prefix mode).
+        message CrossSpaceSearch {
+            message Request {
+                repeated anytype.model.Block.Content.Dataview.Filter filters = 1;
+                // empty sorts: fullText queries default to relevance order,
+                // browse queries (empty fullText) to lastModifiedDate desc
+                repeated anytype.model.Block.Content.Dataview.Sort sorts = 2;
+                string fullText = 3;
+                // offset and limit apply to the merged cross-space result.
+                // Always set a limit: an unlimited request materializes every
+                // space in full
+                int32 offset = 4;
+                int32 limit = 5;
+                // keys to return in records; empty = all
+                repeated string keys = 6;
+            }
+
+            message Response {
+                Error error = 1;
+                repeated google.protobuf.Struct records = 2;
+                // false = records are a partial view: the sequential
+                // per-space store warm-up had not finished when the query
+                // ran, or a space's store failed and was skipped. Retry
+                // later for the complete view, or use
+                // ObjectCrossSpaceSearchSubscribe, which streams
+                // later-loading spaces as they open.
+                bool allStoresLoaded = 3;
 
                 message Error {
                     Code code = 1;
@@ -2614,10 +2733,15 @@ message Rpc {
             message Request {
                 string contextId = 1;
                 bool isArchived = 2;
+                // when true, skip the orphan cascade entirely (no file auto-archive, no
+                // CleanupSuggestion event). Used by the client when archiving objects the user
+                // confirmed in the popup, to avoid re-prompting.
+                bool skipCascade = 3;
             }
 
             message Response {
                 Error error = 1;
+                ResponseEvent event = 2;
 
                 message Error {
                     Code code = 1;
@@ -2879,7 +3003,110 @@ message Rpc {
             message Request {
                 repeated string objectIds = 1;
                 bool isArchived = 2;
+                // when true, skip the orphan cascade entirely (see SetIsArchived.Request).
+                bool skipCascade = 3;
             }
+            message Response {
+                Error error = 1;
+                ResponseEvent event = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
+        message CleanupSuggestions {
+            message Request {
+                string spaceId = 1;
+                // relation keys to return; empty => a default set.
+                // id, createdInContext and resolvedLayout are always included.
+                repeated string keys = 2;
+            }
+
+            message Response {
+                Error error = 1;
+                repeated Item items = 2;
+
+                message Item {
+                    google.protobuf.Struct details = 1;
+                    // true for forest roots (createdInContext parent is outside the orphan set)
+                    bool isRoot = 2;
+                    // set on roots only; none for descendants
+                    Reason reason = 3;
+
+                    enum Reason {
+                        none = 0;
+                        contextArchived = 1;
+                        contextDeleted = 2;
+                        contextUnlinked = 3;
+                    }
+                }
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+
+        // DeletionAudit lists what was removed from a space, newest first, with who created and who
+        // removed each one.
+        //
+        // Records come in two kinds, told apart by isUninstalled:
+        //  - absent: an object destroyed outright. Its tree is gone, so it has no name, and
+        //    creation-side keys are present only if it was deleted by a build that preserves them.
+        //  - true: a type, property, relation option or template that was uninstalled. Reversible,
+        //    tree intact, name and sourceObject still readable.
+        message DeletionAudit {
+            message Request {
+                string spaceId = 1;
+                // relation keys to return; empty => a default audit set.
+                // id, deletedBy, deletedDate and isUninstalled are always included.
+                repeated string keys = 2;
+                int32 offset = 3;
+                int32 limit = 4;
+            }
+
+            message Response {
+                Error error = 1;
+                repeated google.protobuf.Struct records = 2;
+                // total number of deleted objects in the space, ignoring limit/offset
+                int64 total = 3;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+
+        message CleanupSuggestionIgnore {
+            message Request {
+                repeated string objectIds = 1;
+                bool ignored = 2;
+            }
+
             message Response {
                 Error error = 1;
 
@@ -2891,7 +3118,6 @@ message Rpc {
                         NULL = 0;
                         UNKNOWN_ERROR = 1;
                         BAD_INPUT = 2;
-                        // ...
                     }
                 }
             }
@@ -4406,6 +4632,68 @@ message Rpc {
                 }
             }
         }
+        message SetPlaceholders {
+            message Request {
+                string templateId = 1;
+                repeated anytype.model.Placeholder placeholders = 2;
+            }
+            message Response {
+                Error error = 1;
+                ResponseEvent event = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+        message GetPlaceholders {
+            message Request {
+                string templateId = 1;
+            }
+            message Response {
+                Error error = 1;
+                repeated anytype.model.Placeholder placeholders = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+        message DeletePlaceholders {
+            message Request {
+                string templateId = 1;
+                repeated string relationKeys = 2;
+            }
+            message Response {
+                Error error = 1;
+                ResponseEvent event = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
     }
 
     message LinkPreview {
@@ -4828,6 +5116,8 @@ message Rpc {
                 string contextId = 1;
                 repeated anytype.model.Block blocks = 2;
                 anytype.model.Range selectedTextRange = 3;
+                // optional. when set and the request contains multiple blocks, selectedTextRange is applied to the first block and selectedTextRangeLastBlock to the last block. {0,0} range means the whole block
+                anytype.model.Range selectedTextRangeLastBlock = 4;
             }
 
             message Response {
@@ -4897,6 +5187,8 @@ message Rpc {
                 string contextId = 1;
                 repeated anytype.model.Block blocks = 2;
                 anytype.model.Range selectedTextRange = 3;
+                // optional. when set and the request contains multiple blocks, selectedTextRange is applied to the first block and selectedTextRangeLastBlock to the last block. {0,0} range means the whole block
+                anytype.model.Range selectedTextRangeLastBlock = 4;
             }
 
             message Response {
@@ -7450,7 +7742,31 @@ message Rpc {
 
         message RunProfiler {
             message Request {
+                // 0 = save heap snapshot only; >0 = run timed profiler (CPU, heap, goroutines) for this many seconds. Set includeTrace to also capture the runtime execution trace.
                 int32 durationInSeconds = 1;
+                Reason reason = 2;
+                // Optional free-form description to attach to the profile
+                string reasonDesc = 3;
+                // Also capture the runtime execution trace (runtime/trace). Off by default: it is the heaviest artifact in both archive size and runtime overhead. Only applies when durationInSeconds > 0.
+                bool includeTrace = 4;
+
+                enum Reason {
+                    UNKNOWN = 0;
+                    // Triggered explicitly by the user
+                    USER_REQUEST = 1;
+                    // iOS: DISPATCH_MEMORYPRESSURE_WARN
+                    // Android: onTrimMemory(RUNNING_LOW)
+                    MEMORY_PRESSURE_WARN = 2;
+                    // iOS: DISPATCH_MEMORYPRESSURE_CRITICAL / applicationDidReceiveMemoryWarning
+                    // Android: onTrimMemory(RUNNING_CRITICAL)
+                    MEMORY_PRESSURE_CRITICAL = 3;
+                    // iOS: ProcessInfo.thermalState == .serious
+                    // Android: THERMAL_STATUS_SEVERE
+                    THERMAL_SERIOUS = 4;
+                    // iOS: ProcessInfo.thermalState == .critical
+                    // Android: THERMAL_STATUS_CRITICAL or higher
+                    THERMAL_CRITICAL = 5;
+                }
             }
 
             message Response {
@@ -7491,14 +7807,21 @@ message Rpc {
             }
         }
 
-        message ExportLog {
+        message ExportReport {
             message Request {
                 string dir = 1; // empty means using OS-provided temp dir
+                // When false (default) the report includes only the 2 newest log files
+                // (active + most recent rotated). When true, all logs are included.
+                bool full = 2;
             }
 
             message Response {
                 Error error = 1;
                 string path = 2;
+                // JSON summary with profile counts by reason and log count
+                string summary = 3;
+                // Unix timestamp (seconds) of the newest source file in this report. Pass to DebugCleanupReport after the report is successfully uploaded to the reporter server.
+                int64 lastModifiedTs = 4;
 
                 message Error {
                     Code code = 1;
@@ -7509,6 +7832,28 @@ message Rpc {
                         UNKNOWN_ERROR = 1;
                         BAD_INPUT = 2;
                         NO_FOLDER = 3;
+                    }
+                }
+            }
+        }
+
+        message CleanupReport {
+            message Request {
+                // Unix timestamp (seconds); files with lastModified < ts will be removed
+                int64 ts = 1;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
                     }
                 }
             }
@@ -8479,6 +8824,8 @@ message Rpc {
                 repeated string productIds = 1;
 
                 bool isYearly = 2;
+
+                bool isLifetime = 3;
             }
 
             message Response {
@@ -8745,6 +9092,12 @@ message Rpc {
             message Set {
                 message Request {
                     anytype.model.DeviceNetworkType deviceNetworkType = 1;
+                    // opaque identity of the current network path as reported by the OS
+                    // (iOS: NWPath interfaces/gateway digest; Android: Network#getNetworkHandle()).
+                    // When it changes while the type stays the same (Wi-Fi to Wi-Fi switch,
+                    // cellular re-attach) the middleware still resets connections and re-syncs.
+                    // Optional: empty means unknown, only type transitions are used then.
+                    string networkId = 2;
                 }
                 message Response {
                     Error error = 2;
@@ -8862,6 +9215,52 @@ message Rpc {
             }
         }
 
+        message AddNotificationSubscriber {
+            message Request {
+                string chatObjectId = 1;
+                string identity = 2;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
+        message RemoveNotificationSubscriber {
+            message Request {
+                string chatObjectId = 1;
+                string identity = 2;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
         message GetMessages {
             message Request {
                 string chatObjectId = 1;
@@ -8875,6 +9274,7 @@ message Rpc {
                 Error error = 1;
                 repeated model.ChatMessage messages = 2;
                 model.ChatState chatState = 3;
+                int32 messageCount = 4;  // Total number of non-deleted messages in the chat
                 message Error {
                     Code code = 1;
                     string description = 2;
@@ -8925,6 +9325,7 @@ message Rpc {
                 repeated model.ChatMessage messages = 2;  // List of messages
                 int32 numMessagesBefore = 3;  // Number of messages before the returned messages
                 model.ChatState chatState = 4;  // Chat state
+                int32 messageCount = 5;  // Total number of non-deleted messages in the chat
                 message Error {
                     Code code = 1;
                     string description = 2;
@@ -9121,12 +9522,19 @@ message Rpc {
 
         message Search {
             message Request {
+                // empty spaceId means all spaces (usually combined with empty chatId)
                 string spaceId = 1;
+                // empty chatId means all chats in spaceId; results carry chatId/spaceId per message
                 string chatId = 2;
+                // Note: ORDER_ID sort is only meaningful within a single chat
                 repeated anytype.model.Search.Message.Sort sorts = 3;
+                // empty fullText browses the latest messages in scope (default sort CREATED_AT desc);
+                // non-empty fullText is a relevance search (default sort SCORE desc)
                 string fullText = 4;
                 int32 offset = 5;
                 int32 limit = 6;
+                // (optional) restrict to messages authored by these identities; empty = all authors
+                repeated string creators = 7;
             }
 
             message Response {

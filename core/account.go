@@ -126,6 +126,19 @@ func (mw *Middleware) AccountStop(_ context.Context, req *pb.RpcAccountStopReque
 	}
 }
 
+func (mw *Middleware) AccountPreloadRemainingSpaces(cctx context.Context, _ *pb.RpcAccountPreloadRemainingSpacesRequest) *pb.RpcAccountPreloadRemainingSpacesResponse {
+	err := mw.applicationService.AccountPreloadRemainingSpaces(cctx)
+	code := mapErrorCode(err,
+		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountPreloadRemainingSpacesResponseError_ACCOUNT_IS_NOT_RUNNING),
+	)
+	return &pb.RpcAccountPreloadRemainingSpacesResponse{
+		Error: &pb.RpcAccountPreloadRemainingSpacesResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
 func (mw *Middleware) AccountChangeNetworkConfigAndRestart(ctx context.Context, req *pb.RpcAccountChangeNetworkConfigAndRestartRequest) *pb.RpcAccountChangeNetworkConfigAndRestartResponse {
 	err := mw.applicationService.AccountChangeNetworkConfigAndRestart(ctx, req)
 	code := mapErrorCode(err,
@@ -253,6 +266,7 @@ func (mw *Middleware) AccountLocalLinkNewChallenge(ctx context.Context, request 
 	challengeId, err := mw.applicationService.LinkLocalStartNewChallenge(request.Scope, &info)
 	code := mapErrorCode(err,
 		errToCode(session.ErrTooManyChallengeRequests, pb.RpcAccountLocalLinkNewChallengeResponseError_TOO_MANY_REQUESTS),
+		errToCode(session.ErrChallengeAttemptsExceeded, pb.RpcAccountLocalLinkNewChallengeResponseError_TOO_MANY_REQUESTS),
 		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountLocalLinkNewChallengeResponseError_ACCOUNT_IS_NOT_RUNNING),
 	)
 
@@ -269,6 +283,7 @@ func (mw *Middleware) AccountLocalLinkSolveChallenge(_ context.Context, req *pb.
 	token, appKey, err := mw.applicationService.LinkLocalSolveChallenge(req)
 	code := mapErrorCode(err,
 		errToCode(session.ErrChallengeTriesExceeded, pb.RpcAccountLocalLinkSolveChallengeResponseError_CHALLENGE_ATTEMPTS_EXCEEDED),
+		errToCode(session.ErrChallengeAttemptsExceeded, pb.RpcAccountLocalLinkSolveChallengeResponseError_CHALLENGE_ATTEMPTS_EXCEEDED),
 		errToCode(session.ErrChallengeSolutionWrong, pb.RpcAccountLocalLinkSolveChallengeResponseError_INCORRECT_ANSWER),
 		errToCode(session.ErrChallengeIdNotFound, pb.RpcAccountLocalLinkSolveChallengeResponseError_INVALID_CHALLENGE_ID),
 		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountLocalLinkSolveChallengeResponseError_ACCOUNT_IS_NOT_RUNNING),

@@ -104,6 +104,11 @@ type FullTextQueuedObject struct {
 	SpaceId       string
 	MsgOrderId    string
 	DeletedMsgIds []string
+	// Gen is the queue-entry generation captured when the object was listed
+	// for processing. Every enqueue-type mutation bumps it; marking the entry
+	// as indexed succeeds only if the generation hasn't changed since listing,
+	// so updates that race with batch processing are never lost.
+	Gen uint64
 }
 
 func (o *FullTextQueuedObject) FullId() FullID {
@@ -113,4 +118,4 @@ func (o *FullTextQueuedObject) FullId() FullID {
 	}
 }
 
-type FullTextProcessFunc func(objects []FullTextQueuedObject) (succeedIds []FullID, ftIndexSeq uint64, err error)
+type FullTextProcessFunc func(objects []FullTextQueuedObject) (succeed []FullTextQueuedObject, ftIndexSeq uint64, err error)

@@ -2,6 +2,8 @@ package database
 
 import (
 	"fmt"
+	"math"
+	"time"
 
 	"github.com/anyproto/any-store/anyenc"
 	"golang.org/x/text/collate"
@@ -17,7 +19,7 @@ import (
 var log = logging.Logger("anytype-database")
 
 const (
-	RecordScoreField = "_score"
+	secondsPerDay = 86400.0
 )
 
 type Record struct {
@@ -159,6 +161,15 @@ func hasDefaultFilters(filters []FilterRequest) (bool, bool, bool) {
 	return hasArchivedFilter, hasDeletedFilter, hasTypeFilter
 }
 
+// InjectDefaultOrder returns the sorts a store query effectively applies for
+// qry: fulltext queries get _final_score desc prepended unless a score sort
+// was requested. Callers that merge records from several stores must build
+// their merge order from this, not from qry.Sorts — otherwise the per-store
+// candidate cut and the merged order disagree and offset paging breaks.
+func InjectDefaultOrder(qry Query, sorts []SortRequest) []SortRequest {
+	return injectDefaultOrder(qry, sorts)
+}
+
 func injectDefaultOrder(qry Query, sorts []SortRequest) []SortRequest {
 	var (
 		hasScoreSort bool
@@ -168,14 +179,13 @@ func injectDefaultOrder(qry Query, sorts []SortRequest) []SortRequest {
 	}
 
 	for _, sort := range sorts {
-		// include archived objects if we have explicit filter about it
-		if sort.RelationKey == RecordScoreField {
+		if sort.RelationKey == bundle.RelationKey_score || sort.RelationKey == bundle.RelationKey_final_score {
 			hasScoreSort = true
 		}
 	}
 
 	if !hasScoreSort {
-		sorts = append([]SortRequest{{RelationKey: RecordScoreField, Type: model.BlockContentDataviewSort_Desc}}, sorts...)
+		sorts = append([]SortRequest{{RelationKey: bundle.RelationKey_final_score, Type: model.BlockContentDataviewSort_Desc}}, sorts...)
 	}
 
 	return sorts
@@ -261,25 +271,40 @@ func getSpaceIDFromFilters(filters []FilterRequest) string {
 }
 
 func (b *queryBuilder) extractOrder(sorts []SortRequest) setOrder {
+	return extractOrder(b.objectStore, b.arena, b.collatorBuffer, sorts)
+}
+
+// NewSetOrder builds the composite order a store query applies for the given
+// sorts — including the per-sort includeTime resolution and custom orders —
+// so callers merging records from several stores can reproduce the stores'
+// own ordering. Returns nil when sorts is empty.
+func NewSetOrder(store ObjectStore, arena *anyenc.Arena, collatorBuffer *collate.Buffer, sorts []SortRequest) Order {
+	if order := extractOrder(store, arena, collatorBuffer, sorts); order != nil {
+		return order
+	}
+	return nil
+}
+
+func extractOrder(store ObjectStore, arena *anyenc.Arena, collatorBuffer *collate.Buffer, sorts []SortRequest) setOrder {
 	if len(sorts) > 0 {
 		order := setOrder{}
 		for _, sort := range sorts {
-			ko := NewKeyOrder(b.objectStore, b.arena, b.collatorBuffer, sort).(*keyOrder)
+			ko := NewKeyOrder(store, arena, collatorBuffer, sort).(*keyOrder)
 			ko.includeTime = isIncludeTime(sorts, sort)
-			order = b.appendCustomOrder(sort, order, ko)
+			order = appendCustomOrder(arena, sort, order, ko)
 		}
 		return order
 	}
 	return nil
 }
 
-func (b *queryBuilder) appendCustomOrder(sort SortRequest, orders setOrder, order *keyOrder) setOrder {
-	defer b.arena.Reset()
+func appendCustomOrder(arena *anyenc.Arena, sort SortRequest, orders setOrder, order *keyOrder) setOrder {
+	defer arena.Reset()
 	if sort.Type == model.BlockContentDataviewSort_Custom && len(sort.CustomOrder) > 0 {
 		idsIndices := make(map[string]int, len(sort.CustomOrder))
 		var idx int
 		for _, it := range sort.CustomOrder {
-			val := it.ToAnyEnc(b.arena)
+			val := it.ToAnyEnc(arena)
 
 			raw := string(val.MarshalTo(nil))
 			if raw != "" {
@@ -287,7 +312,7 @@ func (b *queryBuilder) appendCustomOrder(sort SortRequest, orders setOrder, orde
 				idx++
 			}
 		}
-		orders = append(orders, newCustomOrder(b.arena, sort.RelationKey, idsIndices, order))
+		orders = append(orders, newCustomOrder(arena, sort.RelationKey, idsIndices, order))
 	} else {
 		orders = append(orders, order)
 	}
@@ -311,6 +336,12 @@ type FulltextResult struct {
 	Highlight       string
 	HighlightRanges []*model.Range
 	Score           float64
+	// NameMatch reports whether the object's BEST-scoring doc is a name (or
+	// pluralName) match. It deliberately does not depend on Path: the
+	// representative doc can change with the candidate budget (pluralName
+	// preference), and the final-score name boost must stay budget-stable or
+	// offset pagination drifts between requests.
+	NameMatch bool
 }
 
 func (r FulltextResult) Model() model.SearchMeta {
@@ -324,9 +355,11 @@ func (r FulltextResult) Model() model.SearchMeta {
 
 func (r FulltextResult) MessageModel() model.SearchMessageResult {
 	return model.SearchMessageResult{
-		ChatId:          r.Path.ObjectId,
-		MessageId:       r.Path.MessageId,
-		Score:           int64(r.Score),
+		ChatId:    r.Path.ObjectId,
+		MessageId: r.Path.MessageId,
+		// the proto field is an integer; round instead of truncating so that
+		// sub-integer BM25 scores don't all collapse to the same value
+		Score:           int64(math.Round(r.Score)),
 		Highlight:       r.Highlight,
 		HighlightRanges: r.HighlightRanges,
 	}
@@ -393,4 +426,67 @@ func convertToHighlightRanges(ranges [][]int, highlight string) []*model.Range {
 type Filters struct {
 	FilterObj Filter
 	Order     Order
+}
+
+// participantLayoutBoost is a tie-break signal for participant (space member)
+// objects: deliberately an order of magnitude below the 1.0-weight signals so
+// a person wins over an otherwise-equal regular object without overcoming a
+// real relevance difference like a name match. Combined with the pinned
+// recency below it puts a matching person above ANY equally-matching regular
+// object regardless of how recently that object was edited (1.0 + 0.1 vs the
+// regular maximum of 1.0).
+const participantLayoutBoost = 0.1
+
+// ComputeFinalScore blends a Tantivy BM25 score with additive signals:
+//   - recency: exponential decay on the more-recent of lastOpenedDate / lastModifiedDate (30-day half-life, [0,1]).
+//     Participant objects are pinned to 1.0: their lastModifiedDate moves only
+//     on profile changes, so the decayed value is noise, and a person must not
+//     sink below recently edited objects on it.
+//   - nameBoost: 1.0 when the fulltext match landed in the "name" relation field, 0 otherwise
+//   - participantLayoutBoost: 0.1 for participant objects (tie-break)
+//
+// Formula: ln(1+bm25) + recency + nameBoost + participantBoost
+// Log-compressing the BM25 score keeps recency and nameBoost as equal-weight additive signals.
+// All signals derive from the doc itself, keeping the score budget-stable
+// (identical across page requests regardless of the candidate set).
+func ComputeFinalScore(bm25Score float64, details *domain.Details, nameMatch bool) float64 {
+	if details == nil {
+		return math.Log1p(bm25Score)
+	}
+	isParticipant := details.GetInt64(bundle.RelationKeyResolvedLayout) == int64(model.ObjectType_participant)
+	var recency float64
+	if isParticipant {
+		recency = 1.0
+	} else {
+		// hour granularity: the recency signal must be stable between consecutive
+		// page requests, or the re-ranked result order drifts mid-pagination and
+		// pages overlap; with a 30-day half-life the precision loss is negligible
+		now := time.Now().Truncate(time.Hour).Unix()
+		lastOpened := details.GetInt64(bundle.RelationKeyLastOpenedDate)
+		lastModified := details.GetInt64(bundle.RelationKeyLastModifiedDate)
+		if lastOpened > lastModified {
+			recency = recencyDecay(now, lastOpened)
+		} else {
+			recency = recencyDecay(now, lastModified)
+		}
+	}
+	nameBoost := 0.0
+	if nameMatch {
+		nameBoost = 1.0
+	}
+	participantBoost := 0.0
+	if isParticipant {
+		participantBoost = participantLayoutBoost
+	}
+	return math.Log1p(bm25Score) + recency + nameBoost + participantBoost
+}
+
+// recencyDecay returns exp(-ln(2)/30 * age_in_days) clamped to [0,1].
+// Returns 0 when ts is zero (never opened/modified).
+func recencyDecay(nowUnix, ts int64) float64 {
+	if ts == 0 {
+		return 0
+	}
+	ageDays := float64(nowUnix-ts) / secondsPerDay
+	return math.Min(1.0, math.Exp(-math.Log(2)/30.0*ageDays))
 }

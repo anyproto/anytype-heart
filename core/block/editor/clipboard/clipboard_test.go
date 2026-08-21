@@ -838,6 +838,33 @@ func TestClipboard_TitleOps(t *testing.T) {
 			require.True(t, hasBlockId)
 		})
 	}
+	t.Run("paste - when pasted blocks contain featuredRelations system block", func(t *testing.T) {
+		// given
+		sb := smarttest.New("text")
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithTitle))
+		cb := newFixture(t, sb)
+
+		// when
+		_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+			AnySlot: []*model.Block{
+				{
+					Id: "paste1",
+					Content: &model.BlockContentOfText{
+						Text: &model.BlockContentText{Text: "some text"},
+					},
+				},
+				{
+					Id:      template.FeaturedRelationsId,
+					Content: &model.BlockContentOfFeaturedRelations{FeaturedRelations: &model.BlockContentFeaturedRelations{}},
+				},
+			},
+		}, "")
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "system block")
+		assert.Contains(t, err.Error(), template.FeaturedRelationsId)
+	})
 	t.Run("paste - when insert partially", func(t *testing.T) {
 		// given
 		sb := smarttest.New("text")
@@ -1142,6 +1169,98 @@ func TestClipboard_PasteToCodeBlock(t *testing.T) {
 	assert.Equal(t, model.BlockContentText_Code, sb.Doc.Pick(codeBlock.Model().Id).Model().GetText().Style)
 }
 
+func TestClipboard_PasteToCodeBlock_TrailingNewline(t *testing.T) {
+	t.Run("strip trailing newline when selection extends to end", func(t *testing.T) {
+		// given
+		sb := smarttest.New("text")
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithTitle))
+		s := sb.NewState()
+		codeBlock := simple.New(&model.Block{
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Style: model.BlockContentText_Code,
+					Text:  "some code",
+				},
+			},
+		})
+		s.Add(codeBlock)
+		s.InsertTo("", model.Block_Inner, codeBlock.Model().Id)
+		require.NoError(t, sb.Apply(s))
+
+		// when — select " code" (positions 4..9, end of text) and paste with trailing \n
+		cb := newFixture(t, sb)
+		_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+			FocusedBlockId:    codeBlock.Model().Id,
+			SelectedTextRange: rng(4, 9),
+			TextSlot:          " replacement\n",
+		}, "")
+
+		// then — trailing newline should be stripped
+		require.NoError(t, err)
+		assert.Equal(t, "some replacement", sb.Doc.Pick(codeBlock.Model().Id).Model().GetText().Text)
+	})
+
+	t.Run("full text replacement strips trailing newline", func(t *testing.T) {
+		// given
+		sb := smarttest.New("text")
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithTitle))
+		s := sb.NewState()
+		codeBlock := simple.New(&model.Block{
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Style: model.BlockContentText_Code,
+					Text:  "hello world",
+				},
+			},
+		})
+		s.Add(codeBlock)
+		s.InsertTo("", model.Block_Inner, codeBlock.Model().Id)
+		require.NoError(t, sb.Apply(s))
+
+		// when — select all text and paste with trailing \n
+		cb := newFixture(t, sb)
+		_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+			FocusedBlockId:    codeBlock.Model().Id,
+			SelectedTextRange: rng(0, 11),
+			TextSlot:          "replacement\n",
+		}, "")
+
+		// then — no blank line at the end
+		require.NoError(t, err)
+		assert.Equal(t, "replacement", sb.Doc.Pick(codeBlock.Model().Id).Model().GetText().Text)
+	})
+
+	t.Run("preserve trailing newline when selection is in the middle", func(t *testing.T) {
+		// given
+		sb := smarttest.New("text")
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithTitle))
+		s := sb.NewState()
+		codeBlock := simple.New(&model.Block{
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Style: model.BlockContentText_Code,
+					Text:  "some code here",
+				},
+			},
+		})
+		s.Add(codeBlock)
+		s.InsertTo("", model.Block_Inner, codeBlock.Model().Id)
+		require.NoError(t, sb.Apply(s))
+
+		// when — select "code" (positions 5..9, NOT end of text) and paste with trailing \n
+		cb := newFixture(t, sb)
+		_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+			FocusedBlockId:    codeBlock.Model().Id,
+			SelectedTextRange: rng(5, 9),
+			TextSlot:          "block\n",
+		}, "")
+
+		// then — trailing newline should be preserved as a separator
+		require.NoError(t, err)
+		assert.Equal(t, "some block\n here", sb.Doc.Pick(codeBlock.Model().Id).Model().GetText().Text)
+	})
+}
+
 func TestClipboard_PasteToTableCellBlock(t *testing.T) {
 	// given
 	sb := smarttest.New("text")
@@ -1257,16 +1376,16 @@ func TestPasteIntoEmptyStyledBlock(t *testing.T) {
 			require.NotNil(t, targetBlock, "target block should not be deleted")
 			assert.Equal(t, tc.style, targetBlock.Model().GetText().Style, "target block style should be preserved")
 			
-			// For multi-block paste: target stays empty, blocks inserted separately
-			// For single-block paste: text merges into target (intoBlock mode)
+			// The empty focused block is reused for the first paste line (both for
+			// single- and multi-block paste) instead of being left as a stray empty
+			// paragraph above the pasted content; remaining paste blocks are inserted
+			// below. The block keeps its own style.
+			assert.Equal(t, tc.pasteBlocks[0].GetText().Text, targetBlock.Model().GetText().Text, "first paste text should be merged into target")
 			if len(tc.pasteBlocks) > 1 {
-				assert.Equal(t, "", targetBlock.Model().GetText().Text, "target block should remain empty for multi-block paste")
-				require.NotEmpty(t, blockIds, "pasted blocks should be inserted")
-				firstPasteBlock := sb.Doc.Pick(blockIds[0])
-				require.NotNil(t, firstPasteBlock, "first paste block should exist in state")
-				assert.Equal(t, tc.pasteBlocks[0].GetText().Text, firstPasteBlock.Model().GetText().Text, "first paste block text should be preserved")
-			} else {
-				assert.Equal(t, tc.pasteBlocks[0].GetText().Text, targetBlock.Model().GetText().Text, "single block text should merge into target")
+				require.NotEmpty(t, blockIds, "remaining paste blocks should be inserted")
+				lastPasteBlock := sb.Doc.Pick(blockIds[len(blockIds)-1])
+				require.NotNil(t, lastPasteBlock, "last paste block should exist in state")
+				assert.Equal(t, tc.pasteBlocks[len(tc.pasteBlocks)-1].GetText().Text, lastPasteBlock.Model().GetText().Text, "remaining paste block text should be preserved")
 			}
 		})
 	}
@@ -1647,6 +1766,253 @@ func Test_CopyAndCutText(t *testing.T) {
 		assert.Len(t, anySlotCopy, 1)
 		assert.Len(t, anySlotCut, 1)
 	})
+
+}
+
+func Test_CopyAndCutMultiBlockRange(t *testing.T) {
+	givenSbWithThreeTextBlocks := func(t *testing.T) (*smarttest.SmartTest, []*model.Block) {
+		sb := smarttest.New("text")
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithEmpty))
+		s := sb.NewState()
+		blocks := []*model.Block{
+			givenTextBlockWithMarks("1", "first block", nil),
+			givenTextBlockWithMarks("2", "middle block", nil),
+			givenTextBlockWithMarks("3", "last block", nil),
+		}
+		for _, b := range blocks {
+			insertBlock(s, b, "")
+		}
+		require.NoError(t, sb.Apply(s))
+		return sb, blocks
+	}
+
+	t.Run("copy - partial first and last block", func(t *testing.T) {
+		// given
+		sb, blocks := givenSbWithThreeTextBlocks(t)
+		cb := newFixture(t, sb)
+
+		// when
+		textSlot, htmlSlot, anySlot, err := cb.Copy(nil, pb.RpcBlockCopyRequest{
+			Blocks:                     blocks,
+			SelectedTextRange:          &model.Range{From: 6, To: 11},
+			SelectedTextRangeLastBlock: &model.Range{From: 0, To: 4},
+		})
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "block\nmiddle block\nlast", textSlot)
+		require.Len(t, anySlot, 3)
+		assert.Equal(t, "block", anySlot[0].GetText().Text)
+		assert.Equal(t, "middle block", anySlot[1].GetText().Text)
+		assert.Equal(t, "last", anySlot[2].GetText().Text)
+		assert.NotEmpty(t, htmlSlot)
+
+		// document is not modified
+		assert.Equal(t, "first block", sb.Pick("1").Model().GetText().Text)
+		assert.Equal(t, "middle block", sb.Pick("2").Model().GetText().Text)
+		assert.Equal(t, "last block", sb.Pick("3").Model().GetText().Text)
+	})
+
+	t.Run("copy - marks are shifted to the range start", func(t *testing.T) {
+		// given
+		sb := smarttest.New("text")
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithEmpty))
+		s := sb.NewState()
+		blocks := []*model.Block{
+			givenTextBlockWithMarks("1", "first block", []*model.BlockContentTextMark{
+				{Range: &model.Range{From: 6, To: 11}, Type: model.BlockContentTextMark_Bold},
+			}),
+			givenTextBlockWithMarks("2", "last block", []*model.BlockContentTextMark{
+				{Range: &model.Range{From: 0, To: 4}, Type: model.BlockContentTextMark_Italic},
+			}),
+		}
+		for _, b := range blocks {
+			insertBlock(s, b, "")
+		}
+		require.NoError(t, sb.Apply(s))
+		cb := newFixture(t, sb)
+		want := []*model.BlockContentTextMark{
+			{Range: &model.Range{From: 0, To: 5}, Type: model.BlockContentTextMark_Bold},
+		}
+
+		// when
+		_, _, anySlot, err := cb.Copy(nil, pb.RpcBlockCopyRequest{
+			Blocks:                     blocks,
+			SelectedTextRange:          &model.Range{From: 6, To: 11},
+			SelectedTextRangeLastBlock: &model.Range{From: 0, To: 4},
+		})
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, anySlot, 2)
+		assert.Equal(t, want, anySlot[0].GetText().Marks.Marks)
+		assert.Equal(t, []*model.BlockContentTextMark{
+			{Range: &model.Range{From: 0, To: 4}, Type: model.BlockContentTextMark_Italic},
+		}, anySlot[1].GetText().Marks.Marks)
+	})
+
+	t.Run("copy - zero ranges mean whole blocks", func(t *testing.T) {
+		// given
+		sb, blocks := givenSbWithThreeTextBlocks(t)
+		cb := newFixture(t, sb)
+
+		// when
+		textSlot, _, anySlot, err := cb.Copy(nil, pb.RpcBlockCopyRequest{
+			Blocks:                     blocks,
+			SelectedTextRange:          &model.Range{},
+			SelectedTextRangeLastBlock: &model.Range{},
+		})
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "first block\nmiddle block\nlast block", textSlot)
+		require.Len(t, anySlot, 3)
+		assert.Equal(t, "first block", anySlot[0].GetText().Text)
+		assert.Equal(t, "last block", anySlot[2].GetText().Text)
+	})
+
+	t.Run("copy - last block range only", func(t *testing.T) {
+		// given
+		sb, blocks := givenSbWithThreeTextBlocks(t)
+		cb := newFixture(t, sb)
+
+		// when
+		textSlot, _, _, err := cb.Copy(nil, pb.RpcBlockCopyRequest{
+			Blocks:                     blocks,
+			SelectedTextRangeLastBlock: &model.Range{From: 0, To: 4},
+		})
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "first block\nmiddle block\nlast", textSlot)
+	})
+
+	t.Run("cut - partial first and last block", func(t *testing.T) {
+		// given
+		sb, blocks := givenSbWithThreeTextBlocks(t)
+		cb := newFixture(t, sb)
+
+		// when
+		textSlot, htmlSlot, anySlot, err := cb.Cut(nil, pb.RpcBlockCutRequest{
+			Blocks:                     blocks,
+			SelectedTextRange:          &model.Range{From: 6, To: 11},
+			SelectedTextRangeLastBlock: &model.Range{From: 0, To: 5},
+		})
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "block\nmiddle block\nlast ", textSlot)
+		require.Len(t, anySlot, 3)
+		assert.Equal(t, "block", anySlot[0].GetText().Text)
+		assert.Equal(t, "middle block", anySlot[1].GetText().Text)
+		assert.Equal(t, "last ", anySlot[2].GetText().Text)
+		assert.NotEmpty(t, htmlSlot)
+
+		// partially selected blocks keep the rest of their text, the middle block is removed
+		assert.Equal(t, "first ", sb.Pick("1").Model().GetText().Text)
+		assert.Nil(t, sb.Pick("2"))
+		assert.Equal(t, "block", sb.Pick("3").Model().GetText().Text)
+	})
+
+	t.Run("cut - zero ranges cut whole blocks", func(t *testing.T) {
+		// given
+		sb, blocks := givenSbWithThreeTextBlocks(t)
+		cb := newFixture(t, sb)
+
+		// when
+		textSlot, _, anySlot, err := cb.Cut(nil, pb.RpcBlockCutRequest{
+			Blocks:                     blocks,
+			SelectedTextRange:          &model.Range{},
+			SelectedTextRangeLastBlock: &model.Range{},
+		})
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "first block\nmiddle block\nlast block", textSlot)
+		require.Len(t, anySlot, 3)
+		assert.Nil(t, sb.Pick("1"))
+		assert.Nil(t, sb.Pick("2"))
+		assert.Nil(t, sb.Pick("3"))
+	})
+
+	t.Run("cut - backward compatibility: no last block range cuts whole blocks", func(t *testing.T) {
+		// given
+		sb, blocks := givenSbWithThreeTextBlocks(t)
+		cb := newFixture(t, sb)
+
+		// when
+		textSlot, _, _, err := cb.Cut(nil, pb.RpcBlockCutRequest{
+			Blocks:            blocks,
+			SelectedTextRange: &model.Range{From: 6, To: 11},
+		})
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "first block\nmiddle block\nlast block", textSlot)
+		assert.Nil(t, sb.Pick("1"))
+		assert.Nil(t, sb.Pick("2"))
+		assert.Nil(t, sb.Pick("3"))
+	})
+
+	t.Run("cut - single block ignores last block range", func(t *testing.T) {
+		// given
+		sb, blocks := givenSbWithThreeTextBlocks(t)
+		cb := newFixture(t, sb)
+
+		// when
+		textSlot, _, _, err := cb.Cut(nil, pb.RpcBlockCutRequest{
+			Blocks:                     blocks[:1],
+			SelectedTextRange:          &model.Range{From: 0, To: 5},
+			SelectedTextRangeLastBlock: &model.Range{From: 0, To: 4},
+		})
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "first", textSlot)
+		assert.Equal(t, " block", sb.Pick("1").Model().GetText().Text)
+	})
+
+	t.Run("cut - non-text first block is cut whole", func(t *testing.T) {
+		// given
+		sb := smarttest.New("text")
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithEmpty))
+		s := sb.NewState()
+		fileBlock := &model.Block{
+			Id:      "1",
+			Content: &model.BlockContentOfFile{File: &model.BlockContentFile{Name: "image"}},
+		}
+		insertBlock(s, fileBlock, "")
+		textBlock := givenTextBlockWithMarks("2", "last block", nil)
+		insertBlock(s, textBlock, "")
+		require.NoError(t, sb.Apply(s))
+		cb := newFixture(t, sb)
+
+		// when
+		textSlot, _, anySlot, err := cb.Cut(nil, pb.RpcBlockCutRequest{
+			Blocks:                     []*model.Block{fileBlock, textBlock},
+			SelectedTextRange:          &model.Range{},
+			SelectedTextRangeLastBlock: &model.Range{From: 0, To: 4},
+		})
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "last", textSlot)
+		require.Len(t, anySlot, 2)
+		assert.Nil(t, sb.Pick("1"))
+		assert.Equal(t, " block", sb.Pick("2").Model().GetText().Text)
+	})
+}
+
+func givenTextBlockWithMarks(id string, text string, marks []*model.BlockContentTextMark) *model.Block {
+	return &model.Block{
+		Id: id,
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text:  text,
+				Marks: &model.BlockContentTextMarks{Marks: marks},
+			},
+		},
+	}
 }
 
 func givenRow3Level1NumberedBlock(s *state.State) *model.Block {
@@ -2158,5 +2524,101 @@ func TestPasteEmptyFileBlock(t *testing.T) {
 		require.NoError(t, err)
 		assert.Len(t, blockIds, 3)
 		assert.Empty(t, uploadArr)
+	})
+}
+
+func TestClipboard_PasteIntoEmptyBlockForksId(t *testing.T) {
+	newTextModel := func(text string) *model.Block {
+		return &model.Block{Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: text}}}
+	}
+	newPage := func(t *testing.T) *smarttest.SmartTest {
+		return createPage(t, []*model.Block{
+			{Id: "a", Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "existing"}}},
+			{Id: "empty", Content: &model.BlockContentOfText{Text: &model.BlockContentText{}}},
+		})
+	}
+
+	t.Run("single text block into empty block gets a fresh id", func(t *testing.T) {
+		// given
+		sb := newPage(t)
+		cb := newFixture(t, sb)
+
+		// when
+		blockIds, _, caret, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+			FocusedBlockId:    "empty",
+			SelectedTextRange: &model.Range{},
+			AnySlot:           []*model.Block{newTextModel("pasted")},
+		}, "")
+
+		// then
+		require.NoError(t, err)
+		assert.Nil(t, sb.Pick("empty"), "the peer-known empty block id must be replaced")
+		require.Len(t, blockIds, 1)
+		forked := sb.Pick(blockIds[0])
+		require.NotNil(t, forked)
+		assert.Equal(t, "pasted", forked.Model().GetText().Text)
+		assert.EqualValues(t, -1, caret, "caret must be reported via blockIds, not a position in the replaced block")
+		checkBlockText(t, sb, []string{"existing", "pasted"})
+	})
+
+	t.Run("multi block paste into empty block forks the first line", func(t *testing.T) {
+		// given
+		sb := newPage(t)
+		cb := newFixture(t, sb)
+
+		// when
+		blockIds, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+			FocusedBlockId:    "empty",
+			SelectedTextRange: &model.Range{},
+			AnySlot:           []*model.Block{newTextModel("first"), newTextModel("second")},
+		}, "")
+
+		// then
+		require.NoError(t, err)
+		assert.Nil(t, sb.Pick("empty"))
+		require.Len(t, blockIds, 2)
+		assert.Equal(t, "first", sb.Pick(blockIds[0]).Model().GetText().Text)
+		checkBlockText(t, sb, []string{"existing", "first", "second"})
+	})
+
+	t.Run("paste into non-empty block keeps its id", func(t *testing.T) {
+		// given
+		sb := newPage(t)
+		cb := newFixture(t, sb)
+
+		// when: caret at the end of "existing"
+		_, _, caret, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+			FocusedBlockId:    "a",
+			SelectedTextRange: &model.Range{From: 8, To: 8},
+			AnySlot:           []*model.Block{newTextModel("-tail")},
+		}, "")
+
+		// then
+		require.NoError(t, err)
+		require.NotNil(t, sb.Pick("a"))
+		assert.Equal(t, "existing-tail", sb.Pick("a").Model().GetText().Text)
+		assert.EqualValues(t, 13, caret)
+	})
+
+	t.Run("empty title keeps its id", func(t *testing.T) {
+		// given
+		sb := smarttest.New("text")
+		s := sb.NewState()
+		template.InitTemplate(s, template.WithTitle)
+		_, _, err := state.ApplyState("", s, false)
+		require.NoError(t, err)
+		cb := newFixture(t, sb)
+
+		// when
+		_, _, _, _, err = cb.Paste(nil, &pb.RpcBlockPasteRequest{
+			FocusedBlockId:    template.TitleBlockId,
+			SelectedTextRange: &model.Range{},
+			AnySlot:           []*model.Block{newTextModel("t")},
+		}, "")
+
+		// then
+		require.NoError(t, err)
+		require.NotNil(t, sb.Pick(template.TitleBlockId))
+		assert.Equal(t, "t", sb.Pick(template.TitleBlockId).Model().GetText().Text)
 	})
 }

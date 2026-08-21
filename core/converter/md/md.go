@@ -545,7 +545,16 @@ func (h *MD) renderText(buf writer, in *renderState, b *model.Block) {
 		in.listNumber = 0
 	}
 
-	buf.WriteString(in.indent)
+	// Toggle blocks are emitted as an HTML <details> element at column 0 (see the
+	// Toggle case below): the indent prefix is intentionally skipped here so the
+	// opener is not indented (a >=4-space indent would make goldmark parse the
+	// whole element as an indented code block on re-import, and a smaller indent
+	// leaks indentation characters — e.g. the figure-space from a Checkbox parent
+	// — into the child text). Nesting is reconstructed by the importer's
+	// open/close <details> stack, not by markdown indentation.
+	if text.Style != model.BlockContentText_Toggle {
+		buf.WriteString(in.indent) // nolint:errcheck
+	}
 
 	switch text.Style {
 	case model.BlockContentText_Header1, model.BlockContentText_ToggleHeader1, model.BlockContentText_Title:
@@ -576,11 +585,35 @@ func (h *MD) renderText(buf writer, in *renderState, b *model.Block) {
 		}
 		renderText()
 		h.renderChildren(buf, in.AddSpace(), b)
-	case model.BlockContentText_Quote, model.BlockContentText_Toggle:
+	case model.BlockContentText_Quote:
 		buf.WriteString("> ")
 		buf.WriteString(strings.ReplaceAll(text.Text, "\n", "   \n> "))
 		buf.WriteString("   \n\n")
 		h.renderChildren(buf, in, b)
+	case model.BlockContentText_Toggle:
+		// Toggle blocks are exported as an HTML <details>/<summary> element so that
+		// they round-trip back to a Toggle on import (and don't collide with Quote's
+		// "> " blockquote marker).
+		//
+		// The whole element (opener, <summary>, children, closer) is written at
+		// column 0 regardless of the toggle's parent indent: markdown indentation
+		// is NOT used to convey nesting here (the importer rebuilds it from the
+		// open/close <details> stack). Indenting the opener by >=4 spaces would make
+		// goldmark treat it as an indented code block and collapse the toggle;
+		// smaller indents would leak into child text. So children are rendered with
+		// a reset (empty) indent too.
+		//
+		// The summary text is HTML-escaped so that characters that are significant
+		// to the HTML parser ('<', '>', '&') — including a literal "</details>" in
+		// the title — survive the round-trip. The importer unescapes them back.
+		childIn := &renderState{}
+		buf.WriteString("<details>\n")                                               // nolint:errcheck
+		buf.WriteString("<summary>")                                                 // nolint:errcheck
+		buf.WriteString(html.EscapeString(strings.ReplaceAll(text.Text, "\n", " "))) // nolint:errcheck
+		buf.WriteString("</summary>\n\n")                                            // nolint:errcheck
+		h.renderChildren(buf, childIn, b)
+		buf.WriteString("\n")             // nolint:errcheck
+		buf.WriteString("</details>\n\n") // nolint:errcheck
 	case model.BlockContentText_Code:
 		buf.WriteString("```\n") // nolint:errcheck
 		txt := strings.ReplaceAll(text.Text, "```", "\\`\\`\\`")

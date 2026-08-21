@@ -46,6 +46,7 @@ service ClientCommands {
     rpc AccountMigrateCancel (anytype.Rpc.Account.MigrateCancel.Request) returns (anytype.Rpc.Account.MigrateCancel.Response);
     rpc AccountCreate (anytype.Rpc.Account.Create.Request) returns (anytype.Rpc.Account.Create.Response);
     rpc AccountDelete (anytype.Rpc.Account.Delete.Request) returns (anytype.Rpc.Account.Delete.Response);
+    rpc AccountPreloadRemainingSpaces (anytype.Rpc.Account.PreloadRemainingSpaces.Request) returns (anytype.Rpc.Account.PreloadRemainingSpaces.Response);
     rpc AccountRevertDeletion (anytype.Rpc.Account.RevertDeletion.Request) returns (anytype.Rpc.Account.RevertDeletion.Response);
     rpc AccountSelect (anytype.Rpc.Account.Select.Request) returns (anytype.Rpc.Account.Select.Response);
     rpc AccountEnableLocalNetworkSync (anytype.Rpc.Account.EnableLocalNetworkSync.Request) returns (anytype.Rpc.Account.EnableLocalNetworkSync.Response);
@@ -79,6 +80,7 @@ service ClientCommands {
     rpc SpaceUnsetOrder (anytype.Rpc.Space.UnsetOrder.Request) returns (anytype.Rpc.Space.UnsetOrder.Response);
     rpc SpaceChangeOwnership(anytype.Rpc.Space.ChangeOwnership.Request) returns (anytype.Rpc.Space.ChangeOwnership.Response);
     rpc SpaceDeleteCorruptedBackup (anytype.Rpc.Space.DeleteCorruptedBackup.Request) returns (anytype.Rpc.Space.DeleteCorruptedBackup.Response);
+    rpc SpaceParticipantsAddList (anytype.Rpc.Space.ParticipantsAddList.Request) returns (anytype.Rpc.Space.ParticipantsAddList.Response);
 
     // Publishing
     // ***
@@ -107,6 +109,7 @@ service ClientCommands {
     rpc ObjectSearch (anytype.Rpc.Object.Search.Request) returns (anytype.Rpc.Object.Search.Response);
     rpc ObjectSearchWithMeta (anytype.Rpc.Object.SearchWithMeta.Request) returns (anytype.Rpc.Object.SearchWithMeta.Response);
     rpc ObjectSearchSubscribe (anytype.Rpc.Object.SearchSubscribe.Request) returns (anytype.Rpc.Object.SearchSubscribe.Response);
+    rpc ObjectCrossSpaceSearch (anytype.Rpc.Object.CrossSpaceSearch.Request) returns (anytype.Rpc.Object.CrossSpaceSearch.Response);
     rpc ObjectCrossSpaceSearchSubscribe (anytype.Rpc.Object.CrossSpaceSearchSubscribe.Request) returns (anytype.Rpc.Object.CrossSpaceSearchSubscribe.Response);
     rpc ObjectCrossSpaceSearchUnsubscribe (anytype.Rpc.Object.CrossSpaceSearchUnsubscribe.Request) returns (anytype.Rpc.Object.CrossSpaceSearchUnsubscribe.Response);
     rpc ObjectSubscribeIds (anytype.Rpc.Object.SubscribeIds.Request) returns (anytype.Rpc.Object.SubscribeIds.Response);
@@ -124,6 +127,9 @@ service ClientCommands {
     rpc ObjectListDuplicate (anytype.Rpc.Object.ListDuplicate.Request) returns (anytype.Rpc.Object.ListDuplicate.Response);
     rpc ObjectListDelete (anytype.Rpc.Object.ListDelete.Request) returns (anytype.Rpc.Object.ListDelete.Response);
     rpc ObjectListSetIsArchived (anytype.Rpc.Object.ListSetIsArchived.Request) returns (anytype.Rpc.Object.ListSetIsArchived.Response);
+    rpc ObjectCleanupSuggestions (anytype.Rpc.Object.CleanupSuggestions.Request) returns (anytype.Rpc.Object.CleanupSuggestions.Response);
+    rpc ObjectCleanupSuggestionIgnore (anytype.Rpc.Object.CleanupSuggestionIgnore.Request) returns (anytype.Rpc.Object.CleanupSuggestionIgnore.Response);
+    rpc ObjectDeletionAudit (anytype.Rpc.Object.DeletionAudit.Request) returns (anytype.Rpc.Object.DeletionAudit.Response);
     rpc ObjectListSetIsFavorite (anytype.Rpc.Object.ListSetIsFavorite.Request) returns (anytype.Rpc.Object.ListSetIsFavorite.Response);
     rpc ObjectListSetObjectType (anytype.Rpc.Object.ListSetObjectType.Request) returns (anytype.Rpc.Object.ListSetObjectType.Response);
     rpc ObjectListSetDetails (anytype.Rpc.Object.ListSetDetails.Request) returns (anytype.Rpc.Object.ListSetDetails.Response);
@@ -206,6 +212,9 @@ service ClientCommands {
     rpc TemplateCreateFromObject (anytype.Rpc.Template.CreateFromObject.Request) returns (anytype.Rpc.Template.CreateFromObject.Response);
     rpc TemplateClone (anytype.Rpc.Template.Clone.Request) returns (anytype.Rpc.Template.Clone.Response);
     rpc TemplateExportAll (anytype.Rpc.Template.ExportAll.Request) returns (anytype.Rpc.Template.ExportAll.Response);
+    rpc TemplateSetPlaceholders (anytype.Rpc.Template.SetPlaceholders.Request) returns (anytype.Rpc.Template.SetPlaceholders.Response);
+    rpc TemplateGetPlaceholders (anytype.Rpc.Template.GetPlaceholders.Request) returns (anytype.Rpc.Template.GetPlaceholders.Response);
+    rpc TemplateDeletePlaceholders (anytype.Rpc.Template.DeletePlaceholders.Request) returns (anytype.Rpc.Template.DeletePlaceholders.Response);
 
     rpc LinkPreview (anytype.Rpc.LinkPreview.Request) returns (anytype.Rpc.LinkPreview.Response);
 
@@ -349,11 +358,14 @@ service ClientCommands {
     rpc DebugPing (anytype.Rpc.Debug.Ping.Request) returns (anytype.Rpc.Debug.Ping.Response);
     rpc DebugSubscriptions (anytype.Rpc.Debug.Subscriptions.Request) returns (anytype.Rpc.Debug.Subscriptions.Response);
     rpc DebugOpenedObjects (anytype.Rpc.Debug.OpenedObjects.Request) returns (anytype.Rpc.Debug.OpenedObjects.Response);
+    // When DurationInSeconds=0, saves a heap memory profile to the logs directory and returns the file path.
+    // When DurationInSeconds>0, runs a full profiler (CPU, heap, trace, goroutines) for the given duration.
     rpc DebugRunProfiler (anytype.Rpc.Debug.RunProfiler.Request) returns (anytype.Rpc.Debug.RunProfiler.Response);
     rpc DebugAccountSelectTrace (anytype.Rpc.Debug.AccountSelectTrace.Request) returns (anytype.Rpc.Debug.AccountSelectTrace.Response);
     rpc DebugAnystoreObjectChanges (anytype.Rpc.Debug.AnystoreObjectChanges.Request) returns (anytype.Rpc.Debug.AnystoreObjectChanges.Response);
     rpc DebugNetCheck (anytype.Rpc.Debug.NetCheck.Request) returns (anytype.Rpc.Debug.NetCheck.Response);
-    rpc DebugExportLog (anytype.Rpc.Debug.ExportLog.Request) returns (anytype.Rpc.Debug.ExportLog.Response);
+    rpc DebugExportReport (anytype.Rpc.Debug.ExportReport.Request) returns (anytype.Rpc.Debug.ExportReport.Response);
+    rpc DebugCleanupReport (anytype.Rpc.Debug.CleanupReport.Request) returns (anytype.Rpc.Debug.CleanupReport.Response);
 
     rpc InitialSetParameters (anytype.Rpc.Initial.SetParameters.Request) returns (anytype.Rpc.Initial.SetParameters.Response);
 
@@ -436,6 +448,8 @@ service ClientCommands {
     rpc ChatSearch (anytype.Rpc.Chat.Search.Request) returns (anytype.Rpc.Chat.Search.Response);
     rpc ChatSetPinnedMessages (anytype.Rpc.Chat.SetPinnedMessages.Request) returns (anytype.Rpc.Chat.SetPinnedMessages.Response);
     rpc ChatGetPinnedMessages (anytype.Rpc.Chat.GetPinnedMessages.Request) returns (anytype.Rpc.Chat.GetPinnedMessages.Response);
+    rpc ChatAddNotificationSubscriber (anytype.Rpc.Chat.AddNotificationSubscriber.Request) returns (anytype.Rpc.Chat.AddNotificationSubscriber.Response);
+    rpc ChatRemoveNotificationSubscriber (anytype.Rpc.Chat.RemoveNotificationSubscriber.Request) returns (anytype.Rpc.Chat.RemoveNotificationSubscriber.Response);
 
     // mock AI RPCs for compatibility between branches. Not implemented in main
     rpc AIWritingTools (anytype.Rpc.AI.WritingTools.Request) returns (anytype.Rpc.AI.WritingTools.Response);

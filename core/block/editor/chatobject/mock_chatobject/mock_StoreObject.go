@@ -96,7 +96,7 @@ func (_c *MockStoreObject_AddHook_Call) Return() *MockStoreObject_AddHook_Call {
 }
 
 func (_c *MockStoreObject_AddHook_Call) RunAndReturn(run func(smartblock.HookCallback, ...smartblock.Hook)) *MockStoreObject_AddHook_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -145,7 +145,7 @@ func (_c *MockStoreObject_AddHookOnce_Call) Return() *MockStoreObject_AddHookOnc
 }
 
 func (_c *MockStoreObject_AddHookOnce_Call) RunAndReturn(run func(string, smartblock.HookCallback, ...smartblock.Hook)) *MockStoreObject_AddHookOnce_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -203,6 +203,53 @@ func (_c *MockStoreObject_AddMessage_Call) Return(_a0 string, _a1 error) *MockSt
 }
 
 func (_c *MockStoreObject_AddMessage_Call) RunAndReturn(run func(context.Context, session.Context, *chatmodel.Message) (string, error)) *MockStoreObject_AddMessage_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// AddNotificationSubscriber provides a mock function with given fields: ctx, identity
+func (_m *MockStoreObject) AddNotificationSubscriber(ctx context.Context, identity string) error {
+	ret := _m.Called(ctx, identity)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AddNotificationSubscriber")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = rf(ctx, identity)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockStoreObject_AddNotificationSubscriber_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddNotificationSubscriber'
+type MockStoreObject_AddNotificationSubscriber_Call struct {
+	*mock.Call
+}
+
+// AddNotificationSubscriber is a helper method to define mock.On call
+//   - ctx context.Context
+//   - identity string
+func (_e *MockStoreObject_Expecter) AddNotificationSubscriber(ctx interface{}, identity interface{}) *MockStoreObject_AddNotificationSubscriber_Call {
+	return &MockStoreObject_AddNotificationSubscriber_Call{Call: _e.mock.On("AddNotificationSubscriber", ctx, identity)}
+}
+
+func (_c *MockStoreObject_AddNotificationSubscriber_Call) Run(run func(ctx context.Context, identity string)) *MockStoreObject_AddNotificationSubscriber_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockStoreObject_AddNotificationSubscriber_Call) Return(_a0 error) *MockStoreObject_AddNotificationSubscriber_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockStoreObject_AddNotificationSubscriber_Call) RunAndReturn(run func(context.Context, string) error) *MockStoreObject_AddNotificationSubscriber_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -268,7 +315,7 @@ func (_c *MockStoreObject_AddRelationLinksToState_Call) RunAndReturn(run func(*s
 	return _c
 }
 
-// AllRelationKeys provides a mock function with given fields:
+// AllRelationKeys provides a mock function with no fields
 func (_m *MockStoreObject) AllRelationKeys() []domain.RelationKey {
 	ret := _m.Called()
 
@@ -376,7 +423,7 @@ func (_c *MockStoreObject_Apply_Call) RunAndReturn(run func(*state.State, ...sma
 	return _c
 }
 
-// Blocks provides a mock function with given fields:
+// Blocks provides a mock function with no fields
 func (_m *MockStoreObject) Blocks() []*model.Block {
 	ret := _m.Called()
 
@@ -452,11 +499,11 @@ func (_c *MockStoreObject_BlocksInit_Call) Return() *MockStoreObject_BlocksInit_
 }
 
 func (_c *MockStoreObject_BlocksInit_Call) RunAndReturn(run func(simple.DetailsService)) *MockStoreObject_BlocksInit_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
-// ChangeId provides a mock function with given fields:
+// ChangeId provides a mock function with no fields
 func (_m *MockStoreObject) ChangeId() string {
 	ret := _m.Called()
 
@@ -501,7 +548,7 @@ func (_c *MockStoreObject_ChangeId_Call) RunAndReturn(run func() string) *MockSt
 	return _c
 }
 
-// CheckSubscriptions provides a mock function with given fields:
+// CheckSubscriptions provides a mock function with no fields
 func (_m *MockStoreObject) CheckSubscriptions() bool {
 	ret := _m.Called()
 
@@ -546,7 +593,7 @@ func (_c *MockStoreObject_CheckSubscriptions_Call) RunAndReturn(run func() bool)
 	return _c
 }
 
-// Close provides a mock function with given fields:
+// Close provides a mock function with no fields
 func (_m *MockStoreObject) Close() error {
 	ret := _m.Called()
 
@@ -591,20 +638,20 @@ func (_c *MockStoreObject_Close_Call) RunAndReturn(run func() error) *MockStoreO
 	return _c
 }
 
-// CombinedDetails provides a mock function with given fields:
-func (_m *MockStoreObject) CombinedDetails() *domain.Details {
+// CombinedDetails provides a mock function with no fields
+func (_m *MockStoreObject) CombinedDetails() *domain.GenericMap[domain.RelationKey] {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for CombinedDetails")
 	}
 
-	var r0 *domain.Details
-	if rf, ok := ret.Get(0).(func() *domain.Details); ok {
+	var r0 *domain.GenericMap[domain.RelationKey]
+	if rf, ok := ret.Get(0).(func() *domain.GenericMap[domain.RelationKey]); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*domain.Details)
+			r0 = ret.Get(0).(*domain.GenericMap[domain.RelationKey])
 		}
 	}
 
@@ -628,12 +675,12 @@ func (_c *MockStoreObject_CombinedDetails_Call) Run(run func()) *MockStoreObject
 	return _c
 }
 
-func (_c *MockStoreObject_CombinedDetails_Call) Return(_a0 *domain.Details) *MockStoreObject_CombinedDetails_Call {
+func (_c *MockStoreObject_CombinedDetails_Call) Return(_a0 *domain.GenericMap[domain.RelationKey]) *MockStoreObject_CombinedDetails_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockStoreObject_CombinedDetails_Call) RunAndReturn(run func() *domain.Details) *MockStoreObject_CombinedDetails_Call {
+func (_c *MockStoreObject_CombinedDetails_Call) RunAndReturn(run func() *domain.GenericMap[domain.RelationKey]) *MockStoreObject_CombinedDetails_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -743,20 +790,20 @@ func (_c *MockStoreObject_DeleteMessage_Call) RunAndReturn(run func(context.Cont
 	return _c
 }
 
-// Details provides a mock function with given fields:
-func (_m *MockStoreObject) Details() *domain.Details {
+// Details provides a mock function with no fields
+func (_m *MockStoreObject) Details() *domain.GenericMap[domain.RelationKey] {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for Details")
 	}
 
-	var r0 *domain.Details
-	if rf, ok := ret.Get(0).(func() *domain.Details); ok {
+	var r0 *domain.GenericMap[domain.RelationKey]
+	if rf, ok := ret.Get(0).(func() *domain.GenericMap[domain.RelationKey]); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*domain.Details)
+			r0 = ret.Get(0).(*domain.GenericMap[domain.RelationKey])
 		}
 	}
 
@@ -780,12 +827,12 @@ func (_c *MockStoreObject_Details_Call) Run(run func()) *MockStoreObject_Details
 	return _c
 }
 
-func (_c *MockStoreObject_Details_Call) Return(_a0 *domain.Details) *MockStoreObject_Details_Call {
+func (_c *MockStoreObject_Details_Call) Return(_a0 *domain.GenericMap[domain.RelationKey]) *MockStoreObject_Details_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockStoreObject_Details_Call) RunAndReturn(run func() *domain.Details) *MockStoreObject_Details_Call {
+func (_c *MockStoreObject_Details_Call) RunAndReturn(run func() *domain.GenericMap[domain.RelationKey]) *MockStoreObject_Details_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -838,7 +885,7 @@ func (_c *MockStoreObject_EditMessage_Call) RunAndReturn(run func(context.Contex
 	return _c
 }
 
-// EnableLayouts provides a mock function with given fields:
+// EnableLayouts provides a mock function with no fields
 func (_m *MockStoreObject) EnableLayouts() {
 	_m.Called()
 }
@@ -866,11 +913,11 @@ func (_c *MockStoreObject_EnableLayouts_Call) Return() *MockStoreObject_EnableLa
 }
 
 func (_c *MockStoreObject_EnableLayouts_Call) RunAndReturn(run func()) *MockStoreObject_EnableLayouts_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
-// EnabledRelationAsDependentObjects provides a mock function with given fields:
+// EnabledRelationAsDependentObjects provides a mock function with no fields
 func (_m *MockStoreObject) EnabledRelationAsDependentObjects() {
 	_m.Called()
 }
@@ -898,11 +945,11 @@ func (_c *MockStoreObject_EnabledRelationAsDependentObjects_Call) Return() *Mock
 }
 
 func (_c *MockStoreObject_EnabledRelationAsDependentObjects_Call) RunAndReturn(run func()) *MockStoreObject_EnabledRelationAsDependentObjects_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
-// GetAndUnsetFileKeys provides a mock function with given fields:
+// GetAndUnsetFileKeys provides a mock function with no fields
 func (_m *MockStoreObject) GetAndUnsetFileKeys() []pb.ChangeFileKeys {
 	ret := _m.Called()
 
@@ -949,7 +996,7 @@ func (_c *MockStoreObject_GetAndUnsetFileKeys_Call) RunAndReturn(run func() []pb
 	return _c
 }
 
-// GetDocInfo provides a mock function with given fields:
+// GetDocInfo provides a mock function with no fields
 func (_m *MockStoreObject) GetDocInfo() smartblock.DocInfo {
 	ret := _m.Called()
 
@@ -1112,6 +1159,64 @@ func (_c *MockStoreObject_GetMessagesByIds_Call) RunAndReturn(run func(context.C
 	return _c
 }
 
+// GetNotificationSubscribers provides a mock function with given fields: ctx
+func (_m *MockStoreObject) GetNotificationSubscribers(ctx context.Context) ([]string, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetNotificationSubscribers")
+	}
+
+	var r0 []string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) ([]string, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) []string); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockStoreObject_GetNotificationSubscribers_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetNotificationSubscribers'
+type MockStoreObject_GetNotificationSubscribers_Call struct {
+	*mock.Call
+}
+
+// GetNotificationSubscribers is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockStoreObject_Expecter) GetNotificationSubscribers(ctx interface{}) *MockStoreObject_GetNotificationSubscribers_Call {
+	return &MockStoreObject_GetNotificationSubscribers_Call{Call: _e.mock.On("GetNotificationSubscribers", ctx)}
+}
+
+func (_c *MockStoreObject_GetNotificationSubscribers_Call) Run(run func(ctx context.Context)) *MockStoreObject_GetNotificationSubscribers_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockStoreObject_GetNotificationSubscribers_Call) Return(_a0 []string, _a1 error) *MockStoreObject_GetNotificationSubscribers_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockStoreObject_GetNotificationSubscribers_Call) RunAndReturn(run func(context.Context) ([]string, error)) *MockStoreObject_GetNotificationSubscribers_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetPinnedMessages provides a mock function with given fields: ctx
 func (_m *MockStoreObject) GetPinnedMessages(ctx context.Context) ([]*chatmodel.Message, error) {
 	ret := _m.Called(ctx)
@@ -1201,11 +1306,11 @@ func (_c *MockStoreObject_HandleSyncStatusUpdate_Call) Return() *MockStoreObject
 }
 
 func (_c *MockStoreObject_HandleSyncStatusUpdate_Call) RunAndReturn(run func([]string, domain.ObjectSyncStatus, domain.SyncError)) *MockStoreObject_HandleSyncStatusUpdate_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
-// History provides a mock function with given fields:
+// History provides a mock function with no fields
 func (_m *MockStoreObject) History() undo.History {
 	ret := _m.Called()
 
@@ -1252,7 +1357,7 @@ func (_c *MockStoreObject_History_Call) RunAndReturn(run func() undo.History) *M
 	return _c
 }
 
-// Id provides a mock function with given fields:
+// Id provides a mock function with no fields
 func (_m *MockStoreObject) Id() string {
 	ret := _m.Called()
 
@@ -1343,7 +1448,7 @@ func (_c *MockStoreObject_Init_Call) RunAndReturn(run func(*smartblock.InitConte
 	return _c
 }
 
-// IsDeleted provides a mock function with given fields:
+// IsDeleted provides a mock function with no fields
 func (_m *MockStoreObject) IsDeleted() bool {
 	ret := _m.Called()
 
@@ -1388,7 +1493,7 @@ func (_c *MockStoreObject_IsDeleted_Call) RunAndReturn(run func() bool) *MockSto
 	return _c
 }
 
-// IsLocked provides a mock function with given fields:
+// IsLocked provides a mock function with no fields
 func (_m *MockStoreObject) IsLocked() bool {
 	ret := _m.Called()
 
@@ -1479,7 +1584,7 @@ func (_c *MockStoreObject_Iterate_Call) RunAndReturn(run func(func(simple.Block)
 	return _c
 }
 
-// Layout provides a mock function with given fields:
+// Layout provides a mock function with no fields
 func (_m *MockStoreObject) Layout() (model.ObjectTypeLayout, bool) {
 	ret := _m.Called()
 
@@ -1534,20 +1639,20 @@ func (_c *MockStoreObject_Layout_Call) RunAndReturn(run func() (model.ObjectType
 	return _c
 }
 
-// LocalDetails provides a mock function with given fields:
-func (_m *MockStoreObject) LocalDetails() *domain.Details {
+// LocalDetails provides a mock function with no fields
+func (_m *MockStoreObject) LocalDetails() *domain.GenericMap[domain.RelationKey] {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for LocalDetails")
 	}
 
-	var r0 *domain.Details
-	if rf, ok := ret.Get(0).(func() *domain.Details); ok {
+	var r0 *domain.GenericMap[domain.RelationKey]
+	if rf, ok := ret.Get(0).(func() *domain.GenericMap[domain.RelationKey]); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*domain.Details)
+			r0 = ret.Get(0).(*domain.GenericMap[domain.RelationKey])
 		}
 	}
 
@@ -1571,17 +1676,17 @@ func (_c *MockStoreObject_LocalDetails_Call) Run(run func()) *MockStoreObject_Lo
 	return _c
 }
 
-func (_c *MockStoreObject_LocalDetails_Call) Return(_a0 *domain.Details) *MockStoreObject_LocalDetails_Call {
+func (_c *MockStoreObject_LocalDetails_Call) Return(_a0 *domain.GenericMap[domain.RelationKey]) *MockStoreObject_LocalDetails_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockStoreObject_LocalDetails_Call) RunAndReturn(run func() *domain.Details) *MockStoreObject_LocalDetails_Call {
+func (_c *MockStoreObject_LocalDetails_Call) RunAndReturn(run func() *domain.GenericMap[domain.RelationKey]) *MockStoreObject_LocalDetails_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// Lock provides a mock function with given fields:
+// Lock provides a mock function with no fields
 func (_m *MockStoreObject) Lock() {
 	_m.Called()
 }
@@ -1609,7 +1714,7 @@ func (_c *MockStoreObject_Lock_Call) Return() *MockStoreObject_Lock_Call {
 }
 
 func (_c *MockStoreObject_Lock_Call) RunAndReturn(run func()) *MockStoreObject_Lock_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -1764,7 +1869,7 @@ func (_c *MockStoreObject_MarkReadReactions_Call) RunAndReturn(run func(context.
 	return _c
 }
 
-// NewState provides a mock function with given fields:
+// NewState provides a mock function with no fields
 func (_m *MockStoreObject) NewState() *state.State {
 	ret := _m.Called()
 
@@ -1888,11 +1993,11 @@ func (_c *MockStoreObject_ObjectClose_Call) Return() *MockStoreObject_ObjectClos
 }
 
 func (_c *MockStoreObject_ObjectClose_Call) RunAndReturn(run func(session.Context)) *MockStoreObject_ObjectClose_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
-// ObjectCloseAllSessions provides a mock function with given fields:
+// ObjectCloseAllSessions provides a mock function with no fields
 func (_m *MockStoreObject) ObjectCloseAllSessions() {
 	_m.Called()
 }
@@ -1920,11 +2025,11 @@ func (_c *MockStoreObject_ObjectCloseAllSessions_Call) Return() *MockStoreObject
 }
 
 func (_c *MockStoreObject_ObjectCloseAllSessions_Call) RunAndReturn(run func()) *MockStoreObject_ObjectCloseAllSessions_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
-// ObjectTypeKey provides a mock function with given fields:
+// ObjectTypeKey provides a mock function with no fields
 func (_m *MockStoreObject) ObjectTypeKey() domain.TypeKey {
 	ret := _m.Called()
 
@@ -1969,7 +2074,7 @@ func (_c *MockStoreObject_ObjectTypeKey_Call) RunAndReturn(run func() domain.Typ
 	return _c
 }
 
-// ObjectTypeKeys provides a mock function with given fields:
+// ObjectTypeKeys provides a mock function with no fields
 func (_m *MockStoreObject) ObjectTypeKeys() []domain.TypeKey {
 	ret := _m.Called()
 
@@ -2093,6 +2198,53 @@ func (_c *MockStoreObject_RegisterSession_Call) Return() *MockStoreObject_Regist
 }
 
 func (_c *MockStoreObject_RegisterSession_Call) RunAndReturn(run func(session.Context)) *MockStoreObject_RegisterSession_Call {
+	_c.Run(run)
+	return _c
+}
+
+// RemoveNotificationSubscriber provides a mock function with given fields: ctx, identity
+func (_m *MockStoreObject) RemoveNotificationSubscriber(ctx context.Context, identity string) error {
+	ret := _m.Called(ctx, identity)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RemoveNotificationSubscriber")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = rf(ctx, identity)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockStoreObject_RemoveNotificationSubscriber_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RemoveNotificationSubscriber'
+type MockStoreObject_RemoveNotificationSubscriber_Call struct {
+	*mock.Call
+}
+
+// RemoveNotificationSubscriber is a helper method to define mock.On call
+//   - ctx context.Context
+//   - identity string
+func (_e *MockStoreObject_Expecter) RemoveNotificationSubscriber(ctx interface{}, identity interface{}) *MockStoreObject_RemoveNotificationSubscriber_Call {
+	return &MockStoreObject_RemoveNotificationSubscriber_Call{Call: _e.mock.On("RemoveNotificationSubscriber", ctx, identity)}
+}
+
+func (_c *MockStoreObject_RemoveNotificationSubscriber_Call) Run(run func(ctx context.Context, identity string)) *MockStoreObject_RemoveNotificationSubscriber_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockStoreObject_RemoveNotificationSubscriber_Call) Return(_a0 error) *MockStoreObject_RemoveNotificationSubscriber_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockStoreObject_RemoveNotificationSubscriber_Call) RunAndReturn(run func(context.Context, string) error) *MockStoreObject_RemoveNotificationSubscriber_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -2190,7 +2342,7 @@ func (_c *MockStoreObject_ResetToVersion_Call) RunAndReturn(run func(*state.Stat
 	return _c
 }
 
-// Restrictions provides a mock function with given fields:
+// Restrictions provides a mock function with no fields
 func (_m *MockStoreObject) Restrictions() restriction.Restrictions {
 	ret := _m.Called()
 
@@ -2235,7 +2387,7 @@ func (_c *MockStoreObject_Restrictions_Call) RunAndReturn(run func() restriction
 	return _c
 }
 
-// RootId provides a mock function with given fields:
+// RootId provides a mock function with no fields
 func (_m *MockStoreObject) RootId() string {
 	ret := _m.Called()
 
@@ -2280,7 +2432,7 @@ func (_c *MockStoreObject_RootId_Call) RunAndReturn(run func() string) *MockStor
 	return _c
 }
 
-// SearchText provides a mock function with given fields:
+// SearchText provides a mock function with no fields
 func (_m *MockStoreObject) SearchText() string {
 	ret := _m.Called()
 
@@ -2354,7 +2506,7 @@ func (_c *MockStoreObject_SendEvent_Call) Return() *MockStoreObject_SendEvent_Ca
 }
 
 func (_c *MockStoreObject_SendEvent_Call) RunAndReturn(run func([]*pb.EventMessage)) *MockStoreObject_SendEvent_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -2406,7 +2558,7 @@ func (_c *MockStoreObject_SetDetails_Call) RunAndReturn(run func(session.Context
 	return _c
 }
 
-// SetIsDeleted provides a mock function with given fields:
+// SetIsDeleted provides a mock function with no fields
 func (_m *MockStoreObject) SetIsDeleted() {
 	_m.Called()
 }
@@ -2434,7 +2586,7 @@ func (_c *MockStoreObject_SetIsDeleted_Call) Return() *MockStoreObject_SetIsDele
 }
 
 func (_c *MockStoreObject_SetIsDeleted_Call) RunAndReturn(run func()) *MockStoreObject_SetIsDeleted_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -2467,7 +2619,7 @@ func (_c *MockStoreObject_SetLocker_Call) Return() *MockStoreObject_SetLocker_Ca
 }
 
 func (_c *MockStoreObject_SetLocker_Call) RunAndReturn(run func(smartblock.Locker)) *MockStoreObject_SetLocker_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -2581,7 +2733,7 @@ func (_c *MockStoreObject_SetVerticalAlign_Call) RunAndReturn(run func(session.C
 	return _c
 }
 
-// Show provides a mock function with given fields:
+// Show provides a mock function with no fields
 func (_m *MockStoreObject) Show() (*model.ObjectView, error) {
 	ret := _m.Called()
 
@@ -2638,7 +2790,7 @@ func (_c *MockStoreObject_Show_Call) RunAndReturn(run func() (*model.ObjectView,
 	return _c
 }
 
-// Snippet provides a mock function with given fields:
+// Snippet provides a mock function with no fields
 func (_m *MockStoreObject) Snippet() string {
 	ret := _m.Called()
 
@@ -2683,7 +2835,7 @@ func (_c *MockStoreObject_Snippet_Call) RunAndReturn(run func() string) *MockSto
 	return _c
 }
 
-// Space provides a mock function with given fields:
+// Space provides a mock function with no fields
 func (_m *MockStoreObject) Space() smartblock.Space {
 	ret := _m.Called()
 
@@ -2730,7 +2882,7 @@ func (_c *MockStoreObject_Space_Call) RunAndReturn(run func() smartblock.Space) 
 	return _c
 }
 
-// SpaceID provides a mock function with given fields:
+// SpaceID provides a mock function with no fields
 func (_m *MockStoreObject) SpaceID() string {
 	ret := _m.Called()
 
@@ -2925,7 +3077,7 @@ func (_c *MockStoreObject_ToggleMessageReaction_Call) RunAndReturn(run func(cont
 	return _c
 }
 
-// Tree provides a mock function with given fields:
+// Tree provides a mock function with no fields
 func (_m *MockStoreObject) Tree() objecttree.ObjectTree {
 	ret := _m.Called()
 
@@ -3028,7 +3180,7 @@ func (_c *MockStoreObject_TryClose_Call) RunAndReturn(run func(time.Duration) (b
 	return _c
 }
 
-// Type provides a mock function with given fields:
+// Type provides a mock function with no fields
 func (_m *MockStoreObject) Type() coresmartblock.SmartBlockType {
 	ret := _m.Called()
 
@@ -3073,7 +3225,7 @@ func (_c *MockStoreObject_Type_Call) RunAndReturn(run func() coresmartblock.Smar
 	return _c
 }
 
-// UniqueKey provides a mock function with given fields:
+// UniqueKey provides a mock function with no fields
 func (_m *MockStoreObject) UniqueKey() domain.UniqueKey {
 	ret := _m.Called()
 
@@ -3120,7 +3272,7 @@ func (_c *MockStoreObject_UniqueKey_Call) RunAndReturn(run func() domain.UniqueK
 	return _c
 }
 
-// UniqueKeyInternal provides a mock function with given fields:
+// UniqueKeyInternal provides a mock function with no fields
 func (_m *MockStoreObject) UniqueKeyInternal() string {
 	ret := _m.Called()
 
@@ -3165,7 +3317,7 @@ func (_c *MockStoreObject_UniqueKeyInternal_Call) RunAndReturn(run func() string
 	return _c
 }
 
-// Unlock provides a mock function with given fields:
+// Unlock provides a mock function with no fields
 func (_m *MockStoreObject) Unlock() {
 	_m.Called()
 }
@@ -3193,12 +3345,12 @@ func (_c *MockStoreObject_Unlock_Call) Return() *MockStoreObject_Unlock_Call {
 }
 
 func (_c *MockStoreObject_Unlock_Call) RunAndReturn(run func()) *MockStoreObject_Unlock_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
 // UpdateDetails provides a mock function with given fields: ctx, update
-func (_m *MockStoreObject) UpdateDetails(ctx session.Context, update func(*domain.Details) (*domain.Details, error)) error {
+func (_m *MockStoreObject) UpdateDetails(ctx session.Context, update func(*domain.GenericMap[domain.RelationKey]) (*domain.GenericMap[domain.RelationKey], error)) error {
 	ret := _m.Called(ctx, update)
 
 	if len(ret) == 0 {
@@ -3206,7 +3358,7 @@ func (_m *MockStoreObject) UpdateDetails(ctx session.Context, update func(*domai
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(session.Context, func(*domain.Details) (*domain.Details, error)) error); ok {
+	if rf, ok := ret.Get(0).(func(session.Context, func(*domain.GenericMap[domain.RelationKey]) (*domain.GenericMap[domain.RelationKey], error)) error); ok {
 		r0 = rf(ctx, update)
 	} else {
 		r0 = ret.Error(0)
@@ -3222,14 +3374,14 @@ type MockStoreObject_UpdateDetails_Call struct {
 
 // UpdateDetails is a helper method to define mock.On call
 //   - ctx session.Context
-//   - update func(*domain.Details)(*domain.Details , error)
+//   - update func(*domain.GenericMap[domain.RelationKey])(*domain.GenericMap[domain.RelationKey] , error)
 func (_e *MockStoreObject_Expecter) UpdateDetails(ctx interface{}, update interface{}) *MockStoreObject_UpdateDetails_Call {
 	return &MockStoreObject_UpdateDetails_Call{Call: _e.mock.On("UpdateDetails", ctx, update)}
 }
 
-func (_c *MockStoreObject_UpdateDetails_Call) Run(run func(ctx session.Context, update func(*domain.Details) (*domain.Details, error))) *MockStoreObject_UpdateDetails_Call {
+func (_c *MockStoreObject_UpdateDetails_Call) Run(run func(ctx session.Context, update func(*domain.GenericMap[domain.RelationKey]) (*domain.GenericMap[domain.RelationKey], error))) *MockStoreObject_UpdateDetails_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(session.Context), args[1].(func(*domain.Details) (*domain.Details, error)))
+		run(args[0].(session.Context), args[1].(func(*domain.GenericMap[domain.RelationKey]) (*domain.GenericMap[domain.RelationKey], error)))
 	})
 	return _c
 }
@@ -3239,7 +3391,7 @@ func (_c *MockStoreObject_UpdateDetails_Call) Return(err error) *MockStoreObject
 	return _c
 }
 
-func (_c *MockStoreObject_UpdateDetails_Call) RunAndReturn(run func(session.Context, func(*domain.Details) (*domain.Details, error)) error) *MockStoreObject_UpdateDetails_Call {
+func (_c *MockStoreObject_UpdateDetails_Call) RunAndReturn(run func(session.Context, func(*domain.GenericMap[domain.RelationKey]) (*domain.GenericMap[domain.RelationKey], error)) error) *MockStoreObject_UpdateDetails_Call {
 	_c.Call.Return(run)
 	return _c
 }

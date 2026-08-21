@@ -23,13 +23,13 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/object/objectlink"
+	"github.com/anyproto/anytype-heart/core/block/objectgc"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/block/undo"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
-	"github.com/anyproto/anytype-heart/core/files/filegc"
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
@@ -101,7 +101,7 @@ func New(
 	eventSender event.Sender,
 	spaceIdResolver idresolver.Resolver,
 	formatFetcher relationutils.RelationFormatFetcher,
-	fileGC filegc.FileGC,
+	objectGC objectgc.ObjectGC,
 ) SmartBlock {
 	s := &smartBlock{
 		currentParticipantId: currentParticipantId,
@@ -113,7 +113,7 @@ func New(
 
 		spaceIndex:      spaceIndex,
 		indexer:         indexer,
-		fileGC:          fileGC,
+		objectGC:        objectGC,
 		eventSender:     eventSender,
 		objectStore:     objectStore,
 		spaceIdResolver: spaceIdResolver,
@@ -270,13 +270,7 @@ type smartBlock struct {
 	eventSender     event.Sender
 	spaceIdResolver idresolver.Resolver
 	formatFetcher   relationutils.RelationFormatFetcher
-	fileGC          filegc.FileGC
-
-	// sessionCreatedLinks tracks links added locally in this session.
-	// These are considered "session-created" and will be permanently deleted (skipBin=true) when removed.
-	// nil means object was never explicitly opened → safe default (archive all removals).
-	// empty map means object was opened but no local links added yet.
-	sessionCreatedLinks map[string]struct{}
+	objectGC        objectgc.ObjectGC
 }
 
 func (sb *smartBlock) SetLocker(locker Locker) {
@@ -512,9 +506,16 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, err er
 	})
 
 	for _, rec := range records {
+		recId := rec.Details.GetString(bundle.RelationKeyId)
+		recDetails := rec.Details
+		if recId != sb.Id() {
+			// strip dependents only; a self-reference (rare) keeps full details,
+			// matching the self entry added above and the onMetaChange self branch
+			recDetails = rec.Details.CopyWithoutKeys(bundle.DefaultStrippedKeys...)
+		}
 		details = append(details, &model.ObjectViewDetailsSet{
-			Id:      rec.Details.GetString(bundle.RelationKeyId),
-			Details: rec.Details.ToProto(),
+			Id:      recId,
+			Details: recDetails.ToProto(),
 		})
 	}
 	go sb.metaListener(recordsCh)
@@ -574,6 +575,12 @@ func (sb *smartBlock) onMetaChange(details *domain.Details) {
 		return
 	}
 	id := details.GetString(bundle.RelationKeyId)
+	if id != sb.Id() {
+		// dependents never carry strip-by-default keys (sync/usage churn);
+		// strip before diffing/storing so a later change to those keys produces
+		// an empty diff and no event for the client
+		details = details.CopyWithoutKeys(bundle.DefaultStrippedKeys...)
+	}
 	var msgs []*pb.EventMessage
 	if v, exists := sb.lastDepDetails[id]; exists {
 		diff, keysToUnset := domain.StructDiff(v, details)
@@ -616,16 +623,6 @@ func (sb *smartBlock) dependentSmartIds(includeRelations, includeObjTypes, inclu
 
 func (sb *smartBlock) RegisterSession(ctx session.Context) {
 	sb.sessions[ctx.ID()] = ctx
-	sb.initSessionTracking()
-}
-
-// initSessionTracking initializes session-created links tracking.
-// Only initializes if not already done (first session registration).
-func (sb *smartBlock) initSessionTracking() {
-	if sb.sessionCreatedLinks != nil {
-		return
-	}
-	sb.sessionCreatedLinks = make(map[string]struct{})
 }
 
 func (sb *smartBlock) IsLocked() bool {
@@ -691,8 +688,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		len(sb.ObjectTree.Heads()) == 1 &&
 		sb.ObjectTree.Heads()[0] == sb.ObjectTree.Id() &&
 		!allowApplyWithEmptyTree &&
-		sb.Type() != smartblock.SmartBlockTypeChatDerivedObject &&
-		sb.Type() != smartblock.SmartBlockTypeAccountObject {
+		!sb.Type().IsStoreBacked() {
 		// protection for applying migrations on empty tree
 		log.With("sbType", sb.Type().String(), "objectId", sb.Id()).Warnf("apply on empty tree discarded")
 		return ErrApplyOnEmptyTreeDisallowed
@@ -758,6 +754,28 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	sb.setRestrictionsDetail(s)
 
 	st := sb.Doc.(*state.State)
+
+	if sendEvent {
+		events := msgsToEvents(msgs)
+		if ctx := s.Context(); ctx != nil {
+			// TODO: sessionContext.SetMessages replaces (not appends), so a second Apply
+			// against a different smartblock under the same sctx silently drops the first
+			// smartblock's events. The response slot can only carry events for one smartblock,
+			// but today we let the second writer win. Decide on the right behavior (route the
+			// mismatched writer through sb.sendEvent, or model multi-smartblock responses
+			// explicitly) and remove this warning. See GO-7152.
+			if prevId := ctx.ObjectID(); prevId != "" && prevId != sb.Id() {
+				log.With("prevSmartBlockId", prevId, "smartBlockId", sb.Id()).
+					Warnf("session context already holds events for a different smartblock; previous events will be discarded")
+			}
+			ctx.SetMessages(sb.Id(), events)
+		} else {
+			sb.sendEvent(&pb.Event{
+				Messages:  events,
+				ContextId: sb.RootId(),
+			})
+		}
+	}
 
 	changes := st.GetChanges()
 	var changeId string
@@ -841,44 +859,63 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		sb.runIndexer(st)
 	}
 
-	if sendEvent {
-		events := msgsToEvents(msgs)
-		if ctx := s.Context(); ctx != nil {
-			ctx.SetMessages(sb.Id(), events)
-		} else {
-			sb.sendEvent(&pb.Event{
-				Messages:  events,
-				ContextId: sb.RootId(),
-			})
-		}
-	}
-
 	if sb.hasDepIds(&act) {
 		sb.CheckSubscriptions()
 	}
 
-	// Check for file GC after successful apply
-	if parent := s.ParentState(); parent != nil && len(linksBefore) > 0 {
+	// Check for file GC after successful apply.
+	// Note: do NOT guard on len(linksBefore) > 0 — undo can add links from an empty state
+	// (linksBefore == []) and we must still detect those additions to restore archived files.
+	if parent := s.ParentState(); parent != nil {
 		linksAfter := st.LocalDetails().GetStringList(bundle.RelationKeyLinks)
+		sctx := s.Context() // capture before goroutines; session.Context is immutable
 
-		// Track newly added links as session-created (if object was explicitly opened)
-		if sb.sessionCreatedLinks != nil {
-			addedLinks := getAddedLinks(linksBefore, linksAfter)
-			for _, link := range addedLinks {
-				sb.sessionCreatedLinks[link] = struct{}{}
+		addedLinks := getAddedLinks(linksBefore, linksAfter)
+
+		// Restore archived files whose links were re-added (e.g. via undo).
+		if len(addedLinks) > 0 {
+			// A fresh child context isolates accumulated events so they can be
+			// pushed to the originating session once restore finishes, avoiding
+			// a data race with the RPC handler reading ctx.GetResponseEvent().
+			var restoreSctx session.Context
+			if sctx != nil {
+				restoreSctx = session.NewChildContext(sctx)
 			}
+			go func() {
+				sb.restoreObjectsOnLinksAdded(restoreSctx, sb.SpaceID(), sb.Id(), addedLinks)
+				if restoreSctx != nil && restoreSctx.ID() != "" {
+					if msgs := restoreSctx.GetMessages(); len(msgs) > 0 {
+						sb.eventSender.SendToSession(restoreSctx.ID(), &pb.Event{
+							Messages:  msgs,
+							ContextId: sb.Id(),
+						})
+					}
+				}
+			}()
 		}
 
 		removedLinks := getRemovedLinks(linksBefore, linksAfter)
 		if len(removedLinks) > 0 {
-			// Clean up session-created tracking for removed links
-			if sb.sessionCreatedLinks != nil {
-				for _, link := range removedLinks {
-					delete(sb.sessionCreatedLinks, link)
-				}
+			// Perform file GC asynchronously to not block the Apply and avoid
+			// potential deadlock: Apply holds sb.Lock; GC needs archive.Lock; the
+			// archive's own Apply can need sb.Lock via checkArchivedRestriction.
+			// A fresh child context isolates accumulated events so they can be
+			// pushed to the originating session once GC finishes.
+			var gcSctx session.Context
+			if sctx != nil {
+				gcSctx = session.NewChildContext(sctx)
 			}
-			// Perform file GC asynchronously to not block the Apply
-			go sb.performFileGC(sb.SpaceID(), sb.Id(), removedLinks)
+			go func() {
+				sb.performGCOnLinksRemoval(gcSctx, sb.SpaceID(), sb.Id(), removedLinks)
+				if gcSctx != nil && gcSctx.ID() != "" {
+					if msgs := gcSctx.GetMessages(); len(msgs) > 0 {
+						sb.eventSender.SendToSession(gcSctx.ID(), &pb.Event{
+							Messages:  msgs,
+							ContextId: sb.Id(),
+						})
+					}
+				}
+			}()
 		}
 	}
 	if hooks {
@@ -902,6 +939,16 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 
 func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
 	source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentParticipantId, sb.spaceIndex, sb.formatFetcher).Migrate(s)
+	// Ensure bundled relation links are present for all bundled detail keys.
+	// Without this, imported states may lack relation links for details like setOf,
+	// producing a RelationRemove change that wipes the detail on replay (GO-7217).
+	var relKeys []domain.RelationKey
+	for k := range s.Details().Iterate() {
+		if bundle.HasRelation(k) {
+			relKeys = append(relKeys, k)
+		}
+	}
+	s.AddBundledRelationLinks(relKeys...)
 	s.SetParent(sb.Doc.(*state.State))
 	sb.storeFileKeys(s)
 	sb.injectLocalDetails(s)
@@ -1457,10 +1504,26 @@ func (sb *smartBlock) collectOutgoingLinks(st *state.State) []OutgoingLink {
 			})
 		}
 
+		// A bookmark block points at its bookmark object via TargetObjectId. Without this
+		// the bookmark object gets no backlink from the containing page and objectgc
+		// misclassifies it as an orphan (GO-7377).
+		if bm := blockModel.GetBookmark(); bm != nil && bm.TargetObjectId != "" && bm.TargetObjectId != objectId && !linkSet[bm.TargetObjectId] {
+			linkSet[bm.TargetObjectId] = true
+			outgoingLinks = append(outgoingLinks, OutgoingLink{
+				TargetID:      bm.TargetObjectId,
+				SourceBlockID: blockModel.Id,
+			})
+		}
+
 		if text := blockModel.GetText(); text != nil && text.Marks != nil {
-			// Extract mentions from text marks
+			// Extract mentions and inline-object marks from text marks. Object marks
+			// (e.g. @page references) are semantically equivalent to mentions for the
+			// purpose of outgoing links.
 			for _, mark := range text.Marks.Marks {
-				if mark.Type == model.BlockContentTextMark_Mention && mark.Param != "" && mark.Param != objectId && !linkSet[mark.Param] {
+				if mark.Type != model.BlockContentTextMark_Mention && mark.Type != model.BlockContentTextMark_Object {
+					continue
+				}
+				if mark.Param != "" && mark.Param != objectId && !linkSet[mark.Param] {
 					linkSet[mark.Param] = true
 					outgoingLinks = append(outgoingLinks, OutgoingLink{
 						TargetID:      mark.Param,
@@ -1470,9 +1533,31 @@ func (sb *smartBlock) collectOutgoingLinks(st *state.State) []OutgoingLink {
 			}
 		}
 
+		// Inline dataview embed (e.g. a Set/Collection embedded on a Page) — its
+		// TargetObjectId is the embedded object. A standalone Set/Collection's own
+		// dataview block has TargetObjectId == "" and is unaffected.
+		if dv := blockModel.GetDataview(); dv != nil && dv.TargetObjectId != "" && dv.TargetObjectId != objectId && !linkSet[dv.TargetObjectId] {
+			linkSet[dv.TargetObjectId] = true
+			outgoingLinks = append(outgoingLinks, OutgoingLink{
+				TargetID:      dv.TargetObjectId,
+				SourceBlockID: blockModel.Id,
+			})
+		}
+
 		return true
 	}); err != nil {
 		log.Warnf("failed to iterate state blocks: %v", err)
+	}
+
+	// Collect collection members (StoreSlice). A Collection points at its members via
+	// a store slice, not via blocks or relations, so they need an explicit emission.
+	if !internalflag.NewFromState(st).Has(model.InternalFlag_collectionDontIndexLinks) {
+		for _, id := range st.GetStoreSlice(template.CollectionStoreKey) {
+			if id != "" && id != objectId && !linkSet[id] {
+				linkSet[id] = true
+				outgoingLinks = append(outgoingLinks, OutgoingLink{TargetID: id})
+			}
+		}
 	}
 
 	// Collect links from object relations
@@ -1559,51 +1644,64 @@ func guessRelationFormatFromValue(val domain.Value) model.RelationFormat {
 	}
 }
 
-// performFileGC runs the file garbage collector for removed links
-func (sb *smartBlock) performFileGC(spaceId, contextId string, removedLinks []string) {
-	if sb.fileGC == nil {
+// restoreObjectsOnLinksAdded unarchives objects that were GC'd when their link is re-added
+// to the context (e.g. via undo).
+func (sb *smartBlock) restoreObjectsOnLinksAdded(sctx session.Context, spaceId, contextId string, addedLinks []string) {
+	if sb.objectGC == nil {
 		return
 	}
+	restoredIds, err := sb.objectGC.RestoreOrphansOnLinksAdded(spaceId, contextId, addedLinks)
+	if err != nil {
+		log.With("objectId", contextId).Errorf("restore on links added failed: %v", err)
+	}
+	if sctx != nil && len(restoredIds) > 0 {
+		msgs := sctx.GetMessages()
+		msgs = append(msgs, &pb.EventMessage{
+			Value: &pb.EventMessageValueOfObjectAutoRestore{
+				ObjectAutoRestore: &pb.EventObjectAutoRestore{ObjectIds: restoredIds},
+			},
+		})
+		sctx.SetMessages(contextId, msgs)
+	}
+}
 
-	// If sessionCreatedLinks is nil, object was never explicitly opened by user.
-	// Treat all removed links as existing (safe default - archive instead of delete).
-	if sb.sessionCreatedLinks == nil {
-		if len(removedLinks) > 0 {
-			if err := sb.fileGC.CheckFilesOnLinksRemoval(spaceId, contextId, removedLinks, false, nil); err != nil {
-				log.With("objectId", contextId).Errorf("file gc on links removal failed: %v", err)
-			}
-		}
+// performGCOnLinksRemoval runs the object garbage collector for removed links
+func (sb *smartBlock) performGCOnLinksRemoval(sctx session.Context, spaceId, contextId string, removedLinks []string) {
+	if sb.objectGC == nil {
 		return
 	}
-
-	// Classify removed links as session-created or existing.
-	// Session-created links are tracked explicitly in sessionCreatedLinks map
-	// (populated during Apply when links are added locally).
-	// This ensures that links added by remote sync are NOT considered session-created.
-	var sessionCreated []string
-	var existing []string
-
-	for _, link := range removedLinks {
-		if _, isSessionCreated := sb.sessionCreatedLinks[link]; isSessionCreated {
-			// This link was added during the current session by the local user
-			sessionCreated = append(sessionCreated, link)
-		} else {
-			// This link existed at open time OR was added via remote sync
-			existing = append(existing, link)
-		}
+	if len(removedLinks) == 0 {
+		return
 	}
-
-	// Process existing files - archive them (skipBin=false)
-	if len(existing) > 0 {
-		if err := sb.fileGC.CheckFilesOnLinksRemoval(spaceId, contextId, existing, false, nil); err != nil {
-			log.Errorf("file GC failed for existing files in context %s: %v", contextId, err)
-		}
+	res, err := sb.objectGC.ArchiveOrphansOnLinksRemoval(spaceId, contextId, removedLinks, false, nil)
+	if err != nil {
+		log.With("objectId", contextId).Errorf("object gc on links removal failed: %v", err)
 	}
-
-	// Process session-created files - delete them permanently (skipBin=true)
-	if len(sessionCreated) > 0 {
-		if err := sb.fileGC.CheckFilesOnLinksRemoval(spaceId, contextId, sessionCreated, true, nil); err != nil {
-			log.Errorf("file GC failed for session-created files in context %s: %v", contextId, err)
+	if sctx != nil {
+		msgs := sctx.GetMessages()
+		changed := false
+		if len(res.Files) > 0 {
+			msgs = append(msgs, &pb.EventMessage{
+				Value: &pb.EventMessageValueOfObjectAutoArchive{
+					ObjectAutoArchive: &pb.EventObjectAutoArchive{ObjectIds: res.Files},
+				},
+			})
+			changed = true
+		}
+		if len(res.Candidates) > 0 {
+			msgs = append(msgs, &pb.EventMessage{
+				Value: &pb.EventMessageValueOfObjectCleanupSuggestion{
+					ObjectCleanupSuggestion: &pb.EventObjectCleanupSuggestion{
+						ObjectIds: res.Candidates,
+						ContextId: contextId,
+						Trigger:   pb.EventObjectCleanupSuggestion_linkRemoval,
+					},
+				},
+			})
+			changed = true
+		}
+		if changed {
+			sctx.SetMessages(contextId, msgs)
 		}
 	}
 }

@@ -30,7 +30,6 @@ func (s *Service) GlobalSearch(ctx context.Context, request apimodel.SearchReque
 		return nil, 0, false, ErrFailedGetAllSpaceIds
 	}
 
-	baseFilters := s.prepareBaseFilters()
 	queryFilters := s.prepareQueryFilter(request.Query)
 	sorts, criterionToSortAfter := s.prepareSorts(request.Sort)
 
@@ -38,11 +37,12 @@ func (s *Service) GlobalSearch(ctx context.Context, request apimodel.SearchReque
 	for _, spaceId := range spaceIds {
 		// Resolve template and type IDs per spaceId, as they are unique per spaceId
 		templateFilter := s.prepareTemplateFilter()
-		typeFilters := s.prepareTypeFilters(request.Types, spaceId)
+		typeFilters, hasFileType := s.prepareTypeFilters(request.Types, spaceId)
 		if len(request.Types) > 0 && len(typeFilters) == 0 {
 			// Skip spaces that don't have any of the requested types
 			continue
 		}
+		baseFilters := s.prepareBaseFilters(hasFileType)
 
 		// Build expression filters if provided
 		var expressionFilters []*model.BlockContentDataviewFilter
@@ -107,15 +107,15 @@ func (s *Service) GlobalSearch(ctx context.Context, request apimodel.SearchReque
 
 // Search retrieves a paginated list of objects from a specific space that match the search parameters.
 func (s *Service) Search(ctx context.Context, spaceId string, request apimodel.SearchRequest, offset int, limit int) (objects []apimodel.Object, total int, hasMore bool, err error) {
-	baseFilters := s.prepareBaseFilters()
 	templateFilter := s.prepareTemplateFilter()
 	queryFilters := s.prepareQueryFilter(request.Query)
 
-	typeFilters := s.prepareTypeFilters(request.Types, spaceId)
+	typeFilters, hasFileType := s.prepareTypeFilters(request.Types, spaceId)
 	if len(request.Types) > 0 && len(typeFilters) == 0 {
 		// No matching types in this space; return empty result
 		return nil, 0, false, nil
 	}
+	baseFilters := s.prepareBaseFilters(hasFileType)
 
 	// Build expression filters if provided
 	var expressionFilters []*model.BlockContentDataviewFilter
@@ -176,12 +176,18 @@ func (s *Service) combineFilters(operator model.BlockContentDataviewFilterOperat
 }
 
 // prepareBaseFilters returns a list of default filters that should be applied to all search queries.
-func (s *Service) prepareBaseFilters() []*model.BlockContentDataviewFilter {
+// File layouts (file, image, video, audio, pdf) are excluded by default and only included when
+// the caller explicitly requests file types via the search request.
+func (s *Service) prepareBaseFilters(includeFileLayouts bool) []*model.BlockContentDataviewFilter {
+	layouts := util.ObjectLayouts
+	if includeFileLayouts {
+		layouts = util.ObjectAndFileLayouts
+	}
 	return []*model.BlockContentDataviewFilter{
 		{
 			RelationKey: bundle.RelationKeyResolvedLayout.String(),
 			Condition:   model.BlockContentDataviewFilter_In,
-			Value:       pbtypes.IntList(util.LayoutsToIntArgs(util.ObjectLayouts)...),
+			Value:       pbtypes.IntList(util.LayoutsToIntArgs(layouts)...),
 		},
 		{
 			RelationKey: bundle.RelationKeyIsHidden.String(),
@@ -228,9 +234,11 @@ func (s *Service) prepareQueryFilter(searchQuery string) []*model.BlockContentDa
 }
 
 // prepareTypeFilters combines type filters with an OR condition.
-func (s *Service) prepareTypeFilters(types []string, spaceId string) []*model.BlockContentDataviewFilter {
+// The second return value reports whether any matched type is a file-layout type — callers use
+// this to widen the base layout filter so file objects become searchable when explicitly requested.
+func (s *Service) prepareTypeFilters(types []string, spaceId string) (filters []*model.BlockContentDataviewFilter, hasFileType bool) {
 	if len(types) == 0 {
-		return nil
+		return nil, false
 	}
 
 	// Prepare nested filters for each type
@@ -246,6 +254,10 @@ func (s *Service) prepareTypeFilters(types []string, spaceId string) []*model.Bl
 			continue
 		}
 
+		if util.IsFileTypeUniqueKey(typeDef.UniqueKey) {
+			hasFileType = true
+		}
+
 		nestedFilters = append(nestedFilters, &model.BlockContentDataviewFilter{
 			RelationKey: bundle.RelationKeyType.String(),
 			Condition:   model.BlockContentDataviewFilter_Equal,
@@ -254,7 +266,7 @@ func (s *Service) prepareTypeFilters(types []string, spaceId string) []*model.Bl
 	}
 
 	if len(nestedFilters) == 0 {
-		return nil
+		return nil, false
 	}
 
 	// Combine all filters with an OR operator
@@ -263,7 +275,7 @@ func (s *Service) prepareTypeFilters(types []string, spaceId string) []*model.Bl
 			Operator:      model.BlockContentDataviewFilter_Or,
 			NestedFilters: nestedFilters,
 		},
-	}
+	}, hasFileType
 }
 
 // prepareSorts returns a sort filter based on the given sort parameters

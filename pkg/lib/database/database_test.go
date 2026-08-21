@@ -1,7 +1,9 @@
 package database
 
 import (
+	"math"
 	"testing"
+	"time"
 
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/stretchr/testify/assert"
@@ -831,5 +833,168 @@ func TestFTDocumentMatchToFulltextResult(t *testing.T) {
 		assert.Len(t, result.HighlightRanges, 1)
 		assert.Equal(t, int32(0), result.HighlightRanges[0].From)
 		assert.Equal(t, int32(6), result.HighlightRanges[0].To) // 6 UTF-16 runes
+	})
+}
+
+func TestRecencyDecay(t *testing.T) {
+	now := time.Now().Unix()
+
+	t.Run("zero timestamp returns 0", func(t *testing.T) {
+		// when
+		got := recencyDecay(now, 0)
+
+		// then
+		assert.Equal(t, 0.0, got)
+	})
+
+	t.Run("ts equal to now returns 1", func(t *testing.T) {
+		// when
+		got := recencyDecay(now, now)
+
+		// then
+		assert.InDelta(t, 1.0, got, 1e-9)
+	})
+
+	t.Run("ts 30 days ago returns ~0.5 (half-life)", func(t *testing.T) {
+		// given
+		thirtyDaysAgo := now - 30*86400
+
+		// when
+		got := recencyDecay(now, thirtyDaysAgo)
+
+		// then
+		assert.InDelta(t, 0.5, got, 0.001)
+	})
+
+	t.Run("future timestamp is clamped to 1", func(t *testing.T) {
+		// when
+		got := recencyDecay(now, now+86400)
+
+		// then
+		assert.Equal(t, 1.0, got)
+	})
+}
+
+func TestComputeFinalScore(t *testing.T) {
+	t.Run("zero dates and no name match gives ln(1+score)", func(t *testing.T) {
+		// given
+		details := domain.NewDetails()
+		score := 2.77
+
+		// when
+		got := ComputeFinalScore(score, details, false)
+
+		// then
+		assert.InDelta(t, math.Log1p(score), got, 1e-9)
+	})
+
+	t.Run("name match adds 1.0 on top of log-score", func(t *testing.T) {
+		// given
+		details := domain.NewDetails()
+		score := 2.77
+
+		// when
+		withoutBoost := ComputeFinalScore(score, details, false)
+		withBoost := ComputeFinalScore(score, details, true)
+
+		// then
+		assert.InDelta(t, withoutBoost+1.0, withBoost, 1e-9)
+	})
+
+	t.Run("participant outranks any recency, loses only to real relevance", func(t *testing.T) {
+		// given: a stale participant (no dates — its lastModified moves only
+		// on profile edits, so recency is pinned to the maximum) vs a regular
+		// object edited right now
+		freshRegular := domain.NewDetails()
+		freshRegular.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_basic))
+		freshRegular.SetInt64(bundle.RelationKeyLastModifiedDate, time.Now().Unix())
+		staleParticipant := domain.NewDetails()
+		staleParticipant.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_participant))
+		score := 2.77
+
+		// when
+		regularScore := ComputeFinalScore(score, freshRegular, false)
+		participantScore := ComputeFinalScore(score, staleParticipant, false)
+
+		// then: pinned recency 1.0 + tie-break 0.1 beats the freshest regular
+		assert.Greater(t, participantScore, regularScore)
+		assert.InDelta(t, math.Log1p(score)+1.0+participantLayoutBoost, participantScore, 1e-9)
+		// ...but a real relevance signal (name match) still dominates
+		assert.Greater(t, ComputeFinalScore(score, freshRegular, true), participantScore)
+	})
+
+	t.Run("fresh open adds recency on top of log-score", func(t *testing.T) {
+		// given
+		details := domain.NewDetails()
+		now := time.Now().Unix()
+		details.SetInt64(bundle.RelationKeyLastOpenedDate, now)
+		score := 2.77
+
+		// when
+		got := ComputeFinalScore(score, details, false)
+
+		// then
+		want := math.Log1p(score) + 1.0 // recency == 1.0 when opened right now
+		assert.InDelta(t, want, got, 0.01)
+	})
+
+	t.Run("lastModified dominates lastOpened when more recent", func(t *testing.T) {
+		// given
+		details := domain.NewDetails()
+		now := time.Now().Unix()
+		thirtyDaysAgo := now - 30*86400
+		details.SetInt64(bundle.RelationKeyLastOpenedDate, thirtyDaysAgo) // recency ~0.5
+		details.SetInt64(bundle.RelationKeyLastModifiedDate, now)          // recency ~1.0
+		score := 1.0
+
+		// when
+		got := ComputeFinalScore(score, details, false)
+
+		// then
+		want := math.Log1p(score) + 1.0 // picks modified (more recent)
+		assert.InDelta(t, want, got, 0.01)
+	})
+
+	t.Run("lastOpened dominates lastModified when more recent", func(t *testing.T) {
+		// given
+		details := domain.NewDetails()
+		now := time.Now().Unix()
+		thirtyDaysAgo := now - 30*86400
+		details.SetInt64(bundle.RelationKeyLastOpenedDate, now)             // recency ~1.0
+		details.SetInt64(bundle.RelationKeyLastModifiedDate, thirtyDaysAgo) // recency ~0.5
+		score := 1.0
+
+		// when
+		got := ComputeFinalScore(score, details, false)
+
+		// then
+		want := math.Log1p(score) + 1.0 // picks opened (more recent)
+		assert.InDelta(t, want, got, 0.01)
+	})
+
+	t.Run("all three signals combine additively", func(t *testing.T) {
+		// given
+		details := domain.NewDetails()
+		now := time.Now().Unix()
+		details.SetInt64(bundle.RelationKeyLastOpenedDate, now) // recency == 1.0
+		score := 3.0
+
+		// when
+		got := ComputeFinalScore(score, details, true) // nameMatch = true
+
+		// then
+		want := math.Log1p(score) + 1.0 + 1.0 // log + recency + nameBoost
+		assert.InDelta(t, want, got, 0.01)
+	})
+
+	t.Run("nil details returns ln(1+score)", func(t *testing.T) {
+		// given
+		score := 2.77
+
+		// when
+		got := ComputeFinalScore(score, nil, false)
+
+		// then
+		assert.InDelta(t, math.Log1p(score), got, 1e-9)
 	})
 }

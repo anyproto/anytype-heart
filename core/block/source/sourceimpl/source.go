@@ -169,7 +169,7 @@ func (s *service) newTreeSource(ctx context.Context, space source.Space, id stri
 		fileObjectMigrator: s.fileObjectMigrator,
 		formatFetcher:      s.formatFetcher,
 	}
-	if sbt == smartblock.SmartBlockTypeChatDerivedObject || sbt == smartblock.SmartBlockTypeDiscussionObject || sbt == smartblock.SmartBlockTypeAccountObject {
+	if sbt.IsStoreBacked() {
 		return &store{treeSource: src, sbType: sbt, diffManagers: map[string]*diffManager{}, spaceService: s.spaceService}, nil
 	}
 
@@ -614,6 +614,14 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 		st = initState
 		startId = st.ChangeId()
 	}
+	// the replay-scoped parent index makes PickParentOf/UnlinkAll O(1) during
+	// change application (it no-ops on layered states, i.e. the incremental
+	// initState path); it must be off again before normalization runs
+	defer func() {
+		if st != nil {
+			st.DisableParentIndex()
+		}
+	}()
 
 	// todo: can we avoid unmarshaling here? we already had this data
 	sbt, uniqueKeyInternalKey, err := typeprovider.GetTypeAndKeyFromRoot(ot.Header())
@@ -638,6 +646,7 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 				} else {
 					st = state.NewDoc(ot.Id(), nil).(*state.State)
 				}
+				st.EnableParentIndex()
 				st.SetChangeId(change.Id)
 				return true
 			}
@@ -658,6 +667,7 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 					if iterErr != nil {
 						return false
 					}
+					st.EnableParentIndex()
 				} else {
 					st = st.NewState()
 				}

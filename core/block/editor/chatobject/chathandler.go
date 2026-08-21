@@ -9,6 +9,8 @@ import (
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/query"
+	"github.com/anyproto/any-sync/commonspace/object/acl/list"
+	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/globalsign/mgo/bson"
 	"go.uber.org/zap"
 
@@ -29,10 +31,34 @@ type ChatHandler struct {
 	chatFullId      domain.FullID
 	currentIdentity string
 	myParticipantId string
+	// aclList resolves permissions for the change author at the change's AclHeadId.
+	// May be nil in unit tests that exercise pre-Admin behavior.
+	aclList list.AclList
 	// reactionsCounterEpoch is the unix timestamp after which reactions counters are tracked
 	reactionsCounterEpoch int64
 	// forceNotRead forces handler to mark all messages as not read. It's useful for unit testing
 	forceNotRead bool
+}
+
+// canModerateAt reports whether the change author had Owner or Admin permission
+// at the ACL head referenced by the change. Falls back to false when the AclList
+// is unavailable or the head/identity cannot be resolved — preserving the
+// historical creator-only restriction in those cases.
+func (d *ChatHandler) canModerateAt(authorAccount, aclHeadId string) bool {
+	if d.aclList == nil || aclHeadId == "" {
+		return false
+	}
+	authorKey, err := crypto.DecodeAccountAddress(authorAccount)
+	if err != nil {
+		return false
+	}
+	d.aclList.RLock()
+	defer d.aclList.RUnlock()
+	perms, err := d.aclList.AclState().PermissionsAtRecord(aclHeadId, authorKey)
+	if err != nil {
+		return false
+	}
+	return perms.IsOwner() || perms.IsAdmin()
 }
 
 func (d *ChatHandler) CollectionName() string {
@@ -45,6 +71,23 @@ func (d *ChatHandler) Init(ctx context.Context, s *storestate.StoreState) (err e
 }
 
 func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) error {
+	coll, err := ch.State.Collection(ctx, CollectionName)
+	if err != nil {
+		return fmt.Errorf("get collection: %w", err)
+	}
+	_, err = coll.FindId(ctx, ch.Value.GetString("id"))
+	if err == nil {
+		// The message is already stored: this create is being replayed over an existing
+		// store (e.g. the one-time full-tree replay storeApply runs for a store without
+		// the fullyReplayed marker, which a reindex triggers for every chat). The insert
+		// would hit ErrDocExists anyway; bail out before mutating the subscription
+		// counters, so already-read messages are not resurrected as unread.
+		return storestate.ErrIgnore
+	}
+	if !errors.Is(err, anystore.ErrDocNotFound) {
+		return fmt.Errorf("check for existing message: %w", err)
+	}
+
 	msg, err := chatmodel.UnmarshalMessage(ch.Value)
 	if err != nil {
 		return fmt.Errorf("unmarshal message: %w", err)
@@ -86,6 +129,7 @@ func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) 
 
 	d.subscription.Lock()
 	defer d.subscription.Unlock()
+	d.subscription.UpdateMessageCount(1)
 	d.subscription.UpdateChatState(func(state *model.ChatState) *model.ChatState {
 		if !msg.Read {
 			if msg.OrderId < state.Messages.OldestOrderId || state.Messages.OldestOrderId == "" {
@@ -145,7 +189,7 @@ func (d *ChatHandler) BeforeDelete(ctx context.Context, ch storestate.ChangeOp) 
 	if err != nil {
 		return storestate.DeleteModeDelete, fmt.Errorf("unmarshal message: %w", err)
 	}
-	if message.Creator != ch.Change.Creator {
+	if message.Creator != ch.Change.Creator && !d.canModerateAt(ch.Change.Creator, ch.Change.AclHeadId) {
 		return storestate.DeleteModeDelete, errors.New("can't delete not own message")
 	}
 

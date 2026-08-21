@@ -29,6 +29,14 @@ var spaceViewLog = logging.Logger("core.block.editor.spaceview")
 
 var ErrIncorrectSpaceInfo = errors.New("space info is incorrect")
 
+// RelationKeyInviteCleanupDone certifies that a space's revoked invite files have been deleted from
+// the file node. Its value is the acl record id of the last invite revocation the cleanup covered,
+// so a later revocation — which appends a record — voids the certificate by itself.
+//
+// It is an internal marker with no entry in relations.json, and it lives in the spaceview tree so
+// that only one of the account's devices does the work.
+const RelationKeyInviteCleanupDone = domain.RelationKey("inviteCleanupDone")
+
 // required relations for spaceview beside the bundle.RequiredInternalRelations
 var spaceViewRequiredRelations = []domain.RelationKey{
 	bundle.RelationKeySpaceLocalStatus,
@@ -91,9 +99,16 @@ func (s *SpaceView) Init(ctx *smartblock.InitContext) (err error) {
 		SetAclHeadId(info.GetAclHeadId()).
 		SetEncodedKey(info.EncodedKey)
 	s.setSpacePersistentInfo(ctx.State, newInfo)
+	// Preserve the localStatus/remoteStatus persisted from the previous session instead of
+	// force-resetting to Unknown. A spaceview reloaded from disk that was Ok stays Ok so the
+	// client list does not churn on cold start; the spaceLoader remains the sole authority for
+	// status transitions. Brand-new spaceviews have no persisted value and default to Unknown
+	// (SpaceLocalInfo.GetLocalStatus/GetRemoteStatus return Unknown when unset). Explicit reset
+	// paths (spacefactory recreate, joiner rejoin) still set Unknown themselves.
+	prevLocalInfo := spaceinfo.NewSpaceLocalInfoFromState(ctx.State)
 	localInfo := spaceinfo.NewSpaceLocalInfo(spaceId)
-	localInfo.SetLocalStatus(spaceinfo.LocalStatusUnknown).
-		SetRemoteStatus(spaceinfo.RemoteStatusUnknown).
+	localInfo.SetLocalStatus(prevLocalInfo.GetLocalStatus()).
+		SetRemoteStatus(prevLocalInfo.GetRemoteStatus()).
 		UpdateDetails(ctx.State).
 		Log(log)
 	s.AddHook(s.afterApply, smartblock.HookAfterApply)
@@ -128,6 +143,11 @@ func (s *SpaceView) TryClose(objectTTL time.Duration) (res bool, err error) {
 }
 
 func (s *SpaceView) SetSpaceLocalInfo(info spaceinfo.SpaceLocalInfo) (err error) {
+	// Skip the no-op state apply when nothing changed: on app start this path is
+	// hit ~1300 times, almost always with values identical to what's stored.
+	if info.Equal(s.LocalDetails()) {
+		return nil
+	}
 	st := s.NewState()
 	info.UpdateDetails(st).Log(log)
 	s.updateAccessType(st)
@@ -258,6 +278,9 @@ func (s *SpaceView) SetAccessType(acc spaceinfo.AccessType) (err error) {
 }
 
 func (s *SpaceView) SetSpacePersistentInfo(info spaceinfo.SpacePersistentInfo) (err error) {
+	if info.Equal(s.CombinedDetails()) {
+		return nil
+	}
 	st := s.NewState()
 	s.setSpacePersistentInfo(st, info)
 	return s.Apply(st)
@@ -267,6 +290,39 @@ func (s *SpaceView) SetSharedSpacesLimit(limit int) (err error) {
 	st := s.NewState()
 	st.SetDetailAndBundledRelation(bundle.RelationKeySharedSpacesLimit, domain.Int64(limit))
 	return s.Apply(st)
+}
+
+// SetInviteFileInfo stores an invite the owner holds in their own account. Only the owner's devices
+// sync the space view, so the cid and the key never reach the members of the space.
+func (s *SpaceView) SetInviteFileInfo(info domain.InviteInfo) (err error) {
+	st := s.NewState()
+	setInviteDetails(st, info)
+	return s.Apply(st)
+}
+
+func (s *SpaceView) GetExistingInviteInfo() (info domain.InviteInfo) {
+	info = getInviteDetails(s.CombinedDetails())
+	// an invite is only ever put here to be held by the owner
+	info.HeldByOwner = info.InviteFileCid != ""
+	return
+}
+
+func (s *SpaceView) RemoveExistingInviteInfo() (info domain.InviteInfo, err error) {
+	info = s.GetExistingInviteInfo()
+	st := s.NewState()
+	removeInviteDetails(st)
+	return info, s.Apply(st)
+}
+
+func (s *SpaceView) SetInviteCleanupDone(coveredRevocation string) (err error) {
+	st := s.NewState()
+	// deliberately not a bundled relation: this is an internal marker, not something clients render
+	st.SetDetail(RelationKeyInviteCleanupDone, domain.String(coveredRevocation))
+	return s.Apply(st)
+}
+
+func (s *SpaceView) GetInviteCleanupDone() (coveredRevocation string) {
+	return s.CombinedDetails().GetString(RelationKeyInviteCleanupDone)
 }
 
 func (s *SpaceView) SetPushNotificationMode(ctx session.Context, mode pb.RpcPushNotificationMode) (err error) {

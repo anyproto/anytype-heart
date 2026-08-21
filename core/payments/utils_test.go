@@ -264,17 +264,18 @@ func TestProductFieldParity(t *testing.T) {
 
 func TestConvertProductData_JSONCoverage(t *testing.T) {
 	src := &paymentserviceproto.MembershipV2_Product{
-		Id:            "prod_123",
-		Name:          "Plus",
-		Description:   "Best value",
-		IsTopLevel:    true,
-		IsHidden:      true,
-		IsIntro:       true,
-		IsUpgradeable: true,
-		PricesYearly:  []*paymentserviceproto.MembershipV2_Amount{{Currency: "USD", AmountCents: 4800}, {Currency: "EUR", AmountCents: 4500}},
-		PricesMonthly: []*paymentserviceproto.MembershipV2_Amount{{Currency: "USD", AmountCents: 500}, {Currency: "EUR", AmountCents: 450}},
-		ColorStr:      "blue",
-		Offer:         "intro",
+		Id:             "prod_123",
+		Name:           "Plus",
+		Description:    "Best value",
+		IsTopLevel:     true,
+		IsHidden:       true,
+		IsIntro:        true,
+		IsUpgradeable:  true,
+		PricesYearly:   []*paymentserviceproto.MembershipV2_Amount{{Currency: "USD", AmountCents: 4800}, {Currency: "EUR", AmountCents: 4500}},
+		PricesMonthly:  []*paymentserviceproto.MembershipV2_Amount{{Currency: "USD", AmountCents: 500}, {Currency: "EUR", AmountCents: 450}},
+		PricesLifetime: []*paymentserviceproto.MembershipV2_Amount{{Currency: "USD", AmountCents: 10000}, {Currency: "EUR", AmountCents: 9000}},
+		ColorStr:       "blue",
+		Offer:          "intro",
 		Features: &paymentserviceproto.MembershipV2_Features{
 			StorageBytes:  100 * 1024 * 1024,
 			SpaceReaders:  10,
@@ -306,6 +307,10 @@ func TestConvertProductData_JSONCoverage(t *testing.T) {
 		PricesMonthly: []*model.MembershipV2Amount{
 			{Currency: src.PricesMonthly[0].Currency, AmountCents: src.PricesMonthly[0].AmountCents},
 			{Currency: src.PricesMonthly[1].Currency, AmountCents: src.PricesMonthly[1].AmountCents},
+		},
+		PricesLifetime: []*model.MembershipV2Amount{
+			{Currency: src.PricesLifetime[0].Currency, AmountCents: src.PricesLifetime[0].AmountCents},
+			{Currency: src.PricesLifetime[1].Currency, AmountCents: src.PricesLifetime[1].AmountCents},
 		},
 		Features: &model.MembershipV2Features{
 			StorageBytes:  src.Features.StorageBytes,
@@ -469,6 +474,9 @@ func TestConvertCartProductData_JSONCoverage(t *testing.T) {
 			PricesMonthly: []*paymentserviceproto.MembershipV2_Amount{
 				{Currency: "USD", AmountCents: 500},
 			},
+			PricesLifetime: []*paymentserviceproto.MembershipV2_Amount{
+				{Currency: "USD", AmountCents: 10000},
+			},
 			ColorStr: "blue",
 			Offer:    "intro",
 			Features: &paymentserviceproto.MembershipV2_Features{
@@ -481,8 +489,9 @@ func TestConvertCartProductData_JSONCoverage(t *testing.T) {
 				AnyNameMinLen: 9,
 			},
 		},
-		IsYearly: true,
-		Remove:   true,
+		IsYearly:   true,
+		Remove:     true,
+		IsLifetime: true,
 	}
 
 	actual := convertCartProductData(src)
@@ -505,6 +514,9 @@ func TestConvertCartProductData_JSONCoverage(t *testing.T) {
 			PricesMonthly: []*model.MembershipV2Amount{
 				{Currency: src.Product.PricesMonthly[0].Currency, AmountCents: src.Product.PricesMonthly[0].AmountCents},
 			},
+			PricesLifetime: []*model.MembershipV2Amount{
+				{Currency: src.Product.PricesLifetime[0].Currency, AmountCents: src.Product.PricesLifetime[0].AmountCents},
+			},
 			Features: &model.MembershipV2Features{
 				StorageBytes:  src.Product.Features.StorageBytes,
 				SpaceReaders:  src.Product.Features.SpaceReaders,
@@ -516,8 +528,9 @@ func TestConvertCartProductData_JSONCoverage(t *testing.T) {
 				PrivateSpaces: 4096,
 			},
 		},
-		IsYearly: src.IsYearly,
-		Remove:   src.Remove,
+		IsYearly:   src.IsYearly,
+		Remove:     src.Remove,
+		IsLifetime: src.IsLifetime,
 	}
 
 	require.Equal(t, expected, actual)

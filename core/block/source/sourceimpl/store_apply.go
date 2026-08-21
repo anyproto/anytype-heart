@@ -26,9 +26,7 @@ func (a *storeApply) Apply(ctx context.Context) error {
 		a.hook.BeforeIteration(a.ot)
 	}
 
-	maxAddSeq := a.tx.GetMaxAddSeq()
-
-	err := a.ot.IterateAfterAddSeq(ctx, maxAddSeq, UnmarshalStoreChange, func(change *objecttree.Change) bool {
+	iterate := func(change *objecttree.Change) bool {
 		a.tx.UpdateMaxAddSeq(change.AddSeq)
 
 		if a.hook != nil {
@@ -36,14 +34,26 @@ func (a *storeApply) Apply(ctx context.Context) error {
 		}
 
 		lastErr = a.applyChange(change)
-		if lastErr != nil {
-			return false
-		}
+		return lastErr == nil
+	}
 
-		return true
-	})
+	if a.tx.IsFullyReplayed() {
+		err := a.ot.IterateAfterAddSeq(ctx, a.tx.GetMaxAddSeq(), UnmarshalStoreChange, iterate)
+		return errors.Join(err, lastErr)
+	}
 
-	return errors.Join(err, lastErr)
+	// Nothing has been replayed into the store yet, so the addSeq watermark cannot be used
+	// to pick up where we left off: addSeq is a local per-insert sequence that older builds
+	// never assigned, and IterateAfterAddSeq only yields changes whose addSeq is strictly
+	// greater than the watermark. Starting from 0 therefore silently skips every change
+	// stored before addSeq existed. Walk the tree instead — it yields the complete history
+	// in order (store-backed objects never snapshot, so the tree spans the genesis root).
+	err := a.ot.IterateRoot(UnmarshalStoreChange, iterate)
+	if err = errors.Join(err, lastErr); err != nil {
+		return err
+	}
+	a.tx.MarkFullyReplayed()
+	return nil
 }
 
 func (a *storeApply) applyChange(change *objecttree.Change) (err error) {
@@ -58,6 +68,7 @@ func (a *storeApply) applyChange(change *objecttree.Change) (err error) {
 	set := storestate.ChangeSet{
 		Id:        change.Id,
 		Order:     change.OrderId,
+		AclHeadId: change.AclHeadId,
 		Changes:   storeChange.ChangeSet,
 		Creator:   change.Identity.Account(),
 		Timestamp: change.Timestamp,

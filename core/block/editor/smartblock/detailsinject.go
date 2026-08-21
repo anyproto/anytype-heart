@@ -249,7 +249,8 @@ func (sb *smartBlock) deriveChatId(s *state.State) error {
 
 // resolveLayout adds resolvedLayout to local details of object. Priority:
 // layout restricted by sbType > layout > recommendedLayout from type > current resolvedLayout > basic (fallback)
-// resolveLayout also converts object from Note, i.e. adds Name and Title to state
+// resolveLayout also converts object from Note, i.e. adds Name and Title to state,
+// but only when the layout is actually known - never off the fallback guess.
 func (sb *smartBlock) resolveLayout(s *state.State) {
 	if s.Details() == nil && s.LocalDetails() == nil {
 		return
@@ -274,6 +275,7 @@ func (sb *smartBlock) resolveLayout(s *state.State) {
 
 	typeDetails, err := sb.getTypeDetails(s)
 	valueInType := typeDetails.Get(bundle.RelationKeyRecommendedLayout)
+	layoutIsKnown := true
 	if layoutValue.Ok() {
 		newValue = layoutValue
 	} else if valueInType.Ok() {
@@ -281,34 +283,47 @@ func (sb *smartBlock) resolveLayout(s *state.State) {
 	} else if currentValue.Ok() {
 		newValue = currentValue
 	} else {
-		log.Warnf("failed to get recommended layout from details of type: %v. Fallback to basic layout", err)
-		newValue = sb.getFallbackLayoutValue(s)
+		log.Warnf("failed to get recommended layout from details of type: %v. Guessing the layout", err)
+		newValue, layoutIsKnown = sb.getFallbackLayoutValue(s)
 	}
 
 	if newValue.Ok() {
 		s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, newValue)
 	}
 
+	if !layoutIsKnown {
+		// We don't know the real layout: the type object is most likely just not indexed
+		// yet, e.g. an object imported before its own type. Record a sane resolvedLayout
+		// so the object is not left without one, but never rewrite blocks or move the
+		// name in or out of details based on a guess - resolveLayout runs again once the
+		// type is available, and that is when converting is safe.
+		return
+	}
+
 	convertLayoutBlocks(s, currentValue, newValue)
 }
 
-func (sb *smartBlock) getFallbackLayoutValue(s *state.State) domain.Value {
+// getFallbackLayoutValue is the last resort when neither the object nor its type tells us
+// the layout. layoutIsKnown reports whether the value is actually derived from something
+// authoritative (a bundled type, the smartblock type) rather than merely guessed.
+func (sb *smartBlock) getFallbackLayoutValue(s *state.State) (value domain.Value, layoutIsKnown bool) {
 	if len(s.ObjectTypeKeys()) > 0 {
 		typeKey := s.ObjectTypeKeys()[len(s.ObjectTypeKeys())-1]
 		if bt, err := bundle.GetType(typeKey); err == nil && typeKey != bundle.TypeKeyTemplate {
-			return domain.Int64(int64(bt.Layout))
+			return domain.Int64(int64(bt.Layout)), true
 		}
 	}
 
 	if sb.Type() == smartblock.SmartBlockTypeFileObject {
 		// for file object we use file layout
-		return domain.Int64(int64(model.ObjectType_file))
+		return domain.Int64(int64(model.ObjectType_file)), true
 	}
 
-	if s.Exists(state.TitleBlockID) {
-		return domain.Int64(int64(model.ObjectType_basic))
-	}
-	return domain.Int64(int64(model.ObjectType_note))
+	// Basic is the layout new types get by default. Guessing note here used to be based on
+	// the absence of a title block, which is wrong for objects whose title lives in the name
+	// detail (every imported one), and note is the single layout whose conversion deletes
+	// the name detail - so a wrong guess silently lost the object's name.
+	return domain.Int64(int64(model.ObjectType_basic)), false
 }
 
 func convertLayoutBlocks(st *state.State, oldLayout, newLayout domain.Value) {

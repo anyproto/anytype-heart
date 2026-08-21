@@ -20,12 +20,12 @@ func (_m *MockSpaceIdGetter) EXPECT() *MockSpaceIdGetter_Expecter {
 	return &MockSpaceIdGetter_Expecter{mock: &_m.Mock}
 }
 
-// AllSpaceIds provides a mock function with given fields:
-func (_m *MockSpaceIdGetter) AllSpaceIds() []string {
+// AllLoadedSpaceIds provides a mock function with no fields
+func (_m *MockSpaceIdGetter) AllLoadedSpaceIds() []string {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
-		panic("no return value specified for AllSpaceIds")
+		panic("no return value specified for AllLoadedSpaceIds")
 	}
 
 	var r0 []string
@@ -40,29 +40,29 @@ func (_m *MockSpaceIdGetter) AllSpaceIds() []string {
 	return r0
 }
 
-// MockSpaceIdGetter_AllSpaceIds_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AllSpaceIds'
-type MockSpaceIdGetter_AllSpaceIds_Call struct {
+// MockSpaceIdGetter_AllLoadedSpaceIds_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AllLoadedSpaceIds'
+type MockSpaceIdGetter_AllLoadedSpaceIds_Call struct {
 	*mock.Call
 }
 
-// AllSpaceIds is a helper method to define mock.On call
-func (_e *MockSpaceIdGetter_Expecter) AllSpaceIds() *MockSpaceIdGetter_AllSpaceIds_Call {
-	return &MockSpaceIdGetter_AllSpaceIds_Call{Call: _e.mock.On("AllSpaceIds")}
+// AllLoadedSpaceIds is a helper method to define mock.On call
+func (_e *MockSpaceIdGetter_Expecter) AllLoadedSpaceIds() *MockSpaceIdGetter_AllLoadedSpaceIds_Call {
+	return &MockSpaceIdGetter_AllLoadedSpaceIds_Call{Call: _e.mock.On("AllLoadedSpaceIds")}
 }
 
-func (_c *MockSpaceIdGetter_AllSpaceIds_Call) Run(run func()) *MockSpaceIdGetter_AllSpaceIds_Call {
+func (_c *MockSpaceIdGetter_AllLoadedSpaceIds_Call) Run(run func()) *MockSpaceIdGetter_AllLoadedSpaceIds_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run()
 	})
 	return _c
 }
 
-func (_c *MockSpaceIdGetter_AllSpaceIds_Call) Return(_a0 []string) *MockSpaceIdGetter_AllSpaceIds_Call {
+func (_c *MockSpaceIdGetter_AllLoadedSpaceIds_Call) Return(_a0 []string) *MockSpaceIdGetter_AllLoadedSpaceIds_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockSpaceIdGetter_AllSpaceIds_Call) RunAndReturn(run func() []string) *MockSpaceIdGetter_AllSpaceIds_Call {
+func (_c *MockSpaceIdGetter_AllLoadedSpaceIds_Call) RunAndReturn(run func() []string) *MockSpaceIdGetter_AllLoadedSpaceIds_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -113,7 +113,7 @@ func (_c *MockSpaceIdGetter_Init_Call) RunAndReturn(run func(*app.App) error) *M
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockSpaceIdGetter) Name() string {
 	ret := _m.Called()
 
@@ -158,7 +158,7 @@ func (_c *MockSpaceIdGetter_Name_Call) RunAndReturn(run func() string) *MockSpac
 	return _c
 }
 
-// TechSpaceId provides a mock function with given fields:
+// TechSpaceId provides a mock function with no fields
 func (_m *MockSpaceIdGetter) TechSpaceId() string {
 	ret := _m.Called()
 

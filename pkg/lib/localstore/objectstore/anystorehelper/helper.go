@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"runtime"
 	"slices"
 	"strings"
 
@@ -15,6 +16,23 @@ import (
 )
 
 var log = logging.Logger("objectstore.spaceindex")
+
+// ApplyPlatformPragmas adds platform-specific SQLite connection pragmas.
+// On Apple platforms plain fsync() does not flush the drive cache, so a WAL
+// checkpoint whose DB sync silently didn't reach stable storage can corrupt the
+// main DB file on power loss ("the only time that a failed sync operation can
+// cause database corruption is during a checkpoint operation", sqlite.org/wal.html).
+// fullfsync=1 makes SQLite use F_FULLFSYNC for all syncs there.
+//
+// Intended only for source-of-truth dbs (space stores, which may hold the sole
+// copy of not-yet-synced data). Derived dbs (object index, crdt state) skip it:
+// they are rebuilt by reindex/replay on corruption and checkpoint too often to
+// pay F_FULLFSYNC on every one.
+func ApplyPlatformPragmas(opts map[string]string) {
+	if runtime.GOOS == "darwin" || runtime.GOOS == "ios" {
+		opts["fullfsync"] = "1"
+	}
+}
 
 func IsCorruptedError(err error) (code sqlite.ResultCode, isCorrupted bool) {
 	code = sqlite.ErrCode(err)

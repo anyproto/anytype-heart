@@ -57,6 +57,16 @@ type InMemoryStore struct {
 	spaceCids map[string]map[cid.Cid]struct{}
 	mu        sync.Mutex
 
+	// spaceInfoErr, when non-nil, is returned from SpaceInfo. Used in tests to
+	// simulate transient backend failures (e.g. cross-DC redsync lock contention).
+	errMu        sync.Mutex
+	spaceInfoErr error
+
+	// availabilityOmit cids are silently dropped from CheckAvailability
+	// responses. Used in tests to simulate a node that doesn't answer for
+	// some of the requested cids.
+	availabilityOmit map[cid.Cid]struct{}
+
 	stats *InMemoryStoreStats
 }
 
@@ -108,6 +118,9 @@ func (t *InMemoryStore) CheckAvailability(ctx context.Context, spaceId string, c
 
 	checkResult := make([]*fileproto.BlockAvailability, 0, len(cids))
 	for _, cid := range cids {
+		if _, omit := t.availabilityOmit[cid]; omit {
+			continue
+		}
 		status := fileproto.AvailabilityStatus_NotExists
 		if _, ok := t.store[cid]; ok {
 			status = fileproto.AvailabilityStatus_Exists
@@ -130,8 +143,13 @@ func (t *InMemoryStore) BindCids(ctx context.Context, spaceId string, fileId dom
 
 	var bytesToBind int
 	for _, cid := range cids {
+		b, ok := t.store[cid]
+		if !ok {
+			// The real node refuses to bind a cid it doesn't have
+			return fileprotoerr.ErrCIDNotFound
+		}
 		if !t.isCidBinded(spaceId, cid) {
-			bytesToBind += len(t.store[cid].RawData())
+			bytesToBind += len(b.RawData())
 		}
 	}
 	if !t.isWithinLimits(bytesToBind) {
@@ -255,6 +273,13 @@ func (t *InMemoryStore) DeleteFiles(ctx context.Context, spaceId string, fileIds
 }
 
 func (t *InMemoryStore) SpaceInfo(ctx context.Context, spaceId string) (*fileproto.SpaceInfoResponse, error) {
+	t.errMu.Lock()
+	if injected := t.spaceInfoErr; injected != nil {
+		t.errMu.Unlock()
+		return nil, injected
+	}
+	t.errMu.Unlock()
+
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -279,6 +304,26 @@ func (t *InMemoryStore) SetLimit(limit int) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.limit = limit
+}
+
+// SetSpaceInfoError sets an error that subsequent SpaceInfo calls will return.
+// Pass nil to clear. Used in tests to simulate transient backend failures.
+func (t *InMemoryStore) SetSpaceInfoError(err error) {
+	t.errMu.Lock()
+	defer t.errMu.Unlock()
+	t.spaceInfoErr = err
+}
+
+// SetOmitFromAvailability makes subsequent CheckAvailability calls silently
+// drop the given cids from responses, simulating a node that doesn't answer
+// for some requested cids
+func (t *InMemoryStore) SetOmitFromAvailability(cids ...cid.Cid) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.availabilityOmit = make(map[cid.Cid]struct{}, len(cids))
+	for _, c := range cids {
+		t.availabilityOmit[c] = struct{}{}
+	}
 }
 
 func (t *InMemoryStore) AccountInfo(ctx context.Context) (*fileproto.AccountInfoResponse, error) {

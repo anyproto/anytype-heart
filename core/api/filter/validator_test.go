@@ -398,6 +398,74 @@ func TestValidator_ValidateFilters(t *testing.T) {
 			},
 		},
 		{
+			name: "type filter resolves type key to object ID",
+			filters: &filter.ParsedFilters{
+				Filters: []filter.Filter{
+					{
+						PropertyKey: "type",
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       "page",
+					},
+				},
+			},
+			setupMock: func(m *mock_filter.MockApiService) {
+				m.On("GetCachedProperties", testSpaceId).Return(mockProperties)
+				m.On("GetCachedTypes", testSpaceId).Return(map[string]*apimodel.Type{
+					"page": {Id: "type-page-id", Key: "page", UniqueKey: "ot-page"},
+				})
+			},
+			checkResult: func(t *testing.T, filters *filter.ParsedFilters) {
+				require.Len(t, filters.Filters, 1)
+				assert.Equal(t, "type", filters.Filters[0].PropertyKey)
+				assert.Equal(t, model.BlockContentDataviewFilter_Equal, filters.Filters[0].Condition)
+				assert.Equal(t, "type-page-id", filters.Filters[0].Value)
+			},
+		},
+		{
+			name: "type filter with in condition resolves multiple type keys",
+			filters: &filter.ParsedFilters{
+				Filters: []filter.Filter{
+					{
+						PropertyKey: "type",
+						Condition:   model.BlockContentDataviewFilter_In,
+						Value:       []string{"page", "note"},
+					},
+				},
+			},
+			setupMock: func(m *mock_filter.MockApiService) {
+				m.On("GetCachedProperties", testSpaceId).Return(mockProperties)
+				m.On("GetCachedTypes", testSpaceId).Return(map[string]*apimodel.Type{
+					"page": {Id: "type-page-id", Key: "page", UniqueKey: "ot-page"},
+					"note": {Id: "type-note-id", Key: "note", UniqueKey: "ot-note"},
+				})
+			},
+			checkResult: func(t *testing.T, filters *filter.ParsedFilters) {
+				require.Len(t, filters.Filters, 1)
+				assert.Equal(t, "type", filters.Filters[0].PropertyKey)
+				assert.Equal(t, model.BlockContentDataviewFilter_In, filters.Filters[0].Condition)
+				assert.Equal(t, []string{"type-page-id", "type-note-id"}, filters.Filters[0].Value)
+			},
+		},
+		{
+			name: "type filter with unknown type key returns error",
+			filters: &filter.ParsedFilters{
+				Filters: []filter.Filter{
+					{
+						PropertyKey: "type",
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       "nonexistent",
+					},
+				},
+			},
+			setupMock: func(m *mock_filter.MockApiService) {
+				m.On("GetCachedProperties", testSpaceId).Return(mockProperties)
+				m.On("GetCachedTypes", testSpaceId).Return(map[string]*apimodel.Type{
+					"page": {Id: "type-page-id", Key: "page", UniqueKey: "ot-page"},
+				})
+			},
+			expectedError: "invalid filter at index 0: invalid value for property \"type\": bad input: type \"nonexistent\" not found",
+		},
+		{
 			name: "multiple filters with one invalid",
 			filters: &filter.ParsedFilters{
 				Filters: []filter.Filter{

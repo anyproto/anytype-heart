@@ -69,6 +69,14 @@ var LocalAndDerivedRelationKeys []domain.RelationKey
 var ErrNotFound = fmt.Errorf("not found")
 
 func init() {
+	// extras must join the bundle before the key lists below are derived from it. This is the only
+	// init in the package, so ordering against the generated relations map is guaranteed: package
+	// level vars are initialized before any init runs.
+	if paths := extraRelationsPaths(); len(paths) > 0 {
+		if err := loadExtraRelations(paths, relations); err != nil {
+			panic(fmt.Errorf("%s: %w", envExtraRelations, err))
+		}
+	}
 	for _, r := range relations {
 		if r.DataSource == model.Relation_account || r.DataSource == model.Relation_local {
 			LocalRelationsKeys = append(LocalRelationsKeys, domain.RelationKey(r.Key))

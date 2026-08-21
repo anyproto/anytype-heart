@@ -3,13 +3,12 @@ package exporter
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 
 	anystore "github.com/anyproto/any-store"
-	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/headsync/headstorage"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
-	"github.com/anyproto/any-sync/commonspace/object/acl/recordverifier"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/consensus/consensusproto"
@@ -17,16 +16,9 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-type recordVerifier struct {
-}
-
-func (r recordVerifier) Init(a *app.App) (err error) {
-	return nil
-}
-
-func (r recordVerifier) Name() (name string) {
-	return recordverifier.CName
-}
+// recordVerifier is a local no-op verifier used only for building a throwaway
+// AclList during debug export. It skips acceptor validation intentionally.
+type recordVerifier struct{}
 
 func (r recordVerifier) VerifyAcceptor(rec *consensusproto.RawRecord) (err error) {
 	return nil
@@ -39,6 +31,10 @@ func (r recordVerifier) ShouldValidate() bool {
 type DataConverter interface {
 	Unmarshall(dataType string, decrypted []byte) (any, error)
 	Marshall(model any) (data []byte, dataType string, err error)
+}
+
+type addSeqSetter interface {
+	SetAddSeq(seq *atomic.Uint64)
 }
 
 func prepareExport(ctx context.Context, readable objecttree.ReadableObjectTree, store anystore.DB) (objecttree.ObjectTree, error) {
@@ -63,6 +59,9 @@ func prepareExport(ctx context.Context, readable objecttree.ReadableObjectTree, 
 	treeStorage, err := objecttree.CreateStorage(ctx, readable.Header(), headStorage, store)
 	if err != nil {
 		return nil, err
+	}
+	if setter, ok := treeStorage.(addSeqSetter); ok {
+		setter.SetAddSeq(&atomic.Uint64{})
 	}
 	writeTree, err := objecttree.BuildTestableTree(treeStorage, newAcl)
 	if err != nil {

@@ -6,8 +6,27 @@ import (
 	"testing"
 
 	"github.com/rwcarlsen/goexif/exif"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func Test_extensionFromContentType(t *testing.T) {
+	t.Run("jpeg content type", func(t *testing.T) {
+		assert.Equal(t, ".jpg", extensionFromContentType("image/jpeg"))
+	})
+	t.Run("png content type", func(t *testing.T) {
+		assert.Equal(t, ".png", extensionFromContentType("image/png"))
+	})
+	t.Run("webp content type", func(t *testing.T) {
+		assert.Equal(t, ".webp", extensionFromContentType("image/webp"))
+	})
+	t.Run("empty content type falls back to jpg", func(t *testing.T) {
+		assert.Equal(t, ".jpg", extensionFromContentType(""))
+	})
+	t.Run("unknown content type falls back to jpg", func(t *testing.T) {
+		assert.Equal(t, ".jpg", extensionFromContentType("application/x-unknown-type"))
+	})
+}
 
 func Test_injectArtistIntoExif(t *testing.T) {
 	type args struct {

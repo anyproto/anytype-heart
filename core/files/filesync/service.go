@@ -18,6 +18,7 @@ Scope: global
 - batchUploader (x10): sends batched block upload requests to backup node [runBatchUploader]
 - requestsBatcher: batches small files together, splits large files across requests [requestsBatcher.run]
 - limitedUploader: retries uploads when space becomes available [runLimitedUploader]
+- missingBlocksRetrier: retries files whose blocks were found neither locally nor on the node [runMissingBlocksRetrier]
 - deleter: processes pending deletions from queue [runDeleter]
 - spaceUsage (per space): periodically updates per-space limits from backup node [spaceUsage.update]
 
@@ -26,16 +27,24 @@ Scope: global
 
 ## Documentation
 File states: PendingUpload -> Uploading -> Done (or Limited if quota exceeded)
+                          -> MissingBlocks (blocks found neither locally nor on node; retried with backoff)
                           -> PendingDeletion -> Deleted
 
 Upload flow:
-1. AddFile enqueues file with PendingUpload state
-2. Uploader checks block availability on node (which blocks need upload vs bind)
+1. AddFile enqueues file with PendingUpload state. The file's blocks are not
+   required to exist locally: a file object may reference a fileId whose
+   blocks live only on the file node (e.g. import dedup reused a fileId
+   uploaded from another space or device).
+2. Uploader enumerates the file's cids without fetching leaf data (structural
+   nodes are read locally with a fallback to the node) and checks their
+   availability on the node: blocks the node already has are bound, the rest
+   are uploaded from the local store.
 3. Allocates space in local limit tracker
-4. Walks DAG and batches blocks via requestsBatcher
+4. Binds cids, then batches locally-present blocks via requestsBatcher
 5. batchUploader sends BlockPushMany requests to node
 6. On completion, marks file as Done; on limit error, marks as Limited
 
+A file whose bytes are already on the node reaches Done with zero uploads.
 Limited files are retried when spaceUsageManager detects more free space available.
 */
 
@@ -50,7 +59,6 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
-	"github.com/anyproto/any-sync/commonfile/fileservice"
 	ipld "github.com/ipfs/go-ipld-format"
 	"go.uber.org/zap"
 
@@ -58,6 +66,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files/filehelper"
+	"github.com/anyproto/anytype-heart/core/files/filestorage"
 	rpcstore2 "github.com/anyproto/anytype-heart/core/files/filestorage/rpcstore"
 	"github.com/anyproto/anytype-heart/core/files/filesync/filequeue"
 	"github.com/anyproto/anytype-heart/core/subscription"
@@ -77,6 +86,7 @@ type StatusCallback func(fileObjectId string, fileId domain.FullFileId, status f
 
 type FileSync interface {
 	AddFile(req AddFileRequest) (err error)
+	MarkUploaded(objectId string) error
 	OnStatusUpdated(StatusCallback)
 	DeleteFile(objectId string, fileId domain.FullFileId) (err error)
 	UpdateNodeUsage(ctx context.Context) error
@@ -116,6 +126,7 @@ type fileSync struct {
 	loopCtx         context.Context
 	loopCancel      context.CancelFunc
 	dagService      ipld.DAGService
+	fileStorage     filestorage.FileStorage
 	eventSender     event.Sender
 	onStatusUpdated []StatusCallback
 
@@ -147,7 +158,7 @@ func New() FileSync {
 func (s *fileSync) Init(a *app.App) (err error) {
 	s.loopCtx, s.loopCancel = context.WithCancel(context.Background())
 	s.rpcStore = app.MustComponent[rpcstore2.Service](a).NewStore()
-	s.dagService = app.MustComponent[fileservice.FileService](a).DAGService()
+	s.fileStorage = app.MustComponent[filestorage.FileStorage](a)
 	s.eventSender = app.MustComponent[event.Sender](a)
 	s.cfg = app.MustComponent[*config.Config](a)
 	techSpaceId := app.MustComponent[spaceService](a).TechSpaceId()
@@ -194,6 +205,8 @@ func (s *fileSync) Name() (name string) {
 }
 
 func (s *fileSync) Run(ctx context.Context) error {
+	s.dagService = s.fileStorage.LocalDAGService()
+
 	if s.cfg.IsLocalOnlyMode() {
 		return nil
 	}
@@ -222,6 +235,8 @@ func (s *fileSync) Run(ctx context.Context) error {
 	for range 10 {
 		go s.runUploader(s.loopCtx)
 	}
+
+	go s.runMissingBlocksRetrier(s.loopCtx)
 
 	go s.runLimitedUploader(s.loopCtx)
 

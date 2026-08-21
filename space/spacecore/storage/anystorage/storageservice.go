@@ -19,6 +19,7 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/exp/maps"
 
+	"github.com/anyproto/anytype-heart/core/debug/debugreporter"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/anystorehelper"
 	"github.com/anyproto/anytype-heart/space/spacedomain"
 )
@@ -48,6 +49,8 @@ type storageService struct {
 
 	backupsMu sync.RWMutex
 	backups   []CorruptedBackup
+
+	reporter debugreporter.Reporter
 }
 
 func (s *storageService) AllSpaceIds() (ids []string, err error) {
@@ -86,6 +89,16 @@ func (s *storageService) openDb(ctx context.Context, id string) (db anystore.DB,
 				With(zap.Bool("isCorrupted", isCorrupted)).
 				With(zap.Int64("tookMs", time.Since(start).Milliseconds())).
 				Error("failed to open spacestore, backing up")
+			if s.reporter != nil {
+				s.reporter.Report("DB_CORRUPTION", map[string]any{
+					"db":      filepath.Join(filepath.Base(filepath.Dir(dbPath)), filepath.Base(dbPath)),
+					"spaceId": id,
+					"code":    code.String(),
+					"desc":    code.Message(),
+					"error":   err.Error(),
+					"tookMs":  time.Since(start).Milliseconds(),
+				}, debugreporter.Capture{Kind: debugreporter.KindNone})
+			}
 			if _, backupErr := s.backupCorruptedSpace(id); backupErr != nil {
 				log.With(zap.Error(backupErr)).Error("failed to backup corrupted space")
 			}
@@ -111,6 +124,10 @@ func (s *storageService) Close(ctx context.Context) (err error) {
 }
 
 func (s *storageService) Init(a *app.App) (err error) {
+	// Reporter is optional — see anystoreprovider.Init comment.
+	if r, err := app.GetComponent[debugreporter.Reporter](a); err == nil {
+		s.reporter = r
+	}
 	if _, err = os.Stat(s.rootPath); err != nil {
 		err = os.MkdirAll(s.rootPath, 0755)
 		if err != nil {
@@ -178,9 +195,39 @@ func (s *storageService) WaitSpaceStorage(ctx context.Context, id string) (space
 	}
 	st, err := spacestorage.New(ctx, id, db)
 	if err != nil {
-		return nil, err
+		return nil, s.handleStorageBuildError(id, db, err)
 	}
-	return NewClientStorage(ctx, st)
+	cs, err := NewClientStorage(ctx, st)
+	if err != nil {
+		return nil, s.handleStorageBuildError(id, db, err)
+	}
+	return cs, nil
+}
+
+// handleStorageBuildError converts a build failure on an openable store.db into
+// ErrSpaceStorageMissing when the db is valid but uninitialized (its mandatory
+// collections were never durably created, e.g. a create interrupted by process
+// kill or power loss). The db passes every corruption check, so without this the
+// space can never load and never self-heal (GO-7393). The db dir is backed up
+// and the caller re-downloads the space from peers.
+func (s *storageService) handleStorageBuildError(id string, db anystore.DB, err error) error {
+	if !errors.Is(err, anystore.ErrCollectionNotFound) {
+		_ = db.Close()
+		return err
+	}
+	log.With(zap.String("spaceId", id), zap.Error(err)).Error("space store is uninitialized, backing up for re-download")
+	if s.reporter != nil {
+		s.reporter.Report("DB_UNINITIALIZED", map[string]any{
+			"db":      filepath.Join(id, "store.db"),
+			"spaceId": id,
+			"error":   err.Error(),
+		}, debugreporter.Capture{Kind: debugreporter.KindNone})
+	}
+	_ = db.Close()
+	if _, backupErr := s.backupCorruptedSpace(id); backupErr != nil {
+		log.With(zap.String("spaceId", id), zap.Error(backupErr)).Error("failed to backup uninitialized space")
+	}
+	return spacestorage.ErrSpaceStorageMissing
 }
 
 func (s *storageService) SpaceExists(id string) bool {
@@ -225,6 +272,7 @@ func (s *storageService) anyStoreConfig() *anystore.Config {
 	}
 	opts["synchronous"] = "normal"
 	opts["wal_autocheckpoint"] = "10000"
+	anystorehelper.ApplyPlatformPragmas(opts)
 
 	return &anystore.Config{
 		ReadConnections:                           4,

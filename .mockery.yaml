@@ -111,6 +111,9 @@ packages:
   github.com/anyproto/anytype-heart/core/invitestore:
     interfaces:
       Service:
+  github.com/anyproto/anytype-heart/core/invitecleanup:
+    interfaces:
+      Service:
   github.com/anyproto/anytype-heart/core/indexer:
     interfaces:
       Indexer:
@@ -270,6 +273,8 @@ packages:
       EventService:
       CrossSpaceSubscriptionService:
       ClientCommands:
+      ChatSubscriptionService:
+      FileObjectService:
   github.com/anyproto/anytype-heart/core/api/filter:
     interfaces:
       ApiService:
@@ -289,6 +294,9 @@ packages:
   github.com/anyproto/anytype-heart/core/relationutils:
     interfaces:
       RelationFormatFetcher:
-  github.com/anyproto/anytype-heart/core/onetoone:
+  github.com/anyproto/anytype-heart/core/inbox/inboxservice:
     interfaces:
-      Service:
+      Sender:
+  github.com/anyproto/anytype-heart/core/inbox/inboxclient:
+    interfaces:
+      InboxClient:

@@ -74,6 +74,19 @@ var excludedSystemProperties = map[string]bool{
 	bundle.RelationKeyIconOption.String():             true,
 	bundle.RelationKeyIconName.String():               true,
 	bundle.RelationKeyPicture.String():                true,
+	// Internal file storage and encryption fields. Already Hidden=true in the bundle (so they
+	// don't reach the property cache), but kept here as defense-in-depth so a future change
+	// to either the bundle or the cache subscription cannot accidentally leak file keys / CIDs.
+	bundle.RelationKeyFileId.String():               true,
+	bundle.RelationKeyFileSourceChecksum.String():   true,
+	bundle.RelationKeyFileVariantIds.String():       true,
+	bundle.RelationKeyFileVariantPaths.String():     true,
+	bundle.RelationKeyFileVariantKeys.String():      true,
+	bundle.RelationKeyFileVariantWidths.String():    true,
+	bundle.RelationKeyFileVariantChecksums.String(): true,
+	bundle.RelationKeyFileVariantMills.String():     true,
+	bundle.RelationKeyFileVariantOptions.String():   true,
+	bundle.RelationKeyFileIndexingStatus.String():   true,
 }
 
 var PropertyFormatToRelationFormat = map[apimodel.PropertyFormat]model.RelationFormat{
@@ -225,7 +238,16 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, request ap
 		}
 	}
 
-	return s.GetProperty(ctx, spaceId, resp.ObjectId)
+	prop, err := s.GetProperty(ctx, spaceId, resp.ObjectId)
+	if err != nil {
+		return nil, fmt.Errorf("get created property: %w", err)
+	}
+
+	// Synchronously cache the property so it's immediately available for subsequent
+	// requests without waiting for async subscription events.
+	s.cache.cacheProperty(spaceId, prop)
+
+	return prop, nil
 }
 
 // UpdateProperty updates an existing property in a specific space.

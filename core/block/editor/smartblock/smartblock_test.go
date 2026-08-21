@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver/mock_idresolver"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	_ "github.com/anyproto/anytype-heart/core/block/simple/base"
@@ -321,6 +322,44 @@ func TestSmartBlock_CollectOutgoingLinks(t *testing.T) {
 		assert.Equal(t, "file1", links[0].SourceBlockID)
 	})
 
+	t.Run("collect link from bookmark block", func(t *testing.T) {
+		// given
+		objectId := "root"
+		fx := newFixture(objectId, t)
+		fx.init(t, []*model.Block{
+			{Id: objectId, ChildrenIds: []string{"bookmark1"}},
+			{Id: "bookmark1", Content: &model.BlockContentOfBookmark{
+				Bookmark: &model.BlockContentBookmark{TargetObjectId: "bookmarkTarget1"},
+			}},
+		})
+
+		// when
+		links := fx.collectOutgoingLinks(fx.NewState())
+
+		// then
+		require.Len(t, links, 1)
+		assert.Equal(t, "bookmarkTarget1", links[0].TargetID)
+		assert.Equal(t, "bookmark1", links[0].SourceBlockID)
+	})
+
+	t.Run("skip self-reference in bookmark block", func(t *testing.T) {
+		// given
+		objectId := "root"
+		fx := newFixture(objectId, t)
+		fx.init(t, []*model.Block{
+			{Id: objectId, ChildrenIds: []string{"bookmark1"}},
+			{Id: "bookmark1", Content: &model.BlockContentOfBookmark{
+				Bookmark: &model.BlockContentBookmark{TargetObjectId: objectId}, // self-reference
+			}},
+		})
+
+		// when
+		links := fx.collectOutgoingLinks(fx.NewState())
+
+		// then
+		assert.Empty(t, links)
+	})
+
 	t.Run("collect link from text mention", func(t *testing.T) {
 		// given
 		objectId := "root"
@@ -546,5 +585,112 @@ func TestSmartBlock_CollectOutgoingLinks(t *testing.T) {
 		assert.Equal(t, OutgoingLink{TargetID: "user1", RelationKey: bundle.RelationKeyAssignee.String()}, first[2])
 		assert.Equal(t, OutgoingLink{TargetID: "author1", RelationKey: bundle.RelationKeyAuthor.String()}, first[3])
 		assert.Equal(t, OutgoingLink{TargetID: "company1", RelationKey: bundle.RelationKeyCompany.String()}, first[4])
+	})
+
+	t.Run("collect link from text Object mark (inline link mark)", func(t *testing.T) {
+		// given
+		objectId := "root"
+		fx := newFixture(objectId, t)
+		fx.init(t, []*model.Block{
+			{Id: objectId, ChildrenIds: []string{"text1"}},
+			{Id: "text1", Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text: "see [[page]]",
+					Marks: &model.BlockContentTextMarks{
+						Marks: []*model.BlockContentTextMark{
+							{Type: model.BlockContentTextMark_Object, Param: "linkedPage"},
+						},
+					},
+				},
+			}},
+		})
+
+		// when
+		links := fx.collectOutgoingLinks(fx.NewState())
+
+		// then
+		require.Len(t, links, 1)
+		assert.Equal(t, "linkedPage", links[0].TargetID)
+		assert.Equal(t, "text1", links[0].SourceBlockID)
+	})
+
+	t.Run("collect link from inline dataview embed", func(t *testing.T) {
+		// given a page with a dataview block embedding an existing Set/Collection
+		objectId := "root"
+		fx := newFixture(objectId, t)
+		fx.init(t, []*model.Block{
+			{Id: objectId, ChildrenIds: []string{"dv"}},
+			{Id: "dv", Content: &model.BlockContentOfDataview{
+				Dataview: &model.BlockContentDataview{
+					TargetObjectId: "embeddedSet",
+				},
+			}},
+		})
+
+		// when
+		links := fx.collectOutgoingLinks(fx.NewState())
+
+		// then
+		require.Len(t, links, 1)
+		assert.Equal(t, "embeddedSet", links[0].TargetID)
+		assert.Equal(t, "dv", links[0].SourceBlockID)
+	})
+
+	t.Run("dataview embed pointing at self is skipped", func(t *testing.T) {
+		// given
+		objectId := "root"
+		fx := newFixture(objectId, t)
+		fx.init(t, []*model.Block{
+			{Id: objectId, ChildrenIds: []string{"dv"}},
+			{Id: "dv", Content: &model.BlockContentOfDataview{
+				Dataview: &model.BlockContentDataview{TargetObjectId: objectId},
+			}},
+		})
+
+		// when
+		links := fx.collectOutgoingLinks(fx.NewState())
+
+		// then
+		assert.Empty(t, links)
+	})
+
+	t.Run("collect collection store members", func(t *testing.T) {
+		// given a Collection-shaped state with two members in its store slice
+		objectId := "coll1"
+		fx := newFixture(objectId, t)
+		fx.init(t, []*model.Block{{Id: objectId}})
+		st := fx.NewState()
+		st.UpdateStoreSlice(template.CollectionStoreKey, []string{"member1", "member2"})
+
+		// when
+		links := fx.collectOutgoingLinks(st)
+
+		// then
+		targets := map[string]bool{}
+		for _, l := range links {
+			targets[l.TargetID] = true
+		}
+		assert.True(t, targets["member1"])
+		assert.True(t, targets["member2"])
+	})
+
+	t.Run("collection store skipped when InternalFlag_collectionDontIndexLinks is set", func(t *testing.T) {
+		// given
+		objectId := "coll1"
+		fx := newFixture(objectId, t)
+		fx.init(t, []*model.Block{{Id: objectId}})
+		st := fx.NewState()
+		st.UpdateStoreSlice(template.CollectionStoreKey, []string{"member1"})
+		flags := internalflag.NewFromState(st)
+		flags.Add(model.InternalFlag_collectionDontIndexLinks)
+		flags.AddToState(st)
+
+		// when
+		links := fx.collectOutgoingLinks(st)
+
+		// then
+		for _, l := range links {
+			assert.NotEqual(t, "member1", l.TargetID, "store-slice members must be skipped while flag is set")
+		}
 	})
 }

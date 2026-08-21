@@ -75,6 +75,11 @@ type Store interface {
 	PushStoreChange(ctx context.Context, params PushStoreChangeParams) (changeId string, err error)
 	SetPushChangeHook(onPushChange PushChangeHook)
 
+	// AclList exposes the underlying space ACL so handlers can resolve permissions
+	// (e.g. ChatHandler.BeforeDelete needs to know if the change author was an admin
+	// at the change's AclHeadId).
+	AclList() list.AclList
+
 	// RegisterDiffManager sets a hook that will be called when a change is removed (marked as read) from the diff manager
 	// must be called before ReadStoreDoc.
 	//
@@ -141,7 +146,7 @@ func (b *BuildOptions) BuildTreeOpts() objecttreebuilder.BuildTreeOpts {
 			if err != nil {
 				return nil, err
 			}
-			if sbt == smartblock.SmartBlockTypeChatDerivedObject || sbt == smartblock.SmartBlockTypeAccountObject || sbt == smartblock.SmartBlockTypeDiscussionObject {
+			if sbt.IsStoreBacked() {
 				ot.SetFlusher(objecttree.MarkNewChangeFlusher())
 			}
 			return ot, nil

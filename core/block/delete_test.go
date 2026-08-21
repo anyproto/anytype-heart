@@ -22,7 +22,7 @@ func TestService_unsetDashboardIdIfNeeded(t *testing.T) {
 		objectId    = "deletedObj"
 	)
 
-	t.Run("deleting object that is current dashboard resets homepage", func(t *testing.T) {
+	t.Run("deleting homepage object resets homepage to widgets", func(t *testing.T) {
 		// given
 		store := objectstore.NewStoreFixture(t)
 		detailsSvc := mock_detailservice.NewMockService(t)
@@ -49,7 +49,7 @@ func TestService_unsetDashboardIdIfNeeded(t *testing.T) {
 			assert.Equal(t, spaceId, spcId)
 			require.NotNil(t, details)
 			require.NotEmpty(t, details)
-			assert.Empty(t, details.GetString(bundle.RelationKeyHomepage))
+			assert.Equal(t, domain.HomepageWidgets, details.GetString(bundle.RelationKeyHomepage))
 			return nil
 		})
 

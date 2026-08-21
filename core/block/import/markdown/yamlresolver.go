@@ -18,8 +18,10 @@ func NewYAMLPropertyResolver() *YAMLPropertyResolver {
 	}
 }
 
-// ResolvePropertyKey returns the key for a property name, creating one if it doesn't exist
-func (r *YAMLPropertyResolver) ResolvePropertyKey(name string) string {
+// ResolvePropertyKey returns the key for a property name, creating one if it doesn't exist.
+// objectTypeName is accepted for interface compatibility and is ignored —
+// the non-schema import path has no per-type scope.
+func (r *YAMLPropertyResolver) ResolvePropertyKey(_ string, name string) string {
 	if key, exists := r.nameToKey[name]; exists {
 		return key
 	}
@@ -31,7 +33,7 @@ func (r *YAMLPropertyResolver) ResolvePropertyKey(name string) string {
 }
 
 // GetRelationFormat returns the format for a relation - not used for non-schema imports
-func (r *YAMLPropertyResolver) GetRelationFormat(key string) model.RelationFormat {
+func (r *YAMLPropertyResolver) GetRelationFormat(_ string, _ string) model.RelationFormat {
 	// Return longtext as default - the actual format will be determined by the YAML value type
 	return model.RelationFormat_longtext
 }

@@ -8,7 +8,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
 	"github.com/gogo/protobuf/proto"
-
 )
 
 func New() app.Component {

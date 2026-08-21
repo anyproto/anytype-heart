@@ -36,6 +36,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -57,6 +58,8 @@ type Manager interface {
 	UpdatePinned(message *chatmodel.Message)
 	UpdateFull(message *chatmodel.Message)
 	UpdateChatState(updater func(*model.ChatState) *model.ChatState)
+	UpdateMessageCount(delta int32)
+	GetMessageCount() int32
 	Add(prevOrderId string, message *chatmodel.Message)
 	Delete(messageId string)
 	ForceSendingChatState()
@@ -67,6 +70,7 @@ type Manager interface {
 	UpdateReactionReadStatus(msgId string, unread bool)
 	ReadReactions(newOrderId string, idsModified []string)
 	ForceReloadReactionState()
+	ReconcileChatState()
 }
 
 type Service interface {
@@ -192,12 +196,14 @@ type SubscribeLastMessagesRequest struct {
 	WithDependencies       bool
 	OnlyLastMessage        bool
 	CouldUseSessionContext bool
+	SseSink                chan<- *pb.Event
 }
 
 type SubscribeLastMessagesResponse struct {
 	PreviousOrderId string
 	Messages        []*chatmodel.Message
 	ChatState       *model.ChatState
+	MessageCount    int32
 	// Dependencies per message id
 	Dependencies map[string][]*domain.Details
 }
@@ -252,17 +258,24 @@ func (s *service) SubscribeLastMessages(ctx context.Context, req SubscribeLastMe
 		}
 	}
 
-	// Warm up cache
-	go func() {
-		_, err = s.objectGetter.WaitAndGetObject(s.componentCtx, req.ChatObjectId)
-		if err != nil {
-			log.Error("load chat to cache", zap.String("chatObjectId", req.ChatObjectId), zap.Error(err))
-		}
-	}()
+	// Warm up the chat tree only for full subscriptions, i.e. a chat actually opened
+	// by the user. Vault previews subscribe with OnlyLastMessage and must not open
+	// every chat tree on app start (GO-7302): their data is served from the persisted
+	// repository above and refreshed by per-space diffsync, which pulls a chat tree
+	// only when its heads diverge (head-syncing chats first, see block.Service.GetPriorityIds).
+	if !req.OnlyLastMessage {
+		go func() {
+			_, err := s.objectGetter.WaitAndGetObject(s.componentCtx, req.ChatObjectId)
+			if err != nil {
+				log.Error("load chat to cache", zap.String("chatObjectId", req.ChatObjectId), zap.Error(err))
+			}
+		}()
+	}
 
 	return &SubscribeLastMessagesResponse{
 		Messages:        messages,
 		ChatState:       mngr.GetChatState(),
+		MessageCount:    mngr.GetMessageCount(),
 		Dependencies:    depsPerMessage,
 		PreviousOrderId: previousOrderId,
 	}, nil

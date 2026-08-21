@@ -10,6 +10,7 @@ import (
 	_ "github.com/anyproto/anytype-heart/core/api/docs"
 	"github.com/anyproto/anytype-heart/core/api/handler"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
+	"github.com/anyproto/anytype-heart/util/localorigin"
 )
 
 const (
@@ -20,6 +21,14 @@ const (
 	maxWriteRequestsPerSecond = 1  // allow sustained 1 request per second
 	maxBurstRequests          = 60 // allow all requests in the first second
 )
+
+// envApiAllowedOrigins adds comma-separated exact origins to the allowlist, for
+// local clients that are not served from a loopback host.
+const envApiAllowedOrigins = "ANYTYPE_API_ALLOWED_ORIGINS"
+
+// envApiAllowedHosts adds comma-separated Host header values to the allowlist,
+// for operators who bind the API to a routable interface and reach it by name.
+const envApiAllowedHosts = "ANYTYPE_API_ALLOWED_HOSTS"
 
 // NewRouter builds and returns a *gin.Engine with all routes configured.
 func (srv *Server) NewRouter(mw apicore.ClientCommands, eventService apicore.EventService, openapiYAML []byte, openapiJSON []byte) *gin.Engine {
@@ -36,6 +45,8 @@ func (srv *Server) NewRouter(mw apicore.ClientCommands, eventService apicore.Eve
 	v1.Use(srv.ensureCacheInitialized())
 	v1.Use(srv.ensureAuthenticated(mw))
 
+	srv.registerChatRoutes(v1, eventService, writeRateLimitMW)
+	srv.registerFileRoutes(v1, eventService, writeRateLimitMW)
 	srv.registerListRoutes(v1, eventService, writeRateLimitMW)
 	srv.registerMemberRoutes(v1, eventService)
 	srv.registerObjectRoutes(v1, eventService, writeRateLimitMW)
@@ -59,6 +70,12 @@ func (srv *Server) setupMiddleware() *gin.Engine {
 	router := gin.New()
 	router.Use(gin.Recovery())
 	router.Use(ensureMetadataHeader())
+	// Before every route, including the unauthenticated /v1/auth ones.
+	// Only native clients talk to this API, so file:// is not trusted here.
+	router.Use(ensureTrustedOrigin(localorigin.New(
+		os.Getenv(envApiAllowedOrigins),
+		localorigin.AllowHosts(os.Getenv(envApiAllowedHosts)),
+	)))
 
 	if isDebug {
 		router.Use(gin.Logger())
@@ -106,6 +123,94 @@ func (srv *Server) registerAuthRoutes(router *gin.Engine) {
 		authGroup.POST("/auth/challenges", handler.CreateChallengeHandler(srv.service))
 		authGroup.POST("/auth/api_keys", handler.CreateApiKeyHandler(srv.service))
 	}
+}
+
+// registerChatRoutes registers chat message routes
+func (srv *Server) registerChatRoutes(v1 *gin.RouterGroup, eventService apicore.EventService, writeRateLimitMW gin.HandlerFunc) {
+	v1.GET("/spaces/:space_id/chats",
+		srv.ensureFilters(),
+		ensureAnalyticsEvent("ListChats", eventService),
+		handler.ListChatsHandler(srv.service),
+	)
+	v1.POST("/spaces/:space_id/chats",
+		writeRateLimitMW,
+		ensureAnalyticsEvent("CreateChat", eventService),
+		handler.CreateChatHandler(srv.service),
+	)
+	v1.GET("/spaces/:space_id/chats/:chat_id/messages/stream",
+		ensureAnalyticsEvent("ChatMessageStream", eventService),
+		handler.ChatStreamHandler(srv.service, srv.chatSubSvc),
+	)
+	v1.GET("/spaces/:space_id/chats/:chat_id/messages",
+		ensureAnalyticsEvent("GetChatMessages", eventService),
+		handler.GetChatMessagesHandler(srv.service),
+	)
+	v1.GET("/spaces/:space_id/chats/:chat_id/messages/search",
+		ensureAnalyticsEvent("SearchChatMessages", eventService),
+		handler.SearchChatMessagesHandler(srv.service),
+	)
+	v1.GET("/spaces/:space_id/chats/:chat_id/messages/:message_id",
+		ensureAnalyticsEvent("GetChatMessage", eventService),
+		handler.GetChatMessageHandler(srv.service),
+	)
+	v1.POST("/spaces/:space_id/chats/:chat_id/messages",
+		writeRateLimitMW,
+		ensureAnalyticsEvent("AddChatMessage", eventService),
+		handler.AddChatMessageHandler(srv.service),
+	)
+	v1.PATCH("/spaces/:space_id/chats/:chat_id/messages/:message_id",
+		writeRateLimitMW,
+		ensureAnalyticsEvent("EditChatMessage", eventService),
+		handler.EditChatMessageHandler(srv.service),
+	)
+	v1.DELETE("/spaces/:space_id/chats/:chat_id/messages/:message_id",
+		writeRateLimitMW,
+		ensureAnalyticsEvent("DeleteChatMessage", eventService),
+		handler.DeleteChatMessageHandler(srv.service),
+	)
+	v1.POST("/spaces/:space_id/chats/:chat_id/messages/:message_id/reactions",
+		writeRateLimitMW,
+		ensureAnalyticsEvent("ToggleChatReaction", eventService),
+		handler.ToggleChatReactionHandler(srv.service),
+	)
+	v1.POST("/spaces/:space_id/chats/:chat_id/read_all",
+		writeRateLimitMW,
+		ensureAnalyticsEvent("ReadAllChatMessages", eventService),
+		handler.ReadAllChatMessagesHandler(srv.service),
+	)
+	v1.POST("/spaces/:space_id/chats/:chat_id/messages/read",
+		writeRateLimitMW,
+		ensureAnalyticsEvent("ReadChatMessages", eventService),
+		handler.ReadChatMessagesHandler(srv.service),
+	)
+	v1.POST("/spaces/:space_id/chats/:chat_id/reactions/read",
+		writeRateLimitMW,
+		ensureAnalyticsEvent("ReadChatReactions", eventService),
+		handler.ReadChatReactionsHandler(srv.service),
+	)
+}
+
+// registerFileRoutes registers file-related routes
+func (srv *Server) registerFileRoutes(v1 *gin.RouterGroup, eventService apicore.EventService, writeRateLimitMW gin.HandlerFunc) {
+	v1.POST("/spaces/:space_id/files",
+		writeRateLimitMW,
+		ensureAnalyticsEvent("UploadFile", eventService),
+		handler.UploadFileHandler(srv.service),
+	)
+	v1.GET("/spaces/:space_id/files/:file_id",
+		ensureAnalyticsEvent("DownloadFile", eventService),
+		handler.DownloadFileHandler(srv.service),
+	)
+	// HEAD reuses the same handler; http.ServeContent omits the body and
+	// returns just the status line + headers, which is what HEAD requires.
+	v1.HEAD("/spaces/:space_id/files/:file_id",
+		handler.DownloadFileHandler(srv.service),
+	)
+	v1.DELETE("/spaces/:space_id/files/:file_id",
+		writeRateLimitMW,
+		ensureAnalyticsEvent("DeleteFile", eventService),
+		handler.DeleteFileHandler(srv.service),
+	)
 }
 
 // registerListRoutes registers list-related routes

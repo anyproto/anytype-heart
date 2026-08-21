@@ -30,6 +30,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/internal/components/builder"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
 	spaceservice "github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
@@ -47,6 +48,7 @@ type SpaceLoader interface {
 type spaceLoader struct {
 	status              spacestatus.SpaceStatus
 	builder             builder.SpaceBuilder
+	storageService      storage.ClientStorage
 	loading             *loadingSpace
 	stopIfMandatoryFail bool
 	disableRemoteLoad   bool
@@ -68,6 +70,7 @@ func (s *spaceLoader) Init(a *app.App) (err error) {
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 	s.status = app.MustComponent[spacestatus.SpaceStatus](a)
 	s.builder = app.MustComponent[builder.SpaceBuilder](a)
+	s.storageService = app.MustComponent[storage.ClientStorage](a)
 	return nil
 }
 
@@ -95,16 +98,29 @@ func (s *spaceLoader) Close(ctx context.Context) (err error) {
 }
 
 func (s *spaceLoader) startLoad(ctx context.Context) (err error) {
+	// Probe the on-disk store BEFORE taking s.mx: SpaceExists performs blocking I/O (an os.Stat
+	// on anystorage, a synchronized SQL query on sqlitestorage) and depends only on the immutable
+	// SpaceId, so keeping it out of the critical section avoids stalling concurrent
+	// WaitLoad/onLoad/Close callers that also contend for s.mx.
+	onDisk := s.storageService.SpaceExists(s.status.SpaceId())
+
 	s.mx.Lock()
 	defer s.mx.Unlock()
 
 	if s.status.GetPersistentStatus() == spaceinfo.AccountStatusDeleted {
 		return ErrSpaceDeleted
 	}
-	info := spaceinfo.NewSpaceLocalInfo(s.status.SpaceId())
-	info.SetLocalStatus(spaceinfo.LocalStatusLoading)
-	if err = s.status.SetLocalInfo(info); err != nil {
-		return
+	// Fast path: a space whose store still exists on disk and was already Ok in the previous
+	// session keeps reporting Ok to clients. We still run the background build below; we just
+	// do not publish a transient Loading (which would make the client hide the space on cold
+	// start). If onLoad later fails, it sets Missing (accepted Ok->Missing regression).
+	onDiskAndOk := s.status.GetLocalStatus() == spaceinfo.LocalStatusOk && onDisk
+	if !onDiskAndOk {
+		info := spaceinfo.NewSpaceLocalInfo(s.status.SpaceId())
+		info.SetLocalStatus(spaceinfo.LocalStatusLoading)
+		if err = s.status.SetLocalInfo(info); err != nil {
+			return
+		}
 	}
 	s.loading = s.newLoadingSpace(s.ctx, s.stopIfMandatoryFail, s.disableRemoteLoad, s.status.GetLatestAclHeadId())
 	return
@@ -124,6 +140,12 @@ func (s *spaceLoader) onLoad(sp clientspace.Space, loadErr error) (err error) {
 	case errors.Is(loadErr, spaceservice.ErrSpaceIsDeleted):
 		info.SetLocalStatus(spaceinfo.LocalStatusMissing).
 			SetRemoteStatus(spaceinfo.RemoteStatusDeleted)
+	case errors.Is(loadErr, context.Canceled), errors.Is(loadErr, context.DeadlineExceeded):
+		// The component context was canceled (Close/shutdown), so the background build was
+		// interrupted rather than genuinely failing. Persisting Missing here would knock a healthy
+		// space off the optimistic-Ok fast path on the next cold start, so leave the persisted
+		// status untouched and let the next session re-evaluate it.
+		return nil
 	default:
 		info.SetLocalStatus(spaceinfo.LocalStatusMissing)
 	}
@@ -137,34 +159,31 @@ func (s *spaceLoader) open(ctx context.Context) (clientspace.Space, error) {
 
 func (s *spaceLoader) WaitLoad(ctx context.Context) (sp clientspace.Space, err error) {
 	s.mx.Lock()
-	status := s.status.GetLocalStatus()
-
-	switch status {
-	case spaceinfo.LocalStatusUnknown:
+	// Readiness is driven by the loader's own lifecycle, NOT by the client-facing persisted
+	// localStatus. localStatus may be an optimistic Ok (set before the background build
+	// finished); returning s.space here without the loadCh wait would hand back a nil space.
+	if s.loading == nil {
 		s.mx.Unlock()
-		return nil, fmt.Errorf("waitLoad for an unknown space")
-	case spaceinfo.LocalStatusLoading:
-		// loading in progress, wait channel and retry
-		waitCh := s.loading.loadCh
-		loadErr := s.loading.getLoadErr()
-		s.mx.Unlock()
-		if loadErr != nil {
-			return nil, loadErr
-		}
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		case <-waitCh:
-		}
-		return s.WaitLoad(ctx)
-	case spaceinfo.LocalStatusMissing:
-		// local missing state means the loader ended with an error
-		err = s.loading.getLoadErr()
-	case spaceinfo.LocalStatusOk:
-		sp = s.space
-	default:
-		err = fmt.Errorf("undefined space state: %v", status)
+		return nil, fmt.Errorf("waitLoad for a not started space")
 	}
+	if s.space != nil {
+		sp = s.space
+		s.mx.Unlock()
+		return sp, nil
+	}
+	loading := s.loading
+	loadErr := loading.getLoadErr()
+	if loadErr != nil {
+		s.mx.Unlock()
+		return nil, loadErr
+	}
+	waitCh := loading.loadCh
 	s.mx.Unlock()
-	return
+
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-waitCh:
+	}
+	return s.WaitLoad(ctx)
 }

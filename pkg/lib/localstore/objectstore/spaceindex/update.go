@@ -3,8 +3,11 @@ package spaceindex
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"sync"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/anyenc/anyencutil"
 	"github.com/anyproto/any-store/query"
@@ -30,6 +33,7 @@ func (s *dsObjectStore) UpdateObjectDetails(ctx context.Context, id string, deta
 
 	arena := s.arenaPool.Get()
 	defer func() {
+		arena.Reset()
 		s.arenaPool.Put(arena)
 	}()
 	newVal := details.ToAnyEnc(arena)
@@ -41,12 +45,11 @@ func (s *dsObjectStore) UpdateObjectDetails(ctx context.Context, id string, deta
 		isModified = true
 		return newVal, true, nil
 	}))
-	if isModified {
-		s.sendUpdatesToSubscriptions(id, details)
-	}
-
 	if err != nil {
 		return fmt.Errorf("upsert details: %w", err)
+	}
+	if isModified {
+		s.sendUpdatesToSubscriptions(ctx, id, details)
 	}
 
 	return nil
@@ -58,11 +61,52 @@ func (s *dsObjectStore) SubscribeForAll(callback func(rec database.Record)) {
 	s.lock.Unlock()
 }
 
-func (s *dsObjectStore) sendUpdatesToSubscriptions(id string, details *domain.Details) {
-	detCopy := details.Copy()
-	detCopy.SetString(bundle.RelationKeyId, id)
+// txNotifications buffers the ids of objects written inside a write
+// transaction. They are flushed only on successful commit (see notifyingTx):
+// firing earlier would announce writes that are not yet visible to readers —
+// or never will be, if the tx rolls back. A subscriber that wires its
+// callback and then re-queries the store could otherwise permanently miss a
+// write that was notified before wiring but committed after the re-query.
+//
+// Only ids are buffered; the flush re-reads the committed details. This is
+// what makes the machinery simple and right: rolled-back savepoint writes
+// and ids deleted later in the tx announce nothing, a same-id write chain
+// announces its final state once, and an indexer batch buffers ids instead
+// of pinning a full details copy per write. (It also makes the flush robust
+// to notification reordering — moot while same-id writes stay single-writer
+// sequenced, which any-store and the upstream object locks guarantee.)
+type txNotifications struct {
+	mu      sync.Mutex
+	pending []string
+	seen    map[string]struct{}
+}
+
+func (b *txNotifications) add(id string) {
+	b.mu.Lock()
+	if b.seen == nil {
+		b.seen = make(map[string]struct{})
+	}
+	if _, ok := b.seen[id]; !ok {
+		b.seen[id] = struct{}{}
+		b.pending = append(b.pending, id)
+	}
+	b.mu.Unlock()
+}
+
+type txNotificationsKey struct{}
+
+func (s *dsObjectStore) sendUpdatesToSubscriptions(ctx context.Context, id string, details *domain.Details) {
+	if buf, ok := ctx.Value(txNotificationsKey{}).(*txNotifications); ok && buf != nil {
+		buf.add(id)
+		return
+	}
 	s.lock.RLock()
 	defer s.lock.RUnlock()
+	if s.onChangeCallback == nil && len(s.subscriptions) == 0 {
+		return
+	}
+	detCopy := details.Copy()
+	detCopy.SetString(bundle.RelationKeyId, id)
 	if s.onChangeCallback != nil {
 		s.onChangeCallback(database.Record{
 			Details: detCopy,
@@ -70,6 +114,33 @@ func (s *dsObjectStore) sendUpdatesToSubscriptions(id string, details *domain.De
 	}
 	for _, sub := range s.subscriptions {
 		_ = sub.PublishAsync(id, detCopy)
+	}
+}
+
+func (s *dsObjectStore) flushTxNotifications(buf *txNotifications) {
+	buf.mu.Lock()
+	pending := buf.pending
+	buf.pending = nil
+	buf.seen = nil
+	buf.mu.Unlock()
+
+	for _, id := range pending {
+		details, err := s.GetDetails(id)
+		// GetDetails returns EMPTY details with a nil error for an absent
+		// doc — an id deleted later in the same tx must not be announced as
+		// a degenerate {id}-only record
+		if err != nil || details == nil || details.Len() == 0 {
+			continue
+		}
+		details.SetString(bundle.RelationKeyId, id)
+		s.lock.RLock()
+		if s.onChangeCallback != nil {
+			s.onChangeCallback(database.Record{Details: details})
+		}
+		for _, sub := range s.subscriptions {
+			_ = sub.PublishAsync(id, details)
+		}
+		s.lock.RUnlock()
 	}
 }
 
@@ -179,9 +250,18 @@ func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *
 	return nil
 }
 
-// ModifyObjectDetails updates existing details in store using modification function `proc`
-// `proc` should return ErrDetailsNotChanged in case old details are empty or no changes were made
-func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *domain.Details) (*domain.Details, bool, error)) error {
+// ModifyObjectDetails updates details in store using modification function `proc`.
+// When upsert is true, the object is created if it does not exist; when false, missing objects are silently skipped.
+func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *domain.Details) (*domain.Details, bool, error), upsert bool) error {
+	return s.ModifyObjectDetailsCtx(s.componentCtx, id, proc, upsert)
+}
+
+// ModifyObjectDetailsCtx is like ModifyObjectDetails but runs under the
+// provided context instead of the store component context. Pass a tx-bearing
+// context (see WriteTx) to batch many modifications into a single write tx and,
+// when the context is non-cancelable, to skip any-store's per-statement
+// SQLite interrupt handshake.
+func (s *dsObjectStore) ModifyObjectDetailsCtx(ctx context.Context, id string, proc func(details *domain.Details) (*domain.Details, bool, error), upsert bool) error {
 	if proc == nil {
 		return nil
 	}
@@ -190,7 +270,12 @@ func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *domain
 		arena.Reset()
 		s.arenaPool.Put(arena)
 	}()
-	_, err := s.objects.UpsertId(s.componentCtx, id, query.ModifyFunc(func(arena *anyenc.Arena, val *anyenc.Value) (*anyenc.Value, bool, error) {
+	// notifyDetails is captured by the modifier and sent only after the write
+	// op succeeds: notifying from inside ModifyFunc would announce a write
+	// that may still fail or, under a write tx, not be committed yet
+	var notifyDetails *domain.Details
+	modifier := query.ModifyFunc(func(arena *anyenc.Arena, val *anyenc.Value) (*anyenc.Value, bool, error) {
+		notifyDetails = nil
 		inputDetails, err := domain.NewDetailsFromAnyEnc(val)
 		if err != nil {
 			return nil, false, fmt.Errorf("get old details: json to proto: %w", err)
@@ -216,12 +301,23 @@ func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *domain
 		if len(diff) == 0 {
 			return nil, false, nil
 		}
-		s.sendUpdatesToSubscriptions(id, newDetails)
+		notifyDetails = newDetails
 		return jsonVal, true, nil
-	}))
-
+	})
+	var err error
+	if upsert {
+		_, err = s.objects.UpsertId(ctx, id, modifier)
+	} else {
+		_, err = s.objects.UpdateId(ctx, id, modifier)
+		if errors.Is(err, anystore.ErrDocNotFound) {
+			return nil
+		}
+	}
 	if err != nil {
-		return fmt.Errorf("upsert details: %w", err)
+		return fmt.Errorf("modify details: %w", err)
+	}
+	if notifyDetails != nil {
+		s.sendUpdatesToSubscriptions(ctx, id, notifyDetails)
 	}
 	return nil
 }

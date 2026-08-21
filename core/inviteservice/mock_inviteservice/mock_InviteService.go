@@ -464,7 +464,7 @@ func (_c *MockInviteService_Init_Call) RunAndReturn(run func(*app.App) error) *M
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockInviteService) Name() string {
 	ret := _m.Called()
 
@@ -510,21 +510,31 @@ func (_c *MockInviteService_Name_Call) RunAndReturn(run func() string) *MockInvi
 }
 
 // RemoveExisting provides a mock function with given fields: ctx, spaceId
-func (_m *MockInviteService) RemoveExisting(ctx context.Context, spaceId string) error {
+func (_m *MockInviteService) RemoveExisting(ctx context.Context, spaceId string) (domain.InviteInfo, error) {
 	ret := _m.Called(ctx, spaceId)
 
 	if len(ret) == 0 {
 		panic("no return value specified for RemoveExisting")
 	}
 
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+	var r0 domain.InviteInfo
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (domain.InviteInfo, error)); ok {
+		return rf(ctx, spaceId)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) domain.InviteInfo); ok {
 		r0 = rf(ctx, spaceId)
 	} else {
-		r0 = ret.Error(0)
+		r0 = ret.Get(0).(domain.InviteInfo)
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, spaceId)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // MockInviteService_RemoveExisting_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RemoveExisting'
@@ -546,12 +556,12 @@ func (_c *MockInviteService_RemoveExisting_Call) Run(run func(ctx context.Contex
 	return _c
 }
 
-func (_c *MockInviteService_RemoveExisting_Call) Return(_a0 error) *MockInviteService_RemoveExisting_Call {
-	_c.Call.Return(_a0)
+func (_c *MockInviteService_RemoveExisting_Call) Return(_a0 domain.InviteInfo, _a1 error) *MockInviteService_RemoveExisting_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockInviteService_RemoveExisting_Call) RunAndReturn(run func(context.Context, string) error) *MockInviteService_RemoveExisting_Call {
+func (_c *MockInviteService_RemoveExisting_Call) RunAndReturn(run func(context.Context, string) (domain.InviteInfo, error)) *MockInviteService_RemoveExisting_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -598,6 +608,63 @@ func (_c *MockInviteService_Run_Call) Return(err error) *MockInviteService_Run_C
 }
 
 func (_c *MockInviteService_Run_Call) RunAndReturn(run func(context.Context) error) *MockInviteService_Run_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ShareWithinSpace provides a mock function with given fields: ctx, spaceId
+func (_m *MockInviteService) ShareWithinSpace(ctx context.Context, spaceId string) (domain.InviteInfo, error) {
+	ret := _m.Called(ctx, spaceId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ShareWithinSpace")
+	}
+
+	var r0 domain.InviteInfo
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (domain.InviteInfo, error)); ok {
+		return rf(ctx, spaceId)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) domain.InviteInfo); ok {
+		r0 = rf(ctx, spaceId)
+	} else {
+		r0 = ret.Get(0).(domain.InviteInfo)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, spaceId)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockInviteService_ShareWithinSpace_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ShareWithinSpace'
+type MockInviteService_ShareWithinSpace_Call struct {
+	*mock.Call
+}
+
+// ShareWithinSpace is a helper method to define mock.On call
+//   - ctx context.Context
+//   - spaceId string
+func (_e *MockInviteService_Expecter) ShareWithinSpace(ctx interface{}, spaceId interface{}) *MockInviteService_ShareWithinSpace_Call {
+	return &MockInviteService_ShareWithinSpace_Call{Call: _e.mock.On("ShareWithinSpace", ctx, spaceId)}
+}
+
+func (_c *MockInviteService_ShareWithinSpace_Call) Run(run func(ctx context.Context, spaceId string)) *MockInviteService_ShareWithinSpace_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockInviteService_ShareWithinSpace_Call) Return(_a0 domain.InviteInfo, _a1 error) *MockInviteService_ShareWithinSpace_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockInviteService_ShareWithinSpace_Call) RunAndReturn(run func(context.Context, string) (domain.InviteInfo, error)) *MockInviteService_ShareWithinSpace_Call {
 	_c.Call.Return(run)
 	return _c
 }

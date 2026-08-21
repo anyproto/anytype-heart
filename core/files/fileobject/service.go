@@ -63,6 +63,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/files/filesync"
 	"github.com/anyproto/anytype-heart/core/relationutils"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -106,6 +107,7 @@ type Service interface {
 	MigrateFileIdsInBlocks(st *state.State, spc source.Space)
 	MigrateFiles(st *state.State, spc source.Space, keysChanges []*pb.ChangeFileKeys)
 	EnsureFileAddedToSyncQueue(id domain.FullID, details *domain.Details) error
+	MarkFileUploaded(objectId string) error
 }
 
 type objectCreatorService interface {
@@ -216,13 +218,13 @@ func (s *service) Run(_ context.Context) error {
 }
 
 type objectArchiver interface {
-	SetListIsArchived(ctx context.Context, objectIds []string, isArchived bool) error
+	SetListIsArchived(sctx session.Context, ctx context.Context, objectIds []string, isArchived bool, skipCascade bool) error
 }
 
 func (s *service) deleteMigratedFilesInNonPersonalSpaces(ctx context.Context) error {
 	personalSpaceId := s.spaceService.PersonalSpaceId()
 
-	records, err := s.objectStore.QueryCrossSpace(database.Query{
+	records, err := s.objectStore.QueryCrossSpace(ctx, database.Query{
 		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyFileId,
@@ -247,7 +249,7 @@ func (s *service) deleteMigratedFilesInNonPersonalSpaces(ctx context.Context) er
 		for _, record := range records {
 			ids = append(ids, record.Details.GetString(bundle.RelationKeyId))
 		}
-		if err = s.objectArchiver.SetListIsArchived(ctx, ids, true); err != nil {
+		if err = s.objectArchiver.SetListIsArchived(nil, ctx, ids, true, false); err != nil {
 			return err
 		}
 	}
@@ -257,7 +259,7 @@ func (s *service) deleteMigratedFilesInNonPersonalSpaces(ctx context.Context) er
 
 // After migrating to new sync queue we need to ensure that all not synced files are added to the queue
 func (s *service) ensureNotSyncedFilesAddedToQueue() error {
-	records, err := s.objectStore.QueryCrossSpace(database.Query{
+	records, err := s.objectStore.QueryCrossSpace(s.componentCtx, database.Query{
 		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyFileId,
@@ -267,6 +269,11 @@ func (s *service) ensureNotSyncedFilesAddedToQueue() error {
 				RelationKey: bundle.RelationKeyFileBackupStatus,
 				Condition:   model.BlockContentDataviewFilter_NotEqual,
 				Value:       domain.Int64(int64(filesyncstatus.Synced)),
+			},
+			{
+				RelationKey: bundle.RelationKeyIsDeleted,
+				Condition:   model.BlockContentDataviewFilter_NotEqual,
+				Value:       domain.Bool(true),
 			},
 		},
 	})
@@ -319,6 +326,10 @@ func (s *service) EnsureFileAddedToSyncQueue(id domain.FullID, details *domain.D
 	}
 	err := s.addToSyncQueue(req)
 	return err
+}
+
+func (s *service) MarkFileUploaded(objectId string) error {
+	return s.fileSync.MarkUploaded(objectId)
 }
 
 func (s *service) Close(ctx context.Context) error {
@@ -451,7 +462,7 @@ func (s *service) createInSpace(ctx context.Context, space clientspace.Space, re
 
 	if req.AdditionalDetails != nil {
 		for k, v := range req.AdditionalDetails.Iterate() {
-			createState.SetDetailAndBundledRelation(k, v)
+			createState.SetDetail(k, v)
 		}
 	}
 
@@ -695,7 +706,7 @@ func (s *service) DeleteFileData(spaceId string, objectId string) error {
 	if err != nil {
 		return fmt.Errorf("get file id from object: %w", err)
 	}
-	records, err := s.objectStore.QueryCrossSpace(database.Query{
+	records, err := s.objectStore.QueryCrossSpace(s.componentCtx, database.Query{
 		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyId,

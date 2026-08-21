@@ -13,6 +13,7 @@ Scope: global
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 
@@ -33,9 +34,16 @@ import (
 
 const CName = "invitestore"
 
+// ErrInviteUnreadable means the invite block was fetched but could not be turned back into an
+// invite. Retrying will not change that.
+var ErrInviteUnreadable = errors.New("invite is unreadable")
+
 type Service interface {
 	app.ComponentRunnable
-	StoreInvite(ctx context.Context, invite *model.Invite) (id cid.Cid, key crypto.SymKey, err error)
+	// StoreInvite uploads an invite file and binds it, on the coordinator, to the invite it belongs
+	// to. inviteKey is the public part of the invite's acl key — of the guest key, for a guest invite.
+	// The coordinator needs that binding to resolve a later removal request.
+	StoreInvite(ctx context.Context, spaceId string, inviteKey crypto.PubKey, invite *model.Invite) (id cid.Cid, key crypto.SymKey, err error)
 	RemoveInvite(ctx context.Context, id cid.Cid) error
 	GetInvite(ctx context.Context, id cid.Cid, key crypto.SymKey) (*model.Invite, error)
 }
@@ -71,7 +79,7 @@ func (s *service) Name() (name string) {
 	return CName
 }
 
-func (s *service) StoreInvite(ctx context.Context, invite *model.Invite) (cid.Cid, crypto.SymKey, error) {
+func (s *service) StoreInvite(ctx context.Context, spaceId string, inviteKey crypto.PubKey, invite *model.Invite) (cid.Cid, crypto.SymKey, error) {
 	key, err := crypto.NewRandomAES()
 	if err != nil {
 		return cid.Cid{}, nil, fmt.Errorf("generate key: %w", err)
@@ -91,7 +99,7 @@ func (s *service) StoreInvite(ctx context.Context, invite *model.Invite) (cid.Ci
 		return cid.Cid{}, nil, fmt.Errorf("make block: %w", err)
 	}
 
-	if err = s.coordinator.AclUploadInvite(ctx, block); err != nil {
+	if err = s.coordinator.AclUploadInvite(ctx, spaceId, inviteKey, block); err != nil {
 		return cid.Cid{}, nil, fmt.Errorf("add data to IPFS: %w", err)
 	}
 	return block.Cid(), key, nil
@@ -115,13 +123,13 @@ func (s *service) GetInvite(ctx context.Context, id cid.Cid, key crypto.SymKey) 
 
 	data, err = key.Decrypt(data)
 	if err != nil {
-		return nil, fmt.Errorf("decrypt data: %w", err)
+		return nil, fmt.Errorf("%w: decrypt data: %w", ErrInviteUnreadable, err)
 	}
 
 	var invite model.Invite
 	err = proto.Unmarshal(data, &invite)
 	if err != nil {
-		return nil, fmt.Errorf("unmarshal data: %w", err)
+		return nil, fmt.Errorf("%w: unmarshal data: %w", ErrInviteUnreadable, err)
 	}
 	return &invite, nil
 }

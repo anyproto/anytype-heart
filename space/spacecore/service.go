@@ -93,6 +93,7 @@ type service struct {
 	peerStore            peerstore.PeerStore
 	peerService          peerservice.PeerService
 	poolManager          PoolManager
+	discoveryKeys        *discoveryKeySource
 
 	dbsAreFlushing     atomic.Bool
 	componentCtx       context.Context
@@ -111,6 +112,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.coordinator = a.MustComponent(coordinatorclient.CName).(coordinatorclient.CoordinatorClient)
 	s.poolManager = a.MustComponent(peermanager.CName).(PoolManager)
 	s.spaceStorageProvider = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
+	s.discoveryKeys = newDiscoveryKeySource(s.spaceStorageProvider, s.accountKeys)
 	s.peerStore = a.MustComponent(peerstore.CName).(peerstore.PeerStore)
 	s.peerService = a.MustComponent(peerservice.CName).(peerservice.PeerService)
 	localDiscovery := a.MustComponent(localdiscovery.CName).(localdiscovery.LocalDiscovery)
@@ -137,17 +139,37 @@ func (s *service) Run(ctx context.Context) (err error) {
 	return
 }
 
-func (s *service) Derive(ctx context.Context, spaceType spacedomain.SpaceType) (space *AnySpace, err error) {
-	payload := spacepayloads.SpaceDerivePayload{
+// deriveStoragePayload builds the derived space payload with the v0 header
+// builder. commonspace.DeriveSpace/DeriveId switched to the v1 builder, which
+// content-addresses a different header and therefore yields a different space
+// id for the same keys — every existing account would stop finding its
+// personal and tech spaces. Both builders stay available upstream, so heart
+// pins the v0 one until an id-continuity strategy exists.
+func (s *service) deriveStoragePayload(spaceType spacedomain.SpaceType) (spacestorage.SpaceStorageCreatePayload, error) {
+	return spacepayloads.StoragePayloadForSpaceDerive(spacepayloads.SpaceDerivePayload{
 		SigningKey: s.wallet.GetAccountPrivkey(),
 		MasterKey:  s.wallet.GetMasterKey(),
 		SpaceType:  string(spaceType),
-	}
-	id, err := s.commonSpace.DeriveSpace(ctx, payload)
+	})
+}
+
+func (s *service) Derive(ctx context.Context, spaceType spacedomain.SpaceType) (space *AnySpace, err error) {
+	storageCreate, err := s.deriveStoragePayload(spaceType)
 	if err != nil {
-		return
+		return nil, fmt.Errorf("derive storage payload: %w", err)
 	}
-	obj, err := s.spaceCache.Get(ctx, id)
+	if err = spacepayloads.ValidateSpaceStorageCreatePayload(storageCreate); err != nil {
+		return nil, fmt.Errorf("validate storage payload: %w", err)
+	}
+	store, err := s.spaceStorageProvider.CreateSpaceStorage(ctx, storageCreate)
+	if err != nil {
+		if !errors.Is(err, spacestorage.ErrSpaceStorageExists) {
+			return nil, fmt.Errorf("create space storage: %w", err)
+		}
+	} else if err = store.Close(ctx); err != nil {
+		return nil, fmt.Errorf("close space storage: %w", err)
+	}
+	obj, err := s.spaceCache.Get(ctx, storageCreate.SpaceHeaderWithId.Id)
 	if err != nil {
 		return
 	}
@@ -174,12 +196,11 @@ func (s *service) CloseSpace(ctx context.Context, id string) error {
 }
 
 func (s *service) DeriveID(ctx context.Context, spaceType spacedomain.SpaceType) (id string, err error) {
-	payload := spacepayloads.SpaceDerivePayload{
-		SigningKey: s.wallet.GetAccountPrivkey(),
-		MasterKey:  s.wallet.GetMasterKey(),
-		SpaceType:  string(spaceType),
+	storageCreate, err := s.deriveStoragePayload(spaceType)
+	if err != nil {
+		return "", fmt.Errorf("derive storage payload: %w", err)
 	}
-	return s.commonSpace.DeriveId(ctx, payload)
+	return storageCreate.SpaceHeaderWithId.Id, nil
 }
 
 func (s *service) Create(ctx context.Context, spaceType spacedomain.SpaceType, replicationKey uint64, metadataPayload []byte) (container *AnySpace, err error) {
@@ -301,11 +322,15 @@ func (s *service) Close(ctx context.Context) (err error) {
 	return s.spaceCache.Close()
 }
 
-func (s *service) Flush(timeout time.Duration, waitPending bool) {
+// flushWaitSlack bounds how long Flush may wait past the per-DB timeout. SQLite does not
+// promptly honor context cancellation inside a checkpoint, so a plain wg.Wait() can overrun
+// by minutes on throttled mobile background I/O (GO-7393).
+const flushWaitSlack = time.Second * 2
+
+func (s *service) Flush(timeout time.Duration, waitPending bool, mode anystore.FlushMode) {
 	if !s.dbsAreFlushing.CompareAndSwap(false, true) {
 		return
 	}
-	defer s.dbsAreFlushing.Store(false)
 
 	var dbs []anystore.DB
 	s.spaceCache.ForEach(func(v ocache.Object) (isContinue bool) {
@@ -319,18 +344,29 @@ func (s *service) Flush(timeout time.Duration, waitPending bool) {
 		idleDuration = time.Millisecond * 50
 	}
 
-	wg := sync.WaitGroup{}
+	wg := &sync.WaitGroup{}
 	for _, db := range dbs {
 		wg.Add(1)
 		go func(db anystore.DB) {
 			defer wg.Done()
 			ctx, cancel := context.WithTimeout(s.componentCtx, timeout)
 			defer cancel()
-			err := db.Flush(ctx, idleDuration, anystore.FlushModeCheckpointPassive)
+			err := db.Flush(ctx, idleDuration, mode)
 			if err != nil {
 				log.With(zap.Error(err)).Error("failed to flush db")
 			}
 		}(db)
 	}
-	wg.Wait()
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		// unlock the next flush only after the goroutines actually finished
+		s.dbsAreFlushing.Store(false)
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(timeout + flushWaitSlack):
+		log.With(zap.Int("dbs", len(dbs)), zap.Duration("timeout", timeout)).Warn("flush overran its budget, returning early")
+	}
 }

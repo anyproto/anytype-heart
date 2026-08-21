@@ -41,12 +41,35 @@ type InviteInfo struct {
 	InviteFileKey string
 	InviteType    InviteType
 	Permissions   list.AclPermissions
+	// HeldByOwner is set when the invite is kept in the owner's account instead of the space, so that
+	// only the owner can share it. Members see it without the cid and the key: all they can do is ask
+	// the owner for the link.
+	HeldByOwner bool
 }
 
-type InviteObject interface {
+// InviteInfoObject is an object that can hold the current invite of a space: the workspace when the
+// invite is shared within the space, the owner's space view when it is held by the owner.
+type InviteInfoObject interface {
 	SetInviteFileInfo(inviteInfo InviteInfo) (err error)
 	GetExistingInviteInfo() InviteInfo
 	RemoveExistingInviteInfo() (InviteInfo, error)
+}
+
+// ShareableWithinSpace reports whether an invite may be stored in the workspace, where every member
+// of the space reads it and can hand the link out.
+//
+// An invite anyone can join with needs no approval from anyone: whoever holds the link is in the
+// space, with the permissions the invite carries. Read access is as much as a member is trusted to
+// give away; a link that grants more than that stays in the owner's account.
+func ShareableWithinSpace(inviteType InviteType, permissions list.AclPermissions) bool {
+	if inviteType != InviteTypeAnyone {
+		return true
+	}
+	return permissions == list.AclPermissionsReader
+}
+
+type InviteObject interface {
+	InviteInfoObject
 
 	SetGuestInviteFileInfo(fileCid string, fileKey string) (err error)
 	GetExistingGuestInviteInfo() (fileCid string, fileKey string)
@@ -60,6 +83,8 @@ func ConvertParticipantPermissions(permissions model.ParticipantPermissions) lis
 		return list.AclPermissionsReader
 	case model.ParticipantPermissions_Owner:
 		return list.AclPermissionsOwner
+	case model.ParticipantPermissions_Admin:
+		return list.AclPermissionsAdmin
 	default:
 		return list.AclPermissionsNone
 	}
@@ -73,6 +98,8 @@ func ConvertAclPermissions(permissions list.AclPermissions) model.ParticipantPer
 		return model.ParticipantPermissions_Reader
 	case aclrecordproto.AclUserPermissions_Owner:
 		return model.ParticipantPermissions_Owner
+	case aclrecordproto.AclUserPermissions_Admin:
+		return model.ParticipantPermissions_Admin
 	default:
 		return model.ParticipantPermissions_NoPermissions
 	}

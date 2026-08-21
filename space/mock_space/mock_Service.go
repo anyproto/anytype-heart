@@ -30,7 +30,7 @@ func (_m *MockService) EXPECT() *MockService_Expecter {
 	return &MockService_Expecter{mock: &_m.Mock}
 }
 
-// AccountMetadataPayload provides a mock function with given fields:
+// AccountMetadataPayload provides a mock function with no fields
 func (_m *MockService) AccountMetadataPayload() []byte {
 	ret := _m.Called()
 
@@ -77,7 +77,7 @@ func (_c *MockService_AccountMetadataPayload_Call) RunAndReturn(run func() []byt
 	return _c
 }
 
-// AccountMetadataSymKey provides a mock function with given fields:
+// AccountMetadataSymKey provides a mock function with no fields
 func (_m *MockService) AccountMetadataSymKey() crypto.SymKey {
 	ret := _m.Called()
 
@@ -431,7 +431,7 @@ func (_c *MockService_Delete_Call) RunAndReturn(run func(context.Context, string
 	return _c
 }
 
-// FirstCreatedSpaceId provides a mock function with given fields:
+// FirstCreatedSpaceId provides a mock function with no fields
 func (_m *MockService) FirstCreatedSpaceId() string {
 	ret := _m.Called()
 
@@ -793,7 +793,7 @@ func (_c *MockService_Join_Call) RunAndReturn(run func(context.Context, string, 
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockService) Name() string {
 	ret := _m.Called()
 
@@ -838,7 +838,7 @@ func (_c *MockService_Name_Call) RunAndReturn(run func() string) *MockService_Na
 	return _c
 }
 
-// PersonalSpaceId provides a mock function with given fields:
+// PersonalSpaceId provides a mock function with no fields
 func (_m *MockService) PersonalSpaceId() string {
 	ret := _m.Called()
 
@@ -879,6 +879,52 @@ func (_c *MockService_PersonalSpaceId_Call) Return(_a0 string) *MockService_Pers
 }
 
 func (_c *MockService_PersonalSpaceId_Call) RunAndReturn(run func() string) *MockService_PersonalSpaceId_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// PreloadRemainingSpaces provides a mock function with given fields: ctx
+func (_m *MockService) PreloadRemainingSpaces(ctx context.Context) error {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PreloadRemainingSpaces")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockService_PreloadRemainingSpaces_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PreloadRemainingSpaces'
+type MockService_PreloadRemainingSpaces_Call struct {
+	*mock.Call
+}
+
+// PreloadRemainingSpaces is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockService_Expecter) PreloadRemainingSpaces(ctx interface{}) *MockService_PreloadRemainingSpaces_Call {
+	return &MockService_PreloadRemainingSpaces_Call{Call: _e.mock.On("PreloadRemainingSpaces", ctx)}
+}
+
+func (_c *MockService_PreloadRemainingSpaces_Call) Run(run func(ctx context.Context)) *MockService_PreloadRemainingSpaces_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockService_PreloadRemainingSpaces_Call) Return(_a0 error) *MockService_PreloadRemainingSpaces_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockService_PreloadRemainingSpaces_Call) RunAndReturn(run func(context.Context) error) *MockService_PreloadRemainingSpaces_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -985,7 +1031,7 @@ func (_c *MockService_SpaceViewId_Call) RunAndReturn(run func(string) (string, e
 	return _c
 }
 
-// TechSpace provides a mock function with given fields:
+// TechSpace provides a mock function with no fields
 func (_m *MockService) TechSpace() *clientspace.TechSpace {
 	ret := _m.Called()
 
@@ -1032,7 +1078,7 @@ func (_c *MockService_TechSpace_Call) RunAndReturn(run func() *clientspace.TechS
 	return _c
 }
 
-// TechSpaceId provides a mock function with given fields:
+// TechSpaceId provides a mock function with no fields
 func (_m *MockService) TechSpaceId() string {
 	ret := _m.Called()
 

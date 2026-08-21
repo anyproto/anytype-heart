@@ -10,6 +10,7 @@ import (
 	"github.com/samber/lo"
 	"golang.org/x/exp/slices"
 
+	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -20,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	templateSvc "github.com/anyproto/anytype-heart/core/block/template"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -49,14 +51,20 @@ var (
 	}
 )
 
+type accountIdProvider interface {
+	AccountID() string
+}
+
 type service struct {
-	picker       cache.ObjectGetter
-	store        objectstore.ObjectStore
-	spaceService space.Service
-	creator      objectcreator.Service
-	resolver     idresolver.Resolver
-	exporter     export.Export
-	converter    converter.LayoutConverter
+	picker         cache.ObjectGetter
+	store          objectstore.ObjectStore
+	spaceService   space.Service
+	creator        objectcreator.Service
+	resolver       idresolver.Resolver
+	exporter       export.Export
+	converter      converter.LayoutConverter
+	accountService accountIdProvider
+	formatFetcher  relationutils.RelationFormatFetcher
 }
 
 func New() templateSvc.Service {
@@ -75,6 +83,8 @@ func (s *service) Init(a *app.App) error {
 	s.resolver = a.MustComponent(idresolver.CName).(idresolver.Resolver)
 	s.exporter = a.MustComponent(export.CName).(export.Export)
 	s.converter = app.MustComponent[converter.LayoutConverter](a)
+	s.accountService = app.MustComponent[account.Service](a)
+	s.formatFetcher = app.MustComponent[relationutils.RelationFormatFetcher](a)
 	return nil
 }
 
@@ -101,7 +111,8 @@ func (s *service) CreateTemplateStateWithDetails(req templateSvc.CreateTemplateR
 		}
 	}
 
-	addDetailsToTemplateState(targetState, req.Details)
+	s.resolveTemplatePlaceholders(targetState, req.SpaceId)
+	s.addDetailsToTemplateState(targetState, req.Details, req.SpaceId)
 	return targetState, nil
 }
 
@@ -171,7 +182,8 @@ func (s *service) CreateTemplateStateFromSmartBlock(sb smartblock.SmartBlock, re
 	if err != nil {
 		st = s.createBlankTemplateState(domain.FullID{SpaceID: req.SpaceId, ObjectID: req.TypeId}, req.Layout)
 	}
-	addDetailsToTemplateState(st, req.Details)
+	s.resolveTemplatePlaceholders(st, req.SpaceId)
+	s.addDetailsToTemplateState(st, req.Details, req.SpaceId)
 	return st
 }
 
@@ -386,7 +398,7 @@ func (s *service) TemplateClone(spaceId string, id string) (templateId string, e
 }
 
 func (s *service) TemplateExportAll(ctx context.Context, path string) (string, error) {
-	records, err := s.store.QueryCrossSpace(database.Query{
+	records, err := s.store.QueryCrossSpace(ctx, database.Query{
 		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyIsArchived,
@@ -497,7 +509,7 @@ func (s *service) buildTemplateStateFromObject(sb smartblock.SmartBlock) (*state
 	return st, nil
 }
 
-func addDetailsToTemplateState(st *state.State, details *domain.Details) {
+func (s *service) addDetailsToTemplateState(st *state.State, details *domain.Details, spaceId string) {
 	var keysToExclude []domain.RelationKey
 	if st.Details() != nil {
 		for key := range templatePreferableRelationKeys {
@@ -518,6 +530,30 @@ func addDetailsToTemplateState(st *state.State, details *domain.Details) {
 		st.AddBundledRelationLinks(bundle.RelationKeyName)
 	}
 
+	// Merge multi-value relations (tag, object, file) from template and incoming details
+	for key, incomingVal := range toAdd.Iterate() {
+		templateVal := st.Details().GetStringList(key)
+		if len(templateVal) == 0 {
+			continue
+		}
+		format, err := s.formatFetcher.GetRelationFormatByKey(spaceId, key)
+		if err != nil {
+			continue
+		}
+		if isMultiValueRelationFormat(format) {
+			merged := lo.Uniq(append(templateVal, incomingVal.StringList()...))
+			toAdd.Set(key, domain.StringList(merged))
+		}
+	}
+
 	st.AddDetails(toAdd)
 	st.BlocksInit(st)
+}
+
+func isMultiValueRelationFormat(format model.RelationFormat) bool {
+	switch format {
+	case model.RelationFormat_tag, model.RelationFormat_object, model.RelationFormat_file:
+		return true
+	}
+	return false
 }

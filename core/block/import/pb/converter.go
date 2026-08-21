@@ -1,6 +1,7 @@
 package pb
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -204,7 +205,12 @@ func (p *Pb) readProfileFile(f io.ReadCloser) (*pb.Profile, error) {
 		return nil, err
 	}
 	if err = profile.Unmarshal(data); err != nil {
-		return nil, err
+		// try JSON format
+		profile = &pb.Profile{}
+		um := jsonpb.Unmarshaler{AllowUnknownFields: true}
+		if jsonErr := um.Unmarshal(bytes.NewReader(data), profile); jsonErr != nil {
+			return nil, err
+		}
 	}
 	return profile, nil
 }

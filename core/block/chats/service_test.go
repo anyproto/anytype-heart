@@ -22,6 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/detailservice/mock_detailservice"
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject/mock_chatobject"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver/mock_idresolver"
+	"github.com/anyproto/anytype-heart/core/block/objectgc"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/subscription"
@@ -65,14 +66,71 @@ func (s *accountServiceDummy) Init(a *app.App) error {
 	return nil
 }
 
-type chatRepoServiceDummy struct{}
+type chatRepoServiceDummy struct {
+	repo chatrepository.Repository
+	// repos, when set, routes by chatObjectId and fails on unknown chats —
+	// multi-chat search tests use it to assert which chats are hydrated
+	repos map[string]chatrepository.Repository
+}
 
-func (s *chatRepoServiceDummy) Name() string                                                    { return "chatRepoServiceDummy" }
-func (s *chatRepoServiceDummy) Init(a *app.App) error                                           { return nil }
-func (s *chatRepoServiceDummy) Run(ctx context.Context) error                                   { return nil }
-func (s *chatRepoServiceDummy) Close(ctx context.Context) error                                 { return nil }
+func (s *chatRepoServiceDummy) Name() string                    { return "chatRepoServiceDummy" }
+func (s *chatRepoServiceDummy) Init(a *app.App) error           { return nil }
+func (s *chatRepoServiceDummy) Run(ctx context.Context) error   { return nil }
+func (s *chatRepoServiceDummy) Close(ctx context.Context) error { return nil }
 func (s *chatRepoServiceDummy) Repository(spaceId, chatObjectId string) (chatrepository.Repository, error) {
-	return nil, nil
+	if s.repos != nil {
+		repo, ok := s.repos[chatObjectId]
+		if !ok {
+			return nil, fmt.Errorf("unexpected chat %s", chatObjectId)
+		}
+		return repo, nil
+	}
+	return s.repo, nil
+}
+
+// fakeChatRepository is a minimal repository stub for service-level read tests. Only the methods
+// the tests exercise are implemented; the embedded interface leaves the rest as compile-time
+// stubs (calling an unimplemented one panics, surfacing accidental coverage gaps).
+type fakeChatRepository struct {
+	chatrepository.Repository
+	pinned          []*chatmodel.Message
+	messagesByIds   []*chatmodel.Message
+	messagesByIdsFn func(messageIds []string) ([]*chatmodel.Message, error)
+	lastMessages    []*chatmodel.Message
+}
+
+func (f *fakeChatRepository) GetPinnedMessages(ctx context.Context) ([]*chatmodel.Message, error) {
+	return f.pinned, nil
+}
+
+func (f *fakeChatRepository) GetMessagesByIds(ctx context.Context, messageIds []string) ([]*chatmodel.Message, error) {
+	if f.messagesByIdsFn != nil {
+		return f.messagesByIdsFn(messageIds)
+	}
+	return f.messagesByIds, nil
+}
+
+func (f *fakeChatRepository) GetLastMessages(ctx context.Context, limit uint) ([]*chatmodel.Message, error) {
+	if int(limit) < len(f.lastMessages) {
+		return f.lastMessages[:limit], nil
+	}
+	return f.lastMessages, nil
+}
+
+func (f *fakeChatRepository) GetLastMessagesByCreators(ctx context.Context, creators []string, limit uint) ([]*chatmodel.Message, error) {
+	filtered := make([]*chatmodel.Message, 0, len(f.lastMessages))
+	for _, message := range f.lastMessages {
+		for _, creator := range creators {
+			if message.Creator == creator {
+				filtered = append(filtered, message)
+				break
+			}
+		}
+	}
+	if int(limit) < len(filtered) {
+		return filtered[:limit], nil
+	}
+	return filtered, nil
 }
 
 type fileGCDummy struct{}
@@ -81,11 +139,18 @@ func (s *fileGCDummy) Name() string                    { return "fileGCDummy" }
 func (s *fileGCDummy) Init(a *app.App) error           { return nil }
 func (s *fileGCDummy) Run(ctx context.Context) error   { return nil }
 func (s *fileGCDummy) Close(ctx context.Context) error { return nil }
-func (s *fileGCDummy) CheckFilesOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) error {
-	return nil
+func (s *fileGCDummy) ArchiveOrphansOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) (objectgc.OrphanCandidates, error) {
+	return objectgc.OrphanCandidates{}, nil
 }
-func (s *fileGCDummy) CheckFilesOnContextArchived(spaceId, contextId string, isArchived bool) error {
-	return nil
+func (s *fileGCDummy) CheckObjectsOnObjectArchived(spaceId, objectId string, isArchived bool) (objectgc.OrphanCandidates, error) {
+	return objectgc.OrphanCandidates{}, nil
+}
+func (s *fileGCDummy) RestoreOrphansOnLinksAdded(spaceId, contextId string, addedLinks []string) ([]string, error) {
+	return nil, nil
+}
+
+func (s *fileGCDummy) ListOrphans(spaceId string) ([]objectgc.OrphanItem, error) {
+	return nil, nil
 }
 
 type actionType int
@@ -109,10 +174,40 @@ type fixture struct {
 	crossSpaceSubService *mock_crossspacesub.MockService
 	ftSearch             *mock_ftsearch.MockFTSearch
 	objectStore          *objectstore.StoreFixture
+	chatRepoService      *chatRepoServiceDummy
 
 	lock sync.Mutex
 	// recorded actions (subscribe/unsubscribe) per chat object, in temporal order
 	actions map[string][]recordedAction
+	// broadcasts captured from the event sender
+	broadcasts []*pb.Event
+	// when true, SubscribeLastMessages returns no messages (simulates a chat
+	// whose message store is not loaded yet). Set before start().
+	subscribeReturnsNoMessages bool
+}
+
+// waitForBroadcasts polls until pred reports satisfied for the captured
+// broadcasts, returning the snapshot it matched on. Fails on timeout.
+func (fx *fixture) waitForBroadcasts(t *testing.T, pred func([]*pb.Event) bool) []*pb.Event {
+	timer := time.NewTimer(time.Second)
+	ticker := time.NewTicker(2 * time.Millisecond)
+	for {
+		select {
+		case <-timer.C:
+			fx.lock.Lock()
+			snapshot := append([]*pb.Event(nil), fx.broadcasts...)
+			fx.lock.Unlock()
+			t.Fatalf("wait for broadcasts: timeout, got %d events: %v", len(snapshot), snapshot)
+			return nil
+		case <-ticker.C:
+		}
+		fx.lock.Lock()
+		snapshot := append([]*pb.Event(nil), fx.broadcasts...)
+		fx.lock.Unlock()
+		if pred(snapshot) {
+			return snapshot
+		}
+	}
 }
 
 func (fx *fixture) recordAction(chatObjectId string, a recordedAction) {
@@ -150,9 +245,9 @@ func newFixture(t *testing.T) *fixture {
 	idResolver := mock_idresolver.NewMockResolver(t)
 	idResolver.EXPECT().ResolveSpaceID(mock.Anything).Return("", nil).Maybe()
 	eventSender := mock_event.NewMockSender(t)
-	eventSender.EXPECT().Broadcast(mock.Anything).Maybe()
 	detailService := mock_detailservice.NewMockService(t)
 	ftSearch := mock_ftsearch.NewMockFTSearch(t)
+	chatRepoService := &chatRepoServiceDummy{}
 
 	fx := &fixture{
 		service:              New().(*service),
@@ -161,8 +256,14 @@ func newFixture(t *testing.T) *fixture {
 		objectGetter:         objectGetter,
 		ftSearch:             ftSearch,
 		objectStore:          objectStore,
+		chatRepoService:      chatRepoService,
 		actions:              map[string][]recordedAction{},
 	}
+	eventSender.EXPECT().Broadcast(mock.Anything).Run(func(e *pb.Event) {
+		fx.lock.Lock()
+		fx.broadcasts = append(fx.broadcasts, e)
+		fx.lock.Unlock()
+	}).Maybe()
 
 	ctx := context.Background()
 	a := new(app.App)
@@ -177,7 +278,7 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(&accountServiceDummy{})
 	a.Register(testutil.PrepareMock(ctx, a, detailService))
 	a.Register(&fileGCDummy{})
-	a.Register(&chatRepoServiceDummy{})
+	a.Register(chatRepoService)
 	a.Register(fx)
 
 	fx.app = a
@@ -228,6 +329,14 @@ func (fx *fixture) expectSubscribe(t *testing.T) {
 			actionType: actionTypeSubscribe,
 			subId:      req.SubId,
 		})
+		if fx.subscribeReturnsNoMessages {
+			// Message store not loaded yet: no messages available.
+			return &chatsubscription.SubscribeLastMessagesResponse{
+				Messages:     nil,
+				ChatState:    givenLastState(),
+				Dependencies: nil,
+			}, nil
+		}
 		return &chatsubscription.SubscribeLastMessagesResponse{
 			Messages:     givenLastMessages(),
 			ChatState:    givenLastState(),
@@ -461,6 +570,145 @@ func TestSubscribeToMessagePreviews(t *testing.T) {
 				},
 			},
 		})
+	})
+}
+
+// TestSubscribeToMessagePreviews_ChatAddedAfterSubscribe reproduces the
+// "onChatAdded hook" deficiency on develop.
+//
+// A chat object that appears AFTER SubscribeToMessagePreviews is backfilled via
+// the onChatAddedAsync hook (monitorMessagePreviews.OnAdd). The initial RPC
+// response delivers a full ChatPreview that includes the message Dependencies
+// (creator/attachments). The async hook must deliver an equivalent preview, but
+// it broadcasts an EventChatAdd with Dependencies left nil — so a late-joining
+// chat's preview arrives without its sender/attachment metadata.
+func TestSubscribeToMessagePreviews_ChatAddedAfterSubscribe(t *testing.T) {
+	fx := newFixture(t)
+	ctx := context.Background()
+
+	// No chats exist at subscription time.
+	fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{
+		Records: []*domain.Details{},
+	}, nil).Maybe()
+
+	// onChatAddedAsync needs a manager for the late chat.
+	fx.assertSendEvents(t, []string{"chat1"})
+
+	fx.start(t)
+
+	// Subscribe first: previews is empty.
+	resp, err := fx.SubscribeToMessagePreviews(ctx, "previewSub1")
+	require.NoError(t, err)
+	require.Empty(t, resp.Previews)
+
+	// Now a chat appears (cross-space sub OnAdd, forwarded to the internal queue).
+	err = fx.chatObjectsSubQueue.Add(ctx, &pb.EventMessage{
+		SpaceId: "space1",
+		Value: &pb.EventMessageValueOfSubscriptionAdd{
+			SubscriptionAdd: &pb.EventObjectSubscriptionAdd{
+				Id: "chat1",
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	// The hook fires: SubscribeLastMessages is invoked for chat1 under previewSub1.
+	fx.waitForActions(t, map[string][]recordedAction{
+		"chat1": {{actionType: actionTypeSubscribe, subId: "previewSub1"}},
+	})
+
+	// The client receives an EventChatAdd carrying the last message...
+	events := fx.waitForBroadcasts(t, func(evs []*pb.Event) bool {
+		for _, e := range evs {
+			for _, m := range e.Messages {
+				if m.GetChatAdd() != nil {
+					return true
+				}
+			}
+		}
+		return false
+	})
+
+	var chatAdd *pb.EventChatAdd
+	for _, e := range events {
+		for _, m := range e.Messages {
+			if ca := m.GetChatAdd(); ca != nil {
+				chatAdd = ca
+			}
+		}
+	}
+	require.NotNil(t, chatAdd, "client must receive a ChatAdd for the late-added chat")
+	require.Equal(t, "messageId1", chatAdd.Id)
+
+	// ...but, unlike the initial ChatPreview response, the message Dependencies
+	// (creator/attachments) are dropped on the async backfill path.
+	// givenDependencies() returns one dep (depId1) for messageId1.
+	require.NotEmpty(t, chatAdd.Dependencies,
+		"late-added chat preview must carry message dependencies, like the initial SubscribeToMessagePreviews response")
+}
+
+// TestSubscribeToMessagePreviews_ChatAddedAfterSubscribe_StoreNotReady documents
+// the reactive contract for a chat backfilled while its message store is not
+// loaded yet.
+//
+// onChatAddedAsync has no last message to send immediately, but it still
+// registers subId on the chat's subscription manager via SubscribeLastMessages.
+// The actual message is then delivered reactively, not by polling: once the chat
+// object finishes loading it calls subscription.Flush, and the manager emits the
+// last message (with dependencies) to subId. So the chats service's only
+// obligation here is to establish that subscription, which it must do even when
+// no message is available yet.
+func TestSubscribeToMessagePreviews_ChatAddedAfterSubscribe_StoreNotReady(t *testing.T) {
+	fx := newFixture(t)
+	ctx := context.Background()
+
+	// The late chat's message store is not loaded yet: no message available.
+	fx.subscribeReturnsNoMessages = true
+
+	// No chats exist at subscription time.
+	fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{
+		Records: []*domain.Details{},
+	}, nil).Maybe()
+
+	// onChatAddedAsync needs a manager for the late chat.
+	fx.assertSendEvents(t, []string{"chat1"})
+
+	fx.start(t)
+
+	resp, err := fx.SubscribeToMessagePreviews(ctx, "previewSub1")
+	require.NoError(t, err)
+	require.Empty(t, resp.Previews)
+
+	// A chat appears after subscribe; its message store is not ready yet.
+	err = fx.chatObjectsSubQueue.Add(ctx, &pb.EventMessage{
+		SpaceId: "space1",
+		Value: &pb.EventMessageValueOfSubscriptionAdd{
+			SubscriptionAdd: &pb.EventObjectSubscriptionAdd{
+				Id: "chat1",
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	// The chat's message subscription must still be registered (so the reactive
+	// Flush can deliver the message once the store loads), even though there is
+	// no message to send right now.
+	fx.waitForActions(t, map[string][]recordedAction{
+		"chat1": {{actionType: actionTypeSubscribe, subId: "previewSub1"}},
+	})
+
+	// The hook completes by broadcasting a ChatStateUpdate; the last message
+	// itself arrives later via the reactive Flush path (not exercised here, as
+	// the manager is mocked).
+	fx.waitForBroadcasts(t, func(evs []*pb.Event) bool {
+		for _, e := range evs {
+			for _, m := range e.Messages {
+				if m.GetChatStateUpdate() != nil {
+					return true
+				}
+			}
+		}
+		return false
 	})
 }
 
@@ -880,7 +1128,7 @@ func TestService_Search(t *testing.T) {
 			Records: []*domain.Details{},
 		}, nil).Maybe()
 
-		fx.ftSearch.EXPECT().Search(spaceId, "file").Return([]*ftsearch.DocumentMatch{
+		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "file", mock.Anything, mock.Anything).Return([]*ftsearch.DocumentMatch{
 			{
 				Score: 11.11,
 				ID:    domain.NewObjectPathWithMessage(chatId, "msg1").String(),
@@ -903,10 +1151,7 @@ func TestService_Search(t *testing.T) {
 			},
 		}, nil)
 
-		mockChatObj := mock_chatobject.NewMockStoreObject(t)
-		mockChatObj.EXPECT().Lock().Return()
-		mockChatObj.EXPECT().Unlock().Return()
-		mockChatObj.EXPECT().GetMessagesByIds(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, ids []string) ([]*chatmodel.Message, error) {
+		fx.chatRepoService.repo = &fakeChatRepository{messagesByIdsFn: func(ids []string) ([]*chatmodel.Message, error) {
 			assert.Len(t, ids, 2)
 			assert.Contains(t, ids, "msg1")
 			assert.Contains(t, ids, "msg2")
@@ -914,8 +1159,7 @@ func TestService_Search(t *testing.T) {
 				{ChatMessage: &model.ChatMessage{Id: "msg1"}},
 				{ChatMessage: &model.ChatMessage{Id: "msg2"}},
 			}, nil
-		})
-		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatId).Return(mockChatObj, nil)
+		}}
 
 		fx.start(t)
 
@@ -942,7 +1186,7 @@ func TestService_Search(t *testing.T) {
 			Records: []*domain.Details{},
 		}, nil).Maybe()
 
-		fx.ftSearch.EXPECT().Search(spaceId, "test").Return([]*ftsearch.DocumentMatch{
+		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "test", mock.Anything, mock.Anything).Return([]*ftsearch.DocumentMatch{
 			{
 				Score: 10.0,
 				ID:    domain.NewObjectPathWithMessage(chatId, "msg1").String(),
@@ -975,17 +1219,13 @@ func TestService_Search(t *testing.T) {
 			},
 		}, nil)
 
-		mockChatObj := mock_chatobject.NewMockStoreObject(t)
-		mockChatObj.EXPECT().Lock().Return()
-		mockChatObj.EXPECT().Unlock().Return()
-		mockChatObj.EXPECT().GetMessagesByIds(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, ids []string) ([]*chatmodel.Message, error) {
+		fx.chatRepoService.repo = &fakeChatRepository{messagesByIdsFn: func(ids []string) ([]*chatmodel.Message, error) {
 			messages := make([]*chatmodel.Message, len(ids))
 			for i, id := range ids {
 				messages[i] = &chatmodel.Message{ChatMessage: &model.ChatMessage{Id: id}}
 			}
 			return messages, nil
-		})
-		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatId).Return(mockChatObj, nil)
+		}}
 
 		fx.start(t)
 
@@ -1012,7 +1252,7 @@ func TestService_Search(t *testing.T) {
 			Records: []*domain.Details{},
 		}, nil).Maybe()
 
-		fx.ftSearch.EXPECT().Search(spaceId, "query").Return([]*ftsearch.DocumentMatch{
+		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "query", mock.Anything, mock.Anything).Return([]*ftsearch.DocumentMatch{
 			{
 				Score: 10.0,
 				ID:    domain.NewObjectPathWithMessage(chatId, "msg1").String(),
@@ -1045,17 +1285,13 @@ func TestService_Search(t *testing.T) {
 			},
 		}, nil)
 
-		mockChatObj := mock_chatobject.NewMockStoreObject(t)
-		mockChatObj.EXPECT().Lock().Return()
-		mockChatObj.EXPECT().Unlock().Return()
-		mockChatObj.EXPECT().GetMessagesByIds(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, ids []string) ([]*chatmodel.Message, error) {
+		fx.chatRepoService.repo = &fakeChatRepository{messagesByIdsFn: func(ids []string) ([]*chatmodel.Message, error) {
 			messages := make([]*chatmodel.Message, len(ids))
 			for i, id := range ids {
 				messages[i] = &chatmodel.Message{ChatMessage: &model.ChatMessage{Id: id}}
 			}
 			return messages, nil
-		})
-		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatId).Return(mockChatObj, nil)
+		}}
 
 		fx.start(t)
 
@@ -1095,19 +1331,15 @@ func TestService_Search(t *testing.T) {
 				},
 			})
 		}
-		fx.ftSearch.EXPECT().Search(spaceId, "text").Return(ftResults, nil)
+		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "text", mock.Anything, mock.Anything).Return(ftResults, nil)
 
-		mockChatObj := mock_chatobject.NewMockStoreObject(t)
-		mockChatObj.EXPECT().Lock().Return()
-		mockChatObj.EXPECT().Unlock().Return()
-		mockChatObj.EXPECT().GetMessagesByIds(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, ids []string) ([]*chatmodel.Message, error) {
+		fx.chatRepoService.repo = &fakeChatRepository{messagesByIdsFn: func(ids []string) ([]*chatmodel.Message, error) {
 			messages := make([]*chatmodel.Message, len(ids))
 			for i, id := range ids {
 				messages[i] = &chatmodel.Message{ChatMessage: &model.ChatMessage{Id: id}}
 			}
 			return messages, nil
-		})
-		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatId).Return(mockChatObj, nil)
+		}}
 
 		fx.start(t)
 
@@ -1137,7 +1369,7 @@ func TestService_Search(t *testing.T) {
 			Records: []*domain.Details{},
 		}, nil).Maybe()
 
-		fx.ftSearch.EXPECT().Search(spaceId, "search").Return([]*ftsearch.DocumentMatch{
+		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "search", mock.Anything, mock.Anything).Return([]*ftsearch.DocumentMatch{
 			{
 				Score: 5.0,
 				ID:    domain.NewObjectPathWithMessage(chatId, "msg1").String(),
@@ -1170,17 +1402,13 @@ func TestService_Search(t *testing.T) {
 			},
 		}, nil)
 
-		mockChatObj := mock_chatobject.NewMockStoreObject(t)
-		mockChatObj.EXPECT().Lock().Return()
-		mockChatObj.EXPECT().Unlock().Return()
-		mockChatObj.EXPECT().GetMessagesByIds(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, ids []string) ([]*chatmodel.Message, error) {
+		fx.chatRepoService.repo = &fakeChatRepository{messagesByIdsFn: func(ids []string) ([]*chatmodel.Message, error) {
 			messages := make([]*chatmodel.Message, len(ids))
 			for i, id := range ids {
 				messages[i] = &chatmodel.Message{ChatMessage: &model.ChatMessage{Id: id}}
 			}
 			return messages, nil
-		})
-		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatId).Return(mockChatObj, nil)
+		}}
 
 		fx.start(t)
 
@@ -1215,7 +1443,7 @@ func TestService_Search(t *testing.T) {
 			Records: []*domain.Details{},
 		}, nil).Maybe()
 
-		fx.ftSearch.EXPECT().Search(spaceId, "msg").Return([]*ftsearch.DocumentMatch{
+		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "msg", mock.Anything, mock.Anything).Return([]*ftsearch.DocumentMatch{
 			{
 				Score: 5.0,
 				ID:    domain.NewObjectPathWithMessage(chatId, "msg1").String(),
@@ -1239,10 +1467,7 @@ func TestService_Search(t *testing.T) {
 			},
 		}, nil)
 
-		mockChatObj := mock_chatobject.NewMockStoreObject(t)
-		mockChatObj.EXPECT().Lock().Return()
-		mockChatObj.EXPECT().Unlock().Return()
-		mockChatObj.EXPECT().GetMessagesByIds(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, ids []string) ([]*chatmodel.Message, error) {
+		fx.chatRepoService.repo = &fakeChatRepository{messagesByIdsFn: func(ids []string) ([]*chatmodel.Message, error) {
 			messages := make([]*chatmodel.Message, len(ids))
 			for i, id := range ids {
 				messages[i] = &chatmodel.Message{ChatMessage: &model.ChatMessage{
@@ -1251,8 +1476,7 @@ func TestService_Search(t *testing.T) {
 				}}
 			}
 			return messages, nil
-		})
-		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatId).Return(mockChatObj, nil)
+		}}
 
 		fx.start(t)
 
@@ -1287,7 +1511,7 @@ func TestService_Search(t *testing.T) {
 			Records: []*domain.Details{},
 		}, nil).Maybe()
 
-		fx.ftSearch.EXPECT().Search(spaceId, "text").Return([]*ftsearch.DocumentMatch{
+		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "text", mock.Anything, mock.Anything).Return([]*ftsearch.DocumentMatch{
 			{
 				Score: 5.0,
 				ID:    domain.NewObjectPathWithMessage(chatId, "msg1").String(),
@@ -1311,10 +1535,7 @@ func TestService_Search(t *testing.T) {
 			},
 		}, nil)
 
-		mockChatObj := mock_chatobject.NewMockStoreObject(t)
-		mockChatObj.EXPECT().Lock().Return()
-		mockChatObj.EXPECT().Unlock().Return()
-		mockChatObj.EXPECT().GetMessagesByIds(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, ids []string) ([]*chatmodel.Message, error) {
+		fx.chatRepoService.repo = &fakeChatRepository{messagesByIdsFn: func(ids []string) ([]*chatmodel.Message, error) {
 			messages := make([]*chatmodel.Message, len(ids))
 			for i, id := range ids {
 				timestamp := int64(1000 + i) // msg1=1000, msg2=1001, msg3=1002
@@ -1324,8 +1545,7 @@ func TestService_Search(t *testing.T) {
 				}}
 			}
 			return messages, nil
-		})
-		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatId).Return(mockChatObj, nil)
+		}}
 
 		fx.start(t)
 
@@ -1360,7 +1580,7 @@ func TestService_Search(t *testing.T) {
 			Records: []*domain.Details{},
 		}, nil).Maybe()
 
-		fx.ftSearch.EXPECT().Search(spaceId, "test").Return([]*ftsearch.DocumentMatch{
+		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "test", mock.Anything, mock.Anything).Return([]*ftsearch.DocumentMatch{
 			{
 				Score: 5.0,
 				ID:    domain.NewObjectPathWithMessage(chatId, "msg1").String(),
@@ -1384,10 +1604,7 @@ func TestService_Search(t *testing.T) {
 			},
 		}, nil)
 
-		mockChatObj := mock_chatobject.NewMockStoreObject(t)
-		mockChatObj.EXPECT().Lock().Return()
-		mockChatObj.EXPECT().Unlock().Return()
-		mockChatObj.EXPECT().GetMessagesByIds(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, ids []string) ([]*chatmodel.Message, error) {
+		fx.chatRepoService.repo = &fakeChatRepository{messagesByIdsFn: func(ids []string) ([]*chatmodel.Message, error) {
 			orderMap := map[string]string{
 				"msg1": "order_002",
 				"msg2": "order_001",
@@ -1401,8 +1618,7 @@ func TestService_Search(t *testing.T) {
 				}}
 			}
 			return messages, nil
-		})
-		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatId).Return(mockChatObj, nil)
+		}}
 
 		fx.start(t)
 
@@ -1442,7 +1658,7 @@ func TestService_Search(t *testing.T) {
 		}, nil).Maybe()
 
 		// FTSearch returns results from multiple chats
-		fx.ftSearch.EXPECT().Search(spaceId, "query").Return([]*ftsearch.DocumentMatch{
+		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "query", mock.Anything, mock.Anything).Return([]*ftsearch.DocumentMatch{
 			{
 				Score: 10.0,
 				ID:    domain.NewObjectPathWithMessage(chatId, "msg1").String(),
@@ -1466,10 +1682,7 @@ func TestService_Search(t *testing.T) {
 			},
 		}, nil)
 
-		mockChatObj := mock_chatobject.NewMockStoreObject(t)
-		mockChatObj.EXPECT().Lock().Return()
-		mockChatObj.EXPECT().Unlock().Return()
-		mockChatObj.EXPECT().GetMessagesByIds(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, ids []string) ([]*chatmodel.Message, error) {
+		fx.chatRepoService.repo = &fakeChatRepository{messagesByIdsFn: func(ids []string) ([]*chatmodel.Message, error) {
 			// Should only receive msg1 and msg3, not msg2 (different chat)
 			assert.Len(t, ids, 2)
 			assert.Contains(t, ids, "msg1")
@@ -1481,8 +1694,7 @@ func TestService_Search(t *testing.T) {
 				messages[i] = &chatmodel.Message{ChatMessage: &model.ChatMessage{Id: id}}
 			}
 			return messages, nil
-		})
-		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatId).Return(mockChatObj, nil)
+		}}
 
 		fx.start(t)
 
@@ -1507,7 +1719,7 @@ func TestService_Search(t *testing.T) {
 			Records: []*domain.Details{},
 		}, nil).Maybe()
 
-		fx.ftSearch.EXPECT().Search(spaceId, "error").Return(nil, fmt.Errorf("search index error"))
+		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "error", mock.Anything, mock.Anything).Return(nil, fmt.Errorf("search index error"))
 
 		fx.start(t)
 
@@ -1524,7 +1736,7 @@ func TestService_Search(t *testing.T) {
 		assert.Contains(t, err.Error(), "search ft")
 	})
 
-	t.Run("empty query returns empty results", func(t *testing.T) {
+	t.Run("empty query browses the chat's last messages, no FT involved", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
 		ctx := context.Background()
@@ -1533,13 +1745,12 @@ func TestService_Search(t *testing.T) {
 			Records: []*domain.Details{},
 		}, nil).Maybe()
 
-		fx.ftSearch.EXPECT().Search(spaceId, "").Return([]*ftsearch.DocumentMatch{}, nil)
-
-		mockChatObj := mock_chatobject.NewMockStoreObject(t)
-		mockChatObj.EXPECT().Lock().Return()
-		mockChatObj.EXPECT().Unlock().Return()
-		mockChatObj.EXPECT().GetMessagesByIds(mock.Anything, []string{}).Return([]*chatmodel.Message{}, nil)
-		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatId).Return(mockChatObj, nil)
+		// no ftSearch expectation: browse must not query the index
+		fx.chatRepoService.repo = &fakeChatRepository{lastMessages: []*chatmodel.Message{
+			{ChatMessage: &model.ChatMessage{Id: "msgNew", CreatedAt: 300}},
+			{ChatMessage: &model.ChatMessage{Id: "msgMid", CreatedAt: 200}},
+			{ChatMessage: &model.ChatMessage{Id: "msgOld", CreatedAt: 100}},
+		}}
 
 		fx.start(t)
 
@@ -1552,125 +1763,128 @@ func TestService_Search(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		assert.Empty(t, results)
+		require.Len(t, results, 3)
+		got := []string{results[0].MessageId, results[1].MessageId, results[2].MessageId}
+		// default browse order: CREATED_AT desc
+		assert.Equal(t, []string{"msgNew", "msgMid", "msgOld"}, got)
+		assert.Equal(t, chatId, results[0].ChatId)
+		assert.Equal(t, spaceId, results[0].SpaceId)
 	})
 }
 
-// TODO: GO-6749 uncomment when old clients will be able to unmarshal messages with pinned=true
-// func TestService_PinMessages(t *testing.T) {
-// 	t.Run("pin single message successfully", func(t *testing.T) {
-// 		// given
-// 		fx := newFixture(t)
-// 		ctx := context.Background()
-// 		chatObjectId := "chatId1"
-// 		messageIds := []string{"msg1"}
-//
-// 		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{
-// 			Records: []*domain.Details{},
-// 		}, nil).Maybe()
-//
-// 		mockChat := mock_chatobject.NewMockStoreObject(t)
-// 		mockChat.EXPECT().Lock().Return()
-// 		mockChat.EXPECT().Unlock().Return()
-// 		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg1", true).Return(nil)
-//
-// 		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatObjectId).Return(mockChat, nil)
-//
-// 		fx.start(t)
-//
-// 		// when
-// 		err := fx.PinMessages(ctx, chatObjectId, messageIds, true)
-//
-// 		// then
-// 		require.NoError(t, err)
-// 	})
-//
-// 	t.Run("pin multiple messages", func(t *testing.T) {
-// 		// given
-// 		fx := newFixture(t)
-// 		ctx := context.Background()
-// 		chatObjectId := "chatId1"
-// 		messageIds := []string{"msg1", "msg2", "msg3"}
-//
-// 		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{
-// 			Records: []*domain.Details{},
-// 		}, nil).Maybe()
-//
-// 		mockChat := mock_chatobject.NewMockStoreObject(t)
-// 		mockChat.EXPECT().Lock().Return()
-// 		mockChat.EXPECT().Unlock().Return()
-// 		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg1", true).Return(nil)
-// 		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg2", true).Return(nil)
-// 		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg3", true).Return(nil)
-//
-// 		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatObjectId).Return(mockChat, nil)
-//
-// 		fx.start(t)
-//
-// 		// when
-// 		err := fx.PinMessages(ctx, chatObjectId, messageIds, true)
-//
-// 		// then
-// 		require.NoError(t, err)
-// 	})
-//
-// 	t.Run("pin message returns error on failure", func(t *testing.T) {
-// 		// given
-// 		fx := newFixture(t)
-// 		ctx := context.Background()
-// 		chatObjectId := "chatId1"
-// 		messageIds := []string{"msg1"}
-//
-// 		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{
-// 			Records: []*domain.Details{},
-// 		}, nil).Maybe()
-//
-// 		mockChat := mock_chatobject.NewMockStoreObject(t)
-// 		mockChat.EXPECT().Lock().Return()
-// 		mockChat.EXPECT().Unlock().Return()
-// 		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg1", true).Return(fmt.Errorf("message not found"))
-//
-// 		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatObjectId).Return(mockChat, nil)
-//
-// 		fx.start(t)
-//
-// 		// when
-// 		err := fx.PinMessages(ctx, chatObjectId, messageIds, true)
-//
-// 		// then
-// 		require.Error(t, err)
-// 	})
-// }
+func TestService_PinMessages(t *testing.T) {
+	t.Run("pin single message successfully", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		ctx := context.Background()
+		chatObjectId := "chatId1"
+		messageIds := []string{"msg1"}
 
-// TODO: GO-6749 uncomment when old clients will be able to unmarshal messages with pinned=true
-// func TestService_UnpinMessages(t *testing.T) {
-// 	t.Run("unpin single message successfully", func(t *testing.T) {
-// 		// given
-// 		fx := newFixture(t)
-// 		ctx := context.Background()
-// 		chatObjectId := "chatId1"
-// 		messageIds := []string{"msg2"}
-//
-// 		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{
-// 			Records: []*domain.Details{},
-// 		}, nil).Maybe()
-//
-// 		mockChat := mock_chatobject.NewMockStoreObject(t)
-// 		mockChat.EXPECT().Lock().Return()
-// 		mockChat.EXPECT().Unlock().Return()
-// 		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg2", false).Return(nil)
-//
-// 		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatObjectId).Return(mockChat, nil)
-//
-// 		fx.start(t)
-//
-// 		// when
-// 		err := fx.PinMessages(ctx, chatObjectId, messageIds, false)
-//
-// 		// then
-// 		require.NoError(t, err)
-// 	})
-// }
+		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{
+			Records: []*domain.Details{},
+		}, nil).Maybe()
+
+		mockChat := mock_chatobject.NewMockStoreObject(t)
+		mockChat.EXPECT().Lock().Return()
+		mockChat.EXPECT().Unlock().Return()
+		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg1", true).Return(nil)
+
+		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatObjectId).Return(mockChat, nil)
+
+		fx.start(t)
+
+		// when
+		err := fx.PinMessages(ctx, chatObjectId, messageIds, true)
+
+		// then
+		require.NoError(t, err)
+	})
+
+	t.Run("pin multiple messages", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		ctx := context.Background()
+		chatObjectId := "chatId1"
+		messageIds := []string{"msg1", "msg2", "msg3"}
+
+		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{
+			Records: []*domain.Details{},
+		}, nil).Maybe()
+
+		mockChat := mock_chatobject.NewMockStoreObject(t)
+		mockChat.EXPECT().Lock().Return()
+		mockChat.EXPECT().Unlock().Return()
+		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg1", true).Return(nil)
+		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg2", true).Return(nil)
+		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg3", true).Return(nil)
+
+		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatObjectId).Return(mockChat, nil)
+
+		fx.start(t)
+
+		// when
+		err := fx.PinMessages(ctx, chatObjectId, messageIds, true)
+
+		// then
+		require.NoError(t, err)
+	})
+
+	t.Run("pin message returns error on failure", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		ctx := context.Background()
+		chatObjectId := "chatId1"
+		messageIds := []string{"msg1"}
+
+		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{
+			Records: []*domain.Details{},
+		}, nil).Maybe()
+
+		mockChat := mock_chatobject.NewMockStoreObject(t)
+		mockChat.EXPECT().Lock().Return()
+		mockChat.EXPECT().Unlock().Return()
+		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg1", true).Return(fmt.Errorf("message not found"))
+
+		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatObjectId).Return(mockChat, nil)
+
+		fx.start(t)
+
+		// when
+		err := fx.PinMessages(ctx, chatObjectId, messageIds, true)
+
+		// then
+		require.Error(t, err)
+	})
+}
+
+func TestService_UnpinMessages(t *testing.T) {
+	t.Run("unpin single message successfully", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		ctx := context.Background()
+		chatObjectId := "chatId1"
+		messageIds := []string{"msg2"}
+
+		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{
+			Records: []*domain.Details{},
+		}, nil).Maybe()
+
+		mockChat := mock_chatobject.NewMockStoreObject(t)
+		mockChat.EXPECT().Lock().Return()
+		mockChat.EXPECT().Unlock().Return()
+		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg2", false).Return(nil)
+
+		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatObjectId).Return(mockChat, nil)
+
+		fx.start(t)
+
+		// when
+		err := fx.PinMessages(ctx, chatObjectId, messageIds, false)
+
+		// then
+		require.NoError(t, err)
+	})
+}
 
 func TestService_GetPinnedMessages(t *testing.T) {
 	t.Run("get pinned messages successfully", func(t *testing.T) {
@@ -1706,12 +1920,9 @@ func TestService_GetPinnedMessages(t *testing.T) {
 			},
 		}
 
-		mockChat := mock_chatobject.NewMockStoreObject(t)
-		mockChat.EXPECT().Lock().Return()
-		mockChat.EXPECT().Unlock().Return()
-		mockChat.EXPECT().GetPinnedMessages(mock.Anything).Return(want, nil)
-
-		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatObjectId).Return(mockChat, nil)
+		// Pinned messages are served straight from the anystore repository — no smartblock /
+		// change-tree build (GO-7340).
+		fx.chatRepoService.repo = &fakeChatRepository{pinned: want}
 
 		fx.start(t)
 
@@ -1735,12 +1946,7 @@ func TestService_GetPinnedMessages(t *testing.T) {
 			Records: []*domain.Details{},
 		}, nil).Maybe()
 
-		mockChat := mock_chatobject.NewMockStoreObject(t)
-		mockChat.EXPECT().Lock().Return()
-		mockChat.EXPECT().Unlock().Return()
-		mockChat.EXPECT().GetPinnedMessages(mock.Anything).Return(nil, nil)
-
-		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatObjectId).Return(mockChat, nil)
+		fx.chatRepoService.repo = &fakeChatRepository{pinned: nil}
 
 		fx.start(t)
 
@@ -1750,5 +1956,38 @@ func TestService_GetPinnedMessages(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.Empty(t, got)
+	})
+}
+
+func TestService_GetMessagesByIds(t *testing.T) {
+	t.Run("returns messages from repository without building the tree", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		ctx := context.Background()
+		chatObjectId := "chatId1"
+
+		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{
+			Records: []*domain.Details{},
+		}, nil).Maybe()
+
+		want := []*chatmodel.Message{
+			{ChatMessage: &model.ChatMessage{Id: "msg1", OrderId: "order1"}},
+			{ChatMessage: &model.ChatMessage{Id: "msg2", OrderId: "order2"}},
+		}
+
+		// Served straight from the anystore repository — no smartblock / change-tree build (GO-7340).
+		// No WaitAndGetObject expectation is set, so any attempt to build the tree fails the test.
+		fx.chatRepoService.repo = &fakeChatRepository{messagesByIds: want}
+
+		fx.start(t)
+
+		// when
+		got, err := fx.GetMessagesByIds(ctx, chatObjectId, []string{"msg1", "msg2"})
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, got, 2)
+		assert.Equal(t, "msg1", got[0].Id)
+		assert.Equal(t, "msg2", got[1].Id)
 	})
 }

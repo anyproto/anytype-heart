@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "33b752b3618688fb548408b767bccf5376a33033d855edf5642cdf8dc3496a91"
+const RelationChecksum = "df2637b4fed2c7622ae81a8211523ce0907f50257b6f6f6b3438023a5d967a14"
 const (
 	RelationKeyTag                                  domain.RelationKey = "tag"
 	RelationKeyCamera                               domain.RelationKey = "camera"
@@ -131,6 +131,7 @@ const (
 	RelationKeyGuestKey                             domain.RelationKey = "guestKey"
 	RelationKeyParticipantPermissions               domain.RelationKey = "participantPermissions"
 	RelationKeySpaceInvitePermissions               domain.RelationKey = "spaceInvitePermissions"
+	RelationKeySpaceInviteHeldByOwner               domain.RelationKey = "spaceInviteHeldByOwner"
 	RelationKeyIdentity                             domain.RelationKey = "identity"
 	RelationKeyParticipantStatus                    domain.RelationKey = "participantStatus"
 	RelationKeyMyParticipantStatus                  domain.RelationKey = "myParticipantStatus"
@@ -143,6 +144,7 @@ const (
 	RelationKeyImageKind                            domain.RelationKey = "imageKind"
 	RelationKeyCreatedInContext                     domain.RelationKey = "createdInContext"
 	RelationKeyCreatedInContextRef                  domain.RelationKey = "createdInContextRef"
+	RelationKeyCreatedInContextIgnored              domain.RelationKey = "createdInContextIgnored"
 	RelationKeyImportType                           domain.RelationKey = "importType"
 	RelationKeyGlobalName                           domain.RelationKey = "globalName"
 	RelationKeySyncStatus                           domain.RelationKey = "syncStatus"
@@ -190,14 +192,23 @@ const (
 	RelationKeyWidgetViewId                         domain.RelationKey = "widgetViewId"
 	RelationKeyIsMainChat                           domain.RelationKey = "isMainChat"
 	RelationKeyLastMessageDate                      domain.RelationKey = "lastMessageDate"
+	RelationKeyNotificationSubscribers              domain.RelationKey = "notificationSubscribers"
+	RelationKeyUnreadMessageCount                   domain.RelationKey = "unreadMessageCount"
+	RelationKeyUnreadMentionCount                   domain.RelationKey = "unreadMentionCount"
 	RelationKeyFileAvailableOffline                 domain.RelationKey = "fileAvailableOffline"
 	RelationKeyAnalyticsChatId                      domain.RelationKey = "analyticsChatId"
 	RelationKeyAnalyticsSpaceId                     domain.RelationKey = "analyticsSpaceId"
 	RelationKey_score                               domain.RelationKey = "_score"
+	RelationKey_final_score                         domain.RelationKey = "_final_score"
 	RelationKeyMigrationObjectContext               domain.RelationKey = "migrationObjectContext"
 	RelationKeyTemplateNamePrefillType              domain.RelationKey = "templateNamePrefillType"
 	RelationKeySpaceType                            domain.RelationKey = "spaceType"
 	RelationKeyHomepage                             domain.RelationKey = "homepage"
+	RelationKeyTemplatePlaceholders                 domain.RelationKey = "templatePlaceholders"
+	RelationKeyDeletedBy                            domain.RelationKey = "deletedBy"
+	RelationKeyDeletedDate                          domain.RelationKey = "deletedDate"
+	RelationKeyDeletionChangeId                     domain.RelationKey = "deletionChangeId"
+	RelationKeyDeletedSnapshot                      domain.RelationKey = "deletedSnapshot"
 )
 
 var (
@@ -534,12 +545,26 @@ var (
 			DataSource:       model.Relation_details,
 			Description:      "Object ID where the object was initially created",
 			Format:           model.RelationFormat_object,
-			Hidden:           true,
 			Id:               "_brcreatedInContext",
 			Key:              "createdInContext",
 			MaxCount:         1,
 			Name:             "Created in context",
 			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Revision:         1,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyCreatedInContextIgnored: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Ignore this object's createdInContext link: it is excluded from cleanup suggestions and from automatic context-driven archival",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Id:               "_brcreatedInContextIgnored",
+			Key:              "createdInContextIgnored",
+			MaxCount:         1,
+			Name:             "Created in context ignored",
+			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
@@ -611,6 +636,64 @@ var (
 			MaxCount:         1,
 			Name:             "Default view type",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyDeletedBy: {
+
+			DataSource:       model.Relation_local,
+			Description:      "Human who permanently deleted this object",
+			Format:           model.RelationFormat_object,
+			Hidden:           true,
+			Id:               "_brdeletedBy",
+			Key:              "deletedBy",
+			MaxCount:         1,
+			Name:             "Deleted by",
+			ObjectTypes:      []string{TypePrefix + "participant"},
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyDeletedDate: {
+
+			DataSource:       model.Relation_local,
+			Description:      "Date when the object was permanently deleted",
+			Format:           model.RelationFormat_date,
+			Hidden:           true,
+			Id:               "_brdeletedDate",
+			IncludeTime:      true,
+			Key:              "deletedDate",
+			MaxCount:         1,
+			Name:             "Deletion date",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyDeletedSnapshot: {
+
+			DataSource:       model.Relation_local,
+			Description:      "What the object was, captured when it was deleted. Nested so its keys stay out of the objectstore indexes",
+			Format:           model.RelationFormat_map,
+			Hidden:           true,
+			Id:               "_brdeletedSnapshot",
+			Key:              "deletedSnapshot",
+			MaxCount:         1,
+			Name:             "Deleted object snapshot",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyDeletionChangeId: {
+
+			DataSource:       model.Relation_local,
+			Description:      "Id of the space settings tree change that deleted this object. Objects deleted in one operation share it",
+			Format:           model.RelationFormat_shorttext,
+			Hidden:           true,
+			Id:               "_brdeletionChangeId",
+			Key:              "deletionChangeId",
+			MaxCount:         1,
+			Name:             "Deletion change id",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
@@ -1576,6 +1659,19 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyNotificationSubscribers: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Participants subscribed to notifications on this discussion",
+			Format:           model.RelationFormat_object,
+			Id:               "_brnotificationSubscribers",
+			Key:              "notificationSubscribers",
+			Name:             "Notification subscribers",
+			ObjectTypes:      []string{TypePrefix + "participant"},
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyOldAnytypeID: {
 
 			DataSource:       model.Relation_details,
@@ -2256,6 +2352,20 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeySpaceInviteHeldByOwner: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Set when the space invite is kept in the owner's account instead of the space, so that only the owner can share it",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Id:               "_brspaceInviteHeldByOwner",
+			Key:              "spaceInviteHeldByOwner",
+			MaxCount:         1,
+			Name:             "Invite is held by the space owner",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeySpaceInvitePermissions: {
 
 			DataSource:       model.Relation_details,
@@ -2615,6 +2725,20 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyTemplatePlaceholders: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Dynamic placeholder mappings for template relation default values",
+			Format:           model.RelationFormat_map,
+			Hidden:           true,
+			Id:               "_brtemplatePlaceholders",
+			Key:              "templatePlaceholders",
+			MaxCount:         1,
+			Name:             "Template Placeholders",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyTime: {
 
 			DataSource:       model.Relation_details,
@@ -2680,6 +2804,34 @@ var (
 			Key:              "uniqueKey",
 			MaxCount:         1,
 			Name:             "Unique object key",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyUnreadMentionCount: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Number of unread mentions in a discussion for the current user",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brunreadMentionCount",
+			Key:              "unreadMentionCount",
+			MaxCount:         1,
+			Name:             "Unread mentions",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyUnreadMessageCount: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Number of unread messages in a discussion for the current user",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brunreadMessageCount",
+			Key:              "unreadMessageCount",
+			MaxCount:         1,
+			Name:             "Unread messages",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -2762,6 +2914,20 @@ var (
 			Key:              "writersLimit",
 			MaxCount:         1,
 			Name:             "Writers limit",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKey_final_score: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Fulltext search final score (BM25 + recency + name boost)",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_br_final_score",
+			Key:              "_final_score",
+			MaxCount:         1,
+			Name:             "Final Score",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

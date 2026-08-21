@@ -242,7 +242,9 @@ func (mw *Middleware) FileReconcile(ctx context.Context, req *pb.RpcFileReconcil
 			},
 		}
 	}
-	return &pb.RpcFileReconcileResponse{}
+	return &pb.RpcFileReconcileResponse{
+		Error: &pb.RpcFileReconcileResponseError{Code: pb.RpcFileReconcileResponseError_NULL},
+	}
 }
 
 func (mw *Middleware) FileSetAutoDownload(ctx context.Context, req *pb.RpcFileSetAutoDownloadRequest) *pb.RpcFileSetAutoDownloadResponse {
@@ -255,7 +257,9 @@ func (mw *Middleware) FileSetAutoDownload(ctx context.Context, req *pb.RpcFileSe
 			},
 		}
 	}
-	return &pb.RpcFileSetAutoDownloadResponse{}
+	return &pb.RpcFileSetAutoDownloadResponse{
+		Error: &pb.RpcFileSetAutoDownloadResponseError{Code: pb.RpcFileSetAutoDownloadResponseError_NULL},
+	}
 }
 
 func (mw *Middleware) FileAutoDownloadSetLimit(ctx context.Context, req *pb.RpcFileAutoDownloadSetLimitRequest) *pb.RpcFileAutoDownloadSetLimitResponse {
@@ -268,16 +272,29 @@ func (mw *Middleware) FileAutoDownloadSetLimit(ctx context.Context, req *pb.RpcF
 			},
 		}
 	}
-	return &pb.RpcFileAutoDownloadSetLimitResponse{}
+	return &pb.RpcFileAutoDownloadSetLimitResponse{
+		Error: &pb.RpcFileAutoDownloadSetLimitResponseError{Code: pb.RpcFileAutoDownloadSetLimitResponseError_NULL},
+	}
 }
 
 func (mw *Middleware) FileCacheDownload(ctx context.Context, req *pb.RpcFileCacheDownloadRequest) *pb.RpcFileCacheDownloadResponse {
 	handle := func() error {
-		file, err := mustService[fileobject.Service](mw).GetFileData(ctx, req.FileObjectId)
+		fileObjectService := mustService[fileobject.Service](mw)
+		// Fast path: resolve the file id from the indexed object store without
+		// opening the smartblock. CacheFile then skips the warm-up entirely when
+		// the file is already cached locally.
+		fullId, err := fileObjectService.GetFileIdFromObject(req.FileObjectId)
 		if err != nil {
-			return fmt.Errorf("get file data: %w", err)
+			// The file id could not be read from the index — the object is not
+			// indexed yet, or its file id relation is still empty mid-upload. Fall
+			// back to loading the file data, which also warms up the object itself.
+			file, err := fileObjectService.GetFileData(ctx, req.FileObjectId)
+			if err != nil {
+				return fmt.Errorf("get file data: %w", err)
+			}
+			fullId = domain.FullFileId{SpaceId: file.SpaceId(), FileId: file.FileId()}
 		}
-		mustService[filedownloader.Service](mw).CacheFile(file.SpaceId(), file.FileId())
+		mustService[filedownloader.Service](mw).CacheFile(fullId.SpaceId, fullId.FileId)
 		return nil
 	}
 	err := handle()
@@ -289,7 +306,9 @@ func (mw *Middleware) FileCacheDownload(ctx context.Context, req *pb.RpcFileCach
 			},
 		}
 	}
-	return &pb.RpcFileCacheDownloadResponse{}
+	return &pb.RpcFileCacheDownloadResponse{
+		Error: &pb.RpcFileCacheDownloadResponseError{Code: pb.RpcFileCacheDownloadResponseError_NULL},
+	}
 }
 
 func (mw *Middleware) FileCacheCancelDownload(ctx context.Context, req *pb.RpcFileCacheCancelDownloadRequest) *pb.RpcFileCacheCancelDownloadResponse {
@@ -310,5 +329,7 @@ func (mw *Middleware) FileCacheCancelDownload(ctx context.Context, req *pb.RpcFi
 			},
 		}
 	}
-	return &pb.RpcFileCacheCancelDownloadResponse{}
+	return &pb.RpcFileCacheCancelDownloadResponse{
+		Error: &pb.RpcFileCacheCancelDownloadResponseError{Code: pb.RpcFileCacheCancelDownloadResponseError_NULL},
+	}
 }

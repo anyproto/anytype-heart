@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/hashicorp/golang-lru/v2/expirable"
@@ -19,6 +20,11 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
+
+// sseSendTimeout bounds how long Flush will wait to deliver an event to a slow
+// SSE subscriber before giving up, closing its channel and dropping the
+// subscription. The handler observes the closed channel and exits the stream.
+const sseSendTimeout = time.Second
 
 type subscriptionManager struct {
 	lock sync.Mutex
@@ -37,9 +43,11 @@ type subscriptionManager struct {
 
 	chatStateOrder          int64
 	chatState               *model.ChatState
+	messageCount            int32
 	needReloadState         bool
 	needReloadReactionState bool
 	chatStateUpdated        bool
+	messageCountUpdated     bool
 
 	// Deps
 	spaceIndex  spaceindex.Store
@@ -53,6 +61,9 @@ type subscription struct {
 
 	// couldUseSessionContext determines if client could receive events synchronously in API responses
 	couldUseSessionContext bool
+
+	// sseSink, when set, receives events directly instead of going through the event sender
+	sseSink chan<- *pb.Event
 
 	state *messagesState
 }
@@ -77,9 +88,11 @@ func (s *subscriptionManager) subscribe(req SubscribeLastMessagesRequest, initia
 		id:                     req.SubId,
 		withDependencies:       req.WithDependencies,
 		couldUseSessionContext: req.CouldUseSessionContext,
+		sseSink:                req.SseSink,
 		state:                  st,
 	}
 	s.chatStateUpdated = false
+	s.messageCountUpdated = false
 }
 
 func (s *subscriptionManager) unsubscribe(subId string) {
@@ -119,11 +132,58 @@ func (s *subscriptionManager) loadChatState(ctx context.Context) error {
 		return err
 	}
 	s.chatState = state
+	count, err := s.repository.CountMessages(ctx)
+	if err != nil {
+		return fmt.Errorf("count messages: %w", err)
+	}
+	s.messageCount = int32(count)
 	return nil
 }
 
 func (s *subscriptionManager) GetChatState() *model.ChatState {
 	return copyChatState(s.chatState)
+}
+
+// ReconcileChatState re-derives the ChatState and message count from the repository — the
+// persisted read-flags are the source of truth — and replaces the in-memory copies only when
+// they diverged. The in-memory counters can drift from the DB: a change replayed over an
+// already-stored message bumps them before the insert is ignored with ErrDocExists, and an
+// apply error rolls the DB back after they were already bumped. Managers are also cached
+// across object reopens, so drift survives until something reloads. Called under Lock on
+// object open, before the first flush, so clients never observe drifted values.
+func (s *subscriptionManager) ReconcileChatState() {
+	dbState, err := s.repository.LoadChatState(s.componentCtx)
+	if err != nil {
+		log.Error("reconcile chat state: load from repository", zap.Error(err))
+		return
+	}
+	if !chatStateValuesEqual(s.chatState, dbState) {
+		s.UpdateChatState(func(*model.ChatState) *model.ChatState {
+			return dbState
+		})
+	}
+	count, err := s.repository.CountMessages(s.componentCtx)
+	if err != nil {
+		log.Error("reconcile chat state: count messages", zap.Error(err))
+		return
+	}
+	if int32(count) != s.messageCount {
+		s.messageCount = int32(count)
+		s.messageCountUpdated = true
+	}
+}
+
+// chatStateValuesEqual compares everything clients consume (counters and watermarks),
+// ignoring the local event-ordering field Order.
+func chatStateValuesEqual(a, b *model.ChatState) bool {
+	return unreadStateEqual(a.GetMessages(), b.GetMessages()) &&
+		unreadStateEqual(a.GetMentions(), b.GetMentions()) &&
+		a.GetLastStateId() == b.GetLastStateId() &&
+		a.GetUnreadReactionOrderId() == b.GetUnreadReactionOrderId()
+}
+
+func unreadStateEqual(a, b *model.ChatStateUnreadState) bool {
+	return a.GetOldestOrderId() == b.GetOldestOrderId() && a.GetCounter() == b.GetCounter()
 }
 
 func (s *subscriptionManager) UpdateChatState(updater func(*model.ChatState) *model.ChatState) {
@@ -133,8 +193,21 @@ func (s *subscriptionManager) UpdateChatState(updater func(*model.ChatState) *mo
 	s.chatStateUpdated = true
 }
 
+func (s *subscriptionManager) UpdateMessageCount(delta int32) {
+	s.messageCount += delta
+	if s.messageCount < 0 {
+		s.messageCount = 0
+	}
+	s.messageCountUpdated = true
+}
+
+func (s *subscriptionManager) GetMessageCount() int32 {
+	return s.messageCount
+}
+
 func (s *subscriptionManager) ForceSendingChatState() {
 	s.chatStateUpdated = true
+	s.messageCountUpdated = true
 }
 
 func (s *subscriptionManager) GetLastMessage() (*model.ChatMessage, bool, error) {
@@ -170,6 +243,13 @@ func (s *subscriptionManager) Flush(reloadStateIfNeeded bool) {
 			}
 			return newState
 		})
+		newCount, err := s.repository.CountMessages(s.componentCtx)
+		if err != nil {
+			log.Error("failed to reload message count", zap.Error(err))
+		} else if int32(newCount) != s.messageCount {
+			s.messageCount = int32(newCount)
+			s.messageCountUpdated = true
+		}
 		s.needReloadState = false
 		s.needReloadReactionState = false
 	}
@@ -212,6 +292,14 @@ func (s *subscriptionManager) Flush(reloadStateIfNeeded bool) {
 		}
 	}
 
+	if s.messageCountUpdated {
+		events = append(events, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatUpdateMessageCount{ChatUpdateMessageCount: &pb.EventChatUpdateMessageCount{
+			MessageCount: s.messageCount,
+			SubIds:       s.listSubIds(),
+		}}))
+		s.messageCountUpdated = false
+	}
+
 	if s.chatStateUpdated {
 		events = append(events, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatStateUpdate{ChatStateUpdate: &pb.EventChatUpdateState{
 			State:  s.GetChatState(),
@@ -226,8 +314,15 @@ func (s *subscriptionManager) Flush(reloadStateIfNeeded bool) {
 
 	var syncSubIds []string
 	var asyncSubIds []string
+	type sseSub struct {
+		id   string
+		sink chan<- *pb.Event
+	}
+	var sseSubs []sseSub
 	for _, sub := range s.subscriptions {
-		if sub.couldUseSessionContext && s.sessionContext != nil {
+		if sub.sseSink != nil {
+			sseSubs = append(sseSubs, sseSub{id: sub.id, sink: sub.sseSink})
+		} else if sub.couldUseSessionContext && s.sessionContext != nil {
 			syncSubIds = append(syncSubIds, sub.id)
 		} else {
 			asyncSubIds = append(asyncSubIds, sub.id)
@@ -256,6 +351,34 @@ func (s *subscriptionManager) Flush(reloadStateIfNeeded bool) {
 		s.eventSender.Broadcast(ev)
 	}
 
+	var droppedSseSubs []string
+	for _, ss := range sseSubs {
+		sseEvents := cloneEvents(events)
+		eventsSetSubIds([]string{ss.id}, sseEvents)
+		ev := &pb.Event{
+			ContextId: s.chatId,
+			Messages:  sseEvents,
+		}
+		// Try non-blocking first to avoid the timer cost on the common path.
+		select {
+		case ss.sink <- ev:
+			continue
+		default:
+		}
+		// Slow subscriber: wait up to sseSendTimeout, then drop the
+		// subscription so we never silently lose events.
+		timer := time.NewTimer(sseSendTimeout)
+		select {
+		case ss.sink <- ev:
+			timer.Stop()
+		case <-timer.C:
+			close(ss.sink)
+			droppedSseSubs = append(droppedSseSubs, ss.id)
+		}
+	}
+	for _, id := range droppedSseSubs {
+		delete(s.subscriptions, id)
+	}
 }
 
 func (s *subscriptionManager) enrichWithDependencies(ev *pb.EventChatAdd) {
@@ -530,6 +653,8 @@ func eventsSetSubIds(subIds []string, events []*pb.EventMessage) {
 		} else if v := ev.GetChatUpdatePinnedStatus(); v != nil {
 			v.SubIds = subIds
 		} else if v := ev.GetChatUpdateReactionReadStatus(); v != nil {
+			v.SubIds = subIds
+		} else if v := ev.GetChatUpdateMessageCount(); v != nil {
 			v.SubIds = subIds
 		}
 	}

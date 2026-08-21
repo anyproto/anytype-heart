@@ -52,7 +52,7 @@ func (_c *MockDeletionController_AddSpaceToDelete_Call) Return() *MockDeletionCo
 }
 
 func (_c *MockDeletionController_AddSpaceToDelete_Call) RunAndReturn(run func(string)) *MockDeletionController_AddSpaceToDelete_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -148,7 +148,7 @@ func (_c *MockDeletionController_Init_Call) RunAndReturn(run func(*app.App) erro
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockDeletionController) Name() string {
 	ret := _m.Called()
 
@@ -239,7 +239,7 @@ func (_c *MockDeletionController_Run_Call) RunAndReturn(run func(context.Context
 	return _c
 }
 
-// UpdateCoordinatorStatus provides a mock function with given fields:
+// UpdateCoordinatorStatus provides a mock function with no fields
 func (_m *MockDeletionController) UpdateCoordinatorStatus() {
 	_m.Called()
 }
@@ -267,7 +267,7 @@ func (_c *MockDeletionController_UpdateCoordinatorStatus_Call) Return() *MockDel
 }
 
 func (_c *MockDeletionController_UpdateCoordinatorStatus_Call) RunAndReturn(run func()) *MockDeletionController_UpdateCoordinatorStatus_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 

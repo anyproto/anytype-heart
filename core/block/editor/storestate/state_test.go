@@ -384,3 +384,31 @@ func (fx *fixture) finish(t testing.TB) {
 		_ = os.RemoveAll(fx.tmpDir)
 	}
 }
+
+// captureHandler records the AclHeadId seen by the handler for each operation.
+type captureHandler struct {
+	DefaultHandler
+	last ChangeOp
+}
+
+func (h *captureHandler) BeforeCreate(ctx context.Context, ch ChangeOp) error {
+	h.last = ch
+	return h.DefaultHandler.BeforeCreate(ctx, ch)
+}
+
+func TestApplyChangeSet_AclHeadIdPlumbing(t *testing.T) {
+	handler := &captureHandler{DefaultHandler: DefaultHandler{Name: "testColl"}}
+	fx := newFixture(t, "objId", handler)
+	tx, err := fx.NewTx(ctx)
+	require.NoError(t, err)
+	build := &Builder{}
+	assert.NoError(t, build.Create("testColl", "1", `{"key":"value"}`))
+	require.NoError(t, tx.ApplyChangeSet(ChangeSet{
+		Id:        "rec1",
+		Order:     "1",
+		AclHeadId: "acl-head-42",
+		Changes:   build.ChangeSet,
+	}))
+	require.NoError(t, tx.Commit())
+	require.Equal(t, "acl-head-42", handler.last.Change.AclHeadId)
+}

@@ -106,6 +106,10 @@ func (c *virtualCommonSpace) StoredIds() []string {
 	return nil
 }
 
+func (c *virtualCommonSpace) SyncHeads(ctx context.Context) error {
+	return nil
+}
+
 func (c *virtualCommonSpace) DebugAllHeads() []headsync.TreeHeads {
 	return nil
 }

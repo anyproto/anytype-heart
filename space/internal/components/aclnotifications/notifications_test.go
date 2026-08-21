@@ -11,6 +11,7 @@ import (
 	"github.com/cheggaaa/mb/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -665,4 +666,24 @@ func (a *aclListStub) Close(ctx context.Context) (err error) { return err }
 
 func (a *aclListStub) GetRecordIndex(recordId string) (idx int) {
 	return
+}
+
+func TestMapProtoPermissionToAcl_Admin(t *testing.T) {
+	require.Equal(t, model.ParticipantPermissions_Admin, mapProtoPermissionToAcl(aclrecordproto.AclUserPermissions_Admin))
+}
+
+func TestMapProtoPermissionToAcl_Owner(t *testing.T) {
+	require.Equal(t, model.ParticipantPermissions_Owner, mapProtoPermissionToAcl(aclrecordproto.AclUserPermissions_Owner))
+}
+
+func TestMapProtoPermissionToAcl_Writer(t *testing.T) {
+	require.Equal(t, model.ParticipantPermissions_Writer, mapProtoPermissionToAcl(aclrecordproto.AclUserPermissions_Writer))
+}
+
+func TestMapProtoPermissionToAcl_Reader(t *testing.T) {
+	require.Equal(t, model.ParticipantPermissions_Reader, mapProtoPermissionToAcl(aclrecordproto.AclUserPermissions_Reader))
+}
+
+func TestMapProtoPermissionToAcl_None(t *testing.T) {
+	require.Equal(t, model.ParticipantPermissions_NoPermissions, mapProtoPermissionToAcl(aclrecordproto.AclUserPermissions_None))
 }

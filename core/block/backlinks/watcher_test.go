@@ -122,6 +122,82 @@ func TestWatcher_Run(t *testing.T) {
 }
 
 func TestWatcher_updateAccumulatedBacklinks(t *testing.T) {
+	t.Run("invalid link target must not be indexed as ghost object", func(t *testing.T) {
+		// Reproducer for a bug where object A has a link to object B that does not exist
+		// in the objectStore. The backlinks watcher, upon processing A's outgoing links,
+		// calls ModifyObjectDetails for B. any-store's UpsertId creates a synthetic
+		// {"id": "B"} document for missing records before invoking the modifier, so
+		// updateBacklinks receives a non-nil *domain.Details and happily persists
+		// {id, backlinks} for B — making an invisible "ghost" object searchable.
+
+		// given
+		f := newFixture(t, time.Second)
+
+		// Only object A exists; object B ("ghost") does NOT exist in the store.
+		f.store.AddObjects(t, spaceId, []spaceindex.TestObject{{
+			bundle.RelationKeyId:      domain.String("objA"),
+			bundle.RelationKeySpaceId: domain.String(spaceId),
+		}})
+
+		spc := mock_clientspace.NewMockSpace(t)
+		f.spaceService.EXPECT().Get(mock.Anything, spaceId).Return(spc, nil)
+		spc.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{
+			Archive: "archive",
+		})
+		// objB does not exist in the ocache either, so DoLockedIfNotExists calls apply().
+		spc.EXPECT().DoLockedIfNotExists(mock.Anything, mock.Anything).RunAndReturn(func(id string, apply func() error) error {
+			return apply()
+		})
+
+		// A → B link was indexed; backlinks watcher accumulated: B should gain A as backlink.
+		f.watcher.accumulatedBacklinks = map[domain.FullID]*backLinksUpdate{
+			{ObjectID: "objB", SpaceID: spaceId}: {
+				added: []string{"objA"},
+			},
+		}
+
+		// when
+		f.watcher.updateAccumulatedBacklinks()
+
+		// then — objB must NOT have been written to the store; it is a non-existent object.
+		// GetDetails returns empty details (no error) for missing objects, so check that
+		// no backlinks were persisted — a ghost would have backlinks: ["objA"].
+		details, err := f.store.SpaceIndex(spaceId).GetDetails("objB")
+		require.NoError(t, err)
+		assert.Empty(t, details.GetStringList(bundle.RelationKeyBacklinks), "ghost object objB must not be indexed with backlinks in the store")
+	})
+
+	t.Run("store-owned participant is updated directly in the store, bypassing the object cache", func(t *testing.T) {
+		// given
+		f := newFixture(t, time.Second)
+		participantId := domain.NewParticipantId(spaceId, "identity1")
+		f.store.AddObjects(t, spaceId, []spaceindex.TestObject{{
+			bundle.RelationKeyId:      domain.String(participantId),
+			bundle.RelationKeySpaceId: domain.String(spaceId),
+			bundle.RelationKeyName:    domain.String("John"),
+		}})
+
+		spc := mock_clientspace.NewMockSpace(t)
+		f.spaceService.EXPECT().Get(mock.Anything, spaceId).Return(spc, nil)
+		spc.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{})
+		// no DoLockedIfNotExists / Do expectations: the watcher must not go through
+		// the object cache for store-owned objects — a cached stale smartblock state
+		// would be written back over the record
+
+		f.watcher.accumulatedBacklinks = map[domain.FullID]*backLinksUpdate{
+			{ObjectID: participantId, SpaceID: spaceId}: {added: []string{"objA"}},
+		}
+
+		// when
+		f.watcher.updateAccumulatedBacklinks()
+
+		// then
+		details, err := f.store.SpaceIndex(spaceId).GetDetails(participantId)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"objA"}, details.GetStringList(bundle.RelationKeyBacklinks))
+		assert.Equal(t, "John", details.GetString(bundle.RelationKeyName))
+	})
+
 	t.Run("no errors", func(t *testing.T) {
 		// given
 		f := newFixture(t, time.Second)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -25,9 +26,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
+	"github.com/anyproto/anytype-heart/core/inbox/inboxservice/mock_inboxservice"
 	"github.com/anyproto/anytype-heart/core/kanban/mock_kanban"
 	"github.com/anyproto/anytype-heart/core/notifications/mock_notifications"
-	"github.com/anyproto/anytype-heart/core/onetoone/mock_onetoone"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pb"
@@ -239,10 +240,10 @@ func newFixture(t *testing.T, expectOldAccount func(t *testing.T, fx *fixture)) 
 	collService := &dummyCollectionService{}
 	subscriptionService := subscription.New()
 	identityService := testutil.PrepareMock(ctx, fx.a, mock_dependencies.NewMockIdentityService(t))
-	onetooneServiceMock := mock_onetoone.NewMockService(t)
-	onetooneServiceMock.EXPECT().Run(mock.Anything).Return(nil).Maybe()
-	onetooneServiceMock.EXPECT().Close(mock.Anything).Return(nil).Maybe()
-	onetooneService := testutil.PrepareMock(ctx, fx.a, onetooneServiceMock)
+	inboxSenderMock := mock_inboxservice.NewMockSender(t)
+	inboxSenderMock.EXPECT().Run(mock.Anything).Return(nil).Maybe()
+	inboxSenderMock.EXPECT().Close(mock.Anything).Return(nil).Maybe()
+	inboxSenderService := testutil.PrepareMock(ctx, fx.a, inboxSenderMock)
 	fx.a.
 		Register(testutil.PrepareMock(ctx, fx.a, wallet)).
 		Register(fx.config).
@@ -259,7 +260,7 @@ func newFixture(t *testing.T, expectOldAccount func(t *testing.T, fx *fixture)) 
 		Register(testutil.PrepareMock(ctx, fx.a, fx.factory)).
 		Register(testutil.PrepareMock(ctx, fx.a, mock_notifications.NewMockNotifications(t))).
 		Register(identityService).
-		Register(onetooneService).
+		Register(inboxSenderService).
 		Register(&testSpaceLoaderListener{}).
 		Register(fx.service)
 	fx.expectRun(t, expectOldAccount)
@@ -564,5 +565,156 @@ func TestService_onSpaceStatusUpdated(t *testing.T) {
 		})
 
 		time.Sleep(200 * time.Millisecond)
+	})
+}
+
+func TestService_OnWorkspaceChanged(t *testing.T) {
+	newTestService := func(t *testing.T) (*service, *mock_techspace.MockTechSpace) {
+		mockTS := mock_techspace.NewMockTechSpace(t)
+		svc := &service{
+			techSpace: &clientspace.TechSpace{TechSpace: mockTS},
+			ctx:       context.Background(),
+		}
+		return svc, mockTS
+	}
+
+	t.Run("account init - parallel spaces propagate independently", func(t *testing.T) {
+		// given
+		svc, mockTS := newTestService(t)
+
+		const spaceCount = 10
+		var received sync.Map
+
+		mockTS.EXPECT().
+			SpaceViewSetData(mock.Anything, mock.Anything, mock.Anything).
+			RunAndReturn(func(_ context.Context, spaceId string, details *domain.Details) error {
+				received.Store(spaceId, details)
+				return nil
+			})
+
+		// when: simulate parallel workspace Init for multiple spaces
+		var wg sync.WaitGroup
+		for i := range spaceCount {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				spaceId := fmt.Sprintf("space-%d", i)
+				details := domain.NewDetails().
+					SetString(bundle.RelationKeyName, fmt.Sprintf("Space %d", i)).
+					SetInt64(bundle.RelationKeySpaceType, int64(model.SpaceType_SpaceTypeRegular))
+				svc.OnWorkspaceChanged(spaceId, details)
+			}()
+		}
+		wg.Wait()
+
+		// then: every space must have received its own details
+		for i := range spaceCount {
+			spaceId := fmt.Sprintf("space-%d", i)
+			val, ok := received.Load(spaceId)
+			require.True(t, ok, "space %s did not receive data", spaceId)
+			d := val.(*domain.Details)
+			assert.Equal(t, fmt.Sprintf("Space %d", i), d.GetString(bundle.RelationKeyName))
+		}
+	})
+
+	t.Run("workspace creation - homepage preserved after init", func(t *testing.T) {
+		// given
+		svc, mockTS := newTestService(t)
+		spaceId := "new-space"
+		homepage := "bafyreihlyjxj2bds4fdseerpdzn6yztdeqoxzyr7yjdk4q6ql5ocnhcvqa"
+
+		var lastDetails *domain.Details
+		mockTS.EXPECT().
+			SpaceViewSetData(mock.Anything, spaceId, mock.Anything).
+			RunAndReturn(func(_ context.Context, _ string, details *domain.Details) error {
+				lastDetails = details
+				return nil
+			})
+
+		// when: workspace Init — empty homepage
+		svc.OnWorkspaceChanged(spaceId, domain.NewDetails().
+			SetString(bundle.RelationKeyName, "My Space").
+			SetString(bundle.RelationKeyHomepage, "").
+			SetInt64(bundle.RelationKeySpaceType, int64(model.SpaceType_SpaceTypeRegular)))
+
+		// when: sync status triggers another workspace apply
+		svc.OnWorkspaceChanged(spaceId, domain.NewDetails().
+			SetString(bundle.RelationKeyName, "My Space").
+			SetString(bundle.RelationKeyHomepage, "").
+			SetInt64(bundle.RelationKeySpaceType, int64(model.SpaceType_SpaceTypeRegular)))
+
+		// when: WorkspaceSetHomepage sets the correct value
+		svc.OnWorkspaceChanged(spaceId, domain.NewDetails().
+			SetString(bundle.RelationKeyName, "My Space").
+			SetString(bundle.RelationKeyHomepage, homepage).
+			SetInt64(bundle.RelationKeySpaceType, int64(model.SpaceType_SpaceTypeRegular)))
+
+		// then: last propagated details must contain the homepage
+		require.NotNil(t, lastDetails)
+		assert.Equal(t, homepage, lastDetails.GetString(bundle.RelationKeyHomepage))
+	})
+
+	t.Run("one-to-one space - frequent participant changes", func(t *testing.T) {
+		// given
+		svc, mockTS := newTestService(t)
+		spaceId := "one-to-one-space"
+
+		var lastDetails *domain.Details
+		mockTS.EXPECT().
+			SpaceViewSetData(mock.Anything, spaceId, mock.Anything).
+			RunAndReturn(func(_ context.Context, _ string, details *domain.Details) error {
+				lastDetails = details
+				return nil
+			})
+
+		// when: workspace Init for one-to-one space
+		svc.OnWorkspaceChanged(spaceId, domain.NewDetails().
+			SetString(bundle.RelationKeyName, "").
+			SetString(bundle.RelationKeyIconImage, "").
+			SetInt64(bundle.RelationKeySpaceType, int64(model.SpaceType_SpaceTypeOneToOne)))
+
+		// when: participant profile arrives (simulates updateOneToOneInfo)
+		svc.OnWorkspaceChanged(spaceId, domain.NewDetails().
+			SetString(bundle.RelationKeyName, "Alice").
+			SetString(bundle.RelationKeyIconImage, "icon-v1").
+			SetInt64(bundle.RelationKeyIconOption, 3).
+			SetString(bundle.RelationKeyHomepage, "").
+			SetInt64(bundle.RelationKeySpaceType, int64(model.SpaceType_SpaceTypeOneToOne)))
+
+		// when: participant updates their profile
+		svc.OnWorkspaceChanged(spaceId, domain.NewDetails().
+			SetString(bundle.RelationKeyName, "Alice W.").
+			SetString(bundle.RelationKeyIconImage, "icon-v2").
+			SetInt64(bundle.RelationKeyIconOption, 5).
+			SetString(bundle.RelationKeyHomepage, "").
+			SetInt64(bundle.RelationKeySpaceType, int64(model.SpaceType_SpaceTypeOneToOne)))
+
+		// when: another participant update with different icon
+		svc.OnWorkspaceChanged(spaceId, domain.NewDetails().
+			SetString(bundle.RelationKeyName, "Alice W.").
+			SetString(bundle.RelationKeyIconImage, "icon-v3").
+			SetInt64(bundle.RelationKeyIconOption, 5).
+			SetString(bundle.RelationKeyHomepage, "").
+			SetInt64(bundle.RelationKeySpaceType, int64(model.SpaceType_SpaceTypeOneToOne)))
+
+		// then: last propagated details must contain the latest participant data
+		require.NotNil(t, lastDetails)
+		assert.Equal(t, "Alice W.", lastDetails.GetString(bundle.RelationKeyName))
+		assert.Equal(t, "icon-v3", lastDetails.GetString(bundle.RelationKeyIconImage))
+		assert.Equal(t, int64(5), lastDetails.GetInt64(bundle.RelationKeyIconOption))
+	})
+}
+
+func TestOrderSpacesOpenedFirst(t *testing.T) {
+	t.Run("opened spaces move to the front, order stable", func(t *testing.T) {
+		got := orderSpacesOpenedFirst(
+			[]string{"a", "b", "c", "d"},
+			map[string]struct{}{"c": {}, "d": {}},
+		)
+		assert.Equal(t, []string{"c", "d", "a", "b"}, got)
+	})
+	t.Run("no opened spaces: unchanged", func(t *testing.T) {
+		ids := []string{"a", "b"}
+		assert.Equal(t, ids, orderSpacesOpenedFirst(ids, nil))
 	})
 }

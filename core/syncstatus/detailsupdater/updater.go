@@ -260,7 +260,7 @@ func (u *syncStatusUpdater) updateObjectDetails(syncStatusDetails *syncStatusDet
 			details.SetInt64(bundle.RelationKeySyncError, int64(syncError))
 			details.SetInt64(bundle.RelationKeySyncDate, time.Now().Unix())
 			return details, true, nil
-		})
+		}, true)
 	})
 	if err == nil {
 		return nil

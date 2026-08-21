@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/debug"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/environment"
 )
 
 func (mw *Middleware) DebugTree(cctx context.Context, req *pb.RpcDebugTreeRequest) *pb.RpcDebugTreeResponse {
@@ -215,7 +214,7 @@ func (mw *Middleware) DebugOpenedObjects(_ context.Context, _ *pb.RpcDebugOpened
 }
 
 func (mw *Middleware) DebugRunProfiler(cctx context.Context, req *pb.RpcDebugRunProfilerRequest) *pb.RpcDebugRunProfilerResponse {
-	path, err := mw.applicationService.RunProfiler(cctx, int(req.DurationInSeconds))
+	path, err := mw.applicationService.RunProfiler(cctx, int(req.DurationInSeconds), req.Reason.String(), req.ReasonDesc, req.IncludeTrace)
 	if err != nil {
 		return &pb.RpcDebugRunProfilerResponse{
 			Error: &pb.RpcDebugRunProfilerResponseError{
@@ -244,19 +243,34 @@ func (mw *Middleware) DebugAccountSelectTrace(cctx context.Context, req *pb.RpcD
 	}
 }
 
-func (mw *Middleware) DebugExportLog(cctx context.Context, req *pb.RpcDebugExportLogRequest) *pb.RpcDebugExportLogResponse {
-	path, err := mw.applicationService.SaveLog(environment.LOG_PATH, req.Dir)
+func (mw *Middleware) DebugExportReport(cctx context.Context, req *pb.RpcDebugExportReportRequest) *pb.RpcDebugExportReportResponse {
+	path, summary, lastModifiedTs, err := mw.applicationService.SaveReport(req.Dir, req.Full)
 
 	code := mapErrorCode(err,
-		errToCode(application.ErrNoFolder, pb.RpcDebugExportLogResponseError_NO_FOLDER),
+		errToCode(application.ErrNoFolder, pb.RpcDebugExportReportResponseError_NO_FOLDER),
 	)
-	return &pb.RpcDebugExportLogResponse{
-		Path: path,
-		Error: &pb.RpcDebugExportLogResponseError{
+	return &pb.RpcDebugExportReportResponse{
+		Path:           path,
+		Summary:        summary,
+		LastModifiedTs: lastModifiedTs,
+		Error: &pb.RpcDebugExportReportResponseError{
 			Code:        code,
 			Description: getErrorDescription(err),
 		},
 	}
+}
+
+func (mw *Middleware) DebugCleanupReport(cctx context.Context, req *pb.RpcDebugCleanupReportRequest) *pb.RpcDebugCleanupReportResponse {
+	err := mw.applicationService.CleanupReport(req.Ts)
+	if err != nil {
+		return &pb.RpcDebugCleanupReportResponse{
+			Error: &pb.RpcDebugCleanupReportResponseError{
+				Code:        pb.RpcDebugCleanupReportResponseError_UNKNOWN_ERROR,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+	return &pb.RpcDebugCleanupReportResponse{}
 }
 
 func (mw *Middleware) DebugAnystoreObjectChanges(cctx context.Context, req *pb.RpcDebugAnystoreObjectChangesRequest) *pb.RpcDebugAnystoreObjectChangesResponse {

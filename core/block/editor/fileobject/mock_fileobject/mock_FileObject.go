@@ -23,7 +23,7 @@ func (_m *MockFileObject) EXPECT() *MockFileObject_Expecter {
 	return &MockFileObject_Expecter{mock: &_m.Mock}
 }
 
-// GetFile provides a mock function with given fields:
+// GetFile provides a mock function with no fields
 func (_m *MockFileObject) GetFile() (files.File, error) {
 	ret := _m.Called()
 
@@ -80,7 +80,7 @@ func (_c *MockFileObject_GetFile_Call) RunAndReturn(run func() (files.File, erro
 	return _c
 }
 
-// GetFullFileId provides a mock function with given fields:
+// GetFullFileId provides a mock function with no fields
 func (_m *MockFileObject) GetFullFileId() domain.FullFileId {
 	ret := _m.Called()
 
@@ -125,7 +125,7 @@ func (_c *MockFileObject_GetFullFileId_Call) RunAndReturn(run func() domain.Full
 	return _c
 }
 
-// GetImage provides a mock function with given fields:
+// GetImage provides a mock function with no fields
 func (_m *MockFileObject) GetImage() (files.Image, error) {
 	ret := _m.Called()
 

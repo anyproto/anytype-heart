@@ -31,6 +31,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -38,6 +39,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/acl/aclrecordproto"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/commonspace/object/acl/recordverifier"
+	"github.com/anyproto/any-sync/consensus/consensusproto/consensuserr"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	"github.com/anyproto/any-sync/identityrepo/identityrepoproto"
@@ -48,6 +50,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/invitecleanup"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
@@ -77,7 +80,7 @@ type AccountPermissions struct {
 
 type AclService interface {
 	app.Component
-	GenerateInvite(ctx context.Context, spaceId string, inviteType model.InviteType, permissions model.ParticipantPermissions) (domain.InviteInfo, error)
+	GenerateInvite(ctx context.Context, spaceId string, inviteType model.InviteType, permissions model.ParticipantPermissions, shareWithinSpace bool) (domain.InviteInfo, error)
 	ChangeInvite(ctx context.Context, spaceId string, permissions model.ParticipantPermissions) error
 	RevokeInvite(ctx context.Context, spaceId string) error
 	GetCurrentInvite(ctx context.Context, spaceId string) (domain.InviteInfo, error)
@@ -93,7 +96,7 @@ type AclService interface {
 	Leave(ctx context.Context, spaceId string) (err error)
 	Remove(ctx context.Context, spaceId string, identities []crypto.PubKey) (err error)
 	ChangePermissions(ctx context.Context, spaceId string, perms []AccountPermissions) (err error)
-	AddAccount(ctx context.Context, spaceId string, pubKey crypto.PubKey, metadata []byte, permissions list.AclPermissions) error
+	AddAccounts(ctx context.Context, spaceId string, additions []list.AccountAdd) error
 	AddGuestAccount(ctx context.Context, spaceId string) (privKey crypto.PrivKey, err error)
 	OwnershipChange(ctx context.Context, spaceId string, newOwner crypto.PubKey, oldOwnerPerm model.ParticipantPermissions) (err error)
 }
@@ -110,9 +113,11 @@ type identityRepoClient interface {
 
 type aclService struct {
 	nodeConfigGetter NodeConfGetter
+	nodeConf         nodeconf.Service
 	joiningClient    aclclient.AclJoiningClient
 	spaceService     space.Service
 	inviteService    inviteservice.InviteService
+	inviteCleanup    invitecleanup.Service
 	accountService   account.Service
 	coordClient      coordinatorclient.CoordinatorClient
 	identityRepo     identityRepoClient
@@ -120,22 +125,30 @@ type aclService struct {
 	updater          *aclUpdater
 	getter           *aclGetter
 
+	// aclClientLock serializes all ACL modification operations.
+	// This prevents race conditions where concurrent operations (e.g. GenerateInvite
+	// and AddAccounts) read the same ACL head, build records with the same prevId,
+	// and only one succeeds on the node ("incorrect prev id of a record" error).
+	aclClientLock sync.Mutex
+
 	ctx       context.Context
 	ctxCancel context.CancelFunc
 }
 
 func (a *aclService) Init(ap *app.App) (err error) {
 	a.nodeConfigGetter = app.MustComponent[NodeConfGetter](ap)
+	a.nodeConf = app.MustComponent[nodeconf.Service](ap)
 	a.joiningClient = app.MustComponent[aclclient.AclJoiningClient](ap)
 	a.spaceService = app.MustComponent[space.Service](ap)
 	a.accountService = app.MustComponent[account.Service](ap)
 	a.inviteService = app.MustComponent[inviteservice.InviteService](ap)
+	a.inviteCleanup = app.MustComponent[invitecleanup.Service](ap)
 	a.coordClient = app.MustComponent[coordinatorclient.CoordinatorClient](ap)
 	a.identityRepo = app.MustComponent[identityRepoClient](ap)
 	subService := app.MustComponent[subscription.Service](ap)
 	crossSub := app.MustComponent[crossspacesub.Service](ap)
 	wlt := app.MustComponent[wallet.Wallet](ap)
-	a.getter = newAclGetter(a.joiningClient, wlt.Account())
+	a.getter = newAclGetter(a.joiningClient, wlt.Account(), a.nodeConf)
 	a.updater, err = newAclUpdater("acl-updater",
 		wlt.Account().SignKey.GetPublic().Account(),
 		crossSub,
@@ -150,8 +163,26 @@ func (a *aclService) Init(ap *app.App) (err error) {
 	}
 
 	a.ctx, a.ctxCancel = context.WithCancel(context.Background())
-	a.recordVerifier = recordverifier.New()
 	return nil
+}
+
+// buildRecordVerifier returns the test-injected verifier when present, otherwise
+// builds one from the current networkId. We decode lazily because in LocalOnly
+// mode networkId is empty; in that mode there are no acceptor-signed records
+// to check, so we fall back to the no-op verifier.
+func (a *aclService) buildRecordVerifier() (recordverifier.AcceptorVerifier, error) {
+	if a.recordVerifier != nil {
+		return a.recordVerifier, nil
+	}
+	networkId := a.nodeConf.Configuration().NetworkId
+	if networkId == "" {
+		return recordverifier.NewValidateFull(), nil
+	}
+	netKey, err := crypto.DecodeNetworkId(networkId)
+	if err != nil {
+		return nil, fmt.Errorf("invalid networkId: %w", err)
+	}
+	return recordverifier.New(netKey), nil
 }
 
 func (a *aclService) Run(_ context.Context) (err error) {
@@ -214,21 +245,21 @@ func (a *aclService) AddGuestAccount(ctx context.Context, spaceId string) (privK
 	if err != nil {
 		return nil, err
 	}
-	return pk, a.AddAccount(ctx, spaceId, pubKey, metadata, list.AclPermissionsGuest)
+	return pk, a.AddAccounts(ctx, spaceId, []list.AccountAdd{{
+		Identity:    pubKey,
+		Metadata:    metadata,
+		Permissions: list.AclPermissionsGuest,
+	}})
 }
 
-func (a *aclService) AddAccount(ctx context.Context, spaceId string, pubKey crypto.PubKey, metadata []byte, permission list.AclPermissions) error {
+func (a *aclService) AddAccounts(ctx context.Context, spaceId string, additions []list.AccountAdd) error {
 	sp, err := a.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return convertedOrSpaceErr(err)
 	}
-	err = sp.CommonSpace().AclClient().AddAccounts(ctx, list.AccountsAddPayload{Additions: []list.AccountAdd{
-		{
-			Identity:    pubKey,
-			Metadata:    metadata,
-			Permissions: permission,
-		},
-	}})
+	a.aclClientLock.Lock()
+	defer a.aclClientLock.Unlock()
+	err = sp.CommonSpace().AclClient().AddAccounts(ctx, list.AccountsAddPayload{Additions: additions})
 	if err != nil {
 		return convertedOrAclRequestError(err)
 	}
@@ -245,6 +276,8 @@ func (a *aclService) Remove(ctx context.Context, spaceId string, identities []cr
 		return convertedOrInternalError("generate random key pair", err)
 	}
 	cl := removeSpace.CommonSpace().AclClient()
+	a.aclClientLock.Lock()
+	defer a.aclClientLock.Unlock()
 	err = cl.RemoveAccounts(ctx, list.AccountRemovePayload{
 		Identities: identities,
 		Change: list.ReadKeyChangePayload{
@@ -253,6 +286,62 @@ func (a *aclService) Remove(ctx context.Context, spaceId string, identities []cr
 		},
 	})
 	if err != nil {
+		return convertedOrAclRequestError(err)
+	}
+	return nil
+}
+
+// RotateReadKey generates a new space read key when retiring a revoked AnyoneCanJoin invite. It is the
+// invitecleanup.readKeyRotator implementation.
+//
+// It only sends the rotation while the acl head is still expectedHead — the head the cleanup decided
+// the rotation on. If the acl has moved (another device rotated, or any acl change landed), it returns
+// invitecleanup.ErrAclHeadChanged and does nothing, so the rotation is never applied to state that
+// changed under the decision. The record itself carries prevId = the current head, so the coordinator
+// rejects a rotation built on a head it has since advanced past; that rejection maps to the same
+// sentinel.
+func (a *aclService) RotateReadKey(ctx context.Context, spaceId string, expectedHead string) error {
+	sp, err := a.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return convertedOrSpaceErr(err)
+	}
+	change, err := newReadKeyChange()
+	if err != nil {
+		return convertedOrInternalError("generate read key change", err)
+	}
+	acl := sp.CommonSpace().Acl()
+	cl := sp.CommonSpace().AclClient()
+
+	a.aclClientLock.Lock()
+	defer a.aclClientLock.Unlock()
+
+	acl.RLock()
+	sameHead := acl.Head().Id == expectedHead
+	acl.RUnlock()
+	if !sameHead {
+		return invitecleanup.ErrAclHeadChanged
+	}
+
+	// a bare read-key change, not RevokeAllInvitesAndRotate: the backlog invite is already revoked, and
+	// any invite that is still live is legitimate and must survive — a pure rotation re-keys live
+	// invites and members while excluding the already-revoked ones.
+	acl.Lock()
+	rec, err := acl.RecordBuilder().BuildReadKeyChange(change)
+	acl.Unlock()
+	if err != nil {
+		return convertedOrInternalError("build read key change", err)
+	}
+
+	if err = cl.AddRecord(ctx, rec); err != nil {
+		// the acl head moved between the local head check and the node accepting the record: a local
+		// prev-id mismatch (ErrIncorrectRecordSequence) or the node rejecting a record built on a head
+		// it has advanced past (consensus ErrConflict). Either way the rotation another device most
+		// likely already made stands, and this one is abandoned for the next launch.
+		if errors.Is(err, list.ErrIncorrectRecordSequence) ||
+			errors.Is(err, consensuserr.ErrConflict) ||
+			strings.Contains(err.Error(), "incorrect prev id") {
+			return invitecleanup.ErrAclHeadChanged
+		}
 		return convertedOrAclRequestError(err)
 	}
 	return nil
@@ -276,6 +365,8 @@ func (a *aclService) Decline(ctx context.Context, spaceId string, identity crypt
 		return convertedOrSpaceErr(err)
 	}
 	cl := sp.CommonSpace().AclClient()
+	a.aclClientLock.Lock()
+	defer a.aclClientLock.Unlock()
 	err = cl.DeclineRequest(ctx, identity)
 	if err != nil {
 		return convertedOrAclRequestError(err)
@@ -288,16 +379,64 @@ func (a *aclService) RevokeInvite(ctx context.Context, spaceId string) error {
 	if err != nil {
 		return convertedOrSpaceErr(err)
 	}
-	cl := sp.CommonSpace().AclClient()
-	err = cl.RevokeAllInvites(ctx)
+	commonSpace := sp.CommonSpace()
+	cl := commonSpace.AclClient()
+	acl := commonSpace.Acl()
+	a.aclClientLock.Lock()
+	err = revokeAllInvites(ctx, cl, acl)
+	a.aclClientLock.Unlock()
 	if err != nil {
 		return convertedOrAclRequestError(err)
 	}
-	err = a.inviteService.RemoveExisting(ctx, spaceId)
+	revoked, err := a.inviteService.RemoveExisting(ctx, spaceId)
 	if err != nil {
 		return convertedOrInternalError("remove existing invite", err)
 	}
+	a.onInviteRevoked(ctx, spaceId, revoked)
 	return nil
+}
+
+// revokeAllInvites revokes every invite the space has, rotating the read key when any of them is one
+// anyone can join with. That kind of invite embeds the read key, so revoking it is not enough — the
+// key it handed out has to be rotated away or it keeps decrypting content created after the revocation.
+func revokeAllInvites(ctx context.Context, cl aclclient.AclSpaceClient, acl list.AclList) error {
+	if !hasAnyoneCanJoinInvite(acl) {
+		return cl.RevokeAllInvites(ctx)
+	}
+	change, err := newReadKeyChange()
+	if err != nil {
+		return err
+	}
+	return cl.RevokeAllInvitesAndRotate(ctx, change)
+}
+
+// hasAnyoneCanJoinInvite reports whether the space currently offers an invite anyone can join with.
+func hasAnyoneCanJoinInvite(acl list.AclList) bool {
+	acl.RLock()
+	defer acl.RUnlock()
+	return len(acl.AclState().Invites(aclrecordproto.AclInviteType_AnyoneCanJoin)) > 0
+}
+
+func newReadKeyChange() (list.ReadKeyChangePayload, error) {
+	metadataKey, _, err := crypto.GenerateRandomEd25519KeyPair()
+	if err != nil {
+		return list.ReadKeyChangePayload{}, err
+	}
+	return list.ReadKeyChangePayload{MetadataKey: metadataKey, ReadKey: crypto.NewAES()}, nil
+}
+
+// onInviteRevoked hands an invite the acl has just revoked to the cleanup service, which deletes its
+// file. It runs only once the revocation has gone through, it must not run while aclClientLock is
+// held, and it never fails the caller: the invite is revoked either way, and the background pass
+// retries whatever the deletion does not finish — the revocation record has already voided the
+// space's clean certificate, so the pass will come back for it.
+func (a *aclService) onInviteRevoked(ctx context.Context, spaceId string, revoked domain.InviteInfo) {
+	if revoked.InviteFileCid == "" {
+		return
+	}
+	if err := a.inviteCleanup.InviteRevoked(ctx, spaceId, revoked); err != nil {
+		log.Warn("delete revoked invite file", zap.String("spaceId", spaceId), zap.Error(err))
+	}
 }
 
 func (a *aclService) ChangePermissions(ctx context.Context, spaceId string, perms []AccountPermissions) error {
@@ -318,6 +457,8 @@ func (a *aclService) ChangePermissions(ctx context.Context, spaceId string, perm
 			aclPerms = list.AclPermissionsReader
 		case model.ParticipantPermissions_Writer:
 			aclPerms = list.AclPermissionsWriter
+		case model.ParticipantPermissions_Admin:
+			aclPerms = list.AclPermissionsAdmin
 		default:
 			acl.RUnlock()
 			return ErrIncorrectPermissions
@@ -337,6 +478,8 @@ func (a *aclService) ChangePermissions(ctx context.Context, spaceId string, perm
 	}
 	acl.RUnlock()
 	cl := sp.CommonSpace().AclClient()
+	a.aclClientLock.Lock()
+	defer a.aclClientLock.Unlock()
 	err = cl.ChangePermissions(ctx, list.PermissionChangesPayload{
 		Changes: listPerms,
 	})
@@ -397,6 +540,11 @@ func (a *aclService) Leave(ctx context.Context, spaceId string) (err error) {
 	if err != nil {
 		return convertedOrAclRequestError(err)
 	}
+	// We've left the space, so drop the network-fetched ACL copy the getter cached for
+	// this operation; otherwise it lingers in currentAcls for the rest of the session.
+	if removeErr := a.getter.RemoveAcl(ctx, spaceId); removeErr != nil {
+		log.Warn("remove acl from getter cache after leave", zap.Error(removeErr), zap.String("spaceId", spaceId))
+	}
 	return nil
 }
 
@@ -423,20 +571,23 @@ func (a *aclService) StopSharing(ctx context.Context, spaceId string) error {
 		return convertedOrInternalError("generate random key pair", err)
 	}
 	cl := commonSpace.AclClient()
+	a.aclClientLock.Lock()
 	err = cl.StopSharing(ctx, list.ReadKeyChangePayload{
 		MetadataKey: newPrivKey,
 		ReadKey:     crypto.NewAES(),
 	})
+	a.aclClientLock.Unlock()
 	if err != nil {
 		return convertedOrAclRequestError(err)
 	}
 	acl.RLock()
 	head := acl.Head().Id
 	acl.RUnlock()
-	err = a.inviteService.RemoveExisting(ctx, spaceId)
+	revoked, err := a.inviteService.RemoveExisting(ctx, spaceId)
 	if err != nil {
 		return convertedOrInternalError("remove existing invite", err)
 	}
+	a.onInviteRevoked(ctx, spaceId, revoked)
 	if localInfo.GetShareableStatus() != spaceinfo.ShareableStatusShareable {
 		return nil
 	}
@@ -588,7 +739,11 @@ func (a *aclService) ViewInvite(ctx context.Context, inviteCid cid.Cid, inviteFi
 	if err != nil {
 		return domain.InviteView{}, convertedOrAclRequestError(err)
 	}
-	lst, err := list.BuildAclListWithIdentity(a.accountService.Keys(), store, a.recordVerifier)
+	verifier, err := a.buildRecordVerifier()
+	if err != nil {
+		return domain.InviteView{}, convertedOrInternalError("build record verifier", err)
+	}
+	lst, err := list.BuildAclListWithIdentity(a.accountService.Keys(), store, verifier)
 	if err != nil {
 		return domain.InviteView{}, convertedOrAclRequestError(err)
 	}
@@ -601,7 +756,9 @@ func (a *aclService) ViewInvite(ctx context.Context, inviteCid cid.Cid, inviteFi
 }
 
 func (a *aclService) Accept(ctx context.Context, spaceId string, identity crypto.PubKey, permissions model.ParticipantPermissions) error {
-	validPerms := permissions == model.ParticipantPermissions_Reader || permissions == model.ParticipantPermissions_Writer
+	validPerms := permissions == model.ParticipantPermissions_Reader ||
+		permissions == model.ParticipantPermissions_Writer ||
+		permissions == model.ParticipantPermissions_Admin
 	if !validPerms {
 		return ErrIncorrectPermissions
 	}
@@ -627,14 +784,18 @@ func (a *aclService) Accept(ctx context.Context, spaceId string, identity crypto
 	if recId == "" {
 		return fmt.Errorf("%w with identity: %s", ErrRequestNotExists, identity.Account())
 	}
-	cl := acceptSpace.CommonSpace().AclClient()
 	var aclPerms list.AclPermissions
 	switch permissions {
 	case model.ParticipantPermissions_Reader:
 		aclPerms = list.AclPermissionsReader
 	case model.ParticipantPermissions_Writer:
 		aclPerms = list.AclPermissionsWriter
+	case model.ParticipantPermissions_Admin:
+		aclPerms = list.AclPermissionsAdmin
 	}
+	cl := acceptSpace.CommonSpace().AclClient()
+	a.aclClientLock.Lock()
+	defer a.aclClientLock.Unlock()
 	err = cl.AcceptRequest(ctx, list.RequestAcceptPayload{
 		RequestRecordId: recId,
 		Permissions:     aclPerms,
@@ -659,6 +820,12 @@ func (a *aclService) ChangeInvite(ctx context.Context, spaceId string, permissio
 		if current.InviteType != domain.InviteTypeAnyone {
 			return inviteservice.ErrInviteNotExists
 		}
+		// the invite is shared within the space, so raising it above read access would leave a link that
+		// lets whoever holds it write, in the hands of every member. Generating such an invite is
+		// refused; changing one into it is refused for the same reason
+		if !current.HeldByOwner && !domain.ShareableWithinSpace(current.InviteType, domain.ConvertParticipantPermissions(permissions)) {
+			return inviteservice.ErrInviteNotShareable
+		}
 	}
 	acceptSpace, err := a.spaceService.Get(ctx, spaceId)
 	if err != nil {
@@ -680,7 +847,9 @@ func (a *aclService) ChangeInvite(ctx context.Context, spaceId string, permissio
 	if invite.Permissions == invitePermissions {
 		return ErrIncorrectPermissions
 	}
+	a.aclClientLock.Lock()
 	err = aclClient.ChangeInvitePermissions(ctx, invites[0].Id, invitePermissions)
+	a.aclClientLock.Unlock()
 	if err != nil {
 		return convertedOrAclRequestError(err)
 	}
@@ -691,46 +860,111 @@ func (a *aclService) ChangeInvite(ctx context.Context, spaceId string, permissio
 	return nil
 }
 
-func (a *aclService) GenerateInvite(ctx context.Context, spaceId string, invType model.InviteType, permissions model.ParticipantPermissions) (result domain.InviteInfo, err error) {
+func (a *aclService) GenerateInvite(ctx context.Context, spaceId string, invType model.InviteType, permissions model.ParticipantPermissions, shareWithinSpace bool) (result domain.InviteInfo, err error) {
 	if spaceId == a.accountService.PersonalSpaceID() {
 		err = ErrPersonalSpace
 		return
 	}
 	inviteType := domain.InviteType(invType)
+	if shareWithinSpace && !domain.ShareableWithinSpace(inviteType, domain.ConvertParticipantPermissions(permissions)) {
+		return domain.InviteInfo{}, inviteservice.ErrInviteNotShareable
+	}
 	current, err := a.inviteService.GetCurrent(ctx, spaceId)
-	if err == nil {
-		if current.InviteType == inviteType {
+	// an invite this device cannot read comes back without a cid: it is held by the owner, and only
+	// they can do anything with it
+	if err == nil && current.InviteFileCid != "" && current.InviteType == inviteType {
+		switch {
+		case current.HeldByOwner == !shareWithinSpace:
 			return current, nil
+		case shareWithinSpace:
+			// the invite the owner holds is published into the workspace. It is the same invite: nothing
+			// is revoked, no new file is stored, and the link the owner already handed out keeps working
+			return a.inviteService.ShareWithinSpace(ctx, spaceId)
+		default:
+			// the other way round is not something we can honour. The workspace's change history has
+			// already given this invite's cid and key to every member of the space; taking the details
+			// back out of the workspace would not take the invite back. Revoking it would, and that is
+			// the client's call to make, not ours
+			return domain.InviteInfo{}, ErrInviteAlreadyShared
 		}
 	}
 	acceptSpace, err := a.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return
 	}
-	aclClient := acceptSpace.CommonSpace().AclClient()
+	commonSpace := acceptSpace.CommonSpace()
+	acl := commonSpace.Acl()
+	// only the owner may create an invite. The any-sync node rejects a non-owner's invite record too, but
+	// checking here keeps admins from ever building or storing one in the first place.
+	acl.RLock()
+	isOwner := acl.AclState().Permissions(acl.AclState().Identity()).IsOwner()
+	acl.RUnlock()
+	if !isOwner {
+		return domain.InviteInfo{}, ErrIncorrectPermissions
+	}
+	aclClient := commonSpace.AclClient()
 	aclPermissions := domain.ConvertParticipantPermissions(permissions)
 	invitePayload := aclclient.InvitePayload{
 		Permissions: aclPermissions,
 		InviteType:  domain.ConvertInviteType(inviteType),
 	}
-	res, err := aclClient.ReplaceInvite(ctx, invitePayload)
-	if err != nil {
-		err = convertedOrInternalError("couldn't generate acl invite", err)
-		return
-	}
-	params := inviteservice.GenerateInviteParams{
-		SpaceId:     spaceId,
-		Key:         res.InviteKey,
-		InviteType:  inviteType,
-		Permissions: aclPermissions,
-	}
-	return a.inviteService.Generate(ctx, params, func() error {
-		err := aclClient.AddRecord(ctx, res.InviteRec)
-		if err != nil {
-			return convertedOrAclRequestError(err)
+	// ReplaceInvite revokes whatever invite the space has, which happens here whenever the invite type
+	// changes: an invite of the same type would have been returned above instead
+	replaces := current.InviteFileCid != ""
+
+	// the lock is released before the invite is reported as revoked: onInviteRevoked reaches the tech
+	// space and the file node, and aclClientLock serializes every acl operation of every space
+	var revokedEarly bool
+	result, err = func() (domain.InviteInfo, error) {
+		a.aclClientLock.Lock()
+		defer a.aclClientLock.Unlock()
+		// an anyone-can-join invite embeds the read key. Before replacing it, revoke it and rotate, so the
+		// key it handed out cannot read what the new invite's members go on to write. ReplaceInvite cannot
+		// do this in one record — a new invite in the same record would embed the pre-rotation key — so it
+		// is a separate record, and the ReplaceInvite below then has nothing left to revoke.
+		if hasAnyoneCanJoinInvite(acl) {
+			change, err := newReadKeyChange()
+			if err != nil {
+				return domain.InviteInfo{}, convertedOrInternalError("generate read key change", err)
+			}
+			if err := aclClient.RevokeAllInvitesAndRotate(ctx, change); err != nil {
+				return domain.InviteInfo{}, convertedOrInternalError("revoke and rotate invites", err)
+			}
+			revokedEarly = true
+			// The invite the details point at is revoked as of the record above, so clear them before the
+			// new invite's round trips rather than after: should anything below fail, GetCurrent then
+			// answers "no invite" instead of advertising a dead link, and a retry falls past the
+			// early-return above and generates cleanly. Best effort — on success setInviteInfo overwrites
+			// the details anyway, and a failed clear merely leaves the window this shrinks.
+			if _, err := a.inviteService.RemoveExisting(ctx, spaceId); err != nil {
+				log.Warn("clear details of a replaced invite", zap.String("spaceId", spaceId), zap.Error(err))
+			}
 		}
-		return nil
-	})
+		res, err := aclClient.ReplaceInvite(ctx, invitePayload)
+		if err != nil {
+			return domain.InviteInfo{}, convertedOrInternalError("couldn't generate acl invite", err)
+		}
+		params := inviteservice.GenerateInviteParams{
+			SpaceId:          spaceId,
+			Key:              res.InviteKey,
+			InviteType:       inviteType,
+			Permissions:      aclPermissions,
+			ShareWithinSpace: shareWithinSpace,
+		}
+		return a.inviteService.Generate(ctx, params, func() error {
+			if err := aclClient.AddRecord(ctx, res.InviteRec); err != nil {
+				return convertedOrAclRequestError(err)
+			}
+			return nil
+		})
+	}()
+	// on success the old invite is revoked by ReplaceInvite; on a mid-flight failure it is revoked all
+	// the same when the rotation record went through first — report it either way, so its file is
+	// deleted now rather than by the next launch's sweep
+	if replaces && (err == nil || revokedEarly) {
+		a.onInviteRevoked(ctx, spaceId, current)
+	}
+	return result, err
 }
 
 func (a *aclService) GetGuestUserInvite(ctx context.Context, spaceId string) (info domain.InviteInfo, err error) {
@@ -784,7 +1018,8 @@ func (a *aclService) OwnershipChange(ctx context.Context, spaceId string, newOwn
 	if err != nil {
 		return convertedOrSpaceErr(err)
 	}
-
 	aclClient := ownedSpace.CommonSpace().AclClient()
+	a.aclClientLock.Lock()
+	defer a.aclClientLock.Unlock()
 	return aclClient.OwnershipChange(ctx, newOwner, domain.ConvertParticipantPermissions(oldOwnerPerm))
 }

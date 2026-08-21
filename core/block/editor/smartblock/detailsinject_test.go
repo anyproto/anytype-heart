@@ -551,10 +551,11 @@ func TestGetFallbackLayout(t *testing.T) {
 		st.SetObjectTypeKey(bundle.TypeKeyTask)
 
 		// when
-		v := fx.getFallbackLayoutValue(st)
+		v, layoutIsKnown := fx.getFallbackLayoutValue(st)
 
 		// then
 		assert.Equal(t, domain.Int64(int64(model.ObjectType_todo)), v)
+		assert.True(t, layoutIsKnown)
 	})
 	t.Run("fallback to file if sbType=file", func(t *testing.T) {
 		// given
@@ -564,10 +565,11 @@ func TestGetFallbackLayout(t *testing.T) {
 		st := state.NewDoc(id, nil).NewState()
 
 		// when
-		v := fx.getFallbackLayoutValue(st)
+		v, layoutIsKnown := fx.getFallbackLayoutValue(st)
 
 		// then
 		assert.Equal(t, domain.Int64(int64(model.ObjectType_file)), v)
+		assert.True(t, layoutIsKnown)
 	})
 	t.Run("fallback to basic if title exists", func(t *testing.T) {
 		// given
@@ -580,21 +582,23 @@ func TestGetFallbackLayout(t *testing.T) {
 		}).NewState()
 
 		// when
-		v := fx.getFallbackLayoutValue(st)
+		v, layoutIsKnown := fx.getFallbackLayoutValue(st)
 
 		// then
 		assert.Equal(t, domain.Int64(int64(model.ObjectType_basic)), v)
+		assert.False(t, layoutIsKnown, "layout of an unknown type is only a guess")
 	})
-	t.Run("fallback to note if no title presented", func(t *testing.T) {
+	t.Run("fallback to basic, not note, if no title presented", func(t *testing.T) {
 		// given
 		fx := newFixture(id, t)
 
 		st := state.NewDoc(id, nil).NewState()
 
 		// when
-		v := fx.getFallbackLayoutValue(st)
+		v, layoutIsKnown := fx.getFallbackLayoutValue(st)
 
 		// then
-		assert.Equal(t, domain.Int64(int64(model.ObjectType_note)), v)
+		assert.Equal(t, domain.Int64(int64(model.ObjectType_basic)), v)
+		assert.False(t, layoutIsKnown, "layout of an unknown type is only a guess")
 	})
 }
