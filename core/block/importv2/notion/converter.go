@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"sync"
 
 	importv2 "github.com/anyproto/anytype-heart/core/block/importv2"
 	"github.com/anyproto/anytype-heart/core/block/importv2/notion/client"
@@ -96,6 +97,11 @@ type Converter struct {
 	skip        func(sourceKey string) bool
 	recoverKeys []string
 	planReuse   schemaplan.Reuse
+	// syncedMu guards syncedOriginals, which is read and written by the
+	// parallel prefetch workers.
+	syncedMu        sync.Mutex
+	syncedOriginals map[string][]notionBlock
+
 	// recoverBudget is how many claims recoverUnrecorded may still PROBE.
 	// A field rather than the bare constant so this suite can exercise the
 	// exhausted path without issuing a thousand ladders.
@@ -162,6 +168,7 @@ func New(apiClient *client.Client, fetcher client.FileFetcher, factory importv2.
 		deferredTypes:         map[string]schemaplan.TypeDefinition{},
 		propertyScopes:        map[string]string{},
 		schemaFetches:         map[string]*schemaFetch{},
+		syncedOriginals:       map[string][]notionBlock{},
 	}
 	for _, opt := range opts {
 		opt(c)

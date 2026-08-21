@@ -137,7 +137,13 @@ func (c *Converter) fetchChildren(ctx context.Context, blockId string, depth int
 		if childSource == "" {
 			continue
 		}
-		children, err := c.fetchChildren(ctx, childSource, depth+1, seenIds, sink)
+		var children []notionBlock
+		var err error
+		if syncedDuplicate {
+			children, err = c.syncedOriginal(ctx, childSource, depth+1, seenIds, sink)
+		} else {
+			children, err = c.fetchChildren(ctx, childSource, depth+1, seenIds, sink)
+		}
 		if err != nil {
 			if ctx.Err() != nil {
 				return nil, err
@@ -161,6 +167,60 @@ func (c *Converter) fetchChildren(ctx context.Context, blockId string, depth int
 		block.children = children
 	}
 	return blocks, nil
+}
+
+// syncedOriginal fetches the content of a synced block's original, once per
+// run. A workspace built from Notion templates puts the same synced nav bar
+// on every page: one recorded workspace referenced 6 originals from 138
+// places, and re-walking each original's subtree per reference cost 303 of
+// its 1286 block requests — a third of the crawl, at Notion's ~3 requests a
+// second, fetching bytes it already had.
+//
+// Callers get a COPY. The caller re-ids a hoisted subtree in place
+// (suffixHoistedIds) so that one original appearing several times in a page
+// does not produce one block id under several parents, and handing out the
+// cached slice would rewrite the cache with the first caller's suffix.
+func (c *Converter) syncedOriginal(ctx context.Context, blockId string, depth int, seenIds map[string]struct{}, sink importv2.Sink) ([]notionBlock, error) {
+	c.syncedMu.Lock()
+	cached, ok := c.syncedOriginals[blockId]
+	c.syncedMu.Unlock()
+	if ok {
+		// The fetch that filled the cache recorded these ids in ITS page's
+		// ownership set; this page needs them too, or a child entity
+		// parented to one of these blocks looks like it belongs elsewhere.
+		recordBlockIds(cached, seenIds)
+		return cloneBlocks(cached), nil
+	}
+	children, err := c.fetchChildren(ctx, blockId, depth, seenIds, sink)
+	if err != nil {
+		return nil, err
+	}
+	c.syncedMu.Lock()
+	c.syncedOriginals[blockId] = cloneBlocks(children)
+	c.syncedMu.Unlock()
+	return children, nil
+}
+
+// cloneBlocks deep-copies a subtree. The payload is shared: it is only ever
+// decoded, never written.
+func cloneBlocks(blocks []notionBlock) []notionBlock {
+	if blocks == nil {
+		return nil
+	}
+	out := make([]notionBlock, len(blocks))
+	copy(out, blocks)
+	for i := range out {
+		out[i].children = cloneBlocks(out[i].children)
+	}
+	return out
+}
+
+// recordBlockIds adds a subtree's real Notion ids to a page's ownership set.
+func recordBlockIds(blocks []notionBlock, seenIds map[string]struct{}) {
+	for i := range blocks {
+		seenIds[blocks[i].notionId()] = struct{}{}
+		recordBlockIds(blocks[i].children, seenIds)
+	}
 }
 
 // suffixHoistedIds rewrites a duplicate synced block's hoisted subtree with a
