@@ -76,10 +76,14 @@ func (c *Converter) fetchBlockTree(ctx context.Context, pageId string, seenIds m
 	return c.fetchChildren(ctx, pageId, 0, seenIds, sink)
 }
 
+// fetchChildren walks one block's children. Issues raised here are keyed to
+// the page: pageId is the ROOT of this walk (fetchBlockTree passes it as the
+// first blockId), which is what a reader can open — a block id resolves to
+// nothing and cannot be named.
 func (c *Converter) fetchChildren(ctx context.Context, blockId string, depth int, seenIds map[string]struct{}, sink importv2.Sink) ([]notionBlock, error) {
 	if depth > maxBlockDepth {
 		sink.Issue(importv2.Warning(importv2.IssueDataLoss, blockId,
-			fmt.Sprintf("block tree deeper than %d levels; deeper content skipped", maxBlockDepth)))
+			fmt.Sprintf("Content nested deeper than %d levels was not imported", maxBlockDepth)))
 		return nil, nil
 	}
 	var blocks []notionBlock
@@ -151,8 +155,11 @@ func (c *Converter) fetchChildren(ctx context.Context, blockId string, depth int
 			// One unreadable subtree (e.g. a synced block whose original is
 			// not shared with the integration → 404) must not drop the
 			// whole page: degrade to a placeholder child.
-			sink.Issue(importv2.Warning(importv2.IssueDataLoss, block.Id,
-				fmt.Sprintf("children of block %s could not be fetched: %s", block.Id, err)))
+			sink.Issue(importv2.Issue{
+				Severity: importv2.SeverityWarning, Code: importv2.IssueDataLoss, SourceKey: block.Id,
+				Message: "Part of this page could not be fetched from Notion (a synced block whose original is not shared with the integration, most often); a placeholder marks the gap",
+				Err:     err,
+			})
 			block.children = []notionBlock{{Id: block.Id + "-lostchildren", Type: "unreadable"}}
 			continue
 		}

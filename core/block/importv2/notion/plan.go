@@ -84,11 +84,15 @@ func (c *Converter) fetchSchema(ctx context.Context, stub Entity) (*schemaFetch,
 			if ctx.Err() != nil {
 				return nil, fmt.Errorf("fetch database: %w", err)
 			}
-			issue := importv2.ObjectError(importv2.IssueObjectFailed, stub.Id, fmt.Errorf("fetch database: %w", err))
+			issue := importv2.Issue{
+				Severity: importv2.SeverityObjectError, Code: importv2.IssueObjectFailed, SourceKey: stub.Id, Subject: stub.Title,
+				Message: "This database could not be fetched from Notion", Err: err,
+			}
 			return &schemaFetch{issue: &issue}, nil
 		}
 		if len(database.DataSources) == 0 {
-			issue := importv2.Warning(importv2.IssueDataLoss, stub.Id, "database exposes no data sources; skipped")
+			issue := importv2.Warning(importv2.IssueDataLoss, stub.Id,
+				"Notion's API exposes no data source for this database, so it could not be imported").About(stub.Title)
 			return &schemaFetch{issue: &issue}, nil
 		}
 		schemaId = database.DataSources[0].Id
@@ -99,7 +103,10 @@ func (c *Converter) fetchSchema(ctx context.Context, stub Entity) (*schemaFetch,
 		if ctx.Err() != nil {
 			return nil, fmt.Errorf("fetch data source: %w", err)
 		}
-		issue := importv2.ObjectError(importv2.IssueObjectFailed, stub.Id, fmt.Errorf("fetch data source: %w", err))
+		issue := importv2.Issue{
+			Severity: importv2.SeverityObjectError, Code: importv2.IssueObjectFailed, SourceKey: stub.Id, Subject: stub.Title,
+			Message: "The schema of this database could not be fetched from Notion", Err: err,
+		}
 		return &schemaFetch{issue: &issue}, nil
 	}
 	return &schemaFetch{schemaId: schemaId, database: &database}, nil
@@ -246,8 +253,13 @@ func (c *Converter) emitPlanTypes(ctx context.Context, sink importv2.Sink) error
 		}
 		object, minted, err := schemaplan.TypeObject(def)
 		if err != nil {
-			sink.Issue(importv2.Warning(importv2.IssueLLMPlanEntryDropped, string(def.Key),
-				fmt.Sprintf("plan type not emitted: %s", err)))
+			// No source key: a plan type key is the planner's invention, not
+			// anything the user has or the report can resolve.
+			sink.Issue(importv2.Issue{
+				Severity: importv2.SeverityWarning, Code: importv2.IssueLLMPlanEntryDropped, Subject: def.Name,
+				Message: "A suggested object type could not be created; its databases were imported as collections",
+				Err:     err,
+			})
 			continue
 		}
 		c.planTypeKeys[def.Key] = minted
@@ -282,8 +294,11 @@ func (c *Converter) emitDeferredType(ctx context.Context, stub Entity, schemaDef
 	}
 	object, _, err := schemaplan.TypeObject(def)
 	if err != nil {
-		sink.Issue(importv2.Warning(importv2.IssueLLMPlanEntryDropped, string(def.Key),
-			fmt.Sprintf("plan type not emitted: %s", err)))
+		sink.Issue(importv2.Issue{
+			Severity: importv2.SeverityWarning, Code: importv2.IssueLLMPlanEntryDropped, SourceKey: stub.Id, Subject: def.Name,
+			Message: "This database could not be imported as a suggested object type; it was imported as a collection instead",
+			Err:     err,
+		})
 		return nil
 	}
 	listed := map[string]bool{}

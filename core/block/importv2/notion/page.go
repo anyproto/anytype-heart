@@ -133,6 +133,12 @@ func (c *Converter) emitFetchedPage(ctx context.Context, f *fetchedPage, sink im
 	// the wire but never a log line.
 	sink.Item(importv2.DisplayText(f.stub.Title))
 	for _, issue := range f.issues {
+		// The fetch phase knows block ids, not pages: it walks a tree from a
+		// root it was handed. Here the page is in hand, and the page is what
+		// the report can name and link — a block id resolves to nothing.
+		if issue.SourceKey != f.stub.Id {
+			issue.SourceKey = f.stub.Id
+		}
 		sink.Issue(issue)
 	}
 	stub := f.stub
@@ -142,7 +148,10 @@ func (c *Converter) emitFetchedPage(ctx context.Context, f *fetchedPage, sink im
 			// per-object failure per remaining entity.
 			return fmt.Errorf("fetch page: %w", f.pageErr)
 		}
-		sink.Issue(importv2.ObjectError(importv2.IssueObjectFailed, stub.Id, fmt.Errorf("fetch page: %w", f.pageErr)))
+		sink.Issue(importv2.Issue{
+			Severity: importv2.SeverityObjectError, Code: importv2.IssueObjectFailed, SourceKey: stub.Id, Subject: stub.Title,
+			Message: "This page could not be fetched from Notion", Err: f.pageErr,
+		})
 		return nil
 	}
 	page := f.page

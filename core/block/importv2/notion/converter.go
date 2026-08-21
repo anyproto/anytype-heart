@@ -209,8 +209,8 @@ func (c *Converter) EnumerateIdentities(ctx context.Context, yield func(importv2
 
 func (c *Converter) Convert(ctx context.Context, sink importv2.Sink) (importv2.RootSpec, error) {
 	if c.searchTruncated {
-		sink.Issue(importv2.Warning(importv2.IssueDataLoss, "search",
-			"workspace search pagination stopped early (inconsistent cursor from the API); importing what was gathered"))
+		sink.Issue(importv2.Warning(importv2.IssueDataLoss, "",
+			"Notion's search stopped early (it returned an inconsistent cursor), so some pages may be missing from this import"))
 	}
 	if err := c.planStructure(ctx, sink); err != nil {
 		return importv2.RootSpec{}, err
@@ -419,7 +419,7 @@ func (c *Converter) recoverOne(ctx context.Context, key string, sink importv2.Si
 		// offers the entity — deleted, or no longer shared with the
 		// integration. This is the honest drift report (08-13 §5.4).
 		sink.Issue(importv2.Warning(importv2.IssueDataLoss, key,
-			"object found by an interrupted import session no longer exists in Notion (or is no longer shared with the integration); it was not imported"))
+			"Claimed by an interrupted import session, and no longer in Notion (deleted, or no longer shared with the integration); not imported"))
 		return nil
 	}
 	// Transport trouble, rate limits, 5xx: the entity may well still exist.
@@ -509,7 +509,7 @@ func (c *Converter) adoptLateEntity(ctx context.Context, entity Entity, sink imp
 	}
 	if c.lateDiscovered >= lateDiscoveryCap {
 		sink.Issue(importv2.Warning(importv2.IssueDataLoss, entity.Id,
-			fmt.Sprintf("discovery cap (%d) reached; entity found outside search was not imported", lateDiscoveryCap)))
+			fmt.Sprintf("Found outside Notion's search index, past this import's discovery limit of %d; not imported", lateDiscoveryCap)).About(entity.Title))
 		return false
 	}
 	if err := sink.Claim(ctx, importv2.IdentityClaim{
@@ -517,8 +517,11 @@ func (c *Converter) adoptLateEntity(ctx context.Context, entity Entity, sink imp
 		SbType:         coresb.SmartBlockTypePage,
 		SourceFilePath: entity.Id,
 	}); err != nil {
-		sink.Issue(importv2.Warning(importv2.IssueMissingTarget, entity.Id,
-			fmt.Sprintf("claim discovered entity: %s", err)))
+		sink.Issue(importv2.Issue{
+			Severity: importv2.SeverityWarning, Code: importv2.IssueMissingTarget, SourceKey: entity.Id, Subject: entity.Title,
+			Message: "Found outside Notion's search index but could not be added to the import; links to it were left unresolved",
+			Err:     err,
+		})
 		return false
 	}
 	c.lateDiscovered++
