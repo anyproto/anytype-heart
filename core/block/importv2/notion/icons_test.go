@@ -176,7 +176,7 @@ func TestNamedIconsInRecordedWorkspace(t *testing.T) {
 
 	var unresolvedNames, unknownColors []string
 	for name := range names {
-		if _, ok := resolveNotionIconName(name); !ok {
+		if _, _, ok := resolveNotionIconName(name); !ok {
 			unresolvedNames = append(unresolvedNames, name)
 		}
 	}
@@ -223,14 +223,19 @@ func TestIconEmojiAreEmoji(t *testing.T) {
 		return false
 	}
 	require.NotEmpty(t, notionIconEmoji)
-	for name, emoji := range notionIconEmoji {
-		var renderable bool
-		for _, r := range emoji {
-			if r == 0xFE0F || emojiRange(r) {
-				renderable = true
+	require.NotEmpty(t, notionEmoji)
+	tables := map[string]map[string]string{"notionIconEmoji": notionIconEmoji, "notionEmoji": notionEmoji}
+	for table, entries := range tables {
+		for name, emoji := range entries {
+			_ = table
+			var renderable bool
+			for _, r := range emoji {
+				if r == 0xFE0F || emojiRange(r) {
+					renderable = true
+				}
 			}
+			assert.True(t, renderable, "%s: %q maps to %q (%U), which is not an emoji", table, name, emoji, []rune(emoji))
 		}
-		assert.True(t, renderable, "%q maps to %q (%U), which is not an emoji", name, emoji, []rune(emoji))
 	}
 }
 
@@ -249,14 +254,15 @@ func TestEveryNotionIconResolves(t *testing.T) {
 			continue
 		}
 		total++
-		resolved, ok := resolveNotionIconName(name)
+		resolved, _, ok := resolveNotionIconName(name)
 		if !ok {
 			unresolved = append(unresolved, name)
 			continue
 		}
 		// Types wear the named icon; everything else needs the emoji, so a
-		// target with no emoji is a page that imports bare.
-		if notionIconEmoji[resolved] == "" {
+		// name with no emoji is a page that imports bare.
+		_ = resolved
+		if emojiForNotionIcon(&iconValue{Type: "icon", Icon: &notionNamedIcon{Name: name}}) == "" {
 			noEmoji = append(noEmoji, name+" → "+resolved)
 		}
 	}
@@ -265,4 +271,48 @@ func TestEveryNotionIconResolves(t *testing.T) {
 	sort.Strings(noEmoji)
 	assert.Empty(t, unresolved, "%d of %d Notion icons map to nothing", len(unresolved), total)
 	assert.Empty(t, noEmoji, "%d of %d Notion icons reach a page with no emoji", len(noEmoji), total)
+
+	// Every override must name an icon Notion actually has, or it is a line
+	// nothing will ever read.
+	inventory := map[string]bool{}
+	for _, line := range strings.Split(string(raw), "\n") {
+		if name := strings.TrimSpace(line); name != "" && !strings.HasPrefix(name, "#") {
+			inventory[name] = true
+		}
+	}
+	for name := range notionEmoji {
+		assert.True(t, inventory[name], "notionEmoji overrides %q, which is not a Notion icon", name)
+	}
+}
+
+func TestEmojiPrefersTheRicherVocabulary(t *testing.T) {
+	emojiOf := func(name string) string {
+		return emojiForNotionIcon(&iconValue{Type: "icon", Icon: &notionNamedIcon{Name: name, Color: "blue"}})
+	}
+	cases := []struct{ notion, want, why string }{
+		{"banana", "🍌", "sixteen Notion foods share one Anytype icon; emoji has the fruit"},
+		{"broccoli", "🥦", ""},
+		{"mosque", "🕌", "church, mosque and synagogue all become one office block otherwise"},
+		{"chess-king", "♟️", "chess pieces are not dice"},
+		{"potted-plant", "🪴", ""},
+		{"rocket", "🚀", "no override: the Anytype icon already says it"},
+		{"book", "📖", ""},
+		{"BANANA_alternate", "🍌", "an override is found through the same normalization as the icon"},
+	}
+	for _, c := range cases {
+		t.Run(c.notion, func(t *testing.T) {
+			assert.Equal(t, c.want, emojiOf(c.notion), c.why)
+		})
+	}
+
+	t.Run("a name with no counterpart has no emoji", func(t *testing.T) {
+		assert.Empty(t, emojiOf("quokka-riding-a-bicycle"))
+	})
+
+	t.Run("a type still takes the named icon, not the emoji", func(t *testing.T) {
+		// given — the two channels differ deliberately
+		name, _, ok := (&iconValue{Type: "icon", Icon: &notionNamedIcon{Name: "banana"}}).namedIcon()
+		require.True(t, ok)
+		assert.Equal(t, "nutrition", name)
+	})
 }

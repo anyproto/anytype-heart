@@ -516,6 +516,166 @@ var notionIconNames = map[string]string{
 	"zoom-out":            "search",
 }
 
+// notionEmoji is what a page or callout wears when Notion's icon says more
+// than an Anytype icon can. The two channels are not the same vocabulary:
+// types carry a named icon from Anytype's 390, while everything else carries
+// an emoji, and emoji is the richer set — sixteen of Notion's food icons all
+// map to the one "nutrition" icon, but a banana can simply be a banana.
+//
+// Only names where a distinct emoji beats the composed one are listed; the
+// rest fall through to notionIconEmoji, which keeps a page and its type
+// agreeing wherever they can. Keyed by the name Notion sent (after the same
+// normalization the icon lookup does), not by the Anytype icon, because that
+// mapping is exactly the one being bypassed.
+var notionEmoji = map[string]string{
+	"123":               "🔢",
+	"alien":             "👽",
+	"anchor":            "⚓",
+	"apple":             "🍎",
+	"asterisk":          "✳️",
+	"atm":               "🏧",
+	"baby":              "👶",
+	"backpack":          "🎒",
+	"baggage-claim":     "🧳",
+	"banana":            "🍌",
+	"bathtub":           "🛁",
+	"bee":               "🐝",
+	"blood-pressure":    "🩸",
+	"bone":              "🦴",
+	"boot":              "🥾",
+	"bowl":              "🥣",
+	"bread":             "🍞",
+	"broccoli":          "🥦",
+	"broom":             "🧹",
+	"butterfly":         "🦋",
+	"cake":              "🍰",
+	"candy":             "🍬",
+	"cards":             "🃏",
+	"carrot":            "🥕",
+	"castle":            "🏰",
+	"cat":               "🐈",
+	"chair":             "🪑",
+	"champagne":         "🍾",
+	"chess-bishop":      "♟️",
+	"chess-king":        "♟️",
+	"chess-knight":      "♟️",
+	"chess-pawn":        "♟️",
+	"chess-queen":       "♟️",
+	"chess-rook":        "♟️",
+	"chicken":           "🍗",
+	"child":             "🧒",
+	"church":            "⛪",
+	"cigarette":         "🚬",
+	"city":              "🏙️",
+	"clover":            "🍀",
+	"coat":              "🧥",
+	"coffee":            "☕",
+	"corn":              "🌽",
+	"cow":               "🐄",
+	"currency":          "💱",
+	"customs":           "🛃",
+	"dental":            "🦷",
+	"dna":               "🧬",
+	"dog":               "🐕",
+	"dress":             "👗",
+	"duck":              "🦆",
+	"eject":             "⏏️",
+	"elephant":          "🐘",
+	"elevator":          "🛗",
+	"factory":           "🏭",
+	"feather":           "🪶",
+	"fire-extinguisher": "🧯",
+	"fire-truck":        "🚒",
+	"fireworks":         "🎆",
+	"flatware":          "🍴",
+	"flood":             "🌊",
+	"friends":           "👫",
+	"fuel":              "⛽",
+	"gavel":             "⚖️",
+	"ghost":             "👻",
+	"government":        "🏛️",
+	"guitar":            "🎸",
+	"hail":              "🌨️",
+	"handbag":           "👜",
+	"hashtag":           "#️⃣",
+	"helicopter":        "🚁",
+	"history":           "🕰️",
+	"kite":              "🪁",
+	"knife":             "🔪",
+	"lemon":             "🍋",
+	"luggage":           "🧳",
+	"meat":              "🥩",
+	"medication":        "💊",
+	"metronome":         "🎼",
+	"microscope":        "🔬",
+	"monorail":          "🚝",
+	"mosque":            "🕌",
+	"motorcycle":        "🏍️",
+	"mouth":             "👄",
+	"movie":             "🎬",
+	"mushroom":          "🍄",
+	"nut":               "🥜",
+	"octagon":           "🛑",
+	"onion":             "🧅",
+	"orange":            "🍊",
+	"orbit":             "🪐",
+	"parking":           "🅿️",
+	"pen":               "🖊️",
+	"piano":             "🎹",
+	"pig":               "🐷",
+	"pill":              "💊",
+	"playlist":          "🎶",
+	"potted-plant":      "🪴",
+	"rainbow":           "🌈",
+	"run":               "🏃",
+	"sailboat":          "⛵",
+	"sandwich":          "🥪",
+	"scooter":           "🛵",
+	"seed":              "🌱",
+	"shell":             "🐚",
+	"shoe":              "👟",
+	"shopping-bag":      "🛍️",
+	"shower":            "🚿",
+	"sink":              "🚰",
+	"skateboard":        "🛹",
+	"snake":             "🐍",
+	"soap":              "🧼",
+	"soccer":            "⚽",
+	"sock":              "🧦",
+	"spider":            "🕷️",
+	"spoon":             "🥄",
+	"strawberry":        "🍓",
+	"stroller":          "🍼",
+	"suit":              "👔",
+	"sunglasses":        "🕶️",
+	"sunrise":           "🌅",
+	"sunset":            "🌇",
+	"sword":             "⚔️",
+	"synagogue":         "🕍",
+	"syringe":           "💉",
+	"tabs":              "🗂️",
+	"taxi":              "🚕",
+	"teapot":            "🫖",
+	"thought":           "💭",
+	"thought-alert":     "💭",
+	"thought-dialogue":  "💭",
+	"toilet":            "🚽",
+	"token":             "🪙",
+	"tooth":             "🦷",
+	"tornado":           "🌪️",
+	"traffic-cone":      "🚧",
+	"tree":              "🌳",
+	"truck":             "🚚",
+	"trumpet":           "🎺",
+	"violin":            "🎻",
+	"volcano":           "🌋",
+	"whale":             "🐋",
+	"wheat":             "🌾",
+	"wind":              "🌬️",
+	"wrench":            "🔧",
+	"zoom-out":          "🔎",
+}
+
 // notionIconEmoji renders a named icon as an emoji, for the objects that
 // cannot wear one. Anytype's named icons are a TYPE-only feature — the API
 // refuses them for anything else, and the client renders iconName only for
@@ -778,9 +938,15 @@ var notionIconEmoji = map[string]string{
 // emojiForNotionIcon renders a Notion built-in icon as an emoji, for objects
 // that cannot carry a named icon.
 func emojiForNotionIcon(icon *iconValue) string {
-	name, _, ok := icon.namedIcon()
+	if icon == nil || icon.Type != "icon" || icon.Icon == nil {
+		return ""
+	}
+	name, matched, ok := resolveNotionIconName(icon.Icon.Name)
 	if !ok {
 		return ""
+	}
+	if emoji := notionEmoji[matched]; emoji != "" {
+		return emoji
 	}
 	return notionIconEmoji[name]
 }
@@ -802,18 +968,18 @@ var notionIconVariants = []string{
 // dropping trailing words — "chart-bar-stacked" is a chart, "book-open" is a
 // book. Whatever is left has no counterpart, and the caller keeps the icon it
 // already had.
-func resolveNotionIconName(raw string) (string, bool) {
-	name := strings.ToLower(strings.TrimSpace(raw))
-	name = strings.Map(func(r rune) rune {
+func resolveNotionIconName(raw string) (name, matched string, ok bool) {
+	normalized := strings.ToLower(strings.TrimSpace(raw))
+	normalized = strings.Map(func(r rune) rune {
 		if r == ' ' || r == '_' {
 			return '-'
 		}
 		return r
-	}, name)
+	}, normalized)
 
-	lookup := func(candidate string) (string, bool) {
+	lookup := func(candidate string) (string, string, bool) {
 		if resolved, ok := notionIconNames[candidate]; ok {
-			return resolved, true
+			return resolved, candidate, true
 		}
 		// Every suffix is tried, not just the first that matches: "-line" also
 		// ends "book-outline", and giving up there would skip "-outline".
@@ -823,15 +989,15 @@ func resolveNotionIconName(raw string) (string, bool) {
 				continue
 			}
 			if resolved, ok := notionIconNames[stem]; ok {
-				return resolved, true
+				return resolved, stem, true
 			}
 		}
-		return "", false
+		return "", "", false
 	}
 
-	for candidate := name; candidate != ""; {
-		if resolved, ok := lookup(candidate); ok {
-			return resolved, true
+	for candidate := normalized; candidate != ""; {
+		if resolved, key, ok := lookup(candidate); ok {
+			return resolved, key, true
 		}
 		cut := strings.LastIndex(candidate, "-")
 		if cut < 0 {
@@ -839,7 +1005,7 @@ func resolveNotionIconName(raw string) (string, bool) {
 		}
 		candidate = candidate[:cut]
 	}
-	return "", false
+	return "", "", false
 }
 
 // notionIconColors maps Notion's icon palette onto Anytype's ten icon options.
@@ -878,7 +1044,7 @@ func (i *iconValue) namedIcon() (string, int64, bool) {
 	if i == nil || i.Type != "icon" || i.Icon == nil || i.Icon.Name == "" {
 		return "", 0, false
 	}
-	resolved, ok := resolveNotionIconName(i.Icon.Name)
+	resolved, _, ok := resolveNotionIconName(i.Icon.Name)
 	if !ok {
 		return "", 0, false
 	}
