@@ -249,6 +249,40 @@ func TestExport_CompactLabelCannotTakeAServedId(t *testing.T) {
 			mentionTargets(back), "each mention keeps the object it named:\n%s", data)
 	})
 
+	t.Run("a block label cannot take a short OBJECT id", func(t *testing.T) {
+		// the block half against the OTHER id population, which is the half
+		// its own census cannot see: mintedSuffixLabels counts local ids only,
+		// so a 5-char object id spelled verbatim in the document is invisible
+		// to it and only the fullIds avoid-set stands between the minted block
+		// and a label that already names something else in the same document.
+		snap := &model.SmartBlockSnapshotBase{
+			Blocks: []*model.Block{
+				{Id: "obj1", ChildrenIds: []string{mintedBlock},
+					Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}},
+				mentionBlock(mintedBlock, shortObject),
+			},
+			Details: fields(map[string]*types.Value{"id": str("obj1")}),
+		}
+		data, err := Marshal(model.SmartBlockType_Page, snap, Options{CompactBlockLabels: true})
+		require.NoError(t, err)
+		require.NoError(t, Validate(data), "%s", data)
+
+		var doc struct {
+			Blocks []struct {
+				Id   string `json:"id"`
+				Text string `json:"text"`
+			} `json:"blocks"`
+		}
+		require.NoError(t, json.Unmarshal(data, &doc))
+		require.Len(t, doc.Blocks, 1)
+		assert.NotEqual(t, shortObject, doc.Blocks[0].Id,
+			"the block must not label itself with an object id the document serves verbatim:\n%s", data)
+		assert.Equal(t, mintedBlock, doc.Blocks[0].Id,
+			"and with that label refused it stays full")
+		assert.Contains(t, doc.Blocks[0].Text, shortObject,
+			"the fixture only bites while the object id is spelled in the document")
+	})
+
 	t.Run("a block label cannot take a short block id", func(t *testing.T) {
 		// the block half of the same rule under the shape rule that now
 		// governs it. Unlike the refs half above, removing the avoid-set does
