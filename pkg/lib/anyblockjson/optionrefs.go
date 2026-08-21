@@ -30,7 +30,12 @@ package anyblockjson
 // option resolution reads qualified keys and never a plain label. Neither can
 // be reached from the other's slot even by a hand-written document.
 
-import "strings"
+import (
+	"sort"
+	"strings"
+
+	"github.com/anyproto/anytype-heart/core/domain"
+)
 
 // optionRefSeparator joins an option name to the property spelling that owns
 // it. `#` is outside the plain-label charset (§9a), which is what makes the
@@ -74,4 +79,107 @@ func isQualifiedOptionRefKey(s string) bool {
 	// the right half cannot hold a separator (LastIndex), so admitting it
 	// here is what pins the split — and what keeps the key invertible
 	return isWritablePropertyKey(s[:i]) && isWritablePropertyKey(s[i+1:])
+}
+
+//
+// ---- export ----
+//
+
+// optionRefPair is one entry before its property has a spelling: export
+// records the STORED key, because the term ledger has not necessarily
+// finished claiming spellings when a value is written, and renders the key at
+// emission time (buildOptionRefs).
+type optionRefPair struct {
+	key  string // stored property key
+	name string // the option name written into the document
+}
+
+// recordOptionRef notes that a name written into the document stands for a
+// particular option id. Called from exactly one place — optionName, the one
+// site where export substitutes a name for an id — so the legend covers
+// exactly the values that need it and nothing else: there is no pruning pass
+// because there is nothing unused to prune (§9a).
+//
+// FIRST WRITING WINS. Two distinct options of one property sharing one name
+// produce one key, and a JSON list of two identical strings has no way to say
+// which entry means which option — the collapse §11 already documents for
+// name resolution. Keeping the first makes the collapse deterministic, which
+// is what export∘import byte-stability needs; dropping the entry instead
+// would hand the choice back to the resolver's list order and make a second
+// generation differ from the first.
+func (e *exporter) recordOptionRef(key, name, id string) {
+	if key == "" || name == "" || id == "" || name == id {
+		return
+	}
+	if e.optionRefs == nil {
+		e.optionRefs = map[optionRefPair]string{}
+	}
+	pair := optionRefPair{key: key, name: name}
+	if _, seen := e.optionRefs[pair]; seen {
+		return
+	}
+	e.optionRefs[pair] = id
+}
+
+// buildOptionRefs renders the recorded pairs into legend keys, in the
+// document's own spelling. It runs at envelope-assembly time, when every key
+// slot has already claimed its term, so the spelling here is the spelling the
+// values were written under.
+//
+// A property whose spelling carries the separator is skipped: `#` is a legal
+// character in an api key (`strcase.ToSnake("C#")` is `c#`), and a slug
+// holding one would make the split ambiguous. Those options keep today's
+// name-only behavior, which is correct, merely less faithful.
+func (e *exporter) buildOptionRefs() map[string]string {
+	if len(e.optionRefs) == 0 {
+		return nil
+	}
+	pairs := make([]optionRefPair, 0, len(e.optionRefs))
+	for pair := range e.optionRefs {
+		pairs = append(pairs, pair)
+	}
+	sort.Slice(pairs, func(i, j int) bool {
+		if pairs[i].key != pairs[j].key {
+			return pairs[i].key < pairs[j].key
+		}
+		return pairs[i].name < pairs[j].name
+	})
+	out := map[string]string{}
+	for _, pair := range pairs {
+		slug := e.propertySlug(pair.key)
+		if slug == "" || isQualifiedRefsKey(slug) {
+			continue
+		}
+		label := optionRefKey(pair.name, slug)
+		if !isQualifiedOptionRefKey(label) {
+			continue // an over-long or unwritable half; the name still stands
+		}
+		out[label] = e.optionRefs[pair]
+	}
+	return out
+}
+
+//
+// ---- import ----
+//
+
+// optionIdFromRefs is step 1 of §3's option resolution: the qualified legend
+// entry, honored only when the id it carries is a live option OF THAT
+// RELATION in the target space. The liveness question is the resolver's
+// OptionName — it answers for an id exactly when that id is an option of that
+// key — which is why a reader with no resolver ignores these entries
+// altogether: it has no space to ask, and an id it cannot check is not an
+// answer it can give.
+func (imp *importer) optionIdFromRefs(key, slug, name string) (string, bool) {
+	if slug == "" || name == "" || imp.opts.ResolveOptions == nil {
+		return "", false
+	}
+	id := imp.doc.Refs[optionRefKey(name, slug)]
+	if id == "" {
+		return "", false
+	}
+	if _, live := imp.opts.ResolveOptions.OptionName(domain.RelationKey(key), id); !live {
+		return "", false
+	}
+	return id, true
 }

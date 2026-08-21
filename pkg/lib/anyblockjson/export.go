@@ -123,6 +123,12 @@ type exporter struct {
 	objectRefs map[string]string // full object id -> refs label (§9a)
 	localIds   map[string]string // block/row/column/view id -> short label
 
+	// optionRefs is the second `refs` population: the option id behind every
+	// name export wrote for a select value (optionrefs.go). Recorded against
+	// the STORED property key and rendered into `<name>#<slug>` keys at
+	// envelope-assembly time, when the term ledger has settled.
+	optionRefs map[optionRefPair]string
+
 	// idLabels maps a stored block/row/column id to the id written for it, and
 	// idsUsed is every id this document has written. One set for every id
 	// surface, because they share one uniqueness domain (§4): a sanitized
@@ -999,14 +1005,21 @@ func (e *exporter) buildDoc(sbType model.SmartBlockType) (*omap, error) {
 		doc.set("type_properties", typeProperties) // present even when empty (§2a)
 	}
 
-	if len(e.objectRefs) > 0 {
-		refs := &omap{}
-		type kv struct{ label, id string }
-		var entries []kv
-		for id, label := range e.objectRefs {
-			entries = append(entries, kv{label, id})
-		}
+	// one legend, two key populations (§9a): the compaction labels, which
+	// exist only under CompactObjectRefs, and the qualified option keys,
+	// which are identity rather than compaction and are therefore written
+	// whether or not anything is being compacted.
+	type kv struct{ label, id string }
+	var entries []kv
+	for id, label := range e.objectRefs {
+		entries = append(entries, kv{label, id})
+	}
+	for label, id := range e.buildOptionRefs() {
+		entries = append(entries, kv{label, id})
+	}
+	if len(entries) > 0 {
 		sort.Slice(entries, func(i, j int) bool { return entries[i].label < entries[j].label })
+		refs := &omap{}
 		for _, en := range entries {
 			refs.set(en.label, en.id)
 		}
@@ -1244,9 +1257,16 @@ func (e *exporter) propertyValue(key string, v *types.Value) any {
 	return protoValueToJSON(v)
 }
 
+// optionName is the one site where export substitutes a name for an option id
+// (§3), in property values, filter values and custom orders alike — so it is
+// also the one site that records what that name stood for (optionrefs.go).
+// The legend entry rides with the substitution rather than behind a flag:
+// identity is not compaction, and a document that spells a name without
+// saying which option it was is the lossy half this legend exists to close.
 func (e *exporter) optionName(key, id string) string {
 	if e.opts.ResolveOptions != nil {
 		if name, ok := e.opts.ResolveOptions.OptionName(domain.RelationKey(key), id); ok {
+			e.recordOptionRef(key, name, id)
 			return name
 		}
 	}

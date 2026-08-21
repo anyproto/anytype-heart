@@ -443,7 +443,7 @@ func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBas
 			}}}
 		}
 		boundBy[key] = slug
-		if v := imp.propertyValue(key, doc.Properties[slug]); v != nil {
+		if v := imp.propertyValue(key, slug, doc.Properties[slug]); v != nil {
 			details.Fields[key] = v
 		}
 	}
@@ -518,7 +518,12 @@ func (imp *importer) buildCollections() *types.Struct {
 // propertyValue decodes a property per its resolved format (§3). Scalars of
 // list-shaped formats normalize to single-element lists (§11). An explicit
 // null stays a null value — presence of the key is preserved (§3).
-func (imp *importer) propertyValue(key string, v any) *types.Value {
+//
+// Both spellings travel: `key` is the stored key the value lands on, `slug`
+// the term the document spelled it with. The slug is not decoration — the
+// option legend is keyed by the SPELLING (optionrefs.go), because the reader
+// that resolves it is reading the document, not the store.
+func (imp *importer) propertyValue(key, slug string, v any) *types.Value {
 	if v == nil {
 		return &types.Value{Kind: &types.Value_NullValue{}}
 	}
@@ -543,7 +548,7 @@ func (imp *importer) propertyValue(key string, v any) *types.Value {
 			}
 		}
 	case model.RelationFormat_status, model.RelationFormat_tag:
-		return wrapToList(mapJSONStrings(v, func(name string) string { return imp.optionId(key, name) }))
+		return wrapToList(mapJSONStrings(v, func(name string) string { return imp.optionId(key, slug, name) }))
 	case model.RelationFormat_object, model.RelationFormat_file:
 		return wrapToList(mapJSONStrings(v, imp.resolveId))
 	}

@@ -17,6 +17,8 @@
     ]
   },
   "refs": {
+    "Done#customStatus": "opt2",
+    "In progress#customStatus": "opt1",
     "image": "bafyreiimage",
     "kmark": "bafyreibookmark",
     "roman": "bafyreiroman",

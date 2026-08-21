@@ -515,7 +515,7 @@ func (imp *importer) sortFromJSON(js jsonSort, dv *model.BlockContentDataview) *
 		NoCollate:      js.NoCollate,
 	}
 	for _, entry := range js.CustomOrder {
-		s.CustomOrder = append(s.CustomOrder, imp.dvValueFromJSON(dv, key, entry))
+		s.CustomOrder = append(s.CustomOrder, imp.dvValueFromJSON(dv, key, js.Property, entry))
 	}
 	return s
 }
@@ -544,7 +544,7 @@ func (imp *importer) filterFromJSON(jf jsonFilter, dv *model.BlockContentDatavie
 		IncludeTime:      jf.IncludeTime,
 	}
 	if jf.Value != nil {
-		f.Value = imp.dvValueFromJSON(dv, key, jf.Value)
+		f.Value = imp.dvValueFromJSON(dv, key, jf.Property, jf.Value)
 	}
 	return f
 }
@@ -552,11 +552,11 @@ func (imp *importer) filterFromJSON(jf jsonFilter, dv *model.BlockContentDatavie
 // dvValueFromJSON reverses dvValueToJSON: option names back to ids where a
 // resolver knows them, ref labels back to full object ids, verbatim
 // otherwise (§3, §9a).
-func (imp *importer) dvValueFromJSON(dv *model.BlockContentDataview, key string, v any) *types.Value {
+func (imp *importer) dvValueFromJSON(dv *model.BlockContentDataview, key, slug string, v any) *types.Value {
 	format := imp.impDvFormat(dv, key)
 	switch format {
 	case model.RelationFormat_status, model.RelationFormat_tag:
-		return mapJSONStrings(v, func(name string) string { return imp.optionId(key, name) })
+		return mapJSONStrings(v, func(name string) string { return imp.optionId(key, slug, name) })
 	case model.RelationFormat_object, model.RelationFormat_file:
 		return mapJSONStrings(v, imp.resolveId)
 	}
@@ -581,13 +581,21 @@ func mapJSONStrings(v any, fn func(string) string) *types.Value {
 	return jsonToProtoValue(v)
 }
 
-func (imp *importer) optionId(key, name string) string {
+// optionId resolves one select value, in the three steps §3 states: the
+// document's own qualified legend entry, honored only for an id the target
+// space still serves as an option of that relation (optionrefs.go); then
+// name resolution through the wired resolver, which is what a bundle carried
+// to a space that never saw those ids falls back on; then the value
+// unchanged, because creating a missing option is the wiring's job.
+func (imp *importer) optionId(key, slug, name string) string {
+	if id, ok := imp.optionIdFromRefs(key, slug, name); ok {
+		return id
+	}
 	if imp.opts.ResolveOptions != nil {
 		if id, ok := imp.opts.ResolveOptions.OptionId(domain.RelationKey(key), name); ok {
 			return id
 		}
 	}
-	// unresolved names pass through; creating options is the wiring's job (§3)
 	return name
 }
 

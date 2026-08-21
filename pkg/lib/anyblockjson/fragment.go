@@ -117,7 +117,8 @@ func UnmarshalBlock(raw json.RawMessage, forcedId string, opts Options) ([]*mode
 // A nil v yields an explicit null value (presence is preserved, §3).
 func UnmarshalPropertyValue(key string, v any, opts Options) *types.Value {
 	imp := &importer{opts: opts, doc: &jsonDoc{}}
-	return imp.propertyValue(key, v)
+	// no envelope, so no legend: the key is its own spelling here
+	return imp.propertyValue(key, key, v)
 }
 
 // MarshalBlockSubtree serializes one block subtree into its flat JSON run
