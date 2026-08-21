@@ -17,7 +17,7 @@ readable, and mostly writable, by someone who has never seen Anytype
 internals.
 
 Changes in v0.22: **two namespaces stop overloading a value that was already
-saying something else** (§1, §2, §2c, §3, §10).
+saying something else** (§1, §2, §2c, §3, §10, §15).
 (1) The reserved `index.json` widget targets and homepages move into the
 platform's own address space: `_favorite`, `_recent`, `_set`, `_collection`,
 `_all_objects`, `_recent_open`, `_widgets`, `_graph` — and **no bundle-local
@@ -69,6 +69,26 @@ template exported yesterday whose target type happened to be absent carries
 nothing to trip the `template_for` gate, so without it the document would
 import as an ordinary page and nothing anywhere would say so. It is
 deletable at the version bump.
+
+(3) **§15 carries the evidence, not just the verdict** (§15). The rejected
+legend spellings were recorded as conclusions — "no separator survives
+arbitrary option names", "option names may legally begin with `@`" — which is
+exactly the form in which a rejected design comes back. Each now cites what
+falsifies it: `bundle.ApiSlug("C#") == "c#"` and `ApiSlug("#1 priority") ==
+"#1_priority"` for the separator, `ApiSlug("@home") == "@home"` plus
+`Validate`'s resolver-less signature for the sigil, and — the one that was
+believed to be a format-only change and is not — `model.RelationOption`
+having **no key field**, so `ListRelationOptions` cannot supply the stored
+keys the `{name, id}` pair shape's byte argument rested on. Two proposals
+about the §3 chain's store step are recorded as killed for the first time:
+deleting it (`bundle.RelationKeysByApiFold("Severity") == []`, so an agent
+reading a space's property listing would silently mint a duplicate relation)
+and making it mandatory (`bundle.TypeKeysByApiFold("Task") == [task]`, so a
+space holding a live stored type key `Task` — which this format creates —
+would be silently retyped to the bundled Task type). §15 also records what
+v0.22 settled together with the cheaper option each change declined, and two
+§13 typos are fixed: a `(§2b)` citation to a section that does not exist, and
+a stray `}` closing the index code fence.
 
 Changes in v0.21 (superseded by v0.22): **every key slot admits before it writes, and every
 fragment carries what its keys mean** (§3, §6, §12, §13).
@@ -3157,6 +3177,7 @@ pkg/lib/anyblockjson/
                                round-trip testing, and how the format
                                handles each
   schema/object.schema.json  — the published JSON Schema (embedded)
+  schema/index.schema.json   — the bundle index's own schema (§2c, embedded)
   export.go                  — snapshot → JSON
   import.go                  — JSON → snapshot
   inline.go                  — marks ↔ inline markup codec (§8)
@@ -3394,7 +3415,6 @@ The bundle index (§2c) has its own pair, since it is not an object snapshot:
 ```go
 func UnmarshalIndex(data []byte) (*Index, error)
 func MarshalIndex(idx *Index) ([]byte, error)
-}
 ```
 
 The package is deliberately **pipeline-agnostic**: it depends only on
@@ -3488,18 +3508,42 @@ Wiring (follow-up work, not this package):
    from Notion databases; Obsidian precedent) — flagged as a judgment call.
 3. **Option names vs `{id, name}` objects** (§3): **settled** — names stay in
    the value, generatable and readable, and the id rides beside them in
-   `option_ids`, under the property that owns the option (§9a). The
-   `{id, name}` value shape was the standing fallback for the
-   duplicate-name/rename caveats; the legend closes both without asking a
-   generator to write an id it does not have, and without putting a second
-   value shape in the slot small models write most. Two spellings for the
-   legend were considered at the freeze and rejected: a flat map with a `#`
-   separator (deleted at v0.20 — no separator survives contact with arbitrary
-   option names and property slugs, §9a), and an `@` sigil marking a handle
-   in the value itself (option names may legally begin with `@`, and
-   `Validate` takes no format resolver, so it cannot tell an option value
-   from an object reference — the sigil would make `Marshal` emit documents
-   its own `Validate` rejects, §11 I1).
+   `option_ids`, under the property that owns the option (§9a).
+
+   The rejected alternatives are recorded here WITH the evidence that killed
+   them, because each was proposed more than once and each looks reasonable
+   until the evidence is in hand.
+
+   - **A flat legend map with a separator** (`#`, deleted at v0.20). No
+     separator survives contact with real option names and property slugs:
+     `bundle.ApiSlug("C#") == "c#"` and `ApiSlug("#1 priority") ==
+     "#1_priority"`, so `#` appears inside both halves of the joined key. The
+     nested shape needs no separator at all (§9a).
+   - **A sigil in the value itself** (`"@opt-high"` marking a handle). Two
+     independent falsifications. A legal property slug can BEGIN with the
+     sigil — `ApiSlug("@home") == "@home"` — so the marker is not
+     distinguishable from data. And `Validate(data []byte) error` takes no
+     resolver of any kind (§13), so it cannot know whether a `/properties`
+     value is a select value or an object reference: it would have to accept
+     the sigil everywhere (breaking I2, since `Unmarshal` with a resolver
+     refuses more) or refuse it somewhere `Marshal` emits it (breaking I1).
+     Export's own deep links are not the counter-example they look like:
+     `objectLinkDest` builds the URL with `url.Values{}.Encode()`
+     (`inline.go`), so an id starting with `@` is written `%40…`.
+   - **`{name, id}` value pairs.** This was the standing fallback for the
+     duplicate-name and rename caveats, and it was believed to be a
+     format-only change. It is not: `model.RelationOption` is
+     `{Id, Text, Color, RelationKey, OrderId}` — there is **no key field** —
+     so `ListRelationOptions` cannot supply the stored keys the byte-cost
+     argument for the pair shape rested on. It also puts a second value shape
+     in the slot small models write most often.
+
+   One argument that must NOT come back attached to any of these: the sigil
+   designs were largely defended as protecting `object_ids` against a dropped
+   legend. Object-reference compaction was deleted at v0.20 and `object_ids`
+   never shipped — the only `object_ids` in this document is the dataview's
+   `object_orders[].object_ids` field. Object references print in full,
+   everywhere, and need no legend to survive.
 4. **Mention syntax**: `<mention object_id="…">` tag vs unifying with the
    `anytype://` link form plus a marker. The tag is unambiguous and
    LLM-friendly; confirm clients are happy rendering it.
@@ -3526,7 +3570,72 @@ Wiring (follow-up work, not this package):
    its dedicated both-versions error, rather than by a member name. It is a
    release decision: §10's rules do not change either way, and the diagnostic
    (§12) stands either way.
-10. **Trim system-property noise** (follow-up): refine §3 "presence is
+
+   There is now one piece of code waiting on the answer: the v0.22 refusal of
+   `{"type": "template"}` with no `kind` (§10). It exists because that shape
+   is well-formed under both readings and would otherwise import silently as
+   the wrong kind of object. A version bump refuses every draft-era document
+   at the gate, at which point the special case is dead code and should be
+   deleted along with the last use of the `template` string constant outside
+   export's emission rule.
+10. **Settled at v0.22, with the alternatives that were declined.** Both
+    changes had a cheaper option that was considered and rejected on the
+    evidence, and both are recorded so the cheaper one is not re-proposed as
+    if it were new.
+
+    - **`kind` as the sole template authority** (§2, §3). The declined
+      alternative was to keep deriving the kind from the type term when
+      `kind` is absent, which costs no migration at all: yesterday's
+      `{"type": "template", "template_for": "task"}` would keep working.
+      Rejected because it leaves the type term carrying structural meaning —
+      the format would have two authorities and the incoherence the change
+      set out to remove would survive in half, with
+      `{"type": "template", "type_keys": {"template": "myThing"}}` meaning a
+      template of type `myThing` for no stated reason. The opposite extreme,
+      making `kind` REQUIRED on every document, was also declined: it deletes
+      the `template` constant outright and refuses every draft-era document
+      through the schema's `required`, but it costs ~16 bytes on every page,
+      contradicts §4's omit-every-default rule, and refuses documents with
+      nothing wrong with them.
+    - **The `_` namespace** (§1, §2c). The declined alternative was to leave
+      the reserved listings spelled as bare words and simply ban those six
+      words as bundle-local ids — about six lines, no format change, no
+      translation table, and it closes the shadowing completely. Rejected
+      because it is a word list: every listing added later retroactively bans
+      an id that was legal, and nothing about a bare `set` in a document tells
+      a reader which of the two kinds of target it is. Note that the ban did
+      NOT go away — the `_` prefix makes the FORMAT unambiguous, and the ban
+      on the six wire spellings is still what makes the WIRE unambiguous,
+      since the importer's own spellings are bare.
+
+11. **The §3 chain's store step: both directions proposed, both declined.**
+    Step 3c — the stored-key fold, store-backed readers only,
+    single-candidate-or-nothing — has been proposed for deletion and for
+    promotion, by different reviewers, and both are recorded here because
+    each is falsified by one call.
+
+    - **Delete it, and let the reader's own table be the whole of step 3.**
+      Rejected: `bundle.RelationKeysByApiFold("Severity") == []`. The bundled
+      fold knows nothing about a space's custom keys, so an agent that read a
+      space's property listing and POSTed
+      `{"properties": {"severity": […]}}` would resolve `severity` to
+      nothing, pass it through verbatim, and silently mint a SECOND relation
+      beside the one it just read. The store step is what closes that, and
+      only a store-backed reader can.
+    - **Promote it — make the fold mandatory, so every reader resolves the
+      same way.** Rejected: `bundle.TypeKeysByApiFold("Task") == [task]`. A
+      space holding a live stored type key `Task` — which this format
+      creates, `{"kind": "object_type", "key": "Task"}` is legal — would have
+      every reference to it folded onto the bundled Task type. Verbatim-first
+      (§3 step 2) exists precisely so a stored key is its own address, and a
+      mandatory fold would overrule it.
+
+    The asymmetry is the point and is what §3 already states: a reader may
+    resolve MORE than another, never DIFFERENTLY. Deleting the step makes a
+    store-backed reader resolve less than it can; promoting it makes an
+    offline reader resolve differently than it should.
+
+12. **Trim system-property noise** (follow-up): refine §3 "presence is
     meaningful" — keys in `bundle.SystemRelations` are machine-stamped
     metadata (`is_hidden`, `revision`, `relation_format_include_time`, …) and
     could safely omit empty/default values, keeping documents compact for
