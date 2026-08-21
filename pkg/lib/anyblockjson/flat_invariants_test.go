@@ -231,6 +231,15 @@ func hostileSnapshot(n int) (model.SmartBlockType, *model.SmartBlockSnapshotBase
 		// property's api key. Both keys are written verbatim here, and
 		// without the identity entry the reader binds one of them twice.
 		"initiative": str("custom, whose spelling this space now gives away"),
+		// a SELECT property, whose values are spelled by name with the option
+		// id carried in the qualified refs legend (§3, §9a). The pool holds
+		// exactly the shapes that make a legend key hard — a name carrying
+		// the separator, a name carrying a space (both outside the plain
+		// label charset), two options sharing one name, a name past the bound
+		// a legend key may carry, and an id no resolver knows — so I1 asks
+		// whether a document Marshal writes with those keys is one its own
+		// Validate accepts and its own Unmarshal reads.
+		"tag": strList(hostileOptionValues...),
 	}
 	// the envelope key is a STORED identity key written verbatim (§2), and a
 	// closed charset over it was falsified by a 36 808-object sweep: relation
@@ -262,6 +271,26 @@ func hostileSnapshot(n int) (model.SmartBlockType, *model.SmartBlockSnapshotBase
 		snap.Details.Fields["recommendedHiddenRelations"] = strList("hp3")
 	}
 	return sbType, snap
+}
+
+// hostileOptions is the option pool the hostile corpus's select property
+// resolves against, scanned first-match exactly as storeresolver does. Two
+// entries deliberately share a name: within one value that is the collapse
+// §11 documents, and the corpus asks that the collapse be a FIXPOINT rather
+// than a coin flip on the pool's order.
+var hostileOptions = spaceOptions{"tag": {
+	{id: "opt-hash", name: "C#"},
+	{id: "opt-space", name: "import issue"},
+	{id: "opt-dup1", name: "books"},
+	{id: "opt-dup2", name: "books"},
+	{id: "opt-long", name: strings.Repeat("n", maxPropertyKeyLen+1)},
+}}
+
+// hostileOptionValues is what the corpus's object carries: every option in
+// the pool, both same-named ones, plus an id nothing resolves — which export
+// writes verbatim and owes no entry for.
+var hostileOptionValues = []string{
+	"opt-hash", "opt-space", "opt-dup1", "opt-dup2", "opt-long", "opt-unknown",
 }
 
 // hostileTypePools are the ObjectTypes shapes that make the type namespace
@@ -646,6 +675,7 @@ func TestInvariant_MarshalOutputValidates(t *testing.T) {
 			for n := 0; n < 300; n++ {
 				sbType, snap := hostileSnapshot(n)
 				o := variant.write
+				o.ResolveOptions = hostileOptions
 				var wantProps []typePropTargets
 				if sbType == model.SmartBlockType_STType {
 					o.ResolveProperties = hostileTypePropResolver{}
@@ -664,11 +694,30 @@ func TestInvariant_MarshalOutputValidates(t *testing.T) {
 				// row, so a path that writes without checking writes it twice.
 				assert.LessOrEqual(t, strings.Count(string(data), sharedCellMarker), 1,
 					"seed %d emitted one block twice:\n%s", n, data)
+				// the option legend must actually be IN the document, or this
+				// sweep asks nothing about it — a corpus that stops reaching
+				// the code under test is the way a green invariant lies. Both
+				// key shapes the plain label charset rejects are asserted, and
+				// the same-named pair by its first writing (optionrefs.go).
+				refs := docRefs(t, data)
+				for key, id := range map[string]string{
+					"C##tag":           "opt-hash",
+					"import issue#tag": "opt-space",
+					"books#tag":        "opt-dup1",
+				} {
+					assert.Equal(t, id, refs[key], "seed %d owes the legend %q:\n%s", n, key, data)
+				}
 				capture := &capturedTypeProps{}
 				_, back, err := Unmarshal(data, Options{
 					GenerateId:        seqIds(fmt.Sprintf("g%d_", n)),
 					Keys:              variant.read,
 					ResolveProperties: capture,
+					// the option resolver is wired on BOTH ends, which is what
+					// §11.1's "equivalent resolvers" means for select values —
+					// a different axis from the key vocabulary above, and the
+					// only wiring under which the option legend is an answer
+					// at all (a reader with no space cannot check an id)
+					ResolveOptions: hostileOptions,
 				})
 				require.NoError(t, err,
 					"seed %d produced a valid document its own Unmarshal refuses:\n%s", n, data)
@@ -721,14 +770,16 @@ func TestInvariant_MarshalOutputValidates(t *testing.T) {
 				// different stored key on the way home — which is where the
 				// PROPERTY namespace's half of this hole lives, since the
 				// assertions above watch only the type slots.
-				plainOpts := Options{}
+				plainOpts := Options{ResolveOptions: hostileOptions}
 				if sbType == model.SmartBlockType_STType {
 					plainOpts.ResolveProperties = hostileTypePropResolver{}
 				}
 				plainData, err := Marshal(sbType, snap, plainOpts)
 				require.NoError(t, err, "seed %d", n)
-				_, plainBack, err := Unmarshal(plainData,
-					Options{GenerateId: seqIds(fmt.Sprintf("g%d_", n))})
+				_, plainBack, err := Unmarshal(plainData, Options{
+					GenerateId:     seqIds(fmt.Sprintf("g%d_", n)),
+					ResolveOptions: hostileOptions,
+				})
 				require.NoError(t, err, "seed %d", n)
 				assert.Equal(t, plainBack, back,
 					"seed %d: a vocabulary spells the same snapshot differently; it may not mean a different one:\n%s", n, data)
@@ -887,6 +938,26 @@ var hostileDocs = []string{
 		"type_properties": [{"key": "` + strings.Repeat("k", maxPropertyKeyLen+1) + `"}]}`,
 	`{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
 		"type_properties": [{"key": "a\nb"}]}`,
+	// the `refs` legend's two key populations (§9a): a plain compaction label
+	// and a qualified option key in ONE map, the shapes the plain charset
+	// rejects (a space, a separator inside the NAME), an entry nothing
+	// spells, and the malformed halves — no name, no property, a half past
+	// the writable-key bound, a control character — which the schema and the
+	// package predicate have to refuse identically
+	`{"version": 1, "refs": {"High#tag": "bafyreiopt"}, "properties": {"tag": ["High"]}}`,
+	`{"version": 1, "refs": {"import issue#tag": "bafyreiopt", "miovm": "bafyreitarget"},
+		"properties": {"tag": ["import issue"]},
+		"blocks": [{"type": "link", "object_id": "miovm"}]}`,
+	`{"version": 1, "refs": {"C##language": "bafyreiopt"}}`,
+	`{"version": 1, "refs": {"High#tag": "bafyreiopt"},
+		"blocks": [{"type": "link", "object_id": "High#tag"}]}`,
+	`{"version": 1, "refs": {"#": "bafyreiopt"}}`,
+	`{"version": 1, "refs": {"High#": "bafyreiopt"}}`,
+	`{"version": 1, "refs": {"#tag": "bafyreiopt"}}`,
+	`{"version": 1, "refs": {"a#b\nc": "bafyreiopt"}}`,
+	`{"version": 1, "refs": {"has space": "bafyreiopt"}}`,
+	`{"version": 1, "refs": {"High#` + strings.Repeat("p", maxPropertyKeyLen+1) + `": "bafyreiopt"}}`,
+	`{"version": 1, "refs": {"` + strings.Repeat("n", maxPropertyKeyLen+1) + `#tag": "bafyreiopt"}}`,
 	// the reserved `template` spelling, straight through the envelope: the
 	// type-moves-template vocabulary answers a different stored key for it,
 	// and both halves must still agree about what kind of document this is
