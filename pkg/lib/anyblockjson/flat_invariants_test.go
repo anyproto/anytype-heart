@@ -188,9 +188,27 @@ func hostileSnapshot(n int) (model.SmartBlockType, *model.SmartBlockSnapshotBase
 						RelationKey: "dueDate", Condition: model.BlockContentDataviewFilter_Greater,
 						QuickOption: model.BlockContentDataviewFilter_NumberOfDaysAgo,
 						Value:       str("a week"),
+					}, {
+						// a filter naming NO property. Real data holds these
+						// (a relation deleted out from under a view), and the
+						// format now says a filter has to name the property it
+						// filters on (§6) — so an export that wrote the
+						// nameless node emitted a document its own Validate
+						// rejects. The sort and the column beside it have
+						// dropped their nameless form all along; this is the
+						// slot that did not. Appended after the picks so it
+						// consumes no randomness and the corpus above is
+						// unchanged.
+						RelationKey: "", Condition: model.BlockContentDataviewFilter_Equal,
+						Value: str("x"),
 					}}}},
 			}}})
 	}
+	// a property BLOCK naming no property — the second slot that used to be
+	// emitted nameless, and the second half of the same rule. Its id consumes
+	// no randomness, so the corpus above is unchanged.
+	add(&model.Block{Id: "nokey" + fmt.Sprint(n),
+		Content: &model.BlockContentOfRelation{Relation: &model.BlockContentRelation{}}})
 	// details carry the keys the import surface must refuse: if export ever
 	// emitted one, Marshal's output would fail its own Validate, which is how
 	// this invariant proves the two surfaces are still each other's mirror.

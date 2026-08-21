@@ -132,6 +132,11 @@ type importer struct {
 	// blocks with the same id, which validation has already finished checking
 	// by the time it happens (§9).
 	usedIds map[string]struct{}
+	// refusal is the first key slot whose resolution named nothing — see
+	// propertyKeyAt. Deferred because the slots that can produce it are deep
+	// inside block construction; build turns it into the ValidationError
+	// before it returns a snapshot.
+	refusal *Issue
 }
 
 // claimAuthoredIds records every id the document names before anything is
@@ -216,6 +221,63 @@ func (imp *importer) propertyKey(slug string) string {
 		return key
 	}
 	return imp.opts.propertyKey(slug)
+}
+
+// propertyKeyAt is propertyKey at a slot that can REFUSE — every key slot
+// outside `/properties`, which runs its own admission at the detail seam.
+//
+// The rule is one sentence, and it is the same one the document side now
+// carries at every slot: **a key slot has to name something**. The document
+// half is the schema (`minLength: 1`); this is the resolution half, and it is
+// reachable only through Options.Keys, which §3 accepts from anyone: a
+// vocabulary answering ("", true) for a non-empty spelling. `/properties`,
+// `/type`, `/template_for` and `type_properties[].object_types` refused that
+// from the start; the nine slots that did not stored the empty key and then
+// LOST the slot on the way back out — a column and a sort vanish, a property
+// block and a link's shown-property list come back nameless, a filter
+// re-exports as a node that filters on nothing.
+//
+// The refusal is deferred rather than returned, because these slots sit deep
+// inside block construction (dataview views, filter trees) where an error
+// return would have to be threaded through a dozen signatures for a fault
+// none of them can repair. build reports the first one before it hands back a
+// snapshot, so no caller ever sees the damaged object.
+// The `slot` names which kind of slot was reading, and the message names the
+// SPELLING rather than leaning on the pointer: the fault is in the reader's
+// vocabulary, not in the document, so "which spelling does your table answer
+// nothing for" is the question a caller can act on. The pointer stays coarse
+// (`/blocks`) because these slots are built without one and inventing a
+// precise-looking pointer that is wrong is worse than a coarse true one.
+func (imp *importer) propertyKeyAt(slug, slot string) string {
+	key := imp.propertyKey(slug)
+	if slug != "" && key == "" {
+		imp.refuse("/blocks", fmt.Sprintf(
+			"the vocabulary resolves the %s spelling %q to the empty key; "+
+				"a key slot has to name something (§3)", slot, slug))
+	}
+	return key
+}
+
+// propertyKeysAt is the list form (a link block's shown properties).
+func (imp *importer) propertyKeysAt(slugs []string, slot string) []string {
+	if len(slugs) == 0 {
+		return slugs
+	}
+	out := make([]string, len(slugs))
+	for i, slug := range slugs {
+		out[i] = imp.propertyKeyAt(slug, slot)
+	}
+	return out
+}
+
+// refuse records the first key-slot refusal. First and not all of them: the
+// issue list §12 promises is one fault per slot, and a vocabulary answering
+// "" answers "" everywhere, so collecting them would print the same fault
+// once per slot in the document.
+func (imp *importer) refuse(path, message string) {
+	if imp.refusal == nil {
+		imp.refusal = &Issue{Path: path, Message: message}
+	}
 }
 
 // propertyKeys is the list form (a link block's shown properties). Like the
@@ -455,6 +517,12 @@ func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBas
 		return 0, nil, fmt.Errorf("build blocks: %w", err)
 	}
 	all = append(all, blocks...)
+
+	// a key slot that resolved onto nothing refuses the document rather than
+	// handing back an object with the slot missing (propertyKeyAt)
+	if imp.refusal != nil {
+		return 0, nil, &ValidationError{Issues: []Issue{*imp.refusal}}
+	}
 
 	snapshot := &model.SmartBlockSnapshotBase{
 		Blocks:      all,
@@ -766,7 +834,7 @@ func (imp *importer) linkFromJSON(jb *jsonBlock) (*model.BlockContentLink, error
 		CardStyle:     cardStyleNames.value(jb.CardStyle),
 		IconSize:      iconSizeNames.value(jb.IconSize),
 		Description:   linkDescriptionNames.value(jb.Description),
-		Relations:     imp.propertyKeys(propKeys),
+		Relations:     imp.propertyKeysAt(propKeys, "link block `properties`"),
 	}, nil
 }
 
@@ -839,7 +907,8 @@ func (imp *importer) blockFromJSON(jb *jsonBlock, forcedId string) ([]*model.Blo
 	case jb.Type == "table_of_contents":
 		b.Content = &model.BlockContentOfTableOfContents{TableOfContents: &model.BlockContentTableOfContents{}}
 	case jb.Type == "property":
-		b.Content = &model.BlockContentOfRelation{Relation: &model.BlockContentRelation{Key: imp.propertyKey(jb.Key)}}
+		b.Content = &model.BlockContentOfRelation{Relation: &model.BlockContentRelation{
+			Key: imp.propertyKeyAt(jb.Key, "property block `key`")}}
 	case jb.Type == "dataview":
 		dv, err := imp.dataviewFromJSON(jb)
 		if err != nil {

@@ -48,6 +48,19 @@ inversion: asking one table instead of two was measured, and it drops
 `{"due_date": "dueDate"}` (a bundled value lands on a custom relation). Cost:
 +93 bytes on each of the four goldens, ~2%.
 
+(3) **A key slot has to name something, at all sixteen slots and through all
+three doors** (§3, §6, §12). Three slots enforced it; thirteen took an empty
+spelling from a plain document — no vocabulary needed — and silently lost the
+slot on the way back out, `"type": ""` costing an object its type. The schema
+now carries `minLength: 1` at every key slot and `required: ["property"]` on a
+dataview filter (the sort and the column beside it always had it), export
+**drops** a nameless filter and a nameless `property` block as it already
+dropped the nameless sort and column, and the import seam refuses a vocabulary
+resolving a non-empty spelling onto the empty key at the nine slots that used
+to store it. The rule bounds nothing else: length and charset at these slots
+stay as §3 already argued them, because bounding them would make a stored key
+unexportable.
+
 Changes in v0.20 (superseded by v0.21): **three legends, and one compaction that carries none**
 (§2, §3, §9, §9a, §11, §12, §13). The envelope's indirection is now exactly
 `property_keys`, `type_keys` and `option_ids`; **`refs` is deleted**, both
@@ -1087,6 +1100,40 @@ writes the entry:
   — its home surface is `type`, a value. See its own rules below.) Export
   drops a type-property entry whose stored key is unwritable, with a warning,
   rather than emit one the seam refuses.
+- **A key slot has to name something — at every slot, through every door.**
+  This is the one rule that binds *all sixteen* key slots (twelve property,
+  four type), and it is the minimum: it says nothing about length or charset,
+  only that a slot which names nothing names nothing. Three doors carry it.
+
+  **The document.** Every key-slot string is `minLength: 1` in the schema.
+  Only `/properties`, `type_properties[].key` and `type_properties[].
+  object_types[]` used to be; the other thirteen took an empty spelling from a
+  plain document, no vocabulary needed, and then LOST the slot on the way back
+  out, in silence: a column and a sort vanish, a property block and a link's
+  shown-property list come back nameless, a filter re-exports as a node that
+  filters on nothing, and `"type": ""` costs the object its type. A dataview
+  filter also has to *carry* the member — `required: ["property"]`, as its
+  sibling sort and column always have — and validation states that rule in its
+  own words, because the schema can only state it inside a `oneOf` and the
+  branch that fails takes the other branch's whole verdict with it.
+
+  **Export.** A filter and a `property` block whose stored key is empty are
+  **dropped**, with a warning, which is what the sort and the column beside
+  them have always done with the same input. Written out they were nameless
+  nodes: the schema accepted them, import stored the empty key, and the next
+  export wrote them again — forever, meaning nothing.
+
+  **The import seam.** A vocabulary answering `("", true)` for a non-empty
+  spelling is refused at every slot. `/properties`, `type`, `template_for` and
+  `object_types[]` refused it from the start; the other nine stored it. The
+  refusal names the *spelling*, because the fault is the reader's table rather
+  than the document, and that is the fact a caller can act on.
+
+  What this rule deliberately does NOT do is bound length or charset at these
+  slots. See the two bullets below: `/properties` cannot express such a key
+  because it is a member name, and the primary type slots stay unbounded on
+  purpose — bounding them would make a stored key unexportable, which is a
+  larger loss than the one it would prevent.
 - **The legend cannot launder a spelling onto an internal key.** Entries are
   honored during validation and admission exactly as during import — the
   legend is step one of key resolution — so `{"prio": "uniqueKey"}` does not
@@ -1172,9 +1219,12 @@ type key is — and one rule above that deliberately does **not** carry over.
   stored type keys back out of `unique_key`. It still round-trips through
   this format verbatim, and that is the point: the format carries what the
   store holds; which of the store's keys the rest of the system can address
-  is not its ruling to make. The one resolution the import seam refuses is
-  the **empty** type key (a vocabulary bug), which would store the
-  unwritable `ot-` and re-export as no type at all, silently.
+  is not its ruling to make. The one thing refused here is the **empty** type
+  key, in both its forms — the literal `"type": ""` (schema `minLength: 1`)
+  and a vocabulary resolving a non-empty spelling onto nothing — because it
+  would store the unwritable `ot-` and re-export as no type at all, silently.
+  That is not an exception to "unbounded on purpose": an empty string is not
+  a stored type key of any shape, it is the absence of one.
 - **The reserved spelling is `template` — in both directions, and against
   the reader as well as the writer.** Export keys `template_for` emission
   off the spelled term, validation gates `/template_for` on it, and import
@@ -1930,7 +1980,10 @@ a group exists only for `or` or nesting):
   proto node with non-empty `nestedFilters` to a group and drops its leaf
   fields; import writes `operator` only on groups (leaves get the proto
   default).
-- leaf, canonical order: `property`, `condition`, `value`, `date_preset`,
+- leaf, canonical order: `property` (**required** — a leaf filter names the
+  property it filters on, like the sort and the column beside it; export drops
+  a filter whose stored relation key is empty rather than write a node that
+  filters on nothing, §3), `condition`, `value`, `date_preset`,
   `include_time`, `nested_property` (reserved, output-only), `id`
   (output-only). `condition` values: `equal · not_equal · greater · less ·
   greater_or_equal · less_or_equal · contains · not_contains · in · not_in ·

@@ -222,6 +222,17 @@ func (e *exporter) filterToJSON(f *model.BlockContentDataviewFilter, dv *model.B
 		fm.set("filters", nested)
 		return fm
 	}
+	// a leaf filter has to name the property it filters on (§6) — the rule
+	// the sort and the column beside it have carried all along. Without it a
+	// filter whose stored relation key is empty was emitted as a nameless
+	// node: it filtered on nothing, the schema accepted it, import stored the
+	// empty key, and the next export wrote the same node again. Dropping it
+	// is what the sort loop above already does with the same input.
+	if f.RelationKey == "" {
+		e.warn("", "a filter names no property and is dropped; a filter has to name "+
+			"the property it filters on (§6)")
+		return nil
+	}
 	fm.setNonEmpty("property", e.propertySlug(f.RelationKey))
 	if f.Condition != model.BlockContentDataviewFilter_None {
 		fm.setNonEmpty("condition", conditionNames.name(f.Condition))
@@ -418,7 +429,7 @@ func (imp *importer) dataviewFromJSON(jb *jsonBlock) (*model.BlockContentDatavie
 		}
 	}
 	for _, p := range props {
-		key := imp.propertyKey(p.Key)
+		key := imp.propertyKeyAt(p.Key, "dataview `properties`")
 		dv.RelationLinks = append(dv.RelationLinks, &model.RelationLink{
 			Key:    key,
 			Format: imp.declaredFormat(key, p.Format),
@@ -433,9 +444,9 @@ func (imp *importer) dataviewFromJSON(jb *jsonBlock) (*model.BlockContentDatavie
 			Id:                    viewId,
 			Type:                  viewTypeNames.value(jv.Type),
 			Name:                  jv.Name,
-			GroupRelationKey:      imp.propertyKey(jv.GroupBy),
-			CoverRelationKey:      imp.propertyKey(jv.CoverProperty),
-			EndRelationKey:        imp.propertyKey(jv.EndProperty),
+			GroupRelationKey:      imp.propertyKeyAt(jv.GroupBy, "view `group_by`"),
+			CoverRelationKey:      imp.propertyKeyAt(jv.CoverProperty, "view `cover_property`"),
+			EndRelationKey:        imp.propertyKeyAt(jv.EndProperty, "view `end_property`"),
 			HideIcon:              jv.HideIcon,
 			CardSize:              cardSizeNames.value(jv.CardSize),
 			CoverFit:              jv.CoverFit,
@@ -455,7 +466,7 @@ func (imp *importer) dataviewFromJSON(jb *jsonBlock) (*model.BlockContentDatavie
 		}
 		for _, jc := range jv.Columns {
 			view.Relations = append(view.Relations, &model.BlockContentDataviewRelation{
-				Key:       imp.propertyKey(jc.Property),
+				Key:       imp.propertyKeyAt(jc.Property, "view column `property`"),
 				IsVisible: !jc.Hidden,
 				Width:     jsonInt32(jc.Width),
 				Formula:   aggregationNames.value(jc.Aggregation),
@@ -501,7 +512,7 @@ func (imp *importer) impDvFormat(dv *model.BlockContentDataview, key string) mod
 }
 
 func (imp *importer) sortFromJSON(js jsonSort, dv *model.BlockContentDataview) *model.BlockContentDataviewSort {
-	key := imp.propertyKey(js.Property)
+	key := imp.propertyKeyAt(js.Property, "sort `property`")
 	s := &model.BlockContentDataviewSort{
 		RelationKey:    key,
 		Type:           sortDirectionNames.value(js.Direction),
@@ -530,7 +541,7 @@ func (imp *importer) filterFromJSON(jf jsonFilter, dv *model.BlockContentDatavie
 		}
 		return f
 	}
-	key := imp.propertyKey(jf.Property)
+	key := imp.propertyKeyAt(jf.Property, "filter `property`")
 	f := &model.BlockContentDataviewFilter{
 		Id:               jf.Id,
 		RelationKey:      key,

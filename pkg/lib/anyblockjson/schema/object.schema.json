@@ -20,8 +20,8 @@
       ]
     },
     "id": { "type": "string" },
-    "type": { "type": "string" },
-    "template_for": { "type": "string" },
+    "type": { "type": "string", "minLength": 1 },
+    "template_for": { "type": "string", "minLength": 1 },
     "key": { "type": "string", "pattern": "^[^\u0000-\u001f\u007f]+$", "maxLength": 255 },
     "properties": { "$ref": "#/$defs/propertyMap" },
     "type_properties": { "type": "array", "items": { "$ref": "#/$defs/typeProperty" } },
@@ -234,7 +234,7 @@
               "card_style": { "enum": ["text", "card", "inline"] },
               "icon_size": { "enum": ["none", "small", "medium"] },
               "description": { "enum": ["none", "manual", "content"] },
-              "properties": { "type": "array", "items": { "type": "string" } }
+              "properties": { "type": "array", "items": { "type": "string", "minLength": 1 } }
             }
           }
         },
@@ -250,8 +250,9 @@
           "if": { "properties": { "type": { "const": "property" } }, "required": ["type"] },
           "then": {
             "properties": {
-              "key": { "type": "string" }
-            }
+              "key": { "type": "string", "minLength": 1 }
+            },
+            "required": ["key"]
           }
         },
         {
@@ -366,7 +367,7 @@
     "dataviewProperty": {
       "type": "object",
       "properties": {
-        "key": { "type": "string" },
+        "key": { "type": "string", "minLength": 1 },
         "format": {
           "enum": [
             "text", "number", "select", "multi_select", "date",
@@ -384,9 +385,9 @@
         "id": { "type": "string" },
         "type": { "enum": ["table", "list", "gallery", "kanban", "calendar", "graph"] },
         "name": { "type": "string" },
-        "group_by": { "type": "string" },
-        "cover_property": { "type": "string" },
-        "end_property": { "type": "string" },
+        "group_by": { "type": "string", "minLength": 1 },
+        "cover_property": { "type": "string", "minLength": 1 },
+        "end_property": { "type": "string", "minLength": 1 },
         "hide_icon": { "type": "boolean" },
         "card_size": { "enum": ["small", "medium", "large"] },
         "cover_fit": { "type": "boolean" },
@@ -416,7 +417,7 @@
     "sort": {
       "type": "object",
       "properties": {
-        "property": { "type": "string" },
+        "property": { "type": "string", "minLength": 1 },
         "direction": { "enum": ["asc", "desc", "custom"] },
         "custom_order": { "type": "array" },
         "empty_placement": { "enum": ["start", "end"] },
@@ -441,7 +442,7 @@
         {
           "type": "object",
           "properties": {
-            "property": { "type": "string" },
+            "property": { "type": "string", "minLength": 1 },
             "condition": {
               "enum": [
                 "equal", "not_equal", "greater", "less", "greater_or_equal",
@@ -463,6 +464,7 @@
             "nested_property": { "type": "string", "x-output-only": true },
             "id": { "type": "string", "x-output-only": true }
           },
+          "required": ["property"],
           "additionalProperties": false
         }
       ]
@@ -470,7 +472,7 @@
     "viewColumn": {
       "type": "object",
       "properties": {
-        "property": { "type": "string" },
+        "property": { "type": "string", "minLength": 1 },
         "hidden": { "type": "boolean" },
         "width": { "type": "integer", "minimum": 0, "maximum": 2147483647 },
         "aggregation": {

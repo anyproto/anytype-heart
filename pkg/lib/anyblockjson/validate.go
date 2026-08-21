@@ -1164,6 +1164,35 @@ func propertyNameIssues(doc map[string]any) keySlotReport {
 				unwritableKeyReason("property key", key))
 		}
 	}
+	// A dataview FILTER has to name a property, like the sort and the column
+	// beside it (§6). The schema says so — `required: ["property"]` on the
+	// leaf branch — but it says it through a `oneOf`, so a filter missing the
+	// member collects the OTHER branch's whole verdict as well: "missing
+	// properties 'operator', 'filters'" plus one "not allowed" per member it
+	// does carry. That is four confidently wrong instructions for one fault,
+	// which is the failure mode §12's one fault, one issue rule exists for.
+	// So this pass owns the wording and mutes the branch's noise.
+	//
+	// The rule is not decorative. A filter with no property filters on
+	// nothing: import stored it with an empty relation key, the view silently
+	// stopped meaning what it said, and export re-emitted the same nameless
+	// node forever.
+	for i, raw := range blocksOf(doc) {
+		block, _ := raw.(map[string]any)
+		if block == nil {
+			continue
+		}
+		views, _ := block["views"].([]any)
+		for j, rawView := range views {
+			view, _ := rawView.(map[string]any)
+			if view == nil {
+				continue
+			}
+			nodes, _ := view["filters"].([]any)
+			checkFilterProperties(nodes,
+				fmt.Sprintf("/blocks/%d/views/%d/filters", i, j), rejectValue)
+		}
+	}
 	for _, field := range []string{"property_keys", "type_keys"} {
 		legend, _ := doc[field].(map[string]any)
 		for _, term := range sortedMapKeys(legend) {
@@ -1181,6 +1210,38 @@ func propertyNameIssues(doc map[string]any) keySlotReport {
 		}
 	}
 	return r
+}
+
+// checkFilterProperties walks a view's filter tree and reports every LEAF
+// node that names no property. A group node (`operator` + `filters`) names
+// none by design, so the walk descends rather than judging it.
+func checkFilterProperties(nodes []any, path string, reject func(string, string)) {
+	for i, raw := range nodes {
+		node, _ := raw.(map[string]any)
+		if node == nil {
+			continue
+		}
+		nPath := fmt.Sprintf("%s/%d", path, i)
+		if sub, isGroup := node["filters"].([]any); isGroup {
+			checkFilterProperties(sub, nPath+"/filters", reject)
+			continue
+		}
+		raw, named := node["property"]
+		if !named {
+			reject(nPath, "a filter has to name the property it filters on (§6)")
+			continue
+		}
+		if prop, isString := raw.(string); isString && prop == "" {
+			reject(nPath+"/property", unwritableKeyReason("property key", prop))
+		}
+	}
+}
+
+// blocksOf is the document's flat block list, or nothing when it has none or
+// the member is not a list — the schema types it; this pass only shapes it.
+func blocksOf(doc map[string]any) []any {
+	blocks, _ := doc["blocks"].([]any)
+	return blocks
 }
 
 // unwritableKeyReason names the string that broke the writable-key rule and

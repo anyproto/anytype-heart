@@ -1580,6 +1580,16 @@ func (e *exporter) blockToJSON(b *model.Block, depth int) (*omap, bool, error) {
 		m.set("type", "table_of_contents")
 		withChildren = false
 	case *model.BlockContentOfRelation:
+		// a property block IS a reference to a property, so one with no key
+		// refers to nothing. It used to be emitted as `{"type": "property"}`
+		// — a block the schema accepted, import stored with the empty key,
+		// and the next export wrote again, forever. Dropped, like the
+		// nameless sort and the nameless column (§6).
+		if orEmpty(c.Relation).Key == "" {
+			e.warn("", "a property block names no property and is dropped; "+
+				"a key slot has to name something (§3)")
+			return nil, false, nil
+		}
 		m.set("type", "property")
 		m.setNonEmpty("key", e.propertySlug(orEmpty(c.Relation).Key))
 		withChildren = false
