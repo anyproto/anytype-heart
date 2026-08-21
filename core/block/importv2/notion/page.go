@@ -54,6 +54,35 @@ type propertyValue struct {
 	LastEditedTime string         `json:"last_edited_time"`
 	CreatedBy      *userValue     `json:"created_by"`
 	LastEditedBy   *userValue     `json:"last_edited_by"`
+	Place          *placeValue    `json:"place"`
+}
+
+// placeValue is Notion's location property. Anytype has no place format, but
+// the address and the display name are ordinary text a user typed and can
+// search for, so they import as text rather than being thrown away.
+type placeValue struct {
+	Name    string  `json:"name"`
+	Address string  `json:"address"`
+	Lat     float64 `json:"lat"`
+	Lon     float64 `json:"lon"`
+}
+
+// text renders a place the way Notion shows it: its name, and the address
+// when that adds something.
+func (p *placeValue) text() string {
+	if p == nil {
+		return ""
+	}
+	name := strings.TrimSpace(p.Name)
+	address := strings.TrimSpace(p.Address)
+	switch {
+	case name == "":
+		return address
+	case address == "" || address == name || strings.HasPrefix(address, name+","):
+		return name
+	default:
+		return name + ", " + address
+	}
 }
 
 type userValue struct {
@@ -137,7 +166,11 @@ func (c *Converter) emitFetchedPage(ctx context.Context, f *fetchedPage, sink im
 		}
 		// The page's properties and title are already in hand — import them
 		// with a placeholder body instead of dropping the whole page.
-		sink.Issue(importv2.Warning(importv2.IssueDataLoss, stub.Id, fmt.Sprintf("page content could not be fetched: %s", f.blocksErr)))
+		sink.Issue(importv2.Issue{
+			Severity: importv2.SeverityWarning, Code: importv2.IssueDataLoss, SourceKey: stub.Id,
+			Message: "The contents of this page could not be fetched from Notion; its properties were imported without them",
+			Err:     f.blocksErr,
+		})
 		blocks = []notionBlock{{Id: stub.Id + "-lostcontent", Type: "unreadable"}}
 	}
 	modelBlocks, err := c.mapBlocks(ctx, mapContext{pageId: stub.Id, blockIds: blockIds}, blocks, sink)
@@ -160,7 +193,75 @@ func (c *Converter) emitFetchedPage(ctx context.Context, f *fetchedPage, sink im
 	if err := c.applyIcon(ctx, object, page.Icon, page.Cover, "/pages/"+stub.Id, sink); err != nil {
 		return err
 	}
+	if c.skipEmptyRow(stub, object, sink) {
+		return nil
+	}
 	return sink.Object(ctx, object)
+}
+
+// blankValue reports a detail that holds nothing a person put there. Notion
+// hands back a value for every column of every row, so an untouched row still
+// arrives carrying empty strings, empty option lists and unchecked boxes —
+// "the property exists", not "the user wrote something". Numbers and dates
+// are never blank: a 0 or an epoch is a value someone chose.
+func blankValue(value domain.Value) bool {
+	switch {
+	case !value.Ok(), value.IsNull():
+		return true
+	case value.IsString():
+		return strings.TrimSpace(value.String()) == ""
+	case value.IsStringList():
+		return len(value.StringList()) == 0
+	case value.IsBool():
+		return !value.Bool()
+	default:
+		return false
+	}
+}
+
+// skipEmptyRow drops a database row that carries nothing at all: no name, no
+// property value, no content, no icon. Notion databases collect these — a
+// row someone tabbed into and left, and the blank filler rows that ship with
+// Notion's own templates — and every one of them lands in Anytype as another
+// "Untitled" object in the sidebar and the graph. One real workspace imported
+// 53 nameless rows, 47 of them completely empty and 45 from a single template.
+//
+// Only rows are eligible: a standalone empty page is somewhere its author
+// made and can find again, while a row is a cell in a table nobody visits.
+// Nothing referenced the 47 in that workspace — no relation, no mention, no
+// link — which is what makes dropping them safe rather than merely tidy.
+//
+// The skip is reported per row, quietly: the engine's completeness invariant
+// requires an issue against every claimed key it never sees emitted, and an
+// info keeps it out of the "something went wrong" count while the report
+// still tallies it under the database it came from.
+func (c *Converter) skipEmptyRow(stub Entity, object *importv2.Object, sink importv2.Sink) bool {
+	if stub.Parent.Type != "data_source_id" && stub.Parent.Type != "database_id" {
+		return false
+	}
+	if len(object.Payload.Blocks) > 0 || object.File != nil {
+		return false
+	}
+	for key, value := range object.Payload.Details.Iterate() {
+		switch key {
+		case bundle.RelationKeySourceFilePath, bundle.RelationKeyCreatedDate, bundle.RelationKeyLastModifiedDate:
+			// Housekeeping the importer itself set; not the user's content.
+		case bundle.RelationKeyName:
+			if !blankValue(value) {
+				return false
+			}
+		default:
+			if !blankValue(value) {
+				return false
+			}
+		}
+	}
+	sink.Issue(importv2.Issue{
+		Severity: importv2.SeverityInfo, Code: importv2.IssueDataLoss, SourceKey: stub.Id,
+		Subject: c.entityById[parentContainerId(stub)].Title,
+		Message: "Empty rows were skipped: they have no name, no values and nothing on them in Notion",
+	})
+	return true
 }
 
 // pageTypeKey returns the type suggested for the page's parent database
@@ -199,7 +300,7 @@ func (c *Converter) convertProperties(ctx context.Context, pageId, scope string,
 		}
 		if value.Type == "verification" {
 			sink.Issue(importv2.Warning(importv2.IssueDataLoss, pageId,
-				fmt.Sprintf("property %q (verification) has no anytype counterpart and was skipped", name)))
+				`Notion "verification" properties have no Anytype counterpart and were skipped`).About(name))
 			continue
 		}
 		// Page-side definitions carry no plan target: schema-declared
@@ -210,7 +311,7 @@ func (c *Converter) convertProperties(ctx context.Context, pageId, scope string,
 			Id:   value.Id,
 			Type: effectivePropertyType(value),
 			Name: name,
-		}, schemaplan.PropertyPlan{}, "", sink)
+		}, schemaplan.PropertyPlan{}, container{key: pageId}, sink)
 		if err != nil || def == nil {
 			if err != nil {
 				return err
@@ -313,7 +414,7 @@ func (c *Converter) propertyDetail(ctx context.Context, pageId, scope, name stri
 			if person.Name == "" {
 				// v1 left the raw notion user id dangling in the detail.
 				sink.Issue(importv2.Warning(importv2.IssueDataLoss, pageId,
-					fmt.Sprintf("property %q references an unresolvable user; skipped", name)))
+					"Notion did not say who these people are — allow the integration to read user information in Notion and import again to keep them").About(name))
 				continue
 			}
 			options = append(options, selectOption{Name: person.Name})
@@ -362,6 +463,11 @@ func (c *Converter) propertyDetail(ctx context.Context, pageId, scope, name stri
 		return c.formulaDetail(pageId, name, value.Formula, sink)
 	case "rollup":
 		return c.rollupDetail(pageId, name, value.Rollup, sink)
+	case "place":
+		if text := value.Place.text(); text != "" {
+			return domain.String(text), nil, nil
+		}
+		return domain.Invalid(), nil, nil
 	case "unique_id":
 		if value.UniqueId == nil {
 			return domain.Invalid(), nil, nil
@@ -378,7 +484,7 @@ func (c *Converter) propertyDetail(ctx context.Context, pageId, scope, name stri
 		return c.timeDetail(value.LastEditedTime), nil, nil
 	default:
 		sink.Issue(importv2.Warning(importv2.IssueDataLoss, pageId,
-			fmt.Sprintf("property %q of type %q was skipped", name, value.Type)))
+			fmt.Sprintf("Notion %q properties have no Anytype counterpart and were skipped", value.Type)).About(name))
 		return domain.Invalid(), nil, nil
 	}
 }
@@ -390,8 +496,10 @@ func (c *Converter) dateDetail(ctx context.Context, pageId, scope, name string, 
 	start, _, err := parseNotionDate(date.Start, date.TimeZone)
 	if err != nil {
 		// v1 imported malformed dates as epoch 0.
-		sink.Issue(importv2.Warning(importv2.IssueDataLoss, pageId,
-			fmt.Sprintf("property %q: %s; value omitted", name, err)))
+		sink.Issue(importv2.Issue{
+			Severity: importv2.SeverityWarning, Code: importv2.IssueDataLoss, SourceKey: pageId, Subject: name,
+			Message: "A date Notion returned could not be read, so the value was left empty", Err: err,
+		})
 		return domain.Invalid(), nil, nil
 	}
 	var companion *companionDetail
@@ -410,7 +518,7 @@ func (c *Converter) dateDetail(ctx context.Context, pageId, scope, name string, 
 			companion = &companionDetail{def: endDef, value: domain.Int64(end)}
 		} else {
 			sink.Issue(importv2.Warning(importv2.IssueDataLoss, pageId,
-				fmt.Sprintf("property %q: unparseable range end; dropped", name)))
+				"The end of a date range could not be read and was dropped").About(name))
 		}
 	}
 	return domain.Int64(start), companion, nil
@@ -475,11 +583,11 @@ func (c *Converter) rollupDetail(pageId, name string, rollup *rollupValue, sink 
 		return domain.Invalid(), nil, nil
 	case "incomplete":
 		sink.Issue(importv2.Warning(importv2.IssueDataLoss, pageId,
-			fmt.Sprintf("rollup %q aggregates more than 25 relations and was returned incomplete; value omitted", name)))
+			"Notion returns rollups over more than 25 relations incomplete, so the value was left empty").About(name))
 		return domain.Invalid(), nil, nil
 	case "unsupported":
 		sink.Issue(importv2.Warning(importv2.IssueDataLoss, pageId,
-			fmt.Sprintf("rollup %q uses an aggregation the API does not expose; value omitted", name)))
+			"Notion's API does not expose this kind of rollup, so the value was left empty").About(name))
 		return domain.Invalid(), nil, nil
 	case "array":
 		parts := make([]string, 0, len(rollup.Array))
@@ -489,7 +597,7 @@ func (c *Converter) rollupDetail(pageId, name string, rollup *rollupValue, sink 
 			}
 		}
 		sink.Issue(importv2.Warning(importv2.IssueDataLoss, pageId,
-			fmt.Sprintf("rollup %q flattened to text (arrays have no anytype counterpart)", name)))
+			"Rollups that return several values were flattened to text: Anytype has no rollup property").About(name))
 		return domain.String(strings.Join(parts, ", ")), nil, nil
 	default:
 		return domain.Invalid(), nil, nil
@@ -641,8 +749,11 @@ func (c *Converter) completeRelationRefs(ctx context.Context, pageId, name strin
 // truncationWarning reports a failed >25-item property completion: the
 // truncated prefix from the page object is kept, but never silently.
 func truncationWarning(pageId, name string, err error) importv2.Issue {
-	return importv2.Warning(importv2.IssueDataLoss, pageId,
-		fmt.Sprintf("property %q: completing the value past %d items failed (%s); the truncated value was kept", name, propertyItemsThreshold, err))
+	return importv2.Issue{
+		Severity: importv2.SeverityWarning, Code: importv2.IssueDataLoss, SourceKey: pageId, Subject: name,
+		Message: fmt.Sprintf("Notion returns only the first %d values of a property inline, and the rest could not be fetched: the value was kept as far as it goes", propertyItemsThreshold),
+		Err:     err,
+	}
 }
 
 type propertyItem struct {

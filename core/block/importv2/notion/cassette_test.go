@@ -106,16 +106,40 @@ func TestCassetteWorkspace(t *testing.T) {
 			// workspace's teamspace templates reuse slug ids ("project",
 			// "status") across databases, which collapsed unrelated properties
 			// onto one relation.
-			Objects:        875,
+			Objects:        832,
 			FileObjects:    41,
 			RootCandidates: 13,
-			Blocks:         5039,
-			MentionMarks:   1466,
-			LinkMarks:      62,
+			// 832: +2 relations for the two "Place" properties, which now
+			// import their address as text instead of being skipped, and
+			// -45 empty database rows. Those rows have no name, no value in
+			// any column and nothing on them — 45 of them are the blank
+			// filler rows of one Notion contact-list template — and every
+			// one used to land in the space as another "Untitled" object.
+			// Nothing in the workspace references them.
+			// 4451: 606 placeholder paragraphs are gone. 435 of them read
+			// "Unsupported block (unsupported)" — Notion buttons, which the
+			// API refuses to expose and which have no content to stand in
+			// for — and 171 read "Unresolved link: Untitled", one per linked
+			// database view. Both are reported instead, per page, with a
+			// count. Placeholders remain wherever the content really exists
+			// and Anytype has no counterpart — and they now keep their
+			// children, which is the +18: the notes inside 3 Notion AI
+			// transcription blocks (paragraphs, bullets, to-dos) were
+			// fetched and then dropped.
+			Blocks:       4451,
+			MentionMarks: 1468, // +2: mentions inside those recovered notes
+			LinkMarks:    62,
 			IssuesByCode: map[importv2.IssueCode]int{
-				importv2.IssueDataLoss:         341,
+				// 261: the 45 skipped rows each report themselves (an info,
+				// which the completeness invariant requires and the report
+				// rolls up under their database).
+				// Before them, 216 from 341: Notion button properties no longer report
+				// a loss per row (112 of them) — a button holds no value,
+				// so the schema notes it once — and place properties now
+				// import instead of being skipped (17).
+				importv2.IssueDataLoss:         261,
 				importv2.IssueMissingTarget:    171,
-				importv2.IssueUnsupportedBlock: 438,
+				importv2.IssueUnsupportedBlock: 435, // the 3 transcriptions now import
 				// 10 databases in the recorded workspace match the naive
 				// type suggestor (§11.5): Tasks/Notes/People/Projects by
 				// name, CRM via email+phone, 5 trackers via due+status

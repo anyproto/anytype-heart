@@ -405,11 +405,14 @@ func TestScriptedWorkspace(t *testing.T) {
 		assert.Equal(t, "lost image", caption.GetText().GetText())
 		var warned bool
 		for _, issue := range sink.issues {
-			if issue.Code == importv2.IssueDataLoss && issue.SourceKey == "m1" {
+			// Keyed by the PAGE, not the block: a block id resolves to
+			// nothing a reader can open, so the report could neither name
+			// nor link it.
+			if issue.Code == importv2.IssueDataLoss && issue.SourceKey == "p2" && issue.Subject == "image" {
 				warned = true
 			}
 		}
-		assert.True(t, warned, "empty-url media must report dataLoss, not vanish silently")
+		assert.True(t, warned, "empty-url media must report dataLoss against its page, not vanish silently")
 
 		require.NotNil(t, blocks["m2"])
 		require.NotNil(t, blocks["m3"])

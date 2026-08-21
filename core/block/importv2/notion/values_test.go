@@ -54,3 +54,25 @@ func TestParseNotionDate(t *testing.T) {
 		}
 	})
 }
+
+func TestPlaceValueText(t *testing.T) {
+	// Notion's place property carries what the user picked on a map. Anytype
+	// has no place format, but the text is real data.
+	cases := []struct {
+		name  string
+		place *placeValue
+		want  string
+	}{
+		{"name and a fuller address read as one line", &placeValue{Name: "Golden Gate Bridge", Address: "Golden Gate Brg, San Francisco, CA"}, "Golden Gate Bridge, Golden Gate Brg, San Francisco, CA"},
+		{"an address that repeats the name is not said twice", &placeValue{Name: "1 Apple Park Way, Cupertino", Address: "1 Apple Park Way, Cupertino"}, "1 Apple Park Way, Cupertino"},
+		{"an address that starts with the name is not said twice", &placeValue{Name: "The Kremlin", Address: "The Kremlin, Nizhny Novgorod"}, "The Kremlin"},
+		{"a place with only an address keeps it", &placeValue{Address: "Church St, New York"}, "Church St, New York"},
+		{"an empty place is no value at all", &placeValue{}, ""},
+		{"no place at all", nil, ""},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			assert.Equal(t, c.want, c.place.text())
+		})
+	}
+}

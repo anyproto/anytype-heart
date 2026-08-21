@@ -87,16 +87,16 @@ func (c *Converter) convertDatabase(ctx context.Context, stub Entity, sink impor
 			// of the schema committing a generic text format.
 			if planProp.Key != "" {
 				sink.Issue(importv2.Warning(importv2.IssueLLMPlanEntryDropped, stub.Id,
-					fmt.Sprintf("property %q is value-typed and cannot be remapped", name)))
+					"Formula and rollup properties take their type from their values, so the suggested mapping could not be applied").About(name))
 			}
 			continue
 		}
 		if property.Type == "verification" {
 			sink.Issue(importv2.Warning(importv2.IssueDataLoss, stub.Id,
-				fmt.Sprintf("property %q (verification) has no anytype counterpart and was skipped", name)))
+				`Notion "verification" properties have no Anytype counterpart and were skipped`).About(name))
 			continue
 		}
-		def, err := c.emitProperty(ctx, c.propertyScope(stub.Id), property, planProp, database.title(), sink)
+		def, err := c.emitProperty(ctx, c.propertyScope(stub.Id), property, planProp, container{key: stub.Id, name: database.title(), schema: true}, sink)
 		if err != nil {
 			return err
 		}
@@ -170,18 +170,45 @@ func (c *Converter) suggestPageType(entityId, schemaId string, database *databas
 	}
 	c.suggestedTypes[entityId] = suggestion.TypeKey
 	c.suggestedTypes[schemaId] = suggestion.TypeKey
-	sink.Issue(importv2.Info(importv2.IssueTypeSuggested,
-		fmt.Sprintf("database %q pages imported as %s (%s)", database.title(), suggestion.TypeKey, suggestion.Reason)))
+	sink.Issue(importv2.Issue{
+		Severity: importv2.SeverityInfo, Code: importv2.IssueTypeSuggested, SourceKey: entityId,
+		Subject: database.title(),
+		Message: fmt.Sprintf("Rows were imported as the %q type (%s)", suggestion.TypeKey, suggestion.Reason),
+	})
 }
 
 // emitProperty resolves one property against the shared store and emits the
 // relation and its schema-declared options on first sight. A non-zero
 // planProp redirects the property onto the plan's target relation instead of
 // minting one from the notion id (docs/ImportV2LLM.md §4).
-func (c *Converter) emitProperty(ctx context.Context, scope string, property propertySchema, planProp schemaplan.PropertyPlan, containerName string, sink importv2.Sink) (*relationDef, error) {
+// container identifies what a property belongs to, for reporting: the source
+// key so the report can link the database (or page) the user knows, and its
+// title for the property-mapping note. Property ids are Notion's own
+// ("%40egk") and mean nothing to a reader, so they are never the source key.
+type container struct {
+	key  string
+	name string
+	// schema marks the database's own declaration of a property, as opposed
+	// to the copy every row carries. Unsupported types are reported from the
+	// schema only: reporting per row said the same thing 112 times about one
+	// workspace's button columns.
+	schema bool
+}
+
+func (c *Converter) emitProperty(ctx context.Context, scope string, property propertySchema, planProp schemaplan.PropertyPlan, owner container, sink importv2.Sink) (*relationDef, error) {
 	if _, supported := relationFormatOf(property.Type); !supported {
-		sink.Issue(importv2.Warning(importv2.IssueDataLoss, property.Id,
-			fmt.Sprintf("property %q of type %q is not supported and was skipped", property.Name, property.Type)))
+		switch {
+		case !owner.schema:
+			// The database that declares this property already reported it.
+		case valuelessProperty(property.Type):
+			sink.Issue(importv2.Issue{
+				Severity: importv2.SeverityInfo, Code: importv2.IssueDataLoss, SourceKey: owner.key, Subject: property.Name,
+				Message: fmt.Sprintf("Notion %q properties hold no value, so there was nothing to import", property.Type),
+			})
+		default:
+			sink.Issue(importv2.Warning(importv2.IssueDataLoss, owner.key,
+				fmt.Sprintf("Notion %q properties have no Anytype counterpart and were skipped", property.Type)).About(property.Name))
+		}
 		return nil, nil
 	}
 	var def *relationDef
@@ -191,12 +218,12 @@ func (c *Converter) emitProperty(ctx context.Context, scope string, property pro
 		if def == nil {
 			// The shared target settled on a format this property's values
 			// cannot carry — degrade to the unplanned path, loudly.
-			sink.Issue(importv2.Warning(importv2.IssueLLMPlanEntryDropped, property.Id,
-				fmt.Sprintf("property %q cannot share target %q (format mismatch); imported unmapped", property.Name, planProp.Key)))
+			sink.Issue(importv2.Warning(importv2.IssueLLMPlanEntryDropped, owner.key,
+				"This property could not share the suggested relation (its values do not fit that format) and was imported on its own").About(property.Name))
 			def, created = c.properties.resolveRelation(scope, property)
 		} else {
 			sink.Issue(importv2.Info(importv2.IssuePropertyMapped,
-				fmt.Sprintf("database %q property %q imported as %q (%s)", containerName, property.Name, def.name, def.key)))
+				fmt.Sprintf("database %q property %q imported as %q (%s)", owner.name, property.Name, def.name, def.key)))
 		}
 	} else {
 		def, created = c.properties.resolveRelation(scope, property)

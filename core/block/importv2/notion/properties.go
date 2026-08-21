@@ -319,15 +319,27 @@ func relationFormatOf(propertyType string) (model.RelationFormat, bool) {
 		return model.RelationFormat_object, true
 	case "unique_id":
 		return model.RelationFormat_longtext, true
+	case "place":
+		// Notion's place value carries a human address and a display name
+		// (plus coordinates Anytype has nowhere to put); the text is real
+		// user data and used to be dropped as "not supported".
+		return model.RelationFormat_longtext, true
 	case "formula":
 		return model.RelationFormat_shorttext, true
 	case "rollup":
 		return model.RelationFormat_longtext, true
 	default:
-		// verification and future types: deliberate skip with an issue at
-		// the call site.
+		// verification, button and future types: deliberate skip with an
+		// issue at the call site.
 		return 0, false
 	}
+}
+
+// valuelessProperty reports a Notion property type that holds no value at
+// all. A button is an action someone clicks; there is no data behind it, so
+// "was skipped" would report the loss of something that never existed.
+func valuelessProperty(propertyType string) bool {
+	return propertyType == "button"
 }
 
 func relationObject(def *relationDef) *importv2.Object {

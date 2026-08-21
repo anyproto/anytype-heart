@@ -365,6 +365,9 @@ func (c *Converter) applyPlanType(entityId, schemaId string, database *databaseO
 	}
 	c.suggestedTypes[entityId] = typeKey
 	c.suggestedTypes[schemaId] = typeKey
-	sink.Issue(importv2.Info(importv2.IssueTypeSuggested,
-		fmt.Sprintf("database %q pages imported as %s (%s)", database.title(), typeKey, containerPlan.Reason)))
+	sink.Issue(importv2.Issue{
+		Severity: importv2.SeverityInfo, Code: importv2.IssueTypeSuggested, SourceKey: entityId,
+		Subject: database.title(),
+		Message: fmt.Sprintf("Rows were imported as the %q type (%s)", typeKey, containerPlan.Reason),
+	})
 }

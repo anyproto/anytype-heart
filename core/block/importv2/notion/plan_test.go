@@ -113,7 +113,7 @@ func TestScriptedPlan(t *testing.T) {
 		// observability: typeSuggested with the plan reason + propertyMapped
 		suggested := issueMessages(sink, importv2.IssueTypeSuggested)
 		require.Len(t, suggested, 1)
-		assert.Contains(t, suggested[0], `database "Tasks" pages imported as `+mintedType.String()+` (LLM plan)`)
+		assert.Contains(t, suggested[0], `Rows were imported as the "`+mintedType.String()+`" type (LLM plan)`)
 		mapped := issueMessages(sink, importv2.IssuePropertyMapped)
 		require.Len(t, mapped, 1)
 		assert.Contains(t, mapped[0], `property "Score" imported as "Effort"`)
@@ -188,7 +188,7 @@ func TestScriptedPlan(t *testing.T) {
 		assert.Contains(t, failed[0], "imported with built-in rules")
 		suggested := issueMessages(sink, importv2.IssueTypeSuggested)
 		require.Len(t, suggested, 1)
-		assert.True(t, strings.Contains(suggested[0], "imported as task (container name)"), suggested[0])
+		assert.True(t, strings.Contains(suggested[0], `as the "task" type (container name)`), suggested[0])
 	})
 
 	t.Run("hallucinated plan entries are dropped loudly, import unharmed", func(t *testing.T) {
@@ -219,7 +219,7 @@ func TestScriptedPlan(t *testing.T) {
 		// then — same verdict the suggestor produced before the plan phase
 		suggested := issueMessages(sink, importv2.IssueTypeSuggested)
 		require.Len(t, suggested, 1)
-		assert.Contains(t, suggested[0], `database "Tasks" pages imported as task (container name)`)
+		assert.Contains(t, suggested[0], `Rows were imported as the "task" type (container name)`)
 		assert.Empty(t, issueMessages(sink, importv2.IssuePropertyMapped))
 	})
 }

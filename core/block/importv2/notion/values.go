@@ -93,6 +93,14 @@ func (c *Converter) applyIcon(ctx context.Context, object *importv2.Object, icon
 	if icon != nil {
 		if icon.Type == "emoji" && icon.Emoji != "" {
 			object.Payload.Details.SetString(bundle.RelationKeyIconEmoji, icon.Emoji)
+		} else if emoji := emojiForNotionIcon(icon); emoji != "" {
+			// One of Notion's built-in icons on something that is not a
+			// type. Named icons are a type-only feature in Anytype (the API
+			// rejects them elsewhere and the client renders them only for
+			// the object-type layout), so the page keeps its icon as the
+			// nearest emoji instead of importing bare. Types take the named
+			// icon itself, in applyDatabaseTypeIcon.
+			object.Payload.Details.SetString(bundle.RelationKeyIconEmoji, emoji)
 		} else if iconUrl := icon.fileUrl(); iconUrl != "" {
 			refresh := c.entityUrlRefresher(refreshPath, func(fresh *iconValue, _ *fileValue) string {
 				return fresh.fileUrl()

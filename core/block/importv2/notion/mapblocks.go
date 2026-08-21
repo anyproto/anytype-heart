@@ -56,7 +56,24 @@ type textPayload struct {
 	Url          string     `json:"url"`
 }
 
+var zzMapped = map[string]int{}
+var zzDropped = map[string]int{}
+var zzDroppedNonEmpty = map[string]int{}
+
+func zzCountDropped(blocks []notionBlock) {
+	for i := range blocks {
+		b := &blocks[i]
+		zzDropped[b.Type]++
+		var pl textPayload
+		if err := b.decode(&pl); err == nil && plainText(pl.RichText) != "" {
+			zzDroppedNonEmpty[b.Type]++
+		}
+		zzCountDropped(b.children)
+	}
+}
+
 func (c *Converter) mapBlock(ctx context.Context, mctx mapContext, block *notionBlock, sink importv2.Sink) ([]*mappedBlock, error) {
+	zzMapped[block.Type]++
 	switch block.Type {
 	case "paragraph":
 		return c.mapText(ctx, mctx, block, model.BlockContentText_Paragraph, sink)
@@ -85,7 +102,7 @@ func (c *Converter) mapBlock(ctx context.Context, mctx mapContext, block *notion
 	case "equation":
 		var payload textPayload
 		if err := block.decode(&payload); err != nil {
-			return c.unsupported(block, sink), nil
+			return c.unsupported(ctx, mctx, block, sink)
 		}
 		return []*mappedBlock{latexBlock(block.Id, payload.Expression, model.BlockContentLatex_Latex)}, nil
 	case "divider":
@@ -103,29 +120,29 @@ func (c *Converter) mapBlock(ctx context.Context, mctx mapContext, block *notion
 	case "column":
 		return c.mapLayout(ctx, mctx, block, model.BlockContentLayout_Column, sink)
 	case "table":
-		return c.mapTable(ctx, block, sink)
+		return c.mapTable(ctx, mctx, block, sink)
 	case "image":
-		return c.mapFile(ctx, block, model.BlockContentFile_Image, sink)
+		return c.mapFile(ctx, mctx, block, model.BlockContentFile_Image, sink)
 	case "pdf":
-		return c.mapFile(ctx, block, model.BlockContentFile_PDF, sink)
+		return c.mapFile(ctx, mctx, block, model.BlockContentFile_PDF, sink)
 	case "file":
-		return c.mapFile(ctx, block, model.BlockContentFile_File, sink)
+		return c.mapFile(ctx, mctx, block, model.BlockContentFile_File, sink)
 	case "video":
-		return c.mapMedia(ctx, block, model.BlockContentFile_Video, sink)
+		return c.mapMedia(ctx, mctx, block, model.BlockContentFile_Video, sink)
 	case "audio":
-		return c.mapMedia(ctx, block, model.BlockContentFile_Audio, sink)
+		return c.mapMedia(ctx, mctx, block, model.BlockContentFile_Audio, sink)
 	case "embed":
-		return c.mapEmbed(block, sink)
+		return c.mapEmbed(ctx, mctx, block, sink)
 	case "link_preview":
 		var payload textPayload
 		if err := block.decode(&payload); err != nil || payload.Url == "" {
-			return c.unsupported(block, sink), nil
+			return c.unsupported(ctx, mctx, block, sink)
 		}
 		return []*mappedBlock{textLinkBlock(block.Id, payload.Url, payload.Url)}, nil
 	case "bookmark":
 		var payload textPayload
 		if err := block.decode(&payload); err != nil {
-			return c.unsupported(block, sink), nil
+			return c.unsupported(ctx, mctx, block, sink)
 		}
 		return []*mappedBlock{{block: &model.Block{
 			Id: block.Id,
@@ -139,12 +156,14 @@ func (c *Converter) mapBlock(ctx context.Context, mctx mapContext, block *notion
 	case "child_database":
 		return c.mapChildEntity(ctx, mctx, block, true, sink)
 	case "link_to_page":
-		return c.mapLinkToPage(ctx, block, sink)
+		return c.mapLinkToPage(ctx, mctx, block, sink)
+	case "transcription":
+		return c.mapTranscription(ctx, mctx, block, sink)
 	case "synced_block":
 		// Transparent container: the (already resolved) content hoists up.
 		return c.mapBlocks(ctx, mctx, block.children, sink)
 	default:
-		return c.unsupported(block, sink), nil
+		return c.unsupported(ctx, mctx, block, sink)
 	}
 }
 
@@ -154,7 +173,7 @@ func (c *Converter) mapBlock(ctx context.Context, mctx mapContext, block *notion
 func (c *Converter) mapText(ctx context.Context, mctx mapContext, block *notionBlock, style model.BlockContentTextStyle, sink importv2.Sink) ([]*mappedBlock, error) {
 	var payload textPayload
 	if err := block.decode(&payload); err != nil {
-		return c.unsupported(block, sink), nil
+		return c.unsupported(ctx, mctx, block, sink)
 	}
 	children, err := c.mapBlocks(ctx, mctx, block.children, sink)
 	if err != nil {
@@ -214,6 +233,11 @@ func (c *Converter) mapText(ctx context.Context, mctx mapContext, block *notionB
 		text := primary.block.GetText()
 		if payload.Icon.Type == "emoji" {
 			text.IconEmoji = payload.Icon.Emoji
+		} else if emoji := emojiForNotionIcon(payload.Icon); emoji != "" {
+			// A callout wearing one of Notion's built-in icons: a block has
+			// no named-icon channel, so the nearest emoji carries it rather
+			// than the callout arriving bare.
+			text.IconEmoji = emoji
 		} else if iconUrl := payload.Icon.fileUrl(); iconUrl != "" {
 			refresh := c.blockUrlRefresher(block.notionId(), func(b *notionBlock) string {
 				var fresh textPayload
@@ -235,7 +259,7 @@ func (c *Converter) mapText(ctx context.Context, mctx mapContext, block *notionB
 func (c *Converter) mapCode(ctx context.Context, mctx mapContext, block *notionBlock, sink importv2.Sink) ([]*mappedBlock, error) {
 	var payload textPayload
 	if err := block.decode(&payload); err != nil {
-		return c.unsupported(block, sink), nil
+		return c.unsupported(ctx, mctx, block, sink)
 	}
 	if payload.Language == "mermaid" {
 		return []*mappedBlock{latexBlock(block.Id, plainText(payload.RichText), model.BlockContentLatex_Mermaid)}, nil
@@ -280,19 +304,19 @@ type filePayload struct {
 // (the API returns "" when the file has no content or the integration lacks
 // access) — an accurate warning, not a false "unsupported block type", and
 // any caption is preserved.
-func (c *Converter) emptyMedia(block *notionBlock, caption []richText, sink importv2.Sink) []*mappedBlock {
-	sink.Issue(importv2.Warning(importv2.IssueDataLoss, block.Id,
-		fmt.Sprintf("%s block has no accessible URL (empty or not shared with the integration); skipped", block.Type)))
+func (c *Converter) emptyMedia(mctx mapContext, block *notionBlock, caption []richText, sink importv2.Sink) []*mappedBlock {
+	sink.Issue(importv2.Warning(importv2.IssueDataLoss, mctx.pageId,
+		"Notion returned no URL for these files, so they could not be downloaded (the file is empty, or not shared with the integration)").About(block.Type))
 	return c.captionBlocks(block.Id, caption)
 }
 
-func (c *Converter) mapFile(ctx context.Context, block *notionBlock, fileType model.BlockContentFileType, sink importv2.Sink) ([]*mappedBlock, error) {
+func (c *Converter) mapFile(ctx context.Context, mctx mapContext, block *notionBlock, fileType model.BlockContentFileType, sink importv2.Sink) ([]*mappedBlock, error) {
 	var payload filePayload
 	if err := block.decode(&payload); err != nil {
-		return c.unsupported(block, sink), nil
+		return c.unsupported(ctx, mctx, block, sink)
 	}
 	if payload.url() == "" {
-		return c.emptyMedia(block, payload.Caption, sink), nil
+		return c.emptyMedia(mctx, block, payload.Caption, sink), nil
 	}
 	refresh := c.blockUrlRefresher(block.notionId(), func(b *notionBlock) string {
 		var fresh filePayload
@@ -319,29 +343,29 @@ func (c *Converter) mapFile(ctx context.Context, block *notionBlock, fileType mo
 
 // mapMedia embeds recognized streaming services as latex processors and
 // imports everything else as a file.
-func (c *Converter) mapMedia(ctx context.Context, block *notionBlock, fileType model.BlockContentFileType, sink importv2.Sink) ([]*mappedBlock, error) {
+func (c *Converter) mapMedia(ctx context.Context, mctx mapContext, block *notionBlock, fileType model.BlockContentFileType, sink importv2.Sink) ([]*mappedBlock, error) {
 	var payload filePayload
 	if err := block.decode(&payload); err != nil {
-		return c.unsupported(block, sink), nil
+		return c.unsupported(ctx, mctx, block, sink)
 	}
 	if payload.url() == "" {
-		return c.emptyMedia(block, payload.Caption, sink), nil
+		return c.emptyMedia(mctx, block, payload.Caption, sink), nil
 	}
 	mediaUrl := payload.url()
 	if processor, ok := embedProcessorOf(mediaUrl); ok {
 		nodes := []*mappedBlock{latexBlock(block.Id, mediaUrl, processor)}
 		return append(nodes, c.captionBlocks(block.Id, payload.Caption)...), nil
 	}
-	return c.mapFile(ctx, block, fileType, sink)
+	return c.mapFile(ctx, mctx, block, fileType, sink)
 }
 
-func (c *Converter) mapEmbed(block *notionBlock, sink importv2.Sink) ([]*mappedBlock, error) {
+func (c *Converter) mapEmbed(ctx context.Context, mctx mapContext, block *notionBlock, sink importv2.Sink) ([]*mappedBlock, error) {
 	var payload textPayload
 	if err := block.decode(&payload); err != nil {
-		return c.unsupported(block, sink), nil
+		return c.unsupported(ctx, mctx, block, sink)
 	}
 	if payload.Url == "" {
-		return c.emptyMedia(block, payload.Caption, sink), nil
+		return c.emptyMedia(mctx, block, payload.Caption, sink), nil
 	}
 	if processor, ok := embedProcessorOf(payload.Url); ok {
 		nodes := []*mappedBlock{latexBlock(block.Id, payload.Url, processor)}
@@ -403,14 +427,14 @@ type tableRowPayload struct {
 // Anytype cell ids are `rowID-colID` with exactly one dash (ParseCellID
 // splits on the first dash; IsTableCell rejects multi-dash ids), so row and
 // column ids derive from the dashed Notion UUIDs with the dashes stripped.
-func (c *Converter) mapTable(ctx context.Context, block *notionBlock, sink importv2.Sink) ([]*mappedBlock, error) {
+func (c *Converter) mapTable(ctx context.Context, mctx mapContext, block *notionBlock, sink importv2.Sink) ([]*mappedBlock, error) {
 	var payload tablePayload
 	if err := block.decode(&payload); err != nil {
-		return c.unsupported(block, sink), nil
+		return c.unsupported(ctx, mctx, block, sink)
 	}
 	if payload.HasRowHeader {
-		sink.Issue(importv2.Warning(importv2.IssueDataLoss, block.Id,
-			"table row headers (first column) have no anytype counterpart; imported as regular cells"))
+		sink.Issue(importv2.Warning(importv2.IssueDataLoss, mctx.pageId,
+			"Anytype tables have no row headers, so the first column imported as regular cells"))
 	}
 
 	columns := make([]*mappedBlock, 0, payload.TableWidth)
@@ -495,7 +519,7 @@ type childEntityPayload struct {
 func (c *Converter) mapChildEntity(ctx context.Context, mctx mapContext, block *notionBlock, wantDatabase bool, sink importv2.Sink) ([]*mappedBlock, error) {
 	var payload childEntityPayload
 	if err := block.decode(&payload); err != nil {
-		return c.unsupported(block, sink), nil
+		return c.unsupported(ctx, mctx, block, sink)
 	}
 
 	// A child_page block's own id IS the child page's id; a child_database
@@ -528,8 +552,27 @@ func (c *Converter) mapChildEntity(ctx context.Context, mctx mapContext, block *
 		}
 	}
 	if targetId == "" {
+		// A child_database block that is not fetchable as a database is a
+		// LINKED VIEW: Notion renders another database inside this page and
+		// the API hands back the view block's own id, never the database it
+		// shows. 171 of the 199 child_database blocks in one real workspace
+		// were these, every one titled "Untitled" — so they are reported as
+		// what they are, and leave no "Unresolved link: Untitled" line
+		// behind.
+		if wantDatabase {
+			// The title is the view's, and Notion leaves it "Untitled"
+			// unless someone renamed the view — carrying that into the
+			// report would add a subject that says nothing.
+			issue := importv2.Warning(importv2.IssueMissingTarget, mctx.pageId,
+				"A linked database view could not be imported: Notion's API does not say which database it shows")
+			if title := payload.Title; title != "" && title != "Untitled" {
+				issue = issue.About(title)
+			}
+			sink.Issue(issue)
+			return nil, nil
+		}
 		sink.Issue(importv2.Warning(importv2.IssueMissingTarget, mctx.pageId,
-			fmt.Sprintf("child %q could not be resolved", payload.Title)))
+			"A subpage could not be linked: it was not part of this import").About(payload.Title))
 		return []*mappedBlock{textBlock(block.Id, fmt.Sprintf("Unresolved link: %s", payload.Title))}, nil
 	}
 	return []*mappedBlock{{block: &model.Block{
@@ -542,6 +585,14 @@ func (c *Converter) mapChildEntity(ctx context.Context, mctx mapContext, block *
 }
 
 func (c *Converter) resolveChildByTitle(mctx mapContext, title string, wantDatabase bool) string {
+	// "Untitled" is what Notion calls every unnamed database AND every
+	// linked view, so matching on it is not evidence of anything: in a
+	// workspace with one unnamed database, every linked view in the import
+	// would resolve to that one database and every page would link somewhere
+	// its author never pointed.
+	if title == "" || title == "Untitled" {
+		return ""
+	}
 	var withinPage, global []string
 	for _, entity := range c.entityById {
 		if entity.isCollectionLike() != wantDatabase || entity.Title != title {
@@ -571,10 +622,10 @@ type linkToPagePayload struct {
 	DatabaseId string `json:"database_id"`
 }
 
-func (c *Converter) mapLinkToPage(ctx context.Context, block *notionBlock, sink importv2.Sink) ([]*mappedBlock, error) {
+func (c *Converter) mapLinkToPage(ctx context.Context, mctx mapContext, block *notionBlock, sink importv2.Sink) ([]*mappedBlock, error) {
 	var payload linkToPagePayload
 	if err := block.decode(&payload); err != nil {
-		return c.unsupported(block, sink), nil
+		return c.unsupported(ctx, mctx, block, sink)
 	}
 	targetId, resolved := "", false
 	switch payload.Type {
@@ -591,8 +642,8 @@ func (c *Converter) mapLinkToPage(ctx context.Context, block *notionBlock, sink 
 		}
 	}
 	if !resolved || targetId == "" {
-		sink.Issue(importv2.Warning(importv2.IssueMissingTarget, block.Id,
-			"link_to_page target was not part of the import"))
+		sink.Issue(importv2.Warning(importv2.IssueMissingTarget, mctx.pageId,
+			"A link pointed at a Notion page that was not part of this import"))
 		return []*mappedBlock{textBlock(block.Id, "Unresolved link")}, nil
 	}
 	return []*mappedBlock{{block: &model.Block{
@@ -604,11 +655,86 @@ func (c *Converter) mapLinkToPage(ctx context.Context, block *notionBlock, sink 
 	}}}, nil
 }
 
-// unsupported is the uniform placeholder: nothing is silently dropped.
-func (c *Converter) unsupported(block *notionBlock, sink importv2.Sink) []*mappedBlock {
-	sink.Issue(importv2.Warning(importv2.IssueUnsupportedBlock, block.Id,
-		fmt.Sprintf("block type %q has no anytype counterpart; placeholder inserted", block.Type)))
-	return []*mappedBlock{textBlock(block.Id, fmt.Sprintf("Unsupported block (%s)", block.Type))}
+// unsupported handles a block that cannot be converted. There are two very
+// different reasons for that, and the report says which:
+//
+//   - Notion itself withheld the block. The API returns type "unsupported"
+//     with the real kind nested inside it ({"unsupported":{"block_type":
+//     "button"}}), so there is nothing to convert and nothing the user can
+//     do about it — 435 of the 5248 blocks in one real workspace were buttons
+//     reported this way. These leave NO placeholder: a page full of
+//     "Unsupported block (unsupported)" paragraphs is worse than the report
+//     line that already names the page and the count.
+//   - Anytype has no counterpart for a kind Notion did return. The content
+//     exists, so a placeholder marks the spot — and its children come with
+//     it, because they are ordinary blocks the importer already fetched and
+//     can render. Notion's AI meeting notes arrive this way: the transcript
+//     is a "transcription" block whose paragraphs, bullets and to-dos are
+//     its children, and dropping them lost the whole meeting.
+func (c *Converter) unsupported(ctx context.Context, mctx mapContext, block *notionBlock, sink importv2.Sink) ([]*mappedBlock, error) {
+	if kind, ok := notionWithheld(block); ok {
+		sink.Issue(importv2.Warning(importv2.IssueUnsupportedBlock, mctx.pageId,
+			"Notion's API does not return the contents of these blocks, so they could not be imported").About(kind))
+		return nil, nil
+	}
+	sink.Issue(importv2.Warning(importv2.IssueUnsupportedBlock, mctx.pageId,
+		"These blocks have no Anytype counterpart; a placeholder marks where they were").About(block.Type))
+	placeholder := textBlock(block.Id, fmt.Sprintf("Unsupported block (%s)", block.Type))
+	children, err := c.mapBlocks(ctx, mctx, block.children, sink)
+	if err != nil {
+		return nil, err
+	}
+	placeholder.children = children
+	return []*mappedBlock{placeholder}, nil
+}
+
+// mapTranscription renders Notion's AI meeting notes. The API returns the
+// transcript's title and hangs the notes themselves — paragraphs, bullets,
+// to-dos — underneath as ordinary child blocks, so the meeting imports as a
+// toggle: its title as the summary, its notes inside. Treating the block as
+// merely "unsupported" threw the notes away after paying to fetch them.
+func (c *Converter) mapTranscription(ctx context.Context, mctx mapContext, block *notionBlock, sink importv2.Sink) ([]*mappedBlock, error) {
+	var payload struct {
+		Title []richText `json:"title"`
+	}
+	if err := block.decode(&payload); err != nil {
+		return c.unsupported(ctx, mctx, block, sink)
+	}
+	children, err := c.mapBlocks(ctx, mctx, block.children, sink)
+	if err != nil {
+		return nil, err
+	}
+	rendered := c.renderRichText(payload.Title)
+	if rendered.text == "" {
+		rendered.text = "Meeting notes"
+	}
+	return []*mappedBlock{{
+		block: &model.Block{
+			Id: block.Id,
+			Content: &model.BlockContentOfText{Text: &model.BlockContentText{
+				Text:  rendered.text,
+				Style: model.BlockContentText_Toggle,
+				Marks: &model.BlockContentTextMarks{Marks: rendered.marks},
+			}},
+		},
+		children: children,
+	}}, nil
+}
+
+// notionWithheld reports the real kind of a block the API refused to expose.
+// The nested block_type is documented for type "unsupported"; an absent one
+// still means withheld, just unnamed.
+func notionWithheld(block *notionBlock) (string, bool) {
+	if block.Type != "unsupported" {
+		return "", false
+	}
+	var payload struct {
+		BlockType string `json:"block_type"`
+	}
+	if err := block.decode(&payload); err != nil || payload.BlockType == "" {
+		return "unknown", true
+	}
+	return payload.BlockType, true
 }
 
 func textBlock(id, text string) *mappedBlock {
