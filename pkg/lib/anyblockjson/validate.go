@@ -316,6 +316,37 @@ func collectSchemaLeaves(e *jsonschema.ValidationError, printer *message.Printer
 	if k, isName := e.ErrorKind.(*kind.PropertyNames); isName && spoken.names[k.Property] {
 		return nil
 	}
+	// `additionalProperties: false` — the closed-set check on the ENVELOPE and
+	// on the fixed-shape definitions — reports every unknown member of one
+	// object in a single verdict carried at the OBJECT's location. Flattened
+	// verbatim that is `additional properties 'refs' not allowed` at path ""
+	// for a document whose fault is one named member, which is the pathless
+	// verdict §12 rules out ("an issue names the member it is about"): inside a
+	// block the same fault comes back correctly addressed, because blocks close
+	// with `unevaluatedProperties`, which the library reports per member. So
+	// the verdict is split into one leaf per member here, each at its own
+	// pointer, and the names are sorted because the library collects them by
+	// ranging over the instance's map — two unknown members otherwise came back
+	// in a different order run to run.
+	//
+	// Unlike an unevaluated-property verdict these are never pruned, and that
+	// is not an oversight: `additionalProperties` consults `properties` and
+	// `patternProperties` of the SAME schema object, which always evaluate, so
+	// its verdict does not depend on a sibling subschema having succeeded — the
+	// unreliability the pruning exists for cannot arise here.
+	if k, isAdditional := e.ErrorKind.(*kind.AdditionalProperties); isAdditional {
+		at := jsonPath(e.InstanceLocation)
+		props := append([]string(nil), k.Properties...)
+		sort.Strings(props)
+		out := make([]schemaLeaf, 0, len(props))
+		for _, prop := range props {
+			out = append(out, schemaLeaf{
+				path:    at + "/" + escapeJSONPointer(prop),
+				message: unknownPropertyMessage(prop),
+			})
+		}
+		return out
+	}
 	if len(e.Causes) == 0 {
 		l := schemaLeaf{path: jsonPath(e.InstanceLocation), message: schemaIssueMessage(e, printer)}
 		if spoken.values[l.path] {
@@ -464,21 +495,44 @@ var schemaPropertyNames = sync.OnceValue(func() map[string]bool {
 // schemaIssueMessage renders one schema error. Unknown properties fail
 // against a `false` schema (unevaluatedProperties / removed keys), whose
 // stock text "false schema" names neither the rule nor the key — rewrite it
-// to name the property, with a migration hint for `children` (the error
-// every nested-era generator will hit).
+// to name the property, through the same renderer the envelope's closed-set
+// verdict uses, so a removed key reads the same wherever it is written.
 func schemaIssueMessage(e *jsonschema.ValidationError, printer *message.Printer) string {
 	if _, isFalse := e.ErrorKind.(*kind.FalseSchema); isFalse {
 		if toks := e.InstanceLocation; len(toks) > 0 {
 			prop := toks[len(toks)-1]
-			if prop == "children" {
-				return `property "children" is not allowed — the flat format has no children; nest with indent instead (§4)`
-			}
 			if _, err := strconv.Atoi(prop); err != nil { // numeric = array index, not a property
-				return fmt.Sprintf("property %q is not allowed", prop)
+				return unknownPropertyMessage(prop)
 			}
 		}
 	}
 	return e.ErrorKind.LocalizedString(printer)
+}
+
+// unknownPropertyMessage names a member no reading of the schema admits, and
+// carries a migration hint for the two names a document written against an
+// older grammar brings. Both hints exist because the bare verdict sends the
+// reader the wrong way, and the format's purpose is the generate → validate →
+// feed-back loop (§13):
+//
+//   - `children` is what every nested-era generator writes; told only that it
+//     is not allowed, the obvious repair is to drop the subtree rather than to
+//     flatten it into `indent` (§4).
+//   - `refs` is the object-reference legend this format used to carry (§9a).
+//     Told only that it is not allowed, the obvious repair is to delete the
+//     legend — which leaves behind exactly the short labels the legend was the
+//     only means of inverting, now addressing nothing. The version integer
+//     cannot say this either: the grammar changed under a version this reader
+//     still accepts, so `refs` is the one marker a pre-v0.20 document carries,
+//     and the message is where the reader is told what happened.
+func unknownPropertyMessage(prop string) string {
+	switch prop {
+	case "children":
+		return `property "children" is not allowed — the flat format has no children; nest with indent instead (§4)`
+	case "refs":
+		return `property "refs" is not allowed — the object-reference legend was removed: every object id is now written in full, on every shape, with no legend (§9a). This document was written by an older exporter; replace each short label it uses with the id "refs" maps that label to, then drop "refs". Dropping it alone leaves labels that address nothing`
+	}
+	return fmt.Sprintf("property %q is not allowed", prop)
 }
 
 // textBearing reports whether the block type's text is parsed for inline

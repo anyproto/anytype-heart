@@ -689,3 +689,43 @@ func TestValidate_PrefixProperty(t *testing.T) {
 		require.NoError(t, Validate([]byte(prefix)), "prefix of %d blocks", n)
 	}
 }
+
+// TestValidate_UnknownEnvelopeMembersAreAddressedOneByOne pins the general
+// rule the `refs` diagnostic is one case of: the envelope is closed with
+// `additionalProperties: false`, which the library reports as ONE verdict per
+// OBJECT — every unknown member named inside its text, at the object's own
+// location. Inside a block the same fault comes back per member (blocks close
+// with `unevaluatedProperties`), so before this the format's one promise about
+// issues — "an issue names the member it is about" (§12) — held everywhere but
+// the envelope, and exactly at the envelope is where a document written
+// against an older grammar fails.
+//
+// The fixture carries TWO unknown members whose sorted order is the reverse of
+// nothing in particular: the library builds its list by ranging over the
+// instance's map, so an unsorted reader answers in a different order run to
+// run, and this asserts the whole ordered slice rather than a set.
+func TestValidate_UnknownEnvelopeMembersAreAddressedOneByOne(t *testing.T) {
+	// given — one legend the format used to carry and one name it never had
+	doc := `{"version": 1, "refs": {"idxxx": "bafyreitarget"}, "zzz_unknown": 1,
+		"blocks": [{"type": "paragraph", "text": "x"}]}`
+	want := []string{"/refs", "/zzz_unknown"}
+
+	// when
+	err := Validate([]byte(doc))
+
+	// then
+	require.Error(t, err)
+	var ve *ValidationError
+	require.True(t, errors.As(err, &ve), "got %v", err)
+	got := make([]string, 0, len(ve.Issues))
+	for _, i := range ve.Issues {
+		got = append(got, i.Path)
+	}
+	assert.Equal(t, want, got,
+		"each unknown envelope member gets its own pointer, in a stable order")
+	for _, i := range ve.Issues {
+		assert.Contains(t, i.Message, "is not allowed")
+		assert.NotContains(t, i.Message, "zzz_unknown\", \"refs",
+			"no issue may still carry the merged list the split replaced")
+	}
+}

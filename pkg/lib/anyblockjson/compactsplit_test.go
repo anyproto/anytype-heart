@@ -232,8 +232,20 @@ func TestValidate_TheRefsLegendIsRefused(t *testing.T) {
 			"blocks": [{"id": "b1", "type": "paragraph",
 				"text": "ping <mention object_id=\"idxxx\">Roman</mention>"}]}`)
 		require.Len(t, got, 1, "got: %v", got)
-		assert.Equal(t, "", got[0].Path, "the root refusal addresses the envelope itself")
-		assert.Contains(t, got[0].Message, "'refs'", "and names the member to drop")
+		// the refusal addresses the MEMBER, not the envelope holding it: the
+		// schema's own closed-set verdict carries the object's location and
+		// named `refs` only inside its text, so a reader was handed an empty
+		// path for a fault it could point at (§12)
+		assert.Equal(t, "/refs", got[0].Path)
+		// and it says what happened. `version` is still 1 across the grammar
+		// change, so this message is the only place a pre-v0.20 document is
+		// told why it stopped validating — and the only place the reader is
+		// warned off the repair the bare verdict suggests
+		assert.Contains(t, got[0].Message, "§9a")
+		assert.Contains(t, got[0].Message, "written in full",
+			"the message states the rule that replaced the legend")
+		assert.Contains(t, got[0].Message, "address nothing",
+			"and warns that deleting the legend alone strands the labels it inverted")
 	})
 
 	t.Run("an empty legend is refused as well", func(t *testing.T) {
@@ -242,7 +254,8 @@ func TestValidate_TheRefsLegendIsRefused(t *testing.T) {
 		// this through
 		got := refused(t, `{"version": 1, "refs": {}}`)
 		require.Len(t, got, 1, "got: %v", got)
-		assert.Contains(t, got[0].Message, "'refs'")
+		assert.Equal(t, "/refs", got[0].Path)
+		assert.Contains(t, got[0].Message, "§9a")
 	})
 
 	t.Run("import refuses it too, so no reader takes the labels literally", func(t *testing.T) {
