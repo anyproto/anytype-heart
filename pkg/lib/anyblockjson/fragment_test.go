@@ -170,6 +170,105 @@ func TestMarshalBlockSubtree(t *testing.T) {
 	})
 }
 
+// fragmentLabelSubtree is two minted block ids, parent and child: the only
+// shape doc-local relabeling touches (isMintedLocalId).
+func fragmentLabelSubtree() []*model.Block {
+	return []*model.Block{
+		{Id: "64b2c1d2e3f4a5b6c7d8e9f0", ChildrenIds: []string{"1111111111111111111a1b2c"},
+			Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "parent"}}},
+		{Id: "1111111111111111111a1b2c",
+			Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "child"}}},
+	}
+}
+
+func fragmentIds(t *testing.T, out json.RawMessage) []string {
+	t.Helper()
+	var arr []struct {
+		Id string `json:"id"`
+	}
+	require.NoError(t, json.Unmarshal(out, &arr))
+	ids := make([]string, len(arr))
+	for i, b := range arr {
+		ids[i] = b.Id
+	}
+	return ids
+}
+
+// A fragment relabels its block ids under CompactBlockLabels and only then —
+// the same §9a rule the whole-document export follows, stated at the fragment
+// API because that is a second entry point into the exporter and it builds
+// its label plan itself.
+//
+// Without this the plan-building call in MarshalBlockSubtree was inert in
+// both directions: deleting it left the package green (nothing marshalled a
+// fragment under the flag), and so did calling it unconditionally. The second
+// half stays unobservable on purpose and is NOT a hole — the flag is checked
+// again where an id is written (exporter.localId), so the gate is a guard
+// against doing the census work, not against using it. What the gate decides
+// is whether the work happens; what the flag decides is whether the result is
+// consulted, and the two subtests below pin the outcome of both.
+func TestMarshalBlockSubtree_BlockLabelsFollowTheFlag(t *testing.T) {
+	full := []string{"64b2c1d2e3f4a5b6c7d8e9f0", "1111111111111111111a1b2c"}
+
+	t.Run("under CompactBlockLabels a minted id relabels to its suffix", func(t *testing.T) {
+		out, err := MarshalBlockSubtree(fragmentLabelSubtree(), Options{CompactBlockLabels: true})
+		require.NoError(t, err)
+		assert.Equal(t, []string{"8e9f0", "a1b2c"}, fragmentIds(t, out),
+			"the fragment builds its own label plan; without it the ids come back full")
+	})
+
+	t.Run("CompactIds is the same alias here as on a document", func(t *testing.T) {
+		viaAlias, err := MarshalBlockSubtree(fragmentLabelSubtree(), Options{CompactIds: true})
+		require.NoError(t, err)
+		viaFlag, err := MarshalBlockSubtree(fragmentLabelSubtree(), Options{CompactBlockLabels: true})
+		require.NoError(t, err)
+		assert.Equal(t, string(viaFlag), string(viaAlias))
+	})
+
+	t.Run("without the flag every id stays full", func(t *testing.T) {
+		out, err := MarshalBlockSubtree(fragmentLabelSubtree(), Options{})
+		require.NoError(t, err)
+		assert.Equal(t, full, fragmentIds(t, out))
+	})
+}
+
+// A fragment has no envelope, so it can carry no legend — which is why the
+// only compaction it may do is the legend-less one. Object references are
+// therefore written in full here under EVERY option, exactly as in a whole
+// document (§9a).
+//
+// This is the surviving, testable half of what 42396b448 fixed in passing:
+// the fragment used to build its plan under the object-ref flag too, and
+// emitted short object labels into an array that had nowhere to define them.
+// That flag is deleted, so the bug is gone by construction and cannot be
+// reproduced; what can be pinned is the property that made it a bug, and this
+// fails the moment any legend-backed compaction reaches the fragment path
+// again.
+func TestMarshalBlockSubtree_ObjectRefsAreNeverCompacted(t *testing.T) {
+	const target = "bafyreimentiontargetidxxx"
+	subtree := []*model.Block{{Id: "64b2c1d2e3f4a5b6c7d8e9f0",
+		Content: &model.BlockContentOfText{Text: &model.BlockContentText{
+			Text: "ping Roman", Marks: &model.BlockContentTextMarks{
+				Marks: []*model.BlockContentTextMark{{
+					Range: &model.Range{From: 5, To: 10},
+					Type:  model.BlockContentTextMark_Mention, Param: target}}}}}}}
+
+	for name, opts := range map[string]Options{
+		"default":            {},
+		"CompactBlockLabels": {CompactBlockLabels: true},
+		"CompactIds":         {CompactIds: true},
+		"OmitIds":            {OmitIds: true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			out, err := MarshalBlockSubtree(subtree, opts)
+			require.NoError(t, err)
+			assert.Contains(t, string(out), `object_id=\"`+target+`\"`,
+				"the mention target must be spelled in full — a fragment has nowhere to define a label")
+			assert.NotContains(t, string(out), `object_id=\"idxxx\"`)
+		})
+	}
+}
+
 func TestUnmarshalPropertyValue(t *testing.T) {
 	t.Run("date strings parse per §3", func(t *testing.T) {
 		v := UnmarshalPropertyValue("dueDate", "2026-07-30", Options{})
