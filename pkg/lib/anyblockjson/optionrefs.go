@@ -137,6 +137,25 @@ func (e *exporter) buildOptionIds() map[string]map[string]string {
 	return out
 }
 
+// optionIdsFor is the value-level slice of buildOptionIds: the {name: id}
+// map recorded for ONE stored key, ungrouped and unslugged, because a
+// value-level caller holds the key rather than a document spelling.
+func (e *exporter) optionIdsFor(key string) map[string]string {
+	if key == "" || len(e.optionRefs) == 0 {
+		return nil
+	}
+	out := map[string]string{}
+	for pair, id := range e.optionRefs {
+		if pair.key == key {
+			out[pair.name] = id
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
 //
 // ---- import ----
 //

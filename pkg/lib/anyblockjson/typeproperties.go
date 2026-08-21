@@ -260,11 +260,14 @@ type RecommendedList struct {
 // document. Both must invert through the same vocabulary, or the two ways of
 // writing one type's property list disagree about what a key means.
 //
-// Options.propertyKey, not the importer's: there is no document here, so there
-// is no `property_keys` legend to consult (§3) — the caller's vocabulary is
-// the only statement about spelling in force. A caller that lifted these slugs
-// out of a document owes them that document's legend before calling, because
-// nothing downstream of this signature can see it.
+// The §3 chain runs from step 1, not from the caller's vocabulary: there is no
+// document here, so the legend arrives through **Options.Legend** — the same
+// three maps the enclosing document's envelope carries. A caller that lifted
+// these slugs out of a document hands over that document's legend; a caller
+// that composed them itself leaves the field zero and the chain starts at the
+// vocabulary, which is what this entry point did unconditionally before, and
+// is why a slug lifted from a legend-carrying document used to land on
+// whichever relation the READER'S table gave that spelling to.
 //
 // It refuses what applyTypeProperties refuses, on the same resolved keys and
 // with the same JSON pointers, because it is the SAME array arriving through
@@ -280,7 +283,7 @@ type RecommendedList struct {
 func BuildRecommendedLists(props []TypeProperty, opts Options) ([]RecommendedList, error) {
 	bySection := map[string][]string{}
 	for i, tp := range props {
-		key := opts.propertyKey(tp.Key)
+		key := opts.legendPropertyKey(tp.Key)
 		if !isWritablePropertyKey(key) {
 			return nil, &ValidationError{Issues: []Issue{{
 				Path:    fmt.Sprintf("/type_properties/%d/key", i),
@@ -296,7 +299,7 @@ func BuildRecommendedLists(props []TypeProperty, opts Options) ([]RecommendedLis
 		// refuses unconditionally, and this is the same array.
 		var targets []string
 		for j, slug := range tp.ObjectTypes {
-			resolved := opts.typeKey(slug)
+			resolved := opts.legendTypeKey(slug)
 			if resolved == "" {
 				return nil, &ValidationError{Issues: []Issue{{
 					Path:    fmt.Sprintf("/type_properties/%d/object_types/%d", i, j),

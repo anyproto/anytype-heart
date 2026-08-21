@@ -16,7 +16,8 @@ strings; the vocabulary follows Notion's API and Anytype's public REST API
 readable, and mostly writable, by someone who has never seen Anytype
 internals.
 
-Changes in v0.21: **every key slot admits before it writes** (§3, §12).
+Changes in v0.21: **every key slot admits before it writes, and every
+fragment carries what its keys mean** (§3, §6, §12, §13).
 (1) The two key legends now admit an entry before recording it. `property_keys`
 and `type_keys` were the last key slots in the format with no admission on the
 way in: the two guards that were supposed to cover them — a denied key never
@@ -60,6 +61,29 @@ resolving a non-empty spelling onto the empty key at the nine slots that used
 to store it. The rule bounds nothing else: length and charset at these slots
 stay as §3 already argued them, because bounding them would make a stored key
 unexportable.
+
+(4) **The fragment surface carries what its pieces mean** (§13.1, new). The
+entry points that read and write a piece of a document — one block, a flat
+run, one property value, a filter tree, a type's property array — ran the §3
+chain from step 2 in both directions: export computed all three legends and
+discarded them at the return, import started from an empty one. A block cut
+out of a document that said `{"priority": "6a32d485…"}` resolved `priority`
+through the READER's table, at the one seam that writes to a live object.
+`MarshalBlockSubtree` now returns a fragment ENVELOPE —
+`{property_keys, type_keys, option_ids, blocks}` — rather than a bare array,
+`MarshalPropertyValue` returns its key's option ids beside the value, and
+every reading entry point takes them back through **`Options.Legend`**.
+`OmitIds` and the compaction flags are **refused** on a fragment rather than
+honoured: both take away the addresses the surface exists to use.
+
+§13 is also corrected. It cited `Options.Keys` / `KeyVocabulary` seven times
+without defining either, omitted the whole fragment surface, claimed "the §8
+inline codec is internal to the package — it is not part of the public API"
+while `ParseInlineText` / `RenderInlineText` are exported, listed neither
+`fragment.go`, `filters.go`, `keyvocab.go`, `blockvocab.go`, `viewvocab.go`,
+`index.go`, `storeresolver/` nor `snapshotdiff/`, and gave
+`PropertyDefinition` without `Options` or `ObjectTypes`, both of which §2a
+depends on.
 
 Changes in v0.20 (superseded by v0.21): **three legends, and one compaction that carries none**
 (§2, §3, §9, §9a, §11, §12, §13). The envelope's indirection is now exactly
@@ -3005,6 +3029,19 @@ pkg/lib/anyblockjson/
   typeproperties.go          — type_properties ↔ recommended lists (§2a);
                                GenerateSchema derived artifacts are planned
                                here (post-v1)
+  keyvocab.go                — KeyVocabulary: the stored key ↔ spelling table,
+                               both namespaces, and the bundled default (§3)
+  blockvocab.go              — the block-type name tables (§5)
+  viewvocab.go               — the dataview enum name tables (§6.2)
+  fragment.go                — the FRAGMENT surface: one block, a flat run,
+                               one property value, the §8 inline codec (below)
+  filters.go                 — the fragment surface for a §6.2 filter tree and
+                               sorts array, standalone (query paths)
+  index.go                   — the bundle index (§2c)
+  storeresolver/             — the space-backed implementations of the four
+                               resolvers, including KeyVocabulary; the only
+                               place that reads a space's api slugs
+  snapshotdiff/              — snapshot ↔ snapshot diffing for the PATCH path
   filterstring/              — compact filter string parser (§6.2.1):
                                string → §6.2 filter tree, offset-addressed
                                errors (planned with API v2 Phase 4; the
@@ -3040,11 +3077,15 @@ type OptionResolver interface {
 }
 
 // PropertyDefinition describes a property object referenced by a type
-// document (§2a).
+// document (§2a). Options is the declared select vocabulary in display
+// order; ObjectTypes restricts which types an objects/files property may
+// point at, given as STORED type keys.
 type PropertyDefinition struct {
-    Key    domain.RelationKey
-    Name   string
-    Format model.RelationFormat
+    Key         domain.RelationKey
+    Name        string
+    Format      model.RelationFormat
+    Options     []OptionDefinition
+    ObjectTypes []string
 }
 
 // PropertyResolver maps property object ids to definitions on export and
@@ -3071,13 +3112,39 @@ func Validate(data []byte) error
 func DetectFormat(data []byte) (version int, schemaURL string, ok bool)
 
 // FormatVersion (= 1) and SchemaURL (the published schema location) are
-// exported constants for the wiring's dispatch. The §8 inline codec is
-// internal to the package — it is not part of the public API.
+// exported constants for the wiring's dispatch.
+
+// KeyVocabulary translates between the STORED keys a snapshot carries and
+// the SLUGS a document spells, in both namespaces and both directions (§3).
+// The default is BundledKeyVocabulary — the derived table that ships with
+// every reader, and nothing else. storeresolver supplies the space-backed
+// one. Three preconditions on an implementation, none implied by the one
+// before it: it inverts what it emits; it never binds a spelling the bundled
+// table binds elsewhere; and a live stored key outranks its own slug binding
+// (§3, §11.1).
+type KeyVocabulary interface {
+    PropertySlug(key string) string
+    PropertyKey(slug string) (key string, ok bool)
+    TypeSlug(key string) string
+    TypeKey(slug string) (key string, ok bool)
+}
+
+// Legend carries the three legends of the document a FRAGMENT was cut out
+// of, so a fragment entry point runs the §3 chain from step 1 rather than
+// from the reader's vocabulary. Marshal and Unmarshal ignore it: a whole
+// document carries its own. The zero value is "no legend".
+type Legend struct {
+    PropertyKeys map[string]string            // spelling → stored relation key (§3)
+    TypeKeys     map[string]string            // spelling → stored type key (§3)
+    OptionIds    map[string]map[string]string // {spelling: {option name: id}} (§9a)
+}
 
 type Options struct {
     ResolveFormat     FormatResolver   // optional; nil = bundle-only resolution (§3)
     ResolveOptions    OptionResolver   // optional; nil = option values pass through as ids
     ResolveProperties PropertyResolver // optional; nil = type documents keep raw recommended-relation ids (§2a)
+    Keys              KeyVocabulary    // optional; nil = BundledKeyVocabulary (§3)
+    Legend            Legend           // fragment entry points only: the enclosing document's legends (§3)
     OmitIds            bool            // export only: drop every id, the option_ids legend included (§9, §9a)
     CompactBlockLabels bool            // export only: relabel doc-local block/row/column/view ids (§9a; lossy, legend-less)
     CompactIds         bool            // export only: alias for CompactBlockLabels — object refs are never compacted (§9a)
@@ -3091,6 +3158,87 @@ type Options struct {
     // CompactFilters (reserved): filters as query strings — post-v1, §6.2.1
 }
 ```
+
+### 13.1 The fragment surface
+
+The entry points above take a whole document. The **fragment surface** takes
+a piece of one — a single block, a flat run, one property value, one filter
+tree — for wiring that edits a live object op-by-op instead of round-tripping
+it (API v2 PATCH). It is the same codec throughout: a fragment run is
+validated by wrapping it in a synthetic document, so §4 monotonicity and the
+§5 per-type shape rules apply unchanged.
+
+```go
+// MarshalBlockSubtree serializes one block subtree into a fragment envelope:
+// {"property_keys": {…}, "type_keys": {…}, "option_ids": {…}, "blocks": […]}
+// — the flat §4 run beside the legends its blocks owe, in the envelope's own
+// member order. OmitIds and the compaction flags are REFUSED here.
+func MarshalBlockSubtree(subtree []*model.Block, opts Options) (json.RawMessage, error)
+
+// UnmarshalBlocks converts a flat run into model blocks with the ChildrenIds
+// graph wired; topIds names the run's top-level blocks, ready for a splice.
+func UnmarshalBlocks(run []json.RawMessage, opts Options) (blocks []*model.Block, topIds []string, err error)
+
+// UnmarshalBlock converts one block object into its model block(s); forcedId,
+// when non-empty, keeps a replaced block's identity.
+func UnmarshalBlock(raw json.RawMessage, forcedId string, opts Options) ([]*model.Block, error)
+
+// MarshalPropertyValue converts one property value to its JSON form, plus
+// this key's share of the option legend — {option name: option id} (§9a).
+func MarshalPropertyValue(key string, v *types.Value, opts Options) (any, map[string]string)
+
+// UnmarshalPropertyValue is its inverse. `key` is a STORED key, not a
+// spelling; the option legend arrives through Options.Legend.OptionIds.
+func UnmarshalPropertyValue(key string, v any, opts Options) *types.Value
+
+// UnmarshalFilters and UnmarshalSorts convert a standalone §6.2 filter tree
+// or sorts array — the query paths, which carry no document.
+func UnmarshalFilters(raw json.RawMessage, opts Options) ([]*model.BlockContentDataviewFilter, error)
+func UnmarshalSorts(raw json.RawMessage, opts Options) ([]*model.BlockContentDataviewSort, error)
+
+// BuildRecommendedLists is the PATCH-type door into the §2a array
+// applyTypeProperties reads out of a document: it resolves a typeProperties
+// array into the four recommended-relation id lists, refusing exactly what
+// the document path refuses.
+func BuildRecommendedLists(props []TypeProperty, opts Options) ([]RecommendedList, error)
+
+// ParseInlineText and RenderInlineText are the §8 inline codec, exported:
+// the single-field pair Marshal uses for every text-bearing block.
+func ParseInlineText(md string) (string, []*model.BlockContentTextMark, error)
+func RenderInlineText(text string, marks []*model.BlockContentTextMark) string
+
+// ParseMarkdownBlocks slices block-level markdown into a §4 flat run
+// (markdownblocks.go). Never fails; unknown constructs degrade to paragraphs.
+func ParseMarkdownBlocks(md string) []json.RawMessage
+```
+
+**A fragment has no envelope, so it has no legend of its own — and that is
+the one thing every entry point here has to be handed.** The §3 chain's
+first and highest step is the document's own statement about its spellings,
+and a fragment cut out of a document that said
+`property_keys: {"priority": "6a32d485…"}` carries the spelling and not the
+statement. Resolved through the reader's vocabulary alone, `priority` lands
+on whichever relation THAT space gives the spelling to — the exact
+misresolution §3 wrote the legend to prevent, at the one seam that writes to
+a live object. So: `MarshalBlockSubtree` and `MarshalPropertyValue` **return**
+the legends their output owes, and every reading entry point takes them back
+through **`Options.Legend`**. A caller that assembled the fragment itself
+leaves the field zero.
+
+**`OmitIds` and the compaction flags are refused on a fragment, not
+ignored.** This surface exists to address a live document, and both take the
+addresses away: `OmitIds` drops every block id, the view id and the filter
+id, so the run says what to write but not where; block-label compaction
+rewrites doc-local ids to short suffixes that are local to the emitted run
+and are not the object's ids at all. Either produced a fragment that reads
+correctly and cannot be applied.
+
+Other exported helpers, in service of the same wiring: `ValidateWarn`
+(validation with a warning sink), `SchemaJSON` (the embedded schema bytes),
+`InternalPropertyKeys` (what §3 strips), `IsCompactLabelShaped`,
+`LeafBlockType` / `TextBlockType`, `FormatName` / `FormatByName`, the four
+vocabulary listers, and `IsReservedWidgetTarget` /
+`IsImportableWidgetTarget` / `IsReservedHomepage` (§2b).
 
 The bundle index (§2c) has its own pair, since it is not an object snapshot:
 

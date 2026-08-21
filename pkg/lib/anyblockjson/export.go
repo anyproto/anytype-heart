@@ -53,16 +53,66 @@ type OptionResolver interface {
 
 // Options configures Marshal and Unmarshal (§13).
 type Options struct {
-	ResolveFormat      FormatResolver   // optional; nil = bundle-only resolution (§3)
-	ResolveOptions     OptionResolver   // optional; nil = option values pass through as ids
-	ResolveProperties  PropertyResolver // optional; nil = type documents keep raw recommended-relation ids (§2a)
-	Keys               KeyVocabulary    // optional; nil = BundledKeyVocabulary (the derived table — keyvocab.go)
-	OmitIds            bool             // export only: drop every id (§9)
-	CompactBlockLabels bool             // export only: relabel doc-local block/row/column/view ids to short suffixes (§9a; lossy, legend-less)
-	CompactIds         bool             // export only: alias for CompactBlockLabels — object refs are never compacted (§9a)
-	GenerateId         func() string    // import only: id generator for missing ids; nil = random 24-hex
-	NormalizeIndent    bool             // import only: clamp over-deep indents instead of rejecting (§4)
-	OnWarning          func(Issue)      // optional sink for warning-grade issues, both directions (indent clamps, unrepresentable dates, …)
+	ResolveFormat     FormatResolver   // optional; nil = bundle-only resolution (§3)
+	ResolveOptions    OptionResolver   // optional; nil = option values pass through as ids
+	ResolveProperties PropertyResolver // optional; nil = type documents keep raw recommended-relation ids (§2a)
+	Keys              KeyVocabulary    // optional; nil = BundledKeyVocabulary (the derived table — keyvocab.go)
+	// Legend is the enclosing document's three legends, for the FRAGMENT
+	// entry points only (fragment.go, filters.go, BuildRecommendedLists).
+	// Marshal and Unmarshal ignore it: a whole document carries its own.
+	//
+	// A fragment has no envelope, so it has no legend of its own — and
+	// without one the §3 chain loses its first and highest step. A block cut
+	// out of a document that said `{"priority": "6a32d485…"}` resolved
+	// `priority` through the READER's vocabulary alone, which is the exact
+	// misresolution the legend exists to prevent, reintroduced at the seam
+	// that edits live objects. Hand the fragment the document's legend and
+	// chain step 1 is back.
+	Legend             Legend
+	OmitIds            bool          // export only: drop every id (§9)
+	CompactBlockLabels bool          // export only: relabel doc-local block/row/column/view ids to short suffixes (§9a; lossy, legend-less)
+	CompactIds         bool          // export only: alias for CompactBlockLabels — object refs are never compacted (§9a)
+	GenerateId         func() string // import only: id generator for missing ids; nil = random 24-hex
+	NormalizeIndent    bool          // import only: clamp over-deep indents instead of rejecting (§4)
+	OnWarning          func(Issue)   // optional sink for warning-grade issues, both directions (indent clamps, unrepresentable dates, …)
+}
+
+// Legend carries the three legends of the document a fragment was cut out
+// of, so the fragment entry points can run the §3 chain from step 1 instead
+// of starting at the reader's vocabulary. The field names and the semantics
+// are the envelope's: `property_keys` and `type_keys` values are
+// AUTHORITATIVE, an `option_ids` value is a liveness-checked hint (§3).
+//
+// The zero value is "no legend", which is what a caller that assembled the
+// fragment itself has, and is the behaviour every fragment entry point had
+// before this field existed.
+type Legend struct {
+	// PropertyKeys maps a property spelling to the stored relation key it
+	// names (§3) — the enclosing document's `property_keys`.
+	PropertyKeys map[string]string
+	// TypeKeys is the same for the type namespace — the enclosing document's
+	// `type_keys`.
+	TypeKeys map[string]string
+	// OptionIds maps {property spelling: {option name: option id}} — the
+	// enclosing document's `option_ids` (§9a).
+	OptionIds map[string]map[string]string
+}
+
+// empty reports whether the legend says nothing.
+func (l Legend) empty() bool {
+	return len(l.PropertyKeys) == 0 && len(l.TypeKeys) == 0 && len(l.OptionIds) == 0
+}
+
+// fragmentDoc is the synthetic envelope a fragment entry point resolves
+// against: no blocks, no properties, just the legend the caller handed over.
+// Every fragment importer used to build `&jsonDoc{}` here, and an empty
+// legend makes chain step 1 unconditionally silent.
+func (o Options) fragmentDoc() *jsonDoc {
+	return &jsonDoc{
+		PropertyKeys: o.Legend.PropertyKeys,
+		TypeKeys:     o.Legend.TypeKeys,
+		OptionIds:    o.Legend.OptionIds,
+	}
 }
 
 // compactBlockLabels reports whether doc-local id relabeling is on.
@@ -110,9 +160,21 @@ var wellKnownPropertyOrder = []string{"name", "description", "iconEmoji", "iconI
 // row-level building block for API list surfaces that carry requested
 // property values (APIV2.md C5) without a full document export. The result
 // marshals with encoding/json.
-func MarshalPropertyValue(key string, v *types.Value, opts Options) any {
+//
+// The second return is this value's share of the `option_ids` legend —
+// {option name: option id} for THIS key (§9a) — and it is not optional
+// bookkeeping. A select value is written as its option NAME, and a name is
+// not an address: two options of one property may share it, and an option
+// renamed between this call and the read makes the wiring mint a second
+// option under the stale name. The whole-document export has carried the ids
+// since §9a; this entry point computed them and threw them away, so every
+// caller of the row-level surface silently had the pre-legend behaviour.
+// Hand the map back to a value-level reader through Options.Legend.OptionIds
+// under this key's spelling, or drop it and accept name resolution knowingly.
+func MarshalPropertyValue(key string, v *types.Value, opts Options) (any, map[string]string) {
 	e := &exporter{opts: opts}
-	return e.propertyValue(key, v)
+	out := e.propertyValue(key, v)
+	return out, e.optionIdsFor(key)
 }
 
 // Marshal serializes a snapshot into canonical AnyBlock JSON (§13).

@@ -78,7 +78,7 @@ func UnmarshalFilters(raw json.RawMessage, opts Options) ([]*model.BlockContentD
 		return nil, &ValidationError{Issues: issues}
 	}
 
-	imp := &importer{opts: opts, doc: &jsonDoc{}}
+	imp := &importer{opts: opts, doc: opts.fragmentDoc()}
 	dv := &model.BlockContentDataview{}
 	out := make([]*model.BlockContentDataviewFilter, 0, len(nodes))
 	for _, jf := range nodes {
@@ -121,7 +121,7 @@ func UnmarshalSorts(raw json.RawMessage, opts Options) ([]*model.BlockContentDat
 		return nil, &ValidationError{Issues: issues}
 	}
 
-	imp := &importer{opts: opts, doc: &jsonDoc{}}
+	imp := &importer{opts: opts, doc: opts.fragmentDoc()}
 	dv := &model.BlockContentDataview{}
 	out := make([]*model.BlockContentDataviewSort, 0, len(sorts))
 	for _, js := range sorts {

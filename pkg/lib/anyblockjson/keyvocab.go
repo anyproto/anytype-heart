@@ -166,6 +166,27 @@ func (o Options) propertyKey(slug string) string {
 	return key
 }
 
+// legendPropertyKey is propertyKey with §3 chain step 1 in front of it: the
+// legend Options.Legend carries, which for a fragment entry point IS the
+// enclosing document's `property_keys`. Same precedence as
+// importer.propertyKey, and stated once rather than twice for exactly that
+// reason — the two doors into a type's property list must not disagree about
+// what a spelling means.
+func (o Options) legendPropertyKey(slug string) string {
+	if key, ok := o.Legend.PropertyKeys[slug]; ok && key != "" {
+		return key
+	}
+	return o.propertyKey(slug)
+}
+
+// legendTypeKey is legendPropertyKey on the type namespace.
+func (o Options) legendTypeKey(slug string) string {
+	if key, ok := o.Legend.TypeKeys[slug]; ok && key != "" {
+		return key
+	}
+	return o.typeKey(slug)
+}
+
 func (o Options) typeSlug(key string) string {
 	if key == "" {
 		return key

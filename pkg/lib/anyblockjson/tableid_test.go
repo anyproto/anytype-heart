@@ -398,14 +398,18 @@ func TestMarshalBlockSubtree_ReservesFromTheCallersRoot(t *testing.T) {
 		{Id: "parent", ChildrenIds: []string{"holder"},
 			Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "parent"}}},
 	}
-	run, err := MarshalBlockSubtree(subtree, Options{})
+	fragment, err := MarshalBlockSubtree(subtree, Options{})
 	require.NoError(t, err)
 
 	// the run is validated the way a fragment is: as the blocks of a document
-	doc, err := json.Marshal(map[string]any{"version": FormatVersion, "blocks": json.RawMessage(run)})
+	var env struct {
+		Blocks json.RawMessage `json:"blocks"`
+	}
+	require.NoError(t, json.Unmarshal(fragment, &env))
+	doc, err := json.Marshal(map[string]any{"version": FormatVersion, "blocks": env.Blocks})
 	require.NoError(t, err)
-	assert.NoError(t, Validate(doc), "Marshal must not emit what Validate rejects:\n%s", run)
-	assert.Contains(t, string(run), `"r1-c1_2"`, "the plain block yields to the grid:\n%s", run)
+	assert.NoError(t, Validate(doc), "Marshal must not emit what Validate rejects:\n%s", fragment)
+	assert.Contains(t, string(fragment), `"r1-c1_2"`, "the plain block yields to the grid:\n%s", fragment)
 }
 
 // The mirror of the export rule on the import side: a generated id may not
