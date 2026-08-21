@@ -1,6 +1,6 @@
 # AnyBlock JSON — format specification
 
-Status: **draft v0.17** · Format version: **1** · Package: `pkg/lib/anyblockjson`
+Status: **draft v0.18** · Format version: **1** · Package: `pkg/lib/anyblockjson`
 
 A human- and agent-readable JSON serialization of Anytype objects (the "anyblock"
 model), designed for export, import, and generation by external tools and LLM
@@ -14,6 +14,30 @@ strings; the vocabulary follows Notion's API and Anytype's public REST API
 (`core/api`) wherever an established term exists — the format should be
 readable, and mostly writable, by someone who has never seen Anytype
 internals.
+
+Changes in v0.18: **a select value says which option it means** (§3, §9a,
+§11). Option values are spelled by NAME because a bundle carries no option
+objects, and a live account showed what the name alone costs: a space may
+hold two options with one name under one relation, and resolution answers the
+first — 7 objects of a 34 339-object sweep came back on an option they were
+never on; and an option renamed between export and import resolves to nothing,
+so the wiring mints a new option carrying the stale name and orphans the
+object from the renamed one. The id now travels beside the name, in the `refs`
+legend the format already has, under a key that qualifies the name with the
+property that owns it (`"High#priority"`). Four things follow. (1) `refs`
+holds **two disjoint key populations**, told apart by the separator alone: a
+compaction label is reachable only from an object-id slot, a qualified key
+only from a select value under that property, and neither from the other's
+slot. (2) The entry is a **hint checked against the target space**, not an
+address — an id that is not a live option of that relation there falls through
+to name resolution, which is what keeps a bundle carried elsewhere working
+exactly as it does now. (3) It is written wherever export substitutes a name
+for an id — property values, filter values, custom orders — and behind no
+option, because identity is not compaction; a document with nothing compacted
+still carries it. (4) The `refs` key charset relaxes to admit both shapes: the
+old `[A-Za-z0-9_-]{1,64}` rejected `import issue`, an ordinary tag name, and
+each half of a qualified key now carries the writable-key rule instead
+(1–128 characters, no control characters).
 
 Changes in v0.17: **the legend answers to the reader that actually reads
 the document, and three things that were said but not done** (§3, §6.2,
@@ -1022,11 +1046,53 @@ property values here, filter `value`s, and sort `custom_order` entries
 (§6.2). Export writes option names (`"status": ["In progress"]`); import
 resolves names against the property's existing options and **creates
 missing ones** (the behavior of the CSV and Notion importers, and of the
-public API's tag endpoints). This is the one deliberate departure from
-id-fidelity: two options of one property sharing a name collapse on
-round-trip, and renaming an option breaks the link on reimport — accepted,
-because opaque option ids are unwritable by agents and unreadable by humans
-(§11 lists this normalization).
+public API's tag endpoints). Names, not ids, because a bundle carries no
+option objects — unlike a linked object, which the bundle carries and the
+importer relinks, an option id from another space would dangle — and because
+opaque option ids are unwritable by agents and unreadable by humans.
+
+**The document carries the id beside the name: the qualified `refs` entry.**
+Name-addressing alone loses identity in two ways a live account shows, and
+both were measured on a 34 339-object sweep: two options of one property may
+share a name, and name resolution answers the FIRST, so an object sitting on
+the second came back pointing at the other one (7 objects); and an option
+renamed between export and import stops resolving at all, so the wiring mints
+a NEW option carrying the stale name — resurrecting the duplicate and
+orphaning the object from the renamed option. So export writes, in the legend
+the format already has (§9a):
+
+```json
+"priority": ["High"],
+"severity": ["High"],
+"refs": { "High#priority": "bafyrei…opt1", "High#severity": "bafyrei…opt2" }
+```
+
+The key is `<option name>#<property key>`, split at the last `#`, in the
+document's own spelling of the property; §9a states the shape, the bounds and
+the two-population discipline. It is written wherever export substitutes a
+name for an id — property values, filter values, custom orders — and behind
+no option at all, because it is identity rather than compaction.
+
+**Reading one option value: three steps, first answer wins.**
+
+1. **The document's qualified `refs` entry** for `<name>#<the spelling this
+   slot used>` — honored only when the id it names is a **live option of that
+   relation** in the target space. That check is the whole reason the entry is
+   safe to write unconditionally: an id from a space the reader never had is
+   simply not an answer, and the document falls through as if it carried none.
+2. **Name resolution** against the property's existing options, as before.
+3. **The value unchanged** — creating the missing option is the wiring's job.
+
+A reader with no option resolver (§13) has no space in which to ask either
+question and stops at step 3, exactly as it did before this legend existed.
+
+What remains normalized, and what no longer is: **one object holding two
+same-named options of one property** still collapses — the document spells
+`["books", "books"]`, and two identical strings have no way to say which entry
+means which option. Export keeps the first writing, so the collapse is
+deterministic and a second export reproduces the first byte for byte (§11.3);
+it is no better than name resolution here, and no worse. A rename, and a
+duplicate name an object touches only once, are no longer lossy (§11).
 
 **Format resolution.** The format does not carry per-property formats;
 `Marshal` and `Unmarshal` accept an optional resolver (§13). Property keys in
@@ -2035,18 +2101,27 @@ C4). Legend example:
 "refs": { "miovm": "bafyreieqh63jv…miovm", "roman": "bafyreidfmzjh…" }
 ```
 
-**`refs` is an authoritative opaque map.** Keys match
-`[A-Za-z0-9_-]{1,64}`; values are full object ids. Keys need **not** be
-suffixes of their values — "the id's last 5 characters" is merely export's
+**`refs` is an authoritative opaque map, in two disjoint key shapes.** A key
+**without** `#` is a *compaction label*, matching `[A-Za-z0-9_-]{1,64}`; a key
+**with** `#` is a *qualified option key* (below). Values are full object ids in
+both populations. The separator is the whole discriminator, and it works
+because it is outside the label charset — no key can be read as both shapes,
+by either direction, and neither shape is reachable from the other's slot.
+
+Compaction-label keys need **not** be suffixes of their values — "the id's last 5 characters" is merely export's
 key-choice algorithm (suffixes, because CIDs share prefixes; a suffix that
 collides with another referenced id's, or that the charset rejects, makes
 that id stay uncompacted — the full-id fallback is always correct under the
 resolution rule below). Agents editing a document may add entries with any label
 (`"roman": "bafyrei…"`) and reference them; humans may rename keys.
 
-**Resolution rule** — total, wherever an object id is expected: if the
-value is a key in `refs`, it resolves to that full id; otherwise it **is** a
-full id. There is no "short-looking" heuristic. Consequences: an unused
+**Resolution rule** — total over the compaction-label population, wherever an
+object id is expected: if the value is a **`#`-free** key in `refs`, it
+resolves to that full id; otherwise it **is** a full id. There is no
+"short-looking" heuristic — reading the *key's* shape is not one, it is the
+same disjointness that lets one map carry two populations at all, and it is
+what stops a document from addressing an option pool from a slot that has no
+property to qualify it. Consequences: an unused
 `refs` entry is ignored (export prunes them); two keys may map to one full
 id (export never produces this); if a `refs` key equals a full id used
 literally elsewhere in the document, the legend wins — export must (and,
@@ -2085,6 +2160,51 @@ birthday-rare).
 prompt-friendly form (no block ids, short object refs with legend). Both are
 alternative serializations — the canonical round-trip form (§11) remains the
 default full-id export.
+
+**Qualified option keys — identity, not compaction.** The second `refs`
+population carries the ID of the option a select value NAMES (§3):
+
+```json
+"priority": ["High"],
+"severity": ["High"],
+"refs": { "High#priority": "bafyrei…opt1", "High#severity": "bafyrei…opt2" }
+```
+
+- **Shape**: `<option name>#<property key>`, **split at the LAST `#`**. The
+  right half is a property spelling as the document writes it (§3 — the
+  reader that resolves the entry is reading the document, not the store) and
+  carries no separator of its own, which is what pins the split and makes the
+  key invertible: a name holding a `#` — `C#`, `#1 priority` — lands whole on
+  the left. Each half obeys the writable-key rule §3 puts on a property
+  spelling — 1–128 characters, no control characters — so the key is bounded
+  like every other key slot here (257 characters, worst case) and the schema
+  enforces both halves. The name half deliberately admits what a compaction
+  label cannot: `import issue#tag` is a real entry, and the old
+  `[A-Za-z0-9_-]` rule refused ordinary tag names outright.
+- **Value**: the full option id, exactly like every other `refs` value.
+- **Written whenever export substitutes a name for an id** — that is, exactly
+  where §3 says option values are names — in property values, dataview filter
+  values and sort custom orders alike. Not behind `CompactObjectRefs`: this
+  half is identity rather than compaction, so a document with no compaction at
+  all still carries it, and a document may carry a `refs` map holding only
+  these. Nothing is pruned because nothing unused is written: the entry is
+  recorded at the substitution itself.
+- **Reachable only from a select value under that property.** An object-id
+  slot never resolves one (the rule above), and a select value never resolves
+  a compaction label — `{"tag": ["miovm"]}` beside `"refs": {"miovm": …}` is
+  the string `miovm`, not that object. Both directions are pinned by tests.
+- **A hint, not an address.** The reading rule is §3's three-step chain: the
+  entry, but only for an id the target space still serves as an option of
+  that relation; then name resolution; then the value unchanged. That is what
+  keeps a bundle carried to a space that never saw those ids working exactly
+  as it does without the legend — and it is why a reader with no option
+  resolver ignores these entries entirely: it has no space to ask, and an id
+  it cannot check is not an answer it can give.
+- **Two spellings export declines to write**, both falling back to name
+  resolution rather than emitting an entry that could be read two ways: an
+  option name past 128 characters, and a property whose *spelling* carries a
+  `#` (legal in an api key — `strcase.ToSnake("C#")` is `c#`), which would put
+  a separator on the wrong side of the split.
 
 ## 10. Versioning and compatibility
 
@@ -2165,7 +2285,13 @@ equivalent resolvers, §3): structural blocks dropped, to be regenerated by
 the editor at first open (§7); restrictions rebuilt (§4); properties
 stripped per §3 (with the exemption list); select/multi_select option ids
 replaced by name resolution — in properties, filter values, and custom
-orders (§3, §6.2 — duplicate-named options collapse); deprecated snapshot
+orders (§3, §6.2) — which the qualified `refs` entry inverts exactly (§9a),
+leaving three residues: **two same-named options of one property held by ONE
+object** collapse onto the first, because the document spells one string
+twice; an option whose name is past 128 characters, or one under a property
+whose spelling carries `#`, gets no entry and resolves by name; and a reader
+wired with no option resolver ignores the entries and keeps the names, having
+no space in which an id could be an option at all; deprecated snapshot
 and block fields cleared (§2, §5); deprecated `Header4` re-styled to
 `heading_3` (§5); `checked` outside checkboxes dropped and marks on literal
 blocks dropped (§5); marks normalized — emoji materialized, whitespace
@@ -2431,6 +2557,9 @@ type FormatResolver func(key domain.RelationKey) (model.RelationFormat, bool)
 
 // OptionResolver maps select/multi_select option ids to names on export and
 // names to ids on import (creating options is the import wiring's job).
+// OptionName carries a second duty on the import side: it is the liveness
+// question the qualified refs legend is checked against — it answers for an
+// id exactly when that id is an option of that relation here (§3, §9a).
 type OptionResolver interface {
     OptionName(key domain.RelationKey, id string) (string, bool)
     OptionId(key domain.RelationKey, name string) (string, bool)
@@ -2584,9 +2713,11 @@ Wiring (follow-up work, not this package):
    disambiguate for the importer.
 2. **`dataview` vs `database`**: kept `dataview` (ownership semantics differ
    from Notion databases; Obsidian precedent) — flagged as a judgment call.
-3. **Option names vs `{id, name}` objects** (§3): names-only chosen for
-   generatability; Notion's `{id, name}` shape is the fallback if the
-   duplicate-name/rename caveats prove unacceptable.
+3. **Option names vs `{id, name}` objects** (§3): **settled** — names stay in
+   the value, generatable and readable, and the id rides in the `refs` legend
+   under a qualified key (§9a). The `{id, name}` value shape was the standing
+   fallback for the duplicate-name/rename caveats; the legend closes both
+   without asking a generator to write an id it does not have.
 4. **Mention syntax**: `<mention object_id="…">` tag vs unifying with the
    `anytype://` link form plus a marker. The tag is unambiguous and
    LLM-friendly; confirm clients are happy rendering it.
