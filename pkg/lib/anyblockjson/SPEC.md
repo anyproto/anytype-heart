@@ -43,7 +43,13 @@ legend-less one** — `CompactBlockLabels` relabels ids the document itself
 defines, so there is no table to carry, keep in sync, or read back. (4) Two
 legends, two rules, deliberately: a `property_keys`/`type_keys` value is
 **authoritative** and unchecked (the corpse case requires it), an
-`option_ids` value is a **liveness-checked hint** (§3).
+`option_ids` value is a **liveness-checked hint** (§3). (5) The consequences
+of (2) and (3) are now stated where a reader meets them: what `OmitIds` gives
+up by dropping the legend, and why export does not warn about it (§9); why a
+malformed legend entry is an error where an unconsulted one is a warning
+(§12); and — since the grammar changed without moving `version` — that a
+document carrying `refs` is refused **by name**, at `/refs`, with the rule
+that replaced the legend and the repair to make (§10, §12).
 
 Changes in v0.19 (superseded by v0.20): **a qualified `refs` key has to name a property the
 document uses** (§3, §9a, §12). The key shape admits any `<name>#<spelling>`
@@ -2292,6 +2298,45 @@ on such blocks are dropped on export (§5).
   diffed. An id-less export is valid but not the canonical round-trip form
   (re-importing mints fresh ids, and option values resolve by name).
 
+**What dropping `option_ids` costs, precisely.** "Option values resolve by
+name" is not a neutral fallback, and a reader choosing this flag should have
+the number. A name is not an identity: a space may hold two distinct options
+of one property under one name, and name resolution answers the **first** one
+the resolver lists (ANOMALIES.md #6). On a 34 339-object sweep that put **7
+objects** on an option they had never been on. `option_ids` is precisely what
+closes that (§9a), so an `OmitIds` document read back into the space it came
+from can move such a value onto the sibling option — silently, because the
+two options read identically in the document and in the UI. An option renamed
+between writing and reading is the same loss from the other end: with no id to
+fall back on, the wiring mints a *second* option under the stale name.
+
+This is **accepted, not fixed**. The shape's entire content is "no ids", and
+an id-less document carrying a map of ids would not be one; the export and
+backup shape keeps the legend, and that is the shape a round trip uses (§11).
+The loss is small, real, and rare — and it is on the read/prompt path, which
+is the one an agent sees most.
+
+**Export does not warn about it**, and the reason is worth writing down
+because the information is nearly in hand. At the moment export substitutes a
+name for an id it could ask the resolver the question *import* will ask —
+`OptionId(key, name)` — and warn whenever the answer is a different id. That
+probe would be exact and costs nothing (the option list is already loaded by
+the `OptionName` call beside it). It is declined because the loss belongs to
+name resolution, not to `OmitIds`: the legend is a **hint**, honoured only
+where the target space still serves the id as a live option of that relation
+(§9a), so a *default*-shape document read into any other space degrades in
+exactly the same way. A warning gated on the flag would therefore assert what
+export cannot know — that the legend will be honoured — while staying silent
+on the identical loss under the default shape. Ungated, it says "an option
+name in this document is ambiguous in the space it came from" on every export
+of that data, forever, about something no edit to the document can fix, and
+§12's rule on the cost of a marginal check applies to the export channel too.
+The place the question can be answered is the reader's, where the destination
+space is known — and `OptionResolver` cannot answer it there either, having no
+way to enumerate a relation's options. That is a gap in the resolver
+interface, recorded here rather than papered over with a signal that is right
+by accident.
+
 ### 9a. The legends, and compact ids
 
 The envelope carries **three legends** and no other indirection. Each answers
@@ -2358,7 +2403,8 @@ rule, the two charsets, and the joined key's length bound.
   does without it.
 - **`OmitIds` drops it** (§9). An id-less shape that ships ids is not an
   id-less shape; the export and backup shape keeps the legend, the prompt
-  shape does not.
+  shape does not. §9 states what that gives up — the two losses above, back,
+  on the read/prompt shape — and why export does not warn about it.
 - **An outer key naming a property this document never spells is a warning**
   (§12) — a key-set comparison, not a parse. The entry can never be
   consulted, since a reader indexes by the spelling the slot in hand wrote. A
@@ -2467,6 +2513,16 @@ in the document is interpreted.
   bundle is versioned as one artifact: if the index or any document in it
   declares an unsupported version, the whole bundle is rejected rather than
   partially imported.
+- **A pre-release grammar change leaves no version marker.** `version` is 1,
+  and the revisions this document records — v0.20's three legends replacing
+  `refs`, most sharply — did not move it. A stored document written against a
+  superseded revision is therefore refused by the *schema*, not by the version
+  gate above: the marker it carries is a member the current grammar does not
+  admit. That refusal is the only notice it gets, which is why the reader
+  names the member (`/refs`) and states the rule that replaced it and the
+  repair, rather than reporting a closed-set violation at the document root
+  (§12). Whether the integer should move once before the format ships is a
+  release decision, not a rule of the format (§15).
 
 **Syntax inside `text` is versioned too, and the reader is exact about it.**
 A `text` string carries no version marker of its own, so the only thing that
@@ -2715,6 +2771,27 @@ fail neither test belong in authoring guidance and in review.
     admissible shape.
   A reader that reports more than this is not wrong about the document being
   invalid, but its extra issues are not statements about the document.
+- **A malformed `option_ids` entry is an error; an unconsulted one is a
+  warning.** The two look like degrees of one fault and are not. An outer key
+  naming a property the document never spells is **well-formed content the
+  document does not need**, and §9a permits a legend to carry more than one
+  document needs — refusing it would refuse a legitimate document. A value
+  that is empty or not a string is **not a legend entry at all**: the slot is
+  typed as an option id and holds something that is not one, under no reading
+  of the format. Three things keep it an error. The published schema types the
+  slot (`{"type": "string", "minLength": 1}`), and the promise above is that
+  an external validator running that schema *and nothing else* reaches the
+  same verdict — downgrading the reader would make `Validate` accept what the
+  schema we publish rejects, and the only way to close that divergence is to
+  loosen the schema until an id slot admits `null` and `12`, at which point it
+  no longer describes the format. `Marshal` never writes one (§11, I1), so the
+  sole source is authoring — the case that can still be fixed. And the cost is
+  bounded and already paid correctly: the fault is reported **once**, at the
+  member's own pointer (`/option_ids/<property>/<name>`), not as a verdict
+  about the document. The objection this answers — that a whole document,
+  blocks and all, is refused over a field a reader may legitimately ignore —
+  is equally true of every typed member of the envelope, and singling out
+  `option_ids` would make it the one member whose type is advisory.
 - **An issue names the member it is about.** The key slots are the one place
   where the schema cannot: `propertyNames` — the writable-key rule on
   `properties`, on `property_keys` and `type_keys` spellings (§3), and on
@@ -2738,6 +2815,33 @@ fail neither test belong in authoring guidance and in review.
   character. Both statements of a rule build it that way, which is what makes
   the suppression above possible at all — it is keyed by pointer, so one
   unescaped spelling is one fault reported twice.
+
+  The **envelope** was the other place the schema could not name the member,
+  for a different reason: it closes with `additionalProperties: false`, whose
+  verdict names every unknown member of one object *inside its own text* and
+  carries the **object's** location — `additional properties 'refs' not
+  allowed`, at the document root. Inside a block the same fault is addressed
+  correctly, because blocks close with `unevaluatedProperties`, which the
+  library reports per member; so the promise held everywhere except the
+  envelope, which is exactly where a document written against an older grammar
+  fails. The reader splits that verdict into **one issue per member, at its
+  own pointer**, in sorted order — the names are collected by ranging over the
+  instance's map, so unsorted they come back in a different order run to run.
+  Unlike an unevaluated-property verdict these are never pruned:
+  `additionalProperties` consults only its own schema object's `properties`
+  and `patternProperties`, which always evaluate, so its verdict never depends
+  on a sibling subschema having succeeded, and the unreliability the pruning
+  exists for cannot arise.
+- **A removed key is told what replaced it.** `children` and `refs` are the
+  two names a document written against a superseded grammar brings, and for
+  both the bare "not allowed" points at the wrong repair: drop the subtree
+  rather than flatten it into `indent` (§4), and delete the legend rather than
+  expand what it inverted (§9a) — which strands every short label in the
+  document as an id that addresses nothing. Each is answered instead with the
+  rule that replaced it and the repair to make. This is the whole of the
+  migration story for a document written before a rule changed, because
+  `version` does not move for a pre-release grammar change (§10): the
+  diagnostic is the only notice such a document gets.
 
 ## 13. Package layout and API
 
@@ -2982,13 +3086,23 @@ Wiring (follow-up work, not this package):
 8. **Property documents** (`kind: "property"`?): custom select/multi_select
    properties own their option lists; a future section may specify them the
    same way types are specified in §2a (resolved options by name, not id).
-9. **Trim system-property noise** (follow-up): refine §3 "presence is
-   meaningful" — keys in `bundle.SystemRelations` are machine-stamped
-   metadata (`is_hidden`, `revision`, `relation_format_include_time`, …) and
-   could safely omit empty/default values, keeping documents compact for
-   LLMs; presence stays preserved for user-intent keys via a small
-   exception list (`name`, `description`, `icon_emoji`, `icon_image`,
-   `done`) and for every non-system key. Deliberately static (no
-   type-schema lookup at export time) to keep the canonical form
-   deterministic. Decide `done` membership and wire `buildProperties` +
-   the round-trip comparator accordingly.
+9. **Should `version` move once before release?** The v0.20 grammar change —
+   `refs` out, three legends in — was made under `version: 1`, which is
+   correct while the format is unreleased (nothing is stored against the old
+   grammar that a migration owes anything to) and is why a pre-v0.20 document
+   is refused by the schema rather than by the version gate (§10). The
+   question is whether the integer should be bumped once at release anyway, so
+   that anything written during the draft period is refused by the gate, with
+   its dedicated both-versions error, rather than by a member name. It is a
+   release decision: §10's rules do not change either way, and the diagnostic
+   (§12) stands either way.
+10. **Trim system-property noise** (follow-up): refine §3 "presence is
+    meaningful" — keys in `bundle.SystemRelations` are machine-stamped
+    metadata (`is_hidden`, `revision`, `relation_format_include_time`, …) and
+    could safely omit empty/default values, keeping documents compact for
+    LLMs; presence stays preserved for user-intent keys via a small
+    exception list (`name`, `description`, `icon_emoji`, `icon_image`,
+    `done`) and for every non-system key. Deliberately static (no
+    type-schema lookup at export time) to keep the canonical form
+    deterministic. Decide `done` membership and wire `buildProperties` +
+    the round-trip comparator accordingly.

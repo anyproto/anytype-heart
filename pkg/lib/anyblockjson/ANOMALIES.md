@@ -89,9 +89,16 @@ property. Because option values round-trip by **name** (§3), import resolves
 to one canonical option — objects referencing the duplicate get their option
 id swapped.
 
-Volume: 7 objects (`tag` property). **Accepted limitation**, kept visible in
-round-trip reports as evidence for the §15.3 open question (names vs
-`{id, name}` pairs).
+Volume: 7 objects (`tag` property). **Closed on the default shape, accepted
+on the id-less one.** The `option_ids` legend (§9a) carries the id beside the
+name and is written unconditionally, so a default export read back into a
+space that still serves the id lands on the option the object was actually
+on. Two readings still resolve by name and still swap: `OmitIds`, which drops
+the legend because an id-less document shipping a map of ids is not one (§9),
+and any read into a space that does not serve those ids — where the legend is
+a hint that fails its liveness check and falls through by design (§3). §15.3
+(names vs `{id, name}` value objects) is settled on the strength of that: the
+id rides beside the name rather than inside the value.
 
 ## 7. Default-valued details are semantically present
 
@@ -195,21 +202,45 @@ appeared in the 2026-07-23 sweeps (~35 400 objects) or the later
 
 ## The compact goldens no longer differ from the plain ones
 
-**Status: open, recorded rather than fixed.** With object-ref compaction
-deleted (v0.20), `CompactIds` selects only block-label relabeling — and the
-rich fixture's block ids are all short or hand-authored (`b1`, `dv1`, `v1`,
-`table1`), none of them minted-shaped, so none relabels. The result is that
-`testdata/rich_compact_ids.json` is now **byte-identical** to
-`testdata/rich.json`, and `rich_compact_omit.json` to `rich_omit_ids.json`.
-Two of the four goldens freeze nothing the other two do not.
+**Status: open, recorded rather than fixed — and now measured.** With
+object-ref compaction deleted (v0.20), `CompactIds` selects only block-label
+relabeling, and the rich fixture's block ids are all short or hand-authored
+(`b1`, `dv1`, `v1`, `table1`), none of them minted-shaped, so none relabels.
+Two of the four goldens therefore freeze nothing the other two do not.
 
-They are not the only cover for that path — `TestExport_MintedShapeRelabeling`
-and `compactsplit_test.go` both pin block relabeling against minted ids, and
-`TestExport_CompactIdsIsAnAliasForBlockLabels` pins the alias — so this is a
-redundancy in the golden set rather than a hole in the coverage. Fixing it
-means giving the rich fixture a minted-shaped block id, which moves every
-golden's block ids; that was not worth doing inside the freeze change.
-**Spec**: §9a.
+**Measured**, not inferred, at `35ec288e6` — `cmp` plus `shasum -a 256` over
+`pkg/lib/anyblockjson/testdata`:
+
+| golden | bytes | sha256 (first 16) |
+|---|---|---|
+| `rich.json` | 4694 | `3ed93ddf8025c87b` |
+| `rich_compact_ids.json` | 4694 | `3ed93ddf8025c87b` |
+| `rich_omit_ids.json` | 3669 | `ce96eee96aea3d4b` |
+| `rich_compact_omit.json` | 3669 | `ce96eee96aea3d4b` |
+
+Both pairs are byte-identical. While that holds — i.e. while no id in the
+rich fixture is minted-shaped — a change to the relabel rule *alone* produces
+**zero** golden drift, and zero drift is exactly what reads as "the goldens
+saw it and it was fine". That is the misleading part, not the duplication.
+
+The path is not uncovered — `TestExport_MintedShapeRelabeling` and
+`compactsplit_test.go` both pin block relabeling against minted ids, and
+`TestExport_CompactIdsIsAnAliasForBlockLabels` pins the alias against a
+fixture that does relabel. So this is a redundancy in the golden set, not a
+hole in the coverage.
+
+**Recommendation (not performed — goldens are load-bearing here, and this is
+a maintainer's call).** If it is closed, close it with a *new, small* pair —
+a two-block fixture carrying one minted-shaped id and one meaningful id, with
+its own plain and `CompactIds` goldens — rather than by minting an id into
+`rich`. Minting into `rich` moves block ids in all four existing goldens for a
+property that has nothing to do with what `rich` is for (a frozen picture of a
+hand-authored document exercising every block type), and it produces a golden
+diff that has to be justified line by line for lines that carry no meaning. A
+dedicated pair differs by exactly the one thing the flag does, which is what a
+golden is worth freezing. Leaving it as it stands is also defensible: the
+named tests above carry the rule, and this entry is the note that keeps the
+zero-drift signal from being read as coverage. **Spec**: §9a.
 
 ---
 
