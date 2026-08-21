@@ -16,10 +16,6 @@
       "In progress"
     ]
   },
-  "refs": {
-    "Done#customStatus": "opt2",
-    "In progress#customStatus": "opt1"
-  },
   "blocks": [
     {
       "type": "heading_2",

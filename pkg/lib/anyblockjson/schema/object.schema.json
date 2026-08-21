@@ -25,17 +25,6 @@
     "key": { "type": "string", "pattern": "^[^\u0000-\u001f\u007f]+$", "maxLength": 255 },
     "properties": { "$ref": "#/$defs/propertyMap" },
     "type_properties": { "type": "array", "items": { "$ref": "#/$defs/typeProperty" } },
-    "refs": {
-      "type": "object",
-      "description": "Legend of full object ids, in two disjoint key shapes (\u00a79a). A key WITHOUT '#' is a compaction label: wherever an object id is expected, a value that is one of these keys resolves to the id it names. A key WITH '#' is a qualified option key, '<option name>#<property key>', split at the LAST '#': it carries the id of the option a select value names (\u00a73), is reachable only from a select value under that property, and never from an object-id slot. Each half of a qualified key obeys the writable-key rule (1-128 characters, no control characters).",
-      "propertyNames": {
-        "anyOf": [
-          { "pattern": "^[A-Za-z0-9_-]{1,64}$" },
-          { "pattern": "^[^\u0000-\u001f\u007f]{1,128}#[^\u0000-\u001f\u007f#]{1,128}$" }
-        ]
-      },
-      "additionalProperties": { "type": "string", "minLength": 1 }
-    },
     "property_keys": {
       "type": "object",
       "description": "Legend: the stored property key each slug in this document names (§3). Present only for keys the bundled table cannot invert; a reader consults it before its own vocabulary. A value is a stored key and obeys the same writable-key rule as a property name (§3).",
@@ -47,6 +36,16 @@
       "description": "Legend: the stored type key each type slug in this document names (§3). Same rule as property_keys, on a legend of the type namespace's own: present only for spellings the bundled table cannot invert; a reader consults it before its own vocabulary. A value is a stored type key and obeys the writable-key rule (§3).",
       "propertyNames": { "pattern": "^[^\u0000-\u001f\u007f]+$", "maxLength": 128 },
       "additionalProperties": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[^\u0000-\u001f\u007f]+$" }
+    },
+    "option_ids": {
+      "type": "object",
+      "description": "Legend: the id of the option each select/multi_select NAME in this document stands for (\u00a73, \u00a79a). Nested: an outer key is a property spelling as this document writes it, an inner key is an option name exactly as the value slot spells it, and the value is the full option id. Written unconditionally wherever export spells an option by name; absent from an id-less export. Read as a HINT, not an address: an id is honoured only where the target space still serves it as a live option of that relation, and otherwise the name resolves as it would without the legend. An outer key naming a property the document never spells is reported as a warning \u2014 the entry can never be consulted.",
+      "propertyNames": { "pattern": "^[^\u0000-\u001f\u007f]+$", "maxLength": 128 },
+      "additionalProperties": {
+        "type": "object",
+        "propertyNames": { "minLength": 1 },
+        "additionalProperties": { "type": "string", "minLength": 1 }
+      }
     },
     "blocks": { "type": "array", "items": { "$ref": "#/$defs/block" } },
     "items": { "type": "array", "items": { "type": "string" } },

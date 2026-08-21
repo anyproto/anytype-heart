@@ -1,12 +1,11 @@
 package anyblockjson
 
-// optionrefs.go — the qualified option legend: a `refs` entry that carries a
-// select option's ID beside the NAME the document spells (§3, §9a) — and,
-// with it, the whole of option resolution. Export records an entry at the one
-// site that substitutes a name for an id (recordOptionRef), and import
-// resolves every select value through the one function below (resolveOption),
-// so both halves of "which option does this name mean?" are answered in this
-// file and nowhere else.
+// optionrefs.go — the `option_ids` legend: the id of the option each select
+// value NAMES (§3, §9a) — and, with it, the whole of option resolution.
+// Export records an entry at the one site that substitutes a name for an id
+// (recordOptionRef), and import resolves every select value through the one
+// function below (resolveOption), so both halves of "which option does this
+// name mean?" are answered in this file and nowhere else.
 //
 // Select and multi_select values are spelled by name (§3) because a bundle
 // carries no option objects — unlike a linked object, which the bundle
@@ -26,86 +25,27 @@ package anyblockjson
 // The entry is a HINT, not an address. Import uses the id only when it is a
 // live option OF THAT RELATION in the target space, and falls back to name
 // resolution otherwise, so a bundle carried to a space that never saw those
-// ids keeps working exactly as it does without the legend.
+// ids keeps working exactly as it does without the legend. That is the
+// deliberate difference from `property_keys`/`type_keys`, whose values are
+// taken at face value: a stored key IS the address, while an option id is a
+// shortcut past a name that is already one (§3).
 //
-// Two key shapes, one map. `refs` already holds plain compaction labels
-// (§9a), whose charset has no `#`; a qualified key always has one, so the two
-// populations are disjoint BY SHAPE, and each is reachable only from its own
-// kind of position: `resolveId` reads plain labels and never a qualified key,
-// option resolution reads qualified keys and never a plain label. Neither can
-// be reached from the other's slot even by a hand-written document.
-//
-// The shape is the whole discriminator, and it can only be the shape: both
-// directions have to sort a key into its population knowing nothing but the
-// key. What a shape cannot say is that the right half MEANS something — the
-// property census at the bottom of this file is that second, document-aware
-// layer, a check on top of the admission rule rather than a replacement for
-// it.
+// NESTED, not joined by a separator. The legend is
+// {property spelling: {option name: option id}} because a name in this format
+// is arbitrary user text and no character can be reserved to join it to its
+// scope. The flat spelling this replaced keyed entries `<name>#<property>`,
+// and `strcase.ToSnake("C#")` is `c#` — a legal api slug — so an option of a
+// property named `C#` had no representable entry at all: the escape hatch was
+// unreachable exactly where it was needed. Nesting removes the separator and
+// with it the split rule, the two-charset admission rule, and the joined
+// key's length bound. The inner key carries no charset rule at all, on
+// purpose: it is the same string the value slot already holds, and a legend
+// that cannot name a value its own document carries is that same hole one
+// level down.
 
 import (
-	"sort"
-	"strings"
-
 	"github.com/anyproto/anytype-heart/core/domain"
 )
-
-// optionRefSeparator joins an option name to the property spelling that owns
-// it. `#` is outside the plain-label charset (§9a), which is what makes the
-// two key shapes tell themselves apart.
-const optionRefSeparator = "#"
-
-// optionRefKey builds the legend key for one option name under one property
-// SPELLING — the slug the document writes, not the stored key, because the
-// reader that resolves it reads the document.
-//
-// The pair (name, slug) is recoverable from the key by splitting on the LAST
-// separator, which is what makes the shape a legend rather than a guess: the
-// slug half is separator-free by admission (isQualifiedOptionRefKey), so a
-// name carrying a `#` of its own — `C#`, `#1 priority` — still lands whole on
-// the left of the split. That also makes the map from pairs to keys
-// injective, so no two distinct (name, slug) pairs can contest one entry.
-func optionRefKey(name, slug string) string {
-	return name + optionRefSeparator + slug
-}
-
-// splitQualifiedOptionRefKey inverts optionRefKey: the (option name, property
-// spelling) pair a qualified key stands for. It answers only for a key the
-// shape rule admits, because an inadmissible key has no split to speak of —
-// the last separator is where the halves meet only once both halves are legal
-// (isQualifiedOptionRefKey pins the split by refusing a separator on the
-// right).
-func splitQualifiedOptionRefKey(s string) (name, slug string, ok bool) {
-	if !isQualifiedOptionRefKey(s) {
-		return "", "", false
-	}
-	i := strings.LastIndex(s, optionRefSeparator)
-	return s[:i], s[i+1:], true
-}
-
-// isQualifiedRefsKey tells the two `refs` key shapes apart. It reads the key
-// alone — no document context — because both directions have to agree about
-// which population a key belongs to before they know anything else about it.
-func isQualifiedRefsKey(s string) bool {
-	return strings.Contains(s, optionRefSeparator)
-}
-
-// isQualifiedOptionRefKey admits a qualified key: <option name>#<property
-// spelling>, split at the LAST separator, each half under the writable-key
-// rule §3 puts on a property spelling — 1–128 characters, no control
-// characters. The slug half carries that rule because it IS a property
-// spelling; the name half takes the same bound rather than none, so a legend
-// key is bounded like every other key slot in this format (257 characters,
-// worst case). An option whose name is longer simply gets no entry and
-// resolves by name, as it does today.
-func isQualifiedOptionRefKey(s string) bool {
-	i := strings.LastIndex(s, optionRefSeparator)
-	if i < 0 {
-		return false
-	}
-	// the right half cannot hold a separator (LastIndex), so admitting it
-	// here is what pins the split — and what keeps the key invertible
-	return isWritablePropertyKey(s[:i]) && isWritablePropertyKey(s[i+1:])
-}
 
 //
 // ---- export ----
@@ -113,8 +53,8 @@ func isQualifiedOptionRefKey(s string) bool {
 
 // optionRefPair is one entry before its property has a spelling: export
 // records the STORED key, because the term ledger has not necessarily
-// finished claiming spellings when a value is written, and renders the key at
-// emission time (buildOptionRefs).
+// finished claiming spellings when a value is written, and renders the
+// spelling at emission time (buildOptionIds).
 type optionRefPair struct {
 	key  string // stored property key
 	name string // the option name written into the document
@@ -147,45 +87,43 @@ func (e *exporter) recordOptionRef(key, name, id string) {
 	e.optionRefs[pair] = id
 }
 
-// buildOptionRefs renders the recorded pairs into legend keys, in the
-// document's own spelling. It runs at envelope-assembly time, when every key
-// slot has already claimed its term, so the spelling here is the spelling the
-// values were written under.
+// buildOptionIds groups the recorded pairs under the document's own property
+// spellings. It runs at envelope-assembly time, when every key slot has
+// already claimed its term, so the spelling here is the spelling the values
+// were written under.
 //
-// The spelling rendered here is the spelling the slot itself wrote — the
-// ledger's answer for a key is memoized — so every key this emits is in the
-// document's own property census by construction (below), which
+// The spelling grouped on is the spelling the slot itself wrote — the
+// ledger's answer for a key is memoized — so every outer key this emits is in
+// the document's own property census by construction (below), which
 // TestInvariant_MarshalOutputValidates checks over the hostile corpus.
 //
-// A property whose spelling carries the separator is skipped: `#` is a legal
-// character in an api key (`strcase.ToSnake("C#")` is `c#`), and a slug
-// holding one would make the split ambiguous. Those options keep today's
-// name-only behavior, which is correct, merely less faithful.
-func (e *exporter) buildOptionRefs() map[string]string {
+// Nothing is skipped. Under the flat spelling this replaced, a property whose
+// slug carried the separator and an option name past the joined key's bound
+// both lost their entry silently; neither residue survives nesting (§11).
+// The one thing that can still turn an entry away is a property that claimed
+// no spelling at all, which no value in the document can be written under
+// either.
+//
+// The intermediate map is what makes duplicate outer keys structurally
+// impossible: the envelope's omap appends blindly, so two stored keys landing
+// on one spelling would otherwise write the same JSON key twice.
+func (e *exporter) buildOptionIds() map[string]map[string]string {
 	if len(e.optionRefs) == 0 {
 		return nil
 	}
-	pairs := make([]optionRefPair, 0, len(e.optionRefs))
-	for pair := range e.optionRefs {
-		pairs = append(pairs, pair)
-	}
-	sort.Slice(pairs, func(i, j int) bool {
-		if pairs[i].key != pairs[j].key {
-			return pairs[i].key < pairs[j].key
-		}
-		return pairs[i].name < pairs[j].name
-	})
-	out := map[string]string{}
-	for _, pair := range pairs {
+	out := map[string]map[string]string{}
+	for pair, id := range e.optionRefs {
 		slug := e.propertySlug(pair.key)
-		if slug == "" || isQualifiedRefsKey(slug) {
+		if slug == "" {
 			continue
 		}
-		label := optionRefKey(pair.name, slug)
-		if !isQualifiedOptionRefKey(label) {
-			continue // an over-long or unwritable half; the name still stands
+		if out[slug] == nil {
+			out[slug] = map[string]string{}
 		}
-		out[label] = e.optionRefs[pair]
+		out[slug][pair.name] = id
+	}
+	if len(out) == 0 {
+		return nil
 	}
 	return out
 }
@@ -202,9 +140,9 @@ func (e *exporter) buildOptionRefs() map[string]string {
 //
 // First answer wins:
 //
-//  1. the document's own qualified legend entry, honored only for an id the
+//  1. the document's own `option_ids` entry, honored only for an id the
 //     target space still serves as an option of that relation
-//     (optionIdFromRefs below);
+//     (optionIdFromLegend below);
 //  2. name resolution through the wired resolver, which is what a bundle
 //     carried to a space that never saw those ids falls back on;
 //  3. the value unchanged, because creating a missing option is the wiring's
@@ -215,7 +153,7 @@ func (e *exporter) buildOptionRefs() map[string]string {
 // latter, because the reader that resolves the legend is reading the
 // document, not the store.
 func (imp *importer) resolveOption(key, slug, name string) string {
-	if id, ok := imp.optionIdFromRefs(key, slug, name); ok {
+	if id, ok := imp.optionIdFromLegend(key, slug, name); ok {
 		return id
 	}
 	if imp.opts.ResolveOptions != nil {
@@ -226,38 +164,25 @@ func (imp *importer) resolveOption(key, slug, name string) string {
 	return name
 }
 
-// optionIdFromRefs is step 1 of §3's option resolution: the qualified legend
+// optionIdFromLegend is step 1 of §3's option resolution: the `option_ids`
 // entry, honored only when the id it carries is a live option OF THAT
 // RELATION in the target space. The liveness question is the resolver's
 // OptionName — it answers for an id exactly when that id is an option of that
 // key — which is why a reader with no resolver ignores these entries
 // altogether: it has no space to ask, and an id it cannot check is not an
 // answer it can give.
-func (imp *importer) optionIdFromRefs(key, slug, name string) (string, bool) {
+//
+// There is no reachability precondition left to state. The lookup is indexed
+// by the spelling the slot in hand just wrote, so an entry filed under any
+// other spelling is never consulted — where the flat spelling needed a census
+// to make the key's right half MEAN a property rather than be a string, the
+// nesting makes that structural. Validate still takes the census, to warn
+// about an entry that can never be consulted (§12); import does not need it.
+func (imp *importer) optionIdFromLegend(key, slug, name string) (string, bool) {
 	if slug == "" || name == "" || imp.opts.ResolveOptions == nil {
 		return "", false
 	}
-	if len(imp.doc.Refs) == 0 {
-		return "", false // no legend, and nothing to take a census for
-	}
-	// The property half has to name a property this document uses. Import
-	// BUILDS the key from the spelling the slot it is resolving just wrote,
-	// so the spelling is in the census by construction: this cannot turn away
-	// an entry that would otherwise be honored, which makes it defence in
-	// depth rather than a behaviour change. What it defends against is the
-	// shape check standing alone — `isQualifiedOptionRefKey` admits any `X#Y`
-	// whose halves are writable strings, and it has to, since both directions
-	// must sort a key into its population knowing nothing but the key (§9a).
-	// This is the document-aware layer on top of that: the one that makes the
-	// right half mean a property rather than a string. Export writes only
-	// spellings it just used, so its keys pass by construction too, and both
-	// constructions are pinned by test — a census that stopped covering a
-	// position would otherwise disable the legend in silence, which is the
-	// exact failure mode this whole file exists to close.
-	if !imp.usesProperty(slug) {
-		return "", false
-	}
-	id := imp.doc.Refs[optionRefKey(name, slug)]
+	id := imp.doc.OptionIds[slug][name]
 	if id == "" {
 		return "", false
 	}
@@ -271,11 +196,12 @@ func (imp *importer) optionIdFromRefs(key, slug, name string) (string, bool) {
 // ---- the property vocabulary ----
 //
 
-// The right half of a qualified key is a PROPERTY SPELLING, and a spelling
-// this document never uses qualifies nothing: the entry is unreachable, and
-// the value it was written for resolves by name as if the legend were absent.
-// Both directions therefore ask whether the document uses the property, and
-// this is the census of where a document can spell one:
+// An `option_ids` outer key is a PROPERTY SPELLING, and a spelling this
+// document never uses qualifies nothing: import indexes the legend by the
+// spelling the slot it is resolving wrote, so such an entry is unreachable
+// and the value it was written for resolves by name as if the legend were
+// absent. Validate reports that (§12), and this is the census of where a
+// document can spell a property:
 //
 //   - `properties`            — member names (§3)
 //   - `property_keys`         — member names, the slug→stored-key legend (§3)
@@ -303,109 +229,14 @@ func (imp *importer) optionIdFromRefs(key, slug, name string) (string, bool) {
 // importer passes it through without translating it (dataview.go) — and no
 // option value is ever resolved under it.
 //
-// Two readers, because the two directions hold the document in two shapes:
-// the importer has decoded it (jsonDoc), Validate has not (map[string]any,
-// and it must answer before anything is decoded). They must return the same
-// set for the same document — one census wider than the other means Validate
-// warning about an entry import honors, or staying quiet about one import
-// steps over — which TestInvariant_ThePropertyCensusesAgree pins over the
-// hostile corpus and the goldens, position by position in
-// TestOptionRefs_ThePropertyCensusCoversEveryPosition.
-
-// usesProperty reports whether the document spells this property in any of
-// the census positions below. The census is taken once and kept: a document
-// carrying no qualified legend entry never asks for it at all.
-func (imp *importer) usesProperty(spelling string) bool {
-	if imp.propertyVocab == nil {
-		imp.propertyVocab = imp.doc.propertySpellings()
-	}
-	return imp.propertyVocab[spelling]
-}
-
-// propertySpellings is the census over a decoded document (import side).
-func (d *jsonDoc) propertySpellings() map[string]bool {
-	out := map[string]bool{}
-	add := func(spelling string) {
-		if spelling != "" {
-			out[spelling] = true
-		}
-	}
-	for slug := range d.Properties {
-		add(slug)
-	}
-	for slug := range d.PropertyKeys {
-		add(slug)
-	}
-	if d.TypeProps != nil {
-		for _, tp := range *d.TypeProps {
-			add(tp.Key)
-		}
-	}
-	var walk func(jbs []*jsonBlock)
-	walk = func(jbs []*jsonBlock) {
-		for _, jb := range jbs {
-			if jb == nil {
-				continue
-			}
-			switch jb.Type {
-			case "property":
-				add(jb.Key)
-			case "link":
-				// `properties` is a list of spellings on a link block and a
-				// list of objects on a dataview (§5, §6.2), so the shape is
-				// read per type rather than guessed; a payload that does not
-				// decode contributes nothing, exactly as it does on import
-				var slugs []string
-				if len(jb.Properties) > 0 {
-					_ = jsonUnmarshal(jb.Properties, &slugs)
-				}
-				for _, slug := range slugs {
-					add(slug)
-				}
-			case "dataview":
-				var props []jsonDvProperty
-				if len(jb.Properties) > 0 {
-					_ = jsonUnmarshal(jb.Properties, &props)
-				}
-				for _, p := range props {
-					add(p.Key)
-				}
-				for _, jv := range jb.Views {
-					add(jv.GroupBy)
-					add(jv.CoverProperty)
-					add(jv.EndProperty)
-					for _, jc := range jv.Columns {
-						add(jc.Property)
-					}
-					for _, js := range jv.Sorts {
-						add(js.Property)
-					}
-					var walkFilters func(nodes []jsonFilter)
-					walkFilters = func(nodes []jsonFilter) {
-						for _, jf := range nodes {
-							add(jf.Property)
-							walkFilters(jf.Filters)
-						}
-					}
-					walkFilters(jv.Filters)
-				}
-			}
-			// a cell holds any block but a table, so every position above can
-			// appear inside one (§6.1) — the same descent claimAuthoredIds
-			// makes for ids
-			for _, row := range jb.Rows {
-				for _, cell := range row.Cells {
-					if cell.Block != nil {
-						walk([]*jsonBlock{cell.Block})
-					}
-					walk(cell.Blocks)
-				}
-			}
-		}
-	}
-	walk(d.Blocks)
-	return out
-}
+// ONE reader, not two. The census used to exist in a decoded twin as well,
+// because import took it too, and an agreement test stood between them. Import
+// no longer takes a census at all (optionIdFromLegend), so the twin lost its
+// only caller — and a function kept alive so a test can check it agrees with
+// the one that is actually used proves nothing about behaviour. What the
+// agreement test really guarded is that the census covers every position a
+// property can be spelled in, and that is pinned directly, position by
+// position, in TestOptionRefs_ThePropertyCensusCoversEveryPosition.
 
 // rawPropertySpellings is the same census over an undecoded document
 // (Validate's side). Every read is shape-tolerant: this runs after the schema

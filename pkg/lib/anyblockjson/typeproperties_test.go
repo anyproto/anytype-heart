@@ -194,11 +194,13 @@ func TestTypePropertiesExport(t *testing.T) {
 		})
 
 		// then — a POSITIVE statement about what is there: an absence
-		// assertion on `refs` would now hold no matter what the export did
+		// assertion on a legend that no longer exists would hold no matter
+		// what the export did
 		require.NoError(t, err)
 		assert.Contains(t, string(data), `"key": "status"`,
 			"the lifted list resolves to a type_properties entry")
-		assert.NotContains(t, string(data), `"refs"`)
+		assert.NotContains(t, string(data), `"relid-status"`,
+			"the raw id is consumed by the lift, not carried as a label")
 	})
 }
 

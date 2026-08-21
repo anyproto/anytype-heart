@@ -207,7 +207,9 @@ func TestValidate_Valid(t *testing.T) {
 		]}`},
 		{"heading_4 alias", `{"version": 1, "blocks": [{"type": "heading_4", "text": "deep"}]}`},
 		{"equation alias", `{"version": 1, "blocks": [{"type": "equation", "text": "E=mc^2"}]}`},
-		{"refs", `{"version": 1, "refs": {"roman": "bafyreiabc", "x_1-2": "bafyreidef"}}`},
+		{"option_ids", `{"version": 1, "properties": {"tag": ["High"], "c#_lang": ["C#"]},
+			"option_ids": {"tag": {"import issue": "bafyreiabc", "High": "bafyreidef"},
+				"c#_lang": {"C#": "bafyreighi"}}}`},
 		// view-id uniqueness is scoped to the dataview BLOCK (§6.2): the app
 		// mints every set/collection/type default view as "default", and
 		// creating an inline set from one copies its views verbatim, so a
@@ -290,7 +292,12 @@ func TestValidate_Invalid(t *testing.T) {
 		{"inline markup error in cell", `{"version": 1, "blocks": [
 			{"type": "table", "columns": [{"id": "c1"}], "rows": [{"id": "r1", "cells": ["<mention>x</mention>"]}]}
 		]}`, "/blocks/0/rows/0/cells/0"},
-		{"bad refs key", `{"version": 1, "refs": {"a b": "bafy1"}}`, `/refs/a b: refs label "a b" is not`},
+		{"an option_ids spelling with a control character",
+			`{"version": 1, "option_ids": {"a\nb": {"High": "bafy1"}}}`,
+			`/option_ids/a` + "\n" + `b: option_ids property spelling "a\nb" carries a control character`},
+		{"an empty option name",
+			`{"version": 1, "properties": {"tag": ["High"]}, "option_ids": {"tag": {"": "bafy1"}}}`,
+			`/option_ids/tag/: option name is empty`},
 		{"filter mixing group and leaf", `{"version": 1, "blocks": [
 			{"type": "dataview", "views": [{"id": "v", "filters": [{"operator": "and", "property": "x", "filters": []}]}]}
 		]}`, "/blocks/0/views/0/filters/0"},
@@ -415,8 +422,8 @@ func TestValidate_PathAddressing(t *testing.T) {
 }
 
 // A key slot the schema constrains through `propertyNames` — the `properties`
-// map, the `property_keys` legend, the `refs` legend (§3, §9a) — has to name
-// the member that broke the rule, like every other issue §12 promises. The
+// map, the `property_keys` legend, both levels of `option_ids` (§3, §9a) — has
+// to name the member that broke the rule, like every other issue §12 promises. The
 // schema cannot: `propertyNames` validates each name as a standalone string
 // instance, so the library's verdict carries neither the enclosing object's
 // location nor, for a length bound, the name itself. A 200-character property
@@ -470,10 +477,20 @@ func TestValidate_KeySlotIssuesNameTheOffendingMember(t *testing.T) {
 			wantIn:   []string{"empty"},
 		},
 		{
-			name:     "a refs label outside the label charset",
-			doc:      `{"version": 1, "refs": {"a b": "bafyreiabc"}}`,
-			wantPath: "/refs/a b",
-			wantIn:   []string{`"a b"`},
+			name:     "an option_ids spelling past the bound",
+			doc:      `{"version": 1, "option_ids": {"` + long + `": {"High": "bafyreiabc"}}}`,
+			wantPath: "/option_ids/" + long,
+			wantIn:   []string{long, "129", "128"},
+		},
+		{
+			// the INNER propertyNames, whose only rule is non-empty. Its own
+			// site in the schema is reported at the document root without
+			// this case (§12), and the pointer has to reach the level too —
+			// `/option_ids/tag/` is the empty member of `tag`'s map.
+			name:     "an empty option name",
+			doc:      `{"version": 1, "option_ids": {"tag": {"": "bafyreiabc"}}}`,
+			wantPath: "/option_ids/tag/",
+			wantIn:   []string{"empty"},
 		},
 		// A spelling carrying a pointer metacharacter is escaped (RFC 6901),
 		// and the escape is what keeps the count at one: the schema's own
@@ -548,8 +565,12 @@ func TestValidate_EveryPropertyNamesSiteHasAnAddressableMessage(t *testing.T) {
 
 	assert.Equal(t, []string{
 		"/$defs/propertyMap", // the properties map, via $ref from /properties
+		"/properties/option_ids",
+		// the option-name level: `option_ids` carries a propertyNames at BOTH
+		// levels and each owes its own case, which is the easy one to
+		// under-count
+		"/properties/option_ids/additionalProperties",
 		"/properties/property_keys",
-		"/properties/refs",
 		"/properties/type_keys",
 	}, sites, "a new propertyNames site needs a case in propertyNameIssues")
 }

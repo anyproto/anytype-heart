@@ -688,36 +688,33 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 		}
 	}
 
-	// A qualified `refs` entry qualifies an option name with a PROPERTY
-	// SPELLING (§9a), and one naming a property the document never spells
-	// qualifies nothing: import builds the lookup key from the spelling the
-	// slot it is resolving wrote, so such an entry is unreachable and the
-	// value it was written for resolves by name as if the legend were absent.
+	// An `option_ids` outer key is a PROPERTY SPELLING (§9a), and one naming a
+	// property the document never spells qualifies nothing: import indexes the
+	// legend by the spelling the slot it is resolving wrote, so such an entry
+	// is unreachable and the values under it resolve by name as if the legend
+	// were absent.
 	//
-	// A warning, not an error, because §9a freezes the opposite rule for the
-	// other half of this map — an unused `refs` entry is IGNORED — and a
-	// legend is allowed to carry more than one document needs. But ignored in
-	// SILENCE is how `High#priorty` validates clean and then quietly loses
-	// the identity it was written to carry, which is the degradation this
-	// format reports everywhere else. The census is taken only when a
-	// qualified key is present.
-	if refs, _ := doc["refs"].(map[string]any); len(refs) > 0 {
-		var spellings map[string]bool
-		for _, label := range sortedMapKeys(refs) {
-			name, slug, qualified := splitQualifiedOptionRefKey(label)
-			if !qualified {
-				continue
-			}
-			if spellings == nil {
-				spellings = rawPropertySpellings(doc)
-			}
+	// A warning, not an error, because a legend is allowed to carry more than
+	// one document needs. But ignored in SILENCE is how a legend filed under
+	// `priorty` validates clean and then quietly loses the identity it was
+	// written to carry, which is the degradation this format reports
+	// everywhere else.
+	//
+	// A KEY-SET COMPARISON, not a parse. The flat spelling this replaced had
+	// to split each key at its last separator before it could ask the census
+	// anything, and that split was defined only for keys the shape rule
+	// admitted; here the property spelling IS the key, so the census answers
+	// it directly.
+	if legend, _ := doc["option_ids"].(map[string]any); len(legend) > 0 {
+		spellings := rawPropertySpellings(doc)
+		for _, slug := range sortedMapKeys(legend) {
 			if spellings[slug] {
 				continue
 			}
-			warnIssue("/refs/"+escapeJSONPointer(label),
-				"qualifies %q, which no property in this document spells — "+
-					"this entry can never be consulted, and %q resolves by name (§3, §9a)",
-				slug, name)
+			warnIssue("/option_ids/"+escapeJSONPointer(slug),
+				"no property in this document spells %q — this legend entry can "+
+					"never be consulted, and the option names under it resolve by "+
+					"name (§3, §9a)", slug)
 		}
 	}
 
@@ -1031,11 +1028,12 @@ type keySlotReport struct {
 
 // propertyNameIssues states, where the key is in hand, every rule the schema
 // carries as `propertyNames`: the `properties` map and the `property_keys` /
-// `type_keys` legends take a writable key (§3), the `refs` legend takes a
-// label (§9a). A legend VALUE rides along because it is a stored key under the
-// same rule and the schema's verdict on it names the bound, not the string —
-// and so does a `type_properties` entry's `key`, a key slot the schema can
-// only reach as an ordinary string value.
+// `type_keys` legends take a writable key (§3), and `option_ids` takes one at
+// its OUTER level with a merely non-empty option name at its inner level
+// (§9a). A legend VALUE rides along because it is a stored key under the same
+// rule and the schema's verdict on it names the bound, not the string — and so
+// does a `type_properties` entry's `key`, a key slot the schema can only reach
+// as an ordinary string value.
 //
 // The rule stays in the published schema — an external validator runs that and
 // nothing else (§12) — and is restated here because `propertyNames` cannot
@@ -1044,9 +1042,9 @@ type keySlotReport struct {
 // object's location nor, for a length bound, the name: a 200-character
 // property key was reported as `maxLength: got 200, want 128` at the document
 // ROOT, and an agent running the generate → validate → feed-back loop (§13)
-// cannot tell from that which property to fix. The predicates are the export
-// side's own (isWritablePropertyKey, isValidRefsKey), so the two directions
-// cannot drift into Marshal emitting what Validate rejects (§11, I1).
+// cannot tell from that which property to fix. The predicate is the export
+// side's own (isWritablePropertyKey), so the two directions cannot drift into
+// Marshal emitting what Validate rejects (§11, I1).
 func propertyNameIssues(doc map[string]any) keySlotReport {
 	r := keySlotReport{names: map[string]bool{}, values: map[string]bool{}}
 	rejectName := func(path, name, reason string) {
@@ -1058,24 +1056,31 @@ func propertyNameIssues(doc map[string]any) keySlotReport {
 		r.values[path] = true
 	}
 
-	if refs, _ := doc["refs"].(map[string]any); refs != nil {
-		for _, label := range sortedMapKeys(refs) {
-			if isValidRefsKey(label) {
-				continue
+	// `option_ids` carries a `propertyNames` at BOTH levels (§9a), and each
+	// needs its own case here or the schema's unaddressable root-level verdict
+	// comes back for it. The two rules differ on purpose: an outer key is a
+	// property spelling like any other, an inner key is an option NAME bounded
+	// only by being non-empty — it is the same string the value slot already
+	// holds, so any charset rule on it would refuse a legend entry for a value
+	// the document itself carries.
+	if legend, _ := doc["option_ids"].(map[string]any); legend != nil {
+		for _, slug := range sortedMapKeys(legend) {
+			path := "/option_ids/" + escapeJSONPointer(slug)
+			if !isWritablePropertyKey(slug) {
+				rejectName(path, slug, unwritableKeyReason("option_ids property spelling", slug))
 			}
-			// the two shapes are told apart by the separator alone (§9a), so
-			// the reason names the shape the key was reaching for — telling a
-			// malformed `High#` that it is not [A-Za-z0-9_-] says nothing
-			// about what it got wrong
-			reason := fmt.Sprintf(
-				"refs label %q is not 1-64 characters of [A-Za-z0-9_-] (§9a)", label)
-			if isQualifiedRefsKey(label) {
-				reason = fmt.Sprintf("refs key %q is not <option name>#<property key>: "+
-					"each half of a qualified key, split at the last %q, is 1-%d characters "+
-					"with no control characters (§3, §9a)",
-					label, optionRefSeparator, maxPropertyKeyLen)
+			names, isObject := legend[slug].(map[string]any)
+			if !isObject {
+				continue // the schema types the level; this pass only shapes it
 			}
-			rejectName("/refs/"+escapeJSONPointer(label), label, reason)
+			for _, name := range sortedMapKeys(names) {
+				if name != "" {
+					continue
+				}
+				rejectName(path+"/", name,
+					"option name is empty — an option_ids entry has to name an "+
+						"option the document spells (§9a)")
+			}
 		}
 	}
 	if props, _ := doc["properties"].(map[string]any); props != nil {

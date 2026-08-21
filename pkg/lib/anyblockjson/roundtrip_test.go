@@ -402,8 +402,8 @@ func TestCompactIds(t *testing.T) {
 	assert.Contains(t, s, `<mention object_id=\"bafyreiroman\">`)
 	assert.Contains(t, s, `"bafyreiroman"`, "the assignee property value too")
 	// no object-id legend, stated as the entries the deleted one would have
-	// written: an absence assertion on `refs` itself would not do, since the
-	// option legend still lives there (§9a)
+	// written — a bare absence assertion on the field name would hold no
+	// matter what the export did, which is the trap this replaces (§9a)
 	assert.NotContains(t, s, `"roman": "bafyreiroman"`)
 	assert.NotContains(t, s, `"tasks": "bafyreitasks"`)
 	assert.NotContains(t, s, `"image": "bafyreiimage"`)

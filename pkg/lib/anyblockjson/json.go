@@ -33,6 +33,33 @@ func (m *omap) set(k string, v any) {
 	m.vals = append(m.vals, v)
 }
 
+// sortedNestedOmap renders a two-level string map into nested omaps, both
+// levels sorted by key (§4 canon). Returns nil for an empty map so
+// setNonEmpty omits the slot.
+func sortedNestedOmap(m map[string]map[string]string) *omap {
+	if len(m) == 0 {
+		return nil
+	}
+	out := &omap{}
+	for _, outer := range sortedStringKeys(m) {
+		inner := &omap{}
+		for _, k := range sortedStringKeys(m[outer]) {
+			inner.set(k, m[outer][k])
+		}
+		out.set(outer, inner)
+	}
+	return out
+}
+
+func sortedStringKeys[V any](m map[string]V) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
+}
+
 // setNonEmpty appends k only when v is not an empty/default value (§4:
 // canonical form omits empty strings, arrays, objects and default scalars).
 func (m *omap) setNonEmpty(k string, v any) {

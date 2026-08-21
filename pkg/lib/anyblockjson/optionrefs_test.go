@@ -1,6 +1,6 @@
 package anyblockjson
 
-// optionrefs_test.go — the qualified option legend (optionrefs.go, §3, §9a).
+// optionrefs_test.go — the `option_ids` legend (optionrefs.go, §3, §9a).
 //
 // Every test here is written against a resolver that behaves the way the real
 // one does: `spaceOptions` scans a per-relation list and answers with the
@@ -75,14 +75,19 @@ func optionSnapshot(props map[string]*types.Value) *model.SmartBlockSnapshotBase
 	}
 }
 
-// docRefs reads the `refs` legend out of an exported document.
-func docRefs(t *testing.T, data []byte) map[string]string {
+// docOptionIds reads the `option_ids` legend out of an exported document.
+func docOptionIds(t *testing.T, data []byte) map[string]map[string]string {
 	t.Helper()
 	var got struct {
-		Refs map[string]string `json:"refs"`
+		OptionIds map[string]map[string]string `json:"option_ids"`
 	}
 	require.NoError(t, json.Unmarshal(data, &got))
-	return got.Refs
+	return got.OptionIds
+}
+
+// legend is the nested literal these tests assert against, spelled once.
+func legend(slug string, entries map[string]string) map[string]map[string]string {
+	return map[string]map[string]string{slug: entries}
 }
 
 // docProperty reads one property value out of an exported document.
@@ -116,7 +121,10 @@ func TestOptionRefs_TwoPropertiesShareAnOptionName(t *testing.T) {
 		"status": strList("bafyopt1"),
 		"tag":    strList("bafyopt2"),
 	})
-	want := map[string]string{"High#status": "bafyopt1", "High#tag": "bafyopt2"}
+	want := map[string]map[string]string{
+		"status": {"High": "bafyopt1"},
+		"tag":    {"High": "bafyopt2"},
+	}
 
 	// when
 	data, err := Marshal(model.SmartBlockType_Page, snap, Options{ResolveOptions: space})
@@ -124,7 +132,7 @@ func TestOptionRefs_TwoPropertiesShareAnOptionName(t *testing.T) {
 
 	// then
 	require.NoError(t, Validate(data))
-	assert.Equal(t, want, docRefs(t, data))
+	assert.Equal(t, want, docOptionIds(t, data))
 	assert.Equal(t, []any{"High"}, docProperty(t, data, "status"))
 	assert.Equal(t, []any{"High"}, docProperty(t, data, "tag"))
 
@@ -153,7 +161,7 @@ func TestOptionRefs_DuplicateNameKeepsTheOptionTheObjectWasOn(t *testing.T) {
 	require.NoError(t, err)
 
 	// then
-	assert.Equal(t, map[string]string{"books#tag": "bafysecond"}, docRefs(t, data))
+	assert.Equal(t, legend("tag", map[string]string{"books": "bafysecond"}), docOptionIds(t, data))
 	assert.Equal(t, []string{"bafysecond"}, storedList(t, back, "tag"))
 	// and the name resolution the legend overrides really does answer the
 	// other option, so this test cannot pass by the fallback agreeing
@@ -186,7 +194,7 @@ func TestOptionRefs_SameNameTwiceInOneValueCollapses(t *testing.T) {
 	// then — the value keeps its arity, the identities collapse onto the
 	// first one written, and the legend says so out loud
 	assert.Equal(t, []any{"books", "books"}, docProperty(t, data, "tag"))
-	assert.Equal(t, map[string]string{"books#tag": "bafysecond"}, docRefs(t, data))
+	assert.Equal(t, legend("tag", map[string]string{"books": "bafysecond"}), docOptionIds(t, data))
 	assert.Equal(t, []string{"bafysecond", "bafysecond"}, storedList(t, back, "tag"))
 
 	// and the collapse is a FIXPOINT: exporting what came back reproduces the
@@ -217,7 +225,7 @@ func TestOptionRefs_RenamedOptionResolvesById(t *testing.T) {
 	require.NoError(t, err)
 
 	// then
-	assert.Equal(t, map[string]string{"High#tag": "bafyorig"}, docRefs(t, data))
+	assert.Equal(t, legend("tag", map[string]string{"High": "bafyorig"}), docOptionIds(t, data))
 	assert.Equal(t, []string{"bafyorig"}, storedList(t, back, "tag"),
 		"the id names the option the document came from; the name now names another")
 	id, ok := target.OptionId("tag", "High")
@@ -242,7 +250,7 @@ func TestOptionRefs_UnknownIdFallsBackToTheName(t *testing.T) {
 	require.NoError(t, err)
 
 	// then
-	assert.Equal(t, map[string]string{"High#tag": "bafysource"}, docRefs(t, data))
+	assert.Equal(t, legend("tag", map[string]string{"High": "bafysource"}), docOptionIds(t, data))
 	assert.Equal(t, []string{"bafytarget"}, storedList(t, back, "tag"))
 }
 
@@ -268,11 +276,13 @@ func TestOptionRefs_IdLiveUnderAnotherRelationIsNotAnAnswer(t *testing.T) {
 	assert.Equal(t, []string{"bafytarget"}, storedList(t, back, "tag"))
 }
 
-// A name carrying the separator itself — `C#`, `#1 priority` — still lands
-// whole, because the key splits at the LAST separator and the property
-// spelling on the right of it can never hold one.
-func TestOptionRefs_NameCarryingTheSeparator(t *testing.T) {
-	for _, name := range []string{"C#", "#1 priority", "a#b#c"} {
+// A name carrying what used to be the separator — `C#`, `#1 priority` — is
+// nothing special now: there is no separator to collide with, so the name is
+// the inner key character for character. The case is kept because it is the
+// one the flat spelling had to reason about (split at the LAST `#`), and the
+// hazard is worth a standing regression rather than an argument.
+func TestOptionRefs_NameCarryingTheOldSeparator(t *testing.T) {
+	for _, name := range []string{"C#", "#1 priority", "a#b#c", "#"} {
 		t.Run(name, func(t *testing.T) {
 			// given
 			space := spaceOptions{"language": {{id: "bafyopt", name: name}}}
@@ -287,16 +297,16 @@ func TestOptionRefs_NameCarryingTheSeparator(t *testing.T) {
 
 			// then
 			require.NoError(t, Validate(data))
-			assert.Equal(t, map[string]string{name + "#language": "bafyopt"}, docRefs(t, data))
+			assert.Equal(t, legend("language", map[string]string{name: "bafyopt"}), docOptionIds(t, data))
 			assert.Equal(t, []string{"bafyopt"}, storedList(t, back, "language"))
 		})
 	}
 }
 
 // An ordinary tag name with a space in it — `import issue` is a real one from
-// the account this was measured on — which the plain-label charset
-// ([A-Za-z0-9_-]) rejected outright. The relaxation is what makes the legend
-// usable at all.
+// the account this was measured on — which the deleted plain-label charset
+// ([A-Za-z0-9_-]) rejected outright. The inner key carries no charset rule at
+// all, which is what makes the legend usable on real option names.
 func TestOptionRefs_NameCarryingASpace(t *testing.T) {
 	// given
 	space := spaceOptions{"tag": {{id: "bafyopt", name: "import issue"}}}
@@ -308,7 +318,7 @@ func TestOptionRefs_NameCarryingASpace(t *testing.T) {
 
 	// then
 	require.NoError(t, Validate(data), "a name with a space must be a legal legend key:\n%s", data)
-	assert.Equal(t, map[string]string{"import issue#tag": "bafyopt"}, docRefs(t, data))
+	assert.Equal(t, legend("tag", map[string]string{"import issue": "bafyopt"}), docOptionIds(t, data))
 
 	_, back, err := Unmarshal(data, Options{ResolveOptions: space})
 	require.NoError(t, err)
@@ -321,7 +331,7 @@ func TestOptionRefs_UnknownValuePassesThrough(t *testing.T) {
 	// given
 	space := spaceOptions{"tag": {{id: "bafyopt", name: "High"}}}
 	doc := `{"version": 1, "id": "obj1", "properties": {"tag": ["Brand new"]},
-		"refs": {"High#tag": "bafyopt"}}`
+		"option_ids": {"tag": {"High": "bafyopt"}}}`
 
 	// when
 	_, back, err := Unmarshal([]byte(doc), Options{ResolveOptions: space, GenerateId: seqIds("g")})
@@ -334,24 +344,40 @@ func TestOptionRefs_UnknownValuePassesThrough(t *testing.T) {
 // The legend is identity, not compaction, so it is not behind the compaction
 // flag — and it is not pruned, because there is nothing unused to prune: the
 // only place an entry is recorded is the substitution itself.
+//
+// OmitIds is the ONE shape that drops it, and that is not an exception to the
+// rule but the same rule read the other way: the legend is nothing but ids, so
+// a shape that declares itself id-less and then ships a map of them is not one
+// (§9). This used to write them, which is what made `rich_omit_ids.json` an
+// id-less golden carrying two option ids.
 func TestOptionRefs_WrittenWithoutCompactionAndOnlyForWhatIsWritten(t *testing.T) {
 	// given — one option the resolver knows and one raw id it does not
 	space := spaceOptions{"tag": {{id: "bafyknown", name: "High"}}}
 	snap := optionSnapshot(map[string]*types.Value{"tag": strList("bafyknown", "bafyunknown")})
 
-	for name, opts := range map[string]Options{
-		"plain":   {ResolveOptions: space},
-		"compact": {ResolveOptions: space, CompactBlockLabels: true},
-		"omitIds": {ResolveOptions: space, OmitIds: true},
+	for name, tc := range map[string]struct {
+		opts       Options
+		wantLegend bool
+	}{
+		"plain":   {Options{ResolveOptions: space}, true},
+		"compact": {Options{ResolveOptions: space, CompactBlockLabels: true}, true},
+		"omitIds": {Options{ResolveOptions: space, OmitIds: true}, false},
 	} {
 		t.Run(name, func(t *testing.T) {
 			// when
-			data, err := Marshal(model.SmartBlockType_Page, snap, opts)
+			data, err := Marshal(model.SmartBlockType_Page, snap, tc.opts)
 			require.NoError(t, err)
 
 			// then
-			assert.Equal(t, map[string]string{"High#tag": "bafyknown"}, docRefs(t, data),
-				"the unresolved id is written verbatim and owes no entry")
+			if tc.wantLegend {
+				assert.Equal(t, legend("tag", map[string]string{"High": "bafyknown"}), docOptionIds(t, data),
+					"the unresolved id is written verbatim and owes no entry")
+			} else {
+				assert.Nil(t, docOptionIds(t, data),
+					"an id-less shape ships no legend of ids (§9)")
+				assert.NotContains(t, string(data), "bafyknown",
+					"and the id it would have carried appears nowhere else either")
+			}
 			assert.Equal(t, []any{"High", "bafyunknown"}, docProperty(t, data, "tag"))
 		})
 	}
@@ -391,7 +417,7 @@ func TestOptionRefs_FilterValuesAndCustomOrders(t *testing.T) {
 		Details: fields(map[string]*types.Value{"name": str("Board")}),
 	}
 	opts := Options{ResolveOptions: space}
-	want := map[string]string{"Filtered#tag": "bafyfilter", "Ordered#tag": "bafyorder"}
+	want := legend("tag", map[string]string{"Filtered": "bafyfilter", "Ordered": "bafyorder"})
 
 	// when
 	data, err := Marshal(model.SmartBlockType_Page, snap, opts)
@@ -401,7 +427,7 @@ func TestOptionRefs_FilterValuesAndCustomOrders(t *testing.T) {
 
 	// then
 	require.NoError(t, Validate(data))
-	assert.Equal(t, want, docRefs(t, data))
+	assert.Equal(t, want, docOptionIds(t, data))
 	view := backView(t, back)
 	assert.Equal(t, []string{"bafyfilter"}, valueStringList(view.Filters[0].Value))
 	require.Len(t, view.Sorts[0].CustomOrder, 1)
@@ -421,9 +447,9 @@ func backView(t *testing.T, snap *model.SmartBlockSnapshotBase) *model.BlockCont
 	return nil
 }
 
-// The legend key carries the SPELLING the document writes, not the stored
-// key — the reader that resolves it is reading the document and has no store
-// to translate with.
+// The legend's OUTER key carries the SPELLING the document writes, not the
+// stored key — the reader that resolves it is reading the document and has no
+// store to translate with.
 func TestOptionRefs_KeyIsTheSpellingNotTheStoredKey(t *testing.T) {
 	// given — a same-named twin ahead of it in the pool, so name resolution
 	// answers a DIFFERENT option and only the legend can be right. Without
@@ -445,21 +471,29 @@ func TestOptionRefs_KeyIsTheSpellingNotTheStoredKey(t *testing.T) {
 	require.NoError(t, err)
 
 	// then
-	assert.Equal(t, map[string]string{"High#priority": "bafyopt"}, docRefs(t, data))
+	assert.Equal(t, legend("priority", map[string]string{"High": "bafyopt"}), docOptionIds(t, data))
 	assert.Equal(t, []string{"bafyopt"}, storedList(t, back, "6a32d4856761631534b22f85"))
 	id, ok := space.OptionId("6a32d4856761631534b22f85", "High")
 	require.True(t, ok)
 	assert.Equal(t, "bafydecoy", id, "the fixture must make name resolution answer differently")
 }
 
-// A property whose SPELLING carries the separator gets no entry: `#` is legal
-// in an api key (`strcase.ToSnake("C#")` is `c#`), and a key with one on both
-// sides of the split would not be invertible. Those options keep today's
-// name-only behavior — correct, merely less faithful — rather than getting an
-// entry that could be read two ways.
-func TestOptionRefs_SeparatorInThePropertySpellingSuppressesTheEntry(t *testing.T) {
+// THE CAPABILITY HOLE, CLOSED. A property whose SPELLING carries a `#` used
+// to get no entry at all: `strcase.ToSnake("C#")` is `c#`, a legal api slug,
+// and a flat key `<name>#<slug>` with a separator on both sides of the split
+// was not invertible — so the escape hatch was unreachable exactly where a
+// user's own naming needed it, and the value fell back to name resolution in
+// silence. Nesting has no separator, so the entry is simply written.
+//
+// The pool lists a same-named decoy FIRST, so name resolution answers a
+// different id: without it the fallback would rescue the value and this test
+// would pass whether or not the entry was written.
+func TestOptionRefs_SeparatorInThePropertySpellingStillGetsAnEntry(t *testing.T) {
 	// given
-	space := spaceOptions{"csharpTag": {{id: "bafyopt", name: "High"}}}
+	space := spaceOptions{"csharpTag": {
+		{id: "bafydecoy", name: "High"},
+		{id: "bafyopt", name: "High"},
+	}}
 	snap := optionSnapshot(map[string]*types.Value{"csharpTag": strList("bafyopt")})
 	opts := Options{ResolveOptions: space, ResolveFormat: selectFormats, Keys: slugVocab{
 		slugs: map[string]string{"csharpTag": "c#_lang"},
@@ -473,41 +507,48 @@ func TestOptionRefs_SeparatorInThePropertySpellingSuppressesTheEntry(t *testing.
 
 	// then
 	require.NoError(t, Validate(data))
-	assert.Nil(t, docRefs(t, data))
+	assert.Equal(t, legend("c#_lang", map[string]string{"High": "bafyopt"}), docOptionIds(t, data))
 	assert.Equal(t, []any{"High"}, docProperty(t, data, "c#_lang"))
 	assert.Equal(t, []string{"bafyopt"}, storedList(t, back, "csharpTag"),
-		"name resolution still carries it")
+		"the legend, not name resolution, is what carries the identity here")
+	id, ok := space.OptionId("csharpTag", "High")
+	require.True(t, ok)
+	assert.Equal(t, "bafydecoy", id, "the fixture must make name resolution answer differently")
 }
 
-// A name past the bound each half of a qualified key carries (the §3
-// writable-key rule, 128 characters) gets no entry either; the value is
-// still written and still resolves by name.
-func TestOptionRefs_OverLongNameGetsNoEntry(t *testing.T) {
+// The other residue nesting removes: an option name past the bound the joined
+// key carried. There is no joined key, and the inner key is bounded only by
+// being non-empty, so a name of any length gets its entry — as it must, since
+// the same string is already sitting in the value slot beside it.
+func TestOptionRefs_OverLongNameStillGetsAnEntry(t *testing.T) {
 	for _, tc := range []struct {
-		name    string
-		length  int
-		wantRef bool
+		name   string
+		length int
 	}{
-		{"at the bound", maxPropertyKeyLen, true},
-		{"past the bound", maxPropertyKeyLen + 1, false},
+		{"at the old bound", maxPropertyKeyLen},
+		{"past the old bound", maxPropertyKeyLen + 1},
+		{"far past it", maxPropertyKeyLen * 8},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			// given
+			// given — a same-named decoy again, so the entry is load-bearing
 			optName := strings.Repeat("n", tc.length)
-			space := spaceOptions{"tag": {{id: "bafyopt", name: optName}}}
+			space := spaceOptions{"tag": {
+				{id: "bafydecoy", name: optName},
+				{id: "bafyopt", name: optName},
+			}}
 			snap := optionSnapshot(map[string]*types.Value{"tag": strList("bafyopt")})
+			opts := Options{ResolveOptions: space}
 
 			// when
-			data, err := Marshal(model.SmartBlockType_Page, snap, Options{ResolveOptions: space})
+			data, err := Marshal(model.SmartBlockType_Page, snap, opts)
+			require.NoError(t, err)
+			_, back, err := Unmarshal(data, opts)
 			require.NoError(t, err)
 
 			// then
 			require.NoError(t, Validate(data), "%s", data)
-			if tc.wantRef {
-				assert.Equal(t, map[string]string{optName + "#tag": "bafyopt"}, docRefs(t, data))
-			} else {
-				assert.Nil(t, docRefs(t, data))
-			}
+			assert.Equal(t, legend("tag", map[string]string{optName: "bafyopt"}), docOptionIds(t, data))
+			assert.Equal(t, []string{"bafyopt"}, storedList(t, back, "tag"))
 		})
 	}
 }
@@ -519,7 +560,7 @@ func TestOptionRefs_OverLongNameGetsNoEntry(t *testing.T) {
 func TestOptionRefs_ReaderWithoutAResolverIgnoresTheLegend(t *testing.T) {
 	// given
 	doc := `{"version": 1, "id": "obj1", "properties": {"tag": ["High"]},
-		"refs": {"High#tag": "bafyopt"}}`
+		"option_ids": {"tag": {"High": "bafyopt"}}}`
 
 	// when
 	_, back, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
@@ -529,115 +570,96 @@ func TestOptionRefs_ReaderWithoutAResolverIgnoresTheLegend(t *testing.T) {
 	assert.Equal(t, []string{"High"}, storedList(t, back, "tag"))
 }
 
-// The two key populations are disjoint by shape, and each is reachable only
-// from its own kind of slot (§9a). Both directions are pinned, because a
-// legend that leaks across slots is exactly the silent re-pointing this whole
-// mechanism exists to stop.
-func TestOptionRefs_ThePopulationsDoNotLeakIntoEachOther(t *testing.T) {
-	space := spaceOptions{"tag": {{id: "bafyopt", name: "High"}}}
-
-	t.Run("a qualified key is not an object id", func(t *testing.T) {
-		// given — an object-id slot literally spelling a qualified key
-		doc := `{"version": 1, "id": "obj1", "refs": {"High#tag": "bafyopt"},
-			"blocks": [{"type": "link", "object_id": "High#tag"}]}`
-
-		// when
-		_, back, err := Unmarshal([]byte(doc), Options{ResolveOptions: space, GenerateId: seqIds("g")})
-
-		// then
-		require.NoError(t, err)
-		assert.Equal(t, "High#tag", linkTarget(t, back))
-	})
-
-	t.Run("a bare option name is not an object id", func(t *testing.T) {
-		// given — the legend holds High#tag, so a bare "High" binds nothing
-		doc := `{"version": 1, "id": "obj1", "refs": {"High#tag": "bafyopt"},
-			"blocks": [{"type": "link", "object_id": "High"}]}`
-
-		// when
-		_, back, err := Unmarshal([]byte(doc), Options{ResolveOptions: space, GenerateId: seqIds("g")})
-
-		// then
-		require.NoError(t, err)
-		assert.Equal(t, "High", linkTarget(t, back))
-	})
-
-	t.Run("a compaction label is not an option", func(t *testing.T) {
-		// given — a plain label whose spelling a select value repeats
-		doc := `{"version": 1, "id": "obj1", "refs": {"miovm": "bafyreitarget"},
-			"properties": {"tag": ["miovm"]}}`
-
-		// when
-		_, back, err := Unmarshal([]byte(doc), Options{ResolveOptions: space, GenerateId: seqIds("g")})
-
-		// then
-		require.NoError(t, err)
-		assert.Equal(t, []string{"miovm"}, storedList(t, back, "tag"))
-	})
-}
-
-func linkTarget(t *testing.T, snap *model.SmartBlockSnapshotBase) string {
-	t.Helper()
-	for _, b := range snap.Blocks {
-		if c, ok := b.Content.(*model.BlockContentOfLink); ok {
-			return c.Link.TargetBlockId
-		}
-	}
-	t.Fatal("no link block in the imported snapshot")
-	return ""
-}
-
-// The published schema and the Go predicate have to admit the same keys, or
+// The published schema and the Go restatement have to admit the same keys, or
 // an external validator (§12) and this package disagree about what a document
-// is. The table runs both against the same inputs.
-func TestOptionRefs_KeyShapeIsTheSameInBothValidators(t *testing.T) {
+// is. `option_ids` carries a rule at BOTH levels and the table runs both.
+//
+// The outer rule is the writable-key rule every property spelling carries.
+// The inner rule is only "non-empty", deliberately: an option name is the
+// same string the value slot already holds, so anything stricter would refuse
+// a legend entry for a value the document itself carries — the `C#` hole one
+// level down.
+func TestOptionRefs_LegendKeyRulesAreTheSameInBothValidators(t *testing.T) {
 	for _, tc := range []struct {
-		key   string
+		name  string
+		slug  string
+		optId string
 		valid bool
 	}{
-		{"miovm", true},                             // plain label
-		{"a-b_C9", true},                            // plain charset, whole
-		{"has space", false},                        // plain charset is unchanged
-		{"High#tag", true},                          // qualified
-		{"import issue#tag", true},                  // a name with a space
-		{"C##language", true},                       // a name with the separator
-		{"a#b#c", true},                             // splits at the last one
-		{"#tag", false},                             // no name
-		{"High#", false},                            // no property
-		{"#", false},                                // neither
-		{strings.Repeat("n", 128) + "#tag", true},   // both halves at the bound
-		{strings.Repeat("n", 129) + "#tag", false},  // the name half past it
-		{"High#" + strings.Repeat("p", 129), false}, // the property half past it
-		{"High#" + strings.Repeat("p", 128), true},  //
-		{"a\nb#tag", false},                         // a control character in the name
-		{"High#ta\ng", false},                       // and one in the property
-		{strings.Repeat("l", 65), false},            // a plain label past 64
+		{"a plain spelling", "tag", "High", true},
+		{"a spelling carrying the old separator", "c#_lang", "High", true},
+		{"an option name with a space", "tag", "import issue", true},
+		{"an option name carrying the old separator", "tag", "C#", true},
+		{"an option name that is only the old separator", "tag", "#", true},
+		{"an option name past the old joined bound", "tag", strings.Repeat("n", 400), true},
+		{"a spelling at the bound", strings.Repeat("p", 128), "High", true},
+		{"a spelling past the bound", strings.Repeat("p", 129), "High", false},
+		{"an empty spelling", "", "High", false},
+		{"a control character in the spelling", "ta\ng", "High", false},
+		{"an empty option name", "tag", "", false},
 		// the bound counts CHARACTERS in both validators — a byte count
-		// would put a 65-character Cyrillic name past 128 and refuse a
+		// would put a 65-character Cyrillic spelling past 128 and refuse a
 		// document the package writes
-		{strings.Repeat("\u044f", 128) + "#tag", true},
-		{strings.Repeat("\u044f", 129) + "#tag", false},
+		{"a Cyrillic spelling at the bound", strings.Repeat("\u044f", 128), "High", true},
+		{"a Cyrillic spelling past it", strings.Repeat("\u044f", 129), "High", false},
 	} {
-		t.Run(tc.key, func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
 			// given
 			raw, err := json.Marshal(map[string]any{
-				"version": 1,
-				"refs":    map[string]string{tc.key: "bafyreitarget"},
+				"version":    1,
+				"option_ids": map[string]any{tc.slug: map[string]string{tc.optId: "bafyreiopt"}},
 			})
 			require.NoError(t, err)
 
-			// when
-			schemaErr := Validate(raw)
+			// when — ValidateWarn, because an unreachable entry is a WARNING
+			// and every document here has one: the point is the key rule, not
+			// the census
+			schemaErr := ValidateWarn(raw, func(Issue) {})
 
 			// then
-			assert.Equal(t, tc.valid, isValidRefsKey(tc.key), "the Go predicate")
 			if tc.valid {
-				assert.NoError(t, schemaErr, "the schema")
+				assert.NoError(t, schemaErr, "%s", raw)
 			} else {
-				assert.Error(t, schemaErr, "the schema")
+				assert.Error(t, schemaErr, "%s", raw)
 			}
 		})
 	}
+}
+
+// The three legends have a canonical order (§2, §4), and `option_ids` is last
+// of them because its OUTER keys are property spellings: the legend that
+// inverts a spelling has to precede the legend keyed by one, so a reader
+// working through the document linearly meets `property_keys` first.
+//
+// No golden pins this — all four carry `option_ids` and none carries
+// `property_keys`, so the two never appear together in a frozen document.
+func TestOptionRefs_TheLegendFollowsPropertyKeys(t *testing.T) {
+	// given — a stored key the bundled table cannot invert, so the document
+	// owes a property_keys entry, carrying a select value so it owes an
+	// option_ids entry too
+	space := spaceOptions{"6a32d4856761631534b22f85": {{id: "bafyopt", name: "High"}}}
+	snap := optionSnapshot(map[string]*types.Value{"6a32d4856761631534b22f85": strList("bafyopt")})
+	opts := Options{ResolveOptions: space, ResolveFormat: selectFormats, Keys: slugVocab{
+		slugs: map[string]string{"6a32d4856761631534b22f85": "priority"},
+	}}
+
+	// when
+	data, err := Marshal(model.SmartBlockType_Page, snap, opts)
+	require.NoError(t, err)
+
+	// then
+	require.NoError(t, Validate(data))
+	s := string(data)
+	properties := strings.Index(s, `"properties"`)
+	propertyKeys := strings.Index(s, `"property_keys"`)
+	optionIds := strings.Index(s, `"option_ids"`)
+	require.NotEqual(t, -1, propertyKeys, "the fixture must produce a property_keys legend:\n%s", s)
+	require.NotEqual(t, -1, optionIds, "and an option_ids legend:\n%s", s)
+	assert.Less(t, properties, propertyKeys, "properties precede the legends:\n%s", s)
+	assert.Less(t, propertyKeys, optionIds,
+		"option_ids is keyed by spellings property_keys inverts, so it comes after:\n%s", s)
+	// and the outer key is the SPELLING, which is what makes the order matter
+	assert.Equal(t, legend("priority", map[string]string{"High": "bafyopt"}), docOptionIds(t, data))
 }
 
 // slugVocab spells the keys it is given and inverts them, and nothing else —
@@ -667,48 +689,48 @@ func (v slugVocab) PropertyKey(slug string) (string, bool) {
 // ---- the property vocabulary (optionrefs.go) ----
 //
 
-// refsWarnings keeps the warnings addressed at the legend and drops the rest,
-// so a corpus that legitimately warns about something else (an unguarded date
-// filter, a tag-shaped literal) cannot make one of these tests pass or fail
-// for a reason it is not about.
-func refsWarnings(issues []Issue) []Issue {
+// optionIdsWarnings keeps the warnings addressed at the legend and drops the
+// rest, so a corpus that legitimately warns about something else (an unguarded
+// date filter, a tag-shaped literal) cannot make one of these tests pass or
+// fail for a reason it is not about.
+func optionIdsWarnings(issues []Issue) []Issue {
 	var out []Issue
 	for _, i := range issues {
-		if strings.HasPrefix(i.Path, "/refs/") {
+		if strings.HasPrefix(i.Path, "/option_ids/") {
 			out = append(out, i)
 		}
 	}
 	return out
 }
 
-// A qualified key whose property half names no property the document uses
-// qualifies nothing: import builds its lookup key from the spelling the slot
-// it is resolving wrote, so `High#priorty` is never asked for and the value
-// falls back to name resolution — the silent degradation the warning exists
-// to say out loud. §9a keeps it a warning: an unused `refs` entry is ignored,
-// and hard-rejecting one would contradict that.
+// An outer key naming no property the document uses qualifies nothing: import
+// indexes the legend by the spelling the slot it is resolving wrote, so an
+// entry filed under `priorty` is never asked for and the value falls back to
+// name resolution — the silent degradation the warning exists to say out loud.
+// It stays a WARNING: a legend is allowed to carry more than one document
+// needs, and hard-rejecting one would contradict that.
 //
 // The pool lists a same-named DECOY first, so name resolution and the legend
 // answer different ids: without it both branches would land on one id and the
 // test would pass while asking nothing.
-func TestOptionRefs_AQualifiedKeyForAPropertyTheDocumentDoesNotUse(t *testing.T) {
+func TestOptionRefs_ALegendEntryForAPropertyTheDocumentDoesNotUse(t *testing.T) {
 	space := spaceOptions{"tag": {
 		{id: "bafyname", name: "High"},   // what the NAME resolves to
 		{id: "bafylegend", name: "High"}, // what the LEGEND names
 	}}
 	for _, tc := range []struct {
 		name     string
-		key      string
+		slug     string
 		wantWarn bool
 		wantId   string
 	}{
-		{"a typo in the property half", "High#priorty", true, "bafyname"},
-		{"the spelling the document uses", "High#tag", false, "bafylegend"},
+		{"a typo in the property spelling", "priorty", true, "bafyname"},
+		{"the spelling the document uses", "tag", false, "bafylegend"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			// given
-			doc := fmt.Sprintf(`{"version": 1, "id": "obj1",
-				"properties": {"tag": ["High"]}, "refs": {%q: "bafylegend"}}`, tc.key)
+			doc := fmt.Sprintf(`{"version": 1, "id": "obj1", "properties": {"tag": ["High"]},
+				"option_ids": {%q: {"High": "bafylegend"}}}`, tc.slug)
 
 			// when
 			var warned []Issue
@@ -718,11 +740,11 @@ func TestOptionRefs_AQualifiedKeyForAPropertyTheDocumentDoesNotUse(t *testing.T)
 			// then
 			require.NoError(t, validateErr, "an unreachable entry is a warning, not an error (§9a)")
 			require.NoError(t, err)
-			got := refsWarnings(warned)
+			got := optionIdsWarnings(warned)
 			if tc.wantWarn {
 				require.Len(t, got, 1, "warnings: %v", warned)
-				assert.Equal(t, "/refs/"+tc.key, got[0].Path)
-				assert.Contains(t, got[0].Message, `qualifies "priorty"`)
+				assert.Equal(t, "/option_ids/"+tc.slug, got[0].Path)
+				assert.Contains(t, got[0].Message, `spells "priorty"`)
 			} else {
 				assert.Empty(t, got, "the document spells this property; nothing to report")
 			}
@@ -762,7 +784,8 @@ func TestOptionRefs_PropertySpelledOnlyInsideADataview(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			// given
-			doc := fmt.Sprintf(`{"version": 1, "id": "obj1", "refs": {"High#tag": "bafylegend"},
+			doc := fmt.Sprintf(`{"version": 1, "id": "obj1",
+				"option_ids": {"tag": {"High": "bafylegend"}},
 				"blocks": [{"id": "dv1", "type": "dataview", "views": [%s]}]}`, tc.view)
 
 			// when
@@ -773,7 +796,7 @@ func TestOptionRefs_PropertySpelledOnlyInsideADataview(t *testing.T) {
 			// then
 			require.NoError(t, validateErr, doc)
 			require.NoError(t, err)
-			assert.Empty(t, refsWarnings(warned), "the document spells `tag` in this dataview")
+			assert.Empty(t, optionIdsWarnings(warned), "the document spells `tag` in this dataview")
 			assert.Equal(t, []string{"bafylegend"}, resolvedOptionIds(t, back),
 				"the legend under a filter-only property must still be honored")
 			// and the fallback the legend overrides really does answer the
@@ -809,12 +832,19 @@ func resolvedOptionIds(t *testing.T, snap *model.SmartBlockSnapshotBase) []strin
 }
 
 // The census itself, position by position (optionrefs.go). Each document
-// spells one probe in exactly one place, and both readers have to find it —
-// the importer's, over the decoded document, and Validate's, over the
-// undecoded one. The last two entries are the boundary: a filter's
-// `nested_property` names a property of the object the filter walks TO, and
-// a `refs` key is not a use of the property it qualifies, or every typo would
-// vouch for itself.
+// spells one probe in exactly one place and the census has to find it.
+//
+// This IS the guard now. The census used to exist in two implementations —
+// import's, over the decoded document, and Validate's, over the undecoded
+// one — with an agreement test between them; import no longer takes a census
+// at all, so the twin is gone and so is that test. What the agreement really
+// stood for is this table: a census that stopped covering a position would
+// make Validate warn about entries import honours, and it is this list, not
+// a second implementation, that says it does not.
+//
+// The last two entries are the boundary: a filter's `nested_property` names a
+// property of the object the filter walks TO, and an `option_ids` key is not
+// a use of the property it names, or every typo would vouch for itself.
 func TestOptionRefs_ThePropertyCensusCoversEveryPosition(t *testing.T) {
 	const probe = "probe_property"
 	for _, tc := range []struct {
@@ -854,65 +884,19 @@ func TestOptionRefs_ThePropertyCensusCoversEveryPosition(t *testing.T) {
 			"views": [{"id": "v1", "filters": [{"property": "probe_property"}]}]}]]}]}]}`, true},
 		{"a filter's nested_property", `{"blocks": [{"type": "dataview", "views": [{"id": "v1",
 			"filters": [{"property": "assignee", "nested_property": "probe_property"}]}]}]}`, false},
-		{"the refs key itself", `{"refs": {"High#probe_property": "bafyreiopt"}}`, false},
+		{"the option_ids key itself", `{"option_ids":
+			{"probe_property": {"High": "bafyreiopt"}}}`, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			// given
 			data := []byte(`{"version": 1, "id": "obj1",` + strings.TrimPrefix(tc.doc, "{"))
 
 			// when
-			var typed jsonDoc
-			require.NoError(t, json.Unmarshal(data, &typed))
 			var raw map[string]any
 			require.NoError(t, json.Unmarshal(data, &raw))
 
 			// then
-			assert.Equal(t, tc.counted, typed.propertySpellings()[probe], "the decoded census")
-			assert.Equal(t, tc.counted, rawPropertySpellings(raw)[probe], "the undecoded census")
-			assert.Equal(t, rawPropertySpellings(raw), typed.propertySpellings(),
-				"the two censuses must answer the same document identically")
-		})
-	}
-}
-
-// The document-aware layer under a microscope. Import builds its lookup key
-// from the spelling the slot it is resolving wrote, so a document whose
-// legend and whose census disagree about a property cannot arrive through the
-// public API at all — which is exactly why this asks optionIdFromRefs
-// directly. The guard is defence in depth, and what it defends against is the
-// day a census stops covering a position, or a caller hands the resolver a
-// spelling its document never wrote: with the guard, such an entry is not an
-// answer; without it, a key assembled out of two halves that never met
-// resolves an option.
-func TestOptionRefs_TheCensusGuardsTheLegendLookup(t *testing.T) {
-	space := spaceOptions{"tag": {{id: "bafyopt", name: "High"}}}
-	refs := map[string]string{"High#tag": "bafyopt"}
-	for _, tc := range []struct {
-		name string
-		doc  *jsonDoc
-		want bool
-	}{
-		{"the document uses the property", &jsonDoc{
-			Refs: refs, Properties: map[string]any{"tag": []any{"High"}}}, true},
-		{"the document uses it only in a filter", &jsonDoc{
-			Refs: refs, Blocks: []*jsonBlock{{Type: "dataview", Views: []jsonView{
-				{Id: "v1", Filters: []jsonFilter{{Property: "tag"}}}}}}}, true},
-		{"the document does not use it at all", &jsonDoc{Refs: refs}, false},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			// given
-			imp := &importer{opts: Options{ResolveOptions: space}, doc: tc.doc}
-
-			// when
-			id, ok := imp.optionIdFromRefs("tag", "tag", "High")
-
-			// then
-			assert.Equal(t, tc.want, ok)
-			if tc.want {
-				assert.Equal(t, "bafyopt", id)
-			} else {
-				assert.Empty(t, id, "an entry qualifying a property the document never spells")
-			}
+			assert.Equal(t, tc.counted, rawPropertySpellings(raw)[probe])
 		})
 	}
 }

@@ -32,18 +32,22 @@ type jsonDoc struct {
 	Key         string              `json:"key"`
 	Properties  map[string]any      `json:"properties"`
 	TypeProps   *[]jsonTypeProperty `json:"type_properties"` // pointer: [] and absent differ (§2a)
-	Refs        map[string]string   `json:"refs"`
 	// PropertyKeys is the §3 slug→stored-key legend: what this document says
 	// its own key spellings mean, consulted before any vocabulary so a reader
-	// without the space still lands on the right relation.
+	// without the space still lands on the right relation. Its values are
+	// AUTHORITATIVE — taken as the stored key, not liveness-checked (§3).
 	PropertyKeys map[string]string `json:"property_keys"`
 	// TypeKeys is the same legend for the TYPE namespace — separate map,
-	// because the namespaces share spellings by design (§3).
+	// because a space may slug a relation and a type onto one term (§3).
 	TypeKeys map[string]string `json:"type_keys"`
-	Blocks   []*jsonBlock      `json:"blocks"`
-	Items    []string          `json:"items"`
-	Store    map[string]any    `json:"store"`
-	Root     *jsonRootEscape   `json:"root"`
+	// OptionIds is the §9a option legend, nested {property spelling: {option
+	// name: option id}}. Unlike the two above its values are HINTS, honoured
+	// only where the id still names a live option of that relation (§3).
+	OptionIds map[string]map[string]string `json:"option_ids"`
+	Blocks    []*jsonBlock                 `json:"blocks"`
+	Items     []string                     `json:"items"`
+	Store     map[string]any               `json:"store"`
+	Root      *jsonRootEscape              `json:"root"`
 }
 
 type jsonRootEscape struct {
@@ -128,10 +132,6 @@ type importer struct {
 	// blocks with the same id, which validation has already finished checking
 	// by the time it happens (§9).
 	usedIds map[string]struct{}
-	// propertyVocab is the set of property spellings this document uses
-	// (optionrefs.go), computed on first use because only the qualified
-	// option legend asks for it.
-	propertyVocab map[string]bool
 }
 
 // claimAuthoredIds records every id the document names before anything is
@@ -507,8 +507,8 @@ func (imp *importer) buildCollections() *types.Struct {
 //
 // Both spellings travel: `key` is the stored key the value lands on, `slug`
 // the term the document spelled it with. The slug is not decoration — the
-// option legend is keyed by the SPELLING (optionrefs.go), because the reader
-// that resolves it is reading the document, not the store.
+// option legend's outer key is the SPELLING (optionrefs.go), because the
+// reader that resolves it is reading the document, not the store.
 func (imp *importer) propertyValue(key, slug string, v any) *types.Value {
 	if v == nil {
 		return &types.Value{Kind: &types.Value_NullValue{}}

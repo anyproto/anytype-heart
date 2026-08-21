@@ -16,9 +16,11 @@
       "In progress"
     ]
   },
-  "refs": {
-    "Done#customStatus": "opt2",
-    "In progress#customStatus": "opt1"
+  "option_ids": {
+    "customStatus": {
+      "Done": "opt2",
+      "In progress": "opt1"
+    }
   },
   "blocks": [
     {

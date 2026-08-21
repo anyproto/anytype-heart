@@ -650,7 +650,7 @@ func (e *exporter) seedIdLabels() {
 			continue
 		}
 		want := e.localId(b.Id)
-		if !isPlainRefsLabel(want) { // the blockId charset: [A-Za-z0-9_-]{1,64}
+		if !isBlockIdLabel(want) { // the blockId charset: [A-Za-z0-9_-]{1,64}
 			continue
 		}
 		if _, taken := e.idsUsed[want]; taken {
@@ -1000,24 +1000,15 @@ func (e *exporter) buildDoc(sbType model.SmartBlockType) (*omap, error) {
 		doc.set("type_properties", typeProperties) // present even when empty (§2a)
 	}
 
-	// the one legend left in this map is the qualified option keys, which are
-	// identity rather than compaction and are therefore written whether or not
-	// anything is being compacted (§9a).
-	if entries := e.buildOptionRefs(); len(entries) > 0 {
-		labels := make([]string, 0, len(entries))
-		for label := range entries {
-			labels = append(labels, label)
-		}
-		sort.Strings(labels)
-		refs := &omap{}
-		for _, label := range labels {
-			refs.set(label, entries[label])
-		}
-		doc.set("refs", refs)
-	}
-
 	doc.setNonEmpty("property_keys", e.buildPropertyKeys())
 	doc.setNonEmpty("type_keys", e.buildTypeKeys())
+	// option_ids last of the three legends: its outer keys are property
+	// spellings, so the legend that inverts those precedes it (§2). Written
+	// unconditionally — this is identity, not compaction — except under
+	// OmitIds, where a legend of nothing but ids has no place (§9, §9a).
+	if !e.opts.OmitIds {
+		doc.setNonEmpty("option_ids", sortedNestedOmap(e.buildOptionIds()))
+	}
 	doc.setNonEmpty("blocks", blocks)
 
 	items, store := e.buildStore()
@@ -1760,20 +1751,11 @@ func (e *exporter) buildLabelPlan() {
 	})
 }
 
-// isValidRefsKey admits either `refs` key shape (§9a): a plain compaction
-// label, or a qualified option key. The two are told apart by the separator
-// and nothing else, so no key can belong to both populations.
-func isValidRefsKey(s string) bool {
-	if isQualifiedRefsKey(s) {
-		return isQualifiedOptionRefKey(s)
-	}
-	return isPlainRefsLabel(s)
-}
-
-// isPlainRefsLabel reports whether s matches the compaction-label pattern
-// ^[A-Za-z0-9_-]{1,64}$ — the charset the schema puts on a plain `refs` key,
-// and the same one block/row/column ids carry (§4, §9a).
-func isPlainRefsLabel(s string) bool {
+// isBlockIdLabel reports whether s matches the block-id pattern
+// ^[A-Za-z0-9_-]{1,64}$ — the charset §4 puts on a block, row or column id.
+// Named for the deleted `refs` legend, whose plain keys carried the same
+// charset; the id sanitizer is the caller that remains.
+func isBlockIdLabel(s string) bool {
 	if len(s) == 0 || len(s) > 64 {
 		return false
 	}

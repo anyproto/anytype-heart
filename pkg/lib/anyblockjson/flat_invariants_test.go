@@ -22,8 +22,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
-	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -234,13 +232,13 @@ func hostileSnapshot(n int) (model.SmartBlockType, *model.SmartBlockSnapshotBase
 		// without the identity entry the reader binds one of them twice.
 		"initiative": str("custom, whose spelling this space now gives away"),
 		// a SELECT property, whose values are spelled by name with the option
-		// id carried in the qualified refs legend (§3, §9a). The pool holds
-		// exactly the shapes that make a legend key hard — a name carrying
-		// the separator, a name carrying a space (both outside the plain
-		// label charset), two options sharing one name, a name past the bound
-		// a legend key may carry, and an id no resolver knows — so I1 asks
-		// whether a document Marshal writes with those keys is one its own
-		// Validate accepts and its own Unmarshal reads.
+		// id carried in `option_ids` (§3, §9a). The pool holds exactly the
+		// shapes that made a legend key hard under the deleted flat spelling
+		// — a name carrying the old separator, a name carrying a space (both
+		// outside the plain label charset), two options sharing one name, a
+		// name past the bound a joined key could carry, and an id no resolver
+		// knows — so I1 asks whether a document Marshal writes with those
+		// keys is one its own Validate accepts and its own Unmarshal reads.
 		"tag": strList(hostileOptionValues...),
 	}
 	// the envelope key is a STORED identity key written verbatim (§2), and a
@@ -690,13 +688,14 @@ func TestInvariant_MarshalOutputValidates(t *testing.T) {
 				var warned []Issue
 				require.NoError(t, ValidateWarn(data, func(i Issue) { warned = append(warned, i) }),
 					"seed %d produced:\n%s", n, data)
-				// I1's option-legend half: a qualified `refs` key names a
-				// property SPELLING, and export writes the spelling it just
-				// used — so a key it emits is in the document's own property
-				// census by construction, and Validate has nothing to report
-				// about the legend. If it ever does, the legend export wrote
-				// is one import will step over in silence (optionrefs.go).
-				assert.Empty(t, refsWarnings(warned), "seed %d produced:\n%s", n, data)
+				// I1's option-legend half: an `option_ids` outer key is a
+				// property SPELLING, and export groups under the spelling it
+				// just used — so a key it emits is in the document's own
+				// property census by construction, and Validate has nothing to
+				// report about the legend. If it ever does, the legend export
+				// wrote is one import will step over in silence
+				// (optionrefs.go).
+				assert.Empty(t, optionIdsWarnings(warned), "seed %d produced:\n%s", n, data)
 				// a block reached twice is written once (§11). The mark that
 				// says so is set in blockToJSON, and every emit path has to
 				// consult it — including the table cell's string shorthand,
@@ -707,16 +706,27 @@ func TestInvariant_MarshalOutputValidates(t *testing.T) {
 					"seed %d emitted one block twice:\n%s", n, data)
 				// the option legend must actually be IN the document, or this
 				// sweep asks nothing about it — a corpus that stops reaching
-				// the code under test is the way a green invariant lies. Both
-				// key shapes the plain label charset rejects are asserted, and
-				// the same-named pair by its first writing (optionrefs.go).
-				refs := docRefs(t, data)
-				for key, id := range map[string]string{
-					"C##tag":           "opt-hash",
-					"import issue#tag": "opt-space",
-					"books#tag":        "opt-dup1",
-				} {
-					assert.Equal(t, id, refs[key], "seed %d owes the legend %q:\n%s", n, key, data)
+				// the code under test is the way a green invariant lies. Every
+				// name the deleted flat spelling could not carry is asserted
+				// here, and the same-named pair by its first writing
+				// (optionrefs.go).
+				names := docOptionIds(t, data)["tag"]
+				if o.OmitIds {
+					// an id-less shape ships no legend of ids (§9), so here
+					// the assertion is that it is GONE — which is as much a
+					// statement about the corpus reaching the code as the
+					// positive one below
+					assert.Empty(t, names, "seed %d kept an option legend under OmitIds:\n%s", n, data)
+				} else {
+					for name, id := range map[string]string{
+						"C#":                                     "opt-hash",
+						"import issue":                           "opt-space",
+						"books":                                  "opt-dup1",
+						strings.Repeat("n", maxPropertyKeyLen+1): "opt-long",
+					} {
+						assert.Equal(t, id, names[name],
+							"seed %d owes the legend an entry for %q:\n%s", n, name, data)
+					}
 				}
 				capture := &capturedTypeProps{}
 				_, back, err := Unmarshal(data, Options{
@@ -802,18 +812,30 @@ func TestInvariant_MarshalOutputValidates(t *testing.T) {
 // The same invariant on the goldens' own fixture, which is the case the
 // existing corpus covers — kept so a regression there is not mistaken for a
 // hostile-input-only problem.
+//
+// The legend CONTENT is asserted, not just the document's validity: "validates
+// and warns about nothing" stays green if the legend vanishes entirely, which
+// is the way this fixture would stop asking the question. On the id-less shape
+// the assertion is the other way round — the legend must be gone (§9).
 func TestInvariant_MarshalOutputValidates_RichFixture(t *testing.T) {
-	for name, opts := range map[string]Options{
-		"plain":   testOptions(),
-		"compact": {CompactIds: true, ResolveFormat: testFormatResolver, ResolveOptions: testResolver},
-		"omitIds": {OmitIds: true, ResolveFormat: testFormatResolver, ResolveOptions: testResolver},
+	for name, tc := range map[string]struct {
+		opts       Options
+		wantLegend map[string]map[string]string
+	}{
+		"plain": {testOptions(),
+			legend("customStatus", map[string]string{"In progress": "opt1", "Done": "opt2"})},
+		"compact": {Options{CompactIds: true, ResolveFormat: testFormatResolver, ResolveOptions: testResolver},
+			legend("customStatus", map[string]string{"In progress": "opt1", "Done": "opt2"})},
+		"omitIds": {Options{OmitIds: true, ResolveFormat: testFormatResolver, ResolveOptions: testResolver},
+			nil},
 	} {
 		t.Run(name, func(t *testing.T) {
-			data, err := Marshal(model.SmartBlockType_Page, richSnapshot(), opts)
+			data, err := Marshal(model.SmartBlockType_Page, richSnapshot(), tc.opts)
 			require.NoError(t, err)
 			var warned []Issue
 			require.NoError(t, ValidateWarn(data, func(i Issue) { warned = append(warned, i) }))
-			assert.Empty(t, refsWarnings(warned), "%s", data)
+			assert.Empty(t, optionIdsWarnings(warned), "%s", data)
+			assert.Equal(t, tc.wantLegend, docOptionIds(t, data), "%s", data)
 		})
 	}
 }
@@ -951,26 +973,30 @@ var hostileDocs = []string{
 		"type_properties": [{"key": "` + strings.Repeat("k", maxPropertyKeyLen+1) + `"}]}`,
 	`{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
 		"type_properties": [{"key": "a\nb"}]}`,
-	// the `refs` legend's two key populations (§9a): a plain compaction label
-	// and a qualified option key in ONE map, the shapes the plain charset
-	// rejects (a space, a separator inside the NAME), an entry nothing
-	// spells, and the malformed halves — no name, no property, a half past
-	// the writable-key bound, a control character — which the schema and the
-	// package predicate have to refuse identically
-	`{"version": 1, "refs": {"High#tag": "bafyreiopt"}, "properties": {"tag": ["High"]}}`,
-	`{"version": 1, "refs": {"import issue#tag": "bafyreiopt", "miovm": "bafyreitarget"},
+	// the `option_ids` legend (§9a) at both levels: an entry the document
+	// spells, an entry nothing spells (the warning), the shapes the deleted
+	// flat key could not represent at all (a spelling carrying `#`, an option
+	// name carrying one, an option name past the joined key's bound), an
+	// option name a plain charset would have rejected, and the malformed
+	// keys — empty at either level, past the writable-key bound, a control
+	// character — which the schema and the package restatement have to refuse
+	// identically. A former plain compaction label is here too, in an
+	// object-id slot, since nothing resolves one now.
+	`{"version": 1, "option_ids": {"tag": {"High": "bafyreiopt"}}, "properties": {"tag": ["High"]}}`,
+	`{"version": 1, "option_ids": {"tag": {"import issue": "bafyreiopt"}},
 		"properties": {"tag": ["import issue"]},
 		"blocks": [{"type": "link", "object_id": "miovm"}]}`,
-	`{"version": 1, "refs": {"C##language": "bafyreiopt"}}`,
-	`{"version": 1, "refs": {"High#tag": "bafyreiopt"},
-		"blocks": [{"type": "link", "object_id": "High#tag"}]}`,
-	`{"version": 1, "refs": {"#": "bafyreiopt"}}`,
-	`{"version": 1, "refs": {"High#": "bafyreiopt"}}`,
-	`{"version": 1, "refs": {"#tag": "bafyreiopt"}}`,
-	`{"version": 1, "refs": {"a#b\nc": "bafyreiopt"}}`,
-	`{"version": 1, "refs": {"has space": "bafyreiopt"}}`,
-	`{"version": 1, "refs": {"High#` + strings.Repeat("p", maxPropertyKeyLen+1) + `": "bafyreiopt"}}`,
-	`{"version": 1, "refs": {"` + strings.Repeat("n", maxPropertyKeyLen+1) + `#tag": "bafyreiopt"}}`,
+	`{"version": 1, "option_ids": {"c#_lang": {"C#": "bafyreiopt"}}}`,
+	`{"version": 1, "option_ids": {"tag": {"#": "bafyreiopt"}}}`,
+	`{"version": 1, "option_ids": {"tag": {"has space": "bafyreiopt"}}}`,
+	`{"version": 1, "option_ids": {"tag": {"a\nb": "bafyreiopt"}}, "properties": {"tag": ["a\nb"]}}`,
+	`{"version": 1, "option_ids": {"tag": {"": "bafyreiopt"}}}`,
+	`{"version": 1, "option_ids": {"": {"High": "bafyreiopt"}}}`,
+	`{"version": 1, "option_ids": {"tag": "bafyreiopt"}}`,
+	`{"version": 1, "option_ids": {"ta\ng": {"High": "bafyreiopt"}}}`,
+	`{"version": 1, "option_ids": {"` + strings.Repeat("p", maxPropertyKeyLen+1) + `": {"High": "bafyreiopt"}}}`,
+	`{"version": 1, "option_ids": {"tag": {"` + strings.Repeat("n", maxPropertyKeyLen+1) + `": "bafyreiopt"}},
+		"properties": {"tag": ["` + strings.Repeat("n", maxPropertyKeyLen+1) + `"]}}`,
 	// the reserved `template` spelling, straight through the envelope: the
 	// type-moves-template vocabulary answers a different stored key for it,
 	// and both halves must still agree about what kind of document this is
@@ -1225,62 +1251,4 @@ func namesOf[T comparable](m map[T]string) []string {
 		out = append(out, v)
 	}
 	return out
-}
-
-// The option legend's property census has two readers, because the two
-// directions hold the document in two shapes: the importer's runs over the
-// decoded document, Validate's over the undecoded one, and it must answer
-// before anything is decoded (optionrefs.go). A document is entitled to the
-// same answer from both — one census wider than the other means Validate
-// warns about an entry import honors, or stays quiet about one import steps
-// over. The corpus is the hostile snapshots, the hand-written hostile
-// documents, and the frozen goldens, so a position that only real output
-// reaches and a position that only a hand-written document reaches are both
-// in it.
-func TestInvariant_ThePropertyCensusesAgree(t *testing.T) {
-	check := func(t *testing.T, what string, data []byte) {
-		t.Helper()
-		var typed jsonDoc
-		if err := json.Unmarshal(data, &typed); err != nil {
-			return // not a decodable document; neither census is asked
-		}
-		var raw map[string]any
-		if err := json.Unmarshal(data, &raw); err != nil {
-			return
-		}
-		assert.Equal(t, rawPropertySpellings(raw), typed.propertySpellings(),
-			"%s:\n%s", what, data)
-	}
-
-	t.Run("hostile snapshots", func(t *testing.T) {
-		for n := 0; n < 300; n++ {
-			sbType, snap := hostileSnapshot(n)
-			o := Options{ResolveOptions: hostileOptions}
-			if sbType == model.SmartBlockType_STType {
-				o.ResolveProperties = hostileTypePropResolver{}
-			}
-			data, err := Marshal(sbType, snap, o)
-			if err != nil {
-				continue
-			}
-			check(t, fmt.Sprintf("seed %d", n), data)
-		}
-	})
-
-	t.Run("hostile documents", func(t *testing.T) {
-		for i, doc := range hostileDocs {
-			check(t, fmt.Sprintf("hostileDocs[%d]", i), []byte(doc))
-		}
-	})
-
-	t.Run("goldens", func(t *testing.T) {
-		goldens, err := filepath.Glob(filepath.Join("testdata", "*.json"))
-		require.NoError(t, err)
-		require.NotEmpty(t, goldens)
-		for _, path := range goldens {
-			data, err := os.ReadFile(path)
-			require.NoError(t, err)
-			check(t, path, data)
-		}
-	})
 }

@@ -69,7 +69,6 @@ func TestExport_ObjectRefsAreNeverCompacted(t *testing.T) {
 			// and there is no legend anywhere to look it up in
 			assert.Contains(t, s, `object_id=\"bafyreimentiontargetidxxx\"`,
 				"the mention target must be written in full")
-			assert.NotContains(t, s, `"refs"`)
 			assert.NotContains(t, s, `"idxxx"`, "no short label for it may appear")
 		})
 	}
