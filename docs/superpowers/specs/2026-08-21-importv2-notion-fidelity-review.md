@@ -82,6 +82,22 @@ all of them mapped. `TestEveryNotionIconResolves` fails if one stops resolving o
 reaches a page with no emoji, so a future refresh that finds new names shows up
 as a failing test rather than as pages importing bare.
 
+### Two channels, two vocabularies
+
+A type carries a named icon (Anytype's 390); a page or callout can only carry an
+emoji. Composing page emoji out of the icon mapping is lossy in one direction,
+because emoji is the richer set: sixteen of Notion's food icons share the one
+`nutrition` icon, all six chess pieces landed on `dice`, and church, mosque and
+synagogue all became the same office block — 217 of the 476 names sat in a bucket
+of three or more.
+
+So pages consult `notionEmoji` first: 146 names that have a distinct emoji (🍌
+banana, 🕌 mosque, ♟️ chess, 🪴 potted-plant, 🩸 blood-pressure). Everything else
+composes as before, which keeps a page and its type agreeing wherever they can.
+The two do diverge where the vocabularies do — a database with a banana icon gets
+the `nutrition` icon, a page with the same icon gets 🍌 — and that is the point:
+each channel says the most it can rather than both saying the least.
+
 ## 4. Untitled pages
 
 53 of 403 imported pages had no name. Cause: they are database rows whose title
