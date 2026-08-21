@@ -114,7 +114,16 @@ func (e *exporter) buildOptionIds() map[string]map[string]string {
 	out := map[string]map[string]string{}
 	for pair, id := range e.optionRefs {
 		slug := e.propertySlug(pair.key)
-		if slug == "" {
+		// propertySlug hands back the STORED key verbatim when the vocabulary
+		// has no spelling for it, and a stored key need not be a writable one
+		// (§3 admits `a\nb`, a 140-character key, whatever the store holds).
+		// /properties filters those before slugging; a dataview filter or sort
+		// slot does not, so without this guard the legend takes an outer key
+		// propertyNameIssues refuses and Marshal emits a document its own
+		// Validate and Unmarshal reject — losing the whole object, not just
+		// the legend. The `#` grammar this replaced bounded BOTH halves; only
+		// dropping the name half was intended.
+		if slug == "" || !isWritablePropertyKey(slug) {
 			continue
 		}
 		if out[slug] == nil {
