@@ -70,13 +70,19 @@ property is empty — Notion shows them as "Untitled" too, so the import was fai
 and 45 of those are the blank filler rows of one Notion contact-list template.
 Nothing in the workspace references them: no relation, no mention, no link.
 
-Those 45 are now skipped, reported once per database. Rows that hold anything —
-an icon, one property, any content — still import, untitled, as they are in Notion.
-Only rows are eligible: a standalone empty page is somewhere its author made and can
-find again.
+Those 45 now go to the BIN rather than the space, reported once per database. Rows
+that hold anything — an icon, one property, any content — still import, untitled, as
+they are in Notion. Only rows are eligible: a standalone empty page is somewhere its
+author made and can find again.
 
-The skip is reported per row (an info), because the engine's completeness invariant
-requires an issue against every claimed key it never sees emitted.
+The bin rather than a skip, and this is the load-bearing part: a row is not
+free-standing. Its database lists it as a member and another row's relation may point
+at it, and both of those are written before any row is fetched — the collection is
+emitted when the database converts, which happens before its rows are read. Dropping
+the objects would turn each of those references into a dangling one, and the resolver
+reports every one of them ("reference target was not part of the import"): 45 pieces
+of clutter traded for 45 warnings. Archived, the rows keep their references, stay out
+of every view, and can be restored by anyone who disagrees.
 
 ## 5. Crawl cost
 
@@ -106,5 +112,5 @@ before, 1746 after, byte-identical output.
 | report lines | 954 | ~200 |
 | placeholder paragraphs in page bodies | 606 | 0 |
 | objects with an icon | 5 | 250 |
-| nameless imported objects | 53 | 8 |
+| nameless objects in the space | 53 | 8 (45 in the bin) |
 | API requests | 2036 | 1746 |

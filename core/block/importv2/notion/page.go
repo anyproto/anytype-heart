@@ -202,9 +202,7 @@ func (c *Converter) emitFetchedPage(ctx context.Context, f *fetchedPage, sink im
 	if err := c.applyIcon(ctx, object, page.Icon, page.Cover, "/pages/"+stub.Id, sink); err != nil {
 		return err
 	}
-	if c.skipEmptyRow(stub, object, sink) {
-		return nil
-	}
+	c.binEmptyRow(stub, object, sink)
 	return sink.Object(ctx, object)
 }
 
@@ -228,49 +226,50 @@ func blankValue(value domain.Value) bool {
 	}
 }
 
-// skipEmptyRow drops a database row that carries nothing at all: no name, no
-// property value, no content, no icon. Notion databases collect these — a
-// row someone tabbed into and left, and the blank filler rows that ship with
-// Notion's own templates — and every one of them lands in Anytype as another
-// "Untitled" object in the sidebar and the graph. One real workspace imported
-// 53 nameless rows, 47 of them completely empty and 45 from a single template.
+// binEmptyRow puts a database row that carries nothing at all — no name, no
+// value in any column, no content, no icon — in the bin instead of the space.
+// Notion databases collect these: a row someone tabbed into and left, and the
+// blank filler rows that ship with Notion's own templates. One real workspace
+// imported 53 nameless rows, 47 of them completely empty and 45 of those from
+// a single contact-list template, and every one landed in the sidebar and the
+// graph as another "Untitled" object.
 //
-// Only rows are eligible: a standalone empty page is somewhere its author
-// made and can find again, while a row is a cell in a table nobody visits.
-// Nothing referenced the 47 in that workspace — no relation, no mention, no
-// link — which is what makes dropping them safe rather than merely tidy.
+// The bin rather than a skip, because a row is not free-standing: its database
+// lists it as a member and another row's relation may point at it, and both of
+// those are written before any row is fetched. Dropping the object would turn
+// each of those references into a dangling one — trading 45 pieces of clutter
+// for 45 warnings about targets that were not part of the import. Archived,
+// the row keeps its references, stays out of every view, and can be restored
+// by anyone who disagrees.
 //
-// The skip is reported per row, quietly: the engine's completeness invariant
-// requires an issue against every claimed key it never sees emitted, and an
-// info keeps it out of the "something went wrong" count while the report
-// still tallies it under the database it came from.
-func (c *Converter) skipEmptyRow(stub Entity, object *importv2.Object, sink importv2.Sink) bool {
+// Only rows are eligible: a standalone empty page is somewhere its author made
+// and can find again, while a row is a cell in a table nobody visits.
+func (c *Converter) binEmptyRow(stub Entity, object *importv2.Object, sink importv2.Sink) {
+	if object.Archived {
+		return // already in the bin in Notion; nothing to say
+	}
 	if stub.Parent.Type != "data_source_id" && stub.Parent.Type != "database_id" {
-		return false
+		return
 	}
 	if len(object.Payload.Blocks) > 0 || object.File != nil {
-		return false
+		return
 	}
 	for key, value := range object.Payload.Details.Iterate() {
 		switch key {
 		case bundle.RelationKeySourceFilePath, bundle.RelationKeyCreatedDate, bundle.RelationKeyLastModifiedDate:
 			// Housekeeping the importer itself set; not the user's content.
-		case bundle.RelationKeyName:
-			if !blankValue(value) {
-				return false
-			}
 		default:
 			if !blankValue(value) {
-				return false
+				return
 			}
 		}
 	}
+	object.Archived = true
 	sink.Issue(importv2.Issue{
 		Severity: importv2.SeverityInfo, Code: importv2.IssueDataLoss, SourceKey: stub.Id,
 		Subject: c.entityById[parentContainerId(stub)].Title,
-		Message: "Empty rows were skipped: they have no name, no values and nothing on them in Notion",
+		Message: "Empty rows went to the bin: they have no name, no values and nothing on them in Notion",
 	})
-	return true
 }
 
 // pageTypeKey returns the type suggested for the page's parent database

@@ -106,16 +106,14 @@ func TestCassetteWorkspace(t *testing.T) {
 			// workspace's teamspace templates reuse slug ids ("project",
 			// "status") across databases, which collapsed unrelated properties
 			// onto one relation.
-			Objects:        832,
+			Objects:        877,
 			FileObjects:    41,
 			RootCandidates: 13,
-			// 832: +2 relations for the two "Place" properties, which now
-			// import their address as text instead of being skipped, and
-			// -45 empty database rows. Those rows have no name, no value in
-			// any column and nothing on them — 45 of them are the blank
-			// filler rows of one Notion contact-list template — and every
-			// one used to land in the space as another "Untitled" object.
-			// Nothing in the workspace references them.
+			// 877: +2 relations for the two "Place" properties, which now
+			// import their address as text instead of being skipped. The 45
+			// empty rows are still here — they go to the BIN rather than
+			// being dropped, because their database lists them as members
+			// and dropping them would dangle those references.
 			// 4451: 606 placeholder paragraphs are gone. 435 of them read
 			// "Unsupported block (unsupported)" — Notion buttons, which the
 			// API refuses to expose and which have no content to stand in
@@ -130,9 +128,8 @@ func TestCassetteWorkspace(t *testing.T) {
 			MentionMarks: 1468, // +2: mentions inside those recovered notes
 			LinkMarks:    62,
 			IssuesByCode: map[importv2.IssueCode]int{
-				// 261: the 45 skipped rows each report themselves (an info,
-				// which the completeness invariant requires and the report
-				// rolls up under their database).
+				// 261: the 45 binned rows each report themselves (an info the
+				// report rolls up under their database).
 				// Before them, 216 from 341: Notion button properties no longer report
 				// a loss per row (112 of them) — a button holds no value,
 				// so the schema notes it once — and place properties now
