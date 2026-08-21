@@ -702,7 +702,27 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 	// resolving a type.
 	kind, _ := doc["kind"].(string)
 	typeTerm, _ := doc["type"].(string)
-	legacyTemplate := kind == "" && typeTerm == typeKeyTemplate
+	// The refusal reads the document's OWN type_keys legend beside the raw
+	// spelling, because that is what the deleted chain read. Two documents
+	// need it, in opposite directions: `{"type_keys":{"tpl":"template"},
+	// "type":"tpl"}` WAS a template under v0.21 (the legend resolves tpl to
+	// the template key) and would otherwise import as a silent Page, and
+	// `{"type_keys":{"template":"custom1"},"type":"template"}` was NEVER one
+	// (the legend rebinds the spelling away) and would otherwise be told to
+	// add a kind that changes what it is. The clause resolves nothing beyond
+	// the document itself — the same thing the refusal already does with
+	// `type` — and dies with the rest of the refusal at the next version
+	// bump (§15.9). The bundled table needs no equivalent: probing
+	// bundle.ListTypesKeys(), the only bundled spelling that resolves to the
+	// stored key `template` is the literal `template`, which the raw
+	// comparison already covers.
+	templateKey := typeTerm == typeKeyTemplate
+	if legend, ok := doc["type_keys"].(map[string]any); ok {
+		if bound, ok := legend[typeTerm].(string); ok {
+			templateKey = bound == typeKeyTemplate
+		}
+	}
+	legacyTemplate := kind == "" && templateKey
 	if legacyTemplate {
 		addIssue("/kind", `a template must say so: add "kind": "template". `+
 			`Until v0.22 the type "template" carried that meaning on its own, and it no longer does `+

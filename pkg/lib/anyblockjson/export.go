@@ -742,6 +742,18 @@ func (e *exporter) recordTypeKey(term, key string) {
 // buildTypeKeys renders the type legend in term order, or nil when the
 // document needs none — which is every document that names only bundled and
 // verbatim, unshadowed type keys.
+// legendTypeTerm answers what this document's own type_keys legend binds a
+// term to, falling back to the term itself. It is the emission-side twin of
+// Validate's legacy-template gate: both read the document alone, resolve
+// nothing beyond it, and must agree about which spellings mean the template
+// type (§2, §10).
+func (e *exporter) legendTypeTerm(term string) string {
+	if key, ok := e.typeKeys[term]; ok && key != "" {
+		return key
+	}
+	return term
+}
+
 func (e *exporter) buildTypeKeys() *omap {
 	if len(e.typeKeys) == 0 {
 		return nil
@@ -1158,7 +1170,24 @@ func (e *exporter) buildDoc(sbType model.SmartBlockType) (*omap, error) {
 	// pre-v0.22 spelling of a template and this format's own Validate now
 	// refuses it (§10). Emitting it would be Marshal writing what Validate
 	// rejects, which is I1.
-	derivable := sbType == model.SmartBlockType_Page && typeTerm != typeKeyTemplate
+	// The term test reads what the document's own type_keys legend binds the
+	// term to, not the raw spelling — Validate's legacy-template refusal reads
+	// the same legend, and the two have to agree or Marshal writes what
+	// Validate rejects. A page whose type term RESOLVES to the template key
+	// (`{"type_keys": {"tmpl": "template"}, "type": "tmpl"}`) is the same
+	// shape as one spelling it literally, and needs its kind just as much.
+	// EITHER spelling forces the kind: the raw term (`{"type": "template"}` is
+	// the pre-v0.22 spelling of a template, which Validate refuses) or the key
+	// the document's own type_keys legend binds it to (`{"type_keys":
+	// {"tmpl": "template"}, "type": "tmpl"}` is the same document said
+	// differently, and Validate's legacy gate reads that legend too). Testing
+	// only the raw term let a page whose term RESOLVES to the template key
+	// export with no kind, which Validate then refused — Marshal writing what
+	// Validate rejects (I1). Testing only the resolved key lets a page whose
+	// legend rebinds `template` ELSEWHERE drop its kind, and the raw spelling
+	// trips the same refusal.
+	derivable := sbType == model.SmartBlockType_Page &&
+		typeTerm != typeKeyTemplate && e.legendTypeTerm(typeTerm) != typeKeyTemplate
 	if !derivable {
 		name := kindNames.name(sbType)
 		if name == "" {
