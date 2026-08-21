@@ -40,7 +40,7 @@ const customType = `{"version": 1, "kind": "object_type", "key": "` + customType
 func TestCheckTemplateTargets_LegendBackedTargetPasses(t *testing.T) {
 	files := writeDocs(t, map[string]string{
 		"types/custom.type.json": customType,
-		"templates/article.json": `{"version": 1, "type": "template", "template_for": "wiki_page",
+		"templates/article.json": `{"version": 1, "kind": "template", "type": "template", "template_for": "wiki_page",
 		  "type_keys": {"wiki_page": "` + customTypeKey + `"}}`,
 	})
 	typeIds, err := TypeIds(files)
@@ -60,7 +60,7 @@ func TestCheckTemplateTargets_LegendBackedTargetPasses(t *testing.T) {
 func TestCheckTemplateTargets_TermCollidingWithAnotherTypesKeyIsReported(t *testing.T) {
 	files := writeDocs(t, map[string]string{
 		"types/wiki-page.type.json": wikiPageType, // key "wikiPage", id "type-wiki-page"
-		"templates/article.json": `{"version": 1, "type": "template", "template_for": "wikiPage",
+		"templates/article.json": `{"version": 1, "kind": "template", "type": "template", "template_for": "wikiPage",
 		  "type_keys": {"wikiPage": "` + customTypeKey + `"}}`,
 	})
 	typeIds, err := TypeIds(files)
@@ -76,12 +76,14 @@ func TestCheckTemplateTargets_TermCollidingWithAnotherTypesKeyIsReported(t *test
 	assert.Contains(t, bad[0].Reason, customTypeKey, "the reason must name the key the converter will look for")
 }
 
-// Fail-open on the GATE: `type` is not the literal `template`, but the
-// legend binds its spelling onto the template key, so the codec builds a
-// Template — and the lint has to check it. Without resolution the document is
-// skipped whole and its missing target goes unreported.
-func TestCheckTemplateTargets_LegendMakesADocumentATemplate(t *testing.T) {
-	doc := `{"version": 1, "type": "wiki_page", "type_keys": {"wiki_page": "template"}}`
+// Fail-open on the GATE: the type term is an ordinary custom key, so nothing
+// about the document LOOKS like a template — but `kind` says it is one, the
+// codec builds a Template, and the lint has to check it. This used to be
+// decided by resolving the type term through the legend, and a document whose
+// gate the lint got wrong was skipped whole, its missing target unreported.
+func TestCheckTemplateTargets_TheKindMakesADocumentATemplate(t *testing.T) {
+	doc := `{"version": 1, "kind": "template", "type": "wiki_page",
+		"type_keys": {"wiki_page": "` + customTypeKey + `"}}`
 	requireCodecSeesATemplate(t, doc, true)
 
 	files := writeDocs(t, map[string]string{"templates/orphan.json": doc})
@@ -92,18 +94,25 @@ func TestCheckTemplateTargets_LegendMakesADocumentATemplate(t *testing.T) {
 	assert.Contains(t, bad[0].Reason, `no "template_for"`)
 }
 
-// The mirror, fail-closed: `type` IS spelled `template`, but the legend binds
-// that spelling to an ordinary type, so the document is NOT a template —
-// validation agrees, and refuses `/template_for` on it. The lint must not
-// demand a target the format forbids.
-func TestCheckTemplateTargets_LegendUnmakesATemplate(t *testing.T) {
-	doc := `{"version": 1, "type": "template", "type_keys": {"template": "wikiPage"}}`
-	requireCodecSeesATemplate(t, doc, false)
+// The mirror, fail-closed: `type` IS spelled `template` — this is a page
+// whose object type is the Template type, which is legal — and the kind says
+// page, so the document is not a template. Validation agrees and refuses
+// `/template_for` on it. The lint must not demand a target the format forbids.
+func TestCheckTemplateTargets_TheTypeTermDoesNotMakeATemplate(t *testing.T) {
+	for name, doc := range map[string]string{
+		"the literal spelling":     `{"version": 1, "kind": "page", "type": "template"}`,
+		"a legend onto the key":    `{"version": 1, "kind": "page", "type": "wiki_page", "type_keys": {"wiki_page": "template"}}`,
+		"no kind, ordinary object": `{"version": 1, "type": "wikiPage"}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			requireCodecSeesATemplate(t, doc, false)
 
-	files := writeDocs(t, map[string]string{"objects/not-a-template.json": doc})
-	bad, err := CheckTemplateTargets(files, map[string]string{})
-	require.NoError(t, err)
-	assert.Empty(t, bad)
+			files := writeDocs(t, map[string]string{"objects/not-a-template.json": doc})
+			bad, err := CheckTemplateTargets(files, map[string]string{})
+			require.NoError(t, err)
+			assert.Empty(t, bad)
+		})
+	}
 }
 
 // requireCodecSeesATemplate pins the fixture to the codec's own verdict, so a
@@ -213,7 +222,7 @@ func TestLintResolvesTypeTermsLikeTheCodec(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			doc := `{"version": 1, ` + c.legend +
+			doc := `{"version": 1, "kind": "template", ` + c.legend +
 				`"type": "` + c.typeTerm + `", "template_for": "` + c.templateFor + `"}`
 			require.NoError(t, anyblockjson.Validate([]byte(doc)))
 

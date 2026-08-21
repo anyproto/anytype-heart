@@ -297,45 +297,27 @@ func (imp *importer) propertyKeys(slugs []string) []string {
 // typeKey inverts a TYPE key slot: the document's own legend first (§3),
 // then the vocabulary in force — propertyKey on the type namespace's legend.
 //
-// With one reservation, the mirror of writableTypeSlug's: the VOCABULARY may
-// not move the `template` spelling in either direction. Export refuses that
-// answer already, and the two halves of the same field must not disagree —
-// the kind derivation and the /template_for gate run through the document's
-// own chain alone (docTypeKey, §2), so a vocabulary answering
-// TypeKey("template") == "69bbfc…" produced a Template smartblock whose
-// ObjectTypeKeys do not contain `template`, which every downstream template
-// check misses (they all test lo.Contains(ObjectTypeKeys, TypeKeyTemplate)),
-// and whose re-export then drops the target type outright. The mirror case —
-// a vocabulary landing some other spelling on the stored key `template` —
-// hands that same machinery to a document that is not a template. Neither is
-// reachable through a shipped vocabulary: storeresolver's keyMaps.key refuses
-// any slug the bundled table binds elsewhere, and the stored key wins when
-// Template is installed. It is reachable through a hand-written
-// Options.Keys, which is what this closes.
+// It used to carry a reservation, the mirror of writableTypeSlug's: the
+// vocabulary could not move the `template` spelling in either direction,
+// because the kind derivation and the /template_for gate read the same field
+// through a DIFFERENT chain (docTypeKey — the document's own, deliberately
+// blind to the reader's vocabulary, because Validate has no vocabulary and
+// §12 requires the two to agree). A vocabulary answering
+// TypeKey("template") == "69bbfc…" therefore produced a Template smartblock
+// whose ObjectTypeKeys do not contain `template` — which every downstream
+// template check misses, since they all test
+// lo.Contains(ObjectTypeKeys, TypeKeyTemplate).
 //
-// The document's own legend is NOT bound by the reservation: docTypeKey
-// consults it too, so a legend that moves the spelling moves the kind
-// derivation and the gate with it, and the two halves still agree. Only the
-// reader's vocabulary, which docTypeKey deliberately cannot see, has to be
-// held to the document's answer.
-// The path is the SLOT being read, and it is a parameter because the guard
-// fires in three of them: the envelope `type`, `template_for`, and every
-// `type_properties[i].object_types[j]` (§2a). It used to say `/type`
-// whatever it was reading, so a caller following the pointer landed on a
-// field that was fine — or on one the document does not have (§13).
+// `kind` answers both questions now, off a field no chain touches, so the two
+// halves cannot disagree and there is nothing left to reserve. The path is
+// still the SLOT being read, because the empty-key refusal below fires in
+// three of them: the envelope `type`, `template_for`, and every
+// `type_properties[i].object_types[j]` (§2a).
 func (imp *importer) typeKey(slug, path string) string {
 	if key, ok := imp.doc.TypeKeys[slug]; ok && key != "" {
 		return key
 	}
-	key := imp.opts.typeKey(slug)
-	docKey, _ := BundledKeyVocabulary{}.TypeKey(slug)
-	if key != docKey && (key == typeKeyTemplate || docKey == typeKeyTemplate) {
-		imp.warn(path,
-			"the vocabulary resolves %q to type %q, but the spelling `template` carries the envelope's template semantics (§2); %q is used instead",
-			slug, key, docKey)
-		return docKey
-	}
-	return key
+	return imp.opts.typeKey(slug)
 }
 
 // warn reports a warning-grade issue through the caller's sink (§13) — the
@@ -345,20 +327,6 @@ func (imp *importer) warn(path, format string, args ...any) {
 		return
 	}
 	imp.opts.OnWarning(Issue{Path: path, Message: fmt.Sprintf(format, args...)})
-}
-
-// docTypeKey resolves a type spelling through the document's own chain alone
-// — legend, bundled table, verbatim — deliberately without the caller's
-// vocabulary. The template gate and the kind derivation are document
-// semantics (§2), and Validate, which takes no vocabulary (§13), must reach
-// the same verdict on them (§12); binding the spelling to a stored key is
-// the vocabulary's domain, and typeKey above handles it.
-func (imp *importer) docTypeKey(slug string) string {
-	if key, ok := imp.doc.TypeKeys[slug]; ok && key != "" {
-		return key
-	}
-	key, _ := BundledKeyVocabulary{}.TypeKey(slug)
-	return key
 }
 
 // declaredFormat maps a document's format name to a stored format. "text"
@@ -400,15 +368,17 @@ func (imp *importer) resolveFormat(key string) (model.RelationFormat, bool) {
 func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBase, error) {
 	doc := imp.doc
 	imp.claimAuthoredIds()
+	// `kind` is the whole of it (§2). There is no derivation from the type
+	// term any more: the spelling `template` resolved through the document's
+	// own chain used to mean Template, which meant the same field answered
+	// two unrelated questions — which type this object has, and what kind of
+	// object it is — and only stayed consistent by forbidding every reader
+	// from spelling that one type key differently. An absent `kind` on a
+	// document whose type is literally `template` is the pre-v0.22 spelling
+	// and Validate refuses it by name, so it never reaches here (§10).
 	sbType := model.SmartBlockType_Page
-	switch {
-	case doc.Kind != "":
+	if doc.Kind != "" {
 		sbType = kindNames.value(doc.Kind)
-	case imp.docTypeKey(doc.Type) == typeKeyTemplate:
-		// the kind derives from the STORED key the spelling resolves to
-		// through the document's own chain — a legend may bind the spelling
-		// `template` elsewhere, or another spelling onto the template key
-		sbType = model.SmartBlockType_Template
 	}
 
 	objectId := doc.Id
@@ -432,7 +402,7 @@ func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBas
 			}}}
 		}
 		objectTypes = append(objectTypes, domain.TypeKey(typeKey).URL())
-		if imp.docTypeKey(doc.Type) == typeKeyTemplate && doc.TemplateFor != "" {
+		if sbType == model.SmartBlockType_Template && doc.TemplateFor != "" {
 			target := imp.typeKey(doc.TemplateFor, "/template_for")
 			if target == "" {
 				return 0, nil, &ValidationError{Issues: []Issue{{

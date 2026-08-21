@@ -124,12 +124,16 @@ const (
 	// well-known internal keys that get lifted into the envelope
 	detailKeyId   = "id"
 	detailKeyType = "type"
-	// typeKeyTemplate is the ONE reserved spelling of the type namespace
-	// (§3). It is envelope-semantic: export keys template_for emission off
-	// it, validation gates /template_for on it, and import derives the
-	// smartblock kind from it — so neither direction lets a reader's
-	// vocabulary move it (writableTypeSlug, importer.typeKey). Named rather
-	// than spelled inline so the reservation is one greppable thing.
+	// typeKeyTemplate is the type key `kind: "template"` names. Nothing
+	// RESOLVES to it any more: `kind` is the sole authority on whether a
+	// document is a template (§2), so the spelling `template` is an ordinary
+	// type term that a legend or a vocabulary may bind wherever it likes.
+	//
+	// Two raw string comparisons survive, and neither consults a vocabulary:
+	// buildDoc keeps `kind` explicit when the term it is about to write is
+	// literally `template` (so a Page never emits a document that trips the
+	// legacy refusal), and validate.go refuses a document with no `kind`
+	// whose `type` is literally `template` (the pre-v0.22 spelling, §10).
 	typeKeyTemplate = "template"
 	storeKeyItems   = "objects"
 	// codeLangField is the internal fields key holding a code block's
@@ -677,13 +681,16 @@ func (e *exporter) seedTypeTermLedger() {
 // spelling when it can actually be written and honored, the stored key
 // itself otherwise. The shape rule is the same — a slug becomes a legend
 // spelling and a stored key a legend value, both bounded by the schema. The
-// reserved spelling differs: where properties refuse `id`/`type`, the type
-// namespace refuses to move **`template`** in either direction, because it
-// is envelope-semantic — export keys template_for emission off the spelled
-// term, validation gates /template_for on it, and import derives the
-// smartblock kind from it (§2). A vocabulary spelling the template key as
-// anything else would silently drop a template's target type; one spelling
-// another key as `template` would hand that machinery to the wrong type.
+// reserved spelling differs: the type namespace has none. It used to refuse
+// to move `template` in either direction, because the envelope's template
+// semantics hung off the spelled term — export keyed template_for emission
+// off it, validation gated /template_for on it, and import derived the
+// smartblock kind from it, so a vocabulary moving the spelling dropped a
+// template's target type and one landing another key on it handed that
+// machinery to the wrong type. `kind` carries all three now (§2), the term is
+// an ordinary type spelling, and the reservation deleted with the ambiguity
+// it was protecting: a vocabulary may spell the template type `tmpl`, and the
+// legend says so and inverts it.
 func (e *exporter) writableTypeSlug(key string) string {
 	slug := e.opts.typeSlug(key)
 	if slug == key {
@@ -693,18 +700,6 @@ func (e *exporter) writableTypeSlug(key string) string {
 		e.warn("/type_keys",
 			"the vocabulary spells type %q as %q, which cannot be a type spelling in this format; the stored key is written instead",
 			key, slug)
-		return key
-	}
-	if key == typeKeyTemplate {
-		e.warn("/type_keys",
-			"the vocabulary spells the template type as %q, but the spelling `template` carries the envelope's template semantics (§2); the stored key is written instead",
-			slug)
-		return key
-	}
-	if slug == typeKeyTemplate {
-		e.warn("/type_keys",
-			"the vocabulary spells %q as `template`, the spelling reserved for the template type (§2); the stored key is written instead",
-			key)
 		return key
 	}
 	return slug
@@ -1097,11 +1092,14 @@ func (e *exporter) envelopeTypeTerms() []string {
 // protected by the wider reservation either: a key the document never names
 // cannot be taken as another key's spelling by a reader that never sees it.
 //
-// The template test is on the KEY, where the emit side tested the spelled
-// TERM. They are the same test: writableTypeSlug pins the spelling `template`
-// to the stored key `template` in both directions, and the ledger's back-off
-// only ever answers the stored key, so a term is `template` exactly when its
-// key is.
+// The second slot exists exactly when the SMARTBLOCK TYPE is Template, which
+// is the whole of §2's template rule since v0.22. It used to be "when the
+// first surviving key is the template key", and that was the bug: a template
+// whose object types are ["ot-task", "ot-extra"] — a real shape, since
+// nothing in the model requires a template to carry the template key first —
+// kept one slot and dropped its target type with a warning. Keyed off the
+// smartblock type, the same snapshot writes `{"kind": "template", "type":
+// "task", "template_for": "extra"}` and round-trips whole.
 func (e *exporter) modelledTypeKeys(warn bool) []string {
 	keys := make([]string, 0, len(e.snapshot.ObjectTypes))
 	stood := make([]int, 0, len(e.snapshot.ObjectTypes)) // where each survivor stood
@@ -1121,7 +1119,7 @@ func (e *exporter) modelledTypeKeys(warn bool) []string {
 		return nil
 	}
 	kept := 1
-	if keys[0] == typeKeyTemplate && len(keys) > 1 {
+	if e.sbType == model.SmartBlockType_Template && len(keys) > 1 {
 		kept = 2
 	}
 	// §3 promises every drop is reported, and the positional one was the
@@ -1152,13 +1150,15 @@ func (e *exporter) buildDoc(sbType model.SmartBlockType) (*omap, error) {
 		typeTerm = typeTerms[0]
 	}
 
-	// kind is omitted whenever derivable (§2). A Page whose type term is
-	// "template" must keep its explicit kind, or import would derive
-	// Template from the type. The term check equals a stored-key check:
-	// writableTypeSlug pins the spelling "template" to the stored key
-	// "template", both directions.
-	derivable := (sbType == model.SmartBlockType_Page && typeTerm != typeKeyTemplate) ||
-		(sbType == model.SmartBlockType_Template && typeTerm == typeKeyTemplate)
+	// kind is omitted whenever derivable (§2), and since v0.22 only Page is
+	// derivable: `kind` is the sole authority on template-ness, so a Template
+	// always spells it. The term test that survives is an EMISSION rule and
+	// resolves nothing — a Page whose type term is literally `template` keeps
+	// its explicit kind, because `{"type": "template"}` with no kind is the
+	// pre-v0.22 spelling of a template and this format's own Validate now
+	// refuses it (§10). Emitting it would be Marshal writing what Validate
+	// rejects, which is I1.
+	derivable := sbType == model.SmartBlockType_Page && typeTerm != typeKeyTemplate
 	if !derivable {
 		name := kindNames.name(sbType)
 		if name == "" {
@@ -1169,7 +1169,7 @@ func (e *exporter) buildDoc(sbType model.SmartBlockType) (*omap, error) {
 
 	doc.setNonEmpty("id", e.objectId())
 	doc.setNonEmpty("type", typeTerm)
-	if typeTerm == typeKeyTemplate && len(typeTerms) > 1 {
+	if sbType == model.SmartBlockType_Template && len(typeTerms) > 1 {
 		doc.setNonEmpty("template_for", typeTerms[1])
 	}
 	doc.setNonEmpty("key", e.snapshot.Key)

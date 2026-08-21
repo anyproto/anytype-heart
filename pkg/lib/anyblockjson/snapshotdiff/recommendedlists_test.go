@@ -43,7 +43,7 @@ func TestCompare_EmptyRecommendedListIsNormalization(t *testing.T) {
 			"name":  {Kind: &types.Value_StringValue{StringValue: "Task"}},
 			fileKey: list(),
 		})
-		assert.Empty(t, Compare(orig, got, anyblockjson.Options{}))
+		assert.Empty(t, Compare(orig, got, model.SmartBlockType_Page, anyblockjson.Options{}))
 	})
 
 	t.Run("an added role list WITH members is still reported", func(t *testing.T) {
@@ -52,7 +52,7 @@ func TestCompare_EmptyRecommendedListIsNormalization(t *testing.T) {
 			"name":  {Kind: &types.Value_StringValue{StringValue: "Task"}},
 			fileKey: list("rel-cover"),
 		})
-		found := Compare(orig, got, anyblockjson.Options{})
+		found := Compare(orig, got, model.SmartBlockType_Page, anyblockjson.Options{})
 		require.Len(t, found, 1, "a role list that gained content is real drift, not normalization")
 		assert.Contains(t, found[0], fileKey)
 	})
@@ -60,7 +60,7 @@ func TestCompare_EmptyRecommendedListIsNormalization(t *testing.T) {
 	t.Run("a role list that LOST its members is still reported", func(t *testing.T) {
 		orig := snapWith(map[string]*types.Value{featuredKey: list("rel-name")})
 		got := snapWith(map[string]*types.Value{featuredKey: list()})
-		found := Compare(orig, got, anyblockjson.Options{})
+		found := Compare(orig, got, model.SmartBlockType_Page, anyblockjson.Options{})
 		require.Len(t, found, 1, "emptying an existing list is loss; only absent->empty is normalization")
 	})
 
@@ -70,7 +70,7 @@ func TestCompare_EmptyRecommendedListIsNormalization(t *testing.T) {
 			"name": {Kind: &types.Value_StringValue{StringValue: "Task"}},
 			"tag":  list(),
 		})
-		found := Compare(orig, got, anyblockjson.Options{})
+		found := Compare(orig, got, model.SmartBlockType_Page, anyblockjson.Options{})
 		require.Len(t, found, 1, "the rule is scoped to the four role lists")
 		assert.Contains(t, found[0], "tag")
 	})

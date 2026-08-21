@@ -292,7 +292,7 @@ func TestCheckSharedSelects_PlainSharedKeyIsStillReported(t *testing.T) {
 // the check probed the map for the STORED key alone, missed it, and rejected a
 // bundle the converter wires perfectly.
 func TestCheckTemplateTargets_AuthoredTargetInSlugSpellingPasses(t *testing.T) {
-	const doc = `{"version": 1, "type": "template", "template_for": "page",
+	const doc = `{"version": 1, "kind": "template", "type": "template", "template_for": "page",
 	  "properties": {"target_object_type": "type-page"}}`
 	requireCodecStoresTargetObjectType(t, doc, true)
 
@@ -308,7 +308,7 @@ func TestCheckTemplateTargets_AuthoredTargetInSlugSpellingPasses(t *testing.T) {
 // and skipped the document whole — the template then imports belonging to no
 // type, unreported.
 func TestCheckTemplateTargets_LegendMovesTheAuthoredTargetAway(t *testing.T) {
-	const doc = `{"version": 1, "type": "template", "template_for": "page",
+	const doc = `{"version": 1, "kind": "template", "type": "template", "template_for": "page",
 	  "property_keys": {"targetObjectType": "` + customPropertyKey + `"},
 	  "properties": {"targetObjectType": "type-page"}}`
 	requireCodecStoresTargetObjectType(t, doc, false)

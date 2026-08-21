@@ -33,6 +33,7 @@ func TestConvert_TemplateTargetTypeBecomesDetail(t *testing.T) {
 	b := newBatch(nil, map[string]string{"wikiPage": "type-wiki-page"})
 	sbType, snap := convertDoc(t, b, "wiki-article.template.json", `{
 	  "version": 1,
+	  "kind": "template",
 	  "id": "template-wiki-article",
 	  "type": "template",
 	  "template_for": "wikiPage",
@@ -54,6 +55,7 @@ func TestConvert_AuthoredTargetObjectTypeWinsAndIsScalar(t *testing.T) {
 	b := newBatch(nil, map[string]string{"wikiPage": "type-wiki-page"})
 	_, snap := convertDoc(t, b, "wiki-guide.template.json", `{
 	  "version": 1,
+	  "kind": "template",
 	  "id": "template-wiki-guide",
 	  "type": "template",
 	  "template_for": "wikiPage",

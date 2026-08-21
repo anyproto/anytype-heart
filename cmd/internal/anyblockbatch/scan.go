@@ -487,13 +487,12 @@ type BadTemplateTarget struct {
 // and imports; the template simply never appears under a type — so the batch
 // has to catch it.
 //
-// Both slots read here are translated (§2): `type` gates the whole check and
-// `template_for` names the target, and each resolves through this document's
-// own type_keys legend before the bundled table and verbatim (§3, typeterm.go).
-// The gate especially: whether a document IS a template is decided by the
-// stored key its `type` term resolves to, so a document spelling another type
-// `template` is not one, and a document whose legend binds some other spelling
-// onto the template key is.
+// The gate is `kind`, and only `kind` (§2, v0.22). Whether a document IS a
+// template is not a fact about its type term: it used to be read off the
+// stored key that term resolved to, through this document's own legend and the
+// bundled table, and that made the same field answer two unrelated questions.
+// `template_for` is still translated (§3, typeterm.go), because it names a
+// type and has to be matched against the bundle's type ids.
 func CheckTemplateTargets(files []string, typeIds map[string]string) ([]BadTemplateTarget, error) {
 	var out []BadTemplateTarget
 	for _, f := range files {
@@ -502,6 +501,7 @@ func CheckTemplateTargets(files []string, typeIds map[string]string) ([]BadTempl
 			return nil, fmt.Errorf("read %s: %w", f, err)
 		}
 		var doc struct {
+			Kind         string                     `json:"kind"`
 			Type         string                     `json:"type"`
 			TemplateFor  string                     `json:"template_for"`
 			TypeKeys     typeLegend                 `json:"type_keys"`
@@ -511,7 +511,7 @@ func CheckTemplateTargets(files []string, typeIds map[string]string) ([]BadTempl
 		if err := json.Unmarshal(data, &doc); err != nil {
 			return nil, fmt.Errorf("parse %s: %w", f, err)
 		}
-		if resolveTypeTerm(doc.TypeKeys, doc.Type) != templateTypeKey {
+		if doc.Kind != templateKind {
 			continue
 		}
 		if authoredTargetObjectType(doc.PropertyKeys, doc.Properties) {

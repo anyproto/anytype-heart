@@ -278,15 +278,28 @@ func hostileSnapshot(n int) (model.SmartBlockType, *model.SmartBlockSnapshotBase
 	// every other pick so adding them did not reshuffle the corpus above.
 	snap.ObjectTypes = hostileTypePools[rnd.Intn(len(hostileTypePools))]
 	sbType := model.SmartBlockType_Page
-	if rnd.Intn(4) == 0 {
+	// one draw, three arms — a switch rather than a second Intn so the corpus
+	// above is unchanged by the template arm's arrival.
+	switch rnd.Intn(4) {
+	case 0:
 		// a type document: the recommended lists resolve through
 		// hostileTypePropResolver, whose definitions carry the object_types
 		// shapes (custom key the vocabulary slugs onto `task`, an unwritable
-		// slug, the reserved `template` spelling)
+		// slug, the `template` spelling)
 		sbType = model.SmartBlockType_STType
 		snap.Details.Fields["recommendedFeaturedRelations"] = strList("hp1")
 		snap.Details.Fields["recommendedRelations"] = strList("hp2")
 		snap.Details.Fields["recommendedHiddenRelations"] = strList("hp3")
+	case 1:
+		// a TEMPLATE, which is the only kind of document with a second type
+		// slot (§2). Without this arm the corpus never produced one, so the
+		// two-slot half of invertedTypes — and of export's own
+		// modelledTypeKeys — was unreachable from the sweep: `template_for`
+		// could have stopped being written at all and every seed stayed
+		// green. It also puts the type pools whose first key is NOT
+		// `template` behind a template, which is the shape v0.22 stopped
+		// losing.
+		sbType = model.SmartBlockType_Template
 	}
 	return sbType, snap
 }
@@ -451,18 +464,24 @@ func (c *capturedTypeProps) PropertyId(def PropertyDefinition) (string, bool) {
 
 // invertedTypes is what a faithful reader owes back for a snapshot's
 // ObjectTypes: the format writes object_types[0] as `type` — and [1] as
-// `template_for` when [0] is the template key — each spelled through the
-// vocabulary in force and inverted through the document's own legend, so the
-// stored KEYS must survive whatever the vocabulary did to their spellings.
-// Entries normalize to the `ot-` URL form; a non-template's types past the
-// first are not modeled by the format (§2).
+// `template_for` on a TEMPLATE — each spelled through the vocabulary in force
+// and inverted through the document's own legend, so the stored KEYS must
+// survive whatever the vocabulary did to their spellings. Entries normalize
+// to the `ot-` URL form; a non-template's types past the first are not
+// modeled by the format (§2).
+//
+// The second slot is keyed off the smartblock TYPE, not off keys[0] being the
+// template key. This model said the latter until v0.22, faithfully, because
+// export did — and both were wrong for a template whose object types do not
+// begin with the template key, which is a shape the model permits and which
+// lost its target type in silence.
 //
 // An entry with no key ("ot-", "") has no spelling and is dropped — and the
 // survivors CLOSE RANKS, which is the load-bearing half. Dropping in place
 // made a keyless entry contagious: it silenced the slot it sat in, and a
 // silent `type` slot makes `template_for` inexpressible, so a template stored
 // as ["ot-", "ot-task"] came back as no types at all rather than as ot-task.
-func invertedTypes(objectTypes []string) []string {
+func invertedTypes(objectTypes []string, sbType model.SmartBlockType) []string {
 	keys := make([]string, 0, len(objectTypes))
 	for _, t := range objectTypes {
 		if key := strings.TrimPrefix(t, "ot-"); key != "" {
@@ -473,7 +492,7 @@ func invertedTypes(objectTypes []string) []string {
 		return nil
 	}
 	out := []string{"ot-" + keys[0]}
-	if keys[0] == "template" && len(keys) > 1 {
+	if sbType == model.SmartBlockType_Template && len(keys) > 1 {
 		out = append(out, "ot-"+keys[1])
 	}
 	return out
@@ -764,7 +783,7 @@ func TestInvariant_MarshalOutputValidates(t *testing.T) {
 				// spelling to a different stored type is exactly the silent
 				// failure the type_keys legend exists to close (§3), and no
 				// error marks it
-				assert.Equal(t, invertedTypes(snap.ObjectTypes), back.ObjectTypes,
+				assert.Equal(t, invertedTypes(snap.ObjectTypes, sbType), back.ObjectTypes,
 					"seed %d: the archive must bind back to the types it came from:\n%s", n, data)
 				// and so must the OTHER type slot. `type_properties[].object_types`
 				// shares the envelope's term ledger and its legend, but nothing
@@ -969,14 +988,14 @@ var hostileDocs = []string{
 	`{"version": 1, "type": "task"}`,
 	`{"version": 1, "type": "tsk"}`,
 	`{"version": 1, "type": "blanktype"}`,
-	`{"version": 1, "type": "template", "template_for": "blanktype"}`,
+	`{"version": 1, "kind": "template", "type": "template", "template_for": "blanktype"}`,
 	`{"version": 1, "type_keys": {"task": "69bbfc78877a91b1d12d1a7c"}, "type": "task"}`,
 	`{"version": 1, "type_keys": {"object_type": "object_type"}, "type": "object_type"}`,
 	`{"version": 1, "type_keys": {"t": ""}}`,
 	`{"version": 1, "type_keys": {"t": "a\nb"}}`,
 	`{"version": 1, "type_keys": {"t": "` + strings.Repeat("k", 129) + `"}}`,
-	`{"version": 1, "type_keys": {"template": "custom1"}, "type": "template", "template_for": "page"}`,
-	`{"version": 1, "type_keys": {"tpl": "template"}, "type": "tpl", "template_for": "page"}`,
+	`{"version": 1, "kind": "template", "type_keys": {"template": "custom1"}, "type": "template", "template_for": "page"}`,
+	`{"version": 1, "kind": "template", "type_keys": {"tpl": "template"}, "type": "tpl", "template_for": "page"}`,
 	`{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
 		"type_keys": {"task": "69bbfc78877a91b1d12d1a7c"},
 		"type_properties": [{"key": "owner", "format": "objects", "object_types": ["task", "blanktype"]}]}`,
@@ -1015,11 +1034,23 @@ var hostileDocs = []string{
 	`{"version": 1, "option_ids": {"` + strings.Repeat("p", maxPropertyKeyLen+1) + `": {"High": "bafyreiopt"}}}`,
 	`{"version": 1, "option_ids": {"tag": {"` + strings.Repeat("n", maxPropertyKeyLen+1) + `": "bafyreiopt"}},
 		"properties": {"tag": ["` + strings.Repeat("n", maxPropertyKeyLen+1) + `"]}}`,
-	// the reserved `template` spelling, straight through the envelope: the
+	// the `template` spelling, straight through the envelope: the
 	// type-moves-template vocabulary answers a different stored key for it,
-	// and both halves must still agree about what kind of document this is
+	// and the kind must be unmoved by that — it is read off `kind` and the
+	// vocabulary cannot reach `kind`
+	`{"version": 1, "kind": "template", "type": "template", "template_for": "task"}`,
+	`{"version": 1, "kind": "template", "type": "tpl", "template_for": "task"}`,
+	// a PAGE whose object type is the template type: the one shape the
+	// pre-v0.22 rule could not tell apart from a template, and the reason
+	// export spells `kind` out here
+	`{"version": 1, "kind": "page", "type": "template"}`,
+	// and the four refusals that replace the reservation — Validate rejects
+	// each, so I2 asks that Unmarshal reject them too rather than decoding a
+	// page that meant to be a template
 	`{"version": 1, "type": "template", "template_for": "task"}`,
-	`{"version": 1, "type": "tpl", "template_for": "task"}`,
+	`{"version": 1, "type": "template"}`,
+	`{"version": 1, "kind": "page", "type": "template", "template_for": "task"}`,
+	`{"version": 1, "kind": "template", "template_for": "task"}`,
 }
 
 // i2Vocabularies is the Options axis I2 runs over. A vocabulary can resolve
@@ -1055,11 +1086,13 @@ var i2Vocabularies = map[string]struct {
 	"type-space":               {typedSpaceVocabulary{typeSlugOf: map[string]string{customTypeKey: "task"}}, true},
 	"type-asymmetric":          {asymmetricTypeVocab{}, true},
 	"type-resolves-unwritable": {blankTypeVocab{}, true},
-	// a vocabulary that moves the reserved `template` spelling in either
-	// direction. It widens nothing — the reservation holds it to the
-	// document's own answer (importer.typeKey), so the two halves must agree
-	// EXACTLY; a regression that lets the vocabulary through shows up here as
-	// a snapshot whose kind and type key disagree, not as an error
+	// a vocabulary that moves the `template` spelling in either direction.
+	// This used to be held to the document's own answer by a reservation
+	// (importer.typeKey) because the kind was derived from the same field;
+	// since v0.22 the kind comes from `kind`, which no vocabulary can reach,
+	// so the vocabulary's answer is simply taken. It still widens nothing
+	// that could make Unmarshal refuse — it never resolves onto the empty
+	// key — so exact agreement is still the assertion.
 	"type-moves-template": {templateMovingVocab{}, false},
 }
 

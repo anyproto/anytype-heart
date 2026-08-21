@@ -444,7 +444,12 @@ func TestEnvelope_Variants(t *testing.T) {
 		s := string(data)
 		assert.Contains(t, s, `"type": "template"`)
 		assert.Contains(t, s, `"template_for": "task"`)
-		assert.NotContains(t, s, `"kind"`)
+		// A template says so, always. `kind` used to be omitted here as
+		// derivable from the type term, which is what made the type term
+		// carry two meanings at once (§2, v0.22): the cost is ~21 bytes on a
+		// template document, and what it buys is that a template whose types
+		// do NOT begin with the template key can express its target at all.
+		assert.Contains(t, s, `"kind": "template"`)
 
 		sbType, snap2, err := Unmarshal(data, Options{GenerateId: seqIds("g")})
 		require.NoError(t, err)

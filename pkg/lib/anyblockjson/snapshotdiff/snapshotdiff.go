@@ -63,10 +63,18 @@ func isEmptyRecommendedList(key string, v *types.Value) bool {
 // Compare reports every place where got diverges from orig on a
 // format-preserved axis, as human-readable findings. An empty result means
 // no detectable drift.
-func Compare(orig, got *model.SmartBlockSnapshotBase, opts anyblockjson.Options) []string {
+//
+// sbType is the snapshot's smartblock type, and it is a parameter rather than
+// something read off the pair because since v0.22 it is the only thing that
+// says how many type slots the envelope had: `template_for` exists exactly on
+// a Template (§2). A snapshot cannot answer that question about itself — a
+// template's ObjectTypes need not begin with the template key — so a caller
+// that has the type must hand it over, or the diff reports a faithfully
+// preserved target type as an invented one.
+func Compare(orig, got *model.SmartBlockSnapshotBase, sbType model.SmartBlockType, opts anyblockjson.Options) []string {
 	var out []string
 
-	out = append(out, compareObjectTypes(orig, got)...)
+	out = append(out, compareObjectTypes(orig, got, sbType)...)
 
 	if orig.Details != nil {
 		gotFields := map[string]*types.Value{}
@@ -155,10 +163,10 @@ var typeKeyIdPrefix = domain.TypeKey("").URL()
 // because order and duplicates carry meaning (`[0]` is the type, `[1]` the
 // template target) and both round-trip today. Anything got carries beyond the
 // modelled positions is drift the other way: the round trip invented a type.
-func compareObjectTypes(orig, got *model.SmartBlockSnapshotBase) []string {
+func compareObjectTypes(orig, got *model.SmartBlockSnapshotBase, sbType model.SmartBlockType) []string {
 	origKeys := typeKeysOf(orig)
 	gotKeys := typeKeysOf(got)
-	modelled := modelledTypeSlots(origKeys)
+	modelled := modelledTypeSlots(origKeys, sbType)
 
 	var out []string
 	for i := 0; i < modelled; i++ {
@@ -195,20 +203,24 @@ func typeKeysOf(s *model.SmartBlockSnapshotBase) []string {
 }
 
 // modelledTypeSlots is how many of the surviving keys the format has a slot
-// for — export.envelopeTypeTerms' own two conditions (§2):
+// for — export.modelledTypeKeys' own two conditions (§2):
 //
 //   - `type` takes the first surviving key, whatever it is;
-//   - `template_for` exists only when that key is the template key, and takes
-//     the second. The reserved spelling `template` pins that term to that
-//     stored key in both directions, in export and import alike, so reading
-//     the stored key here reaches the same verdict export does off the term.
+//   - `template_for` exists only on a TEMPLATE, and takes the second.
+//
+// The second condition used to be "only when the first key is the template
+// key", mirroring what export did. Both were wrong the same way: a template
+// whose object types do not begin with the template key — a shape nothing in
+// the model forbids — lost its target type on export, and this diff called
+// that loss correct. `kind` carries template-ness now, so the question is
+// answered by the smartblock type and not by the data.
 //
 // There is no third slot, so anything further is dropped by design.
-func modelledTypeSlots(keys []string) int {
+func modelledTypeSlots(keys []string, sbType model.SmartBlockType) int {
 	if len(keys) == 0 {
 		return 0
 	}
-	if keys[0] == string(bundle.TypeKeyTemplate) && len(keys) > 1 {
+	if sbType == model.SmartBlockType_Template && len(keys) > 1 {
 		return 2
 	}
 	return 1

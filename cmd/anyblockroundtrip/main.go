@@ -407,7 +407,11 @@ func roundtripFile(path string, opts anyblockjson.Options) ([]issue, *artifactSe
 		fail("not_byte_stable", "first divergence: %s", firstDiff(json1, json2))
 	}
 
-	for _, d := range snapshotdiff.Compare(base, reimported, opts) {
+	// the ORIGINAL smartblock type: how many type slots the envelope had is a
+	// question about the snapshot that went in (§2), and sbType2 is the answer
+	// the round trip produced — using it would make the diff agree with a
+	// round trip that changed the kind
+	for _, d := range snapshotdiff.Compare(base, reimported, sw.SbType, opts) {
 		fail("data_loss", "%s", d)
 	}
 	return issues, arts, nil

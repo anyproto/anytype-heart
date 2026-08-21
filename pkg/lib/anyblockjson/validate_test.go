@@ -192,7 +192,7 @@ func TestValidate_Valid(t *testing.T) {
 				 "columns": [{"property": "name"}, {"property": "status", "width": 30, "aggregation": "count_distinct", "align": "right"}]}
 			 ]}
 		]}`},
-		{"template", `{"version": 1, "type": "template", "template_for": "task"}`},
+		{"template", `{"version": 1, "kind": "template", "type": "template", "template_for": "task"}`},
 		{"collection items", `{"version": 1, "type": "collection", "items": ["obj1", "obj2"]}`},
 		{"widget", `{"version": 1, "kind": "widget", "blocks": [
 			{"type": "widget", "layout": "tree", "limit": 6},
@@ -284,7 +284,10 @@ func TestValidate_Invalid(t *testing.T) {
 		{"table inner id with dash", `{"version": 1, "blocks": [
 			{"type": "table", "columns": [{"id": "c-1"}], "rows": []}
 		]}`, "/blocks/0/columns/0/id"},
-		{"template_for without template type", `{"version": 1, "type": "page", "template_for": "task"}`, "template_for"},
+		{"template_for without the template kind", `{"version": 1, "type": "page", "template_for": "task"}`, "template_for"},
+		{"template_for with the template type but no kind", `{"version": 1, "type": "template", "template_for": "task"}`, "kind"},
+		{"template_for with no type at all", `{"version": 1, "kind": "template", "template_for": "task"}`, "template_for"},
+		{"the pre-v0.22 template spelling", `{"version": 1, "type": "template"}`, `add "kind": "template"`},
 		{"language and fields.lang conflict", `{"version": 1, "blocks": [
 			{"type": "code", "language": "go", "fields": {"lang": "go"}}
 		]}`, "fields.lang"},

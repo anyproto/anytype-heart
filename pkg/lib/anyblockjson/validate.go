@@ -683,24 +683,43 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 	// Go decode error carrying no JSON pointer — the divergence §12 rules out.
 	checkNumbers(doc, "", addIssue)
 
-	// The template gate runs on the STORED key the type spelling resolves to
-	// through the document's own chain — type_keys legend, bundled table,
-	// verbatim — not on the raw spelling: a legend may bind the spelling
-	// `template` to another key, or another spelling onto the template key,
-	// and the gate must agree with the importer's kind derivation (§12).
-	typeLegend, _ := doc["type_keys"].(map[string]any)
-	resolveDocTypeKey := func(term string) string {
-		if v, ok := typeLegend[term]; ok {
-			if key, isStr := v.(string); isStr && key != "" {
-				return key
-			}
-		}
-		key, _ := BundledKeyVocabulary{}.TypeKey(term)
-		return key
+	// The template gate reads `kind`, and nothing else (§2). It used to
+	// resolve the `type` spelling through the document's own chain — legend,
+	// bundled table, verbatim — a private copy of §3 written so that Validate,
+	// which has no vocabulary (§13), reached the same verdict as the
+	// importer's kind derivation (§12). Both sides now read a field no chain
+	// touches, so the copy is gone and so is the class of disagreement it
+	// managed.
+	//
+	// The pre-v0.22 spelling of a template is `{"type": "template"}` with no
+	// `kind`, and it is REFUSED rather than migrated (§10). It has to be
+	// refused loudly, because it is the one shape that would otherwise fail
+	// silently: a template exported yesterday whose target type happened to be
+	// absent carries nothing to trip the template_for gate, so it would import
+	// as an ordinary Page and nothing anywhere would say so. The comparison is
+	// on the RAW spelling — no legend, no bundled table — because it is
+	// identifying a byte sequence a previous version of this format wrote, not
+	// resolving a type.
+	kind, _ := doc["kind"].(string)
+	typeTerm, _ := doc["type"].(string)
+	legacyTemplate := kind == "" && typeTerm == typeKeyTemplate
+	if legacyTemplate {
+		addIssue("/kind", `a template must say so: add "kind": "template". `+
+			`Until v0.22 the type "template" carried that meaning on its own, and it no longer does `+
+			`— without the kind this document imports as an ordinary page (§2)`)
 	}
-	if _, ok := doc["template_for"]; ok {
-		if typ, _ := doc["type"].(string); resolveDocTypeKey(typ) != typeKeyTemplate {
-			addIssue("/template_for", `template_for is only valid on templates (type "template")`)
+	if _, ok := doc["template_for"]; ok && !legacyTemplate {
+		switch {
+		case kind != kindNames.name(model.SmartBlockType_Template):
+			addIssue("/template_for", `template_for is only valid on templates (kind "template")`)
+		case typeTerm == "":
+			// the target type is object_types[1] and there is no [1] without a
+			// [0]: import reads template_for only inside the branch that read
+			// `type`, so without one the field is silently discarded. The old
+			// gate refused this shape as a side effect of resolving `type`;
+			// reading `kind` instead, it has to be said outright.
+			addIssue("/template_for",
+				`template_for names the type this template is FOR, and needs the template's own type beside it: add "type"`)
 		}
 	}
 

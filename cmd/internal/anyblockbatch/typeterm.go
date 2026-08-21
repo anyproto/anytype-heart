@@ -57,12 +57,12 @@ func resolveTypeTerm(legend typeLegend, term string) string {
 	return key
 }
 
-// templateTypeKey is the stored key of the template type. `template` is the
-// reserved SPELLING (§3): validation gates `/template_for` on it, import
-// derives the smartblock kind from it, and export refuses to move it in
-// either direction — all through the document's own chain, which is why the
-// gate below resolves the term rather than string-comparing it.
-const templateTypeKey = "template"
+// templateKind is what a template's `kind` says (§2). Since v0.22 that is the
+// only thing that makes a document a template: the type term `template` used
+// to carry the meaning as a reserved spelling, resolved through the document's
+// own chain, which is why the gate used to resolve rather than compare. The
+// kind is a fixed vocabulary name, so it is compared.
+const templateKind = "template"
 
 // resolvedNote annotates a finding whose slot spelling differs from the
 // stored key it resolves to, so the reported term stays the one the author

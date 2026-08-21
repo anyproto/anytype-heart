@@ -400,12 +400,19 @@ func TestExport_TypeTermLedgerBacksACollidingSlugOff(t *testing.T) {
 		"without the entry this reads back as customTypeKey — the target type re-pointed, silently")
 }
 
-// `template` is an envelope-semantic spelling: export keys template_for
-// emission off it, validation gates template_for on it, and import derives
-// the smartblock kind from it. A vocabulary may not move it — in either
-// direction — or a template's target type is silently dropped.
-func TestExport_TemplateSpellingIsReserved(t *testing.T) {
-	t.Run("the template key keeps its spelling", func(t *testing.T) {
+// `template` used to be an envelope-semantic spelling: export keyed
+// template_for emission off it, validation gated template_for on it, and
+// import derived the smartblock kind from it, so a vocabulary that moved the
+// spelling in either direction silently dropped a template's target type or
+// handed the machinery to the wrong type. Since v0.22 `kind` carries all
+// three, the spelling is an ordinary type term, and the vocabulary may move
+// it — which the legend records and a reader inverts, exactly as for any
+// other key.
+//
+// This is a DELETION, so what is asserted is that the same two vocabularies
+// now round-trip whole, by the legend rather than by the refusal.
+func TestExport_TemplateSpellingIsNoLongerReserved(t *testing.T) {
+	t.Run("a vocabulary may spell the template type its own way", func(t *testing.T) {
 		vocab := typedSpaceVocabulary{typeSlugOf: map[string]string{
 			"template":    "tmpl",
 			customTypeKey: "task",
@@ -418,17 +425,19 @@ func TestExport_TemplateSpellingIsReserved(t *testing.T) {
 		require.NoError(t, err)
 
 		doc := decodeEnvelope(t, data)
-		assert.Equal(t, "template", doc.Type, "the vocabulary's tmpl is refused")
+		assert.Equal(t, "tmpl", doc.Type, "the vocabulary's spelling is honoured now")
+		assert.Equal(t, "template", doc.Kind, "and the kind, not the spelling, says what this is")
 		assert.Equal(t, "task", doc.TemplateFor, "the target type survives")
-		assert.Equal(t, map[string]string{"task": customTypeKey}, doc.TypeKeys)
-		assert.NotEmpty(t, warned, "the refused vocabulary answer is reported")
+		assert.Equal(t, map[string]string{"tmpl": "template", "task": customTypeKey}, doc.TypeKeys,
+			"the legend is what makes the moved spelling invertible")
+		assert.Empty(t, warned, "nothing was refused, so there is nothing to report")
 
 		_, snap2, err := Unmarshal(data, Options{GenerateId: seqIds("g")})
 		require.NoError(t, err)
 		assert.Equal(t, []string{"ot-template", "ot-" + customTypeKey}, snap2.ObjectTypes)
 	})
 
-	t.Run("no other key may take the spelling", func(t *testing.T) {
+	t.Run("another key may take the spelling", func(t *testing.T) {
 		vocab := typedSpaceVocabulary{typeSlugOf: map[string]string{customTypeKey: "template"}}
 		var warned []Issue
 
@@ -437,13 +446,41 @@ func TestExport_TemplateSpellingIsReserved(t *testing.T) {
 		require.NoError(t, err)
 
 		doc := decodeEnvelope(t, data)
-		assert.Equal(t, customTypeKey, doc.Type, "the stored key is its own address")
-		assert.Equal(t, map[string]string{customTypeKey: customTypeKey}, doc.TypeKeys,
-			"`template` is refused as a spelling, and the verbatim key it fell back to "+
-				"still names itself — the assertion here is that the legend does NOT "+
-				"carry the refused spelling")
-		assert.NotEmpty(t, warned)
+		assert.Equal(t, "template", doc.Type, "the spelling reserves nothing")
+		assert.Equal(t, "page", doc.Kind,
+			"but the kind is spelled out anyway: `{\"type\": \"template\"}` with no kind is the "+
+				"pre-v0.22 spelling of a template, and this format's own Validate refuses it (I1)")
+		assert.Equal(t, map[string]string{"template": customTypeKey}, doc.TypeKeys)
+		assert.Empty(t, warned)
+
+		sbType, snap2, err := Unmarshal(data, Options{GenerateId: seqIds("g")})
+		require.NoError(t, err)
+		assert.Equal(t, model.SmartBlockType_Page, sbType)
+		assert.Equal(t, []string{"ot-" + customTypeKey}, snap2.ObjectTypes)
 	})
+}
+
+// The loss the change was FOR. A template's object types need not begin with
+// the template key — nothing in the model requires it, and a real store holds
+// such snapshots — but the second envelope slot used to exist only when
+// keys[0] was the template key. So this snapshot kept one slot and its target
+// type was dropped, with a warning and no way to express it.
+func TestExport_ATemplateNotLedByTheTemplateKeyKeepsItsTarget(t *testing.T) {
+	var warned []Issue
+	data, err := Marshal(model.SmartBlockType_Template, typedSnapshot("ot-task", "ot-"+customTypeKey),
+		Options{OnWarning: func(i Issue) { warned = append(warned, i) }})
+	require.NoError(t, err)
+
+	doc := decodeEnvelope(t, data)
+	assert.Equal(t, "template", doc.Kind)
+	assert.Equal(t, "task", doc.Type)
+	assert.Equal(t, customTypeKey, doc.TemplateFor, "the target type used to be dropped here")
+	assert.Empty(t, warned, "and the drop used to be the only thing said about it")
+
+	sbType, snap, err := Unmarshal(data, Options{GenerateId: seqIds("g")})
+	require.NoError(t, err)
+	assert.Equal(t, model.SmartBlockType_Template, sbType)
+	assert.Equal(t, []string{"ot-task", "ot-" + customTypeKey}, snap.ObjectTypes)
 }
 
 // blankTypeVocab resolves a type spelling to the empty string — the type
@@ -474,7 +511,7 @@ func TestImport_SeamRefusesAnEmptyResolvedTypeKey(t *testing.T) {
 	})
 
 	t.Run("template_for", func(t *testing.T) {
-		doc := `{"version": 1, "type": "template", "template_for": "blanktype"}`
+		doc := `{"version": 1, "kind": "template", "type": "template", "template_for": "blanktype"}`
 		require.NoError(t, Validate([]byte(doc)))
 		_, _, err := Unmarshal([]byte(doc), opts())
 		require.Error(t, err)
@@ -494,30 +531,77 @@ func TestImport_SeamRefusesAnEmptyResolvedTypeKey(t *testing.T) {
 	})
 }
 
-// The template_for gate and the kind derivation run on the STORED key the
-// type spelling resolves to through the document's own chain — not on the
-// raw spelling. A legend that rebinds the spelling `template` says the
-// document's type is NOT the template type, and a legend that binds another
-// spelling ONTO the template key says it is.
-func TestTemplateGateRunsOnTheResolvedTypeKey(t *testing.T) {
-	t.Run("a rebound template spelling is not a template", func(t *testing.T) {
-		doc := `{"version": 1, "type_keys": {"template": "custom1"},
-			"type": "template", "template_for": "page"}`
+// The template_for gate and the kind read `kind`, and the type term says
+// nothing about either (§2). Both used to run on the STORED key the type
+// spelling resolved to through the document's own chain — legend, bundled
+// table, verbatim — which is a private copy of §3 that Validate and the
+// importer each had to keep, and which made the same field answer two
+// unrelated questions.
+func TestTemplateGateRunsOnTheKind(t *testing.T) {
+	t.Run("the type term does not make a template", func(t *testing.T) {
+		// a page whose object type IS the template type: legal, and the one
+		// shape the old rule could not tell apart from a template
+		doc := `{"version": 1, "kind": "page", "type": "template", "template_for": "page"}`
 		err := Validate([]byte(doc))
-		require.Error(t, err, "template_for on a document whose type resolves to custom1")
+		require.Error(t, err, "template_for on a document whose kind is page")
 		assert.Contains(t, err.Error(), "/template_for")
+		assert.Contains(t, err.Error(), `kind "template"`)
 		_, _, unmErr := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 		require.Error(t, unmErr, "Unmarshal agrees (I2)")
 	})
 
-	t.Run("a spelling bound onto the template key is one", func(t *testing.T) {
-		doc := `{"version": 1, "type_keys": {"tpl": "template"},
+	t.Run("the kind does, whatever the type is spelled", func(t *testing.T) {
+		doc := `{"version": 1, "kind": "template", "type_keys": {"tpl": "template"},
 			"type": "tpl", "template_for": "page"}`
 		require.NoError(t, Validate([]byte(doc)))
 		sbType, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 		require.NoError(t, err)
 		assert.Equal(t, model.SmartBlockType_Template, sbType)
 		assert.Equal(t, []string{"ot-template", "ot-page"}, snap.ObjectTypes)
+	})
+
+	// and a legend rebinding the spelling no longer moves the kind with it:
+	// the document is a template because it says so, and its type is whatever
+	// the legend says
+	t.Run("a rebound template spelling is still a template if the kind says so", func(t *testing.T) {
+		doc := `{"version": 1, "kind": "template", "type_keys": {"template": "custom1"},
+			"type": "template", "template_for": "page"}`
+		require.NoError(t, Validate([]byte(doc)))
+		sbType, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
+		require.NoError(t, err)
+		assert.Equal(t, model.SmartBlockType_Template, sbType)
+		assert.Equal(t, []string{"ot-custom1", "ot-page"}, snap.ObjectTypes)
+	})
+
+	// The pre-v0.22 spelling. It is refused rather than migrated (§10), and
+	// it has to be refused LOUDLY: a template whose target type is absent
+	// carries nothing to trip the template_for gate, so without this it would
+	// import as an ordinary page and nothing anywhere would say so.
+	t.Run("the pre-v0.22 spelling is refused by name", func(t *testing.T) {
+		for _, doc := range []string{
+			`{"version": 1, "type": "template", "template_for": "task"}`,
+			`{"version": 1, "type": "template"}`,
+		} {
+			err := Validate([]byte(doc))
+			require.Error(t, err, doc)
+			assert.Contains(t, err.Error(), "/kind")
+			assert.Contains(t, err.Error(), `add "kind": "template"`)
+			_, _, unmErr := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
+			require.Error(t, unmErr, "Unmarshal agrees (I2): %s", doc)
+		}
+	})
+
+	// template_for names object_types[1], and there is no [1] without a [0].
+	// The old gate refused this as a side effect of resolving `type`; reading
+	// `kind` instead, it has to be said outright or the field is discarded in
+	// silence.
+	t.Run("template_for needs a type beside it", func(t *testing.T) {
+		doc := `{"version": 1, "kind": "template", "template_for": "task"}`
+		err := Validate([]byte(doc))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "/template_for")
+		_, _, unmErr := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
+		require.Error(t, unmErr, "Unmarshal agrees (I2)")
 	})
 }
 
@@ -683,11 +767,11 @@ func TestExport_TypeLegendNamesOnlyTypesTheDocumentMentions(t *testing.T) {
 }
 
 // templateMovingVocab is the hand-written third-party vocabulary the
-// `template` reservation exists for: it answers with a different stored key
-// for the reserved spelling, and binds another spelling onto the template key.
-// Neither shipped vocabulary can produce these — storeresolver's keyMaps.key
-// refuses any slug the bundled table binds elsewhere — but Options.Keys is a
-// public interface, so nothing but this guard stops one.
+// `template` reservation used to exist for: it answers a different stored key
+// for that spelling, and binds another spelling onto the template key. No
+// shipped vocabulary can produce either — storeresolver's keyMaps.key refuses
+// any slug the bundled table binds elsewhere — but Options.Keys is a public
+// interface, so a caller can.
 type templateMovingVocab struct{ BundledKeyVocabulary }
 
 func (templateMovingVocab) TypeKey(slug string) (string, bool) {
@@ -700,20 +784,25 @@ func (templateMovingVocab) TypeKey(slug string) (string, bool) {
 	return BundledKeyVocabulary{}.TypeKey(slug)
 }
 
-// The import half of TestExport_TemplateSpellingIsReserved. The kind
-// derivation and the /template_for gate run through the document's own chain
-// alone (docTypeKey — legend, bundled table, verbatim; Validate has no
-// vocabulary either, §12), while the stored key came from the vocabulary. So
-// the two resolutions of one field could disagree: a Template smartblock whose
-// ObjectTypeKeys do not contain `template`, which every downstream template
-// check misses — they all test lo.Contains(ObjectTypeKeys, TypeKeyTemplate) —
-// and whose re-export drops the target type outright, since template_for is
-// keyed off the spelled term.
-func TestImport_TemplateSpellingIsReservedAgainstTheVocabulary(t *testing.T) {
+// The import half of TestExport_TemplateSpellingIsNoLongerReserved, and the
+// reason the reservation could be deleted rather than merely moved.
+//
+// The reservation existed because two chains read the same field: the stored
+// key came from the VOCABULARY, while the kind derivation and the
+// /template_for gate ran through the document's own chain alone (Validate has
+// no vocabulary, §12, so the importer had to agree with it). The two could
+// disagree — a Template smartblock whose ObjectTypeKeys do not contain
+// `template`, invisible to every downstream template check, since they all
+// test lo.Contains(ObjectTypeKeys, TypeKeyTemplate).
+//
+// `kind` answers both questions off a field NO chain touches. So a vocabulary
+// may now move the spelling as freely as it moves any other: there is only
+// one resolution of `type` left, and nothing for it to contradict.
+func TestImport_TheVocabularyMayMoveTheTemplateSpelling(t *testing.T) {
 	opts := func() Options { return Options{GenerateId: seqIds("g"), Keys: templateMovingVocab{}} }
 
-	t.Run("the vocabulary may not move the template key", func(t *testing.T) {
-		doc := `{"version": 1, "type": "template", "template_for": "task"}`
+	t.Run("the kind is the kind whatever the vocabulary answers", func(t *testing.T) {
+		doc := `{"version": 1, "kind": "template", "type": "template", "template_for": "task"}`
 		var warned []Issue
 		o := opts()
 		o.OnWarning = func(i Issue) { warned = append(warned, i) }
@@ -721,83 +810,29 @@ func TestImport_TemplateSpellingIsReservedAgainstTheVocabulary(t *testing.T) {
 		sbType, snap, err := Unmarshal([]byte(doc), o)
 
 		require.NoError(t, err)
-		assert.Equal(t, model.SmartBlockType_Template, sbType)
-		assert.Equal(t, []string{"ot-template", "ot-task"}, snap.ObjectTypes,
-			"a Template whose ObjectTypeKeys lack `template` is invisible to every template check")
-		assert.NotEmpty(t, warned, "the refused vocabulary answer is reported, as on export")
+		assert.Equal(t, model.SmartBlockType_Template, sbType,
+			"the kind is read off `kind`, not off what the vocabulary made of the type")
+		assert.Equal(t, []string{"ot-" + customTypeKey, "ot-task"}, snap.ObjectTypes,
+			"and the type is whatever the vocabulary resolved, with no reservation second-guessing it")
+		assert.Empty(t, warned, "there is no longer a refusal to report")
 
-		// and the snapshot re-exports whole: template_for is keyed off the
-		// spelled term, so a moved spelling used to drop the target type
+		// and it re-exports whole: the target slot is keyed off the kind, so
+		// a moved spelling cannot cost the target type any more
 		out, err := Marshal(sbType, snap, Options{})
 		require.NoError(t, err)
 		assert.Equal(t, "task", decodeEnvelope(t, out).TemplateFor)
 	})
 
-	// §13: a warning's path addresses the fault. The guard fires in three
-	// slots and named `/type` in all three, so a caller following the pointer
-	// landed on a field that was fine — or, from a type document, on one the
-	// document does not have at all.
-	t.Run("the warning addresses the slot it fired in", func(t *testing.T) {
-		for name, tc := range map[string]struct {
-			doc   string
-			paths []string
-		}{
-			"the envelope type": {
-				`{"version": 1, "type": "tpl"}`, []string{"/type"}},
-			"a template's target type": {
-				// `template` is moved by this vocabulary too, so the envelope
-				// slot refuses it as well — one warning per slot, each
-				// naming its own
-				`{"version": 1, "type": "template", "template_for": "tpl"}`,
-				[]string{"/type", "/template_for"}},
-			"a type property's object_types entry": {
-				`{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
-				  "type_properties": [{"key": "owner", "format": "objects",
-				   "object_types": ["page", "tpl"]}]}`,
-				[]string{"/type_properties/0/object_types/1"}},
-		} {
-			t.Run(name, func(t *testing.T) {
-				var warned []Issue
-				o := opts()
-				o.OnWarning = func(i Issue) { warned = append(warned, i) }
-
-				_, _, err := Unmarshal([]byte(tc.doc), o)
-
-				require.NoError(t, err)
-				var paths []string
-				for _, w := range warned {
-					assert.Contains(t, w.Message, "template semantics")
-					paths = append(paths, w.Path)
-				}
-				assert.Equal(t, tc.paths, paths)
-			})
-		}
-	})
-
-	t.Run("no other spelling may take the template key", func(t *testing.T) {
+	t.Run("a spelling the vocabulary binds onto the template key is just a type", func(t *testing.T) {
 		doc := `{"version": 1, "type": "tpl"}`
 
 		sbType, snap, err := Unmarshal([]byte(doc), opts())
 
 		require.NoError(t, err)
 		assert.Equal(t, model.SmartBlockType_Page, sbType,
-			"the document's own chain says `tpl` is not the template type")
-		assert.Equal(t, []string{"ot-tpl"}, snap.ObjectTypes,
-			"so the stored key must not be the template key either")
-	})
-
-	// The reservation binds the VOCABULARY, not the document. A legend moves
-	// docTypeKey with it, so both halves still agree — and that case is
-	// already specified (TestTemplateGateRunsOnTheResolvedTypeKey).
-	t.Run("the document's own legend still moves the spelling", func(t *testing.T) {
-		doc := `{"version": 1, "type_keys": {"tpl": "template"},
-			"type": "tpl", "template_for": "page"}`
-
-		sbType, snap, err := Unmarshal([]byte(doc), opts())
-
-		require.NoError(t, err)
-		assert.Equal(t, model.SmartBlockType_Template, sbType)
-		assert.Equal(t, []string{"ot-template", "ot-page"}, snap.ObjectTypes)
+			"nothing about the type term makes a document a template")
+		assert.Equal(t, []string{"ot-template"}, snap.ObjectTypes,
+			"while the vocabulary's answer is taken at face value — this is a page whose type IS the template type")
 	})
 }
 
@@ -809,7 +844,7 @@ func TestImport_TemplateSpellingIsReservedAgainstTheVocabulary(t *testing.T) {
 // the document is accepted. This is a decision, not an oversight: it is pinned
 // here so that adding the refusal has to argue with §3 first.
 func TestTypeNamespaceHasNoDuplicateBindingRefusal(t *testing.T) {
-	doc := `{"version": 1, "type": "a", "template_for": "b",
+	doc := `{"version": 1, "kind": "template", "type": "a", "template_for": "b",
 		"type_keys": {"a": "template", "b": "template"}}`
 
 	require.NoError(t, Validate([]byte(doc)))

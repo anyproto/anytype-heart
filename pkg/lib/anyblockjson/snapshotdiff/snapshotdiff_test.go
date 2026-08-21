@@ -40,7 +40,7 @@ func TestCompare(t *testing.T) {
 		b := snapshot(map[string]*types.Value{"name": str("Doc")}, textBlock("b1", "hello"))
 
 		// when
-		got := Compare(a, b, anyblockjson.Options{})
+		got := Compare(a, b, model.SmartBlockType_Page, anyblockjson.Options{})
 
 		// then
 		assert.Empty(t, got)
@@ -52,7 +52,7 @@ func TestCompare(t *testing.T) {
 		b := snapshot(map[string]*types.Value{}, textBlock("b1", "hello"))
 
 		// when
-		got := Compare(a, b, anyblockjson.Options{})
+		got := Compare(a, b, model.SmartBlockType_Page, anyblockjson.Options{})
 
 		// then
 		require.Len(t, got, 1)
@@ -65,7 +65,7 @@ func TestCompare(t *testing.T) {
 		b := snapshot(map[string]*types.Value{"name": str("Renamed")})
 
 		// when
-		got := Compare(a, b, anyblockjson.Options{})
+		got := Compare(a, b, model.SmartBlockType_Page, anyblockjson.Options{})
 
 		// then
 		require.Len(t, got, 1)
@@ -78,7 +78,7 @@ func TestCompare(t *testing.T) {
 		b := snapshot(map[string]*types.Value{"name": str("Doc"), "description": str("new")})
 
 		// when
-		got := Compare(a, b, anyblockjson.Options{})
+		got := Compare(a, b, model.SmartBlockType_Page, anyblockjson.Options{})
 
 		// then
 		require.Len(t, got, 1)
@@ -91,7 +91,7 @@ func TestCompare(t *testing.T) {
 		b := snapshot(map[string]*types.Value{"dueDate": num(1700000000)})
 
 		// when
-		got := Compare(a, b, anyblockjson.Options{})
+		got := Compare(a, b, model.SmartBlockType_Page, anyblockjson.Options{})
 
 		// then
 		assert.Empty(t, got)
@@ -103,7 +103,7 @@ func TestCompare(t *testing.T) {
 		b := snapshot(map[string]*types.Value{})
 
 		// when
-		got := Compare(a, b, anyblockjson.Options{})
+		got := Compare(a, b, model.SmartBlockType_Page, anyblockjson.Options{})
 
 		// then
 		assert.Empty(t, got)
@@ -115,7 +115,7 @@ func TestCompare(t *testing.T) {
 		b := snapshot(nil, textBlock("x9", "two"), textBlock("x8", "one"))
 
 		// when
-		got := Compare(a, b, anyblockjson.Options{})
+		got := Compare(a, b, model.SmartBlockType_Page, anyblockjson.Options{})
 
 		// then
 		assert.Empty(t, got)

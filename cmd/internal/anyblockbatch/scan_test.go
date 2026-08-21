@@ -31,7 +31,7 @@ const wikiPageType = `{"version": 1, "kind": "object_type", "key": "wikiPage", "
 func TestCheckTemplateTargets_ResolvableTargetPasses(t *testing.T) {
 	files := writeDocs(t, map[string]string{
 		"types/wiki-page.type.json": wikiPageType,
-		"templates/article.json":    `{"version": 1, "type": "template", "template_for": "wikiPage"}`,
+		"templates/article.json":    `{"version": 1, "kind": "template", "type": "template", "template_for": "wikiPage"}`,
 	})
 	typeIds, err := TypeIds(files)
 	require.NoError(t, err)
@@ -46,7 +46,7 @@ func TestCheckTemplateTargets_ResolvableTargetPasses(t *testing.T) {
 // no type in the space
 func TestCheckTemplateTargets_BundledTargetIsReported(t *testing.T) {
 	files := writeDocs(t, map[string]string{
-		"templates/note.json": `{"version": 1, "type": "template", "template_for": "page"}`,
+		"templates/note.json": `{"version": 1, "kind": "template", "type": "template", "template_for": "page"}`,
 	})
 	bad, err := CheckTemplateTargets(files, map[string]string{})
 	require.NoError(t, err)
@@ -57,7 +57,7 @@ func TestCheckTemplateTargets_BundledTargetIsReported(t *testing.T) {
 
 func TestCheckTemplateTargets_UndefinedTargetIsReported(t *testing.T) {
 	files := writeDocs(t, map[string]string{
-		"templates/article.json": `{"version": 1, "type": "template", "template_for": "wikiPage"}`,
+		"templates/article.json": `{"version": 1, "kind": "template", "type": "template", "template_for": "wikiPage"}`,
 	})
 	bad, err := CheckTemplateTargets(files, map[string]string{})
 	require.NoError(t, err)
@@ -69,7 +69,7 @@ func TestCheckTemplateTargets_UndefinedTargetIsReported(t *testing.T) {
 func TestCheckTemplateTargets_IdlessTargetIsReported(t *testing.T) {
 	files := writeDocs(t, map[string]string{
 		"types/wiki-page.type.json": `{"version": 1, "kind": "object_type", "key": "wikiPage"}`,
-		"templates/article.json":    `{"version": 1, "type": "template", "template_for": "wikiPage"}`,
+		"templates/article.json":    `{"version": 1, "kind": "template", "type": "template", "template_for": "wikiPage"}`,
 	})
 	typeIds, err := TypeIds(files)
 	require.NoError(t, err)
@@ -84,7 +84,7 @@ func TestCheckTemplateTargets_IdlessTargetIsReported(t *testing.T) {
 // to create one (objectcreator.createTemplate), and import does not
 func TestCheckTemplateTargets_MissingTemplateForIsReported(t *testing.T) {
 	files := writeDocs(t, map[string]string{
-		"templates/orphan.json": `{"version": 1, "type": "template"}`,
+		"templates/orphan.json": `{"version": 1, "kind": "template", "type": "template"}`,
 	})
 	bad, err := CheckTemplateTargets(files, map[string]string{})
 	require.NoError(t, err)
@@ -96,7 +96,7 @@ func TestCheckTemplateTargets_MissingTemplateForIsReported(t *testing.T) {
 // document is wired whatever templateFor resolves to
 func TestCheckTemplateTargets_AuthoredTargetObjectTypePasses(t *testing.T) {
 	files := writeDocs(t, map[string]string{
-		"templates/article.json": `{"version": 1, "type": "template", "template_for": "page",
+		"templates/article.json": `{"version": 1, "kind": "template", "type": "template", "template_for": "page",
 		  "properties": {"targetObjectType": "type-page"}}`,
 	})
 	bad, err := CheckTemplateTargets(files, map[string]string{})
