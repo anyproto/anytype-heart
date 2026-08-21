@@ -700,15 +700,22 @@ func TestValidate_PrefixProperty(t *testing.T) {
 // the envelope, and exactly at the envelope is where a document written
 // against an older grammar fails.
 //
-// The fixture carries TWO unknown members whose sorted order is the reverse of
-// nothing in particular: the library builds its list by ranging over the
-// instance's map, so an unsorted reader answers in a different order run to
-// run, and this asserts the whole ordered slice rather than a set.
+// The fixture carries SIX unknown members and asserts the whole ordered slice
+// rather than a set, because the ordering is what a lost sort destroys and a
+// two-member fixture catches that only ~1 run in 8 (measured).
 func TestValidate_UnknownEnvelopeMembersAreAddressedOneByOne(t *testing.T) {
-	// given — one legend the format used to carry and one name it never had
-	doc := `{"version": 1, "refs": {"idxxx": "bafyreitarget"}, "zzz_unknown": 1,
+	// given — one legend the format used to carry, plus names it never had.
+	// SIX of them, deliberately: the library builds its list by ranging over
+	// the instance's map, so with two members an unsorted reader still answers
+	// in sorted order by chance about seven runs in eight, and a `-count=1` CI
+	// run would miss a lost sort almost every time (measured: 23/200). Six
+	// members put a coincidence at roughly 1 in 720.
+	doc := `{"version": 1, "refs": {"idxxx": "bafyreitarget"},
+		"zzz_unknown": 1, "aaa_unknown": 2, "mmm_unknown": 3,
+		"bbb_unknown": 4, "qqq_unknown": 5,
 		"blocks": [{"type": "paragraph", "text": "x"}]}`
-	want := []string{"/refs", "/zzz_unknown"}
+	want := []string{"/aaa_unknown", "/bbb_unknown", "/mmm_unknown",
+		"/qqq_unknown", "/refs", "/zzz_unknown"}
 
 	// when
 	err := Validate([]byte(doc))
