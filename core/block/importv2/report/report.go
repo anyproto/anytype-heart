@@ -4,11 +4,18 @@
 // notification and EventImportFinish carry its id so clients can open it and
 // render a discard button. Output is deterministic (stable block ids, sorted
 // groups) so golden tests stay stable.
+//
+// The page answers one question: what did NOT come over exactly, and where.
+// A real Notion workspace produces around a thousand issues that say about a
+// dozen distinct things — 435 of them "Notion did not return this block" —
+// so the page groups by what happened and then by which object it happened
+// to, rather than printing a line per occurrence. See §"grouping" below.
 package report
 
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/anyproto/anytype-heart/core/block/importv2"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -24,17 +31,52 @@ const SourceKey = "import-report"
 
 const iconEmoji = "📋"
 
-// Build renders the issue ledger as a page object: a summary table
-// (severity × code × count) followed by one toggle per group holding a line
-// per issue. resolve maps a source key to its created object id for mention
-// links; unresolvable keys degrade to plain text.
-func Build(title string, issues []importv2.Issue, dropped int64, resolve func(sourceKey string) (id string, ok bool)) *importv2.Object {
+const (
+	// maxObjectLines bounds one group's object list. A group that hit every
+	// page of a big workspace is understood from its first lines and its
+	// total; the rest is scrolling.
+	maxObjectLines = 25
+	// maxSubjects bounds the named things listed on one object's line.
+	maxSubjects = 4
+	// maxUnnamedLines is how many unresolvable objects are worth a line each.
+	// A source key that resolves to nothing is a Notion id: it cannot be
+	// opened, searched or recognised, so past a couple of them the count and
+	// what they were about say more than the ids do.
+	maxUnnamedLines = 2
+)
+
+// Source is what the run knows about a source key when the report is built:
+// the display name of the object it became, and whether it resolves at all.
+// An unresolved key (a page that failed, a database that became nothing) is
+// rendered as plain text — a mention mark pointing nowhere degrades to
+// _missing_object in the client.
+type Source struct {
+	Name     string
+	Resolved bool
+}
+
+// Lookup answers Source for a source key. nil is allowed and means "nothing
+// resolves": every object is rendered by its key.
+type Lookup func(sourceKey string) Source
+
+func (l Lookup) get(sourceKey string) Source {
+	if l == nil {
+		return Source{}
+	}
+	return l(sourceKey)
+}
+
+// Build renders the issue ledger as a page object: a lead paragraph, a
+// summary table (what happened × how many × how many objects), then one
+// toggle per kind listing the objects it affected.
+func Build(title string, issues []importv2.Issue, dropped int64, lookup Lookup) *importv2.Object {
 	groups := groupIssues(issues)
 
 	var blocks []*model.Block
+	blocks = append(blocks, textBlock("intro", intro(groups), nil))
 	blocks = append(blocks, summaryTable(groups, dropped)...)
 	for groupIndex, group := range groups {
-		blocks = append(blocks, toggleGroup(groupIndex, group, resolve)...)
+		blocks = append(blocks, toggleGroup(groupIndex, group, lookup)...)
 	}
 	if dropped > 0 {
 		blocks = append(blocks, textBlock("overflow",
@@ -55,48 +97,169 @@ func Build(title string, issues []importv2.Issue, dropped int64, resolve func(so
 	}
 }
 
-// group is one (severity, code) bucket, issues in stream order.
+// affected is one object a group touched, with everything named inside it.
+type affected struct {
+	sourceKey string
+	count     int
+	subjects  []string
+	seen      map[string]bool
+}
+
+// group is one (severity, message) bucket: every issue that says the same
+// thing, whichever object it happened to. The message is the grouping key
+// rather than the code, because one code covers many unrelated causes —
+// dataLoss alone spans skipped properties, images without a URL and people
+// the integration may not read.
 type group struct {
 	severity importv2.Severity
 	code     importv2.IssueCode
-	issues   []importv2.Issue
+	message  string
+	count    int
+	objects  []*affected
+	byKey    map[string]*affected
+	// runWide holds the issues with no source key (run diagnostics).
+	runWide int
+	// subjects is every distinct subject in the group, in first-seen order.
+	// When there is exactly one, it belongs in the heading rather than
+	// repeated down the whole list ("— button" on 55 consecutive lines).
+	subjects []string
+	seen     map[string]bool
 }
 
 func groupIssues(issues []importv2.Issue) []group {
 	type key struct {
 		severity importv2.Severity
-		code     importv2.IssueCode
+		message  string
 	}
 	byKey := map[key]*group{}
 	var order []key
 	for _, issue := range issues {
-		k := key{issue.Severity, issue.Code}
+		message := messageOf(issue)
+		k := key{issue.Severity, message}
 		g, ok := byKey[k]
 		if !ok {
-			g = &group{severity: issue.Severity, code: issue.Code}
+			g = &group{severity: issue.Severity, code: issue.Code, message: message,
+				byKey: map[string]*affected{}, seen: map[string]bool{}}
 			byKey[k] = g
 			order = append(order, k)
 		}
-		g.issues = append(g.issues, issue)
-	}
-	sort.SliceStable(order, func(i, j int) bool {
-		if order[i].severity != order[j].severity {
-			return order[i].severity > order[j].severity // most severe first
+		occurrences := issue.Occurrences()
+		g.count += occurrences
+		if issue.Subject != "" && !g.seen[issue.Subject] {
+			g.seen[issue.Subject] = true
+			g.subjects = append(g.subjects, issue.Subject)
 		}
-		return order[i].code < order[j].code
+		if issue.SourceKey == "" {
+			g.runWide += occurrences
+			continue
+		}
+		object, ok := g.byKey[issue.SourceKey]
+		if !ok {
+			object = &affected{sourceKey: issue.SourceKey, seen: map[string]bool{}}
+			g.byKey[issue.SourceKey] = object
+			g.objects = append(g.objects, object)
+		}
+		object.count += occurrences
+		if issue.Subject != "" && !object.seen[issue.Subject] {
+			object.seen[issue.Subject] = true
+			object.subjects = append(object.subjects, issue.Subject)
+		}
+	}
+
+	// Worst first: severity, then reach. Ties break on the message so the
+	// page is byte-stable across runs with the same ledger.
+	sort.SliceStable(order, func(i, j int) bool {
+		a, b := byKey[order[i]], byKey[order[j]]
+		if a.severity != b.severity {
+			return a.severity > b.severity
+		}
+		if a.count != b.count {
+			return a.count > b.count
+		}
+		return a.message < b.message
 	})
 	groups := make([]group, 0, len(order))
 	for _, k := range order {
-		groups = append(groups, *byKey[k])
+		g := byKey[k]
+		sort.SliceStable(g.objects, func(i, j int) bool {
+			if g.objects[i].count != g.objects[j].count {
+				return g.objects[i].count > g.objects[j].count
+			}
+			return g.objects[i].sourceKey < g.objects[j].sourceKey
+		})
+		groups = append(groups, *g)
 	}
 	return groups
+}
+
+func messageOf(issue importv2.Issue) string {
+	if issue.Message != "" {
+		return issue.Message
+	}
+	if issue.Err != nil {
+		return issue.Err.Error()
+	}
+	return string(issue.Code)
+}
+
+// outcome is the severity in the reader's terms. "warning" and "objectError"
+// describe the ledger; a person wants to know whether their content arrived.
+func outcome(severity importv2.Severity) string {
+	switch severity {
+	case importv2.SeverityInfo:
+		return "Note"
+	case importv2.SeverityWarning:
+		return "Imported with changes"
+	default:
+		return "Not imported"
+	}
+}
+
+// intro counts what went wrong separately from what merely happened: a note
+// ("these rows became Tasks") is not a thing that failed to come over, and
+// adding it to the headline number would overstate the damage.
+func intro(groups []group) string {
+	var problems, notes, objects int
+	seen := map[string]bool{}
+	for _, g := range groups {
+		if g.severity <= importv2.SeverityInfo {
+			notes += g.count
+			continue
+		}
+		problems += g.count
+		for _, object := range g.objects {
+			if !seen[object.sourceKey] {
+				seen[object.sourceKey] = true
+				objects++
+			}
+		}
+	}
+	switch {
+	case problems == 0 && notes == 0:
+		return "Everything imported as it is in the source."
+	case problems == 0:
+		return "Everything imported as it is in the source. The notes below say what the importer decided along the way."
+	}
+	text := fmt.Sprintf("%s in %s did not come over exactly. Everything not listed here imported normally.",
+		plural(problems, "thing", "things"), plural(objects, "object", "objects"))
+	if notes > 0 {
+		text += fmt.Sprintf(" %s below are notes about what the importer decided, not problems.", plural(notes, "line", "lines"))
+	}
+	return text
+}
+
+func plural(n int, one, many string) string {
+	if n == 1 {
+		return fmt.Sprintf("%d %s", n, one)
+	}
+	return fmt.Sprintf("%d %s", n, many)
 }
 
 // summaryTable emits the anytype table subtree: table → [columns layout,
 // rows layout]; cell ids are `rowId-colId` with exactly one dash, so row and
 // column ids themselves stay dash-free (ParseCellID splits on the first one).
 func summaryTable(groups []group, dropped int64) []*model.Block {
-	headers := []string{"Severity", "Issue", "Count"}
+	headers := []string{"Result", "What happened", "Times", "Objects"}
 	columnIds := make([]string, len(headers))
 	columns := make([]*model.Block, len(headers))
 	for i := range headers {
@@ -124,10 +287,18 @@ func summaryTable(groups []group, dropped int64) []*model.Block {
 	}
 	makeRow(0, true, headers)
 	for i, g := range groups {
-		makeRow(i+1, false, []string{g.severity.String(), string(g.code), fmt.Sprintf("%d", len(g.issues))})
+		what := g.message
+		if len(g.subjects) == 1 {
+			what = fmt.Sprintf("%s (%s)", what, g.subjects[0])
+		}
+		objects := fmt.Sprintf("%d", len(g.objects))
+		if len(g.objects) == 0 {
+			objects = "—" // a run-wide note is about the import, not an object
+		}
+		makeRow(i+1, false, []string{outcome(g.severity), what, fmt.Sprintf("%d", g.count), objects})
 	}
 	if dropped > 0 {
-		makeRow(len(groups)+1, false, []string{"", "(not recorded)", fmt.Sprintf("%d", dropped)})
+		makeRow(len(groups)+1, false, []string{"", "(not recorded)", fmt.Sprintf("%d", dropped), ""})
 	}
 
 	columnsLayout := &model.Block{
@@ -153,59 +324,142 @@ func summaryTable(groups []group, dropped int64) []*model.Block {
 	return blocks
 }
 
-// toggleGroup emits one toggle per (severity, code) group with a line per
-// issue nested under it.
-func toggleGroup(groupIndex int, g group, resolve func(string) (string, bool)) []*model.Block {
+// toggleGroup emits one toggle per kind of issue, holding a line per object
+// it affected.
+func toggleGroup(groupIndex int, g group, lookup Lookup) []*model.Block {
+	heading := g.message
+	// One subject for the whole group is a fact about the group.
+	sharedSubject := len(g.subjects) == 1
+	if sharedSubject {
+		heading = fmt.Sprintf("%s (%s)", heading, g.subjects[0])
+	}
+	if g.count > 1 {
+		heading = fmt.Sprintf("%s — %d", heading, g.count)
+	}
 	toggle := &model.Block{
 		Id: fmt.Sprintf("group%d", groupIndex),
 		Content: &model.BlockContentOfText{Text: &model.BlockContentText{
-			Text:  fmt.Sprintf("%s — %s (%d)", g.severity, g.code, len(g.issues)),
+			Text:  heading,
 			Style: model.BlockContentText_Toggle,
 		}},
 	}
 	blocks := []*model.Block{toggle}
-	for issueIndex, issue := range g.issues {
-		line := issueLine(fmt.Sprintf("group%d-%d", groupIndex, issueIndex), issue, resolve)
+	add := func(line *model.Block) {
 		toggle.ChildrenIds = append(toggle.ChildrenIds, line.Id)
 		blocks = append(blocks, line)
+	}
+
+	named, unnamed := partitionByName(g.objects, lookup)
+	shown := named
+	if len(shown) > maxObjectLines {
+		shown = shown[:maxObjectLines]
+	}
+	for index, object := range shown {
+		add(objectLine(fmt.Sprintf("group%d-%d", groupIndex, index), object, lookup, sharedSubject))
+	}
+	if rest := len(named) - len(shown); rest > 0 {
+		add(textBlock(fmt.Sprintf("group%d-more", groupIndex), fmt.Sprintf("…and %d more", rest), nil))
+	}
+	if len(unnamed) > 0 {
+		add(unnamedLine(fmt.Sprintf("group%d-unnamed", groupIndex), unnamed, sharedSubject))
 	}
 	return blocks
 }
 
-// issueLine renders one issue as "sourceKey — message". When the source key
-// resolves to a created object, the key's range gets a mention mark whose
+// partitionByName splits a group's objects into the ones the report can name
+// and the ones it cannot. A handful of unnameable objects still get a line
+// each — their key is the only handle anyone has — but a crowd of them
+// becomes a count.
+func partitionByName(objects []*affected, lookup Lookup) (named, unnamed []*affected) {
+	for _, object := range objects {
+		if lookup.get(object.sourceKey).Name != "" {
+			named = append(named, object)
+		} else {
+			unnamed = append(unnamed, object)
+		}
+	}
+	if len(unnamed) <= maxUnnamedLines {
+		return append(named, unnamed...), nil
+	}
+	return named, unnamed
+}
+
+// unnamedLine is the one line that stands for every object the report cannot
+// name: how many there were, and what they were about.
+func unnamedLine(blockId string, objects []*affected, subjectInHeading bool) *model.Block {
+	count := 0
+	var subjects []string
+	seen := map[string]bool{}
+	for _, object := range objects {
+		count += object.count
+		for _, subject := range object.subjects {
+			if !seen[subject] {
+				seen[subject] = true
+				subjects = append(subjects, subject)
+			}
+		}
+	}
+	text := plural(count, "object", "objects")
+	if !subjectInHeading {
+		if list := subjectList(subjects); list != "" {
+			text += " — " + list
+		}
+	}
+	return textBlock(blockId, text, nil)
+}
+
+// objectLine renders one affected object: its name, how many times it was
+// hit, and what inside it was affected. The name carries a mention mark whose
 // Param stays the SOURCE KEY — the persist-side resolver rewrites every mark
 // param, and an unresolvable one would degrade to _missing_object, so the
 // mark is only added when resolution is known to succeed.
-func issueLine(blockId string, issue importv2.Issue, resolve func(string) (string, bool)) *model.Block {
-	message := issue.Message
-	if message == "" && issue.Err != nil {
-		message = issue.Err.Error()
+func objectLine(blockId string, object *affected, lookup Lookup, subjectInHeading bool) *model.Block {
+	source := lookup.get(object.sourceKey)
+	label := source.Name
+	if label == "" {
+		label = object.sourceKey
 	}
-	text := message
+	text := label
+	if object.count > 1 {
+		text += fmt.Sprintf(" (%d)", object.count)
+	}
+	if !subjectInHeading {
+		// A subject that repeats the object's own name says it twice
+		// ("Launch Tracker — Launch Tracker").
+		subjects := make([]string, 0, len(object.subjects))
+		for _, subject := range object.subjects {
+			if subject != label {
+				subjects = append(subjects, subject)
+			}
+		}
+		if list := subjectList(subjects); list != "" {
+			text += " — " + list
+		}
+	}
 	var marks []*model.BlockContentTextMark
-	if issue.SourceKey != "" {
-		text = issue.SourceKey
-		if message != "" {
-			text += " — " + message
-		}
-		if resolvable(issue.SourceKey, resolve) {
-			marks = append(marks, &model.BlockContentTextMark{
-				Range: &model.Range{From: 0, To: int32(textutil.UTF16RuneCountString(issue.SourceKey))},
-				Type:  model.BlockContentTextMark_Mention,
-				Param: issue.SourceKey,
-			})
-		}
+	if source.Resolved {
+		marks = append(marks, &model.BlockContentTextMark{
+			Range: &model.Range{From: 0, To: int32(textutil.UTF16RuneCountString(label))},
+			Type:  model.BlockContentTextMark_Mention,
+			Param: object.sourceKey,
+		})
 	}
 	return textBlock(blockId, text, marks)
 }
 
-func resolvable(sourceKey string, resolve func(string) (string, bool)) bool {
-	if resolve == nil {
-		return false
+func subjectList(subjects []string) string {
+	if len(subjects) == 0 {
+		return ""
 	}
-	id, ok := resolve(sourceKey)
-	return ok && id != ""
+	shown := subjects
+	if len(shown) > maxSubjects {
+		shown = shown[:maxSubjects]
+	}
+	out := strings.Join(shown, ", ")
+	if rest := len(subjects) - len(shown); rest > 0 {
+		out += fmt.Sprintf(", +%d more", rest)
+	}
+	return out
 }
 
 func textBlock(id, text string, marks []*model.BlockContentTextMark) *model.Block {

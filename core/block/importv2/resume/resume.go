@@ -299,6 +299,8 @@ func rehydrateIssues(records []runstore.IssueRecord) []importv2.Issue {
 			Code:      importv2.IssueCode(record.Code),
 			SourceKey: record.SourceKey,
 			ObjectId:  record.ObjectId,
+			Subject:   record.Subject,
+			Count:     record.Count,
 			Message:   record.Message,
 		}
 		if record.Error != "" {
@@ -477,6 +479,8 @@ func IssueRecorder(store *runstore.Store) func(importv2.Issue) {
 			Code:      string(issue.Code),
 			SourceKey: issue.SourceKey,
 			ObjectId:  issue.ObjectId,
+			Subject:   issue.Subject,
+			Count:     issue.Count,
 			Message:   issue.Message,
 		}
 		if issue.Err != nil {

@@ -357,7 +357,46 @@ func (r *run) publishCreated(level int64) {
 // definitions — relations, types, options — are counted by neither kind:
 // they are engine bookkeeping with no pass-1 claim, and counting them would
 // push done past a total that is the claim count.
+// nameTableCap bounds the report's name table. It is far above any workspace
+// that fits the issue cap, and exists so a pathological import cannot grow
+// the table without limit.
+const nameTableCap = 100_000
+
+// rememberName records what an object is called, for the report.
+func (r *run) rememberName(o *importv2.Object) {
+	if o == nil || o.Payload == nil || o.SourceKey == "" {
+		return
+	}
+	// Recorded even when the name is empty: membership means "this run
+	// actually emitted the object", which is what makes a mention link safe.
+	// A key can resolve through the identity table and still have no object
+	// behind it — a claim from an interrupted session, a page whose fetch
+	// failed — and a mention pointing at one of those renders as a dead
+	// _missing_object rather than a name.
+	name := o.Payload.Details.GetString(bundle.RelationKeyName)
+	r.nameMu.Lock()
+	defer r.nameMu.Unlock()
+	if r.names == nil {
+		r.names = make(map[string]string)
+	}
+	if len(r.names) >= nameTableCap {
+		return
+	}
+	r.names[o.SourceKey] = name
+}
+
+// reportLookup is the report's view of a source key: what it is called and
+// whether it can be linked.
+func (r *run) reportLookup(sourceKey string) report.Source {
+	id, ok := r.deps.Identity.Resolve(sourceKey)
+	r.nameMu.Lock()
+	name, emitted := r.names[sourceKey]
+	r.nameMu.Unlock()
+	return report.Source{Name: name, Resolved: ok && id != "" && emitted}
+}
+
 func (r *run) countObject(o *importv2.Object) {
+	r.rememberName(o)
 	switch {
 	case isFileClass(o.SbType):
 		r.deps.Reporter.Completed(importv2.KindFile, 1)
@@ -562,6 +601,15 @@ type run struct {
 	// spilledBytes is the pass-2 download level, seeded from the spill dir
 	// so a resumed crawl continues its predecessor's count.
 	spilledBytes atomic.Int64
+
+	// nameMu guards names: source key → the display name of the object it
+	// became. The report shows these instead of source keys, because a
+	// Notion id ("450313a1-1e14-82b1-…") tells a reader nothing. A resumed
+	// incarnation rebuilds only the names of objects it re-emits; the rest
+	// fall back to their key, which is the same information the ledger had
+	// before names existed.
+	nameMu sync.Mutex
+	names  map[string]string
 
 	issueMu sync.Mutex
 	issues  []importv2.Issue
@@ -1070,7 +1118,7 @@ func (r *run) emitReport(ctx context.Context, claimed bool, title string) {
 	issues := append([]importv2.Issue(nil), r.issues...)
 	dropped := r.issuesDropped
 	r.issueMu.Unlock()
-	object := report.Build(title, issues, dropped, r.deps.Identity.Resolve)
+	object := report.Build(title, issues, dropped, r.reportLookup)
 	assignment, err := r.deps.Identity.Assign(object.SourceKey)
 	if err != nil {
 		r.report(importv2.Warning(importv2.IssueObjectFailed, object.SourceKey,

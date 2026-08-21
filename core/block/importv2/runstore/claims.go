@@ -146,6 +146,8 @@ type IssueRecord struct {
 	Code      string
 	SourceKey string
 	ObjectId  string
+	Subject   string
+	Count     int
 	Message   string
 	Error     string
 }
@@ -167,6 +169,8 @@ func (s *Store) AppendIssue(ctx context.Context, rec IssueRecord) error {
 	row.Set("code", arena.NewString(rec.Code))
 	row.Set("sourceKey", arena.NewString(rec.SourceKey))
 	row.Set("objectId", arena.NewString(rec.ObjectId))
+	row.Set("subject", arena.NewString(rec.Subject))
+	row.Set("count", arena.NewNumberInt(rec.Count))
 	row.Set("message", arena.NewString(rec.Message))
 	row.Set("error", arena.NewString(rec.Error))
 	return s.issues.UpsertOne(ctx, row)
@@ -194,6 +198,8 @@ func (s *Store) ReadIssues(ctx context.Context) ([]IssueRecord, error) {
 			Code:      string(v.GetStringBytes("code")),
 			SourceKey: string(v.GetStringBytes("sourceKey")),
 			ObjectId:  string(v.GetStringBytes("objectId")),
+			Subject:   string(v.GetStringBytes("subject")),
+			Count:     v.GetInt("count"),
 			Message:   string(v.GetStringBytes("message")),
 			Error:     string(v.GetStringBytes("error")),
 		})

@@ -78,13 +78,49 @@ const (
 )
 
 // Issue is the single structured error/warning record used by every stage.
+//
+// Message is the CONSTANT half — the same sentence for every issue of the same
+// kind, so the report can group by it and say "435 of these" instead of
+// printing 435 lines. Whatever varies (a property name, a block kind, a child
+// title) belongs in Subject, and how many times it happened in one place
+// belongs in Count. A message that interpolates a value splits its own group.
 type Issue struct {
 	Severity  Severity
 	Code      IssueCode
 	SourceKey string // which source object, when known
 	ObjectId  string // which created object, when known
-	Message   string
-	Err       error
+	// Subject names the thing inside the source object the issue is about:
+	// the property, the block kind, the child page. Empty when the issue is
+	// about the object as a whole.
+	Subject string
+	// Count is how many times this happened for this source object; 0 and 1
+	// both mean once. Converters that would otherwise emit one issue per
+	// block report the tally instead, which keeps the ledger (capped at
+	// IssueCap) describing the whole import rather than its first thousand
+	// blocks.
+	Count   int
+	Message string
+	Err     error
+}
+
+// Times returns the issue with an occurrence count.
+func (i Issue) Times(count int) Issue {
+	i.Count = count
+	return i
+}
+
+// About returns the issue with the subject it concerns.
+func (i Issue) About(subject string) Issue {
+	i.Subject = subject
+	return i
+}
+
+// Occurrences normalizes Count for arithmetic: an unset count is one.
+func (i Issue) Occurrences() int {
+	if i.Count < 1 {
+		return 1
+	}
+	return i.Count
 }
 
 // Error implements error so an Issue can travel through error returns.
@@ -92,6 +128,12 @@ func (i Issue) Error() string {
 	msg := i.Message
 	if msg == "" && i.Err != nil {
 		msg = i.Err.Error()
+	}
+	if i.Subject != "" {
+		msg = fmt.Sprintf("%s: %s", i.Subject, msg)
+	}
+	if i.Count > 1 {
+		msg = fmt.Sprintf("%s (x%d)", msg, i.Count)
 	}
 	if i.SourceKey != "" {
 		return fmt.Sprintf("%s [%s] %s: %s", i.Severity, i.Code, i.SourceKey, msg)
