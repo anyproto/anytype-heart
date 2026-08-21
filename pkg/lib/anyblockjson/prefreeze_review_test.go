@@ -6,7 +6,6 @@ package anyblockjson
 // hand-written so the fixture can express the failure.
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -197,57 +196,24 @@ func TestExport_SanitizedColumnIdCannotTakeASiblingsId(t *testing.T) {
 		"the paragraph keeps its own id and its content")
 }
 
-// (d) under CompactIds a suffix label must not take an id the document already
-// serves verbatim, or two things answer to one name.
+// (d) under CompactBlockLabels a suffix label must not take an id the document
+// already serves verbatim, or two things answer to one name.
 //
-// The fixture this test was born with — `block_12345` beside `12345` — no
-// longer exercises that on the BLOCK half, and has not since block relabeling
-// was restricted to machine-minted id shapes: `isMintedLocalId` never touches
-// `block_12345`, and the census inside `mintedSuffixLabels` counts every local
-// id, short ones as themselves, so a block label cannot alias another block id
-// whether or not the avoid-set is consulted. The second subtest below states
-// that, since it is the guarantee actually in force.
-//
-// The rule is live on the refs legend, whose labeller relabels both shapes: an
-// object id no longer than the label width labels as ITSELF and is not counted
-// by that census, so a longer id whose suffix equals it takes the same label
-// unless the avoid-set (`fullIds`) stops it. Nothing downstream reports the
-// result — a decoder keeping the last of two identical JSON keys reads a
-// perfectly valid document — it just re-points one mention at the other
-// object, which is why this has to be caught here.
+// The finding was raised against the refs labeller, which is deleted (§9a).
+// What survives it is the BLOCK half, and there the rule is live for exactly
+// one reason: `mintedSuffixLabels`' census counts LOCAL ids only. A block id
+// cannot alias another block id whether or not the avoid-set is consulted —
+// the second subtest states that, since it is what is actually in force — but
+// an OBJECT id is invisible to that census, and every object id is now spelled
+// verbatim in the document, so the `fullIds` avoid-set is the only thing
+// standing between a minted block and a label that already names something
+// else. Nothing downstream reports the result: the document is valid, it just
+// has two meanings for one string.
 func TestExport_CompactLabelCannotTakeAServedId(t *testing.T) {
 	const (
-		shortObject = "abcde"                        // compactIdMinLen wide: labels as itself
-		longObject  = "bafyreiaaaaaaaaaaaaaaaaabcde" // whose suffix is that same label
-		mintedBlock = "0000000000000000000abcde"     // and so is this block's
+		shortObject = "abcde"                    // compactIdMinLen wide: spelled verbatim
+		mintedBlock = "0000000000000000000abcde" // whose suffix is that same string
 	)
-
-	t.Run("a refs label cannot take an object id that labels as itself", func(t *testing.T) {
-		snap := &model.SmartBlockSnapshotBase{
-			Blocks: []*model.Block{
-				{Id: "obj1", ChildrenIds: []string{"m1", "m2"},
-					Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}},
-				mentionBlock("m1", shortObject),
-				mentionBlock("m2", longObject),
-			},
-			Details: fields(map[string]*types.Value{"id": str("obj1")}),
-		}
-		data, err := Marshal(model.SmartBlockType_Page, snap, Options{CompactIds: true})
-		require.NoError(t, err)
-		require.NoError(t, Validate(data), "%s", data)
-
-		// read the labels off the BYTES: decoding into a map keeps the last of
-		// two identical keys and hides the collision this test is about
-		labels := refsLabels(t, data)
-		assert.Len(t, labels, len(uniqueStrings(labels)),
-			"two objects cannot share one refs label:\n%s", data)
-
-		// and the damage the collision does, stated as the reader sees it
-		_, back, err := Unmarshal(data, Options{GenerateId: seqIds("g")})
-		require.NoError(t, err)
-		assert.Equal(t, map[string]string{"m1": shortObject, "m2": longObject},
-			mentionTargets(back), "each mention keeps the object it named:\n%s", data)
-	})
 
 	t.Run("a block label cannot take a short OBJECT id", func(t *testing.T) {
 		// the block half against the OTHER id population, which is the half
@@ -301,54 +267,6 @@ func mentionBlock(id, target string) *model.Block {
 			Marks: []*model.BlockContentTextMark{{
 				Range: &model.Range{From: 0, To: 1},
 				Type:  model.BlockContentTextMark_Mention, Param: target}}}}}}
-}
-
-func mentionTargets(snap *model.SmartBlockSnapshotBase) map[string]string {
-	out := map[string]string{}
-	for _, b := range snap.Blocks {
-		for _, mk := range b.GetText().GetMarks().GetMarks() {
-			if mk.Type == model.BlockContentTextMark_Mention {
-				out[b.Id] = mk.Param
-			}
-		}
-	}
-	return out
-}
-
-// refsLabels lists the refs keys in document order, as written.
-func refsLabels(t *testing.T, data []byte) []string {
-	t.Helper()
-	var envelope struct {
-		Refs json.RawMessage `json:"refs"`
-	}
-	require.NoError(t, json.Unmarshal(data, &envelope))
-	require.NotEmpty(t, envelope.Refs, "the fixture has to produce a refs legend")
-
-	dec := json.NewDecoder(bytes.NewReader(envelope.Refs))
-	open, err := dec.Token()
-	require.NoError(t, err)
-	require.Equal(t, json.Delim('{'), open)
-	var labels []string
-	for dec.More() {
-		key, err := dec.Token()
-		require.NoError(t, err)
-		labels = append(labels, key.(string))
-		var value any
-		require.NoError(t, dec.Decode(&value))
-	}
-	return labels
-}
-
-func uniqueStrings(in []string) []string {
-	seen := map[string]bool{}
-	var out []string
-	for _, s := range in {
-		if !seen[s] {
-			seen[s] = true
-			out = append(out, s)
-		}
-	}
-	return out
 }
 
 // (b) a derived cell id belongs to the table whether or not the cell is

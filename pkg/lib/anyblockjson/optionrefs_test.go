@@ -341,7 +341,7 @@ func TestOptionRefs_WrittenWithoutCompactionAndOnlyForWhatIsWritten(t *testing.T
 
 	for name, opts := range map[string]Options{
 		"plain":   {ResolveOptions: space},
-		"compact": {ResolveOptions: space, CompactObjectRefs: true},
+		"compact": {ResolveOptions: space, CompactBlockLabels: true},
 		"omitIds": {ResolveOptions: space, OmitIds: true},
 	} {
 		t.Run(name, func(t *testing.T) {

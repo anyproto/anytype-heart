@@ -165,7 +165,7 @@ func (e *exporter) cellToJSON(cell *model.Block) (any, error) {
 			// is written twice — the second time with its id, which is the
 			// derived cell id this row already claims.
 			e.visited[cell.Id] = true
-			md := renderInline(t.Text, e.compactMarks(t.Marks.GetMarks()))
+			md := renderInline(t.Text, t.Marks.GetMarks())
 			if md == "" {
 				return nil, nil // empty paragraph collapses to an empty cell (§11)
 			}
@@ -395,7 +395,6 @@ func (imp *importer) cellFromJSON(cell jsonCell, cellId string) ([]*model.Block,
 		if err != nil {
 			return nil, fmt.Errorf("cell %s: %w", cellId, err)
 		}
-		imp.resolveMarkTargets(marks)
 		return []*model.Block{{
 			Id: cellId,
 			Content: &model.BlockContentOfText{Text: &model.BlockContentText{

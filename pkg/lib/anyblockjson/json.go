@@ -790,37 +790,6 @@ func defaultGenerateId() string {
 	return hex.EncodeToString(b[:])
 }
 
-// suffixLabels labels each id with its last size characters (§9a) — the
-// refs-legend labeler. An id whose suffix collides with another id's or is
-// rejected by disallow gets no label and stays uncompacted — with 5
-// characters over CID/hex alphabets collisions are birthday-rare, and
-// falling back to the full id is always correct under the total resolution
-// rule. Ids no longer than size label as themselves. The census only counts
-// ids longer than size, so the caller's disallow set MUST cover every id
-// that stays verbatim in the document (buildCompactIds passes fullIds) or a
-// label could alias a short id.
-func suffixLabels(ids []string, size int, disallow func(candidate string) bool) map[string]string {
-	counts := make(map[string]int, len(ids))
-	for _, id := range ids {
-		if r := []rune(id); len(r) > size {
-			counts[string(r[len(r)-size:])]++
-		}
-	}
-	out := make(map[string]string, len(ids))
-	for _, id := range ids {
-		r := []rune(id)
-		if len(r) <= size {
-			out[id] = id
-			continue
-		}
-		suffix := string(r[len(r)-size:])
-		if counts[suffix] == 1 && (disallow == nil || !disallow(suffix)) {
-			out[id] = suffix
-		}
-	}
-	return out
-}
-
 // mintedSuffixLabels is the doc-local relabeler (§9a): it labels an id with
 // its last size characters ONLY when the id matches a machine-minted shape
 // (isMintedLocalId). The rule is deliberately inverted from "relabel unless

@@ -1,9 +1,9 @@
 package anyblockjson
 
-// compactsplit_test.go covers the C4 split of id compaction into
-// CompactObjectRefs (lossless refs legend) and CompactBlockLabels (lossy
-// local relabeling) — API v2 default reads need the former without the
-// latter.
+// compactsplit_test.go covers what id compaction is after v0.20: ONE half.
+// Object-ref compaction and its `refs` legend are deleted (§9a), so the only
+// compaction left is CompactBlockLabels — doc-local relabeling that carries
+// no legend — and CompactIds is its alias.
 
 import (
 	"encoding/json"
@@ -36,41 +36,48 @@ func compactSplitSnapshot() *model.SmartBlockSnapshotBase {
 }
 
 type parsedCompactDoc struct {
-	Refs   map[string]string `json:"refs"`
 	Blocks []struct {
 		Id string `json:"id"`
 	} `json:"blocks"`
 }
 
-func marshalCompactSplit(t *testing.T, opts Options) parsedCompactDoc {
+func marshalCompactSplit(t *testing.T, opts Options) (parsedCompactDoc, string) {
 	t.Helper()
 	data, err := Marshal(model.SmartBlockType_Page, compactSplitSnapshot(), opts)
 	require.NoError(t, err)
 	require.NoError(t, Validate(data))
 	var doc parsedCompactDoc
 	require.NoError(t, json.Unmarshal(data, &doc))
-	return doc
+	return doc, string(data)
 }
 
-func TestExport_CompactObjectRefsOnly(t *testing.T) {
-	// given / when
-	doc := marshalCompactSplit(t, Options{CompactObjectRefs: true})
+// Every shape leaves object references full and inline. Stated over the
+// compaction flag AND over the default, because "object ids compact" was the
+// documented behaviour of exactly one of those and this is what replaced it.
+func TestExport_ObjectRefsAreNeverCompacted(t *testing.T) {
+	for name, opts := range map[string]Options{
+		"default":            {},
+		"CompactBlockLabels": {CompactBlockLabels: true},
+		"CompactIds":         {CompactIds: true},
+		"OmitIds":            {OmitIds: true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			// given / when
+			_, s := marshalCompactSplit(t, opts)
 
-	// then: object refs compacted with legend, block ids stay full
-	require.Len(t, doc.Refs, 1)
-	assert.Equal(t, "bafyreimentiontargetidxxx", doc.Refs["idxxx"])
-	require.Len(t, doc.Blocks, 2)
-	assert.Equal(t, "64b2c1d2e3f4a5b6c7d8e9f0", doc.Blocks[0].Id)
-	assert.Equal(t, "featuredRelations", doc.Blocks[1].Id)
+			// then: the mention target is spelled in full where it is used,
+			// and there is no legend anywhere to look it up in
+			assert.Contains(t, s, `object_id=\"bafyreimentiontargetidxxx\"`,
+				"the mention target must be written in full")
+			assert.NotContains(t, s, `"refs"`)
+			assert.NotContains(t, s, `"idxxx"`, "no short label for it may appear")
+		})
+	}
 }
 
 func TestExport_CompactBlockLabelsOnly(t *testing.T) {
 	// given / when
-	data, err := Marshal(model.SmartBlockType_Page, compactSplitSnapshot(), Options{CompactBlockLabels: true})
-	require.NoError(t, err)
-	require.NoError(t, Validate(data))
-	var doc parsedCompactDoc
-	require.NoError(t, json.Unmarshal(data, &doc))
+	doc, s := marshalCompactSplit(t, Options{CompactBlockLabels: true})
 
 	// then: ONLY the minted id relabels — a meaningful editor id serves
 	// verbatim (the old charset rule relabeled "featuredRelations" to
@@ -79,24 +86,20 @@ func TestExport_CompactBlockLabelsOnly(t *testing.T) {
 	require.Len(t, doc.Blocks, 2)
 	assert.Equal(t, "8e9f0", doc.Blocks[0].Id)
 	assert.Equal(t, "featuredRelations", doc.Blocks[1].Id)
-
-	// and object refs stay FULL INLINE: no legend, and the mention target
-	// keeps its full spelling inside the marks — the C4 split this file
-	// exists for (refs-absence alone never checked the inline spelling)
-	assert.Empty(t, doc.Refs)
-	assert.Contains(t, string(data), "bafyreimentiontargetidxxx",
+	assert.Contains(t, s, "bafyreimentiontargetidxxx",
 		"the mention target must survive uncompacted in the document body")
 }
 
-func TestExport_CompactIdsImpliesBoth(t *testing.T) {
+func TestExport_CompactIdsIsAnAliasForBlockLabels(t *testing.T) {
 	// given / when
-	doc := marshalCompactSplit(t, Options{CompactIds: true})
+	viaAlias, aliasBytes := marshalCompactSplit(t, Options{CompactIds: true})
+	viaFlag, flagBytes := marshalCompactSplit(t, Options{CompactBlockLabels: true})
 
-	// then
-	require.Len(t, doc.Refs, 1)
-	require.Len(t, doc.Blocks, 2)
-	assert.Equal(t, "8e9f0", doc.Blocks[0].Id)
-	assert.Equal(t, "featuredRelations", doc.Blocks[1].Id, "minted-only relabeling holds under CompactIds too")
+	// then — byte-identical, which is the whole content of "alias"
+	assert.Equal(t, flagBytes, aliasBytes)
+	assert.Equal(t, viaFlag, viaAlias)
+	require.Len(t, viaAlias.Blocks, 2)
+	assert.Equal(t, "8e9f0", viaAlias.Blocks[0].Id, "minted-only relabeling holds under CompactIds too")
 }
 
 // TestExport_MintedShapeRelabeling pins the relabel rule: only machine-

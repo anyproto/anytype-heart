@@ -112,8 +112,8 @@ func UnmarshalBlock(raw json.RawMessage, forcedId string, opts Options) ([]*mode
 
 // UnmarshalPropertyValue decodes one property value per its resolved §3
 // format rules (dates parse, select option names resolve/create through
-// Options.ResolveOptions, object/file refs resolve, scalars of list-shaped
-// formats wrap into lists). It is the import twin of MarshalPropertyValue.
+// Options.ResolveOptions, object/file ids pass through, scalars of
+// list-shaped formats wrap into lists). It is the import twin of MarshalPropertyValue.
 // A nil v yields an explicit null value (presence is preserved, §3).
 func UnmarshalPropertyValue(key string, v any, opts Options) *types.Value {
 	imp := &importer{opts: opts, doc: &jsonDoc{}}
@@ -142,8 +142,8 @@ func MarshalBlockSubtree(subtree []*model.Block, opts Options) (json.RawMessage,
 	// an id-less snapshot: the emit below starts at subtree[0], so that is the
 	// entry point the id reservations have to be reachable from (§4).
 	e.rootId = subtree[0].Id
-	if opts.compactObjectRefs() || opts.compactBlockLabels() {
-		e.buildCompactIds()
+	if opts.compactBlockLabels() {
+		e.buildLabelPlan()
 	}
 	var out []any
 	// topLevel=false: a fragment caller addresses the blocks explicitly, so
@@ -159,9 +159,9 @@ func MarshalBlockSubtree(subtree []*model.Block, opts Options) (json.RawMessage,
 }
 
 // ParseInlineText parses §8 inline Markdown into plain text and marks — the
-// single-field import codec. Mention/object mark params stay as written
-// (fragment callers resolve refs themselves; whole-document import resolves
-// them through the refs legend).
+// single-field import codec. Mention/object mark params stay as written —
+// an object reference is never compacted, so there is nothing to resolve
+// them through (§9a).
 func ParseInlineText(md string) (string, []*model.BlockContentTextMark, error) {
 	return parseInline(md)
 }

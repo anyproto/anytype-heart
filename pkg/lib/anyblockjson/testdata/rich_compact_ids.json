@@ -8,7 +8,7 @@
     "description": "The subtitle",
     "icon_emoji": "🔥",
     "assignee": [
-      "roman"
+      "bafyreiroman"
     ],
     "created_date": "2025-07-06T08:44:05Z",
     "customDate": "2025-07-06T08:44:05Z",
@@ -18,12 +18,7 @@
   },
   "refs": {
     "Done#customStatus": "opt2",
-    "In progress#customStatus": "opt1",
-    "image": "bafyreiimage",
-    "kmark": "bafyreibookmark",
-    "roman": "bafyreiroman",
-    "task1": "bafyreitask1",
-    "tasks": "bafyreitasks"
+    "In progress#customStatus": "opt1"
   },
   "blocks": [
     {
@@ -34,7 +29,7 @@
     {
       "id": "b2",
       "type": "paragraph",
-      "text": "Ship the **new export** with <mention object_id=\"roman\">Roman</mention>"
+      "text": "Ship the **new export** with <mention object_id=\"bafyreiroman\">Roman</mention>"
     },
     {
       "id": "b3",
@@ -60,7 +55,7 @@
     {
       "id": "b8",
       "type": "image",
-      "object_id": "image",
+      "object_id": "bafyreiimage",
       "name": "cat.png",
       "mime_type": "image/png",
       "size": 2048,
@@ -70,7 +65,7 @@
       "id": "b9",
       "type": "bookmark",
       "url": "https://anytype.io",
-      "object_id": "kmark"
+      "object_id": "bafyreibookmark"
     },
     {
       "id": "row1",
@@ -141,7 +136,7 @@
     {
       "id": "dv1",
       "type": "dataview",
-      "object_id": "tasks",
+      "object_id": "bafyreitasks",
       "properties": [
         {
           "key": "name",
@@ -222,7 +217,7 @@
             {
               "group_id": "g1",
               "object_ids": [
-                "task1"
+                "bafyreitask1"
               ]
             }
           ]

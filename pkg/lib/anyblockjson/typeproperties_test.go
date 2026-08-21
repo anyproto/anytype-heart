@@ -181,8 +181,9 @@ func TestTypePropertiesExport(t *testing.T) {
 		assert.Contains(t, string(data), `"key": "created_date"`)
 	})
 
-	t.Run("compact ids emit no legend entries for lifted lists", func(t *testing.T) {
-		// given: recommended ids are long enough to be compacted if collected
+	t.Run("a lifted recommended id is spelled out, not labelled", func(t *testing.T) {
+		// given: an id long enough that the old refs labeller would have
+		// compacted it, had it collected the lifted lists at all
 		snapshot := typeSnapshot()
 		snapshot.Details.Fields["recommendedRelations"] = strList("relid-status")
 
@@ -192,8 +193,11 @@ func TestTypePropertiesExport(t *testing.T) {
 			CompactIds:        true,
 		})
 
-		// then
+		// then — a POSITIVE statement about what is there: an absence
+		// assertion on `refs` would now hold no matter what the export did
 		require.NoError(t, err)
+		assert.Contains(t, string(data), `"key": "status"`,
+			"the lifted list resolves to a type_properties entry")
 		assert.NotContains(t, string(data), `"refs"`)
 	})
 }

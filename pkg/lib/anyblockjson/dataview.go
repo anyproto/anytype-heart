@@ -27,7 +27,7 @@ func (e *exporter) dvFormat(dv *model.BlockContentDataview, key string) (model.R
 
 func (e *exporter) dataviewToJSON(m *omap, dv *model.BlockContentDataview) error {
 	m.set("type", "dataview")
-	m.setNonEmpty("object_id", e.compactObjectId(dv.TargetObjectId))
+	m.setNonEmpty("object_id", dv.TargetObjectId)
 	m.setNonEmpty("is_collection", dv.IsCollection)
 	m.setNonEmpty("source", stringsToAny(dv.Source))
 
@@ -84,8 +84,8 @@ func (e *exporter) viewToJSON(v *model.BlockContentDataviewView, dv *model.Block
 	vm.setNonEmpty("cover_fit", v.CoverFit)
 	vm.setNonEmpty("colored_groups", v.GroupBackgroundColors)
 	vm.setNonEmpty("page_size", v.PageLimit)
-	vm.setNonEmpty("default_template_id", e.compactObjectId(v.DefaultTemplateId))
-	vm.setNonEmpty("default_type_id", e.compactObjectId(v.DefaultObjectTypeId))
+	vm.setNonEmpty("default_template_id", v.DefaultTemplateId)
+	vm.setNonEmpty("default_type_id", v.DefaultObjectTypeId)
 	vm.setNonEmpty("wrap_content", v.WrapContent)
 	if v.ListSize != model.BlockContentDataviewView_Compact {
 		vm.setNonEmpty("list_size", listSizeNames.name(v.ListSize))
@@ -164,7 +164,7 @@ func (e *exporter) objectOrdersToJSON(viewId string, dv *model.BlockContentDatav
 		var ids []any
 		for _, id := range oo.ObjectIds {
 			if id != "" {
-				ids = append(ids, e.compactObjectId(id))
+				ids = append(ids, id)
 			}
 		}
 		om.setNonEmpty("object_ids", ids)
@@ -295,16 +295,14 @@ func (e *exporter) dayCountOperand(f *model.BlockContentDataviewFilter) float64 
 }
 
 // dvValueToJSON converts a filter value or custom-order entry: option names
-// for select properties (§3), compact ids for object-valued ones, verbatim
-// otherwise.
+// for select properties (§3), verbatim otherwise — an object id is written in
+// full like every other object reference (§9a).
 func (e *exporter) dvValueToJSON(dv *model.BlockContentDataview, key string, v *types.Value) any {
 	format, ok := e.dvFormat(dv, key)
 	if ok {
 		switch format {
 		case model.RelationFormat_status, model.RelationFormat_tag:
 			return e.mapValueStrings(v, func(id string) string { return e.optionName(key, id) })
-		case model.RelationFormat_object, model.RelationFormat_file:
-			return e.mapValueStrings(v, e.compactObjectId)
 		}
 	}
 	return protoValueToJSON(v)
@@ -409,7 +407,7 @@ type jsonObjectOrder struct {
 
 func (imp *importer) dataviewFromJSON(jb *jsonBlock) (*model.BlockContentDataview, error) {
 	dv := &model.BlockContentDataview{
-		TargetObjectId: imp.resolveId(jb.ObjectId),
+		TargetObjectId: jb.ObjectId,
 		IsCollection:   jb.IsCollection,
 		Source:         jb.Source,
 	}
@@ -443,8 +441,8 @@ func (imp *importer) dataviewFromJSON(jb *jsonBlock) (*model.BlockContentDatavie
 			CoverFit:              jv.CoverFit,
 			GroupBackgroundColors: jv.ColoredGroups,
 			PageLimit:             jsonInt32(jv.PageSize),
-			DefaultTemplateId:     imp.resolveId(jv.DefaultTemplateId),
-			DefaultObjectTypeId:   imp.resolveId(jv.DefaultTypeId),
+			DefaultTemplateId:     jv.DefaultTemplateId,
+			DefaultObjectTypeId:   jv.DefaultTypeId,
 			WrapContent:           jv.WrapContent,
 			ListSize:              listSizeNames.value(jv.ListSize),
 			AlternateRows:         jv.AlternateRows,
@@ -479,7 +477,7 @@ func (imp *importer) dataviewFromJSON(jb *jsonBlock) (*model.BlockContentDatavie
 		for _, jo := range jv.ObjectOrders {
 			oo := &model.BlockContentDataviewObjectOrder{ViewId: viewId, GroupId: jo.GroupId}
 			for _, id := range jo.ObjectIds {
-				oo.ObjectIds = append(oo.ObjectIds, imp.resolveId(id))
+				oo.ObjectIds = append(oo.ObjectIds, id)
 			}
 			dv.ObjectOrders = append(dv.ObjectOrders, oo)
 		}
@@ -557,7 +555,7 @@ func (imp *importer) dvValueFromJSON(dv *model.BlockContentDataview, key, slug s
 	case model.RelationFormat_status, model.RelationFormat_tag:
 		return mapJSONStrings(v, func(name string) string { return imp.resolveOption(key, slug, name) })
 	case model.RelationFormat_object, model.RelationFormat_file:
-		return mapJSONStrings(v, imp.resolveId)
+		return mapJSONStrings(v, func(id string) string { return id })
 	}
 	return jsonToProtoValue(v)
 }

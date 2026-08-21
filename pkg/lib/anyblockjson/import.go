@@ -299,24 +299,6 @@ func (imp *importer) docTypeKey(slug string) string {
 	return key
 }
 
-// resolveId applies the §9a resolution rule: a refs key resolves to its full
-// id; anything else is a full id already. The rule is total over the legend's
-// PLAIN key population and blind to the qualified option keys — those name an
-// option under a property, they are reachable only from a select value, and a
-// document that spelled one in an object-id slot would be addressing an
-// option pool from a position that has no property to qualify it. Reading the
-// key's shape is not a "short-looking" heuristic on the value §9a rules out:
-// it is the same disjointness that lets one map carry two populations at all.
-func (imp *importer) resolveId(s string) string {
-	if s == "" || isQualifiedRefsKey(s) {
-		return s
-	}
-	if full, ok := imp.doc.Refs[s]; ok {
-		return full
-	}
-	return s
-}
-
 // declaredFormat maps a document's format name to a stored format. "text"
 // is deliberately ambiguous (§3): it names both longtext and the legacy
 // shorttext, so for that one name the property's *existing* format decides,
@@ -512,7 +494,7 @@ func (imp *importer) buildCollections() *types.Struct {
 	if len(doc.Items) > 0 {
 		vals := make([]*types.Value, 0, len(doc.Items))
 		for _, id := range doc.Items {
-			vals = append(vals, &types.Value{Kind: &types.Value_StringValue{StringValue: imp.resolveId(id)}})
+			vals = append(vals, &types.Value{Kind: &types.Value_StringValue{StringValue: id}})
 		}
 		coll.Fields[storeKeyItems] = &types.Value{Kind: &types.Value_ListValue{ListValue: &types.ListValue{Values: vals}}}
 	}
@@ -554,7 +536,7 @@ func (imp *importer) propertyValue(key, slug string, v any) *types.Value {
 	case model.RelationFormat_status, model.RelationFormat_tag:
 		return wrapToList(mapJSONStrings(v, func(name string) string { return imp.resolveOption(key, slug, name) }))
 	case model.RelationFormat_object, model.RelationFormat_file:
-		return wrapToList(mapJSONStrings(v, imp.resolveId))
+		return wrapToList(mapJSONStrings(v, func(id string) string { return id }))
 	}
 	return jsonToProtoValue(v)
 }
@@ -708,19 +690,10 @@ func (imp *importer) parseText(md string) (string, *model.BlockContentTextMarks,
 	if err != nil {
 		return "", nil, err
 	}
-	imp.resolveMarkTargets(marks)
 	if len(marks) == 0 {
 		return text, nil, nil
 	}
 	return text, &model.BlockContentTextMarks{Marks: marks}, nil
-}
-
-func (imp *importer) resolveMarkTargets(marks []*model.BlockContentTextMark) {
-	for _, m := range marks {
-		if m != nil && (m.Type == model.BlockContentTextMark_Mention || m.Type == model.BlockContentTextMark_Object) {
-			m.Param = imp.resolveId(m.Param)
-		}
-	}
 }
 
 // textFromJSON builds a text-family block content (§5), applying the
@@ -740,7 +713,7 @@ func (imp *importer) textFromJSON(jb *jsonBlock) (*model.BlockContentText, error
 	}
 	if style == model.BlockContentText_Callout {
 		t.IconEmoji = jb.IconEmoji
-		t.IconImage = imp.resolveId(jb.IconImage)
+		t.IconImage = jb.IconImage
 	}
 	return t, nil
 }
@@ -750,7 +723,7 @@ func (imp *importer) textFromJSON(jb *jsonBlock) (*model.BlockContentText, error
 func (imp *importer) fileFromJSON(jb *jsonBlock) *model.BlockContentFile {
 	f := &model.BlockContentFile{
 		Type:           fileTypeNames.value(jb.Type),
-		TargetObjectId: imp.resolveId(jb.ObjectId),
+		TargetObjectId: jb.ObjectId,
 		Hash:           jb.Hash,
 		Name:           jb.Name,
 		Mime:           jb.MimeType,
@@ -772,7 +745,7 @@ func (imp *importer) fileFromJSON(jb *jsonBlock) *model.BlockContentFile {
 func (imp *importer) bookmarkFromJSON(jb *jsonBlock) *model.BlockContentBookmark {
 	bm := &model.BlockContentBookmark{
 		Url:            jb.Url,
-		TargetObjectId: imp.resolveId(jb.ObjectId),
+		TargetObjectId: jb.ObjectId,
 	}
 	if bm.TargetObjectId != "" {
 		bm.State = model.BlockContentBookmark_Done
@@ -789,7 +762,7 @@ func (imp *importer) linkFromJSON(jb *jsonBlock) (*model.BlockContentLink, error
 		}
 	}
 	return &model.BlockContentLink{
-		TargetBlockId: imp.resolveId(jb.ObjectId),
+		TargetBlockId: jb.ObjectId,
 		CardStyle:     cardStyleNames.value(jb.CardStyle),
 		IconSize:      iconSizeNames.value(jb.IconSize),
 		Description:   linkDescriptionNames.value(jb.Description),

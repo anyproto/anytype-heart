@@ -15,13 +15,16 @@ import (
 )
 
 func filterDoc(props, filters string) string {
-	return `{"version": 1, "id": "p1", "refs": {"dana": "bafyreirealid"}, "blocks": [{"type": "dataview",
+	return `{"version": 1, "id": "p1", "blocks": [{"type": "dataview",
 		"object_id": "someSet", "properties": [` + props + `],
 		"views": [{"name": "Mine", "filters": [` + filters + `]}]}]}`
 }
 
-// the token is not an id: import must not rewrite it and export must not
-// shorten it into the refs legend
+// the token is not an id: nothing in either direction rewrites it. The
+// fixture used to carry a refs legend to prove the token could not be
+// swallowed into one; there is no legend to be swallowed into now (§9a), so
+// what is left to pin is that the token survives the object-valued path
+// verbatim in both directions.
 func TestRoundtrip_FilterTemplateSurvives(t *testing.T) {
 	for _, tok := range []string{"_filter_template_1_", "_filter_template_2_"} {
 		t.Run(tok, func(t *testing.T) {

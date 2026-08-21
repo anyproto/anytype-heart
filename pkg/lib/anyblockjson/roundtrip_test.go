@@ -395,16 +395,27 @@ func TestCompactIds(t *testing.T) {
 	require.NoError(t, Validate(data))
 	s := string(data)
 
-	// a refs legend appears, mentions use short labels
-	assert.Contains(t, s, `"refs"`)
-	assert.Contains(t, s, `"roman": "bafyreiroman"`)
-	assert.Contains(t, s, `<mention object_id=\"roman\">`)
-	// stripped properties leave no unused legend entries (§9a)
-	assert.NotContains(t, s, `bafyreitypepage`)
-	// the envelope id is never compacted (§9a)
+	// block ids relabel to their 5-char suffix — the one compaction left, and
+	// it carries no legend (§9a)
+	assert.Contains(t, s, `"id": "b1"`, "short authored ids serve as themselves")
+	// object references are written IN FULL, at every use site, on every shape
+	assert.Contains(t, s, `<mention object_id=\"bafyreiroman\">`)
+	assert.Contains(t, s, `"bafyreiroman"`, "the assignee property value too")
+	// no object-id legend, stated as the entries the deleted one would have
+	// written: an absence assertion on `refs` itself would not do, since the
+	// option legend still lives there (§9a)
+	assert.NotContains(t, s, `"roman": "bafyreiroman"`)
+	assert.NotContains(t, s, `"tasks": "bafyreitasks"`)
+	assert.NotContains(t, s, `"image": "bafyreiimage"`)
+	// and no short label survives at a use site either
+	assert.NotContains(t, s, `"object_id": "image"`)
+	assert.NotContains(t, s, `"object_id": "tasks"`)
+	assert.NotContains(t, s, `bafyreitypepage`, "stripped properties leave no legend entries either")
+	// the envelope id, like every other object id (§9a)
 	assert.Contains(t, s, `"id": "bafyreiobject"`)
 
-	// importing the compact form resolves refs back to full ids
+	// importing it back keeps the mention on the object it named — by
+	// carrying the id, not by resolving a label
 	impOpts := testOptions()
 	impOpts.GenerateId = seqIds("gen")
 	_, snap, err := Unmarshal(data, impOpts)

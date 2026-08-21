@@ -34,16 +34,12 @@ type Options struct {
 	ResolveProperties  PropertyResolver // optional; nil = type documents keep raw recommended-relation ids (§2a)
 	Keys               KeyVocabulary    // optional; nil = BundledKeyVocabulary (the derived table — keyvocab.go)
 	OmitIds            bool             // export only: drop every id (§9)
-	CompactIds         bool             // export only: shorthand for CompactObjectRefs+CompactBlockLabels (§9a)
-	CompactObjectRefs  bool             // export only: shorten object refs via the refs legend (§9a; lossless)
-	CompactBlockLabels bool             // export only: relabel doc-local block/row/column/view ids to short suffixes (§9a; legend-less, lossy)
+	CompactBlockLabels bool             // export only: relabel doc-local block/row/column/view ids to short suffixes (§9a; lossy, legend-less)
+	CompactIds         bool             // export only: alias for CompactBlockLabels — object refs are never compacted (§9a)
 	GenerateId         func() string    // import only: id generator for missing ids; nil = random 24-hex
 	NormalizeIndent    bool             // import only: clamp over-deep indents instead of rejecting (§4)
 	OnWarning          func(Issue)      // optional sink for warning-grade issues, both directions (indent clamps, unrepresentable dates, …)
 }
-
-// compactObjectRefs reports whether object-ref compaction (refs legend) is on.
-func (o Options) compactObjectRefs() bool { return o.CompactObjectRefs || o.CompactIds }
 
 // compactBlockLabels reports whether doc-local id relabeling is on.
 func (o Options) compactBlockLabels() bool { return o.CompactBlockLabels || o.CompactIds }
@@ -102,8 +98,8 @@ func Marshal(sbType model.SmartBlockType, snapshot *model.SmartBlockSnapshotBase
 	}
 	e := &exporter{opts: opts, snapshot: snapshot, sbType: sbType, blocks: map[string]*model.Block{}, visited: map[string]bool{}}
 	e.indexBlocks()
-	if opts.compactObjectRefs() || opts.compactBlockLabels() {
-		e.buildCompactIds()
+	if opts.compactBlockLabels() {
+		e.buildLabelPlan()
 	}
 	doc, err := e.buildDoc(sbType)
 	if err != nil {
@@ -120,8 +116,7 @@ type exporter struct {
 	rootId   string
 	visited  map[string]bool // emitted block ids: breaks ChildrenIds cycles, dedupes shared children
 
-	objectRefs map[string]string // full object id -> refs label (§9a)
-	localIds   map[string]string // block/row/column/view id -> short label
+	localIds map[string]string // block/row/column/view id -> short label (§9a)
 
 	// optionRefs is the second `refs` population: the option id behind every
 	// name export wrote for a select value (optionrefs.go). Recorded against
@@ -1005,23 +1000,18 @@ func (e *exporter) buildDoc(sbType model.SmartBlockType) (*omap, error) {
 		doc.set("type_properties", typeProperties) // present even when empty (§2a)
 	}
 
-	// one legend, two key populations (§9a): the compaction labels, which
-	// exist only under CompactObjectRefs, and the qualified option keys,
-	// which are identity rather than compaction and are therefore written
-	// whether or not anything is being compacted.
-	type kv struct{ label, id string }
-	var entries []kv
-	for id, label := range e.objectRefs {
-		entries = append(entries, kv{label, id})
-	}
-	for label, id := range e.buildOptionRefs() {
-		entries = append(entries, kv{label, id})
-	}
-	if len(entries) > 0 {
-		sort.Slice(entries, func(i, j int) bool { return entries[i].label < entries[j].label })
+	// the one legend left in this map is the qualified option keys, which are
+	// identity rather than compaction and are therefore written whether or not
+	// anything is being compacted (§9a).
+	if entries := e.buildOptionRefs(); len(entries) > 0 {
+		labels := make([]string, 0, len(entries))
+		for label := range entries {
+			labels = append(labels, label)
+		}
+		sort.Strings(labels)
 		refs := &omap{}
-		for _, en := range entries {
-			refs.set(en.label, en.id)
+		for _, label := range labels {
+			refs.set(label, entries[label])
 		}
 		doc.set("refs", refs)
 	}
@@ -1051,7 +1041,7 @@ func (e *exporter) buildStore() ([]any, *omap) {
 			objectsLifted = true
 			for _, el := range lv.ListValue.GetValues() {
 				if id := el.GetStringValue(); id != "" {
-					items = append(items, e.compactObjectId(id))
+					items = append(items, id)
 				}
 			}
 		}
@@ -1250,7 +1240,7 @@ func (e *exporter) propertyValue(key string, v *types.Value) any {
 	case model.RelationFormat_object, model.RelationFormat_file:
 		var out []any
 		for _, id := range valueStringList(v) {
-			out = append(out, e.compactObjectId(id))
+			out = append(out, id)
 		}
 		return out
 	}
@@ -1421,12 +1411,12 @@ func (e *exporter) blockToJSON(b *model.Block, depth int) (*omap, bool, error) {
 		bm := orEmpty(c.Bookmark)
 		m.set("type", "bookmark")
 		m.setNonEmpty("url", bm.Url)
-		m.setNonEmpty("object_id", e.compactObjectId(bm.TargetObjectId))
+		m.setNonEmpty("object_id", bm.TargetObjectId)
 		withChildren = false
 	case *model.BlockContentOfLink:
 		l := orEmpty(c.Link)
 		m.set("type", "link")
-		m.setNonEmpty("object_id", e.compactObjectId(l.TargetBlockId))
+		m.setNonEmpty("object_id", l.TargetBlockId)
 		if l.CardStyle != model.BlockContentLink_Text {
 			m.setNonEmpty("card_style", cardStyleNames.name(l.CardStyle))
 		}
@@ -1564,7 +1554,7 @@ func (e *exporter) textToJSON(m *omap, b *model.Block, t *model.BlockContentText
 	}
 	if style == model.BlockContentText_Callout {
 		m.setNonEmpty("icon_emoji", t.IconEmoji)
-		m.setNonEmpty("icon_image", e.compactObjectId(t.IconImage))
+		m.setNonEmpty("icon_image", t.IconImage)
 	}
 	if style == model.BlockContentText_Code {
 		if b.Fields != nil {
@@ -1578,36 +1568,8 @@ func (e *exporter) textToJSON(m *omap, b *model.Block, t *model.BlockContentText
 		return nil
 	}
 	m.setNonEmpty("color", t.Color)
-	m.setNonEmpty("text", renderInline(t.Text, e.compactMarks(t.Marks.GetMarks())))
+	m.setNonEmpty("text", renderInline(t.Text, t.Marks.GetMarks()))
 	return nil
-}
-
-// compactMarks rewrites mention/object mark targets through the refs legend
-// without mutating the snapshot (§9a).
-func (e *exporter) compactMarks(marks []*model.BlockContentTextMark) []*model.BlockContentTextMark {
-	if !e.opts.compactObjectRefs() || len(marks) == 0 {
-		return marks
-	}
-	out := make([]*model.BlockContentTextMark, 0, len(marks))
-	for _, mk := range marks {
-		switch {
-		case mk == nil || mk.Param == "":
-			out = append(out, mk)
-		case mk.Type == model.BlockContentTextMark_Mention || mk.Type == model.BlockContentTextMark_Object:
-			clone := *mk
-			clone.Param = e.compactObjectId(mk.Param)
-			out = append(out, &clone)
-		case mk.Type == model.BlockContentTextMark_Link && isObjectLink(mk.Param):
-			// rendered as an Object mark (§8.3), so its target compacts too
-			id, _ := parseObjectLink(mk.Param)
-			clone := *mk
-			clone.Param = objectLinkDest(e.compactObjectId(id))
-			out = append(out, &clone)
-		default:
-			out = append(out, mk)
-		}
-	}
-	return out
 }
 
 func (e *exporter) fileToJSON(m *omap, f *model.BlockContentFile) {
@@ -1620,7 +1582,7 @@ func (e *exporter) fileToJSON(m *omap, f *model.BlockContentFile) {
 	if objectId == "" {
 		objectId = f.Hash // legacy content address migrates to objectId
 	}
-	m.setNonEmpty("object_id", e.compactObjectId(objectId))
+	m.setNonEmpty("object_id", objectId)
 	m.setNonEmpty("name", f.Name)
 	m.setNonEmpty("mime_type", f.Mime)
 	m.setNonEmpty("size", f.Size_)
@@ -1653,19 +1615,15 @@ func stringsToAny(ss []string) []any {
 // ---- compact ids (§9a) ----
 //
 
-func (e *exporter) compactObjectId(id string) string {
-	if e.opts.compactObjectRefs() && id != "" {
-		if label, ok := e.objectRefs[id]; ok {
-			return label
-		}
-	}
-	return id
-}
-
-// buildCompactIds pre-collects every referenced object id (for the refs
-// legend) and every doc-local block/row/column/view id (for suffix
-// relabeling).
-func (e *exporter) buildCompactIds() {
+// buildLabelPlan works out which doc-local block/row/column/view ids may be
+// relabeled to a short suffix (§9a). It walks BOTH id populations to do it:
+// the doc-local ids that are the relabeling candidates, and every OBJECT id
+// the document references — not because an object id is ever compacted (none
+// is, §9a), but because every one of them is spelled verbatim in the output,
+// so a label equal to one would make two different things answer to one name.
+// mintedSuffixLabels' own census counts local ids only, so that avoid-set is
+// the sole guard against it (TestExport_CompactLabelCannotTakeAServedId).
+func (e *exporter) buildLabelPlan() {
 	objects := map[string]bool{}
 	locals := map[string]bool{}
 	addObject := func(id string) {
@@ -1777,8 +1735,10 @@ func (e *exporter) buildCompactIds() {
 	// the envelope id is never compacted (§9a)
 	delete(objects, e.objectId())
 
-	// refs keys must not equal a full id present in the document (§9a); the
-	// avoid set covers every id this export knows about
+	// no label may equal a full id present in the document (§9a); the avoid
+	// set covers every id this export knows about, object ids included —
+	// every one of those is written verbatim now, which makes the object
+	// half of this set matter MORE than it did when they were compacted
 	fullIds := map[string]bool{e.objectId(): true}
 	for id := range objects {
 		fullIds[id] = true
@@ -1786,32 +1746,18 @@ func (e *exporter) buildCompactIds() {
 	for id := range locals {
 		fullIds[id] = true
 	}
-	// each half builds only when its flag is on (C4 split: object-ref
-	// compaction is lossless via the legend, block relabeling is lossy);
-	// the collision-avoid set always covers both id populations because
-	// un-relabeled ids stay in the document verbatim
-	if e.opts.compactObjectRefs() {
-		e.objectRefs = suffixLabels(setToSlice(objects), compactIdMinLen, func(candidate string) bool {
-			return fullIds[candidate] || !isPlainRefsLabel(candidate)
-		})
-		// short ids label as themselves; drop those the schema charsets reject
-		dropInvalidLabels(e.objectRefs, isPlainRefsLabel)
-	}
-	if e.opts.compactBlockLabels() {
-		// only machine-minted opaque ids relabel (isMintedLocalId); every id
-		// that keeps its full spelling is reserved through the fullIds
-		// avoid-set, so no label can alias a served id — and the census inside
-		// mintedSuffixLabels runs over ALL local ids, so a label cannot be an
-		// ambiguous suffix of one either. For the LOCAL population the census
-		// is the binding guard (it counts a short id as itself, which the refs
-		// labeller does not); the avoid-set carries the object population,
-		// which the census never sees. Labels stay dash-free as before:
-		// '-' is the derived-cell-id separator and forbidden in row/column
-		// ids (§6.1) — minted suffixes are hex, so the check is a backstop.
-		e.localIds = mintedSuffixLabels(setToSlice(locals), compactIdMinLen, func(candidate string) bool {
-			return fullIds[candidate] || isInvalidLocalLabel(candidate)
-		})
-	}
+	// only machine-minted opaque ids relabel (isMintedLocalId); every id that
+	// keeps its full spelling is reserved through the fullIds avoid-set, so no
+	// label can alias a served id — and the census inside mintedSuffixLabels
+	// runs over ALL local ids, so a label cannot be an ambiguous suffix of one
+	// either. For the LOCAL population the census is the binding guard (it
+	// counts a short id as itself); the avoid-set carries the OBJECT
+	// population, which the census never sees. Labels stay dash-free as
+	// before: '-' is the derived-cell-id separator and forbidden in row/column
+	// ids (§6.1) — minted suffixes are hex, so the check is a backstop.
+	e.localIds = mintedSuffixLabels(setToSlice(locals), compactIdMinLen, func(candidate string) bool {
+		return fullIds[candidate] || isInvalidLocalLabel(candidate)
+	})
 }
 
 // isValidRefsKey admits either `refs` key shape (§9a): a plain compaction
@@ -1856,14 +1802,6 @@ func isInvalidLocalLabel(s string) bool {
 
 func isLabelRune(r rune) bool {
 	return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_'
-}
-
-func dropInvalidLabels(labels map[string]string, valid func(string) bool) {
-	for id, label := range labels {
-		if !valid(label) {
-			delete(labels, id)
-		}
-	}
 }
 
 func flattenFilters(filters []*model.BlockContentDataviewFilter) []*model.BlockContentDataviewFilter {
