@@ -61,3 +61,44 @@ func TestSyncedOriginalIsFetchedOnce(t *testing.T) {
 		assert.Equal(t, 1, count, "duplicate block id %q", id)
 	}
 }
+
+// TestPageTallyReportsOncePerKind pins the per-page tally. A template-heavy
+// page holds dozens of Notion buttons and linked views; the ledger is capped
+// at IssueCap, so repeating one sentence per block spends the diagnostics of
+// everything that happens later in the run.
+func TestPageTallyReportsOncePerKind(t *testing.T) {
+	// given
+	tally := newPageTally()
+	mctx := mapContext{pageId: "page1", tally: tally}
+	sink := &recordingSink{}
+	for i := 0; i < 12; i++ {
+		mctx.repeated(importv2.Warning(importv2.IssueUnsupportedBlock, "page1", "withheld").About("button"), sink)
+	}
+	mctx.repeated(importv2.Warning(importv2.IssueUnsupportedBlock, "page1", "withheld").About("ai_block"), sink)
+
+	// when — nothing is reported until the page is done
+	assert.Empty(t, sink.issues)
+	tally.flush("page1", sink)
+
+	// then — one row per kind, carrying its count, in first-seen order
+	require.Len(t, sink.issues, 2)
+	assert.Equal(t, "button", sink.issues[0].Subject)
+	assert.Equal(t, 12, sink.issues[0].Count)
+	assert.Equal(t, "page1", sink.issues[0].SourceKey)
+	assert.Equal(t, "ai_block", sink.issues[1].Subject)
+	assert.Equal(t, 1, sink.issues[1].Count)
+
+	// and a second flush repeats nothing
+	tally.flush("page1", sink)
+	assert.Len(t, sink.issues, 2)
+}
+
+func TestRepeatedWithoutTallyReportsImmediately(t *testing.T) {
+	// given — a caller outside page conversion
+	sink := &recordingSink{}
+	mapContext{pageId: "page1"}.repeated(importv2.Warning(importv2.IssueDataLoss, "page1", "lost"), sink)
+
+	// then
+	require.Len(t, sink.issues, 1)
+	assert.Equal(t, 1, sink.issues[0].Occurrences())
+}

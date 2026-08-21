@@ -189,7 +189,10 @@ func summarizeFidelity(sink *recordingSink) fidelitySummary {
 		}
 	}
 	for _, issue := range sink.issues {
-		summary.IssuesByCode[issue.Code]++
+		// Occurrences, not rows: a converter that tallies repetition (one
+		// row saying "12 of these on this page") must measure the same as
+		// one that repeats itself.
+		summary.IssuesByCode[issue.Code] += issue.Occurrences()
 	}
 	return summary
 }

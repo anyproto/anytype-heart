@@ -182,10 +182,12 @@ func (c *Converter) emitFetchedPage(ctx context.Context, f *fetchedPage, sink im
 		})
 		blocks = []notionBlock{{Id: stub.Id + "-lostcontent", Type: "unreadable"}}
 	}
-	modelBlocks, err := c.mapBlocks(ctx, mapContext{pageId: stub.Id, blockIds: blockIds}, blocks, sink)
+	tally := newPageTally()
+	modelBlocks, err := c.mapBlocks(ctx, mapContext{pageId: stub.Id, blockIds: blockIds, tally: tally}, blocks, sink)
 	if err != nil {
 		return err
 	}
+	tally.flush(stub.Id, sink)
 
 	object := &importv2.Object{
 		SourceKey: stub.Id,

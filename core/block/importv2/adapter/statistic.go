@@ -378,7 +378,7 @@ func (e *statEmitter) Issue(issue importv2.Issue) {
 	defer containTelemetry("issue")
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	countIssue(issue.Severity, &e.snap.warningCount, &e.snap.errorCount)
+	countIssue(issue, &e.snap.warningCount, &e.snap.errorCount)
 	if issue.Severity >= importv2.SeverityFatal && issue.Code != importv2.IssueCancelled {
 		// ERROR means something is actually WRONG. A cancel — the user's or
 		// a shutdown suspend, both of which arrive as a cancelled fatal — is
@@ -445,7 +445,7 @@ func (e *statEmitter) Seed(seed statSeed) {
 	e.totalsSeeded = seed.pagesTotal > 0 || seed.filesTotal > 0
 	e.keepDenominatorsHonestLocked()
 	for _, issue := range seed.issues {
-		countIssue(issue.Severity, &e.snap.warningCount, &e.snap.errorCount)
+		countIssue(issue, &e.snap.warningCount, &e.snap.errorCount)
 	}
 	e.mark(false)
 }

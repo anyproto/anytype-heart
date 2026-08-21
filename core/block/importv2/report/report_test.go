@@ -189,8 +189,22 @@ func TestBuild(t *testing.T) {
 		// then — the one that can be named is named; the rest are counted
 		text := render(object)
 		assert.Contains(t, text, "Tasks database")
-		assert.Contains(t, text, "5 objects — Contacts")
+		assert.Contains(t, text, "5 objects with no name — Contacts")
 		assert.NotContains(t, text, "row0")
+	})
+
+	t.Run("the collapsed line counts objects, and says how often separately", func(t *testing.T) {
+		// given — 4 unnameable objects, hit 3 times each
+		var issues []importv2.Issue
+		for i := 0; i < 4; i++ {
+			issues = append(issues, importv2.Warning(importv2.IssueDataLoss, fmt.Sprintf("row%d", i), "lost").Times(3))
+		}
+
+		// when
+		text := render(Build("t", issues, 0, unknown))
+
+		// then — 4 objects, 12 occurrences: neither number pretends to be the other
+		assert.Contains(t, text, "4 objects with no name, 12 times")
 	})
 
 	t.Run("a few unnamed objects are still listed individually", func(t *testing.T) {
@@ -308,7 +322,7 @@ func TestBuild(t *testing.T) {
 
 		// then
 		assert.Contains(t, text, "1 thing in 1 object did not come over exactly")
-		assert.Contains(t, text, "2 lines below are notes")
+		assert.Contains(t, text, "Plus 2 notes about what the importer decided")
 	})
 
 	t.Run("a subject that repeats the object name is not said twice", func(t *testing.T) {

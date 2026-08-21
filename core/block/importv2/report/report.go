@@ -243,7 +243,7 @@ func intro(groups []group) string {
 	text := fmt.Sprintf("%s in %s did not come over exactly. Everything not listed here imported normally.",
 		plural(problems, "thing", "things"), plural(objects, "object", "objects"))
 	if notes > 0 {
-		text += fmt.Sprintf(" %s below are notes about what the importer decided, not problems.", plural(notes, "line", "lines"))
+		text += fmt.Sprintf(" Plus %s about what the importer decided, which are not problems.", plural(notes, "note", "notes"))
 	}
 	return text
 }
@@ -336,11 +336,17 @@ func toggleGroup(groupIndex int, g group, lookup Lookup) []*model.Block {
 	if g.count > 1 {
 		heading = fmt.Sprintf("%s — %d", heading, g.count)
 	}
+	style := model.BlockContentText_Toggle
+	if len(g.objects) == 0 {
+		// Nothing to unfold: an issue about the run itself (a search that
+		// stopped early, a plan that failed) is the whole statement.
+		style = model.BlockContentText_Paragraph
+	}
 	toggle := &model.Block{
 		Id: fmt.Sprintf("group%d", groupIndex),
 		Content: &model.BlockContentOfText{Text: &model.BlockContentText{
 			Text:  heading,
-			Style: model.BlockContentText_Toggle,
+			Style: style,
 		}},
 	}
 	blocks := []*model.Block{toggle}
@@ -387,11 +393,11 @@ func partitionByName(objects []*affected, lookup Lookup) (named, unnamed []*affe
 // unnamedLine is the one line that stands for every object the report cannot
 // name: how many there were, and what they were about.
 func unnamedLine(blockId string, objects []*affected, subjectInHeading bool) *model.Block {
-	count := 0
+	occurrences := 0
 	var subjects []string
 	seen := map[string]bool{}
 	for _, object := range objects {
-		count += object.count
+		occurrences += object.count
 		for _, subject := range object.subjects {
 			if !seen[subject] {
 				seen[subject] = true
@@ -399,7 +405,10 @@ func unnamedLine(blockId string, objects []*affected, subjectInHeading bool) *mo
 			}
 		}
 	}
-	text := plural(count, "object", "objects")
+	text := plural(len(objects), "object with no name", "objects with no name")
+	if occurrences > len(objects) {
+		text += fmt.Sprintf(", %d times", occurrences)
+	}
 	if !subjectInHeading {
 		if list := subjectList(subjects); list != "" {
 			text += " — " + list

@@ -261,7 +261,7 @@ func buildDormantRunStatus(ctx context.Context, store *runstore.Store) (*pb.RpcO
 	status.BytesDone = importv2.SpillBytes(store.SpillDir())
 	status.ObjectsCreated = state.Engine.Created
 	for _, issue := range state.Engine.Issues {
-		countIssue(issue.Severity, &status.WarningCount, &status.ErrorCount)
+		countIssue(issue, &status.WarningCount, &status.ErrorCount)
 	}
 	return &pb.RpcObjectImportRunStatusRun{
 		Status:        status,
@@ -279,12 +279,16 @@ func buildDormantRunStatus(ctx context.Context, store *runstore.Store) (*pb.RpcO
 // the dir dormant, not a content problem. That asymmetry belongs to the
 // resume seed, not to this classification, which is why it lives in one
 // function.
-func countIssue(severity importv2.Severity, warnings, errors *int64) {
+// countIssue folds one issue into the wire counters. Occurrences, not ledger
+// rows: a converter that tallies repetition (one row saying "12 of these on
+// this page") stands for twelve, and the number the user is shown must not
+// depend on how the ledger chose to store them.
+func countIssue(issue importv2.Issue, warnings, errors *int64) {
 	switch {
-	case severity >= importv2.SeverityObjectError:
-		*errors++
-	case severity == importv2.SeverityWarning:
-		*warnings++
+	case issue.Severity >= importv2.SeverityObjectError:
+		*errors += int64(issue.Occurrences())
+	case issue.Severity == importv2.SeverityWarning:
+		*warnings += int64(issue.Occurrences())
 	}
 }
 

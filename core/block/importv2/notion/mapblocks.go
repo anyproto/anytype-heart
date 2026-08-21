@@ -24,6 +24,63 @@ type mapContext struct {
 	// blockIds is the set of block ids fetched within this page's tree —
 	// the ownership check for block-parented child entities.
 	blockIds map[string]struct{}
+	// tally collects the issues that would otherwise repeat per block. One
+	// page of a template-heavy workspace holds dozens of Notion buttons and
+	// linked views, all saying the same sentence about the same page; the
+	// ledger is capped at IssueCap, so repeating them costs the diagnostics
+	// of everything that happens later in the run.
+	tally *pageTally
+}
+
+// pageTally counts one page's repeated issues, keyed by what they say.
+type pageTally struct {
+	order  []tallyKey
+	counts map[tallyKey]int
+}
+
+type tallyKey struct {
+	severity importv2.Severity
+	code     importv2.IssueCode
+	subject  string
+	message  string
+}
+
+func newPageTally() *pageTally {
+	return &pageTally{counts: map[tallyKey]int{}}
+}
+
+// add records one occurrence instead of reporting it.
+func (t *pageTally) add(issue importv2.Issue) {
+	key := tallyKey{issue.Severity, issue.Code, issue.Subject, issue.Message}
+	if _, seen := t.counts[key]; !seen {
+		t.order = append(t.order, key)
+	}
+	t.counts[key] += issue.Occurrences()
+}
+
+// flush reports one issue per kind, carrying its count, in first-seen order.
+func (t *pageTally) flush(pageId string, sink importv2.Sink) {
+	if t == nil {
+		return
+	}
+	for _, key := range t.order {
+		sink.Issue(importv2.Issue{
+			Severity: key.severity, Code: key.code, SourceKey: pageId,
+			Subject: key.subject, Message: key.message, Count: t.counts[key],
+		})
+	}
+	t.order, t.counts = nil, map[tallyKey]int{}
+}
+
+// repeated routes an issue that one page can raise many times through the
+// page's tally; without a tally (a caller outside page conversion) it is
+// reported as it comes.
+func (mctx mapContext) repeated(issue importv2.Issue, sink importv2.Sink) {
+	if mctx.tally == nil {
+		sink.Issue(issue)
+		return
+	}
+	mctx.tally.add(issue)
 }
 
 func dashless(id string) string {
@@ -305,8 +362,8 @@ type filePayload struct {
 // access) — an accurate warning, not a false "unsupported block type", and
 // any caption is preserved.
 func (c *Converter) emptyMedia(mctx mapContext, block *notionBlock, caption []richText, sink importv2.Sink) []*mappedBlock {
-	sink.Issue(importv2.Warning(importv2.IssueDataLoss, mctx.pageId,
-		"Notion returned no URL for these files, so they could not be downloaded (the file is empty, or not shared with the integration)").About(block.Type))
+	mctx.repeated(importv2.Warning(importv2.IssueDataLoss, mctx.pageId,
+		"Notion returned no URL for these blocks, so their content could not be imported (empty in Notion, or not shared with the integration)").About(block.Type), sink)
 	return c.captionBlocks(block.Id, caption)
 }
 
@@ -568,7 +625,7 @@ func (c *Converter) mapChildEntity(ctx context.Context, mctx mapContext, block *
 			if title := payload.Title; title != "" && title != "Untitled" {
 				issue = issue.About(title)
 			}
-			sink.Issue(issue)
+			mctx.repeated(issue, sink)
 			return nil, nil
 		}
 		sink.Issue(importv2.Warning(importv2.IssueMissingTarget, mctx.pageId,
@@ -673,12 +730,12 @@ func (c *Converter) mapLinkToPage(ctx context.Context, mctx mapContext, block *n
 //     its children, and dropping them lost the whole meeting.
 func (c *Converter) unsupported(ctx context.Context, mctx mapContext, block *notionBlock, sink importv2.Sink) ([]*mappedBlock, error) {
 	if kind, ok := notionWithheld(block); ok {
-		sink.Issue(importv2.Warning(importv2.IssueUnsupportedBlock, mctx.pageId,
-			"Notion's API does not return the contents of these blocks, so they could not be imported").About(kind))
+		mctx.repeated(importv2.Warning(importv2.IssueUnsupportedBlock, mctx.pageId,
+			"Notion's API does not return the contents of these blocks, so they could not be imported").About(kind), sink)
 		return nil, nil
 	}
-	sink.Issue(importv2.Warning(importv2.IssueUnsupportedBlock, mctx.pageId,
-		"These blocks have no Anytype counterpart; a placeholder marks where they were").About(block.Type))
+	mctx.repeated(importv2.Warning(importv2.IssueUnsupportedBlock, mctx.pageId,
+		"These blocks have no Anytype counterpart; a placeholder marks where they were").About(block.Type), sink)
 	placeholder := textBlock(block.Id, fmt.Sprintf("Unsupported block (%s)", block.Type))
 	children, err := c.mapBlocks(ctx, mctx, block.children, sink)
 	if err != nil {

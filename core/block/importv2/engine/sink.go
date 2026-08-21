@@ -122,7 +122,8 @@ func (s *engineSink) skipResumed(object *importv2.Object) bool {
 	}
 	// The row IS done — a previous incarnation's ledger says so — so it
 	// counts, through the same classification every other counted object
-	// goes through.
+	// goes through, and its name is as durable as any persisted object's.
+	s.run.rememberName(object)
 	s.run.countObject(object)
 	return true
 }
