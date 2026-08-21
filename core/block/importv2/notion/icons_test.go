@@ -2,9 +2,11 @@ package notion
 
 import (
 	"encoding/json"
+	"os"
 	"regexp"
 	"sort"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -230,4 +232,37 @@ func TestIconEmojiAreEmoji(t *testing.T) {
 		}
 		assert.True(t, renderable, "%q maps to %q (%U), which is not an emoji", name, emoji, []rune(emoji))
 	}
+}
+
+// TestEveryNotionIconResolves holds the mapping to the inventory in
+// testdata/notion-icons.txt: every icon Notion's picker can produce must land
+// on an Anytype icon, or that icon silently becomes no icon at all.
+func TestEveryNotionIconResolves(t *testing.T) {
+	raw, err := os.ReadFile("testdata/notion-icons.txt")
+	require.NoError(t, err)
+
+	var unresolved, noEmoji []string
+	total := 0
+	for _, line := range strings.Split(string(raw), "\n") {
+		name := strings.TrimSpace(line)
+		if name == "" || strings.HasPrefix(name, "#") {
+			continue
+		}
+		total++
+		resolved, ok := resolveNotionIconName(name)
+		if !ok {
+			unresolved = append(unresolved, name)
+			continue
+		}
+		// Types wear the named icon; everything else needs the emoji, so a
+		// target with no emoji is a page that imports bare.
+		if notionIconEmoji[resolved] == "" {
+			noEmoji = append(noEmoji, name+" → "+resolved)
+		}
+	}
+	require.Greater(t, total, 400, "the inventory should hold Notion's whole picker")
+	sort.Strings(unresolved)
+	sort.Strings(noEmoji)
+	assert.Empty(t, unresolved, "%d of %d Notion icons map to nothing", len(unresolved), total)
+	assert.Empty(t, noEmoji, "%d of %d Notion icons reach a page with no emoji", len(noEmoji), total)
 }
