@@ -214,8 +214,11 @@ func (c *Converter) emitPlanTypes(ctx context.Context, sink importv2.Sink) error
 		}
 		object, minted, err := schemaplan.TypeObject(def)
 		if err != nil {
-			sink.Issue(importv2.Warning(importv2.IssueLLMPlanEntryDropped, string(def.Key),
-				fmt.Sprintf("plan type not emitted: %s", err)))
+			sink.Issue(importv2.Issue{
+				Severity: importv2.SeverityWarning, Code: importv2.IssueLLMPlanEntryDropped, Subject: def.Name,
+				Message: "A suggested object type could not be created; its folders were imported as collections",
+				Err:     err,
+			})
 			continue
 		}
 		if err := sink.Object(ctx, object); err != nil {
@@ -243,15 +246,21 @@ func (c *Converter) applyPlanTypes(order []string, sink importv2.Sink) {
 		}
 		if dir, isDir := strings.CutPrefix(containerId, dirContainerPrefix); isDir {
 			c.suggestedDirTypes[dir] = typeKey
-			sink.Issue(importv2.Info(importv2.IssueTypeSuggested,
-				fmt.Sprintf("folder %q pages imported as %s (%s)", path.Base(dir), typeKey, containerPlan.Reason)))
+			sink.Issue(importv2.Issue{
+				Severity: importv2.SeverityInfo, Code: importv2.IssueTypeSuggested,
+				Subject: fmt.Sprintf("%s → %s (%s)", path.Base(dir), typeKey, containerPlan.Reason),
+				Message: "Pages of these folders were imported as an Anytype type",
+			})
 			continue
 		}
 		// csv container: id is the entry name, members live in its directory
 		dir := strings.TrimSuffix(containerId, path.Ext(containerId))
 		c.suggestedDirTypes[dir] = typeKey
-		sink.Issue(importv2.Info(importv2.IssueTypeSuggested,
-			fmt.Sprintf("collection %q pages imported as %s (%s)", notionPageTitle(containerId), typeKey, containerPlan.Reason)))
+		sink.Issue(importv2.Issue{
+			Severity: importv2.SeverityInfo, Code: importv2.IssueTypeSuggested,
+			Subject: fmt.Sprintf("%s → %s (%s)", notionPageTitle(containerId), typeKey, containerPlan.Reason),
+			Message: "Rows of these collections were imported as an Anytype type",
+		})
 	}
 }
 

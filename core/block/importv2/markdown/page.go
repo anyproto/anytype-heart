@@ -35,13 +35,17 @@ func (c *Converter) convertPage(ctx context.Context, entry source.Entry, sink im
 	sink.Item(importv2.DisplayText(entry.Name))
 	content, err := c.readEntry(ctx, entry.Name)
 	if err != nil {
-		sink.Issue(importv2.ObjectError(importv2.IssueObjectFailed, entry.Name, fmt.Errorf("read: %w", err)))
+		sink.Issue(importv2.Issue{
+			Severity: importv2.SeverityObjectError, Code: importv2.IssueObjectFailed, SourceKey: entry.Name,
+			Message: "This file could not be read", Err: err,
+		})
 		return c.emitPlaceholderPage(ctx, entry, sink)
 	}
 
 	frontMatter, body, err := yaml.ExtractYAMLFrontMatter(content)
 	if err != nil {
-		sink.Issue(importv2.Warning(importv2.IssueDataLoss, entry.Name, "front-matter unreadable, imported as plain text"))
+		sink.Issue(importv2.Warning(importv2.IssueDataLoss, entry.Name,
+			"The front matter of this file could not be read; it was imported as plain text"))
 		body = content
 	}
 	var yamlDetails []domain.Detail
@@ -55,7 +59,10 @@ func (c *Converter) convertPage(ctx context.Context, entry source.Entry, sink im
 		parsed, err := yaml.ParseYAMLFrontMatterWithResolverAndPath(frontMatter, c.resolver, path.Dir(entry.Name))
 		c.resolver.setPlanRedirects(nil)
 		if err != nil {
-			sink.Issue(importv2.Warning(importv2.IssueDataLoss, entry.Name, fmt.Sprintf("front-matter skipped: %s", err)))
+			sink.Issue(importv2.Issue{
+				Severity: importv2.SeverityWarning, Code: importv2.IssueDataLoss, SourceKey: entry.Name,
+				Message: "The front matter of this file could not be read; its properties were skipped", Err: err,
+			})
 		} else if parsed != nil {
 			collectionRefs, parsed.Properties, isCollection = c.extractCollectionProperty(parsed.Properties)
 			// The yaml parser yields properties in map order; sort BEFORE the
@@ -84,7 +91,10 @@ func (c *Converter) convertPage(ctx context.Context, entry source.Entry, sink im
 
 	blocks, _, err := anymark.MarkdownToBlocks(body, path.Dir(entry.Name), nil, c.flavour.Anymark...)
 	if err != nil {
-		sink.Issue(importv2.ObjectError(importv2.IssueObjectFailed, entry.Name, fmt.Errorf("parse markdown: %w", err)))
+		sink.Issue(importv2.Issue{
+			Severity: importv2.SeverityObjectError, Code: importv2.IssueObjectFailed, SourceKey: entry.Name,
+			Message: "This markdown file could not be parsed", Err: err,
+		})
 		return c.emitPlaceholderPage(ctx, entry, sink)
 	}
 
@@ -168,7 +178,7 @@ func (c *Converter) resolveCollectionMembers(pageName string, refs []string, sin
 			continue
 		}
 		sink.Issue(importv2.Warning(importv2.IssueMissingTarget, pageName,
-			fmt.Sprintf("collection member %q is not part of the import", ref)))
+			"A collection listed a file that is not part of this import").About(ref))
 	}
 	return members
 }
@@ -338,7 +348,7 @@ func (c *Converter) rewriteFileBlock(ctx context.Context, pageName string, block
 	entryName, found := c.lookupEntry(file.Name)
 	if !found {
 		sink.Issue(importv2.Warning(importv2.IssueMissingTarget, pageName,
-			fmt.Sprintf("file %q referenced but not present in the source", file.Name)))
+			"A file referenced by this page is not in the source").About(file.Name))
 		file.Name = ""
 		return nil
 	}

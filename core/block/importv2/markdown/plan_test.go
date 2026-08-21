@@ -24,12 +24,19 @@ var vaultFiles = map[string]string{
 	"note.md":            "# Note\n\nLoose.\n",
 }
 
+// planIssueMessages renders an issue the way the report does: the sentence,
+// and the subject it is about.
 func planIssueMessages(sink *recordingSink, code importv2.IssueCode) []string {
 	var out []string
 	for _, issue := range sink.issues {
-		if issue.Code == code {
-			out = append(out, issue.Message)
+		if issue.Code != code {
+			continue
 		}
+		message := issue.Message
+		if issue.Subject != "" {
+			message += " — " + issue.Subject
+		}
+		out = append(out, message)
 	}
 	return out
 }
@@ -94,7 +101,7 @@ func TestFolderPlan(t *testing.T) {
 
 		suggested := planIssueMessages(sink, importv2.IssueTypeSuggested)
 		require.Len(t, suggested, 1)
-		assert.Contains(t, suggested[0], `folder "Work" pages imported as task (LLM plan)`)
+		assert.Contains(t, suggested[0], `Work → task (LLM plan)`)
 		mapped := planIssueMessages(sink, importv2.IssuePropertyMapped)
 		require.Len(t, mapped, 1, "one propertyMapped issue per folder+property, not per page")
 		assert.Contains(t, mapped[0], `property "Deadline" imported as "Due date" (dueDate)`)
@@ -204,7 +211,7 @@ func TestFolderPlan(t *testing.T) {
 		require.Len(t, planIssueMessages(sink, importv2.IssueLLMPlanFailed), 1)
 		suggested := planIssueMessages(sink, importv2.IssueTypeSuggested)
 		require.Len(t, suggested, 1)
-		assert.Contains(t, suggested[0], `folder "Tasks" pages imported as task (container name)`)
+		assert.Contains(t, suggested[0], `Tasks → task (container name)`)
 	})
 
 	t.Run("explicit front-matter type beats the plan type, property remap still applies", func(t *testing.T) {

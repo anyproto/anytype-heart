@@ -197,7 +197,7 @@ func (c *Converter) Convert(ctx context.Context, sink importv2.Sink) (importv2.R
 	}
 	for _, rejected := range c.source.Rejected() {
 		sink.Issue(importv2.Warning(importv2.IssueSourceInvalid, rejected,
-			"archive entry rejected: path escapes the archive root"))
+			"An entry in the archive points outside it and was not imported"))
 	}
 	if err := c.emitSchemaDefinitions(ctx, sink); err != nil {
 		return importv2.RootSpec{}, err

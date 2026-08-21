@@ -197,3 +197,37 @@ func total(counts map[string]int) int {
 	}
 	return sum
 }
+
+// TestIconEmojiAreEmoji keeps the table honest. A value that is not an emoji
+// (a maths dingbat, a technical symbol) reaches the client as an icon it
+// cannot render — worse than the bare page it replaces — and the table is
+// hand-written, so nothing else catches it.
+func TestIconEmojiAreEmoji(t *testing.T) {
+	// Ranges with Emoji_Presentation=Yes, plus anything carrying the
+	// emoji-presentation selector U+FE0F.
+	emojiRange := func(r rune) bool {
+		switch {
+		case r >= 0x1F000:
+			return true
+		case r >= 0x231A && r <= 0x231B, r >= 0x23E9 && r <= 0x23F3, r >= 0x23F8 && r <= 0x23FA:
+			return true
+		case r >= 0x25FD && r <= 0x25FE, r >= 0x2600 && r <= 0x27BF:
+			return true
+		case r >= 0x2934 && r <= 0x2935, r >= 0x2B05 && r <= 0x2B07:
+			return true
+		case r >= 0x2B1B && r <= 0x2B1C, r == 0x2B50, r == 0x2B55:
+			return true
+		}
+		return false
+	}
+	require.NotEmpty(t, notionIconEmoji)
+	for name, emoji := range notionIconEmoji {
+		var renderable bool
+		for _, r := range emoji {
+			if r == 0xFE0F || emojiRange(r) {
+				renderable = true
+			}
+		}
+		assert.True(t, renderable, "%q maps to %q (%U), which is not an emoji", name, emoji, []rune(emoji))
+	}
+}
