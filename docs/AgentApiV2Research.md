@@ -1,5 +1,14 @@
 # Agent-native JSON API v2 — research report
 
+> **Superseded in part (2026-08, SPEC v0.20):** every reference below to a
+> `refs` legend for OBJECT ids — `?ids=compact` resolving through the
+> document's `refs`, `CompactIds` meaning "refs legend + 5-char labels" — is
+> stale. Object-reference compaction is deleted: it measured a net token loss
+> per document and trapped write-back of object-valued properties. Only
+> block-label compaction remains, and it carries no legend. See
+> `core/api/APIV2.md` C4 and `pkg/lib/anyblockjson/SPEC.md` §9a.
+
+
 Status: research synthesis · 2026-07-23 · branch `go-7383-anyblockjson`
 Scope: adopting AnyBlock JSON (`pkg/lib/anyblockjson`, SPEC v0.5) in a fresh version of the
 local REST API (`core/api`), designed for AI agents — including small models — with

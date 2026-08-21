@@ -193,6 +193,37 @@ appeared in the 2026-07-23 sweeps (~35 400 objects) or the later
 
 ---
 
+## The compact goldens no longer differ from the plain ones
+
+**Status: open, recorded rather than fixed.** With object-ref compaction
+deleted (v0.20), `CompactIds` selects only block-label relabeling — and the
+rich fixture's block ids are all short or hand-authored (`b1`, `dv1`, `v1`,
+`table1`), none of them minted-shaped, so none relabels. The result is that
+`testdata/rich_compact_ids.json` is now **byte-identical** to
+`testdata/rich.json`, and `rich_compact_omit.json` to `rich_omit_ids.json`.
+Two of the four goldens freeze nothing the other two do not.
+
+They are not the only cover for that path — `TestExport_MintedShapeRelabeling`
+and `compactsplit_test.go` both pin block relabeling against minted ids, and
+`TestExport_CompactIdsIsAnAliasForBlockLabels` pins the alias — so this is a
+redundancy in the golden set rather than a hole in the coverage. Fixing it
+means giving the rich fixture a minted-shaped block id, which moves every
+golden's block ids; that was not worth doing inside the freeze change.
+**Spec**: §9a.
+
+---
+
+## No golden carries a `property_keys` legend
+
+**Status: open.** All four goldens use bundled or verbatim keys, so the §3
+legend never appears in a frozen document and the goldens prove nothing about
+it — including nothing about its canonical position relative to `option_ids`,
+which is keyed by the spellings `property_keys` inverts. That ordering is
+pinned by `TestOptionRefs_TheLegendFollowsPropertyKeys` instead, which builds
+the two-legend document the goldens do not contain. **Spec**: §2, §4.
+
+---
+
 ## Run ledger
 
 Four object counts circulate in this file and in the package, because the

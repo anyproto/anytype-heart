@@ -38,11 +38,11 @@ inline:
     "status": ["In progress"],
     "due_date": "2026-09-30T00:00:00Z"
   },
-  "refs": { "roman": "bafyreidfmzjh…" },
+  "option_ids": { "status": { "In progress": "bafyrei…opt1" } },
   "blocks": [
     { "type": "heading_2", "text": "Goals" },
     { "type": "paragraph",
-      "text": "Lossless **and** readable, with <mention object_id=\"roman\">Roman</mention>." },
+      "text": "Lossless **and** readable, with <mention object_id=\"bafyreidfmzjh…\">Roman</mention>." },
     { "type": "checkbox", "checked": true, "text": "Draft the spec" },
     { "indent": 1, "type": "bulleted_list_item", "text": "Validate in CI" }
   ]
@@ -155,9 +155,13 @@ not ids* (rule 6) is this rule applied to references.
 reader decode.**
 
 The free savings are taken: defaults and empties are omitted so the common
-case costs nothing (§4); object references compact to short labels with a
-`refs` legend — a 59-character CID costs more tokens than the sentence
-around it (§9a); the API sends compact JSON and minimal rows. *Names, not
+case costs nothing (§4); doc-local block ids relabel to their last five
+characters — a 59-character CID costs more tokens than the sentence around
+it (§9a); the API sends compact JSON and minimal rows. The saving NOT taken
+is the one that looked biggest: object references were compacted behind a
+legend until two independent measurements found it a net token *loss* — a
+label used once costs more than it saves, and a 200-item collection grew
+32.7%. *Names, not
 ids* is a token rule too: the expensive unit is a round trip, not a byte,
 and a name the author already has saves a fetch.
 
@@ -192,9 +196,13 @@ reimport (§3).
 **One exported object is understandable and re-importable without the space
 it came from.**
 
-Every compaction carries its own inverse in the document: `refs` for object
-ids, `property_keys` and `type_keys` for a space's own property and type
-slugs (§3, §9a) — a slug that reads back as a *different* property or type
+The compaction that survives is the one that needs no inverse: a block label
+is a placeholder inside its own document, never an address outside it, so
+there is no table to carry, keep in sync or read back — which is exactly the
+three obligations the deleted object legend failed. What the envelope carries
+instead is identity, not compaction: `property_keys` and `type_keys` for a
+space's own property and type slugs, `option_ids` for the option each select
+name means (§3, §9a) — a slug that reads back as a *different* property or type
 in a reader that cannot ask the space is the defect a sweep saw as twelve
 objects whose dataview came back pointing at another property. The mechanism behind it was established after
 that sweep, and its guard is demonstrated by unit test, not by a
@@ -227,8 +235,8 @@ exist, are opt-in, and report every clamp with its path.
 
 Never guess: the `anytype://object` deep link is matched by exact form; a
 tag-shaped sequence the version does not define is literal text plus a
-warning; `refs` resolution is total, with no "short-looking id" heuristic
-(§8.1, §9a, §10). `Validate` and `Unmarshal` accept and reject the same
+warning; an object id is an object id, never a label some legend might
+rebind (§8.1, §9a, §10). `Validate` and `Unmarshal` accept and reject the same
 documents, and `Marshal` never emits what `Validate` rejects (§11, §12) —
 the promises that make "this document imports" a statement rather than a
 hope. And a check has to earn its place: it catches something silent *and*
@@ -242,9 +250,9 @@ the same document. There are no dialects.**
 
 A file export, an `index.json` bundle, a `GET /v2/…/objects/{id}` body, a
 `POST` that creates an object, the worked example in an API schema — same
-envelope, same blocks, same vocabulary, same validator. `OmitIds`,
-`CompactObjectRefs` and `CompactBlockLabels` are serializations of one
-format chosen per consumer, not formats; the canonical full-id form is the
+envelope, same blocks, same vocabulary, same validator. `OmitIds` and
+`CompactBlockLabels` are serializations of one format chosen per consumer,
+not formats; the canonical full-id form is the
 round-trip form (§9, §9a). Anything learned from reading an export applies
 to the API, and the other way round.
 
@@ -359,7 +367,7 @@ no loss is silent.
 | [Djot rationale](https://github.com/jgm/djot#rationale) | linear parsing; no expressive blind spots; one spelling per construct | — |
 | Block-editor APIs (common vocabulary) | block and property names (`bulleted_list_item`, `heading_1`, *property*); options by name | `{id, name}` option objects (rule 6); `database` (rule 3) |
 | Atlassian Document Format | an envelope with a single `version` integer; `type`-discriminated nodes | additive-within-a-version; nested `content` trees (rule 4) |
-| [Portable Text](https://www.portabletext.org/) | JSON blocks as the unit; a legend referenced by key (`markDefs` → `refs`) | marks as arrays on spans — Markdown in `text` instead (rule 4) |
+| [Portable Text](https://www.portabletext.org/) | JSON blocks as the unit; a legend referenced by key (`markDefs` → `property_keys`, `type_keys`, `option_ids`) | marks as arrays on spans — Markdown in `text` instead (rule 4); a legend for object references, measured a net loss (rule 5) |
 | [JSON Canvas](https://jsoncanvas.org/), [OKF](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md) | a short spec with its purpose stated first; goals and non-goals up front; longevity, readability, interoperability as the brief | — |
 | Anytype public REST API (`core/api`) | format names (`select`, `multi_select`, `text`, `objects`, `files`); snake_case keys; the slug vocabulary | id/key duality; value fields named after formats |
 | Agent-API evidence 2024–2026 (`docs/AgentApiV2Research.md`; [Ustynov 2026](https://arxiv.org/abs/2604.07502)) | id-addressed edits; constrained decoding as the small-model floor; examples over prose; SQL-shaped filters; the validation loop as product surface; compact but not exotic | tabular/TOON-style output by default; raw JSON Patch; whole-document rewrite as the default edit |

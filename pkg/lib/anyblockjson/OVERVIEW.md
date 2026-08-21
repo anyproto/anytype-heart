@@ -128,34 +128,32 @@ internals, and the largest single source of confusion was a vocabulary
 that only made sense if you knew the history. "Relation" now appears
 nowhere in the format.
 
-### 6. Ids compact in two independent halves
+### 6. The compaction that survives is the legend-less one
 
 Full object ids are ~59-character CIDs — a single mention can cost more
-tokens than the sentence containing it.
+tokens than the sentence containing it. There used to be two compactions:
+one that shortened object references behind a `refs` legend, and one that
+relabels document-local block/row/column/view ids to short suffixes. The
+first is deleted; only the second is left.
 
-- **`CompactObjectRefs`** shortens object references and adds a `refs`
-  legend to the envelope. **Lossless** — the legend inverts it.
-- **`CompactBlockLabels`** relabels document-local block/row/column/view
-  ids to short suffixes. **Legend-less and lossy.**
+- **`CompactBlockLabels`** relabels doc-local block/row/column/view ids to
+  their last 5 characters. **Legend-less and lossy.** `CompactIds` is now an
+  alias for it.
 - `OmitIds` drops ids entirely, for generation.
+- **Object references are written in full, on every shape.**
 
-```json
-"refs": { "miovm": "bafyreieqh63jv…miovm", "roman": "bafyreidfmzjh…" }
-```
+**Why the "lossless" half died and the "lossy" half stayed.** An indirection
+table has three obligations — it must be carried, kept in sync, and read
+back — and the object legend failed all three. API v2 removed the same
+legend from its read shape after measuring a net token *loss* per document
+and finding that it trapped write-back: an agent editing an object-valued
+property through a label has to keep the legend in step, and one that
+regenerates the document without it silently re-points every reference. The
+freeze review measured a 200-item collection growing 32.7% under compaction.
 
-**Why two halves rather than one switch.** They pay differently and
-consumers legitimately want one without the other: an editing surface wants
-short block labels but full inline object refs, while a backup shape wants
-full block ids and takes the legend, because its bytes must re-import to
-the same document.
-
-**`refs` is an authoritative opaque map**, not a shortening convention.
-Keys need not be suffixes of their values — "last 5 characters" is merely
-export's key-choice algorithm (suffixes, because CIDs share *prefixes*).
-Agents may add entries with any label they like and reference them:
-`"roman": "bafyrei…"`. The resolution rule is total — if a value is a key
-in `refs` it resolves to that id, otherwise it *is* a full id. No
-"short-looking" heuristic, so there is no ambiguous middle case.
+A block label has none of those obligations. It is a placeholder inside its
+own document, never an address outside it, and a write endpoint resolves one
+against the live object by unique suffix. Nothing to desynchronise.
 
 ### 7. The round-trip contract is a fixed point, not byte-equality
 

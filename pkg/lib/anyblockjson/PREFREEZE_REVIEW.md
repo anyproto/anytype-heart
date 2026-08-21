@@ -334,14 +334,14 @@ freeze because it changes canonical bytes**.
     `rows`×`columns`, or `refs`. Bound them in `Options` with documented
     defaults and put the bounds in §12 — otherwise a rejecting and an accepting
     implementation are both conformant.
-16. **`refs` legend can rebind a literal full id.** **[confirmed]**
+16. **`refs` legend can rebind a literal full id.** **[confirmed — CLOSED BY DELETION at v0.20: there is no object-id legend.]**
     `refs: {"bafyrei<victim>": "bafyrei<attacker>"}` silently re-points a link
     and a mention that name the victim id inline. §9a states the rule and puts
     the burden entirely on the writer; the reader enforces nothing
     (`import.go:122-130` is an unconditional lookup, keys allowed 64 chars —
     every CID fits). Make a colliding key a validation error, or cap refs keys
     at the 16 characters export actually uses.
-17. **`_filter_template_*` tokens get compacted into the refs legend**
+17. **`_filter_template_*` tokens get compacted into the refs legend** **[CLOSED BY DELETION at v0.20: nothing is compacted into a legend.]**
     **[confirmed]** — a direct §6.2 violation ("export must not compact them
     into the refs legend"). `buildCompactIds` (`export.go:797-804`) lacks the
     `isFilterTemplate` guard that already exists at `json.go:485`. One line.

@@ -1,6 +1,6 @@
 # AnyBlock JSON — format specification
 
-Status: **draft v0.19** · Format version: **1** · Package: `pkg/lib/anyblockjson`
+Status: **draft v0.20** · Format version: **1** · Package: `pkg/lib/anyblockjson`
 
 A human- and agent-readable JSON serialization of Anytype objects (the "anyblock"
 model), designed for export, import, and generation by external tools and LLM
@@ -8,14 +8,44 @@ agents. It replaces the raw `jsonpb` dump (`.pb.json`) as the recommended JSON
 interchange format.
 
 Design lineage: the envelope and block tree follow the Atlassian Document
-Format (nested `type`-discriminated tree, a single `version` integer with
-additive evolution); inline formatting uses a Markdown subset inside text
+Format (nested `type`-discriminated tree, a single `version` integer —
+though evolution here is never additive, §10); inline formatting uses a
+Markdown subset inside text
 strings; the vocabulary follows Notion's API and Anytype's public REST API
 (`core/api`) wherever an established term exists — the format should be
 readable, and mostly writable, by someone who has never seen Anytype
 internals.
 
-Changes in v0.19: **a qualified `refs` key has to name a property the
+Changes in v0.20: **three legends, and one compaction that carries none**
+(§2, §3, §9, §9a, §11, §12, §13). The envelope's indirection is now exactly
+`property_keys`, `type_keys` and `option_ids`; **`refs` is deleted**, both
+populations with it. (1) A select value's id moves out of the flat `refs`
+map into **`option_ids`**, nested `{property spelling: {option name: option
+id}}`. The `#` grammar goes with it — the split rule, the two charsets, the
+qualified-key admission rule, and the property census as a *parse* — because
+no separator can join a name to its scope when both halves are arbitrary
+user text: `strcase.ToSnake("C#")` is `c#`, so an option of a property named
+`C#` had no representable entry at all, and re-opening that hole after the
+freeze would cost a version (§10). The census survives only as a key-set
+comparison behind a warning (§12). (2) The legend is written
+**unconditionally** — the condition could only ever be evaluated at export
+time, and the rename it guards against happens in the gap between export and
+read — and `OmitIds` now **drops** it, since an id-less shape that ships ids
+was not one. (3) **Object-reference compaction is deleted outright**:
+`CompactObjectRefs`, the object-id legend, and the resolution step that read
+it. Two independent measurements retired it — API v2 removed the same legend
+from its read shape after measuring a net token LOSS per document and
+finding that the indirection trapped write-back of object-valued properties,
+and the freeze review measured a 200-item collection growing **32.7%** under
+compaction. Object references are written in full on every shape. What is
+left is the rule worth stating: **the compaction that survives is the
+legend-less one** — `CompactBlockLabels` relabels ids the document itself
+defines, so there is no table to carry, keep in sync, or read back. (4) Two
+legends, two rules, deliberately: a `property_keys`/`type_keys` value is
+**authoritative** and unchecked (the corpse case requires it), an
+`option_ids` value is a **liveness-checked hint** (§3).
+
+Changes in v0.19 (superseded by v0.20): **a qualified `refs` key has to name a property the
 document uses** (§3, §9a, §12). The key shape admits any `<name>#<spelling>`
 whose halves are writable strings — it has to, because both directions must
 sort a key into its population knowing nothing but the key — but the right
@@ -32,7 +62,7 @@ other population — an unused `refs` entry is ignored — but `"High#priorty"`
 validating clean and then silently degrading to name resolution is exactly the
 kind of silence this format reports everywhere else.
 
-Changes in v0.18: **a select value says which option it means** (§3, §9a,
+Changes in v0.18 (superseded by v0.20): **a select value says which option it means** (§3, §9a,
 §11). Option values are spelled by NAME because a bundle carries no option
 objects, and a live account showed what the name alone costs: a space may
 hold two options with one name under one relation, and resolution answers the
@@ -351,6 +381,131 @@ validation schemas become one-way derived artifacts (retiring the
    to the normalization defined in §11; export is canonical and
    `Export ∘ Import` is idempotent (§11).
 
+### The four consumers
+
+The four goals above are not four independent wishes. Each is claimed hardest
+by one of four consumers, and the consumer that claims a goal hardest is the
+one that sets its bar. Naming the four makes the rest of this document
+arguable: several rules below look arbitrary from one row of this table and
+forced from another.
+
+| | Consumer | May assume | Owes |
+|---|---|---|---|
+| **1** | **Export and import** — backup, migration, round trip: `Marshal`/`Unmarshal` (§13), an archive or a bundle on disk (§2c) | a live space at both ends, and that the bytes it reads are bytes it wrote | goal 4 (lossless up to §11, canonical output) and goal 1 |
+| **2** | **Authored documents** — an agent, a script or a person writing objects, types and whole bundles for a space that may not exist yet | nothing but the document, the schema, and the bundled key table every reader ships | goal 2, and the offline half of goal 3 |
+| **3** | **The API over the format** — API v2 (`core/api/APIV2.md`): explicit operations against a live space | a space, a store, and the resolvers of §13 | the store-backed half of goal 3 — resolve, refuse or create, and say which |
+| **4** | **Tool wrappers over that API** — the task-shaped tool set models drive instead of the raw surface, delivered as CLI verbs and as an on-device manifest (`APIV2.md` §7) | everything layer 3 guarantees | nothing this format defines: a context budget |
+
+**Layer 1 sets the readability bar, and every other layer inherits it.** Its
+reader is the one that can ask nothing — a file open in an editor, a bundle on
+a disk, a space that no longer exists. So identity that cannot be spelled
+readably is not demoted to an id: the label stays in place and the map goes in
+the envelope — `property_keys`, `type_keys` and `option_ids` (§3). *Naming* above records that move being made once already: the
+key ↔ key mapping went into the DOCUMENT precisely because `Validate` takes no
+resolver. One grammar, so the weakest reader sets the spelling. How far this
+goes is bounded and the bound is written down — formats still resolve through
+caller-wired resolvers (§3) and a name sidecar is a v1 non-goal; `PRINCIPLES.md`
+rule 6 (*Names, not ids*) marks that gap tracked, not accepted.
+
+**Which is why a select value is spelled by its name** (§3) — and not merely
+because names read better. *A bundle carries no option objects.* A linked
+object travels in the bundle and the importer relinks it; an option id from
+another space would dangle. The name is the only address that survives the
+trip, a fact about what moves between layers 1 and 2 rather than a preference
+about what reads nicely. The scope is exactly select and multi_select values:
+object references stay ids by decision (*Non-goals* below). The id is not lost
+— it rides in `option_ids` beside the name, honoured only where the target space
+still serves it as a live option of that relation (§3). A format whose
+readers can always resolve a code can afford to demote the human label beside
+it to a non-authoritative hint; ours frequently cannot, so the name stays
+load-bearing and the id is filed where a stale one does no damage.
+
+**Layer 2 is why ids are optional.** Its author has none — no id to quote, no
+prior state to preserve, nothing to fetch before writing. So block ids are
+optional on input and `OmitIds` writes that shape back out (§9); the envelope
+`id` is not part of that trade and stays. What cross-document identity a bundle
+needs, it mints for itself: `index.json` and every widget target are the
+bundle's own slugs, relinked on install like any other reference (§2c). An
+id-less document is a first-class input and an alternative serialization, never
+a dialect (`PRINCIPLES_SHORT.md` rule 9).
+
+**The line between layers 2 and 3 is a function signature.** `Validate(data
+[]byte) error` takes bytes and nothing else — no space, no store, no resolver
+(§13). Everything on the near side is checkable by an author with no account:
+id collisions across a document (§4), two property spellings binding onto one
+stored key, a `group_by` no view can honour (§6.2), a legend entry that can
+never be consulted (§9a, §12), a malformed inline grammar (§8.1). Everything of
+the form *does this already exist here* — is that type present, is that name
+already an option, which of the two options named `High` did you mean, does that
+id still resolve — is structurally on the far side, and no argument `Validate`
+could take would move it. That is not a gap to be filled later; it is the
+boundary, and it is what lets a bundle be checked before the space it creates
+exists. The cross-document half belongs to the bundle tooling —
+`anyblockvalidate` builds its id set from the bundle's own files to reject a
+widget target no document defines (§2c), and still asks no space anything.
+
+**So the format has no "create this option" flag** — the request that arrives
+once per reader. Three reasons; the third settles it.
+
+- **The format describes a state, and a state has no verb slot.** A document
+  says what an object *is*; `create` is something a caller *does*.
+- **Its value is fixed per consumer, never per document.** Layer 2 *requires*
+  implicit creation — an authored bundle declares types, properties and options
+  no space has seen, and the bundle **is** their creation (§2 `type`, §2a, §3).
+  Layer 1 authors nothing: everything its documents name existed in the space
+  they came from, so a missing option at import is a restoration rather than a
+  new design decision. A field that is always true for one caller and always
+  false for another is describing the caller's intent, not the object.
+- **Only layer 3 holds the store the question is about** — and it answers it
+  there, in the direction this argument predicts. The format's own import
+  default creates what is missing (§3); API v2 gates that behind an explicit
+  request parameter defaulting to off, answering a name it cannot resolve with
+  a did-you-mean error instead, and the tool wrapper is stricter still
+  (`APIV2_REVIEW_SMALLMODEL.md` A2, `APIV2.md` §7.2). Same document, opposite
+  defaults, chosen by the caller. Record APIs that meet this question elsewhere
+  put the switch in the same place: on the write request, off by default, never
+  in the record being written.
+
+**Failure is loud at every layer** (`PRINCIPLES.md` rule 8, *Strict in, canonical out*): version refusal
+with no partial read (§10), one unsupported file and a whole bundle declines to
+install (§2c), path-addressed import errors (§12), a warning for an `option_ids` entry
+nothing can consult (§9a), and layer 3 naming the candidates rather than
+choosing one. The two places the line bends are both documented as such and
+both compensated: name resolution answers the FIRST when two options of one
+property share a name, which is the whole reason the document carries the id
+beside the name (§3); and a widget target that resolves to nothing is dropped
+by a path outside this package with no diagnostic at all, which is why the
+tooling refuses it before install rather than leaving it to be discovered (§2c).
+
+**Layer 4 subtracts — but it has already added.** A tool set hides what a model
+should not spend context on, ids first of all: the wrapper resolves enumerated
+handles server-side so the model never emits a CID (`APIV2.md` §7.1). What it
+may not do is invent a dialect. It would be false, though, to say the format
+owes it nothing. Block ids relabel to short
+suffixes because a 59-character CID costs more tokens than the sentence around
+it, and they can do so safely only because that relabeling carries no legend to
+trap a write-back (§9a); `OmitIds` exists for templates and
+prompt examples (§9); `blocks` is a flat array partly because guided decoders
+cannot express a recursive schema (v0.6). Layer 4's needs shape this format —
+they are met as vocabulary and as serialization options, never as a second
+format.
+
+**One grammar, four serializations.** The layers pay in different currencies,
+so the same document is written differently at each:
+
+| | block ids | object refs |
+|---|---|---|
+| 1 · export, backup | full — the bytes must re-import to the same document (§11) | full — always (§9a) |
+| 2 · authored | none (§9, `OmitIds`) | the bundle's own slugs (§2c) |
+| 3 · API v2 default read | compact by default; `?ids=full` opts out | full — always |
+| 4 · read-only and tool shapes | short labels (outline, prompt examples) | hidden behind enumerated handles |
+
+Rows 3 and 4 are the API's choice, not the format's (API spec C4). What the
+format contributes is that the one compaction it offers carries no legend
+(§9a) — a read can be relabeled without a backup having to carry an
+indirection table a later edit could desynchronise — and that all four rows
+are one document, one validator, one version.
+
 ### Naming
 
 **Every identifier the format defines is `snake_case`**: block types, field
@@ -445,17 +600,17 @@ Fields, in **canonical order** (§4):
 | Field | Type | Req | Notes |
 |---|---|---|---|
 | `$schema` | string | no | Schema URL; written by export, ignored by import except for version detection (§10). |
-| `version` | int | **yes** | Format version. This spec defines `1`. Evolution is additive within a version (ADF model); a breaking change bumps it. |
+| `version` | int | **yes** | Format version. This spec defines `1`. Every format change bumps it — there is no additive-within-a-version rule (§10). |
 | `kind` | string | no | System-level object kind, snake_case (`page`, `profile_page`, `template`, `archive`, `widget`, `chat`, …) — from `model.SmartBlockType`. `chat` is `ChatDerivedObject`: a standalone chat object whose identity is `key`, like a type's; its messages live in the CRDT store, not in snapshots, so it always imports empty. (`chat_object` is the deprecated predecessor; `discussion` is a hidden type.) **Omitted whenever derivable**: absent means `page`, and `type: "template"` implies `template`. An unrecognized value is a validation error listing the allowed values. |
-| `id` | string | no | Object id. Written by export; import treats it as informational (a new id is minted on import) except for resolving intra-export links. Never compacted (§9a). |
+| `id` | string | no | Object id. Written by export; import treats it as informational (a new id is minted on import) except for resolving intra-export links. Written in full, like every object reference — object references are never compacted (§9a). |
 | `type` | string | no | The object's type **slug** (`page`, `task`, `object_type`…) — the key vocabulary of §3, not the stored `ot-`-prefixed key. Maps to `object_types[0]` in the snapshot. Absent when the snapshot has no object types (legacy/system objects). Import inverts the term through the §3 chain in the type namespace — the document's own `type_keys` legend first, then the vocabulary in force (bundled table offline, the space's stored slugs inside a node) — and hands the resulting stored key to the wiring, which resolves it — matching an existing type or creating one (the Markdown importer's behavior). A term the chain does not know passes through verbatim — an exact stored key is always its own address (§3). The spelling `template` is **reserved** for the template type: the kind derivation and `template_for` key off the stored key it resolves to through the DOCUMENT's own chain, and both directions refuse a vocabulary answer that moves it — export writes the stored key instead, import uses the document's own answer, each with a warning (§3). |
 | `template_for` | string | no | Only for templates: the target type slug (`object_types[1]`), same vocabulary and legend as `type`. Present when `type` does not **resolve** to the template key — through the document's own chain, `type_keys` legend first (§3) — → validation error. |
 | `key` | string | no | Identity key of *system* objects (types, properties). This is the STORED identity key (a `uniqueKey`'s internal part), written verbatim: unlike every key slot in §3 it is **not** translated, so for an object whose stored key is a minted BSON it does not match the slug the public API serves as that object's `key`. Because it is verbatim, its charset is whatever the store already holds: a relation option's key is built from the option's *name*, so `completion_status_Not Started`, `…_C/C++` and `…_тогглы` are all real stored keys. The rule is therefore a deny rule — non-empty, no control characters, at most 255 characters — not an allowlist. An allowlist was tried and falsified: it failed 59 objects of a 36 808-object account, every one a relation option. Never emitted for ordinary documents. |
 | `properties` | object | no | The object's properties, §3. |
 | `type_properties` | array | no | Only for `kind: "object_type"` documents: the type's property definitions, §2a. Present on any other kind → validation error. |
-| `refs` | object | no | Short-id legend for compact documents (§9a): maps labels to full object ids. Placed before `blocks` so the legend precedes use when read linearly. |
-| `property_keys` | object | no | Legend: the stored property key each slug in this document names (§3). Written only for slugs the bundled table cannot invert, i.e. a space's own keys; a reader consults it **before** its own vocabulary. Absent from documents that use only bundled and verbatim keys, which is most of them. |
-| `type_keys` | object | no | Legend: the stored type key each type slug in this document names — `property_keys`' twin on the TYPE namespace, written and consulted under the same rule (§3). A separate map, deliberately: the namespaces share spellings by design (`object_type` the type key beside `objectType` the layout value), so one map could not carry both meanings of a shared term. |
+| `property_keys` | object | no | Legend: the stored property key each spelling in this document names (§3). Written wherever a reader's own chain would answer otherwise: a slug the bundled table cannot invert (a space's own key), and the **identity entry** — a stored key written verbatim whose spelling the bundled table, or the vocabulary in force, binds to a different key. A reader consults it **before** its own vocabulary and takes the value as **authoritative**: it is not liveness-checked, deliberately (§3). Absent from documents whose every spelling is bundled or unshadowed, which is most of them. |
+| `type_keys` | object | no | Legend: the stored type key each type slug in this document names — `property_keys`' twin on the TYPE namespace, written and consulted under the same rule (§3). A separate map, deliberately: a space may slug a relation and a type onto one term, so one map could not carry both meanings of a shared spelling. |
+| `option_ids` | object | no | Legend: the id of the option each select/multi_select **name** in this document stands for — nested, `{property spelling: {option name: option id}}` (§3, §9a). Written **unconditionally** wherever export spells an option by name; dropped by `OmitIds` (§9). Read as a **hint**, not an address: an id is honoured only where the target space still serves it as a live option of that relation, and otherwise the name resolves exactly as it did before the legend existed. |
 | `blocks` | array | no | The document's blocks as a **flat pre-order array**; nesting via `indent` (§4). |
 | `items` | array | no | For collection objects: member object ids, in order (from the internal collection store key `objects`). Present on a non-collection document → validation error — enforced by the import *wiring* (collection-ness resolves against the space's types, not offline); the package's `Validate` checks structure only (implementation decision). |
 | `store` | object | no | Escape hatch: remaining internal store content as a free-form JSON object, with the `objects` key lifted into `items`. Output-only (§4a). (Named `store` — its internal name — to avoid colliding with the collection concept.) |
@@ -513,7 +668,7 @@ by `type_properties` — resolved entries, never raw relation ids.
 
 | Field | Type | Req | Notes |
 |---|---|---|---|
-| `key` | string | **yes** | Property key (as stored). |
+| `key` | string | **yes** | Property key, in the document's own spelling — a key slot like any other, inverted through `property_keys` (§3). |
 | `name` | string | no | Display name. Import uses it only when the property must be **created**; an existing property keeps its own name. Every bundled key already exists, so a name given for one is inert — `{"key": "description", "name": "Summary"}` renders as *Description*. Validation warns. If the label is the point, mint a custom key instead of reusing a bundled one. |
 | `format` | string | no | Property format (§3 names). Same import rule as `name`; a conflict with an existing property's format is an error at the wiring level (the package cannot see the space). |
 | `options` | (string \| object)[] | no | A select/multi_select property's **vocabulary, in display order**. Each entry is a bare option name, or `{"name": …, "color": …}` when the option's color is part of the design — the color belongs to the option rather than to a parallel array, so inserting or reordering an option cannot shift it. `color` is one of `grey`, `yellow`, `orange`, `red`, `pink`, `purple`, `blue`, `ice`, `teal`, `lime` (`util/constant`); anything else is a validation error rather than a silently ignored value. The bare string is **canonical** whenever the option declares no color, the object form otherwise — the same rule cells follow in §6.1. Leaving a color out does not mean *no* color: the wiring assigns one, cycling the palette in declaration order and skipping whatever the vocabulary claims explicitly, so a vocabulary that names no colors still gets distinct ones. (The app assigns one at random on every other creation path; cycling keeps a converted bundle identical run to run.) Options are otherwise discovered only from values that happen to be used, so a vocabulary entry no record carries would never exist — its kanban column simply absent — and a discovered option carries no `orderId`, which makes every select sort alphabetically (options order by `[orderId, name]`, `pkg/lib/database.BuildOrderMap`). Declaring them lets the wiring create each one up front with an order id. Every option needs one: the sort concatenates `orderId + name` before comparing, so an option missing an order id is compared by *name* against the others' order ids and lands arbitrarily — ahead of the whole vocabulary when its name sorts below the id alphabet, behind it otherwise. Names discovered from usage rather than declared are ordered after the declared ones. Only meaningful on `select`/`multi_select`; duplicate names are a validation error, across both forms. |
@@ -701,8 +856,8 @@ snake_case **api slug** spelling — `due_date`, `icon_emoji`,
 `manual_property` — bundled, API-created and UI-created keys alike. One
 vocabulary, no aliases, no duality: a reader never has to know which kind of
 key it holds. (This overturns the earlier "as stored, camelCase" rule, and
-it is the format half of the same decision the API surface makes —
-APIV2_ADDRESSING.md §7.5a, §7.3.)
+it is the format half of the same decision the API surface makes; the slug
+itself comes from `core/api/util/key.go`.)
 
 The mapping is a **table, both directions, never a case transform**: for
 bundled keys the derived table in `pkg/lib/bundle` (which ships with every
@@ -985,7 +1140,7 @@ type key is — and one rule above that deliberately does **not** carry over.
   a key the document never names cannot be taken as another key's spelling by
   a reader who never sees it.
 
-**What is not a key slot** (ADDRESSING §7.5a-4). The vocabulary applies where
+**What is not a key slot.** The vocabulary applies where
 a document NAMES a type or property, and nowhere else. Envelope and DTO field
 names, enum *values* (`kind: "object_type"`, layout and view-type names), the
 `index.json` envelope, view field names like `default_template_id`, and — the
@@ -1068,44 +1223,75 @@ option objects — unlike a linked object, which the bundle carries and the
 importer relinks, an option id from another space would dangle — and because
 opaque option ids are unwritable by agents and unreadable by humans.
 
-**The document carries the id beside the name: the qualified `refs` entry.**
+**The document carries the id beside the name: `option_ids`.**
 Name-addressing alone loses identity in two ways a live account shows, and
 both were measured on a 34 339-object sweep: two options of one property may
 share a name, and name resolution answers the FIRST, so an object sitting on
 the second came back pointing at the other one (7 objects); and an option
 renamed between export and import stops resolving at all, so the wiring mints
 a NEW option carrying the stale name — resurrecting the duplicate and
-orphaning the object from the renamed option. So export writes, in the legend
-the format already has (§9a):
+orphaning the object from the renamed option. So export writes the id beside
+the name, in a legend keyed by the property that owns the option (§9a):
 
 ```json
 "priority": ["High"],
 "severity": ["High"],
-"refs": { "High#priority": "bafyrei…opt1", "High#severity": "bafyrei…opt2" }
+"option_ids": {
+  "priority": { "High": "bafyrei…opt1" },
+  "severity": { "High": "bafyrei…opt2" }
+}
 ```
 
-The key is `<option name>#<property key>`, split at the last `#`, in the
-document's own spelling of the property; §9a states the shape, the bounds and
-the two-population discipline. It is written wherever export substitutes a
-name for an id — property values, filter values, custom orders — and behind
-no option at all, because it is identity rather than compaction.
+The outer key is the property **spelling this document writes**, the inner
+key the option **name** exactly as the value spells it; §9a states the shape
+and the emission rule. It is written wherever export substitutes a name for
+an id — property values, filter values, custom orders — and behind no option
+at all, because it is identity rather than compaction.
 
 **Reading one option value: three steps, first answer wins.**
 
-1. **The document's qualified `refs` entry** for `<name>#<the spelling this
-   slot used>` — honored only when the id it names is a **live option of that
-   relation** in the target space, and only when the property half names a
-   property this document uses (§9a — the key is built from the spelling this
-   slot wrote, so that holds by construction; it is the layer that keeps the
-   shape rule from being the only thing a legend key has to satisfy). The
-   liveness check is the whole reason the entry is safe to write
-   unconditionally: an id from a space the reader never had is simply not an
-   answer, and the document falls through as if it carried none.
+1. **`option_ids[<the spelling this slot wrote>][<the name>]`** — honoured
+   only when the id it names is a **live option of that relation** in the
+   target space. There is no reachability precondition left to state: a
+   reader indexes the legend by the spelling the slot in hand wrote, so an
+   entry under any other spelling is simply never looked up (§9a warns about
+   one). The liveness check is the whole reason the entry is safe to write
+   unconditionally: an id from a space the reader never had is not an answer,
+   and the document falls through as if it carried none.
 2. **Name resolution** against the property's existing options, as before.
 3. **The value unchanged** — creating the missing option is the wiring's job.
 
 A reader with no option resolver (§13) has no space in which to ask either
 question and stops at step 3, exactly as it did before this legend existed.
+
+**The legends do not answer to one rule, and the difference is deliberate.**
+A `property_keys` or `type_keys` value is **authoritative**: the reader takes
+it as the stored key, unchecked. Liveness-checking it would re-open the fault
+the legend exists to close — a slug vacated by a deletion and reclaimed by a
+new entity, where the key the document names is precisely the one the target
+space no longer serves under that spelling. An `option_ids` value is a
+**hint**, checked, because an option id names exactly one option of exactly
+one relation, so the target space can answer whether the id is that; and
+where the answer is no, the name is a better address than a dead id. The two
+rules differ because the two questions do: a stored key IS the address, while
+an option id is a shortcut past a name that is already one.
+
+What the authoritative rule costs, stated precisely: a legend value is a key
+as the writing space holds it, so a reader in another space lands it
+verbatim. That is *not* the same as saying legend values are
+source-space-only. A **bundled** key is identical in every space, and a key
+that arrived through an older pb-format import of the same data is reproduced
+identically in every space that imported it — for both, a legend value
+travels as well as the document does. The caveat is exactly the
+**space-minted** key: a bson `6a32d485…` one space minted for its own
+relation names nothing in another, so a document carrying it lands on a key
+the target space has never seen instead of merging onto that space's
+equivalent property. A bundle survives this because it ships the entity's own
+document under that key; a document lifted out of a bundle does not. (The
+import *wiring* narrows this further — `core/block/import/pb` re-homes a
+non-bundled key onto an existing relation of the same format bearing the same
+display name — but that is the wiring's behaviour, not the codec's: the codec
+binds the slot to the stored key and hands it on.)
 
 What remains normalized, and what no longer is: **one object holding two
 same-named options of one property** still collapses — the document spells
@@ -1312,8 +1498,9 @@ byte-stable over it (§11):
   the cheap structural token first), then `id`, `type`, then the
   type-specific props **in the order listed for that type in §5** (`text`
   always last), then `align`, `vertical_align`, `background_color`, `fields`.
-  Nested dataview/table objects: the order listed in §6. `refs` entries
-  sorted by key.
+  Nested dataview/table objects: the order listed in §6. `property_keys`,
+  `type_keys` and `option_ids` entries sorted by key, and each `option_ids`
+  inner map sorted by option name.
 - **Omit empty and default.** Canonical form never writes an empty string,
   empty array, or empty object (envelope included — no `"properties": {}`),
   nor a default scalar (`"indent": 0`, `"checked": false`, `"align":
@@ -1678,9 +1865,9 @@ a group exists only for `or` or nesting):
   `_filter_template_1_` is the object hosting an inline dataview, resolving
   to its id. They are stored verbatim and are **opaque to the middleware** —
   nothing in Go resolves them, so a query evaluated server-side compares
-  against the literal string and matches nothing. They are not object ids:
-  import must not remap them and export must not compact them into the refs
-  legend (§9a). Valid only on `objects`/`files` properties, since they
+  against the literal string and matches nothing. They are not object ids, and nothing in either direction rewrites them —
+  object references are never compacted, so there is no legend one could be
+  swallowed into (§9a). Valid only on `objects`/`files` properties, since they
   resolve to an object id; anywhere else is a validation error. Note the
   date presets are a *different* mechanism — a first-class `quickOption`
   field with real Go-side semantics (§6.2, `quickoptions.go`) — and the
@@ -1770,7 +1957,7 @@ surface (APIV2.md §5).
 The **document** side is unchanged and stays reserved: v1 documents ship
 the structured `filters` array only. The view field name `filter`
 (singular, string) is **reserved** for a post-v1 extension: v1 schemas do
-not define it, so introducing it later is an additive 1.x release (§10 — a
+not define it, so introducing it later is a version bump (§10 — a
 v1.0 reader encountering it reports "produced by a newer version"; export
 keeps writing the structured array; the `CompactFilters` export option
 stays reserved in `Options`). When that lands, the two forms coexist
@@ -2098,155 +2285,153 @@ on such blocks are dropped on export (§5).
 - On output, export writes ids by default (stable diffs, §11 canon). The
   `OmitIds` marshal option (§13) instead drops **every id in the document**
   — blocks, table rows/columns, views, sort/filter ids — along with the
-  id-dependent output-only view state (`groups`, `object_orders`). For
-  templates, prompt examples, and any content meant to be re-inserted rather
-  than diffed. An id-less export is valid but not the canonical round-trip
-  form (re-importing mints fresh ids).
+  id-dependent output-only view state (`groups`, `object_orders`) and the
+  `option_ids` legend (§9a), which is nothing but ids: a shape that declares
+  itself id-less and then ships a map of them is not one. For templates,
+  prompt examples, and any content meant to be re-inserted rather than
+  diffed. An id-less export is valid but not the canonical round-trip form
+  (re-importing mints fresh ids, and option values resolve by name).
 
-### 9a. Compact ids
+### 9a. The legends, and compact ids
 
-Full object ids are ~59-character CIDs; a single mention costs more tokens
-than the sentence around it. Compaction has two independent halves (§13):
-`CompactObjectRefs` shortens object references and adds a `refs` legend to
-the envelope (lossless — the legend inverts it); `CompactBlockLabels`
-relabels doc-local block/row/column/view ids to short suffixes (legend-less,
-lossy). `CompactIds` remains as shorthand for both. The split exists because
-consumers legitimately want one without the other, and because the two
-halves pay differently: API v2 default reads use block labels (the server
-resolves them by unique suffix) and keep object refs full inline, while its
-export shape — the backup/round-trip shape, whose bytes must re-import to
-the same document — keeps block ids full and takes the legend (API spec
-C4). Legend example:
+The envelope carries **three legends** and no other indirection. Each answers
+one question the rest of the document cannot:
 
-```json
-"refs": { "miovm": "bafyreieqh63jv…miovm", "roman": "bafyreidfmzjh…" }
-```
+| legend | maps | question |
+|---|---|---|
+| `property_keys` | property spelling → stored relation key | which relation does this spelling name? (§3) |
+| `type_keys` | type spelling → stored type key | which type does this spelling name? (§3) |
+| `option_ids` | property spelling → (option name → option id) | which option does this name mean? (§3) |
 
-**`refs` is an authoritative opaque map, in two disjoint key shapes.** A key
-**without** `#` is a *compaction label*, matching `[A-Za-z0-9_-]{1,64}`; a key
-**with** `#` is a *qualified option key* (below). Values are full object ids in
-both populations. The separator is the whole discriminator, and it works
-because it is outside the label charset — no key can be read as both shapes,
-by either direction, and neither shape is reachable from the other's slot.
+Three maps rather than one, and `option_ids` nested rather than flat, for one
+reason stated twice at two scales: **a name in this format is arbitrary user
+text, so no character can be reserved to join it to its scope.** The property
+and type namespaces are disjoint claim domains and a space may slug a
+relation and a type onto one term (§3), so a single spelling→key map would
+hold two answers for it. One step down, an option name may contain anything a
+JSON string may, and so may the property spelling that owns it:
+`strcase.ToSnake("C#")` is `c#`, a legal api slug. A flat map keyed
+`<name>#<property>` therefore had no representable entry at all for an option
+of a property named `C#` — the escape hatch was unreachable exactly where it
+was needed — and re-opening that after the freeze costs a version (§10).
+Nesting removes the separator, and with it the split rule, the key admission
+rule, the two charsets, and the joined key's length bound.
 
-Compaction-label keys need **not** be suffixes of their values — "the id's last 5 characters" is merely export's
-key-choice algorithm (suffixes, because CIDs share prefixes; a suffix that
-collides with another referenced id's, or that the charset rejects, makes
-that id stay uncompacted — the full-id fallback is always correct under the
-resolution rule below). Agents editing a document may add entries with any label
-(`"roman": "bafyrei…"`) and reference them; humans may rename keys.
-
-**Resolution rule** — total over the compaction-label population, wherever an
-object id is expected: if the value is a **`#`-free** key in `refs`, it
-resolves to that full id; otherwise it **is** a full id. There is no
-"short-looking" heuristic — reading the *key's* shape is not one, it is the
-same disjointness that lets one map carry two populations at all, and it is
-what stops a document from addressing an option pool from a slot that has no
-property to qualify it. Consequences: an unused
-`refs` entry is ignored (export prunes them); two keys may map to one full
-id (export never produces this); if a `refs` key equals a full id used
-literally elsewhere in the document, the legend wins — export must (and,
-with ≥5-char suffix keys vs 59-char CIDs, trivially does) choose keys that
-collide with no full id present in the document. Import wiring MAY
-additionally resolve unresolved ids by unique suffix against the target
-space (useful for hand-written documents referencing known objects); that
-behavior belongs to the wiring, not this package.
-
-**Coverage** — with `CompactObjectRefs` (or `CompactIds`), export rewrites
-every id-valued surface:
-
-| Surface | Compacted |
-|---|---|
-| `object_id` props (file/image/video/audio/pdf, bookmark, link, dataview) | yes |
-| mention / object-link targets in `text` | yes |
-| `icon_image` (callout) and the `iconImage` property | yes |
-| property values of `objects`/`files` formats | yes |
-| `items` | yes |
-| view `default_template_id`, `default_type_id` | yes |
-| `object_orders[].object_ids` | yes |
-| filter `value` / sort `custom_order` entries of `objects`/`files` properties | yes |
-| envelope `id`, `refs` values themselves | **never** |
-
-With `CompactBlockLabels` (or `CompactIds`), block/row/column/view ids are
-relabeled to their last 5 characters
-(doc-local, no legend needed — same rule as refs keys). Labels are
-constrained to the schema charsets (refs keys `[A-Za-z0-9_-]{1,64}`, local
-relabels additionally dash-free); an id whose suffix collides or yields no
-valid label stays uncompacted (implementation decision — fixed-width
-suffixes with a full-id fallback, chosen over shortest-unique lengthening
-for simplicity; 5 characters over CID/hex alphabets make collisions
-birthday-rare).
-
-`CompactIds` and `OmitIds` compose: together they yield the most
-prompt-friendly form (no block ids, short object refs with legend). Both are
-alternative serializations — the canonical round-trip form (§11) remains the
-default full-id export.
-
-**Qualified option keys — identity, not compaction.** The second `refs`
-population carries the ID of the option a select value NAMES (§3):
+**`option_ids`.**
 
 ```json
-"priority": ["High"],
-"severity": ["High"],
-"refs": { "High#priority": "bafyrei…opt1", "High#severity": "bafyrei…opt2" }
+"properties": { "priority": ["High"], "severity": ["High"] },
+"option_ids": {
+  "priority": { "High": "bafyrei…opt1" },
+  "severity": { "High": "bafyrei…opt2" }
+}
 ```
 
-- **Shape**: `<option name>#<property key>`, **split at the LAST `#`**. The
-  right half is a property spelling as the document writes it (§3 — the
-  reader that resolves the entry is reading the document, not the store) and
-  carries no separator of its own, which is what pins the split and makes the
-  key invertible: a name holding a `#` — `C#`, `#1 priority` — lands whole on
-  the left. Each half obeys the writable-key rule §3 puts on a property
-  spelling — 1–128 characters, no control characters — so the key is bounded
-  like every other key slot here (257 characters, worst case) and the schema
-  enforces both halves. The name half deliberately admits what a compaction
-  label cannot: `import issue#tag` is a real entry, and the old
-  `[A-Za-z0-9_-]` rule refused ordinary tag names outright.
-- **The property half must name a property this document uses.** The shape
-  rule above admits any `<name>#<spelling>` of two writable halves, and it has
-  to: both directions sort a key into its population knowing nothing but the
-  key. But the right half is a property *spelling*, and one the document never
-  writes qualifies nothing — import builds its lookup key from the spelling
-  the slot it is resolving wrote, so the entry is unreachable. The document's
-  **property census** is every position where a spelling can appear:
-  `properties` and `property_keys` members, `type_properties[].key`, a
-  `property` block's `key`, a `link` block's `properties[]`, a `dataview`
-  block's `properties[].key`, and a view's `group_by`, `cover_property`,
-  `end_property`, `columns[].property`, `sorts[].property` and
-  `filters[].property` through nested groups — inside a table cell as well as
-  outside one. A filter's `nested_property` is not in it: it names a property
-  of the object the filter walks *to*, not a key slot of this document. Import
-  honours an entry only when its property half is in the census — defence in
-  depth, since export writes the spelling it just used and its keys are in the
-  census by construction — and **Validate warns** about one that is not
-  (§12). A warning rather than an error, because an unused `refs` entry is
-  ignored by the rule above and a legend may carry more than one document
-  needs; but an entry that can never be consulted degrades to name resolution
-  in silence, and this format says such things out loud.
-- **Value**: the full option id, exactly like every other `refs` value.
-- **Written whenever export substitutes a name for an id** — that is, exactly
-  where §3 says option values are names — in property values, dataview filter
-  values and sort custom orders alike. Not behind `CompactObjectRefs`: this
-  half is identity rather than compaction, so a document with no compaction at
-  all still carries it, and a document may carry a `refs` map holding only
-  these. Nothing is pruned because nothing unused is written: the entry is
+- **Outer key**: a property **spelling as this document writes it** — the
+  reader that resolves the entry is reading the document, not the store — so
+  it carries the writable-key rule every property spelling carries (1–128
+  characters, no control characters, §3), and the property it names inverts
+  through `property_keys` like any spelling elsewhere in the document. The
+  reader does not invert the outer key itself: it indexes the legend by the
+  spelling the slot in hand wrote, and matches or does not. Export writes the
+  spelling the slot itself just used, so its outer keys are spellings the
+  document holds by construction.
+- **Inner key**: the option **name**, character for character as the value
+  spells it, bounded only by being non-empty. It carries no charset rule,
+  deliberately: it is the same string the value slot already holds, and a
+  legend that cannot name a value its own document carries is the `C#` hole
+  again, one level down.
+- **Value**: the full option id.
+- **Written unconditionally**, wherever export substitutes a name for an id —
+  property values, dataview filter values, sort custom orders (§3). Behind no
+  compaction flag, because this is identity rather than compaction; and
+  behind no ambiguity test either, though one is computable: such a test sees
+  only the divergence that exists when the document is written, and the
+  rename it would guard against happens in the gap between writing and
+  reading. Nothing is pruned because nothing unused is written — the entry is
   recorded at the substitution itself.
-- **Reachable only from a select value under that property.** An object-id
-  slot never resolves one (the rule above), and a select value never resolves
-  a compaction label — `{"tag": ["miovm"]}` beside `"refs": {"miovm": …}` is
-  the string `miovm`, not that object. Both directions are pinned by tests.
-- **A hint, not an address.** The reading rule is §3's three-step chain: the
-  entry, but only for an id the target space still serves as an option of
-  that relation; then name resolution; then the value unchanged. That is what
-  keeps a bundle carried to a space that never saw those ids working exactly
-  as it does without the legend — and it is why a reader with no option
-  resolver ignores these entries entirely: it has no space to ask, and an id
-  it cannot check is not an answer it can give.
-- **Two spellings export declines to write**, both falling back to name
-  resolution rather than emitting an entry that could be read two ways: an
-  option name past 128 characters, and a property whose *spelling* carries a
-  `#` (legal in an api key — `strcase.ToSnake("C#")` is `c#`), which would put
-  a separator on the wrong side of the split.
+- **Read as a hint, not an address** — §3's three steps: the id, honoured
+  only where the target space still serves it as a live option of that
+  relation; then name resolution; then the value unchanged. A reader with no
+  option resolver ignores the legend entirely, having no space in which to
+  ask, which is what keeps a bundle carried elsewhere working exactly as it
+  does without it.
+- **`OmitIds` drops it** (§9). An id-less shape that ships ids is not an
+  id-less shape; the export and backup shape keeps the legend, the prompt
+  shape does not.
+- **An outer key naming a property this document never spells is a warning**
+  (§12) — a key-set comparison, not a parse. The entry can never be
+  consulted, since a reader indexes by the spelling the slot in hand wrote. A
+  warning rather than an error, because a legend may carry more than one
+  document needs; but an entry that degrades to name resolution in silence is
+  the kind of silence this format reports everywhere else.
+
+**Object references are never compacted.** Every object id — mention and
+object-link targets in `text`, `object_id` props, a callout's `icon_image`
+and the `iconImage` property, `objects`/`files` property values, `items`,
+view `default_template_id`/`default_type_id`, `object_orders[].object_ids`,
+and filter `value`/sort `custom_order` entries of `objects`/`files`
+properties — is written in full, on every shape, with no legend.
+
+This is a deletion. The format used to carry a `refs` map of short labels to
+full ids behind a `CompactObjectRefs` flag, and two independent measurements
+retired it. API v2 removed the same legend from its read shape after
+measuring a net token **loss** per document, and because the indirection
+trapped write-back: an agent editing an object-valued property through a
+label has to keep the legend in step, and one that regenerates the document
+without it silently re-points every reference it held. The freeze review
+measured the loss from the other end — a 200-item collection grew **32.7%**
+under compaction, because a label used once costs more than it saves. Two
+measurements, one verdict.
+
+**The compaction that survives is the legend-less one**, and that is the rule
+this section has left. `CompactBlockLabels` relabels ids the document itself
+defines, so a short label needs no table to invert: it is a placeholder
+within its containing document, never an address outside it, and a write
+endpoint resolves one against the live object by unique suffix. There is
+nothing to carry, nothing to keep in sync, and nothing to read back. An
+indirection table has all three obligations, and the object legend failed all
+three at once — which is why the half sold as "lossless, because the legend
+inverts it" is gone and the half documented as *lossy* stayed.
+
+With `CompactBlockLabels` (or `CompactIds`, which now selects that one half),
+block/row/column/view ids are relabeled to their last 5 characters. Only
+machine-minted opaque ids relabel: `dataview` is a documented constant,
+`title`/`header` are structural, and an imported document's human-readable
+ids carry meaning that relabeling would destroy for no benefit. Labels are
+constrained to the schema charsets (the block-id charset `[A-Za-z0-9_-]{1,64}`
+of §4; row and column relabels additionally dash-free, since `-` is the
+derived-cell-id separator of §6.1), and an id whose label would collide with
+another id in the document — relabeled or not — or that yields no valid
+label stays uncompacted (implementation decision — fixed-width suffixes with
+a full-id fallback, chosen over shortest-unique lengthening for simplicity; 5
+characters over CID/hex alphabets make collisions birthday-rare).
+
+The collision rule counts BOTH id populations, and that is not an accident of
+implementation: the labeller's own census sees only the doc-local ids it may
+relabel, so the object ids — every one of them now spelled verbatim in the
+document — enter it as an avoid-set. A short object id spelled in a mention
+and a minted block whose suffix equals it would otherwise both answer to one
+name in one document. Deleting object compaction made this guard matter more,
+not less.
+
+The two shapes the API serves are the two this leaves: API v2 default reads
+use block labels (the server resolves them by unique suffix) and keep object
+refs full inline, while its export shape — the backup/round-trip shape, whose
+bytes must re-import to the same document — keeps block ids full (API spec
+C4).
+
+**A wiring may still shorten what the format does not.** Import wiring MAY
+resolve an id it cannot find by unique suffix against the target space
+(useful for hand-written documents naming known objects), and a write
+endpoint MAY resolve a block-label reference the same way against the live
+object. Both belong to the wiring, not to this package: they are lookups
+against live state, not indirection a document carries.
+
+`CompactBlockLabels` and `OmitIds` compose: together they yield the most
+prompt-friendly form (no block ids at all). Both are alternative
+serializations — the canonical round-trip form (§11) remains the default
+full-id export.
 
 ## 10. Versioning and compatibility
 
@@ -2327,13 +2512,11 @@ equivalent resolvers, §3): structural blocks dropped, to be regenerated by
 the editor at first open (§7); restrictions rebuilt (§4); properties
 stripped per §3 (with the exemption list); select/multi_select option ids
 replaced by name resolution — in properties, filter values, and custom
-orders (§3, §6.2) — which the qualified `refs` entry inverts exactly (§9a),
-leaving three residues: **two same-named options of one property held by ONE
-object** collapse onto the first, because the document spells one string
-twice; an option whose name is past 128 characters, or one under a property
-whose spelling carries `#`, gets no entry and resolves by name; and a reader
-wired with no option resolver ignores the entries and keeps the names, having
-no space in which an id could be an option at all; deprecated snapshot
+orders (§3, §6.2) — which `option_ids` inverts exactly (§9a), leaving two
+residues: **two same-named options of one property held by ONE object**
+collapse onto the first, because the document spells one string twice; and a
+reader wired with no option resolver ignores the legend and keeps the names,
+having no space in which an id could be an option at all; deprecated snapshot
 and block fields cleared (§2, §5); deprecated `Header4` re-styled to
 `heading_3` (§5); `checked` outside checkboxes dropped and marks on literal
 blocks dropped (§5); marks normalized — emoji materialized, whitespace
@@ -2482,9 +2665,10 @@ fail neither test belong in authoring guidance and in review.
   the document's own chain — `type_keys` legend first — in validation and
   import alike, a `type_keys` spelling or value gets the same writable-key
   restatement as `property_keys`, and the import seam refuses a term a
-  vocabulary resolves onto the empty type key, §3), `language`-vs-`fields.lang` conflicts, a **qualified `refs` key whose
-  property half is outside the document's property census** (§9a — a warning:
-  the entry can never be consulted and the value degrades to name resolution),
+  vocabulary resolves onto the empty type key, §3), `language`-vs-`fields.lang` conflicts, an **`option_ids` key naming a
+  property this document never spells** (§9a — a warning: the entry can never
+  be consulted and the value degrades to name resolution; a key-set
+  comparison against the document's property census, not a parse of the key),
   and
   **inline-markup parsing** (§8) — grammar errors report the block's JSON
   path and the offending snippet. The indent bound [0, 32] lives in the
@@ -2533,16 +2717,18 @@ fail neither test belong in authoring guidance and in review.
   invalid, but its extra issues are not statements about the document.
 - **An issue names the member it is about.** The key slots are the one place
   where the schema cannot: `propertyNames` — the writable-key rule on
-  `properties` and on `property_keys` spellings (§3), the label charset on
-  `refs` (§9a) — is checked by validating each name as a *standalone string
+  `properties`, on `property_keys` and `type_keys` spellings (§3), and on
+  `option_ids` outer keys (§9a) — is checked by validating each name as a
+  *standalone string
   instance*, so the verdict carries neither the enclosing object's location
   nor, for a length bound, the name itself. A 200-character property key was
   reported as `maxLength: got 200, want 128` at the document **root**, which
   names no property at all. The rule stays in the published schema, because
   an external validator runs that and nothing else, and the reader
   **restates** it where the key is in hand: `/properties/<key>`,
-  `/property_keys/<spelling>`, `/refs/<label>`, with the offending string in
-  the message. A `property_keys` *value* is covered the same way — the schema
+  `/property_keys/<spelling>`, `/type_keys/<spelling>`,
+  `/option_ids/<spelling>` and `/option_ids/<spelling>/<name>`, with the
+  offending string in the message. A `property_keys` *value* is covered the same way — the schema
   addresses it correctly but describes the bound rather than the string. The
   schema's own verdict is suppressed only for the members the restated check
   spoke for, so if the two statements of a rule ever diverge the document is
@@ -2570,11 +2756,12 @@ pkg/lib/anyblockjson/
   inline.go                  — marks ↔ inline markup codec (§8)
   table.go                   — table subtree ↔ columns/rows
   dataview.go                — dataview content mapping (§6.2)
-  optionrefs.go              — the qualified option legend and the whole of
+  optionrefs.go              — the `option_ids` legend and the whole of
                                option resolution (§3, §9a): the export site
                                that records an entry, the one import function
                                that resolves a select value, and the property
-                               census both are checked against
+                               census Validate's reachability warning is
+                               taken against
   validate.go                — schema + semantic validation
   json.go                    — ordered canonical-JSON writer, enum tables,
                                proto value bridges, id helpers
@@ -2608,8 +2795,8 @@ type FormatResolver func(key domain.RelationKey) (model.RelationFormat, bool)
 // OptionResolver maps select/multi_select option ids to names on export and
 // names to ids on import (creating options is the import wiring's job).
 // OptionName carries a second duty on the import side: it is the liveness
-// question the qualified refs legend is checked against — it answers for an
-// id exactly when that id is an option of that relation here (§3, §9a).
+// question `option_ids` is checked against — it answers for an id exactly
+// when that id is an option of that relation here (§3, §9a).
 type OptionResolver interface {
     OptionName(key domain.RelationKey, id string) (string, bool)
     OptionId(key domain.RelationKey, name string) (string, bool)
@@ -2654,10 +2841,9 @@ type Options struct {
     ResolveFormat     FormatResolver   // optional; nil = bundle-only resolution (§3)
     ResolveOptions    OptionResolver   // optional; nil = option values pass through as ids
     ResolveProperties PropertyResolver // optional; nil = type documents keep raw recommended-relation ids (§2a)
-    OmitIds           bool             // export only: drop every id (§9)
-    CompactIds        bool             // export only: shorthand for the two flags below (§9a)
-    CompactObjectRefs bool             // export only: shorten object refs, emit refs legend (§9a; lossless)
-    CompactBlockLabels bool            // export only: relabel doc-local block/row/column/view ids (§9a; lossy)
+    OmitIds            bool            // export only: drop every id, the option_ids legend included (§9, §9a)
+    CompactBlockLabels bool            // export only: relabel doc-local block/row/column/view ids (§9a; lossy, legend-less)
+    CompactIds         bool            // export only: alias for CompactBlockLabels — object refs are never compacted (§9a)
     GenerateId        func() string    // import only: id generator for missing ids;
                                       // nil = random 24-hex (editor-shaped). The wiring
                                       // passes the editor's generator.
@@ -2709,6 +2895,9 @@ Wiring (follow-up work, not this package):
     "name": "Project Phoenix",
     "icon_emoji": "🔥",
     "status": ["In progress"]
+  },
+  "option_ids": {
+    "status": { "In progress": "bafyrei…opt1" }
   },
   "blocks": [
     { "id": "b1", "type": "heading_2", "text": "Goals" },
@@ -2764,10 +2953,19 @@ Wiring (follow-up work, not this package):
 2. **`dataview` vs `database`**: kept `dataview` (ownership semantics differ
    from Notion databases; Obsidian precedent) — flagged as a judgment call.
 3. **Option names vs `{id, name}` objects** (§3): **settled** — names stay in
-   the value, generatable and readable, and the id rides in the `refs` legend
-   under a qualified key (§9a). The `{id, name}` value shape was the standing
-   fallback for the duplicate-name/rename caveats; the legend closes both
-   without asking a generator to write an id it does not have.
+   the value, generatable and readable, and the id rides beside them in
+   `option_ids`, under the property that owns the option (§9a). The
+   `{id, name}` value shape was the standing fallback for the
+   duplicate-name/rename caveats; the legend closes both without asking a
+   generator to write an id it does not have, and without putting a second
+   value shape in the slot small models write most. Two spellings for the
+   legend were considered at the freeze and rejected: a flat map with a `#`
+   separator (deleted at v0.20 — no separator survives contact with arbitrary
+   option names and property slugs, §9a), and an `@` sigil marking a handle
+   in the value itself (option names may legally begin with `@`, and
+   `Validate` takes no format resolver, so it cannot tell an option value
+   from an object reference — the sigil would make `Marshal` emit documents
+   its own `Validate` rejects, §11 I1).
 4. **Mention syntax**: `<mention object_id="…">` tag vs unifying with the
    `anytype://` link form plus a marker. The tag is unambiguous and
    LLM-friendly; confirm clients are happy rendering it.
