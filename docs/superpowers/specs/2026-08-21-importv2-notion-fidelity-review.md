@@ -58,9 +58,29 @@ under exactly this setting (which is why token validation probes `/users/me`).
 
 | recovered | evidence |
 |-----------|----------|
-| 245 page/database icons, 66 callout icons | Notion's built-in icons are a name + colour; `applyIcon` knew only emoji and files. Named icons are type-only in Anytype, so pages and callouts take the nearest emoji (`notionIconEmoji`, keyed by the Anytype icon name so the two tables compose). The workspace goes from 2 objects with an icon to 247. |
+| 245 page/database icons, 66 callout icons (of Notion's whole 474-name icon set — see below) | Notion's built-in icons are a name + colour; `applyIcon` knew only emoji and files. Named icons are type-only in Anytype, so pages and callouts take the nearest emoji (`notionIconEmoji`, keyed by the Anytype icon name so the two tables compose). The workspace goes from 2 objects with an icon to 247. |
 | the notes inside 3 Notion AI transcripts (18 blocks) | A `transcription` block carries a title and hangs its notes underneath as ordinary children; `unsupported()` dropped them after the fetcher had paid for them. Any unknown block type now keeps its subtree. |
 | 5 place values | Notion's location property carries a display name and an address; it was skipped as "not supported" while the text fits a plain text relation. |
+
+### The icon inventory
+
+Notion publishes no list of its icon names: the API reference gives examples,
+and the picker's catalogue lives in a JS chunk the login bundle never loads (I
+went through the chunk manifest looking — 938 named chunks, none of them it).
+Its icon FILES are public and named after the icon, though, so
+
+    https://www.notion.so/icons/<name>_<color>.svg     200 = real, 404 = not
+
+is a membership oracle. Candidates came from Anytype's own 390 icon names, the
+Material Symbols (~3.6k) and Lucide (~1.8k) vocabularies, the names the recorded
+workspace used, and the 201 `icon-*` chunks Notion's app ships; then two rounds
+of variants (-alternate, -line, -filled, -outline, plurals, head words) until a
+round returned nothing new. Yield: 454, then 18, then 0.
+
+**474 names**, committed as `core/block/importv2/notion/testdata/notion-icons.txt`,
+all of them mapped. `TestEveryNotionIconResolves` fails if one stops resolving or
+reaches a page with no emoji, so a future refresh that finds new names shows up
+as a failing test rather than as pages importing bare.
 
 ## 4. Untitled pages
 
