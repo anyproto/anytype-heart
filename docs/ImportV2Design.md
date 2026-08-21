@@ -887,12 +887,32 @@ the working tree, not taken from the synthesis).
    indistinguishable from a clean one. Work (decision §13.7):
    - **Import report object**, created in the target space when a run finishes with ≥1 issue:
      - name: "Import report — {source type}, {date}";
-     - a table block summarizing count by code × severity;
-     - a toggle block per issue code, children = one text line per issue (message + `SourceKey`,
-       with a mention of the created object when `ObjectId` is known);
+     - a lead line, then a table summarizing what happened × how many times × how many objects;
+     - a toggle per KIND of issue, children = one line per affected object, biggest first;
      - capped at `IssueCap` with an explicit overflow line (`IssuesDropped`);
      - added to the root collection (and root widget) so it is discoverable next to the imported
        content.
+
+     Grouping (revised 2026-08-21, after reading the report a real workspace produces — 960 issues
+     saying eleven distinct things, every line beginning with a Notion id):
+
+     - The group key is **(severity, message)**, not the code: one code covers unrelated causes
+       (`dataLoss` spans skipped properties, files Notion returned no URL for, and people the
+       integration may not read), and a user groups by what happened, not by taxonomy. The message
+       is therefore the CONSTANT half of an issue; whatever varies goes in `Issue.Subject` (the
+       property, block kind or child it is about) and `Issue.Count` (how many times, for converters
+       that tally rather than repeat). A message that interpolates a value splits its own group.
+     - Objects are shown by **name**, never by source key: the engine records what it called every
+       object it emitted (`run.names`) and hands the report a `Lookup`. The mention mark renders the
+       text it is given — the client does not substitute the object's name — so the id was what the
+       user saw before this.
+     - That table also gates the mention mark. A key can resolve through the identity table and
+       still have no object behind it (a claim from an interrupted session, a page whose fetch
+       failed); a mention pointing at one of those renders as `_missing_object`.
+     - Objects the report cannot name collapse into one counted line rather than a column of ids.
+     - Severity is rendered as an outcome ("Not imported" / "Imported with changes" / "Note"), and
+       notes are counted apart from problems in the lead line: "these rows became Tasks" is a
+       decision, not damage.
    - Notification payload distinguishes clean success from success-with-N-issues (counts by
      severity; proto extension of `NotificationImport`).
    - One structured end-of-run log line (counts by code) on the `import-v2` scope so
