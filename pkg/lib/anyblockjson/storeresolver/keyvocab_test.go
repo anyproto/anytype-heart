@@ -649,7 +649,13 @@ func TestCorpseStoredKeyStillNamesItsObjects(t *testing.T) {
 		assert.Equal(t, "value of the deleted property", doc.Properties["initiative"])
 		assert.Equal(t, "value of the live one", doc.Properties[bsonPropKey],
 			"the live holder's slug is taken by the stored key, so it keeps its own address")
-		assert.Equal(t, map[string]string{"initiative": "initiative"}, doc.PropertyKeys)
+		assert.Equal(t, map[string]string{
+			"initiative": "initiative",
+			bsonPropKey:  bsonPropKey,
+		}, doc.PropertyKeys,
+			"the live holder names itself for the same reason the corpse does, one "+
+				"delete later: no bundled table binds a bson key, so a document that "+
+				"did not say so would re-point the day this relation is deleted too")
 
 		// and both values come home. Without the entry both spellings address
 		// the live holder, and Unmarshal refuses the document Marshal just

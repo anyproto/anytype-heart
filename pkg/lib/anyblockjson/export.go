@@ -363,23 +363,47 @@ func (e *exporter) writableSlug(key string) string {
 }
 
 // recordPropertyKey writes the legend entry a term owes, or nothing when
-// every reader's own chain already inverts it: a spelling the bundled table
-// binds to this very key needs no entry (the table ships with every reader),
-// and a key spelled as itself is its own address (§3 verbatim-first) —
-// UNLESS some reader would bind that spelling to a DIFFERENT key. That is
-// the shadow case ("due_date" the stored key, beside bundled dueDate): a
-// package-only reader has no stored-key set, so the identity entry
-// {"due_date": "due_date"} is the document's only way to say the term is a
-// stored key. Without it the value silently moved onto the bundled twin.
+// every reader's own chain already answers it correctly. One condition,
+// two halves, and they ask DIFFERENT questions:
 //
-// "Some reader" is TWO tables, not one — see termInverts.
+//  1. the **bundled table BINDS this spelling to this very key** — it ships
+//     with every reader, so `due_date` → `dueDate` needs no entry; and
+//  2. the **vocabulary in force INVERTS it** — a reader may bind a spelling
+//     the bundled table binds correctly, and the writer's own space is the
+//     reader most likely to read the document back.
+//
+// The asymmetry is the point, and it is what makes the rule EXHAUSTIVE. A
+// term that is a stored key written verbatim trivially "inverts" through any
+// table, because a table that does not know a term answers the term itself
+// (chain step 4) — so asking half 1 as an inversion let every custom key
+// pass with no entry at all, and the document said nothing about the one
+// population no reader can resolve without it. That silence is the corpse
+// hole: the key is live and unambiguous the day it is written, and the
+// moment a relation is UI-deleted its stored key stops being live while the
+// freed spelling becomes some other relation's api key. Every document
+// already written then re-points, offline, with nothing in it to say
+// otherwise. Asking half 1 as a BINDING closes it: a spelling the bundled
+// table does not bind to this key owes an entry, verbatim or not.
+//
+// Half 2 stays an inversion, and stays. Dropping it — "one table, not two" —
+// loses the SHADOWING-WRITER entries, where the bundled table binds the
+// spelling correctly and the vocabulary in force binds it elsewhere:
+// measured, it drops `{"task": "task"}` and a template comes back pointing
+// at an unrelated custom type, and drops `{"due_date": "dueDate"}` and
+// dueDate's value lands on the custom relation that wanted the spelling.
+// Both are silent losses of user data, both are pinned by tests.
+//
+// So identity entries stop being the exception and become the common line:
+// every custom key names itself in the legend. That is the byte cost of the
+// rule — ~2% on the golden documents — and it buys the document the ability
+// to say what its own spellings mean without asking anyone.
 //
 // An entry the LEGEND cannot hold is not written — see legendEntryRefusal.
 func (e *exporter) recordPropertyKey(term, key string) {
 	if term == "" {
 		return
 	}
-	if termInverts(term, key, (BundledKeyVocabulary{}).PropertyKey) &&
+	if bundledBinds(term, key, (BundledKeyVocabulary{}).PropertyKey) &&
 		termInverts(term, key, e.opts.keys().PropertyKey) {
 		return
 	}
@@ -477,6 +501,23 @@ func legendEntryRefusal(term, key string, deny bool) (string, bool) {
 func termInverts(term, key string, table func(string) (string, bool)) bool {
 	back, _ := table(term)
 	return back == key
+}
+
+// bundledBinds is the stricter question recordPropertyKey/recordTypeKey ask
+// of the BUNDLED table: does the table actually BIND this spelling to this
+// key — `ok` and all — rather than merely fail to contradict it?
+//
+// termInverts cannot answer it. It drops the ok flag on purpose, because
+// that is what the importer does, and for the VOCABULARY half that is the
+// right question: "would this reader land on the right key?". For the
+// bundled half it is the wrong one, because "the table has never heard of
+// this term" and "the table binds this term to this key" are the same answer
+// there — and they mean opposite things to a reader. The first is exactly
+// the population that owes an entry: a key the bundled table cannot speak
+// for, whose spelling is up for grabs the moment the key stops being live.
+func bundledBinds(term, key string, table func(string) (string, bool)) bool {
+	back, ok := table(term)
+	return ok && back == key
 }
 
 // buildPropertyKeys renders the legend in key order, or nil when the document
@@ -627,7 +668,7 @@ func (e *exporter) recordTypeKey(term, key string) {
 	if term == "" {
 		return
 	}
-	if termInverts(term, key, (BundledKeyVocabulary{}).TypeKey) &&
+	if bundledBinds(term, key, (BundledKeyVocabulary{}).TypeKey) &&
 		termInverts(term, key, e.opts.keys().TypeKey) {
 		return
 	}

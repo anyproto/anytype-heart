@@ -16,6 +16,10 @@
       "In progress"
     ]
   },
+  "property_keys": {
+    "customDate": "customDate",
+    "customStatus": "customStatus"
+  },
   "blocks": [
     {
       "type": "heading_2",

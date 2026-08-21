@@ -594,7 +594,12 @@ func TestKeyVocabulary_VocabularyInForceIsAReaderToo(t *testing.T) {
 		doc := decodeEnvelope(t, data)
 		assert.Equal(t, "value of the deleted property", doc.Properties["initiative"])
 		assert.Equal(t, "value of the live one", doc.Properties[corpsePropKey])
-		assert.Equal(t, map[string]string{"initiative": "initiative"}, doc.PropertyKeys)
+		assert.Equal(t, map[string]string{
+			"initiative":  "initiative",
+			corpsePropKey: corpsePropKey,
+		}, doc.PropertyKeys,
+			"the bson key names itself too: the bundled table binds neither term, "+
+				"so neither is safe from a reader that later does")
 		require.NoError(t, Validate(data))
 
 		// and both values come home, on the stored keys they left on. Without

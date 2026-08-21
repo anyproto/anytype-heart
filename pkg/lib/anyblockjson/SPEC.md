@@ -33,6 +33,21 @@ the term is written verbatim either way, so nothing the document carried is
 lost — only portability for that one key, which had no writable spelling in
 this format under any rule.
 
+(2) **The key legends are exhaustive**: an entry is written for every spelling
+the **bundled table does not BIND to the key being written**, identity entries
+included — where the rule used to ask whether that table *inverts* the term. A
+table that does not know a term answers the term itself (chain step 4), so
+every custom key written verbatim "inverted" trivially and owed nothing, and
+the document said nothing about the one population no reader can resolve
+without it. The key is unambiguous the day it is written; it re-points later,
+when the relation is deleted and the freed spelling becomes another relation's
+api key — and the writer, who had nothing to warn about at the time, is the
+only party who can close it. The vocabulary half of the condition stays an
+inversion: asking one table instead of two was measured, and it drops
+`{"task": "task"}` (a template re-points at an unrelated type) and
+`{"due_date": "dueDate"}` (a bundled value lands on a custom relation). Cost:
++93 bytes on each of the four goldens, ~2%.
+
 Changes in v0.20 (superseded by v0.21): **three legends, and one compaction that carries none**
 (§2, §3, §9, §9a, §11, §12, §13). The envelope's indirection is now exactly
 `property_keys`, `type_keys` and `option_ids`; **`refs` is deleted**, both
@@ -631,7 +646,7 @@ Fields, in **canonical order** (§4):
 | `key` | string | no | Identity key of *system* objects (types, properties). This is the STORED identity key (a `uniqueKey`'s internal part), written verbatim: unlike every key slot in §3 it is **not** translated, so for an object whose stored key is a minted BSON it does not match the slug the public API serves as that object's `key`. Because it is verbatim, its charset is whatever the store already holds: a relation option's key is built from the option's *name*, so `completion_status_Not Started`, `…_C/C++` and `…_тогглы` are all real stored keys. The rule is therefore a deny rule — non-empty, no control characters, at most 255 characters — not an allowlist. An allowlist was tried and falsified: it failed 59 objects of a 36 808-object account, every one a relation option. Never emitted for ordinary documents. |
 | `properties` | object | no | The object's properties, §3. |
 | `type_properties` | array | no | Only for `kind: "object_type"` documents: the type's property definitions, §2a. Present on any other kind → validation error. |
-| `property_keys` | object | no | Legend: the stored property key each spelling in this document names (§3). Written wherever a reader's own chain would answer otherwise: a slug the bundled table cannot invert (a space's own key), and the **identity entry** — a stored key written verbatim whose spelling the bundled table, or the vocabulary in force, binds to a different key. A reader consults it **before** its own vocabulary and takes the value as **authoritative**: it is not liveness-checked, deliberately (§3). Absent from documents whose every spelling is bundled or unshadowed, which is most of them. |
+| `property_keys` | object | no | Legend: the stored property key each spelling in this document names (§3). Written for every spelling the **bundled table does not bind to the key being written** — a slug the table cannot invert (a space's own key) *and* the **identity entry**, which is the ordinary case: a custom key written verbatim names itself, because nothing else in the document says the term is a stored key rather than somebody's slug. A reader consults it **before** its own vocabulary and takes the value as **authoritative**: it is not liveness-checked, deliberately (§3). Absent only from a document whose every spelling is bundled. |
 | `type_keys` | object | no | Legend: the stored type key each type slug in this document names — `property_keys`' twin on the TYPE namespace, written and consulted under the same rule (§3). A separate map, deliberately: a space may slug a relation and a type onto one term, so one map could not carry both meanings of a shared spelling. |
 | `option_ids` | object | no | Legend: the id of the option each select/multi_select **name** in this document stands for — nested, `{property spelling: {option name: option id}}` (§3, §9a). Written **unconditionally** wherever export spells an option by name; dropped by `OmitIds` (§9). Read as a **hint**, not an address: an id is honoured only where the target space still serves it as a live option of that relation, and otherwise the name resolves exactly as it did before the legend existed. |
 | `blocks` | array | no | The document's blocks as a **flat pre-order array**; nesting via `indent` (§4). |
@@ -904,16 +919,18 @@ the bundled table, its stored-key set.
    are *not* stored keys. A node-backed reader answers this step from its
    store (`storeresolver`, both namespaces); a package-only reader has no
    stored-key set and knows a term is a stored key only when the legend says
-   so — which is why export owes the identity entry below wherever this
-   step and the next would disagree.
+   so — which is why export owes the identity entry below for every term the
+   bundled table does not bind to the key being written.
 3. **The bundled derived table**, which ships with every reader.
 4. **Verbatim** — the term *is* the stored key, which is what keeps a
    package-only reader — with no space to ask — lossless on custom keys.
 
 A conforming document resolves identically in every conforming reader:
 steps 1, 3 and 4 need nothing but the document and the shipped table, and
-wherever step 2 would answer differently than step 3, the document carries
-the identity entry that moves that answer into step 1. Every other
+wherever step 3 cannot answer for a term the document itself uses, the
+document carries the entry that moves the answer into step 1 — so step 2,
+the one step that needs a store, is never load-bearing for a document's own
+spellings. Every other
 statement of resolution order in this document is shorthand for this chain.
 
 The namespaces are **disjoint claim domains**: a property and a type may
@@ -935,24 +952,45 @@ writes the entry:
 "property_keys": { "priority": "6a32d4856761631534b22f85" }
 ```
 
-- **Emitted only where a reader's own chain would give the wrong answer, or
-  none.** A bundled key spelled as its derived slug needs no entry
-  (`due_date` → `dueDate` ships with every reader), and a key spelled as
-  itself where nothing binds the spelling elsewhere is its own address (chain
-  step 4). Three spellings owe an entry: a slug the bundled table cannot
-  invert (`priority` → `6a32d485…`), and — the **identity entry**, in two
-  shapes — a stored key written verbatim whose spelling *something a reader
-  runs* binds to a *different* key.
+- **Emitted for every spelling the bundled table does not bind to the key
+  being written.** One condition, two halves, and they ask different
+  questions: the bundled table must **bind** this spelling to this very key
+  (it ships with every reader, so `due_date` → `dueDate` owes nothing), *and*
+  the vocabulary in force must **invert** it (a reader may bind a spelling the
+  bundled table binds correctly, and the writer's own space is the reader most
+  likely to read the document back).
 
-  The first shape is the bundled table: a space whose relation is keyed
+  The asymmetry is what makes the rule exhaustive. A term that is a stored key
+  written verbatim trivially *inverts* through any table, because a table that
+  does not know a term answers the term itself (chain step 4) — so asking the
+  bundled half as an inversion let every custom key pass with no entry at all,
+  and the document said nothing about the one population no reader can resolve
+  without it. That silence is the **corpse-after-export** hole: the key is
+  live and unambiguous the day it is written, and the moment the relation is
+  UI-deleted its stored key stops being live while the freed spelling becomes
+  some other relation's api key. Every document already written re-points,
+  offline, and no writer could have warned about it — the delete happened
+  afterwards. Only the document itself can close that, so a spelling the
+  bundled table does not bind owes an entry, verbatim or not.
+
+  **The identity entry is therefore the ordinary line, not the exception.**
+  Every custom key names itself: `{"customStatus": "customStatus"}`. Two
+  shapes that used to be called out as special are just instances of the one
+  rule now.
+
+  The first is the bundled *shadow*: a space whose relation is keyed
   `due_date`, beside bundled `dueDate`, exports
   `"property_keys": {"due_date": "due_date"}` — the document's only way to
   tell a reader with no store that the term is a stored key (chain step 2).
   Without it, the value silently moved onto the bundled twin in every
   package-only reader.
 
-  The second shape is **the vocabulary in force**, and export owes the entry
-  there too. A vocabulary is consulted *before* the bundled table (chain step
+  The second is **the vocabulary in force**, which is the half that stays an
+  inversion, and it stays for a measured reason: dropping it — "ask one table,
+  not two" — loses `{"task": "task"}`, and a template comes back pointing at
+  an unrelated custom type; and loses `{"due_date": "dueDate"}`, and dueDate's
+  value lands on the custom relation that wanted the spelling. Both are silent
+  losses of user data. A vocabulary is consulted *before* the bundled table (chain step
   2 is a node-backed reader's store), so a term the bundled table inverts
   correctly can still be bound elsewhere by the reader most likely to read
   the document back: the writer's own space. This is not a hypothetical about
@@ -971,8 +1009,14 @@ writes the entry:
   table in a way the writer never saw, and that is the `KeyVocabulary`
   precondition (§11.1), not a legend rule.
 
-  The legend is therefore empty for documents a package-only reader wrote,
-  and costs one line per space-slugged, shadow, or vacated key otherwise.
+  The legend is therefore empty for a document whose every spelling is
+  bundled, and costs one line per non-bundled key otherwise. **Size**: the
+  four golden documents, which each carry two custom keys, grow 93 bytes —
+  about 2%. The adversarial corpus, where every document carries five or more
+  custom keys, grows up to 15%; that is an upper bound, not an estimate. The
+  product's store-backed path pays close to nothing new, because a
+  store-minted relation key is a 24-hex bson while its api slug is derived
+  from the name, so slug ≠ key and the entry already existed.
 - **Consulted first, before any vocabulary.** The legend is the only statement
   the *document* makes about its own spellings; a vocabulary belongs to the
   reader, and two readers disagreeing about a slug is exactly how a property

@@ -241,7 +241,11 @@ func TestExport_TwoKeysOneSlugKeepDistinctTerms(t *testing.T) {
 	require.Len(t, doc.Blocks, 2)
 	assert.Equal(t, "priority", doc.Blocks[0].Key)
 	assert.Equal(t, "bbb222", doc.Blocks[1].Key)
-	assert.Equal(t, map[string]string{"priority": "aaa111"}, doc.PropertyKeys)
+	assert.Equal(t, map[string]string{"priority": "aaa111", "bbb222": "bbb222"},
+		doc.PropertyKeys,
+		"the slug entry names its claimant; the loser, written verbatim, names "+
+			"itself — no bundled table binds `bbb222`, so nothing else in the "+
+			"document says the term is a stored key")
 
 	// and the two relations are still two relations after the round trip
 	_, back, err := Unmarshal(data, Options{GenerateId: seqIds("g")})

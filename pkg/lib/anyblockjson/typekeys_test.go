@@ -374,11 +374,16 @@ func TestExport_TypeTermLedgerBacksACollidingSlugOff(t *testing.T) {
 		"the slug is not emitted — its spelling belongs to the stored key wiki_person")
 	require.Len(t, doc.TypeProps, 1)
 	assert.Equal(t, []string{"wiki_person"}, doc.TypeProps[0].ObjectTypes)
-	assert.Equal(t, map[string]string{"wiki_person": "wiki_person"}, doc.TypeKeys,
+	assert.Equal(t, map[string]string{
+		"wiki_person": "wiki_person",
+		customTypeKey: customTypeKey,
+	}, doc.TypeKeys,
 		"the bundled table is silent on both keys, but THIS vocabulary binds the "+
 			"spelling `wiki_person` to customTypeKey — so the stored key written verbatim "+
 			"owes the identity entry, or its own space reads the target type back as the "+
-			"type that took its spelling")
+			"type that took its spelling. customTypeKey names itself for the same reason "+
+			"one step later: the bundled table cannot speak for it either, so nothing "+
+			"stops a reader from binding the spelling once this type is deleted")
 
 	// a package-only reader, which has no vocabulary at all
 	_, snap2, err := Unmarshal(data, Options{GenerateId: seqIds("g")})
@@ -433,7 +438,10 @@ func TestExport_TemplateSpellingIsReserved(t *testing.T) {
 
 		doc := decodeEnvelope(t, data)
 		assert.Equal(t, customTypeKey, doc.Type, "the stored key is its own address")
-		assert.Empty(t, doc.TypeKeys)
+		assert.Equal(t, map[string]string{customTypeKey: customTypeKey}, doc.TypeKeys,
+			"`template` is refused as a spelling, and the verbatim key it fell back to "+
+				"still names itself — the assertion here is that the legend does NOT "+
+				"carry the refused spelling")
 		assert.NotEmpty(t, warned)
 	})
 }
