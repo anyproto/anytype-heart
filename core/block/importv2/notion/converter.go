@@ -100,7 +100,7 @@ type Converter struct {
 	// syncedMu guards syncedOriginals, which is read and written by the
 	// parallel prefetch workers.
 	syncedMu        sync.Mutex
-	syncedOriginals map[string][]notionBlock
+	syncedOriginals map[string]syncedEntry
 
 	// recoverBudget is how many claims recoverUnrecorded may still PROBE.
 	// A field rather than the bare constant so this suite can exercise the
@@ -168,7 +168,7 @@ func New(apiClient *client.Client, fetcher client.FileFetcher, factory importv2.
 		deferredTypes:         map[string]schemaplan.TypeDefinition{},
 		propertyScopes:        map[string]string{},
 		schemaFetches:         map[string]*schemaFetch{},
-		syncedOriginals:       map[string][]notionBlock{},
+		syncedOriginals:       map[string]syncedEntry{},
 	}
 	for _, opt := range opts {
 		opt(c)

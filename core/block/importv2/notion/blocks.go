@@ -189,9 +189,16 @@ func (c *Converter) fetchChildren(ctx context.Context, blockId string, depth int
 // cached slice would rewrite the cache with the first caller's suffix.
 func (c *Converter) syncedOriginal(ctx context.Context, blockId string, depth int, seenIds map[string]struct{}, sink importv2.Sink) ([]notionBlock, error) {
 	c.syncedMu.Lock()
-	cached, ok := c.syncedOriginals[blockId]
+	entry, ok := c.syncedOriginals[blockId]
 	c.syncedMu.Unlock()
+	// A subtree fetched with LESS depth budget than this caller has may have
+	// been cut short by the depth guard, and reusing it would spread one
+	// deep reference's truncation to every shallow one.
+	if ok && entry.depth > depth {
+		ok = false
+	}
 	if ok {
+		cached := entry.blocks
 		// The fetch that filled the cache recorded these ids in ITS page's
 		// ownership set; this page needs them too, or a child entity
 		// parented to one of these blocks looks like it belongs elsewhere.
@@ -203,9 +210,18 @@ func (c *Converter) syncedOriginal(ctx context.Context, blockId string, depth in
 		return nil, err
 	}
 	c.syncedMu.Lock()
-	c.syncedOriginals[blockId] = cloneBlocks(children)
+	if existing, ok := c.syncedOriginals[blockId]; !ok || existing.depth > depth {
+		c.syncedOriginals[blockId] = syncedEntry{depth: depth, blocks: cloneBlocks(children)}
+	}
 	c.syncedMu.Unlock()
 	return children, nil
+}
+
+// syncedEntry is one cached original, with the depth budget it was fetched
+// under — the budget is part of what the answer means.
+type syncedEntry struct {
+	depth  int
+	blocks []notionBlock
 }
 
 // cloneBlocks deep-copies a subtree. The payload is shared: it is only ever

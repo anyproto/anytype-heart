@@ -113,24 +113,7 @@ type textPayload struct {
 	Url          string     `json:"url"`
 }
 
-var zzMapped = map[string]int{}
-var zzDropped = map[string]int{}
-var zzDroppedNonEmpty = map[string]int{}
-
-func zzCountDropped(blocks []notionBlock) {
-	for i := range blocks {
-		b := &blocks[i]
-		zzDropped[b.Type]++
-		var pl textPayload
-		if err := b.decode(&pl); err == nil && plainText(pl.RichText) != "" {
-			zzDroppedNonEmpty[b.Type]++
-		}
-		zzCountDropped(b.children)
-	}
-}
-
 func (c *Converter) mapBlock(ctx context.Context, mctx mapContext, block *notionBlock, sink importv2.Sink) ([]*mappedBlock, error) {
-	zzMapped[block.Type]++
 	switch block.Type {
 	case "paragraph":
 		return c.mapText(ctx, mctx, block, model.BlockContentText_Paragraph, sink)

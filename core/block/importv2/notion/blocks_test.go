@@ -2,6 +2,7 @@ package notion
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -101,4 +102,42 @@ func TestRepeatedWithoutTallyReportsImmediately(t *testing.T) {
 	// then
 	require.Len(t, sink.issues, 1)
 	assert.Equal(t, 1, sink.issues[0].Occurrences())
+}
+
+// TestSyncedOriginalDepthBudget pins that a subtree fetched with less depth
+// budget is not reused by a shallower reference. The depth guard cuts a walk
+// short; caching that answer under the block id alone would spread one deep
+// reference's truncation to every shallow one.
+func TestSyncedOriginalDepthBudget(t *testing.T) {
+	// given — the same original, first fetched near the depth limit
+	var mu sync.Mutex
+	fetches := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		fetches++
+		mu.Unlock()
+		fmt.Fprint(w, `{"results":[{"id":"fresh","type":"paragraph","has_children":false,"paragraph":{"rich_text":[]}}],"has_more":false,"next_cursor":null}`)
+	}))
+	t.Cleanup(server.Close)
+	apiClient := client.NewClient("token", client.WithBaseURL(server.URL), client.WithRateLimit(1000))
+	converter := New(apiClient, client.NewFileFetcher(), stubFactory{}, t.TempDir())
+	converter.syncedOriginals["orig"] = syncedEntry{depth: maxBlockDepth - 1, blocks: []notionBlock{{Id: "cut-short"}}}
+
+	// when — a shallow caller asks, with more budget than the cached walk had
+	seen := map[string]struct{}{}
+	blocks, err := converter.syncedOriginal(context.Background(), "orig", 1, seen, &recordingSink{})
+
+	// then — it fetches rather than reusing a possibly truncated answer
+	require.NoError(t, err)
+	require.Len(t, blocks, 1)
+	assert.Equal(t, "fresh", blocks[0].Id)
+	assert.Equal(t, 1, fetches)
+
+	// and the fresher, deeper-budget answer replaces the cached one
+	blocks, err = converter.syncedOriginal(context.Background(), "orig", maxBlockDepth, seen, &recordingSink{})
+	require.NoError(t, err)
+	require.Len(t, blocks, 1)
+	assert.Equal(t, "fresh", blocks[0].Id, "the cache now holds the walk with the bigger budget")
+	assert.Equal(t, 1, fetches, "and that one is reused")
+	assert.Contains(t, seen, "fresh", "a cache hit still records the page's ownership set")
 }

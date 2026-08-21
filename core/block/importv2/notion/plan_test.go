@@ -39,12 +39,19 @@ func runScriptedWithOptions(t *testing.T, opts ...Option) *recordingSink {
 	return sink
 }
 
+// issueMessages renders an issue the way the report does: the sentence, and
+// the subject it is about.
 func issueMessages(sink *recordingSink, code importv2.IssueCode) []string {
 	var out []string
 	for _, issue := range sink.issues {
-		if issue.Code == code {
-			out = append(out, issue.Message)
+		if issue.Code != code {
+			continue
 		}
+		message := issue.Message
+		if issue.Subject != "" {
+			message += " — " + issue.Subject
+		}
+		out = append(out, message)
 	}
 	return out
 }
@@ -113,7 +120,7 @@ func TestScriptedPlan(t *testing.T) {
 		// observability: typeSuggested with the plan reason + propertyMapped
 		suggested := issueMessages(sink, importv2.IssueTypeSuggested)
 		require.Len(t, suggested, 1)
-		assert.Contains(t, suggested[0], `Rows were imported as the "`+mintedType.String()+`" type (LLM plan)`)
+		assert.Contains(t, suggested[0], `Tasks → `+mintedType.String()+` (LLM plan)`)
 		mapped := issueMessages(sink, importv2.IssuePropertyMapped)
 		require.Len(t, mapped, 1)
 		assert.Contains(t, mapped[0], `property "Score" imported as "Effort"`)
@@ -188,7 +195,7 @@ func TestScriptedPlan(t *testing.T) {
 		assert.Contains(t, failed[0], "imported with built-in rules")
 		suggested := issueMessages(sink, importv2.IssueTypeSuggested)
 		require.Len(t, suggested, 1)
-		assert.True(t, strings.Contains(suggested[0], `as the "task" type (container name)`), suggested[0])
+		assert.True(t, strings.Contains(suggested[0], `Tasks → task (container name)`), suggested[0])
 	})
 
 	t.Run("hallucinated plan entries are dropped loudly, import unharmed", func(t *testing.T) {
@@ -219,7 +226,7 @@ func TestScriptedPlan(t *testing.T) {
 		// then — same verdict the suggestor produced before the plan phase
 		suggested := issueMessages(sink, importv2.IssueTypeSuggested)
 		require.Len(t, suggested, 1)
-		assert.Contains(t, suggested[0], `Rows were imported as the "task" type (container name)`)
+		assert.Contains(t, suggested[0], `Tasks → task (container name)`)
 		assert.Empty(t, issueMessages(sink, importv2.IssuePropertyMapped))
 	})
 }

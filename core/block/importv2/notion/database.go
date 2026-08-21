@@ -172,8 +172,11 @@ func (c *Converter) suggestPageType(entityId, schemaId string, database *databas
 	c.suggestedTypes[schemaId] = suggestion.TypeKey
 	sink.Issue(importv2.Issue{
 		Severity: importv2.SeverityInfo, Code: importv2.IssueTypeSuggested, SourceKey: entityId,
-		Subject: database.title(),
-		Message: fmt.Sprintf("Rows were imported as the %q type (%s)", suggestion.TypeKey, suggestion.Reason),
+		// The type and the reason belong to the subject, not the sentence:
+		// interpolated into the message they would split this one fact into
+		// a summary row per (type, reason) pair.
+		Subject: fmt.Sprintf("%s → %s (%s)", database.title(), suggestion.TypeKey, suggestion.Reason),
+		Message: "Rows of these databases were imported as an existing Anytype type",
 	})
 }
 
