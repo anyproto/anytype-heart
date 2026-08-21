@@ -11,7 +11,6 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -556,7 +555,7 @@ func (imp *importer) dvValueFromJSON(dv *model.BlockContentDataview, key, slug s
 	format := imp.impDvFormat(dv, key)
 	switch format {
 	case model.RelationFormat_status, model.RelationFormat_tag:
-		return mapJSONStrings(v, func(name string) string { return imp.optionId(key, slug, name) })
+		return mapJSONStrings(v, func(name string) string { return imp.resolveOption(key, slug, name) })
 	case model.RelationFormat_object, model.RelationFormat_file:
 		return mapJSONStrings(v, imp.resolveId)
 	}
@@ -579,24 +578,6 @@ func mapJSONStrings(v any, fn func(string) string) *types.Value {
 		return &types.Value{Kind: &types.Value_ListValue{ListValue: &types.ListValue{Values: vals}}}
 	}
 	return jsonToProtoValue(v)
-}
-
-// optionId resolves one select value, in the three steps §3 states: the
-// document's own qualified legend entry, honored only for an id the target
-// space still serves as an option of that relation (optionrefs.go); then
-// name resolution through the wired resolver, which is what a bundle carried
-// to a space that never saw those ids falls back on; then the value
-// unchanged, because creating a missing option is the wiring's job.
-func (imp *importer) optionId(key, slug, name string) string {
-	if id, ok := imp.optionIdFromRefs(key, slug, name); ok {
-		return id
-	}
-	if imp.opts.ResolveOptions != nil {
-		if id, ok := imp.opts.ResolveOptions.OptionId(domain.RelationKey(key), name); ok {
-			return id
-		}
-	}
-	return name
 }
 
 func (e *exporter) viewColumnToJSON(r *model.BlockContentDataviewRelation) *omap {

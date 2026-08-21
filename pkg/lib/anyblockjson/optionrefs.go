@@ -1,7 +1,12 @@
 package anyblockjson
 
 // optionrefs.go — the qualified option legend: a `refs` entry that carries a
-// select option's ID beside the NAME the document spells (§3, §9a).
+// select option's ID beside the NAME the document spells (§3, §9a) — and,
+// with it, the whole of option resolution. Export records an entry at the one
+// site that substitutes a name for an id (recordOptionRef), and import
+// resolves every select value through the one function below (resolveOption),
+// so both halves of "which option does this name mean?" are answered in this
+// file and nowhere else.
 //
 // Select and multi_select values are spelled by name (§3) because a bundle
 // carries no option objects — unlike a linked object, which the bundle
@@ -162,6 +167,38 @@ func (e *exporter) buildOptionRefs() map[string]string {
 //
 // ---- import ----
 //
+
+// resolveOption resolves ONE select value — the whole of §3's three-step
+// chain, and the only place any of it lives. Every option slot in the format
+// arrives here: property values (import.go) and dataview filter values and
+// sort custom orders (dataview.go) alike, which is what makes "how is an
+// option value resolved?" a question this file answers by itself.
+//
+// First answer wins:
+//
+//  1. the document's own qualified legend entry, honored only for an id the
+//     target space still serves as an option of that relation
+//     (optionIdFromRefs below);
+//  2. name resolution through the wired resolver, which is what a bundle
+//     carried to a space that never saw those ids falls back on;
+//  3. the value unchanged, because creating a missing option is the wiring's
+//     job (§3).
+//
+// `key` is the stored key the value lands on and `slug` the spelling the slot
+// wrote: the resolver is asked with the former and the legend keyed by the
+// latter, because the reader that resolves the legend is reading the
+// document, not the store.
+func (imp *importer) resolveOption(key, slug, name string) string {
+	if id, ok := imp.optionIdFromRefs(key, slug, name); ok {
+		return id
+	}
+	if imp.opts.ResolveOptions != nil {
+		if id, ok := imp.opts.ResolveOptions.OptionId(domain.RelationKey(key), name); ok {
+			return id
+		}
+	}
+	return name
+}
 
 // optionIdFromRefs is step 1 of §3's option resolution: the qualified legend
 // entry, honored only when the id it carries is a live option OF THAT

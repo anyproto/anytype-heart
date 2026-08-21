@@ -548,7 +548,7 @@ func (imp *importer) propertyValue(key, slug string, v any) *types.Value {
 			}
 		}
 	case model.RelationFormat_status, model.RelationFormat_tag:
-		return wrapToList(mapJSONStrings(v, func(name string) string { return imp.optionId(key, slug, name) }))
+		return wrapToList(mapJSONStrings(v, func(name string) string { return imp.resolveOption(key, slug, name) }))
 	case model.RelationFormat_object, model.RelationFormat_file:
 		return wrapToList(mapJSONStrings(v, imp.resolveId))
 	}
