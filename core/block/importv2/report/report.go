@@ -38,6 +38,12 @@ const (
 	maxObjectLines = 25
 	// maxSubjects bounds the named things listed on one object's line.
 	maxSubjects = 4
+	// maxGroups bounds how many kinds the page spells out. One kind per issue
+	// is a real shape — an error string carries the file it failed on, so a
+	// hundred failures are a hundred messages — and without a bound the
+	// summary table grows a row for each. The rest fold into one line that
+	// still counts them.
+	maxGroups = 40
 	// maxUnnamedLines is how many unresolvable objects are worth a line each.
 	// A source key that resolves to nothing is a Notion id: it cannot be
 	// opened, searched or recognised, so past a couple of them the count and
@@ -72,10 +78,15 @@ func (l Lookup) get(sourceKey string) Source {
 func Build(title string, issues []importv2.Issue, dropped int64, lookup Lookup) *importv2.Object {
 	groups := groupIssues(issues)
 
+	shown, folded := groups, []group(nil)
+	if len(shown) > maxGroups {
+		shown, folded = groups[:maxGroups], groups[maxGroups:]
+	}
+
 	var blocks []*model.Block
 	blocks = append(blocks, textBlock("intro", intro(groups), nil))
-	blocks = append(blocks, summaryTable(groups, dropped)...)
-	for groupIndex, group := range groups {
+	blocks = append(blocks, summaryTable(shown, folded, dropped)...)
+	for groupIndex, group := range shown {
 		blocks = append(blocks, toggleGroup(groupIndex, group, lookup)...)
 	}
 	if dropped > 0 {
@@ -258,7 +269,7 @@ func plural(n int, one, many string) string {
 // summaryTable emits the anytype table subtree: table → [columns layout,
 // rows layout]; cell ids are `rowId-colId` with exactly one dash, so row and
 // column ids themselves stay dash-free (ParseCellID splits on the first one).
-func summaryTable(groups []group, dropped int64) []*model.Block {
+func summaryTable(groups, folded []group, dropped int64) []*model.Block {
 	headers := []string{"Result", "What happened", "Times", "Objects"}
 	columnIds := make([]string, len(headers))
 	columns := make([]*model.Block, len(headers))
@@ -297,8 +308,16 @@ func summaryTable(groups []group, dropped int64) []*model.Block {
 		}
 		makeRow(i+1, false, []string{outcome(g.severity), what, fmt.Sprintf("%d", g.count), objects})
 	}
+	if len(folded) > 0 {
+		occurrences := 0
+		for _, g := range folded {
+			occurrences += g.count
+		}
+		makeRow(len(rows), false, []string{"", fmt.Sprintf("%d more kinds of issue", len(folded)),
+			fmt.Sprintf("%d", occurrences), "—"})
+	}
 	if dropped > 0 {
-		makeRow(len(groups)+1, false, []string{"", "(not recorded)", fmt.Sprintf("%d", dropped), ""})
+		makeRow(len(rows), false, []string{"", "(not recorded)", fmt.Sprintf("%d", dropped), ""})
 	}
 
 	columnsLayout := &model.Block{

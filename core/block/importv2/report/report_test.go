@@ -342,6 +342,27 @@ func TestBuild(t *testing.T) {
 		assert.Contains(t, text, "Sprint board — Sprints", "a subject that adds something is kept")
 	})
 
+	t.Run("a flood of one-off kinds folds into a single row", func(t *testing.T) {
+		// given — an error string per file is one group each: a converter
+		// that has not moved its values into Subject, or simply a hundred
+		// different failures, must not turn the page into a hundred-row
+		// table
+		var issues []importv2.Issue
+		for i := 0; i < 60; i++ {
+			issues = append(issues, importv2.Warning(importv2.IssueObjectFailed, fmt.Sprintf("k%02d", i), fmt.Sprintf("could not read file %d", i)))
+		}
+
+		// when
+		object := Build("t", issues, 0, unknown)
+
+		// then
+		rows := blockById(t, object.Payload.Blocks, "summary-rows").ChildrenIds
+		assert.LessOrEqual(t, len(rows), maxGroups+2, "header, the capped groups, and one fold-up row")
+		text := render(object)
+		assert.Contains(t, text, "more kinds of issue")
+		assert.Contains(t, text, "could not read file 0", "the kinds that are shown are still shown")
+	})
+
 	t.Run("overflow renders a table row and a trailing line", func(t *testing.T) {
 		// when
 		object := Build("t", []importv2.Issue{importv2.Warning(importv2.IssueDataLoss, "a.md", "x")}, 7, unknown)
