@@ -15,6 +15,8 @@ import (
 	"bytes"
 	_ "embed"
 	"fmt"
+	"sort"
+	"strings"
 	"sync"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
@@ -26,34 +28,80 @@ var indexSchemaJSON []byte
 // IndexFileName is the name a bundle's index must have, at the bundle root.
 const IndexFileName = "index.json"
 
-// Reserved homepage values (core/domain/homepage.go). Anything else is an
-// object id.
+// PlatformPrefix opens the platform's own address space. A value beginning
+// with it — `_otpage`, `_brdue_date`, `_missing_object`, `_participant_…` —
+// names something the platform provides, never something a document or a
+// bundle mints (§1). The format borrows the same namespace for the built-in
+// screens and listings an index.json may name, which is what makes the two
+// sets provably disjoint: **no bundle-local object id may begin with `_`**.
+//
+// That disjointness is the whole point, and it is not decorative. The pb
+// importer resolves a widget's target through the bundle's own id map FIRST
+// (common.UpdateLinksToObjects) and only then asks
+// widget.IsPredefinedWidgetTargetId. While the reserved listings were bare
+// words — `set`, `favorite` — a bundle shipping an object with id `set`
+// silently captured the widget that meant *the Sets listing*, and
+// Index.EntryPoint, which skips reserved targets, silently disagreed with
+// EffectiveEntryPoint about what the bundle even opens. A prefix rule needs
+// only "no minted id STARTS with `_`", which is permanently true, where a
+// per-word reservation needs a new ban every time a listing is added.
+const PlatformPrefix = "_"
+
+// IsPlatformId reports whether id lies in the reserved `_` namespace, and so
+// addresses the platform rather than anything a bundle ships.
+func IsPlatformId(id string) bool {
+	return strings.HasPrefix(id, PlatformPrefix)
+}
+
+// Reserved homepage values. Anything else is an object id.
+//
+// These are the format's spellings, not the wire's: core/domain/homepage.go
+// carries them as the bare `widgets` / `graph`, and builtinobjects switches on
+// those names BEFORE looking an id up — the opposite precedence from widget
+// targets, and the reason a bundle object with id `graph` can never be a
+// homepage. Both directions close once the reserved spellings live in the
+// platform namespace. The `_` is translated away at the wire boundary, by
+// WireHomepage.
 const (
-	HomepageWidgets = "widgets"
-	HomepageGraph   = "graph"
+	HomepageWidgets = "_widgets"
+	HomepageGraph   = "_graph"
 )
+
+// wireHomepages is the format spelling of each reserved homepage and the
+// spelling core/domain/homepage.go uses for the same screen.
+var wireHomepages = map[string]string{
+	HomepageWidgets: "widgets",
+	HomepageGraph:   "graph",
+}
 
 // reservedWidgetTargets are the widget targets that name a built-in listing
 // rather than an object in the bundle (core/block/editor/widget).
 var reservedWidgetTargets = map[string]struct{}{
-	"favorite": {}, "recent": {}, "set": {}, "collection": {},
-	"allObjects": {}, "recentOpen": {},
+	"_favorite": {}, "_recent": {}, "_set": {}, "_collection": {},
+	"_all_objects": {}, "_recent_open": {},
 }
 
 // importableWidgetTargets are the reserved targets the *importer* recognises:
 // exactly widget.IsPredefinedWidgetTargetId, which is what
 // common.handleLinkBlock consults before deciding a link target it cannot
-// resolve is broken.
+// resolve is broken. The wire spellings are bare — `favorite`, `set` — and
+// cmd/anyblockconvert/widgets.go translates them on the way out.
 //
-// allObjects and recentOpen are real targets in a live space — the All Objects
-// widget is created by WidgetObject's migration 3 — but they are not in that
-// list, and the difference is not cosmetic: a bundle declaring one gets its
-// link rewritten to addr.MissingObject, and WidgetObject.Init then strips the
-// link *and* its now-empty wrapper. The widget disappears with no error and no
-// diagnostic beyond a log line. So a bundle may not name them, and the wiring
-// says so rather than shipping one that silently loses a widget.
-var importableWidgetTargets = map[string]struct{}{
-	"favorite": {}, "recent": {}, "set": {}, "collection": {},
+// _all_objects and _recent_open are real targets in a live space — the All
+// Objects widget is created by WidgetObject's migration 3 — but they are not
+// in that list, and the difference is not cosmetic: a bundle declaring one
+// gets its link rewritten to addr.MissingObject, and WidgetObject.Init then
+// strips the link *and* its now-empty wrapper. The widget disappears with no
+// error and no diagnostic beyond a log line. So a bundle may not name them,
+// and the wiring says so rather than shipping one that silently loses a
+// widget. They are spelled snake_case like every other name this format
+// defines (§1): unlike the other four they are never quoted onto the wire, so
+// there is no live-space spelling for them to preserve.
+// The map is the translation table as well as the membership test, so the two
+// cannot drift: adding a listing without giving it a wire spelling is not
+// expressible.
+var importableWidgetTargets = map[string]string{
+	"_favorite": "favorite", "_recent": "recent", "_set": "set", "_collection": "collection",
 }
 
 // IsReservedWidgetTarget reports whether target names a built-in listing, in
@@ -71,10 +119,85 @@ func IsImportableWidgetTarget(target string) bool {
 	return ok
 }
 
+// WireWidgetTarget returns the id to write into a link block's target for a
+// widget target: the bare listing name for a reserved one, the id itself for
+// anything else.
+//
+// The translation is not cosmetic and is the reason the rename is safe.
+// common.handleLinkBlock leaves a target alone only when
+// widget.IsPredefinedWidgetTargetId knows it, and that function knows the four
+// bare words and nothing else — write `_set` and the link is rewritten to
+// addr.MissingObject and then stripped along with its wrapper, losing the
+// widget with no error. A reserved-but-not-importable target has no wire
+// spelling at all, and is returned unchanged so it fails loudly rather than
+// impersonating an id; CheckIndexTargets refuses those before conversion.
+func WireWidgetTarget(target string) string {
+	if wire, ok := importableWidgetTargets[target]; ok {
+		return wire
+	}
+	return target
+}
+
+// WireHomepage returns the value pb.Profile.SpaceDashboardId should carry for
+// a homepage: the bare screen name for a reserved one, the object id
+// otherwise. builtinobjects.setWorkspaceSettings matches those bare names
+// before it tries to resolve an id, so an untranslated `_graph` would be
+// looked up as an object, fail, and fall back to the widgets screen.
+func WireHomepage(homepage string) string {
+	if wire, ok := wireHomepages[homepage]; ok {
+		return wire
+	}
+	return homepage
+}
+
+// IsReservedBundleId reports whether id is one no object in a bundle may
+// claim.
+//
+// Two populations, and the second is the one that is easy to miss. The `_`
+// namespace is the format's own guarantee (§1). But the importer's spellings
+// are BARE — WireWidgetTarget translates `_set` to `set` on the way out — and
+// common.handleLinkBlock resolves a link target through the bundle's id map
+// before it asks widget.IsPredefinedWidgetTargetId. So an object with id `set`
+// captures the translated widget exactly the way it captured the untranslated
+// one: renaming the format's spelling moves the collision downstream rather
+// than removing it, unless the wire spellings are unmintable too.
+//
+// The homepages are the same story with the precedence reversed:
+// setWorkspaceSettings matches `graph` before resolving an id, so a bundle
+// object with that id is simply unreachable as a homepage.
+func IsReservedBundleId(id string) bool {
+	if IsPlatformId(id) {
+		return true
+	}
+	for _, wire := range importableWidgetTargets {
+		if id == wire {
+			return true
+		}
+	}
+	for _, wire := range wireHomepages {
+		if id == wire {
+			return true
+		}
+	}
+	return false
+}
+
+// ReservedWidgetTargets lists every reserved listing, sorted, so a diagnostic
+// can name the inventory instead of asking the author to guess it.
+func ReservedWidgetTargets() []string {
+	out := make([]string, 0, len(reservedWidgetTargets))
+	for t := range reservedWidgetTargets {
+		out = append(out, t)
+	}
+	sort.Strings(out)
+	return out
+}
+
 // IsReservedHomepage reports whether homepage names a built-in screen rather
 // than an object in the bundle.
 func IsReservedHomepage(homepage string) bool {
-	return homepage == HomepageWidgets || homepage == HomepageGraph
+	_, ok := wireHomepages[homepage]
+	return ok
 }
 
 // Widget is one sidebar widget (§2c).
@@ -191,6 +314,14 @@ func UnmarshalIndex(data []byte) (*Index, error) {
 	if err := checkVersion(doc); err != nil {
 		return nil, err
 	}
+	// The `_` namespace is checked here, ahead of the schema, for the same
+	// reason the version is: the schema states the rule machine-readably (a
+	// pattern and an enum, so a generator reading the schema obeys it), but
+	// its failure is an anonymous "does not match ^[^_]" that tells an author
+	// nothing about which namespace they walked into or what to do about it.
+	if issues := platformNameIssues(doc); len(issues) > 0 {
+		return nil, &ValidationError{Issues: issues}
+	}
 	// MIGRATION SEAM: an older version is migrated forward here, between the
 	// version gate and schema validation. The schema pins the version to a
 	// const, so it doubles as the assertion that migration ran (§10).
@@ -207,6 +338,57 @@ func UnmarshalIndex(data []byte) (*Index, error) {
 		return nil, fmt.Errorf("decode index: %w", err)
 	}
 	return &idx, nil
+}
+
+// platformNameIssues reports index members that walk into the reserved `_`
+// namespace: an entry point or homepage that is not a screen the platform
+// provides, and a widget target spelled like a reserved listing that is not
+// one of the six.
+//
+// Without it a typo in the namespace lands in the worst possible place. A
+// widget target the reader treats as an object id resolves to nothing, and an
+// unresolvable link target becomes addr.MissingObject, after which
+// WidgetObject.Init strips the link and its wrapper — the widget is gone with
+// no error. Saying "unknown reserved listing, here is the inventory" points at
+// the repair; "no object with that id in the bundle" points away from it.
+func platformNameIssues(doc map[string]any) []Issue {
+	var issues []Issue
+	str := func(key string) string {
+		v, _ := doc[key].(string)
+		return v
+	}
+	if e := str("entrypoint"); IsPlatformId(e) {
+		issues = append(issues, Issue{
+			Path: "/entrypoint",
+			Message: fmt.Sprintf("%q begins with %q, which is the platform's own address space (§1): "+
+				"an entry point must be an object id from this bundle, and no built-in screen can be one",
+				e, PlatformPrefix),
+		})
+	}
+	if h := str("homepage"); IsPlatformId(h) && !IsReservedHomepage(h) {
+		issues = append(issues, Issue{
+			Path: "/homepage",
+			Message: fmt.Sprintf("%q begins with %q, which is the platform's own address space (§1): "+
+				"the only reserved homepages are %q and %q, and an object id from this bundle may not begin with %q",
+				h, PlatformPrefix, HomepageWidgets, HomepageGraph, PlatformPrefix),
+		})
+	}
+	widgets, _ := doc["widgets"].([]any)
+	for i, raw := range widgets {
+		w, _ := raw.(map[string]any)
+		target, _ := w["target"].(string)
+		if !IsPlatformId(target) || IsReservedWidgetTarget(target) {
+			continue
+		}
+		issues = append(issues, Issue{
+			Path: fmt.Sprintf("/widgets/%d/target", i),
+			Message: fmt.Sprintf("%q is not a reserved listing; the whole inventory is %s. "+
+				"An object id from this bundle may not begin with %q, so this target names nothing "+
+				"— and a widget target that resolves to nothing is dropped on install without an error",
+				target, strings.Join(ReservedWidgetTargets(), ", "), PlatformPrefix),
+		})
+	}
+	return issues
 }
 
 // MarshalIndex renders an index in the canonical byte form (§4).

@@ -113,13 +113,15 @@ func buildWidgets(idx *anyblockjson.Index) (*model.SmartBlockSnapshotBase, error
 			Id: linkId,
 			// the target is the bundle's own object id, relinked on import like
 			// every other reference (common.UpdateLinksToObjects); a reserved
-			// listing passes through untouched, because handleLinkBlock returns
-			// early for widget.IsPredefinedWidgetTargetId. Anything else that
-			// does not resolve is rewritten to _missing_object and then stripped
-			// — link and wrapper both — by WidgetObject.Init, which is why
+			// listing is translated out of the format's `_` namespace into the
+			// bare word the importer knows (WireWidgetTarget) and then passes
+			// through untouched, because handleLinkBlock returns early for
+			// widget.IsPredefinedWidgetTargetId. Anything else that does not
+			// resolve is rewritten to _missing_object and then stripped — link
+			// and wrapper both — by WidgetObject.Init, which is why
 			// anyblockbatch.CheckIndexTargets rejects such a bundle up front.
 			Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
-				TargetBlockId: w.Target,
+				TargetBlockId: anyblockjson.WireWidgetTarget(w.Target),
 				// all four are their enums' zero values, so they cost no wire
 				// bytes; they are spelled out because this is the shape an app
 				// export writes and the shape a reader will compare against.

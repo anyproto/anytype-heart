@@ -1190,15 +1190,19 @@ func TestExport_ValidIdsAreNeverRenamed(t *testing.T) {
 // It covers the Go name tables as well as the schema: some vocabulary (the
 // layout names) exists only in Go, which is exactly where a stray name hides.
 func TestInvariant_VocabularyIsSnakeCase(t *testing.T) {
-	// platform identifiers are quoted, not translated (§1 Naming)
-	platform := map[string]bool{"allObjects": true, "recentOpen": true}
 	snake := regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
 
 	check := func(t *testing.T, where, ident string) {
 		t.Helper()
-		if platform[ident] || strings.HasPrefix(ident, "$") {
+		if strings.HasPrefix(ident, "$") {
 			return
 		}
+		// A name in the platform's `_` namespace (§1) is exempt from the
+		// *prefix* and nothing else: the reserved index.json listings are
+		// still names this format defines, so `_all_objects` passes and
+		// `_allObjects` does not. This used to be a two-entry allow-list,
+		// which exempted the whole spelling and so pinned nothing.
+		ident = strings.TrimPrefix(ident, PlatformPrefix)
 		assert.Regexp(t, snake, ident, "%s: %q is not snake_case", where, ident)
 	}
 

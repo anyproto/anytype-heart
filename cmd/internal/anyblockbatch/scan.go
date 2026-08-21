@@ -597,6 +597,66 @@ func IndexPath(root string) (string, bool) {
 	return "", false
 }
 
+// CheckBundleIds finds documents that claim an id in the platform's reserved
+// `_` namespace (§1). Nothing a bundle ships may live there.
+//
+// It is not a tidiness rule. The pb importer resolves a link target through
+// the bundle's own id map FIRST (common.UpdateLinksToObjects) and only then
+// asks widget.IsPredefinedWidgetTargetId, so an object whose id equals a
+// reserved listing captures every widget that meant the listing — silently,
+// with no finding from any check and no error at import. Keeping the two
+// namespaces disjoint by a prefix is what makes that unrepresentable, and it
+// stays true as listings are added, which a per-word reservation does not.
+//
+// The same prefix also covers the bundled objects (`_otpage`, `_brdue_date`)
+// and the platform's other addresses (`_missing_object`, `_participant_…`): a
+// bundle minting one of those ids would collide with the object the space
+// already has.
+//
+// It also covers the four listings' and two screens' BARE spellings, which is
+// the half a prefix rule alone would miss — see IsReservedBundleId.
+func CheckBundleIds(files []string) ([]BadTarget, error) {
+	var out []BadTarget
+	for _, f := range files {
+		data, err := os.ReadFile(f)
+		if err != nil {
+			return nil, fmt.Errorf("read %s: %w", f, err)
+		}
+		var probe struct {
+			Id string `json:"id"`
+		}
+		if err := json.Unmarshal(data, &probe); err != nil {
+			return nil, fmt.Errorf("parse %s: %w", f, err)
+		}
+		if !anyblockjson.IsReservedBundleId(probe.Id) {
+			continue
+		}
+		var reason string
+		switch {
+		case anyblockjson.IsReservedWidgetTarget(probe.Id):
+			reason = fmt.Sprintf("this is a reserved index.json widget listing (the inventory is %s), "+
+				"not an id a bundle may mint — the importer resolves a widget target through the bundle's "+
+				"own ids first, so this object would silently capture every widget naming the listing",
+				strings.Join(anyblockjson.ReservedWidgetTargets(), ", "))
+		case anyblockjson.IsReservedHomepage(probe.Id):
+			reason = "this is a reserved index.json homepage screen, not an id a bundle may mint"
+		case anyblockjson.IsPlatformId(probe.Id):
+			reason = "an id may not begin with \"_\": that prefix is the platform's own address space " +
+				"(bundled types and relations, participants, _missing_object) and the reserved index.json " +
+				"listings and screens — an object minting one of those ids shadows it, and a widget or " +
+				"homepage naming it silently gets this object instead of the built-in"
+		default:
+			reason = "this is what a reserved index.json listing or screen is called on the wire " +
+				"(widget.IsPredefinedWidgetTargetId, setWorkspaceSettings), which is where a widget " +
+				"target lands after the format's leading \"_\" is translated off — so an object with " +
+				"this id silently captures the built-in that the whole bundle, not just this document, " +
+				"may want to name"
+		}
+		out = append(out, BadTarget{File: f, Property: "id", Target: probe.Id, Reason: reason})
+	}
+	return out, nil
+}
+
 // CheckIndexTargets finds index.json references that name nothing the bundle
 // defines. Reserved homepages and reserved widget targets name built-in
 // screens and listings, so they are not expected to resolve.
@@ -643,7 +703,8 @@ func CheckIndexTargets(idx *anyblockjson.Index, files []string) []BadTarget {
 			out = append(out, BadTarget{
 				File: anyblockjson.IndexFileName, Property: fmt.Sprintf("widgets[%d]", i), Target: w.Target,
 				Reason: "a reserved listing the importer does not recognise — " +
-					"widget.IsPredefinedWidgetTargetId knows only favorite, recent, set and collection, " +
+					"widget.IsPredefinedWidgetTargetId knows only the four spelled " +
+					"_favorite, _recent, _set and _collection here, " +
 					"so this link is rewritten to _missing_object and the widget is dropped without an error",
 			})
 		case !ids[w.Target]:

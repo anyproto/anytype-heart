@@ -162,5 +162,10 @@ func sanitizeId(s string) string {
 			b.WriteRune('-')
 		}
 	}
-	return b.String()
+	// A leading `_` is the platform's address space (§1), which no
+	// bundle-local id may enter, so a file named `_drafts.json` cannot seed
+	// one. Escaping the prefix rather than rejecting the file keeps a legal
+	// filename legal; `_` stays admissible everywhere else in the id, which is
+	// where a real key like `completion_status` needs it.
+	return strings.TrimLeft(b.String(), "_")
 }

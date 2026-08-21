@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -36,7 +37,7 @@ func TestWriteProfile(t *testing.T) {
 		Widgets: []anyblockjson.Widget{
 			{Target: "page-home", Layout: "tree"},
 			{Target: "type-page", Layout: "view", Limit: 6},
-			{Target: "favorite", Layout: "compact_list"},
+			{Target: "_favorite", Layout: "compact_list"},
 			{Target: "chat-requests"}, // no layout: link, the zero value
 		},
 	}
@@ -55,7 +56,8 @@ func TestWriteProfile(t *testing.T) {
 	assert.Equal(t, model.BlockContentWidget_Link, p.Widgets[3].Layout, "absent layout is link")
 
 	// reserved targets pass through untouched; the installer knows them
-	assert.Equal(t, "favorite", p.Widgets[2].TargetObjectId)
+	assert.Equal(t, "favorite", p.Widgets[2].TargetObjectId,
+		"the platform prefix is the format's; the wire carries the bare listing name")
 	// TEMPORARY: inject opens widgets[0], which is why validate warns when
 	// the declared entrypoint is not first
 	assert.Equal(t, idx.EntryPoint(), p.Widgets[0].TargetObjectId)
@@ -106,4 +108,19 @@ func TestWriteProfile_UnknownLayout(t *testing.T) {
 	}, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown layout")
+}
+
+// builtinobjects.setWorkspaceSettings switches on the bare `widgets`/`graph`
+// BEFORE it tries to resolve an id, so an untranslated `_graph` is looked up
+// as an object, is not found, and silently falls back to the widgets screen.
+func TestWriteProfile_ReservedHomepageIsTranslated(t *testing.T) {
+	for _, tc := range []struct{ homepage, want string }{
+		{anyblockjson.HomepageGraph, domain.HomepageGraph},
+		{anyblockjson.HomepageWidgets, domain.HomepageWidgets},
+		{"page-home", "page-home"},
+	} {
+		dir := t.TempDir()
+		require.NoError(t, writeProfile(dir, &anyblockjson.Index{Homepage: tc.homepage}, nil))
+		assert.Equal(t, tc.want, readBack(t, dir).SpaceDashboardId, tc.homepage)
+	}
 }

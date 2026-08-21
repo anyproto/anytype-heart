@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/widget"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -27,7 +28,7 @@ func sampleIndex() *anyblockjson.Index {
 		Widgets: []anyblockjson.Widget{
 			{Target: "page-okr-hub", Layout: "tree"},
 			{Target: "type-objective", Layout: "view", Limit: 6},
-			{Target: "favorite", Layout: "compact_list"},
+			{Target: "_favorite", Layout: "compact_list"},
 			{Target: "chat-goal-proposals"}, // no layout: link, the zero value
 		},
 	}
@@ -89,7 +90,8 @@ func TestBuildWidgets_Shape(t *testing.T) {
 		link := byId[wrapper.ChildrenIds[0]]
 		require.NotNil(t, link)
 		require.NotNil(t, link.GetLink())
-		assert.Equal(t, w.Target, link.GetLink().TargetBlockId, "widgets[%d] target", i)
+		assert.Equal(t, anyblockjson.WireWidgetTarget(w.Target), link.GetLink().TargetBlockId,
+			"widgets[%d] target", i)
 		assert.Empty(t, link.ChildrenIds)
 
 		assert.Equal(t, link.Id+widgetWrapperSuffix, wrapper.Id,
@@ -197,4 +199,34 @@ func TestWriteWidgets_OnDisk(t *testing.T) {
 		_, err := os.Stat(filepath.Join(empty, "objects"))
 		assert.True(t, os.IsNotExist(err))
 	})
+}
+
+// The four listings the importer knows are bare words
+// (widget.IsPredefinedWidgetTargetId); the format spells them in the platform
+// namespace so a bundle object cannot shadow them. This is the boundary where
+// the prefix has to come back off, and getting it wrong is worse than the bug
+// it replaces: handleLinkBlock rewrites a target it does not recognise to
+// addr.MissingObject, and WidgetObject.Init then strips the link AND its
+// wrapper, so the widget disappears with nothing logged as an error.
+func TestBuildWidgets_ReservedTargetsAreWrittenInTheImporterSpelling(t *testing.T) {
+	idx := &anyblockjson.Index{Widgets: []anyblockjson.Widget{
+		{Target: "_favorite"}, {Target: "_recent"}, {Target: "_set"}, {Target: "_collection"},
+		{Target: "page-home"},
+	}}
+	snap, err := buildWidgets(idx)
+	require.NoError(t, err)
+
+	var targets []string
+	for _, b := range snap.Blocks {
+		if l := b.GetLink(); l != nil {
+			targets = append(targets, l.TargetBlockId)
+		}
+	}
+	assert.Equal(t, []string{"favorite", "recent", "set", "collection", "page-home"}, targets)
+	for _, target := range targets[:4] {
+		assert.True(t, widget.IsPredefinedWidgetTargetId(target),
+			"handleLinkBlock leaves a target alone only for these: %q", target)
+	}
+	assert.False(t, widget.IsPredefinedWidgetTargetId("_favorite"),
+		"the untranslated spelling is exactly what the importer does NOT know")
 }

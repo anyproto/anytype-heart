@@ -86,6 +86,19 @@ func run(inDir, outDir string, normalizeIndent, lenient bool, format outputForma
 		return fmt.Errorf("order input files: %w", err)
 	}
 
+	// the `_` namespace belongs to the platform (§1), and the reserved
+	// index.json listings live in it. Checked before anything is written: an
+	// id this tool would refuse must not first appear as a converted snapshot
+	// on disk.
+	reservedIds, err := anyblockbatch.CheckBundleIds(files)
+	if err != nil {
+		return fmt.Errorf("check bundle ids: %w", err)
+	}
+	if len(reservedIds) > 0 {
+		return fmt.Errorf("%d object%s claiming a reserved id:\n%s",
+			len(reservedIds), plural2(len(reservedIds)), anyblockbatch.ReportTargets(reservedIds))
+	}
+
 	formats, err := anyblockbatch.ScanFormats(files)
 	if err != nil {
 		return fmt.Errorf("scan property formats: %w", err)
@@ -213,7 +226,11 @@ func run(inDir, outDir string, normalizeIndent, lenient bool, format outputForma
 		}
 		// the Widget snapshot carries the id "widgets"; an object claiming the
 		// same one would share both that id — and so the importer's relinking
-		// entry for it — and the output file with the sidebar
+		// entry for it — and the output file with the sidebar. That id is also
+		// the wire spelling of the reserved `_widgets` homepage, so
+		// CheckBundleIds has already refused it above, for its own reason and
+		// before anything was written. This is the backstop for the case where
+		// the two stop being the same string.
 		if _, taken := names[widgetsObjectId]; taken {
 			return fmt.Errorf("an object in the bundle has id %q, which is reserved for the sidebar snapshot (SPEC.md §2c) — rename it", widgetsObjectId)
 		}

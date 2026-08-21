@@ -114,3 +114,23 @@ func TestConvert_SurfacesDocumentWarnings(t *testing.T) {
 	assert.Equal(t, "status", view.GroupRelationKey,
 		"the warned group_by is kept, not dropped — a table view just never honours it")
 }
+
+// A document with no id gets one derived from its file path, so a filename is
+// an id-minting surface like any other. `_` opens the platform's address space
+// (§1) and no bundle-local id may enter it, but refusing the file would make a
+// perfectly legal filename illegal — so the prefix is escaped instead. Only the
+// prefix: `completion_status` is a real key and `my_page` a fine id.
+func TestFallbackSeed_DoesNotMintAPlatformId(t *testing.T) {
+	for _, tc := range []struct{ path, want string }{
+		{"_drafts.json", "drafts"},
+		{"__notes.json", "notes"},
+		{"objects/_set.json", "objects-_set"},
+		{"my_page.json", "my_page"},
+		{"a b.json", "a-b"},
+	} {
+		seed := fallbackSeed("/in", filepath.Join("/in", tc.path))
+		assert.Equal(t, tc.want, seed, tc.path)
+		assert.False(t, anyblockjson.IsPlatformId(genIdFactory(seed)()),
+			"a generated id must not enter the platform namespace: %s", tc.path)
+	}
+}

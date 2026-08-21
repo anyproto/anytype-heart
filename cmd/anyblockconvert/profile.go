@@ -62,9 +62,10 @@ func writeProfile(outDir string, idx *anyblockjson.Index, names map[string]strin
 	}
 
 	// spaceDashboardId is the space's homepage: an object id, or a reserved
-	// screen name passed through untouched. An omitted homepage follows the
-	// entrypoint rather than defaulting to the widgets screen (§2c).
-	profile.SpaceDashboardId = idx.SpaceHomepage()
+	// screen translated out of the format's `_` namespace into the bare name
+	// setWorkspaceSettings switches on (WireHomepage). An omitted homepage
+	// follows the entrypoint rather than defaulting to the widgets screen (§2c).
+	profile.SpaceDashboardId = anyblockjson.WireHomepage(idx.SpaceHomepage())
 
 	// the icon is referenced by id in the format and by name on the wire
 	if idx.IconImage != "" {
@@ -88,7 +89,7 @@ func writeProfile(outDir string, idx *anyblockjson.Index, names map[string]strin
 		}
 		profile.Widgets = append(profile.Widgets, &pb.WidgetBlock{
 			Layout:         layout,
-			TargetObjectId: w.Target,
+			TargetObjectId: anyblockjson.WireWidgetTarget(w.Target),
 			ObjectLimit:    w.Limit,
 		})
 	}

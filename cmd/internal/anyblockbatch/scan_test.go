@@ -139,7 +139,25 @@ func TestCheckIndexTargets_Widgets(t *testing.T) {
 	// the four widget.IsPredefinedWidgetTargetId knows, which handleLinkBlock
 	// leaves alone
 	t.Run("the importable reserved listings pass", func(t *testing.T) {
-		assert.Empty(t, CheckIndexTargets(index("favorite", "recent", "set", "collection"), files))
+		assert.Empty(t, CheckIndexTargets(index("_favorite", "_recent", "_set", "_collection"), files))
+	})
+
+	// The listings used to be bare words, and the pb importer consults the
+	// bundle's own id map BEFORE widget.IsPredefinedWidgetTargetId
+	// (common.UpdateLinksToObjects), so an object with id `set` captured every
+	// widget that meant the Sets listing — with no finding here and no error
+	// at import. The bare word is now an ordinary id and the listing is
+	// `_set`, which CheckBundleIds forbids any object from claiming.
+	t.Run("a bundle object can no longer shadow a listing", func(t *testing.T) {
+		shadow := writeDocs(t, map[string]string{
+			"types/wiki-page.type.json": wikiPageType,
+			"objects/sets.json":         `{"version": 1, "type": "wikiPage", "id": "set"}`,
+		})
+		assert.Empty(t, CheckIndexTargets(index("_set"), shadow),
+			"the listing resolves as a listing, whatever ids the bundle ships")
+		for _, target := range anyblockjson.ReservedWidgetTargets() {
+			assert.True(t, anyblockjson.IsPlatformId(target), target)
+		}
 	})
 
 	t.Run("an unknown id is reported", func(t *testing.T) {
@@ -153,12 +171,78 @@ func TestCheckIndexTargets_Widgets(t *testing.T) {
 	// Objects widget comes from WidgetObject's migration 3 — but the importer
 	// does not know them, so a bundle naming one loses that widget silently
 	t.Run("a reserved listing the importer does not know is reported", func(t *testing.T) {
-		for _, target := range []string{"allObjects", "recentOpen"} {
+		for _, target := range []string{"_all_objects", "_recent_open"} {
 			bad := CheckIndexTargets(index(target), files)
 			require.Len(t, bad, 1, target)
 			assert.Equal(t, target, bad[0].Target)
 			assert.Contains(t, bad[0].Reason, "the importer does not recognise", target)
 		}
+	})
+}
+
+// CheckBundleIds is what makes the reserved `_` namespace hold. Without it the
+// rename only moves the shadowing target: an object with id `_set` captures
+// the Sets widget exactly the way one with id `set` used to, because the
+// importer still resolves through the bundle's ids first.
+func TestCheckBundleIds(t *testing.T) {
+	t.Run("an ordinary bundle passes", func(t *testing.T) {
+		files := writeDocs(t, map[string]string{
+			"types/wiki-page.type.json": wikiPageType,
+			"objects/home.json":         `{"version": 1, "type": "wikiPage", "id": "page-home"}`,
+			"objects/under.json":        `{"version": 1, "type": "wikiPage", "id": "my_page_2"}`,
+		})
+		bad, err := CheckBundleIds(files)
+		require.NoError(t, err)
+		assert.Empty(t, bad, "`_` is only reserved as a PREFIX")
+	})
+
+	// every reserved name, so adding a listing without adding a ban is not a
+	// thing that can happen
+	t.Run("no reserved listing or screen can be a bundle id", func(t *testing.T) {
+		reserved := append(anyblockjson.ReservedWidgetTargets(),
+			anyblockjson.HomepageWidgets, anyblockjson.HomepageGraph)
+		// …and neither can what those are called on the WIRE. This is the half
+		// the prefix does not cover and the half that decides whether the
+		// rename accomplished anything: anyblockconvert translates a widget
+		// target `_set` to `set` before writing the link, and
+		// common.handleLinkBlock then resolves `set` through the bundle's own
+		// id map BEFORE asking widget.IsPredefinedWidgetTargetId. Ban only the
+		// prefix and an object with id `set` captures the Sets widget exactly
+		// as it did before the rename — the collision moved, nothing else.
+		for _, r := range reserved {
+			if wire := anyblockjson.WireWidgetTarget(r); wire != r {
+				reserved = append(reserved, wire)
+			}
+			if wire := anyblockjson.WireHomepage(r); wire != r {
+				reserved = append(reserved, wire)
+			}
+		}
+		require.Contains(t, reserved, "set", "the wire spellings must be in this list, or it proves nothing")
+		require.Contains(t, reserved, "graph")
+		for _, id := range reserved {
+			files := writeDocs(t, map[string]string{
+				"types/wiki-page.type.json": wikiPageType,
+				"objects/shadow.json":       `{"version": 1, "type": "wikiPage", "id": "` + id + `"}`,
+			})
+			bad, err := CheckBundleIds(files)
+			require.NoError(t, err, id)
+			require.Len(t, bad, 1, id)
+			assert.Equal(t, id, bad[0].Target)
+			assert.Equal(t, "id", bad[0].Property)
+		}
+	})
+
+	// the prefix is the rule, not the six words: a bundled object's own
+	// address is just as unmintable
+	t.Run("a bundled platform address cannot be a bundle id", func(t *testing.T) {
+		files := writeDocs(t, map[string]string{
+			"types/wiki-page.type.json": wikiPageType,
+			"objects/page.json":         `{"version": 1, "type": "wikiPage", "id": "_otpage"}`,
+		})
+		bad, err := CheckBundleIds(files)
+		require.NoError(t, err)
+		require.Len(t, bad, 1)
+		assert.Contains(t, bad[0].Reason, "platform")
 	})
 }
 

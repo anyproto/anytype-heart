@@ -1,6 +1,6 @@
 # AnyBlock JSON — format specification
 
-Status: **draft v0.21** · Format version: **1** · Package: `pkg/lib/anyblockjson`
+Status: **draft v0.22** · Format version: **1** · Package: `pkg/lib/anyblockjson`
 
 A human- and agent-readable JSON serialization of Anytype objects (the "anyblock"
 model), designed for export, import, and generation by external tools and LLM
@@ -16,7 +16,28 @@ strings; the vocabulary follows Notion's API and Anytype's public REST API
 readable, and mostly writable, by someone who has never seen Anytype
 internals.
 
-Changes in v0.21: **every key slot admits before it writes, and every
+Changes in v0.22: **the platform's `_` namespace, declared** (§1, §2c).
+(1) The reserved `index.json` widget targets and homepages move into the
+platform's own address space: `_favorite`, `_recent`, `_set`, `_collection`,
+`_all_objects`, `_recent_open`, `_widgets`, `_graph` — and **no bundle-local
+object id may begin with `_`**. They were bare words in the same namespace as
+the ids a bundle mints, and the collision was reachable in both directions:
+the pb importer resolves a widget target through the bundle's own id map
+before asking `widget.IsPredefinedWidgetTargetId`, so an object with id `set`
+silently captured every widget meaning *the Sets listing* (and made
+`Index.EntryPoint` disagree with `EffectiveEntryPoint` about what the bundle
+opens), while `setWorkspaceSettings` matches the reserved homepages *before*
+resolving an id, so an object with id `graph` could never be one. A prefix
+rule closes both permanently, where a word list has to grow a retroactive ban
+per listing. The prefix is translated back off at the wire boundary
+(`WireWidgetTarget` / `WireHomepage`), a `_`-prefixed target that is not one
+of the six is refused by name with the inventory in the message, and a
+generated id derived from a file called `_drafts.json` is escaped rather than
+minted. The prefix alone would only have moved the collision downstream — the
+importer's own spellings are bare, so the six bare words are unmintable as
+bundle ids too.
+
+Changes in v0.21 (superseded by v0.22): **every key slot admits before it writes, and every
 fragment carries what its keys mean** (§3, §6, §12, §13).
 (1) The two key legends now admit an entry before recording it. `property_keys`
 and `type_keys` were the last key slots in the format with no admission on the
@@ -619,10 +640,54 @@ format.** They are not inconsistencies to be tidied away later:
   `Validate` takes no resolver; the answer was to put the mapping in the
   DOCUMENT — the `property_keys` / `type_keys` legends, which a reader with no
   space at all can invert.
-- **Platform identifiers** — the reserved widget targets `allObjects` and
-  `recentOpen` (§2c), the `dataview` block id (§7), and the `objectId`
+- **Platform identifiers** — the `dataview` block id (§7) and the `objectId`
   parameter of the `anytype://object` deep link (§8.1) — name things that
   exist in a live space. They are quoted, not translated.
+
+### The `_` namespace
+
+**A value beginning with `_` addresses the platform, and nothing a document or
+a bundle mints may begin with one.** The platform's own addresses already live
+there — `_otpage`, `_brdue_date`, `_missing_object`, `_participant_…`,
+`_date_2024-01-01` — and the format borrows the same namespace for the
+built-in screens and listings an `index.json` may name: `_favorite`,
+`_recent`, `_set`, `_collection`, `_all_objects`, `_recent_open`, `_widgets`,
+`_graph` (§2c).
+
+The point is that the two sets are then disjoint **by construction**, not by
+inspection. While the reserved listings were bare words, a bundle shipping an
+object with id `set` captured every widget that meant *the Sets listing*: the
+pb importer resolves a widget target through the bundle's own id map first
+(`common.UpdateLinksToObjects`) and only then asks
+`widget.IsPredefinedWidgetTargetId`, so the object won, silently, with no
+finding from any check. The reserved homepages had the same collision with the
+precedence reversed — `builtinobjects.setWorkspaceSettings` matches the
+reserved names *before* resolving an id, so a bundle object with id `graph`
+could never be the homepage. One rule closes both directions.
+
+This is a **prefix** rule, which is why it can be permanent: "no minted id
+STARTS with `_`" is a promise the platform can keep, where reserving a word
+means banning a new id every time a listing is added, retroactively. The name
+after the prefix is still this format's own and is still snake_case, which is
+why the two listings that never reach the wire are spelled `_all_objects` and
+`_recent_open` rather than quoting the live space's `allObjects` /
+`recentOpen`: nothing quotes them, because nothing emits them (see §2c).
+
+The prefix is translated away at the wire boundary, where the importer's own
+spellings are bare (`favorite`, `graph`), by `WireWidgetTarget` /
+`WireHomepage`. Writing `_set` into a link block would be strictly worse than
+the shadowing it replaces — an unrecognised target becomes
+`addr.MissingObject` and the widget is then stripped without an error.
+
+**Which is why a bundle-local id may not be one of those bare spellings
+either** — `favorite`, `recent`, `set`, `collection`, `widgets`, `graph`. The
+prefix rule alone would only move the collision one step downstream: the link
+block that leaves this format saying `_set` reaches the importer saying `set`,
+and `handleLinkBlock` still resolves through the bundle's ids first. The
+prefix is what makes the *format* unambiguous — a reader never has to guess
+which of the two kinds a target meant, and a typo inside the namespace can be
+refused by name. The six-word ban is what makes the *wire* unambiguous. Both,
+or neither is worth having.
 
 (The JSON Schema's own `$defs` names — `blockCore`, `tableCell`, … — are
 neither: they are schema-internal labels a document never contains, and they
@@ -817,7 +882,7 @@ object. That is `index.json`, one file at the bundle root, validated against
   "widgets": [
     { "target": "page-wiki-home" },
     { "target": "type-wiki-page", "layout": "view", "limit": 6 },
-    { "target": "favorite", "layout": "compact_list" }
+    { "target": "_favorite", "layout": "compact_list" }
   ]
 }
 ```
@@ -826,7 +891,7 @@ object. That is `index.json`, one file at the bundle root, validated against
 |---|---|
 | `name` · `description` · `icon_emoji` | the space's own identity, applied on install |
 | `icon_image` | the space icon as an image: the **object id** of an image in the bundle, the same thing the `iconImage` property means on any object (§3). Needs the image object *and* its file in the archive, so a generated bundle uses `icon_emoji` |
-| `homepage` | what opens on entering the space: an object id, or the reserved `widgets` (the sidebar dashboard, the default) or `graph` |
+| `homepage` | what opens on entering the space: an object id, or the reserved `_widgets` (the sidebar dashboard, the default) or `_graph` |
 | `widgets` | sidebar widgets, in order. **The first one is what the install opens**, so the entry point goes first |
 
 `version` is the same format version, with the same rules, that object
@@ -848,12 +913,23 @@ gates on the highest version it finds.
 A widget is `{ target, layout, limit }`. `layout` is `link · tree · list ·
 compact_list · view`, defaulting to `link` and omitted when default (§4).
 `target` is an object id from the bundle — a page, a type, a set, a
-collection — or one of the reserved listings `favorite · recent · set ·
-collection`, which name a built-in rather than something the bundle ships.
-Those four and no others: a live space also has `allObjects` and `recentOpen`
-widgets, but the import path does not know those names
+collection — or one of the reserved listings `_favorite · _recent · _set ·
+_collection`, which name a built-in rather than something the bundle ships.
+The leading `_` is what keeps the two kinds of target apart (§1): an object id
+from the bundle may never begin with one, so a bundle cannot shadow a listing
+with an object of its own, and a reader never has to guess which of the two a
+target meant. Those four and no others: a live space also has an All Objects
+and a Recently Opened widget, but the import path does not know those names
 (`widget.IsPredefinedWidgetTargetId`), so a widget declaring one is **dropped
-on install with no error** — see below. The tooling rejects them.
+on install with no error** — see below. The tooling rejects them, which is
+also why they are spelled `_all_objects` / `_recent_open` rather than quoted
+from the live space: they exist only to be refused, so there is no live
+spelling for them to preserve.
+
+A `_`-prefixed target that is not one of the six is refused by name, with the
+inventory in the message. It cannot be an object id, so the alternative
+diagnostic — "no object with that id in the bundle" — would point an author
+with a typo at the wrong repair.
 
 ### How it reaches the space
 
@@ -910,7 +986,7 @@ Five consequences worth stating, because none is obvious from the wire format:
   is the right default for a *blank* space and the wrong one for a use case:
   on desktop the widgets are already in the sidebar, so it leaves the main
   pane empty. So an omitted `homepage` resolves to the `entrypoint` instead,
-  and only an explicit `"widgets"` or `"graph"` gives up a real page.
+  and only an explicit `"_widgets"` or `"_graph"` gives up a real page.
 
 **A widget target that does not resolve loses the widget, silently.** This is
 the only reference in the format whose failure produces no diagnostic at all:
@@ -919,8 +995,9 @@ the only reference in the format whose failure produces no diagnostic at all:
 *and* its now-empty wrapper. The import succeeds, the widget is not there, and
 the only trace is a log line. That covers both an id no document in the bundle
 defines and a reserved listing the importer does not recognise
-(`allObjects`, `recentOpen`). Both are therefore errors in `anyblockvalidate`
-and `anyblockconvert` rather than something an author discovers by installing.
+(`_all_objects`, `_recent_open`). Both are therefore errors in
+`anyblockvalidate` and `anyblockconvert` rather than something an author
+discovers by installing.
 
 Nothing per-object substitutes for this file. In particular **`is_favorite` is
 not an entry point**: it adds an object to Favorites and nothing more. It
@@ -3246,8 +3323,11 @@ Other exported helpers, in service of the same wiring: `ValidateWarn`
 (validation with a warning sink), `SchemaJSON` (the embedded schema bytes),
 `InternalPropertyKeys` (what §3 strips), `IsCompactLabelShaped`,
 `LeafBlockType` / `TextBlockType`, `FormatName` / `FormatByName`, the four
-vocabulary listers, and `IsReservedWidgetTarget` /
-`IsImportableWidgetTarget` / `IsReservedHomepage` (§2b).
+vocabulary listers, and the `index.json` namespace helpers (§1, §2c):
+`IsPlatformId`, `IsReservedWidgetTarget`, `IsImportableWidgetTarget`,
+`ReservedWidgetTargets`, `IsReservedHomepage`, and the two that translate a
+reserved name into the importer's own bare spelling, `WireWidgetTarget` and
+`WireHomepage`.
 
 The bundle index (§2c) has its own pair, since it is not an object snapshot:
 

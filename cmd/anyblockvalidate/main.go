@@ -36,6 +36,17 @@ func main() {
 	}
 	fail, warned := 0, 0
 
+	// the `_` namespace is the platform's (§1). anyblockconvert refuses a
+	// bundle that mints an id in it, so this tool has to see it too — a bundle
+	// this one blesses and that one rejects is the worst of both.
+	if reserved, err := anyblockbatch.CheckBundleIds(files); err != nil {
+		fmt.Printf("READERR %v\n", err)
+		fail++
+	} else if len(reserved) > 0 {
+		fmt.Printf("INVALID %d object(s) claiming a reserved id\n%s", len(reserved), anyblockbatch.ReportTargets(reserved))
+		fail += len(reserved)
+	}
+
 	if len(indexes) == 0 {
 		warned++
 		fmt.Printf("warn    no index.json found\n         without one the space has no name, no entry point and no sidebar (§2c)\n")

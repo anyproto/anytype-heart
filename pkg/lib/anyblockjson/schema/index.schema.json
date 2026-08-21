@@ -32,13 +32,17 @@
     "entrypoint": {
       "type": "string",
       "minLength": 1,
-      "not": { "enum": ["widgets", "graph", "favorite", "recent", "set", "collection", "allObjects", "recentOpen"] },
-      "description": "The object opened once, immediately after the space is created from this bundle — the first thing a user ever sees. Must be an object id from this bundle: a reserved listing cannot be opened. TEMPORARY: the installer does not read this yet — it opens the first widget instead (pb.Profile has no field for it). Until the heart-side profile handling is improved, also list the entrypoint as your first widget, or what opens will not be what you declared."
+      "pattern": "^[^_]",
+      "description": "The object opened once, immediately after the space is created from this bundle — the first thing a user ever sees. Must be an object id from this bundle, so it may not begin with `_`: that prefix is the platform's own address space (built-in screens, listings and bundled objects), and no reserved screen can be the thing a space opens *with*. TEMPORARY: the installer does not read this yet — it opens the first widget instead (pb.Profile has no field for it). Until the heart-side profile handling is improved, also list the entrypoint as your first widget, or what opens will not be what you declared."
     },
     "homepage": {
       "type": "string",
       "minLength": 1,
-      "description": "What opens whenever the user enters the space afterwards. An object id from this bundle; defaults to `entrypoint`. The reserved `widgets` (sidebar dashboard) and `graph` are accepted but are rarely right for a use case — on desktop the widgets are always in the sidebar anyway, so `widgets` wastes the main pane; it only reads well on mobile, which shows one screen at a time. Name a page."
+      "anyOf": [
+        { "enum": ["_widgets", "_graph"] },
+        { "pattern": "^[^_]" }
+      ],
+      "description": "What opens whenever the user enters the space afterwards. An object id from this bundle, which may not begin with `_`; defaults to `entrypoint`. The reserved `_widgets` (sidebar dashboard) and `_graph` are accepted but are rarely right for a use case — on desktop the widgets are always in the sidebar anyway, so `_widgets` wastes the main pane; it only reads well on mobile, which shows one screen at a time. Name a page."
     },
 
     "widgets": {
@@ -56,7 +60,11 @@
         "target": {
           "type": "string",
           "minLength": 1,
-          "description": "What the widget points at: an object id from this bundle (a page, a type, a set or a collection), or one of the reserved listings `favorite`, `recent`, `set`, `collection`. Those four are the ones the importer recognises; `allObjects` and `recentOpen` exist in a live space but not in the import path, so a widget naming one is dropped on install without an error and the tooling rejects it instead."
+          "anyOf": [
+            { "enum": ["_favorite", "_recent", "_set", "_collection", "_all_objects", "_recent_open"] },
+            { "pattern": "^[^_]" }
+          ],
+          "description": "What the widget points at: an object id from this bundle (a page, a type, a set or a collection), or one of the reserved listings `_favorite`, `_recent`, `_set`, `_collection`. The leading `_` is the platform's address space and is what keeps the two kinds of target apart — an object id from the bundle may never begin with one, so a bundle can no longer shadow a listing with an object of its own. Those four listings are the ones the importer recognises; `_all_objects` and `_recent_open` exist in a live space but not in the import path, so a widget naming one is dropped on install without an error and the tooling rejects it instead."
         },
         "layout": {
           "enum": ["link", "tree", "list", "compact_list", "view"],
