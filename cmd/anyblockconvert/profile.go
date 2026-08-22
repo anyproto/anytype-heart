@@ -68,13 +68,13 @@ func writeProfile(outDir string, idx *anyblockjson.Index, names map[string]strin
 	profile.SpaceDashboardId = anyblockjson.WireHomepage(idx.SpaceHomepage())
 
 	// the icon is referenced by id in the format and by name on the wire
-	if idx.IconImage != "" {
-		name, ok := names[idx.IconImage]
+	if id := idx.IconImageId(); id != "" {
+		name, ok := names[id]
 		if !ok {
-			return fmt.Errorf("icon_image %q names no object in the bundle", idx.IconImage)
+			return fmt.Errorf("icon %q names no object in the bundle", id)
 		}
 		if name == "" {
-			return fmt.Errorf("icon_image %q has no name, and the installer resolves the space icon by name", idx.IconImage)
+			return fmt.Errorf("icon %q has no name, and the installer resolves the space icon by name", id)
 		}
 		profile.Avatar = name
 	}

@@ -19,14 +19,9 @@
       "type": "string",
       "description": "One line on what the space is for. Author-facing and applied to the space where the client shows one."
     },
-    "icon_emoji": {
-      "type": "string",
-      "description": "The space's icon, as an emoji."
-    },
-    "icon_image": {
-      "type": "string",
-      "minLength": 1,
-      "description": "The space's icon as an image: the **object id** of an image in the bundle, exactly as `icon_image` means on any object. The bundle must contain that image object and its file, so this is for hand-assembled bundles; a generated one uses icon_emoji. (The installer actually resolves the space icon by image *name*, not id — the wiring does that lookup so this field stays consistent with every other id in the format.)"
+    "icon": {
+      "$ref": "https://schemas.anytype.io/anyblock/1/object.schema.json#/$defs/plainIcon",
+      "description": "The space's icon: an emoji, or the **object id** of an image in the bundle — exactly the shape `icon` has on any object (\u00a72b), so an author never has to remember a second convention. Two flat keys used to stand here with no rule for which one wins, and they disagreed with the object surface about whether an image is a scalar or a list. An image needs the image object AND its file in the archive, which is why a generated bundle uses an emoji. (The installer resolves the space icon by image *name*, not id — the wiring does that lookup, so this field stays consistent with every other id in the format.)"
     },
 
     "entrypoint": {

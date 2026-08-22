@@ -80,25 +80,35 @@ func TestWriteProfile_Homepage(t *testing.T) {
 	})
 }
 
-// iconImage is an object id in the format and the image's *name* on the wire
+// an image icon is an object id in the format and the image's *name* on the wire
 func TestWriteProfile_IconImage(t *testing.T) {
+	fileIcon := func(id string) *anyblockjson.Icon {
+		return &anyblockjson.Icon{Format: "file", File: id}
+	}
 	dir := t.TempDir()
 	names := map[string]string{"file-logo": "acme-logo"}
 	require.NoError(t, writeProfile(dir, &anyblockjson.Index{
-		Name: "X", IconImage: "file-logo",
+		Name: "X", Icon: fileIcon("file-logo"),
 	}, names))
 	assert.Equal(t, "acme-logo", readBack(t, dir).Avatar)
 
 	t.Run("an unknown id fails rather than shipping a blank icon", func(t *testing.T) {
-		err := writeProfile(t.TempDir(), &anyblockjson.Index{IconImage: "file-missing"}, names)
+		err := writeProfile(t.TempDir(), &anyblockjson.Index{Icon: fileIcon("file-missing")}, names)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "names no object")
 	})
 	t.Run("a nameless object fails: the installer resolves by name", func(t *testing.T) {
-		err := writeProfile(t.TempDir(), &anyblockjson.Index{IconImage: "file-x"},
+		err := writeProfile(t.TempDir(), &anyblockjson.Index{Icon: fileIcon("file-x")},
 			map[string]string{"file-x": ""})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "has no name")
+	})
+	t.Run("an emoji icon leaves the wire avatar empty", func(t *testing.T) {
+		dir := t.TempDir()
+		require.NoError(t, writeProfile(dir, &anyblockjson.Index{
+			Icon: &anyblockjson.Icon{Format: "emoji", Emoji: "📚"},
+		}, names))
+		assert.Empty(t, readBack(t, dir).Avatar)
 	})
 }
 

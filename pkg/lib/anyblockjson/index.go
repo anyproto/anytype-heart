@@ -213,15 +213,19 @@ type Index struct {
 	Version     int    `json:"version"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
-	IconEmoji   string `json:"icon_emoji"`
-	// IconImage is the object id of an image in the bundle — the same thing
-	// iconImage means on any object (§3), so an author never has to remember a
-	// second convention. The installer resolves the space icon by image *name*
+	// Icon is the space's icon in the typed shape every icon in this format
+	// has (§2b), restricted to the two kinds a bundle can hold: an emoji, or
+	// the object id of an image IN THE BUNDLE. Two flat keys used to stand
+	// here, with no rule for which one wins and with `icon_image` spelled as
+	// a scalar while the object surface spelled it as a list — one concept,
+	// two conventions, in one format.
+	//
+	// The installer resolves the space icon by image *name*
 	// (builtinobjects.getNewAvatarId queries name + image layout), so the
 	// wiring looks the name up from this id; that asymmetry is the wire
-	// format's, not the author's. Needs the image object and its file in the
-	// archive, which is why a generated bundle sets IconEmoji instead.
-	IconImage string `json:"icon_image"`
+	// format's, not the author's. An image needs the image object and its
+	// file in the archive, which is why a generated bundle uses an emoji.
+	Icon *Icon `json:"icon"`
 	// Entrypoint is the object opened once, right after the space is created
 	// — the first thing a user ever sees. Distinct from Homepage, which is
 	// what opens on every later entry, and deliberately not the widget order:
@@ -282,6 +286,17 @@ var compileIndexSchema = sync.OnceValues(func() (*jsonschema.Schema, error) {
 		return nil, fmt.Errorf("decode embedded index schema: %w", err)
 	}
 	c := jsonschema.NewCompiler()
+	// the object schema is added alongside, because the index's `icon` is a
+	// $ref into it (§2b): one definition of the icon shape for both surfaces,
+	// rather than a copy in each that drifts. Both files are published at
+	// these URLs, so an external validator resolves the same reference.
+	objectDoc, err := jsonschema.UnmarshalJSON(bytes.NewReader(schemaJSON))
+	if err != nil {
+		return nil, fmt.Errorf("decode embedded schema: %w", err)
+	}
+	if err := c.AddResource(SchemaURL, objectDoc); err != nil {
+		return nil, fmt.Errorf("add schema resource: %w", err)
+	}
 	if err := c.AddResource(IndexSchemaURL, doc); err != nil {
 		return nil, fmt.Errorf("add index schema resource: %w", err)
 	}
@@ -321,6 +336,12 @@ func UnmarshalIndex(data []byte) (*Index, error) {
 	// nothing about which namespace they walked into or what to do about it.
 	if issues := platformNameIssues(doc); len(issues) > 0 {
 		return nil, &ValidationError{Issues: issues}
+	}
+	// the typed icon's discriminator, worded the same way it is on an object
+	// document: `required` can say `format` is missing but not that it is a
+	// CHOICE, and naming the alternatives is the whole point of typing it
+	if issue, missing := missingFormatIssue("/icon", "a space icon", "plainIcon", doc["icon"]); missing {
+		return nil, &ValidationError{Issues: []Issue{issue}}
 	}
 	// MIGRATION SEAM: an older version is migrated forward here, between the
 	// version gate and schema validation. The schema pins the version to a
@@ -391,6 +412,39 @@ func platformNameIssues(doc map[string]any) []Issue {
 	return issues
 }
 
+// indexIconOmap renders a bundle index's icon in canonical form (§2c). The
+// index is a hand-built struct rather than a details bag, so it has its own
+// small renderer — but it writes the SAME two variants the schema's plainIcon
+// admits, and nothing else: an index that named a colour would validate
+// against a $ref it does not satisfy.
+func indexIconOmap(ic *Icon) *omap {
+	if ic == nil {
+		return nil
+	}
+	m := &omap{}
+	switch {
+	case ic.Emoji != "":
+		m.set("format", "emoji")
+		m.set("emoji", ic.Emoji)
+	case ic.File != "":
+		m.set("format", "file")
+		m.set("file", ic.File)
+	default:
+		return nil
+	}
+	return m
+}
+
+// IconImageId is the object id of an index's image icon, or "" when the index
+// has no icon or an emoji one. The bundle wiring resolves that id to an image
+// NAME, which is what the installer actually takes.
+func (i *Index) IconImageId() string {
+	if i == nil || i.Icon == nil || i.Icon.Format != "file" {
+		return ""
+	}
+	return i.Icon.File
+}
+
 // MarshalIndex renders an index in the canonical byte form (§4).
 func MarshalIndex(idx *Index) ([]byte, error) {
 	if idx == nil {
@@ -401,8 +455,7 @@ func MarshalIndex(idx *Index) ([]byte, error) {
 	doc.set("version", FormatVersion)
 	doc.setNonEmpty("name", idx.Name)
 	doc.setNonEmpty("description", idx.Description)
-	doc.setNonEmpty("icon_emoji", idx.IconEmoji)
-	doc.setNonEmpty("icon_image", idx.IconImage)
+	doc.setNonEmpty("icon", indexIconOmap(idx.Icon))
 	doc.setNonEmpty("entrypoint", idx.Entrypoint)
 	doc.setNonEmpty("homepage", idx.Homepage)
 

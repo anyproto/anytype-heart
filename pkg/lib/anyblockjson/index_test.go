@@ -18,7 +18,7 @@ func TestIndex_Roundtrip(t *testing.T) {
 		"version": 1,
 		"name": "Company Wiki",
 		"description": "Everything we know, with an owner.",
-		"icon_emoji": "📚",
+		"icon": { "format": "emoji", "emoji": "📚" },
 		"homepage": "page-wiki-home",
 		"widgets": [
 			{ "target": "page-wiki-home" },
@@ -295,19 +295,60 @@ func TestIndex_WireWidgetTargets(t *testing.T) {
 	assert.Equal(t, "page-wiki-home", WireWidgetTarget("page-wiki-home"), "an object id passes through")
 }
 
-// iconImage names an image object rather than referencing its id, because the
-// installer resolves the space icon by name (getNewAvatarId).
-func TestIndex_IconImage(t *testing.T) {
+// The index schema names the object schema by its published URL to $ref the
+// shared icon definition (§2b). That URL is derived from FormatVersion
+// everywhere else, so a version bump would leave this one spelling behind —
+// the compiler catches it (every index test fails at once), but only this
+// says which line to fix.
+func TestIndexSchema_RefsThePublishedObjectSchema(t *testing.T) {
+	assert.Contains(t, string(indexSchemaJSON), SchemaURL+"#/$defs/plainIcon")
+}
+
+// A bundle index carries the SAME typed icon an object does (§2b, §2c),
+// restricted to the two kinds a bundle can hold. The image variant names an
+// object id; the wiring resolves it to the image's name, because the
+// installer looks the space icon up by name (getNewAvatarId).
+//
+// How this can fail: give the index its own icon shape, or let both an emoji
+// and an image be present at once, and one of these breaks. The old two-key
+// index accepted both with no rule for which wins — the last assertion here
+// used to say "the installer prefers the image", which was a rule written
+// nowhere in the schema.
+func TestIndex_Icon(t *testing.T) {
 	idx, err := UnmarshalIndex([]byte(`{"version": 1, "name": "Wiki",
-		"icon_image": "acme-logo"}`))
+		"icon": {"format": "file", "file": "acme-logo"}}`))
 	require.NoError(t, err)
-	assert.Equal(t, "acme-logo", idx.IconImage)
+	assert.Equal(t, "acme-logo", idx.IconImageId())
 
 	out, err := MarshalIndex(idx)
 	require.NoError(t, err)
-	assert.Contains(t, string(out), `"icon_image": "acme-logo"`)
+	assert.Contains(t, string(out), `"icon": {`)
+	assert.Contains(t, string(out), `"file": "acme-logo"`)
 
-	// both icon forms may be present; the installer prefers the image
-	_, err = UnmarshalIndex([]byte(`{"version": 1, "icon_emoji": "📚", "icon_image": "logo"}`))
-	assert.NoError(t, err)
+	t.Run("an emoji index icon has no image id", func(t *testing.T) {
+		idx, err := UnmarshalIndex([]byte(`{"version": 1, "icon": {"format": "emoji", "emoji": "📚"}}`))
+		require.NoError(t, err)
+		assert.Equal(t, "📚", idx.Icon.Emoji)
+		assert.Empty(t, idx.IconImageId())
+	})
+
+	t.Run("an emoji and an image are no longer both writable", func(t *testing.T) {
+		_, err := UnmarshalIndex([]byte(`{"version": 1,
+			"icon": {"format": "emoji", "emoji": "📚", "file": "logo"}}`))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), `property "file" is not allowed`)
+	})
+
+	t.Run("the discriminator names the alternatives when it is missing", func(t *testing.T) {
+		_, err := UnmarshalIndex([]byte(`{"version": 1, "icon": {"emoji": "📚"}}`))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "/icon: missing property 'format'")
+		assert.Contains(t, err.Error(), "'emoji', 'file'")
+	})
+
+	t.Run("the four-variant object icon is not a space icon", func(t *testing.T) {
+		_, err := UnmarshalIndex([]byte(`{"version": 1, "icon": {"format": "icon", "name": "folder"}}`))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "value must be one of 'emoji', 'file'")
+	})
 }
