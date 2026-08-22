@@ -16,7 +16,8 @@ import (
 
 func TestImport_ChatKind(t *testing.T) {
 	doc := `{"version": 1, "id": "chat-wiki", "kind": "chat", "key": "wikiChat",
-		"properties": {"name": "Wiki", "iconEmoji": "💬"}}`
+		"icon": {"format": "emoji", "emoji": "💬"},
+		"properties": {"name": "Wiki"}}`
 	sbType, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 	require.NoError(t, err)
 
@@ -24,6 +25,8 @@ func TestImport_ChatKind(t *testing.T) {
 	assert.Equal(t, "wikiChat", snap.Key, "identity lives in key, like a type")
 	assert.Equal(t, "chat-wiki", snap.Details.Fields["id"].GetStringValue())
 	assert.Equal(t, "Wiki", snap.Details.Fields["name"].GetStringValue())
+	assert.Equal(t, "💬", snap.Details.Fields["iconEmoji"].GetStringValue(),
+		"the typed envelope field is where an icon is written now (§2b)")
 }
 
 func TestRoundtrip_ChatKind(t *testing.T) {

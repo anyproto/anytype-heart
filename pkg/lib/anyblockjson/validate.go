@@ -175,6 +175,11 @@ func validateToDoc(data []byte, lenient bool, warn func(Issue)) (map[string]any,
 	// member broke it, so this pass owns the wording and schemaIssues stays
 	// quiet about whatever it spoke for (see propertyNameIssues).
 	spoken := propertyNameIssues(doc)
+	// the typed envelope fields' discriminator, for the same reason: the
+	// schema can say `format` is missing but not that it is a CHOICE, and
+	// naming the alternatives at the moment the author is wrong is the whole
+	// reason those fields are typed rather than flat (§2b)
+	iconFormatIssues(doc, &spoken)
 	if err := sch.Validate(doc); err != nil {
 		return nil, &ValidationError{Issues: append(spoken.issues, schemaIssues(err, spoken)...)}
 	}
@@ -273,16 +278,28 @@ func schemaIssues(err error, spoken keySlotReport) []Issue {
 	// a leaf that is not an unevaluated-property verdict is a real fault, and
 	// it makes the closed-set verdict on its enclosing objects unreliable
 	realAt := map[string]bool{}
-	for _, l := range leaves {
-		if l.unevaluated {
-			continue
-		}
-		for p := l.path; ; p = parentPath(p) {
+	markReal := func(path string) {
+		for p := path; ; p = parentPath(p) {
 			realAt[p] = true
 			if p == "" {
 				break
 			}
 		}
+	}
+	// a fault ANOTHER pass spoke for is still a fault at that location, and
+	// the closed-set verdicts around it are just as unreliable. Suppressing
+	// the schema's own leaf without recording this made a callout whose icon
+	// lacks its `format` report the icon (once, well) and then also demand
+	// `text` and `type` be deleted — the exact confidently-wrong advice this
+	// pruning exists to remove.
+	for path := range spoken.values {
+		markReal(path)
+	}
+	for _, l := range leaves {
+		if l.unevaluated {
+			continue
+		}
+		markReal(l.path)
 	}
 	vocabulary := schemaPropertyNames()
 	out := make([]Issue, 0, len(leaves))
@@ -490,6 +507,91 @@ var schemaPropertyNames = sync.OnceValue(func() map[string]bool {
 	}
 	walk(doc)
 	return names
+})
+
+// schemaFormatEnum is the list of variants a typed field's `format` member
+// admits, read out of the published schema by definition name. Reading it
+// rather than restating it is what makes the extension seam (§2b) free: a
+// layer that appends a variant to the schema gets it named in the reader's
+// own diagnostics without touching this package.
+//
+// Every `enum` the definition carries at a `properties/format` position is
+// intersected, so a definition that narrows another one by $ref plus a
+// second enum (plainIcon) answers with the narrowed set.
+func schemaFormatEnum(def string) []string {
+	return schemaFormatEnums()[def]
+}
+
+var schemaFormatEnums = sync.OnceValue(func() map[string][]string {
+	out := map[string][]string{}
+	var doc struct {
+		Defs map[string]any `json:"$defs"`
+	}
+	if err := json.Unmarshal(schemaJSON, &doc); err != nil {
+		return out
+	}
+	for name, def := range doc.Defs {
+		var found [][]string
+		var walk func(node any, inFormat bool)
+		walk = func(node any, inFormat bool) {
+			switch n := node.(type) {
+			case map[string]any:
+				for key, v := range n {
+					switch {
+					case inFormat && key == "enum":
+						if list, isList := v.([]any); isList {
+							names := make([]string, 0, len(list))
+							for _, e := range list {
+								if s, isStr := e.(string); isStr {
+									names = append(names, s)
+								}
+							}
+							if len(names) > 0 {
+								found = append(found, names)
+							}
+						}
+					case key == "properties":
+						if props, isMap := v.(map[string]any); isMap {
+							for prop, sub := range props {
+								walk(sub, prop == "format")
+							}
+							continue
+						}
+						walk(v, false)
+					default:
+						walk(v, false)
+					}
+				}
+			case []any:
+				for _, v := range n {
+					walk(v, inFormat)
+				}
+			}
+		}
+		walk(def, false)
+		if len(found) == 0 {
+			continue
+		}
+		// the intersection, in the order of the first list found. Map
+		// iteration decides which that is when a definition carries two, so
+		// the lists are sorted by length first: the narrowest is the answer,
+		// and narrowing is the only reason a second one exists.
+		sort.SliceStable(found, func(i, j int) bool { return len(found[i]) < len(found[j]) })
+		keep := map[string]int{}
+		for _, list := range found {
+			for _, n := range list {
+				keep[n]++
+			}
+		}
+		var names []string
+		for _, n := range found[0] {
+			if keep[n] == len(found) {
+				names = append(names, n)
+			}
+		}
+		out[name] = names
+	}
+	return out
 })
 
 // schemaIssueMessage renders one schema error. Unknown properties fail
@@ -1227,6 +1329,15 @@ type keySlotReport struct {
 	values map[string]bool
 }
 
+// rejectValueAt records an issue at a pointer the schema addresses correctly
+// but words badly, and silences the schema's own verdict there. It is the
+// same trade propertyNameIssues makes for a key slot: one fault, one issue
+// (§12), worded by whichever pass can say what is actually wrong.
+func (r *keySlotReport) rejectValueAt(path, message string) {
+	r.issues = append(r.issues, Issue{Path: path, Message: message})
+	r.values[path] = true
+}
+
 // propertyNameIssues states, where the key is in hand, every rule the schema
 // carries as `propertyNames`: the `properties` map and the `property_keys` /
 // `type_keys` legends take a writable key (§3), and `option_ids` takes one at
@@ -1429,6 +1540,13 @@ func deniedPropertyKey(key string) (string, bool) {
 	}
 	if strippedDetailKeys()[key] {
 		return fmt.Sprintf("%q is internal: export strips it, so import does not accept it (§3)", key), true
+	}
+	// the icon/cover lift (§2b). Unlike the internal keys these DO have a
+	// written form, so the refusal names it: the same fact — this key is not
+	// where the value lives any more — is worth twice as much said as a
+	// repair. The set is the export side's own, never a restatement.
+	if liftedDetailKeys()[key] {
+		return fmt.Sprintf("%q is written as %s (§2b), not as a property", key, liftedKeyRepair(key)), true
 	}
 	return "", false
 }

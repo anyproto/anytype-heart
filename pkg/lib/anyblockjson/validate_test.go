@@ -151,7 +151,8 @@ func TestValidate_Valid(t *testing.T) {
 			"version": 1,
 			"id": "bafyrei123",
 			"type": "page",
-			"properties": {"name": "Test", "iconEmoji": "🔥", "status": ["In progress"], "priority": 3, "done": false},
+			"icon": {"format": "emoji", "emoji": "🔥"},
+			"properties": {"name": "Test", "status": ["In progress"], "priority": 3, "done": false},
 			"blocks": [
 				{"id": "b1", "type": "heading_2", "text": "Goals"},
 				{"id": "b2", "type": "paragraph", "text": "Ship the **new export**"},

@@ -475,7 +475,7 @@ func TestValidate_PropertyValueShapeWarns(t *testing.T) {
 		// including the raw number a date out of RFC 3339 range exports as
 		assert.Empty(t, warningsFor(t, `{"version": 1, "id": "o1", "properties": {
 			"due_date": "2026-07-06T08:44:05Z", "created_date": 1751791445000,
-			"done": true, "name": "N", "icon_emoji": "fire", "cover_x": 12, "tag": ["a", "b"]}}`))
+			"done": true, "name": "N", "plural_name": "Ns", "tag": ["a", "b"]}}`))
 	})
 
 	t.Run("null is always a value", func(t *testing.T) {

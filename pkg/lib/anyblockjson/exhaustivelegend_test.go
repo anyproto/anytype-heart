@@ -100,8 +100,8 @@ func TestExport_AVerbatimCustomTypeKeyNamesItself(t *testing.T) {
 // double the size of an ordinary document, and nothing would be bought.
 func TestExport_ABundledSpellingStillOwesNothing(t *testing.T) {
 	snap := customKeySnapshot(map[string]*types.Value{
-		"dueDate":   str("2026-07-06T08:44:05Z"),
-		"iconEmoji": str("A"),
+		"dueDate":    str("2026-07-06T08:44:05Z"),
+		"pluralName": str("A"),
 	})
 
 	data, err := Marshal(model.SmartBlockType_Page, snap, Options{})
@@ -109,7 +109,7 @@ func TestExport_ABundledSpellingStillOwesNothing(t *testing.T) {
 
 	doc := decodeDoc(t, data)
 	assert.Contains(t, doc.Properties, "due_date")
-	assert.Contains(t, doc.Properties, "icon_emoji")
+	assert.Contains(t, doc.Properties, "plural_name")
 	assert.Empty(t, doc.PropertyKeys,
 		"every spelling here is one the bundled table binds to the key it came from")
 }

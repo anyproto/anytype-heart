@@ -201,7 +201,7 @@ func TestDocumentSpellsSlugs(t *testing.T) {
 	t.Run("properties are spelled as slugs and read back as stored keys", func(t *testing.T) {
 		// given
 		doc := `{"version": 1, "id": "o1", "properties": {
-			"name": "A page", "icon_emoji": "🔥", "due_date": "2025-07-06T08:44:05Z",
+			"name": "A page", "plural_name": "Pages", "due_date": "2025-07-06T08:44:05Z",
 			"customDate": "whatever"}}`
 
 		// when — the document's slugs bind to stored keys
@@ -209,7 +209,7 @@ func TestDocumentSpellsSlugs(t *testing.T) {
 		require.NoError(t, err)
 
 		// then
-		assert.Contains(t, snap.Details.Fields, "iconEmoji")
+		assert.Contains(t, snap.Details.Fields, "pluralName")
 		assert.Contains(t, snap.Details.Fields, "dueDate")
 		assert.NotContains(t, snap.Details.Fields, "due_date")
 		assert.Contains(t, snap.Details.Fields, "customDate", "custom keys pass through")
@@ -217,9 +217,9 @@ func TestDocumentSpellsSlugs(t *testing.T) {
 		// and the export spells them back
 		data, err := Marshal(model.SmartBlockType_Page, snap, Options{})
 		require.NoError(t, err)
-		assert.Contains(t, string(data), `"icon_emoji"`)
+		assert.Contains(t, string(data), `"plural_name"`)
 		assert.Contains(t, string(data), `"due_date"`)
-		assert.NotContains(t, string(data), `"iconEmoji"`)
+		assert.NotContains(t, string(data), `"pluralName"`)
 		assert.Contains(t, string(data), `"customDate"`)
 	})
 
@@ -437,12 +437,16 @@ func TestBuildRecommendedListsInvertsItsKeySlots(t *testing.T) {
 // Revert either the sort or the boundBy branch and this fails (the sort one
 // intermittently, which is the point of the 32 iterations).
 func TestImportRefusesTwoSpellingsOfOneStoredKey(t *testing.T) {
-	t.Run("the exact POST /types repro: icon_emoji beside iconEmoji", func(t *testing.T) {
+	// The original repro was `icon_emoji` beside `iconEmoji`; that exact pair
+	// is now refused one step earlier, because §2b lifted the icon keys out of
+	// `properties` altogether. The shape it stood for is unchanged and still
+	// reachable through every other bundled twin, so the repro moved to one.
+	t.Run("the POST /types repro: plural_name beside pluralName", func(t *testing.T) {
 		// given — a stored key the bundled table resolves elsewhere:
-		// `icon_emoji` inverts to `iconEmoji`, which is also a literal
+		// `plural_name` inverts to `pluralName`, which is also a literal
 		// stored key, so both spellings land on one detail
 		doc := `{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
-			"properties": {"name": "T", "icon_emoji": "A", "iconEmoji": "B"}}`
+			"properties": {"name": "T", "plural_name": "A", "pluralName": "B"}}`
 
 		for i := 0; i < 32; i++ {
 			// when
@@ -453,8 +457,8 @@ func TestImportRefusesTwoSpellingsOfOneStoredKey(t *testing.T) {
 			var ve *ValidationError
 			require.ErrorAs(t, err, &ve)
 			require.Len(t, ve.Issues, 1)
-			assert.Equal(t, "/properties/icon_emoji", ve.Issues[0].Path, "the same path on every run")
-			assert.Contains(t, ve.Issues[0].Message, `"iconEmoji" and "icon_emoji" both address property "iconEmoji"`)
+			assert.Equal(t, "/properties/plural_name", ve.Issues[0].Path, "the same path on every run")
+			assert.Contains(t, ve.Issues[0].Message, `"pluralName" and "plural_name" both address property "pluralName"`)
 		}
 	})
 
@@ -478,10 +482,10 @@ func TestImportRefusesTwoSpellingsOfOneStoredKey(t *testing.T) {
 	})
 
 	t.Run("distinct keys are untouched", func(t *testing.T) {
-		doc := `{"version": 1, "id": "o1", "properties": {"name": "T", "icon_emoji": "A", "due_date": "2025-07-06T08:44:05Z"}}`
+		doc := `{"version": 1, "id": "o1", "properties": {"name": "T", "plural_name": "A", "due_date": "2025-07-06T08:44:05Z"}}`
 		_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 		require.NoError(t, err)
-		assert.Contains(t, snap.Details.Fields, "iconEmoji")
+		assert.Contains(t, snap.Details.Fields, "pluralName")
 		assert.Contains(t, snap.Details.Fields, "dueDate")
 	})
 }

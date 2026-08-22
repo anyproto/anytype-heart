@@ -628,7 +628,8 @@ func TestGeneratedDocs_ByteStable(t *testing.T) {
 			return fmt.Sprintf(`{"type": "code", "language": "go", "text": %q}`, texts[i%len(texts)])
 		},
 		func(i int) string {
-			return fmt.Sprintf(`{"type": "callout", "icon_emoji": "💡", "text": %q}`, texts[i%len(texts)])
+			return fmt.Sprintf(`{"type": "callout", "icon": {"format": "emoji", "emoji": "💡"}, "text": %q}`,
+				texts[i%len(texts)])
 		},
 	}
 	for i := 0; i < 300; i++ {

@@ -161,6 +161,21 @@ func TestExport_TheObjectCensusCoversEveryPosition(t *testing.T) {
 			&model.Block{Id: censusBlock, Content: &model.BlockContentOfText{
 				Text: &model.BlockContentText{Text: "x"}}},
 			map[string]*types.Value{"assignee": strList(censusObject)}),
+
+		// The two typed envelope fields (§2b). The icon's file used to reach
+		// this set through the property walk, because iconImage is a `file`
+		// relation — the lift takes it out of that walk, so it needs an arm of
+		// its own. The cover's file NEVER reached it: coverId is declared
+		// `longtext`, so the property walk skipped it and a compact label
+		// equal to a file-backed cover id was always possible.
+		"the icon's file": censusSnapshot(
+			&model.Block{Id: censusBlock, Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{Text: "x"}}},
+			map[string]*types.Value{"iconImage": strList(censusObject)}),
+		"the cover's file": censusSnapshot(
+			&model.Block{Id: censusBlock, Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{Text: "x"}}},
+			map[string]*types.Value{"coverId": str(censusObject), "coverType": num(1)}),
 	}
 	for name, snap := range cases {
 		t.Run(name, func(t *testing.T) {

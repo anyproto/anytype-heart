@@ -41,6 +41,21 @@ var strippedKeys = anyblockjson.InternalPropertyKeys()
 // buried the sweep — 1 344 of 1 351 differing objects in a 34 339-object
 // account differed by nothing else. Whether the object state itself should
 // carry all four consistently is GO-7451, not this comparator's call.
+// isDroppedEmptyIconCover is the icon/cover analogue, and it is bigger: §2b
+// lifted nine hidden keys into the typed `icon` and `cover` envelope fields,
+// and a source whose stored value is EMPTY is not a source — so a key present
+// and empty comes back absent. Roughly 2 300 objects in a 36 966-object
+// account carry at least one, nearly double the recommended-list noise above,
+// and left unrecorded it would bury the sweep the same way.
+//
+// Scoped to absent-vs-dropped-empty and nothing else: a cover that really was
+// lost (33 objects hold an absolute filesystem path a Notion import left in
+// coverId, which the typed field cannot write) still reports, because its
+// value is not empty. The predicate is the format's own, not a copy.
+func isDroppedEmptyIconCover(key string, orig, got *types.Value) bool {
+	return got == nil && anyblockjson.DroppedEmptyIconCover(key, orig)
+}
+
 var recommendedListKeys = map[string]bool{
 	bundle.RelationKeyRecommendedFeaturedRelations.String(): true,
 	bundle.RelationKeyRecommendedRelations.String():         true,
@@ -88,6 +103,9 @@ func Compare(orig, got *model.SmartBlockSnapshotBase, sbType model.SmartBlockTyp
 		sort.Strings(keys)
 		for _, k := range keys {
 			if strippedKeys[k] {
+				continue
+			}
+			if isDroppedEmptyIconCover(k, orig.Details.Fields[k], gotFields[k]) {
 				continue
 			}
 			if !detailEqual(k, orig.Details.Fields[k], gotFields[k], opts) {

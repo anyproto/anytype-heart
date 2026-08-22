@@ -24,14 +24,19 @@ type jsonDoc struct {
 	// below: 1.0 and 1e0 are integers to JSON Schema, so checkVersion accepts
 	// them, and a plain int would then fail to decode a document Validate
 	// declared valid.
-	Version     json.Number         `json:"version"`
-	Kind        string              `json:"kind"`
-	Id          string              `json:"id"`
-	Type        string              `json:"type"`
-	TemplateFor string              `json:"template_for"`
-	Key         string              `json:"key"`
-	Properties  map[string]any      `json:"properties"`
-	TypeProps   *[]jsonTypeProperty `json:"type_properties"` // pointer: [] and absent differ (§2a)
+	Version     json.Number `json:"version"`
+	Kind        string      `json:"kind"`
+	Id          string      `json:"id"`
+	Type        string      `json:"type"`
+	TemplateFor string      `json:"template_for"`
+	Key         string      `json:"key"`
+	// Icon and Cover are the typed envelope fields (§2b). Each is one object
+	// whose `format` member selects the variant, and each stands for a family
+	// of hidden stored keys that `properties` refuses.
+	Icon       *Icon               `json:"icon"`
+	Cover      *Cover              `json:"cover"`
+	Properties map[string]any      `json:"properties"`
+	TypeProps  *[]jsonTypeProperty `json:"type_properties"` // pointer: [] and absent differ (§2a)
 	// PropertyKeys is the §3 slug→stored-key legend: what this document says
 	// its own key spellings mean, consulted before any vocabulary so a reader
 	// without the space still lands on the right relation. Its values are
@@ -68,12 +73,11 @@ type jsonBlock struct {
 	Id     string      `json:"id"`
 	Type   string      `json:"type"`
 
-	Checked   bool   `json:"checked"`
-	Color     string `json:"color"`
-	Text      string `json:"text"`
-	Language  string `json:"language"`
-	IconEmoji string `json:"icon_emoji"`
-	IconImage string `json:"icon_image"`
+	Checked  bool   `json:"checked"`
+	Color    string `json:"color"`
+	Text     string `json:"text"`
+	Language string `json:"language"`
+	Icon     *Icon  `json:"icon"`
 
 	ObjectId    string          `json:"object_id"`
 	Name        string          `json:"name"`
@@ -474,6 +478,13 @@ func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBas
 			details.Fields[key] = v
 		}
 	}
+	// the typed envelope fields are written after the property loop and can
+	// never collide with it: the nine keys they stand for are refused in
+	// `properties` on the RESOLVED stored key (deniedPropertyKey), which is
+	// what keeps a space-minted relation whose own stored key is `icon_emoji`
+	// an ordinary property (§2b)
+	imp.applyIcon(details)
+	imp.applyCover(details)
 	if err := imp.applyTypeProperties(details); err != nil {
 		return 0, nil, err
 	}
@@ -806,8 +817,7 @@ func (imp *importer) textFromJSON(jb *jsonBlock) (*model.BlockContentText, error
 		t.Checked = jb.Checked
 	}
 	if style == model.BlockContentText_Callout {
-		t.IconEmoji = jb.IconEmoji
-		t.IconImage = jb.IconImage
+		calloutIconFrom(jb.Icon, t)
 	}
 	return t, nil
 }

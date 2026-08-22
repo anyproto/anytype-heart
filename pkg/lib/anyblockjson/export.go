@@ -195,7 +195,12 @@ var propertiesKeptOnExport = map[string]bool{
 // wellKnownPropertyOrder puts the §3 magic keys first in the properties
 // object; all remaining keys follow alphabetically (canonical order
 // decision).
-var wellKnownPropertyOrder = []string{"name", "description", "iconEmoji", "iconImage"}
+//
+// It held `iconEmoji` and `iconImage` until §2b lifted both into the typed
+// `icon` envelope field, where they sit above `properties` entirely — a
+// stronger version of the same idea, since the reader now meets the icon
+// before the property list rather than at the top of it.
+var wellKnownPropertyOrder = []string{"name", "description"}
 
 // MarshalPropertyValue converts one property value to its JSON form under
 // the §3 rules (dates → RFC 3339, select options → names, object/file →
@@ -261,6 +266,12 @@ type exporter struct {
 	// It is the id census's population (buildLabelPlan): only the probe run
 	// sets it, so a normal export pays nothing for it.
 	emitted map[string]bool
+
+	// icon and cover are the typed envelope fields (§2b), built once: the id
+	// census reads the object ids they write and buildDoc writes the fields
+	// themselves, and building twice would report every warning twice.
+	icon, cover           *omap
+	iconBuilt, coverBuilt bool
 
 	localIds map[string]string // block/row/column/view id -> short label (§9a)
 
@@ -363,7 +374,7 @@ func (e *exporter) seedTermLedger() {
 	}
 	if e.snapshot.Details != nil {
 		stripped := strippedDetailKeys()
-		lifted := e.typePropDetailKeys()
+		lifted := e.envelopeLiftedKeys()
 		for k := range e.snapshot.Details.Fields {
 			if !stripped[k] && !lifted[k] && isWritablePropertyKey(k) {
 				name(k)
@@ -1269,6 +1280,11 @@ func (e *exporter) buildDoc(sbType model.SmartBlockType) (*omap, error) {
 		doc.setNonEmpty("template_for", typeTerms[1])
 	}
 	doc.setNonEmpty("key", e.snapshot.Key)
+	// the typed icon/cover fields sit above `properties` (§2b): they are what
+	// a reader looks at first, and they are outside the key namespace the
+	// legend can rebind
+	doc.setNonEmpty("icon", e.iconField())
+	doc.setNonEmpty("cover", e.coverField())
 	// every surface that spells a property or type key runs before the
 	// envelope is assembled, so the legends they populate land in their
 	// canonical positions rather than trailing the blocks that filled them
@@ -1398,12 +1414,27 @@ func strippedDetailKeys() map[string]bool {
 	return stripped
 }
 
+// envelopeLiftedKeys is every stored detail key some ENVELOPE field carries
+// instead of `properties`: the four recommended lists when type properties
+// are active (§2a) and the nine icon/cover keys always (§2b). The three sites
+// that must agree about the lift — the term census, the properties emit and
+// the id census — all ask this one function, because they used to ask
+// typePropDetailKeys separately and a second lift list would have had to be
+// added to each of them by hand.
+func (e *exporter) envelopeLiftedKeys() map[string]bool {
+	lifted := liftedDetailKeys()
+	for k := range e.typePropDetailKeys() {
+		lifted[k] = true
+	}
+	return lifted
+}
+
 func (e *exporter) buildProperties() *omap {
 	if e.snapshot.Details == nil {
 		return nil
 	}
 	stripped := strippedDetailKeys()
-	lifted := e.typePropDetailKeys()
+	lifted := e.envelopeLiftedKeys()
 	var keys []string
 	for k := range e.snapshot.Details.Fields {
 		if isAttributionProperty(k) {
@@ -1991,8 +2022,11 @@ func (e *exporter) textToJSON(m *omap, b *model.Block, t *model.BlockContentText
 		m.setNonEmpty("checked", t.Checked)
 	}
 	if style == model.BlockContentText_Callout {
-		m.setNonEmpty("icon_emoji", t.IconEmoji)
-		m.setNonEmpty("icon_image", t.IconImage)
+		// the same typed shape as the object icon (§2b), restricted to the
+		// two kinds a block can hold. Shipping the envelope field without
+		// this would leave two icon conventions inside one document, which is
+		// the defect being removed.
+		m.setNonEmpty("icon", e.calloutIcon(t))
 	}
 	if style == model.BlockContentText_Code {
 		if b.Fields != nil {
@@ -2202,10 +2236,15 @@ func (e *exporter) buildLabelPlan() {
 
 	if e.snapshot.Details != nil {
 		stripped := strippedDetailKeys()
-		lifted := e.typePropDetailKeys()
+		lifted := e.envelopeLiftedKeys()
 		for key, v := range e.snapshot.Details.Fields {
 			if stripped[key] || lifted[key] {
-				continue // stripped/lifted properties never appear as ids, so no legend entry
+				// a stripped key is not written at all, so it names nothing.
+				// A LIFTED one is written somewhere else, and the ids it
+				// writes there are fed in explicitly below — this used to say
+				// "lifted properties never appear as ids", which was true
+				// only while the recommended lists were the sole lift.
+				continue
 			}
 			format, ok := e.resolveFormat(key)
 			if ok && (format == model.RelationFormat_object || format == model.RelationFormat_file) {
@@ -2214,6 +2253,14 @@ func (e *exporter) buildLabelPlan() {
 				}
 			}
 		}
+	}
+	// the typed envelope fields write object ids of their own (§2b). `icon`'s
+	// used to reach this set through the property walk above, because
+	// iconImage is a `file` relation; `cover`'s never did, because coverId is
+	// declared `longtext` — so a compact label equal to a file-backed cover id
+	// was always possible and is closed here for the first time.
+	for _, id := range e.liftedObjectIds() {
+		addObject(id)
 	}
 	if e.snapshot.Collections != nil {
 		if v := e.snapshot.Collections.Fields[storeKeyItems]; v != nil {

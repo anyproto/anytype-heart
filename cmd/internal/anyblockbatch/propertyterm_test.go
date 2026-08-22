@@ -174,7 +174,7 @@ func TestCheckPropertyFormats_LegendBackedMissIsReported(t *testing.T) {
 func TestCheckPropertyFormats_BundledSlugIsDeclared(t *testing.T) {
 	files := writeDocs(t, map[string]string{
 		"objects/one.json": `{"version": 1, "type": "page", "id": "obj-1",
-		  "properties": {"due_date": "2026-01-01T00:00:00Z", "icon_emoji": "x", "description": "hi"}}`,
+		  "properties": {"due_date": "2026-01-01T00:00:00Z", "plural_name": "x", "description": "hi"}}`,
 	})
 	formats, err := ScanFormats(files)
 	require.NoError(t, err)

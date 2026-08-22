@@ -482,7 +482,7 @@ func TestImport_SeamRefusesAnUnwritableResolvedKey(t *testing.T) {
 // …} split Validate from Unmarshal — the exact divergence I2 forbids.
 func TestValidate_MirrorsTheSeamsDuplicateBindingRefusal(t *testing.T) {
 	for name, doc := range map[string]string{
-		"bundled twin":   `{"version": 1, "properties": {"iconEmoji": "a", "icon_emoji": "b"}}`,
+		"bundled twin":   `{"version": 1, "properties": {"pluralName": "a", "plural_name": "b"}}`,
 		"date twin":      `{"version": 1, "properties": {"dueDate": "x", "due_date": "y"}}`,
 		"legend-induced": `{"version": 1, "property_keys": {"prio": "customKey"}, "properties": {"prio": 1, "customKey": 2}}`,
 	} {

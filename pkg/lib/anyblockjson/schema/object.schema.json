@@ -23,6 +23,8 @@
     "type": { "type": "string", "minLength": 1 },
     "template_for": { "type": "string", "minLength": 1 },
     "key": { "type": "string", "pattern": "^[^\u0000-\u001f\u007f]+$", "maxLength": 255 },
+    "icon": { "$ref": "#/$defs/icon" },
+    "cover": { "$ref": "#/$defs/cover" },
     "properties": { "$ref": "#/$defs/propertyMap" },
     "type_properties": { "type": "array", "items": { "$ref": "#/$defs/typeProperty" } },
     "property_keys": {
@@ -65,6 +67,100 @@
           { "type": "object" }
         ]
       }
+    },
+    "objectRef": {
+      "type": "string", "minLength": 1, "maxLength": 255, "pattern": "^[^/]+$",
+      "description": "The id of an object in this space, or a bundle-local slug. Never a URL and never a filesystem path — this format does no I/O, so it can only name something the store already holds. To supply an image by URL, use a layer that can fetch it (the API): it uploads the image, mints the file object and writes that object's id here."
+    },
+    "iconColor": {
+      "description": "One of the ten palette colours — the same palette select options use (§2a) — or, for a stored value the palette has no name for, its raw number.",
+      "oneOf": [
+        { "$ref": "#/$defs/optionColor" },
+        { "type": "integer", "minimum": 1 }
+      ]
+    },
+    "opaqueName": {
+      "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[^/]+$",
+      "description": "A name from a vocabulary this format does not enumerate (the app's icon, cover-colour and gradient sets). Validation checks the shape only — a name outside the app's set is accepted here and shows as no icon."
+    },
+    "icon": {
+      "type": "object",
+      "description": "The object's icon: ONE of four kinds, chosen by `format` (§2b). Replaces the flat iconEmoji/iconImage/iconName/iconOption keys, which are refused in `properties`.",
+      "required": ["format"],
+      "properties": {
+        "format": {
+          "enum": ["emoji", "file", "icon", "color"],
+          "description": "Which kind of icon this is: an emoji, an image object in this space, a built-in named icon, or a bare colour."
+        }
+      },
+      "allOf": [
+        { "if": { "properties": { "format": { "const": "emoji" } }, "required": ["format"] },
+          "then": { "required": ["format", "emoji"], "additionalProperties": false,
+                    "properties": {
+                      "format": {},
+                      "emoji": { "type": "string", "minLength": 1 },
+                      "color": { "$ref": "#/$defs/iconColor" }
+                    } } },
+        { "if": { "properties": { "format": { "const": "file" } }, "required": ["format"] },
+          "then": { "required": ["format", "file"], "additionalProperties": false,
+                    "properties": {
+                      "format": {},
+                      "file": { "$ref": "#/$defs/objectRef" },
+                      "color": { "$ref": "#/$defs/iconColor" }
+                    } } },
+        { "if": { "properties": { "format": { "const": "icon" } }, "required": ["format"] },
+          "then": { "required": ["format", "name"], "additionalProperties": false,
+                    "properties": {
+                      "format": {},
+                      "name": { "$ref": "#/$defs/opaqueName" },
+                      "color": { "$ref": "#/$defs/iconColor" },
+                      "emoji": { "type": "string", "minLength": 1, "x-output-only": true,
+                                 "description": "A legacy emoji superseded by this named icon, carried so export loses nothing (§2b). Export writes it; a document that supplies it is not choosing an icon — `format` already did." }
+                    } } },
+        { "if": { "properties": { "format": { "const": "color" } }, "required": ["format"] },
+          "then": { "required": ["format", "color"], "additionalProperties": false,
+                    "properties": {
+                      "format": {},
+                      "color": { "$ref": "#/$defs/iconColor" }
+                    } } }
+      ]
+    },
+    "plainIcon": {
+      "description": "An icon restricted to the two kinds a callout block (§5.2) and a bundle index (§2c) can hold: an emoji, or an image object in this space. The same shape as the object icon, minus the two variants only an object has.",
+      "allOf": [
+        { "$ref": "#/$defs/icon" },
+        { "properties": { "format": { "enum": ["emoji", "file"] } } }
+      ]
+    },
+    "cover": {
+      "type": "object",
+      "description": "The object's cover: ONE of three kinds, chosen by `format` (§2b). Replaces the flat coverId/coverType/coverScale/coverX/coverY keys, which are refused in `properties`. `cover_id` alone cannot be read: the same string names a colour under one type and a gradient under another.",
+      "required": ["format"],
+      "properties": {
+        "format": {
+          "enum": ["image", "color", "gradient"],
+          "description": "Which kind of cover this is: an image object in this space, a flat colour, or a gradient."
+        }
+      },
+      "allOf": [
+        { "if": { "properties": { "format": { "const": "image" } }, "required": ["format"] },
+          "then": { "required": ["format", "file"], "additionalProperties": false,
+                    "properties": {
+                      "format": {},
+                      "file": { "$ref": "#/$defs/objectRef" },
+                      "source": { "enum": ["unsplash", "prebuilt"], "x-output-only": true,
+                                  "description": "Where this image came from (§2b). Export writes it; a generator omits it — an uploaded image has no provenance to claim." },
+                      "scale": { "type": "number" },
+                      "x": { "type": "number" },
+                      "y": { "type": "number" }
+                    } } },
+        { "if": { "properties": { "format": { "const": "color" } }, "required": ["format"] },
+          "then": { "required": ["format", "color"], "additionalProperties": false,
+                    "properties": { "format": {}, "color": { "$ref": "#/$defs/opaqueName" } } } },
+        { "if": { "properties": { "format": { "const": "gradient" } }, "required": ["format"] },
+          "then": { "required": ["format", "gradient"], "additionalProperties": false,
+                    "properties": { "format": {}, "gradient": { "$ref": "#/$defs/opaqueName" } } } }
+      ]
     },
     "blockId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" },
     "tableInnerId": { "type": "string", "pattern": "^[A-Za-z0-9_]{1,64}$" },
@@ -174,8 +270,7 @@
           "if": { "properties": { "type": { "const": "callout" } }, "required": ["type"] },
           "then": {
             "properties": {
-              "icon_emoji": { "type": "string" },
-              "icon_image": { "type": "string" },
+              "icon": { "$ref": "#/$defs/plainIcon" },
               "color": { "$ref": "#/$defs/color" },
               "text": { "type": "string" }
             }

@@ -3,10 +3,13 @@
   "version": 1,
   "id": "bafyreiobject",
   "type": "page",
+  "icon": {
+    "format": "emoji",
+    "emoji": "🔥"
+  },
   "properties": {
     "name": "Project Phoenix",
     "description": "The subtitle",
-    "icon_emoji": "🔥",
     "assignee": [
       "bafyreiroman"
     ],
