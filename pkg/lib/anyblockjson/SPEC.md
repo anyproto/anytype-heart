@@ -1,6 +1,6 @@
 # AnyBlock JSON — format specification
 
-Status: **draft v0.23** · Format version: **1** · Package: `pkg/lib/anyblockjson`
+Status: **draft v0.24** · Format version: **1** · Package: `pkg/lib/anyblockjson`
 
 A human- and agent-readable JSON serialization of Anytype objects (the "anyblock"
 model), designed for export, import, and generation by external tools and LLM
@@ -15,6 +15,72 @@ strings; the vocabulary follows Notion's API and Anytype's public REST API
 (`core/api`) wherever an established term exists — the format should be
 readable, and mostly writable, by someone who has never seen Anytype
 internals.
+
+Changes in v0.24: **attribution is a name, not an address** (§3, §4a, §11, §13).
+
+`creator` and `lastModifiedBy` held a 135-character participant id — the
+single most repeated string this format wrote, present on 100% of 36,966
+production objects. They now hold the member's display **name**, as a plain
+string: `"creator": "Roma Kha"`. Not an array; the relation is `maxCount: 1`
+and 0 of 36,966 values were multi-valued, so the list wrapper was
+definitionally wrong rather than merely verbose.
+
+The name is safe HERE and nowhere else. Both relations are
+`source: derived, maxCount: 1, readonly: true`: the value is recovered from
+the object tree root's own cryptographic signature on every rebuild
+(`treeSource.GetCreationInfo`), and four independent seams already discard
+whatever a document supplies —
+`state.StructCutKeys(details, LocalAndDerivedRelationKeys)`, the pb importer's
+preserve-list, `changeBlockDetailsSet`, and the API's "cannot be set
+directly". The exported line was already informational, so there is no
+fidelity to lose. `assignee`, `author`, `stakeholders` and every custom
+`objects` property are UNCHANGED — they are `source: details`, chosen by a
+person, and the id is the whole of their meaning. Spelling one as a name
+would be data loss, and the temptation is real.
+
+**Two members of one space can carry the same display name** — 76 of the
+2,478 participants in the production corpus answer to `Roma Kha` — so the
+name identifies nobody, and nothing tries to resolve it back. Import DROPS
+both keys, in silence, like a transient key and for a related reason: no
+write path could honour the value. That closes an asymmetry nobody could
+state a reason for, where `creator` was accepted (it sat on the preserve-list
+it never belonged on) and `lastModifiedBy`, one word apart in the bundle with
+an identical definition, was refused outright.
+
+**No name, no property.** With no participant resolver wired, or a member
+this space has no name for, the key is OMITTED — never the raw id, never a
+blank. A format whose `creator` is sometimes a name and sometimes a
+135-character address is worse to read, and worse to write a reader for, than
+one that consistently carries neither.
+
+Measured over the same 36,966 objects, against the v0.23 tip:
+
+- **−2.36% of all bytes** (167,564,862 → 163,612,878). Dropping the
+  attribution entirely would have been −3.48%; the 1.12pp is what the two
+  name lines cost, and it buys back the attribution a readable format wants.
+- **90.1% of documents carry a creator name** with names resolved from the
+  corpus's own participant objects. Of the rest, 7.9% name
+  `_anytype_profile` — the app itself, whose participant object is not in an
+  export but is in a live space index — and 2.0% a member whose profile name
+  is empty in that space. In a live node the first group resolves too.
+- `lastModifiedBy` is on **100%** of objects, not the 71 an earlier count
+  suggested; those 71 were the relation OBJECTS for it, one per space,
+  matched on their `api_object_key`.
+
+What it costs, stated plainly: an object carrying a creator is the first
+thing that is not an id for which `Export(S) ≠ Export(Import(Export(S)))`
+(§11, guarantee 3). Import drops the name, so a second export has nothing to
+write. Nothing there is recoverable and none of it was ever data — an
+imported object gets the importing account's own creator from its own new
+tree — and the loss happens exactly once: the second and third exports are
+byte-identical.
+
+One amendment lands with it (§9a): the term census reserves a spelling
+exactly when the emit writes it. The attribution keys are on the stripped
+list — their stored VALUE never reaches a document — so the ordinary details
+walk stopped seeing them, and a custom relation whose api slug is `creator`
+would then claim the spelling and collapse both properties onto one JSON
+member.
 
 Changes in v0.23: **transparent containers — the format stops spelling a
 rendering budget** (§4, §5, §7a, §9a, §11, §12).
@@ -1713,14 +1779,15 @@ property not set; empty value = property set, currently empty.
 
 **Value shape** (implementation decision): select/multi_select and
 objects/files values are always JSON arrays; import stores them as lists, so
-internally scalar-stored values (e.g. `creator`) normalize to
-single-element lists on round-trip (§11).
+internally scalar-stored values (e.g. `assignee` holding one participant)
+normalize to single-element lists on round-trip (§11). The two attribution
+properties are the exception and are plain strings — see below.
 
 **Stripping.** Export removes internal/derived properties
 (`bundle.LocalAndDerivedRelationKeys`) **except** those the importer
 meaningfully preserves (mirroring `core/block/import/pb`): `created_date`,
-`last_modified_date`, `creator`, `is_favorite`, `is_archived`, `resolved_layout`.
-Those six are **output-only** (§4a): export writes them, generators should
+`last_modified_date`, `is_favorite`, `is_archived`, `resolved_layout`.
+Those five are **output-only** (§4a): export writes them, generators should
 not — with one deliberate exception. **`is_favorite` is authorable**, because
 the pb importer reads it to choose a space's root objects
 (`core/block/import/pb/space.go`), which is how a generated bundle
@@ -1728,21 +1795,71 @@ designates the object a user should land on. A bundle with no favourite, no
 `homepage` and no `spaceDashboardId` imports as an undifferentiated list. `id` is lifted to the envelope and `type` to `type`. Everything else
 round-trips.
 
+**Attribution: `creator` and `last_modified_by` are the member's NAME, as a
+plain string.**
+
+```json
+"creator": "Roma Kha",
+"last_modified_by": "Roma Kha"
+```
+
+Not an array. Both relations are `maxCount: 1` and 0 of 36,966 production
+values were multi-valued, so the list wrapper the other object-format
+properties take is definitionally wrong here.
+
+Both are `source: derived, readonly: true`: their value is recovered from the
+object tree root's own cryptographic signature on every rebuild
+(`treeSource.GetCreationInfo` → `NewParticipantId(spaceId, identity)`), and
+four independent seams discard whatever a document supplies —
+`state.StructCutKeys(details, LocalAndDerivedRelationKeys)`
+(`core/block/editor/state/change.go`), the pb importer's preserve-list, which
+names neither, `changeBlockDetailsSet`, and the API's "cannot be set
+directly". So the line is informational, and a lossy readable spelling costs
+nothing. That reasoning does **not** extend to `assignee`, `author`,
+`stakeholders` or any custom `objects` property: those are `source: details`,
+chosen by a person, and the id is the whole of their meaning. They keep the
+full participant id and the array shape.
+
+The name comes from a `ParticipantResolver` (§13), which export asks and
+import does not have. **Without a resolver, or for a member this space has no
+name for, the property is OMITTED** — never the raw id, never an empty
+string. A format whose `creator` is sometimes a name and sometimes a
+135-character address is worse to read than one that consistently carries
+neither. Measured over 36,966 objects with names resolved from the same
+account: 90.1% carry a name, 7.9% name `_anytype_profile` (the app itself,
+absent from an export but present in a live space index) and 2.0% a member
+whose profile name is empty.
+
+**The name is not an address, and nothing resolves it back.** Two members of
+one space can carry the same display name — 76 of 2,478 participants in the
+production corpus answer to `Roma Kha` — so a name identifies nobody. There
+is deliberately no `option_ids`-style legend for it: the legend exists where
+a name has to invert (§9a), and here nothing may. Import drops both keys.
+
 **Admission is symmetric with one documented exception: import refuses what
-export strips, except for the TRANSIENT keys, which it drops in silence.** A
-transient key describes the *moment* an object was written rather than the
-object — `internalFlags` carries editor state (`editorDeleteEmpty`,
-`editorSelectType`, `editorSelectTemplate`: "this object was just created,
-offer the type picker"), and a restored object is never mid-creation. Export
-removes them like everything else on the list; import drops them instead of
-refusing, because a document carrying one is *stale*, not hostile, and refusing
-it would make an older export unimportable for no gain. Everything else on the
-stripped list is derived state or a merge-resolution vector, and those stay
-errors. The list is expected to grow, and each addition owes the same two
-answers: what the key means in the app, and why nothing downstream of an import
-can act on it. (Measured across 36,967 real objects, `internalFlags` was the
-single largest source of exported noise — present on 18,647 of them, and empty
-on every one.)
+export strips, except for the keys it DROPS in silence.** Two families
+qualify, and each entry owes the same two answers: what the key means in the
+app, and why nothing downstream of an import can act on it.
+
+- **Transient keys** describe the *moment* an object was written rather than
+  the object. `internalFlags` carries editor state (`editorDeleteEmpty`,
+  `editorSelectType`, `editorSelectTemplate`: "this object was just created,
+  offer the type picker"), and a restored object is never mid-creation.
+  Export removes them like everything else on the stripped list. (Measured
+  across 36,967 real objects it was the single largest source of exported
+  noise — present on 18,647 of them, and empty on every one.)
+- **Attribution keys** — `creator`, `lastModifiedBy` — name the member who
+  wrote the object. Their stored VALUE is stripped like every other derived
+  key; what export writes is the name above, which addresses nobody. This
+  closes an asymmetry with no reason behind it: `creator` used to be accepted
+  (it sat on the preserve-list, so the deny rule never saw it) and landed a
+  detail the next rebuild overwrote, while `lastModifiedBy` — an identical
+  relation definition — was refused outright.
+
+Either way, import drops instead of refusing because a document carrying one
+is *stale*, not hostile, and refusing it would make an older export
+unimportable for no gain. Everything else on the stripped list is derived
+state or a merge-resolution vector, and those stay errors.
 
 The rest of the rule, unchanged: **import refuses exactly what export strips.** The
 list above is the only list — the reader derives its deny-list from it rather
@@ -1909,14 +2026,19 @@ refused rather than quietly used: the internal property keys are a deny-list
 in the reader (§3), which is where "authoritative only where semantically
 safe" is actually implemented. Most output-only fields carry
 `x-output-only: true` in the JSON Schema so tooling can warn; the two that
-cannot are `coverId`/`coverType` and the six preserved internal properties,
+cannot are `coverId`/`coverType` and the preserved internal properties,
 which live inside the free-form `propertyMap` and so have no schema node of
 their own to annotate.
 
 Output-only surfaces: `fields` (any block), `root`, `store`, `source`
 (dataview), `groups`/`object_orders` (views, §6.2), `id` on sorts/filters,
-filter `nested_property` (reserved), `cover_id`/`cover_type`, and the six
-preserved internal properties listed in §3.
+filter `nested_property` (reserved), `cover_id`/`cover_type`, the five
+preserved internal properties listed in §3, and the two attribution
+properties `creator`/`last_modified_by`.
+
+The attribution pair is output-only in the strictest sense on the list:
+export writes it and import does not merely ignore a supplied value, it
+drops the key. Everything else here at worst round-trips.
 
 ## 5. Block type inventory
 
@@ -3088,7 +3210,10 @@ container carried** (§7a) — the editor re-creates wrappers on the next
 order rather than of the document, so unlike `title`/`header` what comes back
 is neither the same partition nor guaranteed to come back at all;
 restrictions rebuilt (§4); properties
-stripped per §3 (with the exemption list); select/multi_select option ids
+stripped per §3 (with the exemption list), the attribution pair
+`creator`/`lastModifiedBy` among them — export spells them as a member name
+and import drops the key, so a round trip clears both (§3);
+select/multi_select option ids
 replaced by name resolution — in properties, filter values, and custom
 orders (§3, §6.2) — which `option_ids` inverts exactly (§9a), leaving two
 residues: **two same-named options of one property held by ONE object**
@@ -3177,6 +3302,17 @@ implementation from anyone.
    the document spells (§3). Ids are the documented exception in the same
    direction as (2): a snapshot carrying a block or view with no id exports a
    document that is not canonical, and import mints one.
+
+   **The attribution pair is the second documented exception, and the only
+   one that is not an id.** A snapshot carrying a `creator` exports a document
+   naming the member; import drops the name, so the next export has nothing
+   to write and `Export(Import(Export(S)))` is one property shorter. Nothing
+   there is recoverable and none of it was data: the value is derived from the
+   object tree root's signature, and an imported object gets the importing
+   account's own from its own new tree. What still holds — and is what a
+   re-export diff actually depends on — is that the loss happens **once**:
+   `Export(Import(Export(S))) = Export(Import(Export(Import(Export(S)))))`,
+   so every export after the first is byte-identical to the next.
 
 Both properties are enforced by tests in the package: golden-file tests for
 representative documents plus property-based round-trip tests over generated
@@ -3478,6 +3614,17 @@ type PropertyResolver interface {
     PropertyId(def PropertyDefinition) (string, bool)
 }
 
+// ParticipantResolver names the space member a participant id stands for,
+// for the derived attribution properties creator/lastModifiedBy (§3).
+// EXPORT ONLY, and there is deliberately no inverse: a display name is a
+// label, not an address — two members of one space may share one — and both
+// properties are derived from the object tree's own signature, so an
+// importer has nothing to do with the value even if it could resolve it.
+// Answering false omits the property; the id is never a fallback.
+type ParticipantResolver interface {
+    ParticipantName(id string) (string, bool)
+}
+
 // Marshal serializes a snapshot into canonical AnyBlock JSON.
 func Marshal(sbType model.SmartBlockType, snapshot *model.SmartBlockSnapshotBase, opts Options) ([]byte, error)
 
@@ -3525,6 +3672,7 @@ type Options struct {
     ResolveFormat     FormatResolver   // optional; nil = bundle-only resolution (§3)
     ResolveOptions    OptionResolver   // optional; nil = option values pass through as ids
     ResolveProperties PropertyResolver // optional; nil = type documents keep raw recommended-relation ids (§2a)
+    ResolveParticipants ParticipantResolver // optional; export only. nil = creator/last_modified_by omitted (§3)
     Keys              KeyVocabulary    // optional; nil = BundledKeyVocabulary (§3)
     Legend            Legend           // fragment entry points only: the enclosing document's legends (§3)
     OmitIds            bool            // export only: drop every id, the option_ids legend included (§9, §9a)

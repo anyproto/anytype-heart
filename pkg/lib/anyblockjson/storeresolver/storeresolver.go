@@ -172,6 +172,13 @@ func (r *Resolvers) OptionId(key domain.RelationKey, name string) (string, bool)
 // no listing to load and no vocabulary to prime. The answer is the `name` the
 // space last saw on that member's profile.
 //
+// The lookup is by id and asks nothing about layout, which is what makes it
+// answer for the one attribution value that is NOT a participant:
+// `_anytype_profile`, the app itself, stands in `creator` on 7.9% of a
+// 36,966-object corpus (bundled types and relations copied into a space) and
+// is indexed per space by `reindexIDs`. It resolves to "Anytype", which is
+// the true answer to who wrote those objects.
+//
 // **No name is an answer of "no", not an empty string.** A member who never
 // set a profile name has none here, and so does an id this space has no
 // participant row for (a member of a space this export is not running in, an
