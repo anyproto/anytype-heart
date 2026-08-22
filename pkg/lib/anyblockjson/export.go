@@ -1525,6 +1525,44 @@ func isStructural(b *model.Block) bool {
 	return false
 }
 
+// isTransparentContainer reports the §7a transparent containers: a block
+// that contributes containment and NOTHING else, so the document spells its
+// children and not it. Two shapes qualify — a `Layout/Div`, which is the
+// editor's fan-out wrapper (state.wrapChildrenToDiv mints one whenever a
+// parent exceeds 40 children: a rendering budget, not an authored block),
+// and a block whose content oneof is unset, which is legacy data with no
+// content to render at all.
+//
+// The test is on CONTENT, never on the `div-` id prefix the normalizer
+// happens to mint: keying on a prefix would make id SPELLING semantically
+// load-bearing — the worst thing to freeze — and would leave an authored
+// `{"type": "group"}` round-tripping into a permanent wrapper.
+func isTransparentContainer(b *model.Block) bool {
+	switch c := b.Content.(type) {
+	case nil:
+		return true
+	case *model.BlockContentOfLayout:
+		return orEmpty(c.Layout).Style == model.BlockContentLayout_Div
+	}
+	return false
+}
+
+// warnLiftedAttributes reports a transparent container that carried block
+// attributes, because the lift drops them with it (§7a) and the loss is
+// otherwise invisible. Free on real data — all 7,303 wrappers in the
+// production corpus carry none — and it turns a silent loss into a visible
+// one for a document that authored a `group` with an attribute on it.
+func (e *exporter) warnLiftedAttributes(b *model.Block) {
+	if e.opts.OnWarning == nil {
+		return
+	}
+	if b.Align == model.Block_AlignLeft && b.VerticalAlign == model.Block_VerticalAlignTop &&
+		b.BackgroundColor == "" && len(b.Fields.GetFields()) == 0 {
+		return
+	}
+	e.warn("/blocks", "block %s is a transparent container (§7a): it is lifted, and the attributes on it are dropped", b.Id)
+}
+
 func (e *exporter) buildBlocks() ([]any, error) {
 	root := e.blocks[e.rootId]
 	if root == nil {
@@ -1548,6 +1586,28 @@ func (e *exporter) appendBlocksFlat(out *[]any, ids []string, depth int, topLeve
 			continue
 		}
 		if topLevel && isStructural(b) {
+			continue
+		}
+		// §7a: a transparent container is not a block. Emit nothing for it
+		// and walk its children at ITS OWN depth, carrying its topLevel flag
+		// — the children take the position it held.
+		//
+		// Before the depth check, so both the value compared against the
+		// bound and the emitted indent are post-lift; and marking it visited
+		// HERE, because the lift skips blockToJSON, which is where that mark
+		// is set — a ChildrenIds cycle through a chain of containers would
+		// otherwise recurse until the stack gives out.
+		if isTransparentContainer(b) {
+			if b.Id != "" {
+				if e.visited[b.Id] {
+					continue
+				}
+				e.visited[b.Id] = true
+			}
+			e.warnLiftedAttributes(b)
+			if err := e.appendBlocksFlat(out, b.ChildrenIds, depth, topLevel); err != nil {
+				return err
+			}
 			continue
 		}
 		emitDepth := depth
@@ -1621,12 +1681,11 @@ func (e *exporter) blockToJSON(b *model.Block, depth int) (*omap, bool, error) {
 	case nil:
 		// legacy content-less blocks exist in old accounts: relation objects
 		// carry a bare wrapper around their "used in" dataview, and pages can
-		// hold orphaned empty leaves. A childless one is dropped; one with
-		// children exports as a transparent group so the subtree survives.
-		if len(b.ChildrenIds) == 0 {
-			return nil, false, nil
-		}
-		m.set("type", "group")
+		// hold orphaned empty leaves. Both are transparent containers (§7a),
+		// lifted before this is ever reached from the document walk; the one
+		// caller that does reach it is a CELL, which cannot lift because the
+		// cell is the position (cellToJSON turns it into an empty cell).
+		return nil, false, nil
 	case *model.BlockContentOfText:
 		if err := e.textToJSON(m, b, orEmpty(c.Text), liftedFields); err != nil {
 			return nil, false, err
@@ -1668,10 +1727,10 @@ func (e *exporter) blockToJSON(b *model.Block, depth int) (*omap, bool, error) {
 			m.set("type", "row")
 		case model.BlockContentLayout_Column:
 			m.set("type", "column")
-		case model.BlockContentLayout_Div:
-			m.set("type", "group")
 		default:
-			// header and stray table wrappers are structural (§7)
+			// header and stray table wrappers are structural (§7); a Div is
+			// a transparent container (§7a) and is lifted before this — a
+			// cell that IS one lands here and renders as an empty cell
 			return nil, false, nil
 		}
 	case *model.BlockContentOfTable:

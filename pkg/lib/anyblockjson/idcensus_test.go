@@ -126,18 +126,23 @@ func TestExport_CompactIdsSurviveARoundTrip(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
 		ghost *model.Block
+		extra []*model.Block
 	}{
-		{"structural block", textBlock(ghostId, model.BlockContentText_Title, "Title")},
-		{"content-less leaf", &model.Block{Id: ghostId}},
+		// the production shape: a Layout_Div wrapper and a paragraph whose
+		// minted ids end in the same five characters
+		{"transparent container", divBlock(ghostId, "inner"),
+			[]*model.Block{textBlock("inner", model.BlockContentText_Paragraph, "inside the container")}},
+		{"structural block", textBlock(ghostId, model.BlockContentText_Title, "Title"), nil},
+		{"content-less leaf", &model.Block{Id: ghostId}, nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			snap := &model.SmartBlockSnapshotBase{
-				Blocks: []*model.Block{
+				Blocks: append([]*model.Block{
 					{Id: "root", ChildrenIds: []string{ghostId, servedId},
 						Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}},
 					tc.ghost,
 					textBlock(servedId, model.BlockContentText_Paragraph, "served"),
-				},
+				}, tc.extra...),
 				Details: fields(map[string]*types.Value{"id": str("root"), "name": str("Title")}),
 			}
 			opts := testOptions()
