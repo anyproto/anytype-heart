@@ -214,6 +214,13 @@ var wellKnownPropertyOrder = []string{"name", "description", "iconEmoji", "iconI
 // caller of the row-level surface silently had the pre-legend behaviour.
 // Hand the map back to a value-level reader through Options.Legend.OptionIds
 // under this key's spelling, or drop it and accept name resolution knowingly.
+//
+// The derived attribution keys — `creator`, `lastModifiedBy` — return the
+// member's NAME as a plain string (§3), or **nil** when Options carries no
+// participant resolver or this space has no name for the member. A row
+// surface cannot omit a value its caller asked for, so nil is where the
+// document's "omit it" lands; a caller that wants the property absent rather
+// than null drops it on nil.
 func MarshalPropertyValue(key string, v *types.Value, opts Options) (any, map[string]string) {
 	e := &exporter{opts: opts}
 	out := e.propertyValue(key, v)
@@ -359,6 +366,17 @@ func (e *exporter) seedTermLedger() {
 		lifted := e.typePropDetailKeys()
 		for k := range e.snapshot.Details.Fields {
 			if !stripped[k] && !lifted[k] && isWritablePropertyKey(k) {
+				name(k)
+			}
+		}
+		// the attribution keys are on the stripped list — their VALUE never
+		// reaches a document — but the document still SPELLS them when a name
+		// resolves, and the census counts what the document spells (§9a). The
+		// condition mirrors buildProperties exactly: reserve neither more nor
+		// less than what is written, or a custom relation slugged `creator`
+		// claims the spelling and the two members collapse onto one.
+		for k := range derivedAttributionProperties {
+			if _, named := e.participantName(k); named {
 				name(k)
 			}
 		}
@@ -1388,6 +1406,19 @@ func (e *exporter) buildProperties() *omap {
 	lifted := e.typePropDetailKeys()
 	var keys []string
 	for k := range e.snapshot.Details.Fields {
+		if isAttributionProperty(k) {
+			// stripped as a VALUE like every other derived key, and written
+			// as the member's name — but only when there IS one. With no
+			// resolver, or a member this space cannot name, the property is
+			// omitted outright: a `creator` that is a name on some documents
+			// and a 135-character id on others is worse than one that is
+			// consistently absent (§3).
+			if _, named := e.participantName(k); !named {
+				continue
+			}
+			keys = append(keys, k)
+			continue
+		}
 		if stripped[k] || lifted[k] {
 			continue
 		}
@@ -1472,7 +1503,54 @@ func resolveFormatWith(opts Options, key string) (model.RelationFormat, bool) {
 	return 0, false
 }
 
+// isAttributionProperty reports the two derived properties that name a member
+// — `creator` and `lastModifiedBy` (validate.go). Their stored value is a
+// participant id and the document writes a NAME instead (§3).
+func isAttributionProperty(key string) bool {
+	_, ok := derivedAttributionProperties[key]
+	return ok
+}
+
+// participantNameOf renders an attribution value as the member's display
+// name (§3). ok is false — and the property is then written NOWHERE, rather
+// than written empty — in all four ways this can fail to produce a name: no
+// participant resolver wired, no value, a value holding no id, and a member
+// this space has no name for.
+//
+// The value is read as a LIST and the first id answers, because a stored
+// detail may hold either shape; the relation is `maxCount: 1` and 36,966 real
+// objects held exactly one id each, so there is no second id to lose.
+func participantNameOf(v *types.Value, opts Options) (string, bool) {
+	if opts.ResolveParticipants == nil {
+		return "", false
+	}
+	ids := valueStringList(v)
+	if len(ids) == 0 {
+		return "", false
+	}
+	return opts.ResolveParticipants.ParticipantName(ids[0])
+}
+
+// participantName answers participantNameOf for a stored detail of this
+// snapshot. Both the emit (buildProperties) and the term census
+// (seedTermLedger) ask it, and they must agree: the census reserves a
+// spelling exactly when the emit is going to write it.
+func (e *exporter) participantName(key string) (string, bool) {
+	return participantNameOf(e.detail(key), e.opts)
+}
+
 func (e *exporter) propertyValue(key string, v *types.Value) any {
+	// the derived attribution properties are spelled as the member's NAME,
+	// never as the 135-character participant id they store (§3). Nil is the
+	// "no name" answer, and a whole-document export never reaches it:
+	// buildProperties omits the key rather than writing a null, having asked
+	// the same question first.
+	if isAttributionProperty(key) {
+		if name, ok := participantNameOf(v, e.opts); ok {
+			return name
+		}
+		return nil
+	}
 	// layout is stored as a number and named in the format (§3); a number
 	// outside the enum falls through and exports unchanged.
 	if isLayoutKey(key) {
