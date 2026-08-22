@@ -206,6 +206,12 @@ type exporter struct {
 	rootId   string
 	visited  map[string]bool // emitted block ids: breaks ChildrenIds cycles, dedupes shared children
 
+	// emitted, when non-nil, records the STORED doc-local id of everything
+	// this run actually writes — blocks, table rows/columns, dataview views.
+	// It is the id census's population (buildLabelPlan): only the probe run
+	// sets it, so a normal export pays nothing for it.
+	emitted map[string]bool
+
 	localIds map[string]string // block/row/column/view id -> short label (§9a)
 
 	// optionRefs is the second `refs` population: the option id behind every
@@ -1561,6 +1567,7 @@ func (e *exporter) appendBlocksFlat(out *[]any, ids []string, depth int, topLeve
 		if m == nil {
 			continue
 		}
+		e.recordEmitted(b.Id)
 		*out = append(*out, m)
 		if withChildren {
 			if err := e.appendBlocksFlat(out, b.ChildrenIds, depth+1, false); err != nil {
@@ -1569,6 +1576,14 @@ func (e *exporter) appendBlocksFlat(out *[]any, ids []string, depth int, topLeve
 		}
 	}
 	return nil
+}
+
+// recordEmitted notes that this run wrote the block/row/column/view stored
+// under id. Only the census probe collects; every other run no-ops.
+func (e *exporter) recordEmitted(id string) {
+	if e.emitted != nil && id != "" {
+		e.emitted[id] = true
+	}
 }
 
 func (e *exporter) localId(id string) string {
@@ -1838,6 +1853,36 @@ func stringsToAny(ss []string) []any {
 // ---- compact ids (§9a) ----
 //
 
+// emittedLocalIds is the id census's population: the doc-local ids this
+// export actually SERVES — every block it writes, plus the table rows,
+// columns and dataview views inside them. It runs the block emit a second
+// time on a throwaway exporter (own visited map, own ledgers, warnings
+// swallowed so nothing is reported twice) rather than re-deriving the drop
+// rules, because a second statement of "what export emits" would be a second
+// thing to keep in step with blockToJSON, and the census is only correct
+// while the two agree exactly (TestExport_CensusPopulationIsWhatExportEmits).
+func (e *exporter) emittedLocalIds() map[string]bool {
+	opts := e.opts
+	if opts.OnWarning != nil {
+		// keep the nil-ness — several drop-vs-error decisions read it — but
+		// silence the probe: the real run reports the same issues.
+		opts.OnWarning = func(Issue) {}
+	}
+	probe := &exporter{
+		opts:     opts,
+		snapshot: e.snapshot,
+		sbType:   e.sbType,
+		blocks:   e.blocks,
+		rootId:   e.rootId,
+		visited:  map[string]bool{},
+		emitted:  map[string]bool{},
+	}
+	// an error here is the real run's error too, and it fails there with the
+	// message the caller should see; the partial census costs nothing.
+	_, _ = probe.buildBlocks()
+	return probe.emitted
+}
+
 // buildLabelPlan works out which doc-local block/row/column/view ids may be
 // relabeled to a short suffix (§9a). It walks BOTH id populations to do it:
 // the doc-local ids that are the relabeling candidates, and every OBJECT id
@@ -1846,9 +1891,21 @@ func stringsToAny(ss []string) []any {
 // so a label equal to one would make two different things answer to one name.
 // mintedSuffixLabels' own census counts local ids only, so that avoid-set is
 // the sole guard against it (TestExport_CompactLabelCannotTakeAServedId).
+//
+// **The local population is what export EMITS, not what the snapshot holds**
+// (§9a, mirroring §3's term census). A block the document does not spell —
+// a transparent container (§7a), a structural block (§7), a content-less
+// leaf, a cell whose id is derived, anything unreachable — is gone from the
+// snapshot the round trip rebuilds, so reserving its suffix slot makes
+// `Export(S)` and `Export(Import(Export(S)))` disagree: the first read keeps
+// a paragraph's id full because an invisible block shares its 5-char tail,
+// the second compacts it. That is guarantee 3 (§11), broken on the API's
+// default read shape. The protection lost is illusory anyway — a container
+// the editor re-creates gets a FRESH id no census could have reserved
+// against.
 func (e *exporter) buildLabelPlan() {
 	objects := map[string]bool{}
-	locals := map[string]bool{}
+	locals := e.emittedLocalIds()
 	addObject := func(id string) {
 		if id != "" {
 			objects[id] = true
@@ -1858,9 +1915,6 @@ func (e *exporter) buildLabelPlan() {
 	for _, b := range e.snapshot.Blocks {
 		if b == nil {
 			continue
-		}
-		if b.Id != "" {
-			locals[b.Id] = true
 		}
 		switch c := b.Content.(type) {
 		case *model.BlockContentOfText:
@@ -1897,7 +1951,6 @@ func (e *exporter) buildLabelPlan() {
 				if v == nil {
 					continue
 				}
-				locals[v.Id] = true
 				addObject(v.DefaultTemplateId)
 				addObject(v.DefaultObjectTypeId)
 				for _, f := range flattenFilters(v.Filters) {

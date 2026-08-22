@@ -53,6 +53,7 @@ func (e *exporter) tableToJSON(m *omap, b *model.Block) error {
 			continue // orphan blocks in the columns wrapper are dropped
 		}
 		e.visited[colId] = true
+		e.recordEmitted(colId)
 		colIds = append(colIds, colId)
 		cm := &omap{}
 		if !e.opts.OmitIds {
@@ -94,6 +95,7 @@ func (e *exporter) tableToJSON(m *omap, b *model.Block) error {
 	var rows []any
 	for _, row := range rowBlocks {
 		rm := &omap{}
+		e.recordEmitted(row.Id)
 		if !e.opts.OmitIds {
 			rm.setNonEmpty("id", e.tableInnerId(row.Id))
 		}

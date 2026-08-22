@@ -61,6 +61,7 @@ func (e *exporter) dataviewToJSON(m *omap, dv *model.BlockContentDataview) error
 
 func (e *exporter) viewToJSON(v *model.BlockContentDataviewView, dv *model.BlockContentDataview) (*omap, error) {
 	vm := &omap{}
+	e.recordEmitted(v.Id)
 	if !e.opts.OmitIds {
 		vm.setNonEmpty("id", e.localId(v.Id))
 	}
