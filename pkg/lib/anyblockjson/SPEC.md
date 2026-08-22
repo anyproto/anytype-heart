@@ -2947,13 +2947,35 @@ not less.
 **The census counts the ids the document SPELLS, not every id the snapshot
 holds** — the same principle the term census follows (§3, v0.15). A block the
 document does not spell — a transparent container (§7a), a structural block
-(§7), a content-less leaf, a cell whose id is derived, anything unreachable —
+(§7), a content-less leaf, anything unreachable —
 is gone from the snapshot a round trip rebuilds, so reserving its suffix slot
 makes the two reads disagree: the first keeps a paragraph's id full because
 an invisible block shares its 5-char tail, the second compacts it, and
 guarantee 3 (§11) fails on the API's default read shape. The protection given
 up is illusory in any case: a container the editor re-creates gets a FRESH id
 no census could have reserved against.
+
+**One unspelled id is reserved all the same: a cell's.** A cell carries no id
+in the flat form (§6.1), but unlike everything else in that list it is not
+gone from the rebuilt snapshot — import re-derives `rowId-colId` from row and
+column ids the document DOES spell, so the same cell ids come back and
+reserving them is stable across generations. It is also necessary: a cell id
+ends with its column's id in full, so its last five characters ARE the
+column's label. Leave cells out and the column wins that bucket alone and
+compacts to a label its own cells share as a suffix in the live object —
+which breaks this section's own promise that a served label is neither equal
+to nor an ambiguous suffix of another served id, and makes the wiring's
+resolve-by-unique-suffix allowance below unsound. Measured before the fix:
+899 documents in a 36,966-object account served such a label.
+
+**The census costs a second block emit.** `emittedLocalIds` runs the emit
+again on a throwaway exporter rather than re-deriving the drop rules, because
+a second statement of "what export emits" would be a second thing to keep in
+step with the first, and the census is correct only while the two agree
+exactly. Measured on a 1,630-block document: 4.2 ms → 6.7 ms, +57%. It is
+paid only where labels are minted — that is, on the API's default read shape,
+and never on the export/backup shape or under `OmitIds`, which writes no id
+for a plan to label.
 
 The two shapes the API serves are the two this leaves: API v2 default reads
 use block labels (the server resolves them by unique suffix) and keep object

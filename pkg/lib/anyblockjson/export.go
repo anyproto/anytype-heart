@@ -188,7 +188,11 @@ func Marshal(sbType model.SmartBlockType, snapshot *model.SmartBlockSnapshotBase
 	}
 	e := &exporter{opts: opts, snapshot: snapshot, sbType: sbType, blocks: map[string]*model.Block{}, visited: map[string]bool{}}
 	e.indexBlocks()
-	if opts.compactBlockLabels() {
+	// OmitIds writes no id at all, so a label plan has nothing to label: the
+	// two flags together used to run the census probe — a second full block
+	// emit — and mint a plan for output that carries no ids. Byte-identical
+	// either way; it was simply a whole extra emit for nothing.
+	if opts.compactBlockLabels() && !opts.OmitIds {
 		e.buildLabelPlan()
 	}
 	doc, err := e.buildDoc(sbType)
@@ -1940,6 +1944,20 @@ func (e *exporter) emittedLocalIds() map[string]bool {
 	// an error here is the real run's error too, and it fails there with the
 	// message the caller should see; the partial census costs nothing.
 	_, _ = probe.buildBlocks()
+	// A derived cell id is not SPELLED — a cell carries no id in the flat form
+	// — but unlike every other unspelled block it is not gone from the snapshot
+	// the round trip rebuilds: import re-derives `rowId-colId` from row and
+	// column ids that ARE spelled, so the same cell ids come back, and
+	// reserving them is stable across generations. Leaving them out is what
+	// makes a compacted COLUMN label an ambiguous suffix of its own cells in
+	// the live object (a cell id ends with the whole column id, so its last
+	// five characters ARE the column's label), and §9a promises a served label
+	// is neither equal to nor an ambiguous suffix of another served id.
+	// Measured: without this, 899 corpus documents serve a column label that a
+	// suffix resolver could match against a cell block instead.
+	for _, id := range probe.derivedCellIds(probe.emitted) {
+		probe.emitted[id] = true
+	}
 	return probe.emitted
 }
 
@@ -1955,7 +1973,7 @@ func (e *exporter) emittedLocalIds() map[string]bool {
 // **The local population is what export EMITS, not what the snapshot holds**
 // (§9a, mirroring §3's term census). A block the document does not spell —
 // a transparent container (§7a), a structural block (§7), a content-less
-// leaf, a cell whose id is derived, anything unreachable — is gone from the
+// leaf, anything unreachable — is gone from the
 // snapshot the round trip rebuilds, so reserving its suffix slot makes
 // `Export(S)` and `Export(Import(Export(S)))` disagree: the first read keeps
 // a paragraph's id full because an invisible block shares its 5-char tail,

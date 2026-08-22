@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -106,7 +107,20 @@ func TestExport_CensusPopulationIsWhatExportEmits(t *testing.T) {
 			require.NoError(t, err)
 			require.NoError(t, Validate(data))
 
-			assert.Equal(t, servedLocalIds(t, data), censusOf(tc.snap, testOptions()))
+			// The census is what the round trip REBUILDS, which is what the
+			// document spells PLUS the cell ids a table implies. A cell
+			// carries no id in the flat form, but import re-derives
+			// `rowId-colId` from row and column ids that are spelled, so the
+			// same ids come back — and they have to be reserved, or a column
+			// compacts to a label its own cells share as a suffix in the live
+			// object (see emittedLocalIds). Every OTHER unspelled block —
+			// container, structural, content-less, unreachable — is genuinely
+			// gone and must stay out, which is what the two shapes below pin.
+			want := servedLocalIds(t, data)
+			for _, id := range derivedCellIdsOf(tc.snap, testOptions()) {
+				want[id] = true
+			}
+			assert.Equal(t, want, censusOf(tc.snap, testOptions()))
 		})
 	}
 }
@@ -165,4 +179,111 @@ func TestExport_CompactIdsSurviveARoundTrip(t *testing.T) {
 				"Export(S) and Export(Import(Export(S))) must agree (§11 guarantee 3)")
 		})
 	}
+}
+
+// derivedCellIdsOf lists the `rowId-colId` ids a snapshot's tables imply. It
+// walks the snapshot itself rather than calling the exporter's own helper, so
+// it is an INDEPENDENT statement of what the census owes — the same reason
+// servedLocalIds parses the output bytes instead of asking the exporter.
+//
+// Shape (§6.1): a table's children are two layout wrappers, TableColumns and
+// TableRows; the column ids and row ids are their children, and every
+// (row, column) pair implies a cell.
+func derivedCellIdsOf(snap *model.SmartBlockSnapshotBase, _ Options) []string {
+	byId := map[string]*model.Block{}
+	for _, b := range snap.GetBlocks() {
+		if b != nil && b.Id != "" {
+			byId[b.Id] = b
+		}
+	}
+	var out []string
+	for _, b := range snap.GetBlocks() {
+		if b == nil {
+			continue
+		}
+		if _, isTable := b.Content.(*model.BlockContentOfTable); !isTable {
+			continue
+		}
+		var cols, rows []string
+		for _, wrapperId := range b.ChildrenIds {
+			w := byId[wrapperId]
+			l, ok := w.GetContent().(*model.BlockContentOfLayout)
+			if !ok {
+				continue
+			}
+			switch l.Layout.GetStyle() {
+			case model.BlockContentLayout_TableColumns:
+				cols = append(cols, w.ChildrenIds...)
+			case model.BlockContentLayout_TableRows:
+				rows = append(rows, w.ChildrenIds...)
+			}
+		}
+		for _, r := range rows {
+			for _, c := range cols {
+				out = append(out, r+"-"+c)
+			}
+		}
+	}
+	return out
+}
+
+// countingOptions counts how many times export asks it to name an option,
+// which is how a test can SEE the census probe: the probe is a second full
+// block emit, so a wired resolver is asked twice. The rich fixture's dataview
+// carries select filter values, so this hook is genuinely reached.
+type countingOptions struct {
+	n     *int
+	inner OptionResolver
+}
+
+func (c countingOptions) OptionName(key domain.RelationKey, id string) (string, bool) {
+	*c.n++
+	return c.inner.OptionName(key, id)
+}
+func (c countingOptions) OptionId(key domain.RelationKey, name string) (string, bool) {
+	return c.inner.OptionId(key, name)
+}
+
+// The census probe (emittedLocalIds) is a SECOND full block emit, and the most
+// expensive thing a compact export does. OmitIds writes no id at all, so a
+// label plan has nothing to label — running the probe for that combination
+// costs a whole extra emit for output that carries no ids.
+//
+// The bytes are byte-identical either way, which is exactly why the waste went
+// unnoticed. So this counts RESOLVER CALLS through the public Marshal instead:
+// the probe asks the resolver a second time, and that is observable. A test
+// that re-implemented the gate would pass no matter what the export does —
+// this one fails when the gate is removed.
+func TestExport_NoCensusProbeWhenNoIdIsWritten(t *testing.T) {
+	snap := richSnapshot()
+
+	callsFor := func(opts Options) int {
+		n := 0
+		opts.ResolveFormat = testFormatResolver
+		opts.ResolveOptions = countingOptions{n: &n, inner: testResolver}
+		_, err := Marshal(model.SmartBlockType_Page, snap, opts)
+		require.NoError(t, err)
+		return n
+	}
+
+	plain := callsFor(Options{OmitIds: true})
+	compact := callsFor(Options{OmitIds: true, CompactIds: true})
+	require.NotZero(t, plain, "the fixture must reach the resolver, or this proves nothing")
+	assert.Equal(t, plain, compact,
+		"OmitIds writes no id, so compaction must not run the census probe")
+
+	// the control: WITHOUT OmitIds, compaction does run the probe, so the
+	// assertion above cannot pass by never probing at all
+	withIds := callsFor(Options{})
+	withIdsCompact := callsFor(Options{CompactIds: true})
+	assert.Greater(t, withIdsCompact, withIds,
+		"a compact read still pays for its census (the probe is a second emit)")
+
+	// and the bytes are unchanged by the gate
+	a, err := Marshal(model.SmartBlockType_Page, snap, Options{OmitIds: true})
+	require.NoError(t, err)
+	b, err := Marshal(model.SmartBlockType_Page, snap, Options{OmitIds: true, CompactIds: true})
+	require.NoError(t, err)
+	assert.Equal(t, string(a), string(b),
+		"OmitIds decides the ids; compaction adds nothing to decide")
 }

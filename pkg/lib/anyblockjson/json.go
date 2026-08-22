@@ -871,9 +871,10 @@ func IsCompactLabelShaped(s string) bool {
 //   - RFC-4122 UUID (8-4-4-4-12 lowercase hex): uuid.New().String() —
 //     dataview view ids.
 //
-// Derived cell ids (`rowId-colId`) are left out on purpose: a cell's suffix
-// is its column's, so neither could ever win the census — and cells carry no
-// id in the flat form anyway. Anything unrecognised stays full: a false
+// Derived cell ids (`rowId-colId`) are reserved by the census even though a
+// cell carries no id in the flat form: a cell's suffix IS its column's, so
+// unless both are counted the column wins the bucket alone and compacts to a
+// label its own cells share in the live object. Anything unrecognised stays full: a false
 // negative costs a few tokens, a false positive destroys a meaningful
 // identifier.
 func isMintedLocalId(id string) bool {
