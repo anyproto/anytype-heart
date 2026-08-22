@@ -51,12 +51,43 @@ type OptionResolver interface {
 	OptionId(key domain.RelationKey, name string) (string, bool)
 }
 
+// ParticipantResolver names the space member a participant id stands for.
+// The derived attribution properties — `creator` and `lastModifiedBy` — are
+// written as that NAME rather than as the 135-character participant id (§3).
+//
+// It has ONE direction on purpose, and the missing half is the whole design:
+//
+//   - There is no `ParticipantId(name)`. A display name is a label, not an
+//     address — two members of one space may carry the same one — so nothing
+//     could invert it honestly. Import does not try: it drops both keys (§3).
+//   - Nothing is lost by that. Both properties are `source: derived`,
+//     `maxCount: 1`, `readonly: true`: their value is recovered from the
+//     object tree root's own signature on every rebuild
+//     (`treeSource.GetCreationInfo`), and four separate seams already discard
+//     any value a document supplies. The exported line is a caption on
+//     derived state, which is exactly why a lossy readable spelling is right
+//     here — and why it would be wrong for `assignee`/`author`, which are
+//     `source: details` and must keep resolvable ids.
+//
+// A resolver that cannot answer returns false, and the property is then
+// OMITTED entirely. Falling back to the raw id was considered and rejected:
+// a format whose `creator` is sometimes a name and sometimes a 135-character
+// address is worse to read, and worse to write a reader for, than one that
+// consistently carries neither.
+type ParticipantResolver interface {
+	ParticipantName(id string) (string, bool)
+}
+
 // Options configures Marshal and Unmarshal (§13).
 type Options struct {
 	ResolveFormat     FormatResolver   // optional; nil = bundle-only resolution (§3)
 	ResolveOptions    OptionResolver   // optional; nil = option values pass through as ids
 	ResolveProperties PropertyResolver // optional; nil = type documents keep raw recommended-relation ids (§2a)
-	Keys              KeyVocabulary    // optional; nil = BundledKeyVocabulary (the derived table — keyvocab.go)
+	// ResolveParticipants names the member behind a participant id, for the
+	// derived attribution properties only (export; nil = `creator` and
+	// `lastModifiedBy` are omitted, §3).
+	ResolveParticipants ParticipantResolver
+	Keys                KeyVocabulary // optional; nil = BundledKeyVocabulary (the derived table — keyvocab.go)
 	// Legend is the enclosing document's three legends, for the FRAGMENT
 	// entry points only (fragment.go, filters.go, BuildRecommendedLists).
 	// Marshal and Unmarshal ignore it: a whole document carries its own.

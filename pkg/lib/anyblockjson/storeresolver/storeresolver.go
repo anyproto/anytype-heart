@@ -21,6 +21,11 @@ type Resolvers struct {
 	index      spaceindex.Store
 	optionsFor map[domain.RelationKey][]*model.RelationOption
 
+	// participantNames caches ParticipantName's answers, misses included —
+	// an empty value IS the miss, so an unnamed or unknown participant is
+	// asked about once per export rather than once per object.
+	participantNames map[string]string
+
 	relsLoaded bool
 	relById    map[string]anyblockjson.PropertyDefinition
 	relKeyToId map[string]string
@@ -32,17 +37,22 @@ type Resolvers struct {
 
 // New creates resolvers over one space's index.
 func New(index spaceindex.Store) *Resolvers {
-	return &Resolvers{index: index, optionsFor: map[domain.RelationKey][]*model.RelationOption{}}
+	return &Resolvers{
+		index:            index,
+		optionsFor:       map[domain.RelationKey][]*model.RelationOption{},
+		participantNames: map[string]string{},
+	}
 }
 
 // Options returns anyblockjson.Options pre-wired with the resolvers; callers
 // set the remaining fields (compaction flags etc.) on the returned value.
 func (r *Resolvers) Options() anyblockjson.Options {
 	return anyblockjson.Options{
-		ResolveFormat:     r.ResolveFormat,
-		ResolveOptions:    r,
-		ResolveProperties: r,
-		Keys:              r,
+		ResolveFormat:       r.ResolveFormat,
+		ResolveOptions:      r,
+		ResolveProperties:   r,
+		ResolveParticipants: r,
+		Keys:                r,
 	}
 }
 
@@ -152,6 +162,37 @@ func (r *Resolvers) OptionId(key domain.RelationKey, name string) (string, bool)
 		}
 	}
 	return "", false
+}
+
+// ParticipantName implements anyblockjson.ParticipantResolver: the display
+// name of the space member a participant id names (§3).
+//
+// A participant is an ordinary indexed object whose id is
+// `_participant_<space>_<account>`, so one point lookup answers it — there is
+// no listing to load and no vocabulary to prime. The answer is the `name` the
+// space last saw on that member's profile.
+//
+// **No name is an answer of "no", not an empty string.** A member who never
+// set a profile name has none here, and so does an id this space has no
+// participant row for (a member of a space this export is not running in, an
+// account whose participant object was never indexed). Both make export omit
+// the property, which is the same thing it does with no resolver at all —
+// the format's rule is that `creator` is a name or is absent, never a blank.
+//
+// **Only `name`, deliberately.** A member may also carry `globalName` (their
+// any-name) and `identity`; neither is substituted for a missing `name`,
+// because a document that falls back to an address has re-introduced the
+// address this spelling exists to remove.
+func (r *Resolvers) ParticipantName(id string) (string, bool) {
+	if name, cached := r.participantNames[id]; cached {
+		return name, name != ""
+	}
+	name := ""
+	if details, err := r.index.GetDetails(id); err == nil && details != nil {
+		name = details.GetString(bundle.RelationKeyName)
+	}
+	r.participantNames[id] = name
+	return name, name != ""
 }
 
 // PropertyById implements anyblockjson.PropertyResolver.
