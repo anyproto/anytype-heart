@@ -1528,7 +1528,19 @@ func participantNameOf(v *types.Value, opts Options) (string, bool) {
 	if len(ids) == 0 {
 		return "", false
 	}
-	return opts.ResolveParticipants.ParticipantName(ids[0])
+	name, ok := opts.ResolveParticipants.ParticipantName(ids[0])
+	// The format's rule is "a name or nothing, never a blank": a `"creator": ""`
+	// line costs bytes, says less than absence, and reads to a model as an
+	// attribution that exists and is empty. The shipped storeresolver never
+	// answers blank, but the interface is exported and its contract only says a
+	// resolver that cannot answer returns false — it does not forbid
+	// ("", true). Enforce it HERE, at the seam every resolver passes through,
+	// rather than trusting each implementation. Whitespace counts as blank for
+	// the same reason.
+	if strings.TrimSpace(name) == "" {
+		return "", false
+	}
+	return name, ok
 }
 
 // participantName answers participantNameOf for a stored detail of this

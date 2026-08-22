@@ -141,6 +141,16 @@ func UnmarshalBlock(raw json.RawMessage, forcedId string, opts Options) ([]*mode
 // value was written mints a second option under the stale name — the two
 // losses §9a exists to close, which this entry point had no way to avoid.
 func UnmarshalPropertyValue(key string, v any, opts Options) *types.Value {
+	// A key the whole-document import DROPS returns nothing here too, or the
+	// two doors disagree about the same key. It matters most for attribution
+	// (§3): export writes `creator` as a member NAME, so a caller round-tripping
+	// one value through this pair would hand back "Roman" as though it were a
+	// participant id — a display name in an id slot, which nothing downstream
+	// can resolve. MarshalPropertyValue writes the name; this refuses to read
+	// it back, and the asymmetry is the point.
+	if isDroppedOnImport(key) {
+		return nil
+	}
 	imp := &importer{opts: opts, doc: opts.fragmentDoc()}
 	return imp.propertyValue(key, key, v)
 }

@@ -26,8 +26,16 @@ const participantId = "_participant_bafyreid62d5e6hny6mv6zass2zg73nxyhjzhjasx7im
 // — and a future edit that took them off the internal list would make the
 // sweep unusable with nothing else failing.
 //
-// How this can fail: remove the attribution keys from strippedDetailKeys and
-// both cases report a changed/lost detail.
+// How this can fail: make the comparator compare the attribution keys —
+// through InternalPropertyKeys(), which is what it reads — and both cases
+// report a changed/lost detail.
+//
+// NOT via `derivedAttributionProperties` in strippedDetailKeys(): an audit
+// deleted that loop and all four packages stayed green, because both keys are
+// already in bundle.LocalAndDerivedRelationKeys and neither is in
+// propertiesKeptOnExport, so the loop is inert today. It is defence for the
+// day one of them moves onto the keep-list — not the mechanism this test
+// pins, and naming it here sent a reader looking in the wrong place.
 func TestCompare_AttributionKeysAreNotDataLoss(t *testing.T) {
 	t.Run("creator lost to the round trip is not reported", func(t *testing.T) {
 		// given
