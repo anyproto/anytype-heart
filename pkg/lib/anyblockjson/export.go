@@ -1681,10 +1681,10 @@ func (e *exporter) blockToJSON(b *model.Block, depth int) (*omap, bool, error) {
 	case nil:
 		// legacy content-less blocks exist in old accounts: relation objects
 		// carry a bare wrapper around their "used in" dataview, and pages can
-		// hold orphaned empty leaves. Both are transparent containers (§7a),
-		// lifted before this is ever reached from the document walk; the one
-		// caller that does reach it is a CELL, which cannot lift because the
-		// cell is the position (cellToJSON turns it into an empty cell).
+		// hold orphaned empty leaves. They are transparent containers (§7a)
+		// and both callers handle them before this: appendBlocksFlat lifts,
+		// cellToJSON renders an empty cell. Kept as the drop it would have
+		// been, so a future caller cannot mint a block out of no content.
 		return nil, false, nil
 	case *model.BlockContentOfText:
 		if err := e.textToJSON(m, b, orEmpty(c.Text), liftedFields); err != nil {
@@ -1729,8 +1729,9 @@ func (e *exporter) blockToJSON(b *model.Block, depth int) (*omap, bool, error) {
 			m.set("type", "column")
 		default:
 			// header and stray table wrappers are structural (§7); a Div is
-			// a transparent container (§7a) and is lifted before this — a
-			// cell that IS one lands here and renders as an empty cell
+			// a transparent container (§7a), lifted by appendBlocksFlat and
+			// turned into an empty cell by cellToJSON, so it never arrives
+			// here — and if it ever did, dropping it is the same answer
 			return nil, false, nil
 		}
 	case *model.BlockContentOfTable:
