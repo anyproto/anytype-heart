@@ -83,7 +83,11 @@ func UnmarshalBlocks(run []json.RawMessage, opts Options) (blocks []*model.Block
 	}
 	imp := &importer{opts: opts, doc: opts.fragmentDoc()}
 	root := &model.Block{}
-	blocks, err = imp.flatSubtree(jbs, imp.blockIndents(jbs, -1), root, -1)
+	// §7a: the write path lifts too, or an API caller that pasted a `group`
+	// mints a Layout_Div straight into a live object — one no read will ever
+	// show and normalization never removes while it has children
+	liftedJbs, liftedIndents := liftTransparentContainers(jbs, imp.blockIndents(jbs, -1))
+	blocks, err = imp.flatSubtree(liftedJbs, liftedIndents, root, -1)
 	if err != nil {
 		return nil, nil, fmt.Errorf("build fragment blocks: %w", err)
 	}
@@ -101,6 +105,17 @@ func UnmarshalBlock(raw json.RawMessage, forcedId string, opts Options) ([]*mode
 	jbs, err := validateFragmentRun([]json.RawMessage{raw}, opts)
 	if err != nil {
 		return nil, err
+	}
+	// §7a: this entry point's contract is exactly one block, and a
+	// transparent container is not one. Returning zero blocks would leave
+	// the caller's edit silently unapplied — a replaceBlock that replaced
+	// nothing — so it is named as the error it is.
+	if transparentBlockTypes[jbs[0].Type] {
+		return nil, &ValidationError{Issues: []Issue{{
+			Path: "/blocks/0/type",
+			Message: fmt.Sprintf("%q is a transparent container (§7a) — it contributes no block of its own, "+
+				"so it cannot be the one block this call addresses", jbs[0].Type),
+		}}}
 	}
 	imp := &importer{opts: opts, doc: opts.fragmentDoc()}
 	blocks, err := imp.blockFromJSON(jbs[0], forcedId)

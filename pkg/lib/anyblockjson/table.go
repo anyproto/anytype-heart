@@ -428,7 +428,8 @@ func (imp *importer) cellFromJSON(cell jsonCell, cellId string) ([]*model.Block,
 			return nil, err
 		}
 		rest := cell.Blocks[1:]
-		extra, err := imp.flatSubtree(rest, imp.blockIndents(rest, 0), blocks[0], 0)
+		restJbs, restIndents := liftTransparentContainers(rest, imp.blockIndents(rest, 0))
+		extra, err := imp.flatSubtree(restJbs, restIndents, blocks[0], 0)
 		if err != nil {
 			return nil, err
 		}

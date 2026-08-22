@@ -389,3 +389,315 @@ func TestMarshal_TransparentContainersGolden(t *testing.T) {
 	require.False(t, strings.Contains(string(data), `"group"`))
 	checkGolden(t, "containers.json", data)
 }
+
+//
+// ---- import (§7a) ----
+//
+
+// importedTree renders a snapshot's block graph as "<indent> <type>" lines
+// in document order, so a lift can be read off the rebuilt tree.
+func importedTree(t *testing.T, s *model.SmartBlockSnapshotBase) []string {
+	t.Helper()
+	byId := map[string]*model.Block{}
+	child := map[string]bool{}
+	for _, b := range s.Blocks {
+		byId[b.Id] = b
+		for _, c := range b.ChildrenIds {
+			child[c] = true
+		}
+	}
+	var root *model.Block
+	for _, b := range s.Blocks {
+		if !child[b.Id] {
+			root = b
+			break
+		}
+	}
+	var out []string
+	var walk func(ids []string, depth int)
+	walk = func(ids []string, depth int) {
+		for _, id := range ids {
+			b := byId[id]
+			if b == nil {
+				continue
+			}
+			out = append(out, fmt.Sprintf("%d %s", depth, blockKind(b)))
+			walk(b.ChildrenIds, depth+1)
+		}
+	}
+	require.NotNil(t, root)
+	walk(root.ChildrenIds, 0)
+	return out
+}
+
+// blockKind names a model block the way the JSON type does, closely enough
+// to read a tree by.
+func blockKind(b *model.Block) string {
+	switch c := b.Content.(type) {
+	case *model.BlockContentOfText:
+		return "text:" + orEmpty(c.Text).Text
+	case *model.BlockContentOfLayout:
+		switch orEmpty(c.Layout).Style {
+		case model.BlockContentLayout_Row:
+			return "row"
+		case model.BlockContentLayout_Column:
+			return "column"
+		case model.BlockContentLayout_Div:
+			return "DIV"
+		}
+		return "layout"
+	case *model.BlockContentOfDataview:
+		return "dataview"
+	case nil:
+		return "CONTENT-LESS"
+	}
+	return fmt.Sprintf("%T", b.Content)
+}
+
+func TestUnmarshal_TransparentContainersAreLifted(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		blocks string
+		want   []string
+	}{
+		{
+			name:   "a container contributes no block and its children re-base",
+			blocks: `{"type":"group"},{"indent":1,"type":"paragraph","text":"one"},{"indent":1,"type":"paragraph","text":"two"}`,
+			want:   []string{"0 text:one", "0 text:two"},
+		},
+		{
+			name:   "nested containers re-base recursively",
+			blocks: `{"type":"group"},{"indent":1,"type":"group"},{"indent":2,"type":"paragraph","text":"deep"}`,
+			want:   []string{"0 text:deep"},
+		},
+		{
+			name:   "a childless container is simply gone",
+			blocks: `{"type":"group"},{"type":"paragraph","text":"after"}`,
+			want:   []string{"0 text:after"},
+		},
+		{
+			name:   "only the container's own subtree re-bases",
+			blocks: `{"type":"toggle","text":"t"},{"indent":1,"type":"group"},{"indent":2,"type":"paragraph","text":"inside"},{"type":"paragraph","text":"after"}`,
+			want:   []string{"0 text:t", "1 text:inside", "0 text:after"},
+		},
+		{
+			name:   "attributes on a container are ignored",
+			blocks: `{"type":"group","background_color":"red","align":"center","fields":{"x":"y"}},{"indent":1,"type":"paragraph","text":"one"}`,
+			want:   []string{"0 text:one"},
+		},
+		{
+			// the decoy again, on the read side
+			name:   "row and column are rebuilt, not lifted",
+			blocks: `{"type":"row"},{"indent":1,"type":"column"},{"indent":2,"type":"paragraph","text":"left"}`,
+			want:   []string{"0 row", "1 column", "2 text:left"},
+		},
+		{
+			name:   "row > group > column reads as row > column",
+			blocks: `{"type":"row"},{"indent":1,"type":"group"},{"indent":2,"type":"column"},{"indent":3,"type":"paragraph","text":"left"}`,
+			want:   []string{"0 row", "1 column", "2 text:left"},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			doc := fmt.Sprintf(`{"version":1,"type":"page","blocks":[%s]}`, tc.blocks)
+			require.NoError(t, Validate([]byte(doc)))
+
+			_, snapshot, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, importedTree(t, snapshot))
+			for _, b := range snapshot.Blocks {
+				assert.NotEqual(t, "DIV", blockKind(b),
+					"import must not mint a Layout_Div: no read would ever show it, and normalization never removes one that has children")
+			}
+		})
+	}
+}
+
+// TestUnmarshal_ContainerLiftRunsBeforeTheStructuralRules pins §4.4's
+// ordering. The lift is positional, so a lifted title is at indent 0 for
+// every purpose: absorbed into properties.name exactly as a title written at
+// indent 0 is, and the wrapped primary dataview reaches the position §7's pin
+// requires.
+func TestUnmarshal_ContainerLiftRunsBeforeTheStructuralRules(t *testing.T) {
+	t.Run("a wrapped title is absorbed into the name property", func(t *testing.T) {
+		doc := `{"version":1,"type":"page","blocks":[
+			{"type":"group"},
+			{"indent":1,"type":"title","text":"Wrapped title"},
+			{"indent":1,"type":"paragraph","text":"body"}]}`
+		_, snapshot, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
+		require.NoError(t, err)
+		assert.Equal(t, "Wrapped title", snapshot.Details.Fields["name"].GetStringValue())
+		assert.Equal(t, []string{"0 text:body"}, importedTree(t, snapshot))
+	})
+	t.Run("a wrapped primary dataview is pinned to the editor's fixed id", func(t *testing.T) {
+		doc := `{"version":1,"type":"page","blocks":[
+			{"type":"group"},
+			{"indent":1,"type":"dataview","views":[{"type":"table","name":"All"}]}]}`
+		_, snapshot, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
+		require.NoError(t, err)
+		var dvId string
+		for _, b := range snapshot.Blocks {
+			if b.GetDataview() != nil {
+				dvId = b.Id
+			}
+		}
+		assert.Equal(t, dataviewBlockId, dvId,
+			"the pin fires only at indent 0, which is where the lift puts it")
+	})
+}
+
+// TestUnmarshal_ContainerInsideATableCell covers the second of the three
+// flatSubtree entry points. An unfixed cell path is worse than shipping
+// nothing: it mints a real Layout_Div inside a table that no read ever shows.
+func TestUnmarshal_ContainerInsideATableCell(t *testing.T) {
+	doc := `{"version":1,"type":"page","blocks":[{"type":"table",
+		"columns":[{"id":"c1"}],
+		"rows":[{"id":"r1","cells":[[
+			{"type":"paragraph","text":"cell"},
+			{"indent":1,"type":"group"},
+			{"indent":2,"type":"paragraph","text":"under the container"}]]}]}]}`
+	require.NoError(t, Validate([]byte(doc)))
+
+	_, snapshot, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
+	require.NoError(t, err)
+	for _, b := range snapshot.Blocks {
+		require.NotEqual(t, "DIV", blockKind(b), "a container inside a cell must not become a Layout_Div")
+	}
+	// the paragraph re-bases to the cell's own first level
+	var cell *model.Block
+	for _, b := range snapshot.Blocks {
+		if b.Id == "r1-c1" {
+			cell = b
+		}
+	}
+	require.NotNil(t, cell)
+	require.Len(t, cell.ChildrenIds, 1)
+	byId := map[string]*model.Block{}
+	for _, b := range snapshot.Blocks {
+		byId[b.Id] = b
+	}
+	assert.Equal(t, "text:under the container", blockKind(byId[cell.ChildrenIds[0]]))
+}
+
+// TestUnmarshalBlocks_ContainerOnTheWritePath covers the third entry point —
+// the API's block-write surface. A container pasted through it used to mint a
+// Layout_Div straight into a live object.
+func TestUnmarshalBlocks_ContainerOnTheWritePath(t *testing.T) {
+	run := []json.RawMessage{
+		json.RawMessage(`{"type":"group"}`),
+		json.RawMessage(`{"indent":1,"type":"paragraph","text":"one"}`),
+		json.RawMessage(`{"indent":1,"type":"paragraph","text":"two"}`),
+	}
+	blocks, topIds, err := UnmarshalBlocks(run, Options{GenerateId: seqIds("g")})
+	require.NoError(t, err)
+	require.Len(t, blocks, 2, "the container contributes no block")
+	assert.Equal(t, []string{blocks[0].Id, blocks[1].Id}, topIds,
+		"both paragraphs are top-level in the run — they take the container's position")
+	for _, b := range blocks {
+		assert.NotEqual(t, "DIV", blockKind(b))
+	}
+}
+
+// TestUnmarshalBlock_LoneContainerIsRefused: this entry point's contract is
+// exactly one block. Returning zero would leave a replaceBlock silently
+// replacing nothing.
+func TestUnmarshalBlock_LoneContainerIsRefused(t *testing.T) {
+	_, err := UnmarshalBlock(json.RawMessage(`{"type":"group"}`), "b1", Options{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "transparent container")
+	assert.Contains(t, err.Error(), "/blocks/0/type")
+}
+
+// TestValidate_ContainmentIsJudgedOnTheLiftedTree is §4.5: the grammar is
+// checked against the tree import builds, and the message names the effective
+// parent — or it reads as wrong to whoever wrote the group.
+func TestValidate_ContainmentIsJudgedOnTheLiftedTree(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		blocks string
+		want   string // "" = valid
+	}{
+		{
+			// this document is REJECTED before §7a, and it is one
+			// wrapChildrenToDiv produces from a row with 41 columns
+			name:   "row > group > column is valid: it says row > column",
+			blocks: `{"type":"row"},{"indent":1,"type":"group"},{"indent":2,"type":"column"}`,
+		},
+		{
+			name:   "row > group (childless) is valid: a row with no columns is a legal document",
+			blocks: `{"type":"row"},{"indent":1,"type":"group"}`,
+		},
+		{
+			name:   "row > group > paragraph is reported against the row",
+			blocks: `{"type":"row"},{"indent":1,"type":"group"},{"indent":2,"type":"paragraph","text":"x"}`,
+			want:   "nested under a group inside a row — a row block can only contain column blocks, got paragraph",
+		},
+		{
+			name:   "divider > group > paragraph is reported against the divider",
+			blocks: `{"type":"divider"},{"indent":1,"type":"group"},{"indent":2,"type":"paragraph","text":"x"}`,
+			want:   "nested under a group inside a divider block — divider blocks cannot have children",
+		},
+		{
+			name:   "the direct message is unchanged when no container is between",
+			blocks: `{"type":"row"},{"indent":1,"type":"paragraph","text":"x"}`,
+			want:   "a row block can only contain column blocks, got paragraph",
+		},
+		{
+			name:   "a container under a leaf is exempt: it becomes nothing",
+			blocks: `{"type":"divider"},{"indent":1,"type":"group"}`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			doc := fmt.Sprintf(`{"version":1,"type":"page","blocks":[%s]}`, tc.blocks)
+			err := Validate([]byte(doc))
+			if tc.want == "" {
+				require.NoError(t, err)
+				// I2: whatever Validate accepts, Unmarshal reads
+				_, _, uerr := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
+				require.NoError(t, uerr)
+				return
+			}
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tc.want)
+		})
+	}
+}
+
+// TestValidate_ContainerCannotBeACellBlock: a cell is a position, not a run,
+// so it is the one spelling of a container the format cannot read back —
+// and Validate has to say so, or it would accept what Unmarshal refuses.
+func TestValidate_ContainerCannotBeACellBlock(t *testing.T) {
+	doc := `{"version":1,"type":"page","blocks":[{"type":"table",
+		"columns":[{"id":"c1"}],
+		"rows":[{"id":"r1","cells":[[{"type":"group"},{"indent":1,"type":"paragraph","text":"x"}]]}]}]}`
+
+	err := Validate([]byte(doc))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "a cell block cannot be a group")
+
+	_, _, uerr := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
+	require.Error(t, uerr, "Validate and Unmarshal must agree (I2)")
+}
+
+// TestUnmarshal_ContainerRoundTripsToNothing is guarantee 2 (§11) on a
+// document carrying containers: `group` is a readable input token that no
+// export produces, so the canonical form of a document with one is the same
+// document without it.
+func TestUnmarshal_ContainerRoundTripsToNothing(t *testing.T) {
+	doc := []byte(`{"version":1,"type":"page","blocks":[` +
+		`{"type":"group"},{"indent":1,"type":"paragraph","text":"one"},` +
+		`{"type":"paragraph","text":"two"}]}`)
+
+	sbType, snapshot, err := Unmarshal(doc, Options{GenerateId: seqIds("g")})
+	require.NoError(t, err)
+	first, err := Marshal(sbType, snapshot, Options{OmitIds: true})
+	require.NoError(t, err)
+
+	_, again, err := Unmarshal(first, Options{GenerateId: seqIds("h")})
+	require.NoError(t, err)
+	second, err := Marshal(sbType, again, Options{OmitIds: true})
+	require.NoError(t, err)
+
+	assert.Equal(t, string(first), string(second))
+	assert.NotContains(t, string(first), "group")
+	assert.Equal(t, []string{"0  paragraph", "0  paragraph"}, blockLines(t, first))
+}

@@ -46,7 +46,7 @@ func TestAuthorableVocabularyDropsTheStructuralTypes(t *testing.T) {
 	authorable := AuthorableBlockTypeNames()
 
 	// then
-	assert.Len(t, authorable, len(BlockTypeNames())-len(structuralBlockTypes))
+	assert.Len(t, authorable, len(BlockTypeNames())-len(structuralBlockTypes)-len(transparentBlockTypes))
 	for _, typ := range []string{"title", "description", "featured_properties"} {
 		assert.True(t, StructuralBlockType(typ), "%s is structural (§7)", typ)
 		assert.NotContains(t, authorable, typ)
@@ -54,6 +54,26 @@ func TestAuthorableVocabularyDropsTheStructuralTypes(t *testing.T) {
 	}
 	assert.False(t, StructuralBlockType("paragraph"))
 	assert.Subset(t, BlockTypeNames(), authorable)
+}
+
+// TestAuthorableVocabularyDropsTheTransparentContainers is the §7a half of
+// the same rule, and the reason the two sets stay apart: a structural block
+// is dropped WITH its subtree, a container is dropped and its subtree stays.
+// Both are readable, neither is authorable.
+func TestAuthorableVocabularyDropsTheTransparentContainers(t *testing.T) {
+	// when
+	authorable := AuthorableBlockTypeNames()
+
+	// then
+	for typ := range transparentBlockTypes {
+		assert.True(t, TransparentBlockType(typ), "%s is a transparent container (§7a)", typ)
+		assert.False(t, StructuralBlockType(typ), "%s is not structural — its subtree survives", typ)
+		assert.NotContains(t, authorable, typ)
+		assert.Contains(t, BlockTypeNames(), typ,
+			"it stays readable: Validate must keep accepting what Unmarshal accepts (I2)")
+	}
+	assert.False(t, TransparentBlockType("paragraph"))
+	assert.False(t, TransparentBlockType("row"), "a row is author-created and grammar-bearing (§5)")
 }
 
 // TestStructuralTypesAreDroppedOnImport is the behaviour the exclusion above

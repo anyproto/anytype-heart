@@ -1034,6 +1034,13 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 				if _, has := block["id"]; has {
 					addIssue(path+"/id", "cell blocks cannot carry an id — cell ids are derived")
 				}
+				if transparentBlockTypes[typ] {
+					// §7a: everywhere else a container is lifted and its
+					// children take its place. A cell is a position, not a
+					// run — there is nowhere to lift to — so this is the one
+					// spelling of a container the format cannot read back.
+					addIssue(path+"/type", "a cell block cannot be a %s: a transparent container contributes no block of its own, and a cell is a position rather than a run", typ)
+				}
 			}
 			k := indentOf(block)
 			if k > prev+1 {
@@ -1054,12 +1061,32 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 			for len(stack) > 0 && stack[len(stack)-1].indent >= k {
 				stack = stack[:len(stack)-1]
 			}
-			if len(stack) > 0 {
-				parent := stack[len(stack)-1]
-				if leafBlockTypes[parent.typ] {
-					addIssue(path, "nested under a %s block — %s blocks cannot have children", parent.typ, parent.typ)
-				} else if parent.typ == "row" && typ != "column" {
-					addIssue(path, "a row block can only contain column blocks, got %s", typ)
+			// §7a: containment is judged against the LIFTED tree, because
+			// that is the tree import builds — `row > group > column` says
+			// `row > column`, which is exactly what it becomes. So the
+			// effective parent is the nearest ancestor that survives the
+			// lift, and a container is itself exempt: it becomes nothing, so
+			// there is nothing to place. The message names the effective
+			// parent AND the container between, or it reads as wrong to
+			// whoever wrote the group.
+			if !transparentBlockTypes[typ] {
+				j := len(stack) - 1
+				for j >= 0 && transparentBlockTypes[stack[j].typ] {
+					j--
+				}
+				if j >= 0 {
+					parent := stack[j]
+					viaGroup := j != len(stack)-1
+					switch {
+					case leafBlockTypes[parent.typ] && viaGroup:
+						addIssue(path, "nested under a group inside a %s block — %s blocks cannot have children", parent.typ, parent.typ)
+					case leafBlockTypes[parent.typ]:
+						addIssue(path, "nested under a %s block — %s blocks cannot have children", parent.typ, parent.typ)
+					case parent.typ == "row" && typ != "column" && viaGroup:
+						addIssue(path, "nested under a group inside a row — a row block can only contain column blocks, got %s", typ)
+					case parent.typ == "row" && typ != "column":
+						addIssue(path, "a row block can only contain column blocks, got %s", typ)
+					}
 				}
 			}
 			stack = append(stack, frame{k, typ})

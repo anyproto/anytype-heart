@@ -660,6 +660,12 @@ func (imp *importer) pinPrimaryDataview(raw []*jsonBlock, indents []int) {
 func (imp *importer) topLevelBlocks(details *types.Struct) ([]*jsonBlock, []int) {
 	raw := imp.doc.Blocks
 	indents := imp.blockIndents(raw, -1)
+	// §7a first, and the order is load-bearing: a wrapped dataview is only
+	// visible to the §7 pin at the indent-0 position the pin requires once
+	// the container above it is gone (160 corpus objects gain the `dataview`
+	// id under OmitIds this way, 0 lose it), and a wrapped title is only
+	// absorbed into `properties.name` once the lift has put it at indent 0.
+	raw, indents = liftTransparentContainers(raw, indents)
 	imp.pinPrimaryDataview(raw, indents)
 	jbs := make([]*jsonBlock, 0, len(raw))
 	kept := make([]int, 0, len(raw))
@@ -687,6 +693,47 @@ func (imp *importer) topLevelBlocks(details *types.Struct) ([]*jsonBlock, []int)
 		kept = append(kept, indents[i])
 	}
 	return jbs, kept
+}
+
+// liftTransparentContainers is the import half of §7a: a `group` entry
+// contributes no block, and every following entry indented deeper than it
+// re-bases one level shallower — recursively, so a chain of n containers
+// removes n levels. Any attribute on the container is ignored, and so is its
+// id: a container is not a block, so nothing can address it.
+//
+// It is a pre-pass over the flat run rather than a case inside the rebuild,
+// which is what lets it run at all three flatSubtree entry points — the
+// document body, a table cell's array form, and the fragment WRITE path. A
+// path that misses it does not merely keep a `group` in the JSON: it mints a
+// real Layout_Div that no read will ever show and that normalization never
+// removes while it has children — a phantom indent level living in the
+// object forever.
+//
+// Monotonicity survives by construction, so the lift can never manufacture
+// an F6 violation: a container at indent g had g ≤ p+1, and its first child,
+// at g+1, lands at g.
+func liftTransparentContainers(jbs []*jsonBlock, indents []int) ([]*jsonBlock, []int) {
+	// open holds the indents of the containers this entry is inside, so the
+	// shift is just how many of them there are
+	var open []int
+	outJbs := make([]*jsonBlock, 0, len(jbs))
+	outIndents := make([]int, 0, len(indents))
+	for i, jb := range jbs {
+		if jb == nil {
+			continue
+		}
+		k := indents[i]
+		for len(open) > 0 && open[len(open)-1] >= k {
+			open = open[:len(open)-1]
+		}
+		if transparentBlockTypes[jb.Type] {
+			open = append(open, k)
+			continue
+		}
+		outJbs = append(outJbs, jb)
+		outIndents = append(outIndents, k-len(open))
+	}
+	return outJbs, outIndents
 }
 
 type stackEntry struct {
@@ -862,8 +909,14 @@ func (imp *importer) blockFromJSON(jb *jsonBlock, forcedId string) ([]*model.Blo
 		b.Content = &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_Row}}
 	case jb.Type == "column":
 		b.Content = &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_Column}}
-	case jb.Type == "group":
-		b.Content = &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_Div}}
+	case transparentBlockTypes[jb.Type]:
+		// §7a: a transparent container contributes no block of its own, and
+		// every flat run lifts it away before this. What reaches here is a
+		// caller that addresses exactly ONE block — UnmarshalBlock, or a
+		// table cell, which is a position rather than a run — and a caller
+		// that asked for one block must be told it named nothing, not handed
+		// a wrapper no read will ever show it again.
+		return nil, fmt.Errorf("block %s: %q is a transparent container (§7a) and contributes no block of its own", id, jb.Type)
 	case jb.Type == "table":
 		table, tExtra, err := imp.tableFromJSON(jb, id)
 		if err != nil {
