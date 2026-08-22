@@ -25,9 +25,11 @@ Blocks with `Content == nil` exist in two shapes:
 Volume: 277 objects failed on this before the fix (~67% of all failures in
 run 2); 87 distinct block ids.
 
-**Handling**: a childless content-less block is dropped; one with children
-exports as a transparent `group` so the subtree (e.g. the relation's
-dataview) survives. **Spec**: §7 "Content-less blocks".
+**Handling**: the block is dropped either way — it is a transparent
+container (§7a) — and a subtree under one (e.g. the relation's dataview) is
+lifted into its place. Until v0.23 it was written out as a `group` block, and
+on 160 of these objects that wrapper was what kept §7's primary-dataview pin
+from firing. **Spec**: §7 "Content-less blocks", §7a.
 
 ## 2. File blocks with real block children
 

@@ -386,7 +386,10 @@ freeze because it changes canonical bytes**.
 - **Stray `TableRow`/`TableColumn` outside a table fails the whole object's
   export** **[confirmed]** — loud beats silent, but one corrupt legacy block
   makes an object unexportable in a backup pipeline. Consider the `group`-style
-  fallback.
+  fallback. *(v0.23: there is no longer a `group` output to fall back to —
+  transparent containers are lifted, §7a — and folding a stray table wrapper
+  into that lift would put cells at top level. The finding stands; the
+  suggested repair does not.)*
 - **Duplicate JSON keys**: last-wins in both `Validate` and `Unmarshal` (so no
   divergence), but an agent-emitted duplicate loses content undetectably. A
   token-level pre-scan is cheap and worth it for the generation use case.

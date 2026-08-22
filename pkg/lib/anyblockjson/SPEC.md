@@ -1,6 +1,6 @@
 # AnyBlock JSON — format specification
 
-Status: **draft v0.22** · Format version: **1** · Package: `pkg/lib/anyblockjson`
+Status: **draft v0.23** · Format version: **1** · Package: `pkg/lib/anyblockjson`
 
 A human- and agent-readable JSON serialization of Anytype objects (the "anyblock"
 model), designed for export, import, and generation by external tools and LLM
@@ -15,6 +15,73 @@ strings; the vocabulary follows Notion's API and Anytype's public REST API
 (`core/api`) wherever an established term exists — the format should be
 readable, and mostly writable, by someone who has never seen Anytype
 internals.
+
+Changes in v0.23: **transparent containers — the format stops spelling a
+rendering budget** (§4, §5, §7a, §9a, §11, §12).
+
+A `Layout/Div` is not a block. `state.wrapChildrenToDiv` mints one whenever a
+parent exceeds 40 children — a 2020 performance constant, retuned twice
+inside the same month — so no user gesture makes one, none of the 7,303 in
+the production corpus carries a single attribute, and nothing in any snapshot
+references one. A block whose content oneof is unset is the same thing with
+even less to it. Both are now **transparent containers** (§7a): export writes
+nothing for them and lifts their children to the container's own depth,
+import does the inverse, and the editor's normalization re-creates whatever
+wrappers it wants on the other side, for free.
+
+What it buys, measured over 36,967 production objects:
+
+- **It closes an I1 hole that is live today.** A `Layout_Row` with more than
+  40 columns normalizes to `row > div > columns`, which `Marshal` emitted and
+  its own `Validate` rejected — `/blocks/1: a row block can only contain
+  column blocks, got group` — making the object unexportable AND
+  unrestorable. Containment is now judged against the LIFTED tree (§12), so
+  `row > group > column` says what it becomes: `row > column`.
+- **It repairs 160 real objects.** Their own dataview sits at indent 1 inside
+  a wrapper, where §7's primary-dataview pin — which fires only at indent 0 —
+  never fires: under `omitIds` the id `dataview` was lost and the editor added
+  a second, empty dataview on open. Lifted, 160 gain the id and 0 lose it.
+- **The indent bound stops being burned on structure no reader can see.**
+  Indents in the corpus reach **26**; 9,128 blocks sit at indent ≥ 7. With
+  containers lifted the deepest real nesting anywhere is **6**, and 0 blocks
+  sit at 7 or deeper. 145,750 of 159,301 emitted `indent` lines disappear.
+- **3,349,749 bytes** across the 709 affected documents (5.44% of them,
+  ~10% at the median, 24% worst case), byte-identical in both id modes.
+
+What it costs, stated plainly. Content order and content parentage survive
+in 709 of 709 affected documents and no block's indent ever increases — but
+the wrappers that come back are **not the same wrappers**: after one round
+trip 38.8% of documents get an identical partition, 39.1% a different one,
+and 22.1% none at all, because the content has since shrunk below the
+threshold that created them. That last group is a repair, not a loss.
+Regeneration is therefore conditional and non-deterministic in shape, unlike
+`title`/`header`, which the editor rebuilds deterministically from the type;
+`N(S)` (§11) says so. An authored `group` carrying attributes loses them AND
+its children stop being its children — they become siblings of what followed
+— which is reported through `OnWarning` on the lenient path and is invisible
+to a strict caller. And the format now depends on a heart constant it hides
+but does not control: move `maxChildrenThreshold` and the hidden layer moves
+under a read that did not change. Tolerable only because the layer is
+semantics-free, which is why the rule is scoped to `Layout/Div` plus
+content-less and never to "any `group`".
+
+`group` stays a **readable** input token that no export produces — `Validate`
+must keep accepting what `Unmarshal` accepts (I2) — so it stays in the
+schema's `blockCore.type` enum and in `BlockTypeNames`, and leaves
+`AuthorableBlockTypeNames`. The rule keys on CONTENT, never on the `div-` id
+prefix the normalizer happens to mint: keying on a prefix would make id
+spelling semantically load-bearing, and would leave an authored
+`{"type": "group"}` round-tripping into a permanent wrapper.
+
+One amendment lands with it and is not optional (§9a): the id census counts
+what the document SPELLS. Without it, dropping a container frees the
+suffix slot it was holding, so a paragraph sharing its 5-char tail stays full
+on the first read and compacts on the second — `Export(S) ≠
+Export(Import(Export(S)))`, guarantee 3, on the API's default read shape.
+Measured: the export lift without the amendment breaks byte-stability under
+compaction on 2 production documents; with it, 0 of 36,967. (One of those 2
+was already broken before the lift, for the same reason with a table cell in
+place of a container.)
 
 Changes in v0.22: **two namespaces stop overloading a value that was already
 saying something else** (§1, §2, §2c, §3, §10, §15).
@@ -652,7 +719,7 @@ so the same document is written differently at each:
 
 | | block ids | object refs |
 |---|---|---|
-| 1 · export, backup | full — the bytes must re-import to the same document (§11) | full — always (§9a) |
+| 1 · export, backup | full — the bytes re-import to the same document, up to what the editor regenerates (§7, §7a, §11) | full — always (§9a) |
 | 2 · authored | none (§9, `OmitIds`) | the bundle's own slugs (§2c) |
 | 3 · API v2 default read | compact by default; `?ids=full` opts out | full — always |
 | 4 · read-only and tool shapes | short labels (outline, prompt examples) | hidden behind enumerated handles |
@@ -1779,7 +1846,7 @@ fails schema validation). Every block is an object:
 
 | Field | Type | Req | Notes |
 |---|---|---|---|
-| `indent` | integer ≥ 0 | no | Nesting depth. Absent = `0` (top level); canonical form omits `indent: 0`. Values above **32** fail validation (adversarial-input bound; real documents reach ~6). See the nesting rules below. |
+| `indent` | integer ≥ 0 | no | Nesting depth. Absent = `0` (top level); canonical form omits `indent: 0`. Values above **32** fail validation (adversarial-input bound). Real documents reach **6** — that is the deepest nesting anywhere in a 36,967-object corpus once transparent containers are lifted (§7a); before the lift the same corpus reached 26, all of it wrapper. See the nesting rules below. |
 | `type` | string | **yes** | Discriminator; full inventory in §5. Unrecognized values fail schema validation (see §10 for forward compatibility). |
 | `id` | string | no | `[A-Za-z0-9_-]{1,64}`. Uniqueness is enforced over the whole document, including derived table cell ids `<rowId>-<colId>` — the whole grid, written cells and unwritten ones alike (§6.1) — so a non-table block id that collides with a derived cell id is a validation error. Dataview **view** ids are the one exception: they are unique **within their dataview block**, not document-wide (§6.2). Export writes ids by default — the `OmitIds` option drops them (§9); import generates missing ids with the editor's standard id generator. |
 | `align` | `left · center · right · justify` | no | Omit when default (`left`). |
@@ -1876,8 +1943,8 @@ mapping:
 | `bookmark` | Bookmark | `url`, `object_id` (target bookmark object). `state` handled like file blocks. Deprecated preview fields and `type` (derivable) are dropped — preview data lives on the target object |
 | `link` | Link | `object_id` (target object), `card_style` (`text · card · inline`), `icon_size` (`none · small · medium`), `description` (`none · manual · content`), `properties` (string array: property keys shown on the card). Deprecated `style` and legacy `fields` are dropped |
 | `divider` | Div | `style` (`line · dots`, default `line`) |
-| `row` / `column` | Layout/Row, Layout/Column | — (descendants carry content; a `row` contains only `column`s — §4 containment) |
-| `group` | Layout/Div (legacy) | semantics-free container |
+| `row` / `column` | Layout/Row, Layout/Column | — (descendants carry content; a `row` contains only `column`s — §4 containment, read on the lifted tree, §7a) |
+| `group` | Layout/Div (legacy) | — **accepted on input only; lifted** (§7a). No export ever writes one |
 | `table` | Table (+ structural children) | `columns`, `rows` — see §6.1 |
 | `embed` | Latex | `processor`, `text` (**literal**, §8.4) — see §5.2 |
 | `table_of_contents` | TableOfContents | — |
@@ -2404,9 +2471,98 @@ restores it on the way back in.
 
 **Content-less blocks** (legacy data): old accounts hold blocks whose
 content oneof is unset — relation objects wrap their "used in" dataview in
-one, and pages can contain orphaned empty leaves. Export drops a childless
-content-less block and serializes one with children as a transparent
-`group`, so the subtree survives (part of `N(S)`, §11).
+one, and pages can contain orphaned empty leaves. They are transparent
+containers (§7a): the block is dropped either way, and a subtree under one is
+lifted into its place.
+
+## 7a. Transparent containers
+
+A block is a **transparent container** when it contributes containment and
+nothing else:
+
+- its content is `Layout` with style **`Div`** (`model.BlockContentLayout_Div`
+  — the editor's fan-out wrapper, minted by `state.wrapChildrenToDiv` when a
+  parent exceeds `maxChildrenThreshold` children), or
+- its content oneof is **unset** (legacy data), with or without children.
+
+The test is on **content**, never on the `div-` id prefix the normalizer
+mints. Keying on a prefix would make id *spelling* semantically load-bearing,
+which is the worst thing to freeze, and it would leave an authored
+`{"type": "group"}` round-tripping into a permanent wrapper.
+
+**Export** writes nothing for a container and emits its children at the
+container's **own indent**, with the container's own top-level status. In
+JSON terms: `group` is a type no export ever produces, on any surface.
+Consequences, stated so they are not re-derived:
+
+- A **childless** container emits nothing at all.
+- **Nested containers collapse fully**: a chain of *n* removes *n* levels.
+- **Every attribute the container carried goes with it** — `align`,
+  `vertical_align`, `background_color`, `fields`. No conditional
+  preservation; recorded in `N(S)` (§11) and reported through
+  `Options.OnWarning` when there was anything to lose.
+- The lift runs **before** the depth bound is checked, so both the value
+  compared against 32 and the emitted `indent` are post-lift.
+- A container at indent 0 is transparent for §7 too: a structural block
+  underneath it is at the document's top level and is dropped there, rather
+  than being preserved by the accident of a wrapper standing over it.
+- The rule applies on every export surface — the document, a table cell's
+  descendants, and a block subtree (§13.1) **including its root**, since no
+  read surface ever serves a container id, so no caller can address one
+  except out of a stale cache. A subtree rooted at a container marshals as
+  its lifted children; rooted at a childless one, as an empty run.
+
+**Import** does the inverse, as a pre-pass over the flat run: a `group` entry
+contributes no block, and every following entry indented deeper than it
+re-bases one level shallower — recursively, for nested containers. Any
+attribute on the entry is ignored, and so is its id. The lift runs **before**
+the primary-dataview pin and before top-level structural absorption (§7),
+which is what lets a wrapped dataview be seen at the indent-0 position the pin
+requires and a wrapped `title` be absorbed into `properties.name`. Because the
+lift is positional, a lifted structural block is at indent 0 for every
+purpose, on both sides.
+
+Monotonicity survives by construction, so the lift can never manufacture an F6
+violation: a container at indent *g* satisfied *g ≤ p+1*, and its first child,
+at *g+1*, lands at *g*.
+
+**The two positions that address exactly one block cannot lift, and say so
+rather than resolving to nothing:** the single-block fragment entry point
+(§13.1) refuses a lone container, and a table **cell's own block** cannot be
+one — a cell is a position, not a run — which `Validate` refuses too, so the
+two agree. A cell whose stored block *is* a container renders as an empty
+cell.
+
+**Containment (§12) is judged against the lifted tree**, because that is the
+tree import builds. `row > group > column` is **valid**: it says
+`row > column`. `row > group > paragraph` is invalid and is reported against
+the row, naming the container in between (`nested under a group inside a row
+— a row block can only contain column blocks, got paragraph`), or the message
+reads as wrong to whoever wrote the `group`. A container is itself exempt from
+the check: it becomes nothing, so there is nothing to place.
+
+**What comes back.** Nothing in this format re-creates a container, and no
+importer wiring is needed: the editor's own normalization re-wraps on
+`ApplyState`, which runs on creation and on every cache load. It puts back a
+**different** partition — the split point is a function of arrival order, not
+of the document — and for a document whose content has since shrunk below the
+threshold it puts back nothing at all. Both are covered by `N(S)` (§11).
+
+**This is an obligation on the wiring, and it is worth writing down**: the
+re-wrapping is the editor's, not the format's. A writer that builds a
+snapshot and stores it WITHOUT going through the object-creation path that
+enables layouts (`EnableLayouts`, whose one non-test call site today is
+`core/block/editor/page.go`) will land a thousand-child object in front of a
+renderer the threshold exists to protect. Every path that writes an imported
+document has to run the editor's apply, exactly as the import wiring does
+today.
+
+**The other five layout styles are unaffected**: `Row` and `Column` are
+author-created and grammar-bearing (a column carries `fields.width`),
+`Header` is structural (§7), and `TableRows`/`TableColumns` belong to a
+table's internals (§6.1). A stray `TableRows`/`TableColumns` outside a table
+still drops its whole subtree, deliberately: folding it into this rule would
+put table cells at top level.
 
 ## 8. Rich text: inline markup
 
@@ -2784,11 +2940,22 @@ and a minted block whose suffix equals it would otherwise both answer to one
 name in one document. Deleting object compaction made this guard matter more,
 not less.
 
+**The census counts the ids the document SPELLS, not every id the snapshot
+holds** — the same principle the term census follows (§3, v0.15). A block the
+document does not spell — a transparent container (§7a), a structural block
+(§7), a content-less leaf, a cell whose id is derived, anything unreachable —
+is gone from the snapshot a round trip rebuilds, so reserving its suffix slot
+makes the two reads disagree: the first keeps a paragraph's id full because
+an invisible block shares its 5-char tail, the second compacts it, and
+guarantee 3 (§11) fails on the API's default read shape. The protection given
+up is illusory in any case: a container the editor re-creates gets a FRESH id
+no census could have reserved against.
+
 The two shapes the API serves are the two this leaves: API v2 default reads
 use block labels (the server resolves them by unique suffix) and keep object
 refs full inline, while its export shape — the backup/round-trip shape, whose
-bytes must re-import to the same document — keeps block ids full (API spec
-C4).
+bytes re-import to the same document up to what the editor regenerates (§7,
+§7a) — keeps block ids full (API spec C4).
 
 **A wiring may still shorten what the format does not.** Import wiring MAY
 resolve an id it cannot find by unique suffix against the target space
@@ -2888,7 +3055,13 @@ is recorded here rather than discovered later.
 
 Let `N(S)` be state normalization (given export and import wired with
 equivalent resolvers, §3): structural blocks dropped, to be regenerated by
-the editor at first open (§7); restrictions rebuilt (§4); properties
+the editor at first open (§7); **transparent containers dropped and their
+children lifted to the container's own position, with every attribute the
+container carried** (§7a) — the editor re-creates wrappers on the next
+`ApplyState`, but conditionally and in a shape that is a function of arrival
+order rather than of the document, so unlike `title`/`header` what comes back
+is neither the same partition nor guaranteed to come back at all;
+restrictions rebuilt (§4); properties
 stripped per §3 (with the exemption list); select/multi_select option ids
 replaced by name resolution — in properties, filter values, and custom
 orders (§3, §6.2) — which `option_ids` inverts exactly (§9a), leaving two
@@ -3028,9 +3201,10 @@ fail neither test belong in authoring guidance and in review.
   existing `gojsonschema` is draft-07 only).
 - Import = schema validation first, then semantic checks the schema can't
   express: **indent monotonicity** (§4 validity — errors name both
-  indents), **leaf containment** and **row→column** (§4 containment), id
+  indents), **leaf containment** and **row→column** (§4 containment, judged
+  against the tree §7a's lift builds and naming the effective parent), id
   uniqueness over the whole document (§4), table shape and cell rules
-  (§6.1), envelope combinations (`items`/`template_for`/`kind`, §2),
+  (§6.1, a cell block that is a transparent container included), envelope combinations (`items`/`template_for`/`kind`, §2),
   **property-key admission on the resolved stored key** (§3 — each
   `properties` spelling resolves through the §3 chain before the deny rule,
   the layout-name check and the format-shape warning run; validation
