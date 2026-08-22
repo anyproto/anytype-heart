@@ -200,6 +200,44 @@ pins the first half and the compact golden pins the second. No such id
 appeared in the 2026-07-23 sweeps (~35 400 objects) or the later
 36 808-object one. **Spec**: §9a (relabel rule), schema `$defs/blockId`.
 
+## 13. A quarter of all image covers are absolute filesystem paths
+
+`coverId` is declared `longtext` with no constraint, so nothing in the store
+or in the format ever checked that a cover marked `coverType: 1` (an image)
+names an image object. `core/block/import/notion/api/commonobjects.go` sets
+`coverId` to `cover.External.URL` with `coverType: 1`, expecting a later
+pass to download the file and rewrite the reference. On **33 objects** of a
+36,966-object account that pass never ran, leaving values like:
+
+```
+/var/folders/j0/b3km_psx1bd14q06gdpvzk5m0000gn/T/anytype_notion_import/f99972cc….png
+```
+
+The temp directory is long gone. That is 33 of the 130 `coverType: 1`
+covers — **25% of every image cover in the account** — permanently corrupt,
+and nothing reported it, because a `longtext` holding a path is a perfectly
+good `longtext`. The same importer writes URLs into `iconImage` by the same
+mechanism; no leaked icon survived in this account (0 of 12,011).
+
+**Handling**: refused rather than carried. §2b's `cover.file` is an object
+reference (`^[^/]+$`), so the value cannot be written — and carrying it
+would make `Marshal` emit what its own `Validate` rejects (I1). Export drops
+the cover with a warning naming the value, which turns permanent silent
+corruption into a named event, and `snapshotdiff` still reports it as loss:
+66 findings over those 33 objects, the only loss the icon/cover collapse
+causes. **Spec**: §2b, §11 `N(S)` clause (e). The importer bug is a separate
+ticket — this file records the data, not the fix.
+
+Two smaller ones from the same census, both handled rather than open:
+`iconOption` holds 12, 13 and 15 on six objects, because
+`core/block/import/pb/converter.go` mints `rand.Intn(16)+1` while
+`core/block/import/markdown/schema.go` mints `rand.Intn(10)+1` for the same
+ten-colour palette — §2b's integer colour escape carries them. And 54
+objects hold the bundled `iconEmoji` (empty) beside a **space-minted
+relation whose own stored key is literally `icon_emoji`**, holding a real
+emoji; anything reading "the icon" out of `icon_emoji` in those documents
+reads user data. §2b's lift separates the two visibly.
+
 ---
 
 ## The compact goldens no longer differ from the plain ones
