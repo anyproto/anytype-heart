@@ -1593,6 +1593,17 @@ func walkTable(block map[string]any, path string,
 					checkInline(cell, cellPath)
 				}
 			case map[string]any:
+				// §7a: the same refusal the array form applies at index 0.
+				// A cell is a position, not a run, so a container has nowhere
+				// to lift to and import refuses it (import.go's blockFromJSON)
+				// — Validate has to refuse it here or the two disagree, which
+				// is I2. The array form reaches this through checkFlatRun's
+				// `inCell` branch; the object form has no run to walk, so it
+				// needs its own.
+				if typ, _ := cell["type"].(string); transparentBlockTypes[typ] {
+					addIssue(cellPath+"/type", "a cell block cannot be a %s: a transparent container contributes no block of its own, and a cell is a position rather than a run", typ)
+					continue
+				}
 				// a full walk: the cell joins the id uniqueness domain and
 				// gets its text checked (tables inside cells are already
 				// rejected by the schema's cellBlock definition)

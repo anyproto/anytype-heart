@@ -910,6 +910,13 @@ func (imp *importer) blockFromJSON(jb *jsonBlock, forcedId string) ([]*model.Blo
 	case jb.Type == "column":
 		b.Content = &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_Column}}
 	case transparentBlockTypes[jb.Type]:
+		// DEFENSIVE: unreachable through every public entry point today —
+		// Unmarshal and UnmarshalBlock both validate first, and the validation
+		// side refuses a container in a cell and in a single-block fragment on
+		// its own (probed: mutating this line leaves the whole package green).
+		// It stays as the backstop for a future caller that skips validation,
+		// and it must not be deleted on the strength of a coverage report.
+		//
 		// §7a: a transparent container contributes no block of its own, and
 		// every flat run lifts it away before this. What reaches here is a
 		// caller that addresses exactly ONE block — UnmarshalBlock, or a

@@ -2530,8 +2530,12 @@ at *g+1*, lands at *g*.
 rather than resolving to nothing:** the single-block fragment entry point
 (§13.1) refuses a lone container, and a table **cell's own block** cannot be
 one — a cell is a position, not a run — which `Validate` refuses too, so the
-two agree. A cell whose stored block *is* a container renders as an empty
-cell.
+two agree. That holds for **both cell spellings** (§6.1): the array form is
+refused at index 0 of the run, the object form on the cell itself. They are
+separate checks because they are separate readers, and for one revision only
+the array form was closed, so `Validate` accepted an object-form container that
+`Unmarshal` hard-refused — I2, in the one shape §7a cannot lift. A cell whose
+stored block *is* a container renders as an empty cell.
 
 **Containment (§12) is judged against the lifted tree**, because that is the
 tree import builds. `row > group > column` is **valid**: it says
