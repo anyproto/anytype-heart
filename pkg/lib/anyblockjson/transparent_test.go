@@ -204,6 +204,25 @@ func TestMarshal_ContainerAttributesAreDroppedWithAWarning(t *testing.T) {
 	assert.Contains(t, warnings[0].Message, "attributes on it are dropped")
 }
 
+// TestMarshal_ContainerAttributesWarnOnceUnderCompaction: the id census runs
+// the block emit a SECOND time on a throwaway exporter (§9a), so every
+// warning the emit raises is raised twice unless the probe's sink is
+// silenced. A caller shown each issue twice stops trusting the count.
+func TestMarshal_ContainerAttributesWarnOnceUnderCompaction(t *testing.T) {
+	div := divBlock("div-1", "p1")
+	div.BackgroundColor = "red"
+	snap := pageOf([]string{"div-1"}, div, textBlock("p1", model.BlockContentText_Paragraph, "one"))
+
+	var warnings []Issue
+	opts := testOptions()
+	opts.CompactIds = true // this is what turns the census probe on
+	opts.OnWarning = func(i Issue) { warnings = append(warnings, i) }
+
+	_, err := Marshal(model.SmartBlockType_Page, snap, opts)
+	require.NoError(t, err)
+	assert.Len(t, warnings, 1, "the census probe must not report the emit's issues a second time")
+}
+
 // TestMarshal_ContainerAttributesSilentWhenBare is the other half: a bare
 // container — what normalization actually mints — warns about nothing.
 func TestMarshal_ContainerAttributesSilentWhenBare(t *testing.T) {
