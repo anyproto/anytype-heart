@@ -194,7 +194,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		}
 
 		// when
-		recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 0, 0, "document")
+		recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 0, 0, "document", true)
 
 		// then
 		require.NoError(t, err)
@@ -233,7 +233,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		}, nil)
 
 		// when
-		recs, err := s.QueryFromFulltext(results, params, 0, 0, "test")
+		recs, err := s.QueryFromFulltext(results, params, 0, 0, "test", true)
 
 		// then
 		require.NoError(t, err)
@@ -257,12 +257,42 @@ func TestQueryFromFulltext(t *testing.T) {
 		}
 
 		// when
-		recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 0, 0, "test")
+		recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 0, 0, "test", true)
 
 		// then
 		require.NoError(t, err)
 		require.Len(t, recs, 1)
 		assert.Equal(t, "obj1", recs[0].Details.GetString(bundle.RelationKeyId))
+	})
+
+	t.Run("withInjections=false skips the related-object injection queries", func(t *testing.T) {
+		// given: a matched tag whose objects would be injected
+		s := NewStoreFixture(t)
+		s.AddObjects(t, []TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("tag1"),
+				bundle.RelationKeyName:           domain.String("Urgent"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relationOption)),
+				bundle.RelationKeyRelationKey:    domain.String("priority"),
+			},
+			{
+				bundle.RelationKeyId:             domain.String("obj1"),
+				bundle.RelationKeyName:           domain.String("Task with tag"),
+				domain.RelationKey("priority"):   domain.StringList([]string{"tag1"}),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+			},
+		})
+		results := []database.FulltextResult{
+			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0, NameMatch: true},
+		}
+
+		// when: the cross-space path disables injections
+		recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 0, 0, "Urgent", false)
+
+		// then: only the direct match, no injected records
+		require.NoError(t, err)
+		require.Len(t, recs, 1)
+		assert.Equal(t, "tag1", recs[0].Details.GetString(bundle.RelationKeyId))
 	})
 
 	t.Run("injects objects found by tag name", func(t *testing.T) {
@@ -294,7 +324,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		}, nil)
 
 		// when
-		recs, err := s.QueryFromFulltext(results, params, 0, 0, "Urgent")
+		recs, err := s.QueryFromFulltext(results, params, 0, 0, "Urgent", true)
 
 		// then
 		require.NoError(t, err)
@@ -332,7 +362,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		}, nil)
 
 		// when
-		recs, err := s.QueryFromFulltext(results, params, 0, 0, "Priority")
+		recs, err := s.QueryFromFulltext(results, params, 0, 0, "Priority", true)
 
 		// then
 		require.NoError(t, err)
@@ -380,7 +410,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		}, nil)
 
 		// when
-		recs, err := s.QueryFromFulltext(results, params, 0, 0, "Urgent")
+		recs, err := s.QueryFromFulltext(results, params, 0, 0, "Urgent", true)
 
 		// then
 		require.NoError(t, err)
@@ -431,7 +461,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		}, nil)
 
 		// when
-		recs, err := s.QueryFromFulltext(results, params, 0, 0, "Recipe")
+		recs, err := s.QueryFromFulltext(results, params, 0, 0, "Recipe", true)
 
 		// then
 		require.NoError(t, err)
@@ -467,7 +497,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		}
 
 		// when
-		recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 0, 0, "Reference")
+		recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 0, 0, "Reference", true)
 
 		// then
 		require.NoError(t, err)
@@ -500,7 +530,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		}
 
 		// when
-		recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 3, 0, "Document")
+		recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 3, 0, "Document", true)
 
 		// then
 		require.NoError(t, err)
@@ -534,7 +564,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		}
 
 		// when
-		recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 0, 1, "test")
+		recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 0, 1, "test", true)
 
 		// then
 		require.NoError(t, err)
@@ -562,7 +592,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		}
 
 		// when
-		recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 3, 2, "Item")
+		recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 3, 2, "Item", true)
 
 		// then
 		require.NoError(t, err)
@@ -584,7 +614,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		}
 
 		// when
-		recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 0, 100, "test")
+		recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 0, 100, "test", true)
 
 		// then
 		require.NoError(t, err)
@@ -624,7 +654,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		})
 
 		// when
-		recs, err := s.QueryFromFulltext(results, params, 0, 0, "test")
+		recs, err := s.QueryFromFulltext(results, params, 0, 0, "test", true)
 
 		// then
 		require.NoError(t, err)
@@ -658,7 +688,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		}
 
 		// when
-		recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 0, 0, "test")
+		recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 0, 0, "test", true)
 
 		// then
 		require.NoError(t, err)
@@ -694,7 +724,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		}
 
 		// when
-		recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 0, 0, "description")
+		recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 0, 0, "description", true)
 
 		// then
 		require.NoError(t, err)
@@ -717,7 +747,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		}
 
 		// when
-		recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 0, 0, "Doc")
+		recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 0, 0, "Doc", true)
 
 		// then
 		require.NoError(t, err)
@@ -743,7 +773,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		}
 
 		// when
-		recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 0, 0, "World")
+		recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 0, 0, "World", true)
 
 		// then
 		require.NoError(t, err)
@@ -772,7 +802,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		}
 
 		// when
-		recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 0, 0, "Items")
+		recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 0, 0, "Items", true)
 
 		// then
 		require.NoError(t, err)
@@ -817,7 +847,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		}
 
 		// when
-		recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 0, 0, "test")
+		recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 0, 0, "test", true)
 
 		// then
 		require.NoError(t, err)
@@ -837,7 +867,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		s := NewStoreFixture(t)
 
 		// when
-		recs, err := s.QueryFromFulltext(nil, emptyFilters(t, s), 0, 0, "test")
+		recs, err := s.QueryFromFulltext(nil, emptyFilters(t, s), 0, 0, "test", true)
 
 		// then
 		require.NoError(t, err)
@@ -860,7 +890,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		}
 
 		// when
-		recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 0, 0, "test")
+		recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 0, 0, "test", true)
 
 		// then
 		require.NoError(t, err)
@@ -891,7 +921,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		}
 
 		// when
-		recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 0, 0, "DeletedTag")
+		recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 0, 0, "DeletedTag", true)
 
 		// then
 		require.NoError(t, err)
@@ -926,7 +956,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		}
 
 		// when — no limit (upperBound = 0, injectLimit stays 0 = unlimited)
-		recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 0, 0, "Color")
+		recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 0, 0, "Color", true)
 
 		// then — tag1 + all 5 colored objects
 		require.NoError(t, err)
@@ -960,7 +990,7 @@ func TestQueryFromFulltext(t *testing.T) {
 
 		// when — the injection budget is request-independent, so all 5 tagged
 		// objects join the sequence; the page is produced by slicing it
-		recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 3, 0, "Priority")
+		recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 3, 0, "Priority", true)
 
 		// then — page of 3 out of tag1 + 5 injected
 		require.NoError(t, err)
@@ -1011,9 +1041,9 @@ func TestQueryFromFulltext(t *testing.T) {
 		want := []string{"tagged1", "tag1", "obj1", "obj2"}
 
 		// when: pages with different limits/offsets
-		page1, err := s.QueryFromFulltext(results, params, 2, 0, "test")
+		page1, err := s.QueryFromFulltext(results, params, 2, 0, "test", true)
 		require.NoError(t, err)
-		page2, err := s.QueryFromFulltext(results, params, 2, 2, "test")
+		page2, err := s.QueryFromFulltext(results, params, 2, 2, "test", true)
 		require.NoError(t, err)
 
 		// then: pages are consistent prefixes/slices of the same sequence
@@ -1063,7 +1093,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		// has the higher-scoring hit, so objA must be injected, never objB
 		want := []string{"objA", "tag1", "type1"}
 		for i := 0; i < 20; i++ {
-			recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 3, 0, "Match")
+			recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 3, 0, "Match", true)
 
 			// then
 			require.NoError(t, err)
@@ -1099,7 +1129,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		}
 
 		// when
-		recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 0, 0, "ArchivedTag")
+		recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 0, 0, "ArchivedTag", true)
 
 		// then
 		require.NoError(t, err)
@@ -1130,7 +1160,7 @@ func TestQueryFromFulltext_FinalScore(t *testing.T) {
 		}
 
 		// when
-		records, err := s.QueryFromFulltext(results, emptyFilters(t, s), 10, 0, "test")
+		records, err := s.QueryFromFulltext(results, emptyFilters(t, s), 10, 0, "test", true)
 
 		// then
 		require.NoError(t, err)
@@ -1164,7 +1194,7 @@ func TestQueryFromFulltext_FinalScore(t *testing.T) {
 		// production search paths re-rank the head with
 		textFilters, err := database.NewFilters(database.Query{TextQuery: "fuksman"}, s, &anyenc.Arena{}, &collate.Buffer{})
 		require.NoError(t, err)
-		records, err := s.QueryFromFulltext(results, *textFilters, 10, 0, "fuksman")
+		records, err := s.QueryFromFulltext(results, *textFilters, 10, 0, "fuksman", true)
 
 		// then: the space member ranks first on the tie-break boost
 		require.NoError(t, err)
@@ -1192,9 +1222,9 @@ func TestQueryFromFulltext_FinalScore(t *testing.T) {
 		}
 
 		// when
-		nameRecords, err := s.QueryFromFulltext(nameResults, emptyFilters(t, s), 10, 0, "test")
+		nameRecords, err := s.QueryFromFulltext(nameResults, emptyFilters(t, s), 10, 0, "test", true)
 		require.NoError(t, err)
-		otherRecords, err := s.QueryFromFulltext(otherResults, emptyFilters(t, s), 10, 0, "test")
+		otherRecords, err := s.QueryFromFulltext(otherResults, emptyFilters(t, s), 10, 0, "test", true)
 		require.NoError(t, err)
 
 		// then
@@ -1233,7 +1263,7 @@ func TestQueryFromFulltext_FinalScore(t *testing.T) {
 		}
 
 		// when
-		records, err := s.QueryFromFulltext(results, emptyFilters(t, s), 10, 0, "query")
+		records, err := s.QueryFromFulltext(results, emptyFilters(t, s), 10, 0, "query", true)
 
 		// then
 		require.NoError(t, err)
