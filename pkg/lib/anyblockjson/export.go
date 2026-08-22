@@ -175,10 +175,18 @@ const (
 // propertiesKeptOnExport are the internal properties the importer
 // meaningfully preserves; everything else in LocalAndDerivedRelationKeys is
 // stripped (§3).
+//
+// It mirrors the pb importer's own preserve-list
+// (`core/block/import/pb/converter.go`), which is where "meaningfully
+// preserves" is decided — and `creator` was never on it. It sat here anyway,
+// so export wrote a participant id that every write path on the other side
+// discarded. It is now on derivedAttributionProperties instead (validate.go):
+// stripped as a VALUE, written as a name, dropped on import. Keeping it in
+// both places would have been a contradiction resolved by list order, since
+// strippedDetailKeys folds the dropped keys in after this one.
 var propertiesKeptOnExport = map[string]bool{
 	"createdDate":      true,
 	"lastModifiedDate": true,
-	"creator":          true,
 	"isFavorite":       true,
 	"isArchived":       true,
 	"resolvedLayout":   true,
@@ -1360,6 +1368,13 @@ func strippedDetailKeys() map[string]bool {
 	// transient state describes the moment the object was written, not the
 	// object; it means nothing on the other side of an import
 	for k := range transientProperties {
+		stripped[k] = true
+	}
+	// the attribution keys are stripped as VALUES — the 135-character
+	// participant id never reaches a document. What export writes under those
+	// keys is a member name, put there by buildProperties, and that is not
+	// this list's business: this list is about stored values (§3).
+	for k := range derivedAttributionProperties {
 		stripped[k] = true
 	}
 	return stripped

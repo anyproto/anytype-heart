@@ -1150,6 +1150,51 @@ func isTransientProperty(key string) bool {
 	return ok
 }
 
+// derivedAttributionProperties are the two properties that say WHO — the
+// member who created the object and the member who last changed it. They are
+// dropped on import for the same reason a transient key is (nothing
+// downstream can act on the value), and they are a separate list because
+// export treats them differently: a transient key is not written at all,
+// while these are written as the member's NAME (§3, buildProperties).
+//
+// Why nothing downstream can act on the value, which is the entry price for
+// this list: both are `source: derived, maxCount: 1, readonly: true`
+// (bundle/relations.json). Their value is not stored input — it is recovered
+// from the object tree root's cryptographic signature on every rebuild
+// (`treeSource.GetCreationInfo` → `NewParticipantId(spaceId, identity)`), and
+// four independent seams already discard whatever a document supplies:
+// `state.StructCutKeys(details, LocalAndDerivedRelationKeys)`, the pb
+// importer's preserve-list (which names neither), `changeBlockDetailsSet`,
+// and the API's "cannot be set directly". A document that carries one is
+// telling a reader who wrote the object; it is not, and never was, setting
+// anything.
+//
+// The asymmetry this closes: `creator` used to be ACCEPTED on import (it sat
+// in propertiesKeptOnExport, so the deny rule never saw it) while
+// `lastModifiedBy` — an identical relation definition, one word apart in the
+// bundle — was REFUSED. Neither had any effect. 71 documents in a
+// 36,966-object corpus carry `lastModifiedBy`, and every one of them was
+// unimportable for it.
+var derivedAttributionProperties = map[string]string{
+	"creator":        "the member who created the object, recovered from the tree root's signature on every rebuild",
+	"lastModifiedBy": "the member who last changed the object, derived the same way as creator",
+}
+
+// isDroppedOnImport reports whether a stored key is ignored rather than
+// refused when a document carries it: the transient keys, whose meaning does
+// not survive the trip, and the derived attribution keys, which the document
+// spells as a name and which no write path could honour anyway. Both families
+// are stripped from a document's own VALUES like every other internal key —
+// what they share is that a stale or hand-written document carrying one is
+// still importable (§3).
+func isDroppedOnImport(key string) bool {
+	if isTransientProperty(key) {
+		return true
+	}
+	_, ok := derivedAttributionProperties[key]
+	return ok
+}
+
 // maxPropertyKeyLen mirrors the schema's propertyNames maxLength (§3).
 const maxPropertyKeyLen = 128
 
@@ -1375,10 +1420,11 @@ func deniedPropertyKey(key string) (string, bool) {
 	if key == detailKeyId || key == detailKeyType {
 		return fmt.Sprintf("%q belongs in the envelope, not in properties (§2)", key), true
 	}
-	if isTransientProperty(key) {
-		// stripped on export like the rest, but DROPPED on import rather than
-		// refused: a document carrying transient state is stale, not wrong,
-		// and an old export should still import (§3)
+	if isDroppedOnImport(key) {
+		// its VALUE is stripped on export like the rest, but the key is
+		// DROPPED on import rather than refused: a document carrying transient
+		// state or an attribution line is stale, not wrong, and an old export
+		// should still import (§3)
 		return "", false
 	}
 	if strippedDetailKeys()[key] {

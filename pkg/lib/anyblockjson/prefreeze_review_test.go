@@ -335,20 +335,24 @@ func TestImport_GeneratedIdCannotTakeAnAuthoredId(t *testing.T) {
 // that decide which existing object a snapshot merges into.
 
 // The rule, stated once: import refuses exactly what export strips, except for
-// the transient keys, which it DROPS. Deriving all of it from
-// strippedDetailKeys is what keeps the two surfaces from drifting apart again —
-// a second hand-written list would.
+// the keys it DROPS. Deriving all of it from strippedDetailKeys is what keeps
+// the two surfaces from drifting apart again — a second hand-written list
+// would.
 //
-// The exception is narrow and deliberate (§3): a transient key describes the
-// moment an object was written rather than the object, so a document carrying
-// one is stale, not hostile, and refusing it would make an old export
-// unimportable to no purpose. Everything else on the stripped list is either
-// derived state or a merge-resolution vector, and those stay errors. The
-// transient half is asserted in TestTransientProperties_DroppedNotRefused.
+// The exception is narrow and deliberate (§3), and covers two families. A
+// TRANSIENT key describes the moment an object was written rather than the
+// object; an ATTRIBUTION key names the member who wrote it, and is recovered
+// from the tree root's signature on every rebuild whatever a document says.
+// Either way a document carrying one is stale, not hostile, and refusing it
+// would make an old export unimportable to no purpose. Everything else on the
+// stripped list is either derived state or a merge-resolution vector, and
+// those stay errors. The two exempt halves are asserted in
+// TestTransientProperties_DroppedNotRefused and
+// TestAttributionProperties_DroppedNotRefused.
 func TestValidate_ImportRefusesWhatExportStrips(t *testing.T) {
 	refused := 0
 	for key := range strippedDetailKeys() {
-		if isTransientProperty(key) {
+		if isDroppedOnImport(key) {
 			continue
 		}
 		refused++
@@ -357,7 +361,7 @@ func TestValidate_ImportRefusesWhatExportStrips(t *testing.T) {
 		require.Error(t, err, "%s is stripped on export, so it must be refused on import", key)
 		assert.Contains(t, err.Error(), "/properties/"+key)
 	}
-	require.NotZero(t, refused, "every stripped key became transient — the deny rule went dead")
+	require.NotZero(t, refused, "every stripped key became droppable — the deny rule went dead")
 }
 
 // The named resolution vectors matter most: existingobject.go resolves which
@@ -556,7 +560,7 @@ func TestValidate_EnvelopeKeyRejectsUnreadable(t *testing.T) {
 func TestValidate_DeniedKeysRefusedInCanonicalSpelling(t *testing.T) {
 	covered := 0
 	for key := range strippedDetailKeys() {
-		if isTransientProperty(key) {
+		if isDroppedOnImport(key) {
 			continue // dropped, not refused — see the note above
 		}
 		slug := (BundledKeyVocabulary{}).PropertySlug(key)

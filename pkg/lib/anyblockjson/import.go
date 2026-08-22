@@ -443,11 +443,13 @@ func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBas
 				Message: reason,
 			}}}
 		}
-		// transient state is dropped, not refused: a document carrying it is
-		// stale rather than wrong, and export writes none, so this only ever
-		// fires on a document written before the key joined the list or by a
-		// writer that is not this package (§3).
-		if isTransientProperty(key) {
+		// transient state and the attribution keys are dropped, not refused: a
+		// document carrying one is stale rather than wrong. Export writes no
+		// transient key at all, and writes the attribution keys as a member
+		// NAME that addresses nobody (§3) — so this fires on every document
+		// this package produces for an object with a creator, and on a stale
+		// or hand-written one for the rest.
+		if isDroppedOnImport(key) {
 			continue
 		}
 		// the seam admits only keys export could write (§3): a wider
