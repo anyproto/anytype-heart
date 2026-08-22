@@ -1661,7 +1661,23 @@ designates the object a user should land on. A bundle with no favourite, no
 `homepage` and no `spaceDashboardId` imports as an undifferentiated list. `id` is lifted to the envelope and `type` to `type`. Everything else
 round-trips.
 
-**Admission is symmetric: import refuses exactly what export strips.** The
+**Admission is symmetric with one documented exception: import refuses what
+export strips, except for the TRANSIENT keys, which it drops in silence.** A
+transient key describes the *moment* an object was written rather than the
+object — `internalFlags` carries editor state (`editorDeleteEmpty`,
+`editorSelectType`, `editorSelectTemplate`: "this object was just created,
+offer the type picker"), and a restored object is never mid-creation. Export
+removes them like everything else on the list; import drops them instead of
+refusing, because a document carrying one is *stale*, not hostile, and refusing
+it would make an older export unimportable for no gain. Everything else on the
+stripped list is derived state or a merge-resolution vector, and those stay
+errors. The list is expected to grow, and each addition owes the same two
+answers: what the key means in the app, and why nothing downstream of an import
+can act on it. (Measured across 36,967 real objects, `internalFlags` was the
+single largest source of exported noise — present on 18,647 of them, and empty
+on every one.)
+
+The rest of the rule, unchanged: **import refuses exactly what export strips.** The
 list above is the only list — the reader derives its deny-list from it rather
 than restating it, because a restated list drifts, and the drift ran one way:
 import used to accept every key an author supplied, so `isArchived`,

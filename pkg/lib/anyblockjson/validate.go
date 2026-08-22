@@ -1087,6 +1087,42 @@ var neverWritableProperties = map[string]string{
 	"sourceFilePath": "sourceFilePath selects which existing object a document merges into and cannot be set by a document",
 }
 
+// transientProperties are stored details that describe a MOMENT rather than
+// the object: state the app keeps for its own use, which means nothing once
+// the object is out of the space it was written in. Export drops them and
+// import ignores them, silently and in both directions — they are noise, not
+// input, so a document carrying one is not wrong, merely stale.
+//
+// This is deliberately NOT neverWritableProperties. Those are refused with an
+// error because setting one aims a document at an object it did not create;
+// setting one of these achieves nothing at all, and refusing it would turn a
+// stale export into an unimportable file for no gain.
+//
+// Nor is it the local/derived list: a transient key can be an ordinary stored
+// detail that survives a restart. What puts it here is that its MEANING does
+// not survive the trip.
+//
+// The list is expected to grow. Each entry needs the same two answers as
+// internalFlags: what it means in the app, and why nothing downstream of an
+// import can act on it.
+//
+//   - internalFlags — editor UI state (editorDeleteEmpty, editorSelectType,
+//     editorSelectTemplate: "this object was just created, offer the type
+//     picker"). Measured across 36,967 real objects it is the single largest
+//     source of exported noise, present on 18,647 of them and EMPTY on all
+//     of those; a restored object is never mid-creation, so the flags have
+//     nothing to say.
+var transientProperties = map[string]string{
+	"internalFlags": "editor state for an object being created, which a restored object never is",
+}
+
+// isTransientProperty reports whether a stored key describes a moment rather
+// than the object. Export skips it; import drops it.
+func isTransientProperty(key string) bool {
+	_, ok := transientProperties[key]
+	return ok
+}
+
 // maxPropertyKeyLen mirrors the schema's propertyNames maxLength (§3).
 const maxPropertyKeyLen = 128
 
@@ -1311,6 +1347,12 @@ func deniedPropertyKey(key string) (string, bool) {
 	}
 	if key == detailKeyId || key == detailKeyType {
 		return fmt.Sprintf("%q belongs in the envelope, not in properties (§2)", key), true
+	}
+	if isTransientProperty(key) {
+		// stripped on export like the rest, but DROPPED on import rather than
+		// refused: a document carrying transient state is stale, not wrong,
+		// and an old export should still import (§3)
+		return "", false
 	}
 	if strippedDetailKeys()[key] {
 		return fmt.Sprintf("%q is internal: export strips it, so import does not accept it (§3)", key), true

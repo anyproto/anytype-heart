@@ -334,16 +334,30 @@ func TestImport_GeneratedIdCannotTakeAnAuthoredId(t *testing.T) {
 // bundle.LocalAndDerivedRelationKeys, import took them. Among them are the keys
 // that decide which existing object a snapshot merges into.
 
-// The rule, stated once: import refuses exactly what export strips. Deriving
-// both from strippedDetailKeys is what keeps them from drifting apart again —
+// The rule, stated once: import refuses exactly what export strips, except for
+// the transient keys, which it DROPS. Deriving all of it from
+// strippedDetailKeys is what keeps the two surfaces from drifting apart again —
 // a second hand-written list would.
+//
+// The exception is narrow and deliberate (§3): a transient key describes the
+// moment an object was written rather than the object, so a document carrying
+// one is stale, not hostile, and refusing it would make an old export
+// unimportable to no purpose. Everything else on the stripped list is either
+// derived state or a merge-resolution vector, and those stay errors. The
+// transient half is asserted in TestTransientProperties_DroppedNotRefused.
 func TestValidate_ImportRefusesWhatExportStrips(t *testing.T) {
+	refused := 0
 	for key := range strippedDetailKeys() {
+		if isTransientProperty(key) {
+			continue
+		}
+		refused++
 		doc := fmt.Sprintf(`{"version": 1, "id": "obj1", "properties": {%q: "x"}}`, key)
 		err := Validate([]byte(doc))
 		require.Error(t, err, "%s is stripped on export, so it must be refused on import", key)
 		assert.Contains(t, err.Error(), "/properties/"+key)
 	}
+	require.NotZero(t, refused, "every stripped key became transient — the deny rule went dead")
 }
 
 // The named resolution vectors matter most: existingobject.go resolves which
@@ -542,6 +556,9 @@ func TestValidate_EnvelopeKeyRejectsUnreadable(t *testing.T) {
 func TestValidate_DeniedKeysRefusedInCanonicalSpelling(t *testing.T) {
 	covered := 0
 	for key := range strippedDetailKeys() {
+		if isTransientProperty(key) {
+			continue // dropped, not refused — see the note above
+		}
 		slug := (BundledKeyVocabulary{}).PropertySlug(key)
 		if slug == key {
 			continue // one spelling; TestValidate_ImportRefusesWhatExportStrips covers it

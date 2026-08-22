@@ -1316,6 +1316,11 @@ func strippedDetailKeys() map[string]bool {
 	for k := range neverWritableProperties {
 		stripped[k] = true
 	}
+	// transient state describes the moment the object was written, not the
+	// object; it means nothing on the other side of an import
+	for k := range transientProperties {
+		stripped[k] = true
+	}
 	return stripped
 }
 

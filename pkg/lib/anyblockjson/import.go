@@ -443,6 +443,13 @@ func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBas
 				Message: reason,
 			}}}
 		}
+		// transient state is dropped, not refused: a document carrying it is
+		// stale rather than wrong, and export writes none, so this only ever
+		// fires on a document written before the key joined the list or by a
+		// writer that is not this package (§3).
+		if isTransientProperty(key) {
+			continue
+		}
 		// the seam admits only keys export could write (§3): a wider
 		// vocabulary can resolve a spelling onto a key with no writable form
 		// — the empty string included — which used to land details[""]
