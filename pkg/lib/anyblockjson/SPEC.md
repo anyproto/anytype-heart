@@ -1,6 +1,6 @@
 # AnyBlock JSON — format specification
 
-Status: **draft v0.24** · Format version: **1** · Package: `pkg/lib/anyblockjson`
+Status: **draft v0.25** · Format version: **1** · Package: `pkg/lib/anyblockjson`
 
 A human- and agent-readable JSON serialization of Anytype objects (the "anyblock"
 model), designed for export, import, and generation by external tools and LLM
@@ -15,6 +15,84 @@ strings; the vocabulary follows Notion's API and Anytype's public REST API
 (`core/api`) wherever an established term exists — the format should be
 readable, and mostly writable, by someone who has never seen Anytype
 internals.
+
+Changes in v0.25: **`icon` and `cover` are typed envelope fields** (§2, §2b,
+§2c, §3, §4a, §5, §9a, §11, §12).
+
+Nine hidden stored keys — `iconEmoji`, `iconImage`, `iconName`, `iconOption`,
+`coverId`, `coverType`, `coverScale`, `coverX`, `coverY` — sat in
+`properties` as nine independent slots, and not one of them said which of the
+others it excluded. Over 36,966 production objects that is **22 distinct flat
+key-sets** for what is really one choice with eight shapes, plus one pair no
+reader can decode: `"cover_id": "blue"` is a COLOUR under `"cover_type": 2`
+and a GRADIENT under `"cover_type": 3`, and **both occur in the corpus**.
+`cover_id` alone is undecodable, so this family could not be simplified any
+other way — only typed.
+
+They collapse into two envelope fields, `icon` and `cover`, each ONE object
+whose `format` member selects the variant (§2b). The nine spellings are
+refused in `properties`, and the refusal names the repair.
+
+**The disease was not competing values.** Of 36,966 objects, 883 carry both
+`iconEmoji` and `iconImage` and in **zero** of them are both non-empty: the
+siblings are `""` and `[]`, present because §3 makes key presence meaningful.
+The one real conflict is `iconName` + `iconEmoji`, exactly 200 objects, every
+one a bundled type mid-migration from an emoji to a named icon — and the
+emoji is carried on the named-icon branch as annotated baggage, because a
+backup format that silently deletes a non-empty stored value is
+disqualifying. A typed union deletes the whole empty-sibling class by
+construction: an absent variant is absent, not empty.
+
+**The encoding is `if`/`then`, not `oneOf`, and that is the point of the
+change rather than a detail of it.** Measured through the package's own error
+renderer:
+
+| a model writes | `oneOf` | `if`/`then` |
+|---|---|---|
+| `{"format":"emoji","emoji":"📕","name":"rocket"}` | **10 issues**, three contradictory verdicts on `format`, twice told to delete the *correct* member | **1**: `/icon/name: property "name" is not allowed` |
+| `{"format":"url","url":"…"}` | **12 issues**, none naming the alternatives | **1**: `/icon/format: value must be one of 'emoji', 'file', 'icon', 'color'` |
+| `{"emoji":"🚀"}` | **6 issues** | **1**, naming the union |
+
+`branchLeaves` (§12) cannot prune the difference: it prunes branches that
+failed on the instance's own TYPE, and every icon branch is `type: object`.
+A small model spends most of its time in the failure path, and that one line
+naming the union is the whole reason to type the field.
+
+**The fields live in the ENVELOPE, not in `properties`**, for reasons that
+are forced rather than aesthetic (§2b). `cover` is already a stored property
+key in 30 production objects, `pageCover` in 66 more — both Notion imports,
+neither bundled. A `properties` member can be rebound by the `property_keys`
+legend to point at any relation at all, which is both an I1 hole and a
+laundering primitive. `properties` carries presence-is-meaningful while the
+envelope omits empties. And an envelope member has a schema node of its own
+to annotate, which closes a gap §4a recorded and could not fix.
+
+Measured over the same 36,966 objects, whole codec, against the v0.24 tip:
+
+- **14,992 objects gain a typed field** — 14,949 an `icon`, 126 a `cover`,
+  83 both.
+- **1,358 carry one of the nine and produce neither**: every source present
+  and empty. This is the one place the change overrides
+  presence-is-meaningful, and the carve-out is principled — all nine
+  relations are `hidden: true`, so there is no property row for presence to
+  be meaningful *to*.
+- **33 objects lose a cover, and it was already dead.** Every one is
+  `coverType: 1` holding an absolute path into a long-gone temp directory
+  (`/var/folders/…/anytype_notion_import/….png`), written by
+  `core/block/import/notion` as if a path were a file reference. That is
+  **25% of every image cover in the corpus**, permanently corrupt by exactly
+  the mechanism the typed shape exists to prevent. The drop turns silent
+  corruption into a named warning.
+- **+253,804 bytes, +0.157%.** 0 export errors, 0 invalid documents, 0
+  byte-unstable round trips.
+
+Three seams land with it, and none is optional. The **callout block icon**
+and the **`index.json` icon** move onto the same shape (§5, §2c) — shipping
+the envelope field alone would leave two icon conventions inside one
+document. `snapshotdiff` learns that a source stored empty is not a source:
+without that amendment the same sweep reports **3,038 findings over 2,307
+objects**, nearly double the noise that buried a previous one, and with it 66
+over the 33 that really lost something.
 
 Changes in v0.24: **attribution is a name, not an address** (§3, §4a, §11, §13).
 
@@ -817,7 +895,7 @@ format.** They are not inconsistencies to be tidied away later:
 
 - **Property and type keys** (§3) name relations and types, which live in a
   space rather than in this format. Their canonical spelling is the api slug,
-  which is snake_case anyway — `icon_emoji`, `due_date`,
+  which is snake_case anyway — `plural_name`, `due_date`,
   `last_modified_date` — so most of the time the exemption does not show. It
   shows for a key the vocabulary has no slug for: a legacy `wikiPerson`, a
   minted `6a32d4856761631534b22f85`. Those are written verbatim, whatever
@@ -879,12 +957,14 @@ or neither is worth having.
 neither: they are schema-internal labels a document never contains, and they
 keep JSON Schema's conventional camelCase.)
 
-So `{"type": "callout", "icon_emoji": "💡"}` and
-`{"properties": {"icon_emoji": "🔥"}}` are both correct in the same document,
+So `{"type": "callout", "icon": {"format": "emoji", "emoji": "💡"}}` and
+`{"properties": {"icon_emoji": "☕"}}` are both correct in the same document,
 and they are not the same thing spelled twice: the first is a field this
-format defines, the second is a key belonging to the data, which happens to
-be spelled the same way. `{"properties": {"wikiPerson": …}}` is where the two
-part company.
+format defines, the second is a key belonging to the data — and after v0.25
+it can only be a SPACE-MINTED relation that happens to be stored under that
+name, because the bundled `iconEmoji` is refused there (§2b). 54 production
+objects hold exactly that pair. `{"properties": {"wikiPerson": …}}` is where
+the two part company.
 
 ### Terminology
 
@@ -924,6 +1004,7 @@ The format uses six Anytype concepts; everything else is borrowed vocabulary:
   "version": 1,
   "id": "bafyreieqh63jv…",
   "type": "page",
+  "icon": { "format": "emoji", "emoji": "🔥" },
   "properties": { … },
   "blocks": [ … ]
 }
@@ -940,6 +1021,8 @@ Fields, in **canonical order** (§4):
 | `type` | string | no | The object's type **slug** (`page`, `task`, `object_type`…) — the key vocabulary of §3, not the stored `ot-`-prefixed key. Maps to `object_types[0]` in the snapshot. Absent when the snapshot has no object types (legacy/system objects). Import inverts the term through the §3 chain in the type namespace — the document's own `type_keys` legend first, then the vocabulary in force (bundled table offline, the space's stored slugs inside a node) — and hands the resulting stored key to the wiring, which resolves it — matching an existing type or creating one (the Markdown importer's behavior). A term the chain does not know passes through verbatim — an exact stored key is always its own address (§3). No spelling is reserved: `template` is an ordinary type term that a legend or a vocabulary may bind wherever it likes, because `kind` — a field no chain touches — carries the template semantics it used to carry (v0.22). The one exception is a byte comparison, not a resolution: a document with **no `kind`** whose `type` is literally `template` is the pre-v0.22 spelling of a template and is refused, naming the repair (§10). |
 | `template_for` | string | no | Only for templates: the target type slug (`object_types[1]`), same vocabulary and legend as `type`. Admitted on `kind: "template"` and nothing else — present without it, or without a `type` beside it to be `object_types[0]`, is a validation error. Note what this is NOT keyed off: the template's own type. A template whose `object_types` do not begin with the template key is a shape the model permits, and until v0.22 it could not express its target at all — the second slot existed only when `object_types[0]` was the template key, so the target was dropped with a warning and no way to keep it. |
 | `key` | string | no | Identity key of *system* objects (types, properties). This is the STORED identity key (a `uniqueKey`'s internal part), written verbatim: unlike every key slot in §3 it is **not** translated, so for an object whose stored key is a minted BSON it does not match the slug the public API serves as that object's `key`. Because it is verbatim, its charset is whatever the store already holds: a relation option's key is built from the option's *name*, so `completion_status_Not Started`, `…_C/C++` and `…_тогглы` are all real stored keys. The rule is therefore a deny rule — non-empty, no control characters, at most 255 characters — not an allowlist. An allowlist was tried and falsified: it failed 59 objects of a 36 808-object account, every one a relation option. Never emitted for ordinary documents. |
+| `icon` | object | no | The object's icon — ONE object whose `format` selects the variant (§2b). Stands for the stored `iconEmoji` / `iconImage` / `iconName` / `iconOption` keys, which `properties` refuses. |
+| `cover` | object | no | The object's cover — same shape, three variants (§2b). Stands for the stored `coverId` / `coverType` / `coverScale` / `coverX` / `coverY` keys, which `properties` refuses. |
 | `properties` | object | no | The object's properties, §3. |
 | `type_properties` | array | no | Only for `kind: "object_type"` documents: the type's property definitions, §2a. Present on any other kind → validation error. |
 | `property_keys` | object | no | Legend: the stored property key each spelling in this document names (§3). Written for every spelling the **bundled table does not bind to the key being written** — a slug the table cannot invert (a space's own key) *and* the **identity entry**, which is the ordinary case: a custom key written verbatim names itself, because nothing else in the document says the term is a stored key rather than somebody's slug. A reader consults it **before** its own vocabulary and takes the value as **authoritative**: it is not liveness-checked, deliberately (§3). Absent only from a document whose every spelling is bundled. |
@@ -954,8 +1037,9 @@ The root block of the snapshot (whose id equals the object id) is
 **implicit**: its subtree becomes the `blocks` array (its direct children are
 the indent-0 blocks).
 
-**The title, description, icon, and cover are properties (§3), not blocks.**
-There is no title block in a document (§7).
+**The title and description are properties (§3), not blocks; the icon and the
+cover are envelope fields of their own (§2b).** There is no title block in a
+document (§7), and no icon block.
 
 Snapshot fields **excluded** from the format:
 
@@ -980,7 +1064,8 @@ involved.
   "version": 1,
   "kind": "object_type",
   "key": "task",
-  "properties": { "name": "Task", "icon_emoji": "✅", "recommended_layout": "todo" },
+  "icon": { "format": "icon", "name": "hammer", "color": "orange" },
+  "properties": { "name": "Task", "recommended_layout": "todo" },
   "type_properties": [
     { "key": "due_date",  "name": "Due date", "format": "date",    "section": "featured" },
     { "key": "assignee", "name": "Assignee", "format": "objects", "section": "featured" },
@@ -992,8 +1077,11 @@ involved.
 }
 ```
 
-The type's own details (`name`, `icon_emoji`, `recommended_layout`, …) stay in
-`properties` under their stored keys (§3). The four recommended-relation id
+The type's own details (`name`, `plural_name`, `recommended_layout`, …) stay
+in `properties` under their stored keys (§3); its icon is the envelope field
+every object has (§2b) — a type's icon is where the `icon` variant is
+overwhelmingly used, since all 1,530 objects in the corpus carrying an
+`iconName` are types. The four recommended-relation id
 lists (`recommended_featured_relations`, `recommended_relations`,
 `recommended_file_relations`, `recommended_hidden_relations`) are **replaced**
 by `type_properties` — resolved entries, never raw relation ids.
@@ -1049,6 +1137,183 @@ property table — are **generated one-way** from the type document (planned
 This retires the legacy per-type JSON Schema export (`pkg/lib/schema`) with
 its `x-` extension keys.
 
+## 2b. Icon and cover
+
+An object's icon and its cover are each **one envelope field holding one
+object**, whose `format` member says which kind it is:
+
+```json
+{ "icon":  { "format": "emoji", "emoji": "📕" } }
+{ "icon":  { "format": "file", "file": "bafyreicfdcmfn…" } }
+{ "icon":  { "format": "icon", "name": "hammer", "color": "orange" } }
+{ "icon":  { "format": "color", "color": "teal" } }
+
+{ "cover": { "format": "image", "file": "bafyreigejp…", "y": -0.25 } }
+{ "cover": { "format": "color", "color": "black" } }
+{ "cover": { "format": "gradient", "gradient": "pinkOrange" } }
+```
+
+### `icon` — four variants
+
+| `format` | required | optional | stands for |
+|---|---|---|---|
+| `emoji` | `emoji` (non-empty string) | `color` | `iconEmoji` |
+| `file` | `file` (object reference) | `color` | `iconImage[0]` |
+| `icon` | `name` (a built-in icon name) | `color`, `emoji` (output-only) | `iconName` |
+| `color` | `color` | — | `iconOption` alone |
+
+- **`color` is on every variant, because it is orthogonal to the source.**
+  87 production objects attach one to something other than a named icon — 53
+  workspaces and 2 profiles give an avatar image its background colour, 3 an
+  emoji — and 29 more carry a colour with no source at all (the letter-avatar
+  background; the API reports every one of those as having no icon). Its
+  value is one of the ten palette names §2a already mandates for select
+  options, mapped positionally from the stored number: `iconOption: n` is
+  `palette[n-1]`.
+- **`color` also admits a raw integer ≥ 1**, for a stored value the palette
+  has no name for. This is not decoration: two generators in this repo
+  disagree about the range (`rand.Intn(16)+1` in the pb importer,
+  `rand.Intn(10)+1` in the markdown one), so 12, 13 and 15 exist in real
+  data. It is the same escape §3 already gives a layout number outside the
+  enum. `iconOption: 0` is the proto zero, **not** the first colour — 145
+  production objects carry it and none of them is grey.
+- **`name` is an OPEN string with a shape rule, not a closed enum.** The
+  ~397-name vocabulary lives in `core/api/model/icon.go`, which `pkg/lib` may
+  not import, and closing the enum would violate I1 the first time the app
+  ships a new icon. All 79 distinct values in the corpus are inside the API's
+  set. This is where the design is weakest for an offline generator, and it
+  is a deliberate trade against I1 (§15).
+- **`emoji` on the `icon` branch is a carry-over, and is output-only (§4a).**
+  Exactly 200 production objects hold both an `iconName` and an `iconEmoji` —
+  every one a bundled type mid-migration (`Space` 🌎/`folder` ×18, `Type`
+  🥚/`extension-puzzle` ×12) — and `format` has already answered which one
+  wins, so the emoji is baggage rather than ambiguity. Export writes it with
+  a warning; a document that supplies it is not choosing an icon.
+
+**Precedence, when the store holds more than one source:** `iconName` →
+`iconEmoji` → `iconImage`. That is `core/api/service/icon.go`'s rule, the
+only precedence implementation in heart — every other converter emits all
+four channels and lets the consumer decide. See §15 for what is unverified
+about it.
+
+### `cover` — three variants
+
+| `format` | required | optional | stored `coverType` |
+|---|---|---|---|
+| `image` | `file` (object reference) | `source` (`unsplash` \| `prebuilt`, output-only), `scale`, `x`, `y` | 1 / 5 / 4 |
+| `color` | `color` (an opaque name) | — | 2 |
+| `gradient` | `gradient` (an opaque name) | — | 3 |
+
+The `coverType` relation's own bundled description is this union written as
+prose: *"1-image, 2-color, 3-gradient, 4-prebuilt bg image, 5-unsplash image.
+Value stored in coverId"*.
+
+- **One `image` branch, not three.** A generator that has just uploaded an
+  image has no basis to choose between "image", "unsplash" and "prebuilt",
+  and choosing `unsplash` writes a permanent false provenance claim into cold
+  storage. `source` carries the provenance and is output-only.
+- **`color` and `gradient` are opaque names.** Those two vocabularies live in
+  the clients and appear nowhere in this repo, so validation checks the shape
+  only. Observed colours: `black`, `ice`, `blue`; observed gradients:
+  `pinkOrange`, `red`, `sky`, `blue`, `bluePink`, `greenOrange`. A name
+  outside the app's set validates and shows as no cover — the one corner
+  where the typed shape cannot do what it exists to do (§15).
+- **`cover.color` and `icon.color` share a member name but not a
+  vocabulary.** `black` is a cover colour and is *not* in the option palette.
+  Read each per variant.
+- **Framing (`scale`, `x`, `y`) belongs to an image and to nothing else.**
+  In 36,966 objects those three are non-zero only under cover types 1 and 5,
+  though they are *present and zero* on colours, gradients and cleared covers
+  alike.
+
+### Object references, and the layer that is allowed to fetch
+
+`icon.file` and `cover.file` are **object references**: the id of an image
+object in this space, a bundle-local slug, or the `_missing_object`
+sentinel. Never a URL, never a filesystem path. The schema enforces it with
+`^[^/]+$` — a shape rule rather than a URL-scheme rule, because the compiler
+runs Go's RE2, which has no lookahead, and because a slash is what every
+unwritable value in 36,966 objects has in common.
+
+**This format does no I/O, so it can only name what the store already holds.**
+A URL is a job, not a value. A layer above — the API, the use-case installer
+— may extend the schema with a `url` variant, fetch it, mint the file object
+and rewrite the value into the plain `file` variant *before* anything reaches
+`Unmarshal`. The whole extension is one entry appended to `icon`'s `allOf`
+and one value appended to `format`'s enum; the `if` guards are mutually
+exclusive by `const`, so nothing already valid is reclassified, and the
+reader's own diagnostics name the new variant for free, because the union a
+missing-`format` verdict lists is read out of the published schema rather
+than restated in code.
+
+That is what the typed shape buys over another flat key. The precedent for
+the flat one exists and is unpoliced:
+`core/block/import/notion/api/commonobjects.go` writes a raw Notion URL
+straight into `coverId` with `coverType: 1`, expecting a later pass to
+download and rewrite it — and on 33 production objects that pass never ran,
+leaving an absolute path into a temp directory that no longer exists. The
+typed variant makes that state unrepresentable at the format boundary.
+
+### Where they live, and why not in `properties`
+
+Four reasons, all forced:
+
+1. **`cover` is already a stored property key**, in 30 production objects,
+   with `pageCover` in 66 more — both Notion imports, neither a bundled
+   relation. A schema node keyed on a `properties` member could also be
+   rebound by the `property_keys` legend to point at an arbitrary relation,
+   which is an I1 hole and a laundering primitive. Envelope field names are
+   outside the key namespace and immune to the legend.
+2. **`properties` carries presence-is-meaningful; the envelope omits empty
+   (§4).** Presence-is-meaningful is what generated the noise in the first
+   place. All nine relations are `hidden: true` — they have no property row
+   for presence to be meaningful *to*.
+3. **It closes a gap §4a recorded and could not fix**: `coverId`/`coverType`
+   were output-only with no schema node of their own to annotate. They have
+   one now.
+4. **It fixes a live readability bug.** 54 production objects hold both the
+   bundled `iconEmoji` (empty) and a space-minted relation whose *stored key*
+   is literally `icon_emoji` (holding, in one real space, `"☕"`). Anything
+   reading "the icon" out of `icon_emoji` in those documents reads a
+   coffee-tasting note. After the lift the document carries `"icon": {…}` at
+   the top and `"icon_emoji": "☕"` in `properties` — visibly two different
+   things.
+
+The precedent is not `id`/`type`; it is **`type_properties`** (§2a): stored
+keys lifted into one labelled envelope member, with the flat spelling refused
+where it used to sit.
+
+### The nine spellings are refused in `properties`
+
+`iconEmoji`, `iconImage`, `iconName`, `iconOption`, `coverId`, `coverType`,
+`coverScale`, `coverX`, `coverY` — under any spelling that RESOLVES to one of
+them (§3), the legend included — are refused, and the refusal names the
+repair:
+
+```
+/properties/icon_emoji: "iconEmoji" is written as "icon": {"format": "emoji",
+                        "emoji": "…"} (§2b), not as a property
+```
+
+The refusal is **derived** from the export side's own lift list, never
+restated: a restated list is how the two surfaces drifted apart the last
+time (§3, `deniedPropertyKey`). It is unconditional rather than conditional
+on the typed field being present, because there is no second way to write an
+icon — a format with two legal spellings for one thing, one of which a small
+model has seen far more of in training data, defeats the whole point.
+
+Resolution on the *stored* key is what keeps the 54 dual-key objects above
+working: their space-minted relation resolves to the stored key `icon_emoji`,
+not `iconEmoji`, so it is an ordinary property and sails through.
+
+### The same shape elsewhere
+
+A **callout block** (§5) and a **bundle index** (§2c) carry the same `icon`,
+restricted to the two variants a block or a bundle can hold (`emoji`,
+`file`) — one `$ref`, narrowed by an enum, not a second definition. Shipping
+the envelope field without them would leave two icon conventions inside one
+document, which is the defect being removed.
+
 ## 2c. The bundle index (`index.json`)
 
 Every document described so far is one object. **A bundle also needs to say
@@ -1063,7 +1328,7 @@ object. That is `index.json`, one file at the bundle root, validated against
   "version": 1,
   "name": "Company Wiki",
   "description": "Everything we know, with an owner.",
-  "icon_emoji": "📚",
+  "icon": { "format": "emoji", "emoji": "📚" },
   "homepage": "page-wiki-home",
   "widgets": [
     { "target": "page-wiki-home" },
@@ -1075,8 +1340,8 @@ object. That is `index.json`, one file at the bundle root, validated against
 
 | Field | Meaning |
 |---|---|
-| `name` · `description` · `icon_emoji` | the space's own identity, applied on install |
-| `icon_image` | the space icon as an image: the **object id** of an image in the bundle, the same thing the `iconImage` property means on any object (§3). Needs the image object *and* its file in the archive, so a generated bundle uses `icon_emoji` |
+| `name` · `description` | the space's own identity, applied on install |
+| `icon` | the space's icon, in exactly the shape an object's icon has (§2b), restricted to the two variants a bundle can hold: `{"format": "emoji", "emoji": "📚"}`, or `{"format": "file", "file": "<object id of an image in the bundle>"}`. The image variant needs the image object *and* its file in the archive, so a generated bundle uses an emoji. It is one `$ref` into the object schema, not a copy — an index and an object cannot disagree about what an icon is. Two flat keys stood here until v0.25, with no rule for which won and with the image spelled as a scalar while the object surface spelled it as a list |
 | `homepage` | what opens on entering the space: an object id, or the reserved `_widgets` (the sidebar dashboard, the default) or `_graph` |
 | `widgets` | sidebar widgets, in order. **The first one is what the install opens**, so the entry point goes first |
 
@@ -1135,7 +1400,7 @@ outputs the wiring produces, and who reads them:
 | `widgets` | the Widget snapshot's root children, in order | the sidebar |
 | `entrypoint` | `profile.widgets[0].targetObjectId` | the object the install opens **once** — on the `inject` path only. On a bundle's own path it lands only through the `homepage` fallback above |
 | `name` | `profile.name` | nothing, on this path |
-| `icon_image` | `profile.avatar` | nothing, on this path |
+| `icon` (the `file` variant) | `profile.avatar` | nothing, on this path |
 
 Five consequences worth stating, because none is obvious from the wire format:
 
@@ -1146,7 +1411,7 @@ Five consequences worth stating, because none is obvious from the wire format:
   from the Widget snapshot**, which is also how a real app export carries it —
   export a space and the widget object is a file under `objects/` while the
   export's own `profile` has `"widgets": []`.
-- **`name` and `icon_image` are discarded on this path.**
+- **`name` and the icon are discarded on this path.**
   `CreateObjectsForExperience` calls `setWorkspaceSettings(profile, spaceId,
   false)`, and that function applies `profile.Name` and `profile.Avatar` only
   when `isBundle` is true. The space keeps whatever name the caller of
@@ -1198,7 +1463,7 @@ document defines.
 ## 3. Properties
 
 `properties` is a JSON object keyed by **property key**, always in the
-snake_case **api slug** spelling — `due_date`, `icon_emoji`,
+snake_case **api slug** spelling — `due_date`, `plural_name`,
 `manual_property` — bundled, API-created and UI-created keys alike. One
 vocabulary, no aliases, no duality: a reader never has to know which kind of
 key it holds. (This overturns the earlier "as stored, camelCase" rule, and
@@ -1588,10 +1853,10 @@ a document NAMES a type or property, and nowhere else. Envelope and DTO field
 names, enum *values* (`kind: "object_type"`, layout and view-type names), the
 `index.json` envelope, view field names like `default_template_id`, and — the
 one most easily mistaken for a key — **block attribute names**: a callout's
-`icon_emoji` and `icon_image` are attributes of a block, not property keys.
-They are the format's own vocabulary and follow the format's own rule (§1
-Naming, all snake_case); the vocabulary never touches them, so they would
-keep their spelling whatever the `icon_emoji` *property* were called one
+`icon` and its `format`/`emoji`/`file` members are attributes of a block, not
+property keys. They are the format's own vocabulary and follow the format's
+own rule (§1 Naming, all snake_case); the vocabulary never touches them, so
+they would keep their spelling whatever any *property* were called one
 section over. The layout VALUE `object_type` coexists with the type key
 spelled `object_type` — one is an enum this format defines, the other is a
 name in the space — and that is intended.
@@ -1638,8 +1903,9 @@ blindly:
 
 - **Export** writes `text` for both stored formats.
 - **Import** reads `text` as the key's *existing* format when that key is
-  already known to be `shorttext` — bundled properties (`name`, `icon_emoji`,
-  `cover_id`, …) and anything the wiring's `ResolveFormat` recognizes. So a
+  already known to be `shorttext` — bundled properties (`name`,
+  `plural_name`, `source`, …) and anything the wiring's `ResolveFormat`
+  recognizes. So a
   short-text property keeps its stored format across a round-trip even
   though the document never names it.
 - Otherwise `text` means `longtext`, which is what a **new** property
@@ -1758,15 +2024,18 @@ just unprettified.
 |---|---|---|
 | `name` | text | the object's title |
 | `description` | text | subtitle/description line |
-| `icon_emoji` | text | page icon as emoji |
-| `icon_image` | files | page icon as image (object id) |
-| `cover_id` / `cover_type` | text / number | page cover — output-only (§4a) |
 | `done` | checkbox | completion state on task-like types |
 | `due_date` | date | due date on task-like types |
 
+The icon and the cover are **not** in this table: they are envelope fields of
+their own (§2b), and the nine stored keys behind them are refused here.
+
 **Canonical key order in `properties`** (implementation decision): the
-well-known keys `name`, `description`, `icon_emoji`, `icon_image` first (in
-that order, when present), then all remaining keys alphabetically.
+well-known keys `name`, `description` first (in that order, when present),
+then all remaining keys alphabetically. The list held `icon_emoji` and
+`icon_image` until v0.25 lifted both above `properties` entirely — a stronger
+version of the same idea, since a reader now meets the icon before the
+property list rather than at the top of it.
 
 **Presence is meaningful.** A key's presence in `properties` records that the
 property was set on the object — clients use it to show the property even
@@ -1901,8 +2170,9 @@ of them: a **denied** resolved key; an **unwritable** resolved key (a wider
 vocabulary can resolve a spelling onto the empty string, which used to land
 `details[""]` in silence and vanish on re-export); and **two spellings
 binding onto one stored key** (refused only at import for a while, so a
-hand-written `{"iconEmoji": …, "icon_emoji": …}` validated clean and then
-failed to import). The two halves agree exactly whenever no wider
+hand-written `{"pluralName": …, "plural_name": …}` validated clean and then
+failed to import; the original repro was the icon pair, which v0.25 refuses
+one step earlier). The two halves agree exactly whenever no wider
 vocabulary is in force, which is what keeps Validate and Unmarshal
 accepting the same documents (§12).
 
@@ -2025,16 +2295,19 @@ without them, and where a supplied value would not be safe to take it is
 refused rather than quietly used: the internal property keys are a deny-list
 in the reader (§3), which is where "authoritative only where semantically
 safe" is actually implemented. Most output-only fields carry
-`x-output-only: true` in the JSON Schema so tooling can warn; the two that
-cannot are `coverId`/`coverType` and the preserved internal properties,
-which live inside the free-form `propertyMap` and so have no schema node of
-their own to annotate.
+`x-output-only: true` in the JSON Schema so tooling can warn; the one kind
+that cannot is the preserved internal properties, which live inside the
+free-form `propertyMap` and so have no schema node of their own to annotate.
+(`coverId`/`coverType` stood beside them until v0.25; the typed `cover` field
+gave them a node for the first time, and the `source` member that carries
+their provenance is annotated.)
 
 Output-only surfaces: `fields` (any block), `root`, `store`, `source`
 (dataview), `groups`/`object_orders` (views, §6.2), `id` on sorts/filters,
-filter `nested_property` (reserved), `cover_id`/`cover_type`, the five
-preserved internal properties listed in §3, and the two attribution
-properties `creator`/`last_modified_by`.
+filter `nested_property` (reserved), `cover.source` and the `emoji`
+carry-over on `icon`'s named-icon branch (§2b), the five preserved internal
+properties listed in §3, and the two attribution properties
+`creator`/`last_modified_by`.
 
 The attribution pair is output-only in the strictest sense on the list:
 export writes it and import does not merely ignore a supplied value, it
@@ -2059,7 +2332,7 @@ mapping:
 | `bulleted_list_item` | Text/Marked | `color`, `text` (Notion/BlockNote naming) |
 | `numbered_list_item` | Text/Numbered | `color`, `text` (numbering is derived from position among consecutive siblings; never stored) |
 | `toggle` | Text/Toggle | `color`, `text` |
-| `callout` | Text/Callout | `icon_emoji`, `icon_image` (file object id), `color`, `text` |
+| `callout` | Text/Callout | `icon` (§2b, `emoji` or `file` only), `color`, `text` |
 | `toggle_heading_1` … `toggle_heading_3` | Text/ToggleHeader1..3 | `color`, `text` |
 | `file` `image` `video` `audio` `pdf` | File (Type enum promoted; `Type_None` → `file` with no `object_id`) | `object_id` (target file object), `name`, `mime_type`, `size` (bytes), `style` (`auto · link · embed`), `added_at` (RFC 3339; omitted with a warning when the stored timestamp is outside the representable years, §3 — unlike a property value there is no number form to fall back to). Legacy `hash` accepted on input. On export, a block with only the legacy `hash` set writes it as `object_id` (the hash migrates on round-trip, §11); when both are set, `object_id` wins and the hash is dropped. `state` is not serialized: import sets `Done` when `object_id`/`hash` is present, `Empty` otherwise. File blocks are leaves in the editor, but legacy data can nest real blocks under them — indented descendants are allowed and round-trip verbatim |
 | `bookmark` | Bookmark | `url`, `object_id` (target bookmark object). `state` handled like file blocks. Deprecated preview fields and `type` (derivable) are dropped — preview data lives on the target object |
@@ -3018,8 +3291,9 @@ rule, the two charsets, and the joined key's length bound.
   the kind of silence this format reports everywhere else.
 
 **Object references are never compacted.** Every object id — mention and
-object-link targets in `text`, `object_id` props, a callout's `icon_image`
-and the `iconImage` property, `objects`/`files` property values, `items`,
+object-link targets in `text`, `object_id` props, a callout's `icon.file`,
+the envelope `icon.file` and `cover.file` (§2b), `objects`/`files` property
+values, `items`,
 view `default_template_id`/`default_type_id`, `object_orders[].object_ids`,
 and filter `value`/sort `custom_order` entries of `objects`/`files`
 properties — is written in full, on every shape, with no legend.
@@ -3236,7 +3510,29 @@ property values become single-element lists and the legacy file `hash`
 migrates into `object_id` (§3, §5); object types reduced to the positions §2
 models — one type, plus, on a template, the target type — with keyless
 entries (`ot-`, `""`) dropped first, so the remaining entries close ranks
-rather than lose the slot a keyless one would have silenced (§3); and a type
+rather than lose the slot a keyless one would have silenced (§3);
+**icon and cover reduced to the single winning variant** (§2b), which is
+seven clauses of its own:
+(a) the four icon channels collapse under `iconName` → `iconEmoji` →
+`iconImage`, with `iconOption ≥ 1` attached as `color` to whichever won and
+standing alone as the `color` variant when none did;
+(b) a source whose stored value is EMPTY (`""`, `[]`, `0`, `null`) is not a
+source, so a key present and empty comes back ABSENT — the one place this
+format overrides §3's presence-is-meaningful rule, and it rests on all nine
+relations being `hidden: true`, so no property row exists for presence to be
+meaningful to (1,358 production objects carry only empty sources and end up
+with no icon and no cover at all);
+(c) `iconOption: 0` is the proto zero, not a colour, and is dropped;
+(d) `iconImage` entries beyond the first are dropped with a warning (never
+observed — the relation is `maxCount: 1`);
+(e) a `file` value that is not id-shaped is dropped with a warning, because
+there is no way to write it (33 production objects, every one an absolute
+filesystem path a Notion import left in `coverId`);
+(f) a `coverType` outside `0..5`, a `coverType` of 0, or a `coverType` with
+an empty `coverId`, produces no cover, with a warning where anything was
+lost;
+(g) `coverScale`/`coverX`/`coverY` with no image cover to frame are dropped.
+A callout's icon reduces the same way, `emoji` over `file`; and a type
 object gains an empty list for every recommended role nothing occupies —
 `type_properties` (§2a) collapses the four role lists into one labelled
 array, and import rebuilds all four from it, so a role the store left absent
@@ -3355,7 +3651,11 @@ fail neither test belong in authoring guidance and in review.
   reserved) removes it from the generation path. To keep validation errors usable for LLM
   producers, validation dispatches on the `type` const first (per-type
   `if/then` or programmatic pre-dispatch) instead of a flat 30-branch
-  `oneOf` whose error output is noise. Output-only fields carry
+  `oneOf` whose error output is noise. **The same rule governs every
+  discriminated union in the schema**, and `icon`/`cover` (§2b) are where it
+  was measured rather than assumed: `oneOf` reported 10 issues for one wrong
+  member and never named the alternatives, `if`/`then` reports one and does.
+  Output-only fields carry
   `x-output-only: true` (§4a). Annotated `x-app: Anytype` in line with
   `pkg/lib/schema`.
 - Published at a stable URL and embedded in the package (`go:embed`);
@@ -3380,7 +3680,12 @@ fail neither test belong in authoring guidance and in review.
   runs the §3 chain and `Validate` no longer keeps a private copy of it, a
   `type_keys` spelling or value gets the same writable-key restatement as
   `property_keys`, and the import seam refuses a term a vocabulary resolves
-  onto the empty type key, §3), `language`-vs-`fields.lang` conflicts, an **`option_ids` key naming a
+  onto the empty type key, §3), **a typed field with no `format`** (§2b — the
+  schema's `required` says a member is missing but not that it is a CHOICE,
+  so the reader states the alternatives, reading them out of the published
+  schema rather than restating them, and the schema's own verdict at that
+  pointer is suppressed so the document still gets one fault, one issue),
+  `language`-vs-`fields.lang` conflicts, an **`option_ids` key naming a
   property this document never spells** (§9a — a warning: the entry can never
   be consulted and the value degrades to name resolution; a key-set
   comparison against the document's property census, not a parse of the key),
@@ -3809,9 +4114,10 @@ Wiring (follow-up work, not this package):
   "version": 1,
   "id": "bafyreieqh63jv…",
   "type": "page",
+  "icon": { "format": "emoji", "emoji": "🔥" },
+  "cover": { "format": "gradient", "gradient": "pinkOrange" },
   "properties": {
     "name": "Project Phoenix",
-    "icon_emoji": "🔥",
     "status": ["In progress"]
   },
   "option_ids": {
@@ -3832,7 +4138,7 @@ Wiring (follow-up work, not this package):
         { "id": "r1", "is_header": true, "cells": [ "Format", "Size" ] },
         { "id": "r2", "cells": [ "pb.json", "3020 B" ] }
       ] },
-    { "id": "b8", "type": "callout", "icon_emoji": "💡",
+    { "id": "b8", "type": "callout", "icon": { "format": "emoji", "emoji": "💡" },
       "text": "See the [ADF docs](https://developer.atlassian.com/cloud/jira/platform/apis/document/structure/) for the reference shape" },
     { "id": "b9", "type": "dataview",
       "object_id": "bafyrei…tasksSet",
@@ -4004,8 +4310,65 @@ Wiring (follow-up work, not this package):
     metadata (`is_hidden`, `revision`, `relation_format_include_time`, …) and
     could safely omit empty/default values, keeping documents compact for
     LLMs; presence stays preserved for user-intent keys via a small
-    exception list (`name`, `description`, `icon_emoji`, `icon_image`,
-    `done`) and for every non-system key. Deliberately static (no
+    exception list (`name`, `description`, `done`) and for every non-system
+    key. Deliberately static (no
     type-schema lookup at export time) to keep the canonical form
     deterministic. Decide `done` membership and wire `buildProperties` +
     the round-trip comparator accordingly.
+
+13. **The icon and cover assumptions the clients own** (§2b). Four, in
+    descending order of what they would cost:
+
+    - **Icon precedence is unverified outside heart.** `iconName` >
+      `iconEmoji` > `iconImage` comes from `core/api/service/icon.go`, the
+      only implementation in this repository — every other converter (`dot`,
+      `graphjson`, `publish/relationswhitelist`) emits all four channels and
+      lets the consumer decide. If the desktop client renders the emoji over
+      the named icon, the export picks a different icon than the app shows
+      for the 200 objects that hold both. **One grep in the client repo
+      settles it**, and the answer changes one line of the export rule.
+    - **`coverType: 4` (prebuilt) has zero instances** in 36,966 objects, and
+      the prebuilt id vocabulary exists nowhere in this repository. It is
+      modelled as `{"format": "image", "file": …, "source": "prebuilt"}`
+      because `state/details.go` and `cmd/usecasevalidator` both treat
+      `{1,4,5}` as file-backed. If a prebuilt `coverId` is a client-side
+      asset *name* rather than an object id, the `image` branch is wrong for
+      it and fixing it costs a version bump.
+    - **The gradient and cover-colour vocabularies live only in the
+      clients**, so `cover.color` and `cover.gradient` stay opaque names. A
+      document can say `{"format": "gradient", "gradient": "sunset"}` and get
+      a broken cover with no validation error — the one corner where the
+      typed shape does not do what it exists to do. The format cannot close
+      this alone; the API's discovery layer can serve the enum once the
+      clients publish the list.
+    - **`icon.name` is an open string** (§2b), which is where this design is
+      weakest for an offline generator. Closing the ~397-name enum would
+      violate I1 the first time the app ships a new icon, and would put
+      someone on the hook for keeping `pkg/lib/*` in lockstep with the client
+      icon set forever — the API's own list currently contains a stray
+      `t.txt` between `sync` and `tablet-landscape`, which is what that
+      maintenance looks like when nobody owns it.
+
+14. **The `relation_format_*` family is the same disease at ten times the
+    volume**, and it is deliberately deferred (§15 is where it is recorded so
+    it is not re-discovered). 10,430 production objects are `kind: relation`
+    documents. `relation_format_include_time` is meaningful only on `date`,
+    `relation_format_object_types` only on `object`/`file`, and both are
+    present-and-empty on thousands. Worse, a standalone relation document
+    spells `relation_format: 100` — a raw number — while a `type_properties`
+    entry spells `format: "objects"`: one concept, two spellings, in one
+    format, and §2a already has the right vocabulary to reuse. It is a
+    separate design with its own attack pass; of everything deferred it is
+    the only one that costs a version bump if it slips past the freeze, and
+    if exactly one more thing fits, make it the **spelling** decision rather
+    than the whole collapse. `file_variant_*` (7 parallel arrays on every
+    file object, 8.35% of corpus bytes), `space_invite_*` and `widget_*` are
+    deferred with less at stake — machine-written, never authored.
+
+15. **`picture` stays flat, deliberately** (§3). It has the same relation
+    format as `iconImage` (`file`, `objectTypes: ["image"]`) and 1,946
+    production objects carry one, so folding it into `icon` looks tempting.
+    It is a different concept — a bookmark's preview image, not the object's
+    identity — and folding it in would make one union mean two things. It
+    reads correctly as an ordinary `files` property. Written down so it is
+    not re-litigated.

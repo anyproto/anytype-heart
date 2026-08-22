@@ -22,9 +22,9 @@ a human-only format would have made.
   "version": 1,
   "id": "bafyreieqh63jv…",
   "type": "page",
+  "icon": { "format": "emoji", "emoji": "🔥" },
   "properties": {
     "name": "Project Phoenix",
-    "icon_emoji": "🔥",
     "status": ["In progress"]
   },
   "blocks": [
@@ -40,9 +40,12 @@ a human-only format would have made.
 }
 ```
 
-Three things are load-bearing and worth noticing before the rationale:
+Four things are load-bearing and worth noticing before the rationale:
 blocks are a **flat array**, formatting lives as **markdown inside
-`text`**, and `properties` is a plain **key → value** map.
+`text`**, `properties` is a plain **key → value** map, and the handful of
+things that are a CHOICE rather than a value — the icon, the cover — are
+typed objects with a `format` member, so the alternatives appear in the
+error message rather than only in the spec.
 
 ---
 
