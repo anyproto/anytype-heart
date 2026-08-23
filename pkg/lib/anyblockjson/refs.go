@@ -205,5 +205,18 @@ const missingObjectId = "_missing_object"
 // before the suffix existed — which is what keeps a bare id and a suffixed
 // id importing identically.
 func (imp *importer) objectRef(ref string) string {
-	return imp.opts.unfoldParticipantRef(trimRefName(ref))
+	id := trimRefName(ref)
+	// A bare account identity in a reference slot is the folded half of a
+	// participant id (§9), and only a space can rebuild it. A reader that
+	// names none would store the identity where the composite belongs — a
+	// reference to an object that does not exist, in silence. The classifier
+	// is exact (a strkey checksum), so the reader KNOWS this has happened
+	// and says so, once, in build. It may not refuse: Validate never sees
+	// Options, so refusing here would put the two surfaces into
+	// disagreement over one document (§12 I2).
+	if imp.opts.SpaceId == "" && isAccountIdentity(id) {
+		imp.foldedUnrebuilt = true
+		return id
+	}
+	return imp.opts.unfoldParticipantRef(id)
 }

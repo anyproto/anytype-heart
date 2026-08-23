@@ -141,6 +141,12 @@ type importer struct {
 	// inside block construction; build turns it into the ValidationError
 	// before it returns a snapshot.
 	refusal *Issue
+	// foldedUnrebuilt records that this document carries a FOLDED participant
+	// reference (§9) this reader cannot rebuild, because it names no space.
+	// Set during the walk and reported once in build: the fault is the
+	// reader's wiring, not any one slot's, and a document can hold thousands
+	// of them.
+	foldedUnrebuilt bool
 }
 
 // claimAuthoredIds records every id the document names before anything is
@@ -518,6 +524,15 @@ func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBas
 	// handing back an object with the slot missing (propertyKeyAt)
 	if imp.refusal != nil {
 		return 0, nil, &ValidationError{Issues: []Issue{*imp.refusal}}
+	}
+	// the folded participant references this reader could not rebuild (§9).
+	// One line for the document, not one per slot: the fault is a reader
+	// wired without a space, and every such reference in the object shares it.
+	if imp.foldedUnrebuilt {
+		imp.warn("", "this document was written with participants folded (§9) and "+
+			"Options.SpaceId names no space: their references import as bare "+
+			"identities, which address no object. Set SpaceId to the space this "+
+			"document is being read into.")
 	}
 
 	snapshot := &model.SmartBlockSnapshotBase{

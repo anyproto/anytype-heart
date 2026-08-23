@@ -257,3 +257,31 @@ func TestFold_ComposesWithTheNameSuffix(t *testing.T) {
 		"resolvable AND readable: the folded identity plus the informative name")
 	assert.True(t, strings.Contains(string(data), foldIdentity))
 }
+
+// A reader that names no space cannot rebuild a folded participant id, and
+// says so once for the document (§9). It may not refuse — Validate never
+// sees Options, so a refusal here would leave the two surfaces disagreeing
+// about one document (§12 I2) — so the warning is the whole of the defence,
+// and the tool with no target space (cmd/anyblockconvert) is where it lands.
+//
+// How this can fail: drop the SpaceId check in importer.objectRef and a
+// bare identity is stored where a composite belongs, in silence.
+func TestFold_AReaderWithNoSpaceSaysSoInsteadOfCorrupting(t *testing.T) {
+	// given a document written by a folded export
+	data, err := Marshal(model.SmartBlockType_Page, foldSnapshot(), foldOptions())
+	require.NoError(t, err)
+
+	// when it is read by a reader that names no space
+	reader := refOptions()
+	var warned []Issue
+	reader.OnWarning = func(i Issue) { warned = append(warned, i) }
+	_, back, err := Unmarshal(data, reader)
+	require.NoError(t, err)
+
+	// then
+	require.Len(t, warned, 1, "one line for the document, not one per reference")
+	assert.Contains(t, warned[0].Message, "Options.SpaceId names no space")
+	assert.Equal(t, []string{foldIdentity, foreignComposite},
+		valueStringList(back.GetDetails().GetFields()["owner"]),
+		"the identity is stored as it stands — the warning is what makes that visible")
+}
