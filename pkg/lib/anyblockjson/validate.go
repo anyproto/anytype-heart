@@ -1257,7 +1257,8 @@ func isTransientProperty(key string) bool {
 // dropped on import for the same reason a transient key is (nothing
 // downstream can act on the value), and they are a separate list because
 // export treats them differently: a transient key is not written at all,
-// while these are written as the member's NAME (§3, buildProperties).
+// while these are written as `<id>#<name>` — the folded participant id with
+// the member's name as the informative suffix (§3, §9, buildProperties).
 //
 // Why nothing downstream can act on the value, which is the entry price for
 // this list: both are `source: derived, maxCount: 1, readonly: true`
@@ -1284,8 +1285,8 @@ var derivedAttributionProperties = map[string]string{
 
 // isDroppedOnImport reports whether a stored key is ignored rather than
 // refused when a document carries it: the transient keys, whose meaning does
-// not survive the trip, and the derived attribution keys, which the document
-// spells as a name and which no write path could honour anyway. Both families
+// not survive the trip, and the derived attribution keys, whose value is
+// re-derived from the tree and which no write path could honour anyway. Both families
 // are stripped from a document's own VALUES like every other internal key —
 // what they share is that a stale or hand-written document carrying one is
 // still importable (§3).

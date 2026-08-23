@@ -32,16 +32,18 @@ func attributedSnapshot() *model.SmartBlockSnapshotBase {
 	}
 }
 
-// §3's rule is "a name or nothing, never a blank": an empty `creator` costs
-// bytes, says less than absence, and reads to a model as an attribution that
-// exists and is empty. Enforcing it inside the shipped resolver is not enough
-// — the seam every resolver passes through has to hold it, or one third-party
-// implementation puts a blank line on every object in an export.
+// §3's rule is "a name or nothing after the `#`, never a blank": a dangling
+// `#` costs bytes, says less than its absence, and reads to a model as a
+// name that exists and is empty. Enforcing it inside the shipped resolver is
+// not enough — the seam every resolver passes through has to hold it
+// (refNameLabel), or one third-party implementation puts a dangling `#` on
+// every object in an export. The id half is unaffected either way: it is
+// the resolvable content and is written bare.
 //
 // This can only fail if the seam stops filtering: it drives the real Marshal
 // with a resolver that answers, so a rule enforced only in storeresolver would
 // not save it.
-func TestExport_AResolverThatAnswersBlankWritesNoAttribution(t *testing.T) {
+func TestExport_AResolverThatAnswersBlankWritesABareId(t *testing.T) {
 	for name, answer := range map[string]string{
 		"empty":           "",
 		"a single space":  " ",
@@ -51,31 +53,31 @@ func TestExport_AResolverThatAnswersBlankWritesNoAttribution(t *testing.T) {
 			data, err := Marshal(model.SmartBlockType_Page, attributedSnapshot(),
 				Options{ResolveParticipants: answeringNamer{name: answer}})
 			require.NoError(t, err)
-			assert.NotContains(t, string(data), `"creator"`,
-				"a blank name is not a name: the property is omitted (§3)")
+			assert.Contains(t, string(data), `"creator": "_participant_a_b_C"`,
+				"the bare id: resolvable, and blank-name-proof")
+			assert.NotContains(t, string(data), "#", "a blank name is not a name — no dangling separator")
 			require.NoError(t, Validate(data))
 		})
 	}
 
-	// the control: a real name still lands, so the rule above cannot pass by
-	// dropping attribution altogether
+	// the control: a real name still lands as the suffix, so the rule above
+	// cannot pass by dropping the suffix machinery altogether
 	t.Run("a real name still lands", func(t *testing.T) {
 		data, err := Marshal(model.SmartBlockType_Page, attributedSnapshot(),
 			Options{ResolveParticipants: answeringNamer{name: "Roman"}})
 		require.NoError(t, err)
-		assert.Contains(t, string(data), `"creator": "Roman"`)
+		assert.Contains(t, string(data), `"creator": "_participant_a_b_C#roman"`)
 	})
 }
 
 // MarshalPropertyValue and UnmarshalPropertyValue are twins: whatever one
-// writes, the other reads back. Attribution breaks that on purpose — export
-// writes a member NAME, and a name is not an address — so the read half must
-// refuse rather than hand "Roman" back as though it were a participant id.
-// Without this a value-level caller round-tripping one property puts a display
-// name in an id slot, which nothing downstream can resolve.
+// writes, the other reads back. Attribution breaks that on purpose — the
+// value is derived from the tree on every rebuild, and no write path could
+// honour what a document carries — so the read half must drop it rather
+// than hand it back as though it were settable.
 func TestFragment_TheValueTwinsDisagreeOnAttribution(t *testing.T) {
 	for _, key := range []string{"creator", "lastModifiedBy"} {
-		assert.Nil(t, UnmarshalPropertyValue(key, "Roman", Options{}),
+		assert.Nil(t, UnmarshalPropertyValue(key, "_participant_a_b_C#roman", Options{}),
 			"%s is dropped by whole-document import, so the value door drops it too", key)
 	}
 

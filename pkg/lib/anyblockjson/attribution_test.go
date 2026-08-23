@@ -126,7 +126,7 @@ func TestAttributionProperties_LegendCannotLandThem(t *testing.T) {
 }
 
 //
-// ---- export: the member's name, or nothing ----
+// ---- export: the member's id, with the name riding as the suffix ----
 //
 
 // nameResolver answers with a fixed table, and records what it was asked.
@@ -140,6 +140,13 @@ func (r *nameResolver) ParticipantName(id string) (string, bool) {
 	name, ok := r.names[id]
 	return name, ok && name != ""
 }
+
+// The two halves of testParticipantId, for spelling expectations: the space
+// the composite embeds and the checksummed identity it folds to (§9).
+const (
+	testAttribSpaceId  = "bafyreid62d5e6hny6mv6zass2zg73nxyhjzhjasx7imvzxvqz6rcnjqcgq.30afw2fe3tvff"
+	testAttribIdentity = "AASdKiEGfcyhxX3ufr4auHRviACUXxkF68uZwtSb2AnyRoMA"
+)
 
 // attributionSnapshot is an ordinary object with both attribution details set,
 // stored the way real objects store them.
@@ -175,21 +182,25 @@ func exportedProperties(t *testing.T, snap *model.SmartBlockSnapshotBase, opts O
 	return doc.Properties, string(data)
 }
 
-// A participant id is 135 characters and says nothing to a reader; the member's
-// name is the whole of what the line is for. `creator` is on 100% of a
-// 36,966-object corpus, so this is the single most repeated string the format
-// used to write.
+// Attribution is `<identity>#<name>` (§3): the folded participant id —
+// RESOLVABLE, which the v0.24 name-only spelling was not (API v2 consumers
+// need an id to resolve a member, and 76 of 2,478 production participants
+// share a display name) — with the member's name as the informative suffix,
+// ~57 characters against the 135 the composite was. A plain string, not an
+// array: the relation is `maxCount: 1` and 0 of 36,966 corpus values were
+// multi-valued.
 //
-// How these can fail: emit the stored value instead of the name and the first
-// case finds an array (and the id in the bytes); write the name inside a list
-// and the plain-string assertion fails — `maxCount: 1` makes the wrapper
-// definitionally wrong, and 0 of 36,966 corpus values were multi-valued.
-func TestAttribution_ExportWritesTheMemberName(t *testing.T) {
-	resolver := &nameResolver{names: map[string]string{testParticipantId: "Roman"}}
+// How these can fail: write the name alone and the id assertions fail; write
+// the raw composite and the folded-spelling assertions fail; write the value
+// inside a list and the plain-string equality fails; skip the normalizer and
+// "Roma Kha" arrives with its space.
+func TestAttribution_ExportWritesIdentityAndName(t *testing.T) {
+	resolver := &nameResolver{names: map[string]string{testParticipantId: "Roma Kha"}}
 	opts := testOptions()
 	opts.ResolveParticipants = resolver
+	opts.SpaceId = testAttribSpaceId
 
-	t.Run("creator is a plain string holding the name", func(t *testing.T) {
+	t.Run("creator is a plain string: folded id, then the name", func(t *testing.T) {
 		// given
 		snap := attributionSnapshot(map[string]*types.Value{"creator": strList(testParticipantId)})
 
@@ -197,8 +208,9 @@ func TestAttribution_ExportWritesTheMemberName(t *testing.T) {
 		props, raw := exportedProperties(t, snap, opts)
 
 		// then
-		assert.Equal(t, "Roman", props["creator"])
-		assert.NotContains(t, raw, testParticipantId, "the id must not survive anywhere in the document")
+		assert.Equal(t, testAttribIdentity+"#roma_kha", props["creator"])
+		assert.NotContains(t, raw, testParticipantId,
+			"the 135-character composite folds; the identity stands in (§9)")
 	})
 
 	t.Run("a scalar-stored value reads the same", func(t *testing.T) {
@@ -209,10 +221,10 @@ func TestAttribution_ExportWritesTheMemberName(t *testing.T) {
 		props, _ := exportedProperties(t, snap, opts)
 
 		// then
-		assert.Equal(t, "Roman", props["creator"])
+		assert.Equal(t, testAttribIdentity+"#roma_kha", props["creator"])
 	})
 
-	t.Run("lastModifiedBy is spelled last_modified_by and named too", func(t *testing.T) {
+	t.Run("lastModifiedBy is spelled last_modified_by and shaped the same", func(t *testing.T) {
 		// given
 		snap := attributionSnapshot(map[string]*types.Value{
 			"creator":        strList(testParticipantId),
@@ -223,29 +235,50 @@ func TestAttribution_ExportWritesTheMemberName(t *testing.T) {
 		props, raw := exportedProperties(t, snap, opts)
 
 		// then
-		assert.Equal(t, "Roman", props["last_modified_by"])
+		assert.Equal(t, testAttribIdentity+"#roma_kha", props["last_modified_by"])
 		assert.NotContains(t, props, "lastModifiedBy", "the document spells slugs (§3)")
 		assert.NotContains(t, raw, testParticipantId)
 	})
+
+	t.Run("without a space id the composite survives whole, still with the name", func(t *testing.T) {
+		// given the fold is off (§9) — no SpaceId, no fold, either direction
+		bare := testOptions()
+		bare.ResolveParticipants = resolver
+		snap := attributionSnapshot(map[string]*types.Value{"creator": strList(testParticipantId)})
+
+		// when
+		props, _ := exportedProperties(t, snap, bare)
+
+		// then
+		assert.Equal(t, testParticipantId+"#roma_kha", props["creator"])
+	})
 }
 
-// The rule the spec is emphatic about: no resolver, or no name, and the
-// property is ABSENT — never the raw id, never an empty string. A format whose
-// `creator` is sometimes a name and sometimes a 135-character address is worse
-// to read than one that consistently carries neither.
+// No resolver, or no name, and the id is written BARE — the id is the
+// resolvable half and complete without its caption. Never a dangling `#`,
+// and never an omitted property: v0.24's "no name, no property" rule made
+// the line unreadable to API consumers precisely when a resolver was
+// missing, which is the reversal this change corrects.
 //
-// How these can fail: any fallback to the id or to "" makes the NotContains
-// assertions fail, and so does emitting an explicit null.
-func TestAttribution_OmittedWhenThereIsNoName(t *testing.T) {
+// How these can fail: keep the old omit-on-no-name rule and every case
+// finds the property missing; write "#" with an empty name after it and the
+// exact-equality cases fail.
+func TestAttribution_BareIdWhenThereIsNoName(t *testing.T) {
 	for name, opts := range map[string]Options{
-		"no participant resolver at all": testOptions(),
+		"no participant resolver at all": func() Options {
+			o := testOptions()
+			o.SpaceId = testAttribSpaceId
+			return o
+		}(),
 		"a resolver that cannot name this member": func() Options {
 			o := testOptions()
+			o.SpaceId = testAttribSpaceId
 			o.ResolveParticipants = &nameResolver{names: map[string]string{}}
 			return o
 		}(),
 		"a member whose profile name is empty": func() Options {
 			o := testOptions()
+			o.SpaceId = testAttribSpaceId
 			o.ResolveParticipants = &nameResolver{names: map[string]string{testParticipantId: ""}}
 			return o
 		}(),
@@ -258,24 +291,40 @@ func TestAttribution_OmittedWhenThereIsNoName(t *testing.T) {
 			})
 
 			// when
-			props, raw := exportedProperties(t, snap, opts)
+			props, _ := exportedProperties(t, snap, opts)
 
 			// then
-			assert.NotContains(t, props, "creator")
-			assert.NotContains(t, props, "last_modified_by")
-			assert.NotContains(t, raw, testParticipantId)
-			assert.Contains(t, props, "name", "the rest of the object is untouched")
+			assert.Equal(t, testAttribIdentity, props["creator"], "the bare folded id, nothing else")
+			assert.Equal(t, testAttribIdentity, props["last_modified_by"])
 		})
 	}
+
+	t.Run("an empty stored value is still omitted", func(t *testing.T) {
+		// given no id at all — a bare id is a complete answer, no id is none
+		snap := attributionSnapshot(nil)
+		opts := testOptions()
+		opts.SpaceId = testAttribSpaceId
+
+		// when
+		props, _ := exportedProperties(t, snap, opts)
+
+		// then
+		assert.NotContains(t, props, "creator")
+		assert.NotContains(t, props, "last_modified_by")
+	})
 }
 
 // The control, again, on the export side: `assignee` is `source: details`,
-// user-chosen, and its id is the whole of its meaning. It keeps the full id
-// and the array shape even with a resolver that could name the member.
+// user-chosen, and its id is the whole of its meaning. It keeps the id (the
+// §9 fold applies — the folded spelling IS the id, restated) and the ARRAY
+// shape, and it takes no name suffix from the participant resolver: the
+// suffix on ordinary references belongs to RefNames + ResolveObjectNames,
+// not to the attribution seam.
 func TestAttribution_ExportLeavesUserChosenParticipantsAlone(t *testing.T) {
 	// given
 	opts := testOptions()
-	opts.ResolveParticipants = &nameResolver{names: map[string]string{testParticipantId: "Roman"}}
+	opts.SpaceId = testAttribSpaceId
+	opts.ResolveParticipants = &nameResolver{names: map[string]string{testParticipantId: "Roma Kha"}}
 	snap := attributionSnapshot(map[string]*types.Value{
 		"creator":  strList(testParticipantId),
 		"assignee": strList(testParticipantId),
@@ -285,9 +334,9 @@ func TestAttribution_ExportLeavesUserChosenParticipantsAlone(t *testing.T) {
 	props, _ := exportedProperties(t, snap, opts)
 
 	// then
-	assert.Equal(t, "Roman", props["creator"])
-	assert.Equal(t, []any{testParticipantId}, props["assignee"],
-		"a user-chosen participant reference keeps its id and its list shape")
+	assert.Equal(t, testAttribIdentity+"#roma_kha", props["creator"], "a plain string")
+	assert.Equal(t, []any{testAttribIdentity}, props["assignee"],
+		"a user-chosen participant reference keeps its list shape and takes no suffix here")
 }
 
 // The term census reserves what the document SPELLS (§9a). `creator` is on the
@@ -296,12 +345,13 @@ func TestAttribution_ExportLeavesUserChosenParticipantsAlone(t *testing.T) {
 // claim the spelling, putting two properties on one JSON member and losing one.
 //
 // How this can fail: drop the attribution arm of seedTermLedger and the custom
-// key takes `creator`, so this finds "Roman" under a key that means the custom
-// relation, or one of the two values gone.
+// key takes `creator`, so this finds the identity under a key that means the
+// custom relation, or one of the two values gone.
 func TestAttribution_CensusReservesTheSpellingItWrites(t *testing.T) {
 	// given a space that slugs a custom relation onto `creator`
 	opts := testOptions()
-	opts.ResolveParticipants = &nameResolver{names: map[string]string{testParticipantId: "Roman"}}
+	opts.SpaceId = testAttribSpaceId
+	opts.ResolveParticipants = &nameResolver{names: map[string]string{testParticipantId: "Roma Kha"}}
 	// the custom key sorts BEFORE `creator`, so it reaches the term ledger
 	// first and claims the spelling unless the census has reserved it
 	opts.Keys = slugVocabulary{"aCustomKey": "creator"}
@@ -314,7 +364,8 @@ func TestAttribution_CensusReservesTheSpellingItWrites(t *testing.T) {
 	props, _ := exportedProperties(t, snap, opts)
 
 	// then
-	assert.Equal(t, "Roman", props["creator"], "the attribution key keeps its own spelling")
+	assert.Equal(t, testAttribIdentity+"#roma_kha", props["creator"],
+		"the attribution key keeps its own spelling")
 	assert.Equal(t, "mine", props["aCustomKey"],
 		"the custom key falls back to its stored key, which is always its own address (§3)")
 }
@@ -356,7 +407,8 @@ func (v slugVocabulary) TypeKey(slug string) (string, bool) {
 func TestAttribution_DoesNotSurviveARoundTrip(t *testing.T) {
 	// given
 	opts := testOptions()
-	opts.ResolveParticipants = &nameResolver{names: map[string]string{testParticipantId: "Roman"}}
+	opts.SpaceId = testAttribSpaceId
+	opts.ResolveParticipants = &nameResolver{names: map[string]string{testParticipantId: "Roma Kha"}}
 	snap := attributionSnapshot(map[string]*types.Value{"creator": strList(testParticipantId)})
 
 	// when
@@ -372,7 +424,7 @@ func TestAttribution_DoesNotSurviveARoundTrip(t *testing.T) {
 	require.NoError(t, err)
 
 	// then
-	assert.Contains(t, string(first), `"creator": "Roman"`)
-	assert.NotContains(t, string(second), `"creator"`, "import drops it, so the next export has nothing to name")
+	assert.Contains(t, string(first), `"creator": "`+testAttribIdentity+`#roma_kha"`)
+	assert.NotContains(t, string(second), `"creator"`, "import drops it, so the next export has nothing to write")
 	assert.Equal(t, string(second), string(third), "and everything after the first export is byte-stable")
 }
