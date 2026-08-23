@@ -178,6 +178,9 @@ func (m *keyMaps) bind(label, key string, derived bool) {
 	if label == "" {
 		return
 	}
+	if derived && !m.mintable(label, key) {
+		return
+	}
 	// the fold class is not the slug namespace, and the entry goes in
 	// whether or not the exact spelling is granted: an entity answers to its
 	// own label's fold either way, and TWO entities in one fold class is the
@@ -258,6 +261,32 @@ func (m *keyMaps) key(slug string) (string, bool) {
 		}
 	}
 	return k, true
+}
+
+// mintable reports whether a DERIVED label may be bound at all — the half of
+// roundTrips that does not depend on what the other rows claim, asked before
+// the claim rather than after.
+//
+// A stored slug is a fact about the space, so a slug that shadows a bundled
+// spelling stays in the map and makes that spelling ambiguous for everyone
+// (the §7.5a-6 shadow, which the API surface has too). A derived label is
+// not a fact — it is minted here — so minting one that is already answered
+// elsewhere gains nothing and costs the true owner its spelling: a space
+// holding a relation NAMED `due_date` bound the label to it, the accept side
+// refused it (keyMaps.key will not resolve a spelling the bundled table binds
+// elsewhere), and BUNDLED `dueDate` was left spelling itself `dueDate` in
+// that space — a spelling nobody could use, taken from the one key that could.
+// Two production spaces, two bundled properties (`dueDate`, `iconEmoji`).
+func (m *keyMaps) mintable(label, key string) bool {
+	if m.storedKey[label] {
+		return false // chain step 1 answers first; a label can never outrank it
+	}
+	if m.bundledKey != nil {
+		if other, ok := m.bundledKey(label); ok && other != key {
+			return false
+		}
+	}
+	return true
 }
 
 func (m *keyMaps) addFold(fold, key string) {

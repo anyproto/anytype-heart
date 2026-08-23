@@ -807,19 +807,44 @@ func TestNameDerivedLabels(t *testing.T) {
 		assert.Equal(t, bsonTwinKey, r.PropertySlug(bsonTwinKey))
 	})
 
-	t.Run("a name that lands on a bundled spelling is refused", func(t *testing.T) {
-		// given: a space-minted relation NAMED "Due date", whose label the
-		// bundled table binds to `dueDate`. Minting it would produce a
-		// spelling that is stored but never resolvable — keyMaps.key refuses
-		// to bind a slug the bundled table resolves elsewhere, and roundTrips
-		// refuses to emit one.
-		r := vocabFixture(t, named(relationRow("rel-due", bsonPropKey, ""), "Due date"))
+	t.Run("a name that lands on a bundled spelling is refused, and the bundled key keeps it", func(t *testing.T) {
+		// given: a space-minted relation NAMED "due_date" beside the space's
+		// copy of bundled `dueDate` — a real pair, in a real space
+		r := vocabFixture(t,
+			named(relationRow("rel-named", bsonPropKey, ""), "due_date"),
+			named(relationRow("rel-due", "dueDate", ""), "Due date"),
+		)
 
 		// when / then
-		assert.Equal(t, bsonPropKey, r.PropertySlug(bsonPropKey))
+		assert.Equal(t, bsonPropKey, r.PropertySlug(bsonPropKey), "the derived label is not minted")
 		key, ok := r.PropertyKey("due_date")
 		require.True(t, ok)
 		assert.Equal(t, "dueDate", key, "the bundled table still owns its own spelling")
+		// and the half that a mere accept-side refusal does NOT cover: a
+		// label bound to the wrong key would leave `due_date` a spelling
+		// nobody can use, taken from the one key that could
+		assert.Equal(t, "due_date", r.PropertySlug("dueDate"))
+	})
+
+	t.Run("a name that lands on a live stored key is refused", func(t *testing.T) {
+		// given: chain step 1 answers `manual_property` with the relation
+		// STORED under it, so a label there could never resolve
+		r := vocabFixture(t,
+			named(relationRow("rel-named", bsonPropKey, ""), "Manual property"),
+			named(relationRow("rel-stored", "manual_property", ""), "Something else"),
+		)
+
+		// when / then
+		assert.Equal(t, bsonPropKey, r.PropertySlug(bsonPropKey))
+		key, ok := r.PropertyKey("manual_property")
+		assert.False(t, ok, "an exact stored key wins over any label")
+		assert.Equal(t, "manual_property", key)
+		// and the label is not merely unresolvable but UNMINTED, which is
+		// what keeps the forgiving layer unambiguous for the key that owns
+		// the spelling outright: a minted label folds together with it
+		key, ok = r.PropertyKey("Manual_Property")
+		require.True(t, ok, "chain step 4 still answers for the holder of the stored key")
+		assert.Equal(t, "manual_property", key)
 	})
 
 	t.Run("a bundled key takes its spelling from the code table, never from the space's name", func(t *testing.T) {
