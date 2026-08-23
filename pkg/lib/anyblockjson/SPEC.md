@@ -1,6 +1,6 @@
 # AnyBlock JSON — format specification
 
-Status: **draft v0.27** · Format version: **1** · Package: `pkg/lib/anyblockjson`
+Status: **draft v0.28** · Format version: **1** · Package: `pkg/lib/anyblockjson`
 
 A human- and agent-readable JSON serialization of Anytype objects (the "anyblock"
 model), designed for export, import, and generation by external tools and LLM
@@ -15,6 +15,35 @@ strings; the vocabulary follows Notion's API and Anytype's public REST API
 (`core/api`) wherever an established term exists — the format should be
 readable, and mostly writable, by someone who has never seen Anytype
 internals.
+
+Changes in v0.28: **the separator earns its keep at both ends** (§9, §11).
+
+v0.27 made `#` the one load-bearing character in the id domain and split on
+it unconditionally, which is safe for every id this format WRITES — no id
+form can contain one, measured across 81,696 documents in two corpora — but
+a snapshot's reference slots are untrusted (§11) and a document is
+hand-written, so both ends met values the rule had never been tried on.
+
+**Export now captions only an id the reader can uncaption.** An id already
+carrying a `#` gets none, because `x#y` + `#name` reads back as `x`. The
+degenerate case was worse: `#name` has no id half, import returns it whole
+(the split refuses index 0 so it never invents an empty id), and an export
+willing to caption it appended another name every generation, without
+bound — from a document Validate accepted, and exactly the shape a writer
+produces copying only the readable half of `id#name`. Validate now reports
+that shape as a warning wherever it can see the property's format.
+
+**A reader wired without `Options.SpaceId` says so instead of corrupting.**
+The fold trades the space half of a participant id for the reader's own
+space, so a reader naming none stores a bare identity where a composite
+belongs. Every importer has a target space — an import lands in one — but a
+converter that does not import has none, and that is the path the warning
+exists for. It warns rather than refuses because Validate never sees
+Options, and the two surfaces may not disagree about one document (§12 I2).
+
+`N(S)` (§11) now lists the three residues these leave rather than claiming
+the trim and the fold are pure inverses: they are inverses for every id
+either side writes, which is a narrower promise than the one it made.
 
 Changes in v0.27: **references get a readable half, and identity comes back
 to attribution** (§3, §9, §11, §13). Three connected changes, one shape.
@@ -3418,8 +3447,12 @@ a `#`:
   No id form this format writes can contain `#`: CIDs are base32
   `[a-z2-7]`, participant ids base32+base58, the bundled `_ot`/`_br` slugs
   are `[a-zA-Z0-9_]` across all 223 keys, `_date_…`/`_missing_object` are
-  fixed shapes — measured over 37,429 production documents, zero id-shaped
-  values contain one. And the name half is **normalized through the same
+  fixed shapes — measured over 81,696 production documents across two
+  corpora, zero values in a reference slot contain one. (One id-shaped
+  value elsewhere does: a `uniqueKey` derived from an option named `C#`.
+  Option names are free text and mint keys from it, so the split's safety
+  rests on object ids never being derived from a uniqueKey, which they are
+  not.) And the name half is **normalized through the same
   identifier grammar key labels use** (§3: letters of any script, digits,
   `_`, combining marks — `letter | digit | _ | mark`), which admits no `#`
   either, truncated at 64 characters (a hint, not an address, so truncation
@@ -3447,6 +3480,23 @@ a `#`:
   as in `C#` — import trims nothing there), a date is a date. Mention and
   object-link targets inside `text` keep their ids verbatim: the mention's
   own text already names the target.
+- **A caption is only written where it can be taken off.** A snapshot's
+  reference slots are untrusted (§11) and may hold an id this format could
+  not have written. Export therefore captions no id that already contains a
+  `#`, because `x#y` + `#name` reads back as `x` — the caption would be
+  paid for with the id itself. The degenerate case is worse: `#name` has no
+  id half, `splitRefName` refuses to split at index 0 precisely so import
+  never invents an empty id, so it imports whole and an export willing to
+  caption it would append again every generation, without bound. That shape
+  is what a writer produces copying only the readable half of `id#name`;
+  Validate reports it as a warning wherever it can see the property's
+  format (`/properties/<key>`, bundled table or a declared format — a
+  space-minted key it cannot resolve passes unremarked), and the value is
+  stored as written, addressing nothing.
+- **An id containing `#` still loses its tail on read**, since the reader
+  cannot tell that `#` from a caption's. It is the format's one reference
+  normalization, listed in `N(S)` (§11), and it converges after one
+  generation.
 - **Round trip**: byte-stable given the same resolver — import trims, the
   next export re-derives the same names. Absent a resolver the suffix is
   absent, the same class of resolver-dependence as option names (§3).
@@ -3474,10 +3524,21 @@ rebuilds the composite against `Options.SpaceId` (§13):
 - **`Options.SpaceId` arms it, in both directions at once.** The format
   carries no space id anywhere in the envelope, so the wiring supplies one
   exactly as it supplies resolvers (`storeresolver` wires the index's own).
-  With no SpaceId nothing folds and nothing unfolds: folding on export
-  without the paired import being able to rebuild would land a bare
-  identity in a snapshot slot where a composite belongs — silent corruption
-  of exactly the slot the fold exists to fix.
+  With no SpaceId nothing folds and nothing unfolds. **Any reader of a
+  folded document MUST set it** — it is the space the document is being
+  read INTO, which every importer necessarily knows, since an import lands
+  in a space. A reader that names none stores the bare identity where a
+  composite belongs, addressing no object; because the classifier is exact,
+  the reader knows this has happened and reports it through the warning
+  sink, once for the document (§13). The one caller with genuinely no
+  target space is a converter that does not import — `cmd/anyblockconvert`
+  — and it is the path the warning exists for.
+- **An empty identity is not an identity.** `_participant_<space>_`, built
+  from a blank identity, addresses nobody; 9,103 of 37,429 production
+  objects store one in `lastModifiedBy`. It does not fold — and only the
+  classifier refuses it, since `NewParticipantId(space, "")` rebuilds that
+  exact string, so the round-trip recheck cannot. Without the classifier it
+  would fold to the empty string and the reference would be deleted.
 - **Only this space's composites fold.** A composite embedding a DIFFERENT
   space passes through whole in both directions: folding it would silently
   re-home the member on import. (A document carried into another space
@@ -3767,8 +3828,21 @@ stripped per §3 (with the exemption list), the attribution pair
 `creator`/`lastModifiedBy` among them — export spells them `<id>#<name>`
 and import drops the key, so a round trip clears both (§3); informative
 reference suffixes trimmed and participant composites folded/rebuilt (§9) —
-both exact inverses given the same resolver and SpaceId, so neither leaves
-a residue in the snapshot;
+exact inverses for every id either side WRITES, and the round trip is
+byte-stable for them, but three residues remain because a snapshot's
+reference slots are untrusted and may hold what the format cannot spell:
+**an id containing `#` loses everything from the first one**, since the
+reader cannot tell that `#` from the one a caption hangs on (this is the
+only place the format silently narrows a value it was handed; export no
+longer captions such an id, so the loss happens once and the value is a
+fixpoint after — measured across two corpora, 81,696 documents, zero occur);
+**a bare account identity already stored in an object or file slot comes
+back as this space's participant id**, because unfold cannot know the fold
+never fired (every bare identity in the corpus sits in a text-format
+property, where the object arm never runs); and **a reader wired without a
+SpaceId leaves folded identities bare**, which addresses no object — it is
+told so through the warning sink, once for the document, since the fault is
+the wiring and every such reference in the object shares it;
 select/multi_select option ids
 replaced by name resolution — in properties, filter values, and custom
 orders (§3, §6.2) — which `option_ids` inverts exactly (§9a), leaving two
