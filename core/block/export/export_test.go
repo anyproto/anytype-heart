@@ -703,6 +703,9 @@ func Test_docsForExport(t *testing.T) {
 	t.Run("get relation options - no relation options", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
+		// the state carries a single-value status/tag relation; its value is now collected as a
+		// dependency (it was silently dropped before), so the type lookup has to be stubbed
+		fx.sbtProvider.EXPECT().Type(spaceId, "value").Return(smartblock.SmartBlockTypePage, nil).Maybe()
 
 		fx.store.AddObjects(t, spaceId, []objectstore.TestObject{
 			{
@@ -746,6 +749,9 @@ func Test_docsForExport(t *testing.T) {
 	t.Run("get relation options - 1 relation option", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
+		// the state carries a single-value status/tag relation; its value is now collected as a
+		// dependency (it was silently dropped before), so the type lookup has to be stubbed
+		fx.sbtProvider.EXPECT().Type(spaceId, "value").Return(smartblock.SmartBlockTypePage, nil).Maybe()
 
 		fx.store.AddObjects(t, spaceId, []objectstore.TestObject{
 			{
@@ -795,6 +801,9 @@ func Test_docsForExport(t *testing.T) {
 	t.Run("get derived objects - relation, object type with recommended relations, template with link", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
+		// the state carries a single-value status/tag relation; its value is now collected as a
+		// dependency (it was silently dropped before), so the type lookup has to be stubbed
+		fx.sbtProvider.EXPECT().Type(spaceId, "value").Return(smartblock.SmartBlockTypePage, nil).Maybe()
 		recommendedRelationKey := domain.RelationKey("recommendedRelationKey")
 		templateId := "templateId"
 		templateObjectTypeId := "templateObjectTypeId"
