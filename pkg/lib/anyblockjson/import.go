@@ -385,7 +385,12 @@ func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBas
 		sbType = kindNames.value(doc.Kind)
 	}
 
-	objectId := doc.Id
+	// the envelope id goes through the reference reader like any object
+	// reference (§9): a stray informative suffix is trimmed, and a bare
+	// identity — the participant document's own folded id — rebuilds this
+	// space's participant id. Claimed so a generated block id cannot land on
+	// the rebuilt form.
+	objectId := imp.claimId(imp.objectRef(doc.Id))
 	if objectId == "" {
 		objectId = imp.genId()
 	}

@@ -34,7 +34,13 @@ package anyblockjson
 // id-shaped values contain `#`) — and the name half is normalized through a
 // grammar that admits no `#` either.
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/anyproto/any-sync/util/crypto"
+
+	"github.com/anyproto/anytype-heart/core/domain"
+)
 
 // ObjectNameResolver names an object for the informative reference suffix
 // (§9). It is the object-namespace sibling of ParticipantResolver, and it is
@@ -93,13 +99,62 @@ func refNameLabel(name string) string {
 	return label
 }
 
-// objectRef renders one object reference for a document slot (§9), adding
-// the informative `#name` suffix when the shape asks for it
-// (Options.RefNames) and a resolver names the target. With no resolver, or
-// no name, the reference is written bare — never with a partial or invented
-// suffix.
+// isAccountIdentity reports whether s is a member's account identity — the
+// base58 strkey form with its version byte and crc16 checksum intact
+// (any-sync util/crypto). The checksum is what makes this a CLASSIFIER
+// rather than a heuristic: no CID, bson id, or `_`-prefixed derived id can
+// decode as one, so a bare identity in a reference slot is unambiguous.
+func isAccountIdentity(s string) bool {
+	if len(s) < 40 || len(s) > 64 {
+		return false // cheap gate: real identities are 48 characters
+	}
+	_, err := crypto.DecodeAccountAddress(s)
+	return err == nil
+}
+
+// foldParticipantRef is the export half of the participant fold (§9):
+// `_participant_<SpaceId>_<identity>` becomes the bare identity. It folds
+// ONLY what unfoldParticipantRef provably rebuilds — the space embedded in
+// the id must be this run's own SpaceId (a cross-space participant ref would
+// otherwise silently re-home on import), the identity must classify as one,
+// and the composite must round-trip through domain.NewParticipantId
+// byte-identically. With no SpaceId the fold is off in both directions:
+// folding on export without the paired import being able to rebuild would
+// land a bare identity where a composite belongs.
+func (o Options) foldParticipantRef(id string) string {
+	if o.SpaceId == "" || !strings.HasPrefix(id, domain.ParticipantPrefix) {
+		return id
+	}
+	spaceId, identity, err := domain.ParseParticipantId(id)
+	if err != nil || spaceId != o.SpaceId || !isAccountIdentity(identity) {
+		return id
+	}
+	if domain.NewParticipantId(o.SpaceId, identity) != id {
+		return id
+	}
+	return identity
+}
+
+// unfoldParticipantRef is the import half: a bare identity in an object
+// reference slot rebuilds this space's participant id. Gated on the exact
+// classifier the fold used, so unfold(fold(x)) == x and fold(unfold(y)) == y
+// for every id either side touches.
+func (o Options) unfoldParticipantRef(id string) string {
+	if o.SpaceId == "" || !isAccountIdentity(id) {
+		return id
+	}
+	return domain.NewParticipantId(o.SpaceId, id)
+}
+
+// objectRef renders one object reference for a document slot (§9): the
+// participant fold first, then the informative `#name` suffix when the
+// shape asks for it (Options.RefNames) and a resolver names the target. The
+// resolver is asked about the STORED id — the composite participant id, not
+// the folded identity — because that is the id the space indexes. With no
+// resolver, or no name, the reference is written bare — never with a
+// partial or invented suffix.
 func (e *exporter) objectRef(id string) string {
-	out := id
+	out := e.opts.foldParticipantRef(id)
 	if !e.opts.RefNames || e.opts.ResolveObjectNames == nil || id == "" {
 		return out
 	}
@@ -134,9 +189,10 @@ const dateIdPrefix = "_date_"
 const missingObjectId = "_missing_object"
 
 // objectRef reads one object reference back (§9): the informative suffix is
-// trimmed at the first `#`, unread. Everything else passes verbatim, exactly
-// as before the suffix existed — which is what keeps a bare id and a
-// suffixed id importing identically.
+// trimmed at the first `#`, unread, and a bare identity unfolds into this
+// space's participant id. Everything else passes verbatim, exactly as
+// before the suffix existed — which is what keeps a bare id and a suffixed
+// id importing identically.
 func (imp *importer) objectRef(ref string) string {
-	return trimRefName(ref)
+	return imp.opts.unfoldParticipantRef(trimRefName(ref))
 }

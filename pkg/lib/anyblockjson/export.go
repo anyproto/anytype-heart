@@ -1295,7 +1295,13 @@ func (e *exporter) buildDoc(sbType model.SmartBlockType) (*omap, error) {
 		doc.set("kind", name)
 	}
 
-	doc.setNonEmpty("id", e.objectId())
+	// the envelope id: the participant fold applies — a participant
+	// document's OWN id folds to the bare identity, or a reader could not
+	// textually join a folded reference to the document it points at (§9) —
+	// but never the name suffix: the document's name is right below in
+	// `properties`, and the envelope id is the one slot a reader must be
+	// able to use verbatim as an address.
+	doc.setNonEmpty("id", e.opts.foldParticipantRef(e.objectId()))
 	doc.setNonEmpty("type", typeTerm)
 	if sbType == model.SmartBlockType_Template && len(typeTerms) > 1 {
 		doc.setNonEmpty("template_for", typeTerms[1])
@@ -2178,6 +2184,13 @@ func (e *exporter) buildLabelPlan() {
 	addObject := func(id string) {
 		if id != "" {
 			objects[id] = true
+			// the document spells the FOLDED form of a participant ref
+			// (§9), so the avoid-set carries that spelling too — the raw
+			// composite stays as well, since a suffix-trimming reader
+			// recovers it
+			if folded := e.opts.foldParticipantRef(id); folded != id {
+				objects[folded] = true
+			}
 		}
 	}
 
