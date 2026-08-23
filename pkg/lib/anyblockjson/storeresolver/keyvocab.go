@@ -50,16 +50,54 @@ type keyMaps struct {
 	// bundledFold is that namespace's bundled fold table (chain step 4's
 	// bundled arm), as stored-key strings.
 	bundledFold func(input string) []string
+	// bundled reports whether the bundled table speaks for a stored key.
+	// Such a key takes its spelling from the code table in every space and
+	// offline (§7.5a-1), so the space's own row never derives one for it.
+	bundled func(key string) bool
+	// label is the namespace's half of the §3 label rule
+	// (anyblockjson.PropertyLabel / TypeLabel): what a document spells for
+	// one stored key, given the entity's stored api slug and display name.
+	label func(key, slug, name string) string
+	// derived marks the spellings that came from a display NAME rather than
+	// from a stored slug — a weaker claim, see bind.
+	derived map[string]bool
 }
 
-func newKeyMaps(bundledKey func(string) (string, bool)) *keyMaps {
+// namespace is one key namespace's half of everything above: the listing it
+// loads from, the two bundled tables it consults, and its label rule. It is
+// a struct rather than five positional arguments because loadKeyMaps had
+// four already and the two namespaces have to answer every one of these the
+// same way, which is easier to see in one place.
+type namespace struct {
+	layout      model.ObjectTypeLayout
+	keyOf       func(*domain.Details) string
+	label       func(key, slug, name string) string
+	bundled     func(key string) bool
+	bundledKey  func(slug string) (string, bool)
+	bundledFold func(input string) []string
+}
+
+// entity is one row of the one bounded listing: everything the space stores
+// that a spelling can be built from.
+type entity struct {
+	key    string
+	slug   string
+	name   string
+	hidden bool
+}
+
+func newKeyMaps(ns namespace) *keyMaps {
 	return &keyMaps{
-		slugByKey:  map[string]string{},
-		keyBySlug:  map[string]string{},
-		storedKey:  map[string]bool{},
-		keysByFold: map[string][]string{},
-		keyById:    map[string]string{},
-		bundledKey: bundledKey,
+		slugByKey:   map[string]string{},
+		keyBySlug:   map[string]string{},
+		storedKey:   map[string]bool{},
+		keysByFold:  map[string][]string{},
+		keyById:     map[string]string{},
+		derived:     map[string]bool{},
+		bundledKey:  ns.bundledKey,
+		bundledFold: ns.bundledFold,
+		bundled:     ns.bundled,
+		label:       ns.label,
 	}
 }
 
@@ -80,26 +118,87 @@ func newKeyMaps(bundledKey func(string) (string, bool)) *keyMaps {
 // `severity` verbatim as a relation key no relation object owns; and a hidden
 // squatter holding `due_date` used to win the reverse lookup outright, so the
 // bundled property's own slug resolved to the squatter.
-func (m *keyMaps) add(key, slug string, hidden bool) {
-	if key == "" {
+func (m *keyMaps) add(row entity) {
+	if row.key == "" {
 		return
 	}
-	m.storedKey[key] = true
-	if hidden {
+	m.storedKey[row.key] = true
+	if row.hidden {
 		return
 	}
-	m.addFold(bundle.FoldApiKey(key), key)
-	if slug == "" || slug == key {
+	m.addFold(bundle.FoldApiKey(row.key), row.key)
+	if row.slug != "" && row.slug != row.key {
+		// the RAW stored slug keeps its fold entry even when the label rule
+		// spells the entity differently: documents written before that rule
+		// spelled the slug itself, and chain step 4 is what still answers
+		// for them
+		m.addFold(bundle.FoldApiKey(row.slug), row.key)
+	}
+	m.bind(m.label(row.key, row.slug, ""), row.key, false)
+}
+
+// addDerived is the second pass: the label a display NAME derives (§3 label
+// rule step 3), offered only by an entity that has no spelling of its own.
+//
+// It runs as a pass rather than inline because a derived label is a WEAKER
+// claim than a stored slug, and the twin rule cannot tell them apart. In the
+// production corpus 14 name-derived labels land on a spelling some other
+// relation already stores as its `apiObjectKey` — `more_information`,
+// `active_competitors`, `killme` — and the one-pass rule would have dropped
+// BOTH, so a relation that has had a readable, explicitly minted address for
+// years would start spelling itself with a bson id because an unrelated
+// relation was NAMED something similar. Two passes make the ordering a rule
+// instead of an accident: every explicit slug is bound first, and a derived
+// label takes only what is still free.
+//
+// A bundled key never reaches here: its spelling is the code table's in
+// every space (§7.5a-1), so a space row's name has no say in it. Letting it
+// in would also let a localized bundled name squat a label some space-minted
+// relation could have used.
+func (m *keyMaps) addDerived(row entity) {
+	if row.key == "" || row.hidden || m.bundled(row.key) {
 		return
 	}
-	m.addFold(bundle.FoldApiKey(slug), key)
-	if first, taken := m.keyBySlug[slug]; taken {
-		m.keyBySlug[slug] = "" // twin slugs: neither wins
+	if _, spelled := m.slugByKey[row.key]; spelled {
+		return
+	}
+	m.bind(m.label(row.key, "", row.name), row.key, true)
+}
+
+// bind records one spelling, or refuses it. Two holders of one spelling
+// still drop it from BOTH directions when their claims are equal — an
+// ambiguous address must never resolve by store order (the git rule), and
+// dropping it degrades to the stored key, which always works; clearing only
+// the reverse map left the first holder still EXPORTING a slug that import
+// then refused to invert, a document naming an address the server itself
+// rejects. When the claims are NOT equal — a derived name against a stored
+// slug — the explicit one keeps the spelling and the derived one goes
+// without, which is the whole reason addDerived is a second pass.
+func (m *keyMaps) bind(label, key string, derived bool) {
+	if label == "" {
+		return
+	}
+	// the fold class is not the slug namespace, and the entry goes in
+	// whether or not the exact spelling is granted: an entity answers to its
+	// own label's fold either way, and TWO entities in one fold class is the
+	// ambiguity chain step 4 refuses rather than resolves. Folding only on
+	// success made the forgiving layer hand a CONTESTED spelling to whichever
+	// holder the store listed first — the one answer the twin rule exists to
+	// prevent.
+	m.addFold(bundle.FoldApiKey(label), key)
+	if first, taken := m.keyBySlug[label]; taken {
+		if derived && !m.derived[label] {
+			return
+		}
+		m.keyBySlug[label] = "" // twin claims: neither wins
 		delete(m.slugByKey, first)
 		return
 	}
-	m.keyBySlug[slug] = key
-	m.slugByKey[key] = slug
+	m.keyBySlug[label] = key
+	m.slugByKey[key] = label
+	if derived {
+		m.derived[label] = true
+	}
 }
 
 // roundTrips reports whether emitting `slug` for `key` inverts back to `key`
@@ -204,18 +303,27 @@ func (m *keyMaps) fold(input string) (string, bool) {
 
 func (r *Resolvers) relationKeyMaps() *keyMaps {
 	if r.relVocab == nil {
-		r.relVocab = r.loadKeyMaps(model.ObjectType_relation, func(d *domain.Details) string {
-			return d.GetString(bundle.RelationKeyRelationKey)
-		}, func(slug string) (string, bool) {
-			key, ok := bundle.RelationKeyByApiSlug(slug)
-			return string(key), ok
-		}, func(input string) []string {
-			keys := bundle.RelationKeysByApiFold(input)
-			out := make([]string, len(keys))
-			for i, key := range keys {
-				out[i] = string(key)
-			}
-			return out
+		r.relVocab = r.loadKeyMaps(namespace{
+			layout: model.ObjectType_relation,
+			keyOf: func(d *domain.Details) string {
+				return d.GetString(bundle.RelationKeyRelationKey)
+			},
+			label: anyblockjson.PropertyLabel,
+			bundled: func(key string) bool {
+				return bundle.HasRelation(domain.RelationKey(key))
+			},
+			bundledKey: func(slug string) (string, bool) {
+				key, ok := bundle.RelationKeyByApiSlug(slug)
+				return string(key), ok
+			},
+			bundledFold: func(input string) []string {
+				keys := bundle.RelationKeysByApiFold(input)
+				out := make([]string, len(keys))
+				for i, key := range keys {
+					out[i] = string(key)
+				}
+				return out
+			},
 		})
 	}
 	return r.relVocab
@@ -223,22 +331,31 @@ func (r *Resolvers) relationKeyMaps() *keyMaps {
 
 func (r *Resolvers) typeKeyMaps() *keyMaps {
 	if r.typeVocab == nil {
-		r.typeVocab = r.loadKeyMaps(model.ObjectType_objectType, func(d *domain.Details) string {
-			key, err := domain.GetTypeKeyFromRawUniqueKey(d.GetString(bundle.RelationKeyUniqueKey))
-			if err != nil {
-				return ""
-			}
-			return string(key)
-		}, func(slug string) (string, bool) {
-			key, ok := bundle.TypeKeyByApiSlug(slug)
-			return string(key), ok
-		}, func(input string) []string {
-			keys := bundle.TypeKeysByApiFold(input)
-			out := make([]string, len(keys))
-			for i, key := range keys {
-				out[i] = string(key)
-			}
-			return out
+		r.typeVocab = r.loadKeyMaps(namespace{
+			layout: model.ObjectType_objectType,
+			keyOf: func(d *domain.Details) string {
+				key, err := domain.GetTypeKeyFromRawUniqueKey(d.GetString(bundle.RelationKeyUniqueKey))
+				if err != nil {
+					return ""
+				}
+				return string(key)
+			},
+			label: anyblockjson.TypeLabel,
+			bundled: func(key string) bool {
+				return bundle.HasObjectTypeByKey(domain.TypeKey(key))
+			},
+			bundledKey: func(slug string) (string, bool) {
+				key, ok := bundle.TypeKeyByApiSlug(slug)
+				return string(key), ok
+			},
+			bundledFold: func(input string) []string {
+				keys := bundle.TypeKeysByApiFold(input)
+				out := make([]string, len(keys))
+				for i, key := range keys {
+					out[i] = string(key)
+				}
+				return out
+			},
 		})
 	}
 	return r.typeVocab
@@ -249,14 +366,13 @@ func (r *Resolvers) typeKeyMaps() *keyMaps {
 // table, which is the offline-safe answer — never a stale or half-built map,
 // which would resolve a write against the wrong property (the exact
 // silent-failure class §7.5a-2 forbids a cache from ever producing).
-func (r *Resolvers) loadKeyMaps(layout model.ObjectTypeLayout, keyOf func(*domain.Details) string, bundledKey func(string) (string, bool), bundledFold func(string) []string) *keyMaps {
-	maps := newKeyMaps(bundledKey)
-	maps.bundledFold = bundledFold
+func (r *Resolvers) loadKeyMaps(ns namespace) *keyMaps {
+	maps := newKeyMaps(ns)
 	records, err := r.index.Query(database.Query{Filters: []database.FilterRequest{
 		{
 			RelationKey: bundle.RelationKeyResolvedLayout,
 			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       domain.Int64(int64(layout)),
+			Value:       domain.Int64(int64(ns.layout)),
 		},
 		{
 			// the §7.5-requirement-2 corpse policy: a UI-deleted entity
@@ -269,16 +385,31 @@ func (r *Resolvers) loadKeyMaps(layout model.ObjectTypeLayout, keyOf func(*domai
 	if err != nil {
 		return maps
 	}
+	rows := make([]entity, 0, len(records))
 	for _, record := range records {
-		key := keyOf(record.Details)
-		maps.add(key,
-			record.Details.GetString(bundle.RelationKeyApiObjectKey),
-			record.Details.GetBool(bundle.RelationKeyIsHidden))
+		key := ns.keyOf(record.Details)
+		rows = append(rows, entity{
+			key:    key,
+			slug:   record.Details.GetString(bundle.RelationKeyApiObjectKey),
+			name:   record.Details.GetString(bundle.RelationKeyName),
+			hidden: record.Details.GetBool(bundle.RelationKeyIsHidden),
+		})
 		if id := record.Details.GetString(bundle.RelationKeyId); id != "" && key != "" {
 			if _, taken := maps.keyById[id]; !taken {
 				maps.keyById[id] = key
 			}
 		}
+	}
+	// two passes, in this order: every explicit stored slug claims its
+	// spelling first, and only then do the display names take what is left
+	// (addDerived). The listing is materialized for exactly that reason —
+	// the order rows arrive in must not decide which of two entities keeps
+	// a contested spelling.
+	for _, row := range rows {
+		maps.add(row)
+	}
+	for _, row := range rows {
+		maps.addDerived(row)
 	}
 	return maps
 }

@@ -31,6 +31,35 @@ const (
 	bsonTypeKey = "6a7663db61fab21cd4b9e103"
 )
 
+// propertyNamespace is the relation namespace as relationKeyMaps wires it,
+// for the few tests that drive keyMaps directly.
+func propertyNamespace() namespace {
+	return namespace{
+		label:   anyblockjson.PropertyLabel,
+		bundled: func(key string) bool { return bundle.HasRelation(domain.RelationKey(key)) },
+		bundledKey: func(slug string) (string, bool) {
+			key, ok := bundle.RelationKeyByApiSlug(slug)
+			return string(key), ok
+		},
+	}
+}
+
+// named gives a row the display name the §3 label rule reads; the fixtures'
+// default of "the object id" is a name like any other, but an unreadable one
+// to state a case with.
+func named(row spaceindex.TestObject, name string) spaceindex.TestObject {
+	row[bundle.RelationKeyName] = domain.String(name)
+	return row
+}
+
+// nameless strips a row's display name, which the §3 label rule reads as its
+// last rung: without it the fixture is really asking "what happens when the
+// SLUG cannot spell this entity", and with it the answer changes.
+func nameless(row spaceindex.TestObject) spaceindex.TestObject {
+	delete(row, bundle.RelationKeyName)
+	return row
+}
+
 // vocabFixture builds a resolver over exactly the rows given.
 func vocabFixture(t *testing.T, objects ...spaceindex.TestObject) *Resolvers {
 	index := spaceindex.NewStoreFixture(t)
@@ -121,11 +150,11 @@ func TestPropertyKeyVocabulary(t *testing.T) {
 	// side refuses to invert.
 	t.Run("add drops a twin slug from both directions", func(t *testing.T) {
 		// given
-		m := newKeyMaps(nil)
+		m := newKeyMaps(propertyNamespace())
 
 		// when
-		m.add(bsonPropKey, "manual_property", false)
-		m.add(bsonTwinKey, "manual_property", false)
+		m.add(entity{key: bsonPropKey, slug: "manual_property"})
+		m.add(entity{key: bsonTwinKey, slug: "manual_property"})
 
 		// then
 		assert.Equal(t, "", m.keyBySlug["manual_property"], "neither holder wins the reverse direction")
@@ -136,7 +165,7 @@ func TestPropertyKeyVocabulary(t *testing.T) {
 	})
 
 	t.Run("twin slugs resolve to neither, and neither is emitted", func(t *testing.T) {
-		// given
+		// given: two holders of one stored slug, with distinct NAMES
 		r := vocabFixture(t,
 			relationRow("rel-manual", bsonPropKey, "manual_property"),
 			relationRow("rel-twin", bsonTwinKey, "manual_property"),
@@ -145,7 +174,29 @@ func TestPropertyKeyVocabulary(t *testing.T) {
 		// when / then
 		_, ok := r.PropertyKey("manual_property")
 		assert.False(t, ok, "an ambiguous address must never resolve by store order")
-		assert.Equal(t, bsonPropKey, r.PropertySlug(bsonPropKey), "the FIRST holder keeps the honest stored key too")
+		// the contested spelling is dead for both, and neither holder is
+		// spelled with it — but each still has a name of its own, so the
+		// §3 label rule's last rung answers where the slug could not.
+		// The ambiguity is what must not resolve; the entities are distinct
+		// and their labels are too.
+		assert.Equal(t, "rel_manual", r.PropertySlug(bsonPropKey))
+		assert.Equal(t, "rel_twin", r.PropertySlug(bsonTwinKey))
+		key, ok := r.PropertyKey("rel_manual")
+		require.True(t, ok)
+		assert.Equal(t, bsonPropKey, key)
+	})
+
+	t.Run("with no name either, a contested slug leaves the stored key", func(t *testing.T) {
+		// given: the same twins, nameless
+		r := vocabFixture(t,
+			nameless(relationRow("rel-manual", bsonPropKey, "manual_property")),
+			nameless(relationRow("rel-twin", bsonTwinKey, "manual_property")),
+		)
+
+		// when / then
+		_, ok := r.PropertyKey("manual_property")
+		assert.False(t, ok)
+		assert.Equal(t, bsonPropKey, r.PropertySlug(bsonPropKey), "the stored key is always its own address")
 		assert.Equal(t, bsonTwinKey, r.PropertySlug(bsonTwinKey))
 	})
 
@@ -271,8 +322,8 @@ func TestTypeKeyVocabulary(t *testing.T) {
 
 	t.Run("twin type slugs resolve to neither, and neither is emitted", func(t *testing.T) {
 		r := vocabFixture(t,
-			typeRow("type-a", bsonTypeKey, "meeting_note"),
-			typeRow("type-b", "6a7663db61fab21cd4b9e107", "meeting_note"),
+			nameless(typeRow("type-a", bsonTypeKey, "meeting_note")),
+			nameless(typeRow("type-b", "6a7663db61fab21cd4b9e107", "meeting_note")),
 		)
 
 		_, ok := r.TypeKey("meeting_note")
@@ -671,4 +722,139 @@ func TestCorpseStoredKeyStillNamesItsObjects(t *testing.T) {
 
 func strValue(s string) *types.Value {
 	return &types.Value{Kind: &types.Value_StringValue{StringValue: s}}
+}
+
+// The §3 label rule inside the space vocabulary: what a document spells for a
+// key the bundled table does not speak for. The rule itself is unit-tested in
+// the parent package (label_test.go); what is pinned here is the part only
+// this package can get wrong — WHICH stored fact reaches it, and which claim
+// wins when two of them want one spelling.
+//
+// The population this exists for: 39 relations in a 36,966-object corpus have
+// no `apiObjectKey` at all, so every document that used one spelled a
+// 24-character bson id inline and carried a legend line to invert it. A bson
+// id starts with a digit, so it is not even a legal key in the compact filter
+// grammar (§6.2.1) — the property could not be filtered on.
+func TestNameDerivedLabels(t *testing.T) {
+	t.Run("a slugless relation spells its NAME, both directions", func(t *testing.T) {
+		// given: the shape of all 39 — a bson key, no stored slug, an
+		// ordinary name
+		r := vocabFixture(t, named(relationRow("rel-publish", bsonPropKey, ""), "Publish Date"))
+
+		// when / then
+		assert.Equal(t, "publish_date", r.PropertySlug(bsonPropKey))
+		key, ok := r.PropertyKey("publish_date")
+		require.True(t, ok)
+		assert.Equal(t, bsonPropKey, key, "the accept half has to invert what the emit half writes")
+	})
+
+	t.Run("a slugless type spells its NAME too", func(t *testing.T) {
+		r := vocabFixture(t, named(typeRow("type-vinyl", bsonTypeKey, ""), "Vinyl record "))
+
+		assert.Equal(t, "vinyl_record", r.TypeSlug(bsonTypeKey))
+		key, ok := r.TypeKey("vinyl_record")
+		require.True(t, ok)
+		assert.Equal(t, bsonTypeKey, key)
+	})
+
+	t.Run("a type name that lands on a bundled type spelling is refused", func(t *testing.T) {
+		// two of the corpus's 18 slugless types are named `Recipe`, which is
+		// a BUNDLED type — the same guard as the property namespace's, and
+		// the reason those two keep their bson keys
+		r := vocabFixture(t, named(typeRow("type-recipe", bsonTypeKey, ""), "Recipe "))
+
+		assert.Equal(t, bsonTypeKey, r.TypeSlug(bsonTypeKey))
+		key, ok := r.TypeKey("recipe")
+		require.True(t, ok)
+		assert.Equal(t, "recipe", key, "the bundled type still owns its own spelling")
+	})
+
+	t.Run("a stored slug outranks another entity's name", func(t *testing.T) {
+		// given: one relation stores `more_information` as its api key, and
+		// another is NAMED "More information" — 14 pairs of this exact shape
+		// exist in the corpus. The single-pass twin rule would drop the
+		// spelling for both, so a relation that has had an explicit address
+		// for years would start spelling itself with a bson id because
+		// somebody named another relation similarly.
+		r := vocabFixture(t,
+			named(relationRow("rel-info", bsonPropKey, "more_information"), "Info"),
+			named(relationRow("rel-named", bsonTwinKey, ""), "More information"),
+		)
+
+		// when / then
+		assert.Equal(t, "more_information", r.PropertySlug(bsonPropKey), "the explicit claim keeps the spelling")
+		assert.Equal(t, bsonTwinKey, r.PropertySlug(bsonTwinKey), "the derived one goes without")
+		key, ok := r.PropertyKey("more_information")
+		require.True(t, ok)
+		assert.Equal(t, bsonPropKey, key)
+	})
+
+	t.Run("two names deriving one label leave both with their stored keys", func(t *testing.T) {
+		// given: `Contact type` and `Contact type 📌`, one space, both
+		// slugless. The corpus pairs are `Priority`/`Priority 📌`,
+		// `Email`/`Email 📧` and `Phone`/`Phone 📱`; those three collide with
+		// BUNDLED spellings as well, which is a different refusal (below),
+		// so the fixture uses a name the bundled table has never heard of.
+		r := vocabFixture(t,
+			named(relationRow("rel-p1", bsonPropKey, ""), "Contact type"),
+			named(relationRow("rel-p2", bsonTwinKey, ""), "Contact type \U0001F4CC"),
+		)
+
+		// when / then
+		_, ok := r.PropertyKey("contact_type")
+		assert.False(t, ok, "an ambiguous address must never resolve by store order")
+		assert.Equal(t, bsonPropKey, r.PropertySlug(bsonPropKey))
+		assert.Equal(t, bsonTwinKey, r.PropertySlug(bsonTwinKey))
+	})
+
+	t.Run("a name that lands on a bundled spelling is refused", func(t *testing.T) {
+		// given: a space-minted relation NAMED "Due date", whose label the
+		// bundled table binds to `dueDate`. Minting it would produce a
+		// spelling that is stored but never resolvable — keyMaps.key refuses
+		// to bind a slug the bundled table resolves elsewhere, and roundTrips
+		// refuses to emit one.
+		r := vocabFixture(t, named(relationRow("rel-due", bsonPropKey, ""), "Due date"))
+
+		// when / then
+		assert.Equal(t, bsonPropKey, r.PropertySlug(bsonPropKey))
+		key, ok := r.PropertyKey("due_date")
+		require.True(t, ok)
+		assert.Equal(t, "dueDate", key, "the bundled table still owns its own spelling")
+	})
+
+	t.Run("a bundled key takes its spelling from the code table, never from the space's name", func(t *testing.T) {
+		// given: the space's copy of bundled `dueDate`, named in Russian —
+		// which is the ordinary state of a localized space
+		r := vocabFixture(t,
+			named(relationRow("rel-due", "dueDate", ""), "Срок"),
+			named(relationRow("rel-custom", bsonPropKey, ""), "Срок"),
+		)
+
+		// when / then
+		assert.Equal(t, "due_date", r.PropertySlug("dueDate"), "§7.5a-1: the code table is the authority in every space")
+		// and because the bundled key never derived a label, the space's own
+		// relation is free to take it
+		assert.Equal(t, "срок", r.PropertySlug(bsonPropKey))
+		key, ok := r.PropertyKey("срок")
+		require.True(t, ok)
+		assert.Equal(t, bsonPropKey, key)
+	})
+
+	t.Run("a hidden relation still derives nothing", func(t *testing.T) {
+		// hidden entities keep their stored key and stay out of the slug
+		// namespace at every step, this one included
+		r := vocabFixture(t, named(hiddenRelationRow("rel-secret", bsonPropKey, ""), "Secret"))
+
+		assert.Equal(t, bsonPropKey, r.PropertySlug(bsonPropKey))
+		_, ok := r.PropertyKey("secret")
+		assert.False(t, ok)
+	})
+
+	t.Run("a name label the format refuses as a spelling is never minted", func(t *testing.T) {
+		// §2 refuses `id` and `type` as property spellings before any
+		// resolution, so a label export would throw away is not built here
+		r := vocabFixture(t, named(relationRow("rel-id", bsonPropKey, ""), "id"))
+
+		assert.Equal(t, bsonPropKey, r.PropertySlug(bsonPropKey))
+	})
 }
