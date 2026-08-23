@@ -1,6 +1,6 @@
 # AnyBlock JSON — format specification
 
-Status: **draft v0.26** · Format version: **1** · Package: `pkg/lib/anyblockjson`
+Status: **draft v0.27** · Format version: **1** · Package: `pkg/lib/anyblockjson`
 
 A human- and agent-readable JSON serialization of Anytype objects (the "anyblock"
 model), designed for export, import, and generation by external tools and LLM
@@ -15,6 +15,44 @@ strings; the vocabulary follows Notion's API and Anytype's public REST API
 (`core/api`) wherever an established term exists — the format should be
 readable, and mostly writable, by someone who has never seen Anytype
 internals.
+
+Changes in v0.27: **references get a readable half, and identity comes back
+to attribution** (§3, §9, §11, §13). Three connected changes, one shape.
+
+**Every object reference may carry an informative `#name` suffix** —
+`bafyrei…#local_first_ux` — so a reader sees what a reference points at
+instead of a 59-character CID. The suffix is informative only: import trims
+it at the first `#`, unread, and a bare id stays exactly as valid (§9). It
+is opt-in per shape (`RefNames`, default off): the export/backup shape stays
+minimal and rename-stable, read shapes opt in.
+
+**Participant ids fold to the bare identity.**
+`_participant_<space>_<identity>` is the document's own space restated
+around a 48-character identity; every reference slot — the participant
+document's own envelope `id` included — now spells the identity alone, and
+import rebuilds the composite against `Options.SpaceId` (§9). 135
+characters down to 48, and a document carried into another space re-homes
+the member correctly, because the reader rebuilds against ITS space.
+
+**`creator` and `last_modified_by` return to a RESOLVABLE id**, spelled
+`<identity>#<name>` (§3). v0.24's name-only spelling broke API v2 — its
+consumers need an id to resolve a member, and 76 of 2,478 production
+participants share a display name, so the name identified nobody. The v0.24
+readability win is kept by the suffix; the resolvability it traded away is
+back, at ~57 characters against the 135 the id had before v0.24. Both keys
+stay derived and stay DROPPED on import; only the spelling changes.
+
+Measured over the same 37,429-object corpus (offline resolvers built from
+the corpus itself; baseline = v0.26 tip, same resolvers): the backup shape
+costs **+1.70%** of all bytes (168.28 MB → 171.13 MB — the attribution id
+returning), the read shape **+2.34%** (→ 172.21 MB) with 119,462 suffixed
+references; 3,446 same-space participant composites fold, 0 remain; round
+trip byte-stable on 37,429 of 37,429; data-loss findings identical to the
+v0.26 codec (the 34 pre-existing coverId/coverType/tag findings, no new
+ones). The sweep also surfaced 9,103 objects storing
+`lastModifiedBy = _participant_<space>_` — a composite built from a BLANK
+identity, which v0.24's omit-on-no-name rule had been hiding; an id that
+addresses nobody is omitted (§3).
 
 Changes in v0.26: **a key's label is normalized through the format's own
 grammar** (§1, §3, §6.2.1, §11, §13).
@@ -2185,17 +2223,28 @@ designates the object a user should land on. A bundle with no favourite, no
 `homepage` and no `spaceDashboardId` imports as an undifferentiated list. `id` is lifted to the envelope and `type` to `type`. Everything else
 round-trips.
 
-**Attribution: `creator` and `last_modified_by` are the member's NAME, as a
-plain string.**
+**Attribution: `creator` and `last_modified_by` are the member's RESOLVABLE
+id, named by the informative suffix — `<identity>#<name>`, as a plain
+string.**
 
 ```json
-"creator": "Roma Kha",
-"last_modified_by": "Roma Kha"
+"creator": "A6eK73JmBUM9Aar2BJ4Pd6VkLW7cjhoWL7tJHDM9gk8fhpkc#roma_kha",
+"last_modified_by": "A6eK73JmBUM9Aar2BJ4Pd6VkLW7cjhoWL7tJHDM9gk8fhpkc#roma_kha"
 ```
 
 Not an array. Both relations are `maxCount: 1` and 0 of 36,966 production
 values were multi-valued, so the list wrapper the other object-format
 properties take is definitionally wrong here.
+
+The spelling is the general §9 reference shape: the stored participant id
+through the participant fold (48 characters instead of 135), the member's
+display name riding after the `#` as a caption. This is a deliberate
+reversal of v0.24, which wrote the NAME alone. Name-only was a mistake this
+document owns: it broke API v2, whose consumers need an id to resolve a
+member (avatar, profile), and **two members of one space can carry the same
+display name** — 76 of 2,478 production participants do — so the name
+identified nobody. The suffix keeps what v0.24 bought (a reader sees WHO,
+not an address) and the id restores what it traded away.
 
 Both are `source: derived, readonly: true`: their value is recovered from the
 object tree root's own cryptographic signature on every rebuild
@@ -2204,27 +2253,28 @@ four independent seams discard whatever a document supplies —
 `state.StructCutKeys(details, LocalAndDerivedRelationKeys)`
 (`core/block/editor/state/change.go`), the pb importer's preserve-list, which
 names neither, `changeBlockDetailsSet`, and the API's "cannot be set
-directly". So the line is informational, and a lossy readable spelling costs
-nothing. That reasoning does **not** extend to `assignee`, `author`,
-`stakeholders` or any custom `objects` property: those are `source: details`,
-chosen by a person, and the id is the whole of their meaning. They keep the
-full participant id and the array shape.
+directly". **Import drops both keys**, whatever they carry. That reasoning
+does **not** extend to `assignee`, `author`, `stakeholders` or any custom
+`objects` property: those are `source: details`, chosen by a person; they
+keep the array shape and the ordinary §9 reference rules.
 
 The name comes from a `ParticipantResolver` (§13), which export asks and
-import does not have. **Without a resolver, or for a member this space has no
-name for, the property is OMITTED** — never the raw id, never an empty
-string. A format whose `creator` is sometimes a name and sometimes a
-135-character address is worse to read than one that consistently carries
-neither. Measured over 36,966 objects with names resolved from the same
-account: 90.1% carry a name, 7.9% name `_anytype_profile` (the app itself,
-absent from an export but present in a live space index) and 2.0% a member
-whose profile name is empty.
+import does not have — and unlike the ordinary reference suffix it is NOT
+behind `RefNames`: both keys are dropped on import, so no byte-stability is
+at stake, and the name is the reason the line is worth writing at all.
+**Without a resolver, or for a member this space has no name for, the id is
+written BARE** — never a dangling `#`, and never an omitted property: the id
+is the resolvable half and is complete without its caption. Only a value
+holding no id at all omits the property — and so does the one degenerate id
+production data actually holds: 9,103 of 37,429 corpus objects store
+`lastModifiedBy = _participant_<space>_`, the composite built from a BLANK
+identity. Eighty-six characters that address nobody are the id-shaped
+analogue of a blank name and get the blank name's verdict.
 
-**The name is not an address, and nothing resolves it back.** Two members of
-one space can carry the same display name — 76 of 2,478 participants in the
-production corpus answer to `Roma Kha` — so a name identifies nobody. There
-is deliberately no `option_ids`-style legend for it: the legend exists where
-a name has to invert (§9a), and here nothing may. Import drops both keys.
+**The name is not an address, and nothing resolves it back.** It is the §9
+informative suffix: trimmed unread, never required, never unique. There is
+deliberately no `option_ids`-style legend for it: the legend exists where a
+name has to invert (§9a), and here nothing may.
 
 **Admission is symmetric with one documented exception: import refuses what
 export strips, except for the keys it DROPS in silence.** Two families
@@ -2240,11 +2290,13 @@ app, and why nothing downstream of an import can act on it.
   noise — present on 18,647 of them, and empty on every one.)
 - **Attribution keys** — `creator`, `lastModifiedBy` — name the member who
   wrote the object. Their stored VALUE is stripped like every other derived
-  key; what export writes is the name above, which addresses nobody. This
-  closes an asymmetry with no reason behind it: `creator` used to be accepted
-  (it sat on the preserve-list, so the deny rule never saw it) and landed a
-  detail the next rebuild overwrote, while `lastModifiedBy` — an identical
-  relation definition — was refused outright.
+  key; what export writes is the `<id>#<name>` spelling above, which no
+  write path could honour (the value is re-derived from the tree on every
+  rebuild). This closes an asymmetry with no reason behind it: `creator`
+  used to be accepted (it sat on the preserve-list, so the deny rule never
+  saw it) and landed a detail the next rebuild overwrote, while
+  `lastModifiedBy` — an identical relation definition — was refused
+  outright.
 
 Either way, import drops instead of refusing because a document carrying one
 is *stale*, not hostile, and refusing it would make an older export
@@ -3343,6 +3395,99 @@ way to enumerate a relation's options. That is a gap in the resolver
 interface, recorded here rather than papered over with a signal that is right
 by accident.
 
+### Object references: `id`, optionally `id#name`
+
+An object reference is a full id, and it MAY carry an informative name after
+a `#`:
+
+```json
+"related":  ["bafyrei…#local_first_ux"],
+"assignee": ["A6eK73Jm…#roma_kha"],
+"creator":  "A6eK73Jm…#roma_kha",
+"id":       "A6eK73Jm…"
+```
+
+- **The suffix is informative only.** Import trims it at the FIRST `#`,
+  unread; nothing resolves it, nothing requires it, and nothing depends on
+  it being unique — two objects sharing a display name suffix identically
+  and collide on nothing. Do not resolve by it.
+- **A bare id is exactly as valid and imports identically.** A model writing
+  a new reference has no name to add and must not need one. This is an §11
+  I2 surface.
+- **The split at the first `#` is unconditional and safe from both ends.**
+  No id form this format writes can contain `#`: CIDs are base32
+  `[a-z2-7]`, participant ids base32+base58, the bundled `_ot`/`_br` slugs
+  are `[a-zA-Z0-9_]` across all 223 keys, `_date_…`/`_missing_object` are
+  fixed shapes — measured over 37,429 production documents, zero id-shaped
+  values contain one. And the name half is **normalized through the same
+  identifier grammar key labels use** (§3: letters of any script, digits,
+  `_`, combining marks — `letter | digit | _ | mark`), which admits no `#`
+  either, truncated at 64 characters (a hint, not an address, so truncation
+  invents nothing). A writer MUST normalize; a raw display name would break
+  the split from both ends.
+- **Writing a suffix needs a name.** Export asks `ResolveObjectNames`
+  (§13) about the STORED id and writes the suffix only where it answers
+  with a name that survives normalization — never a partial or invented
+  one. No resolver, bare ids, everywhere.
+- **Opt-in per shape.** The suffix rides `Options.RefNames`, default OFF:
+  the export/backup shape stays minimal and stable under renames of
+  referenced objects (a rename would otherwise dirty every backup diff);
+  read shapes opt in, the way they opt into `CompactBlockLabels`. `OmitIds`
+  is orthogonal — it drops doc-local ids, and object references are
+  content, not doc-local ids. The one exception is attribution (§3), whose
+  suffix rides the participant resolver instead: those two values are
+  dropped on import, so no shape's stability is at stake.
+- **The slots**: object/file-format property values, `items`, every block
+  `object_id` (link, file, bookmark, dataview), object-valued filter
+  `value`s and sort `custom_order` entries, `object_orders[].object_ids`,
+  and the two attribution properties. NOT on ids that already say what they
+  mean — a `_date_…` reference, the `_missing_object` sentinel, a
+  `_filter_template_…` placeholder — and NOT on non-reference slots: a
+  select value is an option NAME already (and may legitimately contain `#`,
+  as in `C#` — import trims nothing there), a date is a date. Mention and
+  object-link targets inside `text` keep their ids verbatim: the mention's
+  own text already names the target.
+- **Round trip**: byte-stable given the same resolver — import trims, the
+  next export re-derives the same names. Absent a resolver the suffix is
+  absent, the same class of resolver-dependence as option names (§3).
+
+### The participant fold
+
+`_participant_<spaceId>_<identity>` is a derived id
+(`core/domain.NewParticipantId`): the space half restates the document's own
+space, and the 48-character identity is the whole of the content. Every
+reference slot above folds it to the bare identity on export, and import
+rebuilds the composite against `Options.SpaceId` (§13):
+
+- **The trigger is the VALUE's shape, never the property name.** The
+  heaviest participant slots in production are space-minted custom
+  properties (`owner`, `voters`, …) with no declared target type, and
+  `assignee`/`author` may legitimately hold a contact. The classifier is the
+  identity's own strkey checksum (`crypto.DecodeAccountAddress`): no CID,
+  bson id or `_`-prefixed derived id can pass it, so unfold cannot fire on
+  anything else.
+- **The participant document's own envelope `id` folds too** — otherwise a
+  reader could not textually join a folded reference to the document it
+  points at. This makes participants the documented special case in the
+  envelope `id` slot, which otherwise always holds a real object id; import
+  rebuilds the composite as the object id and the root block id.
+- **`Options.SpaceId` arms it, in both directions at once.** The format
+  carries no space id anywhere in the envelope, so the wiring supplies one
+  exactly as it supplies resolvers (`storeresolver` wires the index's own).
+  With no SpaceId nothing folds and nothing unfolds: folding on export
+  without the paired import being able to rebuild would land a bare
+  identity in a snapshot slot where a composite belongs — silent corruption
+  of exactly the slot the fold exists to fix.
+- **Only this space's composites fold.** A composite embedding a DIFFERENT
+  space passes through whole in both directions: folding it would silently
+  re-home the member on import. (A document carried into another space
+  re-homes deliberately and correctly, because its folded references
+  rebuild against the READER's SpaceId.)
+- Measured (37,429 production objects): 3,446 same-space composite
+  occurrences across properties, `items`, block `object_id`s, filter
+  values, object orders and the participants' own envelope ids — all fold,
+  none remain. The corpus held zero cross-space composites.
+
 ### 9a. The legends, and compact ids
 
 The envelope carries **three legends** and no other indirection. Each answers
@@ -3424,7 +3569,11 @@ the envelope `icon.file` and `cover.file` (§2b), `objects`/`files` property
 values, `items`,
 view `default_template_id`/`default_type_id`, `object_orders[].object_ids`,
 and filter `value`/sort `custom_order` entries of `objects`/`files`
-properties — is written in full, on every shape, with no legend.
+properties — is written in full, on every shape, with no legend. The §9
+`#name` suffix and the participant fold are not exceptions: the suffix adds
+a caption to a full id and inverts by deletion (no table to carry, nothing
+to keep in sync), and the folded identity IS the participant id's content,
+rebuilt from the reader's own space rather than looked up anywhere.
 
 This is a deletion. The format used to carry a `refs` map of short labels to
 full ids behind a `CompactObjectRefs` flag, and two independent measurements
@@ -3463,7 +3612,9 @@ characters over CID/hex alphabets make collisions birthday-rare).
 The collision rule counts BOTH id populations, and that is not an accident of
 implementation: the labeller's own census sees only the doc-local ids it may
 relabel, so the object ids — every one of them now spelled verbatim in the
-document — enter it as an avoid-set. A short object id spelled in a mention
+document, in the folded spelling where the §9 participant fold applies —
+enter it as an avoid-set (both spellings: the document spells the folded
+form, and a suffix-trimming reader recovers the raw one). A short object id spelled in a mention
 and a minted block whose suffix equals it would otherwise both answer to one
 name in one document. Deleting object compaction made this guard matter more,
 not less.
@@ -3613,8 +3764,11 @@ order rather than of the document, so unlike `title`/`header` what comes back
 is neither the same partition nor guaranteed to come back at all;
 restrictions rebuilt (§4); properties
 stripped per §3 (with the exemption list), the attribution pair
-`creator`/`lastModifiedBy` among them — export spells them as a member name
-and import drops the key, so a round trip clears both (§3);
+`creator`/`lastModifiedBy` among them — export spells them `<id>#<name>`
+and import drops the key, so a round trip clears both (§3); informative
+reference suffixes trimmed and participant composites folded/rebuilt (§9) —
+both exact inverses given the same resolver and SpaceId, so neither leaves
+a residue in the snapshot;
 select/multi_select option ids
 replaced by name resolution — in properties, filter values, and custom
 orders (§3, §6.2) — which `option_ids` inverts exactly (§9a), leaving two
@@ -3735,7 +3889,7 @@ implementation from anyone.
 
    **The attribution pair is the second documented exception, and the only
    one that is not an id.** A snapshot carrying a `creator` exports a document
-   naming the member; import drops the name, so the next export has nothing
+   naming the member; import drops the value, so the next export has nothing
    to write and `Export(Import(Export(S)))` is one property shorter. Nothing
    there is recoverable and none of it was data: the value is derived from the
    object tree root's signature, and an imported object gets the importing
@@ -4061,14 +4215,24 @@ type PropertyResolver interface {
 }
 
 // ParticipantResolver names the space member a participant id stands for,
-// for the derived attribution properties creator/lastModifiedBy (§3).
-// EXPORT ONLY, and there is deliberately no inverse: a display name is a
-// label, not an address — two members of one space may share one — and both
-// properties are derived from the object tree's own signature, so an
-// importer has nothing to do with the value even if it could resolve it.
-// Answering false omits the property; the id is never a fallback.
+// for the derived attribution properties creator/lastModifiedBy — spelled
+// <identity>#<name> (§3, §9). EXPORT ONLY, and there is deliberately no
+// inverse: a display name is a label, not an address — two members of one
+// space may share one — and both properties are derived from the object
+// tree's own signature, so an importer has nothing to do with the value
+// even if it could resolve it. Answering false writes the id bare: the id
+// is the resolvable half and is complete without its caption.
 type ParticipantResolver interface {
     ParticipantName(id string) (string, bool)
+}
+
+// ObjectNameResolver names the object behind a reference, for the
+// informative #name suffix (§9). EXPORT ONLY, behind Options.RefNames;
+// import trims the suffix without asking anyone. Answering false writes the
+// reference bare — never a partial or invented suffix. storeresolver
+// implements it from the space index (one point lookup, cached).
+type ObjectNameResolver interface {
+    ObjectName(id string) (string, bool)
 }
 
 // Marshal serializes a snapshot into canonical AnyBlock JSON.
@@ -4118,7 +4282,15 @@ type Options struct {
     ResolveFormat     FormatResolver   // optional; nil = bundle-only resolution (§3)
     ResolveOptions    OptionResolver   // optional; nil = option values pass through as ids
     ResolveProperties PropertyResolver // optional; nil = type documents keep raw recommended-relation ids (§2a)
-    ResolveParticipants ParticipantResolver // optional; export only. nil = creator/last_modified_by omitted (§3)
+    ResolveParticipants ParticipantResolver // optional; export only. nil = attribution ids written bare (§3)
+    ResolveObjectNames ObjectNameResolver // optional; export only, behind RefNames. nil = references written bare (§9)
+    SpaceId           string           // the space this run reads from / writes into; arms the
+                                       // participant fold in BOTH directions — empty disables it (§9).
+                                       // Supplied by the wiring exactly as resolvers are; the format
+                                       // itself carries no space id.
+    RefNames          bool             // export only: write the informative #name suffix on object
+                                       // references (§9). Default off — the backup shape stays minimal
+                                       // and rename-stable; read shapes opt in.
     Keys              KeyVocabulary    // optional; nil = BundledKeyVocabulary (§3)
     Legend            Legend           // fragment entry points only: the enclosing document's legends (§3)
     OmitIds            bool            // export only: drop every id, the option_ids legend included (§9, §9a)
@@ -4354,7 +4526,21 @@ Wiring (follow-up work, not this package):
    legend. Object-reference compaction was deleted at v0.20 and `object_ids`
    never shipped — the only `object_ids` in this document is the dataview's
    `object_orders[].object_ids` field. Object references print in full,
-   everywhere, and need no legend to survive.
+   everywhere, and need no legend to survive. (The §9 `#name` suffix, added
+   at v0.27, is not that legend coming back: it is a caption on a full id,
+   inverted by deletion, with nothing to carry and nothing to resolve. The
+   `#` inside an option NAME that killed the flat legend is harmless here
+   because the id half of a reference provably contains none — the split
+   runs id-first, not name-first.)
+3a. **Attribution spelling** (§3): **settled twice, second answer stands.**
+   v0.24 spelled `creator`/`last_modified_by` as the member's display name
+   alone; v0.27 reverts to a resolvable id with the name as the informative
+   `#name` suffix. An earlier working note (`CREATOR_SPEC.md`, outside this
+   repo) argued the name-only position and is SUPERSEDED on this point: the
+   name-only spelling broke API v2's need for a resolvable id, and a display
+   name shared by two members (76 of 2,478 in production) identifies
+   neither. Recorded here rather than silently changed, per this section's
+   own rule that rejected positions carry the evidence that killed them.
 4. **Mention syntax**: `<mention object_id="…">` tag vs unifying with the
    `anytype://` link form plus a marker. The tag is unambiguous and
    LLM-friendly; confirm clients are happy rendering it.

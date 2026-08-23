@@ -312,7 +312,8 @@ func processSpace(ctx context.Context, mw *core.Middleware, store objectstore.Ob
 			if dumpJSON && artifacts.json1 != nil {
 				// the document as this SPACE renders it: property and type
 				// labels through the space vocabulary, option values by name,
-				// participants by name. Rendering with default Options
+				// participant refs folded to the identity and attribution as
+				// <identity>#<name> (§9). Rendering with default Options
 				// instead produces a technically valid document in which every
 				// space-minted key is a bson id and every option value a CID —
 				// readable structure, unreadable content.
@@ -436,7 +437,8 @@ func roundtripFile(path string, opts anyblockjson.Options) ([]issue, *artifactSe
 		return issues, arts, nil
 	}
 	// Attribution is written from a DERIVED detail that import deliberately
-	// drops (SPEC §3): `creator` and `last_modified_by` are recovered from the
+	// drops (SPEC §3): `creator` and `last_modified_by` — spelled
+	// <identity>#<name> since v0.27 — are recovered from the
 	// object tree's own signature, so a real import re-derives them — but this
 	// round trip has no tree, so gen2 has nothing to write and the two
 	// generations differ on exactly those lines. Comparing them raw reports
