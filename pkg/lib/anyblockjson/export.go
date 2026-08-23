@@ -528,6 +528,19 @@ func (e *exporter) writableSlug(key string) string {
 		return key
 	}
 	if _, denied := deniedPropertyKey(key); denied {
+		// the refusal protects the LEGEND: a denied key must not become a
+		// legend value (§3). A slug the bundled table binds to this very key
+		// — and no vocabulary contradicts — needs no legend entry at all
+		// (recordPropertyKey's rule), so the deny rule never sees it, and
+		// the reference slots that legitimately NAME a lifted key keep their
+		// §3 spelling. This is not hypothetical: the Property TYPE document
+		// lists `relationFormat` in its type_properties and shows it as a
+		// dataview column in 64 production spaces, and the blanket refusal
+		// spelled all of them camelCase-verbatim with two warnings each.
+		if bundledBinds(slug, key, (BundledKeyVocabulary{}).PropertyKey) &&
+			termInverts(slug, key, e.opts.keys().PropertyKey) {
+			return slug
+		}
 		e.warn("/property_keys",
 			"%q cannot be a legend value (§3 deny rule), so its slug %q is not written; the stored key is its own address",
 			key, slug)
