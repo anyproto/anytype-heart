@@ -289,8 +289,21 @@ func isIdentStart(r rune) bool {
 	return r == '_' || unicode.IsLetter(r)
 }
 
+// isIdentPart follows UAX #31's ID_Continue in the part that matters here:
+// letters, digits, `_`, AND the combining marks (Mn, Mc) that carry the vowels
+// of every Indic and South-East Asian script. Excluding marks is not a
+// restriction on those scripts, it is a corruption of them — without Mn/Mc,
+// मिल/मूल/मल/मैल (mil, mūl, mal, mail — four different words) all reduce to
+// मल, while हिन्दी and हिंदी, two legal spellings of ONE word, reduce to two
+// DIFFERENT tokens. NFC rescues Latin, Greek, Cyrillic and Vietnamese because
+// precomposed forms exist for them; Devanagari, Thai, Bengali, Tamil, Khmer
+// and Myanmar have none.
+//
+// identStart deliberately does NOT admit marks: a combining mark cannot begin
+// an identifier because it has nothing to combine with, and UAX #31 agrees.
 func isIdentPart(r rune) bool {
-	return r == '_' || unicode.IsLetter(r) || unicode.IsDigit(r)
+	return r == '_' || unicode.IsLetter(r) || unicode.IsDigit(r) ||
+		unicode.Is(unicode.Mn, r) || unicode.Is(unicode.Mc, r)
 }
 
 func (lx *lexer) lexIdent(start int) {

@@ -92,9 +92,12 @@ func TestNormalizeKeyLabel(t *testing.T) {
 		{"NOT", "_not", ""},
 		{"in", "_in", ""},
 
-		// a combining mark modifies the letter before it — as a separator it
-		// would cut the word at every virama (`क_ष_त_र_य`)
-		{"क्षत्रिय", "कषतरय", "marks drop, they do not separate"},
+		// A combining mark modifies the letter before it, so it is neither a
+		// separator (which would cut the word at every virama, `क_ष_त_र_य`)
+		// nor droppable (which would strip the VOWELS: this script writes them
+		// as marks, and मिल/मूल/मल/मैल would all become मल). It is an
+		// identifier part — UAX #31 ID_Continue — and the word labels itself.
+		{"क्षत्रिय", "क्षत्रिय", "marks are kept: they carry the word"},
 		{"İstanbul", "istanbul", "lowercasing İ leaves a combining dot behind"},
 	} {
 		t.Run(tc.in, func(t *testing.T) {

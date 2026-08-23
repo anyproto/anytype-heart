@@ -1564,6 +1564,9 @@ bound, is no label at all.
 
 The grammar is **§6.2.1's**, and it is normative rather than stylistic: a key
 is a Unicode identifier — `identStart identPart*`, letters of any script,
+combining marks (UAX #31 `ID_Continue` admits `Mn`/`Mc`, and in Devanagari,
+Thai, Bengali, Tamil, Khmer and Myanmar the VOWELS are marks — dropping them
+does not shorten a word, it changes it: मिल/मूल/मल/मैल would all become मल),
 digits, `_` — and not one of the filter language's reserved words. A label
 outside it **cannot be written in a compact filter string**, which is a
 surface this format serves to models as an EBNF grammar. That is not a corner
@@ -2924,7 +2927,8 @@ Parser interpretation calls (normative, matching the shipped parser):
 keywords match **case-insensitively** (`and` ≡ `AND`) and are **reserved**
 — none can be a bare property key (a colliding key is reachable only
 through the structured form); property keys are Unicode identifiers
-(`identStart identPart*` — letters of any script, digits, `_`), **the
+(`identStart identPart*` — letters of any script, digits, `_`, and the
+combining marks the vowels of Indic and SE-Asian scripts are written with), **the
 grammar §3 mints every label through**, so a key a document spells can
 always be written here — the reason `50% done` labels `_50_done` and a
 bson-keyed property labels its name rather than its key; presets are **excluded

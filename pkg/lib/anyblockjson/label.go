@@ -156,8 +156,18 @@ func normalizeKeyLabel(s string) string {
 			}
 			gap = false
 			b.WriteRune(unicode.ToLower(r))
-		case unicode.Is(unicode.M, r):
-			// a combining mark belongs to the letter it follows
+		case unicode.Is(unicode.Mn, r) || unicode.Is(unicode.Mc, r):
+			// A combining mark belongs to the letter it follows and is KEPT:
+			// in Devanagari, Thai, Bengali, Tamil, Khmer and Myanmar the
+			// vowels ARE marks, so dropping them does not shorten a word, it
+			// changes it — मिल/मूल/मल/मैल would all become मल. The grammar
+			// admits them (identPart, UAX #31 ID_Continue), so they pass
+			// through with the letter rather than being treated as a break.
+			// No `gap` reset: a mark cannot start a token, and one arriving
+			// with a pending separator is malformed input, not a word.
+			if b.Len() > 0 && !gap {
+				b.WriteRune(r)
+			}
 		default:
 			gap = true // `_` included: runs collapse and edges trim
 		}

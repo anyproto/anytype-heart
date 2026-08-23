@@ -27,7 +27,9 @@ countingName = "daysAgo" | "daysFromNow" ;
 key         = identifier ;                          (* a bare property key; not a keyword *)
 identifier  = identStart , { identPart } ;
 identStart  = letter | "_" ;                        (* letter = any Unicode letter *)
-identPart   = letter | digit | "_" ;
+identPart   = letter | digit | "_" | mark ;         (* mark = Unicode Mn/Mc, UAX #31 ID_Continue:
+                                                       an Indic or SE-Asian vowel is a combining
+                                                       mark, and dropping it changes the word *)
 number      = [ "-" ] , digit , { digit } , [ "." , { digit } ] ;
 string      = '"' , { character } , '"' ;           (* backslash escapes: \" \\ \n \t *)
 (* every quoted keyword above matches case-insensitively: "AND" also
