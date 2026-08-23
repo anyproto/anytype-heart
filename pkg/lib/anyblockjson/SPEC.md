@@ -1,6 +1,6 @@
 # AnyBlock JSON — format specification
 
-Status: **draft v0.30** · Format version: **1** · Package: `pkg/lib/anyblockjson`
+Status: **draft v0.31** · Format version: **1** · Package: `pkg/lib/anyblockjson`
 
 A human- and agent-readable JSON serialization of Anytype objects (the "anyblock"
 model), designed for export, import, and generation by external tools and LLM
@@ -15,6 +15,42 @@ strings; the vocabulary follows Notion's API and Anytype's public REST API
 (`core/api`) wherever an established term exists — the format should be
 readable, and mostly writable, by someone who has never seen Anytype
 internals.
+
+Changes in v0.31: **a relation document states its own format, in the
+format's own vocabulary, on the envelope** (§2d — the §15 #14 spelling
+decision, taken).
+
+A `kind: relation` document used to spell `relation_format: 100` inside
+`properties` — a raw enum number — while a `type_properties` entry three
+sections up spelled the same fact `format: "objects"`: one concept, two
+spellings, in one format. And the raw spelling was a live trap, not a
+blemish: in a 198-run small-model eval, 9 of 9 attempts wrote `properties:
+{"format": "number"}`, which VALIDATED — inside `properties` every key is a
+property spelling — and imported as a phantom custom property named
+`format`, leaving the relation longtext forever, silently.
+
+Three stored keys lift onto the envelope, and no others: `relationFormat` →
+`format` (required, a §3 NAME), `relationFormatIncludeTime` →
+`include_time`, `relationFormatObjectTypes` → `object_types` (a type-key
+slot under the same legend discipline as `type_properties[].object_types`,
+with the id↔key translation supplied by the new `TypeResolver` capability).
+The flat spellings are refused in `properties` with the repair named — the
+§2b precedent, refusal included. Unlike §2b, the envelope fields mirror
+stored presence EXACTLY (false, `[]` and null all travel): #14's verdict was
+to fix the spelling and leave the emptiness collapse to its own change, and
+mirroring is what lets the snapshot comparator run with no new rule.
+
+Measured over 38,061 production documents (10,617 relation documents, the
+whole population): every one carries `relationFormat`, so requiring `format`
+refuses nothing; `include_time` is true only on dates (543 of 9,035
+present), null on 80; `object_types` is non-empty only on objects/files
+(1,089 + 167 of 10,159 present); none of the three keys occurs on any other
+kind. Format 102 (`map`, the bundled `templatePlaceholders` relation) occurs
+72 times, which forced the vocabulary total: **`map` is the fourteenth
+format name** (§3), because a required name over real data may not have
+holes. The full 38,061-document sweep re-runs clean: zero I1 violations,
+zero import errors, `Export ∘ Import` byte-stable from the second
+generation, and the §2d wrong-format warnings fire zero times.
 
 Changes in v0.30: **a key is spelled the way its name reads** (§1, §3).
 
@@ -1192,6 +1228,9 @@ Fields, in **canonical order** (§4):
 | `type` | string | no | The object's type **slug** (`page`, `task`, `object_type`…) — the key vocabulary of §3, not the stored `ot-`-prefixed key. Maps to `object_types[0]` in the snapshot. Absent when the snapshot has no object types (legacy/system objects). Import inverts the term through the §3 chain in the type namespace — the document's own `type_keys` legend first, then the vocabulary in force (bundled table offline, the space's stored slugs inside a node) — and hands the resulting stored key to the wiring, which resolves it — matching an existing type or creating one (the Markdown importer's behavior). A term the chain does not know passes through verbatim — an exact stored key is always its own address (§3). No spelling is reserved: `template` is an ordinary type term that a legend or a vocabulary may bind wherever it likes, because `kind` — a field no chain touches — carries the template semantics it used to carry (v0.22). The one exception is a byte comparison, not a resolution: a document with **no `kind`** whose `type` is literally `template` is the pre-v0.22 spelling of a template and is refused, naming the repair (§10). |
 | `template_for` | string | no | Only for templates: the target type slug (`object_types[1]`), same vocabulary and legend as `type`. Admitted on `kind: "template"` and nothing else — present without it, or without a `type` beside it to be `object_types[0]`, is a validation error. Note what this is NOT keyed off: the template's own type. A template whose `object_types` do not begin with the template key is a shape the model permits, and until v0.22 it could not express its target at all — the second slot existed only when `object_types[0]` was the template key, so the target was dropped with a warning and no way to keep it. |
 | `key` | string | no | Identity key of *system* objects (types, properties). This is the STORED identity key (a `uniqueKey`'s internal part), written verbatim: unlike every key slot in §3 it is **not** translated, so for an object whose stored key is a minted BSON it does not match the slug the public API serves as that object's `key`. Because it is verbatim, its charset is whatever the store already holds: a relation option's key is built from the option's *name*, so `completion_status_Not Started`, `…_C/C++` and `…_тогглы` are all real stored keys. The rule is therefore a deny rule — non-empty, no control characters, at most 255 characters — not an allowlist. An allowlist was tried and falsified: it failed 59 objects of a 36 808-object account, every one a relation option. Never emitted for ordinary documents. |
+| `format` | string | on `kind: "relation"` | Only for relation documents, where it is **required**: the format of the property this document defines, as a §3 format NAME — never a raw enum number. Stands for the stored `relationFormat` key, which `properties` refuses (§2d). Illegal on every other kind. |
+| `include_time` | bool \| null | no | Only for relation documents: whether a date property's values carry a time of day. Present exactly when the stored `relationFormatIncludeTime` key is present, value included (§2d). Meaningful on `date` only; a `true` against any other format is a warning. |
+| `object_types` | string[] \| null | no | Only for relation documents: the type keys an `objects`/`files` property may point at, in priority order — a type-key slot exactly like `type_properties[].object_types` (§2a, §2d). Present exactly when the stored `relationFormatObjectTypes` key is present, empty list included. Non-empty against any other format is a warning. |
 | `icon` | object | no | The object's icon — ONE object whose `format` selects the variant (§2b). Stands for the stored `iconEmoji` / `iconImage` / `iconName` / `iconOption` keys, which `properties` refuses. |
 | `cover` | object | no | The object's cover — same shape, three variants (§2b). Stands for the stored `coverId` / `coverType` / `coverScale` / `coverX` / `coverY` keys, which `properties` refuses. |
 | `properties` | object | no | The object's properties, §3. |
@@ -1631,6 +1670,99 @@ they resolve is a cross-document question this package does not answer
 (§13): an index validates on its own terms while naming an object no
 document defines.
 
+## 2d. Relation documents (`kind: "relation"`)
+
+A relation object IS a property definition, and it states what it defines on
+the **envelope**, in the format's own vocabulary:
+
+```json
+{
+  "version": 1,
+  "kind": "relation",
+  "id": "bafyrei…",
+  "key": "budget",
+  "format": "number",
+  "include_time": false,
+  "properties": { "name": "Budget", "description": "Planned spend" }
+}
+```
+
+Exactly **three stored details lift**, and no others:
+
+| stored key | envelope field | shape |
+|---|---|---|
+| `relationFormat` | `format` | a §3 format NAME — **required**. Export refuses to write a relation whose stored format it cannot name (corrupt data only: `formatNames` is total over the model enum, test-pinned), because the fallback — writing `"text"` for a format that is not text — would import as a permanent silent format rewrite, the exact disease this lift kills. `"text"` resolves per key on the way back in, through the envelope `key`, exactly as a `type_properties` entry's format does (§3): a bundled short-text relation keeps its stored format across a round trip. |
+| `relationFormatIncludeTime` | `include_time` | `true` \| `false` \| `null`. Meaningful on `date` only; a `true` against any other format is a **warning**, carried unread. |
+| `relationFormatObjectTypes` | `object_types` | the target **type keys**, in priority order — a type-key slot exactly like `type_properties[].object_types` (§2a): the §3 type vocabulary, the same term ledger, the same `type_keys` legend. Non-empty against a format other than `objects`/`files` is a **warning**. Meaningful entries: `[]` is a cleared target set, `null` a stored null. |
+
+**Presence mirrors presence.** Each field is present exactly when its stored
+key is present, and carries its value — `false`, `[]` and `null` all travel
+(80 production relations hold a null `includeTime`; 8,903 hold an empty
+target list). This deliberately stops the §4 omit-empty canon at these three
+fields, and it is the opposite of §2b's emptiness carve-out, for a reason
+worth stating: these fields are the property's *definition*, not decoration,
+and §15 #14's verdict was to fix the SPELLING and leave the emptiness
+collapse to its own change. Mirroring is what makes the lift a pure spelling
+change — the same details go in and out, so the snapshot comparator
+(snapshotdiff) needed **no new rule**, where §2a and §2b each cost one.
+
+**Why the envelope and not `properties`.** Inside `properties` every key is
+a property spelling, so a bare `format` there means "a custom property named
+format" — and that is a measured live bug, not a hypothesis: in a 198-run
+small-model eval, 9 of 9 attempts wrote `properties: {"format": "number"}`,
+it validated with no warning, and it imported as a phantom property, leaving
+the relation with no `relationFormat` at all — longtext forever, silently.
+The container was the problem, not the word. The §2b reasons apply
+unchanged; the schema gates the three fields on `kind: "relation"` and keeps
+them illegal at every other root, so the same member name cannot be
+reclassified by kind drift.
+
+**The three spellings are refused in `properties`** — under any spelling
+that RESOLVES to one of the stored keys (§3), legend included, on every
+kind, with the repair named:
+
+```
+/properties/relation_format: "relationFormat" is written on a relation
+                             document's envelope as "format": "<a §3 format
+                             name>" (§2d), not as a property
+```
+
+The refusal is derived from the export side's own lift list, never restated
+(§2b's rule), and it is unconditional: a non-relation snapshot carrying one
+of the three details drops it with a warning, because there is no §2d field
+off a relation document to carry it — never observed, 0 of 27,444
+non-relation documents. Refusing a key is not refusing to NAME it: a slot
+that references the relation — the Property type's own `type_properties` and
+dataview columns, in 64 production spaces — keeps the §3 slug
+(`relation_format`), because the deny rule protects the legend and a
+bundled-bound slug needs no legend entry.
+
+**Target types translate at the boundary.** The store keeps
+`relationFormatObjectTypes` as type OBJECT ids
+(`objectcreator.fillRelationFormatObjectTypes`); the document spells type
+keys. The translation is the optional `TypeResolver` capability of
+`Options.ResolveProperties` (storeresolver implements it from the same one
+bounded type listing §7.5a-2 budgets): export inverts id → key, import key →
+this space's id, so a resolver-wired round trip is id-exact. An entry the
+capability cannot answer — a bare key legacy imports stored directly (21
+production entries), an id the space no longer serves, the
+`_missing_object` sentinel — passes through **verbatim in both directions**,
+its own address (§3). Pass-through rather than §2a's drop-the-dangling
+policy, deliberately: there the resolver is the only thing that knows what a
+recommended-list id meant, here the stored value IS the meaning, and a
+backup format that deletes it on export is disqualifying. Without any
+resolver the whole list passes through verbatim and the offline round trip
+is byte-exact.
+
+Corpus facts the design rests on (38,061 documents, 10,617 relation
+documents): every relation document carries `relationFormat`, so requiring
+`format` refuses nothing real; the format distribution covers 14 of 15 enum
+values (everything but `relations`=101), including `map`=102 on 72 documents
+— all the bundled `templatePlaceholders` relation — which is why the §3
+vocabulary gained the name; `include_time` is `true` only on dates (543),
+`object_types` non-empty only on objects/files (1,089 + 167); target entries
+are 1,301 ids, 21 bare keys, 9 `_missing_object`.
+
 ## 3. Properties
 
 `properties` is a JSON object keyed by **property key**, always in its
@@ -2011,21 +2143,23 @@ type key is — and one rule above that deliberately does **not** carry over.
   derives a document's identity from `kind` plus the envelope `key`, and
   from `unique_key` — never from the object types.
 
-  Merge resolution *is* steerable, but through **properties**, not through
-  type keys. `name`, `relation_key`, `relation_format` and `source_object`
-  are ordinary writable properties, and the importer uses them to pick which
-  existing object a document merges into: a relation matches on
-  `relation_format` together with `name` or `relation_key`, and a TYPE
-  document matches on `name` alone, since this format strips `unique_key`
-  and the name is then the only filter left. They stay writable
-  deliberately. Neither half of this codec reads them — they travel the
-  generic details path in both directions — so denying them would force
-  export to strip them, and a stripped property that import refuses is a
-  lossy export: "Marshal never emits a document its own Validate rejects"
-  (§11, I1) is the stronger promise. The guarantee that an imported
-  document cannot rewrite an EXISTING relation's or type's identity
-  therefore belongs at the object layer, which every writer passes through,
-  rather than in this format, which is one writer among several. A
+  Merge resolution *is* steerable, but through the **document's own
+  fields**, not through type keys. `name`, `relation_key` and
+  `source_object` are ordinary writable properties, and the relation's
+  format — spelled `relation_format` in `properties` when this passage was
+  first written, since lifted to the envelope's `format` (§2d), where it is
+  just as writable and lands on the same stored detail — travels beside
+  them; the importer uses them to pick which existing object a document
+  merges into: a relation matches on its format together with `name` or
+  `relation_key`, and a TYPE document matches on `name` alone, since this
+  format strips `unique_key` and the name is then the only filter left.
+  They stay writable deliberately — the §2d lift moved a spelling, never a
+  capability, exactly because a stripped value that import refuses is a
+  lossy export and "Marshal never emits a document its own Validate
+  rejects" (§11, I1) is the stronger promise. The guarantee that an
+  imported document cannot rewrite an EXISTING relation's or type's
+  identity therefore belongs at the object layer, which every writer passes
+  through, rather than in this format, which is one writer among several. A
   `type_keys` value is admitted by shape alone — the writable-key rule the
   schema enforces on both legends.
 - **The primary type slots are unbounded, on purpose.** A `type_keys`
@@ -2153,8 +2287,16 @@ enums and pass through as numbers.
 Format names follow the public REST API (`select`, `multi_select`, …);
 internally they map to `model.RelationFormat` (`status`→`select`,
 `tag`→`multi_select`, `longtext`→`text`,
-`object`→`objects`, `file`→`files`; `emoji` and `properties` exist for
-internal formats).
+`object`→`objects`, `file`→`files`; `emoji`, `properties` and `map` exist
+for internal formats). The vocabulary is **total** over the model enum
+(shorttext's fold aside), and that is load-bearing rather than tidy: a
+relation document states its format as a required NAME (§2d), so a stored
+format without a name is a relation object that cannot be exported. `map`
+earned its name that way — the API does not serve it, but 72 production
+relation documents carry format 102 (the bundled `templatePlaceholders`
+relation), and a required name over real data may not have holes. The one
+statement of the list lives in the published schema (`$defs/propertyFormat`),
+referenced from every slot that speaks it.
 
 **There is one text format, `text`.** The editor offers a single Text
 property type; the stored `longtext`/`shorttext` split is legacy, carries no
@@ -2332,7 +2474,10 @@ important as the ones that passed: `relationFormat` is excluded because its
 `relationFormatObjectTypes` and `featuredRelations` because they are
 list-valued and user-intent-bearing — an empty list is how a CLEARED set is
 expressed, the same reasoning GO-7451 settled for a type's recommended
-lists. This is a state normalization, recorded in `N(S)` (§11).
+lists. (The two `relationFormat*` keys have since moved to a relation
+document's envelope, where the same verdict holds: the §2d fields mirror
+stored presence, empty values included.) This is a state normalization,
+recorded in `N(S)` (§11).
 
 **Value shape** (implementation decision): select/multi_select and
 objects/files values are always JSON arrays; import stores them as lists, so
@@ -3876,6 +4021,19 @@ in the document is interpreted.
   (§12). Whether the integer should move once before the format ships is a
   release decision, not a rule of the format (§15).
 
+  v0.31's relation lift (§2d) is the same shape, and the same decision —
+  **refuse, loudly, with the repair named**, never read-and-migrate. A
+  pre-v0.31 relation document spells `relation_format` inside `properties`
+  and has no envelope `format`; it now trips two named refusals at once —
+  the missing required `format` (whose message lists the vocabulary and, when
+  the legacy spelling is present, says outright that it is the pre-v0.31 form
+  and where the value moved) and the `/properties/relation_format` refusal
+  naming the envelope repair. Reading the old spelling with a warning was
+  declined for the reason §2b records: a format with two legal spellings for
+  one thing, one of them a raw enum number a small model has seen far more
+  of, defeats the lift — and this format is a draft with no external
+  consumers, so the refusal strands nobody.
+
 **Syntax inside `text` is versioned too, and the reader is exact about it.**
 A `text` string carries no version marker of its own, so the only thing that
 keeps a stored document readable across a bump is that the reader recognizes
@@ -4000,6 +4158,22 @@ the empty list is the only way this format can express a role being
 *cleared*, since `type_properties` cannot name a section that exists with no
 members. Whether the object state itself should carry all four consistently
 is a question about the state, not the format (GO-7451).
+
+The §2d relation lift adds almost nothing here, by design — presence mirrors
+presence, so `false`, `[]` and `null` all survive and the three keys are
+otherwise untouched — but three residues are real and stated: **a relation
+snapshot with no stored `relationFormat` comes back with an explicit 0**,
+because `format` is required and absent-reads-as-longtext is what every
+consumer of the detail already does (never observed: all 10,617 production
+relation documents carry the key); **the §3 text collapse now reaches the
+relation's own definition** — a non-bundled shorttext relation read without
+a format resolver comes back longtext, exactly the residue §3 states for
+every other format slot (53 of 10,617 under bare options in the corpus;
+zero with the space's resolver, which knows every live relation's format);
+and **`object_types` entries take the §3 list normalizations** — a
+scalar-stored value wraps, empty-string entries drop — while the id↔key
+translation itself is exact: ids out, ids back under the `TypeResolver`
+capability, verbatim both ways without it.
 
 Export emits `blocks` in pre-order with exact depths, so export can never
 produce a monotonicity violation and the flat shape does not disturb
@@ -4868,20 +5042,27 @@ Wiring (follow-up work, not this package):
       maintenance looks like when nobody owns it.
 
 14. **The `relation_format_*` family is the same disease at ten times the
-    volume**, and it is deliberately deferred (§15 is where it is recorded so
-    it is not re-discovered). 10,430 production objects are `kind: relation`
-    documents. `relation_format_include_time` is meaningful only on `date`,
+    volume** — and the **spelling decision was taken in v0.31** (§2d),
+    exactly as the sentence below prescribed: `relation_format: 100` became
+    the envelope's required `format: "objects"`, `include_time` and
+    `object_types` lifted beside it, and the flat spellings are refused with
+    the repair named. What was deliberately NOT taken is the emptiness
+    collapse this entry also describes: `include_time` is still
+    present-and-false on 8,375 documents and `object_types`
+    present-and-empty on 8,903, now on the envelope, because presence
+    mirrors the store (§2d) and trimming it is a separate decision with its
+    own snapshot-comparator cost. The original record, for the reasoning:
+    `relation_format_include_time` is meaningful only on `date`,
     `relation_format_object_types` only on `object`/`file`, and both are
-    present-and-empty on thousands. Worse, a standalone relation document
-    spells `relation_format: 100` — a raw number — while a `type_properties`
-    entry spells `format: "objects"`: one concept, two spellings, in one
-    format, and §2a already has the right vocabulary to reuse. It is a
-    separate design with its own attack pass; of everything deferred it is
-    the only one that costs a version bump if it slips past the freeze, and
-    if exactly one more thing fits, make it the **spelling** decision rather
-    than the whole collapse. `file_variant_*` (7 parallel arrays on every
-    file object, 8.35% of corpus bytes), `space_invite_*` and `widget_*` are
-    deferred with less at stake — machine-written, never authored.
+    present-and-empty on thousands; a standalone relation document spelled
+    `relation_format: 100` — a raw number — while a `type_properties` entry
+    spelled `format: "objects"`: one concept, two spellings, in one format.
+    Of everything deferred it was the only one that cost a version bump if
+    it slipped past the freeze, and the instruction was: if exactly one more
+    thing fits, make it the **spelling** decision rather than the whole
+    collapse. `file_variant_*` (7 parallel arrays on every file object,
+    8.35% of corpus bytes), `space_invite_*` and `widget_*` remain deferred
+    with less at stake — machine-written, never authored.
 
 15. **`picture` stays flat, deliberately** (§3). It has the same relation
     format as `iconImage` (`file`, `objectTypes: ["image"]`) and 1,946
