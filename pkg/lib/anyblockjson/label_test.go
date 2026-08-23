@@ -1,9 +1,11 @@
 package anyblockjson
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
+	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/text/unicode/norm"
@@ -11,6 +13,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson/filterstring"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 // The label rule leaves bundled keys alone — their spelling is the derived
@@ -171,4 +175,98 @@ func TestPropertyLabel(t *testing.T) {
 		assert.Equal(t, "id", TypeLabel(bson, "", "id"))
 		assert.Equal(t, "type", TypeLabel(bson, "", "Type"))
 	})
+}
+
+// labelVocab is a vocabulary that answers with a §3 LABEL rather than with an
+// api slug — the shape storeresolver now produces for a space-minted key.
+type labelVocab struct{ key, label, typeKey, typeLabel string }
+
+func (v labelVocab) PropertySlug(key string) string {
+	if key == v.key {
+		return v.label
+	}
+	return BundledKeyVocabulary{}.PropertySlug(key)
+}
+
+func (v labelVocab) PropertyKey(slug string) (string, bool) {
+	if slug == v.label {
+		return v.key, true
+	}
+	return BundledKeyVocabulary{}.PropertyKey(slug)
+}
+
+func (v labelVocab) TypeSlug(key string) string {
+	if key == v.typeKey {
+		return v.typeLabel
+	}
+	return BundledKeyVocabulary{}.TypeSlug(key)
+}
+
+func (v labelVocab) TypeKey(slug string) (string, bool) {
+	if slug == v.typeLabel {
+		return v.typeKey, true
+	}
+	return BundledKeyVocabulary{}.TypeKey(slug)
+}
+
+// A label is not ASCII, and the whole codec has to survive that: the label
+// rule keeps any script the §6.2.1 grammar admits, so `Тоггл` labels a
+// property `тоггл` and the format writes that as a JSON member name, as a
+// legend spelling, and as an envelope type term.
+//
+// This is I1 (§11 — "Marshal never emits what its own Validate rejects") for
+// the one string shape the format itself now MINTS. It is not implied by the
+// label rule being correct: the published schema states `propertyNames` as a
+// pattern, and had it been the api key's `^[a-zA-Z0-9_]+$` — which is what
+// every other slug-shaped surface in this codebase carries — every non-Latin
+// label would have validated as an error against the document that had just
+// been written.
+func TestNonASCIILabelSurvivesTheWholeCodec(t *testing.T) {
+	// given
+	const key = "6a7663db61fab21cd4b9e101"
+	const typeKey = "6a7663db61fab21cd4b9e103"
+	vocab := labelVocab{key: key, label: "тоггл", typeKey: typeKey, typeLabel: "日本語のプロパティ"}
+	snapshot := &model.SmartBlockSnapshotBase{
+		Details: &types.Struct{Fields: map[string]*types.Value{
+			// an explicit id, or the byte-stability check below trips over
+			// the documented id exception (§11.2) rather than over a label
+			"id":   pbtypes.String("o1"),
+			"name": pbtypes.String("A page"),
+			key:    pbtypes.String("on"),
+		}},
+		ObjectTypes: []string{"ot-" + typeKey},
+	}
+
+	// when
+	data, err := Marshal(model.SmartBlockType_Page, snapshot, Options{Keys: vocab})
+	require.NoError(t, err)
+
+	// then: the document spells the labels, and carries the legends that
+	// invert them
+	var doc struct {
+		Type         string            `json:"type"`
+		Properties   map[string]any    `json:"properties"`
+		PropertyKeys map[string]string `json:"property_keys"`
+		TypeKeys     map[string]string `json:"type_keys"`
+	}
+	require.NoError(t, json.Unmarshal(data, &doc))
+	assert.Equal(t, "on", doc.Properties["тоггл"])
+	assert.Equal(t, "日本語のプロパティ", doc.Type)
+	assert.Equal(t, key, doc.PropertyKeys["тоггл"])
+	assert.Equal(t, typeKey, doc.TypeKeys["日本語のプロパティ"])
+
+	// and its own validation accepts it (I1) — with NO vocabulary, which is
+	// the reader the schema speaks for
+	require.NoError(t, Validate(data))
+
+	// and it reads back onto the stored keys, through the legend alone
+	_, back, err := Unmarshal(data, Options{})
+	require.NoError(t, err)
+	assert.Equal(t, "on", back.Details.Fields[key].GetStringValue())
+	assert.Equal(t, []string{"ot-" + typeKey}, back.ObjectTypes)
+
+	// and the round trip is byte-stable (§11.2)
+	again, err := Marshal(model.SmartBlockType_Page, back, Options{Keys: vocab})
+	require.NoError(t, err)
+	assert.Equal(t, string(data), string(again))
 }
