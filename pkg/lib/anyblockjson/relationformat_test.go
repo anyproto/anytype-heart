@@ -340,6 +340,39 @@ func TestRelationEnvelope_TargetTypesPassThroughWithoutResolver(t *testing.T) {
 		got.Details.Fields["relationFormatObjectTypes"])
 }
 
+// A reference slot that legitimately NAMES a lifted key — a dataview column
+// on the Property type, a type_properties entry — keeps the §3 slug: the
+// deny rule protects the legend, and a bundled-bound slug needs no legend
+// entry, so the rule never sees it. 64 production spaces carry exactly this
+// document.
+//
+// How this can fail: restore writableSlug's blanket deny refusal and the
+// column spells "relationFormat" camelCase-verbatim with a warning.
+func TestRelationEnvelope_ReferenceSlotsKeepTheBundledSlug(t *testing.T) {
+	// given a set over relation objects, showing the format column — the
+	// Property type's own view
+	snap := dataviewSnapshot(&model.RelationLink{
+		Key: "relationFormat", Format: model.RelationFormat_number,
+	})
+
+	// when
+	var warns []Issue
+	opts := testOptions()
+	opts.OnWarning = func(i Issue) { warns = append(warns, i) }
+	data, err := Marshal(model.SmartBlockType_Page, snap, opts)
+	require.NoError(t, err)
+
+	// then
+	assert.Contains(t, string(data), `"key": "relation_format"`,
+		"naming the relation is not writing its value — the reference keeps its slug")
+	assert.NotContains(t, string(data), `"relationFormat"`,
+		"the verbatim fallback is for keys whose slug would need a legend entry")
+	assert.NotContains(t, string(data), `"property_keys"`,
+		"a bundled binding needs no legend entry — that is what makes the slug safe")
+	assert.Empty(t, warns)
+	require.NoError(t, Validate(data), "§11 I1")
+}
+
 // docObjectTypes reads the envelope object_types out of a rendered document.
 func docObjectTypes(t *testing.T, data []byte) []string {
 	t.Helper()
