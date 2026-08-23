@@ -46,10 +46,10 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/iancoleman/strcase"
 	"golang.org/x/text/unicode/norm"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson/filterstring"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 )
 
 // PropertyLabel is the spelling a document writes for one space-minted
@@ -98,6 +98,22 @@ func keyLabel(key, slug, name string) string {
 		if !filterstring.IsBareKey(label) {
 			label = normalizeKeyLabel(label)
 		}
+		// The slug decides WHICH WORD this key is called — a space that
+		// minted `restaurant_rating` for a property named "Rating" said
+		// something the name does not, and it keeps it. But when the two
+		// agree on the word and disagree only about where the breaks go,
+		// there is nothing to arbitrate: `git_hub_stars` and `github_stars`
+		// are one fold class already (bundle.FoldApiKey drops `_`), so no
+		// reader can tell them apart and no spelling can newly collide. The
+		// name wins there, because the name is what a reader sees and what
+		// an agent would guess — and because api slugs are minted through a
+		// snake-caser that splits acronyms and digit runs, so the mangled
+		// half of the pair is always the slug: `p_2_p_sync`,
+		// `e_2_e_encryption`, `platform_sd_ks`.
+		if byName := normalizeKeyLabel(name); byName != "" &&
+			bundle.FoldApiKey(byName) == bundle.FoldApiKey(label) {
+			label = byName
+		}
 	} else {
 		label = normalizeKeyLabel(name)
 	}
@@ -114,14 +130,24 @@ func keyLabel(key, slug, name string) string {
 // normalizeKeyLabel turns an arbitrary human string into a key in the §6.2.1
 // grammar, or "" when nothing is left to name.
 //
-// It is `ApiSlugFromName` with the transliteration removed and the charset
-// widened to the actual grammar: the SAME `strcase.ToSnake` the api slug is
-// minted with, so an ASCII name lands on exactly the string GO-7458's
-// backfill would store (`Publish Date` → `publish_date`) and the two
-// surfaces converge instead of drifting — then constrained by what a filter
-// key may contain rather than by what a URL path segment may contain.
+// It began as `ApiSlugFromName` with the transliteration removed and the
+// charset widened to the actual grammar — the SAME `strcase.ToSnake` the api
+// slug is minted with, so the two surfaces would converge instead of
+// drifting. Convergence lost. Measured over 38,061 production documents,
+// that snake-caser splits acronyms and digit runs, and a display name is
+// full of both: "P2P Sync" → `p_2_p_sync`, "E2E Encryption" →
+// `e_2_e_encryption`, "Platform SDKs" → `platform_sd_ks`, "GitHub" →
+// `git_hub`, "Objectives S3Y24" → `objectives_s_3_y_24`. Those are not
+// spellings a human or a model reads back.
 //
-// Four decisions worth stating, because each has a plausible alternative:
+// The splitting bought nothing on the real input domain either, which is why
+// it goes. camelCase is a KEY phenomenon — `dueDate`, `iconEmoji` are stored
+// keys — and this rule is fed a display NAME, which separates its own words
+// because a person typed it. A name that IS camelCase is a key someone
+// pasted into a name field; two such relations exist in the corpus, and
+// `iconemoji` is the whole price.
+//
+// Five decisions worth stating, because each has a plausible alternative:
 //
 //   - **NFC.** Two visually identical names can be different byte sequences,
 //     and a label is compared byte-for-byte by every reader. Export is safe
@@ -134,6 +160,15 @@ func keyLabel(key, slug, name string) string {
 //   - **Combining marks are dropped, not separated.** A mark modifies the
 //     letter before it; turning it into `_` would cut `क्षत्रिय` into pieces
 //     at every virama. Dropping keeps the word one word.
+//   - **A leading `_` run is CONTENT, not a gap.** `_` is `identStart`, so
+//     `__amemory_salience` needs no repair at all — and 20 production
+//     relations from two integrations namespace themselves exactly that way,
+//     in both their name and their slug. An interior run still collapses
+//     (`a__b` → `a_b`) and a trailing one is still trimmed, because there it
+//     IS a gap: between two words, or between a word and nothing. This does
+//     overload the character — see the next decision — but the legend
+//     resolves either spelling, so the cost is cosmetic and the loss it
+//     prevents is not.
 //   - **A leading `_` is the escape for both grammar faults.** A label
 //     starting with a digit (`50% done` → `50_done`) and a label that IS a
 //     keyword (`All` → `all`) are the only two ways this construction can
@@ -146,9 +181,23 @@ func normalizeKeyLabel(s string) string {
 	if s == "" {
 		return ""
 	}
+	// a leading `_` run is CONTENT, not a separator to trim: `_` is
+	// identStart in the §6.2.1 grammar, so `__amemory_salience` needs no
+	// repair — 20 production relations from two integrations namespace
+	// themselves this way, in both their name and their slug. Interior runs
+	// still collapse and a trailing run is still trimmed; only the leading
+	// one is preserved, because only there is it a first character rather
+	// than a gap between two words.
+	lead := 0
+	for _, r := range s {
+		if r != '_' {
+			break
+		}
+		lead++
+	}
 	var b strings.Builder
 	gap := false // a separator run is pending, emitted only before the next letter
-	for _, r := range strcase.ToSnake(norm.NFC.String(s)) {
+	for _, r := range norm.NFC.String(s) {
 		switch {
 		case unicode.IsLetter(r) || unicode.IsDigit(r):
 			if gap && b.Len() > 0 {
@@ -172,8 +221,8 @@ func normalizeKeyLabel(s string) string {
 			gap = true // `_` included: runs collapse and edges trim
 		}
 	}
-	label := b.String()
-	if label == "" {
+	label := strings.Repeat("_", lead) + b.String()
+	if label == "" || strings.Trim(label, "_") == "" {
 		return ""
 	}
 	if !filterstring.IsBareKey(label) {

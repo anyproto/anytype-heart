@@ -769,6 +769,25 @@ func TestNameDerivedLabels(t *testing.T) {
 		assert.Equal(t, "recipe", key, "the bundled type still owns its own spelling")
 	})
 
+	t.Run("a mangled slug is re-spelled by its own name, both directions", func(t *testing.T) {
+		// given: the shape the api slug minter produces for any name with an
+		// acronym or a digit run — `p_2_p_sync` for "P2P Sync". The slug and
+		// the name are one fold class, so this changes the spelling and
+		// nothing else.
+		r := vocabFixture(t, named(relationRow("rel-p2p", bsonPropKey, "p_2_p_sync"), "P2P Sync"))
+
+		// when / then
+		assert.Equal(t, "p2p_sync", r.PropertySlug(bsonPropKey))
+		key, ok := r.PropertyKey("p2p_sync")
+		require.True(t, ok)
+		assert.Equal(t, bsonPropKey, key, "the accept half inverts what the emit half writes")
+		// the spelling it used to have still resolves: same fold class, so
+		// chain step 4 answers for every document written before this
+		key, ok = r.PropertyKey("p_2_p_sync")
+		require.True(t, ok)
+		assert.Equal(t, bsonPropKey, key, "documents already written keep resolving")
+	})
+
 	t.Run("a stored slug outranks another entity's name", func(t *testing.T) {
 		// given: one relation stores `more_information` as its api key, and
 		// another is NAMED "More information" — 14 pairs of this exact shape

@@ -134,7 +134,17 @@ func (m *keyMaps) add(row entity) {
 		// for them
 		m.addFold(bundle.FoldApiKey(row.slug), row.key)
 	}
-	m.bind(m.label(row.key, row.slug, ""), row.key, false)
+	// the display name is offered here ONLY when the row has a slug: there
+	// it re-spells that slug's own word within one fold class (§3 label
+	// rule), which is still this entity's explicit claim. A SLUGLESS row's
+	// name is a weaker claim and belongs to addDerived's second pass, so it
+	// must not be seen here — that ordering is the whole reason there are
+	// two passes.
+	var explicitName string
+	if row.slug != "" && row.slug != row.key {
+		explicitName = row.name
+	}
+	m.bind(m.label(row.key, row.slug, explicitName), row.key, false)
 }
 
 // addDerived is the second pass: the label a display NAME derives (§3 label

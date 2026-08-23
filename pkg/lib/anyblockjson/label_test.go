@@ -54,10 +54,36 @@ func TestNormalizeKeyLabel(t *testing.T) {
 		want string
 		why  string
 	}{
-		{"Publish Date", "publish_date", "the api slug's own transform, so an ASCII name lands where GO-7458's backfill would put it"},
+		{"Publish Date", "publish_date", "a name separates its own words, and this one does"},
 		{"Original creation date", "original_creation_date", ""},
-		{"iconEmoji", "icon_emoji", "humps split, exactly as ApiSlug does — `iconemoji` would be the no-transform answer"},
-		{"mediaArtistURL", "media_artist_url", "the acronym case ApiSlug is pinned on"},
+		// The input to this rule is a DISPLAY NAME. camelCase is a KEY
+		// phenomenon — `dueDate`, `iconEmoji` are stored keys — and a person
+		// types "Due Date". So splitting humps buys nothing on the real
+		// input domain and costs everything on the acronym-and-digit cases
+		// beside it: ApiSlug's snake-caser is what turns "P2P Sync" into
+		// `p_2_p_sync`, "Platform SDKs" into `platform_sd_ks` and "GitHub"
+		// into `git_hub`. Convergence with ApiSlug was the old reason to
+		// keep it; that reason died when the mangling was measured against
+		// 38,061 production documents.
+		//
+		// A name that IS camelCase is an import artifact — a stored key
+		// copied into the name field — and it is the whole price: two such
+		// relations exist in the corpus.
+		{"iconEmoji", "iconemoji", "a camelCase NAME is a key someone pasted into a name field: the price of the line above"},
+		{"mediaArtistURL", "mediaartisturl", "same, and no acronym rule can tell SDKs from XMLParser anyway"},
+		{"P2P Sync", "p2p_sync", "a letter and a digit are one word; `p_2_p_sync` is what splitting them cost"},
+		{"E2E Encryption", "e2e_encryption", ""},
+		{"GitHub Stars", "github_stars", "`git_hub_stars` is the api slug stored for this exact relation"},
+		{"Platform SDKs", "platform_sdks", "`platform_sd_ks` likewise"},
+		{"Objectives S3Y24", "objectives_s3y24", ""},
+		// a leading `_` run is CONTENT: `_` is identStart, so there is
+		// nothing to repair. 20 production relations from two integrations
+		// namespace themselves this way.
+		{"__amemory_salience", "__amemory_salience", "a namespace prefix survives; trimming it would merge it with ordinary keys"},
+		{"_leading", "_leading", ""},
+		{"trailing_", "trailing", "a trailing run is still a gap between a word and nothing"},
+		{"a__b", "a_b", "an interior run still collapses"},
+		{"___", "", "underscores alone name nothing"},
 		{"  spaced  name ", "spaced_name", "separator runs collapse and edges trim"},
 		{"Cost & type", "cost_type", ""},
 		{"What's missing", "what_s_missing", ""},
@@ -272,4 +298,48 @@ func TestNonASCIILabelSurvivesTheWholeCodec(t *testing.T) {
 	again, err := Marshal(model.SmartBlockType_Page, back, Options{Keys: vocab})
 	require.NoError(t, err)
 	assert.Equal(t, string(data), string(again))
+}
+
+// The slug says WHICH WORD; within one word, the name says how to spell it.
+//
+// api slugs are minted through a snake-caser that splits acronyms and digit
+// runs, so where slug and name disagree about breaks only, the slug is
+// reliably the mangled half. They are one fold class either way
+// (bundle.FoldApiKey drops `_`), so re-spelling can neither lose the address
+// nor create a collision that did not already exist.
+//
+// How this can fail: drop the fold-class arm and the mangled spellings come
+// back; widen it past the fold class and a deliberately namespaced slug is
+// replaced by the bare name it was namespaced to disambiguate.
+func TestPropertyLabel_TheNameSpellsTheSlugsOwnWord(t *testing.T) {
+	const key = "69bbfc78877a91b1d12d1a89"
+	for name, tc := range map[string]struct{ slug, display, want string }{
+		"a mangled slug is re-spelled by its name": {
+			slug: "p_2_p_sync", display: "P2P Sync", want: "p2p_sync",
+		},
+		"acronym mangling likewise": {
+			slug: "platform_sd_ks", display: "Platform SDKs", want: "platform_sdks",
+		},
+		"a slug naming a DIFFERENT word keeps its spelling": {
+			// the space namespaced this on purpose; "Rating" alone would
+			// collide with every other rating in the space
+			slug: "restaurant_rating", display: "Rating", want: "restaurant_rating",
+		},
+		"an abbreviating slug keeps its spelling": {
+			slug: "workspace_id", display: "Space", want: "workspace_id",
+		},
+		"a namespace prefix survives on both sides": {
+			slug: "__amemory_salience", display: "__amemory_salience", want: "__amemory_salience",
+		},
+		"no slug falls to the name, as before": {
+			slug: "", display: "Website", want: "website",
+		},
+		"no slug and no name has no label but the stored key": {
+			slug: "", display: "", want: "",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, tc.want, PropertyLabel(key, tc.slug, tc.display))
+		})
+	}
 }

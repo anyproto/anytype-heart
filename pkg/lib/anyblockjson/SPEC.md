@@ -1,6 +1,6 @@
 # AnyBlock JSON — format specification
 
-Status: **draft v0.29** · Format version: **1** · Package: `pkg/lib/anyblockjson`
+Status: **draft v0.30** · Format version: **1** · Package: `pkg/lib/anyblockjson`
 
 A human- and agent-readable JSON serialization of Anytype objects (the "anyblock"
 model), designed for export, import, and generation by external tools and LLM
@@ -15,6 +15,33 @@ strings; the vocabulary follows Notion's API and Anytype's public REST API
 (`core/api`) wherever an established term exists — the format should be
 readable, and mostly writable, by someone who has never seen Anytype
 internals.
+
+Changes in v0.30: **a key is spelled the way its name reads** (§1, §3).
+
+Two changes to the label rule, both measured against 38,061 production
+documents, and both invisible to any reader that keeps its legend — a label
+is legend-backed, so every document already written keeps resolving, and the
+old spelling keeps resolving too, since the two are one fold class.
+
+**The api slug's snake-caser is gone from normalization.** It splits acronyms
+and digit runs, and a display name is full of both: `P2P Sync` →
+`p_2_p_sync`, `Platform SDKs` → `platform_sd_ks`, `GitHub` → `git_hub`,
+`Objectives S3Y24` → `objectives_s_3_y_24`. It was there so the format and
+the api slug would converge; convergence lost. It also bought nothing on the
+real input, because camelCase is a KEY phenomenon and this rule is fed a
+display NAME, which separates its own words already.
+
+**A stored slug is re-spelled by its name within one fold class.** The
+mangled spellings above are STORED — the api minted them — so fixing the
+normalizer alone would not reach them. Where slug and name name the same word
+and disagree only about breaks, the name wins. Where the slug says something
+the name does not (`restaurant_rating` for "Rating", `workspace_id` for
+"Space") it keeps its spelling: 64 such properties in the corpus, untouched.
+14 are re-spelled.
+
+**A leading `_` run now survives normalization** — `_` is `identStart`, so
+`__amemory_salience` never needed repair, and 20 relations from two
+integrations namespace themselves that way.
 
 Changes in v0.29: **seven system-stamped keys stop writing their emptiness**
 (§3, §11, §15 #12).
@@ -120,7 +147,9 @@ identifier and not one of the filter grammar's keywords. **A bson id starts
 with a digit, so it cannot be written as a filter key at all** — those 39
 properties could not be filtered on, in a grammar this format serves to
 models as EBNF. So the label is normalized through that grammar instead
-(§3): a conforming stored slug unchanged, else that slug normalized, else the
+(§3): a conforming stored slug unchanged — **but re-spelled by the display
+name when the two are one fold class**, since there they name the same word
+and only the slug is snake-cased — else that slug normalized, else the
 display NAME normalized, else the stored key verbatim as before. Non-Latin
 scripts are kept, never transliterated. All 223 bundled slugs already
 conform, which a test asserts rather than assumes, and a cross-package test
@@ -1630,19 +1659,36 @@ its own authority, and there are two:
    than assumes.
 2. **A space-minted key spells what its space says it is**, through one
    ladder, first answer wins: its stored `apiObjectKey` when that is already
-   a legal key; else that slug **normalized**; else its display **name**
-   normalized; else nothing — and then the stored key is written verbatim,
+   a legal key — **re-spelled by the display name when the two are one fold
+   class** (`bundle.FoldApiKey` drops `_`, so `git_hub_stars` and
+   `github_stars` are already indistinguishable to every reader; the slug
+   decides WHICH WORD, the name decides how to break it, and the slug is
+   reliably the mangled half because it is snake-cased at mint); else that
+   slug **normalized**; else its display **name** normalized; else nothing — and then the stored key is written verbatim,
    which is always its own address (chain step 4 below). A slug that merely
    repeats the stored key is not a slug (rows exist that carry the bson id as
    their own `apiObjectKey`), so it falls to the name; and a key the bundled
    table speaks for never consults its space's row at all, or a localized
    name would take a spelling from the table that ships with every reader.
 
-**Normalization** is NFC, then the same `strcase.ToSnake` the api slug is
-minted with, then: letters and digits of **any script** are kept and
-lowercased, combining marks are dropped (a mark belongs to the letter before
-it), every other rune is a separator, runs of separators collapse to one `_`
-and the edges trim. A result that starts with a digit, or that *is* one of
+**Normalization** is NFC, then: letters and digits of **any script** are kept
+and lowercased, combining marks are dropped (a mark belongs to the letter
+before it), every other rune is a separator, runs of separators collapse to
+one `_`, and a trailing run trims. **A LEADING `_` run is kept** — `_` is
+`identStart`, so `__amemory_salience` needs no repair, and 20 production
+relations from two integrations namespace themselves exactly that way in both
+their name and their slug; a leading run is a first character, not a gap
+between words.
+
+Note what is NOT applied: the `strcase.ToSnake` the api slug is minted with.
+It used to be, so the two surfaces would converge — but it splits acronyms
+and digit runs, and a display name is full of both: `P2P Sync` →
+`p_2_p_sync`, `Platform SDKs` → `platform_sd_ks`, `GitHub` → `git_hub`. It
+also bought nothing on the real input, since camelCase is a KEY phenomenon
+(`dueDate`, `iconEmoji` are stored keys) and this rule is fed a display NAME,
+which separates its own words because a person typed it. A name that IS
+camelCase is a key pasted into a name field; the corpus holds two, and
+`iconemoji` is the whole price. A result that starts with a digit, or that *is* one of
 the filter grammar's keywords, takes a leading `_` — `50% done` → `_50_done`,
 `All` → `_all`. A result that is empty, or longer than the 128-character key
 bound, is no label at all.
