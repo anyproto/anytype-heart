@@ -781,3 +781,31 @@ func TestRelationEnvelope_TheMissingFormatVerdictNamesTheWrongContainer(t *testi
 		assert.Contains(t, err.Error(), "pre-v0.31")
 	})
 }
+
+// The phantom warning is the SEMANTIC half of the guard, and the semantic
+// pass is the only place isRelationKind is load-bearing: for a missing
+// `format` the schema's own kind conditional already refuses, so a test
+// there passes whether or not the Go gate agrees. This document is valid —
+// it has its envelope format — so nothing but isRelationKind decides
+// whether the phantom member is reported.
+//
+// How this can fail: narrow isRelationKind back to STRelation alone and the
+// two side-door kinds go quiet again.
+func TestRelationEnvelope_ThePhantomWarningReachesTheSideDoorKinds(t *testing.T) {
+	for _, kind := range []string{"relation", "bundled_relation", "sub_object"} {
+		t.Run(kind, func(t *testing.T) {
+			// given a VALID relation document that also carries the member
+			doc := []byte(`{"version":1,"kind":"` + kind + `","key":"eh","format":"number",` +
+				`"properties":{"name":"Estimated Hours","format":"number"}}`)
+
+			// when
+			var warned []Issue
+			err := ValidateWarn(doc, func(i Issue) { warned = append(warned, i) })
+
+			// then
+			require.NoError(t, err, "the envelope format is present, so this document stands")
+			require.Len(t, warned, 1, "the phantom member must be reported on every kind that IS a relation")
+			assert.Equal(t, "/properties/format", warned[0].Path)
+		})
+	}
+}

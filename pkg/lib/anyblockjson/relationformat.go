@@ -401,16 +401,15 @@ func relationEnvelopeIssues(doc map[string]any, warn func(path, format string, a
 	if !isRelationKind(doc) {
 		return // the schema refuses the fields on every other kind
 	}
-	// the phantom-property check runs whether or not the envelope field is
-	// there. Gating it behind a present `format` left the commonest shape of
-	// all uncovered — no envelope field AND `properties.format` — where the
-	// author gets only "missing property 'format'" and no word about the
-	// member they DID write, which is the one that has to move.
-	relationPhantomIssues(doc, warn)
 	format, _ := doc["format"].(string)
 	if format == "" {
-		return // required and missing: the schema's error already says so
+		// required and missing: the schema's error already says so, and it
+		// is the one that names the wrong container too
+		// (relationFormatSlotIssue) — this pass never runs on a document
+		// the schema rejected, so it cannot be the place that says it.
+		return
 	}
+	relationPhantomIssues(doc, warn)
 	if v, has := doc["include_time"]; has && format != "date" {
 		if b, isBool := v.(bool); isBool && b {
 			warn("/include_time", "include_time is only meaningful on date, not %q — "+
