@@ -296,6 +296,12 @@ type exporter struct {
 	icon, cover           *omap
 	iconBuilt, coverBuilt bool
 
+	// relTargets is a relation document's translated target-type key list
+	// (§2d), built once for the same reason: the type-key census
+	// (seedTypeTermLedger) and buildRelationEnvelope both read it.
+	relTargets      []string
+	relTargetsBuilt bool
+
 	localIds map[string]string // block/row/column/view id -> short label (§9a)
 
 	// optionRefs is the second `refs` population: the option id behind every
@@ -774,6 +780,17 @@ func (e *exporter) seedTypeTermLedger() {
 						e.typeNamedKeys[key] = true
 					}
 				}
+			}
+		}
+	}
+	// a relation document's own target types (§2d) are a type-key slot too,
+	// and the census must know every key the slot will spell for the same
+	// reason it knows the §2a targets: verbatim-first (§3) makes each its
+	// own address, so no other key's slug may take one as a spelling
+	if e.isRelationDoc() {
+		for _, key := range e.relationTargetKeys() {
+			if key != "" {
+				e.typeNamedKeys[key] = true
 			}
 		}
 	}
@@ -1310,6 +1327,13 @@ func (e *exporter) buildDoc(sbType model.SmartBlockType) (*omap, error) {
 		doc.setNonEmpty("template_for", typeTerms[1])
 	}
 	doc.setNonEmpty("key", e.snapshot.Key)
+	// a relation document states its own definition next (§2d): `format`,
+	// `include_time`, `object_types` — before `icon`, because what a property
+	// IS outranks what it looks like, and before the legends, so the type
+	// terms `object_types` claims land in the ledger the legends render
+	if err := e.buildRelationEnvelope(doc); err != nil {
+		return nil, err
+	}
 	// the typed icon/cover fields sit above `properties` (§2b): they are what
 	// a reader looks at first, and they are outside the key namespace the
 	// legend can rebind
@@ -1447,14 +1471,20 @@ func strippedDetailKeys() map[string]bool {
 
 // envelopeLiftedKeys is every stored detail key some ENVELOPE field carries
 // instead of `properties`: the four recommended lists when type properties
-// are active (§2a) and the nine icon/cover keys always (§2b). The three sites
-// that must agree about the lift — the term census, the properties emit and
-// the id census — all ask this one function, because they used to ask
-// typePropDetailKeys separately and a second lift list would have had to be
-// added to each of them by hand.
+// are active (§2a), the nine icon/cover keys always (§2b), and the three
+// relation-definition keys always (§2d — always even off relation documents,
+// where a present value is dropped with a warning, because the refusal in
+// `properties` is unconditional and export may not write what import
+// refuses, I1/I2). The three sites that must agree about the lift — the term
+// census, the properties emit and the id census — all ask this one function,
+// because they used to ask typePropDetailKeys separately and a second lift
+// list would have had to be added to each of them by hand.
 func (e *exporter) envelopeLiftedKeys() map[string]bool {
 	lifted := liftedDetailKeys()
 	for k := range e.typePropDetailKeys() {
+		lifted[k] = true
+	}
+	for k := range relationLiftedDetailKeys() {
 		lifted[k] = true
 	}
 	return lifted
@@ -2302,6 +2332,14 @@ func (e *exporter) buildLabelPlan() {
 				// writes there are fed in explicitly below — this used to say
 				// "lifted properties never appear as ids", which was true
 				// only while the recommended lists were the sole lift.
+				// `relationFormatObjectTypes` (§2d) is the deliberate
+				// exception in the other direction: its entries leave this
+				// walk and are NOT fed back, because the envelope writes
+				// them as TYPE-KEY terms, not object references — the same
+				// slot type_properties[].object_types is, which has never
+				// had census duty. A term is never textually joined with a
+				// block id, so a compact label equal to one collides with
+				// nothing.
 				continue
 			}
 			format, ok := e.resolveFormat(key)

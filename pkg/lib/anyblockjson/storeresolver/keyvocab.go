@@ -45,7 +45,13 @@ type keyMaps struct {
 	// defined in stored type KEYS (§2a). Filled from the same one bounded
 	// listing, so the mapping costs nothing extra. Hidden entities are
 	// included: identity is not the slug namespace.
+	//
+	// idByKey is its inverse, for the import half of the same translation
+	// (anyblockjson.TypeResolver, §2d): a relation document's `object_types`
+	// arrives as type keys and the store wants this space's type object ids
+	// back. First-wins on a duplicated key, like keyById on a duplicated id.
 	keyById    map[string]string
+	idByKey    map[string]string
 	bundledKey func(slug string) (string, bool)
 	// bundledFold is that namespace's bundled fold table (chain step 4's
 	// bundled arm), as stored-key strings.
@@ -93,6 +99,7 @@ func newKeyMaps(ns namespace) *keyMaps {
 		storedKey:   map[string]bool{},
 		keysByFold:  map[string][]string{},
 		keyById:     map[string]string{},
+		idByKey:     map[string]string{},
 		derived:     map[string]bool{},
 		bundledKey:  ns.bundledKey,
 		bundledFold: ns.bundledFold,
@@ -437,6 +444,9 @@ func (r *Resolvers) loadKeyMaps(ns namespace) *keyMaps {
 			if _, taken := maps.keyById[id]; !taken {
 				maps.keyById[id] = key
 			}
+			if _, taken := maps.idByKey[key]; !taken {
+				maps.idByKey[key] = id
+			}
 		}
 	}
 	// two passes, in this order: every explicit stored slug claims its
@@ -521,4 +531,32 @@ func (r *Resolvers) TypeKey(slug string) (string, bool) {
 		return key, true
 	}
 	return slug, false
+}
+
+// TypeKeyById and TypeIdByKey implement anyblockjson.TypeResolver (§2d): the
+// translation between the type object ids `relationFormatObjectTypes` stores
+// and the stored type keys the format spells. It is targetTypeKeys' own
+// mapping (keyById, filled from the one bounded type listing) surfaced as
+// the capability the codec discovers by assertion, plus the bundled-url arm
+// for legacy entries that were never rewritten to derived ids.
+//
+// Both answer false on a miss, deliberately: the codec's degradation for an
+// unanswered entry is verbatim pass-through — its own address (§3) — and an
+// invented answer here would translate one direction with nothing to invert
+// it on the other.
+func (r *Resolvers) TypeKeyById(id string) (string, bool) {
+	if key, err := bundle.TypeKeyFromUrl(id); err == nil && key != "" {
+		return string(key), true
+	}
+	if key := r.typeKeyMaps().keyById[id]; key != "" {
+		return key, true
+	}
+	return "", false
+}
+
+func (r *Resolvers) TypeIdByKey(key string) (string, bool) {
+	if id := r.typeKeyMaps().idByKey[key]; id != "" {
+		return id, true
+	}
+	return "", false
 }

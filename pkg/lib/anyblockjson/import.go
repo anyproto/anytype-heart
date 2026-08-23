@@ -30,6 +30,15 @@ type jsonDoc struct {
 	Type        string      `json:"type"`
 	TemplateFor string      `json:"template_for"`
 	Key         string      `json:"key"`
+	// Format, IncludeTime and TargetTypes are the relation-definition
+	// envelope fields of a kind:relation document (§2d). The two RawMessage
+	// fields are raw because each has THREE states the schema admits —
+	// absent, null, and a value — and a decoded Go pointer collapses the
+	// first two: field presence mirrors stored-key presence exactly, and a
+	// stored null is a value (§3, 80 production relations hold one).
+	Format      string          `json:"format"`
+	IncludeTime json.RawMessage `json:"include_time"`
+	TargetTypes json.RawMessage `json:"object_types"`
 	// Icon and Cover are the typed envelope fields (§2b). Each is one object
 	// whose `format` member selects the variant, and each stands for a family
 	// of hidden stored keys that `properties` refuses.
@@ -518,6 +527,9 @@ func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBas
 	// an ordinary property (§2b)
 	imp.applyIcon(details)
 	imp.applyCover(details)
+	if err := imp.applyRelationEnvelope(details, sbType); err != nil {
+		return 0, nil, err
+	}
 	if err := imp.applyTypeProperties(details); err != nil {
 		return 0, nil, err
 	}

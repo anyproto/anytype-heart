@@ -63,6 +63,28 @@
       "pattern": "^[^\u0000-\u001f]+$",
       "maxLength": 255
     },
+    "format": {
+      "$ref": "#/$defs/propertyFormat",
+      "description": "Only on kind \"relation\" documents, where it is REQUIRED: the format of the property this document defines, as a §3 format NAME — the same vocabulary type_properties[].format speaks, never a raw enum number. Stands for the stored relationFormat key, which `properties` refuses (§2d)."
+    },
+    "include_time": {
+      "type": [
+        "boolean",
+        "null"
+      ],
+      "description": "Only on kind \"relation\" documents: whether values of a date property carry a time of day. Meaningful on format \"date\" and nothing else — true against any other format is reported as a warning and carried unread. Present exactly when the stored relationFormatIncludeTime key is present, which `properties` refuses (§2d); null is a stored null, preserved like any §3 value."
+    },
+    "object_types": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "Only on kind \"relation\" documents: the type keys an objects/files property may point at, in priority order — a type-key slot exactly like type_properties[].object_types (§2a), spelled in the §3 type vocabulary and inverted through the type_keys legend; a term the chain does not know passes through verbatim. Meaningful on formats \"objects\" and \"files\"; non-empty against any other format is reported as a warning. Present exactly when the stored relationFormatObjectTypes key is present, which `properties` refuses (§2d)."
+    },
     "icon": {
       "$ref": "#/$defs/icon"
     },
@@ -149,6 +171,32 @@
     "version"
   ],
   "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "relation"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "then": {
+        "required": [
+          "format"
+        ]
+      },
+      "else": {
+        "properties": {
+          "format": false,
+          "include_time": false,
+          "object_types": false
+        }
+      }
+    }
+  ],
   "$defs": {
     "propertyMap": {
       "type": "object",
@@ -1134,6 +1182,25 @@
         }
       ]
     },
+    "propertyFormat": {
+      "enum": [
+        "text",
+        "number",
+        "select",
+        "multi_select",
+        "date",
+        "files",
+        "checkbox",
+        "url",
+        "email",
+        "phone",
+        "emoji",
+        "objects",
+        "properties",
+        "map"
+      ],
+      "description": "A property format, by NAME (§3): the public REST API vocabulary, plus names for the internal formats a store really carries — emoji, objects, properties, and map, which 72 production relation documents hold (the bundled templatePlaceholders relation). One list, referenced from every slot that states a format, so the three slots cannot drift apart."
+    },
     "typeProperty": {
       "type": "object",
       "properties": {
@@ -1147,21 +1214,7 @@
           "type": "string"
         },
         "format": {
-          "enum": [
-            "text",
-            "number",
-            "select",
-            "multi_select",
-            "date",
-            "files",
-            "checkbox",
-            "url",
-            "email",
-            "phone",
-            "emoji",
-            "objects",
-            "properties"
-          ]
+          "$ref": "#/$defs/propertyFormat"
         },
         "options": {
           "type": "array",
@@ -1235,21 +1288,7 @@
           "minLength": 1
         },
         "format": {
-          "enum": [
-            "text",
-            "number",
-            "select",
-            "multi_select",
-            "date",
-            "files",
-            "checkbox",
-            "url",
-            "email",
-            "phone",
-            "emoji",
-            "objects",
-            "properties"
-          ]
+          "$ref": "#/$defs/propertyFormat"
         }
       },
       "required": [

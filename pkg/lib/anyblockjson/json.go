@@ -523,6 +523,18 @@ func FormatByName(name string) (model.RelationFormat, bool) {
 // no name of its own and folds into "text" via formatName. The map must
 // remain a bijection (newEnumNames inverts it, and a duplicated name would
 // invert nondeterministically), which is why the fold lives outside it.
+//
+// It is TOTAL over model.RelationFormat, shorttext's fold aside, and that is
+// a load-bearing property rather than tidiness: a relation document states
+// its format on the envelope as a required NAME (§2d), so a stored format
+// this map cannot name is a relation object Marshal cannot export. "map"
+// (RelationFormat_map) is in the vocabulary for exactly that reason — the
+// API does not serve it, but 72 production relation documents carry format
+// 102 (every one the bundled templatePlaceholders relation), and the §3 note
+// that names exist for internal formats (emoji, objects, properties) already
+// covers it. TestFormatNames_TotalOverModelEnum pins the totality, so a
+// format added to the model without a name here fails a test instead of an
+// export.
 var formatNames = newEnumNames(map[model.RelationFormat]string{
 	model.RelationFormat_longtext:  "text",
 	model.RelationFormat_number:    "number",
@@ -537,6 +549,7 @@ var formatNames = newEnumNames(map[model.RelationFormat]string{
 	model.RelationFormat_emoji:     "emoji",
 	model.RelationFormat_object:    "objects",
 	model.RelationFormat_relations: "properties",
+	model.RelationFormat_map:       "map",
 })
 
 // filterTemplatePrefix marks a dynamic filter value: a placeholder the

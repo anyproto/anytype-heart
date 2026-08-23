@@ -82,27 +82,38 @@ func emptyLike(v *types.Value) *types.Value {
 // line away from being trimmed, and each would be wrong:
 // `relationFormat`'s zero is `longtext`, a real format; the list-valued
 // user-intent keys express a CLEARED set by being empty, which GO-7451
-// settled for a type's recommended lists.
+// settled for a type's recommended lists. `relationFormat` and
+// `relationFormatObjectTypes` have since moved to a relation document's
+// envelope (§2d), where the SAME admission verdict holds: the envelope
+// fields mirror stored presence, empty values included.
 //
-// How this can fail: add any of these to trimmedWhenEmpty and its assertion
-// finds the key gone.
+// How this can fail: add featuredRelations to trimmedWhenEmpty and the page
+// assertion finds the key gone; make buildRelationEnvelope treat format 0 as
+// unset, or omit an empty object_types list, and the relation assertions
+// find the fields missing.
 func TestSystemTrim_TheExcludedKeysKeepTheirEmptyValue(t *testing.T) {
 	// given
-	snap := trimSnapshot(map[string]*types.Value{
+	pageSnap := trimSnapshot(map[string]*types.Value{
+		"featuredRelations": strList(),
+	})
+	relSnap := trimSnapshot(map[string]*types.Value{
 		"relationFormat":            num(0), // 0 is longtext, not "unset"
 		"relationFormatObjectTypes": strList(),
-		"featuredRelations":         strList(),
 	})
 
 	// when
-	data, err := Marshal(model.SmartBlockType_Page, snap, testOptions())
+	pageDoc, err := Marshal(model.SmartBlockType_Page, pageSnap, testOptions())
+	require.NoError(t, err)
+	relDoc, err := Marshal(model.SmartBlockType_STRelation, relSnap, testOptions())
 	require.NoError(t, err)
 
 	// then
-	for _, slug := range []string{"relation_format", "relation_format_object_types", "featured_relations"} {
-		assert.Contains(t, string(data), `"`+slug+`"`,
-			"%s is deliberately outside the whitelist (§15 #12)", slug)
-	}
+	assert.Contains(t, string(pageDoc), `"featured_relations"`,
+		"featured_relations is deliberately outside the whitelist (§15 #12)")
+	assert.Contains(t, string(relDoc), `"format": "text"`,
+		"relationFormat 0 is longtext, a real format, and §2d requires the field")
+	assert.Contains(t, string(relDoc), `"object_types": []`,
+		"an empty target set is a CLEARED set; the §2d field mirrors stored presence")
 }
 
 // The whitelist is a list, not a category: a system relation NOT on it keeps

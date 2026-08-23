@@ -180,6 +180,11 @@ func validateToDoc(data []byte, lenient bool, warn func(Issue)) (map[string]any,
 	// naming the alternatives at the moment the author is wrong is the whole
 	// reason those fields are typed rather than flat (§2b)
 	iconFormatIssues(doc, &spoken)
+	// a relation document's required `format` (§2d), same trade again: the
+	// schema's `required` verdict cannot list the names, and the author most
+	// likely to be missing it — one holding a pre-v0.31 document that spelled
+	// `relation_format` in properties — needs the vocabulary, not the bound
+	relationFormatSlotIssue(doc, &spoken)
 	if err := sch.Validate(doc); err != nil {
 		return nil, &ValidationError{Issues: append(spoken.issues, schemaIssues(err, spoken)...)}
 	}
@@ -594,6 +599,29 @@ var schemaFormatEnums = sync.OnceValue(func() map[string][]string {
 	return out
 })
 
+// propertyFormatEnum is the §3 format-name vocabulary as the published
+// schema states it ($defs/propertyFormat) — read rather than restated, the
+// schemaFormatEnums rule: the schema is the one statement an external
+// validator also sees, so the reader's diagnostics quote it instead of a
+// second list that can drift.
+var propertyFormatEnum = sync.OnceValue(func() []string {
+	var doc struct {
+		Defs map[string]struct {
+			Enum []any `json:"enum"`
+		} `json:"$defs"`
+	}
+	if err := json.Unmarshal(schemaJSON, &doc); err != nil {
+		return nil
+	}
+	var names []string
+	for _, e := range doc.Defs["propertyFormat"].Enum {
+		if s, isStr := e.(string); isStr {
+			names = append(names, s)
+		}
+	}
+	return names
+})
+
 // schemaIssueMessage renders one schema error. Unknown properties fail
 // against a `false` schema (unevaluatedProperties / removed keys), whose
 // stock text "false schema" names neither the rule nor the key — rewrite it
@@ -604,6 +632,18 @@ func schemaIssueMessage(e *jsonschema.ValidationError, printer *message.Printer)
 		if toks := e.InstanceLocation; len(toks) > 0 {
 			prop := toks[len(toks)-1]
 			if _, err := strconv.Atoi(prop); err != nil { // numeric = array index, not a property
+				// the §2d fields are declared at the root and gated by kind,
+				// so their false schema fires only OFF a relation document —
+				// and only at the root (len == 1), where the member name is
+				// unambiguous. "not allowed" would send the author toward
+				// deleting the field; the actual repair is the kind.
+				if len(toks) == 1 {
+					switch prop {
+					case "format", "include_time", "object_types":
+						return fmt.Sprintf("property %q is only valid on relation documents "+
+							`(kind "relation", §2d)`, prop)
+					}
+				}
 				return unknownPropertyMessage(prop)
 			}
 		}
@@ -964,6 +1004,12 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 			}
 		}
 	}
+
+	// the §2d relation-definition fields: a meaningful value against a format
+	// that cannot use it is a WARNING, never an error — the reasoning lives
+	// with the check (relationformat.go), beside the export surface it must
+	// not contradict (I1)
+	relationEnvelopeIssues(doc, warnIssue)
 
 	if _, ok := doc["type_properties"]; ok {
 		if kind, _ := doc["kind"].(string); kind != "object_type" {
@@ -1548,6 +1594,17 @@ func deniedPropertyKey(key string) (string, bool) {
 	// repair. The set is the export side's own, never a restatement.
 	if liftedDetailKeys()[key] {
 		return fmt.Sprintf("%q is written as %s (§2b), not as a property", key, liftedKeyRepair(key)), true
+	}
+	// the relation-definition lift (§2d), same rule and same derivation. This
+	// arm is also the whole of the legacy-input decision (§10): a document
+	// written before v0.31 spells `relation_format` here, and it is REFUSED
+	// with the repair named rather than read with a warning — the format is a
+	// pre-release draft with no external consumers, and a second legal
+	// spelling for a relation's format is exactly the ambiguity the lift
+	// deletes.
+	if relationLiftedDetailKeys()[key] {
+		return fmt.Sprintf("%q is written on a relation document's envelope as %s (§2d), "+
+			"not as a property", key, relationLiftedKeyRepair(key)), true
 	}
 	return "", false
 }
