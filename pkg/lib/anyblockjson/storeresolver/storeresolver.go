@@ -26,6 +26,12 @@ type Resolvers struct {
 	// asked about once per export rather than once per object.
 	participantNames map[string]string
 
+	// objectNames caches ObjectName's answers the same way: an export asks
+	// about the same referenced object once per slot it appears in, and the
+	// miss (an unnamed object, an id the index has no row for) is an answer
+	// worth remembering too.
+	objectNames map[string]string
+
 	relsLoaded bool
 	relById    map[string]anyblockjson.PropertyDefinition
 	relKeyToId map[string]string
@@ -41,17 +47,22 @@ func New(index spaceindex.Store) *Resolvers {
 		index:            index,
 		optionsFor:       map[domain.RelationKey][]*model.RelationOption{},
 		participantNames: map[string]string{},
+		objectNames:      map[string]string{},
 	}
 }
 
-// Options returns anyblockjson.Options pre-wired with the resolvers; callers
-// set the remaining fields (compaction flags etc.) on the returned value.
+// Options returns anyblockjson.Options pre-wired with the resolvers and the
+// index's own space id (which enables the participant fold, §9); callers set
+// the remaining fields (compaction flags, RefNames, etc.) on the returned
+// value.
 func (r *Resolvers) Options() anyblockjson.Options {
 	return anyblockjson.Options{
 		ResolveFormat:       r.ResolveFormat,
 		ResolveOptions:      r,
 		ResolveProperties:   r,
 		ResolveParticipants: r,
+		ResolveObjectNames:  r,
+		SpaceId:             r.index.SpaceId(),
 		Keys:                r,
 	}
 }
@@ -199,6 +210,28 @@ func (r *Resolvers) ParticipantName(id string) (string, bool) {
 		name = details.GetString(bundle.RelationKeyName)
 	}
 	r.participantNames[id] = name
+	return name, name != ""
+}
+
+// ObjectName implements anyblockjson.ObjectNameResolver: the display name of
+// the object a reference points at, for the informative `#name` suffix (§9).
+//
+// The same one-point-lookup shape as ParticipantName, deliberately kept
+// separate from it: this one answers for EVERY indexed object — pages,
+// files, types, participants alike — because the suffix rides any object
+// reference, while the participant seam serves exactly two derived
+// properties. No name is an answer of "no", never an empty string: the
+// format's rule for the suffix is a name or nothing (a bare reference),
+// never a dangling `#`.
+func (r *Resolvers) ObjectName(id string) (string, bool) {
+	if name, cached := r.objectNames[id]; cached {
+		return name, name != ""
+	}
+	name := ""
+	if details, err := r.index.GetDetails(id); err == nil && details != nil {
+		name = details.GetString(bundle.RelationKeyName)
+	}
+	r.objectNames[id] = name
 	return name, name != ""
 }
 

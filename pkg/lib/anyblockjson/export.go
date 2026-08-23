@@ -87,7 +87,28 @@ type Options struct {
 	// derived attribution properties only (export; nil = `creator` and
 	// `lastModifiedBy` are omitted, §3).
 	ResolveParticipants ParticipantResolver
-	Keys                KeyVocabulary // optional; nil = BundledKeyVocabulary (the derived table — keyvocab.go)
+	// ResolveObjectNames names the object behind a reference, for the
+	// informative `#name` suffix only (export, behind RefNames; nil = every
+	// reference is written bare, §9). Import never consults it — the suffix
+	// is trimmed unread.
+	ResolveObjectNames ObjectNameResolver
+	// SpaceId is the space this codec run reads from or writes into — the
+	// wiring supplies it exactly as it supplies the resolvers. It enables
+	// the participant fold (§9): export folds
+	// `_participant_<SpaceId>_<identity>` to the bare identity, and import
+	// rebuilds the composite against this space. Empty disables the fold in
+	// BOTH directions: a composite id passes through verbatim and a bare
+	// identity is left alone, because folding on export without the paired
+	// import being able to rebuild would land a bare identity in a snapshot
+	// slot where a composite belongs — silent corruption of exactly the slot
+	// the fold exists to fix.
+	SpaceId string
+	// RefNames turns on the informative `#name` suffix on object references
+	// (export only, §9). Off by default — the export/backup shape stays
+	// minimal and stable under renames of referenced objects — and opted
+	// into by read shapes, the way CompactBlockLabels is.
+	RefNames bool
+	Keys     KeyVocabulary // optional; nil = BundledKeyVocabulary (the derived table — keyvocab.go)
 	// Legend is the enclosing document's three legends, for the FRAGMENT
 	// entry points only (fragment.go, filters.go, BuildRecommendedLists).
 	// Marshal and Unmarshal ignore it: a whole document carries its own.
