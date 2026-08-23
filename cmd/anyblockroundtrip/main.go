@@ -54,6 +54,7 @@ func main() {
 		spaceFilter = flag.String("space", "", "comma-separated space ids to check (default: all)")
 		limit       = flag.Int("limit", 0, "max objects per space (0 = all)")
 		keepExports = flag.Bool("keep-exports", false, "keep the raw pb export directories for passing objects too")
+		dumpJSON    = flag.Bool("dump-json", false, "write each object's AnyBlock JSON beside its .pb, rendered with the SPACE's resolvers (implies -keep-exports)")
 	)
 	flag.Parse()
 
@@ -62,7 +63,10 @@ func main() {
 		fmt.Fprintln(os.Stderr, "\nboth -mnemonic (or $ANYTYPE_MNEMONIC) and -root-path are required")
 		os.Exit(2)
 	}
-	if err := run(*mnemonic, *accountId, *rootPath, *outDir, *spaceFilter, *limit, *keepExports); err != nil {
+	if *dumpJSON {
+		*keepExports = true // the JSON is written beside the .pb, so the .pb must stay
+	}
+	if err := run(*mnemonic, *accountId, *rootPath, *outDir, *spaceFilter, *limit, *keepExports, *dumpJSON); err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)
 		os.Exit(1)
 	}
@@ -79,7 +83,7 @@ func rpcErr(name string, code int32, description string) error {
 	return fmt.Errorf("%s: code %d: %s", name, code, description)
 }
 
-func run(mnemonic, accountId, rootPath, outDir, spaceFilter string, limit int, keepExports bool) error {
+func run(mnemonic, accountId, rootPath, outDir, spaceFilter string, limit int, keepExports, dumpJSON bool) error {
 	ctx := context.Background()
 	mw := core.New()
 	mw.SetEventSender(event.NewCallbackSender(func(*pb.Event) {}))
@@ -148,7 +152,7 @@ func run(mnemonic, accountId, rootPath, outDir, spaceFilter string, limit int, k
 	summary := &summary{Account: accountId, Categories: map[string]int{}, IndentHistogram: map[int]int{}}
 	for _, s := range spaces {
 		fmt.Printf("\n== space %s (%s)\n", s.id, s.name)
-		ss, err := processSpace(ctx, mw, store, s.id, outDir, limit, keepExports)
+		ss, err := processSpace(ctx, mw, store, s.id, outDir, limit, keepExports, dumpJSON)
 		if err != nil {
 			fmt.Printf("   space failed: %v\n", err)
 			summary.SpaceErrors = append(summary.SpaceErrors, spaceError{SpaceId: s.id, Error: err.Error()})
@@ -259,7 +263,7 @@ type summary struct {
 }
 
 func processSpace(ctx context.Context, mw *core.Middleware, store objectstore.ObjectStore,
-	spaceId, outDir string, limit int, keepExports bool) (*spaceSummary, error) {
+	spaceId, outDir string, limit int, keepExports, dumpJSON bool) (*spaceSummary, error) {
 
 	exportDir := filepath.Join(outDir, "export", spaceId)
 	resp := mw.ObjectListExport(ctx, &pb.RpcObjectListExportRequest{
@@ -305,6 +309,18 @@ func processSpace(ctx context.Context, mw *core.Middleware, store objectstore.Ob
 			return nil, fmt.Errorf("object %s: %w", objectId, err)
 		}
 		if artifacts != nil {
+			if dumpJSON && artifacts.json1 != nil {
+				// the document as this SPACE renders it: property and type
+				// labels through the space vocabulary, option values by name,
+				// participants by name. Rendering with default Options
+				// instead produces a technically valid document in which every
+				// space-minted key is a bson id and every option value a CID —
+				// readable structure, unreadable content.
+				out := strings.TrimSuffix(f, ".pb") + ".anyblock.json"
+				if err := os.WriteFile(out, artifacts.json1, 0o644); err != nil {
+					return nil, fmt.Errorf("dump json for %s: %w", objectId, err)
+				}
+			}
 			if artifacts.json1 != nil {
 				ss.IndentHistogram[maxIndentOf(artifacts.json1)]++
 			}
@@ -360,6 +376,23 @@ type artifactSet struct {
 	reimported *pb.SnapshotWithType
 }
 
+// stripAttribution removes the two derived attribution members from a rendered
+// document so two generations can be compared on what the format is actually
+// responsible for. It is deliberately textual and deliberately narrow: it drops
+// only a top-level `"creator"` or `"last_modified_by"` line, so an attribution
+// value appearing anywhere else still counts as a difference.
+func stripAttribution(doc []byte) string {
+	var out []string
+	for _, line := range strings.Split(string(doc), "\n") {
+		t := strings.TrimSpace(line)
+		if strings.HasPrefix(t, `"creator":`) || strings.HasPrefix(t, `"last_modified_by":`) {
+			continue
+		}
+		out = append(out, line)
+	}
+	return strings.Join(out, "\n")
+}
+
 func roundtripFile(path string, opts anyblockjson.Options) ([]issue, *artifactSet, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -402,9 +435,19 @@ func roundtripFile(path string, opts anyblockjson.Options) ([]issue, *artifactSe
 		fail("reexport_error", "%v", err)
 		return issues, arts, nil
 	}
-	if string(json1) != string(json2) {
+	// Attribution is written from a DERIVED detail that import deliberately
+	// drops (SPEC §3): `creator` and `last_modified_by` are recovered from the
+	// object tree's own signature, so a real import re-derives them — but this
+	// round trip has no tree, so gen2 has nothing to write and the two
+	// generations differ on exactly those lines. Comparing them raw reports
+	// every object in an account as unstable and buries whatever else moved:
+	// measured, 37,011 of 37,429, and 4,000 of a 4,001 sample differed by
+	// nothing else. So the check strips the lines it knows are owed to the
+	// tree, the way the detail comparator already skips the internal keys.
+	if stripAttribution(json1) != stripAttribution(json2) {
 		arts.json2 = json2
-		fail("not_byte_stable", "first divergence: %s", firstDiff(json1, json2))
+		fail("not_byte_stable", "first divergence: %s",
+			firstDiff([]byte(stripAttribution(json1)), []byte(stripAttribution(json2))))
 	}
 
 	// the ORIGINAL smartblock type: how many type slots the envelope had is a
