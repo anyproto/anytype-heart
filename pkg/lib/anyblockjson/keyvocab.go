@@ -89,6 +89,17 @@ import (
 // stored key, so export writes the identity entry for it —
 // TestKeyVocabulary_VocabularyInForceIsAReaderToo and
 // TestCorpseStoredKeyStillNamesItsObjects.
+//
+// **What no rule above requires, and every shipped implementation does.** The
+// three obligations are about correctness — a spelling that inverts, and
+// inverts to the right key. What it LOOKS like is a separate question, and
+// §3 answers it: a key is spelled by its label, a Unicode identifier in the
+// §6.2.1 grammar, which is what makes it writable at the format's narrowest
+// key surface (a property whose spelling starts with a digit cannot be named
+// in a compact filter string at all). PropertyLabel and TypeLabel are that
+// rule, exported so a vocabulary can apply it to whatever its source of truth
+// stores; storeresolver calls them, and an implementation that answers with a
+// raw stored slug is still correct, merely unspellable in one place.
 type KeyVocabulary interface {
 	// PropertySlug is the wire spelling of a stored relation key. Returning
 	// the input unchanged is always valid ("no slug for this key").
