@@ -176,7 +176,11 @@
       "if": {
         "properties": {
           "kind": {
-            "const": "relation"
+            "enum": [
+              "relation",
+              "bundled_relation",
+              "sub_object"
+            ]
           }
         },
         "required": [

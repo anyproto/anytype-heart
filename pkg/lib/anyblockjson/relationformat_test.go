@@ -703,3 +703,81 @@ func TestPropertyFormatEnum_MatchesFormatNames(t *testing.T) {
 			"%s must reference the shared vocabulary, not restate it", slot)
 	}
 }
+
+// A kind nothing emits is exactly the kind nobody thought to guard. Export
+// writes neither `bundled_relation` nor `sub_object` — 0 of 38,061 corpus
+// documents — but the schema's `kind` enum offers both beside `relation`
+// with nothing marking them non-authorable, and a small model picked one:
+// `{"kind":"bundled_relation", …, "properties":{"format":"number"}}`
+// validated clean, with no warning, and imported as a phantom property with
+// no relationFormat at all. That is verbatim the §2d bug, one kind over.
+//
+// `relation_option` is deliberately NOT in the set: an option document is a
+// value, not a property definition, so `format` there is an ordinary custom
+// key.
+//
+// How this can fail: narrow isRelationKind back to STRelation alone and the
+// two side doors reopen; widen it to relation_option and the last case
+// starts refusing a legitimate document.
+func TestRelationEnvelope_TheSideDoorKindsAreGuardedToo(t *testing.T) {
+	for kind, wantValid := range map[string]bool{
+		"relation":         false,
+		"bundled_relation": false,
+		"sub_object":       false,
+		"relation_option":  true,
+	} {
+		t.Run(kind, func(t *testing.T) {
+			// given the shape 9 of 9 small-model attempts wrote
+			doc := []byte(`{"version":1,"kind":"` + kind + `","key":"eh",` +
+				`"properties":{"name":"Estimated Hours","format":"number"}}`)
+
+			// when
+			err := Validate(doc)
+
+			// then
+			if wantValid {
+				assert.NoError(t, err, "an option document is a value, not a property definition")
+				return
+			}
+			require.Error(t, err, "a relation document must state its own format (§2d)")
+			assert.Contains(t, err.Error(), "missing property 'format'")
+		})
+	}
+}
+
+// Told only that a member is MISSING, an author has no reason to connect
+// that to the member they did write. The warning that would say so lives in
+// the semantic pass, and a schema failure never reaches it — so the verdict
+// that does run has to name the wrong container itself.
+//
+// How this can fail: drop the phantom clause from relationFormatSlotIssue
+// and the commonest authoring mistake in the corpus of small-model attempts
+// gets a message that never mentions the line it is about.
+func TestRelationEnvelope_TheMissingFormatVerdictNamesTheWrongContainer(t *testing.T) {
+	t.Run("format written into properties", func(t *testing.T) {
+		// given
+		doc := []byte(`{"version":1,"kind":"relation","key":"eh",` +
+			`"properties":{"name":"Estimated Hours","format":"number"}}`)
+
+		// when
+		err := Validate(doc)
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), `spells "format" inside properties`)
+		assert.Contains(t, err.Error(), "move that member out to the envelope")
+	})
+
+	t.Run("the pre-v0.31 spelling still gets its own hint", func(t *testing.T) {
+		// given
+		doc := []byte(`{"version":1,"kind":"relation","key":"eh",` +
+			`"properties":{"name":"Estimated Hours","relation_format":2}}`)
+
+		// when
+		err := Validate(doc)
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "pre-v0.31")
+	})
+}

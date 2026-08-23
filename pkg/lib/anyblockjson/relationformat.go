@@ -340,10 +340,11 @@ func (imp *importer) applyRelationEnvelope(details *types.Struct, sbType model.S
 // most likely to hit it is holding a pre-v0.31 document whose format lives
 // in `properties` as a raw number. The kind is read RAW, exactly as the
 // schema's `if` reads it, so the two verdicts cannot disagree about which
-// documents owe the field. The names are read out of the published schema
+// documents owe the field — isRelationKind and the schema's `if` list the
+// same three. The names are read out of the published schema
 // (propertyFormatEnum), never restated.
 func relationFormatSlotIssue(doc map[string]any, r *keySlotReport) {
-	if kind, _ := doc["kind"].(string); kind != kindNames.name(model.SmartBlockType_STRelation) {
+	if !isRelationKind(doc) {
 		return
 	}
 	if _, has := doc["format"]; has {
@@ -365,6 +366,18 @@ func relationFormatSlotIssue(doc map[string]any, r *keySlotReport) {
 			msg += `. This document spells "relation_format" inside properties — the pre-v0.31 ` +
 				`form: replace that raw number with its name here, on the envelope`
 		}
+		// the OTHER wrong container, and the commoner one: 9 of 9
+		// small-model attempts wrote `format` inside `properties`, where it
+		// is a custom property named "format" and the relation ends up with
+		// no format at all. Told only that a member is missing, the author
+		// has no reason to connect it to the member they DID write — and
+		// the warning that would say so lives in the semantic pass, which
+		// a schema failure never reaches.
+		if _, phantom := props["format"]; phantom {
+			msg += `. This document spells "format" inside properties, where it names a ` +
+				`CUSTOM property rather than the relation's own format: move that member ` +
+				`out to the envelope`
+		}
 	}
 	r.rejectValueAt("", msg)
 }
@@ -385,9 +398,15 @@ func relationFormatSlotIssue(doc map[string]any, r *keySlotReport) {
 // most of the corpus (8,375 present-and-false alone), burying the case an
 // author can actually fix.
 func relationEnvelopeIssues(doc map[string]any, warn func(path, format string, args ...any)) {
-	if kind, _ := doc["kind"].(string); kind != kindNames.name(model.SmartBlockType_STRelation) {
+	if !isRelationKind(doc) {
 		return // the schema refuses the fields on every other kind
 	}
+	// the phantom-property check runs whether or not the envelope field is
+	// there. Gating it behind a present `format` left the commonest shape of
+	// all uncovered — no envelope field AND `properties.format` — where the
+	// author gets only "missing property 'format'" and no word about the
+	// member they DID write, which is the one that has to move.
+	relationPhantomIssues(doc, warn)
 	format, _ := doc["format"].(string)
 	if format == "" {
 		return // required and missing: the schema's error already says so
@@ -404,22 +423,45 @@ func relationEnvelopeIssues(doc map[string]any, warn func(path, format string, a
 				"it is carried but nothing reads it (§2d)", format)
 		}
 	}
-	// a `properties` member spelling one of the three FIELD names on a
-	// relation document is almost certainly the envelope field written in the
-	// wrong container — the exact shape the 9-of-9 eval failures wrote,
-	// minus the missing envelope field the schema now catches. It stays a
-	// WARNING, because the spelling is a legitimate custom property key (a
-	// media space really can have a "Format" column) and a relation object
-	// carrying one must stay exportable (I1); but silent it was the §2d bug
-	// reborn, one confused generation later.
-	if props, _ := doc["properties"].(map[string]any); props != nil {
-		for _, member := range []string{"format", "include_time", "object_types"} {
-			if _, has := props[member]; has {
-				warn("/properties/"+member, "on a relation document %q names a CUSTOM property, "+
-					"not the relation's own %s — that lives on the envelope (§2d); "+
-					"drop this member unless a property literally named %q is meant",
-					member, member, member)
-			}
+}
+
+// relationPhantomIssues reports a `properties` member spelling one of the
+// three FIELD names on a relation document. It is almost certainly the
+// envelope field written in the wrong container — the exact shape 9 of 9
+// small-model attempts wrote, which validated silently and imported as a
+// custom property literally named `format`, leaving the relation with no
+// relationFormat at all.
+//
+// It stays a WARNING, because the spelling is a legitimate custom property
+// key (a media space really can have a "Format" column) and a relation
+// object carrying one must stay exportable (§11 I1).
+//
+// The kind gate is the relation-adjacent SET, not `relation` alone. Export
+// writes neither `bundled_relation` nor `sub_object` — 0 of 38,061 corpus
+// documents — but the schema's `kind` enum offers both beside `relation`
+// with nothing marking them non-authorable, and an author who picks one
+// walks straight back into the §2d bug with every gate silent. A kind
+// nothing emits is exactly the kind nobody thought to guard.
+func relationPhantomIssues(doc map[string]any, warn func(path, format string, args ...any)) {
+	props, _ := doc["properties"].(map[string]any)
+	if props == nil {
+		return
+	}
+	for _, member := range []string{"format", "include_time", "object_types"} {
+		if _, has := props[member]; has {
+			warn("/properties/"+member, "on a relation document %q names a CUSTOM property, "+
+				"not the relation's own %s — that lives on the envelope (§2d); "+
+				"drop this member unless a property literally named %q is meant",
+				member, member, member)
 		}
 	}
+}
+
+// isRelationKind reports the kinds whose document IS a relation: the one
+// export writes, plus the two the schema's enum offers beside it.
+func isRelationKind(doc map[string]any) bool {
+	kind, _ := doc["kind"].(string)
+	return kind == kindNames.name(model.SmartBlockType_STRelation) ||
+		kind == kindNames.name(model.SmartBlockType_BundledRelation) ||
+		kind == kindNames.name(model.SmartBlockType_SubObject)
 }
