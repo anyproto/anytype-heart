@@ -742,14 +742,13 @@ func TestInvariant_MarshalOutputValidates(t *testing.T) {
 		// promises: one says the document plus its legend stand alone, the
 		// other says the document plus the writer's own vocabulary do.
 		read KeyVocabulary
-		// readSpaceId is the space the READER is reading into. Empty is the
-		// default and says the document stands alone. It does not, once
-		// participants are folded (§9): the fold trades the space half of a
-		// participant id for the reader's own space, so a reader that names
-		// none cannot rebuild the composite — it stores the bare identity
-		// and Unmarshal warns. That is a real narrowing of "the document
-		// plus its legend resolve without the vocabulary that wrote them",
-		// and naming it here is the point: only the folded variant needs it.
+		// readSpaceId is the space the READER is reading into — not a
+		// vocabulary, and not something the writer has to hand over: an
+		// import lands in a space, so every importer has one. The folded
+		// variant needs it because the fold trades the space half of a
+		// participant id for the reader's own (§9). Empty stays the default
+		// everywhere else, and a reader that leaves it empty on a folded
+		// document is warned rather than left to store a bare identity.
 		readSpaceId string
 	}{
 		"plain":        {},
