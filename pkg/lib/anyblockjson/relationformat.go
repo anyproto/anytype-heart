@@ -404,4 +404,22 @@ func relationEnvelopeIssues(doc map[string]any, warn func(path, format string, a
 				"it is carried but nothing reads it (§2d)", format)
 		}
 	}
+	// a `properties` member spelling one of the three FIELD names on a
+	// relation document is almost certainly the envelope field written in the
+	// wrong container — the exact shape the 9-of-9 eval failures wrote,
+	// minus the missing envelope field the schema now catches. It stays a
+	// WARNING, because the spelling is a legitimate custom property key (a
+	// media space really can have a "Format" column) and a relation object
+	// carrying one must stay exportable (I1); but silent it was the §2d bug
+	// reborn, one confused generation later.
+	if props, _ := doc["properties"].(map[string]any); props != nil {
+		for _, member := range []string{"format", "include_time", "object_types"} {
+			if _, has := props[member]; has {
+				warn("/properties/"+member, "on a relation document %q names a CUSTOM property, "+
+					"not the relation's own %s — that lives on the envelope (§2d); "+
+					"drop this member unless a property literally named %q is meant",
+					member, member, member)
+			}
+		}
+	}
 }

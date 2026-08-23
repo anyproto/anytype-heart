@@ -501,6 +501,39 @@ func TestRelationEnvelope_WrongFormatWarnsButCarries(t *testing.T) {
 	}
 }
 
+// A `properties` member spelling one of the three FIELD names on a relation
+// document warns: it is a custom property named "format", not the relation's
+// format — the phantom-property shape the 9-of-9 eval failures wrote, which
+// with the envelope field ALSO present would otherwise validate in silence.
+// A warning and not a refusal, because the spelling is a legitimate custom
+// key and a relation object carrying one must stay exportable (I1).
+//
+// How this can fail: drop the properties-member loop from
+// relationEnvelopeIssues and the phantom shape validates with no notice;
+// make it a refusal and the page case (where the member is an ordinary
+// property) starts failing I1 for spaces that really have one.
+func TestRelationEnvelope_PhantomFieldNameInPropertiesWarns(t *testing.T) {
+	// given the envelope field AND its phantom twin in properties
+	doc := `{"version":1,"kind":"relation","id":"o1","key":"b","format":"number",` +
+		`"properties":{"name":"Budget","format":"number"}}`
+
+	// when
+	var warns []Issue
+	err := ValidateWarn([]byte(doc), func(i Issue) { warns = append(warns, i) })
+
+	// then
+	require.NoError(t, err, "a custom property named format is legal — the warning is the guard")
+	require.Len(t, warns, 1)
+	assert.Equal(t, "/properties/format", warns[0].Path)
+	assert.Contains(t, warns[0].Message, "CUSTOM property")
+
+	// and on a PAGE the same member is an ordinary property: no warning
+	warns = nil
+	page := `{"version":1,"id":"o1","properties":{"format":"vinyl"}}`
+	require.NoError(t, ValidateWarn([]byte(page), func(i Issue) { warns = append(warns, i) }))
+	assert.Empty(t, warns)
+}
+
 // The three fields are legal only on kind:relation, and `format` is required
 // there — the schema conditional, with the messages naming the rule rather
 // than the mechanism.

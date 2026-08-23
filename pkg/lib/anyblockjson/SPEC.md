@@ -1731,7 +1731,14 @@ The refusal is derived from the export side's own lift list, never restated
 (§2b's rule), and it is unconditional: a non-relation snapshot carrying one
 of the three details drops it with a warning, because there is no §2d field
 off a relation document to carry it — never observed, 0 of 27,444
-non-relation documents. Refusing a key is not refusing to NAME it: a slot
+non-relation documents. And on a relation document, a `properties` member
+spelling one of the three FIELD names (`format`, `include_time`,
+`object_types`) is a **warning**: it names a custom property, not the
+relation's own definition — the phantom shape the 9-of-9 eval failures
+wrote, which with the envelope field also present would otherwise validate
+in silence. A warning and not a refusal because the spelling is a legitimate
+custom key (a media space really can have a "Format" column) and a relation
+object carrying one must stay exportable (I1). Refusing a key is not refusing to NAME it: a slot
 that references the relation — the Property type's own `type_properties` and
 dataview columns, in 64 production spaces — keeps the §3 slug
 (`relation_format`), because the deny rule protects the legend and a
