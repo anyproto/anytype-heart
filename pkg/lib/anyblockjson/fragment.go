@@ -143,11 +143,11 @@ func UnmarshalBlock(raw json.RawMessage, forcedId string, opts Options) ([]*mode
 func UnmarshalPropertyValue(key string, v any, opts Options) *types.Value {
 	// A key the whole-document import DROPS returns nothing here too, or the
 	// two doors disagree about the same key. It matters most for attribution
-	// (§3): export writes `creator` as a member NAME, so a caller round-tripping
-	// one value through this pair would hand back "Roman" as though it were a
-	// participant id — a display name in an id slot, which nothing downstream
-	// can resolve. MarshalPropertyValue writes the name; this refuses to read
-	// it back, and the asymmetry is the point.
+	// (§3): `creator` and `lastModifiedBy` are DERIVED — the store sets them,
+	// a writer never does — so a caller round-tripping one value through this
+	// pair would hand back a value that can only be discarded on the way in.
+	// MarshalPropertyValue writes the member as `<id>#<name>` for a reader to
+	// display; this refuses to read it back, and the asymmetry is the point.
 	if isDroppedOnImport(key) {
 		return nil
 	}
