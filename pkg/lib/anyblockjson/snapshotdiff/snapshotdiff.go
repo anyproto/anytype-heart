@@ -56,6 +56,21 @@ func isDroppedEmptyIconCover(key string, orig, got *types.Value) bool {
 	return got == nil && anyblockjson.DroppedEmptyIconCover(key, orig)
 }
 
+// isDroppedEmptySystemProperty is the third normalization of this shape, and
+// the narrowest: §15 #12 admits seven system-stamped keys whose EMPTY value
+// says nothing a reader could act on (`isHidden` false, `revision` 0,
+// `relationMaxCount` 0, …), so export omits them and they come back absent.
+// The whitelist is deliberately explicit rather than a rule over
+// bundle.SystemRelations — see systemtrim.go for the admission test each key
+// had to pass, and for the keys that failed it.
+//
+// Scoped to absent-vs-dropped-empty like its neighbours: a non-empty value
+// on one of those keys still reports if it goes missing, and so does an
+// empty one that came back SET. The predicate is the format's own.
+func isDroppedEmptySystemProperty(key string, orig, got *types.Value) bool {
+	return got == nil && anyblockjson.DroppedEmptySystemProperty(key, orig)
+}
+
 var recommendedListKeys = map[string]bool{
 	bundle.RelationKeyRecommendedFeaturedRelations.String(): true,
 	bundle.RelationKeyRecommendedRelations.String():         true,
@@ -106,6 +121,9 @@ func Compare(orig, got *model.SmartBlockSnapshotBase, sbType model.SmartBlockTyp
 				continue
 			}
 			if isDroppedEmptyIconCover(k, orig.Details.Fields[k], gotFields[k]) {
+				continue
+			}
+			if isDroppedEmptySystemProperty(k, orig.Details.Fields[k], gotFields[k]) {
 				continue
 			}
 			if !detailEqual(k, orig.Details.Fields[k], gotFields[k], opts) {

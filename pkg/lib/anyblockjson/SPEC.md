@@ -1,6 +1,6 @@
 # AnyBlock JSON — format specification
 
-Status: **draft v0.28** · Format version: **1** · Package: `pkg/lib/anyblockjson`
+Status: **draft v0.29** · Format version: **1** · Package: `pkg/lib/anyblockjson`
 
 A human- and agent-readable JSON serialization of Anytype objects (the "anyblock"
 model), designed for export, import, and generation by external tools and LLM
@@ -15,6 +15,24 @@ strings; the vocabulary follows Notion's API and Anytype's public REST API
 (`core/api`) wherever an established term exists — the format should be
 readable, and mostly writable, by someone who has never seen Anytype
 internals.
+
+Changes in v0.29: **seven system-stamped keys stop writing their emptiness**
+(§3, §11, §15 #12).
+
+`presence is meaningful` earns its keep for anything a person touched — an
+empty `tag` list is someone having cleared the tags — and costs nothing on an
+ordinary page. It costs ~20% on the documents this format most exists to be
+read: `relationDefaultValue`, `relationMaxCount` and their neighbours appear
+only on RELATION and TYPE documents, so an agent reading a space's schema pays
+for every unset machine flag. Measured over 36,967 documents: 1.13% of all
+bytes, but p50 1.21% against p90 13.55% and max 23.22%.
+
+Seven keys — `isHidden`, `isHiddenDiscovery`, `isArchived`,
+`relationReadonlyValue`, `revision`, `relationMaxCount`,
+`relationDefaultValue` — are now written only when non-empty. It is a
+**whitelist**: the blanket form over `bundle.SystemRelations` fails open on
+every relation added later, and buys 0.04% of bytes for the privilege. Three
+keys were considered and refused, and §3 says why for each.
 
 Changes in v0.28: **the separator earns its keep at both ends** (§9, §11).
 
@@ -2234,6 +2252,31 @@ its value verbatim — including `false`, `0`, `""`, `[]`, and explicit
 Omitting a key and writing an empty value are different statements: absent =
 property not set; empty value = property set, currently empty.
 
+**Seven system-stamped keys are the exception** (§15 #12). `isHidden`,
+`isHiddenDiscovery`, `isArchived`, `relationReadonlyValue`, `revision`,
+`relationMaxCount` and `relationDefaultValue` are written only when their
+value is NOT empty. Nothing sets them but the system, and for each the empty
+value IS the semantic default — `false` is visible, `0` is unlimited, an
+empty default value is no default — so no reader distinguishes absent from
+present-and-empty: every one reaches the value through a typed getter that
+answers the same either way. Measured over 36,967 production documents,
+their empty values are 1.13% of all bytes but the distribution is bimodal
+(p50 1.21%, p90 13.55%, max 23.22%): they cluster on RELATION and TYPE
+documents, so an agent reading a space's SCHEMA reads exactly the documents
+that pay ~20%.
+
+It is a **whitelist, not a category**. The blanket form — every key in
+`bundle.SystemRelations` minus an exception list — was declined: it admits
+every system relation added in future sight-unseen, and buys almost nothing,
+since the saving is top-heavy (these seven carry ~50% of it; the thirty-key
+tail carries 0.04% of all bytes). The keys that FAILED admission are as
+important as the ones that passed: `relationFormat` is excluded because its
+`0` is `longtext`, a real format rather than "unset" (§15 #14), and
+`relationFormatObjectTypes` and `featuredRelations` because they are
+list-valued and user-intent-bearing — an empty list is how a CLEARED set is
+expressed, the same reasoning GO-7451 settled for a type's recommended
+lists. This is a state normalization, recorded in `N(S)` (§11).
+
 **Value shape** (implementation decision): select/multi_select and
 objects/files values are always JSON arrays; import stores them as lists, so
 internally scalar-stored values (e.g. `assignee` holding one participant)
@@ -3849,7 +3892,10 @@ orders (§3, §6.2) — which `option_ids` inverts exactly (§9a), leaving two
 residues: **two same-named options of one property held by ONE object**
 collapse onto the first, because the document spells one string twice; and a
 reader wired with no option resolver ignores the legend and keeps the names,
-having no space in which an id could be an option at all; deprecated snapshot
+having no space in which an id could be an option at all; the seven
+system-stamped keys of §3 come back ABSENT when their stored value was empty
+(§15 #12) — a whitelist, so every other key present-and-empty still survives;
+deprecated snapshot
 and block fields cleared (§2, §5); deprecated `Header4` re-styled to
 `heading_3` (§5); `checked` outside checkboxes dropped and marks on literal
 blocks dropped (§5); marks normalized — emoji materialized, whitespace
@@ -4706,16 +4752,30 @@ Wiring (follow-up work, not this package):
     store-backed reader resolve less than it can; promoting it makes an
     offline reader resolve differently than it should.
 
-12. **Trim system-property noise** (follow-up): refine §3 "presence is
-    meaningful" — keys in `bundle.SystemRelations` are machine-stamped
-    metadata (`is_hidden`, `revision`, `relation_format_include_time`, …) and
-    could safely omit empty/default values, keeping documents compact for
-    LLMs; presence stays preserved for user-intent keys via a small
-    exception list (`name`, `description`, `done`) and for every non-system
-    key. Deliberately static (no
-    type-schema lookup at export time) to keep the canonical form
-    deterministic. Decide `done` membership and wire `buildProperties` +
-    the round-trip comparator accordingly.
+12. **Trim system-property noise**: **settled at v0.29** — a whitelist of
+    seven keys, spelled out in §3 and in `systemtrim.go` with the admission
+    test each had to pass.
+
+    The proposal was the inverse: a rule over `bundle.SystemRelations` (108
+    keys) minus a small exception list. It was declined for two reasons that
+    are worth keeping. It **fails open** — every system relation added in
+    future joins the trim set with nobody having looked at it, and the cost
+    of a wrong entry is a silently dropped value. And it buys nearly
+    nothing: the saving is top-heavy, so seven vetted keys carry ~50% of it
+    while the thirty-key tail carries 3.6% of 1.13%, or **0.04% of all
+    bytes**. An explicit list gets nearly all the benefit with every
+    omission reviewed.
+
+    The `done` membership question the proposal left open is moot: `done` is
+    not a system relation and was never a candidate. The real question turned
+    out to be which system keys to ADMIT, and the answer is those whose empty
+    value is both the proto zero and the semantic default — see §3 for the
+    three that failed it.
+
+    The measurement that motivated this also found `internalFlags` to be 24%
+    of the saving and not a trimming question at all: it is transient editor
+    state, so it went to the `transientProperties` strip list outright,
+    independent of this item.
 
 13. **The icon and cover assumptions the clients own** (§2b). Four, in
     descending order of what they would cost:

@@ -55,6 +55,7 @@ func main() {
 		limit       = flag.Int("limit", 0, "max objects per space (0 = all)")
 		keepExports = flag.Bool("keep-exports", false, "keep the raw pb export directories for passing objects too")
 		dumpJSON    = flag.Bool("dump-json", false, "write each object's AnyBlock JSON beside its .pb, rendered with the SPACE's resolvers (implies -keep-exports)")
+		refNames    = flag.Bool("ref-names", false, "render the READ shape: every object reference carries its informative #name suffix (SPEC.md §9)")
 	)
 	flag.Parse()
 
@@ -66,7 +67,7 @@ func main() {
 	if *dumpJSON {
 		*keepExports = true // the JSON is written beside the .pb, so the .pb must stay
 	}
-	if err := run(*mnemonic, *accountId, *rootPath, *outDir, *spaceFilter, *limit, *keepExports, *dumpJSON); err != nil {
+	if err := run(*mnemonic, *accountId, *rootPath, *outDir, *spaceFilter, *limit, *keepExports, *dumpJSON, *refNames); err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)
 		os.Exit(1)
 	}
@@ -83,7 +84,7 @@ func rpcErr(name string, code int32, description string) error {
 	return fmt.Errorf("%s: code %d: %s", name, code, description)
 }
 
-func run(mnemonic, accountId, rootPath, outDir, spaceFilter string, limit int, keepExports, dumpJSON bool) error {
+func run(mnemonic, accountId, rootPath, outDir, spaceFilter string, limit int, keepExports, dumpJSON, refNames bool) error {
 	ctx := context.Background()
 	mw := core.New()
 	mw.SetEventSender(event.NewCallbackSender(func(*pb.Event) {}))
@@ -152,7 +153,7 @@ func run(mnemonic, accountId, rootPath, outDir, spaceFilter string, limit int, k
 	summary := &summary{Account: accountId, Categories: map[string]int{}, IndentHistogram: map[int]int{}}
 	for _, s := range spaces {
 		fmt.Printf("\n== space %s (%s)\n", s.id, s.name)
-		ss, err := processSpace(ctx, mw, store, s.id, outDir, limit, keepExports, dumpJSON)
+		ss, err := processSpace(ctx, mw, store, s.id, outDir, limit, keepExports, dumpJSON, refNames)
 		if err != nil {
 			fmt.Printf("   space failed: %v\n", err)
 			summary.SpaceErrors = append(summary.SpaceErrors, spaceError{SpaceId: s.id, Error: err.Error()})
@@ -263,7 +264,7 @@ type summary struct {
 }
 
 func processSpace(ctx context.Context, mw *core.Middleware, store objectstore.ObjectStore,
-	spaceId, outDir string, limit int, keepExports, dumpJSON bool) (*spaceSummary, error) {
+	spaceId, outDir string, limit int, keepExports, dumpJSON, refNames bool) (*spaceSummary, error) {
 
 	exportDir := filepath.Join(outDir, "export", spaceId)
 	resp := mw.ObjectListExport(ctx, &pb.RpcObjectListExportRequest{
@@ -300,6 +301,9 @@ func processSpace(ctx context.Context, mw *core.Middleware, store objectstore.Ob
 	}
 
 	opts := storeresolver.New(store.SpaceIndex(spaceId)).Options()
+	// the read shape (§9): both legs of the round trip carry it, so the
+	// suffix is exercised as a fixpoint rather than only written
+	opts.RefNames = refNames
 
 	ss := &spaceSummary{SpaceId: spaceId, Total: len(files), Categories: map[string]int{}, IndentHistogram: map[int]int{}}
 	for _, f := range files {

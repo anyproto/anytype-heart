@@ -216,17 +216,30 @@ func hostileSnapshot(n int) (model.SmartBlockType, *model.SmartBlockSnapshotBase
 	// slug: the hostileVocab variant maps them onto the slug shapes a real
 	// space can mint (over-long, empty, shadowing a bundled spelling).
 	details := map[string]*types.Value{
-		"id":                       str("obj1"),
-		"name":                     str("hostile"),
-		"spaceId":                  str("bafyspace"),
-		"uniqueKey":                str("ot-page"),
-		"oldAnytypeID":             str("legacy1"),
-		"sourceFilePath":           str("/tmp/x.md"),
-		"restrictions":             {Kind: &types.Value_NumberValue{NumberValue: 3}},
-		"isArchived":               {Kind: &types.Value_BoolValue{BoolValue: true}},
-		"":                         str("empty key"),
-		"a\nb":                     str("newline key"),
-		"dueDate":                  str("next Friday"),
+		"id":             str("obj1"),
+		"name":           str("hostile"),
+		"spaceId":        str("bafyspace"),
+		"uniqueKey":      str("ot-page"),
+		"oldAnytypeID":   str("legacy1"),
+		"sourceFilePath": str("/tmp/x.md"),
+		"restrictions":   {Kind: &types.Value_NumberValue{NumberValue: 3}},
+		"isArchived":     {Kind: &types.Value_BoolValue{BoolValue: true}},
+		"":               str("empty key"),
+		"a\nb":           str("newline key"),
+		"dueDate":        str("next Friday"),
+		// the §15 #12 trim, both sides of it. `isArchived` above is TRUE, so
+		// the non-empty control is already here; these are the empty ones
+		// export omits — and `relationFormat`/`featuredRelations`, which the
+		// whitelist deliberately does not admit and which must therefore
+		// survive. I1 asks whether omitting them is a FIXPOINT: the second
+		// generation must not differ by a key the first one dropped.
+		"isHidden":                 {Kind: &types.Value_BoolValue{BoolValue: false}},
+		"relationReadonlyValue":    {Kind: &types.Value_BoolValue{BoolValue: false}},
+		"revision":                 {Kind: &types.Value_NumberValue{NumberValue: 0}},
+		"relationMaxCount":         {Kind: &types.Value_NumberValue{NumberValue: 0}},
+		"relationDefaultValue":     str(""),
+		"relationFormat":           {Kind: &types.Value_NumberValue{NumberValue: 0}},
+		"featuredRelations":        strList(),
 		"6a32d4856761631534b22f85": str("space-slugged"),
 		"artist":                   str("verbatim custom key"),
 		// the two shadow shapes of the verbatim-first family (§3): a custom

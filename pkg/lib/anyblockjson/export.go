@@ -1482,6 +1482,13 @@ func (e *exporter) buildProperties() *omap {
 		if stripped[k] || lifted[k] {
 			continue
 		}
+		// a system-stamped key whose empty value says nothing a reader could
+		// act on (§15 #12): omitted, so schema documents stop paying ~20% of
+		// their bytes for it. The whitelist is deliberately short and the
+		// rule lives in systemtrim.go, where the comparator reads it too.
+		if DroppedEmptySystemProperty(k, e.snapshot.Details.Fields[k]) {
+			continue
+		}
 		// a stored detail key is not necessarily a property name: real data
 		// holds an empty key and keys with control characters in them, and
 		// there is no way to write those (§3). Dropping them is what keeps
