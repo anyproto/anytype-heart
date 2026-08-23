@@ -373,6 +373,42 @@ func TestRelationEnvelope_ReferenceSlotsKeepTheBundledSlug(t *testing.T) {
 	require.NoError(t, Validate(data), "§11 I1")
 }
 
+// The target keys are in the TYPE-KEY CENSUS: verbatim-first (§3) makes each
+// its own address, so no other key's slug may take one as a spelling — the
+// same duty §2a's targets have carried since typeProperties shipped.
+//
+// How this can fail: drop the relationTargetKeys loop from
+// seedTypeTermLedger. A vocabulary that slugs the document's own TYPE onto a
+// target key's spelling then wins the term, the envelope `type` and a target
+// entry both spell "wine", and the legend binds the spelling to the wrong
+// key — a type substitution with no error anywhere.
+func TestRelationEnvelope_TargetKeysAreInTheTypeCensus(t *testing.T) {
+	// given a vocabulary spelling the relation's own type key as `wine`,
+	// while the relation targets the stored type key `wine`
+	snap := relationSnapshot(map[string]*types.Value{
+		"relationFormat":            num(100),
+		"relationFormatObjectTypes": strList("wine"),
+	})
+	snap.ObjectTypes = []string{"ot-custom123"}
+	opts := testOptions()
+	opts.Keys = typedSpaceVocabulary{typeSlugOf: map[string]string{"custom123": "wine"}}
+
+	// when
+	data, err := Marshal(model.SmartBlockType_STRelation, snap, opts)
+	require.NoError(t, err)
+
+	// then: the stored key `wine` kept its spelling, so the vocabulary's
+	// binding backed off to the verbatim key
+	var doc struct {
+		Type        string   `json:"type"`
+		ObjectTypes []string `json:"object_types"`
+	}
+	require.NoError(t, json.Unmarshal(data, &doc))
+	assert.Equal(t, "custom123", doc.Type,
+		"the census reserved %q for the target, so the type spells its stored key", "wine")
+	assert.Equal(t, []string{"wine"}, doc.ObjectTypes)
+}
+
 // docObjectTypes reads the envelope object_types out of a rendered document.
 func docObjectTypes(t *testing.T, data []byte) []string {
 	t.Helper()
