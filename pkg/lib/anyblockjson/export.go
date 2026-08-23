@@ -1595,6 +1595,18 @@ func attributionRefOf(v *types.Value, opts Options) (string, bool) {
 	if len(ids) == 0 {
 		return "", false
 	}
+	// A participant composite whose identity half is EMPTY addresses nobody
+	// — `_participant_<space>_`, 86 characters of the document's own space
+	// restated with no member behind it. Real data: 9,103 of 37,429
+	// production objects store exactly that in lastModifiedBy (derived when
+	// the writer's identity was blank). It is the id-shaped analogue of a
+	// blank name, and the property is omitted rather than spelled — the same
+	// verdict the blank name gets at refNameLabel.
+	if strings.HasPrefix(ids[0], domain.ParticipantPrefix) {
+		if _, identity, err := domain.ParseParticipantId(ids[0]); err == nil && identity == "" {
+			return "", false
+		}
+	}
 	out := opts.foldParticipantRef(ids[0])
 	if opts.ResolveParticipants != nil {
 		if name, ok := opts.ResolveParticipants.ParticipantName(ids[0]); ok {

@@ -299,6 +299,28 @@ func TestAttribution_BareIdWhenThereIsNoName(t *testing.T) {
 		})
 	}
 
+	t.Run("an empty-identity composite is omitted: it addresses nobody", func(t *testing.T) {
+		// given the real artifact: 9,103 of 37,429 production objects store
+		// `_participant_<space>_` — the composite built from a BLANK
+		// identity — in lastModifiedBy. 86 characters that resolve to no
+		// member; the id-shaped analogue of a blank name.
+		degenerate := "_participant_bafyreid62d5e6hny6mv6zass2zg73nxyhjzhjasx7imvzxvqz6rcnjqcgq_30afw2fe3tvff_"
+		snap := attributionSnapshot(map[string]*types.Value{
+			"creator":        strList(testParticipantId),
+			"lastModifiedBy": strList(degenerate),
+		})
+		opts := testOptions()
+		opts.SpaceId = testAttribSpaceId
+
+		// when
+		props, raw := exportedProperties(t, snap, opts)
+
+		// then
+		assert.Equal(t, testAttribIdentity, props["creator"], "the control: a real id still lands")
+		assert.NotContains(t, props, "last_modified_by")
+		assert.NotContains(t, raw, degenerate)
+	})
+
 	t.Run("an empty stored value is still omitted", func(t *testing.T) {
 		// given no id at all — a bare id is a complete answer, no id is none
 		snap := attributionSnapshot(nil)
