@@ -249,6 +249,24 @@ func hostileSnapshot(n int) (model.SmartBlockType, *model.SmartBlockSnapshotBase
 		// property's api key. Both keys are written verbatim here, and
 		// without the identity entry the reader binds one of them twice.
 		"initiative": str("custom, whose spelling this space now gives away"),
+		// OBJECT REFERENCES, including the shapes that carry the very
+		// separator the informative suffix uses (§9). A snapshot is
+		// untrusted (§11) and the split is unconditional, so I1 asks whether
+		// a document Marshal writes from these is one its own Validate
+		// accepts and its own Unmarshal reads — and the refNames variant
+		// below asks it with the suffix and the participant fold both armed.
+		// `#name` is what a writer produces copying only the readable half
+		// of `id#name`; `obj1` is named by a resolver whose answer
+		// normalizes to nothing, which is the bare-id-never-a-dangling-#
+		// path; the composite is this space's own, so the fold fires on it.
+		//
+		// An id with a `#` INSIDE it — `a#b` — is deliberately absent: it is
+		// the format's one reference normalization (§11 N(S)), so it is not
+		// a fixpoint and belongs in the test that names it,
+		// TestRefs_AHashInsideAnIdIsNormalizedOnce, rather than here where
+		// every value must survive untouched.
+		"assignee": strList("#name", "#", "obj1",
+			domain.NewParticipantId(hostileSpaceId, hostileIdentity)),
 		// a SELECT property, whose values are spelled by name with the option
 		// id carried in `option_ids` (§3, §9a). The pool holds exactly the
 		// shapes that made a legend key hard under the deleted flat spelling
@@ -302,6 +320,31 @@ func hostileSnapshot(n int) (model.SmartBlockType, *model.SmartBlockSnapshotBase
 		sbType = model.SmartBlockType_Template
 	}
 	return sbType, snap
+}
+
+// The space and member the hostile corpus's participant reference names: a
+// real space id shape (`<cid>.<suffix>`) and a checksummed account identity,
+// so the fold's classifier and its round-trip recheck both engage.
+const (
+	hostileSpaceId  = "bafyreid62d5e6hny6mv6zass2zg73nxyhjzhjasx7imvzxvqz6rcnjqcgq.30afw2fe3tvff"
+	hostileIdentity = "AASdKiEGfcyhxX3ufr4auHRviACUXxkF68uZwtSb2AnyRoMA"
+)
+
+// hostileObjectNames names EVERY id, including the ones no caption can
+// survive — an empty answer, a name that normalizes to nothing, and the
+// hostile reference shapes above. A resolver this eager is the adversarial
+// case: it is the export side's own guards, not the resolver's restraint,
+// that have to keep the document readable back.
+type hostileObjectNames struct{}
+
+func (hostileObjectNames) ObjectName(id string) (string, bool) {
+	switch id {
+	case "":
+		return "", true // an empty name is no name at the seam
+	case "obj1":
+		return "🎉", true // normalizes to nothing: a bare id, never a dangling #
+	}
+	return "Имя / Name #1 " + id, true
 }
 
 // hostileOptions is the option pool the hostile corpus's select property
@@ -699,11 +742,29 @@ func TestInvariant_MarshalOutputValidates(t *testing.T) {
 		// promises: one says the document plus its legend stand alone, the
 		// other says the document plus the writer's own vocabulary do.
 		read KeyVocabulary
+		// readSpaceId is the space the READER is reading into. Empty is the
+		// default and says the document stands alone. It does not, once
+		// participants are folded (§9): the fold trades the space half of a
+		// participant id for the reader's own space, so a reader that names
+		// none cannot rebuild the composite — it stores the bare identity
+		// and Unmarshal warns. That is a real narrowing of "the document
+		// plus its legend resolve without the vocabulary that wrote them",
+		// and naming it here is the point: only the folded variant needs it.
+		readSpaceId string
 	}{
-		"plain":          {},
-		"compact":        {write: Options{CompactIds: true}},
-		"omitIds":        {write: Options{OmitIds: true}},
-		"hostileVocab":   {write: Options{Keys: hostileVocab{}}},
+		"plain":        {},
+		"compact":      {write: Options{CompactIds: true}},
+		"omitIds":      {write: Options{OmitIds: true}},
+		"hostileVocab": {write: Options{Keys: hostileVocab{}}},
+		// the read shape (§9): every reference captioned and every
+		// participant folded. Without this variant no invariant run ever
+		// sees a `#name` suffix or a folded identity — the corpus would stop
+		// reaching the code under test, which is how a green invariant lies.
+		"refNames": {write: Options{
+			RefNames:           true,
+			ResolveObjectNames: hostileObjectNames{},
+			SpaceId:            hostileSpaceId,
+		}, readSpaceId: hostileSpaceId},
 		"roundTripVocab": {write: Options{Keys: roundTripVocab{}}, read: roundTripVocab{}},
 		"shadowVocab":    {write: Options{Keys: shadowVocab{}}, read: shadowVocab{}},
 	}
@@ -769,6 +830,7 @@ func TestInvariant_MarshalOutputValidates(t *testing.T) {
 				_, back, err := Unmarshal(data, Options{
 					GenerateId:        seqIds(fmt.Sprintf("g%d_", n)),
 					Keys:              variant.read,
+					SpaceId:           variant.readSpaceId,
 					ResolveProperties: capture,
 					// the option resolver is wired on BOTH ends, which is what
 					// §11.1's "equivalent resolvers" means for select values —
@@ -812,6 +874,7 @@ func TestInvariant_MarshalOutputValidates(t *testing.T) {
 				// census that chose them — is a fixpoint.
 				stripped := o
 				stripped.OmitIds = true
+				stripped.SpaceId = variant.readSpaceId
 				gen1, err := Marshal(sbType, snap, stripped)
 				require.NoError(t, err, "seed %d", n)
 				gen2, err := Marshal(sbType, back, stripped)

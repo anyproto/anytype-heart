@@ -175,10 +175,21 @@ func (e *exporter) objectRef(id string) string {
 // missing-object sentinel already say everything they mean, and a dynamic
 // filter placeholder (§6.2) is not an object id at all — a suffix on any of
 // them would be decoration on a value some other layer must read verbatim.
+//
+// An id that already carries a `#` is excluded for a different reason: the
+// suffix is only written where it is REVERSIBLE. No id this format writes
+// contains one, but a snapshot is untrusted (§11) and may hold anything, and
+// `x#y` + `#name` reads back as `x` — a different id from the one exported.
+// Worse where the id half is empty: `#name` refuses to split at index 0
+// (splitRefName), so import returns it whole and the next export appends
+// again, one name per generation without bound. Writing such an id bare
+// costs a caption on a reference that could not resolve anyway, and buys
+// back §11 guarantee 2.
 func suffixableRef(id string) bool {
 	return !strings.HasPrefix(id, dateIdPrefix) &&
 		id != missingObjectId &&
-		!isFilterTemplate(id)
+		!isFilterTemplate(id) &&
+		!strings.Contains(id, refNameSep)
 }
 
 // dateIdPrefix marks a virtual date object id (pkg/lib/localstore/addr).

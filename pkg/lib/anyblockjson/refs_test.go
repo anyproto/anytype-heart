@@ -267,6 +267,20 @@ func TestRefs_TrimNeverInventsEmptinessAndSkipsOptionNames(t *testing.T) {
 			valueStringList(snap.GetDetails().GetFields()["assignee"]))
 	})
 
+	t.Run("a double-# value trims at the FIRST separator", func(t *testing.T) {
+		// given a reference whose informative half itself spells a #
+		doc := `{"version": 1, "properties": {"assignee": ["bafyreiassigned#a#b"]}}`
+
+		// when
+		_, snap, err := Unmarshal([]byte(doc), testOptions())
+
+		// then — LastIndex would hand back bafyreiassigned#a, an id that
+		// addresses nothing
+		require.NoError(t, err)
+		assert.Equal(t, []string{"bafyreiassigned"},
+			valueStringList(snap.GetDetails().GetFields()["assignee"]))
+	})
+
 	t.Run("an option name keeps its #", func(t *testing.T) {
 		// given customStatus resolves to the select format (testOptions)
 		doc := `{"version": 1, "properties": {"customStatus": ["C#"]}}`
@@ -376,4 +390,152 @@ func TestRefNameLabel(t *testing.T) {
 		assert.NotEmpty(t, got)
 		assert.False(t, strings.HasSuffix(got, "_"), "no dangling separator after the cut")
 	})
+}
+
+// An id that already carries a `#` takes no suffix, however confidently a
+// resolver names it: `x#y` + `#name` reads back as `x`, so the caption would
+// be paid for with the id itself (§9).
+//
+// How this can fail: drop the refNameSep arm of suffixableRef and both ids
+// below gain a caption the reader cannot undo.
+func TestRefNames_AnIdCarryingAHashTakesNoSuffix(t *testing.T) {
+	// given a resolver that has a name for both hostile ids
+	snap := &model.SmartBlockSnapshotBase{
+		Blocks: []*model.Block{{
+			Id:      "bafyreirefroot",
+			Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}},
+		}},
+		Details: fields(map[string]*types.Value{
+			"id":       str("bafyreirefroot"),
+			"assignee": strList("bafyreiassigned#stale_name"),
+			"related":  strList("#notanid"),
+		}),
+	}
+	opts := refOptions()
+	opts.RefNames = true
+	opts.ResolveObjectNames = testObjectNames{
+		"bafyreiassigned#stale_name": "Roma Kha",
+		"#notanid":                   "Roma Kha",
+	}
+
+	// when
+	data, err := Marshal(model.SmartBlockType_Page, snap, opts)
+	require.NoError(t, err)
+	require.NoError(t, Validate(data), "Marshal never emits what Validate rejects (§11 I1)")
+	doc := string(data)
+
+	// then — both stand exactly as stored, with nothing appended
+	assert.Contains(t, doc, `"bafyreiassigned#stale_name"`)
+	assert.Contains(t, doc, `"#notanid"`)
+	assert.NotContains(t, doc, "roma_kha", "no caption on an unsplittable id")
+}
+
+// A reference with no id half does not grow a name every generation (§11
+// guarantee 2). splitRefName refuses to split at index 0, so `#name` imports
+// whole; if export were still willing to caption it, each round trip would
+// append another and the document would diverge without bound.
+//
+// How this can fail: let suffixableRef admit a `#`-bearing id and generation
+// 2 is `#some_name#roma_kha`, generation 3 one name longer again.
+func TestRefs_ALeadingHashReferenceDoesNotGrow(t *testing.T) {
+	// given the mistake a writer makes copying the readable half of id#name
+	doc := []byte(`{"version": 1, "kind": "page", "id": "bafyreiroot",
+		"properties": {"assignee": ["#some_name"]}}`)
+	require.NoError(t, Validate(doc))
+
+	opts := refOptions()
+	opts.RefNames = true
+	opts.ResolveObjectNames = testObjectNames{"#some_name": "Roma Kha"}
+
+	// when — three generations through the codec
+	var gens []string
+	cur := doc
+	for i := 0; i < 3; i++ {
+		sbType, snap, err := Unmarshal(cur, opts)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"#some_name"},
+			valueStringList(snap.GetDetails().GetFields()["assignee"]),
+			"generation %d reads back the value it was given", i+1)
+		cur, err = Marshal(sbType, snap, opts)
+		require.NoError(t, err)
+		require.NoError(t, Validate(cur))
+		gens = append(gens, string(cur))
+	}
+
+	// then
+	assert.Equal(t, gens[0], gens[1], "Export ∘ Import is byte-stable (§11)")
+	assert.Equal(t, gens[1], gens[2])
+}
+
+// The format's one reference normalization (§11 N(S)): an id with a `#`
+// INSIDE it loses its tail on read, because the split cannot tell that `#`
+// from the one the suffix uses. Export no longer captions such an id, so the
+// loss happens once and the value is a fixpoint from the second generation
+// on — it does not shrink again, and it does not grow.
+//
+// No id this format writes contains a `#` and none was found in 81,696
+// production documents across two corpora; this test exists to state what
+// happens if one ever does, rather than to leave it to be discovered.
+//
+// How this can fail: caption a `#`-bearing id again and generation 2 differs
+// from generation 3 as the tail is eaten one segment at a time.
+func TestRefs_AHashInsideAnIdIsNormalizedOnce(t *testing.T) {
+	// given
+	opts := refOptions()
+	opts.RefNames = true
+	opts.ResolveObjectNames = testObjectNames{
+		"bafyreiassigned#weird": "Roma Kha",
+		"bafyreiassigned":       "Roma Kha",
+	}
+	snap := &model.SmartBlockSnapshotBase{
+		Blocks: []*model.Block{{
+			Id:      "bafyreirefroot",
+			Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}},
+		}},
+		Details: fields(map[string]*types.Value{
+			"id":       str("bafyreirefroot"),
+			"assignee": strList("bafyreiassigned#weird"),
+		}),
+	}
+
+	// when
+	gen1, err := Marshal(model.SmartBlockType_Page, snap, opts)
+	require.NoError(t, err)
+	sbType, back, err := Unmarshal(gen1, opts)
+	require.NoError(t, err)
+	gen2, err := Marshal(sbType, back, opts)
+	require.NoError(t, err)
+	_, back2, err := Unmarshal(gen2, opts)
+	require.NoError(t, err)
+	gen3, err := Marshal(sbType, back2, opts)
+	require.NoError(t, err)
+
+	// then — the tail goes once, and only once
+	assert.Contains(t, string(gen1), `"bafyreiassigned#weird"`, "export writes the stored id whole")
+	assert.Equal(t, []string{"bafyreiassigned"},
+		valueStringList(back.GetDetails().GetFields()["assignee"]),
+		"the reader cannot tell this # from the suffix's, so the tail goes (§11 N(S))")
+	assert.Equal(t, string(gen2), string(gen3), "and the normalized value is a fixpoint")
+}
+
+// A reference with no id half is a warning on the way in, not a silent
+// dangling value: the reader will not repair it, so the writer is told (§9).
+// Warning-grade, because a document that carries one is still readable, and
+// export must be able to pass through whatever a snapshot holds.
+//
+// How this can fail: drop the objects arm of wrongShapeForFormat and the
+// document validates clean while the value addresses nothing.
+func TestValidate_AReferenceWithNoIdHalfWarns(t *testing.T) {
+	// given assignee is a bundled objects property — no store needed to know it
+	doc := []byte(`{"version": 1, "properties": {"assignee": ["#roma_kha"]}}`)
+
+	// when
+	var warned []Issue
+	err := ValidateWarn(doc, func(i Issue) { warned = append(warned, i) })
+
+	// then
+	require.NoError(t, err, "a document that carries one is still readable")
+	require.Len(t, warned, 1)
+	assert.Equal(t, "/properties/assignee", warned[0].Path)
+	assert.Contains(t, warned[0].Message, "no id before its")
 }

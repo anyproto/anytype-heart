@@ -1600,8 +1600,42 @@ func wrongShapeForFormat(key string, v any) (string, bool) {
 		if _, isStr := v.(string); !isStr {
 			return fmt.Sprintf("%q is a text property: a non-string reads as empty", key), true
 		}
+	case model.RelationFormat_object, model.RelationFormat_file:
+		// a reference is an id, optionally followed by `#name` (§9). A value
+		// that BEGINS at the separator has no id half, so it addresses
+		// nothing — and the reader will not repair it: splitRefName refuses
+		// to split at index 0 precisely so import never invents an empty id,
+		// which means the value is stored exactly as written and dangles
+		// forever. It is the shape a writer produces copying only the
+		// readable half of `id#name`.
+		for _, ref := range stringsOf(v) {
+			if strings.HasPrefix(ref, refNameSep) {
+				return fmt.Sprintf("%q is an object property: %q has no id before its %q, "+
+					"so it names no object — a reference is an id, optionally followed by %q (§9)",
+					key, ref, refNameSep, refNameSep+"name"), true
+			}
+		}
 	}
 	return "", false
+}
+
+// stringsOf collects the strings a property value carries, whether it holds
+// one or a list of them (§3: a single value and a one-element list are the
+// same value).
+func stringsOf(v any) []string {
+	switch x := v.(type) {
+	case string:
+		return []string{x}
+	case []any:
+		out := make([]string, 0, len(x))
+		for _, e := range x {
+			if s, ok := e.(string); ok {
+				out = append(out, s)
+			}
+		}
+		return out
+	}
+	return nil
 }
 
 // checkNumbers walks every number in the document and reports the ones no
