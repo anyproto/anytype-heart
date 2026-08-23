@@ -258,6 +258,120 @@ func TestFold_ComposesWithTheNameSuffix(t *testing.T) {
 	assert.True(t, strings.Contains(string(data), foldIdentity))
 }
 
+// A composite built from a BLANK identity addresses nobody, and 9,103 of the
+// corpus's 37,429 objects carry one. It is not an identity, so it does not
+// fold — and the guard that says so is the ONLY one that does: the
+// round-trip recheck passes, because NewParticipantId(space, "") rebuilds
+// that exact string. Without the classifier the value would fold to the
+// empty string and the reference would be deleted outright.
+//
+// Attribution has its own guard for this shape (attribution_test.go), which
+// is why it went uncovered here: the ordinary reference slots share none of
+// that path.
+//
+// How this can fail: drop !isAccountIdentity from foldParticipantRef and
+// both slots below lose their value entirely.
+func TestFold_AnEmptyIdentityCompositeIsNotAnIdentity(t *testing.T) {
+	// given
+	empty := domain.NewParticipantId(foldSpaceId, "")
+	require.Equal(t, empty, domain.NewParticipantId(foldSpaceId, ""),
+		"the recheck cannot refuse this shape: it rebuilds byte-identically")
+	snap := &model.SmartBlockSnapshotBase{
+		Blocks: []*model.Block{{
+			Id:      "bafyreifoldroot",
+			Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}},
+		}},
+		Details: fields(map[string]*types.Value{
+			"id":       str("bafyreifoldroot"),
+			"assignee": strList(empty),
+		}),
+		Collections: fields(map[string]*types.Value{storeKeyItems: strList(empty)}),
+	}
+
+	// when
+	data, err := Marshal(model.SmartBlockType_Page, snap, foldOptions())
+	require.NoError(t, err)
+	_, back, err := Unmarshal(data, foldOptions())
+	require.NoError(t, err)
+
+	// then
+	assert.Equal(t, []string{empty}, valueStringList(back.GetDetails().GetFields()["assignee"]),
+		"a value that addresses nobody still may not be deleted")
+	assert.Equal(t, []string{empty},
+		valueStringList(back.GetCollections().GetFields()[storeKeyItems]))
+}
+
+// The fold has two gates — the space embedded in the id must be this run's,
+// and the composite must rebuild byte-identically — and they are NOT
+// redundant, though on every real space id either alone would do. Each input
+// below is refused by exactly one of them, so neither can be deleted as
+// "already covered by the other". Two refactors, each green on its own, is
+// how both would otherwise go.
+//
+// How this can fail: drop the spaceId != o.SpaceId gate and the first case
+// folds; drop the NewParticipantId recheck and the second does. Either fold
+// re-homes a member onto a space that is not theirs.
+func TestFold_NeitherGateIsRedundant(t *testing.T) {
+	for name, tc := range map[string]struct{ spaceId, stored string }{
+		// ParseParticipantId always answers parts[2] + "." + parts[3], so a
+		// space id spelled with `_` and no `.` parses back as a DIFFERENT
+		// space — while NewParticipantId, which replaces only the first `.`,
+		// rebuilds this id exactly. Only the same-space gate refuses.
+		"only the same-space gate refuses": {
+			spaceId: "a_b", stored: "_participant_a_b_" + foldIdentity,
+		},
+		// Here the parse answers this run's own space id — the gate is
+		// satisfied — but NewParticipantId puts the `_` in a different place
+		// than the stored id has it. Only the recheck refuses.
+		"only the round-trip recheck refuses": {
+			spaceId: "a.b.c", stored: "_participant_a.b_c_" + foldIdentity,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			// given
+			o := foldOptions()
+			o.SpaceId = tc.spaceId
+
+			// then
+			assert.Equal(t, tc.stored, o.foldParticipantRef(tc.stored),
+				"folding this would re-home the member on import")
+		})
+	}
+}
+
+// A resolver that answers with a name the suffix grammar reduces to nothing
+// — an emoji-only title, which real objects have — leaves the reference
+// BARE. Never a dangling `#`: that value reads back as the id it came from
+// only because splitRefName refuses to split at index 0, and a document full
+// of them is unreadable besides.
+//
+// How this can fail: append the separator before checking the normalized
+// label and every emoji-named reference gains a trailing `#`.
+func TestRefNames_ANameThatNormalizesToNothingLeavesTheRefBare(t *testing.T) {
+	// given
+	opts := refOptions()
+	opts.RefNames = true
+	opts.ResolveObjectNames = testObjectNames{"bafyreiassigned": "🎉🎉🎉"}
+	snap := &model.SmartBlockSnapshotBase{
+		Blocks: []*model.Block{{
+			Id:      "bafyreirefroot",
+			Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}},
+		}},
+		Details: fields(map[string]*types.Value{
+			"id":       str("bafyreirefroot"),
+			"assignee": strList("bafyreiassigned"),
+		}),
+	}
+
+	// when
+	data, err := Marshal(model.SmartBlockType_Page, snap, opts)
+	require.NoError(t, err)
+
+	// then
+	assert.Contains(t, string(data), `"bafyreiassigned"`)
+	assert.NotContains(t, string(data), "#", "an empty label is no label, not an empty suffix")
+}
+
 // A reader that names no space cannot rebuild a folded participant id, and
 // says so once for the document (§9). It may not refuse — Validate never
 // sees Options, so a refusal here would leave the two surfaces disagreeing
