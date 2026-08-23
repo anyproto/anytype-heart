@@ -27,7 +27,7 @@ func (e *exporter) dvFormat(dv *model.BlockContentDataview, key string) (model.R
 
 func (e *exporter) dataviewToJSON(m *omap, dv *model.BlockContentDataview) error {
 	m.set("type", "dataview")
-	m.setNonEmpty("object_id", dv.TargetObjectId)
+	m.setNonEmpty("object_id", e.objectRef(dv.TargetObjectId))
 	m.setNonEmpty("is_collection", dv.IsCollection)
 	m.setNonEmpty("source", stringsToAny(dv.Source))
 
@@ -165,7 +165,7 @@ func (e *exporter) objectOrdersToJSON(viewId string, dv *model.BlockContentDatav
 		var ids []any
 		for _, id := range oo.ObjectIds {
 			if id != "" {
-				ids = append(ids, id)
+				ids = append(ids, e.objectRef(id))
 			}
 		}
 		om.setNonEmpty("object_ids", ids)
@@ -307,14 +307,17 @@ func (e *exporter) dayCountOperand(f *model.BlockContentDataviewFilter) float64 
 }
 
 // dvValueToJSON converts a filter value or custom-order entry: option names
-// for select properties (§3), verbatim otherwise — an object id is written in
-// full like every other object reference (§9a).
+// for select properties (§3), object references through the §9 reference
+// renderer (full id, plus the informative `#name` suffix where the shape
+// asks for it), verbatim otherwise.
 func (e *exporter) dvValueToJSON(dv *model.BlockContentDataview, key string, v *types.Value) any {
 	format, ok := e.dvFormat(dv, key)
 	if ok {
 		switch format {
 		case model.RelationFormat_status, model.RelationFormat_tag:
 			return e.mapValueStrings(v, func(id string) string { return e.optionName(key, id) })
+		case model.RelationFormat_object, model.RelationFormat_file:
+			return e.mapValueStrings(v, e.objectRef)
 		}
 	}
 	return protoValueToJSON(v)
@@ -419,7 +422,7 @@ type jsonObjectOrder struct {
 
 func (imp *importer) dataviewFromJSON(jb *jsonBlock) (*model.BlockContentDataview, error) {
 	dv := &model.BlockContentDataview{
-		TargetObjectId: jb.ObjectId,
+		TargetObjectId: imp.objectRef(jb.ObjectId),
 		IsCollection:   jb.IsCollection,
 		Source:         jb.Source,
 	}
@@ -489,7 +492,7 @@ func (imp *importer) dataviewFromJSON(jb *jsonBlock) (*model.BlockContentDatavie
 		for _, jo := range jv.ObjectOrders {
 			oo := &model.BlockContentDataviewObjectOrder{ViewId: viewId, GroupId: jo.GroupId}
 			for _, id := range jo.ObjectIds {
-				oo.ObjectIds = append(oo.ObjectIds, id)
+				oo.ObjectIds = append(oo.ObjectIds, imp.objectRef(id))
 			}
 			dv.ObjectOrders = append(dv.ObjectOrders, oo)
 		}
@@ -559,18 +562,22 @@ func (imp *importer) filterFromJSON(jf jsonFilter, dv *model.BlockContentDatavie
 }
 
 // dvValueFromJSON reverses dvValueToJSON: option names back to ids where a
-// resolver knows them, everything else verbatim (§3, §9a).
+// resolver knows them, object references through the §9 reference reader
+// (the informative `#name` suffix trimmed unread), everything else verbatim
+// (§3, §9a).
 //
-// Objects and files have no arm here. They had one while the format carried a
-// `refs` legend — it mapped each short label back to the full id — and when
-// that legend was deleted (§9a) the arm was left behind mapping every id
-// through an identity function, which is what the verbatim path below already
-// does. There is nothing to invert now: every object id is written in full.
+// The objects/files arm is BACK, and it is not the one the deleted `refs`
+// legend had (§9a): that one inverted an indirection table, this one strips
+// a suffix that was never an address. A bare id passes through it unchanged,
+// so a document written without suffixes imports exactly as it did before
+// the arm existed.
 func (imp *importer) dvValueFromJSON(dv *model.BlockContentDataview, key, slug string, v any) *types.Value {
 	format := imp.impDvFormat(dv, key)
 	switch format {
 	case model.RelationFormat_status, model.RelationFormat_tag:
 		return mapJSONStrings(v, func(name string) string { return imp.resolveOption(key, slug, name) })
+	case model.RelationFormat_object, model.RelationFormat_file:
+		return mapJSONStrings(v, imp.objectRef)
 	}
 	return jsonToProtoValue(v)
 }

@@ -34,6 +34,8 @@ package anyblockjson
 // id-shaped values contain `#`) — and the name half is normalized through a
 // grammar that admits no `#` either.
 
+import "strings"
+
 // ObjectNameResolver names an object for the informative reference suffix
 // (§9). It is the object-namespace sibling of ParticipantResolver, and it is
 // export-only: import trims the suffix without ever asking anyone.
@@ -45,4 +47,96 @@ package anyblockjson
 // ("", true) cannot put a dangling `#` on every reference in an export.
 type ObjectNameResolver interface {
 	ObjectName(id string) (string, bool)
+}
+
+// refNameSep splits an object reference from its informative name suffix.
+// The FIRST occurrence splits (§9): the id half can never contain one, and
+// the name half never does either once normalized, so first-vs-last is not a
+// choice between behaviours — it is the same answer stated defensively.
+const refNameSep = "#"
+
+// maxRefNameLen bounds the suffix. The suffix is a glanceable hint, not an
+// address, so a name that normalizes past the bound is truncated rather than
+// dropped — truncation invents nothing here, unlike a key label (label.go),
+// which IS an address and refuses instead.
+const maxRefNameLen = 64
+
+// splitRefName splits a reference at the first `#` into the id and the
+// informative name. A reference with no `#`, and the degenerate `#…` whose
+// id half would be empty, split into themselves and no name: import never
+// invents an empty id out of a malformed reference.
+func splitRefName(ref string) (id, name string) {
+	if i := strings.Index(ref, refNameSep); i > 0 {
+		return ref[:i], ref[i+1:]
+	}
+	return ref, ""
+}
+
+// trimRefName is the import half of the suffix: the id, with the informative
+// name dropped unread (§9).
+func trimRefName(ref string) string {
+	id, _ := splitRefName(ref)
+	return id
+}
+
+// refNameLabel normalizes a display name into the suffix grammar: the same
+// identifier normalization key labels go through (label.go — letters of any
+// script, digits, `_`, combining marks), bounded by maxRefNameLen. An empty
+// answer means no suffix. The grammar admits no `#`, which is the writer's
+// half of the split guarantee: a raw display name here would break the split
+// from both ends.
+func refNameLabel(name string) string {
+	label := normalizeKeyLabel(name)
+	if runes := []rune(label); len(runes) > maxRefNameLen {
+		label = strings.TrimRight(string(runes[:maxRefNameLen]), "_")
+	}
+	return label
+}
+
+// objectRef renders one object reference for a document slot (§9), adding
+// the informative `#name` suffix when the shape asks for it
+// (Options.RefNames) and a resolver names the target. With no resolver, or
+// no name, the reference is written bare — never with a partial or invented
+// suffix.
+func (e *exporter) objectRef(id string) string {
+	out := id
+	if !e.opts.RefNames || e.opts.ResolveObjectNames == nil || id == "" {
+		return out
+	}
+	if !suffixableRef(id) {
+		return out
+	}
+	name, ok := e.opts.ResolveObjectNames.ObjectName(id)
+	if !ok {
+		return out
+	}
+	if label := refNameLabel(name); label != "" {
+		return out + refNameSep + label
+	}
+	return out
+}
+
+// suffixableRef reports the ids a name suffix belongs on. A date id and the
+// missing-object sentinel already say everything they mean, and a dynamic
+// filter placeholder (§6.2) is not an object id at all — a suffix on any of
+// them would be decoration on a value some other layer must read verbatim.
+func suffixableRef(id string) bool {
+	return !strings.HasPrefix(id, dateIdPrefix) &&
+		id != missingObjectId &&
+		!isFilterTemplate(id)
+}
+
+// dateIdPrefix marks a virtual date object id (pkg/lib/localstore/addr).
+const dateIdPrefix = "_date_"
+
+// missingObjectId is the dangling-reference sentinel stored details carry
+// (pkg/lib/localstore/addr.MissingObject).
+const missingObjectId = "_missing_object"
+
+// objectRef reads one object reference back (§9): the informative suffix is
+// trimmed at the first `#`, unread. Everything else passes verbatim, exactly
+// as before the suffix existed — which is what keeps a bare id and a
+// suffixed id importing identically.
+func (imp *importer) objectRef(ref string) string {
+	return trimRefName(ref)
 }

@@ -552,7 +552,7 @@ func (imp *importer) buildCollections() *types.Struct {
 	if len(doc.Items) > 0 {
 		vals := make([]*types.Value, 0, len(doc.Items))
 		for _, id := range doc.Items {
-			vals = append(vals, &types.Value{Kind: &types.Value_StringValue{StringValue: id}})
+			vals = append(vals, &types.Value{Kind: &types.Value_StringValue{StringValue: imp.objectRef(id)}})
 		}
 		coll.Fields[storeKeyItems] = &types.Value{Kind: &types.Value_ListValue{ListValue: &types.ListValue{Values: vals}}}
 	}
@@ -594,7 +594,7 @@ func (imp *importer) propertyValue(key, slug string, v any) *types.Value {
 	case model.RelationFormat_status, model.RelationFormat_tag:
 		return wrapToList(mapJSONStrings(v, func(name string) string { return imp.resolveOption(key, slug, name) }))
 	case model.RelationFormat_object, model.RelationFormat_file:
-		return wrapToList(mapJSONStrings(v, func(id string) string { return id }))
+		return wrapToList(mapJSONStrings(v, imp.objectRef))
 	}
 	return jsonToProtoValue(v)
 }
@@ -827,7 +827,7 @@ func (imp *importer) textFromJSON(jb *jsonBlock) (*model.BlockContentText, error
 func (imp *importer) fileFromJSON(jb *jsonBlock) *model.BlockContentFile {
 	f := &model.BlockContentFile{
 		Type:           fileTypeNames.value(jb.Type),
-		TargetObjectId: jb.ObjectId,
+		TargetObjectId: imp.objectRef(jb.ObjectId),
 		Hash:           jb.Hash,
 		Name:           jb.Name,
 		Mime:           jb.MimeType,
@@ -849,7 +849,7 @@ func (imp *importer) fileFromJSON(jb *jsonBlock) *model.BlockContentFile {
 func (imp *importer) bookmarkFromJSON(jb *jsonBlock) *model.BlockContentBookmark {
 	bm := &model.BlockContentBookmark{
 		Url:            jb.Url,
-		TargetObjectId: jb.ObjectId,
+		TargetObjectId: imp.objectRef(jb.ObjectId),
 	}
 	if bm.TargetObjectId != "" {
 		bm.State = model.BlockContentBookmark_Done
@@ -866,7 +866,7 @@ func (imp *importer) linkFromJSON(jb *jsonBlock) (*model.BlockContentLink, error
 		}
 	}
 	return &model.BlockContentLink{
-		TargetBlockId: jb.ObjectId,
+		TargetBlockId: imp.objectRef(jb.ObjectId),
 		CardStyle:     cardStyleNames.value(jb.CardStyle),
 		IconSize:      iconSizeNames.value(jb.IconSize),
 		Description:   linkDescriptionNames.value(jb.Description),

@@ -1353,7 +1353,7 @@ func (e *exporter) buildStore() ([]any, *omap) {
 			objectsLifted = true
 			for _, el := range lv.ListValue.GetValues() {
 				if id := el.GetStringValue(); id != "" {
-					items = append(items, id)
+					items = append(items, e.objectRef(id))
 				}
 			}
 		}
@@ -1651,7 +1651,7 @@ func (e *exporter) propertyValue(key string, v *types.Value) any {
 	case model.RelationFormat_object, model.RelationFormat_file:
 		var out []any
 		for _, id := range valueStringList(v) {
-			out = append(out, id)
+			out = append(out, e.objectRef(id))
 		}
 		return out
 	}
@@ -1890,12 +1890,12 @@ func (e *exporter) blockToJSON(b *model.Block, depth int) (*omap, bool, error) {
 		bm := orEmpty(c.Bookmark)
 		m.set("type", "bookmark")
 		m.setNonEmpty("url", bm.Url)
-		m.setNonEmpty("object_id", bm.TargetObjectId)
+		m.setNonEmpty("object_id", e.objectRef(bm.TargetObjectId))
 		withChildren = false
 	case *model.BlockContentOfLink:
 		l := orEmpty(c.Link)
 		m.set("type", "link")
-		m.setNonEmpty("object_id", l.TargetBlockId)
+		m.setNonEmpty("object_id", e.objectRef(l.TargetBlockId))
 		if l.CardStyle != model.BlockContentLink_Text {
 			m.setNonEmpty("card_style", cardStyleNames.name(l.CardStyle))
 		}
@@ -2075,7 +2075,7 @@ func (e *exporter) fileToJSON(m *omap, f *model.BlockContentFile) {
 	if objectId == "" {
 		objectId = f.Hash // legacy content address migrates to objectId
 	}
-	m.setNonEmpty("object_id", objectId)
+	m.setNonEmpty("object_id", e.objectRef(objectId))
 	m.setNonEmpty("name", f.Name)
 	m.setNonEmpty("mime_type", f.Mime)
 	m.setNonEmpty("size", f.Size_)
