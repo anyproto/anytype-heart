@@ -1,0 +1,603 @@
+package anyblockjson
+
+// relationformat_test.go — the §2d relation-definition envelope fields:
+// `format`, `include_time`, `object_types` on kind:relation documents, the
+// refusal of their flat spellings in `properties`, and the presence-mirror
+// round trip.
+
+import (
+	"encoding/json"
+	"strings"
+	"testing"
+
+	"github.com/gogo/protobuf/types"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+)
+
+func nullValue() *types.Value {
+	return &types.Value{Kind: &types.Value_NullValue{}}
+}
+
+// relationSnapshot is a minimal kind:relation snapshot — the details a real
+// relation object carries, minus the install noise this test does not need.
+func relationSnapshot(details map[string]*types.Value) *model.SmartBlockSnapshotBase {
+	if details == nil {
+		details = map[string]*types.Value{}
+	}
+	details["id"] = str("relObjectId")
+	if _, has := details["name"]; !has {
+		details["name"] = str("Budget")
+	}
+	return &model.SmartBlockSnapshotBase{
+		Key:     "budget",
+		Details: fields(details),
+		Blocks: []*model.Block{{
+			Id:      "relObjectId",
+			Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}},
+		}},
+	}
+}
+
+// typeIdVocabulary is a TypeResolver-capable property resolver: the shape
+// storeresolver has, reduced to the id↔key translation the §2d slot needs.
+type typeIdVocabulary struct {
+	testPropertyResolver
+	keyById map[string]string
+	idByKey map[string]string
+}
+
+func (r *typeIdVocabulary) TypeKeyById(id string) (string, bool) {
+	key, ok := r.keyById[id]
+	return key, ok
+}
+
+func (r *typeIdVocabulary) TypeIdByKey(key string) (string, bool) {
+	id, ok := r.idByKey[key]
+	return id, ok
+}
+
+func newTypeIdVocabulary() *typeIdVocabulary {
+	return &typeIdVocabulary{
+		testPropertyResolver: *newTestPropertyResolver(),
+		keyById:              map[string]string{"typeid-page": "page", "typeid-wine": "wine"},
+		idByKey:              map[string]string{"page": "typeid-page", "wine": "typeid-wine"},
+	}
+}
+
+// The three stored details travel on the envelope, never in `properties`.
+//
+// How this can fail: drop relationLiftedDetailKeys from envelopeLiftedKeys
+// and the flat spellings reappear in properties; drop the
+// buildRelationEnvelope call from buildDoc and the envelope fields vanish.
+func TestRelationEnvelope_LiftsTheThreeDetails(t *testing.T) {
+	// given
+	snap := relationSnapshot(map[string]*types.Value{
+		"relationFormat":            num(2),
+		"relationFormatIncludeTime": boolValue(false),
+		"relationFormatObjectTypes": strList("typeid-page"),
+	})
+
+	// when
+	data, err := Marshal(model.SmartBlockType_STRelation, snap, testOptions())
+	require.NoError(t, err)
+
+	// then
+	assert.Contains(t, string(data), `"format": "number"`)
+	assert.Contains(t, string(data), `"include_time": false`)
+	assert.Contains(t, string(data), `"object_types"`)
+	for _, spelling := range []string{`"relation_format"`, `"relation_format_include_time"`,
+		`"relation_format_object_types"`} {
+		assert.NotContains(t, string(data), spelling,
+			"the flat spelling must not survive anywhere — properties refuses it (§2d)")
+	}
+	require.NoError(t, Validate(data), "Marshal never emits what Validate rejects (§11 I1)")
+}
+
+// `format` is required on a relation document, so every relation export
+// writes one — including a stored 0 (longtext, a real format) and a snapshot
+// with no relationFormat detail at all, both of which write "text".
+//
+// How this can fail: emit `format` with setNonEmpty, or skip it when the
+// detail is absent, and the exported document is one Validate refuses (I1).
+func TestRelationEnvelope_FormatIsAlwaysWritten(t *testing.T) {
+	for name, details := range map[string]map[string]*types.Value{
+		"stored zero":   {"relationFormat": num(0)},
+		"absent detail": {},
+	} {
+		t.Run(name, func(t *testing.T) {
+			// when
+			data, err := Marshal(model.SmartBlockType_STRelation, relationSnapshot(details), testOptions())
+			require.NoError(t, err)
+
+			// then
+			assert.Contains(t, string(data), `"format": "text"`)
+			require.NoError(t, Validate(data), "§11 I1")
+		})
+	}
+}
+
+// formatNames is total over model.RelationFormat — the property that makes
+// the required §2d `format` safe for every stored enum value. shorttext is
+// the one deliberate hole; formatName folds it into "text".
+//
+// How this can fail: add a value to the model enum without naming it here
+// (the way "map" was missing before v0.31, on 72 production documents), or
+// remove a name from formatNames.
+func TestFormatNames_TotalOverModelEnum(t *testing.T) {
+	for raw, enumName := range model.RelationFormat_name {
+		f := model.RelationFormat(raw)
+		assert.NotEmpty(t, formatName(f),
+			"stored format %s (%d) has no §3 name: a relation object carrying it cannot be exported (§2d)",
+			enumName, raw)
+	}
+}
+
+// Format "map" (102) is real data — 72 production relation documents, every
+// one the bundled templatePlaceholders relation — and round-trips by name.
+//
+// How this can fail: remove RelationFormat_map from formatNames and export
+// errors; remove "map" from the schema enum and the exported document fails
+// its own validation.
+func TestRelationEnvelope_MapFormatRoundTrips(t *testing.T) {
+	// given
+	snap := relationSnapshot(map[string]*types.Value{"relationFormat": num(102)})
+
+	// when
+	data, err := Marshal(model.SmartBlockType_STRelation, snap, testOptions())
+	require.NoError(t, err)
+	require.NoError(t, Validate(data), "§11 I1")
+	sbType, got, err := Unmarshal(data, testOptions())
+
+	// then
+	require.NoError(t, err)
+	assert.Contains(t, string(data), `"format": "map"`)
+	assert.Equal(t, model.SmartBlockType_STRelation, sbType)
+	assert.Equal(t, float64(102), got.Details.Fields["relationFormat"].GetNumberValue())
+}
+
+// A stored format the vocabulary cannot name fails the export by name,
+// rather than being rewritten to "text": `format` is required, so there is
+// nothing to omit, and a false format claim imports as a permanent silent
+// format rewrite — the disease the lift exists to kill.
+//
+// How this can fail: make relationFormatName fall back to "text" for an
+// unnameable value and the error disappears.
+func TestRelationEnvelope_UnnameableFormatFailsExport(t *testing.T) {
+	for name, v := range map[string]*types.Value{
+		"outside the enum": num(47),
+		"not a number":     str("weird"),
+	} {
+		t.Run(name, func(t *testing.T) {
+			// when
+			_, err := Marshal(model.SmartBlockType_STRelation,
+				relationSnapshot(map[string]*types.Value{"relationFormat": v}), testOptions())
+
+			// then
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "cannot state what it defines",
+				"the failure has to say the document could not be written, not merely that a value was odd")
+		})
+	}
+}
+
+// The flat spellings are refused in `properties`, by Validate AND by
+// Unmarshal (§12 I2), with the envelope repair named. This is also the whole
+// of the legacy story (§10): a pre-v0.31 document spells `relation_format`
+// here and is refused loudly instead of read.
+//
+// How this can fail: drop the relationLiftedDetailKeys arm from
+// deniedPropertyKey and both doors accept the raw number again — a phantom
+// property in Validate's case, a silent second spelling in Unmarshal's.
+func TestRelationEnvelope_RefusedInProperties(t *testing.T) {
+	for spelling, value := range map[string]string{
+		"relation_format":              "100",
+		"relation_format_include_time": "true",
+		"relation_format_object_types": `["page"]`,
+	} {
+		t.Run(spelling, func(t *testing.T) {
+			doc := `{"version":1,"kind":"relation","id":"o1","key":"budget","format":"number",` +
+				`"properties":{"` + spelling + `":` + value + `}}`
+
+			err := Validate([]byte(doc))
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "/properties/"+spelling)
+			assert.Contains(t, err.Error(), "§2d", "the refusal names the repair")
+
+			_, _, err = Unmarshal([]byte(doc), testOptions())
+			require.Error(t, err, "Unmarshal must refuse what Validate refuses (§12 I2)")
+		})
+	}
+}
+
+// Envelope presence mirrors stored presence EXACTLY — false, `[]` and null
+// all travel, absence stays absence — so the same details go in and out and
+// the snapshot comparator needs no new rule (§2d, §11).
+//
+// How this can fail: emit include_time or object_types with setNonEmpty
+// (false and [] vanish), drop the null arms (80 production relations hold a
+// null includeTime), or make import invent a detail the document does not
+// carry.
+func TestRelationEnvelope_PresenceMirrorsTheStore(t *testing.T) {
+	for name, tc := range map[string]struct {
+		details  map[string]*types.Value
+		wire     []string // substrings the document must carry
+		notOnDoc []string // members the document must NOT carry
+	}{
+		"present and false/empty": {
+			details: map[string]*types.Value{
+				"relationFormat":            num(6),
+				"relationFormatIncludeTime": boolValue(false),
+				"relationFormatObjectTypes": strList(),
+			},
+			wire: []string{`"include_time": false`, `"object_types": []`},
+		},
+		"present and null": {
+			details: map[string]*types.Value{
+				"relationFormat":            num(4),
+				"relationFormatIncludeTime": nullValue(),
+			},
+			wire:     []string{`"include_time": null`},
+			notOnDoc: []string{`"object_types"`},
+		},
+		"absent": {
+			details:  map[string]*types.Value{"relationFormat": num(2)},
+			notOnDoc: []string{`"include_time"`, `"object_types"`},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			// given
+			snap := relationSnapshot(tc.details)
+			want := map[string]*types.Value{}
+			for k, v := range snap.Details.Fields {
+				if relationLiftedDetailKeys()[k] {
+					want[k] = v
+				}
+			}
+
+			// when
+			data, err := Marshal(model.SmartBlockType_STRelation, snap, testOptions())
+			require.NoError(t, err)
+			require.NoError(t, Validate(data), "§11 I1")
+			_, got, err := Unmarshal(data, testOptions())
+			require.NoError(t, err)
+
+			// then
+			for _, w := range tc.wire {
+				assert.Contains(t, string(data), w)
+			}
+			for _, w := range tc.notOnDoc {
+				assert.NotContains(t, string(data), w,
+					"an absent stored key writes no envelope member")
+			}
+			for k, v := range want {
+				assert.Equal(t, v, got.Details.Fields[k], "detail %q changed on the way round", k)
+			}
+			for k := range relationLiftedDetailKeys() {
+				if _, wanted := want[k]; !wanted {
+					assert.Nil(t, got.Details.Fields[k], "the round trip invented detail %q", k)
+				}
+			}
+		})
+	}
+}
+
+// With the TypeResolver capability wired, the stored target-type ids are
+// spelled as type keys on the wire and come back as the same ids — the id↔key
+// translation is an inverse, so the snapshot round-trips byte-exactly. An
+// entry the resolver cannot answer passes through verbatim, its own address.
+//
+// How this can fail: drop the TypeKeyById arm from relationTargetKeys and
+// the wire carries raw ids under a resolver; drop the TypeIdByKey arm from
+// applyRelationEnvelope and the round trip stores keys where ids were.
+func TestRelationEnvelope_TargetTypesTranslateThroughTheResolver(t *testing.T) {
+	// given
+	opts := testOptions()
+	opts.ResolveProperties = newTypeIdVocabulary()
+	snap := relationSnapshot(map[string]*types.Value{
+		"relationFormat":            num(100),
+		"relationFormatObjectTypes": strList("typeid-page", "bafyreidangling"),
+	})
+
+	// when
+	data, err := Marshal(model.SmartBlockType_STRelation, snap, opts)
+	require.NoError(t, err)
+	_, got, err := Unmarshal(data, opts)
+	require.NoError(t, err)
+
+	// then
+	assert.Equal(t, []string{"page", "bafyreidangling"}, docObjectTypes(t, data),
+		"a resolvable id spells its type key; an unresolvable one passes through verbatim (§3)")
+	assert.Equal(t, strList("typeid-page", "bafyreidangling"),
+		got.Details.Fields["relationFormatObjectTypes"],
+		"the translation must invert: ids in, ids out")
+}
+
+// Without the capability, entries pass through verbatim in both directions —
+// the offline round trip is byte-exact, and nothing is invented or dropped.
+//
+// How this can fail: make relationTargetKeys drop entries it cannot
+// translate (the §2a dangling-id policy, wrong here: the stored value IS the
+// meaning) and the ids vanish from the wire.
+func TestRelationEnvelope_TargetTypesPassThroughWithoutResolver(t *testing.T) {
+	// given
+	snap := relationSnapshot(map[string]*types.Value{
+		"relationFormat":            num(100),
+		"relationFormatObjectTypes": strList("bafyreitypeone", "wine"),
+	})
+
+	// when
+	data, err := Marshal(model.SmartBlockType_STRelation, snap, testOptions())
+	require.NoError(t, err)
+	_, got, err := Unmarshal(data, testOptions())
+	require.NoError(t, err)
+
+	// then
+	assert.Equal(t, []string{"bafyreitypeone", "wine"}, docObjectTypes(t, data))
+	assert.Equal(t, strList("bafyreitypeone", "wine"),
+		got.Details.Fields["relationFormatObjectTypes"])
+}
+
+// docObjectTypes reads the envelope object_types out of a rendered document.
+func docObjectTypes(t *testing.T, data []byte) []string {
+	t.Helper()
+	var doc struct {
+		ObjectTypes []string `json:"object_types"`
+	}
+	require.NoError(t, json.Unmarshal(data, &doc))
+	return doc.ObjectTypes
+}
+
+// A custom stored type key in `object_types` owes the type_keys legend its
+// identity entry, exactly as the same key would in
+// type_properties[].object_types — the §2d slot is a type-key slot, not a
+// free string.
+//
+// How this can fail: write the entries raw instead of through typeSlugs and
+// the legend entry disappears — a reader whose vocabulary binds the spelling
+// elsewhere then resolves the target to a different type.
+func TestRelationEnvelope_TargetTypesOweTheTypeLegend(t *testing.T) {
+	// given a custom stored key whose spelling the bundled table cannot invert
+	snap := relationSnapshot(map[string]*types.Value{
+		"relationFormat":            num(100),
+		"relationFormatObjectTypes": strList("wine"),
+	})
+
+	// when
+	data, err := Marshal(model.SmartBlockType_STRelation, snap, testOptions())
+	require.NoError(t, err)
+
+	// then
+	var doc struct {
+		TypeKeys map[string]string `json:"type_keys"`
+	}
+	require.NoError(t, json.Unmarshal(data, &doc))
+	assert.Equal(t, "wine", doc.TypeKeys["wine"],
+		"a verbatim custom type key owes the identity entry (§3)")
+}
+
+// `include_time` against a non-date format and a non-empty `object_types`
+// against a non-objects/files format WARN and stay valid: the stored details
+// are not authored, so a refusal would make Marshal emit what Validate
+// rejects (I1). Only a MEANINGFUL value warns — a false or empty one against
+// the wrong format is most of the corpus (8,375 present-and-false
+// include_time alone) and says nothing an author could act on.
+//
+// How this can fail: drop the relationEnvelopeIssues call from
+// semanticIssues and the warnings vanish; warn on any presence and the
+// no-warning cases light up.
+func TestRelationEnvelope_WrongFormatWarnsButCarries(t *testing.T) {
+	for name, tc := range map[string]struct {
+		doc      string
+		wantWarn string // "" = no warning expected
+	}{
+		"include_time true on number": {
+			doc:      `{"version":1,"kind":"relation","id":"o1","key":"b","format":"number","include_time":true}`,
+			wantWarn: "/include_time",
+		},
+		"object_types non-empty on number": {
+			doc:      `{"version":1,"kind":"relation","id":"o1","key":"b","format":"number","object_types":["page"]}`,
+			wantWarn: "/object_types",
+		},
+		"include_time false on number": {
+			doc: `{"version":1,"kind":"relation","id":"o1","key":"b","format":"number","include_time":false}`,
+		},
+		"object_types empty on number": {
+			doc: `{"version":1,"kind":"relation","id":"o1","key":"b","format":"number","object_types":[]}`,
+		},
+		"include_time true on date": {
+			doc: `{"version":1,"kind":"relation","id":"o1","key":"b","format":"date","include_time":true}`,
+		},
+		"object_types non-empty on objects": {
+			doc: `{"version":1,"kind":"relation","id":"o1","key":"b","format":"objects","object_types":["page"]}`,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			// when
+			var warns []Issue
+			err := ValidateWarn([]byte(tc.doc), func(i Issue) { warns = append(warns, i) })
+
+			// then
+			require.NoError(t, err, "a warning-grade fault must not refuse the document (§2d)")
+			if tc.wantWarn == "" {
+				assert.Empty(t, warns)
+				return
+			}
+			require.Len(t, warns, 1)
+			assert.Equal(t, tc.wantWarn, warns[0].Path)
+			assert.Contains(t, warns[0].Message, "only meaningful on")
+		})
+	}
+}
+
+// The three fields are legal only on kind:relation, and `format` is required
+// there — the schema conditional, with the messages naming the rule rather
+// than the mechanism.
+//
+// How this can fail: remove the allOf conditional from object.schema.json
+// and every case below validates clean; remove the schemaIssueMessage arm
+// and the off-relation refusals degrade to a bare "not allowed".
+func TestRelationEnvelope_FieldsAreGatedByKind(t *testing.T) {
+	for name, tc := range map[string]struct{ doc, want string }{
+		"format on a page": {
+			doc:  `{"version":1,"id":"o1","format":"number"}`,
+			want: `/format: property "format" is only valid on relation documents`,
+		},
+		"include_time on a template": {
+			doc:  `{"version":1,"kind":"template","id":"o1","type":"template","include_time":true}`,
+			want: `/include_time: property "include_time" is only valid on relation documents`,
+		},
+		"object_types on a type": {
+			doc:  `{"version":1,"kind":"object_type","id":"o1","object_types":["page"]}`,
+			want: `/object_types: property "object_types" is only valid on relation documents`,
+		},
+		"missing format on a relation": {
+			doc:  `{"version":1,"kind":"relation","id":"o1","key":"b"}`,
+			want: "missing property 'format': a relation document states the format",
+		},
+		"legacy relation_format beside a missing format": {
+			doc:  `{"version":1,"kind":"relation","id":"o1","key":"b","properties":{"relation_format":100}}`,
+			want: "the pre-v0.31 form",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			err := Validate([]byte(tc.doc))
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tc.want)
+
+			_, _, err = Unmarshal([]byte(tc.doc), testOptions())
+			assert.Error(t, err, "Unmarshal must refuse what Validate refuses (§12 I2)")
+		})
+	}
+}
+
+// A non-relation snapshot carrying any of the three details drops them with
+// a warning: the refusal in `properties` is unconditional, so export may not
+// write the flat spelling anywhere (I1), and no §2d field exists off a
+// relation document to carry the value. Never observed in production — 0 of
+// 27,444 non-relation documents carry any of the three.
+//
+// How this can fail: make envelopeLiftedKeys include the three keys only on
+// relation documents and the page export writes `relation_format` into
+// properties — a document its own Validate refuses.
+func TestRelationEnvelope_NonRelationKindDropsTheDetails(t *testing.T) {
+	// given
+	snap := trimSnapshot(map[string]*types.Value{
+		"relationFormat": num(2),
+		"name":           str("A page, oddly stamped"),
+	})
+
+	// when
+	var warns []Issue
+	opts := testOptions()
+	opts.OnWarning = func(i Issue) { warns = append(warns, i) }
+	data, err := Marshal(model.SmartBlockType_Page, snap, opts)
+	require.NoError(t, err)
+
+	// then
+	assert.NotContains(t, string(data), `"relation_format"`)
+	assert.NotContains(t, string(data), `"format"`,
+		"a page has no §2d field to lift into")
+	require.NoError(t, Validate(data), "§11 I1")
+	require.Len(t, warns, 1)
+	assert.Contains(t, warns[0].Message, "not a relation document")
+}
+
+// "text" resolves per key on the way back in, exactly as a type_properties
+// entry's format does (§3): the relation's own envelope `key` disambiguates,
+// so a bundled short-text relation keeps its stored format across a round
+// trip even though the document never spells shorttext.
+//
+// How this can fail: map the envelope format name blindly through
+// formatNames.value in applyRelationEnvelope — "text" then lands longtext on
+// every relation, and the bundled `name` relation comes back reformatted.
+func TestRelationEnvelope_TextFoldResolvesPerKey(t *testing.T) {
+	// given the bundled `name` relation, stored shorttext
+	snap := relationSnapshot(map[string]*types.Value{
+		"relationFormat": num(float64(model.RelationFormat_shorttext)),
+	})
+	snap.Key = "name"
+
+	// when
+	data, err := Marshal(model.SmartBlockType_STRelation, snap, testOptions())
+	require.NoError(t, err)
+	_, got, err := Unmarshal(data, testOptions())
+	require.NoError(t, err)
+
+	// then
+	assert.Contains(t, string(data), `"format": "text"`,
+		"shorttext has no name of its own (§3)")
+	assert.Equal(t, float64(model.RelationFormat_shorttext),
+		got.Details.Fields["relationFormat"].GetNumberValue(),
+		"the bundled key resolves the fold — shorttext survives the trip")
+}
+
+// Export ∘ Import is byte-stable over a relation document (§11 guarantee 2).
+//
+// How this can fail: any asymmetry between buildRelationEnvelope and
+// applyRelationEnvelope — a field written that import drops, or one import
+// rewrites into a different value — shows up as a byte diff on the second
+// export.
+func TestRelationEnvelope_ExportImportIsByteStable(t *testing.T) {
+	// given
+	snap := relationSnapshot(map[string]*types.Value{
+		"relationFormat":            num(100),
+		"relationFormatIncludeTime": boolValue(false),
+		"relationFormatObjectTypes": strList("bafyreitypeone"),
+	})
+
+	// when
+	first, err := Marshal(model.SmartBlockType_STRelation, snap, testOptions())
+	require.NoError(t, err)
+	sbType, got, err := Unmarshal(first, testOptions())
+	require.NoError(t, err)
+	second, err := Marshal(sbType, got, testOptions())
+	require.NoError(t, err)
+
+	// then
+	assert.Equal(t, string(first), string(second))
+}
+
+// The published schema states the format vocabulary once —
+// $defs/propertyFormat — and every slot that speaks it ($2a's typeProperty,
+// §6.2's dataviewProperty, the §2d envelope) references that one list, which
+// must equal formatNames exactly: the schema is what an external validator
+// runs, and a name in one place but not the other is a document one side
+// writes and the other refuses.
+//
+// How this can fail: add a format name to formatNames without the schema (or
+// vice versa), or point one of the three slots at a private enum again.
+func TestPropertyFormatEnum_MatchesFormatNames(t *testing.T) {
+	// given the schema's own statement
+	schemaNames := propertyFormatEnum()
+	require.NotEmpty(t, schemaNames, "the schema must publish $defs/propertyFormat")
+
+	want := map[string]bool{}
+	for _, name := range formatNames.toName {
+		want[name] = true
+	}
+	got := map[string]bool{}
+	for _, name := range schemaNames {
+		got[name] = true
+	}
+	assert.Equal(t, want, got)
+
+	// and the three slots all reference the shared list
+	var schema struct {
+		Properties map[string]json.RawMessage `json:"properties"`
+		Defs       map[string]struct {
+			Properties map[string]json.RawMessage `json:"properties"`
+		} `json:"$defs"`
+	}
+	require.NoError(t, json.Unmarshal(SchemaJSON(), &schema))
+	for slot, raw := range map[string]json.RawMessage{
+		"root format":             schema.Properties["format"],
+		"typeProperty.format":     schema.Defs["typeProperty"].Properties["format"],
+		"dataviewProperty.format": schema.Defs["dataviewProperty"].Properties["format"],
+	} {
+		assert.True(t, strings.Contains(string(raw), `"#/$defs/propertyFormat"`),
+			"%s must reference the shared vocabulary, not restate it", slot)
+	}
+}
