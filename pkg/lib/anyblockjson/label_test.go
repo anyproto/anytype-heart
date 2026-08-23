@@ -5,8 +5,39 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/text/unicode/norm"
+
+	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson/filterstring"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 )
+
+// The label rule leaves bundled keys alone — their spelling is the derived
+// api slug, in every space and offline (§3). That is only safe if the api
+// slug is already a key this format can write everywhere, and nothing in
+// `pkg/lib/bundle` knows about the §6.2.1 grammar: `ApiSlug` is
+// `strcase.ToSnake` and no more, so a bundled key added later as `50Percent`
+// or `all` would produce a slug no filter string can name — silently, since
+// the label rule would pass it straight through.
+//
+// It holds today for all 223 (194 relations, 29 types), and this asserts it
+// rather than assuming it, at the moment such a key would be added.
+func TestBundledSlugsAreKeysTheFilterGrammarAccepts(t *testing.T) {
+	var keys []string
+	for _, u := range bundle.ListRelationsUrls() {
+		keys = append(keys, strings.TrimPrefix(u, addr.BundledRelationURLPrefix))
+	}
+	for _, k := range bundle.ListTypesKeys() {
+		keys = append(keys, string(k))
+	}
+	require.NotEmpty(t, keys)
+	for _, key := range keys {
+		slug := bundle.ApiSlug(key)
+		_, err := filterstring.Parse(slug+` = "x"`, filterstring.Options{})
+		require.NoErrorf(t, err, "bundled key %q spells %q, which is not a key this format can write", key, slug)
+	}
+}
 
 // The label rule (§3): what a document spells for a key the bundled table
 // does not speak for. Every case here is a decision with a plausible

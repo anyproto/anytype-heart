@@ -1,6 +1,6 @@
 # AnyBlock JSON — format specification
 
-Status: **draft v0.25** · Format version: **1** · Package: `pkg/lib/anyblockjson`
+Status: **draft v0.26** · Format version: **1** · Package: `pkg/lib/anyblockjson`
 
 A human- and agent-readable JSON serialization of Anytype objects (the "anyblock"
 model), designed for export, import, and generation by external tools and LLM
@@ -15,6 +15,58 @@ strings; the vocabulary follows Notion's API and Anytype's public REST API
 (`core/api`) wherever an established term exists — the format should be
 readable, and mostly writable, by someone who has never seen Anytype
 internals.
+
+Changes in v0.26: **a key's label is normalized through the format's own
+grammar** (§1, §3, §6.2.1, §11, §13).
+
+A key the bundled table does not speak for used to be spelled by its stored
+`apiObjectKey`, or — with none — by its stored key. Both halves borrow a
+constraint this format does not have and miss one it does. `apiObjectKey` is
+minted for API v2, where a slug is a URL PATH SEGMENT, so its charset is
+`^[a-zA-Z0-9_]+$`: `Тоггл` transliterates to `toggl` and
+`日本語のプロパティ` to `ri_ben_yu_nopuropatei`, unguessable and unreadable at
+once. And a relation with no slug is spelled by a 24-character bson id — 39
+relations and 18 types in a 36,966-object corpus, every one an ordinary user
+property with an ordinary name (`Publish Date`, `Active competitors`,
+`Website`).
+
+The constraint the format DOES have is §6.2.1's: a key is a Unicode
+identifier and not one of the filter grammar's keywords. **A bson id starts
+with a digit, so it cannot be written as a filter key at all** — those 39
+properties could not be filtered on, in a grammar this format serves to
+models as EBNF. So the label is normalized through that grammar instead
+(§3): a conforming stored slug unchanged, else that slug normalized, else the
+display NAME normalized, else the stored key verbatim as before. Non-Latin
+scripts are kept, never transliterated. All 223 bundled slugs already
+conform, which a test asserts rather than assumes, and a cross-package test
+asserts the other half — every label the rule mints parses as a key in the
+subpackage that owns the grammar.
+
+Measured over the same 36,966 objects, both codec halves, against the v0.25
+tip:
+
+- **474 documents change a spelling (1.28%)**, 471 of them shorter; the
+  corpus shrinks by 13,681 bytes. The legend costs nothing new: 30,729
+  entries before and after, because §3's exhaustive rule already owed one for
+  every non-bundled key — only the label's own length changes.
+- **398 documents stop spelling a bson id** (2,193 → 1,795), and 7 opaque
+  keys become readable words.
+- **No bundled label moves**, in either namespace: 0 of 12,166 vocabulary
+  entries.
+- **Only 1 of the 39 slugless relations gets a name label**, and the other 38
+  are the format's existing rules doing their job rather than the new one
+  failing: 15 names land on a spelling the BUNDLED table binds (`Due Date`,
+  `Priority`, `Email`, `Phone`, `URL`), 11 on a spelling another relation in
+  the same space already stores as its api slug (the duplicated-property
+  shape a Notion import leaves), 8 on a live stored key, 2 are `id` and
+  `type`, and 2 are named `#`. Every one of those keeps the stored key,
+  which is what it had before. The population this rule can help is small
+  because the population that is *both* nameless-in-the-store and
+  unclaimed-in-its-space is small.
+- **An explicit slug outranks a derived name**, which is not a tie-break
+  detail: 14 name-derived labels in the corpus collide with a slug another
+  relation minted years ago, and the flat twin rule would have taken the
+  spelling from both.
 
 Changes in v0.25: **`icon` and `cover` are typed envelope fields** (§2, §2b,
 §2c, §3, §4a, §5, §9a, §11, §12).
@@ -894,12 +946,17 @@ draft, which the reader then had to reject.
 format.** They are not inconsistencies to be tidied away later:
 
 - **Property and type keys** (§3) name relations and types, which live in a
-  space rather than in this format. Their canonical spelling is the api slug,
-  which is snake_case anyway — `plural_name`, `due_date`,
-  `last_modified_date` — so most of the time the exemption does not show. It
-  shows for a key the vocabulary has no slug for: a legacy `wikiPerson`, a
-  minted `6a32d4856761631534b22f85`. Those are written verbatim, whatever
-  their shape, because an exact stored key is always its own address (§3).
+  space rather than in this format. Their canonical spelling is their
+  **label**, which is snake_case by construction — a bundled key's api slug
+  (`plural_name`, `due_date`, `last_modified_date`), or a space-minted key's
+  stored slug or display name normalized through the identifier grammar of
+  §6.2.1 (`publish_date`, and `тоггл`, which is snake_case in a script that
+  has no case) — so most of the time the exemption does not show. It shows
+  where no label can be derived at all: a legacy `wikiPerson` whose name
+  normalizes back onto its own key, a minted `6a32d4856761631534b22f85`
+  whose relation has no name and no slug. Those are written verbatim,
+  whatever their shape, because an exact stored key is always its own
+  address (§3).
   This section once said the key ↔ key mapping was impossible because
   `Validate` takes no resolver; the answer was to put the mapping in the
   DOCUMENT — the `property_keys` / `type_keys` legends, which a reader with no
@@ -1462,21 +1519,82 @@ document defines.
 
 ## 3. Properties
 
-`properties` is a JSON object keyed by **property key**, always in the
-snake_case **api slug** spelling — `due_date`, `plural_name`,
-`manual_property` — bundled, API-created and UI-created keys alike. One
+`properties` is a JSON object keyed by **property key**, always in its
+snake_case **label** — `due_date`, `plural_name`, `manual_property`,
+`publish_date` — bundled, API-created and UI-created keys alike. One
 vocabulary, no aliases, no duality: a reader never has to know which kind of
 key it holds. (This overturns the earlier "as stored, camelCase" rule, and
-it is the format half of the same decision the API surface makes; the slug
-itself comes from `core/api/util/key.go`.)
+it is the format half of the same decision the API surface makes; a bundled
+key's label is the api slug from `core/api/util/key.go`.)
 
 The mapping is a **table, both directions, never a case transform**: for
 bundled keys the derived table in `pkg/lib/bundle` (which ships with every
 reader, so documents still resolve offline), and for every other key the
-entity's stored `apiObjectKey`, which a node-backed reader primes from the
-space. `mediaArtistURL` → `media_artist_url` → `ToLowerCamel` would yield
+space's own vocabulary, which a node-backed reader primes from the space —
+and which the document carries the inverse of, entry by entry (`property_keys`,
+below). `mediaArtistURL` → `media_artist_url` → `ToLowerCamel` would yield
 `mediaArtistUrl`, and `_score` does not round-trip at all — string inversion
 cannot be the reverse mechanism, and the package's tests pin both cases.
+
+**The label, and the grammar it is minted through.** A key's label comes from
+its own authority, and there are two:
+
+1. **A bundled key spells its derived api slug**, from the table that ships
+   with every reader — `dueDate` → `due_date`. All 223 bundled slugs are
+   already legal keys under the grammar below, which a test asserts rather
+   than assumes.
+2. **A space-minted key spells what its space says it is**, through one
+   ladder, first answer wins: its stored `apiObjectKey` when that is already
+   a legal key; else that slug **normalized**; else its display **name**
+   normalized; else nothing — and then the stored key is written verbatim,
+   which is always its own address (chain step 4 below). A slug that merely
+   repeats the stored key is not a slug (rows exist that carry the bson id as
+   their own `apiObjectKey`), so it falls to the name; and a key the bundled
+   table speaks for never consults its space's row at all, or a localized
+   name would take a spelling from the table that ships with every reader.
+
+**Normalization** is NFC, then the same `strcase.ToSnake` the api slug is
+minted with, then: letters and digits of **any script** are kept and
+lowercased, combining marks are dropped (a mark belongs to the letter before
+it), every other rune is a separator, runs of separators collapse to one `_`
+and the edges trim. A result that starts with a digit, or that *is* one of
+the filter grammar's keywords, takes a leading `_` — `50% done` → `_50_done`,
+`All` → `_all`. A result that is empty, or longer than the 128-character key
+bound, is no label at all.
+
+The grammar is **§6.2.1's**, and it is normative rather than stylistic: a key
+is a Unicode identifier — `identStart identPart*`, letters of any script,
+digits, `_` — and not one of the filter language's reserved words. A label
+outside it **cannot be written in a compact filter string**, which is a
+surface this format serves to models as an EBNF grammar. That is not a corner
+case: a space-minted stored key is a 24-character bson id, and a bson id
+starts with a digit, so before this rule 39 relations in a 36,966-object
+corpus had no spelling that could be filtered on at all.
+
+Three consequences worth stating outright:
+
+- **Non-Latin scripts are kept, never transliterated.** `Тоггл` is `тоггл`
+  and `日本語のプロパティ` is itself. The api slug's transliteration exists
+  because a slug is a URL path segment there; it would answer `toggl` and
+  `ri_ben_yu_nopuropatei` here — unguessable and unreadable at once, which is
+  strictly worse than either the name or the key.
+- **A minted `apiObjectKey` outranks a display name, and is the
+  rename-stable address.** A label derived from a name changes when the name
+  changes, and the next export writes the new one; the stored key never
+  moves, and the `property_keys` line every non-bundled key already carries
+  keeps every document already written resolvable through chain step 1. Where
+  two entities in one space want one label, the explicit claim keeps it and
+  the derived one goes without; where the two claims are equal — two stored
+  slugs, or two names — neither wins and both are written verbatim, because
+  an ambiguous address must never resolve by store order. `Priority` and
+  `Priority 📌` are a real pair, in a real space.
+- **A label may not take a spelling that is already answered.** The bundled
+  table's spellings are not up for grabs (a space-minted relation named "Due
+  date" does not become `due_date`), a live stored key outranks any label
+  (verbatim-first, below), and `id` and `type` are never minted as property
+  labels because §2 refuses those two spellings before any resolution.
+  Within one document the term ledger applies the same discipline (*one term,
+  one key*, below).
 
 **Resolution — one rule, stated once, covering both namespaces.** The
 format names keys in two namespaces — property keys and TYPE keys — and
@@ -2185,10 +2303,13 @@ after checking every key in every account — while the shapes ruled out here
 (the empty key, a key with a newline in it) are keys nothing can read. Export
 drops such a stored key with a warning, since there is no way to write it.
 
-The rule binds the **spelling**, and the spelling is the slug: a vocabulary's
-slug comes from `apiObjectKey`, which is user-supplied or strcase-derived
-from the property name with no length bound and no reserved-word check, so
-nothing upstream guarantees it is a spelling this format accepts. Export
+The rule binds the **spelling**, and the spelling is whatever the vocabulary
+answers: the shipped one normalizes it (§3's label rule bounds the length and
+the charset), but `Options.Keys` accepts an implementation from anyone, and
+the raw material underneath is an `apiObjectKey` that is user-supplied or
+strcase-derived from the property name with no length bound and no
+reserved-word check — so nothing upstream *guarantees* a spelling this format
+accepts. Export
 therefore checks the slug it is about to write, and one it cannot honor
 falls back to the stored key — always its own address (verbatim-first) —
 with a warning naming the vocabulary's answer. Three answers export cannot
@@ -2803,7 +2924,10 @@ Parser interpretation calls (normative, matching the shipped parser):
 keywords match **case-insensitively** (`and` ≡ `AND`) and are **reserved**
 — none can be a bare property key (a colliding key is reachable only
 through the structured form); property keys are Unicode identifiers
-(`identStart identPart*` — letters, digits, `_`); presets are **excluded
+(`identStart identPart*` — letters of any script, digits, `_`), **the
+grammar §3 mints every label through**, so a key a document spells can
+always be written here — the reason `50% done` labels `_50_done` and a
+bson-keyed property labels its name rather than its key; presets are **excluded
 from value lists** and from conditions the engine does not transform
 (`notEqual`, `contains`, …: only `= > < >= <=` take a preset); set
 literals require `=` / `!=` (a list after an ordering operator errors);
@@ -3589,7 +3713,13 @@ implementation from anyone.
    re-importing/re-exporting it is byte-identical. (Byte equality with the
    *original* `J` holds only when `J` is already canonical — import mints
    missing ids, merges marks, maps aliases like `heading_4`/`equation`,
-   absorbs top-level title/description blocks.)
+   absorbs top-level title/description blocks, and export spells every key
+   with the LABEL its authority gives it now, so a document written before
+   the property was renamed — or before this rule — comes back naming the
+   same stored key with a different term. That is a change of spelling and
+   not of state: the label resolves through the document's own legend
+   first, so `N(S)` is untouched and the object is the same object either
+   way.)
 3. `Export(S) = Export(Import(Export(S)))` — the same guarantee anchored on
    the SNAPSHOT rather than on a document, and the one an object exported
    twice depends on: once directly, once after a round trip through this
@@ -3854,6 +3984,11 @@ pkg/lib/anyblockjson/
                                here (post-v1)
   keyvocab.go                — KeyVocabulary: the stored key ↔ spelling table,
                                both namespaces, and the bundled default (§3)
+  label.go                   — the label rule (§3): what a document spells
+                               for a key the bundled table does not speak
+                               for, normalized through §6.2.1's identifier
+                               grammar. A vocabulary calls it; the codec
+                               never does
   blockvocab.go              — the block-type name tables (§5)
   viewvocab.go               — the dataview enum name tables (§6.2)
   fragment.go                — the FRAGMENT surface: one block, a flat run,
@@ -3863,7 +3998,9 @@ pkg/lib/anyblockjson/
   index.go                   — the bundle index (§2c)
   storeresolver/             — the space-backed implementations of the four
                                resolvers, including KeyVocabulary; the only
-                               place that reads a space's api slugs
+                               place that reads a space's api slugs and
+                               display names, and the one that applies the
+                               §3 label rule to them
   snapshotdiff/              — snapshot ↔ snapshot diffing for the PATCH path
   filterstring/              — compact filter string parser (§6.2.1):
                                string → §6.2 filter tree, offset-addressed
