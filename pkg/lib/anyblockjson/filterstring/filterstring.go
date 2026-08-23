@@ -763,6 +763,20 @@ func (p *parser) checkKey(tok token) error {
 	}
 }
 
+// IsBareKey reports whether a key can be written as a bare property key in a
+// compact filter string: the `key = identifier` rule of the EBNF above, plus
+// the reserved words the grammar keeps for itself.
+//
+// It is exported because the grammar is where the format's notion of an
+// identifier LIVES (§6.2.1 — this parser is the normative artifact), and
+// what a document may SPELL for a key is decided elsewhere: the label rule in
+// the parent package normalizes through this predicate, so a spelling that
+// package mints is one this package can parse. Asking it here rather than
+// restating the rule there is the point — a second copy of "letters, digits,
+// `_`, not a keyword" is a copy that drifts, and the two packages already
+// shipped one such drift (filterstring_agreement_test.go).
+func IsBareKey(key string) bool { return bareWritable(key) }
+
 // bareWritable reports whether a property key can be written as a bare
 // identifier in the compact syntax: identifier characters only and not a
 // reserved word.
