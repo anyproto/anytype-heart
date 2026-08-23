@@ -85,3 +85,50 @@ func filterValueSnapshot(v *types.Value) *model.SmartBlockSnapshotBase {
 		Details: fields(map[string]*types.Value{"id": str("bafyreifiltroot")}),
 	}
 }
+
+// An ABSENT format says the document did not speak; the chain answers (§3).
+// It is not a declaration of text — which is what it used to mean, and that
+// silently overrode the bundled table: listing a bundled DATE property
+// without its format pinned it to longtext, so the view's filters stopped
+// being dates. Omitting the whole properties list resolved correctly, which
+// made naming a property strictly worse than staying silent about it.
+//
+// Canonical export always writes a format, so absence only ever arrives
+// from a hand-written document.
+//
+// How this can fail: let declaredFormatWith fall through to longtext for an
+// empty name again and the middle case reads back as text.
+func TestDataview_AnAbsentFormatResolvesThroughTheChain(t *testing.T) {
+	const filter = `"views":[{"name":"All","filters":[{"property":"due_date","condition":"greater","value":"2026-01-01T00:00:00Z"}]}]`
+	for name, tc := range map[string]struct {
+		props string
+		want  model.RelationFormat
+	}{
+		"declared date":        {`"properties":[{"key":"due_date","format":"date"}],`, model.RelationFormat_date},
+		"format omitted":       {`"properties":[{"key":"due_date"}],`, model.RelationFormat_date},
+		"no properties list":   {``, model.RelationFormat_date},
+		"declared text stands": {`"properties":[{"key":"due_date","format":"text"}],`, model.RelationFormat_longtext},
+	} {
+		t.Run(name, func(t *testing.T) {
+			// given
+			doc := `{"version":1,"blocks":[{"type":"dataview",` + tc.props + filter + `}]}`
+
+			// when
+			_, snap, err := Unmarshal([]byte(doc), testOptions())
+			require.NoError(t, err)
+
+			// then
+			var got model.RelationFormat = -1
+			for _, b := range snap.GetBlocks() {
+				if dv := b.GetDataview(); dv != nil {
+					for _, v := range dv.GetViews() {
+						for _, f := range v.GetFilters() {
+							got = f.GetFormat()
+						}
+					}
+				}
+			}
+			assert.Equal(t, tc.want, got, "naming a property must never be worse than staying silent")
+		})
+	}
+}

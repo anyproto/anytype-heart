@@ -1671,6 +1671,17 @@ its own authority, and there are two:
    table speaks for never consults its space's row at all, or a localized
    name would take a spelling from the table that ships with every reader.
 
+An **absent** `format` in either slot that carries one (`type_properties[]`,
+a dataview's `properties[]`) says the document did not speak, and the §3
+chain answers — the bundled table, then the caller's resolver. It is NOT a
+declaration of `text`: that reading silently overrode the table, so
+`{"key": "due_date"}` pinned a bundled DATE property to longtext and its
+filters stopped being dates, while omitting the list entirely resolved
+correctly. Naming a property was strictly worse than staying silent about
+it. Canonical export always writes a format, so an absent one only ever
+arrives from a hand-written document — the population that means "I did not
+say".
+
 **Normalization** is NFC, then: letters and digits of **any script** are kept
 and lowercased, combining marks are dropped (a mark belongs to the letter
 before it), every other rune is a separator, runs of separators collapse to

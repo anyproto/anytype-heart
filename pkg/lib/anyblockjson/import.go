@@ -361,6 +361,27 @@ func (imp *importer) declaredFormat(key, name string) model.RelationFormat {
 // collapse was designed not to have, and the two doors then disagree about
 // what one array means.
 func declaredFormatWith(opts Options, key, name string) model.RelationFormat {
+	// An ABSENT format is not a declaration of text. `format` is optional
+	// in both slots that carry it, so a document that omits it has said
+	// nothing about the property — and the answer to nothing is the chain
+	// (§3), not longtext. Treating absence as `text` silently OVERRODE the
+	// bundled table: `{"key": "due_date"}` in a dataview's property list
+	// pinned a bundled DATE property to longtext, so its filters stopped
+	// being dates, while omitting the list entirely resolved correctly.
+	// Listing a property without its format was worse than not listing it
+	// at all — the opposite of what any author would assume, and reported
+	// by nothing.
+	//
+	// Canonical export always writes a format (formatName answers "text"
+	// even for longtext), so absence only ever arrives from a hand-written
+	// document — exactly the population that means "I did not say". A
+	// declared "text" still stands, and still folds per key below.
+	if name == "" {
+		if resolved, ok := resolveFormatWith(opts, key); ok {
+			return resolved
+		}
+		return model.RelationFormat_longtext
+	}
 	f := formatNames.value(name)
 	if f != model.RelationFormat_longtext {
 		return f
