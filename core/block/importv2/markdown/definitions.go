@@ -64,6 +64,21 @@ func (r *mdResolver) ResolvePropertyKey(objectTypeName, name string) string {
 			return key
 		}
 	}
+	// A front-matter key that IS an Anytype relation key names that relation:
+	// "iconEmoji: 🛠️" is the page's icon, not a text column called iconEmoji.
+	// Machine-written front matter reads this way — our own markdown export
+	// writes some of these, and vaults grown from one carry them — and minting
+	// a relation for them produced a column no one asked for, a page with no
+	// icon, and a duplicate of a bundled relation that can never be told apart
+	// from it in the UI.
+	//
+	// Only an exact key match counts. A human-written "Description" stays the
+	// user's own column: deciding that a column named like a bundled relation
+	// IS that relation is a different question, and the planner answers it
+	// deliberately for the few targets it allows.
+	if bundle.HasRelation(domain.RelationKey(name)) {
+		return name
+	}
 	if key, ok := r.nameToKey[name]; ok {
 		return key
 	}
@@ -140,8 +155,47 @@ func typeSourceKey(name string) string        { return "type:" + name }
 // The returned relation links carry THIS page's inferred formats: the same
 // property name can infer different formats on different pages, and the
 // resolver trusts the object's own links over the run-wide registry.
+// anytypeOwnedKeys are the relations the destination owns: identity, location
+// and provenance. A file may name them, but never set them.
+var anytypeOwnedKeys = map[domain.RelationKey]struct{}{
+	bundle.RelationKeyId:             {},
+	bundle.RelationKeySpaceId:        {},
+	bundle.RelationKeyType:           {},
+	bundle.RelationKeyLayout:         {},
+	bundle.RelationKeyLayoutAlign:    {},
+	bundle.RelationKeySourceFilePath: {},
+	bundle.RelationKeyCreator:        {},
+	bundle.RelationKeyLastModifiedBy: {},
+	bundle.RelationKeyLinks:          {},
+	bundle.RelationKeyBacklinks:      {},
+}
+
+// reportOwnedKey says once per run that a file tried to set one of them.
+func (c *Converter) reportOwnedKey(key string, sink importv2.Sink) {
+	if c.reportedOwnedKeys == nil {
+		c.reportedOwnedKeys = map[string]bool{}
+	}
+	if c.reportedOwnedKeys[key] {
+		return
+	}
+	c.reportedOwnedKeys[key] = true
+	sink.Issue(importv2.Issue{
+		Severity: importv2.SeverityInfo, Code: importv2.IssueDataLoss, Subject: key,
+		Message: "Front matter set a field Anytype gives the object itself; it was ignored",
+	})
+}
+
 func (c *Converter) emitPropertyDefinitions(ctx context.Context, properties []yaml.Property, typeName string, sink importv2.Sink) (details []domain.Detail, links []*model.RelationLink, typeKey string, err error) {
 	for _, property := range properties {
+		if _, owned := anytypeOwnedKeys[domain.RelationKey(property.Key)]; owned {
+			// Who created the object, which space it lives in, what its id is:
+			// the destination decides these, and a value carried in from
+			// another account is at best stale and at worst someone else's
+			// identity. Reported once per key for the whole run — every file
+			// of an exported vault carries the same ones.
+			c.reportOwnedKey(property.Key, sink)
+			continue
+		}
 		if !bundle.HasRelation(domain.RelationKey(property.Key)) && !c.emittedRelations[property.Key] {
 			c.emittedRelations[property.Key] = true
 			if err := sink.Object(ctx, relationObject(property)); err != nil {

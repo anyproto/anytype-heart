@@ -76,10 +76,13 @@ type Converter struct {
 	csvEntries []source.Entry
 	baseNames  map[string][]string // base name → full entry names
 
-	emittedRelations map[string]bool   // relation key
-	emittedOptions   map[string]bool   // option source key
-	emittedTypes     map[string]string // type name → type key
-	emittedFiles     map[string]bool   // file entry name
+	emittedRelations map[string]bool
+	// reportedOwnedKeys dedupes the "front matter set an Anytype field"
+	// note: every file of an exported vault carries the same ones.
+	reportedOwnedKeys map[string]bool   // relation key
+	emittedOptions    map[string]bool   // option source key
+	emittedTypes      map[string]string // type name → type key
+	emittedFiles      map[string]bool   // file entry name
 }
 
 // New builds a per-run converter instance (never shared between runs).
