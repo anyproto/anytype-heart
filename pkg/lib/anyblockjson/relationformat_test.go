@@ -7,6 +7,7 @@ package anyblockjson
 
 import (
 	"encoding/json"
+	"math"
 	"strings"
 	"testing"
 
@@ -179,6 +180,46 @@ func TestRelationEnvelope_UnnameableFormatFailsExport(t *testing.T) {
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "cannot state what it defines",
 				"the failure has to say the document could not be written, not merely that a value was odd")
+		})
+	}
+}
+
+// A stored relationFormat that is NaN, infinite, or outside int32 fails the
+// export BY THE GUARD, before the float ever reaches int32: what int32(n)
+// yields for such values is implementation-dependent (Go spec, Conversions),
+// and measured here int32(NaN) is 0 — so without the guard a NaN format
+// exports as `"format": "text"`, a false claim about what the property is
+// that imports as a permanent silent rewrite to longtext, the exact disease
+// the §2d lift exists to kill. The other inputs happen to land outside the
+// enum on this architecture and would still error by name, which is why
+// every subtest pins the GUARD's own message rather than merely
+// require.Error: the pin must hold on every architecture, never on the
+// accident of what the conversion produces. Corrupt-data-only territory —
+// all 10,617 production relation documents carry an in-enum integer — but
+// corrupt data is exactly what an export must refuse to launder into a
+// well-formed lie.
+//
+// How this can fail: drop the IsNaN/IsInf/int32-range guard from
+// relationFormatName. The NaN subtest then exports `"format": "text"`
+// cleanly, and the rest degrade to the no-name error — the wrong statement
+// about a value the reading never legitimately produced.
+func TestRelationEnvelope_NonFiniteFormatFailsExportByTheGuard(t *testing.T) {
+	for name, raw := range map[string]float64{
+		"NaN":          math.NaN(),
+		"+Inf":         math.Inf(1),
+		"-Inf":         math.Inf(-1),
+		"beyond int32": 1e10,
+		"negative":     -1,
+	} {
+		t.Run(name, func(t *testing.T) {
+			// when
+			_, err := Marshal(model.SmartBlockType_STRelation,
+				relationSnapshot(map[string]*types.Value{"relationFormat": num(raw)}), testOptions())
+
+			// then
+			require.Error(t, err, "a value the enum cannot hold must fail export, never become text")
+			assert.Contains(t, err.Error(), "outside the format enum",
+				"the guard, not the int32 conversion's accident, must be what refuses this value")
 		})
 	}
 }
