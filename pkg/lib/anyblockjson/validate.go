@@ -1374,6 +1374,43 @@ var transientProperties = map[string]string{
 	"data":         "the client's analytics route context, recorded on the object rather than sent as an event",
 	"isNew":        "a just-created flag, true of the moment and never of the object",
 	"layoutFormat": "client layout state written beside the analytics context, defined by no relation",
+
+	// The SOURCE SPACE'S LIVE SESSION — its invite credentials, its invite
+	// state and its analytics identity. Every one of these describes the
+	// space a bundle was exported FROM, and a space restored from that
+	// bundle regenerates all of them; not one is a fact about any object in
+	// it.
+	//
+	// Three of them are secrets. `spaceInviteFileKey` and
+	// `spaceInviteGuestFileKey` are, in the bundled table's own words, the
+	// "encoded encryption key of invite file" — and a bundle is a SHAREABLE
+	// artifact: a use case, a template, a backup someone sends on. Measured
+	// before this rule: 74 of 77 exported spaces carried at least one of
+	// these, 35 carried the invite key, and `analyticsSpaceId` — a stable
+	// per-space tracking identifier — travelled in 50.
+	//
+	// All ten occur on the space's own document and nowhere else in 38,070
+	// corpus documents, so stripping them reaches nothing that wanted them.
+	"spaceInviteFileKey":         "the invite file's ENCRYPTION KEY; a bundle is shareable and a restored space mints its own",
+	"spaceInviteGuestFileKey":    "the guest invite file's ENCRYPTION KEY; same",
+	"oneToOneRequestMetadataKey": "a participant's request-metadata KEY; belongs to the source space's session",
+	"spaceInviteFileCid":         "addresses the invite file the key above opens; useless and unwanted once the key is gone",
+	"spaceInviteGuestFileCid":    "same, for the guest invite",
+	"spaceInvitePermissions":     "the source space's live invite configuration, remade with the new space's own invite",
+	"spaceInviteType":            "same",
+	"spaceInviteHeldByOwner":     "same",
+	"oneToOneInboxSentStatus":    "the source space's inbox session state",
+	"analyticsSpaceId":           "an anonymous per-space TRACKING id; it identifies the space it left, not the one being made",
+
+	// DEPRECATED space details. `spaceDashboardId` is `homepage`'s
+	// predecessor and its `object` format never told the truth — 46 of the
+	// 54 documents carrying both disagree, and its values are the sentinels
+	// `chat` and `lastOpened` rather than object ids at all. `homepage`
+	// (longtext, "could handle either object id or a sentinel") is the live
+	// one and index.json already carries it.
+	"spaceDashboardId": "deprecated: homepage's predecessor, and its `object` format holds sentinels, not ids",
+	"spaceUxType":      "deprecated",
+	"hasChat":          "deprecated",
 }
 
 // isTransientProperty reports whether a stored key describes a moment rather

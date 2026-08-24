@@ -93,6 +93,23 @@ func TestTransientProperties_BundledVerdictPerKey(t *testing.T) {
 		"data":          false, // not a relation at all — the whole justification
 		"isNew":         false,
 		"layoutFormat":  false,
+		// the source space's live session: bundled every one, and stripped
+		// for a third reason again — they belong to the space a bundle came
+		// FROM, and three of them are secrets
+		"spaceInviteFileKey":         true,
+		"spaceInviteGuestFileKey":    true,
+		"oneToOneRequestMetadataKey": true,
+		"spaceInviteFileCid":         true,
+		"spaceInviteGuestFileCid":    true,
+		"spaceInvitePermissions":     true,
+		"spaceInviteType":            true,
+		"spaceInviteHeldByOwner":     true,
+		"oneToOneInboxSentStatus":    true,
+		"analyticsSpaceId":           true,
+		// deprecated space details
+		"spaceDashboardId": true,
+		"spaceUxType":      true,
+		"hasChat":          true,
 	}
 	assert.Equal(t, len(want), len(transientProperties),
 		"every transient key owes a verdict here — a new one must say which case it is")
@@ -132,4 +149,53 @@ func TestTransientProperties_TheAnalyticsTripleIsDropped(t *testing.T) {
 			"%q describes the click that made the object, not the object", key)
 	}
 	assert.Contains(t, snap.GetDetails().GetFields(), "name", "the object itself survives")
+}
+
+// A bundle is a SHAREABLE artifact — a use case, a template, a backup
+// someone sends on — and it was carrying the source space's invite
+// encryption keys. `spaceInviteFileKey` is, in the bundled table's own
+// words, the "encoded encryption key of invite file for current space".
+//
+// Measured before the rule: of 77 exported spaces, 74 carried at least one
+// of these, 35 carried the invite key, 31 a participant's request-metadata
+// key, and 50 carried `analyticsSpaceId` — a stable per-space tracking
+// identifier. All ten occur on the space's own document and nowhere else in
+// 38,070 corpus documents.
+//
+// None of them is a fact about any object in the bundle: a restored space
+// mints its own invites and its own analytics identity.
+//
+// How this can fail: drop any of these from transientProperties and the
+// value reaches the snapshot — and, on the export side, the wire.
+func TestTransientProperties_ASpacesSecretsDoNotTravel(t *testing.T) {
+	secrets := map[string]string{
+		"space_invite_file_key":           `"CTSVcbZvejUEhSziyp1c5oFtQaYg"`,
+		"space_invite_guest_file_key":     `"AUhKdNbK3mZcq6taS2qT32Lc92FPM"`,
+		"one_to_one_request_metadata_key": `"CAISIFALZJQnpN1fVts0VW0oBsKqv"`,
+		"analytics_space_id":              `"3817ea69-b7fa-4d93-ad6d-1b9a8"`,
+	}
+	stored := map[string]string{
+		"space_invite_file_key":           "spaceInviteFileKey",
+		"space_invite_guest_file_key":     "spaceInviteGuestFileKey",
+		"one_to_one_request_metadata_key": "oneToOneRequestMetadataKey",
+		"analytics_space_id":              "analyticsSpaceId",
+	}
+	for spelling, value := range secrets {
+		t.Run(spelling, func(t *testing.T) {
+			// given the space's own document carrying it
+			doc := []byte(`{"version":1,"kind":"space_settings","properties":{"name":"My space","` +
+				spelling + `":` + value + `}}`)
+
+			// when
+			require.NoError(t, Validate(doc), "a stale export still imports")
+			_, snap, err := Unmarshal(doc, Options{})
+			require.NoError(t, err)
+
+			// then
+			assert.NotContains(t, snap.GetDetails().GetFields(), stored[spelling],
+				"a shareable bundle must not carry the source space's %s", spelling)
+			assert.Contains(t, snap.GetDetails().GetFields(), "name",
+				"the space itself survives")
+		})
+	}
 }
