@@ -239,3 +239,53 @@ func TestPropertyDictionary_MarshalRefusesTheUnwritable(t *testing.T) {
 		assert.NotContains(t, strings.ToLower(err.Error()), `"text"`, "no fallback spelling")
 	})
 }
+
+// §11 I1 on the shortest possible path: what MarshalPropertyDictionary
+// writes, UnmarshalPropertyDictionary must be able to read. `max_count` went
+// out through setNonEmpty unchecked while the schema bounds it to a
+// non-negative int32, so a negative or oversized value produced bytes this
+// same file refuses.
+//
+// Reachable rather than theoretical: the value is whatever the caller holds,
+// and a relation's stored relationMaxCount is an untrusted number like any
+// other detail.
+//
+// How this can fail: put setNonEmpty back without the bound and the two
+// cases below marshal cleanly into a document that fails its own reader.
+func TestPropertyDictionary_MaxCountStaysWithinWhatItCanRead(t *testing.T) {
+	for name, count := range map[string]int64{
+		"negative":     -1,
+		"beyond int32": 1 << 40,
+	} {
+		t.Run(name, func(t *testing.T) {
+			// given
+			d := &PropertyDictionary{Properties: []PropertyDefinition{{
+				Key: "estimated_hours", Format: model.RelationFormat_number, MaxCount: count,
+			}}}
+
+			// when
+			_, err := MarshalPropertyDictionary(d)
+
+			// then
+			require.Error(t, err, "an entry that cannot be read back is not an entry")
+			assert.Contains(t, err.Error(), "max_count")
+		})
+	}
+
+	t.Run("an ordinary bound still writes and reads back", func(t *testing.T) {
+		// given
+		d := &PropertyDictionary{Properties: []PropertyDefinition{{
+			Key: "estimated_hours", Format: model.RelationFormat_number, MaxCount: 1,
+		}}}
+
+		// when
+		data, err := MarshalPropertyDictionary(d)
+		require.NoError(t, err)
+		back, err := UnmarshalPropertyDictionary(data)
+
+		// then
+		require.NoError(t, err, "§11 I1: what Marshal writes, Unmarshal reads")
+		require.Len(t, back.Properties, 1)
+		assert.Equal(t, int64(1), back.Properties[0].MaxCount)
+	})
+}

@@ -27,6 +27,7 @@ import (
 	"bytes"
 	_ "embed"
 	"fmt"
+	"math"
 	"sort"
 	"sync"
 
@@ -269,6 +270,16 @@ func dictionaryEntryOmap(def PropertyDefinition) (*omap, error) {
 		// a pointer false is a declaration, not an absence — the same
 		// distinction the §2a array preserves through both its doors
 		m.set("include_time", *def.IncludeTime)
+	}
+	// the schema bounds max_count to a non-negative int32, and setNonEmpty
+	// would have written whatever the caller held: a negative or
+	// out-of-range value produced bytes this file's own Unmarshal refuses,
+	// which is §11 I1 broken on the shortest possible path. Refused by name,
+	// the same treatment `format` gets above — an entry that cannot be read
+	// back is not an entry.
+	if def.MaxCount < 0 || def.MaxCount > math.MaxInt32 {
+		return nil, fmt.Errorf("property %q: max_count %d is outside the range an entry can "+
+			"state (0..%d) (§2f)", def.Key, def.MaxCount, math.MaxInt32)
 	}
 	m.setNonEmpty("max_count", def.MaxCount)
 	m.setNonEmpty("readonly", def.Readonly)

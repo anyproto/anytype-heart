@@ -169,8 +169,23 @@ func OmittedBundledRelation(sbType model.SmartBlockType, base *model.SmartBlockS
 	internal := strippedDetailKeys()
 	for k := range det {
 		switch {
+		case isAttributionProperty(k):
+			// `creator` and `lastModifiedBy` are in strippedDetailKeys, but
+			// unlike the rest of that set they are NOT absent from a
+			// document: export writes the §3 attribution spelling
+			// `<id>#<name>` for both, so a KEPT copy of this relation would
+			// have carried them and an omitted one does not. Every one of
+			// the 10,617 corpus relation documents holds a `creator`.
+			//
+			// They are omitted anyway, on their own verdict rather than on
+			// the internal set's: attribution on an installed copy of a
+			// bundled relation records WHO RAN THE INSTALL, not who authored
+			// the property — the bundled original is authored by nobody in
+			// this space. Same class as createdDate, which
+			// RelationInstallArtifactKey already covers.
 		case internal[k]:
-			// never travels in any document; nothing to lose
+			// the raw stored value never travels in any document; nothing to
+			// lose. (Attribution is the exception, handled above.)
 		case RelationInstallArtifactKey(k):
 			// re-stamped by the next install, any value
 		case relationDefinitionKeys[k]:
