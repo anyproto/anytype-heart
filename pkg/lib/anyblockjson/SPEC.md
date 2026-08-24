@@ -4558,8 +4558,16 @@ every other format slot (53 of 10,617 under bare options in the corpus;
 zero with the space's resolver, which knows every live relation's format);
 and **`object_types` entries take the §3 list normalizations** — a
 scalar-stored value wraps, empty-string entries drop — while the id↔key
-translation itself is exact: ids out, ids back under the `TypeResolver`
-capability, verbatim both ways without it.
+translation is exact for every id the store actually speaks: ids out, ids
+back under the `TypeResolver` capability, verbatim both ways without it.
+One residue, measured at 27 corpus relations: **a legacy bare type KEY
+stored where the store speaks object ids comes back as this space's type
+object id** — export passes the key through verbatim (it is no id the
+resolver serves), and import writes the id the key names, which is the
+store's own spelling for the same type. A respelling, not a rebinding — the
+comparator normalizes both sides to keys through the same capability, the
+treatment the recommended lists already get, so only a change of the type
+NAMED reports.
 
 The §2a `type_settings` group (v0.32) adds three normalizations, all scoped
 to TYPE documents and all owned by exported predicates the comparator reads

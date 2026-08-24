@@ -107,3 +107,65 @@ func TestCompare_OmittedRelationDefinitionLossStillReports(t *testing.T) {
 	diffs := Compare(omittableCopy(t), got, model.SmartBlockType_STRelation, anyblockjson.Options{})
 	assert.NotEmpty(t, diffs)
 }
+
+// relation_settings' object_types round-trips by type KEY, and legacy data
+// mixes spellings: 27 corpus relations store a bare type key where the
+// store speaks object ids, and import writes the id back — the SAME type,
+// respelled. The comparator normalizes both sides to keys through the
+// TypeResolver, exactly as it does for the recommended lists one namespace
+// over, so a respelling is silent and a REBINDING still reports.
+//
+// How this can fail: drop the relationTargetsDetailKey arm from detailEqual
+// (the respelled case reports as loss — the 27 false findings come back),
+// or normalize one side only (the rebound case goes green and a genuine
+// target substitution ships as normalization).
+func TestCompare_RelationTargetsCompareByTypeKey(t *testing.T) {
+	tr := &targetsResolver{idToKey: map[string]string{"bafyderivedgoal": "goal", "bafyderivedtask": "task"}}
+	opts := anyblockjson.Options{ResolveProperties: tr}
+	targets := func(entries ...string) *model.SmartBlockSnapshotBase {
+		vals := make([]*types.Value, 0, len(entries))
+		for _, e := range entries {
+			vals = append(vals, &types.Value{Kind: &types.Value_StringValue{StringValue: e}})
+		}
+		return &model.SmartBlockSnapshotBase{Details: &types.Struct{Fields: map[string]*types.Value{
+			"relationFormatObjectTypes": {Kind: &types.Value_ListValue{
+				ListValue: &types.ListValue{Values: vals}}},
+		}}}
+	}
+
+	t.Run("a respelled target is the same type", func(t *testing.T) {
+		diffs := Compare(targets("goal"), targets("bafyderivedgoal"), model.SmartBlockType_STRelation, opts)
+		assert.Empty(t, diffs)
+	})
+	t.Run("a rebound target still reports", func(t *testing.T) {
+		diffs := Compare(targets("goal"), targets("bafyderivedtask"), model.SmartBlockType_STRelation, opts)
+		assert.NotEmpty(t, diffs)
+	})
+	t.Run("without the capability the raw comparison stands", func(t *testing.T) {
+		// §2d: verbatim both ways without a resolver, so equal stays equal
+		diffs := Compare(targets("goal"), targets("goal"), model.SmartBlockType_STRelation, anyblockjson.Options{})
+		assert.Empty(t, diffs)
+	})
+}
+
+// targetsResolver is the TypeResolver capability over a fixed id table.
+type targetsResolver struct{ idToKey map[string]string }
+
+func (r *targetsResolver) PropertyById(id string) (anyblockjson.PropertyDefinition, bool) {
+	return anyblockjson.PropertyDefinition{}, false
+}
+func (r *targetsResolver) PropertyId(def anyblockjson.PropertyDefinition) (string, bool) {
+	return "", false
+}
+func (r *targetsResolver) TypeKeyById(id string) (string, bool) {
+	k, ok := r.idToKey[id]
+	return k, ok
+}
+func (r *targetsResolver) TypeIdByKey(key string) (string, bool) {
+	for id, k := range r.idToKey {
+		if k == key {
+			return id, true
+		}
+	}
+	return "", false
+}

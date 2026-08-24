@@ -318,6 +318,21 @@ func detailEqual(key string, a, b *types.Value, opts anyblockjson.Options) bool 
 			normalizeRecommended(stringsOf(a), opts.ResolveProperties),
 			normalizeRecommended(stringsOf(b), opts.ResolveProperties))
 	}
+	// relationFormatObjectTypes round-trips by type KEY (§2d), and legacy
+	// data mixes spellings the same way the recommended lists do: 27 corpus
+	// relations store a bare type key where the store speaks object ids, and
+	// import writes the id back — the same TYPE, in the store's own
+	// spelling. So the comparison normalizes both sides to keys through the
+	// TypeResolver capability and demands position-for-position identity,
+	// exactly as normalizeRecommended does one namespace over: a rebound
+	// TARGET still reports, a respelled one does not. Without the
+	// capability the translation is verbatim both ways (§2d), so the raw
+	// comparison below is already exact.
+	if key == relationTargetsDetailKey {
+		if tr, ok := opts.ResolveProperties.(anyblockjson.TypeResolver); ok {
+			return equalStrings(normalizeTypeRefs(stringsOf(a), tr), normalizeTypeRefs(stringsOf(b), tr))
+		}
+	}
 	format, _ := resolveFormat(key, opts)
 	switch format {
 	case model.RelationFormat_object, model.RelationFormat_file,
@@ -340,6 +355,30 @@ var recommendedDetailKeys = map[string]bool{
 	"recommendedRelations":         true,
 	"recommendedFileRelations":     true,
 	"recommendedHiddenRelations":   true,
+}
+
+// relationTargetsDetailKey is the stored key behind relation_settings'
+// object_types (§2d) — the type-namespace twin of the four lists above.
+const relationTargetsDetailKey = "relationFormatObjectTypes"
+
+// normalizeTypeRefs reduces each target entry to the type KEY it names: a
+// bundled url through the table, an object id through the resolver, and
+// anything else — a legacy bare key included — verbatim, its own address.
+// Applied to BOTH sides, so only a change of the type named survives it.
+func normalizeTypeRefs(entries []string, tr anyblockjson.TypeResolver) []string {
+	out := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		if key, err := bundle.TypeKeyFromUrl(entry); err == nil && key != "" {
+			out = append(out, string(key))
+			continue
+		}
+		if key, ok := tr.TypeKeyById(entry); ok && key != "" {
+			out = append(out, key)
+			continue
+		}
+		out = append(out, entry)
+	}
+	return out
 }
 
 func normalizeRecommended(entries []string, r anyblockjson.PropertyResolver) []string {
