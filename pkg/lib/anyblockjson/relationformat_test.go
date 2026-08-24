@@ -387,6 +387,93 @@ func TestRelationEnvelope_ReferenceSlotsKeepTheBundledSlug(t *testing.T) {
 	require.NoError(t, Validate(data), "§11 I1")
 }
 
+// The denied-key exemption is TWO questions, and this pins the first: the
+// bundled table must BIND the slug to this very key. Slugs come from
+// apiObjectKey — user-editable — so a space really can spell `relationFormat`
+// with a slug of its own, and that slug inverts through the vocabulary in
+// force while the bundled table has never heard of it. Such a slug OWES a
+// legend entry (recordPropertyKey's rule: a spelling the bundled table does
+// not bind always does), and the entry's value would be the denied key, which
+// the §3 deny rule refuses — so the document would spell `fmt_col` with
+// nothing anywhere saying what it means, and every reader would resolve it
+// verbatim (chain step 4) as a custom property named fmt_col: a silent
+// repoint of the reference. The stored key is the one spelling that needs no
+// entry, so it is the one written. The safe population the exemption serves
+// (64 production spaces showing the Property type's format column) is
+// bundled-bound by construction, so backing THIS slug off costs it nothing.
+//
+// How this can fail: drop the bundledBinds half from writableSlug's
+// denied-key exemption. termInverts alone accepts this slug — the writer's
+// own space does invert it — and the column spells "fmt_col" with no legend
+// entry possible for it.
+func TestRelationEnvelope_ADeniedKeySlugTheBundledTableDoesNotBindBacksOff(t *testing.T) {
+	// given the Property type's format column, under a vocabulary that
+	// spells the lifted key with a space-minted slug of its own
+	snap := dataviewSnapshot(&model.RelationLink{
+		Key: "relationFormat", Format: model.RelationFormat_number,
+	})
+	var warns []Issue
+	opts := testOptions()
+	opts.Keys = typedSpaceVocabulary{propSlugOf: map[string]string{"relationFormat": "fmt_col"}}
+	opts.OnWarning = func(i Issue) { warns = append(warns, i) }
+
+	// when
+	data, err := Marshal(model.SmartBlockType_Page, snap, opts)
+	require.NoError(t, err)
+
+	// then
+	assert.Contains(t, string(data), `"key": "relationFormat"`,
+		"a slug that would owe an unwritable legend entry backs off to the stored key (§3)")
+	assert.NotContains(t, string(data), "fmt_col")
+	assert.NotContains(t, string(data), `"property_keys"`,
+		"the denied key can never be a legend value — that is why the slug had to go")
+	require.NotEmpty(t, warns, "the backed-off spelling is reported")
+	assert.Contains(t, warns[0].Message, "cannot be a legend value")
+	require.NoError(t, Validate(data), "§11 I1")
+}
+
+// …and this pins the second question: the vocabulary IN FORCE must invert
+// the slug. The bundled table binds `relation_format` to relationFormat, but
+// the writer's own space is a reader too — its vocabulary answers FIRST on
+// import, ahead of the bundled table — and here a custom relation has
+// claimed the api key `relation_format` for itself (the freed-spelling
+// hazard recordPropertyKey documents: measured on the property namespace,
+// the same shadowing silently lands dueDate's value on the custom relation
+// that wanted the spelling). Writing the slug would re-point the column to
+// the shadowing relation the moment the document is read back where it was
+// written, and no legend entry can correct it, because the entry's value
+// would be the denied key. Only the verbatim stored key — always its own
+// address (§3) — survives that reader.
+//
+// How this can fail: drop the termInverts half from writableSlug's
+// denied-key exemption. bundledBinds alone accepts the slug, the column
+// spells "relation_format", and the writer's own vocabulary binds it to the
+// shadowing custom relation — a repoint with no error anywhere.
+func TestRelationEnvelope_ADeniedKeySlugShadowedByTheVocabularyBacksOff(t *testing.T) {
+	// given the same format column, under a vocabulary where a custom
+	// relation holds the bundled slug of the lifted key
+	snap := dataviewSnapshot(&model.RelationLink{
+		Key: "relationFormat", Format: model.RelationFormat_number,
+	})
+	var warns []Issue
+	opts := testOptions()
+	opts.Keys = typedSpaceVocabulary{
+		propSlugOf: map[string]string{"64af1efbc52a6a5ed6e9dabc": "relation_format"}}
+	opts.OnWarning = func(i Issue) { warns = append(warns, i) }
+
+	// when
+	data, err := Marshal(model.SmartBlockType_Page, snap, opts)
+	require.NoError(t, err)
+
+	// then
+	assert.Contains(t, string(data), `"key": "relationFormat"`,
+		"the writer's own space would re-point the slug, so the stored key is the honest spelling")
+	assert.NotContains(t, string(data), "relation_format")
+	require.NotEmpty(t, warns, "the backed-off spelling is reported")
+	assert.Contains(t, warns[0].Message, "cannot be a legend value")
+	require.NoError(t, Validate(data), "§11 I1")
+}
+
 // The target keys are in the TYPE-KEY CENSUS: verbatim-first (§3) makes each
 // its own address, so no other key's slug may take one as a spelling — the
 // same duty §2a's targets have carried since typeProperties shipped.
