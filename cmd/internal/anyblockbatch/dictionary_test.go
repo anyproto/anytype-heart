@@ -110,3 +110,18 @@ func TestUsedPropertyKeys_ResolvesTheChain(t *testing.T) {
 	assert.False(t, used["id"], "envelope facts are not property references")
 	assert.False(t, used["type"], "envelope facts are not property references")
 }
+
+// UnknownInstalledKeys is the tool-side half of the §2f installed
+// asymmetry: the CODEC tolerates a key the bundled table cannot name (a
+// newer app's backup must stay readable), while the authoring tools WARN,
+// because in a bundle being written the likelier story is a typo or a
+// space-minted key filed on the wrong list.
+//
+// How this can fail: invert the membership test (both assertions flip), or
+// quietly drop the check from anyblockvalidate's dictionary pass — this
+// test keeps the helper honest, and the helper is the whole of that check.
+func TestUnknownInstalledKeys_NamesWhatTheTableCannot(t *testing.T) {
+	dict := &anyblockjson.PropertyDictionary{Installed: []string{"tag", "aKeyFromANewerApp", "dueDate"}}
+	assert.Equal(t, []string{"aKeyFromANewerApp"}, UnknownInstalledKeys(dict))
+	assert.Empty(t, UnknownInstalledKeys(&anyblockjson.PropertyDictionary{Installed: []string{"tag"}}))
+}
