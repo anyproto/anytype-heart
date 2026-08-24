@@ -1202,7 +1202,25 @@
         "properties",
         "map"
       ],
-      "description": "A property format, by NAME (§3): the public REST API vocabulary, plus names for the internal formats a store really carries — emoji, objects, properties, and map, which 72 production relation documents hold (the bundled templatePlaceholders relation). One list, referenced from every slot that states a format, so the three slots cannot drift apart."
+      "description": "A property format, by NAME (§3): the public REST API vocabulary, plus names for the internal formats a store really carries — emoji, objects, properties, and map, which 72 production relation documents hold (the bundled templatePlaceholders relation). One list, referenced from every slot that states a format, so the three slots cannot drift apart. Includes `map`, which only the relation-document envelope may state: it is the format of hidden system relations (templatePlaceholders is the only carrier — 72 production documents) and no authored property may declare it, so type_properties[] and a dataview's properties[] reference authorableFormat instead."
+    },
+    "authorableFormat": {
+      "enum": [
+        "text",
+        "number",
+        "select",
+        "multi_select",
+        "date",
+        "files",
+        "checkbox",
+        "url",
+        "email",
+        "phone",
+        "emoji",
+        "objects",
+        "properties"
+      ],
+      "description": "A property format an author may DECLARE (§3) — propertyFormat without `map`. `map` names the shape of a hidden system relation's value, never something a type or a view declares: it occurs on 0 of 19,862 type_properties entries and 0 of 28,034 dataview property entries in a 38,061-document corpus, and its only carrier is the bundled, hidden templatePlaceholders. Splitting the vocabulary keeps the relation envelope able to state what it is (§2d) while keeping the authorable slots — the ones a model writes, and the ones a generated per-type schema is built from — unable to invent one."
     },
     "typeProperty": {
       "type": "object",
@@ -1217,7 +1235,7 @@
           "type": "string"
         },
         "format": {
-          "$ref": "#/$defs/propertyFormat"
+          "$ref": "#/$defs/authorableFormat"
         },
         "options": {
           "type": "array",
@@ -1291,7 +1309,7 @@
           "minLength": 1
         },
         "format": {
-          "$ref": "#/$defs/propertyFormat"
+          "$ref": "#/$defs/authorableFormat"
         }
       },
       "required": [

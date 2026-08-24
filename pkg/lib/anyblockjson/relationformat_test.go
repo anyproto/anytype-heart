@@ -908,7 +908,7 @@ func TestRelationEnvelope_ExportImportIsByteStable(t *testing.T) {
 // How this can fail: add a format name to formatNames without the schema (or
 // vice versa), or point one of the three slots at a private enum again.
 func TestPropertyFormatEnum_MatchesFormatNames(t *testing.T) {
-	// given the schema's own statement
+	// given the schema's own statement of every format the store carries
 	schemaNames := propertyFormatEnum()
 	require.NotEmpty(t, schemaNames, "the schema must publish $defs/propertyFormat")
 
@@ -920,23 +920,43 @@ func TestPropertyFormatEnum_MatchesFormatNames(t *testing.T) {
 	for _, name := range schemaNames {
 		got[name] = true
 	}
-	assert.Equal(t, want, got)
+	assert.Equal(t, want, got, "propertyFormat is total over the model enum")
 
-	// and the three slots all reference the shared list
 	var schema struct {
 		Properties map[string]json.RawMessage `json:"properties"`
 		Defs       map[string]struct {
+			Enum       []string                   `json:"enum"`
 			Properties map[string]json.RawMessage `json:"properties"`
 		} `json:"$defs"`
 	}
 	require.NoError(t, json.Unmarshal(SchemaJSON(), &schema))
-	for slot, raw := range map[string]json.RawMessage{
-		"root format":             schema.Properties["format"],
-		"typeProperty.format":     schema.Defs["typeProperty"].Properties["format"],
-		"dataviewProperty.format": schema.Defs["dataviewProperty"].Properties["format"],
+
+	// authorableFormat is propertyFormat minus `map`, and nothing else: it
+	// must not drift into a second hand-maintained list.
+	authorable := map[string]bool{}
+	for _, name := range schema.Defs["authorableFormat"].Enum {
+		authorable[name] = true
+	}
+	delete(want, "map")
+	assert.Equal(t, want, authorable,
+		"authorableFormat is the whole vocabulary minus `map`, restated nowhere")
+
+	// and each slot references the list it is entitled to. The relation
+	// envelope states what a property IS, so it may name every format a
+	// store carries. The two AUTHORED slots may not invent a `map`: it
+	// names the shape of a hidden system relation's value, and occurs on 0
+	// of 19,862 type_properties entries and 0 of 28,034 dataview property
+	// entries in a 38,061-document corpus.
+	for slot, tc := range map[string]struct {
+		raw json.RawMessage
+		ref string
+	}{
+		"root format":             {schema.Properties["format"], "propertyFormat"},
+		"typeProperty.format":     {schema.Defs["typeProperty"].Properties["format"], "authorableFormat"},
+		"dataviewProperty.format": {schema.Defs["dataviewProperty"].Properties["format"], "authorableFormat"},
 	} {
-		assert.True(t, strings.Contains(string(raw), `"#/$defs/propertyFormat"`),
-			"%s must reference the shared vocabulary, not restate it", slot)
+		assert.Truef(t, strings.Contains(string(tc.raw), `"#/$defs/`+tc.ref+`"`),
+			"%s must reference %s, not restate it", slot, tc.ref)
 	}
 }
 
@@ -1091,4 +1111,44 @@ func TestRelationEnvelope_EveryRelationKindRoundTripsLossless(t *testing.T) {
 				"the definition survives on every kind that IS a relation")
 		})
 	}
+}
+
+// `map` is not an authorable format. It names the shape of a hidden system
+// relation's value — `templatePlaceholders` is the only carrier, 72
+// production documents — and no type or view declares one: 0 of 19,862
+// type_properties entries and 0 of 28,034 dataview property entries in a
+// 38,061-document corpus.
+//
+// The relation envelope must still be able to state it, or those 72
+// documents cannot say what they define and stop exporting (§2d).
+//
+// How this can fail: point the authored slots back at propertyFormat and a
+// model can declare a property whose values nothing but the client writes.
+func TestPropertyFormat_MapIsNotAuthorable(t *testing.T) {
+	t.Run("a relation document may state it", func(t *testing.T) {
+		doc := []byte(`{"version":1,"kind":"relation","key":"templatePlaceholders","format":"map",
+			"properties":{"name":"Template Placeholders"}}`)
+		assert.NoError(t, Validate(doc), "the only carrier of `map` must keep exporting")
+	})
+
+	t.Run("a type may not declare it", func(t *testing.T) {
+		doc := []byte(`{"version":1,"kind":"object_type","key":"task","properties":{"name":"Task"},
+			"type_properties":[{"key":"placeholders","format":"map"}]}`)
+		require.Error(t, Validate(doc), "an authored property may not invent a map")
+	})
+
+	t.Run("a dataview may not declare it", func(t *testing.T) {
+		doc := []byte(`{"version":1,"blocks":[{"type":"dataview",
+			"properties":[{"key":"placeholders","format":"map"}],
+			"views":[{"name":"All"}]}]}`)
+		require.Error(t, Validate(doc), "a view may not invent a map either")
+	})
+
+	t.Run("the authored slots still take every other format", func(t *testing.T) {
+		for _, f := range []string{"text", "number", "date", "select", "objects", "properties"} {
+			doc := []byte(`{"version":1,"kind":"object_type","key":"task","properties":{"name":"Task"},
+				"type_properties":[{"key":"p","format":"` + f + `"}]}`)
+			assert.NoErrorf(t, Validate(doc), "%q is authorable", f)
+		}
+	})
 }

@@ -1707,6 +1707,16 @@ obligation in a format about to freeze. Nothing observable turns on it (0
 corpus documents either way); what turns on it is not extending support to
 something on its way out.
 
+`format` here may name **every** format a store carries, including `map` —
+the shape of a hidden system relation's value, whose only carrier is the
+bundled `templatePlaceholders` (72 production documents). The two AUTHORED
+format slots may not: `type_properties[].format` and a dataview's
+`properties[].format` reference `authorableFormat`, which is the same
+vocabulary minus `map`. A relation document has to be able to say what it
+defines; a type or a view has no business declaring a property whose values
+only the client writes, and none does — 0 of 19,862 type-property entries
+and 0 of 28,034 dataview property entries carry it.
+
 Exactly **three stored details lift**, and no others:
 
 | stored key | envelope field | shape |
