@@ -1,6 +1,6 @@
 # AnyBlock JSON — format specification
 
-Status: **draft v0.33** · Format version: **1** · Package: `pkg/lib/anyblockjson`
+Status: **draft v0.34** · Format version: **1** · Package: `pkg/lib/anyblockjson`
 
 A human- and agent-readable JSON serialization of Anytype objects (the "anyblock"
 model), designed for export, import, and generation by external tools and LLM
@@ -15,6 +15,32 @@ strings; the vocabulary follows Notion's API and Anytype's public REST API
 (`core/api`) wherever an established term exists — the format should be
 readable, and mostly writable, by someone who has never seen Anytype
 internals.
+
+Changes in v0.34: **a bundle carries no space document, and no space
+secrets** (§2c, §3).
+
+**Ten details of the source space stop being exported.** Three are secrets:
+`spaceInviteFileKey` and `spaceInviteGuestFileKey` are, in the bundled
+table's own words, the "encoded encryption key of invite file", and
+`oneToOneRequestMetadataKey` is a participant's request-metadata key. A
+bundle is a SHAREABLE artifact — a use case, a template, a backup someone
+sends on — and 74 of 77 exported spaces carried at least one; 35 carried the
+invite key; 50 carried `analyticsSpaceId`, a stable per-space tracking
+identifier. None is a fact about any object in the bundle: a restored space
+mints its own. The invite-state and deprecated members go with them
+(`spaceUxType`, `hasChat`, and `spaceDashboardId` — `homepage`'s
+predecessor, whose `object` format holds the sentinels `chat` and
+`lastOpened` rather than ids, and which disagrees with `homepage` on 46 of
+the 54 documents carrying both).
+
+**And then the space document has nothing left to say.** Measured over the
+same 77: after every existing rule runs, it reduces to `homepage` (77),
+`name` (75), `description` (12) and `featuredRelations` (12) — and
+`index.json` already states the first three, existing exactly once per
+bundle because an export is a single space. So export omits the document and
+`IndexFromSpaceSettings` lifts the three fields, one place saying which
+detail becomes which index field. The omission is fail-closed: a member the
+format cannot account for keeps the document.
 
 Changes in v0.33: **the space's own object spells its settings** (§2).
 

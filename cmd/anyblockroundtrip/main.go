@@ -722,6 +722,11 @@ type spaceComposer struct {
 	optionPaths map[string]string
 	written     []string
 
+	// the fields the space's own document is the source of (§2c). Lifted as
+	// that document is observed and omitted, so the index states what the
+	// dropped document held.
+	index anyblockjson.Index
+
 	omittedDocs  int
 	omittedBytes int
 }
@@ -745,6 +750,14 @@ func newSpaceComposer(opts anyblockjson.Options, spaceName string) *spaceCompose
 func (c *spaceComposer) observeSnapshot(sw *pb.SnapshotWithType) (omittedKey string, issues []issue) {
 	base := sw.Snapshot.GetData()
 	if base == nil {
+		return "", nil
+	}
+	// the space's own object: index.json states everything it holds (§2c),
+	// so the composer lifts those fields and drops the document. The lift
+	// runs BEFORE the omission is recorded, so a bundle can never drop the
+	// document without having written what it carried.
+	if anyblockjson.OmittedSpaceSettings(sw.SbType, base) {
+		anyblockjson.IndexFromSpaceSettings(&c.index, base)
 		return "", nil
 	}
 	if key, ok := anyblockjson.OmittedBundledRelation(sw.SbType, base, c.opts); ok {
@@ -865,7 +878,11 @@ func (c *spaceComposer) finish(ss *spaceSummary) error {
 	}
 
 	idx := &anyblockjson.Index{
-		Name: c.spaceName,
+		// the space's own document is the source where it exists; the
+		// listing's name is the fallback for a space that has none
+		Name:        firstNonEmpty(c.index.Name, c.spaceName),
+		Description: c.index.Description,
+		Homepage:    c.index.Homepage,
 		Manifest: &anyblockjson.Manifest{
 			Types:      relPaths(root, c.typePaths),
 			Options:    relPaths(root, c.optionPaths),
@@ -1003,4 +1020,15 @@ func sortedStringSet(m map[string]anyblockjson.PropertyDefinition) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+// firstNonEmpty returns the first non-empty string, so a field the space's
+// own document did not state falls back rather than blanking.
+func firstNonEmpty(vals ...string) string {
+	for _, v := range vals {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
 }
