@@ -612,27 +612,41 @@ func TestRelationEnvelope_WrongFormatWarnsButCarries(t *testing.T) {
 // How this can fail: drop the properties-member loop from
 // relationEnvelopeIssues and the phantom shape validates with no notice;
 // make it a refusal and the page case (where the member is an ordinary
-// property) starts failing I1 for spaces that really have one.
+// property) starts failing I1 for spaces that really have one. The members
+// run one at a time, because relationPhantomIssues lists the three
+// literally and a member dropped from that list keeps the other two
+// warning — the 9-of-9 eval failures happened to write `format`, but the
+// bug they demonstrate (a §2d field name is an ordinary spelling inside
+// `properties`) is a property of the container, so all three members walk
+// into it the same way.
 func TestRelationEnvelope_PhantomFieldNameInPropertiesWarns(t *testing.T) {
-	// given the envelope field AND its phantom twin in properties
-	doc := `{"version":1,"kind":"relation","id":"o1","key":"b","format":"number",` +
-		`"properties":{"name":"Budget","format":"number"}}`
+	for member, value := range map[string]string{
+		"format":       `"number"`,
+		"include_time": `true`,
+		"object_types": `["vinyl"]`,
+	} {
+		t.Run(member, func(t *testing.T) {
+			// given the envelope format AND the phantom twin in properties
+			doc := `{"version":1,"kind":"relation","id":"o1","key":"b","format":"number",` +
+				`"properties":{"name":"Budget","` + member + `":` + value + `}}`
 
-	// when
-	var warns []Issue
-	err := ValidateWarn([]byte(doc), func(i Issue) { warns = append(warns, i) })
+			// when
+			var warns []Issue
+			err := ValidateWarn([]byte(doc), func(i Issue) { warns = append(warns, i) })
 
-	// then
-	require.NoError(t, err, "a custom property named format is legal — the warning is the guard")
-	require.Len(t, warns, 1)
-	assert.Equal(t, "/properties/format", warns[0].Path)
-	assert.Contains(t, warns[0].Message, "CUSTOM property")
+			// then
+			require.NoError(t, err, "a custom property named %s is legal — the warning is the guard", member)
+			require.Len(t, warns, 1)
+			assert.Equal(t, "/properties/"+member, warns[0].Path)
+			assert.Contains(t, warns[0].Message, "CUSTOM property")
 
-	// and on a PAGE the same member is an ordinary property: no warning
-	warns = nil
-	page := `{"version":1,"id":"o1","properties":{"format":"vinyl"}}`
-	require.NoError(t, ValidateWarn([]byte(page), func(i Issue) { warns = append(warns, i) }))
-	assert.Empty(t, warns)
+			// and on a PAGE the same member is an ordinary property: no warning
+			warns = nil
+			page := `{"version":1,"id":"o1","properties":{"` + member + `":` + value + `}}`
+			require.NoError(t, ValidateWarn([]byte(page), func(i Issue) { warns = append(warns, i) }))
+			assert.Empty(t, warns)
+		})
+	}
 }
 
 // The three fields are legal only on kind:relation, and `format` is required
