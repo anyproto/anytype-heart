@@ -4,34 +4,50 @@
   "title": "AnyBlock JSON property dictionary",
   "description": "One properties.json at the root of a bundle names every property the bundle's objects use — the dictionary (§2f). It is a sibling of index.json, not a section inside it: an index says where things are, a dictionary says what they mean. It replaces the ~9,500 relation documents per account that restated the bundled table field for field (98% of installed copies are identical to it), and it is what lets a third-party reader interpret a backup WITHOUT shipping the bundled table: every entry carries its format, so a date is a date and an option name is an option name even to a reader that has never seen Anytype.",
   "type": "object",
-  "required": ["version"],
+  "required": [
+    "version"
+  ],
   "additionalProperties": false,
   "properties": {
-    "$schema": { "type": "string" },
-    "version": { "const": 1 },
-
+    "$schema": {
+      "type": "string"
+    },
+    "version": {
+      "const": 1
+    },
     "installed": {
       "type": "array",
-      "items": { "type": "string", "minLength": 1 },
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
       "description": "The BUNDLED property keys present in the space, as stored keys only (`dueDate`, `tag`) — presence, not definition. 98% of installed copies are field-identical to the bundled table, so a key list is the whole of what a restore needs: the reader reinstalls each key from its own bundled table. An installed copy that DIVERGES from the table (a rename, a changed is_hidden) additionally gets a full entry in `properties`, which overrides the table member for member. A key the reader's table does not know is skipped, not refused — it is a newer app's bundled property, and rejecting the dictionary for it would make every backup unreadable one app version back."
     },
-
     "properties": {
       "type": "array",
-      "items": { "$ref": "#/$defs/dictionaryEntry" },
-      "description": "One propertyDefinition per property the bundle's objects actually REFERENCE — used-only, not everything installed: a space installs a median 125 bundled properties and uses 57, and the 68 nothing touches buy a reader nothing (the restore reinstalls the bundled table anyway). Keys are STORED keys, never document spellings: a document spells a property by its label, its property_keys legend binds the label to the stored key, and the stored key is what this dictionary answers for. The reader flow is object → label → legend → stored key → this entry, with no folder convention and no scanning (§2f)."
+      "items": {
+        "$ref": "#/$defs/dictionaryEntry"
+      },
+      "description": "One propertyDefinition per property the bundle's objects actually REFERENCE — used-only, not everything installed: a space installs a median 125 bundled properties and uses 57, and the 68 nothing touches buy a reader nothing (the restore reinstalls the bundled table anyway). Keys are STORED keys, never document spellings: a document spells a property by its label, its property_keys legend binds the label to the stored key, and the stored key is what this dictionary answers for. The reader flow is object → label → (1) the document's property_keys legend, (2) a verbatim match against a dictionary key, (3) the api-slug derivation applied FORWARD to the dictionary's own keys — snake_case of the stored key, exactly strcase.ToSnake, a pure function with no table behind it. Step 3 carries 69.4% of value slots in a measured 77-space export, because §3 writes a legend line only for a spelling the bundled table does not bind. Derive forward and build a label→key map; never invert the transform. No folder convention, no scanning (§2f)."
     }
   },
   "$defs": {
     "dictionaryEntry": {
       "description": "One dictionary entry: a propertyDefinition (§2e), referenced rather than restated — the third of the shape's three homes, beside a type document's property-definition entry and a relation document's relation_settings. The layer narrows `object_types` to a real array (only a relation's STORED value can hold a null; a dictionary describes, it does not mirror a store slot) and requires `format`, because self-sufficiency is the constraint that shapes the dictionary: an entry without a format is readable only by a reader shipping bundle/relations.json, which is exactly the dependence the dictionary exists to end.",
       "allOf": [
-        { "$ref": "https://schemas.anytype.io/anyblock/1/object.schema.json#/$defs/propertyDefinition" }
+        {
+          "$ref": "https://schemas.anytype.io/anyblock/1/object.schema.json#/$defs/propertyDefinition"
+        }
       ],
       "properties": {
-        "object_types": { "type": "array" }
+        "object_types": {
+          "type": "array"
+        }
       },
-      "required": ["key", "format"],
+      "required": [
+        "key",
+        "format"
+      ],
       "unevaluatedProperties": false
     }
   }

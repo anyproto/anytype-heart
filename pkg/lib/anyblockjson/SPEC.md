@@ -2115,11 +2115,29 @@ Two members:
 
 **Keys are STORED keys, never document spellings.** A document spells a
 property by its label; its `property_keys` legend binds the label to the
-stored key; the stored key is what the dictionary answers for. The reader
-flow is object → label → legend → stored key → dictionary entry, with no
-folder convention and no scanning — and it is why entries need no legend of
-their own: every key slot in this file (`key`, `object_types`) speaks the
-stored spelling directly.
+stored key; the stored key is what the dictionary answers for. Entries
+therefore need no legend of their own: every key slot in this file (`key`,
+`object_types`) speaks the stored spelling directly.
+
+**The reader flow, in full, and the step that is easy to miss.** A label
+resolves in this order — the document's own `property_keys` legend; then a
+verbatim match against a dictionary key; then **the api-slug derivation
+applied FORWARD to the dictionary's own keys**. That third step is not
+optional garnish: measured over a produced 77-space export, of 503,919
+property value slots **5.7% resolve through a legend line, 24.0% match a
+dictionary key verbatim, and 69.4% resolve only through the derivation** —
+because §3's exhaustive rule writes a legend line only for a spelling the
+bundled table does not bind, so a bundled property's label never gets one.
+
+The derivation is `snake_case` of the stored key (`bundle.ApiSlug` is
+exactly `strcase.ToSnake`, a pure function of the key with no table behind
+it): `addedDate` → `added_date`, `mediaArtistURL` → `media_artist_url`,
+acronym and digit runs split. A reader applies it to every key in
+`installed` and every entry `key`, building its own label→key map once.
+**Derive forward, never invert** — four bundled keys do not survive a
+reverse transform (`mediaArtistURL`, `oldAnytypeID`, `_score`,
+`_final_score`), and forward derivation from keys you already hold has no
+such ambiguity.
 
 **Every entry carries its `format`, and the schema requires it.**
 Self-sufficiency is the constraint that shapes the dictionary: a
