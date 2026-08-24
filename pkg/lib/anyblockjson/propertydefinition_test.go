@@ -79,9 +79,10 @@ func TestPropertyDefinition_OneSharedShapeThreeHomes(t *testing.T) {
 
 	// each home: a $ref to the shared shape, a local layer of narrowings,
 	// refusals (`false` members whose fact lives elsewhere) and home-owned
-	// members ONLY, and its own closure. The map grows with the homes — the
-	// dictionary entry joins it as it lands — and a home missing from it is
-	// a fourth spelling.
+	// members ONLY, and its own closure. The two in-file homes are checked
+	// through this map; the third home — the dictionary entry, which lives
+	// in properties.schema.json — is checked below with the same rules. A
+	// home missing from either is a fourth spelling.
 	typeProperty, foundTypeProperty := schema.Defs["typeProperty"]
 	relationSettings, foundRelationSettings := schema.Properties["relation_settings"]
 	for home, tc := range map[string]struct {
@@ -124,6 +125,42 @@ func TestPropertyDefinition_OneSharedShapeThreeHomes(t *testing.T) {
 		}
 		assert.Equalf(t, "false", string(h.Uneval), "%s must close itself with unevaluatedProperties: false", home)
 	}
+
+	// the third home lives in its own schema FILE — the dictionary entry
+	// (§2f) — and references the shape across files by its published URL,
+	// the way the index schema references plainIcon. Same discipline: a
+	// layer of narrowings (`object_types` back to a real array) plus the
+	// home's own requirements, closed with unevaluatedProperties.
+	//
+	// How this can fail: restate the ten members inside
+	// properties.schema.json instead of the $ref (drift starts), widen the
+	// entry's layer beyond the one narrowing, or reopen the entry by
+	// deleting its unevaluatedProperties gate.
+	var propSchema struct {
+		Defs map[string]schemaNode `json:"$defs"`
+	}
+	require.NoError(t, json.Unmarshal(propertiesSchemaJSON, &propSchema))
+	entry, foundEntry := propSchema.Defs["dictionaryEntry"]
+	require.True(t, foundEntry, "the properties schema must publish $defs/dictionaryEntry")
+	refFound := false
+	for _, a := range entry.AllOf {
+		var ref struct {
+			Ref string `json:"$ref"`
+		}
+		if json.Unmarshal(a, &ref) == nil && ref.Ref == SchemaURL+"#/$defs/propertyDefinition" {
+			refFound = true
+		}
+	}
+	assert.True(t, refFound, "a dictionary entry must reference propertyDefinition by its published URL, not restate it")
+	for m, raw := range entry.Properties {
+		if string(raw) == "false" {
+			continue
+		}
+		assert.Truef(t, m == "object_types", "dictionaryEntry restates %q — its layer holds the one narrowing only", m)
+	}
+	assert.ElementsMatch(t, []string{"key", "format"}, entry.Required,
+		"an entry requires its key and — self-sufficiency, §2f — its format")
+	assert.Equal(t, "false", string(entry.Uneval), "dictionaryEntry must close itself with unevaluatedProperties: false")
 }
 
 // The layered closure has a classic failure mode: `additionalProperties:

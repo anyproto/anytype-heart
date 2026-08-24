@@ -53,14 +53,16 @@ const (
 	maxBlockIndent = 32
 )
 
-// SchemaURL and IndexSchemaURL are the published schema locations written
-// into exported documents. Both are derived from FormatVersion so a version
-// bump carries them along and they cannot drift out of sync with it; the
+// SchemaURL, IndexSchemaURL and PropertiesSchemaURL are the published schema
+// locations written into exported documents. All are derived from
+// FormatVersion so a version bump carries them along and they cannot drift
+// out of sync with it; the
 // $id inside each embedded schema file is checked against them by
 // TestVersionIdentity, which is the one copy the compiler cannot keep honest.
 var (
-	SchemaURL      = schemaBaseURL + strconv.Itoa(FormatVersion) + "/object.schema.json"
-	IndexSchemaURL = schemaBaseURL + strconv.Itoa(FormatVersion) + "/index.schema.json"
+	SchemaURL           = schemaBaseURL + strconv.Itoa(FormatVersion) + "/object.schema.json"
+	IndexSchemaURL      = schemaBaseURL + strconv.Itoa(FormatVersion) + "/index.schema.json"
+	PropertiesSchemaURL = schemaBaseURL + strconv.Itoa(FormatVersion) + "/properties.schema.json"
 )
 
 // Issue is a single path-addressed validation problem.

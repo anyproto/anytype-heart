@@ -377,8 +377,9 @@ func TestVersionIdentity(t *testing.T) {
 		raw []byte
 		url string
 	}{
-		"object": {raw: schemaJSON, url: SchemaURL},
-		"index":  {raw: indexSchemaJSON, url: IndexSchemaURL},
+		"object":     {raw: schemaJSON, url: SchemaURL},
+		"index":      {raw: indexSchemaJSON, url: IndexSchemaURL},
+		"properties": {raw: propertiesSchemaJSON, url: PropertiesSchemaURL},
 	}
 
 	for name, tc := range want {

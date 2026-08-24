@@ -19,6 +19,25 @@ internals.
 Changes in v0.32: **a property is described by one shape, wherever it is
 described** (§2e) — the property-dictionary change.
 
+**A bundle carries a property dictionary** (§2f): `properties.json` at the
+bundle root, sibling of `index.json`, with its own published schema. One
+file naming every property the bundle's objects use — `installed` lists the
+bundled keys present as keys only (98% of installed copies are
+field-identical to the bundled table, measured over 9,675), and
+`properties` carries one `propertyDefinition` per property actually
+referenced, used-only (a space installs a median 125 bundled properties and
+uses 57), plus a full entry for each of the 174 divergent installed copies.
+Keys are STORED keys — the legend already binds a document's labels to
+them, so the dictionary needs no legend of its own — and every entry
+carries its `format`, required by the schema, because a third-party reader
+must interpret a backup WITHOUT shipping `bundle/relations.json`: that
+self-sufficiency constraint is what killed the simpler "just stop exporting
+bundled relations" idea. A dictionary entry is the third home of
+`$defs/propertyDefinition`, referenced across schema files by its published
+URL; an `installed` key the reader's table cannot name is skipped, never
+refused, so a newer app's backup stays readable one version back — while
+the writer refuses what its own table cannot name.
+
 **`relation_settings` groups the relation definition** (§2d). The three
 members v0.31 put at the document root — `format`, `include_time`,
 `object_types` — move into one group that is a layer over
@@ -1943,7 +1962,7 @@ homes**, and no fourth:
 
 | home | shape |
 |---|---|
-| a property-dictionary entry (planned, this version) | one `propertyDefinition` |
+| a property-dictionary entry (§2f) | one `propertyDefinition` |
 | a type document's property-definition entry (§2a) | one `propertyDefinition` + `section` |
 | a relation document's definition fields (§2d) | one `propertyDefinition` |
 
@@ -1968,6 +1987,103 @@ doors the §2a array arrives by (the document, and the PATCH-type channel),
 so a member the schema admits cannot be silently shed at the seam — a
 document that validates and then quietly means less than it says is worse
 than one the schema refuses.
+
+## 2f. The property dictionary (`properties.json`)
+
+A bundle names every property its objects use in **one file**,
+`properties.json`, at the bundle root beside `index.json` and validated
+against `properties.schema.json`. It is a sibling of the index and not a
+section inside it, deliberately: an index says *where* things are, a
+dictionary says *what they mean* (§7.3 of the design record; the manifest
+belongs in the index because a manifest is what an index is).
+
+```json
+{
+  "$schema": "https://schemas.anytype.io/anyblock/1/properties.schema.json",
+  "version": 1,
+  "installed": ["createdDate", "dueDate", "tag"],
+  "properties": [
+    { "key": "6a32d4856761631534b22f85", "name": "Budget", "format": "number" },
+    { "key": "693c14f2aa11631534b22f01", "name": "Owner", "format": "objects",
+      "object_types": ["participant"] },
+    { "key": "dueDate", "name": "End Date", "format": "date" }
+  ]
+}
+```
+
+**Why it exists, measured.** 10,617 of 38,061 corpus documents are
+`kind: relation` — 5.8% of the bytes — and 9,675 of them are installed
+copies of the 194 bundled relations, **98% field-identical to
+`bundle/relations.json`**. Each spends a ~967-byte document, with its own
+envelope, attribution and system properties, to restate `{key, name,
+format}` a table every reader already ships. The dictionary replaces those
+restatements: export omits a bundled relation document whose definition
+matches the table (§11), and one key in `installed` stands for it.
+
+Two members:
+
+- **`installed`** — the BUNDLED property keys present in the space, as
+  stored keys only: presence, not definition. A restore reinstalls each key
+  from the reader's own bundled table. An installed copy that DIVERGES from
+  the table — a rename, a changed `is_hidden` (174 of 9,675 in the corpus:
+  132 by `is_hidden` alone, 8 real renames) — keeps its relation document
+  AND gets a full entry here, which overrides the table member for member. A
+  key the reader's table cannot name is **skipped, not refused**: the
+  bundled table grows independently of the format version, so a backup
+  written by a newer app must stay readable one app version back. (The
+  writer has no such excuse — `MarshalPropertyDictionary` refuses a key its
+  own table cannot name, since it would tell the reader to install nothing;
+  the repair is a full entry, where the format travels along.)
+- **`properties`** — one `propertyDefinition` (§2e) per property the
+  bundle's objects actually REFERENCE. **Used-only, not
+  everything installed**: a space installs a median 125 bundled properties
+  and uses 57 (47%), and the 68 nothing touches buy a reader nothing a
+  restore does not already provide. Space-minted properties appear here in
+  full — the dictionary is where an author declares a property without
+  writing a relation document at all, in the same vocabulary as a type's
+  `property_definitions` entry.
+
+**Keys are STORED keys, never document spellings.** A document spells a
+property by its label; its `property_keys` legend binds the label to the
+stored key; the stored key is what the dictionary answers for. The reader
+flow is object → label → legend → stored key → dictionary entry, with no
+folder convention and no scanning — and it is why entries need no legend of
+their own: every key slot in this file (`key`, `object_types`) speaks the
+stored spelling directly.
+
+**Every entry carries its `format`, and the schema requires it.**
+Self-sufficiency is the constraint that shapes the dictionary: a
+third-party reader must be able to interpret a backup WITHOUT shipping
+`bundle/relations.json` — tell a date from a string, an option name from
+free text. Dropping bundled relation documents with *no* dictionary was
+considered and rejected for exactly this reason; it is the same "stands
+alone" property that keeps a space id off the envelope. (`installed` keys
+carry no format because they are not interpretation, they are restore
+instructions — the definitions a reader interprets by are the entries.)
+`format` resolves per key exactly as everywhere else (§3): `"text"` on a
+bundled short-text key stays short text.
+
+A dictionary entry is the **third home** of `$defs/propertyDefinition`
+(§2e), referenced across files by the published URL the way the index
+references `plainIcon`, and closed with `unevaluatedProperties`. Its layer
+narrows `object_types` back to a real array — only a relation's STORED
+value can hold a null (§2d), and a dictionary describes a property rather
+than mirroring a store slot. `section` is refused: it is the one type-owned
+member, meaningless off a type document. One key, one slot: a key stated
+twice — in `installed` or in `properties` — is refused on read and on
+write alike, with the first occurrence named.
+
+`version` is the same format version, under the same rules, as every other
+file in a bundle (§2c, §10): one integer, one namespace, gated before the
+schema so a newer version gets the dedicated both-versions error rather
+than a generic const failure.
+
+The tooling knows this is not an object document, the way it knows
+`index.json` is not: `anyblockbatch.DiscoverJSONFiles` excludes it,
+`anyblockvalidate` validates it against its own schema (and warns — tools
+warn, the codec tolerates — on an `installed` key the local table cannot
+name), and `anyblockconvert` reads it as a declaration source (§3, the
+import wiring).
 
 ## 3. Properties
 
@@ -4972,12 +5088,20 @@ vocabulary listers, and the `index.json` namespace helpers (§1, §2c):
 reserved name into the importer's own bare spelling, `WireWidgetTarget` and
 `WireHomepage`.
 
-The bundle index (§2c) has its own pair, since it is not an object snapshot:
+The bundle index (§2c) has its own pair, since it is not an object snapshot,
+and the property dictionary (§2f) another, on the same reasoning:
 
 ```go
 func UnmarshalIndex(data []byte) (*Index, error)
 func MarshalIndex(idx *Index) ([]byte, error)
+func UnmarshalPropertyDictionary(data []byte) (*PropertyDictionary, error)
+func MarshalPropertyDictionary(d *PropertyDictionary) ([]byte, error)
 ```
+
+The dictionary's Go surface is `[]PropertyDefinition` — the same struct the
+resolvers speak and both doors of the §2a array build — rather than a
+dictionary-local entry type: §2e's one-shape rule holds on the Go side too,
+and a fourth field list is how a fourth spelling starts.
 
 The package is deliberately **pipeline-agnostic**: it depends only on
 `pkg/lib/pb/model`, `core/domain`, `pkg/lib/bundle`, `util/text`, the proto

@@ -15,7 +15,7 @@ func main() {
 		fmt.Println("usage: anyblockvalidate <file-or-dir>...")
 		os.Exit(2)
 	}
-	var files, indexes []string
+	var files, indexes, dictionaries []string
 	for _, arg := range os.Args[1:] {
 		_ = filepath.Walk(arg, func(p string, info os.FileInfo, err error) error {
 			if err != nil {
@@ -24,10 +24,15 @@ func main() {
 			if info.IsDir() || !strings.HasSuffix(p, ".json") {
 				return nil
 			}
-			// the bundle index (§2c) describes the bundle, not an object: it
-			// has its own schema and would fail every object-level check
+			// the bundle index (§2c) and the property dictionary (§2f)
+			// describe the bundle, not an object: each has its own schema
+			// and would fail every object-level check
 			if filepath.Base(p) == anyblockjson.IndexFileName {
 				indexes = append(indexes, p)
+				return nil
+			}
+			if filepath.Base(p) == anyblockjson.PropertiesFileName {
+				dictionaries = append(dictionaries, p)
 				return nil
 			}
 			files = append(files, p)
@@ -89,6 +94,34 @@ func main() {
 						"               List the entrypoint first in widgets.\n", declared, effective)
 				}
 			}
+		}
+	}
+	for _, dictPath := range dictionaries {
+		data, err := os.ReadFile(dictPath)
+		if err != nil {
+			fmt.Printf("READERR %s: %v\n", dictPath, err)
+			fail++
+			continue
+		}
+		dict, err := anyblockjson.UnmarshalPropertyDictionary(data)
+		if err != nil {
+			fmt.Printf("INVALID %s\n         %v\n", dictPath, err)
+			fail++
+			continue
+		}
+		fmt.Printf("ok      %s\n         %d installed key(s), %d defined propert%s\n",
+			dictPath, len(dict.Installed), len(dict.Properties),
+			map[bool]string{true: "y", false: "ies"}[len(dict.Properties) == 1])
+		// the codec TOLERATES an installed key its bundled table cannot name
+		// (a newer app's bundled property — anyblockjson.PropertyDictionary),
+		// but in a bundle being authored the far likelier story is a typo or
+		// a space-minted key filed on the wrong list, and this tool is the
+		// authoring surface: say so, without failing what the reader accepts.
+		if unknown := anyblockbatch.UnknownInstalledKeys(dict); len(unknown) > 0 {
+			warned++
+			fmt.Printf("         warn: %d installed key(s) this bundled table cannot name — a reader installs nothing for them.\n"+
+				"               If yours is not from a newer app, it is a typo or belongs in `properties` with its format: %s\n",
+				len(unknown), strings.Join(unknown, ", "))
 		}
 	}
 	for _, f := range files {

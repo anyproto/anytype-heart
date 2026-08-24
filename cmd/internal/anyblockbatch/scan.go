@@ -233,9 +233,10 @@ func CheckPropertyFormats(files []string, formats map[string]FormatInfo) ([]Unde
 }
 
 // DiscoverJSONFiles walks root and returns every .json object document,
-// sorted so a batch is deterministic regardless of directory order. The
-// bundle index (§2c) is excluded: it describes the bundle rather than an
-// object, has its own schema, and would fail every object-level check.
+// sorted so a batch is deterministic regardless of directory order. The two
+// bundle-level documents are excluded: the index (§2c) and the property
+// dictionary (§2f) describe the bundle rather than an object, have their own
+// schemas, and would fail every object-level check.
 func DiscoverJSONFiles(root string) ([]string, error) {
 	var files []string
 	err := filepath.Walk(root, func(p string, info os.FileInfo, err error) error {
@@ -243,7 +244,8 @@ func DiscoverJSONFiles(root string) ([]string, error) {
 			return err
 		}
 		if !info.IsDir() && strings.HasSuffix(p, ".json") &&
-			filepath.Base(p) != anyblockjson.IndexFileName {
+			filepath.Base(p) != anyblockjson.IndexFileName &&
+			filepath.Base(p) != anyblockjson.PropertiesFileName {
 			files = append(files, p)
 		}
 		return nil
@@ -620,6 +622,17 @@ func IndexPath(root string) (string, bool) {
 	return "", false
 }
 
+// PropertiesPath returns the bundle's property dictionary path (§2f), and
+// whether it exists — IndexPath's rule, at IndexPath's location: both
+// bundle-level documents live at the bundle root.
+func PropertiesPath(root string) (string, bool) {
+	p := filepath.Join(root, anyblockjson.PropertiesFileName)
+	if st, err := os.Stat(p); err == nil && !st.IsDir() {
+		return p, true
+	}
+	return "", false
+}
+
 // CheckBundleIds finds documents that claim an id in the platform's reserved
 // `_` namespace (§1). Nothing a bundle ships may live there.
 //
@@ -765,4 +778,22 @@ func ObjectNames(files []string) (map[string]string, error) {
 		}
 	}
 	return out, nil
+}
+
+// UnknownInstalledKeys reports the dictionary's `installed` keys this
+// build's bundled table cannot name. The CODEC tolerates them — the table
+// grows independently of the format version, so a newer app's backup lists
+// keys an older reader has never heard of, and refusing them would make
+// every backup unreadable one app version back (§2f) — but a reader installs
+// nothing for them, so in a bundle being AUTHORED they are far likelier a
+// typo or a space-minted key filed on the wrong list. The tools warn; the
+// codec stays silent; the two verdicts are the same fact at two surfaces.
+func UnknownInstalledKeys(dict *anyblockjson.PropertyDictionary) []string {
+	var out []string
+	for _, key := range dict.Installed {
+		if _, err := bundle.GetRelation(domain.RelationKey(key)); err != nil {
+			out = append(out, key)
+		}
+	}
+	return out
 }
