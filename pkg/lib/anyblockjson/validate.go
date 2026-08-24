@@ -1063,6 +1063,7 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 	// with the check (relationformat.go), beside the export surface it must
 	// not contradict (I1)
 	relationEnvelopeIssues(doc, warnIssue)
+	definitionIdentityIssue(doc, warnIssue)
 
 	// the type_settings name-over-number members carry the layout rule (§2a,
 	// §3): a typo'd NAME is refused — it would import as a raw string onto a

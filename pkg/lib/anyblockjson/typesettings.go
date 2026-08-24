@@ -413,3 +413,41 @@ func typeSettingDetailValue(v any, value func(string) (float64, bool)) *types.Va
 	}
 	return nil
 }
+
+// definitionIdentityIssue reports a type or relation document that names no
+// `key`. Such a document defines something and says nothing about WHAT: the
+// key is the stored identity every other document addresses it by, and
+// without one the definition lands on nothing an object can be typed by or a
+// property value can resolve to.
+//
+// A WARNING and not a refusal, because §11 I1 forbids emitting what Validate
+// rejects and a snapshot's stored key is untrusted — the hostile corpus
+// builds a type whose stored key is the empty string precisely because a
+// 36,808-object sweep falsified a closed charset over that slot. Export must
+// stay able to write whatever a snapshot holds.
+//
+// It earns its place under §12's first test — it catches something silent.
+// Four of four schema-only runs in the small-model authoring eval wrote a
+// type document with `"type": "podcast_episode"` and no `key` at all; every
+// one validated, imported and round-tripped, and the type came back with no
+// identity. Nothing said a word.
+func definitionIdentityIssue(doc map[string]any, warn func(path, format string, args ...any)) {
+	kind, _ := doc["kind"].(string)
+	var what string
+	switch {
+	case isRelationKind(doc):
+		what = "relation"
+	case kind == kindNames.name(model.SmartBlockType_STType) ||
+		kind == kindNames.name(model.SmartBlockType_BundledObjectType):
+		what = "type"
+	default:
+		return
+	}
+	if key, _ := doc["key"].(string); key != "" {
+		return
+	}
+	warn("/key", "a %s document defines something and names no `key` — the stored "+
+		"identity every other document addresses it by. Without one the definition "+
+		"imports with no identity: nothing can be typed by it, and no property value "+
+		"resolves to it (§2a, §2d)", what)
+}

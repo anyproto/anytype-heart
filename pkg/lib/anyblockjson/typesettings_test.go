@@ -373,3 +373,48 @@ func TestTypeSettings_RevisionIsNotProvenance(t *testing.T) {
 	assert.NotContains(t, typeProvenanceKeys, "revision",
 		"it failed the §15 #12 admission test — the verdict is recorded beside the list")
 }
+
+// A definition that names no `key` has no identity. Four of four schema-only
+// runs in the small-model authoring eval wrote exactly this — a type
+// document with `"type": "podcast_episode"` and no `key` — and every one
+// validated, imported and round-tripped with the type coming back nameless.
+//
+// It is a WARNING, not a refusal: §11 I1 forbids emitting what Validate
+// rejects, and a snapshot's stored key is untrusted (the hostile corpus
+// builds a type whose stored key is the empty string on purpose), so export
+// must stay able to write one.
+//
+// How this can fail: drop definitionIdentityIssue and the keyless shape goes
+// silent again; widen it past type and relation documents and an ordinary
+// page starts warning about a key it never owed.
+func TestDefinitionIdentity_AKeylessDefinitionWarns(t *testing.T) {
+	for name, tc := range map[string]struct {
+		doc  string
+		want bool
+	}{
+		"type document with no key": {
+			`{"version":1,"kind":"object_type","properties":{"name":"Podcast Episode"}}`, true},
+		"relation document with no key": {
+			`{"version":1,"kind":"relation","relation_settings":{"format":"number"},` +
+				`"properties":{"name":"Episode"}}`, true},
+		"type document WITH a key": {
+			`{"version":1,"kind":"object_type","key":"podcast","properties":{"name":"Podcast"}}`, false},
+		"an ordinary page owes no key": {
+			`{"version":1,"kind":"page","properties":{"name":"A page"}}`, false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			// when
+			var warned []Issue
+			require.NoError(t, ValidateWarn([]byte(tc.doc), func(i Issue) { warned = append(warned, i) }))
+
+			// then
+			var got bool
+			for _, w := range warned {
+				if w.Path == "/key" {
+					got = true
+				}
+			}
+			assert.Equal(t, tc.want, got, "warnings: %v", warned)
+		})
+	}
+}
