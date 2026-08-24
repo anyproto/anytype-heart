@@ -10,7 +10,8 @@
   "additionalProperties": false,
   "properties": {
     "$schema": {
-      "type": "string"
+      "type": "string",
+      "description": "Which of the format's three grammars this document follows — an object document, a bundle index, or a property dictionary. OPTIONAL and DECORATIVE for validity: `version` alone gates the format, so a stale or invented URL here never makes a document invalid (a bundle written against a later schema still reads). What it does do is DISPATCH: a reader handed a file with no filename to go by uses this to pick the grammar, matching on the trailing `object|index|properties.schema.json` and ignoring the version segment. Without it a reader falls back to the document's shape, which can only tell the grammars apart when the document happens to carry a member unique to one. Every document this format writes carries it, and a hand-written one is easier for a reader to place if it does too."
     },
     "version": {
       "const": 1

@@ -353,6 +353,9 @@ func UnmarshalIndex(data []byte) (*Index, error) {
 	if err := checkVersion(doc); err != nil {
 		return nil, err
 	}
+	if issues := misroutedIssues(data, KindIndex); len(issues) > 0 {
+		return nil, &ValidationError{Issues: issues}
+	}
 	// The `_` namespace is checked here, ahead of the schema, for the same
 	// reason the version is: the schema states the rule machine-readably (a
 	// pattern and an enum, so a generator reading the schema obeys it), but

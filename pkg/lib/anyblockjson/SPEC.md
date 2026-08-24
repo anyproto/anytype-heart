@@ -1,6 +1,6 @@
 # AnyBlock JSON — format specification
 
-Status: **draft v0.34** · Format version: **1** · Package: `pkg/lib/anyblockjson`
+Status: **draft v0.35** · Format version: **1** · Package: `pkg/lib/anyblockjson`
 
 A human- and agent-readable JSON serialization of Anytype objects (the "anyblock"
 model), designed for export, import, and generation by external tools and LLM
@@ -15,6 +15,50 @@ strings; the vocabulary follows Notion's API and Anytype's public REST API
 (`core/api`) wherever an established term exists — the format should be
 readable, and mostly writable, by someone who has never seen Anytype
 internals.
+
+Changes in v0.35: **a document says which grammar it follows** (§2c, §2f,
+§13).
+
+A bundle holds three species of file — object documents, one index, one
+property dictionary — and until now nothing in a document reliably told them
+apart. `version` is `const: 1` in all three schemas, so it discriminates
+nothing; `$schema` is written by every writer but required by none. That
+left the FILENAME, which is not part of the format: a bundle unpacked flat,
+renamed, or streamed over an API has lost it.
+
+The cost was measured, not imagined. Handed to the object reader, a correct
+index reported `/name: property "name" is not allowed` — on the field whose
+whole job is to name the space — and a dictionary reported `/properties: got
+array, want object` and `/installed: property "installed" is not allowed`,
+on its headline field. Each sends an author to repair a file that was
+already right, and 9 of 9 bundle files written by small models against the
+schemas carried no `$schema` at all.
+
+`DocumentKind` places a document: the declared `$schema` first, matched on
+its trailing `object|index|properties.schema.json` so a bundle written
+against a later schema still places; then shape, for a document that
+declares none — `installed` or a `properties` ARRAY is a dictionary's alone,
+a `manifest`, `widgets` or `entrypoint` an index's. Each reader refuses a
+document belonging to another grammar and names the reader that wants it.
+
+`$schema` is deliberately NOT made required. The format is meant to be
+hand-authorable, and 503 of the 506 documents in this package's own tests
+would have had to grow a 60-byte URL to keep saying what they already say.
+It also stays DECORATIVE for validity — only `version` gates, so a stale or
+invented URL never makes a document invalid — because a bundle written
+against a later schema must still read. A document carrying no `$schema` and
+no member unique to one grammar is left to its caller: `{"version": 1}` is a
+legal start to all three, and a reader that guessed there would override its
+caller on no evidence.
+
+**What could not be fixed: a definition with no `key` stays valid.** A type
+or relation document that names no key imports with no identity — nothing
+can be typed by it, and no property value resolves to it — and the format
+has always said so in a warning. 8 of 36 type documents authored against the
+schema shipped without one and were told they were fine. It stays a warning
+because Marshal can emit such a document (a snapshot whose type carries no
+unique key produces one), so refusing it would make this package reject its
+own output (I1). Real data never does it: 0 of 2,975 corpus definitions.
 
 Changes in v0.34: **a bundle carries no space document, and no space
 secrets** (§2c, §3).

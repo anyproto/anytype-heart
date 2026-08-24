@@ -166,6 +166,13 @@ func validateToDoc(data []byte, lenient bool, warn func(Issue)) (map[string]any,
 	if err := checkVersion(doc); err != nil {
 		return nil, err
 	}
+	// a bundle index or a property dictionary is a different grammar, and
+	// walking one through this grammar produces errors about the very members
+	// that make it what it is (§2c, §2f). After the version gate, which every
+	// grammar shares.
+	if issues := misroutedIssues(data, KindObject); len(issues) > 0 {
+		return nil, &ValidationError{Issues: issues}
+	}
 	// MIGRATION SEAM: an older version is migrated forward here, between the
 	// version gate and schema validation. The schema pins the version to a
 	// const, so it doubles as the assertion that migration ran (§10).
@@ -1063,6 +1070,14 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 	// with the check (relationformat.go), beside the export surface it must
 	// not contradict (I1)
 	relationEnvelopeIssues(doc, warnIssue)
+	// a definition with no identity stays a WARNING, and the reason is I1
+	// rather than judgement: Marshal can emit a keyless type document — a
+	// snapshot whose type carries no unique key produces one — so refusing it
+	// here would make this package reject its own output. Real data never
+	// does it (0 of 2,975 corpus definitions), but the invariant is stated
+	// over every snapshot, not the likely ones. The cost is measured and
+	// real: 8 of 36 type documents authored against the schema shipped with
+	// no key and were told they were fine (§15).
 	definitionIdentityIssue(doc, warnIssue)
 
 	// the type_settings name-over-number members carry the layout rule (§2a,

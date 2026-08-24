@@ -124,6 +124,9 @@ func UnmarshalPropertyDictionary(data []byte) (*PropertyDictionary, error) {
 	if err := checkVersion(doc); err != nil {
 		return nil, err
 	}
+	if issues := misroutedIssues(data, KindPropertyDictionary); len(issues) > 0 {
+		return nil, &ValidationError{Issues: issues}
+	}
 	sch, err := compilePropertiesSchema()
 	if err != nil {
 		return nil, fmt.Errorf("embedded properties schema: %w", err)
