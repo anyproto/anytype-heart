@@ -1289,6 +1289,25 @@ var neverWritableProperties = map[string]string{
 //     nothing to say.
 var transientProperties = map[string]string{
 	"internalFlags": "editor state for an object being created, which a restored object never is",
+	// The client's ANALYTICS context, persisted onto the object instead of
+	// only being sent as an event. `route` is anytype-ts's analytics-route
+	// concept (`analytics.route.shortcut`, `.header`, `.menuSystem`), and
+	// `SettingsSpace` names the screen the "create type" click came from.
+	// 35 type objects across 7 spaces carry the identical triple
+	// — data {"route":"SettingsSpace"}, isNew true, layoutFormat 0 — on
+	// ordinary user types (News, Bug report, Meeting, Issue).
+	//
+	// None of the three is a relation: not bundled, and no relation document
+	// defines them anywhere in 38,061 documents. So they are orphan details
+	// that no reader can name, give a format to, or act on — and the
+	// exhaustive legend rule dutifully pins all three, spending three
+	// entries to preserve the identity of something that describes nothing.
+	//
+	// `isNew` is `internalFlags`' idea exactly: a flag saying the object was
+	// just created, which a restored object never was.
+	"data":         "the client's analytics route context, recorded on the object rather than sent as an event",
+	"isNew":        "a just-created flag, true of the moment and never of the object",
+	"layoutFormat": "client layout state written beside the analytics context, defined by no relation",
 }
 
 // isTransientProperty reports whether a stored key describes a moment rather

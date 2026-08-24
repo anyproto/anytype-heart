@@ -7,6 +7,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -66,4 +68,68 @@ func TestTransientProperties_NeverExported(t *testing.T) {
 	assert.NotContains(t, string(data), "internal_flags",
 		"transient state describes the moment, not the object (§3)")
 	assert.Contains(t, string(data), `"name"`, "and the rest of the object is untouched")
+}
+
+// Whether a transient key is a BUNDLED relation is a per-key verdict, and
+// this pins each one so a change fires here instead of silently changing
+// what gets eaten.
+//
+// The two justifications are different, and only one of them tolerates a
+// bundled key. `internalFlags` IS a bundled relation and is stripped anyway,
+// because what it holds is editor state — "this object was just created,
+// offer the type picker" — which a restored object is never in. The
+// analytics triple is stripped for the opposite reason: nothing defines
+// those keys at all, so no reader can name them, give them a format, or act
+// on them. If a bundled relation ever takes one of those three spellings
+// they stop being nameless, the justification evaporates, and dropping them
+// would delete real schema shipped with every reader.
+//
+// How this can fail: add a bundled relation named `data`, `isNew` or
+// `layoutFormat`; remove the bundled `internalFlags`; or add a key to
+// transientProperties without deciding which case it is.
+func TestTransientProperties_BundledVerdictPerKey(t *testing.T) {
+	want := map[string]bool{
+		"internalFlags": true,  // bundled, and stripped regardless: editor state
+		"data":          false, // not a relation at all — the whole justification
+		"isNew":         false,
+		"layoutFormat":  false,
+	}
+	assert.Equal(t, len(want), len(transientProperties),
+		"every transient key owes a verdict here — a new one must say which case it is")
+	for key, why := range transientProperties {
+		t.Run(key, func(t *testing.T) {
+			verdict, listed := want[key]
+			require.Truef(t, listed, "%q was added to transientProperties with no bundled verdict (%s)", key, why)
+			assert.Equalf(t, verdict, bundle.HasRelation(domain.RelationKey(key)),
+				"%q changed sides: a nameless key that became bundled is real schema now, "+
+					"and dropping it would delete it (%s)", key, why)
+		})
+	}
+}
+
+// The analytics triple: 35 type objects across 7 spaces carry
+// `data: {"route":"SettingsSpace"}`, `isNew: true`, `layoutFormat: 0` — the
+// client's analytics route context persisted onto the object instead of
+// sent as an event. `data` is a MAP-shaped value that no relation defines,
+// so no reader can name it, give it a format, or act on it.
+//
+// How this can fail: drop any of the three from transientProperties and its
+// value reaches the snapshot.
+func TestTransientProperties_TheAnalyticsTripleIsDropped(t *testing.T) {
+	// given the exact shape those 35 objects carry
+	doc := []byte(`{"version": 1, "kind": "object_type", "key": "use_case",
+		"properties": {"name": "Use Case", "data": {"route": "SettingsSpace"},
+		               "isNew": true, "layoutFormat": 0}}`)
+
+	// when
+	require.NoError(t, Validate(doc), "a stale export still imports")
+	_, snap, err := Unmarshal(doc, Options{})
+	require.NoError(t, err, "Validate and Unmarshal agree (§11 I2)")
+
+	// then
+	for _, key := range []string{"data", "isNew", "layoutFormat"} {
+		assert.NotContains(t, snap.GetDetails().GetFields(), key,
+			"%q describes the click that made the object, not the object", key)
+	}
+	assert.Contains(t, snap.GetDetails().GetFields(), "name", "the object itself survives")
 }
