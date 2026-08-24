@@ -362,9 +362,23 @@ func collectSchemaLeaves(e *jsonschema.ValidationError, printer *message.Printer
 		sort.Strings(props)
 		out := make([]schemaLeaf, 0, len(props))
 		for _, prop := range props {
+			msg := unknownPropertyMessage(prop)
+			// the pre-v0.32 relation-definition spellings, at the ROOT only
+			// — anywhere else (a view, a sort) the same names are ordinary
+			// unknown members and the hint would mislead. Same reasoning as
+			// `refs` (§10): told only "not allowed", the obvious wrong
+			// repair is to delete the definition rather than regroup it.
+			if at == "" {
+				switch prop {
+				case "format", "include_time", "object_types":
+					msg = fmt.Sprintf("property %q moved off the root: a relation document "+
+						"states its definition in the \"relation_settings\" group (§2d) — "+
+						"move it (and its two siblings, if present) in there", prop)
+				}
+			}
 			out = append(out, schemaLeaf{
 				path:    at + "/" + escapeJSONPointer(prop),
-				message: unknownPropertyMessage(prop),
+				message: msg,
 			})
 		}
 		return out
@@ -632,16 +646,21 @@ func schemaIssueMessage(e *jsonschema.ValidationError, printer *message.Printer)
 		if toks := e.InstanceLocation; len(toks) > 0 {
 			prop := toks[len(toks)-1]
 			if _, err := strconv.Atoi(prop); err != nil { // numeric = array index, not a property
-				// the §2d fields are declared at the root and gated by kind,
-				// so their false schema fires only OFF a relation document —
-				// and only at the root (len == 1), where the member name is
+				// the §2d group is declared at the root and gated by kind, so
+				// its false schema fires only OFF a relation document — and
+				// only at the root (len == 1), where the member name is
 				// unambiguous. "not allowed" would send the author toward
-				// deleting the field; the actual repair is the kind.
-				if len(toks) == 1 {
-					switch prop {
-					case "format", "include_time", "object_types":
-						return fmt.Sprintf("property %q is only valid on relation documents "+
-							`(kind "relation", §2d)`, prop)
+				// deleting the group; the actual repair is the kind.
+				if len(toks) == 1 && prop == "relation_settings" {
+					return fmt.Sprintf("property %q is only valid on relation documents "+
+						`(kind "relation", §2d)`, prop)
+				}
+				// inside the group, the refused members each have a home
+				// already (§2d): telling the author only "not allowed" sends
+				// them toward deleting the fact instead of moving it.
+				if len(toks) == 2 && toks[0] == "relation_settings" {
+					if home, owned := relationSettingsMemberHomes[prop]; owned {
+						return fmt.Sprintf("relation_settings does not carry %q — %s (§2d)", prop, home)
 					}
 				}
 				return unknownPropertyMessage(prop)
@@ -667,6 +686,20 @@ func schemaIssueMessage(e *jsonschema.ValidationError, printer *message.Printer)
 //     cannot say this either: the grammar changed under a version this reader
 //     still accepts, so `refs` is the one marker a pre-v0.20 document carries,
 //     and the message is where the reader is told what happened.
+//
+// relationSettingsMemberHomes names, for each propertyDefinition member the
+// §2d group refuses, where the fact it spells already lives — the repair the
+// bare "not allowed" cannot point at.
+var relationSettingsMemberHomes = map[string]string{
+	"key":           "the envelope `key` is the relation's key",
+	"name":          "the relation's name is the `name` property",
+	"description":   "the relation's description is the `description` property",
+	"options":       "a relation's options are relation_option documents of their own",
+	"max_count":     "it still travels in `properties` as `relation_max_count`",
+	"readonly":      "it still travels in `properties` as `relation_readonly_value`",
+	"default_value": "it still travels in `properties` as `relation_default_value`",
+}
+
 func unknownPropertyMessage(prop string) string {
 	switch prop {
 	case "children":
@@ -1622,7 +1655,7 @@ func deniedPropertyKey(key string) (string, bool) {
 	// spelling for a relation's format is exactly the ambiguity the lift
 	// deletes.
 	if relationLiftedDetailKeys()[key] {
-		return fmt.Sprintf("%q is written on a relation document's envelope as %s (§2d), "+
+		return fmt.Sprintf("%q is written on a relation document's envelope as %s in relation_settings (§2d), "+
 			"not as a property", key, relationLiftedKeyRepair(key)), true
 	}
 	return "", false

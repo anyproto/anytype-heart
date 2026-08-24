@@ -63,27 +63,27 @@
       "pattern": "^[^\u0000-\u001f]+$",
       "maxLength": 255
     },
-    "format": {
-      "$ref": "#/$defs/propertyFormat",
-      "description": "Only on relation documents (kind \"relation\" or \"bundled_relation\"), where it is REQUIRED: the format of the property this document defines, as a §3 format NAME — the same vocabulary type_properties[].format speaks, never a raw enum number. Stands for the stored relationFormat key, which `properties` refuses (§2d)."
-    },
-    "include_time": {
-      "type": [
-        "boolean",
-        "null"
+    "relation_settings": {
+      "description": "Only on relation documents (kind \"relation\" or \"bundled_relation\"), where it is REQUIRED: the definition of the property this document IS \u2014 one propertyDefinition (\u00a72d, \u00a72e). Three members travel today, each mirroring stored presence EXACTLY, value included: `format` (required \u2014 a \u00a73 format NAME, the same vocabulary type_properties[].format speaks, never a raw enum number; stands for the stored relationFormat key, which `properties` refuses), `include_time` (present exactly when the stored relationFormatIncludeTime key is; meaningful on format \"date\" only, and a stored null travels as null), and `object_types` (present exactly when the stored relationFormatObjectTypes key is; the target type keys in priority order \u2014 a type-key slot exactly like type_properties[].object_types, inverted through the type_keys legend, meaningful on \"objects\"/\"files\" only). The members refused with `false` have a home already: `key` is the envelope's, `name` and `description` are properties', `options` are relation_option documents, and max_count/readonly/default_value still travel in `properties` under their stored keys until the dictionary lifts them \u2014 admitting a second spelling of any of them here would be the \u00a715 #14 disease this group exists to end.",
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "#/$defs/propertyDefinition"
+        }
       ],
-      "description": "Only on relation documents (kind \"relation\" or \"bundled_relation\"): whether values of a date property carry a time of day. Meaningful on format \"date\" and nothing else — true against any other format is reported as a warning and carried unread. Present exactly when the stored relationFormatIncludeTime key is present, which `properties` refuses (§2d); null is a stored null, preserved like any §3 value."
-    },
-    "object_types": {
-      "type": [
-        "array",
-        "null"
-      ],
-      "items": {
-        "type": "string",
-        "minLength": 1
+      "properties": {
+        "key": false,
+        "name": false,
+        "options": false,
+        "description": false,
+        "max_count": false,
+        "readonly": false,
+        "default_value": false
       },
-      "description": "Only on relation documents (kind \"relation\" or \"bundled_relation\"): the type keys an objects/files property may point at, in priority order — a type-key slot exactly like type_properties[].object_types (§2a), spelled in the §3 type vocabulary and inverted through the type_keys legend; a term the chain does not know passes through verbatim. Meaningful on formats \"objects\" and \"files\"; non-empty against any other format is reported as a warning. Present exactly when the stored relationFormatObjectTypes key is present, which `properties` refuses (§2d)."
+      "required": [
+        "format"
+      ],
+      "unevaluatedProperties": false
     },
     "icon": {
       "$ref": "#/$defs/icon"
@@ -188,14 +188,12 @@
       },
       "then": {
         "required": [
-          "format"
+          "relation_settings"
         ]
       },
       "else": {
         "properties": {
-          "format": false,
-          "include_time": false,
-          "object_types": false
+          "relation_settings": false
         }
       }
     }

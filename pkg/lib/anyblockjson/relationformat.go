@@ -1,8 +1,12 @@
 package anyblockjson
 
-// relationformat.go implements §2d: the three relation-definition envelope
-// fields of a `kind: "relation"` document — `format`, `include_time`,
-// `object_types`.
+// relationformat.go implements §2d: the `relation_settings` group of a
+// `kind: "relation"` document — one propertyDefinition (§2e), whose three
+// travelling members are `format`, `include_time`, `object_types`. v0.31
+// put the three at the document root; v0.32 regrouped them, because the
+// dictionary entry and a type's property-definition entry are groups
+// holding the same shape and two patterns for one idea is §15 #14 one
+// level up.
 //
 // A relation object IS a property definition, and until this lift it was the
 // one document that could not state its own format in the format's own
@@ -69,10 +73,10 @@ func relationLiftedDetailKeys() map[string]bool {
 	}
 }
 
-// relationLiftedKeyRepair names the envelope field a refused flat spelling
-// belongs in — liftedKeyRepair's rule (§2b): the refusal is worth twice as
-// much said as a repair, because unlike an internal key there IS something
-// to write instead.
+// relationLiftedKeyRepair names the relation_settings member a refused flat
+// spelling belongs in — liftedKeyRepair's rule (§2b): the refusal is worth
+// twice as much said as a repair, because unlike an internal key there IS
+// something to write instead.
 func relationLiftedKeyRepair(key string) string {
 	switch key {
 	case detailKeyRelationFormat:
@@ -139,20 +143,25 @@ func isRelationSmartBlock(sbType model.SmartBlockType) bool {
 		sbType == model.SmartBlockType_BundledRelation
 }
 
-// buildRelationEnvelope writes the three §2d fields onto the envelope, or —
-// on a kind that has no such fields — reports any stored value the lift
-// leaves nowhere to go. Field presence mirrors stored-key presence exactly,
-// value included (false, `[]`, null): the §4 omit-empty canon stops at these
-// three because they are the property's definition, and §15 #14 scoped this
+// buildRelationEnvelope writes the `relation_settings` group — one
+// propertyDefinition, the three §2d members that travel today — or, on a
+// kind that has no such group, reports any stored value the lift leaves
+// nowhere to go. Member presence mirrors stored-key presence exactly, value
+// included (false, `[]`, null): the §4 omit-empty canon stops at these three
+// because they are the property's definition, and §15 #14 scoped the v0.31
 // change to the SPELLING, deliberately leaving present-and-empty alone so
 // the snapshot round-trips unchanged and the comparator needs no new rule.
+// v0.32 regrouped the three off the root — churn on freshly shipped fields,
+// accepted deliberately: the dictionary entry and the type's
+// property-definition entry are groups holding the same shape, and two
+// patterns for one idea is the §15 #14 disease again, one level up.
 func (e *exporter) buildRelationEnvelope(doc *omap) error {
 	if !e.isRelationDoc() {
 		for _, key := range []string{detailKeyRelationFormat,
 			detailKeyRelationFormatIncludeTime, detailKeyRelationFormatObjectTypes} {
 			if e.detail(key) != nil {
 				e.warn("/properties", "%q describes a relation and this is not a relation document; "+
-					"the value is dropped — it has no §2d field here and `properties` refuses the key", key)
+					"the value is dropped — it has no §2d member here and `properties` refuses the key", key)
 			}
 		}
 		return nil
@@ -162,19 +171,20 @@ func (e *exporter) buildRelationEnvelope(doc *omap) error {
 	if err != nil {
 		return err
 	}
-	doc.set("format", name)
+	group := &omap{}
+	group.set("format", name)
 
 	if v := e.detail(detailKeyRelationFormatIncludeTime); v != nil {
 		switch k := v.GetKind().(type) {
 		case *types.Value_BoolValue:
-			doc.set("include_time", k.BoolValue)
+			group.set("include_time", k.BoolValue)
 		case *types.Value_NullValue:
 			// a stored null is a value — the key was set (§3) — and 80
 			// production relations hold exactly this, so dropping it would
 			// change the snapshot on the way round
-			doc.set("include_time", nil)
+			group.set("include_time", nil)
 		default:
-			e.warn("/include_time", "includeTime %v is neither a boolean nor null and is dropped — "+
+			e.warn("/relation_settings/include_time", "includeTime %v is neither a boolean nor null and is dropped — "+
 				"there is no way to write it (§2d)", protoValueToJSON(v))
 		}
 	}
@@ -185,14 +195,15 @@ func (e *exporter) buildRelationEnvelope(doc *omap) error {
 			// present even when empty — an empty list is a cleared target
 			// set, the same user-intent reading that kept
 			// relationFormatObjectTypes off the §15 #12 trim whitelist
-			doc.set("object_types", stringsToAny(e.typeSlugs(e.relationTargetKeys())))
+			group.set("object_types", stringsToAny(e.typeSlugs(e.relationTargetKeys())))
 		case *types.Value_NullValue:
-			doc.set("object_types", nil)
+			group.set("object_types", nil)
 		default:
-			e.warn("/object_types", "relationFormatObjectTypes %v is not a list and is dropped — "+
+			e.warn("/relation_settings/object_types", "relationFormatObjectTypes %v is not a list and is dropped — "+
 				"there is no way to write it (§2d)", protoValueToJSON(v))
 		}
 	}
+	doc.set("relation_settings", group)
 	return nil
 }
 
@@ -273,28 +284,34 @@ func (e *exporter) relationTargetKeys() []string {
 // ---- import ----
 //
 
-// applyRelationEnvelope writes the stored keys the §2d fields stand for.
-// Presence mirrors presence: a field the document omits writes nothing, so
-// the details that came out are the details that go back in.
+// applyRelationEnvelope writes the stored keys the §2d group's members stand
+// for. Presence mirrors presence: a member the document omits writes
+// nothing, so the details that came out are the details that go back in.
 func (imp *importer) applyRelationEnvelope(details *types.Struct, sbType model.SmartBlockType) error {
 	if !isRelationSmartBlock(sbType) {
-		// the schema keeps the three fields off every other kind (§2d), so
-		// there is nothing here to read — Unmarshal validates before it
-		// decodes, deliberately (§12 I2)
+		// the schema keeps the group off every other kind (§2d), so there is
+		// nothing here to read — Unmarshal validates before it decodes,
+		// deliberately (§12 I2)
 		return nil
 	}
-	doc := imp.doc
-	if doc.Format != "" {
+	rs := imp.doc.RelationSettings
+	if rs == nil {
+		// unreachable off a validated document — the schema requires the
+		// group on both relation kinds — but Unmarshal must not crash on a
+		// snapshot rebuilt by a caller that skipped Validate
+		return nil
+	}
+	if rs.Format != "" {
 		// the name resolves per key, exactly as a type_properties entry's
 		// format does (§3): "text" names both stored text formats, and the
 		// relation's own envelope `key` is what disambiguates — a bundled
 		// short-text relation (name, globalName, …) keeps its stored format
 		// across a round trip even though the document never spells it
-		f := declaredFormatWith(imp.opts, doc.Key, doc.Format)
+		f := declaredFormatWith(imp.opts, imp.doc.Key, rs.Format)
 		details.Fields[detailKeyRelationFormat] = &types.Value{
 			Kind: &types.Value_NumberValue{NumberValue: float64(f)}}
 	}
-	if raw := doc.IncludeTime; len(raw) > 0 {
+	if raw := rs.IncludeTime; len(raw) > 0 {
 		if string(raw) == "null" {
 			details.Fields[detailKeyRelationFormatIncludeTime] = &types.Value{
 				Kind: &types.Value_NullValue{}}
@@ -307,7 +324,7 @@ func (imp *importer) applyRelationEnvelope(details *types.Struct, sbType model.S
 				Kind: &types.Value_BoolValue{BoolValue: b}}
 		}
 	}
-	if raw := doc.TargetTypes; len(raw) > 0 {
+	if raw := rs.TargetTypes; len(raw) > 0 {
 		if string(raw) == "null" {
 			details.Fields[detailKeyRelationFormatObjectTypes] = &types.Value{
 				Kind: &types.Value_NullValue{}}
@@ -320,7 +337,7 @@ func (imp *importer) applyRelationEnvelope(details *types.Struct, sbType model.S
 		tr, _ := imp.opts.ResolveProperties.(TypeResolver)
 		vals := make([]*types.Value, 0, len(slugs))
 		for j, slug := range slugs {
-			slotPath := fmt.Sprintf("/object_types/%d", j)
+			slotPath := fmt.Sprintf("/relation_settings/object_types/%d", j)
 			// a TYPE key slot (§2d): the document's own legend first, then
 			// the vocabulary — and the seam refuses a resolution onto the
 			// empty key, which has no written form (§3), the same refusal
@@ -354,37 +371,61 @@ func (imp *importer) applyRelationEnvelope(details *types.Struct, sbType model.S
 // ---- validation ----
 //
 
-// relationFormatSlotIssue words the missing-`format` verdict on a relation
+// relationSettingsOf reads the §2d group off a raw document, for the checks
+// that run before it decodes. One reader, so the slot issue and the semantic
+// pass cannot disagree about where the group lives.
+func relationSettingsOf(doc map[string]any) (map[string]any, bool) {
+	raw, has := doc["relation_settings"]
+	group, _ := raw.(map[string]any)
+	return group, has
+}
+
+// relationFormatSlotIssue words the missing-definition verdict on a relation
 // document — missingFormatIssue's trade (§2b) at the §2d slot: `required`
 // can say a member is missing but not what the choices are, and the author
-// most likely to hit it is holding a pre-v0.31 document whose format lives
-// in `properties` as a raw number. The kind is read RAW, exactly as the
-// schema's `if` reads it, so the two verdicts cannot disagree about which
-// documents owe the field — isRelationKind and the schema's `if` list the
-// same three. The names are read out of the published schema
-// (propertyFormatEnum), never restated.
+// most likely to hit it is holding an older document whose format lives at
+// the root (pre-v0.32) or in `properties` as a raw number (pre-v0.31). The
+// kind is read RAW, exactly as the schema's `if` reads it, so the two
+// verdicts cannot disagree about which documents owe the group —
+// isRelationKind and the schema's `if` list the same kinds. The names are
+// read out of the published schema (propertyFormatEnum), never restated.
 func relationFormatSlotIssue(doc map[string]any, r *keySlotReport) {
 	if !isRelationKind(doc) {
 		return
 	}
-	if _, has := doc["format"]; has {
-		return
+	group, hasGroup := relationSettingsOf(doc)
+	if hasGroup {
+		if _, has := group["format"]; has {
+			return
+		}
 	}
 	names := propertyFormatEnum()
 	if len(names) == 0 {
 		return
 	}
-	msg := fmt.Sprintf("missing property 'format': a relation document states "+
-		"the format of the property it defines — one of %s (§2d)", quotedList(names))
-	// the migration hint, on the same reasoning as `refs` (§10): a pre-v0.31
-	// document is exactly one that has no `format` and spells
-	// `relation_format` in properties, and told only that a member is
-	// missing, the obvious wrong repair is to invent one while leaving the
-	// raw number where it sits
+	var msg string
+	path := ""
+	if hasGroup {
+		path = "/relation_settings"
+		msg = fmt.Sprintf("missing property 'format': a relation document states "+
+			"the format of the property it defines — one of %s (§2d)", quotedList(names))
+	} else {
+		msg = fmt.Sprintf("missing property 'relation_settings': a relation document states "+
+			"the definition of the property it IS — at least `format`, one of %s (§2d)", quotedList(names))
+	}
+	// the migration hints, on the same reasoning as `refs` (§10): each older
+	// spelling is exactly one this verdict fires on, and told only that a
+	// member is missing, the obvious wrong repair is to invent one while
+	// leaving the old spelling where it sits
+	if _, atRoot := doc["format"]; atRoot && !hasGroup {
+		msg += `. This document spells "format" at the root — the pre-v0.32 form: ` +
+			`the definition moved into the "relation_settings" group, so move ` +
+			`"format" (and "include_time"/"object_types" beside it) in there`
+	}
 	if props, _ := doc["properties"].(map[string]any); props != nil {
 		if _, legacy := props["relation_format"]; legacy {
 			msg += `. This document spells "relation_format" inside properties — the pre-v0.31 ` +
-				`form: replace that raw number with its name here, on the envelope`
+				`form: replace that raw number with its name in relation_settings`
 		}
 		// the OTHER wrong container, and the commoner one: 9 of 9
 		// small-model attempts wrote `format` inside `properties`, where it
@@ -396,10 +437,10 @@ func relationFormatSlotIssue(doc map[string]any, r *keySlotReport) {
 		if _, phantom := props["format"]; phantom {
 			msg += `. This document spells "format" inside properties, where it names a ` +
 				`CUSTOM property rather than the relation's own format: move that member ` +
-				`out to the envelope`
+				`into relation_settings`
 		}
 	}
-	r.rejectValueAt("", msg)
+	r.rejectValueAt(path, msg)
 }
 
 // relationEnvelopeIssues runs the §2d checks the schema cannot express: a
@@ -419,9 +460,10 @@ func relationFormatSlotIssue(doc map[string]any, r *keySlotReport) {
 // author can actually fix.
 func relationEnvelopeIssues(doc map[string]any, warn func(path, format string, args ...any)) {
 	if !isRelationKind(doc) {
-		return // the schema refuses the fields on every other kind
+		return // the schema refuses the group on every other kind
 	}
-	format, _ := doc["format"].(string)
+	group, _ := relationSettingsOf(doc)
+	format, _ := group["format"].(string)
 	if format == "" {
 		// required and missing: the schema's error already says so, and it
 		// is the one that names the wrong container too
@@ -430,15 +472,15 @@ func relationEnvelopeIssues(doc map[string]any, warn func(path, format string, a
 		return
 	}
 	relationPhantomIssues(doc, warn)
-	if v, has := doc["include_time"]; has && format != "date" {
+	if v, has := group["include_time"]; has && format != "date" {
 		if b, isBool := v.(bool); isBool && b {
-			warn("/include_time", "include_time is only meaningful on date, not %q — "+
+			warn("/relation_settings/include_time", "include_time is only meaningful on date, not %q — "+
 				"it is carried but nothing reads it (§2d)", format)
 		}
 	}
-	if v, has := doc["object_types"]; has && format != "objects" && format != "files" {
+	if v, has := group["object_types"]; has && format != "objects" && format != "files" {
 		if list, isList := v.([]any); isList && len(list) > 0 {
-			warn("/object_types", "object_types is only meaningful on objects/files, not %q — "+
+			warn("/relation_settings/object_types", "object_types is only meaningful on objects/files, not %q — "+
 				"it is carried but nothing reads it (§2d)", format)
 		}
 	}
@@ -469,7 +511,7 @@ func relationPhantomIssues(doc map[string]any, warn func(path, format string, ar
 	for _, member := range []string{"format", "include_time", "object_types"} {
 		if _, has := props[member]; has {
 			warn("/properties/"+member, "on a relation document %q names a CUSTOM property, "+
-				"not the relation's own %s — that lives on the envelope (§2d); "+
+				"not the relation's own %s — that lives in relation_settings (§2d); "+
 				"drop this member unless a property literally named %q is meant",
 				member, member, member)
 		}

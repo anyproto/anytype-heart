@@ -1,9 +1,9 @@
 package anyblockjson
 
-// relationformat_test.go — the §2d relation-definition envelope fields:
-// `format`, `include_time`, `object_types` on kind:relation documents, the
-// refusal of their flat spellings in `properties`, and the presence-mirror
-// round trip.
+// relationformat_test.go — the §2d relation-definition group:
+// `relation_settings` with `format`, `include_time`, `object_types` on
+// kind:relation documents, the refusal of their flat spellings in
+// `properties`, and the presence-mirror round trip.
 
 import (
 	"encoding/json"
@@ -239,7 +239,8 @@ func TestRelationEnvelope_RefusedInProperties(t *testing.T) {
 		"relation_format_object_types": `["page"]`,
 	} {
 		t.Run(spelling, func(t *testing.T) {
-			doc := `{"version":1,"kind":"relation","id":"o1","key":"budget","format":"number",` +
+			doc := `{"version":1,"kind":"relation","id":"o1","key":"budget",` +
+				`"relation_settings":{"format":"number"},` +
 				`"properties":{"` + spelling + `":` + value + `}}`
 
 			err := Validate([]byte(doc))
@@ -591,23 +592,28 @@ func TestRelationEnvelope_TargetKeysAreInTheTypeCensus(t *testing.T) {
 	// then: the stored key `wine` kept its spelling, so the vocabulary's
 	// binding backed off to the verbatim key
 	var doc struct {
-		Type        string   `json:"type"`
-		ObjectTypes []string `json:"object_types"`
+		Type             string `json:"type"`
+		RelationSettings struct {
+			ObjectTypes []string `json:"object_types"`
+		} `json:"relation_settings"`
 	}
 	require.NoError(t, json.Unmarshal(data, &doc))
 	assert.Equal(t, "custom123", doc.Type,
 		"the census reserved %q for the target, so the type spells its stored key", "wine")
-	assert.Equal(t, []string{"wine"}, doc.ObjectTypes)
+	assert.Equal(t, []string{"wine"}, doc.RelationSettings.ObjectTypes)
 }
 
-// docObjectTypes reads the envelope object_types out of a rendered document.
+// docObjectTypes reads the §2d target-type list out of a rendered document —
+// inside the relation_settings group since v0.32.
 func docObjectTypes(t *testing.T, data []byte) []string {
 	t.Helper()
 	var doc struct {
-		ObjectTypes []string `json:"object_types"`
+		RelationSettings struct {
+			ObjectTypes []string `json:"object_types"`
+		} `json:"relation_settings"`
 	}
 	require.NoError(t, json.Unmarshal(data, &doc))
-	return doc.ObjectTypes
+	return doc.RelationSettings.ObjectTypes
 }
 
 // A custom stored type key in `object_types` owes the type_keys legend its
@@ -654,24 +660,24 @@ func TestRelationEnvelope_WrongFormatWarnsButCarries(t *testing.T) {
 		wantWarn string // "" = no warning expected
 	}{
 		"include_time true on number": {
-			doc:      `{"version":1,"kind":"relation","id":"o1","key":"b","format":"number","include_time":true}`,
-			wantWarn: "/include_time",
+			doc:      `{"version":1,"kind":"relation","id":"o1","key":"b","relation_settings":{"format":"number","include_time":true}}`,
+			wantWarn: "/relation_settings/include_time",
 		},
 		"object_types non-empty on number": {
-			doc:      `{"version":1,"kind":"relation","id":"o1","key":"b","format":"number","object_types":["page"]}`,
-			wantWarn: "/object_types",
+			doc:      `{"version":1,"kind":"relation","id":"o1","key":"b","relation_settings":{"format":"number","object_types":["page"]}}`,
+			wantWarn: "/relation_settings/object_types",
 		},
 		"include_time false on number": {
-			doc: `{"version":1,"kind":"relation","id":"o1","key":"b","format":"number","include_time":false}`,
+			doc: `{"version":1,"kind":"relation","id":"o1","key":"b","relation_settings":{"format":"number","include_time":false}}`,
 		},
 		"object_types empty on number": {
-			doc: `{"version":1,"kind":"relation","id":"o1","key":"b","format":"number","object_types":[]}`,
+			doc: `{"version":1,"kind":"relation","id":"o1","key":"b","relation_settings":{"format":"number","object_types":[]}}`,
 		},
 		"include_time true on date": {
-			doc: `{"version":1,"kind":"relation","id":"o1","key":"b","format":"date","include_time":true}`,
+			doc: `{"version":1,"kind":"relation","id":"o1","key":"b","relation_settings":{"format":"date","include_time":true}}`,
 		},
 		"object_types non-empty on objects": {
-			doc: `{"version":1,"kind":"relation","id":"o1","key":"b","format":"objects","object_types":["page"]}`,
+			doc: `{"version":1,"kind":"relation","id":"o1","key":"b","relation_settings":{"format":"objects","object_types":["page"]}}`,
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -717,7 +723,8 @@ func TestRelationEnvelope_PhantomFieldNameInPropertiesWarns(t *testing.T) {
 	} {
 		t.Run(member, func(t *testing.T) {
 			// given the envelope format AND the phantom twin in properties
-			doc := `{"version":1,"kind":"relation","id":"o1","key":"b","format":"number",` +
+			doc := `{"version":1,"kind":"relation","id":"o1","key":"b",` +
+				`"relation_settings":{"format":"number"},` +
 				`"properties":{"name":"Budget","` + member + `":` + value + `}}`
 
 			// when
@@ -739,32 +746,46 @@ func TestRelationEnvelope_PhantomFieldNameInPropertiesWarns(t *testing.T) {
 	}
 }
 
-// The three fields are legal only on kind:relation, and `format` is required
-// there — the schema conditional, with the messages naming the rule rather
-// than the mechanism.
+// The group is legal only on kind:relation, `format` is required inside it,
+// and every older spelling gets a message naming the repair rather than the
+// mechanism — the migration story of two versions, in one gate.
 //
 // How this can fail: remove the allOf conditional from object.schema.json
-// and every case below validates clean; remove the schemaIssueMessage arm
-// and the off-relation refusals degrade to a bare "not allowed".
+// and the off-relation cases validate clean; remove the schemaIssueMessage
+// arm and they degrade to a bare "not allowed"; drop a hint clause from
+// relationFormatSlotIssue or the root-spelling special case and the
+// corresponding migration case loses its repair.
 func TestRelationEnvelope_FieldsAreGatedByKind(t *testing.T) {
 	for name, tc := range map[string]struct{ doc, want string }{
-		"format on a page": {
-			doc:  `{"version":1,"id":"o1","format":"number"}`,
-			want: `/format: property "format" is only valid on relation documents`,
+		"relation_settings on a page": {
+			doc:  `{"version":1,"id":"o1","relation_settings":{"format":"number"}}`,
+			want: `/relation_settings: property "relation_settings" is only valid on relation documents`,
 		},
-		"include_time on a template": {
-			doc:  `{"version":1,"kind":"template","id":"o1","type":"template","include_time":true}`,
-			want: `/include_time: property "include_time" is only valid on relation documents`,
+		"relation_settings on a template": {
+			doc:  `{"version":1,"kind":"template","id":"o1","type":"template","relation_settings":{"format":"date"}}`,
+			want: `/relation_settings: property "relation_settings" is only valid on relation documents`,
 		},
-		"object_types on a type": {
-			doc:  `{"version":1,"kind":"object_type","id":"o1","object_types":["page"]}`,
-			want: `/object_types: property "object_types" is only valid on relation documents`,
+		"relation_settings on a type": {
+			doc:  `{"version":1,"kind":"object_type","id":"o1","relation_settings":{"format":"objects"}}`,
+			want: `/relation_settings: property "relation_settings" is only valid on relation documents`,
 		},
-		"missing format on a relation": {
+		"missing relation_settings on a relation": {
 			doc:  `{"version":1,"kind":"relation","id":"o1","key":"b"}`,
-			want: "missing property 'format': a relation document states the format",
+			want: "missing property 'relation_settings': a relation document states the definition",
 		},
-		"legacy relation_format beside a missing format": {
+		"missing format inside the group": {
+			doc:  `{"version":1,"kind":"relation","id":"o1","key":"b","relation_settings":{}}`,
+			want: "/relation_settings: missing property 'format'",
+		},
+		"the pre-v0.32 root spelling": {
+			doc:  `{"version":1,"kind":"relation","id":"o1","key":"b","format":"number"}`,
+			want: "moved off the root",
+		},
+		"a refused member inside the group names its home": {
+			doc:  `{"version":1,"kind":"relation","id":"o1","key":"b","relation_settings":{"format":"number","name":"Budget"}}`,
+			want: "the relation's name is the `name` property",
+		},
+		"legacy relation_format beside a missing definition": {
 			doc:  `{"version":1,"kind":"relation","id":"o1","key":"b","properties":{"relation_format":100}}`,
 			want: "the pre-v0.31 form",
 		},
@@ -941,8 +962,9 @@ func TestPropertyFormatEnum_MatchesFormatNames(t *testing.T) {
 	assert.Equal(t, want, authorable,
 		"authorableFormat is the whole vocabulary minus `map`, restated nowhere")
 
-	// and each slot references the list it is entitled to. The relation
-	// envelope states what a property IS, so it may name every format a
+	// and each slot references the list it is entitled to. The shared
+	// propertyDefinition shape (which the §2d relation_settings group is a
+	// reference to) states what a property IS, so it may name every format a
 	// store carries. The two AUTHORED slots may not invent a `map`: it
 	// names the shape of a hidden system relation's value, and occurs on 0
 	// of 19,862 type_properties entries and 0 of 28,034 dataview property
@@ -951,9 +973,9 @@ func TestPropertyFormatEnum_MatchesFormatNames(t *testing.T) {
 		raw json.RawMessage
 		ref string
 	}{
-		"root format":             {schema.Properties["format"], "propertyFormat"},
-		"typeProperty.format":     {schema.Defs["typeProperty"].Properties["format"], "authorableFormat"},
-		"dataviewProperty.format": {schema.Defs["dataviewProperty"].Properties["format"], "authorableFormat"},
+		"propertyDefinition.format": {schema.Defs["propertyDefinition"].Properties["format"], "propertyFormat"},
+		"typeProperty.format":       {schema.Defs["typeProperty"].Properties["format"], "authorableFormat"},
+		"dataviewProperty.format":   {schema.Defs["dataviewProperty"].Properties["format"], "authorableFormat"},
 	} {
 		assert.Truef(t, strings.Contains(string(tc.raw), `"#/$defs/`+tc.ref+`"`),
 			"%s must reference %s, not restate it", slot, tc.ref)
@@ -1003,7 +1025,7 @@ func TestRelationEnvelope_TheSideDoorKindsAreGuardedToo(t *testing.T) {
 				return
 			}
 			require.Error(t, err, "a relation document must state its own format (§2d)")
-			assert.Contains(t, err.Error(), "missing property 'format'")
+			assert.Contains(t, err.Error(), "missing property 'relation_settings'")
 		})
 	}
 }
@@ -1028,7 +1050,7 @@ func TestRelationEnvelope_TheMissingFormatVerdictNamesTheWrongContainer(t *testi
 		// then
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), `spells "format" inside properties`)
-		assert.Contains(t, err.Error(), "move that member out to the envelope")
+		assert.Contains(t, err.Error(), "move that member into relation_settings")
 	})
 
 	t.Run("the pre-v0.31 spelling still gets its own hint", func(t *testing.T) {
@@ -1058,7 +1080,8 @@ func TestRelationEnvelope_ThePhantomWarningReachesTheSideDoorKinds(t *testing.T)
 	for _, kind := range []string{"relation", "bundled_relation"} {
 		t.Run(kind, func(t *testing.T) {
 			// given a VALID relation document that also carries the member
-			doc := []byte(`{"version":1,"kind":"` + kind + `","key":"eh","format":"number",` +
+			doc := []byte(`{"version":1,"kind":"` + kind + `","key":"eh",` +
+				`"relation_settings":{"format":"number"},` +
 				`"properties":{"name":"Estimated Hours","format":"number"}}`)
 
 			// when
@@ -1126,7 +1149,8 @@ func TestRelationEnvelope_EveryRelationKindRoundTripsLossless(t *testing.T) {
 // model can declare a property whose values nothing but the client writes.
 func TestPropertyFormat_MapIsNotAuthorable(t *testing.T) {
 	t.Run("a relation document may state it", func(t *testing.T) {
-		doc := []byte(`{"version":1,"kind":"relation","key":"templatePlaceholders","format":"map",
+		doc := []byte(`{"version":1,"kind":"relation","key":"templatePlaceholders",
+			"relation_settings":{"format":"map"},
 			"properties":{"name":"Template Placeholders"}}`)
 		assert.NoError(t, Validate(doc), "the only carrier of `map` must keep exporting")
 	})

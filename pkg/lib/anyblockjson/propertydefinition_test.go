@@ -45,14 +45,16 @@ var sharedPropertyMembers = []string{
 // home at once; or reopen typeProperty by removing its unevaluatedProperties
 // gate.
 func TestPropertyDefinition_OneSharedShapeThreeHomes(t *testing.T) {
+	type schemaNode struct {
+		AllOf      []json.RawMessage          `json:"allOf"`
+		Properties map[string]json.RawMessage `json:"properties"`
+		Required   []string                   `json:"required"`
+		Additional json.RawMessage            `json:"additionalProperties"`
+		Uneval     json.RawMessage            `json:"unevaluatedProperties"`
+	}
 	var schema struct {
-		Defs map[string]struct {
-			AllOf      []json.RawMessage          `json:"allOf"`
-			Properties map[string]json.RawMessage `json:"properties"`
-			Required   []string                   `json:"required"`
-			Additional json.RawMessage            `json:"additionalProperties"`
-			Uneval     json.RawMessage            `json:"unevaluatedProperties"`
-		} `json:"$defs"`
+		Properties map[string]schemaNode `json:"properties"`
+		Defs       map[string]schemaNode `json:"$defs"`
 	}
 	require.NoError(t, json.Unmarshal(SchemaJSON(), &schema))
 
@@ -75,17 +77,29 @@ func TestPropertyDefinition_OneSharedShapeThreeHomes(t *testing.T) {
 	assert.Empty(t, def.Additional, "the shared shape must stay open for its homes to layer over")
 	assert.Empty(t, def.Uneval, "the shared shape must stay open for its homes to layer over")
 
-	// each home: a $ref to the shared shape, a local layer of narrowings and
-	// home-owned members ONLY, and its own closure. The map grows with the
-	// homes — relation_settings and the dictionary entry join it as they land
-	// — and a home missing from it is a fourth spelling.
+	// each home: a $ref to the shared shape, a local layer of narrowings,
+	// refusals (`false` members whose fact lives elsewhere) and home-owned
+	// members ONLY, and its own closure. The map grows with the homes — the
+	// dictionary entry joins it as it lands — and a home missing from it is
+	// a fourth spelling.
+	typeProperty, foundTypeProperty := schema.Defs["typeProperty"]
+	relationSettings, foundRelationSettings := schema.Properties["relation_settings"]
 	for home, tc := range map[string]struct {
-		localMembers []string // what the home's own `properties` layer may hold
+		node         schemaNode
+		found        bool
+		localMembers []string // narrowings and home-owned members the layer may hold
 	}{
-		"typeProperty": {localMembers: []string{"format", "object_types", "section"}},
+		"typeProperty": {
+			node: typeProperty, found: foundTypeProperty,
+			localMembers: []string{"format", "object_types", "section"},
+		},
+		"relation_settings": {
+			node: relationSettings, found: foundRelationSettings,
+			localMembers: nil, // nothing to narrow; its layer is all refusals
+		},
 	} {
-		h, ok := schema.Defs[home]
-		require.Truef(t, ok, "home %s must exist", home)
+		require.Truef(t, tc.found, "home %s must exist", home)
+		h := tc.node
 		refFound := false
 		for _, a := range h.AllOf {
 			var ref struct {
@@ -100,7 +114,12 @@ func TestPropertyDefinition_OneSharedShapeThreeHomes(t *testing.T) {
 		for _, m := range tc.localMembers {
 			allowed[m] = true
 		}
-		for m := range h.Properties {
+		for m, raw := range h.Properties {
+			if string(raw) == "false" {
+				// a refusal, not a restatement: the member's fact has a home
+				// elsewhere on this document (§2d)
+				continue
+			}
 			assert.Truef(t, allowed[m], "%s restates %q — a shared member may only be narrowed, and only where the home must", home, m)
 		}
 		assert.Equalf(t, "false", string(h.Uneval), "%s must close itself with unevaluatedProperties: false", home)
