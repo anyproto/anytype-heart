@@ -120,9 +120,12 @@ var typeProvenanceKeys = map[string]string{
 	// 1,623 docs: the bundled url this type was installed from — derivable
 	// from the type's own key (`_ot<key>`)
 	"sourceObject": "install artifact, derivable from the type key",
-	// 1,693 docs, values builtin/usecase/dragAndDrop/api: how the INSTALL
-	// happened, not what the type is. On ordinary objects origin is real
-	// provenance and stays; the drop is type-documents-only.
+	// 1,693 docs, values builtin(7) 1,310 · usecase(6) 278 · import(3) 90 ·
+	// api(9) 15 — how the INSTALL happened, not what the type is. (An
+	// earlier draft read enum 3 as `dragAndDrop`; that is 2, and it occurs
+	// zero times. The verdict stands; the value list did not.) On ordinary
+	// objects origin is real provenance and stays; the drop is
+	// type-documents-only.
 	"origin": "install provenance, not the type's definition",
 	// 1,627 docs, 1,600 of them the epoch zero (1970-01-01): an install
 	// timestamp at best, garbage at median

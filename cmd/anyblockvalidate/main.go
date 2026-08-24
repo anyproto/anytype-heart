@@ -182,7 +182,19 @@ func main() {
 		}
 	}
 
-	fmt.Printf("\n=== %d/%d valid, %d invalid", len(files)-fail, len(files), fail)
+	// every document this run judged, not just the object ones: `files`
+	// excludes index.json and properties.json while `fail` counts their
+	// failures alongside the batch-wide findings, so subtracting one from
+	// the other printed counts that never happened — "-1/0 valid" for a
+	// directory holding a single bad dictionary.
+	judged := len(files) + len(indexes) + len(dictionaries)
+	valid := judged - fail
+	if valid < 0 {
+		// more findings than documents: a batch-wide check can report
+		// several against one file. Say what is true — nothing passed.
+		valid = 0
+	}
+	fmt.Printf("\n=== %d/%d valid, %d invalid", valid, judged, fail)
 	if warned > 0 {
 		// warnings do not fail the run: the document imports, part of it is
 		// just inert

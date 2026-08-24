@@ -843,6 +843,23 @@ func DictionaryFormats(path string) (map[string]FormatInfo, []anyblockjson.Prope
 // place its options were spelled out.
 func MergeDictionaryFormats(scanned, dict map[string]FormatInfo, warn func(format string, args ...any)) map[string]FormatInfo {
 	for key, d := range dict {
+		// a BUNDLED key's definition is the code table's, in every space and
+		// offline (§7.5a-1) — the dictionary cannot override it, and the
+		// tools do not pretend to: the format table below is consulted only
+		// for keys the bundled table does not answer for. Said out loud,
+		// because the entry is otherwise accepted in silence and the author
+		// is left believing a redefinition took effect. The same run then
+		// warns from the bundled table about a value the entry declared
+		// legal, which reads as the tool contradicting itself.
+		if rel, err := bundle.GetRelation(domain.RelationKey(key)); err == nil && rel != nil {
+			if d.Format != rel.Format {
+				warn("property %q is BUNDLED: the dictionary says %s, the bundled table says %s, "+
+					"and the bundled table wins here and in every reader (§7.5a-1) — "+
+					"the entry documents the property, it cannot redefine it",
+					key, d.FormatName, anyblockjson.FormatName(rel.Format))
+			}
+			continue
+		}
 		existing, seen := scanned[key]
 		if seen && existing.Format != d.Format {
 			warn("property %q: a type declares %s but the dictionary says %s — the dictionary wins (§2f)",

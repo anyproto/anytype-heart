@@ -359,7 +359,10 @@ var recommendedDetailKeys = map[string]bool{
 
 // relationTargetsDetailKey is the stored key behind relation_settings'
 // object_types (§2d) — the type-namespace twin of the four lists above.
-const relationTargetsDetailKey = "relationFormatObjectTypes"
+// Named off the bundle rather than spelled, the §2b rule: a rename there
+// is a compile error here instead of a comparator that silently stops
+// normalizing the key it was written for.
+var relationTargetsDetailKey = bundle.RelationKeyRelationFormatObjectTypes.String()
 
 // normalizeTypeRefs reduces each target entry to the type KEY it names: a
 // bundled url through the table, an object id through the resolver, and
