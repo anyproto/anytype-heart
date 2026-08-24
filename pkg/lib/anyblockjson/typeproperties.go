@@ -4,6 +4,7 @@ package anyblockjson
 // from the four recommended-relation id lists on the snapshot's details.
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -14,8 +15,13 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-// PropertyDefinition describes a property (relation) object referenced by a
-// type document (§2a).
+// PropertyDefinition describes a property (relation) object — the Go side of
+// the schema's one `$defs/propertyDefinition` shape, which every surface that
+// describes a property references (§2a, §2d; §15 #14). Import hands the WHOLE
+// decoded definition to the resolver's create path, so a member the wiring
+// can store is never silently shed at the codec seam; on an existing property
+// every member is inert, the same rule the §2a table states for name and
+// format.
 type PropertyDefinition struct {
 	Key    domain.RelationKey
 	Name   string
@@ -37,6 +43,23 @@ type PropertyDefinition struct {
 	// filter value available on the property (§6.2) while still allowing the
 	// seeded people as values.
 	ObjectTypes []string
+	// Description is the property's own description (the stored
+	// `description` detail on its relation object).
+	Description string
+	// IncludeTime says whether a date property's values carry a time of day
+	// (stored `relationFormatIncludeTime`). A pointer because absent and
+	// false differ: absent says nothing, false clears the flag.
+	IncludeTime *bool
+	// MaxCount bounds how many values the property holds (stored
+	// `relationMaxCount`); 0 is unlimited, the stored default.
+	MaxCount int64
+	// Readonly marks the property's value as not user-writable (stored
+	// `relationReadonlyValue`).
+	Readonly bool
+	// DefaultValue is the value a new object receives for this property
+	// (stored `relationDefaultValue`), as decoded JSON — the wiring converts
+	// it to its store form.
+	DefaultValue any
 }
 
 // OptionDefinition is one entry of a declared select vocabulary (§2a). Color
@@ -227,14 +250,60 @@ func (e *exporter) resolveTypeProperty(id string) (PropertyDefinition, bool) {
 
 // TypeProperty is one §2a typeProperties entry in its JSON shape — exported
 // so API wiring can accept typeProperties outside a full document (the
-// PATCH type surface).
+// PATCH type surface). It is the schema's one propertyDefinition shape plus
+// `section`; the five members after ObjectTypes decode so a document that
+// states them reaches the resolver's create path with the whole definition
+// rather than losing them at the seam.
 type TypeProperty struct {
 	Key         string             `json:"key"`
 	Name        string             `json:"name"`
 	Format      string             `json:"format"`
 	Options     []OptionDefinition `json:"options"`
 	ObjectTypes []string           `json:"object_types"`
-	Section     string             `json:"section"`
+	Description string             `json:"description"`
+	IncludeTime *bool              `json:"include_time"`
+	// json.Number for the schema-integer reason every integer field in this
+	// package decodes that way: 3.0 and 3e0 are integers to JSON Schema, so
+	// Validate accepts them, and a typed int would then fail to decode a
+	// document Validate declared valid.
+	MaxCount     json.Number `json:"max_count"`
+	Readonly     bool        `json:"readonly"`
+	DefaultValue any         `json:"default_value"`
+	Section      string      `json:"section"`
+}
+
+// definition assembles the shared PropertyDefinition this entry declares,
+// with the key slots already resolved by the caller — one builder for both
+// doors the array arrives through (applyTypeProperties and
+// BuildRecommendedLists), so the two cannot disagree about which members
+// travel.
+func (tp TypeProperty) definition(key string, format model.RelationFormat, targets []string) PropertyDefinition {
+	return PropertyDefinition{
+		Key:          domain.RelationKey(key),
+		Name:         tp.Name,
+		Format:       format,
+		Options:      tp.Options,
+		ObjectTypes:  targets,
+		Description:  tp.Description,
+		IncludeTime:  tp.IncludeTime,
+		MaxCount:     maxCountValue(tp.MaxCount),
+		Readonly:     tp.Readonly,
+		DefaultValue: tp.DefaultValue,
+	}
+}
+
+// maxCountValue reads the schema-integer max_count. The schema bounds it to
+// [0, 2^31-1], so the float conversion cannot truncate a valid document; an
+// absent member is the zero, which is the stored default (unlimited).
+func maxCountValue(n json.Number) int64 {
+	if n == "" {
+		return 0
+	}
+	f, err := n.Float64()
+	if err != nil {
+		return 0
+	}
+	return int64(f)
 }
 
 type jsonTypeProperty = TypeProperty
@@ -311,13 +380,7 @@ func BuildRecommendedLists(props []TypeProperty, opts Options) ([]RecommendedLis
 		}
 		id := key
 		if opts.ResolveProperties != nil {
-			def := PropertyDefinition{
-				Key:         domain.RelationKey(key),
-				Name:        tp.Name,
-				Format:      declaredFormatWith(opts, key, tp.Format),
-				Options:     tp.Options,
-				ObjectTypes: targets,
-			}
+			def := tp.definition(key, declaredFormatWith(opts, key, tp.Format), targets)
 			if resolved, ok := opts.ResolveProperties.PropertyId(def); ok {
 				id = resolved
 			}
@@ -376,13 +439,7 @@ func (imp *importer) applyTypeProperties(details *types.Struct) error {
 			}
 			targets = append(targets, resolved)
 		}
-		def := PropertyDefinition{
-			Key:         domain.RelationKey(key),
-			Name:        tp.Name,
-			Format:      imp.declaredFormat(key, tp.Format),
-			Options:     tp.Options,
-			ObjectTypes: targets,
-		}
+		def := tp.definition(key, imp.declaredFormat(key, tp.Format), targets)
 		id := key
 		if imp.opts.ResolveProperties != nil {
 			if resolved, ok := imp.opts.ResolveProperties.PropertyId(def); ok {

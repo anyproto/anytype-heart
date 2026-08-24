@@ -1222,20 +1222,21 @@
       ],
       "description": "A property format an author may DECLARE (§3) — propertyFormat without `map`. `map` names the shape of a hidden system relation's value, never something a type or a view declares: it occurs on 0 of 19,862 type_properties entries and 0 of 28,034 dataview property entries in a 38,061-document corpus, and its only carrier is the bundled, hidden templatePlaceholders. Splitting the vocabulary keeps the relation envelope able to state what it is (§2d) while keeping the authorable slots — the ones a model writes, and the ones a generated per-type schema is built from — unable to invent one."
     },
-    "typeProperty": {
+    "propertyDefinition": {
       "type": "object",
+      "description": "ONE property, described in one shape, wherever this format describes a property (\u00a73.6). Exactly three homes reference it \u2014 a dictionary entry, a type document's property-definition list, and a relation document's relation_settings \u2014 and no fourth spelling of the concept may exist: a relation document and a type's property list once described the same property in two vocabularies, and the raw one was a measured live trap (\u00a715 #14). The shape states no `required` of its own and stays open: each home adds its own requirements, narrows what it must (an authored home may not declare `map`), refuses the members another surface already owns, and closes itself with unevaluatedProperties.",
       "properties": {
         "key": {
           "type": "string",
           "minLength": 1,
           "maxLength": 128,
-          "pattern": "^[^\u0000-\u001f]+$"
+          "pattern": "^[^\u0000-\u001f]+$"
         },
         "name": {
           "type": "string"
         },
         "format": {
-          "$ref": "#/$defs/authorableFormat"
+          "$ref": "#/$defs/propertyFormat"
         },
         "options": {
           "type": "array",
@@ -1244,11 +1245,49 @@
           }
         },
         "object_types": {
-          "type": "array",
+          "type": [
+            "array",
+            "null"
+          ],
           "items": {
             "type": "string",
             "minLength": 1
           }
+        },
+        "description": {
+          "type": "string"
+        },
+        "include_time": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "max_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "default_value": {}
+      }
+    },
+    "typeProperty": {
+      "type": "object",
+      "description": "One entry of a type document's property-definition list (\u00a72a): a propertyDefinition plus `section`, the ONE field that belongs to the type rather than the property \u2014 of 1,614 properties declared by 2+ types within one space, zero differ in anything else. The shared members are referenced, never restated; this layer only narrows: `format` to the authorable vocabulary, `object_types` to a real list (a type declares targets or omits the member \u2014 only a relation's stored value can hold a null).",
+      "allOf": [
+        {
+          "$ref": "#/$defs/propertyDefinition"
+        }
+      ],
+      "properties": {
+        "format": {
+          "$ref": "#/$defs/authorableFormat"
+        },
+        "object_types": {
+          "type": "array"
         },
         "section": {
           "enum": [
@@ -1261,7 +1300,7 @@
       "required": [
         "key"
       ],
-      "additionalProperties": false
+      "unevaluatedProperties": false
     },
     "vocabularyOption": {
       "anyOf": [

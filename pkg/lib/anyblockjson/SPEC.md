@@ -1,6 +1,6 @@
 # AnyBlock JSON — format specification
 
-Status: **draft v0.31** · Format version: **1** · Package: `pkg/lib/anyblockjson`
+Status: **draft v0.32** · Format version: **1** · Package: `pkg/lib/anyblockjson`
 
 A human- and agent-readable JSON serialization of Anytype objects (the "anyblock"
 model), designed for export, import, and generation by external tools and LLM
@@ -15,6 +15,26 @@ strings; the vocabulary follows Notion's API and Anytype's public REST API
 (`core/api`) wherever an established term exists — the format should be
 readable, and mostly writable, by someone who has never seen Anytype
 internals.
+
+Changes in v0.32: **a property is described by one shape, wherever it is
+described** (§2e) — the first move of the property-dictionary change.
+
+The schema now publishes `$defs/propertyDefinition`, and every surface that
+describes a property is a layer over a reference to it: a
+`type_properties[]` entry is a propertyDefinition plus `section` — the ONE
+field that belongs to the type rather than the property, proven by the
+corpus (of 1,614 properties declared by 2+ types within one space, zero
+differ in anything else). The shape carries the ten decided members: the
+five every home already spoke (`key`, `name`, `format`, `options`,
+`object_types`) and the five the dictionary lifts (`description`,
+`include_time`, `max_count`, `readonly`, `default_value`). A home layers
+narrowings over the reference rather than restating members — an authored
+home may not declare `map`, a type's `object_types` is a real array — and
+the codec threads the whole decoded definition to the resolver's create
+path, so a member the schema admits is never shed at the seam. The homes
+are asserted to REFERENCE the shape, the way `authorableFormat` is asserted
+to be `propertyFormat` minus `map`, because a fourth spelling of "a
+property definition" is exactly the §15 #14 disease.
 
 Changes in v0.31: **a relation document states its own format, in the
 format's own vocabulary, on the envelope** (§2d — the §15 #14 spelling
@@ -1305,7 +1325,21 @@ by `type_properties` — resolved entries, never raw relation ids.
 | `format` | string | no | Property format (§3 names). Same import rule as `name`; a conflict with an existing property's format is an error at the wiring level (the package cannot see the space). |
 | `options` | (string \| object)[] | no | A select/multi_select property's **vocabulary, in display order**. Each entry is a bare option name, or `{"name": …, "color": …}` when the option's color is part of the design — the color belongs to the option rather than to a parallel array, so inserting or reordering an option cannot shift it. `color` is one of `grey`, `yellow`, `orange`, `red`, `pink`, `purple`, `blue`, `ice`, `teal`, `lime` (`util/constant`); anything else is a validation error rather than a silently ignored value. The bare string is **canonical** whenever the option declares no color, the object form otherwise — the same rule cells follow in §6.1. Leaving a color out does not mean *no* color: the wiring assigns one, cycling the palette in declaration order and skipping whatever the vocabulary claims explicitly, so a vocabulary that names no colors still gets distinct ones. (The app assigns one at random on every other creation path; cycling keeps a converted bundle identical run to run.) Options are otherwise discovered only from values that happen to be used, so a vocabulary entry no record carries would never exist — its kanban column simply absent — and a discovered option carries no `orderId`, which makes every select sort alphabetically (options order by `[orderId, name]`, `pkg/lib/database.BuildOrderMap`). Declaring them lets the wiring create each one up front with an order id. Every option needs one: the sort concatenates `orderId + name` before comparing, so an option missing an order id is compared by *name* against the others' order ids and lands arbitrarily — ahead of the whole vocabulary when its name sorts below the id alphabet, behind it otherwise. Names discovered from usage rather than declared are ordered after the declared ones. Only meaningful on `select`/`multi_select`; duplicate names are a validation error, across both forms. |
 | `object_types` | string[] | no | The **type slugs** an `objects`/`files` property may point at, in priority order — a type-key slot like the envelope `type`, so it speaks the one key vocabulary (§3), claims its spellings through the same type term ledger and owes the same `type_keys` legend; import inverts each entry through the legend first, and a term the chain does not know passes through verbatim. Empty means any object — an untargeted property will happily accept a random page as a task's assignee. Listing the built-in `participant` alongside a bundle's own people type is what makes the current-user filter value usable on that property (§6.2) while still allowing the seeded people as values; the client only offers it when the relation's targets include Participant. The wiring resolves each key to an id the way it resolves properties: a type the batch defines by the id its own document carries, a bundled type by its bundled url (`_ot<key>`). Only meaningful on `objects`/`files`. |
-| `section` | string | no | `featured` \| `hidden` \| `file` — which list the property belongs to. Absent = a regular (sidebar) property. |
+| `description` | string | no | The property's own description (its relation object's `description` detail). Same import rule as `name`: read when the property is created, inert on an existing one. |
+| `include_time` | bool \| null | no | Whether a date property's values carry a time of day. Same import rule as `name`; meaningful on `date` only. |
+| `max_count` | int | no | How many values the property holds; 0 (or absent) is unlimited, the stored default. Same import rule as `name`. |
+| `readonly` | bool | no | Whether the property's value is user-writable. Same import rule as `name`. |
+| `default_value` | any | no | The value a new object receives for this property. Same import rule as `name`. |
+| `section` | string | no | `featured` \| `hidden` \| `file` — which list the property belongs to. Absent = a regular (sidebar) property. **The one field that belongs to the type rather than the property** (§2e): of 1,614 properties declared by 2+ types within one space, zero differ in anything else. |
+
+An entry is the one `propertyDefinition` shape plus `section` (§2e): the
+schema expresses it as a reference to `$defs/propertyDefinition` with a
+layer of narrowings (`format` to the authorable vocabulary, `object_types`
+to a real array), never as a restatement. The five members after
+`object_types` follow the `name` rule — read when the property must be
+created, inert on an existing one — and the codec hands the WHOLE decoded
+definition to the resolver's create path, so a member the schema admits is
+never shed at the seam.
 
 Export emits entries in section order featured → regular → file → hidden,
 preserving order within each list, and drops ids that no longer resolve to a
@@ -1799,6 +1833,40 @@ values (everything but `relations`=101), including `map`=102 on 72 documents
 vocabulary gained the name; `include_time` is `true` only on dates (543),
 `object_types` non-empty only on objects/files (1,089 + 167); target entries
 are 1,301 ids, 21 bare keys, 9 `_missing_object`.
+
+## 2e. One property, one shape (`propertyDefinition`)
+
+A property is described by **one shape**, `$defs/propertyDefinition`,
+wherever this format describes a property. The shape has exactly **three
+homes**, and no fourth:
+
+| home | shape |
+|---|---|
+| a property-dictionary entry (planned, this version) | one `propertyDefinition` |
+| a type document's property-definition entry (§2a) | one `propertyDefinition` + `section` |
+| a relation document's definition fields (§2d) | one `propertyDefinition` |
+
+The shape's ten members: `key`, `name`, `format`, `options`,
+`object_types`, `description`, `include_time`, `max_count`, `readonly`,
+`default_value`. It states no `required` of its own and stays open — each
+home layers over a `$ref` to it, adds its own requirements, narrows what it
+must, refuses the members another surface already owns, and closes itself
+with `unevaluatedProperties: false`. A home may **narrow** a shared member
+(an authored home pins `format` to `authorableFormat`; a type's
+`object_types` is a real array, since only a relation's stored value can
+hold a null) but never restate its shape: two statements of one member
+agree today and drift tomorrow, which is the §15 #14 disease — one concept,
+two spellings, in one format — that §2d was written to end.
+
+The rule is test-pinned the way the format vocabulary is: the homes are
+asserted to REFERENCE `$defs/propertyDefinition`, the way
+`authorableFormat` is asserted to be `propertyFormat` minus `map` rather
+than restated. On the Go side the codec threads the whole decoded
+definition to the resolver's create path through one builder shared by both
+doors the §2a array arrives by (the document, and the PATCH-type channel),
+so a member the schema admits cannot be silently shed at the seam — a
+document that validates and then quietly means less than it says is worse
+than one the schema refuses.
 
 ## 3. Properties
 

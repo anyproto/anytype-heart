@@ -15,6 +15,7 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/constant"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 // pendingSnapshot is a Relation/RelationOption object the batch mints the
@@ -336,6 +337,26 @@ func (b *batch) mintRelation(def anyblockjson.PropertyDefinition) string {
 	if ids := b.objectTypeIds(def); len(ids) > 0 {
 		details.Fields[detailRelationFormatObjectTypes] = strListVal(ids)
 	}
+	// the rest of the shared propertyDefinition shape (§2a): a definition may
+	// state these, and a minted relation that shed them would make listing a
+	// member in the document weaker than not listing it — the exact trap the
+	// absent-format rule documents. Each writes only when declared, so a
+	// definition that says nothing changes nothing.
+	if def.Description != "" {
+		details.Fields[detailDescription] = strVal(def.Description)
+	}
+	if def.IncludeTime != nil {
+		details.Fields[detailRelationFormatIncludeTime] = boolVal(*def.IncludeTime)
+	}
+	if def.MaxCount > 0 {
+		details.Fields[detailRelationMaxCount] = numVal(float64(def.MaxCount))
+	}
+	if def.Readonly {
+		details.Fields[detailRelationReadonlyValue] = boolVal(true)
+	}
+	if def.DefaultValue != nil {
+		details.Fields[detailRelationDefaultValue] = pbtypes.InterfaceToValue(def.DefaultValue)
+	}
 
 	snap := &model.SmartBlockSnapshotBase{
 		Blocks:      rootOnlyBlocks(id),
@@ -419,6 +440,10 @@ const (
 	detailRelationMaxCount          = "relationMaxCount"
 	detailLayout                    = "layout"
 	detailIsHidden                  = string(bundle.RelationKeyIsHidden)
+	detailDescription               = string(bundle.RelationKeyDescription)
+	detailRelationFormatIncludeTime = string(bundle.RelationKeyRelationFormatIncludeTime)
+	detailRelationReadonlyValue     = string(bundle.RelationKeyRelationReadonlyValue)
+	detailRelationDefaultValue      = string(bundle.RelationKeyRelationDefaultValue)
 )
 
 func strVal(s string) *types.Value {
