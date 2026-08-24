@@ -451,13 +451,28 @@ type artifactSet struct {
 // responsible for. It is deliberately textual and deliberately narrow: it drops
 // only a top-level `"creator"` or `"last_modified_by"` line, so an attribution
 // value appearing anywhere else still counts as a difference.
+//
+// When the stripped member was the LAST in its object, the previous line keeps
+// a trailing comma the other generation never had — a blindspot this strip
+// carried silently until v0.32 exposed it: the §2a settings lift moved
+// `plural_name`/`recommended_layout` out of `properties`, which made `creator`
+// the final property on most type documents, and every one of them reported
+// not_byte_stable over a comma. The comma is trimmed only when the strip
+// actually removed the member between it and the closing brace, so a real
+// difference on the neighbouring lines still counts.
 func stripAttribution(doc []byte) string {
 	var out []string
+	stripped := false
 	for _, line := range strings.Split(string(doc), "\n") {
 		t := strings.TrimSpace(line)
 		if strings.HasPrefix(t, `"creator":`) || strings.HasPrefix(t, `"last_modified_by":`) {
+			stripped = true
 			continue
 		}
+		if stripped && len(out) > 0 && strings.HasPrefix(t, "}") {
+			out[len(out)-1] = strings.TrimSuffix(out[len(out)-1], ",")
+		}
+		stripped = false
 		out = append(out, line)
 	}
 	return strings.Join(out, "\n")
