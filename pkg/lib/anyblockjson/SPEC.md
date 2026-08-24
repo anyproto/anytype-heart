@@ -1415,7 +1415,7 @@ VALUES at the root, and one word carrying two meanings in one file is the
 same shape as the `featured_relations` collision below — one word per
 concept.
 
-**A type document does not carry its own install provenance.** Eight stored
+**A type document does not carry its own install provenance.** Seven stored
 keys are omitted on export and dropped on import (stale, not wrong — the
 transient-key policy, scoped by kind), each admitted to the drop
 individually against 1,760 corpus type documents (§15 #12; the verdicts
@@ -1425,17 +1425,30 @@ derivable from the kind), `smartblock_types` (occurs only on installed
 copies of bundled types, restating the bundled table), `source_object`
 (derivable from the type key: `_ot<key>`), `origin` (how the INSTALL
 happened — on ordinary objects origin is real provenance and stays),
-`added_date` (epoch-zero on 1,600 of 1,627), `revision` (the bundled
-migration marker, restamped on install), and `set_of` (1,757 distinct
-targets, NONE resolving inside the export — a pointer to nothing; on a set
-document `setOf` is the collection's meaning and stays). Five candidates
-FAILED the admission test and stay in `properties`: `is_hidden` (cannot be
-proven install-only), `order_id` (the user's own ordering of types),
-`layout_width`/`layout_align` (the type object's own page display, set by a
-person where non-zero), and `featured_relations` — which means what this
-type OBJECT features, while `section: "featured"` means what objects OF
-this type feature: the two differ in 361 of 400 corpus cases, so they are
-two things, not one.
+`added_date` (epoch-zero on 1,600 of 1,627), and `set_of` — which is the
+type document's **own id** on 1,756 of 1,757, re-stamped by
+`WithForcedDetail` from the object's id on every init, so it is a function
+of the id rather than a fact about the type. (An earlier draft recorded
+`set_of` as "1,757 targets, none resolving" — a measurement that compared
+raw values against bare ids while the corpus dump carried `#name`
+suffixes, so every comparison missed. The verdict was right; the evidence
+for it was not, and §15 #12 is an evidence discipline.)
+
+Six candidates FAILED the admission test and stay in `properties`:
+`is_hidden` (cannot be proven install-only), `order_id` (the user's own
+ordering of types), `layout_width`/`layout_align` (the type object's own
+page display, set by a person where non-zero), `featured_relations` —
+which means what this type OBJECT features, while `section: "featured"`
+means what objects OF this type feature: the two differ in 361 of 400
+corpus cases, so they are two things, not one — and **`revision`**, which
+was admitted at first and then failed. `systemobjectreviser` short-circuits
+on `bundleRevision <= localObject.GetInt64(revisionKey)`; an absent
+revision reads 0, the guard stops firing, and the bundled definition is
+copied over the local one for `name`, `pluralName`, `recommendedLayout`,
+`isHidden` and `relationMaxCount`. Of 1,599 installed bundled type
+documents, **40 carry a local name the reviser would overwrite** (key
+`relation` is locally "Relation", bundled "Property") and 36 a local plural
+name. Dropping it reverts a user's rename on restore, silently.
 
 `property_definitions` entry fields (canonical order):
 
@@ -4573,10 +4586,12 @@ The §2a `type_settings` group (v0.32) adds three normalizations, all scoped
 to TYPE documents and all owned by exported predicates the comparator reads
 (`DroppedTypeProvenanceKey`, `DroppedEmptyTypeSetting`), so the two sides
 cannot drift the way that once produced 1,344 false failures in one sweep:
-**the eight install-provenance keys come back ABSENT** — `layout`,
+**the seven install-provenance keys come back ABSENT** — `layout`,
 `resolvedLayout`, `smartblockTypes`, `sourceObject`, `origin`, `addedDate`,
-`revision`, `setOf`, each admitted to the drop individually against 1,760
-corpus type documents (the verdicts live on `typeProvenanceKeys`, §2a) —
+`setOf`, each admitted to the drop individually against 1,760 corpus type
+documents (the verdicts live on `typeProvenanceKeys`, §2a; `revision` was
+admitted and then failed — it guards a type's own name against the bundled
+reviser) —
 while the same keys on any other kind survive untouched; **the five lifted
 settings come back ABSENT when their stored value was empty** (`pluralName`
 `""` on 145 corpus docs, `defaultTemplateId` `[]` on 87), the §4 omit-empty

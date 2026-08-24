@@ -98,7 +98,7 @@ func TestTypeSettings_ProvenanceIsDroppedOnTypeDocumentsOnly(t *testing.T) {
 		}
 		require.NoError(t, json.Unmarshal(data, &doc))
 		for _, slug := range []string{"layout", "resolved_layout", "smartblock_types",
-			"source_object", "origin", "added_date", "revision", "set_of"} {
+			"source_object", "origin", "added_date", "set_of"} {
 			_, has := doc.Properties[slug]
 			assert.Falsef(t, has, "%s describes the install, not the type (§2a)", slug)
 		}
@@ -109,7 +109,7 @@ func TestTypeSettings_ProvenanceIsDroppedOnTypeDocumentsOnly(t *testing.T) {
 			"properties":{"name":"T","origin":7,"set_of":["bafyreinothing"],"revision":3}}`
 		_, snap, err := Unmarshal([]byte(doc), testOptions())
 		require.NoError(t, err, "a document carrying install provenance is stale, not wrong")
-		for _, key := range []string{"origin", "setOf", "revision"} {
+		for _, key := range []string{"origin", "setOf"} {
 			assert.Nilf(t, snap.Details.Fields[key], "%s is dropped on a type document", key)
 		}
 	})
@@ -337,4 +337,39 @@ func TestTypeSettings_ComparatorPredicatesMatchTheDrops(t *testing.T) {
 	}
 	assert.False(t, DroppedTypeProvenanceKey(model.SmartBlockType_STType, "name"),
 		"the predicate covers the admitted keys and nothing else")
+}
+
+// `revision` is NOT provenance, and the difference is not cosmetic: it is the
+// guard that stops SystemObjectReviser re-applying a bundled definition over
+// a user's own.
+//
+// systemobjectreviser short-circuits on
+// `bundleRevision <= localObject.GetInt64(revisionKey)`. An absent revision
+// reads 0, so the guard stops firing, and buildDiffDetails then copies the
+// BUNDLED values over the local ones for every key in systemObjectFilterKeys
+// — name, pluralName, recommendedLayout, isHidden, relationMaxCount.
+//
+// Measured on 1,599 installed bundled type documents: 40 carry a local
+// `name` the reviser would overwrite (key `relation` is locally "Relation",
+// bundled "Property") and 36 a local plural name. Dropping revision reverts
+// those renames on restore, silently.
+//
+// How this can fail: put "revision" back into typeProvenanceKeys and a type
+// document stops carrying the marker that protects its own name.
+func TestTypeSettings_RevisionIsNotProvenance(t *testing.T) {
+	// given a type document carrying a revision
+	doc := []byte(`{"version":1,"kind":"object_type","key":"task",
+		"properties":{"name":"Task","revision":3},
+		"type_settings":{"layout":"basic"}}`)
+
+	// when
+	require.NoError(t, Validate(doc))
+	_, snap, err := Unmarshal(doc, Options{})
+	require.NoError(t, err)
+
+	// then
+	assert.Contains(t, snap.GetDetails().GetFields(), "revision",
+		"revision guards the type's name against the bundled reviser and must survive")
+	assert.NotContains(t, typeProvenanceKeys, "revision",
+		"it failed the §15 #12 admission test — the verdict is recorded beside the list")
 }

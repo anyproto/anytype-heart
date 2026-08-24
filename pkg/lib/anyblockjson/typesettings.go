@@ -95,6 +95,18 @@ func typeSettingsLiftedKeyRepair(key string) string {
 //     feature) in 361 of 400 corpus cases. Two things, not one. Kept.
 //   - `headerRelationsLayout` (51 docs): a real per-type editor setting the
 //     group does not model; kept in `properties` rather than half-lifted.
+//   - `revision` (1,455 docs): admitted at first on the reasoning that the
+//     system "re-runs the bundled migrations from zero and restamps it".
+//     It does re-run, and the re-run is not a no-op. systemobjectreviser
+//     guards on `bundleRevision <= localObject.GetInt64(revisionKey)`; an
+//     absent revision reads 0, the guard stops short-circuiting, and
+//     buildDiffDetails then copies the BUNDLED values over the local ones
+//     for every key in systemObjectFilterKeys — name, pluralName,
+//     recommendedLayout, isHidden, relationMaxCount among them. Measured
+//     on the same corpus: of 1,599 installed bundled type documents, 40
+//     carry a local `name` the reviser would overwrite (key `relation` is
+//     locally "Relation", bundled "Property") and 36 a local plural name.
+//     Dropping it silently reverts a user's rename on restore. KEPT.
 var typeProvenanceKeys = map[string]string{
 	// 1,758 of 1,760 docs, ONE distinct value ("object_type"): derivable
 	// from the kind, information-free
@@ -115,14 +127,16 @@ var typeProvenanceKeys = map[string]string{
 	// 1,627 docs, 1,600 of them the epoch zero (1970-01-01): an install
 	// timestamp at best, garbage at median
 	"addedDate": "install timestamp, epoch-zero on 98% of the corpus",
-	// 1,455 docs: the bundled-table revision at install time. Absent, the
-	// system re-runs the bundled migrations from zero and restamps it —
-	// re-derived, not lost.
-	"revision": "bundled migration marker, restamped on install",
-	// 1,757 docs, 1,757 DISTINCT targets, none of which resolves inside the
-	// export: a pointer to nothing. On a set document `setOf` is the
-	// collection's meaning and stays; the drop is type-documents-only.
-	"setOf": "a pointer to nothing: 1,757 distinct targets, zero resolve",
+	// 1,757 docs, and 1,756 of them hold the document's OWN id — a
+	// self-reference, not the pointer-to-nothing an earlier measurement
+	// reported (it compared raw values against bare ids while the corpus
+	// dump carried `#name` suffixes, so every comparison missed). The drop
+	// is safe for a different reason than the one first written down:
+	// objecttype.go:264 re-stamps it with WithForcedDetail from the
+	// object's own id on every init, so it is a function of the id and
+	// cannot survive into a new space anyway. On a SET document `setOf` is
+	// the collection's meaning and stays; the drop is type-documents-only.
+	"setOf": "the type's own id, re-stamped by WithForcedDetail on every init",
 }
 
 // DroppedTypeProvenanceKey reports a stored detail that export omits on a
