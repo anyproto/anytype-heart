@@ -877,19 +877,20 @@ func (c *spaceComposer) finish(ss *spaceSummary) error {
 		return fmt.Errorf("write property dictionary: %w", err)
 	}
 
-	idx := &anyblockjson.Index{
-		// the space's own document is the source where it exists; the
-		// listing's name is the fallback for a space that has none
-		Name:        firstNonEmpty(c.index.Name, c.spaceName),
-		Description: c.index.Description,
-		Homepage:    c.index.Homepage,
-		Manifest: &anyblockjson.Manifest{
-			Types:      relPaths(root, c.typePaths),
-			Options:    relPaths(root, c.optionPaths),
-			Properties: anyblockjson.PropertiesFileName,
-		},
+	// start from what the space's own document was lifted into (§2c) rather
+	// than copying its fields across by hand: the hand-written version listed
+	// three, and silently dropped the space ICON the moment the lift learned
+	// to carry one. Whatever IndexFromSpaceSettings writes now travels
+	// without this function being told about it.
+	idx := c.index
+	// the listing's name is the fallback for a space whose document has none
+	idx.Name = firstNonEmpty(c.index.Name, c.spaceName)
+	idx.Manifest = &anyblockjson.Manifest{
+		Types:      relPaths(root, c.typePaths),
+		Options:    relPaths(root, c.optionPaths),
+		Properties: anyblockjson.PropertiesFileName,
 	}
-	idxData, err := anyblockjson.MarshalIndex(idx)
+	idxData, err := anyblockjson.MarshalIndex(&idx)
 	if err != nil {
 		return fmt.Errorf("marshal index: %w", err)
 	}
