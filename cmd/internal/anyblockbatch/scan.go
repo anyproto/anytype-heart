@@ -261,7 +261,11 @@ func DiscoverJSONFiles(root string) ([]string, error) {
 func Report(us []Undeclared) string {
 	var b strings.Builder
 	for _, u := range us {
-		fmt.Fprintf(&b, "  %s: property %q has no declared format%s — add it to some type's type_settings.property_definitions\n",
+		// BOTH homes, deliberately: §2f gave a format two places it can be
+		// declared, and naming only one sends an author who wrote the other
+		// to undo it.
+		fmt.Fprintf(&b, "  %s: property %q has no declared format%s — declare it in properties.json, "+
+			"or in some type's type_settings.property_definitions\n",
 			u.File, u.Key, resolvedPropertyNote(u.Key, u.Resolved))
 	}
 	return b.String()

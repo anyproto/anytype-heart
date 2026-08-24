@@ -159,6 +159,22 @@ func main() {
 	// JSON — dates stay strings, selects mint no options, object references
 	// are never remapped. Per-file validation cannot see it.
 	if formats, ferr := anyblockbatch.ScanFormats(files); ferr == nil {
+		// the dictionary is the OTHER home a format can be declared in
+		// (§2f), and anyblockconvert merges it before running this exact
+		// check. Without the same merge this tool refuses a bundle the
+		// converter accepts — and its repair text then sends the author to
+		// the type home, undoing the dictionary they had written.
+		for _, dictPath := range dictionaries {
+			dictFormats, _, derr := anyblockbatch.DictionaryFormats(dictPath)
+			if derr != nil {
+				continue // the per-file pass above already reported it
+			}
+			formats = anyblockbatch.MergeDictionaryFormats(formats, dictFormats,
+				func(format string, args ...any) {
+					warned++
+					fmt.Printf("warn    "+format+"\n", args...)
+				})
+		}
 		if undeclared, uerr := anyblockbatch.CheckPropertyFormats(files, formats); uerr == nil && len(undeclared) > 0 {
 			fail += len(undeclared)
 			fmt.Printf("\nUNDECLARED property formats (anyblockconvert will refuse these):\n%s",
