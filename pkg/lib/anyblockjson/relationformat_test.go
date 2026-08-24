@@ -395,6 +395,55 @@ func TestRelationEnvelope_TargetTypesPassThroughWithoutResolver(t *testing.T) {
 		got.Details.Fields["relationFormatObjectTypes"])
 }
 
+// blankTypeResolver answers every translation with ("", true) — the shape a
+// resolver bug really produces when its map carries an entry whose value was
+// never filled (storeresolver builds keyById from a bounded space query, and
+// a type row with an empty stored key lands exactly this). The same defect
+// class already bit the property seam once: a vocabulary resolving a slug to
+// "" put details[""] in the store (TestImport_SeamRefusesAnUnwritableResolvedKey).
+type blankTypeResolver struct{ *testPropertyResolver }
+
+func (blankTypeResolver) TypeKeyById(id string) (string, bool)  { return "", true }
+func (blankTypeResolver) TypeIdByKey(key string) (string, bool) { return "", true }
+
+// The TypeResolver contract for an EMPTY answer: ok-with-"" is NO answer, in
+// both directions. The empty string has no written form (§3) and is no
+// store address either, so trusting the ok flag alone would let the
+// translation DESTROY the value it was asked to translate — export would put
+// "" in a type-key slot where the stored id was, import would store "" where
+// the key was — when the §2d rule is that an entry the resolver cannot
+// answer passes through verbatim, its own address, for the wiring to
+// reconcile. Pass-through, never a refusal: the stored value IS the meaning,
+// and a backup format that loses it to a resolver bug is disqualifying.
+//
+// How this can fail: drop `key != ""` from relationTargetKeys' TypeKeyById
+// arm and the wire carries "" where the stored id was; drop `resolved != ""`
+// from applyRelationEnvelope's TypeIdByKey arm and the store receives ""
+// where the key was. Each drop is silent on every other test — the working
+// resolvers never answer ok-with-empty.
+func TestRelationEnvelope_AResolverAnsweringEmptyIsNoAnswer(t *testing.T) {
+	// given
+	opts := testOptions()
+	opts.ResolveProperties = blankTypeResolver{newTestPropertyResolver()}
+	snap := relationSnapshot(map[string]*types.Value{
+		"relationFormat":            num(100),
+		"relationFormatObjectTypes": strList("bafyreitypeone"),
+	})
+
+	// when
+	data, err := Marshal(model.SmartBlockType_STRelation, snap, opts)
+	require.NoError(t, err)
+	_, got, err := Unmarshal(data, opts)
+	require.NoError(t, err)
+
+	// then
+	assert.Equal(t, []string{"bafyreitypeone"}, docObjectTypes(t, data),
+		"export: ok-with-empty is no translation — the stored id is its own address (§3)")
+	assert.Equal(t, strList("bafyreitypeone"),
+		got.Details.Fields["relationFormatObjectTypes"],
+		"import: ok-with-empty is no translation — the key passes through verbatim")
+}
+
 // A reference slot that legitimately NAMES a lifted key — a dataview column
 // on the Property type, a type_properties entry — keeps the §3 slug: the
 // deny rule protects the legend, and a bundled-bound slug needs no legend
