@@ -680,32 +680,63 @@ func TestRelationEnvelope_FieldsAreGatedByKind(t *testing.T) {
 // a warning: the refusal in `properties` is unconditional, so export may not
 // write the flat spelling anywhere (I1), and no §2d field exists off a
 // relation document to carry the value. Never observed in production — 0 of
-// 27,444 non-relation documents carry any of the three.
+// 27,444 non-relation documents carry any of the three — which is exactly
+// why the warning is the whole guard: when the shape does appear, the drop
+// is the only trace the value ever existed, so it must be per KEY, not per
+// document. Each key runs alone, because the reporting loop in
+// buildRelationEnvelope lists the three literally and a key dropped from
+// that list keeps the other two warning.
 //
 // How this can fail: make envelopeLiftedKeys include the three keys only on
-// relation documents and the page export writes `relation_format` into
-// properties — a document its own Validate refuses.
+// relation documents and the page export writes the flat spelling into
+// properties — a document its own Validate refuses; or drop one key from
+// buildRelationEnvelope's off-relation reporting loop and that key's value
+// vanishes in silence while the other two still warn.
 func TestRelationEnvelope_NonRelationKindDropsTheDetails(t *testing.T) {
-	// given
-	snap := trimSnapshot(map[string]*types.Value{
-		"relationFormat": num(2),
-		"name":           str("A page, oddly stamped"),
-	})
+	for name, tc := range map[string]struct {
+		storedKey string
+		value     *types.Value
+		flat      string
+		field     string
+	}{
+		"relationFormat": {
+			storedKey: "relationFormat", value: num(2),
+			flat: `"relation_format"`, field: `"format"`,
+		},
+		"relationFormatIncludeTime": {
+			storedKey: "relationFormatIncludeTime", value: boolValue(true),
+			flat: `"relation_format_include_time"`, field: `"include_time"`,
+		},
+		"relationFormatObjectTypes": {
+			storedKey: "relationFormatObjectTypes", value: strList("typeid-page"),
+			flat: `"relation_format_object_types"`, field: `"object_types"`,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			// given
+			snap := trimSnapshot(map[string]*types.Value{
+				tc.storedKey: tc.value,
+				"name":       str("A page, oddly stamped"),
+			})
 
-	// when
-	var warns []Issue
-	opts := testOptions()
-	opts.OnWarning = func(i Issue) { warns = append(warns, i) }
-	data, err := Marshal(model.SmartBlockType_Page, snap, opts)
-	require.NoError(t, err)
+			// when
+			var warns []Issue
+			opts := testOptions()
+			opts.OnWarning = func(i Issue) { warns = append(warns, i) }
+			data, err := Marshal(model.SmartBlockType_Page, snap, opts)
+			require.NoError(t, err)
 
-	// then
-	assert.NotContains(t, string(data), `"relation_format"`)
-	assert.NotContains(t, string(data), `"format"`,
-		"a page has no §2d field to lift into")
-	require.NoError(t, Validate(data), "§11 I1")
-	require.Len(t, warns, 1)
-	assert.Contains(t, warns[0].Message, "not a relation document")
+			// then
+			assert.NotContains(t, string(data), tc.flat)
+			assert.NotContains(t, string(data), tc.field,
+				"a page has no §2d field to lift into")
+			require.NoError(t, Validate(data), "§11 I1")
+			require.Len(t, warns, 1, "the warning is the only trace of the dropped value")
+			assert.Contains(t, warns[0].Message, "not a relation document")
+			assert.Contains(t, warns[0].Message, tc.storedKey,
+				"the warning must name which detail was dropped")
+		})
+	}
 }
 
 // "text" resolves per key on the way back in, exactly as a type_properties
