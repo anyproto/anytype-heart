@@ -2104,6 +2104,32 @@ Two members:
   writer has no such excuse — `MarshalPropertyDictionary` refuses a key its
   own table cannot name, since it would tell the reader to install nothing;
   the repair is a full entry, where the format travels along.)
+**Precedence, when a property is described more than once.** The composition
+puts a property's definition in up to three places at once — a dictionary
+entry, a kept relation document's `relation_settings`, and a type's
+`property_definitions` — and 273 kept bundled-key relation documents in a
+77-space export also carry an entry, so the pair is ordinary rather than
+exotic. The order is:
+
+1. **The bundled table**, for a key it names. It ships with every reader and
+   is the same in every space (§7.5a-1), so no document can redefine a
+   bundled property — an entry for one DOCUMENTS it, and the tools warn when
+   the two disagree rather than accepting the entry in silence.
+2. **The dictionary entry**, for every other key. It is the bundle-wide
+   statement, and the one an author writes when there is no relation
+   document at all.
+3. **A type's `property_definitions` entry**, which narrows nothing and adds
+   only `section` — what THIS type does with the property, not what the
+   property is.
+4. **A kept relation document's `relation_settings`**, which is the same
+   `propertyDefinition` and should agree by construction; where it does not,
+   the dictionary is the bundle's answer.
+
+The redundancy is deliberate and stated here so it stays reasoned: a type
+document is a self-sufficient authoring unit (§2a), and the dictionary is
+what a bulk reader consults. Unreasoned duplication is how one concept ends
+up with two spellings — §15 #14 is the record of that happening.
+
 - **`properties`** — one `propertyDefinition` (§2e) per property the
   bundle's objects actually REFERENCE. **Used-only, not
   everything installed**: a space installs a median 125 bundled properties
@@ -5591,3 +5617,33 @@ Wiring (follow-up work, not this package):
     **suggestion, never a bind** — "this space already has a property named
     Estimated Hours; reuse it?" — so that merging two identities is a
     decision someone made rather than one that happened.
+
+
+17. **`order_id` should become `sort_position`, an integer.** It survived the
+    §2a admission test because it carries something real — the user's own
+    ordering — but what it carries is a **lexid**, written for a machine that
+    needs cheap insertion between two neighbours. Measured: 946 documents
+    carry one (603 `relation_option`, 343 `object_type`), every value exactly
+    four characters, 184 distinct, commonest `VVVV`, `VWUz`, `VXUU`. Nothing
+    about `VWUz` says "second": an agent asked to insert an option between two
+    others cannot compute a value, and cannot read the order back without
+    sorting the whole set first. `sort_position: 2` says what it means, an
+    author can write one, and a reader can sort on it without knowing the
+    encoding. The store keeps its lexid — this is a question about what the
+    DOCUMENT spells, exactly like `relation_format: 100` becoming
+    `format: "number"` in §2d. Its own attack pass: what import does when two
+    entries claim one position, and whether export renumbers densely or
+    preserves gaps. **Pre-freeze if it is wanted at all.**
+
+18. **One statement of what a property KEY may be.** `$defs/propertyDefinition`
+    bounds its `key` to 128 characters and a control-character-free pattern;
+    `$defs/dataviewProperty` restates the slot as `{type: string, minLength:
+    1}` and bounds neither. Demonstrated: a 200-character key is accepted in a
+    dataview block's `properties[]` and refused in a definition, in the same
+    document. The obvious repair — point both at one `$defs/propertyKey` — was
+    tried and reverted: export really does emit such a column (verified), so
+    tightening the schema alone makes Marshal emit what its own Validate
+    rejects (§11 I1). The fix has to move export and the schema together,
+    which is a coordinated change rather than a one-line `$ref`. Recorded
+    because the one-shape rule §2e establishes is exactly what this violates,
+    and it is the sort of drift that is invisible until someone measures it.
