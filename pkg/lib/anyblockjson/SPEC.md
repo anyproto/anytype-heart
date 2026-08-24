@@ -5105,3 +5105,38 @@ Wiring (follow-up work, not this package):
     identity — and folding it in would make one union mean two things. It
     reads correctly as an ordinary `files` property. Written down so it is
     not re-litigated.
+
+16. **Reusing a key across spaces** (follow-up, and NOT a format change).
+    An agent that adds the same new type with the same new properties to
+    several spaces gets a different stored key in each, because each space
+    mints its own — so the same logical data stops being comparable across
+    them. Measured: **39 spellings in a 77-space account already bind to
+    more than one stored key**, `date` to three (`67dab1b0…` in 21 spaces,
+    plus two others).
+
+    The format already has the answer, and it is the legend: an author that
+    mints the key ONCE and ships it in `type_keys`/`property_keys` gets the
+    same key in every space, deterministically and offline. A legend entry
+    naming a key the space has never seen creates it under that key. An
+    agent minting for this purpose should use a RANDOM key, not a readable
+    one — a readable key can collide with an unrelated property a space
+    already has, and that collision merges two different properties in
+    silence.
+
+    The tempting alternative — look the type/property up in the user's
+    OTHER spaces at creation time and reuse the key when it looks like the
+    same thing — is declined for the format and left as a possible import
+    feature. It is non-deterministic (the answer depends on which spaces
+    exist at that moment), order-dependent (whichever space was created
+    first defines identity for the rest), needs cross-space reads on the
+    creation path, ties a private space's schema to a shared one, and its
+    equivalence test is a name heuristic — so it silently merges exactly
+    what §3's chain and the exhaustive legend rule exist to keep apart (see
+    the cross-space mis-binding case there: without a legend entry, a
+    document's `data` lands on the READER's unrelated `data` property, with
+    no error and no warning).
+
+    If it is built, it belongs in the import pipeline and it should be a
+    **suggestion, never a bind** — "this space already has a property named
+    Estimated Hours; reuse it?" — so that merging two identities is a
+    decision someone made rather than one that happened.
