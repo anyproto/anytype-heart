@@ -261,22 +261,31 @@ func (e *exporter) buildIcon() *omap {
 	if e.snapshot == nil || e.snapshot.Details == nil {
 		return nil
 	}
-	color, hasColor := iconColorValue(e.detail(detailKeyIconOption))
-	m := &omap{}
-	withColor := func() *omap {
-		if hasColor {
-			m.set("color", color)
-		}
-		return m
+	return iconOmap(iconOf(e.detail, e.warn))
+}
+
+// iconOf chooses the icon from the four stored channels (§2b), or returns nil
+// when the object has no icon. It is the ONE implementation of the precedence
+// described above: the object surface renders what it returns, and so does a
+// bundle index (§2c), which is what keeps the space icon and the object icon
+// from being two conventions for one concept.
+//
+// It reports through `warn` exactly where a stored value cannot be carried,
+// and a caller that cannot afford to lose one — the index, which omits the
+// document it read the icon from — treats any warning as a refusal.
+func iconOf(detail func(string) *types.Value, warn func(path, format string, args ...any)) *Icon {
+	color, hasColor := iconColorValue(detail(detailKeyIconOption))
+	ic := &Icon{}
+	if hasColor {
+		ic.Color = color
 	}
 
-	if name := e.detail(detailKeyIconName).GetStringValue(); name != "" {
+	if name := detail(detailKeyIconName).GetStringValue(); name != "" {
 		if !isOpaqueName(name) {
-			e.warn("/icon", "icon name %q cannot be written in this format and is dropped", name)
+			warn("/icon", "icon name %q cannot be written in this format and is dropped", name)
 		} else {
-			m.set("format", "icon")
-			m.set("name", name)
-			withColor()
+			ic.Format = "icon"
+			ic.Name = name
 			// the conflict carry-over: 200 real objects — every one a bundled
 			// type mid-migration from an emoji to a named icon — hold BOTH.
 			// `format` has already answered which icon wins, so the emoji is
@@ -284,44 +293,89 @@ func (e *exporter) buildIcon() *omap {
 			// that silently deletes a non-empty stored value on export is
 			// disqualifying. It is annotated x-output-only: a document that
 			// supplies it is not choosing an icon.
-			if emoji := e.detail(detailKeyIconEmoji).GetStringValue(); emoji != "" {
-				m.set("emoji", emoji)
-				e.warn("/icon", "this object holds both a named icon (%q) and an emoji (%q); "+
+			if emoji := detail(detailKeyIconEmoji).GetStringValue(); emoji != "" {
+				ic.Emoji = emoji
+				warn("/icon", "this object holds both a named icon (%q) and an emoji (%q); "+
 					"the name wins and the emoji is carried as output-only baggage", name, emoji)
 			}
-			return m
+			return ic
 		}
 	}
-	if emoji := e.detail(detailKeyIconEmoji).GetStringValue(); emoji != "" {
-		m.set("format", "emoji")
-		m.set("emoji", emoji)
-		return withColor()
+	if emoji := detail(detailKeyIconEmoji).GetStringValue(); emoji != "" {
+		ic.Format = "emoji"
+		ic.Emoji = emoji
+		return ic
 	}
-	if images := valueStringList(e.detail(detailKeyIconImage)); len(images) > 0 {
+	if images := valueStringList(detail(detailKeyIconImage)); len(images) > 0 {
 		if len(images) > 1 {
-			e.warn("/icon", "the icon image list holds %d entries; only the first is an icon", len(images))
+			warn("/icon", "the icon image list holds %d entries; only the first is an icon", len(images))
 		}
 		if !isObjectRef(images[0]) {
 			// there is no way to write it: the schema's objectRef refuses a
 			// URL and a filesystem path, so carrying it would make Marshal
 			// emit what its own Validate rejects (§11, I1)
-			e.warn("/icon", "icon image %q is not an object id and is dropped — "+
+			warn("/icon", "icon image %q is not an object id and is dropped — "+
 				"this format holds a reference to an image object, never a URL or a path", images[0])
 		} else {
-			m.set("format", "file")
-			m.set("file", images[0])
-			return withColor()
+			ic.Format = "file"
+			ic.File = images[0]
+			return ic
 		}
 	}
 	if hasColor {
 		// a colour with no source: the letter-avatar background. 29 real
 		// objects carry one, and the API reports every one of them as having
 		// no icon at all.
-		m.set("format", "color")
-		m.set("color", color)
-		return m
+		ic.Format = "color"
+		return ic
 	}
 	return nil
+}
+
+// iconOmap renders a chosen icon as the format's typed `icon` field. It is
+// the one renderer, shared by the object surface and the bundle index, so the
+// two cannot drift into different spellings of the same icon.
+//
+// `format` is the discriminator and comes first; the colour attaches to
+// whichever channel won; the named-icon variant carries its emoji last, as
+// output-only baggage.
+func iconOmap(ic *Icon) *omap {
+	if ic == nil {
+		return nil
+	}
+	format := ic.Format
+	if format == "" {
+		// a caller that filled the channel without naming the variant
+		switch {
+		case ic.Name != "":
+			format = "icon"
+		case ic.Emoji != "":
+			format = "emoji"
+		case ic.File != "":
+			format = "file"
+		case ic.Color != nil:
+			format = "color"
+		default:
+			return nil
+		}
+	}
+	m := &omap{}
+	m.set("format", format)
+	switch format {
+	case "icon":
+		m.set("name", ic.Name)
+	case "emoji":
+		m.set("emoji", ic.Emoji)
+	case "file":
+		m.set("file", ic.File)
+	}
+	if ic.Color != nil {
+		m.set("color", ic.Color)
+	}
+	if format == "icon" && ic.Emoji != "" {
+		m.set("emoji", ic.Emoji)
+	}
+	return m
 }
 
 // buildCover renders the five cover channels as one typed field (§2b), or nil

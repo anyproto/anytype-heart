@@ -301,13 +301,13 @@ func TestIndex_WireWidgetTargets(t *testing.T) {
 // the compiler catches it (every index test fails at once), but only this
 // says which line to fix.
 func TestIndexSchema_RefsThePublishedObjectSchema(t *testing.T) {
-	assert.Contains(t, string(indexSchemaJSON), SchemaURL+"#/$defs/plainIcon")
+	assert.Contains(t, string(indexSchemaJSON), SchemaURL+"#/$defs/icon")
 }
 
-// A bundle index carries the SAME typed icon an object does (§2b, §2c),
-// restricted to the two kinds a bundle can hold. The image variant names an
-// object id; the wiring resolves it to the image's name, because the
-// installer looks the space icon up by name (getNewAvatarId).
+// A bundle index carries the SAME typed icon an object does (§2b, §2c) — the
+// whole shape, not a restriction of it. The image variant names an object id;
+// the wiring resolves it to the image's name, because the installer looks the
+// space icon up by name (getNewAvatarId).
 //
 // How this can fail: give the index its own icon shape, or let both an emoji
 // and an image be present at once, and one of these breaks. The old two-key
@@ -346,9 +346,44 @@ func TestIndex_Icon(t *testing.T) {
 		assert.Contains(t, err.Error(), "'emoji', 'file'")
 	})
 
-	t.Run("the four-variant object icon is not a space icon", func(t *testing.T) {
-		_, err := UnmarshalIndex([]byte(`{"version": 1, "icon": {"format": "icon", "name": "folder"}}`))
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "value must be one of 'emoji', 'file'")
+	// The index took the narrow emoji-or-image shape until the space's own
+	// document stopped being exported (§2c) and the index became the only
+	// place a space icon could live. A LETTER AVATAR — a colour and nothing
+	// else — is the icon of 20 of 77 real spaces, and the narrow shape had
+	// no way to spell one, so omitting the document would have deleted it.
+	t.Run("a letter avatar is a colour and nothing else", func(t *testing.T) {
+		idx, err := UnmarshalIndex([]byte(`{"version": 1, "icon": {"format": "color", "color": "red"}}`))
+		require.NoError(t, err)
+		assert.Equal(t, "red", idx.Icon.Color)
+		assert.Empty(t, idx.IconImageId(), "a colour names no image")
+
+		out, err := MarshalIndex(idx)
+		require.NoError(t, err)
+		assert.Contains(t, string(out), `"format": "color"`)
+		assert.Contains(t, string(out), `"color": "red"`)
+	})
+
+	t.Run("a colour rides along with the icon it tints", func(t *testing.T) {
+		idx, err := UnmarshalIndex([]byte(`{"version": 1,
+			"icon": {"format": "file", "file": "acme-logo", "color": "red"}}`))
+		require.NoError(t, err)
+		out, err := MarshalIndex(idx)
+		require.NoError(t, err)
+		assert.Contains(t, string(out), `"file": "acme-logo"`)
+		assert.Contains(t, string(out), `"color": "red"`)
+	})
+
+	// One renderer, so the index and the object surface cannot drift into two
+	// spellings of one icon (§2b).
+	t.Run("the index renders through the object surface's own renderer", func(t *testing.T) {
+		for _, ic := range []*Icon{
+			{Format: "emoji", Emoji: "📚"},
+			{Format: "file", File: "logo"},
+			{Format: "file", File: "logo", Color: "red"},
+			{Format: "color", Color: "red"},
+			{Format: "icon", Name: "folder", Color: "red"},
+		} {
+			assert.Equal(t, iconOmap(ic), indexIconOmap(ic), "icon %+v", ic)
+		}
 	})
 }

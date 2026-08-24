@@ -16,10 +16,22 @@ package anyblockjson
 // reduces to exactly four members:
 //
 //	homepage            77 of 77   → index.homepage
+//	createdDate         77 of 77   → dropped: when the space OBJECT was minted,
+//	                                 which a restored space is not
+//	lastModifiedDate    77 of 77   → dropped, for the same reason
+//	iconOption          74 of 77   → index.icon (a colour)
 //	name                75 of 77   → index.name
+//	iconImage           56 of 77   → index.icon (an image object in the bundle)
 //	description         12 of 77   → index.description
 //	featuredRelations   12 of 77   → what the space OBJECT features, which is
 //	                                 nothing once the object is not a document
+//	iconEmoji            1 of 77   → index.icon
+//
+// The icon was the reason this could not simply be dropped: a first reading
+// of the corpus counted only the members a rendered DOCUMENT still showed and
+// concluded four remained. Read from the stored details instead — which is
+// what the omission actually sees — three more channels appear, and almost
+// every space has one.
 //
 // So export omits it, and `IndexFromSpaceSettings` is the one place that says
 // which detail becomes which index field — so a composer cannot quietly carry
@@ -40,6 +52,62 @@ var spaceSettingsIndexKeys = map[string]string{
 	bundle.RelationKeyName.String():        "name",
 	bundle.RelationKeyDescription.String(): "description",
 	"homepage":                             "homepage",
+	detailKeyIconEmoji:                     "icon",
+	detailKeyIconImage:                     "icon",
+	detailKeyIconName:                      "icon",
+	detailKeyIconOption:                    "icon",
+}
+
+// spacePageIsEmpty reports a space object whose page holds nothing a reader
+// would miss — only the header scaffolding every object carries: the root
+// block, the header layout, the featured-properties row, and an EMPTY title.
+//
+// Counting blocks does not answer this: all 77 corpus spaces have an empty
+// page, and 17 of them carry four blocks of scaffolding to say so, so a
+// `len(blocks) > 1` test keeps 17 documents that hold nothing at all.
+//
+// Fail-closed, and deliberately narrow: a text block with any text, marks or
+// a style other than the two structural ones, and any other block type at
+// all, keeps the document.
+func spacePageIsEmpty(base *model.SmartBlockSnapshotBase) bool {
+	for _, b := range base.GetBlocks() {
+		switch c := b.Content.(type) {
+		case *model.BlockContentOfSmartblock, *model.BlockContentOfLayout,
+			*model.BlockContentOfFeaturedRelations:
+			// the scaffolding the editor puts on every object
+		case *model.BlockContentOfText:
+			t := c.Text
+			if t.GetText() != "" || len(t.GetMarks().GetMarks()) > 0 {
+				return false
+			}
+			if t.GetStyle() != model.BlockContentText_Title &&
+				t.GetStyle() != model.BlockContentText_Description {
+				return false
+			}
+		default:
+			return false
+		}
+	}
+	return true
+}
+
+// spaceIcon chooses the space's icon through the ONE precedence this format
+// has (§2b), and reports whether it can be carried WHOLE.
+//
+// The second return is what makes the omission safe: `iconOf` warns exactly
+// where a stored channel cannot be written — an icon name this format cannot
+// spell, an image that is not an object id, a list holding more than one. On
+// an ordinary object that warning travels with the document. Here there is no
+// document to carry it, so anything less than a lossless icon keeps the
+// document instead.
+func spaceIcon(base *model.SmartBlockSnapshotBase) (icon *Icon, whole bool) {
+	det := base.GetDetails().GetFields()
+	lossless := true
+	ic := iconOf(
+		func(k string) *types.Value { return det[k] },
+		func(string, string, ...any) { lossless = false },
+	)
+	return ic, lossless
 }
 
 // IndexFromSpaceSettings reads the space's own object into the index fields
@@ -64,6 +132,9 @@ func IndexFromSpaceSettings(idx *Index, base *model.SmartBlockSnapshotBase) {
 	if v := stringDetail(det, "homepage"); v != "" {
 		idx.Homepage = v
 	}
+	if ic, whole := spaceIcon(base); whole && ic != nil {
+		idx.Icon = ic
+	}
 }
 
 // OmittedSpaceSettings reports a space document a bundle does not write,
@@ -79,9 +150,13 @@ func OmittedSpaceSettings(sbType model.SmartBlockType, base *model.SmartBlockSna
 	if sbType != model.SmartBlockType_Workspace || base == nil {
 		return false
 	}
-	if len(base.GetBlocks()) > 1 {
+	if !spacePageIsEmpty(base) {
 		// a space object with real content on its page is not a restatement
-		// of anything; every one of the 77 in the corpus has none
+		// of anything
+		return false
+	}
+	if _, whole := spaceIcon(base); !whole {
+		// the index would carry a lesser icon than the object holds
 		return false
 	}
 	stripped := strippedDetailKeys()
@@ -96,6 +171,12 @@ func OmittedSpaceSettings(sbType model.SmartBlockType, base *model.SmartBlockSna
 			// anything once the document is gone
 		case spaceSettingsConstantKeys[k]:
 			// one distinct value across all 77 corpus documents
+		case k == bundle.RelationKeyCreatedDate.String(),
+			k == bundle.RelationKeyLastModifiedDate.String():
+			// when the space OBJECT was minted and last touched. A bundle is
+			// not that object: a space restored from one is created when it
+			// is restored, so carrying the original timestamps would date the
+			// new space to the old one
 		default:
 			return false // unaccounted: keep the document
 		}

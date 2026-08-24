@@ -70,6 +70,92 @@ func TestSpaceSettings_OmittedOnlyWhenTheIndexSaysItAll(t *testing.T) {
 	t.Run("no other kind is ever omitted here", func(t *testing.T) {
 		assert.False(t, OmittedSpaceSettings(model.SmartBlockType_Page, spaceSnapshot(nil)))
 	})
+
+	// The space object's own timestamps: when it was minted, not when the
+	// bundle's content was written. A space restored from a bundle is created
+	// when it is restored.
+	t.Run("the object's own timestamps do not stop the omission", func(t *testing.T) {
+		assert.True(t, OmittedSpaceSettings(model.SmartBlockType_Workspace,
+			spaceSnapshot(map[string]*types.Value{
+				"createdDate": num(1700000000), "lastModifiedDate": num(1700000001)})))
+	})
+
+	// 17 of 77 corpus spaces carry the editor's header scaffolding and no
+	// content at all. Counting blocks kept every one of them.
+	t.Run("header scaffolding is not content", func(t *testing.T) {
+		snap := spaceSnapshot(nil)
+		snap.Blocks = append(snap.Blocks,
+			&model.Block{Id: "header", Content: &model.BlockContentOfLayout{
+				Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_Header}}},
+			&model.Block{Id: "title", Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{Style: model.BlockContentText_Title}}},
+			&model.Block{Id: "featured", Content: &model.BlockContentOfFeaturedRelations{
+				FeaturedRelations: &model.BlockContentFeaturedRelations{}}})
+		assert.True(t, OmittedSpaceSettings(model.SmartBlockType_Workspace, snap))
+	})
+
+	t.Run("an empty block that is not scaffolding keeps the document", func(t *testing.T) {
+		snap := spaceSnapshot(nil)
+		snap.Blocks = append(snap.Blocks, &model.Block{Id: "p",
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{Style: model.BlockContentText_Paragraph}}})
+		assert.False(t, OmittedSpaceSettings(model.SmartBlockType_Workspace, snap),
+			"fail closed: an empty paragraph is still the author's block")
+	})
+
+	// The icon is the one member whose carrying can FAIL: an image that is
+	// not an object id cannot be written at all. On an ordinary object that
+	// warning travels with the document; here there would be no document.
+	t.Run("an icon the index cannot carry keeps the document", func(t *testing.T) {
+		assert.False(t, OmittedSpaceSettings(model.SmartBlockType_Workspace,
+			spaceSnapshot(map[string]*types.Value{
+				detailKeyIconImage: str("https://example.com/logo.png")})),
+			"fail closed: the index would carry a lesser icon than the object holds")
+	})
+}
+
+// The space icon travels in index.json, in the one shape every icon in this
+// format has (§2b). Measured over 77 corpus spaces: 55 an image, 20 a bare
+// colour — the letter avatar — and 2 no icon at all.
+//
+// How this can fail: give the index a narrower icon than the object surface,
+// and the 20 letter avatars are deleted by an export that reports success.
+func TestSpaceSettings_TheIconTravelsInTheIndex(t *testing.T) {
+	t.Run("an image icon, with the colour it is tinted with", func(t *testing.T) {
+		var idx Index
+		IndexFromSpaceSettings(&idx, spaceSnapshot(map[string]*types.Value{
+			detailKeyIconImage: str("bafyreiimage"), detailKeyIconOption: num(3)}))
+
+		require.NotNil(t, idx.Icon)
+		assert.Equal(t, "file", idx.Icon.Format)
+		assert.Equal(t, "bafyreiimage", idx.Icon.File)
+		assert.NotNil(t, idx.Icon.Color, "the colour rides along with the icon it tints")
+		assert.Equal(t, "bafyreiimage", idx.IconImageId())
+	})
+
+	t.Run("a letter avatar is a colour and nothing else", func(t *testing.T) {
+		var idx Index
+		IndexFromSpaceSettings(&idx, spaceSnapshot(map[string]*types.Value{
+			detailKeyIconOption: num(3)}))
+
+		require.NotNil(t, idx.Icon, "20 of 77 real spaces have exactly this icon")
+		assert.Equal(t, "color", idx.Icon.Format)
+		assert.NotNil(t, idx.Icon.Color)
+	})
+
+	t.Run("an icon that cannot be carried whole is not carried at all", func(t *testing.T) {
+		var idx Index
+		IndexFromSpaceSettings(&idx, spaceSnapshot(map[string]*types.Value{
+			detailKeyIconImage: str("https://example.com/logo.png")}))
+
+		assert.Nil(t, idx.Icon, "and the document is kept instead, so nothing is lost")
+	})
+
+	t.Run("no icon at all", func(t *testing.T) {
+		var idx Index
+		IndexFromSpaceSettings(&idx, spaceSnapshot(nil))
+		assert.Nil(t, idx.Icon)
+	})
 }
 
 // The lift is the composer's half of the omission: a bundle that drops the
@@ -91,11 +177,24 @@ func TestSpaceSettings_TheIndexTakesWhatTheDocumentHeld(t *testing.T) {
 	assert.Equal(t, "What it is for", idx.Description)
 	assert.Equal(t, "bafyreihome", idx.Homepage)
 
-	// and every key the predicate treats as index-carried is actually lifted
+	// and every key the predicate treats as index-carried is actually lifted.
+	// Compared against the index the SAME snapshot without that key produces:
+	// asserting merely that the result is non-empty proves nothing, because
+	// the base snapshot already carries a name and a homepage.
+	samples := map[string]*types.Value{
+		"name": str("Another name"), "description": str("What it is for"),
+		"homepage":         str("bafyreielsewhere"),
+		detailKeyIconEmoji: str("📚"), detailKeyIconImage: str("bafyreiimage"),
+		detailKeyIconName: str("folder"), detailKeyIconOption: num(3),
+	}
 	for stored := range spaceSettingsIndexKeys {
-		var one Index
-		IndexFromSpaceSettings(&one, spaceSnapshot(map[string]*types.Value{stored: str("value")}))
-		require.NotEqualf(t, Index{}, one,
+		v, ok := samples[stored]
+		require.Truef(t, ok, "no sample value for index-carried key %q", stored)
+
+		var without, with Index
+		IndexFromSpaceSettings(&without, spaceSnapshot(nil))
+		IndexFromSpaceSettings(&with, spaceSnapshot(map[string]*types.Value{stored: v}))
+		require.NotEqualf(t, without, with,
 			"%q is listed as index-carried but the lift writes nothing for it", stored)
 	}
 }

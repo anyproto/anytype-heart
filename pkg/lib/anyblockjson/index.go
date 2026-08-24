@@ -436,27 +436,18 @@ func platformNameIssues(doc map[string]any) []Issue {
 	return issues
 }
 
-// indexIconOmap renders a bundle index's icon in canonical form (§2c). The
-// index is a hand-built struct rather than a details bag, so it has its own
-// small renderer — but it writes the SAME two variants the schema's plainIcon
-// admits, and nothing else: an index that named a colour would validate
-// against a $ref it does not satisfy.
+// indexIconOmap renders a bundle index's icon in canonical form (§2c).
+//
+// It is `iconOmap`, the object surface's own renderer, and deliberately not a
+// second one: the index used to render its own two variants, and a space
+// whose icon is a bare COLOUR would have had it silently dropped on the way
+// into the index. Measured over 77 real spaces: 55 resolve to an image, and
+// their colour rides along on the file variant, which the narrow shape did
+// allow — but 20 have the colour and nothing else, and those are the letter
+// avatars the client actually draws. The index now admits the full `icon`
+// shape, which is also what its schema $refs.
 func indexIconOmap(ic *Icon) *omap {
-	if ic == nil {
-		return nil
-	}
-	m := &omap{}
-	switch {
-	case ic.Emoji != "":
-		m.set("format", "emoji")
-		m.set("emoji", ic.Emoji)
-	case ic.File != "":
-		m.set("format", "file")
-		m.set("file", ic.File)
-	default:
-		return nil
-	}
-	return m
+	return iconOmap(ic)
 }
 
 // IconImageId is the object id of an index's image icon, or "" when the index

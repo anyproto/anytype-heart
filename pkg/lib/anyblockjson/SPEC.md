@@ -33,14 +33,30 @@ predecessor, whose `object` format holds the sentinels `chat` and
 `lastOpened` rather than ids, and which disagrees with `homepage` on 46 of
 the 54 documents carrying both).
 
-**And then the space document has nothing left to say.** Measured over the
-same 77: after every existing rule runs, it reduces to `homepage` (77),
-`name` (75), `description` (12) and `featuredRelations` (12) — and
-`index.json` already states the first three, existing exactly once per
-bundle because an export is a single space. So export omits the document and
-`IndexFromSpaceSettings` lifts the three fields, one place saying which
-detail becomes which index field. The omission is fail-closed: a member the
-format cannot account for keeps the document.
+**And then the space document has nothing left of its own to say.** Measured
+over the same 77, after every existing rule runs: `homepage` (77),
+`createdDate` (77), `lastModifiedDate` (77), `iconOption` (74), `name` (75),
+`iconImage` (56), `description` (12), `featuredRelations` (12), `iconEmoji`
+(1). `index.json` already states the name, description and homepage, and
+exists exactly once per bundle because an export is a single space. The two
+timestamps date the space OBJECT, which a restored space is not — it is
+created when it is restored. `featuredRelations` says what that object
+features, and there is no object to feature anything once it is gone.
+
+**The icon is the member that made this more than a deletion.** It travels
+into `index.json`, whose `icon` now takes the full `icon` shape (§2b) rather
+than the emoji-or-image narrowing it carried before: 55 of the 77 spaces
+resolve to an image, and their colour rides along on that variant, but 20
+have a colour and nothing else — the letter avatar the client draws when no
+image was ever set — and the narrow shape had no way to spell one. Export
+and index now share ONE icon builder and ONE renderer, so the space icon and
+the object icon cannot become two spellings of one concept.
+
+So export omits the document and `IndexFromSpaceSettings` lifts what it
+held, one place saying which detail becomes which index field. The omission
+is fail-closed on every axis: a member the format cannot account for keeps
+the document, so does an icon that cannot be carried whole, and so does any
+block that is not the editor's own header scaffolding.
 
 Changes in v0.33: **the space's own object spells its settings** (§2).
 

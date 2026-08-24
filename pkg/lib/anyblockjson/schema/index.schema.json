@@ -4,12 +4,17 @@
   "title": "AnyBlock JSON bundle index",
   "description": "One index.json at the root of a bundle describes the bundle as a whole: what the space is called, where a user lands after installing it, and what the sidebar shows. Everything else in a bundle describes a single object; this is the only document that describes the set.",
   "type": "object",
-  "required": ["version"],
+  "required": [
+    "version"
+  ],
   "additionalProperties": false,
   "properties": {
-    "$schema": { "type": "string" },
-    "version": { "const": 1 },
-
+    "$schema": {
+      "type": "string"
+    },
+    "version": {
+      "const": 1
+    },
     "name": {
       "type": "string",
       "minLength": 1,
@@ -20,10 +25,9 @@
       "description": "One line on what the space is for. Author-facing and applied to the space where the client shows one."
     },
     "icon": {
-      "$ref": "https://schemas.anytype.io/anyblock/1/object.schema.json#/$defs/plainIcon",
-      "description": "The space's icon: an emoji, or the **object id** of an image in the bundle — exactly the shape `icon` has on any object (\u00a72b), so an author never has to remember a second convention. Two flat keys used to stand here with no rule for which one wins, and they disagreed with the object surface about whether an image is a scalar or a list. An image needs the image object AND its file in the archive, which is why a generated bundle uses an emoji. (The installer resolves the space icon by image *name*, not id — the wiring does that lookup, so this field stays consistent with every other id in the format.)"
+      "$ref": "https://schemas.anytype.io/anyblock/1/object.schema.json#/$defs/icon",
+      "description": "The space's icon — exactly the shape `icon` has on any object (§2b), so an author never has to remember a second convention: an emoji, the **object id** of an image in the bundle, a built-in icon name, or a bare colour. Two flat keys used to stand here with no rule for which one wins, and they disagreed with the object surface about whether an image is a scalar or a list. This field was then narrowed to emoji-or-image, which silently dropped the icon of a space whose icon is a bare colour — 20 of 77 real spaces, the letter avatars the client draws when no image was ever set. An image needs the image object AND its file in the archive, which is why a generated bundle uses an emoji. (The installer resolves the space icon by image *name*, not id — the wiring does that lookup, so this field stays consistent with every other id in the format; an emoji or colour icon reaches no installer field at all, and is carried so a round trip does not lose it.)"
     },
-
     "entrypoint": {
       "type": "string",
       "minLength": 1,
@@ -34,18 +38,25 @@
       "type": "string",
       "minLength": 1,
       "anyOf": [
-        { "enum": ["_widgets", "_graph"] },
-        { "pattern": "^[^_]" }
+        {
+          "enum": [
+            "_widgets",
+            "_graph"
+          ]
+        },
+        {
+          "pattern": "^[^_]"
+        }
       ],
       "description": "What opens whenever the user enters the space afterwards. An object id from this bundle, which may not begin with `_`; defaults to `entrypoint`. The reserved `_widgets` (sidebar dashboard) and `_graph` are accepted but are rarely right for a use case — on desktop the widgets are always in the sidebar anyway, so `_widgets` wastes the main pane; it only reads well on mobile, which shows one screen at a time. Name a page."
     },
-
     "widgets": {
       "type": "array",
       "description": "Sidebar widgets, in the order they should appear. Independent of `entrypoint` — declaring one does not require a widget for it. Only give a type a widget when you want fast access to its objects (`layout: \"view\"`); the sidebar already lists every type automatically, so a link or list widget on a type just duplicates that.",
-      "items": { "$ref": "#/$defs/widget" }
+      "items": {
+        "$ref": "#/$defs/widget"
+      }
     },
-
     "manifest": {
       "$ref": "#/$defs/manifest",
       "description": "Where to find what a reader must resolve by key or id rather than by walking (§2c): types, options, and the property dictionary. The format defines NO folder layout — objects/, types/, relations/ are one exporter's convention — and an object names its type by spelling alone, so without this a reader resolves a type by scanning every document for a matching key. Measured: types (22/space) and options (34/space) are the only two namespaces documents address without a path, ~5.1 KB per space, 0.23% of the bytes."
@@ -58,12 +69,18 @@
       "properties": {
         "types": {
           "type": "object",
-          "additionalProperties": { "type": "string", "minLength": 1 },
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1
+          },
           "description": "STORED type key → the type document's path, relative to this file. Stored keys, not per-document spellings: a document's type_keys legend binds its spelling to the stored key, and the stored key is what the manifest answers for — the same rule the property dictionary applies (§2f). Reader flow: object → `type` spelling → the object's own legend → stored key → this map → the type file, no scanning."
         },
         "options": {
           "type": "object",
-          "additionalProperties": { "type": "string", "minLength": 1 },
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1
+          },
           "description": "Option object id → the relation_option document's path, relative to this file. Ids, because that is how documents address options: a value carries the option's NAME and the option_ids legend beside it carries the id (§9a) — the id is the only spelling that survives a rename, so it is the one the manifest keys on."
         },
         "properties": {
@@ -75,20 +92,39 @@
     },
     "widget": {
       "type": "object",
-      "required": ["target"],
+      "required": [
+        "target"
+      ],
       "additionalProperties": false,
       "properties": {
         "target": {
           "type": "string",
           "minLength": 1,
           "anyOf": [
-            { "enum": ["_favorite", "_recent", "_set", "_collection", "_all_objects", "_recent_open"] },
-            { "pattern": "^[^_]" }
+            {
+              "enum": [
+                "_favorite",
+                "_recent",
+                "_set",
+                "_collection",
+                "_all_objects",
+                "_recent_open"
+              ]
+            },
+            {
+              "pattern": "^[^_]"
+            }
           ],
           "description": "What the widget points at: an object id from this bundle (a page, a type, a set or a collection), or one of the reserved listings `_favorite`, `_recent`, `_set`, `_collection`. The leading `_` is the platform's address space and is what keeps the two kinds of target apart — an object id from the bundle may never begin with one, so a bundle can no longer shadow a listing with an object of its own. Those four listings are the ones the importer recognises; `_all_objects` and `_recent_open` exist in a live space but not in the import path, so a widget naming one is dropped on install without an error and the tooling rejects it instead."
         },
         "layout": {
-          "enum": ["link", "tree", "list", "compact_list", "view"],
+          "enum": [
+            "link",
+            "tree",
+            "list",
+            "compact_list",
+            "view"
+          ],
           "default": "link",
           "description": "How the widget renders. `link` is a single row; `tree` expands children; `list` and `compact_list` show contents; `view` renders a type's or set's own view."
         },

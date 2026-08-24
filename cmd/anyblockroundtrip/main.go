@@ -355,15 +355,15 @@ func processSpace(ctx context.Context, mw *core.Middleware, store objectstore.Ob
 		// and the trip it takes instead (installed key → the reader's
 		// bundled table) is verified here, per omitted document, through the
 		// same comparator as everything else.
-		omittedKey := ""
+		omitted := false
 		if artifacts != nil && artifacts.original != nil {
-			key, recon := composer.observeSnapshot(artifacts.original)
-			omittedKey = key
+			isOmitted, recon := composer.observeSnapshot(artifacts.original)
+			omitted = isOmitted
 			issues = append(issues, recon...)
 		}
 		if artifacts != nil {
 			if dumpJSON && artifacts.json1 != nil {
-				if omittedKey != "" {
+				if omitted {
 					composer.omittedDocs++
 					composer.omittedBytes += len(artifacts.json1)
 				} else {
@@ -747,10 +747,10 @@ func newSpaceComposer(opts anyblockjson.Options, spaceName string) *spaceCompose
 // document — installed key → the reader's bundled table — through the same
 // comparator as every ordinary round trip, so the omission predicate and
 // the reconstruction cannot drift apart silently.
-func (c *spaceComposer) observeSnapshot(sw *pb.SnapshotWithType) (omittedKey string, issues []issue) {
+func (c *spaceComposer) observeSnapshot(sw *pb.SnapshotWithType) (omitted bool, issues []issue) {
 	base := sw.Snapshot.GetData()
 	if base == nil {
-		return "", nil
+		return false, nil
 	}
 	// the space's own object: index.json states everything it holds (§2c),
 	// so the composer lifts those fields and drops the document. The lift
@@ -758,20 +758,20 @@ func (c *spaceComposer) observeSnapshot(sw *pb.SnapshotWithType) (omittedKey str
 	// document without having written what it carried.
 	if anyblockjson.OmittedSpaceSettings(sw.SbType, base) {
 		anyblockjson.IndexFromSpaceSettings(&c.index, base)
-		return "", nil
+		return true, nil
 	}
 	if key, ok := anyblockjson.OmittedBundledRelation(sw.SbType, base, c.opts); ok {
 		c.installed[key] = true
 		det, ok := anyblockjson.InstalledRelationDetails(key, c.opts)
 		if !ok {
-			return key, []issue{{category: "omitted_reconstruction",
+			return true, []issue{{category: "omitted_reconstruction",
 				detail: fmt.Sprintf("installed key %q has no bundled reconstruction", key)}}
 		}
 		got := &model.SmartBlockSnapshotBase{Details: det, ObjectTypes: base.ObjectTypes}
 		for _, d := range snapshotdiff.Compare(base, got, sw.SbType, c.opts) {
 			issues = append(issues, issue{category: "omitted_reconstruction", detail: d})
 		}
-		return key, issues
+		return true, issues
 	}
 	if det := base.GetDetails().GetFields(); det != nil &&
 		(sw.SbType == model.SmartBlockType_STRelation || sw.SbType == model.SmartBlockType_BundledRelation) {
@@ -784,7 +784,7 @@ func (c *spaceComposer) observeSnapshot(sw *pb.SnapshotWithType) (omittedKey str
 			c.entries[key] = storedRelationDefinition(base, c.opts)
 		}
 	}
-	return "", nil
+	return false, nil
 }
 
 // observeWritten records a written document's place for the manifest: a type
