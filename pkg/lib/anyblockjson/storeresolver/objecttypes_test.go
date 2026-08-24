@@ -1,6 +1,6 @@
 package storeresolver
 
-// PropertyDefinition.ObjectTypes — `type_properties[].object_types`, SPEC §2a
+// PropertyDefinition.ObjectTypes — `type_settings.property_definitions[].object_types`, SPEC §2a
 // — had no node-backed emitter at all: the resolver left the field empty, so a
 // node export of a type document silently dropped every property's target
 // types and the property came back accepting any object. These tests drive the
@@ -132,19 +132,21 @@ func TestTypeDocumentCarriesObjectTypes(t *testing.T) {
 
 	// then
 	var doc struct {
-		TypeKeys  map[string]string `json:"type_keys"`
-		TypeProps []struct {
-			Key         string   `json:"key"`
-			ObjectTypes []string `json:"object_types"`
-		} `json:"type_properties"`
+		TypeKeys     map[string]string `json:"type_keys"`
+		TypeSettings struct {
+			PropertyDefinitions []struct {
+				Key         string   `json:"key"`
+				ObjectTypes []string `json:"object_types"`
+			} `json:"property_definitions"`
+		} `json:"type_settings"`
 	}
 	require.NoError(t, json.Unmarshal(data, &doc))
-	require.Len(t, doc.TypeProps, 1)
-	assert.Equal(t, "assignee", doc.TypeProps[0].Key)
+	require.Len(t, doc.TypeSettings.PropertyDefinitions, 1)
+	assert.Equal(t, "assignee", doc.TypeSettings.PropertyDefinitions[0].Key)
 	// the slots are spelled as slugs and the legend inverts the one the
 	// bundled table cannot (§3) — the whole point of carrying the targets is
 	// that a reader can bind them back
-	assert.Equal(t, []string{"person", "participant"}, doc.TypeProps[0].ObjectTypes)
+	assert.Equal(t, []string{"person", "participant"}, doc.TypeSettings.PropertyDefinitions[0].ObjectTypes)
 	assert.Equal(t, map[string]string{"person": customTypeKey}, doc.TypeKeys)
 
 	// and: the document reads back onto the very same stored keys

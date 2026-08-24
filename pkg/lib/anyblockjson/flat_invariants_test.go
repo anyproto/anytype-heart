@@ -1073,18 +1073,18 @@ var hostileDocs = []string{
 	`{"version": 1, "kind": "template", "type_keys": {"tpl": "template"}, "type": "tpl", "template_for": "page"}`,
 	`{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
 		"type_keys": {"task": "69bbfc78877a91b1d12d1a7c"},
-		"type_properties": [{"key": "owner", "format": "objects", "object_types": ["task", "blanktype"]}]}`,
+		"type_settings": {"property_definitions": [{"key": "owner", "format": "objects", "object_types": ["task", "blanktype"]}]}}`,
 	// a type_properties `key` is a PROPERTY key slot and admits like one: the
 	// schema bounds the spelling, a wider vocabulary resolves past it — and
 	// the two shapes the seam refuses with the DEFAULT vocabulary, where no
 	// resolution widens anything and the schema's `minLength: 1` is the only
 	// bound the slot ever had
 	`{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
-		"type_properties": [{"key": "blank", "format": "text"}]}`,
+		"type_settings": {"property_definitions": [{"key": "blank", "format": "text"}]}}`,
 	`{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
-		"type_properties": [{"key": "` + strings.Repeat("k", maxPropertyKeyLen+1) + `"}]}`,
+		"type_settings": {"property_definitions": [{"key": "` + strings.Repeat("k", maxPropertyKeyLen+1) + `"}]}}`,
 	`{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
-		"type_properties": [{"key": "a\nb"}]}`,
+		"type_settings": {"property_definitions": [{"key": "a\nb"}]}}`,
 	// the `option_ids` legend (§9a) at both levels: an entry the document
 	// spells, an entry nothing spells (the warning), the shapes the deleted
 	// flat key could not represent at all (a spelling carrying `#`, an option

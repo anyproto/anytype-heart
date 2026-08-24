@@ -63,40 +63,42 @@ func typeSnapshot() *model.SmartBlockSnapshotBase {
 }
 
 func TestTypePropertiesExport(t *testing.T) {
-	t.Run("recommended lists become type_properties in section order", func(t *testing.T) {
+	t.Run("recommended lists become property_definitions in section order", func(t *testing.T) {
 		// given
 		opts := Options{ResolveProperties: newTestPropertyResolver()}
-		want := `"type_properties": [
-    {
-      "key": "due_date",
-      "name": "Due date",
-      "format": "date",
-      "section": "featured"
-    },
-    {
-      "key": "assignee",
-      "name": "Assignee",
-      "format": "objects",
-      "section": "featured"
-    },
-    {
-      "key": "status",
-      "name": "Status",
-      "format": "select"
-    },
-    {
-      "key": "file_ext",
-      "name": "File extension",
-      "format": "text",
-      "section": "file"
-    },
-    {
-      "key": "origin",
-      "name": "Origin",
-      "format": "text",
-      "section": "hidden"
-    }
-  ]`
+		want := `"type_settings": {
+    "property_definitions": [
+      {
+        "key": "due_date",
+        "name": "Due date",
+        "format": "date",
+        "section": "featured"
+      },
+      {
+        "key": "assignee",
+        "name": "Assignee",
+        "format": "objects",
+        "section": "featured"
+      },
+      {
+        "key": "status",
+        "name": "Status",
+        "format": "select"
+      },
+      {
+        "key": "file_ext",
+        "name": "File extension",
+        "format": "text",
+        "section": "file"
+      },
+      {
+        "key": "origin",
+        "name": "Origin",
+        "format": "text",
+        "section": "hidden"
+      }
+    ]
+  }`
 
 		// when
 		data, err := Marshal(model.SmartBlockType_STType, typeSnapshot(), opts)
@@ -128,12 +130,12 @@ func TestTypePropertiesExport(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.NotContains(t, string(data), "type_properties")
+		assert.NotContains(t, string(data), "type_settings")
 		assert.Contains(t, string(data), "recommended_featured_relations")
 		assert.Contains(t, string(data), "relid-dueDate")
 	})
 
-	t.Run("non-type documents never emit type_properties", func(t *testing.T) {
+	t.Run("non-type documents never emit type_settings", func(t *testing.T) {
 		// given
 		snapshot := &model.SmartBlockSnapshotBase{
 			Details: fields(map[string]*types.Value{
@@ -147,7 +149,7 @@ func TestTypePropertiesExport(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.NotContains(t, string(data), "type_properties")
+		assert.NotContains(t, string(data), "type_settings")
 	})
 
 	t.Run("all-empty lists emit an explicit empty array", func(t *testing.T) {
@@ -164,7 +166,7 @@ func TestTypePropertiesExport(t *testing.T) {
 		// then: presence of the (empty) array is what lets import rebuild
 		// the four lists as explicit empty lists
 		require.NoError(t, err)
-		assert.Contains(t, string(data), `"type_properties": []`)
+		assert.Contains(t, string(data), `"property_definitions": []`)
 	})
 
 	t.Run("bare bundle key entries resolve via the bundle fallback", func(t *testing.T) {
@@ -210,11 +212,11 @@ func TestTypePropertiesImport(t *testing.T) {
   "kind": "object_type",
   "key": "task",
   "properties": { "name": "Task" },
-  "type_properties": [
+  "type_settings": {"property_definitions": [
     { "key": "due_date", "name": "Due date", "format": "date", "section": "featured" },
     { "key": "status", "name": "Status", "format": "select" },
     { "key": "origin", "section": "hidden" }
-  ]
+  ]}
 }`
 
 	t.Run("lists rebuilt through the resolver", func(t *testing.T) {
@@ -250,7 +252,7 @@ func TestTypePropertiesImport(t *testing.T) {
 
 	t.Run("empty array rebuilds all four lists as empty", func(t *testing.T) {
 		// given
-		doc := `{"version": 1, "kind": "object_type", "key": "task", "type_properties": []}`
+		doc := `{"version": 1, "kind": "object_type", "key": "task", "type_settings": {"property_definitions": []}}`
 
 		// when
 		_, snapshot, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("id")})
@@ -329,7 +331,7 @@ func TestTypePropertiesRoundTrip(t *testing.T) {
 func TestTypePropertiesValidation(t *testing.T) {
 	t.Run("rejected outside type documents", func(t *testing.T) {
 		// given
-		doc := `{"version": 1, "type_properties": [{"key": "due_date"}]}`
+		doc := `{"version": 1, "type_settings": {"property_definitions": [{"key": "due_date"}]}}`
 
 		// when
 		err := Validate([]byte(doc))
@@ -345,7 +347,7 @@ func TestTypePropertiesValidation(t *testing.T) {
   "version": 1,
   "kind": "object_type",
   "properties": { "recommendedRelations": ["relid-status"] },
-  "type_properties": [{"key": "due_date"}]
+  "type_settings": {"property_definitions": [{"key": "due_date"}]}
 }`
 
 		// when
@@ -353,14 +355,14 @@ func TestTypePropertiesValidation(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "conflicts with type_properties")
+		assert.Contains(t, err.Error(), "conflicts with type_settings.property_definitions")
 	})
 
 	t.Run("unknown section and missing key rejected by schema", func(t *testing.T) {
 		for _, doc := range []string{
-			`{"version": 1, "kind": "object_type", "type_properties": [{"key": "a", "section": "sidebar"}]}`,
-			`{"version": 1, "kind": "object_type", "type_properties": [{"name": "No key"}]}`,
-			`{"version": 1, "kind": "object_type", "type_properties": [{"key": "a", "format": "status"}]}`,
+			`{"version": 1, "kind": "object_type", "type_settings": {"property_definitions": [{"key": "a", "section": "sidebar"}]}}`,
+			`{"version": 1, "kind": "object_type", "type_settings": {"property_definitions": [{"name": "No key"}]}}`,
+			`{"version": 1, "kind": "object_type", "type_settings": {"property_definitions": [{"key": "a", "format": "status"}]}}`,
 		} {
 			assert.Error(t, Validate([]byte(doc)), strings.ReplaceAll(doc, "\n", " "))
 		}
@@ -371,9 +373,9 @@ func TestTypePropertiesValidation(t *testing.T) {
   "version": 1,
   "kind": "object_type",
   "key": "task",
-  "type_properties": [
+  "type_settings": {"property_definitions": [
     { "key": "due_date", "name": "Due date", "format": "date", "section": "featured" }
-  ]
+  ]}
 }`
 		assert.NoError(t, Validate([]byte(doc)))
 	})
@@ -401,7 +403,7 @@ func TestBuildRecommendedListsRefusesUnwritableResolvedKeys(t *testing.T) {
 		assert.Nil(t, lists)
 		var ve *ValidationError
 		require.ErrorAs(t, err, &ve, "the refusal is path-addressed, as on the document path")
-		assert.Contains(t, err.Error(), "/type_properties/0/key")
+		assert.Contains(t, err.Error(), "/type_settings/property_definitions/0/key")
 	})
 
 	t.Run("an object_types entry the vocabulary resolves onto nothing", func(t *testing.T) {
@@ -422,7 +424,7 @@ func TestBuildRecommendedListsRefusesUnwritableResolvedKeys(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.Nil(t, lists)
-		assert.Contains(t, err.Error(), "/type_properties/0/object_types/1")
+		assert.Contains(t, err.Error(), "/type_settings/property_definitions/0/object_types/1")
 	})
 
 	t.Run("the refusal does not depend on a resolver being wired", func(t *testing.T) {
@@ -434,7 +436,7 @@ func TestBuildRecommendedListsRefusesUnwritableResolvedKeys(t *testing.T) {
 		_, err := BuildRecommendedLists(props, Options{Keys: blankTypeVocab{}})
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "/type_properties/0/object_types/0")
+		assert.Contains(t, err.Error(), "/type_settings/property_definitions/0/object_types/0")
 	})
 
 	t.Run("a resolvable array still builds", func(t *testing.T) {
@@ -455,7 +457,7 @@ func TestBuildRecommendedListsRefusesUnwritableResolvedKeys(t *testing.T) {
 // (TestImport_SeamRefusesAnEmptyResolvedTypeKey), three lines below.
 func TestImport_TypePropertyKeyRefusesAnUnwritableResolvedKey(t *testing.T) {
 	doc := `{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
-		"type_properties": [{"key": "blank", "format": "text"}]}`
+		"type_settings": {"property_definitions": [{"key": "blank", "format": "text"}]}}`
 	require.NoError(t, Validate([]byte(doc)),
 		"the document's own chain resolves blank verbatim — Validate cannot see the vocabulary")
 
@@ -465,7 +467,7 @@ func TestImport_TypePropertyKeyRefusesAnUnwritableResolvedKey(t *testing.T) {
 	require.Error(t, err)
 	var ve *ValidationError
 	require.ErrorAs(t, err, &ve, "the refusal is path-addressed")
-	assert.Contains(t, err.Error(), "/type_properties/0/key")
+	assert.Contains(t, err.Error(), "/type_settings/property_definitions/0/key")
 }
 
 // The two doors into the §2a array must also agree on what a DECLARED FORMAT
@@ -490,7 +492,7 @@ func TestTypePropertyFormatIsTheSameThroughBothDoors(t *testing.T) {
 		raw, err := json.Marshal(entry)
 		require.NoError(t, err)
 		doc := `{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
-			"type_properties": [` + string(raw) + `]}`
+			"type_settings": {"property_definitions": [` + string(raw) + `]}}`
 		_, _, err = Unmarshal([]byte(doc), opts)
 		require.NoError(t, err)
 		return r.defs
@@ -547,7 +549,7 @@ func TestTypePropertyFormatIsTheSameThroughBothDoors(t *testing.T) {
 
 // §13: a path addresses the fault. A dropped §2a entry has no index in the
 // document — it is not there — and the warning used to carry
-// `/type_properties/<len(out)>`, which is the index the next SURVIVING entry
+// `/type_settings/property_definitions/<len(out)>`, which is the index the next SURVIVING entry
 // takes. So the diagnostic for the broken entry pointed at a healthy one, and
 // a caller that trusted the pointer read the wrong property.
 func TestExport_ADroppedTypePropertyIsReportedAtTheArray(t *testing.T) {
@@ -571,10 +573,10 @@ func TestExport_ADroppedTypePropertyIsReportedAtTheArray(t *testing.T) {
 
 	// then
 	doc := decodeEnvelope(t, data)
-	require.Len(t, doc.TypeProps, 1)
-	assert.Equal(t, "owner", doc.TypeProps[0].Key, "entry 0 of the document is the HEALTHY one")
+	require.Len(t, doc.TypeProps(), 1)
+	assert.Equal(t, "owner", doc.TypeProps()[0].Key, "entry 0 of the document is the HEALTHY one")
 	require.Len(t, warned, 1)
-	assert.Equal(t, "/type_properties", warned[0].Path,
+	assert.Equal(t, typePropertyDefinitionsPath, warned[0].Path,
 		"the array is the fault's address; the dropped entry has no index in it")
 	assert.Contains(t, warned[0].Message, "is dropped",
 		"and the message names the key, which is what identifies it")

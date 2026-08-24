@@ -720,17 +720,17 @@ func TestExport_UnwritableSlugFallsBackToTheStoredKey(t *testing.T) {
 }
 
 // The same raw-spelling defect had a fourth instance in the same loop's
-// neighbourhood: the type_properties-vs-recommended-lists ambiguity check
+// neighbourhood: the property_definitions-vs-recommended-lists ambiguity check
 // indexed properties by the STORED list keys, so the canonical spelling
 // "recommended_relations" carried both representations without a word.
 func TestValidate_RecommendedListConflictCheckedInCanonicalSpelling(t *testing.T) {
 	for _, spelling := range []string{"recommendedRelations", "recommended_relations"} {
 		doc := fmt.Sprintf(`{"version": 1, "kind": "object_type", "id": "t1", "key": "page",
-			"type_properties": [{"key": "due_date", "format": "date"}],
+			"type_settings": {"property_definitions": [{"key": "due_date", "format": "date"}]},
 			"properties": {%q: ["a"]}}`, spelling)
 		err := Validate([]byte(doc))
 		require.Error(t, err, spelling)
 		assert.Contains(t, err.Error(), "/properties/"+spelling)
-		assert.Contains(t, err.Error(), "type_properties")
+		assert.Contains(t, err.Error(), "type_settings.property_definitions")
 	}
 }

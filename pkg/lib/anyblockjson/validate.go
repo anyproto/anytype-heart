@@ -374,6 +374,10 @@ func collectSchemaLeaves(e *jsonschema.ValidationError, printer *message.Printer
 					msg = fmt.Sprintf("property %q moved off the root: a relation document "+
 						"states its definition in the \"relation_settings\" group (§2d) — "+
 						"move it (and its two siblings, if present) in there", prop)
+				case "type_properties":
+					msg = `property "type_properties" moved: a type document states its ` +
+						`definitions in "type_settings" and this array is its ` +
+						`"property_definitions" member (§2a) — move it in there`
 				}
 			}
 			out = append(out, schemaLeaf{
@@ -654,6 +658,10 @@ func schemaIssueMessage(e *jsonschema.ValidationError, printer *message.Printer)
 				if len(toks) == 1 && prop == "relation_settings" {
 					return fmt.Sprintf("property %q is only valid on relation documents "+
 						`(kind "relation", §2d)`, prop)
+				}
+				if len(toks) == 1 && prop == "type_settings" {
+					return fmt.Sprintf("property %q is only valid on type documents "+
+						`(kind "object_type", §2a)`, prop)
 				}
 				// inside the group, the refused members each have a home
 				// already (§2d): telling the author only "not allowed" sends
@@ -1008,6 +1016,16 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 				addIssue(path, "%s", reason)
 				continue
 			}
+			// the §2a type-settings lift, kind-scoped like the import seam it
+			// mirrors (typesettings.go): on a TYPE document the five stored
+			// keys live in the group, and the flat spelling is refused with
+			// the repair named; on every other kind the same keys are
+			// ordinary properties
+			if isTypeKind(doc) && typeSettingsLiftedDetailKeys()[key] {
+				addIssue(path, "%q is written on a type document as %s in type_settings (§2a), "+
+					"not as a property", key, typeSettingsLiftedKeyRepair(key))
+				continue
+			}
 			// the document's own chain can hardly resolve a shape-checked
 			// term onto an unwritable key — legend values and spellings were
 			// vetted before this runs — but the seam refuses one however it
@@ -1044,14 +1062,26 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 	// not contradict (I1)
 	relationEnvelopeIssues(doc, warnIssue)
 
-	if _, ok := doc["type_properties"]; ok {
-		if kind, _ := doc["kind"].(string); kind != "object_type" {
-			addIssue("/type_properties", `type_properties is only valid on type documents (kind "object_type")`)
+	// the type_settings name-over-number members carry the layout rule (§2a,
+	// §3): a typo'd NAME is refused — it would import as a raw string onto a
+	// number-format detail, which every consumer reads with an int getter and
+	// silently sees as the zero — while a raw number still passes, because a
+	// stored value outside the vocabulary round-trips as its number.
+	if group, _ := typeSettingsOf(doc); group != nil {
+		if s, isStr := group["layout"].(string); isStr && !layoutNames.has(s) {
+			addIssue("/type_settings/layout", "unknown layout %q", s)
 		}
-		// typeProperties replaces the recommended-relation lists (§2a): a
-		// document carrying both is ambiguous. The lists are named by whatever
-		// spelling resolves onto them — recommendedListKeys holds stored keys,
-		// and the canonical document spells recommended_relations (§3)
+		if s, isStr := group["default_view"].(string); isStr && !viewTypeNames.has(s) {
+			addIssue("/type_settings/default_view", "unknown view type %q", s)
+		}
+	}
+
+	if defs, hasDefs := typePropertyDefinitionsOf(doc); hasDefs {
+		// property_definitions replaces the recommended-relation lists (§2a):
+		// a document carrying both is ambiguous. The lists are named by
+		// whatever spelling resolves onto them — recommendedListKeys holds
+		// stored keys, and the canonical document spells
+		// recommended_relations (§3)
 		if props, _ := doc["properties"].(map[string]any); props != nil {
 			listKeys := make(map[string]bool, len(recommendedListKeys))
 			for _, l := range recommendedListKeys {
@@ -1060,14 +1090,14 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 			for _, term := range sortedMapKeys(props) {
 				if listKeys[resolveDocKey(term)] {
 					addIssue("/properties/"+escapeJSONPointer(term),
-						"conflicts with type_properties, which replaces this list")
+						"conflicts with type_settings.property_definitions, which replaces this list")
 				}
 			}
 		}
 		// name is used only when the property has to be created (§2a); an
 		// existing one keeps its own, so renaming a bundled key here reads as
 		// working and silently does nothing
-		if list, _ := doc["type_properties"].([]any); list != nil {
+		if list := defs; list != nil {
 			for i, raw := range list {
 				tp, ok := raw.(map[string]any)
 				if !ok {
@@ -1083,7 +1113,7 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 						if shown == "" {
 							shown = "text"
 						}
-						addIssue(fmt.Sprintf("/type_properties/%d/options", i),
+						addIssue(fmt.Sprintf(typePropertyDefinitionsPath+"/%d/options", i),
 							"options is only meaningful on select/multi_select, not %q", shown)
 					}
 					// an option is a bare name or an object carrying a color
@@ -1093,7 +1123,7 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 					for j, o := range opts {
 						n := optionEntryName(o)
 						if seen[n] {
-							addIssue(fmt.Sprintf("/type_properties/%d/options/%d", i, j),
+							addIssue(fmt.Sprintf(typePropertyDefinitionsPath+"/%d/options/%d", i, j),
 								"duplicate option %q", n)
 						}
 						seen[n] = true
@@ -1108,7 +1138,7 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 						if shown == "" {
 							shown = "text"
 						}
-						addIssue(fmt.Sprintf("/type_properties/%d/object_types", i),
+						addIssue(fmt.Sprintf(typePropertyDefinitionsPath+"/%d/object_types", i),
 							"object_types is only meaningful on objects/files, not %q", shown)
 					}
 				}
@@ -1119,12 +1149,12 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 				if key != "" {
 					if rel, err := bundle.GetRelation(domain.RelationKey(resolveDocKey(key))); err == nil && rel != nil {
 						if name, _ := tp["name"].(string); name != "" && name != rel.Name {
-							warnIssue(fmt.Sprintf("/type_properties/%d/name", i),
+							warnIssue(fmt.Sprintf(typePropertyDefinitionsPath+"/%d/name", i),
 								"%q is a bundled property named %q — this name is ignored; mint a custom key if the label matters",
 								key, rel.Name)
 						}
 						if ots, has := tp["object_types"].([]any); has && len(ots) > 0 {
-							warnIssue(fmt.Sprintf("/type_properties/%d/object_types", i),
+							warnIssue(fmt.Sprintf(typePropertyDefinitionsPath+"/%d/object_types", i),
 								"%q is a bundled property; its target types are fixed by the bundle and this list is ignored — mint a custom key to target different types",
 								key)
 						}
@@ -1502,22 +1532,22 @@ func propertyNameIssues(doc map[string]any) keySlotReport {
 			}
 		}
 	}
-	// a type_properties `key` is a property key slot too (§2a), and the only
-	// one that is a JSON string VALUE rather than a member name: the schema
-	// carries the rule, but `propertyNames` never sees this slot, so its
-	// verdict names a bound or prints a regex instead of saying what is wrong
-	// with the string. Same rule, same wording as the members above — and the
-	// same reason it is a rule at all: the import seam refuses a key export
-	// could not write back, so a document carrying one validated clean and
-	// then failed to import (I2).
-	if list, _ := doc["type_properties"].([]any); list != nil {
+	// a property definition's `key` is a property key slot too (§2a), and
+	// the only one that is a JSON string VALUE rather than a member name: the
+	// schema carries the rule, but `propertyNames` never sees this slot, so
+	// its verdict names a bound or prints a regex instead of saying what is
+	// wrong with the string. Same rule, same wording as the members above —
+	// and the same reason it is a rule at all: the import seam refuses a key
+	// export could not write back, so a document carrying one validated clean
+	// and then failed to import (I2).
+	if list, _ := typePropertyDefinitionsOf(doc); list != nil {
 		for i, raw := range list {
 			tp, _ := raw.(map[string]any)
 			key, isString := tp["key"].(string)
 			if !isString || isWritablePropertyKey(key) {
 				continue
 			}
-			rejectValue(fmt.Sprintf("/type_properties/%d/key", i),
+			rejectValue(fmt.Sprintf(typePropertyDefinitionsPath+"/%d/key", i),
 				unwritableKeyReason("property key", key))
 		}
 	}

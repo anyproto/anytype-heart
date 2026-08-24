@@ -855,7 +855,7 @@ func TestOptionRefs_ThePropertyCensusCoversEveryPosition(t *testing.T) {
 		{"a properties member", `{"properties": {"probe_property": ["High"]}}`, true},
 		{"a property_keys spelling", `{"property_keys": {"probe_property": "storedKey"}}`, true},
 		{"a type_properties key", `{"kind": "object_type",
-			"type_properties": [{"key": "probe_property", "format": "select"}]}`, true},
+			"type_settings": {"property_definitions": [{"key": "probe_property", "format": "select"}]}}`, true},
 		{"a property block's key", `{"blocks":
 			[{"type": "property", "key": "probe_property"}]}`, true},
 		{"a link block's shown properties", `{"blocks":

@@ -126,6 +126,23 @@ func Compare(orig, got *model.SmartBlockSnapshotBase, sbType model.SmartBlockTyp
 			if isDroppedEmptySystemProperty(k, orig.Details.Fields[k], gotFields[k]) {
 				continue
 			}
+			// a TYPE document does not carry its own install provenance
+			// (§2a, v0.32): eight keys export omits there whatever their
+			// value — each admitted against the corpus individually — so the
+			// comparator learns the rule in the same commit that taught
+			// export (the miss that produced 1,344 false failures in one
+			// sweep). Scoped to absent-on-the-way-back: a got side that
+			// somehow carries the key still reports. The predicate is the
+			// format's own, not a copy.
+			if gotFields[k] == nil && anyblockjson.DroppedTypeProvenanceKey(sbType, k) {
+				continue
+			}
+			// the five type_settings members follow the §4 omit-empty canon
+			// (§2a): a pluralName of "" or a defaultTemplateId of [] comes
+			// back absent. Same scoping, same ownership of the predicate.
+			if gotFields[k] == nil && anyblockjson.DroppedEmptyTypeSetting(sbType, k, orig.Details.Fields[k]) {
+				continue
+			}
 			if !detailEqual(k, orig.Details.Fields[k], gotFields[k], opts) {
 				out = append(out, fmt.Sprintf("detail %q changed: %s -> %s",
 					k, valuePreview(orig.Details.Fields[k]), valuePreview(gotFields[k])))

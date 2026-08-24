@@ -4,7 +4,7 @@ package anyblockbatch
 //
 // The envelope `key` a type document carries is the raw STORED key and is
 // never translated (SPEC.md §2). Every other type slot IS translated: the
-// envelope `type` and `template_for`, and `type_properties[].object_types`
+// envelope `type` and `template_for`, and `type_settings.property_definitions[].object_types`
 // carry a term that resolves through the §3 chain — the document's own
 // `type_keys` legend, then the bundled derived table, then verbatim.
 //

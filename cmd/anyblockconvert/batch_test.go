@@ -278,8 +278,8 @@ func TestBatch_LegendBackedPropertyMintsItsRelationAndOptions(t *testing.T) {
 	typeDoc := filepath.Join(dir, "task.type.json")
 	require.NoError(t, os.WriteFile(typeDoc, []byte(`{"version": 1, "kind": "object_type",
 	  "key": "task", "id": "type-task", `+legend+`
-	  "type_properties": [{"key": "priority", "name": "Priority", "format": "select",
-	    "options": ["High", "Low"]}]}`), 0o644))
+	  "type_settings": {"property_definitions": [{"key": "priority", "name": "Priority", "format": "select",
+	    "options": ["High", "Low"]}]}}`), 0o644))
 
 	formats, err := anyblockbatch.ScanFormats([]string{typeDoc})
 	require.NoError(t, err)

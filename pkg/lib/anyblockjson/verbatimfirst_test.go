@@ -380,14 +380,16 @@ func TestExport_ADeniedKeyNeverTakesASlug(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, Validate(data), "emitted:\n%s", data)
 		var doc struct {
-			TypeProperties []struct {
-				Key string `json:"key"`
-			} `json:"type_properties"`
+			TypeSettings struct {
+				PropertyDefinitions []struct {
+					Key string `json:"key"`
+				} `json:"property_definitions"`
+			} `json:"type_settings"`
 			PropertyKeys map[string]string `json:"property_keys"`
 		}
 		require.NoError(t, json.Unmarshal(data, &doc))
-		require.Len(t, doc.TypeProperties, 1)
-		assert.Equal(t, "uniqueKey", doc.TypeProperties[0].Key)
+		require.Len(t, doc.TypeSettings.PropertyDefinitions, 1)
+		assert.Equal(t, "uniqueKey", doc.TypeSettings.PropertyDefinitions[0].Key)
 		assert.Empty(t, doc.PropertyKeys)
 	})
 }

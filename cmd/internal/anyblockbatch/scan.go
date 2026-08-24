@@ -65,9 +65,32 @@ type typePropRaw struct {
 	ObjectTypes []string                        `json:"object_types"`
 }
 
+// typeSettingsRaw is the slice of the §2a group the batch scans read: the
+// property definitions moved off the document root into
+// `type_settings.property_definitions` in v0.32, and a scanner still reading
+// the root would silently see no declarations at all.
+type typeSettingsRaw struct {
+	PropertyDefinitions *[]typePropRaw `json:"property_definitions"`
+}
+
+func (ts *typeSettingsRaw) definitions() *[]typePropRaw {
+	if ts == nil {
+		return nil
+	}
+	return ts.PropertyDefinitions
+}
+
+// typeSettingsDefs is the nil-safe value form for scanners that only range.
+func typeSettingsDefs(ts *typeSettingsRaw) []typePropRaw {
+	if defs := ts.definitions(); defs != nil {
+		return *defs
+	}
+	return nil
+}
+
 type prescanDoc struct {
-	PropertyKeys   propertyLegend `json:"property_keys"`
-	TypeProperties *[]typePropRaw `json:"type_properties"`
+	PropertyKeys propertyLegend   `json:"property_keys"`
+	TypeSettings *typeSettingsRaw `json:"type_settings"`
 }
 
 // ScanFormats reads every document's typeProperties (§2a) once, up front, to
@@ -81,7 +104,7 @@ type prescanDoc struct {
 // The table is keyed by the STORED key each entry's `key` term resolves to,
 // because that is what the converter reads it by: anyblockjson hands
 // Options.ResolveFormat the output of importer.propertyKey, never the
-// spelling. `type_properties[].key` is a translated slot (§3), so it runs the
+// spelling. `type_settings.property_definitions[].key` is a translated slot (§3), so it runs the
 // chain — this document's own property_keys legend, the bundled table,
 // verbatim — first; see propertyterm.go for what keying it raw costs.
 func ScanFormats(files []string) (map[string]FormatInfo, error) {
@@ -95,10 +118,10 @@ func ScanFormats(files []string) (map[string]FormatInfo, error) {
 		if err := json.Unmarshal(data, &doc); err != nil {
 			return nil, fmt.Errorf("parse %s: %w", f, err)
 		}
-		if doc.TypeProperties == nil {
+		if doc.TypeSettings.definitions() == nil {
 			continue
 		}
-		for _, tp := range *doc.TypeProperties {
+		for _, tp := range *doc.TypeSettings.definitions() {
 			if tp.Key == "" {
 				continue
 			}
@@ -142,7 +165,7 @@ type Undeclared struct {
 	// Key is the term as spelled in the document, so the author can find it.
 	Key string
 	// Resolved is the stored key that term binds to (§3) — what the
-	// converter will actually look up, and what a type_properties entry has
+	// converter will actually look up, and what a property-definition entry has
 	// to end up naming for the finding to go away. Equal to Key whenever the
 	// document spells the stored key itself.
 	Resolved string
@@ -236,7 +259,7 @@ func DiscoverJSONFiles(root string) ([]string, error) {
 func Report(us []Undeclared) string {
 	var b strings.Builder
 	for _, u := range us {
-		fmt.Fprintf(&b, "  %s: property %q has no declared format%s — add it to some type's type_properties\n",
+		fmt.Fprintf(&b, "  %s: property %q has no declared format%s — add it to some type's type_settings.property_definitions\n",
 			u.File, u.Key, resolvedPropertyNote(u.Key, u.Resolved))
 	}
 	return b.String()
@@ -342,10 +365,10 @@ func CheckSharedSelects(files []string) ([]SharedSelect, error) {
 			return nil, fmt.Errorf("read %s: %w", f, err)
 		}
 		var doc struct {
-			Kind           string         `json:"kind"`
-			Key            string         `json:"key"`
-			PropertyKeys   propertyLegend `json:"property_keys"`
-			TypeProperties []typePropRaw  `json:"type_properties"`
+			Kind         string           `json:"kind"`
+			Key          string           `json:"key"`
+			PropertyKeys propertyLegend   `json:"property_keys"`
+			TypeSettings *typeSettingsRaw `json:"type_settings"`
 		}
 		if err := json.Unmarshal(data, &doc); err != nil {
 			return nil, fmt.Errorf("parse %s: %w", f, err)
@@ -359,7 +382,7 @@ func CheckSharedSelects(files []string) ([]SharedSelect, error) {
 		if typeName == "" {
 			typeName = filepath.Base(f)
 		}
-		for _, tp := range doc.TypeProperties {
+		for _, tp := range typeSettingsDefs(doc.TypeSettings) {
 			if tp.Format != "select" && tp.Format != "multi_select" {
 				continue
 			}
@@ -424,13 +447,13 @@ func CheckTargetTypes(files []string, typeIds map[string]string) ([]BadTarget, e
 			return nil, fmt.Errorf("read %s: %w", f, err)
 		}
 		var doc struct {
-			TypeKeys       typeLegend    `json:"type_keys"`
-			TypeProperties []typePropRaw `json:"type_properties"`
+			TypeKeys     typeLegend       `json:"type_keys"`
+			TypeSettings *typeSettingsRaw `json:"type_settings"`
 		}
 		if err := json.Unmarshal(data, &doc); err != nil {
 			return nil, fmt.Errorf("parse %s: %w", f, err)
 		}
-		for _, tp := range doc.TypeProperties {
+		for _, tp := range typeSettingsDefs(doc.TypeSettings) {
 			for _, target := range tp.ObjectTypes {
 				key := resolveTypeTerm(doc.TypeKeys, target)
 				id, defined := typeIds[key]

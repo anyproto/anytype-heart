@@ -1157,7 +1157,7 @@ func TestPropertyFormat_MapIsNotAuthorable(t *testing.T) {
 
 	t.Run("a type may not declare it", func(t *testing.T) {
 		doc := []byte(`{"version":1,"kind":"object_type","key":"task","properties":{"name":"Task"},
-			"type_properties":[{"key":"placeholders","format":"map"}]}`)
+			"type_settings":{"property_definitions": [{"key":"placeholders","format":"map"}]}}`)
 		require.Error(t, Validate(doc), "an authored property may not invent a map")
 	})
 
@@ -1171,7 +1171,7 @@ func TestPropertyFormat_MapIsNotAuthorable(t *testing.T) {
 	t.Run("the authored slots still take every other format", func(t *testing.T) {
 		for _, f := range []string{"text", "number", "date", "select", "objects", "properties"} {
 			doc := []byte(`{"version":1,"kind":"object_type","key":"task","properties":{"name":"Task"},
-				"type_properties":[{"key":"p","format":"` + f + `"}]}`)
+				"type_settings":{"property_definitions": [{"key":"p","format":"` + f + `"}]}}`)
 			assert.NoErrorf(t, Validate(doc), "%q is authorable", f)
 		}
 	})

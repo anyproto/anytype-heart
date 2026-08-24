@@ -139,7 +139,7 @@ func TestPropertyDefinition_OneSharedShapeThreeHomes(t *testing.T) {
 func TestPropertyDefinition_LayeredClosureHoldsBothWays(t *testing.T) {
 	t.Run("an unknown member is still refused through the layer", func(t *testing.T) {
 		err := Validate([]byte(`{"version":1,"kind":"object_type","key":"task",
-			"type_properties":[{"key":"due_date","sections":"featured"}]}`))
+			"type_settings":{"property_definitions": [{"key":"due_date","sections":"featured"}]}}`))
 		require.Error(t, err, "`sections` names nothing; the closure must catch it")
 	})
 	t.Run("a null object_types stays a relation-only shape", func(t *testing.T) {
@@ -147,14 +147,14 @@ func TestPropertyDefinition_LayeredClosureHoldsBothWays(t *testing.T) {
 		// hold one (§2d); a type declares targets or omits the member, so the
 		// home narrows it back to an array
 		err := Validate([]byte(`{"version":1,"kind":"object_type","key":"task",
-			"type_properties":[{"key":"assignee","object_types":null}]}`))
+			"type_settings":{"property_definitions": [{"key":"assignee","object_types":null}]}}`))
 		require.Error(t, err)
 	})
 	t.Run("every shared member is admitted on an entry", func(t *testing.T) {
 		err := Validate([]byte(`{"version":1,"kind":"object_type","key":"task",
-			"type_properties":[{"key":"budget","name":"Budget","format":"number",
+			"type_settings":{"property_definitions": [{"key":"budget","name":"Budget","format":"number",
 				"description":"Planned spend","include_time":false,"max_count":1,
-				"readonly":true,"default_value":100,"section":"featured"}]}`))
+				"readonly":true,"default_value":100,"section":"featured"}]}}`))
 		require.NoError(t, err)
 	})
 }
@@ -185,9 +185,9 @@ func (r *capturingPropertyResolver) PropertyId(def PropertyDefinition) (string, 
 // or rebuild the def by hand in one door and forget a member there.
 func TestPropertyDefinition_SharedMembersReachTheResolver(t *testing.T) {
 	doc := []byte(`{"version":1,"kind":"object_type","key":"task",
-		"type_properties":[{"key":"budget","name":"Budget","format":"number",
+		"type_settings":{"property_definitions": [{"key":"budget","name":"Budget","format":"number",
 			"description":"Planned spend","include_time":false,"max_count":1,
-			"readonly":true,"default_value":100,"section":"featured"}]}`)
+			"readonly":true,"default_value":100,"section":"featured"}]}}`)
 
 	check := func(t *testing.T, defs []PropertyDefinition) {
 		require.Len(t, defs, 1)
@@ -212,10 +212,12 @@ func TestPropertyDefinition_SharedMembersReachTheResolver(t *testing.T) {
 	t.Run("the PATCH door", func(t *testing.T) {
 		r := &capturingPropertyResolver{}
 		var parsed struct {
-			TypeProps []TypeProperty `json:"type_properties"`
+			TypeSettings struct {
+				PropertyDefinitions []TypeProperty `json:"property_definitions"`
+			} `json:"type_settings"`
 		}
 		require.NoError(t, json.Unmarshal(doc, &parsed))
-		_, err := BuildRecommendedLists(parsed.TypeProps, Options{ResolveProperties: r})
+		_, err := BuildRecommendedLists(parsed.TypeSettings.PropertyDefinitions, Options{ResolveProperties: r})
 		require.NoError(t, err)
 		check(t, r.defs)
 	})

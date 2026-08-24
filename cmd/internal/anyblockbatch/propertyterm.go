@@ -6,7 +6,7 @@ package anyblockbatch
 //
 // The envelope `key` a property document carries is the raw STORED key and is
 // never translated (SPEC.md §2). Every property SLOT is translated: the
-// `properties` map's own keys, and `type_properties[].key`, carry a term that
+// `properties` map's own keys, and `type_settings.property_definitions[].key`, carry a term that
 // resolves through the §3 chain — the document's own `property_keys` legend,
 // then the bundled derived table, then verbatim.
 //

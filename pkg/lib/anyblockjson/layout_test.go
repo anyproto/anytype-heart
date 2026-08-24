@@ -1,9 +1,11 @@
 package anyblockjson
 
 // Layout is stored as a number but named in the format (§3). Before this, a
-// document following the spec ("recommended_layout": "profile") imported the
-// *string* onto a number-format property: every consumer reads it with an
-// int64 getter, so the type silently fell back to basic (== 0).
+// document following the spec ("layout": "profile") imported the *string*
+// onto a number-format property: every consumer reads it with an int64
+// getter, so the type silently fell back to basic (== 0). Since v0.32 the
+// recommended layout travels as `type_settings.layout` (§2a); the same rule
+// rides along.
 
 import (
 	"testing"
@@ -29,7 +31,7 @@ func TestImport_LayoutNameToNumber(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			doc := `{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
-				"properties": {"recommendedLayout": "` + tc.name + `"}}`
+				"type_settings": {"layout": "` + tc.name + `"}}`
 			_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 			require.NoError(t, err)
 
@@ -45,7 +47,7 @@ func TestImport_LayoutNameToNumber(t *testing.T) {
 // legacy documents that wrote the raw enum still import unchanged
 func TestImport_LayoutNumberStillAccepted(t *testing.T) {
 	doc := `{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
-		"properties": {"recommendedLayout": 1}}`
+		"type_settings": {"layout": 1}}`
 	_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 	require.NoError(t, err)
 	assert.Equal(t, float64(model.ObjectType_profile),
@@ -66,24 +68,26 @@ func TestExport_LayoutNumberToName(t *testing.T) {
 	}
 	data, err := Marshal(model.SmartBlockType_STType, snapshot, testOptions())
 	require.NoError(t, err)
-	assert.Contains(t, string(data), `"recommended_layout": "profile"`)
-	assert.Contains(t, string(data), `"resolved_layout": "todo"`)
+	assert.Contains(t, string(data), `"layout": "profile"`,
+		"the recommended layout is the group's layout member (§2a)")
+	assert.NotContains(t, string(data), `"resolved_layout"`,
+		"a type document does not carry its own display provenance (§2a)")
 }
 
 func TestRoundtrip_LayoutSurvives(t *testing.T) {
 	doc := `{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
-		"properties": {"recommended_layout": "profile"}}`
+		"type_settings": {"layout": "profile"}}`
 	_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 	require.NoError(t, err)
 	data, err := Marshal(model.SmartBlockType_STType, snap, testOptions())
 	require.NoError(t, err)
-	assert.Contains(t, string(data), `"recommended_layout": "profile"`)
+	assert.Contains(t, string(data), `"layout": "profile"`)
 }
 
 // a typo must not reach the snapshot as a bare string
 func TestValidate_UnknownLayoutRejected(t *testing.T) {
 	doc := `{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
-		"properties": {"recommendedLayout": "Profile"}}`
+		"type_settings": {"layout": "Profile"}}`
 	_, _, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown layout")

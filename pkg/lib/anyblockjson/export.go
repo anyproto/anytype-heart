@@ -1356,16 +1356,17 @@ func (e *exporter) buildDoc(sbType model.SmartBlockType) (*omap, error) {
 	// envelope is assembled, so the legends they populate land in their
 	// canonical positions rather than trailing the blocks that filled them
 	properties := e.buildProperties()
-	typeProperties := e.buildTypeProperties()
+	typeSettings := e.buildTypeSettings()
 	blocks, err := e.buildBlocks()
 	if err != nil {
 		return nil, err
 	}
 
 	doc.setNonEmpty("properties", properties)
-	if typeProperties != nil {
-		doc.set("type_properties", typeProperties) // present even when empty (§2a)
-	}
+	// present whenever it has anything to say — with a property resolver its
+	// property_definitions member is present even when empty, because that
+	// presence is what tells import to rebuild the four lists (§2a)
+	doc.setNonEmpty("type_settings", typeSettings)
 
 	doc.setNonEmpty("property_keys", e.buildPropertyKeys())
 	doc.setNonEmpty("type_keys", e.buildTypeKeys())
@@ -1500,6 +1501,15 @@ func (e *exporter) envelopeLiftedKeys() map[string]bool {
 	for k := range relationLiftedDetailKeys() {
 		lifted[k] = true
 	}
+	// the five type_settings members, on TYPE documents only (§2a): off one,
+	// the same stored keys are ordinary properties — apiObjectKey is real
+	// data on 9,725 relation documents — so the lift is kind-scoped where
+	// §2b's and §2d's are unconditional
+	if e.isTypeDoc() {
+		for k := range typeSettingsLiftedDetailKeys() {
+			lifted[k] = true
+		}
+	}
 	return lifted
 }
 
@@ -1524,6 +1534,16 @@ func (e *exporter) buildProperties() *omap {
 		}
 		if stripped[k] || lifted[k] {
 			continue
+		}
+		// a TYPE document does not carry its own install provenance (§2a):
+		// eight keys, each admitted to the drop individually against the
+		// corpus — the verdicts live on typeProvenanceKeys. Silent, like the
+		// transient keys: the value describes the install, not the type, and
+		// the comparator consults the same predicate.
+		if e.isTypeDoc() {
+			if _, dropped := typeProvenanceKeys[k]; dropped {
+				continue
+			}
 		}
 		// a system-stamped key whose empty value says nothing a reader could
 		// act on (§15 #12): omitted, so schema documents stop paying ~20% of

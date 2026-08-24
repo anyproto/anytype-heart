@@ -32,10 +32,24 @@ stored presence exactly, so the snapshot comparator again needed no new
 rule; both older spellings (the v0.31 root members, the pre-v0.31 raw
 number in `properties`) are refused with the repair named.
 
+**`type_settings` holds everything defining the type** (§2a). One gated
+subtree carries the five settings lifted from `properties` — `layout`
+(recommendedLayout), `api_key` (apiObjectKey — NOT `slug`: the document's
+own label differs from it on 941 of 1,326 corpus types), `plural_name`,
+`default_template`, `default_view` — plus `property_definitions`, the array
+that lived at the root as `type_properties`. The flat spellings are refused
+in `properties` ON TYPE DOCUMENTS only, because the lift is kind-scoped:
+`apiObjectKey` is real data on 9,725 relation documents, where it stays an
+ordinary property. And a type document stops carrying its own install
+provenance: eight keys dropped, each admitted individually against 1,760
+corpus type documents, five candidates kept because they carry something
+real — the verdicts are in §2a, the normalizations in §11 N(S), and the
+comparator reads them through the format's own predicates.
+
 The schema now publishes `$defs/propertyDefinition`, and every surface that
 describes a property is a layer over a reference to it: a
-`type_properties[]` entry is a propertyDefinition plus `section` — the ONE
-field that belongs to the type rather than the property, proven by the
+`property_definitions[]` entry is a propertyDefinition plus `section` — the
+ONE field that belongs to the type rather than the property, proven by the
 corpus (of 1,614 properties declared by 2+ types within one space, zero
 differ in anything else). The shape carries the ten decided members: the
 five every home already spoke (`key`, `name`, `format`, `options`,
@@ -65,7 +79,7 @@ property spelling — and imported as a phantom custom property named
 Three stored keys lift onto the envelope, and no others: `relationFormat` →
 `format` (required, a §3 NAME), `relationFormatIncludeTime` →
 `include_time`, `relationFormatObjectTypes` → `object_types` (a type-key
-slot under the same legend discipline as `type_properties[].object_types`,
+slot under the same legend discipline as `property_definitions[].object_types`,
 with the id↔key translation supplied by the new `TypeResolver` capability).
 The flat spellings are refused in `properties` with the repair named — the
 §2b precedent, refusal included. Unlike §2b, the envelope fields mirror
@@ -714,10 +728,10 @@ declared **format** now resolves the same way through both doors: the
 PATCH-types channel read `text` literally while the document path resolved it
 per key (§3), so the bundled `name` property was created as `longtext`
 through one endpoint and stayed `shorttext` through the other. (6) Two
-warnings addressed the wrong place (§13): a dropped `type_properties` entry
+warnings addressed the wrong place (§13): a dropped property-definition entry
 pointed at the index the next surviving entry takes, and the template-spelling
 guard said `/type` wherever it fired, including from
-`/type_properties/N/object_types/M`, a field the pointer does not even name.
+`…/property_definitions/N/object_types/M`, a field the pointer does not even name.
 
 Changes in v0.16: **the date-preset rules read the same gate the query
 engine does, and one fault stays one issue** (§6.2, §12). (1) A preset is
@@ -749,7 +763,7 @@ Export(Import(Export(S)))`, and §3 the census rule that makes it true: the
 term census reserves the keys the document SPELLS, not every key the snapshot
 holds. Reserving more backed a real slug off, so one object exported before
 and after a round trip produced two documents. (3) A property key slot carries
-the writable-key rule wherever it is, including `type_properties[].key`,
+the writable-key rule wherever it is, including `property_definitions[].key`,
 which is a JSON string value the schema could only bound at `minLength: 1`:
 a 140-character key validated clean and then failed to import. Export drops
 such an entry now rather than emit one the seam refuses. (4) §3's argument
@@ -781,7 +795,7 @@ one, so a Template smartblock could come back with no `template` in its
 object type keys — invisible to every template check. The reservation binds
 the vocabulary on both sides now; the document's own legend still moves the
 spelling, because the kind derivation moves with it. (4)
-`BuildRecommendedLists`, the PATCH channel for `type_properties`, refused
+`BuildRecommendedLists`, the PATCH channel for `property_definitions`, refused
 nothing, so a vocabulary bug wrote the empty key into a type's recommended
 lists; it now refuses what the document path refuses, and returns an error.
 (5) §3's justification for having no type deny rule was false as written —
@@ -798,7 +812,7 @@ two property spellings would collapse and lose a value. §3 now records it.
 Changes in v0.13: **the type namespace gets the property treatment** (§2,
 §2a, §3, §12): `type_keys`, the envelope legend that makes type spellings
 invertible from the document alone. The type key slots — envelope
-`type`/`template_for` and `type_properties[].object_types` — were slugged on
+`type`/`template_for` and `property_definitions[].object_types` — were slugged on
 the way out with nothing to invert them: a node-backed vocabulary slugging a
 custom type `69bbfc…` to `task` exported `"type": "task"`, and a package-only
 reader bound it to the bundled Task type — a different type, silently. The
@@ -963,7 +977,7 @@ and cells can no longer contain `table` blocks — the cell definition is the
 schema's recursion cut (§6.1, §12).
 
 Changes from v0.4: type documents specified (§2a) — `kind: "object_type"` with a
-`type_properties` array replacing the four recommended-relation id lists; a
+`property_definitions` array replacing the four recommended-relation id lists; a
 type's dataview exports as an ordinary block when present; per-type
 validation schemas become one-way derived artifacts (retiring the
 `pkg/lib/schema` x-key approach).
@@ -1265,7 +1279,7 @@ Fields, in **canonical order** (§4):
 | `icon` | object | no | The object's icon — ONE object whose `format` selects the variant (§2b). Stands for the stored `iconEmoji` / `iconImage` / `iconName` / `iconOption` keys, which `properties` refuses. |
 | `cover` | object | no | The object's cover — same shape, three variants (§2b). Stands for the stored `coverId` / `coverType` / `coverScale` / `coverX` / `coverY` keys, which `properties` refuses. |
 | `properties` | object | no | The object's properties, §3. |
-| `type_properties` | array | no | Only for `kind: "object_type"` documents: the type's property definitions, §2a. Present on any other kind → validation error. |
+| `type_settings` | object | no | Only for type documents (`kind: "object_type"`, `"bundled_object_type"`): everything that defines the TYPE, in one gated subtree — `layout`, `api_key`, `plural_name`, `default_template`, `default_view`, and `property_definitions` (§2a). Present on any other kind → validation error. Until v0.32 the property list sat at the root as `type_properties`; that spelling is refused with the repair named. |
 | `property_keys` | object | no | Legend: the stored property key each spelling in this document names (§3). Written for every spelling the **bundled table does not bind to the key being written** — a slug the table cannot invert (a space's own key) *and* the **identity entry**, which is the ordinary case: a custom key written verbatim names itself, because nothing else in the document says the term is a stored key rather than somebody's slug. A reader consults it **before** its own vocabulary and takes the value as **authoritative**: it is not liveness-checked, deliberately (§3). Absent only from a document whose every spelling is bundled. |
 | `type_keys` | object | no | Legend: the stored type key each type slug in this document names — `property_keys`' twin on the TYPE namespace, written and consulted under the same rule (§3). A separate map, deliberately: a space may slug a relation and a type onto one term, so one map could not carry both meanings of a shared spelling. |
 | `option_ids` | object | no | Legend: the id of the option each select/multi_select **name** in this document stands for — nested, `{property spelling: {option name: option id}}` (§3, §9a). Written **unconditionally** wherever export spells an option by name; dropped by `OmitIds` (§9). Read as a **hint**, not an address: an id is honoured only where the target space still serves it as a live option of that relation, and otherwise the name resolves exactly as it did before the legend existed. |
@@ -1306,28 +1320,91 @@ involved.
   "kind": "object_type",
   "key": "task",
   "icon": { "format": "icon", "name": "hammer", "color": "orange" },
-  "properties": { "name": "Task", "recommended_layout": "todo" },
-  "type_properties": [
-    { "key": "due_date",  "name": "Due date", "format": "date",    "section": "featured" },
-    { "key": "assignee", "name": "Assignee", "format": "objects", "section": "featured" },
-    { "key": "status",   "name": "Status",   "format": "select",
-      "options": ["Backlog", {"name": "In progress", "color": "blue"},
-                  {"name": "Done", "color": "lime"}] }
-  ],
+  "properties": { "name": "Task", "description": "…" },
+  "type_settings": {
+    "layout": "todo",
+    "api_key": "task",
+    "plural_name": "Tasks",
+    "default_template": "bafyrei…",
+    "default_view": "table",
+    "property_definitions": [
+      { "key": "due_date",  "name": "Due date", "format": "date",    "section": "featured" },
+      { "key": "assignee", "name": "Assignee", "format": "objects", "section": "featured" },
+      { "key": "status",   "name": "Status",   "format": "select",
+        "options": ["Backlog", {"name": "In progress", "color": "blue"},
+                    {"name": "Done", "color": "lime"}] }
+    ]
+  },
   "blocks": [ { "type": "dataview", … } ]
 }
 ```
 
-The type's own details (`name`, `plural_name`, `recommended_layout`, …) stay
-in `properties` under their stored keys (§3); its icon is the envelope field
-every object has (§2b) — a type's icon is where the `icon` variant is
-overwhelmingly used, since all 1,530 objects in the corpus carrying an
-`iconName` are types. The four recommended-relation id
-lists (`recommended_featured_relations`, `recommended_relations`,
-`recommended_file_relations`, `recommended_hidden_relations`) are **replaced**
-by `type_properties` — resolved entries, never raw relation ids.
+**Everything that defines the type lives in `type_settings`** — one gated
+subtree. Nesting is not tidiness: §2d already put one root `allOf`
+conditional on the schema, five more root fields would be five more, the
+eval found models putting `type_properties` on non-type documents precisely
+BECAUSE the root had no conditionals, and many constrained decoders do not
+implement `if`/`then` at all. One group is one conditional, and a per-kind
+generated schema includes or omits it in one move. The five settings members
+lift from `properties` (their flat spellings — `recommended_layout`,
+`api_object_key`, `plural_name`, `default_template_id`, `default_view_type`
+— are refused there ON TYPE DOCUMENTS with the repair named; the refusal is
+kind-scoped where §2b's and §2d's are unconditional, because `apiObjectKey`
+is real data on 9,725 relation documents, where it stays an ordinary
+property):
 
-`type_properties` entry fields (canonical order):
+| member | stored key | shape |
+|---|---|---|
+| `layout` | `recommendedLayout` | the recommended layout of objects OF this type, as a layout name; a stored number outside the vocabulary passes through raw, and an unknown NAME is refused (it would import as a string onto a number detail, silently read as `basic`). |
+| `api_key` | `apiObjectKey` | the type's public API key. **`api_key`, not `slug`**: of 1,326 corpus type documents with one, the document's own label differs from it in 941 (`Space member` has api key `participant` and label `space_member`) — calling it a slug would imply it is the term used elsewhere in the document, which for 71% of types it is not. |
+| `plural_name` | `pluralName` | the plural display name. |
+| `default_template` | `defaultTemplateId` | the object id of the template new objects start from — a scalar: the stored value is a list in every corpus document, with at most one entry (55 of 142; 87 empty), and a second entry is dropped with a warning. |
+| `default_view` | `defaultViewType` | the default view type, as a §6.2 view-type name; same raw-number/unknown-name policy as `layout`. |
+
+The five follow the **§4 omit-empty canon** — a `pluralName` of `""` (145
+corpus docs) or a `defaultTemplateId` of `[]` (87) says nothing a reader
+could act on — unlike §2d's members, which are a property's definition and
+mirror presence exactly; the comparator reads the same rule through
+`DroppedEmptyTypeSetting` (§11).
+
+The type's REMAINING details (`name`, `description`, `is_hidden`,
+`order_id`, …) stay in `properties` under their stored keys (§3); its icon
+is the envelope field every object has (§2b) — a type's icon is where the
+`icon` variant is overwhelmingly used, since all 1,530 objects in the corpus
+carrying an `iconName` are types. The four recommended-relation id lists
+(`recommended_featured_relations`, `recommended_relations`,
+`recommended_file_relations`, `recommended_hidden_relations`) are
+**replaced** by `type_settings.property_definitions` — resolved entries,
+never raw relation ids. The array lived at the document root as
+`type_properties` until v0.32; the word is `property_definitions` rather
+than `properties` because the document already uses that word for property
+VALUES at the root, and one word carrying two meanings in one file is the
+same shape as the `featured_relations` collision below — one word per
+concept.
+
+**A type document does not carry its own install provenance.** Eight stored
+keys are omitted on export and dropped on import (stale, not wrong — the
+transient-key policy, scoped by kind), each admitted to the drop
+individually against 1,760 corpus type documents (§15 #12; the verdicts
+live on `typeProvenanceKeys`, and §11 N(S) records the normalization):
+`layout` and `resolved_layout` (ONE distinct value each — "object_type" —
+derivable from the kind), `smartblock_types` (occurs only on installed
+copies of bundled types, restating the bundled table), `source_object`
+(derivable from the type key: `_ot<key>`), `origin` (how the INSTALL
+happened — on ordinary objects origin is real provenance and stays),
+`added_date` (epoch-zero on 1,600 of 1,627), `revision` (the bundled
+migration marker, restamped on install), and `set_of` (1,757 distinct
+targets, NONE resolving inside the export — a pointer to nothing; on a set
+document `setOf` is the collection's meaning and stays). Five candidates
+FAILED the admission test and stay in `properties`: `is_hidden` (cannot be
+proven install-only), `order_id` (the user's own ordering of types),
+`layout_width`/`layout_align` (the type object's own page display, set by a
+person where non-zero), and `featured_relations` — which means what this
+type OBJECT features, while `section: "featured"` means what objects OF
+this type feature: the two differ in 361 of 400 corpus cases, so they are
+two things, not one.
+
+`property_definitions` entry fields (canonical order):
 
 | Field | Type | Req | Notes |
 |---|---|---|---|
@@ -1359,19 +1436,19 @@ references); legacy lists that store bare property **keys** instead of ids
 resolve through the reverse lookup, falling back to the bundle for system
 properties. The canonical form writes `name` and `format` on every entry
 (`format` defaults to `text` when absent on input), and writes the
-`type_properties` array **even when empty** — its presence is what tells
+`property_definitions` array **even when empty** — its presence is what tells
 import to rebuild the lists. Import then rebuilds all four id lists — empty
 sections become explicit empty lists, matching how type objects store them —
 resolving each `key` against the space and creating missing properties (the
 same policy as select option names, §3). A document without a
-`type_properties` field leaves the lists untouched.
+`property_definitions` member leaves the lists untouched.
 
 Property ids are space-local, so the rewrite requires a property resolver
 (`Options.ResolveProperties`, §13). Without one, export leaves the four
 lists in `properties` as raw id lists, and import passes unresolved keys
 through in place of ids for the wiring to reconcile — the same degradation
 as option values without an option resolver (§3). A document carrying both
-`type_properties` and any of the four raw lists in `properties` is ambiguous
+`property_definitions` and any of the four raw lists in `properties` is ambiguous
 and fails validation.
 
 **Dataview.** A type's views live in a single dataview block on the type
@@ -1534,7 +1611,7 @@ Four reasons, all forced:
    the top and `"icon_emoji": "☕"` in `properties` — visibly two different
    things.
 
-The precedent is not `id`/`type`; it is **`type_properties`** (§2a): stored
+The precedent is not `id`/`type`; it is **the §2a property list** (`type_properties` then, `type_settings.property_definitions` now): stored
 keys lifted into one labelled envelope member, with the flat spelling refused
 where it used to sit.
 
@@ -1767,7 +1844,7 @@ something on its way out.
 `format` here may name **every** format a store carries, including `map` —
 the shape of a hidden system relation's value, whose only carrier is the
 bundled `templatePlaceholders` (72 production documents). The two AUTHORED
-format slots may not: `type_properties[].format` and a dataview's
+format slots may not: `property_definitions[].format` and a dataview's
 `properties[].format` reference `authorableFormat`, which is the same
 vocabulary minus `map`. A relation document has to be able to say what it
 defines; a type or a view has no business declaring a property whose values
@@ -1778,9 +1855,9 @@ Exactly **three stored details lift**, and no others:
 
 | stored key | `relation_settings` member | shape |
 |---|---|---|
-| `relationFormat` | `format` | a §3 format NAME — **required**. Export refuses to write a relation whose stored format it cannot name (corrupt data only: `formatNames` is total over the model enum, test-pinned), because the fallback — writing `"text"` for a format that is not text — would import as a permanent silent format rewrite, the exact disease this lift kills. `"text"` resolves per key on the way back in, through the envelope `key`, exactly as a `type_properties` entry's format does (§3): a bundled short-text relation keeps its stored format across a round trip. |
+| `relationFormat` | `format` | a §3 format NAME — **required**. Export refuses to write a relation whose stored format it cannot name (corrupt data only: `formatNames` is total over the model enum, test-pinned), because the fallback — writing `"text"` for a format that is not text — would import as a permanent silent format rewrite, the exact disease this lift kills. `"text"` resolves per key on the way back in, through the envelope `key`, exactly as a property-definition entry's format does (§3): a bundled short-text relation keeps its stored format across a round trip. |
 | `relationFormatIncludeTime` | `include_time` | `true` \| `false` \| `null`. Meaningful on `date` only; a `true` against any other format is a **warning**, carried unread. |
-| `relationFormatObjectTypes` | `object_types` | the target **type keys**, in priority order — a type-key slot exactly like `type_properties[].object_types` (§2a): the §3 type vocabulary, the same term ledger, the same `type_keys` legend. Non-empty against a format other than `objects`/`files` is a **warning**. Meaningful entries: `[]` is a cleared target set, `null` a stored null. |
+| `relationFormatObjectTypes` | `object_types` | the target **type keys**, in priority order — a type-key slot exactly like `property_definitions[].object_types` (§2a): the §3 type vocabulary, the same term ledger, the same `type_keys` legend. Non-empty against a format other than `objects`/`files` is a **warning**. Meaningful entries: `[]` is a cleared target set, `null` a stored null. |
 
 **Presence mirrors presence.** Each member is present exactly when its
 stored key is present, and carries its value — `false`, `[]` and `null` all travel
@@ -1827,7 +1904,7 @@ wrote, which with the group's member also present would otherwise validate
 in silence. A warning and not a refusal because the spelling is a legitimate
 custom key (a media space really can have a "Format" column) and a relation
 object carrying one must stay exportable (I1). Refusing a key is not refusing to NAME it: a slot
-that references the relation — the Property type's own `type_properties` and
+that references the relation — the Property type's own property definitions and
 dataview columns, in 64 production spaces — keeps the §3 slug
 (`relation_format`), because the deny rule protects the legend and a
 bundled-bound slug needs no legend entry.
@@ -1932,7 +2009,7 @@ its own authority, and there are two:
    table speaks for never consults its space's row at all, or a localized
    name would take a spelling from the table that ships with every reader.
 
-An **absent** `format` in either slot that carries one (`type_properties[]`,
+An **absent** `format` in either slot that carries one (`property_definitions[]`,
 a dataview's `properties[]`) says the document did not speak, and the §3
 chain answers — the bundled table, then the caller's resolver. It is NOT a
 declaration of `text`: that reading silently overrode the table, so
@@ -2121,7 +2198,7 @@ writes the entry:
 - **It covers every key slot, not just `properties`.** Wherever the format
   names a property — a `property` block's `key`, a link block's `properties`
   list, a dataview's `property`/`group_by`/`cover_property`/`end_property`,
-  a filter's or sort's `property`, a `type_properties` entry's `key` — the
+  a filter's or sort's `property`, a property-definition entry's `key` — the
   slug is written through the same recording step and read back through the
   legend first. A slot that writes the slug without recording the entry
   inverts only when some *other* slot in the same document happened to record
@@ -2172,7 +2249,7 @@ writes the entry:
 - **A property key slot carries the writable-key rule wherever it is,
   including where it is a JSON string VALUE.** `/properties` and the legends
   are member names, so the schema states the rule as `propertyNames`; a
-  `type_properties` entry's `key` (§2a) is an ordinary string value the
+  property-definition entry's `key` (§2a) is an ordinary string value the
   schema can only reach as one, and for a while `minLength: 1` was the only
   bound it had — a 140-character key, or one carrying a newline, validated
   clean and then failed to import. The rule is the namespace's, not the
@@ -2190,7 +2267,7 @@ writes the entry:
   only that a slot which names nothing names nothing. Three doors carry it.
 
   **The document.** Every key-slot string is `minLength: 1` in the schema.
-  Only `/properties`, `type_properties[].key` and `type_properties[].
+  Only `/properties`, `property_definitions[].key` and `property_definitions[].
   object_types[]` used to be; the other thirteen took an empty spelling from a
   plain document, no vocabulary needed, and then LOST the slot on the way back
   out, in silence: a column and a sort vanish, a property block and a link's
@@ -2232,7 +2309,7 @@ writes the entry:
 **The type namespace carries the same inverse: `type_keys`.** Everything
 above holds with `type_keys` for the legend, the type half of the bundled
 table, and the type slots — the envelope `type` and `template_for`, and
-`type_properties[].object_types` (§2, §2a). Export claims type spellings
+`property_definitions[].object_types` (§2, §2a). Export claims type spellings
 through a term ledger of the namespace's own, seeded by the same census
 (every stored type key the snapshot or the resolved type-property
 definitions name), and writes identity entries under the same trigger: a
@@ -2450,7 +2527,7 @@ about its properties, and only the text/text collapse needs a key to
 disambiguate.
 
 **Properties are space-wide, not per-type.** Two types whose
-`type_properties` name the same select share one option pool, so their
+`property_definitions` name the same select share one option pool, so their
 vocabularies merge into a single dropdown. That is the point for a property
 whose values are genuinely common (`tag`) and a defect for the lifecycle
 selects a schema reaches for, where the same word means different things per
@@ -4287,11 +4364,11 @@ lost;
 (g) `coverScale`/`coverX`/`coverY` with no image cover to frame are dropped.
 A callout's icon reduces the same way, `emoji` over `file`; and a type
 object gains an empty list for every recommended role nothing occupies —
-`type_properties` (§2a) collapses the four role lists into one labelled
+`property_definitions` (§2a) collapses the four role lists into one labelled
 array, and import rebuilds all four from it, so a role the store left absent
 comes back as `[]`. An absent list and an empty one say the same thing, and
 the empty list is the only way this format can express a role being
-*cleared*, since `type_properties` cannot name a section that exists with no
+*cleared*, since `property_definitions` cannot name a section that exists with no
 members. Whether the object state itself should carry all four consistently
 is a question about the state, not the format (GO-7451).
 
@@ -4310,6 +4387,22 @@ and **`object_types` entries take the §3 list normalizations** — a
 scalar-stored value wraps, empty-string entries drop — while the id↔key
 translation itself is exact: ids out, ids back under the `TypeResolver`
 capability, verbatim both ways without it.
+
+The §2a `type_settings` group (v0.32) adds three normalizations, all scoped
+to TYPE documents and all owned by exported predicates the comparator reads
+(`DroppedTypeProvenanceKey`, `DroppedEmptyTypeSetting`), so the two sides
+cannot drift the way that once produced 1,344 false failures in one sweep:
+**the eight install-provenance keys come back ABSENT** — `layout`,
+`resolvedLayout`, `smartblockTypes`, `sourceObject`, `origin`, `addedDate`,
+`revision`, `setOf`, each admitted to the drop individually against 1,760
+corpus type documents (the verdicts live on `typeProvenanceKeys`, §2a) —
+while the same keys on any other kind survive untouched; **the five lifted
+settings come back ABSENT when their stored value was empty** (`pluralName`
+`""` on 145 corpus docs, `defaultTemplateId` `[]` on 87), the §4 omit-empty
+canon where §2d mirrors presence, because these are settings with defined
+defaults rather than a property's definition; and **a `defaultTemplateId`
+with a second entry keeps only its first**, with a warning — the member is
+the one default template, and 0 of 1,760 corpus documents carry more.
 
 Export emits `blocks` in pre-order with exact depths, so export can never
 produce a monotonicity violation and the flat shape does not disturb
@@ -4624,7 +4717,7 @@ pkg/lib/anyblockjson/
   validate.go                — schema + semantic validation
   json.go                    — ordered canonical-JSON writer, enum tables,
                                proto value bridges, id helpers
-  typeproperties.go          — type_properties ↔ recommended lists (§2a);
+  typeproperties.go          — property_definitions ↔ recommended lists (§2a);
                                GenerateSchema derived artifacts are planned
                                here (post-v1)
   keyvocab.go                — KeyVocabulary: the stored key ↔ spelling table,

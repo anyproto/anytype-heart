@@ -358,8 +358,8 @@ func TestObjectTypesIsAKeySlot(t *testing.T) {
 	t.Run("import inverts the slug to the stored type key", func(t *testing.T) {
 		// given
 		doc := `{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
-			"type_properties": [{"key": "owner", "name": "Owner", "format": "objects",
-			 "object_types": ["object_type", "wikiPerson"]}]}`
+			"type_settings": {"property_definitions": [{"key": "owner", "name": "Owner", "format": "objects",
+			 "object_types": ["object_type", "wikiPerson"]}]}}`
 		r := &recordingPropertyResolver{}
 
 		// when
@@ -388,11 +388,13 @@ func TestObjectTypesIsAKeySlot(t *testing.T) {
 
 		require.NoError(t, err)
 		var doc struct {
-			TypeProperties []TypeProperty `json:"type_properties"`
+			TypeSettings struct {
+				PropertyDefinitions []TypeProperty `json:"property_definitions"`
+			} `json:"type_settings"`
 		}
 		require.NoError(t, json.Unmarshal(data, &doc))
-		require.Len(t, doc.TypeProperties, 1)
-		assert.Equal(t, []string{"object_type", "wikiPerson"}, doc.TypeProperties[0].ObjectTypes)
+		require.Len(t, doc.TypeSettings.PropertyDefinitions, 1)
+		assert.Equal(t, []string{"object_type", "wikiPerson"}, doc.TypeSettings.PropertyDefinitions[0].ObjectTypes)
 	})
 }
 
@@ -439,13 +441,17 @@ func TestBuildRecommendedListsInvertsItsKeySlots(t *testing.T) {
 func TestImportRefusesTwoSpellingsOfOneStoredKey(t *testing.T) {
 	// The original repro was `icon_emoji` beside `iconEmoji`; that exact pair
 	// is now refused one step earlier, because §2b lifted the icon keys out of
-	// `properties` altogether. The shape it stood for is unchanged and still
-	// reachable through every other bundled twin, so the repro moved to one.
+	// `properties` altogether — and `pluralName`, which the repro moved to,
+	// is likewise refused earlier ON TYPE DOCUMENTS since the §2a lift. The
+	// shape both stood for is unchanged and still reachable through every
+	// bundled twin on a kind with no lift for it, so the repro stays on the
+	// same pair one kind over: a page carrying pluralName is unusual but
+	// legal, and both spellings still land on one detail.
 	t.Run("the POST /types repro: plural_name beside pluralName", func(t *testing.T) {
 		// given — a stored key the bundled table resolves elsewhere:
 		// `plural_name` inverts to `pluralName`, which is also a literal
 		// stored key, so both spellings land on one detail
-		doc := `{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
+		doc := `{"version": 1, "id": "t1", "key": "k",
 			"properties": {"name": "T", "plural_name": "A", "pluralName": "B"}}`
 
 		for i := 0; i < 32; i++ {

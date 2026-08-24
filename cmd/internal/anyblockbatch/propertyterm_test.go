@@ -42,8 +42,8 @@ func TestScanFormats_LegendBackedKeyIsStoredResolved(t *testing.T) {
 	files := writeDocs(t, map[string]string{
 		"types/task.type.json": `{"version": 1, "kind": "object_type", "key": "task", "id": "type-task",
 		  "property_keys": {"priority": "` + customPropertyKey + `"},
-		  "type_properties": [{"key": "priority", "name": "Priority", "format": "select",
-		    "options": ["High", "Low"]}]}`,
+		  "type_settings": {"property_definitions": [{"key": "priority", "name": "Priority", "format": "select",
+		    "options": ["High", "Low"]}]}}`,
 	})
 	formats, err := ScanFormats(files)
 	require.NoError(t, err)
@@ -64,7 +64,7 @@ func TestScanFormats_FallbackNameIsTheSpelling(t *testing.T) {
 	files := writeDocs(t, map[string]string{
 		"types/task.type.json": `{"version": 1, "kind": "object_type", "key": "task", "id": "type-task",
 		  "property_keys": {"priority": "` + customPropertyKey + `"},
-		  "type_properties": [{"key": "priority", "format": "text"}]}`,
+		  "type_settings": {"property_definitions": [{"key": "priority", "format": "text"}]}}`,
 	})
 	formats, err := ScanFormats(files)
 	require.NoError(t, err)
@@ -76,7 +76,7 @@ func TestScanFormats_FallbackNameIsTheSpelling(t *testing.T) {
 func TestScanFormats_UntranslatedKeyIsUnchanged(t *testing.T) {
 	files := writeDocs(t, map[string]string{
 		"types/task.type.json": `{"version": 1, "kind": "object_type", "key": "task", "id": "type-task",
-		  "type_properties": [{"key": "wikiStage", "format": "select", "options": ["A"]}]}`,
+		  "type_settings": {"property_definitions": [{"key": "wikiStage", "format": "select", "options": ["A"]}]}}`,
 	})
 	formats, err := ScanFormats(files)
 	require.NoError(t, err)
@@ -89,7 +89,7 @@ func TestScanFormats_UntranslatedKeyIsUnchanged(t *testing.T) {
 func TestScanFormats_BundledSlugResolvesToTheBundledKey(t *testing.T) {
 	files := writeDocs(t, map[string]string{
 		"types/task.type.json": `{"version": 1, "kind": "object_type", "key": "task", "id": "type-task",
-		  "type_properties": [{"key": "due_date", "format": "date"}]}`,
+		  "type_settings": {"property_definitions": [{"key": "due_date", "format": "date"}]}}`,
 	})
 	formats, err := ScanFormats(files)
 	require.NoError(t, err)
@@ -109,8 +109,8 @@ func TestScanFormats_AnswersEveryKeyTheCodecAsksFor(t *testing.T) {
 	files := writeDocs(t, map[string]string{
 		"types/task.type.json": `{"version": 1, "kind": "object_type", "key": "task", "id": "type-task",
 		  "property_keys": {"priority": "` + customPropertyKey + `"},
-		  "type_properties": [{"key": "priority", "format": "select", "options": ["High"]},
-		    {"key": "wikiStage", "format": "select", "options": ["Draft"]}]}`,
+		  "type_settings": {"property_definitions": [{"key": "priority", "format": "select", "options": ["High"]},
+		    {"key": "wikiStage", "format": "select", "options": ["Draft"]}]}}`,
 		"objects/one.json": object,
 	})
 	formats, err := ScanFormats(files)
@@ -206,7 +206,7 @@ func TestCheckPropertyFormats_UnknownKeyIsStillReported(t *testing.T) {
 func TestCheckPropertyFormats_DeclarationAndUseMayDisagreeOnSpelling(t *testing.T) {
 	files := writeDocs(t, map[string]string{
 		"types/task.type.json": `{"version": 1, "kind": "object_type", "key": "task", "id": "type-task",
-		  "type_properties": [{"key": "` + customPropertyKey + `", "format": "select", "options": ["High"]}]}`,
+		  "type_settings": {"property_definitions": [{"key": "` + customPropertyKey + `", "format": "select", "options": ["High"]}]}}`,
 		"objects/one.json": `{"version": 1, "type": "task", "id": "obj-1",
 		  "property_keys": {"priority": "` + customPropertyKey + `"},
 		  "properties": {"priority": "High"}}`,
@@ -241,9 +241,9 @@ func TestCheckSharedSelects_MergesAcrossSpellings(t *testing.T) {
 	files := writeDocs(t, map[string]string{
 		"types/a.type.json": `{"version": 1, "kind": "object_type", "key": "typeA", "id": "type-a",
 		  "property_keys": {"stage": "` + customPropertyKey + `"},
-		  "type_properties": [{"key": "stage", "format": "select", "options": ["One"]}]}`,
+		  "type_settings": {"property_definitions": [{"key": "stage", "format": "select", "options": ["One"]}]}}`,
 		"types/b.type.json": `{"version": 1, "kind": "object_type", "key": "typeB", "id": "type-b",
-		  "type_properties": [{"key": "` + customPropertyKey + `", "format": "select", "options": ["Two"]}]}`,
+		  "type_settings": {"property_definitions": [{"key": "` + customPropertyKey + `", "format": "select", "options": ["Two"]}]}}`,
 	})
 	shared, err := CheckSharedSelects(files)
 	require.NoError(t, err)
@@ -261,10 +261,10 @@ func TestCheckSharedSelects_OneSpellingTwoKeysIsNotShared(t *testing.T) {
 	files := writeDocs(t, map[string]string{
 		"types/a.type.json": `{"version": 1, "kind": "object_type", "key": "typeA", "id": "type-a",
 		  "property_keys": {"stage": "` + customPropertyKey + `"},
-		  "type_properties": [{"key": "stage", "format": "select", "options": ["One"]}]}`,
+		  "type_settings": {"property_definitions": [{"key": "stage", "format": "select", "options": ["One"]}]}}`,
 		"types/b.type.json": `{"version": 1, "kind": "object_type", "key": "typeB", "id": "type-b",
 		  "property_keys": {"stage": "69bbfc78877a91b1d12d1a7c"},
-		  "type_properties": [{"key": "stage", "format": "select", "options": ["Two"]}]}`,
+		  "type_settings": {"property_definitions": [{"key": "stage", "format": "select", "options": ["Two"]}]}}`,
 	})
 	shared, err := CheckSharedSelects(files)
 	require.NoError(t, err)
@@ -275,9 +275,9 @@ func TestCheckSharedSelects_OneSpellingTwoKeysIsNotShared(t *testing.T) {
 func TestCheckSharedSelects_PlainSharedKeyIsStillReported(t *testing.T) {
 	files := writeDocs(t, map[string]string{
 		"types/a.type.json": `{"version": 1, "kind": "object_type", "key": "typeA", "id": "type-a",
-		  "type_properties": [{"key": "wikiStage", "format": "select", "options": ["One"]}]}`,
+		  "type_settings": {"property_definitions": [{"key": "wikiStage", "format": "select", "options": ["One"]}]}}`,
 		"types/b.type.json": `{"version": 1, "kind": "object_type", "key": "typeB", "id": "type-b",
-		  "type_properties": [{"key": "wikiStage", "format": "select", "options": ["Two"]}]}`,
+		  "type_settings": {"property_definitions": [{"key": "wikiStage", "format": "select", "options": ["Two"]}]}}`,
 	})
 	shared, err := CheckSharedSelects(files)
 	require.NoError(t, err)

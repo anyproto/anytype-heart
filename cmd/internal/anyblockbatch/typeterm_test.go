@@ -136,7 +136,7 @@ func TestCheckTargetTypes_LegendBackedTargetPasses(t *testing.T) {
 		"types/custom.type.json": customType,
 		"types/person.type.json": `{"version": 1, "kind": "object_type", "key": "person", "id": "type-person",
 		  "type_keys": {"wiki_page": "` + customTypeKey + `"},
-		  "type_properties": [{"key": "assignee", "format": "objects", "object_types": ["wiki_page"]}]}`,
+		  "type_settings": {"property_definitions": [{"key": "assignee", "format": "objects", "object_types": ["wiki_page"]}]}}`,
 	})
 	typeIds, err := TypeIds(files)
 	require.NoError(t, err)
@@ -156,7 +156,7 @@ func TestCheckTargetTypes_TermCollidingWithAnotherTypesKeyIsReported(t *testing.
 		"types/wiki-page.type.json": wikiPageType, // key "wikiPage", id "type-wiki-page"
 		"types/person.type.json": `{"version": 1, "kind": "object_type", "key": "person", "id": "type-person",
 		  "type_keys": {"wikiPage": "` + customTypeKey + `"},
-		  "type_properties": [{"key": "assignee", "format": "objects", "object_types": ["wikiPage"]}]}`,
+		  "type_settings": {"property_definitions": [{"key": "assignee", "format": "objects", "object_types": ["wikiPage"]}]}}`,
 	})
 	typeIds, err := TypeIds(files)
 	require.NoError(t, err)
@@ -177,7 +177,7 @@ func TestCheckTargetTypes_TermCollidingWithAnotherTypesKeyIsReported(t *testing.
 func TestCheckTargetTypes_UnknownTargetIsStillReported(t *testing.T) {
 	files := writeDocs(t, map[string]string{
 		"types/person.type.json": `{"version": 1, "kind": "object_type", "key": "person", "id": "type-person",
-		  "type_properties": [{"key": "assignee", "format": "objects", "object_types": ["wiki_page"]}]}`,
+		  "type_settings": {"property_definitions": [{"key": "assignee", "format": "objects", "object_types": ["wiki_page"]}]}}`,
 	})
 	bad, err := CheckTargetTypes(files, map[string]string{})
 	require.NoError(t, err)
@@ -191,7 +191,7 @@ func TestCheckTargetTypes_BundledTargetPassesInBothSpellings(t *testing.T) {
 	for _, target := range []string{"object_type", "objectType", "page", "task"} {
 		files := writeDocs(t, map[string]string{
 			"types/person.type.json": `{"version": 1, "kind": "object_type", "key": "person", "id": "type-person",
-			  "type_properties": [{"key": "assignee", "format": "objects", "object_types": ["` + target + `"]}]}`,
+			  "type_settings": {"property_definitions": [{"key": "assignee", "format": "objects", "object_types": ["` + target + `"]}]}}`,
 		})
 		bad, err := CheckTargetTypes(files, map[string]string{})
 		require.NoError(t, err)

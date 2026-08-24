@@ -37,10 +37,12 @@ type jsonDoc struct {
 	// Icon and Cover are the typed envelope fields (§2b). Each is one object
 	// whose `format` member selects the variant, and each stands for a family
 	// of hidden stored keys that `properties` refuses.
-	Icon       *Icon               `json:"icon"`
-	Cover      *Cover              `json:"cover"`
-	Properties map[string]any      `json:"properties"`
-	TypeProps  *[]jsonTypeProperty `json:"type_properties"` // pointer: [] and absent differ (§2a)
+	Icon       *Icon          `json:"icon"`
+	Cover      *Cover         `json:"cover"`
+	Properties map[string]any `json:"properties"`
+	// TypeSettings is a kind:object_type document's definition group (§2a):
+	// the five lifted settings plus property_definitions.
+	TypeSettings *jsonTypeSettings `json:"type_settings"`
 	// PropertyKeys is the §3 slug→stored-key legend: what this document says
 	// its own key spellings mean, consulted before any vocabulary so a reader
 	// without the space still lands on the right relation. Its values are
@@ -256,7 +258,7 @@ func (imp *importer) propertyKey(slug string) string {
 // half is the schema (`minLength: 1`); this is the resolution half, and it is
 // reachable only through Options.Keys, which §3 accepts from anyone: a
 // vocabulary answering ("", true) for a non-empty spelling. `/properties`,
-// `/type`, `/template_for` and `type_properties[].object_types` refused that
+// `/type`, `/template_for` and a property definition's `object_types` refused that
 // from the start; the nine slots that did not stored the empty key and then
 // LOST the slot on the way back out — a column and a sort vanish, a property
 // block and a link's shown-property list come back nameless, a filter
@@ -337,7 +339,7 @@ func (imp *importer) propertyKeys(slugs []string) []string {
 // halves cannot disagree and there is nothing left to reserve. The path is
 // still the SLOT being read, because the empty-key refusal below fires in
 // three of them: the envelope `type`, `template_for`, and every
-// `type_properties[i].object_types[j]` (§2a).
+// `type_settings.property_definitions[i].object_types[j]` (§2a).
 func (imp *importer) typeKey(slug, path string) string {
 	if key, ok := imp.doc.TypeKeys[slug]; ok && key != "" {
 		return key
@@ -494,6 +496,26 @@ func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBas
 				Message: reason,
 			}}}
 		}
+		// the §2a type-settings lift is KIND-SCOPED (typesettings.go): on a
+		// TYPE document the five stored keys live in the group and their flat
+		// spellings are refused with the repair named, while on every other
+		// kind they stay ordinary properties (apiObjectKey is real data on
+		// 9,725 relation documents)
+		if isTypeSmartBlock(sbType) {
+			if typeSettingsLiftedDetailKeys()[key] {
+				return 0, nil, &ValidationError{Issues: []Issue{{
+					Path: "/properties/" + escapeJSONPointer(slug),
+					Message: fmt.Sprintf("%q is written on a type document as %s in type_settings (§2a), "+
+						"not as a property", key, typeSettingsLiftedKeyRepair(key)),
+				}}}
+			}
+			// the install-provenance keys are dropped, not refused, on a type
+			// document: a document carrying one is stale rather than wrong —
+			// the transientProperties policy, scoped by kind (§2a)
+			if _, stale := typeProvenanceKeys[key]; stale {
+				continue
+			}
+		}
 		// transient state and the attribution keys are dropped, not refused: a
 		// document carrying one is stale rather than wrong. Export writes no
 		// transient key at all, and writes the attribution keys as derived
@@ -536,7 +558,7 @@ func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBas
 	if err := imp.applyRelationEnvelope(details, sbType); err != nil {
 		return 0, nil, err
 	}
-	if err := imp.applyTypeProperties(details); err != nil {
+	if err := imp.applyTypeSettings(details, sbType); err != nil {
 		return 0, nil, err
 	}
 

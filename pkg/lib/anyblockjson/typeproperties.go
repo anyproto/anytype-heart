@@ -147,7 +147,7 @@ var recommendedListKeys = []struct {
 // are space-local, so without one the lists pass through in properties as
 // raw ids (the same degradation as options without an option resolver).
 func (e *exporter) typePropsActive() bool {
-	return e.sbType == model.SmartBlockType_STType && e.opts.ResolveProperties != nil
+	return e.isTypeDoc() && e.opts.ResolveProperties != nil
 }
 
 // typePropDetailKeys returns the detail keys hidden from properties (and from
@@ -190,13 +190,13 @@ func (e *exporter) buildTypeProperties() []any {
 			// precisely when that key is unwritable.
 			//
 			// The path is the ARRAY, not an index in it: the entry is
-			// dropped, so it has no index, and `/type_properties/<len(out)>`
-			// — the index the next SURVIVOR takes — addressed a healthy
-			// entry as the fault (§13). The message names the key, which is
-			// what identifies the drop; this is the same shape the property
-			// namespace reports a dropped key with (`/properties`).
+			// dropped, so it has no index, and the index the next SURVIVOR
+			// takes would address a healthy entry as the fault (§13). The
+			// message names the key, which is what identifies the drop; this
+			// is the same shape the property namespace reports a dropped key
+			// with (`/properties`).
 			if !writableTypePropertyKey(def) {
-				e.warn("/type_properties",
+				e.warn(typePropertyDefinitionsPath,
 					"property %q is dropped: %s", def.Key,
 					unwritableKeyReason("property key", string(def.Key)))
 				continue
@@ -355,7 +355,7 @@ func BuildRecommendedLists(props []TypeProperty, opts Options) ([]RecommendedLis
 		key := opts.legendPropertyKey(tp.Key)
 		if !isWritablePropertyKey(key) {
 			return nil, &ValidationError{Issues: []Issue{{
-				Path:    fmt.Sprintf("/type_properties/%d/key", i),
+				Path:    fmt.Sprintf(typePropertyDefinitionsPath+"/%d/key", i),
 				Message: unwritableKeyReason("resolved property key", key),
 			}}}
 		}
@@ -372,7 +372,7 @@ func BuildRecommendedLists(props []TypeProperty, opts Options) ([]RecommendedLis
 			resolved := opts.legendTypeKey(slug)
 			if resolved == "" {
 				return nil, &ValidationError{Issues: []Issue{{
-					Path:    fmt.Sprintf("/type_properties/%d/object_types/%d", i, j),
+					Path:    fmt.Sprintf(typePropertyDefinitionsPath+"/%d/object_types/%d", i, j),
 					Message: unwritableKeyReason("resolved type key", resolved),
 				}}}
 			}
@@ -405,11 +405,12 @@ func BuildRecommendedLists(props []TypeProperty, opts Options) ([]RecommendedLis
 // field's presence (even as an empty array) is the trigger: absent means the
 // document does not carry the lists at all.
 func (imp *importer) applyTypeProperties(details *types.Struct) error {
-	if imp.doc.TypeProps == nil {
+	ts := imp.doc.TypeSettings
+	if ts == nil || ts.TypeProps == nil {
 		return nil
 	}
 	lists := map[string][]*types.Value{}
-	for i, tp := range *imp.doc.TypeProps {
+	for i, tp := range *ts.TypeProps {
 		// `key` is a PROPERTY key slot, and the seam admits only keys export
 		// could write (§3) — the same refusal /properties makes one file over.
 		// The schema bounds the SPELLING (minLength 1), but a wider vocabulary
@@ -420,7 +421,7 @@ func (imp *importer) applyTypeProperties(details *types.Struct) error {
 		key := imp.propertyKey(tp.Key)
 		if !isWritablePropertyKey(key) {
 			return &ValidationError{Issues: []Issue{{
-				Path:    fmt.Sprintf("/type_properties/%d/key", i),
+				Path:    fmt.Sprintf(typePropertyDefinitionsPath+"/%d/key", i),
 				Message: unwritableKeyReason("resolved property key", key),
 			}}}
 		}
@@ -429,7 +430,7 @@ func (imp *importer) applyTypeProperties(details *types.Struct) error {
 		// onto the empty key, which has no written form (§3)
 		var targets []string
 		for j, slug := range tp.ObjectTypes {
-			slotPath := fmt.Sprintf("/type_properties/%d/object_types/%d", i, j)
+			slotPath := fmt.Sprintf(typePropertyDefinitionsPath+"/%d/object_types/%d", i, j)
 			resolved := imp.typeKey(slug, slotPath)
 			if resolved == "" {
 				return &ValidationError{Issues: []Issue{{

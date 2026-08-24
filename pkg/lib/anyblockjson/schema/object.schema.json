@@ -94,11 +94,39 @@
     "properties": {
       "$ref": "#/$defs/propertyMap"
     },
-    "type_properties": {
-      "type": "array",
-      "items": {
-        "$ref": "#/$defs/typeProperty"
-      }
+    "type_settings": {
+      "description": "Only on type documents (kind \"object_type\" or \"bundled_object_type\"): everything that defines the TYPE, in one gated subtree (\u00a72a). `layout` is the recommended layout of objects of this type (a layout name; a stored number outside the vocabulary passes through raw). `api_key` is the type's public API key \u2014 NOT a slug: of 1,326 corpus type documents with one, the document's own label differs from it in 941. `plural_name` is the plural display name. `default_template` is the object id of the template new objects of this type start from. `default_view` is the default view type (a \u00a76.2 view-type name; a stored number outside the vocabulary passes through raw). `property_definitions` is the type's property list \u2014 one propertyDefinition + `section` per entry (\u00a72e); it lived at the document root as `type_properties` until v0.32, and the word is `property_definitions` rather than `properties` because the document already uses that word for property VALUES at the root \u2014 one word per concept.",
+      "type": "object",
+      "properties": {
+        "layout": {
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "api_key": {
+          "type": "string"
+        },
+        "plural_name": {
+          "type": "string"
+        },
+        "default_template": {
+          "$ref": "#/$defs/objectRef"
+        },
+        "default_view": {
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "property_definitions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/typeProperty"
+          }
+        }
+      },
+      "additionalProperties": false
     },
     "property_keys": {
       "type": "object",
@@ -194,6 +222,27 @@
       "else": {
         "properties": {
           "relation_settings": false
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "object_type",
+              "bundled_object_type"
+            ]
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "then": {},
+      "else": {
+        "properties": {
+          "type_settings": false
         }
       }
     }

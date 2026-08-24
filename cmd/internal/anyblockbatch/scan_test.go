@@ -262,7 +262,7 @@ func TestCheckTargetTypes_BundledKeyDefinedLocallyWithoutIdIsReported(t *testing
 	files := writeDocs(t, map[string]string{
 		"types/page.type.json": `{"version": 1, "kind": "object_type", "key": "page"}`,
 		"types/person.type.json": `{"version": 1, "kind": "object_type", "key": "person", "id": "type-person",
-		  "type_properties": [{"key": "assignee", "format": "objects", "object_types": ["page"]}]}`,
+		  "type_settings": {"property_definitions": [{"key": "assignee", "format": "objects", "object_types": ["page"]}]}}`,
 	})
 	typeIds, err := TypeIds(files)
 	require.NoError(t, err)
@@ -284,7 +284,7 @@ func TestCheckTargetTypes_BundledKeyDefinedLocallyWithIdPasses(t *testing.T) {
 	files := writeDocs(t, map[string]string{
 		"types/page.type.json": `{"version": 1, "kind": "object_type", "key": "page", "id": "type-page"}`,
 		"types/person.type.json": `{"version": 1, "kind": "object_type", "key": "person", "id": "type-person",
-		  "type_properties": [{"key": "assignee", "format": "objects", "object_types": ["page"]}]}`,
+		  "type_settings": {"property_definitions": [{"key": "assignee", "format": "objects", "object_types": ["page"]}]}}`,
 	})
 	typeIds, err := TypeIds(files)
 	require.NoError(t, err)
@@ -299,7 +299,7 @@ func TestCheckTargetTypes_IdlessLocalTypeIsReported(t *testing.T) {
 	files := writeDocs(t, map[string]string{
 		"types/wiki-page.type.json": `{"version": 1, "kind": "object_type", "key": "wikiPage"}`,
 		"types/person.type.json": `{"version": 1, "kind": "object_type", "key": "person", "id": "type-person",
-		  "type_properties": [{"key": "assignee", "format": "objects", "object_types": ["wikiPage"]}]}`,
+		  "type_settings": {"property_definitions": [{"key": "assignee", "format": "objects", "object_types": ["wikiPage"]}]}}`,
 	})
 	typeIds, err := TypeIds(files)
 	require.NoError(t, err)

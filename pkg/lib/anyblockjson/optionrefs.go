@@ -233,7 +233,7 @@ func (imp *importer) optionIdFromLegend(key, slug, name string) (string, bool) {
 //
 //   - `properties`            — member names (§3)
 //   - `property_keys`         — member names, the slug→stored-key legend (§3)
-//   - `type_properties[].key` — §2a
+//   - `type_settings.property_definitions[].key` — §2a
 //   - a `property` block's `key` (§5)
 //   - a `link` block's `properties[]`, the shown-property list (§5)
 //   - a `dataview` block's `properties[].key` (§6.2)
@@ -289,7 +289,7 @@ func rawPropertySpellings(doc map[string]any) map[string]bool {
 	}
 	addMembers(doc["properties"])
 	addMembers(doc["property_keys"])
-	if list, _ := doc["type_properties"].([]any); list != nil {
+	if list, _ := typePropertyDefinitionsOf(doc); list != nil {
 		for _, raw := range list {
 			tp, _ := raw.(map[string]any)
 			addString(tp["key"])

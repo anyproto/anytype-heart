@@ -82,7 +82,15 @@ type envelopeTypeDoc struct {
 	PropertyKeys map[string]string `json:"property_keys"`
 	TypeKeys     map[string]string `json:"type_keys"`
 	Properties   map[string]any    `json:"properties"`
-	TypeProps    []TypeProperty    `json:"type_properties"`
+	TypeSettings struct {
+		PropertyDefinitions []TypeProperty `json:"property_definitions"`
+	} `json:"type_settings"`
+}
+
+// TypeProps reads the property-definition list wherever the tests consult
+// it — inside type_settings since v0.32.
+func (d envelopeTypeDoc) TypeProps() []TypeProperty {
+	return d.TypeSettings.PropertyDefinitions
 }
 
 func decodeEnvelope(t *testing.T, data []byte) envelopeTypeDoc {
@@ -290,8 +298,8 @@ func TestTypeKeysLegendCoversObjectTypes(t *testing.T) {
 		require.NoError(t, err)
 
 		doc := decodeEnvelope(t, data)
-		require.Len(t, doc.TypeProps, 1)
-		assert.Equal(t, []string{"task"}, doc.TypeProps[0].ObjectTypes)
+		require.Len(t, doc.TypeProps(), 1)
+		assert.Equal(t, []string{"task"}, doc.TypeProps()[0].ObjectTypes)
 		assert.Equal(t, map[string]string{"task": customTypeKey}, doc.TypeKeys,
 			"a slot that writes the slug without recording the entry inverts only by luck")
 	})
@@ -299,8 +307,8 @@ func TestTypeKeysLegendCoversObjectTypes(t *testing.T) {
 	t.Run("import reads the legend first", func(t *testing.T) {
 		doc := `{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
 			"type_keys": {"task": "` + customTypeKey + `"},
-			"type_properties": [{"key": "owner", "name": "Owner", "format": "objects",
-			 "object_types": ["task", "participant"]}]}`
+			"type_settings": {"property_definitions": [{"key": "owner", "name": "Owner", "format": "objects",
+			 "object_types": ["task", "participant"]}]}}`
 		r := &recordingPropertyResolver{}
 
 		_, _, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g"), ResolveProperties: r})
@@ -372,8 +380,8 @@ func TestExport_TypeTermLedgerBacksACollidingSlugOff(t *testing.T) {
 	doc := decodeEnvelope(t, data)
 	assert.Equal(t, customTypeKey, doc.Type,
 		"the slug is not emitted — its spelling belongs to the stored key wiki_person")
-	require.Len(t, doc.TypeProps, 1)
-	assert.Equal(t, []string{"wiki_person"}, doc.TypeProps[0].ObjectTypes)
+	require.Len(t, doc.TypeProps(), 1)
+	assert.Equal(t, []string{"wiki_person"}, doc.TypeProps()[0].ObjectTypes)
 	assert.Equal(t, map[string]string{
 		"wiki_person": "wiki_person",
 		customTypeKey: customTypeKey,
@@ -520,14 +528,14 @@ func TestImport_SeamRefusesAnEmptyResolvedTypeKey(t *testing.T) {
 
 	t.Run("object_types", func(t *testing.T) {
 		doc := `{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
-			"type_properties": [{"key": "owner", "format": "objects",
-			 "object_types": ["page", "blanktype"]}]}`
+			"type_settings": {"property_definitions": [{"key": "owner", "format": "objects",
+			 "object_types": ["page", "blanktype"]}]}}`
 		require.NoError(t, Validate([]byte(doc)))
 		o := opts()
 		o.ResolveProperties = &recordingPropertyResolver{}
 		_, _, err := Unmarshal([]byte(doc), o)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "/type_properties/0/object_types/1")
+		assert.Contains(t, err.Error(), "/type_settings/property_definitions/0/object_types/1")
 	})
 }
 
