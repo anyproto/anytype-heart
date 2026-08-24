@@ -38,6 +38,20 @@ URL; an `installed` key the reader's table cannot name is skipped, never
 refused, so a newer app's backup stays readable one version back — while
 the writer refuses what its own table cannot name.
 
+**`index.json` gains a manifest** (§2c): stored type key → file, option id →
+file, and a pointer to the dictionary — the only two namespaces documents
+address without a path (types 22/space, options 34/space; 5.1 KB/space,
+0.23%), so a reader resolves a type without scanning and without the folder
+convention the spec has never defined. And **composition omits a bundled
+relation document whose definition matches the table** — the §11 N(S)
+addition, owned by exported predicates (`OmittedBundledRelation`,
+`RelationInstallArtifactKey`, `InstallStampedDefault`) that the round-trip
+comparator reads rather than copies, fail-closed on every axis: a divergent
+member, an unclassified key, an alien-kinded value or a real block each
+keep the document. The import wiring reads the dictionary as a declaration
+source: an entry feeds the batch's format table and is minted up front with
+its whole declared shape, whether or not any type lists it.
+
 **`relation_settings` groups the relation definition** (§2d). The three
 members v0.31 put at the document root — `format`, `include_time`,
 `object_types` — move into one group that is a layer over
@@ -1732,6 +1746,49 @@ A `_`-prefixed target that is not one of the six is refused by name, with the
 inventory in the message. It cannot be an object id, so the alternative
 diagnostic — "no object with that id in the bundle" — would point an author
 with a typo at the wrong repair.
+
+### The manifest
+
+The index also says **where to find what a reader must resolve by key or id
+rather than by walking**. The format defines no folder layout — `objects/`,
+`types/`, `relations/` are one exporter's convention — and an object names
+its type by *spelling* alone, so without a manifest a reader resolves a type
+by scanning every document for a matching `key`. Measured, exactly two
+namespaces are addressed that way: types (22/space) and options (34/space) —
+~5.1 KB per space, 0.23% of the bytes.
+
+```json
+{ "manifest": {
+    "types":      { "task": "types/bafyrei….anyblock.json" },
+    "options":    { "bafyrei…opt1": "relationsOptions/bafyrei….anyblock.json" },
+    "properties": "properties.json" } }
+```
+
+- **`types`** — STORED type key → the type document's path. Stored keys,
+  not per-document spellings, the same rule the dictionary applies (§2f): a
+  document's `type_keys` legend binds its spelling to the stored key, and
+  the stored key is what the manifest answers for.
+- **`options`** — option object id → the relation_option document's path.
+  Ids, because that is how documents address options: a value carries the
+  option's NAME and the `option_ids` legend beside it carries the id (§9a) —
+  the id is the spelling that survives a rename.
+- **`properties`** — the property dictionary's path (§2f). A pointer rather
+  than an inline map, because properties resolve by stored key through each
+  document's own legend and the dictionary is the file that answers for
+  stored keys.
+
+Paths are relative to the index file. The reader flow, with no scanning and
+no folder convention: object → `type: "task"` → the object's legend → stored
+key → manifest → the type file → `property_definitions` → property not
+there → manifest → the dictionary → the entry.
+
+The manifest is optional — a bundle without one is walked the way every
+bundle was before it existed — and closed: the index root already refuses
+undeclared members (`additionalProperties: false`), and the manifest extends
+that inside itself, because an undeclared lookup table is one no reader
+opens. Whether its paths resolve is the same cross-document question every
+other id in the index poses, answered by the tooling, not this package
+(§13).
 
 ### How it reaches the space
 
@@ -4520,6 +4577,32 @@ defaults rather than a property's definition; and **a `defaultTemplateId`
 with a second entry keeps only its first**, with a warning — the member is
 the one default template, and 0 of 1,760 corpus documents carry more.
 
+The §2f dictionary adds one normalization, and it is a COMPOSITION rule
+rather than a document one — the per-document codec is untouched: **a
+bundled-identical relation document is not written at all**. Its key travels
+in the dictionary's `installed` list, and a reader reconstructs the object
+from its own bundled table, across which trip (a) the install artifacts —
+`createdDate`, `origin`, `addedDate`, `sourceObject`, `revision`,
+`apiObjectKey`, `featuredRelations`, `scope`, `importType`,
+`lastModifiedDate`, `layout`/`resolvedLayout`, the three recommended-list
+stamps — come back ABSENT, re-stamped by the next install, and (b) a
+definition member the copy never stored comes back as its explicit empty
+default, because an install states the whole definition. Both movements are
+owned by exported predicates the comparator reads
+(`OmittedBundledRelation`, `RelationInstallArtifactKey`,
+`InstallStampedDefault`) and both are scoped to snapshots the omission
+predicate itself admits, so the ordinary document round trip keeps its full
+sensitivity. The predicate is fail-closed on every axis — a divergent
+definition member, an unclassified detail key, an alien-kinded value, a
+block the format preserves (19 corpus relation documents carry a dataview
+or free text) each keep the document — because omitting a document that
+carried real data would delete it silently, which is disqualifying for a
+backup format. Each admitted artifact key passed the §15 #12 test
+individually against the 9,675 bundled-key relation documents; the verdicts
+live on `relationInstallArtifactKeys`, and the keys that FAILED
+(`isUninstalled`, `isFavorite`, `isArchived`, the bare `includeTime`) keep
+their documents.
+
 Export emits `blocks` in pre-order with exact depths, so export can never
 produce a monotonicity violation and the flat shape does not disturb
 byte-stability. Strict inputs add nothing to `N(S)`; for lenient
@@ -5102,6 +5185,14 @@ The dictionary's Go surface is `[]PropertyDefinition` — the same struct the
 resolvers speak and both doors of the §2a array build — rather than a
 dictionary-local entry type: §2e's one-shape rule holds on the Go side too,
 and a fourth field list is how a fourth spelling starts.
+
+The §2f composition predicates are exported beside them, for the wiring
+that composes a bundle and the comparator that verifies one:
+`OmittedBundledRelation` (may this relation document be omitted, and under
+which `installed` key), `InstalledRelationDetails` (the reconstruction a
+reader builds from that key), `RelationInstallArtifactKey` and
+`InstallStampedDefault` (the two movements the omission trip makes, which
+`snapshotdiff.Compare` reads rather than restates).
 
 The package is deliberately **pipeline-agnostic**: it depends only on
 `pkg/lib/pb/model`, `core/domain`, `pkg/lib/bundle`, `util/text`, the proto

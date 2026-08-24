@@ -44,9 +44,35 @@
       "type": "array",
       "description": "Sidebar widgets, in the order they should appear. Independent of `entrypoint` — declaring one does not require a widget for it. Only give a type a widget when you want fast access to its objects (`layout: \"view\"`); the sidebar already lists every type automatically, so a link or list widget on a type just duplicates that.",
       "items": { "$ref": "#/$defs/widget" }
+    },
+
+    "manifest": {
+      "$ref": "#/$defs/manifest",
+      "description": "Where to find what a reader must resolve by key or id rather than by walking (§2c): types, options, and the property dictionary. The format defines NO folder layout — objects/, types/, relations/ are one exporter's convention — and an object names its type by spelling alone, so without this a reader resolves a type by scanning every document for a matching key. Measured: types (22/space) and options (34/space) are the only two namespaces documents address without a path, ~5.1 KB per space, 0.23% of the bytes."
     }
   },
   "$defs": {
+    "manifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "types": {
+          "type": "object",
+          "additionalProperties": { "type": "string", "minLength": 1 },
+          "description": "STORED type key → the type document's path, relative to this file. Stored keys, not per-document spellings: a document's type_keys legend binds its spelling to the stored key, and the stored key is what the manifest answers for — the same rule the property dictionary applies (§2f). Reader flow: object → `type` spelling → the object's own legend → stored key → this map → the type file, no scanning."
+        },
+        "options": {
+          "type": "object",
+          "additionalProperties": { "type": "string", "minLength": 1 },
+          "description": "Option object id → the relation_option document's path, relative to this file. Ids, because that is how documents address options: a value carries the option's NAME and the option_ids legend beside it carries the id (§9a) — the id is the only spelling that survives a rename, so it is the one the manifest keys on."
+        },
+        "properties": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The property dictionary's path, relative to this file — properties.json at the bundle root (§2f). A pointer rather than an inline map because properties resolve by stored KEY through each document's own legend, and the dictionary is the file that answers for stored keys."
+        }
+      }
+    },
     "widget": {
       "type": "object",
       "required": ["target"],

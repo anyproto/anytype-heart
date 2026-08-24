@@ -106,6 +106,17 @@ func Compare(orig, got *model.SmartBlockSnapshotBase, sbType model.SmartBlockTyp
 
 	out = append(out, compareObjectTypes(orig, got, sbType)...)
 
+	// the §2f omission: a bundled-identical relation document is not written
+	// at all — its key travels in the dictionary's `installed` list and a
+	// reader reconstructs it from the bundled table. Across that trip the
+	// install artifacts (createdDate, origin, apiObjectKey, …) come back
+	// absent, re-stamped by the next install, and a definition member the
+	// copy never stored comes back as its explicit empty default. Both skips
+	// below are scoped to snapshots the omission predicate itself admits —
+	// the predicate is the format's own, not a copy — so on the ordinary
+	// document round trip, where every key survives, neither ever fires.
+	_, omittable := anyblockjson.OmittedBundledRelation(sbType, orig, opts)
+
 	if orig.Details != nil {
 		gotFields := map[string]*types.Value{}
 		if got.Details != nil {
@@ -143,6 +154,13 @@ func Compare(orig, got *model.SmartBlockSnapshotBase, sbType model.SmartBlockTyp
 			if gotFields[k] == nil && anyblockjson.DroppedEmptyTypeSetting(sbType, k, orig.Details.Fields[k]) {
 				continue
 			}
+			// an omitted relation document's install artifacts (§2f): absent
+			// on the way back, re-stamped by the next install. Scoped to
+			// absent-and-artifact on an omittable snapshot — a definition
+			// member that goes missing still reports.
+			if gotFields[k] == nil && omittable && anyblockjson.RelationInstallArtifactKey(k) {
+				continue
+			}
 			if !detailEqual(k, orig.Details.Fields[k], gotFields[k], opts) {
 				out = append(out, fmt.Sprintf("detail %q changed: %s -> %s",
 					k, valuePreview(orig.Details.Fields[k]), valuePreview(gotFields[k])))
@@ -169,6 +187,15 @@ func Compare(orig, got *model.SmartBlockSnapshotBase, sbType model.SmartBlockTyp
 		sort.Strings(gotOnly)
 		for _, k := range gotOnly {
 			if isEmptyRecommendedList(k, got.Details.Fields[k]) {
+				continue
+			}
+			// the reconstruction of an omitted relation document (§2f)
+			// states the WHOLE definition, so a member the original copy
+			// never stored arrives as its explicit empty default —
+			// `isHidden: false`, `object_types: []`. Absent and empty say
+			// the same thing for a definition member with a defined
+			// default; a NON-empty invented member still reports.
+			if omittable && anyblockjson.InstallStampedDefault(k, got.Details.Fields[k]) {
 				continue
 			}
 			out = append(out, fmt.Sprintf("detail %q added: %s", k, valuePreview(got.Details.Fields[k])))

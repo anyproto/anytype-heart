@@ -104,6 +104,24 @@ func run(inDir, outDir string, normalizeIndent, lenient bool, format outputForma
 		return fmt.Errorf("scan property formats: %w", err)
 	}
 
+	// the property dictionary (§2f) is a declaration source beside the type
+	// documents: an author declares a property once, bundle-wide, without
+	// writing a relation document at all. Its entries join the format table
+	// (dictionary winning a stated conflict) and are pre-minted below, so a
+	// dictionary-declared property exists in the archive whether or not any
+	// type happens to list it.
+	var dictDefs []anyblockjson.PropertyDefinition
+	if dictPath, ok := anyblockbatch.PropertiesPath(inDir); ok {
+		dictFormats, defs, dictErr := anyblockbatch.DictionaryFormats(dictPath)
+		if dictErr != nil {
+			return fmt.Errorf("read property dictionary: %w", dictErr)
+		}
+		dictDefs = defs
+		formats = anyblockbatch.MergeDictionaryFormats(formats, dictFormats, func(format string, args ...any) {
+			fmt.Fprintf(os.Stderr, "warning: "+format+"\n", args...)
+		})
+	}
+
 	if shared, serr := anyblockbatch.CheckSharedSelects(files); serr == nil && len(shared) > 0 {
 		fmt.Fprintf(os.Stderr, "warning: %d select propert%s shared across types:\n%s",
 			len(shared), plural(len(shared)), anyblockbatch.ReportSharedSelects(shared))
@@ -161,6 +179,15 @@ func run(inDir, outDir string, normalizeIndent, lenient bool, format outputForma
 	}
 
 	b := newBatch(formats, typeIds)
+
+	// dictionary-declared properties exist up front, with the FULL declared
+	// shape — description, include_time, max_count, readonly, default_value
+	// all reach mintRelation (§2e: a member the file admits is never shed at
+	// the seam). Entry order is the dictionary's canonical sorted order, so
+	// minted ids are stable across runs like everything else in the batch.
+	for _, def := range dictDefs {
+		b.PropertyId(def)
+	}
 
 	if err := os.MkdirAll(outDir, 0o755); err != nil {
 		return fmt.Errorf("mkdir %s: %w", outDir, err)

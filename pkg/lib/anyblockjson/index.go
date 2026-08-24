@@ -207,6 +207,26 @@ type Widget struct {
 	Limit  int32  `json:"limit"`
 }
 
+// Manifest says where to find what a reader must resolve by key or id
+// rather than by walking (§2c): the format defines no folder layout, and an
+// object names its type by spelling alone, so without one a reader resolves
+// a type by scanning every document for a matching key. Types are keyed by
+// STORED type key and options by option object id — the two spellings that
+// survive a rename — and Properties points at the dictionary (§2f), which
+// answers for stored property keys the same way. Paths are relative to the
+// index file.
+type Manifest struct {
+	Types      map[string]string `json:"types"`
+	Options    map[string]string `json:"options"`
+	Properties string            `json:"properties"`
+}
+
+// empty reports whether the manifest locates nothing — the shape setNonEmpty
+// cannot judge for a struct.
+func (m *Manifest) empty() bool {
+	return m == nil || (len(m.Types) == 0 && len(m.Options) == 0 && m.Properties == "")
+}
+
 // Index is a bundle's index.json (§2c).
 type Index struct {
 	Schema      string `json:"$schema"`
@@ -235,6 +255,10 @@ type Index struct {
 	Entrypoint string   `json:"entrypoint"`
 	Homepage   string   `json:"homepage"`
 	Widgets    []Widget `json:"widgets"`
+	// Manifest locates types, options and the property dictionary without a
+	// folder convention (§2c). Optional: a bundle without one is walked the
+	// way every bundle was before it existed.
+	Manifest *Manifest `json:"manifest"`
 }
 
 // EntryPoint returns the entry point the bundle *declares*: the entrypoint
@@ -475,5 +499,26 @@ func MarshalIndex(idx *Index) ([]byte, error) {
 		widgets = append(widgets, wm)
 	}
 	doc.setNonEmpty("widgets", widgets)
+	if !idx.Manifest.empty() {
+		m := &omap{}
+		m.setNonEmpty("types", sortedStringOmap(idx.Manifest.Types))
+		m.setNonEmpty("options", sortedStringOmap(idx.Manifest.Options))
+		m.setNonEmpty("properties", idx.Manifest.Properties)
+		doc.setNonEmpty("manifest", m)
+	}
 	return marshalCanonical(doc)
+}
+
+// sortedStringOmap renders a string map with sorted keys — the canonical
+// order for the manifest's two lookup tables (§4), or nil when there is
+// nothing to render.
+func sortedStringOmap(m map[string]string) *omap {
+	if len(m) == 0 {
+		return nil
+	}
+	out := &omap{}
+	for _, k := range sortedStringKeys(m) {
+		out.set(k, m[k])
+	}
+	return out
 }

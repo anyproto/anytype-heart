@@ -797,3 +797,99 @@ func UnknownInstalledKeys(dict *anyblockjson.PropertyDictionary) []string {
 	}
 	return out
 }
+
+// DictionaryFormats reads the bundle's property dictionary (§2f) into the
+// same batch-wide table ScanFormats builds, plus the full definitions for
+// pre-minting. The dictionary is where an author declares a property WITHOUT
+// writing a relation document — the same vocabulary as a type's
+// property-definition entry, one file for the whole bundle — so its entries
+// join the format registry exactly as type-declared ones do, and the caller
+// merges with the dictionary as the authority: the dictionary is the
+// property's one home (§2e), a type entry its per-type use.
+//
+// Keys arrive as STORED keys (§2f), so unlike ScanFormats there is no legend
+// chain to run: the table is keyed by what the file spells.
+func DictionaryFormats(path string) (map[string]FormatInfo, []anyblockjson.PropertyDefinition, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read %s: %w", path, err)
+	}
+	dict, err := anyblockjson.UnmarshalPropertyDictionary(data)
+	if err != nil {
+		return nil, nil, fmt.Errorf("%s: %w", anyblockjson.PropertiesFileName, err)
+	}
+	out := map[string]FormatInfo{}
+	for _, def := range dict.Properties {
+		out[string(def.Key)] = FormatInfo{
+			Format:     def.Format,
+			FormatName: anyblockjson.FormatName(def.Format),
+			Name:       def.Name,
+			Options:    def.Options,
+		}
+	}
+	return out, dict.Properties, nil
+}
+
+// MergeDictionaryFormats folds the dictionary's table into the type-scanned
+// one, dictionary winning on a conflict — with the conflict SAID, because a
+// type entry disagreeing with the dictionary means the bundle contradicts
+// itself and silence would let whichever file loaded last decide. A type
+// entry that declares a vocabulary the dictionary entry omits keeps that
+// vocabulary: the dictionary defines the property, the type may still be the
+// place its options were spelled out.
+func MergeDictionaryFormats(scanned, dict map[string]FormatInfo, warn func(format string, args ...any)) map[string]FormatInfo {
+	for key, d := range dict {
+		existing, seen := scanned[key]
+		if seen && existing.Format != d.Format {
+			warn("property %q: a type declares %s but the dictionary says %s — the dictionary wins (§2f)",
+				key, existing.FormatName, d.FormatName)
+		}
+		if seen && len(d.Options) == 0 && len(existing.Options) > 0 {
+			d.Options = existing.Options
+		}
+		scanned[key] = d
+	}
+	return scanned
+}
+
+// UsedPropertyKeys reports every STORED property key the bundle's documents
+// reference — the population the dictionary's `properties` list names (§2f,
+// used-only). Two slots count as a reference, resolved through the same
+// chain every scan here runs (a document's own property_keys legend, the
+// bundled table, verbatim): a `properties` member on any document, and a
+// `type_settings.property_definitions[].key`. A dataview's column list is
+// deliberately NOT one — it is a per-view cache carrying its own inline
+// format (§6.2), so a key that appears there and nowhere else gives a
+// reader nothing to look up.
+func UsedPropertyKeys(files []string) (map[string]bool, error) {
+	out := map[string]bool{}
+	for _, f := range files {
+		data, err := os.ReadFile(f)
+		if err != nil {
+			return nil, fmt.Errorf("read %s: %w", f, err)
+		}
+		var doc struct {
+			PropertyKeys propertyLegend             `json:"property_keys"`
+			Properties   map[string]json.RawMessage `json:"properties"`
+			TypeSettings *typeSettingsRaw           `json:"type_settings"`
+		}
+		if err := json.Unmarshal(data, &doc); err != nil {
+			return nil, fmt.Errorf("parse %s: %w", f, err)
+		}
+		for k := range doc.Properties {
+			// id and type are envelope facts, skipped on the SPELLING the
+			// way the codec skips them (importer.build)
+			if k == "id" || k == "type" {
+				continue
+			}
+			out[resolvePropertyTerm(doc.PropertyKeys, k)] = true
+		}
+		for _, tp := range typeSettingsDefs(doc.TypeSettings) {
+			if tp.Key == "" {
+				continue
+			}
+			out[resolvePropertyTerm(doc.PropertyKeys, tp.Key)] = true
+		}
+	}
+	return out, nil
+}
