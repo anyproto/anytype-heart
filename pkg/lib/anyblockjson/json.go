@@ -219,21 +219,27 @@ func (e enumNames[T]) value(n string) T  { return e.toVal[n] }
 func (e enumNames[T]) has(n string) bool { _, ok := e.toVal[n]; return ok }
 
 var kindNames = newEnumNames(map[model.SmartBlockType]string{
-	model.SmartBlockType_AccountOld:             "account_old",
-	model.SmartBlockType_Page:                   "page",
-	model.SmartBlockType_ProfilePage:            "profile_page",
-	model.SmartBlockType_Home:                   "home",
-	model.SmartBlockType_Archive:                "archive",
-	model.SmartBlockType_Widget:                 "widget",
-	model.SmartBlockType_File:                   "file",
-	model.SmartBlockType_Template:               "template",
-	model.SmartBlockType_BundledTemplate:        "bundled_template",
-	model.SmartBlockType_BundledRelation:        "bundled_relation",
-	model.SmartBlockType_SubObject:              "sub_object",
-	model.SmartBlockType_BundledObjectType:      "bundled_object_type",
-	model.SmartBlockType_AnytypeProfile:         "anytype_profile",
-	model.SmartBlockType_Date:                   "date",
-	model.SmartBlockType_Workspace:              "workspace",
+	model.SmartBlockType_AccountOld:        "account_old",
+	model.SmartBlockType_Page:              "page",
+	model.SmartBlockType_ProfilePage:       "profile_page",
+	model.SmartBlockType_Home:              "home",
+	model.SmartBlockType_Archive:           "archive",
+	model.SmartBlockType_Widget:            "widget",
+	model.SmartBlockType_File:              "file",
+	model.SmartBlockType_Template:          "template",
+	model.SmartBlockType_BundledTemplate:   "bundled_template",
+	model.SmartBlockType_BundledRelation:   "bundled_relation",
+	model.SmartBlockType_SubObject:         "sub_object",
+	model.SmartBlockType_BundledObjectType: "bundled_object_type",
+	model.SmartBlockType_AnytypeProfile:    "anytype_profile",
+	model.SmartBlockType_Date:              "date",
+	// the space's own object holds the space's SETTINGS — its name, icon,
+	// homepage — not the space itself, and `space_settings` says that where
+	// `workspace` said something the product no longer calls anything. One
+	// per space (77 in a 77-space corpus), machine-written and never
+	// authored, so the rename costs nothing but is a wire value: after the
+	// freeze it would cost a version.
+	model.SmartBlockType_Workspace:              "space_settings",
 	model.SmartBlockType_STRelation:             "relation",
 	model.SmartBlockType_STType:                 "object_type",
 	model.SmartBlockType_STRelationOption:       "relation_option",

@@ -1,6 +1,6 @@
 # AnyBlock JSON — format specification
 
-Status: **draft v0.32** · Format version: **1** · Package: `pkg/lib/anyblockjson`
+Status: **draft v0.33** · Format version: **1** · Package: `pkg/lib/anyblockjson`
 
 A human- and agent-readable JSON serialization of Anytype objects (the "anyblock"
 model), designed for export, import, and generation by external tools and LLM
@@ -15,6 +15,29 @@ strings; the vocabulary follows Notion's API and Anytype's public REST API
 (`core/api`) wherever an established term exists — the format should be
 readable, and mostly writable, by someone who has never seen Anytype
 internals.
+
+Changes in v0.33: **the space's own object spells its settings** (§2).
+
+`kind: "workspace"` becomes **`kind: "space_settings"`**. The object holds the
+space's name, icon and homepage — its settings — not the space itself, and
+`workspace` named something the product no longer calls anything. The Go
+smartblock type is untouched; only the spelling moves.
+
+Free today and a version bump after the freeze: it is a wire value in the
+`kind` enum, and the corpus carries exactly one per space (77 of 38,070),
+every one machine-written and never authored. No backward compatibility, per
+§10 — the retired spelling is refused rather than quietly accepted, so a
+document written against the old vocabulary fails loudly instead of importing
+as something else.
+
+The product's wider rename — spaces presented as channels — deliberately does
+NOT reach the document vocabulary. The format keeps saying `space`, because
+that is what the thing is in this model and the format's job is to describe
+the model rather than the interface; the API makes `channel` a synonym at its
+own layer. Measured before deciding: outside this one kind, "space" appears
+in the document surface only as scope in seven schema descriptions ("an image
+object in this space") and in `index.json`'s own prose, where it remains
+accurate.
 
 Changes in v0.32: **a property is described by one shape, wherever it is
 described** (§2e) — the property-dictionary change.

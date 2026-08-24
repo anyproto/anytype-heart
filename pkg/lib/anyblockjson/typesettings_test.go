@@ -418,3 +418,45 @@ func TestDefinitionIdentity_AKeylessDefinitionWarns(t *testing.T) {
 		})
 	}
 }
+
+// The space's own object holds the space's SETTINGS — its name, icon,
+// homepage — not the space itself. `space_settings` says that; `workspace`
+// said something the product no longer calls anything.
+//
+// It is a wire value in the `kind` enum, so it is free today and a version
+// bump after the freeze: one per space, 77 in a 77-space corpus, all
+// machine-written and never authored. The Go smartblock type is untouched —
+// only the spelling moves.
+//
+// No backward compatibility, per §10: the draft has no external consumers,
+// and the retired spelling is refused rather than quietly accepted, so a
+// document written against the old vocabulary fails loudly instead of
+// importing as something else.
+//
+// How this can fail: point kindNames back at "workspace" and the export
+// spelling changes under a reader that expects the new one; widen the schema
+// enum to accept both and the retired spelling stops failing.
+func TestKind_TheSpacesOwnObjectSpellsItsSettings(t *testing.T) {
+	// given the space's own object
+	snap := &model.SmartBlockSnapshotBase{
+		Blocks: []*model.Block{{Id: "bafyreispace",
+			Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}},
+		Details: fields(map[string]*types.Value{"id": str("bafyreispace"), "name": str("My space")}),
+	}
+
+	// when
+	data, err := Marshal(model.SmartBlockType_Workspace, snap, testOptions())
+	require.NoError(t, err)
+
+	// then it spells the new name, and reads back as the same smartblock type
+	require.NoError(t, Validate(data), "§11 I1")
+	assert.Contains(t, string(data), `"kind": "space_settings"`)
+	sbType, _, err := Unmarshal(data, testOptions())
+	require.NoError(t, err)
+	assert.Equal(t, model.SmartBlockType_Workspace, sbType,
+		"only the spelling moves; the smartblock type is unchanged")
+
+	// and the retired spelling is refused, not silently reinterpreted
+	assert.Error(t, Validate([]byte(`{"version":1,"kind":"workspace","properties":{"name":"x"}}`)),
+		"§10: no backward compatibility while the format is a draft — fail loudly")
+}
