@@ -116,14 +116,13 @@ type TypeResolver interface {
 // kinds, because the schema now requires `format` on all three: an export
 // that lifted for fewer than it validates for would emit a document its own
 // Validate rejects (§11 I1) — which is exactly what happened when only the
-// document side was widened, on `bundled_relation` and `sub_object`.
+// document side was widened, on `bundled_relation`.
 //
-// Zero of those are exported from a live store, which is why the narrow
-// version went unnoticed. But cmd/anyblockrecover reads arbitrary pb
-// backups, where a relation-shaped snapshot on the legacy `sub_object` kind
-// is exactly the thing a recovery is for — and under the narrow gate its
-// format had nowhere to go, so the value was dropped with a warning and the
-// round trip reported it as loss.
+// `sub_object` is NOT one of them. It is deprecated and out of the format's
+// support surface by decision, not by measurement — 0 of 38,061 corpus
+// documents carry it either way, so nothing observable turns on it; what
+// turns on it is that a deprecated kind must not acquire a new obligation
+// in a format about to freeze.
 func (e *exporter) isRelationDoc() bool {
 	return isRelationSmartBlock(e.sbType)
 }
@@ -137,8 +136,7 @@ func (e *exporter) isRelationDoc() bool {
 // widened.
 func isRelationSmartBlock(sbType model.SmartBlockType) bool {
 	return sbType == model.SmartBlockType_STRelation ||
-		sbType == model.SmartBlockType_BundledRelation ||
-		sbType == model.SmartBlockType_SubObject
+		sbType == model.SmartBlockType_BundledRelation
 }
 
 // buildRelationEnvelope writes the three §2d fields onto the envelope, or —
@@ -458,7 +456,7 @@ func relationEnvelopeIssues(doc map[string]any, warn func(path, format string, a
 // object carrying one must stay exportable (§11 I1).
 //
 // The kind gate is the relation-adjacent SET, not `relation` alone. Export
-// writes neither `bundled_relation` nor `sub_object` — 0 of 38,061 corpus
+// writes `bundled_relation` — 0 of 38,061 corpus
 // documents — but the schema's `kind` enum offers both beside `relation`
 // with nothing marking them non-authorable, and an author who picks one
 // walks straight back into the §2d bug with every gate silent. A kind
@@ -483,6 +481,5 @@ func relationPhantomIssues(doc map[string]any, warn func(path, format string, ar
 func isRelationKind(doc map[string]any) bool {
 	kind, _ := doc["kind"].(string)
 	return kind == kindNames.name(model.SmartBlockType_STRelation) ||
-		kind == kindNames.name(model.SmartBlockType_BundledRelation) ||
-		kind == kindNames.name(model.SmartBlockType_SubObject)
+		kind == kindNames.name(model.SmartBlockType_BundledRelation)
 }

@@ -1670,7 +1670,7 @@ they resolve is a cross-document question this package does not answer
 (§13): an index validates on its own terms while naming an object no
 document defines.
 
-## 2d. Relation documents (`kind: "relation"`, `"bundled_relation"`, `"sub_object"`)
+## 2d. Relation documents (`kind: "relation"`, `"bundled_relation"`)
 
 A relation object IS a property definition, and it states what it defines on
 the **envelope**, in the format's own vocabulary:
@@ -1687,20 +1687,25 @@ the **envelope**, in the format's own vocabulary:
 }
 ```
 
-**Three kinds are relation documents**, and all three carry these fields:
-`relation`, `bundled_relation` and `sub_object`. Only the first comes out of
-a live store — 0 of 38,061 corpus documents are either of the others — but
-the `kind` enum offers all three, `cmd/anyblockrecover` reads arbitrary pb
-backups where a relation on the legacy `sub_object` kind is exactly what a
-recovery is for, and a small model authoring from the schema alone picked
-`bundled_relation` unprompted. The export gate, the import gate and the
-schema's `if` therefore name the same three: a half that lifts for fewer
-than the schema validates for emits a document its own Validate rejects
-(§11 I1), and a half that reads back fewer drops the definition. Both breaks
-happened while this section was being written, each time from widening one
-list and not its siblings. `relation_option` is NOT one of them — an option
-document is a value, not a property definition, so `format` there is an
-ordinary custom property key.
+**Two kinds are relation documents**, and both carry these fields: `relation`
+and `bundled_relation`. Only the first comes out of a live store — 0 of
+38,061 corpus documents are the other — but the `kind` enum offers it beside
+`relation` with nothing marking it non-authorable, and a small model
+authoring from the schema alone picked it unprompted, walking straight back
+into the bug this section exists to stop. The export gate, the import gate
+and the schema's `if` therefore name the same two: a half that lifts for
+fewer than the schema validates for emits a document its own Validate
+rejects (§11 I1), and a half that reads back fewer drops the definition.
+Both breaks happened while this section was being written, each time from
+widening one list and not its siblings.
+
+Two neighbouring kinds are deliberately outside the set. `relation_option`,
+because an option document is a value rather than a property definition, so
+`format` there is an ordinary custom property key. And **`sub_object`,
+because it is deprecated** — a kind being retired must not acquire a new
+obligation in a format about to freeze. Nothing observable turns on it (0
+corpus documents either way); what turns on it is not extending support to
+something on its way out.
 
 Exactly **three stored details lift**, and no others:
 

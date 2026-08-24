@@ -948,9 +948,11 @@ func TestPropertyFormatEnum_MatchesFormatNames(t *testing.T) {
 // validated clean, with no warning, and imported as a phantom property with
 // no relationFormat at all. That is verbatim the §2d bug, one kind over.
 //
-// `relation_option` is deliberately NOT in the set: an option document is a
-// value, not a property definition, so `format` there is an ordinary custom
-// key.
+// Two kinds are deliberately NOT in the set. `relation_option` because an
+// option document is a value, not a property definition, so `format` there
+// is an ordinary custom key. `sub_object` because it is deprecated: a kind
+// being retired must not pick up a new obligation in a format about to
+// freeze, and 0 of 38,061 corpus documents carry it either way.
 //
 // How this can fail: narrow isRelationKind back to STRelation alone and the
 // two side doors reopen; widen it to relation_option and the last case
@@ -959,8 +961,13 @@ func TestRelationEnvelope_TheSideDoorKindsAreGuardedToo(t *testing.T) {
 	for kind, wantValid := range map[string]bool{
 		"relation":         false,
 		"bundled_relation": false,
-		"sub_object":       false,
-		"relation_option":  true,
+		// `sub_object` is DEPRECATED and deliberately outside the set: a kind
+		// on its way out must not acquire a new obligation in a format about
+		// to freeze. It therefore accepts this shape in silence, like any
+		// non-relation kind — that is a decision, not an oversight, and
+		// re-widening it would be re-adopting a kind we are dropping.
+		"sub_object":      true,
+		"relation_option": true,
 	} {
 		t.Run(kind, func(t *testing.T) {
 			// given the shape 9 of 9 small-model attempts wrote
@@ -1028,7 +1035,7 @@ func TestRelationEnvelope_TheMissingFormatVerdictNamesTheWrongContainer(t *testi
 // How this can fail: narrow isRelationKind back to STRelation alone and the
 // two side-door kinds go quiet again.
 func TestRelationEnvelope_ThePhantomWarningReachesTheSideDoorKinds(t *testing.T) {
-	for _, kind := range []string{"relation", "bundled_relation", "sub_object"} {
+	for _, kind := range []string{"relation", "bundled_relation"} {
 		t.Run(kind, func(t *testing.T) {
 			// given a VALID relation document that also carries the member
 			doc := []byte(`{"version":1,"kind":"` + kind + `","key":"eh","format":"number",` +
@@ -1062,7 +1069,6 @@ func TestRelationEnvelope_EveryRelationKindRoundTripsLossless(t *testing.T) {
 	for _, sb := range []model.SmartBlockType{
 		model.SmartBlockType_STRelation,
 		model.SmartBlockType_BundledRelation,
-		model.SmartBlockType_SubObject,
 	} {
 		t.Run(sb.String(), func(t *testing.T) {
 			// given
