@@ -112,11 +112,33 @@ type TypeResolver interface {
 //
 
 // isRelationDoc reports whether this export carries the §2d envelope fields.
-// Only kind "relation": a bundled_relation snapshot is never exported (0 in
-// the corpus) and widening the conditional would widen the schema for a
-// population that does not exist.
+// It is the snapshot-side half of isRelationKind and MUST list the same
+// kinds, because the schema now requires `format` on all three: an export
+// that lifted for fewer than it validates for would emit a document its own
+// Validate rejects (§11 I1) — which is exactly what happened when only the
+// document side was widened, on `bundled_relation` and `sub_object`.
+//
+// Zero of those are exported from a live store, which is why the narrow
+// version went unnoticed. But cmd/anyblockrecover reads arbitrary pb
+// backups, where a relation-shaped snapshot on the legacy `sub_object` kind
+// is exactly the thing a recovery is for — and under the narrow gate its
+// format had nowhere to go, so the value was dropped with a warning and the
+// round trip reported it as loss.
 func (e *exporter) isRelationDoc() bool {
-	return e.sbType == model.SmartBlockType_STRelation
+	return isRelationSmartBlock(e.sbType)
+}
+
+// isRelationSmartBlock is the SNAPSHOT-side statement of which kinds are
+// relations, and isRelationKind is the DOCUMENT-side one. All three lists —
+// these two and the schema's `if` — must name the same kinds: the schema
+// requires `format` on each of them, so a half that lifts for fewer than the
+// schema validates for breaks §11 I1 in one direction and drops the
+// definition in the other. Both breaks happened when only one list was
+// widened.
+func isRelationSmartBlock(sbType model.SmartBlockType) bool {
+	return sbType == model.SmartBlockType_STRelation ||
+		sbType == model.SmartBlockType_BundledRelation ||
+		sbType == model.SmartBlockType_SubObject
 }
 
 // buildRelationEnvelope writes the three §2d fields onto the envelope, or —
@@ -257,7 +279,7 @@ func (e *exporter) relationTargetKeys() []string {
 // Presence mirrors presence: a field the document omits writes nothing, so
 // the details that came out are the details that go back in.
 func (imp *importer) applyRelationEnvelope(details *types.Struct, sbType model.SmartBlockType) error {
-	if sbType != model.SmartBlockType_STRelation {
+	if !isRelationSmartBlock(sbType) {
 		// the schema keeps the three fields off every other kind (§2d), so
 		// there is nothing here to read — Unmarshal validates before it
 		// decodes, deliberately (§12 I2)

@@ -1670,7 +1670,7 @@ they resolve is a cross-document question this package does not answer
 (§13): an index validates on its own terms while naming an object no
 document defines.
 
-## 2d. Relation documents (`kind: "relation"`)
+## 2d. Relation documents (`kind: "relation"`, `"bundled_relation"`, `"sub_object"`)
 
 A relation object IS a property definition, and it states what it defines on
 the **envelope**, in the format's own vocabulary:
@@ -1686,6 +1686,21 @@ the **envelope**, in the format's own vocabulary:
   "properties": { "name": "Budget", "description": "Planned spend" }
 }
 ```
+
+**Three kinds are relation documents**, and all three carry these fields:
+`relation`, `bundled_relation` and `sub_object`. Only the first comes out of
+a live store — 0 of 38,061 corpus documents are either of the others — but
+the `kind` enum offers all three, `cmd/anyblockrecover` reads arbitrary pb
+backups where a relation on the legacy `sub_object` kind is exactly what a
+recovery is for, and a small model authoring from the schema alone picked
+`bundled_relation` unprompted. The export gate, the import gate and the
+schema's `if` therefore name the same three: a half that lifts for fewer
+than the schema validates for emits a document its own Validate rejects
+(§11 I1), and a half that reads back fewer drops the definition. Both breaks
+happened while this section was being written, each time from widening one
+list and not its siblings. `relation_option` is NOT one of them — an option
+document is a value, not a property definition, so `format` there is an
+ordinary custom property key.
 
 Exactly **three stored details lift**, and no others:
 
@@ -4031,11 +4046,18 @@ in the document is interpreted.
   v0.31's relation lift (§2d) is the same shape, and the same decision —
   **refuse, loudly, with the repair named**, never read-and-migrate. A
   pre-v0.31 relation document spells `relation_format` inside `properties`
-  and has no envelope `format`; it now trips two named refusals at once —
-  the missing required `format` (whose message lists the vocabulary and, when
-  the legacy spelling is present, says outright that it is the pre-v0.31 form
-  and where the value moved) and the `/properties/relation_format` refusal
-  naming the envelope repair. Reading the old spelling with a warning was
+  and has no envelope `format`. It trips the missing-`format` refusal, which
+  carries the whole repair: the message lists the vocabulary and, when a
+  legacy spelling sits in `properties`, says outright that it is the
+  pre-v0.31 form and where the value moved. Measured over all 10,617 legacy
+  relation documents in a 38,061-document corpus, every one trips exactly
+  that refusal and exactly one — the `/properties/relation_format` refusal
+  cannot also fire, because it lives in the semantic pass and a schema
+  failure never reaches it. It appears on the second pass, once the envelope
+  field exists and the old member is still there. The same message also
+  names `format` in `properties` when that is what the author wrote, which
+  is the commoner mistake and the one a missing-member verdict would
+  otherwise never mention. Reading the old spelling with a warning was
   declined for the reason §2b records: a format with two legal spellings for
   one thing, one of them a raw enum number a small model has seen far more
   of, defeats the lift — and this format is a draft with no external

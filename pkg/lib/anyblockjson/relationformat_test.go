@@ -242,6 +242,20 @@ func TestRelationEnvelope_PresenceMirrorsTheStore(t *testing.T) {
 			wire:     []string{`"include_time": null`},
 			notOnDoc: []string{`"object_types"`},
 		},
+		// object_types stored as a NULL is its own arm on both sides, and
+		// it is the one that can break §11 I1: export writes
+		// `"object_types": null`, so the schema's type union has to admit
+		// null or Marshal emits what Validate rejects. Nothing reached this
+		// path before — the include_time null case above exercises a
+		// different arm.
+		"object_types present and null": {
+			details: map[string]*types.Value{
+				"relationFormat":            num(100),
+				"relationFormatObjectTypes": nullValue(),
+			},
+			wire:     []string{`"object_types": null`},
+			notOnDoc: []string{`"include_time"`},
+		},
 		"absent": {
 			details:  map[string]*types.Value{"relationFormat": num(2)},
 			notOnDoc: []string{`"include_time"`, `"object_types"`},
@@ -806,6 +820,47 @@ func TestRelationEnvelope_ThePhantomWarningReachesTheSideDoorKinds(t *testing.T)
 			require.NoError(t, err, "the envelope format is present, so this document stands")
 			require.Len(t, warned, 1, "the phantom member must be reported on every kind that IS a relation")
 			assert.Equal(t, "/properties/format", warned[0].Path)
+		})
+	}
+}
+
+// A relation-shaped snapshot on a legacy kind must round-trip like any
+// other. The schema requires `format` on all three relation kinds, so the
+// export gate has to lift for all three or Marshal emits a document its own
+// Validate rejects — which is precisely what happened when the document
+// side was widened alone.
+//
+// Zero of these kinds come out of a live store, which is why the narrow gate
+// went unnoticed. cmd/anyblockrecover reads arbitrary pb backups, where a
+// relation on the legacy `sub_object` kind is the thing a recovery is for.
+//
+// How this can fail: narrow isRelationDoc back to STRelation and the last
+// two kinds emit no format, fail their own Validate, and lose the detail.
+func TestRelationEnvelope_EveryRelationKindRoundTripsLossless(t *testing.T) {
+	for _, sb := range []model.SmartBlockType{
+		model.SmartBlockType_STRelation,
+		model.SmartBlockType_BundledRelation,
+		model.SmartBlockType_SubObject,
+	} {
+		t.Run(sb.String(), func(t *testing.T) {
+			// given
+			snap := relationSnapshot(map[string]*types.Value{
+				"relationFormat":            num(4),
+				"relationFormatIncludeTime": boolValue(true),
+			})
+
+			// when
+			data, err := Marshal(sb, snap, Options{})
+			require.NoError(t, err)
+			require.NoError(t, Validate(data), "Marshal never emits what Validate rejects (§11 I1)")
+			_, back, err := Unmarshal(data, Options{})
+			require.NoError(t, err)
+
+			// then
+			assert.Contains(t, string(data), `"format": "date"`)
+			assert.Equal(t, num(4).String(),
+				back.GetDetails().GetFields()["relationFormat"].String(),
+				"the definition survives on every kind that IS a relation")
 		})
 	}
 }
