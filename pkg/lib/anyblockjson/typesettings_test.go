@@ -307,13 +307,18 @@ func TestTypeSettings_SecondDefaultTemplateWarns(t *testing.T) {
 // NUMBER outside the enum still passes — a stored value round-trips as its
 // number.
 //
-// How this can fail: drop the default_view arm from the group's semantic
-// check and the typo imports in silence.
+// The SCHEMA answers this now — `default_view` $refs the same viewType
+// definition a view's own `type` does, so the two cannot drift — and the
+// refusal names the vocabulary, which the semantic message did not.
+//
+// How this can fail: loosen either slot back to a bare string and a
+// schema-driven generator emits a name the codec will refuse.
 func TestTypeSettings_UnknownViewNameRefusedRawNumberPasses(t *testing.T) {
 	err := Validate([]byte(`{"version":1,"kind":"object_type","id":"t1","key":"k",
 		"type_settings":{"default_view":"Table"}}`))
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "unknown view type")
+	assert.Contains(t, err.Error(), "/type_settings/default_view")
+	assert.Contains(t, err.Error(), "'table'", "the refusal names the vocabulary")
 
 	_, snap, err := Unmarshal([]byte(`{"version":1,"kind":"object_type","id":"t1","key":"k",
 		"type_settings":{"default_view":42}}`), testOptions())

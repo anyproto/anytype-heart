@@ -84,13 +84,22 @@ func TestRoundtrip_LayoutSurvives(t *testing.T) {
 	assert.Contains(t, string(data), `"layout": "profile"`)
 }
 
-// a typo must not reach the snapshot as a bare string
+// a typo must not reach the snapshot as a bare string.
+//
+// The SCHEMA answers this now, not the semantic pass: `type_settings.layout`
+// used to be `{"type": ["string","number"]}`, which meant a generator reading
+// the published schema could emit any string it liked and only learn at the
+// codec that the vocabulary is closed. The schema states the vocabulary, so
+// the refusal arrives with the whole list — which the semantic message it
+// replaced never carried.
 func TestValidate_UnknownLayoutRejected(t *testing.T) {
 	doc := `{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
 		"type_settings": {"layout": "Profile"}}`
 	_, _, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "unknown layout")
+	assert.Contains(t, err.Error(), "/type_settings/layout")
+	assert.Contains(t, err.Error(), "'basic'", "the refusal names the vocabulary")
+	assert.Contains(t, err.Error(), "'profile'", "including the name that was nearly right")
 }
 
 // the other layout-ish bundled keys hold different enums and must be untouched

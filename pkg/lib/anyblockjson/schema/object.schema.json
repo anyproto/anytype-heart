@@ -100,10 +100,15 @@
       "type": "object",
       "properties": {
         "layout": {
-          "type": [
-            "string",
-            "number"
-          ]
+          "anyOf": [
+            {
+              "$ref": "#/$defs/objectLayout"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "description": "The layout instances of this type get. Stated as a name; see $defs/objectLayout."
         },
         "api_key": {
           "type": "string"
@@ -115,10 +120,15 @@
           "$ref": "#/$defs/objectRef"
         },
         "default_view": {
-          "type": [
-            "string",
-            "number"
-          ]
+          "anyOf": [
+            {
+              "$ref": "#/$defs/viewType"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "description": "How this type's own view renders by default. Stated as a name; see $defs/viewType."
         },
         "property_definitions": {
           "type": "array",
@@ -1417,14 +1427,7 @@
           "type": "string"
         },
         "type": {
-          "enum": [
-            "table",
-            "list",
-            "gallery",
-            "kanban",
-            "calendar",
-            "graph"
-          ]
+          "$ref": "#/$defs/viewType"
         },
         "name": {
           "type": "string"
@@ -1719,6 +1722,50 @@
         }
       },
       "additionalProperties": false
+    },
+    "objectLayout": {
+      "enum": [
+        "audio",
+        "basic",
+        "bookmark",
+        "chat_deprecated",
+        "chat_derived",
+        "collection",
+        "dashboard",
+        "date",
+        "devices",
+        "discussion",
+        "file",
+        "image",
+        "missing_object",
+        "note",
+        "notification",
+        "object_type",
+        "participant",
+        "pdf",
+        "profile",
+        "relation",
+        "relation_option",
+        "relation_options_list",
+        "set",
+        "space",
+        "space_view",
+        "tag",
+        "todo",
+        "video"
+      ],
+      "description": "The closed set of object layouts, by NAME (§3). Validate refuses a name outside this set: a typo would import as a raw string onto a number-format detail, where every consumer reads it with an integer getter and silently sees `basic`. A raw NUMBER is accepted beside a name, because a stored value outside the vocabulary round-trips as its number rather than being lost."
+    },
+    "viewType": {
+      "enum": [
+        "table",
+        "list",
+        "gallery",
+        "kanban",
+        "calendar",
+        "graph"
+      ],
+      "description": "How a dataview view renders. One definition, shared by a view's own `type` and a type's `default_view`, so the two cannot drift into different vocabularies for one concept."
     }
   }
 }

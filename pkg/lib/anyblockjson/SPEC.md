@@ -17,7 +17,18 @@ readable, and mostly writable, by someone who has never seen Anytype
 internals.
 
 Changes in v0.35: **a document says which grammar it follows** (§2c, §2f,
-§13).
+§13), and **the published schema stops being looser than the codec** (§13).
+
+`type_settings.layout` and `default_view` were `{"type": ["string",
+"number"]}` in the schema while Validate refused any name outside a closed
+set. A schema that is looser than the validator is the worst of both worlds:
+a generator reading it emits documents the codec rejects, and a consumer
+trusting it accepts documents the codec would refuse — and §1 promises an
+author may work from the document, the schema and the bundled key table
+alone. Both slots now state their vocabulary, `default_view` sharing the one
+`viewType` definition a view's own `type` uses, and a test pins both against
+the codec's tables in each direction. The refusal now names the whole
+vocabulary, which the message it replaced did not.
 
 A bundle holds three species of file — object documents, one index, one
 property dictionary — and until now nothing in a document reliably told them
