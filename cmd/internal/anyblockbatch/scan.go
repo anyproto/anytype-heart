@@ -886,7 +886,7 @@ func MergeDictionaryFormats(scanned, dict map[string]FormatInfo, warn func(forma
 // used-only). Two slots count as a reference, resolved through the same
 // chain every scan here runs (a document's own property_internal_keys legend, the
 // bundled table, verbatim): a `properties` member on any document, and a
-// `type_settings.property_definitions[].key`. A dataview's column list is
+// `type_settings.property_definitions[].property`. A dataview's column list is
 // deliberately NOT one — it is a per-view cache carrying its own inline
 // format (§6.2), so a key that appears there and nowhere else gives a
 // reader nothing to look up.
