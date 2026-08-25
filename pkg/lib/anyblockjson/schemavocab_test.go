@@ -42,6 +42,7 @@ func TestSchemaVocabularies_MatchTheCodec(t *testing.T) {
 	}{
 		{"objectLayout", keysOfLayouts(), "object layout"},
 		{"viewType", keysOfViewTypes(), "dataview view type"},
+		{"blockAlign", keysOfEnumNames(alignNames), "alignment"},
 	} {
 		t.Run(tc.def, func(t *testing.T) {
 			got := append([]string(nil), schema.Defs[tc.def].Enum...)
@@ -83,17 +84,46 @@ func TestSchemaVocabularies_OneViewTypeDefinition(t *testing.T) {
 }
 
 func keysOfLayouts() map[string]bool {
+	return keysOfEnumNames(layoutNames)
+}
+
+func keysOfViewTypes() map[string]bool {
+	return keysOfEnumNames(viewTypeNames)
+}
+
+func keysOfEnumNames[T comparable](e enumNames[T]) map[string]bool {
 	out := map[string]bool{}
-	for n := range layoutNames.toVal {
+	for n := range e.toVal {
 		out[n] = true
 	}
 	return out
 }
 
-func keysOfViewTypes() map[string]bool {
-	out := map[string]bool{}
-	for n := range viewTypeNames.toVal {
-		out[n] = true
+// The three slots that spell an alignment share one definition rather than
+// each restating four names — one concept, one spelling: a block's `align`,
+// a view column's `align`, and (by the semantic pass, which is the only
+// place a property slot's vocabulary CAN bind — a property spelling is not
+// fixed to its stored key) the `layout_align` property value.
+func TestSchemaVocabularies_OneAlignDefinition(t *testing.T) {
+	var schema struct {
+		Defs map[string]json.RawMessage `json:"$defs"`
 	}
-	return out
+	require.NoError(t, json.Unmarshal(schemaJSON, &schema))
+
+	for _, tc := range []struct{ def, member string }{
+		{"blockCore", "align"},
+		{"viewColumn", "align"},
+	} {
+		var node struct {
+			Properties map[string]struct {
+				Ref  string   `json:"$ref"`
+				Enum []string `json:"enum"`
+			} `json:"properties"`
+		}
+		require.NoError(t, json.Unmarshal(schema.Defs[tc.def], &node))
+		assert.Equal(t, "#/$defs/blockAlign", node.Properties[tc.member].Ref,
+			"%s.%s must share the one alignment definition", tc.def, tc.member)
+		assert.Empty(t, node.Properties[tc.member].Enum,
+			"a second copy of the vocabulary is a place to drift")
+	}
 }

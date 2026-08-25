@@ -113,6 +113,10 @@ func TestNamedEnumProperties_PerKeyVerdict(t *testing.T) {
 		"recommendedLayout": "layout",
 		"layout":            "layout",
 		"resolvedLayout":    "layout",
+		// the object's own page alignment: user-settable (readonly false),
+		// stored as a model.BlockAlign — the enum the format already names
+		// twice, on a block's align and a view column's align
+		"layoutAlign": "align",
 	}
 	assert.Equal(t, len(want), len(namedEnumProperties),
 		"every named key owes a verdict here — a new one must say which vocabulary it draws from")

@@ -411,6 +411,9 @@ func TestAuthoringSubset_EveryObjectEnumValueIsFullValid(t *testing.T) {
 	sweep("section", schemaEnum(t, schema, "$defs", "propertyDefinition", "properties", "section", "enum"), func(v string) string {
 		return typeDoc(`"property_definitions": [{"property": "p1", "section": "` + v + `"}]`)
 	})
+	sweep("layout_align", schemaEnum(t, schema, "$defs", "blockAlign", "enum"), func(v string) string {
+		return `{"version": 1, "properties": {"layout_align": "` + v + `"}}`
+	})
 	sweep("palette colour on icons", schemaEnum(t, schema, "$defs", "paletteColor", "enum"), func(v string) string {
 		return `{"version": 1, "icon": {"format": "icon", "name": "book", "color": "` + v + `"}}`
 	})

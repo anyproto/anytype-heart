@@ -684,6 +684,12 @@ func (v propertyVocabulary) quotedNames() string {
 
 var layoutVocabulary = vocabularyOf(layoutNames, "layout")
 
+// alignVocabulary spells a model.BlockAlign — the enum a block's `align`,
+// a view column's `align` and the layoutAlign DETAIL all store. One concept,
+// one spelling (§15 #14): the four names were already the format's alignment
+// vocabulary twice over before the property joined.
+var alignVocabulary = vocabularyOf(alignNames, "align")
+
 // viewTypeVocabulary is not a property vocabulary — no stored detail key
 // maps to it — but §2a's default_view member shares the reading, and the
 // guarded adapter is how both enum members stopped naming NaN.
@@ -699,6 +705,17 @@ var namedEnumProperties = map[string]propertyVocabulary{
 	"recommendedLayout": layoutVocabulary,
 	"layout":            layoutVocabulary,
 	"resolvedLayout":    layoutVocabulary,
+	// layoutAlign is the object's own page alignment — the one key of the
+	// five 2026-08 bare-integer enums a user can set (readonly false in the
+	// bundled table), which is why it is NAMED rather than deprecated: it
+	// survives the §2a admission on type documents as "the type object's own
+	// page display, set by a person where non-zero", and the app writes it
+	// as a model.BlockAlign (participant/profile editors stamp AlignCenter;
+	// the align UI sets the rest). Before this entry, `layout_align:
+	// "center"` VALIDATED and stored the string on a number detail — every
+	// int getter answered 0, left — while the reader of an export saw a bare
+	// 1 beside a named `layout` and had no way to learn what it meant.
+	"layoutAlign": alignVocabulary,
 }
 
 // namedEnumProperty answers whether a stored key is written by name, and

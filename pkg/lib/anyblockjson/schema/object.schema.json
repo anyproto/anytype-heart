@@ -712,12 +712,7 @@
           ]
         },
         "align": {
-          "enum": [
-            "left",
-            "center",
-            "right",
-            "justify"
-          ]
+          "$ref": "#/$defs/blockAlign"
         },
         "vertical_align": {
           "enum": [
@@ -1709,12 +1704,7 @@
           ]
         },
         "align": {
-          "enum": [
-            "left",
-            "center",
-            "right",
-            "justify"
-          ]
+          "$ref": "#/$defs/blockAlign"
         }
       },
       "required": [
@@ -1795,6 +1785,15 @@
         "graph"
       ],
       "description": "How a dataview view renders. One definition, shared by a view's own `type` and a type's `default_view`, so the two cannot drift into different vocabularies for one concept."
+    },
+    "blockAlign": {
+      "enum": [
+        "left",
+        "center",
+        "right",
+        "justify"
+      ],
+      "description": "Horizontal alignment, by NAME. One definition for one concept: a block's `align`, a view column's `align`, and the `layout_align` property value (§3) all draw from it. The property slot cannot $ref this definition — a property SPELLING is not fixed to its stored key, so the vocabulary there is enforced by the semantic pass on the RESOLVED key — but the vocabulary is this one: an unknown name on `layout_align` is a validation error, and a raw NUMBER is accepted beside a name, because a stored value outside the vocabulary round-trips as its number rather than being lost."
     }
   }
 }

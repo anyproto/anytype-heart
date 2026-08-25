@@ -204,7 +204,7 @@
     },
     "propertyMap": {
       "type": "object",
-      "description": "The object's property values, keyed by property key: `name` (the title), `description`, and the keys this bundle's types and properties.json declare. Value shape follows the property's format — text/url/email/phone: a string; number: a number; checkbox: a boolean; date: an RFC 3339 UTC string (\"2026-07-06T15:04:05Z\"); select and multi_select: an ARRAY of option names; objects/files: an array of bundle-local ids. Only write a key to say something — an absent key means \"not set\". `is_favorite: true` pins the object to Favorites. Do NOT write ids, icons, covers, timestamps or attribution here: the icon and cover are envelope fields, and the rest is the app's to derive.",
+      "description": "The object's property values, keyed by property key: `name` (the title), `description`, and the keys this bundle's types and properties.json declare. Value shape follows the property's format — text/url/email/phone: a string; number: a number; checkbox: a boolean; date: an RFC 3339 UTC string (\"2026-07-06T15:04:05Z\"); select and multi_select: an ARRAY of option names; objects/files: an array of bundle-local ids; `layout_align`: an alignment NAME (see $defs/blockAlign) — the stored value is a number, but an author writes the name, exactly as blocks and views spell alignment. Only write a key to say something — an absent key means \"not set\". `is_favorite: true` pins the object to Favorites. Do NOT write ids, icons, covers, timestamps or attribution here: the icon and cover are envelope fields, and the rest is the app's to derive.",
       "propertyNames": {
         "pattern": "^[^\u0000-\u001f]+$",
         "maxLength": 128,
@@ -272,6 +272,12 @@
           ]
         }
       },
+      "properties": {
+        "layout_align": {
+          "$ref": "#/$defs/blockAlign",
+          "description": "The object's own page alignment, by NAME. An author writes the name; raw numbers are the full format's stored-value pass-through, which the subset removes."
+        }
+      },
       "additionalProperties": {
         "anyOf": [
           {
@@ -287,6 +293,15 @@
           }
         ]
       }
+    },
+    "blockAlign": {
+      "enum": [
+        "left",
+        "center",
+        "right",
+        "justify"
+      ],
+      "description": "Horizontal alignment, by NAME — the one vocabulary the format spells alignment in."
     },
     "icon": {
       "type": "object",
