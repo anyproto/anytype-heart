@@ -163,7 +163,7 @@ func unmarshalPropertyDictionary(data []byte, warn func(Issue)) (*PropertyDictio
 	}
 	d := &PropertyDictionary{Installed: installedKeys(jd.Installed, warn)}
 	for i, tp := range jd.Properties {
-		shadowedBundledKeyIssue(i, tp.Key, warn)
+		storedKey := dictionaryEntryKey(i, tp.Key, warn)
 		// entries speak STORED keys in every key slot — `key` and
 		// `object_types` alike — so there is no legend to run and no
 		// vocabulary to consult: the definition is built by the same shared
@@ -171,97 +171,116 @@ func unmarshalPropertyDictionary(data []byte, warn func(Issue)) (*PropertyDictio
 		// through verbatim. `format` resolves per key exactly as a
 		// relation_settings format does (§3): "text" on a bundled
 		// short-text key stays short text, and on anything else is longtext.
-		def := tp.definition(tp.Key, declaredFormatWith(Options{}, tp.Key, tp.Format), tp.ObjectTypes)
+		def := tp.definition(storedKey, declaredFormatWith(Options{}, storedKey, tp.Format), tp.ObjectTypes)
 		d.Properties = append(d.Properties, def)
 	}
 	return d, nil
 }
 
-// installedKeys reads the `installed` list, recovering a key written in the
-// label spelling and reporting every key the bundled table does not know.
+// dictionaryKeySpelling renders an ENTRY's stored key the way the dictionary
+// spells it: the api slug for a bundled property, the stored key verbatim for
+// anything else (§2f).
 //
-// `installed` carries STORED keys — `dueDate`, not `due_date` — and it is the
-// only slot in the format that does, which is exactly why authors write the
-// other one: within a single real bundle, an object document spells the
-// property `created_date` and the dictionary spells it `createdDate`.
+// Only `properties` needs the condition. `installed` admits bundled keys and
+// nothing else — it names rows to restore from the bundled table — so it
+// slugs unconditionally. An ENTRY, by contrast, is how a bundle declares a
+// property the bundled table does NOT have, so its key population is mixed:
+// of 6,426 entries in a 77-space export, 515 are space-minted bson ids.
 //
-// A key outside the table is TOLERATED, not refused, and that tolerance is
-// deliberate: the bundled table grows independently of the format version, so
-// a backup written by a newer app lists keys an older reader has never heard
-// of, and refusing them would make every backup unreadable one app version
-// back. What was missing is that nothing SAID so — the document read clean
-// and only re-rendering it failed.
+// For those the condition is load-bearing rather than cosmetic.
+// `bundle.ApiSlug` is `strcase.ToSnake`, and
+// `ApiSlug("6a32d4856761631534b22f85")` is
+// `"6_a_32_d_4856761631534_b_22_f_85"` — a key that names nothing. Slugging
+// unconditionally would corrupt one entry key in twelve.
+func dictionaryKeySpelling(storedKey string) string {
+	if bundle.HasRelation(domain.RelationKey(storedKey)) {
+		return bundle.ApiSlug(storedKey)
+	}
+	return storedKey
+}
+
+// dictionaryStoredKey resolves a dictionary spelling back to the stored key
+// it names, following the same ladder every other slot in the format follows:
+// an exact stored key wins, then a single fold match, and an ambiguity is
+// never resolved by guess (bundle.RelationKeysByApiFold).
 //
-// When the unknown key folds to exactly one bundled key it is recovered to
-// it, the forgiving layer's own rule (bundle.RelationKeysByApiFold): exact
-// match first, a single fold match second, an ambiguity never resolved by
-// guess. A key that folds to nothing is kept verbatim — it may be the newer
-// app's.
+// ok is false only when the spelling folds onto more than one bundled
+// property, which cannot happen for a slug this package wrote —
+// TestDictionaryKeys_TheBundledTableStaysUnambiguous pins that — but can for
+// one an author invents.
+func dictionaryStoredKey(spelling string) (stored string, ambiguous []string) {
+	if bundle.HasRelation(domain.RelationKey(spelling)) {
+		return spelling, nil // a stored key names itself
+	}
+	candidates := bundle.RelationKeysByApiFold(spelling)
+	switch len(candidates) {
+	case 1:
+		return candidates[0].String(), nil
+	case 0:
+		return spelling, nil // a space-minted key, or a newer app's
+	default:
+		names := make([]string, 0, len(candidates))
+		for _, c := range candidates {
+			names = append(names, c.String())
+		}
+		sort.Strings(names)
+		return spelling, names
+	}
+}
+
+// installedKeys reads the `installed` list into stored keys, reporting a key
+// that names no bundled property.
+//
+// Every key here is meant to be bundled — `installed` names rows to restore
+// from the bundled table, and a key outside it tells a reader to install
+// nothing. Such a key is TOLERATED rather than refused, and the tolerance is
+// about VERSION SKEW rather than custom properties: the bundled table grows independently of the
+// format version, so a backup written by a newer app lists keys an older
+// reader has never heard of, and refusing them would make every backup
+// unreadable one app version back. What was missing is that nothing SAID so —
+// the document read clean and only re-rendering it failed.
 func installedKeys(raw []string, warn func(Issue)) []string {
 	if len(raw) == 0 {
 		return raw
 	}
 	out := make([]string, 0, len(raw))
-	for i, key := range raw {
+	for i, spelling := range raw {
 		path := fmt.Sprintf("/installed/%d", i)
-		if bundle.HasRelation(domain.RelationKey(key)) {
-			out = append(out, key)
-			continue
-		}
-		switch candidates := bundle.RelationKeysByApiFold(key); len(candidates) {
-		case 1:
-			stored := candidates[0].String()
-			warnIssue(warn, path, "installed key %q is spelled the way a document spells it; "+
-				"this list carries STORED keys, so it is read as %q. Write %q here — `installed` "+
-				"restores from the bundled table, and %q is not in it (§2f)",
-				key, stored, stored, key)
-			out = append(out, stored)
-		case 0:
+		stored, ambiguous := dictionaryStoredKey(spelling)
+		switch {
+		case len(ambiguous) > 0:
+			warnIssue(warn, path, "installed key %q folds onto more than one bundled property (%s), "+
+				"so which is meant cannot be decided here — write one of them (§2f)",
+				spelling, strings.Join(quoteAll(ambiguous), ", "))
+		case !bundle.HasRelation(domain.RelationKey(stored)):
 			warnIssue(warn, path, "installed key %q is not a bundled property, so a reader "+
 				"restoring this bundle installs NOTHING for it. Give it a full entry in "+
 				"`properties`, where its definition travels with it — or, if it comes from a "+
-				"newer app whose bundled table has it, expect this reader to skip it (§2f)", key)
-			out = append(out, key)
-		default:
-			names := make([]string, 0, len(candidates))
-			for _, c := range candidates {
-				names = append(names, strconv.Quote(c.String()))
-			}
-			sort.Strings(names)
-			warnIssue(warn, path, "installed key %q folds to more than one bundled property (%s), "+
-				"so which one is meant cannot be decided here — write the stored key you mean (§2f)",
-				key, strings.Join(names, ", "))
-			out = append(out, key)
+				"newer app whose bundled table has it, expect this reader to skip it (§2f)", spelling)
 		}
+		out = append(out, stored)
 	}
 	return out
 }
 
-// shadowedBundledKeyIssue reports an entry whose key is the LABEL spelling of
-// a bundled property.
-//
-// Nothing is recovered here, unlike `installed`: an entry carries a full
-// definition, and a custom property deliberately named close to a bundled one
-// is legitimate — rewriting its key would change what it defines. But an
-// entry keyed `due_date` beside the bundled `dueDate` defines a SECOND
-// property that merely looks like the first, and every document referring to
-// the bundled one keeps referring to the bundled one, so the shadow collects
-// nothing.
-func shadowedBundledKeyIssue(i int, key string, warn func(Issue)) {
-	if warn == nil || key == "" || bundle.HasRelation(domain.RelationKey(key)) {
-		return
+// dictionaryEntryKey resolves an entry's key, reporting an ambiguity.
+func dictionaryEntryKey(i int, spelling string, warn func(Issue)) string {
+	stored, ambiguous := dictionaryStoredKey(spelling)
+	if len(ambiguous) > 0 {
+		warnIssue(warn, fmt.Sprintf("/properties/%d/key", i),
+			"%q folds onto more than one bundled property (%s), so which is meant cannot be "+
+				"decided here — write one of them (§2f)",
+			spelling, strings.Join(quoteAll(ambiguous), ", "))
 	}
-	candidates := bundle.RelationKeysByApiFold(key)
-	if len(candidates) != 1 {
-		return
+	return stored
+}
+
+func quoteAll(names []string) []string {
+	out := make([]string, 0, len(names))
+	for _, n := range names {
+		out = append(out, strconv.Quote(n))
 	}
-	stored := candidates[0].String()
-	warnIssue(warn, fmt.Sprintf("/properties/%d/key", i),
-		"%q defines a NEW property that merely looks like the bundled %q — this list carries "+
-			"STORED keys, and %q is the label spelling. Documents referring to %q go on referring "+
-			"to it, so nothing ever uses this entry. Write %q to define the bundled property, or "+
-			"keep this key if a distinct property is what you meant (§2f)",
-		key, stored, key, stored, stored)
+	return out
 }
 
 func warnIssue(warn func(Issue), path, format string, args ...any) {
@@ -327,16 +346,27 @@ func MarshalPropertyDictionary(d *PropertyDictionary) ([]byte, error) {
 	doc.set("$schema", PropertiesSchemaURL)
 	doc.set("version", FormatVersion)
 
-	installed := append([]string(nil), d.Installed...)
-	sort.Strings(installed)
-	for i, key := range installed {
-		if i > 0 && installed[i-1] == key {
-			return nil, fmt.Errorf("installed key %q is listed twice: the dictionary has one slot per key (§2f)", key)
-		}
+	// stored keys in, SLUGS out (§2f): every key here is a bundled property,
+	// and a bundled property's written spelling is its api slug everywhere
+	// else in the format. The dictionary used to be the one file that spelled
+	// a property `dueDate` while every document beside it said `due_date`.
+	installed := make([]string, 0, len(d.Installed))
+	for _, key := range d.Installed {
 		if _, err := bundle.GetRelation(domain.RelationKey(key)); err != nil {
 			return nil, fmt.Errorf("installed key %q is not a bundled property: `installed` restores from the "+
 				"bundled table, so a key outside it tells the reader to install nothing — give it a full "+
 				"entry in `properties` instead (§2f)", key)
+		}
+		// ApiSlug unconditionally, not dictionaryKeySpelling: the check above
+		// has already established this key is bundled, and `installed` admits
+		// nothing else — it is a list of rows to restore from the bundled
+		// table, so a space-minted key has no meaning in it.
+		installed = append(installed, bundle.ApiSlug(key))
+	}
+	sort.Strings(installed)
+	for i, key := range installed {
+		if i > 0 && installed[i-1] == key {
+			return nil, fmt.Errorf("installed key %q is listed twice: the dictionary has one slot per key (§2f)", key)
 		}
 	}
 	doc.setNonEmpty("installed", stringsToAny(installed))
@@ -359,8 +389,11 @@ func MarshalPropertyDictionary(d *PropertyDictionary) ([]byte, error) {
 }
 
 // dictionaryEntryOmap renders one entry: the propertyDefinition members in
-// the §2e order, keys verbatim (stored keys are the dictionary's spelling,
-// so there is no slug to translate and no legend to write). `format` is
+// the §2e order, its key in the dictionary's spelling — the api slug for a
+// bundled property, the stored key verbatim for a space-minted one, which is
+// the ladder every other slot in the format follows (§2f). There is still no
+// legend to write: the spelling is a pure function of the key, so a reader
+// inverts it without one. `format` is
 // written unconditionally — required by the schema, because an entry without
 // one is readable only by a reader shipping the bundled table (§2f) — and a
 // stored format outside the enum is an ERROR for relationFormatName's
@@ -370,13 +403,14 @@ func dictionaryEntryOmap(def PropertyDefinition) (*omap, error) {
 	if !isWritablePropertyKey(string(def.Key)) {
 		return nil, fmt.Errorf("property dictionary: %s", unwritableKeyReason("property key", string(def.Key)))
 	}
+	spelling := dictionaryKeySpelling(string(def.Key))
 	name := formatName(def.Format)
 	if name == "" {
 		return nil, fmt.Errorf("property %q: format %d has no §3 name: the entry cannot state "+
 			"what the property holds (§2f)", def.Key, def.Format)
 	}
 	m := &omap{}
-	m.set("key", string(def.Key))
+	m.set("key", spelling)
 	m.setNonEmpty("name", def.Name)
 	m.set("format", name)
 	m.setNonEmpty("options", optionsToAny(def.Options))

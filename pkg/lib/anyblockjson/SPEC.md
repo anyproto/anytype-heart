@@ -16,6 +16,35 @@ strings; the vocabulary follows Notion's API and Anytype's public REST API
 readable, and mostly writable, by someone who has never seen Anytype
 internals.
 
+Changes in v0.36: **the property dictionary spells a property the way every
+other slot does** (§2f).
+
+`properties.json` was the last place in the format that spelled a property in
+camelCase. Inside a single real exported bundle, an object document said
+`created_date` while the dictionary beside it said `createdDate` — one
+concept, two spellings, which is the disease §15 #14 exists to name. It now
+writes `created_date` too.
+
+`installed` slugs unconditionally: it names rows to restore from the bundled
+table and admits nothing else. An ENTRY's `key` slugs only when the key is
+bundled, and the condition is load-bearing rather than cosmetic — `ApiSlug`
+is `strcase.ToSnake`, and `ApiSlug("6a32d4856761631534b22f85")` is
+`"6_a_32_d_4856761631534_b_22_f_85"`, a key naming nothing. 515 of the 6,426
+entry keys in a 77-space export are space-minted bson ids, so slugging entry
+keys unconditionally would corrupt one in twelve.
+
+Reading follows the ladder every other slot follows: an exact stored key
+names itself, then a single fold match, and an ambiguity is never resolved by
+guess. So a bundle written before this change still reads, and re-rendering
+settles it on the canonical spelling.
+
+The whole design rests on one fact, and it is now a test rather than an
+observation: a bundled property's slug names it UNIQUELY. Over the 194
+bundled relations there are no slug collisions and no fold collisions, and
+every slug recovers its own key. That test is the condition under which a NEW
+bundled relation may be added — if adding one breaks it, the relation needs a
+different key, not a looser dictionary.
+
 Changes in v0.35: **a document says which grammar it follows** (§2c, §2f,
 §13), and **the published schema stops being looser than the codec** (§13).
 
