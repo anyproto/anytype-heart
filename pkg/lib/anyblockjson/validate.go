@@ -1467,6 +1467,34 @@ var transientProperties = map[string]string{
 	// resolves it as declared, and writing a real object id there validated,
 	// imported and round-tripped with no warning at all.
 	"featuredRelations": "deprecated: the type's `section: \"featured\"` owns this, and the clients read it from there",
+
+	// THE FILE MACHINERY'S per-device answers, stamped on every file object
+	// and meaning nothing off the device that stamped them. Their sibling
+	// `fileSyncStatus` is in bundle.LocalAndDerivedRelationKeys and has never
+	// exported; these two say the same kind of thing and leaked only because
+	// the bundle lists them as ordinary relations.
+	//
+	// `fileBackupStatus` is filesyncstatus.Status — which node-sync state THIS
+	// device last observed for the file (core/files/filesync writes it, the
+	// reconciler and the sync-status updater read it). All 10,248 file objects
+	// in a 28,604-document corpus carry it: 10,246 say Synced(4), 2 say
+	// Queued(5). A restored file's backup status is the destination's filesync
+	// machinery's to determine — importing "Synced" claims the new space's
+	// filenode holds blocks it has never seen. The enum's own comment says
+	// even the stored history is untrustworthy: SyncedLegacy exists because a
+	// migration "accidentally set FileBackupStatus to Synced for all files,
+	// even not synced".
+	//
+	// `fileIndexingStatus` is the sharpest entry on this list: ONE distinct
+	// value — Indexed(1) — across all 10,248 occurrences, which is the
+	// definition of saying nothing. And on import it is worse than nothing:
+	// the file indexer's queue query selects file objects whose
+	// fileIndexingStatus != Indexed (core/files/fileobject/fileindex.go), so
+	// an imported "Indexed" tells the destination's indexer the restored file
+	// needs no indexing — the one thing downstream that could act on the
+	// value acts on it wrongly.
+	"fileBackupStatus":   "this device's file-sync answer; the destination's filesync machinery determines its own",
+	"fileIndexingStatus": "one distinct value in all real data, and importing it suppresses the destination's file indexer",
 }
 
 // isTransientProperty reports whether a stored key describes a moment rather

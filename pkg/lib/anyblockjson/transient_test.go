@@ -112,6 +112,12 @@ func TestTransientProperties_BundledVerdictPerKey(t *testing.T) {
 		"hasChat":          true,
 		// deprecated: the type owns which properties an instance features
 		"featuredRelations": true,
+		// the file machinery's per-device answers: bundled both, and stripped
+		// because they are the moment's sync/index state of the device that
+		// exported — the class fileSyncStatus was always in, via
+		// bundle.LocalAndDerivedRelationKeys
+		"fileBackupStatus":   true,
+		"fileIndexingStatus": true,
 	}
 	assert.Equal(t, len(want), len(transientProperties),
 		"every transient key owes a verdict here — a new one must say which case it is")
@@ -151,6 +157,56 @@ func TestTransientProperties_TheAnalyticsTripleIsDropped(t *testing.T) {
 			"%q describes the click that made the object, not the object", key)
 	}
 	assert.Contains(t, snap.GetDetails().GetFields(), "name", "the object itself survives")
+}
+
+// The file machinery's per-device answers do not travel. Every one of the
+// 10,248 file objects in a 28,604-document corpus carried both keys —
+// `file_backup_status` as Synced(4) on 10,246 and Queued(5) on 2,
+// `file_indexing_status` as Indexed(1) on ALL of them, one distinct value
+// across the whole corpus. Both describe what THIS device's sync and index
+// machinery last observed, which the destination's machinery determines for
+// itself — and `fileIndexingStatus` is actively harmful on import: the file
+// indexer queues exactly the file objects whose status is not Indexed
+// (core/files/fileobject/fileindex.go), so an imported Indexed tells it the
+// restored file needs no indexing.
+//
+// How this can fail: drop either key from transientProperties and the value
+// reaches the snapshot — and, on the export side, the wire.
+func TestTransientProperties_FileStatusDoesNotTravel(t *testing.T) {
+	t.Run("import drops, not refuses", func(t *testing.T) {
+		// given the exact shape all 10,248 corpus file objects carry
+		doc := []byte(`{"version": 1, "properties": {"name": "photo.png",
+			"file_backup_status": 4, "file_indexing_status": 1}}`)
+
+		// when
+		require.NoError(t, Validate(doc), "a stale export still imports")
+		_, snap, err := Unmarshal(doc, Options{})
+		require.NoError(t, err, "Validate and Unmarshal agree (§11 I2)")
+
+		// then
+		for _, key := range []string{"fileBackupStatus", "fileIndexingStatus"} {
+			assert.NotContains(t, snap.GetDetails().GetFields(), key,
+				"%q is the exporting device's answer, not a fact about the file", key)
+		}
+		assert.Contains(t, snap.GetDetails().GetFields(), "name", "the file object itself survives")
+	})
+
+	t.Run("export strips", func(t *testing.T) {
+		snap := &model.SmartBlockSnapshotBase{
+			Blocks: []*model.Block{{Id: "f1", Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}},
+			Details: fields(map[string]*types.Value{
+				"id":                 str("f1"),
+				"name":               str("photo.png"),
+				"fileBackupStatus":   num(4),
+				"fileIndexingStatus": num(1),
+			}),
+		}
+		data, err := Marshal(model.SmartBlockType_FileObject, snap, Options{})
+		require.NoError(t, err)
+		assert.NotContains(t, string(data), "file_backup_status")
+		assert.NotContains(t, string(data), "file_indexing_status")
+		assert.Contains(t, string(data), `"name"`, "and the rest of the object is untouched")
+	})
 }
 
 // A bundle is a SHAREABLE artifact — a use case, a template, a backup
