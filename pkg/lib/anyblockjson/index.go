@@ -68,7 +68,11 @@ const (
 )
 
 // wireHomepages is the format spelling of each reserved homepage and the
-// spelling core/domain/homepage.go uses for the same screen.
+// spelling core/domain/homepage.go uses for the same screen. WireHomepage
+// walks it one way and FormatHomepage the other: the STORE holds the wire
+// spelling, so a value lifted out of a space object has to be translated
+// before it becomes an index field, exactly as one written to a profile has
+// to be translated on the way out.
 var wireHomepages = map[string]string{
 	HomepageWidgets: "widgets",
 	HomepageGraph:   "graph",
@@ -143,6 +147,15 @@ func WireWidgetTarget(target string) string {
 // otherwise. builtinobjects.setWorkspaceSettings matches those bare names
 // before it tries to resolve an id, so an untranslated `_graph` would be
 // looked up as an object, fail, and fall back to the widgets screen.
+func FormatHomepage(wire string) string {
+	for format, w := range wireHomepages {
+		if w == wire {
+			return format
+		}
+	}
+	return wire
+}
+
 func WireHomepage(homepage string) string {
 	if wire, ok := wireHomepages[homepage]; ok {
 		return wire

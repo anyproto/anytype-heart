@@ -130,7 +130,13 @@ func IndexFromSpaceSettings(idx *Index, base *model.SmartBlockSnapshotBase) {
 		idx.Description = v
 	}
 	if v := stringDetail(det, "homepage"); v != "" {
-		idx.Homepage = v
+		// the STORE spells a reserved screen the way core/domain/homepage.go
+		// does — a bare `widgets` — while the format spells it `_widgets`,
+		// inside the `_` namespace no bundle object may claim (§1). Lifting
+		// the stored value verbatim put the wire spelling in the index, and
+		// the batch checker then read it as an object id naming nothing:
+		// 8 of 77 exported indexes said `"homepage": "widgets"`.
+		idx.Homepage = FormatHomepage(v)
 	}
 	if ic, whole := spaceIcon(base); whole && ic != nil {
 		idx.Icon = ic

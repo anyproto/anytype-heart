@@ -198,3 +198,39 @@ func TestSpaceSettings_TheIndexTakesWhatTheDocumentHeld(t *testing.T) {
 			"%q is listed as index-carried but the lift writes nothing for it", stored)
 	}
 }
+
+// The STORE spells a reserved homepage the way core/domain/homepage.go does —
+// a bare `widgets` — while the format spells it `_widgets`, inside the `_`
+// namespace no bundle object may claim (§1). The lift has to translate, the
+// way the profile writer translates in the other direction.
+//
+// Measured before the fix: 8 of 77 exported indexes carried
+// `"homepage": "widgets"`, which the batch checker read as an object id
+// naming nothing in the bundle.
+//
+// How this can fail: lift the stored value verbatim and a reserved screen
+// becomes a dangling object reference; translate an ordinary object id and a
+// real homepage stops resolving.
+func TestSpaceSettings_AReservedHomepageIsTranslatedOnTheWayIn(t *testing.T) {
+	t.Run("the wire spelling becomes the format spelling", func(t *testing.T) {
+		var idx Index
+		IndexFromSpaceSettings(&idx, spaceSnapshot(map[string]*types.Value{
+			"homepage": str("widgets")}))
+		assert.Equal(t, HomepageWidgets, idx.Homepage)
+		assert.True(t, IsReservedBundleId(idx.Homepage) || idx.Homepage[0] == '_',
+			"it must land in the reserved namespace, not look like an object id")
+	})
+
+	t.Run("an ordinary object id is untouched", func(t *testing.T) {
+		var idx Index
+		IndexFromSpaceSettings(&idx, spaceSnapshot(map[string]*types.Value{
+			"homepage": str("bafyreihome")}))
+		assert.Equal(t, "bafyreihome", idx.Homepage)
+	})
+
+	t.Run("and the pair round-trips", func(t *testing.T) {
+		for _, wire := range []string{"widgets", "graph"} {
+			assert.Equal(t, wire, WireHomepage(FormatHomepage(wire)))
+		}
+	})
+}
