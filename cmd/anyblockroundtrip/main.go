@@ -720,7 +720,11 @@ type spaceComposer struct {
 
 	typePaths   map[string]string
 	optionPaths map[string]string
-	written     []string
+	// optionsByKey is the select vocabulary each property actually has in
+	// this space, gathered from the option documents so the dictionary can
+	// state it inline (§2f). Keyed by STORED property key.
+	optionsByKey map[string][]anyblockjson.OptionDefinition
+	written      []string
 
 	// the fields the space's own document is the source of (§2c). Lifted as
 	// that document is observed and omitted, so the index states what the
@@ -733,12 +737,13 @@ type spaceComposer struct {
 
 func newSpaceComposer(opts anyblockjson.Options, spaceName string) *spaceComposer {
 	return &spaceComposer{
-		opts:        opts,
-		spaceName:   spaceName,
-		installed:   map[string]bool{},
-		entries:     map[string]anyblockjson.PropertyDefinition{},
-		typePaths:   map[string]string{},
-		optionPaths: map[string]string{},
+		opts:         opts,
+		spaceName:    spaceName,
+		installed:    map[string]bool{},
+		entries:      map[string]anyblockjson.PropertyDefinition{},
+		typePaths:    map[string]string{},
+		optionPaths:  map[string]string{},
+		optionsByKey: map[string][]anyblockjson.OptionDefinition{},
 	}
 }
 
@@ -802,6 +807,19 @@ func (c *spaceComposer) observeWritten(sw *pb.SnapshotWithType, path string) {
 			c.typePaths[key] = path
 		}
 	case model.SmartBlockType_STRelationOption:
+		// an option's whole meaning is three details — which property it
+		// belongs to, its name, and its colour — wrapped in a document whose
+		// remaining forty lines are derived scaffolding. The dictionary
+		// states those three inline, so a bundle declares a select vocabulary
+		// in the same place it declares the property (§2f).
+		if key := det["relationKey"].GetStringValue(); key != "" {
+			if name := det["name"].GetStringValue(); name != "" {
+				c.optionsByKey[key] = append(c.optionsByKey[key], anyblockjson.OptionDefinition{
+					Name:  name,
+					Color: det["relationOptionColor"].GetStringValue(),
+				})
+			}
+		}
 		if id := det["id"].GetStringValue(); id != "" {
 			c.optionPaths[id] = path
 		}
@@ -858,6 +876,33 @@ func (c *spaceComposer) finish(ss *spaceSummary) error {
 		orphans = append(orphans, key)
 	}
 	sort.Strings(orphans)
+
+	// the select vocabulary travels with the property that owns it. A
+	// property whose options a space minted has no entry otherwise — it is an
+	// ordinary installed bundled key — and its vocabulary would exist only in
+	// the option documents, where an author generating a bundle has to know
+	// to look for it.
+	for key, opts := range c.optionsByKey {
+		if !used[key] {
+			continue // §2f is used-only: an unused property's vocabulary buys a reader nothing
+		}
+		sort.Slice(opts, func(i, j int) bool { return opts[i].Name < opts[j].Name })
+		def, have := entries[key]
+		if !have {
+			if resolved, ok := resolvedDefinition(key, c.opts); ok {
+				def = resolved
+			} else if rel, err := bundle.GetRelation(domain.RelationKey(key)); err == nil {
+				def = anyblockjson.PropertyDefinition{
+					Key: domain.RelationKey(key), Name: rel.Name, Format: rel.Format,
+					ObjectTypes: bundledTargetKeys(rel.ObjectTypes),
+				}
+			} else {
+				continue // nothing can say what this property is; §2f reports it as an orphan
+			}
+		}
+		def.Options = opts
+		entries[key] = def
+	}
 
 	dict := &anyblockjson.PropertyDictionary{}
 	for key := range c.installed {
