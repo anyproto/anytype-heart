@@ -239,7 +239,7 @@ func TestRelationEnvelope_RefusedInProperties(t *testing.T) {
 		"relation_format_object_types": `["page"]`,
 	} {
 		t.Run(spelling, func(t *testing.T) {
-			doc := `{"version":1,"kind":"relation","id":"o1","key":"budget",` +
+			doc := `{"version":1,"kind":"relation","id":"o1","internal_key":"budget",` +
 				`"relation_settings":{"format":"number"},` +
 				`"properties":{"` + spelling + `":` + value + `}}`
 
@@ -660,24 +660,24 @@ func TestRelationEnvelope_WrongFormatWarnsButCarries(t *testing.T) {
 		wantWarn string // "" = no warning expected
 	}{
 		"include_time true on number": {
-			doc:      `{"version":1,"kind":"relation","id":"o1","key":"b","relation_settings":{"format":"number","include_time":true}}`,
+			doc:      `{"version":1,"kind":"relation","id":"o1","internal_key":"b","relation_settings":{"format":"number","include_time":true}}`,
 			wantWarn: "/relation_settings/include_time",
 		},
 		"object_types non-empty on number": {
-			doc:      `{"version":1,"kind":"relation","id":"o1","key":"b","relation_settings":{"format":"number","object_types":["page"]}}`,
+			doc:      `{"version":1,"kind":"relation","id":"o1","internal_key":"b","relation_settings":{"format":"number","object_types":["page"]}}`,
 			wantWarn: "/relation_settings/object_types",
 		},
 		"include_time false on number": {
-			doc: `{"version":1,"kind":"relation","id":"o1","key":"b","relation_settings":{"format":"number","include_time":false}}`,
+			doc: `{"version":1,"kind":"relation","id":"o1","internal_key":"b","relation_settings":{"format":"number","include_time":false}}`,
 		},
 		"object_types empty on number": {
-			doc: `{"version":1,"kind":"relation","id":"o1","key":"b","relation_settings":{"format":"number","object_types":[]}}`,
+			doc: `{"version":1,"kind":"relation","id":"o1","internal_key":"b","relation_settings":{"format":"number","object_types":[]}}`,
 		},
 		"include_time true on date": {
-			doc: `{"version":1,"kind":"relation","id":"o1","key":"b","relation_settings":{"format":"date","include_time":true}}`,
+			doc: `{"version":1,"kind":"relation","id":"o1","internal_key":"b","relation_settings":{"format":"date","include_time":true}}`,
 		},
 		"object_types non-empty on objects": {
-			doc: `{"version":1,"kind":"relation","id":"o1","key":"b","relation_settings":{"format":"objects","object_types":["page"]}}`,
+			doc: `{"version":1,"kind":"relation","id":"o1","internal_key":"b","relation_settings":{"format":"objects","object_types":["page"]}}`,
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -723,7 +723,7 @@ func TestRelationEnvelope_PhantomFieldNameInPropertiesWarns(t *testing.T) {
 	} {
 		t.Run(member, func(t *testing.T) {
 			// given the envelope format AND the phantom twin in properties
-			doc := `{"version":1,"kind":"relation","id":"o1","key":"b",` +
+			doc := `{"version":1,"kind":"relation","id":"o1","internal_key":"b",` +
 				`"relation_settings":{"format":"number"},` +
 				`"properties":{"name":"Budget","` + member + `":` + value + `}}`
 
@@ -770,23 +770,23 @@ func TestRelationEnvelope_FieldsAreGatedByKind(t *testing.T) {
 			want: `/relation_settings: property "relation_settings" is only valid on relation documents`,
 		},
 		"missing relation_settings on a relation": {
-			doc:  `{"version":1,"kind":"relation","id":"o1","key":"b"}`,
+			doc:  `{"version":1,"kind":"relation","id":"o1","internal_key":"b"}`,
 			want: "missing property 'relation_settings': a relation document states the definition",
 		},
 		"missing format inside the group": {
-			doc:  `{"version":1,"kind":"relation","id":"o1","key":"b","relation_settings":{}}`,
+			doc:  `{"version":1,"kind":"relation","id":"o1","internal_key":"b","relation_settings":{}}`,
 			want: "/relation_settings: missing property 'format'",
 		},
 		"the pre-v0.32 root spelling": {
-			doc:  `{"version":1,"kind":"relation","id":"o1","key":"b","format":"number"}`,
+			doc:  `{"version":1,"kind":"relation","id":"o1","internal_key":"b","format":"number"}`,
 			want: "moved off the root",
 		},
 		"a refused member inside the group names its home": {
-			doc:  `{"version":1,"kind":"relation","id":"o1","key":"b","relation_settings":{"format":"number","name":"Budget"}}`,
+			doc:  `{"version":1,"kind":"relation","id":"o1","internal_key":"b","relation_settings":{"format":"number","name":"Budget"}}`,
 			want: "the relation's name is the `name` property",
 		},
 		"legacy relation_format beside a missing definition": {
-			doc:  `{"version":1,"kind":"relation","id":"o1","key":"b","properties":{"relation_format":100}}`,
+			doc:  `{"version":1,"kind":"relation","id":"o1","internal_key":"b","properties":{"relation_format":100}}`,
 			want: "the pre-v0.31 form",
 		},
 	} {
@@ -1013,7 +1013,7 @@ func TestRelationEnvelope_TheSideDoorKindsAreGuardedToo(t *testing.T) {
 	} {
 		t.Run(kind, func(t *testing.T) {
 			// given the shape 9 of 9 small-model attempts wrote
-			doc := []byte(`{"version":1,"kind":"` + kind + `","key":"eh",` +
+			doc := []byte(`{"version":1,"kind":"` + kind + `","internal_key":"eh",` +
 				`"properties":{"name":"Estimated Hours","format":"number"}}`)
 
 			// when
@@ -1041,7 +1041,7 @@ func TestRelationEnvelope_TheSideDoorKindsAreGuardedToo(t *testing.T) {
 func TestRelationEnvelope_TheMissingFormatVerdictNamesTheWrongContainer(t *testing.T) {
 	t.Run("format written into properties", func(t *testing.T) {
 		// given
-		doc := []byte(`{"version":1,"kind":"relation","key":"eh",` +
+		doc := []byte(`{"version":1,"kind":"relation","internal_key":"eh",` +
 			`"properties":{"name":"Estimated Hours","format":"number"}}`)
 
 		// when
@@ -1055,7 +1055,7 @@ func TestRelationEnvelope_TheMissingFormatVerdictNamesTheWrongContainer(t *testi
 
 	t.Run("the pre-v0.31 spelling still gets its own hint", func(t *testing.T) {
 		// given
-		doc := []byte(`{"version":1,"kind":"relation","key":"eh",` +
+		doc := []byte(`{"version":1,"kind":"relation","internal_key":"eh",` +
 			`"properties":{"name":"Estimated Hours","relation_format":2}}`)
 
 		// when
@@ -1080,7 +1080,7 @@ func TestRelationEnvelope_ThePhantomWarningReachesTheSideDoorKinds(t *testing.T)
 	for _, kind := range []string{"relation", "bundled_relation"} {
 		t.Run(kind, func(t *testing.T) {
 			// given a VALID relation document that also carries the member
-			doc := []byte(`{"version":1,"kind":"` + kind + `","key":"eh",` +
+			doc := []byte(`{"version":1,"kind":"` + kind + `","internal_key":"eh",` +
 				`"relation_settings":{"format":"number"},` +
 				`"properties":{"name":"Estimated Hours","format":"number"}}`)
 
@@ -1149,15 +1149,15 @@ func TestRelationEnvelope_EveryRelationKindRoundTripsLossless(t *testing.T) {
 // model can declare a property whose values nothing but the client writes.
 func TestPropertyFormat_MapIsNotAuthorable(t *testing.T) {
 	t.Run("a relation document may state it", func(t *testing.T) {
-		doc := []byte(`{"version":1,"kind":"relation","key":"templatePlaceholders",
+		doc := []byte(`{"version":1,"kind":"relation","internal_key":"templatePlaceholders",
 			"relation_settings":{"format":"map"},
 			"properties":{"name":"Template Placeholders"}}`)
 		assert.NoError(t, Validate(doc), "the only carrier of `map` must keep exporting")
 	})
 
 	t.Run("a type may not declare it", func(t *testing.T) {
-		doc := []byte(`{"version":1,"kind":"object_type","key":"task","properties":{"name":"Task"},
-			"type_settings":{"property_definitions": [{"key":"placeholders","format":"map"}]}}`)
+		doc := []byte(`{"version":1,"kind":"object_type","internal_key":"task","properties":{"name":"Task"},
+			"type_settings":{"property_definitions": [{"property":"placeholders","format":"map"}]}}`)
 		require.Error(t, Validate(doc), "an authored property may not invent a map")
 	})
 
@@ -1170,8 +1170,8 @@ func TestPropertyFormat_MapIsNotAuthorable(t *testing.T) {
 
 	t.Run("the authored slots still take every other format", func(t *testing.T) {
 		for _, f := range []string{"text", "number", "date", "select", "objects", "properties"} {
-			doc := []byte(`{"version":1,"kind":"object_type","key":"task","properties":{"name":"Task"},
-				"type_settings":{"property_definitions": [{"key":"p","format":"` + f + `"}]}}`)
+			doc := []byte(`{"version":1,"kind":"object_type","internal_key":"task","properties":{"name":"Task"},
+				"type_settings":{"property_definitions": [{"property":"p","format":"` + f + `"}]}}`)
 			assert.NoErrorf(t, Validate(doc), "%q is authorable", f)
 		}
 	})

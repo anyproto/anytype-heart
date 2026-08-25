@@ -34,7 +34,7 @@
   },
   "$defs": {
     "dictionaryEntry": {
-      "description": "One dictionary entry: a propertyDefinition (§2e), referenced rather than restated. Its `key` is the api slug for a bundled property (`due_date`) and the stored key verbatim for a space-minted one — a bson id like `6a32d4856761631534b22f85`, which has no slug and must never be given one — the third of the shape's three homes, beside a type document's property-definition entry and a relation document's relation_settings. The layer narrows `object_types` to a real array (only a relation's STORED value can hold a null; a dictionary describes, it does not mirror a store slot) and requires `format`, because self-sufficiency is the constraint that shapes the dictionary: an entry without a format is readable only by a reader shipping bundle/relations.json, which is exactly the dependence the dictionary exists to end. An entry must identify the property it declares: state a `key`, or a `name` the key is derived from. A NAME ALONE IS ENOUGH — `{\"name\": \"Cooking Time\", \"format\": \"number\"}` declares a property keyed `cooking_time`. Prefer that when authoring: every exported example carries a space-minted key like `6a83296f61fab2265263ae34`, because export writes the keys a real space holds, and an author has no space to draw one from — inventing one is never right. A derived key runs through the same resolution as a written one, so a property named \"Due Date\" lands on the bundled `due_date` instead of minting a lookalike beside it.",
+      "description": "One dictionary entry: a propertyDefinition (§2e), referenced rather than restated. Its `property` is the entry's spelling: the api slug for a bundled property (`due_date`), the stored key verbatim for a space-minted one — a bson id like `6a32d4856761631534b22f85`, which has no slug and must never be given one. Its `internal_key` is the stored key itself, written by export for fidelity and never required from an author. This is the third of the shape's three homes, beside a type document's property-definition entry and a relation document's relation_settings. The layer narrows `object_types` to a real array (only a relation's STORED value can hold a null; a dictionary describes, it does not mirror a store slot) and requires `format`, because self-sufficiency is the constraint that shapes the dictionary: an entry without a format is readable only by a reader shipping bundle/relations.json, which is exactly the dependence the dictionary exists to end. An entry must identify the property it declares: state a `property` (the spelling), or an `internal_key` (the stored id), or a `name` the spelling is derived from. A NAME ALONE IS ENOUGH — `{\"name\": \"Cooking Time\", \"format\": \"number\"}` declares a property spelled `cooking_time`. Prefer `property` or `name` when authoring: `internal_key` is an id the app mints, an author has no space to draw one from, and inventing one is never right — when a custom property states none, the import wiring mints a fresh internal key exactly as the app does when a user creates one. A derived spelling runs through the same resolution as a written one, so a property named \"Due Date\" lands on the bundled `due_date` instead of minting a lookalike beside it.",
       "allOf": [
         {
           "$ref": "https://schemas.anytype.io/anyblock/1/object.schema.json#/$defs/propertyDefinition"
@@ -52,7 +52,12 @@
       "anyOf": [
         {
           "required": [
-            "key"
+            "property"
+          ]
+        },
+        {
+          "required": [
+            "internal_key"
           ]
         },
         {

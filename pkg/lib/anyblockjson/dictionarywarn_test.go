@@ -68,7 +68,7 @@ func TestDictionary_TheStoredSpellingStillNamesItsProperty(t *testing.T) {
 func TestDictionary_AnEntryKeyIsSluggedOnlyWhenItIsBundled(t *testing.T) {
 	t.Run("a bundled key travels as its slug", func(t *testing.T) {
 		d, warns := readDict(t, `{`+dictHead+
-			`"properties":[{"key":"due_date","name":"Due date","format":"date"}]}`)
+			`"properties":[{"property":"due_date","name":"Due date","format":"date"}]}`)
 
 		require.Len(t, d.Properties, 1)
 		assert.EqualValues(t, "dueDate", d.Properties[0].Key,
@@ -79,7 +79,7 @@ func TestDictionary_AnEntryKeyIsSluggedOnlyWhenItIsBundled(t *testing.T) {
 	t.Run("a space-minted key survives verbatim", func(t *testing.T) {
 		const bson = "6a32d4856761631534b22f85"
 		d, warns := readDict(t, `{`+dictHead+
-			`"properties":[{"key":"`+bson+`","name":"Aroma notes","format":"text"}]}`)
+			`"properties":[{"property":"`+bson+`","name":"Aroma notes","format":"text"}]}`)
 
 		require.Len(t, d.Properties, 1)
 		assert.EqualValues(t, bson, d.Properties[0].Key)
@@ -226,7 +226,7 @@ func TestDictionaryKeys_TheBundledTypeTableStaysUnambiguous(t *testing.T) {
 // legend, so their spelling has to be a pure function of the key.
 func TestDictionary_TargetTypesSpellLikeEverythingElse(t *testing.T) {
 	d, warns := readDict(t, `{`+dictHead+
-		`"properties":[{"key":"assignee","name":"Assignee","format":"objects",`+
+		`"properties":[{"property":"assignee","name":"Assignee","format":"objects",`+
 		`"object_types":["participant","object_type","6a83296f61fab2265263ae34"]}]}`)
 	require.Empty(t, warns)
 	require.Len(t, d.Properties, 1)

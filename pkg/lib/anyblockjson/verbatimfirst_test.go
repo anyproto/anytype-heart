@@ -382,7 +382,7 @@ func TestExport_ADeniedKeyNeverTakesASlug(t *testing.T) {
 		var doc struct {
 			TypeSettings struct {
 				PropertyDefinitions []struct {
-					Key string `json:"key"`
+					Key string `json:"property"`
 				} `json:"property_definitions"`
 			} `json:"type_settings"`
 			PropertyKeys map[string]string `json:"property_internal_keys"`

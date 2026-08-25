@@ -52,7 +52,7 @@ func convertFile(inDir, path string, b *batch, normalizeIndent bool, warn func(a
 
 // patchObjectTypes fills in the one snapshot field pkg/lib/anyblockjson
 // leaves for the wiring to set: kind: "object_type" documents carry their
-// identity in the envelope's "key" field, not "type" (SPEC.md §2a), so
+// identity in the envelope's "internal_key" field, not "type" (SPEC.md §2a), so
 // Unmarshal never populates ObjectTypes for them. Relation/RelationOption
 // documents parsed straight out of the source folder (rather than minted by
 // this tool) get the same treatment, as do chat/discussion documents, whose

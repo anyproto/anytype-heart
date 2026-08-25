@@ -204,7 +204,7 @@ func TestUnmarshalFilters_HonoursTheLegendItIsHandedOver(t *testing.T) {
 // say the caller "owes them that document's legend before calling, because
 // nothing downstream of this signature can see it". Now it can.
 func TestBuildRecommendedLists_HonoursTheLegendItIsHandedOver(t *testing.T) {
-	props := []TypeProperty{{Key: "priority", Section: "featured"}}
+	props := []TypeProperty{{Property: "priority", Section: "featured"}}
 	reader := Options{Keys: slugVocab{slugs: map[string]string{"decoyKey": "priority"}}}
 
 	t.Run("without the legend", func(t *testing.T) {

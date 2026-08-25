@@ -307,7 +307,7 @@ func (imp *importer) applyRelationEnvelope(details *types.Struct, sbType model.S
 		// relation's own envelope `key` is what disambiguates — a bundled
 		// short-text relation (name, globalName, …) keeps its stored format
 		// across a round trip even though the document never spells it
-		f := declaredFormatWith(imp.opts, imp.doc.Key, rs.Format)
+		f := declaredFormatWith(imp.opts, imp.doc.InternalKey, rs.Format)
 		details.Fields[detailKeyRelationFormat] = &types.Value{
 			Kind: &types.Value_NumberValue{NumberValue: float64(f)}}
 	}

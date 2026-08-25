@@ -202,7 +202,13 @@ func (e *exporter) buildTypeProperties() []any {
 				continue
 			}
 			m := &omap{}
-			m.set("key", e.propertySlug(string(def.Key)))
+			// the spelling and the stored key travel side by side (§2e):
+			// `property` is the document-facing spelling every other key slot
+			// writes, `internal_key` the stored id the app minted — export
+			// states both, an author needs neither (identity may be a `name`
+			// alone)
+			m.set(memberDefinitionProperty, e.propertySlug(string(def.Key)))
+			m.set(memberInternalKey, string(def.Key))
 			m.setNonEmpty("name", def.Name)
 			m.setNonEmpty("format", formatName(def.Format))
 			m.setNonEmpty("options", optionsToAny(def.Options))
@@ -255,7 +261,19 @@ func (e *exporter) resolveTypeProperty(id string) (PropertyDefinition, bool) {
 // states them reaches the resolver's create path with the whole definition
 // rather than losing them at the seam.
 type TypeProperty struct {
-	Key         string             `json:"key"`
+	// Property is the entry's document-facing SPELLING (`due_date`) — a key
+	// slot like any other, inverted through the legend and the vocabulary
+	// (§3). It is deliberately NOT called a key: the word `key` used to mean
+	// both this spelling and the stored id, and the split gave each its own
+	// name (§2e).
+	Property string `json:"property"`
+	// InternalKey is the STORED internal key, written by export for fidelity
+	// (the app-minted bson id of a custom property, the camelCase key of a
+	// bundled one). An author never needs to state one — identity is
+	// `property`, or `internal_key`, or a `name` the spelling derives from —
+	// and when none is stated for a custom property the import wiring mints a
+	// fresh internal key, exactly as the app does when a user creates one.
+	InternalKey string             `json:"internal_key"`
 	Name        string             `json:"name"`
 	Format      string             `json:"format"`
 	Options     []OptionDefinition `json:"options"`
@@ -272,27 +290,39 @@ type TypeProperty struct {
 	Section      string      `json:"section"`
 }
 
-// authoredKey is the key this entry names: its own `key`, or — when it states
-// none — the key its NAME derives.
+// authoredKey is the term this entry names its property by: its `property`
+// spelling, else its `internal_key`, else the spelling its NAME derives. The
+// caller runs the result through the §3 resolution ladder like any other key
+// slot.
 //
-// A `key` used to be required in both homes of this shape, and that was a trap
-// for the population the format most wants to serve. Every exported example is
-// full of space-minted bson ids (`6a83296f61fab2265263ae34`), because export
-// writes the keys a real space actually holds; an author generating a use case
-// has no space to draw one from, so a required `key` asks them to INVENT an
-// identifier whose only correct forms they cannot produce. What they write
-// instead is the slug — which is right, and which the name already implies.
+// An identifying member used to be required in both homes of this shape, and
+// that was a trap for the population the format most wants to serve. Every
+// exported example is full of space-minted bson ids
+// (`6a83296f61fab2265263ae34`), because export writes the keys a real space
+// actually holds; an author generating a use case has no space to draw one
+// from, so a required stored key asks them to INVENT an identifier whose only
+// correct forms they cannot produce. What they write instead is the slug —
+// which is right, and which the name already implies.
 //
 // So a name is enough. `{"name": "Cooking Time", "format": "number"}` declares
-// a property keyed `cooking_time`, and the derivation runs through the same
-// resolution ladder as a written key, so `{"name": "Due Date"}` lands on the
-// bundled `dueDate` rather than minting a lookalike beside it.
+// a property spelled `cooking_time`, and the derivation runs through the same
+// resolution ladder as a written spelling, so `{"name": "Due Date"}` lands on
+// the bundled `dueDate` rather than minting a lookalike beside it.
 //
-// Export writes both members, so this changes nothing about what this package
-// produces (§11 I1).
+// `internal_key` ranks below `property` deliberately: export writes both from
+// one stored key, so on its own output the two agree, and an author who
+// states only the internal key has written the stored key itself — which the
+// ladder answers verbatim, its own address (§3 chain step 4; a conforming
+// vocabulary answers a live stored key verbatim too, KeyVocabulary rule 3).
+//
+// Export writes `property` and `internal_key` on every entry, so this changes
+// nothing about what this package produces (§11 I1).
 func (tp TypeProperty) authoredKey() string {
-	if tp.Key != "" {
-		return tp.Key
+	if tp.Property != "" {
+		return tp.Property
+	}
+	if tp.InternalKey != "" {
+		return tp.InternalKey
 	}
 	if tp.Name == "" {
 		return ""
@@ -352,7 +382,7 @@ type RecommendedList struct {
 // so a property minted here is created with the same shape import gives it.
 //
 // It takes the full Options rather than a bare resolver because a
-// typeProperties array carries KEY SLOTS — `key` and `objectTypes` — and this
+// typeProperties array carries KEY SLOTS — the entry identity and `objectTypes` — and this
 // is the PATCH channel for the same array `applyTypeProperties` reads out of a
 // document. Both must invert through the same vocabulary, or the two ways of
 // writing one type's property list disagree about what a key means.
@@ -383,7 +413,7 @@ func BuildRecommendedLists(props []TypeProperty, opts Options) ([]RecommendedLis
 		key := opts.legendPropertyKey(tp.authoredKey())
 		if !isWritablePropertyKey(key) {
 			return nil, &ValidationError{Issues: []Issue{{
-				Path:    fmt.Sprintf(typePropertyDefinitionsPath+"/%d/key", i),
+				Path:    fmt.Sprintf(typePropertyDefinitionsPath+"/%d/"+memberDefinitionProperty, i),
 				Message: unwritableKeyReason("resolved property key", key),
 			}}}
 		}
@@ -439,7 +469,7 @@ func (imp *importer) applyTypeProperties(details *types.Struct) error {
 	}
 	lists := map[string][]*types.Value{}
 	for i, tp := range *ts.TypeProps {
-		// `key` is a PROPERTY key slot, and the seam admits only keys export
+		// the entry identity is a PROPERTY key slot, and the seam admits only keys export
 		// could write (§3) — the same refusal /properties makes one file over.
 		// The schema bounds the SPELLING (minLength 1), but a wider vocabulary
 		// resolves past it: PropertyKey("assignee") answering ("", true) landed
@@ -449,7 +479,7 @@ func (imp *importer) applyTypeProperties(details *types.Struct) error {
 		key := imp.propertyKey(tp.authoredKey())
 		if !isWritablePropertyKey(key) {
 			return &ValidationError{Issues: []Issue{{
-				Path:    fmt.Sprintf(typePropertyDefinitionsPath+"/%d/key", i),
+				Path:    fmt.Sprintf(typePropertyDefinitionsPath+"/%d/"+memberDefinitionProperty, i),
 				Message: unwritableKeyReason("resolved property key", key),
 			}}}
 		}

@@ -79,7 +79,7 @@ func TestSpecClaim_TheStoreStepIsNeitherRemovableNorPromotable(t *testing.T) {
 	assert.Equal(t, []domain.RelationKey{bundle.RelationKeyDueDate}, bundle.RelationKeysByApiFold("due-date"))
 
 	// promoting it: a space may hold a live stored type key `Task` — this
-	// format creates one, `{"kind": "object_type", "key": "Task"}` is legal —
+	// format creates one, `{"kind": "object_type", "internal_key": "Task"}` is legal —
 	// and a mandatory fold would overrule verbatim-first (§3 step 2) and
 	// retype every reference to it onto the bundled Task type
 	assert.Equal(t, []domain.TypeKey{bundle.TypeKeyTask}, bundle.TypeKeysByApiFold("Task"))

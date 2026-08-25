@@ -164,8 +164,8 @@ func unmarshalPropertyDictionary(data []byte, warn func(Issue)) (*PropertyDictio
 	d := &PropertyDictionary{Installed: installedKeys(jd.Installed, warn)}
 	for i, tp := range jd.Properties {
 		storedKey := dictionaryEntryKey(i, tp.authoredKey(), warn)
-		// entries speak STORED keys in every key slot — `key` and
-		// `object_types` alike — so there is no legend to run and no
+		// entries speak STORED keys in every key slot — the entry identity
+		// and `object_types` alike — so there is no legend to run and no
 		// vocabulary to consult: the definition is built by the same shared
 		// builder both doors of the §2a array use, with the slots passed
 		// through verbatim. `format` resolves per key exactly as a
@@ -307,7 +307,7 @@ func installedKeys(raw []string, warn func(Issue)) []string {
 func dictionaryEntryKey(i int, spelling string, warn func(Issue)) string {
 	stored, ambiguous := dictionaryStoredKey(spelling)
 	if len(ambiguous) > 0 {
-		warnIssue(warn, fmt.Sprintf("/properties/%d/key", i),
+		warnIssue(warn, fmt.Sprintf("/properties/%d/"+memberDefinitionProperty, i),
 			"%q folds onto more than one bundled property (%s), so which is meant cannot be "+
 				"decided here — write one of them (§2f)",
 			spelling, strings.Join(quoteAll(ambiguous), ", "))
@@ -365,13 +365,18 @@ func dictionaryDuplicateIssues(doc map[string]any) []Issue {
 	entries, _ := doc["properties"].([]any)
 	for i, raw := range entries {
 		entry, _ := raw.(map[string]any)
-		key, _ := entry["key"].(string)
+		// the identity an entry states, spelling first — the same order
+		// authoredKey runs (§2e)
+		key, _ := entry[memberDefinitionProperty].(string)
+		if key == "" {
+			key, _ = entry[memberInternalKey].(string)
+		}
 		if key == "" {
 			continue // the schema's required/minLength verdict already stands
 		}
 		if first, dup := seenEntries[key]; dup {
 			issues = append(issues, Issue{
-				Path: fmt.Sprintf("/properties/%d/key", i),
+				Path: fmt.Sprintf("/properties/%d/"+memberDefinitionProperty, i),
 				Message: fmt.Sprintf("%q is already defined at /properties/%d — one property, one definition (§2e)",
 					key, first),
 			})
@@ -440,11 +445,12 @@ func MarshalPropertyDictionary(d *PropertyDictionary) ([]byte, error) {
 }
 
 // dictionaryEntryOmap renders one entry: the propertyDefinition members in
-// the §2e order, its key in the dictionary's spelling — the api slug for a
-// bundled property, the stored key verbatim for a space-minted one, which is
-// the ladder every other slot in the format follows (§2f). There is still no
-// legend to write: the spelling is a pure function of the key, so a reader
-// inverts it without one. `format` is
+// the §2e order, its `property` in the dictionary's spelling — the api slug
+// for a bundled property, the stored key verbatim for a space-minted one,
+// which is the ladder every other slot in the format follows (§2f) — and its
+// `internal_key` the stored key verbatim, the export-fidelity half an author
+// never has to write. There is still no legend to write: the spelling is a
+// pure function of the key, so a reader inverts it without one. `format` is
 // written unconditionally — required by the schema, because an entry without
 // one is readable only by a reader shipping the bundled table (§2f) — and a
 // stored format outside the enum is an ERROR for relationFormatName's
@@ -461,7 +467,8 @@ func dictionaryEntryOmap(def PropertyDefinition) (*omap, error) {
 			"what the property holds (§2f)", def.Key, def.Format)
 	}
 	m := &omap{}
-	m.set("key", spelling)
+	m.set(memberDefinitionProperty, spelling)
+	m.set(memberInternalKey, string(def.Key))
 	m.setNonEmpty("name", def.Name)
 	m.set("format", name)
 	m.setNonEmpty("options", optionsToAny(def.Options))

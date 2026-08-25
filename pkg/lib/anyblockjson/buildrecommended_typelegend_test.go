@@ -43,7 +43,7 @@ func (r capturingResolver) PropertyId(def PropertyDefinition) (string, bool) {
 
 func TestBuildRecommendedLists_ObjectTypesHonourTheLegendToo(t *testing.T) {
 	const liveType = "69bbfc78877a91b1d12d1a7c"
-	props := []TypeProperty{{Key: "who", Section: "featured",
+	props := []TypeProperty{{Property: "who", Section: "featured",
 		Format: "objects", ObjectTypes: []string{"initiative"}}}
 
 	// the decoy: this reader binds the spelling `initiative` to another type

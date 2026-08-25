@@ -135,7 +135,7 @@ func TestTypeDocumentCarriesObjectTypes(t *testing.T) {
 		TypeKeys     map[string]string `json:"type_internal_keys"`
 		TypeSettings struct {
 			PropertyDefinitions []struct {
-				Key         string   `json:"key"`
+				Key         string   `json:"property"`
 				ObjectTypes []string `json:"object_types"`
 			} `json:"property_definitions"`
 		} `json:"type_settings"`

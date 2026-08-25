@@ -357,8 +357,8 @@ func TestBuildPropertiesRefusesASlugAnotherStoredKeyOwns(t *testing.T) {
 func TestObjectTypesIsAKeySlot(t *testing.T) {
 	t.Run("import inverts the slug to the stored type key", func(t *testing.T) {
 		// given
-		doc := `{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
-			"type_settings": {"property_definitions": [{"key": "owner", "name": "Owner", "format": "objects",
+		doc := `{"version": 1, "kind": "object_type", "id": "t1", "internal_key": "k",
+			"type_settings": {"property_definitions": [{"property": "owner", "name": "Owner", "format": "objects",
 			 "object_types": ["object_type", "wikiPerson"]}]}}`
 		r := &recordingPropertyResolver{}
 
@@ -407,7 +407,7 @@ func TestBuildRecommendedListsInvertsItsKeySlots(t *testing.T) {
 	// given
 	r := &recordingPropertyResolver{}
 	props := []TypeProperty{{
-		Key:         "due_date",
+		Property:    "due_date",
 		Name:        "Due date",
 		Format:      "date",
 		ObjectTypes: []string{"object_type", "wikiPerson"},
@@ -451,7 +451,7 @@ func TestImportRefusesTwoSpellingsOfOneStoredKey(t *testing.T) {
 		// given — a stored key the bundled table resolves elsewhere:
 		// `plural_name` inverts to `pluralName`, which is also a literal
 		// stored key, so both spellings land on one detail
-		doc := `{"version": 1, "id": "t1", "key": "k",
+		doc := `{"version": 1, "id": "t1", "internal_key": "k",
 			"properties": {"name": "T", "plural_name": "A", "pluralName": "B"}}`
 
 		for i := 0; i < 32; i++ {

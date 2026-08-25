@@ -43,7 +43,7 @@ var FormatByName = map[string]model.RelationFormat{
 // FormatInfo is what the batch knows about a custom property key, gathered
 // from every objectType document's typeProperties (§2a) before any document
 // is actually converted. The map that holds it is keyed by the STORED
-// property key each entry's `key` term resolves to (propertyterm.go), which
+// property key each entry's identity term resolves to (propertyterm.go), which
 // is what the converter reads it by.
 type FormatInfo struct {
 	Format     model.RelationFormat
@@ -55,14 +55,29 @@ type FormatInfo struct {
 }
 
 type typePropRaw struct {
-	Key    string `json:"key"`
-	Name   string `json:"name"`
-	Format string `json:"format"`
+	// Property is the entry's document-facing spelling, InternalKey the
+	// stored id export writes beside it (SPEC.md §2e). The prescan names an
+	// entry by whichever it states, spelling first — the same order the
+	// codec's authoredKey runs.
+	Property    string `json:"property"`
+	InternalKey string `json:"internal_key"`
+	Name        string `json:"name"`
+	Format      string `json:"format"`
 	// OptionDefinition decodes both §2a forms (a bare name, or an object with
 	// a color), so the prescan shares one decoder with anyblockjson rather
 	// than restating the union.
 	Options     []anyblockjson.OptionDefinition `json:"options"`
 	ObjectTypes []string                        `json:"object_types"`
+}
+
+// term is the identity this entry states: its `property` spelling, else its
+// `internal_key` (SPEC.md §2e). Empty for a name-only entry, which the
+// prescans skip — the codec derives the spelling from the name at import.
+func (tp typePropRaw) term() string {
+	if tp.Property != "" {
+		return tp.Property
+	}
+	return tp.InternalKey
 }
 
 // typeSettingsRaw is the slice of the §2a group the batch scans read: the
@@ -101,10 +116,10 @@ type prescanDoc struct {
 // document's typeProperties already declared "team"'s format — regardless of
 // which file the directory walk visits first.
 //
-// The table is keyed by the STORED key each entry's `key` term resolves to,
+// The table is keyed by the STORED key each entry's identity term resolves to,
 // because that is what the converter reads it by: anyblockjson hands
 // Options.ResolveFormat the output of importer.propertyKey, never the
-// spelling. `type_settings.property_definitions[].key` is a translated slot (§3), so it runs the
+// spelling. `type_settings.property_definitions[].property` is a translated slot (§3), so it runs the
 // chain — this document's own property_internal_keys legend, the bundled table,
 // verbatim — first; see propertyterm.go for what keying it raw costs.
 func ScanFormats(files []string) (map[string]FormatInfo, error) {
@@ -122,10 +137,10 @@ func ScanFormats(files []string) (map[string]FormatInfo, error) {
 			continue
 		}
 		for _, tp := range *doc.TypeSettings.definitions() {
-			if tp.Key == "" {
+			if tp.term() == "" {
 				continue
 			}
-			key := resolvePropertyTerm(doc.PropertyKeys, tp.Key)
+			key := resolvePropertyTerm(doc.PropertyKeys, tp.term())
 			format, ok := FormatByName[tp.Format]
 			if !ok {
 				// unrecognized or absent format: leave unresolved so the
@@ -140,7 +155,7 @@ func ScanFormats(files []string) (map[string]FormatInfo, error) {
 			// mintRelation writes when the entry declares none.
 			name := tp.Name
 			if name == "" {
-				name = tp.Key
+				name = tp.term()
 			}
 			if existing, seen := out[key]; seen && len(tp.Options) == 0 && len(existing.Options) > 0 {
 				// a second type referencing the same property need not
@@ -149,7 +164,7 @@ func ScanFormats(files []string) (map[string]FormatInfo, error) {
 			}
 			if existing, seen := out[key]; seen && existing.Format != format {
 				fmt.Fprintf(os.Stderr, "warning: %s: property %q declared with conflicting formats (%s vs %s) — keeping the first seen\n",
-					f, tp.Key+resolvedPropertyNote(tp.Key, key), existing.FormatName, tp.Format)
+					f, tp.term()+resolvedPropertyNote(tp.term(), key), existing.FormatName, tp.Format)
 				continue
 			}
 			out[key] = FormatInfo{Format: format, FormatName: tp.Format, Name: name, Options: tp.Options}
@@ -283,7 +298,7 @@ func TypeIds(files []string) (map[string]string, error) {
 		}
 		var probe struct {
 			Kind string `json:"kind"`
-			Key  string `json:"key"`
+			Key  string `json:"internal_key"`
 			Id   string `json:"id"`
 		}
 		if err := json.Unmarshal(data, &probe); err != nil {
@@ -372,7 +387,7 @@ func CheckSharedSelects(files []string) ([]SharedSelect, error) {
 		}
 		var doc struct {
 			Kind         string           `json:"kind"`
-			Key          string           `json:"key"`
+			Key          string           `json:"internal_key"`
 			PropertyKeys propertyLegend   `json:"property_internal_keys"`
 			TypeSettings *typeSettingsRaw `json:"type_settings"`
 		}
@@ -382,7 +397,7 @@ func CheckSharedSelects(files []string) ([]SharedSelect, error) {
 		if doc.Kind != "object_type" {
 			continue
 		}
-		// the envelope `key` is the raw stored key and is never translated
+		// the envelope `internal_key` is the raw stored key and is never translated
 		// (§2), so it is the right label for the type as it stands
 		typeName := doc.Key
 		if typeName == "" {
@@ -392,7 +407,7 @@ func CheckSharedSelects(files []string) ([]SharedSelect, error) {
 			if tp.Format != "select" && tp.Format != "multi_select" {
 				continue
 			}
-			key := resolvePropertyTerm(doc.PropertyKeys, tp.Key)
+			key := resolvePropertyTerm(doc.PropertyKeys, tp.term())
 			d, ok := byKey[key]
 			if !ok {
 				d = &decl{seen: map[string]bool{}}
@@ -470,13 +485,13 @@ func CheckTargetTypes(files []string, typeIds map[string]string) ([]BadTarget, e
 				}
 				switch {
 				case defined && id == "":
-					out = append(out, BadTarget{File: f, Property: tp.Key, Target: target, Reason: "that type is defined here but its document carries no \"id\", so nothing can reference it" + shadows + note})
+					out = append(out, BadTarget{File: f, Property: tp.term(), Target: target, Reason: "that type is defined here but its document carries no \"id\", so nothing can reference it" + shadows + note})
 				case defined:
 					// a document in this bundle, with an id to point at
 				case bundle.HasObjectTypeByKey(domain.TypeKey(key)):
 					// bundled, and this bundle does not shadow it
 				default:
-					out = append(out, BadTarget{File: f, Property: tp.Key, Target: target, Reason: "no such type: not bundled, and not defined by this bundle" + note})
+					out = append(out, BadTarget{File: f, Property: tp.term(), Target: target, Reason: "no such type: not bundled, and not defined by this bundle" + note})
 				}
 			}
 		}
@@ -888,10 +903,10 @@ func UsedPropertyKeys(files []string) (map[string]bool, error) {
 			out[resolvePropertyTerm(doc.PropertyKeys, k)] = true
 		}
 		for _, tp := range typeSettingsDefs(doc.TypeSettings) {
-			if tp.Key == "" {
+			if tp.term() == "" {
 				continue
 			}
-			out[resolvePropertyTerm(doc.PropertyKeys, tp.Key)] = true
+			out[resolvePropertyTerm(doc.PropertyKeys, tp.term())] = true
 		}
 	}
 	return out, nil

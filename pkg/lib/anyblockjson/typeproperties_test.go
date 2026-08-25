@@ -69,30 +69,35 @@ func TestTypePropertiesExport(t *testing.T) {
 		want := `"type_settings": {
     "property_definitions": [
       {
-        "key": "due_date",
+        "property": "due_date",
+        "internal_key": "dueDate",
         "name": "Due date",
         "format": "date",
         "section": "featured"
       },
       {
-        "key": "assignee",
+        "property": "assignee",
+        "internal_key": "assignee",
         "name": "Assignee",
         "format": "objects",
         "section": "featured"
       },
       {
-        "key": "status",
+        "property": "status",
+        "internal_key": "status",
         "name": "Status",
         "format": "select"
       },
       {
-        "key": "file_ext",
+        "property": "file_ext",
+        "internal_key": "fileExt",
         "name": "File extension",
         "format": "text",
         "section": "file"
       },
       {
-        "key": "origin",
+        "property": "origin",
+        "internal_key": "origin",
         "name": "Origin",
         "format": "text",
         "section": "hidden"
@@ -120,7 +125,7 @@ func TestTypePropertiesExport(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.Contains(t, string(data), `"key": "status"`)
+		assert.Contains(t, string(data), `"property": "status"`)
 		assert.NotContains(t, string(data), "relid-gone")
 	})
 
@@ -179,8 +184,8 @@ func TestTypePropertiesExport(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.Contains(t, string(data), `"key": "creator"`)
-		assert.Contains(t, string(data), `"key": "created_date"`)
+		assert.Contains(t, string(data), `"property": "creator"`)
+		assert.Contains(t, string(data), `"property": "created_date"`)
 	})
 
 	t.Run("a lifted recommended id is spelled out, not labelled", func(t *testing.T) {
@@ -199,7 +204,7 @@ func TestTypePropertiesExport(t *testing.T) {
 		// assertion on a legend that no longer exists would hold no matter
 		// what the export did
 		require.NoError(t, err)
-		assert.Contains(t, string(data), `"key": "status"`,
+		assert.Contains(t, string(data), `"property": "status"`,
 			"the lifted list resolves to a type_properties entry")
 		assert.NotContains(t, string(data), `"relid-status"`,
 			"the raw id is consumed by the lift, not carried as a label")
@@ -210,12 +215,12 @@ func TestTypePropertiesImport(t *testing.T) {
 	docJSON := `{
   "version": 1,
   "kind": "object_type",
-  "key": "task",
+  "internal_key": "task",
   "properties": { "name": "Task" },
   "type_settings": {"property_definitions": [
-    { "key": "due_date", "name": "Due date", "format": "date", "section": "featured" },
-    { "key": "status", "name": "Status", "format": "select" },
-    { "key": "origin", "section": "hidden" }
+    { "property": "due_date", "name": "Due date", "format": "date", "section": "featured" },
+    { "property": "status", "name": "Status", "format": "select" },
+    { "property": "origin", "section": "hidden" }
   ]}
 }`
 
@@ -252,7 +257,7 @@ func TestTypePropertiesImport(t *testing.T) {
 
 	t.Run("empty array rebuilds all four lists as empty", func(t *testing.T) {
 		// given
-		doc := `{"version": 1, "kind": "object_type", "key": "task", "type_settings": {"property_definitions": []}}`
+		doc := `{"version": 1, "kind": "object_type", "internal_key": "task", "type_settings": {"property_definitions": []}}`
 
 		// when
 		_, snapshot, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("id")})
@@ -267,7 +272,7 @@ func TestTypePropertiesImport(t *testing.T) {
 
 	t.Run("absent type_properties leaves the lists absent", func(t *testing.T) {
 		// given
-		doc := `{"version": 1, "kind": "object_type", "key": "task"}`
+		doc := `{"version": 1, "kind": "object_type", "internal_key": "task"}`
 
 		// when
 		_, snapshot, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("id")})
@@ -331,7 +336,7 @@ func TestTypePropertiesRoundTrip(t *testing.T) {
 func TestTypePropertiesValidation(t *testing.T) {
 	t.Run("rejected outside type documents", func(t *testing.T) {
 		// given
-		doc := `{"version": 1, "type_settings": {"property_definitions": [{"key": "due_date"}]}}`
+		doc := `{"version": 1, "type_settings": {"property_definitions": [{"property": "due_date"}]}}`
 
 		// when
 		err := Validate([]byte(doc))
@@ -347,7 +352,7 @@ func TestTypePropertiesValidation(t *testing.T) {
   "version": 1,
   "kind": "object_type",
   "properties": { "recommendedRelations": ["relid-status"] },
-  "type_settings": {"property_definitions": [{"key": "due_date"}]}
+  "type_settings": {"property_definitions": [{"property": "due_date"}]}
 }`
 
 		// when
@@ -360,9 +365,9 @@ func TestTypePropertiesValidation(t *testing.T) {
 
 	t.Run("unknown section and no identity at all rejected by schema", func(t *testing.T) {
 		for _, doc := range []string{
-			`{"version": 1, "kind": "object_type", "type_settings": {"property_definitions": [{"key": "a", "section": "sidebar"}]}}`,
+			`{"version": 1, "kind": "object_type", "type_settings": {"property_definitions": [{"property": "a", "section": "sidebar"}]}}`,
 			`{"version": 1, "kind": "object_type", "type_settings": {"property_definitions": [{"format": "number"}]}}`,
-			`{"version": 1, "kind": "object_type", "type_settings": {"property_definitions": [{"key": "a", "format": "status"}]}}`,
+			`{"version": 1, "kind": "object_type", "type_settings": {"property_definitions": [{"property": "a", "format": "status"}]}}`,
 		} {
 			assert.Error(t, Validate([]byte(doc)), strings.ReplaceAll(doc, "\n", " "))
 		}
@@ -372,7 +377,7 @@ func TestTypePropertiesValidation(t *testing.T) {
 	// space would, so requiring one asked for an invented identifier.
 	t.Run("a name alone declares a property", func(t *testing.T) {
 		require.NoError(t, Validate([]byte(
-			`{"version": 1, "kind": "object_type", "key": "recipe", "type_settings": {`+
+			`{"version": 1, "kind": "object_type", "internal_key": "recipe", "type_settings": {`+
 				`"property_definitions": [{"name": "Cooking Time", "format": "number"}]}}`)))
 	})
 
@@ -380,9 +385,9 @@ func TestTypePropertiesValidation(t *testing.T) {
 		doc := `{
   "version": 1,
   "kind": "object_type",
-  "key": "task",
+  "internal_key": "task",
   "type_settings": {"property_definitions": [
-    { "key": "due_date", "name": "Due date", "format": "date", "section": "featured" }
+    { "property": "due_date", "name": "Due date", "format": "date", "section": "featured" }
   ]}
 }`
 		assert.NoError(t, Validate([]byte(doc)))
@@ -401,7 +406,7 @@ func TestTypePropertiesValidation(t *testing.T) {
 func TestBuildRecommendedListsRefusesUnwritableResolvedKeys(t *testing.T) {
 	t.Run("a property key the vocabulary resolves onto nothing", func(t *testing.T) {
 		// given — PropertyKey("blank") answers ("", true)
-		props := []TypeProperty{{Key: "blank", Name: "Blank", Section: "featured"}}
+		props := []TypeProperty{{Property: "blank", Name: "Blank", Section: "featured"}}
 
 		// when
 		lists, err := BuildRecommendedLists(props, Options{Keys: blankKeyVocab{}})
@@ -411,14 +416,14 @@ func TestBuildRecommendedListsRefusesUnwritableResolvedKeys(t *testing.T) {
 		assert.Nil(t, lists)
 		var ve *ValidationError
 		require.ErrorAs(t, err, &ve, "the refusal is path-addressed, as on the document path")
-		assert.Contains(t, err.Error(), "/type_settings/property_definitions/0/key")
+		assert.Contains(t, err.Error(), "/type_settings/property_definitions/0/property")
 	})
 
 	t.Run("an object_types entry the vocabulary resolves onto nothing", func(t *testing.T) {
 		// given — TypeKey("blanktype") answers ("", true); the good sibling
 		// stands first so a fix that merely skipped the bad entry is caught
 		props := []TypeProperty{{
-			Key:         "assignee",
+			Property:    "assignee",
 			ObjectTypes: []string{"page", "blanktype"},
 			Section:     "featured",
 		}}
@@ -439,7 +444,7 @@ func TestBuildRecommendedListsRefusesUnwritableResolvedKeys(t *testing.T) {
 		// object_types used to be resolved only inside the resolver branch, so
 		// the same input got two different verdicts depending on the caller's
 		// wiring — while applyTypeProperties refuses unconditionally
-		props := []TypeProperty{{Key: "assignee", ObjectTypes: []string{"blanktype"}}}
+		props := []TypeProperty{{Property: "assignee", ObjectTypes: []string{"blanktype"}}}
 
 		_, err := BuildRecommendedLists(props, Options{Keys: blankTypeVocab{}})
 
@@ -448,7 +453,7 @@ func TestBuildRecommendedListsRefusesUnwritableResolvedKeys(t *testing.T) {
 	})
 
 	t.Run("a resolvable array still builds", func(t *testing.T) {
-		props := []TypeProperty{{Key: "due_date", ObjectTypes: []string{"page"}, Section: "featured"}}
+		props := []TypeProperty{{Property: "due_date", ObjectTypes: []string{"page"}, Section: "featured"}}
 
 		lists, err := BuildRecommendedLists(props, Options{Keys: blankTypeVocab{}})
 
@@ -464,8 +469,8 @@ func TestBuildRecommendedListsRefusesUnwritableResolvedKeys(t *testing.T) {
 // The type half of this entry has been refused since the seam was written
 // (TestImport_SeamRefusesAnEmptyResolvedTypeKey), three lines below.
 func TestImport_TypePropertyKeyRefusesAnUnwritableResolvedKey(t *testing.T) {
-	doc := `{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
-		"type_settings": {"property_definitions": [{"key": "blank", "format": "text"}]}}`
+	doc := `{"version": 1, "kind": "object_type", "id": "t1", "internal_key": "k",
+		"type_settings": {"property_definitions": [{"property": "blank", "format": "text"}]}}`
 	require.NoError(t, Validate([]byte(doc)),
 		"the document's own chain resolves blank verbatim — Validate cannot see the vocabulary")
 
@@ -475,7 +480,7 @@ func TestImport_TypePropertyKeyRefusesAnUnwritableResolvedKey(t *testing.T) {
 	require.Error(t, err)
 	var ve *ValidationError
 	require.ErrorAs(t, err, &ve, "the refusal is path-addressed")
-	assert.Contains(t, err.Error(), "/type_settings/property_definitions/0/key")
+	assert.Contains(t, err.Error(), "/type_settings/property_definitions/0/property")
 }
 
 // The two doors into the §2a array must also agree on what a DECLARED FORMAT
@@ -493,13 +498,13 @@ func TestTypePropertyFormatIsTheSameThroughBothDoors(t *testing.T) {
 		opts.ResolveProperties = r
 		opts.GenerateId = seqIds("g")
 		entry := &omap{}
-		entry.set("key", tp.Key)
+		entry.set("property", tp.Property)
 		entry.setNonEmpty("name", tp.Name)
 		entry.setNonEmpty("format", tp.Format)
 		entry.setNonEmpty("section", tp.Section)
 		raw, err := json.Marshal(entry)
 		require.NoError(t, err)
-		doc := `{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
+		doc := `{"version": 1, "kind": "object_type", "id": "t1", "internal_key": "k",
 			"type_settings": {"property_definitions": [` + string(raw) + `]}}`
 		_, _, err = Unmarshal([]byte(doc), opts)
 		require.NoError(t, err)
@@ -520,22 +525,22 @@ func TestTypePropertyFormatIsTheSameThroughBothDoors(t *testing.T) {
 		want model.RelationFormat
 	}{
 		"a bundled short-text key keeps its stored format": {
-			tp:   TypeProperty{Key: "name", Name: "Name", Format: "text", Section: "featured"},
+			tp:   TypeProperty{Property: "name", Name: "Name", Format: "text", Section: "featured"},
 			want: model.RelationFormat_shorttext,
 		},
 		"a key the wiring resolves as short text keeps it too": {
 			opts: Options{ResolveFormat: func(key domain.RelationKey) (model.RelationFormat, bool) {
 				return model.RelationFormat_shorttext, key == "headline"
 			}},
-			tp:   TypeProperty{Key: "headline", Name: "Headline", Format: "text"},
+			tp:   TypeProperty{Property: "headline", Name: "Headline", Format: "text"},
 			want: model.RelationFormat_shorttext,
 		},
 		"a new key declared as text is long text": {
-			tp:   TypeProperty{Key: "summary", Name: "Summary", Format: "text"},
+			tp:   TypeProperty{Property: "summary", Name: "Summary", Format: "text"},
 			want: model.RelationFormat_longtext,
 		},
 		"any other name is taken literally": {
-			tp:   TypeProperty{Key: "name", Name: "Name", Format: "number"},
+			tp:   TypeProperty{Property: "name", Name: "Name", Format: "number"},
 			want: model.RelationFormat_number,
 		},
 	}
@@ -582,7 +587,7 @@ func TestExport_ADroppedTypePropertyIsReportedAtTheArray(t *testing.T) {
 	// then
 	doc := decodeEnvelope(t, data)
 	require.Len(t, doc.TypeProps(), 1)
-	assert.Equal(t, "owner", doc.TypeProps()[0].Key, "entry 0 of the document is the HEALTHY one")
+	assert.Equal(t, "owner", doc.TypeProps()[0].Property, "entry 0 of the document is the HEALTHY one")
 	require.Len(t, warned, 1)
 	assert.Equal(t, typePropertyDefinitionsPath, warned[0].Path,
 		"the array is the fault's address; the dropped entry has no index in it")

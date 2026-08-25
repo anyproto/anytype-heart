@@ -29,7 +29,7 @@ type jsonDoc struct {
 	Id          string      `json:"id"`
 	Type        string      `json:"type"`
 	TemplateFor string      `json:"template_for"`
-	Key         string      `json:"key"`
+	InternalKey string      `json:"internal_key"`
 	// RelationSettings is a kind:relation document's definition group (§2d):
 	// one propertyDefinition, whose three travelling members stand for the
 	// stored relation-definition keys that `properties` refuses.
@@ -371,7 +371,7 @@ func (imp *importer) declaredFormat(key, name string) model.RelationFormat {
 // declaredFormatWith is that rule with nothing but Options behind it, because
 // the §2a array arrives through TWO doors and the rule is the array's, not the
 // document's: BuildRecommendedLists — the API's PATCH-type channel — read the
-// name literally, so `{"key": "name", "format": "text"}` created the bundled
+// name literally, so `{"property": "name", "format": "text"}` created the bundled
 // `name` property as longtext through one door and kept it shorttext through
 // the other. The whole point of the collapse is that `text` resolves per key
 // (§3); a door that skips the resolution re-introduces exactly the loss the
@@ -601,7 +601,7 @@ func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBas
 		Details:     details,
 		ObjectTypes: objectTypes,
 		Collections: imp.buildCollections(),
-		Key:         doc.Key,
+		Key:         doc.InternalKey,
 	}
 	return sbType, snapshot, nil
 }

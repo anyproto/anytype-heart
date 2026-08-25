@@ -30,7 +30,7 @@ func TestImport_LayoutNameToNumber(t *testing.T) {
 		{"collection", model.ObjectType_collection},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			doc := `{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
+			doc := `{"version": 1, "kind": "object_type", "id": "t1", "internal_key": "k",
 				"type_settings": {"layout": "` + tc.name + `"}}`
 			_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 			require.NoError(t, err)
@@ -46,7 +46,7 @@ func TestImport_LayoutNameToNumber(t *testing.T) {
 
 // legacy documents that wrote the raw enum still import unchanged
 func TestImport_LayoutNumberStillAccepted(t *testing.T) {
-	doc := `{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
+	doc := `{"version": 1, "kind": "object_type", "id": "t1", "internal_key": "k",
 		"type_settings": {"layout": 1}}`
 	_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 	require.NoError(t, err)
@@ -75,7 +75,7 @@ func TestExport_LayoutNumberToName(t *testing.T) {
 }
 
 func TestRoundtrip_LayoutSurvives(t *testing.T) {
-	doc := `{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
+	doc := `{"version": 1, "kind": "object_type", "id": "t1", "internal_key": "k",
 		"type_settings": {"layout": "profile"}}`
 	_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 	require.NoError(t, err)
@@ -93,7 +93,7 @@ func TestRoundtrip_LayoutSurvives(t *testing.T) {
 // the refusal arrives with the whole list — which the semantic message it
 // replaced never carried.
 func TestValidate_UnknownLayoutRejected(t *testing.T) {
-	doc := `{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
+	doc := `{"version": 1, "kind": "object_type", "id": "t1", "internal_key": "k",
 		"type_settings": {"layout": "Profile"}}`
 	_, _, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 	require.Error(t, err)

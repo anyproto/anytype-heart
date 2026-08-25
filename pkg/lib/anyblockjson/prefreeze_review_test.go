@@ -523,7 +523,7 @@ func TestValidate_EnvelopeKeyAcceptsRealStoredKeys(t *testing.T) {
 		"69a56205ccba0a47d8d8eb71_тогглы",
 		"69bbfc78877a91b1d12d1a7c_JavaScript/TypeScript",
 	} {
-		doc := fmt.Sprintf(`{"version": 1, "kind": "relation_option", "id": "o1", "key": %q}`, key)
+		doc := fmt.Sprintf(`{"version": 1, "kind": "relation_option", "id": "o1", "internal_key": %q}`, key)
 		assert.NoError(t, Validate([]byte(doc)), "stored key %q must round-trip", key)
 	}
 }
@@ -534,7 +534,7 @@ func TestValidate_EnvelopeKeyAcceptsRealStoredKeys(t *testing.T) {
 // account, and this one was not.
 func TestValidate_EnvelopeKeyRejectsUnreadable(t *testing.T) {
 	for _, doc := range []string{
-		`{"version": 1, "kind": "object_type", "id": "t1", "key": ""}`,
+		`{"version": 1, "kind": "object_type", "id": "t1", "internal_key": ""}`,
 		"{\"version\": 1, \"kind\": \"object_type\", \"id\": \"t1\", \"key\": \"a\\u0000b\"}",
 		"{\"version\": 1, \"kind\": \"object_type\", \"id\": \"t1\", \"key\": \"a\\nb\"}",
 	} {
@@ -725,8 +725,8 @@ func TestExport_UnwritableSlugFallsBackToTheStoredKey(t *testing.T) {
 // "recommended_relations" carried both representations without a word.
 func TestValidate_RecommendedListConflictCheckedInCanonicalSpelling(t *testing.T) {
 	for _, spelling := range []string{"recommendedRelations", "recommended_relations"} {
-		doc := fmt.Sprintf(`{"version": 1, "kind": "object_type", "id": "t1", "key": "page",
-			"type_settings": {"property_definitions": [{"key": "due_date", "format": "date"}]},
+		doc := fmt.Sprintf(`{"version": 1, "kind": "object_type", "id": "t1", "internal_key": "page",
+			"type_settings": {"property_definitions": [{"property": "due_date", "format": "date"}]},
 			"properties": {%q: ["a"]}}`, spelling)
 		err := Validate([]byte(doc))
 		require.Error(t, err, spelling)

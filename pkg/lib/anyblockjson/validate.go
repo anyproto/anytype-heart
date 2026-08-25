@@ -708,7 +708,8 @@ func schemaIssueMessage(e *jsonschema.ValidationError, printer *message.Printer)
 // §2d group refuses, where the fact it spells already lives — the repair the
 // bare "not allowed" cannot point at.
 var relationSettingsMemberHomes = map[string]string{
-	"key":           "the envelope `key` is the relation's key",
+	"internal_key":  "the envelope `internal_key` is the relation's stored key",
+	"property":      "a relation document is addressed by its envelope `internal_key`; its spelling is derived, never stated here",
 	"name":          "the relation's name is the `name` property",
 	"description":   "the relation's description is the `description` property",
 	"options":       "a relation's options are relation_option documents of their own",
@@ -1121,7 +1122,17 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 				if !ok {
 					continue
 				}
-				key, _ := tp["key"].(string)
+				// the identity an entry states: its `property` spelling
+				// (resolved through the document's own legend below), else
+				// its `internal_key`, which IS a stored key and resolves to
+				// itself (§2e)
+				key, _ := tp[memberDefinitionProperty].(string)
+				resolvedEntryKey := ""
+				if key != "" {
+					resolvedEntryKey = resolveDocKey(key)
+				} else if ik, _ := tp[memberInternalKey].(string); ik != "" {
+					key, resolvedEntryKey = ik, ik
+				}
 				// options declare a select's vocabulary and its display
 				// order (§2a); on any other format there is nothing to
 				// declare and the array would be silently dropped
@@ -1165,7 +1176,7 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 				// already exists (§2a). The key slot spells the api slug like
 				// every other (§3), so the lookup runs on the resolved key
 				if key != "" {
-					if rel, err := bundle.GetRelation(domain.RelationKey(resolveDocKey(key))); err == nil && rel != nil {
+					if rel, err := bundle.GetRelation(domain.RelationKey(resolvedEntryKey)); err == nil && rel != nil {
 						if name, _ := tp["name"].(string); name != "" && name != rel.Name {
 							warnIssue(fmt.Sprintf(typePropertyDefinitionsPath+"/%d/name", i),
 								"%q is a bundled property named %q — this name is ignored; mint a custom key if the label matters",
@@ -1528,8 +1539,8 @@ func (r *keySlotReport) rejectValueAt(path, message string) {
 // its OUTER level with a merely non-empty option name at its inner level
 // (§9a). A legend VALUE rides along because it is a stored key under the same
 // rule and the schema's verdict on it names the bound, not the string — and so
-// does a `type_properties` entry's `key`, a key slot the schema can only reach
-// as an ordinary string value.
+// does a property-definition entry's `property` (and its `internal_key`), key
+// slots the schema can only reach as ordinary string values.
 //
 // The rule stays in the published schema — an external validator runs that and
 // nothing else (§12) — and is restated here because `propertyNames` cannot
@@ -1587,7 +1598,7 @@ func propertyNameIssues(doc map[string]any) keySlotReport {
 			}
 		}
 	}
-	// a property definition's `key` is a property key slot too (§2a), and
+	// a property definition's `property` is a property key slot too (§2a), and
 	// the only one that is a JSON string VALUE rather than a member name: the
 	// schema carries the rule, but `propertyNames` never sees this slot, so
 	// its verdict names a bound or prints a regex instead of saying what is
@@ -1598,12 +1609,17 @@ func propertyNameIssues(doc map[string]any) keySlotReport {
 	if list, _ := typePropertyDefinitionsOf(doc); list != nil {
 		for i, raw := range list {
 			tp, _ := raw.(map[string]any)
-			key, isString := tp["key"].(string)
-			if !isString || isWritablePropertyKey(key) {
-				continue
+			if key, isString := tp[memberDefinitionProperty].(string); isString && !isWritablePropertyKey(key) {
+				rejectValue(fmt.Sprintf(typePropertyDefinitionsPath+"/%d/"+memberDefinitionProperty, i),
+					unwritableKeyReason("property key", key))
 			}
-			rejectValue(fmt.Sprintf(typePropertyDefinitionsPath+"/%d/key", i),
-				unwritableKeyReason("property key", key))
+			// internal_key is a stored key under the same writable rule the
+			// legend VALUES carry (§3) — the import seam refuses a key export
+			// could not write back, whichever member states it
+			if key, isString := tp[memberInternalKey].(string); isString && !isWritablePropertyKey(key) {
+				rejectValue(fmt.Sprintf(typePropertyDefinitionsPath+"/%d/"+memberInternalKey, i),
+					unwritableKeyReason("property internal key", key))
+			}
 		}
 	}
 	// A dataview FILTER has to name a property, like the sort and the column

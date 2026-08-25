@@ -1339,7 +1339,7 @@ func (e *exporter) buildDoc(sbType model.SmartBlockType) (*omap, error) {
 	if sbType == model.SmartBlockType_Template && len(typeTerms) > 1 {
 		doc.setNonEmpty("template_for", typeTerms[1])
 	}
-	doc.setNonEmpty("key", e.snapshot.Key)
+	doc.setNonEmpty(memberInternalKey, e.snapshot.Key)
 	// a relation document states its own definition next (§2d): `format`,
 	// `include_time`, `object_types` — before `icon`, because what a property
 	// IS outranks what it looks like, and before the legends, so the type

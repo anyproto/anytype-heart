@@ -32,7 +32,7 @@ func TestDictionaryFormats_ReadsEntries(t *testing.T) {
 	require.NoError(t, os.WriteFile(path, []byte(`{"version":1,
 		"installed":["tag"],
 		"properties":[
-			{"key":"6a32d4856761631534b22f85","name":"Stage","format":"select",
+			{"property":"6a32d4856761631534b22f85","name":"Stage","format":"select",
 			 "options":["Now",{"name":"Later","color":"blue"}]}]}`), 0o644))
 
 	// when
@@ -96,8 +96,8 @@ func TestUsedPropertyKeys_ResolvesTheChain(t *testing.T) {
 		"objects/a.json": `{"version":1,
 			"property_internal_keys": {"severity": "6a32d4856761631534b22f85"},
 			"properties": {"severity": "high", "due_date": "2026-01-01", "id": "a1", "type": "task"}}`,
-		"types/t.json": `{"version":1,"kind":"object_type","key":"task",
-			"type_settings":{"property_definitions":[{"key":"assignee","format":"objects"}]}}`,
+		"types/t.json": `{"version":1,"kind":"object_type","internal_key":"task",
+			"type_settings":{"property_definitions":[{"property":"assignee","format":"objects"}]}}`,
 	})
 
 	used, err := UsedPropertyKeys(files)

@@ -26,7 +26,7 @@ func writeDocs(t *testing.T, docs map[string]string) []string {
 	return files
 }
 
-const wikiPageType = `{"version": 1, "kind": "object_type", "key": "wikiPage", "id": "type-wiki-page"}`
+const wikiPageType = `{"version": 1, "kind": "object_type", "internal_key": "wikiPage", "id": "type-wiki-page"}`
 
 func TestCheckTemplateTargets_ResolvableTargetPasses(t *testing.T) {
 	files := writeDocs(t, map[string]string{
@@ -68,7 +68,7 @@ func TestCheckTemplateTargets_UndefinedTargetIsReported(t *testing.T) {
 // a type document with no id has nothing for the detail to point at
 func TestCheckTemplateTargets_IdlessTargetIsReported(t *testing.T) {
 	files := writeDocs(t, map[string]string{
-		"types/wiki-page.type.json": `{"version": 1, "kind": "object_type", "key": "wikiPage"}`,
+		"types/wiki-page.type.json": `{"version": 1, "kind": "object_type", "internal_key": "wikiPage"}`,
 		"templates/article.json":    `{"version": 1, "kind": "template", "type": "template", "template_for": "wikiPage"}`,
 	})
 	typeIds, err := TypeIds(files)
@@ -260,9 +260,9 @@ func TestCheckBundleIds(t *testing.T) {
 // converter half of this.)
 func TestCheckTargetTypes_BundledKeyDefinedLocallyWithoutIdIsReported(t *testing.T) {
 	files := writeDocs(t, map[string]string{
-		"types/page.type.json": `{"version": 1, "kind": "object_type", "key": "page"}`,
-		"types/person.type.json": `{"version": 1, "kind": "object_type", "key": "person", "id": "type-person",
-		  "type_settings": {"property_definitions": [{"key": "assignee", "format": "objects", "object_types": ["page"]}]}}`,
+		"types/page.type.json": `{"version": 1, "kind": "object_type", "internal_key": "page"}`,
+		"types/person.type.json": `{"version": 1, "kind": "object_type", "internal_key": "person", "id": "type-person",
+		  "type_settings": {"property_definitions": [{"property": "assignee", "format": "objects", "object_types": ["page"]}]}}`,
 	})
 	typeIds, err := TypeIds(files)
 	require.NoError(t, err)
@@ -282,9 +282,9 @@ func TestCheckTargetTypes_BundledKeyDefinedLocallyWithoutIdIsReported(t *testing
 // so it has something real to point at.
 func TestCheckTargetTypes_BundledKeyDefinedLocallyWithIdPasses(t *testing.T) {
 	files := writeDocs(t, map[string]string{
-		"types/page.type.json": `{"version": 1, "kind": "object_type", "key": "page", "id": "type-page"}`,
-		"types/person.type.json": `{"version": 1, "kind": "object_type", "key": "person", "id": "type-person",
-		  "type_settings": {"property_definitions": [{"key": "assignee", "format": "objects", "object_types": ["page"]}]}}`,
+		"types/page.type.json": `{"version": 1, "kind": "object_type", "internal_key": "page", "id": "type-page"}`,
+		"types/person.type.json": `{"version": 1, "kind": "object_type", "internal_key": "person", "id": "type-person",
+		  "type_settings": {"property_definitions": [{"property": "assignee", "format": "objects", "object_types": ["page"]}]}}`,
 	})
 	typeIds, err := TypeIds(files)
 	require.NoError(t, err)
@@ -297,9 +297,9 @@ func TestCheckTargetTypes_BundledKeyDefinedLocallyWithIdPasses(t *testing.T) {
 // — the reorder must not lose the arm that already worked.
 func TestCheckTargetTypes_IdlessLocalTypeIsReported(t *testing.T) {
 	files := writeDocs(t, map[string]string{
-		"types/wiki-page.type.json": `{"version": 1, "kind": "object_type", "key": "wikiPage"}`,
-		"types/person.type.json": `{"version": 1, "kind": "object_type", "key": "person", "id": "type-person",
-		  "type_settings": {"property_definitions": [{"key": "assignee", "format": "objects", "object_types": ["wikiPage"]}]}}`,
+		"types/wiki-page.type.json": `{"version": 1, "kind": "object_type", "internal_key": "wikiPage"}`,
+		"types/person.type.json": `{"version": 1, "kind": "object_type", "internal_key": "person", "id": "type-person",
+		  "type_settings": {"property_definitions": [{"property": "assignee", "format": "objects", "object_types": ["wikiPage"]}]}}`,
 	})
 	typeIds, err := TypeIds(files)
 	require.NoError(t, err)

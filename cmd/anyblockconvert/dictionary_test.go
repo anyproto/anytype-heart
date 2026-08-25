@@ -33,7 +33,7 @@ func TestRun_DictionaryDeclaredPropertyConverts(t *testing.T) {
 	outDir := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(inDir, "properties.json"), []byte(`{"version":1,
 		"properties":[
-			{"key":"6a32d4856761631534b22f85","name":"Budget","format":"number",
+			{"property":"6a32d4856761631534b22f85","name":"Budget","format":"number",
 			 "description":"Planned spend","max_count":1,"readonly":true,"default_value":100}]}`), 0o644))
 	require.NoError(t, os.MkdirAll(filepath.Join(inDir, "objects"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(inDir, "objects", "a.json"), []byte(`{"version":1,

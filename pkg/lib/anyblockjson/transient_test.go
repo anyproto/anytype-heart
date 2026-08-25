@@ -134,7 +134,7 @@ func TestTransientProperties_BundledVerdictPerKey(t *testing.T) {
 // value reaches the snapshot.
 func TestTransientProperties_TheAnalyticsTripleIsDropped(t *testing.T) {
 	// given the exact shape those 35 objects carry
-	doc := []byte(`{"version": 1, "kind": "object_type", "key": "use_case",
+	doc := []byte(`{"version": 1, "kind": "object_type", "internal_key": "use_case",
 		"properties": {"name": "Use Case", "data": {"route": "SettingsSpace"},
 		               "isNew": true, "layoutFormat": 0}}`)
 

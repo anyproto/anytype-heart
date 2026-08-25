@@ -36,7 +36,7 @@ type pendingSnapshot struct {
 type batch struct {
 	// formats is keyed by the STORED property key, which is what every
 	// reader below hands it: anyblockjson resolves a `properties` key or a
-	// `type_settings.property_definitions[].key` through the document's own property_internal_keys legend
+	// `type_settings.property_definitions[].property` through the document's own property_internal_keys legend
 	// and the bundled table (§3, importer.propertyKey) before it calls
 	// ResolveFormat or builds a PropertyDefinition. anyblockbatch.ScanFormats
 	// runs the same chain when it builds the table — keying it by the raw

@@ -105,7 +105,7 @@ func TestTypeSettings_ProvenanceIsDroppedOnTypeDocumentsOnly(t *testing.T) {
 	})
 
 	t.Run("dropped on import of a type document", func(t *testing.T) {
-		doc := `{"version":1,"kind":"object_type","id":"t1","key":"k",
+		doc := `{"version":1,"kind":"object_type","id":"t1","internal_key":"k",
 			"properties":{"name":"T","origin":7,"set_of":["bafyreinothing"],"revision":3}}`
 		_, snap, err := Unmarshal([]byte(doc), testOptions())
 		require.NoError(t, err, "a document carrying install provenance is stale, not wrong")
@@ -137,7 +137,7 @@ func TestTypeSettings_ProvenanceIsDroppedOnTypeDocumentsOnly(t *testing.T) {
 // a type document gets two legal spellings for one fact.
 func TestTypeSettings_FlatSpellingsAreRefusedOnTypeDocumentsOnly(t *testing.T) {
 	t.Run("refused on a type document", func(t *testing.T) {
-		doc := `{"version":1,"kind":"object_type","id":"t1","key":"k",
+		doc := `{"version":1,"kind":"object_type","id":"t1","internal_key":"k",
 			"properties":{"plural_name":"Tasks"}}`
 		err := Validate([]byte(doc))
 		require.Error(t, err)
@@ -149,7 +149,7 @@ func TestTypeSettings_FlatSpellingsAreRefusedOnTypeDocumentsOnly(t *testing.T) {
 	})
 
 	t.Run("accepted on a relation document", func(t *testing.T) {
-		doc := `{"version":1,"kind":"relation","id":"r1","key":"budget",
+		doc := `{"version":1,"kind":"relation","id":"r1","internal_key":"budget",
 			"relation_settings":{"format":"number"},
 			"properties":{"name":"Budget","api_object_key":"budget"}}`
 		require.NoError(t, Validate([]byte(doc)),
@@ -175,11 +175,11 @@ func TestTypeSettings_GatedByKindWithMigrationHints(t *testing.T) {
 			want: `/type_settings: property "type_settings" is only valid on type documents`,
 		},
 		"type_settings on a relation": {
-			doc:  `{"version":1,"kind":"relation","id":"o1","key":"b","relation_settings":{"format":"number"},"type_settings":{}}`,
+			doc:  `{"version":1,"kind":"relation","id":"o1","internal_key":"b","relation_settings":{"format":"number"},"type_settings":{}}`,
 			want: `property "type_settings" is only valid on type documents`,
 		},
 		"the pre-v0.32 root type_properties": {
-			doc:  `{"version":1,"kind":"object_type","id":"o1","key":"k","type_properties":[{"key":"due_date"}]}`,
+			doc:  `{"version":1,"kind":"object_type","id":"o1","internal_key":"k","type_properties":[{"key":"due_date"}]}`,
 			want: `property "type_properties" moved`,
 		},
 	} {
@@ -314,13 +314,13 @@ func TestTypeSettings_SecondDefaultTemplateWarns(t *testing.T) {
 // How this can fail: loosen either slot back to a bare string and a
 // schema-driven generator emits a name the codec will refuse.
 func TestTypeSettings_UnknownViewNameRefusedRawNumberPasses(t *testing.T) {
-	err := Validate([]byte(`{"version":1,"kind":"object_type","id":"t1","key":"k",
+	err := Validate([]byte(`{"version":1,"kind":"object_type","id":"t1","internal_key":"k",
 		"type_settings":{"default_view":"Table"}}`))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "/type_settings/default_view")
 	assert.Contains(t, err.Error(), "'table'", "the refusal names the vocabulary")
 
-	_, snap, err := Unmarshal([]byte(`{"version":1,"kind":"object_type","id":"t1","key":"k",
+	_, snap, err := Unmarshal([]byte(`{"version":1,"kind":"object_type","id":"t1","internal_key":"k",
 		"type_settings":{"default_view":42}}`), testOptions())
 	require.NoError(t, err)
 	assert.Equal(t, float64(42), snap.Details.Fields["defaultViewType"].GetNumberValue())
@@ -363,7 +363,7 @@ func TestTypeSettings_ComparatorPredicatesMatchTheDrops(t *testing.T) {
 // document stops carrying the marker that protects its own name.
 func TestTypeSettings_RevisionIsNotProvenance(t *testing.T) {
 	// given a type document carrying a revision
-	doc := []byte(`{"version":1,"kind":"object_type","key":"task",
+	doc := []byte(`{"version":1,"kind":"object_type","internal_key":"task",
 		"properties":{"name":"Task","revision":3},
 		"type_settings":{"layout":"basic"}}`)
 
@@ -403,7 +403,7 @@ func TestDefinitionIdentity_AKeylessDefinitionWarns(t *testing.T) {
 			`{"version":1,"kind":"relation","relation_settings":{"format":"number"},` +
 				`"properties":{"name":"Episode"}}`, true},
 		"type document WITH a key": {
-			`{"version":1,"kind":"object_type","key":"podcast","properties":{"name":"Podcast"}}`, false},
+			`{"version":1,"kind":"object_type","internal_key":"podcast","properties":{"name":"Podcast"}}`, false},
 		"an ordinary page owes no key": {
 			`{"version":1,"kind":"page","properties":{"name":"A page"}}`, false},
 	} {
@@ -415,7 +415,7 @@ func TestDefinitionIdentity_AKeylessDefinitionWarns(t *testing.T) {
 			// then
 			var got bool
 			for _, w := range warned {
-				if w.Path == "/key" {
+				if w.Path == "/internal_key" {
 					got = true
 				}
 			}

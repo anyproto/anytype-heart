@@ -284,12 +284,12 @@ zero-drift signal from being read as coverage. **Spec**: §9a.
 
 ---
 
-## No golden carries a `property_keys` legend
+## No golden carries a `property_internal_keys` legend
 
 **Status: open.** All four goldens use bundled or verbatim keys, so the §3
 legend never appears in a frozen document and the goldens prove nothing about
 it — including nothing about its canonical position relative to `option_ids`,
-which is keyed by the spellings `property_keys` inverts. That ordering is
+which is keyed by the spellings `property_internal_keys` inverts. That ordering is
 pinned by `TestOptionRefs_TheLegendFollowsPropertyKeys` instead, which builds
 the two-legend document the goldens do not contain. **Spec**: §2, §4.
 
@@ -328,7 +328,7 @@ comparator says so itself: its findings are triage input, not proof.
   objects failing their own export on the envelope `key` charset (SPEC §2's
   deny rule; `TestValidate_EnvelopeKeyAcceptsRealStoredKeys` carries the
   real keys), 12 objects whose dataview came back pointing at another
-  property (SPEC §3's `property_keys` legend; `storeresolver/keyvocab.go`),
+  property (SPEC §3's `property_internal_keys` legend; `storeresolver/keyvocab.go`),
   two date-filter documents export emitted and validation rejected
   (`datefilter_test.go`), and 10 378 false data-loss issues caused by the
   harness's own stale copy of the internal-property list (now

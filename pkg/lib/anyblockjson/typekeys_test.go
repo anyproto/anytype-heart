@@ -305,9 +305,9 @@ func TestTypeKeysLegendCoversObjectTypes(t *testing.T) {
 	})
 
 	t.Run("import reads the legend first", func(t *testing.T) {
-		doc := `{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
+		doc := `{"version": 1, "kind": "object_type", "id": "t1", "internal_key": "k",
 			"type_internal_keys": {"task": "` + customTypeKey + `"},
-			"type_settings": {"property_definitions": [{"key": "owner", "name": "Owner", "format": "objects",
+			"type_settings": {"property_definitions": [{"property": "owner", "name": "Owner", "format": "objects",
 			 "object_types": ["task", "participant"]}]}}`
 		r := &recordingPropertyResolver{}
 
@@ -527,8 +527,8 @@ func TestImport_SeamRefusesAnEmptyResolvedTypeKey(t *testing.T) {
 	})
 
 	t.Run("object_types", func(t *testing.T) {
-		doc := `{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
-			"type_settings": {"property_definitions": [{"key": "owner", "format": "objects",
+		doc := `{"version": 1, "kind": "object_type", "id": "t1", "internal_key": "k",
+			"type_settings": {"property_definitions": [{"property": "owner", "format": "objects",
 			 "object_types": ["page", "blanktype"]}]}}`
 		require.NoError(t, Validate([]byte(doc)))
 		o := opts()

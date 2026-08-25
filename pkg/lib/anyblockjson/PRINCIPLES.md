@@ -200,7 +200,7 @@ The compaction that survives is the one that needs no inverse: a block label
 is a placeholder inside its own document, never an address outside it, so
 there is no table to carry, keep in sync or read back — which is exactly the
 three obligations the deleted object legend failed. What the envelope carries
-instead is identity, not compaction: `property_keys` and `type_keys` for a
+instead is identity, not compaction: `property_internal_keys` and `type_internal_keys` for a
 space's own property and type slugs, `option_ids` for the option each select
 name means (§3, §9a) — a slug that reads back as a *different* property or type
 in a reader that cannot ask the space is the defect a sweep saw as twelve
@@ -367,7 +367,7 @@ no loss is silent.
 | [Djot rationale](https://github.com/jgm/djot#rationale) | linear parsing; no expressive blind spots; one spelling per construct | — |
 | Block-editor APIs (common vocabulary) | block and property names (`bulleted_list_item`, `heading_1`, *property*); options by name | `{id, name}` option objects (rule 6); `database` (rule 3) |
 | Atlassian Document Format | an envelope with a single `version` integer; `type`-discriminated nodes | additive-within-a-version; nested `content` trees (rule 4) |
-| [Portable Text](https://www.portabletext.org/) | JSON blocks as the unit; a legend referenced by key (`markDefs` → `property_keys`, `type_keys`, `option_ids`) | marks as arrays on spans — Markdown in `text` instead (rule 4); a legend for object references, measured a net loss (rule 5) |
+| [Portable Text](https://www.portabletext.org/) | JSON blocks as the unit; a legend referenced by key (`markDefs` → `property_internal_keys`, `type_internal_keys`, `option_ids`) | marks as arrays on spans — Markdown in `text` instead (rule 4); a legend for object references, measured a net loss (rule 5) |
 | [JSON Canvas](https://jsoncanvas.org/), [OKF](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md) | a short spec with its purpose stated first; goals and non-goals up front; longevity, readability, interoperability as the brief | — |
 | Anytype public REST API (`core/api`) | format names (`select`, `multi_select`, `text`, `objects`, `files`); snake_case keys; the slug vocabulary | id/key duality; value fields named after formats |
 | Agent-API evidence 2024–2026 (`docs/AgentApiV2Research.md`; [Ustynov 2026](https://arxiv.org/abs/2604.07502)) | id-addressed edits; constrained decoding as the small-model floor; examples over prose; SQL-shaped filters; the validation loop as product surface; compact but not exotic | tabular/TOON-style output by default; raw JSON Patch; whole-document rewrite as the default edit |

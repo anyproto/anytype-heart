@@ -29,7 +29,7 @@ import (
 const customTypeKey = "69bbfc78877a91b1d12d1a7c"
 
 // customType is that type's own document, so the bundle can address it.
-const customType = `{"version": 1, "kind": "object_type", "key": "` + customTypeKey + `", "id": "type-custom"}`
+const customType = `{"version": 1, "kind": "object_type", "internal_key": "` + customTypeKey + `", "id": "type-custom"}`
 
 // --- template_for ----------------------------------------------------------
 
@@ -134,9 +134,9 @@ func requireCodecSeesATemplate(t *testing.T, doc string, want bool) {
 func TestCheckTargetTypes_LegendBackedTargetPasses(t *testing.T) {
 	files := writeDocs(t, map[string]string{
 		"types/custom.type.json": customType,
-		"types/person.type.json": `{"version": 1, "kind": "object_type", "key": "person", "id": "type-person",
+		"types/person.type.json": `{"version": 1, "kind": "object_type", "internal_key": "person", "id": "type-person",
 		  "type_internal_keys": {"wiki_page": "` + customTypeKey + `"},
-		  "type_settings": {"property_definitions": [{"key": "assignee", "format": "objects", "object_types": ["wiki_page"]}]}}`,
+		  "type_settings": {"property_definitions": [{"property": "assignee", "format": "objects", "object_types": ["wiki_page"]}]}}`,
 	})
 	typeIds, err := TypeIds(files)
 	require.NoError(t, err)
@@ -154,9 +154,9 @@ func TestCheckTargetTypes_LegendBackedTargetPasses(t *testing.T) {
 func TestCheckTargetTypes_TermCollidingWithAnotherTypesKeyIsReported(t *testing.T) {
 	files := writeDocs(t, map[string]string{
 		"types/wiki-page.type.json": wikiPageType, // key "wikiPage", id "type-wiki-page"
-		"types/person.type.json": `{"version": 1, "kind": "object_type", "key": "person", "id": "type-person",
+		"types/person.type.json": `{"version": 1, "kind": "object_type", "internal_key": "person", "id": "type-person",
 		  "type_internal_keys": {"wikiPage": "` + customTypeKey + `"},
-		  "type_settings": {"property_definitions": [{"key": "assignee", "format": "objects", "object_types": ["wikiPage"]}]}}`,
+		  "type_settings": {"property_definitions": [{"property": "assignee", "format": "objects", "object_types": ["wikiPage"]}]}}`,
 	})
 	typeIds, err := TypeIds(files)
 	require.NoError(t, err)
@@ -176,8 +176,8 @@ func TestCheckTargetTypes_TermCollidingWithAnotherTypesKeyIsReported(t *testing.
 // reported — resolution must not turn every miss into a pass.
 func TestCheckTargetTypes_UnknownTargetIsStillReported(t *testing.T) {
 	files := writeDocs(t, map[string]string{
-		"types/person.type.json": `{"version": 1, "kind": "object_type", "key": "person", "id": "type-person",
-		  "type_settings": {"property_definitions": [{"key": "assignee", "format": "objects", "object_types": ["wiki_page"]}]}}`,
+		"types/person.type.json": `{"version": 1, "kind": "object_type", "internal_key": "person", "id": "type-person",
+		  "type_settings": {"property_definitions": [{"property": "assignee", "format": "objects", "object_types": ["wiki_page"]}]}}`,
 	})
 	bad, err := CheckTargetTypes(files, map[string]string{})
 	require.NoError(t, err)
@@ -190,8 +190,8 @@ func TestCheckTargetTypes_UnknownTargetIsStillReported(t *testing.T) {
 func TestCheckTargetTypes_BundledTargetPassesInBothSpellings(t *testing.T) {
 	for _, target := range []string{"object_type", "objectType", "page", "task"} {
 		files := writeDocs(t, map[string]string{
-			"types/person.type.json": `{"version": 1, "kind": "object_type", "key": "person", "id": "type-person",
-			  "type_settings": {"property_definitions": [{"key": "assignee", "format": "objects", "object_types": ["` + target + `"]}]}}`,
+			"types/person.type.json": `{"version": 1, "kind": "object_type", "internal_key": "person", "id": "type-person",
+			  "type_settings": {"property_definitions": [{"property": "assignee", "format": "objects", "object_types": ["` + target + `"]}]}}`,
 		})
 		bad, err := CheckTargetTypes(files, map[string]string{})
 		require.NoError(t, err)

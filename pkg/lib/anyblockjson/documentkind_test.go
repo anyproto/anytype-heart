@@ -41,13 +41,13 @@ func TestDocumentKind_PlacesTheThreeGrammars(t *testing.T) {
 		// exist; it must fall through to shape rather than be believed
 		assert.Equal(t, KindObject, DocumentKind([]byte(
 			`{"$schema": "https://schemas.anytype.io/anyblock/1/relation.schema.json",
-			  "version": 1, "kind": "relation", "key": "estimate"}`)))
+			  "version": 1, "kind": "relation", "internal_key": "estimate"}`)))
 	})
 
 	t.Run("shape places a document that declares nothing", func(t *testing.T) {
 		for _, tc := range []struct{ name, doc, want string }{
 			{"installed is a dictionary's alone", `{"version": 1, "installed": ["done"]}`, KindPropertyDictionary},
-			{"and so is a properties ARRAY", `{"version": 1, "properties": [{"key": "k", "format": "text"}]}`, KindPropertyDictionary},
+			{"and so is a properties ARRAY", `{"version": 1, "properties": [{"property": "k", "format": "text"}]}`, KindPropertyDictionary},
 			{"a properties MAP is an object's", `{"version": 1, "properties": {"name": "Note"}}`, KindObject},
 			{"a manifest is an index's", `{"version": 1, "manifest": {"properties": "properties.json"}}`, KindIndex},
 			{"so are widgets", `{"version": 1, "widgets": [{"target": "page-home"}]}`, KindIndex},

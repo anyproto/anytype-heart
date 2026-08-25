@@ -418,7 +418,7 @@ func typeSettingDetailValue(v any, value func(string) (float64, bool)) *types.Va
 }
 
 // definitionIdentityIssue reports a type or relation document that names no
-// `key`. Such a document defines something and says nothing about WHAT: the
+// `internal_key`. Such a document defines something and says nothing about WHAT: the
 // key is the stored identity every other document addresses it by, and
 // without one the definition lands on nothing an object can be typed by or a
 // property value can resolve to.
@@ -446,10 +446,10 @@ func definitionIdentityIssue(doc map[string]any, warn func(path, format string, 
 	default:
 		return
 	}
-	if key, _ := doc["key"].(string); key != "" {
+	if key, _ := doc[memberInternalKey].(string); key != "" {
 		return
 	}
-	warn("/key", "a %s document defines something and names no `key` — the stored "+
+	warn("/"+memberInternalKey, "a %s document defines something and names no `internal_key` — the stored "+
 		"identity every other document addresses it by. Without one the definition "+
 		"imports with no identity: nothing can be typed by it, and no property value "+
 		"resolves to it (§2a, §2d)", what)

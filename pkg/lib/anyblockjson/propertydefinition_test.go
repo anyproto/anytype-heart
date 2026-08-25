@@ -19,14 +19,16 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-// sharedPropertyMembers is the decided propertyDefinition surface: the five
-// members every home speaks today plus the five the dictionary lifts
-// (description, include_time, max_count, readonly, default_value). The test
-// restates it ON PURPOSE — the schema is the implementation and this list is
-// the specification, so a member added to one and not the other fails here
-// instead of shipping as a home-local extension.
+// sharedPropertyMembers is the decided propertyDefinition surface: the
+// identity pair the key/spelling split produced (`property` the spelling,
+// `internal_key` the stored id — one word no longer carries both meanings),
+// the four members every home speaks beside it, plus the five the dictionary
+// lifts (description, include_time, max_count, readonly, default_value). The
+// test restates it ON PURPOSE — the schema is the implementation and this
+// list is the specification, so a member added to one and not the other
+// fails here instead of shipping as a home-local extension.
 var sharedPropertyMembers = []string{
-	"key", "name", "format", "options", "object_types",
+	"property", "internal_key", "name", "format", "options", "object_types",
 	"description", "include_time", "max_count", "readonly", "default_value",
 }
 
@@ -180,21 +182,21 @@ func TestPropertyDefinition_OneSharedShapeThreeHomes(t *testing.T) {
 // delete the gate entirely (first case goes green on a member nothing reads).
 func TestPropertyDefinition_LayeredClosureHoldsBothWays(t *testing.T) {
 	t.Run("an unknown member is still refused through the layer", func(t *testing.T) {
-		err := Validate([]byte(`{"version":1,"kind":"object_type","key":"task",
-			"type_settings":{"property_definitions": [{"key":"due_date","sections":"featured"}]}}`))
+		err := Validate([]byte(`{"version":1,"kind":"object_type","internal_key":"task",
+			"type_settings":{"property_definitions": [{"property":"due_date","sections":"featured"}]}}`))
 		require.Error(t, err, "`sections` names nothing; the closure must catch it")
 	})
 	t.Run("a null object_types stays a relation-only shape", func(t *testing.T) {
 		// the shared shape admits null because a relation's STORED value can
 		// hold one (§2d); a type declares targets or omits the member, so the
 		// home narrows it back to an array
-		err := Validate([]byte(`{"version":1,"kind":"object_type","key":"task",
-			"type_settings":{"property_definitions": [{"key":"assignee","object_types":null}]}}`))
+		err := Validate([]byte(`{"version":1,"kind":"object_type","internal_key":"task",
+			"type_settings":{"property_definitions": [{"property":"assignee","object_types":null}]}}`))
 		require.Error(t, err)
 	})
 	t.Run("every shared member is admitted on an entry", func(t *testing.T) {
-		err := Validate([]byte(`{"version":1,"kind":"object_type","key":"task",
-			"type_settings":{"property_definitions": [{"key":"budget","name":"Budget","format":"number",
+		err := Validate([]byte(`{"version":1,"kind":"object_type","internal_key":"task",
+			"type_settings":{"property_definitions": [{"property":"budget","name":"Budget","format":"number",
 				"description":"Planned spend","include_time":false,"max_count":1,
 				"readonly":true,"default_value":100,"section":"featured"}]}}`))
 		require.NoError(t, err)
@@ -226,8 +228,8 @@ func (r *capturingPropertyResolver) PropertyId(def PropertyDefinition) (string, 
 // How this can fail: shed one of the five members in TypeProperty.definition,
 // or rebuild the def by hand in one door and forget a member there.
 func TestPropertyDefinition_SharedMembersReachTheResolver(t *testing.T) {
-	doc := []byte(`{"version":1,"kind":"object_type","key":"task",
-		"type_settings":{"property_definitions": [{"key":"budget","name":"Budget","format":"number",
+	doc := []byte(`{"version":1,"kind":"object_type","internal_key":"task",
+		"type_settings":{"property_definitions": [{"property":"budget","name":"Budget","format":"number",
 			"description":"Planned spend","include_time":false,"max_count":1,
 			"readonly":true,"default_value":100,"section":"featured"}]}}`)
 
