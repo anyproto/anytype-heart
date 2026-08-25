@@ -1,6 +1,6 @@
 # AnyBlock JSON — format specification
 
-Status: **draft v0.41** · Format version: **1** · Package: `pkg/lib/anyblockjson`
+Status: **draft v0.42** · Format version: **1** · Package: `pkg/lib/anyblockjson`
 
 A human- and agent-readable JSON serialization of Anytype objects (the "anyblock"
 model), designed for export, import, and generation by external tools and LLM
@@ -15,6 +15,49 @@ strings; the vocabulary follows Notion's API and Anytype's public REST API
 (`core/api`) wherever an established term exists — the format should be
 readable, and mostly writable, by someone who has never seen Anytype
 internals.
+
+Changes in v0.42: **no proto-enum property is a bare integer any more** —
+three more stored keys are named, two are deprecated, and writing a name
+the format has not named stops being silently accepted-then-zeroed (§3).
+
+The format named some enum properties and left others as raw numbers in
+the same document. Measured over 28,599 real exported documents, a reader
+saw `resolved_layout: "dashboard"` — named — beside `origin: 7` (15,943
+documents), `file_backup_status: 4` (10,248), `import_type: 1` (8,303) and
+`layout_align: 1` (2,557), with no way to learn that 7 meant anything. And
+the reverse failed worse: `{"layout_align": "center"}` VALIDATED — the
+string landed on the number-format detail, a warning existed but Validate
+discards warnings, and every consumer reading with an int getter saw 0.
+For `import_type` the zero is not even "unset": it is notion, so an
+accepted-then-zeroed `"markdown"` was a false claim about where the object
+came from.
+
+Each of the five keys got its own verdict. `layout_align` is NAMED — the
+one key of the five a user can set, and the vocabulary already existed
+twice over (a block's `align`, a view column's `align`): left · center ·
+right · justify, now one shared schema definition. `origin` and
+`import_type` are NAMED as the object's provenance, on this spec's own
+precedent (§2a keeps origin on ordinary objects as "real provenance"; all
+TEN origin values occur in real data). `file_backup_status` and
+`file_indexing_status` are DEPRECATED to the transient list instead:
+per-device sync/index state — the class of `syncStatus`, which never
+exported — and `file_indexing_status` carried ONE distinct value across
+all 10,248 occurrences while actively suppressing the destination's file
+indexer on import. An unknown NAME on a named key is now an error stating
+the vocabulary; a raw number still passes everywhere, because a stored
+value outside a vocabulary round-trips as its number rather than being
+lost. Zero of the 26,803 real stored values across the three newly named
+keys is a string, so the promoted error refuses nothing any real export
+carries.
+
+The mechanism hardened on the way. Name-over-number became one per-key
+table all four surfaces consult, and two latent holes closed with it: a
+stored STRING a vocabulary does not name is dropped at export with a
+warning (written verbatim it was a document Marshal's own Validate rejects
+— an I1 violation reachable from any store holding a string on a layout
+detail), and the number→name read gained relationFormatName's
+NaN/Inf/fraction/int32 guard — int32(NaN) is 0 on this machine, so a NaN
+layout used to export as the enum zero's name.
 
 Changes in v0.41: **the slot that names a property is spelled `property`,
 everywhere** (§5, §6.2).
@@ -3163,19 +3206,54 @@ Values are encoded by the property's format:
 | `objects`, `files` | array of object ids (strings) |
 | unresolvable format | value passes through verbatim in both directions |
 
-**Layout is named, not numbered.** `recommended_layout`, `layout` and
-`resolved_layout` are stored as numbers (their bundled relations have format
-`number`), but the format writes the enum **name** — `basic · profile · todo ·
-set · object_type · property · file · dashboard · image · note · space ·
-bookmark · property_options_list · property_option · collection · audio · video ·
-date · space_view · participant · pdf · chat_deprecated · chat_derived · tag ·
-notification · missing_object · devices · discussion`. A bare integer would be
-the one opaque enum in an otherwise self-describing format. Import maps the
-name to its number and still accepts a raw number, so older documents keep
-working; export always writes the name; an unrecognized name is a validation
-error. Note this applies only to these three keys — `layoutAlign`,
-`layoutWidth`, `widgetLayout` and `headerRelationsLayout` hold *different*
-enums and pass through as numbers.
+**Enum-valued properties are named, not numbered.** Six stored keys hold
+numbers whose meaning is a proto enum (their bundled relations have format
+`number`), and the format writes the enum **name** — a bare integer would
+be an opaque enum in an otherwise self-describing format. Each key's
+vocabulary, one table per concept (`namedEnumProperties`):
+
+- `recommended_layout`, `layout`, `resolved_layout` — the object layout:
+  `basic · profile · todo · set · object_type · property · file ·
+  dashboard · image · note · space · bookmark · property_options_list ·
+  property_option · collection · audio · video · date · space_view ·
+  participant · pdf · chat_deprecated · chat_derived · tag · notification ·
+  missing_object · devices · discussion` (`$defs/objectLayout`).
+- `layout_align` — the object's own page alignment: `left · center ·
+  right · justify`, the SAME vocabulary a block's `align` and a view
+  column's `align` spell (`$defs/blockAlign` — one definition, three
+  slots, §15 #14).
+- `origin` — how the object entered its space: `none · clipboard ·
+  drag_and_drop · import · webclipper · sharing_extension · usecase ·
+  builtin · bookmark · api` (`$defs/objectOrigin`). Real provenance, kept
+  on ordinary objects (the §2a admission dropped it from TYPE documents
+  only, as install provenance) — and all ten values occur in real data.
+- `import_type` — which importer created an import- or usecase-originated
+  object: `notion · markdown · external · pb · html · txt · csv ·
+  obsidian` (`$defs/importType`). Named or refused, never a stray string:
+  the underlying enum's ZERO is notion, so an unchecked string here read
+  back as a false claim that the object came from Notion.
+
+Import maps a name to its number and still accepts a raw number, so older
+documents keep working; export always writes the name for an in-vocabulary
+number and the raw number for anything else — a stored value outside the
+vocabulary round-trips as its number rather than being lost. An
+unrecognized NAME is a validation error stating the vocabulary, because
+the silent alternative was measured and bad: the string imported onto the
+number-format detail and every consumer reading it with an int getter saw
+the enum's zero. The property slots' vocabularies are enforced by the
+semantic pass on the RESOLVED key, not by the schema — a property SPELLING
+is not fixed to its stored key (a legend may rebind it, above) — so the
+schema states each vocabulary in `$defs` for the reader and the semantic
+pass owns the refusal. On the way out the same rule binds export: a stored
+STRING a vocabulary does not name has no written form and is dropped with
+a warning (written verbatim it was a document Marshal's own `Validate`
+rejects, §11 I1), while a stored string that IS a name survives and reads
+back as the number.
+
+The remaining layout-ish bundled keys stay numbers deliberately:
+`layoutWidth` is a fraction, not an enum, and `widgetLayout` /
+`headerRelationsLayout` hold enums nothing measurable writes — 13 and 0
+occurrences across 28,604 real exported documents.
 
 Format names follow the public REST API (`select`, `multi_select`, …);
 internally they map to `model.RelationFormat` (`status`→`select`,
@@ -3455,6 +3533,12 @@ app, and why nothing downstream of an import can act on it.
   Export removes them like everything else on the stripped list. (Measured
   across 36,967 real objects it was the single largest source of exported
   noise — present on 18,647 of them, and empty on every one.)
+  `fileBackupStatus` and `fileIndexingStatus` are the same family from the
+  file machinery: which sync/index state THIS device last observed, stamped
+  on every file object (all 10,248 in a 28,604-document corpus), and the
+  destination's machinery determines its own — `fileIndexingStatus` carried
+  ONE distinct value across all occurrences and, imported, told the
+  destination's indexer the restored file needed no indexing.
 - **Attribution keys** — `creator`, `lastModifiedBy` — name the member who
   wrote the object. Their stored VALUE is stripped like every other derived
   key; what export writes is the `<id>#<name>` spelling above, which no
@@ -3493,7 +3577,7 @@ them.)
 **Admission runs on the resolved stored key, not on the raw spelling.** The
 document spells slugs, so a reader first lands each `properties` key on its
 stored key through the §3 resolution chain, and *then* applies the deny
-rule, the layout-name check and the format-shape warning to the result.
+rule, the enum-name check and the format-shape warning to the result.
 Checked against the raw spelling instead, all three were dead for exactly
 the documents this format produces: `unique_key` walked past the rule that
 `uniqueKey` tripped, and a `property_internal_keys` entry could rebind any harmless
@@ -5268,7 +5352,7 @@ fail neither test belong in authoring guidance and in review.
   (§6.1, a cell block that is a transparent container included), envelope combinations (`items`/`template_for`/`kind`, §2),
   **property-key admission on the resolved stored key** (§3 — each
   `properties` spelling resolves through the §3 chain before the deny rule,
-  the layout-name check and the format-shape warning run; validation
+  the enum-name check and the format-shape warning run; validation
   mirrors the importer's details seam refusal for refusal — a **denied**
   resolved key, an **unwritable** resolved key, and **two spellings binding
   onto one stored key** are all errors — and a `property_internal_keys` *value* is
