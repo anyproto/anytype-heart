@@ -53,6 +53,56 @@
           ]
         }
       ],
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "options"
+            ]
+          },
+          "then": {
+            "properties": {
+              "format": {
+                "enum": [
+                  "select",
+                  "multi_select"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "object_types"
+            ]
+          },
+          "then": {
+            "properties": {
+              "format": {
+                "enum": [
+                  "objects",
+                  "files"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "include_time"
+            ]
+          },
+          "then": {
+            "properties": {
+              "format": {
+                "const": "date"
+              }
+            }
+          }
+        }
+      ],
       "additionalProperties": false,
       "properties": {
         "property": {

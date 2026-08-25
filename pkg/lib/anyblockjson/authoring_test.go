@@ -578,6 +578,9 @@ func TestAuthoringSubset_RefusesBackupOnlySurfaces(t *testing.T) {
 		"a file block":               `{"version": 1, "blocks": [{"type": "image", "object_id": "bafyimg"}]}`,
 		"a custom sort order":        `{"version": 1, "blocks": [{"type": "dataview", "views": [{"sorts": [{"property": "p", "direction": "custom", "custom_order": ["b", "a"]}]}]}]}`,
 		"dataview output-only state": `{"version": 1, "blocks": [{"type": "dataview", "source": ["bafysrc"], "views": [{"name": "v"}]}]}`,
+		"include_time off a date property": `{"version": 1, "kind": "object_type", "internal_key": "t1",
+			"properties": {"name": "T"},
+			"type_settings": {"property_definitions": [{"property": "p1", "format": "text", "include_time": true}]}}`,
 	}
 	for name, doc := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -590,6 +593,29 @@ func TestAuthoringSubset_RefusesBackupOnlySurfaces(t *testing.T) {
 				"the refusal names itself a subset verdict, not a format one")
 		})
 	}
+
+	t.Run("member-format coupling the format refuses at semantics", func(t *testing.T) {
+		// The subset invariant's first failure, found by probing rather than
+		// by a sweep: `options` off select/multi_select and `object_types`
+		// off objects/files are §12 ERRORS the authoring schema originally
+		// admitted — an authoring-valid document the format refused. The
+		// coupling is schema-expressible, so the subset now refuses both at
+		// generation time, and this pins that the two sides agree.
+		for name, doc := range map[string]string{
+			"options off select": `{"version": 1, "kind": "object_type", "internal_key": "t1",
+				"properties": {"name": "T"},
+				"type_settings": {"property_definitions": [{"property": "p1", "format": "date", "options": ["A"]}]}}`,
+			"object_types off objects/files": `{"version": 1, "kind": "object_type", "internal_key": "t1",
+				"properties": {"name": "T"},
+				"type_settings": {"property_definitions": [{"property": "p1", "format": "number", "object_types": ["task"]}]}}`,
+		} {
+			t.Run(name, func(t *testing.T) {
+				data := []byte(doc)
+				require.Error(t, Validate(data), "§12 refuses the pairing")
+				require.Error(t, authoringOnly(data), "and the subset must refuse it at the schema, or it admits what the format rejects")
+			})
+		}
+	})
 
 	t.Run("the pre-v0.22 template spelling is refused at the schema", func(t *testing.T) {
 		// {"type": "template"} with no kind is the one shape both sides
@@ -621,6 +647,24 @@ func TestAuthoringSubset_RefusesBackupOnlySurfaces(t *testing.T) {
 		require.NoError(t, err, "must be full-valid")
 		require.Error(t, ValidateAuthoringPropertyDictionary(doc),
 			"an author states a spelling or a name; a stored id is the app's to mint")
+	})
+
+	t.Run("dictionary member-format coupling", func(t *testing.T) {
+		// the full dictionary reader TOLERATES these pairings (unlike a type
+		// entry, where §12 refuses them), so on this surface the coupling is
+		// an ordinary subset narrowing: full-valid, subset-refused
+		for name, doc := range map[string]string{
+			"options off select":       `{"version": 1, "properties": [{"property": "p1", "format": "date", "options": ["A"]}]}`,
+			"object_types off objects": `{"version": 1, "properties": [{"property": "p1", "format": "number", "object_types": ["task"]}]}`,
+			"include_time off date":    `{"version": 1, "properties": [{"property": "p1", "format": "text", "include_time": true}]}`,
+		} {
+			t.Run(name, func(t *testing.T) {
+				data := []byte(doc)
+				_, err := UnmarshalPropertyDictionary(data)
+				require.NoError(t, err, "must be full-valid:\n%s", doc)
+				require.Error(t, ValidateAuthoringPropertyDictionary(data))
+			})
+		}
 	})
 }
 

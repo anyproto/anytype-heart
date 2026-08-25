@@ -2603,10 +2603,13 @@ warning-free, and its cross-file references are asserted coherent — it is
 the bundle an authoring agent should be shown first, and the test is what
 keeps it worth imitating.
 
-Sizes, measured at v0.40: object 56,105 → 32,486 bytes, index 8,845 →
-3,990, properties 6,727 → 4,714 — the three surfaces together 71,677 →
-41,190 (−43%), with every remaining `description` rewritten for an author:
-short, concrete, saying what to write.
+Sizes, measured at v0.40: object 56,105 → 33,690 bytes, index 8,845 →
+4,003, properties 6,727 → 5,691 — the three surfaces together 71,677 →
+43,384 (−39%), with every remaining `description` rewritten for an author:
+short, concrete, saying what to write. The byte count understates the
+narrowing where it matters to a generator: 3 authorable kinds where the full
+enum offers 31, 23 block types of 39, 12 envelope members of 19, and no
+output-only member anywhere — the test asserts that literally.
 
 ## 3. Properties
 

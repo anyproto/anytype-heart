@@ -578,6 +578,65 @@
             "name"
           ]
         }
+      ],
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "options"
+            ]
+          },
+          "then": {
+            "required": [
+              "format"
+            ],
+            "properties": {
+              "format": {
+                "enum": [
+                  "select",
+                  "multi_select"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "object_types"
+            ]
+          },
+          "then": {
+            "required": [
+              "format"
+            ],
+            "properties": {
+              "format": {
+                "enum": [
+                  "objects",
+                  "files"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "include_time"
+            ]
+          },
+          "then": {
+            "required": [
+              "format"
+            ],
+            "properties": {
+              "format": {
+                "const": "date"
+              }
+            }
+          }
+        }
       ]
     },
     "richText": {
