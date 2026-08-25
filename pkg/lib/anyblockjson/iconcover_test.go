@@ -574,3 +574,49 @@ func TestLiftedKeysAreHiddenRelations(t *testing.T) {
 		assert.True(t, rel.Hidden, "%q must be hidden, or dropping it when empty is real loss", key)
 	}
 }
+
+// An icon's `file` holds TWO address spaces, and the format has to say so
+// because a reader cannot tell from the slot alone.
+//
+// Normally it is the id of a file object in the bundle — 11,251 of 12,378 in
+// a 77-space export. But a participant avatar and a space invite icon are
+// stored by the app as the raw content cid of the image itself
+// (core/acl/aclservice.go writes SpaceIconCid into iconImage, whose format is
+// `file`), and those 992 can never resolve as object ids: a content cid is
+// raw/dag-pb and begins `bafybei`, an object id is dag-cbor and begins
+// `bafyrei`. A reader dereferencing one against the bundle finds nothing —
+// not because the object is missing, but because it was never an object.
+//
+// Both shapes are legal and both must stay legal; what the format owes is the
+// distinction, which now lives in $defs/objectRef and on the file variant.
+//
+// How this can fail: constrain the slot to one address space and 992 real
+// participant icons become invalid; drop the description and a reader has no
+// way to learn the rule.
+func TestIcon_FileHoldsEitherAnObjectIdOrAContentCid(t *testing.T) {
+	for _, tc := range []struct{ name, id string }{
+		{"an object id", "bafyreiarrls75xlsmbc4hwhjuht34fgkzz5xpvpkexmzqov4oxssgckohy"},
+		{"a raw content cid, as a participant avatar carries", "bafybeig56mk6qmlv624q3ykecbok5v7wmzeqc5zlci2h6d42w5pg3hx6bu"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			doc := `{"version": 1, "id": "o1", "icon": {"format": "file", "file": "` + tc.id + `"}}`
+			require.NoError(t, Validate([]byte(doc)))
+			_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
+			require.NoError(t, err)
+			assert.Equal(t, strList(tc.id), snap.Details.Fields[detailKeyIconImage],
+				"the stored value is the same slot either way")
+		})
+	}
+
+	t.Run("the schema says how to tell them apart", func(t *testing.T) {
+		var s struct {
+			Defs map[string]struct {
+				Description string `json:"description"`
+			} `json:"$defs"`
+		}
+		require.NoError(t, json.Unmarshal(schemaJSON, &s))
+		d := s.Defs["objectRef"].Description
+		assert.Contains(t, d, "bafybei", "the content-cid codec must be named")
+		assert.Contains(t, d, "bafyrei", "and the object-id codec beside it")
+	})
+}

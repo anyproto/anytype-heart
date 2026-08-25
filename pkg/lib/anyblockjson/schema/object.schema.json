@@ -291,7 +291,7 @@
       "minLength": 1,
       "maxLength": 255,
       "pattern": "^[^/]+$",
-      "description": "The id of an object in this space, or a bundle-local slug. Never a URL and never a filesystem path — this format does no I/O, so it can only name something the store already holds. To supply an image by URL, use a layer that can fetch it (the API): it uploads the image, mints the file object and writes that object's id here."
+      "description": "The id of an object in this space, or a bundle-local slug. Never a URL and never a filesystem path — this format does no I/O, so it can only name something the store already holds. To supply an image by URL, use a layer that can fetch it (the API): it uploads the image, mints the file object and writes that object's id here. ONE SLOT, TWO ADDRESS SPACES, and a reader has to tell them apart: an icon's `file` may hold a raw CONTENT cid instead of an object id, because the app writes one there — a participant's avatar and a space invite's icon are stored as the cid of the image itself (core/acl/aclservice.go), not as an object. 992 of 12,378 file icons in a 77-space export are of that kind. They are told apart by CID codec: an OBJECT id is dag-cbor and begins `bafyrei`, a content cid is raw or dag-pb and begins `bafybei`. A content cid resolves against the blob store, never against the bundle, so a reader that dereferences it as an object id finds nothing — not because the object is missing but because it was never an object."
     },
     "iconColor": {
       "description": "One of the ten palette colours — the same palette select options use (§2a) — or, for a stored value the palette has no name for, its raw number.",
@@ -373,7 +373,8 @@
             "properties": {
               "format": {},
               "file": {
-                "$ref": "#/$defs/objectRef"
+                "$ref": "#/$defs/objectRef",
+                "description": "The image. Normally the id of a file object in this bundle; for a participant avatar or an invite icon it is the raw content cid of the image instead — see $defs/objectRef for how the two are told apart."
               },
               "color": {
                 "$ref": "#/$defs/iconColor"
