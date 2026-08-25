@@ -104,8 +104,8 @@ id rides beside the name rather than inside the value.
 
 ## 7. Default-valued details are semantically present
 
-Details like `is_hidden: false`, `revision: 0`, `relation_format_include_time:
-false` appear *explicitly* on thousands of objects. Presence of a property
+Details like `is_hidden: false`, `revision: 0`, `property_format_include_time:
+false` (v0.38 spelling) appear *explicitly* on thousands of objects. Presence of a property
 key — even with a default/empty value — records that the property was set on
 the object; clients rely on it.
 

@@ -1,6 +1,6 @@
 # AnyBlock JSON — format specification
 
-Status: **draft v0.37** · Format version: **1** · Package: `pkg/lib/anyblockjson`
+Status: **draft v0.38** · Format version: **1** · Package: `pkg/lib/anyblockjson`
 
 A human- and agent-readable JSON serialization of Anytype objects (the "anyblock"
 model), designed for export, import, and generation by external tools and LLM
@@ -15,6 +15,67 @@ strings; the vocabulary follows Notion's API and Anytype's public REST API
 (`core/api`) wherever an established term exists — the format should be
 readable, and mostly writable, by someone who has never seen Anytype
 internals.
+
+Changes in v0.38: **the format stops calling a property a relation,
+everywhere it still did** (§2, §2a, §2c, §2d, §2f, §3).
+
+The product calls these things properties, and the format already did in
+every name it minted late — the block type is `featured_properties`, the
+shape is `propertyDefinition`, the legends are `property_internal_keys` —
+while the names minted early still said relation, and the contradiction sat
+inside single documents: measured over a 77-space export (38,081
+documents), the properties bag spelled `featured_relations` in 12,609
+documents, many directly beside a `featured_properties` block; 1,215
+documents carried `kind: "relation"` with a `relation_settings` member,
+2,641 `kind: "relation_option"`; 4,013 spelled a relation-flavored layout
+name; the manifest keyed two types as `relation`/`relation_option`. One
+concept, two spellings, in one format — §15 #14, at format scale.
+
+Two mechanisms carry the rename, because the two populations differ in what
+may move:
+
+- **The format's own vocabulary renames outright.** Kinds `relation` →
+  `property`, `bundled_relation` → `bundled_property`, `relation_option` →
+  `property_option`; the §2d group `relation_settings` →
+  `property_settings`; the layout names `relation`/`relation_option`/
+  `relation_options_list` → `property`/`property_option`/
+  `property_options_list`. Wire names only — the model enums behind them
+  are the store's and do not move.
+- **Sixteen bundled keys take explicit wire ALIASES**, because their
+  stored keys spell "relation" INSIDE the key and stored keys are the
+  app's addresses, identical in every space — unchangeable. The format
+  already separates spelling from stored key (that is what `internal_key`
+  vs `property` means, v0.37), so the alias table is the same mechanism
+  extended: `featuredRelations` spells `featured_properties`,
+  `relationKey` → `property_key`, `relationFormat` → `property_format`
+  (and its two siblings), `relationOptionColor` → `property_option_color`,
+  `relationMaxCount`/`relationReadonlyValue`/`relationDefaultValue` →
+  `property_max_count`/`property_readonly_value`/`property_default_value`,
+  `headerRelationsLayout` → `header_properties_layout`, the four
+  recommended lists → `recommended_[featured_|hidden_|file_]properties`;
+  type keys `relation` → `property`, `relationOption` → `property_option`.
+
+An alias changes the wire spelling and nothing else. The stored key still
+resolves verbatim at every slot (§3 chain step 2 — `relation` the type term
+still names the Relation type, because it IS that type's stored key); the
+alias is a bundled-table fact that ships with every reader, so it owes no
+legend entry; and the VACATED slug binds nothing any more — its fold class
+moves with it, necessarily, because `FoldApiKey` drops case and
+underscores, so the stored key's own fold IS the old slug's, and keeping
+either would keep the old spelling alive. Pre-freeze, no back-compat: the
+old kind spellings are refused at the enum with the repair named, and
+`relation_format` in `properties` is now an ordinary custom key rather
+than a second way to write a relation's format. The collision guards
+extend over the table — an alias may not collide with any bundled key's
+spelling or fold, and every spelling must name its key back, aliased keys
+included; no alias collides today, and adding one that does fails the
+guard by name.
+
+One kind of "relation" deliberately survives: the STORED keys themselves
+(`relationFormat`, `featuredRelations`, …) and the property FORMAT value
+`objects` (the public API's own word for `RelationFormat_object`). The
+first are addresses this format never rewrites; the second is another
+surface's vocabulary, not this format's to rename.
 
 Changes in v0.37: **one word stops meaning two things — `internal_key` is
 the stored id, `property` is the spelling** (§2, §2a, §2e, §2f, §3).
@@ -1512,7 +1573,7 @@ Fields, in **canonical order** (§4):
 | `type` | string | no | The object's type **slug** (`page`, `task`, `object_type`…) — the key vocabulary of §3, not the stored `ot-`-prefixed key. Maps to `object_types[0]` in the snapshot. Absent when the snapshot has no object types (legacy/system objects). Import inverts the term through the §3 chain in the type namespace — the document's own `type_internal_keys` legend first, then the vocabulary in force (bundled table offline, the space's stored slugs inside a node) — and hands the resulting stored key to the wiring, which resolves it — matching an existing type or creating one (the Markdown importer's behavior). A term the chain does not know passes through verbatim — an exact stored key is always its own address (§3). No spelling is reserved: `template` is an ordinary type term that a legend or a vocabulary may bind wherever it likes, because `kind` — a field no chain touches — carries the template semantics it used to carry (v0.22). The one exception is a byte comparison, not a resolution: a document with **no `kind`** whose `type` is literally `template` is the pre-v0.22 spelling of a template and is refused, naming the repair (§10). |
 | `template_for` | string | no | Only for templates: the target type slug (`object_types[1]`), same vocabulary and legend as `type`. Admitted on `kind: "template"` and nothing else — present without it, or without a `type` beside it to be `object_types[0]`, is a validation error. Note what this is NOT keyed off: the template's own type. A template whose `object_types` do not begin with the template key is a shape the model permits, and until v0.22 it could not express its target at all — the second slot existed only when `object_types[0]` was the template key, so the target was dropped with a warning and no way to keep it. |
 | `internal_key` | string | no | Identity key of *system* objects (types, properties). This is the STORED identity key (a `uniqueKey`'s internal part), written verbatim: unlike every key slot in §3 it is **not** translated, so for an object whose stored key is a minted BSON it does not match the slug the public API serves as that object's `key`. The name says what the value is — an id the app MINTS (a bson for a custom definition, the camelCase bundled key for a bundled one), never something an author derives — where the word `key` used to name this stored id AND a property definition's spelling one level down, one word for two concepts (§15 #14). Because it is verbatim, its charset is whatever the store already holds: a relation option's key is built from the option's *name*, so `completion_status_Not Started`, `…_C/C++` and `…_тогглы` are all real stored keys. The rule is therefore a deny rule — non-empty, no control characters, at most 255 characters — not an allowlist. An allowlist was tried and falsified: it failed 59 objects of a 36 808-object account, every one a relation option. Never emitted for ordinary documents. |
-| `relation_settings` | object | on `kind: "relation"` | Only for relation documents, where it is **required**: the definition of the property this document IS — one `propertyDefinition` (§2d, §2e). Carries `format` (required, a §3 format NAME — never a raw enum number; stands for the stored `relationFormat` key, which `properties` refuses), `include_time` and `object_types`, each present exactly when its stored key is, value included. Illegal on every other kind. |
+| `property_settings` | object | on `kind: "property"` | Only for property documents, where it is **required**: the definition of the property this document IS — one `propertyDefinition` (§2d, §2e). Carries `format` (required, a §3 format NAME — never a raw enum number; stands for the stored `relationFormat` key, which `properties` refuses), `include_time` and `object_types`, each present exactly when its stored key is, value included. Illegal on every other kind. |
 | `icon` | object | no | The object's icon — ONE object whose `format` selects the variant (§2b). Stands for the stored `iconEmoji` / `iconImage` / `iconName` / `iconOption` keys, which `properties` refuses. |
 | `cover` | object | no | The object's cover — same shape, three variants (§2b). Stands for the stored `coverId` / `coverType` / `coverScale` / `coverX` / `coverY` keys, which `properties` refuses. |
 | `properties` | object | no | The object's properties, §3. |
@@ -1608,15 +1669,15 @@ The type's REMAINING details (`name`, `description`, `is_hidden`,
 `order_id`, …) stay in `properties` under their stored keys (§3); its icon
 is the envelope field every object has (§2b) — a type's icon is where the
 `icon` variant is overwhelmingly used, since all 1,530 objects in the corpus
-carrying an `iconName` are types. The four recommended-relation id lists
-(`recommended_featured_relations`, `recommended_relations`,
-`recommended_file_relations`, `recommended_hidden_relations`) are
+carrying an `iconName` are types. The four recommended-property id lists
+(`recommended_featured_properties`, `recommended_properties`,
+`recommended_file_properties`, `recommended_hidden_properties`) are
 **replaced** by `type_settings.property_definitions` — resolved entries,
-never raw relation ids. The array lived at the document root as
+never raw property ids. The array lived at the document root as
 `type_properties` until v0.32; the word is `property_definitions` rather
 than `properties` because the document already uses that word for property
 VALUES at the root, and one word carrying two meanings in one file is the
-same shape as the `featured_relations` collision below — one word per
+same shape as the `featured_properties` collision below — one word per
 concept.
 
 **A type document does not carry its own install provenance.** Seven stored
@@ -1641,7 +1702,7 @@ for it was not, and §15 #12 is an evidence discipline.)
 Six candidates FAILED the admission test and stay in `properties`:
 `is_hidden` (cannot be proven install-only), `order_id` (the user's own
 ordering of types), `layout_width`/`layout_align` (the type object's own
-page display, set by a person where non-zero), `featured_relations` —
+page display, set by a person where non-zero), `featured_properties` —
 which means what this type OBJECT features, while `section: "featured"`
 means what objects OF this type feature: the two differ in 361 of 400
 corpus cases, so they are two things, not one — and **`revision`**, which
@@ -1986,7 +2047,7 @@ namespaces are addressed that way: types (22/space) and options (34/space) —
   not per-document spellings, the same rule the dictionary applies (§2f): a
   document's `type_internal_keys` legend binds its spelling to the stored key, and
   the stored key is what the manifest answers for.
-- **`options`** — option object id → the relation_option document's path.
+- **`options`** — option object id → the property_option document's path.
   Ids, because that is how documents address options: a value carries the
   option's NAME and the `option_ids` legend beside it carries the id (§9a) —
   the id is the spelling that survives a rename.
@@ -2086,19 +2147,19 @@ they resolve is a cross-document question this package does not answer
 (§13): an index validates on its own terms while naming an object no
 document defines.
 
-## 2d. Relation documents (`kind: "relation"`, `"bundled_relation"`)
+## 2d. Property documents (`kind: "property"`, `"bundled_property"`)
 
-A relation object IS a property definition, and it states what it defines in
-**`relation_settings`** — one `propertyDefinition` (§2e), in the format's own
-vocabulary:
+A relation object IS a property definition, and its document states what it
+defines in **`property_settings`** — one `propertyDefinition` (§2e), in the
+format's own vocabulary:
 
 ```json
 {
   "version": 1,
-  "kind": "relation",
+  "kind": "property",
   "id": "bafyrei…",
   "internal_key": "budget",
-  "relation_settings": { "format": "number", "include_time": false },
+  "property_settings": { "format": "number", "include_time": false },
   "properties": { "name": "Budget", "description": "Planned spend" }
 }
 ```
@@ -2110,17 +2171,17 @@ the same shape and two patterns for one idea is the §15 #14 disease one
 level up. The group is a layer over `$defs/propertyDefinition`: the members
 another surface already owns are refused with the home named (`internal_key`
 is the envelope's — and `property`, the spelling, is refused with it: a
-relation document is addressed by its stored key and its spelling is derived,
+property document is addressed by its stored key and its spelling is derived,
 never stated — `name` and `description` are `properties`', `options` are
-relation_option documents), and `max_count`/`readonly`/`default_value` keep
+property_option documents), and `max_count`/`readonly`/`default_value` keep
 travelling in `properties` under their stored keys until the dictionary
 lifts them — admitting a second spelling of any of those here would
 reintroduce exactly the duality this section removed.
 
-**Two kinds are relation documents**, and both carry the group: `relation`
-and `bundled_relation`. Only the first comes out of a live store — 0 of
+**Two kinds are property documents**, and both carry the group: `property`
+and `bundled_property`. Only the first comes out of a live store — 0 of
 38,061 corpus documents are the other — but the `kind` enum offers it beside
-`relation` with nothing marking it non-authorable, and a small model
+`property` with nothing marking it non-authorable, and a small model
 authoring from the schema alone picked it unprompted, walking straight back
 into the bug this section exists to stop. The export gate, the import gate
 and the schema's `if` therefore name the same two: a half that lifts for
@@ -2129,7 +2190,7 @@ rejects (§11 I1), and a half that reads back fewer drops the definition.
 Both breaks happened while this section was being written, each time from
 widening one list and not its siblings.
 
-Two neighbouring kinds are deliberately outside the set. `relation_option`,
+Two neighbouring kinds are deliberately outside the set. `property_option`,
 because an option document is a value rather than a property definition, so
 `format` there is an ordinary custom property key. And **`sub_object`,
 because it is deprecated** — a kind being retired must not acquire a new
@@ -2149,7 +2210,7 @@ and 0 of 28,034 dataview property entries carry it.
 
 Exactly **three stored details lift**, and no others:
 
-| stored key | `relation_settings` member | shape |
+| stored key | `property_settings` member | shape |
 |---|---|---|
 | `relationFormat` | `format` | a §3 format NAME — **required**. Export refuses to write a relation whose stored format it cannot name (corrupt data only: `formatNames` is total over the model enum, test-pinned), because the fallback — writing `"text"` for a format that is not text — would import as a permanent silent format rewrite, the exact disease this lift kills. `"text"` resolves per key on the way back in, through the envelope `internal_key`, exactly as a property-definition entry's format does (§3): a bundled short-text relation keeps its stored format across a round trip. |
 | `relationFormatIncludeTime` | `include_time` | `true` \| `false` \| `null`. Meaningful on `date` only; a `true` against any other format is a **warning**, carried unread. |
@@ -2173,7 +2234,7 @@ small-model eval, 9 of 9 attempts wrote `properties: {"format": "number"}`,
 it validated with no warning, and it imported as a phantom property, leaving
 the relation with no `relationFormat` at all — longtext forever, silently.
 The container was the problem, not the word. The §2b reasons apply
-unchanged; the schema gates the group on `kind: "relation"` and keeps it
+unchanged; the schema gates the group on `kind: "property"` and keeps it
 illegal at every other root, so the same member name cannot be reclassified
 by kind drift.
 
@@ -2182,11 +2243,14 @@ that RESOLVES to one of the stored keys (§3), legend included, on every
 kind, with the repair named:
 
 ```
-/properties/relation_format: "relationFormat" is written on a relation
+/properties/property_format: "relationFormat" is written on a property
                              document's envelope as "format": "<a §3 format
-                             name>" in relation_settings (§2d), not as a
+                             name>" in property_settings (§2d), not as a
                              property
 ```
+
+(`property_format` is the stored key's wire spelling — the v0.38 alias, §3;
+the stored key `relationFormat` written verbatim trips the same refusal.)
 
 The refusal is derived from the export side's own lift list, never restated
 (§2b's rule), and it is unconditional: a non-relation snapshot carrying one
@@ -2201,9 +2265,9 @@ in silence. A warning and not a refusal because the spelling is a legitimate
 custom key (a media space really can have a "Format" column) and a relation
 object carrying one must stay exportable (I1). Refusing a key is not refusing to NAME it: a slot
 that references the relation — the Property type's own property definitions and
-dataview columns, in 64 production spaces — keeps the §3 slug
-(`relation_format`), because the deny rule protects the legend and a
-bundled-bound slug needs no legend entry.
+dataview columns, in 64 production spaces — keeps the §3 spelling
+(`property_format`), because the deny rule protects the legend and a
+bundled-bound spelling needs no legend entry.
 
 **Target types translate at the boundary.** The store keeps
 `relationFormatObjectTypes` as type OBJECT ids
@@ -2241,7 +2305,7 @@ homes**, and no fourth:
 |---|---|
 | a property-dictionary entry (§2f) | one `propertyDefinition` |
 | a type document's property-definition entry (§2a) | one `propertyDefinition` + `section` |
-| a relation document's definition fields (§2d) | one `propertyDefinition` |
+| a property document's definition fields (§2d) | one `propertyDefinition` |
 
 The shape's eleven members: `property`, `internal_key`, `name`, `format`,
 `options`, `object_types`, `description`, `include_time`, `max_count`,
@@ -2318,7 +2382,7 @@ Two members:
   the repair is a full entry, where the format travels along.)
 **Precedence, when a property is described more than once.** The composition
 puts a property's definition in up to three places at once — a dictionary
-entry, a kept relation document's `relation_settings`, and a type's
+entry, a kept property document's `property_settings`, and a type's
 `property_definitions` — and 273 kept bundled-key relation documents in a
 77-space export also carry an entry, so the pair is ordinary rather than
 exotic. The order is:
@@ -2333,7 +2397,7 @@ exotic. The order is:
 3. **A type's `property_definitions` entry**, which narrows nothing and adds
    only `section` — what THIS type does with the property, not what the
    property is.
-4. **A kept relation document's `relation_settings`**, which is the same
+4. **A kept property document's `property_settings`**, which is the same
    `propertyDefinition` and should agree by construction; where it does not,
    the dictionary is the bundle's answer.
 
@@ -2799,14 +2863,14 @@ type key is — and one rule above that deliberately does **not** carry over.
   from `unique_key` — never from the object types.
 
   Merge resolution *is* steerable, but through the **document's own
-  fields**, not through type keys. `name`, `relation_key` and
+  fields**, not through type keys. `name`, `property_key` and
   `source_object` are ordinary writable properties, and the relation's
   format — spelled `relation_format` in `properties` when this passage was
   first written, since lifted to the envelope's `format` (§2d), where it is
   just as writable and lands on the same stored detail — travels beside
   them; the importer uses them to pick which existing object a document
   merges into: a relation matches on its format together with `name` or
-  `relation_key`, and a TYPE document matches on `name` alone, since this
+  `property_key`, and a TYPE document matches on `name` alone, since this
   format strips `unique_key` and the name is then the only filter left.
   They stay writable deliberately — the §2d lift moved a spelling, never a
   capability, exactly because a stripped value that import refuses is a
@@ -2928,8 +2992,8 @@ Values are encoded by the property's format:
 **Layout is named, not numbered.** `recommended_layout`, `layout` and
 `resolved_layout` are stored as numbers (their bundled relations have format
 `number`), but the format writes the enum **name** — `basic · profile · todo ·
-set · object_type · relation · file · dashboard · image · note · space ·
-bookmark · relation_options_list · relation_option · collection · audio · video ·
+set · object_type · property · file · dashboard · image · note · space ·
+bookmark · property_options_list · property_option · collection · audio · video ·
 date · space_view · participant · pdf · chat_deprecated · chat_derived · tag ·
 notification · missing_object · devices · discussion`. A bare integer would be
 the one opaque enum in an otherwise self-describing format. Import maps the
@@ -4695,6 +4759,14 @@ in the document is interpreted.
   one thing, one of them a raw enum number a small model has seen far more
   of, defeats the lift — and this format is a draft with no external
   consumers, so the refusal strands nobody.
+
+  v0.38's rename moves the first refusal a legacy document meets, without
+  changing the decision: a pre-v0.38 relation document spells
+  `kind: "relation"`, which the kind enum now refuses by name before any
+  member is read, and the vacated `relation_format` spelling resolves to
+  nothing at all any more — the refusal-by-resolution fires on the alias
+  `property_format` and on the verbatim stored key, the two spellings that
+  still name the detail (§3).
 
 **Syntax inside `text` is versioned too, and the reader is exact about it.**
 A `text` string carries no version marker of its own, so the only thing that
