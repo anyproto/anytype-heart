@@ -163,7 +163,15 @@ func unmarshalPropertyDictionary(data []byte, warn func(Issue)) (*PropertyDictio
 	}
 	d := &PropertyDictionary{Installed: installedKeys(jd.Installed, warn)}
 	for i, tp := range jd.Properties {
-		storedKey := dictionaryEntryKey(i, tp.authoredKey(), warn)
+		// an entry's `internal_key` IS the stored key and skips the ladder —
+		// a stored id is its own address (§3) and the fold match below could
+		// rebind it onto a bundled twin; its `property` spelling resolves
+		// exactly as before
+		term, isInternal := tp.authoredKey()
+		storedKey := term
+		if !isInternal {
+			storedKey = dictionaryEntryKey(i, term, warn)
+		}
 		// entries speak STORED keys in every key slot — the entry identity
 		// and `object_types` alike — so there is no legend to run and no
 		// vocabulary to consult: the definition is built by the same shared

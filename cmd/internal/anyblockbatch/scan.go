@@ -80,6 +80,17 @@ func (tp typePropRaw) term() string {
 	return tp.InternalKey
 }
 
+// resolvedKey is the stored key the entry's identity names, by the codec's
+// own rule (SPEC.md §2e): an `internal_key` verbatim — a stored id is its
+// own address and never re-enters the slug ladder — and a `property`
+// spelling through the legend-then-bundled-table ladder like every slot.
+func (tp typePropRaw) resolvedKey(legend propertyLegend) string {
+	if tp.Property == "" && tp.InternalKey != "" {
+		return tp.InternalKey
+	}
+	return resolvePropertyTerm(legend, tp.term())
+}
+
 // typeSettingsRaw is the slice of the §2a group the batch scans read: the
 // property definitions moved off the document root into
 // `type_settings.property_definitions` in v0.32, and a scanner still reading
@@ -140,7 +151,7 @@ func ScanFormats(files []string) (map[string]FormatInfo, error) {
 			if tp.term() == "" {
 				continue
 			}
-			key := resolvePropertyTerm(doc.PropertyKeys, tp.term())
+			key := tp.resolvedKey(doc.PropertyKeys)
 			format, ok := FormatByName[tp.Format]
 			if !ok {
 				// unrecognized or absent format: leave unresolved so the
@@ -407,7 +418,7 @@ func CheckSharedSelects(files []string) ([]SharedSelect, error) {
 			if tp.Format != "select" && tp.Format != "multi_select" {
 				continue
 			}
-			key := resolvePropertyTerm(doc.PropertyKeys, tp.term())
+			key := tp.resolvedKey(doc.PropertyKeys)
 			d, ok := byKey[key]
 			if !ok {
 				d = &decl{seen: map[string]bool{}}
@@ -906,7 +917,7 @@ func UsedPropertyKeys(files []string) (map[string]bool, error) {
 			if tp.term() == "" {
 				continue
 			}
-			out[resolvePropertyTerm(doc.PropertyKeys, tp.term())] = true
+			out[tp.resolvedKey(doc.PropertyKeys)] = true
 		}
 	}
 	return out, nil

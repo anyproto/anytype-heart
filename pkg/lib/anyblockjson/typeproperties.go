@@ -290,10 +290,15 @@ type TypeProperty struct {
 	Section      string      `json:"section"`
 }
 
-// authoredKey is the term this entry names its property by: its `property`
-// spelling, else its `internal_key`, else the spelling its NAME derives. The
-// caller runs the result through the §3 resolution ladder like any other key
-// slot.
+// authoredKey is the identity this entry states, rewired for the
+// key/spelling split: its `property` spelling, else its `internal_key`, else
+// the spelling its NAME derives. The second return says which kind of term
+// came back — a spelling runs through the §3 resolution ladder like any
+// other key slot, while an `internal_key` IS the stored key and resolves
+// verbatim: a stored id is always its own address (§3), and re-entering the
+// slug layer could rebind it (the bundled table folds `due_date` onto
+// `dueDate`, which is exactly wrong for a member whose whole meaning is
+// "this exact stored key").
 //
 // An identifying member used to be required in both homes of this shape, and
 // that was a trap for the population the format most wants to serve. Every
@@ -309,25 +314,23 @@ type TypeProperty struct {
 // resolution ladder as a written spelling, so `{"name": "Due Date"}` lands on
 // the bundled `dueDate` rather than minting a lookalike beside it.
 //
-// `internal_key` ranks below `property` deliberately: export writes both from
-// one stored key, so on its own output the two agree, and an author who
-// states only the internal key has written the stored key itself — which the
-// ladder answers verbatim, its own address (§3 chain step 4; a conforming
-// vocabulary answers a live stored key verbatim too, KeyVocabulary rule 3).
+// `internal_key` ranks below `property` deliberately: export writes both
+// from one stored key, so on its own output the two agree, and the spelling
+// is the member the document's own legend speaks for.
 //
 // Export writes `property` and `internal_key` on every entry, so this changes
 // nothing about what this package produces (§11 I1).
-func (tp TypeProperty) authoredKey() string {
+func (tp TypeProperty) authoredKey() (term string, isInternalKey bool) {
 	if tp.Property != "" {
-		return tp.Property
+		return tp.Property, false
 	}
 	if tp.InternalKey != "" {
-		return tp.InternalKey
+		return tp.InternalKey, true
 	}
 	if tp.Name == "" {
-		return ""
+		return "", false
 	}
-	return bundle.SanitizeApiSlug(bundle.ApiSlugFromName(tp.Name), maxObjectRefLen)
+	return bundle.SanitizeApiSlug(bundle.ApiSlugFromName(tp.Name), maxObjectRefLen), false
 }
 
 // definition assembles the shared PropertyDefinition this entry declares,
@@ -410,7 +413,10 @@ type RecommendedList struct {
 func BuildRecommendedLists(props []TypeProperty, opts Options) ([]RecommendedList, error) {
 	bySection := map[string][]string{}
 	for i, tp := range props {
-		key := opts.legendPropertyKey(tp.authoredKey())
+		key, isInternal := tp.authoredKey()
+		if !isInternal {
+			key = opts.legendPropertyKey(key)
+		}
 		if !isWritablePropertyKey(key) {
 			return nil, &ValidationError{Issues: []Issue{{
 				Path:    fmt.Sprintf(typePropertyDefinitionsPath+"/%d/"+memberDefinitionProperty, i),
@@ -476,7 +482,10 @@ func (imp *importer) applyTypeProperties(details *types.Struct) error {
 		// the empty key in the type's recommended list, where it names nothing
 		// and disappears on re-export. Only the resolved key can be judged,
 		// which is why the schema cannot own this.
-		key := imp.propertyKey(tp.authoredKey())
+		key, isInternal := tp.authoredKey()
+		if !isInternal {
+			key = imp.propertyKey(key)
+		}
 		if !isWritablePropertyKey(key) {
 			return &ValidationError{Issues: []Issue{{
 				Path:    fmt.Sprintf(typePropertyDefinitionsPath+"/%d/"+memberDefinitionProperty, i),
