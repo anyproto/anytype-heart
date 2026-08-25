@@ -900,9 +900,16 @@ func (c *spaceComposer) finish(ss *spaceSummary) error {
 		// in the order the SPACE shows them, which the stored `orderId`
 		// carries: `status` really reads To Do → In Progress → Done, and
 		// sorting by name turned that workflow into Done → In Progress →
-		// To Do on 42 of the 61 vocabularies that state an order. An option
-		// with no orderId sorts after the ordered ones, by name, because
-		// there is nothing else to go on.
+		// To Do on 42 of the 61 vocabularies that state an order.
+		//
+		// An option with no orderId sorts AFTER the ordered ones, by name,
+		// and that is not a compromise — it is the app's own model. Ordering
+		// is a newer feature than options: 229 of 312 vocabularies state no
+		// order at all and 21 state one for only some members, and the app's
+		// own placement query (objectcreator/relation_option.go) filters
+		// `orderId NotEmpty`, so an option without one is not in the app's
+		// ordering either. There is no order to lose; name is what makes the
+		// canonical form deterministic.
 		sort.SliceStable(stored, func(i, j int) bool {
 			a, b := stored[i], stored[j]
 			if (a.order == "") != (b.order == "") {
