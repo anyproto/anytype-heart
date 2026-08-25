@@ -165,9 +165,26 @@ func unmarshalPropertyDictionary(data []byte, warn func(Issue)) (*PropertyDictio
 	for i, tp := range jd.Properties {
 		// an entry's `internal_key` IS the stored key and skips the ladder —
 		// a stored id is its own address (§3) and the fold match below could
-		// rebind it onto a bundled twin; its `property` spelling resolves
-		// exactly as before
+		// rebind it onto a bundled twin.
+		//
+		// When an entry states BOTH, the `property` spelling wins
+		// (authoredKey): export writes the pair from one stored key, so they
+		// always agree in anything this package produced, and where an author
+		// makes them disagree the spelling is what the document's own values
+		// resolve through. Neither order is safe on a disagreeing pair —
+		// honouring the internal_key would point the entry at a property no
+		// value in the document uses — so the disagreement is REPORTED rather
+		// than silently resolved.
 		term, isInternal := tp.authoredKey()
+		if tp.Property != "" && tp.InternalKey != "" {
+			if resolved, _ := dictionaryStoredKey(tp.Property); resolved != tp.InternalKey {
+				warnIssue(warn, fmt.Sprintf("/properties/%d", i),
+					"this entry states property %q and internal_key %q, and they name different "+
+						"properties (%q resolves to %q). The spelling wins, because it is what the "+
+						"document's own values resolve through — state one, or make them agree (§2e)",
+					tp.Property, tp.InternalKey, tp.Property, resolved)
+			}
+		}
 		storedKey := term
 		if !isInternal {
 			storedKey = dictionaryEntryKey(i, term, warn)

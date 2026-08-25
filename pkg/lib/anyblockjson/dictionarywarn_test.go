@@ -341,3 +341,47 @@ func bundledRelationKeys() []string {
 	}
 	return out
 }
+
+// An entry may state a `property` spelling and an `internal_key`, and export
+// writes both from ONE stored key — so in anything this package produced they
+// agree and the precedence never matters. An AUTHOR can make them disagree,
+// and then neither order is safe: the spelling is what the document's own
+// values resolve through, while the internal_key is the exact key the entry
+// claims to define. Honouring either silently leaves the other pointing
+// somewhere else.
+//
+// So the disagreement is reported. The spelling still wins — the code's
+// comment used to say the opposite of what authoredKey does, which is the
+// contradiction this pins shut.
+//
+// How this can fail: let the pair disagree in silence and a type's recommended
+// list points at a property no value in the document uses.
+func TestDictionary_ADisagreeingIdentityPairIsReported(t *testing.T) {
+	t.Run("they disagree", func(t *testing.T) {
+		d, warns := readDict(t, `{`+dictHead+
+			`"properties":[{"property":"due_date","internal_key":"6a32d4856761631534b22f85",`+
+			`"name":"Due date","format":"date"}]}`)
+
+		require.Len(t, warns, 1)
+		assert.Contains(t, warns[0].Message, "name different properties")
+		assert.EqualValues(t, "dueDate", d.Properties[0].Key,
+			"the spelling wins, as authoredKey has always done")
+	})
+
+	t.Run("they agree — the pair export writes", func(t *testing.T) {
+		_, warns := readDict(t, `{`+dictHead+
+			`"properties":[{"property":"due_date","internal_key":"dueDate",`+
+			`"name":"Due date","format":"date"}]}`)
+		assert.Empty(t, warns, "the agreeing pair is the normal case and must be silent")
+	})
+
+	t.Run("only one stated", func(t *testing.T) {
+		for _, entry := range []string{
+			`{"property":"due_date","format":"date"}`,
+			`{"internal_key":"6a32d4856761631534b22f85","format":"date"}`,
+		} {
+			_, warns := readDict(t, `{`+dictHead+`"properties":[`+entry+`]}`)
+			assert.Empty(t, warns, entry)
+		}
+	})
+}
