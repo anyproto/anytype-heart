@@ -183,6 +183,23 @@ func main() {
 			fmt.Printf("\nUNDECLARED property formats (anyblockconvert will refuse these):\n%s",
 				anyblockbatch.Report(undeclared))
 		}
+
+		// batch-wide for the same reason: a view naming a property nothing
+		// declares is a filter that matches nothing, a sort that orders
+		// nothing, a column that stays empty — and it imports in silence. The
+		// CODEC cannot raise it, because a custom property whose stored key is
+		// already a legal spelling binds no legend entry, so inside one
+		// document a typo and a verbatim custom key look the same. Only here,
+		// holding every declaration in the bundle, are they distinguishable.
+		declared := map[string]bool{}
+		for key := range formats {
+			declared[key] = true
+		}
+		if bad, verr := anyblockbatch.CheckViewProperties(files, declared); verr == nil && len(bad) > 0 {
+			fail += len(bad)
+			fmt.Printf("\nVIEW slots naming a property nothing declares:\n%s",
+				anyblockbatch.ReportViewProperties(bad))
+		}
 	}
 
 	// every document this run judged, not just the object ones: `files`

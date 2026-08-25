@@ -922,3 +922,145 @@ func UsedPropertyKeys(files []string) (map[string]bool, error) {
 	}
 	return out, nil
 }
+
+// CheckViewProperties reports a view slot — a filter leaf, a sort or a
+// column — naming a property nothing in the bundle can resolve.
+//
+// This is the silent class, and the one a per-document reader cannot judge.
+// A filter on a property that exists nowhere does not fail: it matches
+// nothing, so the view shows everything it was meant to narrow. Asked to
+// "also exclude archived items", six of nine agents produced exactly that —
+// a document that validates, imports and round-trips byte-stably, with a new
+// filter that is a no-op.
+//
+// The codec cannot raise it. A custom property whose stored key is already a
+// legal spelling — `aroma_notes`, and 112 more in a 77-space corpus — binds
+// no legend entry, because the spelling IS the key. Inside one document that
+// is indistinguishable from a typo. Only a reader holding the whole bundle
+// can tell them apart, and that is this function: `declared` carries every
+// key the bundle declares anywhere — the property dictionary, each type's
+// property definitions, and every document's legend.
+//
+// No real export trips it: 1,517 filter leaves across the corpus, none
+// unresolved.
+func CheckViewProperties(files []string, declared map[string]bool) ([]BadViewProperty, error) {
+	var out []BadViewProperty
+	for _, f := range files {
+		data, err := os.ReadFile(f)
+		if err != nil {
+			return nil, fmt.Errorf("read %s: %w", f, err)
+		}
+		var doc struct {
+			PropertyKeys propertyLegend `json:"property_internal_keys"`
+			Blocks       []struct {
+				Views []struct {
+					Id      string            `json:"id"`
+					Filters []json.RawMessage `json:"filters"`
+					Sorts   []viewPropSlot    `json:"sorts"`
+					Columns []viewPropSlot    `json:"columns"`
+				} `json:"views"`
+				Properties []struct {
+					Property string `json:"property"`
+				} `json:"properties"`
+			} `json:"blocks"`
+		}
+		if err := json.Unmarshal(data, &doc); err != nil {
+			return nil, fmt.Errorf("parse %s: %w", f, err)
+		}
+		for _, b := range doc.Blocks {
+			// a dataview's own properties list declares what its views may
+			// name, whether or not anything else in the bundle does
+			local := map[string]bool{}
+			for _, p := range b.Properties {
+				local[p.Property] = true
+			}
+			for _, v := range b.Views {
+				at := v.Id
+				if at == "" {
+					at = "(unnamed view)"
+				}
+				judge := func(prop, what string) {
+					if prop == "" || local[prop] {
+						return
+					}
+					key := resolvePropertyTerm(doc.PropertyKeys, prop)
+					if declared[key] || declared[prop] || bundle.HasRelation(domain.RelationKey(key)) {
+						return
+					}
+					out = append(out, BadViewProperty{
+						File: f, View: at, Slot: what, Property: prop,
+					})
+				}
+				for _, raw := range v.Filters {
+					for _, prop := range filterLeafProperties(raw) {
+						judge(prop, "filter")
+					}
+				}
+				for _, s := range v.Sorts {
+					judge(s.Property, "sort")
+				}
+				for _, c := range v.Columns {
+					judge(c.Property, "column")
+				}
+			}
+		}
+	}
+	return out, nil
+}
+
+type viewPropSlot struct {
+	Property string `json:"property"`
+}
+
+// BadViewProperty is a view slot naming a property nothing in the bundle
+// declares.
+type BadViewProperty struct {
+	File     string
+	View     string // the view's id
+	Slot     string // "filter", "sort" or "column"
+	Property string
+}
+
+// ReportViewProperties renders the findings, one line each, saying what the
+// slot does instead of what it was meant to do.
+func ReportViewProperties(bs []BadViewProperty) string {
+	effect := map[string]string{
+		"filter": "narrows nothing, so the view shows everything",
+		"sort":   "leaves the order untouched",
+		"column": "stays empty",
+	}
+	var b strings.Builder
+	for _, x := range bs {
+		what := effect[x.Slot]
+		if what == "" {
+			what = "does nothing"
+		}
+		fmt.Fprintf(&b, "  %s\n    view %q: the %s on %q %s — no document, no type and no property "+
+			"dictionary declares that property, and it is not a bundled one. Nothing reports it at import.\n",
+			x.File, x.View, x.Slot, x.Property, what)
+	}
+	return b.String()
+}
+
+// filterLeafProperties returns the properties a filter node names, descending
+// through group nodes, which name none by design.
+func filterLeafProperties(raw json.RawMessage) []string {
+	var node struct {
+		Property string            `json:"property"`
+		Filters  []json.RawMessage `json:"filters"`
+	}
+	if json.Unmarshal(raw, &node) != nil {
+		return nil
+	}
+	if len(node.Filters) > 0 {
+		var out []string
+		for _, sub := range node.Filters {
+			out = append(out, filterLeafProperties(sub)...)
+		}
+		return out
+	}
+	if node.Property == "" {
+		return nil
+	}
+	return []string{node.Property}
+}
