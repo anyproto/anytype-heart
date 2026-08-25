@@ -722,8 +722,10 @@ type spaceComposer struct {
 	optionPaths map[string]string
 	// optionsByKey is the select vocabulary each property actually has in
 	// this space, gathered from the option documents so the dictionary can
-	// state it inline (§2f). Keyed by STORED property key.
-	optionsByKey map[string][]anyblockjson.OptionDefinition
+	// state it inline (§2f). Keyed by STORED property key, and held with the
+	// stored `orderId` so the inline array can be written in the order the
+	// space actually shows.
+	optionsByKey map[string][]storedOption
 	written      []string
 
 	// the fields the space's own document is the source of (§2c). Lifted as
@@ -743,7 +745,7 @@ func newSpaceComposer(opts anyblockjson.Options, spaceName string) *spaceCompose
 		entries:      map[string]anyblockjson.PropertyDefinition{},
 		typePaths:    map[string]string{},
 		optionPaths:  map[string]string{},
-		optionsByKey: map[string][]anyblockjson.OptionDefinition{},
+		optionsByKey: map[string][]storedOption{},
 	}
 }
 
@@ -820,9 +822,12 @@ func (c *spaceComposer) observeWritten(sw *pb.SnapshotWithType, path string) {
 		// in the same place it declares the property (§2f).
 		if key := det["relationKey"].GetStringValue(); key != "" {
 			if name := det["name"].GetStringValue(); name != "" {
-				c.optionsByKey[key] = append(c.optionsByKey[key], anyblockjson.OptionDefinition{
-					Name:  name,
-					Color: det["relationOptionColor"].GetStringValue(),
+				c.optionsByKey[key] = append(c.optionsByKey[key], storedOption{
+					order: det["orderId"].GetStringValue(),
+					def: anyblockjson.OptionDefinition{
+						Name:  name,
+						Color: det["relationOptionColor"].GetStringValue(),
+					},
 				})
 			}
 		}
@@ -888,11 +893,30 @@ func (c *spaceComposer) finish(ss *spaceSummary) error {
 	// ordinary installed bundled key — and its vocabulary would exist only in
 	// the option documents, where an author generating a bundle has to know
 	// to look for it.
-	for key, opts := range c.optionsByKey {
+	for key, stored := range c.optionsByKey {
 		if !used[key] {
 			continue // §2f is used-only: an unused property's vocabulary buys a reader nothing
 		}
-		sort.Slice(opts, func(i, j int) bool { return opts[i].Name < opts[j].Name })
+		// in the order the SPACE shows them, which the stored `orderId`
+		// carries: `status` really reads To Do → In Progress → Done, and
+		// sorting by name turned that workflow into Done → In Progress →
+		// To Do on 42 of the 61 vocabularies that state an order. An option
+		// with no orderId sorts after the ordered ones, by name, because
+		// there is nothing else to go on.
+		sort.SliceStable(stored, func(i, j int) bool {
+			a, b := stored[i], stored[j]
+			if (a.order == "") != (b.order == "") {
+				return a.order != ""
+			}
+			if a.order != b.order {
+				return a.order < b.order
+			}
+			return a.def.Name < b.def.Name
+		})
+		opts := make([]anyblockjson.OptionDefinition, 0, len(stored))
+		for _, so := range stored {
+			opts = append(opts, so.def)
+		}
 		def, have := entries[key]
 		if !have {
 			if resolved, ok := resolvedDefinition(key, c.opts); ok {
@@ -967,6 +991,16 @@ func (c *spaceComposer) finish(ss *spaceSummary) error {
 // storedRelationDefinition reads the definition a kept relation document
 // states, off its stored details — the §2f full entry for a divergent
 // installed copy. Members mirror what the document itself would carry.
+// storedOption is one option document's contribution to the inline
+// vocabulary: the definition the dictionary states, plus the stored `orderId`
+// that decides where it sits. The orderId itself never reaches a document —
+// it is a lexid, which is exactly the spelling this format keeps out of an
+// author's way; the ARRAY POSITION is what carries the order.
+type storedOption struct {
+	order string
+	def   anyblockjson.OptionDefinition
+}
+
 func storedRelationDefinition(base *model.SmartBlockSnapshotBase, opts anyblockjson.Options) anyblockjson.PropertyDefinition {
 	det := base.GetDetails().GetFields()
 	def := anyblockjson.PropertyDefinition{
