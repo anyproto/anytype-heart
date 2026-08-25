@@ -1,6 +1,6 @@
 # AnyBlock JSON — format specification
 
-Status: **draft v0.40** · Format version: **1** · Package: `pkg/lib/anyblockjson`
+Status: **draft v0.41** · Format version: **1** · Package: `pkg/lib/anyblockjson`
 
 A human- and agent-readable JSON serialization of Anytype objects (the "anyblock"
 model), designed for export, import, and generation by external tools and LLM
@@ -15,6 +15,46 @@ strings; the vocabulary follows Notion's API and Anytype's public REST API
 (`core/api`) wherever an established term exists — the format should be
 readable, and mostly writable, by someone who has never seen Anytype
 internals.
+
+Changes in v0.41: **the slot that names a property is spelled `property`,
+everywhere** (§5, §6.2).
+
+The one concept had two member names, and they sat twelve lines apart
+inside a single dataview block, each a HARD schema error in the other's
+position: measured over 28,599 real exported documents, a dataview's
+`properties[]` entry required `key` (28,034 slots) while the columns, sorts
+and filters beside it required `property` (46,710 slots), and the
+`property` block spelled `key` too (67,808 blocks). 2,504 real dataview
+blocks — one document in twelve that carries one — write the SAME property
+spelling under both names, `backlinks` as `key` in `properties[]` and as
+`property` in a column of the view below it.
+
+This was the format's worst authoring trap, because generalising a member
+name across sibling structures inside one block is what generalisation IS:
+a model that learned `{"property": "status"}` from a view column wrote it
+in `properties[]` and was rejected; one that learned `key` from the 67,808
+property blocks wrote it in a column and was rejected. Both spellings are
+common in the corpus, so few-shot prompting reproduced the split rather
+than resolving it — and neither slot carried a description, so a human
+reading the schema found nothing saying which side a given slot was on.
+
+Both slots now spell `property`, the word the schema's own prose ("the
+property key"), the sorts, filters and columns, and the §2e definition
+member already used. Both members now carry descriptions that say what the
+slot names and name the sibling slots that spell it the same way, and
+`viewColumn` gets its description too — the absence of one is half of why
+the defect survived. The authoring subset renames with it, and stays a
+strict subset by the §2g test.
+
+No old spelling is accepted, per the pre-freeze rule (v0.37, v0.38): an
+input alias would be purely additive, but the format is about to freeze —
+an alias accepted "for one release" would freeze in — and a second legal
+spelling keeps the two-name confusion alive in every example an agent
+learns from, which is the disease being cured. `key` in either slot is
+refused like any unknown member, WITH the repair named: 95,842 corpus
+slots spell it, so an agent prompted on an old export will write it, and
+told only "not allowed" the obvious wrong repair is deleting the member —
+which costs the block the one thing it says.
 
 Changes in v0.40: **the format gains an authoring subset** (§2g) — three
 schemas under `schema/authoring/` that narrow each published grammar to
@@ -2659,7 +2699,7 @@ An **absent** `format` in either slot that carries one (`property_definitions[]`
 a dataview's `properties[]`) says the document did not speak, and the §3
 chain answers — the bundled table, then the caller's resolver. It is NOT a
 declaration of `text`: that reading silently overrode the table, so
-`{"key": "due_date"}` in a dataview's list pinned a bundled DATE property to longtext and its
+`{"property": "due_date"}` in a dataview's list pinned a bundled DATE property to longtext and its
 filters stopped being dates, while omitting the list entirely resolved
 correctly. Naming a property was strictly worse than staying silent about
 it. Canonical export always writes a format, so an absent one only ever
@@ -2842,9 +2882,10 @@ writes the entry:
   reader, and two readers disagreeing about a slug is exactly how a property
   ends up naming a different relation than it was exported from.
 - **It covers every key slot, not just `properties`.** Wherever the format
-  names a property — a `property` block's `key`, a link block's `properties`
-  list, a dataview's `property`/`group_by`/`cover_property`/`end_property`,
-  a filter's or sort's `property`, a property-definition entry's `property` — the
+  names a property — a `property` block's `property`, a link block's
+  `properties` list, a dataview's `properties[].property`, a view's
+  `group_by`/`cover_property`/`end_property`, a filter's, sort's or
+  column's `property`, a property-definition entry's `property` — the
   slug is written through the same recording step and read back through the
   legend first. A slot that writes the slug without recording the entry
   inverts only when some *other* slot in the same document happened to record
@@ -3645,7 +3686,7 @@ mapping:
 | `table` | Table (+ structural children) | `columns`, `rows` — see §6.1 |
 | `embed` | Latex | `processor`, `text` (**literal**, §8.4) — see §5.2 |
 | `table_of_contents` | TableOfContents | — |
-| `property` | Relation | `key` (property key; renders the property inline) |
+| `property` | Relation | `property` (the property's spelling, the member every property-naming slot uses since v0.41; renders the property inline) |
 | `dataview` | Dataview | fully specified in §6.2 |
 | `widget` | Widget | `layout` (`link · tree · list · compact_list · view`), `limit`, `view_id`, `auto_added` |
 | `chat` | Chat | — (rare) |
@@ -3788,9 +3829,9 @@ string enums, and defaults omitted:
   "type": "dataview",
   "object_id": "bafyrei…targetSet",
   "properties": [
-    { "key": "name", "format": "text" },
-    { "key": "status", "format": "select" },
-    { "key": "due_date", "format": "date" }
+    { "property": "name", "format": "text" },
+    { "property": "status", "format": "select" },
+    { "property": "due_date", "format": "date" }
   ],
   "views": [
     {
@@ -3822,7 +3863,7 @@ string enums, and defaults omitted:
 | `object_id` | `TargetObjectId` | the set/collection object this view queries; empty for original set/collection objects and detached inline sets |
 | `is_collection` | `is_collection` | |
 | `source` | `source` | legacy, detached inline sets only; output-only (§4a) |
-| `properties` | `relationLinks` | array of `{ "key", "format" }` — the properties available to this view, with formats per §3's vocabulary. **This field is live** (maintained by the dataview editor), unlike the deprecated snapshot-level relationLinks |
+| `properties` | `relationLinks` | array of `{ "property", "format" }` — the properties available to this view, with formats per §3's vocabulary; `property` is the same member name the columns, sorts and filters use to refer to one (one spelling per concept since v0.41). **This field is live** (maintained by the dataview editor), unlike the deprecated snapshot-level relationLinks |
 | `views` | `views` | see below |
 
 Dropped (normalization): `activeView` (local UI state; the proto itself
@@ -5756,9 +5797,9 @@ Wiring (follow-up work, not this package):
     { "id": "b9", "type": "dataview",
       "object_id": "bafyrei…tasksSet",
       "properties": [
-        { "key": "name", "format": "text" },
-        { "key": "status", "format": "select" },
-        { "key": "due_date", "format": "date" }
+        { "property": "name", "format": "text" },
+        { "property": "status", "format": "select" },
+        { "property": "due_date", "format": "date" }
       ],
       "views": [
         { "id": "v1", "type": "kanban", "name": "By status",
