@@ -1,0 +1,19 @@
+{
+  "$schema": "https://schemas.anytype.io/anyblock/1/authoring/object.schema.json",
+  "version": 1,
+  "id": "habit-morning-run",
+  "type": "habit",
+  "icon": { "format": "emoji", "emoji": "🏃" },
+  "properties": {
+    "name": "Morning run",
+    "frequency": [ "Daily" ],
+    "streak": 12,
+    "last_done": "2026-08-24T07:30:00Z"
+  },
+  "blocks": [
+    { "type": "paragraph", "text": "Twenty minutes before breakfast. Shoes by the door the night before — the run starts when the alarm goes off, not when it feels right." },
+    { "type": "toggle", "text": "Routes" },
+    { "indent": 1, "type": "bulleted_list_item", "text": "Park loop — 2.8 km, flat" },
+    { "indent": 1, "type": "bulleted_list_item", "text": "River path — 4 km, one hill" }
+  ]
+}
