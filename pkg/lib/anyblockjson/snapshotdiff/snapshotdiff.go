@@ -357,7 +357,7 @@ var recommendedDetailKeys = map[string]bool{
 	"recommendedHiddenRelations":   true,
 }
 
-// relationTargetsDetailKey is the stored key behind relation_settings'
+// relationTargetsDetailKey is the stored key behind property_settings'
 // object_types (§2d) — the type-namespace twin of the four lists above.
 // Named off the bundle rather than spelled, the §2b rule: a rename there
 // is a compile error here instead of a comparator that silently stops

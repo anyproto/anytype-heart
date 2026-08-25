@@ -193,7 +193,7 @@ func validateToDoc(data []byte, lenient bool, warn func(Issue)) (map[string]any,
 	// schema's `required` verdict cannot list the names, and the author most
 	// likely to be missing it — one holding a pre-v0.31 document that spelled
 	// `relation_format` in properties — needs the vocabulary, not the bound
-	relationFormatSlotIssue(doc, &spoken)
+	propertyFormatSlotIssue(doc, &spoken)
 	if err := sch.Validate(doc); err != nil {
 		return nil, &ValidationError{Issues: append(spoken.issues, schemaIssues(err, spoken)...)}
 	}
@@ -380,8 +380,8 @@ func collectSchemaLeaves(e *jsonschema.ValidationError, printer *message.Printer
 			if at == "" {
 				switch prop {
 				case "format", "include_time", "object_types":
-					msg = fmt.Sprintf("property %q moved off the root: a relation document "+
-						"states its definition in the \"relation_settings\" group (§2d) — "+
+					msg = fmt.Sprintf("property %q moved off the root: a property document "+
+						"states its definition in the \"property_settings\" group (§2d) — "+
 						"move it (and its two siblings, if present) in there", prop)
 				case "type_properties":
 					msg = `property "type_properties" moved: a type document states its ` +
@@ -664,9 +664,9 @@ func schemaIssueMessage(e *jsonschema.ValidationError, printer *message.Printer)
 				// only at the root (len == 1), where the member name is
 				// unambiguous. "not allowed" would send the author toward
 				// deleting the group; the actual repair is the kind.
-				if len(toks) == 1 && prop == "relation_settings" {
-					return fmt.Sprintf("property %q is only valid on relation documents "+
-						`(kind "relation", §2d)`, prop)
+				if len(toks) == 1 && prop == memberPropertySettings {
+					return fmt.Sprintf("property %q is only valid on property documents "+
+						`(kind "property", §2d)`, prop)
 				}
 				if len(toks) == 1 && prop == "type_settings" {
 					return fmt.Sprintf("property %q is only valid on type documents "+
@@ -675,9 +675,9 @@ func schemaIssueMessage(e *jsonschema.ValidationError, printer *message.Printer)
 				// inside the group, the refused members each have a home
 				// already (§2d): telling the author only "not allowed" sends
 				// them toward deleting the fact instead of moving it.
-				if len(toks) == 2 && toks[0] == "relation_settings" {
-					if home, owned := relationSettingsMemberHomes[prop]; owned {
-						return fmt.Sprintf("relation_settings does not carry %q — %s (§2d)", prop, home)
+				if len(toks) == 2 && toks[0] == memberPropertySettings {
+					if home, owned := propertySettingsMemberHomes[prop]; owned {
+						return fmt.Sprintf("property_settings does not carry %q — %s (§2d)", prop, home)
 					}
 				}
 				return unknownPropertyMessage(prop)
@@ -704,15 +704,15 @@ func schemaIssueMessage(e *jsonschema.ValidationError, printer *message.Printer)
 //     still accepts, so `refs` is the one marker a pre-v0.20 document carries,
 //     and the message is where the reader is told what happened.
 //
-// relationSettingsMemberHomes names, for each propertyDefinition member the
+// propertySettingsMemberHomes names, for each propertyDefinition member the
 // §2d group refuses, where the fact it spells already lives — the repair the
 // bare "not allowed" cannot point at.
-var relationSettingsMemberHomes = map[string]string{
-	"internal_key":  "the envelope `internal_key` is the relation's stored key",
-	"property":      "a relation document is addressed by its envelope `internal_key`; its spelling is derived, never stated here",
-	"name":          "the relation's name is the `name` property",
-	"description":   "the relation's description is the `description` property",
-	"options":       "a relation's options are relation_option documents of their own",
+var propertySettingsMemberHomes = map[string]string{
+	"internal_key":  "the envelope `internal_key` is the property's stored key",
+	"property":      "a property document is addressed by its envelope `internal_key`; its spelling is derived, never stated here",
+	"name":          "the property's name is the `name` property",
+	"description":   "the property's description is the `description` property",
+	"options":       "a property's options are property_option documents of their own",
 	"max_count":     "it still travels in `properties` as `relation_max_count`",
 	"readonly":      "it still travels in `properties` as `relation_readonly_value`",
 	"default_value": "it still travels in `properties` as `relation_default_value`",
@@ -1070,7 +1070,7 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 	// that cannot use it is a WARNING, never an error — the reasoning lives
 	// with the check (relationformat.go), beside the export surface it must
 	// not contradict (I1)
-	relationEnvelopeIssues(doc, warnIssue)
+	propertySettingsIssues(doc, warnIssue)
 	// a definition with no identity stays a WARNING, and the reason is I1
 	// rather than judgement: Marshal can emit a keyless type document — a
 	// snapshot whose type carries no unique key produces one — so refusing it
@@ -1755,9 +1755,9 @@ func deniedPropertyKey(key string) (string, bool) {
 	// pre-release draft with no external consumers, and a second legal
 	// spelling for a relation's format is exactly the ambiguity the lift
 	// deletes.
-	if relationLiftedDetailKeys()[key] {
-		return fmt.Sprintf("%q is written on a relation document's envelope as %s in relation_settings (§2d), "+
-			"not as a property", key, relationLiftedKeyRepair(key)), true
+	if propertySettingsLiftedDetailKeys()[key] {
+		return fmt.Sprintf("%q is written on a property document's envelope as %s in property_settings (§2d), "+
+			"not as a property", key, propertySettingsLiftedKeyRepair(key)), true
 	}
 	return "", false
 }

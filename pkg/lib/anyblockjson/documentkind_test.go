@@ -41,7 +41,7 @@ func TestDocumentKind_PlacesTheThreeGrammars(t *testing.T) {
 		// exist; it must fall through to shape rather than be believed
 		assert.Equal(t, KindObject, DocumentKind([]byte(
 			`{"$schema": "https://schemas.anytype.io/anyblock/1/relation.schema.json",
-			  "version": 1, "kind": "relation", "internal_key": "estimate"}`)))
+			  "version": 1, "kind": "property", "internal_key": "estimate"}`)))
 	})
 
 	t.Run("shape places a document that declares nothing", func(t *testing.T) {

@@ -1,12 +1,14 @@
 package anyblockjson
 
-// relationformat.go implements §2d: the `relation_settings` group of a
-// `kind: "relation"` document — one propertyDefinition (§2e), whose three
+// relationformat.go implements §2d: the `property_settings` group of a
+// `kind: "property"` document — one propertyDefinition (§2e), whose three
 // travelling members are `format`, `include_time`, `object_types`. v0.31
 // put the three at the document root; v0.32 regrouped them, because the
 // dictionary entry and a type's property-definition entry are groups
 // holding the same shape and two patterns for one idea is §15 #14 one
-// level up.
+// level up; v0.38 renamed the group (and the kinds) off "relation": the
+// product calls these things properties, and the format already did in
+// every neighbouring name.
 //
 // A relation object IS a property definition, and until this lift it was the
 // one document that could not state its own format in the format's own
@@ -56,7 +58,7 @@ var (
 	detailKeyRelationFormatObjectTypes = bundle.RelationKeyRelationFormatObjectTypes.String()
 )
 
-// relationLiftedDetailKeys is the §2d lift list, and like liftedDetailKeys
+// propertySettingsLiftedDetailKeys is the §2d lift list, and like liftedDetailKeys
 // (§2b) it is the single source of truth for both directions: export writes
 // these keys nowhere but the envelope, and import refuses them in
 // `properties` (deniedPropertyKey reads this same set). The refusal is
@@ -65,7 +67,7 @@ var (
 // to lift into, a present key is dropped with a warning rather than written
 // as a property (never observed: 0 of 27,444 non-relation documents carry
 // any of the three).
-func relationLiftedDetailKeys() map[string]bool {
+func propertySettingsLiftedDetailKeys() map[string]bool {
 	return map[string]bool{
 		detailKeyRelationFormat:            true,
 		detailKeyRelationFormatIncludeTime: true,
@@ -73,11 +75,11 @@ func relationLiftedDetailKeys() map[string]bool {
 	}
 }
 
-// relationLiftedKeyRepair names the relation_settings member a refused flat
+// propertySettingsLiftedKeyRepair names the property_settings member a refused flat
 // spelling belongs in — liftedKeyRepair's rule (§2b): the refusal is worth
 // twice as much said as a repair, because unlike an internal key there IS
 // something to write instead.
-func relationLiftedKeyRepair(key string) string {
+func propertySettingsLiftedKeyRepair(key string) string {
 	switch key {
 	case detailKeyRelationFormat:
 		return `"format": "<a §3 format name>"`
@@ -115,35 +117,35 @@ type TypeResolver interface {
 // ---- export ----
 //
 
-// isRelationDoc reports whether this export carries the §2d envelope fields.
-// It is the snapshot-side half of isRelationKind and MUST list the same
+// isPropertyDoc reports whether this export carries the §2d envelope fields.
+// It is the snapshot-side half of isPropertyKind and MUST list the same
 // kinds, because the schema now requires `format` on all three: an export
 // that lifted for fewer than it validates for would emit a document its own
 // Validate rejects (§11 I1) — which is exactly what happened when only the
-// document side was widened, on `bundled_relation`.
+// document side was widened, on `bundled_property`.
 //
 // `sub_object` is NOT one of them. It is deprecated and out of the format's
 // support surface by decision, not by measurement — 0 of 38,061 corpus
 // documents carry it either way, so nothing observable turns on it; what
 // turns on it is that a deprecated kind must not acquire a new obligation
 // in a format about to freeze.
-func (e *exporter) isRelationDoc() bool {
-	return isRelationSmartBlock(e.sbType)
+func (e *exporter) isPropertyDoc() bool {
+	return isPropertySmartBlock(e.sbType)
 }
 
-// isRelationSmartBlock is the SNAPSHOT-side statement of which kinds are
-// relations, and isRelationKind is the DOCUMENT-side one. All three lists —
+// isPropertySmartBlock is the SNAPSHOT-side statement of which kinds are
+// property documents, and isPropertyKind is the DOCUMENT-side one. All three lists —
 // these two and the schema's `if` — must name the same kinds: the schema
 // requires `format` on each of them, so a half that lifts for fewer than the
 // schema validates for breaks §11 I1 in one direction and drops the
 // definition in the other. Both breaks happened when only one list was
 // widened.
-func isRelationSmartBlock(sbType model.SmartBlockType) bool {
+func isPropertySmartBlock(sbType model.SmartBlockType) bool {
 	return sbType == model.SmartBlockType_STRelation ||
 		sbType == model.SmartBlockType_BundledRelation
 }
 
-// buildRelationEnvelope writes the `relation_settings` group — one
+// buildPropertySettings writes the `property_settings` group — one
 // propertyDefinition, the three §2d members that travel today — or, on a
 // kind that has no such group, reports any stored value the lift leaves
 // nowhere to go. Member presence mirrors stored-key presence exactly, value
@@ -155,12 +157,12 @@ func isRelationSmartBlock(sbType model.SmartBlockType) bool {
 // accepted deliberately: the dictionary entry and the type's
 // property-definition entry are groups holding the same shape, and two
 // patterns for one idea is the §15 #14 disease again, one level up.
-func (e *exporter) buildRelationEnvelope(doc *omap) error {
-	if !e.isRelationDoc() {
+func (e *exporter) buildPropertySettings(doc *omap) error {
+	if !e.isPropertyDoc() {
 		for _, key := range []string{detailKeyRelationFormat,
 			detailKeyRelationFormatIncludeTime, detailKeyRelationFormatObjectTypes} {
 			if e.detail(key) != nil {
-				e.warn("/properties", "%q describes a relation and this is not a relation document; "+
+				e.warn("/properties", "%q describes a property definition and this is not a property document; "+
 					"the value is dropped — it has no §2d member here and `properties` refuses the key", key)
 			}
 		}
@@ -184,7 +186,7 @@ func (e *exporter) buildRelationEnvelope(doc *omap) error {
 			// change the snapshot on the way round
 			group.set("include_time", nil)
 		default:
-			e.warn("/relation_settings/include_time", "includeTime %v is neither a boolean nor null and is dropped — "+
+			e.warn("/property_settings/include_time", "includeTime %v is neither a boolean nor null and is dropped — "+
 				"there is no way to write it (§2d)", protoValueToJSON(v))
 		}
 	}
@@ -199,11 +201,11 @@ func (e *exporter) buildRelationEnvelope(doc *omap) error {
 		case *types.Value_NullValue:
 			group.set("object_types", nil)
 		default:
-			e.warn("/relation_settings/object_types", "relationFormatObjectTypes %v is not a list and is dropped — "+
+			e.warn("/property_settings/object_types", "relationFormatObjectTypes %v is not a list and is dropped — "+
 				"there is no way to write it (§2d)", protoValueToJSON(v))
 		}
 	}
-	doc.set("relation_settings", group)
+	doc.set(memberPropertySettings, group)
 	return nil
 }
 
@@ -246,7 +248,7 @@ func (e *exporter) relationFormatName() (string, error) {
 
 // relationTargetKeys is the stored relationFormatObjectTypes list with each
 // entry translated to the stored type KEY it names, memoized because the
-// type-key census (seedTypeTermLedger) and buildRelationEnvelope both read
+// type-key census (seedTypeTermLedger) and buildPropertySettings both read
 // it — the same one-build rule as iconField (§2b).
 //
 // Translation is per entry and refuses nothing: a type object id inverts
@@ -284,20 +286,20 @@ func (e *exporter) relationTargetKeys() []string {
 // ---- import ----
 //
 
-// applyRelationEnvelope writes the stored keys the §2d group's members stand
+// applyPropertySettings writes the stored keys the §2d group's members stand
 // for. Presence mirrors presence: a member the document omits writes
 // nothing, so the details that came out are the details that go back in.
-func (imp *importer) applyRelationEnvelope(details *types.Struct, sbType model.SmartBlockType) error {
-	if !isRelationSmartBlock(sbType) {
+func (imp *importer) applyPropertySettings(details *types.Struct, sbType model.SmartBlockType) error {
+	if !isPropertySmartBlock(sbType) {
 		// the schema keeps the group off every other kind (§2d), so there is
 		// nothing here to read — Unmarshal validates before it decodes,
 		// deliberately (§12 I2)
 		return nil
 	}
-	rs := imp.doc.RelationSettings
+	rs := imp.doc.PropertySettings
 	if rs == nil {
 		// unreachable off a validated document — the schema requires the
-		// group on both relation kinds — but Unmarshal must not crash on a
+		// group on both property-document kinds — but Unmarshal must not crash on a
 		// snapshot rebuilt by a caller that skipped Validate
 		return nil
 	}
@@ -337,7 +339,7 @@ func (imp *importer) applyRelationEnvelope(details *types.Struct, sbType model.S
 		tr, _ := imp.opts.ResolveProperties.(TypeResolver)
 		vals := make([]*types.Value, 0, len(slugs))
 		for j, slug := range slugs {
-			slotPath := fmt.Sprintf("/relation_settings/object_types/%d", j)
+			slotPath := fmt.Sprintf("/property_settings/object_types/%d", j)
 			// a TYPE key slot (§2d): the document's own legend first, then
 			// the vocabulary — and the seam refuses a resolution onto the
 			// empty key, which has no written form (§3), the same refusal
@@ -371,29 +373,29 @@ func (imp *importer) applyRelationEnvelope(details *types.Struct, sbType model.S
 // ---- validation ----
 //
 
-// relationSettingsOf reads the §2d group off a raw document, for the checks
+// propertySettingsOf reads the §2d group off a raw document, for the checks
 // that run before it decodes. One reader, so the slot issue and the semantic
 // pass cannot disagree about where the group lives.
-func relationSettingsOf(doc map[string]any) (map[string]any, bool) {
-	raw, has := doc["relation_settings"]
+func propertySettingsOf(doc map[string]any) (map[string]any, bool) {
+	raw, has := doc[memberPropertySettings]
 	group, _ := raw.(map[string]any)
 	return group, has
 }
 
-// relationFormatSlotIssue words the missing-definition verdict on a relation
+// propertyFormatSlotIssue words the missing-definition verdict on a property
 // document — missingFormatIssue's trade (§2b) at the §2d slot: `required`
 // can say a member is missing but not what the choices are, and the author
 // most likely to hit it is holding an older document whose format lives at
 // the root (pre-v0.32) or in `properties` as a raw number (pre-v0.31). The
 // kind is read RAW, exactly as the schema's `if` reads it, so the two
 // verdicts cannot disagree about which documents owe the group —
-// isRelationKind and the schema's `if` list the same kinds. The names are
+// isPropertyKind and the schema's `if` list the same kinds. The names are
 // read out of the published schema (propertyFormatEnum), never restated.
-func relationFormatSlotIssue(doc map[string]any, r *keySlotReport) {
-	if !isRelationKind(doc) {
+func propertyFormatSlotIssue(doc map[string]any, r *keySlotReport) {
+	if !isPropertyKind(doc) {
 		return
 	}
-	group, hasGroup := relationSettingsOf(doc)
+	group, hasGroup := propertySettingsOf(doc)
 	if hasGroup {
 		if _, has := group["format"]; has {
 			return
@@ -406,26 +408,33 @@ func relationFormatSlotIssue(doc map[string]any, r *keySlotReport) {
 	var msg string
 	path := ""
 	if hasGroup {
-		path = "/relation_settings"
-		msg = fmt.Sprintf("missing property 'format': a relation document states "+
+		path = "/property_settings"
+		msg = fmt.Sprintf("missing property 'format': a property document states "+
 			"the format of the property it defines — one of %s (§2d)", quotedList(names))
 	} else {
-		msg = fmt.Sprintf("missing property 'relation_settings': a relation document states "+
+		msg = fmt.Sprintf("missing property 'property_settings': a property document states "+
 			"the definition of the property it IS — at least `format`, one of %s (§2d)", quotedList(names))
 	}
 	// the migration hints, on the same reasoning as `refs` (§10): each older
 	// spelling is exactly one this verdict fires on, and told only that a
 	// member is missing, the obvious wrong repair is to invent one while
-	// leaving the old spelling where it sits
+	// leaving the old spelling where it sits. The hints keep the OLD member
+	// names because they describe what the older document in hand SPELLS.
 	if _, atRoot := doc["format"]; atRoot && !hasGroup {
 		msg += `. This document spells "format" at the root — the pre-v0.32 form: ` +
-			`the definition moved into the "relation_settings" group, so move ` +
+			`the definition moved into the "property_settings" group, so move ` +
 			`"format" (and "include_time"/"object_types" beside it) in there`
+	}
+	if _, was := doc["relation_settings"]; was && !hasGroup {
+		// the pre-v0.38 group name, before the format stopped calling a
+		// property a relation anywhere; the members inside are unchanged
+		msg += `. This document spells the group "relation_settings" — the pre-v0.38 form: ` +
+			`rename the group to "property_settings"`
 	}
 	if props, _ := doc["properties"].(map[string]any); props != nil {
 		if _, legacy := props["relation_format"]; legacy {
 			msg += `. This document spells "relation_format" inside properties — the pre-v0.31 ` +
-				`form: replace that raw number with its name in relation_settings`
+				`form: replace that raw number with its name in property_settings`
 		}
 		// the OTHER wrong container, and the commoner one: 9 of 9
 		// small-model attempts wrote `format` inside `properties`, where it
@@ -436,14 +445,14 @@ func relationFormatSlotIssue(doc map[string]any, r *keySlotReport) {
 		// a schema failure never reaches.
 		if _, phantom := props["format"]; phantom {
 			msg += `. This document spells "format" inside properties, where it names a ` +
-				`CUSTOM property rather than the relation's own format: move that member ` +
-				`into relation_settings`
+				`CUSTOM property rather than the property's own format: move that member ` +
+				`into property_settings`
 		}
 	}
 	r.rejectValueAt(path, msg)
 }
 
-// relationEnvelopeIssues runs the §2d checks the schema cannot express: a
+// propertySettingsIssues runs the §2d checks the schema cannot express: a
 // meaningful value against a format that cannot use it. WARNINGS, not
 // errors, and the grade is load-bearing (wrongShapeForFormat's reasoning):
 // the stored details are not authored — a real relation may carry
@@ -458,35 +467,35 @@ func relationFormatSlotIssue(doc map[string]any, r *keySlotReport) {
 // says nothing the reader would act on, and warning on it would fire on
 // most of the corpus (8,375 present-and-false alone), burying the case an
 // author can actually fix.
-func relationEnvelopeIssues(doc map[string]any, warn func(path, format string, args ...any)) {
-	if !isRelationKind(doc) {
+func propertySettingsIssues(doc map[string]any, warn func(path, format string, args ...any)) {
+	if !isPropertyKind(doc) {
 		return // the schema refuses the group on every other kind
 	}
-	group, _ := relationSettingsOf(doc)
+	group, _ := propertySettingsOf(doc)
 	format, _ := group["format"].(string)
 	if format == "" {
 		// required and missing: the schema's error already says so, and it
 		// is the one that names the wrong container too
-		// (relationFormatSlotIssue) — this pass never runs on a document
+		// (propertyFormatSlotIssue) — this pass never runs on a document
 		// the schema rejected, so it cannot be the place that says it.
 		return
 	}
-	relationPhantomIssues(doc, warn)
+	propertyPhantomIssues(doc, warn)
 	if v, has := group["include_time"]; has && format != "date" {
 		if b, isBool := v.(bool); isBool && b {
-			warn("/relation_settings/include_time", "include_time is only meaningful on date, not %q — "+
+			warn("/property_settings/include_time", "include_time is only meaningful on date, not %q — "+
 				"it is carried but nothing reads it (§2d)", format)
 		}
 	}
 	if v, has := group["object_types"]; has && format != "objects" && format != "files" {
 		if list, isList := v.([]any); isList && len(list) > 0 {
-			warn("/relation_settings/object_types", "object_types is only meaningful on objects/files, not %q — "+
+			warn("/property_settings/object_types", "object_types is only meaningful on objects/files, not %q — "+
 				"it is carried but nothing reads it (§2d)", format)
 		}
 	}
 }
 
-// relationPhantomIssues reports a `properties` member spelling one of the
+// propertyPhantomIssues reports a `properties` member spelling one of the
 // three FIELD names on a relation document. It is almost certainly the
 // envelope field written in the wrong container — the exact shape 9 of 9
 // small-model attempts wrote, which validated silently and imported as a
@@ -497,30 +506,30 @@ func relationEnvelopeIssues(doc map[string]any, warn func(path, format string, a
 // key (a media space really can have a "Format" column) and a relation
 // object carrying one must stay exportable (§11 I1).
 //
-// The kind gate is the relation-adjacent SET, not `relation` alone. Export
-// writes `bundled_relation` — 0 of 38,061 corpus
-// documents — but the schema's `kind` enum offers both beside `relation`
-// with nothing marking them non-authorable, and an author who picks one
+// The kind gate is the property-document SET, not `property` alone. Export
+// writes `bundled_property` — 0 of 38,061 corpus
+// documents — but the schema's `kind` enum offers it beside `property`
+// with nothing marking it non-authorable, and an author who picks it
 // walks straight back into the §2d bug with every gate silent. A kind
 // nothing emits is exactly the kind nobody thought to guard.
-func relationPhantomIssues(doc map[string]any, warn func(path, format string, args ...any)) {
+func propertyPhantomIssues(doc map[string]any, warn func(path, format string, args ...any)) {
 	props, _ := doc["properties"].(map[string]any)
 	if props == nil {
 		return
 	}
 	for _, member := range []string{"format", "include_time", "object_types"} {
 		if _, has := props[member]; has {
-			warn("/properties/"+member, "on a relation document %q names a CUSTOM property, "+
-				"not the relation's own %s — that lives in relation_settings (§2d); "+
+			warn("/properties/"+member, "on a property document %q names a CUSTOM property, "+
+				"not this property's own %s — that lives in property_settings (§2d); "+
 				"drop this member unless a property literally named %q is meant",
 				member, member, member)
 		}
 	}
 }
 
-// isRelationKind reports the kinds whose document IS a relation: the one
-// export writes, plus the two the schema's enum offers beside it.
-func isRelationKind(doc map[string]any) bool {
+// isPropertyKind reports the kinds whose document IS a property definition:
+// the one export writes, plus the one the schema's enum offers beside it.
+func isPropertyKind(doc map[string]any) bool {
 	kind, _ := doc["kind"].(string)
 	return kind == kindNames.name(model.SmartBlockType_STRelation) ||
 		kind == kindNames.name(model.SmartBlockType_BundledRelation)

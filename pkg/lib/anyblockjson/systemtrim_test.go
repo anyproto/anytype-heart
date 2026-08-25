@@ -88,7 +88,7 @@ func emptyLike(v *types.Value) *types.Value {
 // fields mirror stored presence, empty values included.
 //
 // How this can fail: add featuredRelations to trimmedWhenEmpty and the page
-// assertion finds the key gone; make buildRelationEnvelope treat format 0 as
+// assertion finds the key gone; make buildPropertySettings treat format 0 as
 // unset, or omit an empty object_types list, and the relation assertions
 // find the fields missing.
 func TestSystemTrim_TheExcludedKeysKeepTheirEmptyValue(t *testing.T) {

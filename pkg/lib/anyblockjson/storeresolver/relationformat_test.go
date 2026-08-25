@@ -92,15 +92,15 @@ func TestRelationDocumentTranslatesTargetTypes(t *testing.T) {
 	// legend entry that inverts it — and the unresolvable id verbatim, its
 	// own address, never dropped
 	var doc struct {
-		RelationSettings struct {
+		PropertySettings struct {
 			Format      string   `json:"format"`
 			ObjectTypes []string `json:"object_types"`
-		} `json:"relation_settings"`
+		} `json:"property_settings"`
 		TypeKeys map[string]string `json:"type_internal_keys"`
 	}
 	require.NoError(t, json.Unmarshal(data, &doc))
-	assert.Equal(t, "objects", doc.RelationSettings.Format)
-	assert.Equal(t, []string{"person", "type-vanished"}, doc.RelationSettings.ObjectTypes)
+	assert.Equal(t, "objects", doc.PropertySettings.Format)
+	assert.Equal(t, []string{"person", "type-vanished"}, doc.PropertySettings.ObjectTypes)
 	assert.Equal(t, customTypeKey, doc.TypeKeys["person"],
 		"the slug owes the legend entry that inverts it (§3)")
 

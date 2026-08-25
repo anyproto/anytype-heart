@@ -298,7 +298,7 @@ type exporter struct {
 
 	// relTargets is a relation document's translated target-type key list
 	// (§2d), built once for the same reason: the type-key census
-	// (seedTypeTermLedger) and buildRelationEnvelope both read it.
+	// (seedTypeTermLedger) and buildPropertySettings both read it.
 	relTargets      []string
 	relTargetsBuilt bool
 
@@ -800,7 +800,7 @@ func (e *exporter) seedTypeTermLedger() {
 	// and the census must know every key the slot will spell for the same
 	// reason it knows the §2a targets: verbatim-first (§3) makes each its
 	// own address, so no other key's slug may take one as a spelling
-	if e.isRelationDoc() {
+	if e.isPropertyDoc() {
 		for _, key := range e.relationTargetKeys() {
 			if key != "" {
 				e.typeNamedKeys[key] = true
@@ -1344,7 +1344,7 @@ func (e *exporter) buildDoc(sbType model.SmartBlockType) (*omap, error) {
 	// `include_time`, `object_types` — before `icon`, because what a property
 	// IS outranks what it looks like, and before the legends, so the type
 	// terms `object_types` claims land in the ledger the legends render
-	if err := e.buildRelationEnvelope(doc); err != nil {
+	if err := e.buildPropertySettings(doc); err != nil {
 		return nil, err
 	}
 	// the typed icon/cover fields sit above `properties` (§2b): they are what
@@ -1498,7 +1498,7 @@ func (e *exporter) envelopeLiftedKeys() map[string]bool {
 	for k := range e.typePropDetailKeys() {
 		lifted[k] = true
 	}
-	for k := range relationLiftedDetailKeys() {
+	for k := range propertySettingsLiftedDetailKeys() {
 		lifted[k] = true
 	}
 	// the five type_settings members, on TYPE documents only (§2a): off one,

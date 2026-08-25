@@ -86,7 +86,7 @@ func TestPropertyDefinition_OneSharedShapeThreeHomes(t *testing.T) {
 	// in properties.schema.json — is checked below with the same rules. A
 	// home missing from either is a fourth spelling.
 	typeProperty, foundTypeProperty := schema.Defs["typeProperty"]
-	relationSettings, foundRelationSettings := schema.Properties["relation_settings"]
+	relationSettings, foundRelationSettings := schema.Properties["property_settings"]
 	for home, tc := range map[string]struct {
 		node         schemaNode
 		found        bool
@@ -96,7 +96,7 @@ func TestPropertyDefinition_OneSharedShapeThreeHomes(t *testing.T) {
 			node: typeProperty, found: foundTypeProperty,
 			localMembers: []string{"format", "object_types", "section"},
 		},
-		"relation_settings": {
+		"property_settings": {
 			node: relationSettings, found: foundRelationSettings,
 			localMembers: nil, // nothing to narrow; its layer is all refusals
 		},

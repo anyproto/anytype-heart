@@ -13,7 +13,7 @@ package anyblockjson
 // index says WHERE things are, a dictionary says WHAT THEY MEAN (§2f). And
 // it is the third home of $defs/propertyDefinition (§2e) — a dictionary
 // entry, a type's property-definition entry and a relation document's
-// relation_settings are one shape in three places, which is why the Go
+// property_settings are one shape in three places, which is why the Go
 // surface here is []PropertyDefinition rather than a fourth field list.
 //
 // Self-sufficiency is the constraint that shapes it: a third-party reader
@@ -177,7 +177,7 @@ func unmarshalPropertyDictionary(data []byte, warn func(Issue)) (*PropertyDictio
 		// vocabulary to consult: the definition is built by the same shared
 		// builder both doors of the §2a array use, with the slots passed
 		// through verbatim. `format` resolves per key exactly as a
-		// relation_settings format does (§3): "text" on a bundled
+		// property_settings format does (§3): "text" on a bundled
 		// short-text key stays short text, and on anything else is longtext.
 		def := tp.definition(storedKey, declaredFormatWith(Options{}, storedKey, tp.Format),
 			mapStrings(tp.ObjectTypes, dictionaryStoredTypeKey))

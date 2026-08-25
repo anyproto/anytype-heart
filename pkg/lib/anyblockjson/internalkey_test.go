@@ -151,7 +151,7 @@ func TestPropertyDictionary_DuplicateAcrossTheTwoIdentityMembers(t *testing.T) {
 	assert.Contains(t, err.Error(), "already defined at /properties/0")
 }
 
-// relation_settings refuses the identity pair the way it refused `key`: a
+// property_settings refuses the identity pair the way it refused `key`: a
 // relation document's stored key is the envelope `internal_key`, and its
 // spelling is derived, never stated — admitting either member would be a
 // second spelling of a fact another surface owns (§2d).
@@ -161,10 +161,10 @@ func TestRelationSettings_RefusesTheIdentityPair(t *testing.T) {
 		"internal_key": "envelope",
 	} {
 		t.Run(member, func(t *testing.T) {
-			err := Validate([]byte(`{"version":1,"kind":"relation","id":"o1","internal_key":"b",
-				"relation_settings":{"format":"number","` + member + `":"x"}}`))
+			err := Validate([]byte(`{"version":1,"kind":"property","id":"o1","internal_key":"b",
+				"property_settings":{"format":"number","` + member + `":"x"}}`))
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), "/relation_settings/"+member)
+			assert.Contains(t, err.Error(), "/property_settings/"+member)
 			assert.Contains(t, strings.ToLower(err.Error()), wantHome,
 				"the refusal names where the fact lives")
 		})

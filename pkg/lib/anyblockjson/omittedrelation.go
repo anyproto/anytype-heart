@@ -149,7 +149,7 @@ func InstallStampedDefault(key string, v *types.Value) bool {
 // every derived id — fewer omissions, never a wrong one, the same
 // degradation every resolver-less path in this format takes.
 func OmittedBundledRelation(sbType model.SmartBlockType, base *model.SmartBlockSnapshotBase, opts Options) (string, bool) {
-	if !isRelationSmartBlock(sbType) || base == nil {
+	if !isPropertySmartBlock(sbType) || base == nil {
 		return "", false
 	}
 	det := base.GetDetails().GetFields()

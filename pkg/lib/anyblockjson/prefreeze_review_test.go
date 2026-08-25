@@ -523,7 +523,7 @@ func TestValidate_EnvelopeKeyAcceptsRealStoredKeys(t *testing.T) {
 		"69a56205ccba0a47d8d8eb71_тогглы",
 		"69bbfc78877a91b1d12d1a7c_JavaScript/TypeScript",
 	} {
-		doc := fmt.Sprintf(`{"version": 1, "kind": "relation_option", "id": "o1", "internal_key": %q}`, key)
+		doc := fmt.Sprintf(`{"version": 1, "kind": "property_option", "id": "o1", "internal_key": %q}`, key)
 		assert.NoError(t, Validate([]byte(doc)), "stored key %q must round-trip", key)
 	}
 }

@@ -149,8 +149,8 @@ func TestTypeSettings_FlatSpellingsAreRefusedOnTypeDocumentsOnly(t *testing.T) {
 	})
 
 	t.Run("accepted on a relation document", func(t *testing.T) {
-		doc := `{"version":1,"kind":"relation","id":"r1","internal_key":"budget",
-			"relation_settings":{"format":"number"},
+		doc := `{"version":1,"kind":"property","id":"r1","internal_key":"budget",
+			"property_settings":{"format":"number"},
 			"properties":{"name":"Budget","api_object_key":"budget"}}`
 		require.NoError(t, Validate([]byte(doc)),
 			"apiObjectKey is an ordinary property off a type document")
@@ -175,7 +175,7 @@ func TestTypeSettings_GatedByKindWithMigrationHints(t *testing.T) {
 			want: `/type_settings: property "type_settings" is only valid on type documents`,
 		},
 		"type_settings on a relation": {
-			doc:  `{"version":1,"kind":"relation","id":"o1","internal_key":"b","relation_settings":{"format":"number"},"type_settings":{}}`,
+			doc:  `{"version":1,"kind":"property","id":"o1","internal_key":"b","property_settings":{"format":"number"},"type_settings":{}}`,
 			want: `property "type_settings" is only valid on type documents`,
 		},
 		"the pre-v0.32 root type_properties": {
@@ -400,7 +400,7 @@ func TestDefinitionIdentity_AKeylessDefinitionWarns(t *testing.T) {
 		"type document with no key": {
 			`{"version":1,"kind":"object_type","properties":{"name":"Podcast Episode"}}`, true},
 		"relation document with no key": {
-			`{"version":1,"kind":"relation","relation_settings":{"format":"number"},` +
+			`{"version":1,"kind":"property","property_settings":{"format":"number"},` +
 				`"properties":{"name":"Episode"}}`, true},
 		"type document WITH a key": {
 			`{"version":1,"kind":"object_type","internal_key":"podcast","properties":{"name":"Podcast"}}`, false},

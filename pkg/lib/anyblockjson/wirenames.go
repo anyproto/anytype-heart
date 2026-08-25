@@ -36,4 +36,11 @@ const (
 	memberPropertyInternalKeys = "property_internal_keys"
 	// memberTypeInternalKeys is the same legend on the type namespace (§3).
 	memberTypeInternalKeys = "type_internal_keys"
+	// memberPropertySettings is a property document's definition group (§2d)
+	// — the group that was born `relation_settings`. The v0.38 rename is the
+	// same disease cured one word later: the product calls these things
+	// properties, the format called the definition kind `relation`, and one
+	// document said both (`featured_properties` the block type beside
+	// `featured_relations` the key). One concept, one spelling (§15 #14).
+	memberPropertySettings = "property_settings"
 )

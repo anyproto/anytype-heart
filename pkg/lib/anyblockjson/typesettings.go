@@ -38,7 +38,7 @@ var (
 
 // typeSettingsLiftedDetailKeys is the §2a settings lift list — the single
 // source for both directions, like liftedDetailKeys (§2b) and
-// relationLiftedDetailKeys (§2d): export writes these keys nowhere but the
+// propertySettingsLiftedDetailKeys (§2d): export writes these keys nowhere but the
 // group, and on a TYPE document import refuses their flat spellings in
 // `properties`. Unlike the §2d list the refusal is KIND-SCOPED, and that is
 // measured, not stylistic: `apiObjectKey` is real data on 9,725 relation and
@@ -172,7 +172,7 @@ func DroppedEmptyTypeSetting(sbType model.SmartBlockType, key string, v *types.V
 
 // isTypeSmartBlock is the SNAPSHOT-side statement of which kinds are type
 // documents, and isTypeKind the DOCUMENT-side one — the same two-halves
-// shape as isRelationSmartBlock/isRelationKind (§2d), with the same rule:
+// shape as isPropertySmartBlock/isPropertyKind (§2d), with the same rule:
 // both halves and the schema's gate must name the same kinds, or one side
 // emits what the other refuses. `bundled_object_type` is in the set for the
 // §2d side-door reason: 0 of 38,061 corpus documents carry it, but the
@@ -192,7 +192,7 @@ func isTypeKind(doc map[string]any) bool {
 }
 
 // typeSettingsOf reads the §2a group off a raw document, for the checks that
-// run before it decodes — relationSettingsOf's twin.
+// run before it decodes — propertySettingsOf's twin.
 func typeSettingsOf(doc map[string]any) (map[string]any, bool) {
 	raw, has := doc["type_settings"]
 	group, _ := raw.(map[string]any)
@@ -438,8 +438,8 @@ func definitionIdentityIssue(doc map[string]any, warn func(path, format string, 
 	kind, _ := doc["kind"].(string)
 	var what string
 	switch {
-	case isRelationKind(doc):
-		what = "relation"
+	case isPropertyKind(doc):
+		what = "property"
 	case kind == kindNames.name(model.SmartBlockType_STType) ||
 		kind == kindNames.name(model.SmartBlockType_BundledObjectType):
 		what = "type"

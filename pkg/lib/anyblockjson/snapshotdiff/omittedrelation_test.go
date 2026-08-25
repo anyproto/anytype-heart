@@ -108,7 +108,7 @@ func TestCompare_OmittedRelationDefinitionLossStillReports(t *testing.T) {
 	assert.NotEmpty(t, diffs)
 }
 
-// relation_settings' object_types round-trips by type KEY, and legacy data
+// property_settings' object_types round-trips by type KEY, and legacy data
 // mixes spellings: 27 corpus relations store a bare type key where the
 // store speaks object ids, and import writes the id back — the SAME type,
 // respelled. The comparator normalizes both sides to keys through the

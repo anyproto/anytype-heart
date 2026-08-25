@@ -1,9 +1,15 @@
 package anyblockjson
 
 // relationformat_test.go — the §2d relation-definition group:
-// `relation_settings` with `format`, `include_time`, `object_types` on
-// kind:relation documents, the refusal of their flat spellings in
+// `property_settings` with `format`, `include_time`, `object_types` on
+// kind:property documents, the refusal of their flat spellings in
 // `properties`, and the presence-mirror round trip.
+//
+// v0.38 renamed the wire vocabulary here — kinds `relation`→`property` /
+// `bundled_relation`→`bundled_property`, the group
+// `relation_settings`→`property_settings` — so every fixture and pinned
+// message in this file moved to the new spelling. The RULES pinned are
+// unchanged: same gates, same repairs, same warnings, one spelling later.
 
 import (
 	"encoding/json"
@@ -22,7 +28,7 @@ func nullValue() *types.Value {
 	return &types.Value{Kind: &types.Value_NullValue{}}
 }
 
-// relationSnapshot is a minimal kind:relation snapshot — the details a real
+// relationSnapshot is a minimal kind:property snapshot — the details a real
 // relation object carries, minus the install noise this test does not need.
 func relationSnapshot(details map[string]*types.Value) *model.SmartBlockSnapshotBase {
 	if details == nil {
@@ -70,9 +76,9 @@ func newTypeIdVocabulary() *typeIdVocabulary {
 
 // The three stored details travel on the envelope, never in `properties`.
 //
-// How this can fail: drop relationLiftedDetailKeys from envelopeLiftedKeys
+// How this can fail: drop propertySettingsLiftedDetailKeys from envelopeLiftedKeys
 // and the flat spellings reappear in properties; drop the
-// buildRelationEnvelope call from buildDoc and the envelope fields vanish.
+// buildPropertySettings call from buildDoc and the envelope fields vanish.
 func TestRelationEnvelope_LiftsTheThreeDetails(t *testing.T) {
 	// given
 	snap := relationSnapshot(map[string]*types.Value{
@@ -229,7 +235,7 @@ func TestRelationEnvelope_NonFiniteFormatFailsExportByTheGuard(t *testing.T) {
 // of the legacy story (§10): a pre-v0.31 document spells `relation_format`
 // here and is refused loudly instead of read.
 //
-// How this can fail: drop the relationLiftedDetailKeys arm from
+// How this can fail: drop the propertySettingsLiftedDetailKeys arm from
 // deniedPropertyKey and both doors accept the raw number again — a phantom
 // property in Validate's case, a silent second spelling in Unmarshal's.
 func TestRelationEnvelope_RefusedInProperties(t *testing.T) {
@@ -239,8 +245,8 @@ func TestRelationEnvelope_RefusedInProperties(t *testing.T) {
 		"relation_format_object_types": `["page"]`,
 	} {
 		t.Run(spelling, func(t *testing.T) {
-			doc := `{"version":1,"kind":"relation","id":"o1","internal_key":"budget",` +
-				`"relation_settings":{"format":"number"},` +
+			doc := `{"version":1,"kind":"property","id":"o1","internal_key":"budget",` +
+				`"property_settings":{"format":"number"},` +
 				`"properties":{"` + spelling + `":` + value + `}}`
 
 			err := Validate([]byte(doc))
@@ -308,7 +314,7 @@ func TestRelationEnvelope_PresenceMirrorsTheStore(t *testing.T) {
 			snap := relationSnapshot(tc.details)
 			want := map[string]*types.Value{}
 			for k, v := range snap.Details.Fields {
-				if relationLiftedDetailKeys()[k] {
+				if propertySettingsLiftedDetailKeys()[k] {
 					want[k] = v
 				}
 			}
@@ -331,7 +337,7 @@ func TestRelationEnvelope_PresenceMirrorsTheStore(t *testing.T) {
 			for k, v := range want {
 				assert.Equal(t, v, got.Details.Fields[k], "detail %q changed on the way round", k)
 			}
-			for k := range relationLiftedDetailKeys() {
+			for k := range propertySettingsLiftedDetailKeys() {
 				if _, wanted := want[k]; !wanted {
 					assert.Nil(t, got.Details.Fields[k], "the round trip invented detail %q", k)
 				}
@@ -347,7 +353,7 @@ func TestRelationEnvelope_PresenceMirrorsTheStore(t *testing.T) {
 //
 // How this can fail: drop the TypeKeyById arm from relationTargetKeys and
 // the wire carries raw ids under a resolver; drop the TypeIdByKey arm from
-// applyRelationEnvelope and the round trip stores keys where ids were.
+// applyPropertySettings and the round trip stores keys where ids were.
 func TestRelationEnvelope_TargetTypesTranslateThroughTheResolver(t *testing.T) {
 	// given
 	opts := testOptions()
@@ -419,7 +425,7 @@ func (blankTypeResolver) TypeIdByKey(key string) (string, bool) { return "", tru
 //
 // How this can fail: drop `key != ""` from relationTargetKeys' TypeKeyById
 // arm and the wire carries "" where the stored id was; drop `resolved != ""`
-// from applyRelationEnvelope's TypeIdByKey arm and the store receives ""
+// from applyPropertySettings's TypeIdByKey arm and the store receives ""
 // where the key was. Each drop is silent on every other test — the working
 // resolvers never answer ok-with-empty.
 func TestRelationEnvelope_AResolverAnsweringEmptyIsNoAnswer(t *testing.T) {
@@ -593,27 +599,27 @@ func TestRelationEnvelope_TargetKeysAreInTheTypeCensus(t *testing.T) {
 	// binding backed off to the verbatim key
 	var doc struct {
 		Type             string `json:"type"`
-		RelationSettings struct {
+		PropertySettings struct {
 			ObjectTypes []string `json:"object_types"`
-		} `json:"relation_settings"`
+		} `json:"property_settings"`
 	}
 	require.NoError(t, json.Unmarshal(data, &doc))
 	assert.Equal(t, "custom123", doc.Type,
 		"the census reserved %q for the target, so the type spells its stored key", "wine")
-	assert.Equal(t, []string{"wine"}, doc.RelationSettings.ObjectTypes)
+	assert.Equal(t, []string{"wine"}, doc.PropertySettings.ObjectTypes)
 }
 
 // docObjectTypes reads the §2d target-type list out of a rendered document —
-// inside the relation_settings group since v0.32.
+// inside the property_settings group since v0.32.
 func docObjectTypes(t *testing.T, data []byte) []string {
 	t.Helper()
 	var doc struct {
-		RelationSettings struct {
+		PropertySettings struct {
 			ObjectTypes []string `json:"object_types"`
-		} `json:"relation_settings"`
+		} `json:"property_settings"`
 	}
 	require.NoError(t, json.Unmarshal(data, &doc))
-	return doc.RelationSettings.ObjectTypes
+	return doc.PropertySettings.ObjectTypes
 }
 
 // A custom stored type key in `object_types` owes the type_internal_keys legend its
@@ -651,7 +657,7 @@ func TestRelationEnvelope_TargetTypesOweTheTypeLegend(t *testing.T) {
 // the wrong format is most of the corpus (8,375 present-and-false
 // include_time alone) and says nothing an author could act on.
 //
-// How this can fail: drop the relationEnvelopeIssues call from
+// How this can fail: drop the propertySettingsIssues call from
 // semanticIssues and the warnings vanish; warn on any presence and the
 // no-warning cases light up.
 func TestRelationEnvelope_WrongFormatWarnsButCarries(t *testing.T) {
@@ -660,24 +666,24 @@ func TestRelationEnvelope_WrongFormatWarnsButCarries(t *testing.T) {
 		wantWarn string // "" = no warning expected
 	}{
 		"include_time true on number": {
-			doc:      `{"version":1,"kind":"relation","id":"o1","internal_key":"b","relation_settings":{"format":"number","include_time":true}}`,
-			wantWarn: "/relation_settings/include_time",
+			doc:      `{"version":1,"kind":"property","id":"o1","internal_key":"b","property_settings":{"format":"number","include_time":true}}`,
+			wantWarn: "/property_settings/include_time",
 		},
 		"object_types non-empty on number": {
-			doc:      `{"version":1,"kind":"relation","id":"o1","internal_key":"b","relation_settings":{"format":"number","object_types":["page"]}}`,
-			wantWarn: "/relation_settings/object_types",
+			doc:      `{"version":1,"kind":"property","id":"o1","internal_key":"b","property_settings":{"format":"number","object_types":["page"]}}`,
+			wantWarn: "/property_settings/object_types",
 		},
 		"include_time false on number": {
-			doc: `{"version":1,"kind":"relation","id":"o1","internal_key":"b","relation_settings":{"format":"number","include_time":false}}`,
+			doc: `{"version":1,"kind":"property","id":"o1","internal_key":"b","property_settings":{"format":"number","include_time":false}}`,
 		},
 		"object_types empty on number": {
-			doc: `{"version":1,"kind":"relation","id":"o1","internal_key":"b","relation_settings":{"format":"number","object_types":[]}}`,
+			doc: `{"version":1,"kind":"property","id":"o1","internal_key":"b","property_settings":{"format":"number","object_types":[]}}`,
 		},
 		"include_time true on date": {
-			doc: `{"version":1,"kind":"relation","id":"o1","internal_key":"b","relation_settings":{"format":"date","include_time":true}}`,
+			doc: `{"version":1,"kind":"property","id":"o1","internal_key":"b","property_settings":{"format":"date","include_time":true}}`,
 		},
 		"object_types non-empty on objects": {
-			doc: `{"version":1,"kind":"relation","id":"o1","internal_key":"b","relation_settings":{"format":"objects","object_types":["page"]}}`,
+			doc: `{"version":1,"kind":"property","id":"o1","internal_key":"b","property_settings":{"format":"objects","object_types":["page"]}}`,
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -706,10 +712,10 @@ func TestRelationEnvelope_WrongFormatWarnsButCarries(t *testing.T) {
 // key and a relation object carrying one must stay exportable (I1).
 //
 // How this can fail: drop the properties-member loop from
-// relationEnvelopeIssues and the phantom shape validates with no notice;
+// propertySettingsIssues and the phantom shape validates with no notice;
 // make it a refusal and the page case (where the member is an ordinary
 // property) starts failing I1 for spaces that really have one. The members
-// run one at a time, because relationPhantomIssues lists the three
+// run one at a time, because propertyPhantomIssues lists the three
 // literally and a member dropped from that list keeps the other two
 // warning — the 9-of-9 eval failures happened to write `format`, but the
 // bug they demonstrate (a §2d field name is an ordinary spelling inside
@@ -723,8 +729,8 @@ func TestRelationEnvelope_PhantomFieldNameInPropertiesWarns(t *testing.T) {
 	} {
 		t.Run(member, func(t *testing.T) {
 			// given the envelope format AND the phantom twin in properties
-			doc := `{"version":1,"kind":"relation","id":"o1","internal_key":"b",` +
-				`"relation_settings":{"format":"number"},` +
+			doc := `{"version":1,"kind":"property","id":"o1","internal_key":"b",` +
+				`"property_settings":{"format":"number"},` +
 				`"properties":{"name":"Budget","` + member + `":` + value + `}}`
 
 			// when
@@ -746,47 +752,47 @@ func TestRelationEnvelope_PhantomFieldNameInPropertiesWarns(t *testing.T) {
 	}
 }
 
-// The group is legal only on kind:relation, `format` is required inside it,
+// The group is legal only on kind:property, `format` is required inside it,
 // and every older spelling gets a message naming the repair rather than the
 // mechanism — the migration story of two versions, in one gate.
 //
 // How this can fail: remove the allOf conditional from object.schema.json
 // and the off-relation cases validate clean; remove the schemaIssueMessage
 // arm and they degrade to a bare "not allowed"; drop a hint clause from
-// relationFormatSlotIssue or the root-spelling special case and the
+// propertyFormatSlotIssue or the root-spelling special case and the
 // corresponding migration case loses its repair.
 func TestRelationEnvelope_FieldsAreGatedByKind(t *testing.T) {
 	for name, tc := range map[string]struct{ doc, want string }{
-		"relation_settings on a page": {
-			doc:  `{"version":1,"id":"o1","relation_settings":{"format":"number"}}`,
-			want: `/relation_settings: property "relation_settings" is only valid on relation documents`,
+		"property_settings on a page": {
+			doc:  `{"version":1,"id":"o1","property_settings":{"format":"number"}}`,
+			want: `/property_settings: property "property_settings" is only valid on property documents`,
 		},
-		"relation_settings on a template": {
-			doc:  `{"version":1,"kind":"template","id":"o1","type":"template","relation_settings":{"format":"date"}}`,
-			want: `/relation_settings: property "relation_settings" is only valid on relation documents`,
+		"property_settings on a template": {
+			doc:  `{"version":1,"kind":"template","id":"o1","type":"template","property_settings":{"format":"date"}}`,
+			want: `/property_settings: property "property_settings" is only valid on property documents`,
 		},
-		"relation_settings on a type": {
-			doc:  `{"version":1,"kind":"object_type","id":"o1","relation_settings":{"format":"objects"}}`,
-			want: `/relation_settings: property "relation_settings" is only valid on relation documents`,
+		"property_settings on a type": {
+			doc:  `{"version":1,"kind":"object_type","id":"o1","property_settings":{"format":"objects"}}`,
+			want: `/property_settings: property "property_settings" is only valid on property documents`,
 		},
-		"missing relation_settings on a relation": {
-			doc:  `{"version":1,"kind":"relation","id":"o1","internal_key":"b"}`,
-			want: "missing property 'relation_settings': a relation document states the definition",
+		"missing property_settings on a relation": {
+			doc:  `{"version":1,"kind":"property","id":"o1","internal_key":"b"}`,
+			want: "missing property 'property_settings': a property document states the definition",
 		},
 		"missing format inside the group": {
-			doc:  `{"version":1,"kind":"relation","id":"o1","internal_key":"b","relation_settings":{}}`,
-			want: "/relation_settings: missing property 'format'",
+			doc:  `{"version":1,"kind":"property","id":"o1","internal_key":"b","property_settings":{}}`,
+			want: "/property_settings: missing property 'format'",
 		},
 		"the pre-v0.32 root spelling": {
-			doc:  `{"version":1,"kind":"relation","id":"o1","internal_key":"b","format":"number"}`,
+			doc:  `{"version":1,"kind":"property","id":"o1","internal_key":"b","format":"number"}`,
 			want: "moved off the root",
 		},
 		"a refused member inside the group names its home": {
-			doc:  `{"version":1,"kind":"relation","id":"o1","internal_key":"b","relation_settings":{"format":"number","name":"Budget"}}`,
-			want: "the relation's name is the `name` property",
+			doc:  `{"version":1,"kind":"property","id":"o1","internal_key":"b","property_settings":{"format":"number","name":"Budget"}}`,
+			want: "the property's name is the `name` property",
 		},
 		"legacy relation_format beside a missing definition": {
-			doc:  `{"version":1,"kind":"relation","id":"o1","internal_key":"b","properties":{"relation_format":100}}`,
+			doc:  `{"version":1,"kind":"property","id":"o1","internal_key":"b","properties":{"relation_format":100}}`,
 			want: "the pre-v0.31 form",
 		},
 	} {
@@ -809,13 +815,13 @@ func TestRelationEnvelope_FieldsAreGatedByKind(t *testing.T) {
 // why the warning is the whole guard: when the shape does appear, the drop
 // is the only trace the value ever existed, so it must be per KEY, not per
 // document. Each key runs alone, because the reporting loop in
-// buildRelationEnvelope lists the three literally and a key dropped from
+// buildPropertySettings lists the three literally and a key dropped from
 // that list keeps the other two warning.
 //
 // How this can fail: make envelopeLiftedKeys include the three keys only on
 // relation documents and the page export writes the flat spelling into
 // properties — a document its own Validate refuses; or drop one key from
-// buildRelationEnvelope's off-relation reporting loop and that key's value
+// buildPropertySettings's off-relation reporting loop and that key's value
 // vanishes in silence while the other two still warn.
 func TestRelationEnvelope_NonRelationKindDropsTheDetails(t *testing.T) {
 	for name, tc := range map[string]struct {
@@ -857,7 +863,7 @@ func TestRelationEnvelope_NonRelationKindDropsTheDetails(t *testing.T) {
 				"a page has no §2d field to lift into")
 			require.NoError(t, Validate(data), "§11 I1")
 			require.Len(t, warns, 1, "the warning is the only trace of the dropped value")
-			assert.Contains(t, warns[0].Message, "not a relation document")
+			assert.Contains(t, warns[0].Message, "not a property document")
 			assert.Contains(t, warns[0].Message, tc.storedKey,
 				"the warning must name which detail was dropped")
 		})
@@ -870,7 +876,7 @@ func TestRelationEnvelope_NonRelationKindDropsTheDetails(t *testing.T) {
 // trip even though the document never spells shorttext.
 //
 // How this can fail: map the envelope format name blindly through
-// formatNames.value in applyRelationEnvelope — "text" then lands longtext on
+// formatNames.value in applyPropertySettings — "text" then lands longtext on
 // every relation, and the bundled `name` relation comes back reformatted.
 func TestRelationEnvelope_TextFoldResolvesPerKey(t *testing.T) {
 	// given the bundled `name` relation, stored shorttext
@@ -895,8 +901,8 @@ func TestRelationEnvelope_TextFoldResolvesPerKey(t *testing.T) {
 
 // Export ∘ Import is byte-stable over a relation document (§11 guarantee 2).
 //
-// How this can fail: any asymmetry between buildRelationEnvelope and
-// applyRelationEnvelope — a field written that import drops, or one import
+// How this can fail: any asymmetry between buildPropertySettings and
+// applyPropertySettings — a field written that import drops, or one import
 // rewrites into a different value — shows up as a byte diff on the second
 // export.
 func TestRelationEnvelope_ExportImportIsByteStable(t *testing.T) {
@@ -963,7 +969,7 @@ func TestPropertyFormatEnum_MatchesFormatNames(t *testing.T) {
 		"authorableFormat is the whole vocabulary minus `map`, restated nowhere")
 
 	// and each slot references the list it is entitled to. The shared
-	// propertyDefinition shape (which the §2d relation_settings group is a
+	// propertyDefinition shape (which the §2d property_settings group is a
 	// reference to) states what a property IS, so it may name every format a
 	// store carries. The two AUTHORED slots may not invent a `map`: it
 	// names the shape of a hidden system relation's value, and occurs on 0
@@ -986,7 +992,7 @@ func TestPropertyFormatEnum_MatchesFormatNames(t *testing.T) {
 // writes neither `bundled_relation` nor `sub_object` — 0 of 38,061 corpus
 // documents — but the schema's `kind` enum offers both beside `relation`
 // with nothing marking them non-authorable, and a small model picked one:
-// `{"kind":"bundled_relation", …, "properties":{"format":"number"}}`
+// `{"kind":"bundled_property", …, "properties":{"format":"number"}}`
 // validated clean, with no warning, and imported as a phantom property with
 // no relationFormat at all. That is verbatim the §2d bug, one kind over.
 //
@@ -996,20 +1002,20 @@ func TestPropertyFormatEnum_MatchesFormatNames(t *testing.T) {
 // being retired must not pick up a new obligation in a format about to
 // freeze, and 0 of 38,061 corpus documents carry it either way.
 //
-// How this can fail: narrow isRelationKind back to STRelation alone and the
+// How this can fail: narrow isPropertyKind back to STRelation alone and the
 // two side doors reopen; widen it to relation_option and the last case
 // starts refusing a legitimate document.
 func TestRelationEnvelope_TheSideDoorKindsAreGuardedToo(t *testing.T) {
 	for kind, wantValid := range map[string]bool{
-		"relation":         false,
-		"bundled_relation": false,
+		"property":         false,
+		"bundled_property": false,
 		// `sub_object` is DEPRECATED and deliberately outside the set: a kind
 		// on its way out must not acquire a new obligation in a format about
 		// to freeze. It therefore accepts this shape in silence, like any
 		// non-relation kind — that is a decision, not an oversight, and
 		// re-widening it would be re-adopting a kind we are dropping.
 		"sub_object":      true,
-		"relation_option": true,
+		"property_option": true,
 	} {
 		t.Run(kind, func(t *testing.T) {
 			// given the shape 9 of 9 small-model attempts wrote
@@ -1025,7 +1031,7 @@ func TestRelationEnvelope_TheSideDoorKindsAreGuardedToo(t *testing.T) {
 				return
 			}
 			require.Error(t, err, "a relation document must state its own format (§2d)")
-			assert.Contains(t, err.Error(), "missing property 'relation_settings'")
+			assert.Contains(t, err.Error(), "missing property 'property_settings'")
 		})
 	}
 }
@@ -1035,13 +1041,13 @@ func TestRelationEnvelope_TheSideDoorKindsAreGuardedToo(t *testing.T) {
 // the semantic pass, and a schema failure never reaches it — so the verdict
 // that does run has to name the wrong container itself.
 //
-// How this can fail: drop the phantom clause from relationFormatSlotIssue
+// How this can fail: drop the phantom clause from propertyFormatSlotIssue
 // and the commonest authoring mistake in the corpus of small-model attempts
 // gets a message that never mentions the line it is about.
 func TestRelationEnvelope_TheMissingFormatVerdictNamesTheWrongContainer(t *testing.T) {
 	t.Run("format written into properties", func(t *testing.T) {
 		// given
-		doc := []byte(`{"version":1,"kind":"relation","internal_key":"eh",` +
+		doc := []byte(`{"version":1,"kind":"property","internal_key":"eh",` +
 			`"properties":{"name":"Estimated Hours","format":"number"}}`)
 
 		// when
@@ -1050,12 +1056,12 @@ func TestRelationEnvelope_TheMissingFormatVerdictNamesTheWrongContainer(t *testi
 		// then
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), `spells "format" inside properties`)
-		assert.Contains(t, err.Error(), "move that member into relation_settings")
+		assert.Contains(t, err.Error(), "move that member into property_settings")
 	})
 
 	t.Run("the pre-v0.31 spelling still gets its own hint", func(t *testing.T) {
 		// given
-		doc := []byte(`{"version":1,"kind":"relation","internal_key":"eh",` +
+		doc := []byte(`{"version":1,"kind":"property","internal_key":"eh",` +
 			`"properties":{"name":"Estimated Hours","relation_format":2}}`)
 
 		// when
@@ -1068,20 +1074,20 @@ func TestRelationEnvelope_TheMissingFormatVerdictNamesTheWrongContainer(t *testi
 }
 
 // The phantom warning is the SEMANTIC half of the guard, and the semantic
-// pass is the only place isRelationKind is load-bearing: for a missing
+// pass is the only place isPropertyKind is load-bearing: for a missing
 // `format` the schema's own kind conditional already refuses, so a test
 // there passes whether or not the Go gate agrees. This document is valid —
-// it has its envelope format — so nothing but isRelationKind decides
+// it has its envelope format — so nothing but isPropertyKind decides
 // whether the phantom member is reported.
 //
-// How this can fail: narrow isRelationKind back to STRelation alone and the
+// How this can fail: narrow isPropertyKind back to STRelation alone and the
 // two side-door kinds go quiet again.
 func TestRelationEnvelope_ThePhantomWarningReachesTheSideDoorKinds(t *testing.T) {
-	for _, kind := range []string{"relation", "bundled_relation"} {
+	for _, kind := range []string{"property", "bundled_property"} {
 		t.Run(kind, func(t *testing.T) {
 			// given a VALID relation document that also carries the member
 			doc := []byte(`{"version":1,"kind":"` + kind + `","internal_key":"eh",` +
-				`"relation_settings":{"format":"number"},` +
+				`"property_settings":{"format":"number"},` +
 				`"properties":{"name":"Estimated Hours","format":"number"}}`)
 
 			// when
@@ -1106,7 +1112,7 @@ func TestRelationEnvelope_ThePhantomWarningReachesTheSideDoorKinds(t *testing.T)
 // went unnoticed. cmd/anyblockrecover reads arbitrary pb backups, where a
 // relation on the legacy `sub_object` kind is the thing a recovery is for.
 //
-// How this can fail: narrow isRelationDoc back to STRelation and the last
+// How this can fail: narrow isPropertyDoc back to STRelation and the last
 // two kinds emit no format, fail their own Validate, and lose the detail.
 func TestRelationEnvelope_EveryRelationKindRoundTripsLossless(t *testing.T) {
 	for _, sb := range []model.SmartBlockType{
@@ -1149,8 +1155,8 @@ func TestRelationEnvelope_EveryRelationKindRoundTripsLossless(t *testing.T) {
 // model can declare a property whose values nothing but the client writes.
 func TestPropertyFormat_MapIsNotAuthorable(t *testing.T) {
 	t.Run("a relation document may state it", func(t *testing.T) {
-		doc := []byte(`{"version":1,"kind":"relation","internal_key":"templatePlaceholders",
-			"relation_settings":{"format":"map"},
+		doc := []byte(`{"version":1,"kind":"property","internal_key":"templatePlaceholders",
+			"property_settings":{"format":"map"},
 			"properties":{"name":"Template Placeholders"}}`)
 		assert.NoError(t, Validate(doc), "the only carrier of `map` must keep exporting")
 	})

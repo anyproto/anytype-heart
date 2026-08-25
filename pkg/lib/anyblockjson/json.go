@@ -219,16 +219,22 @@ func (e enumNames[T]) value(n string) T  { return e.toVal[n] }
 func (e enumNames[T]) has(n string) bool { _, ok := e.toVal[n]; return ok }
 
 var kindNames = newEnumNames(map[model.SmartBlockType]string{
-	model.SmartBlockType_AccountOld:        "account_old",
-	model.SmartBlockType_Page:              "page",
-	model.SmartBlockType_ProfilePage:       "profile_page",
-	model.SmartBlockType_Home:              "home",
-	model.SmartBlockType_Archive:           "archive",
-	model.SmartBlockType_Widget:            "widget",
-	model.SmartBlockType_File:              "file",
-	model.SmartBlockType_Template:          "template",
-	model.SmartBlockType_BundledTemplate:   "bundled_template",
-	model.SmartBlockType_BundledRelation:   "bundled_relation",
+	model.SmartBlockType_AccountOld:      "account_old",
+	model.SmartBlockType_Page:            "page",
+	model.SmartBlockType_ProfilePage:     "profile_page",
+	model.SmartBlockType_Home:            "home",
+	model.SmartBlockType_Archive:         "archive",
+	model.SmartBlockType_Widget:          "widget",
+	model.SmartBlockType_File:            "file",
+	model.SmartBlockType_Template:        "template",
+	model.SmartBlockType_BundledTemplate: "bundled_template",
+	// the three definition kinds say "property" where the store says
+	// "relation": the product calls these things properties, and the format
+	// already did everywhere else — the block type is `featured_properties`,
+	// the shape is `propertyDefinition`, the legend `property_internal_keys`.
+	// One word for one concept (§15 #14); the model constants are the store's
+	// own names and stay.
+	model.SmartBlockType_BundledRelation:   "bundled_property",
 	model.SmartBlockType_SubObject:         "sub_object",
 	model.SmartBlockType_BundledObjectType: "bundled_object_type",
 	model.SmartBlockType_AnytypeProfile:    "anytype_profile",
@@ -240,9 +246,9 @@ var kindNames = newEnumNames(map[model.SmartBlockType]string{
 	// authored, so the rename costs nothing but is a wire value: after the
 	// freeze it would cost a version.
 	model.SmartBlockType_Workspace:              "space_settings",
-	model.SmartBlockType_STRelation:             "relation",
+	model.SmartBlockType_STRelation:             "property",
 	model.SmartBlockType_STType:                 "object_type",
-	model.SmartBlockType_STRelationOption:       "relation_option",
+	model.SmartBlockType_STRelationOption:       "property_option",
 	model.SmartBlockType_SpaceView:              "space_view",
 	model.SmartBlockType_Identity:               "identity",
 	model.SmartBlockType_Participant:            "participant",
@@ -581,20 +587,23 @@ func isFilterTemplate(v string) bool {
 // but a bare integer would be the one opaque enum in an otherwise
 // self-describing format — every other enum here is a name (§3).
 var layoutNames = newEnumNames(map[model.ObjectTypeLayout]string{
-	model.ObjectType_basic:               "basic",
-	model.ObjectType_profile:             "profile",
-	model.ObjectType_todo:                "todo",
-	model.ObjectType_set:                 "set",
-	model.ObjectType_objectType:          "object_type",
-	model.ObjectType_relation:            "relation",
+	model.ObjectType_basic:      "basic",
+	model.ObjectType_profile:    "profile",
+	model.ObjectType_todo:       "todo",
+	model.ObjectType_set:        "set",
+	model.ObjectType_objectType: "object_type",
+	// the wire names for the three relation-flavored layouts say "property",
+	// like the kinds above — only the NAME moves, the model constants they
+	// map from are the store's
+	model.ObjectType_relation:            "property",
 	model.ObjectType_file:                "file",
 	model.ObjectType_dashboard:           "dashboard",
 	model.ObjectType_image:               "image",
 	model.ObjectType_note:                "note",
 	model.ObjectType_space:               "space",
 	model.ObjectType_bookmark:            "bookmark",
-	model.ObjectType_relationOptionsList: "relation_options_list",
-	model.ObjectType_relationOption:      "relation_option",
+	model.ObjectType_relationOptionsList: "property_options_list",
+	model.ObjectType_relationOption:      "property_option",
 	model.ObjectType_collection:          "collection",
 	model.ObjectType_audio:               "audio",
 	model.ObjectType_video:               "video",

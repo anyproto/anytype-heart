@@ -24,15 +24,15 @@
         "file",
         "template",
         "bundled_template",
-        "bundled_relation",
+        "bundled_property",
         "sub_object",
         "bundled_object_type",
         "anytype_profile",
         "date",
         "space_settings",
-        "relation",
+        "property",
         "object_type",
-        "relation_option",
+        "property_option",
         "space_view",
         "identity",
         "participant",
@@ -60,13 +60,13 @@
       "minLength": 1
     },
     "internal_key": {
-      "description": "The STORED identity key of a definition document (a type, a relation, a relation option) \u2014 the uniqueKey's internal part, written verbatim. This is an id the app MINTS, not something an author writes: for a custom property or type it is a bson id like 6a83296f61fab2265263ae34, which no author can produce, and for a bundled one it is the bundled camelCase key (dueDate). Export writes it for fidelity; an authored definition document may omit it, and the import wiring then mints a fresh internal key exactly as the app does when a user creates one. It is deliberately NOT a spelling: unlike every key slot in \u00a73 it is never translated through a legend or the bundled table, so it does not match the snake_case label documents use (that label is the `property` member of a property definition). Charset is a deny rule, not an allowlist \u2014 a relation option's stored key is built from its NAME, so keys like completion_status_Not Started are real stored keys.",
+      "description": "The STORED identity key of a definition document (a type, a property, a property option) \u2014 the uniqueKey's internal part, written verbatim. This is an id the app MINTS, not something an author writes: for a custom property or type it is a bson id like 6a83296f61fab2265263ae34, which no author can produce, and for a bundled one it is the bundled camelCase key (dueDate). Export writes it for fidelity; an authored definition document may omit it, and the import wiring then mints a fresh internal key exactly as the app does when a user creates one. It is deliberately NOT a spelling: unlike every key slot in \u00a73 it is never translated through a legend or the bundled table, so it does not match the snake_case label documents use (that label is the `property` member of a property definition). Charset is a deny rule, not an allowlist \u2014 a property option's stored key is built from its NAME, so keys like completion_status_Not Started are real stored keys.",
       "type": "string",
       "pattern": "^[^\u0000-\u001f]+$",
       "maxLength": 255
     },
-    "relation_settings": {
-      "description": "Only on relation documents (kind \"relation\" or \"bundled_relation\"), where it is REQUIRED: the definition of the property this document IS — one propertyDefinition (§2d, §2e). Three members travel today, each mirroring stored presence EXACTLY, value included: `format` (required — a §3 format NAME, the same vocabulary type_properties[].format speaks, never a raw enum number; stands for the stored relationFormat key, which `properties` refuses), `include_time` (present exactly when the stored relationFormatIncludeTime key is; meaningful on format \"date\" only, and a stored null travels as null), and `object_types` (present exactly when the stored relationFormatObjectTypes key is; the target type keys in priority order — a type-key slot exactly like type_properties[].object_types, inverted through the type_internal_keys legend, meaningful on \"objects\"/\"files\" only). The members refused with `false` have a home already: `internal_key` is the envelope's (and `property`, the spelling, is derived from it \u2014 a relation document never states its own spelling), `name` and `description` are properties', `options` are relation_option documents, and max_count/readonly/default_value still travel in `properties` under their stored keys until the dictionary lifts them — admitting a second spelling of any of them here would be the §15 #14 disease this group exists to end.",
+    "property_settings": {
+      "description": "Only on property documents (kind \"property\" or \"bundled_property\"), where it is REQUIRED: the definition of the property this document IS — one propertyDefinition (§2d, §2e). Three members travel today, each mirroring stored presence EXACTLY, value included: `format` (required — a §3 format NAME, the same vocabulary type_properties[].format speaks, never a raw enum number; stands for the stored relationFormat key, which `properties` refuses), `include_time` (present exactly when the stored relationFormatIncludeTime key is; meaningful on format \"date\" only, and a stored null travels as null), and `object_types` (present exactly when the stored relationFormatObjectTypes key is; the target type keys in priority order — a type-key slot exactly like type_properties[].object_types, inverted through the type_internal_keys legend, meaningful on \"objects\"/\"files\" only). The members refused with `false` have a home already: `internal_key` is the envelope's (and `property`, the spelling, is derived from it \u2014 a property document never states its own spelling), `name` and `description` are properties', `options` are property_option documents, and max_count/readonly/default_value still travel in `properties` under their stored keys until the dictionary lifts them — admitting a second spelling of any of them here would be the §15 #14 disease this group exists to end.",
       "type": "object",
       "allOf": [
         {
@@ -171,7 +171,7 @@
     },
     "option_ids": {
       "type": "object",
-      "description": "Legend: the id of the option each select/multi_select NAME in this document stands for (§3, §9a). Nested: an outer key is a property spelling as this document writes it, an inner key is an option name exactly as the value slot spells it, and the value is the full option id. Written unconditionally wherever export spells an option by name; absent from an id-less export. Read as a HINT, not an address: an id is honoured only where the target space still serves it as a live option of that relation, and otherwise the name resolves as it would without the legend. An outer key naming a property the document never spells is reported as a warning — the entry can never be consulted.",
+      "description": "Legend: the id of the option each select/multi_select NAME in this document stands for (§3, §9a). Nested: an outer key is a property spelling as this document writes it, an inner key is an option name exactly as the value slot spells it, and the value is the full option id. Written unconditionally wherever export spells an option by name; absent from an id-less export. Read as a HINT, not an address: an id is honoured only where the target space still serves it as a live option of that property, and otherwise the name resolves as it would without the legend. An outer key naming a property the document never spells is reported as a warning — the entry can never be consulted.",
       "propertyNames": {
         "pattern": "^[^\u0000-\u001f]+$",
         "maxLength": 128
@@ -218,8 +218,8 @@
         "properties": {
           "kind": {
             "enum": [
-              "relation",
-              "bundled_relation"
+              "property",
+              "bundled_property"
             ]
           }
         },
@@ -229,12 +229,12 @@
       },
       "then": {
         "required": [
-          "relation_settings"
+          "property_settings"
         ]
       },
       "else": {
         "properties": {
-          "relation_settings": false
+          "property_settings": false
         }
       }
     },
@@ -1268,7 +1268,7 @@
         "properties",
         "map"
       ],
-      "description": "A property format, by NAME (§3): the public REST API vocabulary, plus names for the internal formats a store really carries — emoji, objects, properties, and map, which 72 production relation documents hold (the bundled templatePlaceholders relation). One list, referenced from every slot that states a format, so the three slots cannot drift apart. Includes `map`, which only the relation-document envelope may state: it is the format of hidden system relations (templatePlaceholders is the only carrier — 72 production documents) and no authored property may declare it, so type_properties[] and a dataview's properties[] reference authorableFormat instead."
+      "description": "A property format, by NAME (§3): the public REST API vocabulary, plus names for the internal formats a store really carries — emoji, objects, properties, and map, which 72 production property documents hold (the bundled templatePlaceholders property). One list, referenced from every slot that states a format, so the three slots cannot drift apart. Includes `map`, which only a property document's own property_settings may state: it is the format of hidden system properties (templatePlaceholders is the only carrier — 72 production documents) and no authored property may declare it, so type_properties[] and a dataview's properties[] reference authorableFormat instead."
     },
     "authorableFormat": {
       "enum": [
@@ -1286,11 +1286,11 @@
         "objects",
         "properties"
       ],
-      "description": "A property format an author may DECLARE (§3) — propertyFormat without `map`. `map` names the shape of a hidden system relation's value, never something a type or a view declares: it occurs on 0 of 19,862 type_properties entries and 0 of 28,034 dataview property entries in a 38,061-document corpus, and its only carrier is the bundled, hidden templatePlaceholders. Splitting the vocabulary keeps the relation envelope able to state what it is (§2d) while keeping the authorable slots — the ones a model writes, and the ones a generated per-type schema is built from — unable to invent one."
+      "description": "A property format an author may DECLARE (§3) — propertyFormat without `map`. `map` names the shape of a hidden system property's value, never something a type or a view declares: it occurs on 0 of 19,862 type_properties entries and 0 of 28,034 dataview property entries in a 38,061-document corpus, and its only carrier is the bundled, hidden templatePlaceholders. Splitting the vocabulary keeps a property document able to state what it is (§2d) while keeping the authorable slots — the ones a model writes, and the ones a generated per-type schema is built from — unable to invent one."
     },
     "propertyDefinition": {
       "type": "object",
-      "description": "ONE property, described in one shape, wherever this format describes a property (§3.6). Exactly three homes reference it — a dictionary entry, a type document's property-definition list, and a relation document's relation_settings — and no fourth spelling of the concept may exist: a relation document and a type's property list once described the same property in two vocabularies, and the raw one was a measured live trap (§15 #14). The shape states no `required` of its own and stays open: each home adds its own requirements, narrows what it must (an authored home may not declare `map`), refuses the members another surface already owns, and closes itself with unevaluatedProperties. The property's identity splits into two members on purpose: `property` is the document-facing spelling (a label, translated like every key slot), `internal_key` the stored id the app mints (export fidelity, never required from an author) — the word `key` used to carry both meanings and no longer exists in this shape.",
+      "description": "ONE property, described in one shape, wherever this format describes a property (§3.6). Exactly three homes reference it — a dictionary entry, a type document's property-definition list, and a property document's property_settings — and no fourth spelling of the concept may exist: a property document and a type's property list once described the same property in two vocabularies, and the raw one was a measured live trap (§15 #14). The shape states no `required` of its own and stays open: each home adds its own requirements, narrows what it must (an authored home may not declare `map`), refuses the members another surface already owns, and closes itself with unevaluatedProperties. The property's identity splits into two members on purpose: `property` is the document-facing spelling (a label, translated like every key slot), `internal_key` the stored id the app mints (export fidelity, never required from an author) — the word `key` used to carry both meanings and no longer exists in this shape.",
       "properties": {
         "property": {
           "description": "The property's document-facing SPELLING (\u00a73) \u2014 `due_date`, the same snake_case label every other key slot writes, inverted through the document's own legend and the vocabulary in force. A spelling, never a stored id: the stored id is `internal_key`.",
@@ -1350,7 +1350,7 @@
     },
     "typeProperty": {
       "type": "object",
-      "description": "One entry of a type document's property-definition list (§2a): a propertyDefinition plus `section`, the ONE field that belongs to the type rather than the property — of 1,614 properties declared by 2+ types within one space, zero differ in anything else. The shared members are referenced, never restated; this layer only narrows: `format` to the authorable vocabulary, `object_types` to a real list (a type declares targets or omits the member — only a relation's stored value can hold a null). An entry must identify the property it declares: state a `property` (the document-facing spelling), or an `internal_key` (the stored id), or a `name` the spelling is derived from. A NAME ALONE IS ENOUGH — `{\"name\": \"Cooking Time\", \"format\": \"number\"}` declares a property spelled `cooking_time`. Prefer `property` or `name` when authoring: `internal_key` is an id the app mints (every exported example carries one like `6a83296f61fab2265263ae34`, because export writes the keys a real space holds), an author has no space to draw one from, and inventing one is never right — when a custom property states none, the import wiring mints a fresh internal key exactly as the app does when a user creates one. A derived spelling runs through the same resolution as a written one, so a property named \"Due Date\" lands on the bundled `due_date` instead of minting a lookalike beside it.",
+      "description": "One entry of a type document's property-definition list (§2a): a propertyDefinition plus `section`, the ONE field that belongs to the type rather than the property — of 1,614 properties declared by 2+ types within one space, zero differ in anything else. The shared members are referenced, never restated; this layer only narrows: `format` to the authorable vocabulary, `object_types` to a real list (a type declares targets or omits the member — only a property document's stored value can hold a null). An entry must identify the property it declares: state a `property` (the document-facing spelling), or an `internal_key` (the stored id), or a `name` the spelling is derived from. A NAME ALONE IS ENOUGH — `{\"name\": \"Cooking Time\", \"format\": \"number\"}` declares a property spelled `cooking_time`. Prefer `property` or `name` when authoring: `internal_key` is an id the app mints (every exported example carries one like `6a83296f61fab2265263ae34`, because export writes the keys a real space holds), an author has no space to draw one from, and inventing one is never right — when a custom property states none, the import wiring mints a fresh internal key exactly as the app does when a user creates one. A derived spelling runs through the same resolution as a written one, so a property named \"Due Date\" lands on the bundled `due_date` instead of minting a lookalike beside it.",
       "allOf": [
         {
           "$ref": "#/$defs/propertyDefinition"
@@ -1768,9 +1768,9 @@
         "participant",
         "pdf",
         "profile",
-        "relation",
-        "relation_option",
-        "relation_options_list",
+        "property",
+        "property_option",
+        "property_options_list",
         "set",
         "space",
         "space_view",

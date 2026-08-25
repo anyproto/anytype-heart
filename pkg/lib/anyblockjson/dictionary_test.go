@@ -88,7 +88,7 @@ func TestPropertyDictionary_RoundTripBytesStable(t *testing.T) {
 	assert.Equal(t, []string{"dueDate", "tag"}, got.Installed, "installed is sorted on the way out")
 }
 
-// `format` resolves per key, exactly as a relation_settings format does
+// `format` resolves per key, exactly as a property_settings format does
 // (§3): "text" names both stored text formats and the entry's stored KEY is
 // what disambiguates — a bundled short-text property keeps its stored format
 // through the dictionary even though the document never spells it.

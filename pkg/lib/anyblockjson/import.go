@@ -30,10 +30,10 @@ type jsonDoc struct {
 	Type        string      `json:"type"`
 	TemplateFor string      `json:"template_for"`
 	InternalKey string      `json:"internal_key"`
-	// RelationSettings is a kind:relation document's definition group (§2d):
+	// PropertySettings is a kind:property document's definition group (§2d):
 	// one propertyDefinition, whose three travelling members stand for the
 	// stored relation-definition keys that `properties` refuses.
-	RelationSettings *jsonRelationSettings `json:"relation_settings"`
+	PropertySettings *jsonPropertySettings `json:"property_settings"`
 	// Icon and Cover are the typed envelope fields (§2b). Each is one object
 	// whose `format` member selects the variant, and each stands for a family
 	// of hidden stored keys that `properties` refuses.
@@ -61,12 +61,12 @@ type jsonDoc struct {
 	Root      *jsonRootEscape              `json:"root"`
 }
 
-// jsonRelationSettings is the decoded `relation_settings` group (§2d). The
+// jsonPropertySettings is the decoded `property_settings` group (§2d). The
 // two RawMessage members are raw because each has THREE states the schema
 // admits — absent, null, and a value — and a decoded Go pointer collapses
 // the first two: member presence mirrors stored-key presence exactly, and a
 // stored null is a value (§3, 80 production relations hold one).
-type jsonRelationSettings struct {
+type jsonPropertySettings struct {
 	Format      string          `json:"format"`
 	IncludeTime json.RawMessage `json:"include_time"`
 	TargetTypes json.RawMessage `json:"object_types"`
@@ -555,7 +555,7 @@ func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBas
 	// an ordinary property (§2b)
 	imp.applyIcon(details)
 	imp.applyCover(details)
-	if err := imp.applyRelationEnvelope(details, sbType); err != nil {
+	if err := imp.applyPropertySettings(details, sbType); err != nil {
 		return 0, nil, err
 	}
 	if err := imp.applyTypeSettings(details, sbType); err != nil {
