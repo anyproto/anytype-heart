@@ -3,8 +3,9 @@ package anyblockjson
 // label.go — the spelling a document writes for a key the BUNDLED table does
 // not speak for (§3).
 //
-// A bundled key spells its derived api slug and always has: the table ships
-// with every reader, resolves offline, and every one of its 223 slugs is
+// A bundled key spells its derived api slug — or, since v0.38, its alias
+// where the stored key says "relation" (alias.go) — and the table ships
+// with every reader, resolves offline, and every one of its 223 spellings is
 // already a legal key in the §6.2.1 grammar. This file is about the other
 // population — the keys a SPACE mints — and it exists because the spelling
 // they used to get was borrowed from a surface with a different constraint.

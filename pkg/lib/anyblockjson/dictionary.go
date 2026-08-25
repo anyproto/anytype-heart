@@ -187,8 +187,9 @@ func unmarshalPropertyDictionary(data []byte, warn func(Issue)) (*PropertyDictio
 }
 
 // dictionaryKeySpelling renders an ENTRY's stored key the way the dictionary
-// spells it: the api slug for a bundled property, the stored key verbatim for
-// anything else (§2f).
+// spells it: the bundled spelling for a bundled property — its derived api
+// slug, or its v0.38 alias where the stored key says "relation" (alias.go) —
+// the stored key verbatim for anything else (§2f).
 //
 // Only `properties` needs the condition. `installed` admits bundled keys and
 // nothing else — it names rows to restore from the bundled table — so it
@@ -209,7 +210,8 @@ func dictionaryKeySpelling(storedKey string) string {
 }
 
 // dictionaryTypeSpelling renders a TARGET type key the way the dictionary
-// spells it: the api slug for a bundled type, the stored key verbatim for
+// spells it: the bundled spelling for a bundled type (api slug, or v0.38
+// alias — `relation` spells `property`), the stored key verbatim for
 // anything else (§2f) — the same rule the entry's own key follows, for the
 // same reason.
 //
@@ -459,8 +461,9 @@ func MarshalPropertyDictionary(d *PropertyDictionary) ([]byte, error) {
 }
 
 // dictionaryEntryOmap renders one entry: the propertyDefinition members in
-// the §2e order, its `property` in the dictionary's spelling — the api slug
-// for a bundled property, the stored key verbatim for a space-minted one,
+// the §2e order, its `property` in the dictionary's spelling — the bundled
+// spelling (api slug, or v0.38 alias) for a bundled property, the stored key
+// verbatim for a space-minted one,
 // which is the ladder every other slot in the format follows (§2f) — and its
 // `internal_key` the stored key verbatim, the export-fidelity half an author
 // never has to write. There is still no legend to write: the spelling is a

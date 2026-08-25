@@ -26,20 +26,25 @@ import (
 // the label rule would pass it straight through.
 //
 // It holds today for all 223 (194 relations, 29 types), and this asserts it
-// rather than assuming it, at the moment such a key would be added.
+// rather than assuming it, at the moment such a key would be added. The
+// spelling asserted is the ALIAS-AWARE one (v0.38, alias.go): what the
+// format actually writes, which for sixteen keys is the property alias
+// rather than the derived slug.
 func TestBundledSlugsAreKeysTheFilterGrammarAccepts(t *testing.T) {
-	var keys []string
+	var relKeys []string
 	for _, u := range bundle.ListRelationsUrls() {
-		keys = append(keys, strings.TrimPrefix(u, addr.BundledRelationURLPrefix))
+		relKeys = append(relKeys, strings.TrimPrefix(u, addr.BundledRelationURLPrefix))
+	}
+	require.NotEmpty(t, relKeys)
+	for _, key := range relKeys {
+		spelling := (BundledKeyVocabulary{}).PropertySlug(key)
+		_, err := filterstring.Parse(spelling+` = "x"`, filterstring.Options{})
+		require.NoErrorf(t, err, "bundled key %q spells %q, which is not a key this format can write", key, spelling)
 	}
 	for _, k := range bundle.ListTypesKeys() {
-		keys = append(keys, string(k))
-	}
-	require.NotEmpty(t, keys)
-	for _, key := range keys {
-		slug := bundle.ApiSlug(key)
-		_, err := filterstring.Parse(slug+` = "x"`, filterstring.Options{})
-		require.NoErrorf(t, err, "bundled key %q spells %q, which is not a key this format can write", key, slug)
+		spelling := (BundledKeyVocabulary{}).TypeSlug(string(k))
+		_, err := filterstring.Parse(spelling+` = "x"`, filterstring.Options{})
+		require.NoErrorf(t, err, "bundled type %q spells %q, which is not a key this format can write", k, spelling)
 	}
 }
 

@@ -2358,7 +2358,8 @@ belongs in the index because a manifest is what an index is).
 ```
 
 **Why it exists, measured.** 10,617 of 38,061 corpus documents are
-`kind: relation` — 5.8% of the bytes — and 9,675 of them are installed
+property documents (`kind: relation` when measured, `property` since
+v0.38) — 5.8% of the bytes — and 9,675 of them are installed
 copies of the 194 bundled relations, **98% field-identical to
 `bundle/relations.json`**. Each spends a ~967-byte document, with its own
 envelope, attribution and system properties, to restate `{key, name,
@@ -2420,8 +2421,10 @@ halves of the identity.** A document spells a property by its label; its
 `property_internal_keys` legend binds the label to the stored key; the
 stored key is what the dictionary answers for. An entry states that key as
 `internal_key`, verbatim, and its `property` in the spelling every other
-slot uses — the api slug for a bundled key, the stored key verbatim for a
-space-minted one (a bson id has no slug and must never be given one).
+slot uses — the bundled spelling for a bundled key (its derived api slug,
+or its v0.38 alias where the stored key spells "relation"), the stored key
+verbatim for a space-minted one (a bson id has no slug and must never be
+given one).
 Entries need no legend of their own: an `internal_key` never resolves at
 all, and a `property` spelling recovers its stored key through the ladder
 below. An author states any one identity — `property`, `internal_key`, or a
@@ -2441,8 +2444,12 @@ bundled table does not bind, so a bundled property's label never gets one.
 The derivation is `snake_case` of the stored key (`bundle.ApiSlug` is
 exactly `strcase.ToSnake`, a pure function of the key with no table behind
 it): `addedDate` → `added_date`, `mediaArtistURL` → `media_artist_url`,
-acronym and digit runs split. A reader applies it to every key in
-`installed` and every entry's `property`, building its own label→key map once.
+acronym and digit runs split — except for the sixteen keys the v0.38 alias
+table respells, whose wire spelling is the ALIAS and whose derived slug
+binds nothing (`featuredRelations` → `featured_properties`, never
+`featured_relations`). A reader applies alias-then-derivation to every key
+in `installed` and every entry's `property`, building its own label→key map
+once.
 **Derive forward, never invert** — four bundled keys do not survive a
 reverse transform (`mediaArtistURL`, `oldAnytypeID`, `_score`,
 `_final_score`), and forward derivation from keys you already hold has no
@@ -2505,9 +2512,13 @@ cannot be the reverse mechanism, and the package's tests pin both cases.
 its own authority, and there are two:
 
 1. **A bundled key spells its derived api slug**, from the table that ships
-   with every reader — `dueDate` → `due_date`. All 223 bundled slugs are
-   already legal keys under the grammar below, which a test asserts rather
-   than assumes.
+   with every reader — `dueDate` → `due_date` — except where the v0.38
+   alias table respells it: the sixteen bundled keys whose stored key says
+   "relation" spell their property aliases (`featuredRelations` →
+   `featured_properties`), and the alias outranks the derivation in both
+   directions. All 223 bundled spellings, aliases included, are already
+   legal keys under the grammar below, which a test asserts rather than
+   assumes.
 2. **A space-minted key spells what its space says it is**, through one
    ladder, first answer wins: its stored `apiObjectKey` when that is already
    a legal key — **re-spelled by the display name when the two are one fold
