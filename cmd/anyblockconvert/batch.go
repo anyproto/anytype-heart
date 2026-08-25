@@ -3,8 +3,7 @@ package main
 import (
 	"crypto/sha1"
 	"encoding/hex"
-	"fmt"
-	"os"
+	"github.com/globalsign/mgo/bson"
 	"sort"
 
 	"github.com/anyproto/anytype-heart/cmd/internal/anyblockbatch"
@@ -47,6 +46,12 @@ type batch struct {
 	formats map[string]anyblockbatch.FormatInfo
 
 	relIDs map[string]string // stored property key -> minted relation object id
+	// minted is the batch's key vocabulary: the SPELLING a document used ->
+	// the internal key minted for it. A property an author declared by name
+	// or spelling gets a fresh bson id here, the way the app mints one when
+	// a user creates a property, and every document's detail keys resolve
+	// through this map so they all land on that one key (§2e).
+	minted map[string]string
 	optIDs map[string]string // "stored key\x00name" -> minted option object id
 
 	// optNames is optIDs read backwards — "stored key\x00option id" -> name —
@@ -98,6 +103,7 @@ func newBatch(formats map[string]anyblockbatch.FormatInfo, typeIds map[string]st
 	b = &batch{
 		formats:    formats,
 		relIDs:     map[string]string{},
+		minted:     map[string]string{},
 		optIDs:     map[string]string{},
 		optNames:   map[string]string{},
 		optOrder:   map[string]string{},
@@ -189,6 +195,38 @@ func (b *batch) PropertyId(def anyblockjson.PropertyDefinition) (string, bool) {
 	id := b.mintRelation(def)
 	b.relIDs[key] = id
 	return id, true
+}
+
+// PropertySlug and PropertyKey implement anyblockjson.KeyVocabulary: the
+// batch's own spelling layer, laid over the bundled one.
+//
+// This is what makes minting safe across a bundle. A property declared once
+// in properties.json by the spelling `cooking_time` is minted a bson key
+// here; a recipe document that carries `"cooking_time": 90` then resolves
+// that detail key through this vocabulary and lands on the SAME minted key,
+// instead of writing a detail no relation object describes.
+func (b *batch) PropertySlug(key string) string {
+	for spelling, minted := range b.minted {
+		if minted == key {
+			return spelling
+		}
+	}
+	return anyblockjson.BundledKeyVocabulary{}.PropertySlug(key)
+}
+
+func (b *batch) PropertyKey(slug string) (string, bool) {
+	if minted, ok := b.minted[slug]; ok {
+		return minted, true
+	}
+	return anyblockjson.BundledKeyVocabulary{}.PropertyKey(slug)
+}
+
+func (b *batch) TypeSlug(key string) string {
+	return anyblockjson.BundledKeyVocabulary{}.TypeSlug(key)
+}
+
+func (b *batch) TypeKey(slug string) (string, bool) {
+	return anyblockjson.BundledKeyVocabulary{}.TypeKey(slug)
 }
 
 // PropertyById implements anyblockjson.PropertyResolver. Only used on
@@ -322,19 +360,26 @@ func looksLikeMintedKey(key string) bool {
 // pipeline in core/block/import/processor.go can recognize it across
 // re-imports the same way it does for CSV/Notion relations).
 func (b *batch) mintRelation(def anyblockjson.PropertyDefinition) string {
-	// The key/spelling split (SPEC.md §2e) says a custom property created
-	// from a definition with no internal_key gets a FRESH minted internal
-	// key, the way the app mints one when a user creates a property
-	// (objectcreator/relation.go: bson.NewObjectId().Hex()). This tool still
-	// keys the relation by the spelling — minting here needs the minted key
-	// fed back through Options.Keys so every document's detail keys land on
-	// it, which is a batch-wide vocabulary this tool does not wire yet — so
-	// the divergence is at least SAID rather than silent. An exported bundle
-	// never reaches this line with a slug: its custom keys are the stored
-	// bson ids, carried in internal_key and the legend.
-	if !looksLikeMintedKey(string(def.Key)) {
-		fmt.Fprintf(os.Stderr, "note: property %q states no internal_key; this tool keys it by its spelling, "+
-			"where the app's import path mints a fresh internal key (SPEC.md §2e)\n", def.Key)
+	// A property the document declared by SPELLING gets a fresh internal key
+	// here, the way the app mints one when a user creates a property
+	// (objectcreator/relation.go: bson.NewObjectId().Hex()). A property that
+	// stated its `internal_key` keeps it exactly, which is the whole point of
+	// stating one: a bundle re-imported elsewhere reproduces the same stored
+	// key (§2e).
+	//
+	// The document's spelling is remembered as the api key, and bound in this
+	// batch's vocabulary so every OTHER document that names the property by
+	// the same spelling resolves to this one minted key.
+	storedKey := string(def.Key)
+	apiKey := ""
+	if !def.KeyIsInternal {
+		apiKey = storedKey
+		if existing, ok := b.minted[apiKey]; ok {
+			storedKey = existing
+		} else {
+			storedKey = bson.NewObjectId().Hex()
+			b.minted[apiKey] = storedKey
+		}
 	}
 	format := def.Format
 	name := def.Name
@@ -348,7 +393,7 @@ func (b *batch) mintRelation(def anyblockjson.PropertyDefinition) string {
 		name = string(def.Key)
 	}
 
-	uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeRelation, string(def.Key))
+	uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeRelation, storedKey)
 	if err != nil {
 		// def.Key already passed through the schema's property-key charset
 		// (§2a); NewUniqueKey only fails for an unsupported smartblock type.
@@ -359,10 +404,17 @@ func (b *batch) mintRelation(def anyblockjson.PropertyDefinition) string {
 	details := &types.Struct{Fields: map[string]*types.Value{
 		detailID:             strVal(id),
 		detailName:           strVal(name),
-		detailRelationKey:    strVal(string(def.Key)),
+		detailRelationKey:    strVal(storedKey),
 		detailRelationFormat: numVal(float64(format)),
 		detailLayout:         numVal(float64(model.ObjectType_relation)),
 	}}
+	if apiKey != "" {
+		// the spelling the document used, kept the way the app keeps it for a
+		// property created through the API: the internal key is opaque, and
+		// this is the name anything addressing the property by spelling asks
+		// for (objectcreator/relation.go)
+		details.Fields[detailApiObjectKey] = strVal(apiKey)
+	}
 	if format == model.RelationFormat_status {
 		details.Fields[detailRelationMaxCount] = numVal(1)
 	}
@@ -476,6 +528,9 @@ const (
 	detailRelationFormatIncludeTime = string(bundle.RelationKeyRelationFormatIncludeTime)
 	detailRelationReadonlyValue     = string(bundle.RelationKeyRelationReadonlyValue)
 	detailRelationDefaultValue      = string(bundle.RelationKeyRelationDefaultValue)
+	// the spelling a property was created under, which is what an API caller
+	// addresses it by when its internal key is an opaque minted id
+	detailApiObjectKey = string(bundle.RelationKeyApiObjectKey)
 )
 
 func strVal(s string) *types.Value {

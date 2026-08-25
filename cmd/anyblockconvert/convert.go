@@ -31,9 +31,13 @@ func convertFile(inDir, path string, b *batch, normalizeIndent bool, warn func(a
 		ResolveFormat:     b.resolveFormat,
 		ResolveOptions:    b,
 		ResolveProperties: b,
-		GenerateId:        genId,
-		NormalizeIndent:   normalizeIndent,
-		OnWarning:         warn,
+		// the batch's key vocabulary: a property minted for a spelling binds
+		// that spelling batch-wide, so every document's detail keys land on
+		// the one minted key (§2e)
+		Keys:            b,
+		GenerateId:      genId,
+		NormalizeIndent: normalizeIndent,
+		OnWarning:       warn,
 	}
 
 	sbType, snap, err := anyblockjson.Unmarshal(data, opts)

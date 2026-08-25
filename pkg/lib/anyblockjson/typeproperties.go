@@ -23,9 +23,21 @@ import (
 // every member is inert, the same rule the §2a table states for name and
 // format.
 type PropertyDefinition struct {
-	Key    domain.RelationKey
-	Name   string
-	Format model.RelationFormat
+	Key domain.RelationKey
+	// KeyIsInternal records that the document STATED this key as its
+	// `internal_key`, rather than the key being a spelling (`property`, or
+	// one derived from `name`).
+	//
+	// A consumer that CREATES the property needs the difference and cannot
+	// recover it from the value: a stated internal key must be reproduced
+	// exactly, so a bundle re-imported elsewhere yields the same stored key,
+	// while a spelling must get a FRESH minted key the way the app mints one
+	// when a user creates a property. Judging by shape — "24 hex characters
+	// means minted" — gets the common case right and a hand-written 24-hex
+	// spelling wrong, silently.
+	KeyIsInternal bool
+	Name          string
+	Format        model.RelationFormat
 	// Options is the declared vocabulary of a select/multiSelect property,
 	// in display order (§2a). Options are otherwise only discovered from
 	// values that happen to be used, so a vocabulary entry no record carries
@@ -339,17 +351,24 @@ func (tp TypeProperty) authoredKey() (term string, isInternalKey bool) {
 // BuildRecommendedLists), so the two cannot disagree about which members
 // travel.
 func (tp TypeProperty) definition(key string, format model.RelationFormat, targets []string) PropertyDefinition {
+	term, stated := tp.authoredKey()
 	return PropertyDefinition{
-		Key:          domain.RelationKey(key),
-		Name:         tp.Name,
-		Format:       format,
-		Options:      tp.Options,
-		ObjectTypes:  targets,
-		Description:  tp.Description,
-		IncludeTime:  tp.IncludeTime,
-		MaxCount:     maxCountValue(tp.MaxCount),
-		Readonly:     tp.Readonly,
-		DefaultValue: tp.DefaultValue,
+		Key: domain.RelationKey(key),
+		// authoritative when the entry STATED the key, and equally when
+		// resolution moved it: a legend binding a spelling to a stored key
+		// (§9a) is the document telling the reader which property it means,
+		// exactly as `internal_key` does. Only a key nothing bound — a bare
+		// spelling that resolved to itself — is a name awaiting a real key.
+		KeyIsInternal: stated || key != term,
+		Name:          tp.Name,
+		Format:        format,
+		Options:       tp.Options,
+		ObjectTypes:   targets,
+		Description:   tp.Description,
+		IncludeTime:   tp.IncludeTime,
+		MaxCount:      maxCountValue(tp.MaxCount),
+		Readonly:      tp.Readonly,
+		DefaultValue:  tp.DefaultValue,
 	}
 }
 
