@@ -239,10 +239,15 @@ func TestRelationEnvelope_NonFiniteFormatFailsExportByTheGuard(t *testing.T) {
 // deniedPropertyKey and both doors accept the raw number again — a phantom
 // property in Validate's case, a silent second spelling in Unmarshal's.
 func TestRelationEnvelope_RefusedInProperties(t *testing.T) {
+	// v0.38: the slug spellings that resolve onto the three lifted stored
+	// keys are the alias spellings (alias.go); the pre-v0.38 `relation_*`
+	// slugs no longer resolve to anything, so they are ordinary custom keys
+	// and cannot trip this refusal — a legacy document is refused earlier,
+	// at the kind enum and the missing property_settings verdict.
 	for spelling, value := range map[string]string{
-		"relation_format":              "100",
-		"relation_format_include_time": "true",
-		"relation_format_object_types": `["page"]`,
+		"property_format":              "100",
+		"property_format_include_time": "true",
+		"property_format_object_types": `["page"]`,
 	} {
 		t.Run(spelling, func(t *testing.T) {
 			doc := `{"version":1,"kind":"property","id":"o1","internal_key":"budget",` +
@@ -474,8 +479,8 @@ func TestRelationEnvelope_ReferenceSlotsKeepTheBundledSlug(t *testing.T) {
 	require.NoError(t, err)
 
 	// then
-	assert.Contains(t, string(data), `"key": "relation_format"`,
-		"naming the relation is not writing its value — the reference keeps its slug")
+	assert.Contains(t, string(data), `"key": "property_format"`,
+		"naming the property is not writing its value — the reference keeps its slug (the v0.38 alias spelling)")
 	assert.NotContains(t, string(data), `"relationFormat"`,
 		"the verbatim fallback is for keys whose slug would need a legend entry")
 	assert.NotContains(t, string(data), `"property_internal_keys"`,
@@ -555,7 +560,7 @@ func TestRelationEnvelope_ADeniedKeySlugShadowedByTheVocabularyBacksOff(t *testi
 	var warns []Issue
 	opts := testOptions()
 	opts.Keys = typedSpaceVocabulary{
-		propSlugOf: map[string]string{"64af1efbc52a6a5ed6e9dabc": "relation_format"}}
+		propSlugOf: map[string]string{"64af1efbc52a6a5ed6e9dabc": "property_format"}}
 	opts.OnWarning = func(i Issue) { warns = append(warns, i) }
 
 	// when
@@ -565,7 +570,7 @@ func TestRelationEnvelope_ADeniedKeySlugShadowedByTheVocabularyBacksOff(t *testi
 	// then
 	assert.Contains(t, string(data), `"key": "relationFormat"`,
 		"the writer's own space would re-point the slug, so the stored key is the honest spelling")
-	assert.NotContains(t, string(data), "relation_format")
+	assert.NotContains(t, string(data), "property_format")
 	require.NotEmpty(t, warns, "the backed-off spelling is reported")
 	assert.Contains(t, warns[0].Message, "cannot be a legend value")
 	require.NoError(t, Validate(data), "§11 I1")

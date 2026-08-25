@@ -713,9 +713,9 @@ var propertySettingsMemberHomes = map[string]string{
 	"name":          "the property's name is the `name` property",
 	"description":   "the property's description is the `description` property",
 	"options":       "a property's options are property_option documents of their own",
-	"max_count":     "it still travels in `properties` as `relation_max_count`",
-	"readonly":      "it still travels in `properties` as `relation_readonly_value`",
-	"default_value": "it still travels in `properties` as `relation_default_value`",
+	"max_count":     "it still travels in `properties` as `property_max_count`",
+	"readonly":      "it still travels in `properties` as `property_readonly_value`",
+	"default_value": "it still travels in `properties` as `property_default_value`",
 }
 
 func unknownPropertyMessage(prop string) string {
@@ -1100,7 +1100,7 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 		// a document carrying both is ambiguous. The lists are named by
 		// whatever spelling resolves onto them — recommendedListKeys holds
 		// stored keys, and the canonical document spells
-		// recommended_relations (§3)
+		// recommended_properties (§3, the v0.38 alias)
 		if props, _ := doc["properties"].(map[string]any); props != nil {
 			listKeys := make(map[string]bool, len(recommendedListKeys))
 			for _, l := range recommendedListKeys {

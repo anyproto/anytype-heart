@@ -136,7 +136,8 @@ func TestTypePropertiesExport(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.NotContains(t, string(data), "type_settings")
-		assert.Contains(t, string(data), "recommended_featured_relations")
+		// v0.38: the raw list keys spell their property aliases (alias.go)
+		assert.Contains(t, string(data), "recommended_featured_properties")
 		assert.Contains(t, string(data), "relid-dueDate")
 	})
 

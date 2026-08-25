@@ -203,7 +203,7 @@ func unmarshalPropertyDictionary(data []byte, warn func(Issue)) (*PropertyDictio
 // unconditionally would corrupt one entry key in twelve.
 func dictionaryKeySpelling(storedKey string) string {
 	if bundle.HasRelation(domain.RelationKey(storedKey)) {
-		return bundle.ApiSlug(storedKey)
+		return bundledPropertySpelling(storedKey)
 	}
 	return storedKey
 }
@@ -229,20 +229,26 @@ func StoredTypeKey(spelling string) string { return dictionaryStoredTypeKey(spel
 
 func dictionaryTypeSpelling(typeKey string) string {
 	if _, err := bundle.GetType(domain.TypeKey(typeKey)); err == nil {
-		return bundle.ApiSlug(typeKey)
+		return bundledTypeSpelling(typeKey)
 	}
 	return typeKey
 }
 
 // dictionaryStoredTypeKey inverts dictionaryTypeSpelling, by the ladder every
-// slot in the format follows: an exact stored key names itself, then a single
-// fold match, and an ambiguity is never resolved by guess.
+// slot in the format follows: an exact stored key names itself, then the
+// v0.38 alias table, then a single fold match, and an ambiguity is never
+// resolved by guess. The stored-key step running FIRST is deliberate and
+// pinned: `relation` is a bundled type's stored key, so it still names that
+// type verbatim even though its wire spelling is now `property`.
 func dictionaryStoredTypeKey(spelling string) string {
 	if _, err := bundle.GetType(domain.TypeKey(spelling)); err == nil {
 		return spelling
 	}
-	if candidates := bundle.TypeKeysByApiFold(spelling); len(candidates) == 1 {
-		return candidates[0].String()
+	if key, ok := typeKeyByAlias[spelling]; ok {
+		return key
+	}
+	if candidates := BundledTypeKeysByFold(spelling); len(candidates) == 1 {
+		return candidates[0]
 	}
 	return spelling
 }
@@ -260,17 +266,17 @@ func dictionaryStoredKey(spelling string) (stored string, ambiguous []string) {
 	if bundle.HasRelation(domain.RelationKey(spelling)) {
 		return spelling, nil // a stored key names itself
 	}
-	candidates := bundle.RelationKeysByApiFold(spelling)
+	if key, ok := propertyKeyByAlias[spelling]; ok {
+		return key, nil // the v0.38 alias table, before the fold (alias.go)
+	}
+	candidates := BundledPropertyKeysByFold(spelling)
 	switch len(candidates) {
 	case 1:
-		return candidates[0].String(), nil
+		return candidates[0], nil
 	case 0:
 		return spelling, nil // a space-minted key, or a newer app's
 	default:
-		names := make([]string, 0, len(candidates))
-		for _, c := range candidates {
-			names = append(names, c.String())
-		}
+		names := append([]string(nil), candidates...)
 		sort.Strings(names)
 		return spelling, names
 	}
@@ -421,11 +427,11 @@ func MarshalPropertyDictionary(d *PropertyDictionary) ([]byte, error) {
 				"bundled table, so a key outside it tells the reader to install nothing — give it a full "+
 				"entry in `properties` instead (§2f)", key)
 		}
-		// ApiSlug unconditionally, not dictionaryKeySpelling: the check above
-		// has already established this key is bundled, and `installed` admits
-		// nothing else — it is a list of rows to restore from the bundled
-		// table, so a space-minted key has no meaning in it.
-		installed = append(installed, bundle.ApiSlug(key))
+		// the bundled spelling unconditionally, not dictionaryKeySpelling:
+		// the check above has already established this key is bundled, and
+		// `installed` admits nothing else — it is a list of rows to restore
+		// from the bundled table, so a space-minted key has no meaning in it.
+		installed = append(installed, bundledPropertySpelling(key))
 	}
 	sort.Strings(installed)
 	for i, key := range installed {

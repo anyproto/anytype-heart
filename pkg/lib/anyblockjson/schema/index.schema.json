@@ -82,7 +82,7 @@
             "type": "string",
             "minLength": 1
           },
-          "description": "Option object id → the relation_option document's path, relative to this file. Ids, because that is how documents address options: a value carries the option's NAME and the option_ids legend beside it carries the id (§9a) — the id is the only spelling that survives a rename, so it is the one the manifest keys on."
+          "description": "Option object id → the property_option document's path, relative to this file. Ids, because that is how documents address options: a value carries the option's NAME and the option_ids legend beside it carries the id (§9a) — the id is the only spelling that survives a rename, so it is the one the manifest keys on."
         },
         "properties": {
           "type": "string",

@@ -114,35 +114,37 @@ type KeyVocabulary interface {
 	TypeKey(slug string) (key string, ok bool)
 }
 
-// BundledKeyVocabulary is the package default: the bundled derived table,
-// both directions, and nothing else. Custom keys pass through unchanged —
-// a package-only reader has no space to ask about stored slugs.
+// BundledKeyVocabulary is the package default: the bundled derived table —
+// through the v0.38 alias layer (alias.go), which respells the sixteen
+// bundled keys whose stored key says "relation" — both directions, and
+// nothing else. Custom keys pass through unchanged: a package-only reader
+// has no space to ask about stored slugs.
 type BundledKeyVocabulary struct{}
 
 func (BundledKeyVocabulary) PropertySlug(key string) string {
 	if bundle.HasRelation(domain.RelationKey(key)) {
-		return bundle.ApiSlug(key)
+		return bundledPropertySpelling(key)
 	}
 	return key
 }
 
 func (BundledKeyVocabulary) PropertyKey(slug string) (string, bool) {
-	if key, ok := bundle.RelationKeyByApiSlug(slug); ok {
-		return string(key), true
+	if key, ok := bundledPropertyKeyBySpelling(slug); ok {
+		return key, true
 	}
 	return slug, false
 }
 
 func (BundledKeyVocabulary) TypeSlug(key string) string {
 	if bundle.HasObjectTypeByKey(domain.TypeKey(key)) {
-		return bundle.ApiSlug(key)
+		return bundledTypeSpelling(key)
 	}
 	return key
 }
 
 func (BundledKeyVocabulary) TypeKey(slug string) (string, bool) {
-	if key, ok := bundle.TypeKeyByApiSlug(slug); ok {
-		return string(key), true
+	if key, ok := bundledTypeKeyBySpelling(slug); ok {
+		return key, true
 	}
 	return slug, false
 }

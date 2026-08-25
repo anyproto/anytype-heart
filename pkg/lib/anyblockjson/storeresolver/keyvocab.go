@@ -358,18 +358,18 @@ func (r *Resolvers) relationKeyMaps() *keyMaps {
 			bundled: func(key string) bool {
 				return bundle.HasRelation(domain.RelationKey(key))
 			},
+			// the bundled arms run through anyblockjson's v0.38 alias layer,
+			// not pkg/lib/bundle directly: the sixteen relation-spelled
+			// bundled keys answer to their property spellings (and folds),
+			// and the vacated slugs answer to nothing — the same chain the
+			// package-only reader runs, or the two disagree on one spelling
 			bundledKey: func(slug string) (string, bool) {
-				key, ok := bundle.RelationKeyByApiSlug(slug)
-				return string(key), ok
-			},
-			bundledFold: func(input string) []string {
-				keys := bundle.RelationKeysByApiFold(input)
-				out := make([]string, len(keys))
-				for i, key := range keys {
-					out[i] = string(key)
+				if key, ok := (anyblockjson.BundledKeyVocabulary{}).PropertyKey(slug); ok {
+					return key, true
 				}
-				return out
+				return "", false
 			},
+			bundledFold: anyblockjson.BundledPropertyKeysByFold,
 		})
 	}
 	return r.relVocab
@@ -390,18 +390,15 @@ func (r *Resolvers) typeKeyMaps() *keyMaps {
 			bundled: func(key string) bool {
 				return bundle.HasObjectTypeByKey(domain.TypeKey(key))
 			},
+			// the alias-aware bundled arms, exactly as the relation
+			// namespace above
 			bundledKey: func(slug string) (string, bool) {
-				key, ok := bundle.TypeKeyByApiSlug(slug)
-				return string(key), ok
-			},
-			bundledFold: func(input string) []string {
-				keys := bundle.TypeKeysByApiFold(input)
-				out := make([]string, len(keys))
-				for i, key := range keys {
-					out[i] = string(key)
+				if key, ok := (anyblockjson.BundledKeyVocabulary{}).TypeKey(slug); ok {
+					return key, true
 				}
-				return out
+				return "", false
 			},
+			bundledFold: anyblockjson.BundledTypeKeysByFold,
 		})
 	}
 	return r.typeVocab
@@ -478,7 +475,9 @@ func (r *Resolvers) PropertySlug(key string) string {
 	maps := r.relationKeyMaps()
 	candidate := maps.slugByKey[key]
 	if bundle.HasRelation(domain.RelationKey(key)) {
-		candidate = bundle.ApiSlug(key)
+		// through the alias layer, so the sixteen relation-spelled bundled
+		// keys emit their property spellings here too (v0.38, alias.go)
+		candidate = (anyblockjson.BundledKeyVocabulary{}).PropertySlug(key)
 	}
 	if maps.roundTrips(candidate, key) {
 		return candidate
@@ -508,7 +507,7 @@ func (r *Resolvers) TypeSlug(key string) string {
 	maps := r.typeKeyMaps()
 	candidate := maps.slugByKey[key]
 	if bundle.HasObjectTypeByKey(domain.TypeKey(key)) {
-		candidate = bundle.ApiSlug(key)
+		candidate = (anyblockjson.BundledKeyVocabulary{}).TypeSlug(key)
 	}
 	if maps.roundTrips(candidate, key) {
 		return candidate

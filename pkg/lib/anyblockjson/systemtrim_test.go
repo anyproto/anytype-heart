@@ -108,8 +108,10 @@ func TestSystemTrim_TheExcludedKeysKeepTheirEmptyValue(t *testing.T) {
 	require.NoError(t, err)
 
 	// then
-	assert.Contains(t, string(pageDoc), `"featured_relations"`,
-		"featured_relations is deliberately outside the whitelist (§15 #12)")
+	// v0.38: featuredRelations spells `featured_properties` on the wire
+	// (alias.go) — the whitelist verdict is unchanged
+	assert.Contains(t, string(pageDoc), `"featured_properties"`,
+		"featuredRelations is deliberately outside the whitelist (§15 #12)")
 	assert.Contains(t, string(relDoc), `"format": "text"`,
 		"relationFormat 0 is longtext, a real format, and §2d requires the field")
 	assert.Contains(t, string(relDoc), `"object_types": []`,
