@@ -385,6 +385,13 @@ func UnmarshalIndex(data []byte) (*Index, error) {
 	if err := jsonUnmarshal(data, &idx); err != nil {
 		return nil, fmt.Errorf("decode index: %w", err)
 	}
+	// the manifest's type keys arrive in the format's spelling and are held
+	// as STORED keys, the way the dictionary holds its property keys: the
+	// wire says `chat_derived`, the codec says `chatDerived`, and a caller
+	// looking a type up by stored key finds it (§2c).
+	if idx.Manifest != nil {
+		idx.Manifest.Types = reKeyed(idx.Manifest.Types, StoredTypeKey)
+	}
 	return &idx, nil
 }
 
@@ -463,6 +470,18 @@ func (i *Index) IconImageId() string {
 	return i.Icon.File
 }
 
+// reKeyed re-spells a manifest map's keys, keeping its values.
+func reKeyed(in map[string]string, spell func(string) string) map[string]string {
+	if len(in) == 0 {
+		return in
+	}
+	out := make(map[string]string, len(in))
+	for k, v := range in {
+		out[spell(k)] = v
+	}
+	return out
+}
+
 // MarshalIndex renders an index in the canonical byte form (§4).
 func MarshalIndex(idx *Index) ([]byte, error) {
 	if idx == nil {
@@ -495,7 +514,12 @@ func MarshalIndex(idx *Index) ([]byte, error) {
 	doc.setNonEmpty("widgets", widgets)
 	if !idx.Manifest.empty() {
 		m := &omap{}
-		m.setNonEmpty("types", sortedStringOmap(idx.Manifest.Types))
+		// the manifest keys types the way the dictionary keys properties and
+		// the way a type document spells a target type: one spelling per
+		// concept (§2c, §2f). It carried `chatDerived`, `objectType`,
+		// `relationOption` and `spaceView` — 308 camelCase keys across 77
+		// bundles — while the documents beside it said `chat_derived`.
+		m.setNonEmpty("types", sortedStringOmap(reKeyed(idx.Manifest.Types, TypeKeySpelling)))
 		m.setNonEmpty("options", sortedStringOmap(idx.Manifest.Options))
 		m.setNonEmpty("properties", idx.Manifest.Properties)
 		doc.setNonEmpty("manifest", m)

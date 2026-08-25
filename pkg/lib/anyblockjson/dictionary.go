@@ -171,7 +171,8 @@ func unmarshalPropertyDictionary(data []byte, warn func(Issue)) (*PropertyDictio
 		// through verbatim. `format` resolves per key exactly as a
 		// relation_settings format does (§3): "text" on a bundled
 		// short-text key stays short text, and on anything else is longtext.
-		def := tp.definition(storedKey, declaredFormatWith(Options{}, storedKey, tp.Format), tp.ObjectTypes)
+		def := tp.definition(storedKey, declaredFormatWith(Options{}, storedKey, tp.Format),
+			mapStrings(tp.ObjectTypes, dictionaryStoredTypeKey))
 		d.Properties = append(d.Properties, def)
 	}
 	return d, nil
@@ -197,6 +198,45 @@ func dictionaryKeySpelling(storedKey string) string {
 		return bundle.ApiSlug(storedKey)
 	}
 	return storedKey
+}
+
+// dictionaryTypeSpelling renders a TARGET type key the way the dictionary
+// spells it: the api slug for a bundled type, the stored key verbatim for
+// anything else (§2f) — the same rule the entry's own key follows, for the
+// same reason.
+//
+// A type document's `object_types` reaches the same answer by a different
+// road: it slugs through the exporter's per-document ledger and binds the
+// term in that document's `type_keys` legend. The dictionary has no legend,
+// so its spelling must be a PURE FUNCTION of the key, which is what makes
+// `bundle.ApiSlug` the right instrument and a ledger the wrong one.
+//
+// Measured before this rule existed: type documents spelled 5,377 of 5,377
+// target types as slugs, while dictionary entries spelled 232 of 803 in
+// camelCase — the same concept, two spellings, one bundle.
+func TypeKeySpelling(typeKey string) string { return dictionaryTypeSpelling(typeKey) }
+
+// StoredTypeKey inverts TypeKeySpelling.
+func StoredTypeKey(spelling string) string { return dictionaryStoredTypeKey(spelling) }
+
+func dictionaryTypeSpelling(typeKey string) string {
+	if _, err := bundle.GetType(domain.TypeKey(typeKey)); err == nil {
+		return bundle.ApiSlug(typeKey)
+	}
+	return typeKey
+}
+
+// dictionaryStoredTypeKey inverts dictionaryTypeSpelling, by the ladder every
+// slot in the format follows: an exact stored key names itself, then a single
+// fold match, and an ambiguity is never resolved by guess.
+func dictionaryStoredTypeKey(spelling string) string {
+	if _, err := bundle.GetType(domain.TypeKey(spelling)); err == nil {
+		return spelling
+	}
+	if candidates := bundle.TypeKeysByApiFold(spelling); len(candidates) == 1 {
+		return candidates[0].String()
+	}
+	return spelling
 }
 
 // dictionaryStoredKey resolves a dictionary spelling back to the stored key
@@ -273,6 +313,17 @@ func dictionaryEntryKey(i int, spelling string, warn func(Issue)) string {
 			spelling, strings.Join(quoteAll(ambiguous), ", "))
 	}
 	return stored
+}
+
+func mapStrings(in []string, f func(string) string) []string {
+	if len(in) == 0 {
+		return in
+	}
+	out := make([]string, len(in))
+	for i, s := range in {
+		out[i] = f(s)
+	}
+	return out
 }
 
 func quoteAll(names []string) []string {
@@ -414,7 +465,7 @@ func dictionaryEntryOmap(def PropertyDefinition) (*omap, error) {
 	m.setNonEmpty("name", def.Name)
 	m.set("format", name)
 	m.setNonEmpty("options", optionsToAny(def.Options))
-	m.setNonEmpty("object_types", stringsToAny(def.ObjectTypes))
+	m.setNonEmpty("object_types", stringsToAny(mapStrings(def.ObjectTypes, dictionaryTypeSpelling)))
 	m.setNonEmpty("description", def.Description)
 	if def.IncludeTime != nil {
 		// a pointer false is a declaration, not an absence — the same

@@ -188,6 +188,60 @@ func keysBySpelling(keys []string, spell func(string) string) map[string][]strin
 	return out
 }
 
+// The same guard for TYPES. A bundled type's slug is what the manifest keys
+// on and what a dictionary entry's `object_types` names, so an ambiguity here
+// would be undecidable in two places at once.
+//
+// How this can fail: add a bundled type whose key slugs onto an existing
+// one's — this fails naming the pair, and the new type needs a different key.
+func TestDictionaryKeys_TheBundledTypeTableStaysUnambiguous(t *testing.T) {
+	keys := make([]string, 0, 32)
+	for _, tk := range bundle.ListTypesKeys() {
+		keys = append(keys, tk.String())
+	}
+	require.NotEmpty(t, keys)
+
+	for spelling, owners := range keysBySpelling(keys, bundle.ApiSlug) {
+		assert.Lenf(t, owners, 1,
+			"bundled types %v all spell as %q — a manifest key or an object_types member "+
+				"naming it could mean any of them", owners, spelling)
+	}
+	for fold, owners := range keysBySpelling(keys, func(k string) string {
+		return bundle.FoldApiKey(bundle.ApiSlug(k))
+	}) {
+		assert.Lenf(t, owners, 1, "bundled types %v all FOLD to %q", owners, fold)
+	}
+	for _, key := range keys {
+		assert.Equalf(t, key, StoredTypeKey(TypeKeySpelling(key)),
+			"the spelling of type %q must name it back", key)
+	}
+}
+
+// One spelling for one concept, across the two slots that name a type outside
+// a document: a dictionary entry's target types and the bundle manifest.
+//
+// A type DOCUMENT reaches the same answer by a different road — it slugs
+// through the exporter's per-document ledger and binds the term in that
+// document's own `type_keys` legend. The dictionary and the manifest have no
+// legend, so their spelling has to be a pure function of the key.
+func TestDictionary_TargetTypesSpellLikeEverythingElse(t *testing.T) {
+	d, warns := readDict(t, `{`+dictHead+
+		`"properties":[{"key":"assignee","name":"Assignee","format":"objects",`+
+		`"object_types":["participant","object_type","6a83296f61fab2265263ae34"]}]}`)
+	require.Empty(t, warns)
+	require.Len(t, d.Properties, 1)
+
+	assert.Equal(t, []string{"participant", "objectType", "6a83296f61fab2265263ae34"},
+		d.Properties[0].ObjectTypes,
+		"slugs resolve to stored type keys; a space-minted key stays verbatim")
+
+	out, err := MarshalPropertyDictionary(d)
+	require.NoError(t, err)
+	assert.Contains(t, string(out), `"object_type"`, "written back in the format's spelling")
+	assert.NotContains(t, string(out), `"objectType"`)
+	assert.Contains(t, string(out), `"6a83296f61fab2265263ae34"`, "and a minted key is never slugged")
+}
+
 // bundledRelationKeys lists every relation key this build's bundled table
 // holds, read from the table itself rather than a hand-kept list.
 func bundledRelationKeys() []string {
