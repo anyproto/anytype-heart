@@ -1,6 +1,6 @@
 # AnyBlock JSON — format specification
 
-Status: **draft v0.39** · Format version: **1** · Package: `pkg/lib/anyblockjson`
+Status: **draft v0.40** · Format version: **1** · Package: `pkg/lib/anyblockjson`
 
 A human- and agent-readable JSON serialization of Anytype objects (the "anyblock"
 model), designed for export, import, and generation by external tools and LLM
@@ -15,6 +15,14 @@ strings; the vocabulary follows Notion's API and Anytype's public REST API
 (`core/api`) wherever an established term exists — the format should be
 readable, and mostly writable, by someone who has never seen Anytype
 internals.
+
+Changes in v0.40: **the format gains an authoring subset** (§2g) — three
+schemas under `schema/authoring/` that narrow each published grammar to
+exactly what an author composing a use case from nothing writes. Not a new
+format and not a dialect: the same version, the same reader, and a strict
+subset, enforced as a test rather than claimed — every document the
+authoring schemas accept, the full schemas and the full reader accept. The
+three full schemas are untouched.
 
 Changes in v0.39: **the deprecated profile object does not travel** (§2c).
 
@@ -2511,6 +2519,94 @@ The tooling knows this is not an object document, the way it knows
 warn, the codec tolerates — on an `installed` key the local table cannot
 name), and `anyblockconvert` reads it as a declaration source (§3, the
 import wiring).
+
+## 2g. The authoring subset (`authoring/*.schema.json`)
+
+The three published schemas serve two audiences at once, and they pull in
+opposite directions. One is a **backup**: a full-fidelity round trip of a
+real space, which needs ids, attribution, legends, minted internal keys,
+provenance, derived state. The other is an **author** — layer 2 of §1,
+increasingly an LLM agent — generating a use case from nothing: a few types,
+some properties, a handful of objects. An authoring agent reading the full
+object schema reads 56 KB of which most is noise it must actively ignore —
+and worse, it IMITATES what it sees: a 251-run evaluation of small models
+against this format showed them inventing bson ids because every example
+carried one, and writing key fields whose only correct values a real space
+mints.
+
+So each grammar also publishes an **authoring subset**, one schema beside
+each full one:
+
+    schema/authoring/object.schema.json      https://schemas.anytype.io/anyblock/1/authoring/object.schema.json
+    schema/authoring/index.schema.json       https://schemas.anytype.io/anyblock/1/authoring/index.schema.json
+    schema/authoring/properties.schema.json  https://schemas.anytype.io/anyblock/1/authoring/properties.schema.json
+
+**A subset, not a different format.** Same `version`, same reader, same
+wire: an authored document imports through the same `Unmarshal` an exported
+one does, and the authoring URLs keep the trailing file names `DocumentKind`
+dispatches on, so declaring one routes to the same reader. The invariant
+that keeps the subset honest is that **every document valid under an
+authoring schema is valid under the corresponding full schema and full
+reader** — and it is a TEST (`authoring_test.go`), not a claim: a fixture
+per structure the subset can express, an enum sweep that builds one document
+per value the authoring schemas state, and a worked example, each pushed
+through the full `Validate` and the real codec. The semantic rules of §12
+apply on top, unchanged — the subset narrows the grammar, never the checks.
+
+**What the subset removes** is everything whose value only a live space can
+produce, or that a reader derives: ids on blocks, views, sorts and filters;
+the three legends (§9a — an author writes spellings, and the legends exist
+to bind spellings to STORED keys the author does not have); attribution and
+timestamps; `internal_key` where it is app-minted; provenance and derived
+state (`origin`, `revision`, `snippet`, `backlinks`, sync state — the
+`properties` schema node refuses the spellings small models actually write,
+so the phantom-member failure of §2d is an error at generation time, not an
+imported phantom); the output-only surfaces of §4a (`store`, `root`,
+`fields`, `source`, `groups`, `object_orders`); the input aliases
+(`heading_4`, `equation`, `group`); and every kind an author never writes —
+the subset's `kind` enum is `page`, `object_type`, `template`, nothing else.
+Property documents are gone whole: the dictionary (§2f) is where an author
+declares a property, and the import wiring mints the stored identity, which
+is the v0.37 split doing exactly what it was built for.
+
+**Two survivals are deliberate, and both are the SPEC's own rulings.** The
+envelope `id` stays — it is the bundle-local slug every cross-file reference
+resolves through (§1: "the envelope `id` is not part of that trade"), so the
+subset requires its shape instead of dropping it: no leading `_`, none of
+the six reserved bare words (§1, §2c). And `internal_key` stays on TYPE
+documents only, required there: a bundle's own type key is a slug the author
+mints (`habit`), objects name the type by writing that key in `type`, and
+the batch wiring resolves the two against each other by exactly that member
+(§2a, `anyblockbatch.TypeIds`).
+
+**Each authoring schema is self-contained** — no `$ref` crosses a file,
+where the full dictionary and index reference into the object schema (§2e,
+§2b). That is a deliberate trade of the one-shape-one-statement rule for the
+subset's whole point: an agent handed one file has the whole grammar for
+that surface, with no 56 KB import. What keeps the restatements honest is
+the same subset test that keeps everything else honest. One narrowing is
+semantic rather than surface: the two counting date presets
+(`number_of_days_ago`/`_now`) are not in the subset's enum, because where
+they apply they REQUIRE a day count in `value` (§6.2), and a subset
+admitting them bare would admit documents `Validate` refuses.
+
+`ValidateAuthoring`, `ValidateAuthoringIndex` and
+`ValidateAuthoringPropertyDictionary` (§13) run the FULL validation first —
+so refusals carry §12's curated wording — and then the subset schema, whose
+verdicts name themselves subset verdicts. A nil return means the document is
+valid AnyBlock JSON, not merely subset-shaped.
+
+**The worked example** lives at `testdata/authoring/habit_tracker/`: an
+index, one type, a three-property dictionary, a welcome page and two
+objects. It validates against the authoring schemas and the real codec,
+warning-free, and its cross-file references are asserted coherent — it is
+the bundle an authoring agent should be shown first, and the test is what
+keeps it worth imitating.
+
+Sizes, measured at v0.40: object 56,105 → 32,486 bytes, index 8,845 →
+3,990, properties 6,727 → 4,714 — the three surfaces together 71,677 →
+41,190 (−43%), with every remaining `description` rewritten for an author:
+short, concrete, saying what to write.
 
 ## 3. Properties
 
@@ -5294,6 +5390,13 @@ pkg/lib/anyblockjson/
                                handles each
   schema/object.schema.json  — the published JSON Schema (embedded)
   schema/index.schema.json   — the bundle index's own schema (§2c, embedded)
+  schema/authoring/          — the authoring subset (§2g): one self-contained
+                               schema per surface, embedded like the full
+                               three; strict subsets, enforced by test
+  authoring.go               — the authoring subset surface (§2g):
+                               ValidateAuthoring and its index/dictionary
+                               siblings — the full validation first, then
+                               the subset schema
   export.go                  — snapshot → JSON
   import.go                  — JSON → snapshot
   inline.go                  — marks ↔ inline markup codec (§8)
@@ -5416,6 +5519,13 @@ func Unmarshal(data []byte, opts Options) (model.SmartBlockType, *model.SmartBlo
 // Validate checks data against the embedded schema and semantic rules
 // without building a snapshot.
 func Validate(data []byte) error
+
+// ValidateAuthoring checks data against the FULL validation above and then
+// the authoring subset schema (§2g), so a nil return means valid AnyBlock
+// JSON, not merely subset-shaped. ValidateAuthoringIndex and
+// ValidateAuthoringPropertyDictionary do the same for the other two
+// surfaces; AuthoringSchemaURL and siblings name the published locations.
+func ValidateAuthoring(data []byte) error
 
 // DetectFormat reports the version and $schema markers without validating —
 // the cheap dispatch probe for import wiring.
