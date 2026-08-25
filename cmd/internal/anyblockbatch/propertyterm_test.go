@@ -41,7 +41,7 @@ const customPropertyKey = "6a32d4856761631534b22f85"
 func TestScanFormats_LegendBackedKeyIsStoredResolved(t *testing.T) {
 	files := writeDocs(t, map[string]string{
 		"types/task.type.json": `{"version": 1, "kind": "object_type", "key": "task", "id": "type-task",
-		  "property_keys": {"priority": "` + customPropertyKey + `"},
+		  "property_internal_keys": {"priority": "` + customPropertyKey + `"},
 		  "type_settings": {"property_definitions": [{"key": "priority", "name": "Priority", "format": "select",
 		    "options": ["High", "Low"]}]}}`,
 	})
@@ -63,7 +63,7 @@ func TestScanFormats_LegendBackedKeyIsStoredResolved(t *testing.T) {
 func TestScanFormats_FallbackNameIsTheSpelling(t *testing.T) {
 	files := writeDocs(t, map[string]string{
 		"types/task.type.json": `{"version": 1, "kind": "object_type", "key": "task", "id": "type-task",
-		  "property_keys": {"priority": "` + customPropertyKey + `"},
+		  "property_internal_keys": {"priority": "` + customPropertyKey + `"},
 		  "type_settings": {"property_definitions": [{"key": "priority", "format": "text"}]}}`,
 	})
 	formats, err := ScanFormats(files)
@@ -104,11 +104,11 @@ func TestScanFormats_BundledSlugResolvesToTheBundledKey(t *testing.T) {
 // "priority", so the resolver is called and misses.
 func TestScanFormats_AnswersEveryKeyTheCodecAsksFor(t *testing.T) {
 	const object = `{"version": 1, "type": "task", "id": "obj-1",
-	  "property_keys": {"priority": "` + customPropertyKey + `"},
+	  "property_internal_keys": {"priority": "` + customPropertyKey + `"},
 	  "properties": {"priority": "High", "wikiStage": "Draft"}}`
 	files := writeDocs(t, map[string]string{
 		"types/task.type.json": `{"version": 1, "kind": "object_type", "key": "task", "id": "type-task",
-		  "property_keys": {"priority": "` + customPropertyKey + `"},
+		  "property_internal_keys": {"priority": "` + customPropertyKey + `"},
 		  "type_settings": {"property_definitions": [{"key": "priority", "format": "select", "options": ["High"]},
 		    {"key": "wikiStage", "format": "select", "options": ["Draft"]}]}}`,
 		"objects/one.json": object,
@@ -148,7 +148,7 @@ func TestScanFormats_AnswersEveryKeyTheCodecAsksFor(t *testing.T) {
 func TestCheckPropertyFormats_LegendBackedMissIsReported(t *testing.T) {
 	files := writeDocs(t, map[string]string{
 		"objects/one.json": `{"version": 1, "type": "page", "id": "obj-1",
-		  "property_keys": {"priority": "` + customPropertyKey + `"},
+		  "property_internal_keys": {"priority": "` + customPropertyKey + `"},
 		  "properties": {"priority": "High"}}`,
 	})
 	_, bundled := bundle.GetRelationFormat(domain.RelationKey("priority"))
@@ -208,7 +208,7 @@ func TestCheckPropertyFormats_DeclarationAndUseMayDisagreeOnSpelling(t *testing.
 		"types/task.type.json": `{"version": 1, "kind": "object_type", "key": "task", "id": "type-task",
 		  "type_settings": {"property_definitions": [{"key": "` + customPropertyKey + `", "format": "select", "options": ["High"]}]}}`,
 		"objects/one.json": `{"version": 1, "type": "task", "id": "obj-1",
-		  "property_keys": {"priority": "` + customPropertyKey + `"},
+		  "property_internal_keys": {"priority": "` + customPropertyKey + `"},
 		  "properties": {"priority": "High"}}`,
 	})
 	formats, err := ScanFormats(files)
@@ -240,7 +240,7 @@ func TestCheckPropertyFormats_EnvelopeLiftedKeysAreSkipped(t *testing.T) {
 func TestCheckSharedSelects_MergesAcrossSpellings(t *testing.T) {
 	files := writeDocs(t, map[string]string{
 		"types/a.type.json": `{"version": 1, "kind": "object_type", "key": "typeA", "id": "type-a",
-		  "property_keys": {"stage": "` + customPropertyKey + `"},
+		  "property_internal_keys": {"stage": "` + customPropertyKey + `"},
 		  "type_settings": {"property_definitions": [{"key": "stage", "format": "select", "options": ["One"]}]}}`,
 		"types/b.type.json": `{"version": 1, "kind": "object_type", "key": "typeB", "id": "type-b",
 		  "type_settings": {"property_definitions": [{"key": "` + customPropertyKey + `", "format": "select", "options": ["Two"]}]}}`,
@@ -260,10 +260,10 @@ func TestCheckSharedSelects_MergesAcrossSpellings(t *testing.T) {
 func TestCheckSharedSelects_OneSpellingTwoKeysIsNotShared(t *testing.T) {
 	files := writeDocs(t, map[string]string{
 		"types/a.type.json": `{"version": 1, "kind": "object_type", "key": "typeA", "id": "type-a",
-		  "property_keys": {"stage": "` + customPropertyKey + `"},
+		  "property_internal_keys": {"stage": "` + customPropertyKey + `"},
 		  "type_settings": {"property_definitions": [{"key": "stage", "format": "select", "options": ["One"]}]}}`,
 		"types/b.type.json": `{"version": 1, "kind": "object_type", "key": "typeB", "id": "type-b",
-		  "property_keys": {"stage": "69bbfc78877a91b1d12d1a7c"},
+		  "property_internal_keys": {"stage": "69bbfc78877a91b1d12d1a7c"},
 		  "type_settings": {"property_definitions": [{"key": "stage", "format": "select", "options": ["Two"]}]}}`,
 	})
 	shared, err := CheckSharedSelects(files)
@@ -309,7 +309,7 @@ func TestCheckTemplateTargets_AuthoredTargetInSlugSpellingPasses(t *testing.T) {
 // type, unreported.
 func TestCheckTemplateTargets_LegendMovesTheAuthoredTargetAway(t *testing.T) {
 	const doc = `{"version": 1, "kind": "template", "type": "template", "template_for": "page",
-	  "property_keys": {"targetObjectType": "` + customPropertyKey + `"},
+	  "property_internal_keys": {"targetObjectType": "` + customPropertyKey + `"},
 	  "properties": {"targetObjectType": "type-page"}}`
 	requireCodecStoresTargetObjectType(t, doc, false)
 
@@ -351,9 +351,9 @@ func TestLintResolvesPropertyTermsLikeTheCodec(t *testing.T) {
 		{"verbatim custom key", ``, "wikiStage", `"Draft"`},
 		{"bundled slug", ``, "due_date", `"2026-01-01T00:00:00Z"`},
 		{"bundled stored key that is nobody's slug", ``, "dueDate", `"2026-01-01T00:00:00Z"`},
-		{"legend-backed slug", `"property_keys": {"priority": "` + customPropertyKey + `"},`, "priority", `"High"`},
-		{"legend outranks the bundled table", `"property_keys": {"due_date": "` + customPropertyKey + `"},`, "due_date", `"High"`},
-		{"identity entry for a shadow stored key", `"property_keys": {"due_date": "due_date"},`, "due_date", `"High"`},
+		{"legend-backed slug", `"property_internal_keys": {"priority": "` + customPropertyKey + `"},`, "priority", `"High"`},
+		{"legend outranks the bundled table", `"property_internal_keys": {"due_date": "` + customPropertyKey + `"},`, "due_date", `"High"`},
+		{"identity entry for a shadow stored key", `"property_internal_keys": {"due_date": "due_date"},`, "due_date", `"High"`},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -365,7 +365,7 @@ func TestLintResolvesPropertyTermsLikeTheCodec(t *testing.T) {
 			require.NoError(t, err)
 
 			var probe struct {
-				PropertyKeys propertyLegend `json:"property_keys"`
+				PropertyKeys propertyLegend `json:"property_internal_keys"`
 			}
 			require.NoError(t, json.Unmarshal([]byte(doc), &probe))
 

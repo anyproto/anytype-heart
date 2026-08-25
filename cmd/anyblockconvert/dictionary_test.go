@@ -38,7 +38,7 @@ func TestRun_DictionaryDeclaredPropertyConverts(t *testing.T) {
 	require.NoError(t, os.MkdirAll(filepath.Join(inDir, "objects"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(inDir, "objects", "a.json"), []byte(`{"version":1,
 		"id":"obj-a",
-		"property_keys":{"budget":"6a32d4856761631534b22f85"},
+		"property_internal_keys":{"budget":"6a32d4856761631534b22f85"},
 		"properties":{"name":"A","budget":250}}`), 0o644))
 
 	// when

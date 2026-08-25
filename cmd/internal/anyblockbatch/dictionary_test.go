@@ -83,7 +83,7 @@ func TestMergeDictionaryFormats_DictionaryWins(t *testing.T) {
 }
 
 // UsedPropertyKeys resolves through the same chain every scan runs — the
-// document's own property_keys legend, the bundled table, verbatim — and
+// document's own property_internal_keys legend, the bundled table, verbatim — and
 // counts the two slots that reference a property: a `properties` member and
 // a property-definition entry. `id`/`type` are envelope facts and never
 // count.
@@ -94,7 +94,7 @@ func TestMergeDictionaryFormats_DictionaryWins(t *testing.T) {
 func TestUsedPropertyKeys_ResolvesTheChain(t *testing.T) {
 	files := writeDocs(t, map[string]string{
 		"objects/a.json": `{"version":1,
-			"property_keys": {"severity": "6a32d4856761631534b22f85"},
+			"property_internal_keys": {"severity": "6a32d4856761631534b22f85"},
 			"properties": {"severity": "high", "due_date": "2026-01-01", "id": "a1", "type": "task"}}`,
 		"types/t.json": `{"version":1,"kind":"object_type","key":"task",
 			"type_settings":{"property_definitions":[{"key":"assignee","format":"objects"}]}}`,

@@ -4,7 +4,7 @@ package anyblockbatch
 // `type_properties[].object_types`) and look them up in TypeIds, which is
 // keyed by the UNTRANSLATED envelope `key` (SPEC §2). Every test below is a
 // bundle where those two spellings differ, which is the only way the defect
-// can show: a slot spelled as a term its own `type_keys` legend binds
+// can show: a slot spelled as a term its own `type_internal_keys` legend binds
 // elsewhere.
 //
 // Each test states which way it fails without the fix — fail-closed (a valid
@@ -41,7 +41,7 @@ func TestCheckTemplateTargets_LegendBackedTargetPasses(t *testing.T) {
 	files := writeDocs(t, map[string]string{
 		"types/custom.type.json": customType,
 		"templates/article.json": `{"version": 1, "kind": "template", "type": "template", "template_for": "wiki_page",
-		  "type_keys": {"wiki_page": "` + customTypeKey + `"}}`,
+		  "type_internal_keys": {"wiki_page": "` + customTypeKey + `"}}`,
 	})
 	typeIds, err := TypeIds(files)
 	require.NoError(t, err)
@@ -61,7 +61,7 @@ func TestCheckTemplateTargets_TermCollidingWithAnotherTypesKeyIsReported(t *test
 	files := writeDocs(t, map[string]string{
 		"types/wiki-page.type.json": wikiPageType, // key "wikiPage", id "type-wiki-page"
 		"templates/article.json": `{"version": 1, "kind": "template", "type": "template", "template_for": "wikiPage",
-		  "type_keys": {"wikiPage": "` + customTypeKey + `"}}`,
+		  "type_internal_keys": {"wikiPage": "` + customTypeKey + `"}}`,
 	})
 	typeIds, err := TypeIds(files)
 	require.NoError(t, err)
@@ -83,7 +83,7 @@ func TestCheckTemplateTargets_TermCollidingWithAnotherTypesKeyIsReported(t *test
 // gate the lint got wrong was skipped whole, its missing target unreported.
 func TestCheckTemplateTargets_TheKindMakesADocumentATemplate(t *testing.T) {
 	doc := `{"version": 1, "kind": "template", "type": "wiki_page",
-		"type_keys": {"wiki_page": "` + customTypeKey + `"}}`
+		"type_internal_keys": {"wiki_page": "` + customTypeKey + `"}}`
 	requireCodecSeesATemplate(t, doc, true)
 
 	files := writeDocs(t, map[string]string{"templates/orphan.json": doc})
@@ -101,7 +101,7 @@ func TestCheckTemplateTargets_TheKindMakesADocumentATemplate(t *testing.T) {
 func TestCheckTemplateTargets_TheTypeTermDoesNotMakeATemplate(t *testing.T) {
 	for name, doc := range map[string]string{
 		"the literal spelling":     `{"version": 1, "kind": "page", "type": "template"}`,
-		"a legend onto the key":    `{"version": 1, "kind": "page", "type": "wiki_page", "type_keys": {"wiki_page": "template"}}`,
+		"a legend onto the key":    `{"version": 1, "kind": "page", "type": "wiki_page", "type_internal_keys": {"wiki_page": "template"}}`,
 		"no kind, ordinary object": `{"version": 1, "type": "wikiPage"}`,
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -135,7 +135,7 @@ func TestCheckTargetTypes_LegendBackedTargetPasses(t *testing.T) {
 	files := writeDocs(t, map[string]string{
 		"types/custom.type.json": customType,
 		"types/person.type.json": `{"version": 1, "kind": "object_type", "key": "person", "id": "type-person",
-		  "type_keys": {"wiki_page": "` + customTypeKey + `"},
+		  "type_internal_keys": {"wiki_page": "` + customTypeKey + `"},
 		  "type_settings": {"property_definitions": [{"key": "assignee", "format": "objects", "object_types": ["wiki_page"]}]}}`,
 	})
 	typeIds, err := TypeIds(files)
@@ -155,7 +155,7 @@ func TestCheckTargetTypes_TermCollidingWithAnotherTypesKeyIsReported(t *testing.
 	files := writeDocs(t, map[string]string{
 		"types/wiki-page.type.json": wikiPageType, // key "wikiPage", id "type-wiki-page"
 		"types/person.type.json": `{"version": 1, "kind": "object_type", "key": "person", "id": "type-person",
-		  "type_keys": {"wikiPage": "` + customTypeKey + `"},
+		  "type_internal_keys": {"wikiPage": "` + customTypeKey + `"},
 		  "type_settings": {"property_definitions": [{"key": "assignee", "format": "objects", "object_types": ["wikiPage"]}]}}`,
 	})
 	typeIds, err := TypeIds(files)
@@ -216,9 +216,9 @@ func TestLintResolvesTypeTermsLikeTheCodec(t *testing.T) {
 		{"verbatim custom key", ``, "template", "wikiPage"},
 		{"bundled slug", ``, "template", "task"},
 		{"bundled stored key that is nobody's slug", ``, "template", "objectType"},
-		{"legend-backed slug", `"type_keys": {"wiki_page": "` + customTypeKey + `"},`, "template", "wiki_page"},
-		{"legend outranks the bundled table", `"type_keys": {"task": "` + customTypeKey + `"},`, "template", "task"},
-		{"legend on the type slot itself", `"type_keys": {"wiki_page": "template"},`, "wiki_page", "task"},
+		{"legend-backed slug", `"type_internal_keys": {"wiki_page": "` + customTypeKey + `"},`, "template", "wiki_page"},
+		{"legend outranks the bundled table", `"type_internal_keys": {"task": "` + customTypeKey + `"},`, "template", "task"},
+		{"legend on the type slot itself", `"type_internal_keys": {"wiki_page": "template"},`, "wiki_page", "task"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -231,7 +231,7 @@ func TestLintResolvesTypeTermsLikeTheCodec(t *testing.T) {
 			require.Len(t, snap.ObjectTypes, 2, "both type slots must reach the snapshot, or the case proves nothing")
 
 			var probe struct {
-				TypeKeys typeLegend `json:"type_keys"`
+				TypeKeys typeLegend `json:"type_internal_keys"`
 			}
 			require.NoError(t, json.Unmarshal([]byte(doc), &probe))
 

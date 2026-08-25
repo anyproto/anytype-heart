@@ -69,7 +69,7 @@ func TestExport_PropertyKeysLegendCarriesWhatTheTableCannot(t *testing.T) {
 
 	var doc struct {
 		Properties   map[string]any    `json:"properties"`
-		PropertyKeys map[string]string `json:"property_keys"`
+		PropertyKeys map[string]string `json:"property_internal_keys"`
 	}
 	require.NoError(t, json.Unmarshal(data, &doc))
 	assert.Contains(t, doc.Properties, "priority", "the custom key is spelled as its slug")
@@ -81,7 +81,7 @@ func TestExport_PropertyKeysLegendCarriesWhatTheTableCannot(t *testing.T) {
 // The point of the legend: a reader with no space gets the stored keys back.
 func TestImport_PropertyKeysLegendInvertsWithoutTheSpace(t *testing.T) {
 	doc := `{"version": 1, "id": "o1",
-		"property_keys": {"priority": "6a32d4856761631534b22f85"},
+		"property_internal_keys": {"priority": "6a32d4856761631534b22f85"},
 		"properties": {"priority": 3, "due_date": "2026-07-06T08:44:05Z"}}`
 
 	// a package-only reader — no vocabulary at all
@@ -142,7 +142,7 @@ func TestExport_LegendCoversBlockKeySlots(t *testing.T) {
 	require.NoError(t, Validate(data))
 
 	var doc struct {
-		PropertyKeys map[string]string `json:"property_keys"`
+		PropertyKeys map[string]string `json:"property_internal_keys"`
 		Blocks       []struct {
 			Type       string   `json:"type"`
 			Key        string   `json:"key"`
@@ -179,7 +179,7 @@ func TestExport_LegendCoversBlockKeySlots(t *testing.T) {
 // was present.
 func TestImport_LinkPropertiesConsultTheLegend(t *testing.T) {
 	doc := `{"version": 1, "id": "o1",
-		"property_keys": {"priority": "6a32d4856761631534b22f85"},
+		"property_internal_keys": {"priority": "6a32d4856761631534b22f85"},
 		"blocks": [{"type": "link", "id": "lnk", "object_id": "target1",
 			"properties": ["priority", "due_date"]}]}`
 	_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})

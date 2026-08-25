@@ -661,7 +661,7 @@ func TestCorpseStoredKeyStillNamesItsObjects(t *testing.T) {
 		require.NoError(t, anyblockjson.Validate(data))
 		var doc struct {
 			Type     string            `json:"type"`
-			TypeKeys map[string]string `json:"type_keys"`
+			TypeKeys map[string]string `json:"type_internal_keys"`
 		}
 		require.NoError(t, json.Unmarshal(data, &doc))
 		assert.Equal(t, "initiative", doc.Type)
@@ -694,7 +694,7 @@ func TestCorpseStoredKeyStillNamesItsObjects(t *testing.T) {
 		require.NoError(t, anyblockjson.Validate(data))
 		var doc struct {
 			Properties   map[string]string `json:"properties"`
-			PropertyKeys map[string]string `json:"property_keys"`
+			PropertyKeys map[string]string `json:"property_internal_keys"`
 		}
 		require.NoError(t, json.Unmarshal(data, &doc))
 		assert.Equal(t, "value of the deleted property", doc.Properties["initiative"])

@@ -209,7 +209,7 @@ func (e *exporter) buildTypeProperties() []any {
 			// object_types is a TYPE key slot (§7.5a) — it names types, so it
 			// speaks the same vocabulary the envelope `type` does, claims its
 			// spellings through the same term ledger, and owes the same
-			// type_keys legend (§3)
+			// type_internal_keys legend (§3)
 			m.setNonEmpty("object_types", stringsToAny(e.typeSlugs(def.ObjectTypes)))
 			m.setNonEmpty("section", l.section)
 			out = append(out, m)
@@ -390,7 +390,7 @@ func BuildRecommendedLists(props []TypeProperty, opts Options) ([]RecommendedLis
 		// object_types is a TYPE key slot, inverted entry by entry through the
 		// same chain as the key above: Options.Legend's type half first — a
 		// PATCH caller states what its slugs mean the way a document does with
-		// type_keys (§13.1) — then the caller's vocabulary. Resolved (and
+		// type_internal_keys (§13.1) — then the caller's vocabulary. Resolved (and
 		// refused) OUTSIDE the
 		// resolver branch, so the verdict on a given input does not depend on
 		// whether the caller happened to wire a resolver — applyTypeProperties

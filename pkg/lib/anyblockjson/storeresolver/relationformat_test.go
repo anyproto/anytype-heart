@@ -96,7 +96,7 @@ func TestRelationDocumentTranslatesTargetTypes(t *testing.T) {
 			Format      string   `json:"format"`
 			ObjectTypes []string `json:"object_types"`
 		} `json:"relation_settings"`
-		TypeKeys map[string]string `json:"type_keys"`
+		TypeKeys map[string]string `json:"type_internal_keys"`
 	}
 	require.NoError(t, json.Unmarshal(data, &doc))
 	assert.Equal(t, "objects", doc.RelationSettings.Format)

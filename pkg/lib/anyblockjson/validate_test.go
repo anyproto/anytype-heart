@@ -427,7 +427,7 @@ func TestValidate_PathAddressing(t *testing.T) {
 }
 
 // A key slot the schema constrains through `propertyNames` — the `properties`
-// map, the `property_keys` legend, both levels of `option_ids` (§3, §9a) — has
+// map, the `property_internal_keys` legend, both levels of `option_ids` (§3, §9a) — has
 // to name the member that broke the rule, like every other issue §12 promises. The
 // schema cannot: `propertyNames` validates each name as a standalone string
 // instance, so the library's verdict carries neither the enclosing object's
@@ -465,20 +465,20 @@ func TestValidate_KeySlotIssuesNameTheOffendingMember(t *testing.T) {
 		},
 		{
 			name:     "an unwritable legend spelling",
-			doc:      `{"version": 1, "property_keys": {"a\nb": "due_date"}}`,
-			wantPath: "/property_keys/a\nb",
+			doc:      `{"version": 1, "property_internal_keys": {"a\nb": "due_date"}}`,
+			wantPath: "/property_internal_keys/a\nb",
 			wantIn:   []string{`"a\nb"`, "control character"},
 		},
 		{
 			name:     "an unwritable legend stored key",
-			doc:      `{"version": 1, "property_keys": {"prio": "` + long + `"}}`,
-			wantPath: "/property_keys/prio",
+			doc:      `{"version": 1, "property_internal_keys": {"prio": "` + long + `"}}`,
+			wantPath: "/property_internal_keys/prio",
 			wantIn:   []string{long, "129", "128"},
 		},
 		{
 			name:     "an empty legend stored key",
-			doc:      `{"version": 1, "property_keys": {"prio": ""}}`,
-			wantPath: "/property_keys/prio",
+			doc:      `{"version": 1, "property_internal_keys": {"prio": ""}}`,
+			wantPath: "/property_internal_keys/prio",
 			wantIn:   []string{"empty"},
 		},
 		{
@@ -507,14 +507,14 @@ func TestValidate_KeySlotIssuesNameTheOffendingMember(t *testing.T) {
 		// characters, nothing else (§3).
 		{
 			name:     "a legend spelling holding a slash",
-			doc:      `{"version": 1, "property_keys": {"a/b": ""}}`,
-			wantPath: "/property_keys/a~1b",
+			doc:      `{"version": 1, "property_internal_keys": {"a/b": ""}}`,
+			wantPath: "/property_internal_keys/a~1b",
 			wantIn:   []string{"empty"},
 		},
 		{
 			name:     "a type legend spelling holding a tilde",
-			doc:      `{"version": 1, "type_keys": {"a~b": ""}}`,
-			wantPath: "/type_keys/a~0b",
+			doc:      `{"version": 1, "type_internal_keys": {"a~b": ""}}`,
+			wantPath: "/type_internal_keys/a~0b",
 			wantIn:   []string{"empty"},
 		},
 	}
@@ -575,8 +575,8 @@ func TestValidate_EveryPropertyNamesSiteHasAnAddressableMessage(t *testing.T) {
 		// levels and each owes its own case, which is the easy one to
 		// under-count
 		"/properties/option_ids/additionalProperties",
-		"/properties/property_keys",
-		"/properties/type_keys",
+		"/properties/property_internal_keys",
+		"/properties/type_internal_keys",
 	}, sites, "a new propertyNames site needs a case in propertyNameIssues")
 }
 

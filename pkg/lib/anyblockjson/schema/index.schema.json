@@ -74,7 +74,7 @@
             "type": "string",
             "minLength": 1
           },
-          "description": "STORED type key → the type document's path, relative to this file. Stored keys, not per-document spellings: a document's type_keys legend binds its spelling to the stored key, and the stored key is what the manifest answers for — the same rule the property dictionary applies (§2f). Reader flow: object → `type` spelling → the object's own legend → stored key → this map → the type file, no scanning."
+          "description": "STORED type key → the type document's path, relative to this file. Stored keys, not per-document spellings: a document's type_internal_keys legend binds its spelling to the stored key, and the stored key is what the manifest answers for — the same rule the property dictionary applies (§2f). Reader flow: object → `type` spelling → the object's own legend → stored key → this map → the type file, no scanning."
         },
         "options": {
           "type": "object",

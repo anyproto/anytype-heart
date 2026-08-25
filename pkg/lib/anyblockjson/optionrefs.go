@@ -26,7 +26,7 @@ package anyblockjson
 // live option OF THAT RELATION in the target space, and falls back to name
 // resolution otherwise, so a bundle carried to a space that never saw those
 // ids keeps working exactly as it does without the legend. That is the
-// deliberate difference from `property_keys`/`type_keys`, whose values are
+// deliberate difference from `property_internal_keys`/`type_internal_keys`, whose values are
 // taken at face value: a stored key IS the address, while an option id is a
 // shortcut past a name that is already one (§3).
 //
@@ -232,7 +232,7 @@ func (imp *importer) optionIdFromLegend(key, slug, name string) (string, bool) {
 // document can spell a property:
 //
 //   - `properties`            — member names (§3)
-//   - `property_keys`         — member names, the slug→stored-key legend (§3)
+//   - `property_internal_keys`         — member names, the slug→stored-key legend (§3)
 //   - `type_settings.property_definitions[].key` — §2a
 //   - a `property` block's `key` (§5)
 //   - a `link` block's `properties[]`, the shown-property list (§5)
@@ -288,7 +288,7 @@ func rawPropertySpellings(doc map[string]any) map[string]bool {
 		}
 	}
 	addMembers(doc["properties"])
-	addMembers(doc["property_keys"])
+	addMembers(doc[memberPropertyInternalKeys])
 	if list, _ := typePropertyDefinitionsOf(doc); list != nil {
 		for _, raw := range list {
 			tp, _ := raw.(map[string]any)

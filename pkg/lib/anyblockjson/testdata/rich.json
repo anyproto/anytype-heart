@@ -19,7 +19,7 @@
       "In progress"
     ]
   },
-  "property_keys": {
+  "property_internal_keys": {
     "customDate": "customDate",
     "customStatus": "customStatus"
   },

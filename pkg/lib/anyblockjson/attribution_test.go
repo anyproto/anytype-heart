@@ -108,8 +108,8 @@ func TestAttributionProperties_UserChosenParticipantsAreUntouched(t *testing.T) 
 // not refused.
 func TestAttributionProperties_LegendCannotLandThem(t *testing.T) {
 	for name, tc := range map[string]struct{ doc, key string }{
-		"creator":        {`{"version": 1, "property_keys": {"who": "creator"}, "properties": {"who": "Roman"}}`, "creator"},
-		"lastModifiedBy": {`{"version": 1, "property_keys": {"who": "lastModifiedBy"}, "properties": {"who": "Roman"}}`, "lastModifiedBy"},
+		"creator":        {`{"version": 1, "property_internal_keys": {"who": "creator"}, "properties": {"who": "Roman"}}`, "creator"},
+		"lastModifiedBy": {`{"version": 1, "property_internal_keys": {"who": "lastModifiedBy"}, "properties": {"who": "Roman"}}`, "lastModifiedBy"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			// when

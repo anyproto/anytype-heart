@@ -82,7 +82,7 @@ func TestExport_AVerbatimCustomTypeKeyNamesItself(t *testing.T) {
 	require.NoError(t, Validate(data))
 	var doc struct {
 		Type     string            `json:"type"`
-		TypeKeys map[string]string `json:"type_keys"`
+		TypeKeys map[string]string `json:"type_internal_keys"`
 	}
 	require.NoError(t, json.Unmarshal(data, &doc))
 	assert.Equal(t, "initiative", doc.Type)

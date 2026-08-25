@@ -65,7 +65,7 @@
       "maxLength": 255
     },
     "relation_settings": {
-      "description": "Only on relation documents (kind \"relation\" or \"bundled_relation\"), where it is REQUIRED: the definition of the property this document IS — one propertyDefinition (§2d, §2e). Three members travel today, each mirroring stored presence EXACTLY, value included: `format` (required — a §3 format NAME, the same vocabulary type_properties[].format speaks, never a raw enum number; stands for the stored relationFormat key, which `properties` refuses), `include_time` (present exactly when the stored relationFormatIncludeTime key is; meaningful on format \"date\" only, and a stored null travels as null), and `object_types` (present exactly when the stored relationFormatObjectTypes key is; the target type keys in priority order — a type-key slot exactly like type_properties[].object_types, inverted through the type_keys legend, meaningful on \"objects\"/\"files\" only). The members refused with `false` have a home already: `key` is the envelope's, `name` and `description` are properties', `options` are relation_option documents, and max_count/readonly/default_value still travel in `properties` under their stored keys until the dictionary lifts them — admitting a second spelling of any of them here would be the §15 #14 disease this group exists to end.",
+      "description": "Only on relation documents (kind \"relation\" or \"bundled_relation\"), where it is REQUIRED: the definition of the property this document IS — one propertyDefinition (§2d, §2e). Three members travel today, each mirroring stored presence EXACTLY, value included: `format` (required — a §3 format NAME, the same vocabulary type_properties[].format speaks, never a raw enum number; stands for the stored relationFormat key, which `properties` refuses), `include_time` (present exactly when the stored relationFormatIncludeTime key is; meaningful on format \"date\" only, and a stored null travels as null), and `object_types` (present exactly when the stored relationFormatObjectTypes key is; the target type keys in priority order — a type-key slot exactly like type_properties[].object_types, inverted through the type_internal_keys legend, meaningful on \"objects\"/\"files\" only). The members refused with `false` have a home already: `key` is the envelope's, `name` and `description` are properties', `options` are relation_option documents, and max_count/readonly/default_value still travel in `properties` under their stored keys until the dictionary lifts them — admitting a second spelling of any of them here would be the §15 #14 disease this group exists to end.",
       "type": "object",
       "allOf": [
         {
@@ -139,7 +139,7 @@
       },
       "additionalProperties": false
     },
-    "property_keys": {
+    "property_internal_keys": {
       "type": "object",
       "description": "Legend: the stored property key each slug in this document names (§3). Present only for keys the bundled table cannot invert; a reader consults it before its own vocabulary. A value is a stored key and obeys the same writable-key rule as a property name (§3).",
       "propertyNames": {
@@ -153,9 +153,9 @@
         "pattern": "^[^\u0000-\u001f]+$"
       }
     },
-    "type_keys": {
+    "type_internal_keys": {
       "type": "object",
-      "description": "Legend: the stored type key each type slug in this document names (§3). Same rule as property_keys, on a legend of the type namespace's own: present only for spellings the bundled table cannot invert; a reader consults it before its own vocabulary. A value is a stored type key and obeys the writable-key rule (§3).",
+      "description": "Legend: the stored type key each type slug in this document names (§3). Same rule as property_internal_keys, on a legend of the type namespace's own: present only for spellings the bundled table cannot invert; a reader consults it before its own vocabulary. A value is a stored type key and obeys the writable-key rule (§3).",
       "propertyNames": {
         "pattern": "^[^\u0000-\u001f]+$",
         "maxLength": 128

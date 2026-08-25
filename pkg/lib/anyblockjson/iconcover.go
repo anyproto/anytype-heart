@@ -14,7 +14,7 @@ package anyblockjson
 // selects the variant. They live in the ENVELOPE rather than in `properties`
 // for four reasons that are forced rather than aesthetic: `cover` is already
 // a stored property key in real data (30 documents, plus 66 spelling it
-// `pageCover`), a `properties` member can be rebound by the `property_keys`
+// `pageCover`), a `properties` member can be rebound by the `property_internal_keys`
 // legend to point at an arbitrary relation, `properties` carries
 // presence-is-meaningful (§3) while the envelope omits empties (§4), and an
 // envelope member has a schema node of its own to annotate.

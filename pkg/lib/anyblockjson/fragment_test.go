@@ -193,8 +193,8 @@ func fragmentBlocks(t *testing.T, out json.RawMessage) []map[string]any {
 func fragmentLegend(t *testing.T, out json.RawMessage) Legend {
 	t.Helper()
 	var env struct {
-		PropertyKeys map[string]string            `json:"property_keys"`
-		TypeKeys     map[string]string            `json:"type_keys"`
+		PropertyKeys map[string]string            `json:"property_internal_keys"`
+		TypeKeys     map[string]string            `json:"type_internal_keys"`
 		OptionIds    map[string]map[string]string `json:"option_ids"`
 	}
 	require.NoError(t, json.Unmarshal(out, &env))

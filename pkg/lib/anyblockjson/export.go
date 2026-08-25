@@ -133,7 +133,7 @@ type Options struct {
 // Legend carries the three legends of the document a fragment was cut out
 // of, so the fragment entry points can run the §3 chain from step 1 instead
 // of starting at the reader's vocabulary. The field names and the semantics
-// are the envelope's: `property_keys` and `type_keys` values are
+// are the envelope's: `property_internal_keys` and `type_internal_keys` values are
 // AUTHORITATIVE, an `option_ids` value is a liveness-checked hint (§3).
 //
 // The zero value is "no legend", which is what a caller that assembled the
@@ -141,10 +141,10 @@ type Options struct {
 // before this field existed.
 type Legend struct {
 	// PropertyKeys maps a property spelling to the stored relation key it
-	// names (§3) — the enclosing document's `property_keys`.
+	// names (§3) — the enclosing document's `property_internal_keys`.
 	PropertyKeys map[string]string
 	// TypeKeys is the same for the type namespace — the enclosing document's
-	// `type_keys`.
+	// `type_internal_keys`.
 	TypeKeys map[string]string
 	// OptionIds maps {property spelling: {option name: option id}} — the
 	// enclosing document's `option_ids` (§9a).
@@ -498,7 +498,7 @@ func (e *exporter) propertySlugs(keys []string) []string {
 // strcase-derived with no length bound — so nothing upstream guarantees the
 // shape §3 requires of a spelling. Checking the stored key and then emitting
 // the slug unchecked is how Marshal produced a document its own Validate
-// rejects (maxLength 192 vs 128, on /properties and /property_keys at once).
+// rejects (maxLength 192 vs 128, on /properties and /property_internal_keys at once).
 // The stored-key arm covers the mirror case: a slug for a key that cannot be a
 // legend VALUE has no invertible spelling but its own, so the verbatim key —
 // always its own address (§3 verbatim-first) — is the one honest rendering.
@@ -516,13 +516,13 @@ func (e *exporter) writableSlug(key string) string {
 		return slug
 	}
 	if !isWritablePropertyKey(slug) || !isWritablePropertyKey(key) {
-		e.warn("/property_keys",
+		e.warn("/"+memberPropertyInternalKeys,
 			"the vocabulary spells %q as %q, which cannot be a property spelling in this format; the stored key is written instead",
 			key, slug)
 		return key
 	}
 	if slug == detailKeyId || slug == detailKeyType {
-		e.warn("/property_keys",
+		e.warn("/"+memberPropertyInternalKeys,
 			"the vocabulary spells %q as %q, a spelling this format refuses before any resolution (§2); the stored key is written instead",
 			key, slug)
 		return key
@@ -541,7 +541,7 @@ func (e *exporter) writableSlug(key string) string {
 			termInverts(slug, key, e.opts.keys().PropertyKey) {
 			return slug
 		}
-		e.warn("/property_keys",
+		e.warn("/"+memberPropertyInternalKeys,
 			"%q cannot be a legend value (§3 deny rule), so its slug %q is not written; the stored key is its own address",
 			key, slug)
 		return key
@@ -595,7 +595,7 @@ func (e *exporter) recordPropertyKey(term, key string) {
 		return
 	}
 	if reason, refused := legendEntryRefusal(term, key, true); refused {
-		e.warn("/property_keys", "%s", reason)
+		e.warn("/"+memberPropertyInternalKeys, "%s", reason)
 		return
 	}
 	if e.propertyKeys == nil {
@@ -604,7 +604,7 @@ func (e *exporter) recordPropertyKey(term, key string) {
 	e.propertyKeys[term] = key
 }
 
-// legendEntryRefusal reports whether a `property_keys` / `type_keys` entry is
+// legendEntryRefusal reports whether a `property_internal_keys` / `type_internal_keys` entry is
 // one the format can actually carry, and why not. It is the recording site's
 // share of I1 ("Marshal never emits what Validate rejects", §11): every other
 // key slot admits before it writes, and the two legends did not — the ONLY
@@ -829,7 +829,7 @@ func (e *exporter) writableTypeSlug(key string) string {
 		return slug
 	}
 	if !isWritablePropertyKey(slug) || !isWritablePropertyKey(key) {
-		e.warn("/type_keys",
+		e.warn("/"+memberTypeInternalKeys,
 			"the vocabulary spells type %q as %q, which cannot be a type spelling in this format; the stored key is written instead",
 			key, slug)
 		return key
@@ -852,7 +852,7 @@ func (e *exporter) writableTypeSlug(key string) string {
 // (legendEntryRefusal) — minus the deny rule, which is the property
 // namespace's alone: `strippedDetailKeys` and the importer's resolution
 // vectors are relation keys, and Validate states no deny rule over a
-// `type_keys` value.
+// `type_internal_keys` value.
 func (e *exporter) recordTypeKey(term, key string) {
 	if term == "" {
 		return
@@ -862,7 +862,7 @@ func (e *exporter) recordTypeKey(term, key string) {
 		return
 	}
 	if reason, refused := legendEntryRefusal(term, key, false); refused {
-		e.warn("/type_keys", "%s", reason)
+		e.warn("/"+memberTypeInternalKeys, "%s", reason)
 		return
 	}
 	if e.typeKeys == nil {
@@ -874,7 +874,7 @@ func (e *exporter) recordTypeKey(term, key string) {
 // buildTypeKeys renders the type legend in term order, or nil when the
 // document needs none — which is every document that names only bundled and
 // verbatim, unshadowed type keys.
-// legendTypeTerm answers what this document's own type_keys legend binds a
+// legendTypeTerm answers what this document's own type_internal_keys legend binds a
 // term to, falling back to the term itself. It is the emission-side twin of
 // Validate's legacy-template gate: both read the document alone, resolve
 // nothing beyond it, and must agree about which spellings mean the template
@@ -1201,7 +1201,7 @@ var typeKeyIdPrefix = domain.TypeKey("").URL()
 //   - **Only the slots actually WRITTEN claim a term.** typeSlug is the term
 //     ledger's claim step, so slugging an entry no slot emits still records
 //     the legend entry that spelling owes: a document then carried a
-//     `type_keys` line naming a type it never mentions, publishing a space's
+//     `type_internal_keys` line naming a type it never mentions, publishing a space's
 //     slug→key mapping for nothing. buildProperties cannot do this because it
 //     filters before it slugs; the type side now does the same.
 //
@@ -1302,15 +1302,15 @@ func (e *exporter) buildDoc(sbType model.SmartBlockType) (*omap, error) {
 	// pre-v0.22 spelling of a template and this format's own Validate now
 	// refuses it (§10). Emitting it would be Marshal writing what Validate
 	// rejects, which is I1.
-	// The term test reads what the document's own type_keys legend binds the
+	// The term test reads what the document's own type_internal_keys legend binds the
 	// term to, not the raw spelling — Validate's legacy-template refusal reads
 	// the same legend, and the two have to agree or Marshal writes what
 	// Validate rejects. A page whose type term RESOLVES to the template key
-	// (`{"type_keys": {"tmpl": "template"}, "type": "tmpl"}`) is the same
+	// (`{"type_internal_keys": {"tmpl": "template"}, "type": "tmpl"}`) is the same
 	// shape as one spelling it literally, and needs its kind just as much.
 	// EITHER spelling forces the kind: the raw term (`{"type": "template"}` is
 	// the pre-v0.22 spelling of a template, which Validate refuses) or the key
-	// the document's own type_keys legend binds it to (`{"type_keys":
+	// the document's own type_internal_keys legend binds it to (`{"type_internal_keys":
 	// {"tmpl": "template"}, "type": "tmpl"}` is the same document said
 	// differently, and Validate's legacy gate reads that legend too). Testing
 	// only the raw term let a page whose term RESOLVES to the template key
@@ -1368,8 +1368,8 @@ func (e *exporter) buildDoc(sbType model.SmartBlockType) (*omap, error) {
 	// presence is what tells import to rebuild the four lists (§2a)
 	doc.setNonEmpty("type_settings", typeSettings)
 
-	doc.setNonEmpty("property_keys", e.buildPropertyKeys())
-	doc.setNonEmpty("type_keys", e.buildTypeKeys())
+	doc.setNonEmpty(memberPropertyInternalKeys, e.buildPropertyKeys())
+	doc.setNonEmpty(memberTypeInternalKeys, e.buildTypeKeys())
 	// option_ids last of the three legends: its outer keys are property
 	// spellings, so the legend that inverts those precedes it (§2). Written
 	// unconditionally — this is identity, not compaction — except under

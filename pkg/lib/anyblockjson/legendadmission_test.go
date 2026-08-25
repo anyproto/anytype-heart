@@ -3,7 +3,7 @@ package anyblockjson
 // legendadmission_test.go — the two legends admit what they write.
 //
 // Every other key slot in this format checks a key before it writes it;
-// `property_keys` and `type_keys` did not. The only admission on the way in
+// `property_internal_keys` and `type_internal_keys` did not. The only admission on the way in
 // was writableSlug/writableTypeSlug, and both return EARLY when the
 // vocabulary has no slug for a key — so an unwritable stored key walked
 // straight into the ledger, and Marshal emitted a legend its own Validate and
@@ -113,7 +113,7 @@ func TestExport_PropertyLegendRefusesAnEntryItCannotHold(t *testing.T) {
 				decodeDoc(t, data).PropertyKeys,
 				"only the entry the legend can hold; the shadowed key still owes one")
 			require.NotEmpty(t, warnings, "a refused entry is reported")
-			assert.Contains(t, warningsAt(warnings, "/property_keys"), tc.wantWarn)
+			assert.Contains(t, warningsAt(warnings, "/property_internal_keys"), tc.wantWarn)
 
 			// and nothing the document was carrying is lost: the term is
 			// still spelled verbatim, so it survives chain step 4
@@ -145,7 +145,7 @@ func TestExport_PropertyLegendRefusesADeniedValue(t *testing.T) {
 	_, _, err = Unmarshal(data, Options{GenerateId: seqIds("g")})
 	require.NoError(t, err, "emitted:\n%s", data)
 	assert.Empty(t, decodeDoc(t, data).PropertyKeys, "a denied key cannot be a legend value")
-	assert.Contains(t, warningsAt(warnings, "/property_keys"),
+	assert.Contains(t, warningsAt(warnings, "/property_internal_keys"),
 		`"uniqueKey" is internal: export strips it`)
 }
 
@@ -213,14 +213,14 @@ func TestExport_TypeLegendRefusesAnEntryItCannotHold(t *testing.T) {
 
 			var doc struct {
 				Type     string            `json:"type"`
-				TypeKeys map[string]string `json:"type_keys"`
+				TypeKeys map[string]string `json:"type_internal_keys"`
 			}
 			require.NoError(t, json.Unmarshal(data, &doc))
 			assert.Equal(t, tc.key, doc.Type, "the term is still spelled verbatim")
 			assert.Equal(t, map[string]string{"shadowedType": "shadowedType"}, doc.TypeKeys,
 				"only the entry the legend can hold")
 			require.NotEmpty(t, warnings)
-			assert.Contains(t, warningsAt(warnings, "/type_keys"), tc.wantWarn)
+			assert.Contains(t, warningsAt(warnings, "/type_internal_keys"), tc.wantWarn)
 		})
 	}
 }

@@ -12,7 +12,7 @@ import (
 // v0.22 made `kind` the sole authority on what a template is, and refuses a
 // pre-v0.22 document that carried the meaning in `type` alone. The refusal
 // reads the raw spelling — but the chain it replaced read the document's own
-// type_keys legend first, so a document that RENAMED the template spelling
+// type_internal_keys legend first, so a document that RENAMED the template spelling
 // through its own legend fell through the refusal and imported as an ordinary
 // Page, losing the template. Validate said nothing, anyblockvalidate said
 // nothing, and CheckTemplateTargets agreed it was not a template.
@@ -26,7 +26,7 @@ func TestValidate_TheLegacyTemplateGateReadsTheDocumentsOwnLegend(t *testing.T) 
 		// `tpl` resolves to the stored key `template`, so under v0.21 this WAS
 		// a template. Without the legend clause it validates clean and imports
 		// as a Page.
-		doc := []byte(`{"version": 1, "type_keys": {"tpl": "template"}, "type": "tpl"}`)
+		doc := []byte(`{"version": 1, "type_internal_keys": {"tpl": "template"}, "type": "tpl"}`)
 
 		err := Validate(doc)
 		require.Error(t, err, "a pre-v0.22 template must be refused however it spelled the type")
@@ -41,7 +41,7 @@ func TestValidate_TheLegacyTemplateGateReadsTheDocumentsOwnLegend(t *testing.T) 
 		// own legend binds it to `custom1`, so v0.21 read it as an ordinary
 		// page. Refusing it would prescribe a repair that changes what the
 		// document is.
-		doc := []byte(`{"version": 1, "type_keys": {"template": "custom1"}, "type": "template"}`)
+		doc := []byte(`{"version": 1, "type_internal_keys": {"template": "custom1"}, "type": "template"}`)
 
 		require.NoError(t, Validate(doc),
 			"the document's own legend already says this is not a template")

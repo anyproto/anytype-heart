@@ -21,7 +21,7 @@ import (
 
 type flatPropsDoc struct {
 	Properties   map[string]any    `json:"properties"`
-	PropertyKeys map[string]string `json:"property_keys"`
+	PropertyKeys map[string]string `json:"property_internal_keys"`
 	Blocks       []struct {
 		Type string `json:"type"`
 		Key  string `json:"key"`
@@ -289,15 +289,15 @@ func (v twinSlugVocab) TypeKey(slug string) (string, bool) {
 // only for writability.
 func TestValidate_LegendValueObeysTheDenyRule(t *testing.T) {
 	for name, doc := range map[string]string{
-		"resolution vector": `{"version": 1, "property_keys": {"sneaky": "uniqueKey"}}`,
-		"merge selector":    `{"version": 1, "property_keys": {"p": "oldAnytypeID"}}`,
-		"envelope key":      `{"version": 1, "property_keys": {"myid": "id"}}`,
-		"stripped key":      `{"version": 1, "property_keys": {"s": "spaceId"}}`,
+		"resolution vector": `{"version": 1, "property_internal_keys": {"sneaky": "uniqueKey"}}`,
+		"merge selector":    `{"version": 1, "property_internal_keys": {"p": "oldAnytypeID"}}`,
+		"envelope key":      `{"version": 1, "property_internal_keys": {"myid": "id"}}`,
+		"stripped key":      `{"version": 1, "property_internal_keys": {"s": "spaceId"}}`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			err := Validate([]byte(doc))
 			require.Error(t, err, doc)
-			assert.Contains(t, err.Error(), "/property_keys/")
+			assert.Contains(t, err.Error(), "/property_internal_keys/")
 			_, _, unmErr := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 			require.Error(t, unmErr, "I2: Unmarshal refuses what Validate refuses")
 		})
@@ -310,7 +310,7 @@ func TestValidate_LegendValueObeysTheDenyRule(t *testing.T) {
 // accepts (it used to emit /properties/unique_key with no legend entry and
 // then reject its own output).
 func TestImport_LegendBindingToACustomShadowKeyIsNotLaundering(t *testing.T) {
-	doc := `{"version": 1, "id": "o1", "property_keys": {"x": "unique_key"}, "properties": {"x": "ot-page"}}`
+	doc := `{"version": 1, "id": "o1", "property_internal_keys": {"x": "unique_key"}, "properties": {"x": "ot-page"}}`
 	require.NoError(t, Validate([]byte(doc)))
 	sbType, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 	require.NoError(t, err)
@@ -385,7 +385,7 @@ func TestExport_ADeniedKeyNeverTakesASlug(t *testing.T) {
 					Key string `json:"key"`
 				} `json:"property_definitions"`
 			} `json:"type_settings"`
-			PropertyKeys map[string]string `json:"property_keys"`
+			PropertyKeys map[string]string `json:"property_internal_keys"`
 		}
 		require.NoError(t, json.Unmarshal(data, &doc))
 		require.Len(t, doc.TypeSettings.PropertyDefinitions, 1)
@@ -486,7 +486,7 @@ func TestValidate_MirrorsTheSeamsDuplicateBindingRefusal(t *testing.T) {
 	for name, doc := range map[string]string{
 		"bundled twin":   `{"version": 1, "properties": {"pluralName": "a", "plural_name": "b"}}`,
 		"date twin":      `{"version": 1, "properties": {"dueDate": "x", "due_date": "y"}}`,
-		"legend-induced": `{"version": 1, "property_keys": {"prio": "customKey"}, "properties": {"prio": 1, "customKey": 2}}`,
+		"legend-induced": `{"version": 1, "property_internal_keys": {"prio": "customKey"}, "properties": {"prio": 1, "customKey": 2}}`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			err := Validate([]byte(doc))

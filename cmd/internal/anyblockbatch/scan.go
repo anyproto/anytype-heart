@@ -89,7 +89,7 @@ func typeSettingsDefs(ts *typeSettingsRaw) []typePropRaw {
 }
 
 type prescanDoc struct {
-	PropertyKeys propertyLegend   `json:"property_keys"`
+	PropertyKeys propertyLegend   `json:"property_internal_keys"`
 	TypeSettings *typeSettingsRaw `json:"type_settings"`
 }
 
@@ -105,7 +105,7 @@ type prescanDoc struct {
 // because that is what the converter reads it by: anyblockjson hands
 // Options.ResolveFormat the output of importer.propertyKey, never the
 // spelling. `type_settings.property_definitions[].key` is a translated slot (§3), so it runs the
-// chain — this document's own property_keys legend, the bundled table,
+// chain — this document's own property_internal_keys legend, the bundled table,
 // verbatim — first; see propertyterm.go for what keying it raw costs.
 func ScanFormats(files []string) (map[string]FormatInfo, error) {
 	out := map[string]FormatInfo{}
@@ -185,7 +185,7 @@ type Undeclared struct {
 // the batch has to catch it.
 //
 // A `properties` key is a translated slot (§3): it spells the api slug, and
-// binds to a stored key through this document's own property_keys legend,
+// binds to a stored key through this document's own property_internal_keys legend,
 // then the bundled table, then verbatim (propertyterm.go). Both lookups below
 // take the RESOLVED key — the bundled one because `bundle` is keyed by stored
 // keys and knows nothing of `due_date`, the batch one because the converter
@@ -201,7 +201,7 @@ func CheckPropertyFormats(files []string, formats map[string]FormatInfo) ([]Unde
 			return nil, fmt.Errorf("read %s: %w", f, err)
 		}
 		var doc struct {
-			PropertyKeys propertyLegend             `json:"property_keys"`
+			PropertyKeys propertyLegend             `json:"property_internal_keys"`
 			Properties   map[string]json.RawMessage `json:"properties"`
 		}
 		if err := json.Unmarshal(data, &doc); err != nil {
@@ -353,7 +353,7 @@ type SharedSelect struct {
 //
 // Grouped by the STORED key each `key` term resolves to (§3, propertyterm.go),
 // not by its spelling: what merges two vocabularies is naming one property,
-// and two documents naming it two ways — one through its property_keys
+// and two documents naming it two ways — one through its property_internal_keys
 // legend, one verbatim — merge exactly as hard as two spelling it alike.
 // Grouping by spelling missed precisely the collision an author cannot see by
 // reading the files side by side.
@@ -373,7 +373,7 @@ func CheckSharedSelects(files []string) ([]SharedSelect, error) {
 		var doc struct {
 			Kind         string           `json:"kind"`
 			Key          string           `json:"key"`
-			PropertyKeys propertyLegend   `json:"property_keys"`
+			PropertyKeys propertyLegend   `json:"property_internal_keys"`
 			TypeSettings *typeSettingsRaw `json:"type_settings"`
 		}
 		if err := json.Unmarshal(data, &doc); err != nil {
@@ -432,7 +432,7 @@ func ReportSharedSelects(ss []SharedSelect) string {
 // a type that is not bundled: valid, converted, and dangling.
 //
 // object_types is a translated type-key slot (§2a), so each entry runs the §3
-// chain — this document's own type_keys legend, the bundled table, verbatim —
+// chain — this document's own type_internal_keys legend, the bundled table, verbatim —
 // before anything is looked up. typeIds is keyed by the untranslated envelope
 // key (§2), and matching a term against it raw is both a fail-closed and a
 // fail-open bug; see typeterm.go.
@@ -453,7 +453,7 @@ func CheckTargetTypes(files []string, typeIds map[string]string) ([]BadTarget, e
 			return nil, fmt.Errorf("read %s: %w", f, err)
 		}
 		var doc struct {
-			TypeKeys     typeLegend       `json:"type_keys"`
+			TypeKeys     typeLegend       `json:"type_internal_keys"`
 			TypeSettings *typeSettingsRaw `json:"type_settings"`
 		}
 		if err := json.Unmarshal(data, &doc); err != nil {
@@ -533,8 +533,8 @@ func CheckTemplateTargets(files []string, typeIds map[string]string) ([]BadTempl
 			Kind         string                     `json:"kind"`
 			Type         string                     `json:"type"`
 			TemplateFor  string                     `json:"template_for"`
-			TypeKeys     typeLegend                 `json:"type_keys"`
-			PropertyKeys propertyLegend             `json:"property_keys"`
+			TypeKeys     typeLegend                 `json:"type_internal_keys"`
+			PropertyKeys propertyLegend             `json:"property_internal_keys"`
 			Properties   map[string]json.RawMessage `json:"properties"`
 		}
 		if err := json.Unmarshal(data, &doc); err != nil {
@@ -578,7 +578,7 @@ func CheckTemplateTargets(files []string, typeIds map[string]string) ([]BadTempl
 // The converter reads that detail off the CONVERTED snapshot, i.e. under the
 // stored key, so the question here is which SPELLING lands on it — a
 // translated property slot, resolved through this document's own
-// property_keys legend, then the bundled table, then verbatim (§3). Probing
+// property_internal_keys legend, then the bundled table, then verbatim (§3). Probing
 // the map for the stored key alone was wrong both ways: `target_object_type`
 // is the canonical api-slug spelling (§3) and reached the detail while this
 // check missed it, reporting a template the converter wires perfectly (a hard
@@ -858,7 +858,7 @@ func MergeDictionaryFormats(scanned, dict map[string]FormatInfo, warn func(forma
 // UsedPropertyKeys reports every STORED property key the bundle's documents
 // reference — the population the dictionary's `properties` list names (§2f,
 // used-only). Two slots count as a reference, resolved through the same
-// chain every scan here runs (a document's own property_keys legend, the
+// chain every scan here runs (a document's own property_internal_keys legend, the
 // bundled table, verbatim): a `properties` member on any document, and a
 // `type_settings.property_definitions[].key`. A dataview's column list is
 // deliberately NOT one — it is a per-view cache carrying its own inline
@@ -872,7 +872,7 @@ func UsedPropertyKeys(files []string) (map[string]bool, error) {
 			return nil, fmt.Errorf("read %s: %w", f, err)
 		}
 		var doc struct {
-			PropertyKeys propertyLegend             `json:"property_keys"`
+			PropertyKeys propertyLegend             `json:"property_internal_keys"`
 			Properties   map[string]json.RawMessage `json:"properties"`
 			TypeSettings *typeSettingsRaw           `json:"type_settings"`
 		}

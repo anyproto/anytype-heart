@@ -472,7 +472,7 @@ func TestRelationEnvelope_ReferenceSlotsKeepTheBundledSlug(t *testing.T) {
 		"naming the relation is not writing its value — the reference keeps its slug")
 	assert.NotContains(t, string(data), `"relationFormat"`,
 		"the verbatim fallback is for keys whose slug would need a legend entry")
-	assert.NotContains(t, string(data), `"property_keys"`,
+	assert.NotContains(t, string(data), `"property_internal_keys"`,
 		"a bundled binding needs no legend entry — that is what makes the slug safe")
 	assert.Empty(t, warns)
 	require.NoError(t, Validate(data), "§11 I1")
@@ -516,7 +516,7 @@ func TestRelationEnvelope_ADeniedKeySlugTheBundledTableDoesNotBindBacksOff(t *te
 	assert.Contains(t, string(data), `"key": "relationFormat"`,
 		"a slug that would owe an unwritable legend entry backs off to the stored key (§3)")
 	assert.NotContains(t, string(data), "fmt_col")
-	assert.NotContains(t, string(data), `"property_keys"`,
+	assert.NotContains(t, string(data), `"property_internal_keys"`,
 		"the denied key can never be a legend value — that is why the slug had to go")
 	require.NotEmpty(t, warns, "the backed-off spelling is reported")
 	assert.Contains(t, warns[0].Message, "cannot be a legend value")
@@ -616,7 +616,7 @@ func docObjectTypes(t *testing.T, data []byte) []string {
 	return doc.RelationSettings.ObjectTypes
 }
 
-// A custom stored type key in `object_types` owes the type_keys legend its
+// A custom stored type key in `object_types` owes the type_internal_keys legend its
 // identity entry, exactly as the same key would in
 // type_properties[].object_types — the §2d slot is a type-key slot, not a
 // free string.
@@ -637,7 +637,7 @@ func TestRelationEnvelope_TargetTypesOweTheTypeLegend(t *testing.T) {
 
 	// then
 	var doc struct {
-		TypeKeys map[string]string `json:"type_keys"`
+		TypeKeys map[string]string `json:"type_internal_keys"`
 	}
 	require.NoError(t, json.Unmarshal(data, &doc))
 	assert.Equal(t, "wine", doc.TypeKeys["wine"],

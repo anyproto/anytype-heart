@@ -47,10 +47,10 @@ type jsonDoc struct {
 	// its own key spellings mean, consulted before any vocabulary so a reader
 	// without the space still lands on the right relation. Its values are
 	// AUTHORITATIVE — taken as the stored key, not liveness-checked (§3).
-	PropertyKeys map[string]string `json:"property_keys"`
+	PropertyKeys map[string]string `json:"property_internal_keys"`
 	// TypeKeys is the same legend for the TYPE namespace — separate map,
 	// because a space may slug a relation and a type onto one term (§3).
-	TypeKeys map[string]string `json:"type_keys"`
+	TypeKeys map[string]string `json:"type_internal_keys"`
 	// OptionIds is the §9a option legend, nested {property spelling: {option
 	// name: option id}}. Unlike the two above its values are HINTS, honoured
 	// only where the id still names a live option of that relation (§3).

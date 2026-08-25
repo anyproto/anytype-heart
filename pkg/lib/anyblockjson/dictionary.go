@@ -57,7 +57,7 @@ type PropertyDictionary struct {
 	// Properties carries one definition per property the bundle's objects
 	// actually reference — used-only (§2f) — plus a full entry for every
 	// installed copy that diverges from the bundled table. Keys are STORED
-	// keys, never document spellings: a document's property_keys legend
+	// keys, never document spellings: a document's property_internal_keys legend
 	// binds its labels to stored keys, and the stored key is what the
 	// dictionary answers for.
 	Properties []PropertyDefinition
@@ -207,7 +207,7 @@ func dictionaryKeySpelling(storedKey string) string {
 //
 // A type document's `object_types` reaches the same answer by a different
 // road: it slugs through the exporter's per-document ledger and binds the
-// term in that document's `type_keys` legend. The dictionary has no legend,
+// term in that document's `type_internal_keys` legend. The dictionary has no legend,
 // so its spelling must be a PURE FUNCTION of the key, which is what makes
 // `bundle.ApiSlug` the right instrument and a ledger the wrong one.
 //

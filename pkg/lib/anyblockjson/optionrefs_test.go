@@ -629,13 +629,13 @@ func TestOptionRefs_LegendKeyRulesAreTheSameInBothValidators(t *testing.T) {
 // The three legends have a canonical order (§2, §4), and `option_ids` is last
 // of them because its OUTER keys are property spellings: the legend that
 // inverts a spelling has to precede the legend keyed by one, so a reader
-// working through the document linearly meets `property_keys` first.
+// working through the document linearly meets `property_internal_keys` first.
 //
 // No golden pins this — all four carry `option_ids` and none carries
-// `property_keys`, so the two never appear together in a frozen document.
+// `property_internal_keys`, so the two never appear together in a frozen document.
 func TestOptionRefs_TheLegendFollowsPropertyKeys(t *testing.T) {
 	// given — a stored key the bundled table cannot invert, so the document
-	// owes a property_keys entry, carrying a select value so it owes an
+	// owes a property_internal_keys entry, carrying a select value so it owes an
 	// option_ids entry too
 	space := spaceOptions{"6a32d4856761631534b22f85": {{id: "bafyopt", name: "High"}}}
 	snap := optionSnapshot(map[string]*types.Value{"6a32d4856761631534b22f85": strList("bafyopt")})
@@ -651,13 +651,13 @@ func TestOptionRefs_TheLegendFollowsPropertyKeys(t *testing.T) {
 	require.NoError(t, Validate(data))
 	s := string(data)
 	properties := strings.Index(s, `"properties"`)
-	propertyKeys := strings.Index(s, `"property_keys"`)
+	propertyKeys := strings.Index(s, `"property_internal_keys"`)
 	optionIds := strings.Index(s, `"option_ids"`)
-	require.NotEqual(t, -1, propertyKeys, "the fixture must produce a property_keys legend:\n%s", s)
+	require.NotEqual(t, -1, propertyKeys, "the fixture must produce a property_internal_keys legend:\n%s", s)
 	require.NotEqual(t, -1, optionIds, "and an option_ids legend:\n%s", s)
 	assert.Less(t, properties, propertyKeys, "properties precede the legends:\n%s", s)
 	assert.Less(t, propertyKeys, optionIds,
-		"option_ids is keyed by spellings property_keys inverts, so it comes after:\n%s", s)
+		"option_ids is keyed by spellings property_internal_keys inverts, so it comes after:\n%s", s)
 	// and the outer key is the SPELLING, which is what makes the order matter
 	assert.Equal(t, legend("priority", map[string]string{"High": "bafyopt"}), docOptionIds(t, data))
 }
@@ -853,7 +853,7 @@ func TestOptionRefs_ThePropertyCensusCoversEveryPosition(t *testing.T) {
 		counted bool
 	}{
 		{"a properties member", `{"properties": {"probe_property": ["High"]}}`, true},
-		{"a property_keys spelling", `{"property_keys": {"probe_property": "storedKey"}}`, true},
+		{"a property_internal_keys spelling", `{"property_internal_keys": {"probe_property": "storedKey"}}`, true},
 		{"a type_properties key", `{"kind": "object_type",
 			"type_settings": {"property_definitions": [{"key": "probe_property", "format": "select"}]}}`, true},
 		{"a property block's key", `{"blocks":

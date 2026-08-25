@@ -223,7 +223,7 @@ var typeKeyIdPrefix = domain.TypeKey("").URL()
 // Compare used to be structurally blind to. It read only details and text, so
 // a 36 808-object production sweep could never have caught a type
 // substitution: every claim about type-key correctness rested on synthetic
-// tests alone. A rebinding is exactly the loss the `type_keys` legend (§3)
+// tests alone. A rebinding is exactly the loss the `type_internal_keys` legend (§3)
 // exists to prevent, and exactly what a sweep must be able to see.
 //
 // Equality is the wrong predicate here, because export normalizes the list

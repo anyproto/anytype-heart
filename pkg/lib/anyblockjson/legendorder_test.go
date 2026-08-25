@@ -1,7 +1,7 @@
 package anyblockjson
 
 // legendorder_test.go pins the ORDER of the three legends' members, in the
-// bytes (§4 serialization canon: "`property_keys`, `type_keys` and
+// bytes (§4 serialization canon: "`property_internal_keys`, `type_internal_keys` and
 // `option_ids` entries sorted by key, and each `option_ids` inner map sorted
 // by option name").
 //
@@ -91,7 +91,7 @@ func rawNestedMemberOrder(t *testing.T, data []byte, slot, outer string) []strin
 }
 
 func TestExport_LegendMembersAreSortedInTheBytes(t *testing.T) {
-	t.Run("property_keys", func(t *testing.T) {
+	t.Run("property_internal_keys", func(t *testing.T) {
 		// given: four custom keys the bundled table cannot invert, so each
 		// owes a legend entry
 		slugOf := map[string]string{}
@@ -108,11 +108,11 @@ func TestExport_LegendMembersAreSortedInTheBytes(t *testing.T) {
 
 		// then
 		require.NoError(t, Validate(data))
-		assert.Equal(t, wantLegendOrder, rawMemberOrder(t, data, "property_keys"),
+		assert.Equal(t, wantLegendOrder, rawMemberOrder(t, data, "property_internal_keys"),
 			"the legend is keyed by the spelling and sorted by it:\n%s", data)
 	})
 
-	t.Run("type_keys", func(t *testing.T) {
+	t.Run("type_internal_keys", func(t *testing.T) {
 		// given: a type document whose one property targets four custom
 		// types, each of which owes an entry
 		typeSlugOf := map[string]string{}
@@ -143,7 +143,7 @@ func TestExport_LegendMembersAreSortedInTheBytes(t *testing.T) {
 
 		// then
 		require.NoError(t, Validate(data))
-		assert.Equal(t, wantLegendOrder, rawMemberOrder(t, data, "type_keys"),
+		assert.Equal(t, wantLegendOrder, rawMemberOrder(t, data, "type_internal_keys"),
 			"the type legend obeys the same canon as the property one:\n%s", data)
 	})
 

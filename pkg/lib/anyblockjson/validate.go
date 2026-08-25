@@ -248,8 +248,8 @@ func checkVersion(doc map[string]any) error {
 // `~`, and cost §12's one fault, one issue on top: the schema's verdict is
 // suppressed for the members those checks spoke for, and that ledger is keyed
 // by pointer — so an unescaped pointer missed the escaped entry and one empty
-// legend value came back three times, once as `/property_keys/a~1b` and twice
-// more at `/property_keys/a/b`, a location the document does not have.
+// legend value came back three times, once as `/property_internal_keys/a~1b` and twice
+// more at `/property_internal_keys/a/b`, a location the document does not have.
 func jsonPath(tokens []string) string {
 	if len(tokens) == 0 {
 		return ""
@@ -894,12 +894,12 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 	// resolving a type.
 	kind, _ := doc["kind"].(string)
 	typeTerm, _ := doc["type"].(string)
-	// The refusal reads the document's OWN type_keys legend beside the raw
+	// The refusal reads the document's OWN type_internal_keys legend beside the raw
 	// spelling, because that is what the deleted chain read. Two documents
-	// need it, in opposite directions: `{"type_keys":{"tpl":"template"},
+	// need it, in opposite directions: `{"type_internal_keys":{"tpl":"template"},
 	// "type":"tpl"}` WAS a template under v0.21 (the legend resolves tpl to
 	// the template key) and would otherwise import as a silent Page, and
-	// `{"type_keys":{"template":"custom1"},"type":"template"}` was NEVER one
+	// `{"type_internal_keys":{"template":"custom1"},"type":"template"}` was NEVER one
 	// (the legend rebinds the spelling away) and would otherwise be told to
 	// add a kind that changes what it is. The clause resolves nothing beyond
 	// the document itself — the same thing the refusal already does with
@@ -909,7 +909,7 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 	// stored key `template` is the literal `template`, which the raw
 	// comparison already covers.
 	templateKey := typeTerm == typeKeyTemplate
-	if legend, ok := doc["type_keys"].(map[string]any); ok {
+	if legend, ok := doc[memberTypeInternalKeys].(map[string]any); ok {
 		if bound, ok := legend[typeTerm].(string); ok {
 			templateKey = bound == typeKeyTemplate
 		}
@@ -946,7 +946,7 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 	// same resolution importer.propertyKey performs with default Options. A
 	// caller-supplied vocabulary can resolve further than Validate can see,
 	// which is why importer.build re-runs admission on ITS resolved key.
-	legend, _ := doc["property_keys"].(map[string]any)
+	legend, _ := doc[memberPropertyInternalKeys].(map[string]any)
 	resolveDocKey := func(term string) string {
 		if v, ok := legend[term]; ok {
 			if key, isStr := v.(string); isStr && key != "" {
@@ -969,7 +969,7 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 			continue
 		}
 		if reason, denied := deniedPropertyKey(key); denied {
-			addIssue("/property_keys/"+escapeJSONPointer(term), "legend value: %s", reason)
+			addIssue("/"+memberPropertyInternalKeys+"/"+escapeJSONPointer(term), "legend value: %s", reason)
 		}
 	}
 
@@ -1523,8 +1523,8 @@ func (r *keySlotReport) rejectValueAt(path, message string) {
 }
 
 // propertyNameIssues states, where the key is in hand, every rule the schema
-// carries as `propertyNames`: the `properties` map and the `property_keys` /
-// `type_keys` legends take a writable key (§3), and `option_ids` takes one at
+// carries as `propertyNames`: the `properties` map and the `property_internal_keys` /
+// `type_internal_keys` legends take a writable key (§3), and `option_ids` takes one at
 // its OUTER level with a merely non-empty option name at its inner level
 // (§9a). A legend VALUE rides along because it is a stored key under the same
 // rule and the schema's verdict on it names the bound, not the string — and so
@@ -1635,7 +1635,7 @@ func propertyNameIssues(doc map[string]any) keySlotReport {
 				fmt.Sprintf("/blocks/%d/views/%d/filters", i, j), rejectValue)
 		}
 	}
-	for _, field := range []string{"property_keys", "type_keys"} {
+	for _, field := range []string{memberPropertyInternalKeys, memberTypeInternalKeys} {
 		legend, _ := doc[field].(map[string]any)
 		for _, term := range sortedMapKeys(legend) {
 			path := "/" + field + "/" + escapeJSONPointer(term)

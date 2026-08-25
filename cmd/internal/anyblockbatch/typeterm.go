@@ -6,13 +6,13 @@ package anyblockbatch
 // never translated (SPEC.md §2). Every other type slot IS translated: the
 // envelope `type` and `template_for`, and `type_settings.property_definitions[].object_types`
 // carry a term that resolves through the §3 chain — the document's own
-// `type_keys` legend, then the bundled derived table, then verbatim.
+// `type_internal_keys` legend, then the bundled derived table, then verbatim.
 //
 // The lints below compare those slots against `TypeIds`, a map keyed by the
 // untranslated envelope `key`. Comparing an untranslated map against a
 // translated slot fails both ways:
 //
-//   - fail-closed: a bundle whose `template_for` is a slug its `type_keys`
+//   - fail-closed: a bundle whose `template_for` is a slug its `type_internal_keys`
 //     legend binds to a stored key is rejected though the converter resolves
 //     it perfectly well — and anyblockconvert turns the lint's finding into a
 //     hard error, so a correct bundle cannot be converted;
@@ -26,7 +26,7 @@ package anyblockbatch
 
 import "github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 
-// typeLegend is the `type_keys` envelope legend (§2), decoded alongside
+// typeLegend is the `type_internal_keys` envelope legend (§2), decoded alongside
 // whatever slots a lint reads. It is per-document: the legend is the
 // statement THIS document makes about ITS spellings, so it must be decoded
 // from the same file as the slot it resolves.
@@ -72,7 +72,7 @@ func resolvedNote(term, resolved string) string {
 	if resolved == term {
 		return ""
 	}
-	return " (this document's type_keys legend binds " + quote(term) + " to the stored key " + quote(resolved) + ")"
+	return " (this document's type_internal_keys legend binds " + quote(term) + " to the stored key " + quote(resolved) + ")"
 }
 
 func quote(s string) string { return `"` + s + `"` }

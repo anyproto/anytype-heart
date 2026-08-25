@@ -62,7 +62,7 @@ import (
 // The second rule is what makes §11's round-trip guarantee true for a reader
 // export never met, and a vocabulary can satisfy the first completely while
 // breaking it. The legend is the reason: a document owes a
-// `type_keys`/`property_keys` entry only for a spelling the READER's chain
+// `type_internal_keys`/`property_internal_keys` entry only for a spelling the READER's chain
 // cannot invert, and export can only ask the chains it can see — the bundled
 // table, which ships with every reader, and the vocabulary it is running
 // under (recordTypeKey / termInverts; that second half was missing, and a
@@ -179,7 +179,7 @@ func (o Options) propertyKey(slug string) string {
 
 // legendPropertyKey is propertyKey with §3 chain step 1 in front of it: the
 // legend Options.Legend carries, which for a fragment entry point IS the
-// enclosing document's `property_keys`. Same precedence as
+// enclosing document's `property_internal_keys`. Same precedence as
 // importer.propertyKey, and stated once rather than twice for exactly that
 // reason — the two doors into a type's property list must not disagree about
 // what a spelling means.

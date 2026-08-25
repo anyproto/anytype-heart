@@ -7,7 +7,7 @@ package anyblockbatch
 // The envelope `key` a property document carries is the raw STORED key and is
 // never translated (SPEC.md §2). Every property SLOT is translated: the
 // `properties` map's own keys, and `type_settings.property_definitions[].key`, carry a term that
-// resolves through the §3 chain — the document's own `property_keys` legend,
+// resolves through the §3 chain — the document's own `property_internal_keys` legend,
 // then the bundled derived table, then verbatim.
 //
 // The scans below build and compare tables the CONVERTER then reads by the
@@ -16,7 +16,7 @@ package anyblockbatch
 // whose Key is likewise resolved. Keying an untranslated table and reading it
 // translated fails both ways, and every failure here is silent:
 //
-//   - fail-open, the reason this matters: a bundle whose `property_keys`
+//   - fail-open, the reason this matters: a bundle whose `property_internal_keys`
 //     legend backs a slug misses the format table entirely. The value passes
 //     through as raw JSON — a date stays a string, a select mints no option,
 //     an objects reference is never relinked — and NO Relation object is
@@ -41,7 +41,7 @@ package anyblockbatch
 
 import "github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 
-// propertyLegend is the `property_keys` envelope legend (§2), decoded
+// propertyLegend is the `property_internal_keys` envelope legend (§2), decoded
 // alongside whatever slots a scan reads. Per-document, like typeLegend: the
 // legend is the statement THIS document makes about ITS spellings, so it must
 // be decoded from the same file as the slot it resolves.

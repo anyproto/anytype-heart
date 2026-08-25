@@ -80,7 +80,7 @@ func TestMarshalBlockSubtree_CarriesTheLegendsItsBlocksOwe(t *testing.T) {
 	// and the member order is the envelope's (§2, §4): the legend that
 	// inverts a spelling precedes the legend keyed BY one
 	s := string(out)
-	assert.Less(t, indexOf(s, `"property_keys"`), indexOf(s, `"option_ids"`))
+	assert.Less(t, indexOf(s, `"property_internal_keys"`), indexOf(s, `"option_ids"`))
 	assert.Less(t, indexOf(s, `"option_ids"`), indexOf(s, `"blocks"`))
 }
 

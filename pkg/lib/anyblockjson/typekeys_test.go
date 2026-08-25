@@ -3,7 +3,7 @@ package anyblockjson
 // The type namespace gets the same verbatim-first treatment as the property
 // namespace (§3): a term that names a stored type key IS that key, the
 // bundled slug table applies only to terms that are not stored keys, and the
-// document carries its own inverse — the `type_keys` envelope legend —
+// document carries its own inverse — the `type_internal_keys` envelope legend —
 // wherever the shipped table would give a package-only reader the wrong
 // answer. Before the legend existed, a node-backed vocabulary slugging a
 // custom type `69bbfc…` to `task` exported `"type": "task"` with nothing to
@@ -79,8 +79,8 @@ type envelopeTypeDoc struct {
 	Kind         string            `json:"kind"`
 	Type         string            `json:"type"`
 	TemplateFor  string            `json:"template_for"`
-	PropertyKeys map[string]string `json:"property_keys"`
-	TypeKeys     map[string]string `json:"type_keys"`
+	PropertyKeys map[string]string `json:"property_internal_keys"`
+	TypeKeys     map[string]string `json:"type_internal_keys"`
 	Properties   map[string]any    `json:"properties"`
 	TypeSettings struct {
 		PropertyDefinitions []TypeProperty `json:"property_definitions"`
@@ -242,7 +242,7 @@ func TestExport_TypeKeysIdentityEntryForAShadowStoredKey(t *testing.T) {
 // The point of the legend: a reader with no space gets the stored type key
 // back, and the legend outranks the reader's own vocabulary.
 func TestImport_TypeKeysLegendInvertsWithoutTheSpace(t *testing.T) {
-	doc := `{"version": 1, "type_keys": {"task": "` + customTypeKey + `"}, "type": "task"}`
+	doc := `{"version": 1, "type_internal_keys": {"task": "` + customTypeKey + `"}, "type": "task"}`
 
 	t.Run("package-only reader", func(t *testing.T) {
 		_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
@@ -306,7 +306,7 @@ func TestTypeKeysLegendCoversObjectTypes(t *testing.T) {
 
 	t.Run("import reads the legend first", func(t *testing.T) {
 		doc := `{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
-			"type_keys": {"task": "` + customTypeKey + `"},
+			"type_internal_keys": {"task": "` + customTypeKey + `"},
 			"type_settings": {"property_definitions": [{"key": "owner", "name": "Owner", "format": "objects",
 			 "object_types": ["task", "participant"]}]}}`
 		r := &recordingPropertyResolver{}
@@ -559,7 +559,7 @@ func TestTemplateGateRunsOnTheKind(t *testing.T) {
 	})
 
 	t.Run("the kind does, whatever the type is spelled", func(t *testing.T) {
-		doc := `{"version": 1, "kind": "template", "type_keys": {"tpl": "template"},
+		doc := `{"version": 1, "kind": "template", "type_internal_keys": {"tpl": "template"},
 			"type": "tpl", "template_for": "page"}`
 		require.NoError(t, Validate([]byte(doc)))
 		sbType, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
@@ -572,7 +572,7 @@ func TestTemplateGateRunsOnTheKind(t *testing.T) {
 	// the document is a template because it says so, and its type is whatever
 	// the legend says
 	t.Run("a rebound template spelling is still a template if the kind says so", func(t *testing.T) {
-		doc := `{"version": 1, "kind": "template", "type_keys": {"template": "custom1"},
+		doc := `{"version": 1, "kind": "template", "type_internal_keys": {"template": "custom1"},
 			"type": "template", "template_for": "page"}`
 		require.NoError(t, Validate([]byte(doc)))
 		sbType, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
@@ -617,18 +617,18 @@ func TestTemplateGateRunsOnTheKind(t *testing.T) {
 // property legend value (§3).
 func TestValidate_TypeKeysLegendShape(t *testing.T) {
 	for name, doc := range map[string]string{
-		"empty value":     `{"version": 1, "type_keys": {"t": ""}}`,
-		"control value":   `{"version": 1, "type_keys": {"t": "a` + "\\n" + `b"}}`,
-		"over-long value": `{"version": 1, "type_keys": {"t": "` + strings.Repeat("k", 129) + `"}}`,
-		"empty spelling":  `{"version": 1, "type_keys": {"": "task"}}`,
+		"empty value":     `{"version": 1, "type_internal_keys": {"t": ""}}`,
+		"control value":   `{"version": 1, "type_internal_keys": {"t": "a` + "\\n" + `b"}}`,
+		"over-long value": `{"version": 1, "type_internal_keys": {"t": "` + strings.Repeat("k", 129) + `"}}`,
+		"empty spelling":  `{"version": 1, "type_internal_keys": {"": "task"}}`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			err := Validate([]byte(doc))
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), "/type_keys")
+			assert.Contains(t, err.Error(), "/type_internal_keys")
 		})
 	}
-	assert.NoError(t, Validate([]byte(`{"version": 1, "type_keys": {"task": "`+customTypeKey+`"}}`)))
+	assert.NoError(t, Validate([]byte(`{"version": 1, "type_internal_keys": {"task": "`+customTypeKey+`"}}`)))
 }
 
 // A snapshot's ObjectTypes is untrusted data, and real stores hold entries
@@ -741,7 +741,7 @@ func TestExport_AKeylessObjectTypeIsDroppedAndDoesNotTakeItsSiblings(t *testing.
 // The type legend must name only types the document actually mentions.
 // envelopeTypeTerms slugged every ObjectTypes entry, and typeSlug is the term
 // ledger's CLAIM step — it records the legend entry the spelling owes — so a
-// document carried a `type_keys` line for a type no slot names, publishing a
+// document carried a `type_internal_keys` line for a type no slot names, publishing a
 // space's slug→key mapping for nothing. buildProperties cannot do this,
 // because it filters before it slugs.
 func TestExport_TypeLegendNamesOnlyTypesTheDocumentMentions(t *testing.T) {
@@ -853,7 +853,7 @@ func TestImport_TheVocabularyMayMoveTheTemplateSpelling(t *testing.T) {
 // here so that adding the refusal has to argue with §3 first.
 func TestTypeNamespaceHasNoDuplicateBindingRefusal(t *testing.T) {
 	doc := `{"version": 1, "kind": "template", "type": "a", "template_for": "b",
-		"type_keys": {"a": "template", "b": "template"}}`
+		"type_internal_keys": {"a": "template", "b": "template"}}`
 
 	require.NoError(t, Validate([]byte(doc)))
 	sbType, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})

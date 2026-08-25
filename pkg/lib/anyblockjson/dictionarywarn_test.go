@@ -222,7 +222,7 @@ func TestDictionaryKeys_TheBundledTypeTableStaysUnambiguous(t *testing.T) {
 //
 // A type DOCUMENT reaches the same answer by a different road — it slugs
 // through the exporter's per-document ledger and binds the term in that
-// document's own `type_keys` legend. The dictionary and the manifest have no
+// document's own `type_internal_keys` legend. The dictionary and the manifest have no
 // legend, so their spelling has to be a pure function of the key.
 func TestDictionary_TargetTypesSpellLikeEverythingElse(t *testing.T) {
 	d, warns := readDict(t, `{`+dictHead+

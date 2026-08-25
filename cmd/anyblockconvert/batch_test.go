@@ -264,7 +264,7 @@ func TestBatch_IdlessLocalTypeYieldsAnEmptyTargetId(t *testing.T) {
 	}), "the local arm wins and has nothing to offer — not the bundled url")
 }
 
-// End to end, over the real seam: a bundle whose property_keys legend backs a
+// End to end, over the real seam: a bundle whose property_internal_keys legend backs a
 // slug (§3) must mint the property's Relation object and its declared select
 // vocabulary under the STORED key, because that is the key the value's detail
 // is written under. When the format table was keyed by the spelling, the
@@ -272,7 +272,7 @@ func TestBatch_IdlessLocalTypeYieldsAnEmptyTargetId(t *testing.T) {
 // at all, and the declared options sat on a relation nothing referenced.
 func TestBatch_LegendBackedPropertyMintsItsRelationAndOptions(t *testing.T) {
 	const storedKey = "6a32d4856761631534b22f85"
-	const legend = `"property_keys": {"priority": "` + storedKey + `"},`
+	const legend = `"property_internal_keys": {"priority": "` + storedKey + `"},`
 
 	dir := t.TempDir()
 	typeDoc := filepath.Join(dir, "task.type.json")

@@ -275,8 +275,8 @@ func TestNonASCIILabelSurvivesTheWholeCodec(t *testing.T) {
 	var doc struct {
 		Type         string            `json:"type"`
 		Properties   map[string]any    `json:"properties"`
-		PropertyKeys map[string]string `json:"property_keys"`
-		TypeKeys     map[string]string `json:"type_keys"`
+		PropertyKeys map[string]string `json:"property_internal_keys"`
+		TypeKeys     map[string]string `json:"type_internal_keys"`
 	}
 	require.NoError(t, json.Unmarshal(data, &doc))
 	assert.Equal(t, "on", doc.Properties["тоггл"])

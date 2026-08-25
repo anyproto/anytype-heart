@@ -612,7 +612,7 @@ func (hostileVocab) TypeSlug(key string) string {
 		// the mirror, and it was unreachable while the vocabulary had no
 		// answer for this key — `slug == key` short-circuits before the
 		// guard runs. Emitting the slug regardless writes
-		// `type_keys: {"diary": "yyy…(140)"}`, a legend value 12 characters
+		// `type_internal_keys: {"diary": "yyy…(140)"}`, a legend value 12 characters
 		// past the 128 the schema bounds it to: Marshal producing a document
 		// its own Validate rejects, which is I1.
 		return "diary"
@@ -855,7 +855,7 @@ func TestInvariant_MarshalOutputValidates(t *testing.T) {
 					"seed %d produced a valid document its own Unmarshal refuses:\n%s", n, data)
 				// the type slots must INVERT, not merely import: binding the
 				// spelling to a different stored type is exactly the silent
-				// failure the type_keys legend exists to close (§3), and no
+				// failure the type_internal_keys legend exists to close (§3), and no
 				// error marks it
 				assert.Equal(t, invertedTypes(snap.ObjectTypes, sbType), back.ObjectTypes,
 					"seed %d: the archive must bind back to the types it came from:\n%s", n, data)
@@ -999,7 +999,7 @@ var hostileDocs = []string{
 	`{"version": 1, "blocks": [{"type": "table", "columns": [{"id": "c1"}],
 		"rows": [{"id": "r1", "cells": [["nested", {"indent": 1, "type": "paragraph", "text": "y"}]]}]}]}`,
 	// admission runs on the RESOLVED stored key (§3): the canonical slug
-	// spelling of a denied key, a property_keys legend rebinding a harmless
+	// spelling of a denied key, a property_internal_keys legend rebinding a harmless
 	// spelling onto one, and the layout-name check behind the same resolution.
 	// These pin WHERE the rule lives as much as that it exists — a "fix" that
 	// moves the deny rule into import alone makes Validate accept what
@@ -1010,11 +1010,11 @@ var hostileDocs = []string{
 	`{"version": 1, "properties": {"source_file_path": "/x/y"}}`,
 	`{"version": 1, "properties": {"resolved_layout": "nonsense"}}`,
 	`{"version": 1, "properties": {"resolved_layout": "todo"}}`,
-	`{"version": 1, "property_keys": {"prio": "uniqueKey"}, "properties": {"prio": "ot-page"}}`,
-	`{"version": 1, "property_keys": {"myid": "id"}, "properties": {"myid": "boom"}}`,
-	`{"version": 1, "property_keys": {"s": "spaceId"}, "properties": {"s": "other"}}`,
+	`{"version": 1, "property_internal_keys": {"prio": "uniqueKey"}, "properties": {"prio": "ot-page"}}`,
+	`{"version": 1, "property_internal_keys": {"myid": "id"}, "properties": {"myid": "boom"}}`,
+	`{"version": 1, "property_internal_keys": {"s": "spaceId"}, "properties": {"s": "other"}}`,
 	// a benign rebind is the legend working as specified, and flows through
-	`{"version": 1, "property_keys": {"prio": "6a32d4856761631534b22f85"}, "properties": {"prio": "high"}}`,
+	`{"version": 1, "property_internal_keys": {"prio": "6a32d4856761631534b22f85"}, "properties": {"prio": "high"}}`,
 	// a counting date preset with no count: an error where the preset's day
 	// range is applied, and nothing at all where it is inert (§6.2). Both
 	// halves of transformDateFilter's gate make it inert — the condition, and
@@ -1030,26 +1030,26 @@ var hostileDocs = []string{
 	`{"version": 1, "blocks": [{"type": "dataview", "views": [{"id": "v1",
 		"filters": [{"property": "not_a_property", "condition": "greater", "date_preset": "number_of_days_ago"}]}]}]}`,
 	// a legend value is a stored key and obeys the writable-key rule (§3)
-	`{"version": 1, "property_keys": {"p": ""}}`,
+	`{"version": 1, "property_internal_keys": {"p": ""}}`,
 	// a key holding a JSON-pointer metacharacter: legal in a stored key and
 	// in a spelling (§3 bounds length and control characters, nothing else),
 	// so both surfaces have to address it escaped — the accepted member as
 	// much as the refused legend value
 	`{"version": 1, "properties": {"a/b": "x"}}`,
 	`{"version": 1, "properties": {"a~b": "x"}}`,
-	`{"version": 1, "property_keys": {"a/b": ""}}`,
-	`{"version": 1, "property_keys": {"p": "a\nb"}}`,
-	`{"version": 1, "property_keys": {"p": "` + strings.Repeat("k", 129) + `"}}`,
+	`{"version": 1, "property_internal_keys": {"a/b": ""}}`,
+	`{"version": 1, "property_internal_keys": {"p": "a\nb"}}`,
+	`{"version": 1, "property_internal_keys": {"p": "` + strings.Repeat("k", 129) + `"}}`,
 	// the verbatim-first family (§3): twin spellings binding one stored key
 	// are refused by BOTH halves with default Options; an identity entry
 	// makes a shadow spelling a stored key in every reader; a legend VALUE is
 	// admitted like the stored key it is, member or no member spelling it
 	`{"version": 1, "properties": {"iconEmoji": "a", "icon_emoji": "b"}}`,
 	`{"version": 1, "properties": {"dueDate": "2025-01-01T00:00:00Z", "due_date": "x"}}`,
-	`{"version": 1, "property_keys": {"unique_key": "unique_key"}, "properties": {"unique_key": "custom"}}`,
-	`{"version": 1, "property_keys": {"unique_key": "6a32d4856761631534b22f85"}, "properties": {"unique_key": "high"}}`,
-	`{"version": 1, "property_keys": {"sneaky": "uniqueKey"}}`,
-	`{"version": 1, "property_keys": {"p": "oldAnytypeID"}}`,
+	`{"version": 1, "property_internal_keys": {"unique_key": "unique_key"}, "properties": {"unique_key": "custom"}}`,
+	`{"version": 1, "property_internal_keys": {"unique_key": "6a32d4856761631534b22f85"}, "properties": {"unique_key": "high"}}`,
+	`{"version": 1, "property_internal_keys": {"sneaky": "uniqueKey"}}`,
+	`{"version": 1, "property_internal_keys": {"p": "oldAnytypeID"}}`,
 	// two spellings the document's own chain accepts that a WIDER vocabulary
 	// resolves onto a denied / an unwritable key — the i2Vocabularies entries
 	// that widen resolution exercise the §3 seam through these
@@ -1064,15 +1064,15 @@ var hostileDocs = []string{
 	`{"version": 1, "type": "tsk"}`,
 	`{"version": 1, "type": "blanktype"}`,
 	`{"version": 1, "kind": "template", "type": "template", "template_for": "blanktype"}`,
-	`{"version": 1, "type_keys": {"task": "69bbfc78877a91b1d12d1a7c"}, "type": "task"}`,
-	`{"version": 1, "type_keys": {"object_type": "object_type"}, "type": "object_type"}`,
-	`{"version": 1, "type_keys": {"t": ""}}`,
-	`{"version": 1, "type_keys": {"t": "a\nb"}}`,
-	`{"version": 1, "type_keys": {"t": "` + strings.Repeat("k", 129) + `"}}`,
-	`{"version": 1, "kind": "template", "type_keys": {"template": "custom1"}, "type": "template", "template_for": "page"}`,
-	`{"version": 1, "kind": "template", "type_keys": {"tpl": "template"}, "type": "tpl", "template_for": "page"}`,
+	`{"version": 1, "type_internal_keys": {"task": "69bbfc78877a91b1d12d1a7c"}, "type": "task"}`,
+	`{"version": 1, "type_internal_keys": {"object_type": "object_type"}, "type": "object_type"}`,
+	`{"version": 1, "type_internal_keys": {"t": ""}}`,
+	`{"version": 1, "type_internal_keys": {"t": "a\nb"}}`,
+	`{"version": 1, "type_internal_keys": {"t": "` + strings.Repeat("k", 129) + `"}}`,
+	`{"version": 1, "kind": "template", "type_internal_keys": {"template": "custom1"}, "type": "template", "template_for": "page"}`,
+	`{"version": 1, "kind": "template", "type_internal_keys": {"tpl": "template"}, "type": "tpl", "template_for": "page"}`,
 	`{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
-		"type_keys": {"task": "69bbfc78877a91b1d12d1a7c"},
+		"type_internal_keys": {"task": "69bbfc78877a91b1d12d1a7c"},
 		"type_settings": {"property_definitions": [{"key": "owner", "format": "objects", "object_types": ["task", "blanktype"]}]}}`,
 	// a type_properties `key` is a PROPERTY key slot and admits like one: the
 	// schema bounds the spelling, a wider vocabulary resolves past it — and

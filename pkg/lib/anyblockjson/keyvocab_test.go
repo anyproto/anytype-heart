@@ -127,7 +127,7 @@ func TestKeyVocabulary_ShadowingSlugBreaksInversion(t *testing.T) {
 		// writer holds says otherwise
 		data, err := Marshal(model.SmartBlockType_Template, snap, Options{})
 		require.NoError(t, err)
-		assert.NotContains(t, string(data), "type_keys",
+		assert.NotContains(t, string(data), "type_internal_keys",
 			"nothing here owes an entry — which is exactly why the reader is on its own")
 
 		// when
@@ -161,7 +161,7 @@ func TestKeyVocabulary_ShadowingSlugBreaksInversion(t *testing.T) {
 		require.False(t, typeSlugShadowsBundled(conforming, customTypeKey))
 		data, err := Marshal(model.SmartBlockType_Template, snap, Options{Keys: conforming})
 		require.NoError(t, err)
-		assert.NotContains(t, string(data), "type_keys")
+		assert.NotContains(t, string(data), "type_internal_keys")
 		_, back, err := Unmarshal(data, Options{GenerateId: seqIds("h"), Keys: conforming})
 		require.NoError(t, err)
 		assert.Equal(t, []string{"ot-template", "ot-task"}, back.ObjectTypes,

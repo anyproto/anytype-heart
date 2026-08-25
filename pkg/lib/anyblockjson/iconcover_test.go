@@ -367,7 +367,7 @@ func TestImport_TheFlatSpellingsAreRefused(t *testing.T) {
 		// the laundering case: a legend can bind any spelling to any stored
 		// key, so admission runs on what the spelling RESOLVES to
 		"a spelling the legend binds to a lifted key": {
-			doc: `{"version": 1, "property_keys": {"sneaky": "iconEmoji"},
+			doc: `{"version": 1, "property_internal_keys": {"sneaky": "iconEmoji"},
 				"properties": {"sneaky": "🔥"}}`,
 			repair: `"icon": {"format": "emoji", "emoji": "…"}`,
 		},
@@ -395,7 +395,7 @@ func TestImport_TheFlatSpellingsAreRefused(t *testing.T) {
 // relation with it.
 func TestImport_ASpaceMintedIconEmojiRelationIsAnOrdinaryProperty(t *testing.T) {
 	doc := `{"version": 1, "id": "o1",
-		"property_keys": {"icon_emoji": "icon_emoji"},
+		"property_internal_keys": {"icon_emoji": "icon_emoji"},
 		"icon": {"format": "emoji", "emoji": "📕"},
 		"properties": {"icon_emoji": "☕"}}`
 
@@ -421,7 +421,7 @@ func TestImport_ASpaceMintedIconEmojiRelationIsAnOrdinaryProperty(t *testing.T) 
 // outside the key namespace the legend can rebind.
 func TestImport_AStoredRelationNamedCoverIsUntouched(t *testing.T) {
 	doc := `{"version": 1, "id": "o1",
-		"property_keys": {"cover": "cover"},
+		"property_internal_keys": {"cover": "cover"},
 		"cover": {"format": "gradient", "gradient": "pinkOrange"},
 		"properties": {"cover": "a photograph of the team"}}`
 

@@ -459,7 +459,7 @@ func TestValidate_PropertyValueShapeWarns(t *testing.T) {
 
 	t.Run("a spelling the legend binds is checked as what it resolves to", func(t *testing.T) {
 		got := warningsFor(t, `{"version": 1, "id": "o1",
-			"property_keys": {"prio": "dueDate"}, "properties": {"prio": "next Friday"}}`)
+			"property_internal_keys": {"prio": "dueDate"}, "properties": {"prio": "next Friday"}}`)
 		require.Len(t, got, 1)
 		assert.Equal(t, "/properties/prio", got[0].Path)
 		assert.Contains(t, got[0].Message, "date")
@@ -584,9 +584,9 @@ func TestValidate_DeniedKeysRefusedInCanonicalSpelling(t *testing.T) {
 // part of resolving.
 func TestValidate_LegendCannotRebindOntoInternalKeys(t *testing.T) {
 	for name, doc := range map[string]string{
-		"resolution vector": `{"version": 1, "id": "o1", "property_keys": {"prio": "uniqueKey"}, "properties": {"prio": "ot-page"}}`,
-		"envelope id":       `{"version": 1, "id": "o1", "property_keys": {"myid": "id"}, "properties": {"myid": "boom"}}`,
-		"stripped key":      `{"version": 1, "id": "o1", "property_keys": {"s": "spaceId"}, "properties": {"s": "other"}}`,
+		"resolution vector": `{"version": 1, "id": "o1", "property_internal_keys": {"prio": "uniqueKey"}, "properties": {"prio": "ot-page"}}`,
+		"envelope id":       `{"version": 1, "id": "o1", "property_internal_keys": {"myid": "id"}, "properties": {"myid": "boom"}}`,
+		"stripped key":      `{"version": 1, "id": "o1", "property_internal_keys": {"s": "spaceId"}, "properties": {"s": "other"}}`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			err := Validate([]byte(doc))
@@ -598,7 +598,7 @@ func TestValidate_LegendCannotRebindOntoInternalKeys(t *testing.T) {
 
 	// a legend entry that rebinds a spelling onto a HARMLESS key is the
 	// feature working as specified: nothing lands on an internal key
-	ok := `{"version": 1, "id": "o1", "property_keys": {"prio": "6a32d4856761631534b22f85"}, "properties": {"prio": "high"}}`
+	ok := `{"version": 1, "id": "o1", "property_internal_keys": {"prio": "6a32d4856761631534b22f85"}, "properties": {"prio": "high"}}`
 	require.NoError(t, Validate([]byte(ok)))
 	_, snap, err := Unmarshal([]byte(ok), Options{GenerateId: seqIds("g")})
 	require.NoError(t, err)
@@ -633,9 +633,9 @@ func TestValidate_LayoutNameCheckedInCanonicalSpelling(t *testing.T) {
 func TestValidate_LegendValueMustBeAWritableKey(t *testing.T) {
 	t.Run("refused", func(t *testing.T) {
 		for name, doc := range map[string]string{
-			"empty":        `{"version": 1, "property_keys": {"p": ""}}`,
-			"over-long":    fmt.Sprintf(`{"version": 1, "property_keys": {"p": %q}}`, strings.Repeat("k", maxPropertyKeyLen+1)),
-			"control char": `{"version": 1, "property_keys": {"p": "a\nb"}}`,
+			"empty":        `{"version": 1, "property_internal_keys": {"p": ""}}`,
+			"over-long":    fmt.Sprintf(`{"version": 1, "property_internal_keys": {"p": %q}}`, strings.Repeat("k", maxPropertyKeyLen+1)),
+			"control char": `{"version": 1, "property_internal_keys": {"p": "a\nb"}}`,
 		} {
 			assert.Error(t, Validate([]byte(doc)), name)
 		}
@@ -643,7 +643,7 @@ func TestValidate_LegendValueMustBeAWritableKey(t *testing.T) {
 	t.Run("accepted", func(t *testing.T) {
 		// the shapes real stored keys have: bson-hex, and option keys carrying
 		// the option's own name, spaces and non-ASCII included (ANOMALIES §7)
-		doc := `{"version": 1, "property_keys": {
+		doc := `{"version": 1, "property_internal_keys": {
 			"prio": "6a32d4856761631534b22f85",
 			"toggles": "69a56205ccba0a47d8d8eb71_тогглы"}}`
 		require.NoError(t, Validate([]byte(doc)))
