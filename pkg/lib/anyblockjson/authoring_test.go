@@ -206,7 +206,7 @@ func TestAuthoringSubset_StructuralFixtures(t *testing.T) {
 				{"cells": ["Short row"]}]}]}`,
 		"an inline set on a page": `{"version": 1, "id": "page-b", "blocks": [
 			{"type": "dataview", "object_id": "coll-shelf", "is_collection": true,
-			 "properties": [{"key": "name", "format": "text"}],
+			 "properties": [{"property": "name", "format": "text"}],
 			 "views": [{"name": "Shelf"}]}]}`,
 		"a collection": `{"version": 1, "id": "coll-shelf", "type": "collection",
 			"items": ["page-a", "page-b"],
@@ -233,7 +233,7 @@ func TestAuthoringSubset_StructuralFixtures(t *testing.T) {
 					 "object_types": ["participant"], "section": "hidden"}]}}`,
 		"filters, groups and sorts": `{"version": 1, "blocks": [
 			{"type": "dataview",
-			 "properties": [{"key": "stage", "format": "select"}, {"key": "when", "format": "date"}],
+			 "properties": [{"property": "stage", "format": "select"}, {"property": "when", "format": "date"}],
 			 "views": [{
 				"name": "Overdue",
 				"filters": [

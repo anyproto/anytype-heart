@@ -448,7 +448,7 @@ func (hostileTypePropResolver) PropertyById(id string) (PropertyDefinition, bool
 		return PropertyDefinition{Key: "genre", Format: model.RelationFormat_object,
 			ObjectTypes: []string{"longslugged", overLongTypeKey}}, true
 	case "hp3":
-		// a stored property key past the legend bound. The §2a `key` slot is
+		// a stored property key past the legend bound. The §2a `property` slot is
 		// a JSON value, so the schema bounded only its minLength for a while
 		// and export wrote such a key straight through — a document the seam
 		// then refused, which is I1.
@@ -1025,7 +1025,7 @@ var hostileDocs = []string{
 	`{"version": 1, "blocks": [{"type": "dataview", "views": [{"id": "v1",
 		"filters": [{"property": "due_date", "condition": "greater", "date_preset": "number_of_days_ago"}]}]}]}`,
 	`{"version": 1, "blocks": [{"type": "dataview",
-		"properties": [{"key": "due_date", "format": "text"}], "views": [{"id": "v1",
+		"properties": [{"property": "due_date", "format": "text"}], "views": [{"id": "v1",
 		"filters": [{"property": "due_date", "condition": "greater", "date_preset": "number_of_days_ago"}]}]}]}`,
 	`{"version": 1, "blocks": [{"type": "dataview", "views": [{"id": "v1",
 		"filters": [{"property": "not_a_property", "condition": "greater", "date_preset": "number_of_days_ago"}]}]}]}`,
@@ -1074,7 +1074,7 @@ var hostileDocs = []string{
 	`{"version": 1, "kind": "object_type", "id": "t1", "internal_key": "k",
 		"type_internal_keys": {"task": "69bbfc78877a91b1d12d1a7c"},
 		"type_settings": {"property_definitions": [{"property": "owner", "format": "objects", "object_types": ["task", "blanktype"]}]}}`,
-	// a type_properties `key` is a PROPERTY key slot and admits like one: the
+	// a property definition's `property` is a PROPERTY key slot and admits like one: the
 	// schema bounds the spelling, a wider vocabulary resolves past it — and
 	// the two shapes the seam refuses with the DEFAULT vocabulary, where no
 	// resolution widens anything and the schema's `minLength: 1` is the only

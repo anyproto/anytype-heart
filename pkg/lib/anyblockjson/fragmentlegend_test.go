@@ -71,7 +71,7 @@ func TestMarshalBlockSubtree_CarriesTheLegendsItsBlocksOwe(t *testing.T) {
 	require.NoError(t, err)
 	blocks := fragmentBlocks(t, out)
 	require.Len(t, blocks, 3)
-	assert.Equal(t, "priority", blocks[1]["key"], "the property block spells the slug")
+	assert.Equal(t, "priority", blocks[1]["property"], "the property block spells the slug")
 
 	legend := fragmentLegend(t, out)
 	assert.Equal(t, map[string]string{"priority": fragKey}, legend.PropertyKeys)

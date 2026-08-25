@@ -340,7 +340,7 @@ func installedKeys(raw []string, warn func(Issue)) []string {
 func dictionaryEntryKey(i int, spelling string, warn func(Issue)) string {
 	stored, ambiguous := dictionaryStoredKey(spelling)
 	if len(ambiguous) > 0 {
-		warnIssue(warn, fmt.Sprintf("/properties/%d/"+memberDefinitionProperty, i),
+		warnIssue(warn, fmt.Sprintf("/properties/%d/"+memberProperty, i),
 			"%q folds onto more than one bundled property (%s), so which is meant cannot be "+
 				"decided here — write one of them (§2f)",
 			spelling, strings.Join(quoteAll(ambiguous), ", "))
@@ -400,7 +400,7 @@ func dictionaryDuplicateIssues(doc map[string]any) []Issue {
 		entry, _ := raw.(map[string]any)
 		// the identity an entry states, spelling first — the same order
 		// authoredKey runs (§2e)
-		key, _ := entry[memberDefinitionProperty].(string)
+		key, _ := entry[memberProperty].(string)
 		if key == "" {
 			key, _ = entry[memberInternalKey].(string)
 		}
@@ -409,7 +409,7 @@ func dictionaryDuplicateIssues(doc map[string]any) []Issue {
 		}
 		if first, dup := seenEntries[key]; dup {
 			issues = append(issues, Issue{
-				Path: fmt.Sprintf("/properties/%d/"+memberDefinitionProperty, i),
+				Path: fmt.Sprintf("/properties/%d/"+memberProperty, i),
 				Message: fmt.Sprintf("%q is already defined at /properties/%d — one property, one definition (§2e)",
 					key, first),
 			})
@@ -501,7 +501,7 @@ func dictionaryEntryOmap(def PropertyDefinition) (*omap, error) {
 			"what the property holds (§2f)", def.Key, def.Format)
 	}
 	m := &omap{}
-	m.set(memberDefinitionProperty, spelling)
+	m.set(memberProperty, spelling)
 	m.set(memberInternalKey, string(def.Key))
 	m.setNonEmpty("name", def.Name)
 	m.set("format", name)

@@ -2047,7 +2047,7 @@ func (e *exporter) blockToJSON(b *model.Block, depth int) (*omap, bool, error) {
 			return nil, false, nil
 		}
 		m.set("type", "property")
-		m.setNonEmpty("key", e.propertySlug(orEmpty(c.Relation).Key))
+		m.setNonEmpty(memberProperty, e.propertySlug(orEmpty(c.Relation).Key))
 		withChildren = false
 	case *model.BlockContentOfDataview:
 		if err := e.dataviewToJSON(m, orEmpty(c.Dataview)); err != nil {

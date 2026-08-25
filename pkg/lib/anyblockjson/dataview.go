@@ -37,7 +37,7 @@ func (e *exporter) dataviewToJSON(m *omap, dv *model.BlockContentDataview) error
 			continue
 		}
 		pm := &omap{}
-		pm.set("key", e.propertySlug(rl.Key))
+		pm.set(memberProperty, e.propertySlug(rl.Key))
 		pm.setNonEmpty("format", formatName(rl.Format))
 		props = append(props, pm)
 	}
@@ -176,7 +176,7 @@ func (e *exporter) objectOrdersToJSON(viewId string, dv *model.BlockContentDatav
 
 func (e *exporter) sortToJSON(s *model.BlockContentDataviewSort, dv *model.BlockContentDataview) *omap {
 	sm := &omap{}
-	sm.setNonEmpty("property", e.propertySlug(s.RelationKey))
+	sm.setNonEmpty(memberProperty, e.propertySlug(s.RelationKey))
 	if s.Type != model.BlockContentDataviewSort_Asc {
 		sm.setNonEmpty("direction", sortDirectionNames.name(s.Type))
 	}
@@ -234,7 +234,7 @@ func (e *exporter) filterToJSON(f *model.BlockContentDataviewFilter, dv *model.B
 			"the property it filters on (§6)")
 		return nil
 	}
-	fm.setNonEmpty("property", e.propertySlug(f.RelationKey))
+	fm.setNonEmpty(memberProperty, e.propertySlug(f.RelationKey))
 	if f.Condition != model.BlockContentDataviewFilter_None {
 		fm.setNonEmpty("condition", conditionNames.name(f.Condition))
 	}
@@ -362,8 +362,8 @@ func (e *exporter) mapValueStrings(v *types.Value, fn func(string) string) any {
 //
 
 type jsonDvProperty struct {
-	Key    string `json:"key"`
-	Format string `json:"format"`
+	Property string `json:"property"`
+	Format   string `json:"format"`
 }
 
 type jsonView struct {
@@ -447,7 +447,7 @@ func (imp *importer) dataviewFromJSON(jb *jsonBlock) (*model.BlockContentDatavie
 		}
 	}
 	for _, p := range props {
-		key := imp.propertyKeyAt(p.Key, "dataview `properties`")
+		key := imp.propertyKeyAt(p.Property, "dataview `properties`")
 		dv.RelationLinks = append(dv.RelationLinks, &model.RelationLink{
 			Key:    key,
 			Format: imp.declaredFormat(key, p.Format),
@@ -616,7 +616,7 @@ func mapJSONStrings(v any, fn func(string) string) *types.Value {
 
 func (e *exporter) viewColumnToJSON(r *model.BlockContentDataviewRelation) *omap {
 	cm := &omap{}
-	cm.set("property", e.propertySlug(r.Key))
+	cm.set(memberProperty, e.propertySlug(r.Key))
 	// hidden is the inverse of proto isVisible; omitted means visible (§6.2)
 	cm.setNonEmpty("hidden", !r.IsVisible)
 	cm.setNonEmpty("width", r.Width)

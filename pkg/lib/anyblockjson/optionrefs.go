@@ -292,7 +292,7 @@ func rawPropertySpellings(doc map[string]any) map[string]bool {
 	if list, _ := typePropertyDefinitionsOf(doc); list != nil {
 		for _, raw := range list {
 			tp, _ := raw.(map[string]any)
-			addString(tp[memberDefinitionProperty])
+			addString(tp[memberProperty])
 		}
 	}
 	var walkFilters func(v any)
@@ -300,7 +300,7 @@ func rawPropertySpellings(doc map[string]any) map[string]bool {
 		nodes, _ := v.([]any)
 		for _, raw := range nodes {
 			node, _ := raw.(map[string]any)
-			addString(node["property"])
+			addString(node[memberProperty])
 			walkFilters(node["filters"])
 		}
 	}
@@ -311,7 +311,7 @@ func rawPropertySpellings(doc map[string]any) map[string]bool {
 			block, _ := raw.(map[string]any)
 			switch typ, _ := block["type"].(string); typ {
 			case "property":
-				addString(block["key"])
+				addString(block[memberProperty])
 			case "link":
 				items, _ := block["properties"].([]any)
 				for _, item := range items {
@@ -321,7 +321,7 @@ func rawPropertySpellings(doc map[string]any) map[string]bool {
 				items, _ := block["properties"].([]any)
 				for _, item := range items {
 					p, _ := item.(map[string]any)
-					addString(p["key"])
+					addString(p[memberProperty])
 				}
 				views, _ := block["views"].([]any)
 				for _, rawView := range views {
@@ -332,12 +332,12 @@ func rawPropertySpellings(doc map[string]any) map[string]bool {
 					columns, _ := view["columns"].([]any)
 					for _, rawColumn := range columns {
 						column, _ := rawColumn.(map[string]any)
-						addString(column["property"])
+						addString(column[memberProperty])
 					}
 					sorts, _ := view["sorts"].([]any)
 					for _, rawSort := range sorts {
 						sortNode, _ := rawSort.(map[string]any)
-						addString(sortNode["property"])
+						addString(sortNode[memberProperty])
 					}
 					walkFilters(view["filters"])
 				}

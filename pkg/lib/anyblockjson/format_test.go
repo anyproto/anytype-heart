@@ -54,7 +54,7 @@ func TestExport_TextFormatsCollapse(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.NotContains(t, string(data), "shortText")
-	assert.Contains(t, string(data), `"key": "name"`)
+	assert.Contains(t, string(data), `"property": "name"`)
 	assert.Equal(t, 2, strings.Count(string(data), `"format": "text"`))
 }
 
@@ -79,8 +79,8 @@ func TestRoundtrip_ShortTextSurvivesCollapse(t *testing.T) {
 	// same rule via the wiring's resolver, for non-bundled keys
 	t.Run("resolver key", func(t *testing.T) {
 		doc := `{"version": 1, "id": "root", "blocks": [{"type": "dataview",
-			"properties": [{"key": "legacyShort", "format": "text"},
-			               {"key": "plainNote", "format": "text"}],
+			"properties": [{"property": "legacyShort", "format": "text"},
+			               {"property": "plainNote", "format": "text"}],
 			"views": [{"name": "All"}]}]}`
 		opts := Options{GenerateId: seqIds("g")}
 		opts.ResolveFormat = func(key domain.RelationKey) (model.RelationFormat, bool) {
@@ -101,7 +101,7 @@ func TestRoundtrip_ShortTextSurvivesCollapse(t *testing.T) {
 	// document stays authoritative for every name that is unambiguous.
 	t.Run("only text defers to the key", func(t *testing.T) {
 		doc := `{"version": 1, "id": "root", "blocks": [{"type": "dataview",
-			"properties": [{"key": "customDate", "format": "number"}],
+			"properties": [{"property": "customDate", "format": "number"}],
 			"views": [{"name": "All"}]}]}`
 		_, snap, err := Unmarshal([]byte(doc), Options{
 			GenerateId:    seqIds("g"),
@@ -115,7 +115,7 @@ func TestRoundtrip_ShortTextSurvivesCollapse(t *testing.T) {
 // shortText is gone from the vocabulary, not merely unused.
 func TestValidate_ShortTextRejected(t *testing.T) {
 	doc := `{"version": 1, "id": "root", "blocks": [{"type": "dataview",
-		"properties": [{"key": "name", "format": "shortText"}],
+		"properties": [{"property": "name", "format": "shortText"}],
 		"views": [{"name": "All"}]}]}`
 	_, _, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 	require.Error(t, err)

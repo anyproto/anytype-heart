@@ -179,7 +179,7 @@ func TestValidate_Valid(t *testing.T) {
 		]}`},
 		{"dataview", `{"version": 1, "blocks": [
 			{"type": "dataview", "object_id": "bafyset",
-			 "properties": [{"key": "name", "format": "text"}, {"key": "status", "format": "select"}],
+			 "properties": [{"property": "name", "format": "text"}, {"property": "status", "format": "select"}],
 			 "views": [
 				{"id": "v1", "type": "kanban", "name": "By status", "group_by": "status",
 				 "sorts": [{"property": "dueDate", "direction": "asc", "empty_placement": "end"}],

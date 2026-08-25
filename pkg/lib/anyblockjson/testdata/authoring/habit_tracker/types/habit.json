@@ -23,10 +23,10 @@
     {
       "type": "dataview",
       "properties": [
-        { "key": "name", "format": "text" },
-        { "key": "frequency", "format": "select" },
-        { "key": "streak", "format": "number" },
-        { "key": "last_done", "format": "date" }
+        { "property": "name", "format": "text" },
+        { "property": "frequency", "format": "select" },
+        { "property": "streak", "format": "number" },
+        { "property": "last_done", "format": "date" }
       ],
       "views": [
         {

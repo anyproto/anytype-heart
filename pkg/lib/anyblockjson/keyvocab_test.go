@@ -225,7 +225,7 @@ func TestDocumentSpellsSlugs(t *testing.T) {
 
 	t.Run("a dataview's key slots follow the same vocabulary", func(t *testing.T) {
 		doc := `{"version": 1, "id": "o1", "blocks": [{"id": "dv", "type": "dataview",
-			"properties": [{"key": "due_date", "format": "date"}],
+			"properties": [{"property": "due_date", "format": "date"}],
 			"views": [{"id": "v1", "type": "table", "group_by": "due_date",
 				"sorts": [{"property": "due_date"}],
 				"filters": [{"property": "due_date", "condition": "not_empty"}],

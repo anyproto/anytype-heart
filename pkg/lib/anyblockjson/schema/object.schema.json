@@ -1081,13 +1081,14 @@
           },
           "then": {
             "properties": {
-              "key": {
+              "property": {
                 "type": "string",
-                "minLength": 1
+                "minLength": 1,
+                "description": "The property this block renders inline, by its document-facing spelling (`due_date`) — the same member name, and the same spelling, every other slot that names one property uses (a dataview's `properties[]` entry, a view's `columns[]`/`sorts[]`/`filters[]`). Spelled `key` before v0.41."
               }
             },
             "required": [
-              "key"
+              "property"
             ]
           }
         },
@@ -1430,17 +1431,19 @@
     },
     "dataviewProperty": {
       "type": "object",
+      "description": "One entry of a dataview's `properties[]`: a property available to the block's views, with its format (§6.2). Declares the property; the views then refer to it — a column, sort or filter naming a property this list does not carry is still legal (the §3 chain answers its format).",
       "properties": {
-        "key": {
+        "property": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "description": "The property this entry declares, by its document-facing spelling (`due_date`) — the same member name, and the same spelling, the view's `columns[]`, `sorts[]` and `filters[]` beside it use to refer to it. Spelled `key` before v0.41, twelve lines from siblings that spelled `property`, and each was a schema error in the other's position."
         },
         "format": {
           "$ref": "#/$defs/authorableFormat"
         }
       },
       "required": [
-        "key"
+        "property"
       ],
       "additionalProperties": false
     },
@@ -1673,10 +1676,12 @@
     },
     "viewColumn": {
       "type": "object",
+      "description": "One column of a view: which property it shows, plus display facts (width, alignment, an aggregation). Column order is display order.",
       "properties": {
         "property": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "description": "The property this column shows, by its document-facing spelling — the same member name, and the same spelling, the sorts, filters and the dataview's `properties[]` entries use."
         },
         "hidden": {
           "type": "boolean"

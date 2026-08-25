@@ -5,8 +5,8 @@ package anyblockjson
 // APIV2_ADDRESSING.md §7.5a: the API and the format speak ONE key vocabulary, the
 // snake_case api slug, everywhere a type or property is named — envelope
 // `type`/`templateFor`, `properties` map keys, `property_definitions[].property`,
-// dataview `properties[].key`/`groupBy`/`coverProperty`/`endProperty`/sort
-// and filter `property`/column `property`, the `property` block's `key`, and
+// dataview `properties[].property`/`groupBy`/`coverProperty`/`endProperty`/sort
+// and filter `property`/column `property`, the `property` block's `property`, and
 // a link block's `properties`. `dueDate` is `due_date` on the wire; bundled,
 // API-created and UI-created keys are indistinguishable to a reader. This
 // overturns SPEC §3's "camelCase stored keys" rule, deliberately (§7.3).

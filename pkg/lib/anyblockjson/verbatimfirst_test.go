@@ -24,7 +24,7 @@ type flatPropsDoc struct {
 	PropertyKeys map[string]string `json:"property_internal_keys"`
 	Blocks       []struct {
 		Type string `json:"type"`
-		Key  string `json:"key"`
+		Key  string `json:"property"`
 	} `json:"blocks"`
 }
 

@@ -688,11 +688,16 @@ func schemaIssueMessage(e *jsonschema.ValidationError, printer *message.Printer)
 }
 
 // unknownPropertyMessage names a member no reading of the schema admits, and
-// carries a migration hint for the two names a document written against an
-// older grammar brings. Both hints exist because the bare verdict sends the
+// carries a migration hint for the three names a document written against an
+// older grammar brings. The hints exist because the bare verdict sends the
 // reader the wrong way, and the format's purpose is the generate → validate →
 // feed-back loop (§13):
 //
+//   - `key` is the pre-v0.41 spelling of the property-naming slot in a
+//     dataview's `properties[]` and the `property` block — 95,842 slots of a
+//     28,599-document export spell it, so an agent prompted on old exports
+//     WILL write it. Told only "not allowed", the obvious wrong repair is to
+//     delete the member, which costs the block the one thing it says.
 //   - `children` is what every nested-era generator writes; told only that it
 //     is not allowed, the obvious repair is to drop the subtree rather than to
 //     flatten it into `indent` (§4).
@@ -720,6 +725,8 @@ var propertySettingsMemberHomes = map[string]string{
 
 func unknownPropertyMessage(prop string) string {
 	switch prop {
+	case "key":
+		return `property "key" is not allowed — the member that names a property is spelled "property" in every structure (§5, §6.2): a dataview's properties[] entry and the property block spelled it "key" before v0.41, twelve lines from view columns, sorts and filters that spelled "property". Rename the member and keep its value`
 	case "children":
 		return `property "children" is not allowed — the flat format has no children; nest with indent instead (§4)`
 	case "refs":
@@ -1126,7 +1133,7 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 				// (resolved through the document's own legend below), else
 				// its `internal_key`, which IS a stored key and resolves to
 				// itself (§2e)
-				key, _ := tp[memberDefinitionProperty].(string)
+				key, _ := tp[memberProperty].(string)
 				resolvedEntryKey := ""
 				if key != "" {
 					resolvedEntryKey = resolveDocKey(key)
@@ -1632,8 +1639,8 @@ func propertyNameIssues(doc map[string]any) keySlotReport {
 	if list, _ := typePropertyDefinitionsOf(doc); list != nil {
 		for i, raw := range list {
 			tp, _ := raw.(map[string]any)
-			if key, isString := tp[memberDefinitionProperty].(string); isString && !isWritablePropertyKey(key) {
-				rejectValue(fmt.Sprintf(typePropertyDefinitionsPath+"/%d/"+memberDefinitionProperty, i),
+			if key, isString := tp[memberProperty].(string); isString && !isWritablePropertyKey(key) {
+				rejectValue(fmt.Sprintf(typePropertyDefinitionsPath+"/%d/"+memberProperty, i),
 					unwritableKeyReason("property key", key))
 			}
 			// internal_key is a stored key under the same writable rule the
@@ -1707,7 +1714,7 @@ func checkFilterProperties(nodes []any, path string, reject func(string, string)
 			checkFilterProperties(sub, nPath+"/filters", reject)
 			continue
 		}
-		raw, named := node["property"]
+		raw, named := node[memberProperty]
 		if !named {
 			reject(nPath, "a filter has to name the property it filters on (§6)")
 			continue
@@ -2122,7 +2129,7 @@ func checkDataviewViews(block map[string]any, path string, resolveKey func(strin
 		if !ok {
 			continue
 		}
-		key, _ := p["key"].(string)
+		key, _ := p[memberProperty].(string)
 		if f, isStr := p["format"].(string); isStr && key != "" {
 			formats[key] = f
 		} else if key != "" {
@@ -2215,7 +2222,7 @@ func checkDateFilters(view map[string]any, formats map[string]string, isDate fun
 					continue
 				}
 				cond, _ := n["condition"].(string)
-				if prop, _ := n["property"].(string); prop != "" &&
+				if prop, _ := n[memberProperty].(string); prop != "" &&
 					(cond == "not_empty" || cond == "exists") {
 					scope[prop] = true
 				}
@@ -2245,7 +2252,7 @@ func checkDateFilters(view map[string]any, formats map[string]string, isDate fun
 							continue
 						}
 						cond, _ := leaf["condition"].(string)
-						if prop, _ := leaf["property"].(string); prop != "" && cond == "empty" {
+						if prop, _ := leaf[memberProperty].(string); prop != "" && cond == "empty" {
 							childScope[prop] = true
 						}
 					}
@@ -2267,7 +2274,7 @@ func checkDateFilters(view map[string]any, formats map[string]string, isDate fun
 				_, counts := countingPresetNames[preset]
 				leafCond, _ := n["condition"].(string)
 				_, applies := datePresetConditions[leafCond]
-				prop, _ := n["property"].(string)
+				prop, _ := n[memberProperty].(string)
 				switch {
 				case !applies:
 					// the condition in front of us settles it: this preset
@@ -2312,7 +2319,7 @@ func checkDateFilters(view map[string]any, formats map[string]string, isDate fun
 			// a dynamic filter token resolves to an object id, so it can
 			// only match an object/file property; anywhere else it is
 			// compared as a literal string and matches nothing
-			if prop, _ := n["property"].(string); prop != "" {
+			if prop, _ := n[memberProperty].(string); prop != "" {
 				if f, declared := formats[prop]; declared && f != "objects" && f != "files" {
 					for _, tok := range filterTemplateValues(n["value"]) {
 						addIssue(nPath+"/value",
@@ -2324,7 +2331,7 @@ func checkDateFilters(view map[string]any, formats map[string]string, isDate fun
 			if cond != "less" && cond != "less_or_equal" {
 				continue
 			}
-			prop, _ := n["property"].(string)
+			prop, _ := n[memberProperty].(string)
 			if !isDate(prop) || scope[prop] {
 				continue
 			}

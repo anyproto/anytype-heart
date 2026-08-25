@@ -219,7 +219,7 @@ func (e *exporter) buildTypeProperties() []any {
 			// writes, `internal_key` the stored id the app minted — export
 			// states both, an author needs neither (identity may be a `name`
 			// alone)
-			m.set(memberDefinitionProperty, e.propertySlug(string(def.Key)))
+			m.set(memberProperty, e.propertySlug(string(def.Key)))
 			m.set(memberInternalKey, string(def.Key))
 			m.setNonEmpty("name", def.Name)
 			m.setNonEmpty("format", formatName(def.Format))
@@ -438,7 +438,7 @@ func BuildRecommendedLists(props []TypeProperty, opts Options) ([]RecommendedLis
 		}
 		if !isWritablePropertyKey(key) {
 			return nil, &ValidationError{Issues: []Issue{{
-				Path:    fmt.Sprintf(typePropertyDefinitionsPath+"/%d/"+memberDefinitionProperty, i),
+				Path:    fmt.Sprintf(typePropertyDefinitionsPath+"/%d/"+memberProperty, i),
 				Message: unwritableKeyReason("resolved property key", key),
 			}}}
 		}
@@ -507,7 +507,7 @@ func (imp *importer) applyTypeProperties(details *types.Struct) error {
 		}
 		if !isWritablePropertyKey(key) {
 			return &ValidationError{Issues: []Issue{{
-				Path:    fmt.Sprintf(typePropertyDefinitionsPath+"/%d/"+memberDefinitionProperty, i),
+				Path:    fmt.Sprintf(typePropertyDefinitionsPath+"/%d/"+memberProperty, i),
 				Message: unwritableKeyReason("resolved property key", key),
 			}}}
 		}

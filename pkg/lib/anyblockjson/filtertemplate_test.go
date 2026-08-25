@@ -28,7 +28,7 @@ func filterDoc(props, filters string) string {
 func TestRoundtrip_FilterTemplateSurvives(t *testing.T) {
 	for _, tok := range []string{"_filter_template_1_", "_filter_template_2_"} {
 		t.Run(tok, func(t *testing.T) {
-			doc := filterDoc(`{"key": "assignee", "format": "objects"}`,
+			doc := filterDoc(`{"property": "assignee", "format": "objects"}`,
 				`{"property": "assignee", "condition": "in", "value": ["`+tok+`"]}`)
 
 			_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
@@ -59,7 +59,7 @@ func TestValidate_FilterTemplateOnWrongFormat(t *testing.T) {
 	for _, f := range []string{"select", "date", "text", "number"} {
 		t.Run(f, func(t *testing.T) {
 			err := Validate([]byte(filterDoc(
-				`{"key": "stage", "format": "`+f+`"}`,
+				`{"property": "stage", "format": "`+f+`"}`,
 				`{"property": "stage", "condition": "in", "value": ["_filter_template_2_"]}`)))
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "resolves to an object id")
@@ -68,7 +68,7 @@ func TestValidate_FilterTemplateOnWrongFormat(t *testing.T) {
 	for _, f := range []string{"objects", "files"} {
 		t.Run(f+" is fine", func(t *testing.T) {
 			assert.NoError(t, Validate([]byte(filterDoc(
-				`{"key": "assignee", "format": "`+f+`"}`,
+				`{"property": "assignee", "format": "`+f+`"}`,
 				`{"property": "assignee", "condition": "in", "value": ["_filter_template_2_"]}`))))
 		})
 	}
@@ -77,12 +77,12 @@ func TestValidate_FilterTemplateOnWrongFormat(t *testing.T) {
 func TestValidate_FilterTemplateNonTriggers(t *testing.T) {
 	t.Run("a real id on a select is not a token", func(t *testing.T) {
 		assert.NoError(t, Validate([]byte(filterDoc(
-			`{"key": "stage", "format": "select"}`,
+			`{"property": "stage", "format": "select"}`,
 			`{"property": "stage", "condition": "in", "value": ["In progress"]}`))))
 	})
 	t.Run("undeclared format is not checked", func(t *testing.T) {
 		assert.NoError(t, Validate([]byte(filterDoc(
-			`{"key": "other", "format": "objects"}`,
+			`{"property": "other", "format": "objects"}`,
 			`{"property": "notDeclared", "condition": "in", "value": ["_filter_template_2_"]}`))))
 	})
 }

@@ -22,8 +22,8 @@ import (
 func dateFilterDoc(filters string) string {
 	return `{"version": 1, "id": "p1", "blocks": [{"type": "dataview",
 		"object_id": "someSet",
-		"properties": [{"key": "verifiedUntil", "format": "date"},
-		               {"key": "status", "format": "select"}],
+		"properties": [{"property": "verifiedUntil", "format": "date"},
+		               {"property": "status", "format": "select"}],
 		"views": [{"name": "Needs review", "filters": [` + filters + `]}]}]}`
 }
 
@@ -270,7 +270,7 @@ func TestValidate_CountingPresetOnlyOnADateProperty(t *testing.T) {
 		// block that owns the filter — impDvFormat reads the properties
 		// list first, so this filter imports as a text filter
 		doc := `{"version": 1, "blocks": [{"type": "dataview",
-			"properties": [{"key": "due_date", "format": "text"}],
+			"properties": [{"property": "due_date", "format": "text"}],
 			"views": [{"filters": [` + fmt.Sprintf(leaf, "due_date") + `]}]}]}`
 		assert.NoError(t, Validate([]byte(doc)))
 	})

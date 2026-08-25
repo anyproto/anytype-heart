@@ -170,7 +170,7 @@ func UnmarshalPropertyValue(key string, v any, opts Options) *types.Value {
 // and it names them in the DOCUMENT's spelling — which is the writer's
 // vocabulary, not the reader's. The exporter computed all three legends here
 // all along and discarded them at the return, so a `property` block came back
-// as `{"key": "priority"}` with nothing saying which relation `priority` is,
+// as `{"property": "priority"}` with nothing saying which relation `priority` is,
 // where the same block inside a whole document carries
 // `property_internal_keys: {"priority": "6a32d485…"}`. A reader resolved it through
 // its own table, which is precisely the misresolution §3 wrote the legend to

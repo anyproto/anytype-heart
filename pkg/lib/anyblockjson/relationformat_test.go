@@ -479,7 +479,7 @@ func TestRelationEnvelope_ReferenceSlotsKeepTheBundledSlug(t *testing.T) {
 	require.NoError(t, err)
 
 	// then
-	assert.Contains(t, string(data), `"key": "property_format"`,
+	assert.Contains(t, string(data), `"property": "property_format"`,
 		"naming the property is not writing its value — the reference keeps its slug (the v0.38 alias spelling)")
 	assert.NotContains(t, string(data), `"relationFormat"`,
 		"the verbatim fallback is for keys whose slug would need a legend entry")
@@ -524,7 +524,7 @@ func TestRelationEnvelope_ADeniedKeySlugTheBundledTableDoesNotBindBacksOff(t *te
 	require.NoError(t, err)
 
 	// then
-	assert.Contains(t, string(data), `"key": "relationFormat"`,
+	assert.Contains(t, string(data), `"property": "relationFormat"`,
 		"a slug that would owe an unwritable legend entry backs off to the stored key (§3)")
 	assert.NotContains(t, string(data), "fmt_col")
 	assert.NotContains(t, string(data), `"property_internal_keys"`,
@@ -568,7 +568,7 @@ func TestRelationEnvelope_ADeniedKeySlugShadowedByTheVocabularyBacksOff(t *testi
 	require.NoError(t, err)
 
 	// then
-	assert.Contains(t, string(data), `"key": "relationFormat"`,
+	assert.Contains(t, string(data), `"property": "relationFormat"`,
 		"the writer's own space would re-point the slug, so the stored key is the honest spelling")
 	assert.NotContains(t, string(data), "property_format")
 	require.NotEmpty(t, warns, "the backed-off spelling is reported")
@@ -1174,7 +1174,7 @@ func TestPropertyFormat_MapIsNotAuthorable(t *testing.T) {
 
 	t.Run("a dataview may not declare it", func(t *testing.T) {
 		doc := []byte(`{"version":1,"blocks":[{"type":"dataview",
-			"properties":[{"key":"placeholders","format":"map"}],
+			"properties":[{"property":"placeholders","format":"map"}],
 			"views":[{"name":"All"}]}]}`)
 		require.Error(t, Validate(doc), "a view may not invent a map either")
 	})

@@ -857,11 +857,11 @@ func TestOptionRefs_ThePropertyCensusCoversEveryPosition(t *testing.T) {
 		{"a type_properties key", `{"kind": "object_type",
 			"type_settings": {"property_definitions": [{"property": "probe_property", "format": "select"}]}}`, true},
 		{"a property block's key", `{"blocks":
-			[{"type": "property", "key": "probe_property"}]}`, true},
+			[{"type": "property", "property": "probe_property"}]}`, true},
 		{"a link block's shown properties", `{"blocks":
 			[{"type": "link", "object_id": "bafyreitarget", "properties": ["probe_property"]}]}`, true},
 		{"a dataview's properties list", `{"blocks": [{"type": "dataview",
-			"properties": [{"key": "probe_property", "format": "select"}]}]}`, true},
+			"properties": [{"property": "probe_property", "format": "select"}]}]}`, true},
 		{"a view's group_by", `{"blocks": [{"type": "dataview",
 			"views": [{"id": "v1", "group_by": "probe_property"}]}]}`, true},
 		{"a view's cover_property", `{"blocks": [{"type": "dataview",
@@ -878,7 +878,7 @@ func TestOptionRefs_ThePropertyCensusCoversEveryPosition(t *testing.T) {
 			[{"operator": "and", "filters": [{"property": "probe_property"}]}]}]}]}`, true},
 		{"a property block inside a table cell", `{"blocks": [{"type": "table",
 			"columns": [{"id": "c1"}], "rows": [{"id": "r1", "cells":
-			[{"type": "property", "key": "probe_property"}]}]}]}`, true},
+			[{"type": "property", "property": "probe_property"}]}]}]}`, true},
 		{"a dataview inside a table cell", `{"blocks": [{"type": "table",
 			"columns": [{"id": "c1"}], "rows": [{"id": "r1", "cells": [[{"type": "dataview",
 			"views": [{"id": "v1", "filters": [{"property": "probe_property"}]}]}]]}]}]}`, true},

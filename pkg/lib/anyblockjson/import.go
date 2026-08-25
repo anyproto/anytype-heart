@@ -109,7 +109,7 @@ type jsonBlock struct {
 	Description string          `json:"description"`
 	Properties  json.RawMessage `json:"properties"` // link: []string; dataview: []jsonDvProperty
 	Processor   string          `json:"processor"`
-	Key         string          `json:"key"`
+	Property    string          `json:"property"`
 
 	Layout    string      `json:"layout"`
 	Limit     json.Number `json:"limit"`
@@ -382,7 +382,7 @@ func declaredFormatWith(opts Options, key, name string) model.RelationFormat {
 	// in both slots that carry it, so a document that omits it has said
 	// nothing about the property — and the answer to nothing is the chain
 	// (§3), not longtext. Treating absence as `text` silently OVERRODE the
-	// bundled table: `{"key": "due_date"}` in a dataview's property list
+	// bundled table: `{"property": "due_date"}` in a dataview's property list
 	// pinned a bundled DATE property to longtext, so its filters stopped
 	// being dates, while omitting the list entirely resolved correctly.
 	// Listing a property without its format was worse than not listing it
@@ -1039,7 +1039,7 @@ func (imp *importer) blockFromJSON(jb *jsonBlock, forcedId string) ([]*model.Blo
 		b.Content = &model.BlockContentOfTableOfContents{TableOfContents: &model.BlockContentTableOfContents{}}
 	case jb.Type == "property":
 		b.Content = &model.BlockContentOfRelation{Relation: &model.BlockContentRelation{
-			Key: imp.propertyKeyAt(jb.Key, "property block `key`")}}
+			Key: imp.propertyKeyAt(jb.Property, "property block `property`")}}
 	case jb.Type == "dataview":
 		dv, err := imp.dataviewFromJSON(jb)
 		if err != nil {

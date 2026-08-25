@@ -104,10 +104,10 @@ func TestDataview_AnAbsentFormatResolvesThroughTheChain(t *testing.T) {
 		props string
 		want  model.RelationFormat
 	}{
-		"declared date":        {`"properties":[{"key":"due_date","format":"date"}],`, model.RelationFormat_date},
-		"format omitted":       {`"properties":[{"key":"due_date"}],`, model.RelationFormat_date},
+		"declared date":        {`"properties":[{"property":"due_date","format":"date"}],`, model.RelationFormat_date},
+		"format omitted":       {`"properties":[{"property":"due_date"}],`, model.RelationFormat_date},
 		"no properties list":   {``, model.RelationFormat_date},
-		"declared text stands": {`"properties":[{"key":"due_date","format":"text"}],`, model.RelationFormat_longtext},
+		"declared text stands": {`"properties":[{"property":"due_date","format":"text"}],`, model.RelationFormat_longtext},
 	} {
 		t.Run(name, func(t *testing.T) {
 			// given

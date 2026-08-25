@@ -117,7 +117,7 @@ func TestExport_StoredKeyKeepsItsOwnTerm(t *testing.T) {
 }
 
 // Every key slot is a slug slot, and the legend has to cover all of them. A
-// link's `properties` and a `property` block's `key` name relations exactly
+// link's `properties` and a `property` block's `property` name relations exactly
 // as `/properties` does, so a space-slugged key in one of them needs the same
 // inverse — and it needs it whether or not some other surface in the same
 // document happened to record the entry.
@@ -145,7 +145,7 @@ func TestExport_LegendCoversBlockKeySlots(t *testing.T) {
 		PropertyKeys map[string]string `json:"property_internal_keys"`
 		Blocks       []struct {
 			Type       string   `json:"type"`
-			Key        string   `json:"key"`
+			Key        string   `json:"property"`
 			Properties []string `json:"properties"`
 		} `json:"blocks"`
 	}

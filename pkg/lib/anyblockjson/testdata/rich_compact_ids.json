@@ -148,15 +148,15 @@
       "object_id": "bafyreitasks",
       "properties": [
         {
-          "key": "name",
+          "property": "name",
           "format": "text"
         },
         {
-          "key": "customStatus",
+          "property": "customStatus",
           "format": "select"
         },
         {
-          "key": "due_date",
+          "property": "due_date",
           "format": "date"
         }
       ],

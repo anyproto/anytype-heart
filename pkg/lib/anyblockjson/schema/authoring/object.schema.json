@@ -989,7 +989,7 @@
                 "items": {
                   "$ref": "#/$defs/dataviewProperty"
                 },
-                "description": "The properties available to the views — every key a view's columns, sorts, filters or group_by name, with its format."
+                "description": "The properties available to the views — every property a view's columns, sorts, filters or group_by name, with its format."
               },
               "views": {
                 "type": "array",
@@ -1024,13 +1024,14 @@
     },
     "dataviewProperty": {
       "type": "object",
+      "description": "One property available to the views, with its format. `property` is the same member name — and the same spelling — the view's columns, sorts, filters and group_by use to refer to it.",
       "required": [
-        "key",
+        "property",
         "format"
       ],
       "additionalProperties": false,
       "properties": {
-        "key": {
+        "property": {
           "$ref": "#/$defs/propertyKey"
         },
         "format": {

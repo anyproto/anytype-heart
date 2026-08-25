@@ -23,19 +23,19 @@ func TestValidate_GroupByImpossibleIsError(t *testing.T) {
 	}{
 		{
 			name:    "kanban on an object relation",
-			props:   `{"key": "category", "format": "objects"}`,
+			props:   `{"property": "category", "format": "objects"}`,
 			view:    `{"type": "kanban", "name": "By category", "group_by": "category"}`,
 			wantMsg: `cannot group by "category"`,
 		},
 		{
 			name:    "kanban on a date",
-			props:   `{"key": "due", "format": "date"}`,
+			props:   `{"property": "due", "format": "date"}`,
 			view:    `{"type": "kanban", "name": "By due", "group_by": "due"}`,
 			wantMsg: `cannot group by "due"`,
 		},
 		{
 			name:    "calendar on a select",
-			props:   `{"key": "status", "format": "select"}`,
+			props:   `{"property": "status", "format": "select"}`,
 			view:    `{"type": "calendar", "name": "Cal", "group_by": "status"}`,
 			wantMsg: `cannot group by "status"`,
 		},
@@ -50,13 +50,13 @@ func TestValidate_GroupByImpossibleIsError(t *testing.T) {
 
 func TestValidate_GroupByValidCombinations(t *testing.T) {
 	for _, tc := range []struct{ name, props, view string }{
-		{"kanban + select", `{"key": "status", "format": "select"}`,
+		{"kanban + select", `{"property": "status", "format": "select"}`,
 			`{"type": "kanban", "name": "K", "group_by": "status"}`},
-		{"kanban + multi_select", `{"key": "tags", "format": "multi_select"}`,
+		{"kanban + multi_select", `{"property": "tags", "format": "multi_select"}`,
 			`{"type": "kanban", "name": "K", "group_by": "tags"}`},
-		{"kanban + checkbox", `{"key": "done", "format": "checkbox"}`,
+		{"kanban + checkbox", `{"property": "done", "format": "checkbox"}`,
 			`{"type": "kanban", "name": "K", "group_by": "done"}`},
-		{"calendar + date", `{"key": "due", "format": "date"}`,
+		{"calendar + date", `{"property": "due", "format": "date"}`,
 			`{"type": "calendar", "name": "C", "group_by": "due"}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -76,7 +76,7 @@ func TestValidate_GroupByOnNonGroupingViewOnlyWarns(t *testing.T) {
 			if viewType == "table" {
 				view = `{"name": "V", "group_by": "status"}` // table is the default type
 			}
-			doc := dataviewDoc(`{"key": "status", "format": "select"}`, view)
+			doc := dataviewDoc(`{"property": "status", "format": "select"}`, view)
 
 			require.NoError(t, Validate([]byte(doc)), "must not reject real data")
 
@@ -95,7 +95,7 @@ func TestValidate_GroupByOnNonGroupingViewOnlyWarns(t *testing.T) {
 
 // nothing to check against when the key carries no declared format
 func TestValidate_GroupByUndeclaredKeyIsAccepted(t *testing.T) {
-	doc := dataviewDoc(`{"key": "other", "format": "select"}`,
+	doc := dataviewDoc(`{"property": "other", "format": "select"}`,
 		`{"type": "kanban", "name": "K", "group_by": "notInProperties"}`)
 	assert.NoError(t, Validate([]byte(doc)))
 }

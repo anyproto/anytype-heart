@@ -1,7 +1,7 @@
 package anyblockjson
 
 // wirenames.go — the wire spellings of the members the pre-freeze key/spelling
-// split renamed (§2, §2e, §3), each defined exactly once.
+// split renamed (§2, §2e, §3, §5, §6.2), each defined exactly once.
 //
 // The word `key` used to mean two different things in one format: the envelope
 // member held a STORED internal key (a bson id the app mints, or a bundled
@@ -28,9 +28,16 @@ const (
 	// (§2e). Minted by the app, written by export, never required from an
 	// author.
 	memberInternalKey = "internal_key"
-	// memberDefinitionProperty is a property definition's spelling member
-	// (§2e) — a document-facing spelling, not a stored key.
-	memberDefinitionProperty = "property"
+	// memberProperty is THE property-naming slot: the member that names one
+	// property by its document-facing spelling, wherever a structure names
+	// exactly one — a property definition (§2e), a dataview's `properties[]`
+	// entry and the `property` block (both spelled `key` until v0.41), and a
+	// view's column/sort/filter, which spelled `property` from birth. One
+	// concept, one spelling (§15 #14): measured over 28,599 real exports the
+	// two spellings sat twelve lines apart inside single dataview blocks,
+	// each a hard schema error in the other's position, and 2,504 blocks
+	// wrote the same spelling under both names.
+	memberProperty = "property"
 	// memberPropertyInternalKeys is the property legend: document spelling →
 	// stored internal key (§3).
 	memberPropertyInternalKeys = "property_internal_keys"
