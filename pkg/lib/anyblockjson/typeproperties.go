@@ -272,6 +272,34 @@ type TypeProperty struct {
 	Section      string      `json:"section"`
 }
 
+// authoredKey is the key this entry names: its own `key`, or — when it states
+// none — the key its NAME derives.
+//
+// A `key` used to be required in both homes of this shape, and that was a trap
+// for the population the format most wants to serve. Every exported example is
+// full of space-minted bson ids (`6a83296f61fab2265263ae34`), because export
+// writes the keys a real space actually holds; an author generating a use case
+// has no space to draw one from, so a required `key` asks them to INVENT an
+// identifier whose only correct forms they cannot produce. What they write
+// instead is the slug — which is right, and which the name already implies.
+//
+// So a name is enough. `{"name": "Cooking Time", "format": "number"}` declares
+// a property keyed `cooking_time`, and the derivation runs through the same
+// resolution ladder as a written key, so `{"name": "Due Date"}` lands on the
+// bundled `dueDate` rather than minting a lookalike beside it.
+//
+// Export writes both members, so this changes nothing about what this package
+// produces (§11 I1).
+func (tp TypeProperty) authoredKey() string {
+	if tp.Key != "" {
+		return tp.Key
+	}
+	if tp.Name == "" {
+		return ""
+	}
+	return bundle.SanitizeApiSlug(bundle.ApiSlugFromName(tp.Name), maxObjectRefLen)
+}
+
 // definition assembles the shared PropertyDefinition this entry declares,
 // with the key slots already resolved by the caller — one builder for both
 // doors the array arrives through (applyTypeProperties and
@@ -352,7 +380,7 @@ type RecommendedList struct {
 func BuildRecommendedLists(props []TypeProperty, opts Options) ([]RecommendedList, error) {
 	bySection := map[string][]string{}
 	for i, tp := range props {
-		key := opts.legendPropertyKey(tp.Key)
+		key := opts.legendPropertyKey(tp.authoredKey())
 		if !isWritablePropertyKey(key) {
 			return nil, &ValidationError{Issues: []Issue{{
 				Path:    fmt.Sprintf(typePropertyDefinitionsPath+"/%d/key", i),
@@ -418,7 +446,7 @@ func (imp *importer) applyTypeProperties(details *types.Struct) error {
 		// the empty key in the type's recommended list, where it names nothing
 		// and disappears on re-export. Only the resolved key can be judged,
 		// which is why the schema cannot own this.
-		key := imp.propertyKey(tp.Key)
+		key := imp.propertyKey(tp.authoredKey())
 		if !isWritablePropertyKey(key) {
 			return &ValidationError{Issues: []Issue{{
 				Path:    fmt.Sprintf(typePropertyDefinitionsPath+"/%d/key", i),

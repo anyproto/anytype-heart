@@ -163,7 +163,7 @@ func unmarshalPropertyDictionary(data []byte, warn func(Issue)) (*PropertyDictio
 	}
 	d := &PropertyDictionary{Installed: installedKeys(jd.Installed, warn)}
 	for i, tp := range jd.Properties {
-		storedKey := dictionaryEntryKey(i, tp.Key, warn)
+		storedKey := dictionaryEntryKey(i, tp.authoredKey(), warn)
 		// entries speak STORED keys in every key slot — `key` and
 		// `object_types` alike — so there is no legend to run and no
 		// vocabulary to consult: the definition is built by the same shared

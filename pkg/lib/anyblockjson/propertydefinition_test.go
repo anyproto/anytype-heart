@@ -158,8 +158,13 @@ func TestPropertyDefinition_OneSharedShapeThreeHomes(t *testing.T) {
 		}
 		assert.Truef(t, m == "object_types", "dictionaryEntry restates %q — its layer holds the one narrowing only", m)
 	}
-	assert.ElementsMatch(t, []string{"key", "format"}, entry.Required,
-		"an entry requires its key and — self-sufficiency, §2f — its format")
+	// `format` alone is required outright: self-sufficiency (§2f) means an
+	// entry states what the property holds. Identity is required through
+	// anyOf instead — a key, OR a `name` the spelling derives from — because
+	// demanding a key asks an author to invent an identifier only a real
+	// space can mint.
+	assert.ElementsMatch(t, []string{"format"}, entry.Required,
+		"an entry requires its format outright; identity is the anyOf beside it")
 	assert.Equal(t, "false", string(entry.Uneval), "dictionaryEntry must close itself with unevaluatedProperties: false")
 }
 

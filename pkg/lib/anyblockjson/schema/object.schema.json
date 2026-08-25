@@ -1340,7 +1340,7 @@
     },
     "typeProperty": {
       "type": "object",
-      "description": "One entry of a type document's property-definition list (§2a): a propertyDefinition plus `section`, the ONE field that belongs to the type rather than the property — of 1,614 properties declared by 2+ types within one space, zero differ in anything else. The shared members are referenced, never restated; this layer only narrows: `format` to the authorable vocabulary, `object_types` to a real list (a type declares targets or omits the member — only a relation's stored value can hold a null).",
+      "description": "One entry of a type document's property-definition list (§2a): a propertyDefinition plus `section`, the ONE field that belongs to the type rather than the property — of 1,614 properties declared by 2+ types within one space, zero differ in anything else. The shared members are referenced, never restated; this layer only narrows: `format` to the authorable vocabulary, `object_types` to a real list (a type declares targets or omits the member — only a relation's stored value can hold a null). An entry must identify the property it declares: state a `key`, or a `name` the key is derived from. A NAME ALONE IS ENOUGH — `{\"name\": \"Cooking Time\", \"format\": \"number\"}` declares a property keyed `cooking_time`. Prefer that when authoring: every exported example carries a space-minted key like `6a83296f61fab2265263ae34`, because export writes the keys a real space holds, and an author has no space to draw one from — inventing one is never right. A derived key runs through the same resolution as a written one, so a property named \"Due Date\" lands on the bundled `due_date` instead of minting a lookalike beside it.",
       "allOf": [
         {
           "$ref": "#/$defs/propertyDefinition"
@@ -1361,10 +1361,19 @@
           ]
         }
       },
-      "required": [
-        "key"
-      ],
-      "unevaluatedProperties": false
+      "unevaluatedProperties": false,
+      "anyOf": [
+        {
+          "required": [
+            "key"
+          ]
+        },
+        {
+          "required": [
+            "name"
+          ]
+        }
+      ]
     },
     "vocabularyOption": {
       "anyOf": [

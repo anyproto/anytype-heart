@@ -358,14 +358,22 @@ func TestTypePropertiesValidation(t *testing.T) {
 		assert.Contains(t, err.Error(), "conflicts with type_settings.property_definitions")
 	})
 
-	t.Run("unknown section and missing key rejected by schema", func(t *testing.T) {
+	t.Run("unknown section and no identity at all rejected by schema", func(t *testing.T) {
 		for _, doc := range []string{
 			`{"version": 1, "kind": "object_type", "type_settings": {"property_definitions": [{"key": "a", "section": "sidebar"}]}}`,
-			`{"version": 1, "kind": "object_type", "type_settings": {"property_definitions": [{"name": "No key"}]}}`,
+			`{"version": 1, "kind": "object_type", "type_settings": {"property_definitions": [{"format": "number"}]}}`,
 			`{"version": 1, "kind": "object_type", "type_settings": {"property_definitions": [{"key": "a", "format": "status"}]}}`,
 		} {
 			assert.Error(t, Validate([]byte(doc)), strings.ReplaceAll(doc, "\n", " "))
 		}
+	})
+
+	// A NAME is identity enough: an author has no way to mint the key a real
+	// space would, so requiring one asked for an invented identifier.
+	t.Run("a name alone declares a property", func(t *testing.T) {
+		require.NoError(t, Validate([]byte(
+			`{"version": 1, "kind": "object_type", "key": "recipe", "type_settings": {`+
+				`"property_definitions": [{"name": "Cooking Time", "format": "number"}]}}`)))
 	})
 
 	t.Run("valid type document passes", func(t *testing.T) {
