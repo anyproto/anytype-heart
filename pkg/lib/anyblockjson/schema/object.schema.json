@@ -1794,6 +1794,34 @@
         "justify"
       ],
       "description": "Horizontal alignment, by NAME. One definition for one concept: a block's `align`, a view column's `align`, and the `layout_align` property value (§3) all draw from it. The property slot cannot $ref this definition — a property SPELLING is not fixed to its stored key, so the vocabulary there is enforced by the semantic pass on the RESOLVED key — but the vocabulary is this one: an unknown name on `layout_align` is a validation error, and a raw NUMBER is accepted beside a name, because a stored value outside the vocabulary round-trips as its number rather than being lost."
+    },
+    "objectOrigin": {
+      "enum": [
+        "api",
+        "bookmark",
+        "builtin",
+        "clipboard",
+        "drag_and_drop",
+        "import",
+        "none",
+        "sharing_extension",
+        "usecase",
+        "webclipper"
+      ],
+      "description": "How an object entered its space, by NAME — the vocabulary of the `origin` property value (§3). No slot $refs this definition, because a property SPELLING is not fixed to its stored key (a legend may rebind it): the vocabulary is enforced by the semantic pass on the RESOLVED key, and stated here so a reader of the schema can learn it. An unknown name is a validation error; a raw NUMBER is accepted beside a name, because a stored value outside the vocabulary round-trips as its number rather than being lost."
+    },
+    "importType": {
+      "enum": [
+        "csv",
+        "external",
+        "html",
+        "markdown",
+        "notion",
+        "obsidian",
+        "pb",
+        "txt"
+      ],
+      "description": "Which importer created an import- or usecase-originated object, by NAME — the vocabulary of the `import_type` property value (§3), enforced like $defs/objectOrigin by the semantic pass on the resolved key. Named or refused, never stored as a stray string: the underlying enum's ZERO is notion, so an unchecked string here used to read back as a false claim that the object came from Notion."
     }
   }
 }

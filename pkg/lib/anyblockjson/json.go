@@ -690,6 +690,47 @@ var layoutVocabulary = vocabularyOf(layoutNames, "layout")
 // vocabulary twice over before the property joined.
 var alignVocabulary = vocabularyOf(alignNames, "align")
 
+// originNames maps model.ObjectOrigin — how an object entered its space —
+// to the format's names: the proto's own identifiers, snake_cased where they
+// are camelCase, because there is no established public vocabulary to defer
+// to (the REST API stores the same number). TOTAL over the proto enum,
+// pinned by TestNamedEnum_VocabulariesTotalOverModelEnums: a member added to
+// the proto without a name here would export as a bare integer again.
+var originNames = newEnumNames(map[model.ObjectOrigin]string{
+	model.ObjectOrigin_none:             "none",
+	model.ObjectOrigin_clipboard:        "clipboard",
+	model.ObjectOrigin_dragAndDrop:      "drag_and_drop",
+	model.ObjectOrigin_import:           "import",
+	model.ObjectOrigin_webclipper:       "webclipper",
+	model.ObjectOrigin_sharingExtension: "sharing_extension",
+	model.ObjectOrigin_usecase:          "usecase",
+	model.ObjectOrigin_builtin:          "builtin",
+	model.ObjectOrigin_bookmark:         "bookmark",
+	model.ObjectOrigin_api:              "api",
+})
+
+var originVocabulary = vocabularyOf(originNames, "origin")
+
+// importTypeNames maps model.ImportType — which importer brought an
+// import/usecase-originated object in. The names are the proto identifiers
+// lowercased; `pb` stays `pb` (the protobuf export format, the store's own
+// name for it) rather than gaining an invented alias. Note the enum's ZERO
+// is notion — the sharpest reason this key had to be named or die: an
+// accepted-then-zeroed string here did not read as "unset", it read as a
+// false claim that the object came from Notion.
+var importTypeNames = newEnumNames(map[model.ImportType]string{
+	model.Import_Notion:   "notion",
+	model.Import_Markdown: "markdown",
+	model.Import_External: "external",
+	model.Import_Pb:       "pb",
+	model.Import_Html:     "html",
+	model.Import_Txt:      "txt",
+	model.Import_Csv:      "csv",
+	model.Import_Obsidian: "obsidian",
+})
+
+var importTypeVocabulary = vocabularyOf(importTypeNames, "import type")
+
 // viewTypeVocabulary is not a property vocabulary — no stored detail key
 // maps to it — but §2a's default_view member shares the reading, and the
 // guarded adapter is how both enum members stopped naming NaN.
@@ -716,6 +757,29 @@ var namedEnumProperties = map[string]propertyVocabulary{
 	// int getter answered 0, left — while the reader of an export saw a bare
 	// 1 beside a named `layout` and had no way to learn what it meant.
 	"layoutAlign": alignVocabulary,
+	// origin and importType are the object's PROVENANCE — how it entered the
+	// space it was exported from — and they are NAMED rather than deprecated
+	// on the format's own precedent: the §2a admission dropped `origin` from
+	// TYPE documents as install provenance precisely because "on ordinary
+	// objects origin is real provenance and stays", and §2f drops both only
+	// on bundled-identical property documents. The corpus agrees it is real:
+	// all TEN origin values occur across 15,943 documents (import 6,463 ·
+	// bookmark 2,444 · api 2,293 · webclipper 2,080 · usecase 1,110 ·
+	// clipboard 449 · none 425 · builtin 333 · drag_and_drop 301 ·
+	// sharing_extension 45) — a reader can tell an object a person clipped
+	// from one a pipeline made, which is not the class of syncStatus but the
+	// class of createdDate (which the import pipeline deliberately preserves
+	// as OriginalCreatedTimestamp) and creator (written as attribution).
+	//
+	// Deprecation was weighed: heart's own import pipeline re-stamps both on
+	// every snapshot (objectcreator.injectImportDetails), so nothing
+	// downstream of an app import acts on the carried value. But the format
+	// is a READ surface first, and a transient key must describe a MOMENT
+	// rather than the object — origin describes the object's history. The
+	// pair travels together: objectorigin.go writes importType only beside
+	// an import/usecase origin.
+	"origin":     originVocabulary,
+	"importType": importTypeVocabulary,
 }
 
 // namedEnumProperty answers whether a stored key is written by name, and

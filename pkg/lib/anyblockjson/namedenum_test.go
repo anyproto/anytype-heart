@@ -93,3 +93,95 @@ func TestNamedEnum_LayoutAlign(t *testing.T) {
 		require.NoError(t, Validate(data), "§11 I1")
 	})
 }
+
+// origin and import_type — the object's provenance, named on the format's
+// own §2a precedent ("on ordinary objects origin is real provenance and
+// stays"). The corpus carried them as the two largest bare-integer enums:
+// origin on 15,943 documents spanning all TEN enum values, import_type on
+// 8,303 — a reader saw `origin: 7` beside `resolved_layout: "dashboard"`
+// with no way to learn that 7 meant anything.
+func TestNamedEnum_Provenance(t *testing.T) {
+	t.Run("export writes the names", func(t *testing.T) {
+		snap := &model.SmartBlockSnapshotBase{
+			Blocks: []*model.Block{{Id: "o1",
+				Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}},
+			Details: fields(map[string]*types.Value{
+				"id":         str("o1"),
+				"origin":     num(float64(model.ObjectOrigin_builtin)),
+				"importType": num(float64(model.Import_Markdown)),
+			}),
+		}
+		data, err := Marshal(model.SmartBlockType_Page, snap, Options{})
+		require.NoError(t, err)
+		assert.Contains(t, string(data), `"origin": "builtin"`)
+		assert.Contains(t, string(data), `"import_type": "markdown"`)
+		require.NoError(t, Validate(data), "§11 I1")
+	})
+
+	t.Run("import maps the names to the stored numbers", func(t *testing.T) {
+		doc := `{"version": 1, "id": "o1", "properties": {"origin": "webclipper", "import_type": "obsidian"}}`
+		_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
+		require.NoError(t, err)
+		assert.Equal(t, float64(model.ObjectOrigin_webclipper), snap.Details.Fields["origin"].GetNumberValue())
+		assert.Equal(t, float64(model.Import_Obsidian), snap.Details.Fields["importType"].GetNumberValue())
+	})
+
+	// The Notion-zero trap, pinned. This document used to be VALID: the
+	// string "markdown" landed on the number-format detail, and every int
+	// getter answered 0 — which for this enum is not "unset" but NOTION, a
+	// false claim about where the object came from. The key is named now,
+	// so a name is meaningful and a typo is an error.
+	t.Run("markdown no longer reads as notion", func(t *testing.T) {
+		doc := `{"version": 1, "id": "o1", "properties": {"import_type": "markdown"}}`
+		_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
+		require.NoError(t, err)
+		assert.Equal(t, float64(model.Import_Markdown), snap.Details.Fields["importType"].GetNumberValue(),
+			"the name means what it says, not the enum's zero")
+	})
+
+	t.Run("an unknown origin is refused, naming the vocabulary", func(t *testing.T) {
+		doc := `{"version": 1, "id": "o1", "properties": {"origin": "clipbord"}}`
+		err := Validate([]byte(doc))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "/properties/origin")
+		assert.Contains(t, err.Error(), "unknown origin")
+		assert.Contains(t, err.Error(), "'clipboard'", "the refusal names the name that was nearly right")
+		_, _, unmErr := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
+		require.Error(t, unmErr, "Unmarshal must reject what Validate rejects (§11 I2)")
+	})
+
+	t.Run("an unknown import type is refused too", func(t *testing.T) {
+		err := Validate([]byte(`{"version": 1, "id": "o1", "properties": {"import_type": "md"}}`))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "unknown import type")
+		assert.Contains(t, err.Error(), "'markdown'")
+	})
+
+	t.Run("raw numbers still round-trip", func(t *testing.T) {
+		doc := `{"version": 1, "id": "o1", "properties": {"origin": 7, "import_type": 1}}`
+		require.NoError(t, Validate([]byte(doc)), "every corpus document carries the pair this way")
+		_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
+		require.NoError(t, err)
+		assert.Equal(t, float64(model.ObjectOrigin_builtin), snap.Details.Fields["origin"].GetNumberValue())
+		assert.Equal(t, float64(model.Import_Markdown), snap.Details.Fields["importType"].GetNumberValue())
+	})
+}
+
+// Both provenance vocabularies are TOTAL over their proto enums, the
+// formatNames discipline: a member added to the proto without a name here
+// would export as a bare integer again, which is the defect this file
+// exists to keep closed.
+func TestNamedEnum_VocabulariesTotalOverModelEnums(t *testing.T) {
+	for raw, enumName := range model.ObjectOrigin_name {
+		assert.NotEmpty(t, originNames.name(model.ObjectOrigin(raw)),
+			"origin %s (%d) has no §3 name", enumName, raw)
+	}
+	for raw, enumName := range model.ImportType_name {
+		assert.NotEmpty(t, importTypeNames.name(model.ImportType(raw)),
+			"import type %s (%d) has no §3 name", enumName, raw)
+	}
+	for raw, enumName := range model.BlockAlign_name {
+		assert.NotEmpty(t, alignNames.name(model.BlockAlign(raw)),
+			"align %s (%d) has no §3 name", enumName, raw)
+	}
+}

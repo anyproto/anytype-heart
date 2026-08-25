@@ -43,6 +43,8 @@ func TestSchemaVocabularies_MatchTheCodec(t *testing.T) {
 		{"objectLayout", keysOfLayouts(), "object layout"},
 		{"viewType", keysOfViewTypes(), "dataview view type"},
 		{"blockAlign", keysOfEnumNames(alignNames), "alignment"},
+		{"objectOrigin", keysOfEnumNames(originNames), "object origin"},
+		{"importType", keysOfEnumNames(importTypeNames), "import type"},
 	} {
 		t.Run(tc.def, func(t *testing.T) {
 			got := append([]string(nil), schema.Defs[tc.def].Enum...)

@@ -117,6 +117,12 @@ func TestNamedEnumProperties_PerKeyVerdict(t *testing.T) {
 		// stored as a model.BlockAlign — the enum the format already names
 		// twice, on a block's align and a view column's align
 		"layoutAlign": "align",
+		// the object's provenance, named on the format's own §2a precedent:
+		// "on ordinary objects origin is real provenance and stays" — the
+		// class of createdDate and creator, not of syncStatus. importType
+		// rides with it (objectorigin.go writes them as a pair).
+		"origin":     "origin",
+		"importType": "import type",
 	}
 	assert.Equal(t, len(want), len(namedEnumProperties),
 		"every named key owes a verdict here — a new one must say which vocabulary it draws from")
