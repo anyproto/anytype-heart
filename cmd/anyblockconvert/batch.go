@@ -3,9 +3,12 @@ package main
 import (
 	"crypto/sha1"
 	"encoding/hex"
+	"fmt"
+	"os"
+	"sort"
+
 	"github.com/anyproto/anytype-heart/cmd/internal/anyblockbatch"
 	"github.com/anyproto/lexid"
-	"sort"
 
 	"github.com/gogo/protobuf/types"
 
@@ -297,6 +300,21 @@ func (b *batch) nextOptionColor(key domain.RelationKey) string {
 	return take() // a vocabulary claiming all ten: reuse, in cycle order
 }
 
+// looksLikeMintedKey reports whether key has the shape of an app-minted
+// internal key (a bson object id: 24 hex characters) — the population that
+// owes no mint because it already is one.
+func looksLikeMintedKey(key string) bool {
+	if len(key) != 24 {
+		return false
+	}
+	for _, r := range key {
+		if (r < '0' || r > '9') && (r < 'a' || r > 'f') {
+			return false
+		}
+	}
+	return true
+}
+
 // mintRelation builds a Relation object snapshot matching the shape
 // core/block/import/csv and core/block/import/notion build for their own
 // generated relations: Details{name, relationKey, relationFormat, layout},
@@ -304,6 +322,20 @@ func (b *batch) nextOptionColor(key domain.RelationKey) string {
 // pipeline in core/block/import/processor.go can recognize it across
 // re-imports the same way it does for CSV/Notion relations).
 func (b *batch) mintRelation(def anyblockjson.PropertyDefinition) string {
+	// The key/spelling split (SPEC.md §2e) says a custom property created
+	// from a definition with no internal_key gets a FRESH minted internal
+	// key, the way the app mints one when a user creates a property
+	// (objectcreator/relation.go: bson.NewObjectId().Hex()). This tool still
+	// keys the relation by the spelling — minting here needs the minted key
+	// fed back through Options.Keys so every document's detail keys land on
+	// it, which is a batch-wide vocabulary this tool does not wire yet — so
+	// the divergence is at least SAID rather than silent. An exported bundle
+	// never reaches this line with a slug: its custom keys are the stored
+	// bson ids, carried in internal_key and the legend.
+	if !looksLikeMintedKey(string(def.Key)) {
+		fmt.Fprintf(os.Stderr, "note: property %q states no internal_key; this tool keys it by its spelling, "+
+			"where the app's import path mints a fresh internal key (SPEC.md §2e)\n", def.Key)
+	}
 	format := def.Format
 	name := def.Name
 	if fi, ok := b.formats[string(def.Key)]; ok {
