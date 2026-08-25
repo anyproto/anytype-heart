@@ -765,6 +765,12 @@ func (c *spaceComposer) observeSnapshot(sw *pb.SnapshotWithType) (omitted bool, 
 		anyblockjson.IndexFromSpaceSettings(&c.index, base)
 		return true, nil
 	}
+	// the deprecated per-space profile object: superseded by `participant`,
+	// and what survives in a real account is an empty hidden object carrying
+	// someone else's name, dragged in by an import (§2c)
+	if anyblockjson.OmittedProfilePage(sw.SbType, base) {
+		return true, nil
+	}
 	if key, ok := anyblockjson.OmittedBundledRelation(sw.SbType, base, c.opts); ok {
 		c.installed[key] = true
 		det, ok := anyblockjson.InstalledRelationDetails(key, c.opts)

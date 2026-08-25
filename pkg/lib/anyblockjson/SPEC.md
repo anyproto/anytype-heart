@@ -1,6 +1,6 @@
 # AnyBlock JSON — format specification
 
-Status: **draft v0.38** · Format version: **1** · Package: `pkg/lib/anyblockjson`
+Status: **draft v0.39** · Format version: **1** · Package: `pkg/lib/anyblockjson`
 
 A human- and agent-readable JSON serialization of Anytype objects (the "anyblock"
 model), designed for export, import, and generation by external tools and LLM
@@ -15,6 +15,29 @@ strings; the vocabulary follows Notion's API and Anytype's public REST API
 (`core/api`) wherever an established term exists — the format should be
 readable, and mostly writable, by someone who has never seen Anytype
 internals.
+
+Changes in v0.39: **the deprecated profile object does not travel** (§2c).
+
+`kind: "profile_page"` is the pre-participant representation of a person in
+a space, and a `participant` document does that job now. Every space in a
+77-space export that still holds one also holds participants — from 1 to
+1,856 of them.
+
+What survives in a real account is not the owner's own profile. It is the
+profile object of whoever built each imported space, dragged along by the
+import: 8 remain, every one `isHidden`, every one carrying `importType`,
+`origin` and `oldAnytypeID`, seven with no blocks at all and the eighth with
+the empty paragraph the editor leaves on any object ever opened. Four are
+named "Onboarding 2.2", one after a space, three after other people. A
+bundle is shareable, and a hidden object carrying a stranger's name is not
+something a reader wants restored.
+
+The drop is UNCONDITIONAL, deliberately unlike the space-document omission
+beside it. That one fails closed on any content, because a space object is
+live and merely happens to be empty. Nothing creates a profile object any
+more, so whatever a particular one holds is residue from a data model that
+is gone — and keeping the richest of them would preserve exactly the thing
+least worth preserving.
 
 Changes in v0.38: **the format stops calling a property a relation,
 everywhere it still did** (§2, §2a, §2c, §2d, §2f, §3).

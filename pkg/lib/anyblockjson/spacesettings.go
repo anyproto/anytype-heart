@@ -58,7 +58,7 @@ var spaceSettingsIndexKeys = map[string]string{
 	detailKeyIconOption:                    "icon",
 }
 
-// spacePageIsEmpty reports a space object whose page holds nothing a reader
+// pageIsEmpty reports an object whose page holds nothing a reader
 // would miss — only the header scaffolding every object carries: the root
 // block, the header layout, the featured-properties row, and an EMPTY title.
 //
@@ -69,7 +69,7 @@ var spaceSettingsIndexKeys = map[string]string{
 // Fail-closed, and deliberately narrow: a text block with any text, marks or
 // a style other than the two structural ones, and any other block type at
 // all, keeps the document.
-func spacePageIsEmpty(base *model.SmartBlockSnapshotBase) bool {
+func pageIsEmpty(base *model.SmartBlockSnapshotBase) bool {
 	for _, b := range base.GetBlocks() {
 		switch c := b.Content.(type) {
 		case *model.BlockContentOfSmartblock, *model.BlockContentOfLayout,
@@ -150,7 +150,7 @@ func OmittedSpaceSettings(sbType model.SmartBlockType, base *model.SmartBlockSna
 	if sbType != model.SmartBlockType_Workspace || base == nil {
 		return false
 	}
-	if !spacePageIsEmpty(base) {
+	if !pageIsEmpty(base) {
 		// a space object with real content on its page is not a restatement
 		// of anything
 		return false
