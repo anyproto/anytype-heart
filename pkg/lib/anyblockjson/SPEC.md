@@ -6086,3 +6086,29 @@ Wiring (follow-up work, not this package):
     which is a coordinated change rather than a one-line `$ref`. Recorded
     because the one-shape rule §2e establishes is exactly what this violates,
     and it is the sort of drift that is invisible until someone measures it.
+
+19. **An object's `layout` and `resolved_layout` should follow its featured
+    list into deprecation** (follow-up, after the pre-freeze fixes). The type
+    owns an instance's layout: the UI no longer offers a per-object layout
+    choice, so `layout` on an object records a decision nobody can make any
+    more, and `resolved_layout` is by construction derived — the type's
+    `type_settings.layout` is the source and the object's copy is a cache of
+    it.
+
+    The corpus agrees from two directions. `layout` restates `resolved_layout`
+    on 18,515 documents and has **never once disagreed**, so one of the two is
+    pure restatement. And both are declared `number` in 76–77 of the 77
+    dictionaries while every document writes them as enum-name strings, which
+    is the largest single class of the format's own
+    format-does-not-predict-shape problem — 45,369 slots.
+
+    This is the same shape as `featuredRelations`, settled the same way: a
+    detail the TYPE owns, cached on the object, migrating away inside the app,
+    and carried in the format as though the object had decided it.
+
+    It is a follow-up rather than a fix because `resolved_layout` is
+    load-bearing on the way IN — a reader with no type document to consult
+    still needs to know how to render the object — so retiring it means
+    deciding what an importer does when the type is absent. That is a question
+    about the bundle, not about one document. `type_settings.layout` is
+    untouched either way: it is the declaration, not the cache.
