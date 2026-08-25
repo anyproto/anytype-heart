@@ -31,10 +31,15 @@ package anyblockjson
 // deliberately absent from this list:
 //
 //   - `relationFormat` — 0 is `longtext`, a real format, not "unset" (§15 #14).
-//   - `relationFormatObjectTypes`, `featuredRelations` — list-valued and
-//     user-intent-bearing, the same empty-vs-absent shape GO-7451 settled the
-//     other way for a type's recommended lists: an empty list is how a
-//     cleared set is expressed, so it has to survive.
+//   - `relationFormatObjectTypes` — list-valued and user-intent-bearing, the
+//     same empty-vs-absent shape GO-7451 settled the other way for a type's
+//     recommended lists: an empty list is how a cleared set is expressed, so
+//     it has to survive.
+//   - `featuredRelations` was excluded here for the same reason, and the
+//     reason was wrong: an empty list there is not a cleared set but the
+//     LAYOUT SYNCER's output (layout/syncer.go), since no UI sets a
+//     per-object featured list. The key is now deprecated outright and never
+//     reaches this rule.
 //
 // This is a state normalization, recorded in `N(S)` (§11): such a key comes
 // back ABSENT. DroppedEmptySystemProperty exists so the round-trip

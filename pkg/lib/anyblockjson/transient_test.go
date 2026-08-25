@@ -110,6 +110,8 @@ func TestTransientProperties_BundledVerdictPerKey(t *testing.T) {
 		"spaceDashboardId": true,
 		"spaceUxType":      true,
 		"hasChat":          true,
+		// deprecated: the type owns which properties an instance features
+		"featuredRelations": true,
 	}
 	assert.Equal(t, len(want), len(transientProperties),
 		"every transient key owes a verdict here — a new one must say which case it is")

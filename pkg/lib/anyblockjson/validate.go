@@ -1437,6 +1437,29 @@ var transientProperties = map[string]string{
 	"spaceDashboardId": "deprecated: homepage's predecessor, and its `object` format holds sentinels, not ids",
 	"spaceUxType":      "deprecated",
 	"hasChat":          "deprecated",
+
+	// DEPRECATED, and the clearest case of the three: an object's own
+	// featured list. The TYPE owns which properties an instance features —
+	// `section: "featured"` in its property_definitions — and the clients
+	// read it from there, ignoring whatever the object stores.
+	//
+	// heart is actively migrating the stored ones away. layout/syncer.go
+	// rewrites an object's list to empty, keeping `description` if it was
+	// there, and the corpus is that migration caught in flight: of 16,927
+	// values across 12,603 documents, 6,135 are exactly `["description"]`
+	// and 1,285 are exactly `[]` — 59% carrying the syncer's own signature.
+	// There is no UI that sets a per-object featured list, so the remaining
+	// 41% are not user intent either; they are objects the syncer has not
+	// reached, still holding the defaults their type had at creation.
+	//
+	// Dropping it also retires a lie the format could not otherwise fix: the
+	// key is declared `format: "objects"` — an array of object ids — in the
+	// bundled table and in all 77 dictionaries, while holding zero object ids
+	// in all 16,927 real values. It holds property spellings, camelCase
+	// stored keys and bson keys, sometimes mixed inside one array. Nothing
+	// resolves it as declared, and writing a real object id there validated,
+	// imported and round-tripped with no warning at all.
+	"featuredRelations": "deprecated: the type's `section: \"featured\"` owns this, and the clients read it from there",
 }
 
 // isTransientProperty reports whether a stored key describes a moment rather

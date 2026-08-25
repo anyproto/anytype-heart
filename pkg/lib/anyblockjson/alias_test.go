@@ -32,8 +32,12 @@ func TestAlias_BundledPropertyKeysSpellProperty(t *testing.T) {
 		Blocks: []*model.Block{{Id: "o1",
 			Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}},
 		Details: fields(map[string]*types.Value{
-			"id":                str("o1"),
-			"featuredRelations": strList("name"),
+			"id": str("o1"),
+			// relationOptionColor rather than featuredRelations: the latter
+			// was this test's example until it was DEPRECATED outright (the
+			// type owns an object's featured list), so it no longer travels
+			// and could not demonstrate an alias.
+			"relationOptionColor": str("ice"),
 		}),
 	}
 
@@ -42,8 +46,8 @@ func TestAlias_BundledPropertyKeysSpellProperty(t *testing.T) {
 	require.NoError(t, err)
 
 	// then
-	assert.Contains(t, string(data), `"featured_properties"`)
-	assert.NotContains(t, string(data), "featured_relations",
+	assert.Contains(t, string(data), `"property_option_color"`)
+	assert.NotContains(t, string(data), "relation_option_color",
 		"the vacated slug must not survive anywhere in the document")
 	assert.NotContains(t, string(data), `"property_internal_keys"`,
 		"an alias is a bundled-table fact and owes no legend entry")
@@ -51,34 +55,47 @@ func TestAlias_BundledPropertyKeysSpellProperty(t *testing.T) {
 
 	_, back, err := Unmarshal(data, testOptions())
 	require.NoError(t, err)
-	assert.Equal(t, strList("name"), back.Details.Fields["featuredRelations"],
+	assert.Equal(t, str("ice"), back.Details.Fields["relationOptionColor"],
 		"the alias inverts onto the stored key")
 }
 
 // The stored key itself still resolves VERBATIM — §3 chain step 2 is
 // untouched by the alias layer — while the OLD derived slug binds nothing
-// any more: pre-freeze, no back-compat, so `featured_relations` is now an
+// any more: pre-freeze, no back-compat, so `relation_option_color` is now an
 // ordinary custom key that names itself.
+//
+// The example was `featuredRelations` until that key was DEPRECATED outright
+// (an object's featured list belongs to its type), and a deprecated key is
+// dropped on the way IN as well as out — so it could no longer show that a
+// stored key addresses itself.
 //
 // How this can fail: let bundledPropertyKeyBySpelling keep answering for a
 // slug whose key is aliased, and one stored key has two spellings again —
 // the §15 #14 disease the alias exists to end.
 func TestAlias_StoredKeyVerbatimAndTheVacatedSlugBindsNothing(t *testing.T) {
 	t.Run("the stored key is its own address", func(t *testing.T) {
-		doc := `{"version":1,"id":"o1","properties":{"featuredRelations":["name"]}}`
+		doc := `{"version":1,"id":"o1","properties":{"relationOptionColor":"ice"}}`
 		_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 		require.NoError(t, err)
-		assert.Equal(t, strList("name"), snap.Details.Fields["featuredRelations"])
+		assert.Equal(t, str("ice"), snap.Details.Fields["relationOptionColor"])
 	})
 
 	t.Run("the vacated slug names only itself", func(t *testing.T) {
-		doc := `{"version":1,"id":"o1","properties":{"featured_relations":["name"]}}`
+		doc := `{"version":1,"id":"o1","properties":{"relation_option_color":"ice"}}`
 		_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 		require.NoError(t, err)
-		assert.Equal(t, strList("name"), snap.Details.Fields["featured_relations"],
+		assert.Equal(t, str("ice"), snap.Details.Fields["relation_option_color"],
 			"a spelling no table binds passes through verbatim (§3 chain step 4)")
-		assert.Nil(t, snap.Details.Fields["featuredRelations"],
+		assert.Nil(t, snap.Details.Fields["relationOptionColor"],
 			"it must NOT land on the aliased bundled key")
+	})
+
+	t.Run("a deprecated key is dropped in both directions", func(t *testing.T) {
+		doc := `{"version":1,"id":"o1","properties":{"featured_properties":["name"]}}`
+		_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
+		require.NoError(t, err)
+		assert.Nil(t, snap.Details.Fields["featuredRelations"],
+			"the type owns an object's featured list; the object's copy does not come back")
 	})
 }
 

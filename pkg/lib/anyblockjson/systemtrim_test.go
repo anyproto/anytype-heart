@@ -108,10 +108,13 @@ func TestSystemTrim_TheExcludedKeysKeepTheirEmptyValue(t *testing.T) {
 	require.NoError(t, err)
 
 	// then
-	// v0.38: featuredRelations spells `featured_properties` on the wire
-	// (alias.go) — the whitelist verdict is unchanged
-	assert.Contains(t, string(pageDoc), `"featured_properties"`,
-		"featuredRelations is deliberately outside the whitelist (§15 #12)")
+	// featuredRelations used to be this test's example of a key deliberately
+	// OUTSIDE the whitelist, on the reasoning that an empty list is a cleared
+	// set. That reasoning was wrong — no UI sets a per-object featured list,
+	// and an empty one is the layout syncer's output — so the key is now
+	// deprecated outright and never reaches this rule at all.
+	assert.NotContains(t, string(pageDoc), `"featured_properties"`,
+		"deprecated: the type owns an object's featured list")
 	assert.Contains(t, string(relDoc), `"format": "text"`,
 		"relationFormat 0 is longtext, a real format, and §2d requires the field")
 	assert.Contains(t, string(relDoc), `"object_types": []`,
