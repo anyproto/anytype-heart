@@ -48,8 +48,11 @@ const PropertiesFileName = "properties.json"
 
 // PropertyDictionary is a bundle's properties.json (§2f).
 type PropertyDictionary struct {
-	// Installed lists the BUNDLED property keys present in the space, as
-	// stored keys only — presence, not definition: 98% of installed copies
+	// Installed lists the BUNDLED properties present in the space —
+	// presence, not definition. This field holds STORED keys; the wire
+	// spells them as api slugs (`due_date`, not `dueDate`), because v0.36
+	// made the dictionary spell a property the way every other slot does.
+	// 98% of installed copies
 	// are field-identical to the bundled table, so the key is the whole of
 	// what a restore needs. A key that also appears in Properties is
 	// installed AND divergent: the entry overrides the table.

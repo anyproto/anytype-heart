@@ -404,7 +404,7 @@ number in `properties`) are refused with the repair named.
 **`type_settings` holds everything defining the type** (§2a). One gated
 subtree carries the five settings lifted from `properties` — `layout`
 (recommendedLayout), `api_key` (apiObjectKey — NOT `slug`: the document's
-own label differs from it on 941 of 1,326 corpus types), `plural_name`,
+own spelling differs from it on 247 of 1,326 corpus types), `plural_name`,
 `default_template`, `default_view` — plus `property_definitions`, the array
 that lived at the root as `type_properties`. The flat spellings are refused
 in `properties` ON TYPE DOCUMENTS only, because the lift is kind-scoped:
@@ -1725,7 +1725,7 @@ property):
 | member | stored key | shape |
 |---|---|---|
 | `layout` | `recommendedLayout` | the recommended layout of objects OF this type, as a layout name; a stored number outside the vocabulary passes through raw, and an unknown NAME is refused (it would import as a string onto a number detail, silently read as `basic`). |
-| `api_key` | `apiObjectKey` | the type's public API key. **`api_key`, not `slug`**: of 1,326 corpus type documents with one, the document's own label differs from it in 941 (`Space member` has api key `participant` and label `space_member`) — calling it a slug would imply it is the term used elsewhere in the document, which for 71% of types it is not. |
+| `api_key` | `apiObjectKey` | the type's public API key. **`api_key`, not `slug`**: of 1,326 corpus type documents with one, it differs from the document's own spelling in 247 (the `property` type's api key is `relation`, the word the public API kept when the format renamed the concept) — calling it a slug would imply it is the term used elsewhere in the document, which for those 247 it is not. |
 | `plural_name` | `pluralName` | the plural display name. |
 | `default_template` | `defaultTemplateId` | the object id of the template new objects start from — a scalar: the stored value is a list in every corpus document, with at most one entry (55 of 142; 87 empty), and a second entry is dropped with a warning. |
 | `default_view` | `defaultViewType` | the default view type, as a §6.2 view-type name; same raw-number/unknown-name policy as `layout`. |
@@ -2416,7 +2416,7 @@ belongs in the index because a manifest is what an index is).
 {
   "$schema": "https://schemas.anytype.io/anyblock/1/properties.schema.json",
   "version": 1,
-  "installed": ["createdDate", "dueDate", "tag"],
+  "installed": ["created_date", "due_date", "tag"],
   "properties": [
     { "property": "6a32d4856761631534b22f85",
       "internal_key": "6a32d4856761631534b22f85", "name": "Budget", "format": "number" },
