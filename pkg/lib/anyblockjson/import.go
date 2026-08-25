@@ -653,12 +653,14 @@ func (imp *importer) propertyValue(key, slug string, v any) *types.Value {
 	if v == nil {
 		return &types.Value{Kind: &types.Value_NullValue{}}
 	}
-	// layout is named in the format, stored as a number (§3). A number is
-	// still accepted so legacy documents keep importing unchanged.
-	if isLayoutKey(key) {
-		if s, isStr := v.(string); isStr && layoutNames.has(s) {
+	// a name-over-number key is named in the format, stored as a number
+	// (§3). A number is still accepted so legacy documents keep importing
+	// unchanged; a string that is not a vocabulary name never reaches here —
+	// validation refused the document.
+	if vocab, named := namedEnumProperty(key); named {
+		if s, isStr := v.(string); isStr && vocab.has(s) {
 			return &types.Value{Kind: &types.Value_NumberValue{
-				NumberValue: float64(layoutNames.value(s)),
+				NumberValue: vocab.value(s),
 			}}
 		}
 	}

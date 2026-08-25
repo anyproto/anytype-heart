@@ -253,6 +253,16 @@ func hostileSnapshot(n int) (model.SmartBlockType, *model.SmartBlockSnapshotBase
 		// entry existed.
 		"unique_key": str("custom, not the resolution vector"),
 		"due_date":   str("custom, beside dueDate"),
+		// a name-over-number key holding a stored STRING, both halves (§3).
+		// A string the vocabulary does not name has no written form: written
+		// verbatim it is a document Validate refuses (unknown layout), so
+		// every non-type seed failed I1 here until export learned to drop
+		// it. A string that IS a name survives — and reads back as the
+		// number, which the fixpoint leg checks. On TYPE seeds the same two
+		// values exercise the §2a lift's own string handling instead
+		// (typeSettingEnumValue) and the provenance drop.
+		"layout":            str("garbage-name"),
+		"recommendedLayout": str("todo"),
 		// the third shadow shape, and the only one the bundled table cannot
 		// see: a stored key whose spelling the VOCABULARY IN FORCE binds to a
 		// different key (shadowVocab below slugs the BSON key onto it). Real

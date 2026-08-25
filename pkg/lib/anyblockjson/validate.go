@@ -1057,15 +1057,22 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 				continue
 			}
 			boundBy[key] = term
-			// layout properties are named, not numbered (§3). A typo would
-			// otherwise import as a raw string onto a number-format property:
-			// no error anywhere, and every consumer reads it with an int getter
-			// and silently sees "basic".
-			if s, isStr := v.(string); isLayoutKey(key) && isStr {
-				if !layoutNames.has(s) {
-					addIssue(path, "unknown layout %q", s)
+			// name-over-number properties are named, not numbered (§3). A
+			// typo would otherwise import as a raw string onto a
+			// number-format property: no error anywhere, and every consumer
+			// reads it with an int getter and silently sees the enum's zero.
+			// The refusal states the vocabulary, because no schema slot can:
+			// a property SPELLING is not fixed to its stored key (a legend
+			// may rebind it), so this semantic pass — which runs on the
+			// RESOLVED key — is the vocabulary's only enforceable statement.
+			if vocab, named := namedEnumProperty(key); named {
+				if s, isStr := v.(string); isStr {
+					if !vocab.has(s) {
+						addIssue(path, "unknown %s %q — one of %s; a raw stored number is also accepted",
+							vocab.what, s, vocab.quotedNames())
+					}
+					continue // a known name, or a raw number: both accepted (§3)
 				}
-				continue // a raw number is still accepted (§3)
 			}
 			if reason, wrong := wrongShapeForFormat(key, v); wrong {
 				warnIssue(path, "%s", reason)

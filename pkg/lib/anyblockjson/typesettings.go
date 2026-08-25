@@ -239,15 +239,17 @@ func (e *exporter) buildTypeSettings() *omap {
 		return nil
 	}
 	g := &omap{}
+	// both enum members read through the guarded vocabulary adapters (§3):
+	// the bare int32 casts they used before named NaN and fractions after
+	// real members — int32(NaN) is 0 on this machine, which spelt a NaN
+	// layout as the zero's name
 	g.setNonEmpty("layout", e.typeSettingEnumValue(detailKeyRecommendedLayout, "/type_settings/layout",
-		layoutNames.has,
-		func(n float64) string { return layoutNames.name(model.ObjectTypeLayout(int32(n))) }))
+		layoutVocabulary.has, layoutVocabulary.name))
 	g.setNonEmpty("api_key", e.typeSettingString(detailKeyApiObjectKey, "/type_settings/api_key"))
 	g.setNonEmpty("plural_name", e.typeSettingString(detailKeyPluralName, "/type_settings/plural_name"))
 	g.setNonEmpty("default_template", e.typeSettingTemplate())
 	g.setNonEmpty("default_view", e.typeSettingEnumValue(detailKeyDefaultViewType, "/type_settings/default_view",
-		viewTypeNames.has,
-		func(n float64) string { return viewTypeNames.name(model.BlockContentDataviewViewType(int32(n))) }))
+		viewTypeVocabulary.has, viewTypeVocabulary.name))
 	if tp := e.buildTypeProperties(); tp != nil {
 		g.set("property_definitions", tp) // present even when empty (§2a)
 	}

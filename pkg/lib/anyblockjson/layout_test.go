@@ -102,12 +102,31 @@ func TestValidate_UnknownLayoutRejected(t *testing.T) {
 	assert.Contains(t, err.Error(), "'profile'", "including the name that was nearly right")
 }
 
-// the other layout-ish bundled keys hold different enums and must be untouched
-func TestLayout_OnlyObjectLayoutKeysAreNamed(t *testing.T) {
-	for _, key := range []string{"layoutAlign", "layoutWidth", "widgetLayout", "headerRelationsLayout"} {
-		assert.False(t, isLayoutKey(key), "%s is not an ObjectTypeLayout", key)
+// Which stored keys are written by NAME is a per-key verdict (§3), and this
+// pins each one together with the vocabulary it draws from — a key added to
+// namedEnumProperties must state its concept here, and a key deliberately
+// left as a number must stay listed as such. (This replaces the old
+// isLayoutKey membership pin: the layout keys were the only named ones until
+// the mechanism became a per-key table.)
+func TestNamedEnumProperties_PerKeyVerdict(t *testing.T) {
+	want := map[string]string{ // stored key → the concept its refusals name
+		"recommendedLayout": "layout",
+		"layout":            "layout",
+		"resolvedLayout":    "layout",
 	}
-	for _, key := range []string{"recommendedLayout", "layout", "resolvedLayout"} {
-		assert.True(t, isLayoutKey(key), "%s is an ObjectTypeLayout", key)
+	assert.Equal(t, len(want), len(namedEnumProperties),
+		"every named key owes a verdict here — a new one must say which vocabulary it draws from")
+	for key, what := range want {
+		vocab, named := namedEnumProperty(key)
+		require.True(t, named, "%s must be written by name", key)
+		assert.Equal(t, what, vocab.what, "%s draws from the wrong vocabulary", key)
+	}
+	// the layout-ish bundled keys that stay numbers, each for a stated
+	// reason: layoutWidth is a fraction, not an enum; widgetLayout and
+	// headerRelationsLayout hold enums nothing measurable writes (13 and 0
+	// occurrences across 28,604 real exported documents)
+	for _, key := range []string{"layoutWidth", "widgetLayout", "headerRelationsLayout"} {
+		_, named := namedEnumProperty(key)
+		assert.False(t, named, "%s is deliberately not named", key)
 	}
 }

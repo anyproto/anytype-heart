@@ -1552,6 +1552,20 @@ func (e *exporter) buildProperties() *omap {
 		if DroppedEmptySystemProperty(k, e.snapshot.Details.Fields[k]) {
 			continue
 		}
+		// a name-over-number key can hold a vocabulary NAME or a number and
+		// nothing else (§3): Validate refuses any other string as an unknown
+		// name, so a stored string the vocabulary does not name has no
+		// written form — emitting it verbatim produced a document this
+		// package's own Validate rejects (I1). Dropped with a warning, the
+		// §2a typeSettingEnumValue policy; a stored string that IS a name
+		// survives and imports back as its number.
+		if vocab, named := namedEnumProperty(k); named {
+			if s, isStr := e.snapshot.Details.Fields[k].GetKind().(*types.Value_StringValue); isStr && !vocab.has(s.StringValue) {
+				e.warn("/properties", "%s %q on %q is not a name its vocabulary can hold and is dropped — "+
+					"there is no way to write it (§3)", vocab.what, s.StringValue, k)
+				continue
+			}
+		}
 		// a stored detail key is not necessarily a property name: real data
 		// holds an empty key and keys with control characters in them, and
 		// there is no way to write those (§3). Dropping them is what keeps
@@ -1708,11 +1722,14 @@ func (e *exporter) propertyValue(key string, v *types.Value) any {
 		}
 		return nil
 	}
-	// layout is stored as a number and named in the format (§3); a number
-	// outside the enum falls through and exports unchanged.
-	if isLayoutKey(key) {
+	// a name-over-number key is stored as a number and named in the format
+	// (§3); a number outside the vocabulary falls through and exports
+	// unchanged, and a stored STRING never reaches here — buildProperties
+	// drops one the vocabulary does not name (I1) and writes a known name
+	// through the verbatim fall-through below, where import maps it back.
+	if vocab, named := namedEnumProperty(key); named {
 		if n, isNum := v.GetKind().(*types.Value_NumberValue); isNum {
-			if name := layoutNames.name(model.ObjectTypeLayout(int32(n.NumberValue))); name != "" {
+			if name := vocab.name(n.NumberValue); name != "" {
 				return name
 			}
 		}

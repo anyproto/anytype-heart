@@ -620,19 +620,92 @@ var layoutNames = newEnumNames(map[model.ObjectTypeLayout]string{
 	model.ObjectType_discussion:          "discussion",
 })
 
-// layoutValuedKeys are the properties whose stored number is an
-// ObjectTypeLayout. The other layout-ish bundled keys hold *different* enums
-// — layoutAlign is a block align, layoutWidth a fraction, widgetLayout a
-// widget layout, headerRelationsLayout its own enum — so they are left alone.
-var layoutValuedKeys = map[string]struct{}{
-	"recommendedLayout": {},
-	"layout":            {},
-	"resolvedLayout":    {},
+// propertyVocabulary is one stored property key's name-over-number contract
+// (§3): the stored value is a number whose meaning is a proto enum, and the
+// format writes the NAME — a bare integer would be an opaque enum in an
+// otherwise self-describing format. All four surfaces that touch such a key
+// ask this one struct, so they cannot disagree about what a name means:
+// export substitutes the name for an in-vocabulary number (and refuses to
+// write a stored string the vocabulary does not name — there is no way to
+// write it, I1); import maps a known name back to its number; validation
+// refuses an unknown name as an ERROR, because the typo would otherwise
+// import as a raw string onto a number-format detail, where every consumer
+// reads it with an int getter and silently sees the enum's zero; and a raw
+// number outside the vocabulary passes every surface unchanged, because a
+// stored value round-trips as its number rather than being lost.
+type propertyVocabulary struct {
+	what  string               // the concept a refusal names: "layout", "align", …
+	has   func(string) bool    // is this string a vocabulary name
+	value func(string) float64 // name → stored number (only for names has() admits)
+	name  func(float64) string // stored number → name; "" outside the vocabulary
+	names func() []string      // the vocabulary, sorted, for refusals that state it
 }
 
-func isLayoutKey(key string) bool {
-	_, ok := layoutValuedKeys[key]
-	return ok
+// vocabularyOf adapts an enumNames table to the property contract. The name
+// direction reads the number the way every consumer of these details does —
+// int32 of the float — GUARDED the way relationFormatName is: int32(NaN) is 0
+// on this machine, and without the guard a NaN stored on a layout key exports
+// as the enum's zero's name, a false claim that then imports as a permanent
+// silent rewrite. A fraction, an infinity or an out-of-int32 number likewise
+// has no name and round-trips as the number it is.
+func vocabularyOf[T ~int32](e enumNames[T], what string) propertyVocabulary {
+	return propertyVocabulary{
+		what:  what,
+		has:   e.has,
+		value: func(n string) float64 { return float64(e.value(n)) },
+		name: func(n float64) string {
+			if math.IsNaN(n) || math.IsInf(n, 0) || n != math.Trunc(n) ||
+				n < math.MinInt32 || n > math.MaxInt32 {
+				return ""
+			}
+			return e.name(T(int32(n)))
+		},
+		names: func() []string {
+			out := make([]string, 0, len(e.toVal))
+			for n := range e.toVal {
+				out = append(out, n)
+			}
+			sort.Strings(out)
+			return out
+		},
+	}
+}
+
+// quotedNames renders the vocabulary for a refusal — 'a', 'b', 'c' — in the
+// same quoting the schema's own enum errors use, so the two refusal channels
+// read as one.
+func (v propertyVocabulary) quotedNames() string {
+	names := v.names()
+	for i, n := range names {
+		names[i] = "'" + n + "'"
+	}
+	return strings.Join(names, ", ")
+}
+
+var layoutVocabulary = vocabularyOf(layoutNames, "layout")
+
+// viewTypeVocabulary is not a property vocabulary — no stored detail key
+// maps to it — but §2a's default_view member shares the reading, and the
+// guarded adapter is how both enum members stopped naming NaN.
+var viewTypeVocabulary = vocabularyOf(viewTypeNames, "view type")
+
+// namedEnumProperties maps each stored property key whose number the format
+// names onto its vocabulary (§3). The three layout keys hold an
+// ObjectTypeLayout. The remaining layout-ish bundled keys are left as
+// numbers deliberately: layoutWidth is a fraction, not an enum, and
+// widgetLayout/headerRelationsLayout hold enums nothing measurable writes —
+// 13 and 0 occurrences across 28,604 real exported documents.
+var namedEnumProperties = map[string]propertyVocabulary{
+	"recommendedLayout": layoutVocabulary,
+	"layout":            layoutVocabulary,
+	"resolvedLayout":    layoutVocabulary,
+}
+
+// namedEnumProperty answers whether a stored key is written by name, and
+// with which vocabulary.
+func namedEnumProperty(key string) (propertyVocabulary, bool) {
+	v, ok := namedEnumProperties[key]
+	return v, ok
 }
 
 // formatName is the export-side name of a stored format: the canonical name
