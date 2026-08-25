@@ -103,7 +103,15 @@ func main() {
 			fail++
 			continue
 		}
-		dict, err := anyblockjson.UnmarshalPropertyDictionary(data)
+		// the codec TOLERATES an installed key its bundled table cannot name
+		// (a newer app's bundled property), but it now SAYS so through the
+		// same warn channel object documents have — this tool used to carry
+		// its own copy of that check, which meant the authoring surface knew
+		// something the format itself did not report.
+		var dictWarnings []anyblockjson.Issue
+		dict, err := anyblockjson.UnmarshalPropertyDictionaryWarn(data, func(i anyblockjson.Issue) {
+			dictWarnings = append(dictWarnings, i)
+		})
 		if err != nil {
 			fmt.Printf("INVALID %s\n         %v\n", dictPath, err)
 			fail++
@@ -112,16 +120,11 @@ func main() {
 		fmt.Printf("ok      %s\n         %d installed key(s), %d defined propert%s\n",
 			dictPath, len(dict.Installed), len(dict.Properties),
 			map[bool]string{true: "y", false: "ies"}[len(dict.Properties) == 1])
-		// the codec TOLERATES an installed key its bundled table cannot name
-		// (a newer app's bundled property — anyblockjson.PropertyDictionary),
-		// but in a bundle being authored the far likelier story is a typo or
-		// a space-minted key filed on the wrong list, and this tool is the
-		// authoring surface: say so, without failing what the reader accepts.
-		if unknown := anyblockbatch.UnknownInstalledKeys(dict); len(unknown) > 0 {
+		if len(dictWarnings) > 0 {
 			warned++
-			fmt.Printf("         warn: %d installed key(s) this bundled table cannot name — a reader installs nothing for them.\n"+
-				"               If yours is not from a newer app, it is a typo or belongs in `properties` with its format: %s\n",
-				len(unknown), strings.Join(unknown, ", "))
+			for _, w := range dictWarnings {
+				fmt.Printf("         warn: %s\n", w.String())
+			}
 		}
 	}
 	for _, f := range files {

@@ -784,24 +784,6 @@ func ObjectNames(files []string) (map[string]string, error) {
 	return out, nil
 }
 
-// UnknownInstalledKeys reports the dictionary's `installed` keys this
-// build's bundled table cannot name. The CODEC tolerates them — the table
-// grows independently of the format version, so a newer app's backup lists
-// keys an older reader has never heard of, and refusing them would make
-// every backup unreadable one app version back (§2f) — but a reader installs
-// nothing for them, so in a bundle being AUTHORED they are far likelier a
-// typo or a space-minted key filed on the wrong list. The tools warn; the
-// codec stays silent; the two verdicts are the same fact at two surfaces.
-func UnknownInstalledKeys(dict *anyblockjson.PropertyDictionary) []string {
-	var out []string
-	for _, key := range dict.Installed {
-		if _, err := bundle.GetRelation(domain.RelationKey(key)); err != nil {
-			out = append(out, key)
-		}
-	}
-	return out
-}
-
 // DictionaryFormats reads the bundle's property dictionary (§2f) into the
 // same batch-wide table ScanFormats builds, plus the full definitions for
 // pre-minting. The dictionary is where an author declares a property WITHOUT

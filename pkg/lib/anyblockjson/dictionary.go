@@ -29,6 +29,8 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
@@ -110,6 +112,23 @@ type jsonDictionary struct {
 // The reader installs the keys it knows and skips the rest; a WRITER, which
 // checks against its own table, has no such excuse.
 func UnmarshalPropertyDictionary(data []byte) (*PropertyDictionary, error) {
+	return UnmarshalPropertyDictionaryWarn(data, nil)
+}
+
+// UnmarshalPropertyDictionaryWarn is UnmarshalPropertyDictionary with a sink
+// for warning-grade issues, the way ValidateWarn is for object documents.
+//
+// The dictionary had no such sink, and it is the one file in the format whose
+// keys are STORED keys while every other slot spells the snake_case label —
+// so the likeliest authoring mistake, writing the label, produced NOTHING on
+// the way in. An `installed` key outside the bundled table read clean and
+// failed only on the way back out; a `properties` entry keyed by the label
+// read clean and quietly minted a second property beside the bundled one.
+func UnmarshalPropertyDictionaryWarn(data []byte, onWarning func(Issue)) (*PropertyDictionary, error) {
+	return unmarshalPropertyDictionary(data, onWarning)
+}
+
+func unmarshalPropertyDictionary(data []byte, warn func(Issue)) (*PropertyDictionary, error) {
 	raw, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
 	if err != nil {
 		return nil, &ValidationError{Issues: []Issue{{Message: fmt.Sprintf("invalid JSON: %v", err)}}}
@@ -142,8 +161,9 @@ func UnmarshalPropertyDictionary(data []byte) (*PropertyDictionary, error) {
 	if err := jsonUnmarshal(data, &jd); err != nil {
 		return nil, fmt.Errorf("decode property dictionary: %w", err)
 	}
-	d := &PropertyDictionary{Installed: jd.Installed}
-	for _, tp := range jd.Properties {
+	d := &PropertyDictionary{Installed: installedKeys(jd.Installed, warn)}
+	for i, tp := range jd.Properties {
+		shadowedBundledKeyIssue(i, tp.Key, warn)
 		// entries speak STORED keys in every key slot — `key` and
 		// `object_types` alike — so there is no legend to run and no
 		// vocabulary to consult: the definition is built by the same shared
@@ -155,6 +175,99 @@ func UnmarshalPropertyDictionary(data []byte) (*PropertyDictionary, error) {
 		d.Properties = append(d.Properties, def)
 	}
 	return d, nil
+}
+
+// installedKeys reads the `installed` list, recovering a key written in the
+// label spelling and reporting every key the bundled table does not know.
+//
+// `installed` carries STORED keys — `dueDate`, not `due_date` — and it is the
+// only slot in the format that does, which is exactly why authors write the
+// other one: within a single real bundle, an object document spells the
+// property `created_date` and the dictionary spells it `createdDate`.
+//
+// A key outside the table is TOLERATED, not refused, and that tolerance is
+// deliberate: the bundled table grows independently of the format version, so
+// a backup written by a newer app lists keys an older reader has never heard
+// of, and refusing them would make every backup unreadable one app version
+// back. What was missing is that nothing SAID so — the document read clean
+// and only re-rendering it failed.
+//
+// When the unknown key folds to exactly one bundled key it is recovered to
+// it, the forgiving layer's own rule (bundle.RelationKeysByApiFold): exact
+// match first, a single fold match second, an ambiguity never resolved by
+// guess. A key that folds to nothing is kept verbatim — it may be the newer
+// app's.
+func installedKeys(raw []string, warn func(Issue)) []string {
+	if len(raw) == 0 {
+		return raw
+	}
+	out := make([]string, 0, len(raw))
+	for i, key := range raw {
+		path := fmt.Sprintf("/installed/%d", i)
+		if bundle.HasRelation(domain.RelationKey(key)) {
+			out = append(out, key)
+			continue
+		}
+		switch candidates := bundle.RelationKeysByApiFold(key); len(candidates) {
+		case 1:
+			stored := candidates[0].String()
+			warnIssue(warn, path, "installed key %q is spelled the way a document spells it; "+
+				"this list carries STORED keys, so it is read as %q. Write %q here — `installed` "+
+				"restores from the bundled table, and %q is not in it (§2f)",
+				key, stored, stored, key)
+			out = append(out, stored)
+		case 0:
+			warnIssue(warn, path, "installed key %q is not a bundled property, so a reader "+
+				"restoring this bundle installs NOTHING for it. Give it a full entry in "+
+				"`properties`, where its definition travels with it — or, if it comes from a "+
+				"newer app whose bundled table has it, expect this reader to skip it (§2f)", key)
+			out = append(out, key)
+		default:
+			names := make([]string, 0, len(candidates))
+			for _, c := range candidates {
+				names = append(names, strconv.Quote(c.String()))
+			}
+			sort.Strings(names)
+			warnIssue(warn, path, "installed key %q folds to more than one bundled property (%s), "+
+				"so which one is meant cannot be decided here — write the stored key you mean (§2f)",
+				key, strings.Join(names, ", "))
+			out = append(out, key)
+		}
+	}
+	return out
+}
+
+// shadowedBundledKeyIssue reports an entry whose key is the LABEL spelling of
+// a bundled property.
+//
+// Nothing is recovered here, unlike `installed`: an entry carries a full
+// definition, and a custom property deliberately named close to a bundled one
+// is legitimate — rewriting its key would change what it defines. But an
+// entry keyed `due_date` beside the bundled `dueDate` defines a SECOND
+// property that merely looks like the first, and every document referring to
+// the bundled one keeps referring to the bundled one, so the shadow collects
+// nothing.
+func shadowedBundledKeyIssue(i int, key string, warn func(Issue)) {
+	if warn == nil || key == "" || bundle.HasRelation(domain.RelationKey(key)) {
+		return
+	}
+	candidates := bundle.RelationKeysByApiFold(key)
+	if len(candidates) != 1 {
+		return
+	}
+	stored := candidates[0].String()
+	warnIssue(warn, fmt.Sprintf("/properties/%d/key", i),
+		"%q defines a NEW property that merely looks like the bundled %q — this list carries "+
+			"STORED keys, and %q is the label spelling. Documents referring to %q go on referring "+
+			"to it, so nothing ever uses this entry. Write %q to define the bundled property, or "+
+			"keep this key if a distinct property is what you meant (§2f)",
+		key, stored, key, stored, stored)
+}
+
+func warnIssue(warn func(Issue), path, format string, args ...any) {
+	if warn != nil {
+		warn(Issue{Path: path, Message: fmt.Sprintf(format, args...)})
+	}
 }
 
 // dictionaryDuplicateIssues refuses a key stated twice, in either list. Two
