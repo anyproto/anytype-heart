@@ -1,0 +1,1170 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.anytype.io/anyblock/1/authoring/object.schema.json",
+  "title": "AnyBlock object — authoring subset",
+  "description": "One object you are creating from nothing: a page, a type, or a template. This is a strict subset of the full object schema (../object.schema.json) — every document valid here is valid there, same format, same version. What the full schema additionally admits is what only a live space can produce: block ids, attribution, timestamps, minted internal keys, legends, provenance. You never write those; a reader mints or derives them. Write what the object IS and leave the rest out.",
+  "x-app": "Anytype",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Write this file's URL: https://schemas.anytype.io/anyblock/1/authoring/object.schema.json"
+    },
+    "version": {
+      "const": 1
+    },
+    "kind": {
+      "enum": [
+        "page",
+        "object_type",
+        "template"
+      ],
+      "description": "OMIT for an ordinary object — absent means page. Write \"object_type\" for a type document and \"template\" for a template; nothing else is authorable."
+    },
+    "id": {
+      "$ref": "#/$defs/documentId",
+      "description": "This document's bundle-local id, a slug you pick: \"page-welcome\", \"type-habit\". Other files point here with it — a widget target, a link block, a collection's items. Give every document one."
+    },
+    "type": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The object's type, by key: a built-in key (\"page\", \"task\", \"collection\") or the internal_key of a type this bundle declares. On a template, the literal \"template\"."
+    },
+    "template_for": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Templates only: the key of the type this template is for — a type this bundle declares."
+    },
+    "internal_key": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[^\u0000-\u001f]+$",
+      "description": "Type documents only: the type's key, a snake_case slug you mint (\"habit\"). Objects name the type by writing this key in their `type`. Pick a fresh word — a built-in key (\"task\", \"book\") names the built-in type instead."
+    },
+    "icon": {
+      "$ref": "#/$defs/icon"
+    },
+    "cover": {
+      "$ref": "#/$defs/cover"
+    },
+    "properties": {
+      "$ref": "#/$defs/propertyMap"
+    },
+    "type_settings": {
+      "type": "object",
+      "description": "Type documents only: what the type is. Everything here is optional except that a useful type declares a layout and its properties.",
+      "properties": {
+        "layout": {
+          "enum": [
+            "basic",
+            "profile",
+            "todo",
+            "note"
+          ],
+          "description": "How objects of this type look: \"basic\" (title + content), \"profile\" (round avatar), \"todo\" (checkbox in the title), \"note\" (no title)."
+        },
+        "plural_name": {
+          "type": "string",
+          "description": "The plural display name: \"Habits\"."
+        },
+        "default_template": {
+          "$ref": "#/$defs/documentId",
+          "description": "The id of a template document in this bundle that new objects of this type start from."
+        },
+        "default_view": {
+          "enum": [
+            "table",
+            "list",
+            "gallery",
+            "kanban",
+            "calendar"
+          ],
+          "description": "Which view the type opens with. Declare the views themselves in a dataview block on this document."
+        },
+        "property_definitions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/propertyDefinition"
+          },
+          "description": "The type's properties, in display order. An entry names a property (by `property` or `name`) and says where it shows (`section`); its definition — format, options — can live here or in the bundle's properties.json."
+        }
+      },
+      "additionalProperties": false
+    },
+    "blocks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/block"
+      },
+      "description": "The document's content, top to bottom, as one flat array. Nesting is the per-block `indent`. No ids — the app assigns them."
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/documentId"
+      },
+      "description": "Collections only (type \"collection\"): the member objects, by bundle-local id, in order."
+    }
+  },
+  "required": [
+    "version"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "object_type"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "then": {
+        "required": [
+          "internal_key",
+          "type_settings",
+          "properties"
+        ],
+        "properties": {
+          "properties": {
+            "required": [
+              "name"
+            ]
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "internal_key": false,
+          "type_settings": false
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "template"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "then": {
+        "required": [
+          "type",
+          "template_for"
+        ]
+      },
+      "else": {
+        "properties": {
+          "template_for": false
+        }
+      }
+    },
+    {
+      "if": {
+        "not": {
+          "required": [
+            "kind"
+          ]
+        }
+      },
+      "then": {
+        "properties": {
+          "type": {
+            "not": {
+              "const": "template"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "documentId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$",
+      "not": {
+        "enum": [
+          "favorite",
+          "recent",
+          "set",
+          "collection",
+          "widgets",
+          "graph"
+        ]
+      },
+      "description": "A bundle-local id: letters, digits, `-`, `_`; never starting with `_` (that prefix is the platform's) and never one of the six reserved listing words."
+    },
+    "propertyMap": {
+      "type": "object",
+      "description": "The object's property values, keyed by property key: `name` (the title), `description`, and the keys this bundle's types and properties.json declare. Value shape follows the property's format — text/url/email/phone: a string; number: a number; checkbox: a boolean; date: an RFC 3339 UTC string (\"2026-07-06T15:04:05Z\"); select and multi_select: an ARRAY of option names; objects/files: an array of bundle-local ids. Only write a key to say something — an absent key means \"not set\". `is_favorite: true` pins the object to Favorites. Do NOT write ids, icons, covers, timestamps or attribution here: the icon and cover are envelope fields, and the rest is the app's to derive.",
+      "propertyNames": {
+        "pattern": "^[^\u0000-\u001f]+$",
+        "maxLength": 128,
+        "not": {
+          "enum": [
+            "id",
+            "type",
+            "layout",
+            "resolved_layout",
+            "resolvedLayout",
+            "icon_emoji",
+            "iconEmoji",
+            "icon_image",
+            "iconImage",
+            "icon_name",
+            "iconName",
+            "icon_option",
+            "iconOption",
+            "cover_id",
+            "coverId",
+            "cover_type",
+            "coverType",
+            "cover_scale",
+            "coverScale",
+            "cover_x",
+            "coverX",
+            "cover_y",
+            "coverY",
+            "creator",
+            "created_date",
+            "createdDate",
+            "last_modified_by",
+            "lastModifiedBy",
+            "last_modified_date",
+            "lastModifiedDate",
+            "added_date",
+            "addedDate",
+            "space_id",
+            "spaceId",
+            "unique_key",
+            "uniqueKey",
+            "snippet",
+            "backlinks",
+            "links",
+            "mentions",
+            "origin",
+            "import_type",
+            "importType",
+            "old_anytype_id",
+            "oldAnytypeID",
+            "revision",
+            "restrictions",
+            "source_file_path",
+            "sourceFilePath",
+            "internal_flags",
+            "internalFlags",
+            "featured_properties",
+            "featuredRelations",
+            "is_archived",
+            "isArchived",
+            "is_deleted",
+            "isDeleted",
+            "sync_status",
+            "syncStatus"
+          ]
+        }
+      },
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": [
+              "string",
+              "number",
+              "boolean",
+              "null"
+            ]
+          },
+          {
+            "type": "array"
+          }
+        ]
+      }
+    },
+    "icon": {
+      "type": "object",
+      "description": "The object's icon — ONE of three kinds, chosen by `format`: an emoji, a built-in named icon, or a bare palette colour.",
+      "required": [
+        "format"
+      ],
+      "properties": {
+        "format": {
+          "enum": [
+            "emoji",
+            "icon",
+            "color"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "format": {
+                "const": "emoji"
+              }
+            },
+            "required": [
+              "format"
+            ]
+          },
+          "then": {
+            "required": [
+              "format",
+              "emoji"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "format": {},
+              "emoji": {
+                "type": "string",
+                "minLength": 1,
+                "description": "One emoji: \"🌱\"."
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "format": {
+                "const": "icon"
+              }
+            },
+            "required": [
+              "format"
+            ]
+          },
+          "then": {
+            "required": [
+              "format",
+              "name"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "format": {},
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64,
+                "pattern": "^[^/]+$",
+                "description": "A built-in icon name (\"book\", \"repeat\", \"calendar\"). The usual choice for a type's icon. A name the app does not know shows as no icon."
+              },
+              "color": {
+                "$ref": "#/$defs/paletteColor"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "format": {
+                "const": "color"
+              }
+            },
+            "required": [
+              "format"
+            ]
+          },
+          "then": {
+            "required": [
+              "format",
+              "color"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "format": {},
+              "color": {
+                "$ref": "#/$defs/paletteColor"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "cover": {
+      "type": "object",
+      "description": "The object's cover — a flat colour or a gradient, chosen by `format`. The names are the app's own; observed colours: black, ice, blue; observed gradients: pinkOrange, red, sky, blue, bluePink, greenOrange.",
+      "required": [
+        "format"
+      ],
+      "properties": {
+        "format": {
+          "enum": [
+            "color",
+            "gradient"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "format": {
+                "const": "color"
+              }
+            },
+            "required": [
+              "format"
+            ]
+          },
+          "then": {
+            "required": [
+              "format",
+              "color"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "format": {},
+              "color": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64,
+                "pattern": "^[^/]+$"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "format": {
+                "const": "gradient"
+              }
+            },
+            "required": [
+              "format"
+            ]
+          },
+          "then": {
+            "required": [
+              "format",
+              "gradient"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "format": {},
+              "gradient": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64,
+                "pattern": "^[^/]+$"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "paletteColor": {
+      "enum": [
+        "grey",
+        "yellow",
+        "orange",
+        "red",
+        "pink",
+        "purple",
+        "blue",
+        "ice",
+        "teal",
+        "lime"
+      ]
+    },
+    "propertyKey": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[^\u0000-\u001f]+$",
+      "description": "A property key, snake_case: a built-in key (\"name\", \"due_date\", \"done\") or one this bundle declares (\"streak\")."
+    },
+    "propertyFormat": {
+      "enum": [
+        "text",
+        "number",
+        "select",
+        "multi_select",
+        "date",
+        "checkbox",
+        "url",
+        "email",
+        "phone",
+        "objects",
+        "files"
+      ],
+      "description": "What kind of value the property holds. \"select\" is one choice from a vocabulary, \"multi_select\" several; \"objects\" points at other objects."
+    },
+    "option": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "color": {
+              "$ref": "#/$defs/paletteColor"
+            }
+          },
+          "required": [
+            "name"
+          ],
+          "additionalProperties": false
+        }
+      ],
+      "description": "One select option: a bare name (\"Daily\"), or {\"name\", \"color\"} when the colour is part of the design. Declaration order is display order."
+    },
+    "propertyDefinition": {
+      "type": "object",
+      "description": "One property of a type. Identify it by `property` (the snake_case key) or by `name` (the display name — \"Cooking Time\" declares `cooking_time`). Never invent stored ids: the app mints those on import.",
+      "properties": {
+        "property": {
+          "$ref": "#/$defs/propertyKey"
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name. Read only when the property is created here; a built-in key keeps its own name."
+        },
+        "format": {
+          "$ref": "#/$defs/propertyFormat"
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/option"
+          },
+          "description": "select/multi_select only: the vocabulary, in display order."
+        },
+        "object_types": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "objects/files only: which type keys the property may point at. Empty or absent = any object."
+        },
+        "include_time": {
+          "type": "boolean",
+          "description": "date only: whether values carry a time of day."
+        },
+        "section": {
+          "enum": [
+            "featured",
+            "hidden"
+          ],
+          "description": "\"featured\" shows under the title; \"hidden\" hides it; absent = the regular sidebar list."
+        }
+      },
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "required": [
+            "property"
+          ]
+        },
+        {
+          "required": [
+            "name"
+          ]
+        }
+      ]
+    },
+    "richText": {
+      "type": "string",
+      "description": "The block's text. Formatting goes inline, in the string: **bold**, *italic*, ~~strikethrough~~, `code`, [text](https://example.com) for an external link, [text](anytype://object?objectId=<bundle-local id>) for a link to a document in this bundle, <u>underline</u>. Everything else is literal; \\n is a soft line break. Escape a literal *, `, [, ], ~, < or \\ with a backslash."
+    },
+    "literalText": {
+      "type": "string",
+      "description": "Raw content, verbatim — no inline markup is parsed here."
+    },
+    "block": {
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "indent": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 32,
+          "description": "Nesting depth; omit for top level. A block may be at most ONE level deeper than the block before it, and the first block is at 0."
+        },
+        "type": {
+          "enum": [
+            "paragraph",
+            "heading_1",
+            "heading_2",
+            "heading_3",
+            "quote",
+            "code",
+            "checkbox",
+            "bulleted_list_item",
+            "numbered_list_item",
+            "toggle",
+            "callout",
+            "toggle_heading_1",
+            "toggle_heading_2",
+            "toggle_heading_3",
+            "bookmark",
+            "link",
+            "divider",
+            "row",
+            "column",
+            "table",
+            "embed",
+            "table_of_contents",
+            "dataview"
+          ],
+          "description": "There is no title block — the title is the `name` property — and no image block: this format cannot fetch. A `row` contains only `column` blocks (indented under it); content nests under a column."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": [
+                  "paragraph",
+                  "heading_1",
+                  "heading_2",
+                  "heading_3",
+                  "quote",
+                  "checkbox",
+                  "bulleted_list_item",
+                  "numbered_list_item",
+                  "toggle",
+                  "callout",
+                  "toggle_heading_1",
+                  "toggle_heading_2",
+                  "toggle_heading_3"
+                ]
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "text": {
+                "$ref": "#/$defs/richText"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "checkbox"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "checked": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "callout"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "icon": {
+                "type": "object",
+                "required": [
+                  "format",
+                  "emoji"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "format": {
+                    "const": "emoji"
+                  },
+                  "emoji": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "code"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "language": {
+                "type": "string",
+                "description": "\"go\", \"python\", \"json\", …"
+              },
+              "text": {
+                "$ref": "#/$defs/literalText"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "embed"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "processor": {
+                "enum": [
+                  "latex",
+                  "mermaid",
+                  "chart",
+                  "youtube",
+                  "vimeo",
+                  "soundcloud",
+                  "google_maps",
+                  "miro",
+                  "figma",
+                  "twitter",
+                  "open_street_map",
+                  "reddit",
+                  "facebook",
+                  "instagram",
+                  "telegram",
+                  "github_gist",
+                  "codepen",
+                  "bilibili",
+                  "excalidraw",
+                  "kroki",
+                  "graphviz",
+                  "sketchfab",
+                  "image",
+                  "drawio",
+                  "spotify"
+                ],
+                "description": "What renders the embed. Defaults to latex."
+              },
+              "text": {
+                "$ref": "#/$defs/literalText",
+                "description": "Source code for a renderer (latex, mermaid, chart, graphviz, kroki, excalidraw, drawio); the URL for everything else."
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "bookmark"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "type",
+              "url"
+            ],
+            "properties": {
+              "url": {
+                "type": "string",
+                "minLength": 1,
+                "description": "The bookmarked web page."
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "link"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "type",
+              "object_id"
+            ],
+            "properties": {
+              "object_id": {
+                "$ref": "#/$defs/documentId",
+                "description": "The bundle-local id of the document this links to."
+              },
+              "card_style": {
+                "enum": [
+                  "text",
+                  "card",
+                  "inline"
+                ],
+                "description": "How the link renders; omit for a plain text row."
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "divider"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "style": {
+                "enum": [
+                  "line",
+                  "dots"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "table"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "type",
+              "columns",
+              "rows"
+            ],
+            "properties": {
+              "columns": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "properties": {},
+                  "additionalProperties": false
+                },
+                "description": "One `{}` per column — the entry only counts; the app assigns ids and widths. A row may not have more cells than there are columns."
+              },
+              "rows": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/tableRow"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "dataview"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "object_id": {
+                "$ref": "#/$defs/documentId",
+                "description": "Only on a PAGE embedding a view of a set or collection elsewhere in the bundle: that document's id. Omit on the dataview a type, set or collection carries as its own."
+              },
+              "is_collection": {
+                "type": "boolean",
+                "description": "true when this views a collection (a curated list) rather than a set (a live query)."
+              },
+              "properties": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/dataviewProperty"
+                },
+                "description": "The properties available to the views — every key a view's columns, sorts, filters or group_by name, with its format."
+              },
+              "views": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/view"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "tableRow": {
+      "type": "object",
+      "properties": {
+        "is_header": {
+          "type": "boolean"
+        },
+        "cells": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": "One entry per column, in column order: the cell's text, or null for an empty cell. Trailing empties may be left off."
+        }
+      },
+      "additionalProperties": false
+    },
+    "dataviewProperty": {
+      "type": "object",
+      "required": [
+        "key",
+        "format"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "$ref": "#/$defs/propertyKey"
+        },
+        "format": {
+          "$ref": "#/$defs/propertyFormat"
+        }
+      }
+    },
+    "view": {
+      "type": "object",
+      "description": "One way to look at the objects. No ids — the app assigns them.",
+      "properties": {
+        "type": {
+          "enum": [
+            "table",
+            "list",
+            "gallery",
+            "kanban",
+            "calendar"
+          ],
+          "description": "Omit for table. kanban needs `group_by` on a select property; calendar groups by a date property."
+        },
+        "name": {
+          "type": "string",
+          "description": "The view's tab label: \"By status\"."
+        },
+        "group_by": {
+          "$ref": "#/$defs/propertyKey",
+          "description": "kanban/calendar: the property that makes the columns or places the cards."
+        },
+        "card_size": {
+          "enum": [
+            "small",
+            "medium",
+            "large"
+          ],
+          "description": "gallery card size; omit for small."
+        },
+        "sorts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/sort"
+          }
+        },
+        "filters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/filterNode"
+          },
+          "description": "Top-level entries combine with AND; use one group node for OR."
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/viewColumn"
+          },
+          "description": "Which properties the view shows, in order."
+        }
+      },
+      "additionalProperties": false
+    },
+    "sort": {
+      "type": "object",
+      "required": [
+        "property"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "property": {
+          "$ref": "#/$defs/propertyKey"
+        },
+        "direction": {
+          "enum": [
+            "asc",
+            "desc"
+          ],
+          "description": "Omit for asc."
+        },
+        "empty_placement": {
+          "enum": [
+            "start",
+            "end"
+          ],
+          "description": "Where objects with no value go."
+        }
+      }
+    },
+    "filterNode": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "operator",
+            "filters"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "operator": {
+              "enum": [
+                "and",
+                "or"
+              ]
+            },
+            "filters": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/filterNode"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "property"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "property": {
+              "$ref": "#/$defs/propertyKey"
+            },
+            "condition": {
+              "enum": [
+                "equal",
+                "not_equal",
+                "greater",
+                "less",
+                "greater_or_equal",
+                "less_or_equal",
+                "contains",
+                "not_contains",
+                "in",
+                "not_in",
+                "all_in",
+                "empty",
+                "not_empty"
+              ]
+            },
+            "value": {
+              "description": "What to compare against. For select/multi_select: an array of option names. Omit on empty/not_empty."
+            },
+            "date_preset": {
+              "enum": [
+                "yesterday",
+                "today",
+                "tomorrow",
+                "last_week",
+                "current_week",
+                "next_week",
+                "last_month",
+                "current_month",
+                "next_month",
+                "last_year",
+                "current_year",
+                "next_year"
+              ],
+              "description": "Date properties, with equal/in/less/greater/less_or_equal/greater_or_equal: a rolling range instead of a fixed `value`. An \"overdue\" filter (`less` + a date) must sit in an `and` group with a `not_empty` on the same property, or undated objects match too."
+            }
+          }
+        }
+      ]
+    },
+    "viewColumn": {
+      "type": "object",
+      "required": [
+        "property"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "property": {
+          "$ref": "#/$defs/propertyKey"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "aggregation": {
+          "enum": [
+            "count",
+            "count_value",
+            "count_distinct",
+            "count_empty",
+            "count_not_empty",
+            "percent_empty",
+            "percent_not_empty",
+            "sum",
+            "average",
+            "median",
+            "min",
+            "max",
+            "range"
+          ],
+          "description": "A footer over the column's values; omit for none."
+        }
+      }
+    }
+  }
+}
