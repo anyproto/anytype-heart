@@ -6541,3 +6541,32 @@ Wiring (follow-up work, not this package):
     — a bundle-level statement that its files are references, so a reader
     knows an absent blob is intended rather than missing — and that marker is
     what makes carrying a key defensible in that mode and only that mode.
+
+21. **The option documents are nearly redundant with the dictionary**
+    (follow-up, after the freeze). A bundle writes 2,641
+    `kind: "relation_option"` documents and 2,641 manifest entries for them,
+    and the property dictionary already states almost everything they hold:
+    a name, a colour, a position, and — since the dictionary learned
+    `internal_key` — a stored key. That was the first of two gaps.
+
+    The second is the **used-only rule**, and it is the reason this is a
+    follow-up rather than a fix. A dictionary carries a property's
+    vocabulary inline only where a document in the bundle actually uses the
+    property; 175 of the 2,641 options belong to properties no document
+    references, so their vocabularies are not carried at all. Dropping the
+    documents today would silently lose those 175.
+
+    So the question is not "are the documents redundant" — they very nearly
+    are — but "should a dictionary state a vocabulary nobody in this bundle
+    uses". That changes what the dictionary MEANS: today it describes the
+    properties the bundle exercises, and the alternative is that it describes
+    the space's schema whether exercised or not. Both are defensible and the
+    second is a larger claim, which is why it is not being decided under
+    freeze pressure.
+
+    Worth noting what is NOT the obstacle: option identity. `internal_key`
+    settled it, and the api key does not need to travel at all — measured
+    over a 77-space export, all 514 real option api keys are reproduced by
+    the app's own mint-from-name rule (470 by the api slug, 44 by the
+    transliterate fallback for names like `$$` that slug to nothing), so not
+    one of them survived a rename.
