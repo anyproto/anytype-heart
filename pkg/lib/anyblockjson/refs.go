@@ -356,6 +356,11 @@ const dateIdPrefix = "_date_"
 // (pkg/lib/localstore/addr.MissingObject).
 const missingObjectId = "_missing_object"
 
+// MissingObjectId is missingObjectId for the round-trip comparator, which
+// lives in its own package and must apply the very sentinel export applies —
+// the two cannot be allowed to spell it differently.
+const MissingObjectId = missingObjectId
+
 // objectRef reads one object reference back (§9): the informative suffix is
 // trimmed at the first `#`, unread, and a bare identity unfolds into this
 // space's participant id. Everything else passes verbatim, exactly as

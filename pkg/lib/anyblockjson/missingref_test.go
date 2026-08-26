@@ -542,3 +542,53 @@ func TestIsObjectIdShaped(t *testing.T) {
 		assert.False(t, isObjectIdShaped(s), s)
 	}
 }
+
+// A select vocabulary is a list of references too, so the sentinel half of
+// the missing-reference rule applies there as well (§9).
+//
+// The corpus is unambiguous: `"tag": ["_missing_object"]` beside an EMPTY
+// `option_ids` legend — the option is gone and not even a name survives to
+// show. Before this, 700+ such entries travelled as the literal string
+// `_missing_object` in a tag or status value, which reads as a tag NAMED
+// "_missing_object".
+//
+// Only the sentinel drops here, and deliberately not a whole existence
+// check: an option id lives in the option namespace, and optionName already
+// resolves it or leaves it as written.
+//
+// How this can fail: drop it on export without teaching snapshotdiff and the
+// corpus sweep reports a false failure per entry — the drift that once cost
+// 1,344 of them.
+func TestMissingRef_ASelectValueDropsTheSentinel(t *testing.T) {
+	snap := &model.SmartBlockSnapshotBase{
+		Blocks: []*model.Block{{Id: "o1",
+			Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}},
+		Details: fields(map[string]*types.Value{
+			"id":  str("o1"),
+			"tag": strList(missingObjectId),
+		}),
+	}
+
+	data, err := Marshal(model.SmartBlockType_Page, snap, testOptions())
+	require.NoError(t, err)
+	assert.NotContains(t, string(data), missingObjectId,
+		"an option that is gone leaves nothing to write")
+	assert.Contains(t, compactDoc(data), `"tag":[]`,
+		"the key stays: presence is meaningful (§3), only the dead entry goes")
+	require.NoError(t, Validate(data), "§11 I1")
+
+	t.Run("a live option is untouched beside it", func(t *testing.T) {
+		snap := &model.SmartBlockSnapshotBase{
+			Blocks: []*model.Block{{Id: "o1",
+				Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}},
+			Details: fields(map[string]*types.Value{
+				"id":  str("o1"),
+				"tag": strList("opt-live", missingObjectId),
+			}),
+		}
+		data, err := Marshal(model.SmartBlockType_Page, snap, testOptions())
+		require.NoError(t, err)
+		assert.Contains(t, string(data), "opt-live")
+		assert.NotContains(t, string(data), missingObjectId)
+	})
+}

@@ -1753,8 +1753,20 @@ func (e *exporter) propertyValue(key string, v *types.Value) any {
 					"a value this large is usually milliseconds where seconds belong", n.NumberValue)
 		}
 	case model.RelationFormat_status, model.RelationFormat_tag:
+		// a select vocabulary is a LIST of references too, so the same rule
+		// applies (§9): the stored `_missing_object` sentinel names an option
+		// that is gone, and there is nothing left to write — the corpus
+		// carries `"tag": ["_missing_object"]` beside an EMPTY `option_ids`
+		// legend, so not even a name survives to show.
+		//
+		// Only the sentinel drops here, not a whole existence check: an
+		// option id lives in the option namespace, and optionName already
+		// resolves it or leaves it as written.
 		var out []any
 		for _, id := range valueStringList(v) {
+			if id == missingObjectId {
+				continue
+			}
 			out = append(out, e.optionName(key, id))
 		}
 		return out

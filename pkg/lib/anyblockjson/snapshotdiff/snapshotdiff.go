@@ -347,12 +347,31 @@ func detailEqual(key string, a, b *types.Value, opts anyblockjson.Options) bool 
 		// drops nothing, exactly as export drops nothing.
 		return equalStrings(keptObjectRefs(stringsOf(a), opts), keptObjectRefs(stringsOf(b), opts))
 	case model.RelationFormat_status, model.RelationFormat_tag:
-		// mirror the format's list extraction: scalars wrap, empty strings drop
-		return equalStrings(stringsOf(a), stringsOf(b))
+		// mirror the format's list extraction (scalars wrap, empty strings
+		// drop) AND the sentinel half of the missing-reference rule (§9): a
+		// select value of `_missing_object` names an option that is gone, so
+		// export writes a shorter list. Taught here in the same commit that
+		// taught export — the drift that once produced 1,344 false failures.
+		return equalStrings(keptOptionRefs(stringsOf(a)), keptOptionRefs(stringsOf(b)))
 	case model.RelationFormat_date:
 		return int64(a.GetNumberValue()) == int64(b.GetNumberValue())
 	}
 	return proto.Equal(a, b)
+}
+
+// keptOptionRefs drops the stored dangling-option sentinel, which export
+// drops from a select value. Unlike the object arm this needs no existence
+// capability: the sentinel is self-describing, so both sides of a comparison
+// agree whether or not a resolver is wired.
+func keptOptionRefs(in []string) []string {
+	out := make([]string, 0, len(in))
+	for _, s := range in {
+		if s == anyblockjson.MissingObjectId {
+			continue
+		}
+		out = append(out, s)
+	}
+	return out
 }
 
 // recommendedDetailKeys are the four lists SPEC §2a lifts into
