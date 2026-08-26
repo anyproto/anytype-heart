@@ -22,6 +22,8 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"
 	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
+	editorsb "github.com/anyproto/anytype-heart/core/block/editor/fileobject"
+	"github.com/anyproto/anytype-heart/core/block/editor/fileobject/mock_fileobject"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/export"
 	"github.com/anyproto/anytype-heart/core/block/process"
@@ -282,4 +284,84 @@ func bytesReader(s string) *os.File {
 	f.WriteString(s)
 	f.Seek(0, 0)
 	return f
+}
+
+// fileObjectWrapper marries a smarttest object with a mocked file
+// component, the same pattern core/publish's tests use.
+type fileObjectWrapper struct {
+	*smarttest.SmartTest
+	editorsb.FileObject
+}
+
+// A file object exports as BOTH halves, adjacent in files/ — the document
+// at its id path, the bytes beside it under the sanitized extension — and
+// the manifest `files` map is what binds them (§2c, v0.47). The stored
+// file_ext here is deliberately EMPTY (431 corpus files), so the extension
+// falls back to the mime table; and the document must NOT grow a path
+// member — the Source clobber does not carry over.
+//
+// How this can fail: write the blob before it streams cleanly and observe
+// it anyway (the manifest points at bytes that are not there); reintroduce
+// the Source detail (the marshalled document diff shows an archive path in
+// a user relation); or plan the blob from the sanitized extension but bind
+// nothing (the blob is orphaned the moment the layout convention changes).
+func TestExporter_StreamsBlobsAndBindsThemInTheManifest(t *testing.T) {
+	// given
+	fx := newFixture(t)
+	const fileId = "fileObjectId"
+	fx.store.AddObjects(t, spaceId, []spaceindex.TestObject{
+		{
+			bundle.RelationKeyId:           domain.String(fileId),
+			bundle.RelationKeyName:         domain.String("notes"),
+			bundle.RelationKeyFileExt:      domain.String(""), // the corpus's commonest dirt: no extension at all
+			bundle.RelationKeyFileMimeType: domain.String("text/plain"),
+			bundle.RelationKeySpaceId:      domain.String(spaceId),
+		},
+	})
+
+	fileSb := setupObject(fileId, "", smartblock.SmartBlockTypeFileObject, map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyName: domain.String("notes"),
+	})
+	blob, err := os.CreateTemp(t.TempDir(), "blob")
+	require.NoError(t, err)
+	_, err = blob.WriteString("file bytes travel")
+	require.NoError(t, err)
+	_, err = blob.Seek(0, 0)
+	require.NoError(t, err)
+
+	fileData := mock_files.NewMockFile(t)
+	fileData.EXPECT().MimeType().Return("text/plain")
+	fileData.EXPECT().Reader(mock.Anything).Return(blob, nil)
+	fileData.EXPECT().LastModifiedDate().Return(int64(1700000000))
+	fileComponent := mock_fileobject.NewMockFileObject(t)
+	fileComponent.EXPECT().GetFile().Return(fileData, nil)
+
+	fx.picker.EXPECT().GetObject(mock.Anything, fileId).
+		Return(&fileObjectWrapper{SmartTest: fileSb, FileObject: fileComponent}, nil)
+	fx.provider.EXPECT().Type(spaceId, fileId).Return(smartblock.SmartBlockTypeFileObject, nil)
+
+	dir := t.TempDir()
+	wr, err := NewDirWriter(dir)
+	require.NoError(t, err)
+
+	// when
+	succeed, err := fx.exporter.Export(context.Background(),
+		Request{SpaceId: spaceId, SpaceName: "Fixture space", IncludeArchived: true, IncludeFiles: true}, wr)
+
+	// then
+	require.NoError(t, err)
+	assert.Equal(t, 1, succeed)
+
+	tree := readTree(t, dir)
+	require.Contains(t, tree, "files/fileObjectId.anyblock.json", "the document half")
+	require.Contains(t, tree, "files/fileObjectId.txt", "the bytes, same stem, mime-derived extension")
+	assert.Equal(t, "file bytes travel", tree["files/fileObjectId.txt"])
+	assert.NotContains(t, tree["files/fileObjectId.anyblock.json"], "files/fileObjectId.txt",
+		"a document member is not a slot for archive bookkeeping (§1.4)")
+
+	idx, err := anyblockjson.UnmarshalIndex([]byte(tree[anyblockjson.IndexFileName]))
+	require.NoError(t, err)
+	require.NotNil(t, idx.Manifest)
+	assert.Equal(t, map[string]string{fileId: "files/fileObjectId.txt"}, idx.Manifest.Files,
+		"the manifest map is the binding a reader may rely on")
 }
