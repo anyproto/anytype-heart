@@ -1,7 +1,21 @@
 # The native AnyBlock JSON exporter — design
 
-Status: DRAFT for review. Nothing here is implemented. The QUESTIONS in §3
-go to a human; work resumes on their answers.
+Status: IMPLEMENTED (GO-7383, 2026-08-26). §1's pipeline is live:
+collection behind `core/block/export/collect` (Closure replacing
+`isProtobuf`), composition in `pkg/lib/anyblockjson/compose` (Q10 option b;
+the roundtrip harness runs the same code), the exporter wiring in
+`core/block/export/anyblock`, and the manifest `files` map as SPEC v0.47
+(Q4 option a). Q5 taken as (a), Q8 settled to `.anyblock.json`, Q9 as (a)
+via the per-bundle `BundleRoot` prefix. Q11 shipped as close-after-write
+with the release gate named at the call site (any-sync PR #769, the
+GO-7333 fix, must land first — anyblock.go). Still open, deliberately:
+**Q6** (the `Export_AnyBlockJSON` RPC enum — until it lands the exporter
+is driven through the Go API and cmd tooling) and **Q7** (default-backup /
+pb retirement, a product call). One deviation from §1.1: the manifest
+type-path table accumulates at EMIT from actually-written documents rather
+than being pre-built at plan — provably consistent with the output (a doc
+whose emit fails never enters the manifest), and determinism is unaffected
+since finish sorts.
 
 Scope: the production exporter that writes an AnyBlock JSON bundle (SPEC.md
 §2c) from a live space — the replacement for the writing half of
