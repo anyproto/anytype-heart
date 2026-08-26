@@ -117,6 +117,17 @@ func Compare(orig, got *model.SmartBlockSnapshotBase, sbType model.SmartBlockTyp
 	// document round trip, where every key survives, neither ever fires.
 	_, omittable := anyblockjson.OmittedBundledRelation(sbType, orig, opts)
 
+	// the §2c widget-object omission: a widget document a bundle does not
+	// write, because index.json states everything it holds and the object is
+	// rebuilt from it (WidgetsSnapshot). Across that trip the object's own
+	// timestamps and its empty name come back absent — a restored sidebar is
+	// created when it is restored, the space-document rule. Scoped to
+	// snapshots the omission predicate itself admits, and the predicate is
+	// the format's own, not a copy — taught in the same commit that taught
+	// the export wiring, the drift that once produced 1,344 false failures
+	// in one sweep.
+	widgetOmitted := anyblockjson.OmittedWidgetObject(sbType, orig)
+
 	if orig.Details != nil {
 		gotFields := map[string]*types.Value{}
 		if got.Details != nil {
@@ -159,6 +170,16 @@ func Compare(orig, got *model.SmartBlockSnapshotBase, sbType model.SmartBlockTyp
 			// absent-and-artifact on an omittable snapshot — a definition
 			// member that goes missing still reports.
 			if gotFields[k] == nil && omittable && anyblockjson.RelationInstallArtifactKey(k) {
+				continue
+			}
+			// an omitted widget document's residual keys (§2c): the two
+			// object timestamps, and a name that was EMPTY — a non-empty
+			// name keeps the whole document, so within the omitted scope it
+			// cannot be here. Scoped to absent-on-the-way-back like its
+			// neighbours; the lifted state itself (the widgets, the
+			// auto-widget ledger) is rebuilt by WidgetsSnapshot and compares
+			// as ordinary detail and block state.
+			if gotFields[k] == nil && widgetOmitted && anyblockjson.WidgetObjectResidualKey(k, orig.Details.Fields[k]) {
 				continue
 			}
 			if !detailEqual(k, orig.Details.Fields[k], gotFields[k], opts) {

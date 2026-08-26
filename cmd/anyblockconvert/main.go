@@ -258,8 +258,8 @@ func run(inDir, outDir string, normalizeIndent, lenient bool, format outputForma
 		// CheckBundleIds has already refused it above, for its own reason and
 		// before anything was written. This is the backstop for the case where
 		// the two stop being the same string.
-		if _, taken := names[widgetsObjectId]; taken {
-			return fmt.Errorf("an object in the bundle has id %q, which is reserved for the sidebar snapshot (SPEC.md §2c) — rename it", widgetsObjectId)
+		if _, taken := names[anyblockjson.WidgetsObjectId]; taken {
+			return fmt.Errorf("an object in the bundle has id %q, which is reserved for the sidebar snapshot (SPEC.md §2c) — rename it", anyblockjson.WidgetsObjectId)
 		}
 		if err := writeWidgets(outDir, idx, format); err != nil {
 			return fmt.Errorf("write widgets: %w", err)

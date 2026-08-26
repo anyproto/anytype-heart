@@ -4,7 +4,10 @@ package main
 // experience: CreateObjectsForExperience reads only spaceDashboardId off the
 // profile, so profile.widgets never becomes a widget. Everything asserted here
 // is a shape the importer requires and fails silently without — a dropped
-// widget produces no error anywhere.
+// widget produces no error anywhere. The builder itself is
+// anyblockjson.WidgetsSnapshot (shared with the round-trip verifier's
+// reconstruction check); what this file pins is the tool's half: the archive
+// placement and the importer-facing contract.
 
 import (
 	"os"
@@ -27,9 +30,10 @@ func sampleIndex() *anyblockjson.Index {
 		Entrypoint: "page-okr-hub",
 		Widgets: []anyblockjson.Widget{
 			{Target: "page-okr-hub", Layout: "tree"},
-			{Target: "type-objective", Layout: "view", Limit: 6},
+			{Target: "type-objective", Layout: "view", Limit: 6, ViewId: "view-board"},
 			{Target: "_favorite", Layout: "compact_list"},
-			{Target: "chat-goal-proposals"}, // no layout: link, the zero value
+			{Target: "chat-goal-proposals", CardStyle: "card", IconSize: "medium",
+				Description: "content", Properties: []string{"name"}},
 		},
 	}
 }
@@ -53,14 +57,14 @@ func blockIndex(t *testing.T, snap *model.SmartBlockSnapshotBase) (map[string]*m
 	return byId, root
 }
 
-func TestBuildWidgets_Shape(t *testing.T) {
+func TestWidgetsSnapshot_Shape(t *testing.T) {
 	idx := sampleIndex()
-	snap, err := buildWidgets(idx)
+	snap, err := anyblockjson.WidgetsSnapshot(idx)
 	require.NoError(t, err)
 	require.NotNil(t, snap)
 
 	byId, root := blockIndex(t, snap)
-	assert.Equal(t, widgetsObjectId, root.Id, "the root is the snapshot's own id until the importer renames it")
+	assert.Equal(t, anyblockjson.WidgetsObjectId, root.Id, "the root is the snapshot's own id until the importer renames it")
 	require.Len(t, snap.Blocks, 1+2*len(idx.Widgets), "root, plus a wrapper and a link per widget")
 
 	// root children order is sidebar order: updateWidgetObject walks
@@ -78,12 +82,12 @@ func TestBuildWidgets_Shape(t *testing.T) {
 		wrapper := byId[root.ChildrenIds[i]]
 		require.NotNil(t, wrapper, "every root child must exist: an unreachable block is dropped by the BFS")
 
-		widget := wrapper.GetWidget()
-		require.NotNil(t, widget, "a root child of the widget object is a wrapper")
-		assert.Equal(t, wantLayouts[i], widget.Layout, "widgets[%d] layout", i)
-		assert.Equal(t, w.Limit, widget.Limit, "widgets[%d] limit", i)
-		assert.Empty(t, widget.ViewId)
-		assert.False(t, widget.AutoAdded)
+		wc := wrapper.GetWidget()
+		require.NotNil(t, wc, "a root child of the widget object is a wrapper")
+		assert.Equal(t, wantLayouts[i], wc.Layout, "widgets[%d] layout", i)
+		assert.Equal(t, w.Limit, wc.Limit, "widgets[%d] limit", i)
+		assert.Equal(t, w.ViewId, wc.ViewId, "widgets[%d] view_id", i)
+		assert.Equal(t, w.AutoAdded, wc.AutoAdded, "widgets[%d] auto_added", i)
 
 		// addWidgetBlock reads ChildrenIds[0] and ignores the rest
 		require.Len(t, wrapper.ChildrenIds, 1, "a wrapper carries exactly one link")
@@ -94,88 +98,22 @@ func TestBuildWidgets_Shape(t *testing.T) {
 			"widgets[%d] target", i)
 		assert.Empty(t, link.ChildrenIds)
 
-		assert.Equal(t, link.Id+widgetWrapperSuffix, wrapper.Id,
+		assert.Equal(t, link.Id+"-wrapper", wrapper.Id,
 			"the wrapper id convention core/block/editor/widget uses for stable wrappers")
 	}
 
+	// the link child's display members ride on the last widget
+	last := byId[byId[root.ChildrenIds[3]].ChildrenIds[0]].GetLink()
+	assert.Equal(t, model.BlockContentLink_Card, last.CardStyle)
+	assert.Equal(t, model.BlockContentLink_SizeMedium, last.IconSize)
+	assert.Equal(t, model.BlockContentLink_Content, last.Description)
+	assert.Equal(t, []string{"name"}, last.Relations)
+
 	// the object itself: a hidden dashboard, as an app export writes it
-	assert.Equal(t, widgetsObjectId, snap.Details.GetFields()[detailID].GetStringValue())
+	assert.Equal(t, anyblockjson.WidgetsObjectId, snap.Details.GetFields()[detailID].GetStringValue())
 	assert.Equal(t, float64(model.ObjectType_dashboard), snap.Details.GetFields()[detailLayout].GetNumberValue())
 	assert.True(t, snap.Details.GetFields()[detailIsHidden].GetBoolValue())
 	assert.Equal(t, []string{"ot-dashboard"}, snap.ObjectTypes)
-}
-
-// Reordering index.json reorders the sidebar and nothing else.
-func TestBuildWidgets_PreservesIndexOrder(t *testing.T) {
-	targets := func(idx *anyblockjson.Index) []string {
-		snap, err := buildWidgets(idx)
-		require.NoError(t, err)
-		byId, root := blockIndex(t, snap)
-		var out []string
-		for _, id := range root.ChildrenIds {
-			out = append(out, byId[byId[id].ChildrenIds[0]].GetLink().TargetBlockId)
-		}
-		return out
-	}
-
-	forward := &anyblockjson.Index{Widgets: []anyblockjson.Widget{
-		{Target: "a"}, {Target: "b"}, {Target: "c"},
-	}}
-	reversed := &anyblockjson.Index{Widgets: []anyblockjson.Widget{
-		{Target: "c"}, {Target: "b"}, {Target: "a"},
-	}}
-	assert.Equal(t, []string{"a", "b", "c"}, targets(forward))
-	assert.Equal(t, []string{"c", "b", "a"}, targets(reversed))
-}
-
-// Ids are seeded on the widget's position, not just its target, so a bundle
-// that lists the same target twice still gets two distinct wrappers rather
-// than one wrapper the state silently collapses.
-func TestBuildWidgets_RepeatedTargetKeepsIdsUnique(t *testing.T) {
-	snap, err := buildWidgets(&anyblockjson.Index{Widgets: []anyblockjson.Widget{
-		{Target: "page-home", Layout: "tree"},
-		{Target: "page-home", Layout: "link"},
-	}})
-	require.NoError(t, err)
-
-	// blockIndex asserts uniqueness across every block
-	_, root := blockIndex(t, snap)
-	require.Len(t, root.ChildrenIds, 2)
-	assert.NotEqual(t, root.ChildrenIds[0], root.ChildrenIds[1])
-}
-
-// Every block id is 24 hex characters, the shape bson.NewObjectId().Hex()
-// gives every block id in an app export — and derived, so re-converting an
-// unchanged bundle produces identical bytes.
-func TestBuildWidgets_IdsAreStableAndBsonShaped(t *testing.T) {
-	first, err := buildWidgets(sampleIndex())
-	require.NoError(t, err)
-	second, err := buildWidgets(sampleIndex())
-	require.NoError(t, err)
-	assert.Equal(t, first.Blocks, second.Blocks, "conversion must be deterministic across runs")
-
-	_, root := blockIndex(t, first)
-	for _, wrapperId := range root.ChildrenIds {
-		linkId := wrapperId[:len(wrapperId)-len(widgetWrapperSuffix)]
-		assert.Len(t, linkId, 24)
-		assert.Regexp(t, "^[0-9a-f]{24}$", linkId)
-	}
-}
-
-// Nothing to show means no snapshot, rather than a widget object with an empty
-// sidebar.
-func TestBuildWidgets_NoWidgets(t *testing.T) {
-	snap, err := buildWidgets(&anyblockjson.Index{Name: "X", Entrypoint: "page-home"})
-	require.NoError(t, err)
-	assert.Nil(t, snap)
-}
-
-func TestBuildWidgets_UnknownLayout(t *testing.T) {
-	_, err := buildWidgets(&anyblockjson.Index{Widgets: []anyblockjson.Widget{
-		{Target: "a", Layout: "grid"},
-	}})
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "unknown layout")
 }
 
 // The snapshot has to land where core/block/import/pb finds it, as a
@@ -185,7 +123,7 @@ func TestWriteWidgets_OnDisk(t *testing.T) {
 	dir := t.TempDir()
 	require.NoError(t, writeWidgets(dir, sampleIndex(), formatPb))
 
-	data, err := os.ReadFile(filepath.Join(dir, "objects", widgetsObjectId+".pb"))
+	data, err := os.ReadFile(filepath.Join(dir, "objects", anyblockjson.WidgetsObjectId+".pb"))
 	require.NoError(t, err)
 	sw := &pb.SnapshotWithType{}
 	require.NoError(t, proto.Unmarshal(data, sw))
@@ -193,27 +131,46 @@ func TestWriteWidgets_OnDisk(t *testing.T) {
 	require.NotNil(t, sw.Snapshot.Data)
 	assert.Len(t, sw.Snapshot.Data.Blocks, 1+2*len(sampleIndex().Widgets))
 
-	t.Run("a bundle with no widgets writes nothing", func(t *testing.T) {
+	t.Run("a bundle with no sidebar state writes nothing", func(t *testing.T) {
 		empty := t.TempDir()
 		require.NoError(t, writeWidgets(empty, &anyblockjson.Index{Name: "X"}, formatPb))
 		_, err := os.Stat(filepath.Join(empty, "objects"))
 		assert.True(t, os.IsNotExist(err))
 	})
+
+	// the auto-widget ledger is sidebar state: a bundle carrying only it
+	// still writes the snapshot, details and all, so the state is in the
+	// archive the day the importer starts reading it
+	t.Run("the auto-widget ledger alone still writes the snapshot", func(t *testing.T) {
+		ledger := t.TempDir()
+		require.NoError(t, writeWidgets(ledger,
+			&anyblockjson.Index{Name: "X", AutoWidgetTargets: []string{"_bin"}}, formatPb))
+		data, err := os.ReadFile(filepath.Join(ledger, "objects", anyblockjson.WidgetsObjectId+".pb"))
+		require.NoError(t, err)
+		sw := &pb.SnapshotWithType{}
+		require.NoError(t, proto.Unmarshal(data, sw))
+		auto := sw.Snapshot.Data.Details.GetFields()["autoWidgetTargets"]
+		require.NotNil(t, auto)
+		require.Len(t, auto.GetListValue().GetValues(), 1)
+		assert.Equal(t, "bin", auto.GetListValue().GetValues()[0].GetStringValue(),
+			"ledger entries are written in the importer's own spelling, like link targets")
+	})
 }
 
-// The four listings the importer knows are bare words
+// The listings the importer knows are bare words
 // (widget.IsPredefinedWidgetTargetId); the format spells them in the platform
 // namespace so a bundle object cannot shadow them. This is the boundary where
 // the prefix has to come back off, and getting it wrong is worse than the bug
 // it replaces: handleLinkBlock rewrites a target it does not recognise to
 // addr.MissingObject, and WidgetObject.Init then strips the link AND its
 // wrapper, so the widget disappears with nothing logged as an error.
-func TestBuildWidgets_ReservedTargetsAreWrittenInTheImporterSpelling(t *testing.T) {
-	idx := &anyblockjson.Index{Widgets: []anyblockjson.Widget{
-		{Target: "_favorite"}, {Target: "_recent"}, {Target: "_set"}, {Target: "_collection"},
-		{Target: "page-home"},
-	}}
-	snap, err := buildWidgets(idx)
+func TestWidgetsSnapshot_ReservedTargetsAreWrittenInTheImporterSpelling(t *testing.T) {
+	idx := &anyblockjson.Index{}
+	for _, target := range anyblockjson.ReservedWidgetTargets() {
+		idx.Widgets = append(idx.Widgets, anyblockjson.Widget{Target: target})
+	}
+	idx.Widgets = append(idx.Widgets, anyblockjson.Widget{Target: "page-home"})
+	snap, err := anyblockjson.WidgetsSnapshot(idx)
 	require.NoError(t, err)
 
 	var targets []string
@@ -222,11 +179,12 @@ func TestBuildWidgets_ReservedTargetsAreWrittenInTheImporterSpelling(t *testing.
 			targets = append(targets, l.TargetBlockId)
 		}
 	}
-	assert.Equal(t, []string{"favorite", "recent", "set", "collection", "page-home"}, targets)
-	for _, target := range targets[:4] {
+	require.Len(t, targets, len(idx.Widgets))
+	for i, target := range targets[:len(targets)-1] {
 		assert.True(t, widget.IsPredefinedWidgetTargetId(target),
-			"handleLinkBlock leaves a target alone only for these: %q", target)
+			"handleLinkBlock leaves a target alone only for these: %q (from %q)", target, idx.Widgets[i].Target)
 	}
+	assert.Equal(t, "page-home", targets[len(targets)-1], "an object id passes through")
 	assert.False(t, widget.IsPredefinedWidgetTargetId("_favorite"),
 		"the untranslated spelling is exactly what the importer does NOT know")
 }

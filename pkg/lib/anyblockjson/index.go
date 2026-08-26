@@ -7,9 +7,10 @@ package anyblockjson
 // It exists because none of that is expressible per-object. The wiring splits
 // it across two outputs, because the installer takes them from two places: a
 // `profile` file at the archive root (pb.Profile, read by util/builtinobjects)
-// carries spaceDashboardId, and the sidebar travels as a Widget snapshot among
-// the objects, the way an app export carries it. See §2c. A bundle without an
-// index imports as an undifferentiated object list.
+// carries spaceDashboardId, and the sidebar travels as a Widget snapshot the
+// wiring BUILDS from index.widgets (WidgetsSnapshot) — a bundle itself
+// carries no widget document, the way it carries no space document. See §2c.
+// A bundle without an index imports as an undifferentiated object list.
 
 import (
 	"bytes"

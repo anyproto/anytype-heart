@@ -728,9 +728,9 @@ type spaceComposer struct {
 	optionsByKey map[string][]storedOption
 	written      []string
 
-	// the fields the space's own document is the source of (§2c). Lifted as
-	// that document is observed and omitted, so the index states what the
-	// dropped document held.
+	// the fields the space's own document and the widget object are the
+	// sources of (§2c). Lifted as each document is observed and omitted, so
+	// the index states what the dropped documents held.
 	index anyblockjson.Index
 
 	omittedDocs  int
@@ -772,6 +772,30 @@ func (c *spaceComposer) observeSnapshot(sw *pb.SnapshotWithType) (omitted bool, 
 	// someone else's name, dragged in by an import (§2c)
 	if anyblockjson.OmittedProfilePage(sw.SbType, base) {
 		return true, nil
+	}
+	// the sidebar's object: index.json states everything it holds (§2c) —
+	// the wrapper-and-link pairs flat in `widgets`, the auto-widget ledger
+	// at index level — so the composer lifts those fields and drops the
+	// document, the space-settings rule again. The lift runs BEFORE the
+	// omission is recorded, and the snapshot a bundle carries INSTEAD
+	// (WidgetsSnapshot, the same function cmd/anyblockconvert installs
+	// from) is verified against the original through the same comparator as
+	// every ordinary round trip, so the lift and the rebuild cannot drift
+	// apart silently. A nil snapshot means the index carries no sidebar
+	// state because the object held none — the predicate is the proof.
+	if anyblockjson.OmittedWidgetObject(sw.SbType, base) {
+		anyblockjson.IndexFromWidgetObject(&c.index, base)
+		rebuilt, err := anyblockjson.WidgetsSnapshot(&c.index)
+		if err != nil {
+			return true, []issue{{category: "omitted_reconstruction",
+				detail: fmt.Sprintf("widget object: %v", err)}}
+		}
+		if rebuilt != nil {
+			for _, d := range snapshotdiff.Compare(base, rebuilt, sw.SbType, c.opts) {
+				issues = append(issues, issue{category: "omitted_reconstruction", detail: d})
+			}
+		}
+		return true, issues
 	}
 	if key, ok := anyblockjson.OmittedBundledRelation(sw.SbType, base, c.opts); ok {
 		c.installed[key] = true

@@ -1652,8 +1652,8 @@ a bundle mints may begin with one.** The platform's own addresses already live
 there — `_otpage`, `_brdue_date`, `_missing_object`, `_participant_…`,
 `_date_2024-01-01` — and the format borrows the same namespace for the
 built-in screens and listings an `index.json` may name: `_favorite`,
-`_recent`, `_set`, `_collection`, `_all_objects`, `_recent_open`, `_widgets`,
-`_graph` (§2c).
+`_recent`, `_recent_open`, `_set`, `_collection`, `_all_objects`, `_chat`,
+`_bin`, `_widgets`, `_graph` (§2c).
 
 The point is that the two sets are then disjoint **by construction**, not by
 inspection. While the reserved listings were bare words, a bundle shipping an
@@ -1670,9 +1670,10 @@ This is a **prefix** rule, which is why it can be permanent: "no minted id
 STARTS with `_`" is a promise the platform can keep, where reserving a word
 means banning a new id every time a listing is added, retroactively. The name
 after the prefix is still this format's own and is still snake_case, which is
-why the two listings that never reach the wire are spelled `_all_objects` and
-`_recent_open` rather than quoting the live space's `allObjects` /
-`recentOpen`: nothing quotes them, because nothing emits them (see §2c).
+why `_all_objects` and `_recent_open` are spelled that way rather than
+quoting the live space's `allObjects` / `recentOpen`: the format's spelling
+is its own everywhere, and the wire's camelCase comes back at the boundary
+with everything else (`WireWidgetTarget`).
 
 The prefix is translated away at the wire boundary, where the importer's own
 spellings are bare (`favorite`, `graph`), by `WireWidgetTarget` /
@@ -1681,14 +1682,15 @@ the shadowing it replaces — an unrecognised target becomes
 `addr.MissingObject` and the widget is then stripped without an error.
 
 **Which is why a bundle-local id may not be one of those bare spellings
-either** — `favorite`, `recent`, `set`, `collection`, `widgets`, `graph`. The
-prefix rule alone would only move the collision one step downstream: the link
-block that leaves this format saying `_set` reaches the importer saying `set`,
-and `handleLinkBlock` still resolves through the bundle's ids first. The
-prefix is what makes the *format* unambiguous — a reader never has to guess
-which of the two kinds a target meant, and a typo inside the namespace can be
-refused by name. The six-word ban is what makes the *wire* unambiguous. Both,
-or neither is worth having.
+either** — `favorite`, `recent`, `recentOpen`, `set`, `collection`,
+`allObjects`, `chat`, `bin`, `widgets`, `graph`. The prefix rule alone would
+only move the collision one step downstream: the link block that leaves this
+format saying `_set` reaches the importer saying `set`, and
+`handleLinkBlock` still resolves through the bundle's ids first. The prefix
+is what makes the *format* unambiguous — a reader never has to guess which
+of the two kinds a target meant, and a typo inside the namespace can be
+refused by name. The wire-word ban is what makes the *wire* unambiguous.
+Both, or neither is worth having.
 
 (The JSON Schema's own `$defs` names — `blockCore`, `tableCell`, … — are
 neither: they are schema-internal labels a document never contains, and they
@@ -2162,7 +2164,8 @@ object. That is `index.json`, one file at the bundle root, validated against
   "widgets": [
     { "target": "page-wiki-home" },
     { "target": "type-wiki-page", "layout": "view", "limit": 6 },
-    { "target": "_favorite", "layout": "compact_list" }
+    { "target": "_favorite", "layout": "compact_list" },
+    { "target": "_all_objects", "card_style": "card", "icon_size": "medium" }
   ]
 }
 ```
@@ -2190,26 +2193,66 @@ present its output as usable.) In a well-formed bundle every file carries the
 same `version`; a bundle whose files disagree is malformed, and the reader
 gates on the highest version it finds.
 
-A widget is `{ target, layout, limit }`. `layout` is `link · tree · list ·
-compact_list · view`, defaulting to `link` and omitted when default (§4).
-`target` is an object id from the bundle — a page, a type, a set, a
-collection — or one of the reserved listings `_favorite · _recent · _set ·
-_collection`, which name a built-in rather than something the bundle ships.
-The leading `_` is what keeps the two kinds of target apart (§1): an object id
-from the bundle may never begin with one, so a bundle cannot shadow a listing
-with an object of its own, and a reader never has to guess which of the two a
-target meant. Those four and no others: a live space also has an All Objects
-and a Recently Opened widget, but the import path does not know those names
-(`widget.IsPredefinedWidgetTargetId`), so a widget declaring one is **dropped
-on install with no error** — see below. The tooling rejects them, which is
-also why they are spelled `_all_objects` / `_recent_open` rather than quoted
-from the live space: they exist only to be refused, so there is no live
-spelling for them to preserve.
+A widget is flat — `{ target, layout, limit, view_id, auto_added,
+card_style, icon_size, description, properties }` — though the wire carries
+it as two blocks (see below). The members are the two blocks' own §5
+members, verbatim: `layout` (`link · tree · list · compact_list · view`,
+defaulting to `link`), `limit`, `view_id` (which of the target's views a
+`view` widget shows; omitted, the target's default view) and `auto_added`
+(the client placed this widget itself and treats it as its own to manage)
+are the widget block's; `card_style`, `icon_size`, `description` and
+`properties` are the link block's display members, with the same
+vocabularies — the schema states each as one `$ref` into the object schema
+rather than a copy that drifts. `properties` keys resolve through the
+bundle's property dictionary (§2f), the file that answers for stored keys,
+since there is no per-document legend here.
 
-A `_`-prefixed target that is not one of the six is refused by name, with the
-inventory in the message. It cannot be an object id, so the alternative
+`target` is an object id from the bundle — a page, a type, a set, a
+collection — or one of the eight reserved listings `_favorite · _recent ·
+_recent_open · _set · _collection · _all_objects · _chat · _bin`, which name
+a built-in rather than something the bundle ships. The leading `_` is what
+keeps the two kinds of target apart (§1): an object id from the bundle may
+never begin with one, so a bundle cannot shadow a listing with an object of
+its own, and a reader never has to guess which of the two a target meant.
+The inventory is what live sidebars actually hold — measured over a 77-space
+account, 33 of 218 widgets name a listing (chat 11 · bin 10 · allObjects 8 ·
+recent 1 · set 1) — and `widget.IsPredefinedWidgetTargetId` knows every wire
+spelling, so all eight survive import. (For one revision it knew only four,
+and `_all_objects` / `_recent_open` existed in this format only to be
+refused; the importer catching up is what let them travel.)
+
+Two index-level members belong to the sidebar without belonging to any one
+widget, and both are machine state the authoring subset refuses (§2g):
+`auto_widget_targets`, the client's ledger of targets it has already
+auto-added a widget for — usually naming widgets NOT in the sidebar any
+more, which is the point: the ledger is what stops a restored client
+re-adding what the user deleted (21 of 77 spaces carry one) — and
+`auto_widget_disabled`, the per-space switch that turns auto-widgets off
+entirely (2 of 77).
+
+A `_`-prefixed target that is not one of the eight is refused by name, with
+the inventory in the message. It cannot be an object id, so the alternative
 diagnostic — "no object with that id in the bundle" — would point an author
 with a typo at the wrong repair.
+
+**A bundle carries no widget document.** The sidebar of a live space is a
+hidden `kind: "widget"` object whose blocks encode exactly this array: one
+widget wrapper block per widget, each with one indented link child naming
+the target. Measured over 77 spaces the encoding is pure scaffolding — 218
+wrapper blocks, 218 link children, in perfectly regular pairs, plus the
+header scaffolding §7 already drops — and every detail the object carries is
+either lifted here (`autoWidgetTargets`, `autoWidgetDisabled`), constant
+(`isHidden`, the dashboard layout), or the object's own timestamps, which a
+restored sidebar re-mints the way a restored space re-mints its own (v0.34).
+So export lifts the object into these fields (`IndexFromWidgetObject`) and
+omits the document — fail-closed, like the space document beside it: an
+unpaired widget block, a target the index cannot spell (two strays in the
+corpus, `bookmark` and `lists`, words no client defines), a non-empty name,
+real page content, or any detail this package cannot account for keeps the
+document, so a widget object carrying something unforeseen travels rather
+than vanishing. The comparator consults the same predicates
+(`OmittedWidgetObject`, `WidgetObjectResidualKey`), so the omission and the
+round-trip check cannot drift apart (§11).
 
 ### The manifest
 
@@ -2264,7 +2307,7 @@ outputs the wiring produces, and who reads them:
 | output | written by | read by |
 |---|---|---|
 | `profile` at the archive root — `pb.Profile`, raw protobuf whatever format the snapshots are in, since `getProfile` reads it with `pb.Profile.Unmarshal` | `cmd/anyblockconvert` (`profile.go`) | `CreateObjectsForExperience` reads **`spaceDashboardId` only** |
-| a snapshot with `sbType: Widget` among the objects — one root block plus a wrapper-and-link pair per widget | `cmd/anyblockconvert` (`widgets.go`) | the pb importer: `shouldImportSnapshot` admits a Widget snapshot precisely when the import type is `EXPERIENCE`, and `objectcreator.updateWidgetObject` merges its widgets into the space's own widget object |
+| a snapshot with `sbType: Widget` among the objects — one root block plus a wrapper-and-link pair per widget | `cmd/anyblockconvert` (`widgets.go`), built from `index.widgets` by `WidgetsSnapshot` — the same function the round-trip verifier holds against the widget object it omits, so the install artifact and the loss check cannot drift | the pb importer: `shouldImportSnapshot` admits a Widget snapshot precisely when the import type is `EXPERIENCE`, and `objectcreator.updateWidgetObject` merges its widgets into the space's own widget object |
 
 | `index.json` | reaches the space as | effect |
 |---|---|---|
@@ -2280,9 +2323,13 @@ Five consequences worth stating, because none is obvious from the wire format:
   calls `getWidgets` or `createWidgets`; those belong to `inject`. The wiring
   still fills the field, so an archive it produces is also a valid built-in
   archive, but nothing on a bundle's own path reads it. **The sidebar comes
-  from the Widget snapshot**, which is also how a real app export carries it —
-  export a space and the widget object is a file under `objects/` while the
-  export's own `profile` has `"widgets": []`.
+  from the Widget snapshot** — which an app export carries as a stored
+  object, and which this format's wiring rebuilds from `index.widgets`,
+  since a bundle carries no widget document (above). The snapshot's
+  `autoWidgetTargets` / `autoWidgetDisabled` details are inert the same way:
+  `updateWidgetObject` merges only the BLOCKS into the space's own widget
+  object, so the ledger reaches the archive truthfully but no importer reads
+  it back yet. The index is where the state survives.
 - **`name` and the icon are discarded on this path.**
   `CreateObjectsForExperience` calls `setWorkspaceSettings(profile, spaceId,
   false)`, and that function applies `profile.Name` and `profile.Avatar` only
@@ -2316,11 +2363,12 @@ the only reference in the format whose failure produces no diagnostic at all:
 `common.handleLinkBlock` rewrites a link target it cannot resolve to
 `addr.MissingObject`, and `WidgetObject.Init` then removes the broken link
 *and* its now-empty wrapper. The import succeeds, the widget is not there, and
-the only trace is a log line. That covers both an id no document in the bundle
-defines and a reserved listing the importer does not recognise
-(`_all_objects`, `_recent_open`). Both are therefore errors in
-`anyblockvalidate` and `anyblockconvert` rather than something an author
-discovers by installing.
+the only trace is a log line. An id no document in the bundle defines is
+therefore an error in `anyblockvalidate` and `anyblockconvert` rather than
+something an author discovers by installing — and so is a reserved listing
+the importer does not recognise, a set that is empty today (the importer
+knows all eight) and that the batch checker still guards, for the day a
+listing is added to this format before the importer learns it.
 
 Nothing per-object substitutes for this file. In particular **`is_favorite` is
 not an entry point**: it adds an object to Favorites and nothing more. It
@@ -3850,7 +3898,7 @@ mapping:
 | `table_of_contents` | TableOfContents | — |
 | `property` | Relation | `property` (the property's spelling, the member every property-naming slot uses since v0.41; renders the property inline) |
 | `dataview` | Dataview | fully specified in §6.2 |
-| `widget` | Widget | `layout` (`link · tree · list · compact_list · view`), `limit`, `view_id`, `auto_added` |
+| `widget` | Widget | `layout` (`link · tree · list · compact_list · view`), `limit`, `view_id`, `auto_added`. Appears only inside a widget object — and a bundle carries no widget document: its sidebar is `index.widgets`, which states these members flat beside the link child's (§2c) |
 | `chat` | Chat | — (rare) |
 | `featured_properties` | FeaturedRelations | — structural, see §7 |
 | `icon` | Icon | `name` (legacy profile objects only) |
@@ -5981,9 +6029,14 @@ Other exported helpers, in service of the same wiring: `ValidateWarn`
 `LeafBlockType` / `TextBlockType`, `FormatName` / `FormatByName`, the four
 vocabulary listers, and the `index.json` namespace helpers (§1, §2c):
 `IsPlatformId`, `IsReservedWidgetTarget`, `IsImportableWidgetTarget`,
-`ReservedWidgetTargets`, `IsReservedHomepage`, and the two that translate a
-reserved name into the importer's own bare spelling, `WireWidgetTarget` and
-`WireHomepage`.
+`ReservedWidgetTargets`, `IsReservedHomepage`, the translators between a
+reserved name and the importer's own bare spelling (`WireWidgetTarget`,
+`FormatWidgetTarget`, `WireHomepage`, `FormatHomepage`), and the widget
+object's omission seam (§2c): `OmittedWidgetObject`, `IndexFromWidgetObject`,
+`WidgetObjectResidualKey`, and `WidgetsSnapshot` — the one builder both
+`cmd/anyblockconvert` and the round-trip verifier use, so the archive a
+bundle installs from and the reconstruction the sweep verifies are the same
+bytes by construction.
 
 The bundle index (§2c) has its own pair, since it is not an object snapshot,
 and the property dictionary (§2f) another, on the same reasoning:
