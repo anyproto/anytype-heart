@@ -741,3 +741,54 @@ func TestValidate_UnknownEnvelopeMembersAreAddressedOneByOne(t *testing.T) {
 			"no issue may still carry the merged list the split replaced")
 	}
 }
+
+// The warning channel is only worth reading if what it says is worth acting
+// on. Measured over a 77-space export, 77,446 warnings reached a reader and
+// 371 of them told that reader anything: 93% were seven file-variant keys
+// whose BUNDLED DECLARATION disagrees with every value the store has ever
+// held, and 7% were export restating the bundled table's own target types and
+// then reporting that the restatement is ignored.
+//
+// Both are the format arguing with itself about documents no author wrote.
+// Silencing them takes the channel to 379 warnings, 1% of documents, and
+// every survivor is a fact about the document: a view that cannot group, a
+// date filter that silently widens, a rename that will not apply.
+//
+// How this can fail: silence the case where a stated target list DIFFERS from
+// the bundle and a real discard goes unreported; drop the file-variant
+// exemption and 71,736 warnings bury the 371 again.
+func TestWarnings_TheChannelReportsTheDocument(t *testing.T) {
+	warn := func(doc string) []Issue {
+		var out []Issue
+		require.NoError(t, ValidateWarn([]byte(doc), func(i Issue) { out = append(out, i) }), doc)
+		return out
+	}
+
+	t.Run("a mis-declared file-variant key is not the document's fault", func(t *testing.T) {
+		assert.Empty(t, warn(`{"version": 1, "id": "f1", "kind": "file_object",
+			"properties": {"file_variant_paths": ["a", "b"], "file_variant_widths": [100, 200]}}`),
+			"the bundled table declares these text and number; every stored value is a list")
+	})
+
+	t.Run("an ordinary shape mismatch still warns", func(t *testing.T) {
+		assert.NotEmpty(t, warn(`{"version": 1, "id": "o1", "properties": {"description": ["a list"]}}`),
+			"description really is a text property and a list really does read as empty")
+	})
+
+	t.Run("restating the bundle's own targets says nothing", func(t *testing.T) {
+		assert.Empty(t, warn(`{"version": 1, "kind": "object_type", "internal_key": "t",
+			"properties": {"name": "T"},
+			"type_settings": {"property_definitions": [
+				{"property": "creator", "format": "objects", "object_types": ["participant"]}]}}`),
+			"participant is exactly what the bundle says creator targets")
+	})
+
+	t.Run("but asking for something the bundle will not honour does", func(t *testing.T) {
+		w := warn(`{"version": 1, "kind": "object_type", "internal_key": "t",
+			"properties": {"name": "T"},
+			"type_settings": {"property_definitions": [
+				{"property": "creator", "format": "objects", "object_types": ["page"]}]}}`)
+		require.NotEmpty(t, w, "creator does not target page, and the list is discarded")
+		assert.Contains(t, w[0].Message, "ignored")
+	})
+}

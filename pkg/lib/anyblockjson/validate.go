@@ -1196,7 +1196,8 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 								"%q is a bundled property named %q — this name is ignored; mint a custom key if the label matters",
 								key, rel.Name)
 						}
-						if ots, has := tp["object_types"].([]any); has && len(ots) > 0 {
+						if ots, has := tp["object_types"].([]any); has && len(ots) > 0 &&
+							!restatesBundledTargets(ots, rel) {
 							warnIssue(fmt.Sprintf(typePropertyDefinitionsPath+"/%d/object_types", i),
 								"%q is a bundled property; its target types are fixed by the bundle and this list is ignored — mint a custom key to target different types",
 								key)
@@ -1839,9 +1840,70 @@ func deniedPropertyKey(key string) (string, bool) {
 // "Marshal never emits what Validate rejects" (§11) is the stronger promise.
 // Reporting it costs nothing and catches the authoring case, which is the one
 // that can still be fixed.
+// listValuedDespiteDeclaration are the keys whose bundled declaration
+// disagrees with every value the store has ever held, so the shape warning
+// below is about the TABLE rather than the document.
+//
+// All seven describe a file's variants, all seven sit on every file object,
+// and all seven hold a list: six are declared `text` and one (`widths`)
+// `number`. In a 77-space export that is 71,736 warnings — 93% of the entire
+// warning channel, against 371 warnings that tell a reader something. A
+// channel that is 99% noise is a channel nobody reads, which costs the format
+// the warnings it actually needs: the unguarded date filter that silently
+// widens a view, the group_by a view type cannot honour.
+//
+// The right repair is in the bundled table, which is not this package's to
+// change (§15). Until it happens, the format declines to report a mismatch
+// that is universal, expected, and about a declaration no document chose.
+var listValuedDespiteDeclaration = map[string]bool{
+	"fileVariantChecksums": true,
+	"fileVariantIds":       true,
+	"fileVariantKeys":      true,
+	"fileVariantMills":     true,
+	"fileVariantOptions":   true,
+	"fileVariantPaths":     true,
+	"fileVariantWidths":    true,
+}
+
+// restatesBundledTargets reports an `object_types` list that says exactly
+// what the bundled table already says for this property.
+//
+// The warning beside it exists to tell an author their list is IGNORED. That
+// is worth saying when the list asks for something the bundle will not
+// honour; it is worth nothing when the list is the bundle's own answer
+// written out again — and export writes it out again on every bundled
+// property that has targets, which was 5,336 warnings in a 77-space export,
+// 93% of what remained of the channel. `type` restating `object_type`,
+// `creator` restating `participant`, `picture` restating `image`.
+//
+// A list that DIFFERS still warns, because then something really is being
+// discarded.
+func restatesBundledTargets(stated []any, rel *model.Relation) bool {
+	bundled := map[string]bool{}
+	for _, u := range rel.GetObjectTypes() {
+		if k, err := bundle.TypeKeyFromUrl(u); err == nil {
+			bundled[string(k)] = true
+			bundled[TypeKeySpelling(string(k))] = true
+		}
+	}
+	if len(bundled) == 0 {
+		return false
+	}
+	for _, raw := range stated {
+		t, _ := raw.(string)
+		if !bundled[t] {
+			return false
+		}
+	}
+	return true
+}
+
 func wrongShapeForFormat(key string, v any) (string, bool) {
 	if v == nil {
 		return "", false // an explicit null is a value: the key was set (§3)
+	}
+	if listValuedDespiteDeclaration[key] {
+		return "", false
 	}
 	rel, err := bundle.GetRelation(domain.RelationKey(key))
 	if err != nil || rel == nil {
