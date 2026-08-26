@@ -323,9 +323,20 @@ func (e *Exporter) emitDoc(ctx context.Context, req Request, docs collect.Docs, 
 			if !ok {
 				return fmt.Errorf("no planned blob path for %s", id)
 			}
-			if err := e.saveBlob(ctx, wr, b, path.Join(req.BundleRoot, blobPath)); err != nil {
+			fullBlobPath := path.Join(req.BundleRoot, blobPath)
+			if err := e.saveBlob(ctx, wr, b, fullBlobPath); err != nil {
 				blobFailed = true
 				log.With("objectID", id).Warnf("file blob not streamed, document travels without bytes: %v", err)
+				// a PARTIAL blob is worse than none — truncated bytes a
+				// reader may trust — so a writer that can un-write gets the
+				// chance. A zip writer cannot (entries are streamed); there
+				// the partial stays, unbound by the manifest, and the
+				// tooling's orphan check flags it.
+				if remover, ok := wr.(interface{ RemoveFile(string) error }); ok {
+					if rerr := remover.RemoveFile(fullBlobPath); rerr != nil {
+						log.With("objectID", id).Warnf("partial blob not removed: %v", rerr)
+					}
+				}
 				return nil
 			}
 			composer.ObserveFileBlob(id, blobPath)

@@ -58,3 +58,17 @@ func (w *DirWriter) WriteFile(filename string, r io.Reader, lastModifiedDate int
 	}
 	return nil
 }
+
+// RemoveFile deletes one file below the root — the exporter's cleanup hook
+// for a partially streamed blob, guarded by the same containment rule as
+// WriteFile. A file that is already gone is not an error.
+func (w *DirWriter) RemoveFile(filename string) error {
+	full := filepath.Join(w.root, filepath.FromSlash(filename))
+	if rel, err := filepath.Rel(w.root, full); err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return fmt.Errorf("path %q escapes the bundle root", filename)
+	}
+	if err := os.Remove(full); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("remove file: %w", err)
+	}
+	return nil
+}

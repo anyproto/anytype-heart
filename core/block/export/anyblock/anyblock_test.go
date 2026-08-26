@@ -456,3 +456,66 @@ func TestExporter_ABlobFailureIsCountedNotFatal(t *testing.T) {
 	require.NotNil(t, idx.Manifest)
 	assert.Empty(t, idx.Manifest.Files, "no binding for bytes that did not travel")
 }
+
+// failAfterReader serves a few bytes and then errors — the shape of a
+// node that stops serving blocks mid-file ("failed to fetch all nodes",
+// seen live on the corpus sweep).
+type failAfterReader struct{ served bool }
+
+func (r *failAfterReader) Read(p []byte) (int, error) {
+	if r.served {
+		return 0, os.ErrDeadlineExceeded
+	}
+	r.served = true
+	return copy(p, []byte("truncated")), nil
+}
+func (r *failAfterReader) Seek(offset int64, whence int) (int64, error) { return 0, nil }
+func (r *failAfterReader) Close() error                                 { return nil }
+
+// A stream that dies MID-COPY leaves no partial blob behind: truncated
+// bytes a reader may trust are worse than absent bytes, so the writer's
+// cleanup hook removes what the failed copy wrote. Caught live: the corpus
+// files-on sweep left files/…jpg truncated on disk, flagged only by the
+// orphan check.
+//
+// How this can fail: skip the RemoveFile hook (the truncated blob ships,
+// unbound, and every downstream reader that ignores the manifest trusts
+// it); or bind the blob before the copy finishes (the manifest points at
+// truncated bytes, which is strictly worse).
+func TestExporter_AMidStreamFailureLeavesNoPartialBlob(t *testing.T) {
+	fx := newFixture(t)
+	const fileId = "truncatedFileId"
+	fx.store.AddObjects(t, spaceId, []spaceindex.TestObject{
+		{
+			bundle.RelationKeyId:      domain.String(fileId),
+			bundle.RelationKeyName:    domain.String("cut"),
+			bundle.RelationKeyFileExt: domain.String("jpg"),
+			bundle.RelationKeySpaceId: domain.String(spaceId),
+		},
+	})
+	fileSb := setupObject(fileId, "", smartblock.SmartBlockTypeFileObject, map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyName: domain.String("cut"),
+	})
+	fileData := mock_files.NewMockFile(t)
+	fileData.EXPECT().MimeType().Return("application/octet-stream")
+	fileData.EXPECT().Reader(mock.Anything).Return(&failAfterReader{}, nil)
+	fileData.EXPECT().LastModifiedDate().Return(int64(1700000000)).Maybe()
+	fileComponent := mock_fileobject.NewMockFileObject(t)
+	fileComponent.EXPECT().GetFile().Return(fileData, nil)
+	fx.picker.EXPECT().GetObject(mock.Anything, fileId).
+		Return(&fileObjectWrapper{SmartTest: fileSb, FileObject: fileComponent}, nil)
+	fx.provider.EXPECT().Type(spaceId, fileId).Return(smartblock.SmartBlockTypeFileObject, nil)
+
+	dir := t.TempDir()
+	wr, err := NewDirWriter(dir)
+	require.NoError(t, err)
+
+	result, err := fx.exporter.Export(context.Background(),
+		Request{SpaceId: spaceId, SpaceName: "Fixture space", IncludeArchived: true, IncludeFiles: true}, wr)
+
+	require.NoError(t, err)
+	assert.Equal(t, Result{Succeed: 1, BlobErrors: 1}, result)
+	tree := readTree(t, dir)
+	require.Contains(t, tree, "files/truncatedFileId.anyblock.json")
+	assert.NotContains(t, tree, "files/truncatedFileId.bin", "the partial blob must be cleaned up")
+}
