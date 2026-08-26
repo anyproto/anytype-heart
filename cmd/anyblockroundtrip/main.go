@@ -851,6 +851,11 @@ func (c *spaceComposer) observeWritten(sw *pb.SnapshotWithType, path string) {
 					def: anyblockjson.OptionDefinition{
 						Name:  name,
 						Color: det["relationOptionColor"].GetStringValue(),
+						// the option's stored key: minted, so derivable from
+						// nothing, unlike its name, colour, position and api
+						// key (§2f). Carried by uniqueKey `opt-<key>`.
+						InternalKey: strings.TrimPrefix(
+							det["uniqueKey"].GetStringValue(), "opt-"),
 					},
 				})
 			}

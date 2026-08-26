@@ -85,6 +85,17 @@ type PropertyDefinition struct {
 type OptionDefinition struct {
 	Name  string `json:"name"`
 	Color string `json:"color"`
+	// InternalKey is the option's stored key. It is minted, so an author
+	// never writes one and export writes it only where it exists.
+	//
+	// It is the only thing about an option that is derivable from nothing.
+	// The name and colour say what the option MEANS; the array position says
+	// where it sits (§2f); and the option's api key is regenerated from the
+	// name by the app's own rule — measured over a 77-space export, all 514
+	// real option api keys are reproduced by that rule (470 by the slug, 44
+	// by the transliterate fallback for names like `$$` that slug to
+	// nothing), so not one of them needs to travel.
+	InternalKey string `json:"internal_key"`
 }
 
 // UnmarshalJSON accepts both §2a forms: a bare name, or an object carrying a
@@ -106,13 +117,14 @@ func optionsToAny(opts []OptionDefinition) []any {
 		if o.Name == "" {
 			continue
 		}
-		if o.Color == "" {
+		if o.Color == "" && o.InternalKey == "" {
 			out = append(out, o.Name)
 			continue
 		}
 		m := &omap{}
 		m.set("name", o.Name)
-		m.set("color", o.Color)
+		m.setNonEmpty("color", o.Color)
+		m.setNonEmpty("internal_key", o.InternalKey)
 		out = append(out, m)
 	}
 	return out

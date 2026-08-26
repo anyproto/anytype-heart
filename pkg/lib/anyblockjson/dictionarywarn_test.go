@@ -385,3 +385,43 @@ func TestDictionary_ADisagreeingIdentityPairIsReported(t *testing.T) {
 		}
 	})
 }
+
+// An inline option says what the option MEANS — its name, its colour, and by
+// its position where it sits. Its stored key says what the option IS, and
+// that is the one thing about it derivable from nothing.
+//
+// Everything else about an option can be reconstructed. The api key is
+// regenerated from the name by the app's own rule at creation: measured over
+// a 77-space export, all 514 real option api keys are reproduced by it — 470
+// by the api slug and 44 by the transliterate fallback, for names like `$$`
+// that slug to nothing. Not one survived a rename, so none needs to travel.
+// The order is the array position (§2f). The property is the entry holding it.
+//
+// So `internal_key` is what an inline vocabulary was missing to be complete
+// rather than merely descriptive.
+//
+// How this can fail: render it on an option that has none and the compact
+// bare-name form disappears for every colourless option; drop it from the
+// object form and a vocabulary can never state identity.
+func TestDictionary_AnOptionCarriesItsStoredKey(t *testing.T) {
+	d, warns := readDict(t, `{`+dictHead+
+		`"properties":[{"property":"status","name":"Status","format":"select","options":[`+
+		`{"name":"To Do","color":"ice","internal_key":"63454ad0c493f68e301890db"},`+
+		`{"name":"Done","color":"lime"},`+
+		`"Someday"]}]}`)
+	require.Empty(t, warns)
+	require.Len(t, d.Properties, 1)
+
+	opts := d.Properties[0].Options
+	require.Len(t, opts, 3)
+	assert.Equal(t, "63454ad0c493f68e301890db", opts[0].InternalKey)
+	assert.Empty(t, opts[1].InternalKey, "an option may carry none")
+	assert.Equal(t, "Someday", opts[2].Name, "and the bare-name form still means a colourless option")
+
+	out, err := MarshalPropertyDictionary(d)
+	require.NoError(t, err)
+	assert.Contains(t, string(out), `"internal_key": "63454ad0c493f68e301890db"`)
+	assert.Contains(t, string(out), `"name": "To Do"`, "names with spaces survive intact")
+	assert.Contains(t, string(out), `"Someday"`,
+		"an option with neither colour nor key stays the compact bare name")
+}

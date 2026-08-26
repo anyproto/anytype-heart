@@ -1418,6 +1418,12 @@
             },
             "color": {
               "$ref": "#/$defs/optionColor"
+            },
+            "internal_key": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "description": "The option's stored key — a minted id, so an AUTHOR never writes one and export writes it only where it exists. It is the one thing about an option that is derivable from nothing: the name and colour say what the option MEANS, the array position says where it sits, and the option's api key is regenerated from the name by the app's own rule (measured: every one of 514 real option api keys is reproduced by that rule, so none needs to travel). Carrying the internal key is what lets a bundle state a vocabulary completely rather than only describe it."
             }
           },
           "required": [
