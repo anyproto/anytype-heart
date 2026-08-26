@@ -105,6 +105,9 @@ var log = logging.Logger("anytype-mw-export")
 type Export interface {
 	Export(ctx context.Context, req pb.RpcObjectListExportRequest) (path string, succeed int, err error)
 	ExportSingleInMemory(ctx context.Context, spaceId string, objectId string, format model.ExportFormat) (res string, err error)
+	// Collector is the format-agnostic collection seam (collection.go):
+	// the native AnyBlock JSON exporter consumes it and nothing behind it.
+	collect.Collector
 	app.Component
 }
 

@@ -743,25 +743,7 @@ func (e *exportContext) listTargetTypesFromTemplates(ids []string) []string {
 }
 
 func isExcludedFromExport(details *domain.Details) bool {
-	if details == nil {
-		return true
-	}
-	n := details.Len()
-	// Empty details or containing only id
-	if n <= 1 {
-		return true
-	}
-	// Details only with id + backlinks should be discarded
-	if n == 2 && details.Has(bundle.RelationKeyBacklinks) {
-		return true
-	}
-
-	id := details.GetString(bundle.RelationKeyId)
-	if domain.IsFileId(id) {
-		return true
-	}
-
-	return false
+	return collect.Excluded(details)
 }
 
 func objectValid(sbType smartblock.SmartBlockType, info *database.ObjectInfo, includeArchived bool, closure collect.Closure) bool {

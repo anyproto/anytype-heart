@@ -17,6 +17,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 )
 
 // Closure names which dependency closure a collection runs.
@@ -78,4 +79,30 @@ func (d Docs) TransformToDetailsMap() map[string]*domain.Details {
 // anything is written.
 type Collector interface {
 	Collect(ctx context.Context, req Request) (Docs, error)
+}
+
+// Excluded reports a collected row no format should emit: empty or id-only
+// details, an id-plus-backlinks tombstone, or a legacy raw file id. The
+// collection may still hold such rows (they arrive through store queries);
+// every emitter skips them by this one rule.
+func Excluded(details *domain.Details) bool {
+	if details == nil {
+		return true
+	}
+	n := details.Len()
+	// Empty details or containing only id
+	if n <= 1 {
+		return true
+	}
+	// Details only with id + backlinks should be discarded
+	if n == 2 && details.Has(bundle.RelationKeyBacklinks) {
+		return true
+	}
+
+	id := details.GetString(bundle.RelationKeyId)
+	if domain.IsFileId(id) {
+		return true
+	}
+
+	return false
 }
