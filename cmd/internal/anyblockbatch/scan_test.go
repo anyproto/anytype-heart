@@ -323,3 +323,56 @@ func TestCheckTargetTypes_IdlessLocalTypeIsReported(t *testing.T) {
 	assert.Contains(t, bad[0].Reason, `no "id"`)
 	assert.NotContains(t, bad[0].Reason, "prefers it over the bundled type")
 }
+
+// The manifest `files` map binds a file document to its bytes (§2c, v0.47),
+// and every failure it can have is silent at import — the file object
+// arrives, its content does not. Refusals cover what the map STATES: a key
+// naming no document, a path escaping the bundle, a promised blob that is
+// not there. A bundle whose map omits a file document passes — whether an
+// absent blob is intended is the thin-bundle marker's future question
+// (SPEC §15 #20), and refusing it today would refuse every pre-v0.47
+// bundle.
+//
+// How this can fail: stat the blob against the WALK root instead of the
+// index's own directory (a nested bundle's bindings all read missing);
+// stop cleaning the path before the escape check (`a/../../x` reads as
+// contained); or require an entry per file document (every legacy bundle
+// turns invalid overnight).
+func TestCheckManifestFiles(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "files"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "files", "file-1.anyblock.json"),
+		[]byte(`{"version": 1, "kind": "file", "id": "file-1"}`), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "files", "file-1.png"), []byte("bytes"), 0o644))
+	files, err := DiscoverJSONFiles(dir)
+	require.NoError(t, err)
+
+	manifest := func(entries map[string]string) *anyblockjson.Index {
+		return &anyblockjson.Index{Manifest: &anyblockjson.Manifest{Files: entries}}
+	}
+
+	t.Run("a binding whose document and blob both exist passes", func(t *testing.T) {
+		assert.Empty(t, CheckManifestFiles(manifest(map[string]string{"file-1": "files/file-1.png"}), dir, files))
+	})
+	t.Run("no map, nothing to check", func(t *testing.T) {
+		assert.Empty(t, CheckManifestFiles(&anyblockjson.Index{}, dir, files))
+	})
+	t.Run("a key naming no document is a binding for nothing", func(t *testing.T) {
+		got := CheckManifestFiles(manifest(map[string]string{"ghost": "files/file-1.png"}), dir, files)
+		require.Len(t, got, 1)
+		assert.Contains(t, got[0].Reason, "no document")
+	})
+	t.Run("a path that climbs out of the bundle is refused", func(t *testing.T) {
+		got := CheckManifestFiles(manifest(map[string]string{"file-1": "../outside.png"}), dir, files)
+		require.Len(t, got, 1)
+		assert.Contains(t, got[0].Reason, "outside the bundle")
+		got = CheckManifestFiles(manifest(map[string]string{"file-1": "files/../../outside.png"}), dir, files)
+		require.Len(t, got, 1)
+		assert.Contains(t, got[0].Reason, "outside the bundle")
+	})
+	t.Run("a promised blob that is not there is refused", func(t *testing.T) {
+		got := CheckManifestFiles(manifest(map[string]string{"file-1": "files/file-1.pdf"}), dir, files)
+		require.Len(t, got, 1)
+		assert.Contains(t, got[0].Reason, "missing")
+	})
+}

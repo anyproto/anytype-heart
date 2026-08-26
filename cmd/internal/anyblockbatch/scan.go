@@ -928,6 +928,78 @@ func UsedPropertyKeys(files []string) (map[string]bool, error) {
 	return out, nil
 }
 
+// CheckManifestFiles finds manifest `files` entries that do not bind
+// (§2c, v0.47). The map is the bundle's only authoritative binding between
+// a file document and its bytes — the document itself carries no path — so
+// an entry that fails here fails silently at import: the file object
+// arrives and its content does not.
+//
+// Three refusals, each on what the manifest STATES (a bundle whose map
+// omits a file document is like a bundle with no manifest — walked, not
+// refused — because whether an absent blob is intended is the thin-bundle
+// marker's future question, SPEC §15 #20):
+//
+//   - the key names no document in the bundle — the binding is for nothing;
+//   - the path escapes the bundle root — every manifest path is relative to
+//     index.json, and one that climbs out points at bytes the archive does
+//     not carry;
+//   - no file exists at the path — the blob the entry promises is missing.
+func CheckManifestFiles(idx *anyblockjson.Index, indexDir string, files []string) []BadTarget {
+	if idx == nil || idx.Manifest == nil || len(idx.Manifest.Files) == 0 {
+		return nil
+	}
+	ids := map[string]bool{}
+	for _, f := range files {
+		data, err := os.ReadFile(f)
+		if err != nil {
+			continue
+		}
+		var probe struct {
+			Id string `json:"id"`
+		}
+		if json.Unmarshal(data, &probe) == nil && probe.Id != "" {
+			ids[probe.Id] = true
+		}
+	}
+	keys := make([]string, 0, len(idx.Manifest.Files))
+	for key := range idx.Manifest.Files {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	var out []BadTarget
+	for _, key := range keys {
+		blobPath := idx.Manifest.Files[key]
+		prop := fmt.Sprintf("manifest.files[%q]", key)
+		if !ids[key] {
+			out = append(out, BadTarget{
+				File: anyblockjson.IndexFileName, Property: prop, Target: key,
+				Reason: "no document with that id in the bundle — this binds bytes to nothing",
+			})
+			continue
+		}
+		if filepath.IsAbs(blobPath) || escapesDir(blobPath) {
+			out = append(out, BadTarget{
+				File: anyblockjson.IndexFileName, Property: prop, Target: blobPath,
+				Reason: "the path points outside the bundle — manifest paths are relative to index.json and stay inside it",
+			})
+			continue
+		}
+		if st, err := os.Stat(filepath.Join(indexDir, filepath.FromSlash(blobPath))); err != nil || st.IsDir() {
+			out = append(out, BadTarget{
+				File: anyblockjson.IndexFileName, Property: prop, Target: blobPath,
+				Reason: "no file at that path — the blob this entry promises is missing from the bundle",
+			})
+		}
+	}
+	return out
+}
+
+// escapesDir reports a relative path that climbs above its base.
+func escapesDir(p string) bool {
+	clean := filepath.Clean(filepath.FromSlash(p))
+	return clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator))
+}
+
 // CheckViewProperties reports a view slot — a filter leaf, a sort or a
 // column — naming a property nothing in the bundle can resolve.
 //

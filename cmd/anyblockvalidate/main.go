@@ -66,6 +66,11 @@ func main() {
 			fail++
 		} else {
 			dangling := anyblockbatch.CheckIndexTargets(idx, files)
+			// the manifest's blob bindings are index references too (§2c,
+			// v0.47), and theirs is the other silent failure: a file
+			// document whose bytes the entry promises and the archive does
+			// not carry
+			dangling = append(dangling, anyblockbatch.CheckManifestFiles(idx, filepath.Dir(idxPath), files)...)
 			if len(dangling) > 0 {
 				fmt.Printf("INVALID %s\n%s", idxPath, anyblockbatch.ReportTargets(dangling))
 				fail += len(dangling)
