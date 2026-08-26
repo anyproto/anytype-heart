@@ -1476,6 +1476,33 @@ var transientProperties = map[string]string{
 	// imported and round-tripped with no warning at all.
 	"featuredRelations": "deprecated: the type's `section: \"featured\"` owns this, and the clients read it from there",
 
+	// A FILE's variant machinery, and the first of them is a SECRET: the
+	// per-variant encryption keys. This package's own API layer already
+	// refuses to emit all seven, in its words "so a future change to either
+	// the bundle or the cache subscription cannot accidentally leak file keys
+	// / CIDs" (core/api/service/property.go) — and the export was shipping
+	// every one of them in a bundle built to be shared.
+	//
+	// Nothing needs them. They are read by `core/files/queries.go` and the
+	// file editor, which run in a space that already HOLDS the file; no
+	// import path reads any of them, and neither does this format or its
+	// tools. A bundle carries the file itself: imported into another space
+	// the content matches an existing file and is reused, and imported into
+	// another ACCOUNT it becomes a new file with a new encryption key and is
+	// uploaded afresh. The old key describes a blob the new account cannot
+	// and should not open.
+	//
+	// They were also 93% of the format's entire warning channel — 71,736
+	// warnings, six keys declared `text` and one `number` while every stored
+	// value is a list. Not travelling is a better answer than not warning.
+	"fileVariantKeys":      "a secret: the per-variant file ENCRYPTION keys, which a shared bundle must not carry",
+	"fileVariantIds":       "file variant machinery: regenerated when the file is indexed, and never read on import",
+	"fileVariantChecksums": "file variant machinery: regenerated when the file is indexed, and never read on import",
+	"fileVariantMills":     "file variant machinery: regenerated when the file is indexed, and never read on import",
+	"fileVariantOptions":   "file variant machinery: regenerated when the file is indexed, and never read on import",
+	"fileVariantPaths":     "file variant machinery: regenerated when the file is indexed, and never read on import",
+	"fileVariantWidths":    "file variant machinery: regenerated when the file is indexed, and never read on import",
+
 	// THE FILE MACHINERY'S per-device answers, stamped on every file object
 	// and meaning nothing off the device that stamped them. Their sibling
 	// `fileSyncStatus` is in bundle.LocalAndDerivedRelationKeys and has never

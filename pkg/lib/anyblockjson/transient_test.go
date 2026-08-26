@@ -118,6 +118,18 @@ func TestTransientProperties_BundledVerdictPerKey(t *testing.T) {
 		// bundle.LocalAndDerivedRelationKeys
 		"fileBackupStatus":   true,
 		"fileIndexingStatus": true,
+		// the file's variant machinery. The first is a SECRET — the
+		// per-variant encryption keys — and the API layer already refuses to
+		// emit all seven "so a future change cannot accidentally leak file
+		// keys / CIDs". No import path reads any of them; a restored file is
+		// re-indexed and gets its own.
+		"fileVariantKeys":      true,
+		"fileVariantIds":       true,
+		"fileVariantChecksums": true,
+		"fileVariantMills":     true,
+		"fileVariantOptions":   true,
+		"fileVariantPaths":     true,
+		"fileVariantWidths":    true,
 	}
 	assert.Equal(t, len(want), len(transientProperties),
 		"every transient key owes a verdict here — a new one must say which case it is")
@@ -256,4 +268,61 @@ func TestTransientProperties_ASpacesSecretsDoNotTravel(t *testing.T) {
 				"the space itself survives")
 		})
 	}
+}
+
+// A bundle is built to be SHARED, and it was carrying the per-variant file
+// encryption keys of every file in the space.
+//
+// This package's own API layer already refuses to emit all seven file-variant
+// keys, in its words "so a future change to either the bundle or the cache
+// subscription cannot accidentally leak file keys / CIDs"
+// (core/api/service/property.go) — the export was the change that did.
+//
+// Nothing needs them on the way back: they are read by core/files/queries.go
+// and the file editor, both of which run in a space that already holds the
+// file, and by no import path at all. A bundle carries the file itself, so
+// the same content imported elsewhere is matched and reused, or uploaded
+// fresh under a NEW key that the old one does not open.
+//
+// How this can fail: let any of the seven back into an export and a shared
+// bundle hands its recipient the keys to every file in the source space.
+func TestTransientProperties_FileKeysDoNotTravel(t *testing.T) {
+	snap := &model.SmartBlockSnapshotBase{
+		Blocks: []*model.Block{{Id: "f1",
+			Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}},
+		Details: fields(map[string]*types.Value{
+			"id":                   str("f1"),
+			"name":                 str("diagram.png"),
+			"fileVariantKeys":      strList("b53rlwqyr64xos4evv5t5vb254qf2dlfcmraphgzgg5et3optun4q"),
+			"fileVariantIds":       strList("bafybeidflnhxa2fu3gkrzcio4ultfrun4eo5oaei3czlmuhohsfsyacpni"),
+			"fileVariantChecksums": strList("EPDVLKN76F8QG1P33I9DNV12P87SDE5K7J0C3G57RK5QCTULSO00"),
+			"fileVariantPaths":     strList("/0/original/"),
+			"fileVariantMills":     strList("/image/resize"),
+			"fileVariantOptions":   strList("77aUeoeWD8t7zu4QovgeoFKDoCZTtmwvrYADtANdSpS3"),
+			"fileVariantWidths":    strList("192"),
+		}),
+	}
+
+	data, err := Marshal(model.SmartBlockType_FileObject, snap, testOptions())
+	require.NoError(t, err)
+
+	assert.NotContains(t, string(data), "b53rlwqyr64xos4evv5t5vb254qf2dlfcmraphgzgg5et3optun4q",
+		"THE ENCRYPTION KEY must not appear anywhere in a shared bundle")
+	for _, key := range []string{
+		"file_variant_keys", "file_variant_ids", "file_variant_checksums",
+		"file_variant_paths", "file_variant_mills", "file_variant_options", "file_variant_widths",
+	} {
+		assert.NotContainsf(t, string(data), key, "%s must not travel", key)
+	}
+	assert.Contains(t, string(data), "diagram.png", "the file object itself still travels")
+
+	t.Run("and they do not come back either", func(t *testing.T) {
+		doc := `{"version": 1, "id": "f1", "kind": "file_object", "properties": {
+			"name": "diagram.png", "file_variant_keys": ["b53rlwqyr64xos4evv5t5vb254qf2dlfcmrap"]}}`
+		require.NoError(t, Validate([]byte(doc)))
+		_, back, err := Unmarshal([]byte(doc), testOptions())
+		require.NoError(t, err)
+		assert.Nil(t, back.Details.Fields["fileVariantKeys"],
+			"a document that states one must not plant it in the importing space")
+	})
 }
