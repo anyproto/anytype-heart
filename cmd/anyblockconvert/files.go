@@ -8,6 +8,10 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/gogo/protobuf/types"
+
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 // copyBundleFiles copies a bundle's files/ directory — the real binary
@@ -129,4 +133,53 @@ func reportDanglingSources(ds []danglingSource) string {
 		fmt.Fprintf(&b, "  %s: source %q names no file in the bundle's files/ directory\n", d.file, d.source)
 	}
 	return b.String()
+}
+
+// copyManifestBlobs copies each manifest-bound blob (§2c, v0.47) into the
+// output archive at its own bundle-relative path. The map, not the files/
+// layout convention, is the binding — an authored bundle points at assets
+// laid out however it likes — so this walks the MAP, where copyBundleFiles
+// walks the conventional directory; a blob under files/ is copied by both,
+// and the second copy is a byte-identical overwrite. CheckManifestFiles has
+// already refused a path that escapes the bundle or names nothing, so a
+// failure here is an I/O error, not a dangling binding.
+func copyManifestBlobs(inDir, outDir string, blobs map[string]string) (int, error) {
+	paths := make([]string, 0, len(blobs))
+	seen := map[string]bool{}
+	for _, rel := range blobs {
+		if !seen[rel] {
+			seen[rel] = true
+			paths = append(paths, rel)
+		}
+	}
+	sort.Strings(paths)
+	var n int
+	for _, rel := range paths {
+		src := filepath.Join(inDir, filepath.FromSlash(rel))
+		dst := filepath.Join(outDir, filepath.FromSlash(rel))
+		if err := copyFile(src, dst); err != nil {
+			return n, fmt.Errorf("copy %s: %w", rel, err)
+		}
+		n++
+	}
+	return n, nil
+}
+
+// bindBlobSource writes a converted file snapshot's `source` detail from
+// the manifest binding — the pb importer's own contract for locating a
+// file's bytes (normalizeFilePath resolves bundle.RelationKeySource against
+// the archive). The clobber the format banished from its DOCUMENTS is
+// legitimate here: the archive is a transport artifact, and this detail is
+// how that transport has always carried the path.
+func bindBlobSource(snap *model.SmartBlockSnapshotBase, blobPath string) {
+	if snap == nil {
+		return
+	}
+	if snap.Details == nil {
+		snap.Details = &types.Struct{}
+	}
+	if snap.Details.Fields == nil {
+		snap.Details.Fields = map[string]*types.Value{}
+	}
+	snap.Details.Fields["source"] = &types.Value{Kind: &types.Value_StringValue{StringValue: blobPath}}
 }

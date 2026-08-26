@@ -28,11 +28,21 @@ additionally lays each blob out beside its document in `files/` (same stem
 — the object id — real sanitized extension), so the two sort adjacent in
 any listing, but adjacency is convention riding on the map, never
 load-bearing, and an authored bundle points at assets laid out however it
-likes. An absent blob for a declared file document — or an entry pointing
-outside the bundle — is a cross-document refusal for the tooling, like
-every other manifest path. §15 #1 is settled alongside: exported documents
-carry the `.anyblock.json` double extension, so a blob that is itself a
-`.json` file (12 in the corpus) can never be mistaken for a document.
+likes. The map's reader today is the conversion wiring
+(`cmd/anyblockconvert`): each binding is copied into the installable
+archive at its own relative path and the archive-side `source` detail is
+written from the map — the pb importer's own contract for locating a
+file's bytes — so a native bundle's blobs attach on install; the
+production native importer, when it lands, resolves the same map. An entry
+that cannot be honoured — a key naming no document, a path escaping the
+bundle, a missing blob — is a cross-document refusal for the tooling, like
+every other manifest path; the inverse, a file document a PRESENT map does
+not bind, is a warning (bytes that did not travel — the signature of a
+partially failed export), and a bundle with no map at all is a
+metadata-only export, a legitimate mode. §15 #1 is settled alongside:
+exported documents carry the `.anyblock.json` double extension, and the
+map is what tells a bound `.json` BLOB (12 in the corpus) from an authored
+bare-`.json` document at discovery time.
 
 Changes in v0.46: **the manifest no longer locates options** (§2c, §2f).
 
@@ -2375,15 +2385,26 @@ document's bytes by guessing at a layout.
   the lesson of the legacy `source`-clobber, which overwrote a real,
   editable `url` relation that bookmarks legitimately hold, and whose
   destruction round-tripped through import. Every importer holding a file
-  document must find its bytes and every export tool must enumerate them,
-  so blobs have exactly the reader the removed `options` map never had.
+  document must find its bytes and every export tool must enumerate them —
+  and the map has that reader wired: `cmd/anyblockconvert` copies each
+  binding into the installable archive and writes the archive-side
+  `source` detail from it (the pb importer's own contract, resolved by
+  `normalizeFilePath`), and the future production native importer resolves
+  the same map. The clobber the format banished from its DOCUMENTS is
+  legitimate at the archive boundary — the archive is a transport
+  artifact, not a document.
   Keys are object ids verbatim — no re-spelling on either side — and an
   authored bundle writes `"files": {"logo": "assets/logo.png"}` against its
   own minted ids and any layout it likes, which is what makes an authored
-  bundle a first-class citizen rather than a convention-follower. An absent
-  blob for a declared file document, or an entry pointing outside the
-  bundle, is a cross-document refusal for the tooling, like every other
-  manifest path. The bundle is FAT (§15 #20): the bytes travel, nothing
+  bundle a first-class citizen rather than a convention-follower. The
+  tooling's contract, precisely: an entry that cannot be honoured — a key
+  naming no document, a path escaping the bundle, a blob missing at the
+  path — is a cross-document REFUSAL; a file document a present map does
+  not bind is a WARNING (its bytes did not travel — the exporter writes
+  the document and omits the binding when a blob cannot be streamed, and
+  counts it, so a partial export is loud at both ends); a bundle with no
+  map at all is a metadata-only export, tolerated as a mode.
+  The bundle is FAT (§15 #20): the bytes travel, nothing
   else — no variant keys, no encryption keys, and the thin bundle's future
   marker slot stays untouched.
 
@@ -2414,8 +2435,17 @@ because an authored bundle may put documents anywhere):
   `files/<id>.anyblock.json`, the blob at `files/<id>.<ext>` with `<ext>`
   the stored `file_ext` lowercased and restricted to `[a-z0-9]{1,10}`,
   else the conventional extension for `file_mime_type`, else `bin` —
-  `anyblock.json` as a computed suffix is impossible by construction, and
+  a blob wearing the document extension is refused at plan time, and
   the manifest map above, not the adjacency, is what binds them.
+  Putting file DOCUMENTS in `files/` is safe against the one reader known
+  to skip that directory: the legacy pb importer
+  (core/block/import/pb/converter.go) skips `files/` while walking a PB
+  archive — but it also parses every other `.json` file as jsonpb, which
+  refuses every AnyBlock document loudly, in every directory. A native
+  bundle fed to it fails whole, never partially; there is no path on
+  which the skip silently drops just the file documents while the rest
+  imports. Native bundles are read by the native wiring
+  (`cmd/anyblockconvert` → the experience path), which walks everything.
 - `index.json` and `properties.json` sit at the bundle root; there is no
   `profile` file and no root `index.<ext>` home special case — the
   homepage is a field of `index.json` and the home object an ordinary

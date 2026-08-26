@@ -98,7 +98,7 @@
             "type": "string",
             "minLength": 1
           },
-          "description": "File object id → the blob's path, relative to this file (§2c, v0.47). The authoritative binding between a `kind: \"file_object\"` document and its bytes: the document itself carries no path — a document member is not a slot for archive bookkeeping — and every importer holding a file document must find its bytes, so the lookup lives where every other by-id lookup lives. Keys are object ids verbatim, an authored bundle writes them against its own minted ids and any layout it likes; adjacency of blob and document in files/ is one exporter's convention, never load-bearing. An absent blob for a declared file document, or an entry pointing outside the bundle, is a cross-document refusal for the tooling, like every other manifest path."
+          "description": "File object id → the blob's path, relative to this file (§2c, v0.47). The authoritative binding between a `kind: \"file_object\"` document and its bytes: the document itself carries no path — a document member is not a slot for archive bookkeeping — and every importer holding a file document must find its bytes, so the lookup lives where every other by-id lookup lives. Keys are object ids verbatim, an authored bundle writes them against its own minted ids and any layout it likes; adjacency of blob and document in files/ is one exporter's convention, never load-bearing. An entry that cannot be honoured — a key naming no document, a path escaping the bundle, a blob missing at the path — is a cross-document refusal for the tooling; a file document a present map does not bind is warned about (its bytes did not travel), and a bundle with no map is a metadata-only export."
         }
       }
     },

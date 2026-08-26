@@ -727,7 +727,12 @@ guarantee — native bundles are read by native wiring
 independent; (b) keep file documents out of `files/` (a `file_docs/` split)
 purely for defensive overlap. **Recommendation: (a) — the defensive split
 re-creates the legacy two-directory correlation cost to protect a path that
-cannot parse the files anyway.**
+cannot parse the files anyway.** Verified at implementation: the pb
+importer parses every `.json` file as jsonpb (converter.go:285), so a
+native bundle fed to it fails on every document in every directory — the
+`files/` skip changes no outcome, and no partial import can silently drop
+just the file documents (SPEC §2c records this under the exporter's
+convention).
 
 **Q6. Which RPC surface does the native exporter answer to?**
 Why it matters: `model.ExportFormat` today has `Protobuf`/`JSON` (pbjson)
