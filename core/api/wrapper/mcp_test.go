@@ -253,7 +253,7 @@ func TestMCPRepairLoop(t *testing.T) {
 	t.Run("bad enum value → the allowed values", func(t *testing.T) {
 		fx := newFixture(t)
 		fx.stub("POST /v2/spaces/space1/search", 200, searchResponse(1, false, v2model.ObjectRow{Id: "bafyobj1", Name: "Doc", Type: "task"}))
-		fx.stub("GET /v2/spaces/space1/objects/bafyobj1", 200, `{"outline":[{"indent":0,"id":"e0001","type":"heading1","text":"Section"}]}`)
+		fx.stub("GET /v2/spaces/space1/objects/bafyobj1", 200, `{"outline":[{"indent":0,"id":"e0001","type":"heading_1","text":"Section"}]}`)
 		resps := fx.mcpSession(t, TierSmall,
 			call(t, 1, "find", map[string]any{"space": "space1", "query": "doc"}),
 			call(t, 2, "read", map[string]any{"object": "1", "mode": "tree"}),

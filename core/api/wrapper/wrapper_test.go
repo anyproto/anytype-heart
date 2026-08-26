@@ -20,6 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
+	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 )
 
 type recordedRequest struct {
@@ -93,11 +94,59 @@ func newFixture(t *testing.T) *fixture {
 }
 
 // stub queues one response for "METHOD path".
+//
+// A stubbed body that IS an AnyBlock document is validated against the
+// format before it is queued. These stubs stand in for what the API serves,
+// and a stale one does not fail — it agrees with equally stale decoding code
+// and both drift away from production together. That is exactly how
+// describe's type decode went on reading a pre-§2a document (envelope `key`,
+// top-level `typeProperties`) long after the API stopped serving one:
+// json.Unmarshal leaves absent members zero, so the tool answered "this type
+// has no properties" and every test agreed with it.
 func (fx *fixture) stub(methodPath string, status int, body string) {
+	fx.t.Helper()
+	if doc, ok := anyBlockDocumentStub(body); ok {
+		if err := anyblockjson.Validate(doc); err != nil {
+			fx.t.Fatalf("stubbed AnyBlock document for %q is not valid — a stub the API could never serve "+
+				"tests nothing: %v", methodPath, err)
+		}
+	}
 	fx.mu.Lock()
 	defer fx.mu.Unlock()
 	parts := methodPath
 	fx.stubs[parts] = append(fx.stubs[parts], stubResponse{status: status, body: body})
+}
+
+// anyBlockDocumentStub reports whether a stubbed body is a document read,
+// and returns it with v2's own envelope additions removed so the FORMAT can
+// judge the rest.
+//
+// A read envelope is an AnyBlock document plus what v2 adds to it — `etag`
+// (C7), `warnings` (C11), and the `?outline=`/`?format=md`/`?block=` shapes.
+// Those are v2's, not the format's, and validating them as if they were the
+// format's would fail on the API's own contract. The strip list is the one
+// normalizeCreateBody applies for the same reason on the way in.
+func anyBlockDocumentStub(body string) ([]byte, bool) {
+	var probe map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(body), &probe); err != nil {
+		return nil, false
+	}
+	if _, ok := probe["version"]; !ok {
+		return nil, false
+	}
+	// a partial read is a fragment of a document, not one — the format
+	// cannot judge it whole
+	if _, partial := probe["subtree"]; partial {
+		return nil, false
+	}
+	for _, added := range []string{"etag", "warnings", "outline", "markdown"} {
+		delete(probe, added)
+	}
+	doc, err := json.Marshal(probe)
+	if err != nil {
+		return nil, false
+	}
+	return doc, true
 }
 
 // sent returns the recorded requests matching "METHOD path".
@@ -360,7 +409,7 @@ func TestFind(t *testing.T) {
 
 // testFullDoc is what the server now serves on a default read: minted block
 // ids already relabeled server-side (Wave 0.2), meaningful ids in full.
-const testFullDoc = `{"version":1,"etag":"abcd1234","type":"task","properties":{"name":"Doc"},"blocks":[{"id":"e0001","type":"heading1","text":"Section"},{"id":"e0002","type":"paragraph","text":"body"},{"id":"quarterly-goals-1","type":"paragraph","text":"tail"}]}`
+const testFullDoc = `{"version":1,"etag":"abcd1234","type":"task","properties":{"name":"Doc"},"blocks":[{"id":"e0001","type":"heading_1","text":"Section"},{"id":"e0002","type":"paragraph","text":"body"},{"id":"quarterly-goals-1","type":"paragraph","text":"tail"}]}`
 
 func TestRead(t *testing.T) {
 	ctx := context.Background()
@@ -405,7 +454,7 @@ func TestRead(t *testing.T) {
 	t.Run("outline mode passes through the server shape", func(t *testing.T) {
 		fx := newFixture(t)
 		fx.seedSession("space1", Handle{N: 1, Id: "bafyobj1"})
-		fx.stub("GET /v2/spaces/space1/objects/bafyobj1", 200, `{"outline":[{"indent":0,"id":"e0001","type":"heading1","text":"Section"}]}`)
+		fx.stub("GET /v2/spaces/space1/objects/bafyobj1", 200, `{"outline":[{"indent":0,"id":"e0001","type":"heading_1","text":"Section"}]}`)
 
 		result, err := fx.Run(ctx, "read", map[string]any{"object": "1", "mode": "outline"})
 
@@ -445,7 +494,7 @@ func TestRead(t *testing.T) {
 func TestDescribe(t *testing.T) {
 	fx := newFixture(t)
 	fx.stub("GET /v2/spaces/space1/types/task", 200,
-		`{"version":1,"kind":"objectType","key":"task","properties":{"name":"Task"},"typeProperties":[{"key":"due_date","name":"Due date","format":"date"},{"key":"status","name":"Status","format":"select"}]}`)
+		`{"version":1,"kind":"object_type","properties":{"name":"Task"},"type_settings":{"api_key":"task","property_definitions":[{"property":"due_date","name":"Due date","format":"date"},{"property":"status","name":"Status","format":"select"}]}}`)
 	fx.stub("GET /v2/spaces/space1/properties/status/options", 200,
 		`{"data":[{"name":"Backlog"},{"name":"In progress"},{"name":"Done"}],"total":3,"offset":0,"limit":25,"has_more":false}`)
 	fx.stub("GET /v2/spaces/space1/properties", 200, propertiesResponse(
@@ -485,10 +534,10 @@ func TestDescribeReportsWhatIsSettable(t *testing.T) {
 	// the live `page` type: it recommends output-only and derived keys, and
 	// recommends neither name nor description
 	fx.stub("GET /v2/spaces/space1/types/page", 200,
-		`{"version":1,"kind":"objectType","key":"page","properties":{"name":"Page"},"typeProperties":[
-			{"key":"tag","name":"Tag","format":"multiSelect"},
-			{"key":"created_date","name":"Creation date","format":"date"},
-			{"key":"creator","name":"Created by","format":"objects"}]}`)
+		`{"version":1,"kind":"object_type","properties":{"name":"Page"},"type_settings":{"api_key":"page","property_definitions":[
+			{"property":"tag","name":"Tag","format":"multi_select"},
+			{"property":"created_date","name":"Creation date","format":"date"},
+			{"property":"creator","name":"Created by","format":"objects"}]}}`)
 	fx.stub("GET /v2/spaces/space1/properties/tag/options", 200,
 		`{"data":[{"name":"Urgent"}],"total":1,"offset":0,"limit":25,"has_more":false}`)
 	fx.stub("GET /v2/spaces/space1/properties", 200, propertiesResponse(

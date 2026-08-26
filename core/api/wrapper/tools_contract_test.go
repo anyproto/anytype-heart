@@ -235,7 +235,7 @@ func TestDescribeResilience(t *testing.T) {
 	t.Run("a failed option listing is marked, not silently optionless", func(t *testing.T) {
 		fx := newFixture(t)
 		fx.stub("GET /v2/spaces/space1/types/task", 200,
-			`{"version":1,"kind":"objectType","key":"task","properties":{"name":"Task"},"typeProperties":[{"key":"status","name":"Status","format":"select"}]}`)
+			`{"version":1,"kind":"object_type","properties":{"name":"Task"},"type_settings":{"api_key":"task","property_definitions":[{"property":"status","name":"Status","format":"select"}]}}`)
 		fx.stub("GET /v2/spaces/space1/properties/status/options", 503, `oops`)
 		fx.stub("GET /v2/spaces/space1/properties", 200, propertiesResponse(
 			v2model.PropertyRow{Key: "status", Name: "Status", Format: "select"}))

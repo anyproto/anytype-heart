@@ -108,14 +108,22 @@ func (r *Runner) runDescribe(ctx context.Context, session *Session, args map[str
 		// this one — the leak was never describe-specific (§8.34)
 		return nil, err
 	}
+	// §2a/§2e: a type document states its definitions in type_settings, and
+	// each entry names its property under `property`. Decoding the old shape
+	// failed SILENTLY — json.Unmarshal leaves absent members zero — so
+	// describe answered "this type has no properties", which is the one
+	// answer an agent acts on without questioning.
 	var typeDoc struct {
-		Key            string         `json:"key"`
-		Properties     map[string]any `json:"properties"`
-		TypeProperties []struct {
-			Key    string `json:"key"`
-			Name   string `json:"name"`
-			Format string `json:"format"`
-		} `json:"typeProperties"`
+		Properties   map[string]any `json:"properties"`
+		TypeSettings struct {
+			ApiKey              string `json:"api_key"`
+			PropertyDefinitions []struct {
+				Property    string `json:"property"`
+				InternalKey string `json:"internal_key"`
+				Name        string `json:"name"`
+				Format      string `json:"format"`
+			} `json:"property_definitions"`
+		} `json:"type_settings"`
 	}
 	if err := json.Unmarshal(doc, &typeDoc); err != nil {
 		return nil, fmt.Errorf("decode type document: %w", err)
@@ -129,15 +137,22 @@ func (r *Runner) runDescribe(ctx context.Context, session *Session, args map[str
 	// the type's own rows first, in the type's order — the curation is the
 	// A1 signal and the order carries it
 	seen := map[string]bool{}
-	for _, tp := range typeDoc.TypeProperties {
-		if seen[tp.Key] {
+	for _, tp := range typeDoc.TypeSettings.PropertyDefinitions {
+		// the document-facing spelling is what every other surface addresses
+		// this property by; internal_key is the fallback for an entry that
+		// carries only the stored id (§2e)
+		key := tp.Property
+		if key == "" {
+			key = tp.InternalKey
+		}
+		if key == "" || seen[key] {
 			continue
 		}
-		seen[tp.Key] = true
+		seen[key] = true
 		prop := describeProperty{
-			Key: tp.Key, Name: tp.Name, Format: tp.Format,
+			Key: key, Name: tp.Name, Format: tp.Format,
 			OnType:   true,
-			ReadOnly: v2model.IsOutputOnlyProperty(tp.Key),
+			ReadOnly: v2model.IsOutputOnlyProperty(key),
 		}
 		if !prop.ReadOnly {
 			r.fillOptions(ctx, space, &prop)

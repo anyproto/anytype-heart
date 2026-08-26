@@ -111,7 +111,7 @@ func (r *Runner) propertyFormats(ctx context.Context, spaceId string) (map[strin
 
 // selectFormats are the formats whose values are option NAMES the guard
 // checks.
-var selectFormats = map[string]bool{"select": true, "multiSelect": true}
+var selectFormats = map[string]bool{"select": true, "multi_select": true}
 
 // prepareValues resolves @me and relative dates in a property-value map and
 // — when guard is set — pre-validates select option names (the A2 guard).
