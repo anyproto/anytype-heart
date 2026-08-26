@@ -292,15 +292,28 @@ type Widget struct {
 // different job and unaffected: those are resolved against the importing
 // space's live store to survive a rename (§9a), never against the bundle, so
 // they never needed a path beside them.
+//
+// It DOES locate file blobs (v0.47). Files is the map every importer holding
+// a file_object document needs — object id → the blob's archive-relative
+// path — and it is the format's replacement for the legacy exporter's
+// `source`-clobber, which stuffed the blob path into a real, user-facing,
+// editable relation on the document itself. A document member is not a slot
+// for archive bookkeeping; the manifest's whole charter is "where to find
+// what a reader must resolve by id rather than by walking", and blobs are
+// exactly that. Keys are object ids verbatim, so — unlike Types — they take
+// no re-spelling on either side. Adjacency of blob and document in `files/`
+// is one exporter's layout convention riding on top; the map is the only
+// binding a reader may rely on (§2c).
 type Manifest struct {
 	Types      map[string]string `json:"types"`
 	Properties string            `json:"properties"`
+	Files      map[string]string `json:"files"`
 }
 
 // empty reports whether the manifest locates nothing — the shape setNonEmpty
 // cannot judge for a struct.
 func (m *Manifest) empty() bool {
-	return m == nil || (len(m.Types) == 0 && m.Properties == "")
+	return m == nil || (len(m.Types) == 0 && m.Properties == "" && len(m.Files) == 0)
 }
 
 // Index is a bundle's index.json (§2c).
@@ -650,6 +663,10 @@ func MarshalIndex(idx *Index) ([]byte, error) {
 		// bundles — while the documents beside it said `chat_derived`.
 		m.setNonEmpty("types", sortedStringOmap(reKeyed(idx.Manifest.Types, TypeKeySpelling)))
 		m.setNonEmpty("properties", idx.Manifest.Properties)
+		// file blob bindings are keyed by object id VERBATIM (§2c): an id is
+		// its own spelling, so unlike `types` there is nothing to re-key —
+		// only the canonical sort
+		m.setNonEmpty("files", sortedStringOmap(idx.Manifest.Files))
 		doc.setNonEmpty("manifest", m)
 	}
 	return marshalCanonical(doc)

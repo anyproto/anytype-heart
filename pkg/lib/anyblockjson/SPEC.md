@@ -1,6 +1,6 @@
 # AnyBlock JSON — format specification
 
-Status: **draft v0.46** · Format version: **1** · Package: `pkg/lib/anyblockjson`
+Status: **draft v0.47** · Format version: **1** · Package: `pkg/lib/anyblockjson`
 
 A human- and agent-readable JSON serialization of Anytype objects (the "anyblock"
 model), designed for export, import, and generation by external tools and LLM
@@ -15,6 +15,24 @@ strings; the vocabulary follows Notion's API and Anytype's public REST API
 (`core/api`) wherever an established term exists — the format should be
 readable, and mostly writable, by someone who has never seen Anytype
 internals.
+
+Changes in v0.47: **the manifest binds file blobs** (§2c).
+
+A `files` member joins `types` and `properties`: file object id → the
+blob's archive-relative path, one entry per file document whose bytes
+travel. It is the replacement for the legacy exporter's `source`-clobber,
+which stuffed the blob path into a real, user-facing, editable relation on
+the document itself — a document member is not a slot for archive
+bookkeeping. The map is the only binding a reader may rely on; the exporter
+additionally lays each blob out beside its document in `files/` (same stem
+— the object id — real sanitized extension), so the two sort adjacent in
+any listing, but adjacency is convention riding on the map, never
+load-bearing, and an authored bundle points at assets laid out however it
+likes. An absent blob for a declared file document — or an entry pointing
+outside the bundle — is a cross-document refusal for the tooling, like
+every other manifest path. §15 #1 is settled alongside: exported documents
+carry the `.anyblock.json` double extension, so a blob that is itself a
+`.json` file (12 in the corpus) can never be mistaken for a document.
 
 Changes in v0.46: **the manifest no longer locates options** (§2c, §2f).
 
@@ -2317,16 +2335,16 @@ round-trip check cannot drift apart (§11).
 
 The index also says **where to find what a reader must resolve by key or id
 rather than by walking**. The format defines no folder layout — `objects/`,
-`types/`, `relations/` are one exporter's convention — and an object names
-its type by *spelling* alone, so without a manifest a reader resolves a type
-by scanning every document for a matching `internal_key`. Measured, exactly two
-namespaces are addressed that way: types (22/space) and options (34/space) —
-~5.1 KB per space, 0.23% of the bytes.
+`types/`, `files/` are one exporter's convention (below) — and an object
+names its type by *spelling* alone, so without a manifest a reader resolves
+a type by scanning every document for a matching `internal_key`, and a file
+document's bytes by guessing at a layout.
 
 ```json
 { "manifest": {
     "types":      { "task": "types/bafyrei….anyblock.json" },
-    "properties": "properties.json" } }
+    "properties": "properties.json",
+    "files":      { "bafyreigp3him…": "files/bafyreigp3him….png" } } }
 ```
 
 - **`types`** — STORED type key → the type document's path. Stored keys,
@@ -2350,11 +2368,58 @@ namespaces are addressed that way: types (22/space) and options (34/space) —
   than an inline map, because properties resolve by stored key through each
   document's own legend and the dictionary is the file that answers for
   stored keys.
+- **`files`** (v0.47) — file object id → the blob's path, one entry per
+  file document whose bytes travel. The authoritative binding between a
+  `kind: "file"` document and its bytes: the document itself carries no
+  path, because a document member is not a slot for archive bookkeeping —
+  the lesson of the legacy `source`-clobber, which overwrote a real,
+  editable `url` relation that bookmarks legitimately hold, and whose
+  destruction round-tripped through import. Every importer holding a file
+  document must find its bytes and every export tool must enumerate them,
+  so blobs have exactly the reader the removed `options` map never had.
+  Keys are object ids verbatim — no re-spelling on either side — and an
+  authored bundle writes `"files": {"logo": "assets/logo.png"}` against its
+  own minted ids and any layout it likes, which is what makes an authored
+  bundle a first-class citizen rather than a convention-follower. An absent
+  blob for a declared file document, or an entry pointing outside the
+  bundle, is a cross-document refusal for the tooling, like every other
+  manifest path. The bundle is FAT (§15 #20): the bytes travel, nothing
+  else — no variant keys, no encryption keys, and the thin bundle's future
+  marker slot stays untouched.
 
 Paths are relative to the index file. The reader flow, with no scanning and
 no folder convention: object → `type: "task"` → the object's legend → stored
 key → manifest → the type file → `property_definitions` → property not
-there → manifest → the dictionary → the entry.
+there → manifest → the dictionary → the entry; a file document → `manifest.files`
+→ the bytes.
+
+**This exporter's convention** (the "one exporter's convention" slot,
+recorded so a reader of OUR bundles knows the layout without reverse-
+engineering it; none of it is format — a reader must still walk and index,
+because an authored bundle may put documents anywhere):
+
+- One bundle root per space; a multi-space export wraps each in
+  `spaces/<spaceId>/`, and the wrapper is load-bearing — the same id
+  legitimately recurs across spaces (448 cross-space repeats measured,
+  chiefly participant identities), so flattening the wrapper collides.
+- Every document is `<dir>/<id>.anyblock.json`, the id verbatim — id→path
+  is a pure function of the reference itself, which is the naming
+  decision's whole point: a reference carries an id and nothing else, so
+  any name-bearing filename would force a scan. The kind directories are
+  `objects/` (kind `page`, flat — plus any kind without a dedicated home),
+  `types/`, `templates/`, `properties/` (kept `property` documents only;
+  the rest are omitted into the dictionary, §2f), `options/`,
+  `participants/`, and `files/`.
+- `files/` holds both halves of a file, adjacent: the document at
+  `files/<id>.anyblock.json`, the blob at `files/<id>.<ext>` with `<ext>`
+  the stored `file_ext` lowercased and restricted to `[a-z0-9]{1,10}`,
+  else the conventional extension for `file_mime_type`, else `bin` —
+  `anyblock.json` as a computed suffix is impossible by construction, and
+  the manifest map above, not the adjacency, is what binds them.
+- `index.json` and `properties.json` sit at the bundle root; there is no
+  `profile` file and no root `index.<ext>` home special case — the
+  homepage is a field of `index.json` and the home object an ordinary
+  document under `objects/`.
 
 The manifest is optional — a bundle without one is walked the way every
 bundle was before it existed — and closed: the index root already refuses
@@ -6213,9 +6278,15 @@ Wiring (follow-up work, not this package):
 
 ## 15. Open questions
 
-1. **Extension**: `.json` vs `.any.json` for exported files (current pbjson
-   uses `.pb.json`). Leaning `.json` — the `$schema`/`version` markers
-   disambiguate for the importer.
+1. **Extension**: **settled (v0.47)** — exported documents carry
+   `.anyblock.json` (what the tooling had written all along). The earlier
+   lean toward bare `.json` died on the bundle's own contents: a FAT bundle
+   legitimately carries blobs that are themselves `.json` files (12 corpus
+   file objects have `file_ext == "json"`), so "is this file a document"
+   needs one cheap, collision-free test, and the double extension is that
+   test — the entire skip-rule for non-document files, at zero cost. The
+   `$schema`/`version` markers still disambiguate the three grammars once a
+   file IS a document; they were never a cheap answer to whether it is one.
 2. **`dataview` vs `database`**: kept `dataview` (ownership semantics differ
    from Notion databases; Obsidian precedent) — flagged as a judgment call.
 3. **Option names vs `{id, name}` objects** (§3): **settled** — names stay in

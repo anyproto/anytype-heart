@@ -5,6 +5,7 @@ package anyblockjson
 // never defined — and without scanning.
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -112,5 +113,55 @@ func TestIndex_ManifestDoesNotLocateOptions(t *testing.T) {
 			"options":{"bafyopt1":"relationsOptions/bafyopt1.anyblock.json"}}}`))
 		require.Error(t, err, "the manifest is closed (additionalProperties: false)")
 		assert.Contains(t, err.Error(), "options")
+	})
+}
+
+// The manifest binds file blobs (v0.47): file object id → the blob's
+// archive-relative path, keys VERBATIM — an id is its own spelling, so
+// unlike `types` there is nothing to re-key on either side. The map is the
+// `source`-clobber's replacement: the legacy exporter stuffed the blob path
+// into the real, editable Source relation on the document itself, and the
+// destruction round-tripped through import. Here the document carries no
+// path at all and the binding lives where every by-id lookup lives.
+//
+// How this can fail: drop Files from the Manifest struct or MarshalIndex
+// (the binding vanishes on the way round and every blob is orphaned); stop
+// sorting the map (the byte check goes red); re-key the ids through the
+// type-spelling ladder (an id that happens to fold onto a bundled key gets
+// rewritten and the entry dangles); or forget empty() (a files-only
+// manifest is dropped as "empty" and ships nothing).
+func TestIndex_ManifestBindsFileBlobs(t *testing.T) {
+	// given — two entries, deliberately out of sorted order
+	in := &Index{
+		Name: "Corpus",
+		Manifest: &Manifest{
+			Files: map[string]string{
+				"bafyreigp3him": "files/bafyreigp3him.png",
+				"bafyreiaaaaaa": "files/bafyreiaaaaaa.pdf",
+			},
+		},
+	}
+
+	// when
+	data, err := MarshalIndex(in)
+	require.NoError(t, err)
+	got, err := UnmarshalIndex(data)
+	require.NoError(t, err)
+	data2, err := MarshalIndex(got)
+	require.NoError(t, err)
+
+	// then — byte-stable, keys verbatim, sorted; and a files-only manifest
+	// is NOT empty (empty() must know the third member)
+	assert.Equal(t, string(data), string(data2), "Marshal ∘ Unmarshal must be byte-stable")
+	require.NotNil(t, got.Manifest)
+	assert.Equal(t, in.Manifest.Files, got.Manifest.Files)
+	assert.Less(t, strings.Index(string(data), "bafyreiaaaaaa"), strings.Index(string(data), "bafyreigp3him"),
+		"the canonical form sorts the map's keys (§4)")
+
+	t.Run("a non-string or empty blob path is refused", func(t *testing.T) {
+		_, err := UnmarshalIndex([]byte(`{"version":1,"manifest":{"files":{"bafyx":42}}}`))
+		require.Error(t, err)
+		_, err = UnmarshalIndex([]byte(`{"version":1,"manifest":{"files":{"bafyx":""}}}`))
+		require.Error(t, err)
 	})
 }
