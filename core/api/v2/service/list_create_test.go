@@ -38,7 +38,7 @@ func TestV2CreateSet(t *testing.T) {
 			Type:    "chore",
 			Filters: json.RawMessage(`[{"property":"severity","condition":"in","value":["High"]}]`),
 			Sorts:   json.RawMessage(`[{"property":"severity","direction":"desc"}]`),
-		}, false)
+		}, false, true)
 
 		// then
 		require.NoError(t, err)
@@ -74,7 +74,7 @@ func TestV2CreateSet(t *testing.T) {
 			Name:    "Broken",
 			Type:    "chore",
 			Filters: json.RawMessage(`[{"property":"sevirity","condition":"equal","value":true}]`),
-		}, false)
+		}, false, true)
 
 		// then
 		apiErr := v2Err(t, err)
@@ -91,7 +91,7 @@ func TestV2CreateSet(t *testing.T) {
 
 		// when
 		_, err := fx.CreateSet(context.Background(), testSpaceId,
-			v2model.CreateSetRequest{Name: "X", Type: "chores"}, false)
+			v2model.CreateSetRequest{Name: "X", Type: "chores"}, false, true)
 
 		// then
 		apiErr := v2Err(t, err)
@@ -111,7 +111,7 @@ func TestV2CreateSet(t *testing.T) {
 			Name:   "Open work",
 			Type:   "chore",
 			Filter: `type IN ("chore") AND severity IS EMPTY`,
-		}, false)
+		}, false, true)
 
 		// then
 		apiErr := v2Err(t, err)
@@ -129,7 +129,7 @@ func TestV2CreateSet(t *testing.T) {
 			Name:    "Open work",
 			Type:    "chore",
 			Filters: json.RawMessage(`[{"property":"type","condition":"in","value":["chore"]}]`),
-		}, false)
+		}, false, true)
 
 		// then
 		apiErr := v2Err(t, err)
@@ -160,7 +160,7 @@ func TestV2CreateSet(t *testing.T) {
 					Name:    "Open work",
 					Type:    "chore",
 					Filters: json.RawMessage(tc.filters),
-				}, false)
+				}, false, true)
 
 				apiErr := v2Err(t, err)
 				assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -179,7 +179,7 @@ func TestV2CreateSet(t *testing.T) {
 			Name: "X", Type: "chore",
 			Filter:  `done = false`,
 			Filters: json.RawMessage(`[]`),
-		}, false)
+		}, false, true)
 
 		// then — note: `[]` is non-empty as raw JSON
 		apiErr := v2Err(t, err)
@@ -198,7 +198,7 @@ func TestV2CreateSet(t *testing.T) {
 			Name:   "High chores",
 			Type:   "chore",
 			Filter: `severity IN ("High") AND name CONTAINS "fix"`,
-		}, false)
+		}, false, true)
 
 		// then — the set document stores the structured array (SPEC §6.2.1:
 		// the document field `filter` stays reserved; export writes filters)
@@ -226,7 +226,7 @@ func TestV2CreateSet(t *testing.T) {
 		// when — "sevirity" is a typo of the type's "severity"
 		_, err := fx.CreateSet(context.Background(), testSpaceId, v2model.CreateSetRequest{
 			Name: "X", Type: "chore", Filter: `sevirity IN ("High")`,
-		}, false)
+		}, false, true)
 
 		// then
 		apiErr := v2Err(t, err)
@@ -249,7 +249,7 @@ func TestV2CreateSet(t *testing.T) {
 		result, err := fx.CreateSet(context.Background(), testSpaceId, v2model.CreateSetRequest{
 			Name: "Fresh chores", Type: "chore",
 			Filter: `lastModifiedDate > daysAgo(7)`,
-		}, false)
+		}, false, true)
 
 		// then
 		require.NoError(t, err)
@@ -269,7 +269,7 @@ func TestV2CreateSet(t *testing.T) {
 			Name: "X", Type: "chore",
 			Views:   json.RawMessage(`[{"name":"V"}]`),
 			Filters: json.RawMessage(`[{"property":"severity","condition":"not_empty"}]`),
-		}, false)
+		}, false, true)
 
 		// then
 		apiErr := v2Err(t, err)
@@ -286,7 +286,7 @@ func TestV2CreateSet(t *testing.T) {
 		require.NoError(t, err)
 
 		_, err = fx.CreateSet(context.Background(), testSpaceId,
-			v2model.CreateSetRequest{Name: "Sorted", Type: "chore", Sorts: raw}, false)
+			v2model.CreateSetRequest{Name: "Sorted", Type: "chore", Sorts: raw}, false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
@@ -302,7 +302,7 @@ func TestV2CreateSet(t *testing.T) {
 		result, err := fx.CreateSet(context.Background(), testSpaceId, v2model.CreateSetRequest{
 			Name: "Open chores", Type: "chore",
 			Filters: json.RawMessage(`[{"property":"severity","condition":"not_empty"}]`),
-		}, true)
+		}, true, true)
 
 		// then
 		require.NoError(t, err)

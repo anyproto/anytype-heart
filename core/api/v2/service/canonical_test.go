@@ -55,7 +55,7 @@ func TestCanonicalizationEquivalence(t *testing.T) {
 		{"miss stays verbatim", "no_such_key", "no_such_key"},
 	}
 
-	resolvers := fx.newCreatingResolvers(context.Background(), testSpaceId, true)
+	resolvers := fx.newCreatingResolvers(context.Background(), testSpaceId, true, true)
 	entries, err := fx.liveProperties(testSpaceId)
 	require.NoError(t, err)
 
@@ -106,7 +106,7 @@ func TestV2MintShadowingClosed(t *testing.T) {
 		fx.expectEtagRead("type-a")
 
 		result, err := fx.CreateType(context.Background(), testSpaceId,
-			[]byte(`{"kind":"object_type","properties":{"name":"Gizmo"},"type_settings":{"api_key":"gizmo","property_definitions":[{"property":"myKey","section":"featured"}]}}`), false)
+			[]byte(`{"kind":"object_type","properties":{"name":"Gizmo"},"type_settings":{"api_key":"gizmo","property_definitions":[{"property":"myKey","section":"featured"}]}}`), false, true)
 
 		require.NoError(t, err)
 		assert.Nil(t, result.Created, "nothing minted — the fold resolved to the legacy relation")
@@ -122,7 +122,7 @@ func TestV2MintShadowingClosed(t *testing.T) {
 		fx := legacy(t)
 
 		_, err := fx.CreateType(context.Background(), testSpaceId,
-			[]byte(`{"kind":"object_type","properties":{"name":"Gizmo 2"},"type_settings":{"api_key":"gizmo2","property_definitions":[{"property":"My Key","name":"My Key","format":"text"}]}}`), false)
+			[]byte(`{"kind":"object_type","properties":{"name":"Gizmo 2"},"type_settings":{"api_key":"gizmo2","property_definitions":[{"property":"My Key","name":"My Key","format":"text"}]}}`), false, true)
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), `"my_key" is already taken`)
@@ -141,7 +141,7 @@ func TestV2MintShadowingClosed(t *testing.T) {
 			}).Once() // the FIRST spelling mints; a second create fails the mock
 
 		_, err := fx.CreateType(context.Background(), testSpaceId,
-			[]byte(`{"kind":"object_type","properties":{"name":"Warrantied"},"type_settings":{"api_key":"warrantied","property_definitions":[{"property":"warranty_until","name":"W","format":"date"},{"property":"warrantyUntil","name":"W2","format":"date"}]}}`), false)
+			[]byte(`{"kind":"object_type","properties":{"name":"Warrantied"},"type_settings":{"api_key":"warrantied","property_definitions":[{"property":"warranty_until","name":"W","format":"date"},{"property":"warrantyUntil","name":"W2","format":"date"}]}}`), false, true)
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "two spellings of one key")

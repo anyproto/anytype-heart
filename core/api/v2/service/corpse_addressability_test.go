@@ -325,7 +325,7 @@ func TestV2CloneToleranceSurvivesTheProdShape(t *testing.T) {
 			fx.expectEtagRead("clone1")
 
 			// when — the bytes a GET of a corpse-held object serves
-			_, err := fx.CreateObject(context.Background(), testSpaceId, cloneBody, false)
+			_, err := fx.CreateObject(context.Background(), testSpaceId, cloneBody, false, true)
 
 			// then — the value lands under the STORED key it was served under
 			require.NoError(t, err)
@@ -342,7 +342,7 @@ func TestV2CloneToleranceSurvivesTheProdShape(t *testing.T) {
 			fx.addCorpseProperty(t, shape)
 
 			_, err := fx.CreateObject(context.Background(), testSpaceId,
-				[]byte(`{"version":1,"type":"page","properties":{"name":"Fresh","`+corpseSlug+`":"x"}}`), false)
+				[]byte(`{"version":1,"type":"page","properties":{"name":"Fresh","`+corpseSlug+`":"x"}}`), false, true)
 
 			apiErr := v2Err(t, err)
 			assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -375,7 +375,7 @@ func TestV2PatchCorpseKeyChannels(t *testing.T) {
 
 		// when
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"set_properties","set":{"`+corpseBsonKey+`":"2030-12-31"}}`), "", false)
+			patchBody(`{"op":"set_properties","set":{"`+corpseBsonKey+`":"2030-12-31"}}`), "", false, true)
 
 		// then
 		require.NoError(t, err)
@@ -388,7 +388,7 @@ func TestV2PatchCorpseKeyChannels(t *testing.T) {
 		fx.expectMutate(editRead(t, cleanDocNoCorpse), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"set_properties","set":{"`+corpseBsonKey+`":"2030-12-31"}}`), "", false)
+			patchBody(`{"op":"set_properties","set":{"`+corpseBsonKey+`":"2030-12-31"}}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -401,7 +401,7 @@ func TestV2PatchCorpseKeyChannels(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, corpseDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"set_properties","unset":["`+corpseBsonKey+`"]}`), "", false)
+			patchBody(`{"op":"set_properties","unset":["`+corpseBsonKey+`"]}`), "", false, true)
 
 		require.NoError(t, err)
 		_, present := (*captured).CombinedDetails().TryString(domain.RelationKey(corpseBsonKey))
@@ -414,7 +414,7 @@ func TestV2PatchCorpseKeyChannels(t *testing.T) {
 		fx.expectMutate(editRead(t, corpseDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"set_properties","set":{"`+corpseSlug+`":"2030-12-31"}}`), "", false)
+			patchBody(`{"op":"set_properties","set":{"`+corpseSlug+`":"2030-12-31"}}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -447,7 +447,7 @@ func TestV2ViewOpsCorpseKeys(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, corpseViewDocBody), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"update_view","view":"viewAll1","set":{"name":"Renamed"}}`), "", false)
+			patchBody(`{"op":"update_view","view":"viewAll1","set":{"name":"Renamed"}}`), "", false, true)
 
 		require.NoError(t, err)
 		require.NotNil(t, *captured)
@@ -459,7 +459,7 @@ func TestV2ViewOpsCorpseKeys(t *testing.T) {
 		fx.expectMutate(editRead(t, corpseViewDocBody), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"update_view","view":"viewAll1","set":{"group_by":"`+corpseBsonKey+`"}}`), "", false)
+			patchBody(`{"op":"update_view","view":"viewAll1","set":{"group_by":"`+corpseBsonKey+`"}}`), "", false, true)
 
 		require.NoError(t, err)
 	})
@@ -472,7 +472,7 @@ func TestV2ViewOpsCorpseKeys(t *testing.T) {
 			`{"op":"update_view","view":"viewAll1","columns":{"` + corpseBsonKey + `":{"width":80}}}`,
 		} {
 			fx.expectMutate(editRead(t, plainViewDocBody), "headB")
-			_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(op), "", false)
+			_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(op), "", false, true)
 			apiErr := v2Err(t, err)
 			assert.Equal(t, http.StatusBadRequest, apiErr.Status, "op %s", op)
 		}
@@ -608,7 +608,7 @@ func TestV2UninstalledBundledPropertyRefusesWrites(t *testing.T) {
 			fx := newFx(t, shape)
 
 			_, err := fx.CreateObject(ctx, testSpaceId,
-				[]byte(`{"version":1,"type":"page","properties":{"name":"n","due_date":"2027-01-01"}}`), false)
+				[]byte(`{"version":1,"type":"page","properties":{"name":"n","due_date":"2027-01-01"}}`), false, true)
 
 			requireRemovalRefusal(t, err, "due_date")
 			// §8.41-10 coherence: the envelope names what happened (the key
@@ -633,7 +633,7 @@ func TestV2UninstalledBundledPropertyRefusesWrites(t *testing.T) {
 				fx.expectMutate(editRead(t, cleanDoc), "headB")
 
 				_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-					patchBody(`{"op":"set_properties","set":{"due_date":"2030-12-31"}}`), "", false)
+					patchBody(`{"op":"set_properties","set":{"due_date":"2030-12-31"}}`), "", false, true)
 
 				requireRemovalRefusal(t, err, "due_date")
 			})
@@ -643,7 +643,7 @@ func TestV2UninstalledBundledPropertyRefusesWrites(t *testing.T) {
 				captured := fx.expectMutate(editRead(t, holdingDoc), "headB")
 
 				_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-					patchBody(`{"op":"set_properties","unset":["due_date"]}`), "", false)
+					patchBody(`{"op":"set_properties","unset":["due_date"]}`), "", false, true)
 
 				require.NoError(t, err)
 				_, present := (*captured).CombinedDetails().TryString(bundle.RelationKeyDueDate)
@@ -667,7 +667,7 @@ func TestV2UninstalledBundledPropertyRefusesWrites(t *testing.T) {
 			fx.expectMutate(editRead(t, plainViewDoc), "headB")
 
 			_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-				patchBody(`{"op":"update_view","view":"viewAll1","columns":{"due_date":{"width":80}}}`), "", false)
+				patchBody(`{"op":"update_view","view":"viewAll1","columns":{"due_date":{"width":80}}}`), "", false, true)
 
 			requireRemovalRefusal(t, err, "due_date")
 		})
@@ -684,7 +684,7 @@ func TestV2UninstalledBundledPropertyRefusesWrites(t *testing.T) {
 		fx.expectEtagRead("obj-due")
 
 		_, err := fx.CreateObject(ctx, testSpaceId,
-			[]byte(`{"version":1,"type":"page","properties":{"name":"n","due_date":"2027-01-01","description":"d"}}`), false)
+			[]byte(`{"version":1,"type":"page","properties":{"name":"n","due_date":"2027-01-01","description":"d"}}`), false, true)
 
 		require.NoError(t, err)
 		require.NotNil(t, *captured)
@@ -710,7 +710,7 @@ func TestV2UninstalledBundledPropertyRefusesWrites(t *testing.T) {
 		})
 
 		_, err := fx.CreateObject(ctx, testSpaceId,
-			[]byte(`{"version":1,"type":"page","properties":{"name":"n","due_date":"2027-01-01"}}`), false)
+			[]byte(`{"version":1,"type":"page","properties":{"name":"n","due_date":"2027-01-01"}}`), false, true)
 
 		requireRemovalRefusal(t, err, "due_date")
 	})
@@ -725,7 +725,7 @@ func TestV2UninstalledBundledPropertyRefusesWrites(t *testing.T) {
 			fx.expectEtagRead("obj-both")
 
 			_, err := fx.CreateObject(ctx, testSpaceId,
-				[]byte(`{"version":1,"type":"page","properties":{"name":"n","`+corpseBsonKey+`":"x"}}`), false)
+				[]byte(`{"version":1,"type":"page","properties":{"name":"n","`+corpseBsonKey+`":"x"}}`), false, true)
 
 			require.NoError(t, err)
 			assert.Equal(t, "x", (*captured).Details.Fields[corpseBsonKey].GetStringValue())
@@ -914,7 +914,7 @@ func TestV2TypePropertiesCorpseEchoResolvesToItsHolder(t *testing.T) {
 
 			// when — exactly the typeProperties GET just served
 			result, err := fx.UpdateType(context.Background(), testSpaceId, "livetype",
-				[]byte(`{"type_settings":{"property_definitions":[{"property":"`+corpseBsonKey+`","name":"Warranty until","format":"text"}]}}`), false)
+				[]byte(`{"type_settings":{"property_definitions":[{"property":"`+corpseBsonKey+`","name":"Warranty until","format":"text"}]}}`), false, true)
 
 			// then — nothing is minted and the list still points at the very
 			// relation object the GET resolved it from: a round-trip identity
@@ -950,7 +950,7 @@ func TestV2TypePropertiesCorpseEchoResolvesToItsHolder(t *testing.T) {
 				Error: &pb.RpcObjectSetDetailsResponseError{Code: pb.RpcObjectSetDetailsResponseError_NULL}}).Maybe()
 
 			_, err := fx.UpdateType(context.Background(), testSpaceId, "livetype",
-				[]byte(`{"type_settings":{"property_definitions":[{"property":"`+corpseSlug+`","name":"Warranty until","format":"text"}]}}`), false)
+				[]byte(`{"type_settings":{"property_definitions":[{"property":"`+corpseSlug+`","name":"Warranty until","format":"text"}]}}`), false, true)
 
 			require.NoError(t, err)
 			require.Len(t, minted, 1)
@@ -1008,7 +1008,7 @@ func TestV2RemovedBundledSlugEqualsKeyClass(t *testing.T) {
 			addRemoved(t, fx, "description", shape)
 
 			_, err := fx.CreateObject(ctx, testSpaceId,
-				[]byte(`{"version":1,"type":"page","properties":{"name":"n","description":"x"}}`), false)
+				[]byte(`{"version":1,"type":"page","properties":{"name":"n","description":"x"}}`), false, true)
 
 			requireRemovalRefusal(t, err, "description")
 		})
@@ -1022,7 +1022,7 @@ func TestV2RemovedBundledSlugEqualsKeyClass(t *testing.T) {
 			fx.expectMutate(editRead(t, cleanDoc), "headB")
 
 			_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-				patchBody(`{"op":"set_properties","set":{"description":"x"}}`), "", false)
+				patchBody(`{"op":"set_properties","set":{"description":"x"}}`), "", false, true)
 
 			requireRemovalRefusal(t, err, "description")
 		})
@@ -1047,7 +1047,7 @@ func TestV2RemovedBundledSlugEqualsKeyClass(t *testing.T) {
 					addRemoved(t, fx, "tag", shape)
 					fx.expectMutate(editRead(t, plainViewDoc), "headB")
 
-					_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(op), "", false)
+					_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(op), "", false, true)
 
 					requireRemovalRefusal(t, err, "tag")
 				})
@@ -1067,7 +1067,7 @@ func TestV2RemovedBundledSlugEqualsKeyClass(t *testing.T) {
 			fx.expectMutate(editRead(t, plainViewDoc), "headB")
 
 			_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-				patchBody(`{"op":"insert_view","name":"Grouped","set":{"group_by":"tag"}}`), "", false)
+				patchBody(`{"op":"insert_view","name":"Grouped","set":{"group_by":"tag"}}`), "", false, true)
 
 			requireRemovalRefusal(t, err, "tag")
 		})
@@ -1085,7 +1085,7 @@ func TestV2RemovedBundledSlugEqualsKeyClass(t *testing.T) {
 			fx.expectMutate(editRead(t, holdingViewDoc), "headB")
 
 			_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-				patchBody(`{"op":"update_view","view":"viewAll1","set":{"group_by":"tag"}}`), "", false)
+				patchBody(`{"op":"update_view","view":"viewAll1","set":{"group_by":"tag"}}`), "", false, true)
 
 			require.NoError(t, err)
 		})
@@ -1144,7 +1144,7 @@ func TestV2RemovedBundledTypeRefusesWrites(t *testing.T) {
 					addRemovedType(t, fx, spelling.key, shape)
 
 					_, err := fx.CreateObject(ctx, testSpaceId,
-						[]byte(`{"version":1,"type":"`+spelling.input+`","properties":{"name":"n"}}`), false)
+						[]byte(`{"version":1,"type":"`+spelling.input+`","properties":{"name":"n"}}`), false, true)
 
 					requireRemovedType(t, err, spelling.slug)
 
@@ -1162,7 +1162,7 @@ func TestV2RemovedBundledTypeRefusesWrites(t *testing.T) {
 			addRemovedType(t, fx, "task", shape)
 
 			_, err := fx.CreateTemplate(ctx, testSpaceId,
-				[]byte(`{"version":1,"type":"template","template_for":"task","properties":{"name":"Weekly"}}`), false)
+				[]byte(`{"version":1,"type":"template","template_for":"task","properties":{"name":"Weekly"}}`), false, true)
 
 			requireRemovedType(t, err, "task")
 		})
@@ -1177,7 +1177,7 @@ func TestV2RemovedBundledTypeRefusesWrites(t *testing.T) {
 			fx := newV2Fixture(t)
 			addRemovedType(t, fx, "task", shape)
 
-			_, err := fx.CreateSet(ctx, testSpaceId, v2model.CreateSetRequest{Name: "Tasks", Type: "task"}, false)
+			_, err := fx.CreateSet(ctx, testSpaceId, v2model.CreateSetRequest{Name: "Tasks", Type: "task"}, false, true)
 
 			requireRemovedType(t, err, "task")
 		})
@@ -1191,7 +1191,7 @@ func TestV2RemovedBundledTypeRefusesWrites(t *testing.T) {
 		fx.expectEtagRead("obj-task")
 
 		_, err := fx.CreateObject(ctx, testSpaceId,
-			[]byte(`{"version":1,"type":"task","properties":{"name":"n"}}`), false)
+			[]byte(`{"version":1,"type":"task","properties":{"name":"n"}}`), false, true)
 
 		require.NoError(t, err)
 		require.NotNil(t, *captured)
@@ -1210,7 +1210,7 @@ func TestV2RemovedBundledTypeRefusesWrites(t *testing.T) {
 		})
 
 		_, err := fx.CreateObject(ctx, testSpaceId,
-			[]byte(`{"version":1,"type":"task","properties":{"name":"n"}}`), false)
+			[]byte(`{"version":1,"type":"task","properties":{"name":"n"}}`), false, true)
 
 		requireRemovedType(t, err, "task")
 	})
@@ -1243,7 +1243,7 @@ func TestV2TypePropertiesRefusesRemovedBundledKey(t *testing.T) {
 			fx.addRemovedBundledProperty(t, shape)
 
 			_, err := fx.CreateType(ctx, testSpaceId,
-				[]byte(`{"properties":{"name":"Gadget"},"type_settings":{"api_key":"gadget","property_definitions":[{"property":"due_date","format":"date"}]}}`), false)
+				[]byte(`{"properties":{"name":"Gadget"},"type_settings":{"api_key":"gadget","property_definitions":[{"property":"due_date","format":"date"}]}}`), false, true)
 
 			apiErr := v2Err(t, err)
 			assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -1279,7 +1279,7 @@ func TestV2TypePropertiesRefusesRemovedBundledKey(t *testing.T) {
 			})
 
 			_, err := fx.UpdateType(ctx, testSpaceId, "livetype",
-				[]byte(`{"type_settings":{"property_definitions":[{"property":"tag"}]}}`), false)
+				[]byte(`{"type_settings":{"property_definitions":[{"property":"tag"}]}}`), false, true)
 
 			apiErr := v2Err(t, err)
 			assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -1311,7 +1311,7 @@ func TestV2TypePropertiesRefusesRemovedBundledKey(t *testing.T) {
 
 			// when — the spelling the GET serves
 			result, err := fx.UpdateType(ctx, testSpaceId, "livetype",
-				[]byte(`{"type_settings":{"property_definitions":[{"property":"due_date","format":"date"}]}}`), false)
+				[]byte(`{"type_settings":{"property_definitions":[{"property":"due_date","format":"date"}]}}`), false, true)
 
 			// then — the reference survives, nothing minted, nothing installed
 			require.NoError(t, err)
@@ -1373,7 +1373,7 @@ func TestV2SetsRefuseRemovedBundledProperty(t *testing.T) {
 			_, err := fx.CreateSet(ctx, testSpaceId, v2model.CreateSetRequest{
 				Name: "Late bugs", Type: "bug",
 				Filters: json.RawMessage(`[{"property":"due_date","condition":"empty"}]`),
-			}, false)
+			}, false, true)
 
 			apiErr := v2Err(t, err)
 			assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -1391,7 +1391,7 @@ func TestV2SetsRefuseRemovedBundledProperty(t *testing.T) {
 			_, err := fx.CreateSet(ctx, testSpaceId, v2model.CreateSetRequest{
 				Name: "By tag", Type: "bug",
 				Sorts: json.RawMessage(`[{"property":"tag","direction":"asc"}]`),
-			}, false)
+			}, false, true)
 
 			apiErr := v2Err(t, err)
 			assert.Equal(t, http.StatusBadRequest, apiErr.Status)

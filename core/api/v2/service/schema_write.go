@@ -87,7 +87,7 @@ func validateV2ArrayCount(path string, raw json.RawMessage, max int) error {
 // CreateType implements POST /v2/spaces/{space_id}/types: a kind:"object_type"
 // AnyBlock document; typeProperties creates missing properties atomically
 // with the type (SPEC §2a create-missing).
-func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, dryRun bool) (*v2model.CreateResult, error) {
+func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, dryRun, createOptions bool) (*v2model.CreateResult, error) {
 	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
 	}
@@ -212,7 +212,7 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 
 	// Unmarshal rebuilds the four recommended-relation lists from
 	// typeProperties, creating missing properties through the resolver
-	resolvers := s.newCreatingResolvers(ctx, spaceId, dryRun)
+	resolvers := s.newCreatingResolvers(ctx, spaceId, dryRun, createOptions)
 	_, snapshot, err := anyblockjson.Unmarshal(body, resolvers.Options())
 	if err != nil {
 		return nil, mapUnmarshalError(body, err)
@@ -492,7 +492,7 @@ func (p v2TypePatch) propertyDefinitions() *[]anyblockjson.TypeProperty {
 }
 
 // UpdateType implements PATCH /v2/spaces/{space_id}/types/{type}.
-func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey string, body []byte, dryRun bool) (*v2model.CreateResult, error) {
+func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey string, body []byte, dryRun, createOptions bool) (*v2model.CreateResult, error) {
 	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
 	}
@@ -582,7 +582,7 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey string, body 
 		}
 	}
 
-	resolvers := s.newCreatingResolvers(ctx, spaceId, dryRun)
+	resolvers := s.newCreatingResolvers(ctx, spaceId, dryRun, createOptions)
 	if defs := patch.propertyDefinitions(); defs != nil {
 		// the echo baseline (§8.41): entries this type ALREADY references
 		// resolve as identities even when their relation is removed — the

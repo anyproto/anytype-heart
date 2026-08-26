@@ -31,10 +31,11 @@ whether you may write. Ask this instead of discovering limits through 403s
   to `due_date` too; an input matching two properties is a 400 listing
   both. (One exception: the compact `filter` STRING validates before
   folding — use a listed spelling there.)
-  Select/multiSelect values are option **names** (`"In progress"`,
-  case-sensitive) — never option ids. Writes create unknown option names
-  (a PATCH caps this at 64); unknown property keys are rejected with a
-  did-you-mean.
+  Select/multi_select values are option **names** (`"In progress"`,
+  case-sensitive) — never option ids. A name the property does not already
+  hold is **refused** — check it against `GET …/properties/{key}/options`,
+  or resend with **`?create_options=true`** to create it (a PATCH caps that
+  at 64). Unknown property keys are rejected with a did-you-mean.
 - **Blocks** are a FLAT array in pre-order with an integer `indent`
   (absent = 0) — no `children` key. Inline formatting is markdown inside
   `text`. Use block ids exactly as a read served them.
@@ -63,7 +64,7 @@ whether you may write. Ask this instead of discovering limits through 403s
 | delete an object you created | `DELETE …/objects/{id}` — archives (Bin, reversible in the app). Only works on objects THIS key created after provenance shipped; anything else → 403 `not_created_by_this_key`, permanently — don't retry, archive in the app instead. Ownership is matched on the app name EXACTLY (byte-for-byte — re-pair under the identical name to keep delete rights). User content only: system objects 403. Probe first with `?dry_run=true` |
 | curate a collection | PATCH ops `add_items` / `remove_items` on the collection object |
 | read a set / collection | `GET …/sets/{id}/objects` · `…/collections/{id}/objects` (`?view=`, `?fields=`) |
-| new type / property | `POST …/types` · `POST …/properties`; select options ride the property or create-missing |
+| new type / property | `POST …/types` · `POST …/properties`; select options ride the property, or `?create_options=true` mints them from values |
 | upload a file | `POST …/files` (multipart or `{"url":…}`) → the id file blocks and chat attachments need |
 | chat | `GET/POST …/chats/{id}/messages`, `POST …/read` — see Chats |
 
@@ -164,7 +165,7 @@ whether you may write. Ask this instead of discovering limits through 403s
   replacement first (one atomic batch swaps a bad default view).
 - Response: new `etag`, `created_blocks` (payload position → real id;
   nested row/column/cell slots included), `created_views` (same, for minted
-  view ids), `created` (options minted by create-missing),
+  view ids), `created` (options minted under `?create_options=true`),
   `diff_stats {blocks_added, blocks_removed, blocks_changed, blocks_moved,
   properties_changed}`, `warnings` (advisory, e.g. an unguarded date filter).
 - **There is no whole-document replace** — never read a document,
@@ -238,6 +239,12 @@ read: no `Idempotency-Key`, `dry_run` ignored.
   with a different body/path/query → 409 `idempotency_conflict`.
 - **`?dry_run=true`** on any mutation: full validation, identical verdicts,
   nothing committed (response echoes `dry_run: true`).
+- **`?create_options=true`** on any write that sets a select value: consent
+  to MINT option names the property does not hold yet. Default off, and off
+  refuses — an unmatched name is usually a typo or a stale label, and a
+  minted option joins the property's vocabulary for the whole space with no
+  delete surface. `created` on the response lists what a consented write
+  actually minted.
 - **`If-Match`** (objects only): send an etag back verbatim when a
   concurrent overwrite would matter; mismatch → 409 `etag_mismatch`
   carrying the current etag. Omit it by default — sync also moves the

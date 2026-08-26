@@ -142,7 +142,7 @@ func TestV2SlugAddressedDocuments(t *testing.T) {
 		// when
 		result, err := fx.CreateObject(context.Background(), testSpaceId, []byte(`{
 			"version":1,"type":"meeting_note",
-			"properties":{"name":"Standup","manual_property":"hello"}}`), false)
+			"properties":{"name":"Standup","manual_property":"hello"}}`), false, true)
 
 		// then
 		require.NoError(t, err)
@@ -162,7 +162,7 @@ func TestV2SlugAddressedDocuments(t *testing.T) {
 
 		_, err := fx.CreateObject(context.Background(), testSpaceId, []byte(`{
 			"version":1,"type":"meeting_note",
-			"properties":{"manual_property":"a","`+slugPropKey+`":"b"}}`), false)
+			"properties":{"manual_property":"a","`+slugPropKey+`":"b"}}`), false, true)
 
 		var apiErr *v2model.Error
 		require.ErrorAs(t, err, &apiErr)
@@ -181,7 +181,7 @@ func TestV2SlugAddressedOps(t *testing.T) {
 
 		// when
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"set_properties","set":{"manual_property":"from-slug"}}`), "", false)
+			patchBody(`{"op":"set_properties","set":{"manual_property":"from-slug"}}`), "", false, true)
 
 		// then
 		require.NoError(t, err)
@@ -208,7 +208,7 @@ func TestV2SlugAddressedOps(t *testing.T) {
 
 		// when
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"set_properties","set":{"mood_level":["Brand new"]}}`), "", false)
+			patchBody(`{"op":"set_properties","set":{"mood_level":["Brand new"]}}`), "", false, true)
 
 		// then
 		require.NoError(t, err)
@@ -230,7 +230,7 @@ func TestV2SlugAddressedOps(t *testing.T) {
 			names = append(names, fmt.Sprintf(`"Opt %03d"`, i))
 		}
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"set_properties","set":{"moodLevel":[`+strings.Join(names, ",")+`]}}`), "", false)
+			patchBody(`{"op":"set_properties","set":{"moodLevel":[`+strings.Join(names, ",")+`]}}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -255,7 +255,7 @@ func TestV2SlugAddressedOps(t *testing.T) {
 		})
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"set_properties","set":{"moodLevel":["Folded new"]}}`), "", false)
+			patchBody(`{"op":"set_properties","set":{"moodLevel":["Folded new"]}}`), "", false, true)
 
 		require.NoError(t, err)
 	})

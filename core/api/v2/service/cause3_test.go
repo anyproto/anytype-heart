@@ -156,7 +156,7 @@ func TestV2TypeKeyExistsIsCorpseAndChainAware(t *testing.T) {
 	t.Run("creating an object of a UI-deleted type is refused", func(t *testing.T) {
 		// before: typeKeyExists resolved the corpse and the create passed
 		_, err := fx.CreateObject(context.Background(), testSpaceId,
-			[]byte(`{"version":1,"type":"corpsetype","properties":{"name":"zombie"}}`), false)
+			[]byte(`{"version":1,"type":"corpsetype","properties":{"name":"zombie"}}`), false, true)
 
 		var apiErr *v2model.Error
 		require.ErrorAs(t, err, &apiErr)
@@ -168,7 +168,7 @@ func TestV2TypeKeyExistsIsCorpseAndChainAware(t *testing.T) {
 		fx.expectEtagRead("obj-slugtyped")
 
 		_, err := fx.CreateObject(context.Background(), testSpaceId,
-			[]byte(`{"version":1,"type":"meeting_note","properties":{"name":"ok"}}`), false)
+			[]byte(`{"version":1,"type":"meeting_note","properties":{"name":"ok"}}`), false, true)
 
 		require.NoError(t, err)
 		require.NotNil(t, *captured)
@@ -211,7 +211,7 @@ func TestV2CreateToleratesCorpseHeldKeys(t *testing.T) {
 
 		// when — the bytes a GET of such an object serves
 		_, err := fx.CreateObject(context.Background(), testSpaceId,
-			[]byte(`{"version":1,"type":"page","properties":{"name":"Fresh","corpse_key":"x"}}`), false)
+			[]byte(`{"version":1,"type":"page","properties":{"name":"Fresh","corpse_key":"x"}}`), false, true)
 
 		// then
 		require.NoError(t, err)
@@ -226,7 +226,7 @@ func TestV2CreateToleratesCorpseHeldKeys(t *testing.T) {
 		fx := corpseKeyCloneFixture(t)
 
 		_, err := fx.CreateObject(context.Background(), testSpaceId,
-			[]byte(`{"version":1,"type":"page","properties":{"name":"Fresh","never_existed":"x"}}`), false)
+			[]byte(`{"version":1,"type":"page","properties":{"name":"Fresh","never_existed":"x"}}`), false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -242,7 +242,7 @@ func TestV2CreateToleratesCorpseHeldKeys(t *testing.T) {
 		fx.expectEtagRead("clone2")
 
 		_, err := fx.CreateObject(context.Background(), testSpaceId,
-			[]byte(`{"version":1,"type":"page","properties":{"name":"Fresh","corpse_key":"x"}}`), false)
+			[]byte(`{"version":1,"type":"page","properties":{"name":"Fresh","corpse_key":"x"}}`), false, true)
 
 		require.NoError(t, err)
 	})
@@ -266,7 +266,7 @@ func TestV2CreateToleratesCorpseHeldKeys(t *testing.T) {
 		fx.expectEtagRead("clone3")
 
 		_, err := fx.CreateObject(context.Background(), testSpaceId,
-			[]byte(`{"version":1,"type":"page","properties":{"name":"Fresh","archived_key":"x"}}`), false)
+			[]byte(`{"version":1,"type":"page","properties":{"name":"Fresh","archived_key":"x"}}`), false, true)
 
 		require.NoError(t, err)
 		require.NotNil(t, *captured)
@@ -319,7 +319,7 @@ func TestV2CreateSetCanonicalizesViewKeys(t *testing.T) {
 	result, err := fx.CreateSet(context.Background(), testSpaceId, v2model.CreateSetRequest{
 		Name: "My set", Type: "meeting_note",
 		Filters: json.RawMessage(`[{"property":"manual_property","condition":"equal","value":"hello"}]`),
-	}, false)
+	}, false, true)
 
 	require.NoError(t, err)
 	require.NotNil(t, *captured)

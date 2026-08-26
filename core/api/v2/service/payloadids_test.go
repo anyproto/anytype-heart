@@ -93,7 +93,7 @@ func TestPatchPayloadIdsResolve(t *testing.T) {
 		require.Contains(t, string(blocks), `"id":"aaaa1"`, "the default read serves the compact label")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			[]byte(`{"ops":[{"op":"replace_subtree","id":"aaaa1","blocks":`+string(blocks)+`}]}`), "", false)
+			[]byte(`{"ops":[{"op":"replace_subtree","id":"aaaa1","blocks":`+string(blocks)+`}]}`), "", false, true)
 
 		require.NoError(t, err)
 		assert.Equal(t, v2model.DiffStats{}, result.DiffStats, "echoing a subtree back unchanged is a genuine no-op")
@@ -109,7 +109,7 @@ func TestPatchPayloadIdsResolve(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editMintedDoc), "headB")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"replace_subtree","id":"aaaa1","blocks":[{"id":"aaaa1","type":"heading_1","text":"Renamed"}]}`), "", false)
+			patchBody(`{"op":"replace_subtree","id":"aaaa1","blocks":[{"id":"aaaa1","type":"heading_1","text":"Renamed"}]}`), "", false, true)
 
 		require.NoError(t, err)
 		assert.Equal(t, v2model.DiffStats{BlocksChanged: 1}, result.DiffStats)
@@ -130,7 +130,7 @@ func TestPatchPayloadIdsResolve(t *testing.T) {
 		require.Contains(t, string(rows), `"id":"0dd11"`, "the default read serves relabeled row ids")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			[]byte(`{"ops":[{"op":"update_block","id":"0aaa1","set":{"rows":`+string(rows)+`}}]}`), "", false)
+			[]byte(`{"ops":[{"op":"update_block","id":"0aaa1","set":{"rows":`+string(rows)+`}}]}`), "", false, true)
 
 		require.NoError(t, err)
 		assert.Equal(t, v2model.DiffStats{}, result.DiffStats)
@@ -150,7 +150,7 @@ func TestPatchPayloadIdsResolve(t *testing.T) {
 		require.Contains(t, string(cell), `"id":"dddd1"`, "the default read serves the relabeled descendant")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			[]byte(`{"ops":[{"op":"set_cell","table_id":"tblOne1","row":"rowA","col":"colA","value":`+string(cell)+`}]}`), "", false)
+			[]byte(`{"ops":[{"op":"set_cell","table_id":"tblOne1","row":"rowA","col":"colA","value":`+string(cell)+`}]}`), "", false, true)
 
 		require.NoError(t, err)
 		assert.Equal(t, v2model.DiffStats{}, result.DiffStats)
@@ -167,7 +167,7 @@ func TestPatchPayloadIdsResolve(t *testing.T) {
 		fx.expectMutate(editRead(t, editBaseDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"replace_subtree","id":"blockParent1","blocks":[{"id":"notAnId","type":"paragraph","text":"x"}]}`), "", false)
+			patchBody(`{"op":"replace_subtree","id":"blockParent1","blocks":[{"id":"notAnId","type":"paragraph","text":"x"}]}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -182,7 +182,7 @@ func TestPatchPayloadIdsResolve(t *testing.T) {
 		fx.expectMutate(editRead(t, editTailCollisionDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"replace_subtree","id":"1111111111111111117ffff9","blocks":[{"id":"7ffff9","type":"paragraph","text":"x"}]}`), "", false)
+			patchBody(`{"op":"replace_subtree","id":"1111111111111111117ffff9","blocks":[{"id":"7ffff9","type":"paragraph","text":"x"}]}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -202,7 +202,7 @@ func TestPatchPayloadIdsResolve(t *testing.T) {
 			patchBody(`{"op":"update_block","id":"tblOne1","set":{"rows":[`+
 				`{"id":"rowH","is_header":true,"cells":["Name","Status"]},`+
 				`{"id":"rowB","cells":["Export"]},`+
-				`{"cells":["Fresh"]}]}}`), "", false)
+				`{"cells":["Fresh"]}]}}`), "", false, true)
 
 		require.NoError(t, err)
 		assert.Equal(t, v2model.DiffStats{BlocksChanged: 1}, result.DiffStats)
@@ -222,7 +222,7 @@ func TestPatchPayloadIdsResolve(t *testing.T) {
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
 			patchBody(`{"op":"insert_blocks","blocks":[{"type":"table",`+
 				`"columns":[{},{}],`+
-				`"rows":[{"is_header":true,"cells":["Name","Status"]},{"cells":["Export","Done"]}]}]}`), "", false)
+				`"rows":[{"is_header":true,"cells":["Name","Status"]},{"cells":["Export","Done"]}]}]}`), "", false, true)
 
 		require.NoError(t, err)
 		assert.Equal(t, v2model.DiffStats{BlocksAdded: 1}, result.DiffStats)
@@ -243,7 +243,7 @@ func TestPatchPayloadIdsResolve(t *testing.T) {
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
 			patchBody(`{"op":"insert_blocks","blocks":[{"type":"table",`+
-				`"columns":[{}],"rows":[{"id":"rowH","cells":["Fresh"]}]}]}`), "", false)
+				`"columns":[{}],"rows":[{"id":"rowH","cells":["Fresh"]}]}]}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -258,7 +258,7 @@ func TestPatchPayloadIdsResolve(t *testing.T) {
 		fx.expectMutate(editRead(t, editBaseDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"replace_subtree","id":"blockParent1","blocks":[{"id":"blockHeading1","type":"paragraph","text":"x"}]}`), "", false)
+			patchBody(`{"op":"replace_subtree","id":"blockParent1","blocks":[{"id":"blockHeading1","type":"paragraph","text":"x"}]}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -279,7 +279,7 @@ func TestPatchPayloadIdsResolve(t *testing.T) {
 		fx.expectMutate(editRead(t, editMintedDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"replace_subtree","id":"aaaa1","blocks":[{"id":"bbbb1","type":"paragraph","text":"x"}]}`), "", false)
+			patchBody(`{"op":"replace_subtree","id":"aaaa1","blocks":[{"id":"bbbb1","type":"paragraph","text":"x"}]}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -316,7 +316,7 @@ func TestPatchPayloadIdSeam(t *testing.T) {
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
 			patchBody(`{"op":"update_block","id":"dataview","set":{"views":[`+
 				`{"id":"viewAll1","name":"All","columns":[{"property":"name"}]},`+
-				`{"id":"viewAll1","name":"Second","columns":[{"property":"name"}]}]}}`), "", false)
+				`{"id":"viewAll1","name":"Second","columns":[{"property":"name"}]}]}}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -337,7 +337,7 @@ func TestPatchPayloadIdSeam(t *testing.T) {
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
 			patchBody(`{"op":"update_block","id":"dvFirst1","set":{"views":[`+
-				`{"id":"blockPara1","name":"All","columns":[{"property":"name"}]}]}}`), "", false)
+				`{"id":"blockPara1","name":"All","columns":[{"property":"name"}]}]}}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -356,7 +356,7 @@ func TestPatchPayloadIdSeam(t *testing.T) {
 		fx.expectMutate(editRead(t, editTwoDataviewsDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"replace_subtree","id":"blockPara1","blocks":[{"id":"viewA1","type":"paragraph","text":"x"}]}`), "", false)
+			patchBody(`{"op":"replace_subtree","id":"blockPara1","blocks":[{"id":"viewA1","type":"paragraph","text":"x"}]}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -373,7 +373,7 @@ func TestPatchPayloadIdSeam(t *testing.T) {
 		fx.expectMutate(editRead(t, editTwoDataviewsDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"replace_subtree","id":"blockPara1","blocks":[{"id":"ewA1","type":"paragraph","text":"x"}]}`), "", false)
+			patchBody(`{"op":"replace_subtree","id":"blockPara1","blocks":[{"id":"ewA1","type":"paragraph","text":"x"}]}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -392,7 +392,7 @@ func TestPatchPayloadIdSeam(t *testing.T) {
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
 			patchBody(`{"op":"update_block","id":"dataview","set":{"views":[`+
 				`{"id":"viewAll1","name":"All","columns":[{"property":"name"}]},`+
-				`{"id":"viewBoard2","name":"Board","type":"kanban","group_by":"severity","columns":[{"property":"name"},{"property":"severity","hidden":true}]}]}}`), "", false)
+				`{"id":"viewBoard2","name":"Board","type":"kanban","group_by":"severity","columns":[{"property":"name"},{"property":"severity","hidden":true}]}]}}`), "", false, true)
 
 		require.NoError(t, err)
 		assert.Empty(t, result.CreatedViews, "a resolved view id created nothing")
@@ -409,7 +409,7 @@ func TestPatchPayloadIdSeam(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editSharedViewIdDoc), "headB")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"update_view","block":"dvSecond2","view":"default","set":{"name":"Renamed"}}`), "", false)
+			patchBody(`{"op":"update_view","block":"dvSecond2","view":"default","set":{"name":"Renamed"}}`), "", false, true)
 
 		require.NoError(t, err)
 		assert.Equal(t, v2model.DiffStats{BlocksChanged: 1}, result.DiffStats)
@@ -437,7 +437,7 @@ func TestPatchReportsMintedNestedIds(t *testing.T) {
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
 			patchBody(`{"op":"insert_blocks","blocks":[{"type":"table",`+
 				`"columns":[{},{}],`+
-				`"rows":[{"is_header":true,"cells":["Name","Status"]},{"cells":["Export","Done"]}]}]}`), "", false)
+				`"rows":[{"is_header":true,"cells":["Name","Status"]},{"cells":["Export","Done"]}]}]}`), "", false, true)
 
 		require.NoError(t, err)
 		table := docBlocks(stateDoc(t, *captured))[4]
@@ -457,7 +457,7 @@ func TestPatchReportsMintedNestedIds(t *testing.T) {
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
 			patchBody(`{"op":"set_cell","table_id":"tblOne1","row":"rowB","col":"colA",`+
-				`"value":[{"type":"toggle","text":"cell"},{"indent":1,"type":"paragraph","text":"inside"}]}`), "", false)
+				`"value":[{"type":"toggle","text":"cell"},{"indent":1,"type":"paragraph","text":"inside"}]}`), "", false, true)
 
 		require.NoError(t, err)
 		minted := result.CreatedBlocks["ops[0].value[1]"]
@@ -474,7 +474,7 @@ func TestPatchReportsMintedNestedIds(t *testing.T) {
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
 			patchBody(`{"op":"update_block","id":"dataview","set":{"views":[`+
 				`{"id":"viewAll1","name":"All","columns":[{"property":"name"}]},`+
-				`{"name":"Fresh","columns":[{"property":"name"}]}]}}`), "", false)
+				`{"name":"Fresh","columns":[{"property":"name"}]}]}}`), "", false, true)
 
 		require.NoError(t, err)
 		minted := result.CreatedViews["ops[0].set.views[1]"]

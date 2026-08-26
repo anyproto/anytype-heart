@@ -64,7 +64,7 @@ func TestBlockNotFoundHintsAreTrue(t *testing.T) {
 		fx.expectMutate(editRead(t, editTableCellChildDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"replace_text","id":"dddd1","find":"inside","replace":"x"}`), "", false)
+			patchBody(`{"op":"replace_text","id":"dddd1","find":"inside","replace":"x"}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusNotFound, apiErr.Status)

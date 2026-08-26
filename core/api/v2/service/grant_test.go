@@ -106,11 +106,17 @@ func TestEnsureSpaceGrantBackstop(t *testing.T) {
 			name string
 			call func() error
 		}{
-			{"CreateObject", func() error { _, err := fx.CreateObject(ctx, testSpaceId, []byte(`{}`), false); return err }},
-			{"PatchObject", func() error { _, err := fx.PatchObject(ctx, testSpaceId, "obj1", []byte(`{}`), "", false); return err }},
-			{"CreateType", func() error { _, err := fx.CreateType(ctx, testSpaceId, []byte(`{}`), false); return err }},
+			{"CreateObject", func() error { _, err := fx.CreateObject(ctx, testSpaceId, []byte(`{}`), false, true); return err }},
+			{"PatchObject", func() error {
+				_, err := fx.PatchObject(ctx, testSpaceId, "obj1", []byte(`{}`), "", false, true)
+				return err
+			}},
+			{"CreateType", func() error { _, err := fx.CreateType(ctx, testSpaceId, []byte(`{}`), false, true); return err }},
 			{"DeleteProperty", func() error { _, err := fx.DeleteProperty(ctx, testSpaceId, "status", false); return err }},
-			{"CreateSet", func() error { _, err := fx.CreateSet(ctx, testSpaceId, v2model.CreateSetRequest{}, false); return err }},
+			{"CreateSet", func() error {
+				_, err := fx.CreateSet(ctx, testSpaceId, v2model.CreateSetRequest{}, false, true)
+				return err
+			}},
 			{"UploadFile", func() error { _, err := fx.UploadFile(ctx, testSpaceId, "", "", false); return err }},
 			{"CreateChat", func() error {
 				_, err := fx.CreateChat(ctx, testSpaceId, v2model.CreateChatRequest{Name: "c"}, false)
@@ -145,7 +151,7 @@ func TestEnsureSpaceGrantBackstop(t *testing.T) {
 		// key writing into a NON-granted space is told about the space
 		fx := newV2Fixture(t)
 
-		_, err := fx.CreateObject(grantCtx(util.GrantPermsRead, "someOtherSpace"), testSpaceId, []byte(`{}`), false)
+		_, err := fx.CreateObject(grantCtx(util.GrantPermsRead, "someOtherSpace"), testSpaceId, []byte(`{}`), false, true)
 
 		requireSpaceNotGranted(t, err)
 	})

@@ -155,7 +155,7 @@ func parseVerbFlags(tool wrapper.Tool, argv []string, errW io.Writer) (map[strin
 	fs.BoolVar(&opts.jsonOut, "json", false, "print the machine-readable result")
 	fs.BoolVar(&opts.dryRun, "dry-run", false, "validate without committing (?dry_run=true)")
 	fs.StringVar(&opts.ifMatch, "if-match", "", "advanced: require this etag (C7); the task tools omit it by default")
-	fs.BoolVar(&opts.createMissing, "create-missing", false, "advanced: let unknown select option names be created (R9)")
+	fs.BoolVar(&opts.createMissing, "create-missing", false, "consent to CREATE select options for names a property does not hold yet; without it an unmatched name is refused")
 
 	if err := fs.Parse(argv); err != nil {
 		return nil, nil, err

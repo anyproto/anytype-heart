@@ -178,7 +178,7 @@ func TestV2CorpsePolicyTypes(t *testing.T) {
 
 	t.Run("PATCH and DELETE of a UI-deleted type are 404", func(t *testing.T) {
 		fx := corpsePolicyFixture(t)
-		_, err := fx.UpdateType(context.Background(), testSpaceId, "corpsetype", []byte(`{"properties":{"name":"x"}}`), false)
+		_, err := fx.UpdateType(context.Background(), testSpaceId, "corpsetype", []byte(`{"properties":{"name":"x"}}`), false, true)
 		requireNotFoundError(t, err)
 		_, err = fx.DeleteType(context.Background(), testSpaceId, "corpsetype", false)
 		requireNotFoundError(t, err)

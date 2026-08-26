@@ -53,6 +53,9 @@ type creatingResolvers struct {
 	spaceId string
 	reads   *storeresolver.Resolvers
 	dryRun  bool
+	// createOptions is the caller's explicit ?create_options=true consent.
+	// Without it an unmatched select NAME is a refusal, not a mint (A2).
+	createOptions bool
 
 	// liveEntries is the once-per-resolver snapshot of the space's live
 	// properties (keys.go) — the slug namespace the §7.5a-5 chain and the
@@ -103,7 +106,7 @@ func (r *creatingResolvers) removedBundledKeys() (map[string]bool, error) {
 	return r.removedBundled, r.removedBundledErr
 }
 
-func (s *Service) newCreatingResolvers(ctx context.Context, spaceId string, dryRun bool) *creatingResolvers {
+func (s *Service) newCreatingResolvers(ctx context.Context, spaceId string, dryRun, createOptions bool) *creatingResolvers {
 	return &creatingResolvers{
 		ctx:            ctx,
 		mw:             s.mw,
@@ -111,6 +114,7 @@ func (s *Service) newCreatingResolvers(ctx context.Context, spaceId string, dryR
 		spaceId:        spaceId,
 		reads:          storeresolver.New(s.store.SpaceIndex(spaceId)),
 		dryRun:         dryRun,
+		createOptions:  createOptions,
 		createdOptions: map[optionRef]string{},
 		dryReported:    map[optionRef]bool{},
 		createdProps:   map[string]anyblockjson.PropertyDefinition{},
@@ -206,6 +210,17 @@ func (r *creatingResolvers) OptionId(key domain.RelationKey, name string) (strin
 		}
 		return "", false
 	}
+	if !r.createOptions {
+		// A2 backstop. The pre-lock guard (guardCreateMissing) is what a PATCH
+		// caller actually hits, and it refuses with the whole pending list;
+		// this catches the create paths, which have no such guard, and it
+		// makes the rule true of the resolver itself rather than of one
+		// caller. Refusing beats returning "unresolved": that would store the
+		// NAME where an option id belongs — a value matching nothing that
+		// reads as if it matched.
+		r.errs = append(r.errs, optionConsentError(r.spaceId, string(key), name))
+		return "", false
+	}
 	r.sideEffects.Options = append(r.sideEffects.Options, v2model.CreatedOption{Property: string(key), Name: name})
 	resp := r.mw.ObjectCreateRelationOption(r.ctx, &pb.RpcObjectCreateRelationOptionRequest{
 		SpaceId: r.spaceId,
@@ -221,6 +236,19 @@ func (r *creatingResolvers) OptionId(key domain.RelationKey, name string) (strin
 	}
 	r.createdOptions[ref] = resp.ObjectId
 	return resp.ObjectId, true
+}
+
+// optionConsentError is the one statement of the A2 refusal, shared by the
+// pre-lock guard and the resolver backstop so the two cannot word the same
+// rule differently.
+func optionConsentError(spaceId, property, name string) error {
+	return v2model.ValidationFailed("option does not exist",
+		v2model.Issue{
+			Path:    "/properties/" + property,
+			Message: fmt.Sprintf("property %q has no option named %q, and this request did not ask to create one", property, name),
+			Hint: fmt.Sprintf("check the spelling against GET /v2/spaces/%s/properties/%s/options, "+
+				"or resend with ?create_options=true to create it", spaceId, property),
+		})
 }
 
 // prewarmCreateMissing resolves a PATCH's create-missing references BEFORE

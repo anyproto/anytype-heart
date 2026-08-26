@@ -41,8 +41,12 @@ type Runner struct {
 	// IfMatch adds an If-Match precondition on mutations (CLI advanced
 	// flag; the task tools themselves never set it — C7 advisory mode).
 	IfMatch string
-	// AllowNewOptions skips the wrapper's option-name pre-validation (the
-	// A2 guard), letting the REST create-missing semantics (R9) through.
+	// AllowNewOptions is the caller's consent to MINT select options for
+	// names a property does not hold yet. It does two things, and needs to
+	// do both to mean anything: it skips the wrapper's own option-name
+	// pre-validation (the A2 guard), and it sends ?create_options=true so
+	// the server permits the mint. Without the second half the flag would
+	// only move the refusal from the client to the server.
 	AllowNewOptions bool
 
 	// mu serializes Run: the long-lived delivery shares one Runner across
@@ -361,10 +365,17 @@ func requestHash(method, path string, query url.Values, body any) string {
 
 // mutationQuery renders the shared mutation query params.
 func (r *Runner) mutationQuery() url.Values {
-	if !r.DryRun {
+	q := url.Values{}
+	if r.DryRun {
+		q.Set("dry_run", "true")
+	}
+	if r.AllowNewOptions {
+		q.Set("create_options", "true")
+	}
+	if len(q) == 0 {
 		return nil
 	}
-	return url.Values{"dry_run": []string{"true"}}
+	return q
 }
 
 // patchOps sends a single-op PATCH (the wrapper never batches — one tool

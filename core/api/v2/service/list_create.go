@@ -26,7 +26,7 @@ import (
 const dataviewBlockId = "dataview"
 
 // CreateSet implements POST /v2/spaces/{space_id}/sets.
-func (s *Service) CreateSet(ctx context.Context, spaceId string, req v2model.CreateSetRequest, dryRun bool) (*v2model.CreateResult, error) {
+func (s *Service) CreateSet(ctx context.Context, spaceId string, req v2model.CreateSetRequest, dryRun, createOptions bool) (*v2model.CreateResult, error) {
 	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
 	}
@@ -159,7 +159,7 @@ func (s *Service) CreateSet(ctx context.Context, spaceId string, req v2model.Cre
 	if err != nil {
 		return nil, err
 	}
-	return s.createFromDocument(ctx, spaceId, doc, docCreateOptions{dryRun: dryRun})
+	return s.createFromDocument(ctx, spaceId, doc, docCreateOptions{dryRun: dryRun, createOptions: createOptions})
 }
 
 // CreateCollection implements POST /v2/spaces/{space_id}/collections: the
@@ -221,6 +221,8 @@ func (s *Service) CreateCollection(ctx context.Context, spaceId string, req v2mo
 	if err != nil {
 		return nil, err
 	}
+	// a collection body is {name, items}: object ids, no property values, so
+	// no select name can reach the resolver and no consent is meaningful
 	return s.createFromDocument(ctx, spaceId, doc, docCreateOptions{dryRun: dryRun})
 }
 
@@ -476,7 +478,9 @@ func (s *Service) dataviewProperties(spaceId string, referenced []viewKeyRef) []
 
 // storeFormatResolver builds a bundle-aware format resolver over the space.
 func storeFormatResolver(s *Service, spaceId string) anyblockjson.FormatResolver {
-	reads := s.newCreatingResolvers(context.Background(), spaceId, true)
+	// read-only: this resolver answers formats and never writes, so the
+	// option-creation consent is irrelevant and denied on principle
+	reads := s.newCreatingResolvers(context.Background(), spaceId, true, false)
 	return func(key domain.RelationKey) (format model.RelationFormat, ok bool) {
 		if rel, err := bundle.GetRelation(key); err == nil {
 			return rel.Format, true

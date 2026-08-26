@@ -49,7 +49,7 @@ func TestV2WriteVocabularyIsTheReadVocabulary(t *testing.T) {
 
 		// when: the column is addressed by the slug the listings serve
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"update_view","columns":{"manual_property":{"hidden":false}}}`), "", false)
+			patchBody(`{"op":"update_view","columns":{"manual_property":{"hidden":false}}}`), "", false, true)
 
 		// then
 		require.NoError(t, err)
@@ -96,7 +96,7 @@ func TestV2WriteVocabularyIsTheReadVocabulary(t *testing.T) {
 		// when
 		_, err := fx.CreateObject(ctx, testSpaceId, []byte(`{
 			"version":1,"type":"page",
-			"properties":{"name":"Ship it","due_date":"2026-01-02T00:00:00Z"}}`), false)
+			"properties":{"name":"Ship it","due_date":"2026-01-02T00:00:00Z"}}`), false, true)
 
 		// then
 		require.NoError(t, err)
@@ -115,7 +115,7 @@ func TestV2WriteVocabularyIsTheReadVocabulary(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insert_blocks","blocks":[{"type":"property","property":"manual_property"}]}`), "", false)
+			patchBody(`{"op":"insert_blocks","blocks":[{"type":"property","property":"manual_property"}]}`), "", false, true)
 
 		require.NoError(t, err)
 		var keys []string
@@ -159,7 +159,7 @@ func TestV2WriteVocabularyIsTheReadVocabulary(t *testing.T) {
 
 		// when
 		_, err := fx.UpdateType(ctx, testSpaceId, "chore",
-			[]byte(`{"type_settings":{"property_definitions":[{"property":"due_date","section":"featured"}]}}`), false)
+			[]byte(`{"type_settings":{"property_definitions":[{"property":"due_date","section":"featured"}]}}`), false, true)
 
 		// then
 		require.NoError(t, err)
@@ -199,7 +199,7 @@ func TestV2WriteVocabularyIsTheReadVocabulary(t *testing.T) {
 		fx.expectEtagRead("type-chore")
 
 		// when
-		_, err := fx.CreateType(ctx, testSpaceId, []byte(`{"kind":"object_type","type_settings":{"api_key":"chore","property_definitions":[{"property":"due_date","section":"featured"}]}}`), false)
+		_, err := fx.CreateType(ctx, testSpaceId, []byte(`{"kind":"object_type","type_settings":{"api_key":"chore","property_definitions":[{"property":"due_date","section":"featured"}]}}`), false, true)
 
 		// then
 		require.NoError(t, err)

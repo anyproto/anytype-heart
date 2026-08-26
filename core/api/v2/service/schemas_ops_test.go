@@ -246,7 +246,7 @@ func TestOpVocabularyIsSnakeCase(t *testing.T) {
 
 				// when
 				_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-					patchBody(`{"op":"`+camel+`"}`), "", false)
+					patchBody(`{"op":"`+camel+`"}`), "", false, true)
 
 				// then
 				apiErr := v2Err(t, err)
@@ -331,7 +331,7 @@ func TestMatchLocatorIsPublishedExactlyWhereItWorks(t *testing.T) {
 			fx := newV2Fixture(t)
 			fx.expectMutate(editRead(t, editBaseDoc))
 			_, err = fx.PatchObject(ctx, testSpaceId, "obj1",
-				patchBody(fmt.Sprintf(`{"op":%q,"match":"no block says this"}`, op)), "", false)
+				patchBody(fmt.Sprintf(`{"op":%q,"match":"no block says this"}`, op)), "", false, true)
 
 			// the probe carries nothing but a locator that matches nothing, so
 			// every op refuses SOMEHOW — the question is only whether it

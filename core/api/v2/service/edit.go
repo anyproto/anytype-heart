@@ -161,7 +161,7 @@ type v2PatchRequest struct {
 // PatchObject implements PATCH /v2/spaces/{space_id}/objects/{object_id}: the
 // ops apply to a child state of the live object, committed with one ordinary
 // Apply (stateops.go).
-func (s *Service) PatchObject(ctx context.Context, spaceId, objectId string, body []byte, ifMatch string, dryRun bool) (*v2model.EditResult, error) {
+func (s *Service) PatchObject(ctx context.Context, spaceId, objectId string, body []byte, ifMatch string, dryRun, createOptions bool) (*v2model.EditResult, error) {
 	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
 	}
@@ -169,7 +169,7 @@ func (s *Service) PatchObject(ctx context.Context, spaceId, objectId string, bod
 	if err != nil {
 		return nil, err
 	}
-	resolvers := s.newCreatingResolvers(ctx, spaceId, dryRun)
+	resolvers := s.newCreatingResolvers(ctx, spaceId, dryRun, createOptions)
 
 	// Create-missing option resolution runs before the object lock, so no
 	// create-RPC ever holds it (review B6/A6) — but it must NOT run before the
@@ -194,7 +194,7 @@ func (s *Service) PatchObject(ctx context.Context, spaceId, objectId string, bod
 	if err != nil {
 		return nil, err
 	}
-	if err := s.guardCreateMissing(ctx, spaceId, objectId, ops, ifMatch, cur, dryRun); err != nil {
+	if err := s.guardCreateMissing(ctx, spaceId, objectId, ops, ifMatch, cur, dryRun, createOptions); err != nil {
 		return nil, err
 	}
 	s.prewarmCreateMissing(ops, resolvers)
@@ -270,14 +270,25 @@ const v2MaxCreatedOptionsPerPatch = 64
 // existing option by name before creating, so a retry adopts what the first
 // attempt made instead of duplicating it), and detectable — created options
 // carry ObjectOrigin_api.
-func (s *Service) guardCreateMissing(ctx context.Context, spaceId, objectId string, ops []json.RawMessage, ifMatch string, cur apicore.ObjectRead, dryRun bool) error {
+func (s *Service) guardCreateMissing(ctx context.Context, spaceId, objectId string, ops []json.RawMessage, ifMatch string, cur apicore.ObjectRead, dryRun, createOptions bool) error {
 	// a resolver in dry mode records would-be creations instead of performing
 	// them: no RPCs, no document work, just a walk of the op payloads
-	probe := s.newCreatingResolvers(ctx, spaceId, true)
+	// the probe must see the SAME consent as the real run: it exists to
+	// preview what that run would create, and a probe with a different answer
+	// previews a different request
+	probe := s.newCreatingResolvers(ctx, spaceId, true, createOptions)
 	s.prewarmCreateMissing(ops, probe)
 	pending := probe.sideEffects.Options
 	if len(pending) == 0 {
 		return nil
+	}
+	if !createOptions {
+		// A2: refuse BEFORE the lock and before any RPC, naming every option
+		// the batch would have minted rather than only the first — a caller
+		// fixing typos one round trip at a time is the failure mode a
+		// pre-lock guard exists to avoid. A dry run gets the same refusal:
+		// its job is to preview what the real run would do.
+		return optionConsentError(spaceId, pending[0].Property, pending[0].Name)
 	}
 	if len(pending) > v2MaxCreatedOptionsPerPatch {
 		props := map[string]int{}

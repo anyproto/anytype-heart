@@ -250,7 +250,7 @@ func TestPatchObject(t *testing.T) {
 
 		// when
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"update_block","id":"Child1","set":{"text":"edited child"}}`), "", false)
+			patchBody(`{"op":"update_block","id":"Child1","set":{"text":"edited child"}}`), "", false, true)
 
 		// then
 		require.NoError(t, err)
@@ -267,7 +267,7 @@ func TestPatchObject(t *testing.T) {
 		fx.expectMutate(editRead(t, editBaseDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"update_block","id":"blockChild1","set":{"indent":2}}`), "", false)
+			patchBody(`{"op":"update_block","id":"blockChild1","set":{"indent":2}}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -282,7 +282,7 @@ func TestPatchObject(t *testing.T) {
 
 		// when
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insert_blocks","after":"blockHeading1","blocks":[{"type":"checkbox","text":"todo"},{"indent":1,"type":"paragraph","text":"note"}]}`), "", false)
+			patchBody(`{"op":"insert_blocks","after":"blockHeading1","blocks":[{"type":"checkbox","text":"todo"},{"indent":1,"type":"paragraph","text":"note"}]}`), "", false, true)
 
 		// then
 		require.NoError(t, err)
@@ -309,7 +309,7 @@ func TestPatchObject(t *testing.T) {
 		fx.expectMutate(editRead(t, editMintedDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insert_blocks","blocks":[{"id":"bbbb1","type":"paragraph","text":"copy"}]}`), "", false)
+			patchBody(`{"op":"insert_blocks","blocks":[{"id":"bbbb1","type":"paragraph","text":"copy"}]}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -325,7 +325,7 @@ func TestPatchObject(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insert_blocks","inside":"blockParent1","position":"first","blocks":[{"type":"paragraph","text":"first child"}]}`), "", false)
+			patchBody(`{"op":"insert_blocks","inside":"blockParent1","position":"first","blocks":[{"type":"paragraph","text":"first child"}]}`), "", false, true)
 
 		require.NoError(t, err)
 		assert.Equal(t, v2model.DiffStats{BlocksAdded: 1}, result.DiffStats)
@@ -339,7 +339,7 @@ func TestPatchObject(t *testing.T) {
 		fx.expectMutate(editRead(t, editBaseDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insert_blocks","after":"blockHeading1","inside":"blockParent1","blocks":[{"type":"paragraph","text":"x"}]}`), "", false)
+			patchBody(`{"op":"insert_blocks","after":"blockHeading1","inside":"blockParent1","blocks":[{"type":"paragraph","text":"x"}]}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, v2model.CodeAmbiguousInput, apiErr.Code)
@@ -353,7 +353,7 @@ func TestPatchObject(t *testing.T) {
 
 		// when: no after/before/inside — root-append, with a nested payload
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insert_blocks","blocks":[{"type":"paragraph","text":"appended"},{"indent":1,"type":"paragraph","text":"nested"}]}`), "", false)
+			patchBody(`{"op":"insert_blocks","blocks":[{"type":"paragraph","text":"appended"},{"indent":1,"type":"paragraph","text":"nested"}]}`), "", false, true)
 
 		// then
 		require.NoError(t, err)
@@ -373,7 +373,7 @@ func TestPatchObject(t *testing.T) {
 
 		// when
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insert_blocks","blocks":[{"type":"heading_1","text":"First"},{"type":"paragraph","text":"body"}]}`), "", false)
+			patchBody(`{"op":"insert_blocks","blocks":[{"type":"heading_1","text":"First"},{"type":"paragraph","text":"body"}]}`), "", false, true)
 
 		// then
 		require.NoError(t, err)
@@ -396,7 +396,7 @@ func TestPatchObject(t *testing.T) {
 
 		// when
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insert_blocks","markdown":"## Risks","position":"last"}`), "", false)
+			patchBody(`{"op":"insert_blocks","markdown":"## Risks","position":"last"}`), "", false, true)
 
 		// then
 		require.NoError(t, err)
@@ -413,7 +413,7 @@ func TestPatchObject(t *testing.T) {
 		// when: the direction that used to require reading the document first
 		// just to learn the id of the block to sit before
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insert_blocks","position":"first","blocks":[{"type":"heading_2","text":"Summary"},{"indent":1,"type":"paragraph","text":"note"}]}`), "", false)
+			patchBody(`{"op":"insert_blocks","position":"first","blocks":[{"type":"heading_2","text":"Summary"},{"indent":1,"type":"paragraph","text":"note"}]}`), "", false, true)
 
 		// then
 		require.NoError(t, err)
@@ -434,7 +434,7 @@ func TestPatchObject(t *testing.T) {
 
 		// when
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insert_blocks","position":"first","blocks":[{"type":"paragraph","text":"top"}]}`), "", false)
+			patchBody(`{"op":"insert_blocks","position":"first","blocks":[{"type":"paragraph","text":"top"}]}`), "", false, true)
 
 		// then
 		require.NoError(t, err)
@@ -451,7 +451,7 @@ func TestPatchObject(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editEmptyDoc), "headB")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insert_blocks","position":"first","blocks":[{"type":"paragraph","text":"only"}]}`), "", false)
+			patchBody(`{"op":"insert_blocks","position":"first","blocks":[{"type":"paragraph","text":"only"}]}`), "", false, true)
 
 		require.NoError(t, err)
 		assert.Equal(t, v2model.DiffStats{BlocksAdded: 1}, result.DiffStats)
@@ -463,7 +463,7 @@ func TestPatchObject(t *testing.T) {
 		fx.expectMutate(editRead(t, editBaseDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insert_blocks","position":"middle","blocks":[{"type":"paragraph","text":"x"}]}`), "", false)
+			patchBody(`{"op":"insert_blocks","position":"middle","blocks":[{"type":"paragraph","text":"x"}]}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, "invalid position", apiErr.Message)
@@ -477,7 +477,7 @@ func TestPatchObject(t *testing.T) {
 		fx.expectMutate(editRead(t, editBaseDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insert_blocks","after":"blockHeading1","position":"first","blocks":[{"type":"paragraph","text":"x"}]}`), "", false)
+			patchBody(`{"op":"insert_blocks","after":"blockHeading1","position":"first","blocks":[{"type":"paragraph","text":"x"}]}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Contains(t, apiErr.Message, "position only applies to inside")
@@ -489,7 +489,7 @@ func TestPatchObject(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"move_block","id":"blockParent1","position":"first"}`), "", false)
+			patchBody(`{"op":"move_block","id":"blockParent1","position":"first"}`), "", false, true)
 
 		require.NoError(t, err)
 		// every reordered block counts as moved (the documented diff rule)
@@ -507,7 +507,7 @@ func TestPatchObject(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"move_block","id":"blockHeading1","position":"first"}`), "", false)
+			patchBody(`{"op":"move_block","id":"blockHeading1","position":"first"}`), "", false, true)
 
 		require.NoError(t, err)
 		assert.Equal(t, []string{"Section", "parent", "child", "the Q3 report and Q3 plan"},
@@ -519,7 +519,7 @@ func TestPatchObject(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editSoleParentDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"move_block","id":"blockParent1","position":"first"}`), "", false)
+			patchBody(`{"op":"move_block","id":"blockParent1","position":"first"}`), "", false, true)
 
 		require.NoError(t, err)
 		assert.Equal(t, []string{"parent", "child"}, blockTexts(docBlocks(stateDoc(t, *captured))))
@@ -532,7 +532,7 @@ func TestPatchObject(t *testing.T) {
 
 		// when: markdown instead of blocks — same targeting, same pipeline
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insert_blocks","after":"blockHeading1","markdown":"- [ ] todo\n  - sub item"}`), "", false)
+			patchBody(`{"op":"insert_blocks","after":"blockHeading1","markdown":"- [ ] todo\n  - sub item"}`), "", false, true)
 
 		// then
 		require.NoError(t, err)
@@ -551,7 +551,7 @@ func TestPatchObject(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editEmptyDoc), "headB")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insert_blocks","markdown":"# First\n\nbody"}`), "", false)
+			patchBody(`{"op":"insert_blocks","markdown":"# First\n\nbody"}`), "", false, true)
 
 		require.NoError(t, err)
 		assert.Equal(t, v2model.DiffStats{BlocksAdded: 2}, result.DiffStats)
@@ -565,7 +565,7 @@ func TestPatchObject(t *testing.T) {
 		fx.expectMutate(editRead(t, editBaseDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insert_blocks","after":"blockHeading1","blocks":[{"type":"paragraph","text":"x"}],"markdown":"y"}`), "", false)
+			patchBody(`{"op":"insert_blocks","after":"blockHeading1","blocks":[{"type":"paragraph","text":"x"}],"markdown":"y"}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, v2model.CodeAmbiguousInput, apiErr.Code)
@@ -577,7 +577,7 @@ func TestPatchObject(t *testing.T) {
 		fx.expectMutate(editRead(t, editBaseDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insert_blocks","after":"blockHeading1"}`), "", false)
+			patchBody(`{"op":"insert_blocks","after":"blockHeading1"}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, "insert_blocks needs a payload", apiErr.Message)
@@ -589,7 +589,7 @@ func TestPatchObject(t *testing.T) {
 		fx.expectMutate(editRead(t, editBaseDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insert_blocks","after":"blockHeading1","markdown":"  \n\n"}`), "", false)
+			patchBody(`{"op":"insert_blocks","after":"blockHeading1","markdown":"  \n\n"}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, "markdown produced no blocks", apiErr.Message)
@@ -604,7 +604,7 @@ func TestPatchObject(t *testing.T) {
 
 		md := strings.Repeat(`- x\n`, v2MaxMarkdownBlocksPerOp+1)
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(fmt.Sprintf(`{"op":"insert_blocks","after":"blockHeading1","markdown":"%s"}`, md)), "", false)
+			patchBody(fmt.Sprintf(`{"op":"insert_blocks","after":"blockHeading1","markdown":"%s"}`, md)), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, "markdown produced too many blocks", apiErr.Message)
@@ -619,7 +619,7 @@ func TestPatchObject(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"move_block","id":"blockParent1"}`), "", false)
+			patchBody(`{"op":"move_block","id":"blockParent1"}`), "", false, true)
 
 		require.NoError(t, err)
 		// both reordered siblings count as moved (the documented diff rule)
@@ -634,7 +634,7 @@ func TestPatchObject(t *testing.T) {
 		fx.expectMutate(editRead(t, editTableDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insert_blocks","inside":"tblOne1","blocks":[{"type":"paragraph","text":"x"}]}`), "", false)
+			patchBody(`{"op":"insert_blocks","inside":"tblOne1","blocks":[{"type":"paragraph","text":"x"}]}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Contains(t, apiErr.Message, `"table" blocks cannot have children`)
@@ -645,7 +645,7 @@ func TestPatchObject(t *testing.T) {
 		fx.expectMutate(editRead(t, editBaseDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"replace_subtree","id":"blockParent1","blocks":[{"type":"paragraph","text":"a"},{"indent":2,"type":"paragraph","text":"b"}]}`), "", false)
+			patchBody(`{"op":"replace_subtree","id":"blockParent1","blocks":[{"type":"paragraph","text":"a"},{"indent":2,"type":"paragraph","text":"b"}]}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Contains(t, apiErr.Message, "monotonic")
@@ -659,7 +659,7 @@ func TestPatchObject(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"replace_subtree","id":"blockParent1","blocks":[{"type":"bulleted_list_item","text":"a"},{"indent":1,"type":"paragraph","text":"b"}]}`), "", false)
+			patchBody(`{"op":"replace_subtree","id":"blockParent1","blocks":[{"type":"bulleted_list_item","text":"a"},{"indent":1,"type":"paragraph","text":"b"}]}`), "", false, true)
 
 		require.NoError(t, err)
 		assert.Equal(t, v2model.DiffStats{BlocksAdded: 2, BlocksRemoved: 2}, result.DiffStats)
@@ -673,7 +673,7 @@ func TestPatchObject(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"update_block","id":"blockParent1","set":{"type":"quote","text":"new **text**"}}`), "", false)
+			patchBody(`{"op":"update_block","id":"blockParent1","set":{"type":"quote","text":"new **text**"}}`), "", false, true)
 
 		require.NoError(t, err)
 		assert.Equal(t, v2model.DiffStats{BlocksChanged: 1}, result.DiffStats)
@@ -691,7 +691,7 @@ func TestPatchObject(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"update_block","id":"blockSibling2","set":{"text":null}}`), "", false)
+			patchBody(`{"op":"update_block","id":"blockSibling2","set":{"text":null}}`), "", false, true)
 
 		require.NoError(t, err)
 		blocks := docBlocks(stateDoc(t, *captured))
@@ -705,7 +705,7 @@ func TestPatchObject(t *testing.T) {
 		fx.expectMutate(editRead(t, editBaseDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"update_block","id":"blockParent1","set":{"type":"divider"}}`), "", false)
+			patchBody(`{"op":"update_block","id":"blockParent1","set":{"type":"divider"}}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Contains(t, apiErr.Message, `cannot change block "blockParent1" to leaf type "divider"`)
@@ -719,7 +719,7 @@ func TestPatchObject(t *testing.T) {
 		fx.expectMutate(editRead(t, editBaseDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"replaceBlock","id":"blockParent1","block":{"type":"quote"}}`), "", false)
+			patchBody(`{"op":"replaceBlock","id":"blockParent1","block":{"type":"quote"}}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Contains(t, apiErr.Message, `unknown op "replaceBlock"`)
@@ -734,7 +734,7 @@ func TestPatchObject(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"move_block","id":"blockSibling2","inside":"blockParent1","position":"last"}`), "", false)
+			patchBody(`{"op":"move_block","id":"blockSibling2","inside":"blockParent1","position":"last"}`), "", false, true)
 
 		require.NoError(t, err)
 		assert.Equal(t, v2model.DiffStats{BlocksMoved: 1}, result.DiffStats)
@@ -748,7 +748,7 @@ func TestPatchObject(t *testing.T) {
 		fx.expectMutate(editRead(t, editBaseDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"move_block","id":"blockParent1","inside":"blockChild1"}`), "", false)
+			patchBody(`{"op":"move_block","id":"blockParent1","inside":"blockChild1"}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Contains(t, apiErr.Message, "inside its own subtree")
@@ -759,7 +759,7 @@ func TestPatchObject(t *testing.T) {
 		fx.expectMutate(editRead(t, editBaseDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"delete_block","id":"blockParent1"}`), "", false)
+			patchBody(`{"op":"delete_block","id":"blockParent1"}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Contains(t, apiErr.Message, `block "blockParent1" has 1 descendant block`)
@@ -771,7 +771,7 @@ func TestPatchObject(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"delete_block","id":"blockParent1","recursive":true}`), "", false)
+			patchBody(`{"op":"delete_block","id":"blockParent1","recursive":true}`), "", false, true)
 
 		require.NoError(t, err)
 		assert.Equal(t, v2model.DiffStats{BlocksRemoved: 2}, result.DiffStats)
@@ -783,7 +783,7 @@ func TestPatchObject(t *testing.T) {
 		fx.expectMutate(editRead(t, editBaseDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"replace_text","id":"blockSibling2","find":"Q5","replace":"Q6"}`), "", false)
+			patchBody(`{"op":"replace_text","id":"blockSibling2","find":"Q5","replace":"Q6"}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Contains(t, apiErr.Message, `no match found for "Q5" in block "blockSibling2"`)
@@ -794,7 +794,7 @@ func TestPatchObject(t *testing.T) {
 		fx.expectMutate(editRead(t, editBaseDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"replace_text","id":"blockSibling2","find":"Q3","replace":"Q4"}`), "", false)
+			patchBody(`{"op":"replace_text","id":"blockSibling2","find":"Q3","replace":"Q4"}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Contains(t, apiErr.Message, "found 2 matches")
@@ -807,7 +807,7 @@ func TestPatchObject(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"replace_text","id":"blockSibling2","find":"Q3 report","replace":"Q4 report"}`), "", false)
+			patchBody(`{"op":"replace_text","id":"blockSibling2","find":"Q3 report","replace":"Q4 report"}`), "", false, true)
 
 		require.NoError(t, err)
 		assert.Equal(t, v2model.DiffStats{BlocksChanged: 1}, result.DiffStats)
@@ -820,7 +820,7 @@ func TestPatchObject(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"replace_text","id":"blockSibling2","find":"Q3","replace":"Q4","replace_all":true}`), "", false)
+			patchBody(`{"op":"replace_text","id":"blockSibling2","find":"Q3","replace":"Q4","replace_all":true}`), "", false, true)
 
 		require.NoError(t, err)
 		blocks := docBlocks(stateDoc(t, *captured))
@@ -839,7 +839,7 @@ func TestPatchObject(t *testing.T) {
 		want := v2model.DiffStats{BlocksChanged: 1}
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"replace_text","find":"Q3 report","replace":"Q4 report"}`), "", false)
+			patchBody(`{"op":"replace_text","find":"Q3 report","replace":"Q4 report"}`), "", false, true)
 
 		require.NoError(t, err)
 		assert.Equal(t, want, result.DiffStats)
@@ -852,7 +852,7 @@ func TestPatchObject(t *testing.T) {
 		fx.expectMutate(editRead(t, editBaseDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"replace_text","find":"Q9","replace":"Q4"}`), "", false)
+			patchBody(`{"op":"replace_text","find":"Q9","replace":"Q4"}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusNotFound, apiErr.Status)
@@ -873,7 +873,7 @@ func TestPatchObject(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editTwinDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"replace_text","find":"Budget: TBD","replace":"Budget: $40k"}`), "", false)
+			patchBody(`{"op":"replace_text","find":"Budget: TBD","replace":"Budget: $40k"}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -896,7 +896,7 @@ func TestPatchObject(t *testing.T) {
 		fx.expectMutate(editRead(t, editBaseDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"replace_text","find":"Q3","replace":"Q4"}`), "", false)
+			patchBody(`{"op":"replace_text","find":"Q3","replace":"Q4"}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code, "within-block multiplicity is not ambiguous_input")
@@ -911,7 +911,7 @@ func TestPatchObject(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"replace_text","find":"Q3","replace":"Q4","replace_all":true}`), "", false)
+			patchBody(`{"op":"replace_text","find":"Q3","replace":"Q4","replace_all":true}`), "", false, true)
 
 		require.NoError(t, err)
 		blocks := docBlocks(stateDoc(t, *captured))
@@ -925,7 +925,7 @@ func TestPatchObject(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editTwinDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"replace_text","find":"Budget: TBD","replace":"Budget: $40k","replace_all":true}`), "", false)
+			patchBody(`{"op":"replace_text","find":"Budget: TBD","replace":"Budget: $40k","replace_all":true}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, v2model.CodeAmbiguousInput, apiErr.Code)
@@ -943,7 +943,7 @@ func TestPatchObject(t *testing.T) {
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(
 			`{"op":"replace_text","find":"child","replace":"a needle appears"}`,
 			`{"op":"replace_text","find":"needle","replace":"pin"}`,
-		), "", false)
+		), "", false, true)
 
 		require.NoError(t, err)
 		assert.Equal(t, []string{"Section", "parent", "a pin appears", "the Q3 report and Q3 plan"},
@@ -963,7 +963,7 @@ func TestPatchObject(t *testing.T) {
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(
 			`{"op":"update_block","id":"blockParent1","set":{"text":"child of mine"}}`,
 			`{"op":"replace_text","find":"child","replace":"kid"}`,
-		), "", false)
+		), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, v2model.CodeAmbiguousInput, apiErr.Code)
@@ -983,7 +983,7 @@ func TestPatchObject(t *testing.T) {
 			Return(editRead(t, editBaseDoc), nil)
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"replace_text","find":"Q3 report","replace":"Q4 report"}`), "", true)
+			patchBody(`{"op":"replace_text","find":"Q3 report","replace":"Q4 report"}`), "", true, true)
 
 		require.NoError(t, err)
 		assert.True(t, result.DryRun)
@@ -1002,7 +1002,7 @@ func TestPatchObject(t *testing.T) {
 		want := v2model.DiffStats{BlocksChanged: 1}
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"update_block","match":"Draft timeline","set":{"checked":true}}`), "", false)
+			patchBody(`{"op":"update_block","match":"Draft timeline","set":{"checked":true}}`), "", false, true)
 
 		require.NoError(t, err)
 		assert.Equal(t, want, result.DiffStats)
@@ -1020,7 +1020,7 @@ func TestPatchObject(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editTwinDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"update_block","match":"Budget: TBD","set":{"text":"Budget: $40k"}}`), "", false)
+			patchBody(`{"op":"update_block","match":"Budget: TBD","set":{"text":"Budget: $40k"}}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -1040,7 +1040,7 @@ func TestPatchObject(t *testing.T) {
 		fx.expectMutate(editRead(t, editChecklistDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"update_block","match":"Draft agenda","set":{"checked":true}}`), "", false)
+			patchBody(`{"op":"update_block","match":"Draft agenda","set":{"checked":true}}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusNotFound, apiErr.Status)
@@ -1061,7 +1061,7 @@ func TestPatchObject(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"update_block","match":"Q3","set":{"color":"red"}}`), "", false)
+			patchBody(`{"op":"update_block","match":"Q3","set":{"color":"red"}}`), "", false, true)
 
 		require.NoError(t, err)
 		assert.Equal(t, v2model.DiffStats{BlocksChanged: 1}, result.DiffStats)
@@ -1078,7 +1078,7 @@ func TestPatchObject(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editChecklistDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"update_block","id":"taskShip1","match":"Draft timeline","set":{"checked":true}}`), "", false)
+			patchBody(`{"op":"update_block","id":"taskShip1","match":"Draft timeline","set":{"checked":true}}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -1097,7 +1097,7 @@ func TestPatchObject(t *testing.T) {
 		fx.expectMutate(editRead(t, editChecklistDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"update_block","set":{"checked":true}}`), "", false)
+			patchBody(`{"op":"update_block","set":{"checked":true}}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
@@ -1115,7 +1115,7 @@ func TestPatchObject(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"update_block","match":"parent","set":{"text":"renamed parent"}}`), "", false)
+			patchBody(`{"op":"update_block","match":"parent","set":{"text":"renamed parent"}}`), "", false, true)
 
 		require.NoError(t, err)
 		assert.Equal(t, []string{"Section", "renamed parent", "child", "the Q3 report and Q3 plan"},
@@ -1132,7 +1132,7 @@ func TestPatchObject(t *testing.T) {
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(
 			`{"op":"update_block","match":"child","set":{"text":"renamed leaf"}}`,
 			`{"op":"update_block","match":"renamed leaf","set":{"color":"red"}}`,
-		), "", false)
+		), "", false, true)
 
 		require.NoError(t, err)
 		blocks := docBlocks(stateDoc(t, *captured))
@@ -1151,7 +1151,7 @@ func TestPatchObject(t *testing.T) {
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(
 			`{"op":"update_block","match":"child","set":{"text":"renamed leaf"}}`,
 			`{"op":"update_block","match":"child","set":{"color":"red"}}`,
-		), "", false)
+		), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, v2model.CodeNotFound, apiErr.Code)
@@ -1168,7 +1168,7 @@ func TestPatchObject(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"delete_block","match":"child"}`), "", false)
+			patchBody(`{"op":"delete_block","match":"child"}`), "", false, true)
 
 		require.NoError(t, err)
 		assert.Equal(t, v2model.DiffStats{BlocksRemoved: 1}, result.DiffStats)
@@ -1184,7 +1184,7 @@ func TestPatchObject(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editBaseDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"delete_block","match":"parent"}`), "", false)
+			patchBody(`{"op":"delete_block","match":"parent"}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Contains(t, apiErr.Message, `block "blockParent1" has 1 descendant block`)
@@ -1198,7 +1198,7 @@ func TestPatchObject(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"delete_block","match":"parent","recursive":true}`), "", false)
+			patchBody(`{"op":"delete_block","match":"parent","recursive":true}`), "", false, true)
 
 		require.NoError(t, err)
 		assert.Equal(t, v2model.DiffStats{BlocksRemoved: 2}, result.DiffStats,
@@ -1216,7 +1216,7 @@ func TestPatchObject(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editTwinDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"delete_block","match":"Budget: TBD"}`), "", false)
+			patchBody(`{"op":"delete_block","match":"Budget: TBD"}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, v2model.CodeAmbiguousInput, apiErr.Code)
@@ -1229,7 +1229,7 @@ func TestPatchObject(t *testing.T) {
 		retried := retry.expectMutate(editRead(t, editTwinDoc), "headB")
 
 		result, err := retry.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"delete_block","id":"budgetExec1"}`), "", false)
+			patchBody(`{"op":"delete_block","id":"budgetExec1"}`), "", false, true)
 
 		require.NoError(t, err)
 		assert.Equal(t, v2model.DiffStats{BlocksRemoved: 1}, result.DiffStats)
@@ -1248,7 +1248,7 @@ func TestPatchObject(t *testing.T) {
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(
 			`{"op":"update_block","id":"blockParent1","set":{"text":"child of mine"}}`,
 			`{"op":"delete_block","match":"child"}`,
-		), "", false)
+		), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, v2model.CodeAmbiguousInput, apiErr.Code)
@@ -1265,7 +1265,7 @@ func TestPatchObject(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editBaseDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"delete_block","id":"blockChild1","match":"Section"}`), "", false)
+			patchBody(`{"op":"delete_block","id":"blockChild1","match":"Section"}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, v2model.CodeAmbiguousInput, apiErr.Code)
@@ -1279,7 +1279,7 @@ func TestPatchObject(t *testing.T) {
 		fx.expectMutate(editRead(t, editBaseDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"delete_block","recursive":true}`), "", false)
+			patchBody(`{"op":"delete_block","recursive":true}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
@@ -1294,7 +1294,7 @@ func TestPatchObject(t *testing.T) {
 			Return(editRead(t, editBaseDoc), nil)
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"delete_block","match":"parent","recursive":true}`), "", true)
+			patchBody(`{"op":"delete_block","match":"parent","recursive":true}`), "", true, true)
 
 		require.NoError(t, err)
 		assert.True(t, result.DryRun)
@@ -1306,7 +1306,7 @@ func TestPatchObject(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editTableDoc), "headB")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"set_cell","table_id":"tblOne1","row":"rowB","col":"colB","value":"done"}`), "", false)
+			patchBody(`{"op":"set_cell","table_id":"tblOne1","row":"rowB","col":"colB","value":"done"}`), "", false, true)
 
 		require.NoError(t, err)
 		assert.Equal(t, v2model.DiffStats{BlocksChanged: 1}, result.DiffStats)
@@ -1334,7 +1334,7 @@ func TestPatchObject(t *testing.T) {
 		captured := fx.expectMutate(read, "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"set_cell","table_id":"tblOne1","row":"rowB","col":"colB","value":"done"}`), "", false)
+			patchBody(`{"op":"set_cell","table_id":"tblOne1","row":"rowB","col":"colB","value":"done"}`), "", false, true)
 
 		require.NoError(t, err)
 		table := (*captured).Pick("tblOne1")
@@ -1351,7 +1351,7 @@ func TestPatchObject(t *testing.T) {
 		fx.expectMutate(editRead(t, editTableDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"set_cell","table_id":"tblOne1","row":"rowZ","col":"colB","value":"x"}`), "", false)
+			patchBody(`{"op":"set_cell","table_id":"tblOne1","row":"rowZ","col":"colB","value":"x"}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusNotFound, apiErr.Status)
@@ -1365,7 +1365,7 @@ func TestPatchObject(t *testing.T) {
 
 		// cells never carry ids (SPEC §6.1) — the R5 net catches it
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"set_cell","table_id":"tblOne1","row":"rowB","col":"colB","value":{"id":"x1","type":"paragraph","text":"y"}}`), "", false)
+			patchBody(`{"op":"set_cell","table_id":"tblOne1","row":"rowB","col":"colB","value":{"id":"x1","type":"paragraph","text":"y"}}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, "the ops would produce an invalid document — no op was applied", apiErr.Message)
@@ -1377,7 +1377,7 @@ func TestPatchObject(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"set_properties","set":{"name":"Renamed","done":true},"unset":["description"]}`), "", false)
+			patchBody(`{"op":"set_properties","set":{"name":"Renamed","done":true},"unset":["description"]}`), "", false, true)
 
 		require.NoError(t, err)
 		assert.Equal(t, v2model.DiffStats{PropertiesChanged: 3}, result.DiffStats)
@@ -1402,7 +1402,7 @@ func TestPatchObject(t *testing.T) {
 		// reaching either fails the test
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"set_properties","set":{"severity":["BrandNewOption"]}}`), `"deadbeef"`, false)
+			patchBody(`{"op":"set_properties","set":{"severity":["BrandNewOption"]}}`), `"deadbeef"`, false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusConflict, apiErr.Status)
@@ -1425,7 +1425,7 @@ func TestPatchObject(t *testing.T) {
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
 			patchBody(`{"op":"set_properties","set":{"severity":["BrandNewOption"]}}`,
-				`{"op":"update_block","id":"doesNotExist","set":{"text":"hi"}}`), "", false)
+				`{"op":"update_block","id":"doesNotExist","set":{"text":"hi"}}`), "", false, true)
 
 		require.Error(t, err)
 		apiErr := v2Err(t, err)
@@ -1443,7 +1443,7 @@ func TestPatchObject(t *testing.T) {
 			Return(editRead(t, editBaseDoc), nil)
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"set_properties","set":{"severity":["BrandNewOption"]},"unset":["severity"]}`), "", false)
+			patchBody(`{"op":"set_properties","set":{"severity":["BrandNewOption"]},"unset":["severity"]}`), "", false, true)
 
 		require.Error(t, err)
 	})
@@ -1462,7 +1462,7 @@ func TestPatchObject(t *testing.T) {
 		}
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
 			patchBody(fmt.Sprintf(`{"op":"set_properties","set":{"severity":[%s]}}`,
-				strings.Join(names, ","))), "", false)
+				strings.Join(names, ","))), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -1493,7 +1493,7 @@ func TestPatchObject(t *testing.T) {
 		}
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
 			patchBody(fmt.Sprintf(`{"op":"set_properties","set":{"severity":[%s]}}`,
-				strings.Join(names, ","))), "", false)
+				strings.Join(names, ","))), "", false, true)
 
 		require.NoError(t, err)
 		require.NotNil(t, result.Created)
@@ -1509,7 +1509,7 @@ func TestPatchObject(t *testing.T) {
 			Return(editRead(t, editBaseDoc), nil)
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"set_properties","set":{"severity":["BrandNewOption"]}}`), "", true)
+			patchBody(`{"op":"set_properties","set":{"severity":["BrandNewOption"]}}`), "", true, true)
 
 		require.NoError(t, err)
 		require.NotNil(t, result.Created)
@@ -1528,7 +1528,7 @@ func TestPatchObject(t *testing.T) {
 		captured := fx.expectMutate(read, "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"set_properties","set":{"name":"Renamed"}}`), "", false)
+			patchBody(`{"op":"set_properties","set":{"name":"Renamed"}}`), "", false, true)
 
 		// before M1 this returned the blocks refusal, so a set could never be
 		// renamed through v2 even though nothing restricted its details
@@ -1557,7 +1557,7 @@ func TestPatchObject(t *testing.T) {
 			})
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"set_properties","set":{"name":"Renamed"}}`), "", false)
+			patchBody(`{"op":"set_properties","set":{"name":"Renamed"}}`), "", false, true)
 
 		require.NoError(t, err)
 		assert.Equal(t, apicore.EditNeeds{Details: true}, got,
@@ -1573,7 +1573,7 @@ func TestPatchObject(t *testing.T) {
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
 			patchBody(`{"op":"set_properties","set":{"name":"Renamed"}}`,
-				`{"op":"delete_block","id":"blockChild1"}`), "", false)
+				`{"op":"delete_block","id":"blockChild1"}`), "", false, true)
 
 		// M2a: the refusal is PERMANENT, so it must be the C6 403 — not the
 		// bare error RespondError turns into a retryable 500
@@ -1595,7 +1595,7 @@ func TestPatchObject(t *testing.T) {
 			Return(nil, blocksRefusedProduction())
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"delete_block","id":"blockChild1"}`), "", false)
+			patchBody(`{"op":"delete_block","id":"blockChild1"}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusForbidden, apiErr.Status)
@@ -1612,7 +1612,7 @@ func TestPatchObject(t *testing.T) {
 		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(read, nil)
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"delete_block","id":"blockChild1"}`), "", true)
+			patchBody(`{"op":"delete_block","id":"blockChild1"}`), "", true, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusForbidden, apiErr.Status, "the dry run reaches the same 403 the real edit would")
@@ -1627,7 +1627,7 @@ func TestPatchObject(t *testing.T) {
 		fx.expectMutate(editRead(t, editLayoutDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insert_blocks","inside":"rowOne1","blocks":[{"type":"paragraph","text":"x"}]}`), "", false)
+			patchBody(`{"op":"insert_blocks","inside":"rowOne1","blocks":[{"type":"paragraph","text":"x"}]}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -1639,7 +1639,7 @@ func TestPatchObject(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editLayoutDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insert_blocks","inside":"colOne1","blocks":[{"type":"paragraph","text":"added"}]}`), "", false)
+			patchBody(`{"op":"insert_blocks","inside":"colOne1","blocks":[{"type":"paragraph","text":"added"}]}`), "", false, true)
 
 		require.NoError(t, err)
 		assert.NotNil(t, *captured)
@@ -1666,7 +1666,7 @@ func TestPatchObject(t *testing.T) {
 		body := patchBody(fmt.Sprintf(
 			`{"op":"insert_blocks","after":"blockSibling2","blocks":[%s]}`, strings.Join(run, ",")))
 
-		_, err := fx.PatchObject(ctx, testSpaceId, "obj1", body, "", false)
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1", body, "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -1685,7 +1685,7 @@ func TestPatchObject(t *testing.T) {
 		}
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(fmt.Sprintf(`{"op":"insert_blocks","after":"blockHeading1","blocks":[%s]}`, strings.Join(run, ","))), "", false)
+			patchBody(fmt.Sprintf(`{"op":"insert_blocks","after":"blockHeading1","blocks":[%s]}`, strings.Join(run, ","))), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -1704,7 +1704,7 @@ func TestPatchObject(t *testing.T) {
 		}
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(fmt.Sprintf(`{"op":"replace_subtree","id":"blockParent1","blocks":[%s]}`, strings.Join(run, ","))), "", false)
+			patchBody(fmt.Sprintf(`{"op":"replace_subtree","id":"blockParent1","blocks":[%s]}`, strings.Join(run, ","))), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, "too many blocks in one op", apiErr.Message)
@@ -1725,7 +1725,7 @@ func TestPatchObject(t *testing.T) {
 			ops[i] = `{"op":"move_block","id":"blockParent1"}`
 		}
 
-		_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(ops...), "", false)
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(ops...), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -1748,7 +1748,7 @@ func TestPatchObject(t *testing.T) {
 			ops[i] = `{"op":"replace_text","id":"blockSibling2","find":"report","replace":"report"}`
 		}
 
-		_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(ops...), "", false)
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(ops...), "", false, true)
 
 		require.NoError(t, err)
 		require.NotNil(t, *captured)
@@ -1765,7 +1765,7 @@ func TestPatchObject(t *testing.T) {
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(
 			`{"op":"replace_text","id":"blockSibling2","find":"report","replace":"**re****port**"}`,
 			`{"op":"replace_text","id":"blockSibling2","find":"the Q3 **report**","replace":"the Q3 **REPORT**"}`,
-		), "", false)
+		), "", false, true)
 
 		require.NoError(t, err)
 		assert.Equal(t, v2model.DiffStats{BlocksChanged: 1}, result.DiffStats)
@@ -1782,7 +1782,7 @@ func TestPatchObject(t *testing.T) {
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(
 			`{"op":"replace_text","id":"blockChild1","find":"child","replace":"kid"}`,
 			`{"op":"update_block","id":"blockChild1","set":{"color":"red"}}`,
-		), "", false)
+		), "", false, true)
 
 		require.NoError(t, err)
 		blocks := docBlocks(stateDoc(t, *captured))
@@ -1800,7 +1800,7 @@ func TestPatchObject(t *testing.T) {
 			ops[i] = `{"op":"replace_text","id":"blockSibling2","find":"report","replace":"report"}`
 		}
 
-		_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(ops...), "", false)
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(ops...), "", false, true)
 
 		require.NoError(t, err)
 		require.NotNil(t, *captured)
@@ -1815,7 +1815,7 @@ func TestPatchObject(t *testing.T) {
 			ops[i] = `{"op":"set_properties","set":{"name":"x"}}`
 		}
 
-		_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(ops...), "", false)
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(ops...), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -1828,7 +1828,7 @@ func TestPatchObject(t *testing.T) {
 		fx.expectMutate(editRead(t, editBaseDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"set_properties","set":{"resolvedLayout":"todo","totallyUnknown":1}}`), "", false)
+			patchBody(`{"op":"set_properties","set":{"resolvedLayout":"todo","totallyUnknown":1}}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		require.Len(t, apiErr.Issues, 2)
@@ -1836,6 +1836,50 @@ func TestPatchObject(t *testing.T) {
 		assert.Contains(t, apiErr.Issues[0].Message, "output-only")
 		assert.Equal(t, "ops[0].set.totallyUnknown", apiErr.Issues[1].Path)
 		assert.Contains(t, apiErr.Issues[1].Message, "unknown property key")
+	})
+
+	// A2: minting an option is a WRITE the caller did not ask for in the body
+	// — the value names a label, not a create — so it needs explicit consent.
+	// Default OFF and loud: an unmatched select value is far more often a
+	// typo or a hallucinated label than a deliberate new option, and a minted
+	// one joins the property's vocabulary for every object and every member
+	// of the space.
+	t.Run("an unmatched option name is refused without ?create_options", func(t *testing.T) {
+		// given: the read is wired (PatchObject reads before prewarming), but
+		// there is no ObjectCreateRelationOption and no MutateObject
+		// expectation — reaching either fails the test, which is the point
+		fx := newV2Fixture(t)
+		fx.addSelectProperty(t)
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").
+			Return(editRead(t, editBaseDoc), nil).Maybe()
+
+		// when
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"set_properties","set":{"severity":["Critical"]}}`), "", false, false)
+
+		// then: the refusal names the property, the value, and both ways on
+		apiErr := v2ErrWithIssue(t, err)
+		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
+		require.NotEmpty(t, apiErr.Issues)
+		assert.Contains(t, apiErr.Issues[0].Message, `"Critical"`)
+		assert.Contains(t, apiErr.Issues[0].Message, `"severity"`)
+		assert.Contains(t, apiErr.Issues[0].Hint, "/options")
+		assert.Contains(t, apiErr.Issues[0].Hint, "create_options=true")
+	})
+
+	t.Run("an EXISTING option name needs no consent", func(t *testing.T) {
+		// the gate is about minting, not about using: a name the property
+		// already holds resolves on the default path, or the flag would be a
+		// tax on every ordinary write
+		fx := newV2Fixture(t)
+		fx.addSelectProperty(t) // "severity" already holds "High"
+		fx.expectMutate(editRead(t, editBaseDoc), "headB")
+
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"set_properties","set":{"severity":["High"]}}`), "", false, false)
+
+		require.NoError(t, err)
+		assert.Nil(t, result.Created, "nothing was minted")
 	})
 
 	t.Run("set_properties creates missing select options and reports them", func(t *testing.T) {
@@ -1851,7 +1895,7 @@ func TestPatchObject(t *testing.T) {
 
 		// when
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"set_properties","set":{"severity":["Critical"]}}`), "", false)
+			patchBody(`{"op":"set_properties","set":{"severity":["Critical"]}}`), "", false, true)
 
 		// then
 		require.NoError(t, err)
@@ -1869,7 +1913,7 @@ func TestPatchObject(t *testing.T) {
 		fx.expectMutate(read)
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"set_properties","add":{"severity":["High"]}}`), "", false)
+			patchBody(`{"op":"set_properties","add":{"severity":["High"]}}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -1886,7 +1930,7 @@ func TestPatchObject(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"set_properties","add":{"severity":["High"]}}`), "", false)
+			patchBody(`{"op":"set_properties","add":{"severity":["High"]}}`), "", false, true)
 
 		require.NoError(t, err)
 		props := stateDoc(t, *captured)["properties"].(map[string]any)
@@ -1905,7 +1949,7 @@ func TestPatchObject(t *testing.T) {
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
 			patchBody(
 				`{"op":"set_properties","add":{"tags":["Urgent","Urgent"]}}`,
-				`{"op":"set_properties","add":{"tags":["Urgent","Later"]}}`), "", false)
+				`{"op":"set_properties","add":{"tags":["Urgent","Later"]}}`), "", false, true)
 
 		// then
 		require.NoError(t, err)
@@ -1924,7 +1968,7 @@ func TestPatchObject(t *testing.T) {
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
 			patchBody(
 				`{"op":"set_properties","add":{"tags":["Urgent","Later"]}}`,
-				`{"op":"set_properties","remove":{"tags":["Urgent","Nonexistent"]}}`), "", false)
+				`{"op":"set_properties","remove":{"tags":["Urgent","Nonexistent"]}}`), "", false, true)
 
 		// then: no ObjectCreateRelationOption expectation is wired — a create
 		// RPC for "Nonexistent" would fail the test
@@ -1939,7 +1983,7 @@ func TestPatchObject(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"set_properties","remove":{"tags":["Urgent"]}}`), "", false)
+			patchBody(`{"op":"set_properties","remove":{"tags":["Urgent"]}}`), "", false, true)
 
 		require.NoError(t, err)
 		assert.False(t, (*captured).CombinedDetails().Has(domain.RelationKey("tags")),
@@ -1951,7 +1995,7 @@ func TestPatchObject(t *testing.T) {
 		fx.expectMutate(editRead(t, editBaseDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"set_properties","add":{"done":[true]}}`), "", false)
+			patchBody(`{"op":"set_properties","add":{"done":[true]}}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		require.Len(t, apiErr.Issues, 1)
@@ -1965,7 +2009,7 @@ func TestPatchObject(t *testing.T) {
 		fx.expectMutate(editRead(t, editBaseDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"set_properties","set":{"tags":["Urgent"]},"add":{"tags":["Later"]}}`), "", false)
+			patchBody(`{"op":"set_properties","set":{"tags":["Urgent"]},"add":{"tags":["Later"]}}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		require.Len(t, apiErr.Issues, 1)
@@ -1978,7 +2022,7 @@ func TestPatchObject(t *testing.T) {
 		fx.expectMutate(editRead(t, editBaseDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"set_properties","add":{"resolvedLayout":["todo"],"totallyUnknown":["x"]}}`), "", false)
+			patchBody(`{"op":"set_properties","add":{"resolvedLayout":["todo"],"totallyUnknown":["x"]}}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		require.Len(t, apiErr.Issues, 2)
@@ -1994,7 +2038,7 @@ func TestPatchObject(t *testing.T) {
 		fx.expectMutate(editRead(t, editBaseDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"set_properties","add":{"tags":"Urgent"}}`), "", false)
+			patchBody(`{"op":"set_properties","add":{"tags":"Urgent"}}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		require.Len(t, apiErr.Issues, 1)
@@ -2015,7 +2059,7 @@ func TestPatchObject(t *testing.T) {
 		want := &v2model.SideEffects{Options: []v2model.CreatedOption{{Property: "severity", Name: "Critical"}}}
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"set_properties","add":{"severity":["Critical"]}}`), "", false)
+			patchBody(`{"op":"set_properties","add":{"severity":["Critical"]}}`), "", false, true)
 
 		require.NoError(t, err)
 		assert.Equal(t, want, result.Created, "created once — prewarm and the op share the resolver cache")
@@ -2028,7 +2072,7 @@ func TestPatchObject(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editCollectionDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"add_items","items":["memberB","memberA"]}`, `{"op":"remove_items","items":["memberA"]}`), "", false)
+			patchBody(`{"op":"add_items","items":["memberB","memberA"]}`, `{"op":"remove_items","items":["memberA"]}`), "", false, true)
 
 		require.NoError(t, err)
 		doc := stateDoc(t, *captured)
@@ -2040,7 +2084,7 @@ func TestPatchObject(t *testing.T) {
 		fx.expectMutate(editRead(t, editBaseDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"add_items","items":["memberB"]}`), "", false)
+			patchBody(`{"op":"add_items","items":["memberB"]}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Contains(t, apiErr.Message, `add_items requires a collection — this object's type is "page"`)
@@ -2052,7 +2096,7 @@ func TestPatchObject(t *testing.T) {
 
 		// "1" is a suffix of blockHeading1, blockParent1 and blockChild1
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"delete_block","id":"1"}`), "", false)
+			patchBody(`{"op":"delete_block","id":"1"}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, v2model.CodeAmbiguousInput, apiErr.Code)
@@ -2064,7 +2108,7 @@ func TestPatchObject(t *testing.T) {
 		fx.expectMutate(editRead(t, editBaseDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"delete_block","id":"nowhere"}`), "", false)
+			patchBody(`{"op":"delete_block","id":"nowhere"}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusNotFound, apiErr.Status)
@@ -2079,7 +2123,7 @@ func TestPatchObject(t *testing.T) {
 		fx.expectMutate(editRead(t, editBaseDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"frobnicate"}`), "", false)
+			patchBody(`{"op":"frobnicate"}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Contains(t, apiErr.Message, `unknown op "frobnicate"`)
@@ -2096,7 +2140,7 @@ func TestPatchObject(t *testing.T) {
 		// deliberately NO mutator expectation: reaching it would fail the test
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"delete_block","id":"blockChild1"}`), `"deadbeef"`, false)
+			patchBody(`{"op":"delete_block","id":"blockChild1"}`), `"deadbeef"`, false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusConflict, apiErr.Status)
@@ -2109,7 +2153,7 @@ func TestPatchObject(t *testing.T) {
 		fx.expectMutate(editRead(t, editBaseDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"delete_block","id":"blockChild1"}`), QuoteEtag(ComputeEtag([]string{"headA"})), false)
+			patchBody(`{"op":"delete_block","id":"blockChild1"}`), QuoteEtag(ComputeEtag([]string{"headA"})), false, true)
 
 		require.NoError(t, err)
 	})
@@ -2121,7 +2165,7 @@ func TestPatchObject(t *testing.T) {
 
 		// when
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"delete_block","id":"blockParent1","recursive":true}`), "", true)
+			patchBody(`{"op":"delete_block","id":"blockParent1","recursive":true}`), "", true, true)
 
 		// then
 		require.NoError(t, err)
@@ -2133,7 +2177,7 @@ func TestPatchObject(t *testing.T) {
 	t.Run("empty ops list is rejected", func(t *testing.T) {
 		fx := newV2Fixture(t)
 
-		_, err := fx.PatchObject(ctx, testSpaceId, "obj1", []byte(`{"ops":[]}`), "", false)
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1", []byte(`{"ops":[]}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Contains(t, apiErr.Message, "ops must not be empty")
@@ -2147,7 +2191,7 @@ func TestPatchObject(t *testing.T) {
 
 		// when: op 0 is fine, op 1 addresses a missing block
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"delete_block","id":"blockChild1"}`, `{"op":"delete_block","id":"nowhere"}`), "", false)
+			patchBody(`{"op":"delete_block","id":"blockChild1"}`, `{"op":"delete_block","id":"nowhere"}`), "", false, true)
 
 		// then
 		require.Error(t, err)
@@ -2176,7 +2220,7 @@ func TestApplierRenderCounts(t *testing.T) {
 		t.Helper()
 		edit, err := editFromRead("obj1", editRead(t, doc))
 		require.NoError(t, err)
-		resolvers := fx.newCreatingResolvers(ctx, testSpaceId, false)
+		resolvers := fx.newCreatingResolvers(ctx, testSpaceId, false, true)
 		return newV2StateApplier(fx.Service, testSpaceId, "obj1", edit.SbType, edit.State, resolvers)
 	}
 
@@ -2287,7 +2331,7 @@ func TestPatchExcludesSystemManagedObjects(t *testing.T) {
 			fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(read, nil).Maybe()
 
 			_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-				patchBody(`{"op":"update_block","id":"blockChild1","set":{"text":"edited"}}`), "", false)
+				patchBody(`{"op":"update_block","id":"blockChild1","set":{"text":"edited"}}`), "", false, true)
 
 			apiErr := v2Err(t, err)
 			assert.Equal(t, http.StatusBadRequest, apiErr.Status)

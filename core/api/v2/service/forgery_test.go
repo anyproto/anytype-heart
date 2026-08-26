@@ -23,7 +23,7 @@ func TestV2TypeDocumentForgery(t *testing.T) {
 
 		// when
 		_, err := fx.CreateType(context.Background(), testSpaceId,
-			[]byte(`{"kind":"object_type","properties":{"name":"Forged","uniqueKey":"ot-page"},"type_settings":{"api_key":"forged"}}`), false)
+			[]byte(`{"kind":"object_type","properties":{"name":"Forged","uniqueKey":"ot-page"},"type_settings":{"api_key":"forged"}}`), false, true)
 
 		// then
 		apiErr := v2ErrWithIssue(t, err)
@@ -36,7 +36,7 @@ func TestV2TypeDocumentForgery(t *testing.T) {
 		fx := newV2Fixture(t)
 		for _, forged := range []string{"relationKey", "isReadonly", "restrictions"} {
 			_, err := fx.CreateType(context.Background(), testSpaceId,
-				[]byte(`{"kind":"object_type","type_settings":{"api_key":"forged2"},"properties":{"name":"Forged","`+forged+`":"x"}}`), false)
+				[]byte(`{"kind":"object_type","type_settings":{"api_key":"forged2"},"properties":{"name":"Forged","`+forged+`":"x"}}`), false, true)
 			apiErr := v2ErrWithIssue(t, err)
 			require.NotEmpty(t, apiErr.Issues, forged)
 			assert.Equal(t, "/properties/"+forged, apiErr.Issues[0].Path)
@@ -62,7 +62,7 @@ func TestV2TypeDocumentForgery(t *testing.T) {
 			`{"kind":"object_type","properties":{"name":"☕","apiObjectKey":"object_type"}}`,
 		} {
 			fx := newV2Fixture(t)
-			_, err := fx.CreateType(context.Background(), testSpaceId, []byte(body), false)
+			_, err := fx.CreateType(context.Background(), testSpaceId, []byte(body), false, true)
 
 			apiErr := v2ErrWithIssue(t, err)
 			require.NotEmpty(t, apiErr.Issues)
@@ -76,7 +76,7 @@ func TestV2TypeDocumentForgery(t *testing.T) {
 		fx := newV2Fixture(t)
 
 		_, err := fx.CreateObject(context.Background(), testSpaceId,
-			[]byte(`{"version":1,"key":"page","blocks":[{"type":"paragraph","text":"x"}]}`), false)
+			[]byte(`{"version":1,"key":"page","blocks":[{"type":"paragraph","text":"x"}]}`), false, true)
 
 		apiErr := v2ErrWithIssue(t, err)
 		require.NotEmpty(t, apiErr.Issues)

@@ -336,6 +336,45 @@ func ensureDryRun() gin.HandlerFunc {
 	}
 }
 
+// createOptionsKey is the context key ensureCreateOptions sets.
+const createOptionsKey = "create_options"
+
+// ensureCreateOptions parses ?create_options=true — the explicit consent a
+// write needs before an unmatched select value MINTS an option.
+//
+// It defaults OFF and fails loud. A select value that names no existing
+// option is far more often a typo, a hallucinated label or a stale name than
+// a deliberate new option, and minting one silently is unreversible in
+// practice: the option joins the property's vocabulary for every object and
+// every member of the space, and nothing in the response says a write did
+// more than it was asked to. The same reasoning is why Airtable's `typecast`
+// and monday's `create_labels_if_missing` both default off.
+//
+// Group-wide like dry_run, and for the same reason: one parse, one closed
+// value set, one refusal — a mutation route added tomorrow inherits the gate
+// rather than having to remember it.
+func ensureCreateOptions() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		switch c.Query("create_options") {
+		case "", "false":
+			c.Set(createOptionsKey, false)
+		case "true":
+			c.Set(createOptionsKey, true)
+		default:
+			respondV2Error(c, v2model.ValidationFailed("invalid create_options value",
+				v2model.Issue{Path: "create_options", Message: "allowed values: true, false"}))
+			return
+		}
+		c.Next()
+	}
+}
+
+// MayCreateOptions reports whether this request consented to minting select
+// options for names that do not exist yet.
+func MayCreateOptions(c *gin.Context) bool {
+	return c.GetBool(createOptionsKey)
+}
+
 // IsDryRun reports whether the request asked for a dry run (C9).
 func IsDryRun(c *gin.Context) bool {
 	return c.GetBool(dryRunKey)

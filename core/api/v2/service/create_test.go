@@ -100,7 +100,7 @@ func TestV2CreateObjectShortcut(t *testing.T) {
 
 		// when
 		result, err := fx.CreateObject(context.Background(), testSpaceId,
-			[]byte(`{"type":"task","name":"Buy milk"}`), false)
+			[]byte(`{"type":"task","name":"Buy milk"}`), false, true)
 
 		// then
 		require.NoError(t, err)
@@ -121,7 +121,7 @@ func TestV2CreateObjectShortcut(t *testing.T) {
 
 		// when — no BlockCreate/BlockPaste expectations: the paste path is gone
 		result, err := fx.CreateObject(context.Background(), testSpaceId,
-			[]byte(`{"type":"page","name":"Doc","markdown":"# Hello\n\n- [ ] first task"}`), false)
+			[]byte(`{"type":"page","name":"Doc","markdown":"# Hello\n\n- [ ] first task"}`), false, true)
 
 		// then
 		require.NoError(t, err)
@@ -149,7 +149,7 @@ func TestV2CreateObjectShortcut(t *testing.T) {
 
 		// when
 		result, err := fx.CreateObject(context.Background(), testSpaceId,
-			[]byte(`{"type":"page","name":"Doc","markdown":"- [x] done item"}`), true)
+			[]byte(`{"type":"page","name":"Doc","markdown":"- [x] done item"}`), true, true)
 
 		// then
 		require.NoError(t, err)
@@ -164,7 +164,7 @@ func TestV2CreateObjectShortcut(t *testing.T) {
 
 		// when
 		_, err := fx.CreateObject(context.Background(), testSpaceId,
-			[]byte(`{"type":"page","name":"Doc","markdown":"   \n\t\n"}`), false)
+			[]byte(`{"type":"page","name":"Doc","markdown":"   \n\t\n"}`), false, true)
 
 		// then: the same contract as the insert_blocks markdown channel (C6)
 		apiErr := v2Err(t, err)
@@ -186,7 +186,7 @@ func TestV2CreateObjectShortcut(t *testing.T) {
 		require.NoError(t, err)
 
 		// when
-		_, err = fx.CreateObject(context.Background(), testSpaceId, body, false)
+		_, err = fx.CreateObject(context.Background(), testSpaceId, body, false, true)
 
 		// then
 		apiErr := v2Err(t, err)
@@ -216,7 +216,7 @@ func TestV2CreateObjectShortcut(t *testing.T) {
 
 		// when
 		_, err := fx.CreateObject(context.Background(), testSpaceId,
-			[]byte(`{"type":"task","title":"oops"}`), false)
+			[]byte(`{"type":"task","title":"oops"}`), false, true)
 
 		// then
 		apiErr := v2Err(t, err)
@@ -231,7 +231,7 @@ func TestV2CreateObjectShortcut(t *testing.T) {
 		fx := newV2Fixture(t)
 
 		// when
-		_, err := fx.CreateObject(context.Background(), testSpaceId, []byte(`{"name":"x"}`), false)
+		_, err := fx.CreateObject(context.Background(), testSpaceId, []byte(`{"name":"x"}`), false, true)
 
 		// then
 		apiErr := v2Err(t, err)
@@ -253,7 +253,7 @@ func TestV2CreateObjectDocument(t *testing.T) {
 			`"warnings":[{"message":"from the read"}],` +
 			`"blocks":[{"id":"blockHeading1","type":"heading_1","text":"Section"}]}`
 
-		result, err := fx.CreateObject(context.Background(), testSpaceId, []byte(body), false)
+		result, err := fx.CreateObject(context.Background(), testSpaceId, []byte(body), false, true)
 
 		require.NoError(t, err, "a GET body must clone without hand-stripping envelope fields")
 		assert.Equal(t, "cloneObj", result.Id)
@@ -275,7 +275,7 @@ func TestV2CreateObjectDocument(t *testing.T) {
 			`"rows":[{"id":"rowA","cells":[[{"type":"toggle","text":"cell"},` +
 			`{"indent":1,"id":"bbbb1","type":"paragraph","text":"inside"}]]}]}]}`
 
-		result, err := fx.CreateObject(context.Background(), testSpaceId, []byte(body), false)
+		result, err := fx.CreateObject(context.Background(), testSpaceId, []byte(body), false, true)
 
 		require.NoError(t, err)
 		require.Len(t, result.Warnings, 1)
@@ -297,7 +297,7 @@ func TestV2CreateObjectDocument(t *testing.T) {
 		require.Error(t, anyblockjson.Validate(subtree),
 			"the partial envelope must not validate as a whole document (the way outline does not)")
 
-		_, err = fx.CreateObject(context.Background(), testSpaceId, subtree, false)
+		_, err = fx.CreateObject(context.Background(), testSpaceId, subtree, false, true)
 
 		apiErr := v2Err(t, err)
 		require.NotEmpty(t, apiErr.Issues)
@@ -312,7 +312,7 @@ func TestV2CreateObjectDocument(t *testing.T) {
 
 		// when
 		result, err := fx.CreateObject(context.Background(), testSpaceId,
-			[]byte(`{"version":1,"type":"page","properties":{"name":"Doc"},"blocks":[{"type":"paragraph","text":"hi"}]}`), false)
+			[]byte(`{"version":1,"type":"page","properties":{"name":"Doc"},"blocks":[{"type":"paragraph","text":"hi"}]}`), false, true)
 
 		// then
 		require.NoError(t, err)
@@ -332,7 +332,7 @@ func TestV2CreateObjectDocument(t *testing.T) {
 
 		// when
 		result, err := fx.CreateObject(context.Background(), testSpaceId,
-			[]byte(`{"version":1,"blocks":[{"type":"paragraph","text":"hi"}]}`), false)
+			[]byte(`{"version":1,"blocks":[{"type":"paragraph","text":"hi"}]}`), false, true)
 
 		// then
 		require.NoError(t, err)
@@ -352,7 +352,7 @@ func TestV2CreateObjectDocument(t *testing.T) {
 
 		// when
 		_, err := fx.CreateObject(context.Background(), testSpaceId,
-			[]byte(`{"version":1,"type":"recipes","blocks":[]}`), false)
+			[]byte(`{"version":1,"type":"recipes","blocks":[]}`), false, true)
 
 		// then
 		apiErr := v2Err(t, err)
@@ -369,7 +369,7 @@ func TestV2CreateObjectDocument(t *testing.T) {
 
 		// when
 		_, err := fx.CreateObject(context.Background(), testSpaceId,
-			[]byte(`{"version":1,"type":"page","properties":{"name":"ok","madeUpProp":"x"}}`), false)
+			[]byte(`{"version":1,"type":"page","properties":{"name":"ok","madeUpProp":"x"}}`), false, true)
 
 		// then
 		apiErr := v2Err(t, err)
@@ -385,7 +385,7 @@ func TestV2CreateObjectDocument(t *testing.T) {
 
 		// when
 		_, err := fx.CreateObject(context.Background(), testSpaceId,
-			[]byte(`{"version":1,"type":"page","blocks":[{"type":"wat"}]}`), false)
+			[]byte(`{"version":1,"type":"page","blocks":[{"type":"wat"}]}`), false, true)
 
 		// then
 		apiErr := v2Err(t, err)
@@ -400,7 +400,7 @@ func TestV2CreateObjectDocument(t *testing.T) {
 
 		// when
 		_, err := fx.CreateObject(context.Background(), testSpaceId,
-			[]byte(`{"version":2,"type":"page"}`), false)
+			[]byte(`{"version":2,"type":"page"}`), false, true)
 
 		// then
 		apiErr := v2Err(t, err)
@@ -415,7 +415,7 @@ func TestV2CreateObjectDocument(t *testing.T) {
 
 		// when
 		_, err := fx.CreateObject(context.Background(), testSpaceId,
-			[]byte(`{"version":1,"type":"participant"}`), false)
+			[]byte(`{"version":1,"type":"participant"}`), false, true)
 
 		// then
 		apiErr := v2Err(t, err)
@@ -428,7 +428,7 @@ func TestV2CreateObjectDocument(t *testing.T) {
 
 		// when
 		_, err := fx.CreateObject(context.Background(), testSpaceId,
-			[]byte(`{"version":1,"kind":"object_type","type_settings":{"api_key":"thing","property_definitions":[]}}`), false)
+			[]byte(`{"version":1,"kind":"object_type","type_settings":{"api_key":"thing","property_definitions":[]}}`), false, true)
 
 		// then
 		apiErr := v2Err(t, err)
@@ -442,7 +442,7 @@ func TestV2CreateObjectDocument(t *testing.T) {
 
 		// when
 		_, err := fx.CreateObject(context.Background(), testSpaceId,
-			[]byte(`{"version":1,"type":"page","items":["obj1"]}`), false)
+			[]byte(`{"version":1,"type":"page","items":["obj1"]}`), false, true)
 
 		// then
 		apiErr := v2Err(t, err)
@@ -467,7 +467,7 @@ func TestV2CreateObjectDocument(t *testing.T) {
 
 		// when
 		result, err := fx.CreateObject(context.Background(), testSpaceId,
-			[]byte(`{"version":1,"type":"task","properties":{"severity":["High","Blocker"]}}`), false)
+			[]byte(`{"version":1,"type":"task","properties":{"severity":["High","Blocker"]}}`), false, true)
 
 		// then
 		require.NoError(t, err)
@@ -484,7 +484,7 @@ func TestV2CreateObjectDocument(t *testing.T) {
 
 		// when
 		result, err := fx.CreateObject(context.Background(), testSpaceId,
-			[]byte(`{"version":1,"type":"task","properties":{"severity":["Blocker"]}}`), true)
+			[]byte(`{"version":1,"type":"task","properties":{"severity":["Blocker"]}}`), true, true)
 
 		// then
 		require.NoError(t, err)
@@ -506,7 +506,7 @@ func TestV2CreateTemplate(t *testing.T) {
 
 		// when
 		result, err := fx.CreateTemplate(context.Background(), testSpaceId,
-			[]byte(`{"version":1,"type":"template","template_for":"task","properties":{"name":"Weekly"}}`), false)
+			[]byte(`{"version":1,"type":"template","template_for":"task","properties":{"name":"Weekly"}}`), false, true)
 
 		// then
 		require.NoError(t, err)
@@ -522,7 +522,7 @@ func TestV2CreateTemplate(t *testing.T) {
 
 		// when
 		_, err := fx.CreateTemplate(context.Background(), testSpaceId,
-			[]byte(`{"version":1,"type":"template","properties":{"name":"Weekly"}}`), false)
+			[]byte(`{"version":1,"type":"template","properties":{"name":"Weekly"}}`), false, true)
 
 		// then
 		apiErr := v2Err(t, err)
@@ -535,7 +535,7 @@ func TestV2CreateTemplate(t *testing.T) {
 		fx := newV2Fixture(t)
 
 		// when
-		_, err := fx.CreateObject(context.Background(), "ghost", []byte(`{"type":"page"}`), false)
+		_, err := fx.CreateObject(context.Background(), "ghost", []byte(`{"type":"page"}`), false, true)
 
 		// then
 		apiErr := v2Err(t, err)

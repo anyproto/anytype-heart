@@ -46,7 +46,7 @@ func PatchObjectHandler(s *v2service.Service) gin.HandlerFunc {
 		if body == nil {
 			return
 		}
-		result, err := s.PatchObject(c.Request.Context(), c.Param("space_id"), c.Param("object_id"), body, c.GetHeader("If-Match"), isV2DryRun(c))
+		result, err := s.PatchObject(c.Request.Context(), c.Param("space_id"), c.Param("object_id"), body, c.GetHeader("If-Match"), isV2DryRun(c), mayCreateOptions(c))
 		if err != nil {
 			RespondError(c, err)
 			return
