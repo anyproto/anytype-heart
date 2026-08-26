@@ -257,6 +257,7 @@ func (c *Composer) ObserveWritten(sbType model.SmartBlockType, base *model.Smart
 			if name := det["name"].GetStringValue(); name != "" {
 				c.optionsByKey[key] = append(c.optionsByKey[key], storedOption{
 					order: det["orderId"].GetStringValue(),
+					id:    det["id"].GetStringValue(),
 					def: anyblockjson.OptionDefinition{
 						Name:  name,
 						Color: det["relationOptionColor"].GetStringValue(),
@@ -366,7 +367,13 @@ func (c *Composer) Finish() (index, properties []byte, stats Stats, err error) {
 			if a.order != b.order {
 				return a.order < b.order
 			}
-			return a.def.Name < b.def.Name
+			if a.def.Name != b.def.Name {
+				return a.def.Name < b.def.Name
+			}
+			// the total-order tie-break (see storedOption.id): without it a
+			// name shared by two options left the pair in insertion order,
+			// which the concurrent emit does not fix
+			return a.id < b.id
 		})
 		opts := make([]anyblockjson.OptionDefinition, 0, len(stored))
 		for _, so := range stored {
@@ -445,7 +452,15 @@ func (c *Composer) Finish() (index, properties []byte, stats Stats, err error) {
 // author's way; the ARRAY POSITION is what carries the order.
 type storedOption struct {
 	order string
-	def   anyblockjson.OptionDefinition
+	// id is the option document's own id — the total-order tie-break. Two
+	// options of one property may legitimately share a name (and even a
+	// colour), and (order, name) alone is then not a total order: the tie
+	// fell back to insertion order, which under the concurrent emit is
+	// scheduling order, and the corpus sweep caught two exports of one
+	// space disagreeing about which colour sat at which position. The id is
+	// the one member that cannot tie.
+	id  string
+	def anyblockjson.OptionDefinition
 }
 
 // storedRelationDefinition reads the definition a kept relation document

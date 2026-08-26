@@ -8,6 +8,7 @@ package compose
 // small enough to read.
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/gogo/protobuf/types"
@@ -210,4 +211,52 @@ func TestComposer_NothingWrittenNothingStated(t *testing.T) {
 	assert.Nil(t, index)
 	assert.Nil(t, dict)
 	assert.Zero(t, stats.DictionaryEntries)
+}
+
+// Two options of one property may share a NAME — real accounts hold such
+// pairs — and (order, name) alone is then not a total order: the tie used
+// to fall back to insertion order, which under the concurrent emit is
+// scheduling order. The corpus sweep caught it as two exports of one space
+// disagreeing about which colour sat at which vocabulary position. The
+// option document's own id is the tie-break, because it is the one member
+// that cannot tie.
+//
+// How this can fail: drop the id from the sort key (the reversed run puts
+// the twins in arrival order and the bytes differ); or dedupe by name
+// instead of ordering (one of two real options silently vanishes from the
+// vocabulary).
+func TestComposer_SameNamedOptionsHaveATotalOrder(t *testing.T) {
+	optSnap := func(id, color string) *model.SmartBlockSnapshotBase {
+		return &model.SmartBlockSnapshotBase{Details: detFields(map[string]*types.Value{
+			"id": strVal(id), "relationKey": strVal("tag"),
+			"name": strVal("urgent"), "relationOptionColor": strVal(color),
+		})}
+	}
+	run := func(t *testing.T, reversed bool) string {
+		c := NewComposer(anyblockjson.Options{}, "Corpus")
+		twins := []*model.SmartBlockSnapshotBase{optSnap("bafyaaa", "teal"), optSnap("bafyzzz", "purple")}
+		if reversed {
+			twins[0], twins[1] = twins[1], twins[0]
+		}
+		for _, snap := range twins {
+			omitted, _ := c.Observe(model.SmartBlockType_STRelationOption, snap)
+			require.False(t, omitted)
+			require.NoError(t, c.ObserveWritten(model.SmartBlockType_STRelationOption, snap,
+				[]byte(`{"version":1}`), "options/"+snap.Details.Fields["id"].GetStringValue()+".anyblock.json"))
+		}
+		pageSnap := &model.SmartBlockSnapshotBase{Details: detFields(map[string]*types.Value{"id": strVal("bafypage")})}
+		require.NoError(t, c.ObserveWritten(model.SmartBlockType_Page, pageSnap,
+			[]byte(`{"version":1,"properties":{"tag":["urgent"]}}`), "objects/bafypage.anyblock.json"))
+		_, dict, _, err := c.Finish()
+		require.NoError(t, err)
+		return string(dict)
+	}
+
+	fwd := run(t, false)
+	rev := run(t, true)
+	assert.Equal(t, fwd, rev, "vocabulary bytes must not depend on observation order")
+	assert.Contains(t, fwd, "teal")
+	assert.Contains(t, fwd, "purple", "both real options stay; ordering, not deduping")
+	assert.Less(t, strings.Index(fwd, "teal"), strings.Index(fwd, "purple"),
+		"the id tie-break is ascending: bafyaaa's colour sits first")
 }
