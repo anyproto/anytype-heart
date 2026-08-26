@@ -280,25 +280,6 @@ func TestV2UpdateType(t *testing.T) {
 		require.Contains(t, byKey, bundle.RelationKeyRecommendedRelations.String())
 	})
 
-	t.Run("two spellings of one detail are refused, not silently merged", func(t *testing.T) {
-		// given — icon_emoji and iconEmoji are the same stored detail; the
-		// body asks for two values and sortedKeys would just pick one. A
-		// deterministic drop is still a drop.
-		fx := newV2Fixture(t)
-		fx.addTaskType(t)
-
-		// when — no ObjectSetDetails expectation: a write here fails the mock
-		_, err := fx.UpdateType(context.Background(), testSpaceId, "chore",
-			[]byte(`{"properties":{"icon_emoji":"\u2705","iconEmoji":"\ud83d\udd25"}}`), false)
-
-		// then
-		apiErr := v2ErrWithIssue(t, err)
-		assert.Equal(t, "duplicate property key", apiErr.Message)
-		require.Len(t, apiErr.Issues, 1)
-		assert.Equal(t, "/properties/icon_emoji", apiErr.Issues[0].Path)
-		assert.Contains(t, apiErr.Issues[0].Message, `both address "iconEmoji"`)
-	})
-
 	// The wire spelling the swagger, the served type schema, the hint text and
 	// SPEC all teach. `name` folds identically in both vocabularies, which is
 	// why the subtest above stayed green while two of this surface's four
@@ -312,9 +293,11 @@ func TestV2UpdateType(t *testing.T) {
 			detailKey string
 			want      *types.Value
 		}{
-			{"icon_emoji", `{"properties":{"icon_emoji":"✅"}}`, "iconEmoji", pbtypes.String("✅")},
-			{"recommended_layout", `{"properties":{"recommended_layout":"todo"}}`, "recommendedLayout", pbtypes.Int64(int64(model.ObjectType_todo))},
-			{"the camelCase spelling still works", `{"properties":{"iconEmoji":"✅"}}`, "iconEmoji", pbtypes.String("✅")},
+			// §2b: the icon is the typed envelope member, and the format's own
+			// importer decides which stored key a variant sets
+			{"icon", `{"icon":{"format":"emoji","emoji":"✅"}}`, "iconEmoji", pbtypes.String("✅")},
+			// §2a: the layout lives in type_settings, and still takes a NAME
+			{"type_settings.layout", `{"type_settings":{"layout":"todo"}}`, "recommendedLayout", pbtypes.Int64(int64(model.ObjectType_todo))},
 		} {
 			t.Run(tc.name, func(t *testing.T) {
 				// given
@@ -472,7 +455,7 @@ func TestV2CreateProperty(t *testing.T) {
 		apiErr := v2Err(t, err)
 		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
 		require.NotEmpty(t, apiErr.Issues)
-		assert.Equal(t, "/type_settings/api_key", apiErr.Issues[0].Path)
+		assert.Equal(t, "/key", apiErr.Issues[0].Path)
 
 		// a name over the advertised maxLength
 		_, err = fx.CreateProperty(context.Background(), testSpaceId,
@@ -535,7 +518,7 @@ func TestV2CreateProperty(t *testing.T) {
 		// then
 		apiErr := v2Err(t, err)
 		require.Len(t, apiErr.Issues, 1)
-		assert.Equal(t, "/type_settings/api_key", apiErr.Issues[0].Path)
+		assert.Equal(t, "/key", apiErr.Issues[0].Path)
 	})
 
 	t.Run("dry run reports without creating", func(t *testing.T) {

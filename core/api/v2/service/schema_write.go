@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -464,6 +465,12 @@ var typeSettingsPatchKeys = map[string]string{
 type v2TypePatch struct {
 	Properties   map[string]json.RawMessage `json:"properties"`
 	TypeSettings *v2TypeSettingsPatch       `json:"type_settings"`
+	// Icon is §2b's typed envelope icon. It is decoded by the FORMAT rather
+	// than by a variant table restated here: which detail keys a variant sets
+	// is the format's rule, and a second statement of it is how the two
+	// surfaces drift (the §2b lift exists because nine flat keys had no
+	// single owner). See iconPatchDetails.
+	Icon json.RawMessage `json:"icon"`
 }
 
 // v2TypeSettingsPatch is the patchable slice of type_settings. api_key is
@@ -510,6 +517,12 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey string, body 
 	// deterministic, which is not the same as correct — the caller asked for
 	// two values on one detail and one of them is being dropped. Refuse, as
 	// canonicalizeDocumentKeys does on the object channel.
+	//
+	// Unreachable while `properties` accepts only name and description, which
+	// have one spelling each: a duplicate of anything else is refused as
+	// not-updatable first, and that is the better error — a caller told
+	// "duplicate" would fix it only to hear "not updatable" next. Kept for
+	// the key that gains a second spelling, not deleted as dead.
 	spelledBy := map[string]string{}
 	for _, raw := range sortedKeys(patch.Properties) {
 		// this channel does not go through canonicalizeDocumentKeys, so it
@@ -536,6 +549,15 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey string, body 
 			return nil, err
 		}
 		detailUpdates = append(detailUpdates, &model.Detail{Key: key, Value: value})
+	}
+
+	// §2b's typed icon, decoded through the format itself (iconPatchDetails).
+	if len(patch.Icon) > 0 {
+		iconDetails, err := iconPatchDetails(patch.Icon)
+		if err != nil {
+			return nil, err
+		}
+		detailUpdates = append(detailUpdates, iconDetails...)
 	}
 
 	// the §2a settings subtree: each member maps to the stored detail key it
@@ -597,6 +619,60 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey string, body 
 		result.Etag = ComputeEtag(read.Heads)
 	}
 	return result, nil
+}
+
+// iconPatchDetails turns §2b's typed `icon` into the stored detail keys it
+// implies, by handing a minimal type document to the format's own importer
+// and reading back what it set. The variant rules — which of iconEmoji /
+// iconImage / iconName / iconOption a format selects, and what an
+// out-of-vocabulary variant earns — stay stated once, in the format.
+func iconPatchDetails(icon json.RawMessage) ([]*model.Detail, error) {
+	doc, err := encodeEnvelope(map[string]json.RawMessage{
+		"version": json.RawMessage(fmt.Sprintf("%d", anyblockjson.FormatVersion)),
+		"kind":    json.RawMessage(`"object_type"`),
+		"icon":    icon,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if err := anyblockjson.Validate(doc); err != nil {
+		return nil, iconPatchError(err)
+	}
+	_, snapshot, err := anyblockjson.Unmarshal(doc, anyblockjson.Options{})
+	if err != nil {
+		return nil, iconPatchError(err)
+	}
+	var out []*model.Detail
+	for _, key := range sortedKeys(snapshot.GetDetails().GetFields()) {
+		// the probe document's own minted id is not part of the patch
+		if key == v2DetailKeyId {
+			continue
+		}
+		out = append(out, &model.Detail{Key: key, Value: snapshot.Details.Fields[key]})
+	}
+	if len(out) == 0 {
+		return nil, v2model.ValidationFailed("icon sets nothing",
+			v2model.Issue{Path: "/icon", Message: "the icon carries no value the store can hold"})
+	}
+	return out, nil
+}
+
+// iconPatchError re-addresses the probe document's issues onto /icon — the
+// caller sent an icon, not a document.
+func iconPatchError(err error) error {
+	var ve *anyblockjson.ValidationError
+	if !errors.As(err, &ve) {
+		return v2model.ValidationFailed("invalid icon", v2model.Issue{Path: "/icon", Message: err.Error()})
+	}
+	issues := make([]v2model.Issue, 0, len(ve.Issues))
+	for _, iss := range ve.Issues {
+		path := "/icon"
+		if trimmed := strings.TrimPrefix(iss.Path, "/icon"); trimmed != iss.Path && trimmed != "" {
+			path += trimmed
+		}
+		issues = append(issues, v2model.Issue{Path: path, Message: iss.Message})
+	}
+	return v2model.ValidationFailed("invalid icon", issues...)
 }
 
 // typeDetailValue decodes one PATCH type value. `key` is the stored spelling
