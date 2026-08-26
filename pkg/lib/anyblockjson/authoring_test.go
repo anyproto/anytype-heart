@@ -141,6 +141,20 @@ func TestAuthoringExample_HabitTracker(t *testing.T) {
 				referencedIds[w.Target] = "index.json (widget)"
 			}
 		}
+
+		// the example exercises the sidebar the format can actually express
+		// (§2c): a view widget with a limit, a card-styled link, a reserved
+		// listing — and the archive builder must take all of it, since the
+		// sidebar an author writes here IS the widget snapshot the importer
+		// installs
+		require.Len(t, idx.Widgets, 4)
+		assert.Equal(t, "view", idx.Widgets[1].Layout)
+		assert.Equal(t, "card", idx.Widgets[2].CardStyle)
+		assert.True(t, IsReservedWidgetTarget(idx.Widgets[3].Target))
+		snap, err := WidgetsSnapshot(idx)
+		require.NoError(t, err)
+		require.NotNil(t, snap)
+		assert.Len(t, snap.Blocks, 1+2*len(idx.Widgets))
 	})
 
 	t.Run("properties.json", func(t *testing.T) {
