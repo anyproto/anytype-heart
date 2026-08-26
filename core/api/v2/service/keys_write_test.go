@@ -67,7 +67,7 @@ func TestV2WriteVocabularyIsTheReadVocabulary(t *testing.T) {
 		props, _ := dv["properties"].([]any)
 		var keys []string
 		for _, p := range props {
-			keys = append(keys, p.(map[string]any)["key"].(string))
+			keys = append(keys, p.(map[string]any)["property"].(string))
 		}
 		assert.Contains(t, keys, slugPropKey)
 		assert.NotContains(t, keys, "manual_property")
