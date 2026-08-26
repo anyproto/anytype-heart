@@ -24,13 +24,21 @@ determinism (every space exported twice, trees byte-compared) and
 per-document fidelity against a same-process pb export. First run over
 28,542 real documents: layout/classification/naming clean, data loss
 byte-for-byte equal to the pb baseline (34 objects / 67 findings, all
-codec-level), and two real defects caught and fixed — the participant
-filename fold (§1.3 demanded the ENVELOPE id) and a non-total option-
-vocabulary sort (same-name options tied into scheduling order). One
-upstream observation, not an exporter defect: objects whose root change
-carries no creation date (participants, chiefly) get `createdDate` stamped
-at load (smartblock Apply), so any two exports separated by a cache
-eviction differ on that value — the pb exporter shares this.
+codec-level). Real defects caught by real data and review, all fixed:
+the participant filename fold (§1.3 demanded the ENVELOPE id); a
+non-total option-vocabulary sort (same-name options tied into scheduling
+order); the manifest `files` map having validators but no READER
+(cmd/anyblockconvert now binds each blob into the archive and writes the
+archive-side `source` from the map — the pb importer's own contract);
+the §15 #1 skip rule existing only as text (discovery now excludes what
+each manifest binds); and a mid-stream blob failure leaving a truncated
+file on disk (the writer's cleanup hook removes it; failures are counted
+in Export's Result, and a file document unbound by a present map is a
+tooling warning). One upstream observation, not an exporter defect:
+objects whose root change carries no creation date (participants,
+chiefly) get `createdDate` stamped at load (smartblock Apply), so any two
+exports separated by a cache eviction differ on that value — the pb
+exporter shares this.
 
 Scope: the production exporter that writes an AnyBlock JSON bundle (SPEC.md
 §2c) from a live space — the replacement for the writing half of
