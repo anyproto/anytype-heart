@@ -568,7 +568,18 @@ func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBas
 	}
 	if doc.Root != nil {
 		if len(doc.Root.Fields) > 0 {
-			root.Fields = jsonMapToProtoStruct(doc.Root.Fields)
+			// a stale bundle still imports, but its analytics keys do not
+			// reach the snapshot — same rule the analytics details follow
+			// (accepted by Validate, dropped by Unmarshal).
+			fields := make(map[string]any, len(doc.Root.Fields))
+			for k, v := range doc.Root.Fields {
+				if !analyticsRootFields[k] {
+					fields[k] = v
+				}
+			}
+			if len(fields) > 0 {
+				root.Fields = jsonMapToProtoStruct(fields)
+			}
 		}
 		root.BackgroundColor = doc.Root.BackgroundColor
 	}

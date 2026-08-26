@@ -1419,17 +1419,64 @@ func (e *exporter) buildStore() ([]any, *omap) {
 	return items, store
 }
 
+// analyticsRootFields are the analytics keys the ROOT BLOCK's fields carry.
+//
+// The format already decided analytics do not travel — twice, on details:
+// the click-context triple (`data`/`isNew`/`layoutFormat`) "describes the
+// click that made the object, not the object", and `analyticsSpaceId` is
+// stripped beside a space's invite keys because "a restored space mints its
+// own invites and its own analytics identity".
+//
+// Both rulings watched ONE door. These two ride the other: block fields, not
+// details, so the strippedDetailKeys list never saw them and 1,042 of 38,105
+// corpus documents shipped them — analyticsOriginalId on 872,
+// analyticsContext on 445 (values like "empty", a client route name).
+//
+// analyticsOriginalId is the sharper of the two: it is the id of the object
+// this one was made FROM, so it is both a tracking identifier and a dangling
+// reference — 805 of the 872 name an object that is in no bundle at all.
+//
+// Deliberately only these two. The same map carries `isLocked` (128) and
+// `width` (45), which are real state a reader wants, so this is a named set
+// rather than an analytics-prefix sweep — and a prefix rule would be wrong
+// anyway: the corpus holds a user's tag named `analytics` and an option
+// named "Data, Analytics & Reporting", which are CONTENT.
+var analyticsRootFields = map[string]bool{
+	"analyticsOriginalId": true,
+	"analyticsContext":    true,
+}
+
 func (e *exporter) buildRootEscape() *omap {
 	root := e.blocks[e.rootId]
 	if root == nil {
 		return nil
 	}
 	m := &omap{}
-	if root.Fields != nil && len(root.Fields.Fields) > 0 {
-		m.set("fields", protoStructToJSON(root.Fields))
+	if fields := withoutAnalyticsFields(root.Fields); fields != nil {
+		m.set("fields", protoStructToJSON(fields))
 	}
 	m.setNonEmpty("background_color", root.BackgroundColor)
 	return m
+}
+
+// withoutAnalyticsFields returns f without the analytics keys, or nil when
+// nothing survives — so a block whose fields were ONLY analytics exports no
+// `fields` member at all rather than an empty map. Copies rather than
+// mutates: the snapshot belongs to the caller.
+func withoutAnalyticsFields(f *types.Struct) *types.Struct {
+	if f == nil || len(f.Fields) == 0 {
+		return nil
+	}
+	kept := make(map[string]*types.Value, len(f.Fields))
+	for k, v := range f.Fields {
+		if !analyticsRootFields[k] {
+			kept[k] = v
+		}
+	}
+	if len(kept) == 0 {
+		return nil
+	}
+	return &types.Struct{Fields: kept}
 }
 
 //

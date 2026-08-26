@@ -331,3 +331,73 @@ func TestTransientProperties_FileKeysDoNotTravel(t *testing.T) {
 			"a document that states one must not plant it in the importing space")
 	})
 }
+
+// The analytics keys the ROOT BLOCK carries. The format had already ruled
+// twice that analytics do not travel — the click-context triple "describes
+// the click that made the object, not the object", and `analyticsSpaceId`
+// is stripped beside a space's invite keys because "a restored space mints
+// its own invites and its own analytics identity". Both rulings watched the
+// DETAILS door. These two came through block fields, so the strip list never
+// saw them: 1,042 of 38,105 corpus documents shipped one, analyticsOriginalId
+// on 872 and analyticsContext on 445.
+//
+// analyticsOriginalId is the sharper of the two — it is the id of the object
+// this one was made FROM, so it is a tracking identifier AND a dangling
+// reference: 805 of the 872 name an object present in no bundle at all.
+//
+// How this can fail: sweep by prefix instead of by name and a user's own tag
+// named `analytics` goes with it; drop the whole map and `isLocked` (128
+// documents) and `width` (45) go too — those are real state.
+func TestTransientProperties_RootBlockAnalyticsDoNotTravel(t *testing.T) {
+	rootFields := func(f map[string]*types.Value) *model.SmartBlockSnapshotBase {
+		return &model.SmartBlockSnapshotBase{
+			Blocks: []*model.Block{{
+				Id:      "o1",
+				Fields:  &types.Struct{Fields: f},
+				Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}},
+			}},
+			Details: fields(map[string]*types.Value{"id": str("o1")}),
+		}
+	}
+
+	t.Run("export strips them and keeps real state beside them", func(t *testing.T) {
+		data, err := Marshal(model.SmartBlockType_Page, rootFields(map[string]*types.Value{
+			"analyticsOriginalId": str("bafyreied5biwzt4jqshuhmhmknuu37kvsu4kafezcb5b5bcxf2jivdnntq"),
+			"analyticsContext":    str("empty"),
+			"isLocked":            {Kind: &types.Value_BoolValue{BoolValue: true}},
+			"width":               num(0.5),
+		}), Options{})
+		require.NoError(t, err)
+		assert.NotContains(t, string(data), "analyticsOriginalId")
+		assert.NotContains(t, string(data), "analyticsContext")
+		assert.Contains(t, string(data), "isLocked", "real state stays")
+		assert.Contains(t, string(data), "width")
+		require.NoError(t, Validate(data), "§11 I1")
+	})
+
+	// a map that was ONLY analytics leaves no empty `fields` behind.
+	t.Run("nothing survives means no fields member", func(t *testing.T) {
+		data, err := Marshal(model.SmartBlockType_Page, rootFields(map[string]*types.Value{
+			"analyticsContext": str("empty"),
+		}), Options{})
+		require.NoError(t, err)
+		assert.NotContains(t, string(data), `"fields"`)
+	})
+
+	// a bundle written before the rule still imports — the keys are accepted
+	// and dropped, never refused (the analytics-details rule, §3).
+	t.Run("a stale bundle imports without them", func(t *testing.T) {
+		doc := []byte(`{"version": 1, "id": "o1", "root": {"fields": {
+			"analyticsOriginalId": "bafyreied5biwzt4jqshuhmhmknuu37kvsu4kafezcb5b5bcxf2jivdnntq",
+			"analyticsContext": "empty", "isLocked": true}}}`)
+		require.NoError(t, Validate(doc), "a stale export still imports")
+		_, snap, err := Unmarshal(doc, Options{GenerateId: seqIds("g")})
+		require.NoError(t, err, "Validate and Unmarshal agree (§11 I2)")
+
+		require.NotEmpty(t, snap.Blocks)
+		got := snap.Blocks[0].Fields.GetFields()
+		assert.NotContains(t, got, "analyticsOriginalId")
+		assert.NotContains(t, got, "analyticsContext")
+		assert.Contains(t, got, "isLocked", "and the real state still arrives")
+	})
+}
