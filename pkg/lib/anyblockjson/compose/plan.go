@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -61,29 +62,39 @@ type Plan struct {
 	blobPaths map[string]string
 }
 
-// BuildPlan fixes every path before the first emit task starts. It refuses
-// an id that cannot be a filename stem — empty, path separators, a dot-only
-// component — because such an id would escape the bundle root; the corpus's
-// two id populations (lowercase-base32 CIDs, base58 identities) can never
-// trip it, so a refusal here means the store handed us something that is
-// not an object id.
-func BuildPlan(docs []DocMeta) (*Plan, error) {
+// BuildPlan fixes every path before the first emit task starts, for the
+// given space. It refuses an id that cannot be a filename stem — empty,
+// path separators, a dot-only component — because such an id would escape
+// the bundle root; the corpus's two id populations (lowercase-base32 CIDs,
+// base58 participant identities) can never trip it, so a refusal here
+// means the store handed us something that is not an object id.
+//
+// The filename stem is the ENVELOPE id, which for a participant document
+// is not the store id: Marshal folds `_participant_<spaceId>_<identity>`
+// to the bare identity (§9), and a file named by the composite would break
+// the pure reference→path function §1.3 exists for — a reference carries
+// the FOLDED id — besides claiming a `_`-prefixed name in the platform's
+// reserved namespace (§1). The fold declines (foreign space, non-identity
+// tail) exactly when Marshal's does, so stem and envelope cannot disagree.
+// The Plan stays keyed by the STORE id, which is what the emit loop holds.
+func BuildPlan(spaceId string, docs []DocMeta) (*Plan, error) {
 	p := &Plan{
 		docPaths:  make(map[string]string, len(docs)),
 		blobPaths: map[string]string{},
 	}
 	for _, d := range docs {
-		if err := checkIdSafe(d.Id); err != nil {
+		stem := anyblockjson.FoldParticipantId(spaceId, d.Id)
+		if err := checkIdSafe(stem); err != nil {
 			return nil, fmt.Errorf("plan document paths: %w", err)
 		}
 		dir := KindDirectory(d.SbType)
-		p.docPaths[d.Id] = dir + "/" + d.Id + DocExtension
+		p.docPaths[d.Id] = dir + "/" + stem + DocExtension
 		if dir == DirFiles {
 			// the blob sits beside its document: same directory, same stem
 			// (the id), real sanitized extension — so the two halves of a
 			// file sort adjacent in any listing. The manifest `files` map is
 			// what BINDS them (§2c); adjacency is this exporter's layout.
-			p.blobPaths[d.Id] = dir + "/" + d.Id + "." + BlobExtension(d.FileExt, d.FileMime)
+			p.blobPaths[d.Id] = dir + "/" + stem + "." + BlobExtension(d.FileExt, d.FileMime)
 		}
 	}
 	return p, nil

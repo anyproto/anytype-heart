@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/anyproto/anytype-heart/core/domain"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -25,7 +27,7 @@ import (
 // stops being a pure function of a reference.
 func TestBuildPlan_PathsAreAPureFunctionOfTheId(t *testing.T) {
 	// given
-	plan, err := BuildPlan([]DocMeta{
+	plan, err := BuildPlan("space1", []DocMeta{
 		{Id: "bafypage", SbType: model.SmartBlockType_Page},
 		{Id: "bafytype", SbType: model.SmartBlockType_STType},
 		{Id: "bafytmpl", SbType: model.SmartBlockType_Template},
@@ -96,7 +98,42 @@ func TestBlobExtension_SanitizesTheMeasuredDirt(t *testing.T) {
 // this; a refusal means the store handed us something that is not an id.
 func TestBuildPlan_RefusesAPathHostileId(t *testing.T) {
 	for _, id := range []string{"", ".", "..", "a/b", `a\b`} {
-		_, err := BuildPlan([]DocMeta{{Id: id, SbType: model.SmartBlockType_Page}})
+		_, err := BuildPlan("space1", []DocMeta{{Id: id, SbType: model.SmartBlockType_Page}})
 		assert.Error(t, err, "id %q", id)
 	}
+}
+
+// A participant document's filename is its ENVELOPE id — the §9 fold of the
+// store composite to the bare identity — never the store id: a reference
+// carries the folded id, so only the folded stem keeps id→path a pure
+// function of the reference, and the composite would claim a `_`-prefixed
+// name in the platform's reserved namespace (§1). The foreign-space
+// composite stays unfolded, exactly as Marshal keeps it as the envelope id
+// — the plan and the envelope decline together.
+//
+// This was the native sweep's first real-data catch: the plan named the
+// file by the store id while the document inside declared the folded one,
+// and the very first exported space flagged its own member's document as
+// stem_id_mismatch.
+func TestBuildPlan_ParticipantStemIsTheFoldedIdentity(t *testing.T) {
+	// a real, checksum-valid identity (the fold classifies by decoding it)
+	const identity = "AASdKiEGfcyhxX3ufr4auHRviACUXxkF68uZwtSb2AnyRoMA"
+	const spaceId = "bafyreispace.lav62qbhdcf9"
+	own := domain.NewParticipantId(spaceId, identity)
+	foreign := domain.NewParticipantId("bafyreiother.zzz", identity)
+
+	plan, err := BuildPlan(spaceId, []DocMeta{
+		{Id: own, SbType: model.SmartBlockType_Participant},
+		{Id: foreign, SbType: model.SmartBlockType_Participant},
+	})
+	require.NoError(t, err)
+
+	got, ok := plan.DocPath(own)
+	require.True(t, ok, "the plan stays keyed by the STORE id the emit loop holds")
+	assert.Equal(t, "participants/"+identity+".anyblock.json", got)
+
+	got, ok = plan.DocPath(foreign)
+	require.True(t, ok)
+	assert.Equal(t, "participants/"+foreign+".anyblock.json", got,
+		"a foreign-space composite stays unfolded, like its envelope id")
 }

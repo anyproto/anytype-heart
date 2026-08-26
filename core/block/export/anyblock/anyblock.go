@@ -159,7 +159,7 @@ func (e *Exporter) Export(ctx context.Context, req Request, wr Writer) (succeed 
 		})
 		emitIds = append(emitIds, id)
 	}
-	plan, err := compose.BuildPlan(metas)
+	plan, err := compose.BuildPlan(req.SpaceId, metas)
 	if err != nil {
 		return 0, fmt.Errorf("build path plan: %w", err)
 	}
