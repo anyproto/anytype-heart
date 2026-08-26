@@ -1,6 +1,6 @@
 # AnyBlock JSON — format specification
 
-Status: **draft v0.43** · Format version: **1** · Package: `pkg/lib/anyblockjson`
+Status: **draft v0.44** · Format version: **1** · Package: `pkg/lib/anyblockjson`
 
 A human- and agent-readable JSON serialization of Anytype objects (the "anyblock"
 model), designed for export, import, and generation by external tools and LLM
@@ -15,6 +15,54 @@ strings; the vocabulary follows Notion's API and Anytype's public REST API
 (`core/api`) wherever an established term exists — the format should be
 readable, and mostly writable, by someone who has never seen Anytype
 internals.
+
+Changes in v0.44: **a reference to an object the space does not hold is not
+written as if it existed** (§9).
+
+The store already says this, from one direction: `_missing_object` — the
+sentinel importers write when they resolve a dangling reference — appears
+1,089 times across 28,617 exported documents: ~990 in objects/files property
+values (`source_object` 357, `tag` 232, `status` 132, `picture`, custom
+keys), 52 in block `object_id` (image 41, link 7, file 4), 26 in inline
+mentions.
+The export re-exported those verbatim and, worse, wrote ids that dangle
+WITHOUT the sentinel as if they addressed something. Separately, 56
+properties across 42 spaces carry an `object_types` entry that is an object
+id naming nothing — 52 of them `origin: builtin`: a bundled-objects import
+bug shipped use cases whose `relationFormatObjectTypes` hold type ids from
+the account where the use case was AUTHORED, and one walked end to end
+exists in none of that account's 157 space stores. An object id differs in
+every space; a type key does not.
+
+The rule splits on what the slot can express, and the singular half is an
+exception worth stating twice. A SINGULAR slot — a block's `object_id`
+(link, bookmark, the file kinds, dataview), a `<mention>` target — REWRITES
+the id to the sentinel: omission cannot say "no target" there, only deleting
+the block could, and that would lose the fact that a link or mention
+existed. A LIST slot — an objects/files property value, a property
+document's `object_types` — DROPS the entry, because a list expresses
+absence by being shorter. A stored sentinel follows the same split: kept in
+a singular slot, dropped from a list. An emptied list stays `[]`, never
+omitted — the key's presence is meaningful (§3), and cleaning a value must
+not erase the fact that the property was set.
+
+And the part a later reader is most likely to get wrong: **"missing from
+this export" and "missing from the space" are different facts, and only the
+second moves anything.** An export of ONE object must leave every reference
+to its unexported neighbours untouched — those objects exist, they simply
+were not asked along. The exporter never sees the export set, so the only
+question it may ask is of the STORE, through a new optional capability
+(`ObjectExistenceResolver`, §13) — new because the resolver already standing
+in the object namespace is a trap: `ObjectName`'s ok is `name != ""`, so it
+answers "no" for an object that exists UNTITLED, and untitled objects are
+common. Existence and namedness are separate questions, now answered off one
+shared point lookup. The question also only ever reaches CID-shaped ids: a
+`_date_…`, a bundled url, a participant composite, a bare type key are
+addresses in other authorities' namespaces, and a store that was never an
+id's authority cannot declare it missing. With no capability wired — a
+package-only export — nothing is rewritten and nothing is dropped, sentinel
+included: the absence of an answer is not evidence of absence. Full rule in
+§9; the comparator applies the same exported predicate to both sides (§11).
 
 Changes in v0.43: **a shared bundle carries no file keys and no file content
 addresses** (§3).
@@ -2412,16 +2460,23 @@ bundled-bound spelling needs no legend entry.
 keys. The translation is the optional `TypeResolver` capability of
 `Options.ResolveProperties` (storeresolver implements it from the same one
 bounded type listing §7.5a-2 budgets): export inverts id → key, import key →
-this space's id, so a resolver-wired round trip is id-exact. An entry the
-capability cannot answer — a bare key legacy imports stored directly (21
-production entries), an id the space no longer serves, the
-`_missing_object` sentinel — passes through **verbatim in both directions**,
-its own address (§3). Pass-through rather than §2a's drop-the-dangling
-policy, deliberately: there the resolver is the only thing that knows what a
-recommended-list id meant, here the stored value IS the meaning, and a
-backup format that deletes it on export is disqualifying. Without any
-resolver the whole list passes through verbatim and the offline round trip
-is byte-exact.
+this space's id, so a resolver-wired round trip is id-exact. A bare key
+legacy imports stored directly (21 production entries) passes through
+**verbatim in both directions**, its own address (§3): a key is vocabulary,
+and a vocabulary miss is never evidence of nonexistence. What no longer
+passes (v0.44) is an entry the space's own store disowns (§9): the
+`_missing_object` sentinel, and an object id the wired existence capability
+says names no row — 56 production properties carry one, type ids from the
+account where a shipped use case was AUTHORED, and an object id differs in
+every space while a type key does not. Both drop, the real id with a warning
+naming it; `object_types` is a list, and a list expresses absence by being
+shorter. Note the store answers for CORPSES too: an uninstalled type still
+has a row and still inverts through `TypeKeyById` (its id names something),
+so only an id with no row at all drops. Without any resolver the whole list
+passes through verbatim and the offline round trip is byte-exact — an id
+the store merely could not be asked about is still the stored value's
+meaning, and a backup format that deleted it on export would be
+disqualifying.
 
 Corpus facts the design rests on (38,061 documents, 10,617 relation
 documents): every relation document carries `relationFormat`, so requiring
@@ -3226,7 +3281,7 @@ Values are encoded by the property's format:
 | `checkbox` | boolean |
 | `date` | RFC 3339 date-time string, UTC (`"2026-07-06T15:04:05Z"`); import converts back to unix seconds. Import also accepts date-only strings (UTC midnight), non-UTC offsets (converted to UTC), and fractional seconds (truncated to whole seconds). Export always writes the full UTC form — **except** for a stored value outside the years RFC 3339 can express (0000–9999), which export writes as the **raw number**, with a warning. There is no string form for such a value, and writing one anyway (`"57482-01-22T22:43:20Z"`, from milliseconds stored where seconds belong) would not parse back, so the value would return as a *string* on a date property and stay one. A reader must therefore accept a number here; the number is a stored value it cannot interpret as a date, not a second date encoding. |
 | `select`, `multi_select` | array of option **names** (strings) — see below |
-| `objects`, `files` | array of object ids (strings) |
+| `objects`, `files` | array of object ids (strings). A resolver-wired export drops an entry the SPACE does not hold — the stored `_missing_object` sentinel included — and the emptied list stays `[]`, because the key's presence is meaningful; a package-only export drops nothing (§9) |
 | unresolvable format | value passes through verbatim in both directions |
 
 **Enum-valued properties are named, not numbered.** Six stored keys hold
@@ -4794,6 +4849,77 @@ rebuilds the composite against `Options.SpaceId` (§13):
   values, object orders and the participants' own envelope ids — all fold,
   none remain. The corpus held zero cross-space composites.
 
+### References the space cannot serve
+
+A reference to an object that does not exist in the SPACE is not written as
+if it did (v0.44). The space stores already state this for the references
+their importers resolved — `_missing_object`
+(`pkg/lib/localstore/addr.MissingObject`) stands 1,089 times across a
+28,617-document corpus — and export now applies the same honesty to ids
+that dangle without the sentinel, and a consistent policy to the sentinels
+it re-exports.
+
+**The split is by what the slot can express.**
+
+- A **singular slot** — a block's `object_id` (link, bookmark, file, image,
+  video, audio, pdf, dataview) and a `<mention object_id="…">` target (§8)
+  — REWRITES the id to `_missing_object`. Omission cannot express "no
+  target" there: only deleting the block (or the mark) could, and that
+  would lose the fact that a link or mention existed — the mention's text
+  stays, only its address is gone. A stored sentinel is kept as-is.
+- A **list slot** — an objects/files property value (§3), a property
+  document's `object_types` (§2d) — DROPS the entry: a list expresses
+  absence by being shorter. A stored sentinel drops too. The emptied list
+  stays `[]`, never omitted: the key's presence is meaningful (§3), and for
+  `object_types` an empty list is a cleared target set (§2d).
+- Everything else is deliberately out of scope: collection `items`, filter
+  values, custom orders, `object_orders`, a type's `default_template_id`,
+  and object-link marks keep their ids verbatim. Each of those can be
+  extended later on this section's precedent; none was in the evidence.
+
+**"Missing from this export" and "missing from the space" are different
+facts, and only the second may cause a rewrite.** This is the part of the
+rule a later reader is most likely to get wrong. An export of a single
+object references its neighbours in the space; those objects exist and were
+simply not exported, and rewriting them would corrupt a perfectly good
+export. The exporter never sees the export set — it works one document at a
+time — so the only question it can ask is of the STORE, which is the right
+question: does this space hold a row for this id? The answer comes through
+the `ObjectExistenceResolver` capability (§13), asked affirmatively —
+`known && !exists` — so a store failure moves nothing. And it is a NEW
+capability because the resolver already standing in the object namespace
+cannot answer it: `ObjectNameResolver`'s ok is `name != ""`, which reads
+"exists but untitled" as "no". Untitled objects are common; conflating the
+two questions rewrites live references.
+
+**The question only reaches ids the space index is the authority for**:
+CID-shaped ids (`isObjectIdShaped` — `cid.Decode` behind a length gate).
+A `_date_…` id is virtual, `_ot…`/`_br…` resolve against the bundled
+tables, a participant composite against the fold, a bare type key against
+the key vocabulary, a widget link target against the editor's constants —
+a store that was never an id's authority cannot declare it missing, so
+none of those are ever asked about, let alone rewritten. A deleted
+object's tombstone is a row: its id still means something in this space,
+and references to it are untouched.
+
+**With no capability wired, nothing moves — the sentinel included.** A
+package-only export passes every reference through verbatim, exactly as
+before this rule existed: the absence of an answer is not evidence of
+absence, and the offline round trip stays byte-exact.
+
+**Warnings follow what is lost.** A rewrite or a real-id drop destroys the
+stored id — the warning is that id's last appearance anywhere — so both
+warn, naming the id. A stored sentinel kept or dropped says nothing: which
+object it was is already gone, and ~990 silent sentinel drops per corpus
+would drown the channel §12 just reclaimed.
+
+**Round trip**: the change converges in one generation and is a fixpoint
+after — the first export rewrites and drops, import stores what was
+written, and `Export(Import(Export(S))) = Export(S)` holds (§11 guarantee
+3). The comparator applies the same exported predicate
+(`DroppedMissingObjectRef`) to both sides, so a dropped-by-design entry is
+a normalization, not loss (§11).
+
 ### 9a. The legends, and compact ids
 
 The envelope carries **three legends** and no other indirection. Each answers
@@ -5197,6 +5323,24 @@ store's own spelling for the same type. A respelling, not a rebinding — the
 comparator normalizes both sides to keys through the same capability, the
 treatment the recommended lists already get, so only a change of the type
 NAMED reports.
+
+The missing-reference rule (v0.44, §9) adds one normalization, armed only
+when the wiring supplies the `ObjectExistenceResolver` capability (§13) —
+under bare options it adds nothing and every reference passes verbatim:
+**a reference to an object the space's store holds no row for is rewritten
+to `_missing_object` in a singular slot (block `object_id`s, mention
+targets) and dropped from a list slot (objects/files values,
+`object_types`), and a stored sentinel follows the same split — kept in a
+singular slot, dropped from a list.** The movement converges in one
+generation: the first export writes the sentinel or the shorter list,
+import stores exactly that, and every later export is byte-identical — so
+guarantee 3 below holds, with the rewritten id's warning as its last
+appearance anywhere. The predicate is exported
+(`DroppedMissingObjectRef`) and the comparator applies it to BOTH sides
+of the objects/files and `relationFormatObjectTypes` comparisons, the
+same-commit discipline every owned predicate above follows: a
+dropped-by-design entry is not loss, a live entry that vanishes still
+reports, and a comparator handed no capability excuses nothing.
 
 The §2a `type_settings` group (v0.32) adds three normalizations, all scoped
 to TYPE documents and all owned by exported predicates the comparator reads
@@ -5660,6 +5804,20 @@ type ObjectNameResolver interface {
     ObjectName(id string) (string, bool)
 }
 
+// ObjectExistenceResolver answers whether the space's store holds an object
+// under an id — the missing-reference rule's question (§9). An optional
+// capability of Options.ResolveObjectNames, discovered by type assertion
+// (the TypeResolver pattern); storeresolver implements it off the same
+// cached point lookup ObjectName pays for. It is a SEPARATE question from
+// ObjectName deliberately: that seam's ok is name != "", which reads
+// "exists but untitled" as "no" — using it as an existence check rewrites
+// live references. known=false (a store failure) moves nothing; a
+// tombstone row is a row, so a deleted object's references are untouched.
+// With no implementation wired, export rewrites and drops NOTHING.
+type ObjectExistenceResolver interface {
+    ObjectExists(id string) (exists, known bool)
+}
+
 // Marshal serializes a snapshot into canonical AnyBlock JSON.
 func Marshal(sbType model.SmartBlockType, snapshot *model.SmartBlockSnapshotBase, opts Options) ([]byte, error)
 
@@ -5715,7 +5873,10 @@ type Options struct {
     ResolveOptions    OptionResolver   // optional; nil = option values pass through as ids
     ResolveProperties PropertyResolver // optional; nil = type documents keep raw recommended-relation ids (§2a)
     ResolveParticipants ParticipantResolver // optional; export only. nil = attribution ids written bare (§3)
-    ResolveObjectNames ObjectNameResolver // optional; export only, behind RefNames. nil = references written bare (§9)
+    ResolveObjectNames ObjectNameResolver // optional; export only. The #name suffix rides it behind RefNames;
+                                       // nil = references written bare (§9). An implementation may also carry
+                                       // ObjectExistenceResolver (type-asserted), which arms the
+                                       // missing-reference rule (§9) — without it nothing is rewritten or dropped.
     SpaceId           string           // the space this run reads from / writes into; arms the
                                        // participant fold in BOTH directions — empty disables it (§9).
                                        // Supplied by the wiring exactly as resolvers are; the format
