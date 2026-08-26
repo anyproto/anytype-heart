@@ -182,7 +182,9 @@ func (e *exporter) cellToJSON(cell *model.Block) (any, error) {
 			// is written twice — the second time with its id, which is the
 			// derived cell id this row already claims.
 			e.visited[cell.Id] = true
-			md := renderInline(t.Text, t.Marks.GetMarks())
+			// the shorthand renders without going through textToJSON, so it
+			// owes the same mention-target check (§8, §9)
+			md := renderInline(t.Text, e.exportMarks("/blocks", t.Marks.GetMarks()))
 			if md == "" {
 				return nil, nil // empty paragraph collapses to an empty cell (§11)
 			}

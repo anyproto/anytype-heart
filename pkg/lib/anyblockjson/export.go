@@ -1759,8 +1759,17 @@ func (e *exporter) propertyValue(key string, v *types.Value) any {
 		}
 		return out
 	case model.RelationFormat_object, model.RelationFormat_file:
+		// a LIST-valued reference slot: an entry the space does not hold —
+		// the stored sentinel included — is dropped, because a list
+		// expresses absence by being shorter (§9). The emptied list stays
+		// `[]`, never omitted: presence of the key is meaningful (§3), and
+		// dropping dangling entries must not erase the fact that the
+		// property was set.
 		var out []any
 		for _, id := range valueStringList(v) {
+			if e.droppedMissingListEntry("/properties/"+key, id) {
+				continue
+			}
 			out = append(out, e.objectRef(id))
 		}
 		return out
@@ -2000,12 +2009,14 @@ func (e *exporter) blockToJSON(b *model.Block, depth int) (*omap, bool, error) {
 		bm := orEmpty(c.Bookmark)
 		m.set("type", "bookmark")
 		m.setNonEmpty("url", bm.Url)
-		m.setNonEmpty("object_id", e.objectRef(bm.TargetObjectId))
+		// a singular reference slot: a target the space does not hold is
+		// written as the sentinel, never as if it existed (§9)
+		m.setNonEmpty("object_id", e.singularObjectRef("/blocks", "bookmark object_id", bm.TargetObjectId))
 		withChildren = false
 	case *model.BlockContentOfLink:
 		l := orEmpty(c.Link)
 		m.set("type", "link")
-		m.setNonEmpty("object_id", e.objectRef(l.TargetBlockId))
+		m.setNonEmpty("object_id", e.singularObjectRef("/blocks", "link object_id", l.TargetBlockId))
 		if l.CardStyle != model.BlockContentLink_Text {
 			m.setNonEmpty("card_style", cardStyleNames.name(l.CardStyle))
 		}
@@ -2171,7 +2182,10 @@ func (e *exporter) textToJSON(m *omap, b *model.Block, t *model.BlockContentText
 		return nil
 	}
 	m.setNonEmpty("color", t.Color)
-	m.setNonEmpty("text", renderInline(t.Text, t.Marks.GetMarks()))
+	// exportMarks applies the missing-reference rule to mention targets
+	// before the codec renders them (§8, §9); with no existence capability
+	// wired it returns the marks untouched
+	m.setNonEmpty("text", renderInline(t.Text, e.exportMarks("/blocks", t.Marks.GetMarks())))
 	return nil
 }
 
@@ -2185,7 +2199,11 @@ func (e *exporter) fileToJSON(m *omap, f *model.BlockContentFile) {
 	if objectId == "" {
 		objectId = f.Hash // legacy content address migrates to objectId
 	}
-	m.setNonEmpty("object_id", e.objectRef(objectId))
+	// a singular reference slot: a target the space does not hold is written
+	// as the sentinel, never as if it existed (§9) — the legacy hash arm
+	// included, because in the un-migrated spaces that still store one the
+	// hash IS the file object's index row id
+	m.setNonEmpty("object_id", e.singularObjectRef("/blocks", typ+" object_id", objectId))
 	m.setNonEmpty("name", f.Name)
 	m.setNonEmpty("mime_type", f.Mime)
 	m.setNonEmpty("size", f.Size_)

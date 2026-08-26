@@ -27,7 +27,9 @@ func (e *exporter) dvFormat(dv *model.BlockContentDataview, key string) (model.R
 
 func (e *exporter) dataviewToJSON(m *omap, dv *model.BlockContentDataview) error {
 	m.set("type", "dataview")
-	m.setNonEmpty("object_id", e.objectRef(dv.TargetObjectId))
+	// a singular reference slot: a target the space does not hold is
+	// written as the sentinel, never as if it existed (§9)
+	m.setNonEmpty("object_id", e.singularObjectRef("/blocks", "dataview object_id", dv.TargetObjectId))
 	m.setNonEmpty("is_collection", dv.IsCollection)
 	m.setNonEmpty("source", stringsToAny(dv.Source))
 

@@ -330,13 +330,23 @@ func detailEqual(key string, a, b *types.Value, opts anyblockjson.Options) bool 
 	// comparison below is already exact.
 	if key == relationTargetsDetailKey {
 		if tr, ok := opts.ResolveProperties.(anyblockjson.TypeResolver); ok {
-			return equalStrings(normalizeTypeRefs(stringsOf(a), tr), normalizeTypeRefs(stringsOf(b), tr))
+			return equalStrings(normalizeTypeRefs(stringsOf(a), tr, opts), normalizeTypeRefs(stringsOf(b), tr, opts))
 		}
 	}
 	format, _ := resolveFormat(key, opts)
 	switch format {
-	case model.RelationFormat_object, model.RelationFormat_file,
-		model.RelationFormat_status, model.RelationFormat_tag:
+	case model.RelationFormat_object, model.RelationFormat_file:
+		// mirror the format's list extraction (scalars wrap, empty strings
+		// drop) AND its missing-reference rule (§9): an entry naming an
+		// object the space does not hold is dropped by design on export, so
+		// the comparison applies the format's own predicate
+		// (DroppedMissingObjectRef) to BOTH sides — taught in the same
+		// commit that taught export, the drift that once produced 1,344
+		// false failures in one sweep. A live entry that vanishes still
+		// reports, and with no existence capability in opts the predicate
+		// drops nothing, exactly as export drops nothing.
+		return equalStrings(keptObjectRefs(stringsOf(a), opts), keptObjectRefs(stringsOf(b), opts))
+	case model.RelationFormat_status, model.RelationFormat_tag:
 		// mirror the format's list extraction: scalars wrap, empty strings drop
 		return equalStrings(stringsOf(a), stringsOf(b))
 	case model.RelationFormat_date:
@@ -368,7 +378,14 @@ var relationTargetsDetailKey = bundle.RelationKeyRelationFormatObjectTypes.Strin
 // bundled url through the table, an object id through the resolver, and
 // anything else — a legacy bare key included — verbatim, its own address.
 // Applied to BOTH sides, so only a change of the type named survives it.
-func normalizeTypeRefs(entries []string, tr anyblockjson.TypeResolver) []string {
+//
+// An entry that resolves to no key AND names no object the space holds is
+// skipped — export's own missing-reference drop (§9), asked through the
+// format's own predicate so the two cannot drift. The order matters and
+// mirrors export's: resolution first, so a live type's id can never reach
+// the drop, and the predicate's CID-shape gate keeps it off bare keys,
+// which are vocabulary, not references.
+func normalizeTypeRefs(entries []string, tr anyblockjson.TypeResolver, opts anyblockjson.Options) []string {
 	out := make([]string, 0, len(entries))
 	for _, entry := range entries {
 		if key, err := bundle.TypeKeyFromUrl(entry); err == nil && key != "" {
@@ -377,6 +394,25 @@ func normalizeTypeRefs(entries []string, tr anyblockjson.TypeResolver) []string 
 		}
 		if key, ok := tr.TypeKeyById(entry); ok && key != "" {
 			out = append(out, key)
+			continue
+		}
+		if anyblockjson.DroppedMissingObjectRef(opts, entry) {
+			continue
+		}
+		out = append(out, entry)
+	}
+	return out
+}
+
+// keptObjectRefs filters an objects/files value down to the entries export
+// keeps (§9): the missing-reference predicate is the format's own, applied
+// identically to the original and the round-tripped side, so a
+// dropped-by-design entry is not loss and everything else still compares
+// position for position.
+func keptObjectRefs(entries []string, opts anyblockjson.Options) []string {
+	out := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		if anyblockjson.DroppedMissingObjectRef(opts, entry) {
 			continue
 		}
 		out = append(out, entry)

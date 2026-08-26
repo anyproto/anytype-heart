@@ -251,15 +251,22 @@ func (e *exporter) relationFormatName() (string, error) {
 // type-key census (seedTypeTermLedger) and buildPropertySettings both read
 // it — the same one-build rule as iconField (§2b).
 //
-// Translation is per entry and refuses nothing: a type object id inverts
-// through the TypeResolver capability when the resolver carries it, and
-// everything else — a bare type key the legacy import paths stored directly
-// (21 production entries), an id the resolver no longer serves, the
-// `_missing_object` sentinel — passes through verbatim, its own address
-// (§3). Passing through rather than dropping is what makes the offline
-// round trip byte-exact and keeps this a spelling change: §2a's export may
-// drop a dangling recommended-list entry because the resolver is the only
-// thing that knows what the id meant, but here the stored value IS the
+// Translation is per entry: a type object id inverts through the
+// TypeResolver capability when the resolver carries it, and a bare type key
+// the legacy import paths stored directly (21 production entries) passes
+// through verbatim, its own address (§3) — a key is vocabulary, and a
+// vocabulary miss is never evidence of nonexistence. What no longer passes
+// (v0.44) is an entry the SPACE's own store disowns (§9): the
+// `_missing_object` sentinel, and an object id the wired existence
+// capability says names no row — 56 production properties carry one, type
+// ids from the account where a shipped use case was AUTHORED, and an object
+// id differs in every space while a key does not. Both drop, the real id
+// with a warning naming it; `object_types` is a list, and a list expresses
+// absence by being shorter. The predicate is DroppedMissingObjectRef,
+// shared with snapshotdiff, so the comparator drops exactly what export
+// drops. Without the capability — package-only, offline — everything still
+// passes through verbatim and the round trip stays byte-exact: an id the
+// store merely could not be asked about is still the stored value's
 // meaning, and a backup format that deletes it on export is disqualifying.
 func (e *exporter) relationTargetKeys() []string {
 	if e.relTargetsBuilt {
@@ -275,6 +282,9 @@ func (e *exporter) relationTargetKeys() []string {
 				out = append(out, key)
 				continue
 			}
+		}
+		if e.droppedMissingListEntry("/property_settings/object_types", entry) {
+			continue
 		}
 		out = append(out, entry)
 	}

@@ -26,11 +26,19 @@ type Resolvers struct {
 	// asked about once per export rather than once per object.
 	participantNames map[string]string
 
-	// objectNames caches ObjectName's answers the same way: an export asks
-	// about the same referenced object once per slot it appears in, and the
-	// miss (an unnamed object, an id the index has no row for) is an answer
-	// worth remembering too.
-	objectNames map[string]string
+	// objectRows caches one point lookup per referenced object id, answering
+	// BOTH object-namespace questions from it: ObjectName's (the display
+	// name; miss = "") and ObjectExists's (whether the index holds a row at
+	// all). One cache rather than two because they are one GetDetails — an
+	// export asks about the same referenced id once per slot it appears in,
+	// and splitting the caches would pay the lookup twice. The two answers
+	// MUST stay distinct inside the entry: a present-and-unnamed object and
+	// an absent id both answer ObjectName with "", and collapsing them is
+	// exactly the conflation ObjectExists exists to avoid (§9). A store
+	// error caches nothing: an unasked question has no answer worth
+	// remembering, and a transient failure must not become a persistent
+	// wrong claim of absence.
+	objectRows map[string]objectRow
 
 	relsLoaded bool
 	relById    map[string]anyblockjson.PropertyDefinition
@@ -41,13 +49,20 @@ type Resolvers struct {
 	typeVocab *keyMaps
 }
 
+// objectRow is one cached point lookup: what the object-namespace seams know
+// about one referenced id.
+type objectRow struct {
+	name   string
+	exists bool
+}
+
 // New creates resolvers over one space's index.
 func New(index spaceindex.Store) *Resolvers {
 	return &Resolvers{
 		index:            index,
 		optionsFor:       map[domain.RelationKey][]*model.RelationOption{},
 		participantNames: map[string]string{},
-		objectNames:      map[string]string{},
+		objectRows:       map[string]objectRow{},
 	}
 }
 
@@ -213,6 +228,34 @@ func (r *Resolvers) ParticipantName(id string) (string, bool) {
 	return name, name != ""
 }
 
+// objectRow answers one referenced id's row from the cache or one GetDetails.
+// ok is false only when the store errored: nothing is cached then and the
+// caller answers as if it had not been asked.
+//
+// GetDetails is what makes the existence answer precise: it returns an EMPTY
+// details struct for an id the index has no row for (spaceindex/objects.go),
+// while a stored row always carries at least its own id — so emptiness IS
+// the absence signal, and it is available on the very lookup the name
+// already pays for. A deleted object's tombstone row ({id, isDeleted}) is a
+// row: the id still means something in this space, and the missing-reference
+// rule (§9) leaves references to it alone.
+func (r *Resolvers) objectRow(id string) (objectRow, bool) {
+	if row, cached := r.objectRows[id]; cached {
+		return row, true
+	}
+	details, err := r.index.GetDetails(id)
+	if err != nil {
+		return objectRow{}, false
+	}
+	row := objectRow{}
+	if details != nil && details.Len() > 0 {
+		row.exists = true
+		row.name = details.GetString(bundle.RelationKeyName)
+	}
+	r.objectRows[id] = row
+	return row, true
+}
+
 // ObjectName implements anyblockjson.ObjectNameResolver: the display name of
 // the object a reference points at, for the informative `#name` suffix (§9).
 //
@@ -224,15 +267,23 @@ func (r *Resolvers) ParticipantName(id string) (string, bool) {
 // format's rule for the suffix is a name or nothing (a bare reference),
 // never a dangling `#`.
 func (r *Resolvers) ObjectName(id string) (string, bool) {
-	if name, cached := r.objectNames[id]; cached {
-		return name, name != ""
-	}
-	name := ""
-	if details, err := r.index.GetDetails(id); err == nil && details != nil {
-		name = details.GetString(bundle.RelationKeyName)
-	}
-	r.objectNames[id] = name
-	return name, name != ""
+	row, ok := r.objectRow(id)
+	return row.name, ok && row.name != ""
+}
+
+// ObjectExists implements anyblockjson.ObjectExistenceResolver: whether the
+// space's index holds a row for id at all — the question behind the
+// missing-reference rule (§9), riding the same cached point lookup
+// ObjectName pays for.
+//
+// It exists because ObjectName cannot answer it: that seam's ok is
+// `name != ""`, so it says "no" for an object that exists UNTITLED — and
+// untitled objects are common. known is false only when the store errored,
+// and the codec then leaves the reference untouched: a claim of absence has
+// to come from the store actually answering, never from a failure to ask.
+func (r *Resolvers) ObjectExists(id string) (exists, known bool) {
+	row, ok := r.objectRow(id)
+	return row.exists, ok
 }
 
 // PropertyById implements anyblockjson.PropertyResolver.
