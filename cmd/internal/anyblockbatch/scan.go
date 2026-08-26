@@ -260,25 +260,74 @@ func CheckPropertyFormats(files []string, formats map[string]FormatInfo) ([]Unde
 }
 
 // DiscoverJSONFiles walks root and returns every .json object document,
-// sorted so a batch is deterministic regardless of directory order. The two
-// bundle-level documents are excluded: the index (§2c) and the property
-// dictionary (§2f) describe the bundle rather than an object, have their own
-// schemas, and would fail every object-level check.
+// sorted so a batch is deterministic regardless of directory order. Three
+// populations are excluded: the two bundle-level documents — the index
+// (§2c) and the property dictionary (§2f) describe the bundle rather than
+// an object, have their own schemas, and would fail every object-level
+// check — and every file the index's manifest binds as a BLOB
+// (ManifestBlobPaths). A FAT bundle legitimately carries blobs that are
+// themselves .json files (12 in the corpus, `file_ext == "json"`), and an
+// extension test cannot tell them from an authored bare-.json document —
+// the manifest `files` map is the authority on which bytes are content
+// rather than documents (§2c, v0.47; the exporter's own documents
+// additionally carry the .anyblock.json double extension, SPEC §15 #1, so
+// for OUR bundles the collision cannot even arise by name).
 func DiscoverJSONFiles(root string) ([]string, error) {
 	var files []string
+	var indexes []string
 	err := filepath.Walk(root, func(p string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		if !info.IsDir() && strings.HasSuffix(p, ".json") &&
-			filepath.Base(p) != anyblockjson.IndexFileName &&
-			filepath.Base(p) != anyblockjson.PropertiesFileName {
+		if info.IsDir() {
+			return nil
+		}
+		if filepath.Base(p) == anyblockjson.IndexFileName {
+			indexes = append(indexes, p)
+			return nil
+		}
+		if strings.HasSuffix(p, ".json") && filepath.Base(p) != anyblockjson.PropertiesFileName {
 			files = append(files, p)
 		}
 		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
+	blobs := ManifestBlobPaths(indexes)
+	kept := files[:0]
+	for _, f := range files {
+		if !blobs[f] {
+			kept = append(kept, f)
+		}
+	}
+	files = kept
 	sort.Strings(files)
-	return files, err
+	return files, nil
+}
+
+// ManifestBlobPaths reads each index's manifest `files` map and returns the
+// absolute paths of every bound blob — the set a document discovery must
+// skip. An index that does not parse contributes nothing: discovery must
+// not fail on a broken index (the index's own validation reports that), it
+// just cannot exclude blobs the broken manifest would have named.
+func ManifestBlobPaths(indexPaths []string) map[string]bool {
+	out := map[string]bool{}
+	for _, idxPath := range indexPaths {
+		data, err := os.ReadFile(idxPath)
+		if err != nil {
+			continue
+		}
+		idx, err := anyblockjson.UnmarshalIndex(data)
+		if err != nil || idx.Manifest == nil {
+			continue
+		}
+		dir := filepath.Dir(idxPath)
+		for _, blobPath := range idx.Manifest.Files {
+			out[filepath.Join(dir, filepath.FromSlash(blobPath))] = true
+		}
+	}
+	return out
 }
 
 // Report renders undeclared properties as one line each, most useful first.
@@ -991,6 +1040,44 @@ func CheckManifestFiles(idx *anyblockjson.Index, indexDir string, files []string
 			})
 		}
 	}
+	return out
+}
+
+// UnboundFileDocuments lists the file documents a PRESENT manifest `files`
+// map does not bind — bytes that did not travel (§2c). Warning-grade, not a
+// refusal, and the gate on the map's presence is the point: a bundle with
+// no map at all is a metadata-only export (files off, or pre-v0.47), which
+// is a legitimate mode — but a bundle that binds SOME file documents and
+// not others is the signature of a partially failed export (the exporter
+// writes the document and omits the binding when a blob cannot be
+// streamed), and silence there leaves the reader believing the bytes are
+// somewhere.
+func UnboundFileDocuments(idx *anyblockjson.Index, files []string) []string {
+	if idx == nil || idx.Manifest == nil || len(idx.Manifest.Files) == 0 {
+		return nil
+	}
+	var out []string
+	for _, f := range files {
+		data, err := os.ReadFile(f)
+		if err != nil {
+			continue
+		}
+		var probe struct {
+			Id   string `json:"id"`
+			Kind string `json:"kind"`
+		}
+		if json.Unmarshal(data, &probe) != nil {
+			continue
+		}
+		if probe.Kind != "file_object" && probe.Kind != "file" {
+			continue
+		}
+		if probe.Id == "" || idx.Manifest.Files[probe.Id] != "" {
+			continue
+		}
+		out = append(out, probe.Id)
+	}
+	sort.Strings(out)
 	return out
 }
 

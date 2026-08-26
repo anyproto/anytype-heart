@@ -376,3 +376,58 @@ func TestCheckManifestFiles(t *testing.T) {
 		assert.Contains(t, got[0].Reason, "missing")
 	})
 }
+
+// A FAT bundle's manifest-bound .json BLOB is content, not a document
+// (§2c, v0.47): 12 corpus file objects carry file_ext == "json", and only
+// the `files` map can tell their bytes from an authored bare-.json
+// document. Discovery excludes exactly what the map binds — nothing more:
+// an unbound .json stays a document, because authored bundles legitimately
+// name documents with a bare extension.
+//
+// How this can fail: skip by extension convention instead of the map
+// (every authored bare-.json document vanishes from every batch); or fail
+// discovery on a broken index (a bundle with one bad index.json loses its
+// whole document set instead of its blob exclusion).
+func TestDiscoverJSONFiles_SkipsManifestBoundBlobs(t *testing.T) {
+	dir := t.TempDir()
+	write := func(rel, body string) {
+		path := filepath.Join(dir, rel)
+		require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
+		require.NoError(t, os.WriteFile(path, []byte(body), 0o644))
+	}
+	write("objects/home.json", `{"version": 1, "id": "home"}`)
+	write("files/data.anyblock.json", `{"version": 1, "kind": "file_object", "id": "data"}`)
+	write("files/data.json", `{"whatever": "a JSON blob that is file CONTENT"}`)
+	write("index.json", `{"version": 1, "manifest": {"files": {"data": "files/data.json"}}}`)
+
+	files, err := DiscoverJSONFiles(dir)
+	require.NoError(t, err)
+	rels := make([]string, 0, len(files))
+	for _, f := range files {
+		rel, _ := filepath.Rel(dir, f)
+		rels = append(rels, filepath.ToSlash(rel))
+	}
+	assert.ElementsMatch(t, []string{"objects/home.json", "files/data.anyblock.json"}, rels,
+		"the bound blob is skipped; the documents — double-extended or bare — stay")
+}
+
+// A file document a PRESENT manifest map does not bind is warned about —
+// bytes that did not travel, the signature of a partially failed export.
+// A bundle with NO map stays silent: metadata-only exports (files off,
+// pre-v0.47) are a legitimate mode, and warning on every one of them would
+// train readers to ignore the warning.
+func TestUnboundFileDocuments(t *testing.T) {
+	files := writeDocs(t, map[string]string{
+		"files/bound.anyblock.json":   `{"version": 1, "kind": "file_object", "id": "bound"}`,
+		"files/unbound.anyblock.json": `{"version": 1, "kind": "file_object", "id": "unbound"}`,
+		"objects/page.json":           `{"version": 1, "id": "page"}`,
+	})
+
+	withMap := &anyblockjson.Index{Manifest: &anyblockjson.Manifest{
+		Files: map[string]string{"bound": "files/bound.png"}}}
+	assert.Equal(t, []string{"unbound"}, UnboundFileDocuments(withMap, files),
+		"only the file document the map skips; pages are not file documents")
+
+	assert.Empty(t, UnboundFileDocuments(&anyblockjson.Index{}, files),
+		"no map, no warning — metadata-only bundles are a mode, not a defect")
+}
