@@ -261,6 +261,40 @@
     }
   ],
   "$defs": {
+    "cardStyle": {
+      "enum": [
+        "text",
+        "card",
+        "inline"
+      ],
+      "description": "How a link renders: a plain text row (the default), a card, or inline. One definition for every surface that shows a link — the link block and a bundle index's widgets both $ref it, so they cannot disagree."
+    },
+    "iconSize": {
+      "enum": [
+        "none",
+        "small",
+        "medium"
+      ],
+      "description": "The icon size on a link's card. Defaults to none."
+    },
+    "linkDescription": {
+      "enum": [
+        "none",
+        "manual",
+        "content"
+      ],
+      "description": "What the link's card shows under the title: nothing (the default), the manually written description, or the target's own content."
+    },
+    "widgetLayout": {
+      "enum": [
+        "link",
+        "tree",
+        "list",
+        "compact_list",
+        "view"
+      ],
+      "description": "How a sidebar widget renders: `link` is a single row (the default), `tree` expands children, `list` and `compact_list` show contents, `view` renders a type's or set's own view. One definition for the widget block and a bundle index's widgets."
+    },
     "propertyMap": {
       "type": "object",
       "propertyNames": {
@@ -1012,25 +1046,13 @@
                 "type": "string"
               },
               "card_style": {
-                "enum": [
-                  "text",
-                  "card",
-                  "inline"
-                ]
+                "$ref": "#/$defs/cardStyle"
               },
               "icon_size": {
-                "enum": [
-                  "none",
-                  "small",
-                  "medium"
-                ]
+                "$ref": "#/$defs/iconSize"
               },
               "description": {
-                "enum": [
-                  "none",
-                  "manual",
-                  "content"
-                ]
+                "$ref": "#/$defs/linkDescription"
               },
               "properties": {
                 "type": "array",
@@ -1143,13 +1165,7 @@
           "then": {
             "properties": {
               "layout": {
-                "enum": [
-                  "link",
-                  "tree",
-                  "list",
-                  "compact_list",
-                  "view"
-                ]
+                "$ref": "#/$defs/widgetLayout"
               },
               "limit": {
                 "type": "integer",

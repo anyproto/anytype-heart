@@ -136,10 +136,10 @@ func TestCheckIndexTargets_Widgets(t *testing.T) {
 		assert.Empty(t, CheckIndexTargets(index("page-home"), files))
 	})
 
-	// the four widget.IsPredefinedWidgetTargetId knows, which handleLinkBlock
-	// leaves alone
+	// the whole inventory widget.IsPredefinedWidgetTargetId knows, which
+	// handleLinkBlock leaves alone
 	t.Run("the importable reserved listings pass", func(t *testing.T) {
-		assert.Empty(t, CheckIndexTargets(index("_favorite", "_recent", "_set", "_collection"), files))
+		assert.Empty(t, CheckIndexTargets(index(anyblockjson.ReservedWidgetTargets()...), files))
 	})
 
 	// The listings used to be bare words, and the pb importer consults the
@@ -167,16 +167,30 @@ func TestCheckIndexTargets_Widgets(t *testing.T) {
 		assert.Contains(t, bad[0].Reason, "no object with that id")
 	})
 
-	// allObjects and recentOpen are real targets in a live space — the All
-	// Objects widget comes from WidgetObject's migration 3 — but the importer
-	// does not know them, so a bundle naming one loses that widget silently
-	t.Run("a reserved listing the importer does not know is reported", func(t *testing.T) {
-		for _, target := range []string{"_all_objects", "_recent_open"} {
-			bad := CheckIndexTargets(index(target), files)
-			require.Len(t, bad, 1, target)
-			assert.Equal(t, target, bad[0].Target)
-			assert.Contains(t, bad[0].Reason, "the importer does not recognise", target)
+	// This test used to pin the OPPOSITE: _all_objects and _recent_open were
+	// real targets in a live space that the importer did not know, so a
+	// bundle naming one was refused here rather than losing the widget
+	// silently on install. widget.IsPredefinedWidgetTargetId knows the whole
+	// inventory since GO-7383, so the same scenario now pins that every
+	// reserved listing is importable — the refusal branch stays in
+	// CheckIndexTargets as the guard for the day the two inventories come
+	// apart again.
+	t.Run("every reserved listing survives import", func(t *testing.T) {
+		for _, target := range anyblockjson.ReservedWidgetTargets() {
+			assert.True(t, anyblockjson.IsImportableWidgetTarget(target), target)
+			assert.Empty(t, CheckIndexTargets(index(target), files), target)
 		}
+	})
+
+	// the auto-widget ledger's entries are target-shaped references (§2c):
+	// a reserved listing or a bundle object, and nothing else
+	t.Run("auto_widget_targets entries are checked like targets", func(t *testing.T) {
+		idx := index("page-home")
+		idx.AutoWidgetTargets = []string{"_bin", "page-home", "page-gone"}
+		bad := CheckIndexTargets(idx, files)
+		require.Len(t, bad, 1)
+		assert.Equal(t, "auto_widget_targets[2]", bad[0].Property)
+		assert.Equal(t, "page-gone", bad[0].Target)
 	})
 }
 

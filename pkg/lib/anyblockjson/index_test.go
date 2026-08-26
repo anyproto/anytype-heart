@@ -22,19 +22,33 @@ func TestIndex_Roundtrip(t *testing.T) {
 		"homepage": "page-wiki-home",
 		"widgets": [
 			{ "target": "page-wiki-home" },
-			{ "target": "type-wiki-page", "layout": "view", "limit": 6 },
-			{ "target": "_favorite", "layout": "compact_list" }
-		]
+			{ "target": "type-wiki-page", "layout": "view", "limit": 6, "view_id": "view-board" },
+			{ "target": "_favorite", "layout": "compact_list" },
+			{ "target": "_all_objects", "auto_added": true,
+			  "card_style": "card", "icon_size": "medium", "description": "content",
+			  "properties": ["name", "created_date"] }
+		],
+		"auto_widget_targets": ["_bin", "type-wiki-page"],
+		"auto_widget_disabled": true
 	}`
 	idx, err := UnmarshalIndex([]byte(doc))
 	require.NoError(t, err)
 
 	assert.Equal(t, "Company Wiki", idx.Name)
 	assert.Equal(t, "page-wiki-home", idx.Homepage)
-	require.Len(t, idx.Widgets, 3)
+	require.Len(t, idx.Widgets, 4)
 	assert.Equal(t, "", idx.Widgets[0].Layout, "omitted layout stays empty; link is the default")
 	assert.Equal(t, "view", idx.Widgets[1].Layout)
 	assert.Equal(t, int32(6), idx.Widgets[1].Limit)
+	assert.Equal(t, "view-board", idx.Widgets[1].ViewId)
+	assert.True(t, idx.Widgets[3].AutoAdded)
+	assert.Equal(t, "card", idx.Widgets[3].CardStyle)
+	assert.Equal(t, "medium", idx.Widgets[3].IconSize)
+	assert.Equal(t, "content", idx.Widgets[3].Description)
+	assert.Equal(t, []string{"name", "createdDate"}, idx.Widgets[3].Properties,
+		"shown properties are held as STORED keys, like the manifest's type keys (§2c)")
+	assert.Equal(t, []string{"_bin", "type-wiki-page"}, idx.AutoWidgetTargets)
+	assert.True(t, idx.AutoWidgetDisabled)
 
 	// the install opens the first widget's target
 	assert.Equal(t, "page-wiki-home", idx.EntryPoint())
@@ -250,49 +264,48 @@ func TestIndex_Validation(t *testing.T) {
 	})
 }
 
-// Not every reserved listing survives import. handleLinkBlock leaves a target
-// alone only when widget.IsPredefinedWidgetTargetId knows it; anything else it
-// cannot resolve becomes addr.MissingObject, and WidgetObject.Init then strips
-// the link and its wrapper. So allObjects and recentOpen — real targets in a
-// live space — would cost the author a widget with no error to explain it,
-// which is why the two questions are asked separately.
+// Every reserved listing survives import now. This test used to pin the
+// OPPOSITE for _all_objects and _recent_open — the importer knew only four
+// listings, so a bundle naming the others lost the widget silently and the
+// tooling refused them up front. widget.IsPredefinedWidgetTargetId knows the
+// whole inventory since GO-7383, so the pin flips: reserved and importable
+// must now agree member for member, and a listing added to one set without
+// the other is exactly what this catches.
 func TestIndex_ImportableWidgetTargets(t *testing.T) {
-	for _, target := range []string{"_favorite", "_recent", "_set", "_collection"} {
-		assert.True(t, IsReservedWidgetTarget(target), target)
-		assert.True(t, IsImportableWidgetTarget(target), target)
-	}
-	for _, target := range []string{"_all_objects", "_recent_open"} {
-		assert.True(t, IsReservedWidgetTarget(target), "still names a built-in, not an object: "+target)
-		assert.False(t, IsImportableWidgetTarget(target), "the importer does not know it: "+target)
+	for _, target := range ReservedWidgetTargets() {
+		assert.True(t, IsImportableWidgetTarget(target),
+			"a reserved listing the importer does not know loses the widget silently on install: "+target)
 	}
 	assert.False(t, IsImportableWidgetTarget("page-wiki-home"))
+	assert.False(t, IsImportableWidgetTarget("_widgets"), "a homepage screen is not a widget target")
 }
 
-// The four importable listings are the ones the pb importer knows by their
-// bare, unprefixed names (widget.IsPredefinedWidgetTargetId), so the rename
-// only holds together if every one of them has a wire spelling and the wiring
-// applies it. Writing `_set` into a link block instead of `set` is strictly
-// worse than the shadowing bug this replaces: handleLinkBlock rewrites the
-// unrecognised target to addr.MissingObject and WidgetObject.Init then strips
-// the link and its wrapper, so the widget vanishes with no error.
+// The importable listings are the ones the pb importer knows by their bare,
+// unprefixed wire names (widget.IsPredefinedWidgetTargetId), so the format's
+// `_` spelling only holds together if every one of them has a wire spelling
+// and the wiring applies it BOTH ways. Writing `_set` into a link block
+// instead of `set` is strictly worse than the shadowing bug this replaces:
+// handleLinkBlock rewrites the unrecognised target to addr.MissingObject and
+// WidgetObject.Init then strips the link and its wrapper, so the widget
+// vanishes with no error. And lifting a stored `bin` without translating it
+// puts a bare wire word where the index promises an object id or a `_` name.
 func TestIndex_WireWidgetTargets(t *testing.T) {
 	want := map[string]string{
 		"_favorite": "favorite", "_recent": "recent", "_set": "set", "_collection": "collection",
+		"_all_objects": "allObjects", "_recent_open": "recentOpen", "_chat": "chat", "_bin": "bin",
 	}
 	for target, wire := range want {
 		assert.Equal(t, wire, WireWidgetTarget(target), target)
 		assert.NotEqual(t, target, WireWidgetTarget(target),
 			"the platform prefix must be translated away, or the importer drops the widget")
+		assert.Equal(t, target, FormatWidgetTarget(wire),
+			"the lift must invert the wire spelling exactly, or a round trip respells the target: "+wire)
 	}
 	for _, target := range ReservedWidgetTargets() {
-		if IsImportableWidgetTarget(target) {
-			assert.Contains(t, want, target, "every importable listing needs a wire spelling")
-			continue
-		}
-		assert.Equal(t, target, WireWidgetTarget(target),
-			"a listing the importer cannot take has no wire spelling to invent")
+		assert.Contains(t, want, target, "every listing needs a wire spelling")
 	}
 	assert.Equal(t, "page-wiki-home", WireWidgetTarget("page-wiki-home"), "an object id passes through")
+	assert.Equal(t, "bafyrei123", FormatWidgetTarget("bafyrei123"), "an object id passes through the lift too")
 }
 
 // The index schema names the object schema by its published URL to $ref the

@@ -58,6 +58,17 @@
         "$ref": "#/$defs/widget"
       }
     },
+    "auto_widget_targets": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/widgetTarget"
+      },
+      "description": "The targets the client has already auto-added a widget for — its ledger for not re-adding one the user then deleted. Space state, not sidebar content: an entry usually names a widget that is NOT in `widgets` any more, which is the point. Entries are spelled like widget targets (an object id, or a reserved listing). Machine-written on export; an authored bundle has no reason to carry one."
+    },
+    "auto_widget_disabled": {
+      "type": "boolean",
+      "description": "The user turned automatic widget creation off for this space entirely. Machine-written on export, like the ledger above."
+    },
     "manifest": {
       "$ref": "#/$defs/manifest",
       "description": "Where to find what a reader must resolve by key or id rather than by walking (§2c): types, options, and the property dictionary. The format defines NO folder layout — objects/, types/, relations/ are one exporter's convention — and an object names its type by spelling alone, so without this a reader resolves a type by scanning every document for a matching key. Measured: types (22/space) and options (34/space) are the only two namespaces documents address without a path, ~5.1 KB per space, 0.23% of the bytes."
@@ -91,6 +102,28 @@
         }
       }
     },
+    "widgetTarget": {
+      "type": "string",
+      "minLength": 1,
+      "anyOf": [
+        {
+          "enum": [
+            "_favorite",
+            "_recent",
+            "_recent_open",
+            "_set",
+            "_collection",
+            "_all_objects",
+            "_chat",
+            "_bin"
+          ]
+        },
+        {
+          "pattern": "^[^_]"
+        }
+      ],
+      "description": "An object id from this bundle (a page, a type, a set, a collection), or one of the eight reserved listings — the built-in screens a live sidebar can show. The leading `_` is the platform's address space and is what keeps the two kinds of target apart: an object id from the bundle may never begin with one, so a bundle cannot shadow a listing with an object of its own. All eight survive import (widget.IsPredefinedWidgetTargetId knows their wire spellings); a `_`-prefixed name outside the inventory is refused by name, with the inventory in the message, because it can only be a typo."
+    },
     "widget": {
       "type": "object",
       "required": [
@@ -99,41 +132,48 @@
       "additionalProperties": false,
       "properties": {
         "target": {
-          "type": "string",
-          "minLength": 1,
-          "anyOf": [
-            {
-              "enum": [
-                "_favorite",
-                "_recent",
-                "_set",
-                "_collection",
-                "_all_objects",
-                "_recent_open"
-              ]
-            },
-            {
-              "pattern": "^[^_]"
-            }
-          ],
-          "description": "What the widget points at: an object id from this bundle (a page, a type, a set or a collection), or one of the reserved listings `_favorite`, `_recent`, `_set`, `_collection`. The leading `_` is the platform's address space and is what keeps the two kinds of target apart — an object id from the bundle may never begin with one, so a bundle can no longer shadow a listing with an object of its own. Those four listings are the ones the importer recognises; `_all_objects` and `_recent_open` exist in a live space but not in the import path, so a widget naming one is dropped on install without an error and the tooling rejects it instead."
+          "$ref": "#/$defs/widgetTarget",
+          "description": "What the widget points at."
         },
         "layout": {
-          "enum": [
-            "link",
-            "tree",
-            "list",
-            "compact_list",
-            "view"
-          ],
+          "$ref": "https://schemas.anytype.io/anyblock/1/object.schema.json#/$defs/widgetLayout",
           "default": "link",
-          "description": "How the widget renders. `link` is a single row; `tree` expands children; `list` and `compact_list` show contents; `view` renders a type's or set's own view."
+          "description": "How the widget renders — the widget BLOCK's own §5 vocabulary, one $ref rather than a copy. `link` is a single row; `tree` expands children; `list` and `compact_list` show contents; `view` renders a type's or set's own view."
         },
         "limit": {
           "type": "integer",
           "minimum": 0,
           "maximum": 100,
           "description": "How many entries a listing widget shows. Ignored by `link`."
+        },
+        "view_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Which of the target's views a `view` widget shows — a view id inside the target's dataview. Omit for the target's default view, which is also all an author can name: view ids are minted on import."
+        },
+        "auto_added": {
+          "type": "boolean",
+          "description": "The client added this widget automatically (a new type, the bin) rather than the user placing it. Machine-written on export; carried so a restored sidebar keeps behaving like the original — the client treats auto-added widgets as its own to manage."
+        },
+        "card_style": {
+          "$ref": "https://schemas.anytype.io/anyblock/1/object.schema.json#/$defs/cardStyle",
+          "description": "How the widget's row renders — the link block's own §5 member, one $ref rather than a copy. Defaults to `text`."
+        },
+        "icon_size": {
+          "$ref": "https://schemas.anytype.io/anyblock/1/object.schema.json#/$defs/iconSize",
+          "description": "The icon size on the widget's card — the link block's own §5 member. Defaults to `none`."
+        },
+        "description": {
+          "$ref": "https://schemas.anytype.io/anyblock/1/object.schema.json#/$defs/linkDescription",
+          "description": "What the widget's card shows under the title — the link block's own §5 member. Defaults to `none`."
+        },
+        "properties": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Property keys shown on the widget's card — the link block's own §5 member. Keys resolve through the bundle's property dictionary (properties.json), the file that answers for stored keys; there is no per-document legend here."
         }
       }
     }

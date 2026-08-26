@@ -766,12 +766,15 @@ func CheckIndexTargets(idx *anyblockjson.Index, files []string) []BadTarget {
 			if anyblockjson.IsImportableWidgetTarget(w.Target) {
 				continue
 			}
+			// unreachable while the two inventories agree — every reserved
+			// listing is importable today — but the day one is added to the
+			// format before the importer learns it, this is the check that
+			// keeps the failure loud instead of a widget silently gone
 			out = append(out, BadTarget{
 				File: anyblockjson.IndexFileName, Property: fmt.Sprintf("widgets[%d]", i), Target: w.Target,
-				Reason: "a reserved listing the importer does not recognise — " +
-					"widget.IsPredefinedWidgetTargetId knows only the four spelled " +
-					"_favorite, _recent, _set and _collection here, " +
-					"so this link is rewritten to _missing_object and the widget is dropped without an error",
+				Reason: "a reserved listing the importer does not recognise " +
+					"(widget.IsPredefinedWidgetTargetId), so this link is rewritten to " +
+					"_missing_object and the widget is dropped without an error",
 			})
 		case !ids[w.Target]:
 			out = append(out, BadTarget{
@@ -779,6 +782,18 @@ func CheckIndexTargets(idx *anyblockjson.Index, files []string) []BadTarget {
 				Reason: "no object with that id in the bundle (and it is not a reserved widget target)",
 			})
 		}
+	}
+	// the auto-widget ledger's entries are target-shaped references too; an
+	// entry naming nothing is not silent-lossy like a widget (nothing renders
+	// it), but it points a restored client at an object that is not there
+	for i, target := range idx.AutoWidgetTargets {
+		if anyblockjson.IsReservedWidgetTarget(target) || ids[target] {
+			continue
+		}
+		out = append(out, BadTarget{
+			File: anyblockjson.IndexFileName, Property: fmt.Sprintf("auto_widget_targets[%d]", i), Target: target,
+			Reason: "no object with that id in the bundle (and it is not a reserved widget target)",
+		})
 	}
 	return out
 }

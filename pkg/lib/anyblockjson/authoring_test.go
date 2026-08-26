@@ -629,11 +629,19 @@ func TestAuthoringSubset_RefusesBackupOnlySurfaces(t *testing.T) {
 	})
 
 	t.Run("index surfaces", func(t *testing.T) {
+		// `_all_objects` used to be the example here — a listing the importer
+		// dropped, so the subset refused it. The importer knows the whole
+		// inventory since GO-7383 and the listing is authorable now; what the
+		// subset still refuses on the index is the machine-written state the
+		// widget-object lift carries: the auto-widget ledger and the
+		// auto-added flag, which only a live client can write honestly.
 		for name, doc := range map[string]string{
 			"the manifest": `{"version": 1, "name": "X", "entrypoint": "p1",
 				"manifest": {"properties": "properties.json"}}`,
-			"a listing the importer drops": `{"version": 1, "name": "X", "entrypoint": "p1",
-				"widgets": [{"target": "_all_objects"}]}`,
+			"the auto-widget ledger": `{"version": 1, "name": "X", "entrypoint": "p1",
+				"auto_widget_targets": ["_bin"]}`,
+			"an auto-added widget": `{"version": 1, "name": "X", "entrypoint": "p1",
+				"widgets": [{"target": "p1", "auto_added": true}]}`,
 		} {
 			t.Run(name, func(t *testing.T) {
 				data := []byte(doc)

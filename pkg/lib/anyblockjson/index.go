@@ -82,31 +82,44 @@ var wireHomepages = map[string]string{
 // rather than an object in the bundle (core/block/editor/widget).
 var reservedWidgetTargets = map[string]struct{}{
 	"_favorite": {}, "_recent": {}, "_set": {}, "_collection": {},
-	"_all_objects": {}, "_recent_open": {},
+	"_all_objects": {}, "_recent_open": {}, "_chat": {}, "_bin": {},
 }
 
 // importableWidgetTargets are the reserved targets the *importer* recognises:
 // exactly widget.IsPredefinedWidgetTargetId, which is what
 // common.handleLinkBlock consults before deciding a link target it cannot
-// resolve is broken. The wire spellings are bare — `favorite`, `set` — and
-// cmd/anyblockconvert/widgets.go translates them on the way out.
+// resolve is broken. The wire spellings are the live space's own — bare and
+// sometimes camelCase (`favorite`, `allObjects`) — and the wiring translates
+// them at the boundary, both ways (WireWidgetTarget / FormatWidgetTarget).
 //
-// _all_objects and _recent_open are real targets in a live space — the All
-// Objects widget is created by WidgetObject's migration 3 — but they are not
-// in that list, and the difference is not cosmetic: a bundle declaring one
-// gets its link rewritten to addr.MissingObject, and WidgetObject.Init then
-// strips the link *and* its now-empty wrapper. The widget disappears with no
-// error and no diagnostic beyond a log line. So a bundle may not name them,
-// and the wiring says so rather than shipping one that silently loses a
-// widget. They are spelled snake_case like every other name this format
-// defines (§1): unlike the other four they are never quoted onto the wire, so
-// there is no live-space spelling for them to preserve.
+// The inventory is the full set of listings live spaces actually hold:
+// measured over a 77-space account, 33 of 218 widget links name one, and the
+// population is chat 11 · bin 10 · allObjects 8 · recent 1 · set 1 (plus two
+// strays no client defines, which stay inexpressible). For one revision the
+// importer knew only four of these and this map said so — a bundle naming
+// `_all_objects` was refused up front, because the importer would have
+// rewritten the link to addr.MissingObject and WidgetObject.Init would have
+// stripped it, losing the widget with no error. The importer knows all eight
+// now, so all eight travel.
+//
 // The map is the translation table as well as the membership test, so the two
 // cannot drift: adding a listing without giving it a wire spelling is not
 // expressible.
 var importableWidgetTargets = map[string]string{
 	"_favorite": "favorite", "_recent": "recent", "_set": "set", "_collection": "collection",
+	"_all_objects": "allObjects", "_recent_open": "recentOpen", "_chat": "chat", "_bin": "bin",
 }
+
+// wireWidgetTargetsByWire inverts importableWidgetTargets, so a stored link
+// target can be lifted into the format's spelling by lookup rather than by a
+// second table that would drift.
+var wireWidgetTargetsByWire = func() map[string]string {
+	out := make(map[string]string, len(importableWidgetTargets))
+	for format, wire := range importableWidgetTargets {
+		out[wire] = format
+	}
+	return out
+}()
 
 // IsReservedWidgetTarget reports whether target names a built-in listing, in
 // which case it does not name an object in the bundle.
@@ -116,8 +129,11 @@ func IsReservedWidgetTarget(target string) bool {
 }
 
 // IsImportableWidgetTarget reports whether a reserved target survives import.
-// A target that is reserved but not importable is the one case where a widget
-// is dropped silently, so callers must reject it rather than emit it.
+// Every listing in today's inventory does — the importer knows all eight —
+// but the two questions stay separate, because they can come apart again the
+// day a listing is added here before the importer learns it: a reserved
+// target the importer does not know is the one case where a widget is
+// dropped silently, so callers must reject it rather than emit it.
 func IsImportableWidgetTarget(target string) bool {
 	_, ok := importableWidgetTargets[target]
 	return ok
@@ -140,6 +156,18 @@ func WireWidgetTarget(target string) string {
 		return wire
 	}
 	return target
+}
+
+// FormatWidgetTarget is WireWidgetTarget's inverse: the format's `_`-prefixed
+// spelling for a wire listing name, the id itself for anything else. It is
+// what a lift out of a stored widget object applies to every target-shaped
+// value — the link targets and the auto-widget list alike — so the stored
+// `bin` becomes the `_bin` no bundle object may claim (§1).
+func FormatWidgetTarget(wire string) string {
+	if format, ok := wireWidgetTargetsByWire[wire]; ok {
+		return format
+	}
+	return wire
 }
 
 // WireHomepage returns the value pb.Profile.SpaceDashboardId should carry for
@@ -213,11 +241,33 @@ func IsReservedHomepage(homepage string) bool {
 	return ok
 }
 
-// Widget is one sidebar widget (§2c).
+// Widget is one sidebar widget (§2c) — flat, though the wire carries it as
+// two blocks. A stored sidebar is a widget WRAPPER block with an indented
+// LINK child naming the target, and measured over 77 real spaces the pairing
+// is perfectly regular: 218 wrapper blocks, 218 link children, nothing else.
+// The pair carries no information beyond its members, so the format does not
+// ask an author to build block scaffolding to get a sidebar.
+//
+// The members are the two blocks' §5 members, verbatim: `layout`, `limit`,
+// `view_id` and `auto_added` are the wrapper's, and `card_style`,
+// `icon_size`, `description` and `properties` are the link's own display
+// members, with the link's `object_id` renamed `target` because here it may
+// also name a reserved listing.
 type Widget struct {
-	Target string `json:"target"`
-	Layout string `json:"layout"`
-	Limit  int32  `json:"limit"`
+	Target    string `json:"target"`
+	Layout    string `json:"layout"`
+	Limit     int32  `json:"limit"`
+	ViewId    string `json:"view_id"`
+	AutoAdded bool   `json:"auto_added"`
+	// the link child's display members (§5): how the widget's row renders.
+	CardStyle   string `json:"card_style"`
+	IconSize    string `json:"icon_size"`
+	Description string `json:"description"`
+	// Properties are the property keys shown on the widget's card, held as
+	// STORED keys the way the manifest holds type keys: the index has no
+	// per-document legend, so the spelling must be a pure function of the
+	// key, and the dictionary's own spelling pair is that function (§2f).
+	Properties []string `json:"properties"`
 }
 
 // Manifest says where to find what a reader must resolve by key or id
@@ -268,6 +318,16 @@ type Index struct {
 	Entrypoint string   `json:"entrypoint"`
 	Homepage   string   `json:"homepage"`
 	Widgets    []Widget `json:"widgets"`
+	// AutoWidgetTargets are the targets the client has already auto-added a
+	// widget for — its ledger for not re-adding one the user then deleted.
+	// Space state, not widget state: an entry usually names a widget that is
+	// NOT in the sidebar any more, which is the whole point of the ledger.
+	// Spelled like widget targets (a reserved listing or an object id),
+	// because that is what the entries are. 21 of 77 real spaces carry one.
+	AutoWidgetTargets []string `json:"auto_widget_targets"`
+	// AutoWidgetDisabled records that the user turned automatic widgets off
+	// for this space entirely. 2 of 77 real spaces.
+	AutoWidgetDisabled bool `json:"auto_widget_disabled"`
 	// Manifest locates types, options and the property dictionary without a
 	// folder convention (§2c). Optional: a bundle without one is walked the
 	// way every bundle was before it existed.
@@ -405,6 +465,16 @@ func UnmarshalIndex(data []byte) (*Index, error) {
 	if idx.Manifest != nil {
 		idx.Manifest.Types = reKeyed(idx.Manifest.Types, StoredTypeKey)
 	}
+	// a widget's shown properties follow the same rule: spelled on the wire,
+	// held as STORED keys, resolved by the ladder every key slot uses. An
+	// ambiguous spelling stays verbatim — the index is display state, and
+	// which property a fold means is the tooling's cross-document question.
+	for i := range idx.Widgets {
+		idx.Widgets[i].Properties = mapStrings(idx.Widgets[i].Properties, func(s string) string {
+			stored, _ := dictionaryStoredKey(s)
+			return stored
+		})
+	}
 	return &idx, nil
 }
 
@@ -453,6 +523,22 @@ func platformNameIssues(doc map[string]any) []Issue {
 			Message: fmt.Sprintf("%q is not a reserved listing; the whole inventory is %s. "+
 				"An object id from this bundle may not begin with %q, so this target names nothing "+
 				"— and a widget target that resolves to nothing is dropped on install without an error",
+				target, strings.Join(ReservedWidgetTargets(), ", "), PlatformPrefix),
+		})
+	}
+	// the auto-widget ledger's entries are target-shaped and get the same
+	// diagnostic: a `_`-typo there would otherwise read as an object id that
+	// names nothing
+	autos, _ := doc["auto_widget_targets"].([]any)
+	for i, raw := range autos {
+		target, _ := raw.(string)
+		if !IsPlatformId(target) || IsReservedWidgetTarget(target) {
+			continue
+		}
+		issues = append(issues, Issue{
+			Path: fmt.Sprintf("/auto_widget_targets/%d", i),
+			Message: fmt.Sprintf("%q is not a reserved listing; the whole inventory is %s. "+
+				"An object id from this bundle may not begin with %q, so this entry names nothing",
 				target, strings.Join(ReservedWidgetTargets(), ", "), PlatformPrefix),
 		})
 	}
@@ -516,15 +602,32 @@ func MarshalIndex(idx *Index) ([]byte, error) {
 		}
 		wm := &omap{}
 		wm.set("target", w.Target)
-		// link is the default layout and is omitted, like every other
-		// default in this format (§4)
+		// the §4 omit-empty canon, member by member: `link` is the wrapper's
+		// default layout, and the three link display defaults are the same
+		// ones the link BLOCK omits (§5) — `text`, `none`, `none`
 		if w.Layout != "" && w.Layout != "link" {
 			wm.set("layout", w.Layout)
 		}
 		wm.setNonEmpty("limit", w.Limit)
+		wm.setNonEmpty("view_id", w.ViewId)
+		wm.setNonEmpty("auto_added", w.AutoAdded)
+		if w.CardStyle != "" && w.CardStyle != "text" {
+			wm.set("card_style", w.CardStyle)
+		}
+		if w.IconSize != "" && w.IconSize != "none" {
+			wm.set("icon_size", w.IconSize)
+		}
+		if w.Description != "" && w.Description != "none" {
+			wm.set("description", w.Description)
+		}
+		// spelled the way the dictionary spells a stored key (§2f): the
+		// index has no legend, so the spelling is a pure function of the key
+		wm.setNonEmpty("properties", stringsToAny(mapStrings(w.Properties, dictionaryKeySpelling)))
 		widgets = append(widgets, wm)
 	}
 	doc.setNonEmpty("widgets", widgets)
+	doc.setNonEmpty("auto_widget_targets", stringsToAny(idx.AutoWidgetTargets))
+	doc.setNonEmpty("auto_widget_disabled", idx.AutoWidgetDisabled)
 	if !idx.Manifest.empty() {
 		m := &omap{}
 		// the manifest keys types the way the dictionary keys properties and
