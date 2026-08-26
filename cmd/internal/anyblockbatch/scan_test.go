@@ -342,7 +342,7 @@ func TestCheckManifestFiles(t *testing.T) {
 	dir := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "files"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "files", "file-1.anyblock.json"),
-		[]byte(`{"version": 1, "kind": "file", "id": "file-1"}`), 0o644))
+		[]byte(`{"version": 1, "kind": "file_object", "id": "file-1"}`), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "files", "file-1.png"), []byte("bytes"), 0o644))
 	files, err := DiscoverJSONFiles(dir)
 	require.NoError(t, err)

@@ -57,6 +57,8 @@ func main() {
 		keepExports = flag.Bool("keep-exports", false, "keep the raw pb export directories for passing objects too")
 		dumpJSON    = flag.Bool("dump-json", false, "write each object's AnyBlock JSON beside its .pb, rendered with the SPACE's resolvers (implies -keep-exports)")
 		refNames    = flag.Bool("ref-names", false, "render the READ shape: every object reference carries its informative #name suffix (SPEC.md §9)")
+		native      = flag.Bool("native", false, "drive the NATIVE exporter (core/block/export/anyblock) per space and verify layout, classification, blob binding, determinism and fidelity against a legacy pb export taken in the same process")
+		nativeFiles = flag.Bool("native-files", false, "native mode: stream file blobs too (may fetch from the file node; off by default)")
 	)
 	flag.Parse()
 
@@ -68,7 +70,7 @@ func main() {
 	if *dumpJSON {
 		*keepExports = true // the JSON is written beside the .pb, so the .pb must stay
 	}
-	if err := run(*mnemonic, *accountId, *rootPath, *outDir, *spaceFilter, *limit, *keepExports, *dumpJSON, *refNames); err != nil {
+	if err := run(*mnemonic, *accountId, *rootPath, *outDir, *spaceFilter, *limit, *keepExports, *dumpJSON, *refNames, *native, *nativeFiles); err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)
 		os.Exit(1)
 	}
@@ -85,7 +87,7 @@ func rpcErr(name string, code int32, description string) error {
 	return fmt.Errorf("%s: code %d: %s", name, code, description)
 }
 
-func run(mnemonic, accountId, rootPath, outDir, spaceFilter string, limit int, keepExports, dumpJSON, refNames bool) error {
+func run(mnemonic, accountId, rootPath, outDir, spaceFilter string, limit int, keepExports, dumpJSON, refNames, native, nativeFiles bool) error {
 	ctx := context.Background()
 	mw := core.New()
 	mw.SetEventSender(event.NewCallbackSender(func(*pb.Event) {}))
@@ -150,6 +152,10 @@ func run(mnemonic, accountId, rootPath, outDir, spaceFilter string, limit int, k
 		spaces = filtered
 	}
 	fmt.Printf("spaces to check: %d\n", len(spaces))
+
+	if native {
+		return runNative(ctx, mw, store, spaces, outDir, nativeFiles)
+	}
 
 	summary := &summary{Account: accountId, Categories: map[string]int{}, IndentHistogram: map[int]int{}}
 	for _, s := range spaces {

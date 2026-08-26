@@ -2370,7 +2370,7 @@ document's bytes by guessing at a layout.
   stored keys.
 - **`files`** (v0.47) — file object id → the blob's path, one entry per
   file document whose bytes travel. The authoritative binding between a
-  `kind: "file"` document and its bytes: the document itself carries no
+  `kind: "file_object"` document and its bytes: the document itself carries no
   path, because a document member is not a slot for archive bookkeeping —
   the lesson of the legacy `source`-clobber, which overwrote a real,
   editable `url` relation that bookmarks legitimately hold, and whose
