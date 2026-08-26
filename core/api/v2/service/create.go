@@ -444,17 +444,10 @@ func (s *Service) validateDocumentRefs(ctx context.Context, spaceId string, enve
 		return v2model.ValidationFailed("unsupported document kind",
 			v2model.Issue{Path: "/kind", Message: fmt.Sprintf("kind %q cannot be created through the API", envelope.Kind), Hint: "omit kind (page) or use type \"template\""})
 	}
-	// §2a retired the envelope `key` outright — a type states its api slug as
-	// `type_settings.api_key`, and no other kind has an author-written
-	// identity slot at all. The forged-identity refusal this used to make
-	// (a `key` on an object document riding into snapshot.Key and
-	// DeriveTreeObject, ADDRESSING §2.4) is now the format's own: the member
-	// does not exist in the envelope, so validation refuses it before any
-	// snapshot is built.
-	if envelope.TypeSettings != nil {
-		return v2model.ValidationFailed("type_settings is not accepted on an object document",
-			v2model.Issue{Path: "/type_settings", Message: "type_settings defines a TYPE, not an object", Hint: fmt.Sprintf("create the type with POST /v2/spaces/%s/types", spaceId)})
-	}
+	// §2a's identity slots (`type_settings`, and the envelope `key` that
+	// preceded it) are refused by the format itself, path-addressed and on
+	// every kind — including the forged-identity case this layer used to
+	// guard (ADDRESSING §2.4). One statement of the rule, in the validator.
 
 	if opts.requireTemplate {
 		if envelope.Type == "" {

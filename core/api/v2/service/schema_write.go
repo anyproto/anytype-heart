@@ -104,22 +104,6 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 			v2model.Issue{Message: err.Error()})
 	}
 
-	// §2a retired two top-level members this endpoint used to take. The
-	// format refuses both, but its message is about property spelling —
-	// unactionable for someone who wrote `"key": "task"` meaning the type's
-	// api key. Name the move instead, once, before validation sees it.
-	for stale, repair := range map[string]string{
-		"key":             `"type_settings": {"api_key": "…"}`,
-		"type_properties": `"type_settings": {"property_definitions": […]}`,
-	} {
-		if _, ok := fields[stale]; ok {
-			return nil, v2model.ValidationFailed("the type document moved this member",
-				v2model.Issue{Path: "/" + stale,
-					Message: fmt.Sprintf("%q is no longer a top-level member of a type document (§2a)", stale),
-					Hint:    "state it as " + repair})
-		}
-	}
-
 	// the endpoint IS the kind: inject/enforce kind object_type and default
 	// the version so a bare {type_settings} document works
 	if raw, ok := fields["kind"]; ok {
