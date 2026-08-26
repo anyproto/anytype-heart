@@ -165,3 +165,28 @@ func TestIndex_ManifestBindsFileBlobs(t *testing.T) {
 		require.Error(t, err)
 	})
 }
+
+// An empty path VALUE in a manifest table is omitted on the way out, like
+// every empty member (§4): writing it produced bytes the index's own
+// Unmarshal refuses (minLength on every manifest path) — I1 broken from
+// the Go API, reachable by any caller that left a map value blank.
+func TestIndex_ManifestOmitsEmptyPaths(t *testing.T) {
+	data, err := MarshalIndex(&Index{
+		Name: "Corpus",
+		Manifest: &Manifest{
+			Types: map[string]string{"task": "types/t.anyblock.json", "ghost": ""},
+			Files: map[string]string{"bafyx": ""},
+		},
+	})
+	require.NoError(t, err)
+	_, err = UnmarshalIndex(data)
+	require.NoError(t, err, "what Marshal writes, Unmarshal accepts (I1)")
+	assert.NotContains(t, string(data), "ghost")
+	assert.NotContains(t, string(data), "bafyx")
+	assert.Contains(t, string(data), "task")
+
+	// a manifest whose every entry is empty collapses to no manifest at all
+	bare, err := MarshalIndex(&Index{Name: "Corpus", Manifest: &Manifest{Files: map[string]string{"bafyx": ""}}})
+	require.NoError(t, err)
+	assert.NotContains(t, string(bare), "manifest")
+}

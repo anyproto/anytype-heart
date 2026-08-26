@@ -354,9 +354,9 @@ type Index struct {
 	// AutoWidgetDisabled records that the user turned automatic widgets off
 	// for this space entirely. 2 of 77 real spaces.
 	AutoWidgetDisabled bool `json:"auto_widget_disabled"`
-	// Manifest locates types, options and the property dictionary without a
-	// folder convention (§2c). Optional: a bundle without one is walked the
-	// way every bundle was before it existed.
+	// Manifest locates types, file blobs and the property dictionary
+	// without a folder convention (§2c). Optional: a bundle without one is
+	// walked the way every bundle was before it existed.
 	Manifest *Manifest `json:"manifest"`
 }
 
@@ -673,15 +673,18 @@ func MarshalIndex(idx *Index) ([]byte, error) {
 }
 
 // sortedStringOmap renders a string map with sorted keys — the canonical
-// order for the manifest's two lookup tables (§4), or nil when there is
-// nothing to render.
+// order for the manifest's lookup tables (§4), or nil when there is
+// nothing to render. An empty VALUE is omitted like any other empty member
+// (the §4 canon): it locates nothing, and writing it produced bytes the
+// index's own Unmarshal refuses (the schema's minLength on every manifest
+// path) — I1 broken from the Go API.
 func sortedStringOmap(m map[string]string) *omap {
-	if len(m) == 0 {
-		return nil
-	}
 	out := &omap{}
 	for _, k := range sortedStringKeys(m) {
-		out.set(k, m[k])
+		out.setNonEmpty(k, m[k])
+	}
+	if len(out.keys) == 0 {
+		return nil
 	}
 	return out
 }

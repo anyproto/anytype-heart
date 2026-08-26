@@ -485,7 +485,7 @@ func (e *exportContext) docsForExport(ctx context.Context) (err error) {
 	docs, err := e.export.Collect(ctx, collect.Request{
 		SpaceId:          e.spaceId,
 		Ids:              e.reqIds,
-		Closure:          closureForFormat(e.format),
+		Closure:          e.closure,
 		IncludeNested:    e.includeNested,
 		IncludeFiles:     e.includeFiles,
 		IncludeArchived:  e.includeArchive,

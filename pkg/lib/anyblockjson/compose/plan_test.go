@@ -85,6 +85,12 @@ func TestBlobExtension_SanitizesTheMeasuredDirt(t *testing.T) {
 		{"json", "", "json"}, // a JSON blob keeps its extension; the double doc extension is the discriminator
 		{"averylongextension", "application/pdf", "pdf"},
 		{"", "", "bin"},
+		// parameterised media types are stripped at the ';' — the store
+		// holds `text/plain; charset=utf-8` on 150 corpus objects
+		{"", "text/plain; charset=utf-8", "txt"},
+		// both icon spellings live spaces hold (172 + 30 measured)
+		{"", "image/x-icon", "ico"},
+		{"", "image/vnd.microsoft.icon", "ico"},
 	}
 	for _, c := range cases {
 		got := BlobExtension(c.ext, c.mime)
@@ -136,4 +142,16 @@ func TestBuildPlan_ParticipantStemIsTheFoldedIdentity(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, "participants/"+foreign+".anyblock.json", got,
 		"a foreign-space composite stays unfolded, like its envelope id")
+}
+
+// The blob-suffix invariant is CHECKED, not left as a property of today's
+// id populations: a stem ending ".anyblock" plus a literal "json"
+// extension is the one combination that would dress a blob as a document,
+// and BuildPlan refuses it instead of writing it.
+func TestBuildPlan_RefusesABlobWearingTheDocumentExtension(t *testing.T) {
+	_, err := BuildPlan("space1", []DocMeta{
+		{Id: "evil.anyblock", SbType: model.SmartBlockType_FileObject, FileExt: "json"},
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "document extension")
 }

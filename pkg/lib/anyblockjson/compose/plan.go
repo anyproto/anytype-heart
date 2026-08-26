@@ -94,7 +94,16 @@ func BuildPlan(spaceId string, docs []DocMeta) (*Plan, error) {
 			// (the id), real sanitized extension — so the two halves of a
 			// file sort adjacent in any listing. The manifest `files` map is
 			// what BINDS them (§2c); adjacency is this exporter's layout.
-			p.blobPaths[d.Id] = dir + "/" + stem + "." + BlobExtension(d.FileExt, d.FileMime)
+			blobPath := dir + "/" + stem + "." + BlobExtension(d.FileExt, d.FileMime)
+			// a blob may never wear the document extension. The extension
+			// class admits no dot, so only a stem ENDING ".anyblock" plus a
+			// literal "json" extension could produce one — no real id
+			// population contains such a stem, but the invariant is checked
+			// rather than left as a property of today's ids.
+			if strings.HasSuffix(blobPath, DocExtension) {
+				return nil, fmt.Errorf("plan document paths: blob path %q for %s would wear the document extension", blobPath, d.Id)
+			}
+			p.blobPaths[d.Id] = blobPath
 		}
 	}
 	return p, nil
@@ -165,21 +174,30 @@ var blobExtensionByMime = map[string]string{
 	"application/x-tar":  "tar",
 	"application/gzip":   "gz",
 	"application/msword": "doc",
+	// the two icon spellings live spaces actually hold (172 + 30 measured)
+	"image/x-icon":             "ico",
+	"image/vnd.microsoft.icon": "ico",
 }
 
 // BlobExtension sanitizes a file object's stored extension into a safe path
 // component (design §1.4 — cosmetic only, since the manifest map binds and
 // `file_mime_type` travels in the document): `fileExt` lowercased and
 // restricted to [a-z0-9]{1,10}; failing that, the conventional extension
-// for `fileMimeType`; failing that, "bin". A computed final suffix of
-// "anyblock.json" is impossible by construction — the character class
-// admits no dot — so a blob can never impersonate a document.
+// for `fileMimeType` — with any media-type parameters stripped first, since
+// the store holds parameterised values like `text/plain; charset=utf-8`
+// (150 corpus objects) that would otherwise miss the table; failing that,
+// "bin". BuildPlan additionally asserts the result never wears the
+// document extension.
 func BlobExtension(fileExt, fileMime string) string {
 	ext := strings.ToLower(strings.TrimPrefix(strings.TrimSpace(fileExt), "."))
 	if isCleanExt(ext) {
 		return ext
 	}
-	if byMime, ok := blobExtensionByMime[strings.ToLower(strings.TrimSpace(fileMime))]; ok {
+	mime := strings.ToLower(strings.TrimSpace(fileMime))
+	if i := strings.IndexByte(mime, ';'); i >= 0 {
+		mime = strings.TrimSpace(mime[:i])
+	}
+	if byMime, ok := blobExtensionByMime[mime]; ok {
 		return byMime
 	}
 	return "bin"
