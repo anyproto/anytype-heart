@@ -125,7 +125,7 @@ func runNative(ctx context.Context, mw *core.Middleware, store objectstore.Objec
 	a := mw.GetApp()
 	exporter := &anyblock.Exporter{
 		Collector:   app.MustComponent[export.Export](a),
-		Picker:      app.MustComponent[cache.ObjectGetter](a),
+		Picker:      app.MustComponent[cache.CachedObjectGetter](a),
 		ObjectStore: store,
 		SbtProvider: app.MustComponent[typeprovider.SmartBlockTypeProvider](a),
 	}
@@ -248,11 +248,17 @@ func processSpaceNative(ctx context.Context, mw *core.Middleware, store objectst
 		IncludeArchived: true,
 		IncludeFiles:    includeFiles,
 	}
-	succeed, err := exporter.Export(ctx, req, wr)
+	result, err := exporter.Export(ctx, req, wr)
 	if err != nil {
 		return nil, fmt.Errorf("native export: %w", err)
 	}
-	ss.Succeed = succeed
+	ss.Succeed = result.Succeed
+	if result.DocErrors > 0 {
+		report("doc_emit_failed", "%d document(s) failed to emit", result.DocErrors)
+	}
+	if result.BlobErrors > 0 {
+		report("blob_stream_failed", "%d file blob(s) could not be streamed; documents travel without bytes", result.BlobErrors)
+	}
 
 	// 3. layout, filenames, kinds
 	docs, blobs, err := checkBundleLayout(bundleRoot, ss, report)

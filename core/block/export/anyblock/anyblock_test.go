@@ -12,6 +12,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
@@ -46,10 +47,41 @@ import (
 
 const spaceId = "space1"
 
+// closingPicker wraps the object-getter mock with the TryRemoveFromCache
+// the Exporter's typed Picker demands, recording every close so the tests
+// can prove close-after-write actually runs — the memory model (design
+// §1.5/§1.6) is a claim about this call being made, and a fixture that
+// cannot observe it would leave the whole path uncovered.
+type closingPicker struct {
+	*mock_cache.MockObjectGetterComponent
+	mu      sync.Mutex
+	removed map[string]int
+}
+
+func (p *closingPicker) TryRemoveFromCache(_ context.Context, objectId string) (bool, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.removed == nil {
+		p.removed = map[string]int{}
+	}
+	p.removed[objectId]++
+	return true, nil
+}
+
+func (p *closingPicker) removedIds() map[string]int {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	out := make(map[string]int, len(p.removed))
+	for k, v := range p.removed {
+		out[k] = v
+	}
+	return out
+}
+
 type fixture struct {
 	exporter *Exporter
 	store    *objectstore.StoreFixture
-	picker   *mock_cache.MockObjectGetterComponent
+	picker   *closingPicker
 	provider *mock_typeprovider.MockSmartBlockTypeProvider
 }
 
@@ -71,6 +103,8 @@ func newFixture(t *testing.T) *fixture {
 			return rel.Format, nil
 		}).Maybe()
 
+	picker := &closingPicker{MockObjectGetterComponent: objectGetter}
+
 	a := &app.App{}
 	a.Register(storeFixture)
 	a.Register(testutil.PrepareMock(context.Background(), a, mock_event.NewMockSender(t)))
@@ -89,12 +123,12 @@ func newFixture(t *testing.T) *fixture {
 	return &fixture{
 		exporter: &Exporter{
 			Collector:   exp,
-			Picker:      objectGetter,
+			Picker:      picker,
 			ObjectStore: storeFixture,
 			SbtProvider: provider,
 		},
 		store:    storeFixture,
-		picker:   objectGetter,
+		picker:   picker,
 		provider: provider,
 	}
 }
@@ -201,11 +235,17 @@ func TestExporter_WritesABundle(t *testing.T) {
 	require.NoError(t, err)
 
 	// when
-	succeed, err := fx.exporter.Export(context.Background(), req, wr)
+	result, err := fx.exporter.Export(context.Background(), req, wr)
 
 	// then
 	require.NoError(t, err)
-	assert.Equal(t, 2, succeed)
+	assert.Equal(t, Result{Succeed: 2}, result)
+
+	// close-after-write ran for every emitted object — the memory model is
+	// this call being made (design §1.5), proved rather than assumed
+	removed := fx.picker.removedIds()
+	assert.Contains(t, removed, "objectId")
+	assert.Contains(t, removed, "customObjectType")
 
 	tree := readTree(t, dir)
 	require.Contains(t, tree, "objects/objectId.anyblock.json")
@@ -252,9 +292,9 @@ func TestExporter_SameSpaceTwiceIsByteIdentical(t *testing.T) {
 		dir := t.TempDir()
 		wr, err := NewDirWriter(dir)
 		require.NoError(t, err)
-		succeed, err := fx.exporter.Export(context.Background(), req, wr)
+		result, err := fx.exporter.Export(context.Background(), req, wr)
 		require.NoError(t, err)
-		require.Equal(t, 2, succeed)
+		require.Equal(t, Result{Succeed: 2}, result)
 		return readTree(t, dir)
 	}
 
@@ -345,12 +385,12 @@ func TestExporter_StreamsBlobsAndBindsThemInTheManifest(t *testing.T) {
 	require.NoError(t, err)
 
 	// when
-	succeed, err := fx.exporter.Export(context.Background(),
+	result, err := fx.exporter.Export(context.Background(),
 		Request{SpaceId: spaceId, SpaceName: "Fixture space", IncludeArchived: true, IncludeFiles: true}, wr)
 
 	// then
 	require.NoError(t, err)
-	assert.Equal(t, 1, succeed)
+	assert.Equal(t, Result{Succeed: 1}, result)
 
 	tree := readTree(t, dir)
 	require.Contains(t, tree, "files/fileObjectId.anyblock.json", "the document half")
@@ -364,4 +404,55 @@ func TestExporter_StreamsBlobsAndBindsThemInTheManifest(t *testing.T) {
 	require.NotNil(t, idx.Manifest)
 	assert.Equal(t, map[string]string{fileId: "files/fileObjectId.txt"}, idx.Manifest.Files,
 		"the manifest map is the binding a reader may rely on")
+}
+
+// A blob the node cannot serve does not fail the document: the document is
+// already written and carries strictly more than the nothing a failed doc
+// leaves. The failure is COUNTED — Result.BlobErrors — and the manifest
+// omits the binding, which is what the bundle tooling's unbound-file
+// warning then surfaces (§2c).
+//
+// How this can fail: return the stream error from the emit task (the doc
+// counts as failed while sitting written in the bundle — the old
+// behaviour); or bind the blob before the stream succeeds (the manifest
+// points at bytes that are not there, the exact promise CheckManifestFiles
+// refuses).
+func TestExporter_ABlobFailureIsCountedNotFatal(t *testing.T) {
+	// given — a file object whose file component cannot serve bytes
+	fx := newFixture(t)
+	const fileId = "brokenFileId"
+	fx.store.AddObjects(t, spaceId, []spaceindex.TestObject{
+		{
+			bundle.RelationKeyId:           domain.String(fileId),
+			bundle.RelationKeyName:         domain.String("gone"),
+			bundle.RelationKeyFileMimeType: domain.String("image/png"),
+			bundle.RelationKeySpaceId:      domain.String(spaceId),
+		},
+	})
+	fileSb := setupObject(fileId, "", smartblock.SmartBlockTypeFileObject, map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyName: domain.String("gone"),
+	})
+	fileComponent := mock_fileobject.NewMockFileObject(t)
+	fileComponent.EXPECT().GetFile().Return(nil, os.ErrNotExist)
+	fx.picker.EXPECT().GetObject(mock.Anything, fileId).
+		Return(&fileObjectWrapper{SmartTest: fileSb, FileObject: fileComponent}, nil)
+	fx.provider.EXPECT().Type(spaceId, fileId).Return(smartblock.SmartBlockTypeFileObject, nil)
+
+	dir := t.TempDir()
+	wr, err := NewDirWriter(dir)
+	require.NoError(t, err)
+
+	// when
+	result, err := fx.exporter.Export(context.Background(),
+		Request{SpaceId: spaceId, SpaceName: "Fixture space", IncludeArchived: true, IncludeFiles: true}, wr)
+
+	// then — the document travels, the failure is counted, nothing binds
+	require.NoError(t, err)
+	assert.Equal(t, Result{Succeed: 1, BlobErrors: 1}, result)
+	tree := readTree(t, dir)
+	require.Contains(t, tree, "files/brokenFileId.anyblock.json", "the document half still travels")
+	idx, err := anyblockjson.UnmarshalIndex([]byte(tree[anyblockjson.IndexFileName]))
+	require.NoError(t, err)
+	require.NotNil(t, idx.Manifest)
+	assert.Empty(t, idx.Manifest.Files, "no binding for bytes that did not travel")
 }

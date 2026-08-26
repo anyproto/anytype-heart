@@ -95,8 +95,13 @@ type Request struct {
 // components the legacy export service holds; every field is required
 // except none.
 type Exporter struct {
-	Collector   collect.Collector
-	Picker      cache.ObjectGetter
+	Collector collect.Collector
+	// Picker is typed CachedObjectGetter, not ObjectGetter, ON PURPOSE:
+	// close-after-write is the memory model (design §1.5/§1.6 — without it
+	// the export retains throughput × cache TTL of loaded trees), so a
+	// picker that cannot close is a compile error here, never a silent
+	// degradation behind a failed type assertion.
+	Picker      cache.CachedObjectGetter
 	ObjectStore objectstore.ObjectStore
 	SbtProvider typeprovider.SmartBlockTypeProvider
 }
@@ -115,13 +120,32 @@ func emitWidthFor(goos string) int {
 	return 4
 }
 
+// Result is what one export can say about itself — nothing a caller might
+// act on is dropped into a log line alone.
+type Result struct {
+	// Succeed counts the documents accounted for: written, or omitted into
+	// the bundle files.
+	Succeed int
+	// DocErrors counts documents that failed to emit at all (load, marshal
+	// or write) — logged and skipped, the legacy exporter's own per-doc
+	// discipline, but COUNTED, so a caller can tell a clean backup from a
+	// holed one.
+	DocErrors int
+	// BlobErrors counts file objects whose DOCUMENT was written but whose
+	// bytes could not be streamed (node offline, blocks missing). The
+	// document still travels — metadata is strictly more than the nothing a
+	// failed doc leaves — and the manifest simply omits the binding, which
+	// the bundle tooling then surfaces (a file document unbound by a
+	// present map is a warning, §2c). A FAT bundle with BlobErrors > 0 is
+	// not the faithful byte carrier it promises to be; the caller decides
+	// whether that fails the operation.
+	BlobErrors int
+}
+
 // Export writes one space's bundle through wr: every collected document at
 // its planned path, blobs beside their file documents, then
-// properties.json and index.json at the bundle root. succeed counts the
-// documents accounted for — written, or omitted into the bundle files; a
-// document that fails to emit is logged and skipped, never fatal, the
-// legacy exporter's own per-doc discipline.
-func (e *Exporter) Export(ctx context.Context, req Request, wr Writer) (succeed int, err error) {
+// properties.json and index.json at the bundle root.
+func (e *Exporter) Export(ctx context.Context, req Request, wr Writer) (res Result, err error) {
 	docs, err := e.Collector.Collect(ctx, collect.Request{
 		SpaceId:          req.SpaceId,
 		Ids:              req.Ids,
@@ -134,7 +158,7 @@ func (e *Exporter) Export(ctx context.Context, req Request, wr Writer) (succeed 
 		StateFilters:     req.StateFilters,
 	})
 	if err != nil {
-		return 0, fmt.Errorf("collect docs for export: %w", err)
+		return res, fmt.Errorf("collect docs for export: %w", err)
 	}
 
 	// plan: details only, single-threaded, before the first emit task
@@ -161,7 +185,7 @@ func (e *Exporter) Export(ctx context.Context, req Request, wr Writer) (succeed 
 	}
 	plan, err := compose.BuildPlan(req.SpaceId, metas)
 	if err != nil {
-		return 0, fmt.Errorf("build path plan: %w", err)
+		return res, fmt.Errorf("build path plan: %w", err)
 	}
 
 	// the composer gets a DEDICATED resolver set: storeresolver.Resolvers
@@ -173,7 +197,7 @@ func (e *Exporter) Export(ctx context.Context, req Request, wr Writer) (succeed 
 	// emit: width-bounded workers, each with its own resolver set. The
 	// output cannot depend on scheduling: every path was fixed by the plan,
 	// the composer's aggregates are commutative, and finish sorts (§1.5).
-	var succeedAsync int64
+	var succeedAsync, docErrs, blobErrs int64
 	width := emitWidthFor(runtime.GOOS)
 	ids := make(chan string)
 	var wg sync.WaitGroup
@@ -183,8 +207,13 @@ func (e *Exporter) Export(ctx context.Context, req Request, wr Writer) (succeed 
 			defer wg.Done()
 			opts := storeresolver.New(e.ObjectStore.SpaceIndex(req.SpaceId)).Options()
 			for id := range ids {
-				if werr := e.emitDoc(ctx, req, docs, plan, composer, opts, wr, id); werr != nil {
+				blobFailed, werr := e.emitDoc(ctx, req, docs, plan, composer, opts, wr, id)
+				if blobFailed {
+					atomic.AddInt64(&blobErrs, 1)
+				}
+				if werr != nil {
 					log.With("objectID", id).Warnf("can't export doc: %v", werr)
+					atomic.AddInt64(&docErrs, 1)
 				} else {
 					atomic.AddInt64(&succeedAsync, 1)
 				}
@@ -196,30 +225,38 @@ func (e *Exporter) Export(ctx context.Context, req Request, wr Writer) (succeed 
 	}
 	close(ids)
 	wg.Wait()
+	res = Result{Succeed: int(succeedAsync), DocErrors: int(docErrs), BlobErrors: int(blobErrs)}
+	if res.BlobErrors > 0 {
+		log.Errorf("export %s: %d file blob(s) could not be streamed; their documents travel without bytes and the manifest omits the bindings", req.SpaceId, res.BlobErrors)
+	}
 
 	// finish: the two bundle files, re-read-verified by the composer (I1
 	// at bundle scope). Nil bytes = nothing was written, nothing to state.
 	index, properties, _, err := composer.Finish()
 	if err != nil {
-		return int(succeedAsync), fmt.Errorf("compose bundle files: %w", err)
+		return res, fmt.Errorf("compose bundle files: %w", err)
 	}
 	if properties != nil {
 		if err := wr.WriteFile(path.Join(req.BundleRoot, anyblockjson.PropertiesFileName), bytes.NewReader(properties), 0); err != nil {
-			return int(succeedAsync), fmt.Errorf("write property dictionary: %w", err)
+			return res, fmt.Errorf("write property dictionary: %w", err)
 		}
 	}
 	if index != nil {
 		if err := wr.WriteFile(path.Join(req.BundleRoot, anyblockjson.IndexFileName), bytes.NewReader(index), 0); err != nil {
-			return int(succeedAsync), fmt.Errorf("write index: %w", err)
+			return res, fmt.Errorf("write index: %w", err)
 		}
 	}
-	return int(succeedAsync), nil
+	return res, nil
 }
 
 // emitDoc is one emit task: load, decide omission, marshal, write, stream
-// the blob, observe — then close the object out of the cache.
+// the blob, observe — then close the object out of the cache. A blob
+// stream failure does NOT fail the document: the document is already
+// written and carries strictly more than the nothing a failed doc leaves,
+// so the failure is reported through blobFailed (and the manifest omits
+// the binding) rather than by undoing the doc.
 func (e *Exporter) emitDoc(ctx context.Context, req Request, docs collect.Docs, plan *compose.Plan,
-	composer *compose.Composer, opts anyblockjson.Options, wr Writer, id string) error {
+	composer *compose.Composer, opts anyblockjson.Options, wr Writer, id string) (blobFailed bool, _ error) {
 
 	err := cache.Do(e.Picker, id, func(b sb.SmartBlock) error {
 		st := b.NewState()
@@ -287,7 +324,9 @@ func (e *Exporter) emitDoc(ctx context.Context, req Request, docs collect.Docs, 
 				return fmt.Errorf("no planned blob path for %s", id)
 			}
 			if err := e.saveBlob(ctx, wr, b, path.Join(req.BundleRoot, blobPath)); err != nil {
-				return fmt.Errorf("save file blob: %w", err)
+				blobFailed = true
+				log.With("objectID", id).Warnf("file blob not streamed, document travels without bytes: %v", err)
+				return nil
 			}
 			composer.ObserveFileBlob(id, blobPath)
 		}
@@ -309,12 +348,10 @@ func (e *Exporter) emitDoc(ctx context.Context, req Request, docs collect.Docs, 
 	// own entry is loaded, not loading (cache.Do returned above), so the
 	// window arms only on a concurrent re-load — the identical race the
 	// fulltext indexer has soaked in production on every indexed object.
-	if remover, ok := e.Picker.(cache.CachedObjectGetter); ok {
-		if _, cerr := remover.TryRemoveFromCache(ctx, id); cerr != nil {
-			log.With("objectID", id).Warnf("object cache remove: %v", cerr)
-		}
+	if _, cerr := e.Picker.TryRemoveFromCache(ctx, id); cerr != nil {
+		log.With("objectID", id).Warnf("object cache remove: %v", cerr)
 	}
-	return err
+	return blobFailed, err
 }
 
 // saveBlob streams one file object's bytes to the writer — the legacy
