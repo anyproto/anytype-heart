@@ -15,6 +15,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
+	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson/compose"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -905,6 +906,10 @@ func MergeDictionaryFormats(scanned, dict map[string]FormatInfo, warn func(forma
 // deliberately NOT one — it is a per-view cache carrying its own inline
 // format (§6.2), so a key that appears there and nowhere else gives a
 // reader nothing to look up.
+// The scan itself is compose.UsedPropertyKeysFromBytes — promoted there so
+// production composition (which cannot re-read a zip entry and must scan the
+// marshalled bytes before the write) and this file-level convenience run one
+// implementation rather than two that drift.
 func UsedPropertyKeys(files []string) (map[string]bool, error) {
 	out := map[string]bool{}
 	for _, f := range files {
@@ -912,27 +917,12 @@ func UsedPropertyKeys(files []string) (map[string]bool, error) {
 		if err != nil {
 			return nil, fmt.Errorf("read %s: %w", f, err)
 		}
-		var doc struct {
-			PropertyKeys propertyLegend             `json:"property_internal_keys"`
-			Properties   map[string]json.RawMessage `json:"properties"`
-			TypeSettings *typeSettingsRaw           `json:"type_settings"`
+		used, err := compose.UsedPropertyKeysFromBytes(data)
+		if err != nil {
+			return nil, fmt.Errorf("scan %s: %w", f, err)
 		}
-		if err := json.Unmarshal(data, &doc); err != nil {
-			return nil, fmt.Errorf("parse %s: %w", f, err)
-		}
-		for k := range doc.Properties {
-			// id and type are envelope facts, skipped on the SPELLING the
-			// way the codec skips them (importer.build)
-			if k == "id" || k == "type" {
-				continue
-			}
-			out[resolvePropertyTerm(doc.PropertyKeys, k)] = true
-		}
-		for _, tp := range typeSettingsDefs(doc.TypeSettings) {
-			if tp.term() == "" {
-				continue
-			}
-			out[tp.resolvedKey(doc.PropertyKeys)] = true
+		for key := range used {
+			out[key] = true
 		}
 	}
 	return out, nil
