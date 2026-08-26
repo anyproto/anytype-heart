@@ -786,7 +786,7 @@ func dataviewMembership(edited map[string]any) map[string]bool {
 	props, _ := edited["properties"].([]any)
 	for _, raw := range props {
 		if p, ok := raw.(map[string]any); ok {
-			if key, _ := p["key"].(string); key != "" {
+			if key, _ := p["property"].(string); key != "" {
 				known[key] = true
 			}
 		}
@@ -857,8 +857,8 @@ func (a *v2StateApplier) validateViewKeys(edited map[string]any, preKnown map[st
 				}
 			}
 			props = append(props, map[string]any{
-				"key":    use.key,
-				"format": anyblockjson.FormatName(a.propertyFormat(use.key)),
+				"property": use.key,
+				"format":   anyblockjson.FormatName(a.propertyFormat(use.key)),
 			})
 			continue
 		}
@@ -1195,7 +1195,7 @@ func (a *v2StateApplier) applyInsertView(op opInsertView, opPath string) error {
 		columns := make([]any, 0, len(props))
 		for _, raw := range props {
 			if p, ok := raw.(map[string]any); ok {
-				if key, _ := p["key"].(string); key != "" {
+				if key, _ := p["property"].(string); key != "" {
 					columns = append(columns, map[string]any{"property": key})
 				}
 			}

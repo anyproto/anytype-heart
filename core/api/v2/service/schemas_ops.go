@@ -84,16 +84,22 @@ var v2OpBlockCommonProps = v2OpBlockTypeProp + `,` +
 	`"object_id":{"type":"string","maxLength":256},` +
 	`"name":{"type":"string","maxLength":4096},` +
 	`"style":{"type":"string","maxLength":64},` +
-	// block ATTRIBUTE names are not key slots — §7.5a-4 excludes them by name,
-	// and the format's own schema (served verbatim as GET /v2/schemas/object)
-	// declares icon_emoji/icon_image. Re-spelled here, both defs being
-	// additionalProperties:false meant a grammar-constrained decoder could not
-	// author a callout icon at all, and two served schemas contradicted each
-	// other one request apart. TestOpBlockPropsExistInTheFormatSchema is the
-	// structural guard that keeps the exclusion out of prose.
-	`"icon_emoji":{"type":"string","maxLength":64},` +
-	`"icon_image":{"type":"string","maxLength":256},` +
-	`"key":{"type":"string","maxLength":256},` +
+	// §2b replaced the flat icon_emoji/icon_image pair with ONE typed member
+	// whose `format` selects the variant — the same shape the object icon
+	// uses, minus the two variants only an object has (plainIcon). A callout
+	// is the only block type that carries it. Published here because both
+	// payload defs are additionalProperties:false: a variant this schema does
+	// not show is one a grammar-constrained decoder cannot author at all, and
+	// TestSchemaOp checks every name published here against the format's own
+	// block schema.
+	`"icon":{"type":"object","additionalProperties":false,"required":["format"],"description":"a callout's icon (§2b, §5.2): format selects the variant — emoji needs emoji, file needs file (an image object id in this space), icon needs name","properties":{` +
+	`"format":{"type":"string","enum":["emoji","file","icon","color"]},` +
+	`"emoji":{"type":"string","maxLength":64},` +
+	`"file":{"type":"string","maxLength":256},` +
+	`"name":{"type":"string","maxLength":64},` +
+	`"color":{"type":"string","maxLength":64}}},` +
+	`"icon_size":{"type":"string","maxLength":32},` +
+	`"property":{"type":"string","maxLength":256},` +
 	`"card_style":{"type":"string","maxLength":32},` +
 	`"align":{"type":"string","enum":["left","center","right","justify"]},` +
 	`"background_color":{"type":"string","maxLength":64}`

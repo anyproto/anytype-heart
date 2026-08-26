@@ -188,13 +188,17 @@ func TestSchemaOp(t *testing.T) {
 
 	t.Run("the format's block schema knows the attributes the exclusion names", func(t *testing.T) {
 		// the guard above is only worth anything if the format's inventory is
-		// really read from the schema — these are the two the cascade broke.
-		// GO-7383 moved the format's own vocabulary to snake_case, so the
-		// schema now knows icon_emoji/icon_image, not the old camelCase names.
-		assert.False(t, anyblockjson.KnownBlockProperty("iconEmoji"))
-		assert.False(t, anyblockjson.KnownBlockProperty("iconImage"))
-		assert.True(t, anyblockjson.KnownBlockProperty("icon_emoji"))
-		assert.True(t, anyblockjson.KnownBlockProperty("icon_image"))
+		// really read from the schema. §2b collapsed the flat icon pair into
+		// ONE typed member, so the names that must resolve are the typed ones
+		// — and the flat pair must NOT, or the op schema could publish a
+		// member no document can carry and this guard would not notice.
+		assert.True(t, anyblockjson.KnownBlockProperty("icon"))
+		assert.True(t, anyblockjson.KnownBlockProperty("icon_size"))
+		assert.False(t, anyblockjson.KnownBlockProperty("icon_emoji"))
+		assert.False(t, anyblockjson.KnownBlockProperty("icon_image"))
+		// §2e likewise: a property block names its property under `property`
+		assert.True(t, anyblockjson.KnownBlockProperty("property"))
+		assert.False(t, anyblockjson.KnownBlockProperty("key"))
 	})
 
 	t.Run("unknown op lists the available ops", func(t *testing.T) {

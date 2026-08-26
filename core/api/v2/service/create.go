@@ -105,11 +105,30 @@ func (s *Service) CreateObject(ctx context.Context, spaceId string, body []byte,
 }
 
 // CreateTemplate implements POST /v2/spaces/{space_id}/templates: an AnyBlock
-// document with templateFor, routed through the generic object-create path
+// document with template_for, routed through the generic object-create path
 // (no create-from-body template RPC exists — APIV2.md Phase 2).
+//
+// The endpoint IS the kind, exactly as POST /types is: a template must now
+// say `kind: "template"` (the type "template" stopped carrying that meaning
+// on its own), and requiring a caller to restate what the URL already said
+// is the trap C2 exists to avoid. Injected here rather than defaulted deeper
+// so the whole create path below sees a document that is already complete.
 func (s *Service) CreateTemplate(ctx context.Context, spaceId string, body []byte, dryRun bool) (*v2model.CreateResult, error) {
 	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
+	}
+	fields, err := parseEnvelope(body)
+	if err != nil {
+		return nil, v2model.ValidationFailed("request body is not a JSON object",
+			v2model.Issue{Message: err.Error()})
+	}
+	if _, ok := fields["kind"]; !ok {
+		if fields["kind"], err = rawJSON("template"); err != nil {
+			return nil, err
+		}
+		if body, err = encodeEnvelope(fields); err != nil {
+			return nil, err
+		}
 	}
 	return s.createFromDocument(ctx, spaceId, body, docCreateOptions{dryRun: dryRun, requireTemplate: true})
 }
