@@ -130,6 +130,11 @@ func TestTransientProperties_BundledVerdictPerKey(t *testing.T) {
 		"fileVariantOptions":   true,
 		"fileVariantPaths":     true,
 		"fileVariantWidths":    true,
+		// the file's own content addresses, the last two of the API's
+		// refusal list; fileExt and fileMimeType stay, describing the file
+		// rather than addressing it
+		"fileId":             true,
+		"fileSourceChecksum": true,
 	}
 	assert.Equal(t, len(want), len(transientProperties),
 		"every transient key owes a verdict here — a new one must say which case it is")

@@ -1503,6 +1503,18 @@ var transientProperties = map[string]string{
 	"fileVariantPaths":     "file variant machinery: regenerated when the file is indexed, and never read on import",
 	"fileVariantWidths":    "file variant machinery: regenerated when the file is indexed, and never read on import",
 
+	// the file's own content addresses, and the last two members of the API's
+	// refusal list. `fileId` is the cid of the file's content and
+	// `fileSourceChecksum` its source hash; neither is read from an incoming
+	// document by any import path, and fileobject/service.go SETS fileId
+	// itself when it creates the object — so a restored file gets its own.
+	//
+	// `fileExt` and `fileMimeType` deliberately stay: they describe the file
+	// to a reader rather than address it in a store, and the API does not
+	// refuse them.
+	"fileId":             "the file's content address: the importing space mints its own when it creates the file object",
+	"fileSourceChecksum": "the file's source hash: recomputed on the way in, and part of the API's file keys / CIDs refusal",
+
 	// THE FILE MACHINERY'S per-device answers, stamped on every file object
 	// and meaning nothing off the device that stamped them. Their sibling
 	// `fileSyncStatus` is in bundle.LocalAndDerivedRelationKeys and has never

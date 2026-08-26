@@ -1,6 +1,6 @@
 # AnyBlock JSON — format specification
 
-Status: **draft v0.42** · Format version: **1** · Package: `pkg/lib/anyblockjson`
+Status: **draft v0.43** · Format version: **1** · Package: `pkg/lib/anyblockjson`
 
 A human- and agent-readable JSON serialization of Anytype objects (the "anyblock"
 model), designed for export, import, and generation by external tools and LLM
@@ -15,6 +15,29 @@ strings; the vocabulary follows Notion's API and Anytype's public REST API
 (`core/api`) wherever an established term exists — the format should be
 readable, and mostly writable, by someone who has never seen Anytype
 internals.
+
+Changes in v0.43: **a shared bundle carries no file keys and no file content
+addresses** (§3).
+
+`fileVariantKeys` holds the per-variant ENCRYPTION keys of a file, and the
+export shipped them for every file in the space. This repository's own API
+layer already refuses to emit all seven variant keys plus `fileId` and
+`fileSourceChecksum`, "so a future change to either the bundle or the cache
+subscription cannot accidentally leak file keys / CIDs" — the export was that
+change.
+
+Nothing reads them on the way back. They are consumed by
+core/files/queries.go and the file editor, both running in a space that
+already holds the file, and by no import path. A bundle carries the file
+itself: the same content imported into another space is matched and reused,
+and imported into another ACCOUNT becomes a new file with a new key, uploaded
+afresh. `fileExt` and `fileMimeType` stay — they describe the file rather
+than address it in a store.
+
+Those seven keys were also 93% of the format's entire warning channel, six
+declared `text` and one `number` while every stored value is a list. Not
+travelling is a better answer than not warning. §15 #20 records the case that
+would need them back.
 
 Changes in v0.42: **no proto-enum property is a bare integer any more** —
 three more stored keys are named, two are deprecated, and writing a name
@@ -6237,3 +6260,30 @@ Wiring (follow-up work, not this package):
     deciding what an importer does when the type is absent. That is a question
     about the bundle, not about one document. `type_settings.layout` is
     untouched either way: it is the declaration, not the cache.
+
+20. **A bundle that carries files BY REFERENCE** (follow-up, deliberately not
+    in v1). A use case can ship its images two ways, and the format currently
+    supports only the first:
+
+    - **the files travel.** The archive carries the bytes, the importing
+      account uploads them to a file node under keys of its own, and nothing
+      about the source space's storage needs to be known. This is what a
+      bundle does today, and it is why §3 refuses to carry `fileVariantKeys`
+      and its siblings: a shared bundle that carried the source's encryption
+      keys would hand its recipient the keys to every file in that space, for
+      no benefit — the importing account cannot use them and does not need
+      them.
+
+    - **only the references travel.** The bundle names each file by cid and
+      carries the key that opens it, so the use case is small and the
+      importing account DOWNLOADS the content from a file node instead of
+      uploading it. This is the thin bundle, and it is the case that needs
+      exactly what the other case must not carry.
+
+    The second is worth having and is not being built now. It is recorded
+    here so the omission reads as a decision rather than an oversight: the
+    keys are absent because today's bundle is the FAT kind, not because a key
+    can never appear in this format. A thin bundle would need its own marker
+    — a bundle-level statement that its files are references, so a reader
+    knows an absent blob is intended rather than missing — and that marker is
+    what makes carrying a key defensible in that mode and only that mode.
