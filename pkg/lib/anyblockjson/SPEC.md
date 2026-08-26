@@ -1,6 +1,6 @@
 # AnyBlock JSON — format specification
 
-Status: **draft v0.45** · Format version: **1** · Package: `pkg/lib/anyblockjson`
+Status: **draft v0.46** · Format version: **1** · Package: `pkg/lib/anyblockjson`
 
 A human- and agent-readable JSON serialization of Anytype objects (the "anyblock"
 model), designed for export, import, and generation by external tools and LLM
@@ -15,6 +15,25 @@ strings; the vocabulary follows Notion's API and Anytype's public REST API
 (`core/api`) wherever an established term exists — the format should be
 readable, and mostly writable, by someone who has never seen Anytype
 internals.
+
+Changes in v0.46: **the manifest no longer locates options** (§2c, §2f).
+
+A manifest answers a lookup a reader would otherwise have to scan for. No
+reader has that lookup for an option: the property dictionary states a
+property's whole vocabulary inline — each option's name, colour, position
+and, since the vocabulary learned `internal_key`, its stored key — so
+everything an option MEANS is in hand before a single document is opened.
+`manifest.options` was 2,641 entries across a 77-space export, every one
+pointing at a document nothing needed to read.
+
+`option_ids` is untouched and does a different job: it carries option OBJECT
+ids, resolved against the IMPORTING space's live store so a value survives a
+rename (§9a), never against the bundle. It never needed a path beside it.
+
+A bundle still carrying `manifest.options` is REFUSED rather than ignored —
+the manifest is closed, and a manifest member a reader cannot honour is
+worse than absent, because it leaves an author believing their options are
+located.
 
 Changes in v0.45: **the sidebar is index.json's, whole, and a bundle carries
 no widget document** (§1, §2c, §2g, §5).
@@ -2307,7 +2326,6 @@ namespaces are addressed that way: types (22/space) and options (34/space) —
 ```json
 { "manifest": {
     "types":      { "task": "types/bafyrei….anyblock.json" },
-    "options":    { "bafyrei…opt1": "relationsOptions/bafyrei….anyblock.json" },
     "properties": "properties.json" } }
 ```
 
@@ -2315,10 +2333,19 @@ namespaces are addressed that way: types (22/space) and options (34/space) —
   not per-document spellings, the same rule the dictionary applies (§2f): a
   document's `type_internal_keys` legend binds its spelling to the stored key, and
   the stored key is what the manifest answers for.
-- **`options`** — option object id → the property_option document's path.
-  Ids, because that is how documents address options: a value carries the
-  option's NAME and the `option_ids` legend beside it carries the id (§9a) —
-  the id is the spelling that survives a rename.
+  The manifest does NOT locate options (removed in v0.46). A manifest exists
+  to answer a lookup a reader would otherwise have to scan for, and no reader
+  has that lookup for an option: the dictionary states a property's whole
+  vocabulary inline — each option's name, colour, position and, since the
+  vocabulary learned `internal_key`, its stored key (§2f) — so everything an
+  option MEANS is in hand before a single document is opened. The map was
+  2,641 entries across a 77-space export, pointing at documents nothing
+  needed to read.
+
+  `option_ids` is unaffected and does a different job: it carries option
+  OBJECT ids, resolved against the IMPORTING space's live store so a value
+  survives a rename (§9a), never against the bundle. It never needed a path
+  beside it.
 - **`properties`** — the property dictionary's path (§2f). A pointer rather
   than an inline map, because properties resolve by stored key through each
   document's own legend and the dictionary is the file that answers for

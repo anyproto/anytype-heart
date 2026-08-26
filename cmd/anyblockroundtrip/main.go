@@ -266,7 +266,7 @@ type spaceSummary struct {
 	DictionaryInstalled int `json:"dictionaryInstalled,omitempty"`
 	DictionaryEntries   int `json:"dictionaryEntries,omitempty"`
 	ManifestTypes       int `json:"manifestTypes,omitempty"`
-	ManifestOptions     int `json:"manifestOptions,omitempty"`
+	OptionDocs          int `json:"optionDocs,omitempty"`
 	DictionaryBytes     int `json:"dictionaryBytes,omitempty"`
 	IndexBytes          int `json:"indexBytes,omitempty"`
 	// OrphanUsedKeys are referenced property keys with no definition
@@ -409,7 +409,7 @@ func processSpace(ctx context.Context, mw *core.Middleware, store objectstore.Ob
 	fmt.Printf("   %d objects, %d passed, %d failed\n", ss.Total, ss.Passed, ss.Failed)
 	if dumpJSON {
 		fmt.Printf("   dictionary: %d installed, %d entries; manifest: %d types, %d options; omitted %d relation docs (%d bytes)\n",
-			ss.DictionaryInstalled, ss.DictionaryEntries, ss.ManifestTypes, ss.ManifestOptions,
+			ss.DictionaryInstalled, ss.DictionaryEntries, ss.ManifestTypes, ss.OptionDocs,
 			ss.OmittedRelationDocs, ss.OmittedBytes)
 	}
 
@@ -998,7 +998,6 @@ func (c *spaceComposer) finish(ss *spaceSummary) error {
 	idx.Name = firstNonEmpty(c.index.Name, c.spaceName)
 	idx.Manifest = &anyblockjson.Manifest{
 		Types:      relPaths(root, c.typePaths),
-		Options:    relPaths(root, c.optionPaths),
 		Properties: anyblockjson.PropertiesFileName,
 	}
 	idxData, err := anyblockjson.MarshalIndex(&idx)
@@ -1017,7 +1016,7 @@ func (c *spaceComposer) finish(ss *spaceSummary) error {
 	ss.DictionaryInstalled = len(dict.Installed)
 	ss.DictionaryEntries = len(dict.Properties)
 	ss.ManifestTypes = len(c.typePaths)
-	ss.ManifestOptions = len(c.optionPaths)
+	ss.OptionDocs = len(c.optionPaths)
 	ss.DictionaryBytes = len(dictData)
 	ss.IndexBytes = len(idxData)
 	ss.OrphanUsedKeys = orphans

@@ -1,8 +1,8 @@
 package anyblockjson
 
 // manifest_test.go pins the §2c index manifest: the one place a reader can
-// find a type by stored key or an option by id without a folder convention
-// — which the spec has never defined — and without scanning.
+// find a type by stored key without a folder convention — which the spec has
+// never defined — and without scanning.
 
 import (
 	"testing"
@@ -25,7 +25,6 @@ func TestIndex_ManifestRoundTrip(t *testing.T) {
 		Name: "Corpus",
 		Manifest: &Manifest{
 			Types:      map[string]string{"task": "types/bafytask.anyblock.json", "page": "types/bafypage.anyblock.json"},
-			Options:    map[string]string{"bafyopt1": "relationsOptions/bafyopt1.anyblock.json"},
 			Properties: PropertiesFileName,
 		},
 	}
@@ -42,7 +41,6 @@ func TestIndex_ManifestRoundTrip(t *testing.T) {
 	assert.Equal(t, string(data), string(data2), "Marshal ∘ Unmarshal must be byte-stable")
 	require.NotNil(t, got.Manifest)
 	assert.Equal(t, in.Manifest.Types, got.Manifest.Types)
-	assert.Equal(t, in.Manifest.Options, got.Manifest.Options)
 	assert.Equal(t, PropertiesFileName, got.Manifest.Properties)
 
 	// an empty manifest is not written at all
@@ -71,5 +69,48 @@ func TestIndex_ManifestRefusals(t *testing.T) {
 	t.Run("an empty path is refused", func(t *testing.T) {
 		_, err := UnmarshalIndex([]byte(`{"version":1,"manifest":{"properties":""}}`))
 		require.Error(t, err)
+	})
+}
+
+// The manifest located options until v0.46: 2,641 entries across a 77-space
+// export, option object id → the option document's path.
+//
+// It went because a manifest answers a lookup a reader would otherwise scan
+// for, and no reader has that lookup for an option. The dictionary states a
+// property's whole vocabulary inline — every option's name, colour, position
+// and, since the vocabulary learned `internal_key`, its stored key — so
+// everything an option MEANS is in hand before a single document is opened.
+// The entries pointed at documents nothing needed to read.
+//
+// `option_ids` is a different job and is untouched: it carries option OBJECT
+// ids, resolved against the IMPORTING space's live store so a value survives
+// a rename (§9a), never against the bundle. It never needed a path beside it.
+//
+// How this can fail: keep writing the member and every index carries a map
+// no reader consults; refuse it instead of ignoring it and a bundle written
+// last week stops importing.
+func TestIndex_ManifestDoesNotLocateOptions(t *testing.T) {
+	t.Run("export never writes it", func(t *testing.T) {
+		data, err := MarshalIndex(&Index{
+			Name:     "Corpus",
+			Manifest: &Manifest{Types: map[string]string{"task": "types/t.anyblock.json"}, Properties: PropertiesFileName},
+		})
+		require.NoError(t, err)
+		assert.NotContains(t, string(data), `"options"`)
+		assert.Contains(t, string(data), `"types"`, "the lookup a reader DOES have stays")
+	})
+
+	// A bundle written before v0.46 is REFUSED rather than quietly ignored,
+	// which is the opposite of the accept-and-drop rule stale PROPERTIES get
+	// (§3). The manifest is closed — `additionalProperties: false` — and the
+	// closure is the point: a manifest names where things are, so a member
+	// the reader does not understand is a claim it cannot honour. Silently
+	// ignoring it would leave an author believing their options are located.
+	// Nothing has shipped on v0.45, so nothing is stranded.
+	t.Run("a bundle that still carries it is refused, not silently misread", func(t *testing.T) {
+		_, err := UnmarshalIndex([]byte(`{"version":1,"manifest":{
+			"options":{"bafyopt1":"relationsOptions/bafyopt1.anyblock.json"}}}`))
+		require.Error(t, err, "the manifest is closed (additionalProperties: false)")
+		assert.Contains(t, err.Error(), "options")
 	})
 }

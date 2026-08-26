@@ -271,24 +271,36 @@ type Widget struct {
 	Properties []string `json:"properties"`
 }
 
-// Manifest says where to find what a reader must resolve by key or id
-// rather than by walking (§2c): the format defines no folder layout, and an
-// object names its type by spelling alone, so without one a reader resolves
-// a type by scanning every document for a matching key. Types are keyed by
-// STORED type key and options by option object id — the two spellings that
-// survive a rename — and Properties points at the dictionary (§2f), which
-// answers for stored property keys the same way. Paths are relative to the
-// index file.
+// Manifest says where to find what a reader must resolve by key rather than
+// by walking (§2c): the format defines no folder layout, and an object names
+// its type by spelling alone, so without one a reader resolves a type by
+// scanning every document for a matching key. Types are keyed by STORED type
+// key — the spelling that survives a rename — and Properties points at the
+// dictionary (§2f), which answers for stored property keys the same way.
+// Paths are relative to the index file.
+//
+// It does NOT locate options, and that is deliberate (v0.46). A manifest
+// exists to answer a lookup a reader would otherwise have to scan for, and
+// no reader has that lookup for an option: the dictionary states a
+// property's whole vocabulary inline — each option's name, colour, position
+// and, since the vocabulary learned `internal_key`, its stored key — so
+// everything an option MEANS is already in hand before any document is
+// opened. The map was 2,641 entries pointing at documents nothing needed to
+// read.
+//
+// The `option_ids` legend keeps carrying option OBJECT ids, which is a
+// different job and unaffected: those are resolved against the importing
+// space's live store to survive a rename (§9a), never against the bundle, so
+// they never needed a path beside them.
 type Manifest struct {
 	Types      map[string]string `json:"types"`
-	Options    map[string]string `json:"options"`
 	Properties string            `json:"properties"`
 }
 
 // empty reports whether the manifest locates nothing — the shape setNonEmpty
 // cannot judge for a struct.
 func (m *Manifest) empty() bool {
-	return m == nil || (len(m.Types) == 0 && len(m.Options) == 0 && m.Properties == "")
+	return m == nil || (len(m.Types) == 0 && m.Properties == "")
 }
 
 // Index is a bundle's index.json (§2c).
@@ -637,7 +649,6 @@ func MarshalIndex(idx *Index) ([]byte, error) {
 		// `relationOption` and `spaceView` — 308 camelCase keys across 77
 		// bundles — while the documents beside it said `chat_derived`.
 		m.setNonEmpty("types", sortedStringOmap(reKeyed(idx.Manifest.Types, TypeKeySpelling)))
-		m.setNonEmpty("options", sortedStringOmap(idx.Manifest.Options))
 		m.setNonEmpty("properties", idx.Manifest.Properties)
 		doc.setNonEmpty("manifest", m)
 	}
