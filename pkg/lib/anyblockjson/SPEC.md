@@ -5909,6 +5909,14 @@ pkg/lib/anyblockjson/
                                display names, and the one that applies the
                                §3 label rule to them
   snapshotdiff/              — snapshot ↔ snapshot diffing for the PATCH path
+  compose/                   — the bundle-level composition (§2c, §2f): the
+                               path plan, the concurrent-emit composer that
+                               accumulates the dictionary, manifest and
+                               index lift, and the used-key census — shared
+                               by the production exporter
+                               (core/block/export/anyblock) and the cmd
+                               tools, so the sweep exercises the shipping
+                               composition rather than a private copy
   filterstring/              — compact filter string parser (§6.2.1):
                                string → §6.2 filter tree, offset-addressed
                                errors (planned with API v2 Phase 4; the
