@@ -5,13 +5,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
-	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 // The document body is an input channel like any other (review cause 1):
@@ -47,52 +43,33 @@ func TestV2TypeDocumentForgery(t *testing.T) {
 		}
 	})
 
-	t.Run("a document-supplied apiObjectKey is dropped, never trusted", func(t *testing.T) {
-		// the slug is derived from the key/name and union-checked; a
-		// document-supplied value would bypass the check ("object_type"
-		// would shadow the bundled type slug)
-		fx := newV2Fixture(t)
-		var captured *pb.RpcObjectCreateObjectTypeRequest
-		fx.mwMock.EXPECT().ObjectCreateObjectType(mock.Anything, mock.Anything).
-			RunAndReturn(func(ctx context.Context, req *pb.RpcObjectCreateObjectTypeRequest) *pb.RpcObjectCreateObjectTypeResponse {
-				captured = req
-				return &pb.RpcObjectCreateObjectTypeResponse{
-					ObjectId: "type-clean",
-					Error:    &pb.RpcObjectCreateObjectTypeResponseError{Code: pb.RpcObjectCreateObjectTypeResponseError_NULL},
-				}
-			})
-		fx.expectEtagRead("type-clean")
+	t.Run("a document-supplied apiObjectKey is refused, never trusted", func(t *testing.T) {
+		// the slug is derived from the api_key/name and union-checked; a
+		// document-supplied value would bypass that check ("object_type"
+		// would shadow the bundled type slug).
+		//
+		// §2a closed this one layer earlier and harder than the API's own
+		// drop did: apiObjectKey is a type_settings member now, so the
+		// format REFUSES it in `properties` instead of the create silently
+		// dropping it. The invariant is unchanged — a forged slug never
+		// reaches the mint — so this asserts the refusal rather than the
+		// value that used to survive it. No create expectation: reaching the
+		// RPC at all fails the test.
+		for _, body := range []string{
+			`{"kind":"object_type","properties":{"name":"Clean","apiObjectKey":"object_type"},"type_settings":{"api_key":"cleantype"}}`,
+			// the sharp case: no api_key, and a name that slugs to nothing,
+			// so the forged value would have been the ONLY apiObjectKey
+			`{"kind":"object_type","properties":{"name":"☕","apiObjectKey":"object_type"}}`,
+		} {
+			fx := newV2Fixture(t)
+			_, err := fx.CreateType(context.Background(), testSpaceId, []byte(body), false)
 
-		// when
-		_, err := fx.CreateType(context.Background(), testSpaceId,
-			[]byte(`{"kind":"object_type","properties":{"name":"Clean","apiObjectKey":"object_type"},"type_settings":{"api_key":"cleantype"}}`), false)
-
-		// then: the checked slug wins; the forged one is gone
-		require.NoError(t, err)
-		require.NotNil(t, captured)
-		assert.Equal(t, "cleantype", pbtypes.GetString(captured.Details, bundle.RelationKeyApiObjectKey.String()))
-
-		// the sharp case: no key, a name that slugs to nothing — before the
-		// drop, the forged value was the ONLY apiObjectKey and it landed
-		// unchecked on the bundled slug
-		captured = nil
-		fx2 := newV2Fixture(t)
-		fx2.mwMock.EXPECT().ObjectCreateObjectType(mock.Anything, mock.Anything).
-			RunAndReturn(func(ctx context.Context, req *pb.RpcObjectCreateObjectTypeRequest) *pb.RpcObjectCreateObjectTypeResponse {
-				captured = req
-				return &pb.RpcObjectCreateObjectTypeResponse{
-					ObjectId: "type-clean2",
-					Error:    &pb.RpcObjectCreateObjectTypeResponseError{Code: pb.RpcObjectCreateObjectTypeResponseError_NULL},
-				}
-			})
-		fx2.expectEtagRead("type-clean2")
-		_, err = fx2.CreateType(context.Background(), testSpaceId,
-			[]byte(`{"kind":"object_type","properties":{"name":"☕","apiObjectKey":"object_type"}}`), false)
-		require.NoError(t, err)
-		require.NotNil(t, captured)
-		assert.Empty(t, pbtypes.GetString(captured.Details, bundle.RelationKeyApiObjectKey.String()))
+			apiErr := v2ErrWithIssue(t, err)
+			require.NotEmpty(t, apiErr.Issues)
+			assert.Equal(t, "/properties/apiObjectKey", apiErr.Issues[0].Path)
+			assert.Contains(t, apiErr.Issues[0].Message, "type_settings")
+		}
 	})
-
 	t.Run("an object document must not carry an envelope key", func(t *testing.T) {
 		// the same forgery through the second channel: doc.Key becomes
 		// snapshot.Key becomes uniqueKeyInternal becomes DeriveTreeObject

@@ -871,15 +871,22 @@ func TestV2TypePropertiesCorpseEchoResolvesToItsHolder(t *testing.T) {
 			// then — served under the stored BSON key, with the corpse's name
 			require.NoError(t, err)
 			var doc struct {
-				TypeProperties []struct {
-					Key  string `json:"key"`
-					Name string `json:"name"`
-				} `json:"type_properties"`
+				TypeSettings struct {
+					PropertyDefinitions []struct {
+						Property    string `json:"property"`
+						InternalKey string `json:"internal_key"`
+						Name        string `json:"name"`
+					} `json:"property_definitions"`
+				} `json:"type_settings"`
 			}
 			require.NoError(t, json.Unmarshal(body, &doc))
-			require.Len(t, doc.TypeProperties, 1)
-			assert.Equal(t, corpseBsonKey, doc.TypeProperties[0].Key)
-			assert.Equal(t, "Warranty until", doc.TypeProperties[0].Name)
+			defs := doc.TypeSettings.PropertyDefinitions
+			require.Len(t, defs, 1)
+			// §2e: the entry names the property by its document-facing
+			// spelling, and carries the stored key beside it — a BSON-keyed
+			// corpse has no slug, so both land on the stored key
+			assert.Equal(t, corpseBsonKey, defs[0].Property)
+			assert.Equal(t, "Warranty until", defs[0].Name)
 		})
 	})
 
@@ -1236,7 +1243,7 @@ func TestV2TypePropertiesRefusesRemovedBundledKey(t *testing.T) {
 			fx.addRemovedBundledProperty(t, shape)
 
 			_, err := fx.CreateType(ctx, testSpaceId,
-				[]byte(`{"key":"gadget","properties":{"name":"Gadget"},"type_settings":{"property_definitions":[{"property":"due_date","format":"date"}]}}`), false)
+				[]byte(`{"properties":{"name":"Gadget"},"type_settings":{"api_key":"gadget","property_definitions":[{"property":"due_date","format":"date"}]}}`), false)
 
 			apiErr := v2Err(t, err)
 			assert.Equal(t, http.StatusBadRequest, apiErr.Status)
