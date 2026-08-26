@@ -61,13 +61,7 @@ func TestV2CreateType(t *testing.T) {
 		fx.expectEtagRead("type-workout")
 
 		// when
-		result, err := fx.CreateType(context.Background(), testSpaceId, []byte(`{
-			"kind":"object_type","key":"workout",
-			"properties":{"name":"Workout","recommendedLayout":"todo"},
-			"type_properties":[
-				{"property":"severity","section":"featured"},
-				{"property":"spiciness","name":"Spiciness","format":"number"}
-			]}`), false)
+		result, err := fx.CreateType(context.Background(), testSpaceId, []byte(`{"kind":"object_type","properties":{"name":"Workout"},"type_settings":{"api_key":"workout","property_definitions":[{"property":"severity","section":"featured"},{"property":"spiciness","name":"Spiciness","format":"number"}],"layout":"todo"}}`), false)
 
 		// then
 		require.NoError(t, err)
@@ -129,9 +123,7 @@ func TestV2CreateType(t *testing.T) {
 		fx.expectEtagRead("type-workout")
 
 		// when
-		_, err := fx.CreateType(context.Background(), testSpaceId, []byte(`{
-			"kind":"object_type","key":"workout",
-			"type_properties":[{"property":"severity","section":"featured"}]}`), false)
+		_, err := fx.CreateType(context.Background(), testSpaceId, []byte(`{"kind":"object_type","type_settings":{"api_key":"workout","property_definitions":[{"property":"severity","section":"featured"}]}}`), false)
 
 		// then
 		require.NoError(t, err)
@@ -148,9 +140,7 @@ func TestV2CreateType(t *testing.T) {
 		fx := newV2Fixture(t)
 
 		// when
-		result, err := fx.CreateType(context.Background(), testSpaceId, []byte(`{
-			"kind":"object_type","key":"workout",
-			"type_properties":[{"property":"spiciness","format":"number"}]}`), true)
+		result, err := fx.CreateType(context.Background(), testSpaceId, []byte(`{"kind":"object_type","type_settings":{"api_key":"workout","property_definitions":[{"property":"spiciness","format":"number"}]}}`), true)
 
 		// then
 		require.NoError(t, err)
@@ -167,10 +157,7 @@ func TestV2CreateType(t *testing.T) {
 		// field. Dry run: no RPC expectations, any call fails the test.
 		fx := newV2Fixture(t)
 
-		result, err := fx.CreateType(context.Background(), testSpaceId, []byte(`{
-			"kind":"object_type","key":"workout","etag":"abcd1234",
-			"warnings":[{"message":"from the read"}],
-			"type_properties":[{"property":"spiciness","format":"number"}]}`), true)
+		result, err := fx.CreateType(context.Background(), testSpaceId, []byte(`{"kind":"object_type","etag":"abcd1234","warnings":[{"message":"from the read"}],"type_settings":{"api_key":"workout","property_definitions":[{"property":"spiciness","format":"number"}]}}`), true)
 
 		require.NoError(t, err, "a GET-type body must create without hand-stripping envelope fields")
 		assert.True(t, result.DryRun)
@@ -179,9 +166,7 @@ func TestV2CreateType(t *testing.T) {
 	t.Run("a ?block= subtree read is refused by name, not as an unknown field", func(t *testing.T) {
 		fx := newV2Fixture(t)
 
-		_, err := fx.CreateType(context.Background(), testSpaceId, []byte(`{
-			"kind":"object_type","key":"workout","subtree":true,
-			"type_properties":[{"property":"spiciness","format":"number"}]}`), true)
+		_, err := fx.CreateType(context.Background(), testSpaceId, []byte(`{"kind":"object_type","subtree":true,"type_settings":{"api_key":"workout","property_definitions":[{"property":"spiciness","format":"number"}]}}`), true)
 
 		apiErr := v2Err(t, err)
 		require.NotEmpty(t, apiErr.Issues)
@@ -195,7 +180,7 @@ func TestV2CreateType(t *testing.T) {
 
 		// when
 		_, err := fx.CreateType(context.Background(), testSpaceId,
-			[]byte(`{"kind":"object_type","key":"task"}`), false)
+			[]byte(`{"kind":"object_type","type_settings":{"api_key":"task"}}`), false)
 
 		// then
 		apiErr := v2Err(t, err)
@@ -212,7 +197,7 @@ func TestV2CreateType(t *testing.T) {
 
 		// when
 		_, err := fx.CreateType(context.Background(), testSpaceId,
-			[]byte(`{"kind":"object_type","key":"chore"}`), false)
+			[]byte(`{"kind":"object_type","type_settings":{"api_key":"chore"}}`), false)
 
 		// then
 		apiErr := v2Err(t, err)
@@ -226,7 +211,7 @@ func TestV2CreateType(t *testing.T) {
 
 		// when
 		_, err := fx.CreateType(context.Background(), testSpaceId,
-			[]byte(`{"kind":"object_type","key":"workout","blocks":[{"type":"dataview"}]}`), false)
+			[]byte(`{"kind":"object_type","blocks":[{"type":"dataview"}],"type_settings":{"api_key":"workout"}}`), false)
 
 		// then
 		apiErr := v2Err(t, err)
@@ -278,7 +263,7 @@ func TestV2UpdateType(t *testing.T) {
 		// when
 		result, err := fx.UpdateType(context.Background(), testSpaceId, "chore", []byte(`{
 			"properties":{"name":"Chores"},
-			"type_properties":[{"property":"severity","section":"featured"}]}`), false)
+			"type_settings":{"property_definitions":[{"property":"severity","section":"featured"}]}}`), false)
 
 		// then
 		require.NoError(t, err)

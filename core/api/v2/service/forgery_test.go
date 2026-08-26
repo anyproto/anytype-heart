@@ -27,7 +27,7 @@ func TestV2TypeDocumentForgery(t *testing.T) {
 
 		// when
 		_, err := fx.CreateType(context.Background(), testSpaceId,
-			[]byte(`{"kind":"object_type","key":"forged","properties":{"name":"Forged","uniqueKey":"ot-page"}}`), false)
+			[]byte(`{"kind":"object_type","properties":{"name":"Forged","uniqueKey":"ot-page"},"type_settings":{"api_key":"forged"}}`), false)
 
 		// then
 		apiErr := v2ErrWithIssue(t, err)
@@ -65,7 +65,7 @@ func TestV2TypeDocumentForgery(t *testing.T) {
 
 		// when
 		_, err := fx.CreateType(context.Background(), testSpaceId,
-			[]byte(`{"kind":"object_type","key":"cleantype","properties":{"name":"Clean","apiObjectKey":"object_type"}}`), false)
+			[]byte(`{"kind":"object_type","properties":{"name":"Clean","apiObjectKey":"object_type"},"type_settings":{"api_key":"cleantype"}}`), false)
 
 		// then: the checked slug wins; the forged one is gone
 		require.NoError(t, err)

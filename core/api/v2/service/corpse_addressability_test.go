@@ -907,7 +907,7 @@ func TestV2TypePropertiesCorpseEchoResolvesToItsHolder(t *testing.T) {
 
 			// when — exactly the typeProperties GET just served
 			result, err := fx.UpdateType(context.Background(), testSpaceId, "livetype",
-				[]byte(`{"type_properties":[{"property":"`+corpseBsonKey+`","name":"Warranty until","format":"text"}]}`), false)
+				[]byte(`{"type_settings":{"property_definitions":[{"property":"`+corpseBsonKey+`","name":"Warranty until","format":"text"}]}}`), false)
 
 			// then — nothing is minted and the list still points at the very
 			// relation object the GET resolved it from: a round-trip identity
@@ -943,7 +943,7 @@ func TestV2TypePropertiesCorpseEchoResolvesToItsHolder(t *testing.T) {
 				Error: &pb.RpcObjectSetDetailsResponseError{Code: pb.RpcObjectSetDetailsResponseError_NULL}}).Maybe()
 
 			_, err := fx.UpdateType(context.Background(), testSpaceId, "livetype",
-				[]byte(`{"type_properties":[{"property":"`+corpseSlug+`","name":"Warranty until","format":"text"}]}`), false)
+				[]byte(`{"type_settings":{"property_definitions":[{"property":"`+corpseSlug+`","name":"Warranty until","format":"text"}]}}`), false)
 
 			require.NoError(t, err)
 			require.Len(t, minted, 1)
@@ -1236,7 +1236,7 @@ func TestV2TypePropertiesRefusesRemovedBundledKey(t *testing.T) {
 			fx.addRemovedBundledProperty(t, shape)
 
 			_, err := fx.CreateType(ctx, testSpaceId,
-				[]byte(`{"key":"gadget","properties":{"name":"Gadget"},"type_properties":[{"property":"due_date","format":"date"}]}`), false)
+				[]byte(`{"key":"gadget","properties":{"name":"Gadget"},"type_settings":{"property_definitions":[{"property":"due_date","format":"date"}]}}`), false)
 
 			apiErr := v2Err(t, err)
 			assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -1272,7 +1272,7 @@ func TestV2TypePropertiesRefusesRemovedBundledKey(t *testing.T) {
 			})
 
 			_, err := fx.UpdateType(ctx, testSpaceId, "livetype",
-				[]byte(`{"type_properties":[{"property":"tag"}]}`), false)
+				[]byte(`{"type_settings":{"property_definitions":[{"property":"tag"}]}}`), false)
 
 			apiErr := v2Err(t, err)
 			assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -1304,7 +1304,7 @@ func TestV2TypePropertiesRefusesRemovedBundledKey(t *testing.T) {
 
 			// when — the spelling the GET serves
 			result, err := fx.UpdateType(ctx, testSpaceId, "livetype",
-				[]byte(`{"type_properties":[{"property":"due_date","format":"date"}]}`), false)
+				[]byte(`{"type_settings":{"property_definitions":[{"property":"due_date","format":"date"}]}}`), false)
 
 			// then — the reference survives, nothing minted, nothing installed
 			require.NoError(t, err)

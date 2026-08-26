@@ -29,13 +29,41 @@ import (
 // docEnvelope is the light envelope decode used for referential validation
 // before Unmarshal runs (no side effects yet at that point).
 type docEnvelope struct {
-	Kind           string                     `json:"kind"`
-	Type           string                     `json:"type"`
-	TemplateFor    string                     `json:"template_for"`
-	Key            string                     `json:"key"`
-	Properties     map[string]json.RawMessage `json:"properties"`
-	TypeProperties json.RawMessage            `json:"type_properties"`
-	Items          []string                   `json:"items"`
+	Kind        string                     `json:"kind"`
+	Type        string                     `json:"type"`
+	TemplateFor string                     `json:"template_for"`
+	Properties  map[string]json.RawMessage `json:"properties"`
+	// TypeSettings is the §2a gated subtree of a TYPE document. The envelope
+	// `key` and the top-level `type_properties` array both moved in here —
+	// `key` as `api_key` (it was always the apiObjectKey slug) and the array
+	// as `property_definitions`. Only the two members this package's own
+	// logic reads are modelled: the rest reach the store through
+	// anyblockjson.Unmarshal and the snapshot, never through this struct.
+	TypeSettings *typeSettingsEnvelope `json:"type_settings"`
+	Items        []string              `json:"items"`
+}
+
+// typeSettingsEnvelope is the slice of §2a's type_settings the API's own
+// identity and validation layers read.
+type typeSettingsEnvelope struct {
+	ApiKey              string          `json:"api_key"`
+	PropertyDefinitions json.RawMessage `json:"property_definitions"`
+}
+
+// apiKey is the caller's proposed api slug, nil-safe.
+func (e docEnvelope) apiKey() string {
+	if e.TypeSettings == nil {
+		return ""
+	}
+	return e.TypeSettings.ApiKey
+}
+
+// propertyDefinitions is the §2a property-definition array, nil-safe.
+func (e docEnvelope) propertyDefinitions() json.RawMessage {
+	if e.TypeSettings == nil {
+		return nil
+	}
+	return e.TypeSettings.PropertyDefinitions
 }
 
 // v2ObjectShortcut is the R7 shortcut body: {type, name, properties,
@@ -416,14 +444,16 @@ func (s *Service) validateDocumentRefs(ctx context.Context, spaceId string, enve
 		return v2model.ValidationFailed("unsupported document kind",
 			v2model.Issue{Path: "/kind", Message: fmt.Sprintf("kind %q cannot be created through the API", envelope.Kind), Hint: "omit kind (page) or use type \"template\""})
 	}
-	// the envelope key is the derived-identity slot of TYPE documents; on an
-	// object document it would ride into snapshot.Key and DeriveTreeObject —
-	// forged deterministic identity through a channel no guard inspects
-	// (ADDRESSING §2.4). Reject, never strip: identity is nothing to drop
-	// silently.
-	if envelope.Key != "" {
-		return v2model.ValidationFailed("key is not accepted on an object document",
-			v2model.Issue{Path: "/key", Message: "key is the identity slot of type documents only", Hint: "remove key — objects are identified by their minted id"})
+	// §2a retired the envelope `key` outright — a type states its api slug as
+	// `type_settings.api_key`, and no other kind has an author-written
+	// identity slot at all. The forged-identity refusal this used to make
+	// (a `key` on an object document riding into snapshot.Key and
+	// DeriveTreeObject, ADDRESSING §2.4) is now the format's own: the member
+	// does not exist in the envelope, so validation refuses it before any
+	// snapshot is built.
+	if envelope.TypeSettings != nil {
+		return v2model.ValidationFailed("type_settings is not accepted on an object document",
+			v2model.Issue{Path: "/type_settings", Message: "type_settings defines a TYPE, not an object", Hint: fmt.Sprintf("create the type with POST /v2/spaces/%s/types", spaceId)})
 	}
 
 	if opts.requireTemplate {

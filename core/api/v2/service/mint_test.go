@@ -180,7 +180,7 @@ func TestV2TypeMintCollisionCheck(t *testing.T) {
 		fx := newV2Fixture(t)
 
 		_, err := fx.CreateType(context.Background(), testSpaceId,
-			[]byte(`{"kind":"object_type","key":"object_type","properties":{"name":"Shadow"}}`), false)
+			[]byte(`{"kind":"object_type","properties":{"name":"Shadow"},"type_settings":{"api_key":"object_type"}}`), false)
 
 		apiErr := v2ErrWithIssue(t, err)
 		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
@@ -211,7 +211,7 @@ func TestV2TypeMintCollisionCheck(t *testing.T) {
 
 		// when
 		result, err := fx.CreateType(context.Background(), testSpaceId,
-			[]byte(`{"kind":"object_type","key":"corpsetype","properties":{"name":"Recreated"}}`), false)
+			[]byte(`{"kind":"object_type","properties":{"name":"Recreated"},"type_settings":{"api_key":"corpsetype"}}`), false)
 
 		// then: a clean create with fresh BSON identity
 		require.NoError(t, err)
@@ -232,7 +232,7 @@ func TestV2TypeMintCollisionCheck(t *testing.T) {
 		})
 
 		_, err := fx.CreateType(context.Background(), testSpaceId,
-			[]byte(`{"kind":"object_type","key":"meetingNote","properties":{"name":"Meeting note 2"}}`), false)
+			[]byte(`{"kind":"object_type","properties":{"name":"Meeting note 2"},"type_settings":{"api_key":"meetingNote"}}`), false)
 
 		apiErr := v2ErrWithIssue(t, err)
 		require.NotEmpty(t, apiErr.Issues)
@@ -267,8 +267,7 @@ func TestV2PropertyIdResolutionChain(t *testing.T) {
 		// when: no ObjectCreateRelation expectation — a create RPC fails the
 		// mock, which is the point
 		result, err := fx.CreateType(context.Background(), testSpaceId,
-			[]byte(`{"kind":"object_type","key":"sprint","properties":{"name":"Sprint"},
-			"type_properties":[{"property":"priority_level","section":"featured"}]}`), false)
+			[]byte(`{"kind":"object_type","properties":{"name":"Sprint"},"type_settings":{"api_key":"sprint","property_definitions":[{"property":"priority_level","section":"featured"}]}}`), false)
 
 		// then
 		require.NoError(t, err)
@@ -301,8 +300,7 @@ func TestV2PropertyIdResolutionChain(t *testing.T) {
 
 		// when
 		_, err := fx.CreateType(context.Background(), testSpaceId,
-			[]byte(`{"kind":"object_type","key":"errand","properties":{"name":"Errand"},
-			"type_properties":[{"property":"due_date","section":"featured"}]}`), false)
+			[]byte(`{"kind":"object_type","properties":{"name":"Errand"},"type_settings":{"api_key":"errand","property_definitions":[{"property":"due_date","section":"featured"}]}}`), false)
 
 		// then
 		require.NoError(t, err)
@@ -327,8 +325,7 @@ func TestV2PropertyIdResolutionChain(t *testing.T) {
 
 		// when
 		_, err := fx.CreateType(context.Background(), testSpaceId,
-			[]byte(`{"kind":"object_type","key":"twinuser","properties":{"name":"Twin user"},
-			"type_properties":[{"property":"twin_key"}]}`), false)
+			[]byte(`{"kind":"object_type","properties":{"name":"Twin user"},"type_settings":{"api_key":"twinuser","property_definitions":[{"property":"twin_key"}]}}`), false)
 
 		// then
 		require.Error(t, err)
@@ -346,8 +343,7 @@ func TestV2PropertyIdResolutionChain(t *testing.T) {
 		fx.addSelectProperty(t) // "severity", format select
 
 		_, err := fx.CreateType(context.Background(), testSpaceId,
-			[]byte(`{"kind":"object_type","key":"incident","properties":{"name":"Incident"},
-			"type_properties":[{"property":"severity","format":"text"}]}`), false)
+			[]byte(`{"kind":"object_type","properties":{"name":"Incident"},"type_settings":{"api_key":"incident","property_definitions":[{"property":"severity","format":"text"}]}}`), false)
 
 		apiErr := v2ErrWithIssue(t, err)
 		require.NotEmpty(t, apiErr.Issues)
@@ -359,8 +355,7 @@ func TestV2PropertyIdResolutionChain(t *testing.T) {
 		fx := newV2Fixture(t)
 
 		_, err := fx.CreateType(context.Background(), testSpaceId,
-			[]byte(`{"kind":"object_type","key":"errand2","properties":{"name":"Errand 2"},
-			"type_properties":[{"property":"due_date","format":"text"}]}`), false)
+			[]byte(`{"kind":"object_type","properties":{"name":"Errand 2"},"type_settings":{"api_key":"errand2","property_definitions":[{"property":"due_date","format":"text"}]}}`), false)
 
 		apiErr := v2ErrWithIssue(t, err)
 		require.NotEmpty(t, apiErr.Issues)
@@ -379,8 +374,7 @@ func TestV2PropertyIdResolutionChain(t *testing.T) {
 		fx.expectEtagRead("type-ok")
 
 		_, err := fx.CreateType(context.Background(), testSpaceId,
-			[]byte(`{"kind":"object_type","key":"incident2","properties":{"name":"Incident 2"},
-			"type_properties":[{"property":"severity","format":"select"}]}`), false)
+			[]byte(`{"kind":"object_type","properties":{"name":"Incident 2"},"type_settings":{"api_key":"incident2","property_definitions":[{"property":"severity","format":"select"}]}}`), false)
 
 		require.NoError(t, err)
 	})
@@ -395,7 +389,7 @@ func TestV2PropertyIdResolutionChain(t *testing.T) {
 		})
 
 		_, err := fx.UpdateType(context.Background(), testSpaceId, "editable",
-			[]byte(`{"type_properties":[{"property":"severity","format":"number"}]}`), false)
+			[]byte(`{"type_settings":{"property_definitions":[{"property":"severity","format":"number"}]}}`), false)
 
 		apiErr := v2ErrWithIssue(t, err)
 		require.NotEmpty(t, apiErr.Issues)
@@ -422,8 +416,7 @@ func TestV2PropertyIdResolutionChain(t *testing.T) {
 
 		// when
 		result, err := fx.CreateType(context.Background(), testSpaceId,
-			[]byte(`{"kind":"object_type","key":"gadget","properties":{"name":"Gadget"},
-			"type_properties":[{"property":"warranty_until","name":"Warranty until","format":"date"}]}`), false)
+			[]byte(`{"kind":"object_type","properties":{"name":"Gadget"},"type_settings":{"api_key":"gadget","property_definitions":[{"property":"warranty_until","name":"Warranty until","format":"date"}]}}`), false)
 
 		// then
 		require.NoError(t, err)
@@ -521,7 +514,7 @@ func TestCreateReturnsTheStoredKeyNotTheProposal(t *testing.T) {
 
 		// when
 		result, err := fx.CreateType(context.Background(), testSpaceId,
-			[]byte(`{"kind":"object_type","key":"invoice","properties":{"name":"Invoice"}}`), false)
+			[]byte(`{"kind":"object_type","properties":{"name":"Invoice"},"type_settings":{"api_key":"invoice"}}`), false)
 
 		// then
 		require.NoError(t, err)

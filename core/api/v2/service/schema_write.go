@@ -104,8 +104,24 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 			v2model.Issue{Message: err.Error()})
 	}
 
+	// §2a retired two top-level members this endpoint used to take. The
+	// format refuses both, but its message is about property spelling —
+	// unactionable for someone who wrote `"key": "task"` meaning the type's
+	// api key. Name the move instead, once, before validation sees it.
+	for stale, repair := range map[string]string{
+		"key":             `"type_settings": {"api_key": "…"}`,
+		"type_properties": `"type_settings": {"property_definitions": […]}`,
+	} {
+		if _, ok := fields[stale]; ok {
+			return nil, v2model.ValidationFailed("the type document moved this member",
+				v2model.Issue{Path: "/" + stale,
+					Message: fmt.Sprintf("%q is no longer a top-level member of a type document (§2a)", stale),
+					Hint:    "state it as " + repair})
+		}
+	}
+
 	// the endpoint IS the kind: inject/enforce kind object_type and default
-	// the version so a bare {key, typeProperties} document works
+	// the version so a bare {type_settings} document works
 	if raw, ok := fields["kind"]; ok {
 		var kind string
 		if err := json.Unmarshal(raw, &kind); err != nil || kind != "object_type" {
@@ -146,22 +162,26 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 	// shadow the bundled type), live internal keys and live slugs — with
 	// corpses vacated (§8-OQ2), so delete-then-recreate mints cleanly.
 	var slug string
-	if envelope.Key != "" {
-		if err := validateV2FieldLength("/key", envelope.Key, maxV2KeyLength); err != nil {
+	// §2a moved the caller's proposed slug out of the envelope `key` and into
+	// `type_settings.api_key` — the same value under the name it always had
+	// in the store (apiObjectKey).
+	apiKey := envelope.apiKey()
+	keyPath := "/type_settings/api_key"
+	if apiKey != "" {
+		if err := validateV2FieldLength(keyPath, apiKey, maxV2KeyLength); err != nil {
 			return nil, err
 		}
-		if !v2PropertyKeyPattern.MatchString(envelope.Key) {
+		if !v2PropertyKeyPattern.MatchString(apiKey) {
 			return nil, v2model.ValidationFailed("invalid type key",
-				v2model.Issue{Path: "/key",
-					Message: fmt.Sprintf("key %q does not match the advertised pattern ^[a-zA-Z0-9_]+$", envelope.Key),
-					Hint:    "use letters, digits and underscores — or omit key to derive one from the name"})
+				v2model.Issue{Path: keyPath,
+					Message: fmt.Sprintf("key %q does not match the advertised pattern ^[a-zA-Z0-9_]+$", apiKey),
+					Hint:    "use letters, digits and underscores — or omit api_key to derive one from the name"})
 		}
-		slug = bundle.ApiSlug(envelope.Key)
+		slug = bundle.ApiSlug(apiKey)
 	}
 
-	keyPath := "/key"
 	if slug == "" {
-		// no explicit key: the slug derives from the document's name (the
+		// no explicit api_key: the slug derives from the document's name (the
 		// same transform objectcreator would apply, sanitized to the key
 		// grammar) — read from the ENVELOPE so the union check can run
 		// BEFORE the resolver creates anything
@@ -196,9 +216,9 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 
 	// the SPEC §2a format check, at the wiring and BEFORE anything is
 	// created (§7.5-requirement-4)
-	if len(envelope.TypeProperties) > 0 {
+	if len(envelope.propertyDefinitions()) > 0 {
 		var declared []anyblockjson.TypeProperty
-		if err := json.Unmarshal(envelope.TypeProperties, &declared); err == nil {
+		if err := json.Unmarshal(envelope.propertyDefinitions(), &declared); err == nil {
 			if err := s.validateTypePropertyFormats(spaceId, declared); err != nil {
 				return nil, err
 			}
@@ -226,7 +246,7 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 	if err != nil {
 		return nil, err
 	}
-	if len(envelope.TypeProperties) > 0 {
+	if len(envelope.propertyDefinitions()) > 0 {
 		ensureRegularRecommendedList(details, resolvers)
 		if err := resolvers.err(); err != nil {
 			return nil, fmt.Errorf("resolve default recommended properties: %w", err)
@@ -435,18 +455,49 @@ func storedDetailKey(key string) string {
 }
 
 // updatableTypeDetailKeys is the explicit PATCH surface for a type's own
-// properties; anything else is rejected (never silently dropped).
+// `properties`; anything else is rejected (never silently dropped). §2a and
+// §2b emptied this of everything but the two that are still ordinary
+// properties: the layout moved to type_settings.layout and the icon became
+// the typed envelope `icon`, and each is patched through the member it now
+// lives in rather than through a flat spelling this endpoint alone would
+// keep alive (C2 — a caller learns ONE vocabulary, and POST /types already
+// speaks this one).
 var updatableTypeDetailKeys = map[string]bool{
-	"name": true, "description": true, "iconEmoji": true, "recommendedLayout": true,
+	"name": true, "description": true,
+}
+
+// typeSettingsPatchKeys is the PATCH surface of the §2a type_settings
+// subtree, mapped to the stored detail key each member carries.
+var typeSettingsPatchKeys = map[string]string{
+	"layout":      "recommendedLayout",
+	"plural_name": "pluralName",
 }
 
 // v2TypePatch is the PATCH types/{type} body: partial type-document
-// semantics — properties updates the type's own details, typeProperties
-// (when present) rebuilds the recommended lists, creating missing properties
-// (SPEC §2a).
+// semantics — `properties` updates the type's own details, `type_settings`
+// updates the §2a settings subtree, and its `property_definitions` (when
+// present) rebuilds the recommended lists, creating missing properties.
 type v2TypePatch struct {
-	Properties     map[string]json.RawMessage   `json:"properties"`
-	TypeProperties *[]anyblockjson.TypeProperty `json:"type_properties"`
+	Properties   map[string]json.RawMessage `json:"properties"`
+	TypeSettings *v2TypeSettingsPatch       `json:"type_settings"`
+}
+
+// v2TypeSettingsPatch is the patchable slice of type_settings. api_key is
+// deliberately absent: the slug is identity, minted and union-checked at
+// create, and re-pointing it would silently break every URL that names the
+// type.
+type v2TypeSettingsPatch struct {
+	Layout              json.RawMessage              `json:"layout"`
+	PluralName          json.RawMessage              `json:"plural_name"`
+	PropertyDefinitions *[]anyblockjson.TypeProperty `json:"property_definitions"`
+}
+
+// propertyDefinitions is the patch's §2a definition array, nil-safe.
+func (p v2TypePatch) propertyDefinitions() *[]anyblockjson.TypeProperty {
+	if p.TypeSettings == nil {
+		return nil
+	}
+	return p.TypeSettings.PropertyDefinitions
 }
 
 // UpdateType implements PATCH /v2/spaces/{space_id}/types/{type}.
@@ -467,7 +518,7 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey string, body 
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&patch); err != nil {
 		return nil, v2model.ValidationFailed("invalid type patch",
-			v2model.Issue{Message: err.Error(), Hint: "the patch accepts properties and typeProperties"})
+			v2model.Issue{Message: err.Error(), Hint: "the patch accepts properties and type_settings"})
 	}
 
 	var detailUpdates []*model.Detail
@@ -489,30 +540,53 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey string, body 
 		spelledBy[key] = raw
 		if !updatableTypeDetailKeys[key] {
 			return nil, v2model.ValidationFailed("property not updatable on a type",
-				v2model.Issue{Path: "/properties/" + raw, Message: fmt.Sprintf("cannot update %q", raw), Hint: "updatable: name, description, icon_emoji, recommended_layout"})
+				v2model.Issue{Path: "/properties/" + raw, Message: fmt.Sprintf("cannot update %q", raw),
+					Hint: "properties takes name and description; the layout is type_settings.layout and the icon is the typed envelope icon (§2a, §2b)"})
 		}
 		// the map is keyed by the WIRE spelling — reading it back with the
 		// STORED one handed typeDetailValue a nil body for every key the two
 		// vocabularies spell differently, so icon_emoji and recommended_layout
 		// (the only two of the four that differ) 400'd on a value they carried
-		value, err := typeDetailValue(key, raw, patch.Properties[raw])
+		value, err := typeDetailValue(key, "/properties/"+raw, patch.Properties[raw])
 		if err != nil {
 			return nil, err
 		}
 		detailUpdates = append(detailUpdates, &model.Detail{Key: key, Value: value})
 	}
 
+	// the §2a settings subtree: each member maps to the stored detail key it
+	// was lifted from, and reuses typeDetailValue so `layout` accepts a
+	// layout NAME exactly as the create path does.
+	if patch.TypeSettings != nil {
+		for _, member := range sortedKeys(map[string]json.RawMessage{
+			"layout": patch.TypeSettings.Layout, "plural_name": patch.TypeSettings.PluralName,
+		}) {
+			raw := map[string]json.RawMessage{
+				"layout": patch.TypeSettings.Layout, "plural_name": patch.TypeSettings.PluralName,
+			}[member]
+			if len(raw) == 0 {
+				continue
+			}
+			key := typeSettingsPatchKeys[member]
+			value, err := typeDetailValue(key, "/type_settings/"+member, raw)
+			if err != nil {
+				return nil, err
+			}
+			detailUpdates = append(detailUpdates, &model.Detail{Key: key, Value: value})
+		}
+	}
+
 	resolvers := s.newCreatingResolvers(ctx, spaceId, dryRun)
-	if patch.TypeProperties != nil {
+	if defs := patch.propertyDefinitions(); defs != nil {
 		// the echo baseline (§8.41): entries this type ALREADY references
 		// resolve as identities even when their relation is removed — the
 		// GET/PATCH loop must not force-delete a reference the read served
 		resolvers.echoPropertyIds = s.recommendedRelationIds(spaceId, typeId)
 		// the SPEC §2a format check, before the resolver can create
-		if err := s.validateTypePropertyFormats(spaceId, *patch.TypeProperties); err != nil {
+		if err := s.validateTypePropertyFormats(spaceId, *defs); err != nil {
 			return nil, err
 		}
-		lists, err := anyblockjson.BuildRecommendedLists(*patch.TypeProperties, resolvers.Options())
+		lists, err := anyblockjson.BuildRecommendedLists(*defs, resolvers.Options())
 		if err != nil {
 			return nil, fmt.Errorf("build recommended lists: %w", err)
 		}
@@ -541,18 +615,19 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey string, body 
 	return result, nil
 }
 
-// typeDetailValue decodes one PATCH type property value. `key` is the stored
-// spelling the value is decoded FOR; `wire` is the caller's own spelling, and
-// every issue path uses it — an error naming a key the request never sent is
-// unactionable (the old paths said /properties/iconEmoji for icon_emoji).
-func typeDetailValue(key, wire string, raw json.RawMessage) (*types.Value, error) {
+// typeDetailValue decodes one PATCH type value. `key` is the stored spelling
+// the value is decoded FOR; `path` is the pointer INTO THE REQUEST the value
+// arrived at, and every issue uses it — an error naming a slot the request
+// never sent is unactionable (the old paths said /properties/iconEmoji for
+// icon_emoji, and would now say /properties/type_settings/layout).
+func typeDetailValue(key, path string, raw json.RawMessage) (*types.Value, error) {
 	if key == "recommendedLayout" {
 		var name string
 		if err := json.Unmarshal(raw, &name); err == nil {
 			layout, ok := model.ObjectTypeLayout_value[name]
 			if !ok {
 				return nil, v2model.ValidationFailed("unknown layout name",
-					v2model.Issue{Path: "/properties/" + wire, Message: fmt.Sprintf("unknown layout %q", name), Hint: "common layouts: basic, todo, note, profile"})
+					v2model.Issue{Path: path, Message: fmt.Sprintf("unknown layout %q", name), Hint: "common layouts: basic, todo, note, profile"})
 			}
 			return pbtypes.Int64(int64(layout)), nil
 		}
@@ -561,12 +636,12 @@ func typeDetailValue(key, wire string, raw json.RawMessage) (*types.Value, error
 			return pbtypes.Int64(number), nil
 		}
 		return nil, v2model.ValidationFailed("invalid recommendedLayout",
-			v2model.Issue{Path: "/properties/" + wire, Message: "expected a layout name or number"})
+			v2model.Issue{Path: path, Message: "expected a layout name or number"})
 	}
 	var str string
 	if err := json.Unmarshal(raw, &str); err != nil {
 		return nil, v2model.ValidationFailed("invalid property value",
-			v2model.Issue{Path: "/properties/" + wire, Message: "expected a string"})
+			v2model.Issue{Path: path, Message: "expected a string"})
 	}
 	return pbtypes.String(str), nil
 }

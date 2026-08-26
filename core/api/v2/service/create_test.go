@@ -428,7 +428,7 @@ func TestV2CreateObjectDocument(t *testing.T) {
 
 		// when
 		_, err := fx.CreateObject(context.Background(), testSpaceId,
-			[]byte(`{"version":1,"kind":"object_type","key":"thing","type_properties":[]}`), false)
+			[]byte(`{"version":1,"kind":"object_type","type_settings":{"api_key":"thing","property_definitions":[]}}`), false)
 
 		// then
 		apiErr := v2Err(t, err)
