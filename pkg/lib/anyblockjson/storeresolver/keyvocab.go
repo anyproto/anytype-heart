@@ -411,38 +411,60 @@ func (r *Resolvers) typeKeyMaps() *keyMaps {
 // silent-failure class §7.5a-2 forbids a cache from ever producing).
 func (r *Resolvers) loadKeyMaps(ns namespace) *keyMaps {
 	maps := newKeyMaps(ns)
+	// ONE listing, TWO populations. The uninstalled entity is excluded from
+	// the SLUG namespace and included in the id→key naming, and the two
+	// questions are genuinely different:
+	//
+	//   - "which entity owns the spelling `project`?" — a UI-deleted type
+	//     must vacate it, or a new type minted under the freed spelling is
+	//     shadowed by a corpse (§7.5 requirement 2). That policy is why this
+	//     listing filtered uninstalled entities out in the first place.
+	//
+	//   - "what does the id I am HOLDING point at?" — naming a corpse claims
+	//     nothing. The store never removes the type, so the answer exists;
+	//     refusing to look was what put raw object ids into `object_types`,
+	//     where the slot's vocabulary is type KEYS. Measured before this:
+	//     59 of 232 targets on property documents and 55 of 726 on
+	//     dictionary entries were unresolved object ids — and an object id
+	//     is worthless in a bundle anyway, because it differs in every space
+	//     while a key does not.
+	//
+	// The filter therefore moves off the query and onto the slug half.
 	records, err := r.index.Query(database.Query{Filters: []database.FilterRequest{
 		{
 			RelationKey: bundle.RelationKeyResolvedLayout,
 			Condition:   model.BlockContentDataviewFilter_Equal,
 			Value:       domain.Int64(int64(ns.layout)),
 		},
-		{
-			// the §7.5-requirement-2 corpse policy: a UI-deleted entity
-			// vacates the slug namespace here as everywhere else
-			RelationKey: bundle.RelationKeyIsUninstalled,
-			Condition:   model.BlockContentDataviewFilter_NotEqual,
-			Value:       domain.Bool(true),
-		},
 	}})
 	if err != nil {
 		return maps
 	}
 	rows := make([]entity, 0, len(records))
-	for _, record := range records {
-		key := ns.keyOf(record.Details)
-		rows = append(rows, entity{
-			key:    key,
-			slug:   record.Details.GetString(bundle.RelationKeyApiObjectKey),
-			name:   record.Details.GetString(bundle.RelationKeyName),
-			hidden: record.Details.GetBool(bundle.RelationKeyIsHidden),
-		})
-		if id := record.Details.GetString(bundle.RelationKeyId); id != "" && key != "" {
-			if _, taken := maps.keyById[id]; !taken {
-				maps.keyById[id] = key
+	// live entities first, so that where a freed spelling HAS been retaken
+	// the living owner claims id↔key before any corpse sharing its key
+	for _, pass := range []bool{false, true} {
+		for _, record := range records {
+			uninstalled := record.Details.GetBool(bundle.RelationKeyIsUninstalled)
+			if uninstalled != pass {
+				continue
 			}
-			if _, taken := maps.idByKey[key]; !taken {
-				maps.idByKey[key] = id
+			key := ns.keyOf(record.Details)
+			if !uninstalled {
+				rows = append(rows, entity{
+					key:    key,
+					slug:   record.Details.GetString(bundle.RelationKeyApiObjectKey),
+					name:   record.Details.GetString(bundle.RelationKeyName),
+					hidden: record.Details.GetBool(bundle.RelationKeyIsHidden),
+				})
+			}
+			if id := record.Details.GetString(bundle.RelationKeyId); id != "" && key != "" {
+				if _, taken := maps.keyById[id]; !taken {
+					maps.keyById[id] = key
+				}
+				if _, taken := maps.idByKey[key]; !taken {
+					maps.idByKey[key] = id
+				}
 			}
 		}
 	}

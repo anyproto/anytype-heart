@@ -902,3 +902,47 @@ func TestNameDerivedLabels(t *testing.T) {
 		assert.Equal(t, bsonPropKey, r.PropertySlug(bsonPropKey))
 	})
 }
+
+// A UI-deleted entity vacates the SLUG namespace and still answers to its ID.
+// The two are different questions and the listing now serves both:
+//
+//   - "who owns the spelling `project`?" — a corpse must not, or a type
+//     minted under the freed spelling is shadowed by something no listing
+//     shows (§7.5 requirement 2).
+//   - "what does this id point at?" — naming a corpse claims nothing, and the
+//     store never removes the type, so the answer exists.
+//
+// Refusing the second question is what put raw object ids into
+// `object_types`, whose vocabulary is type KEYS: 59 of 232 targets on
+// property documents and 55 of 726 on dictionary entries were unresolved ids.
+// An object id is worthless in a bundle anyway — it differs in every space,
+// while a key does not.
+//
+// How this can fail: filter the corpse out of the query again and TypeKeyById
+// goes back to answering "" for a deleted type; let it into the slug half and
+// the live holder loses its spelling to something invisible.
+func TestKeyVocab_ADeletedTypeIsNamedByIdButOwnsNoSlug(t *testing.T) {
+	corpse := typeRow("type-corpse", "retired_project", "project")
+	corpse[bundle.RelationKeyIsUninstalled] = domain.Bool(true)
+
+	t.Run("its id resolves to its key", func(t *testing.T) {
+		r := vocabFixture(t, corpse)
+		key, ok := r.TypeKeyById("type-corpse")
+		require.True(t, ok, "the store still holds the type; naming it claims nothing")
+		assert.Equal(t, "retired_project", key)
+	})
+
+	// The corpse must not be reachable BY SPELLING — that is the half the
+	// query filter used to enforce, and the half that still must hold.
+	t.Run("but it is unreachable by spelling", func(t *testing.T) {
+		r := vocabFixture(t, corpse)
+
+		key, ok := r.TypeKey("project")
+		assert.Falsef(t, ok && key == "retired_project",
+			"the corpse claimed the spelling it vacated (got %q, ok=%v)", key, ok)
+
+		byId, ok := r.TypeKeyById("type-corpse")
+		require.True(t, ok)
+		assert.Equal(t, "retired_project", byId, "while still being nameable by id")
+	})
+}
