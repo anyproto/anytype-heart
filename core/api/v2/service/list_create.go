@@ -463,7 +463,13 @@ func (s *Service) dataviewProperties(spaceId string, referenced []viewKeyRef) []
 				format = name
 			}
 		}
-		out = append(out, map[string]string{"key": key, "format": format})
+		// §2e: a dataview property entry names its property by the
+		// document-facing SPELLING under `property` (the member `key` used to
+		// mean both this and the stored id, and the split gave each its own
+		// name). The entry has no stored-key member at all —
+		// `dataviewProperty` is {property, format}, additionalProperties
+		// false — and the §3 chain resolves an exact stored key here anyway.
+		out = append(out, map[string]string{"property": key, "format": format})
 	}
 	return out
 }

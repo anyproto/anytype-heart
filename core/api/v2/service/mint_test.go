@@ -268,7 +268,7 @@ func TestV2PropertyIdResolutionChain(t *testing.T) {
 		// mock, which is the point
 		result, err := fx.CreateType(context.Background(), testSpaceId,
 			[]byte(`{"kind":"object_type","key":"sprint","properties":{"name":"Sprint"},
-			"type_properties":[{"key":"priority_level","section":"featured"}]}`), false)
+			"type_properties":[{"property":"priority_level","section":"featured"}]}`), false)
 
 		// then
 		require.NoError(t, err)
@@ -302,7 +302,7 @@ func TestV2PropertyIdResolutionChain(t *testing.T) {
 		// when
 		_, err := fx.CreateType(context.Background(), testSpaceId,
 			[]byte(`{"kind":"object_type","key":"errand","properties":{"name":"Errand"},
-			"type_properties":[{"key":"due_date","section":"featured"}]}`), false)
+			"type_properties":[{"property":"due_date","section":"featured"}]}`), false)
 
 		// then
 		require.NoError(t, err)
@@ -328,7 +328,7 @@ func TestV2PropertyIdResolutionChain(t *testing.T) {
 		// when
 		_, err := fx.CreateType(context.Background(), testSpaceId,
 			[]byte(`{"kind":"object_type","key":"twinuser","properties":{"name":"Twin user"},
-			"type_properties":[{"key":"twin_key"}]}`), false)
+			"type_properties":[{"property":"twin_key"}]}`), false)
 
 		// then
 		require.Error(t, err)
@@ -347,7 +347,7 @@ func TestV2PropertyIdResolutionChain(t *testing.T) {
 
 		_, err := fx.CreateType(context.Background(), testSpaceId,
 			[]byte(`{"kind":"object_type","key":"incident","properties":{"name":"Incident"},
-			"type_properties":[{"key":"severity","format":"text"}]}`), false)
+			"type_properties":[{"property":"severity","format":"text"}]}`), false)
 
 		apiErr := v2ErrWithIssue(t, err)
 		require.NotEmpty(t, apiErr.Issues)
@@ -360,7 +360,7 @@ func TestV2PropertyIdResolutionChain(t *testing.T) {
 
 		_, err := fx.CreateType(context.Background(), testSpaceId,
 			[]byte(`{"kind":"object_type","key":"errand2","properties":{"name":"Errand 2"},
-			"type_properties":[{"key":"due_date","format":"text"}]}`), false)
+			"type_properties":[{"property":"due_date","format":"text"}]}`), false)
 
 		apiErr := v2ErrWithIssue(t, err)
 		require.NotEmpty(t, apiErr.Issues)
@@ -380,7 +380,7 @@ func TestV2PropertyIdResolutionChain(t *testing.T) {
 
 		_, err := fx.CreateType(context.Background(), testSpaceId,
 			[]byte(`{"kind":"object_type","key":"incident2","properties":{"name":"Incident 2"},
-			"type_properties":[{"key":"severity","format":"select"}]}`), false)
+			"type_properties":[{"property":"severity","format":"select"}]}`), false)
 
 		require.NoError(t, err)
 	})
@@ -395,7 +395,7 @@ func TestV2PropertyIdResolutionChain(t *testing.T) {
 		})
 
 		_, err := fx.UpdateType(context.Background(), testSpaceId, "editable",
-			[]byte(`{"type_properties":[{"key":"severity","format":"number"}]}`), false)
+			[]byte(`{"type_properties":[{"property":"severity","format":"number"}]}`), false)
 
 		apiErr := v2ErrWithIssue(t, err)
 		require.NotEmpty(t, apiErr.Issues)
@@ -423,7 +423,7 @@ func TestV2PropertyIdResolutionChain(t *testing.T) {
 		// when
 		result, err := fx.CreateType(context.Background(), testSpaceId,
 			[]byte(`{"kind":"object_type","key":"gadget","properties":{"name":"Gadget"},
-			"type_properties":[{"key":"warranty_until","name":"Warranty until","format":"date"}]}`), false)
+			"type_properties":[{"property":"warranty_until","name":"Warranty until","format":"date"}]}`), false)
 
 		// then
 		require.NoError(t, err)

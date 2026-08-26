@@ -30,7 +30,7 @@ import (
 // vocabulary, so the stored spelling survives into the snapshot verbatim.
 const slugDataviewDoc = `{"version":1,"id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
 	`{"id":"dataview","type":"dataview",` +
-	`"properties":[{"key":"name","format":"text"},{"key":"` + slugPropKey + `","format":"text"}],` +
+	`"properties":[{"property":"name","format":"text"},{"property":"` + slugPropKey + `","format":"text"}],` +
 	`"views":[{"id":"viewAll1","name":"All",` +
 	`"columns":[{"property":"name"},{"property":"` + slugPropKey + `","hidden":true,"width":100}]}]}]}`
 
@@ -159,7 +159,7 @@ func TestV2WriteVocabularyIsTheReadVocabulary(t *testing.T) {
 
 		// when
 		_, err := fx.UpdateType(ctx, testSpaceId, "chore",
-			[]byte(`{"type_properties":[{"key":"due_date","section":"featured"}]}`), false)
+			[]byte(`{"type_properties":[{"property":"due_date","section":"featured"}]}`), false)
 
 		// then
 		require.NoError(t, err)
@@ -201,7 +201,7 @@ func TestV2WriteVocabularyIsTheReadVocabulary(t *testing.T) {
 		// when
 		_, err := fx.CreateType(ctx, testSpaceId, []byte(`{
 			"kind":"object_type","key":"chore",
-			"type_properties":[{"key":"due_date","section":"featured"}]}`), false)
+			"type_properties":[{"property":"due_date","section":"featured"}]}`), false)
 
 		// then
 		require.NoError(t, err)

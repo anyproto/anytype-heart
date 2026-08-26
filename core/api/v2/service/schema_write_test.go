@@ -65,8 +65,8 @@ func TestV2CreateType(t *testing.T) {
 			"kind":"object_type","key":"workout",
 			"properties":{"name":"Workout","recommendedLayout":"todo"},
 			"type_properties":[
-				{"key":"severity","section":"featured"},
-				{"key":"spiciness","name":"Spiciness","format":"number"}
+				{"property":"severity","section":"featured"},
+				{"property":"spiciness","name":"Spiciness","format":"number"}
 			]}`), false)
 
 		// then
@@ -131,7 +131,7 @@ func TestV2CreateType(t *testing.T) {
 		// when
 		_, err := fx.CreateType(context.Background(), testSpaceId, []byte(`{
 			"kind":"object_type","key":"workout",
-			"type_properties":[{"key":"severity","section":"featured"}]}`), false)
+			"type_properties":[{"property":"severity","section":"featured"}]}`), false)
 
 		// then
 		require.NoError(t, err)
@@ -150,7 +150,7 @@ func TestV2CreateType(t *testing.T) {
 		// when
 		result, err := fx.CreateType(context.Background(), testSpaceId, []byte(`{
 			"kind":"object_type","key":"workout",
-			"type_properties":[{"key":"spiciness","format":"number"}]}`), true)
+			"type_properties":[{"property":"spiciness","format":"number"}]}`), true)
 
 		// then
 		require.NoError(t, err)
@@ -170,7 +170,7 @@ func TestV2CreateType(t *testing.T) {
 		result, err := fx.CreateType(context.Background(), testSpaceId, []byte(`{
 			"kind":"object_type","key":"workout","etag":"abcd1234",
 			"warnings":[{"message":"from the read"}],
-			"type_properties":[{"key":"spiciness","format":"number"}]}`), true)
+			"type_properties":[{"property":"spiciness","format":"number"}]}`), true)
 
 		require.NoError(t, err, "a GET-type body must create without hand-stripping envelope fields")
 		assert.True(t, result.DryRun)
@@ -181,7 +181,7 @@ func TestV2CreateType(t *testing.T) {
 
 		_, err := fx.CreateType(context.Background(), testSpaceId, []byte(`{
 			"kind":"object_type","key":"workout","subtree":true,
-			"type_properties":[{"key":"spiciness","format":"number"}]}`), true)
+			"type_properties":[{"property":"spiciness","format":"number"}]}`), true)
 
 		apiErr := v2Err(t, err)
 		require.NotEmpty(t, apiErr.Issues)
@@ -278,7 +278,7 @@ func TestV2UpdateType(t *testing.T) {
 		// when
 		result, err := fx.UpdateType(context.Background(), testSpaceId, "chore", []byte(`{
 			"properties":{"name":"Chores"},
-			"type_properties":[{"key":"severity","section":"featured"}]}`), false)
+			"type_properties":[{"property":"severity","section":"featured"}]}`), false)
 
 		// then
 		require.NoError(t, err)

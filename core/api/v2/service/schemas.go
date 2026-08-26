@@ -48,7 +48,7 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 	"type": {
 		endpoint: "POST /v2/spaces/{space_id}/types",
 		// a type document is an AnyBlock document (kind object_type)
-		example: `{"version":1,"kind":"object_type","key":"task","properties":{"name":"Task","icon_emoji":"✅","recommended_layout":"todo"},"type_properties":[{"key":"due_date","name":"Due date","format":"date","section":"featured"},{"key":"status","name":"Status","format":"select"}]}`,
+		example: `{"version":1,"kind":"object_type","key":"task","properties":{"name":"Task","icon_emoji":"✅","recommended_layout":"todo"},"type_properties":[{"property":"due_date","name":"Due date","format":"date","section":"featured"},{"property":"status","name":"Status","format":"select"}]}`,
 	},
 	"template": {
 		endpoint: "POST /v2/spaces/{space_id}/templates",

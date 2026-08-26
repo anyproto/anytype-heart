@@ -107,7 +107,7 @@ func TestV2MintShadowingClosed(t *testing.T) {
 
 		result, err := fx.CreateType(context.Background(), testSpaceId,
 			[]byte(`{"kind":"object_type","key":"gizmo","properties":{"name":"Gizmo"},
-			"type_properties":[{"key":"myKey","section":"featured"}]}`), false)
+			"type_properties":[{"property":"myKey","section":"featured"}]}`), false)
 
 		require.NoError(t, err)
 		assert.Nil(t, result.Created, "nothing minted — the fold resolved to the legacy relation")
@@ -124,7 +124,7 @@ func TestV2MintShadowingClosed(t *testing.T) {
 
 		_, err := fx.CreateType(context.Background(), testSpaceId,
 			[]byte(`{"kind":"object_type","key":"gizmo2","properties":{"name":"Gizmo 2"},
-			"type_properties":[{"key":"My Key","name":"My Key","format":"text"}]}`), false)
+			"type_properties":[{"property":"My Key","name":"My Key","format":"text"}]}`), false)
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), `"my_key" is already taken`)
@@ -144,7 +144,7 @@ func TestV2MintShadowingClosed(t *testing.T) {
 
 		_, err := fx.CreateType(context.Background(), testSpaceId,
 			[]byte(`{"kind":"object_type","key":"warrantied","properties":{"name":"Warrantied"},
-			"type_properties":[{"key":"warranty_until","name":"W","format":"date"},{"key":"warrantyUntil","name":"W2","format":"date"}]}`), false)
+			"type_properties":[{"property":"warranty_until","name":"W","format":"date"},{"property":"warrantyUntil","name":"W2","format":"date"}]}`), false)
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "two spellings of one key")
@@ -218,5 +218,5 @@ func TestV2CanonicalizeDocumentKeysDeterministicError(t *testing.T) {
 func TestCanonicalTestBodiesParse(t *testing.T) {
 	var v map[string]any
 	require.NoError(t, json.Unmarshal([]byte(`{"kind":"objectType","key":"warrantied","properties":{"name":"Warrantied"},
-			"type_properties":[{"key":"warranty_until","name":"W","format":"date"},{"key":"warrantyUntil","name":"W2","format":"date"}]}`), &v))
+			"type_properties":[{"property":"warranty_until","name":"W","format":"date"},{"property":"warrantyUntil","name":"W2","format":"date"}]}`), &v))
 }

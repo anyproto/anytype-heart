@@ -28,7 +28,7 @@ import (
 // shape the gap report described on a freshly generated type/set view.
 const editSetDoc = `{"version":1,"id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
 	`{"id":"dataview","type":"dataview",` +
-	`"properties":[{"key":"name","format":"text"},{"key":"severity","format":"select"},{"key":"dueDate","format":"date"}],` +
+	`"properties":[{"property":"name","format":"text"},{"property":"severity","format":"select"},{"property":"dueDate","format":"date"}],` +
 	`"views":[{"id":"viewAll1","name":"All",` +
 	`"sorts":[{"property":"dueDate"}],` +
 	`"columns":[{"property":"name"},{"property":"severity","hidden":true,"width":100},{"property":"dueDate","hidden":true,"width":120}]}]}]}`
@@ -36,7 +36,7 @@ const editSetDoc = `{"version":1,"id":"obj1","type":"set","properties":{"name":"
 // editTwoViewsDoc carries two views, so view targeting is required.
 const editTwoViewsDoc = `{"version":1,"id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
 	`{"id":"dataview","type":"dataview",` +
-	`"properties":[{"key":"name","format":"text"},{"key":"severity","format":"select"}],` +
+	`"properties":[{"property":"name","format":"text"},{"property":"severity","format":"select"}],` +
 	`"views":[` +
 	`{"id":"viewAll1","name":"All","columns":[{"property":"name"}]},` +
 	`{"id":"viewBoard2","name":"Board","type":"kanban","group_by":"severity","columns":[{"property":"name"},{"property":"severity","hidden":true}]}]}]}`
@@ -45,14 +45,14 @@ const editTwoViewsDoc = `{"version":1,"id":"obj1","type":"set","properties":{"na
 // is required.
 const editTwoDataviewsDoc = `{"version":1,"id":"obj1","type":"page","properties":{"name":"Doc"},"blocks":[` +
 	`{"id":"blockPara1","type":"paragraph","text":"intro"},` +
-	`{"id":"dvFirst1","type":"dataview","properties":[{"key":"name","format":"text"}],"views":[{"id":"viewA1","name":"A","columns":[{"property":"name"}]}]},` +
-	`{"id":"dvSecond2","type":"dataview","properties":[{"key":"name","format":"text"}],"views":[{"id":"viewB1","name":"B","columns":[{"property":"name","hidden":true}]}]}]}`
+	`{"id":"dvFirst1","type":"dataview","properties":[{"property":"name","format":"text"}],"views":[{"id":"viewA1","name":"A","columns":[{"property":"name"}]}]},` +
+	`{"id":"dvSecond2","type":"dataview","properties":[{"property":"name","format":"text"}],"views":[{"id":"viewB1","name":"B","columns":[{"property":"name","hidden":true}]}]}]}`
 
 // editTypeDoc is a kind:"object_type" document with the type's own dataview —
 // the reporter's actual target (the default "All" view of a custom type).
 const editTypeDoc = `{"version":1,"kind":"object_type","id":"obj1","key":"plant","properties":{"name":"Plant"},"blocks":[` +
 	`{"id":"dataview","type":"dataview",` +
-	`"properties":[{"key":"name","format":"text"},{"key":"severity","format":"select"}],` +
+	`"properties":[{"property":"name","format":"text"},{"property":"severity","format":"select"}],` +
 	`"views":[{"id":"viewAll1","name":"All","columns":[{"property":"name"},{"property":"severity","hidden":true}]}]}]}`
 
 // dataviewOf digs the addressed dataview block out of a captured state doc.
@@ -628,7 +628,7 @@ func TestUpdateViewOp(t *testing.T) {
 		// edit — the whole-block reimport keeps it
 		doc := `{"version":1,"id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
 			`{"id":"dataview","type":"dataview",` +
-			`"properties":[{"key":"name","format":"text"},{"key":"severity","format":"select"}],` +
+			`"properties":[{"property":"name","format":"text"},{"property":"severity","format":"select"}],` +
 			`"views":[{"id":"viewBoard1","name":"Board","type":"kanban","group_by":"severity",` +
 			`"columns":[{"property":"name"},{"property":"severity","hidden":true}],` +
 			`"groups":[{"id":"groupA","background_color":"red"},{"id":"groupB","hidden":true}],` +
@@ -850,7 +850,7 @@ func TestViewFamilyOps(t *testing.T) {
 	t.Run("delete_view removes the view and its editor state", func(t *testing.T) {
 		doc := `{"version":1,"id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
 			`{"id":"dataview","type":"dataview",` +
-			`"properties":[{"key":"name","format":"text"},{"key":"severity","format":"select"}],` +
+			`"properties":[{"property":"name","format":"text"},{"property":"severity","format":"select"}],` +
 			`"views":[` +
 			`{"id":"viewAll1","name":"All","columns":[{"property":"name"}]},` +
 			`{"id":"viewBoard2","name":"Board","type":"kanban","group_by":"severity","columns":[{"property":"name"}],` +
@@ -962,7 +962,7 @@ func TestViewOpReviewFixes(t *testing.T) {
 	// option — the state a deleted tag leaves behind.
 	const editDanglingDoc = `{"version":1,"id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
 		`{"id":"dataview","type":"dataview",` +
-		`"properties":[{"key":"name","format":"text"},{"key":"severity","format":"select"}],` +
+		`"properties":[{"property":"name","format":"text"},{"property":"severity","format":"select"}],` +
 		`"views":[` +
 		`{"id":"viewAll1","name":"All","columns":[{"property":"name"},{"property":"severity","hidden":true}]},` +
 		`{"id":"viewOld2","name":"Old","columns":[{"property":"name"}],` +
@@ -1020,7 +1020,7 @@ func TestViewOpReviewFixes(t *testing.T) {
 		})
 		doc := `{"version":1,"id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
 			`{"id":"dataview","type":"dataview",` +
-			`"properties":[{"key":"name","format":"text"},{"key":"severity","format":"select"}],` +
+			`"properties":[{"property":"name","format":"text"},{"property":"severity","format":"select"}],` +
 			`"views":[` +
 			`{"id":"viewAll1","name":"All","columns":[{"property":"name"},{"property":"severity","hidden":true}]},` +
 			`{"id":"viewPinned2","name":"Pinned","columns":[{"property":"name"}],` +
@@ -1055,7 +1055,7 @@ func TestViewOpReviewFixes(t *testing.T) {
 		})
 		doc := `{"version":1,"id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
 			`{"id":"dataview","type":"dataview",` +
-			`"properties":[{"key":"name","format":"text"},{"key":"legacy","format":"select"}],` +
+			`"properties":[{"property":"name","format":"text"},{"property":"legacy","format":"select"}],` +
 			`"views":[{"id":"viewAll1","name":"All","columns":[{"property":"name"},{"property":"legacy"}]}]}]}`
 		captured := fx.expectMutate(editRead(t, doc), "headB")
 
@@ -1075,7 +1075,7 @@ func TestViewOpReviewFixes(t *testing.T) {
 		fx.addSelectProperty(t) // opt-high exists
 		doc := `{"version":1,"id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
 			`{"id":"dataview","type":"dataview",` +
-			`"properties":[{"key":"name","format":"text"},{"key":"severity","format":"select"}],` +
+			`"properties":[{"property":"name","format":"text"},{"property":"severity","format":"select"}],` +
 			`"views":[{"id":"viewAll1","name":"All","columns":[{"property":"name"}],` +
 			`"filters":[{"property":"severity","condition":"equal","value":"bafyDanglingOpt1"}]}]}]}`
 		captured := fx.expectMutate(editRead(t, doc), "headB")
@@ -1104,7 +1104,7 @@ func TestViewOpReviewFixes(t *testing.T) {
 				props.WriteString(",")
 				cols.WriteString(",")
 			}
-			fmt.Fprintf(&props, `{"key":"name%02d","format":"text"}`, i)
+			fmt.Fprintf(&props, `{"property":"name%02d","format":"text"}`, i)
 			fmt.Fprintf(&cols, `{"property":"name%02d"}`, i)
 		}
 		var views strings.Builder
@@ -1191,7 +1191,7 @@ func TestViewOpReviewFixes(t *testing.T) {
 		fx := newV2Fixture(t)
 		doc := `{"version":1,"id":"obj1","type":"page","properties":{"name":"Doc"},"blocks":[` +
 			`{"id":"blockParent1","type":"toggle","text":"data"},` +
-			`{"indent":1,"id":"dvInline1","type":"dataview","properties":[{"key":"name","format":"text"}],` +
+			`{"indent":1,"id":"dvInline1","type":"dataview","properties":[{"property":"name","format":"text"}],` +
 			`"views":[{"id":"viewA1","name":"A","columns":[{"property":"name","hidden":true}]}]}]}`
 		captured := fx.expectMutate(editRead(t, doc), "headB")
 
@@ -1211,7 +1211,7 @@ func TestViewOpReviewFixes(t *testing.T) {
 	t.Run("minor: removing a column from a column-less view is a clean no-op", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		doc := `{"version":1,"id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
-			`{"id":"dataview","type":"dataview","properties":[{"key":"name","format":"text"}],` +
+			`{"id":"dataview","type":"dataview","properties":[{"property":"name","format":"text"}],` +
 			`"views":[{"id":"viewA1","name":"A"}]}]}`
 		fx.expectMutate(editRead(t, doc), "headB")
 
@@ -1294,7 +1294,7 @@ func TestViewOpReviewFixes(t *testing.T) {
 		fx := newV2Fixture(t)
 		doc := `{"version":1,"id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
 			`{"id":"dataview","type":"dataview",` +
-			`"properties":[{"key":"name","format":"text"},{"key":"severity","format":"select"}],` +
+			`"properties":[{"property":"name","format":"text"},{"property":"severity","format":"select"}],` +
 			`"views":[{"id":"viewBoard1","name":"Board","type":"kanban","group_by":"severity",` +
 			`"columns":[{"property":"name"}],` +
 			`"groups":[{"id":"groupA","background_color":"red"},{"id":"groupB","hidden":true}],` +

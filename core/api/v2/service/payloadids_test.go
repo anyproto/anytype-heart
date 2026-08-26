@@ -38,8 +38,8 @@ const editMintedTableDoc = `{"version":1,"id":"obj1","type":"page","blocks":[` +
 // inline set from one copies its views verbatim). View ids are unique within
 // a dataview BLOCK, not document-wide (SPEC §6.2), so this is valid.
 const editSharedViewIdDoc = `{"version":1,"id":"obj1","type":"page","properties":{"name":"Doc"},"blocks":[` +
-	`{"id":"dvFirst1","type":"dataview","properties":[{"key":"name","format":"text"}],"views":[{"id":"default","name":"First","columns":[{"property":"name"}]}]},` +
-	`{"id":"dvSecond2","type":"dataview","properties":[{"key":"name","format":"text"}],"views":[{"id":"default","name":"Second","columns":[{"property":"name"}]}]}]}`
+	`{"id":"dvFirst1","type":"dataview","properties":[{"property":"name","format":"text"}],"views":[{"id":"default","name":"First","columns":[{"property":"name"}]}]},` +
+	`{"id":"dvSecond2","type":"dataview","properties":[{"property":"name","format":"text"}],"views":[{"id":"default","name":"Second","columns":[{"property":"name"}]}]}]}`
 
 // editTailCollisionDoc holds two minted block ids sharing their last five
 // characters — the §8.28 property-1 case with no cells involved.

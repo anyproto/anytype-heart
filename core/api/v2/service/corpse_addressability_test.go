@@ -432,13 +432,13 @@ func TestV2ViewOpsCorpseKeys(t *testing.T) {
 	ctx := context.Background()
 	corpseViewDocBody := `{"version":1,"id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
 		`{"id":"dataview","type":"dataview",` +
-		`"properties":[{"key":"name","format":"text"},{"key":"` + corpseBsonKey + `","format":"date"}],` +
+		`"properties":[{"property":"name","format":"text"},{"property":"` + corpseBsonKey + `","format":"date"}],` +
 		`"views":[{"id":"viewAll1","name":"All",` +
 		`"filters":[{"property":"` + corpseBsonKey + `","condition":"equal","value":"x"}],` +
 		`"columns":[{"property":"name"},{"property":"` + corpseBsonKey + `","width":100}]}]}]}`
 	plainViewDocBody := `{"version":1,"id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
 		`{"id":"dataview","type":"dataview",` +
-		`"properties":[{"key":"name","format":"text"}],` +
+		`"properties":[{"property":"name","format":"text"}],` +
 		`"views":[{"id":"viewAll1","name":"All","columns":[{"property":"name"}]}]}]}`
 
 	t.Run("a view already showing the corpse key stays editable", func(t *testing.T) {
@@ -662,7 +662,7 @@ func TestV2UninstalledBundledPropertyRefusesWrites(t *testing.T) {
 		corpseShapes(t, func(t *testing.T, shape corpseShape) {
 			fx := newFx(t, shape)
 			plainViewDoc := `{"version":1,"id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
-				`{"id":"dataview","type":"dataview","properties":[{"key":"name","format":"text"}],` +
+				`{"id":"dataview","type":"dataview","properties":[{"property":"name","format":"text"}],` +
 				`"views":[{"id":"viewAll1","name":"All","columns":[{"property":"name"}]}]}]}`
 			fx.expectMutate(editRead(t, plainViewDoc), "headB")
 
@@ -907,7 +907,7 @@ func TestV2TypePropertiesCorpseEchoResolvesToItsHolder(t *testing.T) {
 
 			// when — exactly the typeProperties GET just served
 			result, err := fx.UpdateType(context.Background(), testSpaceId, "livetype",
-				[]byte(`{"type_properties":[{"key":"`+corpseBsonKey+`","name":"Warranty until","format":"text"}]}`), false)
+				[]byte(`{"type_properties":[{"property":"`+corpseBsonKey+`","name":"Warranty until","format":"text"}]}`), false)
 
 			// then — nothing is minted and the list still points at the very
 			// relation object the GET resolved it from: a round-trip identity
@@ -943,7 +943,7 @@ func TestV2TypePropertiesCorpseEchoResolvesToItsHolder(t *testing.T) {
 				Error: &pb.RpcObjectSetDetailsResponseError{Code: pb.RpcObjectSetDetailsResponseError_NULL}}).Maybe()
 
 			_, err := fx.UpdateType(context.Background(), testSpaceId, "livetype",
-				[]byte(`{"type_properties":[{"key":"`+corpseSlug+`","name":"Warranty until","format":"text"}]}`), false)
+				[]byte(`{"type_properties":[{"property":"`+corpseSlug+`","name":"Warranty until","format":"text"}]}`), false)
 
 			require.NoError(t, err)
 			require.Len(t, minted, 1)
@@ -1025,7 +1025,7 @@ func TestV2RemovedBundledSlugEqualsKeyClass(t *testing.T) {
 		// the executed §8.41-2 matrix: columns, groupBy, filters, sorts —
 		// the four channels that accepted a removed `tag` 40 times out of 40
 		plainViewDoc := `{"version":1,"id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
-			`{"id":"dataview","type":"dataview","properties":[{"key":"name","format":"text"}],` +
+			`{"id":"dataview","type":"dataview","properties":[{"property":"name","format":"text"}],` +
 			`"views":[{"id":"viewAll1","name":"All","columns":[{"property":"name"}]}]}]}`
 		ops := map[string]string{
 			"columns":  `{"op":"update_view","view":"viewAll1","columns":{"tag":{"width":80}}}`,
@@ -1052,7 +1052,7 @@ func TestV2RemovedBundledSlugEqualsKeyClass(t *testing.T) {
 		// insert_view shares validateViewKeys with update_view — pinned so a
 		// future split of the two paths cannot reopen one of them
 		plainViewDoc := `{"version":1,"id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
-			`{"id":"dataview","type":"dataview","properties":[{"key":"name","format":"text"}],` +
+			`{"id":"dataview","type":"dataview","properties":[{"property":"name","format":"text"}],` +
 			`"views":[{"id":"viewAll1","name":"All","columns":[{"property":"name"}]}]}]}`
 		corpseShapes(t, func(t *testing.T, shape corpseShape) {
 			fx := newV2Fixture(t)
@@ -1073,7 +1073,7 @@ func TestV2RemovedBundledSlugEqualsKeyClass(t *testing.T) {
 			fx := newV2Fixture(t)
 			addRemoved(t, fx, "tag", shape)
 			holdingViewDoc := `{"version":1,"id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
-				`{"id":"dataview","type":"dataview","properties":[{"key":"name","format":"text"},{"key":"tag","format":"multi_select"}],` +
+				`{"id":"dataview","type":"dataview","properties":[{"property":"name","format":"text"},{"property":"tag","format":"multi_select"}],` +
 				`"views":[{"id":"viewAll1","name":"All","columns":[{"property":"name"},{"property":"tag"}]}]}]}`
 			fx.expectMutate(editRead(t, holdingViewDoc), "headB")
 
@@ -1236,7 +1236,7 @@ func TestV2TypePropertiesRefusesRemovedBundledKey(t *testing.T) {
 			fx.addRemovedBundledProperty(t, shape)
 
 			_, err := fx.CreateType(ctx, testSpaceId,
-				[]byte(`{"key":"gadget","properties":{"name":"Gadget"},"type_properties":[{"key":"due_date","format":"date"}]}`), false)
+				[]byte(`{"key":"gadget","properties":{"name":"Gadget"},"type_properties":[{"property":"due_date","format":"date"}]}`), false)
 
 			apiErr := v2Err(t, err)
 			assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -1272,7 +1272,7 @@ func TestV2TypePropertiesRefusesRemovedBundledKey(t *testing.T) {
 			})
 
 			_, err := fx.UpdateType(ctx, testSpaceId, "livetype",
-				[]byte(`{"type_properties":[{"key":"tag"}]}`), false)
+				[]byte(`{"type_properties":[{"property":"tag"}]}`), false)
 
 			apiErr := v2Err(t, err)
 			assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -1304,7 +1304,7 @@ func TestV2TypePropertiesRefusesRemovedBundledKey(t *testing.T) {
 
 			// when — the spelling the GET serves
 			result, err := fx.UpdateType(ctx, testSpaceId, "livetype",
-				[]byte(`{"type_properties":[{"key":"due_date","format":"date"}]}`), false)
+				[]byte(`{"type_properties":[{"property":"due_date","format":"date"}]}`), false)
 
 			// then — the reference survives, nothing minted, nothing installed
 			require.NoError(t, err)
