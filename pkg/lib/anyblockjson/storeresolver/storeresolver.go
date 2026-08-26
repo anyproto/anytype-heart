@@ -54,6 +54,10 @@ type Resolvers struct {
 type objectRow struct {
 	name   string
 	exists bool
+	// deleted marks a TOMBSTONE: the row survives stripped to its
+	// bookkeeping. It still counts as exists — see ObjectExists — and only
+	// the icon rule asks this narrower question.
+	deleted bool
 }
 
 // New creates resolvers over one space's index.
@@ -251,6 +255,7 @@ func (r *Resolvers) objectRow(id string) (objectRow, bool) {
 	if details != nil && details.Len() > 0 {
 		row.exists = true
 		row.name = details.GetString(bundle.RelationKeyName)
+		row.deleted = details.GetBool(bundle.RelationKeyIsDeleted)
 	}
 	r.objectRows[id] = row
 	return row, true
@@ -284,6 +289,18 @@ func (r *Resolvers) ObjectName(id string) (string, bool) {
 func (r *Resolvers) ObjectExists(id string) (exists, known bool) {
 	row, ok := r.objectRow(id)
 	return row.exists, ok
+}
+
+// ObjectDeleted implements anyblockjson.ObjectDeletionResolver: whether the
+// row the space kept for id is a TOMBSTONE — deleted, stripped to its
+// bookkeeping. It rides the same cached point lookup ObjectExists pays for,
+// and is a strictly narrower question: every deleted id also exists.
+//
+// Only the icon rule consults it (§2b). A deleted object stays a live
+// reference everywhere else, which is ObjectExists's documented position.
+func (r *Resolvers) ObjectDeleted(id string) (deleted, known bool) {
+	row, ok := r.objectRow(id)
+	return row.deleted, ok
 }
 
 // PropertyById implements anyblockjson.PropertyResolver.

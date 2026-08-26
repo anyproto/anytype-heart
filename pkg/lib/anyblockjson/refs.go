@@ -81,6 +81,48 @@ type ObjectExistenceResolver interface {
 	ObjectExists(id string) (exists, known bool)
 }
 
+// ObjectDeletionResolver answers whether an id names an object the space
+// DELETED — a tombstone: the index keeps a row stripped to its bookkeeping
+// (`{id, spaceId, isDeleted, sync*}`) and nothing else.
+//
+// It is deliberately separate from ObjectExists, which counts a tombstone as
+// existing and says so: "a deleted object keeps an index row, so a reference
+// to it is NOT missing: the id still means something in this space". That
+// rule stands for every reference slot but one. An ICON is the exception,
+// because an icon is OPTIONAL: a link or a mention block must have a target,
+// so a dangling one is rewritten to the sentinel rather than dropped, but an
+// object with no icon is an ordinary object. Measured over a 77-space
+// export, 134 bookmark documents shipped an icon pointing at a favicon whose
+// file object had been deleted — every one of the 134 confirmed a tombstone
+// in its own space's store.
+//
+// known=false means the resolver could not ask; the caller then treats the
+// reference as live, so a store failure never removes an icon.
+type ObjectDeletionResolver interface {
+	ObjectDeleted(id string) (deleted, known bool)
+}
+
+// DroppedDeletedIconRef reports that an icon image reference names an object
+// the space deleted, so export drops the icon and falls through to whatever
+// channel is left (§2b) — the same fall-through an image that is not an
+// object id already takes.
+//
+// Exported because snapshotdiff must apply the SAME predicate: `iconImage`
+// is a DETAIL, so without this the comparator reads every dropped icon as
+// data loss — the drift class that once produced 1,344 false failures in a
+// single sweep (§11).
+func DroppedDeletedIconRef(opts Options, id string) bool {
+	if !isObjectIdShaped(id) {
+		return false
+	}
+	res, ok := opts.ResolveObjectNames.(ObjectDeletionResolver)
+	if !ok {
+		return false
+	}
+	deleted, known := res.ObjectDeleted(id)
+	return known && deleted
+}
+
 // isObjectIdShaped reports whether s parses as a content id (CID) — the
 // shape of every object and file id a space actually mints. It is the gate
 // that keeps the existence question OFF everything that is not a space

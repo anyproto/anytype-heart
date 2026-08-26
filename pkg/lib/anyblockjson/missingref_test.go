@@ -592,3 +592,100 @@ func TestMissingRef_ASelectValueDropsTheSentinel(t *testing.T) {
 		assert.NotContains(t, string(data), missingObjectId)
 	})
 }
+
+// tombstoneCid is in the store and DELETED: the row survives stripped to its
+// bookkeeping. It exists — ObjectExists says so deliberately — but the image
+// behind it is gone.
+var tombstoneCid = testCid("tombstone")
+
+// deletingStore answers the deletion question too. Everything in the map
+// exists; the set names which of those rows are tombstones.
+type deletingStore struct {
+	testObjectStore
+	tombstones map[string]bool
+}
+
+func (d deletingStore) ObjectDeleted(id string) (deleted, known bool) {
+	if _, ok := d.testObjectStore[id]; !ok {
+		return false, true
+	}
+	return d.tombstones[id], true
+}
+
+// An icon pointing at a file object the space DELETED used to travel as a
+// reference that resolves to nothing: 134 bookmark documents in a 77-space
+// export carried a favicon whose file object was a tombstone — every one
+// confirmed deleted in its own space's store.
+//
+// It is DROPPED rather than rewritten to the sentinel, and that asymmetry is
+// the rule: a link or a mention MUST have a target, so absence there has to
+// be spelled; an icon is optional, and an object with no icon is an ordinary
+// object. So the icon falls through to whatever channel is left — the same
+// fall-through an image that is not an object id already takes.
+//
+// How this can fail: reuse ObjectExists here and a tombstone reads as live
+// again (it is documented to); reach for the sentinel instead of dropping
+// and every one of those bookmarks gets an icon that renders as a missing
+// object; forget the fall-through and an object that also has a colour loses
+// that too.
+func TestMissingRef_ADeletedIconImageIsDropped(t *testing.T) {
+	store := deletingStore{
+		testObjectStore: testObjectStore{liveCid: "Favicon", tombstoneCid: ""},
+		tombstones:      map[string]bool{tombstoneCid: true},
+	}
+	opts := func() Options { return Options{ResolveObjectNames: store} }
+
+	iconOf := func(t *testing.T, image string, extra map[string]*types.Value) string {
+		t.Helper()
+		det := map[string]*types.Value{"id": str("o1"), "iconImage": str(image)}
+		for k, v := range extra {
+			det[k] = v
+		}
+		data, err := Marshal(model.SmartBlockType_Page,
+			&model.SmartBlockSnapshotBase{Details: fields(det)}, opts())
+		require.NoError(t, err)
+		require.NoError(t, Validate(data), "§11 I1")
+		return string(data)
+	}
+
+	t.Run("a live target still travels", func(t *testing.T) {
+		assert.Contains(t, iconOf(t, liveCid, nil), liveCid)
+	})
+
+	t.Run("a deleted target drops the icon entirely", func(t *testing.T) {
+		out := iconOf(t, tombstoneCid, nil)
+		assert.NotContains(t, out, tombstoneCid)
+		assert.NotContains(t, out, `"icon"`, "and no empty icon is left behind")
+		assert.NotContains(t, out, missingObjectId,
+			"an icon is optional, so absence is silence — not the sentinel a link would get")
+	})
+
+	t.Run("the remaining channels still answer", func(t *testing.T) {
+		out := iconOf(t, tombstoneCid, map[string]*types.Value{
+			"iconOption": num(3),
+		})
+		assert.NotContains(t, out, tombstoneCid)
+		assert.Contains(t, out, `"format": "color"`,
+			"the icon falls through to the colour, as an unwritable image already does")
+	})
+
+	// the capability is the only thing that may remove an icon: a store that
+	// cannot answer, and a package-only export with no store at all, both
+	// keep it.
+	t.Run("no capability keeps every icon", func(t *testing.T) {
+		data, err := Marshal(model.SmartBlockType_Page, &model.SmartBlockSnapshotBase{
+			Details: fields(map[string]*types.Value{"id": str("o1"), "iconImage": str(tombstoneCid)}),
+		}, Options{})
+		require.NoError(t, err)
+		assert.Contains(t, string(data), tombstoneCid)
+	})
+
+	t.Run("a store that cannot answer keeps it", func(t *testing.T) {
+		data, err := Marshal(model.SmartBlockType_Page, &model.SmartBlockSnapshotBase{
+			Details: fields(map[string]*types.Value{"id": str("o1"), "iconImage": str(tombstoneCid)}),
+		}, Options{ResolveObjectNames: unansweringStore{}})
+		require.NoError(t, err)
+		assert.Contains(t, string(data), tombstoneCid,
+			"a failure to ask is not evidence of deletion")
+	})
+}

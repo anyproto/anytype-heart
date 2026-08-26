@@ -261,7 +261,7 @@ func (e *exporter) buildIcon() *omap {
 	if e.snapshot == nil || e.snapshot.Details == nil {
 		return nil
 	}
-	return iconOmap(iconOf(e.detail, e.warn))
+	return iconOmap(iconOf(e.detail, e.warn, e.iconTargetDeleted))
 }
 
 // iconOf chooses the icon from the four stored channels (§2b), or returns nil
@@ -273,7 +273,11 @@ func (e *exporter) buildIcon() *omap {
 // It reports through `warn` exactly where a stored value cannot be carried,
 // and a caller that cannot afford to lose one — the index, which omits the
 // document it read the icon from — treats any warning as a refusal.
-func iconOf(detail func(string) *types.Value, warn func(path, format string, args ...any)) *Icon {
+// deleted reports that an icon image id names an object the space deleted.
+// nil means "never ask" — a package-only export with no store wired, and the
+// space-icon reader, which has no options to consult.
+func iconOf(detail func(string) *types.Value, warn func(path, format string, args ...any),
+	deleted func(string) bool) *Icon {
 	color, hasColor := iconColorValue(detail(detailKeyIconOption))
 	ic := &Icon{}
 	if hasColor {
@@ -310,7 +314,14 @@ func iconOf(detail func(string) *types.Value, warn func(path, format string, arg
 		if len(images) > 1 {
 			warn("/icon", "the icon image list holds %d entries; only the first is an icon", len(images))
 		}
-		if !isObjectRef(images[0]) {
+		if deleted != nil && deleted(images[0]) {
+			// the file object is a tombstone: the space kept the id but not
+			// the image, so carrying it would ship an icon that resolves to
+			// nothing. An icon is optional — unlike a link or a mention,
+			// which must have a target and get the sentinel instead (§9) —
+			// so it is dropped and the remaining channels answer.
+			warn("/icon", "icon image %q names an object this space deleted and is dropped", images[0])
+		} else if !isObjectRef(images[0]) {
 			// there is no way to write it: the schema's objectRef refuses a
 			// URL and a filesystem path, so carrying it would make Marshal
 			// emit what its own Validate rejects (§11, I1)
@@ -741,4 +752,11 @@ func quotedList(names []string) string {
 		out = append(out, "'"+n+"'")
 	}
 	return strings.Join(out, ", ")
+}
+
+// iconTargetDeleted is the exporter's half of the icon rule: it asks the
+// wired store whether the icon's image object is a tombstone. With no store
+// wired it answers no, so a package-only export keeps every icon it is given.
+func (e *exporter) iconTargetDeleted(id string) bool {
+	return DroppedDeletedIconRef(e.opts, id)
 }

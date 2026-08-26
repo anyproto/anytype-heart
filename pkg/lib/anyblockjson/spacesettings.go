@@ -106,6 +106,7 @@ func spaceIcon(base *model.SmartBlockSnapshotBase) (icon *Icon, whole bool) {
 	ic := iconOf(
 		func(k string) *types.Value { return det[k] },
 		func(string, string, ...any) { lossless = false },
+		nil, // no options here; a space icon is read from the snapshot alone
 	)
 	return ic, lossless
 }

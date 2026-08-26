@@ -82,6 +82,24 @@ var recommendedListKeys = map[string]bool{
 // arriving empty. A recommended list that arrives with members is a real
 // difference and is still reported: this suppresses the absent-to-empty step
 // only, never a list that gained content.
+// firstStringValue reads the first string a detail holds, whether it is a
+// bare string or a one-element list. `iconImage` is stored both ways, and
+// export reads images[0] — the comparator must ask about the SAME id.
+func firstStringValue(v *types.Value) string {
+	if v == nil {
+		return ""
+	}
+	if s := v.GetStringValue(); s != "" {
+		return s
+	}
+	for _, el := range v.GetListValue().GetValues() {
+		if s := el.GetStringValue(); s != "" {
+			return s
+		}
+	}
+	return ""
+}
+
 func isEmptyRecommendedList(key string, v *types.Value) bool {
 	if !recommendedListKeys[key] {
 		return false
@@ -146,6 +164,17 @@ func Compare(orig, got *model.SmartBlockSnapshotBase, sbType model.SmartBlockTyp
 				continue
 			}
 			if isDroppedEmptySystemProperty(k, orig.Details.Fields[k], gotFields[k]) {
+				continue
+			}
+			// an icon whose image object the space DELETED is dropped
+			// rather than carried as a reference that resolves to nothing
+			// (§2b). `iconImage` is a detail, so without this the
+			// comparator reads all 134 corpus cases as data loss — the same
+			// drift the type-provenance rule above was taught to avoid.
+			// Scoped to absent-on-the-way-back, and the predicate is the
+			// format's own rather than a copy.
+			if gotFields[k] == nil && k == bundle.RelationKeyIconImage.String() &&
+				anyblockjson.DroppedDeletedIconRef(opts, firstStringValue(orig.Details.Fields[k])) {
 				continue
 			}
 			// a TYPE document does not carry its own install provenance
