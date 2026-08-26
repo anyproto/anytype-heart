@@ -17,6 +17,21 @@ than being pre-built at plan — provably consistent with the output (a doc
 whose emit fails never enters the manifest), and determinism is unaffected
 since finish sorts.
 
+Verified against the corpus by `cmd/anyblockroundtrip -native`, which
+drives THIS exporter (not the pb path) over every space and checks layout,
+kind classification, filename purity, blob binding, omission accounting,
+determinism (every space exported twice, trees byte-compared) and
+per-document fidelity against a same-process pb export. First run over
+28,542 real documents: layout/classification/naming clean, data loss
+byte-for-byte equal to the pb baseline (34 objects / 67 findings, all
+codec-level), and two real defects caught and fixed — the participant
+filename fold (§1.3 demanded the ENVELOPE id) and a non-total option-
+vocabulary sort (same-name options tied into scheduling order). One
+upstream observation, not an exporter defect: objects whose root change
+carries no creation date (participants, chiefly) get `createdDate` stamped
+at load (smartblock Apply), so any two exports separated by a cache
+eviction differ on that value — the pb exporter shares this.
+
 Scope: the production exporter that writes an AnyBlock JSON bundle (SPEC.md
 §2c) from a live space — the replacement for the writing half of
 `core/block/export`, sitting on the extracted collection half. The
