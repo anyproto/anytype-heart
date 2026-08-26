@@ -53,6 +53,7 @@ func (e *exporter) tableToJSON(m *omap, b *model.Block) error {
 			continue // orphan blocks in the columns wrapper are dropped
 		}
 		e.visited[colId] = true
+		e.recordEmitted(colId)
 		colIds = append(colIds, colId)
 		cm := &omap{}
 		if !e.opts.OmitIds {
@@ -94,6 +95,7 @@ func (e *exporter) tableToJSON(m *omap, b *model.Block) error {
 	var rows []any
 	for _, row := range rowBlocks {
 		rm := &omap{}
+		e.recordEmitted(row.Id)
 		if !e.opts.OmitIds {
 			rm.setNonEmpty("id", e.tableInnerId(row.Id))
 		}
@@ -140,8 +142,33 @@ func (e *exporter) cellToJSON(cell *model.Block) (any, error) {
 	if cell == nil {
 		return nil, nil
 	}
+	// §7a: a transparent container has no block of its own, and a cell is a
+	// position rather than a run — there is nowhere to lift to. The cell
+	// renders empty, and a container that held a subtree says so, because
+	// the subtree goes with it. Unreachable from normalization (a cell's
+	// parent is a TableRow, which normalizeTreeBranch never wraps) and
+	// absent from the production corpus; it is corrupt input, not a shape
+	// the editor makes.
+	if isTransparentContainer(cell) {
+		e.visited[cell.Id] = true
+		if len(cell.ChildrenIds) > 0 {
+			e.warn("", "cell %s is a transparent container (§7a): a cell cannot be lifted, so it renders empty and its %d children are dropped",
+				cell.Id, len(cell.ChildrenIds))
+		}
+		return nil, nil
+	}
 	if c, ok := cell.Content.(*model.BlockContentOfText); ok {
 		t := orEmpty(c.Text)
+		if cell.Id != "" && e.visited[cell.Id] {
+			// the mark this branch sets, read back. A block reached twice is
+			// emitted once (§11) — blockToJSON drops the second arrival, and
+			// the shorthand, which never goes through blockToJSON, has to drop
+			// it too. Setting the mark without consulting it only ordered the
+			// two arrivals: a cell reached first silenced the other parent,
+			// while a cell reached second wrote the block A SECOND TIME, so
+			// one stored block came back from import as two.
+			return nil, nil
+		}
 		if t.Style == model.BlockContentText_Paragraph &&
 			t.Color == "" && !t.Checked &&
 			cell.Align == model.Block_AlignLeft &&
@@ -149,7 +176,15 @@ func (e *exporter) cellToJSON(cell *model.Block) (any, error) {
 			cell.BackgroundColor == "" &&
 			(cell.Fields == nil || len(cell.Fields.Fields) == 0) &&
 			len(cell.ChildrenIds) == 0 {
-			md := renderInline(t.Text, e.compactMarks(t.Marks.GetMarks()))
+			// the shorthand renders the block without going through
+			// blockToJSON, which is where the emit-once mark is set (§11).
+			// Unmarked, a block that is both this cell and a child elsewhere
+			// is written twice — the second time with its id, which is the
+			// derived cell id this row already claims.
+			e.visited[cell.Id] = true
+			// the shorthand renders without going through textToJSON, so it
+			// owes the same mention-target check (§8, §9)
+			md := renderInline(t.Text, e.exportMarks("/blocks", t.Marks.GetMarks()))
 			if md == "" {
 				return nil, nil // empty paragraph collapses to an empty cell (§11)
 			}
@@ -271,11 +306,24 @@ func (imp *importer) tableFromJSON(jb *jsonBlock, tableId string) (*model.Block,
 	}
 	table.ChildrenIds = []string{colsWrapper.Id, rowsWrapper.Id}
 
+	// the rows' authored ids, known before a single column is minted: a
+	// generated column id has to keep the whole column of derived ids it
+	// implies clear, and the authored rows are the half of the grid that
+	// cannot move.
+	authoredRowIds := make([]string, 0, len(jb.Rows))
+	for _, jr := range jb.Rows {
+		if jr.Id != "" {
+			authoredRowIds = append(authoredRowIds, jr.Id)
+		}
+	}
+
 	colIds := make([]string, 0, len(jb.Columns))
 	for _, jc := range jb.Columns {
 		id := jc.Id
 		if id == "" {
-			id = imp.newTableInnerId()
+			id = imp.newTableInnerId(func(colId string) bool {
+				return imp.derivedIdTaken(authoredRowIds, func(rowId string) string { return rowId + "-" + colId })
+			})
 		} else {
 			imp.claimTableInnerId(id)
 		}
@@ -304,13 +352,32 @@ func (imp *importer) tableFromJSON(jb *jsonBlock, tableId string) (*model.Block,
 	copy(rows, jb.Rows)
 	sort.SliceStable(rows, func(i, j int) bool { return rows[i].IsHeader && !rows[j].IsHeader })
 
-	for _, jr := range rows {
-		rowId := jr.Id
-		if rowId == "" {
-			rowId = imp.newTableInnerId()
-		} else {
-			imp.claimTableInnerId(rowId)
+	// Every row id is resolved — and the WHOLE grid claimed — before a cell is
+	// built, because building one generates ids (a cell block's descendants,
+	// the next table) and the grid is not free for them to take: the table
+	// owns `<rowId>-<colId>` for every pair, written or not (§6.1). Only the
+	// authored half of that grid was ever claimed, so a generated row or
+	// column left its whole row of derived ids unreserved — and an authored
+	// block sitting on one came back from import as a second block with the
+	// same id, which is a snapshot no editor can resolve.
+	rowIds := make([]string, len(rows))
+	for i, jr := range rows {
+		if jr.Id != "" {
+			rowIds[i] = imp.claimTableInnerId(jr.Id)
+			continue
 		}
+		rowIds[i] = imp.newTableInnerId(func(rowId string) bool {
+			return imp.derivedIdTaken(colIds, func(colId string) string { return rowId + "-" + colId })
+		})
+	}
+	for _, rowId := range rowIds {
+		for _, colId := range colIds {
+			imp.claimId(rowId + "-" + colId)
+		}
+	}
+
+	for rowIdx, jr := range rows {
+		rowId := rowIds[rowIdx]
 		row := &model.Block{
 			Id:      rowId,
 			Content: &model.BlockContentOfTableRow{TableRow: &model.BlockContentTableRow{IsHeader: jr.IsHeader}},
@@ -347,7 +414,6 @@ func (imp *importer) cellFromJSON(cell jsonCell, cellId string) ([]*model.Block,
 		if err != nil {
 			return nil, fmt.Errorf("cell %s: %w", cellId, err)
 		}
-		imp.resolveMarkTargets(marks)
 		return []*model.Block{{
 			Id: cellId,
 			Content: &model.BlockContentOfText{Text: &model.BlockContentText{
@@ -364,7 +430,8 @@ func (imp *importer) cellFromJSON(cell jsonCell, cellId string) ([]*model.Block,
 			return nil, err
 		}
 		rest := cell.Blocks[1:]
-		extra, err := imp.flatSubtree(rest, imp.blockIndents(rest, 0), blocks[0], 0)
+		restJbs, restIndents := liftTransparentContainers(rest, imp.blockIndents(rest, 0))
+		extra, err := imp.flatSubtree(restJbs, restIndents, blocks[0], 0)
 		if err != nil {
 			return nil, err
 		}
@@ -405,10 +472,38 @@ func (imp *importer) claimTableInnerId(id string) string {
 // to the caller: the convert wiring derives ids from file paths, which are
 // full of dashes. So sanitize rather than trust, and disambiguate on
 // collision instead of hoping the sanitized forms stay distinct.
-func (imp *importer) newTableInnerId() string {
-	// genId already claimed its answer; the sanitized form is a different
-	// string, so it has to be claimed on its own
-	return imp.claimId(uniqueLabel(sanitizeTableInnerId(imp.genId()), imp.idTaken))
+//
+// derived reports whether a candidate would make a cell id that is already
+// somebody's: a row or column id is never alone, it names a whole line of the
+// grid, and a line landing on an existing id is the same collision as the id
+// itself landing on one. The candidate is what moves, because a derived id has
+// no spelling of its own (§6.1).
+func (imp *importer) newTableInnerId(derived func(string) bool) string {
+	id := imp.genId()
+	sanitized := sanitizeTableInnerId(id)
+	if sanitized == id && !derived(id) {
+		// nothing to sanitize: genId's answer is already unique and claimed,
+		// and running it through the disambiguation pass would find it taken
+		// by its own claim and rename it to <id>_2 — which is what every
+		// generated row and column id used to be called
+		return id
+	}
+	// the sanitized form is a different string, so it has to be claimed on
+	// its own; the raw one stays claimed, which costs nothing
+	return imp.claimId(uniqueLabel(sanitized, func(candidate string) bool {
+		return imp.idTaken(candidate) || derived(candidate)
+	}))
+}
+
+// derivedIdTaken reports whether any cell id the candidate implies is already
+// claimed — cellId maps each id of the opposite axis to the pair's derived id.
+func (imp *importer) derivedIdTaken(others []string, cellId func(string) string) bool {
+	for _, other := range others {
+		if imp.idTaken(cellId(other)) {
+			return true
+		}
+	}
+	return false
 }
 
 // maxTableInnerId mirrors the schema's tableInnerId length bound, so a

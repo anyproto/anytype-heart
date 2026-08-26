@@ -3,12 +3,15 @@
   "version": 1,
   "id": "bafyreiobject",
   "type": "page",
+  "icon": {
+    "format": "emoji",
+    "emoji": "🔥"
+  },
   "properties": {
     "name": "Project Phoenix",
     "description": "The subtitle",
-    "icon_emoji": "🔥",
     "assignee": [
-      "roman"
+      "bafyreiroman"
     ],
     "created_date": "2025-07-06T08:44:05Z",
     "customDate": "2025-07-06T08:44:05Z",
@@ -16,12 +19,9 @@
       "In progress"
     ]
   },
-  "refs": {
-    "image": "bafyreiimage",
-    "kmark": "bafyreibookmark",
-    "roman": "bafyreiroman",
-    "task1": "bafyreitask1",
-    "tasks": "bafyreitasks"
+  "property_internal_keys": {
+    "customDate": "customDate",
+    "customStatus": "customStatus"
   },
   "blocks": [
     {
@@ -30,7 +30,7 @@
     },
     {
       "type": "paragraph",
-      "text": "Ship the **new export** with <mention object_id=\"roman\">Roman</mention>"
+      "text": "Ship the **new export** with <mention object_id=\"bafyreiroman\">Roman</mention>"
     },
     {
       "type": "bulleted_list_item",
@@ -51,7 +51,7 @@
     },
     {
       "type": "image",
-      "object_id": "image",
+      "object_id": "bafyreiimage",
       "name": "cat.png",
       "mime_type": "image/png",
       "size": 2048,
@@ -60,7 +60,7 @@
     {
       "type": "bookmark",
       "url": "https://anytype.io",
-      "object_id": "kmark"
+      "object_id": "bafyreibookmark"
     },
     {
       "type": "row"
@@ -118,18 +118,18 @@
     },
     {
       "type": "dataview",
-      "object_id": "tasks",
+      "object_id": "bafyreitasks",
       "properties": [
         {
-          "key": "name",
+          "property": "name",
           "format": "text"
         },
         {
-          "key": "customStatus",
+          "property": "customStatus",
           "format": "select"
         },
         {
-          "key": "due_date",
+          "property": "due_date",
           "format": "date"
         }
       ],

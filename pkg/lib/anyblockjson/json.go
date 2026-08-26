@@ -33,6 +33,33 @@ func (m *omap) set(k string, v any) {
 	m.vals = append(m.vals, v)
 }
 
+// sortedNestedOmap renders a two-level string map into nested omaps, both
+// levels sorted by key (§4 canon). Returns nil for an empty map so
+// setNonEmpty omits the slot.
+func sortedNestedOmap(m map[string]map[string]string) *omap {
+	if len(m) == 0 {
+		return nil
+	}
+	out := &omap{}
+	for _, outer := range sortedStringKeys(m) {
+		inner := &omap{}
+		for _, k := range sortedStringKeys(m[outer]) {
+			inner.set(k, m[outer][k])
+		}
+		out.set(outer, inner)
+	}
+	return out
+}
+
+func sortedStringKeys[V any](m map[string]V) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
+}
+
 // setNonEmpty appends k only when v is not an empty/default value (§4:
 // canonical form omits empty strings, arrays, objects and default scalars).
 func (m *omap) setNonEmpty(k string, v any) {
@@ -192,24 +219,36 @@ func (e enumNames[T]) value(n string) T  { return e.toVal[n] }
 func (e enumNames[T]) has(n string) bool { _, ok := e.toVal[n]; return ok }
 
 var kindNames = newEnumNames(map[model.SmartBlockType]string{
-	model.SmartBlockType_AccountOld:             "account_old",
-	model.SmartBlockType_Page:                   "page",
-	model.SmartBlockType_ProfilePage:            "profile_page",
-	model.SmartBlockType_Home:                   "home",
-	model.SmartBlockType_Archive:                "archive",
-	model.SmartBlockType_Widget:                 "widget",
-	model.SmartBlockType_File:                   "file",
-	model.SmartBlockType_Template:               "template",
-	model.SmartBlockType_BundledTemplate:        "bundled_template",
-	model.SmartBlockType_BundledRelation:        "bundled_relation",
-	model.SmartBlockType_SubObject:              "sub_object",
-	model.SmartBlockType_BundledObjectType:      "bundled_object_type",
-	model.SmartBlockType_AnytypeProfile:         "anytype_profile",
-	model.SmartBlockType_Date:                   "date",
-	model.SmartBlockType_Workspace:              "workspace",
-	model.SmartBlockType_STRelation:             "relation",
+	model.SmartBlockType_AccountOld:      "account_old",
+	model.SmartBlockType_Page:            "page",
+	model.SmartBlockType_ProfilePage:     "profile_page",
+	model.SmartBlockType_Home:            "home",
+	model.SmartBlockType_Archive:         "archive",
+	model.SmartBlockType_Widget:          "widget",
+	model.SmartBlockType_File:            "file",
+	model.SmartBlockType_Template:        "template",
+	model.SmartBlockType_BundledTemplate: "bundled_template",
+	// the three definition kinds say "property" where the store says
+	// "relation": the product calls these things properties, and the format
+	// already did everywhere else — the block type is `featured_properties`,
+	// the shape is `propertyDefinition`, the legend `property_internal_keys`.
+	// One word for one concept (§15 #14); the model constants are the store's
+	// own names and stay.
+	model.SmartBlockType_BundledRelation:   "bundled_property",
+	model.SmartBlockType_SubObject:         "sub_object",
+	model.SmartBlockType_BundledObjectType: "bundled_object_type",
+	model.SmartBlockType_AnytypeProfile:    "anytype_profile",
+	model.SmartBlockType_Date:              "date",
+	// the space's own object holds the space's SETTINGS — its name, icon,
+	// homepage — not the space itself, and `space_settings` says that where
+	// `workspace` said something the product no longer calls anything. One
+	// per space (77 in a 77-space corpus), machine-written and never
+	// authored, so the rename costs nothing but is a wire value: after the
+	// freeze it would cost a version.
+	model.SmartBlockType_Workspace:              "space_settings",
+	model.SmartBlockType_STRelation:             "property",
 	model.SmartBlockType_STType:                 "object_type",
-	model.SmartBlockType_STRelationOption:       "relation_option",
+	model.SmartBlockType_STRelationOption:       "property_option",
 	model.SmartBlockType_SpaceView:              "space_view",
 	model.SmartBlockType_Identity:               "identity",
 	model.SmartBlockType_Participant:            "participant",
@@ -396,9 +435,14 @@ var conditionNames = newEnumNames(map[model.BlockContentDataviewFilterCondition]
 })
 
 // countingPresets take a day count from the filter's `value` rather than
-// naming a fixed period: getDateRange reads f.Value.Int64() for these two and
-// for no others (pkg/lib/database/quickoptions.go). Without a value the count
-// is 0, which silently means "today".
+// naming a fixed period: getDateRange reads it as a NUMBER OF DAYS for these
+// two and for no others (pkg/lib/database/quickoptions.go — the exactDate
+// default reads the same field, as the timestamp it is). Without a value the
+// count is 0, which silently means "today" — but only where the range reaches
+// the query at all, which takes a date property and one of the six conditions
+// below (transformDateFilter, datePresetConditions). Everywhere else the
+// preset is inert and the count is never read, which is why the validation
+// rule this set feeds is scoped and export writes the count regardless.
 var countingPresets = map[model.BlockContentDataviewFilterQuickOption]struct{}{
 	model.BlockContentDataviewFilter_NumberOfDaysAgo: {},
 	model.BlockContentDataviewFilter_NumberOfDaysNow: {},
@@ -413,6 +457,24 @@ func countingPreset(q model.BlockContentDataviewFilterQuickOption) bool {
 var countingPresetNames = map[string]struct{}{
 	"number_of_days_ago": {},
 	"number_of_days_now": {},
+}
+
+// datePresetConditions are the conditions that apply a preset's day range at
+// all — the condition half of transformDateFilter's gate. It computes the
+// range for every DATE filter (a filter of any other format it returns before
+// computing anything, which is the other half), then substitutes the range
+// into the filter for these six and no others
+// (pkg/lib/database/quickoptions.go): on any other condition — the
+// presence-only leaves above all — it returns the filter unchanged, so the
+// preset is inert and its day count is never read. That is why a counting
+// preset without a count is an error here and nothing at all there.
+var datePresetConditions = map[string]struct{}{
+	"equal":            {},
+	"in":               {},
+	"less":             {},
+	"greater":          {},
+	"less_or_equal":    {},
+	"greater_or_equal": {},
 }
 
 var datePresetNames = newEnumNames(map[model.BlockContentDataviewFilterQuickOption]string{
@@ -473,6 +535,18 @@ func FormatByName(name string) (model.RelationFormat, bool) {
 // no name of its own and folds into "text" via formatName. The map must
 // remain a bijection (newEnumNames inverts it, and a duplicated name would
 // invert nondeterministically), which is why the fold lives outside it.
+//
+// It is TOTAL over model.RelationFormat, shorttext's fold aside, and that is
+// a load-bearing property rather than tidiness: a relation document states
+// its format on the envelope as a required NAME (§2d), so a stored format
+// this map cannot name is a relation object Marshal cannot export. "map"
+// (RelationFormat_map) is in the vocabulary for exactly that reason — the
+// API does not serve it, but 72 production relation documents carry format
+// 102 (every one the bundled templatePlaceholders relation), and the §3 note
+// that names exist for internal formats (emoji, objects, properties) already
+// covers it. TestFormatNames_TotalOverModelEnum pins the totality, so a
+// format added to the model without a name here fails a test instead of an
+// export.
 var formatNames = newEnumNames(map[model.RelationFormat]string{
 	model.RelationFormat_longtext:  "text",
 	model.RelationFormat_number:    "number",
@@ -487,6 +561,7 @@ var formatNames = newEnumNames(map[model.RelationFormat]string{
 	model.RelationFormat_emoji:     "emoji",
 	model.RelationFormat_object:    "objects",
 	model.RelationFormat_relations: "properties",
+	model.RelationFormat_map:       "map",
 })
 
 // filterTemplatePrefix marks a dynamic filter value: a placeholder the
@@ -512,20 +587,23 @@ func isFilterTemplate(v string) bool {
 // but a bare integer would be the one opaque enum in an otherwise
 // self-describing format — every other enum here is a name (§3).
 var layoutNames = newEnumNames(map[model.ObjectTypeLayout]string{
-	model.ObjectType_basic:               "basic",
-	model.ObjectType_profile:             "profile",
-	model.ObjectType_todo:                "todo",
-	model.ObjectType_set:                 "set",
-	model.ObjectType_objectType:          "object_type",
-	model.ObjectType_relation:            "relation",
+	model.ObjectType_basic:      "basic",
+	model.ObjectType_profile:    "profile",
+	model.ObjectType_todo:       "todo",
+	model.ObjectType_set:        "set",
+	model.ObjectType_objectType: "object_type",
+	// the wire names for the three relation-flavored layouts say "property",
+	// like the kinds above — only the NAME moves, the model constants they
+	// map from are the store's
+	model.ObjectType_relation:            "property",
 	model.ObjectType_file:                "file",
 	model.ObjectType_dashboard:           "dashboard",
 	model.ObjectType_image:               "image",
 	model.ObjectType_note:                "note",
 	model.ObjectType_space:               "space",
 	model.ObjectType_bookmark:            "bookmark",
-	model.ObjectType_relationOptionsList: "relation_options_list",
-	model.ObjectType_relationOption:      "relation_option",
+	model.ObjectType_relationOptionsList: "property_options_list",
+	model.ObjectType_relationOption:      "property_option",
 	model.ObjectType_collection:          "collection",
 	model.ObjectType_audio:               "audio",
 	model.ObjectType_video:               "video",
@@ -542,19 +620,219 @@ var layoutNames = newEnumNames(map[model.ObjectTypeLayout]string{
 	model.ObjectType_discussion:          "discussion",
 })
 
-// layoutValuedKeys are the properties whose stored number is an
-// ObjectTypeLayout. The other layout-ish bundled keys hold *different* enums
-// — layoutAlign is a block align, layoutWidth a fraction, widgetLayout a
-// widget layout, headerRelationsLayout its own enum — so they are left alone.
-var layoutValuedKeys = map[string]struct{}{
-	"recommendedLayout": {},
-	"layout":            {},
-	"resolvedLayout":    {},
+// propertyVocabulary is one stored property key's name-over-number contract
+// (§3): the stored value is a number whose meaning is a proto enum, and the
+// format writes the NAME — a bare integer would be an opaque enum in an
+// otherwise self-describing format. All four surfaces that touch such a key
+// ask this one struct, so they cannot disagree about what a name means:
+// export substitutes the name for an in-vocabulary number (and refuses to
+// write a stored string the vocabulary does not name — there is no way to
+// write it, I1); import maps a known name back to its number; validation
+// refuses an unknown name as an ERROR, because the typo would otherwise
+// import as a raw string onto a number-format detail, where every consumer
+// reads it with an int getter and silently sees the enum's zero; and a raw
+// number outside the vocabulary passes every surface unchanged, because a
+// stored value round-trips as its number rather than being lost.
+type propertyVocabulary struct {
+	what  string               // the concept a refusal names: "layout", "align", …
+	has   func(string) bool    // is this string a vocabulary name
+	value func(string) float64 // name → stored number (only for names has() admits)
+	name  func(float64) string // stored number → name; "" outside the vocabulary
+	names func() []string      // the vocabulary, sorted, for refusals that state it
 }
 
-func isLayoutKey(key string) bool {
-	_, ok := layoutValuedKeys[key]
-	return ok
+// vocabularyOf adapts an enumNames table to the property contract. The name
+// direction reads the number the way every consumer of these details does —
+// int32 of the float — GUARDED the way relationFormatName is: int32(NaN) is 0
+// on this machine, and without the guard a NaN stored on a layout key exports
+// as the enum's zero's name, a false claim that then imports as a permanent
+// silent rewrite. A fraction, an infinity or an out-of-int32 number likewise
+// has no name and round-trips as the number it is.
+func vocabularyOf[T ~int32](e enumNames[T], what string) propertyVocabulary {
+	return propertyVocabulary{
+		what:  what,
+		has:   e.has,
+		value: func(n string) float64 { return float64(e.value(n)) },
+		name: func(n float64) string {
+			if math.IsNaN(n) || math.IsInf(n, 0) || n != math.Trunc(n) ||
+				n < math.MinInt32 || n > math.MaxInt32 {
+				return ""
+			}
+			return e.name(T(int32(n)))
+		},
+		names: func() []string {
+			out := make([]string, 0, len(e.toVal))
+			for n := range e.toVal {
+				out = append(out, n)
+			}
+			sort.Strings(out)
+			return out
+		},
+	}
+}
+
+// quotedNames renders the vocabulary for a refusal — 'a', 'b', 'c' — in the
+// same quoting the schema's own enum errors use, so the two refusal channels
+// read as one.
+func (v propertyVocabulary) quotedNames() string {
+	names := v.names()
+	for i, n := range names {
+		names[i] = "'" + n + "'"
+	}
+	return strings.Join(names, ", ")
+}
+
+var layoutVocabulary = vocabularyOf(layoutNames, "layout")
+
+// alignVocabulary spells a model.BlockAlign — the enum a block's `align`,
+// a view column's `align` and the layoutAlign DETAIL all store. One concept,
+// one spelling (§15 #14): the four names were already the format's alignment
+// vocabulary twice over before the property joined.
+var alignVocabulary = vocabularyOf(alignNames, "align")
+
+// originNames maps model.ObjectOrigin — how an object entered its space —
+// to the format's names: the proto's own identifiers, snake_cased where they
+// are camelCase, because there is no established public vocabulary to defer
+// to (the REST API stores the same number). TOTAL over the proto enum,
+// pinned by TestNamedEnum_VocabulariesTotalOverModelEnums: a member added to
+// the proto without a name here would export as a bare integer again.
+var originNames = newEnumNames(map[model.ObjectOrigin]string{
+	model.ObjectOrigin_none:             "none",
+	model.ObjectOrigin_clipboard:        "clipboard",
+	model.ObjectOrigin_dragAndDrop:      "drag_and_drop",
+	model.ObjectOrigin_import:           "import",
+	model.ObjectOrigin_webclipper:       "webclipper",
+	model.ObjectOrigin_sharingExtension: "sharing_extension",
+	model.ObjectOrigin_usecase:          "usecase",
+	model.ObjectOrigin_builtin:          "builtin",
+	model.ObjectOrigin_bookmark:         "bookmark",
+	model.ObjectOrigin_api:              "api",
+})
+
+var originVocabulary = vocabularyOf(originNames, "origin")
+
+// importTypeNames maps model.ImportType — which importer brought an
+// import/usecase-originated object in. The names are the proto identifiers
+// lowercased; `pb` stays `pb` (the protobuf export format, the store's own
+// name for it) rather than gaining an invented alias. Note the enum's ZERO
+// is notion — the sharpest reason this key had to be named or die: an
+// accepted-then-zeroed string here did not read as "unset", it read as a
+// false claim that the object came from Notion.
+var importTypeNames = newEnumNames(map[model.ImportType]string{
+	model.Import_Notion:   "notion",
+	model.Import_Markdown: "markdown",
+	model.Import_External: "external",
+	model.Import_Pb:       "pb",
+	model.Import_Html:     "html",
+	model.Import_Txt:      "txt",
+	model.Import_Csv:      "csv",
+	model.Import_Obsidian: "obsidian",
+})
+
+var importTypeVocabulary = vocabularyOf(importTypeNames, "import type")
+
+// imageKindNames maps model.ImageKind — what an image was uploaded FOR — to
+// the format's names: the proto identifiers snake_cased. TOTAL over the
+// proto enum, pinned below.
+//
+// This is the fourth of the five 2026-08 bare-integer enums to be named, and
+// it is named on the same measured ground the others were left as numbers:
+// widgetLayout and headerRelationsLayout stayed bare at 13 and 0 occurrences,
+// while imageKind occurs on 4,079 file objects across the 77-space corpus —
+// 4,053 automatically_added, 23 icon, 3 basic-or-cover. A reader of an
+// export saw a bare 3 and had no way to learn what it meant.
+//
+// Note the enum's ZERO is `basic`, and the app never STORES it:
+// makeInitialDetails returns early for Basic, so the key is absent rather
+// than 0 on an ordinary upload. The name exists anyway because a total
+// vocabulary is what keeps a future writer of 0 from exporting a bare
+// integer, and because absent and basic must not be forced to differ.
+var imageKindNames = newEnumNames(map[model.ImageKind]string{
+	model.ImageKind_Basic:              "basic",
+	model.ImageKind_Cover:              "cover",
+	model.ImageKind_Icon:               "icon",
+	model.ImageKind_AutomaticallyAdded: "automatically_added",
+})
+
+var imageKindVocabulary = vocabularyOf(imageKindNames, "image kind")
+
+// viewTypeVocabulary is not a property vocabulary — no stored detail key
+// maps to it — but §2a's default_view member shares the reading, and the
+// guarded adapter is how both enum members stopped naming NaN.
+var viewTypeVocabulary = vocabularyOf(viewTypeNames, "view type")
+
+// namedEnumProperties maps each stored property key whose number the format
+// names onto its vocabulary (§3). The three layout keys hold an
+// ObjectTypeLayout. The remaining layout-ish bundled keys are left as
+// numbers deliberately: layoutWidth is a fraction, not an enum, and
+// widgetLayout/headerRelationsLayout hold enums nothing measurable writes —
+// 13 and 0 occurrences across 28,604 real exported documents.
+var namedEnumProperties = map[string]propertyVocabulary{
+	"recommendedLayout": layoutVocabulary,
+	"layout":            layoutVocabulary,
+	"resolvedLayout":    layoutVocabulary,
+	// layoutAlign is the object's own page alignment — the one key of the
+	// five 2026-08 bare-integer enums a user can set (readonly false in the
+	// bundled table), which is why it is NAMED rather than deprecated: it
+	// survives the §2a admission on type documents as "the type object's own
+	// page display, set by a person where non-zero", and the app writes it
+	// as a model.BlockAlign (participant/profile editors stamp AlignCenter;
+	// the align UI sets the rest). Before this entry, `layout_align:
+	// "center"` VALIDATED and stored the string on a number detail — every
+	// int getter answered 0, left — while the reader of an export saw a bare
+	// 1 beside a named `layout` and had no way to learn what it meant.
+	"layoutAlign": alignVocabulary,
+	// origin and importType are the object's PROVENANCE — how it entered the
+	// space it was exported from — and they are NAMED rather than deprecated
+	// on the format's own precedent: the §2a admission dropped `origin` from
+	// TYPE documents as install provenance precisely because "on ordinary
+	// objects origin is real provenance and stays", and §2f drops both only
+	// on bundled-identical property documents. The corpus agrees it is real:
+	// all TEN origin values occur across 15,943 documents (import 6,463 ·
+	// bookmark 2,444 · api 2,293 · webclipper 2,080 · usecase 1,110 ·
+	// clipboard 449 · none 425 · builtin 333 · drag_and_drop 301 ·
+	// sharing_extension 45) — a reader can tell an object a person clipped
+	// from one a pipeline made, which is not the class of syncStatus but the
+	// class of createdDate (which the import pipeline deliberately preserves
+	// as OriginalCreatedTimestamp) and creator (written as attribution).
+	//
+	// Deprecation was weighed: heart's own import pipeline re-stamps both on
+	// every snapshot (objectcreator.injectImportDetails), so nothing
+	// downstream of an app import acts on the carried value. But the format
+	// is a READ surface first, and a transient key must describe a MOMENT
+	// rather than the object — origin describes the object's history. The
+	// pair travels together: objectorigin.go writes importType only beside
+	// an import/usecase origin.
+	"origin":     originVocabulary,
+	"importType": importTypeVocabulary,
+	// imageKind records what an image was uploaded FOR — a cover, an icon,
+	// or added automatically by a pipeline. It is NAMED rather than
+	// deprecated even though heart has one writer and no reader, because
+	// the format is a read surface first: a person looking at a file object
+	// wants to know why the image is there.
+	//
+	// Deprecation was weighed and is still arguable. The behaviour a client
+	// actually runs on is `isHiddenDiscovery`, which travels independently
+	// and is in perfect lockstep with the automatically_added member — 4,053
+	// of 4,053 in the corpus — so the one live consumer (the client's
+	// subscription filter, which hides auto-added images) survives without
+	// this key. The two anytype-ts filters that DO read imageKind, in the
+	// icon and cover pickers, are both commented out. What would be lost is
+	// the 26 documents where the key says icon or cover and nothing else
+	// does, and even those are recoverable from whichever object references
+	// the image through icon_image or cover_id.
+	//
+	// It stays because naming costs one entry and drops nothing, while
+	// dropping 4,079 documents' worth of a stored, user-visible-in-principle
+	// fact is a decision the freeze does not need to take.
+	"imageKind": imageKindVocabulary,
+}
+
+// namedEnumProperty answers whether a stored key is written by name, and
+// with which vocabulary.
+func namedEnumProperty(key string) (propertyVocabulary, bool) {
+	v, ok := namedEnumProperties[key]
+	return v, ok
 }
 
 // formatName is the export-side name of a stored format: the canonical name
@@ -767,37 +1045,6 @@ func defaultGenerateId() string {
 	return hex.EncodeToString(b[:])
 }
 
-// suffixLabels labels each id with its last size characters (§9a) — the
-// refs-legend labeler. An id whose suffix collides with another id's or is
-// rejected by disallow gets no label and stays uncompacted — with 5
-// characters over CID/hex alphabets collisions are birthday-rare, and
-// falling back to the full id is always correct under the total resolution
-// rule. Ids no longer than size label as themselves. The census only counts
-// ids longer than size, so the caller's disallow set MUST cover every id
-// that stays verbatim in the document (buildCompactIds passes fullIds) or a
-// label could alias a short id.
-func suffixLabels(ids []string, size int, disallow func(candidate string) bool) map[string]string {
-	counts := make(map[string]int, len(ids))
-	for _, id := range ids {
-		if r := []rune(id); len(r) > size {
-			counts[string(r[len(r)-size:])]++
-		}
-	}
-	out := make(map[string]string, len(ids))
-	for _, id := range ids {
-		r := []rune(id)
-		if len(r) <= size {
-			out[id] = id
-			continue
-		}
-		suffix := string(r[len(r)-size:])
-		if counts[suffix] == 1 && (disallow == nil || !disallow(suffix)) {
-			out[id] = suffix
-		}
-	}
-	return out
-}
-
 // mintedSuffixLabels is the doc-local relabeler (§9a): it labels an id with
 // its last size characters ONLY when the id matches a machine-minted shape
 // (isMintedLocalId). The rule is deliberately inverted from "relabel unless
@@ -852,9 +1099,10 @@ func IsCompactLabelShaped(s string) bool {
 //   - RFC-4122 UUID (8-4-4-4-12 lowercase hex): uuid.New().String() —
 //     dataview view ids.
 //
-// Derived cell ids (`rowId-colId`) are left out on purpose: a cell's suffix
-// is its column's, so neither could ever win the census — and cells carry no
-// id in the flat form anyway. Anything unrecognised stays full: a false
+// Derived cell ids (`rowId-colId`) are reserved by the census even though a
+// cell carries no id in the flat form: a cell's suffix IS its column's, so
+// unless both are counted the column wins the bucket alone and compacts to a
+// label its own cells share in the live object. Anything unrecognised stays full: a false
 // negative costs a few tokens, a false positive destroys a meaningful
 // identifier.
 func isMintedLocalId(id string) bool {

@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -36,7 +37,7 @@ func TestWriteProfile(t *testing.T) {
 		Widgets: []anyblockjson.Widget{
 			{Target: "page-home", Layout: "tree"},
 			{Target: "type-page", Layout: "view", Limit: 6},
-			{Target: "favorite", Layout: "compact_list"},
+			{Target: "_favorite", Layout: "compact_list"},
 			{Target: "chat-requests"}, // no layout: link, the zero value
 		},
 	}
@@ -55,7 +56,8 @@ func TestWriteProfile(t *testing.T) {
 	assert.Equal(t, model.BlockContentWidget_Link, p.Widgets[3].Layout, "absent layout is link")
 
 	// reserved targets pass through untouched; the installer knows them
-	assert.Equal(t, "favorite", p.Widgets[2].TargetObjectId)
+	assert.Equal(t, "favorite", p.Widgets[2].TargetObjectId,
+		"the platform prefix is the format's; the wire carries the bare listing name")
 	// TEMPORARY: inject opens widgets[0], which is why validate warns when
 	// the declared entrypoint is not first
 	assert.Equal(t, idx.EntryPoint(), p.Widgets[0].TargetObjectId)
@@ -78,25 +80,35 @@ func TestWriteProfile_Homepage(t *testing.T) {
 	})
 }
 
-// iconImage is an object id in the format and the image's *name* on the wire
+// an image icon is an object id in the format and the image's *name* on the wire
 func TestWriteProfile_IconImage(t *testing.T) {
+	fileIcon := func(id string) *anyblockjson.Icon {
+		return &anyblockjson.Icon{Format: "file", File: id}
+	}
 	dir := t.TempDir()
 	names := map[string]string{"file-logo": "acme-logo"}
 	require.NoError(t, writeProfile(dir, &anyblockjson.Index{
-		Name: "X", IconImage: "file-logo",
+		Name: "X", Icon: fileIcon("file-logo"),
 	}, names))
 	assert.Equal(t, "acme-logo", readBack(t, dir).Avatar)
 
 	t.Run("an unknown id fails rather than shipping a blank icon", func(t *testing.T) {
-		err := writeProfile(t.TempDir(), &anyblockjson.Index{IconImage: "file-missing"}, names)
+		err := writeProfile(t.TempDir(), &anyblockjson.Index{Icon: fileIcon("file-missing")}, names)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "names no object")
 	})
 	t.Run("a nameless object fails: the installer resolves by name", func(t *testing.T) {
-		err := writeProfile(t.TempDir(), &anyblockjson.Index{IconImage: "file-x"},
+		err := writeProfile(t.TempDir(), &anyblockjson.Index{Icon: fileIcon("file-x")},
 			map[string]string{"file-x": ""})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "has no name")
+	})
+	t.Run("an emoji icon leaves the wire avatar empty", func(t *testing.T) {
+		dir := t.TempDir()
+		require.NoError(t, writeProfile(dir, &anyblockjson.Index{
+			Icon: &anyblockjson.Icon{Format: "emoji", Emoji: "📚"},
+		}, names))
+		assert.Empty(t, readBack(t, dir).Avatar)
 	})
 }
 
@@ -106,4 +118,19 @@ func TestWriteProfile_UnknownLayout(t *testing.T) {
 	}, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown layout")
+}
+
+// builtinobjects.setWorkspaceSettings switches on the bare `widgets`/`graph`
+// BEFORE it tries to resolve an id, so an untranslated `_graph` is looked up
+// as an object, is not found, and silently falls back to the widgets screen.
+func TestWriteProfile_ReservedHomepageIsTranslated(t *testing.T) {
+	for _, tc := range []struct{ homepage, want string }{
+		{anyblockjson.HomepageGraph, domain.HomepageGraph},
+		{anyblockjson.HomepageWidgets, domain.HomepageWidgets},
+		{"page-home", "page-home"},
+	} {
+		dir := t.TempDir()
+		require.NoError(t, writeProfile(dir, &anyblockjson.Index{Homepage: tc.homepage}, nil))
+		assert.Equal(t, tc.want, readBack(t, dir).SpaceDashboardId, tc.homepage)
+	}
 }

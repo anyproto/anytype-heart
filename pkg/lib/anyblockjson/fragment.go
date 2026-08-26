@@ -81,9 +81,13 @@ func UnmarshalBlocks(run []json.RawMessage, opts Options) (blocks []*model.Block
 	if err != nil {
 		return nil, nil, err
 	}
-	imp := &importer{opts: opts, doc: &jsonDoc{}}
+	imp := &importer{opts: opts, doc: opts.fragmentDoc()}
 	root := &model.Block{}
-	blocks, err = imp.flatSubtree(jbs, imp.blockIndents(jbs, -1), root, -1)
+	// §7a: the write path lifts too, or an API caller that pasted a `group`
+	// mints a Layout_Div straight into a live object — one no read will ever
+	// show and normalization never removes while it has children
+	liftedJbs, liftedIndents := liftTransparentContainers(jbs, imp.blockIndents(jbs, -1))
+	blocks, err = imp.flatSubtree(liftedJbs, liftedIndents, root, -1)
 	if err != nil {
 		return nil, nil, fmt.Errorf("build fragment blocks: %w", err)
 	}
@@ -102,7 +106,18 @@ func UnmarshalBlock(raw json.RawMessage, forcedId string, opts Options) ([]*mode
 	if err != nil {
 		return nil, err
 	}
-	imp := &importer{opts: opts, doc: &jsonDoc{}}
+	// §7a: this entry point's contract is exactly one block, and a
+	// transparent container is not one. Returning zero blocks would leave
+	// the caller's edit silently unapplied — a replaceBlock that replaced
+	// nothing — so it is named as the error it is.
+	if transparentBlockTypes[jbs[0].Type] {
+		return nil, &ValidationError{Issues: []Issue{{
+			Path: "/blocks/0/type",
+			Message: fmt.Sprintf("%q is a transparent container (§7a) — it contributes no block of its own, "+
+				"so it cannot be the one block this call addresses", jbs[0].Type),
+		}}}
+	}
+	imp := &importer{opts: opts, doc: opts.fragmentDoc()}
 	blocks, err := imp.blockFromJSON(jbs[0], forcedId)
 	if err != nil {
 		return nil, fmt.Errorf("build fragment block: %w", err)
@@ -112,23 +127,75 @@ func UnmarshalBlock(raw json.RawMessage, forcedId string, opts Options) ([]*mode
 
 // UnmarshalPropertyValue decodes one property value per its resolved §3
 // format rules (dates parse, select option names resolve/create through
-// Options.ResolveOptions, object/file refs resolve, scalars of list-shaped
-// formats wrap into lists). It is the import twin of MarshalPropertyValue.
-// A nil v yields an explicit null value (presence is preserved, §3).
+// Options.ResolveOptions, object/file ids pass through, scalars of
+// list-shaped formats wrap into lists). It is the import twin of
+// MarshalPropertyValue. A nil v yields an explicit null value (presence is
+// preserved, §3).
+//
+// `key` is a STORED key here, not a spelling — a value-level caller holds
+// the key it is writing — so the property legend has nothing to do. The
+// OPTION legend does: hand this call the {option name: option id} map for
+// this key through Options.Legend.OptionIds, and a select value resolves by
+// id first (§3 step 1) instead of by name. Without it a name shared by two
+// options lands on whichever answers first, and an option renamed since the
+// value was written mints a second option under the stale name — the two
+// losses §9a exists to close, which this entry point had no way to avoid.
 func UnmarshalPropertyValue(key string, v any, opts Options) *types.Value {
-	imp := &importer{opts: opts, doc: &jsonDoc{}}
-	return imp.propertyValue(key, v)
+	// A key the whole-document import DROPS returns nothing here too, or the
+	// two doors disagree about the same key. It matters most for attribution
+	// (§3): `creator` and `lastModifiedBy` are DERIVED — the store sets them,
+	// a writer never does — so a caller round-tripping one value through this
+	// pair would hand back a value that can only be discarded on the way in.
+	// MarshalPropertyValue writes the member as `<id>#<name>` for a reader to
+	// display; this refuses to read it back, and the asymmetry is the point.
+	if isDroppedOnImport(key) {
+		return nil
+	}
+	imp := &importer{opts: opts, doc: opts.fragmentDoc()}
+	return imp.propertyValue(key, key, v)
 }
 
-// MarshalBlockSubtree serializes one block subtree into its flat JSON run
-// (§4): subtree[0] is the root, emitted at indent 0; the remaining entries
-// back the root's ChildrenIds graph (entries not reachable from the root are
-// ignored, ids the slice does not carry are skipped — the same leniency as
-// a whole-document export). Tables need their internal blocks in the slice
-// to render (§6.1). The result is a compact JSON array of block objects.
+// MarshalBlockSubtree serializes one block subtree into a fragment envelope
+// (§4): `blocks` is the flat run — subtree[0] is the root, emitted at indent
+// 0, and the remaining entries back the root's ChildrenIds graph (entries not
+// reachable from the root are ignored, ids the slice does not carry are
+// skipped, the same leniency as a whole-document export; tables need their
+// internal blocks in the slice to render, §6.1) — beside the legends those
+// blocks owe, in the envelope's own member order:
+//
+//	{"property_internal_keys": {…}, "type_internal_keys": {…}, "option_ids": {…}, "blocks": […]}
+//
+// **The legends are why this is an object rather than the bare array it used
+// to be.** A block run names properties at seven slots and options at two,
+// and it names them in the DOCUMENT's spelling — which is the writer's
+// vocabulary, not the reader's. The exporter computed all three legends here
+// all along and discarded them at the return, so a `property` block came back
+// as `{"property": "priority"}` with nothing saying which relation `priority` is,
+// where the same block inside a whole document carries
+// `property_internal_keys: {"priority": "6a32d485…"}`. A reader resolved it through
+// its own table, which is precisely the misresolution §3 wrote the legend to
+// prevent. Feed the three maps to the reading side through Options.Legend.
+//
+// **OmitIds and the compaction flags are refused, not ignored.** This surface
+// exists for wiring that edits a live document op-by-op, and both destroy the
+// addresses that wiring runs on: OmitIds drops every block id, the view id
+// and the filter id, so the run says what to write but not where; the block
+// relabeling rewrites doc-local ids to short suffixes that are meaningful
+// only inside the emitted run and are not the object's ids at all. Silently
+// honouring either produced a fragment that reads correctly and cannot be
+// applied. A caller that wants an id-less or relabeled rendering wants
+// Marshal on the whole document.
 func MarshalBlockSubtree(subtree []*model.Block, opts Options) (json.RawMessage, error) {
 	if len(subtree) == 0 || subtree[0] == nil || subtree[0].Id == "" {
 		return nil, fmt.Errorf("empty subtree")
+	}
+	if opts.OmitIds {
+		return nil, fmt.Errorf("OmitIds is not available on a block subtree: " +
+			"a fragment is addressed by the ids it carries (§9)")
+	}
+	if opts.compactBlockLabels() {
+		return nil, fmt.Errorf("block-label compaction is not available on a block subtree: " +
+			"the short labels are local to the emitted run, not the object's ids (§9a)")
 	}
 	e := &exporter{
 		opts:     opts,
@@ -137,16 +204,36 @@ func MarshalBlockSubtree(subtree []*model.Block, opts Options) (json.RawMessage,
 		visited:  map[string]bool{},
 	}
 	e.indexBlocks()
-	if opts.compactObjectRefs() || opts.compactBlockLabels() {
-		e.buildCompactIds()
-	}
+	// the fragment's root is the caller's, not the one indexBlocks infers from
+	// an id-less snapshot: the emit below starts at subtree[0], so that is the
+	// entry point the id reservations have to be reachable from (§4).
+	e.rootId = subtree[0].Id
 	var out []any
 	// topLevel=false: a fragment caller addresses the blocks explicitly, so
 	// even a structural root renders rather than silently vanishing
 	if err := e.appendBlocksFlat(&out, []string{subtree[0].Id}, 0, false); err != nil {
 		return nil, fmt.Errorf("marshal block subtree: %w", err)
 	}
-	data, err := json.Marshal(out)
+	// the legends AFTER the emit: every key slot has claimed its term by now,
+	// which is the same ordering buildDoc relies on (§9a)
+	env := &omap{}
+	if m := e.buildPropertyKeys(); m != nil {
+		env.set(memberPropertyInternalKeys, m)
+	}
+	// The type half is UNREACHABLE from every fragment slot today: typeSlug is
+	// called only from envelopeTypeTerms and buildTypeProperties, and neither
+	// is on this path, so no subtree can owe a type_internal_keys line. Kept anyway,
+	// because the cost is three lines and the failure mode of removing it is a
+	// fragment that silently omits a legend the day a block slot starts
+	// carrying a type term. A probe confirms the branch never fires.
+	if m := e.buildTypeKeys(); m != nil {
+		env.set(memberTypeInternalKeys, m)
+	}
+	if m := e.buildOptionIds(); m != nil {
+		env.set("option_ids", m)
+	}
+	env.set("blocks", out)
+	data, err := json.Marshal(env)
 	if err != nil {
 		return nil, fmt.Errorf("encode block subtree: %w", err)
 	}
@@ -154,9 +241,9 @@ func MarshalBlockSubtree(subtree []*model.Block, opts Options) (json.RawMessage,
 }
 
 // ParseInlineText parses §8 inline Markdown into plain text and marks — the
-// single-field import codec. Mention/object mark params stay as written
-// (fragment callers resolve refs themselves; whole-document import resolves
-// them through the refs legend).
+// single-field import codec. Mention/object mark params stay as written —
+// an object reference is never compacted, so there is nothing to resolve
+// them through (§9a).
 func ParseInlineText(md string) (string, []*model.BlockContentTextMark, error) {
 	return parseInline(md)
 }

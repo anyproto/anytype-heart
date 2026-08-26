@@ -11,7 +11,6 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -28,7 +27,9 @@ func (e *exporter) dvFormat(dv *model.BlockContentDataview, key string) (model.R
 
 func (e *exporter) dataviewToJSON(m *omap, dv *model.BlockContentDataview) error {
 	m.set("type", "dataview")
-	m.setNonEmpty("object_id", e.compactObjectId(dv.TargetObjectId))
+	// a singular reference slot: a target the space does not hold is
+	// written as the sentinel, never as if it existed (§9)
+	m.setNonEmpty("object_id", e.singularObjectRef("/blocks", "dataview object_id", dv.TargetObjectId))
 	m.setNonEmpty("is_collection", dv.IsCollection)
 	m.setNonEmpty("source", stringsToAny(dv.Source))
 
@@ -38,7 +39,7 @@ func (e *exporter) dataviewToJSON(m *omap, dv *model.BlockContentDataview) error
 			continue
 		}
 		pm := &omap{}
-		pm.set("key", e.opts.propertySlug(rl.Key))
+		pm.set(memberProperty, e.propertySlug(rl.Key))
 		pm.setNonEmpty("format", formatName(rl.Format))
 		props = append(props, pm)
 	}
@@ -62,6 +63,7 @@ func (e *exporter) dataviewToJSON(m *omap, dv *model.BlockContentDataview) error
 
 func (e *exporter) viewToJSON(v *model.BlockContentDataviewView, dv *model.BlockContentDataview) (*omap, error) {
 	vm := &omap{}
+	e.recordEmitted(v.Id)
 	if !e.opts.OmitIds {
 		vm.setNonEmpty("id", e.localId(v.Id))
 	}
@@ -75,9 +77,9 @@ func (e *exporter) viewToJSON(v *model.BlockContentDataviewView, dv *model.Block
 		vm.setNonEmpty("type", viewTypeNames.name(v.Type))
 	}
 	vm.setNonEmpty("name", v.Name)
-	vm.setNonEmpty("group_by", e.opts.propertySlug(v.GroupRelationKey))
-	vm.setNonEmpty("cover_property", e.opts.propertySlug(v.CoverRelationKey))
-	vm.setNonEmpty("end_property", e.opts.propertySlug(v.EndRelationKey))
+	vm.setNonEmpty("group_by", e.propertySlug(v.GroupRelationKey))
+	vm.setNonEmpty("cover_property", e.propertySlug(v.CoverRelationKey))
+	vm.setNonEmpty("end_property", e.propertySlug(v.EndRelationKey))
 	vm.setNonEmpty("hide_icon", v.HideIcon)
 	if v.CardSize != model.BlockContentDataviewView_Small {
 		vm.setNonEmpty("card_size", cardSizeNames.name(v.CardSize))
@@ -85,8 +87,8 @@ func (e *exporter) viewToJSON(v *model.BlockContentDataviewView, dv *model.Block
 	vm.setNonEmpty("cover_fit", v.CoverFit)
 	vm.setNonEmpty("colored_groups", v.GroupBackgroundColors)
 	vm.setNonEmpty("page_size", v.PageLimit)
-	vm.setNonEmpty("default_template_id", e.compactObjectId(v.DefaultTemplateId))
-	vm.setNonEmpty("default_type_id", e.compactObjectId(v.DefaultObjectTypeId))
+	vm.setNonEmpty("default_template_id", v.DefaultTemplateId)
+	vm.setNonEmpty("default_type_id", v.DefaultObjectTypeId)
 	vm.setNonEmpty("wrap_content", v.WrapContent)
 	if v.ListSize != model.BlockContentDataviewView_Compact {
 		vm.setNonEmpty("list_size", listSizeNames.name(v.ListSize))
@@ -165,7 +167,7 @@ func (e *exporter) objectOrdersToJSON(viewId string, dv *model.BlockContentDatav
 		var ids []any
 		for _, id := range oo.ObjectIds {
 			if id != "" {
-				ids = append(ids, e.compactObjectId(id))
+				ids = append(ids, e.objectRef(id))
 			}
 		}
 		om.setNonEmpty("object_ids", ids)
@@ -176,7 +178,7 @@ func (e *exporter) objectOrdersToJSON(viewId string, dv *model.BlockContentDatav
 
 func (e *exporter) sortToJSON(s *model.BlockContentDataviewSort, dv *model.BlockContentDataview) *omap {
 	sm := &omap{}
-	sm.setNonEmpty("property", e.opts.propertySlug(s.RelationKey))
+	sm.setNonEmpty(memberProperty, e.propertySlug(s.RelationKey))
 	if s.Type != model.BlockContentDataviewSort_Asc {
 		sm.setNonEmpty("direction", sortDirectionNames.name(s.Type))
 	}
@@ -223,7 +225,18 @@ func (e *exporter) filterToJSON(f *model.BlockContentDataviewFilter, dv *model.B
 		fm.set("filters", nested)
 		return fm
 	}
-	fm.setNonEmpty("property", e.opts.propertySlug(f.RelationKey))
+	// a leaf filter has to name the property it filters on (§6) — the rule
+	// the sort and the column beside it have carried all along. Without it a
+	// filter whose stored relation key is empty was emitted as a nameless
+	// node: it filtered on nothing, the schema accepted it, import stored the
+	// empty key, and the next export wrote the same node again. Dropping it
+	// is what the sort loop above already does with the same input.
+	if f.RelationKey == "" {
+		e.warn("", "a filter names no property and is dropped; a filter has to name "+
+			"the property it filters on (§6)")
+		return nil
+	}
+	fm.setNonEmpty(memberProperty, e.propertySlug(f.RelationKey))
 	if f.Condition != model.BlockContentDataviewFilter_None {
 		fm.setNonEmpty("condition", conditionNames.name(f.Condition))
 	}
@@ -238,13 +251,23 @@ func (e *exporter) filterToJSON(f *model.BlockContentDataviewFilter, dv *model.B
 		// survive the usual empty-elision, or the document silently stops
 		// saying which day it means
 		if countingPreset(f.QuickOption) {
-			if f.Value == nil {
-				fm.set("value", float64(0))
-			} else {
-				fm.set("value", e.dvValueToJSON(dv, f.RelationKey, f.Value))
-			}
+			fm.set("value", e.dayCountOperand(f))
 		} else if f.Value != nil {
-			fm.setNonEmpty("value", e.dvValueToJSON(dv, f.RelationKey, f.Value))
+			// a filter's value is DATA, and a falsy one is the most ordinary
+			// data there is: `done = false` is how every task view spells
+			// "not finished yet", and `priority = 0` how a number view
+			// spells "unset". Eliding them leaves `done equal <nothing>` — a
+			// different query, in a document that still validates, and one
+			// the round trip cannot notice because both generations lose it
+			// identically. Measured over 38,061 production objects: 151 of
+			// the 1,494 filters carrying a value carry a falsy one, 122 of
+			// those on `done`, across 70 documents.
+			//
+			// This is the same trap the counting preset above states and
+			// fixes; the fix was never generalized to the branch beside it.
+			if v := e.dvValueToJSON(dv, f.RelationKey, f.Value); v != nil {
+				fm.set("value", v)
+			}
 		}
 	}
 	if f.QuickOption != model.BlockContentDataviewFilter_ExactDate {
@@ -262,9 +285,47 @@ func (e *exporter) filterToJSON(f *model.BlockContentDataviewFilter, dv *model.B
 	return fm
 }
 
+// dayCountOperand renders a counting preset's operand (§6.2): the whole day
+// count in [0, maxDayCount] the format admits, which is also what the query
+// engine reads out of the stored value — domain.Value.Int64 is int64(float)
+// for a number and 0 for every other kind, so a null, a string or a list all
+// mean "0 days, i.e. today" to the engine already.
+//
+// The stored value is untrusted like everything else in a snapshot, and the
+// slot has exactly one written form, so the junk cannot travel: writing it
+// verbatim hands back a document this package's own Validate refuses (§11,
+// I1), and dropping the member says "today" while claiming nothing. Writing
+// the count the engine reads says what the filter does. A count outside the
+// bound is the one case where the two part ways — the engine would keep
+// counting and the format cannot spell it — so it is pinned to the bound and
+// reported.
+func (e *exporter) dayCountOperand(f *model.BlockContentDataviewFilter) float64 {
+	if f.Value == nil {
+		// no operand at all is not a fault to report: it is the stored shape
+		// of "today", and 0 is how this format spells it
+		return 0
+	}
+	raw := f.Value.GetNumberValue() // 0 for every non-number kind
+	count := int64(raw)
+	bounded := count
+	switch {
+	case bounded < 0:
+		bounded = 0
+	case bounded > maxDayCount:
+		bounded = maxDayCount
+	}
+	if _, isNumber := f.Value.GetKind().(*types.Value_NumberValue); !isNumber || float64(count) != raw || count != bounded {
+		e.warn("", "the %s filter on %q carries %v as its day count, which is not one this format can write "+
+			"(a whole number between 0 and %d); %d is written instead",
+			datePresetNames.name(f.QuickOption), f.RelationKey, protoValueToJSON(f.Value), maxDayCount, bounded)
+	}
+	return float64(bounded)
+}
+
 // dvValueToJSON converts a filter value or custom-order entry: option names
-// for select properties (§3), compact ids for object-valued ones, verbatim
-// otherwise.
+// for select properties (§3), object references through the §9 reference
+// renderer (full id, plus the informative `#name` suffix where the shape
+// asks for it), verbatim otherwise.
 func (e *exporter) dvValueToJSON(dv *model.BlockContentDataview, key string, v *types.Value) any {
 	format, ok := e.dvFormat(dv, key)
 	if ok {
@@ -272,7 +333,7 @@ func (e *exporter) dvValueToJSON(dv *model.BlockContentDataview, key string, v *
 		case model.RelationFormat_status, model.RelationFormat_tag:
 			return e.mapValueStrings(v, func(id string) string { return e.optionName(key, id) })
 		case model.RelationFormat_object, model.RelationFormat_file:
-			return e.mapValueStrings(v, e.compactObjectId)
+			return e.mapValueStrings(v, e.objectRef)
 		}
 	}
 	return protoValueToJSON(v)
@@ -303,8 +364,8 @@ func (e *exporter) mapValueStrings(v *types.Value, fn func(string) string) any {
 //
 
 type jsonDvProperty struct {
-	Key    string `json:"key"`
-	Format string `json:"format"`
+	Property string `json:"property"`
+	Format   string `json:"format"`
 }
 
 type jsonView struct {
@@ -377,7 +438,7 @@ type jsonObjectOrder struct {
 
 func (imp *importer) dataviewFromJSON(jb *jsonBlock) (*model.BlockContentDataview, error) {
 	dv := &model.BlockContentDataview{
-		TargetObjectId: imp.resolveId(jb.ObjectId),
+		TargetObjectId: imp.objectRef(jb.ObjectId),
 		IsCollection:   jb.IsCollection,
 		Source:         jb.Source,
 	}
@@ -388,7 +449,7 @@ func (imp *importer) dataviewFromJSON(jb *jsonBlock) (*model.BlockContentDatavie
 		}
 	}
 	for _, p := range props {
-		key := imp.opts.propertyKey(p.Key)
+		key := imp.propertyKeyAt(p.Property, "dataview `properties`")
 		dv.RelationLinks = append(dv.RelationLinks, &model.RelationLink{
 			Key:    key,
 			Format: imp.declaredFormat(key, p.Format),
@@ -403,16 +464,16 @@ func (imp *importer) dataviewFromJSON(jb *jsonBlock) (*model.BlockContentDatavie
 			Id:                    viewId,
 			Type:                  viewTypeNames.value(jv.Type),
 			Name:                  jv.Name,
-			GroupRelationKey:      imp.opts.propertyKey(jv.GroupBy),
-			CoverRelationKey:      imp.opts.propertyKey(jv.CoverProperty),
-			EndRelationKey:        imp.opts.propertyKey(jv.EndProperty),
+			GroupRelationKey:      imp.propertyKeyAt(jv.GroupBy, "view `group_by`"),
+			CoverRelationKey:      imp.propertyKeyAt(jv.CoverProperty, "view `cover_property`"),
+			EndRelationKey:        imp.propertyKeyAt(jv.EndProperty, "view `end_property`"),
 			HideIcon:              jv.HideIcon,
 			CardSize:              cardSizeNames.value(jv.CardSize),
 			CoverFit:              jv.CoverFit,
 			GroupBackgroundColors: jv.ColoredGroups,
 			PageLimit:             jsonInt32(jv.PageSize),
-			DefaultTemplateId:     imp.resolveId(jv.DefaultTemplateId),
-			DefaultObjectTypeId:   imp.resolveId(jv.DefaultTypeId),
+			DefaultTemplateId:     jv.DefaultTemplateId,
+			DefaultObjectTypeId:   jv.DefaultTypeId,
 			WrapContent:           jv.WrapContent,
 			ListSize:              listSizeNames.value(jv.ListSize),
 			AlternateRows:         jv.AlternateRows,
@@ -425,7 +486,7 @@ func (imp *importer) dataviewFromJSON(jb *jsonBlock) (*model.BlockContentDatavie
 		}
 		for _, jc := range jv.Columns {
 			view.Relations = append(view.Relations, &model.BlockContentDataviewRelation{
-				Key:       imp.opts.propertyKey(jc.Property),
+				Key:       imp.propertyKeyAt(jc.Property, "view column `property`"),
 				IsVisible: !jc.Hidden,
 				Width:     jsonInt32(jc.Width),
 				Formula:   aggregationNames.value(jc.Aggregation),
@@ -447,7 +508,7 @@ func (imp *importer) dataviewFromJSON(jb *jsonBlock) (*model.BlockContentDatavie
 		for _, jo := range jv.ObjectOrders {
 			oo := &model.BlockContentDataviewObjectOrder{ViewId: viewId, GroupId: jo.GroupId}
 			for _, id := range jo.ObjectIds {
-				oo.ObjectIds = append(oo.ObjectIds, imp.resolveId(id))
+				oo.ObjectIds = append(oo.ObjectIds, imp.objectRef(id))
 			}
 			dv.ObjectOrders = append(dv.ObjectOrders, oo)
 		}
@@ -471,7 +532,7 @@ func (imp *importer) impDvFormat(dv *model.BlockContentDataview, key string) mod
 }
 
 func (imp *importer) sortFromJSON(js jsonSort, dv *model.BlockContentDataview) *model.BlockContentDataviewSort {
-	key := imp.opts.propertyKey(js.Property)
+	key := imp.propertyKeyAt(js.Property, "sort `property`")
 	s := &model.BlockContentDataviewSort{
 		RelationKey:    key,
 		Type:           sortDirectionNames.value(js.Direction),
@@ -482,7 +543,7 @@ func (imp *importer) sortFromJSON(js jsonSort, dv *model.BlockContentDataview) *
 		NoCollate:      js.NoCollate,
 	}
 	for _, entry := range js.CustomOrder {
-		s.CustomOrder = append(s.CustomOrder, imp.dvValueFromJSON(dv, key, entry))
+		s.CustomOrder = append(s.CustomOrder, imp.dvValueFromJSON(dv, key, js.Property, entry))
 	}
 	return s
 }
@@ -500,7 +561,7 @@ func (imp *importer) filterFromJSON(jf jsonFilter, dv *model.BlockContentDatavie
 		}
 		return f
 	}
-	key := imp.opts.propertyKey(jf.Property)
+	key := imp.propertyKeyAt(jf.Property, "filter `property`")
 	f := &model.BlockContentDataviewFilter{
 		Id:               jf.Id,
 		RelationKey:      key,
@@ -511,21 +572,28 @@ func (imp *importer) filterFromJSON(jf jsonFilter, dv *model.BlockContentDatavie
 		IncludeTime:      jf.IncludeTime,
 	}
 	if jf.Value != nil {
-		f.Value = imp.dvValueFromJSON(dv, key, jf.Value)
+		f.Value = imp.dvValueFromJSON(dv, key, jf.Property, jf.Value)
 	}
 	return f
 }
 
 // dvValueFromJSON reverses dvValueToJSON: option names back to ids where a
-// resolver knows them, ref labels back to full object ids, verbatim
-// otherwise (§3, §9a).
-func (imp *importer) dvValueFromJSON(dv *model.BlockContentDataview, key string, v any) *types.Value {
+// resolver knows them, object references through the §9 reference reader
+// (the informative `#name` suffix trimmed unread), everything else verbatim
+// (§3, §9a).
+//
+// The objects/files arm is BACK, and it is not the one the deleted `refs`
+// legend had (§9a): that one inverted an indirection table, this one strips
+// a suffix that was never an address. A bare id passes through it unchanged,
+// so a document written without suffixes imports exactly as it did before
+// the arm existed.
+func (imp *importer) dvValueFromJSON(dv *model.BlockContentDataview, key, slug string, v any) *types.Value {
 	format := imp.impDvFormat(dv, key)
 	switch format {
 	case model.RelationFormat_status, model.RelationFormat_tag:
-		return mapJSONStrings(v, func(name string) string { return imp.optionId(key, name) })
+		return mapJSONStrings(v, func(name string) string { return imp.resolveOption(key, slug, name) })
 	case model.RelationFormat_object, model.RelationFormat_file:
-		return mapJSONStrings(v, imp.resolveId)
+		return mapJSONStrings(v, imp.objectRef)
 	}
 	return jsonToProtoValue(v)
 }
@@ -548,19 +616,9 @@ func mapJSONStrings(v any, fn func(string) string) *types.Value {
 	return jsonToProtoValue(v)
 }
 
-func (imp *importer) optionId(key, name string) string {
-	if imp.opts.ResolveOptions != nil {
-		if id, ok := imp.opts.ResolveOptions.OptionId(domain.RelationKey(key), name); ok {
-			return id
-		}
-	}
-	// unresolved names pass through; creating options is the wiring's job (§3)
-	return name
-}
-
 func (e *exporter) viewColumnToJSON(r *model.BlockContentDataviewRelation) *omap {
 	cm := &omap{}
-	cm.set("property", e.opts.propertySlug(r.Key))
+	cm.set(memberProperty, e.propertySlug(r.Key))
 	// hidden is the inverse of proto isVisible; omitted means visible (§6.2)
 	cm.setNonEmpty("hidden", !r.IsVisible)
 	cm.setNonEmpty("width", r.Width)

@@ -40,7 +40,7 @@ func TestCompare(t *testing.T) {
 		b := snapshot(map[string]*types.Value{"name": str("Doc")}, textBlock("b1", "hello"))
 
 		// when
-		got := Compare(a, b, anyblockjson.Options{})
+		got := Compare(a, b, model.SmartBlockType_Page, anyblockjson.Options{})
 
 		// then
 		assert.Empty(t, got)
@@ -52,7 +52,7 @@ func TestCompare(t *testing.T) {
 		b := snapshot(map[string]*types.Value{}, textBlock("b1", "hello"))
 
 		// when
-		got := Compare(a, b, anyblockjson.Options{})
+		got := Compare(a, b, model.SmartBlockType_Page, anyblockjson.Options{})
 
 		// then
 		require.Len(t, got, 1)
@@ -65,7 +65,7 @@ func TestCompare(t *testing.T) {
 		b := snapshot(map[string]*types.Value{"name": str("Renamed")})
 
 		// when
-		got := Compare(a, b, anyblockjson.Options{})
+		got := Compare(a, b, model.SmartBlockType_Page, anyblockjson.Options{})
 
 		// then
 		require.Len(t, got, 1)
@@ -78,7 +78,7 @@ func TestCompare(t *testing.T) {
 		b := snapshot(map[string]*types.Value{"name": str("Doc"), "description": str("new")})
 
 		// when
-		got := Compare(a, b, anyblockjson.Options{})
+		got := Compare(a, b, model.SmartBlockType_Page, anyblockjson.Options{})
 
 		// then
 		require.Len(t, got, 1)
@@ -91,7 +91,7 @@ func TestCompare(t *testing.T) {
 		b := snapshot(map[string]*types.Value{"dueDate": num(1700000000)})
 
 		// when
-		got := Compare(a, b, anyblockjson.Options{})
+		got := Compare(a, b, model.SmartBlockType_Page, anyblockjson.Options{})
 
 		// then
 		assert.Empty(t, got)
@@ -103,7 +103,7 @@ func TestCompare(t *testing.T) {
 		b := snapshot(map[string]*types.Value{})
 
 		// when
-		got := Compare(a, b, anyblockjson.Options{})
+		got := Compare(a, b, model.SmartBlockType_Page, anyblockjson.Options{})
 
 		// then
 		assert.Empty(t, got)
@@ -115,7 +115,7 @@ func TestCompare(t *testing.T) {
 		b := snapshot(nil, textBlock("x9", "two"), textBlock("x8", "one"))
 
 		// when
-		got := Compare(a, b, anyblockjson.Options{})
+		got := Compare(a, b, model.SmartBlockType_Page, anyblockjson.Options{})
 
 		// then
 		assert.Empty(t, got)
@@ -139,4 +139,78 @@ func TestTextInventory(t *testing.T) {
 
 	// then
 	assert.Equal(t, map[string]int{"kept": 2}, inv)
+}
+
+// The comparator knows the §15 #12 trim, and knows only that: a dropped
+// EMPTY value on an admitted key is normalization, a dropped non-empty value
+// on the same key is loss, and an unlisted key is neither.
+//
+// The two halves have to move together. When the exporter learned to omit a
+// key the comparator did not know about, every object carrying one reported
+// as data loss — 1,344 of 1,351 differing objects in a 34,339-object sweep,
+// which buried the seven real findings underneath.
+//
+// How this can fail: remove the isDroppedEmptySystemProperty arm and the
+// first case reports; widen it past `got == nil` and the second stops.
+func TestCompare_KnowsTheEmptySystemPropertyTrim(t *testing.T) {
+	boolValue := func(b bool) *types.Value {
+		return &types.Value{Kind: &types.Value_BoolValue{BoolValue: b}}
+	}
+	root := &model.Block{Id: "root", Content: &model.BlockContentOfSmartblock{
+		Smartblock: &model.BlockContentSmartblock{}}}
+	snap := func(kv map[string]*types.Value) *model.SmartBlockSnapshotBase {
+		return &model.SmartBlockSnapshotBase{Blocks: []*model.Block{root}, Details: fields(kv)}
+	}
+
+	t.Run("an admitted key dropped while empty is normalization", func(t *testing.T) {
+		// given
+		orig := snap(map[string]*types.Value{"isHidden": boolValue(false), "revision": num(0)})
+		got := snap(map[string]*types.Value{})
+
+		// when
+		findings := Compare(orig, got, model.SmartBlockType_Page, anyblockjson.Options{})
+
+		// then
+		assert.Empty(t, findings)
+	})
+
+	t.Run("the same key dropped while SET is loss", func(t *testing.T) {
+		// given
+		orig := snap(map[string]*types.Value{"isHidden": boolValue(true)})
+		got := snap(map[string]*types.Value{})
+
+		// when
+		findings := Compare(orig, got, model.SmartBlockType_Page, anyblockjson.Options{})
+
+		// then
+		require.Len(t, findings, 1)
+		assert.Contains(t, findings[0], `detail "isHidden" changed`)
+	})
+
+	t.Run("an admitted key that GAINED a value is still loss", func(t *testing.T) {
+		// given the suppression is scoped to a key that went absent — a round
+		// trip that turned an empty flag into a set one changed the object
+		orig := snap(map[string]*types.Value{"isHidden": boolValue(false)})
+		got := snap(map[string]*types.Value{"isHidden": boolValue(true)})
+
+		// when
+		findings := Compare(orig, got, model.SmartBlockType_Page, anyblockjson.Options{})
+
+		// then
+		require.Len(t, findings, 1)
+		assert.Contains(t, findings[0], `detail "isHidden" changed`)
+	})
+
+	t.Run("an unlisted system relation dropped while empty is still loss", func(t *testing.T) {
+		// given `origin` is a system relation the whitelist does not admit
+		orig := snap(map[string]*types.Value{"origin": num(0)})
+		got := snap(map[string]*types.Value{})
+
+		// when
+		findings := Compare(orig, got, model.SmartBlockType_Page, anyblockjson.Options{})
+
+		// then
+		require.Len(t, findings, 1)
+		assert.Contains(t, findings[0], `detail "origin" changed`)
+	})
 }

@@ -395,16 +395,27 @@ func TestCompactIds(t *testing.T) {
 	require.NoError(t, Validate(data))
 	s := string(data)
 
-	// a refs legend appears, mentions use short labels
-	assert.Contains(t, s, `"refs"`)
-	assert.Contains(t, s, `"roman": "bafyreiroman"`)
-	assert.Contains(t, s, `<mention object_id=\"roman\">`)
-	// stripped properties leave no unused legend entries (§9a)
-	assert.NotContains(t, s, `bafyreitypepage`)
-	// the envelope id is never compacted (§9a)
+	// block ids relabel to their 5-char suffix — the one compaction left, and
+	// it carries no legend (§9a)
+	assert.Contains(t, s, `"id": "b1"`, "short authored ids serve as themselves")
+	// object references are written IN FULL, at every use site, on every shape
+	assert.Contains(t, s, `<mention object_id=\"bafyreiroman\">`)
+	assert.Contains(t, s, `"bafyreiroman"`, "the assignee property value too")
+	// no object-id legend, stated as the entries the deleted one would have
+	// written — a bare absence assertion on the field name would hold no
+	// matter what the export did, which is the trap this replaces (§9a)
+	assert.NotContains(t, s, `"roman": "bafyreiroman"`)
+	assert.NotContains(t, s, `"tasks": "bafyreitasks"`)
+	assert.NotContains(t, s, `"image": "bafyreiimage"`)
+	// and no short label survives at a use site either
+	assert.NotContains(t, s, `"object_id": "image"`)
+	assert.NotContains(t, s, `"object_id": "tasks"`)
+	assert.NotContains(t, s, `bafyreitypepage`, "stripped properties leave no legend entries either")
+	// the envelope id, like every other object id (§9a)
 	assert.Contains(t, s, `"id": "bafyreiobject"`)
 
-	// importing the compact form resolves refs back to full ids
+	// importing it back keeps the mention on the object it named — by
+	// carrying the id, not by resolving a label
 	impOpts := testOptions()
 	impOpts.GenerateId = seqIds("gen")
 	_, snap, err := Unmarshal(data, impOpts)
@@ -433,7 +444,12 @@ func TestEnvelope_Variants(t *testing.T) {
 		s := string(data)
 		assert.Contains(t, s, `"type": "template"`)
 		assert.Contains(t, s, `"template_for": "task"`)
-		assert.NotContains(t, s, `"kind"`)
+		// A template says so, always. `kind` used to be omitted here as
+		// derivable from the type term, which is what made the type term
+		// carry two meanings at once (§2, v0.22): the cost is ~21 bytes on a
+		// template document, and what it buys is that a template whose types
+		// do NOT begin with the template key can express its target at all.
+		assert.Contains(t, s, `"kind": "template"`)
 
 		sbType, snap2, err := Unmarshal(data, Options{GenerateId: seqIds("g")})
 		require.NoError(t, err)
@@ -603,7 +619,7 @@ func TestGeneratedDocs_ByteStable(t *testing.T) {
 		},
 		func(i int) string {
 			return fmt.Sprintf(`{"type": "dataview", "object_id": "bafyreiset%d",
-				"properties": [{"key": "name", "format": "text"}],
+				"properties": [{"property": "name", "format": "text"}],
 				"views": [{"type": "list", "name": "v",
 					"sorts": [{"property": "name", "direction": "desc"}],
 					"filters": [{"property": "name", "condition": "contains", "value": "x"}]}]}`, i)
@@ -612,7 +628,8 @@ func TestGeneratedDocs_ByteStable(t *testing.T) {
 			return fmt.Sprintf(`{"type": "code", "language": "go", "text": %q}`, texts[i%len(texts)])
 		},
 		func(i int) string {
-			return fmt.Sprintf(`{"type": "callout", "icon_emoji": "💡", "text": %q}`, texts[i%len(texts)])
+			return fmt.Sprintf(`{"type": "callout", "icon": {"format": "emoji", "emoji": "💡"}, "text": %q}`,
+				texts[i%len(texts)])
 		},
 	}
 	for i := 0; i < 300; i++ {

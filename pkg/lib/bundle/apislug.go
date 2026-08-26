@@ -7,6 +7,7 @@ import (
 
 	"github.com/gosimple/unidecode"
 	"github.com/iancoleman/strcase"
+	"golang.org/x/text/unicode/norm"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 )
@@ -76,13 +77,21 @@ func SanitizeApiSlug(raw string, maxLen int) string {
 // folding together is an ambiguity the caller must surface loudly, never
 // resolve by guess — which is why the fold lookups below return every match.
 func FoldApiKey(s string) string {
+	// NFC first. A label is MINTED in NFC, but a hand-edited document or an
+	// editor that decomposes on write can spell the same word in NFD — and a
+	// decomposed `tiếng_việt` is a different byte sequence from the composed
+	// one, so every exact-match step of the chain misses it and the value
+	// lands under a key no relation owns. Folding is the layer whose whole job
+	// is forgiving a near-miss a reader cannot see; a normalization difference
+	// is the least visible near-miss there is, so it belongs here rather than
+	// nowhere. Exact matching upstream is untouched.
 	return strings.Map(func(r rune) rune {
 		switch r {
 		case '_', '-':
 			return -1
 		}
 		return r
-	}, strings.ToLower(s))
+	}, strings.ToLower(norm.NFC.String(s)))
 }
 
 var (

@@ -783,8 +783,14 @@ func (b *objectRowBuilder) row(record database.Record) v2model.ObjectRow {
 		values := map[string]any{}
 		proto := record.Details.ToProto()
 		for _, key := range b.fields {
+			// MarshalPropertyValue also returns this key's option-id legend
+			// (name -> stored option id). A ROW is not a document: it has no
+			// envelope to hang a legend on, and select values have always been
+			// served here as bare names. Dropping it knowingly keeps that
+			// contract; serving option ids on rows is a surface decision, not
+			// a consequence of the format change.
 			if v, ok := proto.Fields[key]; ok {
-				values[key] = anyblockjson.MarshalPropertyValue(key, v, b.opts)
+				values[key], _ = anyblockjson.MarshalPropertyValue(key, v, b.opts)
 				continue
 			}
 			// the file aliases (Phase 7): read the backing store relation,
@@ -793,7 +799,7 @@ func (b *objectRowBuilder) row(record database.Record) v2model.ObjectRow {
 			// the alias for every row, never per record
 			if backing, ok := b.aliases[key]; ok {
 				if v, ok := proto.Fields[string(backing)]; ok {
-					values[key] = anyblockjson.MarshalPropertyValue(string(backing), v, b.opts)
+					values[key], _ = anyblockjson.MarshalPropertyValue(string(backing), v, b.opts)
 				}
 			}
 		}

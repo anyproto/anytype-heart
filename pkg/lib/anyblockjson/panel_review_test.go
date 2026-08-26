@@ -114,8 +114,10 @@ func TestExport_SharedAndDuplicateIds(t *testing.T) {
 	require.NoError(t, Validate(data), "duplicate column ids must be dropped")
 }
 
-// Lens 2, findings C and F: the CompactIds path guards nil inner content and
-// never emits refs keys outside the schema charset.
+// Lens 2, finding C: the CompactIds path guards nil inner content. Finding F
+// (a refs key outside the schema charset) is closed by deletion — no object
+// id is labelled at all now — so what stands in its place is the statement
+// that an id no charset would have admitted travels verbatim.
 func TestExport_CompactIdsHardening(t *testing.T) {
 	contents := []model.IsBlockContent{
 		&model.BlockContentOfText{},
@@ -138,15 +140,16 @@ func TestExport_CompactIdsHardening(t *testing.T) {
 		}, "content %T with CompactIds", c)
 	}
 
-	// a mention target with characters outside the refs-key charset stays
-	// uncompacted instead of emitting an invalid legend key
+	// a mention target whose characters no label charset would admit, beside
+	// one that the deleted labeller would happily have shortened: both are
+	// written out, in the mark, with nothing in the envelope
 	snap := &model.SmartBlockSnapshotBase{
 		Details: fields(map[string]*types.Value{"id": str("obj1")}),
 		Blocks: []*model.Block{
 			{Id: "obj1", ChildrenIds: []string{"b1"},
 				Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}},
 			textBlock("b1", model.BlockContentText_Paragraph, "hi",
-				mark(mMention, 0, 2, "a`b"), mark(mMention, 0, 1, "bafyreiregularlylongobjectid")),
+				mark(mMention, 0, 1, "a`b"), mark(mMention, 1, 2, "bafyreiregularlylongobjectid")),
 		},
 	}
 	data, err := Marshal(model.SmartBlockType_Page, snap, Options{CompactIds: true})
@@ -154,7 +157,9 @@ func TestExport_CompactIdsHardening(t *testing.T) {
 	require.NoError(t, Validate(data))
 	// the odd id stays full (entity-encoded in the attribute per §8.1)
 	assert.Contains(t, string(data), "a&#96;b")
-	assert.Contains(t, string(data), `"ectid": "bafyreiregularlylongobjectid"`, "valid ids still compact")
+	assert.Contains(t, string(data), `object_id=\"bafyreiregularlylongobjectid\"`,
+		"a compactable id is written in full too (§9a)")
+	assert.NotContains(t, string(data), `"ectid"`, "and no label is minted for it")
 }
 
 // Lens 3: the parse boundary must stay effectively linear. Every input here
@@ -252,16 +257,22 @@ func TestImport_DefaultIdGenerator(t *testing.T) {
 }
 
 // Suffix labels are a fixed 5 characters; ids whose suffixes collide stay
-// uncompacted (full-id fallback) rather than resolving ambiguously.
+// uncompacted (full-id fallback) rather than resolving ambiguously. Carried
+// over from the deleted object half onto the half that survives: two minted
+// BLOCK ids sharing a tail must both keep their full spelling, or one label
+// would name two blocks.
 func TestExport_SuffixCollisionFallsBackToFullId(t *testing.T) {
+	const (
+		mintedA = "aaaaaaaaaaaaaaaaaaa11111"
+		mintedB = "bbbbbbbbbbbbbbbbbbb11111"
+	)
 	snap := &model.SmartBlockSnapshotBase{
 		Details: fields(map[string]*types.Value{"id": str("obj1")}),
 		Blocks: []*model.Block{
-			{Id: "obj1", ChildrenIds: []string{"b1"},
+			{Id: "obj1", ChildrenIds: []string{mintedA, mintedB},
 				Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}},
-			textBlock("b1", model.BlockContentText_Paragraph, "ab",
-				mark(mMention, 0, 1, "bafyreiaaaa11111"),
-				mark(mMention, 1, 2, "bafyreibbbb11111")),
+			textBlock(mintedA, model.BlockContentText_Paragraph, "a"),
+			textBlock(mintedB, model.BlockContentText_Paragraph, "b"),
 		},
 	}
 	data, err := Marshal(model.SmartBlockType_Page, snap, Options{CompactIds: true})
@@ -270,19 +281,14 @@ func TestExport_SuffixCollisionFallsBackToFullId(t *testing.T) {
 	s := string(data)
 	// both ids share the suffix "11111": neither may claim it
 	assert.NotContains(t, s, `"11111"`)
-	assert.Contains(t, s, `object_id=\"bafyreiaaaa11111\"`)
-	assert.Contains(t, s, `object_id=\"bafyreibbbb11111\"`)
+	assert.Contains(t, s, `"id": "`+mintedA+`"`)
+	assert.Contains(t, s, `"id": "`+mintedB+`"`)
 
-	impOpts := Options{GenerateId: seqIds("g")}
-	_, snap2, err := Unmarshal(data, impOpts)
+	// and the same fixture with only one of them present proves it is the
+	// collision refusing the label, not the shape
+	snap.Blocks = snap.Blocks[:2]
+	snap.Blocks[0].ChildrenIds = []string{mintedA}
+	solo, err := Marshal(model.SmartBlockType_Page, snap, Options{CompactIds: true})
 	require.NoError(t, err)
-	var params []string
-	for _, b := range snap2.Blocks {
-		if txt, ok := b.Content.(*model.BlockContentOfText); ok && txt.Text.Marks != nil {
-			for _, m := range txt.Text.Marks.Marks {
-				params = append(params, m.Param)
-			}
-		}
-	}
-	assert.Equal(t, []string{"bafyreiaaaa11111", "bafyreibbbb11111"}, params)
+	assert.Contains(t, string(solo), `"id": "11111"`)
 }

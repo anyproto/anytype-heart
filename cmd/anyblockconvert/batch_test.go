@@ -8,6 +8,8 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"sort"
 	"testing"
 
@@ -17,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/cmd/internal/anyblockbatch"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/constant"
 )
@@ -241,4 +244,84 @@ func TestBatch_ObjectTypeIdsSplitLocalAndBundled(t *testing.T) {
 func TestBatch_NoObjectTypesLeavesPropertyUntargeted(t *testing.T) {
 	b := newBatch(nil, nil)
 	assert.Nil(t, b.objectTypeIds(anyblockjson.PropertyDefinition{Key: "owner"}))
+}
+
+// The converter half of anyblockbatch's CheckTargetTypes ordering: a type this
+// bundle DEFINES wins over the bundled type of the same name, even when its
+// document carries no id — and then the target is the empty string, which
+// names nothing anywhere. This is not a behaviour to keep, it is the reason
+// CheckTargetTypes has to ask typeIds before it asks the bundle; the lint
+// rejects such a bundle so this never runs in anger. If this assertion ever
+// changes, TestCheckTargetTypes_BundledKeyDefinedLocallyWithoutIdIsReported
+// has to change with it.
+func TestBatch_IdlessLocalTypeYieldsAnEmptyTargetId(t *testing.T) {
+	require.True(t, bundle.HasObjectTypeByKey("page"),
+		"the fixture only bites while `page` really is bundled, i.e. while the two arms disagree")
+	b := newBatch(nil, map[string]string{"page": ""})
+	assert.Equal(t, []string{""}, b.objectTypeIds(anyblockjson.PropertyDefinition{
+		Key:         "owner",
+		ObjectTypes: []string{"page"},
+	}), "the local arm wins and has nothing to offer — not the bundled url")
+}
+
+// End to end, over the real seam: a bundle whose property_internal_keys legend backs a
+// slug (§3) must mint the property's Relation object and its declared select
+// vocabulary under the STORED key, because that is the key the value's detail
+// is written under. When the format table was keyed by the spelling, the
+// format was never found: the value passed through raw, no Relation was minted
+// at all, and the declared options sat on a relation nothing referenced.
+func TestBatch_LegendBackedPropertyMintsItsRelationAndOptions(t *testing.T) {
+	const storedKey = "6a32d4856761631534b22f85"
+	const legend = `"property_internal_keys": {"priority": "` + storedKey + `"},`
+
+	dir := t.TempDir()
+	typeDoc := filepath.Join(dir, "task.type.json")
+	require.NoError(t, os.WriteFile(typeDoc, []byte(`{"version": 1, "kind": "object_type",
+	  "internal_key": "task", "id": "type-task", `+legend+`
+	  "type_settings": {"property_definitions": [{"property": "priority", "name": "Priority", "format": "select",
+	    "options": ["High", "Low"]}]}}`), 0o644))
+
+	formats, err := anyblockbatch.ScanFormats([]string{typeDoc})
+	require.NoError(t, err)
+	b := newBatch(formats, map[string]string{"task": "type-task"})
+
+	// types first, exactly as OrderTypesFirst arranges the walk — the type
+	// document is what drives PropertyId, and so what mints the Relation
+	_, _, _, err = convertFile(dir, typeDoc, b, false, nil)
+	require.NoError(t, err)
+
+	_, snap := convertDoc(t, b, "one.json", `{"version": 1, "id": "obj-1", "type": "task", `+legend+`
+	  "properties": {"priority": "High"}}`)
+
+	// the value reached the detail under the stored key, as an option id
+	optionID := snap.Details.GetFields()[storedKey]
+	require.NotNil(t, optionID, "the legend-backed value must land on the stored key")
+	got := optionID.GetListValue().GetValues()
+	require.Len(t, got, 1, "a resolved select value is an option id list, not the raw string %q",
+		optionID.GetStringValue())
+
+	// and that id is the DECLARED option, minted up front by newBatch under
+	// the same stored key — not one discovered from the value with no order id
+	var relations, options int
+	byID := map[string]*model.SmartBlockSnapshotBase{}
+	for _, p := range b.pending {
+		byID[p.id] = p.snapshot
+		switch p.sbType {
+		case model.SmartBlockType_STRelation:
+			relations++
+			assert.Equal(t, storedKey, p.snapshot.Details.Fields[detailRelationKey].GetStringValue())
+			assert.Equal(t, "Priority", p.snapshot.Details.Fields[detailName].GetStringValue())
+		case model.SmartBlockType_STRelationOption:
+			options++
+			assert.Equal(t, storedKey, p.snapshot.Details.Fields[detailRelationKey].GetStringValue())
+			assert.NotEmpty(t, p.snapshot.Details.Fields[detailOrderId].GetStringValue(),
+				"a declared option is pre-minted with an order id; one discovered from a value is not")
+		}
+	}
+	assert.Equal(t, 1, relations, "exactly one Relation object, for the stored key")
+	assert.Equal(t, 2, options, "both declared options, and no third discovered under the spelling")
+
+	require.Contains(t, byID, got[0].GetStringValue())
+	assert.Equal(t, "High",
+		byID[got[0].GetStringValue()].Details.Fields[detailName].GetStringValue())
 }

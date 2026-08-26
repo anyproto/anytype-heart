@@ -3,9 +3,11 @@ package main
 import (
 	"crypto/sha1"
 	"encoding/hex"
+	"github.com/globalsign/mgo/bson"
+	"sort"
+
 	"github.com/anyproto/anytype-heart/cmd/internal/anyblockbatch"
 	"github.com/anyproto/lexid"
-	"sort"
 
 	"github.com/gogo/protobuf/types"
 
@@ -15,6 +17,7 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/constant"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 // pendingSnapshot is a Relation/RelationOption object the batch mints the
@@ -33,10 +36,30 @@ type pendingSnapshot struct {
 // snapshots the same way core/block/import/csv and core/block/import/notion
 // build them for their own generated relations and options.
 type batch struct {
+	// formats is keyed by the STORED property key, which is what every
+	// reader below hands it: anyblockjson resolves a `properties` key or a
+	// `type_settings.property_definitions[].property` through the document's own property_internal_keys legend
+	// and the bundled table (§3, importer.propertyKey) before it calls
+	// ResolveFormat or builds a PropertyDefinition. anyblockbatch.ScanFormats
+	// runs the same chain when it builds the table — keying it by the raw
+	// spelling instead made every legend-backed property a silent miss here.
 	formats map[string]anyblockbatch.FormatInfo
 
-	relIDs map[string]string // property key -> minted relation object id
-	optIDs map[string]string // "key\x00name" -> minted option object id
+	relIDs map[string]string // stored property key -> minted relation object id
+	// minted is the batch's key vocabulary: the SPELLING a document used ->
+	// the internal key minted for it. A property an author declared by name
+	// or spelling gets a fresh bson id here, the way the app mints one when
+	// a user creates a property, and every document's detail keys resolve
+	// through this map so they all land on that one key (§2e).
+	minted map[string]string
+	optIDs map[string]string // "stored key\x00name" -> minted option object id
+
+	// optNames is optIDs read backwards — "stored key\x00option id" -> name —
+	// and it is what makes OptionName answerable here. The batch is the space
+	// this conversion imports into, so the set of options it has minted IS the
+	// set of live options, and an id outside it names nothing the archive
+	// carries (see OptionName).
+	optNames map[string]string
 
 	// optOrder is the last order id handed out per property key. Every option
 	// needs one: options sort on orderId+name concatenated
@@ -69,11 +92,20 @@ type batch struct {
 // some object is minted without an orderId, and the directory walk reaches
 // objects/ before types/, so declaring lazily would leave the used values
 // unordered and the unused ones ordered.
+//
+// The map key IS the relation key the options are declared under — it has to
+// be the stored key, since that is what OptionId is later called with. That
+// holds because ScanFormats resolves the term (§3) before keying; when it
+// did not, a legend-backed vocabulary was pre-minted under the SPELLING, so
+// the declared options sat on a relation nothing referenced while the values
+// that actually arrived minted a second, order-less set under the real key.
 func newBatch(formats map[string]anyblockbatch.FormatInfo, typeIds map[string]string) (b *batch) {
 	b = &batch{
 		formats:    formats,
 		relIDs:     map[string]string{},
+		minted:     map[string]string{},
 		optIDs:     map[string]string{},
+		optNames:   map[string]string{},
 		optOrder:   map[string]string{},
 		optColor:   map[string]int{},
 		optClaimed: map[string]map[string]bool{},
@@ -93,7 +125,8 @@ func newBatch(formats map[string]anyblockbatch.FormatInfo, typeIds map[string]st
 func (b *batch) relationCount() int { return len(b.relIDs) }
 func (b *batch) optionCount() int   { return len(b.optIDs) }
 
-// resolveFormat implements anyblockjson.FormatResolver.
+// resolveFormat implements anyblockjson.FormatResolver. `key` arrives already
+// resolved (importer.propertyKey), which is why formats is keyed the same way.
 func (b *batch) resolveFormat(key domain.RelationKey) (model.RelationFormat, bool) {
 	if fi, ok := b.formats[string(key)]; ok {
 		return fi.Format, true
@@ -113,10 +146,34 @@ func (b *batch) OptionId(key domain.RelationKey, name string) (string, bool) {
 	return id, true
 }
 
-// OptionName implements anyblockjson.OptionResolver. Only used on export;
-// this tool only imports, so it's never called.
+// OptionName implements anyblockjson.OptionResolver. This tool only imports,
+// but the call is NOT export-only: it is also the liveness question a
+// document's `option_ids` entry is checked against (§3, §9a — an id is
+// honoured only where the resolver answers for it as an option of that
+// relation). A resolver that stubs this out disables the legend for
+// everything it converts, which is what this one used to do, silently and on
+// the strength of a stale doc comment.
+//
+// The archive being built is the space that answers here, and its options are
+// exactly the ones this batch has minted, so optNames IS the liveness table.
+// That keeps the safety property the legend leans on: an id this method
+// confirms always has a RelationOption object in `pending`, so honouring one
+// can never write a reference the archive does not carry.
+//
+// What it means in practice, said plainly rather than left to be inferred: a
+// bundle exported from another space carries THAT space's option ids, and
+// none of them can be live here, since every id in this archive is derived
+// from (property key, option name) by optionLocalKey. Those entries fail
+// liveness and their values resolve by name, which is the fallback §3
+// prescribes and the only thing a fresh-space converter could do with a
+// foreign id anyway. Where the legend does bite is an id this batch itself
+// minted, which is any id naming an option the archive already carries: the
+// value lands on that option even when the name beside it has moved on, so a
+// renamed vocabulary re-points its old values instead of minting a second
+// option under the stale name (the resurrection §3 describes).
 func (b *batch) OptionName(key domain.RelationKey, id string) (string, bool) {
-	return "", false
+	name, ok := b.optNames[string(key)+"\x00"+id]
+	return name, ok
 }
 
 // PropertyId implements anyblockjson.PropertyResolver: allocates a stable
@@ -138,6 +195,38 @@ func (b *batch) PropertyId(def anyblockjson.PropertyDefinition) (string, bool) {
 	id := b.mintRelation(def)
 	b.relIDs[key] = id
 	return id, true
+}
+
+// PropertySlug and PropertyKey implement anyblockjson.KeyVocabulary: the
+// batch's own spelling layer, laid over the bundled one.
+//
+// This is what makes minting safe across a bundle. A property declared once
+// in properties.json by the spelling `cooking_time` is minted a bson key
+// here; a recipe document that carries `"cooking_time": 90` then resolves
+// that detail key through this vocabulary and lands on the SAME minted key,
+// instead of writing a detail no relation object describes.
+func (b *batch) PropertySlug(key string) string {
+	for spelling, minted := range b.minted {
+		if minted == key {
+			return spelling
+		}
+	}
+	return anyblockjson.BundledKeyVocabulary{}.PropertySlug(key)
+}
+
+func (b *batch) PropertyKey(slug string) (string, bool) {
+	if minted, ok := b.minted[slug]; ok {
+		return minted, true
+	}
+	return anyblockjson.BundledKeyVocabulary{}.PropertyKey(slug)
+}
+
+func (b *batch) TypeSlug(key string) string {
+	return anyblockjson.BundledKeyVocabulary{}.TypeSlug(key)
+}
+
+func (b *batch) TypeKey(slug string) (string, bool) {
+	return anyblockjson.BundledKeyVocabulary{}.TypeKey(slug)
 }
 
 // PropertyById implements anyblockjson.PropertyResolver. Only used on
@@ -249,6 +338,21 @@ func (b *batch) nextOptionColor(key domain.RelationKey) string {
 	return take() // a vocabulary claiming all ten: reuse, in cycle order
 }
 
+// looksLikeMintedKey reports whether key has the shape of an app-minted
+// internal key (a bson object id: 24 hex characters) — the population that
+// owes no mint because it already is one.
+func looksLikeMintedKey(key string) bool {
+	if len(key) != 24 {
+		return false
+	}
+	for _, r := range key {
+		if (r < '0' || r > '9') && (r < 'a' || r > 'f') {
+			return false
+		}
+	}
+	return true
+}
+
 // mintRelation builds a Relation object snapshot matching the shape
 // core/block/import/csv and core/block/import/notion build for their own
 // generated relations: Details{name, relationKey, relationFormat, layout},
@@ -256,6 +360,27 @@ func (b *batch) nextOptionColor(key domain.RelationKey) string {
 // pipeline in core/block/import/processor.go can recognize it across
 // re-imports the same way it does for CSV/Notion relations).
 func (b *batch) mintRelation(def anyblockjson.PropertyDefinition) string {
+	// A property the document declared by SPELLING gets a fresh internal key
+	// here, the way the app mints one when a user creates a property
+	// (objectcreator/relation.go: bson.NewObjectId().Hex()). A property that
+	// stated its `internal_key` keeps it exactly, which is the whole point of
+	// stating one: a bundle re-imported elsewhere reproduces the same stored
+	// key (§2e).
+	//
+	// The document's spelling is remembered as the api key, and bound in this
+	// batch's vocabulary so every OTHER document that names the property by
+	// the same spelling resolves to this one minted key.
+	storedKey := string(def.Key)
+	apiKey := ""
+	if !def.KeyIsInternal {
+		apiKey = storedKey
+		if existing, ok := b.minted[apiKey]; ok {
+			storedKey = existing
+		} else {
+			storedKey = bson.NewObjectId().Hex()
+			b.minted[apiKey] = storedKey
+		}
+	}
 	format := def.Format
 	name := def.Name
 	if fi, ok := b.formats[string(def.Key)]; ok {
@@ -268,7 +393,7 @@ func (b *batch) mintRelation(def anyblockjson.PropertyDefinition) string {
 		name = string(def.Key)
 	}
 
-	uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeRelation, string(def.Key))
+	uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeRelation, storedKey)
 	if err != nil {
 		// def.Key already passed through the schema's property-key charset
 		// (§2a); NewUniqueKey only fails for an unsupported smartblock type.
@@ -279,15 +404,42 @@ func (b *batch) mintRelation(def anyblockjson.PropertyDefinition) string {
 	details := &types.Struct{Fields: map[string]*types.Value{
 		detailID:             strVal(id),
 		detailName:           strVal(name),
-		detailRelationKey:    strVal(string(def.Key)),
+		detailRelationKey:    strVal(storedKey),
 		detailRelationFormat: numVal(float64(format)),
 		detailLayout:         numVal(float64(model.ObjectType_relation)),
 	}}
+	if apiKey != "" {
+		// the spelling the document used, kept the way the app keeps it for a
+		// property created through the API: the internal key is opaque, and
+		// this is the name anything addressing the property by spelling asks
+		// for (objectcreator/relation.go)
+		details.Fields[detailApiObjectKey] = strVal(apiKey)
+	}
 	if format == model.RelationFormat_status {
 		details.Fields[detailRelationMaxCount] = numVal(1)
 	}
 	if ids := b.objectTypeIds(def); len(ids) > 0 {
 		details.Fields[detailRelationFormatObjectTypes] = strListVal(ids)
+	}
+	// the rest of the shared propertyDefinition shape (§2a): a definition may
+	// state these, and a minted relation that shed them would make listing a
+	// member in the document weaker than not listing it — the exact trap the
+	// absent-format rule documents. Each writes only when declared, so a
+	// definition that says nothing changes nothing.
+	if def.Description != "" {
+		details.Fields[detailDescription] = strVal(def.Description)
+	}
+	if def.IncludeTime != nil {
+		details.Fields[detailRelationFormatIncludeTime] = boolVal(*def.IncludeTime)
+	}
+	if def.MaxCount > 0 {
+		details.Fields[detailRelationMaxCount] = numVal(float64(def.MaxCount))
+	}
+	if def.Readonly {
+		details.Fields[detailRelationReadonlyValue] = boolVal(true)
+	}
+	if def.DefaultValue != nil {
+		details.Fields[detailRelationDefaultValue] = pbtypes.InterfaceToValue(def.DefaultValue)
 	}
 
 	snap := &model.SmartBlockSnapshotBase{
@@ -310,6 +462,11 @@ func (b *batch) mintOption(key domain.RelationKey, name, orderId, color string) 
 		panic(err)
 	}
 	id := uk.Marshal()
+	// the reverse entry is recorded HERE, at the one place an option object
+	// comes into existence, so "this batch can name the id" and "this batch
+	// carries the object" are the same statement — OptionName's liveness
+	// answer is only safe while that holds.
+	b.optNames[string(key)+"\x00"+id] = name
 
 	details := &types.Struct{Fields: map[string]*types.Value{
 		detailID:          strVal(id),
@@ -367,6 +524,13 @@ const (
 	detailRelationMaxCount          = "relationMaxCount"
 	detailLayout                    = "layout"
 	detailIsHidden                  = string(bundle.RelationKeyIsHidden)
+	detailDescription               = string(bundle.RelationKeyDescription)
+	detailRelationFormatIncludeTime = string(bundle.RelationKeyRelationFormatIncludeTime)
+	detailRelationReadonlyValue     = string(bundle.RelationKeyRelationReadonlyValue)
+	detailRelationDefaultValue      = string(bundle.RelationKeyRelationDefaultValue)
+	// the spelling a property was created under, which is what an API caller
+	// addresses it by when its internal key is an opaque minted id
+	detailApiObjectKey = string(bundle.RelationKeyApiObjectKey)
 )
 
 func strVal(s string) *types.Value {

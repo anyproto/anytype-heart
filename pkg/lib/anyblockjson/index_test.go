@@ -18,23 +18,37 @@ func TestIndex_Roundtrip(t *testing.T) {
 		"version": 1,
 		"name": "Company Wiki",
 		"description": "Everything we know, with an owner.",
-		"icon_emoji": "📚",
+		"icon": { "format": "emoji", "emoji": "📚" },
 		"homepage": "page-wiki-home",
 		"widgets": [
 			{ "target": "page-wiki-home" },
-			{ "target": "type-wiki-page", "layout": "view", "limit": 6 },
-			{ "target": "favorite", "layout": "compact_list" }
-		]
+			{ "target": "type-wiki-page", "layout": "view", "limit": 6, "view_id": "view-board" },
+			{ "target": "_favorite", "layout": "compact_list" },
+			{ "target": "_all_objects", "auto_added": true,
+			  "card_style": "card", "icon_size": "medium", "description": "content",
+			  "properties": ["name", "created_date"] }
+		],
+		"auto_widget_targets": ["_bin", "type-wiki-page"],
+		"auto_widget_disabled": true
 	}`
 	idx, err := UnmarshalIndex([]byte(doc))
 	require.NoError(t, err)
 
 	assert.Equal(t, "Company Wiki", idx.Name)
 	assert.Equal(t, "page-wiki-home", idx.Homepage)
-	require.Len(t, idx.Widgets, 3)
+	require.Len(t, idx.Widgets, 4)
 	assert.Equal(t, "", idx.Widgets[0].Layout, "omitted layout stays empty; link is the default")
 	assert.Equal(t, "view", idx.Widgets[1].Layout)
 	assert.Equal(t, int32(6), idx.Widgets[1].Limit)
+	assert.Equal(t, "view-board", idx.Widgets[1].ViewId)
+	assert.True(t, idx.Widgets[3].AutoAdded)
+	assert.Equal(t, "card", idx.Widgets[3].CardStyle)
+	assert.Equal(t, "medium", idx.Widgets[3].IconSize)
+	assert.Equal(t, "content", idx.Widgets[3].Description)
+	assert.Equal(t, []string{"name", "createdDate"}, idx.Widgets[3].Properties,
+		"shown properties are held as STORED keys, like the manifest's type keys (§2c)")
+	assert.Equal(t, []string{"_bin", "type-wiki-page"}, idx.AutoWidgetTargets)
+	assert.True(t, idx.AutoWidgetDisabled)
 
 	// the install opens the first widget's target
 	assert.Equal(t, "page-wiki-home", idx.EntryPoint())
@@ -67,16 +81,40 @@ func TestIndex_EntryPoint(t *testing.T) {
 	// bundles written before entrypoint existed carried it as widgets[0]
 	t.Run("falls back to the first widget naming an object", func(t *testing.T) {
 		idx, err := UnmarshalIndex([]byte(`{"version": 1,
-			"widgets": [{"target": "recent"}, {"target": "page-home"}]}`))
+			"widgets": [{"target": "_recent"}, {"target": "page-home"}]}`))
 		require.NoError(t, err)
 		assert.Equal(t, "page-home", idx.EntryPoint(), "reserved listings are skipped")
 	})
 
+	// The listing this skips is spelled `_recent`, and an object id may not
+	// begin with `_`, so "skip the reserved ones" is now a statement about
+	// disjoint namespaces rather than a race between two flat word lists. It
+	// used to be the latter: a bundle shipping an object with id `recent` made
+	// EntryPoint skip its own object, so the entry point the tooling reported
+	// was not the one the installer opened.
+	t.Run("the skipped targets cannot be bundle ids", func(t *testing.T) {
+		for _, target := range ReservedWidgetTargets() {
+			assert.True(t, IsPlatformId(target),
+				"a reserved listing must live in the platform namespace, or an object can shadow it: %q", target)
+		}
+		for _, home := range []string{HomepageWidgets, HomepageGraph} {
+			assert.True(t, IsPlatformId(home), home)
+		}
+	})
+
 	t.Run("a reserved listing cannot be an entrypoint", func(t *testing.T) {
-		for _, bad := range []string{"widgets", "graph", "favorite", "recent"} {
+		for _, bad := range []string{"_widgets", "_graph", "_favorite", "_recent", "_all_objects"} {
 			_, err := UnmarshalIndex([]byte(`{"version": 1, "entrypoint": "` + bad + `"}`))
 			require.Error(t, err, bad)
 		}
+	})
+
+	// the reason the entrypoint ban is a prefix and not a word list
+	t.Run("no entrypoint may enter the platform namespace", func(t *testing.T) {
+		_, err := UnmarshalIndex([]byte(`{"version": 1, "entrypoint": "_otpage"}`))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "/entrypoint")
+		assert.Contains(t, err.Error(), "platform")
 	})
 }
 
@@ -96,9 +134,28 @@ func TestIndex_SpaceHomepage(t *testing.T) {
 	})
 	t.Run("a reserved homepage is still allowed, deliberately", func(t *testing.T) {
 		idx, err := UnmarshalIndex([]byte(`{"version": 1,
-			"entrypoint": "page-home", "homepage": "graph"}`))
+			"entrypoint": "page-home", "homepage": "_graph"}`))
 		require.NoError(t, err)
+		assert.Equal(t, "_graph", idx.SpaceHomepage())
+		assert.True(t, IsReservedHomepage(idx.SpaceHomepage()))
+	})
+
+	// The bare word is what core/domain/homepage.go and builtinobjects use, and
+	// setWorkspaceSettings matches it BEFORE trying to resolve an id — so while
+	// the format spelled it `graph` too, an object with that id could never be
+	// a homepage. Here it is an ordinary id and nothing reserved is involved.
+	t.Run("the wire spelling of a reserved screen is an ordinary id", func(t *testing.T) {
+		idx, err := UnmarshalIndex([]byte(`{"version": 1, "homepage": "graph"}`))
+		require.NoError(t, err)
+		assert.False(t, IsReservedHomepage("graph"))
 		assert.Equal(t, "graph", idx.SpaceHomepage())
+	})
+
+	// what pb.Profile.SpaceDashboardId has to carry
+	t.Run("a reserved screen is translated for the wire", func(t *testing.T) {
+		assert.Equal(t, "graph", WireHomepage(HomepageGraph))
+		assert.Equal(t, "widgets", WireHomepage(HomepageWidgets))
+		assert.Equal(t, "page-home", WireHomepage("page-home"), "an object id passes through")
 	})
 }
 
@@ -118,7 +175,7 @@ func TestIndex_Validation(t *testing.T) {
 	}
 
 	t.Run("reserved homepage names are accepted", func(t *testing.T) {
-		for _, h := range []string{"widgets", "graph"} {
+		for _, h := range []string{"_widgets", "_graph"} {
 			_, err := UnmarshalIndex([]byte(`{"version": 1, "homepage": "` + h + `"}`))
 			assert.NoError(t, err, h)
 			assert.True(t, IsReservedHomepage(h))
@@ -128,7 +185,46 @@ func TestIndex_Validation(t *testing.T) {
 	t.Run("an object id is not reserved", func(t *testing.T) {
 		assert.False(t, IsReservedHomepage("page-wiki-home"))
 		assert.False(t, IsReservedWidgetTarget("page-wiki-home"))
-		assert.True(t, IsReservedWidgetTarget("favorite"))
+		assert.True(t, IsReservedWidgetTarget("_favorite"))
+	})
+
+	// The listings the importer knows are bare words; the format spells them
+	// with the platform prefix so nothing a bundle ships can collide. The
+	// unprefixed spelling is therefore an ordinary bundle id and reserves
+	// nothing — which is the whole content of the rename.
+	t.Run("the bare listing name reserves nothing", func(t *testing.T) {
+		for _, bare := range []string{"favorite", "recent", "set", "collection"} {
+			assert.False(t, IsReservedWidgetTarget(bare), bare)
+			_, err := UnmarshalIndex([]byte(`{"version": 1, "entrypoint": "` + bare + `"}`))
+			assert.NoError(t, err, "an ordinary id: %s", bare)
+		}
+	})
+
+	// A `_` target that is not one of the six resolves to nothing, and a
+	// widget target that resolves to nothing is dropped on install with no
+	// error at all — so it has to be refused here, by name, with the
+	// inventory in the message.
+	// The schema states the rule too, so asserting only that this is refused
+	// would stay green with the gate deleted. What the gate is FOR is the
+	// message: an anonymous `does not match pattern '^[^_]'` names neither the
+	// namespace nor the repair, and the failure it precedes is invisible.
+	t.Run("an unknown reserved listing is refused, and named", func(t *testing.T) {
+		_, err := UnmarshalIndex([]byte(`{"version": 1, "widgets": [
+			{"target": "page-home"}, {"target": "_favourite"}]}`))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "/widgets/1/target")
+		assert.Contains(t, err.Error(), "_favourite")
+		assert.Contains(t, err.Error(), "is not a reserved listing")
+		assert.Contains(t, err.Error(), "_favorite", "the message must carry the inventory")
+		assert.Contains(t, err.Error(), "dropped on install without an error",
+			"and must say what happens if it is not caught here")
+	})
+
+	t.Run("an unknown reserved homepage is refused", func(t *testing.T) {
+		_, err := UnmarshalIndex([]byte(`{"version": 1, "homepage": "_last_opened"}`))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "/homepage")
+		assert.Contains(t, err.Error(), "the only reserved homepages are")
 	})
 
 	// an index shares the format version and its rules with object documents
@@ -168,37 +264,139 @@ func TestIndex_Validation(t *testing.T) {
 	})
 }
 
-// Not every reserved listing survives import. handleLinkBlock leaves a target
-// alone only when widget.IsPredefinedWidgetTargetId knows it; anything else it
-// cannot resolve becomes addr.MissingObject, and WidgetObject.Init then strips
-// the link and its wrapper. So allObjects and recentOpen — real targets in a
-// live space — would cost the author a widget with no error to explain it,
-// which is why the two questions are asked separately.
+// Every reserved listing survives import now. This test used to pin the
+// OPPOSITE for _all_objects and _recent_open — the importer knew only four
+// listings, so a bundle naming the others lost the widget silently and the
+// tooling refused them up front. widget.IsPredefinedWidgetTargetId knows the
+// whole inventory since GO-7383, so the pin flips: reserved and importable
+// must now agree member for member, and a listing added to one set without
+// the other is exactly what this catches.
 func TestIndex_ImportableWidgetTargets(t *testing.T) {
-	for _, target := range []string{"favorite", "recent", "set", "collection"} {
-		assert.True(t, IsReservedWidgetTarget(target), target)
-		assert.True(t, IsImportableWidgetTarget(target), target)
-	}
-	for _, target := range []string{"allObjects", "recentOpen"} {
-		assert.True(t, IsReservedWidgetTarget(target), "still names a built-in, not an object: "+target)
-		assert.False(t, IsImportableWidgetTarget(target), "the importer does not know it: "+target)
+	for _, target := range ReservedWidgetTargets() {
+		assert.True(t, IsImportableWidgetTarget(target),
+			"a reserved listing the importer does not know loses the widget silently on install: "+target)
 	}
 	assert.False(t, IsImportableWidgetTarget("page-wiki-home"))
+	assert.False(t, IsImportableWidgetTarget("_widgets"), "a homepage screen is not a widget target")
 }
 
-// iconImage names an image object rather than referencing its id, because the
-// installer resolves the space icon by name (getNewAvatarId).
-func TestIndex_IconImage(t *testing.T) {
+// The importable listings are the ones the pb importer knows by their bare,
+// unprefixed wire names (widget.IsPredefinedWidgetTargetId), so the format's
+// `_` spelling only holds together if every one of them has a wire spelling
+// and the wiring applies it BOTH ways. Writing `_set` into a link block
+// instead of `set` is strictly worse than the shadowing bug this replaces:
+// handleLinkBlock rewrites the unrecognised target to addr.MissingObject and
+// WidgetObject.Init then strips the link and its wrapper, so the widget
+// vanishes with no error. And lifting a stored `bin` without translating it
+// puts a bare wire word where the index promises an object id or a `_` name.
+func TestIndex_WireWidgetTargets(t *testing.T) {
+	want := map[string]string{
+		"_favorite": "favorite", "_recent": "recent", "_set": "set", "_collection": "collection",
+		"_all_objects": "allObjects", "_recent_open": "recentOpen", "_chat": "chat", "_bin": "bin",
+	}
+	for target, wire := range want {
+		assert.Equal(t, wire, WireWidgetTarget(target), target)
+		assert.NotEqual(t, target, WireWidgetTarget(target),
+			"the platform prefix must be translated away, or the importer drops the widget")
+		assert.Equal(t, target, FormatWidgetTarget(wire),
+			"the lift must invert the wire spelling exactly, or a round trip respells the target: "+wire)
+	}
+	for _, target := range ReservedWidgetTargets() {
+		assert.Contains(t, want, target, "every listing needs a wire spelling")
+	}
+	assert.Equal(t, "page-wiki-home", WireWidgetTarget("page-wiki-home"), "an object id passes through")
+	assert.Equal(t, "bafyrei123", FormatWidgetTarget("bafyrei123"), "an object id passes through the lift too")
+}
+
+// The index schema names the object schema by its published URL to $ref the
+// shared icon definition (§2b). That URL is derived from FormatVersion
+// everywhere else, so a version bump would leave this one spelling behind —
+// the compiler catches it (every index test fails at once), but only this
+// says which line to fix.
+func TestIndexSchema_RefsThePublishedObjectSchema(t *testing.T) {
+	assert.Contains(t, string(indexSchemaJSON), SchemaURL+"#/$defs/icon")
+}
+
+// A bundle index carries the SAME typed icon an object does (§2b, §2c) — the
+// whole shape, not a restriction of it. The image variant names an object id;
+// the wiring resolves it to the image's name, because the installer looks the
+// space icon up by name (getNewAvatarId).
+//
+// How this can fail: give the index its own icon shape, or let both an emoji
+// and an image be present at once, and one of these breaks. The old two-key
+// index accepted both with no rule for which wins — the last assertion here
+// used to say "the installer prefers the image", which was a rule written
+// nowhere in the schema.
+func TestIndex_Icon(t *testing.T) {
 	idx, err := UnmarshalIndex([]byte(`{"version": 1, "name": "Wiki",
-		"icon_image": "acme-logo"}`))
+		"icon": {"format": "file", "file": "acme-logo"}}`))
 	require.NoError(t, err)
-	assert.Equal(t, "acme-logo", idx.IconImage)
+	assert.Equal(t, "acme-logo", idx.IconImageId())
 
 	out, err := MarshalIndex(idx)
 	require.NoError(t, err)
-	assert.Contains(t, string(out), `"icon_image": "acme-logo"`)
+	assert.Contains(t, string(out), `"icon": {`)
+	assert.Contains(t, string(out), `"file": "acme-logo"`)
 
-	// both icon forms may be present; the installer prefers the image
-	_, err = UnmarshalIndex([]byte(`{"version": 1, "icon_emoji": "📚", "icon_image": "logo"}`))
-	assert.NoError(t, err)
+	t.Run("an emoji index icon has no image id", func(t *testing.T) {
+		idx, err := UnmarshalIndex([]byte(`{"version": 1, "icon": {"format": "emoji", "emoji": "📚"}}`))
+		require.NoError(t, err)
+		assert.Equal(t, "📚", idx.Icon.Emoji)
+		assert.Empty(t, idx.IconImageId())
+	})
+
+	t.Run("an emoji and an image are no longer both writable", func(t *testing.T) {
+		_, err := UnmarshalIndex([]byte(`{"version": 1,
+			"icon": {"format": "emoji", "emoji": "📚", "file": "logo"}}`))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), `property "file" is not allowed`)
+	})
+
+	t.Run("the discriminator names the alternatives when it is missing", func(t *testing.T) {
+		_, err := UnmarshalIndex([]byte(`{"version": 1, "icon": {"emoji": "📚"}}`))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "/icon: missing property 'format'")
+		assert.Contains(t, err.Error(), "'emoji', 'file'")
+	})
+
+	// The index took the narrow emoji-or-image shape until the space's own
+	// document stopped being exported (§2c) and the index became the only
+	// place a space icon could live. A LETTER AVATAR — a colour and nothing
+	// else — is the icon of 20 of 77 real spaces, and the narrow shape had
+	// no way to spell one, so omitting the document would have deleted it.
+	t.Run("a letter avatar is a colour and nothing else", func(t *testing.T) {
+		idx, err := UnmarshalIndex([]byte(`{"version": 1, "icon": {"format": "color", "color": "red"}}`))
+		require.NoError(t, err)
+		assert.Equal(t, "red", idx.Icon.Color)
+		assert.Empty(t, idx.IconImageId(), "a colour names no image")
+
+		out, err := MarshalIndex(idx)
+		require.NoError(t, err)
+		assert.Contains(t, string(out), `"format": "color"`)
+		assert.Contains(t, string(out), `"color": "red"`)
+	})
+
+	t.Run("a colour rides along with the icon it tints", func(t *testing.T) {
+		idx, err := UnmarshalIndex([]byte(`{"version": 1,
+			"icon": {"format": "file", "file": "acme-logo", "color": "red"}}`))
+		require.NoError(t, err)
+		out, err := MarshalIndex(idx)
+		require.NoError(t, err)
+		assert.Contains(t, string(out), `"file": "acme-logo"`)
+		assert.Contains(t, string(out), `"color": "red"`)
+	})
+
+	// One renderer, so the index and the object surface cannot drift into two
+	// spellings of one icon (§2b).
+	t.Run("the index renders through the object surface's own renderer", func(t *testing.T) {
+		for _, ic := range []*Icon{
+			{Format: "emoji", Emoji: "📚"},
+			{Format: "file", File: "logo"},
+			{Format: "file", File: "logo", Color: "red"},
+			{Format: "color", Color: "red"},
+			{Format: "icon", Name: "folder", Color: "red"},
+		} {
+			assert.Equal(t, iconOmap(ic), indexIconOmap(ic), "icon %+v", ic)
+		}
+	})
 }

@@ -15,17 +15,20 @@ import (
 )
 
 func filterDoc(props, filters string) string {
-	return `{"version": 1, "id": "p1", "refs": {"dana": "bafyreirealid"}, "blocks": [{"type": "dataview",
+	return `{"version": 1, "id": "p1", "blocks": [{"type": "dataview",
 		"object_id": "someSet", "properties": [` + props + `],
 		"views": [{"name": "Mine", "filters": [` + filters + `]}]}]}`
 }
 
-// the token is not an id: import must not rewrite it and export must not
-// shorten it into the refs legend
+// the token is not an id: nothing in either direction rewrites it. The
+// fixture used to carry a refs legend to prove the token could not be
+// swallowed into one; there is no legend to be swallowed into now (§9a), so
+// what is left to pin is that the token survives the object-valued path
+// verbatim in both directions.
 func TestRoundtrip_FilterTemplateSurvives(t *testing.T) {
 	for _, tok := range []string{"_filter_template_1_", "_filter_template_2_"} {
 		t.Run(tok, func(t *testing.T) {
-			doc := filterDoc(`{"key": "assignee", "format": "objects"}`,
+			doc := filterDoc(`{"property": "assignee", "format": "objects"}`,
 				`{"property": "assignee", "condition": "in", "value": ["`+tok+`"]}`)
 
 			_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
@@ -56,7 +59,7 @@ func TestValidate_FilterTemplateOnWrongFormat(t *testing.T) {
 	for _, f := range []string{"select", "date", "text", "number"} {
 		t.Run(f, func(t *testing.T) {
 			err := Validate([]byte(filterDoc(
-				`{"key": "stage", "format": "`+f+`"}`,
+				`{"property": "stage", "format": "`+f+`"}`,
 				`{"property": "stage", "condition": "in", "value": ["_filter_template_2_"]}`)))
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "resolves to an object id")
@@ -65,7 +68,7 @@ func TestValidate_FilterTemplateOnWrongFormat(t *testing.T) {
 	for _, f := range []string{"objects", "files"} {
 		t.Run(f+" is fine", func(t *testing.T) {
 			assert.NoError(t, Validate([]byte(filterDoc(
-				`{"key": "assignee", "format": "`+f+`"}`,
+				`{"property": "assignee", "format": "`+f+`"}`,
 				`{"property": "assignee", "condition": "in", "value": ["_filter_template_2_"]}`))))
 		})
 	}
@@ -74,12 +77,12 @@ func TestValidate_FilterTemplateOnWrongFormat(t *testing.T) {
 func TestValidate_FilterTemplateNonTriggers(t *testing.T) {
 	t.Run("a real id on a select is not a token", func(t *testing.T) {
 		assert.NoError(t, Validate([]byte(filterDoc(
-			`{"key": "stage", "format": "select"}`,
+			`{"property": "stage", "format": "select"}`,
 			`{"property": "stage", "condition": "in", "value": ["In progress"]}`))))
 	})
 	t.Run("undeclared format is not checked", func(t *testing.T) {
 		assert.NoError(t, Validate([]byte(filterDoc(
-			`{"key": "other", "format": "objects"}`,
+			`{"property": "other", "format": "objects"}`,
 			`{"property": "notDeclared", "condition": "in", "value": ["_filter_template_2_"]}`))))
 	})
 }

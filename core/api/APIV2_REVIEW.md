@@ -23,14 +23,21 @@ canonical round-trip is explicitly the full-id export. So the natural
 GET → edit → PATCH/PUT loop sends block labels the server cannot resolve;
 PUT degenerates to full-tree delete+create — the exact DELEGATE-52
 signature diffStats exists to expose.
-*Adjudicated fix:* split id compaction: default reads = **compact object
-ids (refs legend, lossless) + FULL block ids**; block-label compaction only
-in explicitly read-only shapes (outline, prompt exports). Additionally,
-write endpoints MAY resolve block-id references by unique-suffix match
-against the live object (SPEC §9a already sanctions this at the wiring
-level) as a lenient convenience. Requires a small package change: decouple
-object-ref compaction from block relabeling in `Options` (today one
-`CompactIds` flag does both).
+*Adjudicated fix (SUPERSEDED — see below):* split id compaction: default
+reads = compact object ids (refs legend) + FULL block ids; block-label
+compaction only in explicitly read-only shapes.
+
+*What shipped instead, and why it is the better half of the same split:*
+object-ref compaction is **deleted outright** (SPEC §9a, v0.20) — measured a
+0.9–11.5% net token LOSS per document here and +32.7% on a 200-item
+collection in the format's freeze review, and the legend trapped write-back
+exactly the way this finding describes. Default reads compact **block ids**
+and write endpoints resolve a label by unique-suffix match against the live
+object (SPEC §9a wiring allowance), which closes R1 without an indirection
+table: the surviving compaction carries no legend, so there is nothing for a
+PATCH/PUT to desynchronise. The package change this finding asked for is
+done — `CompactObjectRefs` is gone and `CompactIds` is an alias for
+`CompactBlockLabels`.
 
 **R2 · `revision` is undefined, has no backing field, and whole-object
 If-Match 409s on sync noise.** [feasibility ×2 majors + ergonomics major +

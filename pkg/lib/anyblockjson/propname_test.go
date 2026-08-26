@@ -13,8 +13,8 @@ import (
 )
 
 func typeDoc(tp string) string {
-	return `{"version": 1, "kind": "object_type", "id": "t1", "key": "k",
-		"type_properties": [` + tp + `]}`
+	return `{"version": 1, "kind": "object_type", "id": "t1", "internal_key": "k",
+		"type_settings": {"property_definitions": [` + tp + `]}}`
 }
 
 func TestValidate_BundledPropertyRenameWarns(t *testing.T) {
@@ -25,11 +25,11 @@ func TestValidate_BundledPropertyRenameWarns(t *testing.T) {
 		t.Run(tc.key, func(t *testing.T) {
 			var got []Issue
 			require.NoError(t, ValidateWarn(
-				[]byte(typeDoc(`{"key": "`+tc.key+`", "name": "`+tc.want+`"}`)),
+				[]byte(typeDoc(`{"property": "`+tc.key+`", "name": "`+tc.want+`"}`)),
 				func(i Issue) { got = append(got, i) }))
 			require.Len(t, got, 1)
 			assert.Contains(t, got[0].Message, tc.bundled)
-			assert.Contains(t, got[0].Path, "/type_properties/0/name")
+			assert.Contains(t, got[0].Path, "/type_settings/property_definitions/0/name")
 		})
 	}
 }
@@ -42,12 +42,12 @@ func TestValidate_PropertyNameNonTriggers(t *testing.T) {
 		assert.Empty(t, got)
 	}
 	t.Run("custom key keeps its name", func(t *testing.T) {
-		noWarn(t, typeDoc(`{"key": "verifiedUntil", "name": "Verified until", "format": "date"}`))
+		noWarn(t, typeDoc(`{"property": "verifiedUntil", "name": "Verified until", "format": "date"}`))
 	})
 	t.Run("bundled key with the bundled name", func(t *testing.T) {
-		noWarn(t, typeDoc(`{"key": "description", "name": "Description"}`))
+		noWarn(t, typeDoc(`{"property": "description", "name": "Description"}`))
 	})
 	t.Run("bundled key with no name at all", func(t *testing.T) {
-		noWarn(t, typeDoc(`{"key": "description"}`))
+		noWarn(t, typeDoc(`{"property": "description"}`))
 	})
 }

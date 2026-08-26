@@ -86,9 +86,40 @@ func run(inDir, outDir string, normalizeIndent, lenient bool, format outputForma
 		return fmt.Errorf("order input files: %w", err)
 	}
 
+	// the `_` namespace belongs to the platform (§1), and the reserved
+	// index.json listings live in it. Checked before anything is written: an
+	// id this tool would refuse must not first appear as a converted snapshot
+	// on disk.
+	reservedIds, err := anyblockbatch.CheckBundleIds(files)
+	if err != nil {
+		return fmt.Errorf("check bundle ids: %w", err)
+	}
+	if len(reservedIds) > 0 {
+		return fmt.Errorf("%d object%s claiming a reserved id:\n%s",
+			len(reservedIds), plural2(len(reservedIds)), anyblockbatch.ReportTargets(reservedIds))
+	}
+
 	formats, err := anyblockbatch.ScanFormats(files)
 	if err != nil {
 		return fmt.Errorf("scan property formats: %w", err)
+	}
+
+	// the property dictionary (§2f) is a declaration source beside the type
+	// documents: an author declares a property once, bundle-wide, without
+	// writing a relation document at all. Its entries join the format table
+	// (dictionary winning a stated conflict) and are pre-minted below, so a
+	// dictionary-declared property exists in the archive whether or not any
+	// type happens to list it.
+	var dictDefs []anyblockjson.PropertyDefinition
+	if dictPath, ok := anyblockbatch.PropertiesPath(inDir); ok {
+		dictFormats, defs, dictErr := anyblockbatch.DictionaryFormats(dictPath)
+		if dictErr != nil {
+			return fmt.Errorf("read property dictionary: %w", dictErr)
+		}
+		dictDefs = defs
+		formats = anyblockbatch.MergeDictionaryFormats(formats, dictFormats, func(format string, args ...any) {
+			fmt.Fprintf(os.Stderr, "warning: "+format+"\n", args...)
+		})
 	}
 
 	if shared, serr := anyblockbatch.CheckSharedSelects(files); serr == nil && len(shared) > 0 {
@@ -148,6 +179,15 @@ func run(inDir, outDir string, normalizeIndent, lenient bool, format outputForma
 	}
 
 	b := newBatch(formats, typeIds)
+
+	// dictionary-declared properties exist up front, with the FULL declared
+	// shape — description, include_time, max_count, readonly, default_value
+	// all reach mintRelation (§2e: a member the file admits is never shed at
+	// the seam). Entry order is the dictionary's canonical sorted order, so
+	// minted ids are stable across runs like everything else in the batch.
+	for _, def := range dictDefs {
+		b.PropertyId(def)
+	}
 
 	if err := os.MkdirAll(outDir, 0o755); err != nil {
 		return fmt.Errorf("mkdir %s: %w", outDir, err)
@@ -213,9 +253,13 @@ func run(inDir, outDir string, normalizeIndent, lenient bool, format outputForma
 		}
 		// the Widget snapshot carries the id "widgets"; an object claiming the
 		// same one would share both that id — and so the importer's relinking
-		// entry for it — and the output file with the sidebar
-		if _, taken := names[widgetsObjectId]; taken {
-			return fmt.Errorf("an object in the bundle has id %q, which is reserved for the sidebar snapshot (SPEC.md §2c) — rename it", widgetsObjectId)
+		// entry for it — and the output file with the sidebar. That id is also
+		// the wire spelling of the reserved `_widgets` homepage, so
+		// CheckBundleIds has already refused it above, for its own reason and
+		// before anything was written. This is the backstop for the case where
+		// the two stop being the same string.
+		if _, taken := names[anyblockjson.WidgetsObjectId]; taken {
+			return fmt.Errorf("an object in the bundle has id %q, which is reserved for the sidebar snapshot (SPEC.md §2c) — rename it", anyblockjson.WidgetsObjectId)
 		}
 		if err := writeWidgets(outDir, idx, format); err != nil {
 			return fmt.Errorf("write widgets: %w", err)

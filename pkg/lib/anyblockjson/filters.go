@@ -69,14 +69,16 @@ func UnmarshalFilters(raw json.RawMessage, opts Options) ([]*model.BlockContentD
 	// placeholder format rule, the unguarded date-less warning) run on the
 	// generic form, with formats resolved from the space instead of the
 	// dataview's properties list
-	checkDateFilters(map[string]any{"filters": generic},
-		referencedFormats(nodes, opts), "", addIssue, warnIssue)
+	formats := referencedFormats(nodes, opts)
+	checkDateFilters(map[string]any{"filters": generic}, formats,
+		func(prop string) bool { return formats[prop] == "date" },
+		"", addIssue, warnIssue)
 
 	if len(issues) > 0 {
 		return nil, &ValidationError{Issues: issues}
 	}
 
-	imp := &importer{opts: opts, doc: &jsonDoc{}}
+	imp := &importer{opts: opts, doc: opts.fragmentDoc()}
 	dv := &model.BlockContentDataview{}
 	out := make([]*model.BlockContentDataviewFilter, 0, len(nodes))
 	for _, jf := range nodes {
@@ -119,7 +121,7 @@ func UnmarshalSorts(raw json.RawMessage, opts Options) ([]*model.BlockContentDat
 		return nil, &ValidationError{Issues: issues}
 	}
 
-	imp := &importer{opts: opts, doc: &jsonDoc{}}
+	imp := &importer{opts: opts, doc: opts.fragmentDoc()}
 	dv := &model.BlockContentDataview{}
 	out := make([]*model.BlockContentDataviewSort, 0, len(sorts))
 	for _, js := range sorts {
@@ -153,7 +155,12 @@ func validateFilterVocabulary(nodes []jsonFilter, path string, addIssue func(str
 }
 
 // referencedFormats resolves the §3 format name of every property key the
-// filter tree references — the formats input of checkDateFilters.
+// filter tree references — the formats input of checkDateFilters. The term
+// travels through the reader's vocabulary before the format is looked up,
+// exactly as importer.filterFromJSON resolves it (propertyKey, then
+// impDvFormat): a request naming the documented `due_date` slug would
+// otherwise resolve no format at all, and the format is what says whether a
+// date preset means anything here.
 func referencedFormats(nodes []jsonFilter, opts Options) map[string]string {
 	formats := map[string]string{}
 	var walk func(nodes []jsonFilter)
@@ -168,7 +175,7 @@ func referencedFormats(nodes []jsonFilter, opts Options) map[string]string {
 			if _, seen := formats[node.Property]; seen {
 				continue
 			}
-			if f, ok := resolveFormatWith(opts, node.Property); ok {
+			if f, ok := resolveFormatWith(opts, opts.propertyKey(node.Property)); ok {
 				if name := FormatName(f); name != "" {
 					formats[node.Property] = name
 				}

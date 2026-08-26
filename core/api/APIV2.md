@@ -116,6 +116,7 @@ GET /v2/spaces/{space_id}/objects/{object_id}
     ?outline=true                   # block skeleton, see below
     ?block={blockId}                # subtree only (contiguous indent-run)
     ?ids=compact|full               # document shape (C4); default compact (edit)
+                                    # object ids are always full — never compacted
     ?format=anyblock|md             # md read-only, with warnings (C11)
 GET /v2/spaces/{space_id}/objects            # minimal rows (C5)
 DELETE /v2/spaces/{space_id}/objects/{object_id}   # archive, OWN OUTPUT ONLY (creator provenance, §8.42); ?permanent=true later

@@ -36,8 +36,8 @@ func (r CorruptionReport) Clean() bool {
 // the forward+inverse edit sequence. Unlike the round-trip verifier it is
 // order-sensitive: a backtranslation must restore exact document order, so
 // pure reordering (same text multiset, different sequence) is corruption.
-func ScoreCorruption(original, after *model.SmartBlockSnapshotBase, opts anyblockjson.Options) CorruptionReport {
-	report := CorruptionReport{Findings: snapshotdiff.Compare(original, after, opts)}
+func ScoreCorruption(original, after *model.SmartBlockSnapshotBase, sbType model.SmartBlockType, opts anyblockjson.Options) CorruptionReport {
+	report := CorruptionReport{Findings: snapshotdiff.Compare(original, after, sbType, opts)}
 
 	origTexts := snapshotdiff.TextInventory(original)
 	afterTexts := snapshotdiff.TextInventory(after)
@@ -77,7 +77,11 @@ func equalSeq(a, b []string) bool {
 // natural inputs, since API reads and writes speak the format. Both
 // documents import under the same options before comparison.
 func ScoreCorruptionJSON(originalDoc, afterDoc []byte, opts anyblockjson.Options) (CorruptionReport, error) {
-	_, original, err := anyblockjson.Unmarshal(originalDoc, opts)
+	// the comparator needs the smartblock type to know which bundled/derived
+	// slots the format legitimately omits (OmittedBundledRelation,
+	// DroppedTypeProvenanceKey, …); the original document's own type is the
+	// authority, so take it from its import rather than assuming a page
+	sbType, original, err := anyblockjson.Unmarshal(originalDoc, opts)
 	if err != nil {
 		return CorruptionReport{}, fmt.Errorf("import original document: %w", err)
 	}
@@ -85,5 +89,5 @@ func ScoreCorruptionJSON(originalDoc, afterDoc []byte, opts anyblockjson.Options
 	if err != nil {
 		return CorruptionReport{}, fmt.Errorf("import edited document: %w", err)
 	}
-	return ScoreCorruption(original, after, opts), nil
+	return ScoreCorruption(original, after, sbType, opts), nil
 }

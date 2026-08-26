@@ -289,8 +289,21 @@ func isIdentStart(r rune) bool {
 	return r == '_' || unicode.IsLetter(r)
 }
 
+// isIdentPart follows UAX #31's ID_Continue in the part that matters here:
+// letters, digits, `_`, AND the combining marks (Mn, Mc) that carry the vowels
+// of every Indic and South-East Asian script. Excluding marks is not a
+// restriction on those scripts, it is a corruption of them — without Mn/Mc,
+// मिल/मूल/मल/मैल (mil, mūl, mal, mail — four different words) all reduce to
+// मल, while हिन्दी and हिंदी, two legal spellings of ONE word, reduce to two
+// DIFFERENT tokens. NFC rescues Latin, Greek, Cyrillic and Vietnamese because
+// precomposed forms exist for them; Devanagari, Thai, Bengali, Tamil, Khmer
+// and Myanmar have none.
+//
+// identStart deliberately does NOT admit marks: a combining mark cannot begin
+// an identifier because it has nothing to combine with, and UAX #31 agrees.
 func isIdentPart(r rune) bool {
-	return r == '_' || unicode.IsLetter(r) || unicode.IsDigit(r)
+	return r == '_' || unicode.IsLetter(r) || unicode.IsDigit(r) ||
+		unicode.Is(unicode.Mn, r) || unicode.Is(unicode.Mc, r)
 }
 
 func (lx *lexer) lexIdent(start int) {
@@ -762,6 +775,20 @@ func (p *parser) checkKey(tok token) error {
 		Hint:    hint,
 	}
 }
+
+// IsBareKey reports whether a key can be written as a bare property key in a
+// compact filter string: the `key = identifier` rule of the EBNF above, plus
+// the reserved words the grammar keeps for itself.
+//
+// It is exported because the grammar is where the format's notion of an
+// identifier LIVES (§6.2.1 — this parser is the normative artifact), and
+// what a document may SPELL for a key is decided elsewhere: the label rule in
+// the parent package normalizes through this predicate, so a spelling that
+// package mints is one this package can parse. Asking it here rather than
+// restating the rule there is the point — a second copy of "letters, digits,
+// `_`, not a keyword" is a copy that drifts, and the two packages already
+// shipped one such drift (filterstring_agreement_test.go).
+func IsBareKey(key string) bool { return bareWritable(key) }
 
 // bareWritable reports whether a property key can be written as a bare
 // identifier in the compact syntax: identifier characters only and not a

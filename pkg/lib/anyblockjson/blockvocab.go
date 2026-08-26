@@ -51,10 +51,34 @@ var structuralBlockTypes = map[string]bool{
 	"title": true, "description": true, "featured_properties": true,
 }
 
+// transparentBlockTypes are the §7a transparent containers: types that carry
+// containment and nothing else, so export writes their children in their
+// place and import lifts them back out. They are part of the format's
+// vocabulary — Validate must keep accepting what Unmarshal accepts, so
+// `group` stays in BlockTypeNames and in the schema's `blockCore.type` enum
+// — but no export produces one and nothing a caller writes into one
+// survives, so they are not part of an authorable body either.
+//
+// This is deliberately NOT merged with structuralBlockTypes, which reads
+// nearly the same and means the opposite: topLevelBlocks drops a structural
+// block TOGETHER WITH ITS SUBTREE, where a container's whole point is that
+// its subtree stays and only it goes.
+var transparentBlockTypes = map[string]bool{
+	"group": true,
+}
+
 // StructuralBlockType reports whether typ is a §7 structural block. Exported
 // for the API v2 surfaces that publish an authorable vocabulary.
 func StructuralBlockType(typ string) bool {
 	return structuralBlockTypes[typ]
+}
+
+// TransparentBlockType reports whether typ is a §7a transparent container —
+// a type a document may carry that resolves to no block of its own. Exported
+// for the same API v2 surfaces as StructuralBlockType: a generator shown
+// this type would write a block that vanishes on the next read.
+func TransparentBlockType(typ string) bool {
+	return transparentBlockTypes[typ]
 }
 
 // BlockTypeNames lists every §5 block type the format reads, in schema order
@@ -66,11 +90,12 @@ func BlockTypeNames() []string {
 
 // AuthorableBlockTypeNames is the vocabulary a document BODY can be written
 // in: BlockTypeNames minus the §7 structural types, which import absorbs into
-// properties or drops. Order follows BlockTypeNames.
+// properties or drops, and minus the §7a transparent containers, which import
+// lifts away. Order follows BlockTypeNames.
 func AuthorableBlockTypeNames() []string {
 	out := make([]string, 0, len(blockTypeNames))
 	for _, name := range blockTypeNames {
-		if !structuralBlockTypes[name] {
+		if !structuralBlockTypes[name] && !transparentBlockTypes[name] {
 			out = append(out, name)
 		}
 	}

@@ -1,0 +1,65 @@
+{
+  "$schema": "https://schemas.anytype.io/anyblock/1/authoring/object.schema.json",
+  "version": 1,
+  "kind": "object_type",
+  "id": "type-habit",
+  "internal_key": "habit",
+  "icon": { "format": "icon", "name": "repeat", "color": "teal" },
+  "properties": {
+    "name": "Habit",
+    "description": "One habit you are building."
+  },
+  "type_settings": {
+    "layout": "basic",
+    "plural_name": "Habits",
+    "default_view": "table",
+    "property_definitions": [
+      { "property": "frequency", "section": "featured" },
+      { "property": "streak", "section": "featured" },
+      { "property": "last_done" }
+    ]
+  },
+  "blocks": [
+    {
+      "type": "dataview",
+      "properties": [
+        { "property": "name", "format": "text" },
+        { "property": "frequency", "format": "select" },
+        { "property": "streak", "format": "number" },
+        { "property": "last_done", "format": "date" }
+      ],
+      "views": [
+        {
+          "name": "All habits",
+          "sorts": [ { "property": "streak", "direction": "desc" } ],
+          "columns": [
+            { "property": "name" },
+            { "property": "frequency" },
+            { "property": "streak" },
+            { "property": "last_done" }
+          ]
+        },
+        {
+          "type": "kanban",
+          "name": "By frequency",
+          "group_by": "frequency",
+          "columns": [
+            { "property": "name" },
+            { "property": "streak" }
+          ]
+        },
+        {
+          "name": "Daily",
+          "filters": [
+            { "property": "frequency", "condition": "in", "value": [ "Daily" ] }
+          ],
+          "columns": [
+            { "property": "name" },
+            { "property": "streak" },
+            { "property": "last_done" }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -125,8 +125,7 @@ func TestUnmarshalBlock(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		var arr []map[string]any
-		require.NoError(t, json.Unmarshal(out, &arr))
+		arr := fragmentBlocks(t, out)
 		require.Len(t, arr, 1)
 		assert.Equal(t, "quote", arr[0]["type"])
 		assert.Equal(t, "a **bold** word", arr[0]["text"], "inline markup survives the round-trip")
@@ -156,8 +155,7 @@ func TestMarshalBlockSubtree(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		var arr []map[string]any
-		require.NoError(t, json.Unmarshal(out, &arr))
+		arr := fragmentBlocks(t, out)
 		require.Len(t, arr, 2)
 		assert.Equal(t, "p1", arr[0]["id"])
 		assert.Nil(t, arr[0]["indent"])
@@ -170,6 +168,113 @@ func TestMarshalBlockSubtree(t *testing.T) {
 	})
 }
 
+// fragmentLabelSubtree is two minted block ids, parent and child: the only
+// shape doc-local relabeling touches (isMintedLocalId).
+func fragmentLabelSubtree() []*model.Block {
+	return []*model.Block{
+		{Id: "64b2c1d2e3f4a5b6c7d8e9f0", ChildrenIds: []string{"1111111111111111111a1b2c"},
+			Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "parent"}}},
+		{Id: "1111111111111111111a1b2c",
+			Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "child"}}},
+	}
+}
+
+// fragmentBlocks digs the `blocks` run out of a fragment envelope.
+func fragmentBlocks(t *testing.T, out json.RawMessage) []map[string]any {
+	t.Helper()
+	var env struct {
+		Blocks []map[string]any `json:"blocks"`
+	}
+	require.NoError(t, json.Unmarshal(out, &env))
+	return env.Blocks
+}
+
+// fragmentLegend digs the three legends out of a fragment envelope.
+func fragmentLegend(t *testing.T, out json.RawMessage) Legend {
+	t.Helper()
+	var env struct {
+		PropertyKeys map[string]string            `json:"property_internal_keys"`
+		TypeKeys     map[string]string            `json:"type_internal_keys"`
+		OptionIds    map[string]map[string]string `json:"option_ids"`
+	}
+	require.NoError(t, json.Unmarshal(out, &env))
+	return Legend{PropertyKeys: env.PropertyKeys, TypeKeys: env.TypeKeys, OptionIds: env.OptionIds}
+}
+
+func fragmentIds(t *testing.T, out json.RawMessage) []string {
+	t.Helper()
+	blocks := fragmentBlocks(t, out)
+	ids := make([]string, len(blocks))
+	for i, b := range blocks {
+		ids[i], _ = b["id"].(string)
+	}
+	return ids
+}
+
+// A fragment is addressed by the ids it carries, so the two options that take
+// its addresses away are REFUSED rather than honoured.
+//
+// This surface exists for wiring that edits a live document op-by-op. OmitIds
+// drops every block id, the view id and the filter id, so the run says what
+// to write and not where. Block-label compaction rewrites doc-local ids to
+// short suffixes that are local to the emitted run and are not the object's
+// ids at all — the fragment used to hand back `8e9f0` for the block stored as
+// `64b2c1d2e3f4a5b6c7d8e9f0`. Both produced a fragment that reads correctly
+// and cannot be applied, which is the failure this format refuses to make
+// silently.
+func TestMarshalBlockSubtree_RefusesTheOptionsThatTakeAwayItsAddresses(t *testing.T) {
+	for name, tc := range map[string]struct {
+		opts Options
+		want string
+	}{
+		"OmitIds":            {Options{OmitIds: true}, "a fragment is addressed by the ids it carries"},
+		"CompactBlockLabels": {Options{CompactBlockLabels: true}, "not the object's ids"},
+		"CompactIds":         {Options{CompactIds: true}, "not the object's ids"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			out, err := MarshalBlockSubtree(fragmentLabelSubtree(), tc.opts)
+			require.Error(t, err, "emitted:\n%s", out)
+			assert.Contains(t, err.Error(), tc.want)
+			assert.Nil(t, out, "a refused fragment hands back nothing")
+		})
+	}
+
+	t.Run("without them every id is the object's own", func(t *testing.T) {
+		out, err := MarshalBlockSubtree(fragmentLabelSubtree(), Options{})
+		require.NoError(t, err)
+		assert.Equal(t, []string{"64b2c1d2e3f4a5b6c7d8e9f0", "1111111111111111111a1b2c"},
+			fragmentIds(t, out))
+	})
+}
+
+// A fragment has no envelope, so it can carry no legend — which is why the
+// only compaction it may do is the legend-less one. Object references are
+// therefore written in full here under EVERY option, exactly as in a whole
+// document (§9a).
+//
+// This is the surviving, testable half of what 42396b448 fixed in passing:
+// the fragment used to build its plan under the object-ref flag too, and
+// emitted short object labels into an array that had nowhere to define them.
+// That flag is deleted, so the bug is gone by construction and cannot be
+// reproduced; what can be pinned is the property that made it a bug, and this
+// fails the moment any legend-backed compaction reaches the fragment path
+// again.
+func TestMarshalBlockSubtree_ObjectRefsAreNeverCompacted(t *testing.T) {
+	const target = "bafyreimentiontargetidxxx"
+	subtree := []*model.Block{{Id: "64b2c1d2e3f4a5b6c7d8e9f0",
+		Content: &model.BlockContentOfText{Text: &model.BlockContentText{
+			Text: "ping Roman", Marks: &model.BlockContentTextMarks{
+				Marks: []*model.BlockContentTextMark{{
+					Range: &model.Range{From: 5, To: 10},
+					Type:  model.BlockContentTextMark_Mention, Param: target}}}}}}}
+
+	out, err := MarshalBlockSubtree(subtree, Options{})
+	require.NoError(t, err)
+	assert.Contains(t, string(out), `object_id=\"`+target+`\"`,
+		"the mention target must be spelled in full — a fragment defines no object labels")
+	assert.NotContains(t, string(out), `object_id=\"idxxx\"`)
+}
+
 func TestUnmarshalPropertyValue(t *testing.T) {
 	t.Run("date strings parse per §3", func(t *testing.T) {
 		v := UnmarshalPropertyValue("dueDate", "2026-07-30", Options{})
@@ -180,7 +285,7 @@ func TestUnmarshalPropertyValue(t *testing.T) {
 
 	t.Run("round-trips with MarshalPropertyValue", func(t *testing.T) {
 		v := UnmarshalPropertyValue("dueDate", "2026-07-30T00:00:00Z", Options{})
-		back := MarshalPropertyValue("dueDate", v, Options{})
+		back, _ := MarshalPropertyValue("dueDate", v, Options{})
 		assert.Equal(t, "2026-07-30T00:00:00Z", back)
 	})
 

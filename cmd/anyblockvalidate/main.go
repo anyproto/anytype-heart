@@ -15,7 +15,7 @@ func main() {
 		fmt.Println("usage: anyblockvalidate <file-or-dir>...")
 		os.Exit(2)
 	}
-	var files, indexes []string
+	var files, indexes, dictionaries []string
 	for _, arg := range os.Args[1:] {
 		_ = filepath.Walk(arg, func(p string, info os.FileInfo, err error) error {
 			if err != nil {
@@ -24,10 +24,15 @@ func main() {
 			if info.IsDir() || !strings.HasSuffix(p, ".json") {
 				return nil
 			}
-			// the bundle index (§2c) describes the bundle, not an object: it
-			// has its own schema and would fail every object-level check
+			// the bundle index (§2c) and the property dictionary (§2f)
+			// describe the bundle, not an object: each has its own schema
+			// and would fail every object-level check
 			if filepath.Base(p) == anyblockjson.IndexFileName {
 				indexes = append(indexes, p)
+				return nil
+			}
+			if filepath.Base(p) == anyblockjson.PropertiesFileName {
+				dictionaries = append(dictionaries, p)
 				return nil
 			}
 			files = append(files, p)
@@ -35,6 +40,17 @@ func main() {
 		})
 	}
 	fail, warned := 0, 0
+
+	// the `_` namespace is the platform's (§1). anyblockconvert refuses a
+	// bundle that mints an id in it, so this tool has to see it too — a bundle
+	// this one blesses and that one rejects is the worst of both.
+	if reserved, err := anyblockbatch.CheckBundleIds(files); err != nil {
+		fmt.Printf("READERR %v\n", err)
+		fail++
+	} else if len(reserved) > 0 {
+		fmt.Printf("INVALID %d object(s) claiming a reserved id\n%s", len(reserved), anyblockbatch.ReportTargets(reserved))
+		fail += len(reserved)
+	}
 
 	if len(indexes) == 0 {
 		warned++
@@ -80,6 +96,37 @@ func main() {
 			}
 		}
 	}
+	for _, dictPath := range dictionaries {
+		data, err := os.ReadFile(dictPath)
+		if err != nil {
+			fmt.Printf("READERR %s: %v\n", dictPath, err)
+			fail++
+			continue
+		}
+		// the codec TOLERATES an installed key its bundled table cannot name
+		// (a newer app's bundled property), but it now SAYS so through the
+		// same warn channel object documents have — this tool used to carry
+		// its own copy of that check, which meant the authoring surface knew
+		// something the format itself did not report.
+		var dictWarnings []anyblockjson.Issue
+		dict, err := anyblockjson.UnmarshalPropertyDictionaryWarn(data, func(i anyblockjson.Issue) {
+			dictWarnings = append(dictWarnings, i)
+		})
+		if err != nil {
+			fmt.Printf("INVALID %s\n         %v\n", dictPath, err)
+			fail++
+			continue
+		}
+		fmt.Printf("ok      %s\n         %d installed key(s), %d defined propert%s\n",
+			dictPath, len(dict.Installed), len(dict.Properties),
+			map[bool]string{true: "y", false: "ies"}[len(dict.Properties) == 1])
+		if len(dictWarnings) > 0 {
+			warned++
+			for _, w := range dictWarnings {
+				fmt.Printf("         warn: %s\n", w.String())
+			}
+		}
+	}
 	for _, f := range files {
 		data, err := os.ReadFile(f)
 		if err != nil {
@@ -115,14 +162,59 @@ func main() {
 	// JSON — dates stay strings, selects mint no options, object references
 	// are never remapped. Per-file validation cannot see it.
 	if formats, ferr := anyblockbatch.ScanFormats(files); ferr == nil {
+		// the dictionary is the OTHER home a format can be declared in
+		// (§2f), and anyblockconvert merges it before running this exact
+		// check. Without the same merge this tool refuses a bundle the
+		// converter accepts — and its repair text then sends the author to
+		// the type home, undoing the dictionary they had written.
+		for _, dictPath := range dictionaries {
+			dictFormats, _, derr := anyblockbatch.DictionaryFormats(dictPath)
+			if derr != nil {
+				continue // the per-file pass above already reported it
+			}
+			formats = anyblockbatch.MergeDictionaryFormats(formats, dictFormats,
+				func(format string, args ...any) {
+					warned++
+					fmt.Printf("warn    "+format+"\n", args...)
+				})
+		}
 		if undeclared, uerr := anyblockbatch.CheckPropertyFormats(files, formats); uerr == nil && len(undeclared) > 0 {
 			fail += len(undeclared)
 			fmt.Printf("\nUNDECLARED property formats (anyblockconvert will refuse these):\n%s",
 				anyblockbatch.Report(undeclared))
 		}
+
+		// batch-wide for the same reason: a view naming a property nothing
+		// declares is a filter that matches nothing, a sort that orders
+		// nothing, a column that stays empty — and it imports in silence. The
+		// CODEC cannot raise it, because a custom property whose stored key is
+		// already a legal spelling binds no legend entry, so inside one
+		// document a typo and a verbatim custom key look the same. Only here,
+		// holding every declaration in the bundle, are they distinguishable.
+		declared := map[string]bool{}
+		for key := range formats {
+			declared[key] = true
+		}
+		if bad, verr := anyblockbatch.CheckViewProperties(files, declared); verr == nil && len(bad) > 0 {
+			fail += len(bad)
+			fmt.Printf("\nVIEW slots naming a property nothing declares:\n%s",
+				anyblockbatch.ReportViewProperties(bad))
+		}
 	}
 
-	fmt.Printf("\n=== %d/%d valid, %d invalid", len(files)-fail, len(files), fail)
+	// every document this run judged, not just the object ones: `files`
+	// excludes index.json and properties.json while `fail` counts their
+	// failures alongside the batch-wide findings, so subtracting one from
+	// the other printed counts that never happened — "-1/0 valid" for a
+	// directory holding a single bad dictionary.
+	judged := len(files) + len(indexes) + len(dictionaries)
+	valid := judged - fail
+	if valid < 0 {
+		// more findings than documents: a batch-wide check can report
+		// several against one file. Say what is true — nothing passed.
+		valid = 0
+	}
+	fmt.Printf("\n=== %d/%d valid, %d invalid", valid, judged, fail)
 	if warned > 0 {
 		// warnings do not fail the run: the document imports, part of it is
 		// just inert

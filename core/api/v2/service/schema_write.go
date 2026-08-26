@@ -386,7 +386,15 @@ func typeDetailsFromSnapshot(snapshot *model.SmartBlockSnapshotBase, slug string
 func (s *Service) validateTypePropertyFormats(spaceId string, props []anyblockjson.TypeProperty) error {
 	var entries []propertyEntry
 	for i, tp := range props {
-		if tp.Key == "" || tp.Format == "" {
+		// §2e split `key` into the document-facing SPELLING (`property`) and
+		// the STORED internal key (`internal_key`). An entry may state either,
+		// so resolve on the spelling first — that is the term this API's
+		// vocabulary accepts — and fall back to the internal key.
+		term := tp.Property
+		if term == "" {
+			term = tp.InternalKey
+		}
+		if term == "" || tp.Format == "" {
 			continue
 		}
 		declared, ok := anyblockjson.FormatByName(tp.Format)
@@ -399,16 +407,16 @@ func (s *Service) validateTypePropertyFormats(spaceId string, props []anyblockjs
 				return err
 			}
 		}
-		entry, ok, ambiguous := s.resolvePropertyInput(tp.Key, entries)
+		entry, ok, ambiguous := s.resolvePropertyInput(term, entries)
 		if len(ambiguous) > 0 || !ok {
 			continue
 		}
 		if entry.Format != declared {
 			return v2model.ValidationFailed("property format conflict",
 				v2model.Issue{
-					Path: fmt.Sprintf("/typeProperties/%d/format", i),
+					Path: fmt.Sprintf("/type_properties/%d/format", i),
 					Message: fmt.Sprintf("%q declares format %q but the existing property %q has format %q",
-						tp.Key, tp.Format, entry.Name, anyblockjson.FormatName(entry.Format)),
+						term, tp.Format, entry.Name, anyblockjson.FormatName(entry.Format)),
 					Hint: "omit format to use the existing property as it is, or create a new property under a different key",
 				})
 		}
@@ -504,7 +512,10 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey string, body 
 		if err := s.validateTypePropertyFormats(spaceId, *patch.TypeProperties); err != nil {
 			return nil, err
 		}
-		lists := anyblockjson.BuildRecommendedLists(*patch.TypeProperties, resolvers.Options())
+		lists, err := anyblockjson.BuildRecommendedLists(*patch.TypeProperties, resolvers.Options())
+		if err != nil {
+			return nil, fmt.Errorf("build recommended lists: %w", err)
+		}
 		if err := resolvers.err(); err != nil {
 			return nil, fmt.Errorf("resolve type properties: %w", err)
 		}
