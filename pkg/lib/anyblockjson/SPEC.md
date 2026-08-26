@@ -1,6 +1,6 @@
 # AnyBlock JSON — format specification
 
-Status: **draft v0.44** · Format version: **1** · Package: `pkg/lib/anyblockjson`
+Status: **draft v0.45** · Format version: **1** · Package: `pkg/lib/anyblockjson`
 
 A human- and agent-readable JSON serialization of Anytype objects (the "anyblock"
 model), designed for export, import, and generation by external tools and LLM
@@ -15,6 +15,46 @@ strings; the vocabulary follows Notion's API and Anytype's public REST API
 (`core/api`) wherever an established term exists — the format should be
 readable, and mostly writable, by someone who has never seen Anytype
 internals.
+
+Changes in v0.45: **the sidebar is index.json's, whole, and a bundle carries
+no widget document** (§1, §2c, §2g, §5).
+
+index.json has had a `widgets` array since the beginning, and the exporter
+never filled it: 0 of 77 corpus indexes carried one, while 77 of 77 spaces
+exported a hidden `kind: "widget"` object whose BLOCKS encode the same
+sidebar — a widget wrapper block per widget, each with one indented link
+child naming the target, 218 pairs in perfect regularity and nothing else.
+The pairing carries no information beyond the pair, so an author wanting a
+sidebar was being asked to build block scaffolding inside a hidden dashboard
+object to say what one flat array says.
+
+The index widget now says everything the blocks said, flat: `layout`,
+`limit`, `view_id` and `auto_added` from the wrapper, and the link child's
+own display members — `card_style`, `icon_size`, `description`,
+`properties` — as one `$ref` each into the object schema's §5 vocabularies,
+not a copy. Two members are space state rather than widget state and sit at
+index level, machine-written both: `auto_widget_targets` (the client's
+ledger for not re-adding an auto widget the user deleted; 21 of 77 spaces)
+and `auto_widget_disabled` (2 of 77). The reserved-listing inventory grows
+to what live sidebars actually hold — `_chat` and `_bin` join, eight in all
+— and `widget.IsPredefinedWidgetTargetId` learns every wire spelling, which
+retires the one rule where this format refused its own inventory:
+`_all_objects` and `_recent_open` were refusable only because the importer
+silently dropped them, and 29 of the corpus's 33 listing-widgets named a
+target it did not know. An app export re-imported without its All Objects,
+chat and bin widgets was the bug; the format inheriting the refusal would
+have frozen it.
+
+Export therefore lifts the widget object into the index
+(`IndexFromWidgetObject`) and omits the document, fail-closed like the space
+document in v0.34: anything the lift cannot account for keeps the document —
+measured, 1 of 77, a sidebar targeting the stray words `bookmark` and
+`lists` that no client defines. The rebuild is `WidgetsSnapshot`, one
+function shared by the conversion tool and the round-trip verifier, which
+holds its output against every omitted original through the comparator:
+zero reconstruction diffs across the corpus. The comparator learns the
+omission's two residuals (the object's own timestamps, an empty name) in
+the same commit, through the format's own exported predicates (§11).
 
 Changes in v0.44: **a reference to an object the space does not hold is not
 written as if it existed** (§9).
