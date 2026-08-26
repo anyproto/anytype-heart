@@ -5,14 +5,19 @@ package localdiscovery
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	gonet "net"
+	"os"
+	"path/filepath"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/net/transport"
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/util/periodicsync"
 	"github.com/libp2p/zeroconf/v2"
@@ -69,6 +74,14 @@ type localDiscovery struct {
 	hookState    DiscoveryPossibility
 	hooks        []HookCallback
 	networkState NetworkStateService
+
+	// static peers (opt-in via <repoPath>/static-peers.json) — for L3 networks
+	// where mDNS does not propagate (routed VPNs, containers, NAT'd subnets).
+	repoPath         string
+	lastStaticPeers  []staticPeer
+	lastStaticMtime  time.Time
+	staticMu         sync.Mutex
+	lastOwnAddrBytes []byte
 }
 
 func New() LocalDiscovery {
@@ -82,6 +95,7 @@ func (l *localDiscovery) SetNotifier(notifier Notifier) {
 func (l *localDiscovery) Init(a *app.App) (err error) {
 	l.manualStart = a.MustComponent(config.CName).(*config.Config).DontStartLocalNetworkSyncAutomatically
 	l.nodeConf = a.MustComponent(config.CName).(*config.Config).GetNodeConf()
+	l.repoPath = a.MustComponent(config.CName).(*config.Config).GetRepoPath()
 	l.peerId = a.MustComponent(accountservice.CName).(accountservice.Service).Account().PeerId
 	l.periodicCheck = periodicsync.NewPeriodicSync(5, 0, l.refreshInterfaces, log)
 	l.drpcServer = app.MustComponent[clientserver.ClientServer](a)
@@ -211,6 +225,10 @@ func (l *localDiscovery) refreshInterfaces(ctx context.Context) (err error) {
 	// network-change hook can't interleave a rebuild while l.m is released below.
 	l.refreshMu.Lock()
 	defer l.refreshMu.Unlock()
+	// Inject statically-configured peers on every tick, before the mDNS path
+	// below (which is skipped when there are no multicast interfaces, e.g. on a
+	// routed VPN). Opt-in via <repoPath>/static-peers.json; no-op without it.
+	l.injectStaticPeers(ctx)
 
 	l.m.Lock()
 	newAddrs, err := getInterfacesAddrs()
@@ -386,5 +404,157 @@ func (l *localDiscovery) GetOwnAddresses() OwnAddresses {
 	return OwnAddresses{
 		Addrs: l.ipv4,
 		Port:  l.port,
+	}
+}
+
+// staticPeer is a peer to dial directly, used on L3 networks where mDNS does
+// not propagate (routed VPNs: OpenVPN tun, ZeroTier, WireGuard).
+type staticPeer struct {
+	PeerId    string   `json:"peerId"`
+	Addresses []string `json:"addresses"` // each "host:port" (QUIC/UDP)
+}
+
+func (l *localDiscovery) staticPeersPath() string {
+	return filepath.Join(l.repoPath, "static-peers.json")
+}
+
+// loadStaticPeers reads static-peers.json, re-parsing only when its mtime
+// changed. Missing file → nil, false (feature stays opt-in).
+func (l *localDiscovery) loadStaticPeers() (peers []staticPeer, changed bool) {
+	path := l.staticPeersPath()
+	fi, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, false
+		}
+		log.Warn("static peers stat failed", zap.Error(err), zap.String("path", path))
+		l.staticMu.Lock()
+		defer l.staticMu.Unlock()
+		return l.lastStaticPeers, false
+	}
+	l.staticMu.Lock()
+	defer l.staticMu.Unlock()
+	if !fi.ModTime().After(l.lastStaticMtime) {
+		return l.lastStaticPeers, false
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		log.Warn("static peers read failed", zap.Error(err))
+		l.lastStaticMtime = fi.ModTime()
+		return l.lastStaticPeers, false
+	}
+	var loaded []staticPeer
+	if err := json.Unmarshal(data, &loaded); err != nil {
+		log.Warn("static peers parse failed", zap.Error(err), zap.String("path", path))
+		l.lastStaticMtime = fi.ModTime()
+		return l.lastStaticPeers, false
+	}
+	l.lastStaticPeers = loaded
+	l.lastStaticMtime = fi.ModTime()
+	return loaded, true
+}
+
+// staticPeerAddrs normalizes configured addresses to bare "host:port", the
+// form the PeerDiscovered seam (and mDNS) emits. Full URLs — e.g. a
+// listenAddr copied verbatim from the peer's own-address.json ("yamux://…",
+// "quic://…") — are accepted and stripped: addSchema pins the transport, and
+// both listeners share one port, so host:port identifies the peer either way.
+func staticPeerAddrs(addrs []string) []string {
+	res := make([]string, 0, len(addrs))
+	for _, a := range addrs {
+		if i := strings.Index(a, "://"); i != -1 {
+			a = a[i+3:]
+		}
+		if a != "" {
+			res = append(res, a)
+		}
+	}
+	return res
+}
+
+// injectStaticPeers emits every statically-configured peer through the same
+// PeerDiscovered seam as mDNS, using all of this device's non-loopback
+// interface addresses as the dial-back hint (the remote also learns our
+// address from the connection source during SpaceExchange, so this is
+// best-effort). No-op when static-peers.json is absent, so the feature is
+// opt-in and own-address.json is not written for users who don't use it.
+func (l *localDiscovery) injectStaticPeers(ctx context.Context) {
+	peers, changed := l.loadStaticPeers()
+	if peers == nil {
+		return
+	}
+	if changed {
+		ids := make([]string, 0, len(peers))
+		for _, p := range peers {
+			ids = append(ids, p.PeerId)
+		}
+		log.Info("static peers loaded", zap.Strings("peerIds", ids), zap.Int("count", len(peers)))
+	}
+	// Always enumerate ALL interfaces (including VPN/overlay) for the dial-back
+	// hint + own-address.json — l.ipv4 only has multicast interfaces, which
+	// excludes VPN tunnels (wt0, tun, etc.).
+	own := l.enumerateAllAddresses()
+	for _, p := range peers {
+		if p.PeerId == "" || p.PeerId == l.peerId {
+			continue
+		}
+		addrs := staticPeerAddrs(p.Addresses)
+		if len(addrs) == 0 {
+			continue
+		}
+		if l.notifier != nil {
+			peer := DiscoveredPeer{PeerId: p.PeerId, Addrs: addrs}
+			go l.notifier.PeerDiscovered(l.componentCtx, peer, own)
+		}
+	}
+	l.writeOwnAddress(own)
+}
+
+// enumerateAllAddresses returns all non-loopback IPv4 addresses across ALL
+// interfaces (including VPN/overlay), not just multicast ones. Used as a
+// fallback when l.ipv4 is empty (mDNS server not started on L3 networks).
+func (l *localDiscovery) enumerateAllAddresses() OwnAddresses {
+	var ips []string
+	if iaddrs, err := addrs.GetInterfacesAddrs(); err == nil {
+		for _, iface := range iaddrs.Interfaces {
+			for _, a := range iface.GetAddr() {
+				if ip, ok := addrs.AddrToIP(a); ok && ip.To4() != nil && !ip.IsLoopback() {
+					ips = append(ips, ip.To4().String())
+				}
+			}
+		}
+	}
+	return OwnAddresses{Addrs: ips, Port: l.port}
+}
+
+// writeOwnAddress writes own-address.json in static-peers.json entry format
+// (peerId + listen addresses), so the user can copy the file — or just the
+// addresses array — verbatim into the remote peer's static-peers.json; no
+// extra fields, since the yamux:// address already carries the port and
+// schema. Only written when static-peers.json exists (opt-in). Skipped when
+// the content is unchanged to avoid disk churn.
+//
+// listenAddrs are advertised as yamux:// to match addSchema, which pins yamux
+// (TCP) for local peer dials; the QUIC listener stays bound on the same port
+// for peers that still dial QUIC.
+func (l *localDiscovery) writeOwnAddress(own OwnAddresses) {
+	listen := make([]string, 0, len(own.Addrs))
+	for _, a := range own.Addrs {
+		listen = append(listen, fmt.Sprintf("%s://%s:%d", transport.Yamux, a, own.Port))
+	}
+	doc := []staticPeer{{
+		PeerId:    l.peerId,
+		Addresses: listen,
+	}}
+	data, err := json.MarshalIndent(doc, "", "  ")
+	if err != nil {
+		return
+	}
+	if slices.Equal(data, l.lastOwnAddrBytes) {
+		return
+	}
+	l.lastOwnAddrBytes = data
+	if err := os.WriteFile(filepath.Join(l.repoPath, "own-address.json"), data, 0640); err != nil {
+		log.Warn("write own-address failed", zap.Error(err))
 	}
 }
