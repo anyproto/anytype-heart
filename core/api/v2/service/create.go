@@ -82,14 +82,14 @@ var shortcutKeys = map[string]bool{"type": true, "name": true, "properties": tru
 type docCreateOptions struct {
 	dryRun          bool
 	requireTemplate bool // POST /templates: template_for is mandatory
-	// createOptions is the request's ?create_options=true consent, carried
+	// createMissingOptions is the request's ?create_missing_options=true consent, carried
 	// to the resolver that would otherwise mint a select option for a name
 	// that matches nothing.
-	createOptions bool
+	createMissingOptions bool
 }
 
 // CreateObject implements POST /v2/spaces/{space_id}/objects.
-func (s *Service) CreateObject(ctx context.Context, spaceId string, body []byte, dryRun, createOptions bool) (*v2model.CreateResult, error) {
+func (s *Service) CreateObject(ctx context.Context, spaceId string, body []byte, dryRun, createMissingOptions bool) (*v2model.CreateResult, error) {
 	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
 	}
@@ -103,9 +103,9 @@ func (s *Service) CreateObject(ctx context.Context, spaceId string, body []byte,
 	_, hasVersion := fields["version"]
 	_, hasBlocks := fields["blocks"]
 	if hasVersion || hasBlocks {
-		return s.createFromDocument(ctx, spaceId, body, docCreateOptions{dryRun: dryRun, createOptions: createOptions})
+		return s.createFromDocument(ctx, spaceId, body, docCreateOptions{dryRun: dryRun, createMissingOptions: createMissingOptions})
 	}
-	return s.createFromShortcut(ctx, spaceId, fields, dryRun, createOptions)
+	return s.createFromShortcut(ctx, spaceId, fields, dryRun, createMissingOptions)
 }
 
 // CreateTemplate implements POST /v2/spaces/{space_id}/templates: an AnyBlock
@@ -117,7 +117,7 @@ func (s *Service) CreateObject(ctx context.Context, spaceId string, body []byte,
 // on its own), and requiring a caller to restate what the URL already said
 // is the trap C2 exists to avoid. Injected here rather than defaulted deeper
 // so the whole create path below sees a document that is already complete.
-func (s *Service) CreateTemplate(ctx context.Context, spaceId string, body []byte, dryRun, createOptions bool) (*v2model.CreateResult, error) {
+func (s *Service) CreateTemplate(ctx context.Context, spaceId string, body []byte, dryRun, createMissingOptions bool) (*v2model.CreateResult, error) {
 	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
 	}
@@ -134,7 +134,7 @@ func (s *Service) CreateTemplate(ctx context.Context, spaceId string, body []byt
 			return nil, err
 		}
 	}
-	return s.createFromDocument(ctx, spaceId, body, docCreateOptions{dryRun: dryRun, requireTemplate: true, createOptions: createOptions})
+	return s.createFromDocument(ctx, spaceId, body, docCreateOptions{dryRun: dryRun, requireTemplate: true, createMissingOptions: createMissingOptions})
 }
 
 // createFromShortcut synthesizes an AnyBlock document from the shortcut
@@ -143,7 +143,7 @@ func (s *Service) CreateTemplate(ctx context.Context, spaceId string, body []byt
 // and rides the same single-change-set create as an explicit blocks array —
 // dry runs validate it, no half-built object on failure, and the C8 result
 // cache replays it safely (the §7.2 two-change-set caveats are gone).
-func (s *Service) createFromShortcut(ctx context.Context, spaceId string, fields map[string]json.RawMessage, dryRun, createOptions bool) (*v2model.CreateResult, error) {
+func (s *Service) createFromShortcut(ctx context.Context, spaceId string, fields map[string]json.RawMessage, dryRun, createMissingOptions bool) (*v2model.CreateResult, error) {
 	for key := range fields {
 		if !shortcutKeys[key] {
 			return nil, v2model.ValidationFailed("unknown field in create shortcut",
@@ -369,7 +369,7 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 
 	// 3. Unmarshal with create-missing resolvers (SPEC §3/§2a); on a dry run
 	// the resolvers only record would-be creations
-	resolvers := s.newCreatingResolvers(ctx, spaceId, opts.dryRun, opts.createOptions)
+	resolvers := s.newCreatingResolvers(ctx, spaceId, opts.dryRun, opts.createMissingOptions)
 	_, snapshot, err := anyblockjson.Unmarshal(body, resolvers.Options())
 	if err != nil {
 		return nil, mapUnmarshalError(body, err)

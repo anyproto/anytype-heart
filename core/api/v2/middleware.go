@@ -336,10 +336,10 @@ func ensureDryRun() gin.HandlerFunc {
 	}
 }
 
-// createOptionsKey is the context key ensureCreateOptions sets.
-const createOptionsKey = "create_options"
+// createMissingOptionsKey is the context key ensureCreateMissingOptions sets.
+const createMissingOptionsKey = "create_missing_options"
 
-// ensureCreateOptions parses ?create_options=true — the explicit consent a
+// ensureCreateMissingOptions parses ?create_missing_options=true — the explicit consent a
 // write needs before an unmatched select value MINTS an option.
 //
 // It defaults OFF and fails loud. A select value that names no existing
@@ -353,26 +353,26 @@ const createOptionsKey = "create_options"
 // Group-wide like dry_run, and for the same reason: one parse, one closed
 // value set, one refusal — a mutation route added tomorrow inherits the gate
 // rather than having to remember it.
-func ensureCreateOptions() gin.HandlerFunc {
+func ensureCreateMissingOptions() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		switch c.Query("create_options") {
+		switch c.Query("create_missing_options") {
 		case "", "false":
-			c.Set(createOptionsKey, false)
+			c.Set(createMissingOptionsKey, false)
 		case "true":
-			c.Set(createOptionsKey, true)
+			c.Set(createMissingOptionsKey, true)
 		default:
-			respondV2Error(c, v2model.ValidationFailed("invalid create_options value",
-				v2model.Issue{Path: "create_options", Message: "allowed values: true, false"}))
+			respondV2Error(c, v2model.ValidationFailed("invalid create_missing_options value",
+				v2model.Issue{Path: "create_missing_options", Message: "allowed values: true, false"}))
 			return
 		}
 		c.Next()
 	}
 }
 
-// MayCreateOptions reports whether this request consented to minting select
+// MayCreateMissingOptions reports whether this request consented to minting select
 // options for names that do not exist yet.
-func MayCreateOptions(c *gin.Context) bool {
-	return c.GetBool(createOptionsKey)
+func MayCreateMissingOptions(c *gin.Context) bool {
+	return c.GetBool(createMissingOptionsKey)
 }
 
 // IsDryRun reports whether the request asked for a dry run (C9).

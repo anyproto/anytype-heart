@@ -44,7 +44,7 @@ type Runner struct {
 	// AllowNewOptions is the caller's consent to MINT select options for
 	// names a property does not hold yet. It does two things, and needs to
 	// do both to mean anything: it skips the wrapper's own option-name
-	// pre-validation (the A2 guard), and it sends ?create_options=true so
+	// pre-validation (the A2 guard), and it sends ?create_missing_options=true so
 	// the server permits the mint. Without the second half the flag would
 	// only move the refusal from the client to the server.
 	AllowNewOptions bool
@@ -370,7 +370,7 @@ func (r *Runner) mutationQuery() url.Values {
 		q.Set("dry_run", "true")
 	}
 	if r.AllowNewOptions {
-		q.Set("create_options", "true")
+		q.Set("create_missing_options", "true")
 	}
 	if len(q) == 0 {
 		return nil

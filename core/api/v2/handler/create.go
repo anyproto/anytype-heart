@@ -27,14 +27,14 @@ func isV2DryRun(c *gin.Context) bool {
 	return c.GetBool(v2DryRunContextKey)
 }
 
-// v2CreateOptionsContextKey mirrors the key the server's
-// ensureCreateOptions middleware sets.
-const v2CreateOptionsContextKey = "create_options"
+// v2CreateMissingOptionsContextKey mirrors the key the server's
+// ensureCreateMissingOptions middleware sets.
+const v2CreateMissingOptionsContextKey = "create_missing_options"
 
-// mayCreateOptions reports whether this request consented to minting select
+// mayCreateMissingOptions reports whether this request consented to minting select
 // options for names that match nothing (A2). Absent means no.
-func mayCreateOptions(c *gin.Context) bool {
-	return c.GetBool(v2CreateOptionsContextKey)
+func mayCreateMissingOptions(c *gin.Context) bool {
+	return c.GetBool(v2CreateMissingOptionsContextKey)
 }
 
 // maxV2CreateBodySize bounds create request bodies (matches /v2/validate).
@@ -81,14 +81,14 @@ func respondV2Create(c *gin.Context, result *v2model.CreateResult, createdStatus
 // CreateObjectHandler creates an object from an AnyBlock document or the shortcut
 //
 //	@Summary		Create an object
-//	@Description	A select value naming an option the property does not hold is refused unless `create_options=true` is set. An unknown type or property key is rejected either way, with the closest matches named. The body is either a full AnyBlock document or the shortcut {type, name, properties, markdown}; `version` or `blocks` picks the document form.
+//	@Description	A select value naming an option the property does not hold is refused unless `create_missing_options=true` is set. An unknown type or property key is rejected either way, with the closest matches named. The body is either a full AnyBlock document or the shortcut {type, name, properties, markdown}; `version` or `blocks` picks the document form.
 //	@Id				create_object
 //	@Tags			Objects
 //	@Accept			json
 //	@Produce		json
 //	@Param			space_id	path		string					true	"Space id"
 //	@Param			dry_run		query		bool					false	"Validate and report without committing"
-//	@Param			create_options	query	bool					false	"Create select options for names the property does not hold yet (default false: an unmatched name is refused)"
+//	@Param			create_missing_options	query	bool					false	"Create select options for names the property does not hold yet (default false: an unmatched name is refused)"
 //	@Success		201			{object}	v2model.CreateResult	"Created object id + etag"
 //	@Failure		400			{object}	v2model.Error			"Validation or reference failure"
 //	@Security		bearerauth
@@ -99,7 +99,7 @@ func CreateObjectHandler(s *v2service.Service) gin.HandlerFunc {
 		if body == nil {
 			return
 		}
-		result, err := s.CreateObject(c.Request.Context(), c.Param("space_id"), body, isV2DryRun(c), mayCreateOptions(c))
+		result, err := s.CreateObject(c.Request.Context(), c.Param("space_id"), body, isV2DryRun(c), mayCreateMissingOptions(c))
 		if err != nil {
 			RespondError(c, err)
 			return
@@ -118,7 +118,7 @@ func CreateObjectHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Produce		json
 //	@Param			space_id	path		string					true	"Space id"
 //	@Param			dry_run		query		bool					false	"Validate and report without committing"
-//	@Param			create_options	query	bool					false	"Create select options for names the property does not hold yet (default false: an unmatched name is refused)"
+//	@Param			create_missing_options	query	bool					false	"Create select options for names the property does not hold yet (default false: an unmatched name is refused)"
 //	@Success		201			{object}	v2model.CreateResult	"Created template id"
 //	@Failure		400			{object}	v2model.Error			"Validation or reference failure"
 //	@Security		bearerauth
@@ -129,7 +129,7 @@ func CreateTemplateHandler(s *v2service.Service) gin.HandlerFunc {
 		if body == nil {
 			return
 		}
-		result, err := s.CreateTemplate(c.Request.Context(), c.Param("space_id"), body, isV2DryRun(c), mayCreateOptions(c))
+		result, err := s.CreateTemplate(c.Request.Context(), c.Param("space_id"), body, isV2DryRun(c), mayCreateMissingOptions(c))
 		if err != nil {
 			RespondError(c, err)
 			return
@@ -148,7 +148,7 @@ func CreateTemplateHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Produce		json
 //	@Param			space_id	path		string					true	"Space id"
 //	@Param			dry_run		query		bool					false	"Validate and report without committing"
-//	@Param			create_options	query	bool					false	"Create select options for names the property does not hold yet (default false: an unmatched name is refused)"
+//	@Param			create_missing_options	query	bool					false	"Create select options for names the property does not hold yet (default false: an unmatched name is refused)"
 //	@Success		201			{object}	v2model.CreateResult	"Created type id + key"
 //	@Failure		400			{object}	v2model.Error			"Validation failure"
 //	@Security		bearerauth
@@ -159,7 +159,7 @@ func CreateTypeHandler(s *v2service.Service) gin.HandlerFunc {
 		if body == nil {
 			return
 		}
-		result, err := s.CreateType(c.Request.Context(), c.Param("space_id"), body, isV2DryRun(c), mayCreateOptions(c))
+		result, err := s.CreateType(c.Request.Context(), c.Param("space_id"), body, isV2DryRun(c), mayCreateMissingOptions(c))
 		if err != nil {
 			RespondError(c, err)
 			return
@@ -188,7 +188,7 @@ func UpdateTypeHandler(s *v2service.Service) gin.HandlerFunc {
 		if body == nil {
 			return
 		}
-		result, err := s.UpdateType(c.Request.Context(), c.Param("space_id"), c.Param("type"), body, isV2DryRun(c), mayCreateOptions(c))
+		result, err := s.UpdateType(c.Request.Context(), c.Param("space_id"), c.Param("type"), body, isV2DryRun(c), mayCreateMissingOptions(c))
 		if err != nil {
 			RespondError(c, err)
 			return
@@ -317,7 +317,7 @@ func DeletePropertyHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Produce		json
 //	@Param			space_id	path		string					true	"Space id"
 //	@Param			dry_run		query		bool					false	"Validate and report without committing"
-//	@Param			create_options	query	bool					false	"Create select options for names the property does not hold yet (default false: an unmatched name is refused)"
+//	@Param			create_missing_options	query	bool					false	"Create select options for names the property does not hold yet (default false: an unmatched name is refused)"
 //	@Success		201			{object}	v2model.CreateResult	"Created set id"
 //	@Failure		400			{object}	v2model.Error			"Validation or reference failure"
 //	@Failure		413			{object}	v2model.Error			"Request body exceeds the 1 MiB cap"
@@ -331,7 +331,7 @@ func CreateSetHandler(s *v2service.Service) gin.HandlerFunc {
 			maxV2StructuredBodySize, "set") {
 			return
 		}
-		result, err := s.CreateSet(c.Request.Context(), c.Param("space_id"), req, isV2DryRun(c), mayCreateOptions(c))
+		result, err := s.CreateSet(c.Request.Context(), c.Param("space_id"), req, isV2DryRun(c), mayCreateMissingOptions(c))
 		if err != nil {
 			RespondError(c, err)
 			return
@@ -350,7 +350,7 @@ func CreateSetHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Produce		json
 //	@Param			space_id	path		string					true	"Space id"
 //	@Param			dry_run		query		bool					false	"Validate and report without committing"
-//	@Param			create_options	query	bool					false	"Create select options for names the property does not hold yet (default false: an unmatched name is refused)"
+//	@Param			create_missing_options	query	bool					false	"Create select options for names the property does not hold yet (default false: an unmatched name is refused)"
 //	@Success		201			{object}	v2model.CreateResult	"Created collection id"
 //	@Failure		400			{object}	v2model.Error			"Validation or reference failure"
 //	@Failure		413			{object}	v2model.Error			"Request body exceeds the 1 MiB cap"

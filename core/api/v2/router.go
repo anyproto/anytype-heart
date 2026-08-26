@@ -94,7 +94,7 @@ func RegisterRoutes(router *gin.Engine, deps RouteDeps) {
 	// space, this gate denies it unless explicitly granted.
 	v2.Use(ensureSpaceGrant())
 	v2.Use(ensureDryRun())
-	v2.Use(ensureCreateOptions())
+	v2.Use(ensureCreateMissingOptions())
 	idempotencyMW := ensureIdempotency(newIdempotencyStore(idempotencyMaxEntries))
 
 	// P1c introspection: the credential's self-description, derived from the

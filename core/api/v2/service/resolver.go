@@ -53,9 +53,9 @@ type creatingResolvers struct {
 	spaceId string
 	reads   *storeresolver.Resolvers
 	dryRun  bool
-	// createOptions is the caller's explicit ?create_options=true consent.
+	// createMissingOptions is the caller's explicit ?create_missing_options=true consent.
 	// Without it an unmatched select NAME is a refusal, not a mint (A2).
-	createOptions bool
+	createMissingOptions bool
 
 	// liveEntries is the once-per-resolver snapshot of the space's live
 	// properties (keys.go) — the slug namespace the §7.5a-5 chain and the
@@ -106,20 +106,20 @@ func (r *creatingResolvers) removedBundledKeys() (map[string]bool, error) {
 	return r.removedBundled, r.removedBundledErr
 }
 
-func (s *Service) newCreatingResolvers(ctx context.Context, spaceId string, dryRun, createOptions bool) *creatingResolvers {
+func (s *Service) newCreatingResolvers(ctx context.Context, spaceId string, dryRun, createMissingOptions bool) *creatingResolvers {
 	return &creatingResolvers{
-		ctx:            ctx,
-		mw:             s.mw,
-		svc:            s,
-		spaceId:        spaceId,
-		reads:          storeresolver.New(s.store.SpaceIndex(spaceId)),
-		dryRun:         dryRun,
-		createOptions:  createOptions,
-		createdOptions: map[optionRef]string{},
-		dryReported:    map[optionRef]bool{},
-		createdProps:   map[string]anyblockjson.PropertyDefinition{},
-		createdPropIds: map[string]string{},
-		mintedSlugs:    map[string]string{},
+		ctx:                  ctx,
+		mw:                   s.mw,
+		svc:                  s,
+		spaceId:              spaceId,
+		reads:                storeresolver.New(s.store.SpaceIndex(spaceId)),
+		dryRun:               dryRun,
+		createMissingOptions: createMissingOptions,
+		createdOptions:       map[optionRef]string{},
+		dryReported:          map[optionRef]bool{},
+		createdProps:         map[string]anyblockjson.PropertyDefinition{},
+		createdPropIds:       map[string]string{},
+		mintedSlugs:          map[string]string{},
 	}
 }
 
@@ -210,7 +210,7 @@ func (r *creatingResolvers) OptionId(key domain.RelationKey, name string) (strin
 		}
 		return "", false
 	}
-	if !r.createOptions {
+	if !r.createMissingOptions {
 		// A2 backstop. The pre-lock guard (guardCreateMissing) is what a PATCH
 		// caller actually hits, and it refuses with the whole pending list;
 		// this catches the create paths, which have no such guard, and it
@@ -247,7 +247,7 @@ func optionConsentError(spaceId, property, name string) error {
 			Path:    "/properties/" + property,
 			Message: fmt.Sprintf("property %q has no option named %q, and this request did not ask to create one", property, name),
 			Hint: fmt.Sprintf("check the spelling against GET /v2/spaces/%s/properties/%s/options, "+
-				"or resend with ?create_options=true to create it", spaceId, property),
+				"or resend with ?create_missing_options=true to create it", spaceId, property),
 		})
 }
 

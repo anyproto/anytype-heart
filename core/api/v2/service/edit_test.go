@@ -1844,7 +1844,7 @@ func TestPatchObject(t *testing.T) {
 	// typo or a hallucinated label than a deliberate new option, and a minted
 	// one joins the property's vocabulary for every object and every member
 	// of the space.
-	t.Run("an unmatched option name is refused without ?create_options", func(t *testing.T) {
+	t.Run("an unmatched option name is refused without ?create_missing_options", func(t *testing.T) {
 		// given: the read is wired (PatchObject reads before prewarming), but
 		// there is no ObjectCreateRelationOption and no MutateObject
 		// expectation — reaching either fails the test, which is the point
@@ -1864,7 +1864,7 @@ func TestPatchObject(t *testing.T) {
 		assert.Contains(t, apiErr.Issues[0].Message, `"Critical"`)
 		assert.Contains(t, apiErr.Issues[0].Message, `"severity"`)
 		assert.Contains(t, apiErr.Issues[0].Hint, "/options")
-		assert.Contains(t, apiErr.Issues[0].Hint, "create_options=true")
+		assert.Contains(t, apiErr.Issues[0].Hint, "create_missing_options=true")
 	})
 
 	t.Run("an EXISTING option name needs no consent", func(t *testing.T) {
