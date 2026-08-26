@@ -481,7 +481,7 @@ func (r *creatingResolvers) PropertyId(def anyblockjson.PropertyDefinition) (str
 			// spelledAs is the served slug: typeProperties documents spell
 			// slugs, so that is the spelling the caller can actually remove
 			r.errs = append(r.errs, v2model.ValidationFailed("removed property key",
-				removedPropertyIssue(r.spaceId, entry.Key, bundle.ApiSlug(entry.Key), "/typeProperties")))
+				removedPropertyIssue(r.spaceId, entry.Key, bundle.ApiSlug(entry.Key), "/type_settings/property_definitions")))
 			return "", false
 		}
 		// storeresolver still resolves system relations by their bundled

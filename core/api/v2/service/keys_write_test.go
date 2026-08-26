@@ -115,13 +115,13 @@ func TestV2WriteVocabularyIsTheReadVocabulary(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insert_blocks","blocks":[{"type":"property","key":"manual_property"}]}`), "", false)
+			patchBody(`{"op":"insert_blocks","blocks":[{"type":"property","property":"manual_property"}]}`), "", false)
 
 		require.NoError(t, err)
 		var keys []string
 		for _, b := range docBlocks(stateDoc(t, *captured)) {
 			if b["type"] == "property" {
-				key, _ := b["key"].(string)
+				key, _ := b["property"].(string)
 				keys = append(keys, key)
 			}
 		}

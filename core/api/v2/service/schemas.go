@@ -52,7 +52,7 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 	},
 	"template": {
 		endpoint: "POST /v2/spaces/{space_id}/templates",
-		example:  `{"version":1,"type":"template","template_for":"task","properties":{"name":"Weekly task"},"blocks":[{"type":"heading_2","text":"Checklist"},{"type":"checkbox","text":"First step"}]}`,
+		example:  `{"version":1,"kind":"template","type":"template","template_for":"task","properties":{"name":"Weekly task"},"blocks":[{"type":"heading_2","text":"Checklist"},{"type":"checkbox","text":"First step"}]}`,
 	},
 	"property": {
 		endpoint: "POST /v2/spaces/{space_id}/properties",

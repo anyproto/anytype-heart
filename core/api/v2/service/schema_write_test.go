@@ -185,7 +185,7 @@ func TestV2CreateType(t *testing.T) {
 		// then
 		apiErr := v2Err(t, err)
 		require.Len(t, apiErr.Issues, 1)
-		assert.Equal(t, "/key", apiErr.Issues[0].Path)
+		assert.Equal(t, "/type_settings/api_key", apiErr.Issues[0].Path)
 		assert.Contains(t, apiErr.Issues[0].Message, "bundled")
 	})
 
@@ -472,7 +472,7 @@ func TestV2CreateProperty(t *testing.T) {
 		apiErr := v2Err(t, err)
 		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
 		require.NotEmpty(t, apiErr.Issues)
-		assert.Equal(t, "/key", apiErr.Issues[0].Path)
+		assert.Equal(t, "/type_settings/api_key", apiErr.Issues[0].Path)
 
 		// a name over the advertised maxLength
 		_, err = fx.CreateProperty(context.Background(), testSpaceId,
@@ -535,7 +535,7 @@ func TestV2CreateProperty(t *testing.T) {
 		// then
 		apiErr := v2Err(t, err)
 		require.Len(t, apiErr.Issues, 1)
-		assert.Equal(t, "/key", apiErr.Issues[0].Path)
+		assert.Equal(t, "/type_settings/api_key", apiErr.Issues[0].Path)
 	})
 
 	t.Run("dry run reports without creating", func(t *testing.T) {

@@ -40,7 +40,7 @@ func TestV2TypeDocumentForgery(t *testing.T) {
 		fx := newV2Fixture(t)
 		for _, forged := range []string{"relationKey", "isReadonly", "restrictions"} {
 			_, err := fx.CreateType(context.Background(), testSpaceId,
-				[]byte(`{"kind":"object_type","key":"forged2","properties":{"name":"Forged","`+forged+`":"x"}}`), false)
+				[]byte(`{"kind":"object_type","type_settings":{"api_key":"forged2"},"properties":{"name":"Forged","`+forged+`":"x"}}`), false)
 			apiErr := v2ErrWithIssue(t, err)
 			require.NotEmpty(t, apiErr.Issues, forged)
 			assert.Equal(t, "/properties/"+forged, apiErr.Issues[0].Path)

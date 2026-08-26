@@ -347,7 +347,7 @@ func TestV2PropertyIdResolutionChain(t *testing.T) {
 
 		apiErr := v2ErrWithIssue(t, err)
 		require.NotEmpty(t, apiErr.Issues)
-		assert.Equal(t, "/typeProperties/0/format", apiErr.Issues[0].Path)
+		assert.Equal(t, "/type_properties/0/format", apiErr.Issues[0].Path)
 		assert.Contains(t, apiErr.Issues[0].Message, `"select"`)
 	})
 
@@ -359,7 +359,7 @@ func TestV2PropertyIdResolutionChain(t *testing.T) {
 
 		apiErr := v2ErrWithIssue(t, err)
 		require.NotEmpty(t, apiErr.Issues)
-		assert.Equal(t, "/typeProperties/0/format", apiErr.Issues[0].Path)
+		assert.Equal(t, "/type_properties/0/format", apiErr.Issues[0].Path)
 		assert.Contains(t, apiErr.Issues[0].Message, `"date"`)
 	})
 
@@ -393,7 +393,7 @@ func TestV2PropertyIdResolutionChain(t *testing.T) {
 
 		apiErr := v2ErrWithIssue(t, err)
 		require.NotEmpty(t, apiErr.Issues)
-		assert.Equal(t, "/typeProperties/0/format", apiErr.Issues[0].Path)
+		assert.Equal(t, "/type_properties/0/format", apiErr.Issues[0].Path)
 	})
 
 	t.Run("a custom key still creates on a full miss, slug stamped", func(t *testing.T) {

@@ -50,7 +50,7 @@ const editTwoDataviewsDoc = `{"version":1,"id":"obj1","type":"page","properties"
 
 // editTypeDoc is a kind:"object_type" document with the type's own dataview —
 // the reporter's actual target (the default "All" view of a custom type).
-const editTypeDoc = `{"version":1,"kind":"object_type","id":"obj1","key":"plant","properties":{"name":"Plant"},"blocks":[` +
+const editTypeDoc = `{"version":1,"kind":"object_type","id":"obj1","type_settings":{"api_key":"plant"},"properties":{"name":"Plant"},"blocks":[` +
 	`{"id":"dataview","type":"dataview",` +
 	`"properties":[{"property":"name","format":"text"},{"property":"severity","format":"select"}],` +
 	`"views":[{"id":"viewAll1","name":"All","columns":[{"property":"name"},{"property":"severity","hidden":true}]}]}]}`
@@ -207,7 +207,7 @@ func TestUpdateViewOp(t *testing.T) {
 		props, _ := dv["properties"].([]any)
 		var keys []string
 		for _, p := range props {
-			keys = append(keys, p.(map[string]any)["key"].(string))
+			keys = append(keys, p.(map[string]any)["property"].(string))
 		}
 		assert.Contains(t, keys, "tags", "the properties list gains the key so its format rehydrates")
 	})
