@@ -731,6 +731,31 @@ var importTypeNames = newEnumNames(map[model.ImportType]string{
 
 var importTypeVocabulary = vocabularyOf(importTypeNames, "import type")
 
+// imageKindNames maps model.ImageKind — what an image was uploaded FOR — to
+// the format's names: the proto identifiers snake_cased. TOTAL over the
+// proto enum, pinned below.
+//
+// This is the fourth of the five 2026-08 bare-integer enums to be named, and
+// it is named on the same measured ground the others were left as numbers:
+// widgetLayout and headerRelationsLayout stayed bare at 13 and 0 occurrences,
+// while imageKind occurs on 4,079 file objects across the 77-space corpus —
+// 4,053 automatically_added, 23 icon, 3 basic-or-cover. A reader of an
+// export saw a bare 3 and had no way to learn what it meant.
+//
+// Note the enum's ZERO is `basic`, and the app never STORES it:
+// makeInitialDetails returns early for Basic, so the key is absent rather
+// than 0 on an ordinary upload. The name exists anyway because a total
+// vocabulary is what keeps a future writer of 0 from exporting a bare
+// integer, and because absent and basic must not be forced to differ.
+var imageKindNames = newEnumNames(map[model.ImageKind]string{
+	model.ImageKind_Basic:              "basic",
+	model.ImageKind_Cover:              "cover",
+	model.ImageKind_Icon:               "icon",
+	model.ImageKind_AutomaticallyAdded: "automatically_added",
+})
+
+var imageKindVocabulary = vocabularyOf(imageKindNames, "image kind")
+
 // viewTypeVocabulary is not a property vocabulary — no stored detail key
 // maps to it — but §2a's default_view member shares the reading, and the
 // guarded adapter is how both enum members stopped naming NaN.
@@ -780,6 +805,27 @@ var namedEnumProperties = map[string]propertyVocabulary{
 	// an import/usecase origin.
 	"origin":     originVocabulary,
 	"importType": importTypeVocabulary,
+	// imageKind records what an image was uploaded FOR — a cover, an icon,
+	// or added automatically by a pipeline. It is NAMED rather than
+	// deprecated even though heart has one writer and no reader, because
+	// the format is a read surface first: a person looking at a file object
+	// wants to know why the image is there.
+	//
+	// Deprecation was weighed and is still arguable. The behaviour a client
+	// actually runs on is `isHiddenDiscovery`, which travels independently
+	// and is in perfect lockstep with the automatically_added member — 4,053
+	// of 4,053 in the corpus — so the one live consumer (the client's
+	// subscription filter, which hides auto-added images) survives without
+	// this key. The two anytype-ts filters that DO read imageKind, in the
+	// icon and cover pickers, are both commented out. What would be lost is
+	// the 26 documents where the key says icon or cover and nothing else
+	// does, and even those are recoverable from whichever object references
+	// the image through icon_image or cover_id.
+	//
+	// It stays because naming costs one entry and drops nothing, while
+	// dropping 4,079 documents' worth of a stored, user-visible-in-principle
+	// fact is a decision the freeze does not need to take.
+	"imageKind": imageKindVocabulary,
 }
 
 // namedEnumProperty answers whether a stored key is written by name, and

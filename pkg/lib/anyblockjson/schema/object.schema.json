@@ -1845,6 +1845,15 @@
         "txt"
       ],
       "description": "Which importer created an import- or usecase-originated object, by NAME — the vocabulary of the `import_type` property value (§3), enforced like $defs/objectOrigin by the semantic pass on the resolved key. Named or refused, never stored as a stray string: the underlying enum's ZERO is notion, so an unchecked string here used to read back as a false claim that the object came from Notion."
+    },
+    "imageKind": {
+      "enum": [
+        "automatically_added",
+        "basic",
+        "cover",
+        "icon"
+      ],
+      "description": "What an image was uploaded FOR, by NAME — the vocabulary of the `image_kind` property value (§3), enforced like $defs/objectOrigin by the semantic pass on the resolved key. Set on file objects. `automatically_added` marks an image a pipeline brought in rather than a person, and travels beside `is_hidden_discovery`, which is what a client actually filters on."
     }
   }
 }

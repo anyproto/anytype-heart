@@ -184,4 +184,69 @@ func TestNamedEnum_VocabulariesTotalOverModelEnums(t *testing.T) {
 		assert.NotEmpty(t, alignNames.name(model.BlockAlign(raw)),
 			"align %s (%d) has no §3 name", enumName, raw)
 	}
+	for raw, enumName := range model.ImageKind_name {
+		assert.NotEmpty(t, imageKindNames.name(model.ImageKind(raw)),
+			"image kind %s (%d) has no §3 name", enumName, raw)
+	}
+}
+
+// A file object's `image_kind` says what an image was uploaded FOR. It used
+// to travel as the proto's bare integer, so a reader of an export saw `3`
+// beside a named `origin` and had no way to learn it meant the image was
+// added by a pipeline rather than by a person — on 4,079 documents across
+// the 77-space corpus, which is the measured standard the bare-integer keys
+// beside it (widgetLayout at 13, headerRelationsLayout at 0) were left on.
+//
+// Naming it changes nothing a client depends on: the filter that hides
+// auto-added images reads `isHiddenDiscovery`, which travels on its own and
+// is in lockstep with this key's automatically_added member (4,053 of
+// 4,053). This is a change to the READ surface.
+//
+// How this can fail: name it on the way out and not back in, and every
+// import of an exported file object silently loses the kind; leave the enum
+// ZERO out of the vocabulary and a future writer of Basic — the app skips
+// storing it today — exports a bare 0 again.
+func TestNamedEnum_ImageKind(t *testing.T) {
+	t.Run("export writes the name", func(t *testing.T) {
+		for kind, want := range map[model.ImageKind]string{
+			model.ImageKind_AutomaticallyAdded: "automatically_added",
+			model.ImageKind_Icon:               "icon",
+			model.ImageKind_Cover:              "cover",
+			model.ImageKind_Basic:              "basic",
+		} {
+			snap := &model.SmartBlockSnapshotBase{
+				Details: fields(map[string]*types.Value{
+					"id":        str("f1"),
+					"imageKind": num(float64(kind)),
+				}),
+			}
+			data, err := Marshal(model.SmartBlockType_FileObject, snap, Options{})
+			require.NoError(t, err)
+			assert.Contains(t, string(data), `"image_kind": "`+want+`"`,
+				"the kind is spelled, not left as the proto integer")
+			require.NoError(t, Validate(data), "§11 I1")
+		}
+	})
+
+	t.Run("import maps the name to the stored number", func(t *testing.T) {
+		doc := `{"version": 1, "id": "f1", "properties": {"image_kind": "automatically_added"}}`
+		_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
+		require.NoError(t, err)
+		v := snap.Details.Fields["imageKind"]
+		require.NotNil(t, v)
+		_, isNum := v.GetKind().(*types.Value_NumberValue)
+		require.True(t, isNum, "must be stored as a number, not %T", v.GetKind())
+		assert.Equal(t, float64(model.ImageKind_AutomaticallyAdded), v.GetNumberValue())
+	})
+
+	// closed vocabulary: a near-miss is refused by name rather than stored as
+	// a stray string on a number detail, the accepted-then-zeroed failure
+	// this whole file exists to prevent.
+	t.Run("an unknown name is refused", func(t *testing.T) {
+		doc := `{"version": 1, "id": "f1", "properties": {"image_kind": "Icon"}}`
+		_, _, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "image_kind")
+		assert.Contains(t, err.Error(), "'icon'", "the refusal names the vocabulary")
+	})
 }

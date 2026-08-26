@@ -123,6 +123,14 @@ func TestNamedEnumProperties_PerKeyVerdict(t *testing.T) {
 		// rides with it (objectorigin.go writes them as a pair).
 		"origin":     "origin",
 		"importType": "import type",
+		// what an image was uploaded FOR, on file objects. Named on the
+		// measured standard the bare-integer keys beside it were left on:
+		// 4,079 occurrences against widgetLayout's 13 and
+		// headerRelationsLayout's 0. Its automatically_added member is in
+		// lockstep with is_hidden_discovery (4,053 of 4,053), which is the
+		// key a client actually filters on — so this one is named for the
+		// READER rather than for any behaviour that depends on it.
+		"imageKind": "image kind",
 	}
 	assert.Equal(t, len(want), len(namedEnumProperties),
 		"every named key owes a verdict here — a new one must say which vocabulary it draws from")
