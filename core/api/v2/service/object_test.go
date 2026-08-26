@@ -390,6 +390,20 @@ func TestV2GetObjectCompactBody(t *testing.T) {
 // legend exists to shorten.
 const testLinkTargetId = "bafyreih6ymjl42i6pevii77dnlulv4n52hsxmjflmwc5ttygotovbrcteq"
 
+// addLinkTarget puts the link block's target in the store. §9's
+// missing-reference rule rewrites a reference the space does not hold to the
+// `_missing_object` sentinel, and storeresolver answers that question — so a
+// target absent from the fixture makes the read say "missing", which is the
+// right answer to a question these subtests are not asking. They are about
+// id SHAPES; the target has to exist for a shape to be observable at all.
+func (fx *v2Fixture) addLinkTarget(t *testing.T) {
+	fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+		bundle.RelationKeyId:             domain.String(testLinkTargetId),
+		bundle.RelationKeyName:           domain.String("Link target"),
+		bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+	}})
+}
+
 // testObjectReadWithRef adds a link block to the long-id fixture, so both id
 // populations (doc-local block ids and cross-document object refs) are
 // present in one read.
@@ -412,6 +426,7 @@ func TestV2GetObjectIdShapes(t *testing.T) {
 	t.Run("default: short block labels, full inline object refs, no legend", func(t *testing.T) {
 		// given
 		fx := newV2Fixture(t)
+		fx.addLinkTarget(t)
 		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(testObjectReadWithRef(), nil)
 
 		// when
@@ -434,6 +449,7 @@ func TestV2GetObjectIdShapes(t *testing.T) {
 		// no shape serves it now, so full block ids come without the
 		// indirection
 		fx := newV2Fixture(t)
+		fx.addLinkTarget(t)
 		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(testObjectReadWithRef(), nil)
 
 		// when

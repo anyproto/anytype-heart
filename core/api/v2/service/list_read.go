@@ -162,15 +162,21 @@ func (s *Service) listViews(ctx context.Context, spaceId, listId string, want li
 	if err != nil {
 		return nil, 0, false, fmt.Errorf("marshal dataview of %s: %w", listId, err)
 	}
-	var blocks []struct {
-		Views []json.RawMessage `json:"views"`
+	// a fragment is an ENVELOPE now, not a bare blocks array: it carries the
+	// §9a typed legends beside its blocks. This surface serves views only —
+	// each view's option values are already the names the legend would map,
+	// so the legends are read past rather than forwarded.
+	var fragment struct {
+		Blocks []struct {
+			Views []json.RawMessage `json:"views"`
+		} `json:"blocks"`
 	}
-	if err := json.Unmarshal(raw, &blocks); err != nil {
+	if err := json.Unmarshal(raw, &fragment); err != nil {
 		return nil, 0, false, fmt.Errorf("decode dataview of %s: %w", listId, err)
 	}
 	var views []json.RawMessage
-	if len(blocks) > 0 {
-		views = blocks[0].Views
+	if len(fragment.Blocks) > 0 {
+		views = fragment.Blocks[0].Views
 	}
 	total := len(views)
 	page, hasMore := pagination.Paginate(views, offset, limit)
