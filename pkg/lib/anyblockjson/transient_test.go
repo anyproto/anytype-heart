@@ -372,7 +372,7 @@ func TestTransientProperties_RootBlockAnalyticsDoNotTravel(t *testing.T) {
 		assert.NotContains(t, string(data), "analyticsContext")
 		assert.Contains(t, string(data), "isLocked", "real state stays")
 		assert.Contains(t, string(data), "width")
-		require.NoError(t, Validate(data), "§11 I1")
+		require.NoError(t, Validate(data), "I1: Marshal never emits what its own Validate rejects")
 	})
 
 	// a map that was ONLY analytics leaves no empty `fields` behind.

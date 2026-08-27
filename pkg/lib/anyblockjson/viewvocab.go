@@ -2,7 +2,7 @@ package anyblockjson
 
 // viewvocab.go exports the §6.2 dataview view vocabulary at fragment
 // granularity — the enum name lists a surface editing views needs for
-// validation and error text (API v2's updateView op, APIV2.md §8.17). The
+// validation and error text (the API's updateView op). The
 // lists are the single source the API layer consumes, so the op's allowed
 // values cannot drift from what the codec actually reads and writes; a test
 // pins each list against its enum table.

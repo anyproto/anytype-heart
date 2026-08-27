@@ -241,7 +241,6 @@ func TestValidate_TheRefsLegendIsRefused(t *testing.T) {
 		// change, so this message is the only place a pre-v0.20 document is
 		// told why it stopped validating — and the only place the reader is
 		// warned off the repair the bare verdict suggests
-		assert.Contains(t, got[0].Message, "§9a")
 		assert.Contains(t, got[0].Message, "written in full",
 			"the message states the rule that replaced the legend")
 		assert.Contains(t, got[0].Message, "address nothing",
@@ -255,7 +254,6 @@ func TestValidate_TheRefsLegendIsRefused(t *testing.T) {
 		got := refused(t, `{"version": 1, "refs": {}}`)
 		require.Len(t, got, 1, "got: %v", got)
 		assert.Equal(t, "/refs", got[0].Path)
-		assert.Contains(t, got[0].Message, "§9a")
 	})
 
 	t.Run("import refuses it too, so no reader takes the labels literally", func(t *testing.T) {

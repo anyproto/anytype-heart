@@ -2,7 +2,7 @@ package anyblockjson
 
 // filters.go exposes the §6.2 filter/sort codec at fragment granularity:
 // a bare filters array or sorts array — the shapes the API v2 query surface
-// carries in request bodies (APIV2.md Phase 4) — converts to the model tree
+// carries in request bodies — converts to the model tree
 // (`model.BlockContentDataviewFilter` / `Sort`) through the same importer
 // the whole-document dataview path uses, so the structured `filters` request
 // form and the parsed compact filter string land on ONE internal tree.

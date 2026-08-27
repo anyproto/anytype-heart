@@ -121,7 +121,7 @@ func TestRelationEnvelope_FormatIsAlwaysWritten(t *testing.T) {
 
 			// then
 			assert.Contains(t, string(data), `"format": "text"`)
-			require.NoError(t, Validate(data), "§11 I1")
+			require.NoError(t, Validate(data), "I1: Marshal never emits what its own Validate rejects")
 		})
 	}
 }
@@ -155,7 +155,7 @@ func TestRelationEnvelope_MapFormatRoundTrips(t *testing.T) {
 	// when
 	data, err := Marshal(model.SmartBlockType_STRelation, snap, testOptions())
 	require.NoError(t, err)
-	require.NoError(t, Validate(data), "§11 I1")
+	require.NoError(t, Validate(data), "I1: Marshal never emits what its own Validate rejects")
 	sbType, got, err := Unmarshal(data, testOptions())
 
 	// then
@@ -257,7 +257,8 @@ func TestRelationEnvelope_RefusedInProperties(t *testing.T) {
 			err := Validate([]byte(doc))
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "/properties/"+spelling)
-			assert.Contains(t, err.Error(), "§2d", "the refusal names the repair")
+			assert.Contains(t, err.Error(), "in property_settings",
+				"the refusal names the repair")
 
 			_, _, err = Unmarshal([]byte(doc), testOptions())
 			require.Error(t, err, "Unmarshal must refuse what Validate refuses (§12 I2)")
@@ -327,7 +328,7 @@ func TestRelationEnvelope_PresenceMirrorsTheStore(t *testing.T) {
 			// when
 			data, err := Marshal(model.SmartBlockType_STRelation, snap, testOptions())
 			require.NoError(t, err)
-			require.NoError(t, Validate(data), "§11 I1")
+			require.NoError(t, Validate(data), "I1: Marshal never emits what its own Validate rejects")
 			_, got, err := Unmarshal(data, testOptions())
 			require.NoError(t, err)
 
@@ -486,7 +487,7 @@ func TestRelationEnvelope_ReferenceSlotsKeepTheBundledSlug(t *testing.T) {
 	assert.NotContains(t, string(data), `"property_internal_keys"`,
 		"a bundled binding needs no legend entry — that is what makes the slug safe")
 	assert.Empty(t, warns)
-	require.NoError(t, Validate(data), "§11 I1")
+	require.NoError(t, Validate(data), "I1: Marshal never emits what its own Validate rejects")
 }
 
 // The denied-key exemption is TWO questions, and this pins the first: the
@@ -531,7 +532,7 @@ func TestRelationEnvelope_ADeniedKeySlugTheBundledTableDoesNotBindBacksOff(t *te
 		"the denied key can never be a legend value — that is why the slug had to go")
 	require.NotEmpty(t, warns, "the backed-off spelling is reported")
 	assert.Contains(t, warns[0].Message, "cannot be a legend value")
-	require.NoError(t, Validate(data), "§11 I1")
+	require.NoError(t, Validate(data), "I1: Marshal never emits what its own Validate rejects")
 }
 
 // …and this pins the second question: the vocabulary IN FORCE must invert
@@ -573,7 +574,7 @@ func TestRelationEnvelope_ADeniedKeySlugShadowedByTheVocabularyBacksOff(t *testi
 	assert.NotContains(t, string(data), "property_format")
 	require.NotEmpty(t, warns, "the backed-off spelling is reported")
 	assert.Contains(t, warns[0].Message, "cannot be a legend value")
-	require.NoError(t, Validate(data), "§11 I1")
+	require.NoError(t, Validate(data), "I1: Marshal never emits what its own Validate rejects")
 }
 
 // The target keys are in the TYPE-KEY CENSUS: verbatim-first (§3) makes each
@@ -866,7 +867,7 @@ func TestRelationEnvelope_NonRelationKindDropsTheDetails(t *testing.T) {
 			assert.NotContains(t, string(data), tc.flat)
 			assert.NotContains(t, string(data), tc.field,
 				"a page has no §2d field to lift into")
-			require.NoError(t, Validate(data), "§11 I1")
+			require.NoError(t, Validate(data), "I1: Marshal never emits what its own Validate rejects")
 			require.Len(t, warns, 1, "the warning is the only trace of the dropped value")
 			assert.Contains(t, warns[0].Message, "not a property document")
 			assert.Contains(t, warns[0].Message, tc.storedKey,

@@ -524,7 +524,7 @@ func platformNameIssues(doc map[string]any) []Issue {
 	if e := str("entrypoint"); IsPlatformId(e) {
 		issues = append(issues, Issue{
 			Path: "/entrypoint",
-			Message: fmt.Sprintf("%q begins with %q, which is the platform's own address space (§1): "+
+			Message: fmt.Sprintf("%q begins with %q, which is the platform's own address space: "+
 				"an entry point must be an object id from this bundle, and no built-in screen can be one",
 				e, PlatformPrefix),
 		})
@@ -532,7 +532,7 @@ func platformNameIssues(doc map[string]any) []Issue {
 	if h := str("homepage"); IsPlatformId(h) && !IsReservedHomepage(h) {
 		issues = append(issues, Issue{
 			Path: "/homepage",
-			Message: fmt.Sprintf("%q begins with %q, which is the platform's own address space (§1): "+
+			Message: fmt.Sprintf("%q begins with %q, which is the platform's own address space: "+
 				"the only reserved homepages are %q and %q, and an object id from this bundle may not begin with %q",
 				h, PlatformPrefix, HomepageWidgets, HomepageGraph, PlatformPrefix),
 		})

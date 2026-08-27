@@ -284,7 +284,7 @@ func TestPropertyDictionary_MaxCountStaysWithinWhatItCanRead(t *testing.T) {
 		back, err := UnmarshalPropertyDictionary(data)
 
 		// then
-		require.NoError(t, err, "§11 I1: what Marshal writes, Unmarshal reads")
+		require.NoError(t, err, "I1: what Marshal writes, Unmarshal reads")
 		require.Len(t, back.Properties, 1)
 		assert.Equal(t, int64(1), back.Properties[0].MaxCount)
 	})

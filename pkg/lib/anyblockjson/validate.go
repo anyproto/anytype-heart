@@ -677,7 +677,7 @@ func schemaIssueMessage(e *jsonschema.ValidationError, printer *message.Printer)
 				// them toward deleting the fact instead of moving it.
 				if len(toks) == 2 && toks[0] == memberPropertySettings {
 					if home, owned := propertySettingsMemberHomes[prop]; owned {
-						return fmt.Sprintf("property_settings does not carry %q — %s (§2d)", prop, home)
+						return fmt.Sprintf("property_settings does not carry %q — %s", prop, home)
 					}
 				}
 				return unknownPropertyMessage(prop)
@@ -1816,10 +1816,10 @@ func unwritableKeyReason(what, key string) string {
 	case key == "":
 		return what + " is empty — a key slot has to name something (§3)"
 	case n > maxPropertyKeyLen:
-		return fmt.Sprintf("%s %q is %d characters; the bound is %d (§3)",
+		return fmt.Sprintf("%s %q is %d characters; the bound is %d",
 			what, key, n, maxPropertyKeyLen)
 	default:
-		return fmt.Sprintf("%s %q carries a control character (§3)", what, key)
+		return fmt.Sprintf("%s %q carries a control character", what, key)
 	}
 }
 
@@ -1834,7 +1834,7 @@ func deniedPropertyKey(key string) (string, bool) {
 		return reason, true
 	}
 	if key == detailKeyId || key == detailKeyType {
-		return fmt.Sprintf("%q belongs in the envelope, not in properties (§2)", key), true
+		return fmt.Sprintf("%q belongs in the envelope, not in properties", key), true
 	}
 	if isDroppedOnImport(key) {
 		// its VALUE is stripped on export like the rest, but the key is
@@ -1844,14 +1844,14 @@ func deniedPropertyKey(key string) (string, bool) {
 		return "", false
 	}
 	if strippedDetailKeys()[key] {
-		return fmt.Sprintf("%q is internal: export strips it, so import does not accept it (§3)", key), true
+		return fmt.Sprintf("%q is internal: export strips it, so import does not accept it", key), true
 	}
 	// the icon/cover lift (§2b). Unlike the internal keys these DO have a
 	// written form, so the refusal names it: the same fact — this key is not
 	// where the value lives any more — is worth twice as much said as a
 	// repair. The set is the export side's own, never a restatement.
 	if liftedDetailKeys()[key] {
-		return fmt.Sprintf("%q is written as %s (§2b), not as a property", key, liftedKeyRepair(key)), true
+		return fmt.Sprintf("%q is written as %s, not as a property", key, liftedKeyRepair(key)), true
 	}
 	// the relation-definition lift (§2d), same rule and same derivation. This
 	// arm is also the whole of the legacy-input decision (§10): a document
@@ -1861,7 +1861,7 @@ func deniedPropertyKey(key string) (string, bool) {
 	// spelling for a relation's format is exactly the ambiguity the lift
 	// deletes.
 	if propertySettingsLiftedDetailKeys()[key] {
-		return fmt.Sprintf("%q is written on a property document's envelope as %s in property_settings (§2d), "+
+		return fmt.Sprintf("%q is written on a property document's envelope as %s in property_settings, "+
 			"not as a property", key, propertySettingsLiftedKeyRepair(key)), true
 	}
 	return "", false

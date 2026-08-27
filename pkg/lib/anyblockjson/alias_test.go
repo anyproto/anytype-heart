@@ -51,7 +51,7 @@ func TestAlias_BundledPropertyKeysSpellProperty(t *testing.T) {
 		"the vacated slug must not survive anywhere in the document")
 	assert.NotContains(t, string(data), `"property_internal_keys"`,
 		"an alias is a bundled-table fact and owes no legend entry")
-	require.NoError(t, Validate(data), "§11 I1")
+	require.NoError(t, Validate(data), "I1: Marshal never emits what its own Validate rejects")
 
 	_, back, err := Unmarshal(data, testOptions())
 	require.NoError(t, err)

@@ -240,8 +240,8 @@ func (e *exporter) relationFormatName() (string, error) {
 	}
 	name := formatName(model.RelationFormat(int32(n)))
 	if name == "" {
-		return "", fmt.Errorf("relation format %v has no §3 name: this document cannot state "+
-			"what it defines (§2d)", n)
+		return "", fmt.Errorf("relation format %v has no name in this format: "+
+			"this document cannot state what it defines", n)
 	}
 	return name, nil
 }

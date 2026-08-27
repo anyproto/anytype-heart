@@ -298,7 +298,7 @@ func TestTypeSettings_SecondDefaultTemplateWarns(t *testing.T) {
 		}
 	}
 	assert.True(t, found, "the drop must be reported at the member")
-	require.NoError(t, Validate(data), "§11 I1")
+	require.NoError(t, Validate(data), "I1: Marshal never emits what its own Validate rejects")
 }
 
 // An unknown default_view NAME is refused like an unknown layout: a typo
@@ -454,7 +454,7 @@ func TestKind_TheSpacesOwnObjectSpellsItsSettings(t *testing.T) {
 	require.NoError(t, err)
 
 	// then it spells the new name, and reads back as the same smartblock type
-	require.NoError(t, Validate(data), "§11 I1")
+	require.NoError(t, Validate(data), "I1: Marshal never emits what its own Validate rejects")
 	assert.Contains(t, string(data), `"kind": "space_settings"`)
 	sbType, _, err := Unmarshal(data, testOptions())
 	require.NoError(t, err)
@@ -463,5 +463,5 @@ func TestKind_TheSpacesOwnObjectSpellsItsSettings(t *testing.T) {
 
 	// and the retired spelling is refused, not silently reinterpreted
 	assert.Error(t, Validate([]byte(`{"version":1,"kind":"workspace","properties":{"name":"x"}}`)),
-		"§10: no backward compatibility while the format is a draft — fail loudly")
+		"no backward compatibility while the format is a draft — fail loudly")
 }

@@ -413,7 +413,7 @@ func dictionaryDuplicateIssues(doc map[string]any) []Issue {
 		if first, dup := seenEntries[key]; dup {
 			issues = append(issues, Issue{
 				Path: fmt.Sprintf("/properties/%d/"+memberProperty, i),
-				Message: fmt.Sprintf("%q is already defined at /properties/%d — one property, one definition (§2e)",
+				Message: fmt.Sprintf("%q is already defined at /properties/%d — one property, one definition",
 					key, first),
 			})
 			continue
@@ -458,7 +458,7 @@ func MarshalPropertyDictionary(d *PropertyDictionary) ([]byte, error) {
 	sort.Strings(installed)
 	for i, key := range installed {
 		if i > 0 && installed[i-1] == key {
-			return nil, fmt.Errorf("installed key %q is listed twice: the dictionary has one slot per key (§2f)", key)
+			return nil, fmt.Errorf("installed key %q is listed twice: the dictionary has one slot per key", key)
 		}
 	}
 	doc.setNonEmpty("installed", stringsToAny(installed))
@@ -468,7 +468,7 @@ func MarshalPropertyDictionary(d *PropertyDictionary) ([]byte, error) {
 	var entries []any
 	for i, def := range defs {
 		if i > 0 && defs[i-1].Key == def.Key {
-			return nil, fmt.Errorf("property %q is defined twice: one property, one definition (§2e)", def.Key)
+			return nil, fmt.Errorf("property %q is defined twice: one property, one definition", def.Key)
 		}
 		entry, err := dictionaryEntryOmap(def)
 		if err != nil {
@@ -500,8 +500,8 @@ func dictionaryEntryOmap(def PropertyDefinition) (*omap, error) {
 	spelling := dictionaryKeySpelling(string(def.Key))
 	name := formatName(def.Format)
 	if name == "" {
-		return nil, fmt.Errorf("property %q: format %d has no §3 name: the entry cannot state "+
-			"what the property holds (§2f)", def.Key, def.Format)
+		return nil, fmt.Errorf("property %q: format %d has no name in this format: "+
+			"the entry cannot state what the property holds", def.Key, def.Format)
 	}
 	m := &omap{}
 	m.set(memberProperty, spelling)

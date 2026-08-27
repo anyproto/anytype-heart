@@ -505,7 +505,7 @@ func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBas
 			if typeSettingsLiftedDetailKeys()[key] {
 				return 0, nil, &ValidationError{Issues: []Issue{{
 					Path: "/properties/" + escapeJSONPointer(slug),
-					Message: fmt.Sprintf("%q is written on a type document as %s in type_settings (§2a), "+
+					Message: fmt.Sprintf("%q is written on a type document as %s in type_settings, "+
 						"not as a property", key, typeSettingsLiftedKeyRepair(key)),
 				}}}
 			}
@@ -1037,7 +1037,7 @@ func (imp *importer) blockFromJSON(jb *jsonBlock, forcedId string) ([]*model.Blo
 		// table cell, which is a position rather than a run — and a caller
 		// that asked for one block must be told it named nothing, not handed
 		// a wrapper no read will ever show it again.
-		return nil, fmt.Errorf("block %s: %q is a transparent container (§7a) and contributes no block of its own", id, jb.Type)
+		return nil, fmt.Errorf("block %s: %q is a transparent container and contributes no block of its own", id, jb.Type)
 	case jb.Type == "table":
 		table, tExtra, err := imp.tableFromJSON(jb, id)
 		if err != nil {

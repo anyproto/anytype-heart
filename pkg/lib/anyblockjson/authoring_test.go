@@ -628,7 +628,7 @@ func TestAuthoringSubset_RefusesBackupOnlySurfaces(t *testing.T) {
 		} {
 			t.Run(name, func(t *testing.T) {
 				data := []byte(doc)
-				require.Error(t, Validate(data), "§12 refuses the pairing")
+				require.Error(t, Validate(data), "validation refuses the pairing")
 				require.Error(t, authoringOnly(data), "and the subset must refuse it at the schema, or it admits what the format rejects")
 			})
 		}

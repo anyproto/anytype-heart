@@ -1,6 +1,6 @@
 package anyblockjson
 
-// markdownblocks.go — the markdown→flat-blocks parser (APIV2.md §7.1, the
+// markdownblocks.go — the markdown→flat-blocks parser (the
 // Phase-5 critical-path build item): block-level markdown slicing into the §4
 // flat run. Inline content is NOT parsed here — a flat block's `text` is
 // already §8 inline markup source, and the fragment import (UnmarshalBlocks)

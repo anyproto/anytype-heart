@@ -1,6 +1,6 @@
 // Package filterstring parses the compact filter syntax of AnyBlock JSON
 // (SPEC §6.2.1) into the §6.2 structured filter tree. The grammar and this
-// parser ship as a library consumed by the API v2 request surface (APIV2.md
+// parser ship as a library consumed by the API v2 request surface
 // Phase 4 — POST search and the POST sets `filter` field); the *document*
 // view field `filter` stays reserved post-v1, so nothing in the parent
 // package reads or writes the string form.
@@ -63,7 +63,7 @@ type Options struct {
 	// select/multi_select property (ok=false: unknown property — no check).
 	// A name outside the list is an offset-addressed parse error with
 	// did-you-mean: the query path resolves option names READ-ONLY, and a
-	// silent no-match would be worse than an error (APIV2.md Phase-4 rule 3).
+	// silent no-match would be worse than an error.
 	KnownOptions func(key string) (names []string, ok bool)
 }
 

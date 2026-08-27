@@ -42,7 +42,7 @@ func TestDataview_AFalsyFilterValueIsStillTheQuery(t *testing.T) {
 			// when
 			data, err := Marshal(model.SmartBlockType_Page, snap, testOptions())
 			require.NoError(t, err)
-			require.NoError(t, Validate(data), "§11 I1")
+			require.NoError(t, Validate(data), "I1: Marshal never emits what its own Validate rejects")
 			_, back, err := Unmarshal(data, testOptions())
 			require.NoError(t, err)
 

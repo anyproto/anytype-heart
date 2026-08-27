@@ -52,7 +52,7 @@ func TestSystemTrim_AnEmptyAdmittedKeyIsNotWritten(t *testing.T) {
 			// when
 			emptyDoc, err := Marshal(model.SmartBlockType_Page, trimSnapshot(empty), testOptions())
 			require.NoError(t, err)
-			require.NoError(t, Validate(emptyDoc), "§11 I1")
+			require.NoError(t, Validate(emptyDoc), "I1: Marshal never emits what its own Validate rejects")
 			setDoc, err := Marshal(model.SmartBlockType_Page, trimSnapshot(set), testOptions())
 			require.NoError(t, err)
 

@@ -228,7 +228,7 @@ var wellKnownPropertyOrder = []string{"name", "description"}
 // the §3 rules (dates → RFC 3339, select options → names, object/file →
 // id lists, scalars wrap into lists for list-shaped formats). It is the
 // row-level building block for API list surfaces that carry requested
-// property values (APIV2.md C5) without a full document export. The result
+// property values without a full document export. The result
 // marshals with encoding/json.
 //
 // The second return is this value's share of the `option_ids` legend —

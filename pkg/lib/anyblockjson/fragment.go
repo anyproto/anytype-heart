@@ -3,7 +3,7 @@ package anyblockjson
 // fragment.go exposes the conversion machinery at fragment granularity —
 // single blocks, flat runs, one property value, the inline codec — for
 // wiring that edits a live document op-by-op instead of round-tripping the
-// whole document (API v2 PATCH, APIV2.md §2 Phase 3).
+// whole document (the API's PATCH surface).
 //
 // Fragment validation reuses the document validation wholesale: a run is
 // wrapped into a minimal synthetic document and validated there, so V1
@@ -56,7 +56,7 @@ func validateFragmentRun(run []json.RawMessage, opts Options) ([]*jsonBlock, err
 		if fragmentStructuralTypes[jb.Type] {
 			issues = append(issues, Issue{
 				Path:    fmt.Sprintf("/blocks/%d/type", i),
-				Message: fmt.Sprintf("%q is a structural block (§7) — the editor owns it; it cannot appear in a fragment", jb.Type),
+				Message: fmt.Sprintf("%q is a structural block — the editor owns it; it cannot appear in a fragment", jb.Type),
 			})
 		}
 		jbs = append(jbs, &jb)
@@ -113,7 +113,7 @@ func UnmarshalBlock(raw json.RawMessage, forcedId string, opts Options) ([]*mode
 	if transparentBlockTypes[jbs[0].Type] {
 		return nil, &ValidationError{Issues: []Issue{{
 			Path: "/blocks/0/type",
-			Message: fmt.Sprintf("%q is a transparent container (§7a) — it contributes no block of its own, "+
+			Message: fmt.Sprintf("%q is a transparent container — it contributes no block of its own, "+
 				"so it cannot be the one block this call addresses", jbs[0].Type),
 		}}}
 	}

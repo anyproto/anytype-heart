@@ -2,7 +2,7 @@ package anyblockjson
 
 // keyvocab.go — the wire vocabulary for type and property keys.
 //
-// APIV2_ADDRESSING.md §7.5a: the API and the format speak ONE key vocabulary, the
+// The API and the format speak ONE key vocabulary, the
 // snake_case api slug, everywhere a type or property is named — envelope
 // `type`/`templateFor`, `properties` map keys, `property_definitions[].property`,
 // dataview `properties[].property`/`groupBy`/`coverProperty`/`endProperty`/sort
