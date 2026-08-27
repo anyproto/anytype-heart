@@ -18222,7 +18222,7 @@ DEPRECATED, GO-1926 |
 | noProgress | [bool](#bool) |  |  |
 | isMigration | [bool](#bool) |  |  |
 | isNewSpace | [bool](#bool) |  |  |
-| aiParams | [Rpc.Object.Import.Request.AIParams](#anytype-Rpc-Object-Import-Request-AIParams) |  | optional BYOK LLM enrichment of the imported structure (importv2, docs/ImportV2LLM.md); absent = feature off, import runs with built-in rules only |
+| aiParams | [Rpc.Object.Import.Request.AIParams](#anytype-Rpc-Object-Import-Request-AIParams) |  | optional BYOK LLM enrichment of the imported structure (importv2); absent = feature off, import runs with built-in rules only |
 
 
 
@@ -18542,7 +18542,7 @@ DEPRECATED, GO-1926 |
 ### Rpc.Object.ImportRunList
 ImportRunList enumerates every known importv2 run — live ones and
 dormant run dirs. A sibling RPC rather than an empty-id overload
-of ImportRunStatus by design (DM spec §15.5).
+of ImportRunStatus by design.
 
 
 
@@ -18599,7 +18599,7 @@ ImportRunStatus reports one importv2 run by its durable importId
 Live runs are served from the running engine&#39;s surface; dormant
 runs — a crashed process&#39;s dir awaiting the sweep, a suspended
 run — are served from the manifest and the ledger alone, which is
-what makes the poll restart-proof (DM spec §15.5: a server-side
+what makes the poll restart-proof (a server-side
 operator polls job state instead of holding a session stream open
 across sidecar restarts).
 
@@ -33024,9 +33024,8 @@ response already carries the path.
 <a name="anytype-Event-Import-Statistic"></a>
 
 ### Event.Import.Statistic
-Statistic is the structured progress surface of one importv2 run
-(docs/superpowers/specs/2026-08-14-importv2-deferred-materialization-design.md
-§15): per-phase counters — deliberately NO blended overall percentage
+Statistic is the structured progress surface of one importv2 run:
+per-phase counters — deliberately NO blended overall percentage
 (fetching is rate-limit-bound at ~1.5 items/s, creating runs at
 persist speed: any blended bar crawls for an hour and then leaps) —
 plus the three-state running/throttled/retrying model: rate limiting

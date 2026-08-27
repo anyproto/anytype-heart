@@ -271,7 +271,7 @@ func TestLeafTypes_ExportAgreement(t *testing.T) {
 		return out
 	}
 
-	// wrap each leaf in a toggle so structural top-level dropping (§7,
+	// wrap each leaf in a toggle so structural top-level dropping (
 	// featuredProperties) does not interfere; a surviving grandchild would
 	// appear at indent 2
 	build := func(leaf *model.Block, extra []*model.Block) *model.SmartBlockSnapshotBase {

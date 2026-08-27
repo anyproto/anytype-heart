@@ -760,8 +760,7 @@ func (mw *Middleware) ObjectImportNotionValidateToken(ctx context.Context,
 // ObjectImportRunStatus reports one importv2 run by its durable importId —
 // live runs from the running engine's store, dormant runs (a crashed
 // process's dir awaiting the sweep, a suspended run) from manifest+ledger
-// alone, which is what makes polling restart-proof (deferred-
-// materialization spec §15.5).
+// alone, which is what makes polling restart-proof.
 func (mw *Middleware) ObjectImportRunStatus(cctx context.Context, req *pb.RpcObjectImportRunStatusRequest) *pb.RpcObjectImportRunStatusResponse {
 	response := func(run *pb.RpcObjectImportRunStatusRun, code pb.RpcObjectImportRunStatusResponseErrorCode, err error) *pb.RpcObjectImportRunStatusResponse {
 		m := &pb.RpcObjectImportRunStatusResponse{Run: run, Error: &pb.RpcObjectImportRunStatusResponseError{Code: code}}

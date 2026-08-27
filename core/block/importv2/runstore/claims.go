@@ -16,8 +16,8 @@ const (
 	statusClaimed = "claimed"
 )
 
-// ClaimRecord is one pass-1 identity decision, durably recorded (08-13 spec
-// §4.2/§5.2, pulled forward by DM-1): the minted id doubles as write-ahead
+// ClaimRecord is one pass-1 identity decision, durably recorded:
+// the minted id doubles as write-ahead
 // intent — any minted id in the ledger that exists in the space is
 // attributable to this run from claim time — and the retained create
 // payload is what makes a later pass-3 restart mint nothing.

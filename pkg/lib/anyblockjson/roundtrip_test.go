@@ -96,7 +96,7 @@ func testOptions() Options {
 	}
 }
 
-// richSnapshot builds a snapshot exercising every §5 block family plus
+// richSnapshot builds a snapshot exercising every block family plus
 // structural blocks, properties, and store content.
 func richSnapshot() *model.SmartBlockSnapshotBase {
 	objectId := "bafyreiobject"
@@ -258,7 +258,7 @@ func TestMarshal_ProducesValidDocument(t *testing.T) {
 	require.NoError(t, Validate(data))
 }
 
-// TestRoundTrip_ByteStable checks §11.2: Export ∘ Import is idempotent and
+// TestRoundTrip_ByteStable: Export ∘ Import is idempotent and
 // byte-stable.
 func TestRoundTrip_ByteStable(t *testing.T) {
 	opts := testOptions()
@@ -544,7 +544,7 @@ func TestImport_TitleAbsorption(t *testing.T) {
 }
 
 // TestExplicitIndentZero: an explicit "indent": 0 is accepted on input and
-// canonicalized away on re-export (§4 omit-default canon).
+// canonicalized away on re-export (omit-default canon).
 func TestExplicitIndentZero(t *testing.T) {
 	doc := `{"version": 1, "blocks": [{"indent": 0, "id": "a", "type": "paragraph", "text": "x"}]}`
 	sbType, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})

@@ -1,7 +1,6 @@
 package anyblockjson
 
-// export.go serializes a snapshot into canonical AnyBlock JSON (§2–§7,
-// §9–§9a).
+// export.go serializes a snapshot into canonical AnyBlock JSON.
 
 import (
 	"fmt"
@@ -20,7 +19,7 @@ import (
 type FormatResolver func(key domain.RelationKey) (model.RelationFormat, bool)
 
 // OptionResolver maps select/multiSelect option ids to names on export and
-// names to ids on import (creating options is the import wiring's job, §3).
+// names to ids on import (creating options is the import wiring's job).
 type OptionResolver interface {
 	OptionName(key domain.RelationKey, id string) (string, bool)
 	OptionId(key domain.RelationKey, name string) (string, bool)
@@ -426,7 +425,7 @@ func (e *exporter) buildBlocks() ([]any, error) {
 }
 
 // appendBlocksFlat walks a subtree in pre-order and appends each block to out
-// with its depth as the indent field — the flat encoding (§4 F1–F2). A block
+// with its depth as the indent field — the flat encoding. A block
 // dropped by blockToJSON (structural, visited, content-less leaf) drops its
 // whole subtree, matching the nested encoding's semantics.
 func (e *exporter) appendBlocksFlat(out *[]any, ids []string, depth int, topLevel bool) error {

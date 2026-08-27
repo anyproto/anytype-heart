@@ -1,7 +1,7 @@
 // Package markdown is the streaming markdown/Obsidian converter: one page is
 // converted and released at a time; the only converter-resident state is the
 // listing metadata, emitted-definition dedup sets and the deterministic
-// property-key resolver. See docs/ImportV2Design.md §11.1.
+// property-key resolver. See docs/ImportV2Design.md.
 //
 // Increment 1 covers: YAML front-matter → relations/options/types, anymark
 // block conversion, H1 title extraction, link/mention/file/bookmark
@@ -42,7 +42,7 @@ type Params struct {
 	// IncludeContentSamples lets the planner see member page titles
 	// (request flag includeContentSamples).
 	IncludeContentSamples bool
-	// PlanReuse wires the crawl-resume plan recording/reuse (08-13 §6.3,
+	// PlanReuse wires the crawl-resume plan recording/reuse (
 	// same seam as notion.WithPlanReuse): the markdown crawl resume re-runs
 	// pass 2 whole, and a recomputed LLM plan would diverge from what the
 	// spool already holds.
@@ -65,7 +65,7 @@ type Converter struct {
 	// filled by the schema plan (csv collections under SuggestTypes,
 	// folders under FolderContainers).
 	suggestedDirTypes map[string]domain.TypeKey
-	// plan phase state (docs/ImportV2LLM.md §3-4).
+	// plan phase state.
 	planner          schemaplan.Planner
 	plan             schemaplan.Plan
 	planned          map[string]bool

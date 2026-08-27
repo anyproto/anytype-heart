@@ -158,8 +158,8 @@ func (p *Persister) noteCreatedType(o *importv2.Object, outcome Outcome) {
 	p.typesMu.Unlock()
 }
 
-// SetResumeHeal installs the resumed-incarnation ErrTreeExists policy
-// (08-13 §6.2, D4): heal reports whether the ledger proves
+// SetResumeHeal installs the resumed-incarnation ErrTreeExists policy:
+// heal reports whether the ledger proves
 // THIS run created the colliding tree (a non-terminal minted claim, or a
 // non-terminal derived intent row — an interrupted create whose tree may
 // be hollow). The proof is CLASS-GUARDED (review Class C): a key is

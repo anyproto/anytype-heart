@@ -149,7 +149,7 @@ func (c *Converter) convertDatabase(ctx context.Context, stub Entity, sink impor
 }
 
 // suggestPageType records a bundled object type for the data source's rows
-// when the database looks like one (name/shape rules, §11.5). Rows would
+// when the database looks like one (name/shape rules). Rows would
 // otherwise import as plain Pages, so a confident suggestion only upgrades.
 func (c *Converter) suggestPageType(entityId, schemaId string, database *databaseObject, sortedNames []string, sink importv2.Sink) {
 	evidence := typesuggest.Evidence{ContainerName: database.title()}
@@ -183,7 +183,7 @@ func (c *Converter) suggestPageType(entityId, schemaId string, database *databas
 // emitProperty resolves one property against the shared store and emits the
 // relation and its schema-declared options on first sight. A non-zero
 // planProp redirects the property onto the plan's target relation instead of
-// minting one from the notion id (docs/ImportV2LLM.md §4).
+// minting one from the notion id.
 // container identifies what a property belongs to, for reporting: the source
 // key so the report can link the database (or page) the user knows, and its
 // title for the property-mapping note. Property ids are Notion's own

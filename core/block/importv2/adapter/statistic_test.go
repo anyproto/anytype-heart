@@ -17,7 +17,7 @@ import (
 )
 
 // The push producer: a coalescing emitter over the redesigned reporter
-// seam. The properties under test are the ones §15.3 fixes — one event per
+// seam. The properties under test are the ones the contract fixes — one event per
 // window, but NEVER a delayed calm/alarm edge — plus the ETA's honesty and
 // the fact that push and pull are the same builder over the same state.
 
@@ -262,7 +262,7 @@ func TestStatEmitterCounterEpochs(t *testing.T) {
 		// given — review item 12: totalsKnown read `phase != SCANNING`, so
 		// beginMaterialize's very first act — announcing CREATING, which
 		// re-bases the counters to zero before the census that fills them —
-		// published one event per run claiming a KNOWN total of zero. §15.3
+		// published one event per run claiming a KNOWN total of zero. The contract
 		// exists to stop exactly that: clients render a count-up, never a fake
 		// bar or a division by zero.
 		//
@@ -704,7 +704,7 @@ func TestStatEmitterCreatedLevel(t *testing.T) {
 		// interleave and the LOWER level arrives last. This is the cancel
 		// affordance — "stop and remove the N objects created" — and the
 		// dormant poll of the same run serves the exact ledger count, so a
-		// number that walks backwards also breaks §15.5.
+		// number that walks backwards also breaks push/pull agreement.
 		clock := newFakeClock()
 		emitter, _ := newTestEmitter(t, clock)
 		emitter.Phase(importv2.PhaseCreating)
@@ -936,7 +936,7 @@ func TestStatEmitterStallDetection(t *testing.T) {
 		// sampleLocked, which runs only from Completed, and ratesLocked never
 		// consulted the clock. A run that stops completing anything therefore
 		// reported its last healthy rate and a frozen ETA forever — exactly
-		// the throttled-vs-stuck distinction §15.1 exists to draw.
+		// the throttled-vs-stuck distinction the phases exist to draw.
 		clock := newFakeClock()
 		emitter, _ := newTestEmitter(t, clock)
 		emitter.Phase(importv2.PhaseCreating)

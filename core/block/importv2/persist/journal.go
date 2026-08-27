@@ -18,8 +18,7 @@ import (
 // sub-millisecond; the timeout only guards a pathological disk.
 const ledgerWriteTimeout = 10 * time.Second
 
-// EffectLedger is the durable write-through seam behind the journal
-// (docs/superpowers/specs/2026-08-13-importv2-durable-queue-design.md §5.1),
+// EffectLedger is the durable write-through seam behind the journal,
 // implemented by runstore.Store. Every effect is recorded here as it
 // happens so a crash keeps the run compensable.
 type EffectLedger interface {
@@ -197,7 +196,7 @@ func ledgerIssue(err error) error {
 
 // CompensationResult reports what the abort cleanup achieved. Updated
 // objects are deliberately not restored (postponed by design decision —
-// docs/ImportV2Design.md §13): they are listed so the result can say so.
+// docs/ImportV2Design.md): they are listed so the result can say so.
 type CompensationResult struct {
 	// Compensated counts deletes actually performed; AlreadyGone counts
 	// targets that no longer existed (split per review P2: a resumed

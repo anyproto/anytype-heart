@@ -85,7 +85,7 @@ func TestExport_OptionsRoundTrip(t *testing.T) {
 }
 
 // The bare string is canonical whenever the option carries no color, the
-// object form otherwise — the rule §6.1 already gives table cells.
+// object form otherwise — the rule table cells already follow.
 func TestExport_ColorlessOptionStaysABareString(t *testing.T) {
 	doc := `{"version": 1, "kind": "objectType", "id": "t1", "key": "k",
 		"typeProperties": [{"key": "stage", "name": "Stage", "format": "select",

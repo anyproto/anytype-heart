@@ -17,7 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/constant"
 )
 
-// widgetLayouts maps §2c layout names to the wire enum. Absent means link,
+// widgetLayouts maps the bundle index's layout names to the wire enum. Absent means link,
 // the enum's own zero value.
 var widgetLayouts = map[string]model.BlockContentWidgetLayout{
 	"link":        model.BlockContentWidget_Link,

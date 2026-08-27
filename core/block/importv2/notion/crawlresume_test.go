@@ -19,7 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 )
 
-// The ResumableConverter seam (08-13 §6.3 / DM spec §8.3): on a resumed
+// The ResumableConverter seam: on a resumed
 // crawl the engine hands the converter the spool's key set, and every
 // skipped page saves the ~2 requests (page + block tree) that make an
 // interrupted Notion crawl expensive to redo. The re-search itself stays —
@@ -111,7 +111,7 @@ func TestPlanReuse(t *testing.T) {
 	}
 
 	t.Run("a preset plan is reused verbatim: the planner is never called", func(t *testing.T) {
-		// given — 08-13 §6.3: LLM output is not deterministic across calls; a
+		// given — LLM output is not deterministic across calls; a
 		// resumed crawl replanning would mint divergent identities for the
 		// run's second half. The recorded plan is the only legal input.
 		poison := schemaplan.PlannerFunc(func(context.Context, []schemaplan.ContainerSchema) (schemaplan.Plan, error) {

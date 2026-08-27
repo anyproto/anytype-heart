@@ -85,7 +85,7 @@ func renderInline(txt string, marks []*model.BlockContentTextMark) string {
 }
 
 // sanitizeSpans drops nil, zero-length, out-of-bounds and surrogate-splitting
-// ranges, unknown mark types and empty params on param-carrying marks (§8.3
+// ranges, unknown mark types and empty params on param-carrying marks (
 // step 1).
 func sanitizeSpans(u16 []uint16, marks []*model.BlockContentTextMark) []span {
 	spans := make([]span, 0, len(marks))
@@ -154,7 +154,7 @@ func isLowSurrogate(u uint16) bool  { return u >= 0xDC00 && u <= 0xDFFF }
 
 // materializeEmoji splices each Emoji mark's emoji over its covered text,
 // adjusting the remaining marks' offsets. Overlapping emoji marks are
-// truncated earlier-start-wins first (§8.3 step 3 semantics).
+// truncated earlier-start-wins first.
 func materializeEmoji(u16 []uint16, spans []span) ([]uint16, []span) {
 	var emoji, rest []span
 	for _, s := range spans {
@@ -269,13 +269,13 @@ func isWSUnit(u16 []uint16, i int) bool {
 	return unicode.IsSpace(rune(u))
 }
 
-// resolveSameTypeOverlaps applies §8.3 step 3: same-type marks with equal
+// resolveSameTypeOverlaps: same-type marks with equal
 // params merge when overlapping or adjacent; with different params the
 // earlier-starting mark wins and the later is truncated to start where the
 // earlier ends. At equal starts the longer range wins (sort order). A merge
 // that extends an accepted range can create a fresh overlap with a
 // later-accepted range, so each group re-runs until stable — resolution must
-// be idempotent for §11.2 byte-stability.
+// be idempotent for byte-stability.
 func resolveSameTypeOverlaps(spans []span) []span {
 	byType := make(map[model.BlockContentTextMarkType][]span)
 	for _, s := range spans {
@@ -823,7 +823,7 @@ func inlineErr(rs []rune, pos int, msg string) error {
 	return &inlineError{Msg: msg, Snippet: string(rs[start:end])}
 }
 
-// parseInline parses §8 inline Markdown back into plain text and marks with
+// parseInline parses inline Markdown back into plain text and marks with
 // UTF-16 code-unit ranges.
 func parseInline(md string) (string, []*model.BlockContentTextMark, error) {
 	rs := []rune(md)
@@ -840,7 +840,7 @@ func parseInline(md string) (string, []*model.BlockContentTextMark, error) {
 	return text.UTF16ToStr(ib.out), marks, nil
 }
 
-// Resource bounds (deterministic local rules, recorded in SPEC §8): they keep
+// Resource bounds (deterministic local rules, recorded in SPEC.md): they keep
 // parsing linear on the untrusted-document boundary.
 const (
 	// maxLinkDestLen bounds a link destination; longer candidates are not
@@ -1189,7 +1189,7 @@ func decodeEntities(s string) string {
 // parseTag parses a whitelisted inline tag at rs[i]. Returns isTag=false when
 // the '<' does not start a whitelisted tag name (the '<' is then literal);
 // once a whitelisted name is recognized, malformed syntax is an error.
-// A self-closing tag is zero-length and returns a nil token (dropped, §8.1).
+// A self-closing tag is zero-length and returns a nil token (dropped).
 func parseTag(rs []rune, i int) (*token, int, bool, error) {
 	j := i + 1
 	closing := false
@@ -1362,7 +1362,7 @@ func scanLink(rs []rune, i int, ctx *inlineScanCtx) (labelEnd int, dest string, 
 }
 
 // scanAngleDest reads an angle-wrapped destination up to the closing '>',
-// decoding escapes and entities; limit bounds the scan (§8 resource bounds).
+// decoding escapes and entities; limit bounds the scan.
 func scanAngleDest(rs []rune, k, limit int) (string, int, bool) {
 	var db strings.Builder
 	for {

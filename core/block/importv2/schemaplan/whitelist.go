@@ -1,7 +1,6 @@
 package schemaplan
 
-// This file is the whitelist property mapper (docs/superpowers/specs/
-// 2026-08-07-importv2-whitelist-planner-design.md §4): the LLM only groups
+// This file is the whitelist property mapper: the LLM only groups
 // containers into kinds and names them; CompleteKinds turns those kinds into a
 // full Plan in pure code — bundled targets via the closed rules table,
 // kind-local (name, format) keys for everything else, merge guards vetoing
@@ -501,7 +500,7 @@ func kindTypeKey(name, fallbackName string, usedKeys map[domain.TypeKey]bool) do
 	// named "Task" (slug "task", re-keyed to "plan_task") would silently pull
 	// every naive-typed `task` container onto this minted type, bypassing the
 	// coverage gate that exists to keep unrelated databases off one type.
-	// "kind-" keeps the key stable across runs, which §7 re-import
+	// "kind-" keeps the key stable across runs, which re-import
 	// correlation depends on.
 	if bundle.HasObjectTypeByKey(domain.TypeKey(slug)) {
 		slug = "kind-" + slug

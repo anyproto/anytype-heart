@@ -33,7 +33,7 @@ func (fx *fixture) complete(kinds []schemaplan.KindPlan) schemaplan.Plan {
 }
 
 // completeSanitized runs CompleteKinds then Sanitize, requiring zero dropped
-// entries — the structural claim of §4.4, asserted, not assumed.
+// entries — the structural claim asserted, not assumed.
 func (fx *fixture) completeSanitized(kinds []schemaplan.KindPlan) schemaplan.Plan {
 	fx.t.Helper()
 	plan := fx.complete(kinds)

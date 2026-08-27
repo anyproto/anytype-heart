@@ -331,7 +331,7 @@ func (r *resettableObject) ResetToVersion(s *state.State) error {
 
 func TestPersistHeal(t *testing.T) {
 	t.Run("a ledger-proven interrupted create heals by update, attributed created", func(t *testing.T) {
-		// given — DM spec §8.1 (08-13 §6.2, D4): on a resumed incarnation a
+		// given — on a resumed incarnation a
 		// tree written by an interrupted create may be HOLLOW (root change
 		// present, state never applied). Skip-and-read would keep it hollow
 		// and record ActionSkipped for an object this run made — wrong twice.

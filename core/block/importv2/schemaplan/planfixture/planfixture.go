@@ -1,5 +1,5 @@
 // Package planfixture loads the synthetic workspace fixtures the planner
-// quality tests run against (docs/superpowers/specs/2026-08-07-importv2-whitelist-planner-design.md §8).
+// quality tests run against.
 //
 // A fixture is one synthetic workspace: the planner's input (which loads into
 // []schemaplan.ContainerSchema) plus machine-checkable expectations about what

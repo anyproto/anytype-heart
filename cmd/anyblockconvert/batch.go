@@ -26,7 +26,7 @@ type pendingSnapshot struct {
 }
 
 // batch is the cross-document wiring pkg/lib/anyblockjson deliberately
-// leaves to its caller (SPEC.md §2a "the import wiring's job", §3 "creating
+// leaves to its caller (SPEC.md calls this "the import wiring's job": "creating
 // options is the wiring's job"): it answers anyblockjson.Options'
 // FormatResolver/OptionResolver/PropertyResolver callbacks from the
 // pre-scanned typeProperties table, lazily minting Relation/RelationOption

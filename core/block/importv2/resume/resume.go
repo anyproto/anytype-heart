@@ -465,7 +465,7 @@ func ClaimLedgerOption(store *runstore.Store) identity.Option {
 
 // IssueRecorder returns the engine's OnIssue hook writing every retained
 // issue to the durable ledger (pass-2 issues must survive to the pass-3
-// report, DM spec §6.2), capped like the in-memory list. Errors degrade to
+// report), capped like the in-memory list. Errors degrade to
 // a log line: an issue-ledger problem must never abort a run that is
 // otherwise fine.
 func IssueRecorder(store *runstore.Store) func(importv2.Issue) {

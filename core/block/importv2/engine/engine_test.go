@@ -966,7 +966,7 @@ func (c *cancelAfterFirstConverter) Convert(ctx context.Context, sink importv2.S
 
 func TestOnFetchedFailureIsFatal(t *testing.T) {
 	t.Run("a run that cannot mark the pass boundary must not materialize", func(t *testing.T) {
-		// given — S6: §7.2 says a run that cannot journal must not create
+		// given — S6: a run that cannot journal must not create
 		// objects; the fetched/materializing transition IS journaling (the
 		// A1 gate depends on it), so its failure was log-and-continue.
 		fx := newEngineFixture(t)

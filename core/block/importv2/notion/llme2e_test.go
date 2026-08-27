@@ -33,7 +33,7 @@ import (
 // relations' options. Everything else is workspace content, keyed by notion id.
 var planArtifactPrefixes = []string{"type:", "relation:", "option:"}
 
-// TestLiveLLMPlan is the real-LLM end-to-end (docs/ImportV2LLM.md §8): a Notion
+// TestLiveLLMPlan is the real-LLM end-to-end: a Notion
 // workspace converts once with a real OpenAI-planned run and once with the
 // naive planner, over byte-identical API traffic, so every difference is
 // provably the plan's doing.

@@ -1,5 +1,5 @@
 // Package schemaplan models the whole-workspace structure plan an import run
-// consults while converting (docs/ImportV2LLM.md §4): which object type each
+// consults while converting: which object type each
 // container's pages get, and how source properties normalize onto bundled or
 // shared relations. Plans come from a Planner — the LLM implementation, the
 // naive wrapper over typesuggest, or a scripted one in tests — and are
@@ -73,7 +73,7 @@ type PropertyPlan struct {
 	Format model.RelationFormat
 }
 
-// TypeDefinition is a new type the plan introduces, in anyblockjson §2a shape.
+// TypeDefinition is a new type the plan introduces, in the AnyBlock JSON type-document shape.
 type TypeDefinition struct {
 	Key    domain.TypeKey // plan-scoped key; CustomTypeKey mints the emitted one
 	Name   string

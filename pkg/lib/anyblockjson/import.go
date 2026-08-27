@@ -38,7 +38,7 @@ type jsonRootEscape struct {
 	BackgroundColor string         `json:"backgroundColor"`
 }
 
-// jsonBlock is the union of every §5 block shape; the schema guarantees only
+// jsonBlock is the union of every block shape; the schema guarantees only
 // type-appropriate fields are present.
 type jsonBlock struct {
 	// json.Number, not int: the schema's integer type admits integer-valued
@@ -318,7 +318,7 @@ func (imp *importer) blockIndents(jbs []*jsonBlock, base int) []int {
 }
 
 // dataviewBlockId is the editor's fixed id for an object's *own* dataview
-// (mirrors state.DataviewBlockID, which this package must not import, §12).
+// (mirrors state.DataviewBlockID, which this package must not import).
 // Object types, sets and collections all reconstruct their primary dataview
 // at this id and merge into an existing block rather than adding a second
 // one, so a document that omits the id has to resolve to it.

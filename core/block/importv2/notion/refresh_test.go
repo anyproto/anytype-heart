@@ -17,7 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/importv2/notion/client"
 )
 
-// TestExpiredUrlRefresh pins §16 item 5: a Notion-signed file URL captured at
+// TestExpiredUrlRefresh pins the URL refresh: a Notion-signed file URL captured at
 // block-fetch time expires before the lazy download runs; the opener re-mints
 // it from the owning block and the download succeeds.
 func TestExpiredUrlRefresh(t *testing.T) {

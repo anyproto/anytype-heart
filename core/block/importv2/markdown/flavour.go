@@ -49,7 +49,7 @@ type Flavour struct {
 	// DirectoryPagesDefault turns directory pages on for this profile in
 	// addition to the request param. A plain bool request cannot express
 	// explicit-off, so a profile default can only enable — the request
-	// param needs a tri-state before any profile ships true (§11.4 open
+	// param needs a tri-state before any profile ships true (an open
 	// question). Schemas force-disable regardless.
 	DirectoryPagesDefault bool
 	// CollectionByName additionally treats a front-matter property *named*
@@ -58,10 +58,10 @@ type Flavour struct {
 	// loose to run globally.
 	CollectionByName bool
 	// SuggestTypes types csv-collection member pages by the collection's
-	// title (§11.5, name-only evidence — csv rows are never parsed).
+	// title (name-only evidence — csv rows are never parsed).
 	SuggestTypes bool
 	// FolderContainers treats each folder of markdown pages as a schema-plan
-	// container (docs/ImportV2LLM.md §3): a front-matter sweep unions the
+	// container: a front-matter sweep unions the
 	// folder's property schema and the planner may type its pages and remap
 	// their properties. Obsidian only — vault folders are usually
 	// homogeneous; arbitrary markdown trees are not.
@@ -175,7 +175,7 @@ func hasObsidianSegment(dir string) bool {
 	return false
 }
 
-// flavourIssue reports the resolved profile (§11.4 observability: "why did
+// flavourIssue reports the resolved profile (observability: "why did
 // my import behave that way"). Silent for detected-generic — nothing
 // flavour-specific is enabled there.
 func (c *Converter) flavourIssue() (importv2.Issue, bool) {

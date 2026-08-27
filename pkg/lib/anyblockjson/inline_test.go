@@ -173,7 +173,7 @@ func TestParseInline_Golden(t *testing.T) {
 			assert.Equal(t, tc.wantMarks, marks)
 
 			// render(parse(J)) is the canonical form; parsing it again must
-			// reproduce the same state (idempotence, §11.2)
+			// reproduce the same state (idempotence)
 			canonical := renderInline(text, marks)
 			text2, marks2, err := parseInline(canonical)
 			require.NoError(t, err)
@@ -218,7 +218,7 @@ func TestInline_UnmatchedDelimiterLiteralization(t *testing.T) {
 	assert.Equal(t, []*model.BlockContentTextMark{mark(mCode, 1, 2, "")}, marks)
 }
 
-// TestInline_PropertyRoundTrip generates random states and checks the §11
+// TestInline_PropertyRoundTrip generates random states and checks the
 // guarantees: canonical output always parses, and Export ∘ Import is
 // byte-stable from the first canonical form on.
 func TestInline_PropertyRoundTrip(t *testing.T) {

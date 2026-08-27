@@ -225,7 +225,7 @@ func (s *Store) ReadRootSpec(ctx context.Context) (spec importv2.RootSpec, found
 
 const planId = "schemaPlan"
 
-// SetPlanJSON records the run's sanitized structure plan (08-13 §6.3: LLM
+// SetPlanJSON records the run's sanitized structure plan (LLM
 // output is not deterministic across calls, so a resumed crawl must reuse
 // the recorded plan, never recompute it — a second plan would mint divergent
 // type/relation identities for the run's second half). A singleton kv row,
@@ -307,8 +307,7 @@ func (s *Store) RefundCrawlResumeAttempt(ctx context.Context) error {
 	return err
 }
 
-// MarkFetched records the pass-2/pass-3 boundary durably (DM spec §4.1 +
-// §6.4), in the one order that keeps every prefix resumable: RootSpec
+// MarkFetched records the pass-2/pass-3 boundary durably, in the one order that keeps every prefix resumable: RootSpec
 // first (a fetched manifest without it would restart pass 3 missing
 // pass 2's output), then fetched flushed to disk, then materializing.
 // One implementation for the adapter and every harness — the transition
@@ -334,8 +333,8 @@ func (s *Store) MarkFetched(ctx context.Context, spec importv2.RootSpec) error {
 	return nil
 }
 
-// BeginCrawlResume durably opens one pass-2 (crawl) resume attempt (DM spec
-// §8.3): incarnation and the attempt counter move BEFORE any work, exactly
+// BeginCrawlResume durably opens one pass-2 (crawl) resume attempt:
+// incarnation and the attempt counter move BEFORE any work, exactly
 // as BeginResume, but the state stays running and MaterializeStarted stays
 // false — a resumed crawl has put nothing in the space, and flipping the
 // compensation-scope switch here would turn its pure-intent claims into

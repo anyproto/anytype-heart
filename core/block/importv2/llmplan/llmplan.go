@@ -1,5 +1,4 @@
-// Package llmplan is the LLM-backed schemaplan.Planner (design doc
-// docs/superpowers/specs/2026-08-07-importv2-whitelist-planner-design.md):
+// Package llmplan is the LLM-backed schemaplan.Planner:
 // one structured-output kinds call — the model only groups containers into
 // kinds and names them — then schemaplan.CompleteKinds derives every property
 // mapping in code. Invalid responses get exactly one corrective retry;

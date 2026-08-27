@@ -1,5 +1,4 @@
-// Package report builds the per-run import report page (§16 item 1, decision
-// §13.7) — the primary user surface for the issue ledger. The engine persists
+// Package report builds the per-run import report page — the primary user surface for the issue ledger. The engine persists
 // it through the normal pool at the end of a run that produced issues; the
 // notification and EventImportFinish carry its id so clients can open it and
 // render a discard button. Output is deterministic (stable block ids, sorted
@@ -9,7 +8,7 @@
 // A real Notion workspace produces around a thousand issues that say about a
 // dozen distinct things — 435 of them "Notion did not return this block" —
 // so the page groups by what happened and then by which object it happened
-// to, rather than printing a line per occurrence. See §"grouping" below.
+// to, rather than printing a line per occurrence. See "grouping" below.
 package report
 
 import (

@@ -23,7 +23,7 @@ const (
 	optionSampleCap    = 20
 )
 
-// planStructure is the markdown plan phase (docs/ImportV2LLM.md §3): render
+// planStructure is the markdown plan phase: render
 // the run's containers — csv collections under SuggestTypes profiles, folders
 // under FolderContainers profiles — as planner evidence, plan once, sanitize,
 // then surface type verdicts (in container order, where suggestCsvTypes used
@@ -32,7 +32,7 @@ func (c *Converter) planStructure(ctx context.Context, sink importv2.Sink) error
 	// The ANALYZING stage, bracketed UNCONDITIONALLY: a client that saw
 	// the stage begin must always see it end, whatever the planner found to
 	// do and however this step exits. Under an LLM planner this is the
-	// 10-20 s of unexplained silence ImportV2LLM.md §3 specified reporting
+	// 10-20 s of unexplained silence that has to be reported
 	// and nothing ever did.
 	sink.Phase(importv2.PhaseAnalyzing)
 	defer sink.Phase(importv2.PhaseFetching)

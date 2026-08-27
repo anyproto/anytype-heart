@@ -1,8 +1,7 @@
 // Package notion is the streaming Notion converter: the /search crawl is
 // pass 1 (identity only — ids, titles, parents; bodies are released), pass 2
 // re-fetches each page and streams databases, pages, relations, options and
-// files through the sink one object at a time. See docs/ImportV2Design.md
-// §11.2.
+// files through the sink one object at a time. See docs/ImportV2Design.md.
 package notion
 
 import (

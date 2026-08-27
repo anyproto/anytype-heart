@@ -113,8 +113,7 @@ var CompletionNames = map[string]bool{
 }
 
 // MappingCompletionNames is the wider set the schemaplan whitelist's `done`
-// rule uses (docs/superpowers/specs/2026-08-07-importv2-whitelist-planner-design.md
-// §4.1). It is a superset of CompletionNames, and the two deliberately differ
+// rule uses. It is a superset of CompletionNames, and the two deliberately differ
 // because the stakes differ: Suggest infers a type for an ENTIRE database from
 // one checkbox (a "Comments" table with a "Resolved" column would become Task,
 // every row carrying the todo layout), while the mapping rule only routes ONE

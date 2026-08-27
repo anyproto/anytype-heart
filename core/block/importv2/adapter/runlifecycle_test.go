@@ -384,7 +384,7 @@ func TestSuspendRuns(t *testing.T) {
 // says out of its own zero value unless it is seeded (review item 4).
 func TestLifecycleStatSeed(t *testing.T) {
 	t.Run("a resumed run says what cancel would do before its engine starts", func(t *testing.T) {
-		// given — the harm §15.6 renders: phase SCANNING and cancelEffect
+		// given — the harm a client renders: phase SCANNING and cancelEffect
 		// NOTHING_TO_UNDO read as "Cancel (nothing added yet)" for a run that
 		// is about to compensate thousands of real objects.
 		s := &service{config: &config.Config{}}

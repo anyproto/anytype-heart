@@ -90,7 +90,7 @@ type ClaimLedger interface {
 	RecordClaims(ctx context.Context, claims []ClaimLedgerRecord) error
 }
 
-// claimBatchSize batches ledger writes (08-13 §5.2: measured 3-4x over
+// claimBatchSize batches ledger writes (measured 3-4x over
 // per-claim commits). The batch's loss-harmlessness argument ("no side
 // effects exist at claim time, the resumed pass simply re-mints") holds for
 // PASS-1 claims only — they all flush before pass 2 appends anything. It

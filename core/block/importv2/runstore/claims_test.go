@@ -227,7 +227,7 @@ func TestPayloadOccupancy(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("a differing payload re-record never replaces the first", func(t *testing.T) {
-		// given — §9.1 item 1: the payload row is the write-ahead create
+		// given — the payload row is the write-ahead create
 		// payload and the id IS the hash of the root bytes, so a different
 		// root under one id is an identity violation upstream. The blind
 		// UpsertOne made it last-writer-wins — the wrong default for the row

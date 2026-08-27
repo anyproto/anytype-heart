@@ -36409,7 +36409,7 @@ type RpcObjectImportRequest struct {
 	NoProgress            bool                              `protobuf:"varint,12,opt,name=noProgress,proto3" json:"noProgress,omitempty"`
 	IsMigration           bool                              `protobuf:"varint,13,opt,name=isMigration,proto3" json:"isMigration,omitempty"`
 	IsNewSpace            bool                              `protobuf:"varint,15,opt,name=isNewSpace,proto3" json:"isNewSpace,omitempty"`
-	// optional BYOK LLM enrichment of the imported structure (importv2, docs/ImportV2LLM.md);
+	// optional BYOK LLM enrichment of the imported structure (importv2);
 	// absent = feature off, import runs with built-in rules only
 	AiParams *RpcObjectImportRequestAIParams `protobuf:"bytes,16,opt,name=aiParams,proto3" json:"aiParams,omitempty"`
 }
@@ -37670,7 +37670,7 @@ func (m *RpcObjectImportListImportResponse) GetType() RpcObjectImportListImportR
 // Live runs are served from the running engine's surface; dormant
 // runs — a crashed process's dir awaiting the sweep, a suspended
 // run — are served from the manifest and the ledger alone, which is
-// what makes the poll restart-proof (DM spec §15.5: a server-side
+// what makes the poll restart-proof (a server-side
 // operator polls job state instead of holding a session stream open
 // across sidecar restarts).
 type RpcObjectImportRunStatus struct {
@@ -37925,7 +37925,7 @@ func (m *RpcObjectImportRunStatusResponseError) GetDescription() string {
 
 // ImportRunList enumerates every known importv2 run — live ones and
 // dormant run dirs. A sibling RPC rather than an empty-id overload
-// of ImportRunStatus by design (DM spec §15.5).
+// of ImportRunStatus by design.
 type RpcObjectImportRunList struct {
 }
 

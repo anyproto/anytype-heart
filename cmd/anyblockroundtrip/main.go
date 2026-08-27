@@ -237,7 +237,7 @@ type spaceSummary struct {
 	// objects have that maximum — verifies the "~6 typical max" depth datum.
 	IndentHistogram map[int]int `json:"indentHistogram,omitempty"`
 	// CellsWithChildren counts table cell blocks with real descendants (the
-	// §6.1 array-form trigger).
+	// the array-form trigger for table cells).
 	CellsWithChildren int `json:"cellsWithChildren"`
 }
 
@@ -588,7 +588,7 @@ func detailEqual(key string, a, b *types.Value, opts anyblockjson.Options) bool 
 	return proto.Equal(a, b)
 }
 
-// recommendedDetailKeys are the four lists §2a lifts into typeProperties.
+// recommendedDetailKeys are the four lists a type document lifts into typeProperties.
 // They round-trip by property KEY, and legacy data mixes ids and bare keys,
 // so comparison normalizes both sides to keys and skips entries neither
 // side can resolve (dropped-by-design, like missing-object sentinels).
@@ -862,7 +862,7 @@ func (r *spaceResolvers) PropertyById(id string) (anyblockjson.PropertyDefinitio
 	// are absent from the listing AND the by-key lookup (deleted or index
 	// gap — anomaly #9 class), so without this PropertyId cannot invert the
 	// key export just produced and the entry is dropped on re-export
-	// (resolvers must be equivalent both directions, SPEC §2a/§13)
+	// (resolvers must be equivalent both directions)
 	r.relById[id] = def
 	if _, taken := r.relKeyToId[rel.Key]; !taken {
 		r.relKeyToId[rel.Key] = id

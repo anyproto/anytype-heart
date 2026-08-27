@@ -28,8 +28,8 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 )
 
-// The sweep's resume branch, driven through the service (DM spec §8.1 +
-// the harness): a run whose pass 2 completed restarts pass 3 from
+// The sweep's resume branch, driven through the service and
+// the harness: a run whose pass 2 completed restarts pass 3 from
 // its dir; attempts are capped; a pass-2 suspend still compensates.
 
 // makeResumableRun builds a run dir imitating a crash after pass 2: one

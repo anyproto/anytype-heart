@@ -316,7 +316,7 @@ func (c *Converter) convertProperties(ctx context.Context, pageId, scope string,
 		// Page-side definitions carry no plan target: schema-declared
 		// properties were already resolved (and possibly remapped) by their
 		// database, and the rest are value-typed formula/rollup or orphan-page
-		// properties the plan does not cover (docs/ImportV2LLM.md §4).
+		// properties the plan does not cover.
 		def, err := c.emitProperty(ctx, scope, propertySchema{
 			Id:   value.Id,
 			Type: effectivePropertyType(value),

@@ -42,7 +42,7 @@ const (
 	IssueTypeSuggested   IssueCode = "typeSuggested"
 	// IssuePropertyMapped records one adopted schema-plan property decision:
 	// a remap onto a bundled relation, a cross-container merge, or a format
-	// fix (docs/ImportV2LLM.md §8).
+	// fix.
 	IssuePropertyMapped IssueCode = "propertyMapped"
 
 	// Warnings — deliberate data decisions and placeholders.
@@ -177,8 +177,7 @@ func AsIssue(err error, defaultSeverity Severity, defaultCode IssueCode) Issue {
 
 // ErrSuspended is the cancellation cause of a graceful shutdown: the run
 // stops promptly but is NOT compensated — its durable state is kept for the
-// startup sweep (docs/superpowers/specs/2026-08-13-importv2-durable-queue-
-// design.md §6.4). Distinct from user cancellation (a plain cancel, which
+// startup sweep. Distinct from user cancellation (a plain cancel, which
 // compensates): the adapter cancels the run context with this cause from
 // Close, and the engine checks context.Cause against it.
 var ErrSuspended = errors.New("import run suspended for shutdown")

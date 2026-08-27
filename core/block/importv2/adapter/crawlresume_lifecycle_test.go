@@ -31,8 +31,8 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 )
 
-// The sweep's crawl-resume branch, driven through the service (DM spec
-// §8.3 + the harness): a run interrupted mid-crawl re-runs the crawl
+// The sweep's crawl-resume branch, driven through the service and
+// the harness: a run interrupted mid-crawl re-runs the crawl
 // from the manifest's stored request, spends zero requests on recorded
 // pages, and materializes the whole recording.
 
@@ -264,7 +264,7 @@ func TestSweepResumesCrawl(t *testing.T) {
 	})
 
 	t.Run("a CRASHED crawl (state running) resumes the same way", func(t *testing.T) {
-		// given — §8.3 covers crash and suspend alike: running at sweep time
+		// given — crash and suspend alike: running at sweep time
 		// IS the crash detector.
 		fx, _ := resumeFixture(t)
 		dir := makeCrawlRun(t, runstore.RunsRoot(fx.repo), "crashed-crawl", runstore.StateRunning)

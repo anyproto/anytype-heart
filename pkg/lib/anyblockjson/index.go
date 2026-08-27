@@ -1,6 +1,6 @@
 package anyblockjson
 
-// index.go implements §2c: the bundle-level index.json. Every other document
+// index.go implements the bundle-level index.json. Every other document
 // in this format describes one object; index.json describes the set — the
 // space's name, what opens on entry, and what the sidebar shows.
 //

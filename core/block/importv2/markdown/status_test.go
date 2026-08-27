@@ -9,7 +9,7 @@ import (
 )
 
 // The converter half of the producer seam: the plan step announces
-// ANALYZING (the stage ImportV2LLM.md §3 specified and nothing ever
+// ANALYZING (the stage the plan phase creates and nothing ever
 // reported), and every page announces itself as the current item — the
 // strongest not-stuck signal a long crawl has.
 

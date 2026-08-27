@@ -94,7 +94,7 @@ func TestJournalLedger(t *testing.T) {
 	})
 
 	t.Run("a ledger write failure is fatal but keeps the memory record", func(t *testing.T) {
-		// given: §7.2 — a run that cannot journal must not keep creating
+		// given: a run that cannot journal must not keep creating
 		// objects, yet the effect that just happened must stay compensable.
 		ledger := &fakeLedger{err: assert.AnError}
 		journal := NewJournalWithLedger(ledger)

@@ -17,7 +17,7 @@ import (
 // converter that ignores the seam entirely re-emits everything and the
 // engine drops the already-recorded rows before any download.
 
-// skippableConverter is a scriptConverter implementing the 08-13 §6.3 seam:
+// skippableConverter is a scriptConverter implementing the resume seam:
 // it consults Skip per object before "fetching" (emitting) it, and records
 // the recovery set the engine hands it (the P0-A half of the seam).
 type skippableConverter struct {
@@ -128,7 +128,7 @@ func TestResumeCrawlRecoverSeam(t *testing.T) {
 
 func TestResumeCrawlSinkBackstop(t *testing.T) {
 	t.Run("a converter ignoring the seam is merely slower, never incorrect", func(t *testing.T) {
-		// given — 08-13 §6.2 item 5: the engine enforces spool dedup at the
+		// given — the engine enforces spool dedup at the
 		// sink regardless of converter cooperation.
 		fx := newEngineFixture(t)
 		fillSpool(t, fx, pageObj("a", false))
@@ -175,7 +175,7 @@ func TestResumeCrawlSinkBackstop(t *testing.T) {
 
 func TestResumeCrawlStaleClaims(t *testing.T) {
 	t.Run("a prior claim whose entity disappeared warns instead of failing the run", func(t *testing.T) {
-		// given — 08-13 §5.4: a page deleted from the source between sessions
+		// given — a page deleted from the source between sessions
 		// is expected drift on a resumed run, not a converter bug. It was
 		// claimed by incarnation 1, never spooled, and no longer enumerates.
 		fx := newEngineFixture(t)

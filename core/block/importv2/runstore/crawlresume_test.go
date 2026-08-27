@@ -121,7 +121,7 @@ func TestManifestRequestLifetime(t *testing.T) {
 		ctx := context.Background()
 		store := newCrawlStore(t, token)
 
-		// when: the pass-3 restart path (headless by design — §8.1)
+		// when: the pass-3 restart path (headless by design)
 		m, err := store.BeginResume(ctx)
 		require.NoError(t, err)
 

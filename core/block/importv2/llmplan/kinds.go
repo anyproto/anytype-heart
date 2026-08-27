@@ -75,8 +75,8 @@ Icons: `)
 	return b.String()
 }
 
-// kindsResponseSchema is the strict, non-recursive kinds schema (design
-// §3.3), generated at package init from schemaplan.AllowedIcons so prompt,
+// kindsResponseSchema is the strict, non-recursive kinds schema,
+// generated at package init from schemaplan.AllowedIcons so prompt,
 // schema and sanitizer cannot drift. No `key` field: containers nest inside
 // each kind, so the wire format needs no cross-reference and the plan key is
 // derived in code as a slug of the kind name. minimum/maximum/maxItems are

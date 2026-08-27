@@ -14,8 +14,8 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 )
 
-// Rehydration is the pass-3 restart's identity seed (DM spec §8.1, the
-// 08-13 §6.2 rehydration minus converter concerns): a resumed run MINTS
+// Rehydration is the pass-3 restart's identity seed — rehydration
+// minus converter concerns: a resumed run MINTS
 // NOTHING — every id it uses was recorded by a previous incarnation.
 
 func rehydratedService(t *testing.T, entries []RehydratedEntry, files []RehydratedFile) *Service {
@@ -115,7 +115,7 @@ func TestRehydratedEntries(t *testing.T) {
 
 func TestRehydratedFiles(t *testing.T) {
 	t.Run("a completed upload rehydrates as an already-resolved future", func(t *testing.T) {
-		// given — 08-13 §6.2: futures for done file rows are rehydrated
+		// given — futures for done file rows are rehydrated
 		// already-resolved; they cannot deadlock and references to them
 		// resolve without any re-upload
 		service := rehydratedService(t, nil, []RehydratedFile{{
@@ -141,7 +141,7 @@ func TestRehydratedFiles(t *testing.T) {
 
 func TestReclaimableRehydratedClaims(t *testing.T) {
 	t.Run("a crawl re-claim reuses the recorded identity: no mint, no dedup query, no error", func(t *testing.T) {
-		// given — DM spec §8.3 via 08-13 §6.2 item 4: a resumed pass 1 runs
+		// given — a resumed pass 1 runs
 		// against the live source, and claims whose sourceKey already has a
 		// ledger row are no-ops. The mock space has no CreateTreePayload
 		// expectation, so any re-mint fails the test by itself.

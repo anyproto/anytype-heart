@@ -152,7 +152,7 @@ func TestExport_CompactIdsHardening(t *testing.T) {
 	data, err := Marshal(model.SmartBlockType_Page, snap, Options{CompactIds: true})
 	require.NoError(t, err)
 	require.NoError(t, Validate(data))
-	// the odd id stays full (entity-encoded in the attribute per §8.1)
+	// the odd id stays full (entity-encoded in the attribute)
 	assert.Contains(t, string(data), "a&#96;b")
 	assert.Contains(t, string(data), `"ectid": "bafyreiregularlylongobjectid"`, "valid ids still compact")
 }

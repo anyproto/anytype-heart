@@ -12773,9 +12773,8 @@ func (m *EventImportFinish) GetIssuesCount() int64 {
 	return 0
 }
 
-// Statistic is the structured progress surface of one importv2 run
-// (docs/superpowers/specs/2026-08-14-importv2-deferred-materialization-design.md
-// §15): per-phase counters — deliberately NO blended overall percentage
+// Statistic is the structured progress surface of one importv2 run:
+// per-phase counters — deliberately NO blended overall percentage
 // (fetching is rate-limit-bound at ~1.5 items/s, creating runs at
 // persist speed: any blended bar crawls for an hour and then leaps) —
 // plus the three-state running/throttled/retrying model: rate limiting

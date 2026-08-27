@@ -82,7 +82,7 @@ type Sink interface {
 	Item(item DisplayText)
 
 	// Claim registers a late identity claim for an entity discovered only
-	// during pass 2 (second-chance discovery, §16 item 3 — e.g. a Notion
+	// during pass 2 (second-chance discovery — e.g. a Notion
 	// child page the eventually-consistent /search index omitted). The claim
 	// must precede the emission of any object referencing the claimed key,
 	// and the converter must eventually emit the claimed object (or report
@@ -91,8 +91,8 @@ type Sink interface {
 }
 
 // ResumableConverter is implemented by converters that can cheaply skip
-// re-converting objects a previous incarnation already recorded (the 08-13
-// §6.3 seam, serving DM-3's pass-2 crawl resume: the spool is the skip set).
+// re-converting objects a previous incarnation already recorded
+// (serving pass-2 crawl resume: the spool is the skip set).
 // Skip is engine-provided, safe for concurrent use, and purely an
 // optimization — the engine enforces recorded-row dedup at the sink
 // regardless, so a converter that ignores the seam is merely slower, never

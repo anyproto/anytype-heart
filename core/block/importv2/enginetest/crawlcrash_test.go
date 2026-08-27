@@ -17,7 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 )
 
-// The DM-3 equivalence gate (spec §8.3, the DM-2 shape extended to pass 2):
+// The crawl-resume equivalence gate, the DM-2 shape extended to pass 2:
 // kill a run MID-CRAWL — before the fetch-complete marker, the class DM-2
 // could only compensate — resume it from the dir plus the live source, and
 // assert the final object set is IDENTICAL to an uninterrupted run, with
@@ -171,7 +171,7 @@ func TestCrashResumeMidCrawl(t *testing.T) {
 
 	t.Run("a RECORDED file renamed between sessions imports twice — decided drift semantics, pinned", func(t *testing.T) {
 		// given — review P2, decided and documented rather than left silent:
-		// the crawl artifact is the run's ground truth (§8.3 drift rule), so
+		// the crawl artifact is the run's ground truth under the drift rule, so
 		// a rename across the crash boundary is a deletion of the recorded
 		// path (the recording wins — it materializes) PLUS an addition (the
 		// new path imports as a new object). The result is two objects with
@@ -211,7 +211,7 @@ func TestCrashResumeMidCrawl(t *testing.T) {
 	})
 
 	t.Run("a page deleted between sessions warns and the rest converges", func(t *testing.T) {
-		// given — 08-13 §5.4 end to end: incarnation 1 claims every page and
+		// given — source drift end to end: incarnation 1 claims every page and
 		// records two; the source then loses a page that was NOT recorded.
 		root := crashTree(t)
 		fx := NewFixture(t)

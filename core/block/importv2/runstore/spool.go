@@ -21,8 +21,7 @@ const (
 	statusSpooled = "spooled"
 )
 
-// Spool is the pass-2 → pass-3 absorbing queue (deferred-materialization
-// spec §6.1): converter output serialized in emission order, replayed to
+// Spool is the pass-2 → pass-3 absorbing queue: converter output serialized in emission order, replayed to
 // materialization. It deliberately carries no cross-version promise — an
 // incompatible spool is dropped with its run dir, never migrated.
 //

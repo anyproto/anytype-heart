@@ -7,8 +7,7 @@ import (
 	importv2 "github.com/anyproto/anytype-heart/core/block/importv2"
 )
 
-// Reuse is the crawl-resume plan wiring both converters share (08-13 §6.3 /
-// DM spec §8.3). Exactly one direction is active per run: a fresh durable
+// Reuse is the crawl-resume plan wiring both converters share. Exactly one direction is active per run: a fresh durable
 // run Records the sanitized plan it converts under; a resumed crawl gets
 // that recording back as Preset and never calls the planner — LLM output is
 // not deterministic across calls, and a second plan would mint divergent

@@ -6,7 +6,7 @@ import (
 )
 
 // Rehydration seeds a Service from a previous incarnation's identity ledger
-// (the 08-13 §6.2 rehydration minus converter concerns). A
+// (rehydration minus converter concerns). A
 // resumed run mints nothing: every minted id was recorded at claim time
 // with the very payload bytes whose hash IS the id, so the payload is
 // reconstructed, never re-created (re-minting would produce a different id
@@ -29,7 +29,7 @@ type RehydratedEntry struct {
 	// Reclaimable marks a crawl-resume seed: the resumed
 	// pass 1 re-enumerates the live source, and its claim for this key is
 	// absorbed as a reuse of the recorded identity — no re-mint, no dedup
-	// re-query, no ledger re-record (08-13 §6.2 item 4). One-shot: after the
+	// re-query, no ledger re-record. One-shot: after the
 	// reclaim, a further claim for the key is a converter bug again. Pass-3
 	// restarts leave it false — no pass 1 runs there, so any claim against a
 	// rehydrated key keeps failing loudly.

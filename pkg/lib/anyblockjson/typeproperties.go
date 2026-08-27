@@ -49,7 +49,7 @@ type OptionDefinition struct {
 	Color string `json:"color"`
 }
 
-// UnmarshalJSON accepts both §2a forms: a bare name, or an object carrying a
+// UnmarshalJSON accepts both declared forms: a bare name, or an object carrying a
 // color. Same shape as jsonCell, minus the null and array arms.
 func (o *OptionDefinition) UnmarshalJSON(data []byte) error {
 	if strings.HasPrefix(strings.TrimSpace(string(data)), `"`) {
@@ -80,7 +80,7 @@ func optionsToAny(opts []OptionDefinition) []any {
 	return out
 }
 
-// optionEntryName reads the name out of either §2a option form. The semantic
+// optionEntryName reads the name out of either option form. The semantic
 // checks run on the raw document, before it decodes into
 // OptionDefinition, so they need this rather than the struct.
 func optionEntryName(entry any) string {
@@ -96,7 +96,7 @@ func optionEntryName(entry any) string {
 
 // PropertyResolver maps property object ids to definitions on export and
 // definitions back to ids on import. Creating missing properties is the
-// import wiring's job (the OptionResolver contract, §3): PropertyId receives
+// import wiring's job (the OptionResolver contract): PropertyId receives
 // the full definition so the wiring can create-and-return in one step.
 type PropertyResolver interface {
 	PropertyById(id string) (PropertyDefinition, bool)

@@ -31,7 +31,7 @@ func (m *omap) set(k string, v any) {
 	m.vals = append(m.vals, v)
 }
 
-// setNonEmpty appends k only when v is not an empty/default value (§4:
+// setNonEmpty appends k only when v is not an empty/default value (
 // canonical form omits empty strings, arrays, objects and default scalars).
 func (m *omap) setNonEmpty(k string, v any) {
 	switch x := v.(type) {
@@ -637,7 +637,7 @@ func formatDate(sec int64) string {
 }
 
 // parseDate accepts RFC 3339 (with offsets and fractional seconds truncated)
-// and date-only strings (UTC midnight), per §3.
+// and date-only strings (UTC midnight).
 func parseDate(s string) (int64, bool) {
 	for _, layout := range []string{time.RFC3339Nano, time.RFC3339, "2006-01-02"} {
 		if t, err := time.Parse(layout, s); err == nil {

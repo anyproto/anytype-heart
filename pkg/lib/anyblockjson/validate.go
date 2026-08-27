@@ -1,6 +1,6 @@
 package anyblockjson
 
-// validate.go implements §12: schema validation against the embedded JSON
+// validate.go implements schema validation against the embedded JSON
 // Schema (draft 2020-12) plus the semantic checks the schema cannot express,
 // all reported as path-addressed issues.
 
@@ -494,7 +494,7 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 	// checkFlatRun validates one flat pre-order run (the document's blocks
 	// array, or a table cell's array form): V1 monotonicity, V2 leaf
 	// containment, V3 row→column, then the per-block checks. inCell bans an
-	// id on the first element (cell ids are derived, §6.1).
+	// id on the first element (cell ids are derived).
 	checkFlatRun = func(blocks []any, basePath string, inCell bool) {
 		type frame struct {
 			indent int

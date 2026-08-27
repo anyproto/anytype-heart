@@ -35,8 +35,7 @@ const (
 	compensationTimeout = 5 * time.Minute
 )
 
-// Reporter is the rich internal progress seam (deferred-materialization
-// spec §15.4): the adapter down-projects it onto process.Progress AND feeds
+// Reporter is the rich internal progress seam: the adapter down-projects it onto process.Progress AND feeds
 // the coalescing importStatistic emitter from it. Implementations must be
 // safe for concurrent use, and must never affect control flow — every call
 // here is advisory telemetry.

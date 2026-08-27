@@ -1,7 +1,7 @@
 package anyblockjson
 
 // table.go maps the internal table block subtree (table → row/column layout
-// wrappers → cells with composite <rowId>-<colId> ids) to the §6.1
+// wrappers → cells with composite <rowId>-<colId> ids) to the
 // columns/rows JSON form and back.
 
 import (
@@ -120,7 +120,7 @@ func (e *exporter) tableToJSON(m *omap, b *model.Block) error {
 			}
 			cells = append(cells, cv)
 		}
-		// trailing empty cells are omitted (import pads, §6.1)
+		// trailing empty cells are omitted (import pads)
 		for len(cells) > 0 && cells[len(cells)-1] == nil {
 			cells = cells[:len(cells)-1]
 		}

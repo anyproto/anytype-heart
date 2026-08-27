@@ -207,7 +207,7 @@ func TestRunStatusCrossVersion(t *testing.T) {
 		// given — review P2: buildRunStatus called resume.Load
 		// unconditionally, so a v1 dir errored from RunStatus and silently
 		// VANISHED from RunList — the exact symptom Class E was raised to
-		// fix, through a different door. §4.4 froze the manifest fields for
+		// fix, through a different door. The frozen core holds the manifest fields for
 		// exactly this: any version can always say what a run IS.
 		fx := newLifecycleFixture(t)
 		dir := makeResumableRun(t, runstore.RunsRoot(fx.repo), "old-run")
@@ -254,7 +254,7 @@ func TestRunListStrayDir(t *testing.T) {
 func TestRunStatusLive(t *testing.T) {
 	t.Run("a running import answers live from its own statistic emitter", func(t *testing.T) {
 		// given: a scripted engine parked mid-run, reporting through the seam
-		// a real engine reports through. §15.5 serves a live run from the
+		// a real engine reports through. A live run is served from the
 		// registry snapshot, not from a second derivation over the ledger —
 		// the push event and this answer are then the same message.
 		fx := newLifecycleFixture(t)

@@ -1,7 +1,7 @@
 // Package llmclient is a thin, provider-agnostic client for OpenAI-compatible
 // chat-completion endpoints (OpenAI, ollama, LM Studio, llama.cpp, …), built
 // for structured-output calls: one non-streaming completion constrained by a
-// strict JSON schema (docs/ImportV2LLM.md §6).
+// strict JSON schema.
 //
 // The package is a plain library — no app component, no global state — so any
 // feature needing a BYOK LLM call can share it. Determinism is part of the

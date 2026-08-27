@@ -10,7 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 )
 
-// The legacy process scalar is the compatibility path §15.1 promised to
+// The legacy process scalar is the compatibility path the redesign promised to
 // leave untouched, so the down-projection of the redesigned seam has to
 // reproduce what the old one produced — on the resume paths too.
 
@@ -103,7 +103,7 @@ func TestProgressReporterProjection(t *testing.T) {
 		// stands; on a restart pass 1 never ran, so the bar filled against a
 		// total of zero — 563049ff5's bug, restored through a different door.
 		//
-		// The seed is the same census resumeRun already reads for the §15
+		// The seed is the same census resumeRun already reads for the
 		// emitter (review item 4's statSeed): one derivation, both consumers.
 		progress := &recordingProgress{}
 		reporter := &progressReporter{progress: progress}

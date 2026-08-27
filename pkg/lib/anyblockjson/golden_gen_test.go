@@ -26,7 +26,7 @@ func checkGolden(t *testing.T, name string, got []byte) {
 }
 
 // TestMarshal_GoldenFiles freezes the canonical bytes for the rich snapshot
-// in all serialization modes (§11 canon).
+// in all serialization modes.
 func TestMarshal_GoldenFiles(t *testing.T) {
 	for _, tc := range []struct {
 		name string

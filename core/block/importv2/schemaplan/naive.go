@@ -8,7 +8,7 @@ import (
 
 // NewNaive wraps the typesuggest keyword/shape rules as a Planner: one type
 // verdict per container, no property normalization. This is the fallback for
-// runs without LLM config and for every LLM failure (docs/ImportV2LLM.md §7).
+// runs without LLM config and for every LLM failure.
 func NewNaive() Planner {
 	return naivePlanner{suggestor: typesuggest.NewNaive()}
 }

@@ -10,9 +10,9 @@ import (
 
 func TestPhaseMessage(t *testing.T) {
 	t.Run("every phase carries the legacy progress message it replaces", func(t *testing.T) {
-		// given: the strings the pre-§15 Reporter.Phase call sites passed as
+		// given: the strings the pre-redesign Reporter.Phase call sites passed as
 		// free text (engine.go:564,594,775 / spool.go:231), plus the
-		// ANALYZING message ImportV2LLM.md §67 specified and nothing ever
+		// ANALYZING message the plan phase needed and nothing ever
 		// emitted
 		want := map[Phase]string{
 			PhaseScanning:   "Scanning source",

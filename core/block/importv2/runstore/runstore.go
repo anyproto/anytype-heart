@@ -1,7 +1,6 @@
 // Package runstore is the durable per-run state of an import: a dedicated
 // any-store database plus the run's file-spill directory, living together in
-// one directory whose deletion is the run's entire disposal
-// (docs/superpowers/specs/2026-08-13-importv2-durable-queue-design.md §4).
+// one directory whose deletion is the run's entire disposal.
 //
 // Phase A scope: the manifest, the effect ledger (entries + files) and the
 // frozen-core compensation reader. The identity ledger (payloads, derived,
@@ -59,7 +58,7 @@ type State string
 const (
 	StateRunning State = "running"
 	// StateFetched marks pass 2 complete: the spool is whole (the
-	// fetch-complete marker of DM spec §4.1). StateMaterializing marks
+	// fetch-complete marker). StateMaterializing marks
 	// pass 3 started. Both land in the sweep's compensate-by-default branch
 	// on binaries that predate them — the safe outcome.
 	StateFetched       State = "fetched"
@@ -194,8 +193,8 @@ type Store struct {
 }
 
 // activeDirs is the process-global registry of run dirs currently held open
-// by a Store. It is the sweep's guard against touching a live run: the db's
-// .lock file is a dirty sentinel, not a mutex — a second Open of a live
+// by a Store. It is the sweep's guard against touching a live run: the db's.
+// Lock file is a dirty sentinel, not a mutex — a second Open of a live
 // run's db succeeds and Drop would unlink the dir under the live writer.
 // Process-global (not per component instance) on purpose: the confirmed
 // hazard is a same-process account stop/start where Close's 30s grace gave
@@ -718,7 +717,7 @@ func (s *Store) RecordCreated(ctx context.Context, sourceKey, objectId string) e
 }
 
 // RecordUpdated journals an updated existing object. Updates are reported as
-// uncovered by compensation (design decision §13.3), never rolled back.
+// uncovered by compensation (a recorded design decision), never rolled back.
 func (s *Store) RecordUpdated(ctx context.Context, sourceKey, objectId string) error {
 	return s.recordEntry(ctx, sourceKey, objectId, modeMatched, actionUpdated)
 }
@@ -731,7 +730,7 @@ func (s *Store) RecordUpdated(ctx context.Context, sourceKey, objectId string) e
 //     later effect may downgrade it — deletion supersedes update-rollback
 //     for an object this run made;
 //   - rank is assigned at the row's FIRST write and never changes (it is a
-//     frozen field, §4.4, and compensation ordering depends on it);
+//     frozen field, and compensation ordering depends on it);
 //   - a DIFFERENT objectId under the same key is never silently dropped
 //     (Invariant 3): the displaced id is preserved under a synthetic key,
 //     keeping its own mode (a matched id must never become deletable), and
@@ -940,7 +939,7 @@ func (s *Store) RecordDerivedMatched(ctx context.Context, sourceKey, objectId st
 // later; see persist/journal.go). The FIRST record wins entirely: a
 // re-recorded file looks pre-existing only because the first upload indexed
 // it, so the first classification is the honest one. Primary and
-// displacement commit in one transaction (§9.1 item 2, as recordEntry).
+// displacement commit in one transaction (as recordEntry).
 func (s *Store) RecordFile(ctx context.Context, sourceKey, objectId string, preExisting bool) error {
 	rank := int(s.rank.Add(1))
 	var displacedId string
@@ -1173,7 +1172,7 @@ func (s *Store) seedRank(ctx context.Context) error {
 }
 
 // Flush forces a WAL checkpoint + fsync — the suspend path's durability
-// point (measured 4–9 ms, §8).
+// point (measured 4–9 ms).
 func (s *Store) Flush(ctx context.Context) error {
 	ctx, opDone := opCtx(ctx)
 	defer opDone()

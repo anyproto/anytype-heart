@@ -58,7 +58,7 @@ type typePropRaw struct {
 	Key    string `json:"key"`
 	Name   string `json:"name"`
 	Format string `json:"format"`
-	// OptionDefinition decodes both §2a forms (a bare name, or an object with
+	// OptionDefinition decodes both declared-vocabulary forms (a bare name, or an object with
 	// a color), so the prescan shares one decoder with anyblockjson rather
 	// than restating the union.
 	Options     []anyblockjson.OptionDefinition `json:"options"`
@@ -72,7 +72,7 @@ type prescanDoc struct {
 // ScanFormats reads every document's typeProperties once, up front, to
 // build a single batch-wide property-key -> format table. typeProperties is
 // the only place a custom property's format is declared in the AnyBlock JSON
-// format: plain §3 property values don't self-describe their format, so a
+// format: plain property values don't self-describe their format, so a
 // "person" object referencing "team" only resolves correctly if some type
 // document's typeProperties already declared "team"'s format — regardless of
 // which file the directory walk visits first.
@@ -99,7 +99,7 @@ func ScanFormats(files []string) (map[string]FormatInfo, error) {
 				// unrecognized or absent format: leave unresolved so the
 				// property value passes through raw (degrades the same way
 				// an unresolved format does everywhere else in this format,
-				// SPEC.md §3).
+				// SPEC.md).
 				continue
 			}
 			name := tp.Name

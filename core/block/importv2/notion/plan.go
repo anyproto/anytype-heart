@@ -24,7 +24,7 @@ type schemaFetch struct {
 	issue    *importv2.Issue
 }
 
-// planStructure is the plan phase (docs/ImportV2LLM.md §3): prefetch every
+// planStructure is the plan phase: prefetch every
 // pass-1 data-source schema, hand them all to the planner at once, sanitize
 // what comes back, and emit the plan's new types. Runs before the first
 // object is emitted; late-discovered databases are outside the plan and keep
@@ -32,7 +32,7 @@ type schemaFetch struct {
 func (c *Converter) planStructure(ctx context.Context, sink importv2.Sink) error {
 	// The ANALYZING stage, bracketed UNCONDITIONALLY (the markdown
 	// sibling does the same): schema prefetch plus the planner call is the
-	// 10-20 s of unexplained silence ImportV2LLM.md §3 specified reporting
+	// 10-20 s of unexplained silence that has to be reported
 	// and nothing ever did, and a client that saw the stage begin must
 	// always see it end — on the error paths too.
 	sink.Phase(importv2.PhaseAnalyzing)

@@ -311,7 +311,7 @@ func TestEffectLedger(t *testing.T) {
 	})
 
 	t.Run("an unknown entries mode is deletable to this reader", func(t *testing.T) {
-		// given — §4.4 frozen-core reader rule: a mode this binary does not
+		// given — the frozen-core reader rule: a mode this binary does not
 		// know (a phase-B "derived" read by an older binary) is treated as
 		// deletable; a future non-deletable mode must bump schemaVersion.
 		ctx := context.Background()

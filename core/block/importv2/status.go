@@ -12,7 +12,7 @@ import (
 // telemetry: it never affects control flow, carries no determinism
 // requirement, and the golden harness ignores it.
 
-// Phase is the coarse stage indicator. It is deliberately coarse: §15.3
+// Phase is the coarse stage indicator. It is deliberately coarse:
 // forbids a blended overall percentage (pass 2 runs at ~1.5 items/s against
 // Notion's pacer, pass 3 at persist speed), so the phase — not one bar — is
 // what tells a client which counters it is looking at.

@@ -3349,7 +3349,7 @@ message Rpc {
                 bool noProgress = 12;
                 bool isMigration = 13;
                 bool isNewSpace = 15;
-                // optional BYOK LLM enrichment of the imported structure (importv2, docs/ImportV2LLM.md);
+                // optional BYOK LLM enrichment of the imported structure (importv2);
                 // absent = feature off, import runs with built-in rules only
                 AIParams aiParams = 16;
 

@@ -88,12 +88,12 @@ type Converter struct {
 	schemaFetches  map[string]*schemaFetch
 
 	// skip marks entities a previous incarnation already recorded
-	// (ResumableConverter, DM spec §8.3); nil on a fresh run. recoverKeys
+	// (ResumableConverter); nil on a fresh run. recoverKeys
 	// are prior claims the spool never got (the seam's obligation half,
 	// review P0-A) — re-fetched directly after the drain, because the skip
 	// set suppresses re-walking the recorded parents that discovered them.
 	// planReuse is the matching plan wiring: record on a fresh run, preset
-	// on a resumed one (08-13 §6.3 — the plan is never recomputed).
+	// on a resumed one (the plan is never recomputed).
 	skip        func(sourceKey string) bool
 	recoverKeys []string
 	planReuse   schemaplan.Reuse
@@ -123,7 +123,7 @@ func WithContentSamples() Option {
 	return func(c *Converter) { c.includeSamples = true }
 }
 
-// WithPlanReuse wires the crawl-resume plan recording/reuse (08-13 §6.3).
+// WithPlanReuse wires the crawl-resume plan recording/reuse.
 func WithPlanReuse(reuse schemaplan.Reuse) Option {
 	return func(c *Converter) { c.planReuse = reuse }
 }
@@ -228,7 +228,7 @@ func (c *Converter) Convert(ctx context.Context, sink importv2.Sink) (importv2.R
 	// replay serves their recorded objects. Databases are deliberately NOT
 	// skipped above: rows converting in this incarnation need their property
 	// mappings in converter memory, and a schema re-fetch is ~1 request per
-	// data source (08-13 §6.3).
+	// data source.
 	pages := c.pages
 	if c.skip != nil {
 		pages = make([]Entity, 0, len(c.pages))
@@ -416,7 +416,7 @@ func (c *Converter) recoverOne(ctx context.Context, key string, sink importv2.Si
 	if claimGone(pageErr) && claimGone(sourceErr) && claimGone(dbErr) {
 		// POSITIVE not-found from the API, every shape: the source no longer
 		// offers the entity — deleted, or no longer shared with the
-		// integration. This is the honest drift report (08-13 §5.4).
+		// integration. This is the honest drift report.
 		sink.Issue(importv2.Warning(importv2.IssueDataLoss, key,
 			"Claimed by an interrupted import session, and no longer in Notion (deleted, or no longer shared with the integration); not imported"))
 		return nil

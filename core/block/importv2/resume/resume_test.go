@@ -85,7 +85,7 @@ func TestLoad(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("a cross-version dir refuses to load", func(t *testing.T) {
-		// given — §4.4, live since the v2 bump: only the frozen compensation
+		// given — live since the v2 bump: only the frozen compensation
 		// core is promised across versions, and Load rehydrates far more
 		// than the core. The belt behind the sweep's resumable() gate: any
 		// caller gets the refusal, and the dir routes to compensate-only.

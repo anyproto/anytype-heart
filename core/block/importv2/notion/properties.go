@@ -319,7 +319,7 @@ func relationFormatOf(propertyType string) (model.RelationFormat, bool) {
 		return model.RelationFormat_number, true
 	case "select":
 		// Pick-one cardinality preserved: status is anytype's single-select
-		// format (decision §13.8 — v1 collapsed select into tag and the
+		// format (a recorded decision — v1 collapsed select into tag and the
 		// choice was irreversibly multi-valued after import, GO-6345).
 		return model.RelationFormat_status, true
 	case "multi_select", "people":

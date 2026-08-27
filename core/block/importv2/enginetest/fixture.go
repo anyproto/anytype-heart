@@ -438,7 +438,7 @@ func (fx *Fixture) durableDeps(t *testing.T, store *runstore.Store, req importv2
 }
 
 // planRecorder mirrors the adapter's: the sanitized plan lands in the run
-// kv before any emission, so a crawl resume can reuse it (08-13 §6.3).
+// kv before any emission, so a crawl resume can reuse it.
 func planRecorder(t *testing.T, store *runstore.Store) func(schemaplan.Plan) error {
 	t.Helper()
 	return func(plan schemaplan.Plan) error {
