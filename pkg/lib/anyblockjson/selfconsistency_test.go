@@ -1,9 +1,10 @@
 package anyblockjson
 
-// flat_review_test.go holds the regression tests for the FLAT_REVIEW.md fix
-// pass: Marshal never emits output its own Validate rejects (findings 1, 3),
-// Validate and Unmarshal agree on every input (finding 2), and the coverage
-// gaps of findings 4–8.
+// Self-consistency of the codec: Marshal never emits output its own Validate
+// rejects, and Validate and Unmarshal agree on every input — a document one
+// accepts the other must not reject. The cases below are the ones where they
+// used to disagree: tables nested in cells, float indent forms, the depth
+// bound, and leaf types that must not keep children.
 
 import (
 	"encoding/json"

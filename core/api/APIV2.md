@@ -6,8 +6,8 @@ Evidence base: `docs/AgentApiV2Research.md` (+ Addendum A) and
 `pkg/lib/anyblockjson/FLAT.md` — decisions cite sections there instead of
 re-arguing. v1 (`/v1`) stays untouched for the deprecation window.
 
-Changes from v0.2: applied the small-model (3–4B) review
-(`core/api/APIV2_REVIEW_SMALLMODEL.md`). The small-model contract is now a
+Changes from v0.2: applied the small-model (3–4B) review. The small-model
+contract is now a
 first-class **task-tool wrapper** (§7) — a curated ~9-tool layer over the
 full REST API, identical to the Phase-5 CLI verb-set, exposed as CLI verbs
 and an on-device function-calling/MCP manifest. It picks agent-friendly
@@ -18,10 +18,9 @@ structural findings. Consequently `replaceText` and `setCell` become
 becomes a launch dependency, and the primary worked examples switch to
 single-op / single-filter forms. See §7 and the reweighted §2/§3/§4.
 
-Changes from v0.1 (carried): the 3-lens review (`core/api/APIV2_REVIEW.md`,
-R1–R15) — block ids full on edit reads (R1); `revision` → advisory `etag`
-(R2); `inside` indent + `updateBlock` (R3/R4); post-op validity normative
-(R5); build-items marked (R6); `type` everywhere (R7); C13 strict schemas
+Changes from v0.1 (carried): block ids full on edit reads; `revision` →
+advisory `etag`; `inside` indent + `updateBlock`; post-op validity
+normative; build-items marked; `type` everywhere; C13 strict schemas
 (R8); `/validate` split (R9); sets path (R10); files/spaces/members/archive
 (R11); read matrix (R12); benchmarks (R13); op gaps (R14); errors (R15).
 
@@ -399,8 +398,7 @@ produced has been reviewed as "actionable for a model" (C6).
 The full REST surface (§1–§6) is for large models and programmatic clients.
 **Small models (3–4B on-device: Gemma 3n E4B and peers) never touch it
 directly** — they drive a curated, task-shaped **tool-calling wrapper** over
-the same primitives. This is the small-model review's conclusion
-(`APIV2_REVIEW_SMALLMODEL.md`): a "mode" threaded through 30 endpoints leaves
+the same primitives. The reason: a "mode" threaded through 30 endpoints leaves
 the surface's sharp edges reaching a 3B; a wrapper both cuts the tool-count
 cliff (>15 tools → 0–49%) and lets each tool pick a *channel* the raw REST
 body can't. It is not the "ugly MCP over legacy" anti-pattern — the
