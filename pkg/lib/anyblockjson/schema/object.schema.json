@@ -1,0 +1,1859 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.anytype.io/anyblock/1/object.schema.json",
+  "title": "AnyBlock object",
+  "description": "A single Anytype object in AnyBlock JSON interchange format, version 1",
+  "x-app": "Anytype",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Which of the format's three grammars this document follows — an object document, a bundle index, or a property dictionary. OPTIONAL and DECORATIVE for validity: `version` alone gates the format, so a stale or invented URL here never makes a document invalid (a bundle written against a later schema still reads). What it does do is DISPATCH: a reader handed a file with no filename to go by uses this to pick the grammar, matching on the trailing `object|index|properties.schema.json` and ignoring the version segment. Without it a reader falls back to the document's shape, which can only tell the grammars apart when the document happens to carry a member unique to one. Every document this format writes carries it, and a hand-written one is easier for a reader to place if it does too."
+    },
+    "version": {
+      "const": 1
+    },
+    "kind": {
+      "enum": [
+        "account_old",
+        "page",
+        "profile_page",
+        "home",
+        "archive",
+        "widget",
+        "file",
+        "template",
+        "bundled_template",
+        "bundled_property",
+        "sub_object",
+        "bundled_object_type",
+        "anytype_profile",
+        "date",
+        "space_settings",
+        "property",
+        "object_type",
+        "property_option",
+        "space_view",
+        "identity",
+        "participant",
+        "missing_object",
+        "file_object",
+        "notification",
+        "devices",
+        "chat_object",
+        "chat",
+        "account",
+        "discussion",
+        "tech_space",
+        "tech_space_virtual"
+      ]
+    },
+    "id": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "minLength": 1
+    },
+    "template_for": {
+      "type": "string",
+      "minLength": 1
+    },
+    "internal_key": {
+      "description": "The STORED identity key of a definition document (a type, a property, a property option) — the uniqueKey's internal part, written verbatim. This is an id the app MINTS, not something an author writes: for a custom property or type it is a bson id like 6a83296f61fab2265263ae34, which no author can produce, and for a bundled one it is the bundled camelCase key (dueDate). Export writes it for fidelity; an authored definition document may omit it, and the import wiring then mints a fresh internal key exactly as the app does when a user creates one. It is deliberately NOT a spelling: unlike every key slot in §3 it is never translated through a legend or the bundled table, so it does not match the snake_case label documents use (that label is the `property` member of a property definition). Charset is a deny rule, not an allowlist — a property option's stored key is built from its NAME, so keys like completion_status_Not Started are real stored keys.",
+      "type": "string",
+      "pattern": "^[^\u0000-\u001f]+$",
+      "maxLength": 255
+    },
+    "property_settings": {
+      "description": "Only on property documents (kind \"property\" or \"bundled_property\"), where it is REQUIRED: the definition of the property this document IS — one propertyDefinition (§2d, §2e). Three members travel today, each mirroring stored presence EXACTLY, value included: `format` (required — a §3 format NAME, the same vocabulary type_properties[].format speaks, never a raw enum number; stands for the stored relationFormat key, which `properties` refuses), `include_time` (present exactly when the stored relationFormatIncludeTime key is; meaningful on format \"date\" only, and a stored null travels as null), and `object_types` (present exactly when the stored relationFormatObjectTypes key is; the target type keys in priority order — a type-key slot exactly like type_properties[].object_types, inverted through the type_internal_keys legend, meaningful on \"objects\"/\"files\" only). The members refused with `false` have a home already: `internal_key` is the envelope's (and `property`, the spelling, is derived from it — a property document never states its own spelling), `name` and `description` are properties', `options` are property_option documents, and max_count/readonly/default_value still travel in `properties` under their stored keys until the dictionary lifts them — admitting a second spelling of any of them here would be the §15 #14 disease this group exists to end.",
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "#/$defs/propertyDefinition"
+        }
+      ],
+      "properties": {
+        "property": false,
+        "internal_key": false,
+        "name": false,
+        "options": false,
+        "description": false,
+        "max_count": false,
+        "readonly": false,
+        "default_value": false
+      },
+      "required": [
+        "format"
+      ],
+      "unevaluatedProperties": false
+    },
+    "icon": {
+      "$ref": "#/$defs/icon"
+    },
+    "cover": {
+      "$ref": "#/$defs/cover"
+    },
+    "properties": {
+      "$ref": "#/$defs/propertyMap"
+    },
+    "type_settings": {
+      "description": "Only on type documents (kind \"object_type\" or \"bundled_object_type\"): everything that defines the TYPE, in one gated subtree (§2a). `layout` is the recommended layout of objects of this type (a layout name; a stored number outside the vocabulary passes through raw). `api_key` is the type's public API key — NOT a slug: of 1,326 corpus type documents with one, it differs from the document's own spelling in 247 (the `property` type's api key is `relation`, the word the public API kept when the format renamed the concept) — calling it a slug would imply it is the term used elsewhere in the document, which for those 247 it is not. `plural_name` is the plural display name. `default_template` is the object id of the template new objects of this type start from. `default_view` is the default view type (a §6.2 view-type name; a stored number outside the vocabulary passes through raw). `property_definitions` is the type's property list — one propertyDefinition + `section` per entry (§2e); it lived at the document root as `type_properties` until v0.32, and the word is `property_definitions` rather than `properties` because the document already uses that word for property VALUES at the root — one word per concept.",
+      "type": "object",
+      "properties": {
+        "layout": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/objectLayout"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "description": "The layout instances of this type get. Stated as a name; see $defs/objectLayout."
+        },
+        "api_key": {
+          "type": "string"
+        },
+        "plural_name": {
+          "type": "string"
+        },
+        "default_template": {
+          "$ref": "#/$defs/objectRef"
+        },
+        "default_view": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/viewType"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "description": "How this type's own view renders by default. Stated as a name; see $defs/viewType."
+        },
+        "property_definitions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/typeProperty"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "property_internal_keys": {
+      "type": "object",
+      "description": "Legend: the stored property key each slug in this document names (§3). Present only for keys the bundled table cannot invert; a reader consults it before its own vocabulary. A value is a stored key and obeys the same writable-key rule as a property name (§3).",
+      "propertyNames": {
+        "pattern": "^[^\u0000-\u001f]+$",
+        "maxLength": 128
+      },
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 128,
+        "pattern": "^[^\u0000-\u001f]+$"
+      }
+    },
+    "type_internal_keys": {
+      "type": "object",
+      "description": "Legend: the stored type key each type slug in this document names (§3). Same rule as property_internal_keys, on a legend of the type namespace's own: present only for spellings the bundled table cannot invert; a reader consults it before its own vocabulary. A value is a stored type key and obeys the writable-key rule (§3).",
+      "propertyNames": {
+        "pattern": "^[^\u0000-\u001f]+$",
+        "maxLength": 128
+      },
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 128,
+        "pattern": "^[^\u0000-\u001f]+$"
+      }
+    },
+    "option_ids": {
+      "type": "object",
+      "description": "Legend: the id of the option each select/multi_select NAME in this document stands for (§3, §9a). Nested: an outer key is a property spelling as this document writes it, an inner key is an option name exactly as the value slot spells it, and the value is the full option id. Written unconditionally wherever export spells an option by name; absent from an id-less export. Read as a HINT, not an address: an id is honoured only where the target space still serves it as a live option of that property, and otherwise the name resolves as it would without the legend. An outer key naming a property the document never spells is reported as a warning — the entry can never be consulted.",
+      "propertyNames": {
+        "pattern": "^[^\u0000-\u001f]+$",
+        "maxLength": 128
+      },
+      "additionalProperties": {
+        "type": "object",
+        "propertyNames": {
+          "minLength": 1
+        },
+        "additionalProperties": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "blocks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/block"
+      }
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "store": {
+      "type": "object",
+      "x-output-only": true
+    },
+    "root": {
+      "type": "object",
+      "x-output-only": true
+    }
+  },
+  "required": [
+    "version"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "property",
+              "bundled_property"
+            ]
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "then": {
+        "required": [
+          "property_settings"
+        ]
+      },
+      "else": {
+        "properties": {
+          "property_settings": false
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "object_type",
+              "bundled_object_type"
+            ]
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "then": {},
+      "else": {
+        "properties": {
+          "type_settings": false
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "cardStyle": {
+      "enum": [
+        "text",
+        "card",
+        "inline"
+      ],
+      "description": "How a link renders: a plain text row (the default), a card, or inline. One definition for every surface that shows a link — the link block and a bundle index's widgets both $ref it, so they cannot disagree."
+    },
+    "iconSize": {
+      "enum": [
+        "none",
+        "small",
+        "medium"
+      ],
+      "description": "The icon size on a link's card. Defaults to none."
+    },
+    "linkDescription": {
+      "enum": [
+        "none",
+        "manual",
+        "content"
+      ],
+      "description": "What the link's card shows under the title: nothing (the default), the manually written description, or the target's own content."
+    },
+    "widgetLayout": {
+      "enum": [
+        "link",
+        "tree",
+        "list",
+        "compact_list",
+        "view"
+      ],
+      "description": "How a sidebar widget renders: `link` is a single row (the default), `tree` expands children, `list` and `compact_list` show contents, `view` renders a type's or set's own view. One definition for the widget block and a bundle index's widgets."
+    },
+    "propertyMap": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[^\u0000-\u001f]+$",
+        "maxLength": 128
+      },
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": [
+              "string",
+              "number",
+              "boolean",
+              "null"
+            ]
+          },
+          {
+            "type": "array"
+          },
+          {
+            "type": "object"
+          }
+        ]
+      }
+    },
+    "objectRef": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "pattern": "^[^/]+$",
+      "description": "The id of an object in this space, or a bundle-local slug. Never a URL and never a filesystem path — this format does no I/O, so it can only name something the store already holds. To supply an image by URL, use a layer that can fetch it (the API): it uploads the image, mints the file object and writes that object's id here. ONE SLOT, TWO ADDRESS SPACES, and a reader has to tell them apart: an icon's `file` may hold a raw CONTENT cid instead of an object id, because the app writes one there — a participant's avatar and a space invite's icon are stored as the cid of the image itself (core/acl/aclservice.go), not as an object. 992 of 12,378 file icons in a 77-space export are of that kind. They are told apart by CID codec: an OBJECT id is dag-cbor and begins `bafyrei`, a content cid is raw or dag-pb and begins `bafybei`. A content cid resolves against the blob store, never against the bundle, so a reader that dereferences it as an object id finds nothing — not because the object is missing but because it was never an object."
+    },
+    "iconColor": {
+      "description": "One of the ten palette colours — the same palette select options use (§2a) — or, for a stored value the palette has no name for, its raw number.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/optionColor"
+        },
+        {
+          "type": "integer",
+          "minimum": 1
+        }
+      ]
+    },
+    "opaqueName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[^/]+$",
+      "description": "A name from a vocabulary this format does not enumerate (the app's icon, cover-colour and gradient sets). Validation checks the shape only — a name outside the app's set is accepted here and shows as no icon."
+    },
+    "iconVariants": {
+      "type": "object",
+      "description": "The icon variant machinery, shared by every icon slot. It carries the per-variant if/then rules but NOT the set of variant names: each slot states its own, so a value outside a slot's set fails exactly one enum and the reader is told one thing.",
+      "required": [
+        "format"
+      ],
+      "properties": {
+        "format": {
+          "description": "Which kind of icon this is: an emoji, an image object in this space, a built-in named icon, or a bare colour."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "format": {
+                "const": "emoji"
+              }
+            },
+            "required": [
+              "format"
+            ]
+          },
+          "then": {
+            "required": [
+              "format",
+              "emoji"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "format": {},
+              "emoji": {
+                "type": "string",
+                "minLength": 1
+              },
+              "color": {
+                "$ref": "#/$defs/iconColor"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "format": {
+                "const": "file"
+              }
+            },
+            "required": [
+              "format"
+            ]
+          },
+          "then": {
+            "required": [
+              "format",
+              "file"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "format": {},
+              "file": {
+                "$ref": "#/$defs/objectRef",
+                "description": "The image. Normally the id of a file object in this bundle; for a participant avatar or an invite icon it is the raw content cid of the image instead — see $defs/objectRef for how the two are told apart."
+              },
+              "color": {
+                "$ref": "#/$defs/iconColor"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "format": {
+                "const": "icon"
+              }
+            },
+            "required": [
+              "format"
+            ]
+          },
+          "then": {
+            "required": [
+              "format",
+              "name"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "format": {},
+              "name": {
+                "$ref": "#/$defs/opaqueName"
+              },
+              "color": {
+                "$ref": "#/$defs/iconColor"
+              },
+              "emoji": {
+                "type": "string",
+                "minLength": 1,
+                "x-output-only": true,
+                "description": "A legacy emoji superseded by this named icon, carried so export loses nothing (§2b). Export writes it; a document that supplies it is not choosing an icon — `format` already did."
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "format": {
+                "const": "color"
+              }
+            },
+            "required": [
+              "format"
+            ]
+          },
+          "then": {
+            "required": [
+              "format",
+              "color"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "format": {},
+              "color": {
+                "$ref": "#/$defs/iconColor"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "icon": {
+      "description": "The object's icon: ONE of four kinds, chosen by `format` (§2b). Replaces the flat iconEmoji/iconImage/iconName/iconOption keys, which are refused in `properties`.",
+      "allOf": [
+        {
+          "$ref": "#/$defs/iconVariants"
+        }
+      ],
+      "properties": {
+        "format": {
+          "enum": [
+            "emoji",
+            "file",
+            "icon",
+            "color"
+          ],
+          "description": "Which kind of icon this is: an emoji, an image object in this space, a built-in named icon, or a bare colour."
+        }
+      }
+    },
+    "plainIcon": {
+      "description": "An icon restricted to the two kinds a callout block (§5.2) and a bundle index (§2c) can hold: an emoji, or an image object in this space. The same shape as the object icon, minus the two variants only an object has.",
+      "allOf": [
+        {
+          "$ref": "#/$defs/iconVariants"
+        }
+      ],
+      "properties": {
+        "format": {
+          "enum": [
+            "emoji",
+            "file"
+          ]
+        }
+      }
+    },
+    "cover": {
+      "type": "object",
+      "description": "The object's cover: ONE of three kinds, chosen by `format` (§2b). Replaces the flat coverId/coverType/coverScale/coverX/coverY keys, which are refused in `properties`. `cover_id` alone cannot be read: the same string names a colour under one type and a gradient under another.",
+      "required": [
+        "format"
+      ],
+      "properties": {
+        "format": {
+          "enum": [
+            "image",
+            "color",
+            "gradient"
+          ],
+          "description": "Which kind of cover this is: an image object in this space, a flat colour, or a gradient."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "format": {
+                "const": "image"
+              }
+            },
+            "required": [
+              "format"
+            ]
+          },
+          "then": {
+            "required": [
+              "format",
+              "file"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "format": {},
+              "file": {
+                "$ref": "#/$defs/objectRef"
+              },
+              "source": {
+                "enum": [
+                  "unsplash",
+                  "prebuilt"
+                ],
+                "x-output-only": true,
+                "description": "Where this image came from (§2b). Export writes it; a generator omits it — an uploaded image has no provenance to claim."
+              },
+              "scale": {
+                "type": "number"
+              },
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "format": {
+                "const": "color"
+              }
+            },
+            "required": [
+              "format"
+            ]
+          },
+          "then": {
+            "required": [
+              "format",
+              "color"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "format": {},
+              "color": {
+                "$ref": "#/$defs/opaqueName"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "format": {
+                "const": "gradient"
+              }
+            },
+            "required": [
+              "format"
+            ]
+          },
+          "then": {
+            "required": [
+              "format",
+              "gradient"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "format": {},
+              "gradient": {
+                "$ref": "#/$defs/opaqueName"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "blockId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{1,64}$"
+    },
+    "tableInnerId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_]{1,64}$"
+    },
+    "color": {
+      "type": "string"
+    },
+    "block": {
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/$defs/blockCore"
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "table"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "columns": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/tableColumn"
+                }
+              },
+              "rows": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/tableRow"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "cellBlock": {
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/$defs/blockCore"
+        }
+      ],
+      "properties": {
+        "type": {
+          "not": {
+            "const": "table"
+          }
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "blockCore": {
+      "properties": {
+        "indent": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 32
+        },
+        "id": {
+          "$ref": "#/$defs/blockId"
+        },
+        "type": {
+          "enum": [
+            "paragraph",
+            "heading_1",
+            "heading_2",
+            "heading_3",
+            "heading_4",
+            "header_4",
+            "quote",
+            "code",
+            "title",
+            "description",
+            "checkbox",
+            "bulleted_list_item",
+            "numbered_list_item",
+            "toggle",
+            "callout",
+            "toggle_heading_1",
+            "toggle_heading_2",
+            "toggle_heading_3",
+            "file",
+            "image",
+            "video",
+            "audio",
+            "pdf",
+            "bookmark",
+            "link",
+            "divider",
+            "row",
+            "column",
+            "group",
+            "table",
+            "embed",
+            "equation",
+            "table_of_contents",
+            "property",
+            "dataview",
+            "widget",
+            "chat",
+            "featured_properties",
+            "icon"
+          ]
+        },
+        "align": {
+          "$ref": "#/$defs/blockAlign"
+        },
+        "vertical_align": {
+          "enum": [
+            "top",
+            "middle",
+            "bottom"
+          ]
+        },
+        "background_color": {
+          "type": "string"
+        },
+        "fields": {
+          "type": "object",
+          "x-output-only": true
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": [
+                  "paragraph",
+                  "quote",
+                  "toggle",
+                  "bulleted_list_item",
+                  "numbered_list_item",
+                  "toggle_heading_1",
+                  "toggle_heading_2",
+                  "toggle_heading_3",
+                  "title",
+                  "description"
+                ]
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "color": {
+                "$ref": "#/$defs/color"
+              },
+              "text": {
+                "type": "string",
+                "description": "The block's text. Formatting is expressed INLINE, inside this string — this format has no `marks` array and no offsets (§8). A CommonMark-inline subset plus a small tag whitelist, and nothing else:\n  `**bold**`, `*italic*`, `~~strikethrough~~`, `` `code` ``\n  `[text](https://example.com)` — an external link\n  `[text](anytype://object?objectId=<id>)` — a link to an object in this space\n  `<mention object_id=\"<id>\">text</mention>` — a decorated object reference (icon + name)\n  `<u>underline</u>`, `<font color=\"red\">text</font>`, `<font background=\"yellow\">text</font>`\nEverything else is literal text: no block syntax, no images, no autolinks, no HTML beyond those tags. `\\n` is a soft line break within the block. A literal `*`, `` ` ``, `[`, `]`, `~`, `<` or `\\` in prose is backslash-escaped."
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": [
+                  "heading_1",
+                  "heading_2",
+                  "heading_3",
+                  "heading_4",
+                  "header_4"
+                ]
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "color": {
+                "$ref": "#/$defs/color"
+              },
+              "text": {
+                "type": "string",
+                "description": "The block's text. Formatting is expressed INLINE, inside this string — this format has no `marks` array and no offsets (§8). A CommonMark-inline subset plus a small tag whitelist, and nothing else:\n  `**bold**`, `*italic*`, `~~strikethrough~~`, `` `code` ``\n  `[text](https://example.com)` — an external link\n  `[text](anytype://object?objectId=<id>)` — a link to an object in this space\n  `<mention object_id=\"<id>\">text</mention>` — a decorated object reference (icon + name)\n  `<u>underline</u>`, `<font color=\"red\">text</font>`, `<font background=\"yellow\">text</font>`\nEverything else is literal text: no block syntax, no images, no autolinks, no HTML beyond those tags. `\\n` is a soft line break within the block. A literal `*`, `` ` ``, `[`, `]`, `~`, `<` or `\\` in prose is backslash-escaped."
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "checkbox"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "checked": {
+                "type": "boolean"
+              },
+              "color": {
+                "$ref": "#/$defs/color"
+              },
+              "text": {
+                "type": "string",
+                "description": "The block's text. Formatting is expressed INLINE, inside this string — this format has no `marks` array and no offsets (§8). A CommonMark-inline subset plus a small tag whitelist, and nothing else:\n  `**bold**`, `*italic*`, `~~strikethrough~~`, `` `code` ``\n  `[text](https://example.com)` — an external link\n  `[text](anytype://object?objectId=<id>)` — a link to an object in this space\n  `<mention object_id=\"<id>\">text</mention>` — a decorated object reference (icon + name)\n  `<u>underline</u>`, `<font color=\"red\">text</font>`, `<font background=\"yellow\">text</font>`\nEverything else is literal text: no block syntax, no images, no autolinks, no HTML beyond those tags. `\\n` is a soft line break within the block. A literal `*`, `` ` ``, `[`, `]`, `~`, `<` or `\\` in prose is backslash-escaped."
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "code"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "language": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string",
+                "description": "The block's text. Formatting is expressed INLINE, inside this string — this format has no `marks` array and no offsets (§8). A CommonMark-inline subset plus a small tag whitelist, and nothing else:\n  `**bold**`, `*italic*`, `~~strikethrough~~`, `` `code` ``\n  `[text](https://example.com)` — an external link\n  `[text](anytype://object?objectId=<id>)` — a link to an object in this space\n  `<mention object_id=\"<id>\">text</mention>` — a decorated object reference (icon + name)\n  `<u>underline</u>`, `<font color=\"red\">text</font>`, `<font background=\"yellow\">text</font>`\nEverything else is literal text: no block syntax, no images, no autolinks, no HTML beyond those tags. `\\n` is a soft line break within the block. A literal `*`, `` ` ``, `[`, `]`, `~`, `<` or `\\` in prose is backslash-escaped."
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "callout"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "icon": {
+                "$ref": "#/$defs/plainIcon"
+              },
+              "color": {
+                "$ref": "#/$defs/color"
+              },
+              "text": {
+                "type": "string",
+                "description": "The block's text. Formatting is expressed INLINE, inside this string — this format has no `marks` array and no offsets (§8). A CommonMark-inline subset plus a small tag whitelist, and nothing else:\n  `**bold**`, `*italic*`, `~~strikethrough~~`, `` `code` ``\n  `[text](https://example.com)` — an external link\n  `[text](anytype://object?objectId=<id>)` — a link to an object in this space\n  `<mention object_id=\"<id>\">text</mention>` — a decorated object reference (icon + name)\n  `<u>underline</u>`, `<font color=\"red\">text</font>`, `<font background=\"yellow\">text</font>`\nEverything else is literal text: no block syntax, no images, no autolinks, no HTML beyond those tags. `\\n` is a soft line break within the block. A literal `*`, `` ` ``, `[`, `]`, `~`, `<` or `\\` in prose is backslash-escaped."
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": [
+                  "embed",
+                  "equation"
+                ]
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "processor": {
+                "enum": [
+                  "latex",
+                  "mermaid",
+                  "chart",
+                  "youtube",
+                  "vimeo",
+                  "soundcloud",
+                  "google_maps",
+                  "miro",
+                  "figma",
+                  "twitter",
+                  "open_street_map",
+                  "reddit",
+                  "facebook",
+                  "instagram",
+                  "telegram",
+                  "github_gist",
+                  "codepen",
+                  "bilibili",
+                  "excalidraw",
+                  "kroki",
+                  "graphviz",
+                  "sketchfab",
+                  "image",
+                  "drawio",
+                  "spotify"
+                ]
+              },
+              "text": {
+                "type": "string",
+                "description": "The block's text. Formatting is expressed INLINE, inside this string — this format has no `marks` array and no offsets (§8). A CommonMark-inline subset plus a small tag whitelist, and nothing else:\n  `**bold**`, `*italic*`, `~~strikethrough~~`, `` `code` ``\n  `[text](https://example.com)` — an external link\n  `[text](anytype://object?objectId=<id>)` — a link to an object in this space\n  `<mention object_id=\"<id>\">text</mention>` — a decorated object reference (icon + name)\n  `<u>underline</u>`, `<font color=\"red\">text</font>`, `<font background=\"yellow\">text</font>`\nEverything else is literal text: no block syntax, no images, no autolinks, no HTML beyond those tags. `\\n` is a soft line break within the block. A literal `*`, `` ` ``, `[`, `]`, `~`, `<` or `\\` in prose is backslash-escaped."
+              },
+              "url": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": [
+                  "file",
+                  "image",
+                  "video",
+                  "audio",
+                  "pdf"
+                ]
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "object_id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "mime_type": {
+                "type": "string"
+              },
+              "size": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "style": {
+                "enum": [
+                  "auto",
+                  "link",
+                  "embed"
+                ]
+              },
+              "added_at": {
+                "type": "string"
+              },
+              "hash": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "bookmark"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "url": {
+                "type": "string"
+              },
+              "object_id": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "link"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "object_id": {
+                "type": "string"
+              },
+              "card_style": {
+                "$ref": "#/$defs/cardStyle"
+              },
+              "icon_size": {
+                "$ref": "#/$defs/iconSize"
+              },
+              "description": {
+                "$ref": "#/$defs/linkDescription"
+              },
+              "properties": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "divider"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "style": {
+                "enum": [
+                  "line",
+                  "dots"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "property"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "property": {
+                "type": "string",
+                "minLength": 1,
+                "description": "The property this block renders inline, by its document-facing spelling (`due_date`) — the same member name, and the same spelling, every other slot that names one property uses (a dataview's `properties[]` entry, a view's `columns[]`/`sorts[]`/`filters[]`). Spelled `key` before v0.41."
+              }
+            },
+            "required": [
+              "property"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "dataview"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "object_id": {
+                "type": "string"
+              },
+              "is_collection": {
+                "type": "boolean"
+              },
+              "source": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "x-output-only": true
+              },
+              "properties": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/dataviewProperty"
+                }
+              },
+              "views": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/view"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "widget"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "layout": {
+                "$ref": "#/$defs/widgetLayout"
+              },
+              "limit": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2147483647
+              },
+              "view_id": {
+                "type": "string"
+              },
+              "auto_added": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "icon"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "name": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "tableColumn": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/tableInnerId"
+        },
+        "width": {
+          "type": "number"
+        },
+        "fields": {
+          "type": "object",
+          "x-output-only": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "tableRow": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/tableInnerId"
+        },
+        "is_header": {
+          "type": "boolean"
+        },
+        "cells": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/tableCell"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "tableCell": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/cellBlock"
+            }
+          ],
+          "properties": {
+            "id": false,
+            "indent": false
+          }
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/cellBlock"
+          },
+          "minItems": 1
+        }
+      ]
+    },
+    "propertyFormat": {
+      "enum": [
+        "text",
+        "number",
+        "select",
+        "multi_select",
+        "date",
+        "files",
+        "checkbox",
+        "url",
+        "email",
+        "phone",
+        "emoji",
+        "objects",
+        "properties",
+        "map"
+      ],
+      "description": "A property format, by NAME (§3): the public REST API vocabulary, plus names for the internal formats a store really carries — emoji, objects, properties, and map, which 72 production property documents hold (the bundled templatePlaceholders property). One list, referenced from every slot that states a format, so the three slots cannot drift apart. Includes `map`, which only a property document's own property_settings may state: it is the format of hidden system properties (templatePlaceholders is the only carrier — 72 production documents) and no authored property may declare it, so type_properties[] and a dataview's properties[] reference authorableFormat instead."
+    },
+    "authorableFormat": {
+      "enum": [
+        "text",
+        "number",
+        "select",
+        "multi_select",
+        "date",
+        "files",
+        "checkbox",
+        "url",
+        "email",
+        "phone",
+        "emoji",
+        "objects",
+        "properties"
+      ],
+      "description": "A property format an author may DECLARE (§3) — propertyFormat without `map`. `map` names the shape of a hidden system property's value, never something a type or a view declares: it occurs on 0 of 19,862 type_properties entries and 0 of 28,034 dataview property entries in a 38,061-document corpus, and its only carrier is the bundled, hidden templatePlaceholders. Splitting the vocabulary keeps a property document able to state what it is (§2d) while keeping the authorable slots — the ones a model writes, and the ones a generated per-type schema is built from — unable to invent one."
+    },
+    "propertyDefinition": {
+      "type": "object",
+      "description": "ONE property, described in one shape, wherever this format describes a property (§3.6). Exactly three homes reference it — a dictionary entry, a type document's property-definition list, and a property document's property_settings — and no fourth spelling of the concept may exist: a property document and a type's property list once described the same property in two vocabularies, and the raw one was a measured live trap (§15 #14). The shape states no `required` of its own and stays open: each home adds its own requirements, narrows what it must (an authored home may not declare `map`), refuses the members another surface already owns, and closes itself with unevaluatedProperties. The property's identity splits into two members on purpose: `property` is the document-facing spelling (a label, translated like every key slot), `internal_key` the stored id the app mints (export fidelity, never required from an author) — the word `key` used to carry both meanings and no longer exists in this shape.",
+      "properties": {
+        "property": {
+          "description": "The property's document-facing SPELLING (§3) — `due_date`, the same snake_case label every other key slot writes, inverted through the document's own legend and the vocabulary in force. A spelling, never a stored id: the stored id is `internal_key`.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[^\u0000-\u001f]+$"
+        },
+        "internal_key": {
+          "description": "The property's STORED internal key, written by export for fidelity: the bson id the app minted for a custom property (`6a83296f61fab2265263ae34`), the camelCase key of a bundled one (`dueDate`). An author does not write this — an author cannot produce a correct one, and does not need to: identity is `property`, or `internal_key`, or a `name` the spelling derives from, and when a custom property states no internal key the import wiring MINTS a fresh one, exactly as the app does when a user creates a property. Taken verbatim on the way in — a stored key is always its own address (§3).",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[^\u0000-\u001f]+$"
+        },
+        "name": {
+          "type": "string"
+        },
+        "format": {
+          "$ref": "#/$defs/propertyFormat"
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/vocabularyOption"
+          }
+        },
+        "object_types": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "description": {
+          "type": "string"
+        },
+        "include_time": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "max_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "default_value": {}
+      }
+    },
+    "typeProperty": {
+      "type": "object",
+      "description": "One entry of a type document's property-definition list (§2a): a propertyDefinition plus `section`, the ONE field that belongs to the type rather than the property — of 1,614 properties declared by 2+ types within one space, zero differ in anything else. The shared members are referenced, never restated; this layer only narrows: `format` to the authorable vocabulary, `object_types` to a real list (a type declares targets or omits the member — only a property document's stored value can hold a null). An entry must identify the property it declares: state a `property` (the document-facing spelling), or an `internal_key` (the stored id), or a `name` the spelling is derived from. A NAME ALONE IS ENOUGH — `{\"name\": \"Cooking Time\", \"format\": \"number\"}` declares a property spelled `cooking_time`. Prefer `property` or `name` when authoring: `internal_key` is an id the app mints (every exported example carries one like `6a83296f61fab2265263ae34`, because export writes the keys a real space holds), an author has no space to draw one from, and inventing one is never right — when a custom property states none, the import wiring mints a fresh internal key exactly as the app does when a user creates one. A derived spelling runs through the same resolution as a written one, so a property named \"Due Date\" lands on the bundled `due_date` instead of minting a lookalike beside it.",
+      "allOf": [
+        {
+          "$ref": "#/$defs/propertyDefinition"
+        }
+      ],
+      "properties": {
+        "format": {
+          "$ref": "#/$defs/authorableFormat"
+        },
+        "object_types": {
+          "type": "array"
+        },
+        "section": {
+          "enum": [
+            "featured",
+            "hidden",
+            "file"
+          ]
+        }
+      },
+      "unevaluatedProperties": false,
+      "anyOf": [
+        {
+          "required": [
+            "property"
+          ]
+        },
+        {
+          "required": [
+            "internal_key"
+          ]
+        },
+        {
+          "required": [
+            "name"
+          ]
+        }
+      ]
+    },
+    "vocabularyOption": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "color": {
+              "$ref": "#/$defs/optionColor"
+            },
+            "internal_key": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "description": "The option's stored key — a minted id, so an AUTHOR never writes one and export writes it only where it exists. It is the one thing about an option that is derivable from nothing: the name and colour say what the option MEANS, the array position says where it sits, and the option's api key is regenerated from the name by the app's own rule (measured: every one of 514 real option api keys is reproduced by that rule, so none needs to travel). Carrying the internal key is what lets a bundle state a vocabulary completely rather than only describe it."
+            }
+          },
+          "required": [
+            "name"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "optionColor": {
+      "enum": [
+        "grey",
+        "yellow",
+        "orange",
+        "red",
+        "pink",
+        "purple",
+        "blue",
+        "ice",
+        "teal",
+        "lime"
+      ]
+    },
+    "dataviewProperty": {
+      "type": "object",
+      "description": "One entry of a dataview's `properties[]`: a property available to the block's views, with its format (§6.2). Declares the property; the views then refer to it — a column, sort or filter naming a property this list does not carry is still legal (the §3 chain answers its format).",
+      "properties": {
+        "property": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The property this entry declares, by its document-facing spelling (`due_date`) — the same member name, and the same spelling, the view's `columns[]`, `sorts[]` and `filters[]` beside it use to refer to it. Spelled `key` before v0.41, twelve lines from siblings that spelled `property`, and each was a schema error in the other's position."
+        },
+        "format": {
+          "$ref": "#/$defs/authorableFormat"
+        }
+      },
+      "required": [
+        "property"
+      ],
+      "additionalProperties": false
+    },
+    "view": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/$defs/viewType"
+        },
+        "name": {
+          "type": "string"
+        },
+        "group_by": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cover_property": {
+          "type": "string",
+          "minLength": 1
+        },
+        "end_property": {
+          "type": "string",
+          "minLength": 1
+        },
+        "hide_icon": {
+          "type": "boolean"
+        },
+        "card_size": {
+          "enum": [
+            "small",
+            "medium",
+            "large"
+          ]
+        },
+        "cover_fit": {
+          "type": "boolean"
+        },
+        "colored_groups": {
+          "type": "boolean"
+        },
+        "page_size": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "default_template_id": {
+          "type": "string"
+        },
+        "default_type_id": {
+          "type": "string"
+        },
+        "wrap_content": {
+          "type": "boolean"
+        },
+        "list_size": {
+          "enum": [
+            "compact",
+            "regular"
+          ]
+        },
+        "alternate_rows": {
+          "type": "boolean"
+        },
+        "sorts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/sort"
+          }
+        },
+        "filters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/filterNode"
+          }
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/viewColumn"
+          }
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/viewGroup"
+          },
+          "x-output-only": true
+        },
+        "object_orders": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/objectOrder"
+          },
+          "x-output-only": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "sort": {
+      "type": "object",
+      "properties": {
+        "property": {
+          "type": "string",
+          "minLength": 1
+        },
+        "direction": {
+          "enum": [
+            "asc",
+            "desc",
+            "custom"
+          ]
+        },
+        "custom_order": {
+          "type": "array"
+        },
+        "empty_placement": {
+          "enum": [
+            "start",
+            "end"
+          ]
+        },
+        "include_time": {
+          "type": "boolean"
+        },
+        "no_collate": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string",
+          "x-output-only": true
+        }
+      },
+      "required": [
+        "property"
+      ],
+      "additionalProperties": false
+    },
+    "filterNode": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "operator": {
+              "enum": [
+                "and",
+                "or"
+              ]
+            },
+            "filters": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/filterNode"
+              }
+            }
+          },
+          "required": [
+            "operator",
+            "filters"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "property": {
+              "type": "string",
+              "minLength": 1
+            },
+            "condition": {
+              "enum": [
+                "equal",
+                "not_equal",
+                "greater",
+                "less",
+                "greater_or_equal",
+                "less_or_equal",
+                "contains",
+                "not_contains",
+                "in",
+                "not_in",
+                "empty",
+                "not_empty",
+                "all_in",
+                "not_all_in",
+                "exact_in",
+                "not_exact_in",
+                "exists"
+              ]
+            },
+            "value": {},
+            "date_preset": {
+              "enum": [
+                "yesterday",
+                "today",
+                "tomorrow",
+                "last_week",
+                "current_week",
+                "next_week",
+                "last_month",
+                "current_month",
+                "next_month",
+                "number_of_days_ago",
+                "number_of_days_now",
+                "last_year",
+                "current_year",
+                "next_year"
+              ]
+            },
+            "include_time": {
+              "type": "boolean"
+            },
+            "nested_property": {
+              "type": "string",
+              "x-output-only": true
+            },
+            "id": {
+              "type": "string",
+              "x-output-only": true
+            }
+          },
+          "required": [
+            "property"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "viewColumn": {
+      "type": "object",
+      "description": "One column of a view: which property it shows, plus display facts (width, alignment, an aggregation). Column order is display order.",
+      "properties": {
+        "property": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The property this column shows, by its document-facing spelling — the same member name, and the same spelling, the sorts, filters and the dataview's `properties[]` entries use."
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "aggregation": {
+          "enum": [
+            "count",
+            "count_value",
+            "count_distinct",
+            "count_empty",
+            "count_not_empty",
+            "percent_empty",
+            "percent_not_empty",
+            "sum",
+            "average",
+            "median",
+            "min",
+            "max",
+            "range"
+          ]
+        },
+        "align": {
+          "$ref": "#/$defs/blockAlign"
+        }
+      },
+      "required": [
+        "property"
+      ],
+      "additionalProperties": false
+    },
+    "viewGroup": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "background_color": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "objectOrder": {
+      "type": "object",
+      "properties": {
+        "group_id": {
+          "type": "string"
+        },
+        "object_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "objectLayout": {
+      "enum": [
+        "audio",
+        "basic",
+        "bookmark",
+        "chat_deprecated",
+        "chat_derived",
+        "collection",
+        "dashboard",
+        "date",
+        "devices",
+        "discussion",
+        "file",
+        "image",
+        "missing_object",
+        "note",
+        "notification",
+        "object_type",
+        "participant",
+        "pdf",
+        "profile",
+        "property",
+        "property_option",
+        "property_options_list",
+        "set",
+        "space",
+        "space_view",
+        "tag",
+        "todo",
+        "video"
+      ],
+      "description": "The closed set of object layouts, by NAME (§3). Validate refuses a name outside this set: a typo would import as a raw string onto a number-format detail, where every consumer reads it with an integer getter and silently sees `basic`. A raw NUMBER is accepted beside a name, because a stored value outside the vocabulary round-trips as its number rather than being lost."
+    },
+    "viewType": {
+      "enum": [
+        "table",
+        "list",
+        "gallery",
+        "kanban",
+        "calendar",
+        "graph"
+      ],
+      "description": "How a dataview view renders. One definition, shared by a view's own `type` and a type's `default_view`, so the two cannot drift into different vocabularies for one concept."
+    },
+    "blockAlign": {
+      "enum": [
+        "left",
+        "center",
+        "right",
+        "justify"
+      ],
+      "description": "Horizontal alignment, by NAME. One definition for one concept: a block's `align`, a view column's `align`, and the `layout_align` property value (§3) all draw from it. The property slot cannot $ref this definition — a property SPELLING is not fixed to its stored key, so the vocabulary there is enforced by the semantic pass on the RESOLVED key — but the vocabulary is this one: an unknown name on `layout_align` is a validation error, and a raw NUMBER is accepted beside a name, because a stored value outside the vocabulary round-trips as its number rather than being lost."
+    },
+    "objectOrigin": {
+      "enum": [
+        "api",
+        "bookmark",
+        "builtin",
+        "clipboard",
+        "drag_and_drop",
+        "import",
+        "none",
+        "sharing_extension",
+        "usecase",
+        "webclipper"
+      ],
+      "description": "How an object entered its space, by NAME — the vocabulary of the `origin` property value (§3). No slot $refs this definition, because a property SPELLING is not fixed to its stored key (a legend may rebind it): the vocabulary is enforced by the semantic pass on the RESOLVED key, and stated here so a reader of the schema can learn it. An unknown name is a validation error; a raw NUMBER is accepted beside a name, because a stored value outside the vocabulary round-trips as its number rather than being lost."
+    },
+    "importType": {
+      "enum": [
+        "csv",
+        "external",
+        "html",
+        "markdown",
+        "notion",
+        "obsidian",
+        "pb",
+        "txt"
+      ],
+      "description": "Which importer created an import- or usecase-originated object, by NAME — the vocabulary of the `import_type` property value (§3), enforced like $defs/objectOrigin by the semantic pass on the resolved key. Named or refused, never stored as a stray string: the underlying enum's ZERO is notion, so an unchecked string here used to read back as a false claim that the object came from Notion."
+    },
+    "imageKind": {
+      "enum": [
+        "automatically_added",
+        "basic",
+        "cover",
+        "icon"
+      ],
+      "description": "What an image was uploaded FOR, by NAME — the vocabulary of the `image_kind` property value (§3), enforced like $defs/objectOrigin by the semantic pass on the resolved key. Set on file objects. `automatically_added` marks an image a pipeline brought in rather than a person, and travels beside `is_hidden_discovery`, which is what a client actually filters on."
+    }
+  }
+}

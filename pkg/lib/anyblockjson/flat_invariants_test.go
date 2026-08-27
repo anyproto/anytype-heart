@@ -1,0 +1,1394 @@
+package anyblockjson
+
+// Two invariants hold the format together, and the pre-freeze review found six
+// violations of the first and four of the second — every one of them in a place
+// the rule had never been applied, though it was written down. Instances get
+// their own regression tests in prefreeze_review_test.go; these are the
+// invariants themselves, so the next instance fails here without anyone having
+// thought of it:
+//
+//	I1. Marshal never emits a document its own Validate rejects (§11).
+//	I2. Validate and Unmarshal agree on every input (§12): if Validate accepts
+//	    a document, Unmarshal must not fail to decode it, and vice versa.
+//
+// Both are driven by hostile inputs on purpose. A corpus generated from
+// Marshal's own output cannot catch what Marshal gets wrong — it would agree
+// with itself — and the goldens are exactly that corpus. So I1 runs over
+// snapshots built from the id shapes real data and real generators produce
+// (dots, slashes, non-ASCII, over-long, derived-cell-shaped, suffix-colliding),
+// and I2 over hand-written documents.
+
+import (
+	"encoding/json"
+	"fmt"
+	"math/rand"
+	"regexp"
+	"strings"
+	"testing"
+
+	"github.com/gogo/protobuf/types"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+)
+
+// hostileIds are the id shapes that broke the id domain, plus the ones that
+// make two surfaces compete: `a.b` and `dir/file` miss the schema's charset,
+// `c-1` sanitizes onto `c_1`, `block_12345` suffixes onto `12345` under
+// CompactIds, `r1-c1` is what a table derives for its own cell, `c_1-c1` is
+// what one derives after a dashed row id has been sanitized, `dataview` is
+// the id the importer pins, and the long one exceeds the 64-character bound.
+var hostileIds = []string{
+	"", "a.b", "a-b", "a_b", "dir/file", "блок", "c-1", "c_1", "c1", "r1",
+	"r1-c1", "r1-c2", "c_1-c1", "c_1-c_1", "r1-c_1", "12345", "block_12345",
+	"dataview", "-", "_",
+	strings.Repeat("x", 70), "R1-C1", "a b", "id\n2", "obj1",
+}
+
+// sharedCellMarker is the text of the corpus's two-parent cell — the block
+// that is both a table cell and a child of a plain block standing before the
+// table. Nothing else in a hostile document spells it, so counting it in the
+// output counts emissions of that one block.
+const sharedCellMarker = "sharedcell"
+
+// hostileSnapshot builds a deterministic snapshot for seed n: a root, a handful
+// of text blocks, and optionally a table and a dataview, with every id drawn
+// from hostileIds — including duplicates, which the snapshot graph is allowed
+// to contain because it is untrusted (§11).
+func hostileSnapshot(n int) (model.SmartBlockType, *model.SmartBlockSnapshotBase) {
+	rnd := rand.New(rand.NewSource(int64(n)))
+	pick := func() string { return hostileIds[rnd.Intn(len(hostileIds))] }
+
+	root := &model.Block{Id: "obj1",
+		Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}
+	blocks := []*model.Block{root}
+	add := func(b *model.Block) {
+		root.ChildrenIds = append(root.ChildrenIds, b.Id)
+		blocks = append(blocks, b)
+	}
+
+	for i := 0; i < 1+rnd.Intn(4); i++ {
+		add(&model.Block{Id: pick(), Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{Text: fmt.Sprintf("text %d <sub>x</sub>", i)}}})
+	}
+	if rnd.Intn(2) == 0 {
+		colIds := []string{pick(), pick()}
+		rowIds := []string{pick(), pick()}
+		table := &model.Block{Id: pick(),
+			Content: &model.BlockContentOfTable{Table: &model.BlockContentTable{}}}
+		cols := &model.Block{Id: "cols" + fmt.Sprint(n),
+			Content: &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{
+				Style: model.BlockContentLayout_TableColumns}}}
+		rows := &model.Block{Id: "rows" + fmt.Sprint(n),
+			Content: &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{
+				Style: model.BlockContentLayout_TableRows}}}
+		table.ChildrenIds = []string{cols.Id, rows.Id}
+		// a block with TWO parents: the table's first cell, and a plain block
+		// standing before the table. The emit reaches it through the holder
+		// first, which is the arrival order the cell shorthand never handled —
+		// it set the emit-once mark without reading it, so the cell wrote the
+		// block a second time and one stored block imported back as two. Added
+		// before the table so the holder is walked first, and consuming no
+		// randomness so the corpus above is unchanged.
+		add(&model.Block{Id: "holder" + fmt.Sprint(n),
+			ChildrenIds: []string{rowIds[0] + "-" + colIds[0]},
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{Text: "holder"}}})
+		add(table)
+		blocks = append(blocks, cols, rows)
+		for _, id := range colIds {
+			cols.ChildrenIds = append(cols.ChildrenIds, id)
+			blocks = append(blocks, &model.Block{Id: id,
+				Content: &model.BlockContentOfTableColumn{TableColumn: &model.BlockContentTableColumn{}}})
+		}
+		var unwritten []string
+		for _, rowId := range rowIds {
+			rows.ChildrenIds = append(rows.ChildrenIds, rowId)
+			row := &model.Block{Id: rowId,
+				Content: &model.BlockContentOfTableRow{TableRow: &model.BlockContentTableRow{}}}
+			blocks = append(blocks, row)
+			for _, colId := range colIds {
+				cellId := rowId + "-" + colId
+				// a grid cell nobody has filled: no block exists for it, but
+				// the id is the table's all the same (§6.1) — the editor
+				// materializes the cell at exactly that id the first time it
+				// is filled, and validation claims the whole grid
+				if rnd.Intn(3) == 0 {
+					unwritten = append(unwritten, cellId)
+					continue
+				}
+				text := "cell " + cellId
+				if cellId == rowIds[0]+"-"+colIds[0] {
+					// the two-parent cell above, marked so the emit can be
+					// counted: whichever parent reaches it first, the phrase
+					// may appear in the document at most once (§11)
+					text = sharedCellMarker
+				}
+				row.ChildrenIds = append(row.ChildrenIds, cellId)
+				blocks = append(blocks, &model.Block{Id: cellId,
+					Content: &model.BlockContentOfText{
+						Text: &model.BlockContentText{Text: text}}})
+			}
+		}
+		// a plain block sitting on a derived cell id. While every cell was
+		// materialized the id was reserved by the cell block itself, so this
+		// slot — the one collision the emit side never made — had no coverage.
+		if len(unwritten) > 0 {
+			add(&model.Block{Id: unwritten[rnd.Intn(len(unwritten))],
+				Content: &model.BlockContentOfText{
+					Text: &model.BlockContentText{Text: "sits on a cell id"}}})
+		}
+	}
+	if rnd.Intn(3) == 0 {
+		// a date filter carrying a preset but no value: the value-bearing
+		// conditions and the presence-only ones make export write different
+		// things, and only one of those had coverage
+		cond := []model.BlockContentDataviewFilterCondition{
+			model.BlockContentDataviewFilter_Empty,
+			model.BlockContentDataviewFilter_NotEmpty,
+			model.BlockContentDataviewFilter_Exists,
+			model.BlockContentDataviewFilter_Greater,
+			model.BlockContentDataviewFilter_Equal,
+			model.BlockContentDataviewFilter_NotEqual,
+		}[rnd.Intn(6)]
+		preset := []model.BlockContentDataviewFilterQuickOption{
+			model.BlockContentDataviewFilter_NumberOfDaysAgo,
+			model.BlockContentDataviewFilter_NumberOfDaysNow,
+			model.BlockContentDataviewFilter_Today,
+		}[rnd.Intn(3)]
+		add(&model.Block{Id: pick(), Content: &model.BlockContentOfDataview{
+			Dataview: &model.BlockContentDataview{
+				Views: []*model.BlockContentDataviewView{{Id: pick(), Name: "All",
+					Filters: []*model.BlockContentDataviewFilter{{
+						RelationKey: "dueDate", Condition: cond, QuickOption: preset,
+						Format: model.RelationFormat_date,
+					}, {
+						// a stored relation key that cannot be a property
+						// SPELLING, named by a BLOCK slot. /properties drops
+						// such a key before anything slugs it, and so does the
+						// census, so the stored-key half of writableSlug's
+						// guard — the one that keeps an unwritable key out of a
+						// legend VALUE — was reachable from block slots alone,
+						// and the corpus named none. Appended after the picks
+						// so it consumes no randomness and the corpus above is
+						// unchanged.
+						RelationKey: "a\nb", Condition: model.BlockContentDataviewFilter_Equal,
+						Value: str("x"),
+					}, {
+						// a counting preset whose stored operand is not a day
+						// count. The engine reads it as 0 (domain.Value.Int64
+						// answers 0 for every non-number kind) and the format
+						// admits only the count, so export has one honest
+						// rendering and the junk may not travel: written
+						// verbatim it is a document Validate refuses — I1.
+						// Appended after the picks so it consumes no
+						// randomness and the corpus above is unchanged.
+						RelationKey: "dueDate", Condition: model.BlockContentDataviewFilter_Greater,
+						QuickOption: model.BlockContentDataviewFilter_NumberOfDaysAgo,
+						Value:       str("a week"),
+					}, {
+						// a filter naming NO property. Real data holds these
+						// (a relation deleted out from under a view), and the
+						// format now says a filter has to name the property it
+						// filters on (§6) — so an export that wrote the
+						// nameless node emitted a document its own Validate
+						// rejects. The sort and the column beside it have
+						// dropped their nameless form all along; this is the
+						// slot that did not. Appended after the picks so it
+						// consumes no randomness and the corpus above is
+						// unchanged.
+						RelationKey: "", Condition: model.BlockContentDataviewFilter_Equal,
+						Value: str("x"),
+					}}}},
+			}}})
+	}
+	// a property BLOCK naming no property — the second slot that used to be
+	// emitted nameless, and the second half of the same rule. Its id consumes
+	// no randomness, so the corpus above is unchanged.
+	add(&model.Block{Id: "nokey" + fmt.Sprint(n),
+		Content: &model.BlockContentOfRelation{Relation: &model.BlockContentRelation{}}})
+	// details carry the keys the import surface must refuse: if export ever
+	// emitted one, Marshal's output would fail its own Validate, which is how
+	// this invariant proves the two surfaces are still each other's mirror.
+	// The two custom keys at the end exist to give a vocabulary something to
+	// slug: the hostileVocab variant maps them onto the slug shapes a real
+	// space can mint (over-long, empty, shadowing a bundled spelling).
+	details := map[string]*types.Value{
+		"id":             str("obj1"),
+		"name":           str("hostile"),
+		"spaceId":        str("bafyspace"),
+		"uniqueKey":      str("ot-page"),
+		"oldAnytypeID":   str("legacy1"),
+		"sourceFilePath": str("/tmp/x.md"),
+		"restrictions":   {Kind: &types.Value_NumberValue{NumberValue: 3}},
+		"isArchived":     {Kind: &types.Value_BoolValue{BoolValue: true}},
+		"":               str("empty key"),
+		"a\nb":           str("newline key"),
+		"dueDate":        str("next Friday"),
+		// the §15 #12 trim, both sides of it. `isArchived` above is TRUE, so
+		// the non-empty control is already here; these are the empty ones
+		// export omits — and `relationFormat`/`featuredRelations`, which the
+		// whitelist deliberately does not admit and which must therefore
+		// survive. I1 asks whether omitting them is a FIXPOINT: the second
+		// generation must not differ by a key the first one dropped.
+		"isHidden":                 {Kind: &types.Value_BoolValue{BoolValue: false}},
+		"relationReadonlyValue":    {Kind: &types.Value_BoolValue{BoolValue: false}},
+		"revision":                 {Kind: &types.Value_NumberValue{NumberValue: 0}},
+		"relationMaxCount":         {Kind: &types.Value_NumberValue{NumberValue: 0}},
+		"relationDefaultValue":     str(""),
+		"relationFormat":           {Kind: &types.Value_NumberValue{NumberValue: 0}},
+		"featuredRelations":        strList(),
+		"6a32d4856761631534b22f85": str("space-slugged"),
+		"artist":                   str("verbatim custom key"),
+		// the two shadow shapes of the verbatim-first family (§3): a custom
+		// stored key spelling an INTERNAL bundled key's slug, and one
+		// spelling a WRITABLE bundled key's slug beside that bundled key
+		// itself ("dueDate" above). Both are slug-shaped stored keys the
+		// details carried none of, which is exactly how "export writes it
+		// verbatim, the reader resolves it elsewhere" stayed invisible: the
+		// first made seed 0 fail I1's Validate leg outright, the second made
+		// every seed a valid-but-unimportable archive until the identity
+		// entry existed.
+		"unique_key": str("custom, not the resolution vector"),
+		"due_date":   str("custom, beside dueDate"),
+		// a name-over-number key holding a stored STRING, both halves (§3).
+		// A string the vocabulary does not name has no written form: written
+		// verbatim it is a document Validate refuses (unknown layout), so
+		// every non-type seed failed I1 here until export learned to drop
+		// it. A string that IS a name survives — and reads back as the
+		// number, which the fixpoint leg checks. On TYPE seeds the same two
+		// values exercise the §2a lift's own string handling instead
+		// (typeSettingEnumValue) and the provenance drop.
+		"layout":            str("garbage-name"),
+		"recommendedLayout": str("todo"),
+		// the third shadow shape, and the only one the bundled table cannot
+		// see: a stored key whose spelling the VOCABULARY IN FORCE binds to a
+		// different key (shadowVocab below slugs the BSON key onto it). Real
+		// spaces mint it by deleting a property — a UI-deleted entity vacates
+		// the slug namespace, so its stored key stops being reserved while
+		// objects still carry it, and the freed spelling is another
+		// property's api key. Both keys are written verbatim here, and
+		// without the identity entry the reader binds one of them twice.
+		"initiative": str("custom, whose spelling this space now gives away"),
+		// OBJECT REFERENCES, including the shapes that carry the very
+		// separator the informative suffix uses (§9). A snapshot is
+		// untrusted (§11) and the split is unconditional, so I1 asks whether
+		// a document Marshal writes from these is one its own Validate
+		// accepts and its own Unmarshal reads — and the refNames variant
+		// below asks it with the suffix and the participant fold both armed.
+		// `#name` is what a writer produces copying only the readable half
+		// of `id#name`; `obj1` is named by a resolver whose answer
+		// normalizes to nothing, which is the bare-id-never-a-dangling-#
+		// path; the composite is this space's own, so the fold fires on it.
+		//
+		// An id with a `#` INSIDE it — `a#b` — is deliberately absent: it is
+		// the format's one reference normalization (§11 N(S)), so it is not
+		// a fixpoint and belongs in the test that names it,
+		// TestRefs_AHashInsideAnIdIsNormalizedOnce, rather than here where
+		// every value must survive untouched.
+		"assignee": strList("#name", "#", "obj1",
+			domain.NewParticipantId(hostileSpaceId, hostileIdentity)),
+		// a SELECT property, whose values are spelled by name with the option
+		// id carried in `option_ids` (§3, §9a). The pool holds exactly the
+		// shapes that made a legend key hard under the deleted flat spelling
+		// — a name carrying the old separator, a name carrying a space (both
+		// outside the plain label charset), two options sharing one name, a
+		// name past the bound a joined key could carry, and an id no resolver
+		// knows — so I1 asks whether a document Marshal writes with those
+		// keys is one its own Validate accepts and its own Unmarshal reads.
+		"tag": strList(hostileOptionValues...),
+	}
+	// the envelope key is a STORED identity key written verbatim (§2), and a
+	// closed charset over it was falsified by a 36 808-object sweep: relation
+	// options carry their option *name* in the key, spaces and all. I1 never
+	// covered this slot, which is exactly why the bad rule shipped.
+	storedKeys := []string{
+		"", "page", "task", "completion_status_Not Started",
+		"69bbfc78877a91b1d12d1a7c_C/C++", "69a56205ccba0a47d8d8eb71_тогглы",
+		"69bbfc78877a91b1d12d1a84_$addToSet", "opt-" + strings.Repeat("x", 80),
+	}
+	snap := &model.SmartBlockSnapshotBase{
+		Blocks:  blocks,
+		Details: fields(details),
+		Key:     storedKeys[rnd.Intn(len(storedKeys))],
+	}
+	// the TYPE key slots (§3): the envelope `type`/`template_for` pair and —
+	// on type-document seeds — `type_properties[].object_types`. Drawn after
+	// every other pick so adding them did not reshuffle the corpus above.
+	snap.ObjectTypes = hostileTypePools[rnd.Intn(len(hostileTypePools))]
+	sbType := model.SmartBlockType_Page
+	// one draw, three arms — a switch rather than a second Intn so the corpus
+	// above is unchanged by the template arm's arrival.
+	switch rnd.Intn(4) {
+	case 0:
+		// a type document: the recommended lists resolve through
+		// hostileTypePropResolver, whose definitions carry the object_types
+		// shapes (custom key the vocabulary slugs onto `task`, an unwritable
+		// slug, the `template` spelling)
+		sbType = model.SmartBlockType_STType
+		snap.Details.Fields["recommendedFeaturedRelations"] = strList("hp1")
+		snap.Details.Fields["recommendedRelations"] = strList("hp2")
+		snap.Details.Fields["recommendedHiddenRelations"] = strList("hp3")
+	case 1:
+		// a TEMPLATE, which is the only kind of document with a second type
+		// slot (§2). Without this arm the corpus never produced one, so the
+		// two-slot half of invertedTypes — and of export's own
+		// modelledTypeKeys — was unreachable from the sweep: `template_for`
+		// could have stopped being written at all and every seed stayed
+		// green. It also puts the type pools whose first key is NOT
+		// `template` behind a template, which is the shape v0.22 stopped
+		// losing.
+		sbType = model.SmartBlockType_Template
+	}
+	return sbType, snap
+}
+
+// The space and member the hostile corpus's participant reference names: a
+// real space id shape (`<cid>.<suffix>`) and a checksummed account identity,
+// so the fold's classifier and its round-trip recheck both engage.
+const (
+	hostileSpaceId  = "bafyreid62d5e6hny6mv6zass2zg73nxyhjzhjasx7imvzxvqz6rcnjqcgq.30afw2fe3tvff"
+	hostileIdentity = "AASdKiEGfcyhxX3ufr4auHRviACUXxkF68uZwtSb2AnyRoMA"
+)
+
+// hostileObjectNames names EVERY id, including the ones no caption can
+// survive — an empty answer, a name that normalizes to nothing, and the
+// hostile reference shapes above. A resolver this eager is the adversarial
+// case: it is the export side's own guards, not the resolver's restraint,
+// that have to keep the document readable back.
+type hostileObjectNames struct{}
+
+func (hostileObjectNames) ObjectName(id string) (string, bool) {
+	switch id {
+	case "":
+		return "", true // an empty name is no name at the seam
+	case "obj1":
+		return "🎉", true // normalizes to nothing: a bare id, never a dangling #
+	}
+	return "Имя / Name #1 " + id, true
+}
+
+// hostileOptions is the option pool the hostile corpus's select property
+// resolves against, scanned first-match exactly as storeresolver does. Two
+// entries deliberately share a name: within one value that is the collapse
+// §11 documents, and the corpus asks that the collapse be a FIXPOINT rather
+// than a coin flip on the pool's order.
+var hostileOptions = spaceOptions{"tag": {
+	{id: "opt-hash", name: "C#"},
+	{id: "opt-space", name: "import issue"},
+	{id: "opt-dup1", name: "books"},
+	{id: "opt-dup2", name: "books"},
+	{id: "opt-long", name: strings.Repeat("n", maxPropertyKeyLen+1)},
+}}
+
+// hostileOptionValues is what the corpus's object carries: every option in
+// the pool, both same-named ones, plus an id nothing resolves — which export
+// writes verbatim and owes no entry for.
+var hostileOptionValues = []string{
+	"opt-hash", "opt-space", "opt-dup1", "opt-dup2", "opt-long", "opt-unknown",
+}
+
+// hostileTypePools are the ObjectTypes shapes that make the type namespace
+// compete with its readers: a custom key a hostile vocabulary slugs onto the
+// bundled `task` key, a stored key spelling the bundled objectType's slug
+// (the §3 shadow shape — it owes an identity entry), template pairs whose
+// second entry only survives if the `template` spelling stays put, keys whose
+// vocabulary slug is unwritable or reserved, a prefix-less entry, and an
+// entry with no key at all, and — the collateral-damage shapes — a keyless
+// entry STANDING BESIDE a good one. Stored `ot-` has no spelling, so a
+// positional write emitted no `type`, which made `template_for` inexpressible
+// too and took the good sibling down with it; a store that ran an older build
+// holds exactly these.
+// overLongTypeKey is a stored type key past the 128-character bound the
+// schema puts on a LEGEND value (§3). The primary slots are unbounded, so it
+// round-trips verbatim through `type` — but no legend line may name it, and a
+// vocabulary that spells it as something writable is what tries to.
+var overLongTypeKey = strings.Repeat("y", 140)
+
+// overLongPropertyKey is its property-namespace twin: a stored relation key
+// no key slot can carry, member name or value (§3).
+var overLongPropertyKey = strings.Repeat("k", maxPropertyKeyLen+12)
+
+var hostileTypePools = [][]string{
+	nil,
+	{"ot-page"},
+	{"ot-69bbfc78877a91b1d12d1a7c"},
+	{"ot-object_type"},
+	{"ot-template", "ot-69bbfc78877a91b1d12d1a7c"},
+	{"ot-template", "ot-task"},
+	{"ot-" + overLongTypeKey},
+	{"ot-longslugged"},
+	{"ot-blankslugged"},
+	{"ot-squatter"},
+	{"page"},
+	{"ot-"},
+	{"ot-", "ot-task"},
+	{"", "ot-69bbfc78877a91b1d12d1a7c"},
+	{"ot-template", "ot-"},
+	{"ot-template", "ot-", "ot-task"},
+	{"ot-", "ot-template", "ot-task"},
+	// a NON-template with a second type, and one with a third: the format
+	// models neither position, so both are truncated away — and the entries
+	// the census reserved for them are keys no slot ends up spelling. The
+	// pools above are all templates or single types, so the truncating
+	// branch had no shape at all. The second entry here is deliberately the
+	// FIRST one's slug under hostileVocab, which is what makes the
+	// reservation observable.
+	{"ot-69bbfc78877a91b1d12d1a7c", "ot-task"},
+	{"ot-page", "ot-task", "ot-squatter"},
+	// every entry keyless: the whole type list is lost, and the document
+	// must still be a document. `{"ot-"}` covers the single-entry case; this
+	// is the one where closing ranks has nothing to close onto.
+	{"ot-", ""},
+}
+
+// hostileTypePropResolver serves the two property definitions the type-seed
+// recommended lists name. PropertyId answers false so import-side wiring is
+// exercised without it.
+type hostileTypePropResolver struct{}
+
+func (hostileTypePropResolver) PropertyById(id string) (PropertyDefinition, bool) {
+	switch id {
+	case "hp1":
+		return PropertyDefinition{Key: "owner", Name: "Owner", Format: model.RelationFormat_object,
+			ObjectTypes: []string{"69bbfc78877a91b1d12d1a7c", "task", "squatter"}}, true
+	case "hp2":
+		return PropertyDefinition{Key: "genre", Format: model.RelationFormat_object,
+			ObjectTypes: []string{"longslugged", overLongTypeKey}}, true
+	case "hp3":
+		// a stored property key past the legend bound. The §2a `property` slot is
+		// a JSON value, so the schema bounded only its minLength for a while
+		// and export wrote such a key straight through — a document the seam
+		// then refused, which is I1.
+		return PropertyDefinition{Key: domain.RelationKey(overLongPropertyKey), Name: "Ledger"}, true
+	}
+	return PropertyDefinition{}, false
+}
+
+// PropertyId maps a definition back to the id that serves it, which is what a
+// real wiring does: a re-export resolves a recommended list that came back as
+// bare KEYS (no resolver on the reader) through this reverse lookup, so a
+// second generation carries the same definitions as the first.
+func (hostileTypePropResolver) PropertyId(def PropertyDefinition) (string, bool) {
+	switch def.Key {
+	case "owner":
+		return "hp1", true
+	case "genre":
+		return "hp2", true
+	case domain.RelationKey(overLongPropertyKey):
+		return "hp3", true
+	}
+	return "", false
+}
+
+// typePropTargets is one type_properties entry reduced to its two KEY slots:
+// the resolved property key and the resolved target type keys of
+// `object_types` (§2a). Both are what a reader ends up storing, so both must
+// invert.
+type typePropTargets struct {
+	Key     string
+	Targets []string
+}
+
+// wantTypePropTargets is what a faithful reader owes back for a type-document
+// seed, read off hostileTypePropResolver itself so the expectation cannot
+// drift from the fixture — the definitions in §2a section order (featured
+// first, then the regular list), each with its target types intact. hp3 is
+// deliberately absent: its stored key cannot be written, so export drops the
+// entry with a warning rather than emit one the seam refuses (§2a).
+func wantTypePropTargets() []typePropTargets {
+	out := make([]typePropTargets, 0, 2)
+	for _, id := range []string{"hp1", "hp2"} {
+		def, ok := hostileTypePropResolver{}.PropertyById(id)
+		if !ok {
+			panic("hostileTypePropResolver no longer serves " + id)
+		}
+		out = append(out, typePropTargets{Key: string(def.Key), Targets: def.ObjectTypes})
+	}
+	return out
+}
+
+// capturedTypeProps is a reader-side PropertyResolver that records what the
+// type-property seam hands it. It is the ONLY way to see the `object_types`
+// slot from outside: applyTypeProperties resolves those terms and passes them
+// in the definition, while the recommended-relation lists it writes into the
+// snapshot carry property ids, not targets. Answering false keeps the
+// snapshot identical to the resolver-less read (the key passes through in
+// place of an id), so the capture observes without steering.
+type capturedTypeProps struct{ got []typePropTargets }
+
+func (c *capturedTypeProps) PropertyById(string) (PropertyDefinition, bool) {
+	return PropertyDefinition{}, false
+}
+
+func (c *capturedTypeProps) PropertyId(def PropertyDefinition) (string, bool) {
+	c.got = append(c.got, typePropTargets{Key: string(def.Key), Targets: def.ObjectTypes})
+	return "", false
+}
+
+// invertedTypes is what a faithful reader owes back for a snapshot's
+// ObjectTypes: the format writes object_types[0] as `type` — and [1] as
+// `template_for` on a TEMPLATE — each spelled through the vocabulary in force
+// and inverted through the document's own legend, so the stored KEYS must
+// survive whatever the vocabulary did to their spellings. Entries normalize
+// to the `ot-` URL form; a non-template's types past the first are not
+// modeled by the format (§2).
+//
+// The second slot is keyed off the smartblock TYPE, not off keys[0] being the
+// template key. This model said the latter until v0.22, faithfully, because
+// export did — and both were wrong for a template whose object types do not
+// begin with the template key, which is a shape the model permits and which
+// lost its target type in silence.
+//
+// An entry with no key ("ot-", "") has no spelling and is dropped — and the
+// survivors CLOSE RANKS, which is the load-bearing half. Dropping in place
+// made a keyless entry contagious: it silenced the slot it sat in, and a
+// silent `type` slot makes `template_for` inexpressible, so a template stored
+// as ["ot-", "ot-task"] came back as no types at all rather than as ot-task.
+func invertedTypes(objectTypes []string, sbType model.SmartBlockType) []string {
+	keys := make([]string, 0, len(objectTypes))
+	for _, t := range objectTypes {
+		if key := strings.TrimPrefix(t, "ot-"); key != "" {
+			keys = append(keys, key)
+		}
+	}
+	if len(keys) == 0 {
+		return nil
+	}
+	out := []string{"ot-" + keys[0]}
+	if sbType == model.SmartBlockType_Template && len(keys) > 1 {
+		out = append(out, "ot-"+keys[1])
+	}
+	return out
+}
+
+// hostileVocab deliberately breaks the KeyVocabulary contract the way a real
+// space can: a slug comes from apiObjectKey, which is user-supplied or
+// strcase-derived from the property NAME (objectcreator/util.go) with no
+// length bound and no charset audit — so nothing upstream guarantees a slug
+// is a writable spelling, and a space may mint a slug that shadows a bundled
+// one. This slot had no invariant coverage, which is exactly how "check the
+// stored key, emit the slug" shipped.
+type hostileVocab struct{ BundledKeyVocabulary }
+
+func (hostileVocab) PropertySlug(key string) string {
+	switch key {
+	case "name":
+		return strings.Repeat("s", maxPropertyKeyLen+64) // apiObjectKey has no length bound
+	case "dueDate":
+		return "due\ndate" // a control character is not a spelling
+	case "artist":
+		return "" // a vocabulary with no answer at all
+	case "a\nb":
+		// a writable spelling for a stored key that is not writable — the
+		// mirror of the over-long slug above, and the shape that makes the
+		// guard's stored-key half load-bearing: the legend entry this
+		// spelling owes would carry a control character in its VALUE.
+		return "ab"
+	case "6a32d4856761631534b22f85":
+		// a space-minted slug shadowing a bundled internal key's spelling —
+		// which is ALSO a stored key on the hostile details, so the term
+		// ledger must refuse the claim outright (§3: a stored key always
+		// keeps its own term, and this one owes an identity entry). The
+		// corpus's legend-rebind documents cover the honored-entry case.
+		return "unique_key"
+	}
+	return BundledKeyVocabulary{}.PropertySlug(key)
+}
+
+// TypeSlug breaks the contract the same ways the property half does, plus
+// the two shapes only the type namespace has: a slug that collides with a
+// bundled TYPE key (the confirmed defect — `69bbfc…` spelled `task` read
+// back as the bundled Task type by a package-only reader), and answers that
+// move the reserved `template` spelling in either direction, which silently
+// drops a template's target type.
+func (hostileVocab) TypeSlug(key string) string {
+	switch key {
+	case "69bbfc78877a91b1d12d1a7c":
+		return "task"
+	case "longslugged":
+		return strings.Repeat("t", maxPropertyKeyLen+64)
+	case "blankslugged":
+		return ""
+	case "squatter":
+		return "template"
+	case "template":
+		return "tmpl"
+	case overLongTypeKey:
+		// a perfectly good spelling for a stored key that is NOT one. The
+		// slug half of the guard is what an over-long *slug* trips; this is
+		// the mirror, and it was unreachable while the vocabulary had no
+		// answer for this key — `slug == key` short-circuits before the
+		// guard runs. Emitting the slug regardless writes
+		// `type_internal_keys: {"diary": "yyy…(140)"}`, a legend value 12 characters
+		// past the 128 the schema bounds it to: Marshal producing a document
+		// its own Validate rejects, which is I1.
+		return "diary"
+	}
+	return BundledKeyVocabulary{}.TypeSlug(key)
+}
+
+// roundTripVocab is hostileVocab's CONFORMING twin, and the only vocabulary
+// in this file that is a genuine inverse pair: whatever a `…Slug` emits, the
+// matching `…Key` inverts, and no answer binds a spelling the bundled table
+// binds to a different key — the precondition KeyVocabulary states (§3,
+// keyvocab.go). hostileVocab satisfies neither half; it is a WRITER
+// vocabulary, aimed at what export must refuse.
+//
+// It exists because §11.1 states the round-trip guarantee for export and
+// import "wired with equivalent resolvers", and nothing exercised that: every
+// reader in this sweep is package-only, so a stored key whose spelling only
+// the writer's vocabulary knows was never read back through it.
+//
+// The pathological shapes are kept — an over-long slug, a slug for a stored
+// key that is over-long — because export BACKS THOSE OFF, so the document
+// never carries them and the reader inverts the stored key verbatim. That is
+// the conforming half of the same hostility.
+type roundTripVocab struct{}
+
+var roundTripTypeSlugs = map[string]string{
+	customTypeKey:   "tsk7",
+	"squatter":      "sqtr",
+	"longslugged":   strings.Repeat("t", maxPropertyKeyLen+64),
+	overLongTypeKey: "diary",
+}
+
+var roundTripPropertySlugs = map[string]string{
+	"6a32d4856761631534b22f85": "prio",
+	"artist":                   "artist_name",
+}
+
+func (roundTripVocab) PropertySlug(key string) string {
+	if slug, ok := roundTripPropertySlugs[key]; ok {
+		return slug
+	}
+	return BundledKeyVocabulary{}.PropertySlug(key)
+}
+
+func (roundTripVocab) PropertyKey(slug string) (string, bool) {
+	for key, s := range roundTripPropertySlugs {
+		if s == slug {
+			return key, true
+		}
+	}
+	return BundledKeyVocabulary{}.PropertyKey(slug)
+}
+
+func (roundTripVocab) TypeSlug(key string) string {
+	if slug, ok := roundTripTypeSlugs[key]; ok {
+		return slug
+	}
+	return BundledKeyVocabulary{}.TypeSlug(key)
+}
+
+func (roundTripVocab) TypeKey(slug string) (string, bool) {
+	for key, s := range roundTripTypeSlugs {
+		if s == slug {
+			return key, true
+		}
+	}
+	return BundledKeyVocabulary{}.TypeKey(slug)
+}
+
+// shadowVocab is roundTripVocab's third twin, and the one that says the
+// legend is not only about the bundled table. It CONFORMS — a strict inverse
+// pair, and no answer touches a spelling the bundled table binds (`initiative`
+// and `squatter` are not in it, in either namespace) — and it still binds two
+// spellings the corpus carries as STORED keys: the BSON property key is
+// slugged onto `initiative`, which the details hold verbatim, and the BSON
+// type key onto `squatter`, which the type pools and hp1's `object_types`
+// hold verbatim.
+//
+// That is the shape a real space grows on its own: deleting a type or a
+// property vacates the slug namespace (storeresolver's corpse policy) while
+// the objects that used it keep the stored key, and the freed spelling
+// becomes somebody else's api key. Export backs the slug off — the census
+// reserved the stored key — and then wrote the stored key with no legend
+// entry, so this very vocabulary bound it to the other holder on the way
+// back: a re-pointed type in silence, and two spellings of one property
+// loudly (Unmarshal refuses a document Marshal just wrote — I1).
+type shadowVocab struct{}
+
+var shadowPropertySlugs = map[string]string{"6a32d4856761631534b22f85": "initiative"}
+var shadowTypeSlugs = map[string]string{customTypeKey: "squatter"}
+
+func (shadowVocab) PropertySlug(key string) string {
+	if slug, ok := shadowPropertySlugs[key]; ok {
+		return slug
+	}
+	return BundledKeyVocabulary{}.PropertySlug(key)
+}
+
+func (shadowVocab) PropertyKey(slug string) (string, bool) {
+	for key, s := range shadowPropertySlugs {
+		if s == slug {
+			return key, true
+		}
+	}
+	return BundledKeyVocabulary{}.PropertyKey(slug)
+}
+
+func (shadowVocab) TypeSlug(key string) string {
+	if slug, ok := shadowTypeSlugs[key]; ok {
+		return slug
+	}
+	return BundledKeyVocabulary{}.TypeSlug(key)
+}
+
+func (shadowVocab) TypeKey(slug string) (string, bool) {
+	for key, s := range shadowTypeSlugs {
+		if s == slug {
+			return key, true
+		}
+	}
+	return BundledKeyVocabulary{}.TypeKey(slug)
+}
+
+// I1: Marshal either fails loudly — §11 allows that for an over-deep tree or a
+// table inside a cell — or produces a document its own Validate accepts AND
+// its own Unmarshal imports. What it may never do is succeed and hand back an
+// unimportable archive, which is a failure nobody sees until the archive is
+// needed. The Unmarshal leg runs as a package-only reader, because that is
+// what an archive's consumer is: it checks that the document plus its legend
+// resolve without the vocabulary that wrote them — this leg, gated on
+// Validate alone for a while, is where a valid-but-unimportable document (a
+// shadow twin pair; a backed-off slug a block slot recorded anyway) hid.
+func TestInvariant_MarshalOutputValidates(t *testing.T) {
+	variants := map[string]struct {
+		write Options
+		// read is the vocabulary the READER is wired with. Empty is the
+		// default and the archive case — a package-only reader, which is what
+		// an archive's consumer is. roundTripVocab is the other precondition
+		// §11.1 offers, "equivalent resolvers", and the two are different
+		// promises: one says the document plus its legend stand alone, the
+		// other says the document plus the writer's own vocabulary do.
+		read KeyVocabulary
+		// readSpaceId is the space the READER is reading into — not a
+		// vocabulary, and not something the writer has to hand over: an
+		// import lands in a space, so every importer has one. The folded
+		// variant needs it because the fold trades the space half of a
+		// participant id for the reader's own (§9). Empty stays the default
+		// everywhere else, and a reader that leaves it empty on a folded
+		// document is warned rather than left to store a bare identity.
+		readSpaceId string
+	}{
+		"plain":        {},
+		"compact":      {write: Options{CompactIds: true}},
+		"omitIds":      {write: Options{OmitIds: true}},
+		"hostileVocab": {write: Options{Keys: hostileVocab{}}},
+		// the read shape (§9): every reference captioned and every
+		// participant folded. Without this variant no invariant run ever
+		// sees a `#name` suffix or a folded identity — the corpus would stop
+		// reaching the code under test, which is how a green invariant lies.
+		"refNames": {write: Options{
+			RefNames:           true,
+			ResolveObjectNames: hostileObjectNames{},
+			SpaceId:            hostileSpaceId,
+		}, readSpaceId: hostileSpaceId},
+		"roundTripVocab": {write: Options{Keys: roundTripVocab{}}, read: roundTripVocab{}},
+		"shadowVocab":    {write: Options{Keys: shadowVocab{}}, read: shadowVocab{}},
+	}
+	for name, variant := range variants {
+		t.Run(name, func(t *testing.T) {
+			for n := 0; n < 300; n++ {
+				sbType, snap := hostileSnapshot(n)
+				o := variant.write
+				o.ResolveOptions = hostileOptions
+				var wantProps []typePropTargets
+				if sbType == model.SmartBlockType_STType {
+					o.ResolveProperties = hostileTypePropResolver{}
+					wantProps = wantTypePropTargets()
+				}
+				data, err := Marshal(sbType, snap, o)
+				if err != nil {
+					continue // a loud failure is allowed; silent invalidity is not
+				}
+				var warned []Issue
+				require.NoError(t, ValidateWarn(data, func(i Issue) { warned = append(warned, i) }),
+					"seed %d produced:\n%s", n, data)
+				// I1's option-legend half: an `option_ids` outer key is a
+				// property SPELLING, and export groups under the spelling it
+				// just used — so a key it emits is in the document's own
+				// property census by construction, and Validate has nothing to
+				// report about the legend. If it ever does, the legend export
+				// wrote is one import will step over in silence
+				// (optionrefs.go).
+				assert.Empty(t, optionIdsWarnings(warned), "seed %d produced:\n%s", n, data)
+				// a block reached twice is written once (§11). The mark that
+				// says so is set in blockToJSON, and every emit path has to
+				// consult it — including the table cell's string shorthand,
+				// which does not go through blockToJSON at all. The corpus's
+				// two-parent cell is reached from a plain block and from its
+				// row, so a path that writes without checking writes it twice.
+				assert.LessOrEqual(t, strings.Count(string(data), sharedCellMarker), 1,
+					"seed %d emitted one block twice:\n%s", n, data)
+				// the option legend must actually be IN the document, or this
+				// sweep asks nothing about it — a corpus that stops reaching
+				// the code under test is the way a green invariant lies. Every
+				// name the deleted flat spelling could not carry is asserted
+				// here, and the same-named pair by its first writing
+				// (optionrefs.go).
+				names := docOptionIds(t, data)["tag"]
+				if o.OmitIds {
+					// an id-less shape ships no legend of ids (§9), so here
+					// the assertion is that it is GONE — which is as much a
+					// statement about the corpus reaching the code as the
+					// positive one below
+					assert.Empty(t, names, "seed %d kept an option legend under OmitIds:\n%s", n, data)
+				} else {
+					for name, id := range map[string]string{
+						"C#":                                     "opt-hash",
+						"import issue":                           "opt-space",
+						"books":                                  "opt-dup1",
+						strings.Repeat("n", maxPropertyKeyLen+1): "opt-long",
+					} {
+						assert.Equal(t, id, names[name],
+							"seed %d owes the legend an entry for %q:\n%s", n, name, data)
+					}
+				}
+				capture := &capturedTypeProps{}
+				_, back, err := Unmarshal(data, Options{
+					GenerateId:        seqIds(fmt.Sprintf("g%d_", n)),
+					Keys:              variant.read,
+					SpaceId:           variant.readSpaceId,
+					ResolveProperties: capture,
+					// the option resolver is wired on BOTH ends, which is what
+					// §11.1's "equivalent resolvers" means for select values —
+					// a different axis from the key vocabulary above, and the
+					// only wiring under which the option legend is an answer
+					// at all (a reader with no space cannot check an id)
+					ResolveOptions: hostileOptions,
+				})
+				require.NoError(t, err,
+					"seed %d produced a valid document its own Unmarshal refuses:\n%s", n, data)
+				// the type slots must INVERT, not merely import: binding the
+				// spelling to a different stored type is exactly the silent
+				// failure the type_internal_keys legend exists to close (§3), and no
+				// error marks it
+				assert.Equal(t, invertedTypes(snap.ObjectTypes, sbType), back.ObjectTypes,
+					"seed %d: the archive must bind back to the types it came from:\n%s", n, data)
+				// and so must the OTHER type slot. `type_properties[].object_types`
+				// shares the envelope's term ledger and its legend, but nothing
+				// asserted it: the envelope truncates to one type, so the census's
+				// whole stated purpose — a type document naming many types — lived
+				// entirely in a slot no assertion watched. Dropping the ledger
+				// back-off left this corpus green while a bundled target was
+				// silently replaced by a custom type sharing its spelling.
+				assert.Equal(t, wantProps, capture.got,
+					"seed %d: the type properties must bind back to the types they came from:\n%s", n, data)
+				// §11.2 states byte-stability from a DOCUMENT, and
+				// TestInvariant_ImportedDocumentReExportsValid checks it
+				// there. This is the snapshot-side half — Export(S) ==
+				// Export(Import(Export(S))) — which is what §9's "re-exports
+				// diff cleanly" means for an object exported twice, once
+				// before a round trip through the format and once after.
+				//
+				// Both generations are compared with ids OMITTED, because
+				// import mints an id wherever the snapshot had none (§9): a
+				// snapshot carrying an id-less block or view exports a
+				// document that is not canonical, and a second generation
+				// then differs by exactly those minted ids (§11.2 says so).
+				// Ids have their own assertions above and in
+				// TestExport_ValidIdsAreNeverRenamed; what this one asks is
+				// whether everything else — the terms, the legends, and the
+				// census that chose them — is a fixpoint.
+				stripped := o
+				stripped.OmitIds = true
+				stripped.SpaceId = variant.readSpaceId
+				gen1, err := Marshal(sbType, snap, stripped)
+				require.NoError(t, err, "seed %d", n)
+				gen2, err := Marshal(sbType, back, stripped)
+				require.NoError(t, err, "seed %d", n)
+				assert.Equal(t, string(gen1), string(gen2),
+					"seed %d: exporting the snapshot that came back must reproduce the document", n)
+				if variant.read == nil {
+					continue
+				}
+				// With equivalent resolvers on both ends (§11.1), the
+				// vocabulary is a spelling choice and nothing else: the
+				// snapshot that comes back must be the one a package-only
+				// round trip produces. Anything else means a term bound to a
+				// different stored key on the way home — which is where the
+				// PROPERTY namespace's half of this hole lives, since the
+				// assertions above watch only the type slots.
+				plainOpts := Options{ResolveOptions: hostileOptions}
+				if sbType == model.SmartBlockType_STType {
+					plainOpts.ResolveProperties = hostileTypePropResolver{}
+				}
+				plainData, err := Marshal(sbType, snap, plainOpts)
+				require.NoError(t, err, "seed %d", n)
+				_, plainBack, err := Unmarshal(plainData, Options{
+					GenerateId:     seqIds(fmt.Sprintf("g%d_", n)),
+					ResolveOptions: hostileOptions,
+				})
+				require.NoError(t, err, "seed %d", n)
+				assert.Equal(t, plainBack, back,
+					"seed %d: a vocabulary spells the same snapshot differently; it may not mean a different one:\n%s", n, data)
+			}
+		})
+	}
+}
+
+// The same invariant on the goldens' own fixture, which is the case the
+// existing corpus covers — kept so a regression there is not mistaken for a
+// hostile-input-only problem.
+//
+// The legend CONTENT is asserted, not just the document's validity: "validates
+// and warns about nothing" stays green if the legend vanishes entirely, which
+// is the way this fixture would stop asking the question. On the id-less shape
+// the assertion is the other way round — the legend must be gone (§9).
+func TestInvariant_MarshalOutputValidates_RichFixture(t *testing.T) {
+	for name, tc := range map[string]struct {
+		opts       Options
+		wantLegend map[string]map[string]string
+	}{
+		"plain": {testOptions(),
+			legend("customStatus", map[string]string{"In progress": "opt1", "Done": "opt2"})},
+		"compact": {Options{CompactIds: true, ResolveFormat: testFormatResolver, ResolveOptions: testResolver},
+			legend("customStatus", map[string]string{"In progress": "opt1", "Done": "opt2"})},
+		"omitIds": {Options{OmitIds: true, ResolveFormat: testFormatResolver, ResolveOptions: testResolver},
+			nil},
+	} {
+		t.Run(name, func(t *testing.T) {
+			data, err := Marshal(model.SmartBlockType_Page, richSnapshot(), tc.opts)
+			require.NoError(t, err)
+			var warned []Issue
+			require.NoError(t, ValidateWarn(data, func(i Issue) { warned = append(warned, i) }))
+			assert.Empty(t, optionIdsWarnings(warned), "%s", data)
+			assert.Equal(t, tc.wantLegend, docOptionIds(t, data), "%s", data)
+		})
+	}
+}
+
+// hostileDocs are hand-written documents aimed at the seam between the schema's
+// idea of a value and Go's: the schema says "integer", the decoder says int64,
+// and JSON Schema counts 2048.0 and 1e1 as integers. Every one of these is a
+// document a generator can plausibly emit.
+var hostileDocs = []string{
+	`{"version": 1}`,
+	`{"version": 1.0}`,
+	`{"version": 1e0}`,
+	`{"version": 1.5}`,
+	`{"version": 2}`,
+	`{"version": 0}`,
+	`{"version": 1, "blocks": [{"type": "file", "size": 2048}]}`,
+	`{"version": 1, "blocks": [{"type": "file", "size": 2048.0}]}`,
+	`{"version": 1, "blocks": [{"type": "file", "size": 1e3}]}`,
+	`{"version": 1, "blocks": [{"type": "file", "size": 1e30}]}`,
+	`{"version": 1, "blocks": [{"type": "file", "size": -1}]}`,
+	`{"version": 1, "blocks": [{"type": "file", "size": 2048.5}]}`,
+	`{"version": 1, "blocks": [{"type": "widget", "limit": 10}]}`,
+	`{"version": 1, "blocks": [{"type": "widget", "limit": 1e1}]}`,
+	`{"version": 1, "blocks": [{"type": "widget", "limit": 1e20}]}`,
+	`{"version": 1, "blocks": [{"type": "widget", "limit": -3}]}`,
+	`{"version": 1, "blocks": [{"type": "dataview", "views": [{"id": "v1", "page_size": 50.0}]}]}`,
+	`{"version": 1, "blocks": [{"type": "dataview", "views": [{"id": "v1", "page_size": 1e19}]}]}`,
+	`{"version": 1, "blocks": [{"type": "dataview", "views": [{"id": "v1", "page_size": 0}]}]}`,
+	`{"version": 1, "blocks": [{"type": "table", "columns": [{"id": "c1", "width": 120.7}], "rows": []}]}`,
+	`{"version": 1, "blocks": [{"type": "table", "columns": [{"id": "c1", "width": 1e30}], "rows": []}]}`,
+	`{"version": 1, "blocks": [{"type": "table", "columns": [{"id": "c1", "width": -5}], "rows": []}]}`,
+	`{"version": 1, "blocks": [{"indent": 0.0, "type": "paragraph", "text": "x"}]}`,
+	`{"version": 1, "blocks": [{"indent": 1e1, "type": "paragraph", "text": "x"}]}`,
+	`{"version": 1, "properties": {"name": "x", "size": 9007199254740993}}`,
+	`{"version": 1, "blocks": [{"type": "paragraph", "text": "<sub>x</sub>"}]}`,
+	// a JSON number larger than float64 can hold. The loose surfaces have no
+	// schema bound to catch it by construction (§3 accepts any number), and the
+	// snapshot they decode into is a proto Struct, whose numbers are float64 —
+	// so there is nowhere to put such a value, and the answer has to be a
+	// path-addressed rejection rather than a decode error
+	`{"version": 1, "properties": {"num": 1e400}}`,
+	`{"version": 1, "properties": {"num": 1e309}}`,
+	`{"version": 1, "properties": {"num": 1e308}}`,
+	`{"version": 1, "store": {"k": 1e400}}`,
+	`{"version": 1, "blocks": [{"type": "paragraph", "text": "x", "fields": {"w": 1e400}}]}`,
+	`{"version": 1, "blocks": [{"type": "table", "columns": [{"id": "c1", "width": 1e400}], "rows": []}]}`,
+	`{"version": 1, "blocks": [{"type": "dataview", "views": [{"id": "v1",
+		"filters": [{"property": "p", "condition": "equal", "value": 1e400}]}]}]}`,
+	`{"version": 1, "blocks": [{"type": "table", "columns": [{"id": "c1"}],
+		"rows": [{"id": "r1", "cells": [["nested", {"indent": 1, "type": "paragraph", "text": "y"}]]}]}]}`,
+	// admission runs on the RESOLVED stored key (§3): the canonical slug
+	// spelling of a denied key, a property_internal_keys legend rebinding a harmless
+	// spelling onto one, and the layout-name check behind the same resolution.
+	// These pin WHERE the rule lives as much as that it exists — a "fix" that
+	// moves the deny rule into import alone makes Validate accept what
+	// Unmarshal rejects, and this corpus is what catches that.
+	`{"version": 1, "properties": {"unique_key": "ot-page"}}`,
+	`{"version": 1, "properties": {"space_id": "other"}}`,
+	`{"version": 1, "properties": {"old_anytype_id": "legacy-1"}}`,
+	`{"version": 1, "properties": {"source_file_path": "/x/y"}}`,
+	`{"version": 1, "properties": {"resolved_layout": "nonsense"}}`,
+	`{"version": 1, "properties": {"resolved_layout": "todo"}}`,
+	`{"version": 1, "property_internal_keys": {"prio": "uniqueKey"}, "properties": {"prio": "ot-page"}}`,
+	`{"version": 1, "property_internal_keys": {"myid": "id"}, "properties": {"myid": "boom"}}`,
+	`{"version": 1, "property_internal_keys": {"s": "spaceId"}, "properties": {"s": "other"}}`,
+	// a benign rebind is the legend working as specified, and flows through
+	`{"version": 1, "property_internal_keys": {"prio": "6a32d4856761631534b22f85"}, "properties": {"prio": "high"}}`,
+	// a counting date preset with no count: an error where the preset's day
+	// range is applied, and nothing at all where it is inert (§6.2). Both
+	// halves of transformDateFilter's gate make it inert — the condition, and
+	// the property's format, which here comes from the bundled table because
+	// the block declares no properties list at all
+	`{"version": 1, "blocks": [{"type": "dataview", "views": [{"id": "v1",
+		"filters": [{"property": "due_date", "condition": "empty", "date_preset": "number_of_days_ago"}]}]}]}`,
+	`{"version": 1, "blocks": [{"type": "dataview", "views": [{"id": "v1",
+		"filters": [{"property": "due_date", "condition": "greater", "date_preset": "number_of_days_ago"}]}]}]}`,
+	`{"version": 1, "blocks": [{"type": "dataview",
+		"properties": [{"property": "due_date", "format": "text"}], "views": [{"id": "v1",
+		"filters": [{"property": "due_date", "condition": "greater", "date_preset": "number_of_days_ago"}]}]}]}`,
+	`{"version": 1, "blocks": [{"type": "dataview", "views": [{"id": "v1",
+		"filters": [{"property": "not_a_property", "condition": "greater", "date_preset": "number_of_days_ago"}]}]}]}`,
+	// a legend value is a stored key and obeys the writable-key rule (§3)
+	`{"version": 1, "property_internal_keys": {"p": ""}}`,
+	// a key holding a JSON-pointer metacharacter: legal in a stored key and
+	// in a spelling (§3 bounds length and control characters, nothing else),
+	// so both surfaces have to address it escaped — the accepted member as
+	// much as the refused legend value
+	`{"version": 1, "properties": {"a/b": "x"}}`,
+	`{"version": 1, "properties": {"a~b": "x"}}`,
+	`{"version": 1, "property_internal_keys": {"a/b": ""}}`,
+	`{"version": 1, "property_internal_keys": {"p": "a\nb"}}`,
+	`{"version": 1, "property_internal_keys": {"p": "` + strings.Repeat("k", 129) + `"}}`,
+	// the verbatim-first family (§3): twin spellings binding one stored key
+	// are refused by BOTH halves with default Options; an identity entry
+	// makes a shadow spelling a stored key in every reader; a legend VALUE is
+	// admitted like the stored key it is, member or no member spelling it
+	`{"version": 1, "properties": {"iconEmoji": "a", "icon_emoji": "b"}}`,
+	`{"version": 1, "properties": {"dueDate": "2025-01-01T00:00:00Z", "due_date": "x"}}`,
+	`{"version": 1, "property_internal_keys": {"unique_key": "unique_key"}, "properties": {"unique_key": "custom"}}`,
+	`{"version": 1, "property_internal_keys": {"unique_key": "6a32d4856761631534b22f85"}, "properties": {"unique_key": "high"}}`,
+	`{"version": 1, "property_internal_keys": {"sneaky": "uniqueKey"}}`,
+	`{"version": 1, "property_internal_keys": {"p": "oldAnytypeID"}}`,
+	// two spellings the document's own chain accepts that a WIDER vocabulary
+	// resolves onto a denied / an unwritable key — the i2Vocabularies entries
+	// that widen resolution exercise the §3 seam through these
+	`{"version": 1, "properties": {"prio": "bare"}}`,
+	`{"version": 1, "properties": {"blank": "x"}}`,
+	// the TYPE namespace mirrors the legend rules (§3): a benign rebind and
+	// an identity entry flow through, a legend value obeys the writable-key
+	// rule, the template gate runs on the RESOLVED type key, and two
+	// spellings a wider vocabulary resolves further than the document's own
+	// chain (the type-axis i2Vocabularies entries widen through these)
+	`{"version": 1, "type": "task"}`,
+	`{"version": 1, "type": "tsk"}`,
+	`{"version": 1, "type": "blanktype"}`,
+	`{"version": 1, "kind": "template", "type": "template", "template_for": "blanktype"}`,
+	`{"version": 1, "type_internal_keys": {"task": "69bbfc78877a91b1d12d1a7c"}, "type": "task"}`,
+	`{"version": 1, "type_internal_keys": {"object_type": "object_type"}, "type": "object_type"}`,
+	`{"version": 1, "type_internal_keys": {"t": ""}}`,
+	`{"version": 1, "type_internal_keys": {"t": "a\nb"}}`,
+	`{"version": 1, "type_internal_keys": {"t": "` + strings.Repeat("k", 129) + `"}}`,
+	`{"version": 1, "kind": "template", "type_internal_keys": {"template": "custom1"}, "type": "template", "template_for": "page"}`,
+	`{"version": 1, "kind": "template", "type_internal_keys": {"tpl": "template"}, "type": "tpl", "template_for": "page"}`,
+	`{"version": 1, "kind": "object_type", "id": "t1", "internal_key": "k",
+		"type_internal_keys": {"task": "69bbfc78877a91b1d12d1a7c"},
+		"type_settings": {"property_definitions": [{"property": "owner", "format": "objects", "object_types": ["task", "blanktype"]}]}}`,
+	// a property definition's `property` is a PROPERTY key slot and admits like one: the
+	// schema bounds the spelling, a wider vocabulary resolves past it — and
+	// the two shapes the seam refuses with the DEFAULT vocabulary, where no
+	// resolution widens anything and the schema's `minLength: 1` is the only
+	// bound the slot ever had
+	`{"version": 1, "kind": "object_type", "id": "t1", "internal_key": "k",
+		"type_settings": {"property_definitions": [{"property": "blank", "format": "text"}]}}`,
+	`{"version": 1, "kind": "object_type", "id": "t1", "internal_key": "k",
+		"type_settings": {"property_definitions": [{"property": "` + strings.Repeat("k", maxPropertyKeyLen+1) + `"}]}}`,
+	`{"version": 1, "kind": "object_type", "id": "t1", "internal_key": "k",
+		"type_settings": {"property_definitions": [{"property": "a\nb"}]}}`,
+	// the `option_ids` legend (§9a) at both levels: an entry the document
+	// spells, an entry nothing spells (the warning), the shapes the deleted
+	// flat key could not represent at all (a spelling carrying `#`, an option
+	// name carrying one, an option name past the joined key's bound), an
+	// option name a plain charset would have rejected, and the malformed
+	// keys — empty at either level, past the writable-key bound, a control
+	// character — which the schema and the package restatement have to refuse
+	// identically. A former plain compaction label is here too, in an
+	// object-id slot, since nothing resolves one now.
+	`{"version": 1, "option_ids": {"tag": {"High": "bafyreiopt"}}, "properties": {"tag": ["High"]}}`,
+	`{"version": 1, "option_ids": {"tag": {"import issue": "bafyreiopt"}},
+		"properties": {"tag": ["import issue"]},
+		"blocks": [{"type": "link", "object_id": "miovm"}]}`,
+	`{"version": 1, "option_ids": {"c#_lang": {"C#": "bafyreiopt"}}}`,
+	`{"version": 1, "option_ids": {"tag": {"#": "bafyreiopt"}}}`,
+	`{"version": 1, "option_ids": {"tag": {"has space": "bafyreiopt"}}}`,
+	`{"version": 1, "option_ids": {"tag": {"a\nb": "bafyreiopt"}}, "properties": {"tag": ["a\nb"]}}`,
+	`{"version": 1, "option_ids": {"tag": {"": "bafyreiopt"}}}`,
+	`{"version": 1, "option_ids": {"": {"High": "bafyreiopt"}}}`,
+	`{"version": 1, "option_ids": {"tag": "bafyreiopt"}}`,
+	`{"version": 1, "option_ids": {"ta\ng": {"High": "bafyreiopt"}}}`,
+	`{"version": 1, "option_ids": {"` + strings.Repeat("p", maxPropertyKeyLen+1) + `": {"High": "bafyreiopt"}}}`,
+	`{"version": 1, "option_ids": {"tag": {"` + strings.Repeat("n", maxPropertyKeyLen+1) + `": "bafyreiopt"}},
+		"properties": {"tag": ["` + strings.Repeat("n", maxPropertyKeyLen+1) + `"]}}`,
+	// the `template` spelling, straight through the envelope: the
+	// type-moves-template vocabulary answers a different stored key for it,
+	// and the kind must be unmoved by that — it is read off `kind` and the
+	// vocabulary cannot reach `kind`
+	`{"version": 1, "kind": "template", "type": "template", "template_for": "task"}`,
+	`{"version": 1, "kind": "template", "type": "tpl", "template_for": "task"}`,
+	// a PAGE whose object type is the template type: the one shape the
+	// pre-v0.22 rule could not tell apart from a template, and the reason
+	// export spells `kind` out here
+	`{"version": 1, "kind": "page", "type": "template"}`,
+	// and the four refusals that replace the reservation — Validate rejects
+	// each, so I2 asks that Unmarshal reject them too rather than decoding a
+	// page that meant to be a template
+	`{"version": 1, "type": "template", "template_for": "task"}`,
+	`{"version": 1, "type": "template"}`,
+	`{"version": 1, "kind": "page", "type": "template", "template_for": "task"}`,
+	`{"version": 1, "kind": "template", "template_for": "task"}`,
+}
+
+// i2Vocabularies is the Options axis I2 runs over. A vocabulary can resolve
+// spellings the document's own chain (legend → bundled table → verbatim)
+// cannot, and §3 licenses import to refuse MORE than Validate then: admission
+// re-runs at the details seam on the wider resolved key, which Validate —
+// deliberately vocabulary-less (§13) — never sees. For those configurations
+// the invariant is containment plus path-addressed refusals; where nothing
+// widens resolution, it is exact agreement.
+var i2Vocabularies = map[string]struct {
+	keys   KeyVocabulary
+	widens bool
+}{
+	"default": {nil, false},
+	"bundled": {BundledKeyVocabulary{}, false},
+	// a symmetric node-backed vocabulary: both directions agree
+	"space": {spaceVocabulary{slugOf: map[string]string{"6a32d4856761631534b22f85": "priority"}}, true},
+	// PropertySlug and PropertyKey are NOT inverses — the accept side answers
+	// for a slug the emit side never writes, the way a stale or hand-rolled
+	// vocabulary really breaks; the target is an ordinary custom key, so only
+	// the binding moves, never admission
+	"asymmetric": {asymmetricVocab{}, true},
+	// the two resolutions the seam exists to refuse
+	"resolves-denied":     {rebindingVocabulary{}, true},
+	"resolves-unwritable": {blankKeyVocab{}, true},
+	// the TYPE axis of the same matrix: a symmetric node-backed vocabulary,
+	// an asymmetric one whose accept side answers for a slug the emit side
+	// never writes, and the unwritable resolution the type seam refuses
+	// the space-minted slug SHADOWS the bundled `task` spelling, which is
+	// the collision this axis exists for — with a slug no document spells
+	// (`task2`) the axis was inert by construction, and the corpus's
+	// `{"type": "task"}` never met a vocabulary that answers for it
+	"type-space":               {typedSpaceVocabulary{typeSlugOf: map[string]string{customTypeKey: "task"}}, true},
+	"type-asymmetric":          {asymmetricTypeVocab{}, true},
+	"type-resolves-unwritable": {blankTypeVocab{}, true},
+	// a vocabulary that moves the `template` spelling in either direction.
+	// This used to be held to the document's own answer by a reservation
+	// (importer.typeKey) because the kind was derived from the same field;
+	// since v0.22 the kind comes from `kind`, which no vocabulary can reach,
+	// so the vocabulary's answer is simply taken. It still widens nothing
+	// that could make Unmarshal refuse — it never resolves onto the empty
+	// key — so exact agreement is still the assertion.
+	"type-moves-template": {templateMovingVocab{}, false},
+}
+
+type asymmetricTypeVocab struct{ BundledKeyVocabulary }
+
+func (asymmetricTypeVocab) TypeKey(slug string) (string, bool) {
+	if slug == "tsk" {
+		return "69bbfc78877a91b1d12d1a7c", true
+	}
+	return BundledKeyVocabulary{}.TypeKey(slug)
+}
+
+type asymmetricVocab struct{ BundledKeyVocabulary }
+
+func (asymmetricVocab) PropertyKey(slug string) (string, bool) {
+	if slug == "prio" {
+		return "6a32d4856761631534b22f85", true
+	}
+	return BundledKeyVocabulary{}.PropertyKey(slug)
+}
+
+// I2: whatever Validate accepts, Unmarshal must decode, and whatever Validate
+// rejects, Unmarshal must reject too — exactly, for every Options
+// configuration that does not widen resolution, and as containment (Unmarshal
+// accepts a subset, refusing only through path-addressed admission) for the
+// vocabularies that do. A disagreement means the guarantee Validate offers —
+// "this document imports" — is not true, and the failure arrives as a bare Go
+// decode error with no JSON pointer, outside the path-addressed error
+// contract §13 promises.
+func TestInvariant_ValidateAndUnmarshalAgree(t *testing.T) {
+	for vocabName, vocab := range i2Vocabularies {
+		t.Run(vocabName, func(t *testing.T) {
+			for i, doc := range hostileDocs {
+				t.Run(doc[:min(len(doc), 60)], func(t *testing.T) {
+					valErr := Validate([]byte(doc))
+					_, _, unmErr := Unmarshal([]byte(doc),
+						Options{GenerateId: seqIds(fmt.Sprintf("g%d_", i)), Keys: vocab.keys})
+					switch {
+					case valErr != nil:
+						assert.Error(t, unmErr,
+							"Validate rejects this document, so Unmarshal must too: %v", valErr)
+					case !vocab.widens:
+						assert.NoError(t, unmErr,
+							"Validate accepts and nothing widens resolution, so Unmarshal must accept")
+					case unmErr != nil:
+						var ve *ValidationError
+						assert.ErrorAs(t, unmErr, &ve,
+							"a wider vocabulary may refuse more, but only through path-addressed admission")
+					}
+					if unmErr != nil {
+						// every rejection is path-addressed — never a raw
+						// decode error escaping from the Go layer. Checked
+						// whenever Unmarshal fails: the old clause ran only
+						// under valErr != nil, where Unmarshal returns
+						// validateToDoc's error unchanged — so it could never
+						// fire — and nil-panicked when Unmarshal wrongly
+						// accepted what Validate refused.
+						assert.NotContains(t, unmErr.Error(), "decode document",
+							"the reason must come from validation, not from json.Unmarshal")
+					}
+				})
+			}
+		})
+	}
+}
+
+// Whatever Unmarshal accepts must re-export to something Validate accepts too:
+// this is I1 with the input side as the generator, which is how an agent's
+// document actually travels.
+func TestInvariant_ImportedDocumentReExportsValid(t *testing.T) {
+	for _, doc := range hostileDocs {
+		if Validate([]byte(doc)) != nil {
+			continue
+		}
+		sbType, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
+		require.NoError(t, err, doc)
+		out, err := Marshal(sbType, snap, Options{})
+		require.NoError(t, err, doc)
+		require.NoError(t, Validate(out), "%s re-exported as:\n%s", doc, out)
+
+		// and the canonical form is byte-stable through another round (§11.2)
+		_, snap2, err := Unmarshal(out, Options{GenerateId: seqIds("h")})
+		require.NoError(t, err, doc)
+		again, err := Marshal(sbType, snap2, Options{})
+		require.NoError(t, err, doc)
+		assert.Equal(t, string(out), string(again), "re-export must be byte-stable for %s", doc)
+	}
+}
+
+// A document's ids must survive a round trip unchanged when they are already
+// valid: sanitizing is for ids that need it, and renaming one that does not
+// would break the "provided ids are preserved so re-exports diff cleanly"
+// promise (§9).
+func TestExport_ValidIdsAreNeverRenamed(t *testing.T) {
+	doc := `{"version": 1, "id": "obj1", "blocks": [
+		{"type": "paragraph", "id": "a_b", "text": "first"},
+		{"type": "paragraph", "id": "keep-me", "text": "second"},
+		{"type": "table", "columns": [{"id": "c1"}], "rows": [{"id": "r1", "cells": ["x"]}]}]}`
+	sbType, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
+	require.NoError(t, err)
+	out, err := Marshal(sbType, snap, Options{})
+	require.NoError(t, err)
+
+	var got struct {
+		Blocks []struct {
+			Id      string `json:"id"`
+			Columns []struct {
+				Id string `json:"id"`
+			} `json:"columns"`
+			Rows []struct {
+				Id string `json:"id"`
+			} `json:"rows"`
+		} `json:"blocks"`
+	}
+	require.NoError(t, json.Unmarshal(out, &got))
+	require.Len(t, got.Blocks, 3)
+	assert.Equal(t, "a_b", got.Blocks[0].Id)
+	assert.Equal(t, "keep-me", got.Blocks[1].Id)
+	assert.Equal(t, "c1", got.Blocks[2].Columns[0].Id)
+	assert.Equal(t, "r1", got.Blocks[2].Rows[0].Id)
+}
+
+// I3: every identifier the format defines is snake_case (§1 Naming). The rule
+// is worth a test rather than a review habit — the vocabulary grows one enum
+// value at a time, and a camelCase addition would be invisible until a
+// generating model tripped over it, which is the failure the rename fixed.
+//
+// It covers the Go name tables as well as the schema: some vocabulary (the
+// layout names) exists only in Go, which is exactly where a stray name hides.
+func TestInvariant_VocabularyIsSnakeCase(t *testing.T) {
+	snake := regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
+
+	check := func(t *testing.T, where, ident string) {
+		t.Helper()
+		if strings.HasPrefix(ident, "$") {
+			return
+		}
+		// A name in the platform's `_` namespace (§1) is exempt from the
+		// *prefix* and nothing else: the reserved index.json listings are
+		// still names this format defines, so `_all_objects` passes and
+		// `_allObjects` does not. This used to be a two-entry allow-list,
+		// which exempted the whole spelling and so pinned nothing.
+		ident = strings.TrimPrefix(ident, PlatformPrefix)
+		assert.Regexp(t, snake, ident, "%s: %q is not snake_case", where, ident)
+	}
+
+	for _, schema := range [][]byte{schemaJSON, indexSchemaJSON} {
+		var doc any
+		require.NoError(t, json.Unmarshal(schema, &doc))
+		var walk func(node any)
+		walk = func(node any) {
+			switch n := node.(type) {
+			case map[string]any:
+				for key, v := range n {
+					switch key {
+					case "properties":
+						if props, ok := v.(map[string]any); ok {
+							for name, sub := range props {
+								check(t, "schema property", name)
+								walk(sub)
+							}
+							continue
+						}
+					case "enum":
+						if list, ok := v.([]any); ok {
+							for _, e := range list {
+								if s, isStr := e.(string); isStr {
+									check(t, "schema enum", s)
+								}
+							}
+							continue
+						}
+					}
+					walk(v)
+				}
+			case []any:
+				for _, v := range n {
+					walk(v)
+				}
+			}
+		}
+		walk(doc)
+	}
+
+	for name, values := range map[string][]string{
+		"kind":            namesOf(kindNames.toName),
+		"textStyle":       namesOf(textStyleNames.toName),
+		"fileType":        namesOf(fileTypeNames.toName),
+		"processor":       namesOf(processorNames.toName),
+		"widgetLayout":    namesOf(widgetLayoutNames.toName),
+		"viewType":        namesOf(viewTypeNames.toName),
+		"condition":       namesOf(conditionNames.toName),
+		"date_preset":     namesOf(datePresetNames.toName),
+		"aggregation":     namesOf(aggregationNames.toName),
+		"format":          namesOf(formatNames.toName),
+		"layout":          namesOf(layoutNames.toName),
+		"card_style":      namesOf(cardStyleNames.toName),
+		"card_size":       namesOf(cardSizeNames.toName),
+		"list_size":       namesOf(listSizeNames.toName),
+		"empty_placement": namesOf(emptyPlacementNames.toName),
+	} {
+		for _, v := range values {
+			check(t, name+" name table", v)
+		}
+	}
+}
+
+func namesOf[T comparable](m map[T]string) []string {
+	out := make([]string, 0, len(m))
+	for _, v := range m {
+		out = append(out, v)
+	}
+	return out
+}

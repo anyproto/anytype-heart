@@ -1,0 +1,75 @@
+{
+  "$schema": "https://schemas.anytype.io/anyblock/1/object.schema.json",
+  "version": 1,
+  "id": "obj1",
+  "blocks": [
+    {
+      "id": "h1",
+      "type": "heading_1",
+      "text": "Heading"
+    },
+    {
+      "id": "p1",
+      "type": "paragraph",
+      "text": "one"
+    },
+    {
+      "id": "p2",
+      "type": "paragraph",
+      "text": "two"
+    },
+    {
+      "id": "p3",
+      "type": "paragraph",
+      "text": "three"
+    },
+    {
+      "id": "row1",
+      "type": "row"
+    },
+    {
+      "indent": 1,
+      "id": "col1",
+      "type": "column"
+    },
+    {
+      "indent": 2,
+      "id": "p5",
+      "type": "paragraph",
+      "text": "in a column"
+    },
+    {
+      "id": "p4",
+      "type": "paragraph",
+      "text": "four"
+    },
+    {
+      "id": "table1",
+      "type": "table",
+      "columns": [
+        {
+          "id": "c1"
+        }
+      ],
+      "rows": [
+        {
+          "id": "r1",
+          "cells": [
+            [
+              {
+                "type": "paragraph",
+                "text": "cell"
+              },
+              {
+                "indent": 1,
+                "id": "p6",
+                "type": "paragraph",
+                "text": "under the cell's container"
+              }
+            ]
+          ]
+        }
+      ]
+    }
+  ]
+}

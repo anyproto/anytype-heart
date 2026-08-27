@@ -331,6 +331,11 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	}
 	sb.undo = undo.NewHistory(0)
 	sb.restrictions = restriction.GetRestrictions(sb)
+	if hasIdentityDetails(sb.Type()) {
+		// registered here rather than in the Page/ObjectType editors so that it holds for every
+		// writer reaching Apply, including the ones that never go through an editor method
+		sb.AddHook(sb.preserveIdentityDetails, HookBeforeApply)
+	}
 	if ctx.State != nil {
 		// need to store file keys in case we have some new files in the state
 		sb.storeFileKeys(ctx.State)

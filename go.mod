@@ -88,6 +88,7 @@ require (
 	github.com/pseudomuto/protoc-gen-doc v1.5.1
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
 	github.com/samber/lo v1.49.1
+	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2
 	github.com/sasha-s/go-deadlock v0.3.5
 	github.com/shirou/gopsutil/v4 v4.26.2
 	github.com/srwiley/oksvg v0.0.0-20221011165216-be6e8873101c

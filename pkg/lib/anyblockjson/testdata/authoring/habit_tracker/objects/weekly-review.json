@@ -1,0 +1,19 @@
+{
+  "$schema": "https://schemas.anytype.io/anyblock/1/authoring/object.schema.json",
+  "version": 1,
+  "id": "habit-weekly-review",
+  "type": "habit",
+  "icon": { "format": "emoji", "emoji": "🗓️" },
+  "properties": {
+    "name": "Weekly review",
+    "frequency": [ "Weekly" ],
+    "streak": 3,
+    "last_done": "2026-08-22T18:00:00Z"
+  },
+  "blocks": [
+    { "type": "paragraph", "text": "Half an hour on Friday evening: close the week before it closes you." },
+    { "type": "checkbox", "text": "Clear the inbox to zero" },
+    { "type": "checkbox", "text": "Review next week's calendar" },
+    { "type": "checkbox", "text": "Pick the one thing that must happen" }
+  ]
+}

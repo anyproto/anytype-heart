@@ -1,0 +1,22 @@
+{
+  "$schema": "https://schemas.anytype.io/anyblock/1/authoring/object.schema.json",
+  "version": 1,
+  "id": "page-start",
+  "type": "page",
+  "icon": { "format": "emoji", "emoji": "👋" },
+  "properties": {
+    "name": "Start here",
+    "description": "How this tracker works.",
+    "is_favorite": true
+  },
+  "blocks": [
+    { "type": "paragraph", "text": "Add a **Habit** for anything you want to do regularly, and bump its *streak* every time you follow through." },
+    { "type": "bulleted_list_item", "text": "Set the frequency: Daily or Weekly." },
+    { "type": "bulleted_list_item", "text": "Update **Streak** and **Last done** when you finish." },
+    { "type": "callout", "icon": { "format": "emoji", "emoji": "💡" }, "text": "Broke a streak? Set it to zero and move on — the [By frequency board](anytype://object?objectId=type-habit) shows what needs attention today." },
+    { "type": "divider" },
+    { "type": "paragraph", "text": "Two habits are already set up:" },
+    { "type": "link", "object_id": "habit-morning-run", "card_style": "card" },
+    { "type": "link", "object_id": "habit-weekly-review", "card_style": "card" }
+  ]
+}

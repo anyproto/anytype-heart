@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.anytype.io/anyblock/1/authoring/index.schema.json",
+  "title": "AnyBlock bundle index — authoring subset",
+  "description": "One index.json at the bundle root describes the bundle as a whole: what the space is called, what a user lands on, what the sidebar shows. A strict subset of the full index schema (../index.schema.json) — every index valid here is valid there. Every other file in the bundle is one object (authoring/object.schema.json) or the property dictionary (authoring/properties.schema.json).",
+  "x-app": "Anytype",
+  "type": "object",
+  "required": [
+    "version",
+    "name",
+    "entrypoint"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Write this file's URL: https://schemas.anytype.io/anyblock/1/authoring/index.schema.json"
+    },
+    "version": {
+      "const": 1
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The space's name: \"Habit Tracker\"."
+    },
+    "description": {
+      "type": "string",
+      "description": "One line on what the space is for."
+    },
+    "icon": {
+      "type": "object",
+      "required": [
+        "format",
+        "emoji"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "const": "emoji"
+        },
+        "emoji": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "description": "The space's icon, as an emoji: {\"format\": \"emoji\", \"emoji\": \"🌱\"}."
+    },
+    "entrypoint": {
+      "$ref": "#/$defs/documentId",
+      "description": "The id of the page a new user lands on — usually a welcome page that explains the space. Also list it as the FIRST widget: the installer opens the first widget today."
+    },
+    "homepage": {
+      "$ref": "#/$defs/documentId",
+      "description": "What opens on every later visit; omit to reuse the entrypoint. Name a page — a real page reads better than any built-in screen."
+    },
+    "widgets": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/widget"
+      },
+      "description": "The sidebar, top to bottom. Put the entrypoint first. The sidebar already lists every type, so give a type a widget only for fast access to its objects (layout \"view\")."
+    }
+  },
+  "$defs": {
+    "documentId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$",
+      "not": {
+        "enum": [
+          "favorite",
+          "recent",
+          "recentOpen",
+          "set",
+          "collection",
+          "allObjects",
+          "chat",
+          "bin",
+          "widgets",
+          "graph"
+        ]
+      },
+      "description": "The bundle-local id of a document in this bundle — the `id` its file declares. The excluded words are the built-in listings' and screens' own names; an id claiming one would capture the built-in."
+    },
+    "widget": {
+      "type": "object",
+      "required": [
+        "target"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "target": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/documentId"
+            },
+            {
+              "enum": [
+                "_favorite",
+                "_recent",
+                "_recent_open",
+                "_set",
+                "_collection",
+                "_all_objects",
+                "_chat",
+                "_bin"
+              ]
+            }
+          ],
+          "description": "What the widget points at: the id of a page, type, set or collection in this bundle, or a built-in listing (_favorite, _recent, _recent_open, _set, _collection, _all_objects, _chat, _bin). Name your own pages and types first; the listings exist in every space already."
+        },
+        "layout": {
+          "enum": [
+            "link",
+            "tree",
+            "list",
+            "compact_list",
+            "view"
+          ],
+          "description": "How it renders: \"link\" one row (the default), \"tree\" expands children, \"list\"/\"compact_list\" show contents, \"view\" renders a type's or set's own view (a `view` widget shows the type's default view — view ids are minted on import, so there is nothing else to name)."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "How many entries a listing widget shows. Ignored by \"link\"."
+        },
+        "card_style": {
+          "enum": [
+            "text",
+            "card",
+            "inline"
+          ],
+          "description": "How the widget's row renders; omit for a plain text row — the same choice a link block offers."
+        }
+      }
+    }
+  }
+}

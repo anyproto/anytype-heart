@@ -1,0 +1,193 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.anytype.io/anyblock/1/authoring/properties.schema.json",
+  "title": "AnyBlock property dictionary — authoring subset",
+  "description": "One properties.json at the bundle root, beside index.json: the bundle's own properties, declared once, in one place. A strict subset of the full dictionary schema (../properties.schema.json) — every dictionary valid here is valid there. Declare a property here, reference it from a type's property_definitions by its key, and write its values in objects under the same key; the app mints the stored identity on import.",
+  "x-app": "Anytype",
+  "type": "object",
+  "required": [
+    "version",
+    "properties"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Write this file's URL: https://schemas.anytype.io/anyblock/1/authoring/properties.schema.json"
+    },
+    "version": {
+      "const": 1
+    },
+    "installed": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "Built-in properties this bundle wants available, by key: [\"due_date\", \"tag\"]. Presence only — never redefine a built-in here."
+    },
+    "properties": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/property"
+      },
+      "description": "The bundle's own properties, one entry each."
+    }
+  },
+  "$defs": {
+    "property": {
+      "type": "object",
+      "description": "One property. Identify it by `property` (the snake_case key your documents will write: \"streak\") or by `name` (\"Cooking Time\" declares cooking_time); `format` is required. Never invent stored ids — the app mints those on import.",
+      "required": [
+        "format"
+      ],
+      "anyOf": [
+        {
+          "required": [
+            "property"
+          ]
+        },
+        {
+          "required": [
+            "name"
+          ]
+        }
+      ],
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "options"
+            ]
+          },
+          "then": {
+            "properties": {
+              "format": {
+                "enum": [
+                  "select",
+                  "multi_select"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "object_types"
+            ]
+          },
+          "then": {
+            "properties": {
+              "format": {
+                "enum": [
+                  "objects",
+                  "files"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "include_time"
+            ]
+          },
+          "then": {
+            "properties": {
+              "format": {
+                "const": "date"
+              }
+            }
+          }
+        }
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "property": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[^\u0000-\u001f]+$",
+          "description": "The property's key, snake_case: \"streak\", \"last_done\". A fresh word — a built-in key (\"due_date\") names the built-in property instead."
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name: \"Last done\"."
+        },
+        "format": {
+          "enum": [
+            "text",
+            "number",
+            "select",
+            "multi_select",
+            "date",
+            "checkbox",
+            "url",
+            "email",
+            "phone",
+            "objects",
+            "files"
+          ],
+          "description": "What kind of value the property holds. \"select\" is one choice from a vocabulary, \"multi_select\" several; \"objects\" points at other objects."
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "color": {
+                    "enum": [
+                      "grey",
+                      "yellow",
+                      "orange",
+                      "red",
+                      "pink",
+                      "purple",
+                      "blue",
+                      "ice",
+                      "teal",
+                      "lime"
+                    ]
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "description": "select/multi_select only: the vocabulary, in display order. An entry is a bare name (\"Daily\") or {\"name\", \"color\"} when the colour is part of the design."
+        },
+        "object_types": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "objects/files only: which type keys the property may point at. Empty or absent = any object."
+        },
+        "description": {
+          "type": "string",
+          "description": "One line on what the property means."
+        },
+        "include_time": {
+          "type": "boolean",
+          "description": "date only: whether values carry a time of day."
+        }
+      }
+    }
+  }
+}
