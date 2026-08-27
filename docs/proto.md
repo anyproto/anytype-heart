@@ -54,6 +54,11 @@
     - [Rpc.AI.Autofill.Request](#anytype-Rpc-AI-Autofill-Request)
     - [Rpc.AI.Autofill.Response](#anytype-Rpc-AI-Autofill-Response)
     - [Rpc.AI.Autofill.Response.Error](#anytype-Rpc-AI-Autofill-Response-Error)
+    - [Rpc.AI.ListModels](#anytype-Rpc-AI-ListModels)
+    - [Rpc.AI.ListModels.Model](#anytype-Rpc-AI-ListModels-Model)
+    - [Rpc.AI.ListModels.Request](#anytype-Rpc-AI-ListModels-Request)
+    - [Rpc.AI.ListModels.Response](#anytype-Rpc-AI-ListModels-Response)
+    - [Rpc.AI.ListModels.Response.Error](#anytype-Rpc-AI-ListModels-Response-Error)
     - [Rpc.AI.ListSummary](#anytype-Rpc-AI-ListSummary)
     - [Rpc.AI.ListSummary.Request](#anytype-Rpc-AI-ListSummary-Request)
     - [Rpc.AI.ListSummary.Response](#anytype-Rpc-AI-ListSummary-Response)
@@ -1536,6 +1541,7 @@
   
     - [Rpc.AI.Autofill.Request.AutofillMode](#anytype-Rpc-AI-Autofill-Request-AutofillMode)
     - [Rpc.AI.Autofill.Response.Error.Code](#anytype-Rpc-AI-Autofill-Response-Error-Code)
+    - [Rpc.AI.ListModels.Response.Error.Code](#anytype-Rpc-AI-ListModels-Response-Error-Code)
     - [Rpc.AI.ListSummary.Response.Error.Code](#anytype-Rpc-AI-ListSummary-Response-Error-Code)
     - [Rpc.AI.ObjectCreateFromUrl.Response.Error.Code](#anytype-Rpc-AI-ObjectCreateFromUrl-Response-Error-Code)
     - [Rpc.AI.Provider](#anytype-Rpc-AI-Provider)
@@ -2723,6 +2729,7 @@
 | AIAutofill | [Rpc.AI.Autofill.Request](#anytype-Rpc-AI-Autofill-Request) | [Rpc.AI.Autofill.Response](#anytype-Rpc-AI-Autofill-Response) |  |
 | AIListSummary | [Rpc.AI.ListSummary.Request](#anytype-Rpc-AI-ListSummary-Request) | [Rpc.AI.ListSummary.Response](#anytype-Rpc-AI-ListSummary-Response) |  |
 | AIObjectCreateFromUrl | [Rpc.AI.ObjectCreateFromUrl.Request](#anytype-Rpc-AI-ObjectCreateFromUrl-Request) | [Rpc.AI.ObjectCreateFromUrl.Response](#anytype-Rpc-AI-ObjectCreateFromUrl-Response) |  |
+| AIListModels | [Rpc.AI.ListModels.Request](#anytype-Rpc-AI-ListModels-Request) | [Rpc.AI.ListModels.Response](#anytype-Rpc-AI-ListModels-Response) |  |
 | PushNotificationRegisterToken | [Rpc.PushNotification.RegisterToken.Request](#anytype-Rpc-PushNotification-RegisterToken-Request) | [Rpc.PushNotification.RegisterToken.Response](#anytype-Rpc-PushNotification-RegisterToken-Response) | Push |
 | PushNotificationSetSpaceMode | [Rpc.PushNotification.SetSpaceMode.Request](#anytype-Rpc-PushNotification-SetSpaceMode-Request) | [Rpc.PushNotification.SetSpaceMode.Response](#anytype-Rpc-PushNotification-SetSpaceMode-Response) |  |
 | PushNotificationSetForceModeIds | [Rpc.PushNotification.SetForceModeIds.Request](#anytype-Rpc-PushNotification-SetForceModeIds-Request) | [Rpc.PushNotification.SetForceModeIds.Response](#anytype-Rpc-PushNotification-SetForceModeIds-Response) |  |
@@ -3455,6 +3462,97 @@ Response – message from a middleware.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.AI.Autofill.Response.Error.Code](#anytype-Rpc-AI-Autofill-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-ListModels"></a>
+
+### Rpc.AI.ListModels
+ListModels validates a provider config (base URL &#43; token) and
+returns the models it offers. A successful response already proves
+the endpoint is reachable and the token works, so there is no
+separate &#34;validate&#34; RPC: the model list IS the validation result,
+and the Error codes below (ENDPOINT_NOT_REACHABLE, AUTH_REQUIRED,
+...) tell the caller what to fix.
+
+config.model is ignored: at this point the caller does not know
+which model to use yet.
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-ListModels-Model"></a>
+
+### Rpc.AI.ListModels.Model
+Model is one catalog entry, trimmed to what a client-side model
+picker needs: an id to send back as ProviderConfig.model, plus
+whatever attribution the provider gives alongside it.
+
+For OPENAI the list is pre-filtered to models usable for chat
+completions (see FilterChatModels in core/ai/llmclient). For
+every other provider it is returned as-is: OLLAMA, LMSTUDIO and
+LLAMACPP only ever list what the user chose to pull/load onto
+that server, so there is nothing irrelevant to filter out, and
+no capability field to filter by even if there were (see
+FilterChatModels&#39; doc comment for the evidence).
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| ownedBy | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-ListModels-Request"></a>
+
+### Rpc.AI.ListModels.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| config | [Rpc.AI.ProviderConfig](#anytype-Rpc-AI-ProviderConfig) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-ListModels-Response"></a>
+
+### Rpc.AI.ListModels.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.AI.ListModels.Response.Error](#anytype-Rpc-AI-ListModels-Response-Error) |  |  |
+| models | [Rpc.AI.ListModels.Model](#anytype-Rpc-AI-ListModels-Model) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-ListModels-Response-Error"></a>
+
+### Rpc.AI.ListModels.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.AI.ListModels.Response.Error.Code](#anytype-Rpc-AI-ListModels-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -24977,6 +25075,23 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-AI-Autofill-Response-Error-Code"></a>
 
 ### Rpc.AI.Autofill.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| RATE_LIMIT_EXCEEDED | 100 |  |
+| ENDPOINT_NOT_REACHABLE | 101 |  |
+| MODEL_NOT_FOUND | 102 |  |
+| AUTH_REQUIRED | 103 | ... |
+
+
+
+<a name="anytype-Rpc-AI-ListModels-Response-Error-Code"></a>
+
+### Rpc.AI.ListModels.Response.Error.Code
 
 
 | Name | Number | Description |

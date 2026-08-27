@@ -456,6 +456,7 @@ service ClientCommands {
     rpc AIAutofill (anytype.Rpc.AI.Autofill.Request) returns (anytype.Rpc.AI.Autofill.Response);
     rpc AIListSummary (anytype.Rpc.AI.ListSummary.Request) returns (anytype.Rpc.AI.ListSummary.Response);
     rpc AIObjectCreateFromUrl (anytype.Rpc.AI.ObjectCreateFromUrl.Request) returns (anytype.Rpc.AI.ObjectCreateFromUrl.Response);
+    rpc AIListModels (anytype.Rpc.AI.ListModels.Request) returns (anytype.Rpc.AI.ListModels.Response);
 
     // Push
     rpc PushNotificationRegisterToken(anytype.Rpc.PushNotification.RegisterToken.Request) returns (anytype.Rpc.PushNotification.RegisterToken.Response);

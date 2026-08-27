@@ -98,6 +98,20 @@ func New(cfg Config, opts ...Option) (*Client, error) {
 	if cfg.Endpoint == "" || cfg.Model == "" {
 		return nil, fmt.Errorf("llm client requires endpoint and model")
 	}
+	api, o := newAPIClient(cfg, opts...)
+	return &Client{
+		api:   api,
+		model: cfg.Model,
+		retry: o.retry,
+		sleep: sleepCtx,
+	}, nil
+}
+
+// newAPIClient builds the underlying go-openai client shared by New (chat
+// completions) and ListModels (catalog discovery, which has no model yet):
+// same base URL, bearer token, and bounded transport either way, so a
+// listing call is bound by the identical safety rails as a completion call.
+func newAPIClient(cfg Config, opts ...Option) (*openai.Client, options) {
 	o := options{retry: DefaultRetryPolicy()}
 	for _, opt := range opts {
 		opt(&o)
@@ -114,12 +128,7 @@ func New(cfg Config, opts ...Option) (*Client, error) {
 	bounded := *httpClient
 	bounded.Transport = &boundedTransport{base: httpClient.Transport, limit: maxResponseBytes}
 	apiCfg.HTTPClient = &bounded
-	return &Client{
-		api:   openai.NewClientWithConfig(apiCfg),
-		model: cfg.Model,
-		retry: o.retry,
-		sleep: sleepCtx,
-	}, nil
+	return openai.NewClientWithConfig(apiCfg), o
 }
 
 // boundedTransport truncates every response body at limit bytes; an

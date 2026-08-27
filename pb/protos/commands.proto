@@ -4939,6 +4939,59 @@ message Rpc {
             }
         }
 
+        // ListModels validates a provider config (base URL + token) and
+        // returns the models it offers. A successful response already proves
+        // the endpoint is reachable and the token works, so there is no
+        // separate "validate" RPC: the model list IS the validation result,
+        // and the Error codes below (ENDPOINT_NOT_REACHABLE, AUTH_REQUIRED,
+        // ...) tell the caller what to fix.
+        //
+        // config.model is ignored: at this point the caller does not know
+        // which model to use yet.
+        message ListModels {
+            message Request {
+                ProviderConfig config = 1;
+            }
+
+            message Response {
+                Error error = 1;
+                repeated Model models = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        RATE_LIMIT_EXCEEDED = 100;
+                        ENDPOINT_NOT_REACHABLE = 101;
+                        MODEL_NOT_FOUND = 102;
+                        AUTH_REQUIRED = 103;
+                        // ...
+                    }
+                }
+            }
+
+            // Model is one catalog entry, trimmed to what a client-side model
+            // picker needs: an id to send back as ProviderConfig.model, plus
+            // whatever attribution the provider gives alongside it.
+            //
+            // For OPENAI the list is pre-filtered to models usable for chat
+            // completions (see FilterChatModels in core/ai/llmclient). For
+            // every other provider it is returned as-is: OLLAMA, LMSTUDIO and
+            // LLAMACPP only ever list what the user chose to pull/load onto
+            // that server, so there is nothing irrelevant to filter out, and
+            // no capability field to filter by even if there were (see
+            // FilterChatModels' doc comment for the evidence).
+            message Model {
+                string id = 1;
+                string ownedBy = 2;
+            }
+        }
+
         message ProviderConfig {
             Provider provider = 1;
             string endpoint = 2;

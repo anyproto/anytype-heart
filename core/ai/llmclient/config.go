@@ -44,6 +44,37 @@ func FromProto(cfg *pb.RpcAIProviderConfig) (Config, bool, error) {
 	if cfg == nil || cfg.Model == "" {
 		return Config{}, false, nil
 	}
+	endpoint, err := resolveEndpointAndCheckToken(cfg)
+	if err != nil {
+		return Config{}, false, fmt.Errorf("resolve provider endpoint: %w", err)
+	}
+	return Config{Endpoint: endpoint, Model: cfg.Model, Token: cfg.Token}, true, nil
+}
+
+// FromProtoForListing normalizes a wire ProviderConfig for a ListModels call.
+// Unlike FromProto, an empty cfg.Model is expected here — discovering which
+// models exist is the whole point of the call, so there is no model to name
+// yet — which is why this is a sibling constructor rather than a loosened
+// FromProto: loosening FromProto's ok=false-on-empty-model contract would
+// silently redefine "feature off" for its existing caller (the importv2
+// planner), which relies on exactly that signal.
+func FromProtoForListing(cfg *pb.RpcAIProviderConfig) (Config, error) {
+	if cfg == nil {
+		return Config{}, fmt.Errorf("no provider config given")
+	}
+	endpoint, err := resolveEndpointAndCheckToken(cfg)
+	if err != nil {
+		return Config{}, fmt.Errorf("resolve provider endpoint: %w", err)
+	}
+	return Config{Endpoint: endpoint, Token: cfg.Token}, nil
+}
+
+// resolveEndpointAndCheckToken fills cfg's endpoint with the provider's
+// conventional default when none is given and, for OPENAI, validates the
+// token is present and not about to leak over plain http. Shared by
+// FromProto and FromProtoForListing; deliberately does not look at
+// cfg.Model, which means something different to each caller.
+func resolveEndpointAndCheckToken(cfg *pb.RpcAIProviderConfig) (string, error) {
 	endpoint := cfg.Endpoint
 	if endpoint == "" {
 		switch cfg.Provider {
@@ -56,19 +87,19 @@ func FromProto(cfg *pb.RpcAIProviderConfig) (Config, bool, error) {
 		case pb.RpcAI_LLAMACPP:
 			endpoint = defaultEndpointLlamaCpp
 		default:
-			return Config{}, false, fmt.Errorf("unknown provider %v and no endpoint given", cfg.Provider)
+			return "", fmt.Errorf("unknown provider %v and no endpoint given", cfg.Provider)
 		}
 	}
 	if cfg.Provider == pb.RpcAI_OPENAI {
 		if cfg.Token == "" {
-			return Config{}, false, fmt.Errorf("provider openai requires an api token")
+			return "", fmt.Errorf("provider openai requires an api token")
 		}
 		// Local-server tokens are usually dummies; an OpenAI key is real.
 		if err := checkTokenTransport(endpoint, cfg.Token); err != nil {
-			return Config{}, false, err
+			return "", fmt.Errorf("check token transport: %w", err)
 		}
 	}
-	return Config{Endpoint: endpoint, Model: cfg.Model, Token: cfg.Token}, true, nil
+	return endpoint, nil
 }
 
 // checkTokenTransport refuses to send a bearer token in cleartext to a
