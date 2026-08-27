@@ -1,0 +1,1 @@
+{"version":1,"type":"page","properties":{"name":"Release checklist"},"blocks":[{"id":"chk1","type":"checkbox","text":"Ship the release"},{"id":"chk2","type":"checkbox","checked":true,"text":"Write the changelog"}]}

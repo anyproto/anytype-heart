@@ -53,20 +53,30 @@ func (mw *Middleware) WalletConvert(cctx context.Context, req *pb.RpcWalletConve
 }
 
 func (mw *Middleware) WalletCreateSession(cctx context.Context, req *pb.RpcWalletCreateSessionRequest) *pb.RpcWalletCreateSessionResponse {
-	token, accountId, err := mw.applicationService.CreateSession(req)
+	result, err := mw.applicationService.CreateSession(req)
 	code := mapErrorCode(err,
 		errToCode(application.ErrBadInput, pb.RpcWalletCreateSessionResponseError_BAD_INPUT),
 		errToCode(wallet.ErrAppLinkNotFound, pb.RpcWalletCreateSessionResponseError_APP_TOKEN_NOT_FOUND_IN_THE_CURRENT_ACCOUNT),
+		errToCode(wallet.ErrAppLinkExpired, pb.RpcWalletCreateSessionResponseError_APP_TOKEN_EXPIRED),
 		errToCode(application.ErrApplicationIsNotRunning, pb.RpcWalletCreateSessionResponseError_UNKNOWN_ERROR),
 	)
-	return &pb.RpcWalletCreateSessionResponse{
-		Token:     token,
-		AccountId: accountId,
+	resp := &pb.RpcWalletCreateSessionResponse{
 		Error: &pb.RpcWalletCreateSessionResponseError{
 			Code:        code,
 			Description: getErrorDescription(err),
 		},
 	}
+	if result != nil {
+		resp.Token = result.Token
+		resp.AccountId = result.AccountId
+		resp.AccountScope = result.AccountScope
+		resp.AppName = result.AppName
+		resp.AppExpireAt = result.AppExpireAt
+		resp.Grant = result.Grant
+		resp.AppHash = result.AppHash
+		resp.AppCreatedAt = result.AppCreatedAt
+	}
+	return resp
 }
 
 func (mw *Middleware) WalletCloseSession(cctx context.Context, req *pb.RpcWalletCloseSessionRequest) *pb.RpcWalletCloseSessionResponse {

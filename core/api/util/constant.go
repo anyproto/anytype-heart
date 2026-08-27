@@ -36,6 +36,14 @@ func IsFileTypeUniqueKey(uniqueKey string) bool {
 	return ok
 }
 
+// IsFileTypeKey reports whether the given bare type key (e.g. "image")
+// belongs to a file-layout type — the v2 query surface's file-layout opt-in
+// trigger (naming a file type in the type channel widens the row scope to
+// ObjectAndFileLayouts).
+func IsFileTypeKey(key string) bool {
+	return IsFileTypeUniqueKey(domain.TypeKey(key).URL())
+}
+
 var MemberLayouts = []model.ObjectTypeLayout{
 	model.ObjectType_participant,
 }

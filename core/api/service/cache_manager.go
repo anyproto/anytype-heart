@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
+	"github.com/anyproto/anytype-heart/core/api/util"
 )
 
 // participantEntry caches the participant fields needed to enrich chat message
@@ -83,6 +84,21 @@ func (c *cacheManager) cacheType(spaceId string, t *apimodel.Type) {
 
 	c.types[spaceId][t.Id] = t
 	c.types[spaceId][t.UniqueKey] = t
+	// the key DERIVED from the unique key, always — not only when it happens
+	// to equal t.Key. t.Key is the apiObjectKey slug when one is stored, and
+	// for a BSON-keyed custom type ("ot-<hex>") the bare "<hex>" is then
+	// present in NO other slot: uniqueKey keeps its "ot-" prefix and the id is
+	// the object id. Every v1 address the surface has ever served for such a
+	// type is that hex — a create's typeKey, a search's `types`, the `key` of
+	// every object row it ever returned — so the moment the apiObjectKey
+	// backfill stamps a slug, ResolveTypeApiKey stops answering for it and
+	// create/update 400/500 while search silently drops the type from its
+	// filter. Indexing the derived key alongside the slug keeps both spellings
+	// live; properties already get this for free from the RelationKey slot.
+	// Written BEFORE t.Key so an explicit slug still wins the slot on a clash.
+	if derived := util.ToTypeApiKey(t.UniqueKey); derived != "" {
+		c.types[spaceId][derived] = t
+	}
 	c.types[spaceId][t.Key] = t
 }
 
@@ -150,6 +166,7 @@ func (c *cacheManager) removeType(spaceId, id, uniqueKey, key string) {
 	if spaceCache, exists := c.types[spaceId]; exists {
 		delete(spaceCache, id)
 		delete(spaceCache, uniqueKey)
+		delete(spaceCache, util.ToTypeApiKey(uniqueKey)) // the slot cacheType adds
 		delete(spaceCache, key)
 	}
 }

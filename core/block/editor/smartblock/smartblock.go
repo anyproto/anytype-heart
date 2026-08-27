@@ -374,6 +374,17 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	ctx.State.AddBundledRelationLinks(relKeys...)
 	if ctx.IsNewObject && ctx.State != nil {
 		source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentParticipantId, sb.spaceIndex, sb.formatFetcher).Migrate(ctx.State)
+		// Creation provenance (APIV2_OBJECT_DELETE.md §11.4): when the request
+		// ctx carries an API session's raw app name, stamp it on the
+		// CREATION state only — the creating Apply copies it onto the first
+		// content change (source.PushChangeParams.IntegrationName), which is
+		// what the DELETE ownership check later reads. The value is per-apply
+		// by construction (state.State does not propagate it), so a later
+		// edit on this device — IsNewObject false, or a fresh NewState —
+		// carries no stamp.
+		if name := domain.IntegrationNameFromCtx(ctx.Ctx); name != "" {
+			ctx.State.SetIntegrationName(name)
+		}
 	}
 
 	if err = sb.injectLocalDetails(ctx.State); err != nil {
@@ -744,7 +755,18 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		migrationVersionUpdated = true
 		parent                  = s.ParentState()
 		changeType              = s.GetChangeType()
+		// captured from the INCOMING state before ApplyState merges it away:
+		// the doc state never carries the integration name, so only the apply
+		// whose own state was stamped (the creating one) pushes it
+		integrationName = s.IntegrationName()
 	)
+	// consume the stamp AT capture (review F6): one stamped push per stamped
+	// state is a structural guarantee, not a caller invariant. Without this
+	// line the state object keeps the name after it becomes the doc, and
+	// applying the same stamped state twice pushes the value twice —
+	// InitObject applies once today, but attribution will widen the fill
+	// sites, and a caller-count invariant does not survive that.
+	s.SetIntegrationName("")
 
 	if parent != nil {
 		migrationVersionUpdated = s.MigrationVersion() != parent.MigrationVersion()
@@ -818,6 +840,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			FileChangedHashes: getChangedFileHashes(s, fileDetailsKeysFiltered, act),
 			DoSnapshot:        doSnapshot,
 			ChangeType:        changeType,
+			IntegrationName:   integrationName,
 		}
 		changeId, err = sb.source.PushChange(pushChangeParams)
 		// For read-only mode

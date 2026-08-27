@@ -7,9 +7,9 @@ import (
 	"github.com/gin-gonic/gin"
 
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
-	_ "github.com/anyproto/anytype-heart/core/api/docs"
 	"github.com/anyproto/anytype-heart/core/api/handler"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
+	apiv2 "github.com/anyproto/anytype-heart/core/api/v2"
 	"github.com/anyproto/anytype-heart/util/localorigin"
 )
 
@@ -43,7 +43,14 @@ func (srv *Server) NewRouter(mw apicore.ClientCommands, eventService apicore.Eve
 	v1 := router.Group("/v1")
 	v1.Use(paginator)
 	v1.Use(srv.ensureCacheInitialized())
+	// No scope gate on /v1: keys minted without a scope carry Limited
+	// (anytype-cli's CreateApp historically sent none) and must keep working
+	// here — the JSON-API scope gate (ensureJsonApiScope) is /v2-only.
 	v1.Use(srv.ensureAuthenticated(mw))
+	// GRANTED keys are the one exception to /v1's grandfathering: their
+	// grant can only be honored on /v2, so /v1 refuses them with a pointer
+	// there. Legacy (nil-grant) keys pass untouched.
+	v1.Use(ensureUngrantedKey())
 
 	srv.registerChatRoutes(v1, eventService, writeRateLimitMW)
 	srv.registerFileRoutes(v1, eventService, writeRateLimitMW)
@@ -56,6 +63,19 @@ func (srv *Server) NewRouter(mw apicore.ClientCommands, eventService apicore.Eve
 	srv.registerTagRoutes(v1, eventService, writeRateLimitMW)
 	srv.registerTemplateRoutes(v1, eventService)
 	srv.registerTypeRoutes(v1, eventService, writeRateLimitMW)
+
+	apiv2.RegisterRoutes(router, apiv2.RouteDeps{
+		Service:        srv.v2Service,
+		CreateDisabled: srv.v2CreateDisabled,
+		EditDisabled:   srv.v2EditDisabled,
+		Auth:           srv.ensureAuthenticated(mw),
+		KeyScope:       ensureJsonApiScope(),
+		CacheInit:      srv.ensureCacheInitialized(),
+		WriteRateLimit: writeRateLimitMW,
+		AnalyticsEvent: func(code string) gin.HandlerFunc {
+			return ensureAnalyticsEvent(code, eventService)
+		},
+	})
 
 	return router
 }
@@ -107,13 +127,21 @@ func (srv *Server) registerDocumentationRoutes(router *gin.Engine, openapiYAML [
 		c.Redirect(http.StatusMovedPermanently, target)
 	})
 
-	router.GET("/docs/openapi.yaml", func(c *gin.Context) {
-		c.Data(http.StatusOK, "application/x-yaml", openapiYAML)
-	})
-
-	router.GET("/docs/openapi.json", func(c *gin.Context) {
-		c.Data(http.StatusOK, "application/json", openapiJSON)
-	})
+	// /docs/* keeps serving v1 unchanged: it is the path developers.anytype.io
+	// and existing integrations use, so repointing it at v2 would break them
+	// and repointing it at nothing would be worse. The versioned paths are the
+	// ones to link to from here on.
+	serveDoc := func(path, contentType string, body []byte) {
+		router.GET(path, func(c *gin.Context) {
+			c.Data(http.StatusOK, contentType, body)
+		})
+	}
+	serveDoc("/docs/openapi.yaml", "application/x-yaml", openapiYAML)
+	serveDoc("/docs/openapi.json", "application/json", openapiJSON)
+	serveDoc("/v1/docs/openapi.yaml", "application/x-yaml", openapiYAML)
+	serveDoc("/v1/docs/openapi.json", "application/json", openapiJSON)
+	serveDoc("/v2/docs/openapi.yaml", "application/x-yaml", srv.docs.V2YAML)
+	serveDoc("/v2/docs/openapi.json", "application/json", srv.docs.V2JSON)
 }
 
 // registerAuthRoutes registers authentication routes (no auth required)

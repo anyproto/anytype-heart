@@ -15,12 +15,12 @@ import (
 // flakyReader fails the first `failuresBeforeSuccess` Read calls with the
 // supplied error, then succeeds and delegates to delegate.
 type flakyReader struct {
-	delegate              io.ReadSeeker
-	failureErr            error
-	readsBeforeSuccess    int
-	seeksBeforeSuccess    int
-	readsObserved         int
-	seeksObserved         int
+	delegate           io.ReadSeeker
+	failureErr         error
+	readsBeforeSuccess int
+	seeksBeforeSuccess int
+	readsObserved      int
+	seeksObserved      int
 }
 
 func (f *flakyReader) Read(p []byte) (int, error) {

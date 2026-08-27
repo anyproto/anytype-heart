@@ -242,6 +242,7 @@ message Event {
       string challenge = 1;
       ClientInfo clientInfo = 2;
       model.Account.Auth.LocalApiScope scope = 3;
+      model.Account.Auth.AppGrant requestedGrant = 4; // the restriction the client asked for; the consent picker displays it and may narrow it further
     }
 
     message LinkChallengeHide {

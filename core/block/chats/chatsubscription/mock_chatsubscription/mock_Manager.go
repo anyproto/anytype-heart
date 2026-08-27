@@ -157,38 +157,6 @@ func (_c *MockManager_ForceReloadReactionState_Call) RunAndReturn(run func()) *M
 	return _c
 }
 
-// ReconcileChatState provides a mock function with no fields
-func (_m *MockManager) ReconcileChatState() {
-	_m.Called()
-}
-
-// MockManager_ReconcileChatState_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReconcileChatState'
-type MockManager_ReconcileChatState_Call struct {
-	*mock.Call
-}
-
-// ReconcileChatState is a helper method to define mock.On call
-func (_e *MockManager_Expecter) ReconcileChatState() *MockManager_ReconcileChatState_Call {
-	return &MockManager_ReconcileChatState_Call{Call: _e.mock.On("ReconcileChatState")}
-}
-
-func (_c *MockManager_ReconcileChatState_Call) Run(run func()) *MockManager_ReconcileChatState_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *MockManager_ReconcileChatState_Call) Return() *MockManager_ReconcileChatState_Call {
-	_c.Call.Return()
-	return _c
-}
-
-func (_c *MockManager_ReconcileChatState_Call) RunAndReturn(run func()) *MockManager_ReconcileChatState_Call {
-	_c.Run(run)
-	return _c
-}
-
 // ForceSendingChatState provides a mock function with no fields
 func (_m *MockManager) ForceSendingChatState() {
 	_m.Called()
@@ -519,6 +487,38 @@ func (_c *MockManager_ReadReactions_Call) Return() *MockManager_ReadReactions_Ca
 }
 
 func (_c *MockManager_ReadReactions_Call) RunAndReturn(run func(string, []string)) *MockManager_ReadReactions_Call {
+	_c.Run(run)
+	return _c
+}
+
+// ReconcileChatState provides a mock function with no fields
+func (_m *MockManager) ReconcileChatState() {
+	_m.Called()
+}
+
+// MockManager_ReconcileChatState_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReconcileChatState'
+type MockManager_ReconcileChatState_Call struct {
+	*mock.Call
+}
+
+// ReconcileChatState is a helper method to define mock.On call
+func (_e *MockManager_Expecter) ReconcileChatState() *MockManager_ReconcileChatState_Call {
+	return &MockManager_ReconcileChatState_Call{Call: _e.mock.On("ReconcileChatState")}
+}
+
+func (_c *MockManager_ReconcileChatState_Call) Run(run func()) *MockManager_ReconcileChatState_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockManager_ReconcileChatState_Call) Return() *MockManager_ReconcileChatState_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockManager_ReconcileChatState_Call) RunAndReturn(run func()) *MockManager_ReconcileChatState_Call {
 	_c.Run(run)
 	return _c
 }

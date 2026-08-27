@@ -7,7 +7,7 @@ type DisplayCodeResponse struct {
 
 // TO BE DEPRECATED
 type TokenResponse struct {
-	AppKey string `json:"app_key" example:"zhSG/zQRmgADyilWPtgdnfo1qD60oK02/SVgi1GaFt6="` // The app key used to authenticate requests
+	AppKey string `json:"app_key" example:"anytype_amfbcga7eywtio2cjfifoxtfnrzxvamir6lj3jflwk44br6o2xoa_3fe1d4b7"` // The app key used to authenticate requests
 }
 
 type CreateChallengeRequest struct {
@@ -24,5 +24,10 @@ type CreateApiKeyRequest struct {
 }
 
 type CreateApiKeyResponse struct {
-	ApiKey string `json:"api_key" example:"zhSG/zQRmgADyilWPtgdnfo1qD60oK02/SVgi1GaFt6="` // The api key used to authenticate requests
+	// ApiKey is minted in the prefixed+checksummed format
+	// `anytype_<body>_<checksum>`; match it with the published pattern
+	// `\banytype_[0-9A-Za-z]{40,60}_[0-9a-f]{8}\b` (a length RANGE — never
+	// assume a fixed length). Keys issued before the format flip are plain
+	// base64 and keep authenticating unchanged.
+	ApiKey string `json:"api_key" example:"anytype_amfbcga7eywtio2cjfifoxtfnrzxvamir6lj3jflwk44br6o2xoa_3fe1d4b7"` // The api key used to authenticate requests
 }

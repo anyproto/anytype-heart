@@ -114,84 +114,6 @@ func (_c *MockNetworkState_Init_Call) RunAndReturn(run func(*app.App) error) *Mo
 	return _c
 }
 
-// Name provides a mock function with no fields
-func (_m *MockNetworkState) Name() string {
-	ret := _m.Called()
-
-	if len(ret) == 0 {
-		panic("no return value specified for Name")
-	}
-
-	var r0 string
-	if rf, ok := ret.Get(0).(func() string); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(string)
-	}
-
-	return r0
-}
-
-// MockNetworkState_Name_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Name'
-type MockNetworkState_Name_Call struct {
-	*mock.Call
-}
-
-// Name is a helper method to define mock.On call
-func (_e *MockNetworkState_Expecter) Name() *MockNetworkState_Name_Call {
-	return &MockNetworkState_Name_Call{Call: _e.mock.On("Name")}
-}
-
-func (_c *MockNetworkState_Name_Call) Run(run func()) *MockNetworkState_Name_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *MockNetworkState_Name_Call) Return(name string) *MockNetworkState_Name_Call {
-	_c.Call.Return(name)
-	return _c
-}
-
-func (_c *MockNetworkState_Name_Call) RunAndReturn(run func() string) *MockNetworkState_Name_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// RegisterHook provides a mock function with given fields: hook
-func (_m *MockNetworkState) RegisterHook(hook func(model.DeviceNetworkType)) {
-	_m.Called(hook)
-}
-
-// MockNetworkState_RegisterHook_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RegisterHook'
-type MockNetworkState_RegisterHook_Call struct {
-	*mock.Call
-}
-
-// RegisterHook is a helper method to define mock.On call
-//   - hook func(model.DeviceNetworkType)
-func (_e *MockNetworkState_Expecter) RegisterHook(hook interface{}) *MockNetworkState_RegisterHook_Call {
-	return &MockNetworkState_RegisterHook_Call{Call: _e.mock.On("RegisterHook", hook)}
-}
-
-func (_c *MockNetworkState_RegisterHook_Call) Run(run func(hook func(model.DeviceNetworkType))) *MockNetworkState_RegisterHook_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(func(model.DeviceNetworkType)))
-	})
-	return _c
-}
-
-func (_c *MockNetworkState_RegisterHook_Call) Return() *MockNetworkState_RegisterHook_Call {
-	_c.Call.Return()
-	return _c
-}
-
-func (_c *MockNetworkState_RegisterHook_Call) RunAndReturn(run func(func(model.DeviceNetworkType))) *MockNetworkState_RegisterHook_Call {
-	_c.Run(run)
-	return _c
-}
-
 // IsOffline provides a mock function with no fields
 func (_m *MockNetworkState) IsOffline() bool {
 	ret := _m.Called()
@@ -237,6 +159,51 @@ func (_c *MockNetworkState_IsOffline_Call) RunAndReturn(run func() bool) *MockNe
 	return _c
 }
 
+// Name provides a mock function with no fields
+func (_m *MockNetworkState) Name() string {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for Name")
+	}
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
+// MockNetworkState_Name_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Name'
+type MockNetworkState_Name_Call struct {
+	*mock.Call
+}
+
+// Name is a helper method to define mock.On call
+func (_e *MockNetworkState_Expecter) Name() *MockNetworkState_Name_Call {
+	return &MockNetworkState_Name_Call{Call: _e.mock.On("Name")}
+}
+
+func (_c *MockNetworkState_Name_Call) Run(run func()) *MockNetworkState_Name_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockNetworkState_Name_Call) Return(name string) *MockNetworkState_Name_Call {
+	_c.Call.Return(name)
+	return _c
+}
+
+func (_c *MockNetworkState_Name_Call) RunAndReturn(run func() string) *MockNetworkState_Name_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // RegisterConnectivityHook provides a mock function with given fields: hook
 func (_m *MockNetworkState) RegisterConnectivityHook(hook func(bool)) {
 	_m.Called(hook)
@@ -266,6 +233,39 @@ func (_c *MockNetworkState_RegisterConnectivityHook_Call) Return() *MockNetworkS
 }
 
 func (_c *MockNetworkState_RegisterConnectivityHook_Call) RunAndReturn(run func(func(bool))) *MockNetworkState_RegisterConnectivityHook_Call {
+	_c.Run(run)
+	return _c
+}
+
+// RegisterHook provides a mock function with given fields: hook
+func (_m *MockNetworkState) RegisterHook(hook func(model.DeviceNetworkType)) {
+	_m.Called(hook)
+}
+
+// MockNetworkState_RegisterHook_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RegisterHook'
+type MockNetworkState_RegisterHook_Call struct {
+	*mock.Call
+}
+
+// RegisterHook is a helper method to define mock.On call
+//   - hook func(model.DeviceNetworkType)
+func (_e *MockNetworkState_Expecter) RegisterHook(hook interface{}) *MockNetworkState_RegisterHook_Call {
+	return &MockNetworkState_RegisterHook_Call{Call: _e.mock.On("RegisterHook", hook)}
+}
+
+func (_c *MockNetworkState_RegisterHook_Call) Run(run func(hook func(model.DeviceNetworkType))) *MockNetworkState_RegisterHook_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(func(model.DeviceNetworkType)))
+	})
+	return _c
+}
+
+func (_c *MockNetworkState_RegisterHook_Call) Return() *MockNetworkState_RegisterHook_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockNetworkState_RegisterHook_Call) RunAndReturn(run func(func(model.DeviceNetworkType))) *MockNetworkState_RegisterHook_Call {
 	_c.Run(run)
 	return _c
 }

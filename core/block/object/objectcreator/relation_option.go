@@ -3,7 +3,6 @@ package objectcreator
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/order"
@@ -47,10 +46,15 @@ func (s *service) createRelationOption(ctx context.Context, space clientspace.Sp
 		objectKey = uniqueKey.InternalKey()
 	}
 	injectApiObjectKey(object, objectKey)
-
-	if strings.TrimSpace(object.GetString(bundle.RelationKeyApiObjectKey)) == "" {
-		object.SetString(bundle.RelationKeyApiObjectKey, transliterate(object.GetString(bundle.RelationKeyName)))
-	}
+	// NOTE: a second fallback used to re-derive the slug here via bare
+	// transliteration WITHOUT the snake_case step — the one divergence in
+	// the slug layer (GO-7383 ADDRESSING §2.3-3). Removed: for names whose
+	// snake form trims to whitespace/empty (transliterate runs TrimSpace
+	// before unidecode, so U+200B- or U+2800-only names and emoji+space
+	// names do reach this point) the divergent branch stored the raw
+	// transliteration where injectApiObjectKey stored the snaked form —
+	// both effectively blank, neither a usable slug, so the removal is
+	// benign and the un-snaked spelling is gone.
 
 	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
 	createState.SetDetails(object)

@@ -991,3 +991,91 @@ func TestSanitizeAndValidatePropertyValueTypeObject(t *testing.T) {
 		assert.Contains(t, err.Error(), "invalid object reference")
 	})
 }
+
+// TestApiKeyRenameDoesNotMintAShadow covers the §7.5a-6 hole v1's rename
+// channel left open: PATCH /v1/…/properties/{id} and /types/{id} stamp
+// `apiObjectKey` through ObjectSetDetails without ever entering objectcreator,
+// so they bypass ensureUniqueApiObjectKey's union check. Their only guard was
+// the per-space cache, which has NO ROW for a bundled relation that is not
+// installed in the space — so renaming a custom key to `dueDate` minted a
+// fresh `due_date` shadow, the exact failure the mint hardening exists to make
+// unreachable.
+//
+// Revert the shadowsBundled*Key calls in property.go / type.go and the two
+// end-to-end subtests below accept the rename again.
+func TestApiKeyRenameDoesNotMintAShadow(t *testing.T) {
+	t.Run("the predicate is the bundled arm of the union check", func(t *testing.T) {
+		// a bundled derived slug, held by someone else
+		assert.True(t, shadowsBundledRelationKey("due_date", "6a7663db61fab21cd4b9e101"))
+		// a spelling that IS a bundled internal key
+		assert.True(t, shadowsBundledRelationKey("dueDate", "6a7663db61fab21cd4b9e101"))
+		// its own derived slug is not a shadow of itself
+		assert.False(t, shadowsBundledRelationKey("due_date", "dueDate"))
+		// nothing bundled answers to it
+		assert.False(t, shadowsBundledRelationKey("manual_property", "6a7663db61fab21cd4b9e101"))
+
+		assert.True(t, shadowsBundledTypeKey("object_type", "6a7663db61fab21cd4b9e103"))
+		assert.False(t, shadowsBundledTypeKey("object_type", "objectType"))
+		assert.False(t, shadowsBundledTypeKey("meeting_note", "6a7663db61fab21cd4b9e103"))
+	})
+
+	t.Run("renaming a property key onto a bundled slug is refused", func(t *testing.T) {
+		// given: a BSON-keyed custom property, and the bundled dueDate NOT
+		// installed — the cache row that would flag `due_date` does not exist
+		fx := newFixture(t)
+		// deliberately NOT populateCache: the shipped fixture caches a due_date
+		// row, which is the one thing that would have caught this
+		fx.mwMock.On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
+			SpaceId: mockedSpaceId, ObjectId: "rel-custom",
+		}).Return(&pb.RpcObjectShowResponse{
+			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
+			ObjectView: &model.ObjectView{Details: []*model.ObjectViewDetailsSet{{Details: &types.Struct{Fields: map[string]*types.Value{
+				bundle.RelationKeyId.String():             pbtypes.String("rel-custom"),
+				bundle.RelationKeyRelationKey.String():    pbtypes.String("6a7663db61fab21cd4b9e101"),
+				bundle.RelationKeyApiObjectKey.String():   pbtypes.String("manual_property"),
+				bundle.RelationKeyName.String():           pbtypes.String("Manual property"),
+				bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_longtext)),
+			}}}}},
+		}).Maybe()
+		newKey := "dueDate" // strcase.ToSnake makes this due_date
+
+		// when
+		_, err := fx.service.UpdateProperty(context.Background(), mockedSpaceId, "rel-custom",
+			apimodel.UpdatePropertyRequest{Key: &newKey})
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "reserved by a bundled property")
+	})
+
+	t.Run("renaming a type key onto a bundled slug is refused", func(t *testing.T) {
+		// given: a custom type, and `objectType` NOT installed in this space —
+		// so the cache holds no row that could reveal the clash
+		fx := newFixture(t)
+		fx.populateCache(mockedSpaceId)
+		custom := &apimodel.Type{Id: "type-custom", Key: "meeting_note", UniqueKey: "ot-6a7663db61fab21cd4b9e103"}
+		newKey := "object_type"
+
+		// when
+		_, err := fx.service.buildUpdatedTypeDetails(context.Background(), mockedSpaceId, custom,
+			apimodel.UpdateTypeRequest{Key: &newKey})
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "reserved by a bundled type")
+	})
+
+	t.Run("an unrelated rename still works", func(t *testing.T) {
+		fx := newFixture(t)
+		fx.populateCache(mockedSpaceId)
+		custom := &apimodel.Type{Id: "type-custom", Key: "meeting_note", UniqueKey: "ot-6a7663db61fab21cd4b9e103"}
+		newKey := "meeting_minutes"
+
+		details, err := fx.service.buildUpdatedTypeDetails(context.Background(), mockedSpaceId, custom,
+			apimodel.UpdateTypeRequest{Key: &newKey})
+
+		require.NoError(t, err)
+		assert.Equal(t, "meeting_minutes",
+			pbtypes.GetString(details, bundle.RelationKeyApiObjectKey.String()))
+	})
+}

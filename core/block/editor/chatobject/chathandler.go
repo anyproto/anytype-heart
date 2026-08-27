@@ -24,6 +24,22 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
+// The two foreign-message refusals, exported because the API layer
+// classifies them by matching the RPC error DESCRIPTION (the sentinel is
+// flattened to a string at the RPC boundary): core/api/v2 matches
+// Contains(description, Err….Error()), so referencing the sentinel on both
+// sides makes a rewording here update the classifier at compile time
+// instead of silently degrading the 403 back to a retry-looping 500
+// (API v2 surface review M2b).
+var (
+	// ErrModifyForeignMessage refuses editing another member's message
+	// (the EDIT path, UpgradeKeyModifier on the content key).
+	ErrModifyForeignMessage = errors.New("can't modify someone else's message")
+	// ErrDeleteForeignMessage refuses deleting another member's message
+	// without moderation rights (the DELETE path, BeforeDelete).
+	ErrDeleteForeignMessage = errors.New("can't delete not own message")
+)
+
 type ChatHandler struct {
 	repository      chatrepository.Repository
 	subscription    chatsubscription.Manager
@@ -190,7 +206,7 @@ func (d *ChatHandler) BeforeDelete(ctx context.Context, ch storestate.ChangeOp) 
 		return storestate.DeleteModeDelete, fmt.Errorf("unmarshal message: %w", err)
 	}
 	if message.Creator != ch.Change.Creator && !d.canModerateAt(ch.Change.Creator, ch.Change.AclHeadId) {
-		return storestate.DeleteModeDelete, errors.New("can't delete not own message")
+		return storestate.DeleteModeDelete, ErrDeleteForeignMessage
 	}
 
 	d.subscription.Lock()
@@ -243,7 +259,7 @@ func (d *ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModi
 			case chatmodel.ContentKey:
 				creator := msg.Creator
 				if creator != ch.Change.Creator {
-					return v, false, errors.Join(storestate.ErrValidation, fmt.Errorf("can't modify someone else's message"))
+					return v, false, errors.Join(storestate.ErrValidation, ErrModifyForeignMessage)
 				}
 				msg.ModifiedAt = ch.Change.Timestamp
 				msg.MarshalAnyenc(result, a)

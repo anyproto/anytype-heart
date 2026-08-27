@@ -294,6 +294,9 @@ func (s *Service) buildUpdatedTypeDetails(ctx context.Context, spaceId string, t
 			if bundle.HasObjectTypeByKey(domain.TypeKey(util.ToTypeApiKey(t.UniqueKey))) {
 				return nil, util.ErrBadInput("type key of bundled types cannot be changed")
 			}
+			if shadowsBundledTypeKey(apiKey, util.ToTypeApiKey(t.UniqueKey)) {
+				return nil, util.ErrBadInput(fmt.Sprintf("type key %q is reserved by a bundled type", apiKey))
+			}
 			fields[bundle.RelationKeyApiObjectKey.String()] = pbtypes.String(apiKey)
 		}
 	}

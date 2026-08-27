@@ -1,0 +1,386 @@
+package apiv2
+
+// middleware.go holds the API v2 plumbing that lives at the HTTP layer:
+// the C8 idempotency store/middleware, the C9 dry-run scaffold, and the C6
+// error responder.
+
+import (
+	"bytes"
+	"container/list"
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
+	"io"
+	"net/http"
+	"strconv"
+	"strings"
+	"sync"
+
+	"github.com/gin-gonic/gin"
+
+	v2handler "github.com/anyproto/anytype-heart/core/api/v2/handler"
+	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
+)
+
+const (
+	// IdempotencyKeyHeader is the C8 request header.
+	IdempotencyKeyHeader = "Idempotency-Key"
+	// idempotencyMaxEntries bounds the in-process store (LRU eviction);
+	// persistence across restart is not required for v2.0 (§8).
+	idempotencyMaxEntries = 1024
+	// idempotencyMaxBody caps stored replay bodies; larger responses are
+	// not replayable and simply re-execute.
+	idempotencyMaxBody = 1 << 20 // 1 MiB
+	// MaxRequestBody bounds the request body the idempotency middleware
+	// buffers before the handler runs (C3). Without it, io.ReadAll here is
+	// unbounded and bypasses the per-handler size caps (e.g. /v2/validate),
+	// so a keyed POST with a huge body could OOM the process. Sized to match
+	// the largest handler cap (validate = 10 MiB).
+	MaxRequestBody = 10 << 20 // 10 MiB
+
+	// idempotencyPrefixBytes bounds what a streamed upload contributes to its
+	// idempotency identity. Large enough that a multipart prefix carries the
+	// boundary, part headers, filename and the file's opening bytes; small
+	// enough that a keyed upload no longer buffers whole files in RAM.
+	idempotencyPrefixBytes = 64 << 10 // 64 KiB
+)
+
+// storedResult is a replayable response.
+type storedResult struct {
+	bodyHash    string
+	status      int
+	contentType string
+	body        []byte
+}
+
+// idempotencyStore is the in-process C8 store: (space, Idempotency-Key) →
+// (body-hash, stored result), bounded LRU.
+type idempotencyStore struct {
+	mu      sync.Mutex
+	entries map[string]*list.Element
+	order   *list.List               // front = most recent
+	pending map[string]chan struct{} // in-flight reservations (M4)
+	max     int
+}
+
+type idempotencyEntry struct {
+	key    string
+	result storedResult
+}
+
+func newIdempotencyStore(maxEntries int) *idempotencyStore {
+	return &idempotencyStore{
+		entries: map[string]*list.Element{},
+		order:   list.New(),
+		pending: map[string]chan struct{}{},
+		max:     maxEntries,
+	}
+}
+
+func idempotencyStoreKey(spaceId, key string) string {
+	return spaceId + "\x00" + key
+}
+
+// begin claims (space, key) for execution or returns a completed result to
+// replay (M4). It blocks while another request with the same key is in-flight,
+// then re-checks — so concurrent retries never double-execute. When it returns
+// owner=true the caller MUST call finish exactly once (use defer, so a handler
+// panic still releases the reservation).
+func (s *idempotencyStore) begin(spaceId, key string) (result storedResult, replay bool, owner bool) {
+	storeKey := idempotencyStoreKey(spaceId, key)
+	for {
+		s.mu.Lock()
+		if el, ok := s.entries[storeKey]; ok {
+			s.order.MoveToFront(el)
+			res := el.Value.(*idempotencyEntry).result
+			s.mu.Unlock()
+			return res, true, false
+		}
+		if ch, ok := s.pending[storeKey]; ok {
+			s.mu.Unlock()
+			<-ch // wait for the in-flight owner, then re-check
+			continue
+		}
+		s.pending[storeKey] = make(chan struct{})
+		s.mu.Unlock()
+		return storedResult{}, false, true
+	}
+}
+
+// finish releases the reservation taken by begin, storing result for replay
+// when it is non-nil (only successful responses are cached; a nil result lets
+// a subsequent retry re-execute).
+func (s *idempotencyStore) finish(spaceId, key string, result *storedResult) {
+	storeKey := idempotencyStoreKey(spaceId, key)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if result != nil {
+		s.putLocked(storeKey, *result)
+	}
+	if ch, ok := s.pending[storeKey]; ok {
+		close(ch)
+		delete(s.pending, storeKey)
+	}
+}
+
+// putLocked stores a result under storeKey, evicting the least recent entry
+// beyond the bound. The caller holds s.mu.
+func (s *idempotencyStore) putLocked(storeKey string, result storedResult) {
+	if el, ok := s.entries[storeKey]; ok {
+		el.Value.(*idempotencyEntry).result = result
+		s.order.MoveToFront(el)
+		return
+	}
+	s.entries[storeKey] = s.order.PushFront(&idempotencyEntry{key: storeKey, result: result})
+	for s.order.Len() > s.max {
+		last := s.order.Back()
+		s.order.Remove(last)
+		delete(s.entries, last.Value.(*idempotencyEntry).key)
+	}
+}
+
+// get returns the stored result for (space, key), refreshing recency.
+func (s *idempotencyStore) get(spaceId, key string) (storedResult, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	el, ok := s.entries[idempotencyStoreKey(spaceId, key)]
+	if !ok {
+		return storedResult{}, false
+	}
+	s.order.MoveToFront(el)
+	return el.Value.(*idempotencyEntry).result, true
+}
+
+// put stores a result for (space, key) directly (used in tests; the request
+// path goes through begin/finish).
+func (s *idempotencyStore) put(spaceId, key string, result storedResult) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.putLocked(idempotencyStoreKey(spaceId, key), result)
+}
+
+// bodyRecorder captures the response for replay while streaming it through.
+type bodyRecorder struct {
+	gin.ResponseWriter
+	buf      bytes.Buffer
+	overflow bool
+}
+
+func (r *bodyRecorder) Write(p []byte) (int, error) {
+	if r.buf.Len()+len(p) > idempotencyMaxBody {
+		r.overflow = true
+	} else {
+		r.buf.Write(p)
+	}
+	return r.ResponseWriter.Write(p)
+}
+
+// isStreamedUpload reports whether the body is a file being streamed rather
+// than a JSON document. Only multipart qualifies: every other v2 body is a
+// bounded JSON payload whose exact bytes are the request identity.
+func isStreamedUpload(r *http.Request) bool {
+	return strings.HasPrefix(strings.ToLower(r.Header.Get("Content-Type")), "multipart/")
+}
+
+// ensureIdempotency implements C8 on mutation routes (POST, PATCH — and
+// DELETE, the Phase-6 widening, carried by EVERY registered v2 DELETE: the
+// chat message, type and property deletes alike, so C8 reads "every v2
+// mutation" with no per-route exceptions): replay with the same key and
+// body returns the stored result; the same key with a different body → 409
+// idempotency_conflict. Requests without the header pass through. PATCH is
+// where a blind agent retry does the most damage — a retried successful
+// insert_blocks duplicates blocks, a retried delete_block 404s misleadingly —
+// so the middleware covers it like POST (v0.3.5).
+//
+// The gate is a METHOD classifier, not a route list, so PUT stays in the
+// set even though v2 registers no PUT route since the full-document
+// replace was removed (§8.27): a future mutation method must be covered by
+// construction, never by remembering to widen this switch.
+func ensureIdempotency(store *idempotencyStore) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		key := c.GetHeader(IdempotencyKeyHeader)
+		switch c.Request.Method {
+		case http.MethodPost, http.MethodPatch, http.MethodPut, http.MethodDelete:
+		default:
+			c.Next()
+			return
+		}
+		if key == "" {
+			c.Next()
+			return
+		}
+
+		// A streamed upload's body IS the file, so buffering it to hash was
+		// both a memory cost and — worse — a 10 MiB ceiling that appeared
+		// only when the caller sent the header C8 tells every mutation to
+		// send (surface review M4). The disciplined agent was the one that
+		// could not upload a large file, and the 413 named the body, never
+		// the header, so it steered towards shrinking the file.
+		//
+		// For those requests the identity is a BOUNDED PREFIX plus the
+		// declared length rather than the whole body: for multipart that
+		// prefix covers the boundary, the part headers, the filename and the
+		// file's opening bytes, so two genuinely different uploads still
+		// differ in it and still earn their 409. Two uploads identical in
+		// both length and first 64 KiB replay instead of conflicting — a
+		// narrower guarantee than the exact-body hash, recorded in §8.15 and
+		// bounded to this content type.
+		var body []byte
+		streamed := isStreamedUpload(c.Request)
+		if streamed {
+			prefix, err := io.ReadAll(io.LimitReader(c.Request.Body, idempotencyPrefixBytes))
+			if err != nil {
+				respondV2Error(c, v2model.ValidationFailed("read request body: "+err.Error()))
+				return
+			}
+			// the unread remainder keeps streaming to the handler
+			c.Request.Body = struct {
+				io.Reader
+				io.Closer
+			}{io.MultiReader(bytes.NewReader(prefix), c.Request.Body), c.Request.Body}
+			body = prefix
+		} else {
+			read, err := io.ReadAll(io.LimitReader(c.Request.Body, MaxRequestBody+1))
+			if err != nil {
+				respondV2Error(c, v2model.ValidationFailed("read request body: "+err.Error()))
+				return
+			}
+			if len(read) > MaxRequestBody {
+				respondV2Error(c, v2model.RequestTooLarge(fmt.Sprintf("request body exceeds the %d-byte limit", MaxRequestBody)))
+				return
+			}
+			c.Request.Body = io.NopCloser(bytes.NewReader(read))
+			body = read
+		}
+		// The hash identifies the whole request, not just its body:
+		//   - method and path, because PATCH carries the target object in the
+		//     PATH — two byte-identical edits to different objects under one
+		//     reused key would otherwise replay the first object's success
+		//     with its etag, silently leaving the second object unedited
+		//     (no error an agent could repair from);
+		//   - the query string, because a ?dry_run=true request and its later
+		//     real twin share a body but must never replay for each other
+		//     (C8/C9).
+		hasher := sha256.New()
+		for _, part := range []string{c.Request.Method, c.Request.URL.Path, c.Request.URL.RawQuery} {
+			hasher.Write([]byte(part))
+			hasher.Write([]byte{0})
+		}
+		if streamed {
+			// the declared length joins the prefix, so the same opening bytes
+			// with a different total are still a different request
+			hasher.Write([]byte(strconv.FormatInt(c.Request.ContentLength, 10)))
+			hasher.Write([]byte{0})
+		}
+		hasher.Write(body)
+		bodyHash := hex.EncodeToString(hasher.Sum(nil))
+		spaceId := c.Param("space_id")
+
+		stored, replay, owner := store.begin(spaceId, key)
+		if replay {
+			if stored.bodyHash != bodyHash {
+				respondV2Error(c, v2model.NewError(http.StatusConflict, v2model.CodeIdempotencyConflict,
+					"Idempotency-Key was already used with a different request body — use a fresh key per distinct request"))
+				return
+			}
+			c.Header("Idempotency-Replayed", "true")
+			c.Data(stored.status, stored.contentType, stored.body)
+			c.Abort()
+			return
+		}
+		_ = owner // begin returns owner==true here; finish is deferred below
+
+		// Release the reservation on the way out — via defer so a handler panic
+		// (recovered upstream by gin.Recovery) still frees waiters (M4). result
+		// stays nil unless the handler succeeded, so a failed/ panicked request
+		// is not cached and a retry re-executes.
+		var result *storedResult
+		defer func() { store.finish(spaceId, key, result) }()
+
+		recorder := &bodyRecorder{ResponseWriter: c.Writer}
+		c.Writer = recorder
+		c.Next()
+
+		// only successful results replay; failures may be retried fresh
+		status := recorder.Status()
+		if status >= 200 && status < 300 && !recorder.overflow {
+			result = &storedResult{
+				bodyHash:    bodyHash,
+				status:      status,
+				contentType: recorder.Header().Get("Content-Type"),
+				body:        append([]byte(nil), recorder.buf.Bytes()...),
+			}
+		}
+	}
+}
+
+// dryRunKey is the context key ensureDryRun sets.
+const dryRunKey = "dry_run"
+
+// ensureDryRun parses the C9 ?dry_run=true flag into the request context.
+// Mutation handlers (Phase 2+) read it via IsDryRun; until they land this
+// is the no-op scaffold the spec asks for.
+func ensureDryRun() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		switch c.Query("dry_run") {
+		case "", "false":
+			c.Set(dryRunKey, false)
+		case "true":
+			c.Set(dryRunKey, true)
+		default:
+			respondV2Error(c, v2model.ValidationFailed("invalid dry_run value",
+				v2model.Issue{Path: "dry_run", Message: "allowed values: true, false"}))
+			return
+		}
+		c.Next()
+	}
+}
+
+// createMissingOptionsKey is the context key ensureCreateMissingOptions sets.
+const createMissingOptionsKey = "create_missing_options"
+
+// ensureCreateMissingOptions parses ?create_missing_options=true — the explicit consent a
+// write needs before an unmatched select value MINTS an option.
+//
+// It defaults OFF and fails loud. A select value that names no existing
+// option is far more often a typo, a hallucinated label or a stale name than
+// a deliberate new option, and minting one silently is unreversible in
+// practice: the option joins the property's vocabulary for every object and
+// every member of the space, and nothing in the response says a write did
+// more than it was asked to. The same reasoning is why Airtable's `typecast`
+// and monday's `create_labels_if_missing` both default off.
+//
+// Group-wide like dry_run, and for the same reason: one parse, one closed
+// value set, one refusal — a mutation route added tomorrow inherits the gate
+// rather than having to remember it.
+func ensureCreateMissingOptions() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		switch c.Query("create_missing_options") {
+		case "", "false":
+			c.Set(createMissingOptionsKey, false)
+		case "true":
+			c.Set(createMissingOptionsKey, true)
+		default:
+			respondV2Error(c, v2model.ValidationFailed("invalid create_missing_options value",
+				v2model.Issue{Path: "create_missing_options", Message: "allowed values: true, false"}))
+			return
+		}
+		c.Next()
+	}
+}
+
+// MayCreateMissingOptions reports whether this request consented to minting select
+// options for names that do not exist yet.
+func MayCreateMissingOptions(c *gin.Context) bool {
+	return c.GetBool(createMissingOptionsKey)
+}
+
+// IsDryRun reports whether the request asked for a dry run (C9).
+func IsDryRun(c *gin.Context) bool {
+	return c.GetBool(dryRunKey)
+}
+
+// respondV2Error writes a C6 error envelope and aborts the request.
+func respondV2Error(c *gin.Context, err error) {
+	v2handler.RespondError(c, err)
+}

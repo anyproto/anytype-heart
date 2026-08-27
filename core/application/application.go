@@ -29,7 +29,26 @@ type Service struct {
 
 	// session signing key for session tokens
 	sessionSigningKey []byte
-	sessionsByAppHash map[string]string
+	// sessionsByAppHash holds EVERY live session token minted from an app key
+	// (directly or derived via the token auth branch), so revoking the key can
+	// close all of them (H4: revocation must reach every session minted from
+	// the key). appHashByToken is the reverse index, populated on both mint
+	// paths. Entries are released only by CloseSession and LinkLocalRevokeApp;
+	// tokens whose owners never close them stay tracked until process exit.
+	//
+	// Both maps are guarded by appSessionsLock, not by lock: the critical
+	// sections deliberately span the session-service calls (see sessions.go),
+	// and lock is held for the whole of AccountSelect/AccountStop, which would
+	// stall WalletCreateSession/WalletCloseSession for their full duration.
+	sessionsByAppHash map[string]map[string]struct{}
+	appHashByToken    map[string]string
+	// appSessionsLock serializes session mint, close and revoke. Minting from
+	// a token or an app key MUST validate/read and track in one critical
+	// section with the revoke sweep: otherwise a WalletCreateSession racing a
+	// LinkLocalRevokeApp can mint from a not-yet-closed token after the index
+	// was swept, laundering the revoked key into an untracked, unrevokable
+	// session. Never acquire lock while holding appSessionsLock.
+	appSessionsLock sync.Mutex
 
 	rootPath                string
 	fulltextPrimaryLanguage string
@@ -47,7 +66,8 @@ func New() *Service {
 	s := &Service{
 		sessions:          session.New(),
 		traceRecorder:     &traceRecorder{},
-		sessionsByAppHash: make(map[string]string),
+		sessionsByAppHash: make(map[string]map[string]struct{}),
+		appHashByToken:    make(map[string]string),
 	}
 	m := newMigrationManager(s)
 	s.migrationManager = m

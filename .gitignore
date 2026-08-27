@@ -24,6 +24,7 @@ build
 doc/dependency_decisions.yml
 .serena/
 .ralphex/progress/
+/eval-out/
 
 # compiled cmd/ tool binaries, which land at the repo root when built with
 # `go build ./cmd/<name>` and have been committed by accident more than once

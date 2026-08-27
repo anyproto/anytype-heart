@@ -87,7 +87,7 @@ choices, and AnyBlock JSON is already unusually well-positioned for them:
 
 ### 2.1 The current v1 API, assessed as an agent surface
 
-Source: `core/api/docs/openapi.yaml` (Anytype-Version 2025-11-08) and
+Source: `core/api/docs/v1/openapi.yaml` (Anytype-Version 2025-11-08) and
 `core/api/service/object.go`.
 
 What it is: `/v1/spaces/{space_id}/{objects|types|properties|lists|search|…}`,
@@ -782,7 +782,7 @@ building a sandbox.
   for Agent-Friendly CLIs"; Agent Skills authoring docs.
 
 **Local codebase**
-- `core/api/docs/openapi.yaml`, `core/api/service/object.go` (markdown
+- `core/api/docs/v1/openapi.yaml`, `core/api/service/object.go` (markdown
   destroy-and-repaste), `core/block/editor/state/change.go` (id-matched
   diff), `core/block/import/common/objectcreator` (update-in-place via
   `ResetToVersion`), `pb/protos/service/service.proto` (Block* RPC

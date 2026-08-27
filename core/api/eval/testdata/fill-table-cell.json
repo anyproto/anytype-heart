@@ -1,0 +1,1 @@
+{"version":1,"type":"page","properties":{"name":"Feature status"},"blocks":[{"id":"tbl1","type":"table","columns":[{"id":"colname"},{"id":"colstatus"}],"rows":[{"id":"rowhead","is_header":true,"cells":["Feature","Status"]},{"id":"rowexport","cells":["Export"]},{"id":"rowimport","cells":["Import","done"]}]}]}
