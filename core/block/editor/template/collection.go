@@ -47,25 +47,23 @@ var (
 )
 
 func MakeDataviewContent(isCollection bool, ot *model.ObjectType, relLinks []*model.RelationLink, oldContent *model.BlockContentOfDataview) *model.BlockContentOfDataview {
+	// Explicitly passed relLinks are the caller's visible set — even when ot
+	// is also given (an object type's own dataview passes its recommended
+	// relations here so its default "All" view shows them as columns,
+	// core/block/editor/objecttype.go). ot.RelationLinks is only the fallback
+	// column source when the caller names no relations itself; those columns
+	// stay hidden. GO-5969 inverted this precedence, which left every custom
+	// column of a freshly generated type view hidden (GO-7383).
 	commonVisibleRelations := make([]domain.RelationKey, 0, len(relLinks))
-	if ot != nil {
-		relLinks = ot.RelationLinks
-	} else {
+	if len(relLinks) > 0 {
 		for _, relLink := range relLinks {
 			commonVisibleRelations = append(commonVisibleRelations, domain.RelationKey(relLink.Key))
 		}
+	} else if ot != nil {
+		relLinks = ot.RelationLinks
 	}
-	// What a FRESH view shows as columns: the source's own relations, whether
-	// they arrived as an object type or as a relation list. Only existing
-	// views (oldContent) keep commonVisibleRelations as their seed, because
-	// there the user's own column selection decides.
-	sourceRelations := make([]domain.RelationKey, 0, len(relLinks))
-	for _, relLink := range relLinks {
-		sourceRelations = append(sourceRelations, domain.RelationKey(relLink.Key))
-	}
-
 	if oldContent == nil {
-		visibleRelations := slices.Concat(defaultVisibleRelations, sourceRelations)
+		visibleRelations := slices.Concat(defaultVisibleRelations, commonVisibleRelations)
 		view := &model.BlockContentDataviewView{
 			Id:        "default",
 			Type:      DefaultViewLayout,

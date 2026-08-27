@@ -109,6 +109,7 @@ service ClientCommands {
     rpc ObjectSearch (anytype.Rpc.Object.Search.Request) returns (anytype.Rpc.Object.Search.Response);
     rpc ObjectSearchWithMeta (anytype.Rpc.Object.SearchWithMeta.Request) returns (anytype.Rpc.Object.SearchWithMeta.Response);
     rpc ObjectSearchSubscribe (anytype.Rpc.Object.SearchSubscribe.Request) returns (anytype.Rpc.Object.SearchSubscribe.Response);
+    rpc ObjectCrossSpaceSearch (anytype.Rpc.Object.CrossSpaceSearch.Request) returns (anytype.Rpc.Object.CrossSpaceSearch.Response);
     rpc ObjectCrossSpaceSearchSubscribe (anytype.Rpc.Object.CrossSpaceSearchSubscribe.Request) returns (anytype.Rpc.Object.CrossSpaceSearchSubscribe.Response);
     rpc ObjectCrossSpaceSearchUnsubscribe (anytype.Rpc.Object.CrossSpaceSearchUnsubscribe.Request) returns (anytype.Rpc.Object.CrossSpaceSearchUnsubscribe.Response);
     rpc ObjectSubscribeIds (anytype.Rpc.Object.SubscribeIds.Request) returns (anytype.Rpc.Object.SubscribeIds.Response);
@@ -128,6 +129,7 @@ service ClientCommands {
     rpc ObjectListSetIsArchived (anytype.Rpc.Object.ListSetIsArchived.Request) returns (anytype.Rpc.Object.ListSetIsArchived.Response);
     rpc ObjectCleanupSuggestions (anytype.Rpc.Object.CleanupSuggestions.Request) returns (anytype.Rpc.Object.CleanupSuggestions.Response);
     rpc ObjectCleanupSuggestionIgnore (anytype.Rpc.Object.CleanupSuggestionIgnore.Request) returns (anytype.Rpc.Object.CleanupSuggestionIgnore.Response);
+    rpc ObjectDeletionAudit (anytype.Rpc.Object.DeletionAudit.Request) returns (anytype.Rpc.Object.DeletionAudit.Response);
     rpc ObjectListSetIsFavorite (anytype.Rpc.Object.ListSetIsFavorite.Request) returns (anytype.Rpc.Object.ListSetIsFavorite.Response);
     rpc ObjectListSetObjectType (anytype.Rpc.Object.ListSetObjectType.Request) returns (anytype.Rpc.Object.ListSetObjectType.Response);
     rpc ObjectListSetDetails (anytype.Rpc.Object.ListSetDetails.Request) returns (anytype.Rpc.Object.ListSetDetails.Response);

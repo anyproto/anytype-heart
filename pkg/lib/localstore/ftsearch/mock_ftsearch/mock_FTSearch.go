@@ -468,7 +468,7 @@ func (_c *MockFTSearch_NamePrefixSearch_Call) Return(results []*ftsearch.Documen
 	return _c
 }
 
-func (_c *MockFTSearch_NamePrefixSearch_Call) RunAndReturn(run func(string, string, int) ([]*ftsearch.DocumentMatch, error)) *MockFTSearch_NamePrefixSearch_Call {
+func (_c *MockFTSearch_NamePrefixSearch_Call) RunAndReturn(run func(string, string, int, bool) ([]*ftsearch.DocumentMatch, error)) *MockFTSearch_NamePrefixSearch_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -567,8 +567,8 @@ func (_c *MockFTSearch_Run_Call) RunAndReturn(run func(context.Context) error) *
 }
 
 // Search provides a mock function with given fields: spaceId, query, limit
-func (_m *MockFTSearch) Search(spaceId string, query string, limit int) ([]*ftsearch.DocumentMatch, error) {
-	ret := _m.Called(spaceId, query, limit)
+func (_m *MockFTSearch) Search(spaceId string, query string, limit int, withHighlights bool) ([]*ftsearch.DocumentMatch, error) {
+	ret := _m.Called(spaceId, query, limit, withHighlights)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Search")
@@ -576,19 +576,19 @@ func (_m *MockFTSearch) Search(spaceId string, query string, limit int) ([]*ftse
 
 	var r0 []*ftsearch.DocumentMatch
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string, string, int) ([]*ftsearch.DocumentMatch, error)); ok {
-		return rf(spaceId, query, limit)
+	if rf, ok := ret.Get(0).(func(string, string, int, bool) ([]*ftsearch.DocumentMatch, error)); ok {
+		return rf(spaceId, query, limit, withHighlights)
 	}
-	if rf, ok := ret.Get(0).(func(string, string, int) []*ftsearch.DocumentMatch); ok {
-		r0 = rf(spaceId, query, limit)
+	if rf, ok := ret.Get(0).(func(string, string, int, bool) []*ftsearch.DocumentMatch); ok {
+		r0 = rf(spaceId, query, limit, withHighlights)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*ftsearch.DocumentMatch)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(string, string, int) error); ok {
-		r1 = rf(spaceId, query, limit)
+	if rf, ok := ret.Get(1).(func(string, string, int, bool) error); ok {
+		r1 = rf(spaceId, query, limit, withHighlights)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -605,13 +605,13 @@ type MockFTSearch_Search_Call struct {
 //   - spaceId string
 //   - query string
 //   - limit int
-func (_e *MockFTSearch_Expecter) Search(spaceId interface{}, query interface{}, limit interface{}) *MockFTSearch_Search_Call {
-	return &MockFTSearch_Search_Call{Call: _e.mock.On("Search", spaceId, query, limit)}
+func (_e *MockFTSearch_Expecter) Search(spaceId interface{}, query interface{}, limit interface{}, withHighlights interface{}) *MockFTSearch_Search_Call {
+	return &MockFTSearch_Search_Call{Call: _e.mock.On("Search", spaceId, query, limit, withHighlights)}
 }
 
-func (_c *MockFTSearch_Search_Call) Run(run func(spaceId string, query string, limit int)) *MockFTSearch_Search_Call {
+func (_c *MockFTSearch_Search_Call) Run(run func(spaceId string, query string, limit int, withHighlights bool)) *MockFTSearch_Search_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(string), args[2].(int))
+		run(args[0].(string), args[1].(string), args[2].(int), args[3].(bool))
 	})
 	return _c
 }
@@ -621,14 +621,14 @@ func (_c *MockFTSearch_Search_Call) Return(results []*ftsearch.DocumentMatch, er
 	return _c
 }
 
-func (_c *MockFTSearch_Search_Call) RunAndReturn(run func(string, string, int) ([]*ftsearch.DocumentMatch, error)) *MockFTSearch_Search_Call {
+func (_c *MockFTSearch_Search_Call) RunAndReturn(run func(string, string, int, bool) ([]*ftsearch.DocumentMatch, error)) *MockFTSearch_Search_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // SearchChat provides a mock function with given fields: spaceId, chatId, query, limit
-func (_m *MockFTSearch) SearchChat(spaceId string, chatId string, query string, limit int) ([]*ftsearch.DocumentMatch, error) {
-	ret := _m.Called(spaceId, chatId, query, limit)
+func (_m *MockFTSearch) SearchChat(spaceId string, chatId string, query string, creators []string, limit int) ([]*ftsearch.DocumentMatch, error) {
+	ret := _m.Called(spaceId, chatId, query, creators, limit)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SearchChat")
@@ -636,19 +636,19 @@ func (_m *MockFTSearch) SearchChat(spaceId string, chatId string, query string, 
 
 	var r0 []*ftsearch.DocumentMatch
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string, string, string, int) ([]*ftsearch.DocumentMatch, error)); ok {
-		return rf(spaceId, chatId, query, limit)
+	if rf, ok := ret.Get(0).(func(string, string, string, []string, int) ([]*ftsearch.DocumentMatch, error)); ok {
+		return rf(spaceId, chatId, query, creators, limit)
 	}
-	if rf, ok := ret.Get(0).(func(string, string, string, int) []*ftsearch.DocumentMatch); ok {
-		r0 = rf(spaceId, chatId, query, limit)
+	if rf, ok := ret.Get(0).(func(string, string, string, []string, int) []*ftsearch.DocumentMatch); ok {
+		r0 = rf(spaceId, chatId, query, creators, limit)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*ftsearch.DocumentMatch)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(string, string, string, int) error); ok {
-		r1 = rf(spaceId, chatId, query, limit)
+	if rf, ok := ret.Get(1).(func(string, string, string, []string, int) error); ok {
+		r1 = rf(spaceId, chatId, query, creators, limit)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -666,13 +666,13 @@ type MockFTSearch_SearchChat_Call struct {
 //   - chatId string
 //   - query string
 //   - limit int
-func (_e *MockFTSearch_Expecter) SearchChat(spaceId interface{}, chatId interface{}, query interface{}, limit interface{}) *MockFTSearch_SearchChat_Call {
-	return &MockFTSearch_SearchChat_Call{Call: _e.mock.On("SearchChat", spaceId, chatId, query, limit)}
+func (_e *MockFTSearch_Expecter) SearchChat(spaceId interface{}, chatId interface{}, query interface{}, creators interface{}, limit interface{}) *MockFTSearch_SearchChat_Call {
+	return &MockFTSearch_SearchChat_Call{Call: _e.mock.On("SearchChat", spaceId, chatId, query, creators, limit)}
 }
 
-func (_c *MockFTSearch_SearchChat_Call) Run(run func(spaceId string, chatId string, query string, limit int)) *MockFTSearch_SearchChat_Call {
+func (_c *MockFTSearch_SearchChat_Call) Run(run func(spaceId string, chatId string, query string, creators []string, limit int)) *MockFTSearch_SearchChat_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(string), args[2].(string), args[3].(int))
+		run(args[0].(string), args[1].(string), args[2].(string), args[3].([]string), args[4].(int))
 	})
 	return _c
 }
@@ -682,7 +682,7 @@ func (_c *MockFTSearch_SearchChat_Call) Return(results []*ftsearch.DocumentMatch
 	return _c
 }
 
-func (_c *MockFTSearch_SearchChat_Call) RunAndReturn(run func(string, string, string, int) ([]*ftsearch.DocumentMatch, error)) *MockFTSearch_SearchChat_Call {
+func (_c *MockFTSearch_SearchChat_Call) RunAndReturn(run func(string, string, string, []string, int) ([]*ftsearch.DocumentMatch, error)) *MockFTSearch_SearchChat_Call {
 	_c.Call.Return(run)
 	return _c
 }

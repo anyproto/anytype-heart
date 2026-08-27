@@ -110,12 +110,11 @@ func TestMakeDataviewContentNew(t *testing.T) {
 								Type:        model.BlockContentDataviewSort_Desc,
 							},
 						},
-						// A fresh view over a type shows that type's own properties
-						// as columns — otherwise the grid is a single Name column
-						// and every property the type defines is switched off.
-						Relations: makeDataviewRelations(
-							append(defaultDataviewRelations, bundle.RelationKeyMentions, bundle.RelationKeyLinkedProjects, bundle.RelationKeyAssignee),
-							append(defaultVisibleRelations, bundle.RelationKeyMentions, bundle.RelationKeyLinkedProjects, bundle.RelationKeyAssignee)),
+						// ot alone is the FALLBACK column source: its relations
+						// become columns but stay switched off, because no
+						// caller named them as the visible set. A type's own
+						// view passes them explicitly too — the case below.
+						Relations: makeDataviewRelations(append(defaultDataviewRelations, bundle.RelationKeyMentions, bundle.RelationKeyLinkedProjects, bundle.RelationKeyAssignee), defaultVisibleRelations),
 					},
 				},
 				RelationLinks: makeRelationLinks(append(defaultDataviewRelations, bundle.RelationKeyMentions, bundle.RelationKeyLinkedProjects, bundle.RelationKeyAssignee)),
@@ -143,6 +142,43 @@ func TestMakeDataviewContentNew(t *testing.T) {
 					},
 				},
 				RelationLinks: makeRelationLinks(defaultDataviewRelations),
+			},
+		},
+		{
+			// the objecttype.go calling convention (a type's own default "All"
+			// view): the type AND its relation links are both passed, and the
+			// explicitly passed links must come out VISIBLE. GO-5969 regressed
+			// this to name-only visibility, which left every custom column of a
+			// freshly created type's default view hidden (GO-7383).
+			name: "type's own view: explicitly passed relation links become visible columns",
+			ot: &model.ObjectType{
+				Url:  "typeObjectId",
+				Name: "Plant",
+				Key:  "plant",
+				RelationLinks: makeRelationLinks([]domain.RelationKey{
+					bundle.RelationKeyMentions, bundle.RelationKeyLinkedProjects, bundle.RelationKeyAssignee}),
+			},
+			relLinks: makeRelationLinks([]domain.RelationKey{
+				bundle.RelationKeyMentions, bundle.RelationKeyLinkedProjects, bundle.RelationKeyAssignee}),
+			want: &model.BlockContentDataview{
+				Views: []*model.BlockContentDataviewView{
+					{
+						Type: DefaultViewLayout,
+						Name: defaultViewName,
+						Sorts: []*model.BlockContentDataviewSort{
+							{
+								RelationKey: bundle.RelationKeyLastModifiedDate.String(),
+								Type:        model.BlockContentDataviewSort_Desc,
+							},
+						},
+						Relations: makeDataviewRelations(
+							append(defaultDataviewRelations, bundle.RelationKeyMentions, bundle.RelationKeyLinkedProjects, bundle.RelationKeyAssignee),
+							append(defaultVisibleRelations, bundle.RelationKeyMentions, bundle.RelationKeyLinkedProjects, bundle.RelationKeyAssignee),
+						),
+					},
+				},
+				RelationLinks: makeRelationLinks(
+					append(defaultDataviewRelations, bundle.RelationKeyMentions, bundle.RelationKeyLinkedProjects, bundle.RelationKeyAssignee)),
 			},
 		},
 		{
@@ -709,8 +745,10 @@ func TestReconcileTypeDataviewColumns(t *testing.T) {
 
 	t.Run("a view built by the current code is already right", func(t *testing.T) {
 		// given
+		// the type editor's calling convention: the type AND its relation
+		// links, which is what makes those columns visible (objecttype.go)
 		links := []*model.RelationLink{{Key: bundle.RelationKeyAssignee.String()}}
-		content := MakeDataviewContent(false, &model.ObjectType{RelationLinks: links}, nil, nil)
+		content := MakeDataviewContent(false, &model.ObjectType{RelationLinks: links}, links, nil)
 
 		// when
 		changed := ReconcileTypeDataviewColumns(content.Dataview, links)

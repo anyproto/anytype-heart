@@ -10,6 +10,7 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/deletionaudit"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
 	importv2adapter "github.com/anyproto/anytype-heart/core/block/importv2/adapter"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
@@ -199,6 +200,53 @@ func (mw *Middleware) ObjectSearchWithMeta(cctx context.Context, req *pb.RpcObje
 	}
 
 	return response(pb.RpcObjectSearchWithMetaResponseError_NULL, resultsModels, nil)
+}
+
+func (mw *Middleware) ObjectCrossSpaceSearch(cctx context.Context, req *pb.RpcObjectCrossSpaceSearchRequest) *pb.RpcObjectCrossSpaceSearchResponse {
+	response := func(code pb.RpcObjectCrossSpaceSearchResponseErrorCode, records []*types.Struct, allStoresLoaded bool, err error) *pb.RpcObjectCrossSpaceSearchResponse {
+		m := &pb.RpcObjectCrossSpaceSearchResponse{
+			Error:           &pb.RpcObjectCrossSpaceSearchResponseError{Code: code},
+			Records:         records,
+			AllStoresLoaded: allStoresLoaded,
+		}
+		if err != nil {
+			m.Error.Description = getErrorDescription(err)
+		}
+		return m
+	}
+
+	if mw.applicationService.GetApp() == nil {
+		return response(pb.RpcObjectCrossSpaceSearchResponseError_BAD_INPUT, nil, false, fmt.Errorf("account must be started"))
+	}
+
+	if req.FullText != "" {
+		mw.applicationService.GetApp().MustComponent(indexer.CName).(indexer.Indexer).ForceFTIndex()
+	}
+
+	ds := mw.applicationService.GetApp().MustComponent(objectstore.CName).(objectstore.ObjectStore)
+	// one-shot snapshot of the currently-loaded spaces: unlike QueryCrossSpace
+	// this does not wait for the store warm-up; AllStoresLoaded tells the
+	// caller whether the view was complete
+	records, allStoresLoaded, err := ds.QueryCrossSpaceNoWait(cctx, database.Query{
+		Filters:   database.FiltersFromProto(req.Filters),
+		Sorts:     database.SortsFromProto(req.Sorts),
+		Offset:    int(req.Offset),
+		Limit:     int(req.Limit),
+		TextQuery: req.FullText,
+	})
+	if err != nil {
+		return response(pb.RpcObjectCrossSpaceSearchResponseError_UNKNOWN_ERROR, nil, allStoresLoaded, err)
+	}
+
+	protoRecords := make([]*types.Struct, 0, len(records))
+	for _, rec := range records {
+		details := rec.Details
+		if len(req.Keys) > 0 {
+			details = details.CopyOnlyKeys(slice.StringsInto[domain.RelationKey](req.Keys)...)
+		}
+		protoRecords = append(protoRecords, details.ToProto())
+	}
+	return response(pb.RpcObjectCrossSpaceSearchResponseError_NULL, protoRecords, allStoresLoaded, nil)
 }
 
 func (mw *Middleware) ObjectSearchSubscribe(cctx context.Context, req *pb.RpcObjectSearchSubscribeRequest) *pb.RpcObjectSearchSubscribeResponse {
@@ -881,4 +929,103 @@ func (mw *Middleware) ObjectCleanupSuggestions(cctx context.Context, req *pb.Rpc
 		}
 	})
 	return response(pb.RpcObjectCleanupSuggestionsResponseError_NULL, items, nil)
+}
+
+// defaultDeletionAuditKeys is returned when the caller passes no keys. Which of them are actually
+// populated depends on the record: an object deleted before tombstone preservation shipped carries
+// only the forced keys, and name only ever survives an uninstall. A sparse record is a normal result,
+// not an error.
+var defaultDeletionAuditKeys = []domain.RelationKey{
+	bundle.RelationKeyName,
+	bundle.RelationKeyCreator,
+	bundle.RelationKeyCreatedDate,
+	bundle.RelationKeyAddedDate,
+	bundle.RelationKeyCreatedInContext,
+	bundle.RelationKeyCreatedInContextRef,
+	bundle.RelationKeyLastModifiedBy,
+	bundle.RelationKeyLastModifiedDate,
+	bundle.RelationKeyType,
+	bundle.RelationKeyResolvedLayout,
+	bundle.RelationKeySizeInBytes,
+	bundle.RelationKeyFileId,
+	bundle.RelationKeySourceObject,
+	bundle.RelationKeyDeletionChangeId,
+}
+
+// forcedDeletionAuditKeys are always returned: without them a record is not an audit record.
+//
+// isUninstalled is forced because it is what the two kinds of record mean. True is a type, property,
+// relation option or template that was uninstalled — reversible, its tree intact, its name still
+// readable. Absent is an object destroyed outright, unrecoverable and permanently nameless. Reading a
+// record without knowing which it is gets the story wrong in both directions.
+var forcedDeletionAuditKeys = []domain.RelationKey{
+	bundle.RelationKeyId,
+	bundle.RelationKeyDeletedBy,
+	bundle.RelationKeyDeletedDate,
+	bundle.RelationKeyIsUninstalled,
+}
+
+// deletionAuditKeys resolves the relation keys to project: the caller's keys (or the default set
+// when the caller passes none), always unioned with the forced keys.
+func deletionAuditKeys(reqKeys []string) []domain.RelationKey {
+	keys := defaultDeletionAuditKeys
+	if len(reqKeys) > 0 {
+		keys = slice.StringsInto[domain.RelationKey](reqKeys)
+	}
+	keys = append(append([]domain.RelationKey{}, keys...), forcedDeletionAuditKeys...)
+	return lo.Uniq(keys)
+}
+
+func (mw *Middleware) ObjectDeletionAudit(cctx context.Context, req *pb.RpcObjectDeletionAuditRequest) *pb.RpcObjectDeletionAuditResponse {
+	response := func(code pb.RpcObjectDeletionAuditResponseErrorCode, records []*types.Struct, total int64, err error) *pb.RpcObjectDeletionAuditResponse {
+		m := &pb.RpcObjectDeletionAuditResponse{
+			Error:   &pb.RpcObjectDeletionAuditResponseError{Code: code},
+			Records: records,
+			Total:   total,
+		}
+		if err != nil {
+			m.Error.Description = getErrorDescription(err)
+		}
+		return m
+	}
+
+	if req.SpaceId == "" {
+		return response(pb.RpcObjectDeletionAuditResponseError_BAD_INPUT, nil, 0, fmt.Errorf("spaceId is required"))
+	}
+	if req.Limit < 0 || req.Offset < 0 {
+		return response(pb.RpcObjectDeletionAuditResponseError_BAD_INPUT, nil, 0, fmt.Errorf("limit and offset must not be negative"))
+	}
+
+	details, total, err := mustService[deletionaudit.Service](mw).
+		List(cctx, req.SpaceId, int(req.Limit), int(req.Offset))
+	if err != nil {
+		return response(pb.RpcObjectDeletionAuditResponseError_UNKNOWN_ERROR, nil, 0, err)
+	}
+
+	keys := deletionAuditKeys(req.Keys)
+	records := lo.Map(details, func(d *domain.Details, _ int) *types.Struct {
+		return flattenDeletedSnapshot(d).CopyOnlyKeys(keys...).ToProto()
+	})
+	return response(pb.RpcObjectDeletionAuditResponseError_NULL, records, int64(total), nil)
+}
+
+// flattenDeletedSnapshot lifts the tombstone's deletedSnapshot map up to the top level, so the wire
+// record reads as a flat object (creator, type, resolvedLayout, …) and the caller's keys project it.
+//
+// The nesting exists only to keep those relation keys out of the objectstore indexes; a response
+// Struct has no indexes, so there is no reason to make the client dig through it. Top-level keys win:
+// nothing sets both, and the live value is the more trustworthy of the two.
+func flattenDeletedSnapshot(details *domain.Details) *domain.Details {
+	snapshot, ok := details.TryMapValue(bundle.RelationKeyDeletedSnapshot)
+	if !ok {
+		return details
+	}
+	flat := details.Copy()
+	flat.Delete(bundle.RelationKeyDeletedSnapshot)
+	for key, value := range snapshot.Iterate() {
+		if !flat.Has(domain.RelationKey(key)) {
+			flat.Set(domain.RelationKey(key), value)
+		}
+	}
+	return flat
 }

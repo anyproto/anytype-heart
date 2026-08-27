@@ -46,16 +46,6 @@ const (
 	// parks a worker per broadcast indefinitely and freezes the send path.
 	// Dropped broadcasts are recovered by the periodic head-sync.
 	broadcastPeerFindDeadline = time.Second * 30
-	// responsibleNodeDialTimeout bounds the node lookup in
-	// fetchResponsiblePeers. pool.GetOneOf parks single-flight behind an
-	// in-flight dial of whichever node id the shuffle picked; on a fresh
-	// cellular path one unreachable node's address chain (schemes x addrs
-	// dialed sequentially, 10s each) can hold that park for tens of seconds
-	// while another responsible node is already connected (observed in the
-	// field: iOS Wi-Fi->cellular, 71 spaces parked behind one dial). Giving up
-	// early lets the fast retry below re-enter GetOneOf, whose active-conn
-	// check then returns any node that connected meanwhile.
-	responsibleNodeDialTimeout = time.Second * 10
 	// responsiblePeersRetryInterval is the re-fetch cadence right after a
 	// failed node lookup while the device believes it is online: quick enough
 	// to pick up a connection established by another space's dial in the
@@ -68,12 +58,21 @@ const (
 	// captive portal — local-only P2P keeps syncing meanwhile), decaying back
 	// to the normal cadence avoids permanent doomed-dial pressure every 5s.
 	fastRetryMaxAttempts = 3
-	// localPeerDialTimeout is the shared budget for refreshing all local (mDNS)
-	// peers in one fetch cycle. After a network switch the peer store still
-	// lists peers from the previous network whose addresses are unroutable;
-	// unbounded dials to them parked every manager single-flight for the whole
-	// scheme x addr chain (~20-40s) while a healthy node connection sat idle.
-	// A bounded failure also actually triggers the stale peer's removal.
+	// localPeerDialTimeout bounds ONE local (mDNS) peer dial. After a network
+	// switch the peer store still lists peers from the previous network whose
+	// addresses are unroutable; unbounded dials to them parked every manager
+	// single-flight for the whole scheme x addr chain (~20-40s) while a healthy
+	// node connection sat idle. A bounded failure also actually triggers the
+	// stale peer's removal.
+	//
+	// Per dial, not one budget shared across the whole loop. A shared budget is
+	// the same defect as GO-7409: the first stale entry consumes it, every peer
+	// behind it then gets an already-expired context, and because the loop
+	// reads any error as "stale" those peers are evicted from the peer store
+	// without ever being tried. Worse, an already-connected peer hits a select
+	// in ocache with both ctx.Done() and the loaded entry ready, so it is
+	// dropped on a coin flip. In LocalOnly mode there are no nodes at all and
+	// these peers are the only sync path, so that eviction costs sync outright.
 	localPeerDialTimeout = time.Second * 5
 )
 
@@ -338,13 +337,16 @@ func (n *clientPeerManager) nextCheckInterval() time.Duration {
 func (n *clientPeerManager) fetchResponsiblePeers() {
 	var peers []peer.Peer
 	prevStatus := n.nodeStatus.GetNodeStatus(n.spaceId)
-	// Bound the lookup: GetOneOf may park single-flight behind another
-	// space's in-flight dial to an unreachable node; waitLoad honors ctx, so
-	// the retry loop stays in control instead of inheriting the slowest
-	// dial's schedule.
-	dialCtx, cancel := context.WithTimeout(n.ctx, responsibleNodeDialTimeout)
-	p, err := n.p.pool.GetOneOf(dialCtx, n.getNodeIds())
-	cancel()
+	// Deliberately unbounded, as it was before GO-7379. GetOneOf walks every
+	// responsible node x every scheme x every address, and each attempt is
+	// already capped by the transports (yamux net.Dialer.Timeout, quic
+	// HandshakeIdleTimeout), so the walk terminates on its own. A bound here
+	// has to be larger than that whole product or it truncates the walk: a
+	// single address that accepts UDP and never replies then consumes it all
+	// and the yamux fallback is never attempted, which cost self-hosted users
+	// sync entirely. See GO-7410 for the layered fix that lets a bound be
+	// reintroduced safely.
+	p, err := n.p.pool.GetOneOf(n.ctx, n.getNodeIds())
 	if err == nil {
 		n.consecutiveFetchFailures.Store(0)
 		peers = []peer.Peer{p}
@@ -377,12 +379,14 @@ func (n *clientPeerManager) fetchResponsiblePeers() {
 	}
 	peerIds := n.peerStore.LocalPeerIds(n.spaceId)
 	if len(peerIds) > 0 {
-		// Bound the local dials as one budget: on failure the stale peer is
-		// removed, so a Wi-Fi-era entry costs at most one bounded pass after
-		// the switch instead of an unbounded dial chain per cycle.
-		localCtx, cancelLocal := context.WithTimeout(n.ctx, localPeerDialTimeout)
+		// Bound each dial separately, so one stale entry costs only its own
+		// budget: on failure the stale peer is removed, so a Wi-Fi-era entry
+		// costs at most one bounded attempt after the switch instead of an
+		// unbounded dial chain per cycle.
 		for _, peerId := range peerIds {
+			localCtx, cancelLocal := context.WithTimeout(n.ctx, localPeerDialTimeout)
 			p, err := n.p.pool.Get(localCtx, peerId)
+			cancelLocal()
 			if err != nil {
 				n.peerStore.RemoveLocalPeer(peerId)
 				log.Warn("failed to get local from net pool", zap.String("peerId", peerId), zap.Error(err))
@@ -390,7 +394,6 @@ func (n *clientPeerManager) fetchResponsiblePeers() {
 			}
 			peers = append(peers, p)
 		}
-		cancelLocal()
 	}
 	n.publishResponsiblePeers(peers)
 }

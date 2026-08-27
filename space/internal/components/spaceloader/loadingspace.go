@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"go.uber.org/zap"
@@ -115,7 +116,12 @@ func (ls *loadingSpace) logErrors(ctx context.Context, err error, mandatoryObjec
 }
 
 func (ls *loadingSpace) isNotRetryable(err error) bool {
-	return errors.Is(err, objecttree.ErrHasInvalidChanges) || errors.Is(err, spacedomain.ErrUnexpectedSpaceType) || ls.disableRemoteLoad
+	// ErrCollectionNotFound means the local space store is corrupt or incomplete; retrying
+	// the build can never succeed and would wedge every WaitLoad caller forever (GO-7393)
+	return errors.Is(err, objecttree.ErrHasInvalidChanges) ||
+		errors.Is(err, spacedomain.ErrUnexpectedSpaceType) ||
+		errors.Is(err, anystore.ErrCollectionNotFound) ||
+		ls.disableRemoteLoad
 }
 
 func (ls *loadingSpace) load(ctx context.Context) (ok bool, err error) {

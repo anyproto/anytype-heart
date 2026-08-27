@@ -208,6 +208,17 @@ func (s *dsObjectStore) QueryRaw(filters *database.Filters, limit int, offset in
 	return s.queryAnyStore(s.componentCtx, filters.FilterObj, filters.Order, uint(limit), uint(offset))
 }
 
+func (s *dsObjectStore) CountRaw(filters *database.Filters) (int, error) {
+	if filters == nil || filters.FilterObj == nil {
+		return 0, fmt.Errorf("filter cannot be nil or unitialized")
+	}
+	count, err := s.objects.Find(filters.FilterObj.AnystoreFilter()).Count(s.componentCtx)
+	if err != nil {
+		return 0, fmt.Errorf("count objects: %w", err)
+	}
+	return count, nil
+}
+
 type injectionHit struct {
 	id      string
 	details *domain.Details
@@ -219,12 +230,12 @@ type injectionHit struct {
 // expected drops) lives on the go-7316-ft-drop-stats branch for debugging
 // index/store consistency; it is intentionally kept out of the production path.
 
-func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, params database.Filters, limit int, offset int, ftsSearch string) ([]database.Record, error) {
+func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, params database.Filters, limit int, offset int, ftsSearch string, withInjections bool) ([]database.Record, error) {
 	needed := 0
 	if limit > 0 {
 		needed = offset + limit
 	}
-	records := s.queryFromFulltextRecords(results, params, ftsSearch, needed)
+	records := s.queryFromFulltextRecordsOpts(results, params, ftsSearch, needed, withInjections)
 	return paginateRecords(records, offset, limit), nil
 }
 
@@ -262,6 +273,15 @@ func paginateRecords(records []database.Record, offset int, limit int) []databas
 // budget can insert a tied object mid-order (the id tiebreak only orders the
 // objects it can see). Exact float ties at the boundary are rare; accepted.
 func (s *dsObjectStore) queryFromFulltextRecords(results []database.FulltextResult, params database.Filters, ftsSearch string, needed int) []database.Record {
+	return s.queryFromFulltextRecordsOpts(results, params, ftsSearch, needed, true)
+}
+
+// withInjections controls the related-object injections (objects linking to /
+// typed by / tagged with a name-matched object). Each injection group costs an
+// anystore query over the whole collection — the links and option keys have no
+// index — so cross-space search disables them: at N-space scale they dominate
+// the request (measured 1.3s of a 30s profile, 46% of all store-query CPU).
+func (s *dsObjectStore) queryFromFulltextRecordsOpts(results []database.FulltextResult, params database.Filters, ftsSearch string, needed int, withInjections bool) []database.Record {
 	pool := ftRerankPoolSize
 	if pool > len(results) {
 		pool = len(results)
@@ -271,11 +291,14 @@ func (s *dsObjectStore) queryFromFulltextRecords(results []database.FulltextResu
 	// head: resolve, collect related-object injections, re-rank by final score.
 	// The head is always resolved in full — re-ranking can move any of its
 	// objects into the requested page
-	records, injectionGroups := s.resolveFulltextResults(results[:pool], params, ftsSearch, seen, true, 0)
-	// the injection budget is a request-independent constant: deriving it from
-	// the requested page would make the injected set (and thus the re-ranked
-	// head order) differ between offsets, breaking pagination consistency
-	records = s.injectRelatedObjects(injectionGroups, ftRerankPoolSize, params, seen, records)
+	records, injectionGroups := s.resolveFulltextResults(results[:pool], params, ftsSearch, seen, withInjections, 0)
+	if withInjections {
+		// the injection budget is a request-independent constant: deriving it
+		// from the requested page would make the injected set (and thus the
+		// re-ranked head order) differ between offsets, breaking pagination
+		// consistency
+		records = s.injectRelatedObjects(injectionGroups, ftRerankPoolSize, params, seen, records)
+	}
 	if params.Order != nil {
 		// stable: equal final scores keep their BM25 order, so the result is
 		// deterministic across requests
@@ -561,7 +584,7 @@ func (s *dsObjectStore) performFulltextQuery(q database.Query, filters *database
 		if q.PrefixNameQuery {
 			return s.fts.NamePrefixSearch(q.SpaceId, q.TextQuery, limit)
 		}
-		return s.fts.Search(q.SpaceId, q.TextQuery, limit)
+		return s.fts.Search(q.SpaceId, q.TextQuery, limit, true)
 	}
 
 	needed := 0
@@ -620,7 +643,22 @@ func (s *dsObjectStore) performFulltextSearch(enforceMinScore bool, search func(
 	if err != nil {
 		return nil, 0, fmt.Errorf("fullText search: %w", err)
 	}
+	results, err := GroupFulltextResults(ftsResults, enforceMinScore)
+	if err != nil {
+		return nil, 0, err
+	}
+	return results, len(ftsResults), nil
+}
 
+// GroupFulltextResults groups raw doc matches per object, selects each
+// object's best (budget-stable) doc, orders objects deterministically and
+// converts them to fulltext results. Exported for cross-space search, which
+// runs one global tantivy query and groups per space before resolution; the
+// caller must pass matches of a single space (object ids are only unique
+// within one). enforceMinScore drops near-zero-score results without
+// highlights — disable it whenever the matches were produced without
+// highlight generation.
+func GroupFulltextResults(ftsResults []*ftsearch.DocumentMatch, enforceMinScore bool) ([]database.FulltextResult, error) {
 	var resultsByObjectId = make(map[string][]*ftsearch.DocumentMatch)
 	for _, result := range ftsResults {
 		path, err := domain.NewFromPath(result.ID)
@@ -687,7 +725,7 @@ func (s *dsObjectStore) performFulltextSearch(enforceMinScore bool, search func(
 	for _, docMatch := range objectResults {
 		result, err := database.FTDocumentMatchToFulltextResult(docMatch)
 		if err != nil {
-			return nil, 0, fmt.Errorf("fullText search: %w", err)
+			return nil, fmt.Errorf("fullText search: %w", err)
 		}
 		// the name boost must derive from the budget-stable BEST doc, not from
 		// the representative doc: the pluralName preference can switch the
@@ -701,7 +739,7 @@ func (s *dsObjectStore) performFulltextSearch(enforceMinScore bool, search func(
 
 	}
 
-	return results, len(ftsResults), nil
+	return results, nil
 }
 
 // isNameDocId reports whether the doc id is the object's name or pluralName

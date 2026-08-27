@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
-	"github.com/anyproto/anytype-heart/core/block/editor/chatobject/mock_chatobject"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/pb"
@@ -36,22 +35,18 @@ func TestService_SearchScoreSorting(t *testing.T) {
 		}, nil).Maybe()
 
 		// float scores closer than 1.0 to each other
-		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "query", mock.Anything).Return([]*ftsearch.DocumentMatch{
+		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "query", mock.Anything, mock.Anything).Return([]*ftsearch.DocumentMatch{
 			{Score: 2.1, ID: domain.NewObjectPathWithMessage(chatId, "msgLow").String()},
 			{Score: 2.9, ID: domain.NewObjectPathWithMessage(chatId, "msgHigh").String()},
 			{Score: 0.9, ID: domain.NewObjectPathWithMessage(chatId, "msgLowest").String()},
 		}, nil)
 
-		mockChatObj := mock_chatobject.NewMockStoreObject(t)
-		mockChatObj.EXPECT().Lock().Return()
-		mockChatObj.EXPECT().Unlock().Return()
 		// store returns the messages in arbitrary (non-score) order
-		mockChatObj.EXPECT().GetMessagesByIds(mock.Anything, mock.Anything).Return([]*chatmodel.Message{
+		fx.chatRepoService.repo = &fakeChatRepository{messagesByIds: []*chatmodel.Message{
 			{ChatMessage: &model.ChatMessage{Id: "msgLow"}},
 			{ChatMessage: &model.ChatMessage{Id: "msgLowest"}},
 			{ChatMessage: &model.ChatMessage{Id: "msgHigh"}},
-		}, nil)
-		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatId).Return(mockChatObj, nil)
+		}}
 
 		fx.start(t)
 
@@ -97,19 +92,15 @@ func TestService_SearchOffsetBeyondEnd(t *testing.T) {
 		Records: []*domain.Details{},
 	}, nil).Maybe()
 
-	fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "query", mock.Anything).Return([]*ftsearch.DocumentMatch{
+	fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "query", mock.Anything, mock.Anything).Return([]*ftsearch.DocumentMatch{
 		{Score: 2.0, ID: domain.NewObjectPathWithMessage(chatId, "msg1").String()},
 		{Score: 1.0, ID: domain.NewObjectPathWithMessage(chatId, "msg2").String()},
 	}, nil)
 
-	mockChatObj := mock_chatobject.NewMockStoreObject(t)
-	mockChatObj.EXPECT().Lock().Return()
-	mockChatObj.EXPECT().Unlock().Return()
-	mockChatObj.EXPECT().GetMessagesByIds(mock.Anything, mock.Anything).Return([]*chatmodel.Message{
+	fx.chatRepoService.repo = &fakeChatRepository{messagesByIds: []*chatmodel.Message{
 		{ChatMessage: &model.ChatMessage{Id: "msg1"}},
 		{ChatMessage: &model.ChatMessage{Id: "msg2"}},
-	}, nil)
-	fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatId).Return(mockChatObj, nil)
+	}}
 
 	fx.start(t)
 

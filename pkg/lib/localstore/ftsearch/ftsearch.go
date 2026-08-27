@@ -83,11 +83,17 @@ type FTSearch interface {
 	// "objectId/m/messageId"; bare-id documents are deleted as well)
 	BatchDeleteObjects(ids []string) (err error)
 	// Search returns up to limit best-scoring doc matches (limit <= 0 means
-	// the default of 100). The limit applies to docs, not objects.
-	Search(spaceId string, query string, limit int) (results []*DocumentMatch, err error)
-	// SearchChat searches only the chat's message documents ("chatId/m/...")
-	// so messages don't compete with the rest of the space for the limit
-	SearchChat(spaceId string, chatId string, query string, limit int) (results []*DocumentMatch, err error)
+	// the default of 100). The limit applies to docs, not objects. Highlight
+	// generation costs up to ~130µs per matched doc with large stored text and
+	// is pure waste for record-only responses — pass withHighlights=false
+	// unless the caller returns highlight fragments to the client.
+	Search(spaceId string, query string, limit int, withHighlights bool) (results []*DocumentMatch, err error)
+	// SearchChat searches only message documents ("chatId/m/...") so messages
+	// don't compete with the rest of the space for the limit. Empty chatId
+	// searches messages of all chats; empty spaceId searches all spaces.
+	// Non-empty creators restrict to messages authored by those identities
+	// (exact match), scoping the candidate budget to their messages.
+	SearchChat(spaceId string, chatId string, query string, creators []string, limit int) (results []*DocumentMatch, err error)
 	// NamePrefixSearch special prefix case search
 	NamePrefixSearch(spaceId string, query string, limit int) (results []*DocumentMatch, err error)
 	ListByIdPrefix(prefix string) (ids []string, err error)
@@ -123,6 +129,7 @@ type Highlight struct {
 type DocumentMatch struct {
 	Score     float64
 	ID        string
+	SpaceId   string
 	Fragments map[string]*Highlight
 	Fields    map[string]any
 }
@@ -567,18 +574,54 @@ func (f *ftSearch) NamePrefixSearch(spaceId, query string, limit int) ([]*Docume
 	return f.performSearch(spaceId, query, limit, false, f.buildObjectQuery)
 }
 
-func (f *ftSearch) Search(spaceId, query string, limit int) ([]*DocumentMatch, error) {
-	return f.performSearch(spaceId, query, limit, true, f.buildDetailedQuery)
+func (f *ftSearch) Search(spaceId, query string, limit int, withHighlights bool) ([]*DocumentMatch, error) {
+	return f.performSearch(spaceId, query, limit, withHighlights, f.buildDetailedQuery)
 }
 
-func (f *ftSearch) SearchChat(spaceId, chatId, query string, limit int) ([]*DocumentMatch, error) {
+func (f *ftSearch) SearchChat(spaceId, chatId, query string, creators []string, limit int) ([]*DocumentMatch, error) {
 	return f.performSearch(spaceId, query, limit, true, func(qb *tantivy.QueryBuilder, query string) {
+		// restrict to the given authors: the Author field is raw-indexed, so
+		// term queries match the exact identity string. Scoping here rather
+		// than post-filtering keeps the candidate budget on the requested
+		// authors' messages. Boost 0 keeps the clause out of BM25 scoring.
+		authors := make([]string, 0, len(creators))
+		for _, creator := range creators {
+			// an empty term would compile to a match-nothing clause
+			if creator != "" {
+				authors = append(authors, creator)
+			}
+		}
+		if len(authors) == 1 {
+			qb.Query(tantivy.Must, fieldAuthor, authors[0], tantivy.TermQuery, 0.0)
+		} else if len(authors) > 1 {
+			nested := qb.NestedBuilder()
+			for _, author := range authors {
+				nested.Query(tantivy.Should, fieldAuthor, author, tantivy.TermQuery, 0.0)
+			}
+			qb.BooleanQuery(tantivy.Must, nested, 0.0)
+		}
 		if chatId != "" {
 			// restrict to the chat's message docs ("chatId/m/msgId") via a phrase
 			// match on the tokenized id field. A prefix query on IdRaw would
 			// silently truncate: prefix expansion is capped at ~50 terms per
 			// segment. Boost 0 keeps the clause out of BM25 scoring.
 			qb.Query(tantivy.Must, fieldId, chatId+"/m", tantivy.PhraseQuery, 0.0)
+		} else {
+			// all message docs: every "chatId/m/msgId" id contains the token "m"
+			// (the id tokenizer has no stopword filter) while object/relation/block
+			// doc ids tokenize to longer alphanumeric tokens. An exists-query on
+			// the MessageId field is not expressible in tantivy-go, so the token is
+			// the message-doc marker; callers drop the rare false positive via
+			// path.HasMessage(). Boost 0 keeps the clause out of BM25 scoring.
+			//
+			// Index efficiency: the Must intersection is driven by the rarer text
+			// postings and only seeks into the "m" posting list via block skip
+			// lists, so cost scales with text matches, not with total messages.
+			// The per-chat phrase clause above walks the same "m" postings (plus
+			// position checks); a dedicated doc-type field would have an identical
+			// posting-list profile while requiring an index-version bump + full
+			// reindex.
+			qb.Query(tantivy.Must, fieldId, "m", tantivy.TermQuery, 0.0)
 		}
 		f.buildDetailedQuery(qb, query)
 	})
@@ -595,7 +638,12 @@ func (f *ftSearch) performSearch(spaceId, query string, limit int, withHighlight
 
 	qb := tantivy.NewQueryBuilder()
 	if len(spaceId) != 0 {
-		qb.Query(tantivy.Must, fieldSpace, spaceId, tantivy.TermQuery, 1.0)
+		// boost 0 keeps the scope clause out of BM25 scoring: the space term's
+		// IDF depends on the space's share of the index, so at boost 1 it
+		// added a per-space additive bias (larger for smaller spaces) that
+		// made scores incomparable across spaces. Within one space the term
+		// contributed a constant, so per-space ranking is unchanged.
+		qb.Query(tantivy.Must, fieldSpace, spaceId, tantivy.TermQuery, 0.0)
 	}
 
 	buildQueryFunc(qb, query)
@@ -622,6 +670,7 @@ func (f *ftSearch) performSearch(spaceId, query string, limit int, withHighlight
 			return parseSearchResult(json, p)
 		},
 		fieldId,
+		fieldSpace,
 	)
 }
 
@@ -706,8 +755,11 @@ func parseSearchResult(json string, parser *fastjson.Parser) (*DocumentMatch, er
 	}
 
 	return &DocumentMatch{
-		Score:     value.GetFloat64(score),
-		ID:        string(value.GetStringBytes(fieldId)),
+		Score: value.GetFloat64(score),
+		ID:    string(value.GetStringBytes(fieldId)),
+		// the doc's stored space field: lets cross-space searches attribute
+		// hits without extra lookups
+		SpaceId:   string(value.GetStringBytes(fieldSpace)),
 		Fragments: fragments,
 	}, nil
 }

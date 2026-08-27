@@ -107,22 +107,40 @@ func (s *bufferedLumberjackSink) Close() error {
 // the package-level zap registration which only happens once.
 var activeSink *bufferedLumberjackSink
 
+// sinkFilename extracts the log file path from a sink URL.
+//
+// zap resolves output paths through url.Parse. A Windows path carries a drive
+// letter, so "lumberjack:C:\dir\anytype.log" has no "/" after the scheme and is
+// parsed as an *opaque* URL: the whole path lands in u.Opaque and u.Path is
+// empty. Using u.Path alone therefore yielded an empty Filename on Windows,
+// and lumberjack silently fell back to os.TempDir()/<argv0>-lumberjack.log —
+// so no logs ever appeared in the expected directory and debug reports shipped
+// with zero log files. This is not a path-separator issue: "C:/dir/x.log"
+// parses as opaque too.
+func sinkFilename(u *url.URL) string {
+	if u.Path != "" {
+		return u.Path
+	}
+	return u.Opaque
+}
+
 func newLumberjackSink(u *url.URL) (zap.Sink, error) {
 	var lj *lumberjack.Logger
 	const bufSize = 256 * 1024
 	const flushInterval = 30 * time.Second
+	filename := sinkFilename(u)
 	// Mobile keeps smaller rotated files to save disk; buffering behaviour
 	// matches desktop.
 	if runtime.GOOS == "android" || runtime.GOOS == "ios" {
 		lj = &lumberjack.Logger{
-			Filename:   u.Path,
+			Filename:   filename,
 			MaxSize:    10,
 			MaxBackups: 2,
 			Compress:   false,
 		}
 	} else {
 		lj = &lumberjack.Logger{
-			Filename:   u.Path,
+			Filename:   filename,
 			MaxSize:    100,
 			MaxBackups: 10,
 			Compress:   true,

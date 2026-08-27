@@ -49,11 +49,21 @@ type Store interface {
 
 	// Query adds implicit filters on isArchived, isDeleted and objectType relations! To avoid them use QueryRaw
 	Query(q database.Query) (records []database.Record, err error)
+	// QueryFromFulltext resolves already-grouped fulltext results against the
+	// store: details, filters, related-object injections, final score, head
+	// re-rank. Used by cross-space search, which runs the tantivy query
+	// globally and resolves candidates per space.
+	// withInjections=false skips the related-object injections, whose
+	// per-group store queries are unindexed collection scans
+	QueryFromFulltext(results []database.FulltextResult, params database.Filters, limit int, offset int, ftsSearch string, withInjections bool) ([]database.Record, error)
 	// QueryAndCount runs the query (with limit/offset) and additionally returns the total number of
 	// objects matching the filters, ignoring limit/offset. The filters are compiled only once.
 	// It applies the same implicit filters as Query. Fulltext queries are not supported.
 	QueryAndCount(q database.Query) (records []database.Record, total int, err error)
 	QueryRaw(f *database.Filters, limit int, offset int) (records []database.Record, err error)
+	// CountRaw returns how many records match the precompiled filters. Like QueryRaw it applies no
+	// implicit isArchived/isDeleted/type filters, and it neither materializes nor sorts the results.
+	CountRaw(f *database.Filters) (int, error)
 	QueryByIds(ids []string) (records []database.Record, err error)
 	QueryByIdsAndSubscribeForChanges(ids []string, subscription database.Subscription) (records []database.Record, close func(), err error)
 	QueryObjectIds(q database.Query) (ids []string, total int, err error)
@@ -108,6 +118,9 @@ type Store interface {
 	SetActiveViews(objectId string, views map[string]string) error
 	GetActiveViews(objectId string) (map[string]string, error)
 
+	GetDeletionAuditMark() (heads string, err error)
+	SetDeletionAuditMark(heads string) error
+
 	GetRelationLink(key string) (*model.RelationLink, error)
 	FetchRelationByKey(key string) (relation *relationutils.Relation, err error)
 	FetchRelationByKeys(keys ...domain.RelationKey) (relations relationutils.Relations, err error)
@@ -152,6 +165,7 @@ type dsObjectStore struct {
 
 	activeViews    anystore.Collection
 	pendingDetails anystore.Collection
+	deletionAudit  anystore.Collection
 	collections    []anystore.Collection
 
 	// Deps
@@ -286,6 +300,10 @@ func (s *dsObjectStore) initCollections(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("open pendingDetails collection: %w", err)
 	}
+	deletionAudit, err := s.newCollection(ctx, "deletionAudit")
+	if err != nil {
+		return fmt.Errorf("open deletionAudit collection: %w", err)
+	}
 
 	objectIndexes := []anystore.IndexInfo{
 		{
@@ -332,6 +350,25 @@ func (s *dsObjectStore) initCollections(ctx context.Context) error {
 			Fields: []string{bundle.RelationKeyFileSourceChecksum.String()},
 			Sparse: true,
 		},
+		// The deletion audit filters on deletedDate's presence and sorts by (deletedDate desc, id).
+		// Only removed objects carry deletedDate, so a sparse index holds exactly the audit set and
+		// serves both the filter and the sort. Without it every audit page is a full scan of the
+		// collection plus an in-memory sort.
+		//
+		// deletedDate alone, not (deletedDate, id): the index table already stores docId as its join
+		// key, so the id tiebreak resolves from the join without a second indexed column.
+		{
+			Name:   "deletedDate",
+			Fields: []string{bundle.RelationKeyDeletedDate.String()},
+			Sparse: true,
+		},
+		// Uninstalled types/properties are found by this flag when re-deriving who uninstalled them.
+		// Sparse keeps the index to the handful of objects that have ever carried it.
+		{
+			Name:   "isUninstalled",
+			Fields: []string{bundle.RelationKeyIsUninstalled.String()},
+			Sparse: true,
+		},
 	}
 	err = anystorehelper.AddIndexes(ctx, objects, objectIndexes)
 	if err != nil {
@@ -367,6 +404,7 @@ func (s *dsObjectStore) initCollections(ctx context.Context) error {
 	s.headsState = headsState
 	s.activeViews = activeViews
 	s.pendingDetails = pendingDetails
+	s.deletionAudit = deletionAudit
 
 	return nil
 }
