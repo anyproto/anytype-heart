@@ -8,10 +8,12 @@ the roundtrip harness runs the same code), the exporter wiring in
 (Q4 option a). Q5 taken as (a), Q8 settled to `.anyblock.json`, Q9 as (a)
 via the per-bundle `BundleRoot` prefix. Q11 shipped as close-after-write
 with the release gate named at the call site (any-sync PR #769, the
-GO-7333 fix, must land first — anyblock.go). Still open, deliberately:
-**Q6** (the `Export_AnyBlockJSON` RPC enum — until it lands the exporter
-is driven through the Go API and cmd tooling) and **Q7** (default-backup /
-pb retirement, a product call). One deviation from §1.1: the manifest
+GO-7333 fix, must land first — anyblock.go). Q6 landed as its
+recommendation (a): `Export_AnyBlockJSON = 6` on `model.Export.Format`,
+routed by `closureForFormat`/`exportByFormat` over the doc set the export
+service has already collected, with emit running as the export queue's own
+tasks. Still open, deliberately: **Q7** (default-backup / pb retirement, a
+product call). One deviation from §1.1: the manifest
 type-path table accumulates at EMIT from actually-written documents rather
 than being pre-built at plan — provably consistent with the output (a doc
 whose emit fails never enters the manifest), and determinism is unaffected
@@ -442,6 +444,22 @@ the trade is cheap here because emit is storage-read-bound (the same
 argument reindexlimiter.go:12-13 makes), so halving width on mobile costs
 much less than 2× wall-clock while halving the in-flight term.
 
+*Implemented as two runners.* Which pool runs emit is injectable
+(`anyblock.EmitRunner`). Driven from the RPC the tasks go to the export
+queue itself — that is what keeps the progress numbers a client already
+watches counting for this format — and the queue is created with
+`anyblock.EmitWidth()` workers for it, so the width above still bounds the
+resident set. Driven from the Go API (tests, cmd tooling) the package's own
+fixed-width pool runs them. Both honour cancellation, which the first
+implementation ignored entirely: the internal pool stops FEEDING on
+`ctx.Done()`, every task checks `ctx.Err()` before it loads anything (the
+queue-backed runner already holds all N tasks, so only the per-task check
+can stop that one), and an abandoned run returns without writing
+`index.json` or `properties.json` — a bundle whose index states documents
+the emit never wrote is worse than no bundle. Tasks already in flight are
+allowed to finish: each holds a loaded object and possibly a half-written
+file.
+
 **Close after write — active, immediate, TTL-independent.** The cache has
 no refcount, and its PASSIVE path is TTL-only — `GC()` closes entries where
 `isActive() && lastUsage.Before(now-ttl)` (any-sync
@@ -773,6 +791,19 @@ deprecation story for `Export_JSON` (pbjson). Options: (a) new enum value
 clients receive; (c) ship native behind `Export_JSON` + a request flag.
 **Recommendation: (a); (b) breaks consumers on a version boundary they
 can't see, (c) is a dialect switch inside one format id.**
+Shipped as (a) (2026-08-27): `Export_AnyBlockJSON = 6` on
+`model.Export.Format`, `Export_JSON` (pbjson) untouched. Three things the
+wiring settled that the question did not ask: the export service passes the
+doc set it already collected rather than letting the exporter re-collect
+(one whole-space query per export, not two — `Exporter.ExportCollected`);
+emit runs as `process.Queue` tasks through an injected runner, so progress
+and `ProcessCancel` behave exactly as they do for the five legacy formats,
+with the queue created at the emit width for this format (§1.5); and
+`ExportSingleInMemory` answers with ONE document, no bundle files, per Q7's
+position below. The predicate that used to route pb/pbjson was named
+`isAnyblockExport` — a name that predates this format and now reads as its
+opposite — and was replaced by an explicit format switch rather than
+extended.
 
 **Q7. Does the native format become the DEFAULT space backup, and on what
 timeline does pb export retire?**
