@@ -1,6 +1,7 @@
 package bundle
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -83,6 +84,71 @@ func TestFoldApiKey(t *testing.T) {
 func TestApiSlugFromName(t *testing.T) {
 	assert.Equal(t, "manual_property", ApiSlugFromName("Manual property"))
 	assert.Equal(t, "uber", ApiSlugFromName(" Über "))
+}
+
+// The mint pair is what the app STORES as apiObjectKey. Measured over a
+// 38,123-object account, 27 of 1,530 stored api keys sat outside the key
+// grammar the api advertises; every fixture below is one of those shapes,
+// taken from that account.
+func TestMintApiSlugFromName(t *testing.T) {
+	t.Run("punctuation a display name carries never reaches the key", func(t *testing.T) {
+		assert.Equal(t, "lists_[in_work]", ApiSlugFromName("Lists [in work]"),
+			"the derive half leaves brackets in place — this is the stored key today")
+		assert.Equal(t, "lists_in_work", MintApiSlugFromName("Lists [in work]"))
+		assert.Equal(t, "manual_export_import", MintApiSlugFromName("Manual export & import"))
+		assert.Equal(t, "50_done", MintApiSlugFromName("50% done"))
+	})
+
+	t.Run("an emoji arrives as unidecode's literal [?] and is dropped", func(t *testing.T) {
+		assert.Equal(t, "[?]_medium", ApiSlugFromName("➡️ Medium"),
+			"unidecode romanizes an unmappable rune to the three bytes `[?]`")
+		assert.Equal(t, "medium", MintApiSlugFromName("➡️ Medium"))
+	})
+
+	t.Run("a name that romanizes keeps its word", func(t *testing.T) {
+		assert.Equal(t, "zadacha", MintApiSlugFromName("Задача"))
+	})
+
+	t.Run("a name with nothing to romanize mints no slug at all", func(t *testing.T) {
+		// the caller's cue to leave the object addressed by its internal key
+		assert.Equal(t, "", MintApiSlugFromName("➡️"))
+		assert.Equal(t, "", MintApiSlugFromName("☕"))
+		assert.Equal(t, "", MintApiSlugFromName("   "))
+	})
+
+	t.Run("length is bounded", func(t *testing.T) {
+		got := MintApiSlugFromName(strings.Repeat("a", 300))
+		assert.Len(t, got, MaxApiSlugLen)
+		assert.Equal(t, strings.Repeat("a", MaxApiSlugLen), got)
+	})
+}
+
+func TestMintApiSlug(t *testing.T) {
+	t.Run("a supplied key keeps its spelling where the grammar allows", func(t *testing.T) {
+		assert.Equal(t, "due_date", MintApiSlug("dueDate"))
+		assert.Equal(t, "due_date", MintApiSlug("due date"))
+		assert.Equal(t, "already_snake", MintApiSlug("already_snake"))
+		assert.Equal(t, "web_3", MintApiSlug("Web3"),
+			"the snake transform splits a digit run; that is the rule both surfaces already use")
+	})
+
+	t.Run("and loses what the grammar does not admit", func(t *testing.T) {
+		assert.Equal(t, "my_key", MintApiSlug("my key!"))
+		assert.Equal(t, "lists_in_work", MintApiSlug("Lists [in work]"))
+	})
+
+	t.Run("no transliteration on a supplied key", func(t *testing.T) {
+		// the name arm romanizes because nobody is there to ask; a key was
+		// CHOSEN, and answering `Задача` with `zadacha` would name the object
+		// something its author never wrote. Empty says so instead.
+		assert.Equal(t, "", MintApiSlug("Задача"))
+		assert.Equal(t, "", MintApiSlug("!!!"))
+		assert.Equal(t, "", MintApiSlug("___"))
+	})
+
+	t.Run("length is bounded", func(t *testing.T) {
+		assert.Len(t, MintApiSlug(strings.Repeat("k", 300)), MaxApiSlugLen)
+	})
 }
 
 // TestApiSlugTablesAreInjective is the guard init panics on, run over the

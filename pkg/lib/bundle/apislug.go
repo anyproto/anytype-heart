@@ -22,13 +22,16 @@ import (
 // yields mediaArtistUrl; _score does not round-trip) — so the reverse is a
 // table lookup, never a string transform.
 //
-// ApiSlug is deliberately the same transform objectcreator's
-// injectApiObjectKey applies at mint, so a derived slug and a stored
-// apiObjectKey for the same key can never disagree.
+// ApiSlug is deliberately the derive half of what objectcreator's
+// injectApiObjectKey applies at mint — MintApiSlug is that half plus the
+// sanitize one — so a derived slug and a stored apiObjectKey for the same key
+// can never disagree: every bundled key is already inside the key grammar,
+// where sanitizing changes nothing.
 
 // ApiSlug derives the snake_case api key ("slug") from an internal key or a
-// caller-supplied key. It is the mint-time normalization: v2 creates store
-// its result as apiObjectKey, and the bundled tables below are built with it.
+// caller-supplied key. It is the DERIVE half of the mint — v2 creates store
+// MintApiSlug's result as apiObjectKey — and the bundled tables below are
+// built with it alone, because a bundled key is already inside the grammar.
 func ApiSlug(key string) string {
 	return strcase.ToSnake(key)
 }
@@ -69,6 +72,42 @@ func SanitizeApiSlug(raw string, maxLen int) string {
 		out = strings.Trim(out[:maxLen], "_")
 	}
 	return out
+}
+
+// MaxApiSlugLen bounds a minted slug. The api surface declares no length of
+// its own, so the bound is the format's: 255 is what an object reference in
+// an exported document may hold, and a key longer than that could not be
+// written as a reference there at all.
+const MaxApiSlugLen = 255
+
+// MintApiSlug is the whole mint for a SUPPLIED key — a caller's `key` field,
+// or the internal key an object was created with. Derive, then constrain.
+//
+// The derive half alone leaves in place every character strcase does not
+// understand, which is how apiObjectKey values outside the advertised key
+// grammar came to be minted: measured over a 38,123-object account, 27 of
+// 1,530 stored api keys fall outside `^[a-zA-Z0-9_]+$` — `Lists [in work]`
+// stored as `lists_[in_work]`, `Manual export & import` as
+// `manual_export_&_import`. A stored key is the spelling callers address the
+// object by, and the api promises that spelling is snake_case; minting one
+// the grammar does not admit breaks the promise at the only moment it could
+// have been kept.
+//
+// An empty result means the supplied key holds nothing the grammar admits.
+// What that means is the caller's to decide: refuse it, or store no slug and
+// leave the object addressed by its internal key.
+func MintApiSlug(key string) string {
+	return SanitizeApiSlug(ApiSlug(strings.TrimSpace(key)), MaxApiSlugLen)
+}
+
+// MintApiSlugFromName is MintApiSlug for a display NAME, which is
+// transliterated first. Unidecode renders what it cannot romanize as a
+// literal `[?]`, so the sanitize half is what stops the name `➡️ Medium` from
+// minting the key `[?]_medium`. All but four of the off-grammar keys measured
+// above are on options, whose key is derived from the name and nothing else,
+// which is why this arm carries most of the damage.
+func MintApiSlugFromName(name string) string {
+	return SanitizeApiSlug(ApiSlugFromName(name), MaxApiSlugLen)
 }
 
 // FoldApiKey is the forgiving-layer fold: lowercase

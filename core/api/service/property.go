@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/types"
-	"github.com/iancoleman/strcase"
 
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
@@ -215,7 +214,10 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, request ap
 	}
 
 	if request.Key != "" {
-		apiKey := strcase.ToSnake(s.sanitizedString(request.Key))
+		apiKey, ok := util.MintApiObjectKey(request.Key)
+		if !ok {
+			return nil, util.ErrInvalidApiObjectKey("property", request.Key)
+		}
 		if s.cache.getProperties(spaceId)[apiKey] != nil {
 			return nil, util.ErrBadInput(fmt.Sprintf("property key %q already exists", apiKey))
 		}
@@ -270,7 +272,10 @@ func (s *Service) UpdateProperty(ctx context.Context, spaceId string, propertyId
 		})
 	}
 	if request.Key != nil {
-		apiKey := strcase.ToSnake(s.sanitizedString(*request.Key))
+		apiKey, ok := util.MintApiObjectKey(*request.Key)
+		if !ok {
+			return nil, util.ErrInvalidApiObjectKey("property", *request.Key)
+		}
 		if apiKey != prop.Key {
 			if existing, exists := s.cache.getProperties(spaceId)[apiKey]; exists && existing.Id != propertyId {
 				return nil, util.ErrBadInput(fmt.Sprintf("property key %q already exists", apiKey))
