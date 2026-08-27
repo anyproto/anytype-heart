@@ -1,7 +1,7 @@
 // anyblockroundtrip verifies the AnyBlock JSON round-trip (pkg/lib/anyblockjson)
 // against a real account: it recovers the account from a mnemonic, exports every
 // object of every space to pb snapshots, converts each snapshot pb → AnyBlock
-// JSON → pb, and checks the §11 contract (Export ∘ Import byte-stable, no
+// JSON → pb, and checks the contract (Export ∘ Import byte-stable, no
 // unexpected data loss). Every inconsistency leaves an artifact directory with
 // the original snapshot, both JSON generations, and a report for triage.
 //
@@ -439,7 +439,7 @@ func maxIndentOf(jsonDoc []byte) int {
 }
 
 // countCellsWithChildren counts table cell blocks carrying real descendants —
-// the trigger for the §6.1 array-form cell encoding.
+// the trigger for the array-form cell encoding.
 func countCellsWithChildren(base *model.SmartBlockSnapshotBase) int {
 	if base == nil {
 		return 0
@@ -510,7 +510,7 @@ func firstDiff(a, b []byte) string {
 // ---- loss heuristics ----
 //
 
-// strippedKeys mirrors the export-side strip set (§3): LocalAndDerived minus
+// strippedKeys mirrors the export-side strip set: LocalAndDerived minus
 // the keys the importer meaningfully preserves.
 var strippedKeys = func() map[string]bool {
 	kept := map[string]bool{
@@ -663,7 +663,7 @@ func resolveFormat(key string, opts anyblockjson.Options) (model.RelationFormat,
 
 // textInventory counts the plain text of text blocks the format preserves.
 // Structural styles are dropped by design; blocks with emoji marks are skipped
-// because emoji materialization changes the text lossily by design (§8).
+// because emoji materialization changes the text lossily by design.
 func textInventory(s *model.SmartBlockSnapshotBase) map[string]int {
 	out := map[string]int{}
 	for _, b := range s.Blocks {

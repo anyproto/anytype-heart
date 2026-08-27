@@ -144,7 +144,7 @@ func (c *observableConverter) Convert(ctx context.Context, sink importv2.Sink) (
 
 func TestRunMemoryBoundDurableSpool(t *testing.T) {
 	t.Run("the pipeline bound holds through the disk-backed spool", func(t *testing.T) {
-		// given — the §5 invariant, re-proven for the split: pass 2 holds
+		// given — the invariant, re-proven for the split: pass 2 holds
 		// O(1) objects (spooling is transient residency), pass 3 the same
 		// 2C+K the lanes always bounded. The disk absorbs the rest.
 		fx := newEngineFixture(t)

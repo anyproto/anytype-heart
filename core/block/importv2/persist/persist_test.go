@@ -273,7 +273,7 @@ func TestPersistCreate(t *testing.T) {
 
 	t.Run("oversized snapshot fails loudly with a typed code", func(t *testing.T) {
 		// given — a single object over the sync ceiling would persist
-		// locally but never replicate (§16 item 8).
+		// locally but never replicate.
 		fx := newFixture(t)
 		obj := pageObject("docs/war-and-peace.md")
 		huge := strings.Repeat("a", maxSnapshotBytes/2+1<<20)

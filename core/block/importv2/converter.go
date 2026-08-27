@@ -68,14 +68,14 @@ type Sink interface {
 
 	// Phase announces a converter-side stage the engine cannot see — today
 	// only PhaseAnalyzing, the structure-plan step that runs before the
-	// first object and stalls silently for 10-20 s under an LLM planner
-	// (§15.1). The converter announces the phase it returns TO
+	// first object and stalls silently for 10-20 s under an LLM planner.
+	// The converter announces the phase it returns TO
 	// (PhaseFetching) when the stage ends; the engine owns every other
 	// transition. Advisory telemetry: it never affects control flow.
 	Phase(p Phase)
 
 	// Item names the entity being worked on right now — the strongest
-	// not-stuck signal a multi-hour crawl has (§15.2). It is a DisplayText
+	// not-stuck signal a multi-hour crawl has. It is a DisplayText
 	// and not a string on purpose: page titles are USER CONTENT,
 	// displayable but never loggable, and the type is what enforces that.
 	// Safe for concurrent use, like Issue.

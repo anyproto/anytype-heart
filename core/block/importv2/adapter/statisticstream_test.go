@@ -25,7 +25,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 )
 
-// The §15 push producer, end to end over the REAL engine: a whole import
+// The push producer, end to end over the REAL engine: a whole import
 // must leave a coherent statistic trail — the phases in order, the
 // materialize counters reaching their denominator, and a terminal event
 // that is not stuck behind the coalescing window.
@@ -108,7 +108,7 @@ func TestImportStatisticStream(t *testing.T) {
 		assert.Equal(t, model.Import_Markdown, last.ImportType)
 		assert.NotEmpty(t, last.ImportId, "a durable run is pollable by its id")
 
-		// and: no event ever claims a total it does not have — §15.3's rule,
+		// and: no event ever claims a total it does not have — the rule,
 		// which is about the NUMBER and not about the phase
 		for _, e := range events {
 			if e.TotalsKnown {
@@ -140,7 +140,7 @@ func TestImportStatisticThreeState(t *testing.T) {
 	t.Run("a retried Notion request reaches the stream as a state, not an error", func(t *testing.T) {
 		// given: a real Notion crawl whose first /search meets a 503.
 		// Transient pushback and rate limiting are NORMAL operation for a
-		// multi-hour import (§15.2) — the run must report a state, keep
+		// multi-hour import — the run must report a state, keep
 		// going, and never look broken.
 		inner := crawlWorkspace(t)
 		var flaked atomic.Bool

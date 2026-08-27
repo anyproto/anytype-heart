@@ -289,7 +289,7 @@ func TestFinishRun(t *testing.T) {
 
 	t.Run("a clean in-process compensation BEFORE pass 3 disposes the dir", func(t *testing.T) {
 		// given: before the marker the two scopes provably agree — nothing
-		// has entered the space by construction (DM spec §7), so a claim row
+		// has entered the space by construction, so a claim row
 		// is pure intent and CompensationInputs deletes none of them. The
 		// keep above must not become "keep every failed run forever".
 		ctx := context.Background()

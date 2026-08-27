@@ -18,7 +18,7 @@ import (
 
 const rootCollectionName = "Notion Import"
 
-// lateDiscoveryCap bounds pass-2 discovery (§16 item 3): children the
+// lateDiscoveryCap bounds pass-2 discovery: children the
 // eventually-consistent /search index omitted are fetched and imported on
 // demand, but a pathological workspace must not turn the drain into an
 // unbounded crawl.
@@ -63,13 +63,13 @@ type Converter struct {
 	discoveryMisses map[string]bool
 
 	// suggestor types database rows that would otherwise import as plain
-	// Pages (§11.5); suggestedTypes is keyed by data-source AND entity id
+	// Pages; suggestedTypes is keyed by data-source AND entity id
 	// so both parent forms on a page stub resolve. The suggestor only serves
 	// late-discovered databases — pass-1 containers go through the plan.
 	suggestor      typesuggest.Suggestor
 	suggestedTypes map[string]domain.TypeKey
 
-	// plan phase state (docs/ImportV2LLM.md): the planner sees every pass-1
+	// plan phase state: the planner sees every pass-1
 	// schema at once; the sanitized plan drives container types and property
 	// remaps for the containers in `planned`.
 	planner        schemaplan.Planner
@@ -135,8 +135,7 @@ func WithPlanReuse(reuse schemaplan.Reuse) Option {
 // 100 entities).
 func (c *Converter) SetSkip(skip func(sourceKey string) bool) { c.skip = skip }
 
-// SetRecover implements the seam's obligation half (importv2
-// .ResumableConverter, review P0-A): /search is eventually consistent, so
+// SetRecover implements the obligation half of ResumableConverter: /search is eventually consistent, so
 // enumeration is INCOMPLETE here — a prior claim that neither re-enumerates
 // nor sits in the spool may still exist (a page found through a recorded
 // parent's block tree, which the skip set now suppresses re-walking). Each
@@ -251,7 +250,7 @@ func (c *Converter) Convert(ctx context.Context, sink importv2.Sink) (importv2.R
 			return importv2.RootSpec{}, err
 		}
 	}
-	// Drain second-chance discoveries (§16 item 3). The queue grows while it
+	// Drain second-chance discoveries. The queue grows while it
 	// drains — a late page's blocks may reference further omitted children.
 	drained := 0
 	if err := c.drainPending(ctx, sink, &drained); err != nil {

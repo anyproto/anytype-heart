@@ -126,7 +126,7 @@ func (c *Converter) convertPage(ctx context.Context, stub Entity, sink importv2.
 // replays buffered fetch issues in page order, then maps and emits — all
 // shared-state work (properties store, file registry, discovery) lives here.
 func (c *Converter) emitFetchedPage(ctx context.Context, f *fetchedPage, sink importv2.Sink) error {
-	// The §15 currentItem, announced HERE and not in the prefetch worker:
+	// The currentItem, announced HERE and not in the prefetch worker:
 	// fetches run up to prefetchInFlight pages ahead of this loop, so a
 	// worker's title would name a page the user only sees much later. A
 	// Notion page title is user content — hence a DisplayText, which reaches
@@ -274,8 +274,8 @@ func (c *Converter) binEmptyRow(stub Entity, object *importv2.Object, sink impor
 	})
 }
 
-// pageTypeKey returns the type suggested for the page's parent database
-// (§11.5), Page otherwise. Databases convert before pages, so suggestions
+// pageTypeKey returns the type suggested for the page's parent database,
+// Page otherwise. Databases convert before pages, so suggestions
 // are complete by the time any row asks.
 func (c *Converter) pageTypeKey(stub Entity) string {
 	var parentId string

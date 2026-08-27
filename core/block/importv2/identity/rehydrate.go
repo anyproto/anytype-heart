@@ -6,7 +6,7 @@ import (
 )
 
 // Rehydration seeds a Service from a previous incarnation's identity ledger
-// (DM spec §8.1; the 08-13 §6.2 rehydration minus converter concerns). A
+// (the 08-13 §6.2 rehydration minus converter concerns). A
 // resumed run mints nothing: every minted id was recorded at claim time
 // with the very payload bytes whose hash IS the id, so the payload is
 // reconstructed, never re-created (re-minting would produce a different id
@@ -26,7 +26,7 @@ type RehydratedEntry struct {
 	// not-yet-terminal claims.
 	PayloadRoot  []byte
 	PayloadHeads []string
-	// Reclaimable marks a crawl-resume seed (DM spec §8.3): the resumed
+	// Reclaimable marks a crawl-resume seed: the resumed
 	// pass 1 re-enumerates the live source, and its claim for this key is
 	// absorbed as a reuse of the recorded identity — no re-mint, no dedup
 	// re-query, no ledger re-record (08-13 §6.2 item 4). One-shot: after the

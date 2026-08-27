@@ -10,21 +10,21 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-// The §15 PUSH producer: one emitter per engine run, fed by the redesigned
+// The PUSH producer: one emitter per engine run, fed by the redesigned
 // reporter seam (engine.Reporter), by the Notion client's rate-limit hooks
 // (notionclient.StatusHook) and by the run's issue funnel. It owns the run's
 // live statistic and coalesces it onto the event stream.
 //
-// Three rules from the spec are structural here rather than incidental:
+// Three rules are structural here rather than incidental:
 //
-//   - ONE event per window (§15.3): per-item emission is fine at pass 2's
+//   - ONE event per window: per-item emission is fine at pass 2's
 //     ~1.5 items/s and floods at pass 3's 50-200/s.
 //   - EXCEPT for a phase change and every state transition, which emit at
 //     once. Rate limiting is normal operation, and the whole value of the
 //     calm THROTTLED badge is that it appears the moment the crawl pauses;
 //     a quarter second of "is it stuck?" is exactly what it exists to
 //     prevent.
-//   - Push and pull are the SAME builder over the SAME state (§15.5).
+//   - Push and pull are the SAME builder over the SAME state.
 //     Snapshot is what the RPCs serve for a live run, so no field can mean
 //     one thing pushed and another polled.
 //
@@ -32,14 +32,14 @@ import (
 // a run.
 
 const (
-	// statWindow is §15.3's coalescing period.
+	// statWindow is the coalescing period.
 	statWindow = 250 * time.Millisecond
 	// rateWindowSpan bounds the rolling rate sample: long enough to survive
 	// one throttle pause, short enough to track a real slowdown.
 	rateWindowSpan = 30 * time.Second
 	// rateWindowMin is the shortest span that may be called a rate. Below
 	// it a single burst reads as a speed the import cannot sustain, and the
-	// ETA derived from it is a guess — §15.3 allows only defensible ones.
+	// ETA derived from it is a guess, and only defensible ones are published.
 	rateWindowMin = time.Second
 	// rateSampleCap bounds the sample ring.
 	rateSampleCap = 64
@@ -64,7 +64,7 @@ type statConfig struct {
 	now    func() time.Time
 	// pageRateCeiling is the fastest the SOURCE can yield pages, in
 	// pages/s; 0 means no known ceiling. The fetching ETA may never promise
-	// faster (§15.3: ~2 requests per page against Notion's documented 3 rps
+	// faster (~2 requests per page against Notion's documented 3 rps
 	// is a known bound, so the estimate is computable rather than guessed).
 	pageRateCeiling float64
 	// safeToClose{Fetching,Materializing} are the sweep's OWN resume
@@ -94,8 +94,8 @@ type statSnapshot struct {
 	// until it does (review item 16). A duration captured when the pacer
 	// signalled never moved again, so a poller's countdown sat at "4s" for
 	// as long as it cared to ask; every other time-valued field on this
-	// event is already an instant for precisely that reason (§15.2's
-	// phaseStartedAt is unix ms so "clients show elapsed without their own
+	// event is already an instant for precisely that reason (phaseStartedAt
+	// is unix ms so "clients show elapsed without their own
 	// clock"). Zero means no window is pending.
 	resumesAt    time.Time
 	attempt      int32
@@ -290,7 +290,7 @@ func (e *statEmitter) Bytes(total int64) {
 // the LOWER level lands last (review item 7 — measured regressing on every
 // run of a 600-page import, one settling at 598/600). The engine now
 // publishes a high-water mark of its own; this is the surface's own guard,
-// because objectsCreated is §15.4's cancel affordance ("stop and remove the
+// because objectsCreated is the cancel affordance ("stop and remove the
 // N objects created") and the dormant poll of the same run serves the exact
 // ledger count. A level that only rises is also the only reading that can
 // agree with a durable counter.
@@ -371,7 +371,7 @@ func (e *statEmitter) setStateLocked(state pb.EventImportStatisticState, apply f
 
 // --- issue funnel ----------------------------------------------------------
 
-// Issue folds one reported issue into the live counts — §15.2's reason for
+// Issue folds one reported issue into the live counts — the reason for
 // having them at all: a run pouring out warnings can be abandoned at minute
 // 20 instead of minute 110.
 func (e *statEmitter) Issue(issue importv2.Issue) {
@@ -393,7 +393,7 @@ func (e *statEmitter) Issue(issue importv2.Issue) {
 }
 
 // statSeed is everything a RESUMED run's live surface already knows before
-// its engine has started — §15.4's right-hand column, the same reads the
+// its engine has started — the right-hand column, the same reads the
 // dormant poll of this dir performs.
 //
 // It exists because the emitter is built (and registered live) in
@@ -401,7 +401,7 @@ func (e *statEmitter) Issue(issue importv2.Issue) {
 // identity rehydration and the spool open. Everything the surface says in
 // that window it says out of its ZERO VALUE unless it is seeded — and the
 // zero value is phase SCANNING with cancelEffect NOTHING_TO_UNDO, which
-// §15.6 renders as "Cancel (nothing added yet)" for a run whose cancel is
+// a client renders as "Cancel (nothing added yet)" for a run whose cancel is
 // about to compensate thousands of real objects (review item 4).
 type statSeed struct {
 	// materializing is the manifest's sticky marker, derived at the ONE
@@ -418,7 +418,7 @@ type statSeed struct {
 	// this: resume.rehydrateIssues drops them on load, because a fatal that
 	// coexists with a resumable dir IS the abort that made it dormant.
 	issues []importv2.Issue
-	// created is the ledger's object count — §15.4's "a restart resumes the
+	// created is the ledger's object count — the "a restart resumes the
 	// NUMBERS, not just the work". The engine publishes it again the moment
 	// it starts; this is the same number, one rehydration earlier.
 	created int64
@@ -579,7 +579,7 @@ func (e *statEmitter) Close(verdict statVerdict) {
 }
 
 // Snapshot is the PULL half: what ObjectImportRunStatus serves for a live
-// run. Same builder, same state, so §15.5's "push and pull must agree" is a
+// run. Same builder, same state, so the "push and pull must agree" is a
 // property of the code rather than a promise in a comment.
 func (e *statEmitter) Snapshot() *pb.EventImportStatistic {
 	e.mu.Lock()
@@ -624,7 +624,7 @@ func (e *statEmitter) buildLocked() *pb.EventImportStatistic {
 // the rule was written for and false everywhere else (review item 12).
 // Announcing CREATING re-bases the counters to zero, and the spool census
 // that fills them arrives after: every import published one CREATING event
-// claiming a KNOWN total of zero, which §15.3 exists to forbid — clients
+// claiming a KNOWN total of zero, which the contract forbids — clients
 // render a count-up, never a fake bar or a division by zero. Item 13 is the
 // same reading held for a whole pass rather than one event: a swallowed
 // census failure leaves the pass-3 denominators at zero while the numerator
@@ -713,7 +713,7 @@ func (e *statEmitter) pruneSamplesLocked(now time.Time) {
 // two samples answers "how fast was it going while it was going", which is
 // not the question: a stalled run kept reporting its last healthy rate and,
 // with it, a frozen ETA that never moved — the throttled-vs-stuck
-// distinction §15.1 exists to draw, inverted. Measuring to now makes the
+// distinction this surface exists to draw, inverted. Measuring to now makes the
 // rate decay while nothing completes, and once the whole span has passed
 // with no completion the pruning leaves one anchor, no rate, and an ETA of
 // unknown, which is the honest answer.
@@ -737,7 +737,7 @@ func (e *statEmitter) ratesLocked() (pageRate, itemRate float64) {
 	return float64(last.pages-first.pages) / seconds, float64(last.items-first.items) / seconds
 }
 
-// etaLocked is §15.3's defensible estimate and nothing else: zero unless
+// etaLocked is the defensible estimate and nothing else: zero unless
 // every input is present. Fetching is additionally capped by the source's
 // own ceiling — an unrepresentative burst must not promise the user a
 // finish time the API cannot deliver.
@@ -828,7 +828,7 @@ func wirePhase(p importv2.Phase) pb.EventImportStatisticPhase {
 	}
 }
 
-// wireCancelEffect falls straight out of the pass model (§15.2): during
+// wireCancelEffect falls straight out of the pass model: during
 // passes 1-2 nothing has entered the space, so cancel is instant and undoes
 // nothing; from pass 3 it removes what was created. The dormant surface
 // derives the same answer from the manifest's materialize marker, which is

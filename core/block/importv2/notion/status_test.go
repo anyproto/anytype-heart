@@ -8,7 +8,7 @@ import (
 	importv2 "github.com/anyproto/anytype-heart/core/block/importv2"
 )
 
-// The converter half of the §15 producer seam for the flagship driver: the
+// The converter half of the producer seam for the flagship driver: the
 // plan step announces ANALYZING, and every entity announces itself as the
 // current item — in EMISSION order, never in prefetch order (the prefetch
 // pipeline runs up to six pages ahead of what the user is being shown).

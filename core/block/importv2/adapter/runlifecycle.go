@@ -25,15 +25,15 @@ import (
 
 // runLifecycle owns one engine run's durable state: the per-run store (with
 // the effect ledger the journal writes through) and the spill dir, which
-// lives inside the run dir so spilled file bytes share the run's lifetime
-// (spec §4.1). In volatile mode (no repo path — test environments) there is
+// lives inside the run dir so spilled file bytes share the run's lifetime.
+// In volatile mode (no repo path — test environments) there is
 // no store and the spill dir is an OS temp dir removed on finish, as before.
 type runLifecycle struct {
 	store    *runstore.Store
 	spillDir string
 	cleanup  func()
 	settled  bool
-	// stats is the run's §15 statistic emitter — never nil, so every call
+	// stats is the run's statistic emitter — never nil, so every call
 	// site can report unconditionally. It is the push producer AND what the
 	// pull RPCs serve for this run while it is live.
 	stats *statEmitter
@@ -41,7 +41,7 @@ type runLifecycle struct {
 	// called on every settlement path exactly once via settleTracking.
 	untrack func()
 	// seedTotal is the resumed run's pass-3 denominator, kept here so the
-	// LEGACY scalar can be seeded from the same census the §15 emitter is
+	// LEGACY scalar can be seeded from the same census the emitter is
 	// (engineDeps). Zero for a fresh run and a crawl resume, whose
 	// denominators are still being discovered.
 	seedTotal int64
@@ -173,10 +173,10 @@ func (lc *runLifecycle) release() {
 }
 
 // beginRun creates the run dir + store before the engine starts. A store
-// creation failure fails the run (spec §7.2: a run that cannot journal must
+// creation failure fails the run (a run that cannot journal must
 // not create objects). The serialized wire request rides the manifest so a
 // crawl interrupted mid-pass-2 can rebuild its converter on the next start
-// (DM spec §8.3 / OQ2 as decided — stored as-is, scrubbed by the store on
+// (stored as-is, scrubbed by the store on
 // every transition out of the crawl-resumable states).
 func (s *service) beginRun(ctx context.Context, request importv2.Request, wireReq *pb.RpcObjectImportRequest, converterName string, pathIndex int, progress process.Progress) (*runLifecycle, error) {
 	ceiling := pageRateCeilingFor(request.Origin.ImportType)
@@ -227,7 +227,7 @@ func (s *service) beginRun(ctx context.Context, request importv2.Request, wireRe
 }
 
 // pageRateCeilingFor is the fastest the SOURCE can yield pages, per import
-// type — the input the fetching ETA is capped by (§15.3). Only Notion has a
+// type — the input the fetching ETA is capped by. Only Notion has a
 // documented one; a local markdown tree is bounded by disk, which is not a
 // number this may promise anything about.
 func pageRateCeilingFor(importType model.ImportType) float64 {
@@ -238,7 +238,7 @@ func pageRateCeilingFor(importType model.ImportType) float64 {
 }
 
 // planRecorder persists a fresh run's sanitized structure plan to the run
-// kv (08-13 §6.3: a resumed crawl reuses the recording, never replans). nil
+// kv (a resumed crawl reuses the recording, never replans). nil
 // in volatile mode — schemaplan.Resolve treats a nil recorder as no-op.
 func (s *service) planRecorder(lc *runLifecycle) func(schemaplan.Plan) error {
 	if lc.store == nil {
@@ -259,7 +259,7 @@ func (s *service) planRecorder(lc *runLifecycle) func(schemaplan.Plan) error {
 // finishRun settles a run's durable state. A run the ENGINE says was
 // suspended (Result.Suspended — the single source of that verdict; it means
 // compensation was skipped) keeps its dir, marked suspended and flushed for
-// the startup sweep (§6.4). Every other outcome is disposed whole: terminal
+// the startup sweep. Every other outcome is disposed whole: terminal
 // state, then delete the dir. The state write is insurance — if Drop fails,
 // the sweep sees a terminal manifest and just deletes the dir. State writes
 // run on a background context: the run ctx is typically already cancelled
@@ -348,7 +348,7 @@ func (s *service) finishRun(lc *runLifecycle, result *importv2.Result) {
 		// already-deleted id counts compensated (CompensateIds tolerates
 		// not-found), so the retry costs one pass and then drops the dir.
 		// Before the marker the two scopes provably agree — nothing has
-		// entered the space by construction (DM spec §7) — so the common
+		// entered the space by construction — so the common
 		// mid-crawl failure is untouched.
 		if err := lc.store.Close(); err != nil {
 			log.Errorf("close compensated materializing run: %s", err)
@@ -382,7 +382,7 @@ func (s *service) finishRun(lc *runLifecycle, result *importv2.Result) {
 // workerCount in-flight creates and STILL finds an empty journal (review
 // item 3), and those claim rows are the only attribution the hollow trees
 // left behind will ever have. Before pass 3 the two agree — nothing has
-// entered the space by construction (DM spec §7) — so the crawl-cancel
+// entered the space by construction — so the crawl-cancel
 // carve-out this exists for is untouched.
 func discardable(lc *runLifecycle, result *importv2.Result) bool {
 	if !userCancelled(result) || !result.NothingToUndo {
@@ -400,7 +400,7 @@ func (lc *runLifecycle) identityOptions() []identity.Option {
 	return []identity.Option{resume.ClaimLedgerOption(lc.store)}
 }
 
-// onIssue is the run's issue fan-out: the live §15 counts (so a run pouring
+// onIssue is the run's issue fan-out: the live counts (so a run pouring
 // out warnings can be abandoned at minute 20, not minute 110) and the
 // durable ledger, whose rows are what the dormant surface counts later. Both
 // halves in one hook — the counts must not exist on one path only.
@@ -415,8 +415,7 @@ func (s *service) onIssue(lc *runLifecycle) func(importv2.Issue) {
 	}
 }
 
-// onFetched marks the pass-2/pass-3 boundary durably (DM spec §4.1 +
-// §6.4): RootSpec, then fetched flushed to disk, then materializing — the
+// onFetched marks the pass-2/pass-3 boundary durably: RootSpec, then fetched flushed to disk, then materializing — the
 // one-place transition (runstore.MarkFetched) shared with every harness. A
 // crash after fetched resumes from the spool. nil in volatile mode.
 func (s *service) onFetched(lc *runLifecycle) func(importv2.RootSpec) error {
@@ -429,7 +428,7 @@ func (s *service) onFetched(lc *runLifecycle) func(importv2.RootSpec) error {
 }
 
 // onCompensating persists the compensating state before the engine's first
-// compensation delete (spec §6.5) so a crash mid-cleanup is finished by the
+// compensation delete so a crash mid-cleanup is finished by the
 // sweep. nil in volatile mode.
 func (s *service) onCompensating(lc *runLifecycle) func() error {
 	if lc.store == nil {

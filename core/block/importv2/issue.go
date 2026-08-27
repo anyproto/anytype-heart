@@ -61,7 +61,7 @@ const (
 	IssueObjectFailed    IssueCode = "objectFailed"
 	IssueFileFetchFailed IssueCode = "fileFetchFailed"
 	// IssueObjectTooLarge marks an object whose snapshot exceeds the sync
-	// ceiling for a single CRDT change (§16 item 8) — persisted objects must
+	// ceiling for a single CRDT change — persisted objects must
 	// stay under it or they could never replicate.
 	IssueObjectTooLarge IssueCode = "objectTooLarge"
 

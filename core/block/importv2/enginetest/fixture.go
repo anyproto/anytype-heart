@@ -490,7 +490,7 @@ func (fx *Fixture) ResumeDurable(ctx context.Context, t *testing.T, dir string, 
 	return engine.Resume(ctx, req, deps, &state.Engine)
 }
 
-// ResumeCrawlDurable restarts a run killed MID-CRAWL (DM spec §8.3),
+// ResumeCrawlDurable restarts a run killed MID-CRAWL,
 // through the same glue the adapter's sweep uses: LoadCrawl, reclaimable
 // identity, a converter rebuilt over the live source with the RECORDED
 // plan preset (review P2: the fixture previously discarded the loaded

@@ -1,6 +1,6 @@
 package anyblockjson
 
-// Dynamic filter values (§6.2): the client substitutes these for a real
+// Dynamic filter values: the client substitutes these for a real
 // object id before issuing the query (anytype-ts
 // Dataview.valueTemplateMapper). They are stored verbatim, are opaque to the
 // middleware, and are not object ids.

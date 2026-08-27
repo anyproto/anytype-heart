@@ -91,7 +91,7 @@ func (c *Converter) emitFileFromUrl(ctx context.Context, sink importv2.Sink, raw
 //
 // Notion-signed URLs expire (~1h) and the string is captured at block-fetch
 // time while the download runs in a persist worker much later — on a long
-// import the gap exceeds the expiry (§16 item 5). An expiry-shaped failure
+// import the gap exceeds the expiry. An expiry-shaped failure
 // re-mints the URL from its source once and retries.
 func (c *Converter) downloadOpener(sourceKey, name, rawUrl string, refresh urlRefresher) func(ctx context.Context) (io.ReadCloser, error) {
 	return func(ctx context.Context) (io.ReadCloser, error) {

@@ -1,6 +1,6 @@
 package anyblockjson
 
-// Layout is stored as a number but named in the format (§3). Before this, a
+// Layout is stored as a number but named in the format. Before this, a
 // document following the spec ("recommendedLayout": "profile") imported the
 // *string* onto a number-format property: every consumer reads it with an
 // int64 getter, so the type silently fell back to basic (== 0).

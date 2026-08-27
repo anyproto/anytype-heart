@@ -30,7 +30,7 @@ var schemaJSON []byte
 
 const (
 	// FormatVersion is the AnyBlock JSON format version this package reads
-	// and writes (§10).
+	// and writes.
 	FormatVersion = 1
 	// SchemaURL is the published schema location written into exported
 	// documents.
@@ -55,11 +55,11 @@ func (i Issue) String() string {
 	return i.Path + ": " + i.Message
 }
 
-// ValidationError aggregates every issue found in a document (§12).
+// ValidationError aggregates every issue found in a document.
 type ValidationError struct {
 	Issues []Issue
 	// NewerFormat is set when the document cites a newer 1.x schema, so the
-	// failure likely means "produced by a newer version" (§10).
+	// failure likely means "produced by a newer version".
 	NewerFormat bool
 }
 
@@ -93,8 +93,8 @@ var compileSchema = sync.OnceValues(func() (*jsonschema.Schema, error) {
 })
 
 // DetectFormat reports the version and $schema markers of a document without
-// validating or importing it — the cheap dispatch probe for import wiring
-// (§13). ok is false when data is not a JSON object carrying an integer
+// validating or importing it — the cheap dispatch probe for import wiring.
+// Ok is false when data is not a JSON object carrying an integer
 // version.
 func DetectFormat(data []byte) (version int, schemaURL string, ok bool) {
 	var probe struct {
@@ -112,7 +112,7 @@ func DetectFormat(data []byte) (version int, schemaURL string, ok bool) {
 }
 
 // Validate checks data against the embedded schema and the semantic rules
-// without building a snapshot (§12). Validate is always strict; the lenient
+// without building a snapshot. Validate is always strict; the lenient
 // indent mode exists only on Unmarshal (Options.NormalizeIndent).
 func Validate(data []byte) error {
 	_, err := validateToDoc(data, false, nil)
@@ -121,7 +121,7 @@ func Validate(data []byte) error {
 
 // ValidateWarn is Validate with a sink for warning-grade issues: things that
 // do not make a document invalid but do mean part of it is dead weight — a
-// groupBy on a view type that cannot group (§6.2), for instance. Validate
+// groupBy on a view type that cannot group, for instance. Validate
 // discards them, so a tool that wants to show them must call this.
 func ValidateWarn(data []byte, onWarning func(Issue)) error {
 	_, err := validateToDoc(data, false, onWarning)
@@ -130,7 +130,7 @@ func ValidateWarn(data []byte, onWarning func(Issue)) error {
 
 // validateToDoc runs the full validation pipeline and returns the decoded
 // document for the importer to consume. With lenient set, over-deep indents
-// are clamped instead of rejected, each clamp reported through warn (§4).
+// are clamped instead of rejected, each clamp reported through warn.
 func validateToDoc(data []byte, lenient bool, warn func(Issue)) (map[string]any, error) {
 	raw, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
 	if err != nil {
@@ -180,7 +180,7 @@ func validateToDoc(data []byte, lenient bool, warn func(Issue)) (map[string]any,
 }
 
 // checkVersion rejects unsupported versions with a dedicated error naming
-// both versions (§10), before schema validation gets a chance to produce a
+// both versions, before schema validation gets a chance to produce a
 // generic constraint failure.
 func checkVersion(doc map[string]any) error {
 	raw, ok := doc["version"]
@@ -250,7 +250,7 @@ func schemaIssueMessage(e *jsonschema.ValidationError, printer *message.Printer)
 }
 
 // textBearing reports whether the block type's text is parsed for inline
-// markup; code/embed text is literal (§8.4).
+// markup; code/embed text is literal.
 func textBearing(typ string) bool {
 	switch typ {
 	case "paragraph", "heading1", "heading2", "heading3", "heading4", "header4",
@@ -272,7 +272,7 @@ var leafBlockTypes = map[string]bool{
 	"chat": true,
 }
 
-// clampIndents applies the §4 lenient rule in place: an indent more than one
+// clampIndents applies the lenient rule in place: an indent more than one
 // deeper than its predecessor clamps to predecessor+1 (CommonMark's "a level
 // that hasn't been established cannot be opened"); the first entry's
 // predecessor is base. onClamp, when non-nil, receives each clamp.
@@ -329,7 +329,7 @@ func indentOf(block map[string]any) int {
 // combinations, indent monotonicity and containment over the flat blocks
 // array (V1–V3), id uniqueness over the flattened tree including derived
 // table cell ids, table arity, language-vs-fields.lang conflicts, and inline
-// markup grammar (§12). With lenient set, V1 violations clamp (reported via
+// markup grammar. With lenient set, V1 violations clamp (reported via
 // warn) instead of erroring; V2/V3 are evaluated on the clamped indents and
 // stay errors.
 func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue {
@@ -349,7 +349,7 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 		}
 	}
 
-	// layout properties are named, not numbered (§3). A typo would otherwise
+	// layout properties are named, not numbered. A typo would otherwise
 	// import as a raw string onto a number-format property: no error anywhere,
 	// and every consumer reads it with an int getter and silently sees "basic".
 	if props, _ := doc["properties"].(map[string]any); props != nil {
@@ -368,7 +368,7 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 		if kind, _ := doc["kind"].(string); kind != "objectType" {
 			addIssue("/typeProperties", `typeProperties is only valid on type documents (kind "objectType")`)
 		}
-		// typeProperties replaces the recommended-relation lists (§2a): a
+		// typeProperties replaces the recommended-relation lists: a
 		// document carrying both is ambiguous
 		if props, _ := doc["properties"].(map[string]any); props != nil {
 			for _, l := range recommendedListKeys {
@@ -377,7 +377,7 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 				}
 			}
 		}
-		// name is used only when the property has to be created (§2a); an
+		// name is used only when the property has to be created; an
 		// existing one keeps its own, so renaming a bundled key here reads as
 		// working and silently does nothing
 		if list, _ := doc["typeProperties"].([]any); list != nil {
@@ -388,7 +388,7 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 				}
 				key, _ := tp["key"].(string)
 				// options declare a select's vocabulary and its display
-				// order (§2a); on any other format there is nothing to
+				// order; on any other format there is nothing to
 				// declare and the array would be silently dropped
 				if opts, has := tp["options"].([]any); has && len(opts) > 0 {
 					if f, _ := tp["format"].(string); f != "select" && f != "multiSelect" {
@@ -399,8 +399,8 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 						addIssue(fmt.Sprintf("/typeProperties/%d/options", i),
 							"options is only meaningful on select/multiSelect, not %q", shown)
 					}
-					// an option is a bare name or an object carrying a color
-					// (§2a), and the two forms name the same vocabulary: the
+					// an option is a bare name or an object carrying a color,
+					// and the two forms name the same vocabulary: the
 					// duplicate check has to read across both
 					seen := map[string]bool{}
 					for j, o := range opts {
@@ -427,7 +427,7 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 				}
 				// a bundled property is used as-is: only the wiring's
 				// create path reads these, and it never runs for a key that
-				// already exists (§2a)
+				// already exists
 				if key != "" {
 					if rel, err := bundle.GetRelation(domain.RelationKey(key)); err == nil && rel != nil {
 						if name, _ := tp["name"].(string); name != "" && name != rel.Name {
@@ -554,7 +554,7 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 }
 
 // codeLangConflict reports a code block carrying both the first-class
-// language prop and the internal fields.lang it lifts (§5.1).
+// language prop and the internal fields.lang it lifts.
 func codeLangConflict(block map[string]any) bool {
 	if _, hasLang := block["language"]; !hasLang {
 		return false
@@ -596,7 +596,7 @@ func walkTable(block map[string]any, path string,
 		}
 		for j, c := range cells {
 			cellPath := fmt.Sprintf("%s/cells/%d", rowPath, j)
-			// derived cell ids join the uniqueness domain (§4)
+			// derived cell ids join the uniqueness domain
 			if rowId != "" && j < len(colIds) && colIds[j] != "" {
 				claimId(rowId+"-"+colIds[j], cellPath)
 			}
@@ -613,7 +613,7 @@ func walkTable(block map[string]any, path string,
 				// rejected by the schema's cellBlock definition)
 				walkBlock(cell, cellPath)
 			case []any:
-				// array form (§6.1 F10): a flat run — cell block first at
+				// array form: a flat run — cell block first at
 				// indent 0, descendants following
 				checkFlatRun(cell, cellPath, true)
 			}
@@ -785,7 +785,7 @@ func checkDateFilters(view map[string]any, formats map[string]string, path strin
 	walk(nodes, path+"/filters", true, map[string]bool{})
 }
 
-// filterTemplateValues returns the dynamic filter tokens (§6.2) inside a
+// filterTemplateValues returns the dynamic filter tokens inside a
 // filter value, which may be a bare string or an array of them.
 func filterTemplateValues(v any) []string {
 	var out []string

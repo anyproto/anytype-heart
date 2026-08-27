@@ -1,6 +1,6 @@
 package anyblockjson
 
-// dataview.go maps Content.Dataview to the §6.2 JSON form and back: cleaned
+// dataview.go maps Content.Dataview to the JSON form and back: cleaned
 // names, lowerCamel enums, defaults omitted, filter trees with implicit
 // top-level AND, and select values as option names.
 
@@ -15,7 +15,7 @@ import (
 )
 
 // dvFormat resolves a property key's format from the dataview's live
-// relationLinks first, then bundle/resolver (§6.2).
+// relationLinks first, then bundle/resolver.
 func (e *exporter) dvFormat(dv *model.BlockContentDataview, key string) (model.RelationFormat, bool) {
 	for _, rl := range dv.RelationLinks {
 		if rl != nil && rl.Key == key {
@@ -55,7 +55,7 @@ func (e *exporter) dataviewToJSON(m *omap, dv *model.BlockContentDataview) error
 		views = append(views, vm)
 	}
 	m.setNonEmpty("views", views)
-	// activeView and the deprecated relations field are dropped (§6.2)
+	// activeView and the deprecated relations field are dropped
 	return nil
 }
 
@@ -128,7 +128,7 @@ func (e *exporter) viewToJSON(v *model.BlockContentDataviewView, dv *model.Block
 }
 
 // viewGroupsToJSON emits the kanban group display order: array order, the
-// proto's per-group index derived from it (§6.2).
+// proto's per-group index derived from it.
 func (e *exporter) viewGroupsToJSON(viewId string, dv *model.BlockContentDataview) []any {
 	var out []any
 	for _, groupOrder := range dv.GroupOrders {
@@ -194,7 +194,7 @@ func (e *exporter) sortToJSON(s *model.BlockContentDataviewSort, dv *model.Block
 	if !e.opts.OmitIds {
 		sm.setNonEmpty("id", s.Id)
 	}
-	// the cached per-node format is dropped; import rehydrates it (§6.2)
+	// the cached per-node format is dropped; import rehydrates it
 	return sm
 }
 
@@ -230,9 +230,9 @@ func (e *exporter) filterToJSON(f *model.BlockContentDataviewFilter, dv *model.B
 	case model.BlockContentDataviewFilter_Empty,
 		model.BlockContentDataviewFilter_NotEmpty,
 		model.BlockContentDataviewFilter_Exists:
-		// value is dropped on presence-only conditions (§11)
+		// value is dropped on presence-only conditions
 	default:
-		// the day-count presets take their operand from value (§6.2), so a
+		// the day-count presets take their operand from value, so a
 		// zero count is meaningful data rather than an absent field: it must
 		// survive the usual empty-elision, or the document silently stops
 		// saying which day it means
@@ -262,7 +262,7 @@ func (e *exporter) filterToJSON(f *model.BlockContentDataviewFilter, dv *model.B
 }
 
 // dvValueToJSON converts a filter value or custom-order entry: option names
-// for select properties (§3), compact ids for object-valued ones, verbatim
+// for select properties, compact ids for object-valued ones, verbatim
 // otherwise.
 func (e *exporter) dvValueToJSON(dv *model.BlockContentDataview, key string, v *types.Value) any {
 	format, ok := e.dvFormat(dv, key)
@@ -453,7 +453,7 @@ func (imp *importer) dataviewFromJSON(jb *jsonBlock) (*model.BlockContentDatavie
 }
 
 // impDvFormat rehydrates the cached per-node format from the dataview's
-// properties list and bundle; unresolvable keys get format 0 (§6.2).
+// properties list and bundle; unresolvable keys get format 0.
 func (imp *importer) impDvFormat(dv *model.BlockContentDataview, key string) model.RelationFormat {
 	for _, rl := range dv.RelationLinks {
 		if rl != nil && rl.Key == key {
@@ -512,7 +512,7 @@ func (imp *importer) filterFromJSON(jf jsonFilter, dv *model.BlockContentDatavie
 
 // dvValueFromJSON reverses dvValueToJSON: option names back to ids where a
 // resolver knows them, ref labels back to full object ids, verbatim
-// otherwise (§3, §9a).
+// otherwise.
 func (imp *importer) dvValueFromJSON(dv *model.BlockContentDataview, key string, v any) *types.Value {
 	format := imp.impDvFormat(dv, key)
 	switch format {
@@ -548,14 +548,14 @@ func (imp *importer) optionId(key, name string) string {
 			return id
 		}
 	}
-	// unresolved names pass through; creating options is the wiring's job (§3)
+	// unresolved names pass through; creating options is the wiring's job
 	return name
 }
 
 func (e *exporter) viewColumnToJSON(r *model.BlockContentDataviewRelation) *omap {
 	cm := &omap{}
 	cm.set("property", r.Key)
-	// hidden is the inverse of proto isVisible; omitted means visible (§6.2)
+	// hidden is the inverse of proto isVisible; omitted means visible
 	cm.setNonEmpty("hidden", !r.IsVisible)
 	cm.setNonEmpty("width", r.Width)
 	if r.Formula != model.BlockContentDataviewRelation_None {
@@ -564,6 +564,6 @@ func (e *exporter) viewColumnToJSON(r *model.BlockContentDataviewRelation) *omap
 	if r.Align != model.Block_AlignLeft {
 		cm.setNonEmpty("align", alignNames.name(r.Align))
 	}
-	// deprecated per-column date/time fields are dropped (§6.2)
+	// deprecated per-column date/time fields are dropped
 	return cm
 }

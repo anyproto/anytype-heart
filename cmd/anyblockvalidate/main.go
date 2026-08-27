@@ -24,7 +24,7 @@ func main() {
 			if info.IsDir() || !strings.HasSuffix(p, ".json") {
 				return nil
 			}
-			// the bundle index (§2c) describes the bundle, not an object: it
+			// the bundle index describes the bundle, not an object: it
 			// has its own schema and would fail every object-level check
 			if filepath.Base(p) == anyblockjson.IndexFileName {
 				indexes = append(indexes, p)

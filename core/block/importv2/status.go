@@ -7,8 +7,7 @@ import (
 	"strings"
 )
 
-// The vocabulary of the §15 progress surface (deferred-materialization spec
-// §15.2), shared by the engine, the converters and the adapter's emitter so
+// The vocabulary of the progress surface, shared by the engine, the converters and the adapter's emitter so
 // the producer side has ONE set of names. Everything here is advisory
 // telemetry: it never affects control flow, carries no determinism
 // requirement, and the golden harness ignores it.
@@ -25,7 +24,7 @@ const (
 	// chain ends.
 	PhaseScanning Phase = iota
 	// PhaseAnalyzing is the converter-side structure-plan step between
-	// scanning and fetching. It is the stall ImportV2LLM.md §3 specified and
+	// scanning and fetching. It is the stall the plan step creates and
 	// nothing ever reported: 10-20 s of silence with the LLM planner.
 	PhaseAnalyzing
 	// PhaseFetching is pass 2: crawl, convert, spool. Nothing enters the
@@ -38,7 +37,7 @@ const (
 )
 
 // String is the legacy progress message for the phase — the same free-text
-// strings the pre-§15 Reporter.Phase call sites passed, so the legacy
+// strings the pre-redesign Reporter.Phase call sites passed, so the legacy
 // process scalar's message is unchanged by the seam redesign.
 func (p Phase) String() string {
 	switch p {
@@ -60,13 +59,13 @@ func (p Phase) String() string {
 // SpoolSpillPrefix names the files pass 2 drains its downloads into, inside
 // the run's spill dir. It lives here because TWO packages depend on the
 // naming: the engine writes them, and the status surface sums their sizes
-// for a dormant run's bytesDone (§15.4). The persister spills uploads into
+// for a dormant run's bytesDone. The persister spills uploads into
 // the same dir under a different prefix — those bytes are the same content
 // read back rather than new transfer — so this prefix is exactly what keeps
 // them out of the count.
 const SpoolSpillPrefix = "spool-"
 
-// SpillBytes sums the pass-2 download spill in dir: the §15 `bytesDone`,
+// SpillBytes sums the pass-2 download spill in dir: `bytesDone`,
 // defined as BYTES ON DISK rather than bytes ever transferred. That is the
 // only definition both halves of the surface can hold — a dormant dir can
 // count nothing else, a resumed crawl inherits its predecessor's downloads,
@@ -97,8 +96,8 @@ func SpillBytes(dir string) int64 {
 	return total
 }
 
-// Kind separates the two counted classes. They are separate BY REQUIREMENT
-// (§15.2): 500 small files and one 2 GB file behave nothing alike, and the
+// Kind separates the two counted classes. They are separate BY REQUIREMENT:
+// 500 small files and one 2 GB file behave nothing alike, and the
 // legacy blended scalar — one `Step(1)` for a page and for a file — is
 // exactly what made a per-kind statistic impossible to publish honestly.
 //
@@ -116,7 +115,7 @@ const (
 )
 
 // DisplayText carries user content — a page title — to the wire's
-// `currentItem`: displayable, NEVER loggable (§15.2).
+// `currentItem`: displayable, NEVER loggable.
 //
 // The rule is enforced by the type rather than by review: String is the
 // md5 hash, following the logging-hygiene rule this codebase already

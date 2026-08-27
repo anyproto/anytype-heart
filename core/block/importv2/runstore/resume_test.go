@@ -17,8 +17,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-// The dormant-run readers: everything a pass-3 restart (DM spec §8.1) and
-// the §15 pull RPCs consume from a run dir with no live engine.
+// The dormant-run readers: everything a pass-3 restart and
+// the pull RPCs consume from a run dir with no live engine.
 
 func TestReadEntries(t *testing.T) {
 	ctx := context.Background()
@@ -379,7 +379,7 @@ func TestRootSpecKV(t *testing.T) {
 
 	t.Run("the root spec round-trips through kv and survives reopen", func(t *testing.T) {
 		// given — pass 2's RootSpec is a pass-2 output pass 3 consumes; a
-		// restart has no converter to re-produce it (DM spec §4.1).
+		// restart has no converter to re-produce it.
 		dir := filepath.Join(t.TempDir(), "run-1")
 		store := createStore(t, dir)
 		spec := importv2.RootSpec{

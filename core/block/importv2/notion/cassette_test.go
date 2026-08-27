@@ -138,7 +138,7 @@ func TestCassetteWorkspace(t *testing.T) {
 				importv2.IssueMissingTarget:    171,
 				importv2.IssueUnsupportedBlock: 435, // the 3 transcriptions now import
 				// 10 databases in the recorded workspace match the naive
-				// type suggestor (§11.5): Tasks/Notes/People/Projects by
+				// type suggestor: Tasks/Notes/People/Projects by
 				// name, CRM via email+phone, 5 trackers via due+status
 				// (one gained by select→status counting as a status
 				// property in the task shape rule).

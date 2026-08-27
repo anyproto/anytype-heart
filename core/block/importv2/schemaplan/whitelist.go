@@ -29,7 +29,7 @@ type KindPlan struct {
 	FeaturedNames []string // source property names; exact-match or dropped
 }
 
-// coverageGateThreshold is merge guard 1 (§4.5): every member of a
+// coverageGateThreshold is merge guard 1: every member of a
 // multi-container kind must cover at least this share of the kind's merged
 // (lowercased name, format) property union, or the kind is split. Calibrated
 // on a real 37-container workspace: duplicated databases score 1.00, the
@@ -40,7 +40,7 @@ const coverageGateThreshold = 0.5
 // to hit the bundled dueDate target. Token match, not substring, keeps
 // "Overdue" out; the token rule is new semantics deliberately NOT shared with
 // typesuggest's dueNames (which are exact full-name matches for the type
-// verdict) — see the §4.1 rules table for the measured 0-false-positive run
+// verdict) — see the rules table for the measured 0-false-positive run
 // over 27 real date property names.
 var dueTokens = map[string]bool{"due": true, "deadline": true}
 
@@ -59,7 +59,7 @@ var tagSkipNames = map[string]bool{"Tag": true, "Tags": true, "tags": true}
 // name match. Containers absent from every kind fall back to their
 // typesuggest verdict with bundled-only mappings. Deterministic for identical
 // input, and its output sanitizes with zero property-entry drops by
-// construction (§4.4).
+// construction.
 func CompleteKinds(kinds []KindPlan, schemas []ContainerSchema) Plan {
 	schemaById := make(map[string]ContainerSchema, len(schemas))
 	for _, schema := range schemas {
@@ -150,7 +150,7 @@ func dedupeKindMembers(kinds []KindPlan, schemaById map[string]ContainerSchema) 
 	return out
 }
 
-// applyCoverageGate is merge guard 1 (§4.5): a multi-member kind whose union
+// applyCoverageGate is merge guard 1: a multi-member kind whose union
 // of (lowercased name, format) pairs any member covers below the threshold is
 // unsound — merging produces a type most of whose relations are permanently
 // empty for that member's pages. The kind is split wholesale: each member
@@ -228,7 +228,7 @@ func completeKind(kind KindPlan, schemaById map[string]ContainerSchema,
 	salted := vocabularyVetoes(kind, schemaById)
 	containers := make(map[string]ContainerPlan, len(kind.ContainerIds))
 	// One union entry per target key, ordered featured-first then by property
-	// name (§4.3).
+	// name.
 	type unionEntry struct {
 		property PropertySchema
 		plan     PropertyPlan
@@ -338,7 +338,7 @@ func typeProperty(property PropertySchema, plan PropertyPlan, isFeatured bool) T
 	return TypeProperty{Key: plan.Key, Name: property.Name, Format: property.Format, Featured: isFeatured}
 }
 
-// bundledTargets is the §4.1 rules table: property id → bundled relation for
+// bundledTargets is the rules table: property id → bundled relation for
 // one container. All rules are format-anchored and carry the "sole match per
 // container" guard, so ambiguity degrades to no mapping (today's behaviour,
 // zero loss), never to a sanitizer drop.
@@ -398,7 +398,7 @@ func isTagSkip(property PropertySchema) bool {
 	return tagSkipNames[property.Name]
 }
 
-// vocabularyVetoes is merge guard 2 (§4.5): two members of a surviving kind
+// vocabularyVetoes is merge guard 2: two members of a surviving kind
 // may carry the same name and format but different *meanings*. A
 // select/multiSelect (name, format) unifies across members only if every pair
 // of member option sets intersects in at least half the smaller set;
@@ -460,7 +460,7 @@ func optionsAgree(a, b map[string]bool) bool {
 	return 2*overlap >= len(smaller)
 }
 
-// kindLocalKey is the §4.2 sharing rule: a pure function of (name, format), so
+// kindLocalKey is the sharing rule: a pure function of (name, format), so
 // two containers of one kind carrying a byte-identical property name with the
 // same format derive the same plan key; ScopedKey then scopes it by the
 // kind's type key and CustomRelationKey mints ONE shared relation — the
@@ -514,8 +514,8 @@ func kindTypeKey(name, fallbackName string, usedKeys map[domain.TypeKey]bool) do
 	return key
 }
 
-// resolveFeatured maps the model's featured property names onto target keys
-// (§3.4): a name matches a member property when the two are equal after
+// resolveFeatured maps the model's featured property names onto target keys:
+// a name matches a member property when the two are equal after
 // trimming surrounding whitespace (Unicode-exact otherwise — the evidence
 // carries names like "Email 📧 " and the model predictably writes the trimmed
 // form). A name matching properties of several formats resolves to the

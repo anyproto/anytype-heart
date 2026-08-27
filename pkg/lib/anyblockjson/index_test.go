@@ -1,6 +1,6 @@
 package anyblockjson
 
-// index.json (§2c) is the only document that describes the bundle rather than
+// index.json is the only document that describes the bundle rather than
 // one object: the space's name, what opens on entry, what the sidebar shows.
 
 import (
@@ -129,7 +129,7 @@ func TestIndex_Validation(t *testing.T) {
 		assert.True(t, IsReservedWidgetTarget("favorite"))
 	})
 
-	// version 1 is the only version, like every other document (§10)
+	// version 1 is the only version, like every other document
 	t.Run("a newer version is rejected", func(t *testing.T) {
 		_, err := UnmarshalIndex([]byte(`{"version": 2}`))
 		require.Error(t, err)

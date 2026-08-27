@@ -159,7 +159,7 @@ func (p *Persister) noteCreatedType(o *importv2.Object, outcome Outcome) {
 }
 
 // SetResumeHeal installs the resumed-incarnation ErrTreeExists policy
-// (DM spec §8.1; 08-13 §6.2, D4): heal reports whether the ledger proves
+// (08-13 §6.2, D4): heal reports whether the ledger proves
 // THIS run created the colliding tree (a non-terminal minted claim, or a
 // non-terminal derived intent row — an interrupted create whose tree may
 // be hollow). The proof is CLASS-GUARDED (review Class C): a key is
@@ -261,7 +261,7 @@ func (p *Persister) persistRegular(ctx context.Context, o *importv2.Object, targ
 			// have no pass-1 claim, so without this row a create torn
 			// between the tree write and its effect row leaves NO record —
 			// unhealable, uncompensable, silently hollow. Failure aborts
-			// (§7.2: a run that cannot journal must not create objects).
+			// (a run that cannot journal must not create objects).
 			if err = p.journal.CreateIntent(o.SourceKey, target.Id); err != nil {
 				return Outcome{}, err
 			}
@@ -293,7 +293,7 @@ func (p *Persister) createObject(ctx context.Context, sourceKey string, target T
 	})
 	if err == nil {
 		if err = p.journal.CreatedObject(sourceKey, target.Id); err != nil {
-			// The tree exists but its durable record failed: abort (§7.2).
+			// The tree exists but its durable record failed: abort.
 			// The in-memory record stays, so compensation still covers it.
 			return Outcome{}, err
 		}

@@ -3,7 +3,7 @@ package anyblockjson
 // A select's vocabulary is otherwise discovered only from values that happen
 // to be used, so a schema value no sample record carries never exists (its
 // kanban column is simply missing), and minted options get no orderId and
-// sort alphabetically. typeProperties[].options declares both (§2a).
+// sort alphabetically. typeProperties[].options declares both.
 
 import (
 	"encoding/json"
@@ -47,7 +47,7 @@ func TestImport_OptionsReachTheWiring(t *testing.T) {
 }
 
 // A color is declared on the option it belongs to rather than in a parallel
-// array, so inserting or reordering an option cannot shift it (§2a).
+// array, so inserting or reordering an option cannot shift it.
 func TestImport_OptionColorsReachTheWiring(t *testing.T) {
 	doc := `{"version": 1, "kind": "objectType", "id": "t1", "key": "k",
 		"typeProperties": [{"key": "stage", "name": "Stage", "format": "select",

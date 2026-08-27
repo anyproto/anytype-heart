@@ -11,16 +11,15 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/importv2"
 )
 
-// Spool is the pass-2 → pass-3 absorbing queue seam (deferred-
-// materialization spec §4): pass 2 appends converted objects in emission
+// Spool is the pass-2 → pass-3 absorbing queue seam: pass 2 appends converted objects in emission
 // order, pass 3 replays them through the persist pipeline. Implemented by
 // runstore.Spool (disk-backed, the real thing) and memorySpool (unit-test
-// default — it deliberately does NOT claim the §5 memory invariant).
+// default — it deliberately does NOT claim the memory invariant).
 type Spool interface {
 	Append(ctx context.Context, o *importv2.Object) error
 	Replay(ctx context.Context, emit func(o *importv2.Object) error) error
 	// Census counts the recorded rows split by class without decoding a
-	// single snapshot — the §15.4 totals. Pass 3's denominator, and on a
+	// single snapshot — the totals. Pass 3's denominator, and on a
 	// resumed crawl pass 2's already-earned numerator. Derived-class
 	// definitions are reported apart because they belong to neither user-
 	// facing counter (see run.countObject).
@@ -69,8 +68,7 @@ func (m *memorySpool) Census(ctx context.Context) (pages, files, derived int, er
 
 // spoolSink receives the converter's stream in pass 2. Nothing here touches
 // the space: objects are serialized to the spool, file downloads drain to
-// the spill dir (dissolving the unserializable Open closure — DM spec
-// fact 3), issues and late claims flow to the run ledgers.
+// the spill dir (dissolving the unserializable Open closure), issues and late claims flow to the run ledgers.
 type spoolSink struct {
 	run      *run
 	spool    Spool
@@ -89,7 +87,7 @@ func (s *spoolSink) Object(ctx context.Context, object *importv2.Object) error {
 		}
 	}
 	if s.run.recordedInSpool(object.SourceKey) {
-		// The crawl-resume backstop (08-13 §6.2 item 5): a previous
+		// The crawl-resume backstop: a previous
 		// incarnation already recorded this key, so the re-emission is
 		// absorbed — BEFORE the file drain (a recorded file must not
 		// re-download; its bytes sit in the spill dir next to its row) and
@@ -129,7 +127,7 @@ func (s *spoolSink) Object(ctx context.Context, object *importv2.Object) error {
 	if err := s.spool.Append(ctx, object); err != nil {
 		if ctx.Err() != nil {
 			// The run is being stopped; the failed append is the stop, not
-			// a store failure (finish classifies). The §9.1-item-3 entry
+			// a store failure (finish classifies). The detached-context
 			// obligation, discharged for DM-3: the append's DB operation
 			// runs on the store's detached opCtx (runstore opCtx — added at
 			// the DM-2 fix-round blocker for the connection leak), so a
@@ -140,12 +138,12 @@ func (s *spoolSink) Object(ctx context.Context, object *importv2.Object) error {
 			// its partiality must always be at an object boundary.
 			return ctx.Err()
 		}
-		// A spool that cannot absorb is the run store failing: fatal, §7.2.
+		// A spool that cannot absorb is the run store failing: fatal.
 		s.run.report(importv2.Fatal(importv2.IssueStoreError, fmt.Errorf("spool: %w", err)))
 		return s.errIfAborting(ctx)
 	}
 	// Counted only after the row is durable: fetching progress IS the
-	// recording (§8.3), so a row that failed to land must not be reported
+	// recording, so a row that failed to land must not be reported
 	// as fetched. The backstop above deliberately does not count — those
 	// rows are in spoolPass's census seed already.
 	s.run.countObject(object)
@@ -154,13 +152,13 @@ func (s *spoolSink) Object(ctx context.Context, object *importv2.Object) error {
 
 // drainFile downloads/copies the file source into the spill dir and rewrites
 // the source to a plain path. This covers ON-DISK paths too, not only Open
-// closures (review Class D, reversing the spec's §4.1 "loose files are
+// closures (review Class D, reversing the earlier "loose files are
 // spooled as paths, not copied" cost decision): a path into the user's tree
 // serialized into the spool violates the no-source resume invariant — the
-// tree can be gone by the time a resumed pass 3 uploads, and §8.1's
+// tree can be gone by the time a resumed pass 3 uploads, and the
 // headline property is "the run dir alone suffices". Synchronous by design
-// for DM-1: correctness first — the bounded overlap pool (DM spec §4.1,
-// concurrency ~4) is a wall-clock optimization deliberately deferred.
+// for DM-1: correctness first — the bounded overlap pool
+// (concurrency ~4) is a wall-clock optimization deliberately deferred.
 func (s *spoolSink) drainFile(ctx context.Context, object *importv2.Object) error {
 	open := object.File.Open
 	if open == nil {

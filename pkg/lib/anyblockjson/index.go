@@ -57,14 +57,14 @@ func IsReservedHomepage(homepage string) bool {
 	return homepage == HomepageWidgets || homepage == HomepageGraph
 }
 
-// Widget is one sidebar widget (§2c).
+// Widget is one sidebar widget.
 type Widget struct {
 	Target string `json:"target"`
 	Layout string `json:"layout"`
 	Limit  int32  `json:"limit"`
 }
 
-// Index is a bundle's index.json (§2c).
+// Index is a bundle's index.json.
 type Index struct {
 	Schema      string `json:"$schema"`
 	Version     int    `json:"version"`
@@ -72,7 +72,7 @@ type Index struct {
 	Description string `json:"description"`
 	IconEmoji   string `json:"iconEmoji"`
 	// IconImage is the object id of an image in the bundle — the same thing
-	// iconImage means on any object (§3), so an author never has to remember a
+	// iconImage means on any object, so an author never has to remember a
 	// second convention. The installer resolves the space icon by image *name*
 	// (builtinobjects.getNewAvatarId queries name + image layout), so the
 	// wiring looks the name up from this id; that asymmetry is the wire
@@ -149,8 +149,8 @@ var compileIndexSchema = sync.OnceValues(func() (*jsonschema.Schema, error) {
 	return sch, nil
 })
 
-// UnmarshalIndex validates data against the index schema and decodes it
-// (§2c). Errors wrap *ValidationError with path-addressed issues, like
+// UnmarshalIndex validates data against the index schema and decodes it.
+// Errors wrap *ValidationError with path-addressed issues, like
 // Unmarshal.
 //
 // Whether the ids it names exist is a cross-document question the wiring
@@ -196,7 +196,7 @@ func UnmarshalIndex(data []byte) (*Index, error) {
 	return &idx, nil
 }
 
-// MarshalIndex renders an index in the canonical byte form (§4).
+// MarshalIndex renders an index in the canonical byte form.
 func MarshalIndex(idx *Index) ([]byte, error) {
 	if idx == nil {
 		return nil, fmt.Errorf("nil index")
@@ -219,7 +219,7 @@ func MarshalIndex(idx *Index) ([]byte, error) {
 		wm := &omap{}
 		wm.set("target", w.Target)
 		// link is the default layout and is omitted, like every other
-		// default in this format (§4)
+		// default in this format
 		if w.Layout != "" && w.Layout != "link" {
 			wm.set("layout", w.Layout)
 		}

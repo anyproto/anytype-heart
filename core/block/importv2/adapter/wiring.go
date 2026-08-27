@@ -101,7 +101,7 @@ func (f *collectionFactory) MakeCollection(name string, memberSourceKeys []strin
 }
 
 // teeReporter fans the seam out to every consumer of a run's progress: the
-// legacy process scalar and the §15 statistic emitter. There is exactly one
+// legacy process scalar and the statistic emitter. There is exactly one
 // construction site (engineDeps), so a consumer cannot be wired into the
 // fresh-run path and forgotten in the two resume ones.
 type teeReporter []engine.Reporter
@@ -148,8 +148,8 @@ func (t teeReporter) Item(item importv2.DisplayText) {
 
 // progressReporter down-projects the engine's per-kind, per-phase counters
 // onto the legacy wire scalar (one total, one done, one message). The legacy
-// surface stays untouched by the §15 work — it is the compatibility path —
-// so this projection reproduces exactly what the pre-§15 seam produced,
+// surface stays untouched by the work — it is the compatibility path —
+// so this projection reproduces exactly what the pre-redesign seam produced,
 // with one repair the split made free: the denominator re-bases onto the
 // spool census when materialization starts, for a fresh run and a resumed
 // one alike (the resume path used to do that by hand in resumerun.go, the
@@ -172,7 +172,7 @@ type progressReporter struct {
 }
 
 // Seed publishes a RESUMED run's pass-3 denominator before its engine
-// starts, from the same spool census the §15 emitter is seeded with
+// starts, from the same spool census the emitter is seeded with
 // (statSeed) — one derivation, both consumers, applied at the one lifecycle
 // construction site.
 //
@@ -231,7 +231,7 @@ func (r *progressReporter) Completed(kind importv2.Kind, delta int64) {
 }
 
 // The legacy scalar carries none of these: bytes and the created level are
-// new with §15, and currentItem is user content that has no place in a
+// new with the statistic surface, and currentItem is user content that has no place in a
 // process message.
 func (r *progressReporter) Bytes(int64)               {}
 func (r *progressReporter) Created(int64)             {}

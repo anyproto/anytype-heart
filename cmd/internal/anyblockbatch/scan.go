@@ -1,6 +1,6 @@
 // Package anyblockbatch holds the cross-document concerns of an AnyBlock JSON
 // bundle. pkg/lib/anyblockjson is deliberately one-document-at-a-time and
-// leaves these to "the import wiring" (SPEC.md §3); both anyblockconvert and
+// leaves these to "the import wiring"; both anyblockconvert and
 // anyblockvalidate are that wiring, so the batch-wide property-format
 // registry and the checks over it live here rather than in either command.
 package anyblockbatch
@@ -19,10 +19,10 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-// FormatByName is the SPEC.md §3 format vocabulary anyblockjson accepts in
+// FormatByName is the format vocabulary anyblockjson accepts in
 // typeProperties entries and property values. It's small and spec-fixed but
 // unexported inside pkg/lib/anyblockjson, so it's replicated here.
-// "text" is the only text format (§3): shorttext has no name of its own, so
+// "text" is the only text format: shorttext has no name of its own, so
 // a property declared here as text is minted as longtext. Properties whose
 // stored format is shorttext are the bundled ones, which this tool never
 // mints — anyblockjson resolves those by key.
@@ -41,13 +41,13 @@ var FormatByName = map[string]model.RelationFormat{
 }
 
 // FormatInfo is what the batch knows about a custom property key, gathered
-// from every objectType document's typeProperties (§2a) before any document
+// from every objectType document's typeProperties before any document
 // is actually converted.
 type FormatInfo struct {
 	Format     model.RelationFormat
 	FormatName string
 	Name       string
-	// Options is the declared select vocabulary, in display order (§2a),
+	// Options is the declared select vocabulary, in display order,
 	// each entry carrying the color it declares (empty = the batch picks).
 	Options []anyblockjson.OptionDefinition
 	// ObjectTypes are the type keys an objects/files property may point at.
@@ -69,7 +69,7 @@ type prescanDoc struct {
 	TypeProperties *[]typePropRaw `json:"typeProperties"`
 }
 
-// ScanFormats reads every document's typeProperties (§2a) once, up front, to
+// ScanFormats reads every document's typeProperties once, up front, to
 // build a single batch-wide property-key -> format table. typeProperties is
 // the only place a custom property's format is declared in the AnyBlock JSON
 // format: plain §3 property values don't self-describe their format, so a
@@ -130,9 +130,9 @@ type Undeclared struct {
 }
 
 // CheckPropertyFormats finds property values whose format cannot be resolved.
-// Formats do not travel with values in this format (§3): a value is decoded
+// Formats do not travel with values in this format: a value is decoded
 // against the format declared for its key, and the only declaration site is
-// some type document's typeProperties (§2a) — a dataview's properties[] is a
+// some type document's typeProperties — a dataview's properties[] is a
 // per-view cache the converter never reads. When nothing declares a key, the
 // value passes through as raw JSON and every format-driven conversion is
 // silently skipped: a date stays an RFC-3339 string instead of unix seconds,
@@ -178,7 +178,7 @@ func CheckPropertyFormats(files []string, formats map[string]FormatInfo) ([]Unde
 
 // DiscoverJSONFiles walks root and returns every .json object document,
 // sorted so a batch is deterministic regardless of directory order. The
-// bundle index (§2c) is excluded: it describes the bundle rather than an
+// bundle index is excluded: it describes the bundle rather than an
 // object, has its own schema, and would fail every object-level check.
 func DiscoverJSONFiles(root string) ([]string, error) {
 	var files []string

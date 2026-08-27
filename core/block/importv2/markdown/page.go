@@ -29,7 +29,7 @@ import (
 // definitions, referenced file objects, then the page. Nothing about the
 // page is retained afterwards.
 func (c *Converter) convertPage(ctx context.Context, entry source.Entry, sink importv2.Sink) error {
-	// The §15 currentItem. The entry name is a path inside the user's own
+	// The currentItem. The entry name is a path inside the user's own
 	// tree — user content, so it travels as a DisplayText and reaches the
 	// wire but never a log line.
 	sink.Item(importv2.DisplayText(entry.Name))
@@ -82,7 +82,7 @@ func (c *Converter) convertPage(ctx context.Context, entry source.Entry, sink im
 		}
 	}
 	// A collection-title suggestion fills the default-Page gap only — an
-	// explicit front-matter type always wins (§11.5).
+	// explicit front-matter type always wins.
 	if typeKey == bundle.TypeKeyPage.String() {
 		if suggested, ok := c.suggestedDirTypes[path.Dir(entry.Name)]; ok {
 			typeKey = suggested.String()

@@ -29,7 +29,7 @@ const (
 // then surface type verdicts (in container order, where suggestCsvTypes used
 // to speak) and emit the plan's new types.
 func (c *Converter) planStructure(ctx context.Context, sink importv2.Sink) error {
-	// The §15 ANALYZING stage, bracketed UNCONDITIONALLY: a client that saw
+	// The ANALYZING stage, bracketed UNCONDITIONALLY: a client that saw
 	// the stage begin must always see it end, whatever the planner found to
 	// do and however this step exits. Under an LLM planner this is the
 	// 10-20 s of unexplained silence ImportV2LLM.md §3 specified reporting

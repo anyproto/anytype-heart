@@ -1,6 +1,6 @@
 package anyblockjson
 
-// kind: "chat" is the authorable name for ChatDerivedObject (§2). A chat is a
+// kind: "chat" is the authorable name for ChatDerivedObject. A chat is a
 // standalone object: its identity is the envelope's "key", like a type's.
 
 import (

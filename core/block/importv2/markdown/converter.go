@@ -33,10 +33,10 @@ type Params struct {
 	// increment 2; carried here so the adapter contract is stable.
 	CreateDirectoryPages     bool
 	IncludePropertiesAsBlock bool
-	// Flavour forces a dialect profile by name (§11.4); empty means
+	// Flavour forces a dialect profile by name; empty means
 	// detect from the listing.
 	Flavour string
-	// Planner is the structure planner (docs/ImportV2LLM.md); nil means the
+	// Planner is the structure planner; nil means the
 	// naive typesuggest wrapper.
 	Planner schemaplan.Planner
 	// IncludeContentSamples lets the planner see member page titles

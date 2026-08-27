@@ -35,7 +35,7 @@ import (
 var log = logging.Logger("import-v2-runstore")
 
 // SchemaVersion is bumped only for incompatible changes; additive fields do
-// not bump it. The frozen compensation core (§4.4) — Manifest.{SchemaVersion,
+// not bump it. The frozen compensation core — Manifest.{SchemaVersion,
 // State, SpaceId}, entries.{id, objectId, mode, status, rank},
 // files.{id, objectId, status, preExisting} — may only ever gain siblings, so
 // CompensationInputs stays readable against any past version.
@@ -43,11 +43,11 @@ var log = logging.Logger("import-v2-runstore")
 // v2 (DM-2 review round): entries mode "derived" whose status is still
 // "claimed" must NOT be deleted — the id is deterministic, so the row may
 // point at an EARLIER import's object. A v1 reader's unrecognized-mode
-// rule would delete exactly those rows, so §4.4's writer obligation ("a
+// rule would delete exactly those rows, so the writer obligation ("a
 // mode that must not be deleted cannot ride an old schemaVersion") applies
 // MECHANICALLY: the bump makes v1 binaries see schemaVersion > theirs and
 // hand off — the safe direction. The accepted cost: v1 dirs are
-// compensated rather than resumed by v2 binaries (§4.4: resume only
+// compensated rather than resumed by v2 binaries (resume only
 // within a version; compensation forever).
 const SchemaVersion = 2
 
@@ -61,7 +61,7 @@ const (
 	// StateFetched marks pass 2 complete: the spool is whole (the
 	// fetch-complete marker of DM spec §4.1). StateMaterializing marks
 	// pass 3 started. Both land in the sweep's compensate-by-default branch
-	// on binaries that predate them — the safe outcome (§6.3).
+	// on binaries that predate them — the safe outcome.
 	StateFetched       State = "fetched"
 	StateMaterializing State = "materializing"
 	StateSuspended     State = "suspended"
@@ -124,7 +124,7 @@ type Manifest struct {
 // CompensationInputs is the frozen-core view: exactly what compensation
 // needs, ordered by rank descending — which is FIRST-WRITE order reversed
 // (claim order once claims write rows, effect order otherwise), not strict
-// persist order — readable against any schema version by the §4.4 freeze
+// persist order — readable against any schema version by the freeze
 // policy.
 type CompensationInputs struct {
 	Created    []string // run-created object ids, newest first
@@ -148,7 +148,7 @@ const (
 	// Class C): derived objects are never claimed in pass 1, so this row is
 	// their ONLY pre-effect record — the heal proof and the compensation
 	// attribution for a create torn between the tree write and its effect
-	// row. Older binaries read it through the §4.4 rule (an unrecognized
+	// row. Older binaries read it through the rule (an unrecognized
 	// mode is DELETABLE), which is exactly the right disposition.
 	modeDerived = "derived"
 
@@ -288,7 +288,7 @@ func RunsRoot(repoPath string) string {
 	return filepath.Join(repoPath, "importv2", "runs")
 }
 
-// OpenStatusReader opens a run dir for ADVISORY reads only (the §15 pull
+// OpenStatusReader opens a run dir for ADVISORY reads only (the pull
 // surface). Three deliberate differences from Open, each closing a
 // confirmed hazard of using the full open for status polls (review
 // Class E):
@@ -581,7 +581,7 @@ func open(ctx context.Context, dir string) (*Store, error) {
 			return nil, fmt.Errorf("open collection %s: %w", coll.name, err)
 		}
 	}
-	// The one secondary index the design keeps (spec §4.3): compensation and
+	// The one secondary index the design keeps: compensation and
 	// diagnostics look effects up by final object id.
 	if err = anystorehelper.AddIndexes(ctx, s.entries, []anystore.IndexInfo{{Fields: []string{"objectId"}}}); err != nil {
 		_ = db.Close()
@@ -591,7 +591,7 @@ func open(ctx context.Context, dir string) (*Store, error) {
 }
 
 // storeConfig mirrors the app's objectstore settings plus the durability
-// block the spec fixes (§4.1): WAL with synchronous=normal, idle auto-flush,
+// block the spec fixes: WAL with synchronous=normal, idle auto-flush,
 // sentinel dirty-detection for quick-check on reopen.
 func storeConfig() *anystore.Config {
 	return &anystore.Config{
@@ -667,7 +667,7 @@ func (s *Store) SetState(ctx context.Context, state State) error {
 // SetState, MarkFetched, BeginResume, the sweep — obeys it mechanically
 // (OQ2 mitigation 1): the blob's useful life is the crawl, and only the
 // crawl-resumable states (running, suspended) may carry it. Materialization
-// is headless by design (§8.1 — no source, no credentials), so the fetched
+// is headless by design (no source, no credentials), so the fetched
 // transition is where the token leaves the disk.
 func (s *Store) writeManifest(ctx context.Context, m Manifest) (Manifest, error) {
 	ctx, opDone := opCtx(ctx)
@@ -711,7 +711,7 @@ func (s *Store) withWriteTx(ctx context.Context, fn func(txCtx context.Context) 
 	return tx.Commit()
 }
 
-// RecordCreated journals one run-created tree object (spec §5.3): the
+// RecordCreated journals one run-created tree object: the
 // write-through effect row behind persist's journal seam.
 func (s *Store) RecordCreated(ctx context.Context, sourceKey, objectId string) error {
 	return s.recordEntry(ctx, sourceKey, objectId, modeMinted, actionCreated)
@@ -738,7 +738,7 @@ func (s *Store) RecordUpdated(ctx context.Context, sourceKey, objectId string) e
 //     the conflict — an identity violation upstream — is logged loudly.
 //
 // The primary merge and the displacement preservation commit in ONE
-// transaction (§9.1 item 2): a crash between them would lose the displaced
+// transaction: a crash between them would lose the displaced
 // id — and in the minted-sticky branch the primary write is a no-op, so the
 // synthetic row is the only record of the incoming effect.
 func (s *Store) recordEntry(ctx context.Context, sourceKey, objectId, mode, action string) error {
@@ -998,7 +998,7 @@ type rankedId struct {
 	rank int
 }
 
-// CompensationInputs reads the frozen-core view (§4.4): only the
+// CompensationInputs reads the frozen-core view: only the
 // version-frozen fields, tolerantly — an undecodable row is logged and
 // skipped, never fatal (a damaged row must not block cleaning up the rest).
 func (s *Store) CompensationInputs(ctx context.Context) (CompensationInputs, error) {
@@ -1075,7 +1075,7 @@ func (s *Store) CompensationInputs(ctx context.Context) (CompensationInputs, err
 		case modeMatched:
 			inputs.Updated = append(inputs.Updated, objectId)
 		default:
-			// minted — and, by the §4.4 reader rule, any mode this binary
+			// minted — and, by the reader rule, any mode this binary
 			// does not know: an unrecognized mode is treated as DELETABLE
 			// (a phase-B "derived" row read by an older binary must still
 			// be compensated; a future non-deletable mode must bump
@@ -1173,7 +1173,7 @@ func (s *Store) seedRank(ctx context.Context) error {
 }
 
 // Flush forces a WAL checkpoint + fsync — the suspend path's durability
-// point (spec §6.4; measured 4–9 ms, §8).
+// point (measured 4–9 ms, §8).
 func (s *Store) Flush(ctx context.Context) error {
 	ctx, opDone := opCtx(ctx)
 	defer opDone()
@@ -1207,7 +1207,7 @@ func (s *Store) Close() error {
 }
 
 // Drop closes the store and deletes the whole run dir — the disposal the
-// per-run-DB layout exists for (§4.1): O(1), no tombstones, no vacuum. The
+// per-run-DB layout exists for: O(1), no tombstones, no vacuum. The
 // guard is released only AFTER the unlink: the dir must never be observable
 // as existing-but-unguarded (C3).
 func (s *Store) Drop() error {

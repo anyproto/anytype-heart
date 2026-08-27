@@ -8,7 +8,7 @@ import (
 	importv2 "github.com/anyproto/anytype-heart/core/block/importv2"
 )
 
-// The converter half of the §15 producer seam: the plan step announces
+// The converter half of the producer seam: the plan step announces
 // ANALYZING (the stage ImportV2LLM.md §3 specified and nothing ever
 // reported), and every page announces itself as the current item — the
 // strongest not-stuck signal a long crawl has.

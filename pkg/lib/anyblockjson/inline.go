@@ -1,11 +1,11 @@
 package anyblockjson
 
-// inline.go implements the §8 inline-markup codec: canonical rendering of
+// inline.go implements the inline-markup codec: canonical rendering of
 // text marks into the Markdown subset, and the inverse parser. The parser is
 // the exact inverse of the renderer: it resolves emphasis with a
 // deterministic delimiter stack (not CommonMark's delimiter-run algorithm),
 // which is what makes Export ∘ Import byte-stable over arbitrarily
-// overlapping mark ranges. All offsets are UTF-16 code units (§8.3).
+// overlapping mark ranges. All offsets are UTF-16 code units.
 
 import (
 	"fmt"
@@ -19,7 +19,7 @@ import (
 
 const objectLinkPrefix = "anytype://object?objectId="
 
-// markNesting is the fixed outermost→innermost nesting order (§8.3 step 5).
+// markNesting is the fixed outermost→innermost nesting order.
 var markNesting = []model.BlockContentTextMarkType{
 	model.BlockContentTextMark_Mention,
 	model.BlockContentTextMark_Object,
@@ -73,7 +73,7 @@ func sortSpans(s []span) {
 	})
 }
 
-// renderInline serializes text and its marks into §8 inline Markdown.
+// renderInline serializes text and its marks into inline Markdown.
 func renderInline(txt string, marks []*model.BlockContentTextMark) string {
 	u16 := text.StrToUTF16(txt)
 	spans := sanitizeSpans(u16, marks)
@@ -107,7 +107,7 @@ func sanitizeSpans(u16 []uint16, marks []*model.BlockContentTextMark) []span {
 		param := m.Param
 		// a Link whose target is an object deep-link renders identically to
 		// an Object mark, so it normalizes to one — otherwise the parse-back
-		// type flip would break same-type overlap resolution (§8.3)
+		// type flip would break same-type overlap resolution
 		if typ == model.BlockContentTextMark_Link && strings.HasPrefix(param, objectLinkPrefix) {
 			typ = model.BlockContentTextMark_Object
 			param = param[len(objectLinkPrefix):]
@@ -118,10 +118,10 @@ func sanitizeSpans(u16 []uint16, marks []*model.BlockContentTextMark) []span {
 			}
 		} else {
 			// a param on a param-less mark type is noise; normalizing it to
-			// empty lets equal-range marks merge (§8.3)
+			// empty lets equal-range marks merge
 			param = ""
 		}
-		// params beyond the §8 resource bounds are invalid: the parser will
+		// params beyond the resource bounds are invalid: the parser will
 		// not recognize them, so rendering them would not round-trip
 		switch typ {
 		case model.BlockContentTextMark_Link:
@@ -152,8 +152,8 @@ func splitsSurrogatePair(u16 []uint16, i int) bool {
 func isHighSurrogate(u uint16) bool { return u >= 0xD800 && u <= 0xDBFF }
 func isLowSurrogate(u uint16) bool  { return u >= 0xDC00 && u <= 0xDFFF }
 
-// materializeEmoji splices each Emoji mark's emoji over its covered text
-// (§8.1), adjusting the remaining marks' offsets. Overlapping emoji marks are
+// materializeEmoji splices each Emoji mark's emoji over its covered text,
+// adjusting the remaining marks' offsets. Overlapping emoji marks are
 // truncated earlier-start-wins first (§8.3 step 3 semantics).
 func materializeEmoji(u16 []uint16, spans []span) ([]uint16, []span) {
 	var emoji, rest []span
@@ -241,7 +241,7 @@ func isMarkdownDelimited(t model.BlockContentTextMarkType) bool {
 }
 
 // shrinkWhitespaceBoundaries shrinks Markdown-delimited marks past
-// leading/trailing whitespace (§8.3 step 2).
+// leading/trailing whitespace.
 func shrinkWhitespaceBoundaries(u16 []uint16, spans []span) []span {
 	out := spans[:0]
 	for _, s := range spans {
@@ -418,7 +418,7 @@ type stackItem struct {
 }
 
 // treeNode / treeKid form the well-nested render tree built from segment
-// stacks (§8.3 steps 4–5).
+// stacks.
 type treeNode struct {
 	item stackItem
 	root bool
@@ -524,7 +524,7 @@ func renderNode(b *strings.Builder, u16 []uint16, n *treeNode, inLabel bool) {
 		renderKids(true)
 		b.WriteString("](" + escapeDest(n.item.param) + ")")
 	case model.BlockContentTextMark_TextColor:
-		// Coincident color+background ranges combine into one tag (§8.1):
+		// Coincident color+background ranges combine into one tag:
 		// in the tree that is a TextColor node whose sole child is a
 		// BackgroundColor node.
 		if len(n.kids) == 1 && n.kids[0].node != nil &&
@@ -572,7 +572,7 @@ func renderNode(b *strings.Builder, u16 []uint16, n *treeNode, inLabel bool) {
 
 // writeCodeSpan emits a CommonMark code span: the delimiter is the shortest
 // backtick run absent from the content, space-padded when the content starts
-// or ends with a backtick or would trigger the strip rule (§8.2).
+// or ends with a backtick or would trigger the strip rule.
 func writeCodeSpan(b *strings.Builder, content string) {
 	runs := map[int]bool{}
 	run := 0
@@ -628,7 +628,7 @@ func classifyRune(r rune) int {
 	return edgeWord
 }
 
-// escapeProse writes a text segment with canonical minimal escaping (§8.2).
+// escapeProse writes a text segment with canonical minimal escaping.
 // atBOL/atEOL report whether the segment starts/ends the whole rendered
 // string; at internal segment edges the neighbor is a delimiter and is
 // treated as punctuation.
@@ -798,7 +798,7 @@ func escapeDest(dest string) string {
 // ---- parsing ----
 //
 
-// inlineError is a grammar error in a text string's inline markup (§12).
+// inlineError is a grammar error in a text string's inline markup.
 type inlineError struct {
 	Msg     string
 	Snippet string
@@ -853,7 +853,7 @@ const (
 	// similarly); deeper '[' stay literal.
 	maxLinkNesting = 32
 	// maxEmojiParamLen bounds an emoji mark's replacement text; longer
-	// params are invalid and dropped (§8.3 step 1).
+	// params are invalid and dropped.
 	maxEmojiParamLen = 64
 )
 
@@ -1188,7 +1188,7 @@ func decodeEntities(s string) string {
 
 // parseTag parses a whitelisted inline tag at rs[i]. Returns isTag=false when
 // the '<' does not start a whitelisted tag name (the '<' is then literal);
-// once a whitelisted name is recognized, malformed syntax is an error (§12).
+// once a whitelisted name is recognized, malformed syntax is an error.
 // A self-closing tag is zero-length and returns a nil token (dropped, §8.1).
 func parseTag(rs []rune, i int) (*token, int, bool, error) {
 	j := i + 1
@@ -1284,7 +1284,7 @@ func parseTag(rs []rune, i int) (*token, int, bool, error) {
 	return &token{kind: tokTag, tagName: name, closing: closing, attrs: attrs}, j - i, true, nil
 }
 
-// validateTagAttrs enforces the per-tag attribute rules (§8.1); returns an
+// validateTagAttrs enforces the per-tag attribute rules; returns an
 // error message or "".
 func validateTagAttrs(name string, attrs map[string]string) string {
 	switch name {

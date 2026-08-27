@@ -70,7 +70,7 @@ func TestResolveReuse(t *testing.T) {
 	})
 
 	t.Run("a record failure is fatal store trouble, not a silent skip", func(t *testing.T) {
-		// given — §7.2's rule: a run that cannot journal must not keep going;
+		// given — the rule: a run that cannot journal must not keep going;
 		// objects spooled under an unrecorded plan could never be resumed
 		// consistently.
 		planner := PlannerFunc(func(context.Context, []ContainerSchema) (Plan, error) {

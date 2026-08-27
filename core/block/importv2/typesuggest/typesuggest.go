@@ -5,8 +5,8 @@
 //
 // The Suggestor seam is the contract; the naive implementation matches
 // normalized container names against keyword tables and corroborates with
-// property shapes. A learned model can replace it behind the same interface
-// (design doc §11.5). Rules of the seam:
+// property shapes. A learned model can replace it behind the same interface.
+// Rules of the seam:
 //   - suggestions only ever fill the default-Page gap — an explicit type
 //     (front matter, schema) always wins, enforced by the callers;
 //   - implementations return only suggestions confident enough to APPLY,

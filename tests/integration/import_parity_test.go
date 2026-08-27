@@ -158,7 +158,7 @@ func projectionOf(t *testing.T, app *testApplication) parityProjection {
 	for _, record := range records {
 		name := record.Details.GetString(bundle.RelationKeyName)
 		if strings.HasPrefix(name, "Import report — ") {
-			// v2-only diagnostic page (§16 item 1), deliberately absent in v1.
+			// v2-only diagnostic page, deliberately absent in v1.
 			continue
 		}
 		layout := model.ObjectTypeLayout(record.Details.GetInt64(bundle.RelationKeyResolvedLayout))

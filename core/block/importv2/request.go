@@ -28,7 +28,7 @@ type Result struct {
 	RootCollectionId string
 	WidgetLayout     model.BlockContentWidgetLayout
 
-	// ReportObjectId is the import report page (§16 item 1) — set when the
+	// ReportObjectId is the import report page — set when the
 	// run produced issues and the page was persisted. Clients open it from
 	// the finish notification/event and render a discard button on it.
 	ReportObjectId string

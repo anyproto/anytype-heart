@@ -24,7 +24,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 )
 
-// The DM-2 equivalence gate (spec §9): kill a run during pass 3 at the
+// The DM-2 equivalence gate: kill a run during pass 3 at the
 // create, upload and finalize boundaries; resume it from the run dir alone
 // (no source, no network — ResumeDurable never sees the markdown tree);
 // assert the final object set is IDENTICAL to an uninterrupted run. The
@@ -347,7 +347,7 @@ func TestCrashResumeWithoutSource(t *testing.T) {
 		// into the run dir, and the resumed upload read from a path that no
 		// longer existed — reported success with zero issues, because the
 		// old fake uploader never opened what it was given. The no-source
-		// invariant (§8.1: a resumed run needs no source) must hold for
+		// invariant (a resumed run needs no source) must hold for
 		// every converter path, not only the two that were examined.
 		root := crashTree(t)
 		control, controlResult := runControl(t, root)
@@ -625,7 +625,7 @@ func TestCrashResumeUpdateExisting(t *testing.T) {
 }
 
 // corruptOnePendingPayload flips the payload bytes of one non-terminal
-// minted claim — the shape of on-disk corruption the §6.3 versioning story
+// minted claim — the shape of on-disk corruption the versioning story
 // says must refuse, not replay wrong.
 func corruptOnePendingPayload(t *testing.T, dir string) {
 	t.Helper()

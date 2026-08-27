@@ -47,7 +47,7 @@ type batch struct {
 	optOrder map[string]string
 
 	// optColor is the next palette position per property key, and optClaimed
-	// the colors that property's vocabulary names explicitly (§2a) so the
+	// the colors that property's vocabulary names explicitly so the
 	// cycle never hands one of them out a second time. Every option needs a
 	// color too: the app assigns one on creation (pkg/lib/schema.Relation
 	// CreateOptionDetails, core/block/import/markdown), so an option minted
@@ -120,7 +120,7 @@ func (b *batch) OptionName(key domain.RelationKey, id string) (string, bool) {
 }
 
 // PropertyId implements anyblockjson.PropertyResolver: allocates a stable
-// Relation object for a typeProperties entry (§2a) the first time its key is
+// Relation object for a typeProperties entry the first time its key is
 // seen in the batch. Bundled (system) properties resolve to their bundled
 // url instead of minting a new object — installBundledRelationsAndTypes
 // (core/block/import/common/objectcreator) installs those automatically.
@@ -146,8 +146,8 @@ func (b *batch) PropertyById(id string) (anyblockjson.PropertyDefinition, bool) 
 	return anyblockjson.PropertyDefinition{}, false
 }
 
-// declareOptions pre-mints the vocabulary a typeProperties entry declares
-// (§2a), in declaration order, so every value exists whether or not any
+// declareOptions pre-mints the vocabulary a typeProperties entry declares,
+// in declaration order, so every value exists whether or not any
 // record happens to use it and the order is the author's rather than
 // alphabetical. Names already minted from usage are adopted, not duplicated.
 // Options that declare no color take the next palette entry the vocabulary
@@ -270,8 +270,8 @@ func (b *batch) mintRelation(def anyblockjson.PropertyDefinition) string {
 
 	uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeRelation, string(def.Key))
 	if err != nil {
-		// def.Key already passed through the schema's property-key charset
-		// (§2a); NewUniqueKey only fails for an unsupported smartblock type.
+		// def.Key already passed through the schema's property-key charset;
+		// NewUniqueKey only fails for an unsupported smartblock type.
 		panic(err)
 	}
 	id := uk.Marshal()
@@ -324,7 +324,7 @@ func (b *batch) mintOption(key domain.RelationKey, name, orderId, color string) 
 	details.Fields[detailOrderId] = strVal(orderId)
 	// an option's color is a detail like any other, and every creation path in
 	// the app sets one (pkg/lib/schema.Relation.CreateOptionDetails); a
-	// declared vocabulary says which, rather than leaving it to chance (§2a).
+	// declared vocabulary says which, rather than leaving it to chance.
 	details.Fields[detailRelationOptionColor] = strVal(color)
 
 	snap := &model.SmartBlockSnapshotBase{

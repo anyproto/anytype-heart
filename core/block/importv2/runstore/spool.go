@@ -24,7 +24,7 @@ const (
 // Spool is the pass-2 → pass-3 absorbing queue (deferred-materialization
 // spec §6.1): converter output serialized in emission order, replayed to
 // materialization. It deliberately carries no cross-version promise — an
-// incompatible spool is dropped with its run dir, never migrated (§6.3).
+// incompatible spool is dropped with its run dir, never migrated.
 //
 // Two homes, one type: inside a run's own db (Store.Spool — the durable
 // mode) or a standalone throwaway db in the volatile spill dir
@@ -237,7 +237,7 @@ func (sp *Spool) SourceKeys(ctx context.Context) (map[string]coresb.SmartBlockTy
 }
 
 // Census counts the spooled rows split by class without decoding any
-// snapshot — the status surface's totals (§15.4: pages and files are
+// snapshot — the status surface's totals (pages and files are
 // separate counters by requirement).
 //
 // Derived-class rows (relations, types, options) are counted APART from

@@ -47,7 +47,7 @@ func TestConvert_TemplateTargetTypeBecomesDetail(t *testing.T) {
 
 // An authored targetObjectType (what a round-tripped export carries) stays
 // authoritative, and lands as a plain string: object-format property values
-// normalize to single-element lists (§11), but this relation is maxCount 1 and
+// normalize to single-element lists, but this relation is maxCount 1 and
 // every reader takes it as a string.
 func TestConvert_AuthoredTargetObjectTypeWinsAndIsScalar(t *testing.T) {
 	b := newBatch(nil, map[string]string{"wikiPage": "type-wiki-page"})

@@ -23,7 +23,7 @@ type Reuse struct {
 	// Record receives the sanitized plan of a fresh run BEFORE any object
 	// is emitted under it. A record failure is fatal store trouble: a run
 	// whose plan cannot be recorded must not spool objects a resume could
-	// never reproduce (§7.2's a-run-that-cannot-journal rule).
+	// never reproduce (the a-run-that-cannot-journal rule).
 	Record func(Plan) error
 }
 

@@ -11,7 +11,7 @@ import (
 )
 
 // plannerParams is the adapter-resolved BYOK enrichment config
-// (docs/ImportV2LLM.md §9). The zero value means feature off — converters
+// The zero value means feature off — converters
 // default to the naive planner.
 type plannerParams struct {
 	planner        schemaplan.Planner
@@ -45,7 +45,7 @@ func plannerFromRequest(req *pb.RpcObjectImportRequest) plannerParams {
 	// "low" is meaningful on OpenAI and inert on ollama, where "low" and
 	// "high" are byte-identical requests and only "none" differs. It is kept
 	// as a cost-conscious default, NOT on the strength of the retracted
-	// "low beat high" measurement — see the spec's §1 retraction. Thinking
+	// "low beat high" measurement — that measurement was retracted. Thinking
 	// itself is load-bearing: switching it off makes the model stop
 	// abstracting and copy source labels into both name fields.
 	params.planner = llmplan.New(client,

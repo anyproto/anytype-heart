@@ -1,7 +1,7 @@
 package anyblockjson
 
 // Regression tests for the 4-lens review panel findings: adversarial
-// round-trip defects, robustness/DoS quadratics, and the §8 resource bounds
+// round-trip defects, robustness/DoS quadratics, and the resource bounds
 // that close them.
 
 import (
@@ -191,7 +191,7 @@ func TestInline_ParseIsLinearish(t *testing.T) {
 	}
 }
 
-// Lens 3: the §8 resource bounds are deterministic local rules.
+// Lens 3: the resource bounds are deterministic local rules.
 func TestInline_ResourceBounds(t *testing.T) {
 	// an over-long link destination is not recognized; the mark drops on
 	// export and the text stays intact
@@ -223,7 +223,7 @@ func TestInline_ResourceBounds(t *testing.T) {
 	assert.Empty(t, marks2)
 }
 
-// Lens 4: the wiring dispatches on the version/$schema markers (§13).
+// Lens 4: the wiring dispatches on the version/$schema markers.
 func TestDetectFormat(t *testing.T) {
 	v, schema, ok := DetectFormat([]byte(`{"$schema": "https://schemas.anytype.io/anyblock/1.0/object.schema.json", "version": 1}`))
 	require.True(t, ok)

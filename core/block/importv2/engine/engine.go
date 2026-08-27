@@ -44,8 +44,8 @@ const (
 // The counters are PER KIND and PER PHASE, which is the whole point of the
 // redesign. The legacy seam blended pages, files and definitions into one
 // `Step(1)`, so no honest `pagesDone` could be published under a field name
-// the wire contract had already fixed (§15.7). And blending the two passes
-// into one denominator is what §15.3 forbids outright: pass 2 runs at the
+// the wire contract had already fixed. And blending the two passes
+// into one denominator is what the progress contract forbids outright: pass 2 runs at the
 // pacer's ~1.5 items/s and pass 3 at persist speed, so one bar crawls for an
 // hour and then leaps.
 type Reporter interface {
@@ -118,15 +118,15 @@ type Deps struct {
 	Gauge func(delta int)
 	// OnCompensating, when set, is invoked once before the first
 	// compensation delete — the adapter persists the run's "compensating"
-	// state there, so a crash mid-cleanup is finished by the startup sweep
-	// (spec §6.5). A non-nil error GATES the cleanup: without the durable
+	// state there, so a crash mid-cleanup is finished by the startup sweep.
+	// A non-nil error GATES the cleanup: without the durable
 	// marker a crash mid-compensation would make the next start RESUME a
 	// partly-compensated run, silently missing its deleted objects — so no
 	// marker, no deletes (the dir is kept via the CompensationRan rule).
 	OnCompensating func() error
 	// OnIssue, when set, receives every retained issue as it is reported —
 	// the adapter's durable issue ledger (pass-2 issues must survive to the
-	// pass-3 report page, DM spec §6.2). Called outside the issue lock; must
+	// pass-3 report page). Called outside the issue lock; must
 	// be safe for concurrent use and must not block.
 	OnIssue func(issue importv2.Issue)
 	// Spool is the pass-2 → pass-3 queue. nil falls back to an in-memory
@@ -139,10 +139,10 @@ type Deps struct {
 	SpillDir string
 	// OnFetched, when set, fires between pass 2 and pass 3 with pass 2's
 	// RootSpec — the adapter persists it and marks the manifest
-	// fetched/materializing there (DM spec §4.1 + §6.4: a restart has no
+	// fetched/materializing there (a restart has no
 	// converter to re-produce the RootSpec). Its failure is FATAL (S6): the
 	// transition is journaling — the A1 compensation gate depends on it —
-	// and §7.2 forbids creating objects past a failed journal write.
+	// and creating objects past a failed journal write is forbidden.
 	OnFetched func(rootSpec importv2.RootSpec) error
 	// ShutdownCtx, when set, bounds compensation (S1): it must survive the
 	// RUN's cancellation (compensation runs exactly when the run ctx is
@@ -155,7 +155,7 @@ type Deps struct {
 // Run executes one import. The passed ctx is the run's single cancellation
 // source (the adapter joins process cancel into it).
 //
-// Panic firewall (§16 item 2): a panic anywhere in the run becomes a typed
+// Panic firewall: a panic anywhere in the run becomes a typed
 // invariant issue, never a process crash — per object in persistGuarded, per
 // goroutine in the converter/worker spawns, and here as the last resort for
 // the main-goroutine stages (identity pass, finalize, compensation).
@@ -163,7 +163,7 @@ func Run(ctx context.Context, req importv2.Request, converter importv2.Converter
 	return startRun(ctx, req, converter, deps, nil)
 }
 
-// CrawlResumeState seeds a pass-2 crawl restart (DM spec §8.3): a run
+// CrawlResumeState seeds a pass-2 crawl restart: a run
 // interrupted mid-crawl re-runs both passes against the live source, with
 // the spool's recorded keys as the skip set — no separate status
 // bookkeeping, the recording IS the progress.
@@ -175,7 +175,7 @@ type CrawlResumeState struct {
 	SpooledKeys map[string]struct{}
 	// PriorClaims are previous incarnations' claim keys. A prior claim that
 	// neither re-enumerates this incarnation nor sits in the spool is
-	// SOURCE DRIFT (a page deleted between sessions, 08-13 §5.4) — dropped
+	// SOURCE DRIFT (a page deleted between sessions) — dropped
 	// with a data-loss warning at reconciliation, where a fresh claim in
 	// the same gap stays the invariant violation it always was.
 	PriorClaims map[string]struct{}
@@ -184,7 +184,7 @@ type CrawlResumeState struct {
 	Issues []importv2.Issue
 }
 
-// ResumeCrawl is pass 2 restarted against the live source (DM spec §8.3):
+// ResumeCrawl is pass 2 restarted against the live source:
 // pass 1 re-runs with a rehydrated identity (claims are reuses — the
 // adapter wires identity.WithRehydrated with reclaimable entries), pass 2
 // re-crawls skipping what the spool already holds, and pass 3 then
@@ -259,7 +259,7 @@ func startRun(ctx context.Context, req importv2.Request, converter importv2.Conv
 	}
 
 	// Pass 2 — fetch, convert, spool: nothing enters the space, so an abort
-	// anywhere in here compensates nothing and costs nothing (DM spec §7).
+	// anywhere in here compensates nothing and costs nothing.
 	spool := deps.Spool
 	if spool == nil {
 		spool = &memorySpool{}
@@ -302,8 +302,8 @@ func (r *run) materializeTail(runCtx context.Context, spool Spool, rootSpec impo
 }
 
 // beginMaterialize announces pass 3 and fixes its denominators from the
-// spool census — the SAME rows the pull surface counts for a dormant run
-// (§15.4), so a run that is polled and a run that is pushed cannot report
+// spool census — the SAME rows the pull surface counts for a dormant run,
+// so a run that is polled and a run that is pushed cannot report
 // different totals. A census failure costs telemetry only: the seam is
 // advisory and must never fail a run that is otherwise fine.
 func (r *run) beginMaterialize(ctx context.Context, spool Spool) {
@@ -316,7 +316,7 @@ func (r *run) beginMaterialize(ctx context.Context, spool Spool) {
 	if err != nil {
 		// Swallowed deliberately, and not turned into an issue: the replay
 		// reads the same rows a moment later and fails LOUDLY there
-		// (storeError, §7.2) — reporting it twice would put a telemetry
+		// (storeError) — reporting it twice would put a telemetry
 		// failure on the user's report page under its own code.
 		return
 	}
@@ -332,9 +332,9 @@ func (r *run) beginMaterialize(ctx context.Context, spool Spool) {
 // created.Add(1) concurrently, and the atomic orders the INCREMENTS, not the
 // calls: worker B can take 6, worker A take 5, and A announce after B. The
 // surface then counts DOWN (measured regressing on every run of a 600-page
-// import, one settling at 598/600), which is §15.4's cancel affordance —
+// import, one settling at 598/600), which is the cancel affordance —
 // "stop and remove the N objects created" — and disagrees with the exact
-// ledger count the same run answers when polled dormant (§15.5).
+// ledger count the same run answers when polled dormant.
 //
 // The lock is held ACROSS the call on purpose: dropping it first would order
 // the high-water mark and leave the announcements to race again. The seam is
@@ -405,7 +405,7 @@ func (r *run) countObject(o *importv2.Object) {
 	}
 }
 
-// ResumeState seeds a pass-3 restart (DM spec §8.1): everything the run
+// ResumeState seeds a pass-3 restart: everything the run
 // carries across incarnations beyond what the identity service rehydrates.
 type ResumeState struct {
 	// RootSpec is pass 2's persisted output — a restart has no converter to
@@ -430,7 +430,7 @@ type ResumeState struct {
 	// accepted: re-persisting the report would re-open the very
 	// crash-window class this phase closes.
 	ReportObjectId string
-	// Created/Updated continue the ledger's counts (§15.4: a restart
+	// Created/Updated continue the ledger's counts (a restart
 	// resumes the numbers, not just the work). Skipped/Failed are not
 	// durable and restart at zero — recorded, not hidden.
 	Created int64
@@ -482,7 +482,7 @@ func Resume(ctx context.Context, req importv2.Request, deps Deps, state *ResumeS
 	}
 	r.created.Store(state.Created)
 	r.updated.Store(state.Updated)
-	// A restart resumes the NUMBERS, not just the work (§15.4): the cancel
+	// A restart resumes the NUMBERS, not just the work: the cancel
 	// affordance must say "remove the N objects created" counting every
 	// incarnation, not only this one's. Through publishCreated like every
 	// other publication, so this incarnation's workers start ABOVE the seed
@@ -528,7 +528,7 @@ func (r *run) seedIssues(issues []importv2.Issue) {
 // accounted skipped, and nobody else reports the abort — without this, a
 // user cancel yielded a silent "success" and the review confirmed the same
 // hole again during finalize). On any fatal, the suspend verdict (cause
-// importv2.ErrSuspended, spec §6.4) decides compensation: a suspend keeps
+// importv2.ErrSuspended) decides compensation: a suspend keeps
 // the durable state for the startup sweep; everything else compensates.
 func (r *run) finish(runCtx context.Context, rootSpec importv2.RootSpec) *importv2.Result {
 	// The STOP SOURCE, decided once and carried out on the Result (review
@@ -692,7 +692,7 @@ func (r *run) recordedInSpool(sourceKey string) bool {
 // staleAcrossIncarnations reports whether an unassigned claim is source
 // drift on a crawl-resumed run: claimed by a previous incarnation, never
 // spooled, and never re-enumerated by this incarnation's pass 1 — the
-// entity disappeared from the source between sessions (08-13 §5.4).
+// entity disappeared from the source between sessions.
 func (r *run) staleAcrossIncarnations(key string) bool {
 	if r.crawlResume == nil {
 		return false
@@ -757,7 +757,7 @@ func (r *run) identityPass(ctx context.Context, converter importv2.Converter) *i
 		// Per claim, not once at the end: a cursor-chained /search does not
 		// know its own count until the chain ends, so SCANNING publishes a
 		// count-up ("3,412 found") and totalsKnown stays false until the
-		// pass-1/pass-2 boundary (§15.3).
+		// pass-1/pass-2 boundary.
 		r.deps.Reporter.Discovered(importv2.KindPage, 1)
 		return nil
 	})
@@ -1007,7 +1007,7 @@ func (r *run) finalize(ctx context.Context, rootSpec importv2.RootSpec) {
 	r.rootCollectionId = outcome.Id
 }
 
-// reconcileClaims is the completeness invariant (§16 item 4): on a run that
+// reconcileClaims is the completeness invariant: on a run that
 // finished without a fatal, every pass-1 claim must have arrived in pass 2 or
 // carry a reported issue — a bare gap means a converter dropped an object
 // silently, which is exactly the failure class the engine exists to forbid.
@@ -1030,8 +1030,8 @@ func (r *run) reconcileClaims() {
 			continue
 		}
 		if r.staleAcrossIncarnations(key) {
-			// Expected drift on a crawl-resumed run, not a converter bug
-			// (08-13 §5.4): the entity was claimed in a previous session,
+			// Expected drift on a crawl-resumed run, not a converter bug:
+			// the entity was claimed in a previous session,
 			// never recorded, and this session did not find it again. Loud
 			// but non-failing — the invariant's teeth stay for claims made
 			// (or re-made) within the current incarnation. The wording
@@ -1089,8 +1089,8 @@ func (r *run) maybeClaimReport(ctx context.Context) bool {
 	return true
 }
 
-// emitReport builds and persists the report page from the final issue list
-// (§16 item 1). Its own failures degrade to warnings: a report problem must
+// emitReport builds and persists the report page from the final issue list.
+// Its own failures degrade to warnings: a report problem must
 // never abort — or compensate away — an otherwise finished import.
 func (r *run) emitReport(ctx context.Context, claimed bool, title string) {
 	if r.resume != nil && r.resume.ReportObjectId != "" {
@@ -1165,12 +1165,12 @@ func (r *run) compensate() {
 	r.compensateState = 1
 	if r.deps.Journal.IsEmpty() {
 		// Nothing to undo — an abort during passes 1–2, where compensation
-		// is definitionally Drop() (DM spec §7). The zero-delete cleanup is
+		// is definitionally Drop(). The zero-delete cleanup is
 		// skipped TOGETHER WITH the OnCompensating marker, which exists so a
 		// crash mid-cleanup is finished by the sweep — there is no cleanup
 		// to finish, and the marker's durable state transition would scrub
 		// the manifest's crawl request and burn the dir's crawl-resumable
-		// class (DM-3 §8.3) over nothing. CompensationRan stays FALSE
+		// crawl-resume class over nothing. CompensationRan stays FALSE
 		// (review P0-B): nothing ran, and the flag is consumed downstream as
 		// disposal authority — setting it here destroyed the crawl artifact
 		// on every non-transient mid-crawl failure. The vacuousness travels

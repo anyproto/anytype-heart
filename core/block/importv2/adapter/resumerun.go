@@ -17,7 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace"
 )
 
-// resumeRun is the sweep's resume branch (DM spec §8.1): restart pass 3 of
+// resumeRun is the sweep's resume branch: restart pass 3 of
 // a fetched/materializing/suspended-mid-materialize run from its dir alone.
 // Headless by construction — the manifest carries no request blob and no
 // credentials (OQ2 stays avoided): everything pass 3 consumes is the
@@ -93,8 +93,8 @@ func (s *service) resumeRun(ctx context.Context, store *runstore.Store, manifest
 	}()
 
 	// The resumed run's surface starts where its predecessor stopped, from
-	// the SAME reads the dormant poll of this dir performs (§15.4's
-	// right-hand column): the spool census as the pass-3 denominators, the
+	// the SAME reads the dormant poll of this dir performs (the
+	// dormant column): the spool census as the pass-3 denominators, the
 	// ledger's terminal rows as its numerators, the ledger's object count as
 	// the cancel affordance. Without it the whole rehydration window — the
 	// load above, the identity rehydration and the engine's own start —
@@ -178,7 +178,7 @@ func (s *service) resumeEngine(ctx context.Context, request importv2.Request, sp
 	st.SeedJournal(deps.Journal)
 	// The resumed run's progress total is no longer set here: the engine
 	// re-bases it from the spool census at the start of pass 3, on this path
-	// and the fresh one alike (§15.4's one derivation).
+	// and the fresh one alike (the one derivation).
 	result := engine.Resume(ctx, request, deps, &st.Engine)
 	persister.ReconcileTypes(ctx)
 	return result

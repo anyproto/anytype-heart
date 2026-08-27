@@ -37,7 +37,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 )
 
-// The §13.4 lifecycle harness: a real adapter service over fakes, able to
+// The lifecycle harness: a real adapter service over fakes, able to
 // drive Import, Close mid-flight, and the startup sweep — the paths two
 // review rounds could only reason about. The engine itself is scripted (its
 // behavior has its own suite); what runs for real here is everything the

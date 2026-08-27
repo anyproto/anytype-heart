@@ -91,7 +91,7 @@ func WithChunkConcurrency(n int) Option {
 }
 
 // WithPerContainerCalls skips the global kinds call and goes straight to the
-// tier-3 per-container planner (design §6), for providers known to be
+// tier-3 per-container planner, for providers known to be
 // context-starved (Apple Foundation Models' ~4k total context cannot fit the
 // global evidence at all). Without the option the per-container path still
 // engages automatically when the kinds call reports truncation or a

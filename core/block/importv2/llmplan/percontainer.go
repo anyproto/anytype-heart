@@ -13,7 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-// Tier-3 planner (design §6): for context-starved runtimes (Apple FM ~4k
+// Tier-3 planner: for context-starved runtimes (Apple FM ~4k
 // total context, sub-8B locals) where the global kinds call cannot fit, the
 // forced shape is one call per container with a one-field structured
 // response, then a canonicalisation pass in code. Free text is proposed
@@ -108,7 +108,7 @@ func (p *planner) planPerContainer(ctx context.Context, schemas []schemaplan.Con
 }
 
 // askContainerKind runs the one-field call for one container. The user turn
-// is that container's evidence document — the §3.1 rendering, single element.
+// is that container's evidence document — the rendering, single element.
 func (p *planner) askContainerKind(ctx context.Context, schema schemaplan.ContainerSchema) (string, error) {
 	userPrompt, _, err := renderKindsEvidence([]schemaplan.ContainerSchema{schema})
 	if err != nil {

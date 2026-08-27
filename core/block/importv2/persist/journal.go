@@ -15,7 +15,7 @@ import (
 )
 
 // ledgerWriteTimeout bounds one detached effect write. Measured cost is
-// sub-millisecond (spec §8); the timeout only guards a pathological disk.
+// sub-millisecond; the timeout only guards a pathological disk.
 const ledgerWriteTimeout = 10 * time.Second
 
 // EffectLedger is the durable write-through seam behind the journal
@@ -41,13 +41,13 @@ type EffectLedger interface {
 // Journal records every effect of a run, in order, for compensation.
 // Safe for concurrent worker use. With a ledger attached, effects
 // additionally write through to durable storage; a ledger failure is
-// returned as a fatal issue (spec §7.2 — a run that cannot journal must not
+// returned as a fatal issue (a run that cannot journal must not
 // keep creating objects) while the in-memory record is kept, so in-process
 // compensation still covers the effect that just happened — on ABORT paths
-// only (spec §13 item 7): under a shutdown suspend, compensation is
+// only: under a shutdown suspend, compensation is
 // deliberately skipped, so an effect whose detached write failed
 // (disk-full-shaped) is covered by neither record — one object per crash,
-// the same magnitude as the §5.3 post-upload window, disclosed rather than
+// the same magnitude as the post-upload window, disclosed rather than
 // closed.
 type Journal struct {
 	ledger EffectLedger // nil => volatile (tests, sync callers)
@@ -161,7 +161,7 @@ func (j *Journal) Updated() []string {
 // IsEmpty reports a journal with no recorded (or seeded) effects at all —
 // nothing created, uploaded, or updated by any incarnation. The engine's
 // compensation short-circuit reads it: an abort during passes 1–2 has
-// nothing to undo (DM spec §7), and skipping the zero-delete cleanup also
+// nothing to undo, and skipping the zero-delete cleanup also
 // skips the durable compensating marker that would otherwise scrub the
 // manifest's crawl request and burn the dir's crawl-resumable state.
 func (j *Journal) IsEmpty() bool {
@@ -236,10 +236,10 @@ func newestFirst(ids []string) []string {
 }
 
 // CompensateIds is the one compensation implementation, shared by the
-// in-process journal and the startup sweep's crash path (spec §5.1). Ids
+// in-process journal and the startup sweep's crash path. Ids
 // are expected newest-first (runstore.CompensationInputs' order). An
 // already-gone object counts as compensated, not leaked: compensation must
-// be idempotent so a crash mid-cleanup can simply re-run it (§6.5).
+// be idempotent so a crash mid-cleanup can simply re-run it.
 // Duplicate ids are deleted once (their first — newest — occurrence): a
 // seeded journal and the live incarnation legitimately both know an id
 // (the claim seeded it, the heal re-journaled it), and displaced synthetic

@@ -169,7 +169,7 @@ func TestCompensateIds(t *testing.T) {
 
 	t.Run("an already-gone object counts already-gone: success, never leaked", func(t *testing.T) {
 		// given: compensation must be idempotent — a crash mid-cleanup means
-		// the sweep re-runs it against objects already deleted (spec §6.5).
+		// the sweep re-runs it against objects already deleted.
 		// Counted SEPARATELY from performed deletes (review P2: a resumed
 		// cancel probes every pass-1 claim; folding thousands of not-founds
 		// into Compensated inflated the telemetry).

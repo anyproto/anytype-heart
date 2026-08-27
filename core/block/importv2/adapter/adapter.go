@@ -68,14 +68,14 @@ type Importer interface {
 	// ValidateNotionToken probes the Notion API with the given token.
 	ValidateNotionToken(ctx context.Context, req *pb.RpcObjectImportNotionValidateTokenRequest) pb.RpcObjectImportNotionValidateTokenResponseErrorCode
 	// RunStatus reports one run by its durable importId; ErrRunNotFound when
-	// neither a live run nor a run dir carries it (§15.5).
+	// neither a live run nor a run dir carries it.
 	RunStatus(ctx context.Context, importId string) (*pb.RpcObjectImportRunStatusRun, error)
 	// RunList reports every known run — live and dormant.
 	RunList(ctx context.Context) ([]*pb.RpcObjectImportRunStatusRun, error)
 }
 
 // Narrow seams over the app components the adapter's lifecycle paths touch,
-// so the lifecycle harness (§13.4) can construct the service with fakes and
+// so the lifecycle harness can construct the service with fakes and
 // actually drive Import/Close/sweep — the paths earlier reviews could only
 // reason about. Init wires all of them from the real components.
 type spaceGetter interface {
@@ -105,8 +105,8 @@ type service struct {
 	// nil keeps the phase-A compensate-everything sweep — the lifecycle
 	// harness's default, and the safe degradation if wiring ever misses it).
 	resumeRunner resumeFn
-	// crawlResumeRunner is the sweep's pass-2 crawl-resume branch (DM spec
-	// §8.3; resumeCrawlRun in production). Same nil degradation: a mid-crawl
+	// crawlResumeRunner is the sweep's pass-2 crawl-resume branch
+	// (resumeCrawlRun in production). Same nil degradation: a mid-crawl
 	// dir then compensates — trivially, to nothing — as before DM-3.
 	crawlResumeRunner resumeFn
 	// notionClientOpts extend every constructed Notion client (test seam for
@@ -167,7 +167,7 @@ func (s *service) Init(a *app.App) error {
 
 func (s *service) Run(ctx context.Context) error {
 	if s.config.RepoPath != "" {
-		// Settle runs a previous process left behind (spec §6.1): finish
+		// Settle runs a previous process left behind: finish
 		// deleting terminal ones, compensate crashed/suspended ones. Joined
 		// into s.runs so Close waits for the sweep like any run; its ctx
 		// check between dirs stops it promptly on shutdown.
@@ -181,7 +181,7 @@ func (s *service) Run(ctx context.Context) error {
 }
 
 // Close suspends in-flight runs (their durable state is kept for the
-// startup sweep, spec §6.4 — no compensation races the shutdown grace) and
+// startup sweep — no compensation races the shutdown grace) and
 // waits (bounded) for them to drain and flush.
 func (s *service) Close(ctx context.Context) error {
 	// Gate new imports first (no run may start on a closing service), then
@@ -352,7 +352,7 @@ func issuesCount(result *importv2.Result) int64 {
 }
 
 // logRunResult emits the one structured end-of-run line the issue taxonomy
-// feeds into telemetry (§16 item 1): counts by severity/code make a Sentry
+// feeds into telemetry: counts by severity/code make a Sentry
 // or Graylog event attributable to a converter, object class, and failure
 // kind instead of an opaque "import failed".
 func logRunResult(req *pb.RpcObjectImportRequest, result *importv2.Result) {
@@ -494,7 +494,7 @@ func (s *service) executeNotion(ctx context.Context, request importv2.Request, r
 // — ONE construction for the fresh run and the crawl resume, so the two
 // cannot drift. notionClientOpts is the test seam for the API base URL.
 func (s *service) notionConverter(req *pb.RpcObjectImportRequest, lc *runLifecycle, reuse schemaplan.Reuse) *notion.Converter {
-	// The three-state model's producer (§15.2): the pacer knows exactly
+	// The three-state model's producer: the pacer knows exactly
 	// when and how long it is sleeping and the retry loop knows its bounded
 	// attempt count, so throttling reaches the surface as the CALM state it
 	// is rather than as an error.
@@ -525,7 +525,7 @@ func markdownParams(req *pb.RpcObjectImportRequest) ([]string, mdParams, error) 
 		return nil, mdParams{}, fmt.Errorf("markdown import requires at least one path")
 	}
 	// An explicit Obsidian import forces the profile; plain markdown
-	// imports detect the flavour from the listing (§11.4).
+	// imports detect the flavour from the listing.
 	flavour := ""
 	if req.Type == model.Import_Obsidian {
 		flavour = markdown.FlavourObsidian
@@ -574,7 +574,7 @@ func (s *service) markdownParamsFor(params mdParams, lc *runLifecycle, reuse sch
 func (s *service) runEngine(ctx context.Context, request importv2.Request, converter importv2.Converter, spc clientspace.Space, lc *runLifecycle, progress process.Progress) *importv2.Result {
 	// Every run spools to disk — durable runs inside run.db, volatile runs
 	// via a throwaway spool in the spill dir — so the pass-2 memory bound
-	// and the serialization round-trip hold everywhere (DM spec §5.3).
+	// and the serialization round-trip hold everywhere.
 	var spool engine.Spool
 	if lc.store != nil {
 		storeSpool, err := lc.store.Spool(ctx)
@@ -625,7 +625,7 @@ func (s *service) engineDeps(request importv2.Request, spc clientspace.Space, lc
 		&existsChecker{store: s.objectStore.SpaceIndex(request.SpaceID)},
 		lc.spillDir,
 	)
-	// The legacy scalar is seeded from the SAME census the §15 emitter is
+	// The legacy scalar is seeded from the SAME census the emitter is
 	// (runLifecycle.seedTotal): a resumed run's denominator then exists
 	// before its engine starts, and survives an engine census that fails to
 	// land (review item 13).
@@ -641,7 +641,7 @@ func (s *service) engineDeps(request importv2.Request, spc clientspace.Space, lc
 		// The run's root collection carries the import date in its name.
 		Collection: &collectionFactory{service: s.collectionService, addDate: true},
 		// One reporter wiring for the fresh run and both resume branches:
-		// the legacy scalar and the §15 emitter, fanned out here so neither
+		// the legacy scalar and the emitter, fanned out here so neither
 		// can be attached to one path and missed on another.
 		Reporter:       teeReporter{scalar, lc.stats},
 		OnCompensating: s.onCompensating(lc),

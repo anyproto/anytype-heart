@@ -47,7 +47,7 @@ func convertFile(inDir, path string, b *batch, normalizeIndent bool) (string, mo
 
 // patchObjectTypes fills in the one snapshot field pkg/lib/anyblockjson
 // leaves for the wiring to set: kind: "objectType" documents carry their
-// identity in the envelope's "key" field, not "type" (SPEC.md §2a), so
+// identity in the envelope's "key" field, not "type", so
 // Unmarshal never populates ObjectTypes for them. Relation/RelationOption
 // documents parsed straight out of the source folder (rather than minted by
 // this tool) get the same treatment, as do chat/discussion documents, whose
@@ -71,7 +71,7 @@ func patchObjectTypes(sbType model.SmartBlockType, snap *model.SmartBlockSnapsho
 }
 
 // patchTemplateTarget wires a template to the type it is a template *for*.
-// §2's templateFor reaches the snapshot as objectTypes[1] and nothing else, but
+// the templateFor reaches the snapshot as objectTypes[1] and nothing else, but
 // that entry is a derived cache: a type's templates are found by querying the
 // targetObjectType detail (core/block/template/templateimpl.
 // queryTemplatesByType), and the derivation only runs the other way
@@ -84,7 +84,7 @@ func patchObjectTypes(sbType model.SmartBlockType, snap *model.SmartBlockSnapsho
 // has already rejected the bundle if it cannot resolve. An authored
 // targetObjectType — what a round-tripped export carries — stays authoritative,
 // and is rewritten as a plain string: object-format property values normalize to
-// single-element lists (SPEC.md §11), while this relation is maxCount 1 and
+// single-element lists, while this relation is maxCount 1 and
 // every reader takes it as a string.
 func patchTemplateTarget(sbType model.SmartBlockType, snap *model.SmartBlockSnapshotBase, b *batch) {
 	if sbType != model.SmartBlockType_Template {
@@ -125,7 +125,7 @@ func firstString(v *types.Value) string {
 
 // genIdFactory returns a deterministic id generator seeded from a document's
 // file path: anyblockjson.Options.GenerateId is called once for a missing
-// envelope id and again for every block missing its own id (SPEC.md §9), so
+// envelope id and again for every block missing its own id, so
 // it must produce a fresh value each call, not a fixed one.
 func genIdFactory(seed string) func() string {
 	n := 0

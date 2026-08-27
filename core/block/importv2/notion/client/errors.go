@@ -81,7 +81,7 @@ func errorFromResponse(res *http.Response) error {
 // IsExpiredUrl reports whether a download failure looks like an expired
 // pre-signed URL: S3 answers 403 (AccessDenied / "Request has expired"),
 // some hosts 400. The caller re-mints the URL from its source block or
-// entity and retries once (§16 item 5).
+// entity and retries once.
 func IsExpiredUrl(err error) bool {
 	var apiErr *apiError
 	if !errors.As(err, &apiErr) {

@@ -17,7 +17,7 @@ import (
 )
 
 // fixture is the shared test harness: schemas in, kinds in, sanitized plan
-// out, with the §4.4 structural claim (zero drops) asserted on every run.
+// out, with the structural claim (zero drops) asserted on every run.
 type fixture struct {
 	t       *testing.T
 	schemas []schemaplan.ContainerSchema
@@ -589,7 +589,7 @@ func TestCompleteKindsTypeDerivation(t *testing.T) {
 	})
 }
 
-// --- fixture-suite quality tests (design §8) ---
+// --- fixture-suite quality tests ---
 
 // suiteKinds builds the grouping the suite's expectations describe: every
 // sameKind group is one kind, every remaining container its own kind.
@@ -637,7 +637,7 @@ func TestWhitelistFixtureSuite(t *testing.T) {
 					if target == bundle.RelationKeyTag {
 						// The tag target is owned by the shipped notion
 						// redirect: the matcher SKIPS the property so it stays
-						// unplanned and reaches the redirect (§4.1).
+						// unplanned and reaches the redirect.
 						assert.NotContains(t, container.Properties, propertyId,
 							"%s.%s must stay unplanned for the tag redirect", containerId, propertyId)
 						continue

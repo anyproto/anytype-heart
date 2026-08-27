@@ -1,7 +1,6 @@
 package anyblockjson
 
-// import.go reconstructs a snapshot from a validated AnyBlock JSON document
-// (§2–§7, §9).
+// import.go reconstructs a snapshot from a validated AnyBlock JSON document.
 
 import (
 	"encoding/json"
@@ -88,7 +87,7 @@ type jsonBlock struct {
 	Fields          map[string]any `json:"fields"`
 }
 
-// Unmarshal validates data and reconstructs a snapshot (§13). Errors wrap
+// Unmarshal validates data and reconstructs a snapshot. Errors wrap
 // *ValidationError with JSON-path-addressed issues.
 func Unmarshal(data []byte, opts Options) (model.SmartBlockType, *model.SmartBlockSnapshotBase, error) {
 	if _, err := validateToDoc(data, opts.NormalizeIndent, opts.OnWarning); err != nil {
@@ -106,7 +105,7 @@ type importer struct {
 	opts Options
 	doc  *jsonDoc
 	// tableIds tracks row/column ids already used anywhere in the document,
-	// so a generated one never collides with an authored one (§6.1).
+	// so a generated one never collides with an authored one.
 	tableIds map[string]struct{}
 }
 
@@ -117,7 +116,7 @@ func (imp *importer) genId() string {
 	return defaultGenerateId()
 }
 
-// resolveId applies the §9a total resolution rule: a refs key resolves to
+// resolveId applies the total resolution rule: a refs key resolves to
 // its full id; anything else is a full id already.
 func (imp *importer) resolveId(s string) string {
 	if s == "" {
@@ -130,7 +129,7 @@ func (imp *importer) resolveId(s string) string {
 }
 
 // declaredFormat maps a document's format name to a stored format. "text"
-// is deliberately ambiguous (§3): it names both longtext and the legacy
+// is deliberately ambiguous: it names both longtext and the legacy
 // shorttext, so for that one name the property's *existing* format decides,
 // which is what keeps a bundled short-text property (name, iconEmoji, …)
 // from being rewritten to longtext on every round-trip. An absent or
@@ -217,7 +216,7 @@ func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBas
 }
 
 // absorbIntoProperty merges a top-level title/description block's text into
-// the matching property when unset (§7).
+// the matching property when unset.
 func (imp *importer) absorbIntoProperty(details *types.Struct, key, md string) {
 	if md == "" {
 		return
@@ -251,14 +250,14 @@ func (imp *importer) buildCollections() *types.Struct {
 	return coll
 }
 
-// propertyValue decodes a property per its resolved format (§3). Scalars of
-// list-shaped formats normalize to single-element lists (§11). An explicit
-// null stays a null value — presence of the key is preserved (§3).
+// propertyValue decodes a property per its resolved format. Scalars of
+// list-shaped formats normalize to single-element lists. An explicit
+// null stays a null value — presence of the key is preserved.
 func (imp *importer) propertyValue(key string, v any) *types.Value {
 	if v == nil {
 		return &types.Value{Kind: &types.Value_NullValue{}}
 	}
-	// layout is named in the format, stored as a number (§3). A number is
+	// layout is named in the format, stored as a number. A number is
 	// still accepted so legacy documents keep importing unchanged.
 	if isLayoutKey(key) {
 		if s, isStr := v.(string); isStr && layoutNames.has(s) {
@@ -298,7 +297,7 @@ func wrapToList(v *types.Value) *types.Value {
 //
 
 // blockIndents extracts the effective indent of every entry, clamping per
-// §4's lenient rule when NormalizeIndent is set (base is the indent of the
+// the lenient rule when NormalizeIndent is set (base is the indent of the
 // run's implicit parent: −1 for the document, 0 for a cell's descendants).
 // Clamps are silent here — validation already reported each one as a
 // warning-grade issue on the same input, with the same rule.
@@ -322,16 +321,16 @@ func (imp *importer) blockIndents(jbs []*jsonBlock, base int) []int {
 // (mirrors state.DataviewBlockID, which this package must not import, §12).
 // Object types, sets and collections all reconstruct their primary dataview
 // at this id and merge into an existing block rather than adding a second
-// one, so a document that omits the id has to resolve to it (§7).
+// one, so a document that omits the id has to resolve to it.
 const dataviewBlockId = "dataview"
 
-// pinPrimaryDataview gives the document's own dataview the editor's fixed id
-// (§7). The primary dataview is the first indent-0 dataview block carrying
+// pinPrimaryDataview gives the document's own dataview the editor's fixed id.
+// The primary dataview is the first indent-0 dataview block carrying
 // neither an explicit id nor an objectId — an objectId means the block is an
-// inline view of some *other* set or collection (§6.2) and keeps a generated
+// inline view of some *other* set or collection and keeps a generated
 // id, as does any dataview nested below indent 0. A block that already claims
 // the id anywhere in the document wins, so an explicit "id": "dataview" stays
-// authoritative and no duplicate is minted (§13).
+// authoritative and no duplicate is minted.
 func pinPrimaryDataview(raw []*jsonBlock, indents []int) {
 	for _, jb := range raw {
 		if jb != nil && jb.Id == dataviewBlockId {
@@ -352,7 +351,7 @@ func pinPrimaryDataview(raw []*jsonBlock, indents []int) {
 
 // topLevelBlocks resolves the document's blocks array for the tree rebuild:
 // structural blocks at indent 0 are absorbed into properties or dropped,
-// together with their whole subtree (§7 — matching the nested encoding, which
+// together with their whole subtree (matching the nested encoding, which
 // never descended into them).
 func (imp *importer) topLevelBlocks(details *types.Struct) ([]*jsonBlock, []int) {
 	raw := imp.doc.Blocks
@@ -394,7 +393,7 @@ type stackEntry struct {
 	indent int
 }
 
-// flatSubtree rebuilds the tree from a flat pre-order run (§4 F6): walk with
+// flatSubtree rebuilds the tree from a flat pre-order run: walk with
 // a stack seeded (root, rootIndent); a block at indent k attaches to the
 // nearest stack entry shallower than k. Validation guarantees indents are
 // monotone (or already clamped), so that entry is exactly at k−1.
@@ -421,7 +420,7 @@ func (imp *importer) flatSubtree(jbs []*jsonBlock, indents []int, root *model.Bl
 	return all, nil
 }
 
-// textStyleAliases extends the canonical inventory with the §5 input aliases.
+// textStyleAliases extends the canonical inventory with the input aliases.
 var textStyleAliases = map[string]model.BlockContentTextStyle{
 	"heading4": model.BlockContentText_Header3,
 	"header4":  model.BlockContentText_Header3,
@@ -450,7 +449,7 @@ func (imp *importer) resolveMarkTargets(marks []*model.BlockContentTextMark) {
 	}
 }
 
-// textFromJSON builds a text-family block content (§5), applying the
+// textFromJSON builds a text-family block content, applying the
 // heading4/header4 aliases and the per-style prop rules.
 func (imp *importer) textFromJSON(jb *jsonBlock) (*model.BlockContentText, error) {
 	style, isAlias := textStyleAliases[jb.Type]
@@ -472,7 +471,7 @@ func (imp *importer) textFromJSON(jb *jsonBlock) (*model.BlockContentText, error
 	return t, nil
 }
 
-// fileFromJSON builds a file-family block content (§5); state is recomputed,
+// fileFromJSON builds a file-family block content; state is recomputed,
 // never serialized.
 func (imp *importer) fileFromJSON(jb *jsonBlock) *model.BlockContentFile {
 	f := &model.BlockContentFile{
@@ -495,7 +494,7 @@ func (imp *importer) fileFromJSON(jb *jsonBlock) *model.BlockContentFile {
 	return f
 }
 
-// bookmarkFromJSON builds a bookmark content; state is recomputed (§5).
+// bookmarkFromJSON builds a bookmark content; state is recomputed.
 func (imp *importer) bookmarkFromJSON(jb *jsonBlock) *model.BlockContentBookmark {
 	bm := &model.BlockContentBookmark{
 		Url:            jb.Url,
@@ -622,7 +621,7 @@ func (imp *importer) blockFromJSON(jb *jsonBlock, forcedId string) ([]*model.Blo
 }
 
 // applyBlockCommon writes the shared block tail: align, verticalAlign,
-// backgroundColor, fields, and the lifted code language (§4, §5.1).
+// backgroundColor, fields, and the lifted code language.
 func (imp *importer) applyBlockCommon(b *model.Block, jb *jsonBlock, liftedLang string) {
 	b.Align = alignNames.value(jb.Align)
 	b.VerticalAlign = verticalAlignNames.value(jb.VerticalAlign)

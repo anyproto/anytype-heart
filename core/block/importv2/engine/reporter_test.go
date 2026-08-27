@@ -16,10 +16,10 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 )
 
-// The §15 producer seam: the engine publishes PER-KIND, PER-PHASE counters.
+// The producer seam: the engine publishes PER-KIND, PER-PHASE counters.
 // The legacy blended `Step(1)` — one tick for a page, a file and a relation
 // alike — is what made an honest `pagesDone` impossible to put on the wire,
-// so the seam is redesigned before the emitter sits on it (§15.7).
+// so the seam is redesigned before the emitter sits on it.
 
 // recordingReporter records the seam's calls with the phase in effect when
 // each landed, so tests read the counters the way the emitter does.
@@ -259,7 +259,7 @@ func TestReporterConverterSideSignals(t *testing.T) {
 // resumed run starts at its ledger's count — but the persist workers publish
 // created.Add(1) with nothing ordering the increment against the publish, so
 // eight of them interleave and the LOWER level lands last. Every consumer
-// sees it: the wire's objectsCreated (§15.4's "stop and remove the N objects
+// sees it: the wire's objectsCreated (the "stop and remove the N objects
 // created", which the dormant poll of the same run answers from the ledger),
 // and the existing per-kind test above, which was flaky at ~7 runs in 1000
 // under -race for exactly this reason.

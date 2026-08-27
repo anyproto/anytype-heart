@@ -12,7 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/space"
 )
 
-// The startup sweep (spec §6.1 + DM spec §8.1): every run dir left behind
+// The startup sweep: every run dir left behind
 // by a previous process is finished being deleted, RESUMED (a run whose
 // pass 2 completed — fetched/materializing, or suspended after
 // materialization began — restarts pass 3 from its spool, attempts-capped),
@@ -46,7 +46,7 @@ const (
 	sweepResumedFailed           sweepAction = "resumed-failed"
 )
 
-// maxResumeAttempts caps resume-and-crash loops (08-13 §6.1): the counter
+// maxResumeAttempts caps resume-and-crash loops: the counter
 // moves durably BEFORE each attempt (runstore.BeginResume), so however
 // early the crash lands, the run reaches compensation after this many
 // tries.
@@ -102,13 +102,13 @@ func sweepOneGuarded(ctx context.Context, dir string, objects persist.ObjectAcce
 }
 
 // resumable reports whether the manifest describes a run whose pass 2
-// completed — the DM spec §8.1 class: the spool is provably whole (the
+// completed — the class: the spool is provably whole (the
 // fetched marker or later), so pass 3 can restart from the dir alone. A
 // suspend BEFORE materialization began is not in this class — it belongs
 // to crawlResumable below when its manifest carries the request, and
 // compensates (trivially, to nothing) when it does not (pre-DM-3 dirs).
 //
-// Resume also happens only WITHIN a schema version (§4.4: only the frozen
+// Resume also happens only WITHIN a schema version (only the frozen
 // compensation core is promised across versions, and resume rehydrates far
 // more than the core). An older-schema dir falls through to the compensate
 // branch below, which reads only frozen fields — "resume is refused,
@@ -128,12 +128,12 @@ func resumable(m runstore.Manifest) bool {
 	}
 }
 
-// crawlResumable is the DM-3 §8.3 class, disjoint from resumable() by the
+// crawlResumable is the crawl-resume class, disjoint from resumable() by the
 // sticky marker: a run interrupted BEFORE its crawl completed — crashed
 // (running) or suspended pre-materialize — whose manifest still carries the
 // request that rebuilds its converter. Dirs written by pre-DM-3 binaries
 // have no request and keep the old disposition (compensate — trivially, to
-// nothing). Same version gate as resumable (§4.4: resume only within a
+// nothing). Same version gate as resumable (resume only within a
 // version), belt-checked again in resume.LoadCrawl.
 func crawlResumable(m runstore.Manifest) bool {
 	if m.SchemaVersion != runstore.SchemaVersion || m.MaterializeStarted || len(m.Request) == 0 {
@@ -236,14 +236,14 @@ func sweepOne(ctx context.Context, dir string, objects persist.ObjectAccess, pro
 
 	if resume != nil && resumable(manifest) && manifest.ResumeAttempts < maxResumeAttempts {
 		// fetched | materializing | suspended-mid-materialize: finish the
-		// materialization from the dir instead of destroying it (§8.1) —
+		// materialization from the dir instead of destroying it —
 		// headlessly: no source, no credentials, no network. Attempts are
 		// capped; exhaustion falls through to compensation below.
 		return resume(ctx, store, manifest)
 	}
 	if crawlResume != nil && crawlResumable(manifest) && manifest.CrawlResumeAttempts < maxResumeAttempts {
 		// running | suspended mid-crawl, request stored: re-run the crawl
-		// with the spool as the skip set (§8.3) — this needs the source and
+		// with the spool as the skip set — this needs the source and
 		// its credentials, which is exactly what the manifest's request
 		// carries. The CRAWL counter gates (review P1: one shared counter
 		// let cheap ~1-request crawl attempts spend the pass-3 budget, whose
@@ -256,8 +256,8 @@ func sweepOne(ctx context.Context, dir string, objects persist.ObjectAccess, pro
 
 	// running | suspended | cancelling | compensating — and resumable runs
 	// whose attempts are exhausted: compensate from the frozen-core view
-	// (§4.4) — CompensateIds tolerates already-deleted objects, so
-	// re-running a crashed compensation is safe (§6.5).
+	// — CompensateIds tolerates already-deleted objects, so
+	// re-running a crashed compensation is safe.
 	inputs, err := store.CompensationInputs(ctx)
 	if err != nil {
 		_ = store.Close()

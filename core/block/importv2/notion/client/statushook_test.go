@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// The §15 three-state producer seam: rate limiting is normal operation,
+// The three-state producer seam: rate limiting is normal operation,
 // not an error — the pacer knows when it is sleeping and the retry loop
 // knows its attempt count; they need a reporting hook, not new detection.
 

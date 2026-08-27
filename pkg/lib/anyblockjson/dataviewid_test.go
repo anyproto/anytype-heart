@@ -1,6 +1,6 @@
 package anyblockjson
 
-// The primary dataview keeps the editor's fixed block id (§7). Without it the
+// The primary dataview keeps the editor's fixed block id. Without it the
 // editor's WithDataviewIDIfNotExists finds no "dataview" block and adds a
 // second, empty one next to the configured one.
 

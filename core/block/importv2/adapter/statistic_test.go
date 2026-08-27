@@ -16,7 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-// The §15 push producer: a coalescing emitter over the redesigned reporter
+// The push producer: a coalescing emitter over the redesigned reporter
 // seam. The properties under test are the ones §15.3 fixes — one event per
 // window, but NEVER a delayed calm/alarm edge — plus the ETA's honesty and
 // the fact that push and pull are the same builder over the same state.
@@ -96,7 +96,7 @@ func newTestEmitter(t *testing.T, clock *fakeClock, opts ...func(*statConfig)) (
 func TestStatEmitterCoalescing(t *testing.T) {
 	t.Run("a burst of counter ticks yields one event, not one per tick", func(t *testing.T) {
 		// given: pass 3 rates (50-200 objects/s) would flood a per-item
-		// emitter — §15.3's reason for the window
+		// emitter — the reason for the window
 		// The window is an hour of FAKE time on purpose: the real trailing
 		// timer then cannot fire inside the test, so "exactly one" is a
 		// statement about the rule and not about how loaded the machine is.
@@ -589,7 +589,7 @@ func TestStatEmitterCurrentItem(t *testing.T) {
 		assert.Equal(t, "Q3 Planning", emitter.Snapshot().CurrentItem)
 
 		// and: no fmt rendering of the emitter's own state can leak it —
-		// the §15.2 rule, enforced by DisplayText's String
+		// the rule, enforced by DisplayText's String
 		assert.NotContains(t, emitter.stateForLog(), "Q3 Planning")
 	})
 
@@ -611,7 +611,7 @@ func TestStatEmitterCurrentItem(t *testing.T) {
 
 func TestStatEmitterPushEqualsPull(t *testing.T) {
 	t.Run("the pushed event and the polled snapshot are the same message", func(t *testing.T) {
-		// given: §15.5's rule — a field meaning one thing pushed and another
+		// given: the rule — a field meaning one thing pushed and another
 		// polled is a bug, so both sides are ONE builder over ONE state
 		clock := newFakeClock()
 		emitter, sink := newTestEmitter(t, clock)
@@ -701,7 +701,7 @@ func TestStatEmitterCreatedLevel(t *testing.T) {
 		// given — review item 7: the engine publishes objectsCreated as a
 		// LEVEL from workerCount goroutines (Created(r.created.Add(1))), and
 		// nothing orders the increment against the publish. Two workers
-		// interleave and the LOWER level arrives last. This is §15.4's cancel
+		// interleave and the LOWER level arrives last. This is the cancel
 		// affordance — "stop and remove the N objects created" — and the
 		// dormant poll of the same run serves the exact ledger count, so a
 		// number that walks backwards also breaks §15.5.
@@ -783,7 +783,7 @@ func TestStatEmitterThrottleCountdown(t *testing.T) {
 		// given — review item 16: resumesIn was a DURATION frozen at signal
 		// time, so a poller watching the calm badge saw "4s" for as long as
 		// it cared to ask. Every other time-valued field on this event is an
-		// INSTANT for exactly this reason — §15.2's phaseStartedAt is unix ms
+		// INSTANT for exactly this reason — the phaseStartedAt is unix ms
 		// so "clients show elapsed without their own clock" — and this one
 		// was the exception.
 		clock := newFakeClock()
@@ -878,7 +878,7 @@ func TestStatEmitterTerminalVerdict(t *testing.T) {
 	})
 
 	t.Run("a deliberate stop is not an error, however its fatal is shaped", func(t *testing.T) {
-		// given: §15's ERROR means something is actually WRONG. A user cancel
+		// given: the ERROR means something is actually WRONG. A user cancel
 		// and a shutdown suspend are neither, and painting the UI red on the
 		// way out of a deliberate stop is the same category error as painting
 		// it red for a rate limit. The STOP SOURCE decides (review item 1's

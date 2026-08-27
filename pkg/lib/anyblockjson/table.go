@@ -20,7 +20,7 @@ const tableWidthField = "width"
 // tableToJSON flattens the table subtree into columns/rows, mirroring the
 // editor's normalization: header rows first, cells sorted into column order,
 // orphan cells dropped. Only a structurally unrecognizable subtree (missing
-// wrappers) is an error (§6.1).
+// wrappers) is an error.
 func (e *exporter) tableToJSON(m *omap, b *model.Block) error {
 	m.set("type", "table")
 
@@ -136,7 +136,7 @@ func (e *exporter) tableToJSON(m *omap, b *model.Block) error {
 // cellToJSON renders a cell: nil for empty, the string shorthand for a plain
 // paragraph, a block object (without id — derived) otherwise. A cell whose
 // block has descendants renders as an array of flat blocks — the cell block
-// first at indent 0, the descendants following with their depths (§6.1 F10).
+// first at indent 0, the descendants following with their depths.
 func (e *exporter) cellToJSON(cell *model.Block) (any, error) {
 	if cell == nil {
 		return nil, nil
@@ -164,14 +164,14 @@ func (e *exporter) cellToJSON(cell *model.Block) (any, error) {
 	if m == nil {
 		return nil, nil
 	}
-	// cells cannot contain tables — the schema's recursion cut (§6.1, §12).
+	// cells cannot contain tables — the schema's recursion cut.
 	// Erring here keeps the invariant that Marshal never emits output its
 	// own Validate rejects; the prod sweep found zero such cells, so this is
 	// an adversarial/legacy guard, not a live path.
 	if blockJSONType(m) == "table" {
 		return nil, fmt.Errorf("cell %s: a table block cannot be a cell (cells cannot contain tables)", cell.Id)
 	}
-	// cell ids are derived, never serialized (§6.1)
+	// cell ids are derived, never serialized
 	if len(m.keys) > 0 && m.keys[0] == "id" {
 		m.keys = m.keys[1:]
 		m.vals = m.vals[1:]
@@ -222,7 +222,7 @@ type jsonTableRow struct {
 	Cells    []jsonCell `json:"cells"`
 }
 
-// jsonCell is string | null | block object | array of flat blocks (§6.1).
+// jsonCell is string | null | block object | array of flat blocks.
 type jsonCell struct {
 	Text   *string
 	Block  *jsonBlock
@@ -300,7 +300,7 @@ func (imp *importer) tableFromJSON(jb *jsonBlock, tableId string) (*model.Block,
 		extra = append(extra, col)
 	}
 
-	// header rows first: import reorders rather than rejects (§6.1)
+	// header rows first: import reorders rather than rejects
 	rows := make([]jsonTableRow, len(jb.Rows))
 	copy(rows, jb.Rows)
 	sort.SliceStable(rows, func(i, j int) bool { return rows[i].IsHeader && !rows[j].IsHeader })
@@ -359,7 +359,7 @@ func (imp *importer) cellFromJSON(cell jsonCell, cellId string) ([]*model.Block,
 	}
 	if len(cell.Blocks) > 0 {
 		// array form: first element is the cell block, the rest its
-		// descendants per the §4 F6 stack rebuild
+		// descendants per the stack rebuild
 		blocks, err := imp.blockFromJSON(cell.Blocks[0], cellId)
 		if err != nil {
 			return nil, err
@@ -374,7 +374,7 @@ func (imp *importer) cellFromJSON(cell jsonCell, cellId string) ([]*model.Block,
 	if cell.Block == nil {
 		return nil, nil
 	}
-	// an empty plain paragraph collapses to an empty cell (§11)
+	// an empty plain paragraph collapses to an empty cell
 	b := cell.Block
 	if b.Type == "paragraph" && b.Text == "" && b.Color == "" && !b.Checked &&
 		b.Align == "" && b.VerticalAlign == "" && b.BackgroundColor == "" &&
@@ -455,7 +455,7 @@ func sanitizeTableInnerId(s string) string {
 }
 
 // tableInnerId renders a stored row/column id for output. Stored ids can hold
-// characters the format forbids in that position (§6.1): historical data and
+// characters the format forbids in that position: historical data and
 // any generator that derives ids from file paths both produce "-", which is
 // the cell-id separator. Emitting one verbatim would make Marshal write a
 // document its own Validate rejects, so normalize it once here. Only the

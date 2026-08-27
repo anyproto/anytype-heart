@@ -3,7 +3,7 @@ package client
 import "time"
 
 // StatusHook receives the client's rate-limit and retry signals — the
-// producer side of the §15 three-state model (deferred-materialization
+// producer side of the three-state model (deferred-materialization
 // spec: rate limiting is NORMAL operation for a large import, and
 // modelling it as an error makes every healthy run look broken). The
 // sources are exact, not guessed: the shared pacer knows when and how

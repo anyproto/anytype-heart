@@ -11,8 +11,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-// The dormant-run readers: everything a pass-3 restart (DM spec §8.1) and a
-// status query over a run with no live engine (§15.4) read from the ledger.
+// The dormant-run readers: everything a pass-3 restart and a
+// status query over a run with no live engine read from the ledger.
 // Unlike the deliberately tolerant compensation reader, these are STRICT —
 // a row that cannot be decoded here would silently corrupt a replay (a lost
 // identity re-mints; a lost file row re-uploads under a new id), so the
@@ -182,7 +182,7 @@ func (s *Store) scanStrict(ctx context.Context, coll anystore.Collection, read f
 
 const rootSpecId = "rootSpec"
 
-// SetRootSpec persists pass 2's RootSpec (DM spec §4.1: written at the pass
+// SetRootSpec persists pass 2's RootSpec (written at the pass
 // boundary — a restart has no converter to re-produce it). A singleton
 // config row, overwritten whole; it carries no merge invariant.
 func (s *Store) SetRootSpec(ctx context.Context, spec importv2.RootSpec) error {

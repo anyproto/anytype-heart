@@ -12,8 +12,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/deletionaudit"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
-	importv2adapter "github.com/anyproto/anytype-heart/core/block/importv2/adapter"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
+	importv2adapter "github.com/anyproto/anytype-heart/core/block/importv2/adapter"
 	"github.com/anyproto/anytype-heart/core/block/object/objectgraph"
 	"github.com/anyproto/anytype-heart/core/block/objectgc"
 	"github.com/anyproto/anytype-heart/core/date"
@@ -784,8 +784,7 @@ func (mw *Middleware) ObjectImportRunStatus(cctx context.Context, req *pb.RpcObj
 }
 
 // ObjectImportRunList enumerates every known importv2 run — live and
-// dormant. A sibling RPC rather than an empty-id status overload by design
-// (spec §15.5).
+// dormant. A sibling RPC rather than an empty-id status overload by design.
 func (mw *Middleware) ObjectImportRunList(cctx context.Context, req *pb.RpcObjectImportRunListRequest) *pb.RpcObjectImportRunListResponse {
 	response := func(runs []*pb.RpcObjectImportRunStatusRun, code pb.RpcObjectImportRunListResponseErrorCode, err error) *pb.RpcObjectImportRunListResponse {
 		m := &pb.RpcObjectImportRunListResponse{Runs: runs, Error: &pb.RpcObjectImportRunListResponseError{Code: code}}

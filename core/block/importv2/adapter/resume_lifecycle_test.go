@@ -29,7 +29,7 @@ import (
 )
 
 // The sweep's resume branch, driven through the service (DM spec §8.1 +
-// the §13.4 harness): a run whose pass 2 completed restarts pass 3 from
+// the harness): a run whose pass 2 completed restarts pass 3 from
 // its dir; attempts are capped; a pass-2 suspend still compensates.
 
 // makeResumableRun builds a run dir imitating a crash after pass 2: one
@@ -153,7 +153,7 @@ func downgradeSchema(t *testing.T, dir string, version int) {
 
 func TestSweepRefusesCrossVersionResume(t *testing.T) {
 	t.Run("an older-schema dir is compensated, never resumed", func(t *testing.T) {
-		// given — §4.4's 'schemaVersion < ours ⇒ resume is refused,
+		// given — the 'schemaVersion < ours ⇒ resume is refused,
 		// compensation is guaranteed', live for the first time now that
 		// SchemaVersion moved past 1: resume rehydrates far more than the
 		// frozen core, and only the frozen core is promised across
@@ -185,7 +185,7 @@ func TestSweepRefusesCrossVersionResume(t *testing.T) {
 
 func TestSweepSuspendSplit(t *testing.T) {
 	t.Run("suspended mid-materialize resumes; suspended mid-crawl compensates", func(t *testing.T) {
-		// given — the §7 split: a pass-3 suspend is restartable from the
+		// given — the split: a pass-3 suspend is restartable from the
 		// spool; a pass-2 suspend is not until DM-3's crawl seam, so its dir
 		// sweeps to nothing (trivially — no effects exist).
 		fx, _ := resumeFixture(t)

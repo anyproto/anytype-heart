@@ -158,7 +158,7 @@ func run(inDir, outDir string, normalizeIndent, lenient bool, format outputForma
 		converted++
 	}
 
-	// the bundle index (§2c) becomes the archive's profile file: the space's
+	// the bundle index becomes the archive's profile file: the space's
 	// name, its entry point and its sidebar. Written after the snapshots so a
 	// failed conversion does not leave a profile pointing at nothing.
 	if idxPath, ok := anyblockbatch.IndexPath(inDir); ok {

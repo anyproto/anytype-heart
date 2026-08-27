@@ -16,7 +16,7 @@ import (
 //
 // The stored longtext/shorttext split is legacy and carries no meaning in that
 // vocabulary: "shortText" is not a valid format name there and anyblockjson's
-// schema rejects it (pkg/lib/anyblockjson/SPEC.md), while the API's
+// schema rejects it, while the API's
 // PropertyFormat enum omits it. Both therefore render as "text", so a source
 // property stored as shorttext is still described in terms the model knows.
 // The response carries no formats at all (kinds only), so there is no parse
@@ -43,7 +43,7 @@ func formatName(format model.RelationFormat) string {
 	return "text"
 }
 
-// kindsSystemPrompt is the whole ask (design §3.2): group containers into
+// kindsSystemPrompt is the whole ask: group containers into
 // kinds and name them. Property mapping left the model entirely — code writes
 // every property entry (schemaplan.CompleteKinds). Built in code so the icon
 // list stays sourced from schemaplan.AllowedIcons, one source of truth with
@@ -139,8 +139,8 @@ var kindsResponseSchema = func() json.RawMessage {
 	return raw
 }()
 
-// evidence wire shapes — ordinals instead of container ids, no property ids
-// (design §3.1). Ids are converter-scoped and opaque to the planner, so they
+// evidence wire shapes — ordinals instead of container ids, no property ids.
+// Ids are converter-scoped and opaque to the planner, so they
 // may be aliased freely as long as the parser translates back; the response
 // names featured properties by NAME, so property ids are pure waste and an
 // invitation to echo them.
@@ -207,7 +207,7 @@ type wireKind struct {
 }
 
 // parseKinds validates the response and resolves ordinals back through the
-// alias slice (design §3.4): ordinals outside 1..N are dropped and counted; a
+// alias slice: ordinals outside 1..N are dropped and counted; a
 // container claimed by two kinds goes to the first (response order), later
 // claims dropped; kinds with no surviving containers are dropped; featured is
 // truncated to 4. A response whose every ordinal was invalid is a parse error

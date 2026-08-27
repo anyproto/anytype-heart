@@ -581,7 +581,7 @@ func (c *Converter) mapChildEntity(ctx context.Context, mctx mapContext, block *
 	if targetId == "" {
 		targetId = c.resolveChildByTitle(mctx, payload.Title, wantDatabase)
 	}
-	// Second chance (§16 item 3): the block id is the child's fetchable id —
+	// Second chance: the block id is the child's fetchable id —
 	// a child /search omitted (eventual consistency) is claimed and imported
 	// instead of degrading to a dead placeholder.
 	if targetId == "" {

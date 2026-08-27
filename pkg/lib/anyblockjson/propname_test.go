@@ -1,7 +1,7 @@
 package anyblockjson
 
-// typeProperties[].name is used only when the property has to be created
-// (§2a). For a key that already exists — every bundled one — the existing
+// typeProperties[].name is used only when the property has to be created.
+// For a key that already exists — every bundled one — the existing
 // name wins, so a document asking for a different label reads as working and
 // silently does nothing.
 

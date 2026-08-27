@@ -109,7 +109,7 @@ func richSnapshot() *model.SmartBlockSnapshotBase {
 			},
 			Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}},
 		},
-		// structural: dropped on export (§7)
+		// structural: dropped on export
 		{Id: "header", ChildrenIds: []string{"title", "descr", "featured"},
 			Content: &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_Header}}},
 		textBlock("title", model.BlockContentText_Title, "Project Phoenix"),
@@ -144,7 +144,7 @@ func richSnapshot() *model.SmartBlockSnapshotBase {
 		textBlock("b11", model.BlockContentText_Paragraph, "left"),
 		textBlock("b12", model.BlockContentText_Paragraph, "right"),
 
-		// table subtree (§6.1)
+		// table subtree
 		{Id: "table1", ChildrenIds: []string{"tcols", "trows"},
 			Content: &model.BlockContentOfTable{Table: &model.BlockContentTable{}}},
 		{Id: "tcols", ChildrenIds: []string{"c1", "c2"},
@@ -169,7 +169,7 @@ func richSnapshot() *model.SmartBlockSnapshotBase {
 			Processor: model.BlockContentLatex_Mermaid, Text: "graph TD; A-->B",
 		}}},
 
-		// dataview (§6.2)
+		// dataview
 		{Id: "dv1", Content: &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{
 			TargetObjectId: "bafyreitasks",
 			RelationLinks: []*model.RelationLink{
@@ -285,7 +285,7 @@ func TestRoundTrip_ByteStable(t *testing.T) {
 }
 
 // TestRoundTrip_State spot-checks Import(Export(S)) ≡ N(S) on the snapshot
-// level (§11.1).
+// level.
 func TestRoundTrip_State(t *testing.T) {
 	data, err := Marshal(model.SmartBlockType_Page, richSnapshot(), testOptions())
 	require.NoError(t, err)
@@ -308,7 +308,7 @@ func TestRoundTrip_State(t *testing.T) {
 		require.NotNil(t, byId[id], "child %s missing", id)
 	}
 
-	// marks: offsets and resolved mention target (§8)
+	// marks: offsets and resolved mention target
 	b2 := byId["b2"].Content.(*model.BlockContentOfText).Text
 	require.NotNil(t, b2.Marks)
 	want := []*model.BlockContentTextMark{
@@ -317,12 +317,12 @@ func TestRoundTrip_State(t *testing.T) {
 	}
 	assert.Equal(t, want, b2.Marks.Marks)
 
-	// code: language back into fields.lang, literal text (§5.1, §8.4)
+	// code: language back into fields.lang, literal text
 	b6 := byId["b6"]
 	assert.Equal(t, "go", b6.Fields.Fields["lang"].GetStringValue())
 	assert.Equal(t, "func main() {\n\tprintln(\"hi\")\n}", b6.Content.(*model.BlockContentOfText).Text.Text)
 
-	// table subtree rebuilt with derived cell ids, header row first (§6.1)
+	// table subtree rebuilt with derived cell ids, header row first
 	table := byId["table1"]
 	require.Len(t, table.ChildrenIds, 2)
 	colsW, rowsW := byId[table.ChildrenIds[0]], byId[table.ChildrenIds[1]]
@@ -337,7 +337,7 @@ func TestRoundTrip_State(t *testing.T) {
 	assert.Nil(t, byId["r2-c1"])
 	assert.True(t, byId["r2-c2"].Content.(*model.BlockContentOfText).Text.Checked)
 
-	// dataview: cached formats rehydrated, option names resolved back (§6.2)
+	// dataview: cached formats rehydrated, option names resolved back
 	dv := byId["dv1"].Content.(*model.BlockContentOfDataview).Dataview
 	view := dv.Views[0]
 	assert.Equal(t, model.RelationFormat_date, view.Sorts[0].Format)
@@ -345,7 +345,7 @@ func TestRoundTrip_State(t *testing.T) {
 	assert.Equal(t, model.BlockContentDataviewFilter_Or, group.Operator)
 	assert.Equal(t, strList("opt1", "opt2"), group.NestedFilters[0].Value)
 	assert.Equal(t, model.RelationFormat_status, group.NestedFilters[0].Format)
-	// value dropped on presence-only conditions (§11)
+	// value dropped on presence-only conditions
 	assert.Nil(t, group.NestedFilters[1].Value)
 	require.Len(t, dv.GroupOrders, 1)
 	assert.Equal(t, "g1", dv.GroupOrders[0].ViewGroups[0].GroupId)
@@ -377,7 +377,7 @@ func TestOmitIds(t *testing.T) {
 	assert.NotContains(t, s, `"id": "f1"`)
 	assert.NotContains(t, s, `"groups"`)
 	assert.NotContains(t, s, `"objectOrders"`)
-	// the envelope id stays (§9)
+	// the envelope id stays
 	assert.Contains(t, s, `"id": "bafyreiobject"`)
 
 	impOpts := testOptions()
@@ -399,9 +399,9 @@ func TestCompactIds(t *testing.T) {
 	assert.Contains(t, s, `"refs"`)
 	assert.Contains(t, s, `"roman": "bafyreiroman"`)
 	assert.Contains(t, s, `<mention objectId=\"roman\">`)
-	// stripped properties leave no unused legend entries (§9a)
+	// stripped properties leave no unused legend entries
 	assert.NotContains(t, s, `bafyreitypepage`)
-	// the envelope id is never compacted (§9a)
+	// the envelope id is never compacted
 	assert.Contains(t, s, `"id": "bafyreiobject"`)
 
 	// importing the compact form resolves refs back to full ids
@@ -555,8 +555,7 @@ func TestExplicitIndentZero(t *testing.T) {
 }
 
 // TestGeneratedDocs_ByteStable: for generated valid documents J,
-// Export(Import(J)) is canonical and re-import/re-export is byte-identical
-// (§11.2).
+// Export(Import(J)) is canonical and re-import/re-export is byte-identical.
 func TestGeneratedDocs_ByteStable(t *testing.T) {
 	rnd := rand.New(rand.NewSource(7))
 	texts := []string{

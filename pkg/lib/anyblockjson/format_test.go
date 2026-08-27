@@ -1,6 +1,6 @@
 package anyblockjson
 
-// There is one text format on the wire, "text" (§3). The stored
+// There is one text format on the wire, "text". The stored
 // longtext/shorttext split survives it because import resolves "text"
 // against the key's existing format.
 

@@ -11,7 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-// Flavour is the per-run markdown dialect profile (design doc §11.4): the
+// Flavour is the per-run markdown dialect profile: the
 // converter and engine stay flavour-blind, profiles transform page-local data
 // through the hooks below and never see the sink — emission order stays
 // converter-owned. Selected once per run: request override first, listing

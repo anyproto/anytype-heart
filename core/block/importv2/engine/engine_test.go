@@ -532,8 +532,7 @@ func TestRunModes(t *testing.T) {
 
 	t.Run("OnCompensating fires before any deletion, and only on abort", func(t *testing.T) {
 		// given — the durable manifest must say "compensating" BEFORE the
-		// first delete, so a crash mid-cleanup is finished by the sweep
-		// (spec §6.5).
+		// first delete, so a crash mid-cleanup is finished by the sweep.
 		fx := newEngineFixture(t)
 		deleter := fx.deps.Objects.(*deleterFake)
 		var deletedWhenMarked int
@@ -621,7 +620,7 @@ func TestCompensationGate(t *testing.T) {
 	})
 
 	t.Run("an abort with NOTHING to undo skips the gate and the marker entirely", func(t *testing.T) {
-		// given — the DM-3 rule (DM spec §7: compensation during passes 1-2
+		// given — the DM-3 rule (compensation during passes 1-2
 		// is Drop()): an abort whose journal is empty must not write the
 		// compensating transition, which would scrub the manifest's crawl
 		// request and burn the dir's crawl-resumable state to authorize
@@ -727,7 +726,7 @@ func TestRunCancellation(t *testing.T) {
 
 	t.Run("suspend cause stops the run WITHOUT compensating", func(t *testing.T) {
 		// given — a shutdown suspend must preserve the run's work for the
-		// startup sweep instead of tearing it down (spec §6.4): compensation
+		// startup sweep instead of tearing it down: compensation
 		// is skipped, journal effects stay, OnCompensating never fires.
 		fx := newEngineFixture(t)
 		fx.persister.delay = 20 * time.Millisecond

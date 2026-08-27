@@ -1,6 +1,6 @@
 // Package resume glues the durable run store onto the engine and identity
 // seams — ONE implementation of the durable wiring (claim ledger, issue
-// recorder) and of the pass-3 restart's rehydration (DM spec §8.1), shared
+// recorder) and of the pass-3 restart's rehydration, shared
 // by the adapter, the startup sweep and the test harnesses. Three review
 // rounds of this work were consumed by rules fixed in one package and left
 // broken in a sibling; this package exists so the restart rules cannot
@@ -34,15 +34,15 @@ type State struct {
 	// incarnation).
 	SpoolCount int
 	// FilesDone counts completed uploads (the files-ledger rows) — the
-	// status surface's separate file counter (§15.4).
+	// status surface's separate file counter.
 	FilesDone int64
 	// ClaimsTotal counts pass-1 identity claims: the FETCHING phase's
-	// denominator (§15.4 — "claims count / spool rows"). It is the ledger
+	// denominator ("claims count / spool rows"). It is the ledger
 	// twin of the engine's per-claim Discovered(KindPage) during SCANNING,
 	// and it is what makes a mid-crawl poll say "812 of 9,650" instead of
 	// reporting a materialize counter that has not started moving.
 	ClaimsTotal int64
-	// PagesDone counts materialized MINTED objects: the §15.4 page counter,
+	// PagesDone counts materialized MINTED objects: the page counter,
 	// derived-class definitions and files excluded. It is the ledger twin of
 	// the engine's run.countObject classification — the two must agree, or
 	// the same field means one thing pushed and another polled. Finalize-
@@ -112,7 +112,7 @@ func Load(ctx context.Context, store *runstore.Store) (*State, error) {
 		return nil, fmt.Errorf("read manifest: %w", err)
 	}
 	if manifest.SchemaVersion != runstore.SchemaVersion {
-		// The belt behind the sweep's resumable() gate (§4.4): resume only
+		// The belt behind the sweep's resumable() gate: resume only
 		// within a version — a cross-version load would interpret old rows
 		// under new rules. Any caller landing here routes the dir to the
 		// compensate-only path its version is promised.
@@ -311,7 +311,7 @@ func rehydrateIssues(records []runstore.IssueRecord) []importv2.Issue {
 	return issues
 }
 
-// CrawlState is everything a pass-2 crawl restart (DM spec §8.3) rehydrates
+// CrawlState is everything a pass-2 crawl restart rehydrates
 // from a run dir: the reclaimable identity seeds, the spool census, the
 // recorded plan, and the manifest whose Request blob rebuilds the converter.
 type CrawlState struct {
@@ -344,7 +344,7 @@ func LoadCrawl(ctx context.Context, store *runstore.Store) (*CrawlState, error) 
 		return nil, fmt.Errorf("read manifest: %w", err)
 	}
 	if manifest.SchemaVersion != runstore.SchemaVersion {
-		// The same belt as Load (§4.4): resume only within a version.
+		// The same belt as Load: resume only within a version.
 		return nil, fmt.Errorf("run schema v%d cannot be resumed by a v%d binary (compensation only)",
 			manifest.SchemaVersion, runstore.SchemaVersion)
 	}

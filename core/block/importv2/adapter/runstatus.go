@@ -12,20 +12,20 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-// The pull side of the §15 observability surface: ObjectImportRunStatus /
+// The pull side of the observability surface: ObjectImportRunStatus /
 // ObjectImportRunList, served for LIVE runs from the running run's own
 // store handle and for DORMANT runs (a crashed process's dir awaiting the
 // sweep, a suspended run) from manifest + ledger alone — the same
 // dormant-run reading the pass-3 restart is built on, which is what makes
-// polling by importId restart-proof (§15.5).
+// polling by importId restart-proof.
 //
 // Scope, stated honestly. A LIVE run is served from its own statistic
 // emitter — the same builder over the same state the push event uses, so
-// polling and listening cannot disagree by construction (§15.5's "served
+// polling and listening cannot disagree by construction (the "served
 // from the adapter's registry snapshot"). A DORMANT run is served from the
 // ledger alone, which is everything a restart itself could resume from;
 // the purely in-memory fields — itemsPerSecond, ETA, currentItem, live
-// throttle/retry state — are then honestly absent, exactly as §15.4's
+// throttle/retry state — are then honestly absent, exactly as the
 // dormant column says.
 
 // ErrRunNotFound reports an importId with neither a live run nor a run dir.
@@ -139,7 +139,7 @@ func (s *service) RunList(ctx context.Context) ([]*pb.RpcObjectImportRunStatusRu
 }
 
 // buildLiveRunStatus serves a running import from its own emitter — the
-// SAME builder the push event uses over the SAME state (§15.5). This is
+// SAME builder the push event uses over the SAME state. This is
 // what makes "push and pull agree" a property of the code rather than a
 // promise: there is no second derivation to drift. Only the durable
 // lifecycle label is read from the store.
@@ -155,7 +155,7 @@ func buildLiveRunStatus(ctx context.Context, live *liveRunInfo) (*pb.RpcObjectIm
 	}, nil
 }
 
-// buildDormantRunStatus derives the §15.4 ledger-backed columns from a run
+// buildDormantRunStatus derives the ledger-backed columns from a run
 // dir with no engine behind it. Live runs never come here — they are served
 // from their emitter — so there is no `live` flag to get wrong.
 func buildDormantRunStatus(ctx context.Context, store *runstore.Store) (*pb.RpcObjectImportRunStatusRun, error) {
@@ -167,7 +167,7 @@ func buildDormantRunStatus(ctx context.Context, store *runstore.Store) (*pb.RpcO
 		// A cross-version dir is SERVED, from the frozen manifest core alone
 		// (review P2: erroring here made v1 dirs vanish silently from the
 		// listing — the exact Class-E symptom through a different door).
-		// §4.4 froze exactly the fields that let any version say what a run
+		// The frozen manifest core is exactly the fields that let any version say what a run
 		// IS; the ledger-derived numbers need same-version reads and are
 		// honestly absent.
 		return &pb.RpcObjectImportRunStatusRun{
@@ -253,7 +253,7 @@ func buildDormantRunStatus(ctx context.Context, store *runstore.Store) (*pb.RpcO
 		// began and the claim count is final. Nothing on disk distinguishes
 		// a dir that died mid-/search from one that died just after, so a
 		// spool-less dir answers with the conservative "unknown" — never a
-		// fake bar (§15.3).
+		// fake bar.
 		status.TotalsKnown = pages+files > 0
 	}
 	// The same measurement the engine publishes as a level, so the two

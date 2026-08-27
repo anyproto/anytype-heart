@@ -11,7 +11,7 @@ import (
 )
 
 // ResumeCrawl is pass 2 restarted against the live source with the spool as
-// the skip set (DM spec §8.3): re-run pass 1 (claims are reuses), re-run the
+// the skip set: re-run pass 1 (claims are reuses), re-run the
 // crawl skipping what is already recorded, then materialize the whole spool.
 // The sink backstop makes the skip a correctness-free optimization: a
 // converter that ignores the seam entirely re-emits everything and the

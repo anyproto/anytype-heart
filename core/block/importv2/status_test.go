@@ -31,7 +31,7 @@ func TestPhaseMessage(t *testing.T) {
 
 func TestDisplayTextIsNeverLoggable(t *testing.T) {
 	t.Run("rendering user content through fmt yields the hash, not the title", func(t *testing.T) {
-		// given: the §15.2 rule — currentItem is user content, displayable
+		// given: the rule — currentItem is user content, displayable
 		// but NEVER loggable — carried by a type whose fmt rendering follows
 		// the codebase's existing logging-hygiene rule for user text (v1
 		// notion's hashText, core/block/import/notion/api/block/link.go)

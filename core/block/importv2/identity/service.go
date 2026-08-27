@@ -75,7 +75,7 @@ type entry struct {
 
 // ClaimLedgerRecord is one pass-1 decision handed to the durable ledger:
 // the minted id is write-ahead intent, and the serialized payload is what a
-// later materialize-restart needs so it mints nothing (DM spec §6.2).
+// later materialize-restart needs so it mints nothing.
 type ClaimLedgerRecord struct {
 	SourceKey    string
 	ObjectId     string
@@ -272,7 +272,7 @@ func (s *Service) Assign(sourceKey string) (Assignment, error) {
 }
 
 // UnassignedClaims returns pass-1 claims that never arrived in pass 2 — the
-// completeness-reconciliation input (§16 item 4). Order is unspecified; the
+// completeness-reconciliation input. Order is unspecified; the
 // engine sorts for determinism.
 func (s *Service) UnassignedClaims() []string {
 	s.mu.RLock()

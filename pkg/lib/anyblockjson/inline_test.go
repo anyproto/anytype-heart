@@ -31,7 +31,7 @@ const (
 )
 
 // TestRenderInline_Golden checks canonical rendering and that every canonical
-// form is byte-stable through parse ∘ render (§11.2).
+// form is byte-stable through parse ∘ render.
 func TestRenderInline_Golden(t *testing.T) {
 	tests := []struct {
 		name  string

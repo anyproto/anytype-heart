@@ -1,7 +1,7 @@
 package anyblockjson
 
 // json.go holds the shared serialization infrastructure: the ordered-JSON
-// writer that produces the §4 canonical byte form, the enum name tables, the
+// writer that produces the canonical byte form, the enum name tables, the
 // proto value bridges, date formatting, and id helpers.
 
 import (
@@ -20,7 +20,7 @@ import (
 )
 
 // omap is a JSON object with explicit key order — the canonical form fixes
-// key order (§4), which encoding/json maps cannot express.
+// key order, which encoding/json maps cannot express.
 type omap struct {
 	keys []string
 	vals []any
@@ -154,7 +154,7 @@ func writeJSONString(buf *bytes.Buffer, s string) {
 }
 
 // marshalCanonical renders the document omap in the canonical byte form:
-// UTF-8, LF, two-space indent, trailing newline (§4).
+// UTF-8, LF, two-space indent, trailing newline.
 func marshalCanonical(doc *omap) ([]byte, error) {
 	compact, err := doc.MarshalJSON()
 	if err != nil {
@@ -224,7 +224,7 @@ var kindNames = newEnumNames(map[model.SmartBlockType]string{
 })
 
 // textStyleNames maps text styles to JSON block types. Header4 is absent on
-// purpose: deprecated Header4 blocks export as heading3 (§5).
+// purpose: deprecated Header4 blocks export as heading3.
 var textStyleNames = newEnumNames(map[model.BlockContentTextStyle]string{
 	model.BlockContentText_Paragraph:     "paragraph",
 	model.BlockContentText_Header1:       "heading1",
@@ -283,7 +283,7 @@ var iconSizeNames = newEnumNames(map[model.BlockContentLinkIconSize]string{
 	model.BlockContentLink_SizeMedium: "medium",
 })
 
-// linkDescriptionNames: proto "Added" is the manually-set description (§5).
+// linkDescriptionNames: proto "Added" is the manually-set description.
 var linkDescriptionNames = newEnumNames(map[model.BlockContentLinkDescription]string{
 	model.BlockContentLink_None:    "none",
 	model.BlockContentLink_Added:   "manual",
@@ -323,7 +323,7 @@ var processorNames = newEnumNames(map[model.BlockContentLatexProcessor]string{
 	model.BlockContentLatex_Spotify:       "spotify",
 })
 
-// sourceProcessors carry source code in text; all others carry a URL (§5.2).
+// sourceProcessors carry source code in text; all others carry a URL.
 var sourceProcessors = map[model.BlockContentLatexProcessor]bool{
 	model.BlockContentLatex_Latex:      true,
 	model.BlockContentLatex_Mermaid:    true,
@@ -446,7 +446,7 @@ var aggregationNames = newEnumNames(map[model.BlockContentDataviewRelationFormul
 	model.BlockContentDataviewRelation_Range:           "range",
 })
 
-// formatNames follows the public REST API vocabulary (§3). Text has exactly
+// formatNames follows the public REST API vocabulary. Text has exactly
 // one name: the editor offers a single Text format, so the stored
 // longtext/shorttext split stays out of this serialization — shorttext has
 // no name of its own and folds into "text" via formatName. The map must
@@ -489,7 +489,7 @@ func isFilterTemplate(v string) bool {
 // layoutNames maps the object layout enum to the names this format uses.
 // Layout is *stored* as a number (its bundled relation's format is `number`),
 // but a bare integer would be the one opaque enum in an otherwise
-// self-describing format — every other enum here is a name (§3).
+// self-describing format — every other enum here is a name.
 var layoutNames = newEnumNames(map[model.ObjectTypeLayout]string{
 	model.ObjectType_basic:               "basic",
 	model.ObjectType_profile:             "profile",
@@ -537,7 +537,7 @@ func isLayoutKey(key string) bool {
 }
 
 // formatName is the export-side name of a stored format: the canonical name
-// from formatNames, with legacy shorttext folded into "text" (§3).
+// from formatNames, with legacy shorttext folded into "text".
 func formatName(f model.RelationFormat) string {
 	if f == model.RelationFormat_shorttext {
 		f = model.RelationFormat_longtext
@@ -631,7 +631,7 @@ func jsonMapToProtoStruct(m map[string]any) *types.Struct {
 // ---- dates ----
 //
 
-// formatDate renders unix seconds in the full UTC RFC 3339 form (§3).
+// formatDate renders unix seconds in the full UTC RFC 3339 form.
 func formatDate(sec int64) string {
 	return time.Unix(sec, 0).UTC().Format(time.RFC3339)
 }
@@ -660,7 +660,7 @@ func defaultGenerateId() string {
 	return hex.EncodeToString(b[:])
 }
 
-// suffixLabels labels each id with its last size characters (§9a). An id
+// suffixLabels labels each id with its last size characters. An id
 // whose suffix collides with another id's or is rejected by disallow gets no
 // label and stays uncompacted — with 5 characters over CID/hex alphabets
 // collisions are birthday-rare, and falling back to the full id is always

@@ -34,7 +34,7 @@ const (
 )
 
 // PageRateCeiling is the fastest a crawl of this API can possibly go, in
-// pages per second. The §15.3 fetching ETA is capped by it so a burst can
+// pages per second. The fetching ETA is capped by it so a burst can
 // never promise the user a finish time Notion will not allow.
 func PageRateCeiling() float64 {
 	return float64(requestsPerSecond) / requestsPerPage

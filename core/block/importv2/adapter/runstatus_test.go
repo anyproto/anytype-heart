@@ -19,7 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace"
 )
 
-// The §15 pull surface: dormant runs served from manifest + ledger alone
+// The pull surface: dormant runs served from manifest + ledger alone
 // (the same reading the pass-3 restart is built on), live runs from the
 // running run's own store handle.
 
@@ -54,7 +54,7 @@ func TestRunStatusDormant(t *testing.T) {
 		// when
 		run, err := fx.service.RunStatus(ctx, "crashed")
 
-		// then: every ledger-backed field is exact (§15.4's dormant column)
+		// then: every ledger-backed field is exact (the dormant column)
 		require.NoError(t, err)
 		assert.False(t, run.Live)
 		assert.Equal(t, string(runstore.StateMaterializing), run.ManifestState)
@@ -76,7 +76,7 @@ func TestRunStatusDormant(t *testing.T) {
 
 	t.Run("a dir killed mid-crawl reports the FETCHING counters, not the materializing ones", func(t *testing.T) {
 		// given: the phase a big Notion import spends hours in. The counters
-		// are per phase (§15.3), so while fetching they must measure the
+		// are per phase, so while fetching they must measure the
 		// crawl — spool rows against the pass-1 claim count — and not
 		// materialization, which has not started. Serving the materializing
 		// column here reported "0 of 2 pages" for a crawl that had fetched
@@ -165,7 +165,7 @@ func TestRunStatusDormant(t *testing.T) {
 
 	t.Run("a pass-3 dir with an empty spool admits it knows no total either", func(t *testing.T) {
 		// given — the sibling of review item 12, on the pull side: the crawl
-		// branch derives totalsKnown from "the spool has a row" (§15's own
+		// branch derives totalsKnown from "the spool has a row" (the own
 		// as-built rule) and the materializing branch three lines up
 		// hard-coded true. The same field then meant one thing on one side of
 		// an `if` and another on the other, and a spool-less pass-3 dir
@@ -298,7 +298,7 @@ func TestRunStatusLive(t *testing.T) {
 		// and: once the coalescing window closes, the pushed event carries
 		// exactly what the poll answered. Coalescing may DELAY the stream;
 		// it may never make it contradict the poll, because both are one
-		// builder over one state (§15.5).
+		// builder over one state.
 		require.Eventually(t, func() bool {
 			all := fx.statistics()
 			return len(all) > 0 && all[len(all)-1].String() == run.Status.String()

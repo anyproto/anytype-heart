@@ -1,6 +1,6 @@
 package anyblockjson
 
-// typeproperties.go maps a type document's typeProperties array (§2a) to and
+// typeproperties.go maps a type document's typeProperties array to and
 // from the four recommended-relation id lists on the snapshot's details.
 
 import (
@@ -14,29 +14,29 @@ import (
 )
 
 // PropertyDefinition describes a property (relation) object referenced by a
-// type document (§2a).
+// type document.
 type PropertyDefinition struct {
 	Key    domain.RelationKey
 	Name   string
 	Format model.RelationFormat
 	// Options is the declared vocabulary of a select/multiSelect property,
-	// in display order (§2a). Options are otherwise only discovered from
+	// in display order. Options are otherwise only discovered from
 	// values that happen to be used, so a vocabulary entry no record carries
 	// would never exist, and minted options carry no orderId and fall back to
 	// sorting by name. Empty means "whatever usage produces", the pre-options
 	// behaviour.
 	Options []OptionDefinition
 	// ObjectTypes restricts which types an objects/files property may point
-	// at, in priority order, given as **type keys** (§2a). Empty means any
+	// at, in priority order, given as **type keys**. Empty means any
 	// object, which is also what an untargeted property accepts — a task
 	// could be assigned to a random page. Listing the built-in `participant`
 	// alongside a bundle's own people type is what makes the current-user
-	// filter value available on the property (§6.2) while still allowing the
+	// filter value available on the property while still allowing the
 	// seeded people as values.
 	ObjectTypes []string
 }
 
-// OptionDefinition is one entry of a declared select vocabulary (§2a). Color
+// OptionDefinition is one entry of a declared select vocabulary. Color
 // is an Anytype option color name (util/constant.OptionColors); empty leaves
 // the choice to the import wiring, which is why the canonical JSON form of a
 // colorless option is the bare name rather than an object.
@@ -50,7 +50,7 @@ type OptionDefinition struct {
 }
 
 // UnmarshalJSON accepts both §2a forms: a bare name, or an object carrying a
-// color. Same shape as jsonCell (§6.1), minus the null and array arms.
+// color. Same shape as jsonCell, minus the null and array arms.
 func (o *OptionDefinition) UnmarshalJSON(data []byte) error {
 	if strings.HasPrefix(strings.TrimSpace(string(data)), `"`) {
 		return jsonUnmarshal(data, &o.Name)
@@ -61,7 +61,7 @@ func (o *OptionDefinition) UnmarshalJSON(data []byte) error {
 
 // optionsToAny renders a declared vocabulary for export: the bare name when
 // the option carries no color, an object otherwise. The string form is
-// canonical whenever it qualifies, as for table cells (§6.1).
+// canonical whenever it qualifies, as for table cells.
 func optionsToAny(opts []OptionDefinition) []any {
 	var out []any
 	for _, o := range opts {
@@ -81,7 +81,7 @@ func optionsToAny(opts []OptionDefinition) []any {
 }
 
 // optionEntryName reads the name out of either §2a option form. The semantic
-// checks (§12) run on the raw document, before it decodes into
+// checks run on the raw document, before it decodes into
 // OptionDefinition, so they need this rather than the struct.
 func optionEntryName(entry any) string {
 	switch e := entry.(type) {
@@ -104,7 +104,7 @@ type PropertyResolver interface {
 }
 
 // recommendedListKeys are the four detail keys typeProperties replaces, in
-// the §2a canonical section order. The empty section is the regular
+// the canonical section order. The empty section is the regular
 // (sidebar) list.
 var recommendedListKeys = []struct {
 	detailKey string
@@ -125,7 +125,7 @@ func (e *exporter) typePropsActive() bool {
 }
 
 // typePropDetailKeys returns the detail keys hidden from properties (and from
-// the §9a legend) because typeProperties carries them, or nil when inactive.
+// the legend) because typeProperties carries them, or nil when inactive.
 func (e *exporter) typePropDetailKeys() map[string]bool {
 	if !e.typePropsActive() {
 		return nil
@@ -137,7 +137,7 @@ func (e *exporter) typePropDetailKeys() map[string]bool {
 	return skip
 }
 
-// buildTypeProperties renders the §2a array: sections in canonical order,
+// buildTypeProperties renders the array: sections in canonical order,
 // source order preserved within each list, unresolvable ids dropped. The
 // array is emitted even when empty — its presence tells import to rebuild
 // the four lists (as explicit empty lists) rather than leave them absent.
@@ -197,7 +197,7 @@ type jsonTypeProperty struct {
 }
 
 // applyTypeProperties rebuilds the four recommended-relation lists from the
-// document's typeProperties (§2a). Definitions resolve to property ids via
+// document's typeProperties. Definitions resolve to property ids via
 // the resolver; without one — or on a miss the wiring chose not to create —
 // the key passes through in place of an id for the wiring to reconcile. The
 // field's presence (even as an empty array) is the trigger: absent means the

@@ -173,7 +173,7 @@ func TestValidate_Invalid(t *testing.T) {
 
 func TestValidate_NewerFormatHint(t *testing.T) {
 	// a document citing schema 1.3 with an unknown field must be reported as
-	// produced by a newer version (§10)
+	// produced by a newer version
 	doc := `{
 		"$schema": "https://schemas.anytype.io/anyblock/1.3/object.schema.json",
 		"version": 1,
@@ -202,7 +202,7 @@ func TestValidate_PathAddressing(t *testing.T) {
 }
 
 // TestValidate_IndentErrorMessage: the V1 message is the agent-facing repair
-// loop — it must name both indents (§12).
+// loop — it must name both indents.
 func TestValidate_IndentErrorMessage(t *testing.T) {
 	doc := `{"version": 1, "blocks": [
 		{"type": "paragraph", "text": "a"},
@@ -220,7 +220,7 @@ func TestValidate_IndentErrorMessage(t *testing.T) {
 
 // TestNormalizeIndent: lenient mode clamps over-deep indents to the deepest
 // establishable level with a path-addressed warning, and the imported state
-// equals the equivalent valid document's (§4).
+// equals the equivalent valid document's.
 func TestNormalizeIndent(t *testing.T) {
 	invalid := `{"version": 1, "blocks": [
 		{"id": "a", "type": "paragraph", "text": "a"},
@@ -270,7 +270,7 @@ func TestNormalizeIndent(t *testing.T) {
 
 // TestValidate_PrefixProperty: pre-order plus the monotonicity rule makes
 // every prefix of an exported blocks array a valid document — the truncation
-// guarantee, made testable (§4).
+// guarantee, made testable.
 func TestValidate_PrefixProperty(t *testing.T) {
 	data, err := Marshal(model.SmartBlockType_Page, richSnapshot(), testOptions())
 	require.NoError(t, err)

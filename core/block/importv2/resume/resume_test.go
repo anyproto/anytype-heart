@@ -134,7 +134,7 @@ func TestLoad(t *testing.T) {
 		assert.Equal(t, "obj-root", state.Engine.RootCollectionId)
 		assert.Equal(t, "obj-report", state.Engine.ReportObjectId)
 
-		// and — the numbers resume (§15.4): created counts the page, the
+		// and — the numbers resume: created counts the page, the
 		// derived definition and the file; finalize outputs are excluded
 		// exactly as the live counters exclude them
 		assert.Equal(t, int64(3), state.Engine.Created)

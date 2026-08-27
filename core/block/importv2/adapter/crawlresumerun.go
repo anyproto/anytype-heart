@@ -20,7 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-// resumeCrawlRun is the sweep's pass-2 crawl-resume branch (DM spec §8.3):
+// resumeCrawlRun is the sweep's pass-2 crawl-resume branch:
 // a run interrupted mid-crawl re-runs both passes against the live source,
 // with the spool as the skip set and the converter rebuilt from the
 // manifest's stored request — the one resume class that needs the source
@@ -54,7 +54,7 @@ func (s *service) resumeCrawlRun(ctx context.Context, store *runstore.Store, man
 	}
 	// Markdown inputs parse in the prologue: a broken request never reaches
 	// the engine; a moved source keeps the dir for retry (attempts-capped —
-	// a USB drive may return; exhaustion routes to compensation, the §6.1
+	// a USB drive may return; exhaustion routes to compensation, the
 	// source-unavailable disposition).
 	importType := model.ImportType(manifest.ImportType)
 	var paths []string
@@ -184,7 +184,7 @@ func (s *service) resumeCrawlRun(ctx context.Context, store *runstore.Store, man
 	}
 
 	// A multi-path markdown request resumed at path k finishes the
-	// remaining paths as fresh runs (08-13 §6.2 item 1), sharing
+	// remaining paths as fresh runs, sharing
 	// executeMarkdown's combine rules. The resumed run's own dir settles
 	// first — each continuation path owns its own dir.
 	combined := &importv2.Result{}

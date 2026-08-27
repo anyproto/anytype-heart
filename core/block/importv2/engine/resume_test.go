@@ -13,7 +13,7 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 )
 
-// Resume is pass 3 restarted from a recorded spool (DM spec §8.1): no
+// Resume is pass 3 restarted from a recorded spool: no
 // pass 1, no pass 2, no converter — the run is a function of (run dir,
 // space). These tests drive engine.Resume over a pre-filled durable spool
 // and assert the restart semantics the crash tests then prove end to end.

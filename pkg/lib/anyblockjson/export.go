@@ -16,7 +16,7 @@ import (
 )
 
 // FormatResolver reports the format of a property key, when known. Bundle
-// properties are resolved internally; the resolver covers custom keys (§3).
+// properties are resolved internally; the resolver covers custom keys.
 type FormatResolver func(key domain.RelationKey) (model.RelationFormat, bool)
 
 // OptionResolver maps select/multiSelect option ids to names on export and
@@ -26,7 +26,7 @@ type OptionResolver interface {
 	OptionId(key domain.RelationKey, name string) (string, bool)
 }
 
-// Options configures Marshal and Unmarshal (§13).
+// Options configures Marshal and Unmarshal.
 type Options struct {
 	ResolveFormat     FormatResolver   // optional; nil = bundle-only resolution (§3)
 	ResolveOptions    OptionResolver   // optional; nil = option values pass through as ids
@@ -46,13 +46,13 @@ const (
 	detailKeyType = "type"
 	storeKeyItems = "objects"
 	// codeLangField is the internal fields key holding a code block's
-	// language (§5.1)
+	// language
 	codeLangField = "lang"
 )
 
 // propertiesKeptOnExport are the internal properties the importer
 // meaningfully preserves; everything else in LocalAndDerivedRelationKeys is
-// stripped (§3).
+// stripped.
 var propertiesKeptOnExport = map[string]bool{
 	"createdDate":      true,
 	"lastModifiedDate": true,
@@ -62,12 +62,12 @@ var propertiesKeptOnExport = map[string]bool{
 	"resolvedLayout":   true,
 }
 
-// wellKnownPropertyOrder puts the §3 magic keys first in the properties
+// wellKnownPropertyOrder puts the magic keys first in the properties
 // object; all remaining keys follow alphabetically (canonical order
 // decision).
 var wellKnownPropertyOrder = []string{"name", "description", "iconEmoji", "iconImage"}
 
-// Marshal serializes a snapshot into canonical AnyBlock JSON (§13).
+// Marshal serializes a snapshot into canonical AnyBlock JSON.
 func Marshal(sbType model.SmartBlockType, snapshot *model.SmartBlockSnapshotBase, opts Options) ([]byte, error) {
 	if snapshot == nil {
 		return nil, fmt.Errorf("nil snapshot")
@@ -96,7 +96,7 @@ type exporter struct {
 	localIds   map[string]string // block/row/column/view id -> short label
 
 	// tableIds maps a stored row/column id to the sanitized label written for
-	// it (§6.1), and tableIdsUsed keeps those labels distinct.
+	// it, and tableIdsUsed keeps those labels distinct.
 	tableIds     map[string]string
 	tableIdsUsed map[string]struct{}
 }
@@ -123,7 +123,7 @@ func (e *exporter) indexBlocks() {
 			children[c] = true
 		}
 	}
-	// the root block's id equals the object id (§2); fall back to the first
+	// the root block's id equals the object id; fall back to the first
 	// block nobody references
 	if _, ok := e.blocks[e.objectId()]; ok {
 		e.rootId = e.objectId()
@@ -159,7 +159,7 @@ func (e *exporter) buildDoc(sbType model.SmartBlockType) (*omap, error) {
 		typeKey = typeKeys[0]
 	}
 
-	// kind is omitted whenever derivable (§2). A Page whose type key is
+	// kind is omitted whenever derivable. A Page whose type key is
 	// "template" must keep its explicit kind, or import would derive
 	// Template from the type.
 	derivable := (sbType == model.SmartBlockType_Page && typeKey != "template") ||
@@ -260,7 +260,7 @@ func (e *exporter) buildRootEscape() *omap {
 // ---- properties ----
 //
 
-// strippedDetailKeys are the internal/derived properties export removes (§3).
+// strippedDetailKeys are the internal/derived properties export removes.
 func strippedDetailKeys() map[string]bool {
 	stripped := map[string]bool{detailKeyId: true, detailKeyType: true}
 	for _, k := range bundle.LocalAndDerivedRelationKeys {
@@ -303,7 +303,7 @@ func (e *exporter) buildProperties() *omap {
 	for _, k := range ordered {
 		// presence of a property key is meaningful — it records that the
 		// property was set on the object — so values are written verbatim,
-		// including empty and default ones (§3); the omit-empty canon applies
+		// including empty and default ones; the omit-empty canon applies
 		// to block attributes and envelope fields only
 		m.set(k, e.propertyValue(k, e.snapshot.Details.Fields[k]))
 	}
@@ -314,7 +314,7 @@ func (e *exporter) resolveFormat(key string) (model.RelationFormat, bool) {
 	return resolveFormatWith(e.opts, key)
 }
 
-// resolveFormatWith applies the §3 resolution order: bundle first, then the
+// resolveFormatWith applies the resolution order: bundle first, then the
 // caller's resolver.
 func resolveFormatWith(opts Options, key string) (model.RelationFormat, bool) {
 	if f, err := bundle.GetRelationFormat(domain.RelationKey(key)); err == nil {
@@ -327,7 +327,7 @@ func resolveFormatWith(opts Options, key string) (model.RelationFormat, bool) {
 }
 
 func (e *exporter) propertyValue(key string, v *types.Value) any {
-	// layout is stored as a number and named in the format (§3); a number
+	// layout is stored as a number and named in the format; a number
 	// outside the enum falls through and exports unchanged.
 	if isLayoutKey(key) {
 		if n, isNum := v.GetKind().(*types.Value_NumberValue); isNum {
@@ -398,7 +398,7 @@ func orEmpty[T any](p *T) *T {
 	return p
 }
 
-// isStructural reports blocks that are derivable and dropped on export (§7).
+// isStructural reports blocks that are derivable and dropped on export.
 func isStructural(b *model.Block) bool {
 	switch c := b.Content.(type) {
 	case *model.BlockContentOfLayout:
@@ -468,7 +468,7 @@ func (e *exporter) localId(id string) string {
 }
 
 // blockToJSON renders one block at the given depth (its indent, written
-// first per the §4 canonical key order). The returned bool reports whether
+// first per the canonical key order). The returned bool reports whether
 // the caller should descend into the block's children.
 func (e *exporter) blockToJSON(b *model.Block, depth int) (*omap, bool, error) {
 	// a snapshot's block graph is untrusted: without this, a ChildrenIds
@@ -543,7 +543,7 @@ func (e *exporter) blockToJSON(b *model.Block, depth int) (*omap, bool, error) {
 		case model.BlockContentLayout_Div:
 			m.set("type", "group")
 		default:
-			// header and stray table wrappers are structural (§7)
+			// header and stray table wrappers are structural
 			return nil, false, nil
 		}
 	case *model.BlockContentOfTable:
@@ -601,7 +601,7 @@ func (e *exporter) blockToJSON(b *model.Block, depth int) (*omap, bool, error) {
 }
 
 // finishBlockJSON writes the common block tail: align, verticalAlign,
-// backgroundColor, fields — in the §4 canonical order.
+// backgroundColor, fields — in the canonical order.
 func (e *exporter) finishBlockJSON(m *omap, b *model.Block, liftedFields map[string]bool) {
 	if b.Align != model.Block_AlignLeft {
 		m.setNonEmpty("align", alignNames.name(b.Align))
@@ -633,7 +633,7 @@ func (e *exporter) fieldsToJSON(fields *types.Struct, lifted map[string]bool) *o
 
 func (e *exporter) textToJSON(m *omap, b *model.Block, t *model.BlockContentText, liftedFields map[string]bool) error {
 	style := t.Style
-	// deprecated Header4 exports as heading3 (§5)
+	// deprecated Header4 exports as heading3
 	if style == model.BlockContentText_Header4 {
 		style = model.BlockContentText_Header3
 	}
@@ -657,7 +657,7 @@ func (e *exporter) textToJSON(m *omap, b *model.Block, t *model.BlockContentText
 				liftedFields[codeLangField] = true
 			}
 		}
-		// literal text; stored marks and color dropped (§8.4, §11)
+		// literal text; stored marks and color dropped
 		m.setNonEmpty("text", t.Text)
 		return nil
 	}
@@ -667,7 +667,7 @@ func (e *exporter) textToJSON(m *omap, b *model.Block, t *model.BlockContentText
 }
 
 // compactMarks rewrites mention/object mark targets through the refs legend
-// without mutating the snapshot (§9a).
+// without mutating the snapshot.
 func (e *exporter) compactMarks(marks []*model.BlockContentTextMark) []*model.BlockContentTextMark {
 	if !e.opts.CompactIds || len(marks) == 0 {
 		return marks
@@ -682,7 +682,7 @@ func (e *exporter) compactMarks(marks []*model.BlockContentTextMark) []*model.Bl
 			clone.Param = e.compactObjectId(mk.Param)
 			out = append(out, &clone)
 		case mk.Type == model.BlockContentTextMark_Link && strings.HasPrefix(mk.Param, objectLinkPrefix):
-			// rendered as an Object mark (§8.3), so its target compacts too
+			// rendered as an Object mark, so its target compacts too
 			clone := *mk
 			clone.Param = objectLinkPrefix + e.compactObjectId(strings.TrimPrefix(mk.Param, objectLinkPrefix))
 			out = append(out, &clone)
@@ -726,7 +726,7 @@ func stringsToAny(ss []string) []any {
 }
 
 //
-// ---- compact ids (§9a) ----
+// ---- compact ids ----
 //
 
 func (e *exporter) compactObjectId(id string) string {
@@ -768,7 +768,7 @@ func (e *exporter) buildCompactIds() {
 				case mk.Type == model.BlockContentTextMark_Mention || mk.Type == model.BlockContentTextMark_Object:
 					addObject(mk.Param)
 				case mk.Type == model.BlockContentTextMark_Link && strings.HasPrefix(mk.Param, objectLinkPrefix):
-					// normalizes to an Object mark on render (§8.3)
+					// normalizes to an Object mark on render
 					addObject(strings.TrimPrefix(mk.Param, objectLinkPrefix))
 				}
 			}
@@ -849,10 +849,10 @@ func (e *exporter) buildCompactIds() {
 			}
 		}
 	}
-	// the envelope id is never compacted (§9a)
+	// the envelope id is never compacted
 	delete(objects, e.objectId())
 
-	// refs keys must not equal a full id present in the document (§9a); the
+	// refs keys must not equal a full id present in the document; the
 	// avoid set covers every id this export knows about
 	fullIds := map[string]bool{e.objectId(): true}
 	for id := range objects {
@@ -865,7 +865,7 @@ func (e *exporter) buildCompactIds() {
 		return fullIds[candidate] || !isValidRefsKey(candidate)
 	})
 	// local relabels stay dash-free: '-' is the derived-cell-id separator
-	// and forbidden in row/column ids (§6.1)
+	// and forbidden in row/column ids
 	e.localIds = suffixLabels(setToSlice(locals), compactIdMinLen, isInvalidLocalLabel)
 	// short ids label as themselves; drop those the schema charsets reject
 	dropInvalidLabels(e.objectRefs, isValidRefsKey)
@@ -887,7 +887,7 @@ func isValidRefsKey(s string) bool {
 }
 
 // isInvalidLocalLabel rejects relabel candidates for blocks/rows/columns/
-// views: the row/column charset has no dash (§6.1), which also keeps labels
+// views: the row/column charset has no dash, which also keeps labels
 // clear of derived cell ids.
 func isInvalidLocalLabel(s string) bool {
 	if len(s) == 0 || len(s) > 64 {

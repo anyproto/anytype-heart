@@ -30,7 +30,7 @@ type schemaFetch struct {
 // object is emitted; late-discovered databases are outside the plan and keep
 // the naive per-container suggestion.
 func (c *Converter) planStructure(ctx context.Context, sink importv2.Sink) error {
-	// The §15 ANALYZING stage, bracketed UNCONDITIONALLY (the markdown
+	// The ANALYZING stage, bracketed UNCONDITIONALLY (the markdown
 	// sibling does the same): schema prefetch plus the planner call is the
 	// 10-20 s of unexplained silence ImportV2LLM.md §3 specified reporting
 	// and nothing ever did, and a client that saw the stage begin must

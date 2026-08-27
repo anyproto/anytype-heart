@@ -29,7 +29,7 @@ type ClaimRecord struct {
 	PayloadHeads []string
 }
 
-// RecordClaims writes one batch in a single transaction (spec §5.2: batched
+// RecordClaims writes one batch in a single transaction (batched
 // because an unflushed batch's loss is harmless — no side effects exist at
 // claim time; measured 3-4x over per-claim commits).
 func (s *Store) RecordClaims(ctx context.Context, claims []ClaimRecord) error {
@@ -98,7 +98,7 @@ func (s *Store) recordClaimsInTx(txCtx context.Context, claims []ClaimRecord) er
 }
 
 // placePayload writes one write-ahead create payload, keyed by objectId,
-// under the occupancy rule (§9.1 item 1): the FIRST record wins entirely.
+// under the occupancy rule: the FIRST record wins entirely.
 // The minted id is the hash of the root bytes, so a differing re-record
 // under one id is an identity violation upstream — logged loudly, never
 // silently preferred; an identical re-record is an idempotent no-op.
@@ -139,7 +139,7 @@ func readHeads(v *anyenc.Value) []string {
 }
 
 // IssueRecord is one durable issue-ledger row: pass-2 issues must survive to
-// pass 3's report page (DM spec §6.2). Flattened strings — the wire Issue's
+// pass 3's report page. Flattened strings — the wire Issue's
 // error chain does not round-trip and does not need to.
 type IssueRecord struct {
 	Severity  int

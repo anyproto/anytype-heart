@@ -32,7 +32,7 @@ import (
 )
 
 // The sweep's crawl-resume branch, driven through the service (DM spec
-// §8.3 + the §13.4 harness): a run interrupted mid-crawl re-runs the crawl
+// §8.3 + the harness): a run interrupted mid-crawl re-runs the crawl
 // from the manifest's stored request, spends zero requests on recorded
 // pages, and materializes the whole recording.
 

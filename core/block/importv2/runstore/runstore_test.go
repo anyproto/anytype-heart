@@ -595,7 +595,7 @@ func TestRunsRoot(t *testing.T) {
 	assert.Equal(t, filepath.Join("repo", "importv2", "runs"), RunsRoot("repo"))
 }
 
-// TestFrozenCoreFixture pins §4.4's forward-compat promise: the
+// TestFrozenCoreFixture pins the forward-compat promise: the
 // compensation-critical fields written at schema v1 must stay readable
 // forever. The fixture is a real store committed under testdata; generation
 // (RUNSTORE_UPDATE_FIXTURE=1) REFUSES to overwrite an existing fixture —
@@ -603,7 +603,7 @@ func TestRunsRoot(t *testing.T) {
 // frozenFixtureVersions lists every committed freeze pin. Each schema
 // version gets its OWN dir, created once and never regenerated (v2:
 // SchemaVersion bumped because derived-claimed rows must not be deleted by
-// v1 readers — §4.4's writer obligation, honoured mechanically).
+// v1 readers — the writer obligation, honoured mechanically).
 var frozenFixtureVersions = []int{1, 2}
 
 func TestFrozenCoreFixture(t *testing.T) {
@@ -657,7 +657,7 @@ func TestFrozenCoreFixture(t *testing.T) {
 }
 
 // TestFrozenCoreRawFields pins presence AND anyenc type of every frozen
-// field (§4.4) by reading dbs raw, independent of what the current reader
+// field by reading dbs raw, independent of what the current reader
 // happens to consume. The gap it closes is structural: CompensationInputs
 // never reads entries.status, so renaming or retyping it passed the entire
 // black-box suite (confirmed by review) — yet the field is frozen and phase
