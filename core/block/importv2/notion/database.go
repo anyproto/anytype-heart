@@ -224,28 +224,42 @@ func (c *Converter) emitProperty(ctx context.Context, scope string, property pro
 			sink.Issue(importv2.Warning(importv2.IssueLLMPlanEntryDropped, owner.key,
 				"This property could not share the suggested relation (its values do not fit that format) and was imported on its own").About(property.Name))
 			def, created = c.properties.resolveRelation(scope, property)
-		} else if def.bundled {
-			// The column became a native Anytype field: dates sort, checkboxes
-			// tick, assignees resolve to people. Worth saying because the name
-			// can change ("Due Date" → "Due date").
-			sink.Issue(importv2.Issue{
-				Severity: importv2.SeverityInfo, Code: importv2.IssuePropertyMapped, SourceKey: owner.key,
-				Subject: fmt.Sprintf("%s → %s", property.Name, def.name),
-				Message: "Imported onto one of Anytype's built-in properties",
-			})
 		} else {
-			// One relation for every database that has this column, instead of
-			// one per database: the point of the plan, and the reason the same
-			// name appears under several databases here.
+			// Only say something when something happened. The plan pointing a
+			// column at its own freshly minted relation of the same name is
+			// not news — every column does that — and saying it once per
+			// column buried the decisions that ARE news under a page of
+			// "imported as itself".
 			subject := property.Name
 			if def.name != property.Name {
 				subject = fmt.Sprintf("%s → %s", property.Name, def.name)
 			}
-			sink.Issue(importv2.Issue{
-				Severity: importv2.SeverityInfo, Code: importv2.IssuePropertyMapped, SourceKey: owner.key,
-				Subject: subject,
-				Message: "Imported onto a property shared with the other databases that have it",
-			})
+			switch {
+			case def.bundled:
+				// The column became a native Anytype field: dates sort,
+				// checkboxes tick. The name often changes with it.
+				sink.Issue(importv2.Issue{
+					Severity: importv2.SeverityInfo, Code: importv2.IssuePropertyMapped, SourceKey: owner.key,
+					Subject: subject,
+					Message: "Imported onto one of Anytype's built-in properties",
+				})
+			case c.properties.noteContainer(def.key, scope) > 0:
+				// Another database's column of the same kind is already on
+				// this relation, and this one joined it rather than making a
+				// look-alike nobody can tell apart later. That is the plan's
+				// whole point, and the only part of it worth a line.
+				sink.Issue(importv2.Issue{
+					Severity: importv2.SeverityInfo, Code: importv2.IssuePropertyMapped, SourceKey: owner.key,
+					Subject: subject,
+					Message: "Imported onto the same property as another database's column of the same kind",
+				})
+			case def.name != property.Name:
+				sink.Issue(importv2.Issue{
+					Severity: importv2.SeverityInfo, Code: importv2.IssuePropertyMapped, SourceKey: owner.key,
+					Subject: subject,
+					Message: "Imported under a different name",
+				})
+			}
 		}
 	} else {
 		def, created = c.properties.resolveRelation(scope, property)

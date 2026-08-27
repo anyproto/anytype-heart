@@ -1,6 +1,8 @@
 package notion
 
 import (
+	"context"
+	importv2 "github.com/anyproto/anytype-heart/core/block/importv2"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -136,4 +138,64 @@ func TestPropertyIdIsScopedToItsDatabase(t *testing.T) {
 		require.NotNil(t, second)
 		assert.NotEqual(t, first.key, second.key, "the second database's plan entry was discarded")
 	})
+}
+
+func TestNoteContainerCountsSharing(t *testing.T) {
+	// The plan pre-registers every relation it minted, so "did this call
+	// create it?" cannot tell a shared property from a lonely one. This can.
+	store := newPropertiesStore()
+
+	t.Run("the first container to arrive shares with nobody", func(t *testing.T) {
+		assert.Equal(t, 0, store.noteContainer("aipropdesc", "db1"))
+	})
+
+	t.Run("the second one joins it", func(t *testing.T) {
+		assert.Equal(t, 1, store.noteContainer("aipropdesc", "db2"))
+		assert.Equal(t, 2, store.noteContainer("aipropdesc", "db3"))
+	})
+
+	t.Run("the same container asking twice is still one container", func(t *testing.T) {
+		assert.Equal(t, 2, store.noteContainer("aipropdesc", "db3"))
+	})
+
+	t.Run("relations are counted apart", func(t *testing.T) {
+		assert.Equal(t, 0, store.noteContainer("aipropother", "db1"))
+	})
+}
+
+func TestPlannedPropertyNoteSaysWhatHappened(t *testing.T) {
+	// given — two databases whose "Description" column the plan pointed at
+	// one relation, and a third column the plan left alone by name
+	converter := New(nil, nil, stubFactory{}, t.TempDir())
+	sink := &recordingSink{}
+	plan := schemaplan.PropertyPlan{Key: "summary", Name: "Description", Format: model.RelationFormat_longtext}
+	property := propertySchema{Id: "p1", Type: "rich_text", Name: "Description"}
+
+	notes := func() []string {
+		var out []string
+		for _, issue := range sink.issues {
+			if issue.Code == importv2.IssuePropertyMapped {
+				out = append(out, issue.Message+" — "+issue.Subject)
+			}
+		}
+		return out
+	}
+
+	// when — the first database arrives
+	_, err := converter.emitProperty(context.Background(), "db1", property, plan,
+		container{key: "db1", name: "Templates", schema: true}, sink)
+	require.NoError(t, err)
+
+	// then — nothing happened yet worth telling anyone
+	assert.Empty(t, notes(), "a column imported under its own name is not news")
+
+	// when — a second database's column of the same kind arrives
+	_, err = converter.emitProperty(context.Background(), "db2", property, plan,
+		container{key: "db2", name: "Sprints", schema: true}, sink)
+	require.NoError(t, err)
+
+	// then — the join is the news: one property instead of two look-alikes
+	require.Len(t, notes(), 1)
+	assert.Contains(t, notes()[0], "same property as another database")
+	assert.Contains(t, notes()[0], "Description")
 }

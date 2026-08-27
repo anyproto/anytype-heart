@@ -59,6 +59,10 @@ type relationDef struct {
 // Sharing is opt-in and whitelisted: the bundled Tag redirect here, and
 // schemaplan.AllowedBundledTargets on the plan path.
 type propertiesStore struct {
+	// scopesByKey is which containers resolved onto each relation — the
+	// evidence that a relation is actually shared.
+	scopesByKey map[string]map[string]struct{}
+
 	// byScopedId is keyed by (database, notion property id) — Notion's real
 	// identity for a property. The id alone is unique only WITHIN a database:
 	// teamspace templates hand several databases a property with the same
@@ -180,6 +184,27 @@ func parentContainerId(stub Entity) string {
 // property's values — the caller degrades to the unplanned path with a
 // warning. Sanitize normalizes plans so this is a belt against unsanitized
 // or type-definition-seeded format divergence.
+// noteContainer records that a container resolved one of its columns onto a
+// relation, and reports how many OTHER containers already had. The plan
+// pre-registers every relation it minted, so "did this call create it?" says
+// nothing about sharing — this does.
+func (p *propertiesStore) noteContainer(key, scope string) (others int) {
+	if p.scopesByKey == nil {
+		p.scopesByKey = map[string]map[string]struct{}{}
+	}
+	scopes, ok := p.scopesByKey[key]
+	if !ok {
+		scopes = map[string]struct{}{}
+		p.scopesByKey[key] = scopes
+	}
+	if _, seen := scopes[scope]; seen {
+		return len(scopes) - 1
+	}
+	others = len(scopes)
+	scopes[scope] = struct{}{}
+	return others
+}
+
 func (p *propertiesStore) resolvePlanTarget(scope string, property propertySchema, plan schemaplan.PropertyPlan) (def *relationDef, created bool) {
 	scopedId := scopePropertyId(scope, property.Id)
 	if def, ok := p.byScopedId[scopedId]; ok {
