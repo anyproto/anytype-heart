@@ -13,9 +13,13 @@
 // writes properties.json and index.json, re-read-verified (I1 at bundle
 // scope).
 //
-// The RPC surface (a new model.ExportFormat value) is deliberately not
-// here — design Q6, follow-up — so this package is driven through the Go
-// API by tests and cmd tooling until the enum lands.
+// The RPC surface is model.Export_AnyBlockJSON (design Q6, settled as its
+// recommended option (a) — a new enum value, pbjson untouched): the export
+// service routes that format here, hands over the doc set it has already
+// collected, and supplies a Runner that turns emit into process.Queue
+// tasks, so the format reports progress and answers ProcessCancel exactly
+// like the five legacy ones. Driven through the Go API directly — tests,
+// cmd tooling — emit runs on this package's own bounded pool instead.
 package anyblock
 
 import (
@@ -89,12 +93,30 @@ type Request struct {
 	// StateFilters filter the state of objects collected as links, exactly
 	// as the legacy exporter's LinksStateFilters do.
 	StateFilters *state.Filters
+
+	// Runner runs the emit phase's per-document tasks. Nil = this package's
+	// own width-bounded pool (emitWidthFor), which is what tests and cmd
+	// tooling get; the export service passes a process.Queue-backed runner
+	// so an RPC export's progress and cancellation ride the same process
+	// every other format uses.
+	Runner EmitRunner
+}
+
+// EmitRunner runs the emit phase's tasks to completion, bounded. A non-nil
+// error means the run was ABANDONED (cancelled) rather than finished: the
+// exporter then stops without writing index.json or properties.json,
+// because a bundle whose index claims documents the emit never wrote is
+// worse than no bundle at all.
+type EmitRunner interface {
+	Run(ctx context.Context, tasks []func()) error
 }
 
 // Exporter wires the pipeline's dependencies. Construct it with the same
 // components the legacy export service holds; every field is required
-// except none.
+// except Collector, which only the collecting door needs.
 type Exporter struct {
+	// Collector runs the collection Export needs. ExportCollected takes the
+	// doc set from its caller instead and leaves this nil.
 	Collector collect.Collector
 	// Picker is typed CachedObjectGetter, not ObjectGetter, ON PURPOSE:
 	// close-after-write is the memory model (design §1.5/§1.6 — without it
@@ -120,6 +142,83 @@ func emitWidthFor(goos string) int {
 	return 4
 }
 
+// EmitWidth is emitWidthFor on the running platform — what a caller that
+// supplies its own Runner should bound that runner by, so the resident
+// content set stays what §1.6 measured whichever pool actually runs emit.
+func EmitWidth() int {
+	return emitWidthFor(runtime.GOOS)
+}
+
+// boundedRunner is this package's own emit: a fixed-width pool of workers
+// over one channel — the default when the caller supplies no Runner. It is
+// the only Runner that watches ctx directly; the producer stops FEEDING on
+// cancellation rather than only letting tasks skip, so nothing queued
+// behind the cancellation is ever handed out.
+type boundedRunner struct {
+	width int
+}
+
+func (r boundedRunner) Run(ctx context.Context, tasks []func()) error {
+	todo := make(chan func())
+	var wg sync.WaitGroup
+	for range r.width {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for t := range todo {
+				t()
+			}
+		}()
+	}
+	for _, t := range tasks {
+		select {
+		case todo <- t:
+		case <-ctx.Done():
+			// tasks already in flight run to completion: each holds a loaded
+			// object and possibly a half-written file, and unwinding that is
+			// strictly worse than the seconds it costs to let them land
+			close(todo)
+			wg.Wait()
+			return ctx.Err()
+		}
+	}
+	close(todo)
+	wg.Wait()
+	return ctx.Err()
+}
+
+// resolverPool lends one resolver set to each emit task for that task's
+// duration. storeresolver.Resolvers is not safe for concurrent use, and its
+// per-instance caches (the space's relation snapshot, participant names,
+// referenced-object rows) are what keep emit from re-reading the store for
+// every document — so sets are RECYCLED rather than minted per task: the
+// pool holds at most one per concurrently running task, each already warm.
+// Ownership is per task and not per worker because a Runner owns its own
+// goroutines and may run any task on any of them.
+type resolverPool struct {
+	mu   sync.Mutex
+	free []anyblockjson.Options
+	mint func() anyblockjson.Options
+}
+
+func (p *resolverPool) get() anyblockjson.Options {
+	p.mu.Lock()
+	if n := len(p.free); n > 0 {
+		opts := p.free[n-1]
+		p.free = p.free[:n-1]
+		p.mu.Unlock()
+		return opts
+	}
+	p.mu.Unlock()
+	return p.mint()
+}
+
+func (p *resolverPool) put(opts anyblockjson.Options) {
+	p.mu.Lock()
+	p.free = append(p.free, opts)
+	p.mu.Unlock()
+}
+
 // Result is what one export can say about itself — nothing a caller might
 // act on is dropped into a log line alone.
 type Result struct {
@@ -142,11 +241,25 @@ type Result struct {
 	BlobErrors int
 }
 
-// Export writes one space's bundle through wr: every collected document at
-// its planned path, blobs beside their file documents, then
-// properties.json and index.json at the bundle root.
+// Export runs the collection this format wants and writes the bundle
+// through wr: every collected document at its planned path, blobs beside
+// their file documents, then properties.json and index.json at the bundle
+// root.
 func (e *Exporter) Export(ctx context.Context, req Request, wr Writer) (res Result, err error) {
-	docs, err := e.Collector.Collect(ctx, collect.Request{
+	docs, err := e.Collector.Collect(ctx, CollectRequest(req))
+	if err != nil {
+		return res, fmt.Errorf("collect docs for export: %w", err)
+	}
+	return e.ExportCollected(ctx, req, docs, wr)
+}
+
+// CollectRequest is the collection this format runs: the derived closure
+// (design §1.1), with the request's own flags. Exported so a caller that
+// collects for itself — the export service does, before it knows which
+// writer the RPC wants — can ask for the same set instead of guessing at
+// it, and so the two spellings cannot drift apart.
+func CollectRequest(req Request) collect.Request {
+	return collect.Request{
 		SpaceId:          req.SpaceId,
 		Ids:              req.Ids,
 		Closure:          collect.ClosureDerived,
@@ -156,11 +269,17 @@ func (e *Exporter) Export(ctx context.Context, req Request, wr Writer) (res Resu
 		IncludeBacklinks: req.IncludeBacklinks,
 		IncludeSpace:     req.IncludeSpace,
 		StateFilters:     req.StateFilters,
-	})
-	if err != nil {
-		return res, fmt.Errorf("collect docs for export: %w", err)
 	}
+}
 
+// ExportCollected writes the bundle from a doc set the caller collected —
+// docs MUST be what CollectRequest(req) returns, since every phase below
+// treats it as the complete, closed set (the plan names its members, the
+// collection filter drops references outside it). The export service takes
+// this door: it runs the same ClosureDerived collection for every format
+// before the writer exists (closureForFormat, export.go), and re-collecting
+// here would query the whole space a second time.
+func (e *Exporter) ExportCollected(ctx context.Context, req Request, docs collect.Docs, wr Writer) (res Result, err error) {
 	// plan: details only, single-threaded, before the first emit task
 	// (design §1.1). Excluded rows are dropped here by the same rule every
 	// emitter applies.
@@ -194,38 +313,55 @@ func (e *Exporter) Export(ctx context.Context, req Request, wr Writer) (res Resu
 	// race (compose.NewComposer's contract).
 	composer := compose.NewComposer(storeresolver.New(e.ObjectStore.SpaceIndex(req.SpaceId)).Options(), req.SpaceName)
 
-	// emit: width-bounded workers, each with its own resolver set. The
-	// output cannot depend on scheduling: every path was fixed by the plan,
-	// the composer's aggregates are commutative, and finish sorts (§1.5).
+	// emit: width-bounded tasks, each holding one resolver set for its
+	// duration. The output cannot depend on scheduling: every path was fixed
+	// by the plan, the composer's aggregates are commutative, and finish
+	// sorts (§1.5).
 	var succeedAsync, docErrs, blobErrs int64
-	width := emitWidthFor(runtime.GOOS)
-	ids := make(chan string)
-	var wg sync.WaitGroup
-	for range width {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			opts := storeresolver.New(e.ObjectStore.SpaceIndex(req.SpaceId)).Options()
-			for id := range ids {
-				blobFailed, werr := e.emitDoc(ctx, req, docs, plan, composer, opts, wr, id)
-				if blobFailed {
-					atomic.AddInt64(&blobErrs, 1)
-				}
-				if werr != nil {
-					log.With("objectID", id).Warnf("can't export doc: %v", werr)
-					atomic.AddInt64(&docErrs, 1)
-				} else {
-					atomic.AddInt64(&succeedAsync, 1)
-				}
-			}
-		}()
-	}
+	pool := &resolverPool{mint: func() anyblockjson.Options {
+		return storeresolver.New(e.ObjectStore.SpaceIndex(req.SpaceId)).Options()
+	}}
+	tasks := make([]func(), 0, len(emitIds))
 	for _, id := range emitIds {
-		ids <- id
+		tasks = append(tasks, func() {
+			// a cancelled export must stop COLD-LOADING objects, which is
+			// the expensive half of emit — an account-sized bundle otherwise
+			// keeps building trees long after the user said stop. The check
+			// is per task rather than only in the producer because a Runner
+			// may already hold every task (the queue-backed one does).
+			if ctx.Err() != nil {
+				return
+			}
+			opts := pool.get()
+			defer pool.put(opts)
+			blobFailed, werr := e.emitDoc(ctx, req, docs, plan, composer, opts, wr, id)
+			if blobFailed {
+				atomic.AddInt64(&blobErrs, 1)
+			}
+			if werr != nil {
+				log.With("objectID", id).Warnf("can't export doc: %v", werr)
+				atomic.AddInt64(&docErrs, 1)
+			} else {
+				atomic.AddInt64(&succeedAsync, 1)
+			}
+		})
 	}
-	close(ids)
-	wg.Wait()
+	runner := req.Runner
+	if runner == nil {
+		runner = boundedRunner{width: EmitWidth()}
+	}
+	runErr := runner.Run(ctx, tasks)
+	if runErr == nil {
+		// a runner that ran every task can still have been abandoned: the
+		// queue-backed one does not watch ctx, its tasks simply skip
+		runErr = ctx.Err()
+	}
 	res = Result{Succeed: int(succeedAsync), DocErrors: int(docErrs), BlobErrors: int(blobErrs)}
+	if runErr != nil {
+		// no bundle files: index.json states what the bundle holds, and half
+		// an emit holds something nobody measured
+		return res, fmt.Errorf("emit documents: %w", runErr)
+	}
 	if res.BlobErrors > 0 {
 		log.Errorf("export %s: %d file blob(s) could not be streamed; their documents travel without bytes and the manifest omits the bindings", req.SpaceId, res.BlobErrors)
 	}
@@ -269,17 +405,7 @@ func (e *Exporter) emitDoc(ctx context.Context, req Request, docs collect.Docs, 
 		}
 
 		sbType := b.Type().ToProto()
-		// the same snapshot shape the pb converter feeds the wire
-		// (core/converter/pbc), which is also the shape the corpus sweep
-		// verified the codec against — 38k documents, 34 known failures
-		base := &model.SmartBlockSnapshotBase{
-			Blocks:      st.BlocksToSave(),
-			Details:     st.CombinedDetails().ToProto(),
-			ObjectTypes: domain.MarshalTypeKeys(st.ObjectTypeKeys()),
-			Collections: st.Store(),
-			Key:         st.UniqueKeyInternal(),
-			FileInfo:    st.GetFileInfo().ToModel(),
-		}
+		base := snapshotBase(st)
 
 		// omission is decided HERE, on the loaded snapshot — the predicates
 		// take the base, so they cannot run at plan time (design §1.1). An
@@ -363,6 +489,59 @@ func (e *Exporter) emitDoc(ctx context.Context, req Request, docs collect.Docs, 
 		log.With("objectID", id).Warnf("object cache remove: %v", cerr)
 	}
 	return blobFailed, err
+}
+
+// snapshotBase builds the snapshot both doors render from: the same shape
+// the pb converter feeds the wire (core/converter/pbc), which is also the
+// shape the corpus sweep verified the codec against — 38k documents, 34
+// known failures.
+func snapshotBase(st *state.State) *model.SmartBlockSnapshotBase {
+	return &model.SmartBlockSnapshotBase{
+		Blocks:      st.BlocksToSave(),
+		Details:     st.CombinedDetails().ToProto(),
+		ObjectTypes: domain.MarshalTypeKeys(st.ObjectTypeKeys()),
+		Collections: st.Store(),
+		Key:         st.UniqueKeyInternal(),
+		FileInfo:    st.GetFileInfo().ToModel(),
+	}
+}
+
+// ExportDocument renders ONE object as a standalone document: no bundle, no
+// index.json, no property dictionary. This is what ExportSingleInMemory
+// serves for the format (design Q7's position) and what rule 7 of the
+// format's principles allows — a document stands alone, carrying its own
+// property names and formats, so the two bundle files have nothing to add
+// about a single object.
+//
+// No omission predicate runs here either: those exist to keep documents
+// whose content the BUNDLE restates (the space's own object, installed
+// bundled relations) out of that bundle. With no bundle to restate
+// anything, refusing to render the object a caller named by id would just
+// be an empty answer.
+//
+// Unlike emit, this does not close the object out of the cache afterwards:
+// close-after-write pays for itself across thousands of documents (§1.6),
+// while a single-document caller is typically exporting the object the user
+// is looking at, where an eviction only buys the next reader a cold load.
+func (e *Exporter) ExportDocument(ctx context.Context, spaceId, objectId string) ([]byte, error) {
+	opts := storeresolver.New(e.ObjectStore.SpaceIndex(spaceId)).Options()
+	var data []byte
+	err := cache.Do(e.Picker, objectId, func(b sb.SmartBlock) error {
+		st := b.NewState()
+		if st.CombinedDetails().GetBool(bundle.RelationKeyIsDeleted) {
+			return fmt.Errorf("object is deleted")
+		}
+		out, err := anyblockjson.Marshal(b.Type().ToProto(), snapshotBase(st), opts)
+		if err != nil {
+			return fmt.Errorf("marshal document: %w", err)
+		}
+		data = out
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("render document %s: %w", objectId, err)
+	}
+	return data, nil
 }
 
 // saveBlob streams one file object's bytes to the writer — the legacy
