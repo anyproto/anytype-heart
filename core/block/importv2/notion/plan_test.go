@@ -123,7 +123,8 @@ func TestScriptedPlan(t *testing.T) {
 		assert.Contains(t, suggested[0], `Tasks → `+mintedType.String()+` (LLM plan)`)
 		mapped := issueMessages(sink, importv2.IssuePropertyMapped)
 		require.Len(t, mapped, 1)
-		assert.Contains(t, mapped[0], `property "Score" imported as "Effort"`)
+		assert.Contains(t, mapped[0], "shared with the other databases")
+		assert.Contains(t, mapped[0], "Score → Effort")
 	})
 
 	t.Run("bundled remap reuses the bundled relation", func(t *testing.T) {

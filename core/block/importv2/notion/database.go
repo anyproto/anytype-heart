@@ -224,9 +224,28 @@ func (c *Converter) emitProperty(ctx context.Context, scope string, property pro
 			sink.Issue(importv2.Warning(importv2.IssueLLMPlanEntryDropped, owner.key,
 				"This property could not share the suggested relation (its values do not fit that format) and was imported on its own").About(property.Name))
 			def, created = c.properties.resolveRelation(scope, property)
+		} else if def.bundled {
+			// The column became a native Anytype field: dates sort, checkboxes
+			// tick, assignees resolve to people. Worth saying because the name
+			// can change ("Due Date" → "Due date").
+			sink.Issue(importv2.Issue{
+				Severity: importv2.SeverityInfo, Code: importv2.IssuePropertyMapped, SourceKey: owner.key,
+				Subject: fmt.Sprintf("%s → %s", property.Name, def.name),
+				Message: "Imported onto one of Anytype's built-in properties",
+			})
 		} else {
-			sink.Issue(importv2.Info(importv2.IssuePropertyMapped,
-				fmt.Sprintf("database %q property %q imported as %q (%s)", owner.name, property.Name, def.name, def.key)))
+			// One relation for every database that has this column, instead of
+			// one per database: the point of the plan, and the reason the same
+			// name appears under several databases here.
+			subject := property.Name
+			if def.name != property.Name {
+				subject = fmt.Sprintf("%s → %s", property.Name, def.name)
+			}
+			sink.Issue(importv2.Issue{
+				Severity: importv2.SeverityInfo, Code: importv2.IssuePropertyMapped, SourceKey: owner.key,
+				Subject: subject,
+				Message: "Imported onto a property shared with the other databases that have it",
+			})
 		}
 	} else {
 		def, created = c.properties.resolveRelation(scope, property)

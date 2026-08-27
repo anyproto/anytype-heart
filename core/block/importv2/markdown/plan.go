@@ -9,6 +9,7 @@ import (
 
 	importv2 "github.com/anyproto/anytype-heart/core/block/importv2"
 	"github.com/anyproto/anytype-heart/core/block/importv2/schemaplan"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/schema/yaml"
@@ -338,8 +339,16 @@ func (c *Converter) applyPlanRedirects(dir string, properties []yaml.Property, r
 		if redirect.format != 0 {
 			property.Format = redirect.format
 		}
-		c.reportOnce(dir, sourceName, sink, importv2.Info(importv2.IssuePropertyMapped,
-			fmt.Sprintf("folder %q property %q imported as %q (%s)", path.Base(dir), sourceName, property.Name, property.Key)))
+		mapped := importv2.Issue{
+			Severity: importv2.SeverityInfo, Code: importv2.IssuePropertyMapped,
+			Subject: sourceName,
+			Message: "Imported onto a property shared with the other folders that have it",
+		}
+		if bundle.HasRelation(domain.RelationKey(property.Key)) {
+			mapped.Subject = fmt.Sprintf("%s → %s", sourceName, property.Name)
+			mapped.Message = "Imported onto one of Anytype's built-in properties"
+		}
+		c.reportOnce(dir, sourceName, sink, mapped)
 		kept = append(kept, *property)
 	}
 	return kept

@@ -104,7 +104,8 @@ func TestFolderPlan(t *testing.T) {
 		assert.Contains(t, suggested[0], `Work → task (LLM plan)`)
 		mapped := planIssueMessages(sink, importv2.IssuePropertyMapped)
 		require.Len(t, mapped, 1, "one propertyMapped issue per folder+property, not per page")
-		assert.Contains(t, mapped[0], `property "Deadline" imported as "Due date" (dueDate)`)
+		assert.Contains(t, mapped[0], "built-in properties")
+		assert.Contains(t, mapped[0], "Deadline → Due date")
 	})
 
 	t.Run("custom shared key merges the property across pages and feeds the new type", func(t *testing.T) {
