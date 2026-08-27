@@ -1592,6 +1592,16 @@ func (e *exporter) buildProperties() *omap {
 				continue
 			}
 		}
+		// a PARTICIPANT document does not carry createdDate (§3): the object
+		// is derived from the ACL and has no creation change, so the stored
+		// value is a load timestamp re-stamped on every cold build — the
+		// only field that drifted across a 1,164-document double-export
+		// comparison (22/22 participants, created_date only). Same silent
+		// drop as the type provenance above, and the comparator consults
+		// the same predicate (participantprovenance.go).
+		if DroppedParticipantProvenanceKey(e.sbType, k) {
+			continue
+		}
 		// a system-stamped key whose empty value says nothing a reader could
 		// act on (§15 #12): omitted, so schema documents stop paying ~20% of
 		// their bytes for it. The whitelist is deliberately short and the

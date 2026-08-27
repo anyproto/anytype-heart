@@ -38,7 +38,28 @@ tooling warning). One upstream observation, not an exporter defect:
 objects whose root change carries no creation date (participants,
 chiefly) get `createdDate` stamped at load (smartblock Apply), so any two
 exports separated by a cache eviction differ on that value — the pb
-exporter shares this.
+exporter shares this. RESOLVED by the human as a format rule (v0.47):
+participant documents omit `created_date` (`participantProvenanceKeys`,
+the type-provenance pattern; snapshotdiff taught in the same change).
+
+RECORDED OPINION, not acted on (the human's call leans toward leaving
+them): after that omission a participant's remaining provenance —
+`creator` and `last_modified_by` — reads `_anytype_profile` on 2,492 of
+2,492 corpus participants, a 100% placeholder. By the format's own §15
+#12 discipline I would omit those too: "one distinct value in all real
+data is the definition of saying nothing" is the exact verdict that
+admitted the `fileIndexingStatus` drop, and a value that is always a
+placeholder additionally trains consumers to treat `_anytype_profile` as
+an identity. The counter-position (the human's) is also real: keeping the
+field leaves upstream's bug visible instead of papered over, and is
+self-healing — the day heart populates a participant's creator with the
+real identity, documents start carrying it with no format change. The
+cost asymmetry favours reversibility either way: un-omitting later is one
+kind-scoped map entry and needs no version bump (documents never carried
+the key while omitted, so nothing existing changes meaning), while
+keeping the placeholder costs two fields × 2,492 documents of false claim
+per export until upstream fixes it. Leaving them, as decided, is cheap to
+reverse; so would omitting have been.
 
 Scope: the production exporter that writes an AnyBlock JSON bundle (SPEC.md
 §2c) from a live space — the replacement for the writing half of

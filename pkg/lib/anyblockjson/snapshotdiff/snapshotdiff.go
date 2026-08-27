@@ -188,6 +188,15 @@ func Compare(orig, got *model.SmartBlockSnapshotBase, sbType model.SmartBlockTyp
 			if gotFields[k] == nil && anyblockjson.DroppedTypeProvenanceKey(sbType, k) {
 				continue
 			}
+			// a PARTICIPANT document does not carry createdDate (§3): the
+			// stored value is a load timestamp re-stamped on every cold
+			// build, dropped by export whatever it holds — taught here in
+			// the same commit, the standing rule for every drop, or the pb
+			// sweep reports false loss on all 2,492 corpus participants.
+			// Same scoping, same ownership of the predicate.
+			if gotFields[k] == nil && anyblockjson.DroppedParticipantProvenanceKey(sbType, k) {
+				continue
+			}
 			// the five type_settings members follow the §4 omit-empty canon
 			// (§2a): a pluralName of "" or a defaultTemplateId of [] comes
 			// back absent. Same scoping, same ownership of the predicate.

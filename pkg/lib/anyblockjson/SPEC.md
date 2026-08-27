@@ -16,7 +16,11 @@ strings; the vocabulary follows Notion's API and Anytype's public REST API
 readable, and mostly writable, by someone who has never seen Anytype
 internals.
 
-Changes in v0.47: **the manifest binds file blobs** (§2c).
+Changes in v0.47: **the manifest binds file blobs** (§2c), and **a
+participant document does not carry `created_date`** (§3 — the stored value
+is a load timestamp re-stamped on every cold build; the only field that
+drifted across a double-export of 1,164 real documents, on the only kind
+that drifted).
 
 A `files` member joins `types` and `properties`: file object id → the
 blob's archive-relative path, one entry per file document whose bytes
@@ -3755,6 +3759,23 @@ the pb importer reads it to choose a space's root objects
 designates the object a user should land on. A bundle with no favourite, no
 `homepage` and no `spaceDashboardId` imports as an undifferentiated list. `id` is lifted to the envelope and `type` to `type`. Everything else
 round-trips.
+
+**A participant document does not carry `created_date`** (v0.47; the
+transient-key policy scoped by kind, like the type-provenance drop in §2a —
+the verdict lives on `participantProvenanceKeys`). A participant is derived
+from the ACL and has no creation change, so the store stamps `createdDate`
+with `time.Now()` on every cold build — a load timestamp wearing the name
+of a fact. Measured, which is what admitted the drop: two exports of the
+same 7 spaces, 1,164 documents compared field-by-field — the ONLY drifting
+kind is participant (22 of 22) and the ONLY drifting field `created_date`;
+on a full 155-space run, 2,322 drifts against 2,492 participants, every
+other kind byte-stable. Export omits the key on participants whatever it
+holds; import drops it there (stale, not wrong); the §11 comparator
+consults the same predicate. `creator` and `last_modified_by` STAY on
+participants by decision, although both read `_anytype_profile` on 2,492 of
+2,492 corpus participants: that placeholder is upstream's bug to fix — a
+participant's creator should be the real identity — not this format's to
+paper over by omission.
 
 **Attribution: `creator` and `last_modified_by` are the member's RESOLVABLE
 id, named by the informative suffix — `<identity>#<name>`, as a plain

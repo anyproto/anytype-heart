@@ -516,6 +516,13 @@ func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBas
 				continue
 			}
 		}
+		// a participant's createdDate is the same policy on the other
+		// machine-derived kind (§3): the stored value is a load timestamp,
+		// so a document carrying one is stale rather than wrong — dropped,
+		// and re-stamped by the destination the way every derived detail is
+		if DroppedParticipantProvenanceKey(sbType, key) {
+			continue
+		}
 		// transient state and the attribution keys are dropped, not refused: a
 		// document carrying one is stale rather than wrong. Export writes no
 		// transient key at all, and writes the attribution keys as derived
