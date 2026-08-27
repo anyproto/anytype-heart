@@ -49,7 +49,8 @@ func TestSanitize(t *testing.T) {
 		}
 		var issues []importv2.Issue
 		want := Plan{
-			NewTypes: []TypeDefinition{{Key: "sprintTask", Name: "Sprint task"}},
+			// Both names, always: Sanitize derives the plural the plan left out.
+			NewTypes: []TypeDefinition{{Key: "sprintTask", Name: "Sprint task", PluralName: "Sprint tasks"}},
 			Containers: map[string]ContainerPlan{
 				"ds1": {
 					TypeKey: "sprintTask",

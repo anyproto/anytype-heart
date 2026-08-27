@@ -405,6 +405,11 @@ func sanitizeNewTypes(defs []TypeDefinition, owners map[domain.TypeKey]string,
 			continue
 		}
 		def.PluralName = boundedName(def.PluralName, "")
+		// Both names, always: a type whose plural field is empty renders as a
+		// blank "Type plural name" in the editor, and the fallback above —
+		// the container's own title, which is usually plural ("AI Projects")
+		// — leaves the singular field holding a plural.
+		def.Name, def.PluralName = normalizeTypeNames(def.Name, def.PluralName)
 		if !allowedIcons[def.IconName] {
 			def.IconName = ""
 		}

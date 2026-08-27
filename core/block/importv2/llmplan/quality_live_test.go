@@ -101,7 +101,7 @@ func TestLiveNamingQuality(t *testing.T) {
 		corpora = append(corpora, corpus{name: fmt.Sprintf("REAL/%d-containers", len(real)), schemas: real})
 	}
 
-	t.Logf("%-34s %8s %6s %9s %9s %7s %8s %6s", "corpus", "assigned", "kinds", "sing==pl", "echoed", "dupes", "grouping", "sec")
+	t.Logf("%-34s %8s %6s %9s %9s %9s %7s %8s %6s", "corpus", "assigned", "kinds", "sing==pl", "no plural", "echoed", "dupes", "grouping", "sec")
 	for _, c := range corpora {
 		started := time.Now()
 		plan, err := planner.Plan(context.Background(), c.schemas)
@@ -119,9 +119,10 @@ func TestLiveNamingQuality(t *testing.T) {
 				t.Logf("    %s GROUPING MISS: %s", c.name, miss)
 			}
 		}
-		t.Logf("%-34s %5d/%-2d %6d %9s %9s %7d %8s %6.0f  %s",
+		t.Logf("%-34s %5d/%-2d %6d %9s %9s %9s %7d %8s %6.0f  %s",
 			c.name, s.assigned, len(c.schemas), s.kinds,
 			fmt.Sprintf("%d/%d", s.sameSingularPlural, s.kinds),
+			fmt.Sprintf("%d/%d", s.emptyPlural, s.kinds),
 			fmt.Sprintf("%d/%d", s.echoed, s.kinds),
 			s.duplicateNames, grouping, took.Seconds(), strings.Join(s.sample, ", "))
 	}
@@ -173,8 +174,8 @@ func scoreGrouping(plan schemaplan.Plan, expect planfixture.Expectations) (ok, t
 }
 
 type namingScore struct {
-	assigned, kinds, sameSingularPlural, echoed, duplicateNames int
-	sample                                                      []string
+	assigned, kinds, sameSingularPlural, emptyPlural, echoed, duplicateNames int
+	sample                                                                   []string
 }
 
 var nameNoise = regexp.MustCompile(`(?i)\s*\((SB|A1|\d+)\)|\s*\b(DB|Database)\b|[^\w\s&]`)
@@ -203,7 +204,13 @@ func scoreNaming(plan schemaplan.Plan, schemas []schemaplan.ContainerSchema) nam
 	seen := map[string]int{}
 	for _, def := range plan.NewTypes {
 		seen[def.Name]++
-		if strings.EqualFold(strings.TrimSpace(def.Name), strings.TrimSpace(def.PluralName)) {
+		// A MISSING plural scored as fine here — EqualFold("Tasks", "") is
+		// false — which is how a run where the model answered name_plural
+		// with "" for most kinds passed this test and shipped types whose
+		// plural field the user found empty.
+		if strings.TrimSpace(def.PluralName) == "" {
+			score.emptyPlural++
+		} else if strings.EqualFold(strings.TrimSpace(def.Name), strings.TrimSpace(def.PluralName)) {
 			score.sameSingularPlural++
 		}
 		for _, member := range membersByType[string(def.Key)] {
