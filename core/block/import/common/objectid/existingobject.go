@@ -160,48 +160,34 @@ func (e *existingObject) getExistingRelation(snapshot *common.Snapshot, spaceID 
 }
 
 func (e *existingObject) getExistingObjectType(snapshot *common.Snapshot, spaceID string) string {
-	identity, ok := objectTypeIdentityFilter(snapshot)
-	if !ok {
+	name := snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyName)
+	if name == "" {
 		return ""
 	}
 
+	// Search for existing object type by name or unique key
 	records, err := e.objectStore.SpaceIndex(spaceID).QueryRaw(&database.Filters{FilterObj: database.FiltersAnd{
 		database.FilterEq{
 			Key:   bundle.RelationKeyResolvedLayout,
 			Cond:  model.BlockContentDataviewFilter_Equal,
 			Value: domain.Int64(model.ObjectType_objectType),
 		},
-		identity,
+		database.FiltersOr{
+			database.FilterEq{
+				Key:   bundle.RelationKeyName,
+				Cond:  model.BlockContentDataviewFilter_Equal,
+				Value: snapshot.Snapshot.Data.Details.Get(bundle.RelationKeyName),
+			},
+			database.FilterEq{
+				Key:   bundle.RelationKeyUniqueKey,
+				Cond:  model.BlockContentDataviewFilter_Equal,
+				Value: snapshot.Snapshot.Data.Details.Get(bundle.RelationKeyUniqueKey),
+			},
+		},
 	}}, 1, 0)
 	if err == nil && len(records) > 0 {
 		return records[0].Details.GetString(bundle.RelationKeyId)
 	}
 
 	return ""
-}
-
-// objectTypeIdentityFilter tells which existing type the snapshot should be merged into.
-//
-// A unique key identifies a type exactly, so when the snapshot carries one we match on it alone.
-// Matching such a snapshot by name as well would merge two unrelated types that only share a
-// title — an imported ot-pmProject named "Project" into the bundled ot-project, for instance —
-// and the merge silently discards the imported dataview, description and recommended relations.
-// Name is only used for legacy exports, which predate unique keys and offer nothing else to
-// match on.
-func objectTypeIdentityFilter(snapshot *common.Snapshot) (database.Filter, bool) {
-	if uniqueKey := snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyUniqueKey); uniqueKey != "" {
-		return database.FilterEq{
-			Key:   bundle.RelationKeyUniqueKey,
-			Cond:  model.BlockContentDataviewFilter_Equal,
-			Value: domain.String(uniqueKey),
-		}, true
-	}
-	if name := snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyName); name != "" {
-		return database.FilterEq{
-			Key:   bundle.RelationKeyName,
-			Cond:  model.BlockContentDataviewFilter_Equal,
-			Value: domain.String(name),
-		}, true
-	}
-	return nil, false
 }

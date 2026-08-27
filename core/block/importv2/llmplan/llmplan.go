@@ -267,8 +267,8 @@ func (p *planner) planKinds(ctx context.Context, schemas []schemaplan.ContainerS
 	if parseErr == nil {
 		return kinds, nil
 	}
-	// One corrective retry with the error appended (path-addressed feedback,
-	// the anyblockjson validate-after-generate pattern).
+	// One corrective retry with the error appended, as path-addressed
+	// feedback: the model is told which path failed and why.
 	request.User = userPrompt + "\n\nYour previous response was invalid: " + parseErr.Error() +
 		"\nReturn corrected kinds following the schema exactly."
 	raw, _, err = p.client.CompleteJSON(ctx, request)

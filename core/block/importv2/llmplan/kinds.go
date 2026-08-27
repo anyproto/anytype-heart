@@ -11,16 +11,19 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-// formatNames renders an internal format in the wire vocabulary — the
-// anyblockjson / REST API names, not the internal enum names.
+// formatNames renders an internal format in the vocabulary the model is
+// shown: the names Anytype's own API gives property formats, not the internal
+// enum names.
 //
-// The stored longtext/shorttext split is legacy and carries no meaning in that
-// vocabulary: "shortText" is not a valid format name there and anyblockjson's
-// schema rejects it, while the API's
-// PropertyFormat enum omits it. Both therefore render as "text", so a source
-// property stored as shorttext is still described in terms the model knows.
-// The response carries no formats at all (kinds only), so there is no parse
-// direction anymore.
+// The stored longtext/shorttext split is legacy and carries no meaning there —
+// the API's PropertyFormat enum has no "shortText" — so both render as "text"
+// and a property stored as shorttext is still described in terms the model
+// knows. The response carries no formats at all (kinds only), so nothing
+// parses these back.
+//
+// The spellings are camelCase; the REST API writes multi_select. Aligning them
+// is a rename of these twelve strings and nothing else, since they are only
+// ever written, never read back.
 var formatNames = map[model.RelationFormat]string{
 	model.RelationFormat_longtext:  "text",
 	model.RelationFormat_shorttext: "text",

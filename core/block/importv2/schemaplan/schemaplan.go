@@ -73,7 +73,7 @@ type PropertyPlan struct {
 	Format model.RelationFormat
 }
 
-// TypeDefinition is a new type the plan introduces, in the AnyBlock JSON type-document shape.
+// TypeDefinition is a new type the plan introduces.
 type TypeDefinition struct {
 	Key    domain.TypeKey // plan-scoped key; CustomTypeKey mints the emitted one
 	Name   string
