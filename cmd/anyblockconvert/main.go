@@ -166,6 +166,38 @@ func run(inDir, outDir string, normalizeIndent, lenient bool, format outputForma
 			len(badTemplates), map[bool]string{true: "", false: "s"}[len(badTemplates) == 1],
 			anyblockbatch.ReportTemplateTargets(badTemplates))
 	}
+	// the bundle index is loaded BEFORE conversion: its manifest `files`
+	// map is the authoritative binding between a file document and its
+	// bytes (§2c, v0.47), and this tool is that map's reader — each bound
+	// blob is copied into the archive and the converted snapshot's `source`
+	// detail is written from the map, because `source` is the pb importer's
+	// own contract (normalizeFilePath resolves it against the archive). The
+	// clobber that was banished from the FORMAT document is legitimate at
+	// the archive boundary: the archive is a transport artifact, not a
+	// document.
+	var idx *anyblockjson.Index
+	idxPath, hasIndex := anyblockbatch.IndexPath(inDir)
+	if hasIndex {
+		data, readErr := os.ReadFile(idxPath)
+		if readErr != nil {
+			return fmt.Errorf("read %s: %w", idxPath, readErr)
+		}
+		if idx, err = anyblockjson.UnmarshalIndex(data); err != nil {
+			return fmt.Errorf("%s: %w", anyblockjson.IndexFileName, err)
+		}
+		if bad := anyblockbatch.CheckManifestFiles(idx, inDir, files); len(bad) > 0 {
+			return fmt.Errorf("%d manifest file binding%s that cannot be honoured:\n%s",
+				len(bad), plural2(len(bad)), anyblockbatch.ReportTargets(bad))
+		}
+		for _, unbound := range anyblockbatch.UnboundFileDocuments(idx, files) {
+			fmt.Fprintf(os.Stderr, "warning: file document %q has no manifest.files binding — it converts, but its bytes did not travel and it will install without content\n", unbound)
+		}
+	}
+	manifestBlobs := map[string]string{}
+	if idx != nil && idx.Manifest != nil {
+		manifestBlobs = idx.Manifest.Files
+	}
+
 	// a fileObject's real bytes are found by its "source" property
 	// (SPEC.md §3) at import time — catch a bundle pointing at a file that
 	// was never placed under files/ now, not as a silently blank icon later
@@ -203,6 +235,17 @@ func run(inDir, outDir string, normalizeIndent, lenient bool, format outputForma
 	if copiedFiles > 0 {
 		fmt.Printf("copied %d file(s) into %s\n", copiedFiles, filepath.Join(outDir, "files"))
 	}
+	// manifest-bound blobs may live ANYWHERE the author laid them out —
+	// the map, not the files/ convention, is the binding (§2c) — so each is
+	// copied at its own relative path; ones under files/ were copied above
+	// and this overwrite is a no-op for them
+	copiedBlobs, err := copyManifestBlobs(inDir, outDir, manifestBlobs)
+	if err != nil {
+		return fmt.Errorf("copy manifest blobs: %w", err)
+	}
+	if copiedBlobs > 0 {
+		fmt.Printf("bound %d manifest blob(s)\n", copiedBlobs)
+	}
 
 	var failed int
 	var converted int
@@ -217,6 +260,11 @@ func run(inDir, outDir string, normalizeIndent, lenient bool, format outputForma
 			failed++
 			continue
 		}
+		// the manifest binding reaches the archive as the `source` detail —
+		// the pb importer's own contract for locating a file's bytes
+		if blobPath, bound := manifestBlobs[id]; bound {
+			bindBlobSource(snap, blobPath)
+		}
 		if err := writeSnapshot(outDir, id, sbType, snap, format); err != nil {
 			fmt.Fprintf(os.Stderr, "FAIL %s: write: %v\n", f, err)
 			failed++
@@ -230,15 +278,7 @@ func run(inDir, outDir string, normalizeIndent, lenient bool, format outputForma
 	// how the sidebar reaches a space installed as an experience (see
 	// widgets.go). Written after the snapshots so a failed conversion does not
 	// leave either pointing at nothing.
-	if idxPath, ok := anyblockbatch.IndexPath(inDir); ok {
-		data, readErr := os.ReadFile(idxPath)
-		if readErr != nil {
-			return fmt.Errorf("read %s: %w", idxPath, readErr)
-		}
-		idx, idxErr := anyblockjson.UnmarshalIndex(data)
-		if idxErr != nil {
-			return fmt.Errorf("%s: %w", anyblockjson.IndexFileName, idxErr)
-		}
+	if hasIndex {
 		if dangling := anyblockbatch.CheckIndexTargets(idx, files); len(dangling) > 0 {
 			return fmt.Errorf("%d unresolvable reference%s in %s:\n%s",
 				len(dangling), plural2(len(dangling)), anyblockjson.IndexFileName,

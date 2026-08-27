@@ -39,6 +39,21 @@ func main() {
 			return nil
 		})
 	}
+	// what the manifests bind as BLOBS is content, not documents: a FAT
+	// bundle legitimately carries .json blobs (12 in the corpus), and only
+	// the `files` map can tell them from an authored bare-.json document
+	// (§2c, v0.47). Excluded before any object-level check runs, or every
+	// bound .json blob is reported as an invalid document.
+	if blobs := anyblockbatch.ManifestBlobPaths(indexes); len(blobs) > 0 {
+		kept := files[:0]
+		for _, f := range files {
+			if !blobs[f] {
+				kept = append(kept, f)
+			}
+		}
+		files = kept
+	}
+
 	fail, warned := 0, 0
 
 	// the `_` namespace is the platform's (§1). anyblockconvert refuses a
@@ -66,6 +81,19 @@ func main() {
 			fail++
 		} else {
 			dangling := anyblockbatch.CheckIndexTargets(idx, files)
+			// the manifest's blob bindings are index references too (§2c,
+			// v0.47), and theirs is the other silent failure: a file
+			// document whose bytes the entry promises and the archive does
+			// not carry
+			dangling = append(dangling, anyblockbatch.CheckManifestFiles(idx, filepath.Dir(idxPath), files)...)
+			// the inverse is warning-grade: a file document a PRESENT map
+			// does not bind is the signature of a partially failed export —
+			// its bytes did not travel, and the exporter said so by
+			// omitting the binding (§2c)
+			for _, id := range anyblockbatch.UnboundFileDocuments(idx, files) {
+				warned++
+				fmt.Printf("warn    %s: file document %q has no manifest.files binding — its bytes did not travel with this bundle\n", idxPath, id)
+			}
 			if len(dangling) > 0 {
 				fmt.Printf("INVALID %s\n%s", idxPath, anyblockbatch.ReportTargets(dangling))
 				fail += len(dangling)

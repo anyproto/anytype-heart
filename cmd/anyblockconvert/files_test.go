@@ -5,8 +5,11 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/anyproto/anytype-heart/pb"
 )
 
 func TestCopyBundleFiles_NoFilesDir(t *testing.T) {
@@ -109,4 +112,73 @@ func TestCheckFileSources_IgnoresNonFilesSource(t *testing.T) {
 	dangling, err := checkFileSources(in, []string{f})
 	require.NoError(t, err)
 	assert.Empty(t, dangling)
+}
+
+// The manifest `files` map has a reader, and this is it (§2c, v0.47): each
+// binding is copied into the archive at its own relative path — the map,
+// not the files/ convention, is the binding, so an authored bundle's
+// assets/ layout travels — and the converted snapshot's `source` detail is
+// written from the map, because that detail is the pb importer's own
+// contract for locating a file's bytes (normalizeFilePath). Without this,
+// a native bundle's blobs attach to nothing: the documents carry no path
+// on purpose, and the archive would install with blank icons and dead
+// file blocks.
+//
+// How this can fail: copy only files/ (the authored assets/ blob never
+// reaches the archive); skip the source injection (the blob travels but no
+// importer ever looks at it); or key the injection by the minted output id
+// instead of the document's envelope id (the binding misses every
+// re-minted document).
+func TestRun_ManifestBindsBlobsIntoTheArchive(t *testing.T) {
+	inDir := t.TempDir()
+	outDir := t.TempDir()
+	write := func(rel, body string) {
+		path := filepath.Join(inDir, rel)
+		require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
+		require.NoError(t, os.WriteFile(path, []byte(body), 0o644))
+	}
+	write("files/img.anyblock.json", `{"version":1,"kind":"file_object","id":"img-1","properties":{"name":"Logo"}}`)
+	write("assets/logo.png", "png bytes")
+	write("index.json", `{"version":1,"manifest":{"files":{"img-1":"assets/logo.png"}}}`)
+
+	// when
+	require.NoError(t, run(inDir, outDir, false, false, formatPb))
+
+	// then: the blob travelled at its authored path…
+	copied, err := os.ReadFile(filepath.Join(outDir, "assets", "logo.png"))
+	require.NoError(t, err)
+	assert.Equal(t, "png bytes", string(copied))
+
+	// …and the snapshot carries the binding as its source detail
+	var found bool
+	filepath.Walk(outDir, func(p string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() || filepath.Ext(p) != ".pb" {
+			return nil
+		}
+		data, readErr := os.ReadFile(p)
+		require.NoError(t, readErr)
+		var sw pb.SnapshotWithType
+		require.NoError(t, proto.Unmarshal(data, &sw))
+		det := sw.Snapshot.GetData().GetDetails().GetFields()
+		if det["id"].GetStringValue() != "img-1" {
+			return nil
+		}
+		found = true
+		assert.Equal(t, "assets/logo.png", det["source"].GetStringValue(),
+			"the manifest binding reaches the archive as the source detail")
+		return nil
+	})
+	require.True(t, found, "the file document must convert")
+
+	t.Run("a binding the bundle cannot honour refuses the whole conversion", func(t *testing.T) {
+		badIn, badOut := t.TempDir(), t.TempDir()
+		require.NoError(t, os.MkdirAll(filepath.Join(badIn, "files"), 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(badIn, "files", "img.anyblock.json"),
+			[]byte(`{"version":1,"kind":"file_object","id":"img-1","properties":{"name":"Logo"}}`), 0o644))
+		require.NoError(t, os.WriteFile(filepath.Join(badIn, "index.json"),
+			[]byte(`{"version":1,"manifest":{"files":{"img-1":"assets/missing.png"}}}`), 0o644))
+		err := run(badIn, badOut, false, false, formatPb)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "manifest file binding")
+	})
 }

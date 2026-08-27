@@ -292,15 +292,28 @@ type Widget struct {
 // different job and unaffected: those are resolved against the importing
 // space's live store to survive a rename (§9a), never against the bundle, so
 // they never needed a path beside them.
+//
+// It DOES locate file blobs (v0.47). Files is the map every importer holding
+// a file_object document needs — object id → the blob's archive-relative
+// path — and it is the format's replacement for the legacy exporter's
+// `source`-clobber, which stuffed the blob path into a real, user-facing,
+// editable relation on the document itself. A document member is not a slot
+// for archive bookkeeping; the manifest's whole charter is "where to find
+// what a reader must resolve by id rather than by walking", and blobs are
+// exactly that. Keys are object ids verbatim, so — unlike Types — they take
+// no re-spelling on either side. Adjacency of blob and document in `files/`
+// is one exporter's layout convention riding on top; the map is the only
+// binding a reader may rely on (§2c).
 type Manifest struct {
 	Types      map[string]string `json:"types"`
 	Properties string            `json:"properties"`
+	Files      map[string]string `json:"files"`
 }
 
 // empty reports whether the manifest locates nothing — the shape setNonEmpty
 // cannot judge for a struct.
 func (m *Manifest) empty() bool {
-	return m == nil || (len(m.Types) == 0 && m.Properties == "")
+	return m == nil || (len(m.Types) == 0 && m.Properties == "" && len(m.Files) == 0)
 }
 
 // Index is a bundle's index.json (§2c).
@@ -341,9 +354,9 @@ type Index struct {
 	// AutoWidgetDisabled records that the user turned automatic widgets off
 	// for this space entirely. 2 of 77 real spaces.
 	AutoWidgetDisabled bool `json:"auto_widget_disabled"`
-	// Manifest locates types, options and the property dictionary without a
-	// folder convention (§2c). Optional: a bundle without one is walked the
-	// way every bundle was before it existed.
+	// Manifest locates types, file blobs and the property dictionary
+	// without a folder convention (§2c). Optional: a bundle without one is
+	// walked the way every bundle was before it existed.
 	Manifest *Manifest `json:"manifest"`
 }
 
@@ -650,21 +663,28 @@ func MarshalIndex(idx *Index) ([]byte, error) {
 		// bundles — while the documents beside it said `chat_derived`.
 		m.setNonEmpty("types", sortedStringOmap(reKeyed(idx.Manifest.Types, TypeKeySpelling)))
 		m.setNonEmpty("properties", idx.Manifest.Properties)
+		// file blob bindings are keyed by object id VERBATIM (§2c): an id is
+		// its own spelling, so unlike `types` there is nothing to re-key —
+		// only the canonical sort
+		m.setNonEmpty("files", sortedStringOmap(idx.Manifest.Files))
 		doc.setNonEmpty("manifest", m)
 	}
 	return marshalCanonical(doc)
 }
 
 // sortedStringOmap renders a string map with sorted keys — the canonical
-// order for the manifest's two lookup tables (§4), or nil when there is
-// nothing to render.
+// order for the manifest's lookup tables (§4), or nil when there is
+// nothing to render. An empty VALUE is omitted like any other empty member
+// (the §4 canon): it locates nothing, and writing it produced bytes the
+// index's own Unmarshal refuses (the schema's minLength on every manifest
+// path) — I1 broken from the Go API.
 func sortedStringOmap(m map[string]string) *omap {
-	if len(m) == 0 {
-		return nil
-	}
 	out := &omap{}
 	for _, k := range sortedStringKeys(m) {
-		out.set(k, m[k])
+		out.setNonEmpty(k, m[k])
+	}
+	if len(out.keys) == 0 {
+		return nil
 	}
 	return out
 }

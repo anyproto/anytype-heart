@@ -15,6 +15,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
+	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson/compose"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -259,25 +260,74 @@ func CheckPropertyFormats(files []string, formats map[string]FormatInfo) ([]Unde
 }
 
 // DiscoverJSONFiles walks root and returns every .json object document,
-// sorted so a batch is deterministic regardless of directory order. The two
-// bundle-level documents are excluded: the index (§2c) and the property
-// dictionary (§2f) describe the bundle rather than an object, have their own
-// schemas, and would fail every object-level check.
+// sorted so a batch is deterministic regardless of directory order. Three
+// populations are excluded: the two bundle-level documents — the index
+// (§2c) and the property dictionary (§2f) describe the bundle rather than
+// an object, have their own schemas, and would fail every object-level
+// check — and every file the index's manifest binds as a BLOB
+// (ManifestBlobPaths). A FAT bundle legitimately carries blobs that are
+// themselves .json files (12 in the corpus, `file_ext == "json"`), and an
+// extension test cannot tell them from an authored bare-.json document —
+// the manifest `files` map is the authority on which bytes are content
+// rather than documents (§2c, v0.47; the exporter's own documents
+// additionally carry the .anyblock.json double extension, SPEC §15 #1, so
+// for OUR bundles the collision cannot even arise by name).
 func DiscoverJSONFiles(root string) ([]string, error) {
 	var files []string
+	var indexes []string
 	err := filepath.Walk(root, func(p string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		if !info.IsDir() && strings.HasSuffix(p, ".json") &&
-			filepath.Base(p) != anyblockjson.IndexFileName &&
-			filepath.Base(p) != anyblockjson.PropertiesFileName {
+		if info.IsDir() {
+			return nil
+		}
+		if filepath.Base(p) == anyblockjson.IndexFileName {
+			indexes = append(indexes, p)
+			return nil
+		}
+		if strings.HasSuffix(p, ".json") && filepath.Base(p) != anyblockjson.PropertiesFileName {
 			files = append(files, p)
 		}
 		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
+	blobs := ManifestBlobPaths(indexes)
+	kept := files[:0]
+	for _, f := range files {
+		if !blobs[f] {
+			kept = append(kept, f)
+		}
+	}
+	files = kept
 	sort.Strings(files)
-	return files, err
+	return files, nil
+}
+
+// ManifestBlobPaths reads each index's manifest `files` map and returns the
+// absolute paths of every bound blob — the set a document discovery must
+// skip. An index that does not parse contributes nothing: discovery must
+// not fail on a broken index (the index's own validation reports that), it
+// just cannot exclude blobs the broken manifest would have named.
+func ManifestBlobPaths(indexPaths []string) map[string]bool {
+	out := map[string]bool{}
+	for _, idxPath := range indexPaths {
+		data, err := os.ReadFile(idxPath)
+		if err != nil {
+			continue
+		}
+		idx, err := anyblockjson.UnmarshalIndex(data)
+		if err != nil || idx.Manifest == nil {
+			continue
+		}
+		dir := filepath.Dir(idxPath)
+		for _, blobPath := range idx.Manifest.Files {
+			out[filepath.Join(dir, filepath.FromSlash(blobPath))] = true
+		}
+	}
+	return out
 }
 
 // Report renders undeclared properties as one line each, most useful first.
@@ -905,6 +955,10 @@ func MergeDictionaryFormats(scanned, dict map[string]FormatInfo, warn func(forma
 // deliberately NOT one — it is a per-view cache carrying its own inline
 // format (§6.2), so a key that appears there and nowhere else gives a
 // reader nothing to look up.
+// The scan itself is compose.UsedPropertyKeysFromBytes — promoted there so
+// production composition (which cannot re-read a zip entry and must scan the
+// marshalled bytes before the write) and this file-level convenience run one
+// implementation rather than two that drift.
 func UsedPropertyKeys(files []string) (map[string]bool, error) {
 	out := map[string]bool{}
 	for _, f := range files {
@@ -912,30 +966,125 @@ func UsedPropertyKeys(files []string) (map[string]bool, error) {
 		if err != nil {
 			return nil, fmt.Errorf("read %s: %w", f, err)
 		}
-		var doc struct {
-			PropertyKeys propertyLegend             `json:"property_internal_keys"`
-			Properties   map[string]json.RawMessage `json:"properties"`
-			TypeSettings *typeSettingsRaw           `json:"type_settings"`
+		used, err := compose.UsedPropertyKeysFromBytes(data)
+		if err != nil {
+			return nil, fmt.Errorf("scan %s: %w", f, err)
 		}
-		if err := json.Unmarshal(data, &doc); err != nil {
-			return nil, fmt.Errorf("parse %s: %w", f, err)
-		}
-		for k := range doc.Properties {
-			// id and type are envelope facts, skipped on the SPELLING the
-			// way the codec skips them (importer.build)
-			if k == "id" || k == "type" {
-				continue
-			}
-			out[resolvePropertyTerm(doc.PropertyKeys, k)] = true
-		}
-		for _, tp := range typeSettingsDefs(doc.TypeSettings) {
-			if tp.term() == "" {
-				continue
-			}
-			out[tp.resolvedKey(doc.PropertyKeys)] = true
+		for key := range used {
+			out[key] = true
 		}
 	}
 	return out, nil
+}
+
+// CheckManifestFiles finds manifest `files` entries that do not bind
+// (§2c, v0.47). The map is the bundle's only authoritative binding between
+// a file document and its bytes — the document itself carries no path — so
+// an entry that fails here fails silently at import: the file object
+// arrives and its content does not.
+//
+// Three refusals, each on what the manifest STATES (a bundle whose map
+// omits a file document is like a bundle with no manifest — walked, not
+// refused — because whether an absent blob is intended is the thin-bundle
+// marker's future question, SPEC §15 #20):
+//
+//   - the key names no document in the bundle — the binding is for nothing;
+//   - the path escapes the bundle root — every manifest path is relative to
+//     index.json, and one that climbs out points at bytes the archive does
+//     not carry;
+//   - no file exists at the path — the blob the entry promises is missing.
+func CheckManifestFiles(idx *anyblockjson.Index, indexDir string, files []string) []BadTarget {
+	if idx == nil || idx.Manifest == nil || len(idx.Manifest.Files) == 0 {
+		return nil
+	}
+	ids := map[string]bool{}
+	for _, f := range files {
+		data, err := os.ReadFile(f)
+		if err != nil {
+			continue
+		}
+		var probe struct {
+			Id string `json:"id"`
+		}
+		if json.Unmarshal(data, &probe) == nil && probe.Id != "" {
+			ids[probe.Id] = true
+		}
+	}
+	keys := make([]string, 0, len(idx.Manifest.Files))
+	for key := range idx.Manifest.Files {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	var out []BadTarget
+	for _, key := range keys {
+		blobPath := idx.Manifest.Files[key]
+		prop := fmt.Sprintf("manifest.files[%q]", key)
+		if !ids[key] {
+			out = append(out, BadTarget{
+				File: anyblockjson.IndexFileName, Property: prop, Target: key,
+				Reason: "no document with that id in the bundle — this binds bytes to nothing",
+			})
+			continue
+		}
+		if filepath.IsAbs(blobPath) || escapesDir(blobPath) {
+			out = append(out, BadTarget{
+				File: anyblockjson.IndexFileName, Property: prop, Target: blobPath,
+				Reason: "the path points outside the bundle — manifest paths are relative to index.json and stay inside it",
+			})
+			continue
+		}
+		if st, err := os.Stat(filepath.Join(indexDir, filepath.FromSlash(blobPath))); err != nil || st.IsDir() {
+			out = append(out, BadTarget{
+				File: anyblockjson.IndexFileName, Property: prop, Target: blobPath,
+				Reason: "no file at that path — the blob this entry promises is missing from the bundle",
+			})
+		}
+	}
+	return out
+}
+
+// UnboundFileDocuments lists the file documents a PRESENT manifest `files`
+// map does not bind — bytes that did not travel (§2c). Warning-grade, not a
+// refusal, and the gate on the map's presence is the point: a bundle with
+// no map at all is a metadata-only export (files off, or pre-v0.47), which
+// is a legitimate mode — but a bundle that binds SOME file documents and
+// not others is the signature of a partially failed export (the exporter
+// writes the document and omits the binding when a blob cannot be
+// streamed), and silence there leaves the reader believing the bytes are
+// somewhere.
+func UnboundFileDocuments(idx *anyblockjson.Index, files []string) []string {
+	if idx == nil || idx.Manifest == nil || len(idx.Manifest.Files) == 0 {
+		return nil
+	}
+	var out []string
+	for _, f := range files {
+		data, err := os.ReadFile(f)
+		if err != nil {
+			continue
+		}
+		var probe struct {
+			Id   string `json:"id"`
+			Kind string `json:"kind"`
+		}
+		if json.Unmarshal(data, &probe) != nil {
+			continue
+		}
+		if probe.Kind != "file_object" && probe.Kind != "file" {
+			continue
+		}
+		if probe.Id == "" || idx.Manifest.Files[probe.Id] != "" {
+			continue
+		}
+		out = append(out, probe.Id)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// escapesDir reports a relative path that climbs above its base.
+func escapesDir(p string) bool {
+	clean := filepath.Clean(filepath.FromSlash(p))
+	return clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator))
 }
 
 // CheckViewProperties reports a view slot — a filter leaf, a sort or a

@@ -71,7 +71,7 @@
     },
     "manifest": {
       "$ref": "#/$defs/manifest",
-      "description": "Where to find what a reader must resolve by key or id rather than by walking (§2c): types, options, and the property dictionary. The format defines NO folder layout — objects/, types/, relations/ are one exporter's convention — and an object names its type by spelling alone, so without this a reader resolves a type by scanning every document for a matching key. Measured: types (22/space) and options (34/space) are the only two namespaces documents address without a path, ~5.1 KB per space, 0.23% of the bytes."
+      "description": "Where to find what a reader must resolve by key or id rather than by walking (§2c): types, the property dictionary, and file blobs. The format defines NO folder layout — objects/, types/, files/ are one exporter's convention — and an object names its type by spelling alone, so without this a reader resolves a type by scanning every document for a matching key, and a file document's bytes by guessing at a layout."
     }
   },
   "$defs": {
@@ -85,12 +85,20 @@
             "type": "string",
             "minLength": 1
           },
-          "description": "STORED type key → the type document's path, relative to this file. Stored keys, not per-document spellings: a document's type_internal_keys legend binds its spelling to the stored key, and the stored key is what the manifest answers for — the same rule the property dictionary applies (§2f). Reader flow: object → `type` spelling → the object's own legend → stored key → this map → the type file, no scanning. The manifest locates types and the dictionary only: it does not locate options, because the dictionary states each property's whole vocabulary inline (name, colour, position, internal_key), so a reader never has an option lookup to resolve by path."
+          "description": "STORED type key → the type document's path, relative to this file. Stored keys, not per-document spellings: a document's type_internal_keys legend binds its spelling to the stored key, and the stored key is what the manifest answers for — the same rule the property dictionary applies (§2f). Reader flow: object → `type` spelling → the object's own legend → stored key → this map → the type file, no scanning. The manifest locates types, the dictionary and file blobs: it does not locate options, because the dictionary states each property's whole vocabulary inline (name, colour, position, internal_key), so a reader never has an option lookup to resolve by path."
         },
         "properties": {
           "type": "string",
           "minLength": 1,
           "description": "The property dictionary's path, relative to this file — properties.json at the bundle root (§2f). A pointer rather than an inline map because properties resolve by stored KEY through each document's own legend, and the dictionary is the file that answers for stored keys."
+        },
+        "files": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "File object id → the blob's path, relative to this file (§2c, v0.47). The authoritative binding between a `kind: \"file_object\"` document and its bytes: the document itself carries no path — a document member is not a slot for archive bookkeeping — and every importer holding a file document must find its bytes, so the lookup lives where every other by-id lookup lives. Keys are object ids verbatim, an authored bundle writes them against its own minted ids and any layout it likes; adjacency of blob and document in files/ is one exporter's convention, never load-bearing. An entry that cannot be honoured — a key naming no document, a path escaping the bundle, a blob missing at the path — is a cross-document refusal for the tooling; a file document a present map does not bind is warned about (its bytes did not travel), and a bundle with no map is a metadata-only export."
         }
       }
     },

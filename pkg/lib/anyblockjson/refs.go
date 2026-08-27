@@ -262,6 +262,19 @@ func (o Options) foldParticipantRef(id string) string {
 	return identity
 }
 
+// FoldParticipantId is the exported form of the participant fold, for
+// callers that must agree with the envelope id Marshal writes WITHOUT
+// marshalling: the exporter's path plan names a document file by its
+// envelope id (EXPORTER_DESIGN.md §1.3), and a participant document's
+// envelope id is its folded bare identity. Same gates as the internal fold
+// — no spaceId, a foreign space, a non-identity tail, or a composite that
+// does not round-trip all decline and return id unchanged — which is
+// exactly when Marshal keeps the composite as the envelope id, so the plan
+// and the envelope cannot disagree.
+func FoldParticipantId(spaceId, id string) string {
+	return Options{SpaceId: spaceId}.foldParticipantRef(id)
+}
+
 // unfoldParticipantRef is the import half: a bare identity in an object
 // reference slot rebuilds this space's participant id. Gated on the exact
 // classifier the fold used, so unfold(fold(x)) == x and fold(unfold(y)) == y
