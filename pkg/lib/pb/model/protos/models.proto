@@ -1231,6 +1231,11 @@ message Export {
         DOT = 3;
         SVG = 4;
         GRAPH_JSON = 5;
+        // AnyBlockJSON is the native AnyBlock JSON bundle (pkg/lib/anyblockjson
+        // SPEC.md): a directory of `<id>.anyblock.json` documents beside an
+        // index.json and properties.json. Additive — existing values keep
+        // their numbers, so a client that does not know it is unaffected.
+        AnyBlockJSON = 6;
     }
 }
 

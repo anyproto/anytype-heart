@@ -36750,6 +36750,7 @@ stored |
 | DOT | 3 |  |
 | SVG | 4 |  |
 | GRAPH_JSON | 5 |  |
+| AnyBlockJSON | 6 | AnyBlockJSON is the native AnyBlock JSON bundle (pkg/lib/anyblockjson SPEC.md): a directory of `&lt;id&gt;.anyblock.json` documents beside an index.json and properties.json. Additive — existing values keep their numbers, so a client that does not know it is unaffected. |
 
 
 
