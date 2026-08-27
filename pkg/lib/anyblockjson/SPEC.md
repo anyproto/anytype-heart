@@ -1142,6 +1142,11 @@ on such blocks are dropped on export (§5).
 - Import id policy: missing → generated (the editor's standard generator);
   provided → validated for uniqueness (§4) and charset, preserved so that
   re-exports diff cleanly.
+- Block ids are **document-scoped**, and in real accounts they repeat across
+  objects: template instantiation preserves the source object's block ids, so
+  the same 24-hex id occurs verbatim in dozens of documents. Harmless here —
+  uniqueness is only ever checked within a document — but tooling that assumes
+  account-wide block-id uniqueness will be wrong.
 - On output, export writes ids by default (stable diffs, §11 canon). The
   `OmitIds` marshal option (§13) instead drops **every id in the document**
   — blocks, table rows/columns, views, sort/filter ids — along with the
@@ -1318,9 +1323,6 @@ emoji, tables, dataviews, UTF-16 payloads such as astral-plane characters).
 ```
 pkg/lib/anyblockjson/
   SPEC.md                    — this document
-  ANOMALIES.md               — real-world data anomalies found by prod
-                               round-trip testing, and how the format
-                               handles each
   schema/object.schema.json  — the published JSON Schema (embedded)
   export.go                  — snapshot → JSON
   import.go                  — JSON → snapshot
