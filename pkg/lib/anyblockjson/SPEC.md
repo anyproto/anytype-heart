@@ -32,8 +32,8 @@ external consumers; the format version stays 1 and there is no legacy-input
 mode). The block schema is thereby non-recursive, which makes it usable under
 strict/constrained decoding (Anthropic structured outputs reject recursive
 schemas; FSM-class guided decoders cannot express them) and keeps truncated
-generations parseable — see `docs/AgentApiV2Research.md`, Addendum A, for the
-decision record. Nesting rules are specified in §4: strict monotonicity
+generations parseable — the reason the format made this breaking change while
+it still had no external consumers. Nesting rules are specified in §4: strict monotonicity
 validation by default, a `NormalizeIndent` lenient import mode with
 CommonMark-style clamping, and the containment rules formerly expressed in
 the schema (leaf types, row→column) re-provided as path-addressed semantic

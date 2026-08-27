@@ -2,9 +2,7 @@
 
 Status: **draft v0.3** · 2026-07-23 · GO-7383 follow-on
 Depends on: AnyBlock JSON v1 flat (`pkg/lib/anyblockjson/SPEC.md` v0.6).
-Evidence base: `docs/AgentApiV2Research.md` (+ Addendum A) and
-`pkg/lib/anyblockjson/FLAT.md` — decisions cite sections there instead of
-re-arguing. v1 (`/v1`) stays untouched for the deprecation window.
+v1 (`/v1`) stays untouched for the deprecation window.
 
 Changes from v0.2: applied the small-model (3–4B) review. The small-model
 contract is now a
@@ -330,8 +328,8 @@ settled — R8) · B3 tabular result format · B4 wrapper-tool prompt/skill
 guidance.
 
 **Deferred**: dataview/view ops · cross-object batch · block-scoped
-preconditions · conflict rebase · events/subscriptions · core-profile
-strict schema (FLAT.md §7.3) · `?permanent=true` hard delete.
+preconditions · conflict rebase · events/subscriptions · a strict
+core-profile schema · `?permanent=true` hard delete.
 
 **Named build items** (exist nowhere today; budget them): filter-string
 parser (search-scoped — now a launch dependency, backs `find`/`set` in the
