@@ -6,6 +6,7 @@ import (
 	importv2 "github.com/anyproto/anytype-heart/core/block/importv2"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNormalizeTypeNames(t *testing.T) {
@@ -44,6 +45,14 @@ func TestNormalizeTypeNames(t *testing.T) {
 		{"both sides of a conjunction inflect", "Tasks & Features", "", "Task & Feature", "Tasks & Features"},
 		{"even when one side is already singular", "Notes and Clippings", "", "Note and Clipping", "Notes and Clippings"},
 		{"nothing at all stays nothing", "", "", "", ""},
+		// Every name below is one gpt-5.6-luna returned for the recorded
+		// workspace: the model echoes the Notion database title, tag and all.
+		{"a trailing tag is not the head noun", "Reminders (SB)", "", "Reminder (SB)", "Reminders (SB)"},
+		{"nor when the head is an initialism", "CRM (SB)", "", "CRM (SB)", "CRMs (SB)"},
+		{"nor when the head is a phrase", "All notes (SB)", "", "All note (SB)", "All notes (SB)"},
+		{"a head that is not a word does not inflect", "Q1 2024", "", "Q1 2024", "Q1 2024"},
+		{"nor does a word ending in punctuation", "Stay Organized, Connected, and In Control", "",
+			"Stay Organized, Connected, and In Control", "Stay Organized, Connected, and In Controls"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -85,6 +94,28 @@ func TestSanitizeGivesEveryTypeBothNames(t *testing.T) {
 		// then
 		assert.Equal(t, "AI Project", got.Name)
 		assert.Equal(t, "AI Projects", got.PluralName)
+	})
+
+	t.Run("a name cut to the length cap keeps its plural whole", func(t *testing.T) {
+		// given — an over-long name falls back to the container's own title,
+		// cut at the cap, and that cut can land mid-word ("…In Contro").
+		// Inflecting half a word invents one, so a cut name is its own plural.
+		long := "Contact List Template - Stay Organized, Connected, and In Control"
+		schemas := taskSchemas()
+		schemas[0].Name = long
+		plan := Plan{
+			NewTypes:   []TypeDefinition{{Key: "k", Name: long + " and Then Some"}},
+			Containers: map[string]ContainerPlan{"ds1": {TypeKey: "k"}},
+		}
+
+		// when
+		var issues []importv2.Issue
+		got := Sanitize(plan, schemas, collectIssues(&issues))
+
+		// then
+		require.Len(t, got.NewTypes, 1, "type dropped: %v", issues)
+		assert.Len(t, []rune(got.NewTypes[0].Name), maxNameRunes)
+		assert.Equal(t, got.NewTypes[0].Name, got.NewTypes[0].PluralName)
 	})
 
 	t.Run("names the model got right are left alone", func(t *testing.T) {

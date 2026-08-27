@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/ai/llmclient"
+	importv2 "github.com/anyproto/anytype-heart/core/block/importv2"
 	"github.com/anyproto/anytype-heart/core/block/importv2/llmplan"
 	"github.com/anyproto/anytype-heart/core/block/importv2/schemaplan"
 	"github.com/anyproto/anytype-heart/core/block/importv2/schemaplan/planfixture"
@@ -125,6 +126,20 @@ func TestLiveNamingQuality(t *testing.T) {
 			fmt.Sprintf("%d/%d", s.emptyPlural, s.kinds),
 			fmt.Sprintf("%d/%d", s.echoed, s.kinds),
 			s.duplicateNames, grouping, took.Seconds(), strings.Join(s.sample, ", "))
+		if os.Getenv("IMPORTV2_DUMP_NAMES") != "" {
+			// The counts score the model's raw answer; the import ships what
+			// Sanitize makes of it. Print both, so a bad pair reads either as
+			// "the model missed it" or as "the repair missed it".
+			repaired := schemaplan.Sanitize(plan, c.schemas, func(importv2.Issue) {})
+			after := make(map[string]schemaplan.TypeDefinition, len(repaired.NewTypes))
+			for _, def := range repaired.NewTypes {
+				after[string(def.Key)] = def
+			}
+			for _, def := range plan.NewTypes {
+				fixed := after[string(def.Key)]
+				t.Logf("    %-26s %-26s -> %-26s %s", def.Name, def.PluralName, fixed.Name, fixed.PluralName)
+			}
+		}
 	}
 }
 

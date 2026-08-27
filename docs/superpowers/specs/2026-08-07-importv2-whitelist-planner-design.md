@@ -390,6 +390,35 @@ bounding, icon vocabulary, bundled-type-key re-keying, unknown-container ids fro
 It stays the trust boundary precisely so that a bug in `CompleteKinds` — or a scripted/test plan —
 still degrades per-entry with a warning instead of being trusted.
 
+### 4.6 Type names are grammar, not model output (SHIPPED 2026-08-27)
+
+A type carries two names — "Project" for one member, "Projects" for a list — and the response
+schema asks for both. Measured against the recorded 35-container workspace with `gpt-5.6-luna`
+(34 kinds): **14 came back with an empty `name_plural`, and 13 answered `name_singular` with the
+Notion database's own title**, which is plural. In the editor that reads as a blank "Type plural
+name" field beside a type called "AI Projects" — both halves of what the user reported.
+
+So the grammar is code's job, the way property mapping is: the model names the kind, `Sanitize`
+derives the pair (`schemaplan/inflect.go`). A plural that adds nothing — absent, or the same word —
+counts as unanswered. Only the head noun inflects; both sides of a conjunction do ("Tasks &
+Features" → "Task & Feature"); irregulars and uncountables come from short tables, deliberately
+short because a wrong guess reads worse than the rule it replaced. Three guards earn their keep,
+each pinned by a case the live run produced: a trailing bracketed tag is not the head noun
+("Reminders (SB)" → "Reminder (SB)"), a head that does not end in a letter never inflects
+("Q1 2024", "Connected,"), and a name cut at the 64-rune cap is its own plural rather than half a
+word plus an s ("…In Contro" → "…In Contros"). Words that only look plural stay put: "Status",
+"Analysis", "Series", "Ideas", "Life Areas".
+
+After the repair all 34 kinds are grammatical. What remains is name *quality*, not grammar: an
+echoed title keeps its workspace shorthand ("Tasks Area (SB)"), which the prompt, not the
+sanitizer, would have to fix.
+
+The blind spot that let this ship was in the metric. `TestLiveNamingQuality` scored plurals with
+`EqualFold(name, plural)`, and that is false for an empty string — a run of blank plurals scored
+clean. It counts empty plurals in their own column now, and `IMPORTV2_DUMP_NAMES=1` prints every
+kind as `raw name / raw plural → repaired pair`, so a bad number reads either as "the model missed
+it" or "the repair missed it".
+
 ### 4.5 Merge guards — vetoing an unsound kind or share
 
 The model proposes grouping; code verifies it. Two guards run in `CompleteKinds` after the kinds

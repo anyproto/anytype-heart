@@ -112,14 +112,21 @@ func cleanDisplayName(name string) string {
 // fallback is clamped too, so a caller can always rely on getting something
 // usable — returning "" would drop whatever the name belonged to.
 func boundedName(name, fallback string) string {
+	bounded, _ := boundedNameCut(name, fallback)
+	return bounded
+}
+
+// boundedNameCut is boundedName plus whether the answer had to be cut to fit.
+// A cut name can end mid-word, and half a word is not something to inflect.
+func boundedNameCut(name, fallback string) (string, bool) {
 	if cleaned := cleanDisplayName(name); cleaned != "" && len([]rune(cleaned)) <= maxNameRunes {
-		return cleaned
+		return cleaned, false
 	}
 	cleaned := cleanDisplayName(fallback)
 	if runes := []rune(cleaned); len(runes) > maxNameRunes {
-		return strings.TrimSpace(string(runes[:maxNameRunes]))
+		return strings.TrimSpace(string(runes[:maxNameRunes])), true
 	}
-	return cleaned
+	return cleaned, false
 }
 
 // ScopedKey makes a plan key container-local. Two containers naming the same
@@ -399,7 +406,8 @@ func sanitizeNewTypes(defs []TypeDefinition, owners map[domain.TypeKey]string,
 		if owner, ok := owners[def.Key]; ok && schemaById[owner].Name != "" {
 			fallback = schemaById[owner].Name
 		}
-		def.Name = boundedName(def.Name, fallback)
+		bounded, cut := boundedNameCut(def.Name, fallback)
+		def.Name = bounded
 		if def.Name == "" {
 			report(dropped(string(def.Key), "new type without key or name"))
 			continue
@@ -409,7 +417,14 @@ func sanitizeNewTypes(defs []TypeDefinition, owners map[domain.TypeKey]string,
 		// blank "Type plural name" in the editor, and the fallback above —
 		// the container's own title, which is usually plural ("AI Projects")
 		// — leaves the singular field holding a plural.
-		def.Name, def.PluralName = normalizeTypeNames(def.Name, def.PluralName)
+		if cut {
+			// Except when the name was cut: its last word may be half a word.
+			if def.PluralName == "" {
+				def.PluralName = def.Name
+			}
+		} else {
+			def.Name, def.PluralName = normalizeTypeNames(def.Name, def.PluralName)
+		}
 		if !allowedIcons[def.IconName] {
 			def.IconName = ""
 		}

@@ -1,6 +1,9 @@
 package schemaplan
 
-import "strings"
+import (
+	"strings"
+	"unicode"
+)
 
 // A type carries two names: "Project" for one member, "Projects" for a list of
 // them. Both are the model's to write, and a model asked for both routinely
@@ -71,6 +74,40 @@ func lastWord(phrase string) (prefix, word string) {
 	return "", phrase
 }
 
+// trailingTag splits off a bracketed tag at the end of a phrase. The model
+// echoes the Notion database title, and those titles carry workspace
+// shorthand — "Reminders (SB)" — where the noun that inflects is the part in
+// front of the tag, not the tag.
+func trailingTag(phrase string) (base, tag string) {
+	trimmed := strings.TrimRight(phrase, " ")
+	var opener byte
+	switch {
+	case strings.HasSuffix(trimmed, ")"):
+		opener = '('
+	case strings.HasSuffix(trimmed, "]"):
+		opener = '['
+	default:
+		return phrase, ""
+	}
+	cut := strings.LastIndexByte(trimmed, opener)
+	if cut <= 0 {
+		return phrase, ""
+	}
+	base = strings.TrimRight(trimmed[:cut], " ")
+	if base == "" {
+		return phrase, ""
+	}
+	return base, phrase[len(base):]
+}
+
+// inflectable reports whether a word ends in a letter, which is what every
+// rule below assumes. "(SB)", "2024" and "Connected," do not, and an s on the
+// end of those writes something no one typed.
+func inflectable(word string) bool {
+	runes := []rune(word)
+	return len(runes) > 0 && unicode.IsLetter(runes[len(runes)-1])
+}
+
 // matchCase gives a derived word the capitalization of the word it came from,
 // so "PROJECTS" does not become "PROJECTs".
 func matchCase(source, derived string) string {
@@ -99,10 +136,16 @@ func splitConjunction(phrase string) (head, joiner, tail string, ok bool) {
 }
 
 func pluralize(phrase string) string {
+	if base, tag := trailingTag(phrase); tag != "" {
+		return pluralize(base) + tag
+	}
 	if head, joiner, tail, ok := splitConjunction(phrase); ok {
 		return pluralize(head) + joiner + pluralize(tail)
 	}
 	prefix, word := lastWord(phrase)
+	if !inflectable(word) {
+		return phrase
+	}
 	lower := strings.ToLower(word)
 	if uncountable[lower] {
 		return phrase
@@ -125,6 +168,12 @@ func pluralize(phrase string) string {
 // the word does not look like one — "Analysis" and "Status" end in s and are
 // not, and guessing there is how a type ends up called "Statu".
 func singularize(phrase string) (string, bool) {
+	if base, tag := trailingTag(phrase); tag != "" {
+		if singular, ok := singularize(base); ok {
+			return singular + tag, true
+		}
+		return "", false
+	}
 	if head, joiner, tail, ok := splitConjunction(phrase); ok {
 		singularHead, headOk := singularize(head)
 		singularTail, tailOk := singularize(tail)
@@ -140,6 +189,9 @@ func singularize(phrase string) (string, bool) {
 		return singularHead + joiner + singularTail, true
 	}
 	prefix, word := lastWord(phrase)
+	if !inflectable(word) {
+		return "", false
+	}
 	lower := strings.ToLower(word)
 	if uncountable[lower] {
 		return "", false
