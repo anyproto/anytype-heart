@@ -1,4 +1,4 @@
-package anyblock
+package anyblock_test
 
 // anyblock_test.go drives the native exporter end to end over the store
 // fixture: the real collection layer (export.New's Collect), the real plan,
@@ -6,6 +6,11 @@ package anyblock
 // determinism — export the same space twice, compare trees byte for byte —
 // which is the property the whole §1.3 naming decision exists to guarantee,
 // proved rather than asserted.
+//
+// It is an EXTERNAL test package because it builds the real export service
+// for that collection seam, and package export now routes
+// model.Export_AnyBlockJSON back into this package — an in-package test
+// would close that import cycle. Nothing here needs unexported access.
 
 import (
 	"context"
@@ -27,6 +32,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/fileobject/mock_fileobject"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/export"
+	"github.com/anyproto/anytype-heart/core/block/export/anyblock"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
@@ -79,7 +85,7 @@ func (p *closingPicker) removedIds() map[string]int {
 }
 
 type fixture struct {
-	exporter *Exporter
+	exporter *anyblock.Exporter
 	store    *objectstore.StoreFixture
 	picker   *closingPicker
 	provider *mock_typeprovider.MockSmartBlockTypeProvider
@@ -108,7 +114,11 @@ func newFixture(t *testing.T) *fixture {
 	a := &app.App{}
 	a.Register(storeFixture)
 	a.Register(testutil.PrepareMock(context.Background(), a, mock_event.NewMockSender(t)))
-	a.Register(testutil.PrepareMock(context.Background(), a, objectGetter))
+	// the CLOSING picker is what the app holds, not the bare getter mock:
+	// export.Init resolves cache.CachedObjectGetter (the service's own
+	// picker field is typed that way now), which only the wrapper answers
+	testutil.PrepareMock(context.Background(), a, objectGetter)
+	a.Register(picker)
 	a.Register(process.New())
 	a.Register(testutil.PrepareMock(context.Background(), a, mock_space.NewMockService(t)))
 	a.Register(testutil.PrepareMock(context.Background(), a, provider))
@@ -121,7 +131,7 @@ func newFixture(t *testing.T) *fixture {
 	require.NoError(t, exp.Init(a))
 
 	return &fixture{
-		exporter: &Exporter{
+		exporter: &anyblock.Exporter{
 			Collector:   exp,
 			Picker:      picker,
 			ObjectStore: storeFixture,
@@ -150,7 +160,7 @@ func setupObject(id, typeId string, sbType smartblock.SmartBlockType, details ma
 // setupSpace seeds one small space — a named page and its custom type — in
 // both the store fixture and the object mocks, and returns the export
 // request that covers it.
-func setupSpace(t *testing.T, fx *fixture) Request {
+func setupSpace(t *testing.T, fx *fixture) anyblock.Request {
 	const (
 		objectId = "objectId"
 		typeId   = "customObjectType"
@@ -188,7 +198,7 @@ func setupSpace(t *testing.T, fx *fixture) Request {
 	fx.provider.EXPECT().Type(spaceId, objectId).Return(smartblock.SmartBlockTypePage, nil)
 	fx.provider.EXPECT().Type(spaceId, typeId).Return(smartblock.SmartBlockTypeObjectType, nil)
 
-	return Request{SpaceId: spaceId, SpaceName: "Fixture space", IncludeArchived: true}
+	return anyblock.Request{SpaceId: spaceId, SpaceName: "Fixture space", IncludeArchived: true}
 }
 
 // readTree reads every file below root into path → content bytes.
@@ -231,7 +241,7 @@ func TestExporter_WritesABundle(t *testing.T) {
 	fx := newFixture(t)
 	req := setupSpace(t, fx)
 	dir := t.TempDir()
-	wr, err := NewDirWriter(dir)
+	wr, err := anyblock.NewDirWriter(dir)
 	require.NoError(t, err)
 
 	// when
@@ -239,7 +249,7 @@ func TestExporter_WritesABundle(t *testing.T) {
 
 	// then
 	require.NoError(t, err)
-	assert.Equal(t, Result{Succeed: 2}, result)
+	assert.Equal(t, anyblock.Result{Succeed: 2}, result)
 
 	// close-after-write ran for every emitted object — the memory model is
 	// this call being made (design §1.5), proved rather than assumed
@@ -290,11 +300,11 @@ func TestExporter_SameSpaceTwiceIsByteIdentical(t *testing.T) {
 
 	runExport := func(t *testing.T) map[string]string {
 		dir := t.TempDir()
-		wr, err := NewDirWriter(dir)
+		wr, err := anyblock.NewDirWriter(dir)
 		require.NoError(t, err)
 		result, err := fx.exporter.Export(context.Background(), req, wr)
 		require.NoError(t, err)
-		require.Equal(t, Result{Succeed: 2}, result)
+		require.Equal(t, anyblock.Result{Succeed: 2}, result)
 		return readTree(t, dir)
 	}
 
@@ -313,7 +323,7 @@ func TestExporter_SameSpaceTwiceIsByteIdentical(t *testing.T) {
 // level: a path the plan did not mint may not escape the root.
 func TestDirWriter_RefusesEscape(t *testing.T) {
 	dir := t.TempDir()
-	wr, err := NewDirWriter(filepath.Join(dir, "bundle"))
+	wr, err := anyblock.NewDirWriter(filepath.Join(dir, "bundle"))
 	require.NoError(t, err)
 	err = wr.WriteFile("../outside.txt", bytesReader("x"), 0)
 	require.Error(t, err)
@@ -381,16 +391,16 @@ func TestExporter_StreamsBlobsAndBindsThemInTheManifest(t *testing.T) {
 	fx.provider.EXPECT().Type(spaceId, fileId).Return(smartblock.SmartBlockTypeFileObject, nil)
 
 	dir := t.TempDir()
-	wr, err := NewDirWriter(dir)
+	wr, err := anyblock.NewDirWriter(dir)
 	require.NoError(t, err)
 
 	// when
 	result, err := fx.exporter.Export(context.Background(),
-		Request{SpaceId: spaceId, SpaceName: "Fixture space", IncludeArchived: true, IncludeFiles: true}, wr)
+		anyblock.Request{SpaceId: spaceId, SpaceName: "Fixture space", IncludeArchived: true, IncludeFiles: true}, wr)
 
 	// then
 	require.NoError(t, err)
-	assert.Equal(t, Result{Succeed: 1}, result)
+	assert.Equal(t, anyblock.Result{Succeed: 1}, result)
 
 	tree := readTree(t, dir)
 	require.Contains(t, tree, "files/fileObjectId.anyblock.json", "the document half")
@@ -439,16 +449,16 @@ func TestExporter_ABlobFailureIsCountedNotFatal(t *testing.T) {
 	fx.provider.EXPECT().Type(spaceId, fileId).Return(smartblock.SmartBlockTypeFileObject, nil)
 
 	dir := t.TempDir()
-	wr, err := NewDirWriter(dir)
+	wr, err := anyblock.NewDirWriter(dir)
 	require.NoError(t, err)
 
 	// when
 	result, err := fx.exporter.Export(context.Background(),
-		Request{SpaceId: spaceId, SpaceName: "Fixture space", IncludeArchived: true, IncludeFiles: true}, wr)
+		anyblock.Request{SpaceId: spaceId, SpaceName: "Fixture space", IncludeArchived: true, IncludeFiles: true}, wr)
 
 	// then — the document travels, the failure is counted, nothing binds
 	require.NoError(t, err)
-	assert.Equal(t, Result{Succeed: 1, BlobErrors: 1}, result)
+	assert.Equal(t, anyblock.Result{Succeed: 1, BlobErrors: 1}, result)
 	tree := readTree(t, dir)
 	require.Contains(t, tree, "files/brokenFileId.anyblock.json", "the document half still travels")
 	idx, err := anyblockjson.UnmarshalIndex([]byte(tree[anyblockjson.IndexFileName]))
@@ -507,14 +517,14 @@ func TestExporter_AMidStreamFailureLeavesNoPartialBlob(t *testing.T) {
 	fx.provider.EXPECT().Type(spaceId, fileId).Return(smartblock.SmartBlockTypeFileObject, nil)
 
 	dir := t.TempDir()
-	wr, err := NewDirWriter(dir)
+	wr, err := anyblock.NewDirWriter(dir)
 	require.NoError(t, err)
 
 	result, err := fx.exporter.Export(context.Background(),
-		Request{SpaceId: spaceId, SpaceName: "Fixture space", IncludeArchived: true, IncludeFiles: true}, wr)
+		anyblock.Request{SpaceId: spaceId, SpaceName: "Fixture space", IncludeArchived: true, IncludeFiles: true}, wr)
 
 	require.NoError(t, err)
-	assert.Equal(t, Result{Succeed: 1, BlobErrors: 1}, result)
+	assert.Equal(t, anyblock.Result{Succeed: 1, BlobErrors: 1}, result)
 	tree := readTree(t, dir)
 	require.Contains(t, tree, "files/truncatedFileId.anyblock.json")
 	assert.NotContains(t, tree, "files/truncatedFileId.bin", "the partial blob must be cleaned up")

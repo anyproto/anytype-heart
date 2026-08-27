@@ -57,6 +57,7 @@ import (
 	sb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/block/export/anyblock"
 	"github.com/anyproto/anytype-heart/core/block/export/collect"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/converter"
@@ -112,7 +113,15 @@ type Export interface {
 }
 
 type export struct {
-	picker              cache.ObjectGetter
+	// picker is typed CachedObjectGetter rather than ObjectGetter because
+	// the native AnyBlock JSON exporter closes every object it loads out of
+	// the cache — that is its memory model, not an optimisation
+	// (EXPORTER_DESIGN §1.5/§1.6), and anyblock.Exporter takes the wider
+	// type so a picker that cannot close is a compile error there. In
+	// production this resolves to the same component the narrow type did:
+	// core/block.Service is the only ObjectGetter the app registers, and it
+	// already answers the wider interface for the indexer.
+	picker              cache.CachedObjectGetter
 	objectStore         objectstore.ObjectStore
 	sbtProvider         typeprovider.SmartBlockTypeProvider
 	fileService         files.Service
@@ -132,7 +141,7 @@ func (e *export) Init(a *app.App) (err error) {
 	e.processService = app.MustComponent[process.Service](a)
 	e.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	e.fileService = app.MustComponent[files.Service](a)
-	e.picker = app.MustComponent[cache.ObjectGetter](a)
+	e.picker = app.MustComponent[cache.CachedObjectGetter](a)
 	e.sbtProvider = app.MustComponent[typeprovider.SmartBlockTypeProvider](a)
 	e.spaceService = app.MustComponent[space.Service](a)
 	e.accountService = app.MustComponent[account.Service](a)
@@ -151,7 +160,7 @@ func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) 
 		Id:      bson.NewObjectId().Hex(),
 		State:   0,
 		Message: &pb.ModelProcessMessageOfExport{Export: &pb.ModelProcessExport{}},
-	}, 4, req.NoProgress, e.notificationService)
+	}, exportWorkers(req.Format), req.NoProgress, e.notificationService)
 	queue.SetMessage("prepare")
 
 	if err = queue.Start(); err != nil {
@@ -285,6 +294,11 @@ func (e *exportContext) getStateFilters(id string) *state.Filters {
 
 // exportObject synchronously exports a single object and return the bytes slice
 func (e *exportContext) exportObject(ctx context.Context, objectId string) (string, error) {
+	if e.format == model.Export_AnyBlockJSON {
+		// one document, no bundle files, no dependency closure to collect
+		// for it — see exportSingleAnyBlockDocument (anyblockjson.go)
+		return e.exportSingleAnyBlockDocument(ctx, objectId)
+	}
 	err := e.docsForExport(ctx)
 	if err != nil {
 		return "", fmt.Errorf("collect docs for export: %w", err)
@@ -306,11 +320,8 @@ func (e *exportContext) exportObject(ctx context.Context, objectId string) (stri
 		return "", fmt.Errorf("get object details: %w", err)
 	}
 
-	// do not allow file export for in-memory writer
-	// nolint: gosec
-	switch model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyResolvedLayout)) {
-	case model.ObjectType_file, model.ObjectType_image, model.ObjectType_video, model.ObjectType_audio, model.ObjectType_pdf:
-		return "", fmt.Errorf("file export is not allowed for in-memory writer")
+	if err := refuseInMemoryFileObject(details); err != nil {
+		return "", err
 	}
 
 	err = e.writeDoc(ctx, inMemoryWriter, objectId, e.docs.TransformToDetailsMap())
@@ -326,6 +337,18 @@ func (e *exportContext) exportObject(ctx context.Context, objectId string) (stri
 	}
 
 	return "", nil
+}
+
+// refuseInMemoryFileObject is the refusal every in-memory export owes a
+// file object, in any format: the in-memory writer has nowhere to put the
+// bytes, so a document that promises them would be a half answer.
+func refuseInMemoryFileObject(details *domain.Details) error {
+	// nolint: gosec
+	switch model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyResolvedLayout)) {
+	case model.ObjectType_file, model.ObjectType_image, model.ObjectType_video, model.ObjectType_audio, model.ObjectType_pdf:
+		return fmt.Errorf("file export is not allowed for in-memory writer")
+	}
+	return nil
 }
 
 func (e *exportContext) exportObjects(ctx context.Context, queue process.Queue) (string, int, error) {
@@ -392,6 +415,10 @@ func (e *exportContext) exportByFormat(ctx context.Context, wr writer, queue pro
 		succeed = e.exportDotAndSVG(ctx, succeed, wr, queue)
 	} else if e.format == model.Export_GRAPH_JSON {
 		succeed = e.exportGraphJson(ctx, succeed, wr, queue)
+	} else if e.format == model.Export_AnyBlockJSON {
+		// the native bundle exporter writes the whole tree itself — its own
+		// plan, emit and bundle files (anyblockjson.go)
+		return e.exportAnyBlockJSON(ctx, wr, queue)
 	} else {
 		tasks := make([]process.Task, 0, len(e.docs))
 		var succeedAsync int64
@@ -467,18 +494,37 @@ func (e *exportContext) renameZipArchive(wr writer, succeed int) (string, int, e
 	return zipName, succeed, nil
 }
 
-func isAnyblockExport(format model.ExportFormat) bool {
-	return format == model.Export_Protobuf || format == model.Export_JSON
+// exportWorkers is the export queue's width. The legacy formats keep the 4
+// they have always run at. The native AnyBlock JSON bundle runs its emit AS
+// queue tasks, and each of those cold-builds one object into the space's
+// object cache before closing it again, so for that format the queue's
+// width IS the resident content set the design measured
+// (EXPORTER_DESIGN §1.5/§1.6) — which is half as wide on mobile.
+func exportWorkers(format model.ExportFormat) int {
+	if format == model.Export_AnyBlockJSON {
+		return anyblock.EmitWidth()
+	}
+	return 4
 }
 
-// closureForFormat maps a legacy export format onto the collection closure
-// it always ran: the snapshot formats (pb, pbjson) take the derived closure,
-// everything else content only (collect.Closure, design §1.1).
+// closureForFormat maps an export format onto the collection closure it
+// runs. The SELF-CONTAINED formats — the two protobuf renderings and the
+// native AnyBlock JSON bundle — take the derived closure, so types,
+// relations, options and templates travel with the objects; markdown, dot,
+// svg and graphjson take content only (collect.Closure, design §1.1).
+//
+// The predicate this replaced was spelled isAnyblockExport and meant
+// "protobuf or pb.json" — a name that predates the AnyBlock JSON format and
+// now reads as its exact opposite, five lines from the routing that decides
+// what an AnyBlock JSON export collects. Listing the formats here costs one
+// switch and cannot be misread.
 func closureForFormat(format model.ExportFormat) collect.Closure {
-	if isAnyblockExport(format) {
+	switch format {
+	case model.Export_Protobuf, model.Export_JSON, model.Export_AnyBlockJSON:
 		return collect.ClosureDerived
+	default:
+		return collect.ClosureContent
 	}
-	return collect.ClosureContent
 }
 
 func (e *exportContext) docsForExport(ctx context.Context) (err error) {
