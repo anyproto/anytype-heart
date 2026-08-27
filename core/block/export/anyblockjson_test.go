@@ -9,6 +9,7 @@ package export
 // and pkg/lib/anyblockjson and is proved there, over the corpus.
 
 import (
+	"archive/zip"
 	"context"
 	"io/fs"
 	"os"
@@ -197,6 +198,48 @@ func TestExport_AnyBlockJSONWritesABundle(t *testing.T) {
 	assert.Equal(t, "types/customObjectType.anyblock.json", index.Manifest.Types["customObjectType"])
 	_, err = anyblockjson.UnmarshalPropertyDictionary([]byte(tree[anyblockjson.PropertiesFileName]))
 	require.NoError(t, err)
+}
+
+// The same bundle into a zip archive, which is what a real backup takes:
+// the native exporter writes through the export service's own writers, and
+// the zip one is the only writer whose paths are not the filesystem's.
+//
+// How this can fail: build bundle paths with filepath.Join on a platform
+// whose separator is not "/" and the archive grows entries no reader can
+// resolve; or write the bundle files after Close and lose them silently.
+func TestExport_AnyBlockJSONWritesAZipBundle(t *testing.T) {
+	// given
+	fx := newFixture(t)
+	byDirectory := anyblockSpace(t, fx)
+	fx.picker.EXPECT().TryRemoveFromCache(mock.Anything, mock.Anything).Return(true, nil)
+
+	// when
+	archivePath, succeed, err := fx.Export(context.Background(), pb.RpcObjectListExportRequest{
+		SpaceId:         spaceId,
+		Path:            t.TempDir(),
+		Format:          model.Export_AnyBlockJSON,
+		IncludeArchived: true,
+		NoProgress:      true,
+		Zip:             true,
+	})
+
+	// then
+	require.NoError(t, err)
+	assert.Equal(t, len(byDirectory), succeed)
+
+	reader, err := zip.OpenReader(archivePath)
+	require.NoError(t, err)
+	defer reader.Close()
+	entries := make(map[string]bool, len(reader.File))
+	for _, file := range reader.File {
+		entries[file.Name] = true
+	}
+	assert.Len(t, entries, len(byDirectory)+2) // the documents, index.json, properties.json
+	for dir, id := range byDirectory {
+		assert.True(t, entries[dir+"/"+id+".anyblock.json"], "%s belongs in %s/", id, dir)
+	}
+	assert.True(t, entries[anyblockjson.IndexFileName])
+	assert.True(t, entries[anyblockjson.PropertiesFileName])
 }
 
 // Emit runs as queue tasks, so the process the client already watches
