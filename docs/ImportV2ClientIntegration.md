@@ -4,8 +4,8 @@ Audience: anytype-ts / anytype-swift / anytype-kotlin developers.
 Scope: the rewritten import engine (Markdown, Obsidian, Notion) and the optional BYOK LLM structure
 enrichment on top of it.
 
-Engineering references: [ImportV2Design.md](ImportV2Design.md) (engine), [ImportV2LLM.md](ImportV2LLM.md)
-(LLM plan phase), [ImportErrorCodes.md](ImportErrorCodes.md) (error-code mapping).
+Engineering reference: [ImportV2Design.md](ImportV2Design.md) — the engine, the schema-plan
+phase, and the error model.
 
 ---
 

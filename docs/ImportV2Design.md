@@ -1,9 +1,9 @@
 # Import V2 — Architecture & Plan
 
-Design for the greenfield replacement of `core/block/import` ("v1"). Companion documents:
-`docs/ImportComponent.md` (v1 pipeline reference), `docs/ImportNotion.md` (v1 Notion reference),
-`docs/ImportRewriteHandoff.md` (requirements). This document is the deliverable-1 pause point: no
-implementation code exists yet.
+Design for the greenfield replacement of `core/block/import` ("v1"). This is the engine's one
+architecture document: sections 1-16 were written before implementation and carry the original
+reasoning; sections 17-20 fold in the subsystem designs that followed, so what shipped and why is
+in one place. The client-facing contract lives in `docs/ImportV2ClientIntegration.md`.
 
 Scope of the first implementation: **engine core + Markdown**, then **Notion**. Other formats (PB, CSV,
 HTML, TXT, Web, External) stay on v1 and are out of scope until parity is reached and a switch is
@@ -724,8 +724,8 @@ positives. The counts are pinned in the cassette fidelity snapshot.
 collection view (blocked on resolver passthrough + installed-type ids for bundled types); csv header
 line as property evidence; per-page content signals; multilingual/learned matching.
 
-**LLM enrichment.** The "learned model behind the same interface" iteration is designed in
-[ImportV2LLM.md](ImportV2LLM.md): an optional BYOK (OpenAI-compatible) schema-plan step that sees
+**LLM enrichment.** The "learned model behind the same interface" iteration is section 17: an
+optional BYOK (OpenAI-compatible) schema-plan step that sees
 all container schemas before conversion and returns whole-workspace types *plus* property
 normalization (bundled-key remaps, format fixes, cross-container merges). It generalizes this seam
 into an injectable `Planner`; absent config or on any failure the import degrades to exactly the
@@ -962,3 +962,206 @@ the working tree, not taken from the synthesis).
    giant single documents fail downstream with an opaque error). Persist should measure the payload
    and reject/degrade with a typed `ObjectError` naming the object; chunking/splitting oversized
    documents is a possible later refinement.
+
+---
+
+## 17. Schema planning — the model names kinds, code maps properties
+
+Consolidated from the four planner design notes (always-mint, whitelist mapper, LLM
+enrichment, reuse-existing-types), which this section replaces.
+
+**The split.** An optional BYOK step (any OpenAI-compatible endpoint) sees only the *schema*
+of the source — container names, property names and formats, and optionally a few sample
+values — never the page content unless the caller opts in. It answers one question: which
+containers hold the same *kind* of thing, and what is that kind called. Everything else —
+which property maps to which Anytype relation, which keys are shared, what a type's
+properties are — is computed in code (`schemaplan.CompleteKinds`). Property mapping was
+tried as a model responsibility first and produced the failure modes below; moving it into
+code removed a whole class of them at once.
+
+```
+containerSchemas()  →  llmplan kinds call  →  schemaplan.CompleteKinds  →  Plan  →  Sanitize
+   (both converters)     one structured        pure code: type keys,        (unchanged   (the only
+                         completion per        whitelist bundled targets,    shape)       trust
+                         chunk of 8            kind-local property keys,                  boundary)
+                         containers            union of member properties
+```
+
+`schemaplan.Plan` keeps its shape whatever produced it, so the naive planner, a scripted test
+plan and an LLM plan are interchangeable and every downstream invariant is inherited rather
+than re-implemented.
+
+### 17.1 Always mint, but one type per kind
+
+Every confident container gets a minted type; bundled types are never *redefined* (a plan
+defining a document under a bundled key is re-keyed, not dropped). But minting must not
+become one type per database: three task trackers are all tasks. A Notion database becomes
+its own collection regardless, so containers sharing a type yields the right model — **N
+collections over one type**, each keeping its identity as a list while the rows share a shape.
+
+*Pointing* a container's pages at a bundled type is different from *defining* one under that
+key, and is always allowed — it is what the built-in type suggestor has always done. Only the
+prompt enforces always-mint, because `Sanitize` also governs the no-LLM paths.
+
+### 17.2 A property belongs to its type
+
+If two databases are different kinds, their "Status" columns are two different properties.
+Sharing across types is the exception and must be requested explicitly by naming one of the
+five whitelisted bundled targets. The scope is the container's type when it has one, else the
+container itself.
+
+This holds with no plan at all. The Notion converter used to dedup relations by name+format,
+so same-named columns in unrelated databases collapsed into one relation with one shared
+option pool — in the recorded workspace `Status` appeared in 18 databases, `Category` in 5.
+Dedup is now by Notion property id, which still collapses the case that must collapse (a
+database and its pages describing the same column). Markdown/Obsidian front matter still keys
+by property name across a vault: without a plan a folder is not a type, so there is nothing
+to scope the property to.
+
+### 17.3 Type names are grammar, not model output
+
+A type carries two names — "Project" for one member, "Projects" for a list — and the response
+schema asks for both. Measured against the recorded 35-container workspace with a current
+frontier model, 34 kinds: **14 came back with an empty plural, and 13 answered the singular
+field with the Notion database's own title**, which is plural. In the editor that reads as a
+blank "Type plural name" beside a type called "AI Projects".
+
+So `Sanitize` derives the pair (`schemaplan/inflect.go`). A plural that adds nothing — absent,
+or the same word — counts as unanswered. Only the head noun inflects; both sides of a
+conjunction do; irregulars and uncountables come from deliberately short tables, because a
+wrong guess reads worse than the rule it replaced. Three guards, each pinned by a name the
+live run produced: a trailing bracketed tag is not the head noun ("Reminders (SB)" →
+"Reminder (SB)"), a head that does not end in a letter never inflects ("Q1 2024",
+"Connected,"), and a name cut at the length cap is its own plural rather than half a word
+plus an s. Words that only look plural stay put: "Status", "Analysis", "Series", "Ideas".
+
+The metric that should have caught this scored plurals with `EqualFold(name, plural)`, which
+is false for an empty string, so a run of blank plurals looked clean. Empty plurals are their
+own column now, and `IMPORTV2_DUMP_NAMES=1` prints each kind as raw pair → repaired pair.
+
+### 17.4 Chunking, failure, and the trust boundary
+
+The kinds call is split at 8 containers per request; chunk size and balance are the largest
+quality lever measured so far, ahead of prompt wording. Starved runtimes fall back to
+per-container one-field calls.
+
+A planner failure is never fatal: the run degrades to the built-in rules with a warning on the
+report (silently only when the run is being cancelled). `Sanitize` is a pure function and the
+single trust boundary — it bounds display names, holds the closed icon vocabulary, re-keys
+collisions, and drops entries naming things that do not exist. Nothing the model returns
+reaches the space unexamined.
+
+### 17.5 Reusing the user's existing types — designed, not built
+
+An opt-in `reuseExistingTypes` was designed and deliberately not implemented; nothing in the
+wire or the code carries it today. The design, if it is picked up: candidates are non-bundled,
+non-archived types with at least one object, capped at ~40 most-used and passed *into*
+`Sanitize` as data so it keeps no dependency on the space; a container may name a candidate
+instead of defining a type; the container keeps its collection (single-database replacement
+applies only to minted types, since a pre-existing type's objects are not this database's
+rows); and the type itself is never rewritten — name, layout, icon and recommended relations
+are the user's, the import may only add objects.
+
+---
+
+## 18. Durable runs — the ledger, compensation, resume
+
+Consolidated from the durable-runs design note, which this section replaces. Shipped in
+`core/block/importv2/runstore` and `resume`.
+
+**Three drivers, all real.** Imports land in spaces with years of user data, so "throw the
+space away" is not available and compensation must be precise. A large Notion crawl is
+pacer-bound at 3 rps with ~2 requests per page — hours of work that a laptop lid-close used to
+destroy. And a headless heart running imports for hosted orgs cannot be redeployed while any
+import runs, because close cancelled every run and cancellation compensates.
+
+**The fact that forces the shape.** A minted tree id is the hash of a root change containing
+random seed bytes, so re-minting after a restart yields *different* ids — while objects
+persisted before the crash carry references already rewritten to the old ones. Without the
+identity ledger on disk, a resumed run can never reconnect to its own first half. Resume
+cannot be bolted on later; the identity index and payload store are in scope from the start.
+
+| | Decision |
+|---|---|
+| D1 | One any-store DB **per engine run**, in its own directory beside the run's file spill; disposal is `os.RemoveAll(runDir)` |
+| D2 | Durable: run manifest, identity ledger (entries, create payloads, derived memo), effect/outcome ledger, files ledger, issues |
+| D3 | Effect rows are write-through — one transaction per persisted object. Only pass-1 claims batch, because their loss is harmless: no side effects exist yet |
+| D4 | Resume reloads the ledger and re-runs the passes with a skip set of persisted source keys; unfinished creates ride the existing tree-exists fallback, upgraded to heal-by-update on a resumed incarnation |
+| D5 | `Close()` **suspends** — flush, mark suspended, return. Only user cancel compensates, and now durably, so a crash mid-cleanup resumes cleaning |
+| D6 | The adapter sweeps run dirs at startup: finish deleting, finish compensating, or resume, with capped attempts |
+| D7 | Compensation-critical fields are a version-frozen core, additive-only, so a future schema bump can still clean up an old run |
+| D8 | Volatile mode remains: no run store means today's in-memory journal and identity, for tests and the golden harness |
+
+The spill directory moves inside the run dir, so downloaded bytes survive a restart and are
+collected with everything else instead of leaking from an OS temp dir.
+
+---
+
+## 19. Deferred materialization — fetch, convert, spool, then materialize
+
+Consolidated from the deferred-materialization design note, which this section replaces.
+
+**The requirement is product, not optimization.** The engine used to persist from the first
+seconds, so objects trickled into the user's space for the entire multi-hour crawl. A space
+that is half-built for three hours is the thing being forbidden.
+
+```
+pass 1  identity           claims, dedup match, local id minting
+pass 2  fetch/convert/spool crawl, convert, download attachments, write to the run dir.
+                            NOTHING enters the space.
+pass 3  materialize         replay the spool: identity, reference resolution, tree creation,
+                            file upload, journalled effects. No network beyond file sync.
+finalize                    root collection, widget, report
+```
+
+Pass 3 runs at persist speed rather than network speed, so the visibly half-built window
+shrinks from hours to minutes. Everything before it is abortable by deleting the run
+directory: nothing to compensate, because nothing was done.
+
+**The design move:** the spool reader implements the converter interface, so pass 3 *is* the
+existing engine back-half — sink, workers, resolver, persister, journal — fed by a converter
+that replays a spool instead of crawling. The bounded-channel backpressure and the memory
+invariant apply to pass 3 unchanged; what this adds is a durable seam between the halves, not
+a second pipeline.
+
+**Scope of the guarantee: per engine run, not per user request.** A multi-path markdown
+request runs N sequential engine runs, so path 1 has materialized before path 2 starts
+fetching. Notion is a single run and gets the full property.
+
+**Progress.** The phase vocabulary is shared by engine, converters and adapter. It is
+deliberately coarse and carries **no blended overall percentage**: fetching is rate-limit-bound
+at a couple of items a second while creating runs two orders of magnitude faster, so one
+number averaging them would be a lie in both directions. The displayed `currentItem` is user
+content — displayable, never loggable.
+
+---
+
+## 20. Notion fidelity — what the warnings were hiding
+
+Consolidated from the fidelity review, which this section replaces. Measured against the
+recorded workspace (403 pages, 35 data sources, 5248 blocks): 960 issues that turned out to be
+11 distinct shapes.
+
+**What Notion withholds.** 435 of the "unsupported block" warnings were buttons — Notion's own
+API returns `{"type":"unsupported"}` for them and will never return more, so they are reported
+as *Notion withheld this*, not as our failure, and leave no placeholder paragraph behind. 171
+were linked database views, which the API returns as a `child_database` titled "Untitled". 135
+were images and embeds whose external URL came back empty. 67 were people whose names the API
+withholds when the integration's User Capabilities are off — a workspace setting, and the
+report now says so instead of naming an id.
+
+**Icons.** Notion's named icon set was inventoried in full (474 names, via the CDN's own
+`icons/<name>_<color>.svg` oracle) and mapped to Anytype's. Named icons are a **type-only**
+feature here — the API rejects them elsewhere and the client renders them only for the
+object-type layout — so a page or callout carrying one gets the nearest emoji instead, from a
+hand-checked table, while types take the icon itself. Objects with icons went from 5 to 250.
+
+**Untitled pages.** 53 nameless rows: 47 genuinely empty (no name, no values, no content, no
+icon — 45 of them from a single template) and referenced by nothing. Empty rows are archived
+rather than skipped, because the database collection lists its rows as members before they are
+fetched and dropping them would dangle those references. Nameless objects in the space: 53 → 8.
+
+**The report.** Issues group by (severity, message) with per-object rollups and occurrence
+counts, so 960 rows became 396 and the page went from 954 lines to about 200. Messages name
+Notion pages, databases and properties, never ids; the resolver rewrites source keys to
+mentions of the objects that were actually created.
